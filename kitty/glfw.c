@@ -650,6 +650,12 @@ bool
 application_quit_requested() {
     return !application_quit_canary || glfwWindowShouldClose(application_quit_canary);
 }
+
+void
+request_application_quit() {
+    if (application_quit_canary)
+        glfwSetWindowShouldClose(application_quit_canary, true);
+}
 #endif
 
 // Global functions {{{
