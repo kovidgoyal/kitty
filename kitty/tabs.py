@@ -11,7 +11,7 @@ from .child import Child
 from .constants import appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
     add_tab, glfw_post_empty_event, mark_tab_bar_dirty, next_window_id,
-    pt_to_px, remove_tab, remove_window, set_active_tab, swap_tabs,
+    pt_to_px, remove_tab, remove_window, ring_bell, set_active_tab, swap_tabs,
     x11_window_id
 )
 from .layout import create_layout_object_for, evict_cached_layouts
@@ -198,6 +198,16 @@ class Tab:  # {{{
             self.relayout()
             return
         return 'Could not resize'
+
+    def resize_window(self, quality, increment):
+        if increment < 1:
+            raise ValueError(increment)
+        is_horizontal = quality in ('wider', 'narrower')
+        increment *= 1 if quality in ('wider', 'taller') else -1
+        if self.resize_window_by(
+                self.windows[self.active_window_idx].id,
+                increment, is_horizontal) is not None:
+            ring_bell()
 
     def reset_window_sizes(self):
         if self.current_layout.remove_all_biases():

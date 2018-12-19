@@ -25,6 +25,10 @@ Changelog
 - Fix changing :opt:`cursor_text_color` via remote control not working
   (:iss:`1229`)
 
+- Add an action to resize windows that can be mapped to shortcuts in :file:`kitty.conf`
+  (:pull:`1245`)
+
+
 0.13.1 [2018-12-06]
 ------------------------------
 
