@@ -115,6 +115,8 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             for (int c = 3; c < 201; c++) close(c);
 
             environ = env;
+            // for some reason SIGPIPE is set to SIG_IGN, so reset it, needed by bash,
+            // which does not reset signal handlers on its own
             signal(SIGPIPE, SIG_DFL);
             execvp(exe, argv);
             // Report the failure and exec a shell instead, so that we are not left
