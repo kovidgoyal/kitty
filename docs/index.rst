@@ -230,7 +230,7 @@ action, for example::
    map ctrl+left resize_window narrower
    map ctrl+right resize_window wider
    map ctrl+up resize_window taller
-   map shift+down move_window shorter 3
+   map ctrl+down resize_window shorter 3
 
 The ``resize_window`` action has a second, optional argument to control
 the resizing increment (a positive integer that defaults to 1).
