@@ -115,6 +115,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             for (int c = 3; c < 201; c++) close(c);
 
             environ = env;
+            signal(SIGPIPE, SIG_DFL);
             execvp(exe, argv);
             // Report the failure and exec a shell instead, so that we are not left
             // with a forked but not exec'ed process
