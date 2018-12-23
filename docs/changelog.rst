@@ -28,6 +28,9 @@ Changelog
 - Add an action to resize windows that can be mapped to shortcuts in :file:`kitty.conf`
   (:pull:`1245`)
 
+- Fix using the ``new_tab !neighbor`` action changing the order of the
+  non-neighboring tabs (:iss:`1256`)
+
 
 0.13.1 [2018-12-06]
 ------------------------------
