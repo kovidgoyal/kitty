@@ -6,7 +6,7 @@ Frequently Asked Questions
 .. contents::
 
 Some special symbols are rendered small/truncated in kitty?
------------------------------------------------------------------
+-----------------------------------------------------------
 
 The number of cells a unicode character takes up are controlled by the unicode
 standard.  All characters are rendered in a single cell unless the unicode
@@ -54,9 +54,37 @@ servers)::
 
     infocmp xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
 
+If you are behind a proxy (like Balabit) that prevents this, you must redirect the
+1st command to a file, copy that to the server and run ``tic`` manually.  If you
+connect to a server, embedded or Android system that doesn't have ``tic``, copy over
+your local file terminfo to the other system as :file:`~/.terminfo/x/xterm-kitty`.
+
 Really, the correct solution for this is to convince the OpenSSH maintainers to
-have ssh do this automatically when connecting to a server, so that all
-terminals work transparently.
+have ssh do this automatically, if possible, when connecting to a server, so that
+all terminals work transparently.
+
+
+Keys such as arrow keys, backspace, delete, home/end, etc. do not work when using su or sudo?
+-------------------------------------------------------------------------------------------------
+
+Make sure the TERM environment variable, is ``xterm-kitty``.  And either the
+TERMINFO environment variable points to a directory containing :file:`x/xterm-kitty`
+or that file is under :file:`~/.terminfo/x/`.
+
+Note that ``sudo`` might remove TERMINFO.  Then setting it at the shell prompt can
+be too late, because command line editing may not be reinitialized.  In that case
+you can either ask ``sudo`` to set it or if that is not supported, insert an ``env``
+command before starting the shell, or, if not possible, after sudo start another
+Shell providing the right terminfo path::
+
+    sudo … TERMINFO=$HOME/.terminfo bash -i
+    sudo … env TERMINFO=$HOME/.terminfo bash -i
+    TERMINFO=/home/ORIGINALUSER/.terminfo exec bash -i
+
+If you have double width characters in your prompt, you may also need to
+explicitly set a UTF-8 locale, like::
+
+    export LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
 
 
 How do I change the colors in a running kitty instance?
