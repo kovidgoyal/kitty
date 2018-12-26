@@ -923,6 +923,17 @@ is_ascii_control_char(char x) {
         if (yscale > 0) deltaY *= yscale;
     }
 
+    switch([event momentumPhase]) {
+        case NSEventPhaseBegan:
+            flags |= (1 << 1); break;
+        case NSEventPhaseChanged:
+            flags |= (2 << 1); break;
+        case NSEventPhaseEnded:
+            flags |= (3 << 1); break;
+        default:
+            break;
+    }
+
     if (fabs(deltaX) > 0.0 || fabs(deltaY) > 0.0)
         _glfwInputScroll(window, deltaX, deltaY, flags);
 }
