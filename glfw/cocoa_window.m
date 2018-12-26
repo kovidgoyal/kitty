@@ -345,6 +345,8 @@ static NSUInteger translateKeyToModifierFlag(int key)
         case GLFW_KEY_LEFT_SUPER:
         case GLFW_KEY_RIGHT_SUPER:
             return NSEventModifierFlagCommand;
+        case GLFW_KEY_CAPS_LOCK:
+            return NSEventModifierFlagCapsLock;
     }
 
     return 0;
