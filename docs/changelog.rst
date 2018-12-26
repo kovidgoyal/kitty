@@ -31,6 +31,9 @@ Changelog
 - Fix using the ``new_tab !neighbor`` action changing the order of the
   non-neighboring tabs (:iss:`1256`)
 
+- macOS: Fix momentum scrolling continuing when changing the active window/tab
+  (:iss:`1267`)
+
 
 0.13.1 [2018-12-06]
 ------------------------------

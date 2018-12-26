@@ -557,6 +557,7 @@ mouse_event(int button, int modifiers, int action) {
 void
 scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     bool in_tab_bar;
+    static id_type window_for_momentum_scroll = 0;
     unsigned int window_idx = 0;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
     if (!w && !in_tab_bar) {
@@ -571,6 +572,15 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     int s;
     bool is_high_resolution = flags & 1;
     Screen *screen = w->render_data.screen;
+    int momentum_data = (flags > 1) & 3;
+    switch(momentum_data) {
+        case 1:
+            window_for_momentum_scroll = w->id; break;
+        case 2:
+            if (window_for_momentum_scroll != w->id) return;
+        case 3:
+            window_for_momentum_scroll = 0; break;
+    }
     if (is_high_resolution) {
         yoffset *= OPT(touch_scroll_multiplier);
         if (yoffset * global_state.callback_os_window->pending_scroll_pixels < 0) {
