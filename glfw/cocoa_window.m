@@ -626,6 +626,11 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     updateCursorImage(window);
 }
 
+- (BOOL)acceptsFirstMouse:(NSEvent *)event
+{
+    return NO;  // changed by Kovid, to follow cocoa platform conventions
+}
+
 - (void)mouseDown:(NSEvent *)event
 {
     _glfwInputMouseClick(window,
