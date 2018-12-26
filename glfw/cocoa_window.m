@@ -1279,10 +1279,8 @@ static GLFWbool initializeAppKit(void)
     [NSApp run];
 
     // Press and Hold prevents some keys from emitting repeated characters
-    NSDictionary* defaults =
-        [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:NO],
-                                                   @"ApplePressAndHoldEnabled",
-                                                   nil];
+    NSDictionary* defaults = @{@"ApplePressAndHoldEnabled":@NO};
+
     [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
 
     return GLFW_TRUE;
@@ -2016,10 +2014,8 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
 
 void _glfwPlatformSetClipboardString(const char* string)
 {
-    NSArray* types = [NSArray arrayWithObjects:NSPasteboardTypeString, nil];
-
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
-    [pasteboard declareTypes:types owner:nil];
+    [pasteboard declareTypes:@[NSPasteboardTypeString] owner:nil];
     [pasteboard setString:[NSString stringWithUTF8String:string]
                   forType:NSPasteboardTypeString];
 }
