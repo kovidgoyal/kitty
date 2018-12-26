@@ -574,11 +574,11 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     Screen *screen = w->render_data.screen;
     int momentum_data = (flags > 1) & 3;
     switch(momentum_data) {
-        case 1:
+        case 1: // momentum phase began
             window_for_momentum_scroll = w->id; break;
-        case 2:
+        case 2: // momentum phase changed
             if (window_for_momentum_scroll != w->id) return;
-        case 3:
+        case 3: // momentum phase ended
             window_for_momentum_scroll = 0; break;
         default:
             break;
