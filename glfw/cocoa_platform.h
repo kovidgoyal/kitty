@@ -118,7 +118,9 @@ typedef struct _GLFWlibraryNS
     TISInputSourceRef   inputSource;
     IOHIDManagerRef     hidManager;
     id                  unicodeData;
-    id                  listener;
+    id                  helper;
+    id                  keyUpMonitor;
+    id                  keyDownMonitor;
 
     char                keyName[64];
     char                text[256];
