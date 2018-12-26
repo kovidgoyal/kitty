@@ -580,6 +580,8 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
             if (window_for_momentum_scroll != w->id) return;
         case 3:
             window_for_momentum_scroll = 0; break;
+        default:
+            break;
     }
     if (is_high_resolution) {
         yoffset *= OPT(touch_scroll_multiplier);
