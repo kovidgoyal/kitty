@@ -1383,9 +1383,10 @@ typedef void (* GLFWcursorenterfun)(GLFWwindow*,int);
  *  @param[in] flags A bit-mask providing extra data about the event.
  *  flags & 1 will be true if and only if the offset values are "high-precision".
  *  Typically pixel values. Otherwise the offset values are number of lines.
- *  (flags >> 1) & 3 will have value 1 for start of momentum scrolling,
- *  value 2 for momentum scrolling in progress and value 3 for momentum
- *  scrolling ended.
+ *  (flags >> 1) & 7 will have value 1 for the start of momentum scrolling,
+ *  value 2 for stationary momentum scrolling, value 3 for momentum scrolling
+ *  in progress, value 4 for momentum scrolling ended, value 5 for momentum
+ *  scrolling cancelled and value 6 if scrolling may begin soon.
  *
  *  @sa @ref scrolling
  *  @sa @ref glfwSetScrollCallback

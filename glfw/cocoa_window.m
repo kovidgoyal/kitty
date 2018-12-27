@@ -925,10 +925,17 @@ is_ascii_control_char(char x) {
     switch([event momentumPhase]) {
         case NSEventPhaseBegan:
             flags |= (1 << 1); break;
-        case NSEventPhaseChanged:
+        case NSEventPhaseStationary:
             flags |= (2 << 1); break;
-        case NSEventPhaseEnded:
+        case NSEventPhaseChanged:
             flags |= (3 << 1); break;
+        case NSEventPhaseEnded:
+            flags |= (4 << 1); break;
+        case NSEventPhaseCancelled:
+            flags |= (5 << 1); break;
+        case NSEventPhaseMayBegin:
+            flags |= (6 << 1); break;
+        case NSEventPhaseNone:
         default:
             break;
     }
