@@ -572,7 +572,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     int s;
     bool is_high_resolution = flags & 1;
     Screen *screen = w->render_data.screen;
-    int momentum_data = (flags > 1) & 3;
+    int momentum_data = (flags >> 1) & 3;
     switch(momentum_data) {
         case 1:
             window_for_momentum_scroll = w->id; break;
