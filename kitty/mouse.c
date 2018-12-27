@@ -586,6 +586,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
         default:
             break;
     }
+    if (yoffset == 0.0) return;
     if (is_high_resolution) {
         yoffset *= OPT(touch_scroll_multiplier);
         if (yoffset * global_state.callback_os_window->pending_scroll_pixels < 0) {

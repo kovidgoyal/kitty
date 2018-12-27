@@ -940,8 +940,7 @@ is_ascii_control_char(char x) {
             break;
     }
 
-    if (fabs(deltaX) > 0.0 || fabs(deltaY) > 0.0)
-        _glfwInputScroll(window, deltaX, deltaY, flags);
+    _glfwInputScroll(window, deltaX, deltaY, flags);
 }
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
