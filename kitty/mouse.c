@@ -578,6 +578,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
             window_for_momentum_scroll = w->id; break;
         case 2:
             if (window_for_momentum_scroll != w->id) return;
+            break;
         case 3:
             window_for_momentum_scroll = 0; break;
         default:
