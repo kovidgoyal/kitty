@@ -582,7 +582,6 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
             break;
         case MomentumPhaseEnded:
             window_for_momentum_scroll = 0; break;
-            break;
         case NoMomentumData:
             break;
     }
