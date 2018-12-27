@@ -572,16 +572,18 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     int s;
     bool is_high_resolution = flags & 1;
     Screen *screen = w->render_data.screen;
-    int momentum_data = (flags >> 1) & 3;
+    enum MomentumData { NoMomentumData, StartMomentumPhase, MomentumPhaseActive, MomentumPhaseEnded };
+    enum MomentumData momentum_data = (flags >> 1) & 3;
     switch(momentum_data) {
-        case 1:
+        case StartMomentumPhase:
             window_for_momentum_scroll = w->id; break;
-        case 2:
+        case MomentumPhaseActive:
             if (window_for_momentum_scroll != w->id) return;
             break;
-        case 3:
+        case MomentumPhaseEnded:
             window_for_momentum_scroll = 0; break;
-        default:
+            break;
+        case NoMomentumData:
             break;
     }
     if (is_high_resolution) {
