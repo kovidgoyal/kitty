@@ -182,16 +182,14 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
 
 void _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
 {
-    // TODO
     _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Gamma ramp getting not supported yet");
+                    "Wayland: Gamma ramp access is not available");
 }
 
 void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
 {
-    // TODO
     _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Gamma ramp setting not supported yet");
+                    "Wayland: Gamma ramp access is not available");
 }
 
 
