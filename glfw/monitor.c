@@ -474,7 +474,8 @@ GLFWAPI const GLFWgammaramp* glfwGetGammaRamp(GLFWmonitor* handle)
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
 
     _glfwFreeGammaArrays(&monitor->currentRamp);
-    _glfwPlatformGetGammaRamp(monitor, &monitor->currentRamp);
+    if (!_glfwPlatformGetGammaRamp(monitor, &monitor->currentRamp))
+        return NULL;
 
     return &monitor->currentRamp;
 }
@@ -500,7 +501,10 @@ GLFWAPI void glfwSetGammaRamp(GLFWmonitor* handle, const GLFWgammaramp* ramp)
     _GLFW_REQUIRE_INIT();
 
     if (!monitor->originalRamp.size)
-        _glfwPlatformGetGammaRamp(monitor, &monitor->originalRamp);
+    {
+        if (!_glfwPlatformGetGammaRamp(monitor, &monitor->originalRamp))
+            return;
+    }
 
     _glfwPlatformSetGammaRamp(monitor, ramp);
 }

@@ -455,7 +455,7 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
                   &mode->blueBits);
 }
 
-void _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
+GLFWbool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
 {
     HDC dc;
     WORD values[768];
@@ -469,6 +469,8 @@ void _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
     memcpy(ramp->red,   values +   0, 256 * sizeof(unsigned short));
     memcpy(ramp->green, values + 256, 256 * sizeof(unsigned short));
     memcpy(ramp->blue,  values + 512, 256 * sizeof(unsigned short));
+
+    return GLFW_TRUE;
 }
 
 void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
@@ -510,4 +512,3 @@ GLFWAPI const char* glfwGetWin32Monitor(GLFWmonitor* handle)
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return monitor->win32.publicDisplayName;
 }
-
