@@ -240,7 +240,7 @@ GLFWbool _glfwCreateContextOSMesa(_GLFWwindow* window,
         if (ctxconfig->forward)
         {
             _glfwInputError(GLFW_VERSION_UNAVAILABLE,
-                            "OSMesa: Foward-compatible contexts not supported");
+                            "OSMesa: Forward-compatible contexts not supported");
             return GLFW_FALSE;
         }
 
@@ -367,4 +367,3 @@ GLFWAPI OSMesaContext glfwGetOSMesaContext(GLFWwindow* handle)
 
     return window->context.osmesa.handle;
 }
-
