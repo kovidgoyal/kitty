@@ -575,16 +575,21 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     enum MomentumData momentum_data = (flags >> 1) & 7;
 
     switch(momentum_data) {
+        case NoMomentumData:
+            break;
         case MomentumPhaseBegan:
             window_for_momentum_scroll = w->id;
             main_screen_for_momentum_scroll = screen->linebuf == screen->main_linebuf;
             break;
+        case MomentumPhaseStationary:
         case MomentumPhaseActive:
             if (window_for_momentum_scroll != w->id || main_screen_for_momentum_scroll != (screen->linebuf == screen->main_linebuf)) return;
             break;
         case MomentumPhaseEnded:
+        case MomentumPhaseCancelled:
             window_for_momentum_scroll = 0;
             break;
+        case MomentumPhaseMayBegin:
         default:
             break;
     }
