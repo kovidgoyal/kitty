@@ -558,6 +558,7 @@ void
 scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     bool in_tab_bar;
     static id_type window_for_momentum_scroll = 0;
+    static bool main_screen_for_momentum_scroll = false;
     unsigned int window_idx = 0;
     Window *w = window_for_event(&window_idx, &in_tab_bar);
     if (!w && !in_tab_bar) {
@@ -568,18 +569,22 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
         if (t) w = t->windows + t->active_window;
     }
     if (!w) return;
+    Screen *screen = w->render_data.screen;
 
     enum MomentumData { NoMomentumData, MomentumPhaseBegan, MomentumPhaseStationary, MomentumPhaseActive, MomentumPhaseEnded, MomentumPhaseCancelled, MomentumPhaseMayBegin };
     enum MomentumData momentum_data = (flags >> 1) & 7;
 
     switch(momentum_data) {
         case MomentumPhaseBegan:
-            window_for_momentum_scroll = w->id; break;
+            window_for_momentum_scroll = w->id;
+            main_screen_for_momentum_scroll = screen->linebuf == screen->main_linebuf;
+            break;
         case MomentumPhaseActive:
-            if (window_for_momentum_scroll != w->id) return;
+            if (window_for_momentum_scroll != w->id || main_screen_for_momentum_scroll != (screen->linebuf == screen->main_linebuf)) return;
             break;
         case MomentumPhaseEnded:
-            window_for_momentum_scroll = 0; break;
+            window_for_momentum_scroll = 0;
+            break;
         default:
             break;
     }
@@ -587,7 +592,6 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
 
     int s;
     bool is_high_resolution = flags & 1;
-    Screen *screen = w->render_data.screen;
 
     if (is_high_resolution) {
         yoffset *= OPT(touch_scroll_multiplier);
