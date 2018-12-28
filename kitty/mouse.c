@@ -244,13 +244,33 @@ get_url_sentinel(Line *line, index_type url_start) {
 }
 
 static inline void
-set_mouse_cursor_for_screen(Screen *screen) {
-    mouse_cursor_shape = screen->modes.mouse_tracking_mode == NO_TRACKING ? BEAM : OPT(pointer_shape_when_grabbed);
+set_mouse_cursor_for_mouse_tracking_mode(MouseTrackingMode mouse_tracking_mode) {
+    mouse_cursor_shape = mouse_tracking_mode == NO_TRACKING ? BEAM : OPT(pointer_shape_when_grabbed);
 }
 
 static inline void
-detect_url(Screen *screen, unsigned int x, unsigned int y) {
-    bool has_url = false;
+set_mouse_cursor_for_screen(Screen *screen) {
+    set_mouse_cursor_for_mouse_tracking_mode(screen->modes.mouse_tracking_mode);
+}
+
+static bool url_under_mouse_cursor = false;
+
+void
+update_url_cursor_shape(MouseTrackingMode mouse_tracking_mode, int modifiers) {
+    MouseShape old_cursor = mouse_cursor_shape;
+    if (url_under_mouse_cursor && modifiers == (int)OPT(open_url_modifiers)) {
+        mouse_cursor_shape = HAND;
+    } else {
+        set_mouse_cursor_for_mouse_tracking_mode(mouse_tracking_mode);
+    }
+    if (mouse_cursor_shape != old_cursor) {
+        set_mouse_cursor(mouse_cursor_shape);
+    }
+}
+
+static inline void
+detect_url(Screen *screen, unsigned int x, unsigned int y, int modifiers) {
+    url_under_mouse_cursor = false;
     index_type url_start, url_end = 0;
     Line *line = screen_visual_line(screen, y);
     char_type sentinel;
@@ -258,13 +278,13 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
         url_start = line_url_start_at(line, x);
         sentinel = get_url_sentinel(line, url_start);
         if (url_start < line->xnum) url_end = line_url_end_at(line, x, true, sentinel);
-        has_url = url_end > url_start;
+        url_under_mouse_cursor = url_end > url_start;
     }
-    if (has_url) {
-        mouse_cursor_shape = HAND;
+    if (url_under_mouse_cursor) {
         index_type y_extended = y;
         extend_url(screen, line, &url_end, &y_extended, sentinel);
         screen_mark_url(screen, url_start, y, url_end, y_extended);
+        update_url_cursor_shape(screen->modes.mouse_tracking_mode, modifiers);
     } else {
         set_mouse_cursor_for_screen(screen);
         screen_mark_url(screen, 0, 0, 0, 0);
@@ -282,7 +302,7 @@ HANDLER(handle_move_event) {
     }
     if (!cell_for_pos(w, &x, &y, global_state.callback_os_window)) return;
     Screen *screen = w->render_data.screen;
-    detect_url(screen, x, y);
+    detect_url(screen, x, y, modifiers);
     bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
     bool in_tracking_mode = (
@@ -368,9 +388,9 @@ HANDLER(add_click) {
 }
 
 static inline void
-open_url(Window *w) {
+open_url(Window *w, int modifiers) {
     Screen *screen = w->render_data.screen;
-    detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
+    detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, modifiers);
     screen_open_url(screen);
 }
 
@@ -393,7 +413,7 @@ HANDLER(handle_button_event) {
             case GLFW_MOUSE_BUTTON_LEFT:
                 update_drag(true, w, is_release, modifiers);
                 if (is_release) {
-                    if (modifiers == (int)OPT(open_url_modifiers)) open_url(w);
+                    if (modifiers == (int)OPT(open_url_modifiers)) open_url(w, modifiers);
                 } else add_click(w, button, modifiers, window_idx);
                 break;
             case GLFW_MOUSE_BUTTON_MIDDLE:

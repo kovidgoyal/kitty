@@ -297,6 +297,7 @@ void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int off
 void colorprofile_push_dynamic_colors(ColorProfile*);
 void colorprofile_pop_dynamic_colors(ColorProfile*);
 
+void update_url_cursor_shape(MouseTrackingMode mouse_tracking_mode, int modifiers);
 void set_mouse_cursor(MouseShape);
 void enter_event(void);
 void mouse_event(int, int, int);

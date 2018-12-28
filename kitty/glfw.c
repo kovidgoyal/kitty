@@ -218,6 +218,14 @@ refresh_callback(GLFWwindow *w) {
 
 static int mods_at_last_key_or_button_event = 0;
 
+static inline Window*
+active_window(void) {
+    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+    Window *w = t->windows + t->active_window;
+    if (w->render_data.screen) return w;
+    return NULL;
+}
+
 static void
 key_callback(GLFWwindow *w, int key, int scancode, int action, int mods, const char* text, int state) {
     if (!set_callback_window(w)) return;
@@ -227,6 +235,7 @@ key_callback(GLFWwindow *w, int key, int scancode, int action, int mods, const c
         global_state.callback_os_window->is_key_pressed[key] = action == GLFW_RELEASE ? false : true;
     }
     if (is_window_ready_for_callbacks()) on_key_input(key, scancode, action, mods, text, state);
+    update_url_cursor_shape(active_window()->render_data.screen->modes.mouse_tracking_mode, mods);
     global_state.callback_os_window = NULL;
     request_tick_callback();
 }
