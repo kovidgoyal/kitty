@@ -569,22 +569,26 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     }
     if (!w) return;
 
-    int s;
-    bool is_high_resolution = flags & 1;
-    Screen *screen = w->render_data.screen;
-    enum MomentumData { NoMomentumData, StartMomentumPhase, MomentumPhaseActive, MomentumPhaseEnded };
-    enum MomentumData momentum_data = (flags >> 1) & 3;
+    enum MomentumData { NoMomentumData, MomentumPhaseBegan, MomentumPhaseStationary, MomentumPhaseActive, MomentumPhaseEnded, MomentumPhaseCancelled, MomentumPhaseMayBegin };
+    enum MomentumData momentum_data = (flags >> 1) & 7;
+
     switch(momentum_data) {
-        case StartMomentumPhase:
+        case MomentumPhaseBegan:
             window_for_momentum_scroll = w->id; break;
         case MomentumPhaseActive:
             if (window_for_momentum_scroll != w->id) return;
             break;
         case MomentumPhaseEnded:
             window_for_momentum_scroll = 0; break;
-        case NoMomentumData:
+        default:
             break;
     }
+    if (yoffset == 0.0) return;
+
+    int s;
+    bool is_high_resolution = flags & 1;
+    Screen *screen = w->render_data.screen;
+
     if (is_high_resolution) {
         yoffset *= OPT(touch_scroll_multiplier);
         if (yoffset * global_state.callback_os_window->pending_scroll_pixels < 0) {
