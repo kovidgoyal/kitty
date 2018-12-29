@@ -115,7 +115,7 @@ def float_parse(func, rest):
 
 @func_with_args('change_font_size')
 def parse_change_font_size(func, rest):
-    vals = rest.split(' ', 1)
+    vals = rest.strip().split(' ', 1)
     if len(vals) != 2:
         log_error('Invalid change_font_size specification: {}, treating it as default'.format(rest))
         args = [True, None, 0]
@@ -125,13 +125,13 @@ def parse_change_font_size(func, rest):
         if amt[0] in '+-':
             args[1] = amt[0]
             amt = amt[1:]
-        args[2] = float(amt)
+        args[2] = float(amt.strip())
     return func, args
 
 
 @func_with_args('clear_terminal')
 def clear_terminal(func, rest):
-    vals = rest.split(' ', 1)
+    vals = rest.strip().split(' ', 1)
     if len(vals) != 2:
         log_error('clear_terminal needs two arguments, using defaults')
         args = ['reset', 'active']
@@ -152,7 +152,7 @@ def neighboring_window(func, rest):
 
 @func_with_args('resize_window')
 def resize_window(func, rest):
-    vals = rest.split(' ', 1)
+    vals = rest.strip().split(' ', 1)
     if len(vals) > 2:
         log_error('resize_window needs one or two arguments, using defaults')
         args = ['wider', 1]
@@ -205,7 +205,7 @@ def nth_window(func, rest):
 
 
 def parse_key_action(action):
-    parts = action.split(' ', 1)
+    parts = action.strip().split(' ', 1)
     func = parts[0]
     if len(parts) == 1:
         return KeyAction(func, ())
@@ -216,7 +216,8 @@ def parse_key_action(action):
             func, args = parser(func, rest)
         except Exception:
             log_error('Ignoring invalid key action: {}'.format(action))
-    return KeyAction(func, args)
+        else:
+            return KeyAction(func, args)
 
 
 all_key_actions = set()
