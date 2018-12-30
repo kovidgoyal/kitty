@@ -393,14 +393,22 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
             todo[original_src] = cmd
     if todo:
         parallel_run(todo)
-    dest = os.path.join(base, module + '.so')
+    dest = os.path.join(base, module + '.temp.so')
     if not incremental or newer(dest, *objects):
         # Old versions of clang don't like -pthread being passed to the linker
         # Don't treat linker warnings as errors (linker generates spurious
         # warnings on some old systems)
         unsafe = {'-pthread', '-Werror', '-pedantic-errors'}
         linker_cflags = list(filter(lambda x: x not in unsafe, kenv.cflags))
-        run_tool([kenv.cc] + linker_cflags + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
+        try:
+            run_tool([kenv.cc] + linker_cflags + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
+        except Exception:
+            try:
+                os.remove(dest)
+            except EnvironmentError:
+                pass
+        else:
+            os.rename(dest, dest[:-len('.temp.so')] + '.so')
 
 
 def find_c_files():
