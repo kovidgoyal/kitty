@@ -24,11 +24,12 @@ pyspacing(int val) {
 #undef S
 }
 
+
 static inline PyObject*
 pattern_as_dict(FcPattern *pat) {
     PyObject *ans = PyDict_New();
     if (ans == NULL) return NULL;
-#define PS(x) PyUnicode_FromString((char*)x)
+#define PS(x) PyUnicode_Decode((const char*)x, strlen((const char*)x), "UTF-8", "replace")
 #define G(type, get, which, conv, name) { \
     type out; PyObject *p; \
     if (get(pat, which, 0, &out) == FcResultMatch) { \
