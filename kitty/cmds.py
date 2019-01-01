@@ -126,7 +126,7 @@ def set_font_size(boss, window, payload):
     ' and :italic:`\\u21fa` to send unicode characters. If you use the :option:`kitty @ send-text --match` option'
     ' the text will be sent to all matched windows. By default, text is sent to'
     ' only the currently active window.',
-    options_spec=MATCH_WINDOW_OPTION + '''\n
+    options_spec=MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t') + '''\n
 --stdin
 type=bool-set
 Read the text to be sent from :italic:`stdin`. Note that in this case the text is sent as is,
@@ -142,7 +142,7 @@ are sent as is, not interpreted for escapes.
 )
 def cmd_send_text(global_opts, opts, args):
     limit = 1024
-    ret = {'match': opts.match, 'is_binary': False}
+    ret = {'match': opts.match, 'is_binary': False, 'match_tab': opts.match_tab}
 
     def pipe():
         ret['is_binary'] = True
@@ -209,6 +209,13 @@ def send_text(boss, window, payload):
     match = payload['match']
     if match:
         windows = tuple(boss.match_windows(match))
+    if payload['match_tab']:
+        windows = []
+        tabs = tuple(boss.match_tabs(payload['match_tab']))
+        if not tabs:
+            raise MatchError(payload['match_tab'], 'tabs')
+        for tab in tabs:
+            windows += tuple(tab)
     data = payload['text'].encode('utf-8') if payload['is_binary'] else parse_send_text_bytes(payload['text'])
     for window in windows:
         if window is not None:
