@@ -10,7 +10,6 @@ from collections import deque
 from enum import IntEnum
 from itertools import chain
 
-from .child import cwd_of_process
 from .config import build_ansi_color_table
 from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
@@ -481,11 +480,7 @@ class Window:
 
     @property
     def cwd_of_child(self):
-        # TODO: Maybe use the cwd of the leader of the foreground process
-        # group in the session of the child process?
-        pid = self.child.pid
-        if pid is not None:
-            return cwd_of_process(pid) or None
+        return self.child.foreground_cwd or self.child.current_cwd
 
     def pipe_data(self, text, has_wrap_markers=False):
         text = text or ''

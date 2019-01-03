@@ -256,7 +256,7 @@ class Boss:
 
     def new_os_window_with_cwd(self, *args):
         w = self.active_window_for_cwd
-        cwd_from = w.child.pid if w is not None else None
+        cwd_from = w.child.pid_for_cwd if w is not None else None
         self._new_os_window(args, cwd_from)
 
     def add_child(self, window):
@@ -855,7 +855,7 @@ class Boss:
     def pipe(self, source, dest, exe, *args):
         cmd = [exe] + list(args)
         window = self.active_window
-        cwd_from = window.child.pid if window else None
+        cwd_from = window.child.pid_for_cwd if window else None
 
         def create_window():
             return self.special_window_for_cmd(
@@ -923,7 +923,7 @@ class Boss:
 
     def new_tab_with_cwd(self, *args):
         w = self.active_window_for_cwd
-        cwd_from = w.child.pid if w is not None else None
+        cwd_from = w.child.pid_for_cwd if w is not None else None
         self._create_tab(args, cwd_from=cwd_from)
 
     def _new_window(self, args, cwd_from=None):
@@ -941,7 +941,7 @@ class Boss:
         w = self.active_window_for_cwd
         if w is None:
             return self.new_window(*args)
-        cwd_from = w.child.pid if w is not None else None
+        cwd_from = w.child.pid_for_cwd if w is not None else None
         self._new_window(args, cwd_from=cwd_from)
 
     def move_tab_forward(self):

@@ -13,6 +13,10 @@ Changelog
 - Report the current foreground processes as well as the original child process,
   when using `kitty @ ls`
 
+- Use the current working directory of the foreground process for the
+  `*_with_cwd` actions that open a new window with the current working
+  directory.
+
 - Fix setting :opt:`background_opacity` causing window margins/padding to be slightly
   different shade from background (:iss:`1221`)
 
