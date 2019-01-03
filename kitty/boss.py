@@ -10,6 +10,7 @@ from functools import partial
 from gettext import gettext as _
 from weakref import WeakValueDictionary
 
+from .child import cached_process_data
 from .cli import create_opts, parse_args
 from .conf.utils import to_cmdline
 from .config import initial_window_size_func, prepare_config_file_for_editing
@@ -150,14 +151,15 @@ class Boss:
         return os_window_id
 
     def list_os_windows(self):
-        active_tab, active_window = self.active_tab, self.active_window
-        active_tab_manager = self.active_tab_manager
-        for os_window_id, tm in self.os_window_map.items():
-            yield {
-                'id': os_window_id,
-                'is_focused': tm is active_tab_manager,
-                'tabs': list(tm.list_tabs(active_tab, active_window)),
-            }
+        with cached_process_data():
+            active_tab, active_window = self.active_tab, self.active_window
+            active_tab_manager = self.active_tab_manager
+            for os_window_id, tm in self.os_window_map.items():
+                yield {
+                    'id': os_window_id,
+                    'is_focused': tm is active_tab_manager,
+                    'tabs': list(tm.list_tabs(active_tab, active_window)),
+                }
 
     @property
     def all_tab_managers(self):

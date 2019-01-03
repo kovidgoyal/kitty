@@ -4,16 +4,27 @@
 
 import fcntl
 import os
+from collections import defaultdict
+from contextlib import contextmanager
 
 import kitty.fast_data_types as fast_data_types
 
 from .constants import is_macos, shell_path, terminfo_dir
 
 if is_macos:
-    from kitty.fast_data_types import cmdline_of_process, cwd_of_process as _cwd, environ_of_process as _environ_of_process
+    from kitty.fast_data_types import (
+            cmdline_of_process, cwd_of_process as _cwd, environ_of_process as _environ_of_process,
+            process_group_map as _process_group_map
+    )
 
     def cwd_of_process(pid):
         return os.path.realpath(_cwd(pid))
+
+    def process_group_map():
+        ans = defaultdict(list)
+        for pid, pgid in _process_group_map():
+            ans[pgid].append(pid)
+        return ans
 
 else:
 
@@ -26,6 +37,46 @@ else:
 
     def _environ_of_process(pid):
         return open('/proc/{}/environ'.format(pid), 'rb').read().decode('utf-8')
+
+    def process_group_map():
+        ans = defaultdict(list)
+        for x in os.listdir('/proc'):
+            try:
+                pid = int(x)
+            except Exception:
+                continue
+            try:
+                raw = open('/proc/' + x + '/stat', 'rb').read().decode('utf-8')
+            except EnvironmentError:
+                continue
+            try:
+                q = int(raw.split(' ', 5)[4])
+            except Exception:
+                continue
+            ans[q].append(pid)
+        return ans
+
+
+def processes_in_group(grp):
+    gmap = getattr(process_group_map, 'cached_map', None)
+    if gmap is None:
+        try:
+            gmap = process_group_map()
+        except Exception:
+            gmap = {}
+    return gmap.get(grp, [])
+
+
+@contextmanager
+def cached_process_data():
+    try:
+        process_group_map.cached_map = process_group_map()
+    except Exception:
+        process_group_map.cached_map = {}
+    try:
+        yield
+    finally:
+        process_group_map.cached_map = None
 
 
 def parse_environ_block(data):
@@ -141,6 +192,24 @@ class Child:
     def mark_terminal_ready(self):
         os.close(self.terminal_ready_fd)
         self.terminal_ready_fd = -1
+
+    @property
+    def foreground_processes(self):
+        try:
+            pgrp = os.tcgetpgrp(self.child_fd)
+            foreground_processes = processes_in_group(pgrp) if pgrp >= 0 else []
+
+            def process_desc(pid):
+                ans = {'pid': pid}
+                try:
+                    ans['cmdline'] = cmdline_of_process(pid)
+                except Exception:
+                    pass
+                return ans
+
+            return list(map(process_desc, foreground_processes))
+        except Exception:
+            return []
 
     @property
     def cmdline(self):

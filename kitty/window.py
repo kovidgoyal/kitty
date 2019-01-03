@@ -168,6 +168,7 @@ class Window:
             cwd=self.child.current_cwd or self.child.cwd,
             cmdline=self.child.cmdline,
             env=self.child.environ,
+            foreground_processes=self.child.foreground_processes
         )
 
     @property

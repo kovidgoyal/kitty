@@ -40,6 +40,7 @@
 #define NS_TO_US (1000)
 
 #ifdef __APPLE__
+#include <libproc.h>
 #include <mach/mach_time.h>
 static mach_timebase_info_data_t timebase = {0};
 
@@ -52,6 +53,25 @@ user_cache_dir() {
     static char buf[1024];
     if (!confstr(_CS_DARWIN_USER_CACHE_DIR, buf, sizeof(buf) - 1)) return PyErr_SetFromErrno(PyExc_OSError);
     return PyUnicode_FromString(buf);
+}
+
+static PyObject*
+process_group_map() {
+    int num_of_processes = proc_listallpids(NULL, 0);
+    size_t bufsize = sizeof(pid_t) * (num_of_processes + 1024);
+    pid_t *buf = malloc(bufsize);
+    if (!buf) return PyErr_NoMemory();
+    num_of_processes = proc_listallpids(buf, (int)bufsize);
+    PyObject *ans = PyTuple_New(num_of_processes);
+    if (ans == NULL) { free(buf); return PyErr_NoMemory(); }
+    for (int i = 0; i < num_of_processes; i++) {
+        long pid = buf[i], pgid = getpgid(buf[i]);
+        PyObject *t = Py_BuildValue("ll", pid, pgid);
+        if (t == NULL) { free(buf); Py_DECREF(ans); return NULL; }
+        PyTuple_SET_ITEM(ans, i, t);
+    }
+    free(buf);
+    return ans;
 }
 
 #else
@@ -177,6 +197,7 @@ static PyMethodDef module_methods[] = {
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),
+    METHODB(process_group_map, METH_NOARGS),
 #endif
 #ifdef WITH_PROFILER
     {"start_profiler", (PyCFunction)start_profiler, METH_VARARGS, ""},

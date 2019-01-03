@@ -10,6 +10,9 @@ Changelog
   are formatted. In particular the template can be used to display
   the tab number next to the title (:iss:`1223`)
 
+- Report the current foreground processes as well as the original child process,
+  when using `kitty @ ls`
+
 - Fix setting :opt:`background_opacity` causing window margins/padding to be slightly
   different shade from background (:iss:`1221`)
 
