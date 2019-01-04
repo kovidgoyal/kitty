@@ -511,8 +511,10 @@ class TabManager:  # {{{
         if len(self.tabs) > 1:
             idx = self.active_tab_idx
             nidx = (idx + len(self.tabs) + delta) % len(self.tabs)
-            self.tabs[idx], self.tabs[nidx] = self.tabs[nidx], self.tabs[idx]
-            swap_tabs(self.os_window_id, idx, nidx)
+            step = 1 if idx < nidx else -1
+            for i in range(idx, nidx, step):
+                self.tabs[i], self.tabs[i + step] = self.tabs[i + step], self.tabs[i]
+                swap_tabs(self.os_window_id, i, i + step)
             self._set_active_tab(nidx)
             self.mark_tab_bar_dirty()
 
