@@ -23,7 +23,7 @@ from .fast_data_types import (
     set_clipboard_string, set_titlebar_color, set_window_render_data,
     update_window_title, update_window_visibility, viewport_for_window
 )
-from .keys import keyboard_mode_name
+from .keys import keyboard_mode_name, extended_key_event, defines
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import (
@@ -523,6 +523,15 @@ class Window:
         text = self.text_for_selection()
         if text:
             set_clipboard_string(text)
+
+    def copy_or_interrupt(self):
+        text = self.text_for_selection()
+        if text:
+            set_clipboard_string(text)
+        else:
+            mode = keyboard_mode_name(self.screen)
+            text = extended_key_event(defines.GLFW_KEY_C, defines.GLFW_MOD_CONTROL, defines.GLFW_PRESS) if mode == 'kitty' else b'\x03'
+            self.write_to_child(text)
 
     def pass_selection_to_program(self, *args):
         cwd = self.cwd_of_child

@@ -17,6 +17,9 @@ Changelog
   `*_with_cwd` actions that open a new window with the current working
   directory.
 
+- Add a new ``copy_or_interrupt`` action that can be mapped to kbd:`ctrl+c`. It
+  will copy if there is a selection and interrupt otherwise (:iss:`1286`)
+
 - Fix setting :opt:`background_opacity` causing window margins/padding to be slightly
   different shade from background (:iss:`1221`)
 
