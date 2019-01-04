@@ -8,7 +8,7 @@ import sys
 from collections import namedtuple
 
 appname = 'kitty'
-version = (0, 13, 1)
+version = (0, 13, 2)
 str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat

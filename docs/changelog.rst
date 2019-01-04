@@ -3,7 +3,7 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
-0.13.2 [future]
+0.13.2 [2019-01-04]
 ------------------------------
 
 - Add a new option :opt:`tab_title_template` to control how tab titles
