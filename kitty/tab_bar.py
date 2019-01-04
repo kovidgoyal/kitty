@@ -15,7 +15,7 @@ from .utils import color_as_int, log_error
 from .window import calculate_gl_geometry
 from .rgb import alpha_blend, color_from_int
 
-TabBarData = namedtuple('TabBarData', 'title is_active needs_attention')
+TabBarData = namedtuple('TabBarData', 'title is_active needs_attention color')
 DrawData = namedtuple(
     'DrawData', 'leading_spaces sep trailing_spaces bell_on_tab'
     ' bell_fg alpha active_bg inactive_bg default_bg title_template')
@@ -61,7 +61,11 @@ def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length, in
 
 
 def draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, index):
-    tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
+    if tab.color:
+        tab_bg = color_from_int(tab.color) if tab.is_active else alpha_blend(color_from_int(tab.color), draw_data.default_bg, 0.6)
+    else:
+        tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
+
     fade_colors = [as_rgb(color_as_int(alpha_blend(tab_bg, draw_data.default_bg, alpha))) for alpha in draw_data.alpha]
     for bg in fade_colors:
         screen.cursor.bg = bg
@@ -175,7 +179,12 @@ class TabBar:
         last_tab = data[-1] if data else None
 
         for i, t in enumerate(data):
-            s.cursor.bg = self.active_bg if t.is_active else 0
+            if t.color:
+                tab_bg = as_rgb(t.color if t.is_active else color_as_int(alpha_blend(color_from_int(t.color), color_from_int(0), 0.6)))
+            else:
+                tab_bg = self.active_bg if t.is_active else 0
+
+            s.cursor.bg = tab_bg
             s.cursor.fg = self.active_fg if t.is_active else 0
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
