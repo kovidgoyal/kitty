@@ -848,10 +848,9 @@ g('shortcuts.clipboard')  # {{{
 if is_macos:
     k('copy_to_clipboard', 'cmd+c', 'copy_to_clipboard', _('Copy to clipboard'), add_to_docs=False)
     k('paste_from_clipboard', 'cmd+v', 'paste_from_clipboard', _('Paste from clipboard'), add_to_docs=False)
-k('copy_to_clipboard', 'kitty_mod+c', 'copy_to_clipboard', _(
-    'Copy to clipboard. There is also a :code:`copy_or_interrupt` action that'
-    ' can be optionally mapped to :kbd:`ctrl+c`. It'
-    ' will copy only if there is a selection and send an interrupt otherwise. '))
+k('copy_to_clipboard', 'kitty_mod+c', 'copy_to_clipboard', _('Copy to clipboard'), long_text=_('''
+There is also a :code:`copy_or_interrupt` action that can be optionally mapped to :kbd:`Ctrl+c`.
+It will copy only if there is a selection and send an interrupt otherwise.'''))
 k('paste_from_clipboard', 'kitty_mod+v', 'paste_from_clipboard', _('Paste from clipboard'))
 k('paste_from_selection', 'kitty_mod+s', 'paste_from_selection', _('Paste from selection'))
 k('paste_from_selection', 'shift+insert', 'paste_from_selection', _('Paste from selection'))
