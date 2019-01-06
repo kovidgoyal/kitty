@@ -394,7 +394,8 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
     if todo:
         parallel_run(todo)
     dest = os.path.join(base, module + '.temp.so')
-    if not incremental or newer(dest, *objects):
+    real_dest = dest[:-len('.temp.so')] + '.so'
+    if not incremental or newer(real_dest, *objects):
         # Old versions of clang don't like -pthread being passed to the linker
         # Don't treat linker warnings as errors (linker generates spurious
         # warnings on some old systems)
@@ -408,7 +409,7 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
             except EnvironmentError:
                 pass
         else:
-            os.rename(dest, dest[:-len('.temp.so')] + '.so')
+            os.rename(dest, real_dest)
 
 
 def find_c_files():
