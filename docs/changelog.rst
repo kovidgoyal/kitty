@@ -3,6 +3,13 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.13.3 [future]
+------------------------------
+
+- Fix a regression in the previous release that broke using ``background`` for
+  :opt:`cursor_text_color` (:iss:`1288`)
+
+
 0.13.2 [2019-01-04]
 ------------------------------
 

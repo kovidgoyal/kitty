@@ -93,7 +93,7 @@ def load_shader_programs(semi_transparent=0):
 def setup_colors(screen, opts):
     screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
     cursor_text_color = opts.cursor_text_color or (12, 12, 12)
-    cursor_text_color_as_bg = 3 if cursor_text_color is None else 1
+    cursor_text_color_as_bg = 3 if opts.cursor_text_color is None else 1
     screen.color_profile.set_configured_colors(*map(color_as_int, (
         opts.foreground, opts.background, opts.cursor,
         cursor_text_color, (0, 0, cursor_text_color_as_bg),
