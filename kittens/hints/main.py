@@ -316,7 +316,7 @@ def run(args, text):
 
         largest_index = all_marks[-1].index
         for m in all_marks:
-            m.index = largest_index - m.index
+            m.index = largest_index - m.index + 1
         index_map = {m.index: m for m in all_marks}
     except Exception:
         import traceback
