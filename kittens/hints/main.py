@@ -315,8 +315,9 @@ def run(args, text):
             return
 
         largest_index = all_marks[-1].index
+        offset = max(0, args.hints_offset)
         for m in all_marks:
-            m.index = largest_index - m.index
+            m.index = largest_index - m.index + offset
         index_map = {m.index: m for m in all_marks}
     except Exception:
         import traceback
@@ -378,6 +379,13 @@ default=auto
 choices=auto,always,never
 Add trailing space after matched text. Defaults to auto, which adds the space
 when used together with --multiple.
+
+
+--hints-offset
+default=1
+type=int
+The offset (from zero) at which to start hint numbering. Note that only numbers
+greater than zero are respected.
 '''.format(','.join(sorted(URL_PREFIXES))).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
 usage = ''
