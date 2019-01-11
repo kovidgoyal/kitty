@@ -35,8 +35,8 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     }
     window->viewport_width = fw; window->viewport_height = fh;
     double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
-    window->viewport_x_ratio = (double)window->viewport_width / (double)w;
-    window->viewport_y_ratio = (double)window->viewport_height / (double)h;
+    window->viewport_x_ratio = w > 0 ? (double)window->viewport_width / (double)w : xr;
+    window->viewport_y_ratio = h > 0 ? (double)window->viewport_height / (double)h : yr;
     double xdpi = window->logical_dpi_x, ydpi = window->logical_dpi_y;
     set_os_window_dpi(window);
     bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != window->logical_dpi_x) || (ydpi != window->logical_dpi_y);
@@ -352,8 +352,9 @@ get_window_dpi(GLFWwindow *w, double *x, double *y) {
     float xscale = 1, yscale = 1;
     if (w) glfwGetWindowContentScale(w, &xscale, &yscale);
     else glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
-    if (!xscale) xscale = 1.0;
-    if (!yscale) yscale = 1.0;
+    // check for zero or NaN values of xscale/yscale
+    if (!xscale || xscale != xscale) xscale = 1.0;
+    if (!yscale || yscale != yscale) yscale = 1.0;
 #ifdef __APPLE__
     double factor = 72.0;
 #else
