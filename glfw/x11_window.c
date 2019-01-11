@@ -2244,10 +2244,14 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
         }
         else
         {
+            if (!window->resizable)
+                updateNormalHints(window, width, height);
+
             XMoveResizeWindow(_glfw.x11.display, window->x11.handle,
                               xpos, ypos, width, height);
         }
 
+        XFlush(_glfw.x11.display);
         return;
     }
 
