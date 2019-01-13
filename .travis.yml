@@ -4,7 +4,7 @@ matrix:
     fast_finish: true
     include:
         - os: linux
-          dist: trusty
+          dist: xenial
           group: beta
           language: python
           sudo: false
@@ -12,6 +12,7 @@ matrix:
           addons:
             apt:
               packages:
+                - libgl1-mesa-dev
                 - libxi-dev
                 - libxrandr-dev
                 - libxinerama-dev
@@ -20,7 +21,7 @@ matrix:
                 - libdbus-1-dev
 
         - os: linux
-          dist: trusty
+          dist: xenial
           group: beta
           sudo: false
           env:
@@ -30,6 +31,7 @@ matrix:
           addons:
             apt:
               packages:
+                - libgl1-mesa-dev
                 - libfontconfig1-dev
                 - libharfbuzz-dev
                 - libxi-dev
@@ -42,7 +44,7 @@ matrix:
                 - python3-pil
 
         - os: linux
-          dist: trusty
+          dist: xenial
           group: beta
           sudo: false
           env:
@@ -52,6 +54,7 @@ matrix:
           addons:
             apt:
               packages:
+                - libgl1-mesa-dev
                 - libfontconfig1-dev
                 - libharfbuzz-dev
                 - libxi-dev
@@ -64,7 +67,7 @@ matrix:
                 - python3-pil
 
         - os: linux
-          dist: trusty
+          dist: xenial
           group: beta
           sudo: false
           env:
@@ -74,6 +77,7 @@ matrix:
           addons:
             apt:
               packages:
+                - libgl1-mesa-dev
                 - libfontconfig1-dev
                 - libharfbuzz-dev
                 - libxi-dev
