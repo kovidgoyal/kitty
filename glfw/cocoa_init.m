@@ -299,6 +299,14 @@ static GLFWbool initializeTIS(void)
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+static inline bool
+is_ctrl_tab(NSEvent *event) {
+    NSEventModifierFlags modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+    return event.keyCode == kVK_Tab && (modifierFlags == NSEventModifierFlagControl || modifierFlags == (
+                NSEventModifierFlagControl | NSEventModifierFlagShift));
+}
+
+
 int _glfwPlatformInit(void)
 {
     _glfw.ns.autoreleasePool = [[NSAutoreleasePool alloc] init];
@@ -312,8 +320,7 @@ int _glfwPlatformInit(void)
 
     NSEvent* (^keydown_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
-        NSEventModifierFlags modifierFlags = [event modifierFlags];
-        if (event.keyCode == kVK_Tab && (modifierFlags == NSEventModifierFlagControl || modifierFlags == (NSEventModifierFlagControl | NSEventModifierFlagShift))) {
+        if (is_ctrl_tab(event)) {
             // Cocoa swallows Ctrl+Tab to cycle between views
             [[NSApp keyWindow].contentView keyDown:event];
         }
@@ -323,14 +330,13 @@ int _glfwPlatformInit(void)
 
     NSEvent* (^keyup_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
-        NSEventModifierFlags modifierFlags = [event modifierFlags];
         if ([event modifierFlags] & NSEventModifierFlagCommand) {
             // From http://cocoadev.com/index.pl?GameKeyboardHandlingAlmost
             // This works around an AppKit bug, where key up events while holding
             // down the command key don't get sent to the key window.
             [[NSApp keyWindow] sendEvent:event];
         }
-        if (event.keyCode == kVK_Tab && (modifierFlags == NSEventModifierFlagControl || modifierFlags == (NSEventModifierFlagControl | NSEventModifierFlagShift))) {
+        if (is_ctrl_tab(event)) {
             // Cocoa swallows Ctrl+Tab to cycle between views
             [[NSApp keyWindow].contentView keyUp:event];
         }

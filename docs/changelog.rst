@@ -18,6 +18,8 @@ Changelog
 - macOS: Ensure that when running from a bundle, the bundle kitty exe is
   preferred over any kitty in PATH (:iss:`1280`)
 
+- macOS: Fix a regression that broke mapping of :kbd:`ctrl+tab` (:iss:`1304`)
+
 - Add a list of user-created kittens to the docs
 
 - Fix a regression that broke changing mouse wheel scroll direction with
