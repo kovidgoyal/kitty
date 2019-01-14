@@ -615,6 +615,10 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
             // Only use wheel_scroll_multiplier if we are scrolling kitty scrollback or in mouse
             // tracking mode, where the application is responsible for interpreting scroll events
             yoffset *= OPT(wheel_scroll_multiplier);
+        } else if (OPT(wheel_scroll_multiplier) < 0) {
+            // ensure that changing scroll direction still works, even though
+            // we are not using wheel_scroll_multiplier
+            yoffset *= -1;
         }
         s = (int) round(yoffset);
         // apparently on cocoa some mice generate really small yoffset values
