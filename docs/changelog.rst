@@ -20,6 +20,10 @@ Changelog
 
 - Add a list of user-created kittens to the docs
 
+- Fix a regression that broke changing mouse wheel scroll direction with
+  negative :opt:`wheel_scroll_multiplier` values in full-screen applications
+  like vim (:iss:`1299`)
+
 0.13.2 [2019-01-04]
 ------------------------------
 
