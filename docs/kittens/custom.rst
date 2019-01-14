@@ -43,6 +43,8 @@ Now in :file:`kitty.conf` add the lines::
 Start kitty and press :kbd:`ctrl+k` and you should see the kitten running.
 The best way to develop your own kittens is to modify one of the built in
 kittens. Look in the kittens sub-directory of the kitty source code for those.
+Or see below for a list of :ref:`third-party kittens <external_kittens>`,
+that other kitty users have created.
 
 
 Passing arguments to kittens
@@ -127,3 +129,18 @@ layout, by simply adding the line::
 
 
 to the ``handle_result()`` function, above.
+
+.. _external_kittens:
+
+Kittens created by kitty users
+---------------------------------------------
+
+`vim-kitty-navigator <https://github.com/knubie/vim-kitty-navigator>`_
+   Allows you to navigate seamlessly between vim and kitty splits using a consistent set of hotkeys.
+
+`smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
+   Makes the kitty scroll bindings work in full screen applications
+
+`insert password <https://github.com/kovidgoyal/kitty/issues/1222>`_
+   Insert a password from a CLI password manager, taking care to only do it at
+   a password prompt.

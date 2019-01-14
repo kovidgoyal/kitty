@@ -18,6 +18,8 @@ Changelog
 - macOS: Ensure that when running from a bundle, the bundle kitty exe is
   preferred over any kitty in PATH (:iss:`1280`)
 
+- Add a list of user-created kittens to the docs
+
 0.13.2 [2019-01-04]
 ------------------------------
 
