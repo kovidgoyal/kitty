@@ -72,7 +72,11 @@ vec4 calculate_foreground() {
 void main() {
 #ifdef BACKGROUND
 #ifdef TRANSPARENT
-    final_color = vec4(background.rgb * bg_alpha, bg_alpha);
+    // bg_alpha is doubled to match rendering in the SIMPLE case
+    // and also rendering of the margin/padding, see https://github.com/kovidgoyal/kitty/pull/1291
+    // to test use background_opacity, window_margin_width and icat to display
+    // an image.
+    final_color = vec4(background.rgb * bg_alpha * bg_alpha, bg_alpha);
 #else
     final_color = vec4(background.rgb, 1.0f);
 #endif
@@ -101,7 +105,7 @@ void main() {
 #else
     // SIMPLE
 #ifdef TRANSPARENT
-    final_color = alpha_blend_premul(fg.rgb, fg.a, background, bg_alpha);
+    final_color = alpha_blend_premul(fg.rgb, fg.a, background * bg_alpha, bg_alpha);
     final_color = vec4(final_color.rgb, final_color.a);
 #else
     // since background alpha is 1.0, it is effectively pre-multiplied
