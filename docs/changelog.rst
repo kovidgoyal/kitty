@@ -15,6 +15,8 @@ Changelog
 - macOS: Fix dragging kitty window tabs in traditional full screen mode causing
   crashes (:iss:`1296`)
 
+- macOS: Ensure that when running from a bundle, the bundle kitty exe is
+  preferred over any kitty in PATH (:iss:`1280`)
 
 0.13.2 [2019-01-04]
 ------------------------------

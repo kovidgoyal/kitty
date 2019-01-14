@@ -231,7 +231,7 @@ def _main():
     rpath = os.path.dirname(kitty_exe())
     items = frozenset(os.environ['PATH'].split(os.pathsep))
     if rpath and rpath not in items:
-        os.environ['PATH'] += os.pathsep + rpath
+        os.environ['PATH'] = rpath + os.pathsep + os.environ.get('PATH', '')
 
     args = sys.argv[1:]
     if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
