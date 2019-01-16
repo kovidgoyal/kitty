@@ -81,6 +81,14 @@ type=bool-set
 Print out the window size as :italic:`widthxheight` (in pixels) and quit. This is a
 convenience method to query the window size if using kitty icat from a
 scripting language that cannot make termios calls.
+
+
+--stdin
+type=choices
+choices=detect,yes,no
+default=detect
+Read image data from stdin. The default is to do it automatically, when STDIN is not a terminal,
+but you can turn it off or on explicitly, if needed.
 '''
 
 
@@ -269,9 +277,10 @@ def main(args=sys.argv):
     if not sys.stdout.isatty():
         sys.stdout = open(os.ctermid(), 'w')
     stdin_data = None
-    if not sys.stdin.isatty():
+    if args.stdin == 'yes' or (not sys.stdin.isatty() and args.stdin == 'detect'):
         stdin_data = sys.stdin.buffer.read()
-        items.insert(0, stdin_data)
+        if stdin_data:
+            items.insert(0, stdin_data)
         sys.stdin.close()
         sys.stdin = open(os.ctermid(), 'r')
 
@@ -307,7 +316,7 @@ def main(args=sys.argv):
         raise SystemExit('You must specify at least one file to cat')
     if args.place:
         if len(items) > 1 or (isinstance(items[0], str) and os.path.isdir(items[0])):
-            raise SystemExit('The --place option can only be used with a single image')
+            raise SystemExit(f'The --place option can only be used with a single image, not {items}')
         sys.stdout.buffer.write(b'\0337')  # save cursor
     for item in items:
         is_tempfile = False

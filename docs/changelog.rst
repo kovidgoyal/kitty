@@ -6,6 +6,9 @@ Changelog
 0.13.3 [future]
 ------------------------------
 
+- icat kitten: Add a ``--stdin`` option to control if image data is read from
+  stdin (:iss:`1308`)
+
 - hints kitten: Start hints numbering at one instead of zero by default. Added
   an option ``--hints-offset`` to control it. (:iss:`1289`)
 
