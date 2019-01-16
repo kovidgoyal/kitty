@@ -208,7 +208,7 @@ class DiffHandler(Handler):
                 break
 
         if num is not None:
-            self.scroll_pos = min(num, self.max_scroll_pos)
+            self.scroll_pos = max(0, min(num, self.max_scroll_pos))
 
     @property
     def num_lines(self):
