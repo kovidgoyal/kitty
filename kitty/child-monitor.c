@@ -771,6 +771,9 @@ static unsigned int cocoa_pending_actions = 0;
 void
 set_cocoa_pending_action(CocoaPendingAction action) {
     cocoa_pending_actions |= action;
+    // The main loop may be blocking on the event queue, if e.g. unfocused.
+    // Unjam it so the pending action is processed right now.
+    unjam_event_loop();
 }
 #endif
 
