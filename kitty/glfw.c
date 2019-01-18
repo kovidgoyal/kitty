@@ -57,6 +57,19 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     }
 }
 
+// On Cocoa, glfwWaitEvents() can block indefinitely because of the way Cocoa
+// works. See https://github.com/glfw/glfw/issues/1251. I have noticed this
+// happening in particular with window resize events, when waiting with no
+// timeout. See https://github.com/kovidgoyal/kitty/issues/458
+// So we use an unlovely hack to workaround that case
+void
+unjam_event_loop() {
+#ifdef __APPLE__
+    if (event_loop_blocking_with_no_timeout)
+        wakeup_main_loop();
+#endif
+}
+
 
 // callbacks {{{
 
@@ -98,16 +111,6 @@ show_mouse_cursor(GLFWwindow *w) {
 }
 
 static int min_width = 100, min_height = 100;
-// On Cocoa, glfwWaitEvents() can block indefinitely because of the way Cocoa
-// works. See https://github.com/glfw/glfw/issues/1251. I have noticed this
-// happening in particular with window resize events, when waiting with no
-// timeout. See https://github.com/kovidgoyal/kitty/issues/458
-// So we use an unlovely hack to workaround that case
-#ifdef __APPLE__
-#define unjam_event_loop() { if (event_loop_blocking_with_no_timeout) wakeup_main_loop(); }
-#else
-#define unjam_event_loop()
-#endif
 
 static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {

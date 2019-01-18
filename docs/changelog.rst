@@ -32,6 +32,10 @@ Changelog
 - Fix :opt:`background_opacity` not working with pure white backgrounds
   (:iss:`1285`)
 
+- macOS: Fix "New OS Window" dock action not working when kitty is not focused
+  (:iss:`1312`)
+
+
 0.13.2 [2019-01-04]
 ------------------------------
 
