@@ -1039,7 +1039,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
             }
             if (num_spaces) {
                 center_glyph = true;
-                RENDER;
+                RENDER
                 center_glyph = false;
                 render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font_idx, true, center_glyph);
                 run_font_idx = NO_FONT;
@@ -1052,11 +1052,11 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
         prev_width = gpu_cell->attrs & WIDTH_MASK;
         if (run_font_idx == NO_FONT) run_font_idx = cell_font_idx;
         if (run_font_idx == cell_font_idx) continue;
-        RENDER;
+        RENDER
         run_font_idx = cell_font_idx;
         first_cell_in_run = i;
     }
-    RENDER;
+    RENDER
 #undef RENDER
 }
 
