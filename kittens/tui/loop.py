@@ -153,8 +153,9 @@ class Loop:
     def __init__(self,
                  sanitize_bracketed_paste='[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'):
         if is_macos:
-            # On macOS PTY devices are not supported by the KqueueSelector
-            self.asycio_loop = asyncio.SelectorEventLoop(selectors.PollSelector())
+            # On macOS PTY devices are not supported by the KqueueSelector and
+            # the PollSelector is broken, causes 100% CPU usage
+            self.asycio_loop = asyncio.SelectorEventLoop(selectors.SelectSelector())
             asyncio.set_event_loop(self.asycio_loop)
         else:
             self.asycio_loop = asyncio.get_event_loop()

@@ -38,6 +38,8 @@ Changelog
 - macOS: Add aliases for close window and new tab actions that conform to common
   Apple shortcuts for these actions (:iss:`1313`)
 
+- macOS: Fix some kittens causing 100% CPU usage
+
 
 0.13.2 [2019-01-04]
 ------------------------------
