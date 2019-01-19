@@ -18,7 +18,7 @@ worker_processes = []
 
 
 def find_differ():
-    if shutil.which('git') and subprocess.Popen(['git', '--help']).wait() == 0:
+    if shutil.which('git') and subprocess.Popen(['git', '--help'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait() == 0:
         return GIT_DIFF
     if shutil.which('diff'):
         return DIFF_DIFF
