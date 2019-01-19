@@ -35,6 +35,9 @@ Changelog
 - macOS: Fix "New OS Window" dock action not working when kitty is not focused
   (:iss:`1312`)
 
+- macOS: Add aliases for lose window and new tab actions that conform to common
+  Apple shortcuts for these actions (:iss:`1313`)
+
 
 0.13.2 [2019-01-04]
 ------------------------------

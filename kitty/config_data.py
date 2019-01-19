@@ -915,6 +915,8 @@ if is_macos:
     k('new_os_window', 'cmd+n', 'new_os_window', _('New OS window'))
 k('new_os_window', 'kitty_mod+n', 'new_os_window', _('New OS window'))
 k('close_window', 'kitty_mod+w', 'close_window', _('Close window'))
+if is_macos:
+    k('close_window', 'cmd+w', 'close_window', _('Close window'), add_to_docs=False)
 k('next_window', 'kitty_mod+]', 'next_window', _('Next window'))
 k('previous_window', 'kitty_mod+[', 'previous_window', _('Previous window'))
 k('move_window_forward', 'kitty_mod+f', 'move_window_forward', _('Move window forward'))
@@ -935,12 +937,14 @@ k('tenth_window', 'kitty_mod+0', 'tenth_window', _('Tenth window'))
 
 g('shortcuts.tab')  # {{{
 if is_macos:
-    k('next_tab', 'ctrl+tab', 'next_tab', _('Next tab'))
+    k('next_tab', 'ctrl+tab', 'next_tab', _('Next tab'), add_to_docs=False)
 k('next_tab', 'kitty_mod+right', 'next_tab', _('Next tab'))
 if is_macos:
-    k('previous_tab', 'ctrl+shift+tab', 'previous_tab', _('Previous tab'))
+    k('previous_tab', 'ctrl+shift+tab', 'previous_tab', _('Previous tab'), add_to_docs=False)
 k('previous_tab', 'kitty_mod+left', 'previous_tab', _('Previous tab'))
 k('new_tab', 'kitty_mod+t', 'new_tab', _('New tab'))
+if is_macos:
+    k('new_tab', 'cmd+t', 'new_tab', _('New tab'), add_to_docs=False)
 k('close_tab', 'kitty_mod+q', 'close_tab', _('Close tab'))
 k('move_tab_forward', 'kitty_mod+.', 'move_tab_forward', _('Move tab forward'))
 k('move_tab_backward', 'kitty_mod+,', 'move_tab_backward', _('Move tab backward'))
