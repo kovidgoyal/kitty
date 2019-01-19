@@ -19,6 +19,7 @@ from pygments.token import (
     Comment, Keyword, Literal, Name, Number, String, Whitespace
 )
 from sphinx import addnodes
+from sphinx.environment.adapters.toctree import TocTree
 from sphinx.util.logging import getLogger
 
 from kitty.constants import str_version
@@ -214,7 +215,8 @@ def commit_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
 
 # Sidebar ToC {{{
 def create_toc(app, pagename):
-    toctree = app.env.get_toc_for(pagename, app.builder)
+    tt = TocTree(app.env)
+    toctree = tt.get_toc_for(pagename, app.builder)
     if toctree is not None:
         subtree = toctree[toctree.first_child_matching_class(nodes.list_item)]
         bl = subtree.first_child_matching_class(nodes.bullet_list)
