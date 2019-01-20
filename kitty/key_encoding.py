@@ -320,7 +320,9 @@ PRESS, REPEAT, RELEASE = 1, 2, 4
 SHIFT, ALT, CTRL, SUPER = 1, 2, 4, 8
 KeyEvent = namedtuple('KeyEvent', 'type mods key')
 type_map = {'p': PRESS, 't': REPEAT, 'r': RELEASE}
+rtype_map = {v: k for k, v in type_map.items()}
 mod_map = {c: i for i, c in enumerate('ABCDEFGHIJKLMNOP')}
+rmod_map = {v: k for k, v in mod_map.items()}
 key_rmap = {}
 g = globals()
 config_key_map = {}
@@ -365,3 +367,10 @@ def decode_key_event(text):
     mods = mod_map[text[2]]
     key = key_rmap[text[3:5]]
     return KeyEvent(typ, mods, key)
+
+
+def encode_key_event(key_event):
+    typ = rtype_map[key_event.type]
+    mods = rmod_map[key_event.mods]
+    key = ENCODING[key_event.key.replace('_', ' ')]
+    return typ + mods + key
