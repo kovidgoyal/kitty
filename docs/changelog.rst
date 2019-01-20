@@ -3,6 +3,12 @@ Changelog
 
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 
+0.13.4 [future]
+---------------------
+
+- macOS: Fix :kbd:`cmd+period` key not working (:iss:`1318`)
+
+
 0.13.3 [2019-01-19]
 ------------------------------
 

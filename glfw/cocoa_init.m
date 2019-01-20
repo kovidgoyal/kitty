@@ -300,12 +300,15 @@ static GLFWbool initializeTIS(void)
 //////////////////////////////////////////////////////////////////////////
 
 static inline bool
-is_ctrl_tab(NSEvent *event) {
-    NSEventModifierFlags modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+is_ctrl_tab(NSEvent *event, NSEventModifierFlags modifierFlags) {
     return event.keyCode == kVK_Tab && (modifierFlags == NSEventModifierFlagControl || modifierFlags == (
                 NSEventModifierFlagControl | NSEventModifierFlagShift));
 }
 
+static inline bool
+is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
+    return event.keyCode == kVK_ANSI_Period && modifierFlags == NSEventModifierFlagCommand;
+}
 
 int _glfwPlatformInit(void)
 {
@@ -320,7 +323,8 @@ int _glfwPlatformInit(void)
 
     NSEvent* (^keydown_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
-        if (is_ctrl_tab(event)) {
+        NSEventModifierFlags modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+        if (is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
             // Cocoa swallows Ctrl+Tab to cycle between views
             [[NSApp keyWindow].contentView keyDown:event];
         }
@@ -330,13 +334,14 @@ int _glfwPlatformInit(void)
 
     NSEvent* (^keyup_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
-        if ([event modifierFlags] & NSEventModifierFlagCommand) {
+        NSEventModifierFlags modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+        if (modifierFlags & NSEventModifierFlagCommand) {
             // From http://cocoadev.com/index.pl?GameKeyboardHandlingAlmost
             // This works around an AppKit bug, where key up events while holding
             // down the command key don't get sent to the key window.
             [[NSApp keyWindow] sendEvent:event];
         }
-        if (is_ctrl_tab(event)) {
+        if (is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
             // Cocoa swallows Ctrl+Tab to cycle between views
             [[NSApp keyWindow].contentView keyUp:event];
         }
