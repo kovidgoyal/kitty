@@ -3739,10 +3739,6 @@ GLFWAPI void glfwPollEvents(void);
  *  GLFW will pass those events on to the application callbacks before
  *  returning.
  *
- *  If no windows exist, this function returns immediately.  For synchronization
- *  of threads in applications that do not create windows, use your threading
- *  library of choice.
- *
  *  Event processing is not required for joystick input to work.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
@@ -3790,10 +3786,6 @@ GLFWAPI void glfwWaitEvents(void);
  *  GLFW will pass those events on to the application callbacks before
  *  returning.
  *
- *  If no windows exist, this function returns immediately.  For synchronization
- *  of threads in applications that do not create windows, use your threading
- *  library of choice.
- *
  *  Event processing is not required for joystick input to work.
  *
  *  @param[in] timeout The maximum amount of time, in seconds, to wait.
@@ -3816,10 +3808,6 @@ GLFWAPI void glfwWaitEventsTimeout(double timeout);
  *
  *  This function posts an empty event from the current thread to the event
  *  queue, causing @ref glfwWaitEvents or @ref glfwWaitEventsTimeout to return.
- *
- *  If no windows exist, this function returns immediately.  For synchronization
- *  of threads in applications that do not create windows, use your threading
- *  library of choice.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_PLATFORM_ERROR.
