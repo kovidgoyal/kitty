@@ -1919,6 +1919,13 @@ start_selection(Screen *self, PyObject *args) {
 }
 
 static PyObject*
+is_rectangle_select(Screen *self, PyObject *a UNUSED) {
+    PyObject *ans = self->selection.rectangle_select ? Py_True : Py_False;
+    Py_INCREF(ans);
+    return ans;
+}
+
+static PyObject*
 text_for_selection(Screen *self, PyObject *a UNUSED) {
     FullSelectionBoundary start, end;
     full_selection_limits_(selection, &start, &end);
@@ -2211,6 +2218,7 @@ static PyMethodDef methods[] = {
     MND(set_margins, METH_VARARGS)
     MND(rescale_images, METH_NOARGS)
     MND(text_for_selection, METH_NOARGS)
+    MND(is_rectangle_select, METH_NOARGS)
     MND(scroll, METH_VARARGS)
     MND(send_escape_code_to_child, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)

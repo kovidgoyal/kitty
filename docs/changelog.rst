@@ -6,6 +6,9 @@ Changelog
 0.13.4 [future]
 ---------------------
 
+- A new option :opt:`strip_trailing_spaces` to optionally remove trailing
+  spaces from lines when copying to clipboard.
+
 - macOS: Fix :kbd:`cmd+period` key not working (:iss:`1318`)
 
 

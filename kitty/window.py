@@ -451,7 +451,11 @@ class Window:
     # }}}
 
     def text_for_selection(self):
-        return ''.join(self.screen.text_for_selection())
+        lines = self.screen.text_for_selection()
+        if self.opts.strip_trailing_spaces == 'always' or (
+                self.opts.strip_trailing_spaces == 'smart' and not self.screen.is_rectangle_select()):
+            lines = [l.rstrip() for l in lines]
+        return ''.join(lines)
 
     def destroy(self):
         self.destroyed = True

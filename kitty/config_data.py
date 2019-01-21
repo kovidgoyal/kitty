@@ -398,6 +398,11 @@ such as macOS that do not have the concept of primary selections. Note
 that this is a security risk, as all programs, including websites open in your
 browser can read the contents of the clipboard.'''))
 
+o('strip_trailing_spaces', 'never', option_type=choices('never', 'smart', 'always'), long_text=_('''
+Remove spaces at the end of lines when copying to clipboard.
+A value of :code:`smart` will do it when using normal selections, but not rectangle
+selections. :code:`always` will always do it.'''))
+
 o('rectangle_select_modifiers', 'ctrl+alt', option_type=to_modifiers, long_text=_('''
 The modifiers to use rectangular selection (i.e. to select text in a
 rectangular block with the mouse)'''))
