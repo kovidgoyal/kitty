@@ -798,7 +798,7 @@ incompatible with :opt:`background_opacity`. If you want to use both, you are
 probably better off just hiding the titlebar with :opt:`hide_window_decorations`.
 '''))
 
-o('macos_option_as_alt', True, long_text=_('''
+o('macos_option_as_alt', False, long_text=_('''
 Use the option key as an alt key. With this set to no, kitty will use
 the macOS native :kbd:`Option+Key` = unicode character behavior. This will
 break any :kbd:`Alt+key` keyboard shortcuts in your terminal programs, but you
