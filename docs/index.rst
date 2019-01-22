@@ -108,12 +108,12 @@ Scrolling
 ========================    =======================
 Action                      Shortcut
 ========================    =======================
-Scroll line up              :sc:`scroll_line_up`
-Scroll line down            :sc:`scroll_line_down`
-Scroll page up              :sc:`scroll_page_up`
-Scroll page down            :sc:`scroll_page_down`
-Scroll to top               :sc:`scroll_home`
-Scroll to bottom            :sc:`scroll_end`
+Scroll line up              :sc:`scroll_line_up` (also :kbd:`⌥+⌘+⇞` and :kbd:`⌘+↑` on macOS)
+Scroll line down            :sc:`scroll_line_down` (also :kbd:`⌥+⌘+⇟` and :kbd:`⌘+↓` on macOS)
+Scroll page up              :sc:`scroll_page_up` (also :kbd:`⌘+⇞` on macOS)
+Scroll page down            :sc:`scroll_page_down` (also :kbd:`⌘+⇟` on macOS)
+Scroll to top               :sc:`scroll_home` (also :kbd:`⌘+↖` on macOS)
+Scroll to bottom            :sc:`scroll_end` (also :kbd:`⌘+↘` on macOS)
 ========================    =======================
 
 Tabs
@@ -123,13 +123,14 @@ Tabs
 Action                      Shortcut
 ========================    =======================
 New tab                     :sc:`new_tab` (also :kbd:`⌘+t` on macOS)
-Close tab                   :sc:`close_tab`
-Next tab                    :sc:`next_tab` (also :kbd:`control+tab` on macOS)
-Previous tab                :sc:`previous_tab` (also :kbd:`control+shift+tab` on macOS)
+New tab with cwd            :sc:`new_tab_with_cwd` (also :kbd:`⇧+⌘+t` on macOS)
+Close tab                   :sc:`close_tab` (also :kbd:`⌘+w` on macOS)
+Next tab                    :sc:`next_tab` (also :kbd:`^+⇥` on macOS)
+Previous tab                :sc:`previous_tab` (also :kbd:`⇧+^+⇥` on macOS)
 Next layout                 :sc:`next_layout`
 Move tab forward            :sc:`move_tab_forward`
 Move tab backward           :sc:`move_tab_backward`
-Set tab title               :sc:`set_tab_title`
+Set tab title               :sc:`set_tab_title` (also :kbd:`⇧+⌘+i` on macOS)
 ========================    =======================
 
 
@@ -141,7 +142,8 @@ Action                      Shortcut
 ========================    =======================
 New window                  :sc:`new_window`
 New OS window               :sc:`new_os_window` (also :kbd:`⌘+n` on macOS)
-Close window                :sc:`close_window` (also :kbd:`⌘+w` on macOS)
+New OS window with cwd      :sc:`new_os_window_with_cwd` (also :kbd:`⇧+⌘+n` on macOS)
+Close window                :sc:`close_window` (also :kbd:`⇧+⌘+d` on macOS)
 Next window                 :sc:`next_window`
 Previous window             :sc:`previous_window`
 Move window forward         :sc:`move_window_forward`
@@ -177,13 +179,13 @@ Action                              Shortcut
 Copy to clipboard                   :sc:`copy_to_clipboard` (also :kbd:`⌘+c` on macOS)
 Paste from clipboard                :sc:`paste_from_clipboard` (also :kbd:`⌘+v` on macOS)
 Paste from selection                :sc:`paste_from_selection`
-Increase font size                  :sc:`increase_font_size`
-Decrease font size                  :sc:`decrease_font_size`
-Restore font size                   :sc:`reset_font_size`
-Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`^⌘+f` on macOS)
+Increase font size                  :sc:`increase_font_size` (also :kbd:`⌘++` on macOS)
+Decrease font size                  :sc:`decrease_font_size` (also :kbd:`⌘+-` on macOS)
+Restore font size                   :sc:`reset_font_size` (also :kbd:`⌘+0` on macOS)
+Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`^+⌘+f` on macOS)
 Input unicode character             :sc:`input_unicode_character`
 Click URL using the keyboard        :sc:`open_url`
-Reset the terminal                  :sc:`reset_terminal`
+Reset the terminal                  :sc:`reset_terminal` (also :kbd:`⌘+r` on macOS)
 Pass current selection to program   :sc:`pass_selection_to_program`
 Edit |kitty| config file            :sc:`edit_config_file`
 Open a |kitty| shell                :sc:`kitty_shell`

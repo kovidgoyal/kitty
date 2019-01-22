@@ -21,6 +21,7 @@ Changelog
 
 - Fix window title for minimized windows not being updated (:iss:`1332`)
 
+- macOS: Add a bunch of common macOS keyboard shortcuts
 
 0.13.3 [2019-01-19]
 ------------------------------
