@@ -8,6 +8,7 @@
 #include "state.h"
 #include "screen.h"
 #include "lineops.h"
+#include "charsets.h"
 #include <limits.h>
 #include <math.h>
 #include "glfw-wrapper.h"

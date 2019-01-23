@@ -23,6 +23,7 @@
 #include "modes.h"
 #include "wcwidth-std.h"
 #include "control-codes.h"
+#include "charsets.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 static Selection EMPTY_SELECTION = {0};

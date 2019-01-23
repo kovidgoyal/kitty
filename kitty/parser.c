@@ -8,6 +8,7 @@
 #include "control-codes.h"
 #include "screen.h"
 #include "graphics.h"
+#include "charsets.h"
 #include <time.h>
 
 extern PyTypeObject Screen_Type;

@@ -9,6 +9,7 @@
 #include "threading.h"
 #include "screen.h"
 #include "fonts.h"
+#include "charsets.h"
 #include <termios.h>
 #include <unistd.h>
 #include <float.h>

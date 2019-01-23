@@ -268,8 +268,6 @@ ColorProfile* alloc_color_profile();
 PyObject* create_256_color_table();
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
-uint32_t decode_utf8(uint32_t*, uint32_t*, uint8_t byte);
-unsigned int encode_utf8(uint32_t ch, char* dest);
 void cursor_reset(Cursor*);
 Cursor* cursor_copy(Cursor*);
 void cursor_copy_to(Cursor *src, Cursor *dest);

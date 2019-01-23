@@ -8,6 +8,7 @@
 #include "data-types.h"
 #include "unicode-data.h"
 #include "lineops.h"
+#include "charsets.h"
 
 extern PyTypeObject Cursor_Type;
 
