@@ -11,6 +11,9 @@ Changelog
 
 - macOS: Fix :kbd:`cmd+period` key not working (:iss:`1318`)
 
+- Fix using remote control to set cursor text color causing errors when
+  creating new windows (:iss:`1326`)
+
 
 0.13.3 [2019-01-19]
 ------------------------------

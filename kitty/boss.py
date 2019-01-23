@@ -960,7 +960,7 @@ class Boss:
                 if hasattr(self.opts, k):
                     setattr(self.opts, k, color_from_int(v))
             if cursor_text_color is not False:
-                self.opts.cursor_text_color = cursor_text_color
+                self.opts.cursor_text_color = color_from_int(cursor_text_color)
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
         patch_global_colors(spec, configured)
