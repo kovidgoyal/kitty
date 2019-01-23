@@ -935,6 +935,8 @@ For example::
 
     map ctrl+enter new_window @ some_program
 '''))
+if is_macos:
+    k('new_window', 'cmd+enter', 'new_window', _('New window'), add_to_docs=False)
 k('new_os_window', 'kitty_mod+n', 'new_os_window', _('New OS window'))
 if is_macos:
     k('new_os_window', 'cmd+n', 'new_os_window', _('New OS window'), add_to_docs=False)
@@ -948,6 +950,8 @@ k('move_window_forward', 'kitty_mod+f', 'move_window_forward', _('Move window fo
 k('move_window_backward', 'kitty_mod+b', 'move_window_backward', _('Move window backward'))
 k('move_window_to_top', 'kitty_mod+`', 'move_window_to_top', _('Move window to top'))
 k('start_resizing_window', 'kitty_mod+r', 'start_resizing_window', _('Start resizing window'))
+if is_macos:
+    k('start_resizing_window', 'cmd+r', 'start_resizing_window', _('Start resizing window'), add_to_docs=False)
 k('first_window', 'kitty_mod+1', 'first_window', _('First window'))
 k('second_window', 'kitty_mod+2', 'second_window', _('Second window'))
 k('third_window', 'kitty_mod+3', 'third_window', _('Third window'))
@@ -958,6 +962,16 @@ k('seventh_window', 'kitty_mod+7', 'seventh_window', _('Seventh window'))
 k('eighth_window', 'kitty_mod+8', 'eighth_window', _('Eight window'))
 k('ninth_window', 'kitty_mod+9', 'ninth_window', _('Ninth window'))
 k('tenth_window', 'kitty_mod+0', 'tenth_window', _('Tenth window'))
+if is_macos:
+    k('first_window', 'cmd+1', 'first_window', _('First window'), add_to_docs=False)
+    k('second_window', 'cmd+2', 'second_window', _('Second window'), add_to_docs=False)
+    k('third_window', 'cmd+3', 'third_window', _('Third window'), add_to_docs=False)
+    k('fourth_window', 'cmd+4', 'fourth_window', _('Fourth window'), add_to_docs=False)
+    k('fifth_window', 'cmd+5', 'fifth_window', _('Fifth window'), add_to_docs=False)
+    k('sixth_window', 'cmd+6', 'sixth_window', _('Sixth window'), add_to_docs=False)
+    k('seventh_window', 'cmd+7', 'seventh_window', _('Seventh window'), add_to_docs=False)
+    k('eighth_window', 'cmd+8', 'eighth_window', _('Eight window'), add_to_docs=False)
+    k('ninth_window', 'cmd+9', 'ninth_window', _('Ninth window'), add_to_docs=False)
 # }}}
 
 g('shortcuts.tab')  # {{{
@@ -1034,8 +1048,6 @@ k('increase_background_opacity', 'kitty_mod+a>m', 'set_background_opacity +0.1',
 k('decrease_background_opacity', 'kitty_mod+a>l', 'set_background_opacity -0.1', _('Decrease background opacity'))
 k('full_background_opacity', 'kitty_mod+a>1', 'set_background_opacity 1', _('Make background fully opaque'))
 k('reset_background_opacity', 'kitty_mod+a>d', 'set_background_opacity default', _('Reset background opacity'))
-if is_macos:
-    k('reset_terminal', 'cmd+r', 'clear_terminal reset active', _('Reset the terminal'), add_to_docs=False)
 k('reset_terminal', 'kitty_mod+delete', 'clear_terminal reset active', _('Reset the terminal'),
     long_text=_('''
 You can create shortcuts to clear/reset the terminal. For example::

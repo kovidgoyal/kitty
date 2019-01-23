@@ -140,7 +140,7 @@ Windows
 ========================    =======================
 Action                      Shortcut
 ========================    =======================
-New window                  :sc:`new_window`
+New window                  :sc:`new_window` (also :kbd:`⌘+↩` on macOS)
 New OS window               :sc:`new_os_window` (also :kbd:`⌘+n` on macOS)
 New OS window with cwd      :sc:`new_os_window_with_cwd` (also :kbd:`⇧+⌘+n` on macOS)
 Close window                :sc:`close_window` (also :kbd:`⇧+⌘+d` on macOS)
@@ -150,6 +150,7 @@ Move window forward         :sc:`move_window_forward`
 Move window backward        :sc:`move_window_backward`
 Move window to top          :sc:`move_window_to_top`
 Focus specific window       :sc:`first_window`, :sc:`second_window` ... :sc:`tenth_window`
+                            (also :kbd:`⌘+1`, :kbd:`⌘+2` ... :kbd:`⌘+9` on macOS)
                             (clockwise from the top-left)
 ========================    =======================
 
@@ -185,7 +186,7 @@ Restore font size                   :sc:`reset_font_size` (also :kbd:`⌘+0` on 
 Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`^+⌘+f` on macOS)
 Input unicode character             :sc:`input_unicode_character`
 Click URL using the keyboard        :sc:`open_url`
-Reset the terminal                  :sc:`reset_terminal` (also :kbd:`⌘+r` on macOS)
+Reset the terminal                  :sc:`reset_terminal`
 Pass current selection to program   :sc:`pass_selection_to_program`
 Edit |kitty| config file            :sc:`edit_config_file`
 Open a |kitty| shell                :sc:`kitty_shell`
@@ -217,7 +218,7 @@ You can switch between layouts using the :sc:`next_layout` key combination. You 
 also create shortcuts to select particular layouts, and choose which layouts
 you want to enable/disable, see :ref:`conf-kitty-shortcuts.layout` for examples.
 
-You can resize windows inside layouts. Press :sc:`start_resizing_window` to
+You can resize windows inside layouts. Press :sc:`start_resizing_window` (also :kbd:`⌘+r` on macOS) to
 enter resizing mode and follow the on-screen instructions.  In a given window
 layout only some operations may be possible for a particular window. For
 example, in the Tall layout you can make the first window wider/narrower, but
