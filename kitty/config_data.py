@@ -1091,6 +1091,9 @@ the line (same as pressing the Home key)::
     map ctrl+alt+a send_text normal Word\\x1b[H
     map ctrl+alt+a send_text application Word\\x1bOH
 '''))
+if is_macos:
+    k('send_text', 'alt+left', 'send_text all \x1b\x62', _('Jump left one word'), add_to_docs=False)
+    k('send_text', 'alt+right', 'send_text all \x1b\x66', _('Jump right one word'), add_to_docs=False)
 # }}}
 # }}}
 
