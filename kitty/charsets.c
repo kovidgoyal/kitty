@@ -243,7 +243,7 @@ decode_utf8(uint32_t* state, uint32_t* codep, uint8_t byte) {
 }
 
 size_t
-decode_utf8_string(char *src, size_t sz, uint32_t *dest) {
+decode_utf8_string(const char *src, size_t sz, uint32_t *dest) {
     // dest must be a zeroed array of size at least sz
     uint32_t codep = 0, state = 0, prev = UTF8_ACCEPT;
     size_t i, d;

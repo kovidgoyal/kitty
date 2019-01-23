@@ -464,11 +464,26 @@ def kittens_env():
 
 def compile_kittens(incremental, compilation_database, all_keys):
     kenv = kittens_env()
-    for sources, all_headers, dest in [
-        (['kittens/unicode_input/unicode_names.c'], ['kittens/unicode_input/names.h', 'kitty/data-types.h'],  'kittens/unicode_input/unicode_names'),
-        (['kittens/diff/speedup.c'], ['kitty/data-types.h'], 'kittens/diff/diff_speedup'),
-    ]:
-        compile_c_extension(kenv, dest, incremental, compilation_database, all_keys, sources, all_headers)
+
+    def list_files(q):
+        return [os.path.relpath(x, base) for x in glob.glob(q)]
+
+    def files(kitten, output, extra_headers=(), extra_sources=(), filter_sources=None):
+        sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('kittens', kitten, '*.c'))))
+        headers = list_files(os.path.join('kittens', kitten, '*.h')) + list(extra_headers)
+        return (sources, headers, 'kittens/{}/{}'.format(kitten, output))
+
+    for sources, all_headers, dest in (
+        files('unicode_input', 'unicode_names'),
+        files('diff', 'diff_speedup'),
+        files(
+            'choose', 'subseq_matcher',
+            extra_headers=('kitty/charsets.h',),
+            extra_sources=('kitty/charsets.c',),
+            filter_sources=lambda x: 'windows_compat.c' not in x),
+    ):
+        compile_c_extension(
+            kenv, dest, incremental, compilation_database, all_keys, sources, all_headers + ['kitty/data-types.h'])
 
 
 def build(args, native_optimizations=True):
