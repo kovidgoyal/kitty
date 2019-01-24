@@ -632,6 +632,13 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
 }
 
 static inline void
+update_os_window_title(OSWindow *os_window) {
+    Tab *tab = os_window->tabs + os_window->active_tab;
+    Window *w = tab->windows + tab->active_window;
+    update_window_title(w, os_window);
+}
+
+static inline void
 render(double now) {
     double time_since_last_render = now - last_render_at;
     if (time_since_last_render < OPT(repaint_delay)) {
@@ -641,7 +648,11 @@ render(double now) {
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
-        if (!w->num_tabs || !should_os_window_be_rendered(w)) continue;
+        if (!w->num_tabs) continue;
+        if (!should_os_window_be_rendered(w)) {
+            update_os_window_title(w);
+            continue;
+        }
         if (global_state.is_wayland && w->wayland_render_state != RENDER_FRAME_READY && OPT(sync_to_monitor)) {
             if (w->wayland_render_state == RENDER_FRAME_NOT_REQUESTED) wayland_request_frame_render(w);
             continue;
