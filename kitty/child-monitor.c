@@ -634,8 +634,10 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
 static inline void
 update_os_window_title(OSWindow *os_window) {
     Tab *tab = os_window->tabs + os_window->active_tab;
-    Window *w = tab->windows + tab->active_window;
-    update_window_title(w, os_window);
+    if (tab->num_windows) {
+        Window *w = tab->windows + tab->active_window;
+        update_window_title(w, os_window);
+    }
 }
 
 static inline void
