@@ -75,31 +75,31 @@ output_positions(GlobalData *global, len_t *positions, len_t num) {
         int num = swprintf(buf, sizeof(buf)/sizeof(buf[0]), L"%u", positions[i]);
         if (num > 0 && ensure_space(global, num + 1)) {
             for (int i = 0; i < num; i++) global->output[global->output_pos++] = buf[i];
-            global->output[global->output_pos++] = (i == num - 1) ? ':' : ',';
+            global->output[global->output_pos++] = (i == num - 1) ? ',' : ':';
         }
     }
 }
 
 
 static void
-output_result(GlobalData *global, Candidate *c, Options *opts, len_t needle_len, text_t delim) {
+output_result(GlobalData *global, Candidate *c, Options *opts, len_t needle_len) {
     if (opts->output_positions) output_positions(global, c->positions, needle_len);
     if (opts->mark_before_sz > 0 || opts->mark_after_sz > 0) {
         output_with_marks(global, opts, c->src, c->src_sz, c->positions, needle_len);
     } else {
         output_text(global, c->src, c->src_sz);
     }
-    output_text(global, &delim, 1);
+    output_text(global, opts->delimiter, opts->delimiter_sz);
 }
 
 
 void
-output_results(GlobalData *global, Candidate *haystack, size_t count, Options *opts, len_t needle_len, text_t delim) {
+output_results(GlobalData *global, Candidate *haystack, size_t count, Options *opts, len_t needle_len) {
     Candidate *c;
     qsort(haystack, count, sizeof(*haystack), cmpscore);
     size_t left = opts->limit > 0 ? opts->limit : count;
     for (size_t i = 0; i < left; i++) {
         c = haystack + i;
-        if (c->score > 0) output_result(global, c, opts, needle_len, delim);
+        if (c->score > 0) output_result(global, c, opts, needle_len);
     }
 }

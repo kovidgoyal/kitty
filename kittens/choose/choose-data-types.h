@@ -34,7 +34,6 @@ typedef uint8_t len_t;
 typedef uint32_t text_t;
 
 #define LEN_MAX UINT8_MAX
-#define UNUSED(x) (void)(x)
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1
 #define IS_LOWERCASE(x) (x) >= 'a' && (x) <= 'z'
@@ -66,8 +65,8 @@ typedef struct {
     bool output_positions;
     size_t limit;
     int num_threads;
-    text_t mark_before[128], mark_after[128];
-    size_t mark_before_sz, mark_after_sz;
+    text_t mark_before[128], mark_after[128], delimiter[128];
+    size_t mark_before_sz, mark_after_sz, delimiter_sz;
 } Options;
 
 VECTOR_OF(len_t, Positions)
@@ -75,7 +74,7 @@ VECTOR_OF(text_t, Chars)
 VECTOR_OF(Candidate, Candidates)
 
 
-void output_results(GlobalData *, Candidate *haystack, size_t count, Options *opts, len_t needle_len, text_t delim);
+void output_results(GlobalData *, Candidate *haystack, size_t count, Options *opts, len_t needle_len);
 void* alloc_workspace(len_t max_haystack_len, GlobalData*);
 void* free_workspace(void *v);
 double score_item(void *v, text_t *haystack, len_t haystack_len, len_t *match_positions);

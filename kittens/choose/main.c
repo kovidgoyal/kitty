@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#include "data-types.h"
 #include "choose-data-types.h"
 #include "charsets.h"
 
@@ -160,7 +161,7 @@ run_search(Options *opts, GlobalData *global, const char * const *lines, const s
         global->haystack = haystack;
         global->haystack_count = SIZE(candidates);
         ret = run_threaded(opts->num_threads, global);
-        if (ret == 0) output_results(global, haystack, SIZE(candidates), opts, global->needle_len, '\n');
+        if (ret == 0) output_results(global, haystack, SIZE(candidates), opts, global->needle_len);
         else { REPORT_OOM; }
     } else { ret = 1; REPORT_OOM; }
 
@@ -185,13 +186,13 @@ match(PyObject *self, PyObject *args) {
     (void)(self);
     int output_positions;
     unsigned long limit;
-    PyObject *lines, *levels, *needle, *mark_before, *mark_after;
+    PyObject *lines, *levels, *needle, *mark_before, *mark_after, *delimiter;
     Options opts = {0};
     GlobalData global = {0};
-    if (!PyArg_ParseTuple(args, "O!O!O!pkiO!O!",
-            &lines, &PyList_Type, &levels, &PyTuple_Type, &needle, &PyUnicode_Type,
+    if (!PyArg_ParseTuple(args, "O!O!UpkiUUU",
+            &PyList_Type, &lines, &PyTuple_Type, &levels, &needle,
             &output_positions, &limit, &opts.num_threads,
-            &mark_before, &PyUnicode_Type, &mark_after, &PyUnicode_Type
+            &mark_before, &mark_after, &delimiter
     )) return NULL;
     opts.output_positions = output_positions ? true : false;
     opts.limit = limit;
@@ -201,13 +202,14 @@ match(PyObject *self, PyObject *args) {
     global.needle_len = copy_unicode_object(needle, global.needle, arraysz(global.needle));
     opts.mark_before_sz = copy_unicode_object(mark_before, opts.mark_before, arraysz(opts.mark_before));
     opts.mark_after_sz = copy_unicode_object(mark_after, opts.mark_after, arraysz(opts.mark_after));
+    opts.delimiter_sz = copy_unicode_object(delimiter, opts.delimiter, arraysz(opts.delimiter));
     size_t num_lines = PyList_GET_SIZE(lines);
     char **clines = malloc(sizeof(char*) * num_lines);
     size_t *sizes = malloc(sizeof(size_t) * num_lines);
-    if (!lines || !sizes) { PyErr_NoMemory(); return NULL; }
+    if (!lines || !sizes) { return PyErr_NoMemory(); }
     for (size_t i = 0; i < num_lines; i++) {
-        clines[i] = PyBytes_AS_STRING(PyTuple_GET_ITEM(lines, i));
-        sizes[i] = PyBytes_GET_SIZE(PyTuple_GET_ITEM(lines, i));
+        clines[i] = PyBytes_AS_STRING(PyList_GET_ITEM(lines, i));
+        sizes[i] = PyBytes_GET_SIZE(PyList_GET_ITEM(lines, i));
     }
     Py_BEGIN_ALLOW_THREADS;
     run_search(&opts, &global, (const char* const *)clines, sizes, num_lines);
@@ -235,11 +237,7 @@ static struct PyModuleDef module = {
    .m_methods = module_methods
 };
 
-PyMODINIT_FUNC
+EXPORTED PyMODINIT_FUNC
 PyInit_subseq_matcher(void) {
-    PyObject *m;
-
-    m = PyModule_Create(&module);
-    if (m == NULL) return NULL;
-    return m;
+    return PyModule_Create(&module);
 }

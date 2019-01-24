@@ -6,10 +6,7 @@
 
 #pragma once
 
-#include <Python.h>
-
-#define MAX(x, y) ((x) > (y) ? (x) : (y))
-#define MIN(x, y) ((x) < (y) ? (x) : (y))
+#include "data-types.h"
 
 #define REPORT_OOM global->oom = 1;
 
