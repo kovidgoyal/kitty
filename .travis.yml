@@ -97,7 +97,7 @@ matrix:
           language: generic
           addons:
             homebrew:
-              update: true
+              # update: true
               brewfile: true
           env: USE_BREW=1 BUILD_PKG=osx-bundle
 
