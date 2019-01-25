@@ -6,7 +6,9 @@ jobs:
     steps:
         - checkout
         - run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
-        - run: flake8 --count .
+        - run: python3 -m flake8 --count .
+        - run: python3 setup.py build --debug --verbose
+        - run: python3 test.py
 
 workflows:
     version: 2
