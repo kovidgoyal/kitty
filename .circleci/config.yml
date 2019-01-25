@@ -9,6 +9,9 @@ jobs:
         - run: python3 -m flake8 --count .
         - run: python3 setup.py build --debug --verbose
         - run: python3 test.py
+        - run: make FAIL_WARN=-W man
+        - run: make FAIL_WARN=-W html
+        - run: python3 setup.py linux-package
 
 workflows:
     version: 2
