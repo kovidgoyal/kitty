@@ -17,4 +17,4 @@ workflows:
     version: 2
     all_jobs:
         jobs:
-            - linux-system-python
+            - lin-sys
