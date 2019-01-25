@@ -1,6 +1,6 @@
 version: 2
 jobs:
-  linux-system-python:
+  lin-sys:
     docker:
         - image: kovidgoyal/kitty-test:latest
     steps:
