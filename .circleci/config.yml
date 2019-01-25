@@ -6,3 +6,4 @@ jobs:
     steps:
         - checkout
         - run: echo "A first hello"
+        - run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
