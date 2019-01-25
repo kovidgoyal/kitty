@@ -1,9 +1,9 @@
-version: 2.0
+version: 2
 jobs:
-  build:
+  linux-system-python:
     docker:
         - image: kovidgoyal/kitty-test:latest
     steps:
         - checkout
-        - run: echo "A first hello"
         - run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
+        - run: flake8 --count .
