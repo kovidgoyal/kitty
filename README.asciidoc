@@ -2,4 +2,5 @@
 
 See https://sw.kovidgoyal.net/kitty
 
-image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Build status, link=https://travis-ci.org/kovidgoyal/kitty]
+image:https://circleci.com/gh/kovidgoyal/kitty.svg?style=svg["CircleCI Build status", link="https://circleci.com/gh/kovidgoyal/kitty"]
+image::https://travis-ci.org/kovidgoyal/kitty.svg?branch=master[Travis Build status, link=https://travis-ci.org/kovidgoyal/kitty]

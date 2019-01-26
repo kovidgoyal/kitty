@@ -49,7 +49,6 @@ jobs:
         - checkout
         - run: echo "export LD_LIBRARY_PATH=$SW/lib" >> $BASH_ENV
         - run: echo "export PKG_CONFIG_PATH=$SW/lib/pkgconfig" >> $BASH_ENV
-        - run: echo $LD_LIBRARY_PATH
         - run: $SW/bin/python3 setup.py build --debug --verbose
         - run: $SW/bin/python3 test.py
 
