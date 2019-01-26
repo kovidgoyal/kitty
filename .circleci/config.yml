@@ -44,12 +44,11 @@ jobs:
     docker:
         - image: kovidgoyal/kitty-test:latest
     environment:
-        SW: $HOME/sw
-        LD_LIBRARY_PATH: $SW/lib
-        PKG_CONFIG_PATH: $SW/lib/pkgconfig
         ASAN_OPTIONS: leak_check_at_exit=0
     steps:
         - checkout
+        - run: echo "export LD_LIBRARY_PATH=$SW/lib" >> $BASH_ENV
+        - run: echo "export PKG_CONFIG_PATH=$SW/lib/pkgconfig" >> $BASH_ENV
         - run: echo $LD_LIBRARY_PATH
         - run: $SW/bin/python3 setup.py build --debug --verbose
         - run: $SW/bin/python3 test.py
