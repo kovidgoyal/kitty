@@ -40,17 +40,17 @@ jobs:
         - run: /opt/py3.7/bin/python3 setup.py build --debug --verbose --sanitize
         - run: ./asan-launcher test.py
 
-    lin-bundle:
-        docker:
-            - image: kovidgoyal/kitty-test:latest
-        environment:
-            LD_LIBRARY_PATH: $SW/lib
-            PKG_CONFIG_PATH: $SW/lib/pkgconfig
-            ASAN_OPTIONS: leak_check_at_exit=0
-        steps:
-            - checkout
-            - run: $SW/bin/python3 setup.py build --debug --verbose
-            - run: $SW/bin/python3 test.py
+  lin-bundle:
+    docker:
+        - image: kovidgoyal/kitty-test:latest
+    environment:
+        LD_LIBRARY_PATH: $SW/lib
+        PKG_CONFIG_PATH: $SW/lib/pkgconfig
+        ASAN_OPTIONS: leak_check_at_exit=0
+    steps:
+        - checkout
+        - run: $SW/bin/python3 setup.py build --debug --verbose
+        - run: $SW/bin/python3 test.py
 
 
 workflows:
