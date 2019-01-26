@@ -12,9 +12,31 @@ jobs:
         - run: make FAIL_WARN=-W man
         - run: make FAIL_WARN=-W html
         - run: python3 setup.py linux-package
+  lin-35:
+    docker:
+        - image: kovidgoyal/kitty-test:latest
+    environ:
+        CC: gcc
+        CFLAGS: -funsigned-char
+    steps:
+        - checkout
+        - run: /opt/py3.5/bin/python3 setup.py build --debug --verbose --sanitize
+        - run: ./asan-launcher test.py
+  lin-37:
+    docker:
+        - image: kovidgoyal/kitty-test:latest
+    environ:
+        CC: clang
+    steps:
+        - checkout
+        - run: /opt/py3.7/bin/python3 setup.py build --debug --verbose --sanitize
+        - run: ./asan-launcher test.py
+
 
 workflows:
     version: 2
     all_jobs:
         jobs:
             - lin-sys
+            - lin-35
+            - lin-37
