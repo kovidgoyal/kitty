@@ -1,3 +1,6 @@
+# When changing this file, go to
+# https://cloud.docker.com/repository/docker/kovidgoyal/kitty-test/builds and
+# click the "Trigger" button under Automated builds to rebuild 
 FROM ubuntu:latest
 
 # make Apt non-interactive
