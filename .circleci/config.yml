@@ -52,20 +52,20 @@ jobs:
         - run: $SW/bin/python3 setup.py build --debug --verbose
         - run: $SW/bin/python3 test.py
 
-    mac-bundle:
-        macos:
-            xcode: "10.1.0"
-        environment:
-            LC_ALL: en_US.UTF-8
-            LANG: en_US.UTF-8
-            SW: /Users/Shared/buildbot/sw/sw
-        steps:
-            - checkout
-            - run: mkdir -p $SW
-            - run: curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW
-            - run: echo "export PATH=$SW/bin:$PATH" >> $BASH_ENV
-            - run: python3 setup.py build --debug --verbose
-            - run: python3 test.py
+  mac-bundle:
+      macos:
+          xcode: "10.1.0"
+      environment:
+          LC_ALL: en_US.UTF-8
+          LANG: en_US.UTF-8
+          SW: /Users/Shared/buildbot/sw/sw
+      steps:
+          - checkout
+          - run: mkdir -p $SW
+          - run: curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW
+          - run: echo "export PATH=$SW/bin:$PATH" >> $BASH_ENV
+          - run: python3 setup.py build --debug --verbose
+          - run: python3 test.py
 
 
 workflows:
