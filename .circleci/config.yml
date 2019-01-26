@@ -49,6 +49,7 @@ jobs:
         ASAN_OPTIONS: leak_check_at_exit=0
     steps:
         - checkout
+        - run: echo $LD_LIBRARY_PATH
         - run: $SW/bin/python3 setup.py build --debug --verbose
         - run: $SW/bin/python3 test.py
 
