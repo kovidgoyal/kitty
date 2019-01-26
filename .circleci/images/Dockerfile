@@ -40,8 +40,7 @@ RUN python3 /tmp/install-python.py py3.7 https://www.python.org/ftp/python/3.7.2
 
 # Install kitty bundle
 ENV SW=/home/circleci/sw
-RUN mkdir $SW && \
-    curl https://download.calibre-ebook.com/travis/kitty/linux-64.tar.xz | tar xJ -C $SW
+RUN python3 /tmp/install-python.py bundle https://download.calibre-ebook.com/travis/kitty/linux-64.tar.xz
 
 # Clean unused files
 RUN apt-get clean -y

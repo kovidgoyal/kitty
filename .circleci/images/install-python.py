@@ -12,10 +12,12 @@ import tarfile
 from urllib.request import urlopen
 
 PY, URL = sys.argv[1], sys.argv[2]
-SRC = f'/usr/src/{PY}'
-
-os.chdir('/usr/src')
-before = frozenset(os.listdir('.'))
+if PY == 'bundle':
+    SW = os.environ['SW']
+    os.mkdir(SW)
+    os.chdir(SW)
+else:
+    os.chdir('/usr/src')
 
 
 def run(cmd):
@@ -30,12 +32,29 @@ with urlopen(URL) as f:
 
 with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
     tf.extractall()
-after = frozenset(os.listdir('.'))
-src_dir = tuple(after - before)[0]
-os.rename(src_dir, SRC)
-os.chdir(SRC)
-run(f'./configure --prefix=/opt/{PY} --enable-shared --with-system-expat --with-system-ffi --without-ensurepip')
-run(f'make -j {os.cpu_count()}')
-run('make install')
-os.chdir('/')
-shutil.rmtree(SRC)
+
+
+def replace_in_file(path, src, dest):
+    with open(path, 'r+') as f:
+        n = f.read().replace(src, dest)
+        f.seek(0), f.truncate()
+        f.write(n)
+
+
+if PY == 'bundle':
+    replaced = 0
+    for dirpath, dirnames, filenames in os.walk(SW):
+        for f in filenames:
+            if f.endswith('.pc') or (f.endswith('.py') and f.startswith('_sysconfig')):
+                replace_in_file(os.path.join(dirpath, f), '/sw/sw', SW)
+                replaced += 1
+    if replaced < 2:
+        raise SystemExit('Failed to replace path to SW in bundle')
+else:
+    src = os.path.abspath(tuple(os.listdir('.'))[0])
+    os.chdir(src)
+    run(f'./configure --prefix=/opt/{PY} --enable-shared --with-system-expat --with-system-ffi --without-ensurepip')
+    run(f'make -j {os.cpu_count()}')
+    run('make install')
+    os.chdir('/')
+    shutil.rmtree(src)
