@@ -53,7 +53,7 @@ if PY == 'bundle':
 else:
     src = os.path.abspath(tuple(os.listdir('.'))[0])
     os.chdir(src)
-    run(f'./configure --prefix=/opt/{PY} --enable-shared --with-system-expat --with-system-ffi --without-ensurepip')
+    run(f'./configure --prefix=/opt/{PY} --enable-shared --with-system-expat --without-ensurepip')
     run(f'make -j {os.cpu_count()}')
     run('make install')
     os.chdir('/')
