@@ -1,5 +1,7 @@
 version: 2
+
 jobs:
+
   lin-sys:
     docker:
         - image: kovidgoyal/kitty-test:latest
@@ -12,21 +14,25 @@ jobs:
         - run: make FAIL_WARN=-W man
         - run: make FAIL_WARN=-W html
         - run: python3 setup.py linux-package
+
   lin-35:
     docker:
         - image: kovidgoyal/kitty-test:latest
     environ:
         CC: gcc
         CFLAGS: -funsigned-char
+        LD_LIBRARY_PATH: /opt/py3.5/lib:$LD_LIBRARY_PATH
     steps:
         - checkout
         - run: /opt/py3.5/bin/python3 setup.py build --debug --verbose --sanitize
         - run: ./asan-launcher test.py
+
   lin-37:
     docker:
         - image: kovidgoyal/kitty-test:latest
     environ:
         CC: clang
+        LD_LIBRARY_PATH: /opt/py3.7/lib:$LD_LIBRARY_PATH
     steps:
         - checkout
         - run: /opt/py3.7/bin/python3 setup.py build --debug --verbose --sanitize

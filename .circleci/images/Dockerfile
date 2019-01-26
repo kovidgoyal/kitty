@@ -3,7 +3,8 @@ FROM ubuntu:latest
 # make Apt non-interactive
 ENV DEBIAN_FRONTEND=noninteractive
 RUN echo 'APT::Get::Assume-Yes "true";' > /etc/apt/apt.conf.d/90circleci \
-  && echo 'DPkg::Options "--force-confnew";' >> /etc/apt/apt.conf.d/90circleci
+  && echo 'DPkg::Options "--force-confnew";' >> /etc/apt/apt.conf.d/90circleci \
+  && echo 'Acquire::Languages "none";' >> /etc/apt/apt.conf.d/90circleci 
 
 # System setup
 RUN apt-get update && mkdir -p /usr/share/man/man1 && apt-get install -y python3-flake8 python3-pip python3-pil clang git apt locales sudo openssh-client ca-certificates tar gzip parallel net-tools netcat unzip zip bzip2 gnupg curl wget build-essential apt-utils
@@ -41,6 +42,9 @@ RUN python3 /tmp/install-python.py py3.7 https://www.python.org/ftp/python/3.7.2
 ENV SW=/home/circleci/sw
 RUN mkdir $SW && \
     curl https://download.calibre-ebook.com/travis/kitty/linux-64.tar.xz | tar xJ -C $SW
+
+# Clean unused files
+RUN apt-get clean -y
 
 USER circleci
 
