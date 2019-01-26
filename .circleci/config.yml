@@ -18,10 +18,11 @@ jobs:
   lin-35:
     docker:
         - image: kovidgoyal/kitty-test:latest
-    environ:
+    environment:
         CC: gcc
         CFLAGS: -funsigned-char
-        LD_LIBRARY_PATH: /opt/py3.5/lib:$LD_LIBRARY_PATH
+        LD_LIBRARY_PATH: /opt/py3.5/lib
+        ASAN_OPTIONS: leak_check_at_exit=0
     steps:
         - checkout
         - run: /opt/py3.5/bin/python3 setup.py build --debug --verbose --sanitize
@@ -30,9 +31,10 @@ jobs:
   lin-37:
     docker:
         - image: kovidgoyal/kitty-test:latest
-    environ:
+    environment:
         CC: clang
-        LD_LIBRARY_PATH: /opt/py3.7/lib:$LD_LIBRARY_PATH
+        LD_LIBRARY_PATH: /opt/py3.7/lib
+        ASAN_OPTIONS: leak_check_at_exit=0
     steps:
         - checkout
         - run: /opt/py3.7/bin/python3 setup.py build --debug --verbose --sanitize
