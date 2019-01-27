@@ -256,7 +256,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     sprite_tracker_current_layout(os_window->fonts_data, &x, &y, &z);
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
     rd->inverted = inverted ? 1 : 0;
-    rd->background_opacity = os_window->background_opacity;
+    rd->background_opacity = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
 
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
@@ -524,15 +524,8 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
             unmap_vao_buffer(vao_idx, 0);
         }
         bind_program(BORDERS_PROGRAM);
-        static bool constants_set = false;
 #define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-        if (!constants_set) {
-            constants_set = true;
-            glUniform1f(border_uniform_locations[BORDER_background_opacity], w->background_opacity);
-        }
-        if (OPT(dynamic_background_opacity)) {
-            glUniform1f(border_uniform_locations[BORDER_background_opacity], w->background_opacity);
-        }
+        glUniform1f(border_uniform_locations[BORDER_background_opacity], w->is_semi_transparent ? w->background_opacity : 1.0f);
 		glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
 		glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
 		glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
