@@ -318,7 +318,7 @@ def main(args=sys.argv):
         if len(items) > 1 or (isinstance(items[0], str) and os.path.isdir(items[0])):
             raise SystemExit(f'The --place option can only be used with a single image, not {items}')
         sys.stdout.buffer.write(b'\0337')  # save cursor
-    url_pat = re.compile(r'https?://', flags=re.I)
+    url_pat = re.compile(r'(?:https?|ftp)://', flags=re.I)
     for item in items:
         is_tempfile = False
         try:
