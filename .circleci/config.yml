@@ -72,7 +72,7 @@ workflows:
     version: 2
     all_jobs:
         jobs:
-            # - mac-bundle
+            - mac-bundle
             - lin-sys
             - lin-35
             - lin-37
