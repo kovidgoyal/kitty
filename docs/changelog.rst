@@ -6,6 +6,8 @@ Changelog
 0.13.4 [future]
 ---------------------
 
+- icat kitten: Add support for displaying images at http(s) URLs (:iss:`1340`)
+
 - A new option :opt:`strip_trailing_spaces` to optionally remove trailing
   spaces from lines when copying to clipboard.
 
