@@ -1,9 +1,9 @@
 Building kitty from source
 ==============================
 
-.. image:: https://travis-ci.org/kovidgoyal/kitty.svg?branch=master
+.. image:: https://circleci.com/gh/kovidgoyal/kitty.svg?style=svg
   :alt: Build status
-  :target: https://travis-ci.org/kovidgoyal/kitty
+  :target: https://circleci.com/gh/kovidgoyal/kitty
 
 
 |kitty| is designed to run from source, for easy hackability. Make sure
