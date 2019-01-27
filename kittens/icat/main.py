@@ -259,8 +259,10 @@ help_text = (
         ' You can specify multiple image files and/or directories.'
         ' Directories are scanned recursively for image files. If STDIN'
         ' is not a terminal, image data will be read from it as well.'
+        ' You can also specify HTTP(S) or FTP URLs which will be'
+        ' automatically downloaded and displayed.'
 )
-usage = 'image-file ...'
+usage = 'image-file-or-url-or-directory ...'
 
 
 def main(args=sys.argv):
