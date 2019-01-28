@@ -682,7 +682,7 @@ Categories=System;TerminalEmulator;
             )
     # }}}
 
-    if for_bundle or sh_launcher:  # OS X bundle gunk {{{
+    if for_bundle or sh_launcher:  # macOS bundle gunk {{{
         import plistlib
         logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
         os.chdir(ddir)
