@@ -79,7 +79,7 @@ jobs:
           - run: python3 logo/make.py
           - run: python3 setup.py build --debug --verbose
           - run: python3 test.py
-          - run: python3 setup.py osx-bundle
+          - run: python3 setup.py macos-bundle
 
 
 workflows:

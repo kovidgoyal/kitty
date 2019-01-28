@@ -16,7 +16,7 @@ with open('terminfo/kitty.terminfo', 'w') as f:
 
 os.environ['TERMINFO'] = os.path.join(base, 'terminfo')
 subprocess.check_call(['tic', '-x', 'terminfo/kitty.terminfo'])
-# On OS X tic puts the compiled database into a different directory
+# On macOS tic puts the compiled database into a different directory
 try:
     os.mkdir('terminfo/78')
 except FileExistsError:

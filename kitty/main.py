@@ -152,7 +152,7 @@ run_app.first_window_callback = lambda window_handle: None
 run_app.initial_window_size_func = initial_window_size_func
 
 
-def ensure_osx_locale():
+def ensure_macos_locale():
     # Ensure the LANG env var is set. See
     # https://github.com/kovidgoyal/kitty/issues/90
     from .fast_data_types import cocoa_get_lang
@@ -214,7 +214,7 @@ def _main():
     except AttributeError:
         pass  # python compiled without threading
     if is_macos:
-        ensure_osx_locale()
+        ensure_macos_locale()
     try:
         locale.setlocale(locale.LC_ALL, '')
     except Exception:

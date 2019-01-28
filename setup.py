@@ -768,7 +768,7 @@ def option_parser():  # {{{
         'action',
         nargs='?',
         default='build',
-        choices='build test linux-package kitty.app osx-bundle clean'.split(),
+        choices='build test linux-package kitty.app macos-bundle clean'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -849,7 +849,7 @@ def main():
         if not os.path.exists(os.path.join(base, 'docs/_build/html')):
             run_tool(['make', 'docs'])
         package(args)
-    elif args.action == 'osx-bundle':
+    elif args.action == 'macos-bundle' or args.action == 'osx-bundle':
         build(args, native_optimizations=False)
         package(args, for_bundle=True)
     elif args.action == 'kitty.app':
