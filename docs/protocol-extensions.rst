@@ -51,6 +51,9 @@ To reset the underline color (also previously reserved and unused)::
 
     <ESC>[59m
 
+The underline color must remain the same under reverse video, if it has a
+color, if not, it should follow the foreground color.
+
 To detect support for this feature in a terminal emulator, query the terminfo database
 for the ``Su`` boolean capability.
 
