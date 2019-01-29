@@ -116,6 +116,7 @@ def wakeup():
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 terminfo_dir = os.path.join(base_dir, 'terminfo')
 logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
+logo_png_file = os.path.join(base_dir, 'logo', 'kitty.png')
 beam_cursor_data_file = os.path.join(base_dir, 'logo', 'beam-cursor.png')
 try:
     shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'

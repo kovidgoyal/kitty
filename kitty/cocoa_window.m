@@ -115,6 +115,58 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
     return dockMenu;
 }
 
+@interface NotificationDelegate : NSObject <NSUserNotificationCenterDelegate>
+@end
+
+@implementation NotificationDelegate
+    - (void)userNotificationCenter:(NSUserNotificationCenter *)center
+            didDeliverNotification:(NSUserNotification *)notification {
+        (void)(center); (void)(notification);
+    }
+
+    - (BOOL) userNotificationCenter:(NSUserNotificationCenter *)center
+            shouldPresentNotification:(NSUserNotification *)notification {
+        (void)(center); (void)(notification);
+        return YES;
+    }
+
+    - (void) userNotificationCenter:(NSUserNotificationCenter *)center
+            didActivateNotification:(NSUserNotification *)notification {
+        (void)(center); (void)(notification);
+    }
+@end
+
+static PyObject*
+cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
+    char *title = NULL, *subtitle = NULL, *message = NULL, *path_to_image = NULL;
+    if (!PyArg_ParseTuple(args, "ssz|z", &title, &message, &path_to_image, &subtitle)) return NULL;
+    NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
+    if (!center) {PyErr_SetString(PyExc_RuntimeError, "Failed to get the user notification center"); return NULL; }
+    if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
+    NSUserNotification *n = [NSUserNotification new];
+    NSImage *img = nil;
+    if (path_to_image) {
+        NSString *p = [NSString stringWithUTF8String:path_to_image];
+        NSURL *url = [NSURL fileURLWithPath:p];
+        img = [[NSImage alloc] initWithContentsOfURL:url];
+        [url release]; [p release];
+    }
+    n.title = title ? [NSString stringWithUTF8String:title] : nil;
+    n.subtitle = subtitle ? [NSString stringWithUTF8String:subtitle] : nil;
+    n.informativeText = message ? [NSString stringWithUTF8String:message] : nil;
+    if (img) {
+        [n setValue:img forKey:@"_identityImage"];
+        [n setValue:@(false) forKey:@"_identityImageHasBorder"];
+    }
+    [center deliverNotification:n];
+    if (n.title) { [n.title release]; n.title = nil; }
+    if (n.subtitle) { [n.subtitle release]; n.subtitle = nil; }
+    if (n.informativeText) { [n.informativeText release]; n.informativeText = nil; }
+    if (img) [img release];
+    [n release];
+    Py_RETURN_NONE;
+}
+
 void
 cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
@@ -323,6 +375,7 @@ cleanup() {
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_new_window_trigger", (PyCFunction)cocoa_set_new_window_trigger, METH_VARARGS, ""},
+    {"cocoa_send_notification", (PyCFunction)cocoa_send_notification, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
