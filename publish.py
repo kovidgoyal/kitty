@@ -66,6 +66,8 @@ def run_website(args):
     if os.path.exists(publish_dir):
         shutil.rmtree(publish_dir)
     shutil.copytree(os.path.join(docs_dir, '_build', 'html'), publish_dir)
+    with open(os.path.join(publish_dir, 'current-version.txt'), 'w') as f:
+        f.write(version)
     shutil.copy2(os.path.join(docs_dir, 'installer.sh'), publish_dir)
     installer = os.path.join(docs_dir, 'installer.py')
     subprocess.check_call([
