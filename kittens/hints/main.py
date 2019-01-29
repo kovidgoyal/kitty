@@ -385,7 +385,7 @@ when used together with --multiple.
 default=1
 type=int
 The offset (from zero) at which to start hint numbering. Note that only numbers
-greater than zero are respected.
+greater than or equal to zero are respected.
 '''.format(','.join(sorted(URL_PREFIXES))).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
 usage = ''
