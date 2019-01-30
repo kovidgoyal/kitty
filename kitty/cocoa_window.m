@@ -115,6 +115,8 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
     return dockMenu;
 }
 
+static PyObject *notification_activated_callback = NULL;
+
 @interface NotificationDelegate : NSObject <NSUserNotificationCenterDelegate>
 @end
 
@@ -133,13 +135,19 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
     - (void) userNotificationCenter:(NSUserNotificationCenter *)center
             didActivateNotification:(NSUserNotification *)notification {
         (void)(center); (void)(notification);
+        if (notification_activated_callback) {
+            PyObject *ret = PyObject_CallFunction(notification_activated_callback, "z",
+                    notification.identifier ? [notification.identifier UTF8String] : NULL);
+            if (ret == NULL) PyErr_Print();
+            else Py_DECREF(ret);
+        }
     }
 @end
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *title = NULL, *subtitle = NULL, *message = NULL, *path_to_image = NULL;
-    if (!PyArg_ParseTuple(args, "ssz|z", &title, &message, &path_to_image, &subtitle)) return NULL;
+    char *identifier = NULL, *title = NULL, *subtitle = NULL, *message = NULL, *path_to_image = NULL;
+    if (!PyArg_ParseTuple(args, "zssz|z", &identifier, &title, &message, &path_to_image, &subtitle)) return NULL;
     NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
     if (!center) {PyErr_SetString(PyExc_RuntimeError, "Failed to get the user notification center"); return NULL; }
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
@@ -151,6 +159,7 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
         img = [[NSImage alloc] initWithContentsOfURL:url];
         [url release]; [p release];
     }
+    n.identifier = identifier ? [NSString stringWithUTF8String:identifier] : nil;
     n.title = title ? [NSString stringWithUTF8String:title] : nil;
     n.subtitle = subtitle ? [NSString stringWithUTF8String:subtitle] : nil;
     n.informativeText = message ? [NSString stringWithUTF8String:message] : nil;
@@ -159,12 +168,48 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
         [n setValue:@(false) forKey:@"_identityImageHasBorder"];
     }
     [center deliverNotification:n];
+    if (n.identifier) { [n.identifier release]; n.identifier = nil; }
     if (n.title) { [n.title release]; n.title = nil; }
     if (n.subtitle) { [n.subtitle release]; n.subtitle = nil; }
     if (n.informativeText) { [n.informativeText release]; n.informativeText = nil; }
     if (img) [img release];
     [n release];
     Py_RETURN_NONE;
+}
+
+static void
+SIGTERM_handler(int signum UNUSED) {
+    exit(EXIT_FAILURE);
+}
+
+static void
+call_timer_callback(PyObject *timer_callback) {
+    PyObject *ret = PyObject_CallObject(timer_callback, NULL);
+    if (ret == NULL) PyErr_Print();
+    else Py_DECREF(ret);
+}
+
+static PyObject*
+cocoa_run_notification_loop(PyObject *self UNUSED, PyObject *args) {
+    PyObject *timer_callback;
+    double timeout;
+    if (!PyArg_ParseTuple(args, "OOd", &notification_activated_callback, &timer_callback, &timeout)) return NULL;
+    signal(SIGTERM, SIGTERM_handler);
+    signal(SIGINT, SIGTERM_handler);
+    NSAutoreleasePool *pool = [NSAutoreleasePool new];
+    NSApplication * application = [NSApplication sharedApplication];
+    // prevent icon in dock
+    [application setActivationPolicy:NSApplicationActivationPolicyAccessory];
+    // timer will fire after timeout, so fire it once at the start
+    call_timer_callback(timer_callback);
+    [NSTimer scheduledTimerWithTimeInterval:timeout
+        repeats:YES
+        block:^(NSTimer *timer UNUSED) {
+            call_timer_callback(timer_callback);
+    }];
+    [application run];
+	[pool drain];
+    return 0;
 }
 
 void
@@ -376,6 +421,7 @@ static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_new_window_trigger", (PyCFunction)cocoa_set_new_window_trigger, METH_VARARGS, ""},
     {"cocoa_send_notification", (PyCFunction)cocoa_send_notification, METH_VARARGS, ""},
+    {"cocoa_run_notification_loop", (PyCFunction)cocoa_run_notification_loop, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
