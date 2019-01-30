@@ -5,6 +5,7 @@
  */
 
 #pragma once
+#include "data-types.h"
 #if defined(_MSC_VER)
 #define ISWINDOWS
 #define STDCALL __stdcall
@@ -22,11 +23,6 @@ typedef SSIZE_T ssize_t;
 #else
 #define STDCALL
 #endif
-#define _POSIX_C_SOURCE 200809L
-
-#include <sys/types.h>
-#include <stdint.h>
-#include <stdbool.h>
 
 #include "vector.h"
 
