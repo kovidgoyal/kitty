@@ -87,7 +87,18 @@ def at_least_version(package, major, minor=0):
 
 
 def cc_version():
-    cc = os.environ.get('CC', 'clang' if is_macos else 'gcc')
+    if 'CC' in os.environ:
+        cc = os.environ['CC']
+    else:
+        if is_macos:
+            cc = 'clang'
+        else:
+            if shutil.which('gcc'):
+                cc = 'gcc'
+            elif shutil.which('clang'):
+                cc = 'clang'
+            else:
+                cc = 'cc'
     raw = subprocess.check_output([cc, '-dumpversion']).decode('utf-8')
     ver = raw.split('.')[:2]
     try:
