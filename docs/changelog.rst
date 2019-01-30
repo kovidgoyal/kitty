@@ -13,6 +13,9 @@ Changelog
 
 - macOS: Fix :kbd:`cmd+period` key not working (:iss:`1318`)
 
+- macOS: Add an option :opt:`macos_show_window_title_in_menubar` to not
+  show the current window title in the menu-bar (:iss:`1066`)
+
 - Fix using remote control to set cursor text color causing errors when
   creating new windows (:iss:`1326`)
 

@@ -831,6 +831,10 @@ o('macos_traditional_fullscreen', False, long_text=_('''
 Use the traditional full-screen transition, that is faster, but less pretty.
 '''))
 
+o('macos_show_window_title_in_menubar', True, long_text=_('''
+Show the title of the currently active window in the macOS
+menu-bar, making use of otherwise wasted space.'''))
+
 # Disabled by default because of https://github.com/kovidgoyal/kitty/issues/794
 o('macos_custom_beam_cursor', False, long_text=_('''
 Enable/disable custom mouse cursor for macOS that is easier to see on both

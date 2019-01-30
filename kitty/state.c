@@ -391,6 +391,7 @@ PYWRAP1(set_options) {
     S(macos_option_as_alt, PyObject_IsTrue);
     S(macos_traditional_fullscreen, PyObject_IsTrue);
     S(macos_quit_when_last_window_closed, PyObject_IsTrue);
+    S(macos_show_window_title_in_menubar, PyObject_IsTrue);
     S(macos_window_resizable, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
     S(macos_thicken_font, PyFloat_AsDouble);
