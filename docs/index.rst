@@ -194,8 +194,6 @@ Increase background opacity         :sc:`increase_background_opacity`
 Decrease background opacity         :sc:`decrease_background_opacity`
 Full background opacity             :sc:`full_background_opacity`
 Reset background opacity            :sc:`reset_background_opacity`
-Jump left one word                  :kbd:`⌥+←` (only on macOS)
-Jump right one word                 :kbd:`⌥+→` (only on macOS)
 ==================================  =======================
 
 
