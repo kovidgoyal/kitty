@@ -178,11 +178,6 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 }
 
 static void
-SIGTERM_handler(int signum UNUSED) {
-    exit(EXIT_FAILURE);
-}
-
-static void
 call_timer_callback(PyObject *timer_callback) {
     PyObject *ret = PyObject_CallObject(timer_callback, NULL);
     if (ret == NULL) PyErr_Print();
@@ -194,12 +189,22 @@ cocoa_run_notification_loop(PyObject *self UNUSED, PyObject *args) {
     PyObject *timer_callback;
     double timeout;
     if (!PyArg_ParseTuple(args, "OOd", &notification_activated_callback, &timer_callback, &timeout)) return NULL;
-    signal(SIGTERM, SIGTERM_handler);
-    signal(SIGINT, SIGTERM_handler);
     NSAutoreleasePool *pool = [NSAutoreleasePool new];
     NSApplication * application = [NSApplication sharedApplication];
     // prevent icon in dock
     [application setActivationPolicy:NSApplicationActivationPolicyAccessory];
+    signal(SIGTERM, SIG_IGN);
+    signal(SIGINT, SIG_IGN);
+	dispatch_source_t sigint = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
+	dispatch_source_set_event_handler(sigint, ^{
+		[application terminate:nil];
+    });
+    dispatch_resume(sigint);
+	dispatch_source_t sigterm = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
+	dispatch_source_set_event_handler(sigterm, ^{
+		[application terminate:nil];
+    });
+    dispatch_resume(sigterm);
     // timer will fire after timeout, so fire it once at the start
     call_timer_callback(timer_callback);
     [NSTimer scheduledTimerWithTimeInterval:timeout
