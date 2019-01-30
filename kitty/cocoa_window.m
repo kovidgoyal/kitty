@@ -187,6 +187,38 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+@interface ServiceProvider : NSObject
+@end
+
+@implementation ServiceProvider
+
+- (void)openTab:(NSPasteboard*)pasteboard
+        userData:(NSString *) UNUSED userData error:(NSError **) UNUSED error {
+    [self openFilesFromPasteboard:pasteboard type:NEW_TAB_WITH_WD];
+}
+
+- (void)openOSWindow:(NSPasteboard*)pasteboard
+        userData:(NSString *) UNUSED userData  error:(NSError **) UNUSED error {
+    [self openFilesFromPasteboard:pasteboard type:NEW_OS_WINDOW_WITH_WD];
+}
+
+- (void)openFilesFromPasteboard:(NSPasteboard *)pasteboard type:(int)type {
+    NSDictionary *options = [NSDictionary dictionaryWithObject:@YES forKey:NSPasteboardURLReadingFileURLsOnlyKey];
+    NSArray *filePathArray = [pasteboard readObjectsForClasses:[NSArray arrayWithObject:[NSURL class]] options:options];
+    for (NSURL *url in filePathArray) {
+        NSString *path = [url path];
+        BOOL isDirectory = NO;
+        if ([[NSFileManager defaultManager] fileExistsAtPath:path isDirectory:&isDirectory]) {
+            if (!isDirectory) {
+                path = [path stringByDeletingLastPathComponent];
+            }
+            set_cocoa_pending_action_with_wd(type, [path UTF8String]);
+        }
+    }
+}
+
+@end
+
 // global menu {{{
 void
 cocoa_create_global_menu(void) {
@@ -278,6 +310,9 @@ cocoa_create_global_menu(void) {
             @selector(applicationDockMenu:),
             (IMP)get_dock_menu,
             "@@:@");
+
+
+    [NSApp setServicesProvider:[[[ServiceProvider alloc] init] autorelease]];
 }
 
 void
