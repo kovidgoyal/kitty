@@ -747,13 +747,19 @@ python_timer_callback(id_type timer_id, void *data) {
     else Py_DECREF(ret);
 }
 
+static void
+python_timer_cleanup(id_type timer_id UNUSED, void *data) {
+    if (data) Py_DECREF((PyObject*)data);
+}
+
 static PyObject*
 add_python_timer(PyObject *self UNUSED, PyObject *args) {
     PyObject *callback;
     double interval;
     const char *name;
     if (!PyArg_ParseTuple(args, "sOd", &name, &callback, &interval)) return NULL;
-    unsigned long long timer_id = add_timer(&main_event_loop, name, interval, 1, python_timer_callback, callback);
+    unsigned long long timer_id = add_timer(&main_event_loop, name, interval, 1, python_timer_callback, callback, python_timer_cleanup);
+    Py_INCREF(callback);
     return Py_BuildValue("K", timer_id);
 }
 
@@ -860,6 +866,7 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
         }
         has_open_windows = process_pending_closes(self);
     }
+    remove_all_timers(&main_event_loop);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }

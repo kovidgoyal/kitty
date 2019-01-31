@@ -22,7 +22,7 @@ update_timers(EventLoopData *eld) {
 }
 
 id_type
-add_timer(EventLoopData *eld, const char *name, double interval, int enabled, timer_callback_func cb, void *cb_data) {
+add_timer(EventLoopData *eld, const char *name, double interval, int enabled, timer_callback_func cb, void *cb_data, timer_cleanup_func cleanup) {
     if (eld->timers_count >= sizeof(eld->timers)/sizeof(eld->timers[0])) {
         fprintf(stderr, "Too many timers added\n");
         return 0;
@@ -33,24 +33,34 @@ add_timer(EventLoopData *eld, const char *name, double interval, int enabled, ti
     t->trigger_at = enabled ? monotonic() + interval : DBL_MAX;
     t->callback = cb;
     t->callback_data = cb_data;
+    t->cleanup = cleanup;
     t->id = ++timer_counter;
     update_timers(eld);
     return t->id;
 }
 
-#define removeX(which, item_id, update_func) {\
-    for (nfds_t i = 0; i < eld->which##_count; i++) { \
-        if (eld->which[i].id == item_id) { \
-            eld->which##_count--; \
-            if (i < eld->which##_count) { \
-                memmove(eld->which + i, eld->which + i + 1, sizeof(eld->which[0]) * (eld->which##_count - i)); \
-            } \
-            update_func(eld); break; \
-}}}
 
 void
 remove_timer(EventLoopData *eld, id_type timer_id) {
-    removeX(timers, timer_id, update_timers);
+    for (nfds_t i = 0; i < eld->timers_count; i++) {
+        if (eld->timers[i].id == timer_id) {
+            if (eld->timers[i].cleanup) eld->timers[i].cleanup(timer_id, eld->timers[i].callback_data);
+            eld->timers_count--;
+            if (i < eld->timers_count) {
+                memmove(eld->timers + i, eld->timers + i + 1, sizeof(eld->timers[0]) * (eld->timers_count - i));
+            }
+            update_timers(eld);
+            break;
+        }
+    }
+}
+
+void
+remove_all_timers(EventLoopData *eld) {
+    while (eld->timers_count) {
+        eld->timers_count--;
+        if (eld->timers[eld->timers_count].cleanup) eld->timers[eld->timers_count].cleanup(eld->timers[eld->timers_count].id, eld->timers[eld->timers_count].callback_data);
+    }
 }
 
 void
