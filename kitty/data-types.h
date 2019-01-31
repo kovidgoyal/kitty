@@ -257,6 +257,11 @@ typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
         (base)->capacity = _newcap; \
     }
 
+#define remove_from_array(array, i, count) { \
+    count--; \
+    if (i < count) { \
+        memmove(array + i, array + i + 1, sizeof(array[0]) * (count - 1)); \
+    }}
 
 // Global functions
 const char* base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, size_t dest_capacity, size_t *dest_sz);

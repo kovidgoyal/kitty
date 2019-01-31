@@ -80,6 +80,17 @@ static uint8_t drain_buf[1024];
 static int signal_fds[2], wakeup_fds[2];
 
 
+typedef struct {
+    pid_t pid;
+    int status;
+} ReapedPID;
+
+static pid_t monitored_pids[256] = {0};
+static size_t monitored_pids_count = 0;
+static ReapedPID reaped_pids[arraysz(monitored_pids)] = {{0}};
+static size_t reaped_pids_count = 0;
+
+
 
 // Main thread functions {{{
 
@@ -699,6 +710,35 @@ free_twd(ThreadWriteData *x) {
     free(x);
 }
 
+static PyObject*
+monitor_pid(PyObject *self UNUSED, PyObject *args) {
+    long pid;
+    bool ok = true;
+    if (!PyArg_ParseTuple(args, "l", &pid)) return NULL;
+    children_mutex(lock);
+    if (monitored_pids_count >= arraysz(monitored_pids)) {
+        PyErr_SetString(PyExc_RuntimeError, "Too many monitored pids");
+        ok = false;
+    } else {
+        monitored_pids[monitored_pids_count++] = pid;
+    }
+    children_mutex(unlock);
+    if (!ok) return NULL;
+    Py_RETURN_NONE;
+}
+
+static inline void
+report_reaped_pids() {
+    children_mutex(lock);
+    if (reaped_pids_count) {
+        for (size_t i = 0; i < reaped_pids_count; i++) {
+            call_boss(on_monitored_pid_death, "ii", (int)reaped_pids[i].pid, reaped_pids[i].status);
+        }
+        reaped_pids_count = 0;
+    }
+    children_mutex(unlock);
+}
+
 static void*
 thread_write(void *x) {
     ThreadWriteData *data = (ThreadWriteData*)x;
@@ -864,6 +904,7 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
             request_application_quit();
 #endif
         }
+        report_reaped_pids();
         has_open_windows = process_pending_closes(self);
     }
     remove_all_timers(&main_event_loop);
@@ -1016,6 +1057,21 @@ mark_child_for_removal(ChildMonitor *self, pid_t pid) {
 }
 
 static inline void
+mark_monitored_pids(pid_t pid, int status) {
+    children_mutex(lock);
+    for (ssize_t i = monitored_pids_count - 1; i >= 0; i--) {
+        if (pid == monitored_pids[i]) {
+            if (reaped_pids_count < arraysz(reaped_pids)) {
+                reaped_pids[reaped_pids_count].status = status;
+                reaped_pids[reaped_pids_count++].pid = pid;
+            }
+            remove_from_array(monitored_pids, (size_t)i, monitored_pids_count);
+        }
+    }
+    children_mutex(unlock);
+}
+
+static inline void
 reap_children(ChildMonitor *self, bool enable_close_on_child_death) {
     int status;
     pid_t pid;
@@ -1026,6 +1082,7 @@ reap_children(ChildMonitor *self, bool enable_close_on_child_death) {
             if (errno != EINTR) break;
         } else if (pid > 0) {
             if (enable_close_on_child_death) mark_child_for_removal(self, pid);
+            mark_monitored_pids(pid, status);
         } else break;
     }
 }
@@ -1457,6 +1514,7 @@ static PyMethodDef module_methods[] = {
     {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
     {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
     {"change_timer_interval", (PyCFunction)change_python_timer_interval, METH_VARARGS, ""},
+    METHODB(monitor_pid, METH_VARARGS),
     {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };

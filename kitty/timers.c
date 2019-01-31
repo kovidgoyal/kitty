@@ -45,10 +45,7 @@ remove_timer(EventLoopData *eld, id_type timer_id) {
     for (nfds_t i = 0; i < eld->timers_count; i++) {
         if (eld->timers[i].id == timer_id) {
             if (eld->timers[i].cleanup) eld->timers[i].cleanup(timer_id, eld->timers[i].callback_data);
-            eld->timers_count--;
-            if (i < eld->timers_count) {
-                memmove(eld->timers + i, eld->timers + i + 1, sizeof(eld->timers[0]) * (eld->timers_count - i));
-            }
+            remove_from_array(eld->timers, i, eld->timers_count);
             update_timers(eld);
             break;
         }
