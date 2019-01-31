@@ -10,6 +10,7 @@
 #include "screen.h"
 #include "fonts.h"
 #include "charsets.h"
+#include "timers.h"
 #include <termios.h>
 #include <unistd.h>
 #include <float.h>
@@ -727,10 +728,33 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static EventLoopData main_event_loop = {0};
+
 static inline void
 wait_for_events() {
+    maximum_wait = prepare_for_poll(&main_event_loop, maximum_wait);
     event_loop_wait(maximum_wait);
+    dispatch_timers(&main_event_loop);
     maximum_wait = -1;
+}
+
+static void
+python_timer_callback(id_type timer_id, void *data) {
+    PyObject *callback = (PyObject*)data;
+    unsigned long long id = timer_id;
+    PyObject *ret = PyObject_CallFunction(callback, "K", id);
+    if (ret == NULL) PyErr_Print();
+    else Py_DECREF(ret);
+}
+
+static PyObject*
+add_python_timer(PyObject *self UNUSED, PyObject *args) {
+    PyObject *callback;
+    double interval;
+    const char *name;
+    if (!PyArg_ParseTuple(args, "sOd", &name, &callback, &interval)) return NULL;
+    unsigned long long timer_id = add_timer(&main_event_loop, name, interval, 1, python_timer_callback, callback);
+    return Py_BuildValue("K", timer_id);
 }
 
 static inline void
@@ -1379,6 +1403,7 @@ static PyMethodDef methods[] = {
     METHOD(main_loop, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
     METHOD(resize_pty, METH_VARARGS)
+    METHODB(add_python_timer, METH_VARARGS),
     {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
