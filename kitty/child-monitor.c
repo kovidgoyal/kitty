@@ -1065,7 +1065,7 @@ mark_monitored_pids(pid_t pid, int status) {
                 reaped_pids[reaped_pids_count].status = status;
                 reaped_pids[reaped_pids_count++].pid = pid;
             }
-            remove_from_array(monitored_pids, (size_t)i, monitored_pids_count);
+            remove_i_from_array(monitored_pids, (size_t)i, monitored_pids_count);
         }
     }
     children_mutex(unlock);

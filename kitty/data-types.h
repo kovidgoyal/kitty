@@ -257,7 +257,7 @@ typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
         (base)->capacity = _newcap; \
     }
 
-#define remove_from_array(array, i, count) { \
+#define remove_i_from_array(array, i, count) { \
     count--; \
     if (i < count) { \
         memmove(array + i, array + i + 1, sizeof(array[0]) * (count - 1)); \
