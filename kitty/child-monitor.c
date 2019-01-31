@@ -1428,10 +1428,6 @@ static PyMethodDef methods[] = {
     METHOD(main_loop, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
     METHOD(resize_pty, METH_VARARGS)
-    {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
-    {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
-    {"change_timer_interval", (PyCFunction)change_python_timer_interval, METH_VARARGS, ""},
-    {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
 
@@ -1447,6 +1443,8 @@ PyTypeObject ChildMonitor_Type = {
     .tp_new = new,
 };
 
+
+
 static PyObject*
 safe_pipe(PYNOARG) {
     int fds[2] = {0};
@@ -1456,6 +1454,10 @@ safe_pipe(PYNOARG) {
 
 static PyMethodDef module_methods[] = {
     METHODB(safe_pipe, METH_NOARGS),
+    {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
+    {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
+    {"change_timer_interval", (PyCFunction)change_python_timer_interval, METH_VARARGS, ""},
+    {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
 
