@@ -757,6 +757,14 @@ add_python_timer(PyObject *self UNUSED, PyObject *args) {
     return Py_BuildValue("K", timer_id);
 }
 
+static PyObject*
+remove_python_timer(PyObject *self UNUSED, PyObject *args) {
+    unsigned long long timer_id;
+    if (!PyArg_ParseTuple(args, "K", &timer_id)) return NULL;
+    remove_timer(&main_event_loop, timer_id);
+    Py_RETURN_NONE;
+}
+
 static inline void
 process_pending_resizes(double now) {
     global_state.has_pending_resizes = false;
@@ -1403,7 +1411,8 @@ static PyMethodDef methods[] = {
     METHOD(main_loop, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
     METHOD(resize_pty, METH_VARARGS)
-    METHODB(add_python_timer, METH_VARARGS),
+    {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
+    {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
     {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
