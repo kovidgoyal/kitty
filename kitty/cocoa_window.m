@@ -145,7 +145,7 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
         (void)(center); (void)(notification);
         if (notification_activated_callback) {
             PyObject *ret = PyObject_CallFunction(notification_activated_callback, "z",
-                    notification.identifier ? [notification.identifier UTF8String] : NULL);
+                    notification.userInfo[@"user_id"] ? [notification.userInfo[@"user_id"] UTF8String] : NULL);
             if (ret == NULL) PyErr_Print();
             else Py_DECREF(ret);
         }
@@ -154,8 +154,8 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *identifier = NULL, *title = NULL, *subtitle = NULL, *message = NULL, *path_to_image = NULL;
-    if (!PyArg_ParseTuple(args, "zssz|z", &identifier, &title, &message, &path_to_image, &subtitle)) return NULL;
+    char *identifier = NULL, *title = NULL, *subtitle = NULL, *informativeText = NULL, *path_to_image = NULL;
+    if (!PyArg_ParseTuple(args, "zssz|z", &identifier, &title, &informativeText, &path_to_image, &subtitle)) return NULL;
     NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
     if (!center) {PyErr_SetString(PyExc_RuntimeError, "Failed to get the user notification center"); return NULL; }
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
@@ -166,25 +166,28 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
         NSURL *url = [NSURL fileURLWithPath:p];
         img = [[NSImage alloc] initWithContentsOfURL:url];
         [url release]; [p release];
+        if (img) {
+            [n setValue:img forKey:@"_identityImage"];
+            [n setValue:@(false) forKey:@"_identityImageHasBorder"];
+        }
+        [img release];
     }
-    n.identifier = identifier ? [NSString stringWithUTF8String:identifier] : nil;
-    n.title = title ? [NSString stringWithUTF8String:title] : nil;
-    n.subtitle = subtitle ? [NSString stringWithUTF8String:subtitle] : nil;
-    n.informativeText = message ? [NSString stringWithUTF8String:message] : nil;
-    if (img) {
-        [n setValue:img forKey:@"_identityImage"];
-        [n setValue:@(false) forKey:@"_identityImageHasBorder"];
+#define SET(x) { \
+    if (x) { \
+        NSString *t = [NSString stringWithUTF8String:x]; \
+        n.x = t; \
+        [t release]; \
+    }}
+    SET(title); SET(subtitle); SET(informativeText);
+#undef SET
+    if (identifier) {
+        n.userInfo = @{@"user_id": [NSString stringWithUTF8String:identifier]};
     }
     [center deliverNotification:n];
-    if (n.identifier) { [n.identifier release]; n.identifier = nil; }
-    if (n.title) { [n.title release]; n.title = nil; }
-    if (n.subtitle) { [n.subtitle release]; n.subtitle = nil; }
-    if (n.informativeText) { [n.informativeText release]; n.informativeText = nil; }
-    if (img) [img release];
-    [n release];
     Py_RETURN_NONE;
 }
 
+// global menu {{{
 void
 cocoa_create_global_menu(void) {
     NSString* app_name = find_app_name();
@@ -289,7 +292,7 @@ cocoa_update_title(PyObject *pytitle) {
     [title_menu setSubmenu:m];
     [m release];
     [title release];
-}
+} // }}}
 
 bool
 cocoa_make_window_resizable(void *w, bool resizable) {
