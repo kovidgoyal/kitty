@@ -9,7 +9,7 @@ from collections import namedtuple
 from urllib.request import urlopen
 
 from .config import atomic_save
-from .constants import cache_dir, get_boss, version
+from .constants import cache_dir, get_boss, kitty_exe, version
 from .fast_data_types import add_timer, monitor_pid
 from .notify import notify
 from .utils import open_url
@@ -98,7 +98,7 @@ def process_current_release(raw):
 
 def update_check(timer_id=None):
     p = subprocess.Popen([
-        'kitty', '+runpy', 'from kitty.update_check import *; import time; time.sleep(2); print(get_released_version())'
+        kitty_exe(), '+runpy', 'from kitty.update_check import *; import time; time.sleep(2); print(get_released_version())'
     ], stdout=subprocess.PIPE)
     monitor_pid(p.pid)
     get_boss().set_update_check_process(p)
