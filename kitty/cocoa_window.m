@@ -116,6 +116,14 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
 }
 
 static PyObject *notification_activated_callback = NULL;
+static PyObject*
+set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
+    if (notification_activated_callback) Py_DECREF(notification_activated_callback);
+    notification_activated_callback = callback;
+    Py_INCREF(callback);
+    Py_RETURN_NONE;
+
+}
 
 @interface NotificationDelegate : NSObject <NSUserNotificationCenterDelegate>
 @end
@@ -175,46 +183,6 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     if (img) [img release];
     [n release];
     Py_RETURN_NONE;
-}
-
-static void
-call_timer_callback(PyObject *timer_callback) {
-    PyObject *ret = PyObject_CallObject(timer_callback, NULL);
-    if (ret == NULL) PyErr_Print();
-    else Py_DECREF(ret);
-}
-
-static PyObject*
-cocoa_run_notification_loop(PyObject *self UNUSED, PyObject *args) {
-    PyObject *timer_callback;
-    double timeout;
-    if (!PyArg_ParseTuple(args, "OOd", &notification_activated_callback, &timer_callback, &timeout)) return NULL;
-    NSAutoreleasePool *pool = [NSAutoreleasePool new];
-    NSApplication * application = [NSApplication sharedApplication];
-    // prevent icon in dock
-    [application setActivationPolicy:NSApplicationActivationPolicyAccessory];
-    signal(SIGTERM, SIG_IGN);
-    signal(SIGINT, SIG_IGN);
-	dispatch_source_t sigint = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
-	dispatch_source_set_event_handler(sigint, ^{
-		[application terminate:nil];
-    });
-    dispatch_resume(sigint);
-	dispatch_source_t sigterm = dispatch_source_create(DISPATCH_SOURCE_TYPE_SIGNAL, SIGINT, 0, dispatch_get_main_queue());
-	dispatch_source_set_event_handler(sigterm, ^{
-		[application terminate:nil];
-    });
-    dispatch_resume(sigterm);
-    // timer will fire after timeout, so fire it once at the start
-    call_timer_callback(timer_callback);
-    [NSTimer scheduledTimerWithTimeInterval:timeout
-        repeats:YES
-        block:^(NSTimer *timer UNUSED) {
-            call_timer_callback(timer_callback);
-    }];
-    [application run];
-	[pool drain];
-    return 0;
 }
 
 void
@@ -420,13 +388,15 @@ static void
 cleanup() {
     if (dockMenu) [dockMenu release];
     dockMenu = nil;
+    if (notification_activated_callback) Py_DECREF(notification_activated_callback);
+    notification_activated_callback = NULL;
 }
 
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_new_window_trigger", (PyCFunction)cocoa_set_new_window_trigger, METH_VARARGS, ""},
     {"cocoa_send_notification", (PyCFunction)cocoa_send_notification, METH_VARARGS, ""},
-    {"cocoa_run_notification_loop", (PyCFunction)cocoa_run_notification_loop, METH_VARARGS, ""},
+    {"cocoa_set_notification_activated_callback", (PyCFunction)set_notification_activated_callback, METH_O, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

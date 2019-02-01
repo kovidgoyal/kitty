@@ -16,7 +16,8 @@ from .conf.utils import to_cmdline
 from .config import initial_window_size_func, prepare_config_file_for_editing
 from .config_data import MINIMUM_FONT_SIZE
 from .constants import (
-    appname, config_dir, kitty_exe, set_boss, supports_primary_selection
+    appname, config_dir, is_macos, kitty_exe, set_boss,
+    supports_primary_selection
 )
 from .fast_data_types import (
     ChildMonitor, background_opacity_of, change_background_opacity,
@@ -136,6 +137,9 @@ class Boss:
                 self.toggle_fullscreen()
             else:
                 change_os_window_state(args.start_as)
+        if is_macos:
+            from .fast_data_types import cocoa_set_notification_activated_callback
+            cocoa_set_notification_activated_callback(self.notification_activated)
 
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
         if os_window_id is None:
@@ -355,6 +359,10 @@ class Boss:
         if not getattr(self, 'io_thread_started', False):
             self.child_monitor.start()
             self.io_thread_started = True
+        if self.opts.update_check_interval > 0 and not hasattr(self, 'update_check_started'):
+            from .update_check import run_update_check
+            run_update_check(self.opts.update_check_interval * 60 * 60)
+            self.update_check_started = True
 
     def activate_tab_at(self, os_window_id, x):
         tm = self.os_window_map.get(os_window_id)
@@ -973,3 +981,18 @@ class Boss:
                 os.remove(path)
             except FileNotFoundError:
                 pass
+
+    def set_update_check_process(self, process):
+        self.update_check_process = process
+
+    def on_monitored_pid_death(self, pid, exit_status):
+        update_check_process = getattr(self, 'update_check_process', None)
+        if update_check_process is not None and pid == update_check_process.pid:
+            self.update_check_process = None
+            from .update_check import process_current_release
+            process_current_release(update_check_process.stdout.read().decode('utf-8'))
+
+    def notification_activated(self, identifier):
+        if identifier == 'new-version':
+            from .update_check import notification_activated
+            notification_activated()

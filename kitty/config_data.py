@@ -362,8 +362,6 @@ Use negative numbers to change scroll direction.'''))
 
 # }}}
 
-# }}}
-
 g('mouse')  # {{{
 
 o('url_color', '#0087BD', option_type=to_color, long_text=_('''
@@ -733,6 +731,12 @@ environment variables are expanded recursively, so if you use::
     env MYVAR2=${MYVAR1}/${HOME}/b
 
 The value of MYVAR2 will be :code:`a/<path to home directory>/b`.
+'''))
+
+o('update_check_interval', 24, option_type=float, long_text=_('''
+Periodically check if an update to kitty is available. If an update is found
+a system notification is displayed informing you of the available update.
+The default is to check every 24 hrs, set to zero to disable.
 '''))
 
 

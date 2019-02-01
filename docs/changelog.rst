@@ -11,6 +11,10 @@ Changelog
 - A new option :opt:`strip_trailing_spaces` to optionally remove trailing
   spaces from lines when copying to clipboard.
 
+- Automatically check for new releases and notify when an update is available,
+  via the system notification facilities. Can be controlled by
+  :opt:`update_check_interval` (:iss:`1342`)
+
 - macOS: Fix :kbd:`cmd+period` key not working (:iss:`1318`)
 
 - macOS: Add an option :opt:`macos_show_window_title_in_menubar` to not
