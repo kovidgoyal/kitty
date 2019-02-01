@@ -98,7 +98,8 @@ def process_current_release(raw):
 
 def update_check(timer_id=None):
     p = subprocess.Popen([
-        kitty_exe(), '+runpy', 'from kitty.update_check import *; import time; time.sleep(2); print(get_released_version())'
+        kitty_exe(), '+runpy',
+        'from kitty.update_check import *; import time, random; time.sleep(random.randint(1000, 4000) / 1000); print(get_released_version())'
     ], stdout=subprocess.PIPE)
     monitor_pid(p.pid)
     get_boss().set_update_check_process(p)
