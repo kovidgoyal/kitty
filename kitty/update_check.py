@@ -97,14 +97,20 @@ def process_current_release(raw):
 
 
 def update_check(timer_id=None):
-    p = subprocess.Popen([
-        kitty_exe(), '+runpy',
-        'from kitty.update_check import *; import time, random; time.sleep(random.randint(1000, 4000) / 1000); print(get_released_version())'
-    ], stdout=subprocess.PIPE)
+    try:
+        p = subprocess.Popen([
+            kitty_exe(), '+runpy',
+            'from kitty.update_check import *; import time, random; time.sleep(random.randint(1000, 4000) / 1000); print(get_released_version())'
+        ], stdout=subprocess.PIPE)
+    except EnvironmentError:
+        import traceback
+        traceback.print_exc()
+        return False
     monitor_pid(p.pid)
     get_boss().set_update_check_process(p)
+    return True
 
 
 def run_update_check(interval=24 * 60 * 60):
-    update_check()
-    add_timer('update_check', update_check, interval)
+    if update_check():
+        add_timer('update_check', update_check, interval)
