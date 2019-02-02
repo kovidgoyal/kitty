@@ -990,7 +990,14 @@ class Boss:
         if update_check_process is not None and pid == update_check_process.pid:
             self.update_check_process = None
             from .update_check import process_current_release
-            process_current_release(update_check_process.stdout.read().decode('utf-8'))
+            try:
+                raw = update_check_process.stdout.read().decode('utf-8')
+            except BrokenPipeError:
+                pass
+            except Exception as e:
+                log_error('Failed to read data from update check process, with error: {}'.format(e))
+            else:
+                process_current_release(raw)
 
     def notification_activated(self, identifier):
         if identifier == 'new-version':
