@@ -12,7 +12,7 @@ from .config import atomic_save
 from .constants import cache_dir, get_boss, kitty_exe, version
 from .fast_data_types import add_timer, monitor_pid
 from .notify import notify
-from .utils import open_url
+from .utils import log_error, open_url
 
 CHANGELOG_URL = 'https://sw.kovidgoyal.net/kitty/changelog.html'
 RELEASED_VERSION_URL = 'https://sw.kovidgoyal.net/kitty/current-version.txt'
@@ -102,9 +102,8 @@ def update_check(timer_id=None):
             kitty_exe(), '+runpy',
             'from kitty.update_check import *; import time, random; time.sleep(random.randint(1000, 4000) / 1000); print(get_released_version())'
         ], stdout=subprocess.PIPE)
-    except EnvironmentError:
-        import traceback
-        traceback.print_exc()
+    except EnvironmentError as e:
+        log_error('Failed to run kitty for update check, with error: {}'.format(e))
         return False
     monitor_pid(p.pid)
     get_boss().set_update_check_process(p)
