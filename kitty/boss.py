@@ -106,6 +106,7 @@ class Boss:
 
     def __init__(self, os_window_id, opts, args, cached_values, new_os_window_trigger):
         set_draw_minimal_borders(opts)
+        self.update_check_process = None
         self.window_id_map = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.startup_cursor_text_color = opts.cursor_text_color
@@ -778,6 +779,7 @@ class Boss:
     def destroy(self):
         self.shutting_down = True
         self.child_monitor.shutdown_monitor()
+        self.update_check_process = None
         del self.child_monitor
         for tm in self.os_window_map.values():
             tm.destroy()
@@ -992,8 +994,6 @@ class Boss:
             from .update_check import process_current_release
             try:
                 raw = update_check_process.stdout.read().decode('utf-8')
-            except BrokenPipeError:
-                pass
             except Exception as e:
                 log_error('Failed to read data from update check process, with error: {}'.format(e))
             else:

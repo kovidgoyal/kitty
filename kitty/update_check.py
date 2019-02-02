@@ -96,11 +96,21 @@ def process_current_release(raw):
         notify_new_version(release_version)
 
 
+def run_worker():
+    import time
+    import random
+    time.sleep(random.randint(1000, 4000) / 1000)
+    try:
+        print(get_released_version())
+    except BrokenPipeError:
+        pass  # happens if parent process is killed before us
+
+
 def update_check(timer_id=None):
     try:
         p = subprocess.Popen([
             kitty_exe(), '+runpy',
-            'from kitty.update_check import *; import time, random; time.sleep(random.randint(1000, 4000) / 1000); print(get_released_version())'
+            'from kitty.update_check import run_worker; run_worker()'
         ], stdout=subprocess.PIPE)
     except EnvironmentError as e:
         log_error('Failed to run kitty for update check, with error: {}'.format(e))
