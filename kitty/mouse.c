@@ -439,9 +439,9 @@ handle_tab_bar_mouse(int button, int UNUSED modifiers) {
 static inline bool
 mouse_in_region(Region *r) {
     if (r->left == r->right) return false;
-	if (global_state.callback_os_window->mouse_y < r->top || global_state.callback_os_window->mouse_y > r->bottom) return false;
-	if (global_state.callback_os_window->mouse_x < r->left || global_state.callback_os_window->mouse_x > r->right) return false;
-	return true;
+    if (global_state.callback_os_window->mouse_y < r->top || global_state.callback_os_window->mouse_y > r->bottom) return false;
+    if (global_state.callback_os_window->mouse_x < r->left || global_state.callback_os_window->mouse_x > r->right) return false;
+    return true;
 }
 
 static inline Window*
@@ -457,8 +457,8 @@ window_for_id(id_type window_id) {
 static inline Window*
 window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     Region central, tab_bar;
-	os_window_regions(global_state.callback_os_window, &central, &tab_bar);
-	*in_tab_bar = mouse_in_region(&tab_bar);
+    os_window_regions(global_state.callback_os_window, &central, &tab_bar);
+    *in_tab_bar = mouse_in_region(&tab_bar);
     if (!*in_tab_bar && global_state.callback_os_window->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {

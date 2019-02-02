@@ -45,7 +45,7 @@
 static mach_timebase_info_data_t timebase = {0};
 
 static inline double monotonic_() {
-	return ((double)(mach_absolute_time() * timebase.numer) / timebase.denom)/SEC_TO_NS;
+    return ((double)(mach_absolute_time() * timebase.numer) / timebase.denom)/SEC_TO_NS;
 }
 
 static PyObject*
@@ -79,13 +79,13 @@ process_group_map() {
 static inline double monotonic_() {
     struct timespec ts = {0};
 #ifdef CLOCK_HIGHRES
-	clock_gettime(CLOCK_HIGHRES, &ts);
+    clock_gettime(CLOCK_HIGHRES, &ts);
 #elif CLOCK_MONOTONIC_RAW
-	clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
 #else
-	clock_gettime(CLOCK_MONOTONIC, &ts);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
 #endif
-	return (((double)ts.tv_nsec) / SEC_TO_NS) + (double)ts.tv_sec;
+    return (((double)ts.tv_nsec) / SEC_TO_NS) + (double)ts.tv_sec;
 }
 #endif
 

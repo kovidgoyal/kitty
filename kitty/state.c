@@ -683,8 +683,8 @@ PYWRAP1(patch_global_colors) {
 #define P(name) { \
     PyObject *val = PyDict_GetItemString(spec, #name); \
     if (val) { \
-		global_state.opts.name = PyLong_AsLong(val); \
-	} \
+        global_state.opts.name = PyLong_AsLong(val); \
+    } \
 }
     P(active_border_color); P(inactive_border_color); P(bell_border_color);
     if (configured) {

@@ -24,13 +24,13 @@ static inline double
 monotonic() {
     struct timespec ts = {0};
 #ifdef CLOCK_HIGHRES
-	clock_gettime(CLOCK_HIGHRES, &ts);
+    clock_gettime(CLOCK_HIGHRES, &ts);
 #elif CLOCK_MONOTONIC_RAW
-	clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
+    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
 #else
-	clock_gettime(CLOCK_MONOTONIC, &ts);
+    clock_gettime(CLOCK_MONOTONIC, &ts);
 #endif
-	return (((double)ts.tv_nsec) / 1e9) + (double)ts.tv_sec;
+    return (((double)ts.tv_nsec) / 1e9) + (double)ts.tv_sec;
 }
 
 void

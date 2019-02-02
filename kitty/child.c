@@ -32,8 +32,8 @@ serialize_string_tuple(PyObject *src) {
 static inline void
 free_string_tuple(char** data) {
     size_t i = 0;
-	while(data[i]) free(data[i++]);
-	free(data);
+    while(data[i]) free(data[i++]);
+    free(data);
 }
 
 extern char **environ;
