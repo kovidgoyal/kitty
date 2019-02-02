@@ -779,6 +779,8 @@ class Boss:
     def destroy(self):
         self.shutting_down = True
         self.child_monitor.shutdown_monitor()
+        if self.update_check_process is not None:
+            self.update_check_process.kill()
         self.update_check_process = None
         del self.child_monitor
         for tm in self.os_window_map.values():
