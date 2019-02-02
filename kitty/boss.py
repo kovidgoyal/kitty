@@ -779,8 +779,7 @@ class Boss:
     def destroy(self):
         self.shutting_down = True
         self.child_monitor.shutdown_monitor()
-        if self.update_check_process is not None:
-            self.update_check_process.kill()
+        self.set_update_check_process()
         self.update_check_process = None
         del self.child_monitor
         for tm in self.os_window_map.values():
@@ -986,7 +985,13 @@ class Boss:
             except FileNotFoundError:
                 pass
 
-    def set_update_check_process(self, process):
+    def set_update_check_process(self, process=None):
+        if self.update_check_process is not None:
+            try:
+                if self.update_check_process.poll() is None:
+                    self.update_check_process.kill()
+            except Exception:
+                pass
         self.update_check_process = process
 
     def on_monitored_pid_death(self, pid, exit_status):
