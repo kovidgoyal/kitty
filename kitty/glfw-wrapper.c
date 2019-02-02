@@ -385,6 +385,8 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwRequestWaylandFrameEvent_impl) = dlsym(handle, "glfwRequestWaylandFrameEvent");
 
+    *(void **) (&glfwDBusUserNotify_impl) = dlsym(handle, "glfwDBusUserNotify");
+
     return NULL;
 }
 

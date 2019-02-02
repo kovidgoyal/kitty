@@ -28,6 +28,7 @@
 #define _GNU_SOURCE
 #include "internal.h"
 #include "backend_utils.h"
+#include "linux_notify.h"
 
 #include <X11/cursorfont.h>
 #include <X11/Xmd.h>
@@ -2892,4 +2893,8 @@ GLFWAPI Window glfwGetX11Window(GLFWwindow* handle)
 
 GLFWAPI int glfwGetXKBScancode(const char* keyName, GLFWbool caseSensitive) {
     return glfw_xkb_keysym_from_name(keyName, caseSensitive);
+}
+
+GLFWAPI unsigned long long glfwDBusUserNotify(const char *app_name, const char* icon, const char *summary, const char *body, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *data) {
+    return glfw_dbus_send_user_notification(app_name, icon, summary, body, timeout, callback, data);
 }
