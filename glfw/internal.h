@@ -60,7 +60,7 @@
 
 #define _GLFW_MESSAGE_SIZE      1024
 
-typedef int GLFWbool;
+typedef bool GLFWbool;
 typedef unsigned long long GLFWid;
 
 typedef struct _GLFWerror       _GLFWerror;
