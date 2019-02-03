@@ -47,7 +47,7 @@ message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data) {
     if (dbus_message_is_signal(msg, NOTIFICATIONS_IFACE, "ActionInvoked")) {
         uint32_t notification_id;
         const char *action;
-        if (!glfw_dbus_get_args(msg, "Failed to get args from ActionInvoked notification signal",
+        if (glfw_dbus_get_args(msg, "Failed to get args from ActionInvoked notification signal",
                     DBUS_TYPE_UINT32, &notification_id, DBUS_TYPE_STRING, &action, DBUS_TYPE_INVALID)) {
             if (activated_handler) {
                 activated_handler(notification_id, action);
