@@ -1070,7 +1070,9 @@ static PyMethodDef module_methods[] = {
     METHODB(x11_window_id, METH_O),
     METHODB(set_primary_selection, METH_VARARGS),
     METHODB(glfw_poll_events, METH_NOARGS),
+#ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),
+#endif
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
     {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""},
