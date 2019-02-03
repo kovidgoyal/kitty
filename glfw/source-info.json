@@ -65,7 +65,7 @@
       "osmesa_context.h",
       "linux_joystick.h",
       "null_joystick.h",
-	  "linux_notify.h"
+      "linux_notify.h"
     ],
     "protocols": [
       "stable/xdg-shell/xdg-shell.xml",
@@ -90,7 +90,7 @@
       "backend_utils.c",
       "linux_joystick.c",
       "null_joystick.c",
-	  "linux_notify.c"
+      "linux_notify.c"
     ]
   },
   "wayland_protocols": [
@@ -131,7 +131,7 @@
       "osmesa_context.h",
       "linux_joystick.h",
       "null_joystick.h",
-	  "linux_notify.h"
+      "linux_notify.h"
     ],
     "sources": [
       "x11_init.c",
@@ -148,7 +148,7 @@
       "backend_utils.c",
       "linux_joystick.c",
       "null_joystick.c",
-	  "linux_notify.c"
+      "linux_notify.c"
     ]
   }
 }
