@@ -173,6 +173,11 @@ glfw_dbus_dispatch(DBusConnection *conn) {
 }
 
 void
+glfw_dbus_session_bus_dispatch() {
+    if (session_bus) glfw_dbus_dispatch(session_bus);
+}
+
+void
 glfw_dbus_terminate(_GLFWDBUSData *dbus) {
     if (dbus_data) {
         dbus_data->eld = NULL;

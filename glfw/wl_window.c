@@ -839,6 +839,7 @@ handleEvents(double timeout)
         wl_display_cancel_read(display);
     }
     glfw_ibus_dispatch(&_glfw.wl.xkb.ibus);
+	glfw_dbus_session_bus_dispatch();
 }
 
 // Translates a GLFW standard cursor to a theme cursor name

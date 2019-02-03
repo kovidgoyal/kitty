@@ -43,22 +43,18 @@ notification_created(DBusMessage *msg, const char* errmsg, void *data) {
 static DBusHandlerResult
 message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data) {
     (void)(user_data);
-    switch(glfw_dbus_match_signal(msg, NOTIFICATIONS_IFACE, "ActionInvoked", NULL)) {
-        case 0:
-            {
-                uint32_t notification_id;
-                const char *action;
-                if (glfw_dbus_get_args(msg, "Failed to get args from ActionInvoked notification signal",
-                            DBUS_TYPE_UINT32, &notification_id, DBUS_TYPE_STRING, &action, DBUS_TYPE_INVALID)) {
-                    if (activated_handler) {
-                        activated_handler(notification_id, action);
-                    }
-                }
-
+    /* printf("session_bus message_handler invoked interface: %s member: %s\n", dbus_message_get_interface(msg), dbus_message_get_member(msg)); */
+    if (dbus_message_is_signal(msg, NOTIFICATIONS_IFACE, "ActionInvoked")) {
+        uint32_t notification_id;
+        const char *action;
+        if (!glfw_dbus_get_args(msg, "Failed to get args from ActionInvoked notification signal",
+                    DBUS_TYPE_UINT32, &notification_id, DBUS_TYPE_STRING, &action, DBUS_TYPE_INVALID)) {
+            if (activated_handler) {
+                activated_handler(notification_id, action);
+                return DBUS_HANDLER_RESULT_HANDLED;
             }
-            break;
-        default:
-            break;
+        }
+
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
@@ -69,9 +65,8 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     static DBusConnection *added_signal_match = NULL;
     if (!session_bus) return 0;
     if (added_signal_match != session_bus) {
-        dbus_bus_add_match(session_bus, "type='signal',interface='org.freedesktop.Notifications'", NULL);
-        static DBusObjectPathVTable vtable = {.message_function = message_handler};
-        dbus_connection_try_register_object_path(session_bus, NOTIFICATIONS_PATH, &vtable, NULL, NULL);
+        dbus_bus_add_match(session_bus, "type='signal',interface='" NOTIFICATIONS_IFACE "',member='ActionInvoked'", NULL);
+        dbus_connection_add_filter(session_bus, message_handler, NULL, NULL);
         added_signal_match = session_bus;
     }
     NotificationCreatedData *data = malloc(sizeof(NotificationCreatedData));
