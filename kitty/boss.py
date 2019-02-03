@@ -1010,3 +1010,10 @@ class Boss:
         if identifier == 'new-version':
             from .update_check import notification_activated
             notification_activated()
+
+    def dbus_notification_callback(self, activated, *args):
+        from .notify import dbus_notification_created
+        if activated:
+            pass
+        else:
+            dbus_notification_created(*args)
