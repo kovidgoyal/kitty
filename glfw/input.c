@@ -312,7 +312,7 @@ void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods)
 }
 
 // Notifies shared code of a cursor motion event
-// The position is specified in client-area relative screen coordinates
+// The position is specified in content area relative screen coordinates
 //
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos)
 {
@@ -565,9 +565,9 @@ const char* _glfwGetKeyName(int key)
     }
 }
 
-// Center the cursor in the middle of the window
+// Center the cursor in the middle of the content area of the specified window
 //
-void _glfwCenterCursor(_GLFWwindow* window)
+void _glfwCenterCursorInContentArea(_GLFWwindow* window)
 {
     int width, height;
     _glfwPlatformGetWindowSize(window, &width, &height);

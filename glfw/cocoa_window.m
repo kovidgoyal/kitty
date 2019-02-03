@@ -76,9 +76,9 @@ static NSUInteger getStyleMask(_GLFWwindow* window)
     return styleMask;
 }
 
-// Returns whether the cursor is in the client area of the specified window
+// Returns whether the cursor is in the content area of the specified window
 //
-static GLFWbool cursorInClientArea(_GLFWwindow* window)
+static GLFWbool cursorInContentArea(_GLFWwindow* window)
 {
     const NSPoint pos = [window->ns.object mouseLocationOutsideOfEventStream];
     return [window->ns.view mouse:pos inRect:[window->ns.view frame]];
@@ -133,7 +133,7 @@ static void updateCursorMode(_GLFWwindow* window)
         _glfwPlatformGetCursorPos(window,
                                   &_glfw.ns.restoreCursorPosX,
                                   &_glfw.ns.restoreCursorPosY);
-        _glfwCenterCursor(window);
+        _glfwCenterCursorInContentArea(window);
         CGAssociateMouseAndMouseCursorPosition(false);
     }
     else if (_glfw.ns.disabledCursorWindow == window)
@@ -145,7 +145,7 @@ static void updateCursorMode(_GLFWwindow* window)
                                   _glfw.ns.restoreCursorPosY);
     }
 
-    if (cursorInClientArea(window))
+    if (cursorInContentArea(window))
         updateCursorImage(window);
 }
 
@@ -383,7 +383,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         [window->context.nsgl.object update];
 
     if (_glfw.ns.disabledCursorWindow == window)
-        _glfwCenterCursor(window);
+        _glfwCenterCursorInContentArea(window);
 
     const int maximized = [window->ns.object isZoomed];
     if (window->ns.maximized != maximized)
@@ -418,7 +418,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         [window->context.nsgl.object update];
 
     if (_glfw.ns.disabledCursorWindow == window)
-        _glfwCenterCursor(window);
+        _glfwCenterCursorInContentArea(window);
 
     int x, y;
     _glfwPlatformGetWindowPos(window, &x, &y);
@@ -444,12 +444,12 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)windowDidBecomeKey:(NSNotification *)notification
 {
     if (_glfw.ns.disabledCursorWindow == window)
-        _glfwCenterCursor(window);
+        _glfwCenterCursorInContentArea(window);
 
     _glfwInputWindowFocus(window, GLFW_TRUE);
     updateCursorMode(window);
     if (window->cursorMode == GLFW_CURSOR_HIDDEN) hideCursor(window);
-    if (_glfw.ns.disabledCursorWindow != window && cursorInClientArea(window))
+    if (_glfw.ns.disabledCursorWindow != window && cursorInContentArea(window))
     {
         double x = 0, y = 0;
         _glfwPlatformGetCursorPos(window, &x, &y);
@@ -1943,7 +1943,7 @@ void _glfwPlatformDestroyCursor(_GLFWcursor* cursor)
 
 void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
 {
-    if (cursorInClientArea(window))
+    if (cursorInContentArea(window))
         updateCursorImage(window);
 }
 
