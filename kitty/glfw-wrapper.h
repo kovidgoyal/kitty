@@ -1396,6 +1396,7 @@ typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
+typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, const char*);
 typedef int (*glfwInit_func)();
 glfwInit_func glfwInit_impl;
 #define glfwInit glfwInit_impl
@@ -1911,5 +1912,9 @@ glfwRequestWaylandFrameEvent_func glfwRequestWaylandFrameEvent_impl;
 typedef unsigned long long (*glfwDBusUserNotify_func)(const char*, const char*, const char*, const char*, int32_t, GLFWDBusnotificationcreatedfun, void*);
 glfwDBusUserNotify_func glfwDBusUserNotify_impl;
 #define glfwDBusUserNotify glfwDBusUserNotify_impl
+
+typedef void (*glfwDBusSetUserNotificationHandler_func)(GLFWDBusnotificationactivatedfun);
+glfwDBusSetUserNotificationHandler_func glfwDBusSetUserNotificationHandler_impl;
+#define glfwDBusSetUserNotificationHandler glfwDBusSetUserNotificationHandler_impl
 
 const char* load_glfw(const char* path);

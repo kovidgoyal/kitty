@@ -387,6 +387,8 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwDBusUserNotify_impl) = dlsym(handle, "glfwDBusUserNotify");
 
+    *(void **) (&glfwDBusSetUserNotificationHandler_impl) = dlsym(handle, "glfwDBusSetUserNotificationHandler");
+
     return NULL;
 }
 

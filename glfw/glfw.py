@@ -180,6 +180,7 @@ def generate_wrappers(glfw_header):
     void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long id, GLFWwaylandframecallbackfunc callback)
     unsigned long long glfwDBusUserNotify(const char *app_name, const char* icon, const char *summary, const char *body, \
 int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *data)
+    void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)
 '''.splitlines():
         if line:
             functions.append(Function(line.strip(), check_fail=False))
@@ -200,6 +201,7 @@ typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
+typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, const char*);
 {}
 
 const char* load_glfw(const char* path);

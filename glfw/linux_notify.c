@@ -21,6 +21,13 @@ typedef struct {
     void *data;
 } NotificationCreatedData;
 
+static GLFWDBusnotificationactivatedfun activated_handler = NULL;
+
+void
+glfw_dbus_set_user_notification_activated_handler(GLFWDBusnotificationactivatedfun handler) {
+    activated_handler = handler;
+}
+
 void
 notification_created(DBusMessage *msg, const char* errmsg, void *data) {
     if (errmsg) {
@@ -33,10 +40,39 @@ notification_created(DBusMessage *msg, const char* errmsg, void *data) {
     if (ncd->callback) ncd->callback(ncd->next_id, notification_id, ncd->data);
 }
 
+static DBusHandlerResult
+message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data) {
+    (void)(user_data);
+    switch(glfw_dbus_match_signal(msg, NOTIFICATIONS_IFACE, "ActionInvoked", NULL)) {
+        case 0:
+            {
+                uint32_t notification_id;
+                const char *action;
+                if (glfw_dbus_get_args(msg, "Failed to get args from ActionInvoked notification signal",
+                            DBUS_TYPE_UINT32, &notification_id, DBUS_TYPE_STRING, &action, DBUS_TYPE_INVALID)) {
+                    if (activated_handler) {
+                        activated_handler(notification_id, action);
+                    }
+                }
+
+            }
+            break;
+        default:
+            break;
+    }
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 notification_id_type
 glfw_dbus_send_user_notification(const char *app_name, const char* icon, const char *summary, const char *body, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *user_data) {
     DBusConnection *session_bus = glfw_dbus_session_bus();
+    static DBusConnection *added_signal_match = NULL;
     if (!session_bus) return 0;
+    if (added_signal_match != session_bus) {
+        dbus_bus_add_match(session_bus, "type='signal',interface='org.freedesktop.Notifications.ActionInvoked'", NULL);
+        static DBusObjectPathVTable vtable = {.message_function = message_handler};
+        dbus_connection_try_register_object_path(session_bus, NOTIFICATIONS_PATH, &vtable, NULL, NULL);
+    }
     NotificationCreatedData *data = malloc(sizeof(NotificationCreatedData));
     data->next_id = ++notification_id;
     data->callback = callback; data->data = user_data;
