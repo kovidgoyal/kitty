@@ -254,11 +254,7 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     if (window->monitor)
     {
         if (wndconfig.centerCursor)
-        {
-            int width, height;
-            _glfwPlatformGetWindowSize(window, &width, &height);
-            _glfwPlatformSetCursorPos(window, width / 2.0, height / 2.0);
-        }
+            _glfwCenterCursor(window);
     }
     else
     {

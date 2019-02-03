@@ -565,6 +565,15 @@ const char* _glfwGetKeyName(int key)
     }
 }
 
+// Center the cursor in the middle of the window
+//
+void _glfwCenterCursor(_GLFWwindow* window)
+{
+    int width, height;
+    _glfwPlatformGetWindowSize(window, &width, &height);
+    _glfwPlatformSetCursorPos(window, width / 2.0, height / 2.0);
+}
+
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW public API                       //////
 //////////////////////////////////////////////////////////////////////////
