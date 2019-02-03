@@ -64,7 +64,7 @@ message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data) {
 }
 
 notification_id_type
-glfw_dbus_send_user_notification(const char *app_name, const char* icon, const char *summary, const char *body, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *user_data) {
+glfw_dbus_send_user_notification(const char *app_name, const char* icon, const char *summary, const char *body, const char* action_name, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *user_data) {
     DBusConnection *session_bus = glfw_dbus_session_bus();
     static DBusConnection *added_signal_match = NULL;
     if (!session_bus) return 0;
@@ -91,6 +91,11 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     APPEND(DBUS_TYPE_STRING, &summary)
     APPEND(DBUS_TYPE_STRING, &body)
     if (!dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "s", &array)) OOMMSG;
+    if (action_name) {
+        static const char* default_action = "default";
+        dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &default_action);
+        dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING, &action_name);
+    }
     if (!dbus_message_iter_close_container(&args, &array)) OOMMSG;
     if (!dbus_message_iter_open_container(&args, DBUS_TYPE_ARRAY, "{sv}", &array)) OOMMSG;
     if (!dbus_message_iter_close_container(&args, &array)) OOMMSG;

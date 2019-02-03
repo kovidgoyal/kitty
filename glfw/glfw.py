@@ -179,7 +179,7 @@ def generate_wrappers(glfw_header):
     int glfwGetXKBScancode(const char* key_name, int case_sensitive)
     void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long id, GLFWwaylandframecallbackfunc callback)
     unsigned long long glfwDBusUserNotify(const char *app_name, const char* icon, const char *summary, const char *body, \
-int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *data)
+const char *action_text, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *data)
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)
 '''.splitlines():
         if line:

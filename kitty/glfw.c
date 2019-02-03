@@ -1037,14 +1037,14 @@ dbus_notification_created_callback(unsigned long long notification_id, uint32_t 
 
 static PyObject*
 dbus_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *app_name, *icon, *summary, *body;
+    char *app_name, *icon, *summary, *body, *action_name;
     int timeout = -1;
-    if (!PyArg_ParseTuple(args, "ssss|i", &app_name, &icon, &summary, &body, &timeout)) return NULL;
+    if (!PyArg_ParseTuple(args, "sssss|i", &app_name, &icon, &summary, &body, &action_name, &timeout)) return NULL;
     if (!glfwDBusUserNotify) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwDBusUserNotify, did you call glfw_init?");
         return NULL;
     }
-    unsigned long long notification_id = glfwDBusUserNotify(app_name, icon, summary, body, timeout, dbus_notification_created_callback, NULL);
+    unsigned long long notification_id = glfwDBusUserNotify(app_name, icon, summary, body, action_name, timeout, dbus_notification_created_callback, NULL);
     return PyLong_FromUnsignedLongLong(notification_id);
 }
 #endif

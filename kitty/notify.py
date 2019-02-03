@@ -42,6 +42,6 @@ else:
     ):
         if icon is True:
             icon = logo_png_file
-        alloc_id = dbus_send_notification(application, icon, title, body, timeout)
+        alloc_id = dbus_send_notification(application, icon, title, body, 'Click to see changes', timeout)
         if alloc_id and identifier is not None:
             alloc_map[alloc_id] = identifier

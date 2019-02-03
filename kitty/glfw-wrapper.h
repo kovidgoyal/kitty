@@ -1909,7 +1909,7 @@ typedef void (*glfwRequestWaylandFrameEvent_func)(GLFWwindow*, unsigned long lon
 glfwRequestWaylandFrameEvent_func glfwRequestWaylandFrameEvent_impl;
 #define glfwRequestWaylandFrameEvent glfwRequestWaylandFrameEvent_impl
 
-typedef unsigned long long (*glfwDBusUserNotify_func)(const char*, const char*, const char*, const char*, int32_t, GLFWDBusnotificationcreatedfun, void*);
+typedef unsigned long long (*glfwDBusUserNotify_func)(const char*, const char*, const char*, const char*, const char*, int32_t, GLFWDBusnotificationcreatedfun, void*);
 glfwDBusUserNotify_func glfwDBusUserNotify_impl;
 #define glfwDBusUserNotify glfwDBusUserNotify_impl
 
