@@ -220,9 +220,18 @@ static void matchCallback(void* context,
                 case kHIDUsage_GD_Hatswitch:
                     target = hats;
                     break;
+                case kHIDUsage_GD_DPadUp:
+                case kHIDUsage_GD_DPadRight:
+                case kHIDUsage_GD_DPadDown:
+                case kHIDUsage_GD_DPadLeft:
+                case kHIDUsage_GD_SystemMainMenu:
+                case kHIDUsage_GD_Select:
+                case kHIDUsage_GD_Start:
+                    target = buttons;
+                    break;
             }
         }
-        else if (page == kHIDPage_Button)
+        else if (page == kHIDPage_Button || page == kHIDPage_Consumer)
             target = buttons;
 
         if (target)
@@ -459,4 +468,3 @@ void _glfwPlatformUpdateGamepadGUID(char* guid)
                 original, original + 16);
     }
 }
-
