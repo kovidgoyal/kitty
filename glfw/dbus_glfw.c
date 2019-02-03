@@ -317,12 +317,29 @@ static void
 glfw_dbus_connect_to_session_bus() {
     DBusError error;
     dbus_error_init(&error);
-    if (session_bus) dbus_connection_unref(session_bus);
+    if (session_bus) {
+		dbus_connection_unref(session_bus);
+	}
     session_bus = dbus_bus_get(DBUS_BUS_SESSION, &error);
     if (dbus_error_is_set(&error)) {
         report_error(&error, "Failed to connect to DBUS session bus");
         session_bus = NULL;
+		return;
     }
+	static const char *name = "session-bus";
+    if (!dbus_connection_set_watch_functions(session_bus, add_dbus_watch, remove_dbus_watch, toggle_dbus_watch, (void*)name, NULL)) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set DBUS watches on connection to: %s", name);
+        dbus_connection_close(session_bus);
+        dbus_connection_unref(session_bus);
+        return;
+    }
+    if (!dbus_connection_set_timeout_functions(session_bus, add_dbus_timeout, remove_dbus_timeout, toggle_dbus_timeout, (void*)name, NULL)) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set DBUS timeout functions on connection to: %s", name);
+        dbus_connection_close(session_bus);
+        dbus_connection_unref(session_bus);
+        return;
+    }
+
 }
 
 DBusConnection *
