@@ -426,7 +426,8 @@ int _glfwPlatformPollJoystick(_GLFWjoystick* js, int mode)
             _GLFWjoyelementNS* button = (_GLFWjoyelementNS*)
                 CFArrayGetValueAtIndex(js->ns.buttons, i);
             const char value = getElementValue(js, button) - button->minimum;
-            _glfwInputJoystickButton(js, (int) i, value);
+            const int state = (value > 0) ? GLFW_PRESS : GLFW_RELEASE;
+            _glfwInputJoystickButton(js, (int) i, state);
         }
 
         for (i = 0;  i < CFArrayGetCount(js->ns.hats);  i++)
