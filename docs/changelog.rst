@@ -21,6 +21,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Add an option :opt:`macos_show_window_title_in_menubar` to not
   show the current window title in the menu-bar (:iss:`1066`)
 
+- macOS: Workaround for cocoa bug that could cause the mouse cursor to become
+  hidden in other applications in rare circumstances (:iss:`1218`)
+
 - Fix using remote control to set cursor text color causing errors when
   creating new windows (:iss:`1326`)
 
