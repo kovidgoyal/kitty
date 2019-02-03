@@ -2253,16 +2253,20 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
 
     _glfwInputWindowMonitor(window, monitor);
     updateNormalHints(window, width, height);
-    updateWindowMode(window);
 
     if (window->monitor)
     {
-        XMapRaised(_glfw.x11.display, window->x11.handle);
-        if (waitForVisibilityNotify(window))
-            acquireMonitor(window);
+       if (!_glfwPlatformWindowVisible(window))
+       {
+           XMapRaised(_glfw.x11.display, window->x11.handle);
+           waitForVisibilityNotify(window);
+       }
+       updateWindowMode(window);
+       acquireMonitor(window);
     }
     else
     {
+        updateWindowMode(window);
         XMoveResizeWindow(_glfw.x11.display, window->x11.handle,
                           xpos, ypos, width, height);
     }
