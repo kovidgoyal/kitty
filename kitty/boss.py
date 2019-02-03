@@ -1012,8 +1012,8 @@ class Boss:
             notification_activated()
 
     def dbus_notification_callback(self, activated, *args):
-        from .notify import dbus_notification_created
+        from .notify import dbus_notification_created, dbus_notification_activated
         if activated:
-            pass
+            dbus_notification_activated(*args)
         else:
             dbus_notification_created(*args)

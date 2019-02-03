@@ -669,6 +669,12 @@ error_callback(int error, const char* description) {
 }
 
 
+static void
+dbus_user_notification_activated(uint32_t notification_id, const char* action) {
+    unsigned long nid = notification_id;
+    call_boss(dbus_notification_callback, "Oks", Py_True, nid, action);
+}
+
 PyObject*
 glfw_init(PyObject UNUSED *self, PyObject *args) {
     const char* path;
@@ -685,6 +691,10 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
 #ifdef __APPLE__
     glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, 0);
     glfwInitHint(GLFW_COCOA_MENUBAR, 0);
+#else
+    if (glfwDBusSetUserNotificationHandler) {
+        glfwDBusSetUserNotificationHandler(dbus_user_notification_activated);
+    }
 #endif
     PyObject *ans = glfwInit() ? Py_True: Py_False;
     if (ans == Py_True) {
