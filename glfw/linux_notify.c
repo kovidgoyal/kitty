@@ -69,9 +69,10 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     static DBusConnection *added_signal_match = NULL;
     if (!session_bus) return 0;
     if (added_signal_match != session_bus) {
-        dbus_bus_add_match(session_bus, "type='signal',interface='org.freedesktop.Notifications.ActionInvoked'", NULL);
+        dbus_bus_add_match(session_bus, "type='signal',interface='org.freedesktop.Notifications'", NULL);
         static DBusObjectPathVTable vtable = {.message_function = message_handler};
         dbus_connection_try_register_object_path(session_bus, NOTIFICATIONS_PATH, &vtable, NULL, NULL);
+        added_signal_match = session_bus;
     }
     NotificationCreatedData *data = malloc(sizeof(NotificationCreatedData));
     data->next_id = ++notification_id;
