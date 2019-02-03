@@ -51,7 +51,7 @@ script = open(__file__, 'rb').read().decode('utf-8')
 script = script[:script.find('# EOF_REMOTE')].replace('if False:', 'if True:', 1)
 os.chdir(os.path.expanduser('~/work/build-kitty'))
 with tempfile.NamedTemporaryFile(prefix='install-tarball-', suffix='.py') as f:
-    run('./linux 64 kitty')
+    run('./linux 64 kitty --debug-build --compression-level=1')
     f.write(script.encode('utf-8'))
     f.flush()
     run(f'scp build/linux/64/sw/dist/{tarball} {f.name} {HOST}:/tmp')
