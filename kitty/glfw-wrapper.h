@@ -36,14 +36,14 @@
  *  semantic sugar for the number 1.  You can also use `1` or `true` or `_True`
  *  or `GL_TRUE` or whatever you want.
  */
-#define GLFW_TRUE                   1
+#define GLFW_TRUE                   true
 /*! @brief Zero.
  *
  *  Zero.  Seriously.  You don't _need_ to use this symbol in your code.  It's
  *  semantic sugar for the number 0.  You can also use `0` or `false` or
  *  `_False` or `GL_FALSE` or whatever you want.
  */
-#define GLFW_FALSE                  0
+#define GLFW_FALSE                  false
 /*! @} */
 
 /*! @name Key and button actions
