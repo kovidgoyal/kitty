@@ -526,9 +526,9 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         bind_program(BORDERS_PROGRAM);
 #define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
         glUniform1f(border_uniform_locations[BORDER_background_opacity], w->is_semi_transparent ? w->background_opacity : 1.0f);
-		glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
-		glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
-		glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
+        glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
+        glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
+        glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
         color_type default_bg = num_visible_windows > 1 ? OPT(background) : active_window_bg;
         glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));
