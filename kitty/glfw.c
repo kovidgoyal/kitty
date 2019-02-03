@@ -669,11 +669,13 @@ error_callback(int error, const char* description) {
 }
 
 
+#ifndef __APPLE__
 static void
 dbus_user_notification_activated(uint32_t notification_id, const char* action) {
     unsigned long nid = notification_id;
     call_boss(dbus_notification_callback, "Oks", Py_True, nid, action);
 }
+#endif
 
 PyObject*
 glfw_init(PyObject UNUSED *self, PyObject *args) {
