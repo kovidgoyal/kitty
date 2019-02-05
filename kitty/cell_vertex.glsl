@@ -5,6 +5,7 @@
 #define REVERSE_SHIFT {REVERSE_SHIFT}
 #define STRIKE_SHIFT {STRIKE_SHIFT}
 #define DIM_SHIFT {DIM_SHIFT}
+#define USE_SELECTION_FG
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
@@ -171,8 +172,10 @@ void main() {
     foreground = color_to_vec(resolved_fg);
     float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
     effective_text_alpha = inactive_text_alpha * mix(1.0, dim_opacity, has_dim);
+#ifdef USE_SELECTION_FG
     // Selection
     foreground = choose_color(float(is_selected & ONE), color_to_vec(highlight_fg), foreground);
+#endif
     // Underline and strike through (rendered via sprites)
     float in_url = float((is_selected & TWO) >> 1);
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));

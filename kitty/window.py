@@ -79,6 +79,9 @@ def load_shader_programs(semi_transparent=0):
         if semi_transparent:
             vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
             ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
+        if not load_shader_programs.use_selection_fg:
+            vv = vv.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
+            ff = ff.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
         compile_program(p, vv, ff)
     v, f = load_shaders('graphics')
     for which, p in {
@@ -90,14 +93,18 @@ def load_shader_programs(semi_transparent=0):
     init_cell_program()
 
 
+load_shader_programs.use_selection_fg = True
+
+
 def setup_colors(screen, opts):
     screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
     cursor_text_color = opts.cursor_text_color or (12, 12, 12)
     cursor_text_color_as_bg = 3 if opts.cursor_text_color is None else 1
+    sfg = (0, 0, 0) if opts.selection_foreground is None else opts.selection_foreground
     screen.color_profile.set_configured_colors(*map(color_as_int, (
         opts.foreground, opts.background, opts.cursor,
         cursor_text_color, (0, 0, cursor_text_color_as_bg),
-        opts.selection_foreground, opts.selection_background)
+        sfg, opts.selection_background)
     ))
 
 
