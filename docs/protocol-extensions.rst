@@ -136,6 +136,10 @@ Alt -- ``0x2``, Control -- ``0x4`` and Super -- ``0x8``.  ``<key>`` is a number
 (encoded in base85) corresponding to the key pressed. The key name to number
 mapping is defined in :doc:`this table <key-encoding>`.
 
+Client programs must ignore events for keys they do not know. The mapping in
+the above table is stable and will never change, however, new codes might be
+added to it in the future, for new keys.
+
 For example::
 
     <ESC>_KpGp<ESC>\  is  <Ctrl>+<Alt>+x (press)
