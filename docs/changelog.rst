@@ -7,7 +7,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.13.4 [future]
 ---------------------
 
-- Allow specifying a value of ``none`` for the :opt:`selection_foreground``
+- Allow specifying a value of ``none`` for the :opt:`selection_foreground`
   which will cause kitty to not change text color in selections (:iss:`1358`)
 
 - icat kitten: Add support for displaying images at http(s) URLs (:iss:`1340`)
