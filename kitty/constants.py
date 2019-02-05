@@ -119,7 +119,7 @@ logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
 logo_png_file = os.path.join(base_dir, 'logo', 'kitty.png')
 beam_cursor_data_file = os.path.join(base_dir, 'logo', 'beam-cursor.png')
 try:
-    shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
+    shell_path = os.getenv("SHELL", None) or pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
 except KeyError:
     try:
         print('Failed to read login shell via getpwuid() for current user, falling back to /bin/sh', file=sys.stderr)
