@@ -354,7 +354,10 @@ static inline void
 get_window_dpi(GLFWwindow *w, double *x, double *y) {
     float xscale = 1, yscale = 1;
     if (w) glfwGetWindowContentScale(w, &xscale, &yscale);
-    else glfwGetMonitorContentScale(glfwGetPrimaryMonitor(), &xscale, &yscale);
+    else {
+        GLFWmonitor *monitor = glfwGetPrimaryMonitor();
+        if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+    }
     // check for zero or NaN values of xscale/yscale
     if (!xscale || xscale != xscale) xscale = 1.0;
     if (!yscale || yscale != yscale) yscale = 1.0;
@@ -895,8 +898,8 @@ primary_monitor_size(PYNOARG) {
 static PyObject*
 primary_monitor_content_scale(PYNOARG) {
     GLFWmonitor* monitor = glfwGetPrimaryMonitor();
-    float xscale, yscale;
-    glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+    float xscale = 1.0, yscale = 1.0;
+    if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
     return Py_BuildValue("ff", xscale, yscale);
 }
 
