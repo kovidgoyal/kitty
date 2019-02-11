@@ -264,6 +264,10 @@ class Boss:
         cwd_from = w.child.pid_for_cwd if w is not None else None
         self._new_os_window(args, cwd_from)
 
+    def new_os_window_with_wd(self, wd):
+        special_window = SpecialWindow(None, cwd=wd)
+        self._new_os_window(special_window)
+
     def add_child(self, window):
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
@@ -936,6 +940,10 @@ class Boss:
         w = self.active_window_for_cwd
         cwd_from = w.child.pid_for_cwd if w is not None else None
         self._create_tab(args, cwd_from=cwd_from)
+
+    def new_tab_with_wd(self, wd):
+        special_window = SpecialWindow(None, cwd=wd)
+        self._new_tab(special_window)
 
     def _new_window(self, args, cwd_from=None):
         tab = self.active_tab

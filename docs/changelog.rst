@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.13.4 [future]
 ---------------------
 
+- macOS: Allow opening new kitty tabs/top-level windows from Finder
+  (:pull:`1350`)
+
 - Allow specifying a value of ``none`` for the :opt:`selection_foreground`
   which will cause kitty to not change text color in selections (:iss:`1358`)
 

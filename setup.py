@@ -724,6 +724,20 @@ Categories=System;TerminalEmulator;
             NSSupportsAutomaticGraphicsSwitching=True,
             LSApplicationCategoryType='public.app-category.utilities',
             LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
+            NSServices=[
+                {
+                    'NSMenuItem': {'default': 'New ' + appname + ' Tab Here'},
+                    'NSMessage': 'openTab',
+                    'NSRequiredContext': {'NSTextContent': 'FilePath'},
+                    'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+                },
+                {
+                    'NSMenuItem': {'default': 'New ' + appname + ' Window Here'},
+                    'NSMessage': 'openOSWindow',
+                    'NSRequiredContext': {'NSTextContent': 'FilePath'},
+                    'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+                },
+            ],
         )
         with open('Info.plist', 'wb') as fp:
             plistlib.dump(pl, fp)
