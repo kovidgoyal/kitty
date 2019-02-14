@@ -29,7 +29,7 @@ def unit_float(x):
 
 
 def to_bool(x):
-    return x.lower() in 'y yes true'.split()
+    return x.lower() in ('y', 'yes', 'true')
 
 
 def to_cmdline(x):
