@@ -348,6 +348,15 @@ cocoa_make_window_resizable(void *w, bool resizable) {
     return true;
 }
 
+#define NSLeftAlternateKeyMask  (0x000020 | NSEventModifierFlagOption)
+#define NSRightAlternateKeyMask (0x000040 | NSEventModifierFlagOption)
+
+bool
+cocoa_alt_option_key_pressed(NSUInteger flags) {
+    NSUInteger q = (OPT(macos_option_as_alt) == 1) ? NSRightAlternateKeyMask : NSLeftAlternateKeyMask;
+    return ((q & flags) == q) ? true : false;
+}
+
 void
 cocoa_focus_window(void *w) {
     NSWindow *window = (NSWindow*)w;

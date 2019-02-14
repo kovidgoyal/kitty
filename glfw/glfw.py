@@ -196,7 +196,7 @@ const char *action_text, int32_t timeout, GLFWDBusnotificationcreatedfun callbac
 
 {}
 
-typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int);
+typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int,unsigned long);
 typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);

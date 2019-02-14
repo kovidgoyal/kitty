@@ -14,6 +14,7 @@ extern bool cocoa_toggle_fullscreen(void *w, bool);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
+extern bool cocoa_alt_option_key_pressed(unsigned long);
 
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -421,8 +422,12 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
 
 #ifdef __APPLE__
 static int
-filter_option(int key UNUSED, int mods, unsigned int scancode UNUSED) {
-    return ((mods == GLFW_MOD_ALT) || (mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))) ? 1 : 0;
+filter_option(int key UNUSED, int mods, unsigned int scancode UNUSED, unsigned long flags) {
+    if ((mods == GLFW_MOD_ALT) || (mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))) {
+        if (OPT(macos_option_as_alt) == 3) return 1;
+        if (cocoa_alt_option_key_pressed(flags)) return 1;
+    }
+    return 0;
 }
 
 static GLFWwindow *application_quit_canary = NULL;

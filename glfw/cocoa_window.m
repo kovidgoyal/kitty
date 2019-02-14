@@ -818,7 +818,7 @@ is_ascii_control_char(char x) {
     const NSUInteger flags = [event modifierFlags];
     const int mods = translateFlags(flags);
     const int key = translateKey(scancode, GLFW_TRUE);
-    const GLFWbool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, scancode) != 1;
+    const GLFWbool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, scancode, flags) != 1;
     _glfw.ns.text[0] = 0;
     if (!_glfw.ns.unicodeData) {
         // Using the cocoa API for key handling is disabled, as there is no

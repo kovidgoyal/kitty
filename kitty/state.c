@@ -388,7 +388,7 @@ PYWRAP1(set_options) {
     S(sync_to_monitor, PyObject_IsTrue);
     S(close_on_child_death, PyObject_IsTrue);
     S(window_alert_on_bell, PyObject_IsTrue);
-    S(macos_option_as_alt, PyObject_IsTrue);
+    S(macos_option_as_alt, PyLong_AsUnsignedLong);
     S(macos_traditional_fullscreen, PyObject_IsTrue);
     S(macos_quit_when_last_window_closed, PyObject_IsTrue);
     S(macos_show_window_title_in_menubar, PyObject_IsTrue);

@@ -35,7 +35,7 @@ typedef void* id;
 #endif
 
 typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
-typedef int (* GLFWcocoatextinputfilterfun)(int,int,int);
+typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int, unsigned long);
 typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 

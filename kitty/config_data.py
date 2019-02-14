@@ -9,7 +9,8 @@ from gettext import gettext as _
 from . import fast_data_types as defines
 from .conf.definition import option_func
 from .conf.utils import (
-    choices, positive_float, positive_int, to_cmdline, to_color, unit_float
+    choices, positive_float, positive_int, to_bool, to_cmdline, to_color,
+    unit_float
 )
 from .constants import config_dir, is_macos
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -809,11 +810,27 @@ incompatible with :opt:`background_opacity`. If you want to use both, you are
 probably better off just hiding the titlebar with :opt:`hide_window_decorations`.
 '''))
 
-o('macos_option_as_alt', True, long_text=_('''
-Use the option key as an alt key. With this set to no, kitty will use
+
+def macos_option_as_alt(x):
+    x = x.lower()
+    if x == 'both':
+        return 0b11
+    if x == 'left':
+        return 0b10
+    if x == 'right':
+        return 0b01
+    if to_bool(x):
+        return 0b11
+    return 0
+
+
+o('macos_option_as_alt', 0b11, option_type=macos_option_as_alt, long_text=_('''
+Use the option key as an alt key. With this set to :code:`no`, kitty will use
 the macOS native :kbd:`Option+Key` = unicode character behavior. This will
 break any :kbd:`Alt+key` keyboard shortcuts in your terminal programs, but you
-can use the macOS unicode input technique.
+can use the macOS unicode input technique. You can use the values:
+:code:`left`, :code:`right`, or :code:`both` to use only the left, right or
+both Option keys as Alt.
 '''))
 
 o('macos_hide_from_tasks', False, long_text=_('''

@@ -30,6 +30,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Workaround for cocoa bug that could cause the mouse cursor to become
   hidden in other applications in rare circumstances (:iss:`1218`)
 
+- macOS: Allow assigning only the left or right :kbd:`Option` key to work as the
+  :kbd:`Alt` key. See :opt:`macos_option_as_alt` for details (:iss:`1022`)
+
 - Fix using remote control to set cursor text color causing errors when
   creating new windows (:iss:`1326`)
 
