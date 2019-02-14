@@ -8,6 +8,9 @@
 #include "fonts.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
+#include <dlfcn.h>
+// #include "CGSPrivate.h"
+
 extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
 extern bool cocoa_toggle_fullscreen(void *w, bool);
@@ -15,6 +18,15 @@ extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
+
+typedef int CGSConnectionID;
+typedef int CGSWindowID;
+typedef int CGSWorkspaceID;
+extern CGSConnectionID _CGSDefaultConnection(void);
+
+extern void CGSGetWindowWorkspace(const CGSConnectionID cid,
+                                    CGSWindowID wid,
+                                    CGSWorkspaceID *workspace);
 
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -220,7 +232,7 @@ static struct {
 
 #ifdef __APPLE__
 static inline id_type
-pop_focus_history() {
+pop_focus_history_from_workspace(int workspace) {
     int index = --focus_history.next_entry;
     if (index < 0) {
         focus_history.next_entry = index = 0;
@@ -228,6 +240,14 @@ pop_focus_history() {
 
     id_type result = focus_history.entries[index];
     focus_history.entries[index] = 0;
+    int pop_workspace;
+    CGSGetWindowWorkspace(_CGSDefaultConnection(), result, &pop_workspace);
+    printf("pop workspace: %d\n", pop_workspace);
+    if (workspace != pop_workspace) {
+        printf("Next window in focus is on another workspace, not switching focus.");
+        return 0;
+    }
+    // TODO: windows in stack will not be in order acros workspaces, check if there is any window deeper in the stack that is on this workspace so it can be focussed
 
     return result;
 }
@@ -618,22 +638,31 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 
 void
 destroy_os_window(OSWindow *w) {
+    int current_workspace;
+
     if (w->handle) {
+        CGSGetWindowWorkspace(_CGSDefaultConnection(), w->id, &current_workspace);
+        printf("current workspace: %d\n", current_workspace);
+
         // Ensure mouse cursor is visible and reset to default shape, needed on macOS
         show_mouse_cursor(w->handle);
         glfwSetCursor(w->handle, NULL);
         glfwDestroyWindow(w->handle);
     }
+
     w->handle = NULL;
 #ifdef __APPLE__
     // On macOS when closing a window, any other existing windows belonging to the same application do not
     // automatically get focus, so we do it manually.
+
+
     bool change_focus = true;
     while (change_focus) {
-        id_type new_focus_id = pop_focus_history();
+        id_type new_focus_id = pop_focus_history_from_workspace(current_workspace);
         if (new_focus_id == 0) break;
         for (size_t i = 0; i < global_state.num_os_windows; i++) {
             OSWindow *c = global_state.os_windows + i;
+
             if (c->id != w->id && c->handle && c->shown_once && (c->id == new_focus_id)) {
                 glfwFocusWindow(c->handle);
                 change_focus = false;

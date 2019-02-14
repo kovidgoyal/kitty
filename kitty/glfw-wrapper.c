@@ -9,6 +9,7 @@ static void* handle = NULL;
 
 const char*
 load_glfw(const char* path) {
+
     static char buf[2048];
     handle = dlopen(path, RTLD_LAZY);
     if (handle == NULL) fail("Failed to dlopen %s with error: %s", path, dlerror());
