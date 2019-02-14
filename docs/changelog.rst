@@ -35,6 +35,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix window title for minimized windows not being updated (:iss:`1332`)
 
+- macOS: Fix using multi-key sequences to input text ignoring the
+  first few key presses if the sequence is aborted (:iss:`1311`)
+
 
 0.13.3 [2019-01-19]
 ------------------------------

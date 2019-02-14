@@ -1033,7 +1033,9 @@ is_ascii_control_char(char x) {
         characters = [string string];
     else
         characters = (NSString*) string;
-    snprintf(_glfw.ns.text, sizeof(_glfw.ns.text), "%s", [characters UTF8String]);
+    // insertText can be called multiple times for a single key event
+    char *s = _glfw.ns.text + strnlen(_glfw.ns.text, sizeof(_glfw.ns.text));
+    snprintf(s, sizeof(_glfw.ns.text) - (s - _glfw.ns.text), "%s", [characters UTF8String]);
     _glfw.ns.text[sizeof(_glfw.ns.text) - 1] = 0;
 }
 
