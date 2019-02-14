@@ -149,7 +149,11 @@ def render_special(
     ans = CharTexture if missing else CharTexture()
 
     def dl(f, *a):
-        f(ans, cell_width, *a)
+        try:
+            f(ans, cell_width, *a)
+        except Exception as e:
+            log_error('Failed to render {} at cell_width={} and cell_height={} with error: {}'.format(
+                f.__name__, cell_width, cell_height, e))
 
     if underline:
         t = underline_thickness
