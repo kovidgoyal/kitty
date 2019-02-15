@@ -34,6 +34,7 @@ typedef struct {
     float inactive_text_alpha;
     float window_padding_width;
     Edge tab_bar_edge;
+    unsigned long tab_bar_min_tabs;
     bool sync_to_monitor;
     bool close_on_child_death;
     bool window_alert_on_bell;

@@ -571,7 +571,7 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
-    if (TD.screen && os_window->num_tabs > 1) {
+    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
         if (!os_window->tab_bar_data_updated) {
             call_boss(update_tab_bar_data, "K", os_window->id);
             os_window->tab_bar_data_updated = true;
@@ -620,7 +620,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
     draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, os_window);
-    if (TD.screen && os_window->num_tabs > 1) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window, true, false);
+    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window, true, false);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
         if (w->visible && WD.screen) {

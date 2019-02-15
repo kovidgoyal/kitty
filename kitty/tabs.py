@@ -409,17 +409,21 @@ class TabManager:  # {{{
         if not self.tab_bar_hidden:
             self.tab_bar.screen.refresh_sprite_positions()
 
+    @property
+    def tab_bar_should_be_visible(self):
+        return len(self.tabs) >= self.opts.tab_bar_min_tabs
+
     def _add_tab(self, tab):
-        before = len(self.tabs)
+        visible_before = self.tab_bar_should_be_visible
         self.tabs.append(tab)
-        if len(self.tabs) > 1 and before < 2:
+        if not visible_before and self.tab_bar_should_be_visible:
             self.tabbar_visibility_changed()
 
     def _remove_tab(self, tab):
-        before = len(self.tabs)
+        visible_before = self.tab_bar_should_be_visible
         remove_tab(self.os_window_id, tab.id)
         self.tabs.remove(tab)
-        if len(self.tabs) < 2 and before > 1:
+        if visible_before and not self.tab_bar_should_be_visible:
             self.tabbar_visibility_changed()
 
     def _set_active_tab(self, idx):
@@ -433,7 +437,7 @@ class TabManager:  # {{{
             glfw_post_empty_event()
 
     def mark_tab_bar_dirty(self):
-        if len(self.tabs) > 1 and not self.tab_bar_hidden:
+        if self.tab_bar_should_be_visible and not self.tab_bar_hidden:
             mark_tab_bar_dirty(self.os_window_id)
 
     def update_tab_bar_data(self):
@@ -570,7 +574,7 @@ class TabManager:  # {{{
 
     @property
     def blank_rects(self):
-        return self.tab_bar.blank_rects if len(self.tabs) > 1 else ()
+        return self.tab_bar.blank_rects if self.tab_bar_should_be_visible else ()
 
     def destroy(self):
         for t in self:

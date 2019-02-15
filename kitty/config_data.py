@@ -596,6 +596,10 @@ each tab's edges fade into the background color, in the separator style, tabs ar
 separated by a configurable separator.
 '''))
 
+o('tab_bar_min_tabs', 2, option_type=lambda x: max(1, positive_int(x)), long_text=_('''
+The minimum number of tabs that must exist before the tab bar is shown
+'''))
+
 
 def tab_fade(x):
     return tuple(map(unit_float, x.split()))
