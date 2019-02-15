@@ -339,6 +339,16 @@ def main(args=sys.argv):
                     item = tf.name
                 is_tempfile = True
                 process(item, args, is_tempfile)
+            elif item.lower().startswith('file://'):
+                from urllib.parse import urlparse
+                from urllib.request import url2pathname
+                item = urlparse(item)
+                if os.sep == '\\':
+                    item = item.netloc + item.path
+                else:
+                    item = item.path
+                item = url2pathname(item)
+                process(item, args, is_tempfile)
             else:
                 if os.path.isdir(item):
                     for x in scan(item):
