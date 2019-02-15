@@ -824,7 +824,7 @@ def macos_option_as_alt(x):
     return 0
 
 
-o('macos_option_as_alt', 0b11, option_type=macos_option_as_alt, long_text=_('''
+o('macos_option_as_alt', 'both', option_type=macos_option_as_alt, long_text=_('''
 Use the option key as an alt key. With this set to :code:`no`, kitty will use
 the macOS native :kbd:`Option+Key` = unicode character behavior. This will
 break any :kbd:`Alt+key` keyboard shortcuts in your terminal programs, but you
