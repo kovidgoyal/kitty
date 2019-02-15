@@ -108,12 +108,12 @@ Scrolling
 ========================    =======================
 Action                      Shortcut
 ========================    =======================
-Scroll line up              :sc:`scroll_line_up`
-Scroll line down            :sc:`scroll_line_down`
-Scroll page up              :sc:`scroll_page_up`
-Scroll page down            :sc:`scroll_page_down`
-Scroll to top               :sc:`scroll_home`
-Scroll to bottom            :sc:`scroll_end`
+Scroll line up              :sc:`scroll_line_up` (also :kbd:`⌥+⌘+⇞` and :kbd:`⌘+↑` on macOS)
+Scroll line down            :sc:`scroll_line_down` (also :kbd:`⌥+⌘+⇟` and :kbd:`⌘+↓` on macOS)
+Scroll page up              :sc:`scroll_page_up` (also :kbd:`⌘+⇞` on macOS)
+Scroll page down            :sc:`scroll_page_down` (also :kbd:`⌘+⇟` on macOS)
+Scroll to top               :sc:`scroll_home` (also :kbd:`⌘+↖` on macOS)
+Scroll to bottom            :sc:`scroll_end` (also :kbd:`⌘+↘` on macOS)
 ========================    =======================
 
 Tabs
@@ -123,13 +123,13 @@ Tabs
 Action                      Shortcut
 ========================    =======================
 New tab                     :sc:`new_tab` (also :kbd:`⌘+t` on macOS)
-Close tab                   :sc:`close_tab`
-Next tab                    :sc:`next_tab` (also :kbd:`control+tab` on macOS)
-Previous tab                :sc:`previous_tab` (also :kbd:`control+shift+tab` on macOS)
+Close tab                   :sc:`close_tab` (also :kbd:`⌘+w` on macOS)
+Next tab                    :sc:`next_tab` (also :kbd:`^+⇥` on macOS)
+Previous tab                :sc:`previous_tab` (also :kbd:`⇧+^+⇥` on macOS)
 Next layout                 :sc:`next_layout`
 Move tab forward            :sc:`move_tab_forward`
 Move tab backward           :sc:`move_tab_backward`
-Set tab title               :sc:`set_tab_title`
+Set tab title               :sc:`set_tab_title` (also :kbd:`⇧+⌘+i` on macOS)
 ========================    =======================
 
 
@@ -139,15 +139,16 @@ Windows
 ========================    =======================
 Action                      Shortcut
 ========================    =======================
-New window                  :sc:`new_window`
+New window                  :sc:`new_window` (also :kbd:`⌘+↩` on macOS)
 New OS window               :sc:`new_os_window` (also :kbd:`⌘+n` on macOS)
-Close window                :sc:`close_window` (also :kbd:`⌘+w` on macOS)
+Close window                :sc:`close_window` (also :kbd:`⇧+⌘+d` on macOS)
 Next window                 :sc:`next_window`
 Previous window             :sc:`previous_window`
 Move window forward         :sc:`move_window_forward`
 Move window backward        :sc:`move_window_backward`
 Move window to top          :sc:`move_window_to_top`
 Focus specific window       :sc:`first_window`, :sc:`second_window` ... :sc:`tenth_window`
+                            (also :kbd:`⌘+1`, :kbd:`⌘+2` ... :kbd:`⌘+9` on macOS)
                             (clockwise from the top-left)
 ========================    =======================
 
@@ -177,10 +178,10 @@ Action                              Shortcut
 Copy to clipboard                   :sc:`copy_to_clipboard` (also :kbd:`⌘+c` on macOS)
 Paste from clipboard                :sc:`paste_from_clipboard` (also :kbd:`⌘+v` on macOS)
 Paste from selection                :sc:`paste_from_selection`
-Increase font size                  :sc:`increase_font_size`
-Decrease font size                  :sc:`decrease_font_size`
-Restore font size                   :sc:`reset_font_size`
-Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`^⌘+f` on macOS)
+Increase font size                  :sc:`increase_font_size` (also :kbd:`⌘++` on macOS)
+Decrease font size                  :sc:`decrease_font_size` (also :kbd:`⌘+-` on macOS)
+Restore font size                   :sc:`reset_font_size` (also :kbd:`⌘+0` on macOS)
+Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`^+⌘+f` on macOS)
 Input unicode character             :sc:`input_unicode_character`
 Click URL using the keyboard        :sc:`open_url`
 Reset the terminal                  :sc:`reset_terminal`
@@ -215,7 +216,7 @@ You can switch between layouts using the :sc:`next_layout` key combination. You 
 also create shortcuts to select particular layouts, and choose which layouts
 you want to enable/disable, see :ref:`conf-kitty-shortcuts.layout` for examples.
 
-You can resize windows inside layouts. Press :sc:`start_resizing_window` to
+You can resize windows inside layouts. Press :sc:`start_resizing_window` (also :kbd:`⌘+r` on macOS) to
 enter resizing mode and follow the on-screen instructions.  In a given window
 layout only some operations may be possible for a particular window. For
 example, in the Tall layout you can make the first window wider/narrower, but

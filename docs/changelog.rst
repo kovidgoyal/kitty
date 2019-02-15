@@ -7,6 +7,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.14.0 [future]
 ---------------------
 
+- macOS: The default behavior of the Option key has changed, to generating
+  unicode characters rather than acting as the Alt modifier. See
+  :opt:`macos_option_as_alt`.
+
 - macOS: Allow opening new kitty tabs/top-level windows from Finder
   (:pull:`1350`)
 
@@ -44,6 +48,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix using multi-key sequences to input text ignoring the
   first few key presses if the sequence is aborted (:iss:`1311`)
 
+- macOS: Add a number of common macOS keyboard shortcuts
 
 0.13.3 [2019-01-19]
 ------------------------------

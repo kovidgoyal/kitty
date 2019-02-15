@@ -828,13 +828,13 @@ def macos_option_as_alt(x):
     return 0
 
 
-o('macos_option_as_alt', 'both', option_type=macos_option_as_alt, long_text=_('''
+o('macos_option_as_alt', 'no', option_type=macos_option_as_alt, long_text=_('''
 Use the option key as an alt key. With this set to :code:`no`, kitty will use
 the macOS native :kbd:`Option+Key` = unicode character behavior. This will
 break any :kbd:`Alt+key` keyboard shortcuts in your terminal programs, but you
 can use the macOS unicode input technique. You can use the values:
 :code:`left`, :code:`right`, or :code:`both` to use only the left, right or
-both Option keys as Alt.
+both Option keys as Alt, instead.
 '''))
 
 o('macos_hide_from_tasks', False, long_text=_('''
@@ -886,13 +886,14 @@ You can have kitty remove all shortcut definition seen up to this point. Useful,
 instance, to remove the default shortcuts.'''))
 
 g('shortcuts.clipboard')  # {{{
-if is_macos:
-    k('copy_to_clipboard', 'cmd+c', 'copy_to_clipboard', _('Copy to clipboard'), add_to_docs=False)
-    k('paste_from_clipboard', 'cmd+v', 'paste_from_clipboard', _('Paste from clipboard'), add_to_docs=False)
 k('copy_to_clipboard', 'kitty_mod+c', 'copy_to_clipboard', _('Copy to clipboard'), long_text=_('''
 There is also a :code:`copy_or_interrupt` action that can be optionally mapped to :kbd:`Ctrl+c`.
 It will copy only if there is a selection and send an interrupt otherwise.'''))
+if is_macos:
+    k('copy_to_clipboard', 'cmd+c', 'copy_to_clipboard', _('Copy to clipboard'), add_to_docs=False)
 k('paste_from_clipboard', 'kitty_mod+v', 'paste_from_clipboard', _('Paste from clipboard'))
+if is_macos:
+    k('paste_from_clipboard', 'cmd+v', 'paste_from_clipboard', _('Paste from clipboard'), add_to_docs=False)
 k('paste_from_selection', 'kitty_mod+s', 'paste_from_selection', _('Paste from selection'))
 k('paste_from_selection', 'shift+insert', 'paste_from_selection', _('Paste from selection'))
 k('pass_selection_to_program', 'kitty_mod+o', 'pass_selection_to_program', _('Pass selection to program'), long_text=_('''
@@ -912,13 +913,27 @@ window, by using the @selection placeholder::
 
 g('shortcuts.scrolling')  # {{{
 k('scroll_line_up', 'kitty_mod+up', 'scroll_line_up', _('Scroll line up'))
+if is_macos:
+    k('scroll_line_up', 'alt+cmd+page_up', 'scroll_line_up', _('Scroll line up'), add_to_docs=False)
+    k('scroll_line_up', 'cmd+up', 'scroll_line_up', _('Scroll line up'), add_to_docs=False)
 k('scroll_line_up', 'kitty_mod+k', 'scroll_line_up')
 k('scroll_line_down', 'kitty_mod+down', 'scroll_line_down', _('Scroll line down'))
 k('scroll_line_down', 'kitty_mod+j', 'scroll_line_down')
+if is_macos:
+    k('scroll_line_down', 'alt+cmd+page_down', 'scroll_line_down', _('Scroll line down'), add_to_docs=False)
+    k('scroll_line_down', 'cmd+down', 'scroll_line_down', _('Scroll line down'), add_to_docs=False)
 k('scroll_page_up', 'kitty_mod+page_up', 'scroll_page_up', _('Scroll page up'))
+if is_macos:
+    k('scroll_page_up', 'cmd+page_up', 'scroll_page_up', _('Scroll page up'), add_to_docs=False)
 k('scroll_page_down', 'kitty_mod+page_down', 'scroll_page_down', _('Scroll page down'))
+if is_macos:
+    k('scroll_page_down', 'cmd+page_down', 'scroll_page_down', _('Scroll page down'), add_to_docs=False)
 k('scroll_home', 'kitty_mod+home', 'scroll_home', _('Scroll to top'))
+if is_macos:
+    k('scroll_home', 'cmd+home', 'scroll_home', _('Scroll to top'), add_to_docs=False)
 k('scroll_end', 'kitty_mod+end', 'scroll_end', _('Scroll to bottom'))
+if is_macos:
+    k('scroll_end', 'cmd+end', 'scroll_end', _('Scroll to bottom'), add_to_docs=False)
 k('show_scrollback', 'kitty_mod+h', 'show_scrollback', _('Browse scrollback buffer in less'), long_text=_('''
 
 You can pipe the contents of the current screen + history buffer as
@@ -953,17 +968,21 @@ For example::
     map ctrl+enter new_window @ some_program
 '''))
 if is_macos:
-    k('new_os_window', 'cmd+n', 'new_os_window', _('New OS window'))
+    k('new_window', 'cmd+enter', 'new_window', _('New window'), add_to_docs=False)
 k('new_os_window', 'kitty_mod+n', 'new_os_window', _('New OS window'))
+if is_macos:
+    k('new_os_window', 'cmd+n', 'new_os_window', _('New OS window'), add_to_docs=False)
 k('close_window', 'kitty_mod+w', 'close_window', _('Close window'))
 if is_macos:
-    k('close_window', 'cmd+w', 'close_window', _('Close window'), add_to_docs=False)
+    k('close_window', 'shift+cmd+d', 'close_window', _('Close window'), add_to_docs=False)
 k('next_window', 'kitty_mod+]', 'next_window', _('Next window'))
 k('previous_window', 'kitty_mod+[', 'previous_window', _('Previous window'))
 k('move_window_forward', 'kitty_mod+f', 'move_window_forward', _('Move window forward'))
 k('move_window_backward', 'kitty_mod+b', 'move_window_backward', _('Move window backward'))
 k('move_window_to_top', 'kitty_mod+`', 'move_window_to_top', _('Move window to top'))
 k('start_resizing_window', 'kitty_mod+r', 'start_resizing_window', _('Start resizing window'))
+if is_macos:
+    k('start_resizing_window', 'cmd+r', 'start_resizing_window', _('Start resizing window'), add_to_docs=False)
 k('first_window', 'kitty_mod+1', 'first_window', _('First window'))
 k('second_window', 'kitty_mod+2', 'second_window', _('Second window'))
 k('third_window', 'kitty_mod+3', 'third_window', _('Third window'))
@@ -974,22 +993,38 @@ k('seventh_window', 'kitty_mod+7', 'seventh_window', _('Seventh window'))
 k('eighth_window', 'kitty_mod+8', 'eighth_window', _('Eight window'))
 k('ninth_window', 'kitty_mod+9', 'ninth_window', _('Ninth window'))
 k('tenth_window', 'kitty_mod+0', 'tenth_window', _('Tenth window'))
+if is_macos:
+    k('first_window', 'cmd+1', 'first_window', _('First window'), add_to_docs=False)
+    k('second_window', 'cmd+2', 'second_window', _('Second window'), add_to_docs=False)
+    k('third_window', 'cmd+3', 'third_window', _('Third window'), add_to_docs=False)
+    k('fourth_window', 'cmd+4', 'fourth_window', _('Fourth window'), add_to_docs=False)
+    k('fifth_window', 'cmd+5', 'fifth_window', _('Fifth window'), add_to_docs=False)
+    k('sixth_window', 'cmd+6', 'sixth_window', _('Sixth window'), add_to_docs=False)
+    k('seventh_window', 'cmd+7', 'seventh_window', _('Seventh window'), add_to_docs=False)
+    k('eighth_window', 'cmd+8', 'eighth_window', _('Eight window'), add_to_docs=False)
+    k('ninth_window', 'cmd+9', 'ninth_window', _('Ninth window'), add_to_docs=False)
 # }}}
 
 g('shortcuts.tab')  # {{{
-if is_macos:
-    k('next_tab', 'ctrl+tab', 'next_tab', _('Next tab'), add_to_docs=False)
 k('next_tab', 'kitty_mod+right', 'next_tab', _('Next tab'))
 if is_macos:
-    k('previous_tab', 'ctrl+shift+tab', 'previous_tab', _('Previous tab'), add_to_docs=False)
+    k('next_tab', 'ctrl+tab', 'next_tab', _('Next tab'), add_to_docs=False)
 k('previous_tab', 'kitty_mod+left', 'previous_tab', _('Previous tab'))
+if is_macos:
+    k('previous_tab', 'shift+ctrl+tab', 'previous_tab', _('Previous tab'), add_to_docs=False)
 k('new_tab', 'kitty_mod+t', 'new_tab', _('New tab'))
 if is_macos:
     k('new_tab', 'cmd+t', 'new_tab', _('New tab'), add_to_docs=False)
 k('close_tab', 'kitty_mod+q', 'close_tab', _('Close tab'))
+if is_macos:
+    k('close_tab', 'cmd+w', 'close_tab', _('Close tab'), add_to_docs=False)
+    #  Not yet implemented
+    #  k('close_os_window', 'shift+cmd+w', 'close_os_window', _('Close os window'), add_to_docs=False)
 k('move_tab_forward', 'kitty_mod+.', 'move_tab_forward', _('Move tab forward'))
 k('move_tab_backward', 'kitty_mod+,', 'move_tab_backward', _('Move tab backward'))
 k('set_tab_title', 'kitty_mod+alt+t', 'set_tab_title', _('Set tab title'))
+if is_macos:
+    k('set_tab_title', 'shift+cmd+i', 'set_tab_title', _('Set tab title'), add_to_docs=False)
 # }}}
 
 g('shortcuts.layout')  # {{{
@@ -998,8 +1033,14 @@ k('next_layout', 'kitty_mod+l', 'next_layout', _('Next layout'))
 
 g('shortcuts.fonts')  # {{{
 k('increase_font_size', 'kitty_mod+equal', 'change_font_size all +2.0', _('Increase font size'))
+if is_macos:
+    k('increase_font_size', 'cmd+plus', 'change_font_size all +2.0', _('Increase font size'), add_to_docs=False)
 k('decrease_font_size', 'kitty_mod+minus', 'change_font_size all -2.0', _('Decrease font size'))
+if is_macos:
+    k('decrease_font_size', 'cmd+minus', 'change_font_size all -2.0', _('Decrease font size'), add_to_docs=False)
 k('reset_font_size', 'kitty_mod+backspace', 'change_font_size all 0', _('Reset font size'))
+if is_macos:
+    k('reset_font_size', 'cmd+0', 'change_font_size all 0', _('Reset font size'), add_to_docs=False)
 # }}}
 
 g('shortcuts.selection')   # {{{
