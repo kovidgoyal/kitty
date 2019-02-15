@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.13.4 [future]
+0.14.0 [future]
 ---------------------
 
 - macOS: Allow opening new kitty tabs/top-level windows from Finder
