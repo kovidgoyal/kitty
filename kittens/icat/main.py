@@ -265,6 +265,45 @@ help_text = (
 usage = 'image-file-or-url-or-directory ...'
 
 
+def process_single_item(item, args, url_pat, maybe_dir=True):
+    is_tempfile = False
+    try:
+        if isinstance(item, bytes):
+            tf = NamedTemporaryFile(prefix='stdin-image-data-', delete=False)
+            tf.write(item), tf.close()
+            item = tf.name
+            is_tempfile = True
+        if url_pat.match(item) is not None:
+            from urllib.request import urlretrieve
+            with NamedTemporaryFile(prefix='url-image-data-', delete=False) as tf:
+                try:
+                    urlretrieve(item, filename=tf.name)
+                except Exception as e:
+                    raise SystemExit('Failed to download image at URL: {} with error: {}'.format(item, e))
+                item = tf.name
+            is_tempfile = True
+            process(item, args, is_tempfile)
+        elif item.lower().startswith('file://'):
+            from urllib.parse import urlparse
+            from urllib.request import url2pathname
+            item = urlparse(item)
+            if os.sep == '\\':
+                item = item.netloc + item.path
+            else:
+                item = item.path
+            item = url2pathname(item)
+            process(item, args, is_tempfile)
+        else:
+            if maybe_dir and os.path.isdir(item):
+                for x in scan(item):
+                    process_single_item(item, args, url_pat, maybe_dir=False)
+            else:
+                process(item, args, is_tempfile)
+    finally:
+        if is_tempfile:
+            os.remove(item)
+
+
 def main(args=sys.argv):
     global screen_size
     args, items = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname))
@@ -322,39 +361,8 @@ def main(args=sys.argv):
         sys.stdout.buffer.write(b'\0337')  # save cursor
     url_pat = re.compile(r'(?:https?|ftp)://', flags=re.I)
     for item in items:
-        is_tempfile = False
         try:
-            if isinstance(item, bytes):
-                tf = NamedTemporaryFile(prefix='stdin-image-data-', delete=False)
-                tf.write(item), tf.close()
-                item = tf.name
-                is_tempfile = True
-            if url_pat.match(item) is not None:
-                from urllib.request import urlretrieve
-                with NamedTemporaryFile(prefix='url-image-data-', delete=False) as tf:
-                    try:
-                        urlretrieve(item, filename=tf.name)
-                    except Exception as e:
-                        raise SystemExit('Failed to download image at URL: {} with error: {}'.format(item, e))
-                    item = tf.name
-                is_tempfile = True
-                process(item, args, is_tempfile)
-            elif item.lower().startswith('file://'):
-                from urllib.parse import urlparse
-                from urllib.request import url2pathname
-                item = urlparse(item)
-                if os.sep == '\\':
-                    item = item.netloc + item.path
-                else:
-                    item = item.path
-                item = url2pathname(item)
-                process(item, args, is_tempfile)
-            else:
-                if os.path.isdir(item):
-                    for x in scan(item):
-                        process(item, args)
-                else:
-                    process(item, args, is_tempfile)
+            process_single_item(item, args, url_pat)
         except NoImageMagick as e:
             raise SystemExit(str(e))
         except ConvertFailed as e:
