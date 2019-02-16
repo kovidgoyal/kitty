@@ -372,8 +372,8 @@ cocoa_focus_window(void *w) {
 int
 cocoa_get_workspace_id(void *w) {
     NSWindow *window = (NSWindow*)w;
-    int ans = 0;
-    CGSGetWindowWorkspace(_CGSDefaultConnection(), [window windowNumber], &ans);
+    int ans = -1;
+    if (window) CGSGetWindowWorkspace(_CGSDefaultConnection(), [window windowNumber], &ans);
     return ans;
 }
 

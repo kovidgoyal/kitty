@@ -15,6 +15,7 @@ extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
+extern int cocoa_get_workspace_id(void *w);
 
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -594,7 +595,13 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 
 void
 destroy_os_window(OSWindow *w) {
+#ifdef __APPLE__
+    int workspace_id = -1;
+#endif
     if (w->handle) {
+#ifdef __APPLE__
+        workspace_id = cocoa_get_workspace_id(glfwGetCocoaWindow(w->handle));
+#endif
         // Ensure mouse cursor is visible and reset to default shape, needed on macOS
         show_mouse_cursor(w->handle);
         glfwSetCursor(w->handle, NULL);
@@ -608,13 +615,17 @@ destroy_os_window(OSWindow *w) {
     OSWindow *window_to_focus = NULL;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *c = global_state.os_windows + i;
-        if (c->id != w->id && c->handle && c->shown_once && (c->last_focused_counter >= highest_focus_number)) {
+        if (
+                c->id != w->id && c->handle && c->shown_once &&
+                c->last_focused_counter >= highest_focus_number &&
+                (workspace_id == -1 || cocoa_get_workspace_id(glfwGetCocoaWindow(c->handle)) == workspace_id)
+        ) {
             highest_focus_number = c->last_focused_counter;
             window_to_focus = c;
         }
     }
     if (window_to_focus) {
-        glfwFocusWindow(w->handle);
+        glfwFocusWindow(window_to_focus->handle);
     }
 #endif
 }

@@ -53,6 +53,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix scrollback pager history not being cleared when clearing the
   main scrollback buffer (:iss:`1387`)
 
+- macOS: When closing a top-level window only switch focus to the previous kitty
+  window if it is on the same workspace (:iss:`1379`)
+
 0.13.3 [2019-01-19]
 ------------------------------
 
