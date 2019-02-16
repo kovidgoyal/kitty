@@ -50,6 +50,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Add a number of common macOS keyboard shortcuts
 
+- Fix scrollback pager history not being cleared when clearing the
+  main scrollback buffer (:iss:`1387`)
+
 0.13.3 [2019-01-19]
 ------------------------------
 
