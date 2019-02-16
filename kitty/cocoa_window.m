@@ -21,6 +21,12 @@
 #define NSEventModifierFlagControl NSControlKeyMask
 #endif
 
+typedef int CGSConnectionID;
+typedef int CGSWindowID;
+typedef int CGSWorkspaceID;
+extern CGSConnectionID _CGSDefaultConnection(void);
+extern void CGSGetWindowWorkspace(const CGSConnectionID cid, CGSWindowID wid, CGSWorkspaceID *workspace);
+
 static NSMenuItem* title_menu = NULL;
 
 
@@ -361,6 +367,14 @@ void
 cocoa_focus_window(void *w) {
     NSWindow *window = (NSWindow*)w;
     [window makeKeyWindow];
+}
+
+int
+cocoa_get_workspace_id(void *w) {
+    NSWindow *window = (NSWindow*)w;
+    int ans = 0;
+    CGSGetWindowWorkspace(_CGSDefaultConnection(), [window windowNumber], &ans);
+    return ans;
 }
 
 bool
