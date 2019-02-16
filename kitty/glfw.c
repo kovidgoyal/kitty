@@ -213,31 +213,7 @@ scroll_callback(GLFWwindow *w, double xoffset, double yoffset, int flags) {
     global_state.callback_os_window = NULL;
 }
 
-static struct {
-    id_type entries[16];
-    int next_entry;
-} focus_history;
-
-#ifdef __APPLE__
-static inline id_type
-pop_focus_history() {
-    int index = --focus_history.next_entry;
-    if (index < 0) {
-        focus_history.next_entry = index = 0;
-    }
-
-    id_type result = focus_history.entries[index];
-    focus_history.entries[index] = 0;
-
-    return result;
-}
-#endif
-
-static inline void
-push_focus_history(OSWindow *w) {
-    focus_history.entries[focus_history.next_entry++] = w->id;
-    focus_history.next_entry %= (sizeof(focus_history.entries) / sizeof(*(focus_history.entries)));
-}
+static id_type focus_counter = 0;
 
 static void
 window_focus_callback(GLFWwindow *w, int focused) {
@@ -247,7 +223,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
     if (focused) {
         show_mouse_cursor(w);
         focus_in_event();
-        push_focus_history(global_state.callback_os_window);
+        global_state.callback_os_window->last_focused_counter = ++focus_counter;
     }
     double now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
@@ -577,7 +553,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     w->logical_dpi_x = dpi_x; w->logical_dpi_y = dpi_y;
     w->fonts_data = fonts_data;
     w->shown_once = true;
-    push_focus_history(w);
+    w->last_focused_counter = ++focus_counter;
     glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
@@ -628,18 +604,17 @@ destroy_os_window(OSWindow *w) {
 #ifdef __APPLE__
     // On macOS when closing a window, any other existing windows belonging to the same application do not
     // automatically get focus, so we do it manually.
-    bool change_focus = true;
-    while (change_focus) {
-        id_type new_focus_id = pop_focus_history();
-        if (new_focus_id == 0) break;
-        for (size_t i = 0; i < global_state.num_os_windows; i++) {
-            OSWindow *c = global_state.os_windows + i;
-            if (c->id != w->id && c->handle && c->shown_once && (c->id == new_focus_id)) {
-                glfwFocusWindow(c->handle);
-                change_focus = false;
-                break;
-            }
+    id_type highest_focus_number = 0;
+    OSWindow *window_to_focus = NULL;
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *c = global_state.os_windows + i;
+        if (c->id != w->id && c->handle && c->shown_once && (c->last_focused_counter >= highest_focus_number)) {
+            highest_focus_number = c->last_focused_counter;
+            window_to_focus = c;
         }
+    }
+    if (window_to_focus) {
+        glfwFocusWindow(w->handle);
     }
 #endif
 }

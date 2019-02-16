@@ -135,6 +135,7 @@ typedef struct {
     id_type temp_font_group_id;
     double pending_scroll_pixels;
     enum WAYLAND_RENDER_STATE wayland_render_state;
+    id_type last_focused_counter;
 } OSWindow;
 
 
