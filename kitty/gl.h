@@ -208,7 +208,7 @@ create_buffer(GLenum usage) {
         }
     }
     glDeleteBuffers(1, &buffer_id);
-    fatal("too many buffers");
+    fatal("Too many buffers");
     return -1;
 }
 
@@ -274,7 +274,7 @@ create_vao() {
         }
     }
     glDeleteVertexArrays(1, &vao_id);
-    fatal("too many VAOs");
+    fatal("Too many VAOs");
     return -1;
 }
 
@@ -282,7 +282,7 @@ static size_t
 add_buffer_to_vao(ssize_t vao_idx, GLenum usage) {
     VAO* vao = vaos + vao_idx;
     if (vao->num_buffers >= sizeof(vao->buffers) / sizeof(vao->buffers[0])) {
-        fatal("too many buffers in a single VAO");
+        fatal("Too many buffers in a single VAO");
     }
     ssize_t buf = create_buffer(usage);
     vao->buffers[vao->num_buffers++] = buf;
