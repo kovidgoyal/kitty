@@ -633,10 +633,17 @@ static void xdgToplevelHandleConfigure(void* data,
         _glfwInputWindowDamage(window);
     }
 
-    if (!window->wl.justCreated && !activated && window->monitor && window->autoIconify)
-        _glfwPlatformIconifyWindow(window);
+    if (window->wl.wasFullScreen && window->autoIconify)
+    {
+        if (!activated || !fullscreen)
+        {
+            _glfwPlatformIconifyWindow(window);
+            window->wl.wasFullScreen = GLFW_FALSE;
+        }
+    }
+    if (fullscreen && activated)
+        window->wl.wasFullScreen = GLFW_TRUE;
     _glfwInputWindowFocus(window, activated);
-    window->wl.justCreated = GLFW_FALSE;
 }
 
 static void xdgToplevelHandleClose(void* data,
@@ -877,7 +884,6 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
                               const _GLFWctxconfig* ctxconfig,
                               const _GLFWfbconfig* fbconfig)
 {
-    window->wl.justCreated = GLFW_TRUE;
     window->wl.transparent = fbconfig->transparent;
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
 
