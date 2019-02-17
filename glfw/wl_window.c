@@ -140,9 +140,9 @@ static const struct wl_shell_surface_listener shellSurfaceListener = {
 static int
 createAnonymousFile(off_t size)
 {
-    int ret;
+    int ret, fd = -1, shm_anon = 0;
 #ifdef HAS_MEMFD_CREATE
-    int fd = memfd_create("glfw-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+    fd = memfd_create("glfw-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
     if (fd < 0) return -1;
     // We can add this seal before calling posix_fallocate(), as the file
     // is currently zero-sized anyway.
@@ -150,11 +150,14 @@ createAnonymousFile(off_t size)
     // There is also no need to check for the return value, we couldn’t do
     // anything with it anyway.
     fcntl(fd, F_ADD_SEALS, F_SEAL_SHRINK | F_SEAL_SEAL);
+#elif defined(SHM_ANON)
+    fd = shm_open(SHM_ANON, O_RDWR | O_CLOEXEC, 0600);
+    if (fd < 0) return -1;
+    shm_anon = 1;
 #else
     static const char template[] = "/glfw-shared-XXXXXX";
     const char* path;
     char* name;
-    int fd;
 
     path = getenv("XDG_RUNTIME_DIR");
     if (!path)
@@ -174,7 +177,8 @@ createAnonymousFile(off_t size)
     if (fd < 0)
         return -1;
 #endif
-    ret = posix_fallocate(fd, 0, size);
+    // posix_fallocate does not work on SHM descriptors
+    ret = shm_anon ? ftruncate(fd, size) : posix_fallocate(fd, 0, size);
     if (ret != 0)
     {
         close(fd);
