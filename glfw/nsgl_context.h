@@ -27,6 +27,8 @@
 #define _GLFW_PLATFORM_CONTEXT_STATE            _GLFWcontextNSGL nsgl
 #define _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE    _GLFWlibraryNSGL nsgl
 
+#import <CoreVideo/CoreVideo.h>
+#include <stdatomic.h>
 
 // NSGL-specific per-context data
 //
@@ -34,6 +36,10 @@ typedef struct _GLFWcontextNSGL
 {
     id           pixelFormat;
     id           object;
+    CVDisplayLinkRef  displayLink;
+    atomic_int        swapInterval;
+    int               swapIntervalsPassed;
+    id                swapIntervalCond;
 
 } _GLFWcontextNSGL;
 
@@ -53,4 +59,3 @@ GLFWbool _glfwCreateContextNSGL(_GLFWwindow* window,
                                 const _GLFWctxconfig* ctxconfig,
                                 const _GLFWfbconfig* fbconfig);
 void _glfwDestroyContextNSGL(_GLFWwindow* window);
-
