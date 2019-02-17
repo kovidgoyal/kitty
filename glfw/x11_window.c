@@ -2636,7 +2636,7 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, int shape)
     else if (shape == GLFW_CROSSHAIR_CURSOR)
         native = XC_crosshair;
     else if (shape == GLFW_HAND_CURSOR)
-        native = XC_hand1;
+        native = XC_hand2;
     else if (shape == GLFW_HRESIZE_CURSOR)
         native = XC_sb_h_double_arrow;
     else if (shape == GLFW_VRESIZE_CURSOR)
