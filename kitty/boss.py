@@ -1012,7 +1012,10 @@ class Boss:
             except Exception as e:
                 log_error('Failed to read data from update check process, with error: {}'.format(e))
             else:
-                process_current_release(raw)
+                try:
+                    process_current_release(raw)
+                except Exception as e:
+                    log_error('Failed to process update check data {!r}, with error: {}'.format(raw, e))
 
     def notification_activated(self, identifier):
         if identifier == 'new-version':
