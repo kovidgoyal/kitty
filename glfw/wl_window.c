@@ -633,7 +633,7 @@ static void xdgToplevelHandleConfigure(void* data,
         _glfwInputWindowDamage(window);
     }
 
-    if (!window->wl.justCreated && !activated && window->autoIconify)
+    if (!window->wl.justCreated && !activated && window->monitor && window->autoIconify)
         _glfwPlatformIconifyWindow(window);
     _glfwInputWindowFocus(window, activated);
     window->wl.justCreated = GLFW_FALSE;
