@@ -88,6 +88,14 @@ _GLFWwindow* _glfwWindowForId(GLFWid id) {
     return NULL;
 }
 
+// Notifies shared code that a window's occlusion state has changed
+//
+void _glfwInputWindowOcclusion(_GLFWwindow* window, GLFWbool occluded)
+{
+    if (window->callbacks.occlusion)
+        window->callbacks.occlusion((GLFWwindow*) window, occluded);
+}
+
 // Notifies shared code that a window has moved
 // The position is specified in content area relative screen coordinates
 //
@@ -867,6 +875,8 @@ GLFWAPI int glfwGetWindowAttrib(GLFWwindow* handle, int attrib)
             return window->focusOnShow;
         case GLFW_TRANSPARENT_FRAMEBUFFER:
             return _glfwPlatformFramebufferTransparent(window);
+        case GLFW_OCCLUDED:
+            return _glfwPlatformWindowOccluded(window);
         case GLFW_RESIZABLE:
             return window->resizable;
         case GLFW_DECORATED:
@@ -1065,6 +1075,17 @@ GLFWAPI GLFWwindowfocusfun glfwSetWindowFocusCallback(GLFWwindow* handle,
 
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     _GLFW_SWAP_POINTERS(window->callbacks.focus, cbfun);
+    return cbfun;
+}
+
+GLFWAPI GLFWwindowocclusionfun glfwSetWindowOcclusionCallback(GLFWwindow* handle,
+                                                              GLFWwindowocclusionfun cbfun)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(window->callbacks.occlusion, cbfun);
     return cbfun;
 }
 

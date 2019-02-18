@@ -197,6 +197,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetWindowFocusCallback_impl) = dlsym(handle, "glfwSetWindowFocusCallback");
     if (glfwSetWindowFocusCallback_impl == NULL) fail("Failed to load glfw function glfwSetWindowFocusCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetWindowOcclusionCallback_impl) = dlsym(handle, "glfwSetWindowOcclusionCallback");
+    if (glfwSetWindowOcclusionCallback_impl == NULL) fail("Failed to load glfw function glfwSetWindowOcclusionCallback with error: %s", dlerror());
+
     *(void **) (&glfwSetWindowIconifyCallback_impl) = dlsym(handle, "glfwSetWindowIconifyCallback");
     if (glfwSetWindowIconifyCallback_impl == NULL) fail("Failed to load glfw function glfwSetWindowIconifyCallback with error: %s", dlerror());
 

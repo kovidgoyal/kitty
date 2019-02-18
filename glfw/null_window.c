@@ -232,6 +232,11 @@ int _glfwPlatformWindowFocused(_GLFWwindow* window)
     return GLFW_FALSE;
 }
 
+int _glfwPlatformWindowOccluded(_GLFWwindow* window)
+{
+    return GLFW_FALSE;
+}
+
 int _glfwPlatformWindowIconified(_GLFWwindow* window)
 {
     return GLFW_FALSE;

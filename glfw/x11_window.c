@@ -2283,6 +2283,11 @@ int _glfwPlatformWindowFocused(_GLFWwindow* window)
     return window->x11.handle == focused;
 }
 
+int _glfwPlatformWindowOccluded(_GLFWwindow* window)
+{
+    return GLFW_FALSE;
+}
+
 int _glfwPlatformWindowIconified(_GLFWwindow* window)
 {
     return getWindowState(window) == IconicState;

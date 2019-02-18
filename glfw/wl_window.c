@@ -1239,6 +1239,11 @@ int _glfwPlatformWindowFocused(_GLFWwindow* window)
     return _glfw.wl.keyboardFocus == window;
 }
 
+int _glfwPlatformWindowOccluded(_GLFWwindow* window)
+{
+    return GLFW_FALSE;
+}
+
 int _glfwPlatformWindowIconified(_GLFWwindow* window)
 {
     // wl_shell doesn't have any iconified concept, and xdg-shell doesn’t give

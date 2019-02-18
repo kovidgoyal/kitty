@@ -585,7 +585,11 @@
  *  [window attribute](@ref GLFW_FOCUS_ON_SHOW_attrib).
  */
 #define GLFW_FOCUS_ON_SHOW          0x0002000C
-
+/*! @brief Occlusion window attribute
+ *
+ *  Occlusion [window attribute](@ref GLFW_OCCLUDED_attrib).
+ */
+#define GLFW_OCCLUDED               0x0002000D
 /*! @brief Framebuffer bit depth hint.
  *
  *  Framebuffer bit depth [hint](@ref GLFW_RED_BITS).
@@ -1002,6 +1006,24 @@ typedef void (* GLFWwindowrefreshfun)(GLFWwindow*);
  *  @ingroup window
  */
 typedef void (* GLFWwindowfocusfun)(GLFWwindow*,int);
+
+/*! @brief The function signature for window occlusion callbacks.
+ *
+ *  This is the function signature for window occlusion callback functions.
+ *
+ *  @param[in] window The window whose occlusion state changed.
+ *  @param[in] occluded `GLFW_TRUE` if the window was occluded, or `GLFW_FALSE`
+ *  if the window is no longer occluded.
+ *
+ *  @sa @ref window_occlusion
+ *  @sa @ref glfwSetWindowOcclusionCallback
+ *
+ *  @since Added in version 3.3.
+ *
+ *  @ingroup window
+ */
+typedef void (* GLFWwindowocclusionfun)(GLFWwindow*, bool);
+
 
 /*! @brief The function signature for window iconify/restore callbacks.
  *
@@ -1640,6 +1662,10 @@ glfwSetWindowRefreshCallback_func glfwSetWindowRefreshCallback_impl;
 typedef GLFWwindowfocusfun (*glfwSetWindowFocusCallback_func)(GLFWwindow*, GLFWwindowfocusfun);
 glfwSetWindowFocusCallback_func glfwSetWindowFocusCallback_impl;
 #define glfwSetWindowFocusCallback glfwSetWindowFocusCallback_impl
+
+typedef GLFWwindowocclusionfun (*glfwSetWindowOcclusionCallback_func)(GLFWwindow*, GLFWwindowocclusionfun);
+glfwSetWindowOcclusionCallback_func glfwSetWindowOcclusionCallback_impl;
+#define glfwSetWindowOcclusionCallback glfwSetWindowOcclusionCallback_impl
 
 typedef GLFWwindowiconifyfun (*glfwSetWindowIconifyCallback_func)(GLFWwindow*, GLFWwindowiconifyfun);
 glfwSetWindowIconifyCallback_func glfwSetWindowIconifyCallback_impl;

@@ -828,7 +828,11 @@ extern "C" {
  *  [window attribute](@ref GLFW_FOCUS_ON_SHOW_attrib).
  */
 #define GLFW_FOCUS_ON_SHOW          0x0002000C
-
+/*! @brief Occlusion window attribute
+ *
+ *  Occlusion [window attribute](@ref GLFW_OCCLUDED_attrib).
+ */
+#define GLFW_OCCLUDED               0x0002000D
 /*! @brief Framebuffer bit depth hint.
  *
  *  Framebuffer bit depth [hint](@ref GLFW_RED_BITS).
@@ -1245,6 +1249,24 @@ typedef void (* GLFWwindowrefreshfun)(GLFWwindow*);
  *  @ingroup window
  */
 typedef void (* GLFWwindowfocusfun)(GLFWwindow*,int);
+
+/*! @brief The function signature for window occlusion callbacks.
+ *
+ *  This is the function signature for window occlusion callback functions.
+ *
+ *  @param[in] window The window whose occlusion state changed.
+ *  @param[in] occluded `GLFW_TRUE` if the window was occluded, or `GLFW_FALSE`
+ *  if the window is no longer occluded.
+ *
+ *  @sa @ref window_occlusion
+ *  @sa @ref glfwSetWindowOcclusionCallback
+ *
+ *  @since Added in version 3.3.
+ *
+ *  @ingroup window
+ */
+typedef void (* GLFWwindowocclusionfun)(GLFWwindow*, bool);
+
 
 /*! @brief The function signature for window iconify/restore callbacks.
  *
@@ -3582,6 +3604,31 @@ GLFWAPI GLFWwindowrefreshfun glfwSetWindowRefreshCallback(GLFWwindow* window, GL
  *  @ingroup window
  */
 GLFWAPI GLFWwindowfocusfun glfwSetWindowFocusCallback(GLFWwindow* window, GLFWwindowfocusfun cbfun);
+
+/*! @brief Sets the occlusion callback for the specified window.
+ *
+ *  This function sets the occlusion callback of the specified window, which is
+ *  called when the window becomes (fully) occluded by other windows or when (a
+ *  part of) the window becomes visible again because an overlapping window is
+ *  moved away.
+ *
+ *  @param[in] window The window whose callback to set.
+ *  @param[in] cbfun The new callback, or `NULL` to remove the currently set
+ *  callback.
+ *  @return The previously set callback, or `NULL` if no callback was set or the
+ *  library had not been [initialized](@ref intro_init).
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref window_occlusion
+ *
+ *  @since Added in version 3.3.
+ *
+ *  @ingroup window
+ */
+GLFWAPI GLFWwindowocclusionfun glfwSetWindowOcclusionCallback(GLFWwindow* window, GLFWwindowocclusionfun cbfun);
 
 /*! @brief Sets the iconify callback for the specified window.
  *
