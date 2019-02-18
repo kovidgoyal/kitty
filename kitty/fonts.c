@@ -399,8 +399,8 @@ calc_cell_metrics(FontGroup *fg) {
     if (OPT(adjust_column_width_frac) != 0.f) cell_width *= OPT(adjust_column_width_frac);
     cell_width = MAX(2, cell_width);
     int line_height_adjustment = cell_height - before_cell_height;
-    if (cell_height < 4) fatal("line height too small after adjustment");
-    if (cell_height > 1000) fatal("line height too large after adjustment");
+    if (cell_height < 4) fatal("Line height too small after adjustment");
+    if (cell_height > 1000) fatal("Line height too large after adjustment");
     underline_position = MIN(cell_height - 1, underline_position);
     // ensure there is at least a couple of pixels available to render styled underlines
     while (underline_position > baseline + 1 && cell_height - underline_position < 2) underline_position--;
@@ -1103,14 +1103,14 @@ send_prerendered_sprites(FontGroup *fg) {
     clear_canvas(fg);
     current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas);
     do_increment(fg, &error);
-    if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("failed"); }
+    if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
     PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIdd", fg->cell_width, fg->cell_height, fg->baseline, fg->underline_position, fg->underline_thickness, fg->logical_dpi_x, fg->logical_dpi_y);
     if (args == NULL) { PyErr_Print(); fatal("Failed to pre-render cells"); }
     for (ssize_t i = 0; i < PyTuple_GET_SIZE(args) - 1; i++) {
         x = fg->sprite_tracker.x; y = fg->sprite_tracker.y; z = fg->sprite_tracker.z;
-        if (y > 0) { fatal("too many pre-rendered sprites for your GPU or the font size is too large"); }
+        if (y > 0) { fatal("Too many pre-rendered sprites for your GPU or the font size is too large"); }
         do_increment(fg, &error);
-        if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("failed"); }
+        if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
         uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(args, i));
         clear_canvas(fg);
         Region r = { .right = fg->cell_width, .bottom = fg->cell_height };
@@ -1123,12 +1123,12 @@ send_prerendered_sprites(FontGroup *fg) {
 static inline size_t
 initialize_font(FontGroup *fg, unsigned int desc_idx, const char *ftype) {
     PyObject *d = PyObject_CallFunction(descriptor_for_idx, "I", desc_idx);
-    if (d == NULL) { PyErr_Print(); fatal("failed for %s font", ftype); }
+    if (d == NULL) { PyErr_Print(); fatal("Failed for %s font", ftype); }
     bool bold = PyObject_IsTrue(PyTuple_GET_ITEM(d, 1));
     bool italic = PyObject_IsTrue(PyTuple_GET_ITEM(d, 2));
     PyObject *face = desc_to_face(PyTuple_GET_ITEM(d, 0), (FONTS_DATA_HANDLE)fg);
     Py_CLEAR(d);
-    if (face == NULL) { PyErr_Print(); fatal("failed to convert descriptor to face for %s font", ftype); }
+    if (face == NULL) { PyErr_Print(); fatal("Failed to convert descriptor to face for %s font", ftype); }
     size_t idx = fg->fonts_count++;
     bool ok = init_font(fg->fonts + idx, face, bold, italic, false);
     Py_CLEAR(face);
