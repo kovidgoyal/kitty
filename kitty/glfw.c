@@ -869,9 +869,11 @@ mark_os_window_for_close(OSWindow* w, bool yes) {
 
 bool
 should_os_window_be_rendered(OSWindow* w) {
-    if (glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED)) return false;
-    if (!glfwGetWindowAttrib(w->handle, GLFW_VISIBLE)) return false;
-    return true;
+    return (
+            glfwGetWindowAttrib(w->handle, GLFW_ICONIFIED) ||
+            !glfwGetWindowAttrib(w->handle, GLFW_VISIBLE) ||
+            glfwGetWindowAttrib(w->handle, GLFW_OCCLUDED)
+       ) ? false : true;
 }
 
 bool
