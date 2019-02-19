@@ -24,8 +24,12 @@
 typedef int CGSConnectionID;
 typedef int CGSWindowID;
 typedef int CGSWorkspaceID;
+typedef enum _CGSSpaceSelector {
+    kCGSSpaceCurrent = 5,
+    kCGSSpaceAll = 7
+} CGSSpaceSelector;
 extern CGSConnectionID _CGSDefaultConnection(void);
-extern void CGSGetWindowWorkspace(const CGSConnectionID cid, CGSWindowID wid, CGSWorkspaceID *workspace);
+CFArrayRef CGSCopySpacesForWindows(CGSConnectionID Connection, CGSSpaceSelector Type, CFArrayRef Windows);
 
 static NSMenuItem* title_menu = NULL;
 
@@ -369,11 +373,20 @@ cocoa_focus_window(void *w) {
     [window makeKeyWindow];
 }
 
-int
-cocoa_get_workspace_id(void *w) {
+size_t
+cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz) {
     NSWindow *window = (NSWindow*)w;
-    int ans = -1;
-    if (window) CGSGetWindowWorkspace(_CGSDefaultConnection(), [window windowNumber], &ans);
+    if (!window) return 0;
+    NSArray *window_array = @[ @([window windowNumber]) ];
+    CFArrayRef spaces = CGSCopySpacesForWindows(_CGSDefaultConnection(), kCGSSpaceAll, (__bridge CFArrayRef)window_array);
+    CFIndex ans = CFArrayGetCount(spaces);
+    if (ans > 0) {
+        for (CFIndex i = 0; i < MIN(ans, (CFIndex)array_sz); i++) {
+            NSNumber *s = (NSNumber*)CFArrayGetValueAtIndex(spaces, i);
+            workspace_ids[i] = [s intValue];
+        }
+    } else ans = 0;
+    CFRelease(spaces);
     return ans;
 }
 
