@@ -106,6 +106,7 @@ class Boss:
 
     def __init__(self, os_window_id, opts, args, cached_values, new_os_window_trigger):
         set_draw_minimal_borders(opts)
+        self.clipboard_buffers = {}
         self.update_check_process = None
         self.window_id_map = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
@@ -813,6 +814,28 @@ class Boss:
                 set_primary_selection(text)
                 if self.opts.copy_on_select:
                     set_clipboard_string(text)
+
+    def copy_to_buffer(self, buffer_name):
+        w = self.active_window
+        if w is not None and not w.destroyed:
+            text = w.text_for_selection()
+            if text:
+                if buffer_name == 'clipboard':
+                    set_clipboard_string(text)
+                elif buffer_name == 'primary':
+                    set_primary_selection(text)
+                else:
+                    self.clipboard_buffers[buffer_name] = text
+
+    def paste_from_buffer(self, buffer_name):
+        if buffer_name == 'clipboard':
+            text = get_clipboard_string()
+        elif buffer_name == 'primary':
+            text = get_primary_selection()
+        else:
+            text = self.clipboard_buffers.get(buffer_name)
+        if text:
+            self.paste_to_active_window(text)
 
     def goto_tab(self, tab_num):
         tm = self.active_tab_manager

@@ -36,6 +36,8 @@ kitty - the fast, featureful, GPU based terminal emulator
       separate window using arbitrary programs of your choice. This is useful for
       browsing the history comfortably in a pager or editor.
 
+    * Has :ref:`multiple copy/paste buffers <cpbuf>`, like vim.
+
 
 .. figure:: screenshots/screenshot.png
     :alt: Screenshot, showing three programs in the 'Tall' layout
@@ -393,6 +395,23 @@ key. See :sc:`show_scrollback` for details.
 If you wish to store very large amounts of scrollback to view using the piping or
 :sc:`show_scrollback` features, you can use the :opt:`scrollback_pager_history_size`
 option.
+
+.. _cpbuf:
+
+Multiple copy/paste buffers
+-----------------------------
+
+In addition to being able to copy/paste from the system clipboard, in |kitty| you
+can also setup an arbitrary number of copy paste buffers. To do so, simply add
+something like the following to your :file:`kitty.conf`::
+
+   map f1 copy_to_buffer a
+   map f2 paste_from_buffer a
+
+This will allow you to press :kbd:`F1` to copy the current selection to an
+internal buffer named ``a`` and :kbd:`F2` to paste from that buffer. The buffer
+names are arbitrary strings, so you can define as many such buffers as you
+need.
 
 Frequently Asked Questions
 ---------------------------------

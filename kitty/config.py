@@ -140,6 +140,16 @@ def clear_terminal(func, rest):
     return func, args
 
 
+@func_with_args('copy_to_buffer')
+def copy_to_buffer(func, rest):
+    return func, [rest]
+
+
+@func_with_args('paste_from_buffer')
+def paste_from_buffer(func, rest):
+    return func, [rest]
+
+
 @func_with_args('neighboring_window')
 def neighboring_window(func, rest):
     rest = rest.lower()

@@ -7,9 +7,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.14.0 [future]
 ---------------------
 
-- macOS: The default behavior of the Option key has changed, to generating
+- macOS: The default behavior of the Option key has changed. It now generates
   unicode characters rather than acting as the Alt modifier. See
   :opt:`macos_option_as_alt`.
+
+- Support for an arbitrary number of internal clipboard buffers to copy/paste
+  from, see (:ref:`cpbuf`)
 
 - macOS: Allow opening new kitty tabs/top-level windows from Finder
   (:pull:`1350`)
