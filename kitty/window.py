@@ -440,7 +440,7 @@ class Window:
                 if 'write-clipboard' in self.opts.clipboard_control:
                     write('c', set_clipboard_string)
             if 'p' in where:
-                if self.opts.copy_on_select:
+                if self.opts.copy_on_select == 'clipboard':
                     if 'write-clipboard' in self.opts.clipboard_control:
                         write('c', set_clipboard_string)
                 if 'write-primary' in self.opts.clipboard_control:

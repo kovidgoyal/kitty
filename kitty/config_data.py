@@ -393,12 +393,31 @@ The program with which to open URLs that are clicked on.
 The special value :code:`default` means to use the
 operating system's default URL handler.'''))
 
-o('copy_on_select', False, long_text=_('''
-Copy to clipboard on select. With this enabled, simply selecting text with
-the mouse will cause the text to be copied to clipboard. Useful on platforms
-such as macOS that do not have the concept of primary selections. Note
-that this is a security risk, as all programs, including websites open in your
-browser can read the contents of the clipboard.'''))
+
+def copy_on_select(raw):
+    q = raw.lower()
+    # boolean values special cased for backwards compat
+    if q in ('y', 'yes', 'true', 'clipboard'):
+        return 'clipboard'
+    if q in ('n', 'no', 'false', ''):
+        return ''
+    return raw
+
+
+o('copy_on_select', 'no', option_type=copy_on_select, long_text=_('''
+Copy to clipboard or a private buffer on select. With this set to
+:code:`clipboard`, simply selecting text with the mouse will cause the text to
+be copied to clipboard. Useful on platforms such as macOS that do not have the
+concept of primary selections. You can instead specify a name such as :code:`a1` to
+copy to a private kitty buffer instead. Map a shortcut with the
+:code:`paste_from_buffer` action to paste from this private buffer.
+For example::
+
+    map cmd+shift+v paste_from_buffer a1
+
+Note that copying to the clipboard is a security risk, as all programs,
+including websites open in your browser can read the contents of the
+system clipboard.'''))
 
 o('strip_trailing_spaces', 'never', option_type=choices('never', 'smart', 'always'), long_text=_('''
 Remove spaces at the end of lines when copying to clipboard.

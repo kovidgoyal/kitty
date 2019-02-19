@@ -14,6 +14,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Support for an arbitrary number of internal clipboard buffers to copy/paste
   from, see (:ref:`cpbuf`)
 
+- Allow using the new private internal clipboard buffers with the
+  :opt:`copy_on_select` option (:iss:`1390`)
+
 - macOS: Allow opening new kitty tabs/top-level windows from Finder
   (:pull:`1350`)
 

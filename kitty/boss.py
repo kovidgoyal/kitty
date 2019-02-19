@@ -813,7 +813,7 @@ class Boss:
             if text:
                 set_primary_selection(text)
                 if self.opts.copy_on_select:
-                    set_clipboard_string(text)
+                    self.copy_to_buffer(self.opts.copy_on_select)
 
     def copy_to_buffer(self, buffer_name):
         w = self.active_window
