@@ -608,9 +608,9 @@ window_in_same_cocoa_workspace(void *w, size_t *source_workspaces, size_t source
 
 static inline void
 cocoa_focus_last_window(id_type source_window_id, size_t *source_workspaces, size_t source_workspace_count) {
-    id_type highest_focus_number = -1;
+    id_type highest_focus_number = 0;
     OSWindow *window_to_focus = NULL;
-    for (size_t i = -1; i < global_state.num_os_windows; i++) {
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (
                 w->id != source_window_id && w->handle && w->shown_once &&
