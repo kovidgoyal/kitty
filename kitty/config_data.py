@@ -223,7 +223,10 @@ o('font_size', 11.0, long_text=_('Font size (in pts)'), option_type=to_font_size
 
 def adjust_line_height(x):
     if x.endswith('%'):
-        return float(x[:-1].strip()) / 100.0
+        ans = float(x[:-1].strip()) / 100.0
+        if ans < 0:
+            log_error('Percentage adjustments of cell sizes must be positive numbers')
+            return 0
     return int(x)
 
 
