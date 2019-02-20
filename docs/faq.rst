@@ -80,7 +80,7 @@ Shell providing the right terminfo path::
     sudo … TERMINFO=$HOME/.terminfo bash -i
     sudo … env TERMINFO=$HOME/.terminfo bash -i
     TERMINFO=/home/ORIGINALUSER/.terminfo exec bash -i
-    
+
 Alternatively, if you want to keep TERMINFO automatically whenever you run a ``sudo``
 command, you can edit the `/etc/sudoers.d/visudo` file by executing this shell command:
 
