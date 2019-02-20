@@ -1744,6 +1744,55 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
     [window->ns.object setAlphaValue:opacity];
 }
 
+static inline CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
+    NSWindow *nw = w->ns.object;
+    NSDictionary *dict = [nw.screen deviceDescription];
+    NSNumber *displayIDns = [dict objectForKey:@"NSScreenNumber"];
+    if (displayIDns) return [displayIDns unsignedIntValue];
+    return (CGDirectDisplayID)-1;
+}
+
+static inline void sendEvent(NSEvent *event) {
+    if (event.type == NSEventTypeApplicationDefined) {
+        if (event.subtype == RENDER_FRAME_REQUEST_EVENT_TYPE) {
+            CGDirectDisplayID displayID = (CGDirectDisplayID)event.data1;
+            _GLFWwindow *w = _glfw.windowListHead;
+            while (w) {
+                if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
+                    w->ns.renderFrameRequested = GLFW_FALSE;
+                    w->ns.renderFrameCallback((GLFWwindow*)w);
+                }
+                w = w->next;
+            }
+        }
+    } else [NSApp sendEvent:event];
+}
+
+static inline void
+requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
+    if (!callback) {
+        w->ns.renderFrameRequested = GLFW_FALSE;
+        w->ns.renderFrameCallback = NULL;
+        return;
+    }
+    w->ns.renderFrameCallback = callback;
+    w->ns.renderFrameRequested = GLFW_TRUE;
+    CGDirectDisplayID displayID = displayIDForWindow(w);
+    [_glfw.ns.displayLinks.lock lock];
+    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
+        _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
+        if (dl->displayID == displayID) {
+            dl->renderFrameRequested = GLFW_TRUE;
+            if (!dl->displayLinkStarted) {
+                CVDisplayLinkStart(dl->displayLink);
+                dl->displayLinkStarted = GLFW_TRUE;
+            }
+            break;
+        }
+    }
+    [_glfw.ns.displayLinks.lock unlock];
+}
+
 void _glfwPlatformPollEvents(void)
 {
     for (;;)
@@ -1755,7 +1804,7 @@ void _glfwPlatformPollEvents(void)
         if (event == nil)
             break;
 
-        if ([event type] != NSEventTypeApplicationDefined) [NSApp sendEvent:event];
+        sendEvent(event);
     }
 
     [_glfw.ns.autoreleasePool drain];
@@ -1771,7 +1820,7 @@ void _glfwPlatformWaitEvents(void)
                                         untilDate:[NSDate distantFuture]
                                            inMode:NSDefaultRunLoopMode
                                           dequeue:YES];
-    if ([event type] != NSEventTypeApplicationDefined) [NSApp sendEvent:event];
+    sendEvent(event);
 
     _glfwPlatformPollEvents();
 }
@@ -1783,12 +1832,12 @@ void _glfwPlatformWaitEventsTimeout(double timeout)
                                         untilDate:date
                                            inMode:NSDefaultRunLoopMode
                                           dequeue:YES];
-    if (event && [event type] != NSEventTypeApplicationDefined) [NSApp sendEvent:event];
+    if (event) sendEvent(event);
 
     _glfwPlatformPollEvents();
 }
 
-void _glfwPlatformPostEmptyEvent(void)
+void _glfwCocoaPostEmptyEvent(short subtype, long data1)
 {
     NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
     NSEvent* event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
@@ -1797,11 +1846,16 @@ void _glfwPlatformPostEmptyEvent(void)
                                        timestamp:0
                                     windowNumber:0
                                          context:nil
-                                         subtype:0
-                                           data1:0
+                                         subtype:subtype
+                                           data1:data1
                                            data2:0];
     [NSApp postEvent:event atStart:YES];
     [pool drain];
+}
+
+void _glfwPlatformPostEmptyEvent(void)
+{
+    _glfwCocoaPostEmptyEvent(0, 0);
 }
 
 void _glfwPlatformGetCursorPos(_GLFWwindow* window, double* xpos, double* ypos)
@@ -2099,6 +2153,10 @@ GLFWAPI GLFWapplicationshouldhandlereopenfun glfwSetApplicationShouldHandleReope
     GLFWapplicationshouldhandlereopenfun previous = handle_reopen_callback;
     handle_reopen_callback = callback;
     return previous;
+}
+
+GLFWAPI void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback) {
+    requestRenderFrame((_GLFWwindow*)w, callback);
 }
 
 GLFWAPI void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, unsigned short *cocoa_key, int *cocoa_mods) {

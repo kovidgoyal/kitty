@@ -30,14 +30,19 @@
 #include <Carbon/Carbon.h>
 #if defined(__OBJC__)
 #import <Cocoa/Cocoa.h>
+#import <CoreVideo/CoreVideo.h>
 #else
 typedef void* id;
+typedef void* CVDisplayLinkRef;
 #endif
+
+#define RENDER_FRAME_REQUEST_EVENT_TYPE 1
 
 typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int, unsigned long);
 typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
+typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 
 typedef struct VkMacOSSurfaceCreateInfoMVK
 {
@@ -105,7 +110,18 @@ typedef struct _GLFWwindowNS
     GLFWcocoatogglefullscreenfun toggleFullscreenCallback;
     // Dead key state
     UInt32 deadKeyState;
+    // Whether a render frame has been requested for this window
+    GLFWbool renderFrameRequested;
+    GLFWcocoarenderframefun renderFrameCallback;
 } _GLFWwindowNS;
+
+typedef struct _GLFWDisplayLinkNS
+{
+    CVDisplayLinkRef displayLink;
+    CGDirectDisplayID displayID;
+    GLFWbool displayLinkStarted;
+    GLFWbool renderFrameRequested;
+} _GLFWDisplayLinkNS;
 
 // Cocoa-specific global data
 //
@@ -140,6 +156,12 @@ typedef struct _GLFWlibraryNS
         PFN_LMGetKbdType GetKbdType;
         CFStringRef     kPropertyUnicodeKeyLayoutData;
     } tis;
+
+    struct {
+        _GLFWDisplayLinkNS entries[256];
+        size_t count;
+        id lock;
+    } displayLinks;
 
 } _GLFWlibraryNS;
 
@@ -176,3 +198,5 @@ void _glfwInitTimerNS(void);
 void _glfwPollMonitorsNS(void);
 void _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired);
 void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor);
+void _glfwClearDisplayLinks();
+void _glfwCocoaPostEmptyEvent(short subtype, long data1);

@@ -376,6 +376,8 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwGetCocoaKeyEquivalent_impl) = dlsym(handle, "glfwGetCocoaKeyEquivalent");
 
+    *(void **) (&glfwCocoaRequestRenderFrame_impl) = dlsym(handle, "glfwCocoaRequestRenderFrame");
+
     *(void **) (&glfwGetX11Display_impl) = dlsym(handle, "glfwGetX11Display");
 
     *(void **) (&glfwGetX11Window_impl) = dlsym(handle, "glfwGetX11Window");

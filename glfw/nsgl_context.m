@@ -28,7 +28,6 @@
 
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101400)
- #define NSOpenGLContextParameterSwapInterval NSOpenGLCPSwapInterval
  #define NSOpenGLContextParameterSurfaceOpacity NSOpenGLCPSurfaceOpacity
 #endif
 
@@ -50,11 +49,10 @@ static void swapBuffersNSGL(_GLFWwindow* window)
 
 static void swapIntervalNSGL(int interval)
 {
-    _GLFWwindow* window = _glfwPlatformGetTls(&_glfw.contextSlot);
-
-    GLint sync = interval;
-    [window->context.nsgl.object setValues:&sync
-                              forParameter:NSOpenGLContextParameterSwapInterval];
+    // As of Mojave this does not work so we use CVDisplayLink instead
+    (void)(interval);
+    _glfwInputError(GLFW_API_UNAVAILABLE,
+                    "NSGL: Swap intervals do not work on macOS");
 }
 
 static int extensionSupportedNSGL(const char* extension)

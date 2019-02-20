@@ -217,6 +217,60 @@ static void endFadeReservation(CGDisplayFadeReservationToken token)
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+void _glfwClearDisplayLinks() {
+    [_glfw.ns.displayLinks.lock lock];
+    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
+        if (_glfw.ns.displayLinks.entries[i].displayLinkStarted) {
+            CVDisplayLinkStop(_glfw.ns.displayLinks.entries[i].displayLink);
+            _glfw.ns.displayLinks.entries[i].displayLinkStarted = GLFW_FALSE;
+        }
+        if (_glfw.ns.displayLinks.entries[i].displayLink) {
+            CVDisplayLinkRelease(_glfw.ns.displayLinks.entries[i].displayLink);
+            _glfw.ns.displayLinks.entries[i].displayLink = nil;
+        }
+    }
+    _glfw.ns.displayLinks.count = 0;
+    [_glfw.ns.displayLinks.lock unlock];
+}
+
+static CVReturn displayLinkCallback(
+        CVDisplayLinkRef displayLink,
+        const CVTimeStamp* now, const CVTimeStamp* outputTime,
+        CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* userInfo)
+{
+    CGDirectDisplayID displayID = (CGDirectDisplayID)userInfo;
+    [_glfw.ns.displayLinks.lock lock];
+    GLFWbool notify = GLFW_FALSE;
+    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
+        if (_glfw.ns.displayLinks.entries[i].displayID == displayID) {
+            if (_glfw.ns.displayLinks.entries[i].renderFrameRequested) {
+                notify = GLFW_TRUE;
+                _glfw.ns.displayLinks.entries[i].renderFrameRequested = GLFW_FALSE;
+            }
+            break;
+        }
+    }
+    [_glfw.ns.displayLinks.lock unlock];
+    if (notify) {
+        _glfwCocoaPostEmptyEvent(RENDER_FRAME_REQUEST_EVENT_TYPE, displayID);
+    }
+    return kCVReturnSuccess;
+}
+
+static inline void createDisplayLink(CGDirectDisplayID displayID) {
+    [_glfw.ns.displayLinks.lock lock];
+    if (_glfw.ns.displayLinks.count >= sizeof(_glfw.ns.displayLinks.entries)/sizeof(_glfw.ns.displayLinks.entries[0]) - 1) return;
+    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
+        if (_glfw.ns.displayLinks.entries[i].displayID == displayID) return;
+    }
+    _GLFWDisplayLinkNS *entry = &_glfw.ns.displayLinks.entries[_glfw.ns.displayLinks.count++];
+    memset(entry, 0, sizeof(_GLFWDisplayLinkNS));
+    entry->displayID = displayID;
+    CVDisplayLinkCreateWithCGDisplay(displayID, &entry->displayLink);
+    CVDisplayLinkSetOutputCallback(entry->displayLink, &displayLinkCallback, (void*)(uintptr_t)displayID);
+    [_glfw.ns.displayLinks.lock unlock];
+}
+
 // Poll for changes in the set of connected monitors
 //
 void _glfwPollMonitorsNS(void)
@@ -228,6 +282,7 @@ void _glfwPollMonitorsNS(void)
     CGGetOnlineDisplayList(0, NULL, &displayCount);
     displays = calloc(displayCount, sizeof(CGDirectDisplayID));
     CGGetOnlineDisplayList(displayCount, displays, &displayCount);
+    _glfwClearDisplayLinks();
 
     for (i = 0;  i < _glfw.monitorCount;  i++)
         _glfw.monitors[i]->ns.screen = nil;
@@ -269,6 +324,7 @@ void _glfwPollMonitorsNS(void)
         monitor = _glfwAllocMonitor(name, size.width, size.height);
         monitor->ns.displayID  = displays[i];
         monitor->ns.unitNumber = unitNumber;
+        createDisplayLink(monitor->ns.displayID);
 
         free(name);
 
