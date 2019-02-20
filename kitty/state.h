@@ -104,7 +104,7 @@ typedef struct {
     bool is_set;
 } OSWindowGeometry;
 
-enum WAYLAND_RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
+enum RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
 
 typedef struct {
     void *handle;
@@ -134,7 +134,7 @@ typedef struct {
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
     double pending_scroll_pixels;
-    enum WAYLAND_RENDER_STATE wayland_render_state;
+    enum RENDER_STATE render_state;
     id_type last_focused_counter;
 } OSWindow;
 
@@ -149,6 +149,7 @@ typedef struct {
     OSWindow *callback_os_window;
     bool terminate;
     bool is_wayland;
+    bool has_render_frames;
     bool debug_gl, debug_font_fallback;
     bool has_pending_resizes;
     bool in_sequence_mode;
@@ -219,4 +220,4 @@ void set_cocoa_pending_action_with_wd(CocoaPendingAction action, const char *wd)
 bool application_quit_requested();
 void request_application_quit();
 #endif
-void wayland_request_frame_render(OSWindow *w);
+void request_frame_render(OSWindow *w);

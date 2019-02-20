@@ -555,10 +555,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     w->fonts_data = fonts_data;
     w->shown_once = true;
     w->last_focused_counter = ++focus_counter;
-    glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
     glfwSetCocoaToggleFullscreenIntercept(glfw_window, intercept_cocoa_fullscreen);
+#else
+    glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
     send_prerendered_sprites_for_window(w);
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
@@ -1037,25 +1038,40 @@ void
 get_cocoa_key_equivalent(int key, int mods, unsigned short *cocoa_key, int *cocoa_mods) {
     glfwGetCocoaKeyEquivalent(key, mods, cocoa_key, cocoa_mods);
 }
-#endif
 
-void
-wayland_frame_request_callback(id_type os_window_id) {
+static void
+cocoa_frame_request_callback(GLFWwindow *window) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        if (global_state.os_windows[i].id == os_window_id) {
-            global_state.os_windows[i].wayland_render_state = RENDER_FRAME_READY;
+        if (global_state.os_windows[i].handle == window) {
+            global_state.os_windows[i].render_state = RENDER_FRAME_READY;
             break;
         }
     }
 }
 
 void
-wayland_request_frame_render(OSWindow *w) {
-    glfwRequestWaylandFrameEvent(w->handle, w->id, wayland_frame_request_callback);
-    w->wayland_render_state = RENDER_FRAME_REQUESTED;
+request_frame_render(OSWindow *w) {
+    glfwCocoaRequestRenderFrame(w->handle, cocoa_frame_request_callback);
+    w->render_state = RENDER_FRAME_REQUESTED;
 }
 
-#ifndef __APPLE__
+#else
+
+static void
+wayland_frame_request_callback(id_type os_window_id) {
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        if (global_state.os_windows[i].id == os_window_id) {
+            global_state.os_windows[i].render_state = RENDER_FRAME_READY;
+            break;
+        }
+    }
+}
+
+void
+request_frame_render(OSWindow *w) {
+    glfwRequestWaylandFrameEvent(w->handle, w->id, wayland_frame_request_callback);
+    w->render_state = RENDER_FRAME_REQUESTED;
+}
 
 void
 dbus_notification_created_callback(unsigned long long notification_id, uint32_t new_notification_id, void* data UNUSED) {

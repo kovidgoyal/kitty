@@ -64,6 +64,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: When closing a top-level window only switch focus to the previous kitty
   window if it is on the same workspace (:iss:`1379`)
 
+- macOS: Fix :opt:`sync_to_monitor` not working on Mojave.
+
 0.13.3 [2019-01-19]
 ------------------------------
 
