@@ -227,6 +227,7 @@ def adjust_line_height(x):
         if ans < 0:
             log_error('Percentage adjustments of cell sizes must be positive numbers')
             return 0
+        return ans
     return int(x)
 
 
