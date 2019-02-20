@@ -90,7 +90,7 @@ Then add the following content:
 
     Defaults env_keep += "TERM TERMINFO"
 
-Save the file and from now on `sudo` will correctly identify `xterm-kitty`. 
+Save the file and from now on `sudo` will correctly identify `xterm-kitty`.
 This is based on the trick provided [here](https://stackoverflow.com/a/8636711/5715571),
 and has been tested on Clear Linux (27910).
 
