@@ -81,18 +81,10 @@ Shell providing the right terminfo path::
     sudo … env TERMINFO=$HOME/.terminfo bash -i
     TERMINFO=/home/ORIGINALUSER/.terminfo exec bash -i
 
-Alternatively, if you want to keep TERMINFO automatically whenever you run a ``sudo``
-command, you can edit the `/etc/sudoers.d/visudo` file by executing this shell command:
-
-    sudo visudo
-
-Then add the following content:
+Alternatively, you can configure sudo to preserve TERMINFO by running ``sudo
+visudo`` and adding the following line::
 
     Defaults env_keep += "TERM TERMINFO"
-
-Save the file and from now on `sudo` will correctly identify `xterm-kitty`.
-This is based on the trick provided [here](https://stackoverflow.com/a/8636711/5715571),
-and has been tested on Clear Linux (27910).
 
 If you have double width characters in your prompt, you may also need to
 explicitly set a UTF-8 locale, like::
