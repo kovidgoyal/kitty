@@ -81,7 +81,7 @@ Shell providing the right terminfo path::
     sudo … env TERMINFO=$HOME/.terminfo bash -i
     TERMINFO=/home/ORIGINALUSER/.terminfo exec bash -i
 
-Alternatively, you can configure sudo to preserve TERMINFO by running ``sudo
+You can configure sudo to preserve TERMINFO by running ``sudo
 visudo`` and adding the following line::
 
     Defaults env_keep += "TERM TERMINFO"
