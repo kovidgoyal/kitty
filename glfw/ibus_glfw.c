@@ -56,7 +56,7 @@ test_env_var(const char *name, const char *val) {
     return (q && strcmp(q, val) == 0) ? GLFW_TRUE : GLFW_FALSE;
 }
 
-static inline GLFWbool
+static inline size_t
 MIN(size_t a, size_t b) {
     return a < b ? a : b;
 }
