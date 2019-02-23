@@ -76,10 +76,10 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     uint32_t replaces_id = 0;
 
     DBusMessage *msg = dbus_message_new_method_call(NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "Notify");
-    if (!msg) return 0;
+    if (!msg) { free(data); data = NULL; return 0; }
     DBusMessageIter args, array;
     dbus_message_iter_init_append(msg, &args);
-#define OOMMSG { dbus_message_unref(msg); _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n"); return 0; }
+#define OOMMSG { free(data); data = NULL; dbus_message_unref(msg); _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n"); return 0; }
 #define APPEND(type, val) { if (!dbus_message_iter_append_basic(&args, type, val)) OOMMSG }
     APPEND(DBUS_TYPE_STRING, &app_name)
     APPEND(DBUS_TYPE_UINT32, &replaces_id)
@@ -98,6 +98,8 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     APPEND(DBUS_TYPE_INT32, &timeout)
 #undef OOMMSG
 #undef APPEND
-    if (!call_method_with_msg(session_bus, msg, 5000, notification_created, data)) return 0;
-    return data->next_id;
+    if (!call_method_with_msg(session_bus, msg, 5000, notification_created, data)) { free(data); data = NULL; return 0; }
+    notification_id_type next_id = data->next_id;
+    free(data); data = NULL;
+    return next_id;
 }
