@@ -449,3 +449,11 @@ def is_path_in_temp_dir(path):
         if q and path.startswith(q):
             return True
     return False
+
+
+def func_name(f):
+    if hasattr(f, '__name__'):
+        return f.__name__
+    if hasattr(f, 'func') and hasattr(f.func, '__name__'):
+        return f.func.__name__
+    return str(f)

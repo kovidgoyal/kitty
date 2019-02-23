@@ -34,8 +34,8 @@ from .rgb import Color, color_from_int
 from .session import create_session
 from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
 from .utils import (
-    get_editor, get_primary_selection, is_path_in_temp_dir, log_error,
-    open_url, parse_address_spec, remove_socket_file, safe_print,
+    func_name, get_editor, get_primary_selection, is_path_in_temp_dir,
+    log_error, open_url, parse_address_spec, remove_socket_file, safe_print,
     set_primary_selection, single_instance, startup_notification_handler
 )
 
@@ -577,7 +577,7 @@ class Boss:
             f = getattr(self, key_action.func, None)
             if f is not None:
                 if self.args.debug_keyboard:
-                    print('Keypress matched action:', f.__name__)
+                    print('Keypress matched action:', func_name(f))
                 passthrough = f(*key_action.args)
                 if passthrough is not True:
                     return True
@@ -592,7 +592,7 @@ class Boss:
             if f is not None:
                 passthrough = f(*key_action.args)
                 if self.args.debug_keyboard:
-                    print('Keypress matched action:', f.__name__)
+                    print('Keypress matched action:', func_name(f))
                 if passthrough is not True:
                     return True
         return False
