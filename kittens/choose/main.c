@@ -205,7 +205,7 @@ match(PyObject *self, PyObject *args) {
     size_t num_lines = PyList_GET_SIZE(lines);
     char **clines = malloc(sizeof(char*) * num_lines);
     size_t *sizes = malloc(sizeof(size_t) * num_lines);
-    if (!lines || !sizes) { return PyErr_NoMemory(); }
+    if (!sizes) { return PyErr_NoMemory(); }
     for (size_t i = 0; i < num_lines; i++) {
         clines[i] = PyBytes_AS_STRING(PyList_GET_ITEM(lines, i));
         sizes[i] = PyBytes_GET_SIZE(PyList_GET_ITEM(lines, i));
