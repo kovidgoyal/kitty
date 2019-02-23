@@ -24,11 +24,14 @@ def kitty_exe():
     if ans is None:
         rpath = getattr(sys, 'bundle_exe_dir', None)
         if not rpath:
-            items = frozenset(os.environ['PATH'].split(os.pathsep))
+            items = os.environ['PATH'].split(os.pathsep)
+            seen = set()
             for candidate in items:
-                if os.access(os.path.join(candidate, 'kitty'), os.X_OK):
-                    rpath = candidate
-                    break
+                if candidate not in seen:
+                    seen.add(candidate)
+                    if os.access(os.path.join(candidate, 'kitty'), os.X_OK):
+                        rpath = candidate
+                        break
             else:
                 rpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'launcher')
         ans = kitty_exe.ans = os.path.join(rpath, 'kitty')
