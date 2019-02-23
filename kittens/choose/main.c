@@ -204,6 +204,7 @@ match(PyObject *self, PyObject *args) {
     opts.delimiter_sz = copy_unicode_object(delimiter, opts.delimiter, arraysz(opts.delimiter));
     size_t num_lines = PyList_GET_SIZE(lines);
     char **clines = malloc(sizeof(char*) * num_lines);
+    if (!clines) { return PyErr_NoMemory(); }
     size_t *sizes = malloc(sizeof(size_t) * num_lines);
     if (!sizes) { return PyErr_NoMemory(); }
     for (size_t i = 0; i < num_lines; i++) {
