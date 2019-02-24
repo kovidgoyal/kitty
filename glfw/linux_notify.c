@@ -32,12 +32,14 @@ void
 notification_created(DBusMessage *msg, const char* errmsg, void *data) {
     if (errmsg) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Notify: Failed to create notification error: %s", errmsg);
+        if (data) free(data);
         return;
     }
     uint32_t notification_id;
     if (!glfw_dbus_get_args(msg, "Failed to get Notification uid", DBUS_TYPE_UINT32, &notification_id, DBUS_TYPE_INVALID)) return;
     NotificationCreatedData *ncd = (NotificationCreatedData*)data;
     if (ncd->callback) ncd->callback(ncd->next_id, notification_id, ncd->data);
+    if (data) free(data);
 }
 
 static DBusHandlerResult
@@ -76,10 +78,10 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
     uint32_t replaces_id = 0;
 
     DBusMessage *msg = dbus_message_new_method_call(NOTIFICATIONS_SERVICE, NOTIFICATIONS_PATH, NOTIFICATIONS_IFACE, "Notify");
-    if (!msg) return 0;
+    if (!msg) { free(data); return 0; }
     DBusMessageIter args, array;
     dbus_message_iter_init_append(msg, &args);
-#define OOMMSG { dbus_message_unref(msg); _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n"); return 0; }
+#define OOMMSG { free(data); data = NULL; dbus_message_unref(msg); _glfwInputError(GLFW_PLATFORM_ERROR, "%s", "Out of memory allocating DBUS message for notification\n"); return 0; }
 #define APPEND(type, val) { if (!dbus_message_iter_append_basic(&args, type, val)) OOMMSG }
     APPEND(DBUS_TYPE_STRING, &app_name)
     APPEND(DBUS_TYPE_UINT32, &replaces_id)
