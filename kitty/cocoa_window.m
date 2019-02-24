@@ -74,12 +74,12 @@ find_app_name(void) {
 
 - (void) show_preferences              : (id)sender {
     (void)sender;
-    set_cocoa_pending_action(PREFERENCES_WINDOW);
+    set_cocoa_pending_action(PREFERENCES_WINDOW, NULL);
 }
 
 - (void) new_os_window              : (id)sender {
     (void)sender;
-    set_cocoa_pending_action(NEW_OS_WINDOW);
+    set_cocoa_pending_action(NEW_OS_WINDOW, NULL);
 }
 
 
@@ -222,7 +222,7 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
             if (!isDirectory) {
                 path = [path stringByDeletingLastPathComponent];
             }
-            set_cocoa_pending_action_with_wd(type, [path UTF8String]);
+            set_cocoa_pending_action(type, [path UTF8String]);
         }
     }
 }

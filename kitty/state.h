@@ -215,8 +215,7 @@ typedef enum {
     NEW_OS_WINDOW_WITH_WD = 4,
     NEW_TAB_WITH_WD = 8
 } CocoaPendingAction;
-void set_cocoa_pending_action(CocoaPendingAction action);
-void set_cocoa_pending_action_with_wd(CocoaPendingAction action, const char *wd);
+void set_cocoa_pending_action(CocoaPendingAction action, const char*);
 bool application_quit_requested();
 void request_application_quit();
 #endif

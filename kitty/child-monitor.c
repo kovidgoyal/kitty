@@ -873,17 +873,15 @@ static unsigned int cocoa_pending_actions = 0;
 static char *cocoa_pending_actions_wd = NULL;
 
 void
-set_cocoa_pending_action(CocoaPendingAction action) {
+set_cocoa_pending_action(CocoaPendingAction action, const char *wd) {
+    if (wd) {
+        if (cocoa_pending_actions_wd) free(cocoa_pending_actions_wd);
+        cocoa_pending_actions_wd = strdup(wd);
+    }
     cocoa_pending_actions |= action;
     // The main loop may be blocking on the event queue, if e.g. unfocused.
     // Unjam it so the pending action is processed right now.
     unjam_event_loop();
-}
-
-void
-set_cocoa_pending_action_with_wd(CocoaPendingAction action, const char *wd) {
-    cocoa_pending_actions_wd = strdup(wd);
-    set_cocoa_pending_action(action);
 }
 #endif
 
@@ -922,6 +920,9 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
         has_open_windows = process_pending_closes(self);
     }
     remove_all_timers(&main_event_loop);
+#ifdef __APPLE__
+    if (cocoa_pending_actions_wd) { free(cocoa_pending_actions_wd); cocoa_pending_actions_wd = NULL; }
+#endif
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
