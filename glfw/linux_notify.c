@@ -72,6 +72,7 @@ glfw_dbus_send_user_notification(const char *app_name, const char* icon, const c
         added_signal_match = session_bus;
     }
     NotificationCreatedData *data = malloc(sizeof(NotificationCreatedData));
+    if (!data) return 0;
     data->next_id = ++notification_id;
     data->callback = callback; data->data = user_data;
     if (!data->next_id) data->next_id = ++notification_id;
