@@ -294,6 +294,18 @@ static GLFWbool initializeTIS(void)
 
 @end  // GLFWHelper
 
+@interface GLFWApplication : NSApplication
+@end
+
+extern void dispatchCustomEvent(NSEvent *event);
+
+@implementation GLFWApplication
+- (void)sendEvent:(NSEvent *)event {
+    if (event.type == NSEventTypeApplicationDefined) {
+        dispatchCustomEvent(event);
+    } else [super sendEvent:event];
+}
+@end
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
@@ -319,7 +331,7 @@ int _glfwPlatformInit(void)
                              toTarget:_glfw.ns.helper
                            withObject:nil];
 
-    [NSApplication sharedApplication];
+    [GLFWApplication sharedApplication];
 
     NSEvent* (^keydown_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {

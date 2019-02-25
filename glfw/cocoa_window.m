@@ -1752,20 +1752,19 @@ static inline CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
     return (CGDirectDisplayID)-1;
 }
 
-static inline void sendEvent(NSEvent *event) {
-    if (event.type == NSEventTypeApplicationDefined) {
-        if (event.subtype == RENDER_FRAME_REQUEST_EVENT_TYPE) {
-            CGDirectDisplayID displayID = (CGDirectDisplayID)event.data1;
-            _GLFWwindow *w = _glfw.windowListHead;
-            while (w) {
-                if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
-                    w->ns.renderFrameRequested = GLFW_FALSE;
-                    w->ns.renderFrameCallback((GLFWwindow*)w);
-                }
-                w = w->next;
+void
+dispatchCustomEvent(NSEvent *event) {
+    if (event.subtype == RENDER_FRAME_REQUEST_EVENT_TYPE) {
+        CGDirectDisplayID displayID = (CGDirectDisplayID)event.data1;
+        _GLFWwindow *w = _glfw.windowListHead;
+        while (w) {
+            if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
+                w->ns.renderFrameRequested = GLFW_FALSE;
+                w->ns.renderFrameCallback((GLFWwindow*)w);
             }
+            w = w->next;
         }
-    } else [NSApp sendEvent:event];
+    }
 }
 
 static inline void
@@ -1804,7 +1803,7 @@ void _glfwPlatformPollEvents(void)
         if (event == nil)
             break;
 
-        sendEvent(event);
+        [NSApp sendEvent:event];
     }
 
     [_glfw.ns.autoreleasePool drain];
@@ -1820,7 +1819,7 @@ void _glfwPlatformWaitEvents(void)
                                         untilDate:[NSDate distantFuture]
                                            inMode:NSDefaultRunLoopMode
                                           dequeue:YES];
-    sendEvent(event);
+    [NSApp sendEvent:event];
 
     _glfwPlatformPollEvents();
 }
@@ -1832,7 +1831,7 @@ void _glfwPlatformWaitEventsTimeout(double timeout)
                                         untilDate:date
                                            inMode:NSDefaultRunLoopMode
                                           dequeue:YES];
-    if (event) sendEvent(event);
+    if (event) [NSApp sendEvent:event];
 
     _glfwPlatformPollEvents();
 }
