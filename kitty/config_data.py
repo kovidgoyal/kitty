@@ -371,7 +371,7 @@ Use negative numbers to change scroll direction.'''))
 
 g('mouse')  # {{{
 
-o('url_color', '#0087BD', option_type=to_color, long_text=_('''
+o('url_color', '#0087bd', option_type=to_color, long_text=_('''
 The color and style for highlighting URLs on mouse-over.
 :code:`url_style` can be one of: none, single, double, curly'''))
 
@@ -693,7 +693,7 @@ def selection_foreground(x):
 
 o('selection_foreground', '#000000', option_type=selection_foreground, long_text=_('''
 The foreground for text selected with the mouse. A value of none means to leave the color unchanged.'''))
-o('selection_background', '#FFFACD', option_type=to_color, long_text=_('''
+o('selection_background', '#fffacd', option_type=to_color, long_text=_('''
 The background for text selected with the mouse.'''))
 
 g('colors.table')

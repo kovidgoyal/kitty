@@ -85,7 +85,7 @@ c('hunk_bg', '#f1f8ff')
 
 c('search_bg', '#444', long_text=_('Highlighting'))
 c('search_fg', 'white')
-c('select_bg', '#B4D5FE')
+c('select_bg', '#b4d5fe')
 c('select_fg', 'black')
 
 g('shortcuts')
