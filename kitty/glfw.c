@@ -546,7 +546,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
             OPT(cursor_blink_interval) = 0.5;
 #ifdef __APPLE__
             double cbi = cocoa_cursor_blink_interval();
-            if (cbi >= 0) OPT(cursor_blink_interval) = cbi / 2.0;
+            if (cbi >= 0) OPT(cursor_blink_interval) = cbi / 2000.0;
 #endif
         }
         is_first_window = false;
