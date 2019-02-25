@@ -10,7 +10,6 @@
 #include "screen.h"
 #include "fonts.h"
 #include "charsets.h"
-#include "timers.h"
 #include <termios.h>
 #include <unistd.h>
 #include <float.h>
@@ -769,13 +768,9 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static EventLoopData main_event_loop = {0};
-
 static inline void
 wait_for_events() {
-    maximum_wait = prepare_for_poll(&main_event_loop, maximum_wait);
     event_loop_wait(maximum_wait);
-    dispatch_timers(&main_event_loop);
     maximum_wait = -1;
 }
 
@@ -797,9 +792,9 @@ static PyObject*
 add_python_timer(PyObject *self UNUSED, PyObject *args) {
     PyObject *callback;
     double interval;
-    const char *name;
-    if (!PyArg_ParseTuple(args, "sOd", &name, &callback, &interval)) return NULL;
-    unsigned long long timer_id = add_timer(&main_event_loop, name, interval, 1, python_timer_callback, callback, python_timer_cleanup);
+    int repeats = 1;
+    if (!PyArg_ParseTuple(args, "Od|p", &callback, &interval, &repeats)) return NULL;
+    unsigned long long timer_id = add_main_loop_timer(interval, repeats ? true: false, python_timer_callback, callback, python_timer_cleanup);
     Py_INCREF(callback);
     return Py_BuildValue("K", timer_id);
 }
@@ -808,16 +803,7 @@ static PyObject*
 remove_python_timer(PyObject *self UNUSED, PyObject *args) {
     unsigned long long timer_id;
     if (!PyArg_ParseTuple(args, "K", &timer_id)) return NULL;
-    remove_timer(&main_event_loop, timer_id);
-    Py_RETURN_NONE;
-}
-
-static PyObject*
-change_python_timer_interval(PyObject *self UNUSED, PyObject *args) {
-    unsigned long long timer_id;
-    double interval;
-    if (!PyArg_ParseTuple(args, "Kd", &timer_id, &interval)) return NULL;
-    change_timer_interval(&main_event_loop, timer_id, interval);
+    remove_main_loop_timer(timer_id);
     Py_RETURN_NONE;
 }
 
@@ -919,7 +905,6 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
         report_reaped_pids();
         has_open_windows = process_pending_closes(self);
     }
-    remove_all_timers(&main_event_loop);
 #ifdef __APPLE__
     if (cocoa_pending_actions_wd) { free(cocoa_pending_actions_wd); cocoa_pending_actions_wd = NULL; }
 #endif
@@ -1528,7 +1513,6 @@ static PyMethodDef module_methods[] = {
     METHODB(safe_pipe, METH_NOARGS),
     {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
     {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
-    {"change_timer_interval", (PyCFunction)change_python_timer_interval, METH_VARARGS, ""},
     METHODB(monitor_pid, METH_VARARGS),
     {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */

@@ -122,4 +122,4 @@ def update_check(timer_id=None):
 
 def run_update_check(interval=24 * 60 * 60):
     if update_check():
-        add_timer('update_check', update_check, interval)
+        add_timer(update_check, interval)
