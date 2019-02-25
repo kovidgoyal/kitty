@@ -398,9 +398,9 @@ calc_cell_metrics(FontGroup *fg) {
     if (OPT(adjust_line_height_frac) != 0.f) ch *= OPT(adjust_line_height_frac);
     if (OPT(adjust_column_width_px != 0)) cw += OPT(adjust_column_width_px);
     if (OPT(adjust_column_width_frac) != 0.f) cw *= OPT(adjust_column_width_frac);
-    if (cw >= 2 && cw < 1000) cell_width = cw;
+    if (cw >= 2 && cw <= 1000) cell_width = cw;
     else log_error("Cell width invalid after adjustment, ignoring adjust_column_width");
-    if (ch >= 4 && ch < 1000) cell_height = ch;
+    if (ch >= 4 && ch <= 1000) cell_height = ch;
     else log_error("Cell height invalid after adjustment, ignoring adjust_line_height");
     int line_height_adjustment = cell_height - before_cell_height;
     if (cell_height < 4) fatal("Line height too small after adjustment");
