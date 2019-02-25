@@ -599,6 +599,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
             warned = true;
         }
     }
+    // blank the window once so that there is no initial flash of color
+    // changing, in case the background color is not black
+    blank_os_window(w);
+    swap_window_buffers(w);
     return PyLong_FromUnsignedLongLong(w->id);
 }
 
