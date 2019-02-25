@@ -66,6 +66,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix :opt:`sync_to_monitor` not working on Mojave.
 
+- macOS: Use the system cursor blink interval by default
+  :opt:`cursor_blink_interval`.
+
+
 0.13.3 [2019-01-19]
 ------------------------------
 

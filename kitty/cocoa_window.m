@@ -427,6 +427,21 @@ cocoa_get_lang(PyObject UNUSED *self) {
     return Py_BuildValue("s", [locale UTF8String]);
 }
 
+double
+cocoa_cursor_blink_interval(void) {
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    double on_period_ms = [defaults doubleForKey:@"NSTextInsertionPointBlinkPeriodOn"];
+    double off_period_ms = [defaults doubleForKey:@"NSTextInsertionPointBlinkPeriodOff"];
+    double period_ms = [defaults doubleForKey:@"NSTextInsertionPointBlinkPeriod"];
+    double max_value = 60 * 1000.0, ans = -1.0;
+    if (on_period_ms || off_period_ms) {
+        ans = on_period_ms + off_period_ms;
+    } else if (period_ms) {
+        ans = period_ms;
+    }
+    return ans > max_value ? 0.0 : ans;
+}
+
 void
 cocoa_set_hide_from_tasks(void) {
     [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];

@@ -16,6 +16,7 @@ extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
+extern double cocoa_cursor_blink_interval(void);
 
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -541,6 +542,13 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     CC(standard, IBEAM); CC(click, HAND); CC(arrow, ARROW);
 #undef CC
         if (OPT(click_interval) < 0) OPT(click_interval) = glfwGetDoubleClickInterval(glfw_window);
+        if (OPT(cursor_blink_interval) < 0) {
+            OPT(cursor_blink_interval) = 0.5;
+#ifdef __APPLE__
+            double cbi = cocoa_cursor_blink_interval();
+            if (cbi >= 0) OPT(cursor_blink_interval) = cbi / 2.0;
+#endif
+        }
         is_first_window = false;
     }
     OSWindow *w = add_os_window();
