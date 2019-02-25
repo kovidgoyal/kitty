@@ -221,3 +221,6 @@ bool application_quit_requested();
 void request_application_quit();
 #endif
 void request_frame_render(OSWindow *w);
+typedef void (* timer_callback_fun)(id_type, void*);
+id_type add_main_loop_timer(double interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback);
+void remove_main_loop_timer(id_type timer_id);

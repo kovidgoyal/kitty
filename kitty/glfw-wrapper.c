@@ -17,6 +17,18 @@ load_glfw(const char* path) {
     *(void **) (&glfwInit_impl) = dlsym(handle, "glfwInit");
     if (glfwInit_impl == NULL) fail("Failed to load glfw function glfwInit with error: %s", dlerror());
 
+    *(void **) (&glfwRunMainLoop_impl) = dlsym(handle, "glfwRunMainLoop");
+    if (glfwRunMainLoop_impl == NULL) fail("Failed to load glfw function glfwRunMainLoop with error: %s", dlerror());
+
+    *(void **) (&glfwStopMainLoop_impl) = dlsym(handle, "glfwStopMainLoop");
+    if (glfwStopMainLoop_impl == NULL) fail("Failed to load glfw function glfwStopMainLoop with error: %s", dlerror());
+
+    *(void **) (&glfwAddTimer_impl) = dlsym(handle, "glfwAddTimer");
+    if (glfwAddTimer_impl == NULL) fail("Failed to load glfw function glfwAddTimer with error: %s", dlerror());
+
+    *(void **) (&glfwRemoveTimer_impl) = dlsym(handle, "glfwRemoveTimer");
+    if (glfwRemoveTimer_impl == NULL) fail("Failed to load glfw function glfwRemoveTimer with error: %s", dlerror());
+
     *(void **) (&glfwTerminate_impl) = dlsym(handle, "glfwTerminate");
     if (glfwTerminate_impl == NULL) fail("Failed to load glfw function glfwTerminate with error: %s", dlerror());
 

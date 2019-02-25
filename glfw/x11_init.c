@@ -675,6 +675,7 @@ int _glfwPlatformInit(void)
 
 void _glfwPlatformTerminate(void)
 {
+    removeAllTimers(&_glfw.x11.eventLoopData);
     if (_glfw.x11.helperWindowHandle)
     {
         if (XGetSelectionOwner(_glfw.x11.display, _glfw.x11.CLIPBOARD) ==
@@ -767,4 +768,28 @@ const char* _glfwPlatformGetVersionString(void)
         " shared"
 #endif
         ;
+}
+
+static GLFWbool keep_going;
+
+void _glfwPlatformStopMainLoop(void) {
+    if (keep_going) {
+        keep_going = GLFW_FALSE;
+        _glfwPlatformPostEmptyEvent();
+    }
+}
+
+void _glfwPlatformRunMainLoop(void) {
+    keep_going = GLFW_TRUE;
+    while(keep_going) {
+        _glfwPlatformWaitEvents();
+    }
+}
+
+unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuserdatafreefun callback, void *callback_data, GLFWuserdatafreefun free_callback) {
+    return addTimer(&_glfw.x11.eventLoopData, "user timer", interval, 1, repeats, callback, callback_data, free_callback);
+}
+
+void _glfwRemoveTimer(unsigned long long timer_id) {
+    removeTimer(&_glfw.x11.eventLoopData, timer_id);
 }

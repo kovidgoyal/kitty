@@ -1509,6 +1509,8 @@ typedef void (* GLFWmonitorfun)(GLFWmonitor*,int);
  */
 typedef void (* GLFWjoystickfun)(int,int);
 
+typedef void (* GLFWuserdatafun)(unsigned long long, void*);
+
 /*! @brief Video mode type.
  *
  *  This describes a single video mode.
@@ -1655,6 +1657,10 @@ typedef struct GLFWgamepadstate
  *  @ingroup init
  */
 GLFWAPI int glfwInit(void);
+GLFWAPI void glfwRunMainLoop(void);
+GLFWAPI void glfwStopMainLoop(void);
+GLFWAPI unsigned long long glfwAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void * callback_data, GLFWuserdatafun free_callback);
+GLFWAPI void glfwRemoveTimer(unsigned long long);
 
 /*! @brief Terminates the GLFW library.
  *

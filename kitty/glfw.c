@@ -1113,6 +1113,16 @@ dbus_send_notification(PyObject *self UNUSED, PyObject *args) {
 }
 #endif
 
+id_type
+add_main_loop_timer(double interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback) {
+    return glfwAddTimer(interval, repeats, callback, callback_data, free_callback);
+}
+
+void
+remove_main_loop_timer(id_type timer_id) {
+    glfwRemoveTimer(timer_id);
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {

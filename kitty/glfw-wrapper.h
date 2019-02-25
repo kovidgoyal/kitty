@@ -1266,6 +1266,8 @@ typedef void (* GLFWmonitorfun)(GLFWmonitor*,int);
  */
 typedef void (* GLFWjoystickfun)(int,int);
 
+typedef void (* GLFWuserdatafun)(unsigned long long, void*);
+
 /*! @brief Video mode type.
  *
  *  This describes a single video mode.
@@ -1423,6 +1425,22 @@ typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, const char*);
 typedef int (*glfwInit_func)();
 glfwInit_func glfwInit_impl;
 #define glfwInit glfwInit_impl
+
+typedef void (*glfwRunMainLoop_func)();
+glfwRunMainLoop_func glfwRunMainLoop_impl;
+#define glfwRunMainLoop glfwRunMainLoop_impl
+
+typedef void (*glfwStopMainLoop_func)();
+glfwStopMainLoop_func glfwStopMainLoop_impl;
+#define glfwStopMainLoop glfwStopMainLoop_impl
+
+typedef unsigned long long (*glfwAddTimer_func)(double, bool, GLFWuserdatafun, void *, GLFWuserdatafun);
+glfwAddTimer_func glfwAddTimer_impl;
+#define glfwAddTimer glfwAddTimer_impl
+
+typedef void (*glfwRemoveTimer_func)(unsigned long);
+glfwRemoveTimer_func glfwRemoveTimer_impl;
+#define glfwRemoveTimer glfwRemoveTimer_impl
 
 typedef void (*glfwTerminate_func)();
 glfwTerminate_func glfwTerminate_impl;

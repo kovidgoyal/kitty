@@ -55,6 +55,7 @@ addWatch(EventLoopData *eld, const char* name, int fd, int events, int enabled, 
     w->fd = fd; w->events = events; w->enabled = enabled;
     w->callback = cb;
     w->callback_data = cb_data;
+    w->free = NULL;
     w->id = ++watch_counter;
     update_fds(eld);
     return w->id;
@@ -65,6 +66,10 @@ addWatch(EventLoopData *eld, const char* name, int fd, int events, int enabled, 
         if (eld->which[i].id == item_id) { \
             eld->which##_count--; \
             if (i < eld->which##_count) { \
+                if (eld->which[i].callback_data && eld->which[i].free) { \
+                    eld->which[i].free(eld->which[i].id, eld->which[i].callback_data); \
+                    eld->which[i].callback_data = NULL; eld->which[i].free = NULL; \
+                } \
                 memmove(eld->which + i, eld->which + i + 1, sizeof(eld->which[0]) * (eld->which##_count - i)); \
             } \
             update_func(eld); break; \
@@ -102,7 +107,7 @@ update_timers(EventLoopData *eld) {
 }
 
 id_type
-addTimer(EventLoopData *eld, const char *name, double interval, int enabled, timer_callback_func cb, void *cb_data) {
+addTimer(EventLoopData *eld, const char *name, double interval, int enabled, bool repeats, timer_callback_func cb, void *cb_data, GLFWuserdatafreefun free) {
     if (eld->timers_count >= sizeof(eld->timers)/sizeof(eld->timers[0])) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Too many timers added");
         return 0;
@@ -111,8 +116,10 @@ addTimer(EventLoopData *eld, const char *name, double interval, int enabled, tim
     t->interval = interval;
     t->name = name;
     t->trigger_at = enabled ? monotonic() + interval : DBL_MAX;
+    t->repeats = repeats;
     t->callback = cb;
     t->callback_data = cb_data;
+    t->free = free;
     t->id = ++timer_counter;
     update_timers(eld);
     return t->id;
@@ -121,6 +128,14 @@ addTimer(EventLoopData *eld, const char *name, double interval, int enabled, tim
 void
 removeTimer(EventLoopData *eld, id_type timer_id) {
     removeX(timers, timer_id, update_timers);
+}
+
+void
+removeAllTimers(EventLoopData *eld) {
+    for (nfds_t i = 0; i < eld->timers_count; i++) {
+        if (eld->timers[i].free && eld->timers[i].callback_data) eld->timers[i].free(eld->timers[i].id, eld->timers[i].callback_data);
+    }
+    eld->timers_count = 0;
 }
 
 void
@@ -182,7 +197,7 @@ dispatchEvents(EventLoopData *eld) {
 unsigned
 dispatchTimers(EventLoopData *eld) {
     if (!eld->timers_count || eld->timers[0].trigger_at == DBL_MAX) return 0;
-    static struct { timer_callback_func func; id_type id; void* data; } dispatches[sizeof(eld->timers)/sizeof(eld->timers[0])];
+    static struct { timer_callback_func func; id_type id; void* data; bool repeats; } dispatches[sizeof(eld->timers)/sizeof(eld->timers[0])];
     unsigned num_dispatches = 0;
     double now = monotonic();
     for (nfds_t i = 0; i < eld->timers_count && eld->timers[i].trigger_at <= now; i++) {
@@ -190,11 +205,15 @@ dispatchTimers(EventLoopData *eld) {
         dispatches[num_dispatches].func = eld->timers[i].callback;
         dispatches[num_dispatches].id = eld->timers[i].id;
         dispatches[num_dispatches].data = eld->timers[i].callback_data;
+        dispatches[num_dispatches].repeats = eld->timers[i].repeats;
         num_dispatches++;
     }
     // we dispatch separately so that the callbacks can modify timers
     for (unsigned i = 0; i < num_dispatches; i++) {
         dispatches[i].func(dispatches[i].id, dispatches[i].data);
+        if (!dispatches[i].repeats) {
+            removeTimer(eld, dispatches[i].id);
+        }
     }
     if (num_dispatches) update_timers(eld);
     return num_dispatches;

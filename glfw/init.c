@@ -320,3 +320,23 @@ GLFWAPI GLFWerrorfun glfwSetErrorCallback(GLFWerrorfun cbfun)
     _GLFW_SWAP_POINTERS(_glfwErrorCallback, cbfun);
     return cbfun;
 }
+
+
+GLFWAPI void glfwRunMainLoop(void)
+{
+    _GLFW_REQUIRE_INIT();
+    _glfwPlatformRunMainLoop();
+}
+
+GLFWAPI void glfwStopMainLoop(void) {
+    _GLFW_REQUIRE_INIT();
+    _glfwPlatformStopMainLoop();
+}
+
+GLFWAPI unsigned long long glfwAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback) {
+    return _glfwPlatformAddTimer(interval, repeats, callback, callback_data, free_callback);
+}
+
+GLFWAPI void glfwRemoveTimer(unsigned long long timer_id) {
+    _glfwPlatformRemoveTimer(timer_id);
+}
