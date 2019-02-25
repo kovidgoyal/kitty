@@ -533,6 +533,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         cocoa_create_global_menu();
         // This needs to be done only after the first window has been created, because glfw only sets the activation policy once upon initialization.
         if (OPT(macos_hide_from_tasks)) cocoa_set_hide_from_tasks();
+#else
+        glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
 #define CC(dest, shape) {\
     if (!dest##_cursor) { \
@@ -566,8 +568,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
     glfwSetCocoaToggleFullscreenIntercept(glfw_window, intercept_cocoa_fullscreen);
-#else
-    glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
     send_prerendered_sprites_for_window(w);
     if (logo.pixels && logo.width && logo.height) glfwSetWindowIcon(glfw_window, 1, &logo);
