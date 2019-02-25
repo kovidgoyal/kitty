@@ -403,6 +403,8 @@ calc_cell_metrics(FontGroup *fg) {
     if (ch >= 4 && ch <= 1000) cell_height = ch;
     else log_error("Cell height invalid after adjustment, ignoring adjust_line_height");
     int line_height_adjustment = cell_height - before_cell_height;
+    if (cell_width < 2) fatal("Cell width too small after adjustment");
+    if (cell_width > 1000) fatal("Cell width too large after adjustment");
     if (cell_height < 4) fatal("Line height too small after adjustment");
     if (cell_height > 1000) fatal("Line height too large after adjustment");
     underline_position = MIN(cell_height - 1, underline_position);
