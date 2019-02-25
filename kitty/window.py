@@ -55,7 +55,7 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def load_shader_programs(semi_transparent=0):
+def load_shader_programs(semi_transparent=False):
     compile_program(BLIT_PROGRAM, *load_shaders('blit'))
     v, f = load_shaders('cell')
 

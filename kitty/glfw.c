@@ -115,6 +115,11 @@ show_mouse_cursor(GLFWwindow *w) {
 
 static int min_width = 100, min_height = 100;
 
+void
+blank_os_window(OSWindow *w) {
+    blank_canvas(w->is_semi_transparent ? w->background_opacity : 1.0f);
+}
+
 static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
@@ -516,6 +521,15 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window);
     glfwDestroyWindow(temp_window); temp_window = NULL;
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
+    glfwMakeContextCurrent(glfw_window);
+    if (is_first_window) {
+        gl_init();
+    }
+    bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
+    // blank the window once so that there is no initial flash of color
+    // changing, in case the background color is not black
+    blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f);
+    glfwSwapBuffers(glfw_window);
     if (!global_state.is_wayland) {
         PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
         if (pret == NULL) return NULL;
@@ -523,10 +537,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
         glfwShowWindow(glfw_window);
     }
-    glfwMakeContextCurrent(glfw_window);
     if (is_first_window) {
-        gl_init();
-        PyObject *ret = PyObject_CallFunction(load_programs, "i", glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER));
+        PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
 #ifdef __APPLE__
@@ -591,7 +603,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     w->is_focused = true;
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
-    w->is_semi_transparent = glfwGetWindowAttrib(w->handle, GLFW_TRANSPARENT_FRAMEBUFFER);
+    w->is_semi_transparent = is_semi_transparent;
     if (want_semi_transparent && !w->is_semi_transparent) {
         static bool warned = false;
         if (!warned) {
@@ -599,10 +611,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
             warned = true;
         }
     }
-    // blank the window once so that there is no initial flash of color
-    // changing, in case the background color is not black
-    blank_os_window(w);
-    swap_window_buffers(w);
     return PyLong_FromUnsignedLongLong(w->id);
 }
 
