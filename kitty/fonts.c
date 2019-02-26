@@ -406,10 +406,10 @@ calc_cell_metrics(FontGroup *fg) {
     if (ch >= MIN_HEIGHT && ch <= MAX_DIM) cell_height = ch;
     else log_error("Cell height invalid after adjustment, ignoring adjust_line_height");
     int line_height_adjustment = cell_height - before_cell_height;
-    if (cell_height < MIN_HEIGHT) fatal("Line height too small");
-    if (cell_height > MAX_DIM) fatal("Line height too large");
-    if (cell_width < MIN_WIDTH) fatal("Cell width too small");
-    if (cell_width > MAX_DIM) fatal("Cell width too large");
+    if (cell_height < MIN_HEIGHT) fatal("Line height too small: %u", cell_height);
+    if (cell_height > MAX_DIM) fatal("Line height too large: %u", cell_height);
+    if (cell_width < MIN_WIDTH) fatal("Cell width too small: %u", cell_width);
+    if (cell_width > MAX_DIM) fatal("Cell width too large: %u", cell_width);
 #undef MIN_WIDTH
 #undef MIN_HEIGHT
 #undef MAX_DIM
