@@ -733,7 +733,7 @@ dbus_user_notification_activated(uint32_t notification_id, const char* action) {
 }
 #endif
 
-PyObject*
+static PyObject*
 glfw_init(PyObject UNUSED *self, PyObject *args) {
     const char* path;
     int debug_keyboard = 0;
@@ -765,19 +765,13 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     return ans;
 }
 
-PyObject*
+static PyObject*
 glfw_terminate(PYNOARG) {
     glfwTerminate();
     Py_RETURN_NONE;
 }
 
-PyObject*
-glfw_post_empty_event(PYNOARG) {
-    glfwPostEmptyEvent();
-    Py_RETURN_NONE;
-}
-
-PyObject*
+static PyObject*
 glfw_poll_events(PYNOARG) {
     glfwPollEvents();
     Py_RETURN_NONE;
@@ -795,21 +789,21 @@ get_physical_dpi(GLFWmonitor *m) {
     return Py_BuildValue("ff", dpix, dpiy);
 }
 
-PyObject*
+static PyObject*
 glfw_get_physical_dpi(PYNOARG) {
     GLFWmonitor *m = glfwGetPrimaryMonitor();
     if (m == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get primary monitor"); return NULL; }
     return get_physical_dpi(m);
 }
 
-PyObject*
+static PyObject*
 glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
     int key, scancode;
     if (!PyArg_ParseTuple(args, "ii", &key, &scancode)) return NULL;
     return Py_BuildValue("s", glfwGetKeyName(key, scancode));
 }
 
-PyObject*
+static PyObject*
 glfw_window_hint(PyObject UNUSED *self, PyObject *args) {
     int key, val;
     if (!PyArg_ParseTuple(args, "ii", &key, &val)) return NULL;
@@ -1182,7 +1176,6 @@ static PyMethodDef module_methods[] = {
 #endif
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
-    {"glfw_post_empty_event", (PyCFunction)glfw_post_empty_event, METH_NOARGS, ""},
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""},
     {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""},

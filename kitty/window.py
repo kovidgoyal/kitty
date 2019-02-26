@@ -19,7 +19,7 @@ from .fast_data_types import (
     CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM, GRAPHICS_PREMULT_PROGRAM,
     GRAPHICS_PROGRAM, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     STRIKETHROUGH, Screen, add_window, cell_size_for_window, compile_program,
-    get_clipboard_string, glfw_post_empty_event, init_cell_program,
+    get_clipboard_string, init_cell_program,
     set_clipboard_string, set_titlebar_color, set_window_render_data,
     update_window_title, update_window_visibility, viewport_for_window
 )
@@ -267,7 +267,6 @@ class Window:
         t = self.tabref()
         if t is not None:
             t.title_changed(self)
-        glfw_post_empty_event()
 
     def set_title(self, title):
         if title:
@@ -361,7 +360,6 @@ class Window:
             code += 1
         if color_changes:
             self.change_colors(color_changes)
-            glfw_post_empty_event()
 
     def set_color_table_color(self, code, value):
         cp = self.screen.color_profile

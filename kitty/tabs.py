@@ -10,7 +10,7 @@ from .borders import Borders
 from .child import Child
 from .constants import appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
-    add_tab, glfw_post_empty_event, mark_tab_bar_dirty, next_window_id,
+    add_tab, mark_tab_bar_dirty, next_window_id,
     pt_to_px, remove_tab, remove_window, ring_bell, set_active_tab, swap_tabs,
     x11_window_id
 )
@@ -244,7 +244,6 @@ class Tab:  # {{{
         get_boss().add_child(window)
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
         self.relayout_borders()
-        glfw_post_empty_event()
         return window
 
     def new_special_window(self, special_window):
@@ -258,13 +257,11 @@ class Tab:  # {{{
         self.active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
         remove_window(self.os_window_id, self.id, window.id)
         self.relayout_borders()
-        glfw_post_empty_event()
 
     def set_active_window_idx(self, idx):
         if idx != self.active_window_idx:
             self.active_window_idx = self.current_layout.set_active_window(self.windows, idx)
             self.relayout_borders()
-            glfw_post_empty_event()
 
     def set_active_window(self, window):
         try:
@@ -293,13 +290,11 @@ class Tab:  # {{{
             else:
                 self.active_window_idx = self.current_layout.nth_window(self.windows, num)
             self.relayout_borders()
-            glfw_post_empty_event()
 
     def _next_window(self, delta=1):
         if len(self.windows) > 1:
             self.active_window_idx = self.current_layout.next_window(self.windows, self.active_window_idx, delta)
             self.relayout_borders()
-            glfw_post_empty_event()
 
     def next_window(self):
         self._next_window()
@@ -315,12 +310,10 @@ class Tab:  # {{{
         if candidates:
             self.active_window_idx = self.current_layout.set_active_window(self.windows, candidates[0])
             self.relayout_borders()
-            glfw_post_empty_event()
 
     def move_window(self, delta=1):
         self.active_window_idx = self.current_layout.move_window(self.windows, self.active_window_idx, delta)
         self.relayout()
-        glfw_post_empty_event()
 
     def move_window_to_top(self):
         self.move_window(-self.active_window_idx)
@@ -434,7 +427,6 @@ class TabManager:  # {{{
         if not self.tab_bar_hidden:
             self.tab_bar.layout()
             self.resize(only_tabs=True)
-            glfw_post_empty_event()
 
     def mark_tab_bar_dirty(self):
         if self.tab_bar_should_be_visible and not self.tab_bar_hidden:
