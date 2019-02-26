@@ -398,13 +398,21 @@ calc_cell_metrics(FontGroup *fg) {
     if (OPT(adjust_line_height_frac) != 0.f) ch *= OPT(adjust_line_height_frac);
     if (OPT(adjust_column_width_px != 0)) cw += OPT(adjust_column_width_px);
     if (OPT(adjust_column_width_frac) != 0.f) cw *= OPT(adjust_column_width_frac);
-    if (cw >= 2 && cw <= 1000) cell_width = cw;
+#define MAX_DIM 1000
+#define MIN_WIDTH 2
+#define MIN_HEIGHT 4
+    if (cw >= MIN_WIDTH && cw <= MAX_DIM) cell_width = cw;
     else log_error("Cell width invalid after adjustment, ignoring adjust_column_width");
-    if (ch >= 4 && ch <= 1000) cell_height = ch;
+    if (ch >= MIN_HEIGHT && ch <= MAX_DIM) cell_height = ch;
     else log_error("Cell height invalid after adjustment, ignoring adjust_line_height");
     int line_height_adjustment = cell_height - before_cell_height;
-    if (cell_height < 4) fatal("Line height too small after adjustment");
-    if (cell_height > 1000) fatal("Line height too large after adjustment");
+    if (cell_height < MIN_HEIGHT) fatal("Line height too small");
+    if (cell_height > MAX_DIM) fatal("Line height too large");
+    if (cell_width < MIN_WIDTH) fatal("Cell width too small");
+    if (cell_width > MAX_DIM) fatal("Cell width too large");
+#undef MIN_WIDTH
+#undef MIN_HEIGHT
+#undef MAX_DIM
     underline_position = MIN(cell_height - 1, underline_position);
     // ensure there is at least a couple of pixels available to render styled underlines
     while (underline_position > baseline + 1 && cell_height - underline_position < 2) underline_position--;
