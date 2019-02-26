@@ -322,10 +322,14 @@ GLFWAPI GLFWerrorfun glfwSetErrorCallback(GLFWerrorfun cbfun)
 }
 
 
-GLFWAPI void glfwRunMainLoop(void)
+GLFWAPI void glfwRunMainLoop(GLFWtickcallback callback, void *data)
 {
     _GLFW_REQUIRE_INIT();
-    _glfwPlatformRunMainLoop();
+    _glfwPlatformRunMainLoop(callback, data);
+}
+
+GLFWAPI void glfwRequestTickCallback(void) {
+    _glfwPlatformRequestTickCallback();
 }
 
 GLFWAPI void glfwStopMainLoop(void) {
@@ -333,7 +337,10 @@ GLFWAPI void glfwStopMainLoop(void) {
     _glfwPlatformStopMainLoop();
 }
 
-GLFWAPI unsigned long long glfwAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback) {
+GLFWAPI unsigned long long glfwAddTimer(
+        double interval, bool repeats, GLFWuserdatafun callback,
+        void *callback_data, GLFWuserdatafun free_callback)
+{
     return _glfwPlatformAddTimer(interval, repeats, callback, callback_data, free_callback);
 }
 

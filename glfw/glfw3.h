@@ -1510,6 +1510,7 @@ typedef void (* GLFWmonitorfun)(GLFWmonitor*,int);
 typedef void (* GLFWjoystickfun)(int,int);
 
 typedef void (* GLFWuserdatafun)(unsigned long long, void*);
+typedef void (* GLFWtickcallback)(void*);
 
 /*! @brief Video mode type.
  *
@@ -1657,8 +1658,9 @@ typedef struct GLFWgamepadstate
  *  @ingroup init
  */
 GLFWAPI int glfwInit(void);
-GLFWAPI void glfwRunMainLoop(void);
+GLFWAPI void glfwRunMainLoop(GLFWtickcallback callback, void *callback_data);
 GLFWAPI void glfwStopMainLoop(void);
+GLFWAPI void glfwRequestTickCallback(void);
 GLFWAPI unsigned long long glfwAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void * callback_data, GLFWuserdatafun free_callback);
 GLFWAPI void glfwRemoveTimer(unsigned long long);
 

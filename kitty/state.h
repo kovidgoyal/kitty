@@ -222,5 +222,9 @@ void request_application_quit();
 #endif
 void request_frame_render(OSWindow *w);
 typedef void (* timer_callback_fun)(id_type, void*);
+typedef void (* tick_callback_fun)(void*);
 id_type add_main_loop_timer(double interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback);
 void remove_main_loop_timer(id_type timer_id);
+void run_main_loop(tick_callback_fun, void*);
+void request_tick_callback(void);
+void stop_main_loop(void);

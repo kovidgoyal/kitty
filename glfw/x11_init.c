@@ -770,7 +770,11 @@ const char* _glfwPlatformGetVersionString(void)
         ;
 }
 
-static GLFWbool keep_going;
+static GLFWbool keep_going = GLFW_FALSE, tick_callback_requested = GLFW_FALSE;
+
+void _glfwPlatformRequestTickCallback() {
+    tick_callback_requested = GLFW_TRUE;
+}
 
 void _glfwPlatformStopMainLoop(void) {
     if (keep_going) {
@@ -779,9 +783,14 @@ void _glfwPlatformStopMainLoop(void) {
     }
 }
 
-void _glfwPlatformRunMainLoop(void) {
+void _glfwPlatformRunMainLoop(GLFWtickcallback callback, void* data) {
     keep_going = GLFW_TRUE;
+    tick_callback_requested = GLFW_FALSE;
     while(keep_going) {
+        if (tick_callback_requested) {
+            tick_callback_requested = GLFW_FALSE;
+            callback(data);
+        }
         _glfwPlatformWaitEvents();
     }
 }

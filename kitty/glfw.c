@@ -1123,6 +1123,21 @@ remove_main_loop_timer(id_type timer_id) {
     glfwRemoveTimer(timer_id);
 }
 
+void
+run_main_loop(tick_callback_fun cb, void* cb_data) {
+    glfwRunMainLoop(cb, cb_data);
+}
+
+void
+request_tick_callback(void) {
+    glfwRequestTickCallback();
+}
+
+void
+stop_main_loop(void) {
+    glfwStopMainLoop();
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
