@@ -114,6 +114,7 @@ class TestParser(BaseTest):
         pb('\033[20;4h', ('screen_set_mode', 20, 0), ('screen_set_mode', 4, 0))
         pb('\033[?1000;1004h', ('screen_set_mode', 1000, 1), ('screen_set_mode', 1004, 1))
         pb('\033[20;4;20l', ('screen_reset_mode', 20, 0), ('screen_reset_mode', 4, 0), ('screen_reset_mode', 20, 0))
+        pb('\033[=c', ('report_device_attributes', 0, 61))
         s.reset()
 
         def sgr(params):
