@@ -787,7 +787,7 @@ void _glfwPlatformRunMainLoop(GLFWtickcallback callback, void* data) {
     keep_going = GLFW_TRUE;
     tick_callback_requested = GLFW_FALSE;
     while(keep_going) {
-        if (tick_callback_requested) {
+        while (tick_callback_requested) {
             tick_callback_requested = GLFW_FALSE;
             callback(data);
         }
@@ -799,6 +799,6 @@ unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuser
     return addTimer(&_glfw.x11.eventLoopData, "user timer", interval, 1, repeats, callback, callback_data, free_callback);
 }
 
-void _glfwRemoveTimer(unsigned long long timer_id) {
+void _glfwPlatformRemoveTimer(unsigned long long timer_id) {
     removeTimer(&_glfw.x11.eventLoopData, timer_id);
 }
