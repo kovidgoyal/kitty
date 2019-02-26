@@ -854,3 +854,6 @@ const char* _glfwPlatformGetVersionString(void)
 #endif
         ;
 }
+
+#define GLFW_LOOP_BACKEND wl
+#include "main_loop.h"

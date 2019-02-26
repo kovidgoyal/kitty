@@ -65,7 +65,8 @@
       "osmesa_context.h",
       "linux_joystick.h",
       "null_joystick.h",
-      "linux_notify.h"
+      "linux_notify.h",
+      "main_loop.h"
     ],
     "protocols": [
       "stable/xdg-shell/xdg-shell.xml",
@@ -131,7 +132,8 @@
       "osmesa_context.h",
       "linux_joystick.h",
       "null_joystick.h",
-      "linux_notify.h"
+      "linux_notify.h",
+      "main_loop.h"
     ],
     "sources": [
       "x11_init.c",
