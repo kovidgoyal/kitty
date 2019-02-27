@@ -344,6 +344,10 @@ GLFWAPI unsigned long long glfwAddTimer(
     return _glfwPlatformAddTimer(interval, repeats, callback, callback_data, free_callback);
 }
 
+GLFWAPI void glfwUpdateTimer(unsigned long long timer_id, double interval, bool enabled) {
+    _glfwPlatformUpdateTimer(timer_id, interval, enabled);
+}
+
 GLFWAPI void glfwRemoveTimer(unsigned long long timer_id) {
     _glfwPlatformRemoveTimer(timer_id);
 }

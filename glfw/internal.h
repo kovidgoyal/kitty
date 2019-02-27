@@ -787,6 +787,7 @@ void _glfwPlatformRunMainLoop(GLFWtickcallback, void*);
 void _glfwPlatformRequestTickCallback();
 void _glfwPlatformStopMainLoop(void);
 unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuserdatafreefun callback, void *callback_data, GLFWuserdatafreefun free_callback);
+void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, GLFWbool enabled);
 void _glfwPlatformRemoveTimer(unsigned long long timer_id);
 
 char* _glfw_strdup(const char* source);

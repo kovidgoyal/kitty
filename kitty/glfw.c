@@ -1131,6 +1131,11 @@ add_main_loop_timer(double interval, bool repeats, timer_callback_fun callback, 
 }
 
 void
+update_main_loop_timer(id_type timer_id, double interval, bool enabled) {
+    glfwUpdateTimer(timer_id, interval, enabled);
+}
+
+void
 remove_main_loop_timer(id_type timer_id) {
     glfwRemoveTimer(timer_id);
 }

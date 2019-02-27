@@ -865,7 +865,6 @@ set_cocoa_pending_action(CocoaPendingAction action, const char *wd) {
 }
 #endif
 
-static id_type state_check_timer = 0;
 static void process_global_state(void *data);
 
 static void
@@ -874,20 +873,13 @@ do_state_check(id_type timer_id UNUSED, void *data) {
     process_global_state(self);
 }
 
-static void
-request_global_state_check_in(double seconds, ChildMonitor *self) {
-    if (state_check_timer) remove_main_loop_timer(state_check_timer);
-    state_check_timer = add_main_loop_timer(seconds, false, do_state_check, self, NULL);
-}
+static id_type state_check_timer = 0;
 
 static void
 process_global_state(void *data) {
     ChildMonitor *self = data;
-    if (state_check_timer) {
-        remove_main_loop_timer(state_check_timer);
-        state_check_timer = 0;
-    }
     maximum_wait = -1;
+    bool state_check_timer_enabled = false;
 
     double now = monotonic();
     if (global_state.has_pending_resizes) process_pending_resizes(now);
@@ -918,16 +910,18 @@ process_global_state(void *data) {
     if (has_open_windows) {
         if (maximum_wait >= 0) {
             if (maximum_wait == 0) request_tick_callback();
-            else request_global_state_check_in(maximum_wait, self);
+            else state_check_timer_enabled = true;
         }
     } else {
         stop_main_loop();
     }
+    update_main_loop_timer(state_check_timer, MAX(0, maximum_wait), state_check_timer_enabled);
 }
 
 static PyObject*
 main_loop(ChildMonitor *self, PyObject *a UNUSED) {
 #define main_loop_doc "The main thread loop"
+    state_check_timer = add_main_loop_timer(1000, true, do_state_check, self, NULL);
     run_main_loop(process_global_state, self);
 #ifdef __APPLE__
     if (cocoa_pending_actions_wd) { free(cocoa_pending_actions_wd); cocoa_pending_actions_wd = NULL; }

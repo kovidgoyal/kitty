@@ -29,6 +29,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwAddTimer_impl) = dlsym(handle, "glfwAddTimer");
     if (glfwAddTimer_impl == NULL) fail("Failed to load glfw function glfwAddTimer with error: %s", dlerror());
 
+    *(void **) (&glfwUpdateTimer_impl) = dlsym(handle, "glfwUpdateTimer");
+    if (glfwUpdateTimer_impl == NULL) fail("Failed to load glfw function glfwUpdateTimer with error: %s", dlerror());
+
     *(void **) (&glfwRemoveTimer_impl) = dlsym(handle, "glfwRemoveTimer");
     if (glfwRemoveTimer_impl == NULL) fail("Failed to load glfw function glfwRemoveTimer with error: %s", dlerror());
 

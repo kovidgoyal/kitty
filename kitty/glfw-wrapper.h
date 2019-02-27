@@ -1443,6 +1443,10 @@ typedef unsigned long long (*glfwAddTimer_func)(double, bool, GLFWuserdatafun, v
 glfwAddTimer_func glfwAddTimer_impl;
 #define glfwAddTimer glfwAddTimer_impl
 
+typedef void (*glfwUpdateTimer_func)(unsigned long long, double, bool);
+glfwUpdateTimer_func glfwUpdateTimer_impl;
+#define glfwUpdateTimer glfwUpdateTimer_impl
+
 typedef void (*glfwRemoveTimer_func)(unsigned long);
 glfwRemoveTimer_func glfwRemoveTimer_impl;
 #define glfwRemoveTimer glfwRemoveTimer_impl

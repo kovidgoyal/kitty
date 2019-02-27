@@ -44,3 +44,8 @@ unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuser
 void _glfwPlatformRemoveTimer(unsigned long long timer_id) {
     removeTimer(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, timer_id);
 }
+
+void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, GLFWbool enabled) {
+    changeTimerInterval(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, timer_id, interval);
+    toggleTimer(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, timer_id, enabled);
+}
