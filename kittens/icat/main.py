@@ -89,6 +89,11 @@ choices=detect,yes,no
 default=detect
 Read image data from stdin. The default is to do it automatically, when STDIN is not a terminal,
 but you can turn it off or on explicitly, if needed.
+
+
+--silent
+type=bool-set
+Do not print out anything to stdout during operation.
 '''
 
 
@@ -344,7 +349,7 @@ def main(args=sys.argv):
         print('file' if detect_support.has_files else 'stream', end='', file=sys.stderr)
         return
     if args.transfer_mode == 'detect':
-        if not detect_support(wait_for=args.detection_timeout):
+        if not detect_support(wait_for=args.detection_timeout, silent=args.silent):
             raise SystemExit('This terminal emulator does not support the graphics protocol, use a terminal emulator such as kitty that does support it')
     else:
         detect_support.has_files = args.transfer_mode == 'file'
