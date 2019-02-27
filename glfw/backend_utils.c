@@ -122,7 +122,7 @@ addTimer(EventLoopData *eld, const char *name, double interval, int enabled, boo
     t->free = free;
     t->id = ++timer_counter;
     update_timers(eld);
-    return t->id;
+    return timer_counter;
 }
 
 void
