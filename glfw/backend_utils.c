@@ -65,11 +65,11 @@ addWatch(EventLoopData *eld, const char* name, int fd, int events, int enabled, 
     for (nfds_t i = 0; i < eld->which##_count; i++) { \
         if (eld->which[i].id == item_id) { \
             eld->which##_count--; \
+            if (eld->which[i].callback_data && eld->which[i].free) { \
+                eld->which[i].free(eld->which[i].id, eld->which[i].callback_data); \
+                eld->which[i].callback_data = NULL; eld->which[i].free = NULL; \
+            } \
             if (i < eld->which##_count) { \
-                if (eld->which[i].callback_data && eld->which[i].free) { \
-                    eld->which[i].free(eld->which[i].id, eld->which[i].callback_data); \
-                    eld->which[i].callback_data = NULL; eld->which[i].free = NULL; \
-                } \
                 memmove(eld->which + i, eld->which + i + 1, sizeof(eld->which[0]) * (eld->which##_count - i)); \
             } \
             update_func(eld); break; \

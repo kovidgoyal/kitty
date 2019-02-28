@@ -36,7 +36,12 @@ typedef void* id;
 typedef void* CVDisplayLinkRef;
 #endif
 
-#define RENDER_FRAME_REQUEST_EVENT_TYPE 1
+typedef enum {
+    EMPTY_EVENT_TYPE,
+    RENDER_FRAME_REQUEST_EVENT_TYPE,
+    TICK_CALLBACK_EVENT_TYPE
+} EventTypes;
+
 
 typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int, unsigned long);
@@ -129,7 +134,6 @@ typedef struct _GLFWlibraryNS
 {
     CGEventSourceRef    eventSource;
     id                  delegate;
-    id                  autoreleasePool;
     GLFWbool            cursorHidden;
     TISInputSourceRef   inputSource;
     IOHIDManagerRef     hidManager;
@@ -199,4 +203,5 @@ void _glfwPollMonitorsNS(void);
 void _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired);
 void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor);
 void _glfwClearDisplayLinks();
-void _glfwCocoaPostEmptyEvent(short subtype, long data1);
+void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start);
+void _glfwDispatchTickCallback();

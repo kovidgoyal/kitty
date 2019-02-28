@@ -1711,18 +1711,6 @@ typedef GLFWwindowcontentscalefun (*glfwSetWindowContentScaleCallback_func)(GLFW
 glfwSetWindowContentScaleCallback_func glfwSetWindowContentScaleCallback_impl;
 #define glfwSetWindowContentScaleCallback glfwSetWindowContentScaleCallback_impl
 
-typedef void (*glfwPollEvents_func)();
-glfwPollEvents_func glfwPollEvents_impl;
-#define glfwPollEvents glfwPollEvents_impl
-
-typedef void (*glfwWaitEvents_func)();
-glfwWaitEvents_func glfwWaitEvents_impl;
-#define glfwWaitEvents glfwWaitEvents_impl
-
-typedef void (*glfwWaitEventsTimeout_func)(double);
-glfwWaitEventsTimeout_func glfwWaitEventsTimeout_impl;
-#define glfwWaitEventsTimeout glfwWaitEventsTimeout_impl
-
 typedef void (*glfwPostEmptyEvent_func)();
 glfwPostEmptyEvent_func glfwPostEmptyEvent_impl;
 #define glfwPostEmptyEvent glfwPostEmptyEvent_impl

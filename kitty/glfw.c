@@ -772,12 +772,6 @@ glfw_terminate(PYNOARG) {
 }
 
 static PyObject*
-glfw_poll_events(PYNOARG) {
-    glfwPollEvents();
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 get_physical_dpi(GLFWmonitor *m) {
     int width = 0, height = 0;
     glfwGetMonitorPhysicalSize(m, &width, &height);
@@ -910,7 +904,11 @@ swap_window_buffers(OSWindow *os_window) {
 void
 wakeup_main_loop() {
     request_tick_callback();
+#ifndef __APPLE__
+    // On Cocoa request_tick_callback() uses an event which wakes up the
+    // main loop anyway
     glfwPostEmptyEvent();
+#endif
 }
 
 void
@@ -1175,7 +1173,6 @@ static PyMethodDef module_methods[] = {
     METHODB(x11_display, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
     METHODB(set_primary_selection, METH_VARARGS),
-    METHODB(glfw_poll_events, METH_NOARGS),
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),
 #endif

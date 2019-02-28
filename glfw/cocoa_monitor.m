@@ -252,7 +252,7 @@ static CVReturn displayLinkCallback(
     }
     [_glfw.ns.displayLinks.lock unlock];
     if (notify) {
-        _glfwCocoaPostEmptyEvent(RENDER_FRAME_REQUEST_EVENT_TYPE, displayID);
+        _glfwCocoaPostEmptyEvent(RENDER_FRAME_REQUEST_EVENT_TYPE, displayID, true);
     }
     return kCVReturnSuccess;
 }

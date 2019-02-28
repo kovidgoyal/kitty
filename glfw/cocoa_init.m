@@ -324,7 +324,7 @@ is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
 
 int _glfwPlatformInit(void)
 {
-    _glfw.ns.autoreleasePool = [[NSAutoreleasePool alloc] init];
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     _glfw.ns.helper = [[GLFWHelper alloc] init];
 
     [NSThread detachNewThreadSelector:@selector(doNothing:)
@@ -392,11 +392,13 @@ int _glfwPlatformInit(void)
     _glfwInitJoysticksNS();
 
     _glfwPollMonitorsNS();
+    [pool drain];
     return GLFW_TRUE;
 }
 
 void _glfwPlatformTerminate(void)
 {
+    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
     if (_glfw.ns.displayLinks.lock) {
         _glfwClearDisplayLinks();
         [_glfw.ns.displayLinks.lock release];
@@ -443,9 +445,7 @@ void _glfwPlatformTerminate(void)
 
     _glfwTerminateNSGL();
     _glfwTerminateJoysticksNS();
-
-    [_glfw.ns.autoreleasePool release];
-    _glfw.ns.autoreleasePool = nil;
+    [pool drain];
 }
 
 const char* _glfwPlatformGetVersionString(void)
@@ -455,4 +455,111 @@ const char* _glfwPlatformGetVersionString(void)
         " dynamic"
 #endif
         ;
+}
+
+static GLFWtickcallback tick_callback = NULL;
+static void* tick_callback_data = NULL;
+static bool tick_callback_requested = false;
+
+void _glfwDispatchTickCallback() {
+    if (tick_callback) {
+        tick_callback_requested = false;
+        tick_callback(tick_callback_data);
+    }
+}
+
+void _glfwPlatformRequestTickCallback() {
+    if (!tick_callback_requested) {
+        tick_callback_requested = true;
+        _glfwCocoaPostEmptyEvent(TICK_CALLBACK_EVENT_TYPE, 0, false);
+    }
+}
+
+void _glfwPlatformStopMainLoop(void) {
+    tick_callback = NULL;
+    [NSApp stop:nil];
+    _glfwPlatformPostEmptyEvent();
+}
+
+void _glfwPlatformRunMainLoop(GLFWtickcallback callback, void* data) {
+    tick_callback = callback;
+    tick_callback_data = data;
+    [NSApp run];
+}
+
+
+typedef struct {
+    NSTimer *os_timer;
+    unsigned long long id;
+    bool repeats;
+    double interval;
+    GLFWuserdatafun callback;
+    void *callback_data;
+    GLFWuserdatafun free_callback_data;
+} Timer;
+
+static Timer timers[128] = {{0}};
+static size_t num_timers = 0;
+
+static inline void
+remove_timer_at(size_t idx) {
+    if (idx < num_timers) {
+        Timer *t = timers + idx;
+        if (t->os_timer) { [t->os_timer invalidate]; t->os_timer = NULL; }
+        if (t->callback_data && t->free_callback_data) { t->free_callback_data(t->id, t->callback_data); t->callback_data = NULL; }
+        num_timers--;
+        if (idx < num_timers) {
+            memmove(timers + idx, timers + idx + 1, sizeof(timers[0]) * (num_timers - idx));
+        }
+    }
+}
+
+static void schedule_timer(Timer *t) {
+    t->os_timer = [NSTimer scheduledTimerWithTimeInterval:t->interval repeats:(t->repeats ? YES: NO) block:^(NSTimer *os_timer) {
+        for (size_t i = 0; i < num_timers; i++) {
+            if (timers[i].os_timer == os_timer) {
+                timers[i].callback(timers[i].id, timers[i].callback_data);
+                if (!timers[i].repeats) remove_timer_at(i);
+                break;
+            }
+        }
+    }];
+}
+
+unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback) {
+    static unsigned long long timer_counter = 0;
+    if (num_timers >= sizeof(timers)/sizeof(timers[0]) - 1) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Too many timers added");
+        return 0;
+    }
+    Timer *t = timers + num_timers++;
+    t->id = ++timer_counter;
+    t->repeats = repeats;
+    t->interval = interval;
+    t->callback = callback;
+    t->callback_data = callback_data;
+    t->free_callback_data = free_callback;
+    schedule_timer(t);
+    return timer_counter;
+}
+
+void _glfwPlatformRemoveTimer(unsigned long long timer_id) {
+    for (size_t i = 0; i < num_timers; i++) {
+        if (timers[i].id == timer_id) {
+            remove_timer_at(i);
+            break;
+        }
+    }
+}
+
+void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, GLFWbool enabled) {
+    for (size_t i = 0; i < num_timers; i++) {
+        if (timers[i].id == timer_id) {
+            Timer *t = timers + i;
+            if (t->os_timer) { [t->os_timer invalidate]; t->os_timer = NULL; }
+            t->interval = interval;
+            if (enabled) schedule_timer(t);
+            break;
+        }
+    }
 }

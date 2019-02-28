@@ -1401,9 +1401,6 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 
     [window->ns.object close];
     window->ns.object = nil;
-
-    [_glfw.ns.autoreleasePool drain];
-    _glfw.ns.autoreleasePool = [[NSAutoreleasePool alloc] init];
 }
 
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char *title)
@@ -1614,10 +1611,6 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
 
     _glfwInputWindowMonitor(window, monitor);
 
-    // HACK: Allow the state cached in Cocoa to catch up to reality
-    // TODO: Solve this in a less terrible way
-    _glfwPlatformPollEvents();
-
     const NSUInteger styleMask = getStyleMask(window);
     [window->ns.object setStyleMask:styleMask];
     // HACK: Changing the style mask can cause the first responder to be cleared
@@ -1754,16 +1747,30 @@ static inline CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
 
 void
 dispatchCustomEvent(NSEvent *event) {
-    if (event.subtype == RENDER_FRAME_REQUEST_EVENT_TYPE) {
-        CGDirectDisplayID displayID = (CGDirectDisplayID)event.data1;
-        _GLFWwindow *w = _glfw.windowListHead;
-        while (w) {
-            if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
-                w->ns.renderFrameRequested = GLFW_FALSE;
-                w->ns.renderFrameCallback((GLFWwindow*)w);
+    switch(event.subtype) {
+        case RENDER_FRAME_REQUEST_EVENT_TYPE:
+            {
+                CGDirectDisplayID displayID = (CGDirectDisplayID)event.data1;
+                _GLFWwindow *w = _glfw.windowListHead;
+                while (w) {
+                    if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
+                        w->ns.renderFrameRequested = GLFW_FALSE;
+                        w->ns.renderFrameCallback((GLFWwindow*)w);
+                    }
+                    w = w->next;
+                }
             }
-            w = w->next;
-        }
+            break;
+
+        case EMPTY_EVENT_TYPE:
+            break;
+
+        case TICK_CALLBACK_EVENT_TYPE:
+            _glfwDispatchTickCallback();
+            break;
+
+        default:
+            break;
     }
 }
 
@@ -1792,51 +1799,7 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
     [_glfw.ns.displayLinks.lock unlock];
 }
 
-void _glfwPlatformPollEvents(void)
-{
-    for (;;)
-    {
-        NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                            untilDate:[NSDate distantPast]
-                                               inMode:NSDefaultRunLoopMode
-                                              dequeue:YES];
-        if (event == nil)
-            break;
-
-        [NSApp sendEvent:event];
-    }
-
-    [_glfw.ns.autoreleasePool drain];
-    _glfw.ns.autoreleasePool = [[NSAutoreleasePool alloc] init];
-}
-
-void _glfwPlatformWaitEvents(void)
-{
-    // I wanted to pass NO to dequeue:, and rely on PollEvents to
-    // dequeue and send.  For reasons not at all clear to me, passing
-    // NO to dequeue: causes this method never to return.
-    NSEvent *event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                        untilDate:[NSDate distantFuture]
-                                           inMode:NSDefaultRunLoopMode
-                                          dequeue:YES];
-    [NSApp sendEvent:event];
-
-    _glfwPlatformPollEvents();
-}
-
-void _glfwPlatformWaitEventsTimeout(double timeout)
-{
-    NSDate* date = [NSDate dateWithTimeIntervalSinceNow:timeout];
-    NSEvent* event = [NSApp nextEventMatchingMask:NSEventMaskAny
-                                        untilDate:date
-                                           inMode:NSDefaultRunLoopMode
-                                          dequeue:YES];
-    if (event) [NSApp sendEvent:event];
-
-    _glfwPlatformPollEvents();
-}
-
-void _glfwCocoaPostEmptyEvent(short subtype, long data1)
+void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start)
 {
     NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
     NSEvent* event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
@@ -1848,13 +1811,13 @@ void _glfwCocoaPostEmptyEvent(short subtype, long data1)
                                          subtype:subtype
                                            data1:data1
                                            data2:0];
-    [NSApp postEvent:event atStart:YES];
+    [NSApp postEvent:event atStart:at_start ? YES : NO];
     [pool drain];
 }
 
 void _glfwPlatformPostEmptyEvent(void)
 {
-    _glfwCocoaPostEmptyEvent(0, 0);
+    _glfwCocoaPostEmptyEvent(0, 0, true);
 }
 
 void _glfwPlatformGetCursorPos(_GLFWwindow* window, double* xpos, double* ypos)
