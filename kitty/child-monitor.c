@@ -663,7 +663,7 @@ render(double now) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (!w->num_tabs) continue;
-        if (!should_os_window_be_rendered(w)) {
+        if (w->live_resize.in_progress || !should_os_window_be_rendered(w)) {
             update_os_window_title(w);
             continue;
         }

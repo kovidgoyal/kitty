@@ -148,17 +148,13 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         global_state.has_pending_resizes = true;
         window->live_resize.in_progress = true;
         window->live_resize.last_resize_event_at = monotonic();
-#ifdef __APPLE__
-        // On cocoa request_tick_callback() does not work while the window
-        // is being resized, because that happens in a sub-loop. With semi-transparent
-        // windows that is a problem as the scaled background gets blended into
-        // the final background, so we explicitly blank the window here.
-        if (window->is_semi_transparent) {
-            make_os_window_context_current(window);
-            blank_os_window(window);
-            swap_window_buffers(window);
-        }
-#endif
+        // render OS window as blank. On cocoa this is needed for semi-transparent windows,
+        // otherwise you get burn in of the previous frame. On Linux this is needed as otherwise
+        // you get partially rendered windows.
+        make_os_window_context_current(window);
+        update_surface_size(width, height, window->offscreen_texture_id);
+        blank_os_window(window);
+        swap_window_buffers(window);
         request_tick_callback();
     } else log_error("Ignoring resize request for tiny size: %dx%d", width, height);
     global_state.callback_os_window = NULL;
