@@ -419,6 +419,7 @@ struct _GLFWwindow
         GLFWscrollfun           scroll;
         GLFWkeyboardfun         keyboard;
         GLFWdropfun             drop;
+        GLFWliveresizefun       liveResize;
     } callbacks;
 
     // This is defined in the window API's platform.h
@@ -653,6 +654,7 @@ void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
                                       int maxwidth, int maxheight);
 void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window, int numer, int denom);
 void _glfwPlatformGetFramebufferSize(_GLFWwindow* window, int* width, int* height);
+void _glfwInputLiveResize(_GLFWwindow* window, bool started);
 void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
                                      int* left, int* top,
                                      int* right, int* bottom);

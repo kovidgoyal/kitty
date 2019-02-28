@@ -592,6 +592,17 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     return YES;
 }
 
+- (void) viewWillStartLiveResize
+{
+    _glfwInputLiveResize(window, true);
+}
+
+- (void)viewDidEndLiveResize
+{
+    _glfwInputLiveResize(window, false);
+}
+
+
 - (BOOL)wantsUpdateLayer
 {
     return YES;

@@ -129,6 +129,15 @@ window_iconify_callback(GLFWwindow *window, int iconified UNUSED) {
 }
 
 static void
+live_resize_callback(GLFWwindow *w, bool started) {
+    if (!set_callback_window(w)) return;
+    global_state.callback_os_window->has_live_resize_information = true;
+    global_state.callback_os_window->live_resize_in_progress = started;
+    if (!started) request_tick_callback();
+    global_state.callback_os_window = NULL;
+}
+
+static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
     if (width >= min_width && height >= min_height) {
@@ -610,6 +619,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetWindowIconifyCallback(glfw_window, window_iconify_callback);
     // missing maximize/restore callback
     glfwSetFramebufferSizeCallback(glfw_window, framebuffer_size_callback);
+    glfwSetLiveResizeCallback(glfw_window, live_resize_callback);
     glfwSetWindowContentScaleCallback(glfw_window, dpi_change_callback);
     glfwSetMouseButtonCallback(glfw_window, mouse_button_callback);
     glfwSetCursorPosCallback(glfw_window, cursor_pos_callback);

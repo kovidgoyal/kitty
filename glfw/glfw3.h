@@ -1474,6 +1474,8 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, int, int, int, int, const char*, i
  */
 typedef void (* GLFWdropfun)(GLFWwindow*,int,const char**);
 
+typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
+
 /*! @brief The function signature for monitor configuration callbacks.
  *
  *  This is the function signature for monitor configuration callback functions.
@@ -4343,6 +4345,7 @@ GLFWAPI GLFWscrollfun glfwSetScrollCallback(GLFWwindow* window, GLFWscrollfun cb
  *  @ingroup input
  */
 GLFWAPI GLFWdropfun glfwSetDropCallback(GLFWwindow* window, GLFWdropfun cbfun);
+GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow* window, GLFWliveresizefun cbfun);
 
 /*! @brief Returns whether the specified joystick is present.
  *

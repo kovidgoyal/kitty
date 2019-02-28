@@ -1231,6 +1231,8 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, int, int, int, int, const char*, i
  */
 typedef void (* GLFWdropfun)(GLFWwindow*,int,const char**);
 
+typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
+
 /*! @brief The function signature for monitor configuration callbacks.
  *
  *  This is the function signature for monitor configuration callback functions.
@@ -1790,6 +1792,10 @@ glfwSetScrollCallback_func glfwSetScrollCallback_impl;
 typedef GLFWdropfun (*glfwSetDropCallback_func)(GLFWwindow*, GLFWdropfun);
 glfwSetDropCallback_func glfwSetDropCallback_impl;
 #define glfwSetDropCallback glfwSetDropCallback_impl
+
+typedef GLFWliveresizefun (*glfwSetLiveResizeCallback_func)(GLFWwindow*, GLFWliveresizefun);
+glfwSetLiveResizeCallback_func glfwSetLiveResizeCallback_impl;
+#define glfwSetLiveResizeCallback glfwSetLiveResizeCallback_impl
 
 typedef int (*glfwJoystickPresent_func)(int);
 glfwJoystickPresent_func glfwJoystickPresent_impl;

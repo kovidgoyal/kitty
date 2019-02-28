@@ -126,6 +126,7 @@ typedef struct {
     bool is_key_pressed[MAX_KEY_COUNT];
     bool viewport_size_dirty;
     double last_resize_event_at;
+    bool has_live_resize_information, live_resize_in_progress;
     bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
     uint32_t offscreen_texture_id;
     unsigned int clear_count;

@@ -808,10 +808,14 @@ process_pending_resizes(double now) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (w->has_pending_resizes) {
-            if (now - w->last_resize_event_at >= RESIZE_DEBOUNCE_TIME) update_os_window_viewport(w, true);
-            else {
-                global_state.has_pending_resizes = true;
-                set_maximum_wait(RESIZE_DEBOUNCE_TIME - now + w->last_resize_event_at);
+            if (w->has_live_resize_information) {
+                if (!w->live_resize_in_progress) update_os_window_viewport(w, true);
+            } else {
+                if (now - w->last_resize_event_at >= RESIZE_DEBOUNCE_TIME) update_os_window_viewport(w, true);
+                else {
+                    global_state.has_pending_resizes = true;
+                    set_maximum_wait(RESIZE_DEBOUNCE_TIME - now + w->last_resize_event_at);
+                }
             }
         }
     }
