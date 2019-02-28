@@ -824,6 +824,7 @@ close_all_windows() {
 
 static inline bool
 process_pending_closes(ChildMonitor *self) {
+    global_state.has_pending_closes = false;
     bool has_open_windows = false;
     for (size_t w = global_state.num_os_windows; w > 0; w--) {
         OSWindow *os_window = global_state.os_windows + w - 1;
@@ -906,7 +907,8 @@ process_global_state(void *data) {
 #endif
     }
     report_reaped_pids();
-    bool has_open_windows = process_pending_closes(self);
+    bool has_open_windows = true;
+    if (global_state.has_pending_closes) has_open_windows = process_pending_closes(self);
     if (has_open_windows) {
         if (maximum_wait >= 0) {
             if (maximum_wait == 0) request_tick_callback();

@@ -109,6 +109,7 @@ blank_os_window(OSWindow *w) {
 static void
 window_close_callback(GLFWwindow* window) {
     if (!set_callback_window(window)) return;
+    global_state.has_pending_closes = true;
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }
@@ -713,8 +714,10 @@ application_quit_requested() {
 
 void
 request_application_quit() {
-    if (application_quit_canary)
+    if (application_quit_canary) {
+        global_state.has_pending_closes = true;
         glfwSetWindowShouldClose(application_quit_canary, true);
+    }
 }
 #endif
 
@@ -913,6 +916,7 @@ wakeup_main_loop() {
 
 void
 mark_os_window_for_close(OSWindow* w, bool yes) {
+    global_state.has_pending_closes = true;
     glfwSetWindowShouldClose(w->handle, yes);
 }
 
@@ -986,26 +990,6 @@ set_primary_selection(PyObject UNUSED *self, PyObject *args) {
     }
     else log_error("Failed to load glfwSetPrimarySelectionString");
     Py_RETURN_NONE;
-}
-
-static PyObject*
-os_window_should_close(PyObject UNUSED *self, PyObject *args) {
-    int q = -1001;
-    id_type os_window_id;
-    if (!PyArg_ParseTuple(args, "K|i", &os_window_id, &q)) return NULL;
-    for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        OSWindow *w = global_state.os_windows + i;
-        if (w->id == os_window_id) {
-            if (q == -1001) {
-                if (should_os_window_close(w)) Py_RETURN_TRUE;
-                Py_RETURN_FALSE;
-            }
-            glfwSetWindowShouldClose(w->handle, q ? GLFW_TRUE : GLFW_FALSE);
-            Py_RETURN_NONE;
-        }
-    }
-    PyErr_SetString(PyExc_ValueError, "no such OSWindow");
-    return NULL;
 }
 
 static PyObject*
@@ -1167,7 +1151,6 @@ static PyMethodDef module_methods[] = {
     METHODB(toggle_fullscreen, METH_NOARGS),
     METHODB(change_os_window_state, METH_VARARGS),
     METHODB(glfw_window_hint, METH_VARARGS),
-    METHODB(os_window_should_close, METH_VARARGS),
     METHODB(os_window_swap_buffers, METH_VARARGS),
     METHODB(get_primary_selection, METH_NOARGS),
     METHODB(x11_display, METH_NOARGS),
