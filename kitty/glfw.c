@@ -44,7 +44,6 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != window->logical_dpi_x) || (ydpi != window->logical_dpi_y);
 
     window->viewport_size_dirty = true;
-    window->has_pending_resizes = false;
     window->viewport_width = MAX(window->viewport_width, 100);
     window->viewport_height = MAX(window->viewport_height, 100);
     window->window_width = MAX(w, 100);
@@ -131,9 +130,13 @@ window_iconify_callback(GLFWwindow *window, int iconified UNUSED) {
 static void
 live_resize_callback(GLFWwindow *w, bool started) {
     if (!set_callback_window(w)) return;
-    global_state.callback_os_window->has_live_resize_information = true;
-    global_state.callback_os_window->live_resize_in_progress = started;
-    if (!started) request_tick_callback();
+    global_state.callback_os_window->live_resize.from_os_notification = true;
+    global_state.callback_os_window->live_resize.in_progress = true;
+    global_state.has_pending_resizes = true;
+    if (!started) {
+        global_state.callback_os_window->live_resize.os_says_resize_complete = true;
+        request_tick_callback();
+    }
     global_state.callback_os_window = NULL;
 }
 
@@ -142,8 +145,9 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
     if (width >= min_width && height >= min_height) {
         OSWindow *window = global_state.callback_os_window;
-        window->has_pending_resizes = true; global_state.has_pending_resizes = true;
-        window->last_resize_event_at = monotonic();
+        global_state.has_pending_resizes = true;
+        window->live_resize.in_progress = true;
+        window->live_resize.last_resize_event_at = monotonic();
 #ifdef __APPLE__
         // On cocoa request_tick_callback() does not work while the window
         // is being resized, because that happens in a sub-loop. With semi-transparent
@@ -166,8 +170,8 @@ dpi_change_callback(GLFWwindow *w, float x_scale UNUSED, float y_scale UNUSED) {
     // Ensure update_os_window_viewport() is called in the near future, it will
     // take care of DPI changes.
     OSWindow *window = global_state.callback_os_window;
-    window->has_pending_resizes = true; global_state.has_pending_resizes = true;
-    window->last_resize_event_at = monotonic();
+    window->live_resize.in_progress = true; global_state.has_pending_resizes = true;
+    window->live_resize.last_resize_event_at = monotonic();
     global_state.callback_os_window = NULL;
     request_tick_callback();
 }

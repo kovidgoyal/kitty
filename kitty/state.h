@@ -107,6 +107,14 @@ typedef struct {
 enum RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
 
 typedef struct {
+    double last_resize_event_at;
+    bool in_progress;
+    bool from_os_notification;
+    bool os_says_resize_complete;
+} LiveResizeInfo;
+
+
+typedef struct {
     void *handle;
     id_type id;
     OSWindowGeometry before_fullscreen;
@@ -125,8 +133,7 @@ typedef struct {
     PyObject *window_title;
     bool is_key_pressed[MAX_KEY_COUNT];
     bool viewport_size_dirty;
-    double last_resize_event_at;
-    bool has_live_resize_information, live_resize_in_progress;
+    LiveResizeInfo live_resize;
     bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
     uint32_t offscreen_texture_id;
     unsigned int clear_count;

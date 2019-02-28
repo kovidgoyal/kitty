@@ -807,15 +807,21 @@ process_pending_resizes(double now) {
     global_state.has_pending_resizes = false;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
-        if (w->has_pending_resizes) {
-            if (w->has_live_resize_information) {
-                if (!w->live_resize_in_progress) update_os_window_viewport(w, true);
+        if (w->live_resize.in_progress) {
+            bool update_viewport = false;
+            if (w->live_resize.from_os_notification) {
+                if (w->live_resize.os_says_resize_complete || (now - w->live_resize.last_resize_event_at) > 1) update_viewport = true;
             } else {
-                if (now - w->last_resize_event_at >= RESIZE_DEBOUNCE_TIME) update_os_window_viewport(w, true);
+                if (now - w->live_resize.last_resize_event_at >= RESIZE_DEBOUNCE_TIME) update_viewport = true;
                 else {
                     global_state.has_pending_resizes = true;
-                    set_maximum_wait(RESIZE_DEBOUNCE_TIME - now + w->last_resize_event_at);
+                    set_maximum_wait(RESIZE_DEBOUNCE_TIME - now + w->live_resize.last_resize_event_at);
                 }
+            }
+            if (update_viewport) {
+                static const LiveResizeInfo empty = {0};
+                update_os_window_viewport(w, true);
+                w->live_resize = empty;
             }
         }
     }
