@@ -75,11 +75,16 @@ set_freetype_error(const char* prefix, int err_code) {
 
 static FT_Library  library;
 
-#define CALC_CELL_HEIGHT(self) font_units_to_pixels(self, self->height)
+#define CALC_CELL_HEIGHT(self) font_units_to_pixels_y(self, self->height)
 
 static inline int
-font_units_to_pixels(Face *self, int x) {
+font_units_to_pixels_y(Face *self, int x) {
     return ceil((double)FT_MulFix(x, self->face->size->metrics.y_scale) / 64.0);
+}
+
+static inline int
+font_units_to_pixels_x(Face *self, int x) {
+    return ceil((double)FT_MulFix(x, self->face->size->metrics.x_scale) / 64.0);
 }
 
 static inline bool
@@ -256,9 +261,9 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
     *cell_height = CALC_CELL_HEIGHT(self);
-    *baseline = font_units_to_pixels(self, self->ascender);
-    *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels(self, MAX(0, self->ascender - self->underline_position)));
-    *underline_thickness = MAX(1, font_units_to_pixels(self, self->underline_thickness));
+    *baseline = font_units_to_pixels_y(self, self->ascender);
+    *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->underline_position)));
+    *underline_thickness = MAX(1, font_units_to_pixels_y(self, self->underline_thickness));
 }
 
 unsigned int
@@ -567,6 +572,46 @@ display_name(PyObject *s, PyObject *a UNUSED) {
 static PyObject*
 extra_data(PyObject *self, PyObject *a UNUSED) {
     return PyLong_FromVoidPtr(((Face*)self)->extra_data);
+}
+
+
+StringCanvas
+render_simple_text_impl(PyObject *s, const char *text) {
+    Face *self = (Face*)s;
+    StringCanvas ans = {0};
+    size_t num_chars = strnlen(text, 20);
+    int max_char_width = font_units_to_pixels_x(self, self->face->max_advance_width);
+    size_t canvas_width = max_char_width * (num_chars*2);
+    size_t canvas_height = font_units_to_pixels_y(self, self->face->height) + 8;
+    unsigned char *canvas = calloc(1, canvas_width * canvas_height);
+    if (!canvas) return ans;
+    size_t pen_x = 0;
+    for (size_t n = 0; n < num_chars; n++ ) {
+        FT_UInt glyph_index = FT_Get_Char_Index(self->face, text[n]);
+        int error = FT_Load_Glyph(self->face, glyph_index, FT_LOAD_DEFAULT);
+        if (error) continue;
+        error = FT_Render_Glyph(self->face->glyph, FT_RENDER_MODE_NORMAL);
+        if (error) continue;
+        FT_Bitmap *bitmap = &self->face->glyph->bitmap;
+        const unsigned char *rowp = bitmap->buffer;
+        for (size_t row = 0; row < MIN(bitmap->rows, canvas_height); row++) {
+            rowp += bitmap->pitch;
+            unsigned char *canvasp = canvas + ((row * canvas_width) + pen_x);
+            memcpy(canvasp, rowp, MIN(bitmap->width, canvas_width - pen_x));
+        }
+        pen_x += self->face->glyph->advance.x >> 6;
+    }
+    ans.width = pen_x; ans.height = canvas_height;
+    ans.canvas = malloc(ans.width * ans.height);
+    if (ans.canvas) {
+        for (size_t row = 0; row < ans.height; row++) {
+            unsigned char *destp = ans.canvas + (ans.width * row);
+            unsigned char *srcp = canvas + (canvas_width * row);
+            memcpy(destp, srcp, ans.width);
+        }
+    }
+    free(canvas);
+    return ans;
 }
 
 // Boilerplate {{{

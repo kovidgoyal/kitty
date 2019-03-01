@@ -1073,6 +1073,14 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
 #undef RENDER
 }
 
+StringCanvas
+render_simple_text(FONTS_DATA_HANDLE fg_, const char *text) {
+    FontGroup *fg = (FontGroup*)fg_;
+    if (fg->fonts_count) return render_simple_text_impl(fg->fonts[0].face, text);
+    StringCanvas ans = {0};
+    return ans;
+}
+
 static inline void
 clear_symbol_maps() {
     if (symbol_maps) { free(symbol_maps); symbol_maps = NULL; num_symbol_maps = 0; }
