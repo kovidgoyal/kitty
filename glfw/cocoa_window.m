@@ -41,6 +41,7 @@
  #define NSWindowStyleMaskTitled NSTitledWindowMask
  #define NSEventModifierFlagCommand NSCommandKeyMask
  #define NSEventModifierFlagControl NSControlKeyMask
+ #define NSEventModifierFlagNumericPad NSNumericPadKeyMask
  #define NSEventModifierFlagOption NSAlternateKeyMask
  #define NSEventModifierFlagShift NSShiftKeyMask
  #define NSEventModifierFlagCapsLock NSAlphaShiftKeyMask

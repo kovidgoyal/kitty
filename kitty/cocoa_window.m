@@ -15,6 +15,9 @@
 #include <objc/runtime.h>
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
+typedef NSUInteger NSWindowStyleMask;
+#define NSWindowStyleMaskBorderless NSBorderlessWindowMask
+#define NSWindowStyleMaskFullScreen NSFullScreenWindowMask
 #define NSWindowStyleMaskResizable NSResizableWindowMask
 #define NSEventModifierFlagOption NSAlternateKeyMask
 #define NSEventModifierFlagCommand NSCommandKeyMask

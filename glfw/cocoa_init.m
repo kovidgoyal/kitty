@@ -30,6 +30,10 @@
   #define NSEventMaskKeyUp NSKeyUpMask
   #define NSEventMaskKeyDown NSKeyDownMask
   #define NSEventModifierFlagCommand NSCommandKeyMask
+  #define NSEventModifierFlagControl NSControlKeyMask
+  #define NSEventModifierFlagDeviceIndependentFlagsMask NSDeviceIndependentModifierFlagsMask
+  #define NSEventModifierFlagShift NSShiftKeyMask
+  #define NSEventTypeApplicationDefined NSApplicationDefined
 #endif
 
 // Change to our application bundle's resources directory, if present
