@@ -2,17 +2,15 @@
 
 import os
 import sys
-import shutil
-import subprocess
 
 base = os.path.dirname(os.path.abspath(__file__))
 os.chdir(base)
 sys.path.insert(0, base)
 
 from kitty.terminfo import generate_terminfo  # noqa
+from kitty.terminfo import compile_terminfo
 
 with open('terminfo/kitty.terminfo', 'w') as f:
     f.write(generate_terminfo())
 
-os.environ['TERMINFO'] = os.path.join(base, 'terminfo')
-subprocess.check_call(['tic', '-x', 'terminfo/kitty.terminfo'])
+compile_terminfo(base)

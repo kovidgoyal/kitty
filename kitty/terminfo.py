@@ -2,7 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import re
+import sys
+import glob
+import shutil
+import tempfile
+import subprocess
 from binascii import hexlify, unhexlify
 
 
@@ -426,6 +432,26 @@ def generate_terminfo():
     ans.extend('{}#{}'.format(k, numeric_capabilities[k]) for k in sorted(numeric_capabilities))
     ans.extend('{}={}'.format(k, string_capabilities[k]) for k in sorted(string_capabilities))
     return ',\n\t'.join(ans) + ',\n'
+
+
+def compile_terminfo(base):
+    with tempfile.TemporaryDirectory() as tdir:
+        proc = subprocess.run(['tic', '-x', '-o' + tdir, 'terminfo/kitty.terminfo'], check=True, stderr=subprocess.PIPE)
+        regex = '^"terminfo/kitty.terminfo", line [0-9]+, col [0-9]+, terminal \'xterm-kitty\': older tic versions may treat the description field as an alias$'
+        for error in proc.stderr.decode('utf-8').splitlines():
+            if not re.match(regex, error):
+                print(error, file=sys.stderr)
+        tfiles = glob.glob(os.path.join(tdir, '*', 'xterm-kitty'))
+        if not tfiles:
+            raise SystemExit('tic failed to output the compiled kitty terminfo file')
+
+        tfile = tfiles[0]
+        directory, xterm_kitty = os.path.split(tfile)
+        _, directory = os.path.split(directory)
+        odir = os.path.join(base, 'terminfo', directory)
+        os.makedirs(odir, exist_ok=True)
+        ofile = os.path.join(odir, xterm_kitty)
+        shutil.move(tfile, ofile)
 
 
 octal_escape = re.compile(r'\\([0-7]{3})')
