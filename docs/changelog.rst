@@ -69,6 +69,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Use the system cursor blink interval by default
   :opt:`cursor_blink_interval`.
 
+- Add a ``no-append`` setting to :opt:`clipboard_control` to disable
+  the kitty copy concatenation protocol extension for OSC 52.
+
 
 0.13.3 [2019-01-19]
 ------------------------------
