@@ -429,7 +429,8 @@ class Window:
 
             def write(key, func):
                 if text:
-                    if len(self.clipboard_control_buffers[key]) > 1024*1024:
+                    if ('no-append' in self.opts.clipboard_control or
+                            len(self.clipboard_control_buffers[key]) > 1024*1024):
                         self.clipboard_control_buffers[key] = ''
                     self.clipboard_control_buffers[key] += text
                 else:

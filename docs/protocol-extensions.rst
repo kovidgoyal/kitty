@@ -219,3 +219,7 @@ first, for example::
     <ESC>]52;c;!<ESC>\
 
 Here ``!`` is not valid base64 encoded text, so it clears the clipboard.
+
+In case you're using software that can't be easily adapted to this
+protocol extension, it can be disabled by specifying ``no-append`` to the
+:opt:`clipboard_control` setting.
