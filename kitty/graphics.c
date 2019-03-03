@@ -523,8 +523,8 @@ cmp_by_zindex_and_image(const void *a_, const void *b_) {
 }
 
 static inline void
-set_vertex_data(ImageRenderData *rd, const ImageRef *ref, const ImageRect *source_rect) {
-#define R(n, a, b) rd->vertices[n*4] = ref->src_rect.a; rd->vertices[n*4 + 1] = ref->src_rect.b; rd->vertices[n*4 + 2] = source_rect->a; rd->vertices[n*4 + 3] = source_rect->b;
+set_vertex_data(ImageRenderData *rd, const ImageRef *ref, const ImageRect *dest_rect) {
+#define R(n, a, b) rd->vertices[n*4] = ref->src_rect.a; rd->vertices[n*4 + 1] = ref->src_rect.b; rd->vertices[n*4 + 2] = dest_rect->a; rd->vertices[n*4 + 3] = dest_rect->b;
         R(0, right, top); R(1, right, bottom); R(2, left, bottom); R(3, left, top);
 #undef R
 }
@@ -533,10 +533,10 @@ void
 gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height) {
     static const ImageRef source_rect = { .src_rect = { .left=0, .top=0, .bottom=1, .right=1 }};
     const ImageRef *ref = &source_rect;
-    float width_frac = width / (float)screen_width_px, height_frac = height / (float)screen_height_px;
-    float hmargin = MAX(0, 2 - width_frac) / 2;
-    float vmargin = MAX(0, 2 - height_frac) / 2;
-    const ImageRect r = { .left = -1 + hmargin, .right = -1 + hmargin + width_frac, .top = -1 + vmargin, .bottom = -1 + vmargin + height_frac };
+    float width_frac = 2 * MIN(1, width / (float)screen_width_px), height_frac = 2 * MIN(1, height / (float)screen_height_px);
+    float hmargin = (2 - width_frac) / 2;
+    float vmargin = (2 - height_frac) / 2;
+    const ImageRect r = { .left = -1 + hmargin, .right = -1 + hmargin + width_frac, .top = 1 - vmargin, .bottom = 1 - vmargin - height_frac };
     set_vertex_data(ans, ref, &r);
 }
 
