@@ -58,6 +58,17 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     }
 }
 
+static void
+draw_resizing_window(OSWindow *w, unsigned int width, unsigned int height) {
+    char text[32] = {0};
+    blank_os_window(w);
+    snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->cell_width, height / w->fonts_data->cell_height);
+    StringCanvas rendered = render_simple_text(w->fonts_data, text);
+    if (rendered.canvas) {
+        draw_centered_alpha_mask(w->gvao_idx, width, height, rendered.width, rendered.height, rendered.canvas);
+        free(rendered.canvas);
+    }
+}
 
 // callbacks {{{
 
@@ -153,7 +164,7 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         // you get partially rendered windows.
         make_os_window_context_current(window);
         update_surface_size(width, height, window->offscreen_texture_id);
-        blank_os_window(window);
+        draw_resizing_window(window, MAX(0, width), MAX(0, height));
         swap_window_buffers(window);
         request_tick_callback();
     } else log_error("Ignoring resize request for tiny size: %dx%d", width, height);

@@ -16,14 +16,15 @@ from .constants import (
 )
 from .fast_data_types import (
     BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
-    CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM, GRAPHICS_PREMULT_PROGRAM,
-    GRAPHICS_PROGRAM, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    STRIKETHROUGH, Screen, add_window, cell_size_for_window, compile_program,
-    get_clipboard_string, init_cell_program,
-    set_clipboard_string, set_titlebar_color, set_window_render_data,
-    update_window_title, update_window_visibility, viewport_for_window
+    CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
+    GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
+    OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, STRIKETHROUGH, Screen,
+    add_window, cell_size_for_window, compile_program, get_clipboard_string,
+    init_cell_program, set_clipboard_string, set_titlebar_color,
+    set_window_render_data, update_window_title, update_window_visibility,
+    viewport_for_window
 )
-from .keys import keyboard_mode_name, extended_key_event, defines
+from .keys import defines, extended_key_event, keyboard_mode_name
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .utils import (
@@ -87,6 +88,7 @@ def load_shader_programs(semi_transparent=False):
     for which, p in {
             'SIMPLE': GRAPHICS_PROGRAM,
             'PREMULT': GRAPHICS_PREMULT_PROGRAM,
+            'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
     }.items():
         ff = f.replace('ALPHA_TYPE', which)
         compile_program(p, v, ff)

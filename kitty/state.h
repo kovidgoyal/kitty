@@ -21,7 +21,7 @@ typedef struct {
     unsigned int url_style;
     unsigned int scrollback_pager_history_size;
     char_type select_by_word_characters[256]; size_t select_by_word_characters_count;
-    color_type url_color, background, active_border_color, inactive_border_color, bell_border_color;
+    color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color;
     double repaint_delay, input_delay;
     bool focus_follows_mouse, hide_window_decorations;
     bool macos_hide_from_tasks, macos_quit_when_last_window_closed, macos_window_resizable, macos_traditional_fullscreen, macos_show_window_title_in_menubar;
@@ -144,6 +144,7 @@ typedef struct {
     double pending_scroll_pixels;
     enum RENDER_STATE render_state;
     id_type last_focused_counter;
+    ssize_t gvao_idx;
 } OSWindow;
 
 
@@ -205,6 +206,7 @@ ssize_t create_graphics_vao();
 ssize_t create_border_vao();
 bool send_cell_data_to_gpu(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *, bool, bool);
+void draw_centered_alpha_mask(ssize_t gvao_idx, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);

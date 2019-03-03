@@ -38,6 +38,7 @@ void render_line(FONTS_DATA_HANDLE, Line *line);
 void sprite_tracker_set_limits(size_t max_texture_size, size_t max_array_len);
 typedef void (*free_extra_data_func)(void*);
 StringCanvas render_simple_text_impl(PyObject *s, const char *text);
+StringCanvas render_simple_text(FONTS_DATA_HANDLE fg_, const char *text);
 
 static inline void
 right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {

@@ -81,6 +81,7 @@ add_os_window() {
     memset(ans, 0, sizeof(OSWindow));
     ans->id = ++global_state.os_window_id_counter;
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
+    ans->gvao_idx = create_graphics_vao();
     ans->background_opacity = OPT(background_opacity);
     ans->font_sz_in_pts = global_state.font_sz_in_pts;
     END_WITH_OS_WINDOW_REFS
@@ -180,6 +181,7 @@ destroy_os_window_item(OSWindow *w) {
     Py_CLEAR(w->window_title); Py_CLEAR(w->tab_bar_render_data.screen);
     if (w->offscreen_texture_id) free_texture(&w->offscreen_texture_id);
     remove_vao(w->tab_bar_render_data.vao_idx);
+    remove_vao(w->gvao_idx);
     free(w->tabs); w->tabs = NULL;
 }
 
@@ -384,6 +386,7 @@ PYWRAP1(set_options) {
     S(click_interval, PyFloat_AsDouble);
     S(url_color, color_as_int);
     S(background, color_as_int);
+    S(foreground, color_as_int);
     S(active_border_color, color_as_int);
     S(inactive_border_color, color_as_int);
     S(bell_border_color, color_as_int);

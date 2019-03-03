@@ -89,3 +89,4 @@ bool grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float 
 void grman_scroll_images(GraphicsManager *self, const ScrollData*, CellPixelSize fg);
 void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_type);
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);
+void gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height);

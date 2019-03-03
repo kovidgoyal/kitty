@@ -579,14 +579,14 @@ StringCanvas
 render_simple_text_impl(PyObject *s, const char *text) {
     Face *self = (Face*)s;
     StringCanvas ans = {0};
-    size_t num_chars = strnlen(text, 20);
+    size_t num_chars = strnlen(text, 32);
     int max_char_width = font_units_to_pixels_x(self, self->face->max_advance_width);
     size_t canvas_width = max_char_width * (num_chars*2);
     size_t canvas_height = font_units_to_pixels_y(self, self->face->height) + 8;
     unsigned char *canvas = calloc(1, canvas_width * canvas_height);
     if (!canvas) return ans;
     size_t pen_x = 0;
-    for (size_t n = 0; n < num_chars; n++ ) {
+    for (size_t n = 0; n < num_chars; n++) {
         FT_UInt glyph_index = FT_Get_Char_Index(self->face, text[n]);
         int error = FT_Load_Glyph(self->face, glyph_index, FT_LOAD_DEFAULT);
         if (error) continue;

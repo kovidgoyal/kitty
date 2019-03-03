@@ -522,6 +522,24 @@ cmp_by_zindex_and_image(const void *a_, const void *b_) {
     return ans;
 }
 
+static inline void
+set_vertex_data(ImageRenderData *rd, const ImageRef *ref, const ImageRect *source_rect) {
+#define R(n, a, b) rd->vertices[n*4] = ref->src_rect.a; rd->vertices[n*4 + 1] = ref->src_rect.b; rd->vertices[n*4 + 2] = source_rect->a; rd->vertices[n*4 + 3] = source_rect->b;
+        R(0, right, top); R(1, right, bottom); R(2, left, bottom); R(3, left, top);
+#undef R
+}
+
+void
+gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height) {
+    static const ImageRef source_rect = { .src_rect = { .left=0, .top=0, .bottom=1, .right=1 }};
+    const ImageRef *ref = &source_rect;
+    float width_frac = width / (float)screen_width_px, height_frac = height / (float)screen_height_px;
+    float hmargin = MAX(0, 2 - width_frac) / 2;
+    float vmargin = MAX(0, 2 - height_frac) / 2;
+    const ImageRect r = { .left = -1 + hmargin, .right = -1 + hmargin + width_frac, .top = -1 + vmargin, .bottom = -1 + vmargin + height_frac };
+    set_vertex_data(ans, ref, &r);
+}
+
 bool
 grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float screen_left, float screen_top, float dx, float dy, unsigned int num_cols, unsigned int num_rows, CellPixelSize cell) {
     if (self->last_scrolled_by != scrolled_by) self->layers_dirty = true;
@@ -553,9 +571,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
         ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 64, true);
         ImageRenderData *rd = self->render_data + self->count;
-#define R(n, a, b) rd->vertices[n*4] = ref->src_rect.a; rd->vertices[n*4 + 1] = ref->src_rect.b; rd->vertices[n*4 + 2] = r.a; rd->vertices[n*4 + 3] = r.b;
-        R(0, right, top); R(1, right, bottom); R(2, left, bottom); R(3, left, top);
-#undef R
+        set_vertex_data(rd, ref, &r);
         self->count++;
         rd->z_index = ref->z_index; rd->image_id = img->internal_id;
         rd->texture_id = img->texture_id;

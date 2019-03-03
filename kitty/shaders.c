@@ -8,7 +8,7 @@
 #include "fonts.h"
 #include "gl.h"
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT };
 
 // Sprites {{{
@@ -210,7 +210,8 @@ create_graphics_vao() {
 
 struct CellUniformData {
     bool constants_set;
-    GLint gploc, gpploc, cploc, cfploc;
+    bool alpha_mask_fg_set;
+    GLint gploc, gpploc, cploc, cfploc, fg_loc;
     GLfloat prev_inactive_text_alpha;
 };
 
@@ -323,6 +324,27 @@ draw_graphics(int program, ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *d
     bind_vertex_array(vao_idx);
 }
 
+void
+draw_centered_alpha_mask(ssize_t gvao_idx, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas) {
+    static ImageRenderData data = {.group_count=1};
+    gpu_data_for_centered_image(&data, screen_width, screen_height, width, height);
+    if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
+    glBindTexture(GL_TEXTURE_2D, data.texture_id);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, canvas);
+    bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
+    if (!cell_uniform_data.alpha_mask_fg_set) {
+        cell_uniform_data.alpha_mask_fg_set = true;
+        glUniform1i(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "image"), GRAPHICS_UNIT);
+        glUniform1ui(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "fg"), OPT(foreground));
+    }
+    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, gvao_idx, &data, 0, 1);
+}
+
 #define BLEND_ONTO_OPAQUE  glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);  // blending onto opaque colors
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
@@ -414,7 +436,8 @@ set_cell_uniforms(float current_inactive_text_alpha) {
         cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cfploc = glGetUniformLocation(program_id(CELL_FG_PROGRAM), "inactive_text_alpha");
 #define S(prog, name, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), val); }
-        S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT, 1i); S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT, 1i);
+        S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT, 1i);
+        S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT, 1i);
         S(CELL_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i); S(CELL_FG_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i);
         S(CELL_PROGRAM, dim_opacity, OPT(dim_opacity), 1f); S(CELL_FG_PROGRAM, dim_opacity, OPT(dim_opacity), 1f);
 #undef S
@@ -632,7 +655,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(BLIT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
