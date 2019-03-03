@@ -576,16 +576,17 @@ extra_data(PyObject *self, PyObject *a UNUSED) {
 
 
 StringCanvas
-render_simple_text_impl(PyObject *s, const char *text) {
+render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     Face *self = (Face*)s;
     StringCanvas ans = {0};
     size_t num_chars = strnlen(text, 32);
     int max_char_width = font_units_to_pixels_x(self, self->face->max_advance_width);
     size_t canvas_width = max_char_width * (num_chars*2);
     size_t canvas_height = font_units_to_pixels_y(self, self->face->height) + 8;
-    unsigned char *canvas = calloc(1, canvas_width * canvas_height);
+    pixel *canvas = calloc(canvas_width * canvas_height, sizeof(pixel));
     if (!canvas) return ans;
     size_t pen_x = 0;
+    ProcessedBitmap pbm;
     for (size_t n = 0; n < num_chars; n++) {
         FT_UInt glyph_index = FT_Get_Char_Index(self->face, text[n]);
         int error = FT_Load_Glyph(self->face, glyph_index, FT_LOAD_DEFAULT);
@@ -593,12 +594,9 @@ render_simple_text_impl(PyObject *s, const char *text) {
         error = FT_Render_Glyph(self->face->glyph, FT_RENDER_MODE_NORMAL);
         if (error) continue;
         FT_Bitmap *bitmap = &self->face->glyph->bitmap;
-        const unsigned char *rowp = bitmap->buffer;
-        for (size_t row = 0; row < MIN(bitmap->rows, canvas_height); row++) {
-            rowp += bitmap->pitch;
-            unsigned char *canvasp = canvas + ((row * canvas_width) + pen_x);
-            memcpy(canvasp, rowp, MIN(bitmap->width, canvas_width - pen_x));
-        }
+        pbm = EMPTY_PBM;
+        populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
+        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, pen_x, 0, baseline);
         pen_x += self->face->glyph->advance.x >> 6;
     }
     ans.width = pen_x; ans.height = canvas_height;
@@ -606,8 +604,8 @@ render_simple_text_impl(PyObject *s, const char *text) {
     if (ans.canvas) {
         for (size_t row = 0; row < ans.height; row++) {
             unsigned char *destp = ans.canvas + (ans.width * row);
-            unsigned char *srcp = canvas + (canvas_width * row);
-            memcpy(destp, srcp, ans.width);
+            pixel *srcp = canvas + (canvas_width * row);
+            for (size_t i = 0; i < ans.width; i++) destp[i] = srcp[i] & 0xff;
         }
     }
     free(canvas);

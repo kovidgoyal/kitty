@@ -1076,7 +1076,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
 StringCanvas
 render_simple_text(FONTS_DATA_HANDLE fg_, const char *text) {
     FontGroup *fg = (FontGroup*)fg_;
-    if (fg->fonts_count && fg->medium_font_idx) return render_simple_text_impl(fg->fonts[fg->medium_font_idx].face, text);
+    if (fg->fonts_count && fg->medium_font_idx) return render_simple_text_impl(fg->fonts[fg->medium_font_idx].face, text, fg->baseline);
     StringCanvas ans = {0};
     return ans;
 }
