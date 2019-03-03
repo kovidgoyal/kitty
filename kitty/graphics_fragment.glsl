@@ -25,12 +25,10 @@ vec3 color_to_vec(uint c) {
 
 
 void main() {
+    color = texture(image, texcoord);
 #ifdef ALPHA_MASK
-    color = texture(image, texcoord);
-    vec3 fg_col = color_to_vec(fg);
-    color = vec4(color.r * fg_col.r, color.r * fg_col.g, color.r * fg_col.b, 1.0);
+    color = vec4(color_to_vec(fg), color.r);
 #else
-    color = texture(image, texcoord);
     color.a *= inactive_text_alpha;
 #ifdef PREMULT
     color = vec4(color.rgb * color.a, color.a);
