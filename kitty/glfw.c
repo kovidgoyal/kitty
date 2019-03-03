@@ -1014,20 +1014,6 @@ set_primary_selection(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-os_window_swap_buffers(PyObject UNUSED *self, PyObject *args) {
-    id_type os_window_id;
-    if (!PyArg_ParseTuple(args, "K", &os_window_id)) return NULL;
-    for (size_t i = 0; i < global_state.num_os_windows; i++) {
-        OSWindow *w = global_state.os_windows + i;
-        if (w->id == os_window_id) {
-            swap_window_buffers(w); Py_RETURN_NONE;
-        }
-    }
-    PyErr_SetString(PyExc_ValueError, "no such OSWindow");
-    return NULL;
-}
-
-static PyObject*
 set_smallest_allowed_resize(PyObject *self UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "ii", &min_width, &min_height)) return NULL;
     Py_RETURN_NONE;
@@ -1172,7 +1158,6 @@ static PyMethodDef module_methods[] = {
     METHODB(toggle_fullscreen, METH_NOARGS),
     METHODB(change_os_window_state, METH_VARARGS),
     METHODB(glfw_window_hint, METH_VARARGS),
-    METHODB(os_window_swap_buffers, METH_VARARGS),
     METHODB(get_primary_selection, METH_NOARGS),
     METHODB(x11_display, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
