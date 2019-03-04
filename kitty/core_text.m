@@ -374,7 +374,7 @@ ensure_render_space(size_t width, size_t height) {
 
 static inline void
 render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned int baseline, unsigned int num_glyphs) {
-    memset(render_buf, 0, render_buf_sz);
+    memset(render_buf, 0, width * height);
     CGColorSpaceRef gray_color_space = CGColorSpaceCreateDeviceGray();
     CGContextRef render_ctx = CGBitmapContextCreate(render_buf, width, height, 8, width, gray_color_space, (kCGBitmapAlphaInfoMask & kCGImageAlphaNone));
     if (render_ctx == NULL || gray_color_space == NULL) fatal("Out of memory");
@@ -390,6 +390,30 @@ render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned 
     CGContextRelease(render_ctx);
     CGColorSpaceRelease(gray_color_space);
 }
+
+StringCanvas
+render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
+    CTFace *self = (CTFace*)s;
+    CTFontRef font = self->ct_font;
+    size_t num_chars = strnlen(text, 32);
+    unichar chars[num_chars];
+    CGSize advances[num_chars];
+    for (size_t i = 0; i < num_chars; i++) chars[i] = text[i];
+    CTFontGetGlyphsForCharacters(font, chars, glyphs, num_chars);
+    CTFontGetAdvancesForGlyphs(font, kCTFontOrientationDefault, glyphs, advances, num_chars);
+    CGRect bounding_box = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationDefault, glyphs, boxes, num_chars);
+    StringCanvas ans = { .width = 0, .height = 2 * bounding_box.size.height };
+    for (size_t i = 0, y = 0; i < num_chars; i++) {
+        positions[i] = CGPointMake(ans.width, y);
+        ans.width += advances[i].width; y += advances[i].height;
+    }
+    ensure_render_space(ans.width, ans.height);
+    render_glyphs(font, ans.width, ans.height, baseline, num_chars);
+    ans.canvas = malloc(ans.width * ans.height);
+    if (ans.canvas) memcpy(ans.canvas, render_buf, ans.width * ans.height);
+    return ans;
+}
+
 
 static inline bool
 do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONTS_DATA_HANDLE fg, bool center_glyph) {
