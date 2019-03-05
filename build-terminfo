@@ -23,7 +23,7 @@ def compile_terminfo(base):
         tfile = tfiles[0]
         directory, xterm_kitty = os.path.split(tfile)
         _, directory = os.path.split(directory)
-        odir = os.path.join(base, 'terminfo', directory)
+        odir = os.path.join(base, directory)
         os.makedirs(odir, exist_ok=True)
         ofile = os.path.join(odir, xterm_kitty)
         shutil.move(tfile, ofile)
@@ -39,7 +39,7 @@ def generate_terminfo():
     with open('terminfo/kitty.terminfo', 'w') as f:
         f.write(generate_terminfo())
 
-    compile_terminfo(base)
+    compile_terminfo(os.path.join(base, 'terminfo'))
 
 
 if __name__ == '__main__':
