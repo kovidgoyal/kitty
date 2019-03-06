@@ -468,6 +468,24 @@ void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
         *yscale = (float) (pixels.size.height / points.size.height);
 }
 
+void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor, int* xpos, int* ypos, int *width, int *height)
+{
+    NSScreen *resultScreen;
+    for (NSScreen *screen in [NSScreen screens]) {
+        if ([[[screen deviceDescription] valueForKey:@"NSScreenNumber"] intValue] == monitor->ns.displayID) {
+            resultScreen = screen;
+            break;
+        }
+    }
+
+    NSRect frameRect = [[NSScreen resultScreen] visibleFrame];
+
+    *xpos = NSMinX(frameRect);
+    *ypos = NSMinY(frameRect);
+    *width = NSMaxX(frameRect);
+    *height = NSMaxY(frameRect);
+}
+
 GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count)
 {
     CFArrayRef modes;
