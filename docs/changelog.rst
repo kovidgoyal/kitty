@@ -81,8 +81,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Update to using the Unicode 12 standard
 
-- Fix specifying initial window size in cells not working correctly on HiDPI
-  screens (:iss:`1444`)
+- macOS: Fix specifying initial window size in cells not working correctly on
+  Retina screens (:iss:`1444`)
 
 
 0.13.3 [2019-01-19]
