@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2018-08-04
+// unicode data, built from the unicode standard on: 2019-03-06
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"

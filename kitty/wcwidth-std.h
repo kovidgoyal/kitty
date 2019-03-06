@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2018-08-04
+// unicode data, built from the unicode standard on: 2019-03-06
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -8,7 +8,7 @@ START_ALLOW_CASE_RANGE
 static int
 wcwidth_std(int32_t code) {
 	switch(code) {
-		// Marks (2240 codepoints) {{{
+		// Marks (2275 codepoints) {{{
 		case 0x0:
 			return 0;
 		case 0x300 ... 0x36f:
@@ -201,9 +201,7 @@ wcwidth_std(int32_t code) {
 			return 0;
 		case 0xeb1:
 			return 0;
-		case 0xeb4 ... 0xeb9:
-			return 0;
-		case 0xebb ... 0xebc:
+		case 0xeb4 ... 0xebc:
 			return 0;
 		case 0xec8 ... 0xecd:
 			return 0;
@@ -299,7 +297,7 @@ wcwidth_std(int32_t code) {
 			return 0;
 		case 0x1ced:
 			return 0;
-		case 0x1cf2 ... 0x1cf4:
+		case 0x1cf4:
 			return 0;
 		case 0x1cf7 ... 0x1cf9:
 			return 0;
@@ -475,6 +473,12 @@ wcwidth_std(int32_t code) {
 			return 0;
 		case 0x1182c ... 0x1183a:
 			return 0;
+		case 0x119d1 ... 0x119d7:
+			return 0;
+		case 0x119da ... 0x119e0:
+			return 0;
+		case 0x119e4:
+			return 0;
 		case 0x11a01 ... 0x11a0a:
 			return 0;
 		case 0x11a33 ... 0x11a39:
@@ -517,7 +521,9 @@ wcwidth_std(int32_t code) {
 			return 0;
 		case 0x16b30 ... 0x16b36:
 			return 0;
-		case 0x16f51 ... 0x16f7e:
+		case 0x16f4f:
+			return 0;
+		case 0x16f51 ... 0x16f87:
 			return 0;
 		case 0x16f8f ... 0x16f92:
 			return 0;
@@ -557,6 +563,10 @@ wcwidth_std(int32_t code) {
 			return 0;
 		case 0x1e026 ... 0x1e02a:
 			return 0;
+		case 0x1e130 ... 0x1e136:
+			return 0;
+		case 0x1e2ec ... 0x1e2ef:
+			return 0;
 		case 0x1e8d0 ... 0x1e8d6:
 			return 0;
 		case 0x1e944 ... 0x1e94a:
@@ -567,7 +577,7 @@ wcwidth_std(int32_t code) {
 			return 0;
 		// }}}
 
-		// Non-printing characters (2263 codepoints) {{{
+		// Non-printing characters (2272 codepoints) {{{
 		case 0x1 ... 0x1f:
 			return -1;
 		case 0x7f ... 0x9f:
@@ -605,6 +615,8 @@ wcwidth_std(int32_t code) {
 		case 0x110bd:
 			return -1;
 		case 0x110cd:
+			return -1;
+		case 0x13430 ... 0x13438:
 			return -1;
 		case 0x1bca0 ... 0x1bca3:
 			return -1;
@@ -1215,7 +1227,7 @@ wcwidth_std(int32_t code) {
 			return -2;
 		// }}}
 
-		// East Asian double width (181791 codepoints) {{{
+		// East Asian double width (181867 codepoints) {{{
 		case 0x1100 ... 0x115f:
 			return 2;
 		case 0x231a ... 0x231b:
@@ -1346,13 +1358,17 @@ wcwidth_std(int32_t code) {
 			return 2;
 		case 0xffe0 ... 0xffe6:
 			return 2;
-		case 0x16fe0 ... 0x16fe1:
+		case 0x16fe0 ... 0x16fe3:
 			return 2;
-		case 0x17000 ... 0x187f1:
+		case 0x17000 ... 0x187f7:
 			return 2;
 		case 0x18800 ... 0x18af2:
 			return 2;
 		case 0x1b000 ... 0x1b11e:
+			return 2;
+		case 0x1b150 ... 0x1b152:
+			return 2;
+		case 0x1b164 ... 0x1b167:
 			return 2;
 		case 0x1b170 ... 0x1b2fb:
 			return 2;
@@ -1420,25 +1436,33 @@ wcwidth_std(int32_t code) {
 			return 2;
 		case 0x1f6d0 ... 0x1f6d2:
 			return 2;
+		case 0x1f6d5:
+			return 2;
 		case 0x1f6eb ... 0x1f6ec:
 			return 2;
-		case 0x1f6f4 ... 0x1f6f9:
+		case 0x1f6f4 ... 0x1f6fa:
 			return 2;
-		case 0x1f910 ... 0x1f93e:
+		case 0x1f7e0 ... 0x1f7eb:
 			return 2;
-		case 0x1f940 ... 0x1f970:
+		case 0x1f90d ... 0x1f971:
 			return 2;
 		case 0x1f973 ... 0x1f976:
 			return 2;
-		case 0x1f97a:
+		case 0x1f97a ... 0x1f9a2:
 			return 2;
-		case 0x1f97c ... 0x1f9a2:
+		case 0x1f9a5 ... 0x1f9aa:
 			return 2;
-		case 0x1f9b0 ... 0x1f9b9:
+		case 0x1f9ae ... 0x1f9ca:
 			return 2;
-		case 0x1f9c0 ... 0x1f9c2:
+		case 0x1f9cd ... 0x1f9ff:
 			return 2;
-		case 0x1f9d0 ... 0x1f9ff:
+		case 0x1fa70 ... 0x1fa73:
+			return 2;
+		case 0x1fa78 ... 0x1fa7a:
+			return 2;
+		case 0x1fa80 ... 0x1fa82:
+			return 2;
+		case 0x1fa90 ... 0x1fa95:
 			return 2;
 		case 0x20000 ... 0x2fffd:
 			return 2;
@@ -1451,7 +1475,7 @@ wcwidth_std(int32_t code) {
 			return 2;
 		// }}}
 
-		// Not assigned in the unicode character database (766881 codepoints) {{{
+		// Not assigned in the unicode character database (766327 codepoints) {{{
 		case 0x378 ... 0x379:
 			return -4;
 		case 0x380 ... 0x383:
@@ -1668,7 +1692,7 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0xc64 ... 0xc65:
 			return -4;
-		case 0xc70 ... 0xc77:
+		case 0xc70 ... 0xc76:
 			return -4;
 		case 0xc8d:
 			return -4;
@@ -1742,27 +1766,13 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0xe83:
 			return -4;
-		case 0xe85 ... 0xe86:
+		case 0xe85:
 			return -4;
-		case 0xe89:
-			return -4;
-		case 0xe8b ... 0xe8c:
-			return -4;
-		case 0xe8e ... 0xe93:
-			return -4;
-		case 0xe98:
-			return -4;
-		case 0xea0:
+		case 0xe8b:
 			return -4;
 		case 0xea4:
 			return -4;
 		case 0xea6:
-			return -4;
-		case 0xea8 ... 0xea9:
-			return -4;
-		case 0xeac:
-			return -4;
-		case 0xeba:
 			return -4;
 		case 0xebe ... 0xebf:
 			return -4;
@@ -1916,7 +1926,7 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x1cc8 ... 0x1ccf:
 			return -4;
-		case 0x1cfa ... 0x1cff:
+		case 0x1cfb ... 0x1cff:
 			return -4;
 		case 0x1dfa:
 			return -4;
@@ -1974,10 +1984,6 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x2b96 ... 0x2b97:
 			return -4;
-		case 0x2bc9:
-			return -4;
-		case 0x2bff:
-			return -4;
 		case 0x2c2f:
 			return -4;
 		case 0x2c5f:
@@ -2012,7 +2018,7 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x2ddf:
 			return -4;
-		case 0x2e4f ... 0x2e7f:
+		case 0x2e50 ... 0x2e7f:
 			return -4;
 		case 0x2e9a:
 			return -4;
@@ -2048,7 +2054,9 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0xa6f8 ... 0xa6ff:
 			return -4;
-		case 0xa7ba ... 0xa7f6:
+		case 0xa7c0 ... 0xa7c1:
+			return -4;
+		case 0xa7c7 ... 0xa7f6:
 			return -4;
 		case 0xa82c ... 0xa82f:
 			return -4;
@@ -2090,7 +2098,7 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0xab2f:
 			return -4;
-		case 0xab66 ... 0xab6f:
+		case 0xab68 ... 0xab6f:
 			return -4;
 		case 0xabee ... 0xabef:
 			return -4;
@@ -2298,7 +2306,9 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x10f28 ... 0x10f2f:
 			return -4;
-		case 0x10f5a ... 0x10fff:
+		case 0x10f5a ... 0x10fdf:
+			return -4;
+		case 0x10ff7 ... 0x10fff:
 			return -4;
 		case 0x1104e ... 0x11051:
 			return -4;
@@ -2376,7 +2386,7 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x1145c:
 			return -4;
-		case 0x1145f ... 0x1147f:
+		case 0x11460 ... 0x1147f:
 			return -4;
 		case 0x114c8 ... 0x114cf:
 			return -4;
@@ -2392,7 +2402,7 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x1166d ... 0x1167f:
 			return -4;
-		case 0x116b8 ... 0x116bf:
+		case 0x116b9 ... 0x116bf:
 			return -4;
 		case 0x116ca ... 0x116ff:
 			return -4;
@@ -2406,11 +2416,15 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x118f3 ... 0x118fe:
 			return -4;
-		case 0x11900 ... 0x119ff:
+		case 0x11900 ... 0x1199f:
+			return -4;
+		case 0x119a8 ... 0x119a9:
+			return -4;
+		case 0x119d8 ... 0x119d9:
+			return -4;
+		case 0x119e5 ... 0x119ff:
 			return -4;
 		case 0x11a48 ... 0x11a4f:
-			return -4;
-		case 0x11a84 ... 0x11a85:
 			return -4;
 		case 0x11aa3 ... 0x11abf:
 			return -4;
@@ -2456,7 +2470,9 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x11daa ... 0x11edf:
 			return -4;
-		case 0x11ef9 ... 0x11fff:
+		case 0x11ef9 ... 0x11fbf:
+			return -4;
+		case 0x11ff2 ... 0x11ffe:
 			return -4;
 		case 0x1239a ... 0x123ff:
 			return -4;
@@ -2466,7 +2482,9 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x12544 ... 0x12fff:
 			return -4;
-		case 0x1342f ... 0x143ff:
+		case 0x1342f:
+			return -4;
+		case 0x13439 ... 0x143ff:
 			return -4;
 		case 0x14647 ... 0x167ff:
 			return -4;
@@ -2494,19 +2512,23 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x16e9b ... 0x16eff:
 			return -4;
-		case 0x16f45 ... 0x16f4f:
+		case 0x16f4b ... 0x16f4e:
 			return -4;
-		case 0x16f7f ... 0x16f8e:
+		case 0x16f88 ... 0x16f8e:
 			return -4;
 		case 0x16fa0 ... 0x16fdf:
 			return -4;
-		case 0x16fe2 ... 0x16fff:
+		case 0x16fe4 ... 0x16fff:
 			return -4;
-		case 0x187f2 ... 0x187ff:
+		case 0x187f8 ... 0x187ff:
 			return -4;
 		case 0x18af3 ... 0x1afff:
 			return -4;
-		case 0x1b11f ... 0x1b16f:
+		case 0x1b11f ... 0x1b14f:
+			return -4;
+		case 0x1b153 ... 0x1b163:
+			return -4;
+		case 0x1b168 ... 0x1b16f:
 			return -4;
 		case 0x1b2fc ... 0x1bbff:
 			return -4;
@@ -2588,19 +2610,33 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x1e025:
 			return -4;
-		case 0x1e02b ... 0x1e7ff:
+		case 0x1e02b ... 0x1e0ff:
+			return -4;
+		case 0x1e12d ... 0x1e12f:
+			return -4;
+		case 0x1e13e ... 0x1e13f:
+			return -4;
+		case 0x1e14a ... 0x1e14d:
+			return -4;
+		case 0x1e150 ... 0x1e2bf:
+			return -4;
+		case 0x1e2fa ... 0x1e2fe:
+			return -4;
+		case 0x1e300 ... 0x1e7ff:
 			return -4;
 		case 0x1e8c5 ... 0x1e8c6:
 			return -4;
 		case 0x1e8d7 ... 0x1e8ff:
 			return -4;
-		case 0x1e94b ... 0x1e94f:
+		case 0x1e94c ... 0x1e94f:
 			return -4;
 		case 0x1e95a ... 0x1e95d:
 			return -4;
 		case 0x1e960 ... 0x1ec70:
 			return -4;
-		case 0x1ecb5 ... 0x1edff:
+		case 0x1ecb5 ... 0x1ed00:
+			return -4;
+		case 0x1ed3e ... 0x1edff:
 			return -4;
 		case 0x1ee04:
 			return -4;
@@ -2684,7 +2720,7 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x1f10d ... 0x1f10f:
 			return -4;
-		case 0x1f16c ... 0x1f16f:
+		case 0x1f16d ... 0x1f16f:
 			return -4;
 		case 0x1f1ad ... 0x1f1e5:
 			return -4;
@@ -2698,15 +2734,17 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x1f266 ... 0x1f2ff:
 			return -4;
-		case 0x1f6d5 ... 0x1f6df:
+		case 0x1f6d6 ... 0x1f6df:
 			return -4;
 		case 0x1f6ed ... 0x1f6ef:
 			return -4;
-		case 0x1f6fa ... 0x1f6ff:
+		case 0x1f6fb ... 0x1f6ff:
 			return -4;
 		case 0x1f774 ... 0x1f77f:
 			return -4;
-		case 0x1f7d9 ... 0x1f7ff:
+		case 0x1f7d9 ... 0x1f7df:
+			return -4;
+		case 0x1f7ec ... 0x1f7ff:
 			return -4;
 		case 0x1f80c ... 0x1f80f:
 			return -4;
@@ -2718,25 +2756,29 @@ wcwidth_std(int32_t code) {
 			return -4;
 		case 0x1f8ae ... 0x1f8ff:
 			return -4;
-		case 0x1f90c ... 0x1f90f:
+		case 0x1f90c:
 			return -4;
-		case 0x1f93f:
-			return -4;
-		case 0x1f971 ... 0x1f972:
+		case 0x1f972:
 			return -4;
 		case 0x1f977 ... 0x1f979:
 			return -4;
-		case 0x1f97b:
+		case 0x1f9a3 ... 0x1f9a4:
 			return -4;
-		case 0x1f9a3 ... 0x1f9af:
+		case 0x1f9ab ... 0x1f9ad:
 			return -4;
-		case 0x1f9ba ... 0x1f9bf:
+		case 0x1f9cb ... 0x1f9cc:
 			return -4;
-		case 0x1f9c3 ... 0x1f9cf:
+		case 0x1fa54 ... 0x1fa5f:
 			return -4;
-		case 0x1fa00 ... 0x1fa5f:
+		case 0x1fa6e ... 0x1fa6f:
 			return -4;
-		case 0x1fa6e ... 0x1ffff:
+		case 0x1fa74 ... 0x1fa77:
+			return -4;
+		case 0x1fa7b ... 0x1fa7f:
+			return -4;
+		case 0x1fa83 ... 0x1fa8f:
+			return -4;
+		case 0x1fa96 ... 0x1ffff:
 			return -4;
 		case 0x2fffe ... 0x2ffff:
 			return -4;

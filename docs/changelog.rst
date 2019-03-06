@@ -75,6 +75,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a ``no-append`` setting to :opt:`clipboard_control` to disable
   the kitty copy concatenation protocol extension for OSC 52.
 
+- Update to using the Unicode 12 standard
+
 
 0.13.3 [2019-01-19]
 ------------------------------
