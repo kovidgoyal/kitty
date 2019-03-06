@@ -72,6 +72,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Use the system cursor blink interval by default
   :opt:`cursor_blink_interval`.
 
+- Wayland: Use the kitty Wayland backend by default. Can be switched back
+  to using XWayland by setting the environment variable:
+  ``KITTY_DISABLE_WAYLAND=1``
+
 - Add a ``no-append`` setting to :opt:`clipboard_control` to disable
   the kitty copy concatenation protocol extension for OSC 52.
 

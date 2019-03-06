@@ -136,7 +136,7 @@ def glfw_path(module):
 
 
 is_wayland = False
-if os.environ.get('WAYLAND_DISPLAY') and 'KITTY_ENABLE_WAYLAND' in os.environ and os.path.exists(glfw_path('wayland')):
+if os.environ.get('WAYLAND_DISPLAY') and 'KITTY_DISABLE_WAYLAND' not in os.environ and os.path.exists(glfw_path('wayland')):
     is_wayland = True
 
 
