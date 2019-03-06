@@ -232,6 +232,7 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 // global menu {{{
 void
 cocoa_create_global_menu(void) {
+    @autoreleasepool {
     NSString* app_name = find_app_name();
     NSMenu* bar = [[NSMenu alloc] init];
     GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
@@ -323,6 +324,7 @@ cocoa_create_global_menu(void) {
 
 
     [NSApp setServicesProvider:[[[ServiceProvider alloc] init] autorelease]];
+    }
 }
 
 void
@@ -415,6 +417,7 @@ cocoa_toggle_fullscreen(void *w, bool traditional) {
 
 static PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {
+    @autoreleasepool {
     NSString* locale = nil;
     NSString* lang_code = [[NSLocale currentLocale] objectForKey:NSLocaleLanguageCode];
     NSString* country_code = [[NSLocale currentLocale] objectForKey:NSLocaleCountryCode];
@@ -425,10 +428,12 @@ cocoa_get_lang(PyObject UNUSED *self) {
     }
     if (!locale) { Py_RETURN_NONE; }
     return Py_BuildValue("s", [locale UTF8String]);
+    }
 }
 
 double
 cocoa_cursor_blink_interval(void) {
+    @autoreleasepool {
     NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
     double on_period_ms = [defaults doubleForKey:@"NSTextInsertionPointBlinkPeriodOn"];
     double off_period_ms = [defaults doubleForKey:@"NSTextInsertionPointBlinkPeriodOff"];
@@ -440,6 +445,7 @@ cocoa_cursor_blink_interval(void) {
         ans = period_ms;
     }
     return ans > max_value ? 0.0 : ans;
+    }
 }
 
 void
@@ -450,6 +456,7 @@ cocoa_set_hide_from_tasks(void) {
 void
 cocoa_set_titlebar_color(void *w, color_type titlebar_color)
 {
+    @autoreleasepool {
     NSWindow *window = (NSWindow *)w;
 
     double red = ((titlebar_color >> 16) & 0xFF) / 255.0;
@@ -471,14 +478,17 @@ cocoa_set_titlebar_color(void *w, color_type titlebar_color)
     } else {
         [window setAppearance:[NSAppearance appearanceNamed:NSAppearanceNameVibrantLight]];
     }
+    }
 }
 
 static void
 cleanup() {
+    @autoreleasepool {
     if (dockMenu) [dockMenu release];
     dockMenu = nil;
     if (notification_activated_callback) Py_DECREF(notification_activated_callback);
     notification_activated_callback = NULL;
+    }
 }
 
 static PyMethodDef module_methods[] = {

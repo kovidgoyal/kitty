@@ -324,7 +324,7 @@ is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
 
 int _glfwPlatformInit(void)
 {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    @autoreleasepool {
     _glfw.ns.helper = [[GLFWHelper alloc] init];
 
     [NSThread detachNewThreadSelector:@selector(doNothing:)
@@ -392,13 +392,14 @@ int _glfwPlatformInit(void)
     _glfwInitJoysticksNS();
 
     _glfwPollMonitorsNS();
-    [pool drain];
+    }
     return GLFW_TRUE;
 }
 
 void _glfwPlatformTerminate(void)
 {
-    NSAutoreleasePool *pool = [[NSAutoreleasePool alloc] init];
+    @autoreleasepool {
+
     if (_glfw.ns.displayLinks.lock) {
         _glfwClearDisplayLinks();
         [_glfw.ns.displayLinks.lock release];
@@ -445,7 +446,7 @@ void _glfwPlatformTerminate(void)
 
     _glfwTerminateNSGL();
     _glfwTerminateJoysticksNS();
-    [pool drain];
+    }
 }
 
 const char* _glfwPlatformGetVersionString(void)

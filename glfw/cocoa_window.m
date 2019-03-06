@@ -1805,7 +1805,7 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
 
 void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start)
 {
-    NSAutoreleasePool* pool = [[NSAutoreleasePool alloc] init];
+    @autoreleasepool {
     NSEvent* event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
                                         location:NSMakePoint(0, 0)
                                    modifierFlags:0
@@ -1816,7 +1816,7 @@ void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start)
                                            data1:data1
                                            data2:0];
     [NSApp postEvent:event atStart:at_start ? YES : NO];
-    [pool drain];
+    }
 }
 
 void _glfwPlatformPostEmptyEvent(void)
