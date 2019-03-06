@@ -30,6 +30,7 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <math.h>
 
 
 // Check whether the display mode should be included in enumeration
@@ -44,7 +45,7 @@ static GLFWbool modeIsGood(const XRRModeInfo* mi)
 static int calculateRefreshRate(const XRRModeInfo* mi)
 {
     if (mi->hTotal && mi->vTotal)
-        return (int) ((double) mi->dotClock / ((double) mi->hTotal * (double) mi->vTotal));
+        return (int) round((double) mi->dotClock / ((double) mi->hTotal * (double) mi->vTotal));
     else
         return 0;
 }

@@ -29,6 +29,7 @@
 
 #include <stdlib.h>
 #include <limits.h>
+#include <math.h>
 
 #include <IOKit/graphics/IOGraphicsLib.h>
 #include <CoreVideo/CVBase.h>
@@ -148,7 +149,7 @@ static GLFWvidmode vidmodeFromCGDisplayMode(CGDisplayModeRef mode,
     GLFWvidmode result;
     result.width = (int) CGDisplayModeGetWidth(mode);
     result.height = (int) CGDisplayModeGetHeight(mode);
-    result.refreshRate = (int) CGDisplayModeGetRefreshRate(mode);
+    result.refreshRate = (int) round(CGDisplayModeGetRefreshRate(mode));
 
     if (result.refreshRate == 0)
     {

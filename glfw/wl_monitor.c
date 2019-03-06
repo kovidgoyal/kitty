@@ -30,6 +30,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <errno.h>
+#include <math.h>
 
 
 static void outputHandleGeometry(void* data,
@@ -70,7 +71,7 @@ static void outputHandleMode(void* data,
     mode.redBits = 8;
     mode.greenBits = 8;
     mode.blueBits = 8;
-    mode.refreshRate = refresh / 1000;
+    mode.refreshRate = (int)round(refresh / 1000.0);
 
     monitor->modeCount++;
     monitor->modes =
