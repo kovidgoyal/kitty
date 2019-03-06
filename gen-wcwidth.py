@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import re
 import sys
 from collections import defaultdict
 from contextlib import contextmanager
@@ -281,7 +282,8 @@ def gen_ucd():
         p('combining_type mark_for_codepoint(char_type c) {')
         rmap = codepoint_to_mark_map(p, mark_map)
         p('}\n')
-        if rmap[0xfe0e] != 1281:
+        expected = int(re.search(r'^#define VS15 (\d+)', open('kitty/unicode-data.h').read(), re.M).group(1))
+        if rmap[0xfe0e] != expected:
             raise ValueError('The mark for 0xfe0e has changed, you have to update VS15 to {} and VS16 to {} in unicode-data.h'.format(
                 rmap[0xfe0e], rmap[0xfe0f]
             ))
