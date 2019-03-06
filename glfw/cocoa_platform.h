@@ -202,6 +202,7 @@ void _glfwInitTimerNS(void);
 void _glfwPollMonitorsNS(void);
 void _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired);
 void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor);
+float _glfwTransformYNS(float y);
 void _glfwClearDisplayLinks();
 void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start);
 void _glfwDispatchTickCallback();

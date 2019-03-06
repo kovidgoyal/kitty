@@ -341,8 +341,8 @@ GLFWAPI void glfwGetMonitorWorkarea(GLFWmonitor* handle, int* xpos, int* ypos, i
         *ypos = 0;
     if (width)
         *width = 0;
-    if (width)
-        *width = 0;
+    if (height)
+        *height = 0;
 
     _GLFW_REQUIRE_INIT();
 

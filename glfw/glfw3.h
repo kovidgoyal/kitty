@@ -1940,23 +1940,27 @@ GLFWAPI void glfwGetMonitorPos(GLFWmonitor* monitor, int* xpos, int* ypos);
 /*! @brief Returns the work area of the monitor.
  *
  *  This function returns the position, in screen coordinates, of the upper-left
- *  corner of the specified monitor.
+ *  corner of the specified monitor alongwith the work area size in screen co-ordinates.
+ *  The work area is defined as the area of the monitor not occluded by the operating
+ *  system chrome (task bar, global menubar, etc.).
  *
- *  Any or all of the position arguments may be `NULL`.  If an error occurs, all
- *  non-`NULL` position arguments will be set to zero.
+ *  Any or all of the position and size arguments may be `NULL`.  If an error occurs, all
+ *  non-`NULL` position and size arguments will be set to zero.
  *
  *  @param[in] monitor The monitor to query.
  *  @param[out] xpos Where to store the monitor x-coordinate, or `NULL`.
  *  @param[out] ypos Where to store the monitor y-coordinate, or `NULL`.
+ *  @param[out] width Where to store the monitor width, or `NULL`.
+￼*  @param[out] height Where to store the monitor height, or `NULL`.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_PLATFORM_ERROR.
  *
  *  @thread_safety This function must only be called from the main thread.
  *
- *  @sa @ref monitor_properties
+ *  @sa @ref monitor_workarea
  *
- *  @since Added in version 3.0.
+ *  @since Added in version 3.3.
  *
  *  @ingroup monitor
  */
