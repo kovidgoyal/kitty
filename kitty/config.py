@@ -528,13 +528,13 @@ def initial_window_size_func(opts, cached_values):
     w, w_unit = opts.initial_window_width
     h, h_unit = opts.initial_window_height
 
-    def get_window_size(cell_width, cell_height, dpi_x, dpi_y):
+    def get_window_size(cell_width, cell_height, dpi_x, dpi_y, xscale, yscale):
         if w_unit == 'cells':
-            width = cell_width * w + (dpi_x / 72) * (opts.window_margin_width + opts.window_padding_width) + 1
+            width = cell_width * w / xscale + (dpi_x / 72) * (opts.window_margin_width + opts.window_padding_width) + 1
         else:
             width = w
         if h_unit == 'cells':
-            height = cell_height * h + (dpi_y / 72) * (opts.window_margin_width + opts.window_padding_width) + 1
+            height = cell_height * h / yscale + (dpi_y / 72) * (opts.window_margin_width + opts.window_padding_width) + 1
         else:
             height = h
         return width, height

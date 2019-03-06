@@ -104,7 +104,7 @@ def setup_x11_window(win_id):
 def initial_window_size_func(opts, *a):
     from kitty.fast_data_types import glfw_primary_monitor_size, set_smallest_allowed_resize
 
-    def initial_window_size(cell_width, cell_height, dpi_x, dpi_y):
+    def initial_window_size(cell_width, cell_height, dpi_x, dpi_y, xscale, yscale):
         monitor_width, monitor_height = glfw_primary_monitor_size()
         if args.edge in {'top', 'bottom'}:
             h = initial_window_size_func.height = cell_height * args.lines + 1

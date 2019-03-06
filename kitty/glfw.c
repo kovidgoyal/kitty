@@ -372,23 +372,28 @@ current_monitor(GLFWwindow *window) {
 #endif
 
 static inline void
-get_window_dpi(GLFWwindow *w, double *x, double *y) {
-    float xscale = 1, yscale = 1;
-    if (w) glfwGetWindowContentScale(w, &xscale, &yscale);
+get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
+    if (w) glfwGetWindowContentScale(w, xscale, yscale);
     else {
         GLFWmonitor *monitor = glfwGetPrimaryMonitor();
-        if (monitor) glfwGetMonitorContentScale(monitor, &xscale, &yscale);
+        if (monitor) glfwGetMonitorContentScale(monitor, xscale, yscale);
     }
     // check for zero or NaN values of xscale/yscale
-    if (!xscale || xscale != xscale) xscale = 1.0;
-    if (!yscale || yscale != yscale) yscale = 1.0;
+    if (!*xscale || *xscale != *xscale) *xscale = 1.0;
+    if (!*yscale || *yscale != *yscale) *yscale = 1.0;
 #ifdef __APPLE__
-    double factor = 72.0;
+    const double factor = 72.0;
 #else
-    double factor = 96.0;
+    const double factor = 96.0;
 #endif
-    *x = xscale * factor;
-    *y = yscale * factor;
+    *xdpi = *xscale * factor;
+    *ydpi = *yscale * factor;
+}
+
+static inline void
+get_window_dpi(GLFWwindow *w, double *x, double *y) {
+    float xscale = 1, yscale = 1;
+    get_window_content_scale(w, &xscale, &yscale, x, y);
 }
 
 static void
@@ -540,11 +545,11 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 
     GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
     if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
-
-    double dpi_x, dpi_y;
-    get_window_dpi(temp_window, &dpi_x, &dpi_y);
-    FONTS_DATA_HANDLE fonts_data = load_fonts_data(global_state.font_sz_in_pts, dpi_x, dpi_y);
-    PyObject *ret = PyObject_CallFunction(get_window_size, "IIdd", fonts_data->cell_width, fonts_data->cell_height, fonts_data->logical_dpi_x, fonts_data->logical_dpi_y);
+    float xscale, yscale;
+    double xdpi, ydpi;
+    get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
+    FONTS_DATA_HANDLE fonts_data = load_fonts_data(global_state.font_sz_in_pts, xdpi, ydpi);
+    PyObject *ret = PyObject_CallFunction(get_window_size, "IIddff", fonts_data->cell_width, fonts_data->cell_height, fonts_data->logical_dpi_x, fonts_data->logical_dpi_y, xscale, yscale);
     if (ret == NULL) return NULL;
     int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
     Py_CLEAR(ret);
@@ -609,7 +614,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         OSWindow *q = global_state.os_windows + i;
         q->is_focused = q == w ? true : false;
     }
-    w->logical_dpi_x = dpi_x; w->logical_dpi_y = dpi_y;
+    w->logical_dpi_x = xdpi; w->logical_dpi_y = ydpi;
     w->fonts_data = fonts_data;
     w->shown_once = true;
     w->last_focused_counter = ++focus_counter;
