@@ -545,6 +545,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 
     GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
     if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
+#ifndef __APPLE__
+    if (is_first_window) glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
+#endif
     float xscale, yscale;
     double xdpi, ydpi;
     get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
@@ -586,8 +589,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         cocoa_create_global_menu();
         // This needs to be done only after the first window has been created, because glfw only sets the activation policy once upon initialization.
         if (OPT(macos_hide_from_tasks)) cocoa_set_hide_from_tasks();
-#else
-        glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
 #define CC(dest, shape) {\
     if (!dest##_cursor) { \
