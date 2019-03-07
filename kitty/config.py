@@ -530,8 +530,8 @@ def initial_window_size_func(opts, cached_values):
 
     def get_window_size(cell_width, cell_height, dpi_x, dpi_y, xscale, yscale):
         if not is_macos:
-            # not sure if scaling is needed on non-macOS platforms, requires
-            # someone with requisite hardware to test.
+            # scaling is not needed on Wayland, but is needed on macOS. Not
+            # sure about X11.
             xscale = yscale = 1
         if w_unit == 'cells':
             width = cell_width * w / xscale + (dpi_x / 72) * (opts.window_margin_width + opts.window_padding_width) + 1
