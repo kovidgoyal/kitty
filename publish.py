@@ -62,10 +62,32 @@ def run_html(args):
     call('make FAIL_WARN=-W html', cwd=docs_dir)
 
 
+def add_analytics():
+    analytics = '''
+<!-- Google Analytics -->
+<script>
+window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
+ga('create', 'UA-20736318-2', 'auto');
+ga('send', 'pageview');
+</script>
+<script async="async" src='https://www.google-analytics.com/analytics.js'></script>
+<!-- End Google Analytics -->\
+'''
+    for dirpath, firnames, filenames in os.walk(publish_dir):
+        for fname in filenames:
+            if fname.endswith('.html'):
+                with open(os.path.join(dirpath, fname), 'r+b') as f:
+                    html = f.read().decode('utf-8')
+                    html = html.replace('<!-- kitty analytics placeholder -->', analytics, 1)
+                    f.seek(0), f.truncate()
+                    f.write(html.encode('utf-8'))
+
+
 def run_website(args):
     if os.path.exists(publish_dir):
         shutil.rmtree(publish_dir)
     shutil.copytree(os.path.join(docs_dir, '_build', 'html'), publish_dir)
+    add_analytics()
     with open(os.path.join(publish_dir, 'current-version.txt'), 'w') as f:
         f.write(version)
     shutil.copy2(os.path.join(docs_dir, 'installer.sh'), publish_dir)
