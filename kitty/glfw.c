@@ -545,9 +545,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 
     GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
     if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
-#ifndef __APPLE__
-    if (is_first_window) glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
-#endif
     float xscale, yscale;
     double xdpi, ydpi;
     get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
@@ -573,6 +570,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
     blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f);
+#ifndef __APPLE__
+    if (is_first_window) glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
+#endif
     glfwSwapBuffers(glfw_window);
     if (!global_state.is_wayland) {
         PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
