@@ -130,7 +130,7 @@ run_search(Options *opts, GlobalData *global, const char * const *lines, const s
     ALLOC_VEC(text_t, chars, 8192 * 20);
     if (chars.data == NULL) return 1;
     ALLOC_VEC(Candidate, candidates, 8192);
-    if (candidates.data == NULL) { FREE_VEC(candidates) return 1; }
+    if (candidates.data == NULL) { FREE_VEC(chars) return 1; }
 
     for (size_t i = 0; i < num_lines; i++) {
         sz = sizes[i];
