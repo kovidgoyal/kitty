@@ -612,7 +612,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     unsigned int num = screen->parser_buf_pos, start, i, num_params=0, p1, p2;
     static unsigned int params[MAX_PARAMS] = {0};
     bool private;
-    if (buf[0] == '>' || buf[0] == '?' || buf[0] == '!' || buf[0] == '=') {
+    if (buf[0] == '>' || buf[0] == '?' || buf[0] == '!' || buf[0] == '=' || buf[0] == '-') {
         start_modifier = (char)screen->parser_buf[0];
         buf++; num--;
     }
@@ -994,6 +994,7 @@ accumulate_csi(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
         case '>':
         case '!':
         case '=':
+        case '-':
             if (screen->parser_buf_pos != 0) {
                 REPORT_ERROR("Invalid character in CSI: 0x%x, ignoring the sequence", ch);
                 SET_STATE(0);
