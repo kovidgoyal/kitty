@@ -26,6 +26,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Make live resizing of OS windows smoother and show the size in cells
   while the resize is in progress.
 
+- When a window is closed, switch focus to the previously active window (if
+  any) instead of picking the previous window in the layout (:iss:`1450`)
+
 - icat kitten: Add support for displaying images at http(s) URLs (:iss:`1340`)
 
 - A new option :opt:`strip_trailing_spaces` to optionally remove trailing
