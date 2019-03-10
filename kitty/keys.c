@@ -187,6 +187,7 @@ on_key_input(GLFWkeyevent *ev) {
     }
     if (screen->scrolled_by && action == GLFW_PRESS && !is_modifier_key(key)) {
         screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
+        pixel_scroll(screen, 0);
     }
     bool ok_to_send = action == GLFW_PRESS || action == GLFW_REPEAT || screen->modes.mEXTENDED_KEYBOARD;
     if (ok_to_send) {

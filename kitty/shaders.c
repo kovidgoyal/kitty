@@ -9,7 +9,7 @@
 #include "gl.h"
 #include <stddef.h>
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, SCROLL_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT, BGIMAGE_UNIT };
 
 // Sprites {{{
@@ -82,6 +82,7 @@ copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int 
 
 static void
 realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
+    printf("realloc_sprite_texture\n");
     GLuint tex;
     glGenTextures(1, &tex);
     glBindTexture(GL_TEXTURE_2D_ARRAY, tex);
@@ -121,6 +122,7 @@ ensure_sprite_map(FONTS_DATA_HANDLE fg) {
 
 void
 send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigned int z, pixel *buf) {
+    printf("%d\t%d\t%d\n", x, y, z);
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     unsigned int xnum, ynum, znum;
     sprite_tracker_current_layout(fg, &xnum, &ynum, &znum);
@@ -163,6 +165,8 @@ typedef struct {
 } CellProgramLayout;
 
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
+static GLuint scroll_framebuffer = 0;
+static unsigned int quadVAO, quadVBO;
 static ssize_t blit_vertex_array;
 typedef struct {
     GLint image_location, tiled_location, sizes_location, opacity_location, premult_location;
@@ -197,6 +201,62 @@ init_cell_program(void) {
     bgimage_program_layout.premult_location = get_uniform_location(BGIMAGE_PROGRAM, "premult");
     tint_program_layout.tint_color_location = get_uniform_location(TINT_PROGRAM, "tint_color");
     tint_program_layout.edges_location = get_uniform_location(TINT_PROGRAM, "edges");
+}
+
+void setup_scroll(OSWindow *os_window) {
+    glGenFramebuffers(1, &scroll_framebuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, scroll_framebuffer);
+    glGenTextures(1, &os_window->scroll_texture_id);
+    glBindTexture(GL_TEXTURE_2D, os_window->scroll_texture_id);
+    printf("%d %d\n", os_window->viewport_width, os_window->viewport_height);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, os_window->viewport_width, os_window->viewport_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    //glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, 640, 400, 0, GL_RGBA, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, os_window->scroll_texture_id, 0);
+
+    float quadVertices[] = { // vertex attributes for a quad that fills the entire screen in Normalized Device Coordinates.
+        // positions   // texCoords
+        -1.0f,  1.0f,  0.0f, 1.0f,
+        -1.0f, -1.0f,  0.0f, 0.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+
+        -1.0f,  1.0f,  0.0f, 1.0f,
+         1.0f, -1.0f,  1.0f, 0.0f,
+         1.0f,  1.0f,  1.0f, 1.0f
+    };
+
+    glGenVertexArrays(1, &quadVAO);
+    glGenBuffers(1, &quadVBO);
+    glBindVertexArray(quadVAO);
+    glBindBuffer(GL_ARRAY_BUFFER, quadVBO);
+    glBufferData(GL_ARRAY_BUFFER, sizeof(quadVertices), &quadVertices, GL_STATIC_DRAW);
+    glEnableVertexAttribArray(0);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(1);
+    glVertexAttribPointer(1, 2, GL_FLOAT, GL_FALSE, 4 * sizeof(float), (void*)(2 * sizeof(float)));
+}
+
+void before_render() {
+    // first pass
+    glBindFramebuffer(GL_FRAMEBUFFER, scroll_framebuffer);
+    //glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    //glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // we're not using the stencil buffer now
+}
+
+void after_render(OSWindow *os_window, double pixels) {
+    // second pass
+    glBindFramebuffer(GL_FRAMEBUFFER, 0); // back to default
+    glClearColor(0.5f, 0.5f, 0.5f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    //printf("%f\n", pixels);
+    bind_program(SCROLL_PROGRAM);
+    glUniform1f(glGetUniformLocation(program_id(SCROLL_PROGRAM), "offset"), pixels);
+    glBindVertexArray(quadVAO);
+    glBindTexture(GL_TEXTURE_2D, os_window->scroll_texture_id);
+    glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
@@ -315,11 +375,17 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
 
     ensure_sprite_map(fonts_data);
 
+    if (screen->pixel_scroll_changed) {
+        screen->pixel_scroll_changed = false;
+        changed = true;
+    }
+
     bool cursor_pos_changed = screen->cursor->x != screen->last_rendered.cursor_x
                            || screen->cursor->y != screen->last_rendered.cursor_y;
     bool disable_ligatures = screen->disable_ligatures == DISABLE_LIGATURES_CURSOR;
 
     if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || (disable_ligatures && cursor_pos_changed)) {
+        screen->render_not_only_pixel_scroll = true;
         sz = sizeof(GPUCell) * screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed);
@@ -333,6 +399,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     }
 
     if (screen->reload_all_gpu_data || screen_is_selection_dirty(screen)) {
+        screen->render_not_only_pixel_scroll = true;
         sz = screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_apply_selection(screen, address, sz);
@@ -341,6 +408,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     }
 
     if (gvao_idx && grman_update_layers(screen->grman, screen->scrolled_by, xstart, ystart, dx, dy, screen->columns, screen->lines, screen->cell_size)) {
+        screen->render_not_only_pixel_scroll = true;
         send_graphics_data_to_gpu(screen->grman->count, gvao_idx, screen->grman->render_data);
         changed = true;
     }
@@ -808,7 +876,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(SCROLL_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

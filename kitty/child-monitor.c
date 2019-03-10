@@ -246,7 +246,7 @@ schedule_write_to_child(unsigned long id, unsigned int num, ...) {
                 }
                 screen->write_buf_sz = screen->write_buf_used + sz;
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
-                if (screen->write_buf == NULL) { fatal("Out of memory."); }
+                if (screen->write_buf == NULL) fatal("Out of memory.");
             }
             va_start(ap, num);
             for (unsigned int i = 0; i < num; i++) {
@@ -259,7 +259,7 @@ schedule_write_to_child(unsigned long id, unsigned int num, ...) {
             if (screen->write_buf_sz > BUFSIZ && screen->write_buf_used < BUFSIZ) {
                 screen->write_buf_sz = BUFSIZ;
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
-                if (screen->write_buf == NULL) { fatal("Out of memory."); }
+                if (screen->write_buf == NULL) fatal("Out of memory.");
             }
             if (screen->write_buf_used) wakeup_io_loop(self, false);
             screen_mutex(unlock, write);
@@ -589,8 +589,13 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 
 static inline void
 render_os_window(OSWindow *os_window, monotonic_t now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
+    static bool first_time = true;
+    if (first_time) {
+        setup_scroll(os_window);
+        first_time = false;
+    }
     // ensure all pixels are cleared to background color at least once in every buffer
-    if (os_window->clear_count++ < 3) blank_os_window(os_window);
+    if (os_window->clear_count++ < 2) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
     bool static_live_resize_in_progress = os_window->live_resize.in_progress && OPT(resize_draw_strategy) == RESIZE_DRAW_STATIC;
@@ -603,19 +608,24 @@ render_os_window(OSWindow *os_window, monotonic_t now, unsigned int active_windo
         draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
         br->is_dirty = false;
     }
-    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx * x_ratio, TD.dy * y_ratio, TD.screen, os_window, true, false);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
         if (w->visible && WD.screen) {
+            before_render();
             bool is_active_window = i == tab->active_window;
-            draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx * x_ratio, WD.dy * y_ratio, WD.screen, os_window, is_active_window, true);
-            if (WD.screen->start_visual_bell_at != 0) {
-                monotonic_t bell_left = OPT(visual_bell_duration) - (now - WD.screen->start_visual_bell_at);
-                set_maximum_wait(bell_left);
+            if (WD.screen->render_not_only_pixel_scroll) {
+                WD.screen->render_not_only_pixel_scroll = false;
+                draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx * x_ratio, WD.dy * y_ratio, WD.screen, os_window, is_active_window, true);
+                if (WD.screen->start_visual_bell_at != 0) {
+                    monotonic_t bell_left = OPT(visual_bell_duration) - (now - WD.screen->start_visual_bell_at);
+                    set_maximum_wait(bell_left);
+                }
             }
+            after_render(os_window, (WD.screen->scrolled_by_pixels * 2.0) / os_window->viewport_height);
             w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
     }
+    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window, true, false);
     swap_window_buffers(os_window);
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
@@ -688,7 +698,7 @@ render(monotonic_t now, bool input_read) {
         bool needs_render = w->is_damaged || w->live_resize.in_progress;
         if (w->viewport_size_dirty) {
             w->clear_count = 0;
-            update_surface_size(w->viewport_width, w->viewport_height, w->offscreen_texture_id);
+            update_surface_size(w->viewport_width, w->viewport_height, w->offscreen_texture_id, w->scroll_texture_id);
             w->viewport_size_dirty = false;
             needs_render = true;
         }

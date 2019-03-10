@@ -192,6 +192,7 @@ do_drag_scroll(Window *w, bool upwards) {
     Screen *screen = w->render_data.screen;
     if (screen->linebuf == screen->main_linebuf) {
         screen_history_scroll(screen, SCROLL_LINE, upwards);
+        pixel_scroll(screen, 0);
         update_drag(false, w, false, 0);
         if (mouse_cursor_shape != ARROW) {
             mouse_cursor_shape = ARROW;
@@ -651,18 +652,12 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
     int s;
     bool is_high_resolution = flags & 1;
 
+    double pixels = screen->pending_scroll_pixels;
     if (is_high_resolution) {
         yoffset *= OPT(touch_scroll_multiplier);
-        if (yoffset * screen->pending_scroll_pixels < 0) {
-            screen->pending_scroll_pixels = 0;  // change of direction
-        }
-        double pixels = screen->pending_scroll_pixels + yoffset;
-        if (fabs(pixels) < global_state.callback_os_window->fonts_data->cell_height) {
-            screen->pending_scroll_pixels = pixels;
-            return;
-        }
+        pixels += yoffset;
         s = (int)round(pixels) / (int)global_state.callback_os_window->fonts_data->cell_height;
-        screen->pending_scroll_pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
+        pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
     } else {
         if (screen->linebuf == screen->main_linebuf || !screen->modes.mouse_tracking_mode) {
             // Only use wheel_scroll_multiplier if we are scrolling kitty scrollback or in mouse
@@ -677,13 +672,18 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
         // apparently on cocoa some mice generate really small yoffset values
         // when scrolling slowly https://github.com/kovidgoyal/kitty/issues/1238
         if (s == 0 && yoffset != 0) s = yoffset > 0 ? 1 : -1;
-        screen->pending_scroll_pixels = 0;
     }
-    if (s == 0) return;
     bool upwards = s > 0;
+    //printf("asdf %f\n", pixels);
     if (screen->linebuf == screen->main_linebuf) {
         screen_history_scroll(screen, abs(s), upwards);
+        if (screen->scrolled_by == 0 && pixels < 0) pixels = 0;
+        if (screen->scrolled_by == screen->historybuf->count && pixels > 0) pixels = 0;
+        screen->pending_scroll_pixels = pixels;
+        pixel_scroll(screen, (int)pixels);
     } else {
+        pixels = 0.0;
+        pixel_scroll(screen, (int)pixels);
         if (screen->modes.mouse_tracking_mode) {
             int sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, 0);
             if (sz > 0) {
@@ -696,6 +696,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
             fake_scroll(abs(s), upwards);
         }
     }
+    screen->pending_scroll_pixels = pixels;
 }
 
 static PyObject*

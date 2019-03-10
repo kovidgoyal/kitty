@@ -720,7 +720,7 @@ extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) 
 
 static inline void
 render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, bool center_glyph) {
-    static SpritePosition* sprite_position[16];
+    static SpritePosition* sprite_position[16]; // TODO: Remove magic number
     int error = 0;
     num_cells = MIN(arraysz(sprite_position), num_cells);
     for (unsigned int i = 0; i < num_cells; i++) {

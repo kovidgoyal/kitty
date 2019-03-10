@@ -97,6 +97,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->modes = empty_modes;
         self->is_dirty = true;
         self->scroll_changed = false;
+        self->pixel_scroll_changed = false;
+        self->render_not_only_pixel_scroll = false;
         self->margin_top = 0; self->margin_bottom = self->lines - 1;
         self->history_line_added_count = 0;
         RESET_CHARSETS;
@@ -657,6 +659,7 @@ screen_toggle_screen_buffer(Screen *self) {
         self->grman = self->main_grman;
     }
     screen_history_scroll(self, SCROLL_FULL, false);
+    pixel_scroll(self, 0);
     self->is_dirty = true;
     self->selection = EMPTY_SELECTION;
 }
@@ -1199,6 +1202,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             self->scrolled_by = 0;
             self->scroll_changed = true;
         }
+        pixel_scroll(self, 0);
     }
 }
 
@@ -2205,6 +2209,12 @@ screen_selection_range_for_word(Screen *self, const index_type x, const index_ty
 #undef is_ok
 }
 
+void pixel_scroll(Screen *self, int amt) {
+    //printf("pixel_scroll(%d)\n", amt);
+    self->scrolled_by_pixels = amt;
+    self->pixel_scroll_changed = true;
+}
+
 bool
 screen_history_scroll(Screen *self, int amt, bool upwards) {
     switch(amt) {
@@ -2239,6 +2249,7 @@ static PyObject*
 scroll(Screen *self, PyObject *args) {
     int amt, upwards;
     if (!PyArg_ParseTuple(args, "ip", &amt, &upwards)) return NULL;
+    pixel_scroll(self, 0);
     if (screen_history_scroll(self, amt, upwards)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }

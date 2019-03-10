@@ -76,6 +76,7 @@ typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by;
+    int scrolled_by_pixels;
     double pending_scroll_pixels;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
@@ -87,7 +88,7 @@ typedef struct {
         IterationData selection, url;
         unsigned int cursor_x, cursor_y, scrolled_by;
     } last_rendered;
-    bool use_latin1, is_dirty, scroll_changed, reload_all_gpu_data;
+    bool use_latin1, is_dirty, scroll_changed, pixel_scroll_changed, reload_all_gpu_data, render_not_only_pixel_scroll;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
     SavemodesBuffer modes_savepoints;
@@ -197,6 +198,7 @@ bool screen_selection_range_for_line(Screen *self, index_type y, index_type *sta
 bool screen_selection_range_for_word(Screen *self, const index_type x, const index_type y, index_type *, index_type *, index_type *start, index_type *end, bool);
 void screen_start_selection(Screen *self, index_type x, index_type y, bool, bool, SelectionExtendMode);
 void screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half, bool ended, bool start_extended_selection);
+void pixel_scroll(Screen *self, int amt);
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 Line* screen_visual_line(Screen *self, index_type y);
 unsigned long screen_current_char_width(Screen *self);
