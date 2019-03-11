@@ -1042,12 +1042,11 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line) {
                 num_spaces++;
                 // We have a private use char followed by space(s), render it as a multi-cell ligature.
                 GPUCell *space_cell = line->gpu_cells + i + num_spaces;
-                // Ensure the space cell uses the foreground/background colors from the PUA cell.
-                // This is needed because there are stupid applications like
-                // powerline that use PUA+space with different foreground colors
+                // Ensure the space cell uses the foreground color from the PUA cell.
+                // This is needed because there are applications like
+                // Powerline that use PUA+space with different foreground colors
                 // for the space and the PUA. See for example: https://github.com/kovidgoyal/kitty/issues/467
                 space_cell->fg = gpu_cell->fg;
-                space_cell->bg = gpu_cell->bg;
                 space_cell->decoration_fg = gpu_cell->decoration_fg;
             }
             if (num_spaces) {

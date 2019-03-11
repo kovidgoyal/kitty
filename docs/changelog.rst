@@ -87,6 +87,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix specifying initial window size in cells not working correctly on
   Retina screens (:iss:`1444`)
 
+- Fix a regression in version 0.13.0 that caused background colors of space
+  characters after private use unicode characters to not be respected
+  (:iss:`1455`)
+
 
 0.13.3 [2019-01-19]
 ------------------------------
