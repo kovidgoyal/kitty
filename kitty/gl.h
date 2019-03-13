@@ -37,7 +37,7 @@ check_for_gl_error(const char *name, void UNUSED *funcptr, int UNUSED len_args, 
         case GL_STACK_UNDERFLOW:
             f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_UNDERFLOW)");
         case GL_STACK_OVERFLOW:
-            f("An attempt has been made to perform an operation that would cause an internal stack to underflow. (GL_STACK_OVERFLOW)");
+            f("An attempt has been made to perform an operation that would cause an internal stack to overflow. (GL_STACK_OVERFLOW)");
         default:
             fatal("An unknown OpenGL error occurred with code: %d (calling function: %s)", code, name);
             break;
