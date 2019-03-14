@@ -61,6 +61,7 @@ def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_in
         return
     m = key_pat.match(line)
     if m is None:
+        log_error('Ignoring invalid config line: {}'.format(line))
         return
     key, val = m.groups()
     if special_handling(key, val, ans):
