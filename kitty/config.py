@@ -69,7 +69,7 @@ def shlex_parse(func, rest):
 
 @func_with_args('combine')
 def combine_parse(func, rest):
-    sep, rest = rest.split(' ', 1)
+    sep, rest = rest.split(maxsplit=1)
     parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
     args = tuple(map(parse_key_action, filter(None, parts)))
     return func, args
@@ -77,7 +77,7 @@ def combine_parse(func, rest):
 
 @func_with_args('send_text')
 def send_text_parse(func, rest):
-    args = rest.split(' ', 1)
+    args = rest.split(maxsplit=1)
     if len(args) > 0:
         try:
             args[1] = parse_send_text_bytes(args[1])
@@ -90,9 +90,9 @@ def send_text_parse(func, rest):
 @func_with_args('run_kitten', 'run_simple_kitten', 'kitten')
 def kitten_parse(func, rest):
     if func == 'kitten':
-        args = rest.split(' ', 1)
+        args = rest.split(maxsplit=1)
     else:
-        args = rest.split(' ', 2)[1:]
+        args = rest.split(maxsplit=2)[1:]
         func = 'kitten'
     return func, args
 
@@ -115,7 +115,7 @@ def float_parse(func, rest):
 
 @func_with_args('change_font_size')
 def parse_change_font_size(func, rest):
-    vals = rest.strip().split(' ', 1)
+    vals = rest.strip().split(maxsplit=1)
     if len(vals) != 2:
         log_error('Invalid change_font_size specification: {}, treating it as default'.format(rest))
         args = [True, None, 0]
@@ -131,7 +131,7 @@ def parse_change_font_size(func, rest):
 
 @func_with_args('clear_terminal')
 def clear_terminal(func, rest):
-    vals = rest.strip().split(' ', 1)
+    vals = rest.strip().split(maxsplit=1)
     if len(vals) != 2:
         log_error('clear_terminal needs two arguments, using defaults')
         args = ['reset', 'active']
@@ -162,7 +162,7 @@ def neighboring_window(func, rest):
 
 @func_with_args('resize_window')
 def resize_window(func, rest):
-    vals = rest.strip().split(' ', 1)
+    vals = rest.strip().split(maxsplit=1)
     if len(vals) > 2:
         log_error('resize_window needs one or two arguments, using defaults')
         args = ['wider', 1]
@@ -215,7 +215,7 @@ def nth_window(func, rest):
 
 
 def parse_key_action(action):
-    parts = action.strip().split(' ', 1)
+    parts = action.strip().split(maxsplit=1)
     func = parts[0]
     if len(parts) == 1:
         return KeyAction(func, ())
@@ -248,7 +248,10 @@ class KeyDefinition:
 
 
 def parse_key(val, key_definitions):
-    sc, action = val.partition(' ')[::2]
+    parts = val.split(maxsplit=1)
+    if len(parts) != 2:
+        return
+    sc, action = parts
     sc, action = sc.strip().strip(sequence_sep), action.strip()
     if not sc or not action:
         return
@@ -288,7 +291,7 @@ def parse_key(val, key_definitions):
 
 
 def parse_symbol_map(val):
-    parts = val.split(' ')
+    parts = val.split()
     symbol_map = {}
 
     def abort():
