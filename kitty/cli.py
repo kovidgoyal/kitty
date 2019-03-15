@@ -614,7 +614,9 @@ type=bool-set
 
 
 def options_for_completion():
-    return parse_option_spec(options_spec())[0]
+    raw = options_spec()
+    raw = '--help -h\ntype=bool-set\nShow help for kitty command line options\n\n' + raw
+    return parse_option_spec(raw)[0]
 
 
 def option_spec_as_rst(ospec=options_spec, usage=None, message=None, appname=None, heading_char='-'):
