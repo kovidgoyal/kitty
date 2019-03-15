@@ -463,6 +463,10 @@ def parse_cmdline(oc, disabled, args=None):
 def options_spec():
     if not hasattr(options_spec, 'ans'):
         OPTIONS = '''
+--help -h
+Receive help from and for kitty.
+
+
 --class
 dest=cls
 default={appname}
