@@ -376,8 +376,9 @@ static inline void
 render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned int baseline, unsigned int num_glyphs) {
     memset(render_buf, 0, width * height);
     CGColorSpaceRef gray_color_space = CGColorSpaceCreateDeviceGray();
+    if (gray_color_space == NULL) fatal("Out of memory");
     CGContextRef render_ctx = CGBitmapContextCreate(render_buf, width, height, 8, width, gray_color_space, (kCGBitmapAlphaInfoMask & kCGImageAlphaNone));
-    if (render_ctx == NULL || gray_color_space == NULL) fatal("Out of memory");
+    if (render_ctx == NULL) fatal("Out of memory");
     CGContextSetShouldAntialias(render_ctx, true);
     CGContextSetShouldSmoothFonts(render_ctx, true);
     CGContextSetGrayFillColor(render_ctx, 1, 1); // white glyphs
