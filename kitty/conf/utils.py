@@ -60,29 +60,31 @@ def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_in
     if not line or line.startswith('#'):
         return
     m = key_pat.match(line)
-    if m is not None:
-        key, val = m.groups()
-        if special_handling(key, val, ans):
-            return
-        if key == 'include':
-            val = os.path.expandvars(os.path.expanduser(val.strip()))
-            if not os.path.isabs(val):
-                val = os.path.join(base_path_for_includes, val)
-            try:
-                with open(val, encoding='utf-8', errors='replace') as include:
-                    _parse(include, type_map, special_handling, ans, all_keys)
-            except FileNotFoundError:
-                log_error('Could not find included config file: {}, ignoring'.format(val))
-            except EnvironmentError:
-                log_error('Could not read from included config file: {}, ignoring'.format(val))
-            return
-        if all_keys is not None and key not in all_keys:
-            log_error('Ignoring unknown config key: {}'.format(key))
-            return
-        tm = type_map.get(key)
-        if tm is not None:
-            val = tm(val)
-        ans[key] = val
+    if m is None:
+        log_error('Ignoring invalid config line: {}'.format(line))
+        return
+    key, val = m.groups()
+    if special_handling(key, val, ans):
+        return
+    if key == 'include':
+        val = os.path.expandvars(os.path.expanduser(val.strip()))
+        if not os.path.isabs(val):
+            val = os.path.join(base_path_for_includes, val)
+        try:
+            with open(val, encoding='utf-8', errors='replace') as include:
+                _parse(include, type_map, special_handling, ans, all_keys)
+        except FileNotFoundError:
+            log_error('Could not find included config file: {}, ignoring'.format(val))
+        except EnvironmentError:
+            log_error('Could not read from included config file: {}, ignoring'.format(val))
+        return
+    if all_keys is not None and key not in all_keys:
+        log_error('Ignoring unknown config key: {}'.format(key))
+        return
+    tm = type_map.get(key)
+    if tm is not None:
+        val = tm(val)
+    ans[key] = val
 
 
 def _parse(lines, type_map, special_handling, ans, all_keys):
