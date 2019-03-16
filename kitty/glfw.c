@@ -117,7 +117,7 @@ blank_os_window(OSWindow *w) {
 
 static void
 window_close_callback(GLFWwindow* window) {
-    if (!set_callback_window(window)) return;
+    set_callback_window(window);
     global_state.has_pending_closes = true;
     request_tick_callback();
     global_state.callback_os_window = NULL;
@@ -539,6 +539,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #ifdef __APPLE__
     if (is_first_window && !application_quit_canary) {
         application_quit_canary = glfwCreateWindow(100, 200, "quit_canary", NULL, NULL);
+        glfwSetWindowCloseCallback(application_quit_canary, window_close_callback);
     }
     if (!common_context) common_context = application_quit_canary;
 #endif
