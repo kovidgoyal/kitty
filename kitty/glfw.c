@@ -379,8 +379,8 @@ get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xd
         if (monitor) glfwGetMonitorContentScale(monitor, xscale, yscale);
     }
     // check for zero or NaN values of xscale/yscale
-    if (!*xscale || *xscale != *xscale) *xscale = 1.0;
-    if (!*yscale || *yscale != *yscale) *yscale = 1.0;
+    if (*xscale <= 0 || *xscale != *xscale) *xscale = 1.0;
+    if (*yscale <= 0 || *yscale != *yscale) *yscale = 1.0;
 #ifdef __APPLE__
     const double factor = 72.0;
 #else
