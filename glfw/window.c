@@ -143,7 +143,7 @@ void _glfwInputFramebufferSize(_GLFWwindow* window, int width, int height)
 //
 void _glfwInputLiveResize(_GLFWwindow* window, bool started)
 {
-    if (window->callbacks.liveResize)
+    if (window && window->callbacks.liveResize)
         window->callbacks.liveResize((GLFWwindow*) window, started);
 }
 
