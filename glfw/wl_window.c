@@ -101,8 +101,10 @@ static void handleConfigure(void* data,
             height = window->maxheight;
     }
 
-    _glfwInputWindowSize(window, width, height);
-    _glfwPlatformSetWindowSize(window, width, height);
+    if (width != window->wl.width || height != window->wl.height) {
+        _glfwInputWindowSize(window, width, height);
+        _glfwPlatformSetWindowSize(window, width, height);
+    }
     _glfwInputWindowDamage(window);
 }
 
@@ -628,8 +630,10 @@ static void xdgToplevelHandleConfigure(void* data,
             }
         }
 
-        _glfwInputWindowSize(window, width, height);
-        _glfwPlatformSetWindowSize(window, width, height);
+        if (width != window->wl.width || height != window->wl.height) {
+            _glfwInputWindowSize(window, width, height);
+            _glfwPlatformSetWindowSize(window, width, height);
+        }
         _glfwInputWindowDamage(window);
     }
 
