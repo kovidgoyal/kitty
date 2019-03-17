@@ -41,6 +41,34 @@
 
 #define URI_LIST_MIME "text/uri-list"
 
+static void checkScaleChange(_GLFWwindow* window)
+{
+    int scale = 1;
+    int i;
+    int monitorScale;
+
+    // Check if we will be able to set the buffer scale or not.
+    if (_glfw.wl.compositorVersion < 3)
+        return;
+
+    // Get the scale factor from the highest scale monitor.
+    for (i = 0; i < window->wl.monitorsCount; ++i)
+    {
+        monitorScale = window->wl.monitors[i]->wl.scale;
+        if (monitorScale < 0 || monitorScale > 24)
+            continue;
+        if (scale < monitorScale)
+            scale = monitorScale;
+    }
+
+    // Only change the framebuffer size if the scale changed.
+    if (scale != window->wl.scale)
+    {
+        window->wl.scale = scale;
+        wl_surface_set_buffer_scale(window->wl.surface, scale);
+        _glfwInputWindowContentScale(window, scale, scale);
+    }
+}
 
 static const char*
 clipboard_mime() {
@@ -101,6 +129,7 @@ static void handleConfigure(void* data,
             height = window->maxheight;
     }
 
+    checkScaleChange(window);
     if (width != window->wl.width || height != window->wl.height) {
         _glfwInputWindowSize(window, width, height);
         _glfwPlatformSetWindowSize(window, width, height);
@@ -395,33 +424,6 @@ static void resizeWindow(_GLFWwindow* window)
     wl_surface_commit(window->wl.decorations.bottom.surface);
 }
 
-static void checkScaleChange(_GLFWwindow* window)
-{
-    int scale = 1;
-    int i;
-    int monitorScale;
-
-    // Check if we will be able to set the buffer scale or not.
-    if (_glfw.wl.compositorVersion < 3)
-        return;
-
-    // Get the scale factor from the highest scale monitor.
-    for (i = 0; i < window->wl.monitorsCount; ++i)
-    {
-        monitorScale = window->wl.monitors[i]->wl.scale;
-        if (scale < monitorScale)
-            scale = monitorScale;
-    }
-
-    // Only change the framebuffer size if the scale changed.
-    if (scale != window->wl.scale)
-    {
-        window->wl.scale = scale;
-        wl_surface_set_buffer_scale(window->wl.surface, scale);
-        resizeWindow(window);
-    }
-}
-
 static void handleEnter(void *data,
                         struct wl_surface *surface,
                         struct wl_output *output)
@@ -630,6 +632,7 @@ static void xdgToplevelHandleConfigure(void* data,
             }
         }
 
+        checkScaleChange(window);
         if (width != window->wl.width || height != window->wl.height) {
             _glfwInputWindowSize(window, width, height);
             _glfwPlatformSetWindowSize(window, width, height);
