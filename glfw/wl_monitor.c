@@ -94,8 +94,8 @@ static void outputHandleScale(void* data,
                             int32_t factor)
 {
     struct _GLFWmonitor *monitor = data;
-
-    monitor->wl.scale = factor;
+    if (factor > 0 && factor < 24)
+        monitor->wl.scale = factor;
 }
 
 static const struct wl_output_listener outputListener = {
