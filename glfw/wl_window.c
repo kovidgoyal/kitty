@@ -42,6 +42,89 @@
 #define URI_LIST_MIME "text/uri-list"
 
 
+static GLFWbool checkScaleChange(_GLFWwindow* window)
+{
+    int scale = 1;
+    int i;
+    int monitorScale;
+
+    // Check if we will be able to set the buffer scale or not.
+    if (_glfw.wl.compositorVersion < 3)
+        return GLFW_FALSE;
+
+    // Get the scale factor from the highest scale monitor.
+    for (i = 0; i < window->wl.monitorsCount; ++i)
+    {
+        monitorScale = window->wl.monitors[i]->wl.scale;
+        if (scale < monitorScale)
+            scale = monitorScale;
+    }
+
+    // Only change the framebuffer size if the scale changed.
+    if (scale != window->wl.scale)
+    {
+        window->wl.scale = scale;
+        wl_surface_set_buffer_scale(window->wl.surface, scale);
+        return GLFW_TRUE;
+    }
+    return GLFW_FALSE;
+}
+
+// Makes the surface considered as XRGB instead of ARGB.
+static void setOpaqueRegion(_GLFWwindow* window)
+{
+    struct wl_region* region;
+
+    region = wl_compositor_create_region(_glfw.wl.compositor);
+    if (!region)
+        return;
+
+    wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
+    wl_surface_set_opaque_region(window->wl.surface, region);
+    wl_surface_commit(window->wl.surface);
+    wl_region_destroy(region);
+}
+
+
+static void resizeFramebuffer(_GLFWwindow* window)
+{
+    int scale = window->wl.scale;
+    int scaledWidth = window->wl.width * scale;
+    int scaledHeight = window->wl.height * scale;
+    wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
+    if (!window->wl.transparent)
+        setOpaqueRegion(window);
+    _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
+
+    if (!window->wl.decorations.top.surface)
+        return;
+
+    // Top decoration.
+    wp_viewport_set_destination(window->wl.decorations.top.viewport,
+                                window->wl.width, _GLFW_DECORATION_TOP);
+    wl_surface_commit(window->wl.decorations.top.surface);
+
+    // Left decoration.
+    wp_viewport_set_destination(window->wl.decorations.left.viewport,
+                                _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+    wl_surface_commit(window->wl.decorations.left.surface);
+
+    // Right decoration.
+    wl_subsurface_set_position(window->wl.decorations.right.subsurface,
+                               window->wl.width, -_GLFW_DECORATION_TOP);
+    wp_viewport_set_destination(window->wl.decorations.right.viewport,
+                                _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+    wl_surface_commit(window->wl.decorations.right.surface);
+
+    // Bottom decoration.
+    wl_subsurface_set_position(window->wl.decorations.bottom.subsurface,
+                               -_GLFW_DECORATION_WIDTH, window->wl.height);
+    wp_viewport_set_destination(window->wl.decorations.bottom.viewport,
+                                window->wl.width + _GLFW_DECORATION_HORIZONTAL, _GLFW_DECORATION_WIDTH);
+    wl_surface_commit(window->wl.decorations.bottom.surface);
+}
+
+
 static const char*
 clipboard_mime() {
     static char buf[128] = {0};
@@ -57,6 +140,28 @@ static void handlePing(void* data,
 {
     wl_shell_surface_pong(shellSurface, serial);
 }
+
+
+static void dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
+    if (width <= 0) width = window->wl.width;
+    if (height <= 0) height = window->wl.height;
+    GLFWbool size_changed = width != window->wl.width || height != window->wl.height;
+    GLFWbool scale_changed = checkScaleChange(window);
+
+    if (size_changed) {
+        _glfwInputWindowSize(window, width, height);
+        _glfwPlatformSetWindowSize(window, width, height);
+    }
+
+    if (scale_changed) {
+        if (!size_changed)
+            resizeFramebuffer(window);
+        _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
+    }
+
+    _glfwInputWindowDamage(window);
+}
+
 
 static void handleConfigure(void* data,
                             struct wl_shell_surface* shellSurface,
@@ -101,11 +206,7 @@ static void handleConfigure(void* data,
             height = window->maxheight;
     }
 
-    if (width != window->wl.width || height != window->wl.height) {
-        _glfwInputWindowSize(window, width, height);
-        _glfwPlatformSetWindowSize(window, width, height);
-    }
-    _glfwInputWindowDamage(window);
+    dispatchChangesAfterConfigure(window, width, height);
 }
 
 static void handlePopupDone(void* data,
@@ -340,88 +441,6 @@ static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener =
     xdgDecorationHandleConfigure,
 };
 
-// Makes the surface considered as XRGB instead of ARGB.
-static void setOpaqueRegion(_GLFWwindow* window)
-{
-    struct wl_region* region;
-
-    region = wl_compositor_create_region(_glfw.wl.compositor);
-    if (!region)
-        return;
-
-    wl_region_add(region, 0, 0, window->wl.width, window->wl.height);
-    wl_surface_set_opaque_region(window->wl.surface, region);
-    wl_surface_commit(window->wl.surface);
-    wl_region_destroy(region);
-}
-
-
-static void resizeWindow(_GLFWwindow* window)
-{
-    int scale = window->wl.scale;
-    int scaledWidth = window->wl.width * scale;
-    int scaledHeight = window->wl.height * scale;
-    wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
-    if (!window->wl.transparent)
-        setOpaqueRegion(window);
-    _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
-    _glfwInputWindowContentScale(window, scale, scale);
-
-    if (!window->wl.decorations.top.surface)
-        return;
-
-    // Top decoration.
-    wp_viewport_set_destination(window->wl.decorations.top.viewport,
-                                window->wl.width, _GLFW_DECORATION_TOP);
-    wl_surface_commit(window->wl.decorations.top.surface);
-
-    // Left decoration.
-    wp_viewport_set_destination(window->wl.decorations.left.viewport,
-                                _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
-    wl_surface_commit(window->wl.decorations.left.surface);
-
-    // Right decoration.
-    wl_subsurface_set_position(window->wl.decorations.right.subsurface,
-                               window->wl.width, -_GLFW_DECORATION_TOP);
-    wp_viewport_set_destination(window->wl.decorations.right.viewport,
-                                _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
-    wl_surface_commit(window->wl.decorations.right.surface);
-
-    // Bottom decoration.
-    wl_subsurface_set_position(window->wl.decorations.bottom.subsurface,
-                               -_GLFW_DECORATION_WIDTH, window->wl.height);
-    wp_viewport_set_destination(window->wl.decorations.bottom.viewport,
-                                window->wl.width + _GLFW_DECORATION_HORIZONTAL, _GLFW_DECORATION_WIDTH);
-    wl_surface_commit(window->wl.decorations.bottom.surface);
-}
-
-static void checkScaleChange(_GLFWwindow* window)
-{
-    int scale = 1;
-    int i;
-    int monitorScale;
-
-    // Check if we will be able to set the buffer scale or not.
-    if (_glfw.wl.compositorVersion < 3)
-        return;
-
-    // Get the scale factor from the highest scale monitor.
-    for (i = 0; i < window->wl.monitorsCount; ++i)
-    {
-        monitorScale = window->wl.monitors[i]->wl.scale;
-        if (scale < monitorScale)
-            scale = monitorScale;
-    }
-
-    // Only change the framebuffer size if the scale changed.
-    if (scale != window->wl.scale)
-    {
-        window->wl.scale = scale;
-        wl_surface_set_buffer_scale(window->wl.surface, scale);
-        resizeWindow(window);
-    }
-}
-
 static void handleEnter(void *data,
                         struct wl_surface *surface,
                         struct wl_output *output)
@@ -439,7 +458,10 @@ static void handleEnter(void *data,
 
     window->wl.monitors[window->wl.monitorsCount++] = monitor;
 
-    checkScaleChange(window);
+    if (checkScaleChange(window)) {
+        resizeFramebuffer(window);
+        _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
+    }
 }
 
 static void handleLeave(void *data,
@@ -460,7 +482,10 @@ static void handleLeave(void *data,
     }
     window->wl.monitors[--window->wl.monitorsCount] = NULL;
 
-    checkScaleChange(window);
+    if (checkScaleChange(window)) {
+        resizeFramebuffer(window);
+        _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
+    }
 }
 
 static const struct wl_surface_listener surfaceListener = {
@@ -629,13 +654,8 @@ static void xdgToplevelHandleConfigure(void* data,
                     width = height * targetRatio;
             }
         }
-
-        if (width != window->wl.width || height != window->wl.height) {
-            _glfwInputWindowSize(window, width, height);
-            _glfwPlatformSetWindowSize(window, width, height);
-        }
-        _glfwInputWindowDamage(window);
     }
+    dispatchChangesAfterConfigure(window, width, height);
 
     if (window->wl.wasFullScreen && window->autoIconify)
     {
@@ -1039,9 +1059,11 @@ void _glfwPlatformGetWindowSize(_GLFWwindow* window, int* width, int* height)
 
 void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
 {
-    window->wl.width = width;
-    window->wl.height = height;
-    resizeWindow(window);
+    if (width != window->wl.width || height != window->wl.height) {
+        window->wl.width = width;
+        window->wl.height = height;
+        resizeFramebuffer(window);
+    }
 }
 
 void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,

@@ -50,11 +50,6 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     window->window_height = MAX(h, 100);
     if (notify_boss) {
         call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, dpi_changed ? Py_True : Py_False);
-        if (dpi_changed && global_state.is_wayland) {
-           // Fake resize event needed on weston to ensure surface is
-           // positioned correctly after DPI change
-            glfwSetWindowSize(window->handle, window->window_width, window->window_height);
-        }
     }
 }
 
