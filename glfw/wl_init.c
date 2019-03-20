@@ -734,7 +734,7 @@ int _glfwPlatformInit(void)
 
     _glfwInitTimerPOSIX();
 
-    if (_glfw.wl.pointer && _glfw.wl.shm)
+    if (_glfw.wl.shm)
     {
         const char *cursorTheme = getenv("XCURSOR_THEME"), *cursorSizeStr = getenv("XCURSOR_SIZE");
         char *cursorSizeEnd;
