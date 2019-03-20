@@ -257,8 +257,8 @@ Syntax is::
 '''))
 
 o('disable_ligatures_under_cursor', False, long_text=_('''
-Render the characters of a ligature under the cursor individually
-to make editing more intuitive.
+Render the characters of a multi-character ligature under the cursor
+individually to make editing more intuitive.
 '''))
 
 

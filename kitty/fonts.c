@@ -58,7 +58,7 @@ typedef struct {
 
 
 static hb_buffer_t *harfbuzz_buffer = NULL;
-static hb_feature_t no_liga_feature;
+static hb_feature_t no_calt_feature = {0};
 static char_type shape_buffer[4096] = {0};
 static size_t max_texture_size = 1024, max_array_len = 1024;
 
@@ -743,10 +743,10 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.last_gpu_cell = first_gpu_cell + (num_cells ? num_cells - 1 : 0);
     load_hb_buffer(first_cpu_cell, first_gpu_cell, num_cells);
 
-    if (!disable_ligature) {
-        hb_shape(font, harfbuzz_buffer, NULL, 0);
+    if (disable_ligature) {
+        hb_shape(font, harfbuzz_buffer, &no_calt_feature, 1);
     } else {
-        hb_shape(font, harfbuzz_buffer, &no_liga_feature, 1);
+        hb_shape(font, harfbuzz_buffer, NULL, 0);
     }
 
     unsigned int info_length, positions_length;
@@ -1023,14 +1023,13 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor) 
     bool center_glyph = false;
     bool disable_ligature = false;
     bool disable_ligature_in_line = false;
-    index_type first_cell_in_run, i, cursor_x;
+    index_type first_cell_in_run, i;
     attrs_type prev_width = 0;
     if (cursor != NULL && OPT(disable_ligatures_under_cursor)) {
-        cursor_x = cursor->x;
         if (lnum == cursor->y) disable_ligature_in_line = true;
     }
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
-        disable_ligature = disable_ligature_in_line && (first_cell_in_run <= cursor_x && cursor_x <= i);
+        disable_ligature = disable_ligature_in_line && (first_cell_in_run <= cursor->x && cursor->x <= i);
         if (prev_width == 2) { prev_width = 0; continue; }
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
@@ -1381,8 +1380,12 @@ init_fonts(PyObject *module) {
     harfbuzz_buffer = hb_buffer_create();
     if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2048)) { PyErr_NoMemory(); return false; }
     hb_buffer_set_cluster_level(harfbuzz_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
-    const char* feature_str = "-calt";
-    if (!hb_feature_from_string(feature_str, strlen(feature_str), &no_liga_feature)) fatal("hb_feature_from_string() failed");
+#define feature_str "-calt"
+    if (!hb_feature_from_string(feature_str, sizeof(feature_str) - 1, &no_calt_feature)) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create -calt harfbuzz feature");
+        return false;
+    }
+#undef feature_str
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     current_send_sprite_to_gpu = send_sprite_to_gpu;
     return true;

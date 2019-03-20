@@ -20,6 +20,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Allow opening new kitty tabs/top-level windows from Finder
   (:pull:`1350`)
 
+- Add an option :opt:`disable_ligatures_under_cursor` to disable
+  multi-character ligatures under the cursor to make editing easier
+  (:iss:`461`)
+
 - Allow specifying a value of ``none`` for the :opt:`selection_foreground`
   which will cause kitty to not change text color in selections (:iss:`1358`)
 

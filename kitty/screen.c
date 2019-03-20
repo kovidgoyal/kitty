@@ -1468,7 +1468,7 @@ screen_reset_dirty(Screen *self) {
 }
 
 void
-screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data, bool update_cursor_pos) {
+screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_data, bool cursor_has_moved) {
     unsigned int history_line_added_count = self->history_line_added_count;
     index_type lnum;
     bool was_dirty = self->is_dirty;
@@ -1478,8 +1478,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
         lnum = self->scrolled_by - 1 - y;
         historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
-        if (self->historybuf->line->has_dirty_text ||
-            (update_cursor_pos && (self->cursor->y == lnum || self->last_rendered_cursor_y == lnum))) {
+        if (self->historybuf->line->has_dirty_text) {
             render_line(fonts_data, self->historybuf->line, lnum, self->cursor);
             historybuf_mark_line_clean(self->historybuf, lnum);
         }
@@ -1489,7 +1488,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         lnum = y - self->scrolled_by;
         linebuf_init_line(self->linebuf, lnum);
         if (self->linebuf->line->has_dirty_text ||
-            (update_cursor_pos && (self->cursor->y == lnum || self->last_rendered_cursor_y == lnum))) {
+            (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered_cursor_y == lnum))) {
             render_line(fonts_data, self->linebuf->line, lnum, self->cursor);
             linebuf_mark_line_clean(self->linebuf, lnum);
         }
