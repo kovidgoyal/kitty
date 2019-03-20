@@ -243,20 +243,25 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
         copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
     }
     // Cursor position
+    enum { BLOCK_IDX = 0, BEAM_IDX = 6, UNDERLINE_IDX = 7, UNFOCUSED_IDX = 8 };
     if (cursor->is_visible) {
         rd->cursor_x = screen->cursor->x, rd->cursor_y = screen->cursor->y;
         if (cursor->is_focused) {
             switch(cursor->shape) {
                 default:
-                    rd->cursor_fg_sprite_idx = 0; break;
+                    rd->cursor_fg_sprite_idx = BLOCK_IDX; break;
                 case CURSOR_BEAM:
-                    rd->cursor_fg_sprite_idx = 6; break;
+                    rd->cursor_fg_sprite_idx = BEAM_IDX; break;
                 case CURSOR_UNDERLINE:
-                    rd->cursor_fg_sprite_idx = 7; break;
+                    rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
             }
-        } else rd->cursor_fg_sprite_idx = 8;
+        } else rd->cursor_fg_sprite_idx = UNFOCUSED_IDX;
     } else rd->cursor_x = screen->columns, rd->cursor_y = screen->lines;
-    rd->cursor_w = rd->cursor_x + MAX(1, screen_current_char_width(screen)) - 1;
+    rd->cursor_w = rd->cursor_x;
+    if (
+            (rd->cursor_fg_sprite_idx == BLOCK_IDX || rd->cursor_fg_sprite_idx == UNDERLINE_IDX) &&
+            screen_current_char_width(screen) > 1
+    ) rd->cursor_w += 1;
 
     rd->xnum = screen->columns; rd->ynum = screen->lines;
 
