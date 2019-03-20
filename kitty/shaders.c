@@ -286,12 +286,20 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
 
     ensure_sprite_map(fonts_data);
 
-    if (screen->scroll_changed || screen->is_dirty) {
+    bool cursor_pos_changed = screen->cursor->x != screen->last_rendered_cursor_x
+                           || screen->cursor->y != screen->last_rendered_cursor_y;
+
+    if (screen->scroll_changed || screen->is_dirty || (OPT(disable_ligatures_under_cursor) && cursor_pos_changed)) {
         sz = sizeof(GPUCell) * screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
-        screen_update_cell_data(screen, address, fonts_data);
+        screen_update_cell_data(screen, address, fonts_data, OPT(disable_ligatures_under_cursor) && cursor_pos_changed);
         unmap_vao_buffer(vao_idx, cell_data_buffer); address = NULL;
         changed = true;
+    }
+
+    if (cursor_pos_changed) {
+        screen->last_rendered_cursor_x = screen->cursor->x;
+        screen->last_rendered_cursor_y = screen->cursor->y;
     }
 
     if (screen_is_selection_dirty(screen)) {
