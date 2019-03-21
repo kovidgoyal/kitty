@@ -890,7 +890,7 @@ static char *translateCursorShape(int shape)
         case GLFW_CROSSHAIR_CURSOR:
             return "crosshair";
         case GLFW_HAND_CURSOR:
-            return "grabbing";
+            return "hand2";
         case GLFW_HRESIZE_CURSOR:
             return "sb_h_double_arrow";
         case GLFW_VRESIZE_CURSOR:
