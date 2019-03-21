@@ -178,7 +178,7 @@ extern GlobalState global_state;
     else Py_DECREF(cret_); \
 }
 
-#define RESIZE_DEBOUNCE_TIME 0.1
+#define RESIZE_DEBOUNCE_TIME 0.2
 
 void gl_init();
 void remove_vao(ssize_t vao_idx);
