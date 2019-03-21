@@ -652,6 +652,18 @@ update_os_window_title(OSWindow *os_window) {
     }
 }
 
+static void
+draw_resizing_text(OSWindow *w) {
+    char text[32] = {0};
+    unsigned int width = w->live_resize.width, height = w->live_resize.height;
+    snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->cell_width, height / w->fonts_data->cell_height);
+    StringCanvas rendered = render_simple_text(w->fonts_data, text);
+    if (rendered.canvas) {
+        draw_centered_alpha_mask(w->gvao_idx, width, height, rendered.width, rendered.height, rendered.canvas);
+        free(rendered.canvas);
+    }
+}
+
 static inline void
 render(double now) {
     double time_since_last_render = now - last_render_at;
@@ -663,7 +675,7 @@ render(double now) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
         if (!w->num_tabs) continue;
-        if ((w->live_resize.in_progress && (now - w->live_resize.last_resize_event_at) < 1) || !should_os_window_be_rendered(w)) {
+        if (!should_os_window_be_rendered(w)) {
             update_os_window_title(w);
             continue;
         }
@@ -671,8 +683,15 @@ render(double now) {
             if (w->render_state == RENDER_FRAME_NOT_REQUESTED) request_frame_render(w);
             continue;
         }
-        bool needs_render = w->is_damaged;
         make_os_window_context_current(w);
+        if (w->live_resize.in_progress) {
+            blank_os_window(w);
+            draw_resizing_text(w);
+            swap_window_buffers(w);
+            if (USE_RENDER_FRAMES) request_frame_render(w);
+            continue;
+        }
+        bool needs_render = w->is_damaged;
         if (w->viewport_size_dirty) {
             w->clear_count = 0;
             update_surface_size(w->viewport_width, w->viewport_height, w->offscreen_texture_id);

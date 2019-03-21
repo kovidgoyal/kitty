@@ -53,17 +53,6 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     }
 }
 
-static void
-draw_resizing_text(OSWindow *w, unsigned int width, unsigned int height) {
-    char text[32] = {0};
-    snprintf(text, sizeof(text), "%u x %u cells", width / w->fonts_data->cell_width, height / w->fonts_data->cell_height);
-    StringCanvas rendered = render_simple_text(w->fonts_data, text);
-    if (rendered.canvas) {
-        draw_centered_alpha_mask(w->gvao_idx, width, height, rendered.width, rendered.height, rendered.canvas);
-        free(rendered.canvas);
-    }
-}
-
 // callbacks {{{
 
 void
@@ -161,14 +150,9 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         global_state.has_pending_resizes = true;
         window->live_resize.in_progress = true;
         window->live_resize.last_resize_event_at = monotonic();
-        // render OS window as blank. On cocoa this is needed for semi-transparent windows,
-        // otherwise you get burn in of the previous frame. On Linux this is needed as otherwise
-        // you get partially rendered windows.
+        window->live_resize.width = MAX(0, width); window->live_resize.height = MAX(0, height);
         make_os_window_context_current(window);
         update_surface_size(width, height, window->offscreen_texture_id);
-        blank_os_window(window);
-        draw_resizing_text(window, MAX(0, width), MAX(0, height));
-        swap_window_buffers(window);
         request_tick_callback();
     } else log_error("Ignoring resize request for tiny size: %dx%d", width, height);
     global_state.callback_os_window = NULL;
