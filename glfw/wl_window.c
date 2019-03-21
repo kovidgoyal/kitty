@@ -879,7 +879,7 @@ handleEvents(double timeout)
 
 // Translates a GLFW standard cursor to a theme cursor name
 //
-static char *translateCursorShape(int shape)
+static const char *translateCursorShape(int shape)
 {
     switch (shape)
     {
@@ -1555,12 +1555,11 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
             setCursorImage(&cursor->wl);
         else
         {
-            defaultCursor = wl_cursor_theme_get_cursor(_glfw.wl.cursorTheme,
-                                                       "left_ptr");
+            defaultCursor = wl_cursor_theme_get_cursor(_glfw.wl.cursorTheme, translateCursorShape(GLFW_ARROW_CURSOR));
             if (!defaultCursor)
             {
                 _glfwInputError(GLFW_PLATFORM_ERROR,
-                                "Wayland: Standard cursor not found");
+                                "Wayland: Standard arrow cursor not found");
                 return;
             }
             _GLFWcursorWayland cursorWayland = {

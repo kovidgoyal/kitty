@@ -138,7 +138,7 @@ static void setCursor(const char* name)
     if (!cursor)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Standard cursor not found");
+                        "Wayland: Standard cursor %s not found", name);
         return;
     }
     // TODO: handle animated cursors too.
