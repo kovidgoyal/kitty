@@ -877,26 +877,50 @@ handleEvents(double timeout)
     glfw_dbus_session_bus_dispatch();
 }
 
-// Translates a GLFW standard cursor to a theme cursor name
-//
-static const char *translateCursorShape(int shape)
+static struct wl_cursor*
+try_cursor_names(int arg_count, ...) {
+    struct wl_cursor* ans = NULL;
+    va_list ap;
+    va_start(ap, arg_count);
+    for (int i = 0; i < arg_count && !ans; i++) {
+        const char *name = va_arg(ap, const char *);
+        ans = wl_cursor_theme_get_cursor(_glfw.wl.cursorTheme, name);
+    }
+    va_end(ap);
+    return ans;
+}
+
+struct wl_cursor* _glfwLoadCursor(GLFWCursorShape shape)
 {
+    static GLFWbool warnings[GLFW_INVALID_CURSOR] = {0};
+#define NUMARGS(...)  (sizeof((const char*[]){__VA_ARGS__})/sizeof(const char*))
+#define C(name, ...) case name: { \
+    ans = try_cursor_names(NUMARGS(__VA_ARGS__), __VA_ARGS__); \
+    if (!ans && !warnings[name]) {\
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Could not find standard cursor: %s", #name); \
+        warnings[name] = GLFW_TRUE; \
+    } \
+    break; }
+
+    struct wl_cursor* ans = NULL;
     switch (shape)
     {
-        case GLFW_ARROW_CURSOR:
-            return "left_ptr";
-        case GLFW_IBEAM_CURSOR:
-            return "xterm";
-        case GLFW_CROSSHAIR_CURSOR:
-            return "crosshair";
-        case GLFW_HAND_CURSOR:
-            return "hand2";
-        case GLFW_HRESIZE_CURSOR:
-            return "sb_h_double_arrow";
-        case GLFW_VRESIZE_CURSOR:
-            return "sb_v_double_arrow";
+        C(GLFW_ARROW_CURSOR, "left_ptr", "default")
+        C(GLFW_IBEAM_CURSOR, "xterm", "ibeam", "text")
+        C(GLFW_CROSSHAIR_CURSOR, "crosshair", "cross")
+        C(GLFW_HAND_CURSOR, "hand2", "grab", "grabbing", "closedhand")
+        C(GLFW_HRESIZE_CURSOR, "sb_h_double_arrow", "h_double_arrow", "col-resize")
+        C(GLFW_VRESIZE_CURSOR, "sb_v_double_arrow", "v_double_arrow", "row-resize")
+        C(GLFW_NW_RESIZE_CURSOR, "top_left_corner", "nw-resize")
+        C(GLFW_NE_RESIZE_CURSOR, "top_right_corner", "ne-resize")
+        C(GLFW_SW_RESIZE_CURSOR, "bottom_left_corner", "sw-resize")
+        C(GLFW_SE_RESIZE_CURSOR, "bottom_right_corner", "se-resize")
+        case GLFW_INVALID_CURSOR:
+            break;
     }
-    return NULL;
+    return ans;
+#undef NUMARGS
+#undef C
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1405,20 +1429,12 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
     return GLFW_TRUE;
 }
 
-int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, int shape)
+int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape)
 {
     struct wl_cursor* standardCursor;
 
-    standardCursor = wl_cursor_theme_get_cursor(_glfw.wl.cursorTheme,
-                                                translateCursorShape(shape));
-    if (!standardCursor)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Standard cursor \"%s\" not found",
-                        translateCursorShape(shape));
-        return GLFW_FALSE;
-    }
-
+    standardCursor = _glfwLoadCursor(shape);
+    if (!standardCursor) return GLFW_FALSE;
     cursor->wl.cursor = standardCursor;
     cursor->wl.currentImage = 0;
     return GLFW_TRUE;
@@ -1555,13 +1571,8 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
             setCursorImage(&cursor->wl);
         else
         {
-            defaultCursor = wl_cursor_theme_get_cursor(_glfw.wl.cursorTheme, translateCursorShape(GLFW_ARROW_CURSOR));
-            if (!defaultCursor)
-            {
-                _glfwInputError(GLFW_PLATFORM_ERROR,
-                                "Wayland: Standard arrow cursor not found");
-                return;
-            }
+            defaultCursor = _glfwLoadCursor(GLFW_ARROW_CURSOR);
+            if (!defaultCursor) return;
             _GLFWcursorWayland cursorWayland = {
                 defaultCursor,
                 NULL,

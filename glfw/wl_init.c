@@ -126,21 +126,15 @@ static void pointerHandleLeave(void* data,
     _glfwInputCursorEnter(window, GLFW_FALSE);
 }
 
-static void setCursor(const char* name)
+static void setCursor(GLFWCursorShape shape)
 {
     struct wl_buffer* buffer;
     struct wl_cursor* cursor;
     struct wl_cursor_image* image;
     struct wl_surface* surface = _glfw.wl.cursorSurface;
 
-    cursor = wl_cursor_theme_get_cursor(_glfw.wl.cursorTheme,
-                                        name);
-    if (!cursor)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Standard cursor %s not found", name);
-        return;
-    }
+    cursor = _glfwLoadCursor(shape);
+    if (!cursor) return;
     // TODO: handle animated cursors too.
     image = cursor->images[0];
 
@@ -167,7 +161,7 @@ static void pointerHandleMotion(void* data,
                                 wl_fixed_t sy)
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
-    const char* cursorName = NULL;
+    GLFWCursorShape cursorShape = GLFW_ARROW_CURSOR;
 
     if (!window)
         return;
@@ -189,34 +183,34 @@ static void pointerHandleMotion(void* data,
             return;
         case topDecoration:
             if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
-                cursorName = "n-resize";
+                cursorShape = GLFW_VRESIZE_CURSOR;
             else
-                cursorName = "left_ptr";
+                cursorShape = GLFW_ARROW_CURSOR;
             break;
         case leftDecoration:
             if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
-                cursorName = "nw-resize";
+                cursorShape = GLFW_NW_RESIZE_CURSOR;
             else
-                cursorName = "w-resize";
+                cursorShape = GLFW_HRESIZE_CURSOR;
             break;
         case rightDecoration:
             if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
-                cursorName = "ne-resize";
+                cursorShape = GLFW_NE_RESIZE_CURSOR;
             else
-                cursorName = "e-resize";
+                cursorShape = GLFW_HRESIZE_CURSOR;
             break;
         case bottomDecoration:
             if (window->wl.cursorPosX < _GLFW_DECORATION_WIDTH)
-                cursorName = "sw-resize";
+                cursorShape = GLFW_SW_RESIZE_CURSOR;
             else if (window->wl.cursorPosX > window->wl.width + _GLFW_DECORATION_WIDTH)
-                cursorName = "se-resize";
+                cursorShape = GLFW_SE_RESIZE_CURSOR;
             else
-                cursorName = "s-resize";
+                cursorShape = GLFW_VRESIZE_CURSOR;
             break;
         default:
             assert(0);
     }
-    setCursor(cursorName);
+    setCursor(cursorShape);
 }
 
 static void pointerHandleButton(void* data,

@@ -323,3 +323,4 @@ void _glfwAddOutputWayland(uint32_t name, uint32_t version);
 void _glfwSetupWaylandDataDevice();
 void _glfwSetupWaylandPrimarySelectionDevice();
 void animateCursorImage(id_type timer_id, void *data);
+struct wl_cursor* _glfwLoadCursor(GLFWCursorShape);

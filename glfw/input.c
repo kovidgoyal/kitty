@@ -831,20 +831,15 @@ GLFWAPI GLFWcursor* glfwCreateCursor(const GLFWimage* image, int xhot, int yhot,
     return (GLFWcursor*) cursor;
 }
 
-GLFWAPI GLFWcursor* glfwCreateStandardCursor(int shape)
+GLFWAPI GLFWcursor* glfwCreateStandardCursor(GLFWCursorShape shape)
 {
     _GLFWcursor* cursor;
 
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
 
-    if (shape != GLFW_ARROW_CURSOR &&
-        shape != GLFW_IBEAM_CURSOR &&
-        shape != GLFW_CROSSHAIR_CURSOR &&
-        shape != GLFW_HAND_CURSOR &&
-        shape != GLFW_HRESIZE_CURSOR &&
-        shape != GLFW_VRESIZE_CURSOR)
+    if (shape >= GLFW_INVALID_CURSOR)
     {
-        _glfwInputError(GLFW_INVALID_ENUM, "Invalid standard cursor 0x%08X", shape);
+        _glfwInputError(GLFW_INVALID_ENUM, "Invalid standard cursor: %d", shape);
         return NULL;
     }
 

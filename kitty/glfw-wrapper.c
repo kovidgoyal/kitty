@@ -62,6 +62,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetMonitorPos_impl) = dlsym(handle, "glfwGetMonitorPos");
     if (glfwGetMonitorPos_impl == NULL) fail("Failed to load glfw function glfwGetMonitorPos with error: %s", dlerror());
 
+    *(void **) (&glfwGetMonitorWorkarea_impl) = dlsym(handle, "glfwGetMonitorWorkarea");
+    if (glfwGetMonitorWorkarea_impl == NULL) fail("Failed to load glfw function glfwGetMonitorWorkarea with error: %s", dlerror());
+
     *(void **) (&glfwGetMonitorPhysicalSize_impl) = dlsym(handle, "glfwGetMonitorPhysicalSize");
     if (glfwGetMonitorPhysicalSize_impl == NULL) fail("Failed to load glfw function glfwGetMonitorPhysicalSize with error: %s", dlerror());
 

@@ -2632,24 +2632,25 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
     return GLFW_TRUE;
 }
 
-int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, int shape)
+int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape)
 {
     int native = 0;
-
-    if (shape == GLFW_ARROW_CURSOR)
-        native = XC_left_ptr;
-    else if (shape == GLFW_IBEAM_CURSOR)
-        native = XC_xterm;
-    else if (shape == GLFW_CROSSHAIR_CURSOR)
-        native = XC_crosshair;
-    else if (shape == GLFW_HAND_CURSOR)
-        native = XC_hand2;
-    else if (shape == GLFW_HRESIZE_CURSOR)
-        native = XC_sb_h_double_arrow;
-    else if (shape == GLFW_VRESIZE_CURSOR)
-        native = XC_sb_v_double_arrow;
-    else
-        return GLFW_FALSE;
+#define C(name, val) case name: native = val; break;
+    switch(shape) {
+        C(GLFW_ARROW_CURSOR, XC_left_ptr);
+        C(GLFW_IBEAM_CURSOR, XC_xterm);
+        C(GLFW_CROSSHAIR_CURSOR, XC_crosshair);
+        C(GLFW_HAND_CURSOR, XC_hand2);
+        C(GLFW_HRESIZE_CURSOR, XC_sb_h_double_arrow);
+        C(GLFW_VRESIZE_CURSOR, XC_sb_v_double_arrow);
+        C(GLFW_NW_RESIZE_CURSOR, XC_top_left_corner);
+        C(GLFW_NE_RESIZE_CURSOR, XC_top_right_corner);
+        C(GLFW_SW_RESIZE_CURSOR, XC_bottom_left_corner);
+        C(GLFW_SE_RESIZE_CURSOR, XC_bottom_right_corner);
+        case GLFW_INVALID_CURSOR:
+            return GLFW_FALSE;
+    }
+#undef C
 
     cursor->x11.handle = XCreateFontCursor(_glfw.x11.display, native);
     if (!cursor->x11.handle)

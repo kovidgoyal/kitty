@@ -789,36 +789,19 @@
  *  @ingroup input
  *  @{ */
 
-/*! @brief The regular arrow cursor shape.
- *
- *  The regular arrow cursor.
- */
-#define GLFW_ARROW_CURSOR           0x00036001
-/*! @brief The text input I-beam cursor shape.
- *
- *  The text input I-beam cursor shape.
- */
-#define GLFW_IBEAM_CURSOR           0x00036002
-/*! @brief The crosshair shape.
- *
- *  The crosshair shape.
- */
-#define GLFW_CROSSHAIR_CURSOR       0x00036003
-/*! @brief The hand shape.
- *
- *  The hand shape.
- */
-#define GLFW_HAND_CURSOR            0x00036004
-/*! @brief The horizontal resize arrow shape.
- *
- *  The horizontal resize arrow shape.
- */
-#define GLFW_HRESIZE_CURSOR         0x00036005
-/*! @brief The vertical resize arrow shape.
- *
- *  The vertical resize arrow shape.
- */
-#define GLFW_VRESIZE_CURSOR         0x00036006
+typedef enum {
+    GLFW_ARROW_CURSOR,
+    GLFW_IBEAM_CURSOR,
+    GLFW_CROSSHAIR_CURSOR,
+    GLFW_HAND_CURSOR,
+    GLFW_HRESIZE_CURSOR,
+    GLFW_VRESIZE_CURSOR,
+    GLFW_NW_RESIZE_CURSOR,
+    GLFW_NE_RESIZE_CURSOR,
+    GLFW_SW_RESIZE_CURSOR,
+    GLFW_SE_RESIZE_CURSOR,
+    GLFW_INVALID_CURSOR
+} GLFWCursorShape;
 /*! @} */
 
 #define GLFW_CONNECTED              0x00040001
@@ -1489,6 +1472,10 @@ typedef void (*glfwGetMonitorPos_func)(GLFWmonitor*, int*, int*);
 glfwGetMonitorPos_func glfwGetMonitorPos_impl;
 #define glfwGetMonitorPos glfwGetMonitorPos_impl
 
+typedef void (*glfwGetMonitorWorkarea_func)(GLFWmonitor*, int*, int*, int*, int*);
+glfwGetMonitorWorkarea_func glfwGetMonitorWorkarea_impl;
+#define glfwGetMonitorWorkarea glfwGetMonitorWorkarea_impl
+
 typedef void (*glfwGetMonitorPhysicalSize_func)(GLFWmonitor*, int*, int*);
 glfwGetMonitorPhysicalSize_func glfwGetMonitorPhysicalSize_impl;
 #define glfwGetMonitorPhysicalSize glfwGetMonitorPhysicalSize_impl
@@ -1753,7 +1740,7 @@ typedef GLFWcursor* (*glfwCreateCursor_func)(const GLFWimage*, int, int, int);
 glfwCreateCursor_func glfwCreateCursor_impl;
 #define glfwCreateCursor glfwCreateCursor_impl
 
-typedef GLFWcursor* (*glfwCreateStandardCursor_func)(int);
+typedef GLFWcursor* (*glfwCreateStandardCursor_func)(GLFWCursorShape);
 glfwCreateStandardCursor_func glfwCreateStandardCursor_impl;
 #define glfwCreateStandardCursor glfwCreateStandardCursor_impl
 
