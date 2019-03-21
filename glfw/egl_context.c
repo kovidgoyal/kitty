@@ -612,6 +612,15 @@ GLFWbool _glfwCreateContextEGL(_GLFWwindow* window,
 
     window->context.egl.config = config;
 
+    EGLint a = EGL_MIN_SWAP_INTERVAL;
+    if (!eglGetConfigAttrib(_glfw.egl.display, config, a, &a)) {
+        _glfwInputError(GLFW_VERSION_UNAVAILABLE, "EGL: could not check for non-blocking buffer swap with error: %s", getEGLErrorString(eglGetError()));
+    } else {
+        if (a > 0) {
+            _glfwInputError(GLFW_VERSION_UNAVAILABLE, "EGL: non-blocking swap buffers not available, minimum swap interval is: %d", a);
+        }
+    }
+
     // Load the appropriate client library
     if (!_glfw.egl.KHR_get_all_proc_addresses)
     {
@@ -783,4 +792,3 @@ GLFWAPI EGLSurface glfwGetEGLSurface(GLFWwindow* handle)
 
     return window->context.egl.surface;
 }
-
