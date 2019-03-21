@@ -281,6 +281,9 @@ class Tab:  # {{{
         else:
             self.active_window_idx = active_window_idx
         self.relayout_borders()
+        active_window = self.active_window
+        if active_window:
+            self.title_changed(active_window)
 
     def set_active_window_idx(self, idx):
         if idx != self.active_window_idx:
