@@ -939,8 +939,8 @@ void
 wakeup_main_loop() {
     request_tick_callback();
 #ifndef __APPLE__
-    // On Cocoa request_tick_callback() uses an event which wakes up the
-    // main loop anyway
+    // On Cocoa request_tick_callback() uses performSelectorOnMainLoop which
+    // wakes up the main loop anyway
     glfwPostEmptyEvent();
 #endif
 }

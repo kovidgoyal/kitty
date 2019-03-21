@@ -39,7 +39,6 @@ typedef void* CVDisplayLinkRef;
 typedef enum {
     EMPTY_EVENT_TYPE,
     RENDER_FRAME_REQUEST_EVENT_TYPE,
-    TICK_CALLBACK_EVENT_TYPE
 } EventTypes;
 
 

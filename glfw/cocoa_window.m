@@ -1769,10 +1769,6 @@ dispatchCustomEvent(NSEvent *event) {
         case EMPTY_EVENT_TYPE:
             break;
 
-        case TICK_CALLBACK_EVENT_TYPE:
-            _glfwDispatchTickCallback();
-            break;
-
         default:
             break;
     }
