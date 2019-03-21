@@ -905,7 +905,7 @@ struct wl_cursor* _glfwLoadCursor(GLFWCursorShape shape)
     struct wl_cursor* ans = NULL;
     switch (shape)
     {
-        C(GLFW_ARROW_CURSOR, "left_ptr", "default")
+        C(GLFW_ARROW_CURSOR, "arrow", "left_ptr", "default")
         C(GLFW_IBEAM_CURSOR, "xterm", "ibeam", "text")
         C(GLFW_CROSSHAIR_CURSOR, "crosshair", "cross")
         C(GLFW_HAND_CURSOR, "hand2", "grab", "grabbing", "closedhand")
