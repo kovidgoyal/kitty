@@ -296,20 +296,19 @@ static GLFWbool initializeTIS(void)
 
 @interface GLFWApplication : NSApplication
 - (void)tick_callback;
+- (void)render_frame_received:(id)displayIDAsID;
 @end
 
-extern void dispatchCustomEvent(NSEvent *event);
-
 @implementation GLFWApplication
-- (void)sendEvent:(NSEvent *)event {
-    if (event.type == NSEventTypeApplicationDefined) {
-        dispatchCustomEvent(event);
-    } else [super sendEvent:event];
-}
-
 - (void)tick_callback
 {
     _glfwDispatchTickCallback();
+}
+
+- (void)render_frame_received:(id)displayIDAsID
+{
+    CGDirectDisplayID displayID = [(NSNumber*)displayIDAsID unsignedIntValue];
+    _glfwDispatchRenderFrame(displayID);
 }
 @end
 

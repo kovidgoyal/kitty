@@ -277,7 +277,9 @@ static CVReturn displayLinkCallback(
     }
     [_glfw.ns.displayLinks.lock unlock];
     if (notify) {
-        _glfwCocoaPostEmptyEvent(RENDER_FRAME_REQUEST_EVENT_TYPE, displayID, true);
+        NSNumber *arg = [NSNumber numberWithUnsignedInt:displayID];
+        [NSApp performSelectorOnMainThread:@selector(render_frame_received:) withObject:arg waitUntilDone:NO];
+        [arg release];
     }
     return kCVReturnSuccess;
 }

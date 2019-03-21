@@ -1741,7 +1741,7 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
     [window->ns.object setAlphaValue:opacity];
 }
 
-static inline CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
+CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
     NSWindow *nw = w->ns.object;
     NSDictionary *dict = [nw.screen deviceDescription];
     NSNumber *displayIDns = [dict objectForKey:@"NSScreenNumber"];
@@ -1750,27 +1750,14 @@ static inline CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
 }
 
 void
-dispatchCustomEvent(NSEvent *event) {
-    switch(event.subtype) {
-        case RENDER_FRAME_REQUEST_EVENT_TYPE:
-            {
-                CGDirectDisplayID displayID = (CGDirectDisplayID)event.data1;
-                _GLFWwindow *w = _glfw.windowListHead;
-                while (w) {
-                    if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
-                        w->ns.renderFrameRequested = GLFW_FALSE;
-                        w->ns.renderFrameCallback((GLFWwindow*)w);
-                    }
-                    w = w->next;
-                }
-            }
-            break;
-
-        case EMPTY_EVENT_TYPE:
-            break;
-
-        default:
-            break;
+_glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
+    _GLFWwindow *w = _glfw.windowListHead;
+    while (w) {
+        if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
+            w->ns.renderFrameRequested = GLFW_FALSE;
+            w->ns.renderFrameCallback((GLFWwindow*)w);
+        }
+        w = w->next;
     }
 }
 
