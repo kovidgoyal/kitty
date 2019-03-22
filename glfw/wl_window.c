@@ -839,27 +839,45 @@ animateCursorImage(id_type timer_id, void *data) {
     incrementCursorImage(_glfw.wl.pointerFocus);
 }
 
+static void
+abortOnFatalError(int last_error) {
+    _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: fatal display error: %s", strerror(last_error));
+    _GLFWwindow* window = _glfw.windowListHead;
+    while (window)
+    {
+        _glfwInputWindowCloseRequest(window);
+        window = window->next;
+    }
+}
 
 static void
 handleEvents(double timeout)
 {
     struct wl_display* display = _glfw.wl.display;
+    errno = 0;
 
     while (wl_display_prepare_read(display) != 0) {
-        wl_display_dispatch_pending(display);
+        while(1) {
+            errno = 0;
+            int num_dispatched = wl_display_dispatch_pending(display);
+            if (num_dispatched == 0) return;
+            if (num_dispatched < 0) {
+                if (errno == EAGAIN) continue;
+                int last_error = wl_display_get_error(display);
+                if (last_error) abortOnFatalError(last_error);
+                return;
+            }
+            break;
+        }
     }
 
     // If an error different from EAGAIN happens, we have likely been
     // disconnected from the Wayland session, try to handle that the best we
     // can.
+    errno = 0;
     if (wl_display_flush(display) < 0 && errno != EAGAIN)
     {
-        _GLFWwindow* window = _glfw.windowListHead;
-        while (window)
-        {
-            _glfwInputWindowCloseRequest(window);
-            window = window->next;
-        }
+        abortOnFatalError(errno);
         wl_display_cancel_read(display);
         return;
     }
