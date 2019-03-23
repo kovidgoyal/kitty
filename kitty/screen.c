@@ -2054,7 +2054,6 @@ screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type
 void
 screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
     self->selection.end_x = x; self->selection.end_y = y; self->selection.end_scrolled_by = self->scrolled_by;
-    if (ended) self->selection.in_progress = false;
     index_type start, end;
     bool found = false;
     bool extending_leftwards = self->selection.end_y < self->selection.start_y || (self->selection.end_y == self->selection.start_y && self->selection.end_x < self->selection.start_x);
@@ -2108,7 +2107,10 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
         case EXTEND_CELL:
             break;
     }
-    call_boss(set_primary_selection, NULL);
+    if (ended) {
+        self->selection.in_progress = false;
+        call_boss(set_primary_selection, NULL);
+    }
 }
 
 static PyObject*
