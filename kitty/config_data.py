@@ -557,6 +557,10 @@ that separate the inactive window from a neighbor. Note that setting
 a non-zero window margin overrides this and causes all borders to be drawn.
 '''))
 
+o('draw_active_window_borders', True, long_text=_('''
+Draw active window borders using active_border_color.
+'''))
+
 o('window_margin_width', 0.0, option_type=positive_float, long_text=_('''
 The window margin (in pts) (blank area outside the border)'''))
 
