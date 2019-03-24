@@ -95,6 +95,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   characters after private use unicode characters to not be respected
   (:iss:`1455`)
 
+- Only update the selected text to clipboard when the selection is finished,
+  not continuously as it is updated. (:iss:`1460`)
+
 
 0.13.3 [2019-01-19]
 ------------------------------

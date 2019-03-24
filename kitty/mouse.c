@@ -203,7 +203,7 @@ static inline void
 extend_selection(Window *w) {
     Screen *screen = w->render_data.screen;
     if (screen_has_selection(screen)) {
-        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, false);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, true);
     }
 }
 
@@ -321,7 +321,7 @@ multi_click(Window *w, unsigned int count) {
     }
     if (found_selection) {
         screen_start_selection(screen, start, y1, false, mode);
-        screen_update_selection(screen, end, y2, false);
+        screen_update_selection(screen, end, y2, true);
     }
 }
 

@@ -2108,7 +2108,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
         case EXTEND_CELL:
             break;
     }
-    call_boss(set_primary_selection, NULL);
+    if (!self->selection.in_progress) call_boss(set_primary_selection, NULL);
 }
 
 static PyObject*
