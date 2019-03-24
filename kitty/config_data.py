@@ -10,7 +10,7 @@ from . import fast_data_types as defines
 from .conf.definition import option_func
 from .conf.utils import (
     choices, positive_float, positive_int, to_bool, to_cmdline, to_color,
-    unit_float
+    to_color_or_none, unit_float
 )
 from .constants import config_dir, is_macos
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -567,8 +567,9 @@ Negative values will cause the value of :opt:`window_margin_width` to be used in
 o('window_padding_width', 0.0, option_type=positive_float, long_text=_('''
 The window padding (in pts) (blank area between the text and the window border)'''))
 
-o('active_border_color', '#00ff00', option_type=to_color, long_text=_('''
-The color for the border of the active window'''))
+o('active_border_color', '#00ff00', option_type=to_color_or_none, long_text=_('''
+The color for the border of the active window. Set this to none to not draw borders
+around the active window.'''))
 
 o('inactive_border_color', '#cccccc', option_type=to_color, long_text=_('''
 The color for the border of inactive windows'''))

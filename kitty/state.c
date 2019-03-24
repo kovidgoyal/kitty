@@ -291,8 +291,11 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
 #define KK5I(name) PYWRAP1(name) { id_type a, b; unsigned int c, d, e, f, g; PA("KKIIIII", &a, &b, &c, &d, &e, &f, &g); name(a, b, c, d, e, f, g); Py_RETURN_NONE; }
 #define BOOL_SET(name) PYWRAP1(set_##name) { global_state.name = PyObject_IsTrue(args); Py_RETURN_NONE; }
 
+static color_type default_color = 0;
+
 static inline color_type
 color_as_int(PyObject *color) {
+    if (color == Py_None && default_color) return default_color;
     if (!PyTuple_Check(color)) { PyErr_SetString(PyExc_TypeError, "Not a color tuple"); return 0; }
 #define I(n, s) ((PyLong_AsUnsignedLong(PyTuple_GET_ITEM(color, n)) & 0xff) << s)
     return (I(0, 16) | I(1, 8) | I(2, 0)) & 0xffffff;
@@ -387,7 +390,9 @@ PYWRAP1(set_options) {
     S(url_color, color_as_int);
     S(background, color_as_int);
     S(foreground, color_as_int);
+    default_color = 0x00ff00;
     S(active_border_color, color_as_int);
+    default_color = 0;
     S(inactive_border_color, color_as_int);
     S(bell_border_color, color_as_int);
     S(repaint_delay, repaint_delay);

@@ -17,6 +17,7 @@ cell_width = cell_height = 20
 all_borders = True, True, True, True
 no_borders = False, False, False, False
 draw_minimal_borders = False
+draw_active_borders = True
 
 
 def idx_for_id(win_id, windows):
@@ -25,9 +26,10 @@ def idx_for_id(win_id, windows):
             return i
 
 
-def set_draw_minimal_borders(opts):
-    global draw_minimal_borders
+def set_draw_borders_options(opts):
+    global draw_minimal_borders, draw_active_borders
     draw_minimal_borders = opts.draw_minimal_borders and opts.window_margin_width == 0
+    draw_active_borders = opts.active_border_color is not None
 
 
 def layout_dimension(start_at, length, cell_length, decoration_pairs, left_align=False, bias=None):
@@ -392,14 +394,17 @@ class Layout:  # {{{
 
     def resolve_borders(self, windows, active_window):
         if draw_minimal_borders:
-            needs_borders_map = {w.id: (w is active_window or w.needs_attention) for w in windows}
+            needs_borders_map = {w.id: ((w is active_window and draw_active_borders) or w.needs_attention) for w in windows}
             yield from self.minimal_borders(windows, active_window, needs_borders_map)
         else:
             yield from Layout.minimal_borders(self, windows, active_window, None)
 
     def minimal_borders(self, windows, active_window, needs_borders_map):
         for w in windows:
-            yield all_borders
+            if w is active_window and not draw_active_borders and not w.needs_attention:
+                yield no_borders
+            else:
+                yield all_borders
 # }}}
 
 

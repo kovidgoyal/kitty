@@ -52,6 +52,7 @@ class Borders:
         self.tab_id = tab_id
         self.border_width = border_width
         self.padding_width = padding_width
+        self.draw_active_borders = opts.active_border_color is not None
 
     def __call__(
         self,
@@ -77,7 +78,7 @@ class Borders:
             window_bg = (window_bg << 8) | BorderColor.window_bg
             if draw_borders:
                 # Draw the border rectangles
-                if w is active_window:
+                if w is active_window and self.draw_active_borders:
                     color = BorderColor.active
                 else:
                     color = BorderColor.bell if w.needs_attention else BorderColor.inactive
