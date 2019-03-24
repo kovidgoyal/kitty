@@ -17,9 +17,7 @@ def to_color(x):
 
 
 def to_color_or_none(x):
-    if x.lower() == 'none':
-        return
-    return to_color(x)
+    return None if x.lower() == 'none' else to_color(x)
 
 
 def positive_int(x):
