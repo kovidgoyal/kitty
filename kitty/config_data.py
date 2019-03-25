@@ -1131,7 +1131,7 @@ If you want to operate on all windows instead of just the current one, use :ital
 It is also possible to remap Ctrl+L to both scroll the current screen contents into the scrollback buffer
 and clear the screen, instead of just clearing the screen::
 
-    map ctrl+l combine : clear_terminal scroll active : send_text normal,application \x0c
+    map ctrl+l combine : clear_terminal scroll active : send_text normal,application \\x0c
 '''))
 k('send_text', 'ctrl+shift+alt+h', 'send_text all Hello World', _('Send arbitrary text on key presses'),
   add_to_default=False, long_text=_('''
