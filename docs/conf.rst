@@ -20,6 +20,10 @@ You can also display the current configuration by running ``kitty
 :option:`kitty --config` option or use the ``KITTY_CONFIG_DIRECTORY``
 environment variable. See the :option:`kitty --config` option for full details.
 
+Comments can be added to the config file as lines starting with the ``#``
+character. This works only if the ``#`` character is the first character
+in the line.
+
 You can include secondary config files via the :code:`include` directive.  If
 you use a relative path for include, it is resolved with respect to the
 location of the current config file. Note that environment variables are
