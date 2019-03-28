@@ -474,7 +474,8 @@ program running in it.
 
 
 --cwd
-The initial working directory for the new window.
+The initial working directory for the new window. Defaults to whatever
+the working directory for the kitty process you are talking to is.
 
 
 --keep-focus
