@@ -694,6 +694,7 @@ typedef struct {
 
 typedef struct {
     unsigned int first_glyph_idx, first_cell_idx, num_glyphs, num_cells;
+    bool has_special_glyph;
 } Group;
 
 typedef struct {
@@ -876,6 +877,7 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
     current_group->num_glyphs = 1; \
     current_group->first_glyph_idx = G(glyph_idx); \
 }
+        if (is_special) current_group->has_special_glyph = true;
         if (is_last_glyph) {
             // soak up all remaining cells
             if (G(cell_idx) < G(num_cells)) {
@@ -937,6 +939,23 @@ merge_groups_for_pua_space_ligature() {
 }
 
 static inline void
+split_run_at_offset(index_type cursor_offset, index_type *left, index_type *right) {
+    *left = 0; *right = 0;
+    for (unsigned idx = 0; idx < G(group_idx) + 1; idx++) {
+        Group *group = G(groups) + idx;
+        if (group->first_cell_idx <= cursor_offset && cursor_offset < group->first_cell_idx + group->num_cells) {
+            GPUCell *first_cell = G(first_gpu_cell) + group->first_cell_idx;
+            if (group->num_cells > 1 && group->has_special_glyph && (first_cell->attrs & WIDTH_MASK) == 1) {
+                // likely a calt ligature
+                *left = group->first_cell_idx; *right = group->first_cell_idx + group->num_cells;
+            }
+            break;
+        }
+    }
+}
+
+
+static inline void
 render_groups(FontGroup *fg, Font *font, bool center_glyph) {
     unsigned idx = 0;
     ExtraGlyphs ed;
@@ -996,11 +1015,28 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
 #undef G
 
 static inline void
-render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, ssize_t font_idx, bool pua_space_ligature, bool center_glyph, bool disable_ligature) {
+render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, ssize_t font_idx, bool pua_space_ligature, bool center_glyph, int cursor_offset) {
     switch(font_idx) {
         default:
-            shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[font_idx], disable_ligature);
+            shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[font_idx], false);
             if (pua_space_ligature) merge_groups_for_pua_space_ligature();
+            else if (cursor_offset > -1) {
+                index_type left, right;
+                split_run_at_offset(cursor_offset, &left, &right);
+                if (right > left) {
+                    if (left) {
+                        shape_run(first_cpu_cell, first_gpu_cell, left, &fg->fonts[font_idx], false);
+                        render_groups(fg, &fg->fonts[font_idx], center_glyph);
+                    }
+                        shape_run(first_cpu_cell + left, first_gpu_cell + left, right - left, &fg->fonts[font_idx], true);
+                        render_groups(fg, &fg->fonts[font_idx], center_glyph);
+                    if (right < num_cells) {
+                        shape_run(first_cpu_cell + right, first_gpu_cell + right, num_cells - right, &fg->fonts[font_idx], false);
+                        render_groups(fg, &fg->fonts[font_idx], center_glyph);
+                    }
+                    break;
+                }
+            }
             render_groups(fg, &fg->fonts[font_idx], center_glyph);
             break;
         case BLANK_FONT:
@@ -1017,11 +1053,14 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
 
 void
 render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor) {
-#define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) { render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, i - first_cell_in_run, run_font_idx, false, center_glyph, disable_ligature); }
+#define RENDER if (run_font_idx != NO_FONT && i > first_cell_in_run) { \
+    int cursor_offset = -1; \
+    if (disable_ligature_in_line && first_cell_in_run <= cursor->x && cursor->x <= i) cursor_offset = cursor->x - first_cell_in_run; \
+    render_run(fg, line->cpu_cells + first_cell_in_run, line->gpu_cells + first_cell_in_run, i - first_cell_in_run, run_font_idx, false, center_glyph, cursor_offset); \
+}
     FontGroup *fg = (FontGroup*)fg_;
     ssize_t run_font_idx = NO_FONT;
     bool center_glyph = false;
-    bool disable_ligature = false;
     bool disable_ligature_in_line = false;
     index_type first_cell_in_run, i;
     attrs_type prev_width = 0;
@@ -1029,7 +1068,6 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor) 
         if (lnum == cursor->y) disable_ligature_in_line = true;
     }
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {
-        disable_ligature = disable_ligature_in_line && (first_cell_in_run <= cursor->x && cursor->x <= i);
         if (prev_width == 2) { prev_width = 0; continue; }
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
@@ -1066,7 +1104,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor) 
                 center_glyph = true;
                 RENDER
                 center_glyph = false;
-                render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font_idx, true, center_glyph, disable_ligature);
+                render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font_idx, true, center_glyph, -1);
                 run_font_idx = NO_FONT;
                 first_cell_in_run = i + num_spaces + 1;
                 prev_width = line->gpu_cells[i+num_spaces].attrs & WIDTH_MASK;
