@@ -26,11 +26,6 @@
 
 #include "internal.h"
 #include <sys/param.h> // For MAXPATHLEN
-#if MAC_OS_X_VERSION_MAX_ALLOWED < 101200
-  #define NSEventMaskKeyUp NSKeyUpMask
-  #define NSEventMaskKeyDown NSKeyDownMask
-  #define NSEventModifierFlagCommand NSCommandKeyMask
-#endif
 
 // Change to our application bundle's resources directory, if present
 //

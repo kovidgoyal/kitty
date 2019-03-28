@@ -27,10 +27,6 @@
 #include "internal.h"
 
 
-#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101400)
- #define NSOpenGLContextParameterSurfaceOpacity NSOpenGLCPSurfaceOpacity
-#endif
-
 static void makeContextCurrentNSGL(_GLFWwindow* window)
 {
     if (window)
