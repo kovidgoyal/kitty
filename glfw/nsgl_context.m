@@ -299,6 +299,9 @@ GLFWbool _glfwCreateContextNSGL(_GLFWwindow* window,
         [window->context.nsgl.object setValues:&opaque forParameter:NSOpenGLContextParameterSurfaceOpacity];
     }
 
+    if (window->ns.retina)
+        [window->ns.view setWantsBestResolutionOpenGLSurface:YES];
+
     [window->context.nsgl.object setView:window->ns.view];
 
     window->context.makeCurrent = makeContextCurrentNSGL;
