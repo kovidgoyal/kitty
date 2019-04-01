@@ -350,7 +350,7 @@ For example:
 Mouse features
 -------------------
 
-* You can also hold down :kbd:`ctrl+shift` and click on a URL to open it in a browser.
+* You can hold down :kbd:`ctrl+shift` and click on a URL to open it in a browser.
 * You can double click to select a word and triple click to select a line.
 * You can right click to extend a previous selection
 * You can hold down :kbd:`ctrl+alt` and drag with the mouse to select in
