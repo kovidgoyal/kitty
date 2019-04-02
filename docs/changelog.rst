@@ -26,6 +26,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow creating new OS windows in session files (:iss:`1514`)
 
+- Allow setting OS window size in session files
+
 - Allow specifying a value of ``none`` for the :opt:`selection_foreground`
   which will cause kitty to not change text color in selections (:iss:`1358`)
 

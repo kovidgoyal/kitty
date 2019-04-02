@@ -146,7 +146,7 @@ class Boss:
 
     def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
         if os_window_id is None:
-            opts_for_size = opts_for_size or self.opts
+            opts_for_size = opts_for_size or startup_session.os_window_size or self.opts
             cls = wclass or self.args.cls or appname
             with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
                 os_window_id = create_os_window(

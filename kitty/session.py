@@ -3,11 +3,16 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import shlex
+from collections import namedtuple
 
 from .config_data import to_layout_names
 from .constants import shell_path, kitty_exe
 from .layout import all_layouts
 from .utils import log_error
+
+
+WindowSizeOpts = namedtuple(
+    'WindowSizeOpts', 'initial_window_width initial_window_height window_margin_width window_padding_width remember_window_size')
 
 
 class Tab:
@@ -28,6 +33,7 @@ class Session:
         self.tabs = []
         self.active_tab_idx = 0
         self.default_title = default_title
+        self.os_window_size = None
 
     def add_tab(self, opts, name=''):
         if self.tabs and not self.tabs[-1].windows:
@@ -90,7 +96,7 @@ def parse_session(raw, opts, default_title=None):
     for line in raw.splitlines():
         line = line.strip()
         if line and not line.startswith('#'):
-            cmd, rest = line.partition(' ')[::2]
+            cmd, rest = line.split(maxsplit=1)
             cmd, rest = cmd.strip(), rest.strip()
             if cmd == 'new_tab':
                 ans.add_tab(opts, rest)
@@ -110,6 +116,10 @@ def parse_session(raw, opts, default_title=None):
                 ans.set_cwd(rest)
             elif cmd == 'title':
                 ans.set_next_title(rest)
+            elif cmd == 'os_window_size':
+                from kitty.config_data import window_size
+                w, h = map(window_size, rest.split(maxsplit=1))
+                ans.os_window_size = WindowSizeOpts(w, h, opts.window_margin_width, opts.window_padding_width, False)
             else:
                 raise ValueError('Unknown command in session file: {}'.format(cmd))
     yield finalize_session(ans)
