@@ -321,7 +321,7 @@ multi_click(Window *w, unsigned int count) {
     }
     if (found_selection) {
         screen_start_selection(screen, start, y1, false, mode);
-        screen_update_selection(screen, end, y2, true);
+        screen_update_selection(screen, end, y2, false);
     }
 }
 
