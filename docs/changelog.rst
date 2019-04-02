@@ -24,6 +24,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   multi-character ligatures under the cursor to make editing easier
   (:iss:`461`)
 
+- Allow creating new OS windows in session files (:iss:`1514`)
+
 - Allow specifying a value of ``none`` for the :opt:`selection_foreground`
   which will cause kitty to not change text color in selections (:iss:`1358`)
 

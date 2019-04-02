@@ -30,7 +30,7 @@ from .keys import get_shortcut, shortcut_matches
 from .layout import set_draw_borders_options
 from .remote_control import handle_cmd
 from .rgb import Color, color_from_int
-from .session import create_session
+from .session import create_sessions
 from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
 from .utils import (
     func_name, get_editor, get_primary_selection, is_path_in_temp_dir,
@@ -128,16 +128,18 @@ class Boss:
         )
         set_boss(self)
         self.opts, self.args = opts, args
-        startup_session = create_session(opts, args, default_session=opts.startup_session)
+        startup_sessions = create_sessions(opts, args, default_session=opts.startup_session)
         self.keymap = self.opts.keymap.copy()
         if new_os_window_trigger is not None:
             self.keymap.pop(new_os_window_trigger, None)
-        self.add_os_window(startup_session, os_window_id=os_window_id)
-        if args.start_as != 'normal':
-            if args.start_as == 'fullscreen':
-                self.toggle_fullscreen()
-            else:
-                change_os_window_state(args.start_as)
+        for startup_session in startup_sessions:
+            os_window_id = self.add_os_window(startup_session, os_window_id=os_window_id)
+            if args.start_as != 'normal':
+                if args.start_as == 'fullscreen':
+                    self.toggle_fullscreen()
+                else:
+                    change_os_window_state(args.start_as)
+            os_window_id = None
         if is_macos:
             from .fast_data_types import cocoa_set_notification_activated_callback
             cocoa_set_notification_activated_callback(self.notification_activated)
@@ -246,7 +248,7 @@ class Boss:
             sw = args
         else:
             sw = self.args_to_special_window(args, cwd_from) if args else None
-        startup_session = create_session(self.opts, special_window=sw, cwd_from=cwd_from)
+        startup_session = next(create_sessions(self.opts, special_window=sw, cwd_from=cwd_from))
         return self.add_os_window(startup_session)
 
     def new_os_window(self, *args):
@@ -304,10 +306,10 @@ class Boss:
                 opts = create_opts(args)
                 if not os.path.isabs(args.directory):
                     args.directory = os.path.join(msg['cwd'], args.directory)
-                session = create_session(opts, args, respect_cwd=True)
-                os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id)
-                if msg.get('notify_on_os_window_death'):
-                    self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, msg['notify_on_os_window_death'])
+                for session in create_sessions(opts, args, respect_cwd=True):
+                    os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id)
+                    if msg.get('notify_on_os_window_death'):
+                        self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, msg['notify_on_os_window_death'])
             else:
                 log_error('Unknown message received from peer, ignoring')
 

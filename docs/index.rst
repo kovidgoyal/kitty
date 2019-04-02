@@ -342,6 +342,10 @@ For example:
     # Set the current layout
     layout stack
     launch zsh
+
+    # Create a new OS window
+    new_os_window
+    launch sh
     # Make the current window the active (focused) window
     focus
     launch emacs

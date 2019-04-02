@@ -78,6 +78,13 @@ def resolved_shell(opts):
 
 
 def parse_session(raw, opts, default_title=None):
+
+    def finalize_session(ans):
+        for t in ans.tabs:
+            if not t.windows:
+                t.windows.append(resolved_shell(opts))
+        return ans
+
     ans = Session(default_title)
     ans.add_tab(opts)
     for line in raw.splitlines():
@@ -86,6 +93,10 @@ def parse_session(raw, opts, default_title=None):
             cmd, rest = line.partition(' ')[::2]
             cmd, rest = cmd.strip(), rest.strip()
             if cmd == 'new_tab':
+                ans.add_tab(opts, rest)
+            elif cmd == 'new_os_window':
+                yield finalize_session(ans)
+                ans = Session(default_title)
                 ans.add_tab(opts, rest)
             elif cmd == 'layout':
                 ans.set_layout(rest)
@@ -101,16 +112,14 @@ def parse_session(raw, opts, default_title=None):
                 ans.set_next_title(rest)
             else:
                 raise ValueError('Unknown command in session file: {}'.format(cmd))
-    for t in ans.tabs:
-        if not t.windows:
-            t.windows.append(resolved_shell(opts))
-    return ans
+    yield finalize_session(ans)
 
 
-def create_session(opts, args=None, special_window=None, cwd_from=None, respect_cwd=False, default_session=None):
+def create_sessions(opts, args=None, special_window=None, cwd_from=None, respect_cwd=False, default_session=None):
     if args and args.session:
         with open(args.session) as f:
-            return parse_session(f.read(), opts, getattr(args, 'title', None))
+            yield from parse_session(f.read(), opts, getattr(args, 'title', None))
+            return
     if default_session and default_session != 'none':
         try:
             with open(default_session) as f:
@@ -118,7 +127,8 @@ def create_session(opts, args=None, special_window=None, cwd_from=None, respect_
         except EnvironmentError:
             log_error('Failed to read from session file, ignoring: {}'.format(default_session))
         else:
-            return parse_session(session_data, opts, getattr(args, 'title', None))
+            yield from parse_session(session_data, opts, getattr(args, 'title', None))
+            return
     ans = Session()
     current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'
     ans.add_tab(opts)
@@ -135,4 +145,4 @@ def create_session(opts, args=None, special_window=None, cwd_from=None, respect_
             k['override_title'] = args.title
         special_window = SpecialWindow(cmd, **k)
     ans.add_special_window(special_window)
-    return ans
+    yield ans
