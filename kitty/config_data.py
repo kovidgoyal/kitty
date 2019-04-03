@@ -631,6 +631,11 @@ o('tab_bar_min_tabs', 2, option_type=lambda x: max(1, positive_int(x)), long_tex
 The minimum number of tabs that must exist before the tab bar is shown
 '''))
 
+o('tab_bar_switch_to_previous_when_closing_current_tab', True, long_text=_('''
+Switch to the previously active tab when the current tab is closed. The default is yes.
+If no, the tab to the left of the current tab is selected when the current tab is closed.
+'''))
+
 
 def tab_fade(x):
     return tuple(map(unit_float, x.split()))

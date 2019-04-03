@@ -562,6 +562,16 @@ class TabManager:  # {{{
                     break
         if next_active_tab < 0:
             next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
+
+        if not self.opts.tab_bar_switch_to_previous_when_closing_current_tab:
+            # When we do not switch to the previously active tab, we set the next left tab
+            # as active. Unless there are no further tabs on the left, in which case
+            # we select the new leftmost tab.
+            if self.active_tab_idx > 0:
+                next_active_tab = self.active_tab_idx - 1
+            else:
+                next_active_tab = 0
+
         self._set_active_tab(next_active_tab)
         self.mark_tab_bar_dirty()
         tab.destroy()
