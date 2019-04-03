@@ -357,10 +357,13 @@ Mouse features
 -------------------
 
 * You can hold down :kbd:`ctrl+shift` and click on a URL to open it in a browser.
-* You can double click to select a word and triple click to select a line.
-* You can right click to extend a previous selection
+* You can double click to select a word and then drag to select more words.
+* You can triple click to select a line and then drag to select more lines.
+* You can right click to extend a previous selection.
 * You can hold down :kbd:`ctrl+alt` and drag with the mouse to select in
-  columns
+  columns.
+* Selecting text automatically copies it to the primary clipboard (on
+  platforms with a primary clipboard).
 
 
 Font control
