@@ -631,6 +631,13 @@ o('tab_bar_min_tabs', 2, option_type=lambda x: max(1, positive_int(x)), long_tex
 The minimum number of tabs that must exist before the tab bar is shown
 '''))
 
+o('tab_switch_strategy', 'previous', option_type=choices('previous', 'left', 'last'), long_text=_('''
+The algorithm to use when switching to a tab when the current tab is closed.
+The default of :code:`previous` will switch to the last used tab. A value of
+:code:`left` will switch to the tab to the left of the closed tab. A value
+of :code:`last` will switch to the right-most tab.
+'''))
+
 
 def tab_fade(x):
     return tuple(map(unit_float, x.split()))

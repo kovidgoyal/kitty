@@ -28,6 +28,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow setting OS window size in session files
 
+- Add an option :opt:`tab_switch_strategy` to control which
+  tab becomes active when the current tab is closed (:pull:`1524`)
+
 - Allow specifying a value of ``none`` for the :opt:`selection_foreground`
   which will cause kitty to not change text color in selections (:iss:`1358`)
 
