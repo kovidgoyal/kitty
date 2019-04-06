@@ -1031,8 +1031,8 @@ set_custom_cursor(PyObject *self UNUSED, PyObject *args) {
     }
 #define CASE(which, dest) {\
     case which: \
-        standard_cursor = glfwCreateCursor(gimages, x, y, count); \
-        if (standard_cursor == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create custom cursor"); return NULL; } \
+        dest = glfwCreateCursor(gimages, x, y, count); \
+        if (dest == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create custom cursor"); return NULL; } \
         break; \
 }
     switch(shape) {
