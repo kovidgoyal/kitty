@@ -286,6 +286,18 @@ static int translateKey(unsigned int key, GLFWbool apply_keymap)
     return _glfw.ns.keycodes[key];
 }
 
+static void
+display_reconfigured(CGDirectDisplayID display, CGDisplayChangeSummaryFlags flags, void *userInfo)
+{
+    (void)(userInfo); (void)(display); (void)(flags);
+    if (flags & kCGDisplayBeginConfigurationFlag) {
+        return;
+    }
+    if (flags & kCGDisplaySetModeFlag) {
+        // GPU possibly changed
+    }
+}
+
 // Translate a GLFW keycode to a Cocoa modifier flag
 //
 static NSUInteger translateKeyToModifierFlag(int key)
@@ -488,7 +500,13 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 {
     [NSApp stop:nil];
 
+    CGDisplayRegisterReconfigurationCallback(display_reconfigured, NULL);
     _glfwPlatformPostEmptyEvent();
+}
+
+- (void)applicationWillTerminate:(NSNotification *)aNotification
+{
+    CGDisplayRemoveReconfigurationCallback(display_reconfigured, NULL);
 }
 
 - (void)applicationDidHide:(NSNotification *)notification
