@@ -586,6 +586,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     CC(standard, IBEAM); CC(click, HAND); CC(arrow, ARROW);
 #undef CC
         if (OPT(click_interval) < 0) OPT(click_interval) = glfwGetDoubleClickInterval(glfw_window);
+        {
+            uint8_t red, green, blue, alpha;
+            if (glfwGetPlatformSelectionColor(glfw_window, &red, &green, &blue, &alpha)) {
+                printf("Selection color: %u\t%u\t%u\t%u\n", red, green, blue, alpha);
+            }
+        }
         if (OPT(cursor_blink_interval) < 0) {
             OPT(cursor_blink_interval) = 0.5;
 #ifdef __APPLE__

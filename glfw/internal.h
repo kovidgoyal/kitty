@@ -662,6 +662,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
 void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
                                         float* xscale, float* yscale);
 double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window);
+int _glfwPlatformGetSelectionColor(_GLFWwindow* window, uint8_t* red, uint8_t* green, uint8_t* blue, uint8_t* alpha);
 void _glfwPlatformIconifyWindow(_GLFWwindow* window);
 void _glfwPlatformRestoreWindow(_GLFWwindow* window);
 void _glfwPlatformMaximizeWindow(_GLFWwindow* window);

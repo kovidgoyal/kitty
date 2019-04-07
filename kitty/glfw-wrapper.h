@@ -1596,6 +1596,10 @@ typedef double (*glfwGetDoubleClickInterval_func)(GLFWwindow*);
 glfwGetDoubleClickInterval_func glfwGetDoubleClickInterval_impl;
 #define glfwGetDoubleClickInterval glfwGetDoubleClickInterval_impl
 
+typedef int (*glfwGetPlatformSelectionColor_func)(GLFWwindow*, uint8_t*, uint8_t*, uint8_t*, uint8_t*);
+glfwGetPlatformSelectionColor_func glfwGetPlatformSelectionColor_impl;
+#define glfwGetPlatformSelectionColor glfwGetPlatformSelectionColor_impl
+
 typedef float (*glfwGetWindowOpacity_func)(GLFWwindow*);
 glfwGetWindowOpacity_func glfwGetWindowOpacity_impl;
 #define glfwGetWindowOpacity glfwGetWindowOpacity_impl

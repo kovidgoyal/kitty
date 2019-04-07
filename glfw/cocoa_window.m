@@ -1518,6 +1518,25 @@ double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window)
     return [NSEvent doubleClickInterval];
 }
 
+
+
+int _glfwPlatformGetSelectionColor(_GLFWwindow* window,
+                                    uint8_t* red,
+                                    uint8_t* green,
+                                    uint8_t* blue,
+                                    uint8_t* alpha)
+{
+    NSColorSpace *colorSpace = [NSColorSpace deviceRGBColorSpace]; // genericRGBColorSpace
+    NSColor *aColor = [[NSColor selectedControlColor] colorUsingColorSpace:colorSpace];
+    if (!aColor) return GLFW_FALSE;
+    //NSLog(@"%@", aColor);
+    *red    = 255 * aColor.redComponent;
+    *green  = 255 * aColor.greenComponent;
+    *blue   = 255 * aColor.blueComponent;
+    *alpha  = 255 * aColor.alphaComponent;
+    return GLFW_TRUE;
+}
+
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
     [window->ns.object miniaturize:nil];

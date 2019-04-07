@@ -155,6 +155,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetDoubleClickInterval_impl) = dlsym(handle, "glfwGetDoubleClickInterval");
     if (glfwGetDoubleClickInterval_impl == NULL) fail("Failed to load glfw function glfwGetDoubleClickInterval with error: %s", dlerror());
 
+    *(void **) (&glfwGetPlatformSelectionColor_impl) = dlsym(handle, "glfwGetPlatformSelectionColor");
+    if (glfwGetPlatformSelectionColor_impl == NULL) fail("Failed to load glfw function glfwGetPlatformSelectionColor with error: %s", dlerror());
+
     *(void **) (&glfwGetWindowOpacity_impl) = dlsym(handle, "glfwGetWindowOpacity");
     if (glfwGetWindowOpacity_impl == NULL) fail("Failed to load glfw function glfwGetWindowOpacity with error: %s", dlerror());
 

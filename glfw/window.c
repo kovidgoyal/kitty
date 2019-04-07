@@ -744,6 +744,19 @@ GLFWAPI double glfwGetDoubleClickInterval(GLFWwindow* handle)
     return _glfwPlatformGetDoubleClickInterval(window);
 }
 
+GLFWAPI int glfwGetPlatformSelectionColor(GLFWwindow* handle,
+                                           uint8_t* red,
+                                           uint8_t* green,
+                                           uint8_t* blue,
+                                           uint8_t* alpha)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(GLFW_FALSE);
+    return _glfwPlatformGetSelectionColor(window, red, green, blue, alpha);
+}
+
 GLFWAPI float glfwGetWindowOpacity(GLFWwindow* handle)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;

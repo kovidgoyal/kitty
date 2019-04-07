@@ -2116,6 +2116,15 @@ double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window)
     return 0.5;
 }
 
+int _glfwPlatformGetSelectionColor(_GLFWwindow* window,
+                                    uint8_t* UNUSED red,
+                                    uint8_t* UNUSED green,
+                                    uint8_t* UNUSED blue,
+                                    uint8_t* UNUSED alpha)
+{
+    return GLFW_FALSE;
+}
+
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
     if (window->x11.overrideRedirect)

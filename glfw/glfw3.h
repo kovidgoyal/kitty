@@ -3012,6 +3012,35 @@ GLFWAPI void glfwGetWindowContentScale(GLFWwindow* window, float* xscale, float*
  */
 GLFWAPI double glfwGetDoubleClickInterval(GLFWwindow* window);
 
+/*! @brief Retrieves the selection color.
+ *
+ *  This function retrieves the red, green, blue and alpha components of
+ *  the color used for selection and returns GLFW_TRUE if successful.
+ *
+ *  The four color components are numbers between 0 and 255. If the
+ *  system does not support a double click interval, this function always returns GLFW_FALSE.
+ *
+ *  @return GLFW_FALSE if success.
+ *
+ *  @param[in] window The window to query.
+ *  @param[out] red The red color component.
+ *  @param[out] red The green color component.
+ *  @param[out] red The blue color component.
+ *  @param[out] red The alpha color component.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
+ *  GLFW_PLATFORM_ERROR.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref selection_color
+ *
+ *  @since Added in version 3.3.
+ *
+ *  @ingroup window
+ */
+GLFWAPI int glfwGetPlatformSelectionColor(GLFWwindow* window, uint8_t* red, uint8_t* green, uint8_t* blue, uint8_t* alpha);
+
 /*! @brief Returns the opacity of the whole window.
  *
  *  This function returns the opacity of the window, including any decorations.
