@@ -745,10 +745,10 @@ GLFWAPI double glfwGetDoubleClickInterval(GLFWwindow* handle)
 }
 
 GLFWAPI int glfwGetPlatformSelectionColor(GLFWwindow* handle,
-                                           uint8_t* red,
-                                           uint8_t* green,
-                                           uint8_t* blue,
-                                           uint8_t* alpha)
+                                          uint8_t* red,
+                                          uint8_t* green,
+                                          uint8_t* blue,
+                                          uint8_t* alpha)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);
