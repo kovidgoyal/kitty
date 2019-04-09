@@ -451,7 +451,7 @@ void _glfwPlatformTerminate(void)
 
 const char* _glfwPlatformGetVersionString(void)
 {
-    return _GLFW_VERSION_NUMBER " Cocoa NSGL"
+    return _GLFW_VERSION_NUMBER " Cocoa NSGL EGL OSMesa"
 #if defined(_GLFW_BUILD_DLL)
         " dynamic"
 #endif
