@@ -37,9 +37,8 @@ def to_bool(x):
 
 
 def to_cmdline(x):
-    ans = shlex.split(x)
-    ans[0] = os.path.expandvars(os.path.expanduser(ans[0]))
-    return ans
+    return list(map(
+        lambda y: os.path.expandvars(os.path.expanduser(y)), shlex.split(x)))
 
 
 def python_string(text):
