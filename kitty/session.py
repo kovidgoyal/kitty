@@ -96,7 +96,11 @@ def parse_session(raw, opts, default_title=None):
     for line in raw.splitlines():
         line = line.strip()
         if line and not line.startswith('#'):
-            cmd, rest = line.split(maxsplit=1)
+            parts = line.split(maxsplit=1)
+            if len(parts) == 1:
+                cmd, rest = parts[0], ''
+            else:
+                cmd, rest = parts
             cmd, rest = cmd.strip(), rest.strip()
             if cmd == 'new_tab':
                 ans.add_tab(opts, rest)
