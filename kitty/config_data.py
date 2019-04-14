@@ -449,6 +449,8 @@ o('mouse_hide_wait', 3.0, option_type=positive_float, long_text=_('''
 Hide mouse cursor after the specified number of seconds
 of the mouse not being used. Set to zero to disable mouse cursor hiding.'''))
 
+o('mouse_hide_key', True, long_text=_('''TODO'''))
+
 o('focus_follows_mouse', False, long_text=_('''
 Set the active window to the window under the mouse when
 moving the mouse around'''))

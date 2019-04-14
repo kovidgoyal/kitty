@@ -382,6 +382,7 @@ PYWRAP1(set_options) {
     S(url_style, PyLong_AsUnsignedLong);
     S(tab_bar_edge, PyLong_AsLong);
     S(mouse_hide_wait, PyFloat_AsDouble);
+    S(mouse_hide_key, PyObject_IsTrue);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
     S(touch_scroll_multiplier, PyFloat_AsDouble);
     S(open_url_modifiers, convert_mods);

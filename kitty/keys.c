@@ -180,6 +180,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
     bool ok_to_send = action == GLFW_PRESS || action == GLFW_REPEAT || screen->modes.mEXTENDED_KEYBOARD;
     if (ok_to_send) {
         if (has_text) {
+            if (OPT(mouse_hide_key)) hide_mouse(global_state.callback_os_window);
             schedule_write_to_child(w->id, 1, text, strlen(text));
             debug("sent text to child\n");
         } else {
