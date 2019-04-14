@@ -100,6 +100,9 @@ You can either use the
 to set colors or you can enable :doc:`remote control <remote-control>`
 for |kitty| and use :ref:`at_set-colors`.
 
+A list of pre-made color themes for kitty is available at:
+`kitty-themes <https://github.com/dexpota/kitty-themes>`_
+
 
 How do I specify command line options for kitty on macOS?
 ---------------------------------------------------------------
