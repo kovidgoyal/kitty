@@ -108,6 +108,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow setting :opt:`active_border_color` to ``none`` to not draw a border
   around the active window (:iss:`805`)
 
+- Use negative values for :opt:`mouse_hide_wait` to hide the mouse cursor
+  immediately when pressing a key (:iss:`1534`)
+
 
 0.13.3 [2019-01-19]
 ------------------------------
