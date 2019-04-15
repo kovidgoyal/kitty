@@ -14,7 +14,7 @@ typedef enum { LEFT_EDGE, TOP_EDGE, RIGHT_EDGE, BOTTOM_EDGE } Edge;
 
 typedef struct {
     double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval, wheel_scroll_multiplier, touch_scroll_multiplier;
-    bool mouse_hide_key, enable_audio_bell;
+    bool enable_audio_bell;
     CursorShape cursor_shape;
     unsigned int open_url_modifiers;
     unsigned int rectangle_select_modifiers;
