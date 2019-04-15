@@ -447,7 +447,8 @@ Negative numbers will use the system default instead, if available, or fallback 
 
 o('mouse_hide_wait', 3.0, option_type=float, long_text=_('''
 Hide mouse cursor after the specified number of seconds
-of the mouse not being used. Set to zero to disable mouse cursor hiding. TODO'''))
+of the mouse not being used. Set to zero to disable mouse cursor hiding.
+Set to a negative value to hide the mouse cursor immediately when typing text.'''))
 
 o('focus_follows_mouse', False, long_text=_('''
 Set the active window to the window under the mouse when
