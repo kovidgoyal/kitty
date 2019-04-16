@@ -128,7 +128,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
             (action == GLFW_RELEASE ? "RELEASE" : (action == GLFW_PRESS ? "PRESS" : "REPEAT")),
             mods, text, state);
     if (!w) { debug("no active window, ignoring\n"); return; }
-    if (OPT(mouse_hide_wait) < 0) hide_mouse(global_state.callback_os_window);
+    if (OPT(mouse_hide_wait) < 0 && !is_modifier_key(key)) hide_mouse(global_state.callback_os_window);
     Screen *screen = w->render_data.screen;
     switch(state) {
         case 1:  // update pre-edit text
