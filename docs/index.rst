@@ -64,7 +64,8 @@ If you are on Linux, you can also use your distribution's |kitty| package.
 `NixOS <https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/misc/kitty/default.nix>`_,
 `Gentoo <https://packages.gentoo.org/packages/x11-terms/kitty>`_,
 `Fedora <https://copr.fedorainfracloud.org/coprs/gagbo/kitty-latest/>`_,
-`Void Linux <https://github.com/void-linux/void-packages/blob/master/srcpkgs/kitty/template>`_.
+`Void Linux <https://github.com/void-linux/void-packages/blob/master/srcpkgs/kitty/template>`_,
+and `Solus <https://dev.getsol.us/source/kitty/>`_.
 
 See :doc:`Configuring kitty <conf>` for help on configuring |kitty| and
 :doc:`Invocation <invocation>` for the command line arguments |kitty| supports.
