@@ -302,6 +302,10 @@ GLFWbool _glfwCreateContextNSGL(_GLFWwindow* window,
     if (window->ns.retina)
         [window->ns.view setWantsBestResolutionOpenGLSurface:YES];
 
+    GLint interval = 0;
+    [window->context.nsgl.object setValues:&interval
+                              forParameter:NSOpenGLContextParameterSwapInterval];
+
     [window->context.nsgl.object setView:window->ns.view];
 
     window->context.makeCurrent = makeContextCurrentNSGL;
