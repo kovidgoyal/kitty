@@ -391,6 +391,23 @@ class UnicodeInput(Handler):
         self.refresh()
 
     def on_key(self, key_event):
+        if self.mode is HEX and key_event.type is not RELEASE and not key_event.mods:
+            try:
+                val = int(self.line_edit.current_input, 16)
+            except Exception:
+                return
+            if key_event.key is TAB:
+                self.line_edit.current_input = hex(val + 0x10)[2:]
+                self.refresh()
+                return
+            if key_event.key is UP:
+                self.line_edit.current_input = hex(val + 1)[2:]
+                self.refresh()
+                return
+            if key_event.key is DOWN:
+                self.line_edit.current_input = hex(val - 1)[2:]
+                self.refresh()
+                return
         if self.mode is NAME and key_event.type is not RELEASE and not key_event.mods:
             if key_event.key is TAB:
                 if key_event.mods == SHIFT:

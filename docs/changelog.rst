@@ -95,6 +95,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Update to using the Unicode 12 standard
 
+- Unicode input kitten: Allow using the arrow keys in code mode to go to next
+  and previous unicode symbol.
+
 - macOS: Fix specifying initial window size in cells not working correctly on
   Retina screens (:iss:`1444`)
 

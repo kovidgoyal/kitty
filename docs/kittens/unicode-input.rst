@@ -15,6 +15,8 @@ In :guilabel:`Code` mode, you enter a unicode character by typing in the hex cod
 character and pressing enter, for example, type in ``2716`` and press enter to get
 ✖. You can also choose a character from the list of recently used characters by
 typing a leading period and then the two character index and pressing Enter.
+The up and down arrow keys can be used to choose the previous and next unicode
+symbol respectively.
 
 In :guilabel:`Name` mode you instead type words from the character name and use the arrow
 keys/tab to select the character from the displayed matches. You can also type
