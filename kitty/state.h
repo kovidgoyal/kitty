@@ -11,6 +11,7 @@
 #define OPT(name) global_state.opts.name
 
 typedef enum { LEFT_EDGE, TOP_EDGE, RIGHT_EDGE, BOTTOM_EDGE } Edge;
+typedef enum { DISABLE_LIGATURES_NEVER, DISABLE_LIGATURES_CURSOR, DISABLE_LIGATURES_ALWAYS } DisableLigature;
 
 typedef struct {
     double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval, wheel_scroll_multiplier, touch_scroll_multiplier;
@@ -35,7 +36,7 @@ typedef struct {
     float window_padding_width;
     Edge tab_bar_edge;
     unsigned long tab_bar_min_tabs;
-    bool disable_ligatures_under_cursor;
+    DisableLigature disable_ligatures;
     bool sync_to_monitor;
     bool close_on_child_death;
     bool window_alert_on_bell;

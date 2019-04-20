@@ -744,7 +744,7 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.last_gpu_cell = first_gpu_cell + (num_cells ? num_cells - 1 : 0);
     load_hb_buffer(first_cpu_cell, first_gpu_cell, num_cells);
 
-    if (disable_ligature) {
+    if (disable_ligature || OPT(disable_ligatures) == DISABLE_LIGATURES_ALWAYS) {
         hb_shape(font, harfbuzz_buffer, &no_calt_feature, 1);
     } else {
         hb_shape(font, harfbuzz_buffer, NULL, 0);
@@ -1064,7 +1064,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor) 
     bool disable_ligature_in_line = false;
     index_type first_cell_in_run, i;
     attrs_type prev_width = 0;
-    if (cursor != NULL && OPT(disable_ligatures_under_cursor)) {
+    if (cursor != NULL && OPT(disable_ligatures) == DISABLE_LIGATURES_CURSOR) {
         if (lnum == cursor->y) disable_ligature_in_line = true;
     }
     for (i=0, first_cell_in_run=0; i < line->xnum; i++) {

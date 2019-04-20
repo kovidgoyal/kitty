@@ -256,9 +256,17 @@ Syntax is::
 
 '''))
 
-o('disable_ligatures_under_cursor', False, long_text=_('''
-Render the characters of a multi-character ligature under the cursor
-individually to make editing more intuitive.
+
+def disable_ligatures(x):
+    cmap = {'never': 0, 'cursor': 1, 'always': 2}
+    return cmap.get(x.lower(), 0)
+
+
+o('disable_ligatures', 'never', option_type=disable_ligatures, long_text=_('''
+Choose how you want to handle multi-character ligatures. The default is to
+always render them.  You can tell kitty to not render them when the cursor is
+over them by using :code:`cursor` to make editing easier, or have kitty never
+render them at all by using :code:`never`, if you don't like them.
 '''))
 
 

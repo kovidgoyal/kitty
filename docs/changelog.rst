@@ -20,7 +20,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Allow opening new kitty tabs/top-level windows from Finder
   (:pull:`1350`)
 
-- Add an option :opt:`disable_ligatures_under_cursor` to disable
+- Add an option :opt:`disable_ligatures` to disable
   multi-character ligatures under the cursor to make editing easier
   (:iss:`461`)
 
