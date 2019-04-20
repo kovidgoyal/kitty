@@ -48,7 +48,7 @@ def family_name_to_key(family):
     return re.sub(r'\s+', ' ', family.lower())
 
 
-def find_best_match(family, bold=False, italic=False, monospaced=True):
+def find_best_match(family, bold=False, italic=False, monospaced=True, cache={}):
     q = family_name_to_key(family)
     font_map = all_fonts_map(monospaced)
 
@@ -66,7 +66,9 @@ def find_best_match(family, bold=False, italic=False, monospaced=True):
             return candidates[0]
 
     # Use fc-match to see if we can find a monospaced font that matches family
-    possibility = fc_match(family, False, False)
+    if family not in cache:
+        cache[family] = fc_match(family, False, False)
+    possibility = cache[family]
     for key, map_key in (('postscript_name', 'ps_map'), ('full_name', 'full_map'), ('family', 'family_map')):
         val = possibility.get(key)
         if val:
@@ -94,9 +96,10 @@ def resolve_family(f, main_family, bold, italic):
 
 def get_font_files(opts):
     ans = {}
+    cache = {}
     for (bold, italic), attr in attr_map.items():
         rf = resolve_family(getattr(opts, attr), opts.font_family, bold, italic)
-        font = find_best_match(rf, bold, italic)
+        font = find_best_match(rf, bold, italic, cache=cache)
         key = {(False, False): 'medium',
                (True, False): 'bold',
                (False, True): 'italic',
