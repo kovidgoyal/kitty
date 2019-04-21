@@ -7,7 +7,7 @@ from functools import lru_cache
 
 from kitty.fast_data_types import (
     FC_SLANT_ITALIC, FC_SLANT_ROMAN, FC_WEIGHT_BOLD, FC_WEIGHT_REGULAR,
-    fc_list, fc_match,
+    fc_list, fc_match as fc_match_impl,
 )
 
 attr_map = {(False, False): 'font_family',
@@ -46,6 +46,11 @@ def list_fonts():
 
 def family_name_to_key(family):
     return re.sub(r'\s+', ' ', family.lower())
+
+
+@lru_cache()
+def fc_match(family, bold, italic):
+    return fc_match_impl(family, bold, italic)
 
 
 def find_best_match(family, bold=False, italic=False, monospaced=True):
