@@ -337,8 +337,7 @@ def dependecies_for(src, obj, all_headers):
 
 def parallel_run(todo, desc='Compiling {} ...'):
     try:
-        from multiprocessing import cpu_count
-        num_workers = max(1, cpu_count())
+        num_workers = max(2, os.cpu_count())
     except Exception:
         num_workers = 2
     items = list(reversed(tuple(todo.items())))
@@ -614,8 +613,7 @@ def compile_python(base_path):
     import compileall
     import py_compile
     try:
-        from multiprocessing import cpu_count
-        num_workers = max(1, cpu_count())
+        num_workers = max(1, os.cpu_count())
     except Exception:
         num_workers = 1
     for root, dirs, files in os.walk(base_path):
