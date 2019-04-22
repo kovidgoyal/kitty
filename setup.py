@@ -622,10 +622,11 @@ def compile_python(base_path):
         for f in files:
             if f.rpartition('.')[-1] in ('pyc', 'pyo'):
                 os.remove(os.path.join(root, f))
-    kwargs = dict(ddir='', force=True, optimize=1, quiet=1, workers=num_workers)
-    if hasattr(py_compile, 'PycInvalidationMode'):
-        kwargs['invalidation_mode'] = py_compile.PycInvalidationMode.UNCHECKED_HASH
-    compileall.compile_dir(base_path, **kwargs)
+    for optimize in (0, 1, 2):
+        kwargs = dict(ddir='', force=True, optimize=optimize, quiet=1, workers=num_workers)
+        if hasattr(py_compile, 'PycInvalidationMode'):
+            kwargs['invalidation_mode'] = py_compile.PycInvalidationMode.UNCHECKED_HASH
+        compileall.compile_dir(base_path, **kwargs)
 
 
 def package(args, for_bundle=False, sh_launcher=False):
