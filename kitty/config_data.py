@@ -85,9 +85,9 @@ as color16 to color255.''')
         _('Keyboard shortcuts'),
         _('''\
 For a list of key names, see: :link:`GLFW keys
-<http://www.glfw.org/docs/latest/group__keys.html>`. The name to use is the part
+<https://www.glfw.org/docs/latest/group__keys.html>`. The name to use is the part
 after the :code:`GLFW_KEY_` prefix. For a list of modifier names, see:
-:link:`GLFW mods <http://www.glfw.org/docs/latest/group__mods.html>`
+:link:`GLFW mods <https://www.glfw.org/docs/latest/group__mods.html>`
 
 On Linux you can also use XKB key names to bind keys that are not supported by
 GLFW. See :link:`XKB keys

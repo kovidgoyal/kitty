@@ -29,7 +29,7 @@ alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
         glGetIntegerv(GL_MAX_ARRAY_TEXTURE_LAYERS, &(max_array_texture_layers));
 #ifdef __APPLE__
         // Since on Apple we could have multiple GPUs, with different capabilities,
-        // upper bound the values according to the data from http://developer.apple.com/graphicsimaging/opengl/capabilities/
+        // upper bound the values according to the data from https://developer.apple.com/graphicsimaging/opengl/capabilities/
         max_texture_size = MIN(8192, max_texture_size);
         max_array_texture_layers = MIN(512, max_array_texture_layers);
 #endif

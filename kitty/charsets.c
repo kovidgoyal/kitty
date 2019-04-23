@@ -211,7 +211,7 @@ translation_table(uint32_t which) {
 
 uint32_t *latin1_charset = charset_translations[0];
 
-// UTF-8 decode taken from: http://bjoern.hoehrmann.de/utf-8/decoder/dfa/
+// UTF-8 decode taken from: https://bjoern.hoehrmann.de/utf-8/decoder/dfa/
 
 static const uint8_t utf8_data[] = {
   0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, // 00..1f

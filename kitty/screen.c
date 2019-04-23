@@ -459,7 +459,7 @@ screen_align(Screen *self) {
 
 void
 screen_alignment_display(Screen *self) {
-    // http://www.vt100.net/docs/vt510-rm/DECALN.html
+    // https://www.vt100.net/docs/vt510-rm/DECALN.html
     screen_cursor_position(self, 1, 1);
     self->margin_top = 0; self->margin_bottom = self->lines - 1;
     for (unsigned int y = 0; y < self->linebuf->ynum; y++) {

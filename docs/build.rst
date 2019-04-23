@@ -107,7 +107,7 @@ without needing to install all of |kitty|.
         development package of :file:`ncurses`. Also, if you are building from
         a git checkout instead of the released source code tarball, you will
         need :file:`sphinx-build` from the `Sphinx documentation generator
-        <http://www.sphinx-doc.org/>`_.
+        <https://www.sphinx-doc.org/>`_.
 
 This applies to creating packages for |kitty| for macOS package managers such as
 brew or MacPorts as well.
