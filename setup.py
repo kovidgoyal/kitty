@@ -802,7 +802,7 @@ def option_parser():  # {{{
         'action',
         nargs='?',
         default='build',
-        choices='build test linux-package kitty.app macos-bundle osx-bundle clean'.split(),
+        choices='build test linux-package app kitty.app macos-bundle osx-bundle clean'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -894,7 +894,7 @@ def main():
     elif args.action in ('macos-bundle', 'osx-bundle'):
         build(args, native_optimizations=False)
         package(args, for_bundle=True)
-    elif args.action == 'kitty.app':
+    elif args.action in ('app', 'kitty.app'):
         args.prefix = 'kitty.app'
         if os.path.exists(args.prefix):
             shutil.rmtree(args.prefix)
