@@ -71,7 +71,7 @@
 #define ALTERNATE_SCREEN  (1049 << 5)
 
 // Bracketed paste mode
-// http://cirw.in/blog/bracketed-paste
+// https://cirw.in/blog/bracketed-paste
 #define BRACKETED_PASTE (2004 << 5)
 #define BRACKETED_PASTE_START "200~"
 #define BRACKETED_PASTE_END  "201~"

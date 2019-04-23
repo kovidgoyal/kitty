@@ -171,7 +171,7 @@ The motivation for this extension is the various problems with the existing
 solution for erasing to background color, namely the *background color erase
 (bce)* capability. See
 `this discussion <https://github.com/kovidgoyal/kitty/issues/160#issuecomment-346470545>`_
-and `this FAQ <http://invisible-island.net/ncurses/ncurses.faq.html#bce_mismatches>`_
+and `this FAQ <https://invisible-island.net/ncurses/ncurses.faq.html#bce_mismatches>`_
 for a summary of problems with *bce*.
 
 For example, to set the background color to blue in a

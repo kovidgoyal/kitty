@@ -88,7 +88,7 @@ def setup_openssl_environment():
     # Workaround for Linux distros that have still failed to get their heads
     # out of their asses and implement a common location for SSL certificates.
     # It's not that hard people, there exists a wonderful tool called the symlink
-    # See http://www.mobileread.com/forums/showthread.php?t=256095
+    # See https://www.mobileread.com/forums/showthread.php?t=256095
     if 'SSL_CERT_FILE' not in os.environ and 'SSL_CERT_DIR' not in os.environ:
         if os.access('/etc/pki/tls/certs/ca-bundle.crt', os.R_OK):
             os.environ['SSL_CERT_FILE'] = '/etc/pki/tls/certs/ca-bundle.crt'
