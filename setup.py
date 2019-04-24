@@ -848,6 +848,7 @@ def option_parser():  # {{{
     p.add_argument(
         '--extra-logging',
         action='append',
+        default=[],
         choices=('event-loop',),
         help='Turn on extra logging for debugging in this build. Can be specified multiple times, to turn'
         'on different types of logging.'
