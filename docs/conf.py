@@ -6,6 +6,7 @@
 # full list see the documentation:
 # https://www.sphinx-doc.org/en/master/config
 
+import importlib
 import os
 import re
 import subprocess
@@ -25,8 +26,7 @@ from sphinx.util.logging import getLogger
 kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
-if True:
-    from kitty.constants import str_version
+str_version = importlib.import_module('kitty.constants').str_version
 
 # config {{{
 # -- Project information -----------------------------------------------------
