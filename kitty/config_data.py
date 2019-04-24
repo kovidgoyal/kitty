@@ -698,10 +698,15 @@ kitty config and not use a background color in the editor color scheme. Or use
 the escape codes to set the terminals default colors in a shell script to
 launch your editor.  Be aware that using a value less than 1.0 is a (possibly
 significant) performance hit.  If you want to dynamically change transparency
-of windows set dynamic_background_opacity to yes (this is off by default as it
-has a performance cost)
+of windows set :opt:`dynamic_background_opacity` to :code:`yes` (this is off by
+default as it has a performance cost)
 '''))
-o('dynamic_background_opacity', False)
+
+o('dynamic_background_opacity', False, long_text=_('''
+Allow changing of the :opt:`background_opacity` dynamically, using either keyboard
+shortcuts (:sc:`increase_background_opacity` and :sc:`decrease_background_opacity`)
+or the remote control facility.
+'''))
 
 o('dim_opacity', 0.75, option_type=unit_float, long_text=_('''
 How much to dim text that has the DIM/FAINT attribute set. One means no dimming and

@@ -180,7 +180,7 @@ texinfo_documents = [
 # }}}
 
 
-# GitHub linking inlne roles {{{
+# GitHub linking inline roles {{{
 
 def num_role(which, name, rawtext, text, lineno, inliner, options={}, content=[]):
     ' Link to a github issue '
