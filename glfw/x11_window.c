@@ -59,10 +59,16 @@ GLFWbool _glfwDispatchX11Events(void);
 
 static void
 handleEvents(double timeout) {
+    EVDBG("starting handleEvents(%.2f)", timeout);
     int display_read_ok = pollForEvents(&_glfw.x11.eventLoopData, timeout);
-    if (display_read_ok) _glfwDispatchX11Events();
+    EVDBG("display_read_ok: %d", display_read_ok);
+    if (display_read_ok) {
+        _glfwDispatchX11Events();
+        EVDBG("_glfwDispatchX11Events() done");
+    }
     glfw_ibus_dispatch(&_glfw.x11.xkb.ibus);
     glfw_dbus_session_bus_dispatch();
+    EVDBG("other dispatch done");
 }
 
 static GLFWbool

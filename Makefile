@@ -18,6 +18,9 @@ clean:
 debug:
 	python3 setup.py build $(VVAL) --debug
 
+debug-event-loop:
+	python3 setup.py build $(VVAL) --debug --extra-logging=event-loop
+
 # Build with the ASAN and UBSAN sanitizers
 asan:
 	python3 setup.py build $(VVAL) --debug --sanitize

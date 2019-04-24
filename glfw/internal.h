@@ -743,13 +743,21 @@ void _glfwInputJoystickHat(_GLFWjoystick* js, int hat, char value);
 void _glfwInputMonitor(_GLFWmonitor* monitor, int action, int placement);
 void _glfwInputMonitorWindow(_GLFWmonitor* monitor, _GLFWwindow* window);
 
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
 void _glfwInputError(int code, const char* format, ...)
     __attribute__((format(printf, 2, 3)));
+void _glfwDebug(const char* format, ...)
+    __attribute__((format(printf, 1, 2)));
 #else
 void _glfwInputError(int code, const char* format, ...);
+void _glfwDebug(const char* format, ...);
 #endif
 
+#ifdef DEBUG_EVENT_LOOP
+#define EVDBG(...) _glfwDebug(__VA_ARGS__)
+#else
+#define EVDBG(...)
+#endif
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW internal API                      //////

@@ -193,6 +193,20 @@ void _glfwInputError(int code, const char* format, ...)
         _glfwErrorCallback(code, description);
 }
 
+void
+_glfwDebug(const char *format, ...) {
+    if (format)
+    {
+        va_list vl;
+
+        fprintf(stderr, "[%.4f] ", glfwGetTime());
+        va_start(vl, format);
+        vfprintf(stderr, format, vl);
+        va_end(vl);
+        fprintf(stderr, "\n");
+    }
+
+}
 
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW public API                       //////

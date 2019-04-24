@@ -29,6 +29,7 @@ void _glfwPlatformRunMainLoop(GLFWtickcallback callback, void* data) {
     keep_going = GLFW_TRUE;
     tick_callback_requested = GLFW_FALSE;
     while(keep_going) {
+		EVDBG("tick_callback_requested: %d", tick_callback_requested);
         while (tick_callback_requested) {
             tick_callback_requested = GLFW_FALSE;
             callback(data);

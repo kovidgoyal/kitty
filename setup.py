@@ -178,7 +178,8 @@ class Env:
 
 
 def init_env(
-    debug=False, sanitize=False, native_optimizations=True, profile=False
+    debug=False, sanitize=False, native_optimizations=True, profile=False,
+    extra_logging=()
 ):
     native_optimizations = native_optimizations and not sanitize and not debug
     cc, ccver = cc_version()
@@ -200,6 +201,8 @@ def init_env(
         )
     )
     cppflags = shlex.split(cppflags)
+    for el in extra_logging:
+        cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra -Wno-missing-field-initializers -Wall -std=c11'
@@ -508,7 +511,7 @@ def build(args, native_optimizations=True):
     compilation_database = {
         (k['file'], k.get('output')): k['arguments'] for k in compilation_database
     }
-    env = init_env(args.debug, args.sanitize, native_optimizations, args.profile)
+    env = init_env(args.debug, args.sanitize, native_optimizations, args.profile, args.extra_logging)
     try:
         compile_c_extension(
             kitty_env(), 'kitty/fast_data_types', args.incremental, compilation_database, all_keys, *find_c_files()
@@ -841,6 +844,13 @@ def option_parser():  # {{{
         '--libdir-name',
         default='lib',
         help='The name of the directory inside --prefix in which to store compiled files. Defaults to "lib"'
+    )
+    p.add_argument(
+        '--extra-logging',
+        action='append',
+        choices=('event-loop',),
+        help='Turn on extra logging for debugging in this build. Can be specified multiple times, to turn'
+        'on different types of logging.'
     )
     return p
 # }}}
