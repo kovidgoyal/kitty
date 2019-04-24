@@ -22,7 +22,11 @@ from sphinx import addnodes
 from sphinx.environment.adapters.toctree import TocTree
 from sphinx.util.logging import getLogger
 
-from kitty.constants import str_version
+kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if kitty_src not in sys.path:
+    sys.path.insert(0, kitty_src)
+if True:
+    from kitty.constants import str_version
 
 # config {{{
 # -- Project information -----------------------------------------------------

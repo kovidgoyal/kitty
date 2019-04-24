@@ -3,7 +3,7 @@
 
 # You can set these variables from the command line.
 SPHINXOPTS    = -j auto -T $(FAIL_WARN)
-SPHINXBUILD   = python3 .. +launch :sphinx-build
+SPHINXBUILD   = sphinx-build
 SPHINXPROJ    = kitty
 SOURCEDIR     = .
 BUILDDIR      = _build
