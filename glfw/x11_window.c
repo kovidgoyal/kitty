@@ -2497,6 +2497,19 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
                     PropModeReplace, (unsigned char*) &value, 1);
 }
 
+static inline GLFWbool
+dispatch_x11_queued_events(void) {
+    GLFWbool dispatched = GLFW_FALSE;
+    while (XQLength(_glfw.x11.display) > 0)
+    {
+        XEvent event;
+        XNextEvent(_glfw.x11.display, &event);
+        processEvent(&event);
+        dispatched = GLFW_TRUE;
+    }
+    return dispatched;
+}
+
 GLFWbool
 _glfwDispatchX11Events(void) {
     _GLFWwindow* window;
@@ -2506,14 +2519,7 @@ _glfwDispatchX11Events(void) {
     _glfwDetectJoystickConnectionLinux();
 #endif
     XPending(_glfw.x11.display);
-
-    while (XQLength(_glfw.x11.display))
-    {
-        XEvent event;
-        XNextEvent(_glfw.x11.display, &event);
-        processEvent(&event);
-        dispatched = GLFW_TRUE;
-    }
+    if (dispatch_x11_queued_events()) dispatched = GLFW_TRUE;
 
     window = _glfw.x11.disabledCursorWindow;
     if (window)
@@ -2531,6 +2537,8 @@ _glfwDispatchX11Events(void) {
     }
 
     XFlush(_glfw.x11.display);
+    // XFlush can cause events to be queued
+    if (dispatch_x11_queued_events()) dispatched = GLFW_TRUE;
     return dispatched;
 }
 
