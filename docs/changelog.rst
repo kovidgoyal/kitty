@@ -22,7 +22,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add an option :opt:`disable_ligatures` to disable
   multi-character ligatures under the cursor to make editing easier
-  (:iss:`461`)
+  or disable them completely (:iss:`461`)
 
 - Allow creating new OS windows in session files (:iss:`1514`)
 
