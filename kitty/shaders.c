@@ -293,7 +293,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
 
     bool cursor_pos_changed = screen->cursor->x != screen->last_rendered_cursor_x
                            || screen->cursor->y != screen->last_rendered_cursor_y;
-    bool disable_ligatures = OPT(disable_ligatures) == DISABLE_LIGATURES_CURSOR;
+    bool disable_ligatures = screen->disable_ligatures == DISABLE_LIGATURES_CURSOR;
 
     if (screen->scroll_changed || screen->is_dirty || (disable_ligatures && cursor_pos_changed)) {
         sz = sizeof(GPUCell) * screen->lines * screen->columns;

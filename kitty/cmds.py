@@ -815,6 +815,40 @@ def set_background_opacity(boss, window, payload):
 # }}}
 
 
+# disable_ligatures {{{
+@cmd(
+    'Disable ligatures',
+    'Set disable ligatures mode (override global config) for the specified window. '
+    'This accepts the same options as in the kitty config (never, cursor, always). '
+    'By default, this command applys to current active window, use following options to specify others. '
+    'For example: kitty @ disable_ligatures always',
+    options_spec=MATCH_WINDOW_OPTION + '''\n
+--self
+type=bool-set
+If specified set the window this command is run in, rather than the active window.
+''',
+    argspec='MODE',
+    args_count=1
+)
+def cmd_disable_ligatures(global_opts, opts, args):
+    from .config_data import disable_ligatures
+    return {'value': disable_ligatures(args[0]), 'match': opts.match, 'self': opts.self}
+
+
+def disable_ligatures(boss, window, payload):
+    match = payload['match']
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise MatchError(match)
+    else:
+        windows = [window if window and payload['self'] else boss.active_window]
+    for window in windows:
+        if window:
+            boss.set_disable_ligatures(payload['value'], window)
+# }}}
+
+
 # kitten {{{
 @cmd(
     'Run a kitten',

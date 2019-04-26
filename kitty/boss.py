@@ -1051,3 +1051,9 @@ class Boss:
             dbus_notification_activated(*args)
         else:
             dbus_notification_created(*args)
+
+    def set_disable_ligatures(self, value, window=None):
+        if window is None:
+            window = self.active_window
+        window.screen.disable_ligatures = value
+        window.screen.dirty_sprite_positions()

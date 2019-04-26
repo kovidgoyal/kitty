@@ -87,6 +87,7 @@ typedef struct {
     ScreenModes modes;
     ColorProfile *color_profile;
     double start_visual_bell_at;
+    DisableLigature disable_ligatures;
 
     uint32_t parser_buf[PARSER_BUF_SZ];
     unsigned int parser_state, parser_text_start, parser_buf_pos;

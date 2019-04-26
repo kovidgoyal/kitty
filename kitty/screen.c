@@ -106,6 +106,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->test_child = test_child; Py_INCREF(test_child);
         self->cursor = alloc_cursor();
         self->color_profile = alloc_color_profile();
+        self->disable_ligatures = OPT(disable_ligatures);
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns, OPT(scrollback_pager_history_size));
@@ -1479,7 +1480,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         lnum = self->scrolled_by - 1 - y;
         historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
         if (self->historybuf->line->has_dirty_text) {
-            render_line(fonts_data, self->historybuf->line, lnum, self->cursor);
+            render_line(fonts_data, self->historybuf->line, lnum, self->cursor, self->disable_ligatures);
             historybuf_mark_line_clean(self->historybuf, lnum);
         }
         update_line_data(self->historybuf->line, y, address);
@@ -1489,7 +1490,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         linebuf_init_line(self->linebuf, lnum);
         if (self->linebuf->line->has_dirty_text ||
             (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered_cursor_y == lnum))) {
-            render_line(fonts_data, self->linebuf->line, lnum, self->cursor);
+            render_line(fonts_data, self->linebuf->line, lnum, self->cursor, self->disable_ligatures);
             linebuf_mark_line_clean(self->linebuf, lnum);
         }
         update_line_data(self->linebuf->line, y, address);
@@ -1665,7 +1666,6 @@ deactivate_overlay_line(Screen *self) {
     self->overlay_line.xnum = 0;
     self->overlay_line.xstart = 0;
 }
-
 
 // }}}
 
@@ -1877,6 +1877,7 @@ WRAP1B(erase_in_line, 0)
 WRAP1B(erase_in_display, 0)
 WRAP0(scroll_until_cursor)
 
+
 #define MODE_GETSET(name, uname) \
     static PyObject* name##_get(Screen *self, void UNUSED *closure) { PyObject *ans = self->modes.m##uname ? Py_True : Py_False; Py_INCREF(ans); return ans; } \
     static int name##_set(Screen *self, PyObject *val, void UNUSED *closure) { if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } set_mode_from_const(self, uname, PyObject_IsTrue(val) ? true : false); return 0; }
@@ -1910,6 +1911,7 @@ WRAP2(resize, 1, 1)
 WRAP2(set_margins, 1, 1)
 WRAP0(rescale_images)
 WRAP2B(update_selection)
+WRAP0(dirty_sprite_positions)
 
 static PyObject*
 start_selection(Screen *self, PyObject *args) {
@@ -2171,6 +2173,29 @@ wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
     return PyLong_FromLong(wcwidth_std(PyLong_AsLong(chr)));
 }
 
+static PyObject* disable_ligatures_get(Screen *self, void UNUSED *closure) {
+    return PyLong_FromLong(self->disable_ligatures);
+}
+
+static int disable_ligatures_set(Screen *self, PyObject *value, void UNUSED *closure) {
+    if (value == NULL) {
+        PyErr_SetString(PyExc_TypeError, "Cannot delete attribute");
+        return -1;
+    }
+    long v = PyLong_AsLong(value);
+    switch (v) {
+        case DISABLE_LIGATURES_ALWAYS:
+        case DISABLE_LIGATURES_CURSOR:
+        case DISABLE_LIGATURES_NEVER:
+            self->disable_ligatures = v;
+            break;
+        default:
+            PyErr_SetString(PyExc_TypeError, "Cannot set invalid enum value");
+            return -1;
+    }
+    return 0;
+}
+
 
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
@@ -2226,6 +2251,7 @@ static PyMethodDef methods[] = {
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
     MND(paste, METH_O)
+    MND(dirty_sprite_positions, METH_NOARGS)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */
@@ -2238,6 +2264,7 @@ static PyGetSetDef getsetters[] = {
     GETSET(focus_tracking_enabled)
     GETSET(cursor_visible)
     GETSET(cursor_key_mode)
+    GETSET(disable_ligatures)
     {NULL}  /* Sentinel */
 };
 
