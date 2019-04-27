@@ -214,6 +214,12 @@ def nth_window(func, rest):
     return func, [num]
 
 
+@func_with_args('disable_ligatures')
+def disable_ligatures_parse(func, val):
+    from .config_data import disable_ligatures
+    return func, [disable_ligatures(val)]
+
+
 def parse_key_action(action):
     parts = action.strip().split(maxsplit=1)
     func = parts[0]

@@ -1154,6 +1154,8 @@ and clear the screen, instead of just clearing the screen::
 
     map ctrl+l combine : clear_terminal scroll active : send_text normal,application \\x0c
 '''))
+k('disable_ligatures', 'ctrl+shift+alt+l', 'disable_ligatures always', _('Set disable_ligatures to always for current window'),
+  add_to_default=False)
 k('send_text', 'ctrl+shift+alt+h', 'send_text all Hello World', _('Send arbitrary text on key presses'),
   add_to_default=False, long_text=_('''
 You can tell kitty to send arbitrary (UTF-8) encoded text to

@@ -845,7 +845,7 @@ def disable_ligatures(boss, window, payload):
         windows = [window if window and payload['self'] else boss.active_window]
     for window in windows:
         if window:
-            boss.set_disable_ligatures(payload['value'], window)
+            boss.disable_ligatures(payload['value'], window)
 # }}}
 
 
