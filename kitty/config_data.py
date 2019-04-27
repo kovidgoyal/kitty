@@ -199,6 +199,7 @@ o(
     'monospace',
     long_text=_('''
 You can specify different fonts for the bold/italic/bold-italic variants.
+To get a full list of supported fonts use `kitty list-fonts` command.
 By default they are derived automatically, by the OSes font system. Setting
 them manually is useful for font families that have many weight variants like
 Book, Medium, Thick, etc. For example::
