@@ -27,6 +27,14 @@ static GLFWcursor *standard_cursor = NULL, *click_cursor = NULL, *arrow_cursor =
 
 static void set_os_window_dpi(OSWindow *w);
 
+
+static void
+request_tick_callback(void) {
+#ifdef __APPLE__
+    glfwRequestTickCallback();
+#endif
+}
+
 void
 update_os_window_viewport(OSWindow *window, bool notify_boss) {
     int w, h, fw, fh;
@@ -1126,11 +1134,6 @@ remove_main_loop_timer(id_type timer_id) {
 void
 run_main_loop(tick_callback_fun cb, void* cb_data) {
     glfwRunMainLoop(cb, cb_data);
-}
-
-void
-request_tick_callback(void) {
-    glfwRequestTickCallback();
 }
 
 void

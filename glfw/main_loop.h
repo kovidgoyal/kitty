@@ -12,10 +12,9 @@
 #define GLFW_LOOP_BACKEND x11
 #endif
 
-static GLFWbool keep_going = GLFW_FALSE, tick_callback_requested = GLFW_FALSE;
+static GLFWbool keep_going = GLFW_FALSE;
 
 void _glfwPlatformRequestTickCallback() {
-    tick_callback_requested = GLFW_TRUE;
 }
 
 void _glfwPlatformStopMainLoop(void) {
@@ -25,16 +24,12 @@ void _glfwPlatformStopMainLoop(void) {
     }
 }
 
-void _glfwPlatformRunMainLoop(GLFWtickcallback callback, void* data) {
+void _glfwPlatformRunMainLoop(GLFWtickcallback tick_callback, void* data) {
     keep_going = GLFW_TRUE;
-    tick_callback_requested = GLFW_FALSE;
     while(keep_going) {
-		EVDBG("tick_callback_requested: %d", tick_callback_requested);
-        while (tick_callback_requested) {
-            tick_callback_requested = GLFW_FALSE;
-            callback(data);
-        }
         _glfwPlatformWaitEvents();
+		EVDBG("loop tick");
+        tick_callback(data);
     }
 }
 

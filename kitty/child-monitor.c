@@ -940,8 +940,7 @@ process_global_state(void *data) {
     if (global_state.has_pending_closes) has_open_windows = process_pending_closes(self);
     if (has_open_windows) {
         if (maximum_wait >= 0) {
-            if (maximum_wait == 0) request_tick_callback();
-            else state_check_timer_enabled = true;
+            state_check_timer_enabled = true;
         }
     } else {
         stop_main_loop();
