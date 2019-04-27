@@ -1256,8 +1256,12 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
 void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
 {
     // TODO
-    _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Window attention request not implemented yet");
+    static GLFWbool notified = GLFW_FALSE;
+    if (!notified) {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Wayland: Window attention request not implemented yet");
+        notified = GLFW_TRUE;
+    }
 }
 
 int _glfwPlatformWindowBell(_GLFWwindow* window)
