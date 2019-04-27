@@ -1393,7 +1393,6 @@ void _glfwPlatformWaitEventsTimeout(double timeout)
 
 void _glfwPlatformPostEmptyEvent(void)
 {
-    wl_display_sync(_glfw.wl.display);
     while (write(_glfw.wl.eventLoopData.wakeupFds[1], "w", 1) < 0 && errno == EINTR);
 }
 
