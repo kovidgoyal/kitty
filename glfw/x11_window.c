@@ -55,7 +55,7 @@
 // This avoids blocking other threads via the per-display Xlib lock that also
 // covers GLX functions
 //
-GLFWbool _glfwDispatchX11Events(void);
+static unsigned _glfwDispatchX11Events(void);
 
 static void
 handleEvents(double timeout) {
@@ -63,8 +63,9 @@ handleEvents(double timeout) {
     int display_read_ok = pollForEvents(&_glfw.x11.eventLoopData, timeout);
     EVDBG("display_read_ok: %d", display_read_ok);
     if (display_read_ok) {
-        _glfwDispatchX11Events();
-        EVDBG("_glfwDispatchX11Events() done");
+        unsigned dispatched = _glfwDispatchX11Events();
+        (void)dispatched;
+        EVDBG("dispatched %u X11 events", dispatched);
     }
     glfw_ibus_dispatch(&_glfw.x11.xkb.ibus);
     glfw_dbus_session_bus_dispatch();
@@ -2497,29 +2498,29 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
                     PropModeReplace, (unsigned char*) &value, 1);
 }
 
-static inline GLFWbool
+static inline unsigned
 dispatch_x11_queued_events(void) {
-    GLFWbool dispatched = GLFW_FALSE;
+    unsigned dispatched = 0;
     while (XQLength(_glfw.x11.display) > 0)
     {
         XEvent event;
         XNextEvent(_glfw.x11.display, &event);
         processEvent(&event);
-        dispatched = GLFW_TRUE;
+        dispatched += 1;
     }
     return dispatched;
 }
 
-GLFWbool
+static unsigned
 _glfwDispatchX11Events(void) {
     _GLFWwindow* window;
-    GLFWbool dispatched = GLFW_FALSE;
+    unsigned dispatched = 0;
 
 #if defined(__linux__)
     _glfwDetectJoystickConnectionLinux();
 #endif
     XPending(_glfw.x11.display);
-    if (dispatch_x11_queued_events()) dispatched = GLFW_TRUE;
+    dispatched += dispatch_x11_queued_events();
 
     window = _glfw.x11.disabledCursorWindow;
     if (window)
@@ -2538,7 +2539,7 @@ _glfwDispatchX11Events(void) {
 
     XFlush(_glfw.x11.display);
     // XFlush can cause events to be queued
-    if (dispatch_x11_queued_events()) dispatched = GLFW_TRUE;
+    dispatched += dispatch_x11_queued_events();
     return dispatched;
 }
 
