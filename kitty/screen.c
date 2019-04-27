@@ -113,6 +113,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->alt_grman = grman_alloc();
         self->grman = self->main_grman;
         self->pending_mode.wait_time = 2.0;
+        self->disable_ligatures = OPT(disable_ligatures);
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
         if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->main_grman == NULL || self->alt_grman == NULL || self->color_profile == NULL) {
             Py_CLEAR(self); return NULL;
@@ -1479,7 +1480,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         lnum = self->scrolled_by - 1 - y;
         historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
         if (self->historybuf->line->has_dirty_text) {
-            render_line(fonts_data, self->historybuf->line, lnum, self->cursor);
+            render_line(fonts_data, self->historybuf->line, lnum, self->cursor, self->disable_ligatures);
             historybuf_mark_line_clean(self->historybuf, lnum);
         }
         update_line_data(self->historybuf->line, y, address);
@@ -1489,7 +1490,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         linebuf_init_line(self->linebuf, lnum);
         if (self->linebuf->line->has_dirty_text ||
             (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered_cursor_y == lnum))) {
-            render_line(fonts_data, self->linebuf->line, lnum, self->cursor);
+            render_line(fonts_data, self->linebuf->line, lnum, self->cursor, self->disable_ligatures);
             linebuf_mark_line_clean(self->linebuf, lnum);
         }
         update_line_data(self->linebuf->line, y, address);
@@ -1888,6 +1889,37 @@ MODE_GETSET(auto_repeat_enabled, DECARM)
 MODE_GETSET(cursor_visible, DECTCEM)
 MODE_GETSET(cursor_key_mode, DECCKM)
 
+static PyObject* disable_ligatures_get(Screen *self, void UNUSED *closure) {
+    const char *ans = NULL;
+    switch(self->disable_ligatures) {
+        case DISABLE_LIGATURES_NEVER:
+            ans = "never";
+            break;
+        case DISABLE_LIGATURES_CURSOR:
+            ans = "cursor";
+            break;
+        case DISABLE_LIGATURES_ALWAYS:
+            ans = "always";
+            break;
+    }
+    return PyUnicode_FromString(ans);
+}
+
+static int disable_ligatures_set(Screen *self, PyObject *val, void UNUSED *closure) {
+    if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; }
+    if (!PyUnicode_Check(val)) { PyErr_SetString(PyExc_TypeError, "unicode string expected"); return -1; }
+    if (PyUnicode_READY(val) != 0) return -1;
+    const char *q = PyUnicode_AsUTF8(val);
+    DisableLigature dl = DISABLE_LIGATURES_NEVER;
+    if (strcmp(q, "always") == 0) dl = DISABLE_LIGATURES_ALWAYS;
+    else if (strcmp(q, "cursor") == 0) dl = DISABLE_LIGATURES_CURSOR;
+    if (dl != self->disable_ligatures) {
+        self->disable_ligatures = dl;
+        screen_dirty_sprite_positions(self);
+    }
+    return 0;
+}
+
 static PyObject*
 cursor_up(Screen *self, PyObject *args) {
     unsigned int count = 1;
@@ -2238,6 +2270,7 @@ static PyGetSetDef getsetters[] = {
     GETSET(focus_tracking_enabled)
     GETSET(cursor_visible)
     GETSET(cursor_key_mode)
+    GETSET(disable_ligatures)
     {NULL}  /* Sentinel */
 };
 

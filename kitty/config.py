@@ -214,6 +214,20 @@ def nth_window(func, rest):
     return func, [num]
 
 
+@func_with_args('disable_ligatures_in')
+def disable_ligatures_in(func, rest):
+    parts = rest.split(maxsplit=1)
+    if len(parts) == 1:
+        where, strategy = 'active', parts[0]
+    else:
+        where, strategy = parts
+    if where not in ('active', 'all', 'tab'):
+        raise ValueError('{} is not a valid set of windows to disable ligatures in'.format(where))
+    if strategy not in ('never', 'always', 'cursor'):
+        raise ValueError('{} is not a valid disable ligatures strategy'.format(strategy))
+    return func, [where, strategy]
+
+
 def parse_key_action(action):
     parts = action.strip().split(maxsplit=1)
     func = parts[0]

@@ -105,6 +105,7 @@ typedef struct {
         int state;
         uint8_t stop_buf[32];
     } pending_mode;
+    DisableLigature disable_ligatures;
 
 } Screen;
 

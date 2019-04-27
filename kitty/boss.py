@@ -996,6 +996,23 @@ class Boss:
         if tm is not None:
             tm.move_tab(-1)
 
+    def disable_ligatures_in(self, where, strategy):
+        if isinstance(where, str):
+            windows = ()
+            if where == 'active':
+                if self.active_window is not None:
+                    windows = (self.active_window,)
+            elif where == 'all':
+                windows = self.all_windows
+            elif where == 'tab':
+                if self.active_tab is not None:
+                    windows = tuple(self.active_tab)
+        else:
+            windows = where
+        for window in windows:
+            window.screen.disable_ligatures = strategy
+            window.refresh()
+
     def patch_colors(self, spec, cursor_text_color, configured=False):
         if configured:
             for k, v in spec.items():
