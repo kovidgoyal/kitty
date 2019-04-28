@@ -114,6 +114,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Use negative values for :opt:`mouse_hide_wait` to hide the mouse cursor
   immediately when pressing a key (:iss:`1534`)
 
+- When encountering errors in :file:`kitty.conf` report them to the user
+  instead of failing to start.
+
 
 0.13.3 [2019-01-19]
 ------------------------------

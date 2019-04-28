@@ -710,7 +710,7 @@ def compare_opts(opts):
     compare_keymaps(final, initial)
 
 
-def create_opts(args, debug_config=False):
+def create_opts(args, debug_config=False, accumulate_bad_lines=None):
     from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     if debug_config:
@@ -729,7 +729,7 @@ def create_opts(args, debug_config=False):
         if config:
             print(green('Loaded config files:'), ', '.join(config))
     overrides = (a.replace('=', ' ', 1) for a in args.override or ())
-    opts = load_config(*config, overrides=overrides)
+    opts = load_config(*config, overrides=overrides, accumulate_bad_lines=accumulate_bad_lines)
     if debug_config:
         compare_opts(opts)
     return opts

@@ -5,11 +5,13 @@
 import os
 import re
 import shlex
+from collections import namedtuple
 
 from ..rgb import to_color as as_color
 from ..utils import log_error
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
+BadLine = namedtuple('BadLine', 'number line exception')
 
 
 def to_color(x):
@@ -90,22 +92,28 @@ def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_in
     ans[key] = val
 
 
-def _parse(lines, type_map, special_handling, ans, all_keys):
+def _parse(lines, type_map, special_handling, ans, all_keys, accumulate_bad_lines=None):
     name = getattr(lines, 'name', None)
     if name:
         base_path_for_includes = os.path.dirname(os.path.abspath(name))
     else:
         from ..constants import config_dir
         base_path_for_includes = config_dir
-    for line in lines:
-        parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_includes)
+    for i, line in enumerate(lines):
+        try:
+            parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_includes)
+        except Exception as e:
+            if accumulate_bad_lines is None:
+                raise
+            accumulate_bad_lines.append(BadLine(i + 1, line.rstrip(), e))
 
 
 def parse_config_base(
-    lines, defaults, type_map, special_handling, ans, check_keys=True
+    lines, defaults, type_map, special_handling, ans, check_keys=True,
+    accumulate_bad_lines=None
 ):
     all_keys = defaults._asdict() if check_keys else None
-    _parse(lines, type_map, special_handling, ans, all_keys)
+    _parse(lines, type_map, special_handling, ans, all_keys, accumulate_bad_lines)
 
 
 def create_options_class(keys):

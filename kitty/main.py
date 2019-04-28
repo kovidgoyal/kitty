@@ -115,7 +115,7 @@ def get_new_os_window_trigger(opts):
     return new_os_window_trigger
 
 
-def _run_app(opts, args):
+def _run_app(opts, args, bad_lines=()):
     new_os_window_trigger = get_new_os_window_trigger(opts)
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
@@ -132,18 +132,20 @@ def _run_app(opts, args):
                     args.cls or appname, load_all_shaders)
         boss = Boss(window_id, opts, args, cached_values, new_os_window_trigger)
         boss.start()
+        if bad_lines:
+            boss.show_bad_config_lines(bad_lines)
         try:
             boss.child_monitor.main_loop()
         finally:
             boss.destroy()
 
 
-def run_app(opts, args):
+def run_app(opts, args, bad_lines=()):
     set_scale(opts.box_drawing_scale)
     set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
     set_font_family(opts, debug_font_matching=args.debug_font_fallback)
     try:
-        _run_app(opts, args)
+        _run_app(opts, args, bad_lines)
     finally:
         free_font_data()  # must free font data before glfw/freetype/fontconfig/opengl etc are finalized
 
@@ -262,12 +264,13 @@ def _main():
             talk_to_instance(args)
             return
     init_glfw(args.debug_keyboard)  # needed for parsing native keysyms
-    opts = create_opts(args)
+    bad_lines = []
+    opts = create_opts(args, accumulate_bad_lines=bad_lines)
     setup_environment(opts, args)
     try:
         with setup_profiling(args):
             # Avoid needing to launch threads to reap zombies
-            run_app(opts, args)
+            run_app(opts, args, bad_lines)
     finally:
         glfw_terminate()
 

@@ -8,6 +8,7 @@ import re
 import sys
 from collections import namedtuple
 from contextlib import contextmanager
+from functools import partial
 
 from . import fast_data_types as defines
 from .conf.definition import as_conf_file, config_lines
@@ -439,7 +440,7 @@ def option_names_for_completion():
     yield from special_handlers
 
 
-def parse_config(lines, check_keys=True):
+def parse_config(lines, check_keys=True, accumulate_bad_lines=None):
     ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [], 'env': {}}
     parse_config_base(
         lines,
@@ -447,7 +448,8 @@ def parse_config(lines, check_keys=True):
         type_map,
         special_handling,
         ans,
-        check_keys=check_keys
+        check_keys=check_keys,
+        accumulate_bad_lines=accumulate_bad_lines
     )
     return ans
 
@@ -617,8 +619,11 @@ def finalize_keys(opts):
     opts.sequence_map = sequence_map
 
 
-def load_config(*paths, overrides=None):
-    opts = _load_config(Options, defaults, parse_config, merge_configs, *paths, overrides=overrides)
+def load_config(*paths, overrides=None, accumulate_bad_lines=None):
+    parser = parse_config
+    if accumulate_bad_lines is not None:
+        parser = partial(parse_config, accumulate_bad_lines=accumulate_bad_lines)
+    opts = _load_config(Options, defaults, parser, merge_configs, *paths, overrides=overrides)
     finalize_keys(opts)
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
         log_error('Cannot use both macos_titlebar_color and background_opacity')
