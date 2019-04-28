@@ -387,6 +387,7 @@ PYWRAP1(set_options) {
     S(open_url_modifiers, convert_mods);
     S(rectangle_select_modifiers, convert_mods);
     S(click_interval, PyFloat_AsDouble);
+    S(resize_debounce_time, PyFloat_AsDouble);
     S(url_color, color_as_int);
     S(background, color_as_int);
     S(foreground, color_as_int);

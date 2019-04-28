@@ -831,10 +831,10 @@ process_pending_resizes(double now) {
             if (w->live_resize.from_os_notification) {
                 if (w->live_resize.os_says_resize_complete || (now - w->live_resize.last_resize_event_at) > 1) update_viewport = true;
             } else {
-                if (now - w->live_resize.last_resize_event_at >= RESIZE_DEBOUNCE_TIME) update_viewport = true;
+                if (now - w->live_resize.last_resize_event_at >= OPT(resize_debounce_time)) update_viewport = true;
                 else {
                     global_state.has_pending_resizes = true;
-                    set_maximum_wait(RESIZE_DEBOUNCE_TIME - now + w->live_resize.last_resize_event_at);
+                    set_maximum_wait(OPT(resize_debounce_time) - now + w->live_resize.last_resize_event_at);
                 }
             }
             if (update_viewport) {

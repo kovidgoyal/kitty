@@ -8,7 +8,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 ---------------------
 
 - macOS: The default behavior of the Option key has changed. It now generates
-  unicode characters rather than acting as the Alt modifier. See
+  unicode characters rather than acting as the :kbd:`Alt` modifier. See
   :opt:`macos_option_as_alt`.
 
 - Support for an arbitrary number of internal clipboard buffers to copy/paste
@@ -116,6 +116,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - When encountering errors in :file:`kitty.conf` report them to the user
   instead of failing to start.
+
+- Allow the user to control the resize debounce time via
+  :opt:`resize_debounce_time`.
 
 
 0.13.3 [2019-01-19]
