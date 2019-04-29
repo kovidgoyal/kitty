@@ -831,7 +831,12 @@ process_pending_resizes(double now) {
             if (w->live_resize.from_os_notification) {
                 if (w->live_resize.os_says_resize_complete || (now - w->live_resize.last_resize_event_at) > 1) update_viewport = true;
             } else {
-                if (now - w->live_resize.last_resize_event_at >= OPT(resize_debounce_time)) update_viewport = true;
+                double debounce_time = OPT(resize_debounce_time);
+                // if more than one resize event has occurred, wait at least 0.2 secs
+                // before repainting, to avoid rapid transitions between the cells banner
+                // and the normal screen
+                if (w->live_resize.num_of_resize_events > 1) debounce_time = MAX(0.2, debounce_time);
+                if (now - w->live_resize.last_resize_event_at >= debounce_time) update_viewport = true;
                 else {
                     global_state.has_pending_resizes = true;
                     set_maximum_wait(OPT(resize_debounce_time) - now + w->live_resize.last_resize_event_at);

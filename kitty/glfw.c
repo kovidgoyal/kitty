@@ -159,6 +159,7 @@ framebuffer_size_callback(GLFWwindow *w, int width, int height) {
         window->live_resize.in_progress = true;
         window->live_resize.last_resize_event_at = monotonic();
         window->live_resize.width = MAX(0, width); window->live_resize.height = MAX(0, height);
+        window->live_resize.num_of_resize_events++;
         make_os_window_context_current(window);
         update_surface_size(width, height, window->offscreen_texture_id);
         request_tick_callback();

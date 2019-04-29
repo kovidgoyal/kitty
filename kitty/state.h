@@ -113,7 +113,7 @@ typedef struct {
     bool in_progress;
     bool from_os_notification;
     bool os_says_resize_complete;
-    unsigned int width, height;
+    unsigned int width, height, num_of_resize_events;
 } LiveResizeInfo;
 
 
