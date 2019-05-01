@@ -95,11 +95,12 @@ end:
 
 #else
 static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
-    (void)exe_dir_;
 #ifdef __APPLE__
     wchar_t *exe_dir = Py_DecodeLocale(exe_dir_, NULL);
     if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir\n"); return 1; }
     set_bundle_exe_dir(exe_dir);
+#else
+    (void)exe_dir_;
 #endif
     return Py_Main(argc, argv);
 }
