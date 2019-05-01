@@ -22,7 +22,7 @@ WindowGeometry = namedtuple('WindowGeometry', 'left top right bottom xnum ynum')
 def kitty_exe():
     ans = getattr(kitty_exe, 'ans', None)
     if ans is None:
-        rpath = getattr(sys, 'bundle_exe_dir', None)
+        rpath = sys._xoptions.get('bundle_exe_dir')
         if not rpath:
             items = os.environ['PATH'].split(os.pathsep)
             seen = set()

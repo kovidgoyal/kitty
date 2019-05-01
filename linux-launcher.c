@@ -33,6 +33,12 @@ safe_realpath(const char* src, char *buf, size_t buf_sz) {
     return true;
 }
 
+static inline void
+set_bundle_exe_dir(const wchar_t *exe_dir) {
+    wchar_t buf[PATH_MAX+1] = {0};
+    swprintf(buf, PATH_MAX, L"bundle_exe_dir=%ls", exe_dir);
+    PySys_AddXOption(buf);
+}
 
 #ifdef FOR_BUNDLE
 static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
@@ -48,7 +54,7 @@ static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
     int ret = 1;
     wchar_t *exe_dir = Py_DecodeLocale(exe_dir_, NULL);
     if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir\n"); return 1; }
-    PyObject *ed = PyUnicode_FromWideChar(exe_dir, -1);
+    set_bundle_exe_dir(exe_dir);
     wchar_t stdlib[PATH_MAX+1] = {0};
 #ifdef __APPLE__
     const char *python_relpath = "../Resources/Python/lib";
@@ -72,7 +78,6 @@ static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
     Py_Initialize();
     PySys_SetArgvEx(argc - 1, argv + 1, 0);
     PySys_SetObject("frozen", Py_True);
-    if (ed) { PySys_SetObject("bundle_exe_dir", ed); Py_CLEAR(ed); }
     PyObject *kitty = PyUnicode_FromWideChar(stdlib, -1);
     if (kitty == NULL) { fprintf(stderr, "Failed to allocate python kitty lib object\n"); goto end; }
     PyObject *runpy = PyImport_ImportModule("runpy");
@@ -89,8 +94,13 @@ end:
 }
 
 #else
-static int run_embedded(const char* exe_dir, int argc, wchar_t **argv) {
-    (void)exe_dir;
+static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
+    (void)exe_dir_;
+#ifdef __APPLE__
+    wchar_t *exe_dir = Py_DecodeLocale(exe_dir_, NULL);
+    if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir\n"); return 1; }
+    set_bundle_exe_dir(exe_dir);
+#endif
     return Py_Main(argc, argv);
 }
 
