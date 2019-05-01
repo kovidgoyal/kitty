@@ -119,19 +119,29 @@ def ls(boss, window):
 
 # set_font_size {{{
 @cmd(
-    'Set the font size in all windows',
-    'Sets the font size to the specified size, in pts.',
-    argspec='FONT_SIZE', args_count=1
-)
+    'Set the font size in the active top-level OS window',
+    'Sets the font size to the specified size, in pts. Note'
+    ' that in kitty all sub-windows in the same OS window'
+    ' must have the same font size. A value of zero'
+    ' resets the font size to default. Prefixing the value'
+    ' with a + or - increments the font size by the specified'
+    ' amount.',
+    argspec='FONT_SIZE', args_count=1, options_spec='''\
+--all -a
+type=bool-set
+By default, the font size is only changed in the active OS window,
+this option will cause it to be changed in all OS windows.
+''')
 def cmd_set_font_size(global_opts, opts, args):
-    try:
-        return {'size': float(args[0])}
-    except IndexError:
+    if not args:
         raise SystemExit('No font size specified')
+    fs = args[0]
+    inc = fs[0] if fs and fs[0] in '+-' else None
+    return {'size': abs(float(fs)), 'all': opts.all, 'increment_op': inc}
 
 
 def set_font_size(boss, window, payload):
-    boss.set_font_size(payload['size'])
+    boss.change_font_size(payload['all'], payload['increment_op'], payload['size'])
 # }}}
 
 
