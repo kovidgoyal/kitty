@@ -24,6 +24,16 @@
 #define MIN(x, y) ((x) < (y)) ? (x) : (y)
 #define MAX_ARGC 1024
 
+static inline bool
+safe_realpath(const char* src, char *buf, size_t buf_sz) {
+    char* ans = realpath(src, NULL);
+    if (ans == NULL) return false;
+    snprintf(buf, buf_sz, "%s", ans);
+    free(ans);
+    return true;
+}
+
+
 #ifdef FOR_BUNDLE
 static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
     int num;
@@ -80,6 +90,7 @@ end:
 
 #else
 static int run_embedded(const char* exe_dir, int argc, wchar_t **argv) {
+    (void)exe_dir;
     return Py_Main(argc, argv);
 }
 
@@ -92,7 +103,7 @@ read_exe_path(char *exe, size_t buf_sz) {
     uint32_t size = PATH_MAX;
     char apple[PATH_MAX+1] = {0};
     if (_NSGetExecutablePath(apple, &size) != 0) { fprintf(stderr, "Failed to get path to executable\n"); return false; }
-    if (realpath(apple, exe) == NULL) { fprintf(stderr, "realpath() failed on the executable's path\n"); return false; }
+    if (!safe_realpath(apple, exe, buf_sz)) { fprintf(stderr, "realpath() failed on the executable's path\n"); return false; }
     return true;
 }
 #elif defined(__FreeBSD__)
@@ -114,7 +125,7 @@ read_exe_path(char *exe, size_t buf_sz) {
 
 static inline bool
 read_exe_path(char *exe, size_t buf_sz) {
-    if (realpath("/proc/curproc/exe", exe) == NULL) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return false; }
+    if (!safe_realpath("/proc/curproc/exe", exe, buf_sz)) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return false; }
     return true;
 }
 
@@ -122,7 +133,7 @@ read_exe_path(char *exe, size_t buf_sz) {
 
 static inline bool
 read_exe_path(char *exe, size_t buf_sz) {
-    if (realpath("/proc/self/exe", exe) == NULL) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return false; }
+    if (!safe_realpath("/proc/self/exe", exe, buf_sz)) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return false; }
     return true;
 }
 #endif
