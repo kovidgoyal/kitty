@@ -815,6 +815,8 @@ is_ascii_control_char(char x) {
     const int mods = translateFlags(flags);
     const int key = translateKey(scancode, GLFW_TRUE);
     const GLFWbool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, scancode, flags) != 1;
+    const bool previous_has_marked_text = [self hasMarkedText];
+    [self unmarkText];
     _glfw.ns.text[0] = 0;
     if (!_glfw.ns.unicodeData) {
         // Using the cocoa API for key handling is disabled, as there is no
@@ -859,6 +861,9 @@ is_ascii_control_char(char x) {
     if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
     debug_key(@"text: %s glfw_key: %s\n",
             format_text(_glfw.ns.text), _glfwGetKeyName(key));
+    debug_key(@"marked text: %@", markedText);
+    if (([self hasMarkedText] || previous_has_marked_text) && !_glfw.ns.text[0])
+        return;
     _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods, _glfw.ns.text, 0);
 }
 
