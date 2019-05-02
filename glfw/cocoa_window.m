@@ -1014,20 +1014,20 @@ is_ascii_control_char(char x) {
 }
 
 void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c, int d) {
-    [w->ns.view updateIMEStateFor: which left:a top:b cellWidth:c cellHeight:d];
+    [w->ns.view updateIMEStateFor: which left:(CGFloat)a top:(CGFloat)b cellWidth:(CGFloat)c cellHeight:(CGFloat)d];
 }
 
 - (void)updateIMEStateFor:(int)which
-                     left:(int)left
-                      top:(int)top
-                cellWidth:(int)cellWidth
-               cellHeight:(int)cellHeight
+                     left:(CGFloat)left
+                      top:(CGFloat)top
+                cellWidth:(CGFloat)cellWidth
+               cellHeight:(CGFloat)cellHeight
 {
     left /= window->ns.xscale;
     top /= window->ns.yscale;
     cellWidth /= window->ns.xscale;
     cellHeight /= window->ns.yscale;
-    debug_key(@"updateIMEState: %d, %d, %d, %d\n", left, top, cellWidth, cellHeight);
+    debug_key(@"updateIMEState: %f, %f, %f, %f\n", left, top, cellWidth, cellHeight);
     const NSRect frame = [window->ns.view frame];
     markedRect = NSMakeRect(left,
                             frame.size.height - top - cellHeight,
