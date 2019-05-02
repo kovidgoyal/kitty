@@ -93,6 +93,7 @@ def windows_for_payload(boss, window, payload):
                 raise MatchError(payload['match_tab'], 'tabs')
             for tab in tabs:
                 windows += tuple(tab)
+    return windows
 
 
 # ls {{{
