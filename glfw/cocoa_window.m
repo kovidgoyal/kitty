@@ -529,6 +529,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     _GLFWwindow* window;
     NSTrackingArea* trackingArea;
     NSMutableAttributedString* markedText;
+    NSRect markedRect;
 }
 
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow;
@@ -545,6 +546,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
         window = initWindow;
         trackingArea = nil;
         markedText = [[NSMutableAttributedString alloc] init];
+        markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
 
         [self updateTrackingAreas];
         [self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
@@ -1011,6 +1013,27 @@ is_ascii_control_char(char x) {
     [[markedText mutableString] setString:@""];
 }
 
+void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c, int d) {
+    [w->ns.view updateIMEStateFor: which left:a top:b cellWidth:c cellHeight:d];
+}
+
+- (void)updateIMEStateFor:(int)which
+                     left:(int)left
+                      top:(int)top
+                cellWidth:(int)cellWidth
+               cellHeight:(int)cellHeight
+{
+    left /= window->ns.xscale;
+    top /= window->ns.yscale;
+    cellWidth /= window->ns.xscale;
+    cellHeight /= window->ns.yscale;
+    debug_key(@"updateIMEState: %d, %d, %d, %d\n", left, top, cellWidth, cellHeight);
+    const NSRect frame = [window->ns.view frame];
+    markedRect = NSMakeRect(left,
+                            frame.size.height - top - cellHeight,
+                            cellWidth, cellHeight);
+}
+
 - (NSArray*)validAttributesForMarkedText
 {
     return [NSArray array];
@@ -1030,8 +1053,7 @@ is_ascii_control_char(char x) {
 - (NSRect)firstRectForCharacterRange:(NSRange)range
                          actualRange:(NSRangePointer)actualRange
 {
-    const NSRect frame = [window->ns.view frame];
-    return NSMakeRect(frame.origin.x, frame.origin.y, 0.0, 0.0);
+    return markedRect;
 }
 
 - (void)insertText:(id)string replacementRange:(NSRange)replacementRange
