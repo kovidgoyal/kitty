@@ -862,8 +862,17 @@ is_ascii_control_char(char x) {
     debug_key(@"text: %s glfw_key: %s\n",
             format_text(_glfw.ns.text), _glfwGetKeyName(key));
     debug_key(@"marked text: %@", markedText);
-    if (([self hasMarkedText] || previous_has_marked_text) && !_glfw.ns.text[0])
+    if ([self hasMarkedText]) {
+        _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
+                           [[markedText string] UTF8String], 1); // update pre-edit text
+    } else if (previous_has_marked_text) {
+        _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
+                           "\0", 1); // clear pre-edit text
+    }
+    if (([self hasMarkedText] || previous_has_marked_text) && !_glfw.ns.text[0]) {
+        // do not pass keys like BACKSPACE while there's pre-edit text, let IME handle it
         return;
+    }
     _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods, _glfw.ns.text, 0);
 }
 
