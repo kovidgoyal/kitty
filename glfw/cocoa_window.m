@@ -529,6 +529,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     _GLFWwindow* window;
     NSTrackingArea* trackingArea;
     NSMutableAttributedString* markedText;
+    NSRect markedRect;
 }
 
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow;
@@ -545,6 +546,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
         window = initWindow;
         trackingArea = nil;
         markedText = [[NSMutableAttributedString alloc] init];
+        markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
 
         [self updateTrackingAreas];
         [self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
@@ -815,6 +817,8 @@ is_ascii_control_char(char x) {
     const int mods = translateFlags(flags);
     const int key = translateKey(scancode, GLFW_TRUE);
     const GLFWbool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, scancode, flags) != 1;
+    const bool previous_has_marked_text = [self hasMarkedText];
+    [self unmarkText];
     _glfw.ns.text[0] = 0;
     if (!_glfw.ns.unicodeData) {
         // Using the cocoa API for key handling is disabled, as there is no
@@ -859,6 +863,20 @@ is_ascii_control_char(char x) {
     if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
     debug_key(@"text: %s glfw_key: %s\n",
             format_text(_glfw.ns.text), _glfwGetKeyName(key));
+    debug_key(@"marked text: %@", markedText);
+    if (!window->ns.deadKeyState) {
+        if ([self hasMarkedText]) {
+            _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
+                               [[markedText string] UTF8String], 1); // update pre-edit text
+        } else if (previous_has_marked_text) {
+            _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
+                               NULL, 1); // clear pre-edit text
+        }
+        if (([self hasMarkedText] || previous_has_marked_text) && !_glfw.ns.text[0]) {
+            // do not pass keys like BACKSPACE while there's pre-edit text, let IME handle it
+            return;
+        }
+    }
     _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods, _glfw.ns.text, 0);
 }
 
@@ -997,6 +1015,28 @@ is_ascii_control_char(char x) {
     [[markedText mutableString] setString:@""];
 }
 
+void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c, int d) {
+    [w->ns.view updateIMEStateFor: which left:(CGFloat)a top:(CGFloat)b cellWidth:(CGFloat)c cellHeight:(CGFloat)d];
+}
+
+- (void)updateIMEStateFor:(int)which
+                     left:(CGFloat)left
+                      top:(CGFloat)top
+                cellWidth:(CGFloat)cellWidth
+               cellHeight:(CGFloat)cellHeight
+{
+    left /= window->ns.xscale;
+    top /= window->ns.yscale;
+    cellWidth /= window->ns.xscale;
+    cellHeight /= window->ns.yscale;
+    debug_key(@"updateIMEState: %f, %f, %f, %f\n", left, top, cellWidth, cellHeight);
+    const NSRect frame = [window->ns.view frame];
+    const NSRect rectInView = NSMakeRect(left,
+                                         frame.size.height - top - cellHeight,
+                                         cellWidth, cellHeight);
+    markedRect = [window->ns.object convertRectToScreen: rectInView];
+}
+
 - (NSArray*)validAttributesForMarkedText
 {
     return [NSArray array];
@@ -1016,8 +1056,7 @@ is_ascii_control_char(char x) {
 - (NSRect)firstRectForCharacterRange:(NSRange)range
                          actualRange:(NSRangePointer)actualRange
 {
-    const NSRect frame = [window->ns.view frame];
-    return NSMakeRect(frame.origin.x, frame.origin.y, 0.0, 0.0);
+    return markedRect;
 }
 
 - (void)insertText:(id)string replacementRange:(NSRange)replacementRange

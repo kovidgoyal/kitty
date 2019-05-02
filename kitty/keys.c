@@ -143,6 +143,11 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
             } else debug("committed pre-edit text: (null)\n");
             return;
         case 0:
+            // for macOS, update ime position on every key input
+            // because the position is required before next input
+#if defined(__APPLE__)
+            update_ime_position(global_state.callback_os_window, w, screen);
+#endif
             break;
         default:
             debug("invalid state, ignoring\n");

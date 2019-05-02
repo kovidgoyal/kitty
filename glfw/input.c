@@ -919,7 +919,7 @@ GLFWAPI void glfwUpdateIMEState(GLFWwindow* handle, int which, int a, int b, int
     assert(window != NULL);
 
     _GLFW_REQUIRE_INIT();
-#if defined(_GLFW_X11) || defined(_GLFW_WAYLAND)
+#if defined(_GLFW_X11) || defined(_GLFW_WAYLAND) || defined(_GLFW_COCOA)
     _glfwPlatformUpdateIMEState(window, which, a, b, c, d);
 #else
     (void)window; (void)which; (void)a; (void)b; (void)c; (void)d;
