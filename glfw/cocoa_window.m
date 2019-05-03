@@ -861,7 +861,8 @@ is_ascii_control_char(char x) {
             _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
                                [[markedText string] UTF8String], 1); // update pre-edit text
             return;
-        } else if (in_compose_sequence) {
+        }
+        if (in_compose_sequence) {
             debug_key(@"Clearing pre-edit text at end of compose sequence\n");
             _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
                                NULL, 1); // clear pre-edit text
