@@ -37,6 +37,11 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Make live resizing of OS windows smoother and show the size in cells
   while the resize is in progress.
 
+- macOS: Improve handling of IME extended input. Compose characters
+  are now highlighted and the IME panel moves along with the text
+  (:pull:`1586`). Also fixes handling of delete key in Chinese IME
+  (:iss:`1461`)
+
 - When a window is closed, switch focus to the previously active window (if
   any) instead of picking the previous window in the layout (:iss:`1450`)
 

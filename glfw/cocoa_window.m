@@ -831,6 +831,7 @@ is_ascii_control_char(char x) {
     } else {
         static UniChar text[256];
         UniCharCount char_count = 0;
+        const bool in_compose_sequence = window->ns.deadKeyState != 0;
         if (UCKeyTranslate(
                     [(NSData*) _glfw.ns.unicodeData bytes],
                     scancode,
@@ -856,8 +857,14 @@ is_ascii_control_char(char x) {
         }
         if (window->ns.deadKeyState && (char_count == 0 || scancode == 0x75)) {
             // 0x75 is the delete key which needs to be ignored during a compose sequence
-            debug_key(@"Ignoring dead key (text: %s).\n", format_text(_glfw.ns.text));
+            debug_key(@"Sending pre-edit text for dead key (text: %s markedText: %@).\n", format_text(_glfw.ns.text), markedText);
+            _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
+                               [[markedText string] UTF8String], 1); // update pre-edit text
             return;
+        } else if (in_compose_sequence) {
+            debug_key(@"Clearing pre-edit text at end of compose sequence\n");
+            _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
+                               NULL, 1); // clear pre-edit text
         }
     }
     if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
