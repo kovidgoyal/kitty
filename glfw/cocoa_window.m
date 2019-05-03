@@ -1031,9 +1031,10 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c,
     cellHeight /= window->ns.yscale;
     debug_key(@"updateIMEState: %f, %f, %f, %f\n", left, top, cellWidth, cellHeight);
     const NSRect frame = [window->ns.view frame];
-    markedRect = NSMakeRect(left,
-                            frame.size.height - top - cellHeight,
-                            cellWidth, cellHeight);
+    const NSRect rectInView = NSMakeRect(left,
+                                         frame.size.height - top - cellHeight,
+                                         cellWidth, cellHeight);
+    markedRect = [window->ns.object convertRectToScreen: rectInView];
 }
 
 - (NSArray*)validAttributesForMarkedText
