@@ -543,6 +543,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
     blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
+    bool is_subpixel_enabled = OPT(linux_use_subpixel_rendering);
 #ifndef __APPLE__
     if (is_first_window) glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
@@ -555,7 +556,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwShowWindow(glfw_window);
     }
     if (is_first_window) {
-        PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
+        PyObject *ret = PyObject_CallFunction(load_programs, "OO", is_semi_transparent ? Py_True : Py_False, is_subpixel_enabled ? Py_True : Py_False);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
 #ifdef __APPLE__

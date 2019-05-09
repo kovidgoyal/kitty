@@ -406,6 +406,7 @@ PYWRAP1(set_options) {
     S(macos_window_resizable, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
     S(macos_thicken_font, PyFloat_AsDouble);
+    S(linux_use_subpixel_rendering, PyObject_IsTrue);
     S(tab_bar_min_tabs, PyLong_AsUnsignedLong);
     S(disable_ligatures, PyLong_AsLong);
     S(resize_draw_strategy, PyLong_AsLong);

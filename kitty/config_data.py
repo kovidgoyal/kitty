@@ -973,6 +973,11 @@ automatically. Set it to :code:`x11` or :code:`wayland`
 to force the choice.'''))
 # }}}
 
+o('linux_use_subpixel_rendering', False, long_text=_('''
+Use subpixel rendering instead of grayscale in freetype. Impacts performance,
+but may look better on low DPI screens.
+'''))
+
 g('shortcuts')  # {{{
 
 o('kitty_mod', 'ctrl+shift', option_type=to_modifiers, long_text=_('''
