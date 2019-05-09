@@ -10,7 +10,6 @@
 #include <math.h>
 #include <structmember.h>
 #include <ft2build.h>
-#include FT_DRIVER_H
 #include <hb-ft.h>
 #include <fontconfig/fontconfig.h>
 
@@ -237,12 +236,6 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
         int error = FT_New_Face(library, path, index, &(self->face));
         if(error) { set_freetype_error("Failed to load face, with error:", error); Py_CLEAR(self); return NULL; }
         if (!init_ft_face(self, PyDict_GetItemString(descriptor, "path"), hinting, hint_style, rgba, fg)) { Py_CLEAR(self); return NULL; }
-        FT_Parameter property_darkening;
-        FT_Bool darken_stems = 1;
-        property_darkening.tag  = FT_PARAM_TAG_STEM_DARKENING;
-        property_darkening.data = &darken_stems;
-        error = FT_Face_Properties(self->face, 1, &property_darkening);
-        if(error) { set_freetype_error("Failed to set face property, with error:", error); Py_CLEAR(self); return NULL; }
     }
     return (PyObject*)self;
 }
