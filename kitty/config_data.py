@@ -973,10 +973,22 @@ automatically. Set it to :code:`x11` or :code:`wayland`
 to force the choice.'''))
 # }}}
 
-o('use_subpixel_rendering', False, long_text=_('''
+
+def to_subpixel_options(x):
+    x = x.lower()
+    if x == 'lcd':
+        return 1
+    if x == 'lcd_v':
+        return 2
+    return 0
+
+
+o('subpixel_rendering', 'none', option_type=to_subpixel_options, long_text=_('''
 Use subpixel rendering instead of grayscale in freetype. Impacts performance,
-but may look better on low DPI screens.
+but may look better on low DPI screens. Possible values are :code:`none`,
+:code:`lcd`, and :code:`lcd_v`.
 '''))
+# }}}
 
 g('shortcuts')  # {{{
 

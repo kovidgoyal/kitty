@@ -353,7 +353,7 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
     // Trim empty columns from the right side of the bitmap
     for (ssize_t x = ans->width - 1; !column_has_text && x > -1 && extra > 0; x--) {
         for (size_t y = 0; y < ans->rows && !column_has_text; y++) {
-            if (ans->buf[x + y * ans->stride] > 200) column_has_text = true;
+            if (ans->buf[x + y * ans->stride] > 200) column_has_text = true; // TODO
         }
         if (!column_has_text) { ans->width--; extra--; }
     }
@@ -381,8 +381,17 @@ populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBit
 static inline bool
 render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic, bool rescale, FONTS_DATA_HANDLE fg) {
     int flags = FT_LOAD_RENDER;
-    if (OPT(use_subpixel_rendering))
-      flags |= FT_LOAD_TARGET_LCD;
+    switch (OPT(subpixel_rendering)) {
+        case SUBPIXEL_LCD:
+            flags |= FT_LOAD_TARGET_LCD;
+            break;
+        case SUBPIXEL_LCD_V:
+            flags |= FT_LOAD_TARGET_LCD_V;
+            break;
+        case SUBPIXEL_NONE:
+        default:
+            break;
+    }
     if (!load_glyph(self, glyph_id, flags)) return false;
     unsigned int max_width = cell_width * num_cells;
 
@@ -407,6 +416,9 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     } else if (self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD) {
         populate_processed_bitmap(self->face->glyph, &self->face->glyph->bitmap, ans, false);
         ans->width /= 3;
+    } else if (self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD_V) {
+        populate_processed_bitmap(self->face->glyph, &self->face->glyph->bitmap, ans, false);
+        // TODO: tune ans->rows, as it's 3 times biger than the actual height
     } else {
         populate_processed_bitmap(self->face->glyph, &self->face->glyph->bitmap, ans, false);
     }
@@ -571,6 +583,9 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
         copy_color_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width);
     } else if (bm->pixel_mode == FT_PIXEL_MODE_LCD) {
         copy_lcd_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width, bgr);
+    } else if (bm->pixel_mode == FT_PIXEL_MODE_LCD_V) {
+        // copy_lcd_v_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width, bgr);
+        // TODO: implement it
     } else render_alpha_mask(bm->buf, cell, &src, &dest, bm->stride, cell_width);
 }
 
@@ -594,7 +609,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         } else {
             if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) return false;
         }
-        *was_subpixel = (bm.pixel_mode == FT_PIXEL_MODE_LCD);
+        *was_subpixel = (bm.pixel_mode == FT_PIXEL_MODE_LCD || bm.pixel_mode = FT_PIXEL_MODE_LCD_V);
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
         if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) {
@@ -647,10 +662,18 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
         int error = FT_Load_Glyph(self->face, glyph_index, FT_LOAD_DEFAULT);
         if (error) continue;
         int flags = 0;
-        if (OPT(use_subpixel_rendering))
-          flags |= FT_RENDER_MODE_LCD;
-        else
-          flags |= FT_RENDER_MODE_NORMAL;
+        switch (OPT(subpixel_rendering)) {
+            case SUBPIXEL_LCD:
+                flags |= FT_RENDER_MODE_LCD;
+                break;
+            case SUBPIXEL_LCD_V:
+                flags |= FT_RENDER_MODE_LCD_V;
+                break;
+            case SUBPIXEL_NONE:
+            default:
+                flags |= FT_RENDER_MODE_NORMAL;
+                break;
+        }
         error = FT_Render_Glyph(self->face->glyph, flags);
         if (error) continue;
         FT_Bitmap *bitmap = &self->face->glyph->bitmap;
