@@ -609,7 +609,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         } else {
             if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) return false;
         }
-        *was_subpixel = (bm.pixel_mode == FT_PIXEL_MODE_LCD || bm.pixel_mode = FT_PIXEL_MODE_LCD_V);
+        *was_subpixel = (bm.pixel_mode == FT_PIXEL_MODE_LCD || bm.pixel_mode == FT_PIXEL_MODE_LCD_V);
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
         if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) {
