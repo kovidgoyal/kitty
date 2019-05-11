@@ -1686,6 +1686,7 @@ static void processEvent(XEvent *event)
         case DestroyNotify:
             return;
     }
+#undef UPDATE_KEYMAP_IF_NEEDED
 }
 
 
