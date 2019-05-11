@@ -684,14 +684,14 @@ render(double now) {
             continue;
         }
         make_os_window_context_current(w);
-        if (w->live_resize.in_progress) {
+        if (OPT(resize_draw_strategy) != RESIZE_DRAW_SCALED && w->live_resize.in_progress) {
             blank_os_window(w);
-            draw_resizing_text(w);
+            if (OPT(resize_draw_strategy) == RESIZE_DRAW_SIZE) draw_resizing_text(w);
             swap_window_buffers(w);
             if (USE_RENDER_FRAMES) request_frame_render(w);
             continue;
         }
-        bool needs_render = w->is_damaged;
+        bool needs_render = w->is_damaged || w->live_resize.in_progress;
         if (w->viewport_size_dirty) {
             w->clear_count = 0;
             update_surface_size(w->viewport_width, w->viewport_height, w->offscreen_texture_id);

@@ -410,6 +410,7 @@ PYWRAP1(set_options) {
     S(macos_thicken_font, PyFloat_AsDouble);
     S(tab_bar_min_tabs, PyLong_AsUnsignedLong);
     S(disable_ligatures, PyLong_AsLong);
+    S(resize_draw_strategy, PyLong_AsLong);
 
     GA(tab_bar_style);
     global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;

@@ -34,8 +34,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow specifying a value of ``none`` for the :opt:`selection_foreground`
   which will cause kitty to not change text color in selections (:iss:`1358`)
 
-- Make live resizing of OS windows smoother and show the size in cells
-  while the resize is in progress.
+- Make live resizing of OS windows smoother and add an option
+  :opt:`resize_draw_strategy` to control what is drawn while a
+  resize is in progress.
 
 - macOS: Improve handling of IME extended input. Compose characters
   are now highlighted and the IME panel moves along with the text

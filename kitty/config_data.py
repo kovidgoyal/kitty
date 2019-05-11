@@ -609,6 +609,20 @@ The time (in seconds) to wait before redrawing the screen when a
 resize event is received. On platforms such as macOS, where the
 operating system sends event corresponding to the start and end
 of a resize, this number is ignored.'''))
+
+
+def resize_draw_strategy(x):
+    cmap = {'scale': 0, 'blank': 1, 'size': 2}
+    return cmap.get(x.lower(), 0)
+
+
+o('resize_draw_strategy', 'scale', option_type=resize_draw_strategy, long_text=_('''
+Choose how kitty draws a window while a resize is in progress. A
+value of :code:`scale` means draw the current window contents scaled.
+A value of :code:`blank` means draw a blank window.
+A value of :code:`size` means show the window size in cells.
+'''))
+
 # }}}
 
 g('tabbar')   # {{{
