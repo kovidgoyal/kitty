@@ -745,7 +745,7 @@ Categories=System;TerminalEmulator;
         if not os.path.exists(logo_dir):
             raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
         cmd = [env.cc] + ['-Wall', '-Werror'] + [
-                'symlink-deref.c', '-o', os.path.join('MacOS', 'kitty-deref-symlink')]
+                os.path.join(base, 'symlink-deref.c'), '-o', os.path.join('MacOS', 'kitty-deref-symlink')]
         run_tool(cmd)
 
         subprocess.check_call([
