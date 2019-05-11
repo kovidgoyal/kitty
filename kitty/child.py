@@ -168,6 +168,8 @@ class Child:
         env.update(self.env)
         env['TERM'] = self.opts.term
         env['COLORTERM'] = 'truecolor'
+        if self.cwd:
+            env['PWD'] = self.cwd
         if os.path.isdir(terminfo_dir):
             env['TERMINFO'] = terminfo_dir
         env = tuple('{}={}'.format(k, v) for k, v in env.items())

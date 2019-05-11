@@ -129,6 +129,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   It can now increment font size and reset it. It also only acts on the
   active top-level window, by default (:iss:`1581`)
 
+- When launching child processes set the :code:`PWD` environment variable
+  (:iss:`1595`)
+
 0.13.3 [2019-01-19]
 ------------------------------
 
