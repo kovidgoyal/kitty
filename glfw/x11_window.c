@@ -1078,6 +1078,8 @@ static void onConfigChange()
 static void processEvent(XEvent *event)
 {
     _GLFWwindow* window = NULL;
+    static GLFWbool keymap_dirty = GLFW_FALSE;
+#define UPDATE_KEYMAP_IF_NEEDED if (keymap_dirty) { keymap_dirty = GLFW_FALSE; glfw_xkb_compile_keymap(&_glfw.x11.xkb, NULL); }
 
     if (_glfw.x11.randr.available)
     {
@@ -1153,11 +1155,12 @@ static void processEvent(XEvent *event)
                 /* fallthrough */
             case XkbMapNotify:
             {
-                glfw_xkb_compile_keymap(&_glfw.x11.xkb, NULL);
+                keymap_dirty = GLFW_TRUE;
                 return;
             }
             case XkbStateNotify:
             {
+                UPDATE_KEYMAP_IF_NEEDED;
                 XkbStateNotifyEvent *state_event = (XkbStateNotifyEvent*)kb_event;
                 glfw_xkb_update_modifiers(
                         &_glfw.x11.xkb, state_event->base_mods, state_event->latched_mods,
@@ -1182,12 +1185,14 @@ static void processEvent(XEvent *event)
     {
         case KeyPress:
         {
+            UPDATE_KEYMAP_IF_NEEDED;
             glfw_xkb_handle_key_event(window, &_glfw.x11.xkb, event->xkey.keycode, GLFW_PRESS);
             return;
         }
 
         case KeyRelease:
         {
+            UPDATE_KEYMAP_IF_NEEDED;
             if (!_glfw.x11.xkb.detectable)
             {
                 // HACK: Key repeat events will arrive as KeyRelease/KeyPress
