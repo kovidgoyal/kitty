@@ -744,6 +744,10 @@ Categories=System;TerminalEmulator;
         os.rename('../lib', 'Frameworks')
         if not os.path.exists(logo_dir):
             raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
+        cmd = [env.cc] + ['-Wall', '-Werror'] + [
+                'symlink-deref.c', '-o', os.path.join('MacOS', 'kitty-deref-symlink')]
+        run_tool(cmd)
+
         subprocess.check_call([
             'iconutil', '-c', 'icns', logo_dir, '-o',
             os.path.join('Resources', os.path.basename(logo_dir).partition('.')[0] + '.icns')
