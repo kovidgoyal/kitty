@@ -169,6 +169,9 @@ class Child:
         env['TERM'] = self.opts.term
         env['COLORTERM'] = 'truecolor'
         if self.cwd:
+            # needed incase cwd is a symlink, in which case shells
+            # can use it to display the current directory name rather
+            # than the resolved path
             env['PWD'] = self.cwd
         if os.path.isdir(terminfo_dir):
             env['TERMINFO'] = terminfo_dir
