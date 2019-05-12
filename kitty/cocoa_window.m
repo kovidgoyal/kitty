@@ -392,29 +392,6 @@ cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz) {
     return ans;
 }
 
-bool
-cocoa_toggle_fullscreen(void *w, bool traditional) {
-    NSWindow *window = (NSWindow*)w;
-    bool made_fullscreen = true;
-    NSWindowStyleMask sm = [window styleMask];
-    bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
-    if (traditional) {
-        if (!(in_fullscreen)) {
-            sm |= NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen;
-            [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
-        } else {
-            made_fullscreen = false;
-            sm &= ~(NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen);
-            [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
-        }
-        [window setStyleMask: sm];
-    } else {
-        if (in_fullscreen) made_fullscreen = false;
-        [window toggleFullScreen: nil];
-    }
-    return made_fullscreen;
-}
-
 static PyObject*
 cocoa_get_lang(PyObject UNUSED *self) {
     @autoreleasepool {

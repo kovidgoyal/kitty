@@ -475,17 +475,32 @@ static GLFWbool createSurface(_GLFWwindow* window,
     return GLFW_TRUE;
 }
 
-static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, int refreshRate)
+static void
+setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
 {
     if (window->wl.xdg.toplevel)
     {
-        xdg_toplevel_set_fullscreen(
-            window->wl.xdg.toplevel,
-            monitor->wl.output);
+        if (on) {
+            xdg_toplevel_set_fullscreen(
+                window->wl.xdg.toplevel,
+                monitor ? monitor->wl.output : NULL);
+            if (!window->wl.decorations.serverSide)
+                destroyDecorations(window);
+        } else {
+            xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
+            if (!_glfw.wl.decorationManager)
+                createDecorations(window);
+        }
     }
-    setIdleInhibitor(window, GLFW_TRUE);
-    if (!window->wl.decorations.serverSide)
-        destroyDecorations(window);
+    setIdleInhibitor(window, on);
+}
+
+bool
+_glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags) {
+    (void) flags;
+    bool already_fullscreen = window->wl.fullscreened;
+    setFullscreen(window, NULL, !already_fullscreen);
+    return !already_fullscreen;
 }
 
 static void xdgToplevelHandleConfigure(void* data,
@@ -535,18 +550,8 @@ static void xdgToplevelHandleConfigure(void* data,
             }
         }
     }
+    window->wl.fullscreened = fullscreen;
     dispatchChangesAfterConfigure(window, width, height);
-
-    if (window->wl.wasFullScreen && window->autoIconify)
-    {
-        if (!activated || !fullscreen)
-        {
-            _glfwPlatformIconifyWindow(window);
-            window->wl.wasFullScreen = GLFW_FALSE;
-        }
-    }
-    if (fullscreen && activated)
-        window->wl.wasFullScreen = GLFW_TRUE;
     _glfwInputWindowFocus(window, activated);
 }
 
@@ -1121,18 +1126,7 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
                                    int width, int height,
                                    int refreshRate)
 {
-    if (monitor)
-    {
-        setFullscreen(window, monitor, refreshRate);
-    }
-    else
-    {
-        if (window->wl.xdg.toplevel)
-            xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
-        setIdleInhibitor(window, GLFW_FALSE);
-        if (!_glfw.wl.decorationManager)
-            createDecorations(window);
-    }
+    setFullscreen(window, monitor, monitor != NULL);
     _glfwInputWindowMonitor(window, monitor);
 }
 

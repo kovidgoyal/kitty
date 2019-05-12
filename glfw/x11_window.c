@@ -265,6 +265,76 @@ static void updateNormalHints(_GLFWwindow* window, int width, int height)
     XFree(hints);
 }
 
+static inline bool
+is_window_fullscreen(_GLFWwindow* window)
+{
+    Atom* states;
+    unsigned long i;
+    GLFWbool ans = GLFW_FALSE;
+    if (!_glfw.x11.NET_WM_STATE || !_glfw.x11.NET_WM_STATE_FULLSCREEN)
+        return ans;
+    const unsigned long count =
+        _glfwGetWindowPropertyX11(window->x11.handle,
+                                  _glfw.x11.NET_WM_STATE,
+                                  XA_ATOM,
+                                  (unsigned char**) &states);
+
+    for (i = 0;  i < count;  i++)
+    {
+        if (states[i] == _glfw.x11.NET_WM_STATE_FULLSCREEN)
+        {
+            ans = GLFW_TRUE;
+            break;
+        }
+    }
+
+    if (states)
+        XFree(states);
+
+    return ans;
+}
+
+static inline void
+set_fullscreen(_GLFWwindow *window, bool on) {
+    if (_glfw.x11.NET_WM_STATE && _glfw.x11.NET_WM_STATE_FULLSCREEN) {
+        sendEventToWM(window,
+                _glfw.x11.NET_WM_STATE,
+                on ? _NET_WM_STATE_ADD : _NET_WM_STATE_REMOVE,
+                _glfw.x11.NET_WM_STATE_FULLSCREEN,
+                0, 1, 0);
+        // Enable compositor bypass
+        if (!window->x11.transparent)
+        {
+            if (on) {
+                const unsigned long value = 1;
+
+                XChangeProperty(_glfw.x11.display,  window->x11.handle,
+                                _glfw.x11.NET_WM_BYPASS_COMPOSITOR, XA_CARDINAL, 32,
+                                PropModeReplace, (unsigned char*) &value, 1);
+            } else {
+                XDeleteProperty(_glfw.x11.display, window->x11.handle,
+                                _glfw.x11.NET_WM_BYPASS_COMPOSITOR);
+            }
+        }
+
+    } else {
+        static bool warned = false;
+        if (!warned) {
+            warned = true;
+            _glfwInputErrorX11(GLFW_PLATFORM_ERROR,
+                               "X11: Failed to toggle fullscreen, the window manager does not support it");
+        }
+    }
+}
+
+bool
+_glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags) {
+    (void) flags;
+    bool already_fullscreen = is_window_fullscreen(window);
+    set_fullscreen(window, !already_fullscreen);
+    return !already_fullscreen;
+}
+
 // Updates the full screen status of the window
 //
 static void updateWindowMode(_GLFWwindow* window)
@@ -285,11 +355,7 @@ static void updateWindowMode(_GLFWwindow* window)
 
         if (_glfw.x11.NET_WM_STATE && _glfw.x11.NET_WM_STATE_FULLSCREEN)
         {
-            sendEventToWM(window,
-                          _glfw.x11.NET_WM_STATE,
-                          _NET_WM_STATE_ADD,
-                          _glfw.x11.NET_WM_STATE_FULLSCREEN,
-                          0, 1, 0);
+            set_fullscreen(window, true);
         }
         else
         {
@@ -311,15 +377,6 @@ static void updateWindowMode(_GLFWwindow* window)
             window->x11.overrideRedirect = GLFW_TRUE;
         }
 
-        // Enable compositor bypass
-        if (!window->x11.transparent)
-        {
-            const unsigned long value = 1;
-
-            XChangeProperty(_glfw.x11.display,  window->x11.handle,
-                            _glfw.x11.NET_WM_BYPASS_COMPOSITOR, XA_CARDINAL, 32,
-                            PropModeReplace, (unsigned char*) &value, 1);
-        }
     }
     else
     {
@@ -332,11 +389,7 @@ static void updateWindowMode(_GLFWwindow* window)
 
         if (_glfw.x11.NET_WM_STATE && _glfw.x11.NET_WM_STATE_FULLSCREEN)
         {
-            sendEventToWM(window,
-                          _glfw.x11.NET_WM_STATE,
-                          _NET_WM_STATE_REMOVE,
-                          _glfw.x11.NET_WM_STATE_FULLSCREEN,
-                          0, 1, 0);
+            set_fullscreen(window, false);
         }
         else
         {
@@ -353,8 +406,6 @@ static void updateWindowMode(_GLFWwindow* window)
         // Disable compositor bypass
         if (!window->x11.transparent)
         {
-            XDeleteProperty(_glfw.x11.display, window->x11.handle,
-                            _glfw.x11.NET_WM_BYPASS_COMPOSITOR);
         }
     }
 }

@@ -10,7 +10,6 @@
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
-extern bool cocoa_toggle_fullscreen(void *w, bool);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_set_hide_from_tasks(void);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
@@ -330,43 +329,6 @@ make_os_window_context_current(OSWindow *w) {
 }
 
 
-#ifndef __APPLE__
-static GLFWmonitor*
-current_monitor(GLFWwindow *window) {
-    // Find the monitor that has the maximum overlap with this window
-    int nmonitors, i;
-    int wx, wy, ww, wh;
-    int mx, my, mw, mh;
-    int overlap = 0, bestoverlap = 0;
-    GLFWmonitor *bestmonitor = NULL;
-    GLFWmonitor **monitors = NULL;
-    const GLFWvidmode *mode;
-
-    glfwGetWindowPos(window, &wx, &wy);
-    glfwGetWindowSize(window, &ww, &wh);
-    monitors = glfwGetMonitors(&nmonitors);
-    if (monitors == NULL || nmonitors < 1) { PyErr_SetString(PyExc_ValueError, "No monitors connected"); return NULL; }
-
-    for (i = 0; i < nmonitors; i++) {
-        mode = glfwGetVideoMode(monitors[i]);
-        glfwGetMonitorPos(monitors[i], &mx, &my);
-        mw = mode->width;
-        mh = mode->height;
-
-        overlap =
-            MAX(0, MIN(wx + ww, mx + mw) - MAX(wx, mx)) *
-            MAX(0, MIN(wy + wh, my + mh) - MAX(wy, my));
-
-        if (bestoverlap < overlap || bestmonitor == NULL) {
-            bestoverlap = overlap;
-            bestmonitor = monitors[i];
-        }
-    }
-
-    return bestmonitor;
-}
-#endif
-
 static inline void
 get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
     if (w) glfwGetWindowContentScale(w, xscale, yscale);
@@ -397,47 +359,34 @@ set_os_window_dpi(OSWindow *w) {
     get_window_dpi(w->handle, &w->logical_dpi_x, &w->logical_dpi_y);
 }
 
-static bool
-toggle_fullscreen_for_os_window(OSWindow *w) {
+static inline bool
+do_toggle_fullscreen(OSWindow *w) {
     int width, height, x, y;
     glfwGetWindowSize(w->handle, &width, &height);
     glfwGetWindowPos(w->handle, &x, &y);
-#ifdef __APPLE__
-    if (OPT(macos_traditional_fullscreen)) {
-        if (cocoa_toggle_fullscreen(glfwGetCocoaWindow(w->handle), true)) {
-            w->before_fullscreen.is_set = true;
-            w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
-            return true;
-        }
-        if (w->before_fullscreen.is_set) {
-            glfwSetWindowSize(w->handle, w->before_fullscreen.w, w->before_fullscreen.h);
-            glfwSetWindowPos(w->handle, w->before_fullscreen.x, w->before_fullscreen.y);
-        }
-        return false;
-    } else {
-        return cocoa_toggle_fullscreen(glfwGetCocoaWindow(w->handle), false);
-    }
-#else
-    GLFWmonitor *monitor;
-    if ((monitor = glfwGetWindowMonitor(w->handle)) == NULL) {
-        // make fullscreen
-        monitor = current_monitor(w->handle);
-        if (monitor == NULL) { PyErr_Print(); return false; }
-        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
+    if (glfwToggleFullscreen(w->handle, 1)) {
         w->before_fullscreen.is_set = true;
         w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
-        glfwGetWindowSize(w->handle, &w->before_fullscreen.w, &w->before_fullscreen.h);
-        glfwGetWindowPos(w->handle, &w->before_fullscreen.x, &w->before_fullscreen.y);
-        glfwSetWindowMonitor(w->handle, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
         return true;
-    } else {
-        // make windowed
-        const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-        if (w->before_fullscreen.is_set) glfwSetWindowMonitor(w->handle, NULL, w->before_fullscreen.x, w->before_fullscreen.y, w->before_fullscreen.w, w->before_fullscreen.h, mode->refreshRate);
-        else glfwSetWindowMonitor(w->handle, NULL, 0, 0, 600, 400, mode->refreshRate);
-        return false;
     }
+    if (w->before_fullscreen.is_set) {
+        glfwSetWindowSize(w->handle, w->before_fullscreen.w, w->before_fullscreen.h);
+        glfwSetWindowPos(w->handle, w->before_fullscreen.x, w->before_fullscreen.y);
+    }
+    return false;
+}
+
+static bool
+toggle_fullscreen_for_os_window(OSWindow *w) {
+    if (w && w->handle) {
+#ifdef __APPLE__
+    if (!OPT(macos_traditional_fullscreen) return glfwToggleFullscreen(w->handle, 0);
+    return do_toggle_fullscreen(w);
+#else
+    return do_toggle_fullscreen(w);
 #endif
+    }
+    return false;
 }
 
 

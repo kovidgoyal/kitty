@@ -133,6 +133,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When launching child processes set the :code:`PWD` environment variable
   (:iss:`1595`)
 
+- X11: use the window manager's native full-screen implementation when
+  making windows full-screen (:iss:`1605`)
+
 0.13.3 [2019-01-19]
 ------------------------------
 

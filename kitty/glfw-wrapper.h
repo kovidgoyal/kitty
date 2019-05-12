@@ -1536,6 +1536,10 @@ typedef GLFWwindow* (*glfwCreateWindow_func)(int, int, const char*, GLFWmonitor*
 glfwCreateWindow_func glfwCreateWindow_impl;
 #define glfwCreateWindow glfwCreateWindow_impl
 
+typedef bool (*glfwToggleFullscreen_func)(GLFWwindow*, unsigned int);
+glfwToggleFullscreen_func glfwToggleFullscreen_impl;
+#define glfwToggleFullscreen glfwToggleFullscreen_impl
+
 typedef void (*glfwDestroyWindow_func)(GLFWwindow*);
 glfwDestroyWindow_func glfwDestroyWindow_impl;
 #define glfwDestroyWindow glfwDestroyWindow_impl
