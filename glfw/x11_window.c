@@ -353,29 +353,7 @@ static void updateWindowMode(_GLFWwindow* window)
                           0);
         }
 
-        if (_glfw.x11.NET_WM_STATE && _glfw.x11.NET_WM_STATE_FULLSCREEN)
-        {
-            set_fullscreen(window, true);
-        }
-        else
-        {
-            // This is the butcher's way of removing window decorations
-            // Setting the override-redirect attribute on a window makes the
-            // window manager ignore the window completely (ICCCM, section 4)
-            // The good thing is that this makes undecorated full screen windows
-            // easy to do; the bad thing is that we have to do everything
-            // manually and some things (like iconify/restore) won't work at
-            // all, as those are tasks usually performed by the window manager
-
-            XSetWindowAttributes attributes;
-            attributes.override_redirect = True;
-            XChangeWindowAttributes(_glfw.x11.display,
-                                    window->x11.handle,
-                                    CWOverrideRedirect,
-                                    &attributes);
-
-            window->x11.overrideRedirect = GLFW_TRUE;
-        }
+        set_fullscreen(window, true);
 
     }
     else
@@ -387,26 +365,8 @@ static void updateWindowMode(_GLFWwindow* window)
                             _glfw.x11.NET_WM_FULLSCREEN_MONITORS);
         }
 
-        if (_glfw.x11.NET_WM_STATE && _glfw.x11.NET_WM_STATE_FULLSCREEN)
-        {
-            set_fullscreen(window, false);
-        }
-        else
-        {
-            XSetWindowAttributes attributes;
-            attributes.override_redirect = False;
-            XChangeWindowAttributes(_glfw.x11.display,
-                                    window->x11.handle,
-                                    CWOverrideRedirect,
-                                    &attributes);
+        set_fullscreen(window, false);
 
-            window->x11.overrideRedirect = GLFW_FALSE;
-        }
-
-        // Disable compositor bypass
-        if (!window->x11.transparent)
-        {
-        }
     }
 }
 
@@ -1067,19 +1027,6 @@ static void acquireMonitor(_GLFWwindow* window)
 
     _glfwSetVideoModeX11(window->monitor, &window->videoMode);
 
-    if (window->x11.overrideRedirect)
-    {
-        int xpos, ypos;
-        GLFWvidmode mode;
-
-        // Manually position the window over its monitor
-        _glfwPlatformGetMonitorPos(window->monitor, &xpos, &ypos);
-        _glfwPlatformGetVideoMode(window->monitor, &mode);
-
-        XMoveResizeWindow(_glfw.x11.display, window->x11.handle,
-                          xpos, ypos, mode.width, mode.height);
-    }
-
     _glfwInputMonitorWindow(window->monitor, window);
 }
 
@@ -1430,7 +1377,7 @@ static void processEvent(XEvent *event)
             if (event->xconfigure.x != window->x11.xpos ||
                 event->xconfigure.y != window->x11.ypos)
             {
-                if (window->x11.overrideRedirect || event->xany.send_event)
+                if (event->xany.send_event)
                 {
                     _glfwInputWindowPos(window,
                                         event->xconfigure.x,
@@ -2176,30 +2123,12 @@ double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window)
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
 {
-    if (window->x11.overrideRedirect)
-    {
-        // Override-redirect windows cannot be iconified or restored, as those
-        // tasks are performed by the window manager
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "X11: Iconification of full screen windows requires a WM that supports EWMH full screen");
-        return;
-    }
-
     XIconifyWindow(_glfw.x11.display, window->x11.handle, _glfw.x11.screen);
     XFlush(_glfw.x11.display);
 }
 
 void _glfwPlatformRestoreWindow(_GLFWwindow* window)
 {
-    if (window->x11.overrideRedirect)
-    {
-        // Override-redirect windows cannot be iconified or restored, as those
-        // tasks are performed by the window manager
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "X11: Iconification of full screen windows requires a WM that supports EWMH full screen");
-        return;
-    }
-
     if (_glfwPlatformWindowIconified(window))
     {
         XMapWindow(_glfw.x11.display, window->x11.handle);

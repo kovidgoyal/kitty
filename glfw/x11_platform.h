@@ -182,7 +182,6 @@ typedef struct _GLFWwindowX11
     Colormap        colormap;
     Window          handle;
 
-    GLFWbool        overrideRedirect;
     GLFWbool        iconified;
     GLFWbool        maximized;
 
