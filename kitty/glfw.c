@@ -364,7 +364,7 @@ do_toggle_fullscreen(OSWindow *w) {
     int width, height, x, y;
     glfwGetWindowSize(w->handle, &width, &height);
     glfwGetWindowPos(w->handle, &x, &y);
-    if (glfwToggleFullscreen(w->handle, 1)) {
+    if (glfwToggleFullscreen(w->handle, 0)) {
         w->before_fullscreen.is_set = true;
         w->before_fullscreen.w = width; w->before_fullscreen.h = height; w->before_fullscreen.x = x; w->before_fullscreen.y = y;
         return true;
@@ -380,7 +380,7 @@ static bool
 toggle_fullscreen_for_os_window(OSWindow *w) {
     if (w && w->handle) {
 #ifdef __APPLE__
-    if (!OPT(macos_traditional_fullscreen)) return glfwToggleFullscreen(w->handle, 0);
+    if (!OPT(macos_traditional_fullscreen)) return glfwToggleFullscreen(w->handle, 1);
 #endif
     return do_toggle_fullscreen(w);
     }

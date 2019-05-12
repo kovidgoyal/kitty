@@ -2004,7 +2004,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
 bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     NSWindow *window = w->ns.object;
     bool made_fullscreen = true;
-    bool traditional = flags & 1;
+    bool traditional = !(flags & 1);
     NSWindowStyleMask sm = [window styleMask];
     bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
     if (traditional) {
