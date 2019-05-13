@@ -804,9 +804,12 @@ check_cell_consumed(CellData *cell_data, CPUCell *last_cpu_cell) {
             case 0:
                 cell_data->current_codepoint = cell_data->cpu_cell->ch;
                 break;
-            default:
-                cell_data->current_codepoint = codepoint_for_mark(cell_data->cpu_cell->cc_idx[cell_data->codepoints_consumed - 1]);
+            default: {
+                index_type mark = cell_data->cpu_cell->cc_idx[cell_data->codepoints_consumed - 1];
+                // VS15 causes rendering to break, so map it to 0
+                cell_data->current_codepoint = (mark == VS15 || mark == VS16) ? 0 : codepoint_for_mark(mark);
                 break;
+            }
         }
     }
     return 0;
