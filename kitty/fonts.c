@@ -545,6 +545,7 @@ START_ALLOW_CASE_RANGE
                     ans = fg->bi_font_idx; break;
             }
             if (ans < 0) ans = fg->medium_font_idx;
+            printf("has_emoji_presentation: %d has_cell_text: %d\n", has_emoji_presentation(cpu_cell, gpu_cell), has_cell_text(fg->fonts + ans, cpu_cell));
             if (!has_emoji_presentation(cpu_cell, gpu_cell) && has_cell_text(fg->fonts + ans, cpu_cell)) return ans;
             return fallback_font(fg, cpu_cell, gpu_cell);
     }

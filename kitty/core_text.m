@@ -192,7 +192,7 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool UNUSED bold, bool 
     if (emoji_presentation) new_font = CTFontCreateWithName((CFStringRef)@"AppleColorEmoji", self->scaled_point_sz, NULL);
     else {
         char text[256] = {0};
-        cell_as_utf8(cell, true, text, ' ');
+        cell_as_utf8_for_fallback(cell, text);
         CFStringRef str = CFStringCreateWithCString(NULL, text, kCFStringEncodingUTF8);
         if (str == NULL) return PyErr_NoMemory();
         new_font = find_substitute_face(str, self->ct_font);

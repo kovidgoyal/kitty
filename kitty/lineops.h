@@ -64,7 +64,9 @@ index_type line_url_end_at(Line *self, index_type x, bool, char_type);
 index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool*);
 unsigned int line_length(Line *self);
 size_t cell_as_unicode(CPUCell *cell, bool include_cc, Py_UCS4 *buf, char_type);
+size_t cell_as_unicode_for_fallback(CPUCell *cell, Py_UCS4 *buf);
 size_t cell_as_utf8(CPUCell *cell, bool include_cc, char *buf, char_type);
+size_t cell_as_utf8_for_fallback(CPUCell *cell, char *buf);
 PyObject* unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char);
 PyObject* line_as_unicode(Line *);
 

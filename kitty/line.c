@@ -184,6 +184,16 @@ cell_as_unicode(CPUCell *cell, bool include_cc, Py_UCS4 *buf, char_type zero_cha
 }
 
 size_t
+cell_as_unicode_for_fallback(CPUCell *cell, Py_UCS4 *buf) {
+    size_t n = 1;
+    buf[0] = cell->ch ? cell->ch : ' ';
+    for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
+        if (cell->cc_idx[i] != VS15 && cell->cc_idx[i] != VS16) buf[n++] = codepoint_for_mark(cell->cc_idx[i]);
+    }
+    return n;
+}
+
+size_t
 cell_as_utf8(CPUCell *cell, bool include_cc, char *buf, char_type zero_char) {
     size_t n = encode_utf8(cell->ch ? cell->ch : zero_char, buf);
     if (include_cc) {
@@ -192,6 +202,19 @@ cell_as_utf8(CPUCell *cell, bool include_cc, char *buf, char_type zero_char) {
     buf[n] = 0;
     return n;
 }
+
+size_t
+cell_as_utf8_for_fallback(CPUCell *cell, char *buf) {
+    size_t n = encode_utf8(cell->ch ? cell->ch : ' ', buf);
+    for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
+        if (cell->cc_idx[i] != VS15 && cell->cc_idx[i] != VS16) {
+            n += encode_utf8(codepoint_for_mark(cell->cc_idx[i]), buf + n);
+        }
+    }
+    buf[n] = 0;
+    return n;
+}
+
 
 
 PyObject*

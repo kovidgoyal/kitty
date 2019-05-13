@@ -210,7 +210,7 @@ create_fallback_face(PyObject UNUSED *base_face, CPUCell* cell, bool bold, bool 
     if (!emoji_presentation && bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (!emoji_presentation && italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
     if (emoji_presentation) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
-    size_t num = cell_as_unicode(cell, true, char_buf, ' ');
+    size_t num = cell_as_unicode_for_fallback(cell, char_buf);
     add_charset(pat, num);
     PyObject *d = _fc_match(pat);
     if (d) { ans = face_from_descriptor(d, fg); Py_CLEAR(d); }
