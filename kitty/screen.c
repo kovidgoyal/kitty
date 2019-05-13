@@ -373,6 +373,19 @@ draw_combining_char(Screen *self, char_type ch) {
                 if (xpos == self->columns - 1) move_widened_char(self, cpu_cell, gpu_cell, xpos, ypos);
                 else self->cursor->x++;
             }
+        } else if (ch == 0xfe0e) {
+            CPUCell *cpu_cell = self->linebuf->line->cpu_cells + xpos;
+            GPUCell *gpu_cell = self->linebuf->line->gpu_cells + xpos;
+            if ((gpu_cell->attrs & WIDTH_MASK) == 0 && cpu_cell->ch == 0 && xpos > 0) {
+                xpos--;
+                if (self->cursor->x > 0) self->cursor->x--;
+                cpu_cell = self->linebuf->line->cpu_cells + xpos;
+                gpu_cell = self->linebuf->line->gpu_cells + xpos;
+            }
+
+            if ((gpu_cell->attrs & WIDTH_MASK) == 2 && cpu_cell->cc_idx[0] == VS15 && is_emoji_presentation_base(cpu_cell->ch)) {
+                gpu_cell->attrs = (gpu_cell->attrs & !WIDTH_MASK) | 1;
+            }
         }
     }
 }
