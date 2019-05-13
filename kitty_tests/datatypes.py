@@ -344,6 +344,8 @@ class TestDataTypes(BaseTest):
         self.ae(tuple(map(w, 'a1\0コニチ ✔')), (1, 1, 0, 2, 2, 2, 1, 1))
         self.ae(wcswidth('\u2716\u2716\ufe0f\U0001f337'), 5)
         self.ae(wcswidth('\033a\033[2mb'), 2)
+        self.ae(wcswidth('\u25b6\ufe0f'), 2)
+        self.ae(wcswidth('\U0001f610\ufe0e'), 1)
         # Regional indicator symbols (unicode flags) are defined as having
         # Emoji_Presentation so must have width 2
         self.ae(tuple(map(w, '\U0001f1ee\U0001f1f3')), (2, 2))

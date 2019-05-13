@@ -1734,6 +1734,11 @@ screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
                 ans += 1;
                 prev_width = 2;
             } else prev_width = 0;
+        } else if (ch == 0xfe0e) {
+            if (is_emoji_presentation_base(prev_ch) && prev_width == 2) {
+                ans -= 1;
+                prev_width = 1;
+            } else prev_width = 0;
         } else {
             int w = wcwidth_std(ch);
             switch(w) {
