@@ -21,7 +21,7 @@
 #endif
 
 static inline double
-monotonic() {
+monotonic(void) {
     struct timespec ts = {0};
 #ifdef CLOCK_HIGHRES
     clock_gettime(CLOCK_HIGHRES, &ts);

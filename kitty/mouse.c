@@ -405,7 +405,7 @@ HANDLER(handle_button_event) {
 }
 
 static inline int
-currently_pressed_button() {
+currently_pressed_button(void) {
     for (int i = 0; i < GLFW_MOUSE_BUTTON_5; i++) {
         if (global_state.callback_os_window->mouse_button_pressed[i]) return i;
     }

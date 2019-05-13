@@ -317,7 +317,7 @@ typedef struct _GLFWcursorWayland
 
 
 void _glfwAddOutputWayland(uint32_t name, uint32_t version);
-void _glfwSetupWaylandDataDevice();
-void _glfwSetupWaylandPrimarySelectionDevice();
+void _glfwSetupWaylandDataDevice(void);
+void _glfwSetupWaylandPrimarySelectionDevice(void);
 void animateCursorImage(id_type timer_id, void *data);
 struct wl_cursor* _glfwLoadCursor(GLFWCursorShape);

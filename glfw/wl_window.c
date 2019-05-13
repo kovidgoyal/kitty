@@ -126,7 +126,7 @@ static void resizeFramebuffer(_GLFWwindow* window)
 
 
 static const char*
-clipboard_mime() {
+clipboard_mime(void) {
     static char buf[128] = {0};
     if (buf[0] == 0) {
         snprintf(buf, sizeof(buf), "application/glfw+clipboard-%d", getpid());
@@ -1558,7 +1558,7 @@ const static struct zwp_primary_selection_source_v1_listener primary_selection_s
     .cancelled = primary_selection_source_canceled,
 };
 
-static void prune_unclaimed_data_offers() {
+static void prune_unclaimed_data_offers(void) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id && !_glfw.wl.dataOffers[i].offer_type) {
             wl_data_offer_destroy(_glfw.wl.dataOffers[i].id);
@@ -1567,7 +1567,7 @@ static void prune_unclaimed_data_offers() {
     }
 }
 
-static void prune_unclaimed_primary_selection_offers() {
+static void prune_unclaimed_primary_selection_offers(void) {
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].id && !_glfw.wl.dataOffers[i].offer_type) {
             zwp_primary_selection_offer_v1_destroy(_glfw.wl.primarySelectionOffers[i].id);
@@ -1799,7 +1799,7 @@ void _glfwSetupWaylandPrimarySelectionDevice() {
     if (_glfw.wl.primarySelectionDevice) zwp_primary_selection_device_v1_add_listener(_glfw.wl.primarySelectionDevice, &primary_selection_device_listener, NULL);
 }
 
-static inline GLFWbool _glfwEnsureDataDevice() {
+static inline GLFWbool _glfwEnsureDataDevice(void) {
     if (!_glfw.wl.dataDeviceManager)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,

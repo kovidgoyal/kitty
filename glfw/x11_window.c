@@ -1053,7 +1053,7 @@ static void releaseMonitor(_GLFWwindow* window)
     }
 }
 
-static void onConfigChange()
+static void onConfigChange(void)
 {
     float xscale, yscale;
     _glfwGetSystemContentScaleX11(&xscale, &yscale, GLFW_TRUE);

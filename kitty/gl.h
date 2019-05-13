@@ -179,7 +179,7 @@ bind_program(int program) {
 }
 
 static inline void
-unbind_program() {
+unbind_program(void) {
     glUseProgram(0);
 }
 // }}}
@@ -262,7 +262,7 @@ typedef struct {
 static VAO vaos[4*MAX_CHILDREN + 10] = {{0}};
 
 static ssize_t
-create_vao() {
+create_vao(void) {
     GLuint vao_id;
     glGenVertexArrays(1, &vao_id);
     for (size_t i = 0; i < sizeof(vaos)/sizeof(vaos[0]); i++) {
@@ -340,7 +340,7 @@ bind_vertex_array(ssize_t vao_idx) {
 }
 
 static void
-unbind_vertex_array() {
+unbind_vertex_array(void) {
     glBindVertexArray(0);
 }
 

@@ -31,7 +31,7 @@ static uint32_t FG_BG_256[256] = {
 };
 
 static inline void
-init_FG_BG_table() {
+init_FG_BG_table(void) {
     if (UNLIKELY(FG_BG_256[255] == 0)) {
         // colors 16..232: the 6x6x6 color cube
         const uint8_t valuerange[6] = {0x00, 0x5f, 0x87, 0xaf, 0xd7, 0xff};

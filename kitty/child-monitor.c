@@ -747,7 +747,7 @@ monitor_pid(PyObject *self UNUSED, PyObject *args) {
 }
 
 static inline void
-report_reaped_pids() {
+report_reaped_pids(void) {
     children_mutex(lock);
     if (reaped_pids_count) {
         for (size_t i = 0; i < reaped_pids_count; i++) {
@@ -852,7 +852,7 @@ process_pending_resizes(double now) {
 }
 
 static inline void
-close_all_windows() {
+close_all_windows(void) {
     for (size_t w = 0; w < global_state.num_os_windows; w++) mark_os_window_for_close(&global_state.os_windows[w], true);
 }
 
@@ -1391,7 +1391,7 @@ remove_poll_fd(int fd) {
 }
 
 static inline void
-prune_finished_reads() {
+prune_finished_reads(void) {
     if (!talk_data.num_reads) return;
     for (ssize_t i = talk_data.num_reads - 1; i >= 0; i--) {
         PeerReadData *rd = talk_data.reads + i;
@@ -1409,7 +1409,7 @@ prune_finished_reads() {
 }
 
 static inline void
-prune_finished_writes() {
+prune_finished_writes(void) {
     if (!talk_data.num_writes) return;
     for (ssize_t i = talk_data.num_writes - 1; i >= 0; i--) {
         PeerWriteData *wd = talk_data.writes + i;
@@ -1439,7 +1439,7 @@ wakeup_talk_loop(bool in_signal_handler) {
 }
 
 static inline void
-move_queued_writes() {
+move_queued_writes(void) {
     while (talk_data.num_queued_writes) {
         PeerWriteData *src = talk_data.queued_writes + --talk_data.num_queued_writes;
         size_t fd_idx = talk_data.num_listen_fds + talk_data.num_talk_fds;

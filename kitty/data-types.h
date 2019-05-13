@@ -266,12 +266,12 @@ typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
 
 // Global functions
 const char* base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, size_t dest_capacity, size_t *dest_sz);
-Line* alloc_line();
-Cursor* alloc_cursor();
+Line* alloc_line(void);
+Cursor* alloc_cursor(void);
 LineBuf* alloc_linebuf(unsigned int, unsigned int);
 HistoryBuf* alloc_historybuf(unsigned int, unsigned int, unsigned int);
-ColorProfile* alloc_color_profile();
-PyObject* create_256_color_table();
+ColorProfile* alloc_color_profile(void);
+PyObject* create_256_color_table(void);
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);
 void cursor_reset(Cursor*);
@@ -283,7 +283,7 @@ void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, unsigned i
 const char* cell_as_sgr(GPUCell *, GPUCell *);
 const char* cursor_as_sgr(const Cursor *);
 
-double monotonic();
+double monotonic(void);
 PyObject* cm_thread_write(PyObject *self, PyObject *args);
 bool schedule_write_to_child(unsigned long id, unsigned int num, ...);
 bool set_iutf8(int, bool);
@@ -295,9 +295,9 @@ void colorprofile_push_dynamic_colors(ColorProfile*);
 void colorprofile_pop_dynamic_colors(ColorProfile*);
 
 void set_mouse_cursor(MouseShape);
-void enter_event();
+void enter_event(void);
 void mouse_event(int, int, int);
-void focus_in_event();
+void focus_in_event(void);
 void wakeup_io_loop(bool);
 void scroll_event(double, double, int);
 void fake_scroll(int, bool);

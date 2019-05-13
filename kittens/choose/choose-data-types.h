@@ -76,7 +76,7 @@ void* free_workspace(void *v);
 double score_item(void *v, text_t *haystack, len_t haystack_len, len_t *match_positions);
 unsigned int encode_codepoint(text_t ch, char* dest);
 size_t unescape(const char *src, char *dest, size_t destlen);
-int cpu_count();
+int cpu_count(void);
 void* alloc_threads(size_t num_threads);
 #ifdef ISWINDOWS
 bool start_thread(void* threads, size_t i, unsigned int (STDCALL *start_routine) (void *), void *arg);

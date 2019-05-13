@@ -50,7 +50,7 @@ set_special_key_combo(int glfw_key, int mods, bool is_native) {
 }
 
 static inline Window*
-active_window() {
+active_window(void) {
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
     Window *w = t->windows + t->active_window;
     if (w->render_data.screen) return w;

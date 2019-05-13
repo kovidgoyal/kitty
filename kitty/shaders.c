@@ -157,7 +157,7 @@ static GLuint offscreen_framebuffer = 0;
 static ssize_t blit_vertex_array;
 
 static void
-init_cell_program() {
+init_cell_program(void) {
     for (int i = CELL_PROGRAM; i < BORDERS_PROGRAM; i++) {
         cell_program_layouts[i].render_data.index = block_index(i, "CellRenderData");
         cell_program_layouts[i].render_data.size = block_size(i, cell_program_layouts[i].render_data.index);
@@ -531,7 +531,7 @@ enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_default
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
-init_borders_program() {
+init_borders_program(void) {
     Program *p = programs + BORDERS_PROGRAM;
     int left = NUM_BORDER_UNIFORMS;
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
@@ -549,7 +549,7 @@ init_borders_program() {
 }
 
 ssize_t
-create_border_vao() {
+create_border_vao(void) {
     ssize_t vao_idx = create_vao();
 
     add_buffer_to_vao(vao_idx, GL_ARRAY_BUFFER);

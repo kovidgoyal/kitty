@@ -1408,7 +1408,7 @@ typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
 typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, const char*);
-typedef int (*glfwInit_func)();
+typedef int (*glfwInit_func)(void);
 glfwInit_func glfwInit_impl;
 #define glfwInit glfwInit_impl
 
@@ -1416,11 +1416,11 @@ typedef void (*glfwRunMainLoop_func)(GLFWtickcallback, void*);
 glfwRunMainLoop_func glfwRunMainLoop_impl;
 #define glfwRunMainLoop glfwRunMainLoop_impl
 
-typedef void (*glfwStopMainLoop_func)();
+typedef void (*glfwStopMainLoop_func)(void);
 glfwStopMainLoop_func glfwStopMainLoop_impl;
 #define glfwStopMainLoop glfwStopMainLoop_impl
 
-typedef void (*glfwRequestTickCallback_func)();
+typedef void (*glfwRequestTickCallback_func)(void);
 glfwRequestTickCallback_func glfwRequestTickCallback_impl;
 #define glfwRequestTickCallback glfwRequestTickCallback_impl
 
@@ -1436,7 +1436,7 @@ typedef void (*glfwRemoveTimer_func)(unsigned long);
 glfwRemoveTimer_func glfwRemoveTimer_impl;
 #define glfwRemoveTimer glfwRemoveTimer_impl
 
-typedef void (*glfwTerminate_func)();
+typedef void (*glfwTerminate_func)(void);
 glfwTerminate_func glfwTerminate_impl;
 #define glfwTerminate glfwTerminate_impl
 
@@ -1448,7 +1448,7 @@ typedef void (*glfwGetVersion_func)(int*, int*, int*);
 glfwGetVersion_func glfwGetVersion_impl;
 #define glfwGetVersion glfwGetVersion_impl
 
-typedef const char* (*glfwGetVersionString_func)();
+typedef const char* (*glfwGetVersionString_func)(void);
 glfwGetVersionString_func glfwGetVersionString_impl;
 #define glfwGetVersionString glfwGetVersionString_impl
 
@@ -1464,7 +1464,7 @@ typedef GLFWmonitor** (*glfwGetMonitors_func)(int*);
 glfwGetMonitors_func glfwGetMonitors_impl;
 #define glfwGetMonitors glfwGetMonitors_impl
 
-typedef GLFWmonitor* (*glfwGetPrimaryMonitor_func)();
+typedef GLFWmonitor* (*glfwGetPrimaryMonitor_func)(void);
 glfwGetPrimaryMonitor_func glfwGetPrimaryMonitor_impl;
 #define glfwGetPrimaryMonitor glfwGetPrimaryMonitor_impl
 
@@ -1520,7 +1520,7 @@ typedef void (*glfwSetGammaRamp_func)(GLFWmonitor*, const GLFWgammaramp*);
 glfwSetGammaRamp_func glfwSetGammaRamp_impl;
 #define glfwSetGammaRamp glfwSetGammaRamp_impl
 
-typedef void (*glfwDefaultWindowHints_func)();
+typedef void (*glfwDefaultWindowHints_func)(void);
 glfwDefaultWindowHints_func glfwDefaultWindowHints_impl;
 #define glfwDefaultWindowHints glfwDefaultWindowHints_impl
 
@@ -1704,7 +1704,7 @@ typedef GLFWwindowcontentscalefun (*glfwSetWindowContentScaleCallback_func)(GLFW
 glfwSetWindowContentScaleCallback_func glfwSetWindowContentScaleCallback_impl;
 #define glfwSetWindowContentScaleCallback glfwSetWindowContentScaleCallback_impl
 
-typedef void (*glfwPostEmptyEvent_func)();
+typedef void (*glfwPostEmptyEvent_func)(void);
 glfwPostEmptyEvent_func glfwPostEmptyEvent_impl;
 #define glfwPostEmptyEvent glfwPostEmptyEvent_impl
 
@@ -1848,7 +1848,7 @@ typedef const char* (*glfwGetClipboardString_func)(GLFWwindow*);
 glfwGetClipboardString_func glfwGetClipboardString_impl;
 #define glfwGetClipboardString glfwGetClipboardString_impl
 
-typedef double (*glfwGetTime_func)();
+typedef double (*glfwGetTime_func)(void);
 glfwGetTime_func glfwGetTime_impl;
 #define glfwGetTime glfwGetTime_impl
 
@@ -1856,11 +1856,11 @@ typedef void (*glfwSetTime_func)(double);
 glfwSetTime_func glfwSetTime_impl;
 #define glfwSetTime glfwSetTime_impl
 
-typedef uint64_t (*glfwGetTimerValue_func)();
+typedef uint64_t (*glfwGetTimerValue_func)(void);
 glfwGetTimerValue_func glfwGetTimerValue_impl;
 #define glfwGetTimerValue glfwGetTimerValue_impl
 
-typedef uint64_t (*glfwGetTimerFrequency_func)();
+typedef uint64_t (*glfwGetTimerFrequency_func)(void);
 glfwGetTimerFrequency_func glfwGetTimerFrequency_impl;
 #define glfwGetTimerFrequency glfwGetTimerFrequency_impl
 
@@ -1868,7 +1868,7 @@ typedef void (*glfwMakeContextCurrent_func)(GLFWwindow*);
 glfwMakeContextCurrent_func glfwMakeContextCurrent_impl;
 #define glfwMakeContextCurrent glfwMakeContextCurrent_impl
 
-typedef GLFWwindow* (*glfwGetCurrentContext_func)();
+typedef GLFWwindow* (*glfwGetCurrentContext_func)(void);
 glfwGetCurrentContext_func glfwGetCurrentContext_impl;
 #define glfwGetCurrentContext glfwGetCurrentContext_impl
 
@@ -1888,7 +1888,7 @@ typedef GLFWglproc (*glfwGetProcAddress_func)(const char*);
 glfwGetProcAddress_func glfwGetProcAddress_impl;
 #define glfwGetProcAddress glfwGetProcAddress_impl
 
-typedef int (*glfwVulkanSupported_func)();
+typedef int (*glfwVulkanSupported_func)(void);
 glfwVulkanSupported_func glfwVulkanSupported_impl;
 #define glfwVulkanSupported glfwVulkanSupported_impl
 
@@ -1928,7 +1928,7 @@ typedef void (*glfwCocoaRequestRenderFrame_func)(GLFWwindow*, GLFWcocoarenderfra
 glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
 #define glfwCocoaRequestRenderFrame glfwCocoaRequestRenderFrame_impl
 
-typedef void* (*glfwGetX11Display_func)();
+typedef void* (*glfwGetX11Display_func)(void);
 glfwGetX11Display_func glfwGetX11Display_impl;
 #define glfwGetX11Display glfwGetX11Display_impl
 

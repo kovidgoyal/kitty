@@ -181,16 +181,16 @@ extern GlobalState global_state;
     else Py_DECREF(cret_); \
 }
 
-void gl_init();
+void gl_init(void);
 void remove_vao(ssize_t vao_idx);
 bool remove_os_window(id_type os_window_id);
 void make_os_window_context_current(OSWindow *w);
-void update_os_window_references();
+void update_os_window_references(void);
 void mark_os_window_for_close(OSWindow* w, bool yes);
 void update_os_window_viewport(OSWindow *window, bool);
 bool should_os_window_close(OSWindow* w);
 bool should_os_window_be_rendered(OSWindow* w);
-void wakeup_main_loop();
+void wakeup_main_loop(void);
 void swap_window_buffers(OSWindow *w);
 void make_window_context_current(OSWindow *w);
 void hide_mouse(OSWindow *w);
@@ -199,14 +199,14 @@ void destroy_os_window(OSWindow *w);
 void focus_os_window(OSWindow *w, bool also_raise);
 void set_os_window_title(OSWindow *w, const char *title);
 OSWindow* os_window_for_kitty_window(id_type);
-OSWindow* add_os_window();
-OSWindow* current_os_window();
+OSWindow* add_os_window(void);
+OSWindow* current_os_window(void);
 void os_window_regions(OSWindow*, Region *main, Region *tab_bar);
 bool drag_scroll(Window *, OSWindow*);
 void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type, unsigned int, OSWindow *w);
-ssize_t create_cell_vao();
-ssize_t create_graphics_vao();
-ssize_t create_border_vao();
+ssize_t create_cell_vao(void);
+ssize_t create_graphics_vao(void);
+ssize_t create_border_vao(void);
 bool send_cell_data_to_gpu(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *);
 void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow *, bool, bool);
 void draw_centered_alpha_mask(ssize_t gvao_idx, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas);
@@ -228,8 +228,8 @@ typedef enum {
     NEW_TAB_WITH_WD = 8
 } CocoaPendingAction;
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);
-bool application_quit_requested();
-void request_application_quit();
+bool application_quit_requested(void);
+void request_application_quit(void);
 #endif
 void request_frame_render(OSWindow *w);
 typedef void (* timer_callback_fun)(id_type, void*);

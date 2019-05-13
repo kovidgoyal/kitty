@@ -84,7 +84,7 @@ set_callback_window(GLFWwindow *w) {
 }
 
 static inline bool
-is_window_ready_for_callbacks() {
+is_window_ready_for_callbacks(void) {
     OSWindow *w = global_state.callback_os_window;
     if (w->num_tabs == 0) return false;
     Tab *t = w->tabs + w->active_tab;

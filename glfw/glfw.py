@@ -134,6 +134,8 @@ class Function:
             if a == 'void':
                 continue
             self.args.append(Arg(a))
+        if not self.args:
+            self.args = [Arg('void v')]
 
     def declaration(self):
         return 'typedef {restype} (*{name}_func)({args});\n{name}_func {name}_impl;\n#define {name} {name}_impl'.format(
@@ -233,7 +235,7 @@ load_glfw(const char* path) {
 }
 
 void
-unload_glfw() {
+unload_glfw(void) {
     if (handle) { dlclose(handle); handle = NULL; }
 }
 '''.replace('LOAD', '\n\n    '.join(f.load() for f in functions))

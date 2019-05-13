@@ -649,7 +649,7 @@ PyTypeObject Face_Type = {
 };
 
 static void
-free_freetype() {
+free_freetype(void) {
     FT_Done_FreeType(library);
 }
 

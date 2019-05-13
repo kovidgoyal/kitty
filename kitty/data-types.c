@@ -44,7 +44,7 @@
 #include <mach/mach_time.h>
 static mach_timebase_info_data_t timebase = {0};
 
-static inline double monotonic_() {
+static inline double monotonic_(void) {
     return ((double)(mach_absolute_time() * timebase.numer) / timebase.denom)/SEC_TO_NS;
 }
 
@@ -76,7 +76,7 @@ process_group_map() {
 
 #else
 #include <time.h>
-static inline double monotonic_() {
+static inline double monotonic_(void) {
     struct timespec ts = {0};
 #ifdef CLOCK_HIGHRES
     clock_gettime(CLOCK_HIGHRES, &ts);

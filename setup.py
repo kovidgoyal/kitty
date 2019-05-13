@@ -205,7 +205,7 @@ def init_env(
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
-            '-Wextra -Wno-missing-field-initializers -Wall -std=c11'
+            '-Wextra -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
             ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
             optimize,

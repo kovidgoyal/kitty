@@ -416,6 +416,6 @@ load_glfw(const char* path) {
 }
 
 void
-unload_glfw() {
+unload_glfw(void) {
     if (handle) { dlclose(handle); handle = NULL; }
 }

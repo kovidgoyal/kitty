@@ -314,7 +314,7 @@ glfw_dbus_match_signal(DBusMessage *msg, const char *interface, ...) {
 }
 
 static void
-glfw_dbus_connect_to_session_bus() {
+glfw_dbus_connect_to_session_bus(void) {
     DBusError error;
     dbus_error_init(&error);
     if (session_bus) {
