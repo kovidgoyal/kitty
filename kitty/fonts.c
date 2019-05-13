@@ -806,7 +806,8 @@ check_cell_consumed(CellData *cell_data, CPUCell *last_cpu_cell) {
                 break;
             default: {
                 index_type mark = cell_data->cpu_cell->cc_idx[cell_data->codepoints_consumed - 1];
-                // VS15 causes rendering to break, so map it to 0
+                // VS15/16 cause rendering to break, as they get marked as
+                // special glyphs, so map to 0, to avoid that
                 cell_data->current_codepoint = (mark == VS15 || mark == VS16) ? 0 : codepoint_for_mark(mark);
                 break;
             }
