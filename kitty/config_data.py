@@ -863,7 +863,7 @@ program, even one running on a remote server via SSH can read your clipboard.
 o('term', 'xterm-kitty', long_text=_('''
 The value of the TERM environment variable to set. Changing this can break many
 terminal programs, only change it if you know what you are doing, not because
-you read some advice on Stack Overflow to change it. The TERM variable if used
+you read some advice on Stack Overflow to change it. The TERM variable is used
 by various programs to get information about the capabilities and behavior of
 the terminal. If you change it, depending on what programs you run, and how
 different the terminal you are changing it to is, various things from
