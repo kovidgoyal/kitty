@@ -2007,13 +2007,17 @@ is_opt_word_char(char_type ch) {
 }
 
 bool
-screen_selection_range_for_word(Screen *self, index_type x, index_type *y1, index_type *y2, index_type *s, index_type *e) {
+screen_selection_range_for_word(Screen *self, index_type x, index_type *y1, index_type *y2, index_type *s, index_type *e, bool initial_selection) {
     if (*y1 >= self->lines || x >= self->columns) return false;
     index_type start, end;
     Line *line = visual_line_(self, *y1);
     *y2 = *y1;
 #define is_ok(x) (is_word_char((line->cpu_cells[x].ch)) || is_opt_word_char(line->cpu_cells[x].ch))
-    if (!is_ok(x)) return false;
+    if (!is_ok(x)) {
+        if (initial_selection) return false;
+        *s = x; *e = x;
+        return true;
+    }
     start = x; end = x;
     while(true) {
         while(start > 0 && is_ok(start - 1)) start--;
@@ -2109,19 +2113,19 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
     switch(self->selection.extend_mode) {
         case EXTEND_WORD: {
             index_type y1 = y, y2;
-            found = screen_selection_range_for_word(self, x, &y1, &y2, &start, &end);
+            found = screen_selection_range_for_word(self, x, &y1, &y2, &start, &end, false);
             if (found) {
                 if (extending_leftwards) {
                     self->selection.end_x = start; self->selection.end_y = y1;
                     y1 = self->selection.start_y;
-                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end);
+                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end, false);
                     if (found) {
                         self->selection.start_x = end; self->selection.start_y = y2;
                     }
                 } else {
                     self->selection.end_x = end; self->selection.end_y = y2;
                     y1 = self->selection.start_y;
-                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end);
+                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end, false);
                     if (found) {
                         self->selection.start_x = start; self->selection.start_y = y1;
                     }

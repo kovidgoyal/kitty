@@ -309,7 +309,7 @@ multi_click(Window *w, unsigned int count) {
     unsigned int y1 = w->mouse_pos.cell_y, y2 = w->mouse_pos.cell_y;
     switch(count) {
         case 2:
-            found_selection = screen_selection_range_for_word(screen, w->mouse_pos.cell_x, &y1, &y2, &start, &end);
+            found_selection = screen_selection_range_for_word(screen, w->mouse_pos.cell_x, &y1, &y2, &start, &end, true);
             mode = EXTEND_WORD;
             break;
         case 3:
