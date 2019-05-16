@@ -136,6 +136,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - X11: use the window manager's native full-screen implementation when
   making windows full-screen (:iss:`1605`)
 
+- Mouse selection: When extending by word, fix selection encompassing one or
+  two non-word characters after a word when the mouse is over that character
+  (:iss:`1616`)
+
 0.13.3 [2019-01-19]
 ------------------------------
 
