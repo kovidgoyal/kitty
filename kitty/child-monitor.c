@@ -619,13 +619,21 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
     if (os_window->clear_count++ < 3) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
     BorderRects *br = &tab->border_rects;
-    draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, os_window);
-    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx, TD.dy, TD.screen, os_window, true, false);
+    bool static_live_resize_in_progress = os_window->live_resize.in_progress && OPT(resize_draw_strategy) == RESIZE_DRAW_STATIC;
+    float x_ratio = 1, y_ratio = 1;
+    if (static_live_resize_in_progress) {
+        x_ratio = os_window->viewport_width / (double) os_window->live_resize.width;
+        y_ratio = os_window->viewport_height / (double) os_window->live_resize.height;
+    }
+    if (!static_live_resize_in_progress) {
+        draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, os_window);
+    }
+    if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx * x_ratio, TD.dy * y_ratio, TD.screen, os_window, true, false);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
         if (w->visible && WD.screen) {
             bool is_active_window = i == tab->active_window;
-            draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window, is_active_window, true);
+            draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx * x_ratio, WD.dy * y_ratio, WD.screen, os_window, is_active_window, true);
             if (WD.screen->start_visual_bell_at != 0) {
                 double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
                 set_maximum_wait(bell_left);
@@ -684,13 +692,14 @@ render(double now) {
             continue;
         }
         make_os_window_context_current(w);
-        if (OPT(resize_draw_strategy) != RESIZE_DRAW_SCALED && w->live_resize.in_progress) {
+        if (w->live_resize.in_progress && OPT(resize_draw_strategy) >= RESIZE_DRAW_BLANK) {
             blank_os_window(w);
             if (OPT(resize_draw_strategy) == RESIZE_DRAW_SIZE) draw_resizing_text(w);
             swap_window_buffers(w);
             if (USE_RENDER_FRAMES) request_frame_render(w);
             continue;
         }
+        if (w->live_resize.in_progress && OPT(resize_draw_strategy) == RESIZE_DRAW_STATIC) blank_os_window(w);
         bool needs_render = w->is_damaged || w->live_resize.in_progress;
         if (w->viewport_size_dirty) {
             w->clear_count = 0;

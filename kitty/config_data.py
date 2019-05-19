@@ -612,13 +612,14 @@ of a resize, this number is ignored.'''))
 
 
 def resize_draw_strategy(x):
-    cmap = {'scale': 0, 'blank': 1, 'size': 2}
+    cmap = {'static': 0, 'scale': 1, 'blank': 2, 'size': 3}
     return cmap.get(x.lower(), 0)
 
 
-o('resize_draw_strategy', 'scale', option_type=resize_draw_strategy, long_text=_('''
-Choose how kitty draws a window while a resize is in progress. A
-value of :code:`scale` means draw the current window contents scaled.
+o('resize_draw_strategy', 'static', option_type=resize_draw_strategy, long_text=_('''
+Choose how kitty draws a window while a resize is in progress.
+A value of :code:`static` means draw the current window contents, mostly unchanged.
+A value of :code:`scale` means draw the current window contents scaled.
 A value of :code:`blank` means draw a blank window.
 A value of :code:`size` means show the window size in cells.
 '''))
