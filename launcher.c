@@ -1,5 +1,5 @@
 /*
- * linux-launcher.c
+ * launcher.c
  * Copyright (C) 2017 Kovid Goyal <kovid at kovidgoyal.net>
  *
  * Distributed under terms of the GPL3 license.
