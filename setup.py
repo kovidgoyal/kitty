@@ -109,10 +109,16 @@ def cc_version():
     return cc, ver
 
 
+def get_python_include_paths():
+    ans = []
+    for name in sysconfig.get_path_names():
+        if 'include' in name:
+            ans.append(name)
+    return sorted(frozenset(map(sysconfig.get_path, sorted(ans))))
+
+
 def get_python_flags(cflags):
-    cflags.extend(
-        frozenset('-I' + sysconfig.get_path(x) for x in sysconfig.get_path_names())
-    )
+    cflags.extend('-I' + x for x in get_python_include_paths())
     libs = []
     libs += sysconfig.get_config_var('LIBS').split()
     libs += sysconfig.get_config_var('SYSLIBS').split()
