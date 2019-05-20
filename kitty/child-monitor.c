@@ -627,6 +627,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
     }
     if (!static_live_resize_in_progress) {
         draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, os_window);
+        br->is_dirty = false;
     }
     if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx * x_ratio, TD.dy * y_ratio, TD.screen, os_window, true, false);
     for (unsigned int i = 0; i < tab->num_windows; i++) {
@@ -642,7 +643,6 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
         }
     }
     swap_window_buffers(os_window);
-    br->is_dirty = false;
     os_window->last_active_tab = os_window->active_tab; os_window->last_num_tabs = os_window->num_tabs; os_window->last_active_window_id = active_window_id;
     os_window->focused_at_last_render = os_window->is_focused;
     os_window->is_damaged = false;
