@@ -660,7 +660,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
         // NOTE: The returned location uses base 0,1 not 0,0
         const NSPoint pos = [event locationInWindow];
 
-        _glfwInputCursorPos(window, pos.x, contentRect.size.height - pos.y - 1);
+        _glfwInputCursorPos(window, pos.x, contentRect.size.height - pos.y);
     }
 
     window->ns.cursorWarpDeltaX = 0;
