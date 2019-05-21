@@ -56,12 +56,13 @@ Pre-built binaries of |kitty| are available for both macOS and Linux.
 See the :doc:`binary install instructions </binary>`. You can also
 :doc:`build from source </build>`.
 
-If you are on Linux, you can also use your distribution's |kitty| package.
+You can also use your favorite package manager to install the |kitty| package.
 |kitty| packages are available for:
+`macOS with Homebrew (Cask) <https://formulae.brew.sh/cask/kitty>`_,
+`macOS and Linux with Nix <https://nixos.org/nixos/packages.html#kitty>`_,
 `Debian <https://packages.debian.org/buster/kitty>`_,
 `openSUSE <https://build.opensuse.org/package/show/X11:terminals/kitty>`_,
 `Arch Linux <https://www.archlinux.org/packages/community/x86_64/kitty/>`_,
-`NixOS <https://github.com/NixOS/nixpkgs/blob/master/pkgs/applications/misc/kitty/default.nix>`_,
 `Gentoo <https://packages.gentoo.org/packages/x11-terms/kitty>`_,
 `Fedora <https://copr.fedorainfracloud.org/coprs/gagbo/kitty-latest/>`_,
 `Void Linux <https://github.com/void-linux/void-packages/blob/master/srcpkgs/kitty/template>`_,
