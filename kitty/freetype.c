@@ -92,8 +92,10 @@ static inline int
 get_load_flags(int hinting, int hintstyle, int base) {
     int flags = base;
     if (hinting) {
-        if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
-        else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
+        if (!(flags & (FT_LOAD_TARGET_MONO | FT_LOAD_TARGET_LCD | FT_LOAD_TARGET_LCD_V))) {
+            if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
+            else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
+        }
     } else flags |= FT_LOAD_NO_HINTING;
     return flags;
 }
