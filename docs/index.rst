@@ -93,7 +93,7 @@ formatting, etc. It even extends existing text formatting escape codes,
 to add support for features not available elsewhere, such as colored and
 styled (curly) underlines. One of the design goals of |kitty| is to be
 easily extensible so that new features can be added in the future with
-relatively less effort.
+relatively little effort.
 
 Tabs and Windows
 -------------------
