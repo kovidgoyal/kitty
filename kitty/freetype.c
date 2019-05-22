@@ -399,16 +399,19 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
 static inline void
 populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBitmap *ans, bool copy_buf) {
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
-    ans->rows = bitmap->rows;
     if (copy_buf) {
-        ans->buf = calloc(ans->rows, ans->stride);
+        ans->buf = calloc(bitmap->rows, ans->stride);
         if (!ans->buf) fatal("Out of memory");
         ans->needs_free = true;
-        memcpy(ans->buf, bitmap->buffer, ans->rows * ans->stride);
+        memcpy(ans->buf, bitmap->buffer, bitmap->rows * ans->stride);
     } else ans->buf = bitmap->buffer;
-    ans->start_x = 0; ans->width = bitmap->width;
+    ans->start_x = 0; ans->width = bitmap->width; ans->rows = bitmap->rows;
     ans->pixel_mode = bitmap->pixel_mode;
     ans->bitmap_top = slot->bitmap_top; ans->bitmap_left = slot->bitmap_left;
+    if (ans->pixel_mode == FT_PIXEL_MODE_LCD)
+        ans->width /= 3;
+    else if (ans->pixel_mode == FT_PIXEL_MODE_LCD_V)
+        ans->rows /= 3;
 }
 
 static inline bool
@@ -447,12 +450,6 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
         }
         populate_processed_bitmap(self->face->glyph, &bitmap, ans, true);
         FT_Bitmap_Done(library, &bitmap);
-    } else if (self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD) {
-        populate_processed_bitmap(self->face->glyph, &self->face->glyph->bitmap, ans, false);
-        ans->width /= 3;
-    } else if (self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_LCD_V) {
-        populate_processed_bitmap(self->face->glyph, &self->face->glyph->bitmap, ans, false);
-        // TODO: tune ans->rows, as it's 3 times biger than the actual height
     } else {
         populate_processed_bitmap(self->face->glyph, &self->face->glyph->bitmap, ans, false);
     }
@@ -586,6 +583,23 @@ copy_lcd_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect, 
 }
 
 static inline void
+copy_lcd_v_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride, bool bgr) {
+    for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
+        pixel *d = dest + dest_stride * dr;
+        uint8_t *s = src + 3 * src_stride * sr;
+        for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
+            uint8_t *rgb = s + sc;
+#define C(idx, shift) ( rgb[src_stride * idx] << shift)
+            if (!bgr)
+              d[dc] = C(0, 24) | C(1, 16) | C(2, 8) | 0xff;
+            else
+              d[dc] = C(2, 24) | C(1, 16) | C(0, 8) | 0xff;
+#undef C
+        }
+    }
+}
+
+static inline void
 place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, size_t baseline) {
     // We want the glyph to be positioned inside the cell based on the bearingX
     // and bearingY values, making sure that it does not overflow the cell.
@@ -618,8 +632,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
     } else if (bm->pixel_mode == FT_PIXEL_MODE_LCD) {
         copy_lcd_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width, bm->bgr);
     } else if (bm->pixel_mode == FT_PIXEL_MODE_LCD_V) {
-        // copy_lcd_v_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width, bm->bgr);
-        // TODO: implement it
+        copy_lcd_v_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width, bm->bgr);
     } else render_alpha_mask(bm->buf, cell, &src, &dest, bm->stride, cell_width);
 }
 
