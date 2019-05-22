@@ -412,16 +412,17 @@ populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBit
 static inline bool
 render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic, bool rescale, FONTS_DATA_HANDLE fg) {
     int flags = FT_LOAD_RENDER;
-    switch (OPT(subpixel_rendering)) {
-        case SUBPIXEL_LCD:
-            flags |= FT_LOAD_TARGET_LCD;
-            break;
-        case SUBPIXEL_LCD_V:
-            flags |= FT_LOAD_TARGET_LCD_V;
-            break;
-        case SUBPIXEL_NONE:
-        default:
-            break;
+    if (OPT(subpixel_rendering)) {
+        switch (self->rgba) {
+            case FC_RGBA_RGB:
+            case FC_RGBA_BGR:
+                flags |= FT_LOAD_TARGET_LCD;
+                break;
+            case FC_RGBA_VRGB:
+            case FC_RGBA_VBGR:
+                flags |= FT_LOAD_TARGET_LCD_V;
+                break;
+        }
     }
     if (!load_glyph(self, glyph_id, flags)) return false;
     unsigned int max_width = cell_width * num_cells;
@@ -694,17 +695,21 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
         int error = FT_Load_Glyph(self->face, glyph_index, FT_LOAD_DEFAULT);
         if (error) continue;
         int flags = 0;
-        switch (OPT(subpixel_rendering)) {
-            case SUBPIXEL_LCD:
-                flags |= FT_RENDER_MODE_LCD;
-                break;
-            case SUBPIXEL_LCD_V:
-                flags |= FT_RENDER_MODE_LCD_V;
-                break;
-            case SUBPIXEL_NONE:
-            default:
+        if (OPT(subpixel_rendering)) {
+            switch (self->rgba) {
+                case FC_RGBA_RGB:
+                case FC_RGBA_BGR:
+                    flags |= FT_RENDER_MODE_LCD;
+                    break;
+                case FC_RGBA_VRGB:
+                case FC_RGBA_VBGR:
+                    flags |= FT_RENDER_MODE_LCD_V;
+                    break;
+                default:
+                    flags |= FT_RENDER_MODE_LCD;
+            }
+        } else {
                 flags |= FT_RENDER_MODE_NORMAL;
-                break;
         }
         error = FT_Render_Glyph(self->face->glyph, flags);
         if (error) continue;

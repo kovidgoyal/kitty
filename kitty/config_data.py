@@ -295,6 +295,12 @@ a pixel value. There must be four values corresponding to thin, normal, thick,
 and very thick lines.
 '''))
 
+o('subpixel_rendering', False, long_text=_('''
+Use subpixel rendering instead of grayscale in freetype. Impacts performance,
+but may look better on low DPI screens. Possible values are :code:`none`,
+:code:`lcd`, and :code:`lcd_v`.
+'''))
+
 # }}}
 
 g('cursor')  # {{{
@@ -971,23 +977,6 @@ Choose between Wayland and X11 backends. By default, an
 appropriate backend based on the system state is chosen
 automatically. Set it to :code:`x11` or :code:`wayland`
 to force the choice.'''))
-# }}}
-
-
-def to_subpixel_options(x):
-    x = x.lower()
-    if x == 'lcd':
-        return 1
-    if x == 'lcd_v':
-        return 2
-    return 0
-
-
-o('subpixel_rendering', 'none', option_type=to_subpixel_options, long_text=_('''
-Use subpixel rendering instead of grayscale in freetype. Impacts performance,
-but may look better on low DPI screens. Possible values are :code:`none`,
-:code:`lcd`, and :code:`lcd_v`.
-'''))
 # }}}
 
 g('shortcuts')  # {{{
