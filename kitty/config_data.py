@@ -391,6 +391,11 @@ Use negative numbers to change scroll direction.'''))
 
 g('mouse')  # {{{
 
+o('mouse_hide_wait', 3.0, option_type=float, long_text=_('''
+Hide mouse cursor after the specified number of seconds
+of the mouse not being used. Set to zero to disable mouse cursor hiding.
+Set to a negative value to hide the mouse cursor immediately when typing text.'''))
+
 o('url_color', '#0087bd', option_type=to_color, long_text=_('''
 The color and style for highlighting URLs on mouse-over.
 :code:`url_style` can be one of: none, single, double, curly'''))
@@ -459,11 +464,6 @@ database will be matched.'''))
 o('click_interval', -1.0, option_type=float, long_text=_('''
 The interval between successive clicks to detect double/triple clicks (in seconds).
 Negative numbers will use the system default instead, if available, or fallback to 0.5.'''))
-
-o('mouse_hide_wait', 3.0, option_type=float, long_text=_('''
-Hide mouse cursor after the specified number of seconds
-of the mouse not being used. Set to zero to disable mouse cursor hiding.
-Set to a negative value to hide the mouse cursor immediately when typing text.'''))
 
 o('focus_follows_mouse', False, long_text=_('''
 Set the active window to the window under the mouse when
