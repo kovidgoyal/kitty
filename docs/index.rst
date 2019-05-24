@@ -60,6 +60,7 @@ You can also use your favorite package manager to install the |kitty| package.
 |kitty| packages are available for:
 `macOS with Homebrew (Cask) <https://formulae.brew.sh/cask/kitty>`_,
 `macOS and Linux with Nix <https://nixos.org/nixos/packages.html#kitty>`_,
+`Ubuntu <https://launchpad.net/ubuntu/+source/kitty>`_,
 `Debian <https://packages.debian.org/buster/kitty>`_,
 `openSUSE <https://build.opensuse.org/package/show/X11:terminals/kitty>`_,
 `Arch Linux <https://www.archlinux.org/packages/community/x86_64/kitty/>`_,
