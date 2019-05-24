@@ -762,6 +762,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x01\x1d";
                   case 47: // GRAVE_ACCENT
                     return "\x01\x00";
+                  case 51: // UNDERSCORE
+                    return "\x01\x00";
                   case 52: // ESCAPE
                     return "\x01\x1b";
                   case 53: // ENTER
@@ -1036,6 +1038,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x02\x1b\x5d";
                   case 47: // GRAVE_ACCENT
                     return "\x02\x1b\x60";
+                  case 51: // UNDERSCORE
+                    return "\x02\x1b\x5f";
                   case 52: // ESCAPE
                     return "\x02\x1b\x1b";
                   case 53: // ENTER
@@ -1189,6 +1193,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x02\x1b\x7d";
                   case 47: // GRAVE_ACCENT
                     return "\x02\x1b\x7e";
+                  case 51: // UNDERSCORE
+                    return "\x02\x1b\x5f";
                   case 52: // ESCAPE
                     return "\x02\x1b\x1b";
                   case 53: // ENTER
@@ -2421,6 +2427,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x01\x1d";
                   case 47: // GRAVE_ACCENT
                     return "\x01\x00";
+                  case 51: // UNDERSCORE
+                    return "\x01\x00";
                   case 52: // ESCAPE
                     return "\x01\x1b";
                   case 53: // ENTER
@@ -2695,6 +2703,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x02\x1b\x5d";
                   case 47: // GRAVE_ACCENT
                     return "\x02\x1b\x60";
+                  case 51: // UNDERSCORE
+                    return "\x02\x1b\x5f";
                   case 52: // ESCAPE
                     return "\x02\x1b\x1b";
                   case 53: // ENTER
@@ -2848,6 +2858,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x02\x1b\x7d";
                   case 47: // GRAVE_ACCENT
                     return "\x02\x1b\x7e";
+                  case 51: // UNDERSCORE
+                    return "\x02\x1b\x5f";
                   case 52: // ESCAPE
                     return "\x02\x1b\x1b";
                   case 53: // ENTER
@@ -4089,6 +4101,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x01\x1d";
                     case 47: // GRAVE_ACCENT
                       return "\x01\x00";
+                    case 51: // UNDERSCORE
+                      return "\x01\x00";
                     case 52: // ESCAPE
                       return "\x01\x1b";
                     case 53: // ENTER
@@ -4363,6 +4377,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x02\x1b\x5d";
                     case 47: // GRAVE_ACCENT
                       return "\x02\x1b\x60";
+                    case 51: // UNDERSCORE
+                      return "\x02\x1b\x5f";
                     case 52: // ESCAPE
                       return "\x02\x1b\x1b";
                     case 53: // ENTER
@@ -4516,6 +4532,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x02\x1b\x7d";
                     case 47: // GRAVE_ACCENT
                       return "\x02\x1b\x7e";
+                    case 51: // UNDERSCORE
+                      return "\x02\x1b\x5f";
                     case 52: // ESCAPE
                       return "\x02\x1b\x1b";
                     case 53: // ENTER
@@ -5748,6 +5766,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x01\x1d";
                     case 47: // GRAVE_ACCENT
                       return "\x01\x00";
+                    case 51: // UNDERSCORE
+                      return "\x01\x00";
                     case 52: // ESCAPE
                       return "\x01\x1b";
                     case 53: // ENTER
@@ -6022,6 +6042,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x02\x1b\x5d";
                     case 47: // GRAVE_ACCENT
                       return "\x02\x1b\x60";
+                    case 51: // UNDERSCORE
+                      return "\x02\x1b\x5f";
                     case 52: // ESCAPE
                       return "\x02\x1b\x1b";
                     case 53: // ENTER
@@ -6175,6 +6197,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x02\x1b\x7d";
                     case 47: // GRAVE_ACCENT
                       return "\x02\x1b\x7e";
+                    case 51: // UNDERSCORE
+                      return "\x02\x1b\x5f";
                     case 52: // ESCAPE
                       return "\x02\x1b\x1b";
                     case 53: // ENTER
@@ -7153,6 +7177,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x41\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x41\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x41\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x41\x79";
                       case 54: // TAB
@@ -7292,6 +7318,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x42\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x42\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x42\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x42\x79";
                       case 53: // ENTER
@@ -7531,6 +7559,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x45\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x45\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x45\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x45\x79";
                       case 53: // ENTER
@@ -7770,6 +7800,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x46\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x46\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x46\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x46\x79";
                       case 53: // ENTER
@@ -8009,6 +8041,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x43\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x43\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x43\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x43\x79";
                       case 53: // ENTER
@@ -8248,6 +8282,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x44\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x44\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x44\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x44\x79";
                       case 53: // ENTER
@@ -8487,6 +8523,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x47\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x47\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x47\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x47\x79";
                       case 53: // ENTER
@@ -8726,6 +8764,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x48\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x48\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x48\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x48\x79";
                       case 53: // ENTER
@@ -8965,6 +9005,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x49\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x49\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x49\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x49\x79";
                       case 53: // ENTER
@@ -9204,6 +9246,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x4a\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x4a\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x4a\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x4a\x79";
                       case 53: // ENTER
@@ -9443,6 +9487,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x4d\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x4d\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x4d\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x4d\x79";
                       case 53: // ENTER
@@ -9682,6 +9728,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x4e\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x4e\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x4e\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x4e\x79";
                       case 53: // ENTER
@@ -9921,6 +9969,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x4b\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x4b\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x4b\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x4b\x79";
                       case 53: // ENTER
@@ -10160,6 +10210,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x4c\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x4c\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x4c\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x4c\x79";
                       case 53: // ENTER
@@ -10399,6 +10451,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x4f\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x4f\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x4f\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x4f\x79";
                       case 53: // ENTER
@@ -10638,6 +10692,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x72\x50\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x72\x50\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x72\x50\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x72\x50\x79";
                       case 53: // ENTER
@@ -10786,6 +10842,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x41\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x41\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x41\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x41\x79";
                       case 53: // ENTER
@@ -10929,6 +10987,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x42\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x42\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x42\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x42\x79";
                       case 53: // ENTER
@@ -11168,6 +11228,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x45\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x45\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x45\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x45\x79";
                       case 53: // ENTER
@@ -11407,6 +11469,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x46\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x46\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x46\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x46\x79";
                       case 53: // ENTER
@@ -11646,6 +11710,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x43\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x43\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x43\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x43\x79";
                       case 53: // ENTER
@@ -11885,6 +11951,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x44\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x44\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x44\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x44\x79";
                       case 53: // ENTER
@@ -12124,6 +12192,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x47\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x47\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x47\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x47\x79";
                       case 53: // ENTER
@@ -12363,6 +12433,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x48\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x48\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x48\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x48\x79";
                       case 53: // ENTER
@@ -12602,6 +12674,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x49\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x49\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x49\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x49\x79";
                       case 53: // ENTER
@@ -12841,6 +12915,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x4a\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x4a\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x4a\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x4a\x79";
                       case 53: // ENTER
@@ -13080,6 +13156,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x4d\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x4d\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x4d\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x4d\x79";
                       case 53: // ENTER
@@ -13319,6 +13397,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x4e\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x4e\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x4e\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x4e\x79";
                       case 53: // ENTER
@@ -13558,6 +13638,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x4b\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x4b\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x4b\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x4b\x79";
                       case 53: // ENTER
@@ -13797,6 +13879,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x4c\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x4c\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x4c\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x4c\x79";
                       case 53: // ENTER
@@ -14036,6 +14120,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x4f\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x4f\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x4f\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x4f\x79";
                       case 53: // ENTER
@@ -14275,6 +14361,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x70\x50\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x70\x50\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x70\x50\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x70\x50\x79";
                       case 53: // ENTER
@@ -14423,6 +14511,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x41\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x41\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x41\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x41\x79";
                       case 53: // ENTER
@@ -14566,6 +14656,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x42\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x42\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x42\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x42\x79";
                       case 53: // ENTER
@@ -14805,6 +14897,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x45\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x45\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x45\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x45\x79";
                       case 53: // ENTER
@@ -15044,6 +15138,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x46\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x46\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x46\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x46\x79";
                       case 53: // ENTER
@@ -15283,6 +15379,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x43\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x43\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x43\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x43\x79";
                       case 53: // ENTER
@@ -15522,6 +15620,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x44\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x44\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x44\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x44\x79";
                       case 53: // ENTER
@@ -15761,6 +15861,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x47\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x47\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x47\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x47\x79";
                       case 53: // ENTER
@@ -16000,6 +16102,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x48\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x48\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x48\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x48\x79";
                       case 53: // ENTER
@@ -16239,6 +16343,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x49\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x49\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x49\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x49\x79";
                       case 53: // ENTER
@@ -16478,6 +16584,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x4a\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x4a\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x4a\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x4a\x79";
                       case 53: // ENTER
@@ -16717,6 +16825,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x4d\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x4d\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x4d\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x4d\x79";
                       case 53: // ENTER
@@ -16956,6 +17066,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x4e\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x4e\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x4e\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x4e\x79";
                       case 53: // ENTER
@@ -17195,6 +17307,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x4b\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x4b\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x4b\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x4b\x79";
                       case 53: // ENTER
@@ -17434,6 +17548,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x4c\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x4c\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x4c\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x4c\x79";
                       case 53: // ENTER
@@ -17673,6 +17789,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x4f\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x4f\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x4f\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x4f\x79";
                       case 53: // ENTER
@@ -17912,6 +18030,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                         return "\x04\x4b\x74\x50\x78";
                       case 50: // PLUS
                         return "\x05\x4b\x74\x50\x42\x69";
+                      case 51: // UNDERSCORE
+                        return "\x05\x4b\x74\x50\x42\x6a";
                       case 52: // ESCAPE
                         return "\x04\x4b\x74\x50\x79";
                       case 53: // ENTER
