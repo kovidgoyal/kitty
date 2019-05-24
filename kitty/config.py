@@ -24,6 +24,7 @@ named_keys = {
     "'": 'APOSTROPHE',
     ',': 'COMMA',
     '-': 'MINUS',
+    '_': 'UNDERSCORE',
     '.': 'PERIOD',
     '/': 'SLASH',
     ';': 'SEMICOLON',

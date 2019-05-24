@@ -47,6 +47,7 @@
         S(backslash, BACKSLASH); \
         S(bracketright, RIGHT_BRACKET); \
         S(plus, PLUS); \
+        S(underscore, UNDERSCORE); \
         S(grave, GRAVE_ACCENT); \
         S(Escape, ESCAPE); \
         S(Return, ENTER); \

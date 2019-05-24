@@ -167,6 +167,7 @@
 #define GLFW_KEY_WORLD_1            161 /* non-US #1 */
 #define GLFW_KEY_WORLD_2            162 /* non-US #2 */
 #define GLFW_KEY_PLUS               163
+#define GLFW_KEY_UNDERSCORE         164
 
 /* Function keys */
 #define GLFW_KEY_ESCAPE             256

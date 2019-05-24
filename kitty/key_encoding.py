@@ -128,7 +128,8 @@ ENCODING = {
     'X': 'p',
     'Y': 'q',
     'Z': 'r',
-    'PLUS': 'Bi'
+    'PLUS': 'Bi',
+    'UNDERSCORE': 'Bj'
 }
 KEY_MAP = {
     32: 'A',
@@ -182,6 +183,7 @@ KEY_MAP = {
     161: 'w',
     162: 'x',
     163: 'Bi',
+    164: 'Bj',
     256: 'y',
     257: 'z',
     258: '0',

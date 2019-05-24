@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.14.1 [future]
+---------------------
+
+- Add support for the underscore key found in some keyboard layouts
+  (:iss:`1639`)
+
+
 0.14.0 [2019-05-24]
 ---------------------
 
