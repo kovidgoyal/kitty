@@ -290,7 +290,7 @@ get_glyph_width(PyObject *s, glyph_index g) {
 #define B self->face->glyph->bitmap
     /* printf("glyph: %u bitmap.width: %d bitmap.rows: %d horiAdvance: %ld horiBearingX: %ld horiBearingY: %ld vertBearingX: %ld vertBearingY: %ld vertAdvance: %ld width: %ld height: %ld\n", */
     /*         g, B.width, B.rows, M.horiAdvance, M.horiBearingX, M.horiBearingY, M.vertBearingX, M.vertBearingY, M.vertAdvance, M.width, M.height); */
-    return B.width ? B.width : (M.width / 64);
+    return B.width ? (int)B.width : (int)(M.width / 64);
 #undef M
 #undef B
 }
