@@ -444,17 +444,23 @@ void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor)
 
 void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos)
 {
+    @autoreleasepool {
+
     const CGRect bounds = CGDisplayBounds(monitor->ns.displayID);
 
     if (xpos)
         *xpos = (int) bounds.origin.x;
     if (ypos)
         *ypos = (int) bounds.origin.y;
+
+    } // autoreleasepool
 }
 
 void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
                                          float* xscale, float* yscale)
 {
+    @autoreleasepool {
+
     if (!refreshMonitorScreen(monitor))
         return;
 
@@ -465,10 +471,14 @@ void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
         *xscale = (float) (pixels.size.width / points.size.width);
     if (yscale)
         *yscale = (float) (pixels.size.height / points.size.height);
+
+    } // autoreleasepool
 }
 
 void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor, int* xpos, int* ypos, int *width, int *height)
 {
+    @autoreleasepool {
+
     if (!refreshMonitorScreen(monitor))
         return;
 
@@ -483,10 +493,13 @@ void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor, int* xpos, int* ypos
     if (height)
         *height = frameRect.size.height;
 
+    } // autoreleasepool
 }
 
 GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count)
 {
+    @autoreleasepool {
+
     CFArrayRef modes;
     CFIndex found, i, j;
     GLFWvidmode* result;
@@ -525,10 +538,14 @@ GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count)
     CFRelease(modes);
     CVDisplayLinkRelease(link);
     return result;
+
+    } // autoreleasepool
 }
 
 void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode *mode)
 {
+    @autoreleasepool {
+
     CGDisplayModeRef displayMode;
     CVDisplayLinkRef link;
 
@@ -539,10 +556,14 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode *mode)
     CGDisplayModeRelease(displayMode);
 
     CVDisplayLinkRelease(link);
+
+    } // autoreleasepool
 }
 
 GLFWbool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
 {
+    @autoreleasepool {
+
     uint32_t i, size = CGDisplayGammaTableCapacity(monitor->ns.displayID);
     CGGammaValue* values = calloc(size * 3, sizeof(CGGammaValue));
 
@@ -564,10 +585,14 @@ GLFWbool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
 
     free(values);
     return GLFW_TRUE;
+
+    } // autoreleasepool
 }
 
 void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
 {
+    @autoreleasepool {
+
     int i;
     CGGammaValue* values = calloc(ramp->size * 3, sizeof(CGGammaValue));
 
@@ -585,6 +610,8 @@ void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
                                 values + ramp->size * 2);
 
     free(values);
+
+    } // autoreleasepool
 }
 
 
