@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.14.0 [future]
+0.14.0 [2019-05-24]
 ---------------------
 
 - macOS: The default behavior of the Option key has changed. It now generates
