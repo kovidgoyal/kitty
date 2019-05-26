@@ -59,14 +59,6 @@ vec4 blend_onto_opaque_premul(vec3 over, float over_alpha, vec3 under) {
     // with alpha 1 which is effectively pre-multiplied since alpha is 1
     return vec4(premul_blend(over, over_alpha, under), 1.0);
 }
-
-float max3(vec3 v) {
-    return max(max(v.r, v.g), v.b);
-}
-
-float rgb_to_grayscale(vec3 color) {
-    return dot(vec3(0.3, 0.59, 0.11), color);
-}
 // }}}
 
 
@@ -107,7 +99,7 @@ vec4 calculate_foreground() {
 #ifdef TRANSPARENT
     // According to https://stackoverflow.com/questions/33507617/blending-text-rendered-by-freetype-in-color-and-alpha
     // it's impossible to precisely blend it if we use RGBA. Hence, the following hack is used.
-    float alpha = rgb_to_grayscale(text_fg.rgb); // Grayscale looks much nicer than max3
+    float alpha = text_fg.g; // TODO: Cairo uses green channel when converts FreeType's subpixel to ARGB
     vec3 scaled_mask = mix(vec3(1.0), text_fg.rgb / alpha, bvec3(alpha > 0)); // TODO: May get not normalized values?
     vec3 blended_fg = mix(background * bg_alpha * bg_alpha, foreground, scaled_mask); // TODO: Check whether we should multiply by bg_alpha
     float text_alpha = mix(text_fg.a, alpha, subpixel);
