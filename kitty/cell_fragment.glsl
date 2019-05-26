@@ -98,7 +98,7 @@ vec4 calculate_foreground() {
     vec4 text_fg = texture(sprites, sprite_pos);
 #ifdef SUBPIXEL
     vec3 unblended_fg = mix(foreground, text_fg.rgb, colored_sprite);
-    vec3 blended_fg = mix(background, unblended_fg, text_fg.rgb);
+    vec3 blended_fg = mix(background, foreground, text_fg.rgb);
     vec3 fg = mix(unblended_fg, blended_fg, subpixel);
 #else
     vec3 fg = mix(foreground, text_fg.rgb, colored_sprite);
