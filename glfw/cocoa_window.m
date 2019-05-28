@@ -924,9 +924,8 @@ is_ascii_control_char(char x) {
         }
     }
     if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
-    debug_key(@"text: %s glfw_key: %s\n",
-            format_text(_glfw.ns.text), _glfwGetKeyName(key));
-    debug_key(@"marked text: %@", markedText);
+    debug_key(@"text: %s glfw_key: %s marked_text: %@\n",
+            format_text(_glfw.ns.text), _glfwGetKeyName(key), markedText);
     if (!window->ns.deadKeyState) {
         if ([self hasMarkedText]) {
             _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
