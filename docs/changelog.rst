@@ -17,6 +17,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   to occasionally freeze in certain situations, such as moving it between
   monitors or transitioning from/to fullscreen (:iss:`1641`)
 
+- macOS: Fix a regression that caused :kbd:`cmd+v` to double up in the dvorak
+  keyboard layout (:iss:`1652`)
+
 
 0.14.0 [2019-05-24]
 ---------------------

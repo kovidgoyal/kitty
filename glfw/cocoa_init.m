@@ -319,7 +319,9 @@ is_ctrl_tab(NSEvent *event, NSEventModifierFlags modifierFlags) {
 
 static inline bool
 is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
-    return event.keyCode == kVK_ANSI_Period && modifierFlags == NSEventModifierFlagCommand;
+    if (modifierFlags != NSEventModifierFlagCommand) return false;
+    if ([event.charactersIgnoringModifiers isEqualToString:@"."]) return true;
+    return false;
 }
 
 int _glfwPlatformInit(void)
