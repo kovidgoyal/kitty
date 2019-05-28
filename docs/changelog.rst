@@ -10,6 +10,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add support for the underscore key found in some keyboard layouts
   (:iss:`1639`)
 
+- Fix a missing newline when using the pipe command between the
+  scrollback and screen contents (:iss:`1642`)
+
 
 0.14.0 [2019-05-24]
 ---------------------
