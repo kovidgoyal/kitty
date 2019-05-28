@@ -899,11 +899,13 @@ is_ascii_control_char(char x) {
                     &char_count,
                     text
                     ) != noErr) {
-            debug_key(@"UCKeyTranslate failed for scancode: 0x%x (%s) %s\n", scancode, safe_name_for_scancode(scancode), format_mods(mods));
+            debug_key(@"UCKeyTranslate failed for scancode: 0x%x (%s) %s\n",
+                    scancode, safe_name_for_scancode(scancode), format_mods(mods));
             window->ns.deadKeyState = 0;
             return;
         }
-        debug_key(@"scancode: 0x%x (%s) %schar_count: %lu deadKeyState: %u ", scancode, safe_name_for_scancode(scancode), format_mods(mods), char_count, window->ns.deadKeyState);
+        debug_key(@"scancode: 0x%x (%s) %schar_count: %lu deadKeyState: %u repeat: %d",
+                scancode, safe_name_for_scancode(scancode), format_mods(mods), char_count, window->ns.deadKeyState, event.ARepeat);
         if (process_text) {
             // this will call insertText which will fill up _glfw.ns.text
             [self interpretKeyEvents:[NSArray arrayWithObject:event]];
