@@ -366,6 +366,7 @@ void _glfwPollMonitorsNS(void)
 
     free(disconnected);
     free(displays);
+    _glfwRestartDisplayLinks();
 }
 
 // Change the current video mode

@@ -13,6 +13,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a missing newline when using the pipe command between the
   scrollback and screen contents (:iss:`1642`)
 
+- macOS: Fix a regression that could cause rendering of a kitty window
+  to occasionally freeze in certain situations, such as moving it between
+  monitors or transitioning from/to fullscreen (:iss:`1641`)
+
 
 0.14.0 [2019-05-24]
 ---------------------

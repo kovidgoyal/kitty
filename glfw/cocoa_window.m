@@ -53,6 +53,51 @@ static NSUInteger getStyleMask(_GLFWwindow* window)
     return styleMask;
 }
 
+
+CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
+    NSWindow *nw = w->ns.object;
+    NSDictionary *dict = [nw.screen deviceDescription];
+    NSNumber *displayIDns = [dict objectForKey:@"NSScreenNumber"];
+    if (displayIDns) return [displayIDns unsignedIntValue];
+    return (CGDirectDisplayID)-1;
+}
+
+
+static inline void
+requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
+    if (!callback) {
+        w->ns.renderFrameRequested = GLFW_FALSE;
+        w->ns.renderFrameCallback = NULL;
+        return;
+    }
+    w->ns.renderFrameCallback = callback;
+    w->ns.renderFrameRequested = GLFW_TRUE;
+    CGDirectDisplayID displayID = displayIDForWindow(w);
+    [_glfw.ns.displayLinks.lock lock];
+    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
+        _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
+        if (dl->displayID == displayID) {
+            dl->renderFrameRequested = GLFW_TRUE;
+            if (!dl->displayLinkStarted) {
+                CVDisplayLinkStart(dl->displayLink);
+                dl->displayLinkStarted = GLFW_TRUE;
+            }
+            break;
+        }
+    }
+    [_glfw.ns.displayLinks.lock unlock];
+}
+
+void
+_glfwRestartDisplayLinks(void) {
+    _GLFWwindow* window;
+    for (window = _glfw.windowListHead;  window;  window = window->next) {
+        if (window->ns.renderFrameRequested && window->ns.renderFrameCallback) {
+            requestRenderFrame(window, window->ns.renderFrameCallback);
+        }
+    }
+}
+
 // Returns whether the cursor is in the content area of the specified window
 //
 static GLFWbool cursorInContentArea(_GLFWwindow* window)
@@ -453,6 +498,16 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     _glfwInputWindowFocus(window, GLFW_FALSE);
 }
 
+- (void)windowDidChangeScreen:(NSNotification *)notification
+{
+    if (window->ns.renderFrameRequested && window->ns.renderFrameCallback) {
+        // Ensure that if the window changed its monitor, CVDisplayLink
+        // is running for the new monitor
+        requestRenderFrame(window, window->ns.renderFrameCallback);
+    }
+}
+
+
 @end
 
 
@@ -591,7 +646,6 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 {
     _glfwInputLiveResize(window, false);
 }
-
 
 - (BOOL)wantsUpdateLayer
 {
@@ -1774,14 +1828,6 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
     [window->ns.object setAlphaValue:opacity];
 }
 
-CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
-    NSWindow *nw = w->ns.object;
-    NSDictionary *dict = [nw.screen deviceDescription];
-    NSNumber *displayIDns = [dict objectForKey:@"NSScreenNumber"];
-    if (displayIDns) return [displayIDns unsignedIntValue];
-    return (CGDirectDisplayID)-1;
-}
-
 void
 _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
     _GLFWwindow *w = _glfw.windowListHead;
@@ -1792,31 +1838,6 @@ _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
         }
         w = w->next;
     }
-}
-
-static inline void
-requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
-    if (!callback) {
-        w->ns.renderFrameRequested = GLFW_FALSE;
-        w->ns.renderFrameCallback = NULL;
-        return;
-    }
-    w->ns.renderFrameCallback = callback;
-    w->ns.renderFrameRequested = GLFW_TRUE;
-    CGDirectDisplayID displayID = displayIDForWindow(w);
-    [_glfw.ns.displayLinks.lock lock];
-    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
-        _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
-        if (dl->displayID == displayID) {
-            dl->renderFrameRequested = GLFW_TRUE;
-            if (!dl->displayLinkStarted) {
-                CVDisplayLinkStart(dl->displayLink);
-                dl->displayLinkStarted = GLFW_TRUE;
-            }
-            break;
-        }
-    }
-    [_glfw.ns.displayLinks.lock unlock];
 }
 
 void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start)
