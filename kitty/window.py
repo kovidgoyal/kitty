@@ -123,8 +123,8 @@ def text_sanitizer(as_ansi, add_wrap_markers):
     def remove_both(line):
         return pat.sub('', line.replace('\r', ''))
 
-    if as_ansi:
-        return remove_both if add_wrap_markers else remove_sgr
+    if not as_ansi:
+        return remove_both if not add_wrap_markers else remove_sgr
     return remove_wrap_markers
 
 

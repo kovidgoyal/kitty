@@ -874,7 +874,7 @@ class Boss:
                         'KITTY_PIPE_DATA':
                         '{scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}'.format(**pipe_data)
                     }
-                stdin = stdin.encode('utf-8')
+                    stdin = pipe_data['text']
         return env, stdin
 
     def special_window_for_cmd(self, cmd, window=None, stdin=None, cwd_from=None, as_overlay=False):
