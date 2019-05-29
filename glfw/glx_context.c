@@ -226,8 +226,6 @@ static GLFWglproc getProcAddressGLX(const char* procname)
         return _glfw_dlsym(_glfw.glx.handle, procname);
 }
 
-// Destroy the OpenGL context
-//
 static void destroyContextGLX(_GLFWwindow* window)
 {
     if (window->context.glx.window)
@@ -695,4 +693,3 @@ GLFWAPI GLXWindow glfwGetGLXWindow(GLFWwindow* handle)
 
     return window->context.glx.window;
 }
-

@@ -71,8 +71,6 @@ static GLFWglproc getProcAddressNSGL(const char* procname)
     return symbol;
 }
 
-// Destroy the OpenGL context
-//
 static void destroyContextNSGL(_GLFWwindow* window)
 {
     [window->context.nsgl.pixelFormat release];
