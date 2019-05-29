@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.14.1 [future]
+0.14.1 [2019-05-29]
 ---------------------
 
 - Add an option :opt:`command_on_bell` to run an arbitrary command when
