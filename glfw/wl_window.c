@@ -551,6 +551,12 @@ static void xdgToplevelHandleConfigure(void* data,
         }
     }
     window->wl.fullscreened = fullscreen;
+    if (maximized && !fullscreen) {
+        if (window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.buffer) {
+            width -= _GLFW_DECORATION_HORIZONTAL;
+            height -= _GLFW_DECORATION_VERTICAL;
+        }
+    }
     dispatchChangesAfterConfigure(window, width, height);
     _glfwInputWindowFocus(window, activated);
 }

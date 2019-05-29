@@ -34,6 +34,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Automatically increase cell height if the font being used is broken
   and draws the underscore outside the bounding box (:iss:`690`)
 
+- Wayland: Fix maximizing the window on a compositor that does not provide
+  server side window decorations, such a GNOME or Weston not working
+  (:iss:`1662`)
+
 
 0.14.0 [2019-05-24]
 ---------------------
