@@ -214,7 +214,7 @@ void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);
 void send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
-void blank_canvas(float);
+void blank_canvas(float, color_type);
 void blank_os_window(OSWindow *);
 void set_titlebar_color(OSWindow *w, color_type color);
 FONTS_DATA_HANDLE load_fonts_data(double, double, double);

@@ -476,8 +476,8 @@ set_cell_uniforms(float current_inactive_text_alpha) {
 }
 
 void
-blank_canvas(float background_opacity) {
-#define C(shift) (((GLfloat)((OPT(background) >> shift) & 0xFF)) / 255.0f)
+blank_canvas(float background_opacity, color_type color) {
+#define C(shift) (((GLfloat)((color >> shift) & 0xFF)) / 255.0f)
         glClearColor(C(16), C(8), C(0), background_opacity);
 #undef C
         glClear(GL_COLOR_BUFFER_BIT);

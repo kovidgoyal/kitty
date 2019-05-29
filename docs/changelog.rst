@@ -20,6 +20,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix a regression that caused :kbd:`cmd+v` to double up in the dvorak
   keyboard layout (:iss:`1652`)
 
+- When resizing and only a single window is present in the current layout,
+  use that window's background color to fill in the blank areas.
+
 
 0.14.0 [2019-05-24]
 ---------------------

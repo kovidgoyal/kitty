@@ -103,7 +103,18 @@ static int min_width = 100, min_height = 100;
 
 void
 blank_os_window(OSWindow *w) {
-    blank_canvas(w->is_semi_transparent ? w->background_opacity : 1.0f);
+    color_type color = OPT(background);
+    if (w->num_tabs > 0) {
+        Tab *t = w->tabs + w->active_tab;
+        if (t->num_windows == 1) {
+            Window *w = t->windows + t->active_window;
+            Screen *s = w->render_data.screen;
+            if (s) {
+                color = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg);
+            }
+        }
+    }
+    blank_canvas(w->is_semi_transparent ? w->background_opacity : 1.0f, color);
 }
 
 static void
@@ -513,7 +524,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     bool is_semi_transparent = glfwGetWindowAttrib(glfw_window, GLFW_TRANSPARENT_FRAMEBUFFER);
     // blank the window once so that there is no initial flash of color
     // changing, in case the background color is not black
-    blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f);
+    blank_canvas(is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
 #ifndef __APPLE__
     if (is_first_window) glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
