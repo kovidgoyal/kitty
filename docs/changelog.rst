@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a missing newline when using the pipe command between the
   scrollback and screen contents (:iss:`1642`)
 
+- Fix colors not being preserved when using the pipe command with
+  the pager history buffer (:pull:`1657`)
+
 - macOS: Fix a regression that could cause rendering of a kitty window
   to occasionally freeze in certain situations, such as moving it between
   monitors or transitioning from/to fullscreen (:iss:`1641`)

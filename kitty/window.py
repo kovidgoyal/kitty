@@ -111,8 +111,12 @@ def setup_colors(screen, opts):
 
 
 def text_sanitizer(as_ansi, add_wrap_markers):
-    import re
-    pat = re.compile(r'\033\[.+?m')
+    pat = getattr(text_sanitizer, 'pat', None)
+    if pat is None:
+        import re
+        pat = text_sanitizer.pat = re.compile(r'\033\[.+?m')
+
+    ansi, wrap_markers = not as_ansi, not add_wrap_markers
 
     def remove_wrap_markers(line):
         return line.replace('\r', '')
@@ -123,8 +127,8 @@ def text_sanitizer(as_ansi, add_wrap_markers):
     def remove_both(line):
         return pat.sub('', line.replace('\r', ''))
 
-    if as_ansi:
-        return remove_both if add_wrap_markers else remove_sgr
+    if ansi:
+        return remove_both if wrap_markers else remove_sgr
     return remove_wrap_markers
 
 
@@ -483,7 +487,7 @@ class Window:
         if add_history:
             h = []
             self.screen.historybuf.pagerhist_as_text(h.append)
-            if not as_ansi or not add_wrap_markers:
+            if h and (not as_ansi or not add_wrap_markers):
                 sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
                 h = list(map(sanitizer, h))
             self.screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
