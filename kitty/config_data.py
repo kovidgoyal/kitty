@@ -513,6 +513,9 @@ o('bell_on_tab', True, long_text=_('''
 Show a bell symbol on the tab if a bell occurs in one of the windows in the
 tab and the window is not the currently focused window'''))
 
+o('command_on_bell', 'none', option_type=to_cmdline, long_text=_('''
+Program to run when a bell occurs.
+'''))
 # }}}
 
 g('window')  # {{{

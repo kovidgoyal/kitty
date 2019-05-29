@@ -57,6 +57,13 @@ else:
         return ans
 
 
+def checked_terminfo_dir():
+    ans = getattr(checked_terminfo_dir, 'ans', None)
+    if ans is None:
+        ans = checked_terminfo_dir.ans = terminfo_dir if os.path.isdir(terminfo_dir) else None
+    return ans
+
+
 def processes_in_group(grp):
     gmap = getattr(process_group_map, 'cached_map', None)
     if gmap is None:
@@ -149,6 +156,23 @@ class Child:
         self.stdin = stdin
         self.env = env or {}
 
+    @property
+    def final_env(self):
+        env = getattr(self, '_final_env', None)
+        if env is None:
+            env = self._final_env = default_env().copy()
+            env.update(self.env)
+            env['TERM'] = self.opts.term
+            env['COLORTERM'] = 'truecolor'
+            if self.cwd:
+                # needed incase cwd is a symlink, in which case shells
+                # can use it to display the current directory name rather
+                # than the resolved path
+                env['PWD'] = self.cwd
+            if checked_terminfo_dir():
+                env['TERMINFO'] = checked_terminfo_dir()
+        return env
+
     def fork(self):
         if self.forked:
             return
@@ -164,17 +188,7 @@ class Child:
             remove_cloexec(stdin_read_fd)
         else:
             stdin_read_fd = stdin_write_fd = -1
-        env = default_env().copy()
-        env.update(self.env)
-        env['TERM'] = self.opts.term
-        env['COLORTERM'] = 'truecolor'
-        if self.cwd:
-            # needed incase cwd is a symlink, in which case shells
-            # can use it to display the current directory name rather
-            # than the resolved path
-            env['PWD'] = self.cwd
-        if os.path.isdir(terminfo_dir):
-            env['TERMINFO'] = terminfo_dir
+        env = self.final_env
         env = tuple('{}={}'.format(k, v) for k, v in env.items())
         argv = list(self.argv)
         exe = argv[0]

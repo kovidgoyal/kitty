@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.14.1 [future]
 ---------------------
 
+- Add an option :opt:`command_on_bell` to run an arbitrary command when
+  a bell occurs (:iss:`1660`)
+
 - Add support for the underscore key found in some keyboard layouts
   (:iss:`1639`)
 

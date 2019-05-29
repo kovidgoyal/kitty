@@ -306,6 +306,12 @@ class Window:
         return get_boss().active_window is self
 
     def on_bell(self):
+        if self.opts.command_on_bell and self.opts.command_on_bell != ['none']:
+            import subprocess
+            import shlex
+            env = self.child.final_env
+            env['KITTY_CHILD_CMDLINE'] = ' '.join(map(shlex.quote, self.child.cmdline))
+            subprocess.Popen(self.opts.command_on_bell, env=env, cwd=self.child.foreground_cwd)
         if not self.is_active:
             self.needs_attention = True
             tab = self.tabref()
