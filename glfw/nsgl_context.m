@@ -132,12 +132,6 @@ GLFWbool _glfwCreateContextNSGL(_GLFWwindow* window,
             return GLFW_FALSE;
         }
 
-        if (!ctxconfig->forward || ctxconfig->profile != GLFW_OPENGL_CORE_PROFILE)
-        {
-            _glfwInputError(GLFW_VERSION_UNAVAILABLE,
-                            "NSGL: The targeted version of macOS only supports forward-compatible core profile contexts for OpenGL 3.2 and above");
-            return GLFW_FALSE;
-        }
     }
 
     // Context robustness modes (GL_KHR_robustness) are not yet supported by
