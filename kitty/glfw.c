@@ -398,6 +398,20 @@ toggle_fullscreen_for_os_window(OSWindow *w) {
     return false;
 }
 
+static bool
+toggle_maximized_for_os_window(OSWindow *w) {
+    bool maximized = false;
+    if (w && w->handle) {
+        if (glfwGetWindowAttrib(w->handle, GLFW_MAXIMIZED)) {
+            glfwRestoreWindow(w->handle);
+        } else {
+            glfwMaximizeWindow(w->handle);
+            maximized = true;
+        }
+    }
+    return maximized;
+}
+
 
 #ifdef __APPLE__
 static int
@@ -844,6 +858,14 @@ toggle_fullscreen(PYNOARG) {
 }
 
 static PyObject*
+toggle_maximized(PYNOARG) {
+    OSWindow *w = current_os_window();
+    if (!w) Py_RETURN_NONE;
+    if (toggle_maximized_for_os_window(w)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
+static PyObject*
 change_os_window_state(PyObject *self UNUSED, PyObject *args) {
     char *state;
     if (!PyArg_ParseTuple(args, "s", &state)) return NULL;
@@ -1112,6 +1134,7 @@ static PyMethodDef module_methods[] = {
     METHODB(ring_bell, METH_NOARGS),
     METHODB(set_clipboard_string, METH_VARARGS),
     METHODB(toggle_fullscreen, METH_NOARGS),
+    METHODB(toggle_maximized, METH_NOARGS),
     METHODB(change_os_window_state, METH_VARARGS),
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(get_primary_selection, METH_NOARGS),

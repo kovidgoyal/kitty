@@ -24,7 +24,8 @@ from .fast_data_types import (
     change_os_window_state, create_os_window, current_os_window,
     destroy_global_data, get_clipboard_string, global_font_size,
     mark_os_window_for_close, os_window_font_size, patch_global_colors,
-    set_clipboard_string, set_in_sequence_mode, toggle_fullscreen
+    set_clipboard_string, set_in_sequence_mode, toggle_fullscreen,
+    toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout import set_draw_borders_options
@@ -360,6 +361,9 @@ class Boss:
 
     def toggle_fullscreen(self):
         toggle_fullscreen()
+
+    def toggle_maximized(self):
+        toggle_maximized()
 
     def start(self):
         if not getattr(self, 'io_thread_started', False):

@@ -187,6 +187,7 @@ Increase font size                  :sc:`increase_font_size` (also :kbd:`⌘++` 
 Decrease font size                  :sc:`decrease_font_size` (also :kbd:`⌘+-` on macOS)
 Restore font size                   :sc:`reset_font_size` (also :kbd:`⌘+0` on macOS)
 Toggle fullscreen                   :sc:`toggle_fullscreen` (also :kbd:`^+⌘+f` on macOS)
+Toggle maximized                    :sc:`toggle_maximized`
 Input unicode character             :sc:`input_unicode_character`
 Click URL using the keyboard        :sc:`open_url`
 Reset the terminal                  :sc:`reset_terminal`
