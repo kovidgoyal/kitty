@@ -75,8 +75,6 @@ set_freetype_error(const char* prefix, int err_code) {
 
 static FT_Library  library;
 
-#define CALC_CELL_HEIGHT(self) font_units_to_pixels_y(self, self->height)
-
 static inline int
 font_units_to_pixels_y(Face *self, int x) {
     return ceil((double)FT_MulFix(x, self->face->size->metrics.y_scale) / 64.0);
@@ -87,11 +85,56 @@ font_units_to_pixels_x(Face *self, int x) {
     return ceil((double)FT_MulFix(x, self->face->size->metrics.x_scale) / 64.0);
 }
 
+
+static inline int
+get_load_flags(int hinting, int hintstyle, int base) {
+    int flags = base;
+    if (hinting) {
+        if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
+        else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
+    } else flags |= FT_LOAD_NO_HINTING;
+    return flags;
+}
+
+
+static inline bool
+load_glyph(Face *self, int glyph_index, int load_type) {
+    int flags = get_load_flags(self->hinting, self->hintstyle, load_type);
+    int error = FT_Load_Glyph(self->face, glyph_index, flags);
+    if (error) { set_freetype_error("Failed to load glyph, with error:", error); return false; }
+    return true;
+}
+
+static inline unsigned int
+get_height_for_char(Face *self, char ch) {
+    unsigned int ans = 0;
+    int glyph_index = FT_Get_Char_Index(self->face, ch);
+    if (load_glyph(self, glyph_index, FT_LOAD_DEFAULT)) {
+        unsigned int baseline = font_units_to_pixels_y(self, self->ascender);
+        FT_GlyphSlotRec *glyph = self->face->glyph;
+        FT_Bitmap *bm = &glyph->bitmap;
+        if (glyph->bitmap_top <= 0 || (glyph->bitmap_top > 0 && (unsigned int)glyph->bitmap_top < baseline)) {
+            ans = baseline - glyph->bitmap_top + bm->rows;
+        }
+    }
+    return ans;
+}
+
+static inline unsigned int
+calc_cell_height(Face *self, bool for_metrics) {
+    unsigned int ans = font_units_to_pixels_y(self, self->height);
+    unsigned int underscore_height = get_height_for_char(self, '_');
+    if (for_metrics && global_state.debug_font_fallback && underscore_height > ans) {
+        printf("Increasing cell height by %u pixels to work around buggy font that renders underscore outside the bounding box\n", underscore_height - ans);
+    }
+    return MAX(ans, underscore_height);
+}
+
 static inline bool
 set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt xdpi, FT_UInt ydpi, unsigned int desired_height, unsigned int cell_height) {
     int error = FT_Set_Char_Size(self->face, 0, char_height, xdpi, ydpi);
     if (!error) {
-        unsigned int ch = CALC_CELL_HEIGHT(self);
+        unsigned int ch = calc_cell_height(self, false);
         if (desired_height && ch != desired_height) {
             FT_F26Dot6 h = floor((double)char_height * (double)desired_height / (double) ch);
             return set_font_size(self, 0, h, xdpi, ydpi, 0, cell_height);
@@ -146,17 +189,6 @@ set_size_for_face(PyObject *s, unsigned int desired_height, bool force, FONTS_DA
     ((Face*)self)->size_in_pts = fg->font_sz_in_pts;
     return set_font_size(self, w, w, xdpi, ydpi, desired_height, fg->cell_height);
 }
-
-static inline int
-get_load_flags(int hinting, int hintstyle, int base) {
-    int flags = base;
-    if (hinting) {
-        if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
-        else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
-    } else flags |= FT_LOAD_NO_HINTING;
-    return flags;
-}
-
 
 static inline bool
 init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_HANDLE fg) {
@@ -236,14 +268,6 @@ repr(Face *self) {
 }
 
 
-static inline bool
-load_glyph(Face *self, int glyph_index, int load_type) {
-    int flags = get_load_flags(self->hinting, self->hintstyle, load_type);
-    int error = FT_Load_Glyph(self->face, glyph_index, flags);
-    if (error) { set_freetype_error("Failed to load glyph, with error:", error); return false; }
-    return true;
-}
-
 static inline unsigned int
 calc_cell_width(Face *self) {
     unsigned int ans = 0;
@@ -260,7 +284,7 @@ void
 cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness) {
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
-    *cell_height = CALC_CELL_HEIGHT(self);
+    *cell_height = calc_cell_height(self, true);
     *baseline = font_units_to_pixels_y(self, self->ascender);
     *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->underline_position)));
     *underline_thickness = MAX(1, font_units_to_pixels_y(self, self->underline_thickness));

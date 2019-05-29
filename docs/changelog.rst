@@ -29,6 +29,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When resizing and only a single window is present in the current layout,
   use that window's background color to fill in the blank areas.
 
+- Linux: Automatically increase cell height if the font being used is broken
+  and draws the underscore outside the bounding box (:iss:`690`)
+
 
 0.14.0 [2019-05-24]
 ---------------------
