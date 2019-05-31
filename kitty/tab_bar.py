@@ -49,8 +49,9 @@ def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length, in
         screen.draw(' ' * draw_data.trailing_spaces)
     extra = screen.cursor.x - before - max_title_length
     if extra > 0:
-        screen.cursor.x -= extra + 1
+        screen.cursor.x -= extra - draw_data.trailing_spaces + 1
         screen.draw('…')
+        screen.draw(' ' * draw_data.trailing_spaces)
     end = screen.cursor.x
     screen.cursor.bold = screen.cursor.italic = False
     screen.cursor.fg = screen.cursor.bg = 0
