@@ -111,3 +111,9 @@ without needing to install all of |kitty|.
 
 This applies to creating packages for |kitty| for macOS package managers such as
 brew or MacPorts as well.
+
+
+.. note::
+        |kitty| has its own update check mechanism, if you would like to turn
+        it off for your package, change the default value of
+        :opt:`update_check_interval` to zero.
