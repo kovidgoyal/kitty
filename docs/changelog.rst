@@ -9,7 +9,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - hints kitten: Add a :option:`kitty +kitten hints --multiple-joiner` option to
   control how multiple selections are serialized when copying to clipboard
-  or inserting into the terminal. You can have them one separate lines,
+  or inserting into the terminal. You can have them on separate lines,
   separated by arbitrary characters, or even serialized as JSON (:iss:`1665`)
 
 
