@@ -558,6 +558,10 @@ value :code:`all` means all layouts. The first listed layout will be used as the
 startup layout. For a list of available layouts, see the :ref:`layouts`.
 '''))
 
+o('align_top_left', False, long_text=_('''
+Align terminal to the top left corner, i.e. put padding on the bottom and right. Default is centered.
+'''))
+
 o('window_resize_step_cells', 2, option_type=positive_int, long_text=_('''
 The step size (in units of cell width/cell height) to use when resizing
 windows. The cells value is used for horizontal resizing and the lines value
