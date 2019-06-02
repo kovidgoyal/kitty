@@ -346,7 +346,6 @@ int _glfwPlatformInit(void)
         NSEventModifierFlags modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
         if (is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
             // Cocoa swallows Ctrl+Tab to cycle between views
-            NSLog(@"1111111111\n");
             [[NSApp keyWindow].contentView keyDown:event];
         }
 
