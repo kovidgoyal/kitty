@@ -12,6 +12,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   or inserting into the terminal. You can have them on separate lines,
   separated by arbitrary characters, or even serialized as JSON (:iss:`1665`)
 
+- macOS: Fix a regression in the previous release that broke using
+  :kbd:`ctrl+shift+tab` (:iss:`1671`)
+
 
 0.14.1 [2019-05-29]
 ---------------------
