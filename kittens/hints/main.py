@@ -246,7 +246,9 @@ def run_loop(args, text, all_marks, index_map):
     handler = Hints(text, all_marks, index_map, args)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
-        return {'match': handler.chosen, 'program': args.program}
+        return {'match': handler.chosen, 'program': args.program,
+                'multiple_joiner': args.multiple_joiner,
+                'type': args.type}
     raise SystemExit(loop.return_code)
 
 
@@ -374,6 +376,17 @@ Select multiple matches and perform the action on all of them together at the en
 In this mode, press :kbd:`Esc` to finish selecting.
 
 
+--multiple-joiner
+default=auto
+String to use to join multiple selections when copying to the clipboard or
+inserting into the terminal. The special strings: "space", "newline", "empty",
+"json" and "auto" are interpreted as a space character, a newline an empty
+joiner, a JSON serialized list and an automatic choice, based on the type of
+text being selected. In addition, integers are interpreted as zero-based
+indices into the list of selections. You can use 0 for the first selection and
+-1 for the last.
+
+
 --add-trailing-space
 default=auto
 choices=auto,always,never
@@ -422,13 +435,34 @@ def main(args):
 def handle_result(args, data, target_window_id, boss):
     program = data['program']
     matches = tuple(filter(None, data['match']))
+    joiner = data['multiple_joiner']
+    try:
+        is_int = int(joiner)
+    except Exception:
+        is_int = None
+    text_type = data['type']
+
+    def joined_text():
+        if is_int is not None:
+            try:
+                return matches[is_int]
+            except IndexError:
+                return matches[-1]
+        if joiner == 'json':
+            import json
+            return json.dumps(matches, ensure_ascii=False, indent='\t')
+        if joiner == 'auto':
+            q = '\n\r' if text_type in ('line', 'url') else ' '
+        else:
+            q = {'newline': '\n\r', 'space': ' '}.get(joiner, '')
+        return q.join(matches)
+
     if program == '-':
         w = boss.window_id_map.get(target_window_id)
         if w is not None:
-            for m in matches:
-                w.paste(m)
+            w.paste(joined_text())
     elif program == '@':
-        set_clipboard_string(matches[-1])
+        set_clipboard_string(joined_text())
     else:
         cwd = None
         w = boss.window_id_map.get(target_window_id)

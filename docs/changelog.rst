@@ -4,6 +4,15 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.14.2 [future]
+---------------------
+
+- hints kitten: Add a :option:`kitty +kitten hints --multiple-joiner` option to
+  control how multiple selections are serialized when copying to clipboard
+  or inserting into the terminal. You can have them one separate lines,
+  separated by arbitrary characters, or even serialized as JSON (:iss:`1665`)
+
+
 0.14.1 [2019-05-29]
 ---------------------
 
