@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix a regression in the previous release that broke using
   :kbd:`ctrl+shift+tab` (:iss:`1671`)
 
+- panel kitten: Fix the contents of the panel kitten not being positioned
+  correctly on the vertical axis
+
 
 0.14.1 [2019-05-29]
 ---------------------

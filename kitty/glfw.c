@@ -34,6 +34,8 @@ request_tick_callback(void) {
 #endif
 }
 
+static int min_width = 100, min_height = 100;
+
 void
 update_os_window_viewport(OSWindow *window, bool notify_boss) {
     int w, h, fw, fh;
@@ -51,8 +53,8 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != window->logical_dpi_x) || (ydpi != window->logical_dpi_y);
 
     window->viewport_size_dirty = true;
-    window->viewport_width = MAX(window->viewport_width, 100);
-    window->viewport_height = MAX(window->viewport_height, 100);
+    window->viewport_width = MAX(window->viewport_width, min_width);
+    window->viewport_height = MAX(window->viewport_height, min_height);
     window->window_width = MAX(w, 100);
     window->window_height = MAX(h, 100);
     if (notify_boss) {
@@ -98,8 +100,6 @@ static inline void
 show_mouse_cursor(GLFWwindow *w) {
     glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
-
-static int min_width = 100, min_height = 100;
 
 void
 blank_os_window(OSWindow *w) {
