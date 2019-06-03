@@ -28,7 +28,7 @@ from .fast_data_types import (
     toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
-from .layout import set_draw_borders_options
+from .layout import set_layout_options
 from .remote_control import handle_cmd
 from .rgb import Color, color_from_int
 from .session import create_sessions
@@ -105,7 +105,7 @@ class DumpCommands:  # {{{
 class Boss:
 
     def __init__(self, os_window_id, opts, args, cached_values, new_os_window_trigger):
-        set_draw_borders_options(opts)
+        set_layout_options(opts)
         self.clipboard_buffers = {}
         self.update_check_process = None
         self.window_id_map = WeakValueDictionary()

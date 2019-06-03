@@ -586,6 +586,14 @@ Negative values will cause the value of :opt:`window_margin_width` to be used in
 o('window_padding_width', 0.0, option_type=positive_float, long_text=_('''
 The window padding (in pts) (blank area between the text and the window border)'''))
 
+o('placement_strategy', 'center', option_type=choices('center', 'top-left'), long_text=_('''
+When the window size is not an exact multiple of the cell size, the cell area of the terminal
+window will have some extra padding on the sides. You can control how that padding is
+distributed with this option. Using a value of :code:`center` means the cell area will
+be placed centrally. A value of :code:`top-left` means the padding will be on only
+the bottom and right edges.
+'''))
+
 o('active_border_color', '#00ff00', option_type=to_color_or_none, long_text=_('''
 The color for the border of the active window. Set this to none to not draw borders
 around the active window.'''))

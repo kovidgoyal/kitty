@@ -18,6 +18,7 @@ all_borders = True, True, True, True
 no_borders = False, False, False, False
 draw_minimal_borders = False
 draw_active_borders = True
+align_top_left = False
 
 
 def idx_for_id(win_id, windows):
@@ -26,10 +27,11 @@ def idx_for_id(win_id, windows):
             return i
 
 
-def set_draw_borders_options(opts):
-    global draw_minimal_borders, draw_active_borders
+def set_layout_options(opts):
+    global draw_minimal_borders, draw_active_borders, align_top_left
     draw_minimal_borders = opts.draw_minimal_borders and opts.window_margin_width == 0
     draw_active_borders = opts.active_border_color is not None
+    align_top_left = opts.placement_strategy == 'top-left'
 
 
 def layout_dimension(start_at, length, cell_length, decoration_pairs, left_align=False, bias=None):
@@ -86,9 +88,9 @@ def window_geometry(xstart, xnum, ystart, ynum):
     return WindowGeometry(left=xstart, top=ystart, xnum=xnum, ynum=ynum, right=xstart + cell_width * xnum, bottom=ystart + cell_height * ynum)
 
 
-def layout_single_window(xdecoration_pairs, ydecoration_pairs):
-    xstart, xnum = next(layout_dimension(central.left, central.width, cell_width, xdecoration_pairs))
-    ystart, ynum = next(layout_dimension(central.top, central.height, cell_height, ydecoration_pairs))
+def layout_single_window(xdecoration_pairs, ydecoration_pairs, left_align=False):
+    xstart, xnum = next(layout_dimension(central.left, central.width, cell_width, xdecoration_pairs, left_align=align_top_left))
+    ystart, ynum = next(layout_dimension(central.top, central.height, cell_height, ydecoration_pairs, left_align=align_top_left))
     return window_geometry(xstart, xnum, ystart, ynum)
 
 
@@ -368,12 +370,12 @@ class Layout:  # {{{
     def xlayout(self, num, bias=None):
         decoration = self.margin_width + self.border_width + self.padding_width
         decoration_pairs = tuple(repeat((decoration, decoration), num))
-        return layout_dimension(central.left, central.width, cell_width, decoration_pairs, bias=bias)
+        return layout_dimension(central.left, central.width, cell_width, decoration_pairs, bias=bias, left_align=align_top_left)
 
     def ylayout(self, num, left_align=True, bias=None):
         decoration = self.margin_width + self.border_width + self.padding_width
         decoration_pairs = tuple(repeat((decoration, decoration), num))
-        return layout_dimension(central.top, central.height, cell_height, decoration_pairs, bias=bias)
+        return layout_dimension(central.top, central.height, cell_height, decoration_pairs, bias=bias, left_align=align_top_left)
 
     def simple_blank_rects(self, first_window, last_window):
         br = self.blank_rects
@@ -417,7 +419,7 @@ class Stack(Layout):  # {{{
     def do_layout(self, windows, active_window_idx):
         mw = self.margin_width if self.single_window_margin_width < 0 else self.single_window_margin_width
         decoration_pairs = ((mw + self.padding_width, mw + self.padding_width),)
-        wg = layout_single_window(decoration_pairs, decoration_pairs)
+        wg = layout_single_window(decoration_pairs, decoration_pairs, left_align=align_top_left)
         for i, w in enumerate(windows):
             w.set_geometry(i, wg)
             if w.is_visible_in_layout:

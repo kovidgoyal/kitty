@@ -7,6 +7,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.14.2 [future]
 ---------------------
 
+- Add an option :opt:`placement_strategy` to control how the cell area is
+  aligned inside the window when the window size is not an exact multiple
+  of the cell size (:pull:`1670`)
+
 - hints kitten: Add a :option:`kitty +kitten hints --multiple-joiner` option to
   control how multiple selections are serialized when copying to clipboard
   or inserting into the terminal. You can have them on separate lines,
