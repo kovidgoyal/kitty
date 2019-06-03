@@ -116,4 +116,19 @@ brew or MacPorts as well.
 .. note::
         |kitty| has its own update check mechanism, if you would like to turn
         it off for your package, change the default value of
-        :opt:`update_check_interval` to zero.
+        :opt:`update_check_interval` to zero by applying the following patch:
+.. code-block:: diff
+
+    diff --git a/kitty/config_data.py b/kitty/config_data.py
+    index 4f1444a4..2d86c3f1 100644
+    --- a/kitty/config_data.py
+    +++ b/kitty/config_data.py
+    @@ -836,7 +836,7 @@ environment variables are expanded recursively, so if you use::
+     The value of MYVAR2 will be :code:`a/<path to home directory>/b`.
+     '''))
+
+    -o('update_check_interval', 24, option_type=float, long_text=_('''
+    +o('update_check_interval', 0, option_type=float, long_text=_('''
+     Periodically check if an update to kitty is available. If an update is found
+     a system notification is displayed informing you of the available update.
+     The default is to check every 24 hrs, set to zero to disable.
