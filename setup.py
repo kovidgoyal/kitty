@@ -15,6 +15,7 @@ import subprocess
 import sys
 import sysconfig
 import time
+from contextlib import suppress
 
 base = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(base, 'glfw'))
@@ -279,10 +280,8 @@ def kitty_env():
     if '-lz' not in ans.ldpaths:
         ans.ldpaths.append('-lz')
 
-    try:
+    with suppress(FileExistsError):
         os.mkdir(build_dir)
-    except FileExistsError:
-        pass
     return ans
 
 
@@ -424,10 +423,8 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
         try:
             run_tool([kenv.cc] + linker_cflags + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
         except Exception:
-            try:
+            with suppress(EnvironmentError):
                 os.remove(dest)
-            except EnvironmentError:
-                pass
         else:
             os.rename(dest, real_dest)
 
@@ -587,10 +584,8 @@ def build_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=False, 
 def copy_man_pages(ddir):
     mandir = os.path.join(ddir, 'share', 'man')
     safe_makedirs(mandir)
-    try:
+    with suppress(FileNotFoundError):
         shutil.rmtree(os.path.join(mandir, 'man1'))
-    except FileNotFoundError:
-        pass
     src = os.path.join(base, 'docs/_build/man')
     if not os.path.exists(src):
         raise SystemExit('''\
@@ -604,10 +599,8 @@ make && make docs
 def copy_html_docs(ddir):
     htmldir = os.path.join(ddir, 'share', 'doc', appname, 'html')
     safe_makedirs(os.path.dirname(htmldir))
-    try:
+    with suppress(FileNotFoundError):
         shutil.rmtree(htmldir)
-    except FileNotFoundError:
-        pass
     src = os.path.join(base, 'docs/_build/html')
     if not os.path.exists(src):
         raise SystemExit('''\

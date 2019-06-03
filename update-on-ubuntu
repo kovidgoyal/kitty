@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from contextlib import suppress
 
 if False:
     tarball = sys.argv[-1]
@@ -16,14 +17,10 @@ if False:
     os.makedirs(dest)
     os.chdir(dest)
     dest = os.path.expanduser('~/.local/bin/kitty')
-    try:
+    with suppress(EnvironmentError):
         os.remove(dest)
-    except EnvironmentError:
-        pass
-    try:
+    with suppress(EnvironmentError):
         os.makedirs(os.path.dirname(dest))
-    except EnvironmentError:
-        pass
     subprocess.check_call(['tar', 'xJf', tarball])
     os.symlink(os.path.abspath('bin/kitty'), dest)
     print('kitty installed to ~/.local/kitty.app')

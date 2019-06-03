@@ -6,6 +6,7 @@ import locale
 import os
 import sys
 from contextlib import contextmanager
+from contextlib import suppress
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -66,19 +67,15 @@ def talk_to_instance(args):
 
     data = json.dumps(data, ensure_ascii=False).encode('utf-8')
     single_instance.socket.sendall(data)
-    try:
+    with suppress(EnvironmentError):
         single_instance.socket.shutdown(socket.SHUT_RDWR)
-    except EnvironmentError:
-        pass
     single_instance.socket.close()
 
     if args.wait_for_single_instance_window_close:
         conn = notify_socket.accept()[0]
         conn.recv(1)
-        try:
+        with suppress(EnvironmentError):
             conn.shutdown(socket.SHUT_RDWR)
-        except EnvironmentError:
-            pass
         conn.close()
 
 
@@ -212,10 +209,8 @@ def setup_environment(opts, args):
 
 
 def _main():
-    try:
+    with suppress(AttributeError):  # python compiled without threading
         sys.setswitchinterval(1000.0)  # we have only a single python thread
-    except AttributeError:
-        pass  # python compiled without threading
     if is_macos:
         ensure_macos_locale()
     try:

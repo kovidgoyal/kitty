@@ -6,6 +6,7 @@ import fcntl
 import os
 from collections import defaultdict
 from contextlib import contextmanager
+from contextlib import suppress
 
 import kitty.fast_data_types as fast_data_types
 
@@ -220,14 +221,10 @@ class Child:
 
             def process_desc(pid):
                 ans = {'pid': pid}
-                try:
+                with suppress(Exception):
                     ans['cmdline'] = cmdline_of_process(pid)
-                except Exception:
-                    pass
-                try:
+                with suppress(Exception):
                     ans['cwd'] = cwd_of_process(pid) or None
-                except Exception:
-                    pass
                 return ans
 
             return list(map(process_desc, foreground_processes))
@@ -250,25 +247,19 @@ class Child:
 
     @property
     def current_cwd(self):
-        try:
+        with suppress(Exception):
             return cwd_of_process(self.pid)
-        except Exception:
-            pass
 
     @property
     def pid_for_cwd(self):
-        try:
+        with suppress(Exception):
             pgrp = os.tcgetpgrp(self.child_fd)
             foreground_processes = processes_in_group(pgrp) if pgrp >= 0 else []
             if len(foreground_processes) == 1:
                 return foreground_processes[0]
-        except Exception:
-            pass
         return self.pid
 
     @property
     def foreground_cwd(self):
-        try:
+        with suppress(Exception):
             return cwd_of_process(self.pid_for_cwd) or None
-        except Exception:
-            pass

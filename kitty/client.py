@@ -9,6 +9,7 @@
 # will replay the commands and pause at the end waiting for user to press enter
 
 import sys
+from contextlib import suppress
 
 
 CSI = '\033['
@@ -158,7 +159,5 @@ def replay(raw):
 def main(path):
     raw = open(path).read()
     replay(raw)
-    try:
+    with suppress(EOFError, KeyboardInterrupt):
         input()
-    except (EOFError, KeyboardInterrupt):
-        pass

@@ -7,6 +7,7 @@ import re
 from functools import lru_cache
 from hashlib import md5
 from mimetypes import guess_type
+from contextlib import suppress
 
 path_name_map = {}
 
@@ -140,10 +141,8 @@ def is_image(path):
 def data_for_path(path):
     ans = raw_data_for_path(path)
     if not is_image(path) and not os.path.samefile(path, os.devnull):
-        try:
+        with suppress(UnicodeDecodeError):
             ans = ans.decode('utf-8')
-        except UnicodeDecodeError:
-            pass
     return ans
 
 

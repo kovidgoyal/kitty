@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+from contextlib import suppress
 
 from kitty.cli import parse_args
 from kitty.constants import cache_dir
@@ -27,10 +28,8 @@ class HistoryCompleter:
         self.history_path = None
         if name:
             ddir = os.path.join(cache_dir(), 'ask')
-            try:
+            with suppress(FileExistsError):
                 os.makedirs(ddir)
-            except FileExistsError:
-                pass
             self.history_path = os.path.join(ddir, name)
 
     def complete(self, text, state):
@@ -50,10 +49,8 @@ class HistoryCompleter:
 
     def __enter__(self):
         if self.history_path:
-            try:
+            with suppress(Exception):
                 readline.read_history_file(self.history_path)
-            except Exception:
-                pass
             readline.set_completer(self.complete)
         return self
 
@@ -106,10 +103,8 @@ def main(args):
             print(styled(args.message, bold=True))
 
         prompt = '> '
-        try:
+        with suppress(KeyboardInterrupt, EOFError):
             ans['response'] = input(prompt)
-        except (KeyboardInterrupt, EOFError):
-            pass
     return ans
 
 
