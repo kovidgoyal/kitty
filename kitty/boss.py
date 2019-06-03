@@ -9,6 +9,7 @@ import re
 from functools import partial
 from gettext import gettext as _
 from weakref import WeakValueDictionary
+from contextlib import suppress
 
 from .child import cached_process_data
 from .cli import create_opts, parse_args
@@ -639,16 +640,12 @@ class Boss:
     def notify_on_os_window_death(self, address):
         import socket
         s = socket.socket(family=socket.AF_UNIX)
-        try:
+        with suppress(Exception):
             s.connect(address)
             s.sendall(b'c')
-            try:
+            with suppress(EnvironmentError):
                 s.shutdown(socket.SHUT_RDWR)
-            except EnvironmentError:
-                pass
             s.close()
-        except Exception:
-            pass
 
     def display_scrollback(self, window, data, cmd):
         tab = self.active_tab
@@ -1032,18 +1029,14 @@ class Boss:
 
     def safe_delete_temp_file(self, path):
         if is_path_in_temp_dir(path):
-            try:
+            with suppress(FileNotFoundError):
                 os.remove(path)
-            except FileNotFoundError:
-                pass
 
     def set_update_check_process(self, process=None):
         if self.update_check_process is not None:
-            try:
+            with suppress(Exception):
                 if self.update_check_process.poll() is None:
                     self.update_check_process.kill()
-            except Exception:
-                pass
         self.update_check_process = process
 
     def on_monitored_pid_death(self, pid, exit_status):

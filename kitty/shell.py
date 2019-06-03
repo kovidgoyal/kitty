@@ -8,6 +8,7 @@ import shlex
 import sys
 import traceback
 from functools import lru_cache
+from contextlib import suppress
 
 from .cli import (
     emph, green, italic, parse_option_spec, print_help_for_seq, title
@@ -68,10 +69,8 @@ class Completer:
     def __init__(self):
         self.matches = []
         ddir = cache_dir()
-        try:
+        with suppress(FileExistsError):
             os.makedirs(ddir)
-        except FileExistsError:
-            pass
         self.history_path = os.path.join(ddir, 'shell.history')
 
     def complete(self, text, state):
@@ -86,10 +85,8 @@ class Completer:
             return self.matches[state]
 
     def __enter__(self):
-        try:
+        with suppress(Exception):
             readline.read_history_file(self.history_path)
-        except Exception:
-            pass
         readline.set_completer(self.complete)
         delims = readline.get_completer_delims()
         readline.set_completer_delims(delims.replace('-', ''))

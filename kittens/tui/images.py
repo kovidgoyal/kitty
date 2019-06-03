@@ -8,6 +8,7 @@ import sys
 from base64 import standard_b64encode
 from collections import defaultdict, deque
 from itertools import count
+from contextlib import suppress
 
 from kitty.utils import fit_image
 
@@ -172,10 +173,8 @@ class ImageManager:
             if in_flight:
                 pl = in_flight.popleft()
                 if payload.startswith('ENOENT:'):
-                    try:
+                    with suppress(Exception):
                         self.resend_image(image_id, pl)
-                    except Exception:
-                        pass
                 if not in_flight:
                     self.placements_in_flight.pop(image_id, None)
 

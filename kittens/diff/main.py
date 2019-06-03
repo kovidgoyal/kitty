@@ -9,6 +9,7 @@ import warnings
 from collections import defaultdict
 from functools import partial
 from gettext import gettext as _
+from contextlib import suppress
 
 from kitty.cli import CONFIG_HELP, parse_args
 from kitty.constants import appname
@@ -511,10 +512,8 @@ usage = 'file_or_directory_left file_or_directory_right'
 
 def terminate_processes(processes):
     for pid in processes:
-        try:
+        with suppress(Exception):
             os.kill(pid, signal.SIGKILL)
-        except Exception:
-            pass
 
 
 def main(args):

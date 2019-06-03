@@ -5,6 +5,7 @@
 import weakref
 from collections import deque, namedtuple
 from functools import partial
+from contextlib import suppress
 
 from .borders import Borders
 from .child import Child
@@ -28,10 +29,8 @@ def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None, cwd=None,
 
 
 def add_active_id_to_history(items, item_id, maxlen=64):
-    try:
+    with suppress(ValueError):
         items.remove(item_id)
-    except ValueError:
-        pass
     items.append(item_id)
     if len(items) > maxlen:
         items.popleft()

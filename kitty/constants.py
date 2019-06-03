@@ -6,6 +6,7 @@ import os
 import pwd
 import sys
 from collections import namedtuple
+from contextlib import suppress
 
 appname = 'kitty'
 version = (0, 14, 1)
@@ -70,10 +71,8 @@ def _get_config_dir():
 
         def cleanup():
             import shutil
-            try:
+            with suppress(Exception):
                 shutil.rmtree(ans)
-            except Exception:
-                pass
         atexit.register(cleanup)
     return ans
 
@@ -124,10 +123,8 @@ beam_cursor_data_file = os.path.join(base_dir, 'logo', 'beam-cursor.png')
 try:
     shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
 except KeyError:
-    try:
+    with suppress(Exception):
         print('Failed to read login shell via getpwuid() for current user, falling back to /bin/sh', file=sys.stderr)
-    except Exception:
-        pass
     shell_path = '/bin/sh'
 
 

@@ -5,6 +5,7 @@
 import json
 import os
 import sys
+from contextlib import suppress
 
 from .cli import parse_args
 from .config import parse_config, parse_send_text_bytes
@@ -904,7 +905,5 @@ def parse_subcommand_cli(func, args):
 
 
 def display_subcommand_help(func):
-    try:
+    with suppress(SystemExit):
         parse_args(['--help'], (func.options_spec or '\n').format, func.argspec, func.desc, func.name)
-    except SystemExit:
-        pass

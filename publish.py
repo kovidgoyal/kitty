@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from contextlib import suppress
 
 import requests
 
@@ -112,10 +113,8 @@ def run_sdist(args):
             shutil.copytree(os.path.join(docs_dir, '_build', x), os.path.join(dest, x))
         dest = os.path.abspath(os.path.join('build', f'kitty-{version}.tar'))
         subprocess.check_call(['tar', '-cf', dest, os.path.basename(base)], cwd=tdir)
-        try:
+        with suppress(FileNotFoundError):
             os.remove(dest + '.xz')
-        except FileNotFoundError:
-            pass
         subprocess.check_call(['xz', '-9', dest])
 
 

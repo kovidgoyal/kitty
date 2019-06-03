@@ -7,6 +7,7 @@ import subprocess
 import time
 from collections import namedtuple
 from urllib.request import urlopen
+from contextlib import suppress
 
 from .config import atomic_save
 from .constants import cache_dir, get_boss, kitty_exe, version
@@ -56,7 +57,7 @@ def parse_line(line):
 
 def read_cache():
     notified_versions = {}
-    try:
+    with suppress(FileNotFoundError):
         with open(version_notification_log()) as f:
             for line in f:
                 try:
@@ -64,8 +65,6 @@ def read_cache():
                 except Exception:
                     continue
                 notified_versions[n.version] = n
-    except FileNotFoundError:
-        pass
     return notified_versions
 
 
@@ -100,10 +99,8 @@ def run_worker():
     import time
     import random
     time.sleep(random.randint(1000, 4000) / 1000)
-    try:
+    with suppress(BrokenPipeError):  # happens if parent process is killed before us
         print(get_released_version())
-    except BrokenPipeError:
-        pass  # happens if parent process is killed before us
 
 
 def update_check(timer_id=None):

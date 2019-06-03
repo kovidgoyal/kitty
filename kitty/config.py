@@ -8,6 +8,7 @@ import re
 import sys
 from collections import namedtuple
 from contextlib import contextmanager
+from contextlib import suppress
 from functools import partial
 
 from . import fast_data_types as defines
@@ -47,10 +48,8 @@ def parse_shortcut(sc):
     is_native = False
     if key is None:
         if parts[-1].startswith('0x'):
-            try:
+            with suppress(Exception):
                 key = int(parts[-1], 16)
-            except Exception:
-                pass
         else:
             key = defines.key_for_native_key_name(parts[-1])
         is_native = key is not None
@@ -578,10 +577,8 @@ def commented_out_default_config():
 def prepare_config_file_for_editing():
     if not os.path.exists(defconf):
         d = os.path.dirname(defconf)
-        try:
+        with suppress(FileExistsError):
             os.makedirs(d)
-        except FileExistsError:
-            pass
         with open(defconf, 'w', encoding='utf-8') as f:
             f.write(commented_out_default_config())
     return defconf
