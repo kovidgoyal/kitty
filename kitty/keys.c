@@ -223,7 +223,7 @@ PYWRAP1(key_to_bytes) {
 PYWRAP1(key_for_native_key_name) {
     const char *name;
     int case_sensitive = 0;
-    PA("s|p", &name, case_sensitive);
+    PA("s|p", &name, &case_sensitive);
 #ifndef __APPLE__
     if (glfwGetXKBScancode) {  // if this function is called before GLFW is initialized glfwGetXKBScancode will be NULL
         int scancode = glfwGetXKBScancode(name, case_sensitive);
