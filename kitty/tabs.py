@@ -222,7 +222,7 @@ class Tab:  # {{{
         if env:
             fenv.update(env)
         fenv['KITTY_WINDOW_ID'] = str(next_window_id())
-        if not is_macos and not is_wayland:
+        if not is_macos and not is_wayland():
             try:
                 fenv['WINDOWID'] = str(x11_window_id(self.os_window_id))
             except Exception:

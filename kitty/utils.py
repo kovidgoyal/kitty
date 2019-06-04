@@ -207,7 +207,7 @@ def end_startup_notification_x11(ctx):
 
 
 def init_startup_notification(window_handle, startup_id=None):
-    if is_macos or is_wayland:
+    if is_macos or is_wayland():
         return
     if window_handle is None:
         log_error('Could not perform startup notification as window handle not present')
@@ -222,7 +222,7 @@ def init_startup_notification(window_handle, startup_id=None):
 def end_startup_notification(ctx):
     if not ctx:
         return
-    if is_macos or is_wayland:
+    if is_macos or is_wayland():
         return
     try:
         end_startup_notification_x11(ctx)

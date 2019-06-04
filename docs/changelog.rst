@@ -22,6 +22,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - panel kitten: Fix the contents of the panel kitten not being positioned
   correctly on the vertical axis
 
+- Linux: Disable the Wayland backend on GNOME by default as GNOME has no
+  support for server side decorations. Can be controlled by
+  :opt:`linux_display_server`.
+
 - Add an option to control the default :opt:`update_check_interval` when
   building kitty packages
 

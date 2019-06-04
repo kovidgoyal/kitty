@@ -84,8 +84,8 @@ def load_all_shaders(semi_transparent=0):
     load_borders_program()
 
 
-def init_glfw(debug_keyboard=False):
-    glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland else 'x11')
+def init_glfw(opts, debug_keyboard=False):
+    glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland(opts) else 'x11')
     if not glfw_init(glfw_path(glfw_module), debug_keyboard):
         raise SystemExit('GLFW initialization failed')
     return glfw_module
@@ -116,7 +116,7 @@ def _run_app(opts, args, bad_lines=()):
     new_os_window_trigger = get_new_os_window_trigger(opts)
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
-    if not is_wayland and not is_macos:  # no window icons on wayland
+    if not is_wayland() and not is_macos:  # no window icons on wayland
         with open(logo_data_file, 'rb') as f:
             set_default_window_icon(f.read(), 256, 256)
     load_shader_programs.use_selection_fg = opts.selection_foreground is not None
@@ -139,7 +139,7 @@ def _run_app(opts, args, bad_lines=()):
 
 def run_app(opts, args, bad_lines=()):
     set_scale(opts.box_drawing_scale)
-    set_options(opts, is_wayland, args.debug_gl, args.debug_font_fallback)
+    set_options(opts, is_wayland(), args.debug_gl, args.debug_font_fallback)
     set_font_family(opts, debug_font_matching=args.debug_font_fallback)
     try:
         _run_app(opts, args, bad_lines)
@@ -259,7 +259,7 @@ def _main():
             return
     bad_lines = []
     opts = create_opts(args, accumulate_bad_lines=bad_lines)
-    init_glfw(args.debug_keyboard)
+    init_glfw(opts, args.debug_keyboard)
     setup_environment(opts, args)
     try:
         with setup_profiling(args):

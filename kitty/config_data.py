@@ -965,6 +965,12 @@ o('macos_custom_beam_cursor', False, long_text=_('''
 Enable/disable custom mouse cursor for macOS that is easier to see on both
 light and dark backgrounds. WARNING: this might make your mouse cursor
 invisible on dual GPU machines.'''))
+
+o('linux_display_server', 'auto', option_type=choices('auto', 'x11', 'wayland'), long_text=_('''
+Choose between Wayland and X11 backends. By default, an
+appropriate backend based on the system state is chosen
+automatically. Set it to :code:`x11` or :code:`wayland`
+to force the choice.'''))
 # }}}
 
 g('shortcuts')  # {{{

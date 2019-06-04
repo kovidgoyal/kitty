@@ -2,12 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import shutil
 import subprocess
 import sys
 
 from kitty.cli import parse_args
-from kitty.constants import is_macos, is_wayland
+from kitty.constants import is_macos
 
 OPTIONS = r'''
 --lines
@@ -121,7 +122,7 @@ def initial_window_size_func(opts, *a):
 
 def main(sys_args):
     global args
-    if is_macos or is_wayland:
+    if is_macos or not os.environ.get('DISPLAY'):
         raise SystemExit('Currently the panel kitten is supported only on X11 desktops')
     if not shutil.which('xprop'):
         raise SystemExit('The xprop program is required for the panel kitten')

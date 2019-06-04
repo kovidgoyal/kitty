@@ -132,9 +132,34 @@ def glfw_path(module):
     return os.path.join(base, 'glfw-{}.so'.format(module))
 
 
-is_wayland = False
-if os.environ.get('WAYLAND_DISPLAY') and 'KITTY_DISABLE_WAYLAND' not in os.environ and os.path.exists(glfw_path('wayland')):
-    is_wayland = True
+def detect_if_wayland_ok():
+    if 'WAYLAND_DISPLAY' not in os.environ:
+        return False
+    if 'KITTY_DISABLE_WAYLAND' in os.environ:
+        return False
+    if not os.path.exists(glfw_path('wayland')):
+        return False
+    cd = os.environ.get('XDG_CURRENT_DESKTOP')
+    if cd:
+        cd = frozenset(cd.split(':'))
+        if 'GNOME' in cd:
+            # GNOME does not support xdg-decorations
+            # https://gitlab.gnome.org/GNOME/mutter/issues/217
+            return False
+    return True
+
+
+def is_wayland(opts=None):
+    if is_macos:
+        return False
+    if opts is None:
+        return is_wayland.ans
+    if opts.linux_display_server == 'auto':
+        ans = detect_if_wayland_ok()
+    else:
+        ans = opts.linux_display_server == 'wayland'
+    setattr(is_wayland, 'ans', ans)
+    return ans
 
 
 supports_primary_selection = not is_macos
