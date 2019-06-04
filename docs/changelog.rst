@@ -29,6 +29,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add an option to control the default :opt:`update_check_interval` when
   building kitty packages
 
+- Wayland: Fix resizing the window on a compositor that does not provide
+  server side window decorations, such a GNOME or Weston not working
+  correctly (:iss:`1659`)
+
 
 0.14.1 [2019-05-29]
 ---------------------
