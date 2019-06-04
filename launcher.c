@@ -33,12 +33,14 @@ safe_realpath(const char* src, char *buf, size_t buf_sz) {
     return true;
 }
 
+#if defined(FOR_BUNDLE) || defined(__APPLE__)
 static inline void
 set_bundle_exe_dir(const wchar_t *exe_dir) {
     wchar_t buf[PATH_MAX+1] = {0};
     swprintf(buf, PATH_MAX, L"bundle_exe_dir=%ls", exe_dir);
     PySys_AddXOption(buf);
 }
+#endif
 
 #ifdef FOR_BUNDLE
 static int run_embedded(const char* exe_dir_, int argc, wchar_t **argv) {
