@@ -244,7 +244,6 @@ def _main():
     args, rest = parse_args(args=args)
     args.args = rest
     if args.debug_config:
-        init_glfw(args.debug_keyboard)  # needed for parsing native keysyms
         create_opts(args, debug_config=True)
         return
     if getattr(args, 'detach', False):
@@ -258,9 +257,9 @@ def _main():
         if not is_first:
             talk_to_instance(args)
             return
-    init_glfw(args.debug_keyboard)  # needed for parsing native keysyms
     bad_lines = []
     opts = create_opts(args, accumulate_bad_lines=bad_lines)
+    init_glfw(args.debug_keyboard)
     setup_environment(opts, args)
     try:
         with setup_profiling(args):
