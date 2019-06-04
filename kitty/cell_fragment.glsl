@@ -97,11 +97,10 @@ vec4 calculate_foreground() {
 #ifdef SUBPIXEL
     vec3 unblended_fg = mix(foreground, text_fg.rgb, colored_sprite);
 #ifdef TRANSPARENT
-    // According to https://stackoverflow.com/questions/33507617/blending-text-rendered-by-freetype-in-color-and-alpha
-    // it's impossible to precisely blend it if we use RGBA. Hence, the following hack is used.
-    float alpha = text_fg.g; // TODO: Cairo uses green channel when converts FreeType's subpixel to ARGB
-    vec3 scaled_mask = mix(vec3(1.0), text_fg.rgb / alpha, bvec3(alpha > 0)); // TODO: May get not normalized values?
-    vec3 blended_fg = mix(background * bg_alpha * bg_alpha, foreground, scaled_mask); // TODO: Check whether we should multiply by bg_alpha
+    float alpha = text_fg.g; // Cairo uses green channel to convert FreeType's subpixel buffer to ARGB
+    float scale_coeff = mix(1, alpha, alpha > 0);
+    vec3 scaled_mask = text_fg.rgb / scale_coeff;
+    vec3 blended_fg = foreground * scaled_mask;
     float text_alpha = mix(text_fg.a, alpha, subpixel);
 #else
     vec3 blended_fg = mix(background, foreground, text_fg.rgb);
