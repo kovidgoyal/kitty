@@ -657,6 +657,12 @@ def package(args, for_bundle=False, sh_launcher=False):
 
     shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
     shutil.copytree('kittens', os.path.join(libdir, 'kittens'), ignore=src_ignore)
+    with open(os.path.join(libdir, 'kitty/config_data.py'), 'r+', encoding='utf-8') as f:
+        raw = f.read()
+        nraw = raw.replace("update_check_interval', 24", "update_check_interval', {}".format(args.update_check_interval), 1)
+        if nraw == raw:
+            raise SystemExit('Failed to change the value of update_check_interval')
+        f.seek(0), f.truncate(), f.write(nraw)
     compile_python(libdir)
     for root, dirs, files in os.walk(libdir):
         for f in files:
@@ -854,7 +860,14 @@ def option_parser():  # {{{
         default=[],
         choices=('event-loop',),
         help='Turn on extra logging for debugging in this build. Can be specified multiple times, to turn'
-        'on different types of logging.'
+        ' on different types of logging.'
+    )
+    p.add_argument(
+        '--update-check-interval',
+        type=float,
+        default=24,
+        help='When building a package, the default value for the update_check_interval setting will'
+        ' be set to this number. Use zero to disable update checking.'
     )
     return p
 # }}}

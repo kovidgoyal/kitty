@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - panel kitten: Fix the contents of the panel kitten not being positioned
   correctly on the vertical axis
 
+- Add an option to control the default :opt:`update_check_interval` when
+  building kitty packages
+
 
 0.14.1 [2019-05-29]
 ---------------------

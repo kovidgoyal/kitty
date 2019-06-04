@@ -115,5 +115,5 @@ brew or MacPorts as well.
 
 .. note::
         |kitty| has its own update check mechanism, if you would like to turn
-        it off for your package, change the default value of
-        :opt:`update_check_interval` to zero.
+        it off for your package, use
+        ``python3 setup.py linux-package --update-check-interval=0``
