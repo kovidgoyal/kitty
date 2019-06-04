@@ -992,7 +992,8 @@ k('paste_from_selection', 'shift+insert', 'paste_from_selection', _('Paste from 
 k('pass_selection_to_program', 'kitty_mod+o', 'pass_selection_to_program', _('Pass selection to program'), long_text=_('''
 You can also pass the contents of the current selection to any program using
 :code:`pass_selection_to_program`. By default, the system's open program is used, but
-you can specify your own, for example::
+you can specify your own, the selection will be passed as a command line argument to the program,
+for example::
 
     map kitty_mod+o pass_selection_to_program firefox
 
