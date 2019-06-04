@@ -350,13 +350,12 @@ free_processed_bitmap(ProcessedBitmap *bm) {
 }
 
 static inline bool
-is_symbol_visible(ProcessedBitmap *ans, size_t x, size_t y) {
+is_pixel_visible(ProcessedBitmap *ans, size_t x, size_t y) {
     unsigned char *s = ans->buf + x + y * ans->stride;
-    float color = 255.0;
+    float color;
     switch (ans->pixel_mode) {
         case FT_PIXEL_MODE_GRAY:
-            color = (float)s[0];
-            break;
+            return s[0] > 200;
         case FT_PIXEL_MODE_LCD:
 #define C(red, green, blue) ((float)s[red])*0.3 + ((float)s[green])*0.59 + ((float)s[blue])*0.11
             if (!ans->bgr)
@@ -376,7 +375,7 @@ is_symbol_visible(ProcessedBitmap *ans, size_t x, size_t y) {
         default:
             return true;
     }
-    return color > 200.0;
+    return color > 50; // TODO: tweak this value
 }
 
 static inline void
@@ -386,7 +385,7 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
     // Trim empty columns from the right side of the bitmap
     for (ssize_t x = ans->width - 1; !column_has_text && x > -1 && extra > 0; x--) {
         for (size_t y = 0; y < ans->rows && !column_has_text; y++) {
-            if (is_symbol_visible(ans, x, y)) column_has_text = true;
+            if (is_pixel_visible(ans, x, y)) column_has_text = true;
         }
         if (!column_has_text) { ans->width--; extra--; }
     }
@@ -457,7 +456,8 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     if (ans->width > max_width) {
         size_t extra = ans->width - max_width;
         if (italic && extra < cell_width / 2) {
-            trim_borders(ans, extra);
+            if (ans->pixel_mode == FT_PIXEL_MODE_GRAY || extra > 2)
+                trim_borders(ans, extra);
         } else if (extra == 2 && num_cells == 1) {
             // there exist fonts that have bitmaps just a couple of pixels
             // wider than their advances, rather than rescale, which looks
