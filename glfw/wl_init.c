@@ -634,6 +634,39 @@ static const struct wl_registry_listener registryListener = {
 };
 
 
+
+static void registry_handle_global(void* data,
+                                 struct wl_registry* registry,
+                                 uint32_t name,
+                                 const char* interface,
+                                 uint32_t version) {
+    if (strcmp(interface, "zxdg_decoration_manager_v1") == 0) {
+        bool *has_ssd = (bool*)data;
+        if (has_ssd) *has_ssd = true;
+    }
+}
+
+static void registry_handle_global_remove(void *data,
+                                       struct wl_registry *registry,
+                                       uint32_t name) {}
+GLFWAPI const char*
+glfwWaylandCheckForServerSideDecorations(void) {
+    struct wl_display *display = wl_display_connect(NULL);
+    if (!display) return "ERR: Failed to connect to Wayland display";
+    static const struct wl_registry_listener rl = {
+        registry_handle_global, registry_handle_global_remove
+    };
+    struct wl_registry *registry = wl_display_get_registry(display);
+    bool has_ssd = false;
+    wl_registry_add_listener(registry, &rl, &has_ssd);
+    wl_display_roundtrip(display);
+
+    wl_registry_destroy(registry);
+    wl_display_flush(display);
+    wl_display_flush(display);
+    return has_ssd ? "YES" : "NO";
+}
+
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
