@@ -213,7 +213,7 @@ def url(text, s, e):
 @postprocessor
 def brackets(text, s, e):
     # Remove matching brackets
-    if e > s and e <= len(text):
+    if s < e <= len(text):
         before = text[s]
         if before in '({[<' and text[e-1] == closing_bracket_map[before]:
             s += 1
@@ -224,7 +224,7 @@ def brackets(text, s, e):
 @postprocessor
 def quotes(text, s, e):
     # Remove matching quotes
-    if e > s and e <= len(text):
+    if s < e <= len(text):
         before = text[s]
         if before in '\'"' and text[e-1] == before:
             s += 1

@@ -54,7 +54,7 @@ def layout_dimension(start_at, length, cell_length, decoration_pairs, left_align
         inner_length = cells_in_window * cell_length
         return inner_length + decoration_pairs[i][1]
 
-    if bias is not None and number_of_windows > 1 and len(bias) == number_of_windows and cells_per_window > 5:
+    if bias is not None and 1 < number_of_windows == len(bias) and cells_per_window > 5:
         cells_map = [int(b * number_of_cells) for b in bias]
         while min(cells_map) < 5:
             maxi, mini = map(cells_map.index, (max(cells_map), min(cells_map)))
