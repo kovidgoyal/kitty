@@ -757,10 +757,10 @@ class Boss:
     def kitty_shell(self, window_type):
         cmd = ['@', kitty_exe(), '@']
         if window_type == 'tab':
-            self._new_tab(cmd).active_window
+            self._new_tab(cmd)
         elif window_type == 'os_window':
             os_window_id = self._new_os_window(cmd)
-            self.os_window_map[os_window_id].active_window
+            self.os_window_map[os_window_id]
         elif window_type == 'overlay':
             w = self.active_window
             tab = self.active_tab
