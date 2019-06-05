@@ -714,25 +714,22 @@ def create_opts(args, debug_config=False, accumulate_bad_lines=None):
     from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     if debug_config:
-        from io import StringIO
-        dbuf = StringIO()
-        print(version(add_rev=True), file=dbuf)
-        print(' '.join(os.uname()), file=dbuf)
+        print(version(add_rev=True))
+        print(' '.join(os.uname()))
         if is_macos:
             import subprocess
-            print(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip(), file=dbuf)
+            print(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
         if os.path.exists('/etc/issue'):
-            print(open('/etc/issue', encoding='utf-8', errors='replace').read().strip(), file=dbuf)
+            print(open('/etc/issue', encoding='utf-8', errors='replace').read().strip())
         if os.path.exists('/etc/lsb-release'):
-            print(open('/etc/lsb-release', encoding='utf-8', errors='replace').read().strip(), file=dbuf)
+            print(open('/etc/lsb-release', encoding='utf-8', errors='replace').read().strip())
         config = tuple(x for x in config if os.path.exists(x))
         if config:
-            print(green('Loaded config files:'), ', '.join(config), file=dbuf)
+            print(green('Loaded config files:'), ', '.join(config))
     overrides = (a.replace('=', ' ', 1) for a in args.override or ())
     opts = load_config(*config, overrides=overrides, accumulate_bad_lines=accumulate_bad_lines)
     if debug_config:
         if not is_macos:
-            print('Running under:', green('Wayland' if is_wayland(opts) else 'X11'), file=dbuf)
-        print(dbuf.getvalue())
+            print('Running under:', green('Wayland' if is_wayland(opts) else 'X11'))
         compare_opts(opts)
     return opts
