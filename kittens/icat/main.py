@@ -270,7 +270,7 @@ help_text = (
 usage = 'image-file-or-url-or-directory ...'
 
 
-def process_single_item(item, args, url_pat, maybe_dir=True):
+def process_single_item(item, args, url_pat=None, maybe_dir=True):
     is_tempfile = False
     try:
         if isinstance(item, bytes):
@@ -278,7 +278,7 @@ def process_single_item(item, args, url_pat, maybe_dir=True):
             tf.write(item), tf.close()
             item = tf.name
             is_tempfile = True
-        if url_pat.match(item) is not None:
+        if url_pat is not None and url_pat.match(item) is not None:
             from urllib.request import urlretrieve
             with NamedTemporaryFile(prefix='url-image-data-', delete=False) as tf:
                 try:
@@ -300,8 +300,8 @@ def process_single_item(item, args, url_pat, maybe_dir=True):
             process(item, args, is_tempfile)
         else:
             if maybe_dir and os.path.isdir(item):
-                for x in scan(item):
-                    process_single_item(item, args, url_pat, maybe_dir=False)
+                for (x, mt) in scan(item):
+                    process_single_item(x, args, url_pat=None, maybe_dir=False)
             else:
                 process(item, args, is_tempfile)
     finally:
