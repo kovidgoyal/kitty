@@ -257,7 +257,7 @@ class TestDataTypes(BaseTest):
                 self.ae(lf.url_start_at(i), n)
         for i in range(7):
             for scheme in 'http https ftp file'.split():
-                lspace_test(i)
+                lspace_test(i, scheme)
         l3 = create('b https://testing.me a')
         for s in (0, 1, len(l3) - 1, len(l3) - 2):
             self.ae(l3.url_start_at(s), len(l3), 'failed with start at: %d' % s)
