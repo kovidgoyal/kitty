@@ -60,9 +60,6 @@ def load_shader_programs(semi_transparent=False):
     compile_program(BLIT_PROGRAM, *load_shaders('blit'))
     v, f = load_shaders('cell')
 
-    def color_as_vec3(x):
-        return 'vec3({}, {}, {})'.format(x.red / 255, x.green / 255, x.blue / 255)
-
     for which, p in {
             'SIMPLE': CELL_PROGRAM,
             'BACKGROUND': CELL_BG_PROGRAM,
