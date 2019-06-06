@@ -11,7 +11,7 @@ from .utils import load_shaders
 
 try:
     from enum import IntFlag
-except Exception:
+except ImportError:
     from enum import IntEnum as IntFlag
 
 
