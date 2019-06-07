@@ -220,7 +220,7 @@ GLFWbool refreshMonitorScreen(_GLFWmonitor* monitor)
     if (monitor->ns.screen)
         return GLFW_TRUE;
 
-     for (NSScreen* screen in [NSScreen screens])
+    for (NSScreen* screen in [NSScreen screens])
     {
         NSNumber* displayID = [screen deviceDescription][@"NSScreenNumber"];
 
@@ -234,7 +234,7 @@ GLFWbool refreshMonitorScreen(_GLFWmonitor* monitor)
         }
     }
 
-     _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to find a screen for monitor");
+    _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to find a screen for monitor");
     return GLFW_FALSE;
 }
 
