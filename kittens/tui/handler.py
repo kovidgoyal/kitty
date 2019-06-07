@@ -84,6 +84,9 @@ class Handler:
     def on_clipboard_response(self, text, from_primary=False):
         pass
 
+    def on_capability_response(self, name, val):
+        pass
+
     def write(self, data):
         if isinstance(data, str):
             data = data.encode('utf-8')

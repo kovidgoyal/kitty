@@ -22,6 +22,12 @@ class Clipboard(Handler):
         if self.data_to_send is not None:
             self.cmd.write_to_clipboard(self.data_to_send, self.args.use_primary)
         if not self.args.get_clipboard:
+            if self.args.wait_for_completion:
+                # ask kitty for the TN terminfo capability and
+                # only quit after a response is received
+                self.print('\x1bP+q544e\x1b\\', end='')
+                self.print('Waiting for completion...')
+                return
             self.quit_loop(0)
             return
         self.cmd.request_from_clipboard(self.args.use_primary)
@@ -29,6 +35,15 @@ class Clipboard(Handler):
     def on_clipboard_response(self, text, from_primary=False):
         self.clipboard_contents = text
         self.quit_loop(0)
+
+    def on_capability_response(self, name, val):
+        self.quit_loop(0)
+
+    def on_interrupt(self):
+        self.quit_loop(1)
+
+    def on_eot(self):
+        self.quit_loop(1)
 
 
 OPTIONS = r'''
@@ -45,6 +60,13 @@ default=False
 type=bool-set
 Use the primary selection rather than the clipboard on systems that support it,
 such as X11.
+
+
+--wait-for-completion
+default=False
+type=bool-set
+Wait till the copy to clipboard is complete before exiting. Useful if running
+the kitten in a dedicated, ephemeral window.
 '''.format
 help_text = '''\
 Read or write to the system clipboard.
@@ -54,6 +76,7 @@ To set the clipboard text, pipe in the new text on stdin. Use the
 :file:`stdout`. Note that you must enable reading of clipboard in
 :file:`kitty.conf` first.
 '''
+
 usage = ''
 
 

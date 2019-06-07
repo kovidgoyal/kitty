@@ -25,6 +25,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - icat kitten: Fix a regression that broke passing directories to icat
   (:iss:`1683`)
 
+- clipboard kitten: Add a :opt:`kitty +kitten clipboard --wait-for-completion`
+  option to have the kitten wait till copying to clipboard is complete
+  (:iss:`1693`)
+
 - Linux: Disable the Wayland backend on GNOME by default as GNOME has no
   support for server side decorations. Can be controlled by
   :opt:`linux_display_server`.

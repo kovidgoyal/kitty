@@ -214,9 +214,20 @@ class Loop:
                 self.handler.on_text(chunk, self.in_bracketed_paste)
 
     def _on_dcs(self, dcs):
+        debug(dcs)
         if dcs.startswith('@kitty-cmd'):
             import json
             self.handler.on_kitty_cmd_response(json.loads(dcs[len('@kitty-cmd'):]))
+        elif dcs.startswith('1+r'):
+            from binascii import unhexlify
+            vals = dcs[3:].split(';')
+            for q in vals:
+                parts = q.split('=', 1)
+                try:
+                    name, val = parts[0], unhexlify(parts[1]).decode('utf-8', 'replace')
+                except Exception:
+                    continue
+                self.handler.on_capability_response(name, val)
 
     def _on_csi(self, csi):
         q = csi[-1]
