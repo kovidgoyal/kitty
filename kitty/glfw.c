@@ -44,6 +44,10 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height) {
         return; // no change, ignore
     }
+    if (fw / w > 5 || fh / h > 5 || fw < min_width || fh < min_height || fw < w || fh < h) {
+        log_error("Invalid geometry ignored: framebuffer: %dx%d window: %dx%d\n", fw, fh, w, h);
+        return;
+    }
     window->viewport_width = fw; window->viewport_height = fh;
     double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
     window->viewport_x_ratio = w > 0 ? (double)window->viewport_width / (double)w : xr;
