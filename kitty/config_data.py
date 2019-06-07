@@ -618,7 +618,7 @@ window manager/operating system.
 o('resize_debounce_time', 0.1, option_type=positive_float, long_text=_('''
 The time (in seconds) to wait before redrawing the screen when a
 resize event is received. On platforms such as macOS, where the
-operating system sends event corresponding to the start and end
+operating system sends events corresponding to the start and end
 of a resize, this number is ignored.'''))
 
 
