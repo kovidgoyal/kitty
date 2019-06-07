@@ -910,6 +910,11 @@ class Boss:
                 tm.new_tab(special_window=create_window(), cwd_from=cwd_from)
         elif dest == 'os_window':
             self._new_os_window(create_window(), cwd_from=cwd_from)
+        elif dest in ('clipboard', 'primary'):
+            env, stdin = self.process_stdin_source(stdin=source, window=window)
+            if stdin:
+                func = set_clipboard_string if dest == 'clipboard' else set_primary_selection
+                func(stdin)
         else:
             import subprocess
             env, stdin = self.process_stdin_source(stdin=source, window=window)

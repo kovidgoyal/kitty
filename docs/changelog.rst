@@ -29,6 +29,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   option to have the kitten wait till copying to clipboard is complete
   (:iss:`1693`)
 
+- Allow using the :doc:`pipe <pipe>` command to send screen and scrollback
+  contents directly to the clipboard (:iss:`1693`)
+
 - Linux: Disable the Wayland backend on GNOME by default as GNOME has no
   support for server side decorations. Can be controlled by
   :opt:`linux_display_server`.

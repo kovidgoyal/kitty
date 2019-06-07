@@ -43,6 +43,10 @@ You can choose where to run the pipe program:
 ``tab``
    A new window in a new tab
 
+``clipboard, primary``
+   Copy the text directly to the clipboard. In this case the specified program
+   is not run, so use some dummy program name for it.
+
 ``none``
    Run it in the background
 

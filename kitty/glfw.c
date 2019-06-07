@@ -843,7 +843,8 @@ get_content_scale_for_window(PYNOARG) {
 static PyObject*
 set_clipboard_string(PyObject UNUSED *self, PyObject *args) {
     char *title;
-    if(!PyArg_ParseTuple(args, "s", &title)) return NULL;
+    Py_ssize_t sz;
+    if(!PyArg_ParseTuple(args, "s#", &title, &sz)) return NULL;
     OSWindow *w = current_os_window();
     if (w) glfwSetClipboardString(w->handle, title);
     Py_RETURN_NONE;
@@ -987,7 +988,8 @@ get_primary_selection(PYNOARG) {
 static PyObject*
 set_primary_selection(PyObject UNUSED *self, PyObject *args) {
     char *text;
-    if (!PyArg_ParseTuple(args, "s", &text)) return NULL;
+    Py_ssize_t sz;
+    if (!PyArg_ParseTuple(args, "s#", &text, &sz)) return NULL;
     if (glfwSetPrimarySelectionString) {
         OSWindow *w = current_os_window();
         if (w) glfwSetPrimarySelectionString(w->handle, text);
