@@ -164,12 +164,7 @@ class ReadFileWithProgressReporting(io.BufferedReader):  # {{{
 
 class Base(object):  # {{{
     def __init__(self):
-        self.d = os.path.dirname
-        self.j = os.path.join
-        self.a = os.path.abspath
-        self.b = os.path.basename
-        self.s = os.path.splitext
-        self.e = os.path.exists
+        pass
 
     def info(self, *args, **kwargs):
         print(*args, **kwargs)
