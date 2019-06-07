@@ -25,7 +25,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - icat kitten: Fix a regression that broke passing directories to icat
   (:iss:`1683`)
 
-- clipboard kitten: Add a :opt:`kitty +kitten clipboard --wait-for-completion`
+- clipboard kitten: Add a :option:`kitty +kitten clipboard --wait-for-completion`
   option to have the kitten wait till copying to clipboard is complete
   (:iss:`1693`)
 
