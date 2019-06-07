@@ -85,6 +85,9 @@ static void outputHandleMode(void* data,
 static void outputHandleDone(void* data, struct wl_output* output)
 {
     struct _GLFWmonitor *monitor = data;
+    for (int i = 0; i < _glfw.monitorCount; i++) {
+        if (_glfw.monitors[i] == monitor) return;
+    }
 
     _glfwInputMonitor(monitor, GLFW_CONNECTED, _GLFW_INSERT_LAST);
 }
