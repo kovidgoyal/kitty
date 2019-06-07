@@ -43,6 +43,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   server side window decorations, such a GNOME or Weston not working
   correctly (:iss:`1659`)
 
+- Wayland: Fix crash when enabling disabling monitors on sway (:iss:`1696`)
+
 
 0.14.1 [2019-05-29]
 ---------------------

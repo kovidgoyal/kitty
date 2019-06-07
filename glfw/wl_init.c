@@ -613,14 +613,20 @@ static void registryHandleGlobalRemove(void *data,
                                        struct wl_registry *registry,
                                        uint32_t name)
 {
-    int i;
     _GLFWmonitor* monitor;
 
-    for (i = 0; i < _glfw.monitorCount; ++i)
+    for (int i = 0; i < _glfw.monitorCount; ++i)
     {
         monitor = _glfw.monitors[i];
         if (monitor->wl.name == name)
         {
+            for (_GLFWwindow *window = _glfw.windowListHead;  window;  window = window->next) {
+                for (int m = window->wl.monitorsCount - 1; m >= 0; m--) {
+                    if (window->wl.monitors[m] == monitor) {
+                        remove_i_from_array(window->wl.monitors, m, window->wl.monitorsCount);
+                    }
+                }
+            }
             _glfwInputMonitor(monitor, GLFW_DISCONNECTED, 0);
             return;
         }
