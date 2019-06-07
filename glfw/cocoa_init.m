@@ -516,10 +516,7 @@ remove_timer_at(size_t idx) {
         Timer *t = timers + idx;
         if (t->os_timer) { [t->os_timer invalidate]; t->os_timer = NULL; }
         if (t->callback_data && t->free_callback_data) { t->free_callback_data(t->id, t->callback_data); t->callback_data = NULL; }
-        num_timers--;
-        if (idx < num_timers) {
-            memmove(timers + idx, timers + idx + 1, sizeof(timers[0]) * (num_timers - idx));
-        }
+        remove_i_from_array(timers, idx, num_timers);
     }
 }
 

@@ -127,10 +127,7 @@ void _glfwInputMonitor(_GLFWmonitor* monitor, int action, int placement)
         {
             if (_glfw.monitors[i] == monitor)
             {
-                _glfw.monitorCount--;
-                memmove(_glfw.monitors + i,
-                        _glfw.monitors + i + 1,
-                        (_glfw.monitorCount - i) * sizeof(_GLFWmonitor*));
+                remove_i_from_array(_glfw.monitors, i, _glfw.monitorCount);
                 break;
             }
         }
