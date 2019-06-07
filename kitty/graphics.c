@@ -77,14 +77,6 @@ dealloc(GraphicsManager* self) {
 
 static size_t internal_id_counter = 1;
 
-static inline void
-remove_from_array(void *array, size_t item_size, size_t idx, size_t array_count) {
-    size_t num_to_right = array_count - 1 - idx;
-    uint8_t *p = (uint8_t*)array;
-    if (num_to_right > 0) memmove(p + (idx * item_size), p + ((idx + 1) * item_size), num_to_right * item_size);
-    memset(p + (item_size * (array_count - 1)), 0, item_size);
-}
-
 static inline Image*
 img_by_internal_id(GraphicsManager *self, size_t id) {
     for (size_t i = 0; i < self->image_count; i++) {
@@ -104,7 +96,7 @@ img_by_client_id(GraphicsManager *self, uint32_t id) {
 static inline void
 remove_image(GraphicsManager *self, size_t idx) {
     free_image(self, self->images + idx);
-    remove_from_array(self->images, sizeof(Image), idx, self->image_count--);
+    remove_i_from_array(self->images, idx, self->image_count);
     self->layers_dirty = true;
 }
 
@@ -607,7 +599,7 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
             for (j = img->refcnt; j-- > 0;) {
                 ref = img->refs + j;
                 if (filter_func(ref, img, data, cell)) {
-                    remove_from_array(img->refs, sizeof(ImageRef), j, img->refcnt--);
+                    remove_i_from_array(img->refs, j, img->refcnt);
                 }
             }
             if (img->refcnt == 0 && (free_images || img->client_id == 0)) remove_image(self, i);

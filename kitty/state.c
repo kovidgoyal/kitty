@@ -10,14 +10,12 @@
 
 GlobalState global_state = {{0}};
 
-#define REMOVER(array, qid, count, structure, destroy, capacity) { \
+#define REMOVER(array, qid, count, destroy, capacity) { \
     for (size_t i = 0; i < count; i++) { \
         if (array[i].id == qid) { \
             destroy(array + i); \
-            memset(array + i, 0, sizeof(structure)); \
-            size_t num_to_right = count - 1 - i; \
-            if (num_to_right) memmove(array + i, array + i + 1, num_to_right * sizeof(structure)); \
-            (count)--; \
+            memset(array + i, 0, sizeof(array[0])); \
+            remove_i_from_array(array, i, count); \
             break; \
         } \
     }}
@@ -140,7 +138,7 @@ destroy_window(Window *w) {
 
 static inline void
 remove_window_inner(Tab *tab, id_type id) {
-    REMOVER(tab->windows, id, tab->num_windows, Window, destroy_window, tab->capacity);
+    REMOVER(tab->windows, id, tab->num_windows, destroy_window, tab->capacity);
 }
 
 static inline void
@@ -162,7 +160,7 @@ destroy_tab(Tab *tab) {
 static inline void
 remove_tab_inner(OSWindow *os_window, id_type id) {
     make_os_window_context_current(os_window);
-    REMOVER(os_window->tabs, id, os_window->num_tabs, Tab, destroy_tab, os_window->capacity);
+    REMOVER(os_window->tabs, id, os_window->num_tabs, destroy_tab, os_window->capacity);
 }
 
 static inline void
@@ -194,7 +192,7 @@ remove_os_window(id_type os_window_id) {
     END_WITH_OS_WINDOW
     if (found) {
         WITH_OS_WINDOW_REFS
-            REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, OSWindow, destroy_os_window_item, global_state.capacity);
+            REMOVER(global_state.os_windows, os_window_id, global_state.num_os_windows, destroy_os_window_item, global_state.capacity);
         END_WITH_OS_WINDOW_REFS
         update_os_window_references();
     }

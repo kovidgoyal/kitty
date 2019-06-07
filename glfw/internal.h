@@ -197,10 +197,11 @@ typedef void (APIENTRY * PFN_vkVoidFunction)(void);
 #endif
 
 #define remove_i_from_array(array, i, count) { \
-    count--; \
-    if (i < count) { \
-        memmove(array + i, array + i + 1, sizeof(array[0]) * (count - i)); \
+    (count)--; \
+    if ((i) < (count)) { \
+        memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); \
     }}
+
 
 // Constructs a version number string from the public header macros
 #define _GLFW_CONCAT_VERSION(m, n, r) #m "." #n "." #r
