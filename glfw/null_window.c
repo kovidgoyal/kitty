@@ -34,7 +34,7 @@ static int createNativeWindow(_GLFWwindow* window,
     window->null.width = wndconfig->width;
     window->null.height = wndconfig->height;
 
-    return GLFW_TRUE;
+    return true;
 }
 
 
@@ -48,7 +48,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
                               const _GLFWfbconfig* fbconfig)
 {
     if (!createNativeWindow(window, wndconfig))
-        return GLFW_FALSE;
+        return false;
 
     if (ctxconfig->client != GLFW_NO_API)
     {
@@ -56,18 +56,18 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
             ctxconfig->source == GLFW_OSMESA_CONTEXT_API)
         {
             if (!_glfwInitOSMesa())
-                return GLFW_FALSE;
+                return false;
             if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig))
-                return GLFW_FALSE;
+                return false;
         }
         else
         {
             _glfwInputError(GLFW_API_UNAVAILABLE, "Null: EGL not available");
-            return GLFW_FALSE;
+            return false;
         }
     }
 
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformDestroyWindow(_GLFWwindow* window)
@@ -167,17 +167,17 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 
 int _glfwPlatformWindowMaximized(_GLFWwindow* window)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 int _glfwPlatformWindowHovered(_GLFWwindow* window)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 int _glfwPlatformFramebufferTransparent(_GLFWwindow* window)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 void _glfwPlatformSetWindowResizable(_GLFWwindow* window, bool enabled)
@@ -212,7 +212,7 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
 
 int _glfwPlatformWindowBell(_GLFWwindow* window)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 void _glfwPlatformUnhideWindow(_GLFWwindow* window)
@@ -229,22 +229,22 @@ void _glfwPlatformFocusWindow(_GLFWwindow* window)
 
 int _glfwPlatformWindowFocused(_GLFWwindow* window)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 int _glfwPlatformWindowOccluded(_GLFWwindow* window)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 int _glfwPlatformWindowIconified(_GLFWwindow* window)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 int _glfwPlatformWindowVisible(_GLFWwindow* window)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 void _glfwPlatformPollEvents(void)
@@ -279,12 +279,12 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                               const GLFWimage* image,
                               int xhot, int yhot, int count)
 {
-    return GLFW_TRUE;
+    return true;
 }
 
 int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, int shape)
 {
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformDestroyCursor(_GLFWcursor* cursor)
@@ -322,7 +322,7 @@ int _glfwPlatformGetPhysicalDevicePresentationSupport(VkInstance instance,
                                                       VkPhysicalDevice device,
                                                       uint32_t queuefamily)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,

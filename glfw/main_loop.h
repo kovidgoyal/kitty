@@ -12,20 +12,20 @@
 #define GLFW_LOOP_BACKEND x11
 #endif
 
-static bool keep_going = GLFW_FALSE;
+static bool keep_going = false;
 
 void _glfwPlatformRequestTickCallback() {
 }
 
 void _glfwPlatformStopMainLoop(void) {
     if (keep_going) {
-        keep_going = GLFW_FALSE;
+        keep_going = false;
         _glfwPlatformPostEmptyEvent();
     }
 }
 
 void _glfwPlatformRunMainLoop(GLFWtickcallback tick_callback, void* data) {
-    keep_going = GLFW_TRUE;
+    keep_going = true;
     while(keep_going) {
         _glfwPlatformWaitEvents();
 		EVDBG("loop tick");

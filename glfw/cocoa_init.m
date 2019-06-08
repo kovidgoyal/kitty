@@ -214,7 +214,7 @@ static bool updateUnicodeDataNS(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Cocoa: Failed to retrieve keyboard layout input source");
-        return GLFW_FALSE;
+        return false;
     }
 
     _glfw.ns.unicodeData =
@@ -224,10 +224,10 @@ static bool updateUnicodeDataNS(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Cocoa: Failed to retrieve keyboard layout Unicode data");
-        return GLFW_FALSE;
+        return false;
     }
 
-    return GLFW_TRUE;
+    return true;
 }
 
 // Load HIToolbox.framework and the TIS symbols we need from it
@@ -241,7 +241,7 @@ static bool initializeTIS(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Cocoa: Failed to load HIToolbox.framework");
-        return GLFW_FALSE;
+        return false;
     }
 
     CFStringRef* kPropertyUnicodeKeyLayoutData =
@@ -264,7 +264,7 @@ static bool initializeTIS(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Cocoa: Failed to load TIS API symbols");
-        return GLFW_FALSE;
+        return false;
     }
 
     _glfw.ns.tis.kPropertyUnicodeKeyLayoutData =
@@ -387,12 +387,12 @@ int _glfwPlatformInit(void)
 
     _glfw.ns.eventSource = CGEventSourceCreate(kCGEventSourceStateHIDSystemState);
     if (!_glfw.ns.eventSource)
-        return GLFW_FALSE;
+        return false;
 
     CGEventSourceSetLocalEventsSuppressionInterval(_glfw.ns.eventSource, 0.0);
 
     if (!initializeTIS())
-        return GLFW_FALSE;
+        return false;
 
     _glfw.ns.displayLinks.lock = [NSLock new];
     _glfwInitTimerNS();
@@ -400,7 +400,7 @@ int _glfwPlatformInit(void)
 
     _glfwPollMonitorsNS();
     }
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformTerminate(void)

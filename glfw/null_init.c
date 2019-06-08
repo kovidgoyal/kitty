@@ -35,7 +35,7 @@
 int _glfwPlatformInit(void)
 {
     _glfwInitTimerPOSIX();
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformTerminate(void)

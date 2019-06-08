@@ -53,7 +53,7 @@ enum Capabilities {
 static inline bool
 test_env_var(const char *name, const char *val) {
     const char *q = getenv(name);
-    return (q && strcmp(q, val) == 0) ? GLFW_TRUE : GLFW_FALSE;
+    return (q && strcmp(q, val) == 0) ? true : false;
 }
 
 static inline size_t
@@ -200,32 +200,32 @@ read_ibus_address(_GLFWIBUSData *ibus) {
     FILE *addr_file = fopen(ibus->address_file_name, "r");
     if (!addr_file) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to open IBUS address file: %s with error: %s", ibus->address_file_name, strerror(errno));
-        return GLFW_FALSE;
+        return false;
     }
     int stat_result = fstat(fileno(addr_file), &s);
-    bool found = GLFW_FALSE;
+    bool found = false;
     while (fgets(buf, sizeof(buf), addr_file)) {
         if (strncmp(buf, "IBUS_ADDRESS=", sizeof("IBUS_ADDRESS=")-1) == 0) {
             size_t sz = strlen(buf);
             if (buf[sz-1] == '\n') buf[sz-1] = 0;
             if (buf[sz-2] == '\r') buf[sz-2] = 0;
-            found = GLFW_TRUE;
+            found = true;
             break;
         }
     }
     fclose(addr_file); addr_file = NULL;
     if (stat_result != 0) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to stat IBUS address file: %s with error: %s", ibus->address_file_name, strerror(errno));
-        return GLFW_FALSE;
+        return false;
     }
     ibus->address_file_mtime = s.st_mtime;
     if (found) {
         free((void*)ibus->address);
         ibus->address = _glfw_strdup(buf + sizeof("IBUS_ADDRESS=") - 1);
-        return GLFW_TRUE;
+        return true;
     }
     _glfwInputError(GLFW_PLATFORM_ERROR, "Could not find IBUS_ADDRESS in %s", ibus->address_file_name);
-    return GLFW_FALSE;
+    return false;
 }
 
 void
@@ -245,8 +245,8 @@ input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
     dbus_connection_try_register_object_path(ibus->conn, ibus->input_ctx_path, &ibus_vtable, ibus, NULL);
     enum Capabilities caps = IBUS_CAP_FOCUS | IBUS_CAP_PREEDIT_TEXT;
     if (!glfw_dbus_call_method_no_reply(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCapabilities", DBUS_TYPE_UINT32, &caps, DBUS_TYPE_INVALID)) return;
-    ibus->ok = GLFW_TRUE;
-    glfw_ibus_set_focused(ibus, GLFW_FALSE);
+    ibus->ok = true;
+    glfw_ibus_set_focused(ibus, false);
     glfw_ibus_set_cursor_geometry(ibus, 0, 0, 0, 0);
     debug("Connected to IBUS daemon for IME input management\n");
 }
@@ -255,25 +255,25 @@ bool
 setup_connection(_GLFWIBUSData *ibus) {
     const char *client_name = "GLFW_Application";
     const char *address_file_name = get_ibus_address_file_name();
-    ibus->ok = GLFW_FALSE;
-    if (!address_file_name) return GLFW_FALSE;
+    ibus->ok = false;
+    if (!address_file_name) return false;
     free((void*)ibus->address_file_name);
     ibus->address_file_name = _glfw_strdup(address_file_name);
-    if (!read_ibus_address(ibus)) return GLFW_FALSE;
+    if (!read_ibus_address(ibus)) return false;
     if (ibus->conn) {
         glfw_dbus_close_connection(ibus->conn);
         ibus->conn = NULL;
     }
     debug("Connecting to IBUS daemon @ %s for IME input management\n", ibus->address);
-    ibus->conn = glfw_dbus_connect_to(ibus->address, "Failed to connect to the IBUS daemon, with error", "ibus", GLFW_FALSE);
-    if (!ibus->conn) return GLFW_FALSE;
+    ibus->conn = glfw_dbus_connect_to(ibus->address, "Failed to connect to the IBUS daemon, with error", "ibus", false);
+    if (!ibus->conn) return false;
     free((void*)ibus->input_ctx_path); ibus->input_ctx_path = NULL;
     if (!glfw_dbus_call_method_with_reply(
             ibus->conn, IBUS_SERVICE, IBUS_PATH, IBUS_INTERFACE, "CreateInputContext", DBUS_TIMEOUT_USE_DEFAULT, input_context_created, ibus,
             DBUS_TYPE_STRING, &client_name, DBUS_TYPE_INVALID)) {
-        return GLFW_FALSE;
+        return false;
     }
-    return GLFW_TRUE;
+    return true;
 }
 
 
@@ -281,7 +281,7 @@ void
 glfw_connect_to_ibus(_GLFWIBUSData *ibus) {
     if (ibus->inited) return;
     if (!test_env_var("GLFW_IM_MODULE", "ibus")) return;
-    ibus->inited = GLFW_TRUE;
+    ibus->inited = true;
     setup_connection(ibus);
 }
 
@@ -297,21 +297,21 @@ glfw_ibus_terminate(_GLFWIBUSData *ibus) {
     F(address_file_name);
 #undef F
 
-    ibus->ok = GLFW_FALSE;
+    ibus->ok = false;
 }
 
 static bool
 check_connection(_GLFWIBUSData *ibus) {
-    if (!ibus->inited) return GLFW_FALSE;
+    if (!ibus->inited) return false;
     if (ibus->conn && dbus_connection_get_is_connected(ibus->conn)) {
         return ibus->ok;
     }
     struct stat s;
     if (stat(ibus->address_file_name, &s) != 0 || s.st_mtime != ibus->address_file_mtime) {
-        if (!read_ibus_address(ibus)) return GLFW_FALSE;
+        if (!read_ibus_address(ibus)) return false;
         setup_connection(ibus);
     }
-    return GLFW_FALSE;
+    return false;
 }
 
 
@@ -395,23 +395,23 @@ key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
     uint32_t handled = 0;
     KeyEvent *ev = (KeyEvent*)data;
     bool is_release = ev->action == GLFW_RELEASE;
-    bool failed = GLFW_FALSE;
+    bool failed = false;
     if (errmsg) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to process key with error: %s", errmsg);
-        failed = GLFW_TRUE;
+        failed = true;
     } else {
         glfw_dbus_get_args(msg, "Failed to get IBUS handled key from reply", DBUS_TYPE_BOOLEAN, &handled, DBUS_TYPE_INVALID);
         debug("IBUS processed scancode: 0x%x release: %d handled: %u\n", ev->keycode, is_release, handled);
     }
-    glfw_xkb_key_from_ime(ev, handled ? GLFW_TRUE : GLFW_FALSE, failed);
+    glfw_xkb_key_from_ime(ev, handled ? true : false, failed);
     free(ev);
 }
 
 bool
 ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus) {
-    if (!check_connection(ibus)) return GLFW_FALSE;
+    if (!check_connection(ibus)) return false;
     KeyEvent *ev = malloc(sizeof(KeyEvent));
-    if (!ev) return GLFW_FALSE;
+    if (!ev) return false;
     memcpy(ev, ev_, sizeof(KeyEvent));
     uint32_t state = ibus_key_state(ev->glfw_modifiers, ev->action);
     if (!glfw_dbus_call_method_with_reply(
@@ -420,7 +420,7 @@ ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus) {
             DBUS_TYPE_UINT32, &ev->ibus_sym, DBUS_TYPE_UINT32, &ev->ibus_keycode, DBUS_TYPE_UINT32,
             &state, DBUS_TYPE_INVALID)) {
         free(ev);
-        return GLFW_FALSE;
+        return false;
     }
-    return GLFW_TRUE;
+    return true;
 }

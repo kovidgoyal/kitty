@@ -66,21 +66,21 @@ CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
 static inline void
 requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
     if (!callback) {
-        w->ns.renderFrameRequested = GLFW_FALSE;
+        w->ns.renderFrameRequested = false;
         w->ns.renderFrameCallback = NULL;
         return;
     }
     w->ns.renderFrameCallback = callback;
-    w->ns.renderFrameRequested = GLFW_TRUE;
+    w->ns.renderFrameRequested = true;
     CGDirectDisplayID displayID = displayIDForWindow(w);
     [_glfw.ns.displayLinks.lock lock];
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayID == displayID) {
-            dl->renderFrameRequested = GLFW_TRUE;
+            dl->renderFrameRequested = true;
             if (!dl->displayLinkStarted) {
                 CVDisplayLinkStart(dl->displayLink);
-                dl->displayLinkStarted = GLFW_TRUE;
+                dl->displayLinkStarted = true;
             }
             break;
         }
@@ -113,7 +113,7 @@ static void hideCursor(_GLFWwindow* window)
     if (!_glfw.ns.cursorHidden)
     {
         [NSCursor hide];
-        _glfw.ns.cursorHidden = GLFW_TRUE;
+        _glfw.ns.cursorHidden = true;
     }
 }
 
@@ -124,7 +124,7 @@ static void showCursor(_GLFWwindow* window)
     if (_glfw.ns.cursorHidden)
     {
         [NSCursor unhide];
-        _glfw.ns.cursorHidden = GLFW_FALSE;
+        _glfw.ns.cursorHidden = false;
     }
 }
 
@@ -462,7 +462,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     if (window->monitor)
         releaseMonitor(window);
 
-    _glfwInputWindowIconify(window, GLFW_TRUE);
+    _glfwInputWindowIconify(window, true);
 }
 
 - (void)windowDidDeminiaturize:(NSNotification *)notification
@@ -470,7 +470,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     if (window->monitor)
         acquireMonitor(window);
 
-    _glfwInputWindowIconify(window, GLFW_FALSE);
+    _glfwInputWindowIconify(window, false);
 }
 
 - (void)windowDidBecomeKey:(NSNotification *)notification
@@ -478,7 +478,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     if (_glfw.ns.disabledCursorWindow == window)
         _glfwCenterCursorInContentArea(window);
 
-    _glfwInputWindowFocus(window, GLFW_TRUE);
+    _glfwInputWindowFocus(window, true);
     updateCursorMode(window);
     if (window->cursorMode == GLFW_CURSOR_HIDDEN) hideCursor(window);
     if (_glfw.ns.disabledCursorWindow != window && cursorInContentArea(window))
@@ -495,7 +495,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         _glfwPlatformIconifyWindow(window);
     showCursor(window);
 
-    _glfwInputWindowFocus(window, GLFW_FALSE);
+    _glfwInputWindowFocus(window, false);
 }
 
 - (void)windowDidChangeScreen:(NSNotification *)notification
@@ -766,12 +766,12 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void)mouseExited:(NSEvent *)event
 {
-    _glfwInputCursorEnter(window, GLFW_FALSE);
+    _glfwInputCursorEnter(window, false);
 }
 
 - (void)mouseEntered:(NSEvent *)event
 {
-    _glfwInputCursorEnter(window, GLFW_TRUE);
+    _glfwInputCursorEnter(window, true);
 }
 
 - (void)viewDidChangeBackingProperties
@@ -870,7 +870,7 @@ is_ascii_control_char(char x) {
     const unsigned int scancode = [event keyCode];
     const NSUInteger flags = [event modifierFlags];
     const int mods = translateFlags(flags);
-    const int key = translateKey(scancode, GLFW_TRUE);
+    const int key = translateKey(scancode, true);
     const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, scancode, flags) != 1;
     const bool previous_has_marked_text = [self hasMarkedText];
     [self unmarkText];
@@ -949,7 +949,7 @@ is_ascii_control_char(char x) {
     int action;
     const unsigned int modifierFlags =
         [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
-    const int key = translateKey([event keyCode], GLFW_FALSE);
+    const int key = translateKey([event keyCode], false);
     const int mods = translateFlags(modifierFlags);
     const NSUInteger keyFlag = translateKeyToModifierFlag(key);
 
@@ -968,7 +968,7 @@ is_ascii_control_char(char x) {
 
 - (void)keyUp:(NSEvent *)event
 {
-    const int key = translateKey([event keyCode], GLFW_TRUE);
+    const int key = translateKey([event keyCode], true);
     const int mods = translateFlags([event modifierFlags]);
     _glfwInputKeyboard(window, key, [event keyCode], GLFW_RELEASE, mods, "", 0);
 }
@@ -1288,7 +1288,7 @@ static void createMenuBar(void)
 static bool initializeAppKit(void)
 {
     if (_glfw.ns.delegate)
-        return GLFW_TRUE;
+        return true;
 
     // There can only be one application delegate, but we allocate it the
     // first time a window is created to keep all window code in this file
@@ -1297,7 +1297,7 @@ static bool initializeAppKit(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Cocoa: Failed to create application delegate");
-        return GLFW_FALSE;
+        return false;
     }
     [NSApp setDelegate:_glfw.ns.delegate];
 
@@ -1324,7 +1324,7 @@ static bool initializeAppKit(void)
 
     [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
 
-    return GLFW_TRUE;
+    return true;
 }
 
 // Create the Cocoa window
@@ -1338,7 +1338,7 @@ static bool createNativeWindow(_GLFWwindow* window,
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Cocoa: Failed to create window delegate");
-        return GLFW_FALSE;
+        return false;
     }
 
     NSRect contentRect;
@@ -1365,7 +1365,7 @@ static bool createNativeWindow(_GLFWwindow* window,
     if (window->ns.object == nil)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to create window");
-        return GLFW_FALSE;
+        return false;
     }
 
     if (window->monitor)
@@ -1416,7 +1416,7 @@ static bool createNativeWindow(_GLFWwindow* window,
     _glfwPlatformGetWindowSize(window, &window->ns.width, &window->ns.height);
     _glfwPlatformGetFramebufferSize(window, &window->ns.fbWidth, &window->ns.fbHeight);
 
-    return GLFW_TRUE;
+    return true;
 }
 
 
@@ -1431,33 +1431,33 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 {
     window->ns.deadKeyState = 0;
     if (!initializeAppKit())
-        return GLFW_FALSE;
+        return false;
 
     if (!createNativeWindow(window, wndconfig, fbconfig))
-        return GLFW_FALSE;
+        return false;
 
     if (ctxconfig->client != GLFW_NO_API)
     {
         if (ctxconfig->source == GLFW_NATIVE_CONTEXT_API)
         {
             if (!_glfwInitNSGL())
-                return GLFW_FALSE;
+                return false;
             if (!_glfwCreateContextNSGL(window, ctxconfig, fbconfig))
-                return GLFW_FALSE;
+                return false;
         }
         else if (ctxconfig->source == GLFW_EGL_CONTEXT_API)
         {
             if (!_glfwInitEGL())
-                return GLFW_FALSE;
+                return false;
             if (!_glfwCreateContextEGL(window, ctxconfig, fbconfig))
-                return GLFW_FALSE;
+                return false;
         }
         else if (ctxconfig->source == GLFW_OSMESA_CONTEXT_API)
         {
             if (!_glfwInitOSMesa())
-                return GLFW_FALSE;
+                return false;
             if (!_glfwCreateContextOSMesa(window, ctxconfig, fbconfig))
-                return GLFW_FALSE;
+                return false;
         }
     }
 
@@ -1468,7 +1468,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
         acquireMonitor(window);
     }
 
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformDestroyWindow(_GLFWwindow* window)
@@ -1657,7 +1657,7 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
 int _glfwPlatformWindowBell(_GLFWwindow* window)
 {
     NSBeep();
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
@@ -1788,7 +1788,7 @@ int _glfwPlatformWindowHovered(_GLFWwindow* window)
     if ([NSWindow windowNumberAtPoint:point belowWindowWithWindowNumber:0] !=
         [window->ns.object windowNumber])
     {
-        return GLFW_FALSE;
+        return false;
     }
 
     return NSMouseInRect(point,
@@ -1834,7 +1834,7 @@ _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
     _GLFWwindow *w = _glfw.windowListHead;
     while (w) {
         if (w->ns.renderFrameRequested && displayID == displayIDForWindow(w)) {
-            w->ns.renderFrameRequested = GLFW_FALSE;
+            w->ns.renderFrameRequested = false;
             w->ns.renderFrameCallback((GLFWwindow*)w);
         }
         w = w->next;
@@ -1948,7 +1948,7 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
 
     native = [[NSImage alloc] initWithSize:NSMakeSize(image->width, image->height)];
     if (native == nil)
-        return GLFW_FALSE;
+        return false;
 
     for (int i = 0; i < count; i++) {
         const GLFWimage *src = image + i;
@@ -1965,7 +1965,7 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                         bytesPerRow:src->width * 4
                         bitsPerPixel:32];
         if (rep == nil)
-            return GLFW_FALSE;
+            return false;
 
         memcpy([rep bitmapData], src->pixels, src->width * src->height * 4);
         [native addRepresentation:rep];
@@ -1976,8 +1976,8 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                                                 hotSpot:NSMakePoint(xhot, yhot)];
     [native release];
     if (cursor->ns.object == nil)
-        return GLFW_FALSE;
-    return GLFW_TRUE;
+        return false;
+    return true;
 }
 
 int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape)
@@ -1996,7 +1996,7 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape
         U(GLFW_SW_RESIZE_CURSOR, _windowResizeNorthEastSouthWestCursor);
         U(GLFW_SE_RESIZE_CURSOR, _windowResizeNorthWestSouthEastCursor);
         case GLFW_INVALID_CURSOR:
-            return GLFW_FALSE;
+            return false;
     }
 #undef C
 #undef U
@@ -2005,11 +2005,11 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Cocoa: Failed to retrieve standard cursor");
-        return GLFW_FALSE;
+        return false;
     }
 
     [cursor->ns.object retain];
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformDestroyCursor(_GLFWcursor* cursor)
@@ -2093,7 +2093,7 @@ int _glfwPlatformGetPhysicalDevicePresentationSupport(VkInstance instance,
                                                       VkPhysicalDevice device,
                                                       uint32_t queuefamily)
 {
-    return GLFW_TRUE;
+    return true;
 }
 
 VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,

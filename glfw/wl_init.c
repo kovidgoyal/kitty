@@ -103,10 +103,10 @@ static void pointerHandleEnter(void* data,
     _glfw.wl.pointerSerial = serial;
     _glfw.wl.pointerFocus = window;
 
-    window->wl.hovered = GLFW_TRUE;
+    window->wl.hovered = true;
 
     _glfwPlatformSetCursor(window, window->wl.currentCursor);
-    _glfwInputCursorEnter(window, GLFW_TRUE);
+    _glfwInputCursorEnter(window, true);
 }
 
 static void pointerHandleLeave(void* data,
@@ -119,11 +119,11 @@ static void pointerHandleLeave(void* data,
     if (!window)
         return;
 
-    window->wl.hovered = GLFW_FALSE;
+    window->wl.hovered = false;
 
     _glfw.wl.pointerSerial = serial;
     _glfw.wl.pointerFocus = NULL;
-    _glfwInputCursorEnter(window, GLFW_FALSE);
+    _glfwInputCursorEnter(window, false);
 }
 
 static void setCursor(GLFWCursorShape shape)
@@ -370,7 +370,7 @@ static void keyboardHandleEnter(void* data,
     }
 
     _glfw.wl.keyboardFocus = window;
-    _glfwInputWindowFocus(window, GLFW_TRUE);
+    _glfwInputWindowFocus(window, true);
 }
 
 static void keyboardHandleLeave(void* data,
@@ -384,7 +384,7 @@ static void keyboardHandleLeave(void* data,
         return;
 
     _glfw.wl.keyboardFocus = NULL;
-    _glfwInputWindowFocus(window, GLFW_FALSE);
+    _glfwInputWindowFocus(window, false);
 }
 
 static void
@@ -408,12 +408,12 @@ static void keyboardHandleKey(void* data,
         return;
     int action = state == WL_KEYBOARD_KEY_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE;
     glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, key, action);
-    bool repeatable = GLFW_FALSE;
+    bool repeatable = false;
 
     if (action == GLFW_PRESS && _glfw.wl.keyboardRepeatRate > 0 && glfw_xkb_should_repeat(&_glfw.wl.xkb, key))
     {
         _glfw.wl.keyRepeatInfo.key = key;
-        repeatable = GLFW_TRUE;
+        repeatable = true;
         _glfw.wl.keyRepeatInfo.keyboardFocus = window;
     }
     if (repeatable) {
@@ -683,7 +683,7 @@ int _glfwPlatformInit(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                 "Wayland: failed to create self pipe");
-        return GLFW_FALSE;
+        return false;
     }
 
     _glfw.wl.cursor.handle = _glfw_dlopen("libwayland-cursor.so.0");
@@ -691,7 +691,7 @@ int _glfwPlatformInit(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Wayland: Failed to open libwayland-cursor");
-        return GLFW_FALSE;
+        return false;
     }
 
     _glfw.wl.cursor.theme_load = (PFN_wl_cursor_theme_load)
@@ -708,7 +708,7 @@ int _glfwPlatformInit(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Wayland: Failed to open libwayland-egl");
-        return GLFW_FALSE;
+        return false;
     }
 
     _glfw.wl.egl.window_create = (PFN_wl_egl_window_create)
@@ -723,7 +723,7 @@ int _glfwPlatformInit(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Wayland: Failed to connect to display");
-        return GLFW_FALSE;
+        return false;
     }
     initPollData(&_glfw.wl.eventLoopData, _glfw.wl.eventLoopData.wakeupFds[0], wl_display_get_fd(_glfw.wl.display));
     glfw_dbus_init(&_glfw.wl.dbus, &_glfw.wl.eventLoopData);
@@ -733,7 +733,7 @@ int _glfwPlatformInit(void)
     _glfw.wl.registry = wl_display_get_registry(_glfw.wl.display);
     wl_registry_add_listener(_glfw.wl.registry, &registryListener, NULL);
 
-    if (!glfw_xkb_create_context(&_glfw.wl.xkb)) return GLFW_FALSE;
+    if (!glfw_xkb_create_context(&_glfw.wl.xkb)) return false;
 
     // Sync so we got all registry objects
     wl_display_roundtrip(_glfw.wl.display);
@@ -744,7 +744,7 @@ int _glfwPlatformInit(void)
 #ifdef __linux__
     if (_glfw.hints.init.enableJoysticks) {
         if (!_glfwInitJoysticksLinux())
-            return GLFW_FALSE;
+            return false;
     }
 #endif
 
@@ -753,7 +753,7 @@ int _glfwPlatformInit(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Wayland: Failed to find xdg-shell in your compositor");
-        return GLFW_FALSE;
+        return false;
     }
 
     if (_glfw.wl.shm)
@@ -773,13 +773,13 @@ int _glfwPlatformInit(void)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
                             "Wayland: Unable to load default cursor theme");
-            return GLFW_FALSE;
+            return false;
         }
         _glfw.wl.cursorSurface =
             wl_compositor_create_surface(_glfw.wl.compositor);
     }
 
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformTerminate(void)

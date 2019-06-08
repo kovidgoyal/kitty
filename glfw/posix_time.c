@@ -44,13 +44,13 @@ void _glfwInitTimerPOSIX(void)
 
     if (clock_gettime(CLOCK_MONOTONIC, &ts) == 0)
     {
-        _glfw.timer.posix.monotonic = GLFW_TRUE;
+        _glfw.timer.posix.monotonic = true;
         _glfw.timer.posix.frequency = 1000000000;
     }
     else
 #endif
     {
-        _glfw.timer.posix.monotonic = GLFW_FALSE;
+        _glfw.timer.posix.monotonic = false;
         _glfw.timer.posix.frequency = 1000000;
     }
 }

@@ -199,7 +199,7 @@ static bool initExtensions(void)
                                &_glfw.x11.xi.major,
                                &_glfw.x11.xi.minor) == Success)
             {
-                _glfw.x11.xi.available = GLFW_TRUE;
+                _glfw.x11.xi.available = true;
             }
         }
     }
@@ -258,7 +258,7 @@ static bool initExtensions(void)
             {
                 // The GLFW RandR path requires at least version 1.3
                 if (_glfw.x11.randr.major > 1 || _glfw.x11.randr.minor >= 3)
-                    _glfw.x11.randr.available = GLFW_TRUE;
+                    _glfw.x11.randr.available = true;
             }
             else
             {
@@ -277,14 +277,14 @@ static bool initExtensions(void)
         {
             // This is likely an older Nvidia driver with broken gamma support
             // Flag it as useless and fall back to xf86vm gamma, if available
-            _glfw.x11.randr.gammaBroken = GLFW_TRUE;
+            _glfw.x11.randr.gammaBroken = true;
         }
 
         if (!sr->ncrtc)
         {
             // A system without CRTCs is likely a system with broken RandR
             // Disable the RandR monitor path and fall back to core functions
-            _glfw.x11.randr.monitorBroken = GLFW_TRUE;
+            _glfw.x11.randr.monitorBroken = true;
         }
 
         XRRFreeScreenResources(sr);
@@ -330,7 +330,7 @@ static bool initExtensions(void)
                                    &_glfw.x11.xinerama.minor))
         {
             if (XineramaIsActive(_glfw.x11.display))
-                _glfw.x11.xinerama.available = GLFW_TRUE;
+                _glfw.x11.xinerama.available = true;
         }
     }
 
@@ -356,7 +356,7 @@ static bool initExtensions(void)
                                     &_glfw.x11.xrender.major,
                                     &_glfw.x11.xrender.minor))
             {
-                _glfw.x11.xrender.available = GLFW_TRUE;
+                _glfw.x11.xrender.available = true;
             }
         }
     }
@@ -373,19 +373,19 @@ static bool initExtensions(void)
     if (!_glfw.x11.xkb.available)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to load Xkb extension");
-        return GLFW_FALSE;
+        return false;
     }
     Bool supported;
     if (XkbSetDetectableAutoRepeat(_glfw.x11.display, True, &supported))
     {
         if (supported)
-            _glfw.x11.xkb.detectable = GLFW_TRUE;
+            _glfw.x11.xkb.detectable = true;
     }
 
-    if (!glfw_xkb_set_x11_events_mask()) return GLFW_FALSE;
-    if (!glfw_xkb_create_context(&_glfw.x11.xkb)) return GLFW_FALSE;
-    if (!glfw_xkb_update_x11_keyboard_id(&_glfw.x11.xkb)) return GLFW_FALSE;
-    if (!glfw_xkb_compile_keymap(&_glfw.x11.xkb, NULL)) return GLFW_FALSE;
+    if (!glfw_xkb_set_x11_events_mask()) return false;
+    if (!glfw_xkb_create_context(&_glfw.x11.xkb)) return false;
+    if (!glfw_xkb_update_x11_keyboard_id(&_glfw.x11.xkb)) return false;
+    if (!glfw_xkb_compile_keymap(&_glfw.x11.xkb, NULL)) return false;
 
     // Detect whether an EWMH-conformant window manager is running
     detectEWMH();
@@ -457,7 +457,7 @@ static bool initExtensions(void)
         _glfw.x11.NET_WM_CM_Sx = XInternAtom(_glfw.x11.display, name, False);
     }
 
-    return GLFW_TRUE;
+    return true;
 }
 
 // Retrieve system content scale via folklore heuristics
@@ -624,7 +624,7 @@ int _glfwPlatformInit(void)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                 "X11: failed to create self pipe");
-        return GLFW_FALSE;
+        return false;
     }
 
     _glfw.x11.display = XOpenDisplay(NULL);
@@ -642,7 +642,7 @@ int _glfwPlatformInit(void)
                             "X11: The DISPLAY environment variable is missing");
         }
 
-        return GLFW_FALSE;
+        return false;
     }
 
     initPollData(&_glfw.x11.eventLoopData, _glfw.x11.eventLoopData.wakeupFds[0], ConnectionNumber(_glfw.x11.display));
@@ -654,10 +654,10 @@ int _glfwPlatformInit(void)
     _glfw.x11.RESOURCE_MANAGER = XInternAtom(_glfw.x11.display, "RESOURCE_MANAGER", True);
     XSelectInput(_glfw.x11.display, _glfw.x11.root, PropertyChangeMask);
 
-    _glfwGetSystemContentScaleX11(&_glfw.x11.contentScaleX, &_glfw.x11.contentScaleY, GLFW_FALSE);
+    _glfwGetSystemContentScaleX11(&_glfw.x11.contentScaleX, &_glfw.x11.contentScaleY, false);
 
     if (!initExtensions())
-        return GLFW_FALSE;
+        return false;
 
     _glfw.x11.helperWindowHandle = createHelperWindow();
     _glfw.x11.hiddenCursorHandle = createHiddenCursor();
@@ -665,7 +665,7 @@ int _glfwPlatformInit(void)
 #if defined(__linux__)
     if (_glfw.hints.init.enableJoysticks) {
         if (!_glfwInitJoysticksLinux())
-            return GLFW_FALSE;
+            return false;
         if (_glfw.linjs.inotify > 0)
             addWatch(&_glfw.x11.eventLoopData, "joystick", _glfw.linjs.inotify, POLLIN, 1, NULL, NULL);
     }
@@ -674,7 +674,7 @@ int _glfwPlatformInit(void)
     _glfwInitTimerPOSIX();
 
     _glfwPollMonitorsX11();
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformTerminate(void)

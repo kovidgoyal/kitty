@@ -33,7 +33,7 @@
 
 int _glfwPlatformPollJoystick(_GLFWjoystick* js, int mode)
 {
-    return GLFW_FALSE;
+    return false;
 }
 
 void _glfwPlatformUpdateGamepadGUID(char* guid)

@@ -37,17 +37,17 @@
 
 bool _glfwPlatformCreateTls(_GLFWtls* tls)
 {
-    assert(tls->posix.allocated == GLFW_FALSE);
+    assert(tls->posix.allocated == false);
 
     if (pthread_key_create(&tls->posix.key, NULL) != 0)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "POSIX: Failed to create context TLS");
-        return GLFW_FALSE;
+        return false;
     }
 
-    tls->posix.allocated = GLFW_TRUE;
-    return GLFW_TRUE;
+    tls->posix.allocated = true;
+    return true;
 }
 
 void _glfwPlatformDestroyTls(_GLFWtls* tls)
@@ -59,27 +59,27 @@ void _glfwPlatformDestroyTls(_GLFWtls* tls)
 
 void* _glfwPlatformGetTls(_GLFWtls* tls)
 {
-    assert(tls->posix.allocated == GLFW_TRUE);
+    assert(tls->posix.allocated == true);
     return pthread_getspecific(tls->posix.key);
 }
 
 void _glfwPlatformSetTls(_GLFWtls* tls, void* value)
 {
-    assert(tls->posix.allocated == GLFW_TRUE);
+    assert(tls->posix.allocated == true);
     pthread_setspecific(tls->posix.key, value);
 }
 
 bool _glfwPlatformCreateMutex(_GLFWmutex* mutex)
 {
-    assert(mutex->posix.allocated == GLFW_FALSE);
+    assert(mutex->posix.allocated == false);
 
     if (pthread_mutex_init(&mutex->posix.handle, NULL) != 0)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR, "POSIX: Failed to create mutex");
-        return GLFW_FALSE;
+        return false;
     }
 
-    return mutex->posix.allocated = GLFW_TRUE;
+    return mutex->posix.allocated = true;
 }
 
 void _glfwPlatformDestroyMutex(_GLFWmutex* mutex)
@@ -91,13 +91,13 @@ void _glfwPlatformDestroyMutex(_GLFWmutex* mutex)
 
 void _glfwPlatformLockMutex(_GLFWmutex* mutex)
 {
-    assert(mutex->posix.allocated == GLFW_TRUE);
+    assert(mutex->posix.allocated == true);
     pthread_mutex_lock(&mutex->posix.handle);
 }
 
 void _glfwPlatformUnlockMutex(_GLFWmutex* mutex)
 {
-    assert(mutex->posix.allocated == GLFW_TRUE);
+    assert(mutex->posix.allocated == true);
     pthread_mutex_unlock(&mutex->posix.handle);
 }
 

@@ -121,11 +121,11 @@ static bool modeIsGood(CGDisplayModeRef mode)
     uint32_t flags = CGDisplayModeGetIOFlags(mode);
 
     if (!(flags & kDisplayModeValidFlag) || !(flags & kDisplayModeSafeFlag))
-        return GLFW_FALSE;
+        return false;
     if (flags & kDisplayModeInterlacedFlag)
-        return GLFW_FALSE;
+        return false;
     if (flags & kDisplayModeStretchedFlag)
-        return GLFW_FALSE;
+        return false;
 
 #if MAC_OS_X_VERSION_MAX_ALLOWED <= 101100
     CFStringRef format = CGDisplayModeCopyPixelEncoding(mode);
@@ -133,12 +133,12 @@ static bool modeIsGood(CGDisplayModeRef mode)
         CFStringCompare(format, CFSTR(IO32BitDirectPixels), 0))
     {
         CFRelease(format);
-        return GLFW_FALSE;
+        return false;
     }
 
     CFRelease(format);
 #endif /* MAC_OS_X_VERSION_MAX_ALLOWED */
-    return GLFW_TRUE;
+    return true;
 }
 
 // Convert Core Graphics display mode to GLFW video mode
@@ -218,7 +218,7 @@ static void endFadeReservation(CGDisplayFadeReservationToken token)
 bool refreshMonitorScreen(_GLFWmonitor* monitor)
 {
     if (monitor->ns.screen)
-        return GLFW_TRUE;
+        return true;
 
     for (NSScreen* screen in [NSScreen screens])
     {
@@ -230,12 +230,12 @@ bool refreshMonitorScreen(_GLFWmonitor* monitor)
         if (monitor->ns.unitNumber == CGDisplayUnitNumber([displayID unsignedIntValue]))
         {
             monitor->ns.screen = screen;
-            return GLFW_TRUE;
+            return true;
         }
     }
 
     _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to find a screen for monitor");
-    return GLFW_FALSE;
+    return false;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -247,7 +247,7 @@ void _glfwClearDisplayLinks() {
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         if (_glfw.ns.displayLinks.entries[i].displayLinkStarted) {
             CVDisplayLinkStop(_glfw.ns.displayLinks.entries[i].displayLink);
-            _glfw.ns.displayLinks.entries[i].displayLinkStarted = GLFW_FALSE;
+            _glfw.ns.displayLinks.entries[i].displayLinkStarted = false;
         }
         if (_glfw.ns.displayLinks.entries[i].displayLink) {
             CVDisplayLinkRelease(_glfw.ns.displayLinks.entries[i].displayLink);
@@ -265,12 +265,12 @@ static CVReturn displayLinkCallback(
 {
     CGDirectDisplayID displayID = (CGDirectDisplayID)userInfo;
     [_glfw.ns.displayLinks.lock lock];
-    bool notify = GLFW_FALSE;
+    bool notify = false;
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         if (_glfw.ns.displayLinks.entries[i].displayID == displayID) {
             if (_glfw.ns.displayLinks.entries[i].renderFrameRequested) {
-                notify = GLFW_TRUE;
-                _glfw.ns.displayLinks.entries[i].renderFrameRequested = GLFW_FALSE;
+                notify = true;
+                _glfw.ns.displayLinks.entries[i].renderFrameRequested = false;
             }
             break;
         }
@@ -564,7 +564,7 @@ bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
     }
 
     free(values);
-    return GLFW_TRUE;
+    return true;
 }
 
 void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)

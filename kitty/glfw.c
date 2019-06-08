@@ -506,7 +506,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     // We use a temp window to avoid the need to set the window size after
     // creation, which causes a resize event and all the associated processing.
     // The temp window is used to get the DPI.
-    glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_VISIBLE, false);
     GLFWwindow *common_context = global_state.num_os_windows ? global_state.os_windows[0].handle : NULL;
 #ifdef __APPLE__
     if (is_first_window && !application_quit_canary) {
@@ -531,7 +531,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     // https://github.com/glfw/glfw/issues/1268 It doesn't matter since there
     // is no startup notification in Wayland anyway. It amazes me that anyone
     // uses Wayland as anything other than a butt for jokes.
-    if (global_state.is_wayland) glfwWindowHint(GLFW_VISIBLE, GLFW_TRUE);
+    if (global_state.is_wayland) glfwWindowHint(GLFW_VISIBLE, true);
     GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window);
     glfwDestroyWindow(temp_window); temp_window = NULL;
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
@@ -1176,7 +1176,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);
     ADDC(GLFW_REPEAT);
-    ADDC(GLFW_TRUE); ADDC(GLFW_FALSE);
+    ADDC(true); ADDC(false);
     ADDC(GLFW_IBEAM_CURSOR); ADDC(GLFW_HAND_CURSOR); ADDC(GLFW_ARROW_CURSOR);
 
 // --- Keys --------------------------------------------------------------------

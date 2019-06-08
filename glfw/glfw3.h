@@ -271,24 +271,6 @@ extern "C" {
 #define GLFW_VERSION_REVISION       0
 /*! @} */
 
-/*! @name Boolean values
- *  @{ */
-/*! @brief One.
- *
- *  One.  Seriously.  You don't _need_ to use this symbol in your code.  It's
- *  semantic sugar for the number 1.  You can also use `1` or `true` or `_True`
- *  or `GL_TRUE` or whatever you want.
- */
-#define GLFW_TRUE                   true
-/*! @brief Zero.
- *
- *  Zero.  Seriously.  You don't _need_ to use this symbol in your code.  It's
- *  semantic sugar for the number 0.  You can also use `0` or `false` or
- *  `_False` or `GL_FALSE` or whatever you want.
- */
-#define GLFW_FALSE                  false
-/*! @} */
-
 /*! @name Key and button actions
  *  @{ */
 /*! @brief The key or mouse button was released.
@@ -1222,8 +1204,8 @@ typedef void (* GLFWwindowrefreshfun)(GLFWwindow*);
  *  This is the function signature for window focus callback functions.
  *
  *  @param[in] window The window that gained or lost input focus.
- *  @param[in] focused `GLFW_TRUE` if the window was given input focus, or
- *  `GLFW_FALSE` if it lost it.
+ *  @param[in] focused `true` if the window was given input focus, or
+ *  `false` if it lost it.
  *
  *  @sa @ref window_focus
  *  @sa @ref glfwSetWindowFocusCallback
@@ -1239,7 +1221,7 @@ typedef void (* GLFWwindowfocusfun)(GLFWwindow*,int);
  *  This is the function signature for window occlusion callback functions.
  *
  *  @param[in] window The window whose occlusion state changed.
- *  @param[in] occluded `GLFW_TRUE` if the window was occluded, or `GLFW_FALSE`
+ *  @param[in] occluded `true` if the window was occluded, or `false`
  *  if the window is no longer occluded.
  *
  *  @sa @ref window_occlusion
@@ -1258,8 +1240,8 @@ typedef void (* GLFWwindowocclusionfun)(GLFWwindow*, bool);
  *  functions.
  *
  *  @param[in] window The window that was iconified or restored.
- *  @param[in] iconified `GLFW_TRUE` if the window was iconified, or
- *  `GLFW_FALSE` if it was restored.
+ *  @param[in] iconified `true` if the window was iconified, or
+ *  `false` if it was restored.
  *
  *  @sa @ref window_iconify
  *  @sa @ref glfwSetWindowIconifyCallback
@@ -1276,8 +1258,8 @@ typedef void (* GLFWwindowiconifyfun)(GLFWwindow*,int);
  *  functions.
  *
  *  @param[in] window The window that was maximized or restored.
- *  @param[in] iconified `GLFW_TRUE` if the window was maximized, or
- *  `GLFW_FALSE` if it was restored.
+ *  @param[in] iconified `true` if the window was maximized, or
+ *  `false` if it was restored.
  *
  *  @sa @ref window_maximize
  *  @sa glfwSetWindowMaximizeCallback
@@ -1369,8 +1351,8 @@ typedef void (* GLFWcursorposfun)(GLFWwindow*,double,double);
  *  This is the function signature for cursor enter/leave callback functions.
  *
  *  @param[in] window The window that received the event.
- *  @param[in] entered `GLFW_TRUE` if the cursor entered the window's client
- *  area, or `GLFW_FALSE` if it left it.
+ *  @param[in] entered `true` if the cursor entered the window's client
+ *  area, or `false` if it left it.
  *
  *  @sa @ref cursor_enter
  *  @sa @ref glfwSetCursorEnterCallback
@@ -1622,9 +1604,9 @@ typedef struct GLFWgamepadstate
  *  succeeds, you should call @ref glfwTerminate before the application exits.
  *
  *  Additional calls to this function after successful initialization but before
- *  termination will return `GLFW_TRUE` immediately.
+ *  termination will return `true` immediately.
  *
- *  @return `GLFW_TRUE` if successful, or `GLFW_FALSE` if an
+ *  @return `true` if successful, or `false` if an
  *  [error](@ref error_handling) occurred.
  *
  *  @errors Possible errors include @ref GLFW_PLATFORM_ERROR.
@@ -2472,7 +2454,7 @@ GLFWAPI void glfwWindowHintString(int hint, const char* value);
  *  @remark @macos On OS X 10.10 and later the window frame will not be rendered
  *  at full resolution on Retina displays unless the
  *  [GLFW_COCOA_RETINA_FRAMEBUFFER](@ref GLFW_COCOA_RETINA_FRAMEBUFFER_hint)
- *  hint is `GLFW_TRUE` and the `NSHighResolutionCapable` key is enabled in the
+ *  hint is `true` and the `NSHighResolutionCapable` key is enabled in the
  *  application bundle's `Info.plist`.  For more information, see
  *  [High Resolution Guidelines for OS X](https://developer.apple.com/library/mac/documentation/GraphicsAnimation/Conceptual/HighResolutionOSX/Explained/Explained.html)
  *  in the Mac Developer Library.  The GLFW test and example programs use
@@ -3273,7 +3255,7 @@ GLFWAPI void glfwRequestWindowAttention(GLFWwindow* window);
  *  supported. Currently (macOS, Windows, X11 and Wayland).
  *
  *  @param[in] window The window with which the bell is associated.
- *  @return GLFW_TRUE if the bell succeeded otherwise GLFW_FALSE
+ *  @return true if the bell succeeded otherwise false
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_PLATFORM_ERROR.
@@ -3423,7 +3405,7 @@ GLFWAPI int glfwGetWindowAttrib(GLFWwindow* window, int attrib);
  *
  *  @param[in] window The window to set the attribute for.
  *  @param[in] attrib A supported window attribute.
- *  @param[in] value `GLFW_TRUE` or `GLFW_FALSE`.
+ *  @param[in] value `true` or `false`.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
  *  GLFW_INVALID_ENUM, @ref GLFW_INVALID_VALUE and @ref GLFW_PLATFORM_ERROR.
@@ -3805,23 +3787,23 @@ GLFWAPI int glfwGetInputMode(GLFWwindow* window, int mode);
  *    and unlimited cursor movement.  This is useful for implementing for
  *    example 3D camera controls.
  *
- *  If the mode is `GLFW_STICKY_KEYS`, the value must be either `GLFW_TRUE` to
- *  enable sticky keys, or `GLFW_FALSE` to disable it.  If sticky keys are
+ *  If the mode is `GLFW_STICKY_KEYS`, the value must be either `true` to
+ *  enable sticky keys, or `false` to disable it.  If sticky keys are
  *  enabled, a key press will ensure that @ref glfwGetKey returns `GLFW_PRESS`
  *  the next time it is called even if the key had been released before the
  *  call.  This is useful when you are only interested in whether keys have been
  *  pressed but not when or in which order.
  *
  *  If the mode is `GLFW_STICKY_MOUSE_BUTTONS`, the value must be either
- *  `GLFW_TRUE` to enable sticky mouse buttons, or `GLFW_FALSE` to disable it.
+ *  `true` to enable sticky mouse buttons, or `false` to disable it.
  *  If sticky mouse buttons are enabled, a mouse button press will ensure that
  *  @ref glfwGetMouseButton returns `GLFW_PRESS` the next time it is called even
  *  if the mouse button had been released before the call.  This is useful when
  *  you are only interested in whether mouse buttons have been pressed but not
  *  when or in which order.
  *
- *  If the mode is `GLFW_LOCK_KEY_MODS`, the value must be either `GLFW_TRUE` to
- *  enable lock key modifier bits, or `GLFW_FALSE` to disable them.  If enabled,
+ *  If the mode is `GLFW_LOCK_KEY_MODS`, the value must be either `true` to
+ *  enable lock key modifier bits, or `false` to disable them.  If enabled,
  *  callbacks that receive modifier bits will also have the @ref
  *  GLFW_MOD_CAPS_LOCK bit set when the event was generated with Caps Lock on,
  *  and the @ref GLFW_MOD_NUM_LOCK bit when Num Lock was on.
@@ -4366,7 +4348,7 @@ GLFWAPI GLFWliveresizefun glfwSetLiveResizeCallback(GLFWwindow* window, GLFWlive
  *  work.
  *
  *  @param[in] jid The [joystick](@ref joysticks) to query.
- *  @return `GLFW_TRUE` if the joystick is present, or `GLFW_FALSE` otherwise.
+ *  @return `true` if the joystick is present, or `false` otherwise.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
  *  GLFW_INVALID_ENUM and @ref GLFW_PLATFORM_ERROR.
@@ -4640,13 +4622,13 @@ GLFWAPI void* glfwGetJoystickUserPointer(int jid);
  *  a gamepad mapping.
  *
  *  If the specified joystick is present but does not have a gamepad mapping
- *  this function will return `GLFW_FALSE` but will not generate an error.  Call
+ *  this function will return `false` but will not generate an error.  Call
  *  @ref glfwJoystickPresent to check if a joystick is present regardless of
  *  whether it has a mapping.
  *
  *  @param[in] jid The [joystick](@ref joysticks) to query.
- *  @return `GLFW_TRUE` if a joystick is both present and has a gamepad mapping,
- *  or `GLFW_FALSE` otherwise.
+ *  @return `true` if a joystick is both present and has a gamepad mapping,
+ *  or `false` otherwise.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_INVALID_ENUM.
@@ -4707,7 +4689,7 @@ GLFWAPI GLFWjoystickfun glfwSetJoystickCallback(GLFWjoystickfun cbfun);
  *  default.
  *
  *  @param[in] string The string containing the gamepad mappings.
- *  @return `GLFW_TRUE` if successful, or `GLFW_FALSE` if an
+ *  @return `true` if successful, or `false` if an
  *  [error](@ref error_handling) occurred.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
@@ -4761,7 +4743,7 @@ GLFWAPI const char* glfwGetGamepadName(int jid);
  *  an Xbox-like gamepad.
  *
  *  If the specified joystick is not present or does not have a gamepad mapping
- *  this function will return `GLFW_FALSE` but will not generate an error.  Call
+ *  this function will return `false` but will not generate an error.  Call
  *  @ref glfwJoystickPresent to check whether it is present regardless of
  *  whether it has a mapping.
  *
@@ -4774,7 +4756,7 @@ GLFWAPI const char* glfwGetGamepadName(int jid);
  *
  *  @param[in] jid The [joystick](@ref joysticks) to query.
  *  @param[out] state The gamepad input state of the joystick.
- *  @return `GLFW_TRUE` if successful, or `GLFW_FALSE` if no joystick is
+ *  @return `true` if successful, or `false` if no joystick is
  *  connected, it has no gamepad mapping or an [error](@ref error_handling)
  *  occurred.
  *
@@ -5107,7 +5089,7 @@ GLFWAPI void glfwSwapInterval(int interval);
  *  and `vkEnumerateDeviceExtensionProperties` instead.
  *
  *  @param[in] extension The ASCII encoded name of the extension.
- *  @return `GLFW_TRUE` if the extension is available, or `GLFW_FALSE`
+ *  @return `true` if the extension is available, or `false`
  *  otherwise.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
@@ -5180,7 +5162,7 @@ GLFWAPI GLFWglproc glfwGetProcAddress(const char* procname);
  *  and @ref glfwGetPhysicalDevicePresentationSupport to check whether a queue
  *  family of a physical device supports image presentation.
  *
- *  @return `GLFW_TRUE` if Vulkan is minimally available, or `GLFW_FALSE`
+ *  @return `true` if Vulkan is minimally available, or `false`
  *  otherwise.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
@@ -5292,7 +5274,7 @@ GLFWAPI GLFWvkproc glfwGetInstanceProcAddress(VkInstance instance, const char* p
  *
  *  If Vulkan or the required window surface creation instance extensions are
  *  not available on the machine, or if the specified instance was not created
- *  with the required extensions, this function returns `GLFW_FALSE` and
+ *  with the required extensions, this function returns `false` and
  *  generates a @ref GLFW_API_UNAVAILABLE error.  Call @ref glfwVulkanSupported
  *  to check whether Vulkan is at least minimally available and @ref
  *  glfwGetRequiredInstanceExtensions to check what instance extensions are
@@ -5301,13 +5283,13 @@ GLFWAPI GLFWvkproc glfwGetInstanceProcAddress(VkInstance instance, const char* p
  *  @param[in] instance The instance that the physical device belongs to.
  *  @param[in] device The physical device that the queue family belongs to.
  *  @param[in] queuefamily The index of the queue family to query.
- *  @return `GLFW_TRUE` if the queue family supports presentation, or
- *  `GLFW_FALSE` otherwise.
+ *  @return `true` if the queue family supports presentation, or
+ *  `false` otherwise.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
  *  GLFW_API_UNAVAILABLE and @ref GLFW_PLATFORM_ERROR.
  *
- *  @remark @macos This function currently always returns `GLFW_TRUE`, as the
+ *  @remark @macos This function currently always returns `true`, as the
  *  `VK_MVK_macos_surface` extension does not provide
  *  a `vkGetPhysicalDevice*PresentationSupport` type function.
  *

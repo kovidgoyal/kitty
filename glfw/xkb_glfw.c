@@ -140,9 +140,9 @@ bool
 glfw_xkb_set_x11_events_mask(void) {
     if (!XkbSelectEvents(_glfw.x11.display, XkbUseCoreKbd, XkbNewKeyboardNotifyMask | XkbMapNotifyMask | XkbStateNotifyMask, XkbNewKeyboardNotifyMask | XkbMapNotifyMask | XkbStateNotifyMask)) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set XKB events mask");
-        return GLFW_FALSE;
+        return false;
     }
-    return GLFW_TRUE;
+    return true;
 }
 
 bool
@@ -151,15 +151,15 @@ glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb) {
     xcb_connection_t* conn = XGetXCBConnection(_glfw.x11.display);
     if (!conn) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to retrieve XCB connection");
-        return GLFW_FALSE;
+        return false;
     }
 
     xkb->keyboard_device_id = xkb_x11_get_core_keyboard_device_id(conn);
     if (xkb->keyboard_device_id == -1) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to retrieve core keyboard device id");
-        return GLFW_FALSE;
+        return false;
     }
-    return GLFW_TRUE;
+    return true;
 }
 
 #define xkb_glfw_load_keymap(keymap, ...) {\
@@ -211,10 +211,10 @@ glfw_xkb_create_context(_GLFWXKBData *xkb) {
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Failed to initialize XKB context");
-        return GLFW_FALSE;
+        return false;
     }
     glfw_connect_to_ibus(&xkb->ibus);
-    return GLFW_TRUE;
+    return true;
 }
 
 static const char*
@@ -268,13 +268,13 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
     if (err) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "%s", err);
         release_keyboard_data(xkb);
-        return GLFW_FALSE;
+        return false;
     }
     err = load_states(xkb);
     if (err) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "%s", err);
         release_keyboard_data(xkb);
-        return GLFW_FALSE;
+        return false;
     }
     load_compose_tables(xkb);
 #define S(a, n) xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); xkb->a##Mask = 1 << xkb->a##Idx;
@@ -292,7 +292,7 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
     }
     xkb->states.modifiers = 0;
     xkb->states.activeUnknownModifiers = 0;
-    return GLFW_TRUE;
+    return true;
 }
 
 static inline xkb_mod_mask_t
@@ -413,7 +413,7 @@ glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, int which, int a, i
     int x = 0, y = 0;
     switch(which) {
         case 1:
-            glfw_ibus_set_focused(&xkb->ibus, a ? GLFW_TRUE : GLFW_FALSE);
+            glfw_ibus_set_focused(&xkb->ibus, a ? true : false);
             break;
         case 2:
             _glfwPlatformGetWindowPos(w, &x, &y);
@@ -500,13 +500,13 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         if (key_event.text[0]) { debug("%s: %s ", text_type, key_event.text); }
     }
     int glfw_keycode = glfw_key_for_sym(glfw_sym);
-    bool is_fallback = GLFW_FALSE;
+    bool is_fallback = false;
     if (glfw_keycode == GLFW_KEY_UNKNOWN && !key_event.text[0]) {
         int num_default_syms = xkb_state_key_get_syms(sg->default_state, code_for_sym, &default_syms);
         if (num_default_syms > 0) {
             glfw_sym = default_syms[0];
             glfw_keycode = glfw_key_for_sym(glfw_sym);
-            is_fallback = GLFW_TRUE;
+            is_fallback = true;
         }
     }
     debug(

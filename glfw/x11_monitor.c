@@ -544,7 +544,7 @@ bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
         memcpy(ramp->blue,  gamma->blue,  size * sizeof(unsigned short));
 
         XRRFreeGamma(gamma);
-        return GLFW_TRUE;
+        return true;
     }
     else if (_glfw.x11.vidmode.available)
     {
@@ -556,13 +556,13 @@ bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
         XF86VidModeGetGammaRamp(_glfw.x11.display,
                                 _glfw.x11.screen,
                                 ramp->size, ramp->red, ramp->green, ramp->blue);
-        return GLFW_TRUE;
+        return true;
     }
     else
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "X11: Gamma ramp access not supported by server");
-        return GLFW_FALSE;
+        return false;
     }
 }
 

@@ -122,9 +122,9 @@ static int choosePixelFormat(_GLFWwindow* window,
             u->auxBuffers = getPixelFormatAttrib(window, n, WGL_AUX_BUFFERS_ARB);
 
             if (getPixelFormatAttrib(window, n, WGL_STEREO_ARB))
-                u->stereo = GLFW_TRUE;
+                u->stereo = true;
             if (getPixelFormatAttrib(window, n, WGL_DOUBLE_BUFFER_ARB))
-                u->doublebuffer = GLFW_TRUE;
+                u->doublebuffer = true;
 
             if (_glfw.wgl.ARB_multisample)
                 u->samples = getPixelFormatAttrib(window, n, WGL_SAMPLES_ARB);
@@ -135,7 +135,7 @@ static int choosePixelFormat(_GLFWwindow* window,
                     _glfw.wgl.EXT_framebuffer_sRGB)
                 {
                     if (getPixelFormatAttrib(window, n, WGL_FRAMEBUFFER_SRGB_CAPABLE_ARB))
-                        u->sRGB = GLFW_TRUE;
+                        u->sRGB = true;
                 }
             }
             else
@@ -145,7 +145,7 @@ static int choosePixelFormat(_GLFWwindow* window,
                     if (getPixelFormatAttrib(window, n, WGL_COLORSPACE_EXT) ==
                         WGL_COLORSPACE_SRGB_EXT)
                     {
-                        u->sRGB = GLFW_TRUE;
+                        u->sRGB = true;
                     }
                 }
             }
@@ -195,9 +195,9 @@ static int choosePixelFormat(_GLFWwindow* window,
             u->auxBuffers = pfd.cAuxBuffers;
 
             if (pfd.dwFlags & PFD_STEREO)
-                u->stereo = GLFW_TRUE;
+                u->stereo = true;
             if (pfd.dwFlags & PFD_DOUBLEBUFFER)
-                u->doublebuffer = GLFW_TRUE;
+                u->doublebuffer = true;
         }
 
         u->handle = n;
@@ -308,7 +308,7 @@ static int extensionSupportedWGL(const char* extension)
         if (extensions)
         {
             if (_glfwStringInExtensionString(extension, extensions))
-                return GLFW_TRUE;
+                return true;
         }
     }
 
@@ -318,11 +318,11 @@ static int extensionSupportedWGL(const char* extension)
         if (extensions)
         {
             if (_glfwStringInExtensionString(extension, extensions))
-                return GLFW_TRUE;
+                return true;
         }
     }
 
-    return GLFW_FALSE;
+    return false;
 }
 
 static GLFWglproc getProcAddressWGL(const char* procname)
@@ -359,14 +359,14 @@ bool _glfwInitWGL(void)
     HDC pdc, dc;
 
     if (_glfw.wgl.instance)
-        return GLFW_TRUE;
+        return true;
 
     _glfw.wgl.instance = LoadLibraryA("opengl32.dll");
     if (!_glfw.wgl.instance)
     {
         _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,
                              "WGL: Failed to load opengl32.dll");
-        return GLFW_FALSE;
+        return false;
     }
 
     _glfw.wgl.CreateContext = (PFN_wglCreateContext)
@@ -402,7 +402,7 @@ bool _glfwInitWGL(void)
     {
         _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,
                              "WGL: Failed to set pixel format for dummy context");
-        return GLFW_FALSE;
+        return false;
     }
 
     rc = wglCreateContext(dc);
@@ -410,7 +410,7 @@ bool _glfwInitWGL(void)
     {
         _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,
                              "WGL: Failed to create dummy context");
-        return GLFW_FALSE;
+        return false;
     }
 
     pdc = wglGetCurrentDC();
@@ -422,7 +422,7 @@ bool _glfwInitWGL(void)
                              "WGL: Failed to make dummy context current");
         wglMakeCurrent(pdc, prc);
         wglDeleteContext(rc);
-        return GLFW_FALSE;
+        return false;
     }
 
     // NOTE: Functions must be loaded first as they're needed to retrieve the
@@ -467,7 +467,7 @@ bool _glfwInitWGL(void)
 
     wglMakeCurrent(pdc, prc);
     wglDeleteContext(rc);
-    return GLFW_TRUE;
+    return true;
 }
 
 // Terminate WGL
@@ -504,26 +504,26 @@ bool _glfwCreateContextWGL(_GLFWwindow* window,
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "WGL: Failed to retrieve DC for window");
-        return GLFW_FALSE;
+        return false;
     }
 
     pixelFormat = choosePixelFormat(window, ctxconfig, fbconfig);
     if (!pixelFormat)
-        return GLFW_FALSE;
+        return false;
 
     if (!DescribePixelFormat(window->context.wgl.dc,
                              pixelFormat, sizeof(pfd), &pfd))
     {
         _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,
                              "WGL: Failed to retrieve PFD for selected pixel format");
-        return GLFW_FALSE;
+        return false;
     }
 
     if (!SetPixelFormat(window->context.wgl.dc, pixelFormat, &pfd))
     {
         _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,
                              "WGL: Failed to set selected pixel format");
-        return GLFW_FALSE;
+        return false;
     }
 
     if (ctxconfig->client == GLFW_OPENGL_API)
@@ -534,7 +534,7 @@ bool _glfwCreateContextWGL(_GLFWwindow* window,
             {
                 _glfwInputError(GLFW_VERSION_UNAVAILABLE,
                                 "WGL: A forward compatible OpenGL context requested but WGL_ARB_create_context is unavailable");
-                return GLFW_FALSE;
+                return false;
             }
         }
 
@@ -544,7 +544,7 @@ bool _glfwCreateContextWGL(_GLFWwindow* window,
             {
                 _glfwInputError(GLFW_VERSION_UNAVAILABLE,
                                 "WGL: OpenGL profile requested but WGL_ARB_create_context_profile is unavailable");
-                return GLFW_FALSE;
+                return false;
             }
         }
     }
@@ -556,7 +556,7 @@ bool _glfwCreateContextWGL(_GLFWwindow* window,
         {
             _glfwInputError(GLFW_API_UNAVAILABLE,
                             "WGL: OpenGL ES requested but WGL_ARB_create_context_es2_profile is unavailable");
-            return GLFW_FALSE;
+            return false;
         }
     }
 
@@ -619,7 +619,7 @@ bool _glfwCreateContextWGL(_GLFWwindow* window,
         if (ctxconfig->noerror)
         {
             if (_glfw.wgl.ARB_create_context_no_error)
-                setAttrib(WGL_CONTEXT_OPENGL_NO_ERROR_ARB, GLFW_TRUE);
+                setAttrib(WGL_CONTEXT_OPENGL_NO_ERROR_ARB, true);
         }
 
         // NOTE: Only request an explicitly versioned context when necessary, as
@@ -687,7 +687,7 @@ bool _glfwCreateContextWGL(_GLFWwindow* window,
                 }
             }
 
-            return GLFW_FALSE;
+            return false;
         }
     }
     else
@@ -697,7 +697,7 @@ bool _glfwCreateContextWGL(_GLFWwindow* window,
         {
             _glfwInputErrorWin32(GLFW_VERSION_UNAVAILABLE,
                                  "WGL: Failed to create OpenGL context");
-            return GLFW_FALSE;
+            return false;
         }
 
         if (share)
@@ -706,7 +706,7 @@ bool _glfwCreateContextWGL(_GLFWwindow* window,
             {
                 _glfwInputErrorWin32(GLFW_PLATFORM_ERROR,
                                      "WGL: Failed to enable sharing with specified OpenGL context");
-                return GLFW_FALSE;
+                return false;
             }
         }
     }
@@ -718,7 +718,7 @@ bool _glfwCreateContextWGL(_GLFWwindow* window,
     window->context.getProcAddress = getProcAddressWGL;
     window->context.destroy = destroyContextWGL;
 
-    return GLFW_TRUE;
+    return true;
 }
 
 #undef setAttrib

@@ -41,7 +41,7 @@
 
 // Global state shared between compilation units of GLFW
 //
-_GLFWlibrary _glfw = { GLFW_FALSE };
+_GLFWlibrary _glfw = { false };
 
 // These are outside of _glfw so they can be used before initialization and
 // after termination
@@ -50,12 +50,12 @@ static _GLFWerror _glfwMainThreadError;
 static GLFWerrorfun _glfwErrorCallback;
 static _GLFWinitconfig _glfwInitHints =
 {
-    GLFW_TRUE,      // hat buttons
-    GLFW_FALSE,     // debug keyboard
-    GLFW_TRUE,      // enable joystick
+    true,      // hat buttons
+    false,     // debug keyboard
+    true,      // enable joystick
     {
-        GLFW_TRUE,  // macOS menu bar
-        GLFW_TRUE   // macOS bundle chdir
+        true,  // macOS menu bar
+        true   // macOS bundle chdir
     }
 };
 
@@ -92,7 +92,7 @@ static void terminate(void)
     _glfwTerminateVulkan();
     _glfwPlatformTerminate();
 
-    _glfw.initialized = GLFW_FALSE;
+    _glfw.initialized = false;
 
     while (_glfw.errorListHead)
     {
@@ -215,7 +215,7 @@ _glfwDebug(const char *format, ...) {
 GLFWAPI int glfwInit(void)
 {
     if (_glfw.initialized)
-        return GLFW_TRUE;
+        return true;
 
     memset(&_glfw, 0, sizeof(_glfw));
     _glfw.hints.init = _glfwInitHints;
@@ -223,7 +223,7 @@ GLFWAPI int glfwInit(void)
     if (!_glfwPlatformInit())
     {
         terminate();
-        return GLFW_FALSE;
+        return false;
     }
 
     if (!_glfwPlatformCreateMutex(&_glfw.errorLock) ||
@@ -231,12 +231,12 @@ GLFWAPI int glfwInit(void)
         !_glfwPlatformCreateTls(&_glfw.contextSlot))
     {
         terminate();
-        return GLFW_FALSE;
+        return false;
     }
 
     _glfwPlatformSetTls(&_glfw.errorSlot, &_glfwMainThreadError);
 
-    _glfw.initialized = GLFW_TRUE;
+    _glfw.initialized = true;
     _glfw.timer.offset = _glfwPlatformGetTimerValue();
 
     glfwDefaultWindowHints();
@@ -249,12 +249,12 @@ GLFWAPI int glfwInit(void)
             if (!glfwUpdateGamepadMappings(_glfwDefaultMappings[i]))
             {
                 terminate();
-                return GLFW_FALSE;
+                return false;
             }
         }
     }
 
-    return GLFW_TRUE;
+    return true;
 }
 
 GLFWAPI void glfwTerminate(void)
