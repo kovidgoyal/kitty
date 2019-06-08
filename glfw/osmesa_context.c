@@ -108,7 +108,7 @@ static int extensionSupportedOSMesa(const char* extension)
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-GLFWbool _glfwInitOSMesa(void)
+bool _glfwInitOSMesa(void)
 {
     int i;
     const char* sonames[] =
@@ -193,7 +193,7 @@ void _glfwTerminateOSMesa(void)
     attribs[index++] = v; \
 }
 
-GLFWbool _glfwCreateContextOSMesa(_GLFWwindow* window,
+bool _glfwCreateContextOSMesa(_GLFWwindow* window,
                                   const _GLFWctxconfig* ctxconfig,
                                   const _GLFWfbconfig* fbconfig)
 {

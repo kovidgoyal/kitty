@@ -124,7 +124,7 @@ static void pollAbsState(_GLFWjoystick* js)
 
 // Attempt to open the specified joystick device
 //
-static GLFWbool openJoystickDevice(const char* path)
+static bool openJoystickDevice(const char* path)
 {
     int jid, code;
     char name[256] = "";
@@ -264,7 +264,7 @@ static int compareJoysticks(const void* fp, const void* sp)
 
 // Initialize joystick interface
 //
-GLFWbool _glfwInitJoysticksLinux(void)
+bool _glfwInitJoysticksLinux(void)
 {
     DIR* dir;
     int count = 0;

@@ -12,7 +12,7 @@
 #define GLFW_LOOP_BACKEND x11
 #endif
 
-static GLFWbool keep_going = GLFW_FALSE;
+static bool keep_going = GLFW_FALSE;
 
 void _glfwPlatformRequestTickCallback() {
 }
@@ -41,7 +41,7 @@ void _glfwPlatformRemoveTimer(unsigned long long timer_id) {
     removeTimer(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, timer_id);
 }
 
-void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, GLFWbool enabled) {
+void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, bool enabled) {
     changeTimerInterval(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, timer_id, interval);
     toggleTimer(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, timer_id, enabled);
 }

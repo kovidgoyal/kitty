@@ -58,7 +58,7 @@ static _GLFWmapping* findMapping(const char* guid)
 
 // Checks whether a gamepad mapping element is present in the hardware
 //
-static GLFWbool isValidElementForJoystick(const _GLFWmapelement* e,
+static bool isValidElementForJoystick(const _GLFWmapelement* e,
                                           const _GLFWjoystick* js)
 {
     if (e->type == _GLFW_JOYSTICK_HATBIT && (e->index >> 4) >= js->hatCount)
@@ -110,7 +110,7 @@ static _GLFWmapping* findValidMapping(const _GLFWjoystick* js)
 
 // Parses an SDL_GameControllerDB line and adds it to the mapping list
 //
-static GLFWbool parseMapping(_GLFWmapping* mapping, const char* string)
+static bool parseMapping(_GLFWmapping* mapping, const char* string)
 {
     const char* c = string;
     size_t i, length;
@@ -260,7 +260,7 @@ void _glfwInputKeyboard(_GLFWwindow* window, int key, int scancode, int action, 
 {
     if (key >= 0 && key <= GLFW_KEY_LAST)
     {
-        GLFWbool repeated = GLFW_FALSE;
+        bool repeated = GLFW_FALSE;
 
         if (action == GLFW_RELEASE && window->keys[key] == GLFW_RELEASE)
             return;
@@ -328,7 +328,7 @@ void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos)
 
 // Notifies shared code of a cursor enter/leave event
 //
-void _glfwInputCursorEnter(_GLFWwindow* window, GLFWbool entered)
+void _glfwInputCursorEnter(_GLFWwindow* window, bool entered)
 {
     if (window->callbacks.cursorEnter)
         window->callbacks.cursorEnter((GLFWwindow*) window, entered);

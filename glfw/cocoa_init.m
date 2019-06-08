@@ -197,7 +197,7 @@ static void createKeyTables(void)
 
 // Retrieve Unicode data for the current keyboard layout
 //
-static GLFWbool updateUnicodeDataNS(void)
+static bool updateUnicodeDataNS(void)
 {
     if (_glfw.ns.inputSource)
     {
@@ -232,7 +232,7 @@ static GLFWbool updateUnicodeDataNS(void)
 
 // Load HIToolbox.framework and the TIS symbols we need from it
 //
-static GLFWbool initializeTIS(void)
+static bool initializeTIS(void)
 {
     // This works only because Cocoa has already loaded it properly
     _glfw.ns.tis.bundle =
@@ -558,7 +558,7 @@ void _glfwPlatformRemoveTimer(unsigned long long timer_id) {
     }
 }
 
-void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, GLFWbool enabled) {
+void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, bool enabled) {
     for (size_t i = 0; i < num_timers; i++) {
         if (timers[i].id == timer_id) {
             Timer *t = timers + i;

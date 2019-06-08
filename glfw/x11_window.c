@@ -72,7 +72,7 @@ handleEvents(double timeout) {
     EVDBG("other dispatch done");
 }
 
-static GLFWbool
+static bool
 waitForX11Event(double timeout) {
     // returns true iff there is X11 data waiting to be read, does not run watches and timers
     double end_time = glfwGetTime() + timeout;
@@ -96,7 +96,7 @@ waitForX11Event(double timeout) {
 // Waits until a VisibilityNotify event arrives for the specified window or the
 // timeout period elapses (ICCCM section 4.2.2)
 //
-static GLFWbool waitForVisibilityNotify(_GLFWwindow* window)
+static bool waitForVisibilityNotify(_GLFWwindow* window)
 {
     XEvent dummy;
 
@@ -270,7 +270,7 @@ is_window_fullscreen(_GLFWwindow* window)
 {
     Atom* states;
     unsigned long i;
-    GLFWbool ans = GLFW_FALSE;
+    bool ans = GLFW_FALSE;
     if (!_glfw.x11.NET_WM_STATE || !_glfw.x11.NET_WM_STATE_FULLSCREEN)
         return ans;
     const unsigned long count =
@@ -499,7 +499,7 @@ static void enableCursor(_GLFWwindow* window)
 
 // Create the X11 window (and its colormap)
 //
-static GLFWbool createNativeWindow(_GLFWwindow* window,
+static bool createNativeWindow(_GLFWwindow* window,
                                    const _GLFWwndconfig* wndconfig,
                                    Visual* visual, int depth)
 {
@@ -1076,7 +1076,7 @@ static void onConfigChange(void)
 static void processEvent(XEvent *event)
 {
     _GLFWwindow* window = NULL;
-    static GLFWbool keymap_dirty = GLFW_FALSE;
+    static bool keymap_dirty = GLFW_FALSE;
 #define UPDATE_KEYMAP_IF_NEEDED if (keymap_dirty) { keymap_dirty = GLFW_FALSE; glfw_xkb_compile_keymap(&_glfw.x11.xkb, NULL); }
 
     if (_glfw.x11.randr.available)
@@ -1430,7 +1430,7 @@ static void processEvent(XEvent *event)
                 // A drag operation has entered the window
                 unsigned long i, count;
                 Atom* formats = NULL;
-                const GLFWbool list = event->xclient.data.l[1] & 1;
+                const bool list = event->xclient.data.l[1] & 1;
 
                 _glfw.x11.xdnd.source  = event->xclient.data.l[0];
                 _glfw.x11.xdnd.version = event->xclient.data.l[1] >> 24;
@@ -1653,7 +1653,7 @@ static void processEvent(XEvent *event)
                 if (state != IconicState && state != NormalState)
                     return;
 
-                const GLFWbool iconified = (state == IconicState);
+                const bool iconified = (state == IconicState);
                 if (window->x11.iconified != iconified)
                 {
                     if (window->monitor)
@@ -1670,7 +1670,7 @@ static void processEvent(XEvent *event)
             }
             else if (event->xproperty.atom == _glfw.x11.NET_WM_STATE)
             {
-                const GLFWbool maximized = _glfwPlatformWindowMaximized(window);
+                const bool maximized = _glfwPlatformWindowMaximized(window);
                 if (window->x11.maximized != maximized)
                 {
                     window->x11.maximized = maximized;
@@ -1720,7 +1720,7 @@ unsigned long _glfwGetWindowPropertyX11(Window window,
     return itemCount;
 }
 
-GLFWbool _glfwIsVisualTransparentX11(Visual* visual)
+bool _glfwIsVisualTransparentX11(Visual* visual)
 {
     if (!_glfw.x11.xrender.available)
         return GLFW_FALSE;
@@ -2293,7 +2293,7 @@ int _glfwPlatformWindowMaximized(_GLFWwindow* window)
 {
     Atom* states;
     unsigned long i;
-    GLFWbool maximized = GLFW_FALSE;
+    bool maximized = GLFW_FALSE;
     if (!_glfw.x11.NET_WM_STATE ||
             !_glfw.x11.NET_WM_STATE_MAXIMIZED_VERT ||
             !_glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ)
@@ -2350,14 +2350,14 @@ int _glfwPlatformFramebufferTransparent(_GLFWwindow* window)
     return XGetSelectionOwner(_glfw.x11.display, _glfw.x11.NET_WM_CM_Sx) != None;
 }
 
-void _glfwPlatformSetWindowResizable(_GLFWwindow* window, GLFWbool enabled)
+void _glfwPlatformSetWindowResizable(_GLFWwindow* window, bool enabled)
 {
     int width, height;
     _glfwPlatformGetWindowSize(window, &width, &height);
     updateNormalHints(window, width, height);
 }
 
-void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, GLFWbool enabled)
+void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, bool enabled)
 {
     if (enabled)
     {
@@ -2388,7 +2388,7 @@ void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, GLFWbool enabled)
     }
 }
 
-void _glfwPlatformSetWindowFloating(_GLFWwindow* window, GLFWbool enabled)
+void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled)
 {
     if (!_glfw.x11.NET_WM_STATE || !_glfw.x11.NET_WM_STATE_ABOVE)
         return;
@@ -2880,7 +2880,7 @@ GLFWAPI Window glfwGetX11Window(GLFWwindow* handle)
     return window->x11.handle;
 }
 
-GLFWAPI int glfwGetXKBScancode(const char* keyName, GLFWbool caseSensitive) {
+GLFWAPI int glfwGetXKBScancode(const char* keyName, bool caseSensitive) {
     return glfw_xkb_keysym_from_name(keyName, caseSensitive);
 }
 

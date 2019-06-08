@@ -182,11 +182,11 @@ typedef struct _GLFWwindowX11
     Colormap        colormap;
     Window          handle;
 
-    GLFWbool        iconified;
-    GLFWbool        maximized;
+    bool        iconified;
+    bool        maximized;
 
     // Whether the visual supports framebuffer transparency
-    GLFWbool        transparent;
+    bool        transparent;
 
     // Cached position and size used to filter out duplicate events
     int             width, height;
@@ -284,14 +284,14 @@ typedef struct _GLFWlibraryX11
     Atom            RESOURCE_MANAGER;
 
     struct {
-        GLFWbool    available;
+        bool    available;
         void*       handle;
         int         eventBase;
         int         errorBase;
         int         major;
         int         minor;
-        GLFWbool    gammaBroken;
-        GLFWbool    monitorBroken;
+        bool    gammaBroken;
+        bool    monitorBroken;
         PFN_XRRAllocGamma AllocGamma;
         PFN_XRRFreeCrtcInfo FreeCrtcInfo;
         PFN_XRRFreeGamma FreeGamma;
@@ -336,7 +336,7 @@ typedef struct _GLFWlibraryX11
     } xcursor;
 
     struct {
-        GLFWbool    available;
+        bool    available;
         void*       handle;
         int         major;
         int         minor;
@@ -346,7 +346,7 @@ typedef struct _GLFWlibraryX11
     } xinerama;
 
     struct {
-        GLFWbool    available;
+        bool    available;
         void*       handle;
         int         eventBase;
         int         errorBase;
@@ -357,7 +357,7 @@ typedef struct _GLFWlibraryX11
     } vidmode;
 
     struct {
-        GLFWbool    available;
+        bool    available;
         void*       handle;
         int         majorOpcode;
         int         eventBase;
@@ -369,7 +369,7 @@ typedef struct _GLFWlibraryX11
     } xi;
 
     struct {
-        GLFWbool    available;
+        bool    available;
         void*       handle;
         int         major;
         int         minor;
@@ -416,11 +416,11 @@ unsigned long _glfwGetWindowPropertyX11(Window window,
                                         Atom property,
                                         Atom type,
                                         unsigned char** value);
-GLFWbool _glfwIsVisualTransparentX11(Visual* visual);
+bool _glfwIsVisualTransparentX11(Visual* visual);
 
 void _glfwGrabErrorHandlerX11(void);
 void _glfwReleaseErrorHandlerX11(void);
 void _glfwInputErrorX11(int error, const char* message);
 
-void _glfwGetSystemContentScaleX11(float* xscale, float* yscale, GLFWbool bypass_cache);
+void _glfwGetSystemContentScaleX11(float* xscale, float* yscale, bool bypass_cache);
 void _glfwPushSelectionToManagerX11(void);

@@ -50,7 +50,7 @@ enum Capabilities {
 };
 
 
-static inline GLFWbool
+static inline bool
 test_env_var(const char *name, const char *val) {
     const char *q = getenv(name);
     return (q && strcmp(q, val) == 0) ? GLFW_TRUE : GLFW_FALSE;
@@ -193,7 +193,7 @@ get_ibus_address_file_name(void) {
 }
 
 
-static inline GLFWbool
+static inline bool
 read_ibus_address(_GLFWIBUSData *ibus) {
     static char buf[1024];
     struct stat s;
@@ -203,7 +203,7 @@ read_ibus_address(_GLFWIBUSData *ibus) {
         return GLFW_FALSE;
     }
     int stat_result = fstat(fileno(addr_file), &s);
-    GLFWbool found = GLFW_FALSE;
+    bool found = GLFW_FALSE;
     while (fgets(buf, sizeof(buf), addr_file)) {
         if (strncmp(buf, "IBUS_ADDRESS=", sizeof("IBUS_ADDRESS=")-1) == 0) {
             size_t sz = strlen(buf);
@@ -251,7 +251,7 @@ input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
     debug("Connected to IBUS daemon for IME input management\n");
 }
 
-GLFWbool
+bool
 setup_connection(_GLFWIBUSData *ibus) {
     const char *client_name = "GLFW_Application";
     const char *address_file_name = get_ibus_address_file_name();
@@ -300,7 +300,7 @@ glfw_ibus_terminate(_GLFWIBUSData *ibus) {
     ibus->ok = GLFW_FALSE;
 }
 
-static GLFWbool
+static bool
 check_connection(_GLFWIBUSData *ibus) {
     if (!ibus->inited) return GLFW_FALSE;
     if (ibus->conn && dbus_connection_get_is_connected(ibus->conn)) {
@@ -329,7 +329,7 @@ simple_message(_GLFWIBUSData *ibus, const char *method) {
 }
 
 void
-glfw_ibus_set_focused(_GLFWIBUSData *ibus, GLFWbool focused) {
+glfw_ibus_set_focused(_GLFWIBUSData *ibus, bool focused) {
     simple_message(ibus, focused ? "FocusIn" : "FocusOut");
 }
 
@@ -394,8 +394,8 @@ void
 key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
     uint32_t handled = 0;
     KeyEvent *ev = (KeyEvent*)data;
-    GLFWbool is_release = ev->action == GLFW_RELEASE;
-    GLFWbool failed = GLFW_FALSE;
+    bool is_release = ev->action == GLFW_RELEASE;
+    bool failed = GLFW_FALSE;
     if (errmsg) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to process key with error: %s", errmsg);
         failed = GLFW_TRUE;
@@ -407,7 +407,7 @@ key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
     free(ev);
 }
 
-GLFWbool
+bool
 ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus) {
     if (!check_connection(ibus)) return GLFW_FALSE;
     KeyEvent *ev = malloc(sizeof(KeyEvent));

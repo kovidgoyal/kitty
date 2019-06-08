@@ -37,18 +37,18 @@ typedef struct {
 } _GLFWDBUSData;
 
 
-GLFWbool glfw_dbus_init(_GLFWDBUSData *dbus, EventLoopData *eld);
+bool glfw_dbus_init(_GLFWDBUSData *dbus, EventLoopData *eld);
 void glfw_dbus_terminate(_GLFWDBUSData *dbus);
-DBusConnection* glfw_dbus_connect_to(const char *path, const char* err_msg, const char* name, GLFWbool register_on_bus);
+DBusConnection* glfw_dbus_connect_to(const char *path, const char* err_msg, const char* name, bool register_on_bus);
 void glfw_dbus_close_connection(DBusConnection *conn);
-GLFWbool
+bool
 call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_pending_callback callback, void *user_data);
-GLFWbool
+bool
 glfw_dbus_call_method_no_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...);
-GLFWbool
+bool
 glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout_ms, dbus_pending_callback callback, void *user_data, ...);
 void glfw_dbus_dispatch(DBusConnection *);
 void glfw_dbus_session_bus_dispatch(void);
-GLFWbool glfw_dbus_get_args(DBusMessage *msg, const char *failmsg, ...);
+bool glfw_dbus_get_args(DBusMessage *msg, const char *failmsg, ...);
 int glfw_dbus_match_signal(DBusMessage *msg, const char *interface, ...);
 DBusConnection* glfw_dbus_session_bus(void);

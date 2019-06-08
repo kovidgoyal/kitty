@@ -60,7 +60,6 @@
 
 #define _GLFW_MESSAGE_SIZE      1024
 
-typedef bool GLFWbool;
 typedef unsigned long long GLFWid;
 
 typedef struct _GLFWerror       _GLFWerror;
@@ -248,12 +247,12 @@ struct _GLFWerror
 //
 struct _GLFWinitconfig
 {
-    GLFWbool      hatButtons;
-    GLFWbool      debugKeyboard;
-    GLFWbool      enableJoysticks;
+    bool      hatButtons;
+    bool      debugKeyboard;
+    bool      enableJoysticks;
     struct {
-        GLFWbool  menubar;
-        GLFWbool  chdir;
+        bool  menubar;
+        bool  chdir;
     } ns;
 };
 
@@ -268,18 +267,18 @@ struct _GLFWwndconfig
     int           width;
     int           height;
     const char*   title;
-    GLFWbool      resizable;
-    GLFWbool      visible;
-    GLFWbool      decorated;
-    GLFWbool      focused;
-    GLFWbool      autoIconify;
-    GLFWbool      floating;
-    GLFWbool      maximized;
-    GLFWbool      centerCursor;
-    GLFWbool      focusOnShow;
-    GLFWbool      scaleToMonitor;
+    bool      resizable;
+    bool      visible;
+    bool      decorated;
+    bool      focused;
+    bool      autoIconify;
+    bool      floating;
+    bool      maximized;
+    bool      centerCursor;
+    bool      focusOnShow;
+    bool      scaleToMonitor;
     struct {
-        GLFWbool  retina;
+        bool  retina;
         char      frameName[256];
     } ns;
     struct {
@@ -303,15 +302,15 @@ struct _GLFWctxconfig
     int           source;
     int           major;
     int           minor;
-    GLFWbool      forward;
-    GLFWbool      debug;
-    GLFWbool      noerror;
+    bool      forward;
+    bool      debug;
+    bool      noerror;
     int           profile;
     int           robustness;
     int           release;
     _GLFWwindow*  share;
     struct {
-        GLFWbool  offline;
+        bool  offline;
     } nsgl;
 };
 
@@ -336,11 +335,11 @@ struct _GLFWfbconfig
     int         accumBlueBits;
     int         accumAlphaBits;
     int         auxBuffers;
-    GLFWbool    stereo;
+    bool    stereo;
     int         samples;
-    GLFWbool    sRGB;
-    GLFWbool    doublebuffer;
-    GLFWbool    transparent;
+    bool    sRGB;
+    bool    doublebuffer;
+    bool    transparent;
     uintptr_t   handle;
 };
 
@@ -351,7 +350,7 @@ struct _GLFWcontext
     int                 client;
     int                 source;
     int                 major, minor, revision;
-    GLFWbool            forward, debug, noerror;
+    bool            forward, debug, noerror;
     int                 profile;
     int                 robustness;
     int                 release;
@@ -382,12 +381,12 @@ struct _GLFWwindow
     struct _GLFWwindow* next;
 
     // Window settings and state
-    GLFWbool            resizable;
-    GLFWbool            decorated;
-    GLFWbool            autoIconify;
-    GLFWbool            floating;
-    GLFWbool            focusOnShow;
-    GLFWbool            shouldClose;
+    bool            resizable;
+    bool            decorated;
+    bool            autoIconify;
+    bool            floating;
+    bool            focusOnShow;
+    bool            shouldClose;
     void*               userPointer;
     GLFWid              id;
     GLFWvidmode         videoMode;
@@ -398,9 +397,9 @@ struct _GLFWwindow
     int                 maxwidth, maxheight;
     int                 numer, denom;
 
-    GLFWbool            stickyKeys;
-    GLFWbool            stickyMouseButtons;
-    GLFWbool            lockKeyMods;
+    bool            stickyKeys;
+    bool            stickyMouseButtons;
+    bool            lockKeyMods;
     int                 cursorMode;
     char                mouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
     char                keys[GLFW_KEY_LAST + 1];
@@ -491,7 +490,7 @@ struct _GLFWmapping
 //
 struct _GLFWjoystick
 {
-    GLFWbool        present;
+    bool        present;
     float*          axes;
     int             axisCount;
     unsigned char*  buttons;
@@ -527,7 +526,7 @@ struct _GLFWmutex
 //
 struct _GLFWlibrary
 {
-    GLFWbool            initialized;
+    bool            initialized;
 
     struct {
         _GLFWinitconfig init;
@@ -560,23 +559,23 @@ struct _GLFWlibrary
     } timer;
 
     struct {
-        GLFWbool        available;
+        bool        available;
         void*           handle;
         char*           extensions[2];
 #if !defined(_GLFW_VULKAN_STATIC)
         PFN_vkEnumerateInstanceExtensionProperties EnumerateInstanceExtensionProperties;
         PFN_vkGetInstanceProcAddr GetInstanceProcAddr;
 #endif
-        GLFWbool        KHR_surface;
+        bool        KHR_surface;
 #if defined(_GLFW_WIN32)
-        GLFWbool        KHR_win32_surface;
+        bool        KHR_win32_surface;
 #elif defined(_GLFW_COCOA)
-        GLFWbool        MVK_macos_surface;
+        bool        MVK_macos_surface;
 #elif defined(_GLFW_X11)
-        GLFWbool        KHR_xlib_surface;
-        GLFWbool        KHR_xcb_surface;
+        bool        KHR_xlib_surface;
+        bool        KHR_xcb_surface;
 #elif defined(_GLFW_WAYLAND)
-        GLFWbool        KHR_wayland_surface;
+        bool        KHR_wayland_surface;
 #endif
     } vk;
 
@@ -629,7 +628,7 @@ void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
 void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor, int* xpos, int* ypos, int *width, int *height);
 GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count);
 void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode);
-GLFWbool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp);
+bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp);
 void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp);
 
 void _glfwPlatformSetClipboardString(const char* string);
@@ -689,9 +688,9 @@ int _glfwPlatformWindowMaximized(_GLFWwindow* window);
 int _glfwPlatformWindowHovered(_GLFWwindow* window);
 int _glfwPlatformFramebufferTransparent(_GLFWwindow* window);
 float _glfwPlatformGetWindowOpacity(_GLFWwindow* window);
-void _glfwPlatformSetWindowResizable(_GLFWwindow* window, GLFWbool enabled);
-void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, GLFWbool enabled);
-void _glfwPlatformSetWindowFloating(_GLFWwindow* window, GLFWbool enabled);
+void _glfwPlatformSetWindowResizable(_GLFWwindow* window, bool enabled);
+void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, bool enabled);
+void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled);
 void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity);
 void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c, int d);
 
@@ -709,12 +708,12 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
                                           const VkAllocationCallbacks* allocator,
                                           VkSurfaceKHR* surface);
 
-GLFWbool _glfwPlatformCreateTls(_GLFWtls* tls);
+bool _glfwPlatformCreateTls(_GLFWtls* tls);
 void _glfwPlatformDestroyTls(_GLFWtls* tls);
 void* _glfwPlatformGetTls(_GLFWtls* tls);
 void _glfwPlatformSetTls(_GLFWtls* tls, void* value);
 
-GLFWbool _glfwPlatformCreateMutex(_GLFWmutex* mutex);
+bool _glfwPlatformCreateMutex(_GLFWmutex* mutex);
 void _glfwPlatformDestroyMutex(_GLFWmutex* mutex);
 void _glfwPlatformLockMutex(_GLFWmutex* mutex);
 void _glfwPlatformUnlockMutex(_GLFWmutex* mutex);
@@ -724,15 +723,15 @@ void _glfwPlatformUnlockMutex(_GLFWmutex* mutex);
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwInputWindowFocus(_GLFWwindow* window, GLFWbool focused);
-void _glfwInputWindowOcclusion(_GLFWwindow* window, GLFWbool occluded);
+void _glfwInputWindowFocus(_GLFWwindow* window, bool focused);
+void _glfwInputWindowOcclusion(_GLFWwindow* window, bool occluded);
 void _glfwInputWindowPos(_GLFWwindow* window, int xpos, int ypos);
 void _glfwInputWindowSize(_GLFWwindow* window, int width, int height);
 void _glfwInputFramebufferSize(_GLFWwindow* window, int width, int height);
 void _glfwInputWindowContentScale(_GLFWwindow* window,
                                   float xscale, float yscale);
-void _glfwInputWindowIconify(_GLFWwindow* window, GLFWbool iconified);
-void _glfwInputWindowMaximize(_GLFWwindow* window, GLFWbool maximized);
+void _glfwInputWindowIconify(_GLFWwindow* window, bool iconified);
+void _glfwInputWindowMaximize(_GLFWwindow* window, bool maximized);
 void _glfwInputWindowDamage(_GLFWwindow* window);
 void _glfwInputWindowCloseRequest(_GLFWwindow* window);
 void _glfwInputWindowMonitor(_GLFWwindow* window, _GLFWmonitor* monitor);
@@ -741,7 +740,7 @@ void _glfwInputKeyboard(_GLFWwindow* window, int key, int scancode, int action, 
 void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset, int flags);
 void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods);
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);
-void _glfwInputCursorEnter(_GLFWwindow* window, GLFWbool entered);
+void _glfwInputCursorEnter(_GLFWwindow* window, bool entered);
 void _glfwInputDrop(_GLFWwindow* window, int count, const char** names);
 void _glfwInputJoystick(_GLFWjoystick* js, int event);
 void _glfwInputJoystickAxis(_GLFWjoystick* js, int axis, float value);
@@ -771,13 +770,13 @@ void _glfwDebug(const char* format, ...);
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-GLFWbool _glfwStringInExtensionString(const char* string, const char* extensions);
+bool _glfwStringInExtensionString(const char* string, const char* extensions);
 const _GLFWfbconfig* _glfwChooseFBConfig(const _GLFWfbconfig* desired,
                                          const _GLFWfbconfig* alternatives,
                                          unsigned int count);
-GLFWbool _glfwRefreshContextAttribs(_GLFWwindow* window,
+bool _glfwRefreshContextAttribs(_GLFWwindow* window,
                                     const _GLFWctxconfig* ctxconfig);
-GLFWbool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig);
+bool _glfwIsValidContextConfig(const _GLFWctxconfig* ctxconfig);
 
 const GLFWvidmode* _glfwChooseVideoMode(_GLFWmonitor* monitor,
                                         const GLFWvidmode* desired);
@@ -797,7 +796,7 @@ void _glfwFreeJoystick(_GLFWjoystick* js);
 const char* _glfwGetKeyName(int key);
 void _glfwCenterCursorInContentArea(_GLFWwindow* window);
 
-GLFWbool _glfwInitVulkan(int mode);
+bool _glfwInitVulkan(int mode);
 void _glfwTerminateVulkan(void);
 const char* _glfwGetVulkanResultString(VkResult result);
 _GLFWwindow* _glfwFocusedWindow(void);
@@ -806,7 +805,7 @@ void _glfwPlatformRunMainLoop(GLFWtickcallback, void*);
 void _glfwPlatformRequestTickCallback(void);
 void _glfwPlatformStopMainLoop(void);
 unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback);
-void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, GLFWbool enabled);
+void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, bool enabled);
 void _glfwPlatformRemoveTimer(unsigned long long timer_id);
 
 char* _glfw_strdup(const char* source);

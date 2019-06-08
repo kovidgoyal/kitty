@@ -135,25 +135,25 @@ typedef struct _GLFWlibraryWGL
     PFNWGLGETEXTENSIONSSTRINGEXTPROC    GetExtensionsStringEXT;
     PFNWGLGETEXTENSIONSSTRINGARBPROC    GetExtensionsStringARB;
     PFNWGLCREATECONTEXTATTRIBSARBPROC   CreateContextAttribsARB;
-    GLFWbool                            EXT_swap_control;
-    GLFWbool                            EXT_colorspace;
-    GLFWbool                            ARB_multisample;
-    GLFWbool                            ARB_framebuffer_sRGB;
-    GLFWbool                            EXT_framebuffer_sRGB;
-    GLFWbool                            ARB_pixel_format;
-    GLFWbool                            ARB_create_context;
-    GLFWbool                            ARB_create_context_profile;
-    GLFWbool                            EXT_create_context_es2_profile;
-    GLFWbool                            ARB_create_context_robustness;
-    GLFWbool                            ARB_create_context_no_error;
-    GLFWbool                            ARB_context_flush_control;
+    bool                            EXT_swap_control;
+    bool                            EXT_colorspace;
+    bool                            ARB_multisample;
+    bool                            ARB_framebuffer_sRGB;
+    bool                            EXT_framebuffer_sRGB;
+    bool                            ARB_pixel_format;
+    bool                            ARB_create_context;
+    bool                            ARB_create_context_profile;
+    bool                            EXT_create_context_es2_profile;
+    bool                            ARB_create_context_robustness;
+    bool                            ARB_create_context_no_error;
+    bool                            ARB_context_flush_control;
 
 } _GLFWlibraryWGL;
 
 
-GLFWbool _glfwInitWGL(void);
+bool _glfwInitWGL(void);
 void _glfwTerminateWGL(void);
-GLFWbool _glfwCreateContextWGL(_GLFWwindow* window,
+bool _glfwCreateContextWGL(_GLFWwindow* window,
                                const _GLFWctxconfig* ctxconfig,
                                const _GLFWfbconfig* fbconfig);
 

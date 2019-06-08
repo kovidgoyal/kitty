@@ -116,7 +116,7 @@ static char* getDisplayName(CGDirectDisplayID displayID)
 
 // Check whether the display mode should be included in enumeration
 //
-static GLFWbool modeIsGood(CGDisplayModeRef mode)
+static bool modeIsGood(CGDisplayModeRef mode)
 {
     uint32_t flags = CGDisplayModeGetIOFlags(mode);
 
@@ -215,7 +215,7 @@ static void endFadeReservation(CGDisplayFadeReservationToken token)
 
 // Finds and caches the NSScreen corresponding to the specified monitor
 //
-GLFWbool refreshMonitorScreen(_GLFWmonitor* monitor)
+bool refreshMonitorScreen(_GLFWmonitor* monitor)
 {
     if (monitor->ns.screen)
         return GLFW_TRUE;
@@ -265,7 +265,7 @@ static CVReturn displayLinkCallback(
 {
     CGDirectDisplayID displayID = (CGDirectDisplayID)userInfo;
     [_glfw.ns.displayLinks.lock lock];
-    GLFWbool notify = GLFW_FALSE;
+    bool notify = GLFW_FALSE;
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         if (_glfw.ns.displayLinks.entries[i].displayID == displayID) {
             if (_glfw.ns.displayLinks.entries[i].renderFrameRequested) {
@@ -542,7 +542,7 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode *mode)
     CVDisplayLinkRelease(link);
 }
 
-GLFWbool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
+bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
 {
     uint32_t i, size = CGDisplayGammaTableCapacity(monitor->ns.displayID);
     CGGammaValue* values = calloc(size * 3, sizeof(CGGammaValue));

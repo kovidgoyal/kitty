@@ -87,7 +87,7 @@ static void destroyContextNSGL(_GLFWwindow* window)
 
 // Initialize OpenGL support
 //
-GLFWbool _glfwInitNSGL(void)
+bool _glfwInitNSGL(void)
 {
     if (_glfw.nsgl.framework)
         return GLFW_TRUE;
@@ -112,7 +112,7 @@ void _glfwTerminateNSGL(void)
 
 // Create the OpenGL context
 //
-GLFWbool _glfwCreateContextNSGL(_GLFWwindow* window,
+bool _glfwCreateContextNSGL(_GLFWwindow* window,
                                 const _GLFWctxconfig* ctxconfig,
                                 const _GLFWfbconfig* fbconfig)
 {

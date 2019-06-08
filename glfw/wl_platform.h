@@ -133,10 +133,10 @@ typedef struct _GLFWdecorationWayland
 typedef struct _GLFWwindowWayland
 {
     int                         width, height;
-    GLFWbool                    visible;
-    GLFWbool                    maximized;
-    GLFWbool                    hovered;
-    GLFWbool                    transparent;
+    bool                    visible;
+    bool                    maximized;
+    bool                    hovered;
+    bool                    transparent;
     struct wl_surface*          surface;
     struct wl_egl_window*       native;
     struct wl_callback*         callback;
@@ -167,10 +167,10 @@ typedef struct _GLFWwindowWayland
 
     struct zwp_idle_inhibitor_v1*          idleInhibitor;
 
-    GLFWbool                    fullscreened;
+    bool                    fullscreened;
 
     struct {
-        GLFWbool                           serverSide;
+        bool                           serverSide;
         struct wl_buffer*                  buffer;
         _GLFWdecorationWayland             top, left, right, bottom;
         int                                focus;

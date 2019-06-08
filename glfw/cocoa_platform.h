@@ -116,8 +116,8 @@ typedef struct _GLFWwindowNS
     id              view;
     id              layer;
 
-    GLFWbool        maximized;
-    GLFWbool        retina;
+    bool        maximized;
+    bool        retina;
 
     // Cached window properties to filter out duplicate events
     int             width, height;
@@ -136,7 +136,7 @@ typedef struct _GLFWwindowNS
     // Dead key state
     UInt32 deadKeyState;
     // Whether a render frame has been requested for this window
-    GLFWbool renderFrameRequested;
+    bool renderFrameRequested;
     GLFWcocoarenderframefun renderFrameCallback;
 } _GLFWwindowNS;
 
@@ -144,8 +144,8 @@ typedef struct _GLFWDisplayLinkNS
 {
     CVDisplayLinkRef displayLink;
     CGDirectDisplayID displayID;
-    GLFWbool displayLinkStarted;
-    GLFWbool renderFrameRequested;
+    bool displayLinkStarted;
+    bool renderFrameRequested;
 } _GLFWDisplayLinkNS;
 
 // Cocoa-specific global data
@@ -154,7 +154,7 @@ typedef struct _GLFWlibraryNS
 {
     CGEventSourceRef    eventSource;
     id                  delegate;
-    GLFWbool            cursorHidden;
+    bool            cursorHidden;
     TISInputSourceRef   inputSource;
     IOHIDManagerRef     hidManager;
     id                  unicodeData;

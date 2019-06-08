@@ -40,7 +40,7 @@
 
 // Notifies shared code that a window has lost or received input focus
 //
-void _glfwInputWindowFocus(_GLFWwindow* window, GLFWbool focused)
+void _glfwInputWindowFocus(_GLFWwindow* window, bool focused)
 {
     if (window->callbacks.focus)
         window->callbacks.focus((GLFWwindow*) window, focused);
@@ -90,7 +90,7 @@ _GLFWwindow* _glfwWindowForId(GLFWid id) {
 
 // Notifies shared code that a window's occlusion state has changed
 //
-void _glfwInputWindowOcclusion(_GLFWwindow* window, GLFWbool occluded)
+void _glfwInputWindowOcclusion(_GLFWwindow* window, bool occluded)
 {
     if (window->callbacks.occlusion)
         window->callbacks.occlusion((GLFWwindow*) window, occluded);
@@ -116,7 +116,7 @@ void _glfwInputWindowSize(_GLFWwindow* window, int width, int height)
 
 // Notifies shared code that a window has been iconified or restored
 //
-void _glfwInputWindowIconify(_GLFWwindow* window, GLFWbool iconified)
+void _glfwInputWindowIconify(_GLFWwindow* window, bool iconified)
 {
     if (window->callbacks.iconify)
         window->callbacks.iconify((GLFWwindow*) window, iconified);
@@ -124,7 +124,7 @@ void _glfwInputWindowIconify(_GLFWwindow* window, GLFWbool iconified)
 
 // Notifies shared code that a window has been maximized or restored
 //
-void _glfwInputWindowMaximize(_GLFWwindow* window, GLFWbool maximized)
+void _glfwInputWindowMaximize(_GLFWwindow* window, bool maximized)
 {
     if (window->callbacks.maximize)
         window->callbacks.maximize((GLFWwindow*) window, maximized);

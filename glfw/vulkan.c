@@ -39,7 +39,7 @@
 //////                       GLFW internal API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-GLFWbool _glfwInitVulkan(int mode)
+bool _glfwInitVulkan(int mode)
 {
     VkResult err;
     VkExtensionProperties* ep;

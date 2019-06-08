@@ -35,7 +35,7 @@
 //
 typedef struct _GLFWtlsPOSIX
 {
-    GLFWbool        allocated;
+    bool        allocated;
     pthread_key_t   key;
 
 } _GLFWtlsPOSIX;
@@ -44,7 +44,7 @@ typedef struct _GLFWtlsPOSIX
 //
 typedef struct _GLFWmutexPOSIX
 {
-    GLFWbool        allocated;
+    bool        allocated;
     pthread_mutex_t handle;
 
 } _GLFWmutexPOSIX;

@@ -173,13 +173,13 @@ typedef struct _GLFWlibraryEGL
 {
     EGLDisplay      display;
     EGLint          major, minor;
-    GLFWbool        prefix;
+    bool        prefix;
 
-    GLFWbool        KHR_create_context;
-    GLFWbool        KHR_create_context_no_error;
-    GLFWbool        KHR_gl_colorspace;
-    GLFWbool        KHR_get_all_proc_addresses;
-    GLFWbool        KHR_context_flush_control;
+    bool        KHR_create_context;
+    bool        KHR_create_context_no_error;
+    bool        KHR_gl_colorspace;
+    bool        KHR_get_all_proc_addresses;
+    bool        KHR_context_flush_control;
 
     void*           handle;
 
@@ -203,13 +203,13 @@ typedef struct _GLFWlibraryEGL
 } _GLFWlibraryEGL;
 
 
-GLFWbool _glfwInitEGL(void);
+bool _glfwInitEGL(void);
 void _glfwTerminateEGL(void);
-GLFWbool _glfwCreateContextEGL(_GLFWwindow* window,
+bool _glfwCreateContextEGL(_GLFWwindow* window,
                                const _GLFWctxconfig* ctxconfig,
                                const _GLFWfbconfig* fbconfig);
 #if defined(_GLFW_X11)
-GLFWbool _glfwChooseVisualEGL(const _GLFWwndconfig* wndconfig,
+bool _glfwChooseVisualEGL(const _GLFWwndconfig* wndconfig,
                               const _GLFWctxconfig* ctxconfig,
                               const _GLFWfbconfig* fbconfig,
                               Visual** visual, int* depth);

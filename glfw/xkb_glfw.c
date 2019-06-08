@@ -136,7 +136,7 @@ glfw_xkb_sym_for_key(int key) {
 
 #ifdef _GLFW_X11
 
-GLFWbool
+bool
 glfw_xkb_set_x11_events_mask(void) {
     if (!XkbSelectEvents(_glfw.x11.display, XkbUseCoreKbd, XkbNewKeyboardNotifyMask | XkbMapNotifyMask | XkbStateNotifyMask, XkbNewKeyboardNotifyMask | XkbMapNotifyMask | XkbStateNotifyMask)) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to set XKB events mask");
@@ -145,7 +145,7 @@ glfw_xkb_set_x11_events_mask(void) {
     return GLFW_TRUE;
 }
 
-GLFWbool
+bool
 glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb) {
     xkb->keyboard_device_id = -1;
     xcb_connection_t* conn = XGetXCBConnection(_glfw.x11.display);
@@ -204,7 +204,7 @@ glfw_xkb_release(_GLFWXKBData *xkb) {
     glfw_ibus_terminate(&xkb->ibus);
 }
 
-GLFWbool
+bool
 glfw_xkb_create_context(_GLFWXKBData *xkb) {
     xkb->context = xkb_context_new(0);
     if (!xkb->context)
@@ -260,7 +260,7 @@ load_compose_tables(_GLFWXKBData *xkb) {
     xkb_compose_table_unref(compose_table);
 }
 
-GLFWbool
+bool
 glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
     const char *err;
     release_keyboard_data(xkb);
@@ -326,7 +326,7 @@ glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_m
     update_modifiers(xkb, &xkb->states);
 }
 
-GLFWbool
+bool
 glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode) {
 #ifdef _GLFW_WAYLAND
     scancode += 8;
@@ -366,7 +366,7 @@ glfw_xkb_keysym_name(xkb_keysym_t sym) {
 }
 
 int
-glfw_xkb_keysym_from_name(const char *name, GLFWbool case_sensitive) {
+glfw_xkb_keysym_from_name(const char *name, bool case_sensitive) {
     return (int)xkb_keysym_from_name(name, case_sensitive ? XKB_KEYSYM_NO_FLAGS : XKB_KEYSYM_CASE_INSENSITIVE);
 }
 
@@ -424,7 +424,7 @@ glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, int which, int a, i
 }
 
 void
-glfw_xkb_key_from_ime(KeyEvent *ev, GLFWbool handled_by_ime, GLFWbool failed) {
+glfw_xkb_key_from_ime(KeyEvent *ev, bool handled_by_ime, bool failed) {
     _GLFWwindow *window = _glfwWindowForId(ev->window_id);
     if (failed && window && window->callbacks.keyboard) {
         // notify application to remove any existing pre-edit text
@@ -437,7 +437,7 @@ glfw_xkb_key_from_ime(KeyEvent *ev, GLFWbool handled_by_ime, GLFWbool failed) {
     // you'd need to implement a ring buffer to store pending key presses.
     xkb_keycode_t prev_handled_press = last_handled_press_keycode;
     last_handled_press_keycode = 0;
-    GLFWbool is_release = ev->action == GLFW_RELEASE;
+    bool is_release = ev->action == GLFW_RELEASE;
     debug("From IBUS: scancode: 0x%x name: %s is_release: %d\n", ev->keycode, glfw_xkb_keysym_name(ev->keysym), is_release);
     if (window && !handled_by_ime && !(is_release && ev->keycode == prev_handled_press)) {
         debug("↳ to application: glfw_keycode: 0x%x (%s) keysym: 0x%x (%s) action: %s %s text: %s\n",
@@ -500,7 +500,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         if (key_event.text[0]) { debug("%s: %s ", text_type, key_event.text); }
     }
     int glfw_keycode = glfw_key_for_sym(glfw_sym);
-    GLFWbool is_fallback = GLFW_FALSE;
+    bool is_fallback = GLFW_FALSE;
     if (glfw_keycode == GLFW_KEY_UNKNOWN && !key_event.text[0]) {
         int num_default_syms = xkb_state_key_get_syms(sg->default_state, code_for_sym, &default_syms);
         if (num_default_syms > 0) {

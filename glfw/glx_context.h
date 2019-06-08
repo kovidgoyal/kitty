@@ -153,28 +153,28 @@ typedef struct _GLFWlibraryGLX
     PFNGLXSWAPINTERVALEXTPROC           SwapIntervalEXT;
     PFNGLXSWAPINTERVALMESAPROC          SwapIntervalMESA;
     PFNGLXCREATECONTEXTATTRIBSARBPROC   CreateContextAttribsARB;
-    GLFWbool        SGI_swap_control;
-    GLFWbool        EXT_swap_control;
-    GLFWbool        MESA_swap_control;
-    GLFWbool        ARB_multisample;
-    GLFWbool        ARB_framebuffer_sRGB;
-    GLFWbool        EXT_framebuffer_sRGB;
-    GLFWbool        ARB_create_context;
-    GLFWbool        ARB_create_context_profile;
-    GLFWbool        ARB_create_context_robustness;
-    GLFWbool        EXT_create_context_es2_profile;
-    GLFWbool        ARB_create_context_no_error;
-    GLFWbool        ARB_context_flush_control;
+    bool        SGI_swap_control;
+    bool        EXT_swap_control;
+    bool        MESA_swap_control;
+    bool        ARB_multisample;
+    bool        ARB_framebuffer_sRGB;
+    bool        EXT_framebuffer_sRGB;
+    bool        ARB_create_context;
+    bool        ARB_create_context_profile;
+    bool        ARB_create_context_robustness;
+    bool        EXT_create_context_es2_profile;
+    bool        ARB_create_context_no_error;
+    bool        ARB_context_flush_control;
 
 } _GLFWlibraryGLX;
 
-GLFWbool _glfwInitGLX(void);
+bool _glfwInitGLX(void);
 void _glfwTerminateGLX(void);
-GLFWbool _glfwCreateContextGLX(_GLFWwindow* window,
+bool _glfwCreateContextGLX(_GLFWwindow* window,
                                const _GLFWctxconfig* ctxconfig,
                                const _GLFWfbconfig* fbconfig);
 void _glfwDestroyContextGLX(_GLFWwindow* window);
-GLFWbool _glfwChooseVisualGLX(const _GLFWwndconfig* wndconfig,
+bool _glfwChooseVisualGLX(const _GLFWwndconfig* wndconfig,
                               const _GLFWctxconfig* ctxconfig,
                               const _GLFWfbconfig* fbconfig,
                               Visual** visual, int* depth);

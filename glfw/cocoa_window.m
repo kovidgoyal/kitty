@@ -100,7 +100,7 @@ _glfwRestartDisplayLinks(void) {
 
 // Returns whether the cursor is in the content area of the specified window
 //
-static GLFWbool cursorInContentArea(_GLFWwindow* window)
+static bool cursorInContentArea(_GLFWwindow* window)
 {
     const NSPoint pos = [window->ns.object mouseLocationOutsideOfEventStream];
     return [window->ns.view mouse:pos inRect:[window->ns.view frame]];
@@ -263,7 +263,7 @@ safe_name_for_scancode(unsigned int scancode) {
 
 // Translates a macOS keycode to a GLFW keycode
 //
-static int translateKey(unsigned int key, GLFWbool apply_keymap)
+static int translateKey(unsigned int key, bool apply_keymap)
 {
     if (apply_keymap) {
         // Look for the effective key name after applying any keyboard layouts/mappings
@@ -860,7 +860,7 @@ convert_utf16_to_utf8(UniChar *src, UniCharCount src_length, char *dest, size_t 
     CFRelease(string);
 }
 
-static inline GLFWbool
+static inline bool
 is_ascii_control_char(char x) {
     return x == 0 || (1 <= x && x <= 31) || x == 127;
 }
@@ -871,7 +871,7 @@ is_ascii_control_char(char x) {
     const NSUInteger flags = [event modifierFlags];
     const int mods = translateFlags(flags);
     const int key = translateKey(scancode, GLFW_TRUE);
-    const GLFWbool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, scancode, flags) != 1;
+    const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, scancode, flags) != 1;
     const bool previous_has_marked_text = [self hasMarkedText];
     [self unmarkText];
     _glfw.ns.text[0] = 0;
@@ -1285,7 +1285,7 @@ static void createMenuBar(void)
 
 // Initialize the Cocoa Application Kit
 //
-static GLFWbool initializeAppKit(void)
+static bool initializeAppKit(void)
 {
     if (_glfw.ns.delegate)
         return GLFW_TRUE;
@@ -1329,7 +1329,7 @@ static GLFWbool initializeAppKit(void)
 
 // Create the Cocoa window
 //
-static GLFWbool createNativeWindow(_GLFWwindow* window,
+static bool createNativeWindow(_GLFWwindow* window,
                                    const _GLFWwndconfig* wndconfig,
                                    const _GLFWfbconfig* fbconfig)
 {
@@ -1800,18 +1800,18 @@ int _glfwPlatformFramebufferTransparent(_GLFWwindow* window)
     return ![window->ns.object isOpaque] && ![window->ns.view isOpaque];
 }
 
-void _glfwPlatformSetWindowResizable(_GLFWwindow* window, GLFWbool enabled)
+void _glfwPlatformSetWindowResizable(_GLFWwindow* window, bool enabled)
 {
     [window->ns.object setStyleMask:getStyleMask(window)];
 }
 
-void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, GLFWbool enabled)
+void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, bool enabled)
 {
     [window->ns.object setStyleMask:getStyleMask(window)];
     [window->ns.object makeFirstResponder:window->ns.view];
 }
 
-void _glfwPlatformSetWindowFloating(_GLFWwindow* window, GLFWbool enabled)
+void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled)
 {
     if (enabled)
         [window->ns.object setLevel:NSFloatingWindowLevel];

@@ -31,7 +31,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 typedef struct {
-    GLFWbool ok, inited;
+    bool ok, inited;
     time_t address_file_mtime;
     DBusConnection *conn;
     const char *input_ctx_path, *address_file_name, *address;
@@ -49,7 +49,7 @@ typedef struct {
 
 void glfw_connect_to_ibus(_GLFWIBUSData *ibus);
 void glfw_ibus_terminate(_GLFWIBUSData *ibus);
-void glfw_ibus_set_focused(_GLFWIBUSData *ibus, GLFWbool focused);
+void glfw_ibus_set_focused(_GLFWIBUSData *ibus, bool focused);
 void glfw_ibus_dispatch(_GLFWIBUSData *ibus);
-GLFWbool ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus);
+bool ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus);
 void glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h);

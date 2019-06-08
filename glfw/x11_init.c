@@ -154,7 +154,7 @@ static void detectEWMH(void)
 
 // Look for and initialize supported X11 extensions
 //
-static GLFWbool initExtensions(void)
+static bool initExtensions(void)
 {
     _glfw.x11.vidmode.handle = _glfw_dlopen("libXxf86vm.so.1");
     if (_glfw.x11.vidmode.handle)
@@ -462,7 +462,7 @@ static GLFWbool initExtensions(void)
 
 // Retrieve system content scale via folklore heuristics
 //
-void _glfwGetSystemContentScaleX11(float* xscale, float* yscale, GLFWbool bypass_cache)
+void _glfwGetSystemContentScaleX11(float* xscale, float* yscale, bool bypass_cache)
 {
     // NOTE: Default to the display-wide DPI as we don't currently have a policy
     //       for which monitor a window is considered to be on

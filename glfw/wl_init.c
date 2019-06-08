@@ -408,7 +408,7 @@ static void keyboardHandleKey(void* data,
         return;
     int action = state == WL_KEYBOARD_KEY_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE;
     glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, key, action);
-    GLFWbool repeatable = GLFW_FALSE;
+    bool repeatable = GLFW_FALSE;
 
     if (action == GLFW_PRESS && _glfw.wl.keyboardRepeatRate > 0 && glfw_xkb_should_repeat(&_glfw.wl.xkb, key))
     {

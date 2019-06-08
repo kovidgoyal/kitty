@@ -45,7 +45,7 @@ report_error(DBusError *err, const char *fmt, ...) {
 static _GLFWDBUSData *dbus_data = NULL;
 static DBusConnection *session_bus = NULL;
 
-GLFWbool
+bool
 glfw_dbus_init(_GLFWDBUSData *dbus, EventLoopData *eld) {
     dbus->eld = eld;
     dbus_data = dbus;
@@ -136,7 +136,7 @@ toggle_dbus_timeout(DBusTimeout *timeout, void *data) {
 
 
 DBusConnection*
-glfw_dbus_connect_to(const char *path, const char* err_msg, const char *name, GLFWbool register_on_bus) {
+glfw_dbus_connect_to(const char *path, const char* err_msg, const char *name, bool register_on_bus) {
     DBusError err;
     dbus_error_init(&err);
     DBusConnection *ans = dbus_connection_open_private(path, &err);
@@ -195,14 +195,14 @@ glfw_dbus_close_connection(DBusConnection *conn) {
     dbus_connection_unref(conn);
 }
 
-GLFWbool
+bool
 glfw_dbus_get_args(DBusMessage *msg, const char *failmsg, ...) {
     DBusError err;
     dbus_error_init(&err);
     va_list ap;
     va_start(ap, failmsg);
     int firstarg = va_arg(ap, int);
-    GLFWbool ret = dbus_message_get_args_valist(msg, &err, firstarg, ap) ? GLFW_TRUE : GLFW_FALSE;
+    bool ret = dbus_message_get_args_valist(msg, &err, firstarg, ap) ? GLFW_TRUE : GLFW_FALSE;
     va_end(ap);
     if (!ret) report_error(&err, failmsg);
     return ret;
@@ -233,9 +233,9 @@ method_reply_received(DBusPendingCall *pending, void *user_data) {
     }
 }
 
-GLFWbool
+bool
 call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_pending_callback callback, void *user_data) {
-    GLFWbool retval = GLFW_FALSE;
+    bool retval = GLFW_FALSE;
 #define REPORT(errs) _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to call DBUS method: node=%s path=%s interface=%s method=%s, with error: %s", dbus_message_get_destination(msg), dbus_message_get_path(msg), dbus_message_get_interface(msg), dbus_message_get_member(msg), errs)
     if (callback) {
         DBusPendingCall *pending = NULL;
@@ -260,12 +260,12 @@ call_method_with_msg(DBusConnection *conn, DBusMessage *msg, int timeout, dbus_p
 #undef REPORT
 }
 
-static GLFWbool
+static bool
 call_method(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout, dbus_pending_callback callback, void *user_data, va_list ap) {
     if (!conn) return GLFW_FALSE;
     DBusMessage *msg = dbus_message_new_method_call(node, path, interface, method);
     if (!msg) return GLFW_FALSE;
-    GLFWbool retval = GLFW_FALSE;
+    bool retval = GLFW_FALSE;
 
     int firstarg = va_arg(ap, int);
     if ((firstarg == DBUS_TYPE_INVALID) || dbus_message_append_args_valist(msg, firstarg, ap)) {
@@ -278,9 +278,9 @@ call_method(DBusConnection *conn, const char *node, const char *path, const char
     return retval;
 }
 
-GLFWbool
+bool
 glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, int timeout, dbus_pending_callback callback, void* user_data, ...) {
-    GLFWbool retval;
+    bool retval;
     va_list ap;
     va_start(ap, user_data);
     retval = call_method(conn, node, path, interface, method, timeout, callback, user_data, ap);
@@ -288,9 +288,9 @@ glfw_dbus_call_method_with_reply(DBusConnection *conn, const char *node, const c
     return retval;
 }
 
-GLFWbool
+bool
 glfw_dbus_call_method_no_reply(DBusConnection *conn, const char *node, const char *path, const char *interface, const char *method, ...) {
-    GLFWbool retval;
+    bool retval;
     va_list ap;
     va_start(ap, method);
     retval = call_method(conn, node, path, interface, method, DBUS_TIMEOUT_USE_DEFAULT, NULL, NULL, ap);

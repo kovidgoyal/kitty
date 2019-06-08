@@ -35,7 +35,7 @@
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-GLFWbool _glfwPlatformCreateTls(_GLFWtls* tls)
+bool _glfwPlatformCreateTls(_GLFWtls* tls)
 {
     assert(tls->posix.allocated == GLFW_FALSE);
 
@@ -69,7 +69,7 @@ void _glfwPlatformSetTls(_GLFWtls* tls, void* value)
     pthread_setspecific(tls->posix.key, value);
 }
 
-GLFWbool _glfwPlatformCreateMutex(_GLFWmutex* mutex)
+bool _glfwPlatformCreateMutex(_GLFWmutex* mutex)
 {
     assert(mutex->posix.allocated == GLFW_FALSE);
 

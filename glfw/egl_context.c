@@ -85,7 +85,7 @@ static int getEGLConfigAttrib(EGLConfig config, int attrib)
 
 // Return the EGLConfig most closely matching the specified hints
 //
-static GLFWbool chooseEGLConfig(const _GLFWctxconfig* ctxconfig,
+static bool chooseEGLConfig(const _GLFWctxconfig* ctxconfig,
                                 const _GLFWfbconfig* desired,
                                 EGLConfig* result)
 {
@@ -297,7 +297,7 @@ static void destroyContextEGL(_GLFWwindow* window)
 
 // Initialize EGL
 //
-GLFWbool _glfwInitEGL(void)
+bool _glfwInitEGL(void)
 {
     int i;
     const char* sonames[] =
@@ -453,7 +453,7 @@ void _glfwTerminateEGL(void)
 
 // Create the OpenGL or OpenGL ES context
 //
-GLFWbool _glfwCreateContextEGL(_GLFWwindow* window,
+bool _glfwCreateContextEGL(_GLFWwindow* window,
                                const _GLFWctxconfig* ctxconfig,
                                const _GLFWfbconfig* fbconfig)
 {
@@ -714,7 +714,7 @@ GLFWbool _glfwCreateContextEGL(_GLFWwindow* window,
 // Returns the Visual and depth of the chosen EGLConfig
 //
 #if defined(_GLFW_X11)
-GLFWbool _glfwChooseVisualEGL(const _GLFWwndconfig* wndconfig,
+bool _glfwChooseVisualEGL(const _GLFWwndconfig* wndconfig,
                               const _GLFWctxconfig* ctxconfig,
                               const _GLFWfbconfig* fbconfig,
                               Visual** visual, int* depth)
