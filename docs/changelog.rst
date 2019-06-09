@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.14.2 [future]
+0.14.2 [2019-06-09]
 ---------------------
 
 - Add an option :opt:`placement_strategy` to control how the cell area is
