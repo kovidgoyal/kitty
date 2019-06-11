@@ -3,6 +3,7 @@
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
+from contextlib import suppress
 
 from .constants import is_macos
 
@@ -18,11 +19,9 @@ else:
     def load_libxkb_lookup():
         import ctypes
         for suffix in ('.0', ''):
-            try:
+            with suppress(Exception):
                 lib = ctypes.CDLL('libxkbcommon.so' + suffix)
                 break
-            except Exception:
-                pass
         else:
             from ctypes.util import find_library
             lib = find_library('xkbcommon')
