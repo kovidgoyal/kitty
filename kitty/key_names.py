@@ -15,10 +15,14 @@ if is_macos:
     def get_key_name_lookup():
         return null_lookup
 else:
-
     def load_libxkb_lookup():
         import ctypes
-        lib = ctypes.CDLL('libxkbcommon.so')
+        for suffix in ('.0', ''):
+            try:
+                lib = ctypes.CDLL('libxkbcommon.so' + suffix)
+                break
+            except Exception:
+                pass
         f = lib.xkb_keysym_from_name
         f.argtypes = [ctypes.c_char_p, ctypes.c_int]
         f.restype = ctypes.c_int
