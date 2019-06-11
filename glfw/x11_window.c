@@ -51,6 +51,7 @@
 
 #define _GLFW_XDND_VERSION 5
 
+
 // Wait for data to arrive using poll
 // This avoids blocking other threads via the per-display Xlib lock that also
 // covers GLX functions
@@ -2245,13 +2246,14 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
 
     if (window->monitor)
     {
-       if (!_glfwPlatformWindowVisible(window))
-       {
-           XMapRaised(_glfw.x11.display, window->x11.handle);
-           waitForVisibilityNotify(window);
-       }
-       updateWindowMode(window);
-       acquireMonitor(window);
+        if (!_glfwPlatformWindowVisible(window))
+        {
+            XMapRaised(_glfw.x11.display, window->x11.handle);
+            waitForVisibilityNotify(window);
+        }
+
+        updateWindowMode(window);
+        acquireMonitor(window);
     }
     else
     {
@@ -2294,10 +2296,13 @@ int _glfwPlatformWindowMaximized(_GLFWwindow* window)
     Atom* states;
     unsigned long i;
     bool maximized = false;
+
     if (!_glfw.x11.NET_WM_STATE ||
-            !_glfw.x11.NET_WM_STATE_MAXIMIZED_VERT ||
-            !_glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ)
+        !_glfw.x11.NET_WM_STATE_MAXIMIZED_VERT ||
+        !_glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ)
+    {
         return maximized;
+    }
     const unsigned long count =
         _glfwGetWindowPropertyX11(window->x11.handle,
                                   _glfw.x11.NET_WM_STATE,
@@ -2891,3 +2896,4 @@ GLFWAPI unsigned long long glfwDBusUserNotify(const char *app_name, const char* 
 GLFWAPI void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler) {
     glfw_dbus_set_user_notification_activated_handler(handler);
 }
+

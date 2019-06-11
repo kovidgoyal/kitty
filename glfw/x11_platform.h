@@ -182,11 +182,11 @@ typedef struct _GLFWwindowX11
     Colormap        colormap;
     Window          handle;
 
-    bool        iconified;
-    bool        maximized;
+    bool            iconified;
+    bool            maximized;
 
     // Whether the visual supports framebuffer transparency
-    bool        transparent;
+    bool            transparent;
 
     // Cached position and size used to filter out duplicate events
     int             width, height;
@@ -284,14 +284,14 @@ typedef struct _GLFWlibraryX11
     Atom            RESOURCE_MANAGER;
 
     struct {
-        bool    available;
+        bool        available;
         void*       handle;
         int         eventBase;
         int         errorBase;
         int         major;
         int         minor;
-        bool    gammaBroken;
-        bool    monitorBroken;
+        bool        gammaBroken;
+        bool        monitorBroken;
         PFN_XRRAllocGamma AllocGamma;
         PFN_XRRFreeCrtcInfo FreeCrtcInfo;
         PFN_XRRFreeGamma FreeGamma;
@@ -336,7 +336,7 @@ typedef struct _GLFWlibraryX11
     } xcursor;
 
     struct {
-        bool    available;
+        bool        available;
         void*       handle;
         int         major;
         int         minor;
@@ -346,7 +346,7 @@ typedef struct _GLFWlibraryX11
     } xinerama;
 
     struct {
-        bool    available;
+        bool        available;
         void*       handle;
         int         eventBase;
         int         errorBase;
@@ -357,7 +357,7 @@ typedef struct _GLFWlibraryX11
     } vidmode;
 
     struct {
-        bool    available;
+        bool        available;
         void*       handle;
         int         majorOpcode;
         int         eventBase;
@@ -369,7 +369,7 @@ typedef struct _GLFWlibraryX11
     } xi;
 
     struct {
-        bool    available;
+        bool        available;
         void*       handle;
         int         major;
         int         minor;
@@ -406,6 +406,7 @@ typedef struct _GLFWcursorX11
 
 } _GLFWcursorX11;
 
+
 void _glfwPollMonitorsX11(void);
 void _glfwSetVideoModeX11(_GLFWmonitor* monitor, const GLFWvidmode* desired);
 void _glfwRestoreVideoModeX11(_GLFWmonitor* monitor);
@@ -424,3 +425,4 @@ void _glfwInputErrorX11(int error, const char* message);
 
 void _glfwGetSystemContentScaleX11(float* xscale, float* yscale, bool bypass_cache);
 void _glfwPushSelectionToManagerX11(void);
+

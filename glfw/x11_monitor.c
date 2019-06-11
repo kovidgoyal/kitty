@@ -349,7 +349,7 @@ void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
         *yscale = _glfw.x11.contentScaleY;
 }
 
-void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor, int* xpos, int* ypos, int *width, int *height)
+void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor, int* xpos, int* ypos, int* width, int* height)
 {
     int areaX = 0, areaY = 0, areaWidth = 0, areaHeight = 0;
 
@@ -595,7 +595,8 @@ void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
                                 (unsigned short*) ramp->green,
                                 (unsigned short*) ramp->blue);
     }
-    else {
+    else
+    {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "X11: Gamma ramp access not supported by server");
     }
@@ -619,3 +620,4 @@ GLFWAPI RROutput glfwGetX11Monitor(GLFWmonitor* handle)
     _GLFW_REQUIRE_INIT_OR_RETURN(None);
     return monitor->x11.output;
 }
+
