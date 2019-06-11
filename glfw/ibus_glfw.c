@@ -57,7 +57,7 @@ test_env_var(const char *name, const char *val) {
 }
 
 static inline size_t
-MIN(size_t a, size_t b) {
+GLFW_MIN(size_t a, size_t b) {
     return a < b ? a : b;
 }
 
@@ -151,7 +151,7 @@ get_ibus_address_file_name(void) {
     addr = getenv("IBUS_ADDRESS");
     int offset = 0;
     if (addr && addr[0]) {
-        memcpy(ans, addr, MIN(strlen(addr), sizeof(ans)));
+        memcpy(ans, addr, GLFW_MIN(strlen(addr), sizeof(ans)));
         return ans;
     }
 
