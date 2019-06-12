@@ -367,8 +367,8 @@ static void xdgDecorationHandleConfigure(void* data,
                                          uint32_t mode)
 {
     _GLFWwindow* window = data;
-     window->wl.decorations.serverSide = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-     if (!window->wl.decorations.serverSide)
+    window->wl.decorations.serverSide = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    if (!window->wl.decorations.serverSide)
         createDecorations(window);
 }
 
@@ -914,6 +914,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     destroyDecorations(window);
     if (window->wl.xdg.decoration)
         zxdg_toplevel_decoration_v1_destroy(window->wl.xdg.decoration);
+
     if (window->wl.decorations.buffer)
         wl_buffer_destroy(window->wl.decorations.buffer);
 
@@ -1001,13 +1002,15 @@ void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
     }
 }
 
-void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window, int numer, int denom)
+void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window,
+                                       int numer, int denom)
 {
     // TODO: find out how to trigger a resize.
     // The actual limits are checked in the xdg_toplevel::configure handler.
 }
 
-void _glfwPlatformGetFramebufferSize(_GLFWwindow* window, int* width, int* height)
+void _glfwPlatformGetFramebufferSize(_GLFWwindow* window,
+                                     int* width, int* height)
 {
     _glfwPlatformGetWindowSize(window, width, height);
     *width *= window->wl.scale;
@@ -2001,6 +2004,7 @@ frame_handle_redraw(void *data, struct wl_callback *callback, uint32_t time) {
     wl_callback_destroy(callback);
 }
 
+
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW native API                       //////
 //////////////////////////////////////////////////////////////////////////
@@ -2042,3 +2046,4 @@ GLFWAPI unsigned long long glfwDBusUserNotify(const char *app_name, const char* 
 GLFWAPI void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler) {
     glfw_dbus_set_user_notification_activated_handler(handler);
 }
+

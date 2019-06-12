@@ -46,7 +46,8 @@ static inline int min(int n1, int n2)
     return n1 < n2 ? n1 : n2;
 }
 
-static _GLFWwindow* findWindowFromDecorationSurface(struct wl_surface* surface, int* which)
+static _GLFWwindow* findWindowFromDecorationSurface(struct wl_surface* surface,
+                                                    int* which)
 {
     int focus;
     _GLFWwindow* window = _glfw.windowListHead;
@@ -174,7 +175,8 @@ static void pointerHandleMotion(void* data,
     switch (window->wl.decorations.focus)
     {
         case mainWindow:
-            _glfwInputCursorPos(window, window->wl.cursorPosX, window->wl.cursorPosY);
+            _glfwInputCursorPos(window,
+                                window->wl.cursorPosX, window->wl.cursorPosY);
             return;
         case topDecoration:
             if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
@@ -217,7 +219,6 @@ static void pointerHandleButton(void* data,
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     int glfwButton;
-
     uint32_t edges = XDG_TOPLEVEL_RESIZE_EDGE_NONE;
 
     if (!window)
