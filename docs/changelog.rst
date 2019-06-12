@@ -10,6 +10,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix an out of bounds read causing a crash when selecting text with the mouse
   in the alternate screen mode (:iss:`1578`)
 
+- Document the kitty remote control protocol (:iss:`1646`)
+
 
 0.14.2 [2019-06-09]
 ---------------------

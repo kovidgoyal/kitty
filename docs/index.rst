@@ -486,3 +486,4 @@ See :doc:`changelog`.
 
     *
     kittens/*
+    generated/rc

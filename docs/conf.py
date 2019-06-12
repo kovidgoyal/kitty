@@ -276,6 +276,48 @@ def write_cli_docs(all_kitten_names):
 # }}}
 
 
+def write_remote_control_protocol_docs():  # {{{
+    from kitty.cmds import cmap
+    field_pat = re.compile(r'\s*([a-zA-Z0-9_+]+)\s*:\s*(.+)')
+
+    def format_cmd(p, name, cmd):
+        p(name)
+        p('-' * 80)
+        lines = cmd.__doc__.strip().splitlines()
+        fields = []
+        for line in lines:
+            m = field_pat.match(line)
+            if m is None:
+                p(line)
+            else:
+                fields.append((m.group(1), m.group(2)))
+        if fields:
+            p('\nFields are:\n')
+            for (name, desc) in fields:
+                if '+' in name:
+                    title = name.replace('+', ' (required)')
+                else:
+                    title = name
+                    defval = cmd.get_default(name.replace('-', '_'), cmd)
+                    if defval is not cmd:
+                        title = f'{title} (default: {defval})'
+                    else:
+                        title = f'{title} (optional)'
+                p(f':code:`{title}`')
+                p(' ', desc), p()
+        p(), p()
+
+    with open(f'generated/rc.rst', 'w') as f:
+        p = partial(print, file=f)
+        for name in sorted(cmap):
+            cmd = cmap[name]
+            if not cmd.__doc__:
+                continue
+            name = name.replace('_', '-')
+            format_cmd(p, name, cmd)
+# }}}
+
+
 # config file docs {{{
 
 class ConfLexer(RegexLexer):
@@ -537,6 +579,7 @@ def setup(app):
     from kittens.runner import all_kitten_names
     all_kitten_names = all_kitten_names()
     write_cli_docs(all_kitten_names)
+    write_remote_control_protocol_docs()
     write_conf_docs(app, all_kitten_names)
     app.add_lexer('session', SessionLexer())
     app.add_role('link', link_role)

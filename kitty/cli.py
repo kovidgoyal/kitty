@@ -212,6 +212,14 @@ def wrap(text, limit=80):
     return reversed(lines)
 
 
+def get_defaults_from_seq(seq):
+    ans = {}
+    for opt in seq:
+        if not isinstance(opt, str):
+            ans[opt['dest']] = defval_for_opt(opt)
+    return ans
+
+
 default_msg = ('''\
 Run the :italic:`{appname}` terminal emulator. You can also specify the :italic:`program`
 to run inside :italic:`{appname}` as normal arguments following the :italic:`options`.

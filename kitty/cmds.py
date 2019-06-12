@@ -7,7 +7,7 @@ import os
 import sys
 from contextlib import suppress
 
-from .cli import parse_args
+from .cli import parse_args, parse_option_spec, get_defaults_from_seq
 from .config import parse_config, parse_send_text_bytes
 from .constants import appname
 from .fast_data_types import focus_os_window
@@ -36,7 +36,33 @@ class UnknownLayout(ValueError):
 cmap = {}
 
 
-def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='...', string_return_is_error=False, args_count=None):
+def cmd(
+    short_desc,
+    desc=None,
+    options_spec=None,
+    no_response=False,
+    argspec='...',
+    string_return_is_error=False,
+    args_count=None,
+):
+
+    if options_spec:
+        defaults = None
+
+        def get_defaut_value(name, missing=None):
+            nonlocal defaults
+            if defaults is None:
+                defaults = get_defaults_from_seq(parse_option_spec(options_spec)[0])
+            return defaults.get(name, missing)
+    else:
+        def get_defaut_value(name, missing=None):
+            return missing
+
+    def payload_get(payload, key, opt_name=None):
+        ans = payload.get(key, payload_get)
+        if ans is not payload_get:
+            return ans
+        return get_defaut_value(opt_name or key)
 
     def w(func):
         func.short_desc = short_desc
@@ -49,6 +75,8 @@ def cmd(short_desc, desc=None, options_spec=None, no_response=False, argspec='..
         func.no_response = no_response
         func.string_return_is_error = string_return_is_error
         func.args_count = 0 if not argspec else args_count
+        func.get_default = get_defaut_value
+        func.payload_get = payload_get
         cmap[func.name] = func
         return func
     return w
@@ -109,6 +137,9 @@ def windows_for_payload(boss, window, payload):
     argspec=''
 )
 def cmd_ls(global_opts, opts, args):
+    '''
+    No payload
+    '''
     pass
 
 
@@ -135,6 +166,11 @@ By default, the font size is only changed in the active OS window,
 this option will cause it to be changed in all OS windows.
 ''')
 def cmd_set_font_size(global_opts, opts, args):
+    '''
+    size+: The new font size in pts (a positive number)
+    all: Boolean whether to change font size in the current window or all windows
+    increment_op: The string ``+`` or ``-`` to interpret size as an increment
+    '''
     if not args:
         raise SystemExit('No font size specified')
     fs = args[0]
@@ -143,7 +179,9 @@ def cmd_set_font_size(global_opts, opts, args):
 
 
 def set_font_size(boss, window, payload):
-    boss.change_font_size(payload['all'], payload['increment_op'], payload['size'])
+    boss.change_font_size(
+        cmd_set_font_size.payload_get(payload, 'all'),
+        payload.get('increment_op', None), payload['size'])
 # }}}
 
 
@@ -170,6 +208,12 @@ are sent as is, not interpreted for escapes.
     argspec='[TEXT TO SEND]'
 )
 def cmd_send_text(global_opts, opts, args):
+    '''
+    text+: The text being sent
+    is_binary+: If False text is interpreted as a python string literal instead of plain text
+    match: A string indicating the window to send text to
+    match_tab: A string indicating the tab to send text to
+    '''
     limit = 1024
     ret = {'match': opts.match, 'is_binary': False, 'match_tab': opts.match_tab}
 
@@ -235,12 +279,14 @@ def cmd_send_text(global_opts, opts, args):
 
 def send_text(boss, window, payload):
     windows = [boss.active_window]
-    match = payload['match']
+    pg = cmd_send_text.payload_get
+    match = pg(payload, 'match')
     if match:
         windows = tuple(boss.match_windows(match))
-    if payload['match_tab']:
+    mt = pg(payload, 'match_tab')
+    if mt:
         windows = []
-        tabs = tuple(boss.match_tabs(payload['match_tab']))
+        tabs = tuple(boss.match_tabs(mt))
         if not tabs:
             raise MatchError(payload['match_tab'], 'tabs')
         for tab in tabs:
@@ -269,19 +315,25 @@ want to allow other programs to change it afterwards, use this option.
     argspec='TITLE ...'
 )
 def cmd_set_window_title(global_opts, opts, args):
+    '''
+    title+: The new title
+    match: Which windows to change the title in
+    temporary: Boolean indicating if the change is temporary or permanent
+    '''
     return {'title': ' '.join(args), 'match': opts.match, 'temporary': opts.temporary}
 
 
 def set_window_title(boss, window, payload):
     windows = [window or boss.active_window]
-    match = payload['match']
+    pg = cmd_set_window_title.payload_get
+    match = pg(payload, 'match')
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
             raise MatchError(match)
     for window in windows:
         if window:
-            if payload['temporary']:
+            if pg(payload, 'temporary'):
                 window.override_title = None
                 window.title_changed(payload['title'])
             else:

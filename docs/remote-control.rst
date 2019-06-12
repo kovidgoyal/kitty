@@ -134,5 +134,10 @@ still write to the pipes of any other program on the same computer and
 therefore can control |kitty|. It can, however, be useful to block programs
 running on other computers (for example, over ssh) or as other users.
 
+Documentation for the remote control protocol
+-----------------------------------------------
+
+If you wish to develop your own client to talk to |kitty|, you
+can use the :doc:`rc_protocol`.
 
 .. include:: generated/cli-kitty-at.rst

@@ -20,7 +20,7 @@ from .utils import TTYIO, parse_address_spec
 def handle_cmd(boss, window, cmd):
     cmd = json.loads(cmd)
     v = cmd['version']
-    no_response = cmd['no_response']
+    no_response = cmd.get('no_response', False)
     if tuple(v)[:2] > version[:2]:
         if no_response:
             return
