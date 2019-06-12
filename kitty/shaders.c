@@ -506,14 +506,15 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     set_cell_uniforms(current_inactive_text_alpha);
     GLfloat w = (GLfloat)screen->columns * dx, h = (GLfloat)screen->lines * dy;
     // The scissor limits below are calculated to ensure that they do not
-    // overlap with the pixels outside the draw area, see https://github.com/kovidgoyal/kitty/issues/741
-    // for a test case (the scissor is also used by draw_cells_interleaved_premult to blit the framebuffer)
+    // overlap with the pixels outside the draw area,
+    // for a test case (scissor is also used to blit framebuffer in draw_cells_interleaved_premult) run:
+    // kitty -o background=cyan -o background_opacity=0.7 -o window_margin_width=40 sh -c "kitty +kitten icat logo/kitty.png; read"
 #define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
     glScissor(
-            (GLint)(ceilf(SCALE(width, (xstart + 1.0f) / 2.0f))),
-            (GLint)(ceilf(SCALE(height, ((ystart - h) + 1.0f) / 2.0f))),
-            (GLsizei)(floorf(SCALE(width, w / 2.0f))-1),
-            (GLsizei)(floorf(SCALE(height, h / 2.0f))-1)
+            (GLint)(ceilf(SCALE(width, (xstart + 1.0f) / 2.0f))), // x
+            (GLint)(ceilf(SCALE(height, ((ystart - h) + 1.0f) / 2.0f))), // y
+            (GLsizei)(floorf(SCALE(width, w / 2.0f))), // width
+            (GLsizei)(floorf(SCALE(height, h / 2.0f))) // height
     );
 #undef SCALE
     if (os_window->is_semi_transparent) {
