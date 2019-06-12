@@ -353,11 +353,16 @@ def set_window_title(boss, window, payload):
     argspec='TITLE ...'
 )
 def cmd_set_tab_title(global_opts, opts, args):
+    '''
+    title+: The new title
+    match: Which tab to change the title of
+    '''
     return {'title': ' '.join(args), 'match': opts.match}
 
 
 def set_tab_title(boss, window, payload):
-    match = payload['match']
+    pg = cmd_set_tab_title.payload_get
+    match = pg(payload, 'match')
     if match:
         tabs = tuple(boss.match_tabs(match))
         if not tabs:
@@ -379,6 +384,10 @@ def set_tab_title(boss, window, payload):
     argspec='LAYOUT_NAME'
 )
 def cmd_goto_layout(global_opts, opts, args):
+    '''
+    layout+: The new layout name
+    match: Which tab to change the layout of
+    '''
     try:
         return {'layout': args[0], 'match': opts.match}
     except IndexError:
@@ -386,7 +395,8 @@ def cmd_goto_layout(global_opts, opts, args):
 
 
 def goto_layout(boss, window, payload):
-    match = payload['match']
+    pg = cmd_goto_layout.payload_get
+    match = pg(payload, 'match')
     if match:
         if match == 'all':
             tabs = tuple(boss.all_tabs)
