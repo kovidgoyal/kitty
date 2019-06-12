@@ -931,24 +931,23 @@ cause colors to be changed in all windows.
     args_count=1
 )
 def cmd_set_background_opacity(global_opts, opts, args):
+    '''
+    opacity+: A number between 0.1 and 1
+    match_window: Window to change opacity in
+    match_tab: Tab to change opacity in
+    all: Boolean indicating operate on all windows
+    '''
     opacity = max(0.1, min(float(args[0]), 1.0))
     return {
             'opacity': opacity, 'match_window': opts.match,
-            'all': opts.all,
+            'all': opts.all, 'match_tab': opts.match_tab
     }
 
 
 def set_background_opacity(boss, window, payload):
     if not boss.opts.dynamic_background_opacity:
         raise OpacityError('You must turn on the dynamic_background_opacity option in kitty.conf to be able to set background opacity')
-    if payload['all']:
-        windows = tuple(boss.all_windows)
-    else:
-        windows = (window or boss.active_window,)
-        if payload['match_window']:
-            windows = tuple(boss.match_windows(payload['match_window']))
-            if not windows:
-                raise MatchError(payload['match_window'])
+    windows = windows_for_payload(payload)
     for os_window_id in {w.os_window_id for w in windows}:
         boss._set_os_window_background_opacity(os_window_id, payload['opacity'])
 # }}}
@@ -969,6 +968,12 @@ cause ligatures to be changed in all windows.
     argspec='STRATEGY'
 )
 def cmd_disable_ligatures(global_opts, opts, args):
+    '''
+    strategy+: One of :code:`never`, :code:`always` or :code:`cursor`
+    match_window: Window to change opacity in
+    match_tab: Tab to change opacity in
+    all: Boolean indicating operate on all windows
+    '''
     strategy = args[0]
     if strategy not in ('never', 'always', 'cursor'):
         raise ValueError('{} is not a valid disable_ligatures strategy'.format('strategy'))
@@ -995,6 +1000,11 @@ def disable_ligatures(boss, window, payload):
     argspec='kitten_name',
 )
 def cmd_kitten(global_opts, opts, args):
+    '''
+    kitten+: The name of the kitten to run
+    args: Arguments to pass to the kitten as a list
+    match: The window to run the kitten over
+    '''
     if len(args) < 1:
         raise SystemExit('Must specify kitten name')
     return {'match': opts.match, 'args': list(args)[1:], 'kitten': args[0]}
@@ -1002,14 +1012,15 @@ def cmd_kitten(global_opts, opts, args):
 
 def kitten(boss, window, payload):
     windows = [window or boss.active_window]
-    match = payload['match']
+    pg = cmd_kitten.payload_get
+    match = pg(payload, 'match')
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
             raise MatchError(match)
     for window in windows:
         if window:
-            boss._run_kitten(payload['kitten'], args=tuple(payload['args']), window=window)
+            boss._run_kitten(payload['kitten'], args=tuple(payload.get('args', ())), window=window)
             break
 # }}}
 
