@@ -809,7 +809,7 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     data->fd = fd;
     memcpy(data->buf, buf, data->sz);
     int ret = pthread_create(&thread, NULL, thread_write, data);
-    if (ret != 0) { free_twd(data); return PyErr_SetFromErrno(PyExc_OSError); }
+    if (ret != 0) { close(fd); free_twd(data); return PyErr_SetFromErrno(PyExc_OSError); }
     pthread_detach(thread);
     Py_RETURN_NONE;
 }
