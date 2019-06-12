@@ -6,10 +6,10 @@ import atexit
 import json
 import os
 import re
+from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
 from weakref import WeakValueDictionary
-from contextlib import suppress
 
 from .child import cached_process_data
 from .cli import create_opts, parse_args
@@ -25,8 +25,8 @@ from .fast_data_types import (
     change_os_window_state, create_os_window, current_os_window,
     destroy_global_data, get_clipboard_string, global_font_size,
     mark_os_window_for_close, os_window_font_size, patch_global_colors,
-    set_clipboard_string, set_in_sequence_mode, toggle_fullscreen,
-    toggle_maximized
+    set_clipboard_string, set_in_sequence_mode, thread_write,
+    toggle_fullscreen, toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout import set_layout_options
@@ -920,7 +920,7 @@ class Boss:
             env, stdin = self.process_stdin_source(stdin=source, window=window)
             if stdin:
                 p = subprocess.Popen(cmd, env=env, stdin=subprocess.PIPE)
-                p.communicate(stdin)
+                thread_write(p.stdin.fileno(), stdin)
             else:
                 subprocess.Popen(cmd)
 

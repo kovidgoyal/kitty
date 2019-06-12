@@ -12,6 +12,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Document the kitty remote control protocol (:iss:`1646`)
 
+- When piping data to a child in the pipe command do it in a thread so as not
+  to block the UI (:iss:`1708`)
 
 0.14.2 [2019-06-09]
 ---------------------
