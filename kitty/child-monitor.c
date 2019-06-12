@@ -722,7 +722,7 @@ typedef struct { int fd; uint8_t *buf; size_t sz; } ThreadWriteData;
 
 static inline ThreadWriteData*
 alloc_twd(size_t sz) {
-    ThreadWriteData *data = malloc(sizeof(ThreadWriteData));
+    ThreadWriteData *data = calloc(1, sizeof(ThreadWriteData));
     if (data != NULL) {
         data->sz = sz;
         data->buf = malloc(sz);
@@ -774,11 +774,21 @@ thread_write(void *x) {
     if (flags == -1) { free_twd(data); return 0; }
     flags &= ~O_NONBLOCK;
     fcntl(data->fd, F_SETFL, flags);
-    FILE *f = fdopen(data->fd, "w");
-    if (fwrite(data->buf, 1, data->sz, f) != data->sz) {
-        log_error("Failed to write all data");
+    size_t pos = 0;
+    while (pos < data->sz) {
+        errno = 0;
+        ssize_t nbytes = write(data->fd, data->buf + pos, data->sz - pos);
+        if (nbytes < 0) {
+            if (errno == EAGAIN || errno == EINTR) continue;
+            break;
+        }
+        if (nbytes == 0) break;
+        pos += nbytes;
     }
-    fclose(f);
+    if (pos < data->sz) {
+        log_error("Failed to write all data to STDIN of child process with error: %s", strerror(errno));
+    }
+    close(data->fd);
     free_twd(data);
     return 0;
 }
