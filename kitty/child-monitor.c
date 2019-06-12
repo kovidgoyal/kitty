@@ -123,7 +123,7 @@ handle_signal(int sig_num) {
 }
 
 static inline bool
-self_pipe(int fds[2]) {
+self_pipe(int fds[2], bool nonblock) {
 #ifdef __APPLE__
     int flags;
     flags = pipe(fds);
@@ -132,13 +132,17 @@ self_pipe(int fds[2]) {
         flags = fcntl(fds[i], F_GETFD);
         if (flags == -1) {  return false; }
         if (fcntl(fds[i], F_SETFD, flags | FD_CLOEXEC) == -1) { return false; }
-        flags = fcntl(fds[i], F_GETFL);
-        if (flags == -1) { return false; }
-        if (fcntl(fds[i], F_SETFL, flags | O_NONBLOCK) == -1) { return false; }
+        if (nonblock) {
+            flags = fcntl(fds[i], F_GETFL);
+            if (flags == -1) { return false; }
+            if (fcntl(fds[i], F_SETFL, flags | O_NONBLOCK) == -1) { return false; }
+        }
     }
     return true;
 #else
-    return pipe2(fds, O_CLOEXEC | O_NONBLOCK) == 0;
+    int flags = O_CLOEXEC;
+    if (nonblock) flags |= O_NONBLOCK;
+    return pipe2(fds, flags) == 0;
 #endif
 }
 
@@ -156,8 +160,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
     }
-    if (!self_pipe(wakeup_fds)) return PyErr_SetFromErrno(PyExc_OSError);
-    if (!self_pipe(signal_fds)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (!self_pipe(wakeup_fds, true)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (!self_pipe(signal_fds, true)) return PyErr_SetFromErrno(PyExc_OSError);
     struct sigaction act = {.sa_handler=handle_signal};
 #define SA(which) { if (sigaction(which, &act, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError); if (siginterrupt(which, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);}
     SA(SIGINT); SA(SIGTERM); SA(SIGCHLD);
@@ -1487,7 +1491,7 @@ talk_loop(void *data) {
     ChildMonitor *self = (ChildMonitor*)data;
     set_thread_name("KittyPeerMon");
     if ((pthread_mutex_init(&talk_data.peer_lock, NULL)) != 0) { perror("Failed to create peer mutex"); return 0; }
-    if (!self_pipe(talk_data.wakeup_fds)) { perror("Failed to create wakeup fds for talk thread"); return 0; }
+    if (!self_pipe(talk_data.wakeup_fds, true)) { perror("Failed to create wakeup fds for talk thread"); return 0; }
     ensure_space_for(&talk_data, fds, PollFD, 8, fds_capacity, 8, false);
 #define add_listener(which) \
     if (self->which > -1) { \
@@ -1579,14 +1583,16 @@ PyTypeObject ChildMonitor_Type = {
 
 
 static PyObject*
-safe_pipe(PYNOARG) {
+safe_pipe(PyObject *self UNUSED, PyObject *args) {
+    int nonblock = 1;
+    if (!PyArg_ParseTuple(args, "|p", &nonblock)) return NULL;
     int fds[2] = {0};
-    if (!self_pipe(fds)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (!self_pipe(fds, nonblock)) return PyErr_SetFromErrno(PyExc_OSError);
     return Py_BuildValue("ii", fds[0], fds[1]);
 }
 
 static PyMethodDef module_methods[] = {
-    METHODB(safe_pipe, METH_NOARGS),
+    METHODB(safe_pipe, METH_VARARGS),
     {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
     {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
     METHODB(monitor_pid, METH_VARARGS),

@@ -25,7 +25,7 @@ from .fast_data_types import (
     change_os_window_state, create_os_window, current_os_window,
     destroy_global_data, get_clipboard_string, global_font_size,
     mark_os_window_for_close, os_window_font_size, patch_global_colors,
-    set_clipboard_string, set_in_sequence_mode, thread_write,
+    safe_pipe, set_clipboard_string, set_in_sequence_mode, thread_write,
     toggle_fullscreen, toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
@@ -919,8 +919,15 @@ class Boss:
             import subprocess
             env, stdin = self.process_stdin_source(stdin=source, window=window)
             if stdin:
-                p = subprocess.Popen(cmd, env=env, stdin=subprocess.PIPE)
-                thread_write(p.stdin.fileno(), stdin)
+                r, w = safe_pipe(False)
+                try:
+                    subprocess.Popen(cmd, env=env, stdin=r)
+                except Exception:
+                    os.close(w)
+                else:
+                    thread_write(w, stdin)
+                finally:
+                    os.close(r)
             else:
                 subprocess.Popen(cmd)
 
