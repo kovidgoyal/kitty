@@ -231,7 +231,6 @@ start(PyObject *s, PyObject *a UNUSED) {
     Py_RETURN_NONE;
 }
 
-
 static PyObject *
 wakeup(PYNOARG) {
 #define wakeup_doc "wakeup() -> wakeup the ChildMonitor I/O thread, forcing it to exit from poll() if it is waiting there."
@@ -793,6 +792,7 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     memcpy(data->buf, buf, data->sz);
     int ret = pthread_create(&thread, NULL, thread_write, data);
     if (ret != 0) { free_twd(data); return PyErr_SetFromErrno(PyExc_OSError); }
+    pthread_detach(thread);
     Py_RETURN_NONE;
 }
 
