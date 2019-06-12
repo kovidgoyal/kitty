@@ -333,3 +333,4 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
     // This seems like the most appropriate error to return here
     return VK_ERROR_INITIALIZATION_FAILED;
 }
+
