@@ -438,7 +438,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     glDisable(GL_BLEND);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 
-    // Now render the framebuffer to the screen reversing alpha pre-multiplication
+    // Now render the framebuffer to the screen
     glEnable(GL_SCISSOR_TEST);
     bind_program(BLIT_PROGRAM); bind_vertex_array(blit_vertex_array);
     static bool blit_constants_set = false;
