@@ -24,7 +24,7 @@ else:
                 break
         else:
             from ctypes.util import find_library
-            lib = find_library('xkbcommon')
+            lib = ctypes.CDLL(find_library('xkbcommon'))
 
         f = lib.xkb_keysym_from_name
         f.argtypes = [ctypes.c_char_p, ctypes.c_int]
