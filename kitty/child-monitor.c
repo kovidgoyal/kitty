@@ -770,6 +770,10 @@ static void*
 thread_write(void *x) {
     ThreadWriteData *data = (ThreadWriteData*)x;
     set_thread_name("KittyWriteStdin");
+    int flags = fcntl(data->fd, F_GETFL, 0);
+    if (flags == -1) { free_twd(data); return 0; }
+    flags &= ~O_NONBLOCK;
+    fcntl(data->fd, F_SETFL, flags);
     FILE *f = fdopen(data->fd, "w");
     if (fwrite(data->buf, 1, data->sz, f) != data->sz) {
         log_error("Failed to write all data");
