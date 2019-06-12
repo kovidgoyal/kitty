@@ -929,7 +929,7 @@ class Boss:
                 finally:
                     os.close(r)
             else:
-                subprocess.Popen(cmd)
+                subprocess.Popen(cmd, env=env)
 
     def args_to_special_window(self, args, cwd_from=None):
         args = list(args)
