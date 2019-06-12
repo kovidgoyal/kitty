@@ -627,7 +627,6 @@ def cmd_new_window(global_opts, opts, args):
     cwd: Working directory for the new window
     tab_title: Title for the new tab
     window_type: One of :code:`kitty` or :code:`os`
-    no_response: Boolean indicating whether to send a response or not
     keep_focus: Boolean indicating whether the current window should retain focus or not
     '''
     if opts.no_response:
@@ -690,14 +689,18 @@ the command will exit with a success code.
 '''
 )
 def cmd_focus_window(global_opts, opts, args):
+    '''
+    match: The tab to open the new window in
+    '''
     if opts.no_response:
         global_opts.no_command_response = True
     return {'match': opts.match, 'no_response': opts.no_response}
 
 
 def focus_window(boss, window, payload):
+    pg = cmd_focus_window.payload_get
     windows = [window or boss.active_window]
-    match = payload['match']
+    match = pg(payload, 'match')
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
@@ -727,13 +730,17 @@ using this option means that you will not be notified of failures.
     no_response=True,
 )
 def cmd_focus_tab(global_opts, opts, args):
+    '''
+    match: The tab to focus
+    '''
     if opts.no_response:
         global_opts.no_command_response = True
     return {'match': opts.match}
 
 
 def focus_tab(boss, window, payload):
-    match = payload['match']
+    pg = cmd_focus_tab.payload_get
+    match = pg(payload, 'match')
     tabs = tuple(boss.match_tabs(match))
     if not tabs:
         raise MatchError(match, 'tabs')
@@ -767,22 +774,29 @@ If specified get text from the window this command is run in, rather than the ac
     argspec=''
 )
 def cmd_get_text(global_opts, opts, args):
+    '''
+    match: The tab to focus
+    extent: One of :code:`screen`, :code:`all`, or :code:`selection`
+    ansi: Boolean, if True send ANSI formatting codes
+    self: Boolean, if True use window command was run in
+    '''
     return {'match': opts.match, 'extent': opts.extent, 'ansi': opts.ansi, 'self': opts.self}
 
 
 def get_text(boss, window, payload):
-    match = payload['match']
+    pg = cmd_get_text.payload_get
+    match = pg(payload, 'match')
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
             raise MatchError(match)
     else:
-        windows = [window if window and payload['self'] else boss.active_window]
+        windows = [window if window and pg(payload, 'self') else boss.active_window]
     window = windows[0]
-    if payload['extent'] == 'selection':
+    if pg(payload, 'extent') == 'selection':
         ans = window.text_for_selection()
     else:
-        ans = window.as_text(as_ansi=bool(payload['ansi']), add_history=payload['extent'] == 'all')
+        ans = window.as_text(as_ansi=bool(pg(payload, 'ansi')), add_history=pg(payload, 'extent') == 'all')
     return ans
 # }}}
 
