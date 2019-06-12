@@ -423,11 +423,15 @@ def goto_layout(boss, window, payload):
     options_spec=MATCH_TAB_OPTION,
 )
 def cmd_last_used_layout(global_opts, opts, args):
+    '''
+    match: Which tab to change the layout of
+    '''
     return {'match': opts.match}
 
 
 def last_used_layout(boss, window, payload):
-    match = payload['match']
+    pg = cmd_last_used_layout.payload_get
+    match = pg(payload, 'match')
     if match:
         if match == 'all':
             tabs = tuple(boss.all_tabs)
@@ -454,17 +458,22 @@ If specified close the window this command is run in, rather than the active win
     argspec=''
 )
 def cmd_close_window(global_opts, opts, args):
+    '''
+    match: Which window to change the layout of
+    self: Boolean indicating whether to close the window the command is run in
+    '''
     return {'match': opts.match, 'self': opts.self}
 
 
 def close_window(boss, window, payload):
-    match = payload['match']
+    pg = cmd_close_window.payload_get
+    match = pg(payload, 'match')
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
             raise MatchError(match)
     else:
-        windows = [window if window and payload['self'] else boss.active_window]
+        windows = [window if window and pg(payload, 'self') else boss.active_window]
     for window in windows:
         if window:
             boss.close_window(window)
