@@ -828,6 +828,15 @@ this option, any color arguments are ignored and --configured and --all are impl
     argspec='COLOR_OR_FILE ...'
 )
 def cmd_set_colors(global_opts, opts, args):
+    '''
+    colors+: An object mapping names to colors as 24-bit RGB integers
+    cursor_text_color: A 24-bit clor for text under the cursor
+    match_window: Window to change colors in
+    match_tab: Tab to change colors in
+    all: Boolean indicating change colors everywhere or not
+    configured: Boolean indicating whether to change the configured colors. Must be True if reset is True
+    reset: Boolean indicating colors should be reset to startup values
+    '''
     from .rgb import color_as_int, Color
     colors, cursor_text_color = {}, False
     if not opts.reset:
@@ -840,16 +849,17 @@ def cmd_set_colors(global_opts, opts, args):
         cursor_text_color = colors.pop('cursor_text_color', False)
         colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}
     return {
-        'title': ' '.join(args), 'match_window': opts.match, 'match_tab': opts.match_tab,
+        'match_window': opts.match, 'match_tab': opts.match_tab,
         'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset,
         'colors': colors, 'reset': opts.reset, 'cursor_text_color': cursor_text_color
     }
 
 
 def set_colors(boss, window, payload):
+    pg = cmd_set_colors.payload_get
     from .rgb import color_as_int, Color
     windows = windows_for_payload(boss, window, payload)
-    if payload['reset']:
+    if pg(payload, 'reset'):
         payload['colors'] = {k: color_as_int(v) for k, v in boss.startup_colors.items()}
         payload['cursor_text_color'] = boss.startup_cursor_text_color
     profiles = tuple(w.screen.color_profile for w in windows)
@@ -857,8 +867,8 @@ def set_colors(boss, window, payload):
     cursor_text_color = payload.get('cursor_text_color', False)
     if isinstance(cursor_text_color, (tuple, list, Color)):
         cursor_text_color = color_as_int(Color(*cursor_text_color))
-    patch_color_profiles(payload['colors'], cursor_text_color, profiles, payload['configured'])
-    boss.patch_colors(payload['colors'], cursor_text_color, payload['configured'])
+    patch_color_profiles(payload['colors'], cursor_text_color, profiles, pg(payload, 'configured'))
+    boss.patch_colors(payload['colors'], cursor_text_color, pg(payload, 'configured'))
     default_bg_changed = 'background' in payload['colors']
     for w in windows:
         if default_bg_changed:
@@ -880,18 +890,23 @@ configured colors.
 ''' + '\n\n' + MATCH_WINDOW_OPTION
 )
 def cmd_get_colors(global_opts, opts, args):
+    '''
+    match: The window to get the colors for
+    configured: Boolean indicating whether to get configured or current colors
+    '''
     return {'configured': opts.configured, 'match': opts.match}
 
 
 def get_colors(boss, window, payload):
     from .rgb import Color, color_as_sharp, color_from_int
+    pg = cmd_get_colors.payload_get
     ans = {k: getattr(boss.opts, k) for k in boss.opts if isinstance(getattr(boss.opts, k), Color)}
-    if not payload['configured']:
+    if not pg(payload, 'configured'):
         windows = (window or boss.active_window,)
-        if payload['match']:
-            windows = tuple(boss.match_windows(payload['match']))
+        if pg(payload, 'match'):
+            windows = tuple(boss.match_windows(pg(payload, 'match')))
             if not windows:
-                raise MatchError(payload['match'])
+                raise MatchError(pg(payload, 'match'))
         ans.update({k: color_from_int(v) for k, v in windows[0].current_colors.items()})
     all_keys = natsort_ints(ans)
     maxlen = max(map(len, all_keys))
