@@ -459,7 +459,7 @@ If specified close the window this command is run in, rather than the active win
 )
 def cmd_close_window(global_opts, opts, args):
     '''
-    match: Which window to change the layout of
+    match: Which window to close
     self: Boolean indicating whether to close the window the command is run in
     '''
     return {'match': opts.match, 'self': opts.self}
@@ -508,22 +508,29 @@ If specified resize the window this command is run in, rather than the active wi
     string_return_is_error=True
 )
 def cmd_resize_window(global_opts, opts, args):
+    '''
+    match: Which window to resize
+    self: Boolean indicating whether to close the window the command is run in
+    increment: Integer specifying the resize increment
+    axis: One of :code:`horizontal, vertical` or :code:`reset`
+    '''
     return {'match': opts.match, 'increment': opts.increment, 'axis': opts.axis, 'self': opts.self}
 
 
 def resize_window(boss, window, payload):
-    match = payload['match']
+    pg = cmd_resize_window.payload_get
+    match = pg(payload, 'match')
     if match:
         windows = tuple(boss.match_windows(match))
         if not windows:
             raise MatchError(match)
     else:
-        windows = [window if window and payload['self'] else boss.active_window]
+        windows = [window if window and pg(payload, 'self') else boss.active_window]
     resized = False
     if windows and windows[0]:
         resized = boss.resize_layout_window(
-            windows[0], increment=payload['increment'], is_horizontal=payload['axis'] == 'horizontal',
-            reset=payload['axis'] == 'reset'
+            windows[0], increment=pg(payload, 'increment'), is_horizontal=pg(payload, 'axis') == 'horizontal',
+            reset=pg(payload, 'axis') == 'reset'
         )
     return resized
 # }}}
@@ -540,17 +547,22 @@ If specified close the tab this command is run in, rather than the active tab.
     argspec=''
 )
 def cmd_close_tab(global_opts, opts, args):
+    '''
+    match: Which tab to close
+    self: Boolean indicating whether to close the window the command is run in
+    '''
     return {'match': opts.match, 'self': opts.self}
 
 
 def close_tab(boss, window, payload):
-    match = payload['match']
+    pg = cmd_close_tab.payload_get
+    match = pg(payload, 'match')
     if match:
         tabs = tuple(boss.match_tabs(match))
         if not tabs:
             raise MatchError(match, 'tabs')
     else:
-        tabs = [boss.tab_for_window(window) if window and payload['self'] else boss.active_tab]
+        tabs = [boss.tab_for_window(window) if window and pg(payload, 'self') else boss.active_tab]
     for tab in tabs:
         if window:
             if tab:
