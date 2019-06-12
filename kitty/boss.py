@@ -11,7 +11,7 @@ from functools import partial
 from gettext import gettext as _
 from weakref import WeakValueDictionary
 
-from .child import cached_process_data
+from .child import cached_process_data, cwd_of_process
 from .cli import create_opts, parse_args
 from .conf.utils import to_cmdline
 from .config import initial_window_size_func, prepare_config_file_for_editing
@@ -918,10 +918,14 @@ class Boss:
         else:
             import subprocess
             env, stdin = self.process_stdin_source(stdin=source, window=window)
+            cwd = None
+            if cwd_from:
+                with suppress(Exception):
+                    cwd = cwd_of_process(cwd_from)
             if stdin:
                 r, w = safe_pipe(False)
                 try:
-                    subprocess.Popen(cmd, env=env, stdin=r)
+                    subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd)
                 except Exception:
                     os.close(w)
                 else:
@@ -929,7 +933,7 @@ class Boss:
                 finally:
                     os.close(r)
             else:
-                subprocess.Popen(cmd, env=env)
+                subprocess.Popen(cmd, env=env, cwd=cwd)
 
     def args_to_special_window(self, args, cwd_from=None):
         args = list(args)
