@@ -620,6 +620,16 @@ the id of the new window will not be printed out.
     argspec='[CMD ...]'
 )
 def cmd_new_window(global_opts, opts, args):
+    '''
+    args+: The command line to run in the new window, as a list, use an empty list to run the default shell
+    match: The tab to open the new window in
+    title: Title for the new window
+    cwd: Working directory for the new window
+    tab_title: Title for the new tab
+    window_type: One of :code:`kitty` or :code:`os`
+    no_response: Boolean indicating whether to send a response or not
+    keep_focus: Boolean indicating whether the current window should retain focus or not
+    '''
     if opts.no_response:
         global_opts.no_command_response = True
     return {'match': opts.match, 'title': opts.title, 'cwd': opts.cwd,
@@ -629,28 +639,29 @@ def cmd_new_window(global_opts, opts, args):
 
 
 def new_window(boss, window, payload):
-    w = SpecialWindow(cmd=payload['args'] or None, override_title=payload['title'], cwd=payload['cwd'])
+    pg = cmd_new_window.payload_get
+    w = SpecialWindow(cmd=payload['args'] or None, override_title=pg(payload, 'title'), cwd=pg(payload, 'cwd'))
     old_window = boss.active_window
-    if payload['new_tab']:
+    if pg(payload, 'new_tab'):
         boss._new_tab(w)
         tab = boss.active_tab
-        if payload['tab_title']:
-            tab.set_title(payload['tab_title'])
+        if pg(payload, 'tab_title'):
+            tab.set_title(pg(payload, 'tab_title'))
         wid = boss.active_window.id
-        if payload['keep_focus'] and old_window:
+        if pg(payload, 'keep_focus') and old_window:
             boss.set_active_window(old_window)
-        return None if payload['no_response'] else str(wid)
+        return None if pg(payload, 'no_response') else str(wid)
 
-    if payload['window_type'] == 'os':
+    if pg(payload, 'window_type') == 'os':
         boss._new_os_window(w)
         wid = boss.active_window.id
-        if payload['keep_focus'] and old_window:
+        if pg(payload, 'keep_focus') and old_window:
             os_window_id = boss.set_active_window(old_window)
             if os_window_id:
                 focus_os_window(os_window_id)
-        return None if payload['no_response'] else str(wid)
+        return None if pg(payload, 'no_response') else str(wid)
 
-    match = payload['match']
+    match = pg(payload, 'match')
     if match:
         tabs = tuple(boss.match_tabs(match))
         if not tabs:
@@ -659,9 +670,9 @@ def new_window(boss, window, payload):
         tabs = [boss.active_tab]
     tab = tabs[0]
     w = tab.new_special_window(w)
-    if payload['keep_focus'] and old_window:
+    if pg(payload, 'keep_focus') and old_window:
         boss.set_active_window(old_window)
-    return None if payload['no_response'] else str(w.id)
+    return None if pg(payload, 'no_response') else str(w.id)
 # }}}
 
 
