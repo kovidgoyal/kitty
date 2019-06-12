@@ -1580,6 +1580,18 @@ range_line_(Screen *self, int y) {
     return self->linebuf->line;
 }
 
+static inline int
+clamp_for_range_line(Screen *self, int y) {
+    if (y < 0) {
+        unsigned int idx = -(y + 1);
+        if (idx >= self->historybuf->count) {
+            y += idx - self->historybuf->count + 1;
+        }
+        return y;
+    }
+    return MIN((unsigned int)y, self->lines - 1);
+}
+
 #define iterate_over_rectangle(start, end, line_func, y_type) { \
     y_type min_y = MIN(start->y, end->y), max_y = MAX(start->y, end->y); \
     index_type min_x = MIN(start->x, end->x), max_x = MAX(start->x, end->x); \
@@ -1982,6 +1994,8 @@ text_for_selection(Screen *self, PyObject *a UNUSED) {
     FullSelectionBoundary start, end;
     full_selection_limits_(selection, &start, &end);
     PyObject *ans = NULL;
+    start.y = clamp_for_range_line(self, start.y);
+    end.y = clamp_for_range_line(self, end.y);
     if (start.y == end.y && start.x == end.x) ans = PyTuple_New(0);
     else text_for_range(ans, start, end, self->selection.rectangle_select, true, range_line_, int);
     return ans;
