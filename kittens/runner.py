@@ -95,7 +95,11 @@ def run_kitten(kitten, run_name='__main__'):
     try:
         runpy.run_module('kittens.{}.main'.format(kitten), run_name=run_name)
     except ImportError:
-        raise SystemExit('No kitten named {}'.format(kitten))
+        raise SystemExit((
+            'No kitten named {}. If you are trying to run a custom kitten,'
+            ' you have to do so via a mapping in kitty.conf, see'
+            ' https://sw.kovidgoyal.net/kitty/kittens/custom.html'
+        ).format(kitten))
 
 
 def all_kitten_names():
