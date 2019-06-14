@@ -86,6 +86,9 @@ vec4 blend_onto_opaque_premul(vec3 over, float over_alpha, vec3 under) {
  *        First everything is rendered into a framebuffer, and then the framebauffer is blended onto
  *        the screen. The framebuffer is needed because it allows access to the background color pixels
  *        to blend with the image pixels. The steps are basically the same as for 2a.
+ *
+ *  In this shader exactly *one* of SIMPLE, SPECIAL, FOREGROUND or BACKGROUND will be defined, corresponding
+ *  to the appropriate rendering pass from above.
  */
 #ifdef NEEDS_FOREGROUND
 vec4 calculate_foreground() {
