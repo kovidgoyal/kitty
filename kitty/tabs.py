@@ -268,6 +268,12 @@ class Tab:  # {{{
             next_window_id = self.windows[idx].id
         active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
         remove_window(self.os_window_id, self.id, window.id)
+        if window.overlay_for is not None:
+            for idx, q in enumerate(self.windows):
+                if q.id == window.overlay_for:
+                    active_window_idx = idx
+                    next_window_id = q.id
+                    break
         if next_window_id is None and active_window_idx is not None and len(self.windows) > active_window_idx:
             next_window_id = self.windows[active_window_idx].id
         if next_window_id is not None:

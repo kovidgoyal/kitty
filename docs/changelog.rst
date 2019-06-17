@@ -18,6 +18,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - unicode_input kitten: Fix a regression that broke using indices to select
   recently used symbols.
 
+- Fix a regression that caused closing an overlay window to focus
+  the previously focused window rather than the underlying window (:iss:`1720`)
+
 0.14.2 [2019-06-09]
 ---------------------
 
