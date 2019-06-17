@@ -15,6 +15,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When piping data to a child in the pipe command do it in a thread so as not
   to block the UI (:iss:`1708`)
 
+- unicode_input kitten: Fix a regression that broke using indices to select
+  recently used symbols.
+
 0.14.2 [2019-06-09]
 ---------------------
 

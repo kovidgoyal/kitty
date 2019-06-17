@@ -240,11 +240,10 @@ class Table:
 
 
 def is_index(w):
-    try:
+    with suppress(Exception):
         int(w.lstrip(INDEX_CHAR), 16)
         return True
-    except Exception:
-        return False
+    return False
 
 
 class UnicodeInput(Handler):
@@ -295,9 +294,10 @@ class UnicodeInput(Handler):
         self.current_char = None
         if self.mode is HEX:
             with suppress(Exception):
-                if self.line_edit.current_input.startswith(INDEX_CHAR) and len(self.line_edit.current_input) > 1:
-                    self.current_char = chr(self.table.codepoint_at_hint(self.line_edit.current_input[1:]))
-                else:
+                if self.line_edit.current_input.startswith(INDEX_CHAR):
+                    if len(self.line_edit.current_input) > 1:
+                        self.current_char = chr(self.table.codepoint_at_hint(self.line_edit.current_input[1:]))
+                elif self.line_edit.current_input:
                     code = int(self.line_edit.current_input, 16)
                     self.current_char = chr(code)
         elif self.mode is NAME:
@@ -392,19 +392,20 @@ class UnicodeInput(Handler):
             try:
                 val = int(self.line_edit.current_input, 16)
             except Exception:
-                return
-            if key_event.key is TAB:
-                self.line_edit.current_input = hex(val + 0x10)[2:]
-                self.refresh()
-                return
-            if key_event.key is UP:
-                self.line_edit.current_input = hex(val + 1)[2:]
-                self.refresh()
-                return
-            if key_event.key is DOWN:
-                self.line_edit.current_input = hex(val - 1)[2:]
-                self.refresh()
-                return
+                pass
+            else:
+                if key_event.key is TAB:
+                    self.line_edit.current_input = hex(val + 0x10)[2:]
+                    self.refresh()
+                    return
+                if key_event.key is UP:
+                    self.line_edit.current_input = hex(val + 1)[2:]
+                    self.refresh()
+                    return
+                if key_event.key is DOWN:
+                    self.line_edit.current_input = hex(val - 1)[2:]
+                    self.refresh()
+                    return
         if self.mode is NAME and key_event.type is not RELEASE and not key_event.mods:
             if key_event.key is TAB:
                 if key_event.mods == SHIFT:
