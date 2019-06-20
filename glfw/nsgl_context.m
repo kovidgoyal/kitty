@@ -131,7 +131,6 @@ bool _glfwCreateContextNSGL(_GLFWwindow* window,
                             "NSGL: The targeted version of macOS does not support OpenGL 3.0 or 3.1 but may support 3.2 and above");
             return false;
         }
-
     }
 
     // Context robustness modes (GL_KHR_robustness) are not yet supported by
@@ -288,7 +287,8 @@ bool _glfwCreateContextNSGL(_GLFWwindow* window,
     if (fbconfig->transparent)
     {
         GLint opaque = 0;
-        [window->context.nsgl.object setValues:&opaque forParameter:NSOpenGLContextParameterSurfaceOpacity];
+        [window->context.nsgl.object setValues:&opaque
+                                  forParameter:NSOpenGLContextParameterSurfaceOpacity];
     }
 
     if (window->ns.retina)

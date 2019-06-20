@@ -100,7 +100,7 @@ void _glfwInputMonitor(_GLFWmonitor* monitor, int action, int placement)
         {
             memmove(_glfw.monitors + 1,
                     _glfw.monitors,
-                    (_glfw.monitorCount - 1) * sizeof(_GLFWmonitor*));
+                    ((size_t) _glfw.monitorCount - 1) * sizeof(_GLFWmonitor*));
             _glfw.monitors[0] = monitor;
         }
         else
@@ -327,7 +327,9 @@ GLFWAPI void glfwGetMonitorPos(GLFWmonitor* handle, int* xpos, int* ypos)
     _glfwPlatformGetMonitorPos(monitor, xpos, ypos);
 }
 
-GLFWAPI void glfwGetMonitorWorkarea(GLFWmonitor* handle, int* xpos, int* ypos, int* width, int* height)
+GLFWAPI void glfwGetMonitorWorkarea(GLFWmonitor* handle,
+                                    int* xpos, int* ypos,
+                                    int* width, int* height)
 {
     _GLFWmonitor* monitor = (_GLFWmonitor*) handle;
     assert(monitor != NULL);
@@ -458,6 +460,7 @@ GLFWAPI void glfwSetGamma(GLFWmonitor* handle, float gamma)
         _glfwInputError(GLFW_INVALID_VALUE, "Invalid gamma value %f", gamma);
         return;
     }
+
     original = glfwGetGammaRamp(handle);
     if (!original)
         return;
@@ -472,10 +475,8 @@ GLFWAPI void glfwSetGamma(GLFWmonitor* handle, float gamma)
         value = i / (float) (original->size - 1);
         // Apply gamma curve
         value = powf(value, 1.f / gamma) * 65535.f + 0.5f;
-
         // Clamp to value range
-        if (value > 65535.f)
-            value = 65535.f;
+        value = fminf(value, 65535.f);
 
         values[i] = (unsigned short) value;
     }
