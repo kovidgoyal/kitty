@@ -409,7 +409,7 @@ _GLFWjoystick* _glfwAllocJoystick(const char* name,
     js->present     = true;
     js->name        = _glfw_strdup(name);
     js->axes        = calloc(axisCount, sizeof(float));
-    js->buttons     = calloc(buttonCount + hatCount * 4, 1);
+    js->buttons     = calloc(buttonCount + (size_t) hatCount * 4, 1);
     js->hats        = calloc(hatCount, 1);
     js->axisCount   = axisCount;
     js->buttonCount = buttonCount;
@@ -571,9 +571,11 @@ const char* _glfwGetKeyName(int key)
 void _glfwCenterCursorInContentArea(_GLFWwindow* window)
 {
     int width, height;
+
     _glfwPlatformGetWindowSize(window, &width, &height);
     _glfwPlatformSetCursorPos(window, width / 2.0, height / 2.0);
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW public API                       //////
@@ -672,7 +674,9 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* handle, int mode, int value)
         window->stickyMouseButtons = value;
     }
     else if (mode == GLFW_LOCK_KEY_MODS)
+    {
         window->lockKeyMods = value ? true : false;
+    }
     else
         _glfwInputError(GLFW_INVALID_ENUM, "Invalid input mode 0x%08X", mode);
 }
