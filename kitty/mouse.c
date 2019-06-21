@@ -539,7 +539,7 @@ mouse_event(int button, int modifiers, int action) {
     if (in_tab_bar) {
         mouse_cursor_shape = HAND;
         handle_tab_bar_mouse(button, modifiers);
-    } else if(w) {
+    } else if (w) {
         handle_event(w, button, modifiers, window_idx);
     } else if (button == GLFW_MOUSE_BUTTON_LEFT && global_state.callback_os_window->mouse_button_pressed[button]) {
         // initial click, clamp it to the closest window
