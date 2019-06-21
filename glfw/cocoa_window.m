@@ -1011,7 +1011,7 @@ is_ascii_control_char(char x) {
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender
 {
     // HACK: We don't know what to say here because we don't know what the
-    // application wants to do with the paths
+    //       application wants to do with the paths
     return NSDragOperationGeneric;
 }
 
@@ -1021,19 +1021,19 @@ is_ascii_control_char(char x) {
     // NOTE: The returned location uses base 0,1 not 0,0
     const NSPoint pos = [sender draggingLocation];
     _glfwInputCursorPos(window, pos.x, contentRect.size.height - pos.y);
+
     NSPasteboard* pasteboard = [sender draggingPasteboard];
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
     NSArray* urls = [pasteboard readObjectsForClasses:@[[NSURL class]]
                                               options:options];
     if (!urls) return NO;
     const NSUInteger count = [urls count];
-
     if (count)
     {
         char** paths = calloc(count, sizeof(char*));
 
         for (NSUInteger i = 0;  i < count;  i++)
-            paths[i] = _glfw_strdup([[urls objectAtIndex:i] fileSystemRepresentation]);
+            paths[i] = _glfw_strdup([urls[i] fileSystemRepresentation]);
 
         _glfwInputDrop(window, (int) count, (const char**) paths);
 
@@ -1213,7 +1213,7 @@ static void createMenuBar(void)
     {
         char** progname = _NSGetProgname();
         if (progname && *progname)
-            appName = [NSString stringWithUTF8String:*progname];
+            appName = @(*progname);
         else
             appName = @"GLFW Application";
     }
@@ -1393,10 +1393,9 @@ static bool createNativeWindow(_GLFWwindow* window,
     }
 
     if (strlen(wndconfig->ns.frameName))
-        [window->ns.object setFrameAutosaveName:[NSString stringWithUTF8String:wndconfig->ns.frameName]];
+        [window->ns.object setFrameAutosaveName:@(wndconfig->ns.frameName)];
 
     window->ns.view = [[GLFWContentView alloc] initWithGlfwWindow:window];
-
     window->ns.retina = wndconfig->ns.retina;
 
     if (fbconfig->transparent)
@@ -1408,7 +1407,7 @@ static bool createNativeWindow(_GLFWwindow* window,
 
     [window->ns.object setContentView:window->ns.view];
     [window->ns.object makeFirstResponder:window->ns.view];
-    [window->ns.object setTitle:[NSString stringWithUTF8String:wndconfig->title]];
+    [window->ns.object setTitle:@(wndconfig->title)];
     [window->ns.object setDelegate:window->ns.delegate];
     [window->ns.object setAcceptsMouseMovedEvents:YES];
     [window->ns.object setRestorable:NO];
@@ -1497,7 +1496,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char *title)
 {
-    NSString* string = [NSString stringWithUTF8String:title];
+    NSString* string = @(title);
     [window->ns.object setTitle:string];
     // HACK: Set the miniwindow title explicitly as setTitle: doesn't update it
     //       if the window lacks NSWindowStyleMaskTitled
@@ -1663,11 +1662,10 @@ int _glfwPlatformWindowBell(_GLFWwindow* window)
 void _glfwPlatformFocusWindow(_GLFWwindow* window)
 {
     // Make us the active application
-    // HACK: This has been moved here from initializeAppKit to prevent
-    //       applications using only hidden windows from being activated, but
-    //       should probably not be done every time any window is shown
+    // HACK: This is here to prevent applications using only hidden windows from
+    //       being activated, but should probably not be done every time any
+    //       window is shown
     [NSApp activateIgnoringOtherApps:YES];
-
     [window->ns.object makeKeyAndOrderFront:nil];
 }
 
@@ -1844,6 +1842,7 @@ _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
 void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start)
 {
     @autoreleasepool {
+
     NSEvent* event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
                                         location:NSMakePoint(0, 0)
                                    modifierFlags:0
@@ -1854,7 +1853,8 @@ void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start)
                                            data1:data1
                                            data2:0];
     [NSApp postEvent:event atStart:at_start ? YES : NO];
-    }
+
+    } // autoreleasepool
 }
 
 void _glfwPlatformPostEmptyEvent(void)
@@ -1974,6 +1974,7 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
 
     cursor->ns.object = [[NSCursor alloc] initWithImage:native
                                                 hotSpot:NSMakePoint(xhot, yhot)];
+
     [native release];
     if (cursor->ns.object == nil)
         return false;
@@ -2051,8 +2052,7 @@ void _glfwPlatformSetClipboardString(const char* string)
 {
     NSPasteboard* pasteboard = [NSPasteboard generalPasteboard];
     [pasteboard declareTypes:@[NSPasteboardTypeString] owner:nil];
-    [pasteboard setString:[NSString stringWithUTF8String:string]
-                  forType:NSPasteboardTypeString];
+    [pasteboard setString:@(string) forType:NSPasteboardTypeString];
 }
 
 const char* _glfwPlatformGetClipboardString(void)
@@ -2136,6 +2136,7 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
 
     if (window->ns.retina)
         [window->ns.layer setContentsScale:[window->ns.object backingScaleFactor]];
+
     [window->ns.view setLayer:window->ns.layer];
     [window->ns.view setWantsLayer:YES];
 
@@ -2289,6 +2290,7 @@ GLFWAPI void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, unsigned sho
 #undef K
     }
 }
+
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW internal API                      //////
