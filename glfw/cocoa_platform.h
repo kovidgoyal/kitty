@@ -116,8 +116,8 @@ typedef struct _GLFWwindowNS
     id              view;
     id              layer;
 
-    bool        maximized;
-    bool        retina;
+    bool            maximized;
+    bool            retina;
 
     // Cached window properties to filter out duplicate events
     int             width, height;
@@ -154,7 +154,7 @@ typedef struct _GLFWlibraryNS
 {
     CGEventSourceRef    eventSource;
     id                  delegate;
-    bool            cursorHidden;
+    bool                cursorHidden;
     TISInputSourceRef   inputSource;
     IOHIDManagerRef     hidManager;
     id                  unicodeData;
@@ -222,7 +222,9 @@ void _glfwInitTimerNS(void);
 void _glfwPollMonitorsNS(void);
 void _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired);
 void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor);
+
 float _glfwTransformYNS(float y);
+
 void _glfwClearDisplayLinks(void);
 void _glfwRestartDisplayLinks(void);
 void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start);

@@ -287,7 +287,7 @@ static bool initializeTIS(void)
 {
 }
 
-@end  // GLFWHelper
+@end // GLFWHelper
 
 @interface GLFWApplication : NSApplication
 - (void)tick_callback;
@@ -306,6 +306,7 @@ static bool initializeTIS(void)
     _glfwDispatchRenderFrame(displayID);
 }
 @end
+
 
 //////////////////////////////////////////////////////////////////////////
 //////                       GLFW platform API                      //////
@@ -332,6 +333,7 @@ is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
 int _glfwPlatformInit(void)
 {
     @autoreleasepool {
+
     _glfw.ns.helper = [[GLFWHelper alloc] init];
 
     [NSThread detachNewThreadSelector:@selector(doNothing:)
@@ -374,6 +376,7 @@ int _glfwPlatformInit(void)
     _glfw.ns.keyDownMonitor =
         [NSEvent addLocalMonitorForEventsMatchingMask:NSEventMaskKeyDown
                                               handler:keydown_block];
+
     if (_glfw.hints.init.ns.chdir)
         changeToResourcesDirectory();
 
@@ -399,8 +402,9 @@ int _glfwPlatformInit(void)
     _glfwInitJoysticksNS();
 
     _glfwPollMonitorsNS();
-    }
     return true;
+
+    } // autoreleasepool
 }
 
 void _glfwPlatformTerminate(void)
@@ -444,6 +448,7 @@ void _glfwPlatformTerminate(void)
         [_glfw.ns.helper release];
         _glfw.ns.helper = nil;
     }
+
     if (_glfw.ns.keyUpMonitor)
         [NSEvent removeMonitor:_glfw.ns.keyUpMonitor];
     if (_glfw.ns.keyDownMonitor)
@@ -453,7 +458,8 @@ void _glfwPlatformTerminate(void)
 
     _glfwTerminateNSGL();
     _glfwTerminateJoysticksNS();
-    }
+
+    } // autoreleasepool
 }
 
 const char* _glfwPlatformGetVersionString(void)
