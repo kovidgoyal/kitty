@@ -59,6 +59,8 @@ vec4 blend_onto_opaque_premul(vec3 over, float over_alpha, vec3 under) {
     // with alpha 1 which is effectively pre-multiplied since alpha is 1
     return vec4(premul_blend(over, over_alpha, under), 1.0);
 }
+
+
 // }}}
 
 
