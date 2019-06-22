@@ -9,8 +9,8 @@ logo/*.iconset
 compile_commands.json
 glad/out
 asan-launcher
-asan-launcher.dSYM
 kitty-profile
+*.dSYM
 dev
 __pycache__
 glfw/wayland-*-client-protocol.[ch]
