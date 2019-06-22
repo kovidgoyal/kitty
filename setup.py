@@ -303,8 +303,21 @@ def run_tool(cmd, desc=None):
         raise SystemExit(ret)
 
 
+def get_vcs_rev_defines():
+    ans = []
+    if os.path.exists('.git'):
+        try:
+            rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
+        except FileNotFoundError:
+            with open('.git/refs/heads/master') as f:
+                rev = f.read()
+        ans.append('KITTY_VCS_REV="{}"'.format(rev))
+    return ans
+
+
 SPECIAL_SOURCES = {
     'kitty/parser_dump.c': ('kitty/parser.c', ['DUMP_COMMANDS']),
+    'kitty/data-types.c': ('kitty/data-types.c', get_vcs_rev_defines),
 }
 
 
@@ -392,12 +405,10 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
         is_special = src in SPECIAL_SOURCES
         if is_special:
             src, defines = SPECIAL_SOURCES[src]
+            if callable(defines):
+                defines = defines()
             cppflags.extend(map(define, defines))
 
-        if src == 'kitty/data-types.c':
-            if os.path.exists('.git'):
-                rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
-                cppflags.append(define('KITTY_VCS_REV="{}"'.format(rev)))
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         key = original_src, os.path.basename(dest)
         all_keys.add(key)
