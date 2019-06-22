@@ -177,8 +177,8 @@ def first_successful_compile(cc, *cflags, src=None):
 
 class Env:
 
-    def __init__(self, cc, cppflags, cflags, ldflags, ldpaths=[]):
-        self.cc, self.cppflags, self.cflags, self.ldflags, self.ldpaths = cc, cppflags, cflags, ldflags, ldpaths
+    def __init__(self, cc, cppflags, cflags, ldflags, ldpaths=None):
+        self.cc, self.cppflags, self.cflags, self.ldflags, self.ldpaths = cc, cppflags, cflags, ldflags, [] if ldpaths is None else ldpaths
 
     def copy(self):
         return Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), list(self.ldpaths))
@@ -242,8 +242,7 @@ def init_env(
         cppflags.append('-DWITH_PROFILER')
         cflags.append('-g3')
         ldflags.append('-lprofiler')
-    ldpaths = []
-    return Env(cc, cppflags, cflags, ldflags, ldpaths=ldpaths)
+    return Env(cc, cppflags, cflags, ldflags)
 
 
 def kitty_env():
