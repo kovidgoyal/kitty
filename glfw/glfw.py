@@ -6,6 +6,8 @@ import json
 import os
 import re
 import sys
+from kitty.enums import BuildType
+from setup import CompileObject
 
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
@@ -88,18 +90,23 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
     return ans
 
 
-def build_wayland_protocols(env, run_tool, emphasis, newer, dest_dir):
+def prepare_build_wayland_protocols(env, emphasis, newer, dest_dir, module):
+    tasks = {}
+    glfw_deps = []
     for protocol in env.wayland_protocols:
         src = os.path.join(env.wayland_packagedir, protocol)
         if not os.path.exists(src):
             raise SystemExit('The wayland-protocols package on your system is missing the {} protocol definition file'.format(protocol))
         for ext in 'hc':
             dest = wayland_protocol_file_name(src, ext)
-            dest = os.path.join(dest_dir, dest)
-            if newer(dest, src):
+            full_dest = os.path.join(dest_dir, dest)
+            if newer(full_dest, src):
                 q = 'client-header' if ext == 'h' else env.wayland_scanner_code
-                run_tool([env.wayland_scanner, q, src, dest],
-                         desc='Generating {} ...'.format(emphasis(os.path.basename(dest))))
+                cmd = [env.wayland_scanner, q, src, full_dest]
+                key = dest, module
+                tasks[key] = CompileObject(cmd, BuildType.generate)
+                glfw_deps += [key]
+    return glfw_deps, tasks
 
 
 class Arg:

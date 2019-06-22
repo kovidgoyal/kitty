@@ -6,7 +6,6 @@ build
 linux-package
 kitty.app
 logo/*.iconset
-compile_commands.json
 glad/out
 asan-launcher
 asan-launcher.dSYM
