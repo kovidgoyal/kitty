@@ -103,6 +103,28 @@ for |kitty| and use :ref:`at_set-colors`.
 A list of pre-made color themes for kitty is available at:
 `kitty-themes <https://github.com/dexpota/kitty-themes>`_
 
+Examples of using OSC escape codes to set colors::
+
+    Change the default foreground color:
+    printf '\x1b]10;#ff0000\x1b\\'
+    Change the default background color:
+    printf '\x1b]11;blue\x1b\\'
+    Change the cursor color:
+    printf '\x1b]12;blue\x1b\\'
+    Change the selection background color:
+    printf '\x1b]17;blue\x1b\\'
+    Change the selection foreground color:
+    printf '\x1b]19;blue\x1b\\'
+    Change the nth color (0 - 255):
+    printf '\x1b]4;n;green\x1b\\'
+
+You can use various syntaxes/names for color specifications in the above
+examples. See `XParseColor <https://linux.die.net/man/3/xparsecolor>`_
+for full details.
+
+If a ``?`` is given rather than a color specification, kitty will respond
+with the current value for the specified color.
+
 
 How do I specify command line options for kitty on macOS?
 ---------------------------------------------------------------
