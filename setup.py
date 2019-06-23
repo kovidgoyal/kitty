@@ -313,7 +313,7 @@ def get_vcs_rev_defines():
                     rev = f.read()
             except NotADirectoryError:
                 gitloc = open('.git').read()
-                with open(os.path.join(gitloc, '/refs/heads/master')) as f:
+                with open(os.path.join(gitloc, 'refs/heads/master')) as f:
                     rev = f.read()
 
         ans.append('KITTY_VCS_REV="{}"'.format(rev.strip()))
