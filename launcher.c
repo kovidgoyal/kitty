@@ -137,7 +137,7 @@ read_exe_path(char *exe, size_t buf_sz) {
 
 static inline bool
 read_exe_path(char *exe, size_t buf_sz) {
-    if (!safe_realpath("/proc/curproc/exe", exe, buf_sz)) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return false; }
+    if (!safe_realpath("/proc/curproc/exe", exe, buf_sz)) { fprintf(stderr, "Failed to read /proc/curproc/exe\n"); return false; }
     return true;
 }
 
