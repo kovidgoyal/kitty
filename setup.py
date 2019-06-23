@@ -308,9 +308,15 @@ def get_vcs_rev_defines():
         try:
             rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
         except FileNotFoundError:
-            with open('.git/refs/heads/master') as f:
-                rev = f.read()
-        ans.append('KITTY_VCS_REV="{}"'.format(rev))
+            try:
+                with open('.git/refs/heads/master') as f:
+                    rev = f.read()
+            except NotADirectoryError:
+                gitloc = open('.git').read()
+                with open(os.path.join(gitloc, '/refs/heads/master')) as f:
+                    rev = f.read()
+
+        ans.append('KITTY_VCS_REV="{}"'.format(rev.strip()))
     return ans
 
 
