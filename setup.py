@@ -780,17 +780,6 @@ Categories=System;TerminalEmulator;
 
 def clean():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    if os.path.exists('.git'):
-        for f in subprocess.check_output(
-            'git ls-files --others --ignored --exclude-from=.gitignore'.split()
-        ).decode('utf-8').splitlines():
-            if f.startswith('logo/kitty.iconset') or f.startswith('dev/'):
-                continue
-            os.unlink(f)
-            if os.sep in f and not os.listdir(os.path.dirname(f)):
-                os.rmdir(os.path.dirname(f))
-        return
-    # Not a git checkout, clean manually
 
     def safe_remove(*entries):
         for x in entries:
