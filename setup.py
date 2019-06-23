@@ -790,7 +790,9 @@ def clean():
                     os.unlink(x)
 
     safe_remove('build', 'compile_commands.json', 'linux-package', 'kitty.app')
-    for root, dirs, files in os.walk('.'):
+    exclude = ('.git',)
+    for root, dirs, files in os.walk('.', topdown=True):
+        dirs[:] = [d for d in dirs if d not in exclude]
         remove_dirs = {d for d in dirs if d == '__pycache__'}
         [(shutil.rmtree(os.path.join(root, d)), dirs.remove(d)) for d in remove_dirs]
         for f in files:
