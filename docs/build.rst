@@ -44,17 +44,10 @@ Now build the native code parts of |kitty| with the following command::
 
 You can run |kitty|, as::
 
-    python3 .
+    ./kitty/launcher/kitty
 
-If that works, you can create a script to launch |kitty|:
-
-.. code-block:: sh
-
-    #!/usr/bin/env python3
-    import runpy
-    runpy.run_path('/path/to/kitty/dir', run_name='__main__')
-
-And place it in :file:`~/bin` or :file:`/usr/bin` so that you can run |kitty| using
+If that works, you can create a symlink to the launcher in :file:`~/bin` or
+some other directory on your PATH so that you can run |kitty| using
 just ``kitty``.
 
 

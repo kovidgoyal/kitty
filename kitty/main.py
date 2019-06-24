@@ -4,9 +4,9 @@
 
 import locale
 import os
+import shutil
 import sys
-from contextlib import contextmanager
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -174,7 +174,7 @@ def setup_profiling(args):
     if stop_profiler is not None:
         import subprocess
         stop_profiler()
-        exe = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'kitty-profile')
+        exe = kitty_exe()
         cg = '/tmp/kitty-profile.callgrind'
         print('Post processing profile data for', exe, '...')
         subprocess.call(['pprof', '--callgrind', exe, '/tmp/kitty-profile.log'], stdout=open(cg, 'wb'))
@@ -225,11 +225,14 @@ def _main():
         except Exception:
             log_error('Failed to set locale with no LANG, ignoring')
 
-    # Ensure kitty is in PATH
-    rpath = os.path.dirname(kitty_exe())
-    items = frozenset(os.environ['PATH'].split(os.pathsep))
-    if rpath and rpath not in items:
-        os.environ['PATH'] = rpath + os.pathsep + os.environ.get('PATH', '')
+    # Ensure the correct kitty is in PATH
+    rpath = sys._xoptions.get('bundle_exe_dir')
+    if rpath:
+        modify_path = is_macos or getattr(sys, 'frozen', False) or sys._xoptions.get('kitty_from_source') == '1'
+        if modify_path or not shutil.which('kitty'):
+            existing_paths = list(filter(None, os.environ.get('PATH', '').split(os.pathsep)))
+            existing_paths.insert(0, rpath)
+            os.environ['PATH'] = os.pathsep.join(existing_paths)
 
     args = sys.argv[1:]
     if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':

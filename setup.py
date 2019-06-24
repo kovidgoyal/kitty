@@ -15,6 +15,7 @@ import subprocess
 import sys
 import sysconfig
 import time
+from collections import namedtuple
 from contextlib import suppress
 
 base = os.path.dirname(os.path.abspath(__file__))
@@ -177,11 +178,12 @@ def first_successful_compile(cc, *cflags, src=None):
 
 class Env:
 
-    def __init__(self, cc, cppflags, cflags, ldflags, ldpaths=None):
+    def __init__(self, cc, cppflags, cflags, ldflags, ldpaths=None, ccver=None):
         self.cc, self.cppflags, self.cflags, self.ldflags, self.ldpaths = cc, cppflags, cflags, ldflags, [] if ldpaths is None else ldpaths
+        self.ccver = ccver
 
     def copy(self):
-        return Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), list(self.ldpaths))
+        return Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), list(self.ldpaths), self.ccver)
 
 
 def init_env(
@@ -242,7 +244,7 @@ def init_env(
         cppflags.append('-DWITH_PROFILER')
         cflags.append('-g3')
         ldflags.append('-lprofiler')
-    return Env(cc, cppflags, cflags, ldflags)
+    return Env(cc, cppflags, cflags, ldflags, ccver=ccver)
 
 
 def kitty_env():
@@ -395,7 +397,43 @@ def parallel_run(todo, desc='Compiling {} ...'):
         run_tool(failed[1])
 
 
-def compile_c_extension(kenv, module, incremental, compilation_database, all_keys, sources, headers):
+CompileKey = namedtuple('CompileKey', 'src dest')
+
+
+class CompilationDatabase:
+
+    def cmd_changed(self, key, cmd):
+        self.all_keys.add(key)
+        return self.db.get(key) != cmd
+
+    def update_cmd(self, key, cmd):
+        self.db[key] = cmd
+
+    def __enter__(self):
+        self.all_keys = set()
+        try:
+            with open('compile_commands.json') as f:
+                compilation_database = json.load(f)
+        except FileNotFoundError:
+            compilation_database = []
+        compilation_database = {
+            CompileKey(k['file'], k.get('output')): k['arguments'] for k in compilation_database
+        }
+        self.db = compilation_database
+        return self
+
+    def __exit__(self, *a):
+        cdb = self.db
+        for key in set(cdb) - self.all_keys:
+            del cdb[key]
+        compilation_database = [
+            {'file': k.src, 'arguments': v, 'directory': base, 'output': k.dest} for k, v in cdb.items()
+        ]
+        with open('compile_commands.json', 'w') as f:
+            json.dump(compilation_database, f, indent=2, sort_keys=True)
+
+
+def compile_c_extension(kenv, module, incremental, compilation_database, sources, headers):
     prefix = os.path.basename(module)
     objects = [
         os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
@@ -415,16 +453,15 @@ def compile_c_extension(kenv, module, incremental, compilation_database, all_key
             cppflags.extend(map(define, defines))
 
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
-        key = original_src, os.path.basename(dest)
-        all_keys.add(key)
-        cmd_changed = compilation_database.get(key, [])[:-4] != cmd
+        cmd += ['-c', src] + ['-o', dest]
+        key = CompileKey(original_src, os.path.basename(dest))
+        cmd_changed = compilation_database.cmd_changed(key, cmd)
         must_compile = not incremental or cmd_changed
         src = os.path.join(base, src)
         if must_compile or newer(
             dest, *dependecies_for(src, dest, headers)
         ):
-            cmd += ['-c', src] + ['-o', dest]
-            compilation_database[key] = cmd
+            compilation_database.update_cmd(key, cmd)
             todo[original_src] = cmd
     if todo:
         parallel_run(todo)
@@ -462,7 +499,7 @@ def find_c_files():
     return tuple(ans), tuple(headers)
 
 
-def compile_glfw(incremental, compilation_database, all_keys):
+def compile_glfw(incremental, compilation_database):
     modules = 'cocoa' if is_macos else 'x11 wayland'
     for module in modules.split():
         try:
@@ -482,7 +519,7 @@ def compile_glfw(incremental, compilation_database, all_keys):
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
                 continue
-        compile_c_extension(genv, 'kitty/glfw-' + module, incremental, compilation_database, all_keys, sources, all_headers)
+        compile_c_extension(genv, 'kitty/glfw-' + module, incremental, compilation_database, sources, all_headers)
 
 
 def kittens_env():
@@ -495,7 +532,7 @@ def kittens_env():
     return kenv
 
 
-def compile_kittens(incremental, compilation_database, all_keys):
+def compile_kittens(incremental, compilation_database):
     kenv = kittens_env()
 
     def list_files(q):
@@ -516,82 +553,69 @@ def compile_kittens(incremental, compilation_database, all_keys):
             filter_sources=lambda x: 'windows_compat.c' not in x),
     ):
         compile_c_extension(
-            kenv, dest, incremental, compilation_database, all_keys, sources, all_headers + ['kitty/data-types.h'])
+            kenv, dest, incremental, compilation_database, sources, all_headers + ['kitty/data-types.h'])
 
 
 def build(args, native_optimizations=True):
     global env
-    try:
-        with open('compile_commands.json') as f:
-            compilation_database = json.load(f)
-    except FileNotFoundError:
-        compilation_database = []
-    all_keys = set()
-    compilation_database = {
-        (k['file'], k.get('output')): k['arguments'] for k in compilation_database
-    }
     env = init_env(args.debug, args.sanitize, native_optimizations, args.profile, args.extra_logging)
-    try:
-        compile_c_extension(
-            kitty_env(), 'kitty/fast_data_types', args.incremental, compilation_database, all_keys, *find_c_files()
-        )
-        compile_glfw(args.incremental, compilation_database, all_keys)
-        compile_kittens(args.incremental, compilation_database, all_keys)
-        for key in set(compilation_database) - all_keys:
-            del compilation_database[key]
-    finally:
-        compilation_database = [
-            {'file': k[0], 'arguments': v, 'directory': base, 'output': k[1]} for k, v in compilation_database.items()
-        ]
-        with open('compile_commands.json', 'w') as f:
-            json.dump(compilation_database, f, indent=2, sort_keys=True)
+    compile_c_extension(
+        kitty_env(), 'kitty/fast_data_types', args.incremental, args.compilation_database, *find_c_files()
+    )
+    compile_glfw(args.incremental, args.compilation_database)
+    compile_kittens(args.incremental, args.compilation_database)
 
 
 def safe_makedirs(path):
     os.makedirs(path, exist_ok=True)
 
 
-def build_asan_launcher(args):
-    dest = 'asan-launcher'
-    src = 'asan-launcher.c'
-    if args.incremental and not newer(dest, src):
-        return
-    cc, ccver = cc_version()
-    cflags = '-g3 -Wall -Werror -fpie -std=c99'.split()
-    pylib = get_python_flags(cflags)
-    sanitize_lib = ['-lasan'] if cc == 'gcc' and not is_macos else []
-    cflags.extend(get_sanitize_args(cc, ccver))
-    cmd = [cc] + cflags + [src, '-o', dest] + sanitize_lib + pylib
-    run_tool(cmd, desc='Creating {} ...'.format(emphasis('asan-launcher')))
-
-
-def build_launcher(args, launcher_dir='.', for_bundle=False, sh_launcher=False, for_freeze=False):
+def build_launcher(args, launcher_dir='.', bundle_type='source'):
     cflags = '-Wall -Werror -fpie'.split()
     cppflags = []
     libs = []
-    if args.profile:
-        cppflags.append('-DWITH_PROFILER'), cflags.append('-g')
-        libs.append('-lprofiler')
+    if args.profile or args.sanitize:
+        if args.sanitize:
+            cflags.append('-g3')
+            cflags.extend(get_sanitize_args(env.cc, env.ccver))
+            libs += ['-lasan'] if env.cc == 'gcc' and not is_macos else []
+        else:
+            cflags.append('-g')
+        if args.profile:
+            libs.append('-lprofiler')
     else:
         cflags.append('-O3')
-    if for_bundle or for_freeze:
+    if bundle_type.endswith('-freeze'):
         cppflags.append('-DFOR_BUNDLE')
         cppflags.append('-DPYVER="{}"'.format(sysconfig.get_python_version()))
-    elif sh_launcher:
-        cppflags.append('-DFOR_LAUNCHER')
-    cppflags.append('-DLIB_DIR_NAME="{}"'.format(args.libdir_name.strip('/')))
+        cppflags.append('-DKITTY_LIB_DIR_NAME="{}"'.format(args.libdir_name))
+    elif bundle_type == 'source':
+        cppflags.append('-DFROM_SOURCE')
+    if bundle_type.startswith('macos-'):
+        klp = '../Frameworks/kitty'
+    elif bundle_type.startswith('linux-'):
+        klp = '../{}/kitty'.format(args.libdir_name.strip('/'))
+    elif bundle_type == 'source':
+        klp = '../..'
+    else:
+        raise SystemExit('Unknown bundle type: {}'.format(bundle_type))
+    cppflags.append('-DKITTY_LIB_PATH="{}"'.format(klp))
     pylib = get_python_flags(cflags)
-    exe = 'kitty-profile' if args.profile else 'kitty'
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
-    if for_freeze:
+    if bundle_type == 'linux-freeze':
         ldflags += ['-Wl,-rpath,$ORIGIN/../lib']
+    os.makedirs(launcher_dir, exist_ok=True)
+    dest = os.path.join(launcher_dir, 'kitty')
+    src = 'launcher.c'
     cmd = [env.cc] + cppflags + cflags + [
-        'launcher.c', '-o',
-        os.path.join(launcher_dir, exe)
-    ] + ldflags + libs + pylib
-    run_tool(cmd)
+           src, '-o', dest] + ldflags + libs + pylib
+    key = CompileKey('launcher.c', 'kitty')
+    must_compile = not args.incremental or args.compilation_database.cmd_changed(key, cmd)
+    if must_compile or newer(dest, src):
+        run_tool(cmd, 'Building {}...'.format(emphasis('launcher')))
+        args.compilation_database.update_cmd(key, cmd)
 
 
 # Packaging {{{
@@ -645,9 +669,9 @@ def compile_python(base_path):
         compileall.compile_dir(base_path, **kwargs)
 
 
-def package(args, for_bundle=False, sh_launcher=False):
+def package(args, bundle_type):
     ddir = args.prefix
-    if for_bundle or sh_launcher:
+    if bundle_type == 'linux-freeze':
         args.libdir_name = 'lib'
     libdir = os.path.join(ddir, args.libdir_name.strip('/'), 'kitty')
     if os.path.exists(libdir):
@@ -688,7 +712,7 @@ def package(args, for_bundle=False, sh_launcher=False):
     shutil.copy2('kitty/launcher/kitty', os.path.join(libdir, 'kitty', 'launcher'))
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
-    build_launcher(args, launcher_dir, for_bundle, sh_launcher, args.for_freeze)
+    build_launcher(args, launcher_dir, bundle_type)
     if not is_macos:  # {{{ linux desktop gunk
         copy_man_pages(ddir)
         copy_html_docs(ddir)
@@ -714,7 +738,7 @@ Categories=System;TerminalEmulator;
             )
     # }}}
 
-    if for_bundle or sh_launcher:  # macOS bundle gunk {{{
+    if bundle_type.startswith('macos-'):  # macOS bundle gunk {{{
         import plistlib
         logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
         os.chdir(ddir)
@@ -766,9 +790,7 @@ Categories=System;TerminalEmulator;
         os.rename('../lib', 'Frameworks')
         if not os.path.exists(logo_dir):
             raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
-        cmd = [env.cc] + ['-Wall', '-Werror'] + [
-                os.path.join(base, 'symlink-deref.c'), '-o', os.path.join('MacOS', 'kitty-deref-symlink')]
-        run_tool(cmd)
+        os.symlink(os.path.join('MacOS', 'kitty'), os.path.join('MacOS', 'kitty-deref-symlink'))
 
         subprocess.check_call([
             'iconutil', '-c', 'icns', logo_dir, '-o',
@@ -809,7 +831,7 @@ def option_parser():  # {{{
         'action',
         nargs='?',
         default='build',
-        choices='build test linux-package kitty.app macos-bundle osx-bundle clean'.split(),
+        choices='build test linux-package kitty.app linux-freeze macos-freeze clean'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -828,10 +850,7 @@ def option_parser():  # {{{
         '--sanitize',
         default=False,
         action='store_true',
-        help='Turn on sanitization to detect memory access errors and undefined behavior. Note that if you do turn it on,'
-        ' a special executable will be built for running the test suite. If you want to run normal kitty'
-        ' with sanitization, use LD_PRELOAD=libasan.so (for gcc) and'
-        ' LD_PRELOAD=/usr/lib/clang/4.0.0/lib/linux/libclang_rt.asan-x86_64.so (for clang, changing path as appropriate).'
+        help='Turn on sanitization to detect memory access errors and undefined behavior. This is a big performance hit.'
     )
     p.add_argument(
         '--prefix',
@@ -889,34 +908,39 @@ def main():
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    if args.action == 'build':
-        build(args)
-        if args.sanitize:
-            build_asan_launcher(args)
-        if args.profile:
-            build_launcher(args)
-            print('kitty profile executable is', 'kitty-profile')
-    elif args.action == 'test':
+    if args.action == 'test':
         os.execlp(
             sys.executable, sys.executable, os.path.join(base, 'test.py')
         )
-    elif args.action == 'linux-package':
-        build(args, native_optimizations=False)
-        if not os.path.exists(os.path.join(base, 'docs/_build/html')):
-            run_tool(['make', 'docs'])
-        package(args)
-    elif args.action in ('macos-bundle', 'osx-bundle'):
-        build(args, native_optimizations=False)
-        package(args, for_bundle=True)
-    elif args.action == 'kitty.app':
-        args.prefix = 'kitty.app'
-        if os.path.exists(args.prefix):
-            shutil.rmtree(args.prefix)
-        build(args)
-        package(args, for_bundle=False, sh_launcher=True)
-        print('kitty.app successfully built!')
-    elif args.action == 'clean':
+    if args.action == 'clean':
         clean()
+        return
+
+    with CompilationDatabase() as cdb:
+        args.compilation_database = cdb
+        if args.action == 'build':
+            build(args)
+            build_launcher(args, launcher_dir='kitty/launcher')
+        elif args.action == 'linux-package':
+            build(args, native_optimizations=False)
+            if not os.path.exists(os.path.join(base, 'docs/_build/html')):
+                run_tool(['make', 'docs'])
+            package(args, bundle_type='linux-package')
+        elif args.action == 'linux-freeze':
+            build(args, native_optimizations=False)
+            if not os.path.exists(os.path.join(base, 'docs/_build/html')):
+                run_tool(['make', 'docs'])
+            package(args, bundle_type='linux-freeze')
+        elif args.action == 'macos-freeze':
+            build(args, native_optimizations=False)
+            package(args, bundle_type='macos-freeze')
+        elif args.action == 'kitty.app':
+            args.prefix = 'kitty.app'
+            if os.path.exists(args.prefix):
+                shutil.rmtree(args.prefix)
+            build(args)
+            package(args, bundle_type='macos-package')
+            print('kitty.app successfully built!')
 
 
 if __name__ == '__main__':

@@ -8,8 +8,7 @@ kitty.app
 logo/*.iconset
 compile_commands.json
 glad/out
-asan-launcher
-kitty-profile
+kitty/launcher
 *.dSYM
 dev
 __pycache__

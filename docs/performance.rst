@@ -14,12 +14,12 @@ render loop to reduce CPU usage. See :ref:`conf-kitty-performance` for details.
 See also the :opt:`sync_to_monitor` option to further decrease latency at the cost
 of some `tearing <https://en.wikipedia.org/wiki/Screen_tearing>`_ while scrolling.
 
-You can generate detailed per-function performance data using
-`gperftools <https://github.com/gperftools/gperftools>`_. Build |kitty| with
-`make profile` which will create an executable called `kitty-profile`.  Run
-that and perform the task you want to analyse, for example, scrolling a large
-file with `less`. After you quit, function call statistics will be printed to
-`stdout` and you can use tools like *kcachegrind* for more detailed analysis.
+You can generate detailed per-function performance data using `gperftools
+<https://github.com/gperftools/gperftools>`_. Build |kitty| with `make
+profile`. Run kitty and perform the task you want to analyse, for example,
+scrolling a large file with `less`. After you quit, function call statistics
+will be printed to `stdout` and you can use tools like *kcachegrind* for more
+detailed analysis.
 
 Here are some CPU usage numbers for the task of scrolling a file continuously
 in less.  The CPU usage is for the terminal process and X together and is

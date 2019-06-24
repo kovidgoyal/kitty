@@ -10,7 +10,7 @@ jobs:
         - run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
         - run: python3 -m flake8 --count .
         - run: python3 setup.py build --debug --verbose
-        - run: python3 test.py
+        - run: ./kitty/launcher/kitty +launch test.py
         - run: make FAIL_WARN=-W man
         - run: make FAIL_WARN=-W html
         - run: python3 setup.py linux-package --update-check-interval=0
@@ -26,7 +26,7 @@ jobs:
     steps:
         - checkout
         - run: /opt/py3.5/bin/python3 setup.py build --debug --verbose --sanitize
-        - run: ./asan-launcher test.py
+        - run: ./kitty/launcher/kitty +launch test.py
 
   lin-37:
     docker:
@@ -38,7 +38,7 @@ jobs:
     steps:
         - checkout
         - run: /opt/py3.7/bin/python3 setup.py build --debug --verbose --sanitize
-        - run: ./asan-launcher test.py
+        - run: ./kitty/launcher/kitty +launch test.py
 
   lin-bundle:
     docker:
@@ -50,7 +50,7 @@ jobs:
         - run: echo "export LD_LIBRARY_PATH=$SW/lib" >> $BASH_ENV
         - run: echo "export PKG_CONFIG_PATH=$SW/lib/pkgconfig" >> $BASH_ENV
         - run: $SW/bin/python3 setup.py build --debug --verbose
-        - run: $SW/bin/python3 test.py
+        - run: ./kitty/launcher/kitty +launch test.py
 
   mac-bundle:
       macos:
@@ -65,7 +65,7 @@ jobs:
           - run: curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW
           - run: echo "export PATH=$SW/bin:$PATH" >> $BASH_ENV
           - run: python3 setup.py build --debug --verbose
-          - run: python3 test.py
+          - run: ./kitty/launcher/kitty +launch test.py
 
   mac-brew:
       macos:
@@ -78,8 +78,8 @@ jobs:
           - run: brew bundle
           - run: python3 logo/make.py
           - run: python3 setup.py build --debug --verbose
-          - run: python3 test.py
-          - run: python3 setup.py macos-bundle
+          - run: ./kitty/launcher/kitty +launch test.py
+          - run: python3 setup.py linux-package
 
 
 workflows:
