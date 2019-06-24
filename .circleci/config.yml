@@ -81,7 +81,9 @@ jobs:
           - run: python3 setup.py build --debug --verbose
           - run: ./kitty/launcher/kitty +launch test.py
           - run: echo "export PATH=/usr/local/opt/sphinx-doc/bin:$PATH" >> $BASH_ENV
-          - run: python3 setup.py linux-package
+          - run: python3 setup.py linux-package --verbose
+          - run: python3 setup.py kitty.app --verbose
+          - run: kitty.app/Contents/MacOS/kitty +runpy "from kitty.constants import *; print(kitty_exe())"
 
 
 workflows:
