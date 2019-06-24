@@ -49,6 +49,7 @@ jobs:
         - checkout
         - run: echo "export LD_LIBRARY_PATH=$SW/lib" >> $BASH_ENV
         - run: echo "export PKG_CONFIG_PATH=$SW/lib/pkgconfig" >> $BASH_ENV
+        - run: echo "export PYTHONHOME=$SW" >> $BASH_ENV
         - run: $SW/bin/python3 setup.py build --debug --verbose
         - run: ./kitty/launcher/kitty +launch test.py
 
@@ -79,6 +80,7 @@ jobs:
           - run: python3 logo/make.py
           - run: python3 setup.py build --debug --verbose
           - run: ./kitty/launcher/kitty +launch test.py
+          - run: echo "export PATH=/usr/local/opt/sphinx-doc/bin:$PATH" >> $BASH_ENV
           - run: python3 setup.py linux-package
 
 
