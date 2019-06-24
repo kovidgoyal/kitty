@@ -793,7 +793,7 @@ def clean():
     exclude = ('.git',)
     for root, dirs, files in os.walk('.', topdown=True):
         dirs[:] = [d for d in dirs if d not in exclude]
-        remove_dirs = {d for d in dirs if d == '__pycache__'}
+        remove_dirs = {d for d in dirs if d == '__pycache__' or d.endswith('.dSYM')}
         [(shutil.rmtree(os.path.join(root, d)), dirs.remove(d)) for d in remove_dirs]
         for f in files:
             ext = f.rpartition('.')[-1]
