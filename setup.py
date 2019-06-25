@@ -703,6 +703,12 @@ Icon=kitty
 Categories=System;TerminalEmulator;
 '''
             )
+    with current_dir(ddir):
+        in_src_launcher = 'lib/kitty/kitty/launcher/kitty'
+        launcher = 'bin/kitty'
+        if os.path.exists(in_src_launcher):
+            os.remove(in_src_launcher)
+        os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
 
 
 def create_macos_bundle_gunk(ddir):
@@ -762,6 +768,11 @@ def create_macos_bundle_gunk(ddir):
             'iconutil', '-c', 'icns', logo_dir, '-o',
             os.path.join('Resources', os.path.basename(logo_dir).partition('.')[0] + '.icns')
         ])
+        launcher = 'MacOS/kitty'
+        in_src_launcher = 'Frameworks/kitty/kitty/launcher/kitty'
+        if os.path.exists(in_src_launcher):
+            os.remove(in_src_launcher)
+        os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
 
 
 def package(args, bundle_type):
@@ -804,7 +815,6 @@ def package(args, bundle_type):
         for f in files:
             path = os.path.join(root, f)
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
-    shutil.copy2('kitty/launcher/kitty', os.path.join(libdir, 'kitty', 'launcher'))
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
     build_launcher(args, launcher_dir, bundle_type)
@@ -955,7 +965,6 @@ def main():
             if os.path.exists(args.prefix):
                 shutil.rmtree(args.prefix)
             build(args)
-            build_launcher(args, launcher_dir='kitty/launcher')
             package(args, bundle_type='macos-package')
             print('kitty.app successfully built!')
 
