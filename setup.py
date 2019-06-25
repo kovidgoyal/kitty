@@ -708,6 +708,7 @@ Categories=System;TerminalEmulator;
         launcher = 'bin/kitty'
         if os.path.exists(in_src_launcher):
             os.remove(in_src_launcher)
+        os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
         os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
 
 
@@ -772,6 +773,7 @@ def create_macos_bundle_gunk(ddir):
         in_src_launcher = 'Frameworks/kitty/kitty/launcher/kitty'
         if os.path.exists(in_src_launcher):
             os.remove(in_src_launcher)
+        os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
         os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
 
 
