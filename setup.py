@@ -680,7 +680,7 @@ def compile_python(base_path):
         compileall.compile_dir(base_path, **kwargs)
 
 
-def create_linux_bundle_gunk(ddir):
+def create_linux_bundle_gunk(ddir, libdir_name):
     copy_man_pages(ddir)
     copy_html_docs(ddir)
     icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
@@ -704,7 +704,7 @@ Categories=System;TerminalEmulator;
 '''
             )
     with current_dir(ddir):
-        in_src_launcher = 'lib/kitty/kitty/launcher/kitty'
+        in_src_launcher = libdir_name + '/kitty/kitty/launcher/kitty'
         launcher = 'bin/kitty'
         if os.path.exists(in_src_launcher):
             os.remove(in_src_launcher)
@@ -819,7 +819,7 @@ def package(args, bundle_type):
     safe_makedirs(launcher_dir)
     build_launcher(args, launcher_dir, bundle_type)
     if not is_macos:
-        create_linux_bundle_gunk(ddir)
+        create_linux_bundle_gunk(ddir, args.libdir_name)
 
     if bundle_type.startswith('macos-'):
         create_macos_bundle_gunk(ddir)
