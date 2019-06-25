@@ -669,6 +669,18 @@ def compile_python(base_path):
         compileall.compile_dir(base_path, **kwargs)
 
 
+class ChDir(object):
+    def __init__(self, path):
+        self.old_dir = os.getcwd()
+        self.new_dir = path
+
+    def __enter__(self):
+        os.chdir(self.new_dir)
+
+    def __exit__(self, *args):
+        os.chdir(self.old_dir)
+
+
 def package(args, bundle_type):
     ddir = args.prefix
     if bundle_type == 'linux-freeze':
@@ -741,61 +753,61 @@ Categories=System;TerminalEmulator;
     if bundle_type.startswith('macos-'):  # macOS bundle gunk {{{
         import plistlib
         logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
-        os.chdir(ddir)
-        os.mkdir('Contents')
-        os.chdir('Contents')
-        VERSION = '.'.join(map(str, version))
-        pl = dict(
-            CFBundleDevelopmentRegion='English',
-            CFBundleDisplayName=appname,
-            CFBundleName=appname,
-            CFBundleIdentifier='net.kovidgoyal.' + appname,
-            CFBundleVersion=VERSION,
-            CFBundleShortVersionString=VERSION,
-            CFBundlePackageType='APPL',
-            CFBundleSignature='????',
-            CFBundleExecutable=appname,
-            LSMinimumSystemVersion='10.12.0',
-            LSRequiresNativeExecution=True,
-            NSAppleScriptEnabled=False,
-            # Needed for dark mode in Mojave when linking against older SDKs
-            NSRequiresAquaSystemAppearance='NO',
-            NSHumanReadableCopyright=time.strftime(
-                'Copyright %Y, Kovid Goyal'),
-            CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://sw.kovidgoyal.net/kitty',
-            CFBundleIconFile=appname + '.icns',
-            NSHighResolutionCapable=True,
-            NSSupportsAutomaticGraphicsSwitching=True,
-            LSApplicationCategoryType='public.app-category.utilities',
-            LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
-            NSServices=[
-                {
-                    'NSMenuItem': {'default': 'New ' + appname + ' Tab Here'},
-                    'NSMessage': 'openTab',
-                    'NSRequiredContext': {'NSTextContent': 'FilePath'},
-                    'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
-                },
-                {
-                    'NSMenuItem': {'default': 'New ' + appname + ' Window Here'},
-                    'NSMessage': 'openOSWindow',
-                    'NSRequiredContext': {'NSTextContent': 'FilePath'},
-                    'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
-                },
-            ],
-        )
-        with open('Info.plist', 'wb') as fp:
-            plistlib.dump(pl, fp)
-        os.rename('../share', 'Resources')
-        os.rename('../bin', 'MacOS')
-        os.rename('../lib', 'Frameworks')
-        if not os.path.exists(logo_dir):
-            raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
-        os.symlink(os.path.join('MacOS', 'kitty'), os.path.join('MacOS', 'kitty-deref-symlink'))
+        with ChDir(ddir):
+            os.mkdir('Contents')
+            os.chdir('Contents')
+            VERSION = '.'.join(map(str, version))
+            pl = dict(
+                CFBundleDevelopmentRegion='English',
+                CFBundleDisplayName=appname,
+                CFBundleName=appname,
+                CFBundleIdentifier='net.kovidgoyal.' + appname,
+                CFBundleVersion=VERSION,
+                CFBundleShortVersionString=VERSION,
+                CFBundlePackageType='APPL',
+                CFBundleSignature='????',
+                CFBundleExecutable=appname,
+                LSMinimumSystemVersion='10.12.0',
+                LSRequiresNativeExecution=True,
+                NSAppleScriptEnabled=False,
+                # Needed for dark mode in Mojave when linking against older SDKs
+                NSRequiresAquaSystemAppearance='NO',
+                NSHumanReadableCopyright=time.strftime(
+                    'Copyright %Y, Kovid Goyal'),
+                CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://sw.kovidgoyal.net/kitty',
+                CFBundleIconFile=appname + '.icns',
+                NSHighResolutionCapable=True,
+                NSSupportsAutomaticGraphicsSwitching=True,
+                LSApplicationCategoryType='public.app-category.utilities',
+                LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
+                NSServices=[
+                    {
+                        'NSMenuItem': {'default': 'New ' + appname + ' Tab Here'},
+                        'NSMessage': 'openTab',
+                        'NSRequiredContext': {'NSTextContent': 'FilePath'},
+                        'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+                    },
+                    {
+                        'NSMenuItem': {'default': 'New ' + appname + ' Window Here'},
+                        'NSMessage': 'openOSWindow',
+                        'NSRequiredContext': {'NSTextContent': 'FilePath'},
+                        'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+                    },
+                ],
+            )
+            with open('Info.plist', 'wb') as fp:
+                plistlib.dump(pl, fp)
+            os.rename('../share', 'Resources')
+            os.rename('../bin', 'MacOS')
+            os.rename('../lib', 'Frameworks')
+            if not os.path.exists(logo_dir):
+                raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
+            os.symlink(os.path.join('MacOS', 'kitty'), os.path.join('MacOS', 'kitty-deref-symlink'))
 
-        subprocess.check_call([
-            'iconutil', '-c', 'icns', logo_dir, '-o',
-            os.path.join('Resources', os.path.basename(logo_dir).partition('.')[0] + '.icns')
-        ])
+            subprocess.check_call([
+                'iconutil', '-c', 'icns', logo_dir, '-o',
+                os.path.join('Resources', os.path.basename(logo_dir).partition('.')[0] + '.icns')
+            ])
     # }}}
 # }}}
 
