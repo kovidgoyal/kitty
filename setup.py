@@ -16,7 +16,7 @@ import sys
 import sysconfig
 import time
 from collections import namedtuple
-from contextlib import suppress
+from contextlib import suppress, contextmanager
 
 base = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(base, 'glfw'))
@@ -41,6 +41,16 @@ is_macos = 'darwin' in _plat
 env = None
 
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
+
+
+@contextmanager
+def current_dir(path):
+    cwd = os.getcwd()
+    try:
+        os.chdir(path)
+        yield path
+    finally:
+        os.chdir(cwd)
 
 
 def emphasis(text):
@@ -411,8 +421,9 @@ class CompilationDatabase:
 
     def __enter__(self):
         self.all_keys = set()
+        self.dbpath = os.path.abspath('compile_commands.json')
         try:
-            with open('compile_commands.json') as f:
+            with open(self.dbpath) as f:
                 compilation_database = json.load(f)
         except FileNotFoundError:
             compilation_database = []
@@ -429,7 +440,7 @@ class CompilationDatabase:
         compilation_database = [
             {'file': k.src, 'arguments': v, 'directory': base, 'output': k.dest} for k, v in cdb.items()
         ]
-        with open('compile_commands.json', 'w') as f:
+        with open(self.dbpath, 'w') as f:
             json.dump(compilation_database, f, indent=2, sort_keys=True)
 
 
@@ -669,61 +680,17 @@ def compile_python(base_path):
         compileall.compile_dir(base_path, **kwargs)
 
 
-def package(args, bundle_type):
-    ddir = args.prefix
-    if bundle_type == 'linux-freeze':
-        args.libdir_name = 'lib'
-    libdir = os.path.join(ddir, args.libdir_name.strip('/'), 'kitty')
-    if os.path.exists(libdir):
-        shutil.rmtree(libdir)
-    os.makedirs(os.path.join(libdir, 'logo'))
-    build_terminfo = runpy.run_path('build-terminfo', run_name='import_build')
-    for x in (libdir, os.path.join(ddir, 'share')):
-        odir = os.path.join(x, 'terminfo')
-        safe_makedirs(odir)
-        build_terminfo['compile_terminfo'](odir)
-    shutil.copy2('__main__.py', libdir)
-    shutil.copy2('logo/kitty.rgba', os.path.join(libdir, 'logo'))
-    shutil.copy2('logo/kitty.png', os.path.join(libdir, 'logo'))
-    shutil.copy2('logo/beam-cursor.png', os.path.join(libdir, 'logo'))
-    shutil.copy2('logo/beam-cursor@2x.png', os.path.join(libdir, 'logo'))
-
-    def src_ignore(parent, entries):
-        return [
-            x for x in entries
-            if '.' in x and x.rpartition('.')[2] not in
-            ('py', 'so', 'glsl')
-        ]
-
-    shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
-    shutil.copytree('kittens', os.path.join(libdir, 'kittens'), ignore=src_ignore)
-    if args.update_check_interval != 24.0:
-        with open(os.path.join(libdir, 'kitty/config_data.py'), 'r+', encoding='utf-8') as f:
-            raw = f.read()
-            nraw = raw.replace("update_check_interval', 24", "update_check_interval', {}".format(args.update_check_interval), 1)
-            if nraw == raw:
-                raise SystemExit('Failed to change the value of update_check_interval')
-            f.seek(0), f.truncate(), f.write(nraw)
-    compile_python(libdir)
-    for root, dirs, files in os.walk(libdir):
-        for f in files:
-            path = os.path.join(root, f)
-            os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
-    shutil.copy2('kitty/launcher/kitty', os.path.join(libdir, 'kitty', 'launcher'))
-    launcher_dir = os.path.join(ddir, 'bin')
-    safe_makedirs(launcher_dir)
-    build_launcher(args, launcher_dir, bundle_type)
-    if not is_macos:  # {{{ linux desktop gunk
-        copy_man_pages(ddir)
-        copy_html_docs(ddir)
-        icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
-        safe_makedirs(icdir)
-        shutil.copy2('logo/kitty.png', icdir)
-        deskdir = os.path.join(ddir, 'share', 'applications')
-        safe_makedirs(deskdir)
-        with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
-            f.write(
-                '''\
+def create_linux_bundle_gunk(ddir):
+    copy_man_pages(ddir)
+    copy_html_docs(ddir)
+    icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
+    safe_makedirs(icdir)
+    shutil.copy2('logo/kitty.png', icdir)
+    deskdir = os.path.join(ddir, 'share', 'applications')
+    safe_makedirs(deskdir)
+    with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
+        f.write(
+            '''\
 [Desktop Entry]
 Version=1.0
 Type=Application
@@ -736,12 +703,12 @@ Icon=kitty
 Categories=System;TerminalEmulator;
 '''
             )
-    # }}}
 
-    if bundle_type.startswith('macos-'):  # macOS bundle gunk {{{
-        import plistlib
-        logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
-        os.chdir(ddir)
+
+def create_macos_bundle_gunk(ddir):
+    import plistlib
+    logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
+    with current_dir(ddir):
         os.mkdir('Contents')
         os.chdir('Contents')
         VERSION = '.'.join(map(str, version))
@@ -791,12 +758,61 @@ Categories=System;TerminalEmulator;
         if not os.path.exists(logo_dir):
             raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
         os.symlink(os.path.join('MacOS', 'kitty'), os.path.join('MacOS', 'kitty-deref-symlink'))
-
         subprocess.check_call([
             'iconutil', '-c', 'icns', logo_dir, '-o',
             os.path.join('Resources', os.path.basename(logo_dir).partition('.')[0] + '.icns')
         ])
-    # }}}
+
+
+def package(args, bundle_type):
+    ddir = args.prefix
+    if bundle_type == 'linux-freeze':
+        args.libdir_name = 'lib'
+    libdir = os.path.join(ddir, args.libdir_name.strip('/'), 'kitty')
+    if os.path.exists(libdir):
+        shutil.rmtree(libdir)
+    os.makedirs(os.path.join(libdir, 'logo'))
+    build_terminfo = runpy.run_path('build-terminfo', run_name='import_build')
+    for x in (libdir, os.path.join(ddir, 'share')):
+        odir = os.path.join(x, 'terminfo')
+        safe_makedirs(odir)
+        build_terminfo['compile_terminfo'](odir)
+    shutil.copy2('__main__.py', libdir)
+    shutil.copy2('logo/kitty.rgba', os.path.join(libdir, 'logo'))
+    shutil.copy2('logo/kitty.png', os.path.join(libdir, 'logo'))
+    shutil.copy2('logo/beam-cursor.png', os.path.join(libdir, 'logo'))
+    shutil.copy2('logo/beam-cursor@2x.png', os.path.join(libdir, 'logo'))
+
+    def src_ignore(parent, entries):
+        return [
+            x for x in entries
+            if '.' in x and x.rpartition('.')[2] not in
+            ('py', 'so', 'glsl')
+        ]
+
+    shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
+    shutil.copytree('kittens', os.path.join(libdir, 'kittens'), ignore=src_ignore)
+    if args.update_check_interval != 24.0:
+        with open(os.path.join(libdir, 'kitty/config_data.py'), 'r+', encoding='utf-8') as f:
+            raw = f.read()
+            nraw = raw.replace("update_check_interval', 24", "update_check_interval', {}".format(args.update_check_interval), 1)
+            if nraw == raw:
+                raise SystemExit('Failed to change the value of update_check_interval')
+            f.seek(0), f.truncate(), f.write(nraw)
+    compile_python(libdir)
+    for root, dirs, files in os.walk(libdir):
+        for f in files:
+            path = os.path.join(root, f)
+            os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
+    shutil.copy2('kitty/launcher/kitty', os.path.join(libdir, 'kitty', 'launcher'))
+    launcher_dir = os.path.join(ddir, 'bin')
+    safe_makedirs(launcher_dir)
+    build_launcher(args, launcher_dir, bundle_type)
+    if not is_macos:
+        create_linux_bundle_gunk()
+
+    if bundle_type.startswith('macos-'):
+        create_macos_bundle_gunk()
 # }}}
 
 
