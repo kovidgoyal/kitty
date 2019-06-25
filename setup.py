@@ -809,10 +809,10 @@ def package(args, bundle_type):
     safe_makedirs(launcher_dir)
     build_launcher(args, launcher_dir, bundle_type)
     if not is_macos:
-        create_linux_bundle_gunk()
+        create_linux_bundle_gunk(ddir)
 
     if bundle_type.startswith('macos-'):
-        create_macos_bundle_gunk()
+        create_macos_bundle_gunk(ddir)
 # }}}
 
 
