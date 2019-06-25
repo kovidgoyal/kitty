@@ -955,6 +955,7 @@ def main():
             if os.path.exists(args.prefix):
                 shutil.rmtree(args.prefix)
             build(args)
+            build_launcher(args, launcher_dir='kitty/launcher')
             package(args, bundle_type='macos-package')
             print('kitty.app successfully built!')
 
