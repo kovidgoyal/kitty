@@ -200,7 +200,6 @@ typedef struct {
     uint8_t decoration;
     CursorShape shape;
     color_type fg, bg, decoration_fg;
-
 } Cursor;
 
 typedef struct {

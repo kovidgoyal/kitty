@@ -132,7 +132,6 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     notification_activated_callback = callback;
     Py_INCREF(callback);
     Py_RETURN_NONE;
-
 }
 
 @interface NotificationDelegate : NSObject <NSUserNotificationCenterDelegate>
