@@ -68,7 +68,7 @@ class Borders:
         bw, pw = self.border_width, self.padding_width
         if bw + pw <= 0:
             return
-        draw_borders = bw > 0 and draw_window_borders and len(windows) > 1
+        draw_borders = bw > 0 and draw_window_borders
         if draw_borders:
             border_data = current_layout.resolve_borders(windows, active_window)
 
