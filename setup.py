@@ -940,35 +940,34 @@ def main():
         os.execlp(
             sys.executable, sys.executable, os.path.join(base, 'test.py')
         )
-    if args.action == 'clean':
+    elif args.action == 'clean':
         clean()
-        return
-
-    with CompilationDatabase() as cdb:
-        args.compilation_database = cdb
-        if args.action == 'build':
-            build(args)
-            build_launcher(args, launcher_dir='kitty/launcher')
-        elif args.action == 'linux-package':
-            build(args, native_optimizations=False)
-            if not os.path.exists(os.path.join(base, 'docs/_build/html')):
-                run_tool(['make', 'docs'])
-            package(args, bundle_type='linux-package')
-        elif args.action == 'linux-freeze':
-            build(args, native_optimizations=False)
-            if not os.path.exists(os.path.join(base, 'docs/_build/html')):
-                run_tool(['make', 'docs'])
-            package(args, bundle_type='linux-freeze')
-        elif args.action == 'macos-freeze':
-            build(args, native_optimizations=False)
-            package(args, bundle_type='macos-freeze')
-        elif args.action == 'kitty.app':
-            args.prefix = 'kitty.app'
-            if os.path.exists(args.prefix):
-                shutil.rmtree(args.prefix)
-            build(args)
-            package(args, bundle_type='macos-package')
-            print('kitty.app successfully built!')
+    else:
+        with CompilationDatabase() as cdb:
+            args.compilation_database = cdb
+            if args.action == 'build':
+                build(args)
+                build_launcher(args, launcher_dir='kitty/launcher')
+            elif args.action == 'linux-package':
+                build(args, native_optimizations=False)
+                if not os.path.exists(os.path.join(base, 'docs/_build/html')):
+                    run_tool(['make', 'docs'])
+                package(args, bundle_type='linux-package')
+            elif args.action == 'linux-freeze':
+                build(args, native_optimizations=False)
+                if not os.path.exists(os.path.join(base, 'docs/_build/html')):
+                    run_tool(['make', 'docs'])
+                package(args, bundle_type='linux-freeze')
+            elif args.action == 'macos-freeze':
+                build(args, native_optimizations=False)
+                package(args, bundle_type='macos-freeze')
+            elif args.action == 'kitty.app':
+                args.prefix = 'kitty.app'
+                if os.path.exists(args.prefix):
+                    shutil.rmtree(args.prefix)
+                build(args)
+                package(args, bundle_type='macos-package')
+                print('kitty.app successfully built!')
 
 
 if __name__ == '__main__':
