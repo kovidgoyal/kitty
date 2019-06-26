@@ -15,12 +15,12 @@
 #ifdef __APPLE__
 #include <mach-o/dyld.h>
 #include <sys/syslimits.h>
+#include <sys/stat.h>
 #else
 #include <limits.h>
 #endif
 #include <Python.h>
 #include <wchar.h>
-#include <sys/stat.h>
 
 #define MIN(x, y) ((x) < (y)) ? (x) : (y)
 #define MAX_ARGC 1024
