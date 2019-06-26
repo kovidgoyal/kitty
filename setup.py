@@ -318,7 +318,7 @@ def get_vcs_rev_defines():
     ans = []
     if os.path.exists('.git'):
         try:
-            rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8').strip()
+            rev = subprocess.check_output(['git', 'rev-parse', 'HEAD']).decode('utf-8')
         except FileNotFoundError:
             try:
                 with open('.git/refs/heads/master') as f:
