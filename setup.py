@@ -428,7 +428,7 @@ class CompilationDatabase:
         except FileNotFoundError:
             compilation_database = []
         compilation_database = {
-            CompileKey(k['file'], k.get('output')): k['arguments'] for k in compilation_database
+            CompileKey(k['file'], k['output']): k['arguments'] for k in compilation_database
         }
         self.db = compilation_database
         return self
