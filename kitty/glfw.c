@@ -1052,6 +1052,7 @@ cocoa_frame_request_callback(GLFWwindow *window) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         if (global_state.os_windows[i].handle == window) {
             global_state.os_windows[i].render_state = RENDER_FRAME_READY;
+            global_state.os_windows[i].last_render_frame_received_at = monotonic();
             request_tick_callback();
             break;
         }
@@ -1071,6 +1072,7 @@ wayland_frame_request_callback(id_type os_window_id) {
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         if (global_state.os_windows[i].id == os_window_id) {
             global_state.os_windows[i].render_state = RENDER_FRAME_READY;
+            global_state.os_windows[i].last_render_frame_received_at = monotonic();
             request_tick_callback();
             break;
         }

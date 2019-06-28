@@ -148,6 +148,7 @@ typedef struct {
     id_type temp_font_group_id;
     double pending_scroll_pixels;
     enum RENDER_STATE render_state;
+    double last_render_frame_received_at;
     id_type last_focused_counter;
     ssize_t gvao_idx;
 } OSWindow;
