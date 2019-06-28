@@ -607,7 +607,7 @@ def build_launcher(args, launcher_dir='.', bundle_type='source'):
     elif bundle_type.startswith('linux-'):
         klp = '../{}/kitty'.format(args.libdir_name.strip('/'))
     elif bundle_type == 'source':
-        klp = '../..'
+        klp = os.path.relpath('.', launcher_dir)
     else:
         raise SystemExit('Unknown bundle type: {}'.format(bundle_type))
     cppflags.append('-DKITTY_LIB_PATH="{}"'.format(klp))
@@ -756,8 +756,32 @@ def macos_info_plist():
     return plistlib.dumps(pl)
 
 
-def create_macos_bundle_gunk(ddir):
+def create_macos_app_icon(where='Resources'):
     logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
+    if not os.path.exists(logo_dir):
+        raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
+    subprocess.check_call([
+        'iconutil', '-c', 'icns', logo_dir, '-o',
+        os.path.join(where, os.path.basename(logo_dir).partition('.')[0] + '.icns')
+    ])
+
+
+def create_minimal_macos_bundle(args, where):
+    if os.path.exists(where):
+        shutil.rmtree(where)
+    bin_dir = os.path.join(where, 'kitty.app/Contents/MacOS')
+    resources_dir = os.path.join(where, 'kitty.app/Contents/Resources')
+    os.makedirs(resources_dir), os.makedirs(bin_dir)
+    with open(os.path.join(where, 'kitty.app/Contents/Info.plist'), 'wb') as f:
+        f.write(macos_info_plist())
+    build_launcher(args, bin_dir)
+    os.symlink(
+        os.path.join(os.path.relpath(bin_dir, where), appname),
+        os.path.join(where, appname))
+    create_macos_app_icon(resources_dir)
+
+
+def create_macos_bundle_gunk(ddir):
     with current_dir(ddir):
         os.mkdir('Contents')
         os.chdir('Contents')
@@ -766,19 +790,14 @@ def create_macos_bundle_gunk(ddir):
         os.rename('../share', 'Resources')
         os.rename('../bin', 'MacOS')
         os.rename('../lib', 'Frameworks')
-        if not os.path.exists(logo_dir):
-            raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
         os.symlink(os.path.join('MacOS', 'kitty'), os.path.join('MacOS', 'kitty-deref-symlink'))
-        subprocess.check_call([
-            'iconutil', '-c', 'icns', logo_dir, '-o',
-            os.path.join('Resources', os.path.basename(logo_dir).partition('.')[0] + '.icns')
-        ])
         launcher = 'MacOS/kitty'
         in_src_launcher = 'Frameworks/kitty/kitty/launcher/kitty'
         if os.path.exists(in_src_launcher):
             os.remove(in_src_launcher)
         os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
         os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
+    create_macos_app_icon(os.path.join(ddir, 'Contents', 'Resources'))
 
 
 def package(args, bundle_type):
@@ -952,7 +971,11 @@ def main():
         args.compilation_database = cdb
         if args.action == 'build':
             build(args)
-            build_launcher(args, launcher_dir='kitty/launcher')
+            launcher_dir = 'kitty/launcher'
+            if is_macos:
+                create_minimal_macos_bundle(args, launcher_dir)
+            else:
+                build_launcher(args, launcher_dir=launcher_dir)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
             if not os.path.exists(os.path.join(base, 'docs/_build/html')):
