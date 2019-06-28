@@ -28,12 +28,7 @@ asan:
 profile:
 	python3 setup.py build $(VVAL) --profile
 
-logo/kitty.iconset/icon_256x256.png: logo/kitty.svg logo/make.py
-	logo/make.py
-
-rendered_logo: logo/kitty.iconset/icon_256x256.png
-
-app: rendered_logo
+app: 
 	python3 setup.py kitty.app $(VVAL)
 
 man:
