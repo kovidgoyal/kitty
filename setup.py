@@ -16,7 +16,8 @@ import sys
 import sysconfig
 import time
 from collections import namedtuple
-from contextlib import suppress, contextmanager
+from contextlib import suppress
+from pathlib import Path
 
 base = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(base, 'glfw'))
@@ -41,16 +42,6 @@ is_macos = 'darwin' in _plat
 env = None
 
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
-
-
-@contextmanager
-def current_dir(path):
-    cwd = os.getcwd()
-    try:
-        os.chdir(path)
-        yield path
-    finally:
-        os.chdir(cwd)
 
 
 def emphasis(text):
@@ -703,13 +694,13 @@ Icon=kitty
 Categories=System;TerminalEmulator;
 '''
             )
-    with current_dir(ddir):
-        in_src_launcher = libdir_name + '/kitty/kitty/launcher/kitty'
-        launcher = 'bin/kitty'
-        if os.path.exists(in_src_launcher):
-            os.remove(in_src_launcher)
-        os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
-        os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
+    ddir = Path(ddir)
+    in_src_launcher = ddir / (libdir_name + '/kitty/kitty/launcher/kitty')
+    launcher = ddir / 'bin/kitty'
+    if os.path.exists(in_src_launcher):
+        os.remove(in_src_launcher)
+    os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
+    os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
 
 
 def macos_info_plist():
@@ -782,21 +773,20 @@ def create_minimal_macos_bundle(args, where):
 
 
 def create_macos_bundle_gunk(ddir):
-    with current_dir(ddir):
-        os.mkdir('Contents')
-        os.chdir('Contents')
-        with open('Info.plist', 'wb') as fp:
-            fp.write(macos_info_plist())
-        os.rename('../share', 'Resources')
-        os.rename('../bin', 'MacOS')
-        os.rename('../lib', 'Frameworks')
-        os.symlink(os.path.join('MacOS', 'kitty'), os.path.join('MacOS', 'kitty-deref-symlink'))
-        launcher = 'MacOS/kitty'
-        in_src_launcher = 'Frameworks/kitty/kitty/launcher/kitty'
-        if os.path.exists(in_src_launcher):
-            os.remove(in_src_launcher)
-        os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
-        os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
+    ddir = Path(ddir)
+    os.mkdir(ddir / 'Contents')
+    with open(ddir / 'Contents/Info.plist', 'wb') as fp:
+        fp.write(macos_info_plist())
+    os.rename(ddir / 'share', ddir / 'Contents/Resources')
+    os.rename(ddir / 'bin', ddir / 'Contents/MacOS')
+    os.rename(ddir / 'lib', ddir / 'Contents/Frameworks')
+    os.symlink('kitty', ddir / 'Contents/MacOS/kitty-deref-symlink')
+    launcher = ddir / 'Contents/MacOS/kitty'
+    in_src_launcher = ddir / 'Contents/Frameworks/kitty/kitty/launcher/kitty'
+    if os.path.exists(in_src_launcher):
+        os.remove(in_src_launcher)
+    os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)
+    os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
     create_macos_app_icon(os.path.join(ddir, 'Contents', 'Resources'))
 
 
