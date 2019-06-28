@@ -712,53 +712,57 @@ Categories=System;TerminalEmulator;
         os.symlink(os.path.relpath(launcher, os.path.dirname(in_src_launcher)), in_src_launcher)
 
 
-def create_macos_bundle_gunk(ddir):
+def macos_info_plist():
     import plistlib
+    VERSION = '.'.join(map(str, version))
+    pl = dict(
+        CFBundleDevelopmentRegion='English',
+        CFBundleDisplayName=appname,
+        CFBundleName=appname,
+        CFBundleIdentifier='net.kovidgoyal.' + appname,
+        CFBundleVersion=VERSION,
+        CFBundleShortVersionString=VERSION,
+        CFBundlePackageType='APPL',
+        CFBundleSignature='????',
+        CFBundleExecutable=appname,
+        LSMinimumSystemVersion='10.12.0',
+        LSRequiresNativeExecution=True,
+        NSAppleScriptEnabled=False,
+        # Needed for dark mode in Mojave when linking against older SDKs
+        NSRequiresAquaSystemAppearance='NO',
+        NSHumanReadableCopyright=time.strftime(
+            'Copyright %Y, Kovid Goyal'),
+        CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://sw.kovidgoyal.net/kitty',
+        CFBundleIconFile=appname + '.icns',
+        NSHighResolutionCapable=True,
+        NSSupportsAutomaticGraphicsSwitching=True,
+        LSApplicationCategoryType='public.app-category.utilities',
+        LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
+        NSServices=[
+            {
+                'NSMenuItem': {'default': 'New ' + appname + ' Tab Here'},
+                'NSMessage': 'openTab',
+                'NSRequiredContext': {'NSTextContent': 'FilePath'},
+                'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+            },
+            {
+                'NSMenuItem': {'default': 'New ' + appname + ' Window Here'},
+                'NSMessage': 'openOSWindow',
+                'NSRequiredContext': {'NSTextContent': 'FilePath'},
+                'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
+            },
+        ],
+    )
+    return plistlib.dumps(pl)
+
+
+def create_macos_bundle_gunk(ddir):
     logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
     with current_dir(ddir):
         os.mkdir('Contents')
         os.chdir('Contents')
-        VERSION = '.'.join(map(str, version))
-        pl = dict(
-            CFBundleDevelopmentRegion='English',
-            CFBundleDisplayName=appname,
-            CFBundleName=appname,
-            CFBundleIdentifier='net.kovidgoyal.' + appname,
-            CFBundleVersion=VERSION,
-            CFBundleShortVersionString=VERSION,
-            CFBundlePackageType='APPL',
-            CFBundleSignature='????',
-            CFBundleExecutable=appname,
-            LSMinimumSystemVersion='10.12.0',
-            LSRequiresNativeExecution=True,
-            NSAppleScriptEnabled=False,
-            # Needed for dark mode in Mojave when linking against older SDKs
-            NSRequiresAquaSystemAppearance='NO',
-            NSHumanReadableCopyright=time.strftime(
-                'Copyright %Y, Kovid Goyal'),
-            CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://sw.kovidgoyal.net/kitty',
-            CFBundleIconFile=appname + '.icns',
-            NSHighResolutionCapable=True,
-            NSSupportsAutomaticGraphicsSwitching=True,
-            LSApplicationCategoryType='public.app-category.utilities',
-            LSEnvironment={'KITTY_LAUNCHED_BY_LAUNCH_SERVICES': '1'},
-            NSServices=[
-                {
-                    'NSMenuItem': {'default': 'New ' + appname + ' Tab Here'},
-                    'NSMessage': 'openTab',
-                    'NSRequiredContext': {'NSTextContent': 'FilePath'},
-                    'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
-                },
-                {
-                    'NSMenuItem': {'default': 'New ' + appname + ' Window Here'},
-                    'NSMessage': 'openOSWindow',
-                    'NSRequiredContext': {'NSTextContent': 'FilePath'},
-                    'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
-                },
-            ],
-        )
         with open('Info.plist', 'wb') as fp:
-            plistlib.dump(pl, fp)
+            fp.write(macos_info_plist())
         os.rename('../share', 'Resources')
         os.rename('../bin', 'MacOS')
         os.rename('../lib', 'Frameworks')
