@@ -7,6 +7,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.14.3 [future]
 ---------------------
 
+- Remote control: Add a command `kitty @ scroll-window` to scroll windows
+
 - Fix an out of bounds read causing a crash when selecting text with the mouse
   in the alternate screen mode (:iss:`1578`)
 

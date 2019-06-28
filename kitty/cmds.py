@@ -690,7 +690,7 @@ the command will exit with a success code.
 )
 def cmd_focus_window(global_opts, opts, args):
     '''
-    match: The tab to open the new window in
+    match: The window to focus
     '''
     if opts.no_response:
         global_opts.no_command_response = True
@@ -711,6 +711,59 @@ def focus_window(boss, window, payload):
             if os_window_id:
                 focus_os_window(os_window_id, True)
             break
+# }}}
+
+
+# scroll_window {{{
+@cmd(
+    'Scroll the specified window',
+    'Scroll the specified window, if no window is specified, scroll the window this command is run inside.'
+    ' SCROLL_AMOUNT can be either the keywords :code:`start` or :code:`end` or an'
+    ' argument of the form <number>[unit][+-]. For example, 30 will scroll down 30 lines and 2p- will'
+    ' scroll up 2 pages.',
+    argspec='SCROLL_AMOUNT',
+    options_spec=MATCH_WINDOW_OPTION
+)
+def cmd_scroll_window(global_opts, opts, args):
+    '''
+    amount+: The amount to scroll, a two item list with the first item being \
+             either a number or the keywords, start and end. \
+             And the second item being either 'p' for pages or 'l' for lines.
+    match: The window to scroll
+    '''
+    amt = args[0]
+    ans = {'match': opts.match}
+    if amt in ('start', 'end'):
+        ans['amount'] = amt, None
+    else:
+        pages = 'p' in amt
+        amt = amt.replace('p', '')
+        mult = -1 if amt.endswith('-') else 1
+        amt = int(amt.replace('-', ''))
+        ans['amount'] = [amt * mult, 'p' if pages else 'l']
+    return ans
+
+
+def scroll_window(boss, window, payload):
+    pg = cmd_scroll_window.payload_get
+    windows = [window or boss.active_window]
+    match = pg(payload, 'match')
+    amt = pg(payload, 'amount')
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise MatchError(match)
+    for window in windows:
+        if window:
+            if amt[0] in ('start', 'end'):
+                getattr(window, {'start': 'scroll_home'}.get(amt[0], 'scroll_end'))()
+            else:
+                amt, unit = amt
+                unit = 'page' if unit == 'p' else 'line'
+                direction = 'up' if amt < 0 else 'down'
+                func = getattr(window, 'scroll_{}_{}'.format(unit, direction))
+                for i in range(abs(amt)):
+                    func()
 # }}}
 
 
