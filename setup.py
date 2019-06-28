@@ -749,8 +749,6 @@ def macos_info_plist():
 
 def create_macos_app_icon(where='Resources'):
     logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
-    if not os.path.exists(logo_dir):
-        raise SystemExit('The kitty logo has not been generated, you need to run logo/make.py')
     subprocess.check_call([
         'iconutil', '-c', 'icns', logo_dir, '-o',
         os.path.join(where, os.path.basename(logo_dir).partition('.')[0] + '.icns')

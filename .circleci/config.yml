@@ -65,7 +65,6 @@ jobs:
           - run: mkdir -p $SW
           - run: curl https://download.calibre-ebook.com/travis/kitty/osx.tar.xz | tar xJ -C $SW
           - run: echo "export PATH=$SW/bin:$PATH" >> $BASH_ENV
-          - run: python3 logo/make.py
           - run: python3 setup.py build --debug --verbose
           - run: ./kitty/launcher/kitty +launch test.py
 
@@ -78,7 +77,6 @@ jobs:
       steps:
           - checkout
           - run: brew bundle
-          - run: python3 logo/make.py
           - run: python3 setup.py build --debug --verbose
           - run: ./kitty/launcher/kitty +launch test.py
           - run: echo "export PATH=/usr/local/opt/sphinx-doc/bin:$PATH" >> $BASH_ENV

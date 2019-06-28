@@ -54,8 +54,7 @@ just ``kitty``.
 Building kitty.app on macOS from source
 -------------------------------------------
 
-Install `imagemagick`, `optipng` and `librsvg` using `brew` or similar (needed
-for the logo generation step). And run::
+Run::
 
     make app
 
