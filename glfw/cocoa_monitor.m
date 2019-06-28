@@ -245,11 +245,8 @@ bool refreshMonitorScreen(_GLFWmonitor* monitor)
 void _glfwClearDisplayLinks() {
     [_glfw.ns.displayLinks.lock lock];
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
-        if (_glfw.ns.displayLinks.entries[i].displayLinkStarted) {
-            CVDisplayLinkStop(_glfw.ns.displayLinks.entries[i].displayLink);
-            _glfw.ns.displayLinks.entries[i].displayLinkStarted = false;
-        }
         if (_glfw.ns.displayLinks.entries[i].displayLink) {
+            CVDisplayLinkStop(_glfw.ns.displayLinks.entries[i].displayLink);
             CVDisplayLinkRelease(_glfw.ns.displayLinks.entries[i].displayLink);
             _glfw.ns.displayLinks.entries[i].displayLink = nil;
         }

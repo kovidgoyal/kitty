@@ -144,7 +144,6 @@ typedef struct _GLFWDisplayLinkNS
 {
     CVDisplayLinkRef displayLink;
     CGDirectDisplayID displayID;
-    bool displayLinkStarted;
     bool renderFrameRequested;
 } _GLFWDisplayLinkNS;
 

@@ -78,9 +78,8 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
         _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayID == displayID) {
             dl->renderFrameRequested = true;
-            if (!dl->displayLinkStarted) {
+            if (!CVDisplayLinkIsRunning(dl->displayLink)) {
                 CVDisplayLinkStart(dl->displayLink);
-                dl->displayLinkStarted = true;
             }
             break;
         }
