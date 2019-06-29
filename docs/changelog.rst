@@ -23,6 +23,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression that caused closing an overlay window to focus
   the previously focused window rather than the underlying window (:iss:`1720`)
 
+- macOS: Reduce energy consumption when idle by shutting down Apple's display
+  link thread after 30 second of inactivity (:iss:`1763`)
+
 0.14.2 [2019-06-09]
 ---------------------
 

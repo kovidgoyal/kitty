@@ -62,6 +62,19 @@ CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
     return (CGDirectDisplayID)-1;
 }
 
+static unsigned long long display_link_shutdown_timer = 0;
+#define DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL 30
+
+void
+_glfwShutdownCVDisplayLink(unsigned long long timer_id, void *user_data) {
+    [_glfw.ns.displayLinks.lock lock];
+    display_link_shutdown_timer = 0;
+    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
+        _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
+        if (dl->displayLink) CVDisplayLinkStop(dl->displayLink);
+    }
+    [_glfw.ns.displayLinks.lock unlock];
+}
 
 static inline void
 requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
@@ -74,6 +87,11 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
     w->ns.renderFrameRequested = true;
     CGDirectDisplayID displayID = displayIDForWindow(w);
     [_glfw.ns.displayLinks.lock lock];
+    if (display_link_shutdown_timer) {
+        _glfwPlatformUpdateTimer(display_link_shutdown_timer, DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL, true);
+    } else {
+        display_link_shutdown_timer = _glfwPlatformAddTimer(DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL, false, _glfwShutdownCVDisplayLink, NULL, NULL);
+    }
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayID == displayID) {
