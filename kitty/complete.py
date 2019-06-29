@@ -12,6 +12,25 @@ from .cli import options_for_completion, parse_option_spec
 from .cmds import cmap
 from .shell import options_for_cmd
 
+'''
+To add completion for a new shell, you need to:
+
+1) Add an entry to completion scripts for your shell, this is
+a simple function that call's kitty's completion code and passes the
+results to the shell's completion system. This can be output by
+`kitty +complete setup shell_name` and its output goes into
+your shell's rc file.
+
+2) Add an input_parser function, this takes the input from
+the shell for the text being completed and returns a list of words
+alongwith a boolean indicating if we are on a new word or not. This
+is passed to kitty's completion system.
+
+3) An output_serializer function that is responsible for
+taking the results from kitty's completion system and converting
+them into something your shell will understand.
+'''
+
 parsers, serializers = {}, {}
 
 
@@ -131,7 +150,6 @@ def bash_output_serializer(ans):
             lines.append('COMPREPLY+=({})'.format(shlex.quote(word)))
     # debug('\n'.join(lines))
     return '\n'.join(lines)
-# }}}
 
 
 @output_serializer
@@ -142,6 +160,7 @@ def fish_output_serializer(ans):
             lines.append(shlex.quote(word))
     # debug('\n'.join(lines))
     return '\n'.join(lines)
+# }}}
 
 
 def completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points):
