@@ -267,7 +267,7 @@ class Layout:  # {{{
         self.swap_windows_in_os_window(nidx, idx)
         return self.set_active_window(all_windows, nidx)
 
-    def add_window(self, all_windows, window, current_active_window_idx):
+    def add_window(self, all_windows, window, current_active_window_idx, location=None):
         active_window_idx = None
         if window.overlay_for is not None:
             i = idx_for_id(window.overlay_for, all_windows)
@@ -278,6 +278,16 @@ class Layout:  # {{{
                 all_windows.append(all_windows[i])
                 all_windows[i] = window
                 active_window_idx = i
+        elif location is not None:
+            if location == 'neighbor' and current_active_window_idx is not None:
+                active_window_idx = current_active_window_idx + 1
+            elif location == 'first':
+                active_window_idx = 0
+            if active_window_idx is not None:
+                for i in range(len(all_windows), active_window_idx, -1):
+                    self.swap_windows_in_os_window(i, i - 1)
+                all_windows.insert(active_window_idx, window)
+
         if active_window_idx is None:
             active_window_idx = len(all_windows)
             all_windows.append(window)

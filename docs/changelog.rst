@@ -9,6 +9,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Remote control: Add a command `kitty @ scroll-window` to scroll windows
 
+- Allow passing a ``!neighbor`` argument to the new_window mapping to open a
+  new window next to the active window (:iss:`1746`)
+
 - Fix an out of bounds read causing a crash when selecting text with the mouse
   in the alternate screen mode (:iss:`1578`)
 

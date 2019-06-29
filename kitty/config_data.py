@@ -1066,6 +1066,13 @@ Any programs running in that window will be allowed to control kitty.
 For example::
 
     map ctrl+enter new_window @ some_program
+
+You can open a new window next to the currently active window or as the first window,
+with::
+
+    map ctrl+n new_window !neighbor some_program
+    map ctrl+f new_window !first some_program
+
 '''))
 if is_macos:
     k('new_window', 'cmd+enter', 'new_window', _('New window'), add_to_docs=False)

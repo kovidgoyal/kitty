@@ -232,7 +232,7 @@ class Tab:  # {{{
         ans.fork()
         return ans
 
-    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None, env=None):
+    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None, env=None, location=None):
         child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env)
         window = Window(self, child, self.opts, self.args, override_title=override_title)
         if overlay_for is not None:
@@ -241,12 +241,12 @@ class Tab:  # {{{
             overlaid.overlay_window_id = window.id
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx)
+        self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx, location)
         self.relayout_borders()
         return window
 
-    def new_special_window(self, special_window):
-        return self.new_window(False, *special_window)
+    def new_special_window(self, special_window, location=None):
+        return self.new_window(False, *special_window, location=location)
 
     def close_window(self):
         if self.windows:

@@ -988,10 +988,14 @@ class Boss:
     def _new_window(self, args, cwd_from=None):
         tab = self.active_tab
         if tab is not None:
+            location = None
+            if args and args[0].startswith('!'):
+                location = args[0][1:].lower()
+                args = args[1:]
             if args:
-                return tab.new_special_window(self.args_to_special_window(args, cwd_from=cwd_from))
+                return tab.new_special_window(self.args_to_special_window(args, cwd_from=cwd_from), location=location)
             else:
-                return tab.new_window(cwd_from=cwd_from)
+                return tab.new_window(cwd_from=cwd_from, location=location)
 
     def new_window(self, *args):
         self._new_window(args)
