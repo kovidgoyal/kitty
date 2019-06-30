@@ -123,11 +123,15 @@ get_height_for_char(Face *self, char ch) {
 static inline unsigned int
 calc_cell_height(Face *self, bool for_metrics) {
     unsigned int ans = font_units_to_pixels_y(self, self->height);
-    unsigned int underscore_height = get_height_for_char(self, '_');
-    if (for_metrics && global_state.debug_font_fallback && underscore_height > ans) {
-        printf("Increasing cell height by %u pixels to work around buggy font that renders underscore outside the bounding box\n", underscore_height - ans);
+    if (for_metrics) {
+        unsigned int underscore_height = get_height_for_char(self, '_');
+        if (underscore_height > ans) {
+            if (global_state.debug_font_fallback) printf(
+                "Increasing cell height by %u pixels to work around buggy font that renders underscore outside the bounding box\n", underscore_height - ans);
+            return underscore_height;
+        }
     }
-    return MAX(ans, underscore_height);
+    return ans;
 }
 
 static inline bool

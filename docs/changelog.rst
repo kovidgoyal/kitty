@@ -29,6 +29,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Reduce energy consumption when idle by shutting down Apple's display
   link thread after 30 second of inactivity (:iss:`1763`)
 
+- Linux: Fix incorrect scaling for fallback fonts when the font has an
+  underscore that renders out of bounds (:iss:`1713`)
+
+
 0.14.2 [2019-06-09]
 ---------------------
 
