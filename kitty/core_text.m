@@ -197,12 +197,8 @@ manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
                 char_type ch = cell->ch ? cell->ch : ' ';
                 bool found = true;
                 if (!glyph_id_for_codepoint_ctfont(new_font, ch)) found = false;
-                if (found && cell->cc_idx[0]) {
-                    ch = codepoint_for_mark(cell->cc_idx[0]);
-                    if (!glyph_id_for_codepoint_ctfont(new_font, ch)) found = false;
-                }
-                if (found && cell->cc_idx[1]) {
-                    ch = codepoint_for_mark(cell->cc_idx[1]);
+                for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i] && found; i++) {
+                    ch = codepoint_for_mark(cell->cc_idx[i]);
                     if (!glyph_id_for_codepoint_ctfont(new_font, ch)) found = false;
                 }
                 if (found) {
