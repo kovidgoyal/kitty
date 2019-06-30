@@ -850,7 +850,7 @@ def clean():
                 else:
                     os.unlink(x)
 
-    safe_remove('build', 'compile_commands.json', 'linux-package', 'kitty.app', 'asan-launcher', 'kitty-profile')
+    safe_remove('build', 'compile_commands.json', 'linux-package', 'kitty.app', 'asan-launcher', 'kitty-profile', 'kitty/launcher')
     exclude = ('.git',)
     for root, dirs, files in os.walk('.', topdown=True):
         dirs[:] = [d for d in dirs if d not in exclude]
