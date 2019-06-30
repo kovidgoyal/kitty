@@ -650,11 +650,6 @@ extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) 
     return ans;
 }
 
-static inline bool
-is_private_use(char_type ch) {
-    return (0xe000 <= ch && ch <= 0xf8ff) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
-}
-
 static inline void
 render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, bool center_glyph) {
     static SpritePosition* sprite_position[16];

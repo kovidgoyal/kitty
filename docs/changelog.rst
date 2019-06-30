@@ -32,6 +32,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Fix incorrect scaling for fallback fonts when the font has an
   underscore that renders out of bounds (:iss:`1713`)
 
+- macOS: Fix finding fallback font for private use unicode symbols not working
+  reliably (:iss:`1650`)
+
 
 0.14.2 [2019-06-09]
 ---------------------

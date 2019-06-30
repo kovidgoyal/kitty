@@ -24,3 +24,8 @@ can_strip_from_end_of_url(uint32_t ch) {
         ch == '>'
     ) ? true : false;
 }
+
+static inline bool
+is_private_use(char_type ch) {
+    return (0xe000 <= ch && ch <= 0xf8ff) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
+}
