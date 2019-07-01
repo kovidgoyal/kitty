@@ -696,7 +696,11 @@ render(double now) {
             continue;
         }
         if (USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
-            if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now)) request_frame_render(w);
+            if (w->render_state == RENDER_FRAME_NOT_REQUESTED) request_frame_render(w);
+            else if (no_render_frame_received_recently(w, now)) {
+                log_error("No render frame received recently, re-requesting...");
+                request_frame_render(w);
+            }
             continue;
         }
         make_os_window_context_current(w);
