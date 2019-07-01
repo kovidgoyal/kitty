@@ -12,9 +12,9 @@
 #include "unicode-data.h"
 
 #define MISSING_GLYPH 4
-#define MAX_NUM_EXTRA_GLYPHS 8
-#define CELLS_IN_CANVAS ((MAX_NUM_EXTRA_GLYPHS + 1) * 3)
-#define MAX_NUM_EXTRA_GLYPHS_PUA 4
+#define MAX_NUM_EXTRA_GLYPHS 8u
+#define CELLS_IN_CANVAS ((MAX_NUM_EXTRA_GLYPHS + 1u) * 3u)
+#define MAX_NUM_EXTRA_GLYPHS_PUA 4u
 
 typedef void (*send_sprite_to_gpu_func)(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
 send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
@@ -196,7 +196,7 @@ sprite_map_set_error(int error) {
 void
 sprite_tracker_set_limits(size_t max_texture_size_, size_t max_array_len_) {
     max_texture_size = max_texture_size_;
-    max_array_len = MIN(0xfff, max_array_len_);
+    max_array_len = MIN(0xfffu, max_array_len_);
 }
 
 static inline void
@@ -207,7 +207,7 @@ do_increment(FontGroup *fg, int *error) {
         fg->sprite_tracker.ynum = MIN(MAX(fg->sprite_tracker.ynum, fg->sprite_tracker.y + 1), fg->sprite_tracker.max_y);
         if (fg->sprite_tracker.y >= fg->sprite_tracker.max_y) {
             fg->sprite_tracker.y = 0; fg->sprite_tracker.z++;
-            if (fg->sprite_tracker.z >= MIN(UINT16_MAX, max_array_len)) *error = 2;
+            if (fg->sprite_tracker.z >= MIN((size_t)UINT16_MAX, max_array_len)) *error = 2;
         }
     }
 }
@@ -329,8 +329,8 @@ clear_special_glyph_cache(Font *font) {
 
 static void
 sprite_tracker_set_layout(GPUSpriteTracker *sprite_tracker, unsigned int cell_width, unsigned int cell_height) {
-    sprite_tracker->xnum = MIN(MAX(1, max_texture_size / cell_width), UINT16_MAX);
-    sprite_tracker->max_y = MIN(MAX(1, max_texture_size / cell_height), UINT16_MAX);
+    sprite_tracker->xnum = MIN(MAX(1u, max_texture_size / cell_width), (size_t)UINT16_MAX);
+    sprite_tracker->max_y = MIN(MAX(1u, max_texture_size / cell_height), (size_t)UINT16_MAX);
     sprite_tracker->ynum = 1;
     sprite_tracker->x = 0; sprite_tracker->y = 0; sprite_tracker->z = 0;
 }
@@ -586,7 +586,7 @@ render_alpha_mask(uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *de
         for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
             pixel val = d[dc];
             uint8_t alpha = s[sc];
-            d[dc] = 0xffffff00 | MIN(0xff, alpha + (val & 0xff));
+            d[dc] = 0xffffff00 | MIN(0xffu, alpha + (val & 0xff));
         }
     }
 }
@@ -716,7 +716,7 @@ num_codepoints_in_cell(CPUCell *cell) {
 static inline void
 shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb_font_t *font, bool disable_ligature) {
     if (group_state.groups_capacity <= 2 * num_cells) {
-        group_state.groups_capacity = MAX(128, 2 * num_cells);  // avoid unnecessary reallocs
+        group_state.groups_capacity = MAX(128u, 2 * num_cells);  // avoid unnecessary reallocs
         group_state.groups = realloc(group_state.groups, sizeof(Group) * group_state.groups_capacity);
         if (!group_state.groups) fatal("Out of memory");
     }
@@ -837,7 +837,7 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
     uint32_t cluster, next_cluster;
     bool add_to_current_group;
 #define G(x) (group_state.x)
-#define MAX_GLYPHS_IN_GROUP (MAX_NUM_EXTRA_GLYPHS + 1)
+#define MAX_GLYPHS_IN_GROUP (MAX_NUM_EXTRA_GLYPHS + 1u)
     while (G(glyph_idx) < G(num_glyphs) && G(cell_idx) < G(num_cells)) {
         glyph_index glyph_id = G(info)[G(glyph_idx)].codepoint;
         cluster = G(info)[G(glyph_idx)].cluster;
@@ -1072,7 +1072,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         if (is_private_use(cpu_cell->ch)
                 && cell_font_idx != BOX_FONT
                 && cell_font_idx != MISSING_FONT) {
-            int desired_cells = 1;
+            unsigned int desired_cells = 1;
             if (cell_font_idx > 0) {
                 Font *font = (fg->fonts + cell_font_idx);
                 glyph_index glyph_id = glyph_id_for_codepoint(font->face, cpu_cell->ch);
@@ -1081,7 +1081,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 desired_cells = ceilf((float)width / fg->cell_width);
             }
 
-            int num_spaces = 0;
+            unsigned int num_spaces = 0;
             while ((line->cpu_cells[i+num_spaces+1].ch == ' ')
                     && num_spaces < MAX_NUM_EXTRA_GLYPHS_PUA
                     && num_spaces < desired_cells

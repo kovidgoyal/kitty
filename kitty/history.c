@@ -77,7 +77,7 @@ free_pagerhist(HistoryBuf *self) {
 static inline bool
 pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
     if (ph->bufsize >= ph->maxsz) return false;
-    size_t newsz = ph->bufsize + MAX(1024 * 1024, minsz);
+    size_t newsz = ph->bufsize + MAX(1024u * 1024u, minsz);
     void *newbuf = PyMem_Realloc(ph->buffer, newsz * sizeof(Py_UCS4));
     if (!newbuf) return false;
     ph->buffer = newbuf;
@@ -186,7 +186,7 @@ pagerhist_push(HistoryBuf *self) {
             ph->bufend = ph->end; ph->end = 0; \
         } \
 }
-    size_t sz = MAX(1024, ph->bufsize - ph->end);
+    size_t sz = MAX(1024u, ph->bufsize - ph->end);
     sz = MAX(sz, self->xnum + self->xnum);
     EXPAND_IF_FULL(sz);
     if (ph->start != ph->end && !l.continued) {

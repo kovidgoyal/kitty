@@ -267,7 +267,7 @@ find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
 static Image*
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty, uint32_t iid) {
 #define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; if (img) img->data_loaded = false; return NULL; }
-#define MAX_DATA_SZ (4 * 100000000)
+#define MAX_DATA_SZ (4u * 100000000u)
     has_add_respose = false;
     bool existing, init_img = true;
     Image *img = NULL;

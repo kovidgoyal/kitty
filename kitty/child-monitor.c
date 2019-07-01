@@ -1361,7 +1361,7 @@ read_from_peer(ChildMonitor *self, int s) {
         if (rd->fd == s) {
             if (rd->used >= rd->capacity) {
                 if (rd->capacity >= 1024 * 1024) failed("Ignoring too large message from peer");
-                rd->capacity = MAX(8192, rd->capacity * 2);
+                rd->capacity = MAX(8192u, rd->capacity * 2);
                 rd->data = realloc(rd->data, rd->capacity);
                 if (!rd->data) failed("Out of memory");
             }

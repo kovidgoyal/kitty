@@ -34,7 +34,7 @@ void
 set_special_key_combo(int glfw_key, int mods, bool is_native) {
     if (is_native) {
         if (native_special_keys_count >= native_special_keys_capacity) {
-            native_special_keys_capacity = MAX(128, 2 * native_special_keys_capacity);
+            native_special_keys_capacity = MAX(128u, 2 * native_special_keys_capacity);
             native_special_keys = realloc(native_special_keys, sizeof(native_special_keys[0]) * native_special_keys_capacity);
             if (native_special_keys == NULL) fatal("Out of memory");
         }

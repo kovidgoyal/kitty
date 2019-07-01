@@ -306,7 +306,7 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define SET_COLOR(name) REPORT_OSC2(name, code, string); name(screen, code, string);
     const unsigned int limit = screen->parser_buf_pos;
     unsigned int code=0, i;
-    for (i = 0; i < MIN(limit, 5); i++) {
+    for (i = 0; i < MIN(limit, 5u); i++) {
         if (screen->parser_buf[i] < '0' || screen->parser_buf[i] > '9') break;
     }
     if (i > 0) {
@@ -380,7 +380,7 @@ screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, fa
 static inline void
 screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
 static inline void
-screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1, count); i++) screen_tab(s); }
+screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1u, count); i++) screen_tab(s); }
 
 static inline const char*
 repr_csi_params(unsigned int *params, unsigned int num_params) {

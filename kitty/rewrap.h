@@ -64,7 +64,7 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
             while(src_x_limit && (src->line->cpu_cells[src_x_limit - 1].ch) == BLANK_CHAR) src_x_limit--;
 
         }
-        if (is_tracked_line && *track_x >= src_x_limit) *track_x = MAX(1, src_x_limit) - 1;
+        if (is_tracked_line && *track_x >= src_x_limit) *track_x = MAX(1u, src_x_limit) - 1;
         while (src_x < src_x_limit) {
             if (dest_x >= dest->xnum) { next_dest_line(true); dest_x = 0; }
             num = MIN(src->line->xnum - src_x, dest->xnum - dest_x);

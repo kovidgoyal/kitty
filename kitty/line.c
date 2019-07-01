@@ -58,7 +58,7 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
     index_type pos = x;
     enum URL_PARSER_STATES {ANY, FIRST_SLASH, SECOND_SLASH};
     enum URL_PARSER_STATES state = ANY;
-    limit = MAX(2, limit);
+    limit = MAX(2u, limit);
     if (pos < limit) return 0;
     do {
         char_type ch = self->cpu_cells[pos].ch;

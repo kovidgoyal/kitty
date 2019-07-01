@@ -185,7 +185,7 @@ realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *n
 static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
-    lines = MAX(1, lines); columns = MAX(1, columns);
+    lines = MAX(1u, lines); columns = MAX(1u, columns);
 
     bool is_main = self->linebuf == self->main_linebuf;
     index_type num_content_lines_before, num_content_lines_after, num_content_lines;
@@ -325,7 +325,7 @@ move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type
         linebuf_init_line(self->linebuf, self->cursor->y);
         dest_cpu = self->linebuf->line->cpu_cells;
         dest_gpu = self->linebuf->line->gpu_cells;
-        self->cursor->x = MIN(2, self->columns);
+        self->cursor->x = MIN(2u, self->columns);
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     } else {
         dest_cpu = cpu_cell - 1;
@@ -818,7 +818,7 @@ screen_cursor_down1(Screen *self, unsigned int count/*=1*/) {
 
 void
 screen_cursor_to_column(Screen *self, unsigned int column) {
-    unsigned int x = MAX(column, 1) - 1;
+    unsigned int x = MAX(column, 1u) - 1;
     if (x != self->cursor->x) {
         self->cursor->x = x;
         screen_ensure_bounds(self, false, cursor_within_margins(self));

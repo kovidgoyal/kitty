@@ -27,7 +27,7 @@ static inline bool
 ensure_space(GlobalData *global, size_t sz) {
     if (global->output_sz < sz + global->output_pos || !global->output) {
         size_t before = global->output_sz;
-        global->output_sz += MAX(sz, (64 * 1024));
+        global->output_sz += MAX(sz, (64u * 1024u));
         global->output = realloc(global->output, sizeof(text_t) * global->output_sz);
         if (!global->output) {
             global->output_sz = before;

@@ -90,7 +90,7 @@ START_ALLOW_CASE_RANGE
             case 3:
                 self->italic = true;  break;
             case 4:
-                if (i < count) { self->decoration = MIN(3, params[i]); i++; }
+                if (i < count) { self->decoration = MIN(3u, params[i]); i++; }
                 else self->decoration = 1;
                 break;
             case 7:
@@ -161,7 +161,7 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, unsigned int *p
             case 3:
                 SET(ITALIC_SHIFT);
             case 4:
-                if (i < count) { uint8_t val = MIN(3, params[i]); i++; SETM(val, DECORATION_MASK, DECORATION_SHIFT); }
+                if (i < count) { uint8_t val = MIN(3u, params[i]); i++; SETM(val, DECORATION_MASK, DECORATION_SHIFT); }
                 else { SETM(1, DECORATION_MASK, DECORATION_SHIFT); }
             case 7:
                 SET(REVERSE_SHIFT);
