@@ -678,7 +678,7 @@ draw_resizing_text(OSWindow *w) {
 static inline bool
 no_render_frame_received_recently(OSWindow *w, double now, double max_wait) {
     bool ans = now - w->last_render_frame_received_at > max_wait;
-    if (ans) log_error("No render frame received in %f seconds, re-requesting at: %f", max_wait, monotonic());
+    if (ans) log_error("No render frame received in %f seconds, re-requesting at: %f", max_wait, now);
     return ans;
 }
 
