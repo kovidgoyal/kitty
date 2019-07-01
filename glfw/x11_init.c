@@ -46,10 +46,9 @@ static Atom getSupportedAtom(Atom* supportedAtoms,
                              unsigned long atomCount,
                              const char* atomName)
 {
-    unsigned long i;
     const Atom atom = XInternAtom(_glfw.x11.display, atomName, False);
 
-    for (i = 0;  i < atomCount;  i++)
+    for (unsigned long i = 0;  i < atomCount;  i++)
     {
         if (supportedAtoms[i] == atom)
             return atom;

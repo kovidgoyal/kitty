@@ -992,10 +992,9 @@ is_ascii_control_char(char x) {
 
 - (void)scrollWheel:(NSEvent *)event
 {
-    double deltaX, deltaY;
+    double deltaX = [event scrollingDeltaX];
+    double deltaY = [event scrollingDeltaY];
 
-    deltaX = [event scrollingDeltaX];
-    deltaY = [event scrollingDeltaY];
     int flags = [event hasPreciseScrollingDeltas] ? 1 : 0;
     if (flags) {
         float xscale = 1, yscale = 1;
