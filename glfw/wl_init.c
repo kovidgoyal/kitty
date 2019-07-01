@@ -38,6 +38,12 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <wayland-client.h>
+// Needed for the BTN_* defines
+#if __has_include(<linux/input.h>)
+#include <linux/input.h>
+#elif __has_include(<dev/evdev/input.h>)
+#include <dev/evdev/input.h>
+#endif
 
 
 static inline int min(int n1, int n2)
