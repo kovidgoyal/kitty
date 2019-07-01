@@ -247,7 +247,7 @@ typedef void (APIENTRY * PFN_vkVoidFunction)(void);
 #endif
 
 // dlsym that works with -Wpedantic
-#define glfw_dlsym(dest, handle, name) do {*(void **)&(handle) = _glfw_dlsym(handle, name);}while (0)
+#define glfw_dlsym(dest, handle, name) do {*(void **)&(dest) = _glfw_dlsym(handle, name);}while (0)
 
 // Mark function arguments as unused
 #define UNUSED __attribute__ ((unused))
