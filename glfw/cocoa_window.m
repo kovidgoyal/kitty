@@ -1723,7 +1723,7 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
     // HACK: Changing the style mask can cause the first responder to be cleared
     [window->ns.object makeFirstResponder:window->ns.view];
 
-    if (monitor)
+    if (window->monitor)
     {
         [window->ns.object setLevel:NSMainMenuWindowLevel + 1];
         [window->ns.object setHasShadow:NO];
