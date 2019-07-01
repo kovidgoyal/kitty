@@ -467,8 +467,9 @@ def compile_c_extension(kenv, module, incremental, compilation_database, sources
             todo[original_src] = cmd
     if todo:
         parallel_run(todo)
-    dest = os.path.join(base, module + '.temp.so')
-    real_dest = dest[:-len('.temp.so')] + '.so'
+    dest = os.path.join(build_dir, module + '.so')
+    real_dest = os.path.join(base, module + '.so')
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
     if not incremental or newer(real_dest, *objects):
         # Old versions of clang don't like -pthread being passed to the linker
         # Don't treat linker warnings as errors (linker generates spurious
