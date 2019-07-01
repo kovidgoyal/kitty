@@ -309,10 +309,10 @@ void _glfwPollMonitorsNS(void)
     for (uint32_t i = 0;  i < _glfw.monitorCount;  i++)
         _glfw.monitors[i]->ns.screen = nil;
 
+    _GLFWmonitor** disconnected = NULL;
     uint32_t disconnectedCount = _glfw.monitorCount;
     if (disconnectedCount)
     {
-        _GLFWmonitor** disconnected = NULL;
         disconnected = calloc(_glfw.monitorCount, sizeof(_GLFWmonitor*));
         memcpy(disconnected,
                _glfw.monitors,
