@@ -23,7 +23,6 @@ def wayland_protocol_file_name(base, ext='c'):
 
 def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
     ans = env.copy()
-    ans.cflags = list(ans.cflags)
     if not is_macos:
         ans.cflags.append('-pthread')
         ans.ldpaths.append('-pthread')
