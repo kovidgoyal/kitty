@@ -676,8 +676,10 @@ draw_resizing_text(OSWindow *w) {
 }
 
 static inline bool
-no_render_frame_received_recently(OSWindow *w, double now) {
-    return now - w->last_render_frame_received_at > 0.25;
+no_render_frame_received_recently(OSWindow *w, double now, double max_wait) {
+    bool ans = now - w->last_render_frame_received_at > max_wait;
+    if (ans) log_error("No render frame received in %f seconds, re-requesting at: %f", max_wait, monotonic());
+    return ans;
 }
 
 static inline void
@@ -696,7 +698,7 @@ render(double now) {
             continue;
         }
         if (USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
-            if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now)) request_frame_render(w);
+            if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, 0.25)) request_frame_render(w);
             continue;
         }
         make_os_window_context_current(w);
