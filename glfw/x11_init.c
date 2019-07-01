@@ -155,14 +155,10 @@ static bool initExtensions(void)
     _glfw.x11.vidmode.handle = _glfw_dlopen("libXxf86vm.so.1");
     if (_glfw.x11.vidmode.handle)
     {
-        _glfw.x11.vidmode.QueryExtension = (PFN_XF86VidModeQueryExtension)
-            _glfw_dlsym(_glfw.x11.vidmode.handle, "XF86VidModeQueryExtension");
-        _glfw.x11.vidmode.GetGammaRamp = (PFN_XF86VidModeGetGammaRamp)
-            _glfw_dlsym(_glfw.x11.vidmode.handle, "XF86VidModeGetGammaRamp");
-        _glfw.x11.vidmode.SetGammaRamp = (PFN_XF86VidModeSetGammaRamp)
-            _glfw_dlsym(_glfw.x11.vidmode.handle, "XF86VidModeSetGammaRamp");
-        _glfw.x11.vidmode.GetGammaRampSize = (PFN_XF86VidModeGetGammaRampSize)
-            _glfw_dlsym(_glfw.x11.vidmode.handle, "XF86VidModeGetGammaRampSize");
+        glfw_dlsym(_glfw.x11.vidmode.QueryExtension, _glfw.x11.vidmode.handle, "XF86VidModeQueryExtension");
+        glfw_dlsym(_glfw.x11.vidmode.GetGammaRamp, _glfw.x11.vidmode.handle, "XF86VidModeGetGammaRamp");
+        glfw_dlsym(_glfw.x11.vidmode.SetGammaRamp, _glfw.x11.vidmode.handle, "XF86VidModeSetGammaRamp");
+        glfw_dlsym(_glfw.x11.vidmode.GetGammaRampSize, _glfw.x11.vidmode.handle, "XF86VidModeGetGammaRampSize");
 
         _glfw.x11.vidmode.available =
             XF86VidModeQueryExtension(_glfw.x11.display,
@@ -177,10 +173,8 @@ static bool initExtensions(void)
 #endif
     if (_glfw.x11.xi.handle)
     {
-        _glfw.x11.xi.QueryVersion = (PFN_XIQueryVersion)
-            _glfw_dlsym(_glfw.x11.xi.handle, "XIQueryVersion");
-        _glfw.x11.xi.SelectEvents = (PFN_XISelectEvents)
-            _glfw_dlsym(_glfw.x11.xi.handle, "XISelectEvents");
+        glfw_dlsym(_glfw.x11.xi.QueryVersion, _glfw.x11.xi.handle, "XIQueryVersion");
+        glfw_dlsym(_glfw.x11.xi.SelectEvents, _glfw.x11.xi.handle, "XISelectEvents");
 
         if (XQueryExtension(_glfw.x11.display,
                             "XInputExtension",
@@ -207,42 +201,24 @@ static bool initExtensions(void)
 #endif
     if (_glfw.x11.randr.handle)
     {
-        _glfw.x11.randr.AllocGamma = (PFN_XRRAllocGamma)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRAllocGamma");
-        _glfw.x11.randr.FreeGamma = (PFN_XRRFreeGamma)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRFreeGamma");
-        _glfw.x11.randr.FreeCrtcInfo = (PFN_XRRFreeCrtcInfo)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRFreeCrtcInfo");
-        _glfw.x11.randr.FreeGamma = (PFN_XRRFreeGamma)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRFreeGamma");
-        _glfw.x11.randr.FreeOutputInfo = (PFN_XRRFreeOutputInfo)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRFreeOutputInfo");
-        _glfw.x11.randr.FreeScreenResources = (PFN_XRRFreeScreenResources)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRFreeScreenResources");
-        _glfw.x11.randr.GetCrtcGamma = (PFN_XRRGetCrtcGamma)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRGetCrtcGamma");
-        _glfw.x11.randr.GetCrtcGammaSize = (PFN_XRRGetCrtcGammaSize)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRGetCrtcGammaSize");
-        _glfw.x11.randr.GetCrtcInfo = (PFN_XRRGetCrtcInfo)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRGetCrtcInfo");
-        _glfw.x11.randr.GetOutputInfo = (PFN_XRRGetOutputInfo)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRGetOutputInfo");
-        _glfw.x11.randr.GetOutputPrimary = (PFN_XRRGetOutputPrimary)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRGetOutputPrimary");
-        _glfw.x11.randr.GetScreenResourcesCurrent = (PFN_XRRGetScreenResourcesCurrent)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRGetScreenResourcesCurrent");
-        _glfw.x11.randr.QueryExtension = (PFN_XRRQueryExtension)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRQueryExtension");
-        _glfw.x11.randr.QueryVersion = (PFN_XRRQueryVersion)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRQueryVersion");
-        _glfw.x11.randr.SelectInput = (PFN_XRRSelectInput)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRSelectInput");
-        _glfw.x11.randr.SetCrtcConfig = (PFN_XRRSetCrtcConfig)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRSetCrtcConfig");
-        _glfw.x11.randr.SetCrtcGamma = (PFN_XRRSetCrtcGamma)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRSetCrtcGamma");
-        _glfw.x11.randr.UpdateConfiguration = (PFN_XRRUpdateConfiguration)
-            _glfw_dlsym(_glfw.x11.randr.handle, "XRRUpdateConfiguration");
+        glfw_dlsym(_glfw.x11.randr.AllocGamma, _glfw.x11.randr.handle, "XRRAllocGamma");
+        glfw_dlsym(_glfw.x11.randr.FreeGamma, _glfw.x11.randr.handle, "XRRFreeGamma");
+        glfw_dlsym(_glfw.x11.randr.FreeCrtcInfo, _glfw.x11.randr.handle, "XRRFreeCrtcInfo");
+        glfw_dlsym(_glfw.x11.randr.FreeGamma, _glfw.x11.randr.handle, "XRRFreeGamma");
+        glfw_dlsym(_glfw.x11.randr.FreeOutputInfo, _glfw.x11.randr.handle, "XRRFreeOutputInfo");
+        glfw_dlsym(_glfw.x11.randr.FreeScreenResources, _glfw.x11.randr.handle, "XRRFreeScreenResources");
+        glfw_dlsym(_glfw.x11.randr.GetCrtcGamma, _glfw.x11.randr.handle, "XRRGetCrtcGamma");
+        glfw_dlsym(_glfw.x11.randr.GetCrtcGammaSize, _glfw.x11.randr.handle, "XRRGetCrtcGammaSize");
+        glfw_dlsym(_glfw.x11.randr.GetCrtcInfo, _glfw.x11.randr.handle, "XRRGetCrtcInfo");
+        glfw_dlsym(_glfw.x11.randr.GetOutputInfo, _glfw.x11.randr.handle, "XRRGetOutputInfo");
+        glfw_dlsym(_glfw.x11.randr.GetOutputPrimary, _glfw.x11.randr.handle, "XRRGetOutputPrimary");
+        glfw_dlsym(_glfw.x11.randr.GetScreenResourcesCurrent, _glfw.x11.randr.handle, "XRRGetScreenResourcesCurrent");
+        glfw_dlsym(_glfw.x11.randr.QueryExtension, _glfw.x11.randr.handle, "XRRQueryExtension");
+        glfw_dlsym(_glfw.x11.randr.QueryVersion, _glfw.x11.randr.handle, "XRRQueryVersion");
+        glfw_dlsym(_glfw.x11.randr.SelectInput, _glfw.x11.randr.handle, "XRRSelectInput");
+        glfw_dlsym(_glfw.x11.randr.SetCrtcConfig, _glfw.x11.randr.handle, "XRRSetCrtcConfig");
+        glfw_dlsym(_glfw.x11.randr.SetCrtcGamma, _glfw.x11.randr.handle, "XRRSetCrtcGamma");
+        glfw_dlsym(_glfw.x11.randr.UpdateConfiguration, _glfw.x11.randr.handle, "XRRUpdateConfiguration");
 
         if (XRRQueryExtension(_glfw.x11.display,
                               &_glfw.x11.randr.eventBase,
@@ -299,12 +275,9 @@ static bool initExtensions(void)
 #endif
     if (_glfw.x11.xcursor.handle)
     {
-        _glfw.x11.xcursor.ImageCreate = (PFN_XcursorImageCreate)
-            _glfw_dlsym(_glfw.x11.xcursor.handle, "XcursorImageCreate");
-        _glfw.x11.xcursor.ImageDestroy = (PFN_XcursorImageDestroy)
-            _glfw_dlsym(_glfw.x11.xcursor.handle, "XcursorImageDestroy");
-        _glfw.x11.xcursor.ImageLoadCursor = (PFN_XcursorImageLoadCursor)
-            _glfw_dlsym(_glfw.x11.xcursor.handle, "XcursorImageLoadCursor");
+        glfw_dlsym(_glfw.x11.xcursor.ImageCreate, _glfw.x11.xcursor.handle, "XcursorImageCreate");
+        glfw_dlsym(_glfw.x11.xcursor.ImageDestroy, _glfw.x11.xcursor.handle, "XcursorImageDestroy");
+        glfw_dlsym(_glfw.x11.xcursor.ImageLoadCursor, _glfw.x11.xcursor.handle, "XcursorImageLoadCursor");
     }
 
 #if defined(__CYGWIN__)
@@ -314,12 +287,9 @@ static bool initExtensions(void)
 #endif
     if (_glfw.x11.xinerama.handle)
     {
-        _glfw.x11.xinerama.IsActive = (PFN_XineramaIsActive)
-            _glfw_dlsym(_glfw.x11.xinerama.handle, "XineramaIsActive");
-        _glfw.x11.xinerama.QueryExtension = (PFN_XineramaQueryExtension)
-            _glfw_dlsym(_glfw.x11.xinerama.handle, "XineramaQueryExtension");
-        _glfw.x11.xinerama.QueryScreens = (PFN_XineramaQueryScreens)
-            _glfw_dlsym(_glfw.x11.xinerama.handle, "XineramaQueryScreens");
+        glfw_dlsym(_glfw.x11.xinerama.IsActive, _glfw.x11.xinerama.handle, "XineramaIsActive");
+        glfw_dlsym(_glfw.x11.xinerama.QueryExtension, _glfw.x11.xinerama.handle, "XineramaQueryExtension");
+        glfw_dlsym(_glfw.x11.xinerama.QueryScreens, _glfw.x11.xinerama.handle, "XineramaQueryScreens");
 
         if (XineramaQueryExtension(_glfw.x11.display,
                                    &_glfw.x11.xinerama.major,
@@ -337,12 +307,9 @@ static bool initExtensions(void)
 #endif
     if (_glfw.x11.xrender.handle)
     {
-        _glfw.x11.xrender.QueryExtension = (PFN_XRenderQueryExtension)
-            _glfw_dlsym(_glfw.x11.xrender.handle, "XRenderQueryExtension");
-        _glfw.x11.xrender.QueryVersion = (PFN_XRenderQueryVersion)
-            _glfw_dlsym(_glfw.x11.xrender.handle, "XRenderQueryVersion");
-        _glfw.x11.xrender.FindVisualFormat = (PFN_XRenderFindVisualFormat)
-            _glfw_dlsym(_glfw.x11.xrender.handle, "XRenderFindVisualFormat");
+        glfw_dlsym(_glfw.x11.xrender.QueryExtension, _glfw.x11.xrender.handle, "XRenderQueryExtension");
+        glfw_dlsym(_glfw.x11.xrender.QueryVersion, _glfw.x11.xrender.handle, "XRenderQueryVersion");
+        glfw_dlsym(_glfw.x11.xrender.FindVisualFormat, _glfw.x11.xrender.handle, "XRenderFindVisualFormat");
 
         if (XRenderQueryExtension(_glfw.x11.display,
                                   &_glfw.x11.xrender.errorBase,
@@ -536,7 +503,7 @@ static Window createHelperWindow(void)
 
 // X error handler
 //
-static int errorHandler(Display *display, XErrorEvent* event)
+static int errorHandler(Display *display UNUSED, XErrorEvent* event)
 {
     _glfw.x11.errorCode = event->error_code;
     return 0;

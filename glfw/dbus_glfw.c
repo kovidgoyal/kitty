@@ -53,7 +53,7 @@ glfw_dbus_init(_GLFWDBUSData *dbus, EventLoopData *eld) {
 }
 
 static void
-on_dbus_watch_ready(int fd, int events, void *data) {
+on_dbus_watch_ready(int fd UNUSED, int events, void *data) {
     DBusWatch *watch = (DBusWatch*)data;
     unsigned int flags = 0;
     if (events & POLLERR) flags |= DBUS_WATCH_ERROR;
@@ -84,19 +84,19 @@ add_dbus_watch(DBusWatch *watch, void *data) {
 }
 
 static void
-remove_dbus_watch(DBusWatch *watch, void *data) {
+remove_dbus_watch(DBusWatch *watch, void *data UNUSED) {
     id_type *idp = dbus_watch_get_data(watch);
     if (idp) removeWatch(dbus_data->eld, *idp);
 }
 
 static void
-toggle_dbus_watch(DBusWatch *watch, void *data) {
+toggle_dbus_watch(DBusWatch *watch, void *data UNUSED) {
     id_type *idp = dbus_watch_get_data(watch);
     if (idp) toggleWatch(dbus_data->eld, *idp, dbus_watch_get_enabled(watch));
 }
 
 static void
-on_dbus_timer_ready(id_type timer_id, void *data) {
+on_dbus_timer_ready(id_type timer_id UNUSED, void *data) {
     if (data) {
         DBusTimeout *t = (DBusTimeout*)data;
         dbus_timeout_handle(t);
@@ -123,13 +123,13 @@ add_dbus_timeout(DBusTimeout *timeout, void *data) {
 }
 
 static void
-remove_dbus_timeout(DBusTimeout *timeout, void *data) {
+remove_dbus_timeout(DBusTimeout *timeout, void *data UNUSED) {
     id_type *idp = dbus_timeout_get_data(timeout);
     if (idp) removeTimer(dbus_data->eld, *idp);
 }
 
 static void
-toggle_dbus_timeout(DBusTimeout *timeout, void *data) {
+toggle_dbus_timeout(DBusTimeout *timeout, void *data UNUSED) {
     id_type *idp = dbus_timeout_get_data(timeout);
     if (idp) toggleTimer(dbus_data->eld, *idp, dbus_timeout_get_enabled(timeout));
 }
@@ -178,7 +178,7 @@ glfw_dbus_session_bus_dispatch() {
 }
 
 void
-glfw_dbus_terminate(_GLFWDBUSData *dbus) {
+glfw_dbus_terminate(_GLFWDBUSData *dbus UNUSED) {
     if (dbus_data) {
         dbus_data->eld = NULL;
         dbus_data = NULL;

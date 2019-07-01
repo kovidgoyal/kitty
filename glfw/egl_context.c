@@ -253,8 +253,8 @@ static GLFWglproc getProcAddressEGL(const char* procname)
 
     if (window->context.egl.client)
     {
-        GLFWglproc proc = (GLFWglproc) _glfw_dlsym(window->context.egl.client,
-                                                   procname);
+        GLFWglproc proc = NULL;
+        glfw_dlsym(proc, window->context.egl.client, procname);
         if (proc)
             return proc;
     }
@@ -335,38 +335,22 @@ bool _glfwInitEGL(void)
 
     _glfw.egl.prefix = (strncmp(sonames[i], "lib", 3) == 0);
 
-    _glfw.egl.GetConfigAttrib = (PFN_eglGetConfigAttrib)
-        _glfw_dlsym(_glfw.egl.handle, "eglGetConfigAttrib");
-    _glfw.egl.GetConfigs = (PFN_eglGetConfigs)
-        _glfw_dlsym(_glfw.egl.handle, "eglGetConfigs");
-    _glfw.egl.GetDisplay = (PFN_eglGetDisplay)
-        _glfw_dlsym(_glfw.egl.handle, "eglGetDisplay");
-    _glfw.egl.GetError = (PFN_eglGetError)
-        _glfw_dlsym(_glfw.egl.handle, "eglGetError");
-    _glfw.egl.Initialize = (PFN_eglInitialize)
-        _glfw_dlsym(_glfw.egl.handle, "eglInitialize");
-    _glfw.egl.Terminate = (PFN_eglTerminate)
-        _glfw_dlsym(_glfw.egl.handle, "eglTerminate");
-    _glfw.egl.BindAPI = (PFN_eglBindAPI)
-        _glfw_dlsym(_glfw.egl.handle, "eglBindAPI");
-    _glfw.egl.CreateContext = (PFN_eglCreateContext)
-        _glfw_dlsym(_glfw.egl.handle, "eglCreateContext");
-    _glfw.egl.DestroySurface = (PFN_eglDestroySurface)
-        _glfw_dlsym(_glfw.egl.handle, "eglDestroySurface");
-    _glfw.egl.DestroyContext = (PFN_eglDestroyContext)
-        _glfw_dlsym(_glfw.egl.handle, "eglDestroyContext");
-    _glfw.egl.CreateWindowSurface = (PFN_eglCreateWindowSurface)
-        _glfw_dlsym(_glfw.egl.handle, "eglCreateWindowSurface");
-    _glfw.egl.MakeCurrent = (PFN_eglMakeCurrent)
-        _glfw_dlsym(_glfw.egl.handle, "eglMakeCurrent");
-    _glfw.egl.SwapBuffers = (PFN_eglSwapBuffers)
-        _glfw_dlsym(_glfw.egl.handle, "eglSwapBuffers");
-    _glfw.egl.SwapInterval = (PFN_eglSwapInterval)
-        _glfw_dlsym(_glfw.egl.handle, "eglSwapInterval");
-    _glfw.egl.QueryString = (PFN_eglQueryString)
-        _glfw_dlsym(_glfw.egl.handle, "eglQueryString");
-    _glfw.egl.GetProcAddress = (PFN_eglGetProcAddress)
-        _glfw_dlsym(_glfw.egl.handle, "eglGetProcAddress");
+    glfw_dlsym(_glfw.egl.GetConfigAttrib, _glfw.egl.handle, "eglGetConfigAttrib");
+    glfw_dlsym(_glfw.egl.GetConfigs, _glfw.egl.handle, "eglGetConfigs");
+    glfw_dlsym(_glfw.egl.GetDisplay, _glfw.egl.handle, "eglGetDisplay");
+    glfw_dlsym(_glfw.egl.GetError, _glfw.egl.handle, "eglGetError");
+    glfw_dlsym(_glfw.egl.Initialize, _glfw.egl.handle, "eglInitialize");
+    glfw_dlsym(_glfw.egl.Terminate, _glfw.egl.handle, "eglTerminate");
+    glfw_dlsym(_glfw.egl.BindAPI, _glfw.egl.handle, "eglBindAPI");
+    glfw_dlsym(_glfw.egl.CreateContext, _glfw.egl.handle, "eglCreateContext");
+    glfw_dlsym(_glfw.egl.DestroySurface, _glfw.egl.handle, "eglDestroySurface");
+    glfw_dlsym(_glfw.egl.DestroyContext, _glfw.egl.handle, "eglDestroyContext");
+    glfw_dlsym(_glfw.egl.CreateWindowSurface, _glfw.egl.handle, "eglCreateWindowSurface");
+    glfw_dlsym(_glfw.egl.MakeCurrent, _glfw.egl.handle, "eglMakeCurrent");
+    glfw_dlsym(_glfw.egl.SwapBuffers, _glfw.egl.handle, "eglSwapBuffers");
+    glfw_dlsym(_glfw.egl.SwapInterval, _glfw.egl.handle, "eglSwapInterval");
+    glfw_dlsym(_glfw.egl.QueryString, _glfw.egl.handle, "eglQueryString");
+    glfw_dlsym(_glfw.egl.GetProcAddress, _glfw.egl.handle, "eglGetProcAddress");
 
     if (!_glfw.egl.GetConfigAttrib ||
         !_glfw.egl.GetConfigs ||
@@ -714,7 +698,7 @@ bool _glfwCreateContextEGL(_GLFWwindow* window,
 // Returns the Visual and depth of the chosen EGLConfig
 //
 #if defined(_GLFW_X11)
-bool _glfwChooseVisualEGL(const _GLFWwndconfig* wndconfig,
+bool _glfwChooseVisualEGL(const _GLFWwndconfig* wndconfig UNUSED,
                               const _GLFWctxconfig* ctxconfig,
                               const _GLFWfbconfig* fbconfig,
                               Visual** visual, int* depth)

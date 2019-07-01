@@ -29,7 +29,7 @@
 #include <regex.h>
 
 #define _GLFW_PLATFORM_JOYSTICK_STATE         _GLFWjoystickLinux linjs
-#define _GLFW_PLATFORM_LIBRARY_JOYSTICK_STATE _GLFWlibraryLinux  linjs
+#define _GLFW_PLATFORM_LIBRARY_JOYSTICK_STATE _GLFWlibraryLinux  linjs;
 
 #define _GLFW_PLATFORM_MAPPING_NAME "Linux"
 
@@ -59,4 +59,3 @@ typedef struct _GLFWlibraryLinux
 bool _glfwInitJoysticksLinux(void);
 void _glfwTerminateJoysticksLinux(void);
 void _glfwDetectJoystickConnectionLinux(void);
-

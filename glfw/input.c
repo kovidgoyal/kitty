@@ -1371,7 +1371,7 @@ GLFWAPI int glfwGetGamepadState(int jid, GLFWgamepadstate* state)
     return true;
 }
 
-GLFWAPI void glfwSetClipboardString(GLFWwindow* handle, const char* string)
+GLFWAPI void glfwSetClipboardString(GLFWwindow* handle UNUSED, const char* string)
 {
     assert(string != NULL);
 
@@ -1379,14 +1379,14 @@ GLFWAPI void glfwSetClipboardString(GLFWwindow* handle, const char* string)
     _glfwPlatformSetClipboardString(string);
 }
 
-GLFWAPI const char* glfwGetClipboardString(GLFWwindow* handle)
+GLFWAPI const char* glfwGetClipboardString(GLFWwindow* handle UNUSED)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return _glfwPlatformGetClipboardString();
 }
 
 #if defined(_GLFW_X11) || defined(_GLFW_WAYLAND)
-GLFWAPI void glfwSetPrimarySelectionString(GLFWwindow* handle, const char* string)
+GLFWAPI void glfwSetPrimarySelectionString(GLFWwindow* handle UNUSED, const char* string)
 {
     assert(string != NULL);
 
@@ -1394,7 +1394,7 @@ GLFWAPI void glfwSetPrimarySelectionString(GLFWwindow* handle, const char* strin
     _glfwPlatformSetPrimarySelectionString(string);
 }
 
-GLFWAPI const char* glfwGetPrimarySelectionString(GLFWwindow* handle)
+GLFWAPI const char* glfwGetPrimarySelectionString(GLFWwindow* handle UNUSED)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return _glfwPlatformGetPrimarySelectionString();

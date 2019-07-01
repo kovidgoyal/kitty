@@ -142,7 +142,7 @@ static bool chooseGLXFBConfig(const _GLFWfbconfig* desired,
 
 // Create the OpenGL context using legacy API
 //
-static GLXContext createLegacyContextGLX(_GLFWwindow* window,
+static GLXContext createLegacyContextGLX(_GLFWwindow* window UNUSED,
                                          GLXFBConfig fbconfig,
                                          GLXContext share)
 {
@@ -222,8 +222,11 @@ static GLFWglproc getProcAddressGLX(const char* procname)
         return _glfw.glx.GetProcAddress((const GLubyte*) procname);
     else if (_glfw.glx.GetProcAddressARB)
         return _glfw.glx.GetProcAddressARB((const GLubyte*) procname);
-    else
-        return _glfw_dlsym(_glfw.glx.handle, procname);
+    else {
+        GLFWglproc ans = NULL;
+        glfw_dlsym(ans, _glfw.glx.handle, procname);
+        return ans;
+    }
 }
 
 static void destroyContextGLX(_GLFWwindow* window)
@@ -280,36 +283,21 @@ bool _glfwInitGLX(void)
         return false;
     }
 
-    _glfw.glx.GetFBConfigs =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetFBConfigs");
-    _glfw.glx.GetFBConfigAttrib =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetFBConfigAttrib");
-    _glfw.glx.GetClientString =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetClientString");
-    _glfw.glx.QueryExtension =
-        _glfw_dlsym(_glfw.glx.handle, "glXQueryExtension");
-    _glfw.glx.QueryVersion =
-        _glfw_dlsym(_glfw.glx.handle, "glXQueryVersion");
-    _glfw.glx.DestroyContext =
-        _glfw_dlsym(_glfw.glx.handle, "glXDestroyContext");
-    _glfw.glx.MakeCurrent =
-        _glfw_dlsym(_glfw.glx.handle, "glXMakeCurrent");
-    _glfw.glx.SwapBuffers =
-        _glfw_dlsym(_glfw.glx.handle, "glXSwapBuffers");
-    _glfw.glx.QueryExtensionsString =
-        _glfw_dlsym(_glfw.glx.handle, "glXQueryExtensionsString");
-    _glfw.glx.CreateNewContext =
-        _glfw_dlsym(_glfw.glx.handle, "glXCreateNewContext");
-    _glfw.glx.CreateWindow =
-        _glfw_dlsym(_glfw.glx.handle, "glXCreateWindow");
-    _glfw.glx.DestroyWindow =
-        _glfw_dlsym(_glfw.glx.handle, "glXDestroyWindow");
-    _glfw.glx.GetProcAddress =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetProcAddress");
-    _glfw.glx.GetProcAddressARB =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetProcAddressARB");
-    _glfw.glx.GetVisualFromFBConfig =
-        _glfw_dlsym(_glfw.glx.handle, "glXGetVisualFromFBConfig");
+    glfw_dlsym(_glfw.glx.GetFBConfigs, _glfw.glx.handle, "glXGetFBConfigs");
+    glfw_dlsym(_glfw.glx.GetFBConfigAttrib, _glfw.glx.handle, "glXGetFBConfigAttrib");
+    glfw_dlsym(_glfw.glx.GetClientString, _glfw.glx.handle, "glXGetClientString");
+    glfw_dlsym(_glfw.glx.QueryExtension, _glfw.glx.handle, "glXQueryExtension");
+    glfw_dlsym(_glfw.glx.QueryVersion, _glfw.glx.handle, "glXQueryVersion");
+    glfw_dlsym(_glfw.glx.DestroyContext, _glfw.glx.handle, "glXDestroyContext");
+    glfw_dlsym(_glfw.glx.MakeCurrent, _glfw.glx.handle, "glXMakeCurrent");
+    glfw_dlsym(_glfw.glx.SwapBuffers, _glfw.glx.handle, "glXSwapBuffers");
+    glfw_dlsym(_glfw.glx.QueryExtensionsString, _glfw.glx.handle, "glXQueryExtensionsString");
+    glfw_dlsym(_glfw.glx.CreateNewContext, _glfw.glx.handle, "glXCreateNewContext");
+    glfw_dlsym(_glfw.glx.CreateWindow, _glfw.glx.handle, "glXCreateWindow");
+    glfw_dlsym(_glfw.glx.DestroyWindow, _glfw.glx.handle, "glXDestroyWindow");
+    glfw_dlsym(_glfw.glx.GetProcAddress, _glfw.glx.handle, "glXGetProcAddress");
+    glfw_dlsym(_glfw.glx.GetProcAddressARB, _glfw.glx.handle, "glXGetProcAddressARB");
+    glfw_dlsym(_glfw.glx.GetVisualFromFBConfig, _glfw.glx.handle, "glXGetVisualFromFBConfig");
 
     if (!_glfw.glx.GetFBConfigs ||
         !_glfw.glx.GetFBConfigAttrib ||
@@ -631,8 +619,8 @@ bool _glfwCreateContextGLX(_GLFWwindow* window,
 
 // Returns the Visual and depth of the chosen GLXFBConfig
 //
-bool _glfwChooseVisualGLX(const _GLFWwndconfig* wndconfig,
-                              const _GLFWctxconfig* ctxconfig,
+bool _glfwChooseVisualGLX(const _GLFWwndconfig* wndconfig UNUSED,
+                              const _GLFWctxconfig* ctxconfig UNUSED,
                               const _GLFWfbconfig* fbconfig,
                               Visual** visual, int* depth)
 {

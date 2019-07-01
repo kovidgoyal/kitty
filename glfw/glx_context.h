@@ -107,8 +107,8 @@ typedef GLXContext (*PFNGLXCREATECONTEXTATTRIBSARBPROC)(Display*,GLXFBConfig,GLX
 #define glXCreateWindow _glfw.glx.CreateWindow
 #define glXDestroyWindow _glfw.glx.DestroyWindow
 
-#define _GLFW_PLATFORM_CONTEXT_STATE            _GLFWcontextGLX glx
-#define _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE    _GLFWlibraryGLX glx
+#define _GLFW_PLATFORM_CONTEXT_STATE            _GLFWcontextGLX glx;
+#define _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE    _GLFWlibraryGLX glx;
 
 
 // GLX-specific per-context data
@@ -178,4 +178,3 @@ bool _glfwChooseVisualGLX(const _GLFWwndconfig* wndconfig,
                               const _GLFWctxconfig* ctxconfig,
                               const _GLFWfbconfig* fbconfig,
                               Visual** visual, int* depth);
-

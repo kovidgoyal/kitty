@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include "internal.h"
 #include "xkb_glfw.h"
+START_ALLOW_CASE_RANGE
 
 #define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
 
@@ -101,7 +102,7 @@ glfw_key_for_sym(xkb_keysym_t key) {
 #define S(f, t) case XKB_KEY_##f: return GLFW_KEY_##t
 #define F(f, t) S(f, t)
 #define R(s, e, gs, ...) case XKB_KEY_##s ... XKB_KEY_##e: return GLFW_KEY_##gs + key - XKB_KEY_##s
-#define D(s, e, gs, ...) R(s, e, gs)
+#define D(s, e, gs, ...) R(s, e, gs, __VA_ARGS__)
     map_key(key)
         S(KP_Up, UP);
         S(KP_Down, DOWN);
@@ -115,7 +116,7 @@ glfw_key_for_sym(xkb_keysym_t key) {
 #undef D
 #undef R
 #undef S
-};
+}
 
 xkb_keysym_t
 glfw_xkb_sym_for_key(int key) {
@@ -133,6 +134,7 @@ glfw_xkb_sym_for_key(int key) {
 #undef R
 #undef S
 }
+END_ALLOW_CASE_RANGE
 
 #ifdef _GLFW_X11
 
@@ -167,7 +169,7 @@ glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb) {
     if (conn) keymap = xkb_x11_keymap_new_from_device(xkb->context, conn, xkb->keyboard_device_id, XKB_KEYMAP_COMPILE_NO_FLAGS); \
 }
 
-#define xkb_glfw_load_state(keymap, state, ...) {\
+#define xkb_glfw_load_state(keymap, state) {\
     xcb_connection_t* conn = XGetXCBConnection(_glfw.x11.display); \
     if (conn) state = xkb_x11_state_new_from_device(keymap, conn, xkb->keyboard_device_id); \
 }
@@ -175,7 +177,7 @@ glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb) {
 #else
 
 #define xkb_glfw_load_keymap(keymap, map_str) keymap = xkb_keymap_new_from_string(xkb->context, map_str, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
-#define xkb_glfw_load_state(keymap, state, ...) state = xkb_state_new(keymap);
+#define xkb_glfw_load_state(keymap, state) state = xkb_state_new(keymap);
 
 #endif
 
@@ -335,7 +337,7 @@ glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode) {
 }
 
 
-static KeyEvent key_event = {};
+static KeyEvent key_event = {0};
 
 static inline xkb_keysym_t
 compose_symbol(struct xkb_compose_state *composeState, xkb_keysym_t sym, int *compose_completed) {

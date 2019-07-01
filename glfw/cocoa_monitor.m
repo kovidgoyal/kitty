@@ -256,9 +256,9 @@ void _glfwClearDisplayLinks() {
 }
 
 static CVReturn displayLinkCallback(
-        CVDisplayLinkRef displayLink,
-        const CVTimeStamp* now, const CVTimeStamp* outputTime,
-        CVOptionFlags flagsIn, CVOptionFlags* flagsOut, void* userInfo)
+        CVDisplayLinkRef displayLink UNUSED,
+        const CVTimeStamp* now UNUSED, const CVTimeStamp* outputTime UNUSED,
+        CVOptionFlags flagsIn UNUSED, CVOptionFlags* flagsOut UNUSED, void* userInfo)
 {
     CGDirectDisplayID displayID = (CGDirectDisplayID)userInfo;
     [_glfw.ns.displayLinks.lock lock];
@@ -306,7 +306,7 @@ void _glfwPollMonitorsNS(void)
     CGGetOnlineDisplayList(displayCount, displays, &displayCount);
     _glfwClearDisplayLinks();
 
-    for (uint32_t i = 0;  i < _glfw.monitorCount;  i++)
+    for (int i = 0;  i < _glfw.monitorCount;  i++)
         _glfw.monitors[i]->ns.screen = nil;
 
     _GLFWmonitor** disconnected = NULL;
@@ -430,7 +430,7 @@ void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor)
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor)
+void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor UNUSED)
 {
 }
 
@@ -559,7 +559,7 @@ void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
 {
     CGGammaValue* values = calloc(ramp->size * 3, sizeof(CGGammaValue));
 
-    for (int i = 0;  i < ramp->size;  i++)
+    for (unsigned int i = 0;  i < ramp->size;  i++)
     {
         values[i]                  = ramp->red[i] / 65535.f;
         values[i + ramp->size]     = ramp->green[i] / 65535.f;

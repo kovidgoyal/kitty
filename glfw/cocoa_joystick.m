@@ -75,7 +75,7 @@ static long getElementValue(_GLFWjoystick* js, _GLFWjoyelementNS* element)
 //
 static CFComparisonResult compareElements(const void* fp,
                                           const void* sp,
-                                          void* user)
+                                          void* user UNUSED)
 {
     const _GLFWjoyelementNS* fe = fp;
     const _GLFWjoyelementNS* se = sp;
@@ -117,9 +117,9 @@ static void closeJoystick(_GLFWjoystick* js)
 
 // Callback for user-initiated joystick addition
 //
-static void matchCallback(void* context,
-                          IOReturn result,
-                          void* sender,
+static void matchCallback(void* context UNUSED,
+                          IOReturn result UNUSED,
+                          void* sender UNUSED,
                           IOHIDDeviceRef device)
 {
     int jid;
@@ -270,9 +270,9 @@ static void matchCallback(void* context,
 
 // Callback for user-initiated joystick removal
 //
-static void removeCallback(void* context,
-                           IOReturn result,
-                           void* sender,
+static void removeCallback(void* context UNUSED,
+                           IOReturn result UNUSED,
+                           void* sender UNUSED,
                            IOHIDDeviceRef device)
 {
     int jid;
@@ -316,7 +316,7 @@ void _glfwInitJoysticksNS(void)
         return;
     }
 
-    for (int i = 0;  i < sizeof(usages) / sizeof(long);  i++)
+    for (size_t i = 0;  i < sizeof(usages) / sizeof(long);  i++)
     {
         const long page = kHIDPage_GenericDesktop;
 

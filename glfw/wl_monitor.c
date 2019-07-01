@@ -34,15 +34,15 @@
 
 
 static void outputHandleGeometry(void* data,
-                                 struct wl_output* output,
+                                 struct wl_output* output UNUSED,
                                  int32_t x,
                                  int32_t y,
                                  int32_t physicalWidth,
                                  int32_t physicalHeight,
-                                 int32_t subpixel,
+                                 int32_t subpixel UNUSED,
                                  const char* make,
                                  const char* model,
-                                 int32_t transform)
+                                 int32_t transform UNUSED)
 {
     struct _GLFWmonitor *monitor = data;
     char name[1024];
@@ -57,7 +57,7 @@ static void outputHandleGeometry(void* data,
 }
 
 static void outputHandleMode(void* data,
-                             struct wl_output* output,
+                             struct wl_output* output UNUSED,
                              uint32_t flags,
                              int32_t width,
                              int32_t height,
@@ -82,7 +82,7 @@ static void outputHandleMode(void* data,
         monitor->wl.currentMode = monitor->modeCount - 1;
 }
 
-static void outputHandleDone(void* data, struct wl_output* output)
+static void outputHandleDone(void* data, struct wl_output* output UNUSED)
 {
     struct _GLFWmonitor *monitor = data;
     for (int i = 0; i < _glfw.monitorCount; i++) {
@@ -93,7 +93,7 @@ static void outputHandleDone(void* data, struct wl_output* output)
 }
 
 static void outputHandleScale(void* data,
-                              struct wl_output* output,
+                              struct wl_output* output UNUSED,
                               int32_t factor)
 {
     struct _GLFWmonitor *monitor = data;
@@ -198,15 +198,15 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
     *mode = monitor->modes[monitor->wl.currentMode];
 }
 
-bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
+bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor UNUSED, GLFWgammaramp* ramp UNUSED)
 {
     _glfwInputError(GLFW_PLATFORM_ERROR,
                     "Wayland: Gamma ramp access is not available");
     return false;
 }
 
-void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor,
-                               const GLFWgammaramp* ramp)
+void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor UNUSED,
+                               const GLFWgammaramp* ramp UNUSED)
 {
     _glfwInputError(GLFW_PLATFORM_ERROR,
                     "Wayland: Gamma ramp access is not available");
@@ -223,4 +223,3 @@ GLFWAPI struct wl_output* glfwGetWaylandMonitor(GLFWmonitor* handle)
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
     return monitor->wl.output;
 }
-

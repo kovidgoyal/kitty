@@ -139,7 +139,7 @@ static int getWindowState(_GLFWwindow* window)
 
 // Returns whether the event is a selection event
 //
-static Bool isSelectionEvent(Display* display, XEvent* event, XPointer pointer)
+static Bool isSelectionEvent(Display* display UNUSED, XEvent* event, XPointer pointer UNUSED)
 {
     if (event->xany.window != _glfw.x11.helperWindowHandle)
         return False;
@@ -151,7 +151,7 @@ static Bool isSelectionEvent(Display* display, XEvent* event, XPointer pointer)
 
 // Returns whether it is a _NET_FRAME_EXTENTS event for the specified window
 //
-static Bool isFrameExtentsEvent(Display* display, XEvent* event, XPointer pointer)
+static Bool isFrameExtentsEvent(Display* display UNUSED, XEvent* event, XPointer pointer)
 {
     _GLFWwindow* window = (_GLFWwindow*) pointer;
     return event->type == PropertyNotify &&
@@ -162,7 +162,7 @@ static Bool isFrameExtentsEvent(Display* display, XEvent* event, XPointer pointe
 
 // Returns whether it is a property event for the specified selection transfer
 //
-static Bool isSelPropNewValueNotify(Display* display, XEvent* event, XPointer pointer)
+static Bool isSelPropNewValueNotify(Display* display UNUSED, XEvent* event, XPointer pointer)
 {
     XEvent* notification = (XEvent*) pointer;
     return event->type == PropertyNotify &&
@@ -326,8 +326,7 @@ set_fullscreen(_GLFWwindow *window, bool on) {
 }
 
 bool
-_glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags) {
-    (void) flags;
+_glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
     bool already_fullscreen = is_window_fullscreen(window);
     set_fullscreen(window, !already_fullscreen);
     return !already_fullscreen;
@@ -2010,8 +2009,8 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
 }
 
 void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
-                                      int minwidth, int minheight,
-                                      int maxwidth, int maxheight)
+                                      int minwidth UNUSED, int minheight UNUSED,
+                                      int maxwidth UNUSED, int maxheight UNUSED)
 {
     int width, height;
     _glfwPlatformGetWindowSize(window, &width, &height);
@@ -2019,7 +2018,7 @@ void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
     XFlush(_glfw.x11.display);
 }
 
-void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window, int numer, int denom)
+void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window, int numer UNUSED, int denom UNUSED)
 {
     int width, height;
     _glfwPlatformGetWindowSize(window, &width, &height);
@@ -2092,7 +2091,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
         XFree(extents);
 }
 
-void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
+void _glfwPlatformGetWindowContentScale(_GLFWwindow* window UNUSED,
                                         float* xscale, float* yscale)
 {
     if (xscale)
@@ -2101,7 +2100,7 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
         *yscale = _glfw.x11.contentScaleY;
 }
 
-double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window)
+double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
 {
     return 0.5;
 }
@@ -2200,7 +2199,7 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
                                    _GLFWmonitor* monitor,
                                    int xpos, int ypos,
                                    int width, int height,
-                                   int refreshRate)
+                                   int refreshRate UNUSED)
 {
     if (window->monitor == monitor)
     {
@@ -2258,7 +2257,7 @@ int _glfwPlatformWindowFocused(_GLFWwindow* window)
     return window->x11.handle == focused;
 }
 
-int _glfwPlatformWindowOccluded(_GLFWwindow* window)
+int _glfwPlatformWindowOccluded(_GLFWwindow* window UNUSED)
 {
     return false;
 }
@@ -2339,7 +2338,7 @@ int _glfwPlatformFramebufferTransparent(_GLFWwindow* window)
     return XGetSelectionOwner(_glfw.x11.display, _glfw.x11.NET_WM_CM_Sx) != None;
 }
 
-void _glfwPlatformSetWindowResizable(_GLFWwindow* window, bool enabled)
+void _glfwPlatformSetWindowResizable(_GLFWwindow* window, bool enabled UNUSED)
 {
     int width, height;
     _glfwPlatformGetWindowSize(window, &width, &height);
@@ -2597,7 +2596,7 @@ int _glfwPlatformGetKeyScancode(int key)
 
 int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                               const GLFWimage* image,
-                              int xhot, int yhot, int count)
+                              int xhot, int yhot, int count UNUSED)
 {
     cursor->x11.handle = _glfwCreateCursorX11(image, xhot, yhot);
     if (!cursor->x11.handle)
@@ -2643,7 +2642,7 @@ void _glfwPlatformDestroyCursor(_GLFWcursor* cursor)
         XFreeCursor(_glfw.x11.display, cursor->x11.handle);
 }
 
-void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
+void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor UNUSED)
 {
     if (window->cursorMode == GLFW_CURSOR_NORMAL)
     {

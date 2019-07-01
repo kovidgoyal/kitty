@@ -66,7 +66,7 @@ bool _glfwInitVulkan(int mode)
         return false;
     }
 
-    _glfw.vk.GetInstanceProcAddr = (PFN_vkGetInstanceProcAddr)
+    *(void **) &_glfw.vk.GetInstanceProcAddr =
         _glfw_dlsym(_glfw.vk.handle, "vkGetInstanceProcAddr");
     if (!_glfw.vk.GetInstanceProcAddr)
     {
@@ -260,7 +260,7 @@ GLFWAPI GLFWvkproc glfwGetInstanceProcAddress(VkInstance instance,
     }
 #else
     if (!proc)
-        proc = (GLFWvkproc) _glfw_dlsym(_glfw.vk.handle, procname);
+        *(void **) &proc = _glfw_dlsym(_glfw.vk.handle, procname);
 #endif
 
     return proc;

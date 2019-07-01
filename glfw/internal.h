@@ -225,12 +225,32 @@ typedef void (APIENTRY * PFN_vkVoidFunction)(void);
 
 // Swaps the provided pointers
 #define _GLFW_SWAP_POINTERS(x, y) \
-    {                             \
-        void* t;                  \
+    do{                           \
+        __typeof__(x) t;          \
         t = x;                    \
         x = y;                    \
         y = t;                    \
-    }
+    }while(0)
+
+
+// Suppress some pedantic warnings
+#ifdef __clang__
+#define START_ALLOW_CASE_RANGE _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wpedantic\"")
+#define END_ALLOW_CASE_RANGE _Pragma("clang diagnostic pop")
+#define ALLOW_UNUSED_RESULT _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wunused-result\"")
+#define END_ALLOW_UNUSED_RESULT _Pragma("clang diagnostic pop")
+#else
+#define START_ALLOW_CASE_RANGE _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
+#define END_ALLOW_CASE_RANGE _Pragma("GCC diagnostic pop")
+#define ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic ignored \"-Wunused-result\"")
+#define END_ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic pop")
+#endif
+
+// dlsym that works with -Wpedantic
+#define glfw_dlsym(dest, handle, name) do {*(void **)&(handle) = _glfw_dlsym(handle, name);}while (0)
+
+// Mark function arguments as unused
+#define UNUSED __attribute__ ((unused))
 
 // Per-thread error structure
 //
@@ -367,7 +387,7 @@ struct _GLFWcontext
     _GLFWdestroycontextfun      destroy;
 
     // This is defined in the context API's context.h
-    _GLFW_PLATFORM_CONTEXT_STATE;
+    _GLFW_PLATFORM_CONTEXT_STATE
     // This is defined in egl_context.h
     _GLFW_EGL_CONTEXT_STATE;
     // This is defined in osmesa_context.h
@@ -587,9 +607,9 @@ struct _GLFWlibrary
     // This is defined in the window API's platform.h
     _GLFW_PLATFORM_LIBRARY_WINDOW_STATE;
     // This is defined in the context API's context.h
-    _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE;
+    _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE
     // This is defined in the platform's joystick.h
-    _GLFW_PLATFORM_LIBRARY_JOYSTICK_STATE;
+    _GLFW_PLATFORM_LIBRARY_JOYSTICK_STATE
     // This is defined in egl_context.h
     _GLFW_EGL_LIBRARY_CONTEXT_STATE;
     // This is defined in osmesa_context.h

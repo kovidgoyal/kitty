@@ -239,7 +239,7 @@ static struct wl_buffer* createShmBuffer(const GLFWimage* image)
     if (fd < 0)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Creating a buffer file for %d B failed: %m",
+                        "Wayland: Creating a buffer file for %d B failed: %%m",
                         length);
         return NULL;
     }
@@ -248,7 +248,7 @@ static struct wl_buffer* createShmBuffer(const GLFWimage* image)
     if (data == MAP_FAILED)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: mmap failed: %m");
+                        "Wayland: mmap failed: %%m");
         close(fd);
         return NULL;
     }
@@ -363,7 +363,7 @@ static void destroyDecorations(_GLFWwindow* window)
 }
 
 static void xdgDecorationHandleConfigure(void* data,
-                                         struct zxdg_toplevel_decoration_v1* decoration,
+                                         struct zxdg_toplevel_decoration_v1* decoration UNUSED,
                                          uint32_t mode)
 {
     _GLFWwindow* window = data;
@@ -377,7 +377,7 @@ static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener =
 };
 
 static void handleEnter(void *data,
-                        struct wl_surface *surface,
+                        struct wl_surface *surface UNUSED,
                         struct wl_output *output)
 {
     _GLFWwindow* window = data;
@@ -400,7 +400,7 @@ static void handleEnter(void *data,
 }
 
 static void handleLeave(void *data,
-                        struct wl_surface *surface,
+                        struct wl_surface *surface UNUSED,
                         struct wl_output *output)
 {
     _GLFWwindow* window = data;
@@ -496,15 +496,14 @@ setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
 }
 
 bool
-_glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags) {
-    (void) flags;
+_glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
     bool already_fullscreen = window->wl.fullscreened;
     setFullscreen(window, NULL, !already_fullscreen);
     return !already_fullscreen;
 }
 
 static void xdgToplevelHandleConfigure(void* data,
-                                       struct xdg_toplevel* toplevel,
+                                       struct xdg_toplevel* toplevel UNUSED,
                                        int32_t width,
                                        int32_t height,
                                        struct wl_array* states)
@@ -562,7 +561,7 @@ static void xdgToplevelHandleConfigure(void* data,
 }
 
 static void xdgToplevelHandleClose(void* data,
-                                   struct xdg_toplevel* toplevel)
+                                   struct xdg_toplevel* toplevel UNUSED)
 {
     _GLFWwindow* window = data;
     _glfwInputWindowCloseRequest(window);
@@ -573,7 +572,7 @@ static const struct xdg_toplevel_listener xdgToplevelListener = {
     xdgToplevelHandleClose
 };
 
-static void xdgSurfaceHandleConfigure(void* data,
+static void xdgSurfaceHandleConfigure(void* data UNUSED,
                                       struct xdg_surface* surface,
                                       uint32_t serial)
 {
@@ -726,7 +725,7 @@ incrementCursorImage(_GLFWwindow* window)
 }
 
 void
-animateCursorImage(id_type timer_id, void *data) {
+animateCursorImage(id_type timer_id UNUSED, void *data UNUSED) {
     incrementCursorImage(_glfw.wl.pointerFocus);
 }
 
@@ -945,14 +944,14 @@ void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
         xdg_toplevel_set_title(window->wl.xdg.toplevel, title);
 }
 
-void _glfwPlatformSetWindowIcon(_GLFWwindow* window,
-                                int count, const GLFWimage* images)
+void _glfwPlatformSetWindowIcon(_GLFWwindow* window UNUSED,
+                                int count UNUSED, const GLFWimage* images UNUSED)
 {
     _glfwInputError(GLFW_PLATFORM_ERROR,
                     "Wayland: Setting window icon not supported");
 }
 
-void _glfwPlatformGetWindowPos(_GLFWwindow* window, int* xpos, int* ypos)
+void _glfwPlatformGetWindowPos(_GLFWwindow* window UNUSED, int* xpos UNUSED, int* ypos UNUSED)
 {
     // A Wayland client is not aware of its position, so just warn and leave it
     // as (0, 0)
@@ -961,7 +960,7 @@ void _glfwPlatformGetWindowPos(_GLFWwindow* window, int* xpos, int* ypos)
                     "Wayland: Window position retrieval not supported");
 }
 
-void _glfwPlatformSetWindowPos(_GLFWwindow* window, int xpos, int ypos)
+void _glfwPlatformSetWindowPos(_GLFWwindow* window UNUSED, int xpos UNUSED, int ypos UNUSED)
 {
     // A Wayland client can not set its position, so just warn
 
@@ -1002,8 +1001,8 @@ void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
     }
 }
 
-void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window,
-                                       int numer, int denom)
+void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window UNUSED,
+                                       int numer UNUSED, int denom UNUSED)
 {
     // TODO: find out how to trigger a resize.
     // The actual limits are checked in the xdg_toplevel::configure handler.
@@ -1043,7 +1042,7 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
         *yscale = (float) window->wl.scale;
 }
 
-double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window)
+double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
 {
     return 0.5;
 }
@@ -1099,7 +1098,7 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
     window->wl.visible = false;
 }
 
-void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
+void _glfwPlatformRequestWindowAttention(_GLFWwindow* window UNUSED)
 {
     // TODO
     static bool notified = false;
@@ -1110,7 +1109,7 @@ void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
     }
 }
 
-int _glfwPlatformWindowBell(_GLFWwindow* window)
+int _glfwPlatformWindowBell(_GLFWwindow* window UNUSED)
 {
     // TODO: Use an actual Wayland API to implement this when one becomes available
     static char tty[L_ctermid + 1];
@@ -1123,7 +1122,7 @@ int _glfwPlatformWindowBell(_GLFWwindow* window)
     return false;
 }
 
-void _glfwPlatformFocusWindow(_GLFWwindow* window)
+void _glfwPlatformFocusWindow(_GLFWwindow* window UNUSED)
 {
     _glfwInputError(GLFW_PLATFORM_ERROR,
                     "Wayland: Focusing a window requires user interaction");
@@ -1131,9 +1130,9 @@ void _glfwPlatformFocusWindow(_GLFWwindow* window)
 
 void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
                                    _GLFWmonitor* monitor,
-                                   int xpos, int ypos,
-                                   int width, int height,
-                                   int refreshRate)
+                                   int xpos UNUSED, int ypos UNUSED,
+                                   int width UNUSED, int height UNUSED,
+                                   int refreshRate UNUSED)
 {
     setFullscreen(window, monitor, monitor != NULL);
     _glfwInputWindowMonitor(window, monitor);
@@ -1144,12 +1143,12 @@ int _glfwPlatformWindowFocused(_GLFWwindow* window)
     return _glfw.wl.keyboardFocus == window;
 }
 
-int _glfwPlatformWindowOccluded(_GLFWwindow* window)
+int _glfwPlatformWindowOccluded(_GLFWwindow* window UNUSED)
 {
     return false;
 }
 
-int _glfwPlatformWindowIconified(_GLFWwindow* window)
+int _glfwPlatformWindowIconified(_GLFWwindow* window UNUSED)
 {
     // xdg-shell doesn’t give any way to request whether a surface is
     // iconified.
@@ -1176,7 +1175,7 @@ int _glfwPlatformFramebufferTransparent(_GLFWwindow* window)
     return window->wl.transparent;
 }
 
-void _glfwPlatformSetWindowResizable(_GLFWwindow* window, bool enabled)
+void _glfwPlatformSetWindowResizable(_GLFWwindow* window UNUSED, bool enabled UNUSED)
 {
     // TODO
     _glfwInputError(GLFW_PLATFORM_ERROR,
@@ -1194,19 +1193,19 @@ void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, bool enabled)
     }
 }
 
-void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled)
+void _glfwPlatformSetWindowFloating(_GLFWwindow* window UNUSED, bool enabled UNUSED)
 {
     // TODO
     _glfwInputError(GLFW_PLATFORM_ERROR,
                     "Wayland: Window attribute setting not implemented yet");
 }
 
-float _glfwPlatformGetWindowOpacity(_GLFWwindow* window)
+float _glfwPlatformGetWindowOpacity(_GLFWwindow* window UNUSED)
 {
     return 1.f;
 }
 
-void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
+void _glfwPlatformSetWindowOpacity(_GLFWwindow* window UNUSED, float opacity UNUSED)
 {
 }
 
@@ -1254,7 +1253,7 @@ void _glfwPlatformSetCursorPos(_GLFWwindow* window, double x, double y)
     }
 }
 
-void _glfwPlatformSetCursorMode(_GLFWwindow* window, int mode)
+void _glfwPlatformSetCursorMode(_GLFWwindow* window, int mode UNUSED)
 {
     _glfwPlatformSetCursor(window, window->wl.currentCursor);
 }
@@ -1271,7 +1270,7 @@ int _glfwPlatformGetKeyScancode(int key)
 
 int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                               const GLFWimage* image,
-                              int xhot, int yhot, int count)
+                              int xhot, int yhot, int count UNUSED)
 {
     cursor->wl.buffer = createShmBuffer(image);
     if (!cursor->wl.buffer)
@@ -1305,11 +1304,11 @@ void _glfwPlatformDestroyCursor(_GLFWcursor* cursor)
 }
 
 static void handleRelativeMotion(void* data,
-                                 struct zwp_relative_pointer_v1* pointer,
-                                 uint32_t timeHi,
-                                 uint32_t timeLo,
-                                 wl_fixed_t dx,
-                                 wl_fixed_t dy,
+                                 struct zwp_relative_pointer_v1* pointer UNUSED,
+                                 uint32_t timeHi UNUSED,
+                                 uint32_t timeLo UNUSED,
+                                 wl_fixed_t dx UNUSED,
+                                 wl_fixed_t dy UNUSED,
                                  wl_fixed_t dxUnaccel,
                                  wl_fixed_t dyUnaccel)
 {
@@ -1327,8 +1326,8 @@ static const struct zwp_relative_pointer_v1_listener relativePointerListener = {
     handleRelativeMotion
 };
 
-static void handleLocked(void* data,
-                         struct zwp_locked_pointer_v1* lockedPointer)
+static void handleLocked(void* data UNUSED,
+                         struct zwp_locked_pointer_v1* lockedPointer UNUSED)
 {
 }
 
@@ -1346,10 +1345,10 @@ static void unlockPointer(_GLFWwindow* window)
     window->wl.pointerLock.lockedPointer = NULL;
 }
 
-static void lockPointer(_GLFWwindow* window);
+static void lockPointer(_GLFWwindow* window UNUSED);
 
-static void handleUnlocked(void* data,
-                           struct zwp_locked_pointer_v1* lockedPointer)
+static void handleUnlocked(void* data UNUSED,
+                           struct zwp_locked_pointer_v1* lockedPointer UNUSED)
 {
 }
 
@@ -1471,12 +1470,12 @@ static void send_text(char *text, int fd)
     close(fd);
 }
 
-static void _glfwSendClipboardText(void *data, struct wl_data_source *data_source, const char *mime_type, int fd) {
+static void _glfwSendClipboardText(void *data UNUSED, struct wl_data_source *data_source UNUSED, const char *mime_type UNUSED, int fd) {
     send_text(_glfw.wl.clipboardString, fd);
 }
 
-static void _glfwSendPrimarySelectionText(void *data, struct zwp_primary_selection_source_v1 *primary_selection_source,
-        const char *mime_type, int fd) {
+static void _glfwSendPrimarySelectionText(void *data UNUSED, struct zwp_primary_selection_source_v1 *primary_selection_source UNUSED,
+        const char *mime_type UNUSED, int fd) {
     send_text(_glfw.wl.primarySelectionString, fd);
 }
 
@@ -1541,28 +1540,28 @@ static char* read_data_offer(struct wl_data_offer *data_offer, const char *mime)
     return read_offer_string(pipefd[0]);
 }
 
-static void data_source_canceled(void *data, struct wl_data_source *wl_data_source) {
+static void data_source_canceled(void *data UNUSED, struct wl_data_source *wl_data_source) {
     if (_glfw.wl.dataSourceForClipboard == wl_data_source)
         _glfw.wl.dataSourceForClipboard = NULL;
     wl_data_source_destroy(wl_data_source);
 }
 
-static void primary_selection_source_canceled(void *data, struct zwp_primary_selection_source_v1 *primary_selection_source) {
+static void primary_selection_source_canceled(void *data UNUSED, struct zwp_primary_selection_source_v1 *primary_selection_source) {
     if (_glfw.wl.dataSourceForPrimarySelection == primary_selection_source)
         _glfw.wl.dataSourceForPrimarySelection = NULL;
     zwp_primary_selection_source_v1_destroy(primary_selection_source);
 }
 
-static void data_source_target(void *data, struct wl_data_source *wl_data_source, const char* mime) {
+static void data_source_target(void *data UNUSED, struct wl_data_source *wl_data_source UNUSED, const char* mime UNUSED) {
 }
 
-const static struct wl_data_source_listener data_source_listener = {
+static const struct wl_data_source_listener data_source_listener = {
     .send = _glfwSendClipboardText,
     .cancelled = data_source_canceled,
     .target = data_source_target,
 };
 
-const static struct zwp_primary_selection_source_v1_listener primary_selection_source_listener = {
+static const struct zwp_primary_selection_source_v1_listener primary_selection_source_listener = {
     .send = _glfwSendPrimarySelectionText,
     .cancelled = primary_selection_source_canceled,
 };
@@ -1585,7 +1584,7 @@ static void prune_unclaimed_primary_selection_offers(void) {
     }
 }
 
-static void mark_selection_offer(void *data, struct wl_data_device *data_device, struct wl_data_offer *data_offer)
+static void mark_selection_offer(void *data UNUSED, struct wl_data_device *data_device UNUSED, struct wl_data_offer *data_offer)
 {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id == data_offer) {
@@ -1597,7 +1596,7 @@ static void mark_selection_offer(void *data, struct wl_data_device *data_device,
     prune_unclaimed_data_offers();
 }
 
-static void mark_primary_selection_offer(void *data, struct zwp_primary_selection_device_v1* primary_selection_device,
+static void mark_primary_selection_offer(void *data UNUSED, struct zwp_primary_selection_device_v1* primary_selection_device UNUSED,
         struct zwp_primary_selection_offer_v1 *primary_selection_offer) {
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].id == primary_selection_offer) {
@@ -1620,7 +1619,7 @@ static void set_offer_mimetype(struct _GLFWWaylandDataOffer* offer, const char* 
         offer->has_uri_list = 1;
 }
 
-static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const char *mime) {
+static void handle_offer_mimetype(void *data UNUSED, struct wl_data_offer* id, const char *mime) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id == id) {
             set_offer_mimetype(&_glfw.wl.dataOffers[i], mime);
@@ -1629,7 +1628,7 @@ static void handle_offer_mimetype(void *data, struct wl_data_offer* id, const ch
     }
 }
 
-static void handle_primary_selection_offer_mimetype(void *data, struct zwp_primary_selection_offer_v1* id, const char *mime) {
+static void handle_primary_selection_offer_mimetype(void *data UNUSED, struct zwp_primary_selection_offer_v1* id, const char *mime) {
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].id == id) {
             set_offer_mimetype((struct _GLFWWaylandDataOffer*)&_glfw.wl.primarySelectionOffers[i], mime);
@@ -1638,7 +1637,7 @@ static void handle_primary_selection_offer_mimetype(void *data, struct zwp_prima
     }
 }
 
-static void data_offer_source_actions(void *data, struct wl_data_offer* id, uint32_t actions) {
+static void data_offer_source_actions(void *data UNUSED, struct wl_data_offer* id, uint32_t actions) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id == id) {
             _glfw.wl.dataOffers[i].source_actions = actions;
@@ -1647,7 +1646,7 @@ static void data_offer_source_actions(void *data, struct wl_data_offer* id, uint
     }
 }
 
-static void data_offer_action(void *data, struct wl_data_offer* id, uint32_t action) {
+static void data_offer_action(void *data UNUSED, struct wl_data_offer* id, uint32_t action) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id == id) {
             _glfw.wl.dataOffers[i].dnd_action = action;
@@ -1667,7 +1666,7 @@ static const struct zwp_primary_selection_offer_v1_listener primary_selection_of
     .offer = handle_primary_selection_offer_mimetype,
 };
 
-static void handle_data_offer(void *data, struct wl_data_device *wl_data_device, struct wl_data_offer *id) {
+static void handle_data_offer(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, struct wl_data_offer *id) {
     size_t smallest_idx = SIZE_MAX, pos = 0;
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].idx && _glfw.wl.dataOffers[i].idx < smallest_idx) {
@@ -1688,7 +1687,7 @@ end:
     wl_data_offer_add_listener(id, &data_offer_listener, NULL);
 }
 
-static void handle_primary_selection_offer(void *data, struct zwp_primary_selection_device_v1 *zwp_primary_selection_device_v1, struct zwp_primary_selection_offer_v1 *id) {
+static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary_selection_device_v1 *zwp_primary_selection_device_v1 UNUSED, struct zwp_primary_selection_offer_v1 *id) {
     size_t smallest_idx = SIZE_MAX, pos = 0;
     for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
         if (_glfw.wl.primarySelectionOffers[i].idx && _glfw.wl.primarySelectionOffers[i].idx < smallest_idx) {
@@ -1709,7 +1708,7 @@ end:
     zwp_primary_selection_offer_v1_add_listener(id, &primary_selection_offer_listener, NULL);
 }
 
-static void drag_enter(void *data, struct wl_data_device *wl_data_device, uint32_t serial, struct wl_surface *surface, wl_fixed_t x, wl_fixed_t y, struct wl_data_offer *id) {
+static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x UNUSED, wl_fixed_t y UNUSED, struct wl_data_offer *id) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id == id) {
             _glfw.wl.dataOffers[i].offer_type = DRAG_AND_DROP;
@@ -1723,7 +1722,7 @@ static void drag_enter(void *data, struct wl_data_device *wl_data_device, uint32
     prune_unclaimed_data_offers();
 }
 
-static void drag_leave(void *data, struct wl_data_device *wl_data_device) {
+static void drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
             wl_data_offer_destroy(_glfw.wl.dataOffers[i].id);
@@ -1732,7 +1731,7 @@ static void drag_leave(void *data, struct wl_data_device *wl_data_device) {
     }
 }
 
-static void drop(void *data, struct wl_data_device *wl_data_device) {
+static void drop(void *data, struct wl_data_device *wl_data_device UNUSED) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
             char *uri_list = read_data_offer(_glfw.wl.dataOffers[i].id, URI_LIST_MIME);
@@ -1764,10 +1763,10 @@ static void drop(void *data, struct wl_data_device *wl_data_device) {
     }
 }
 
-static void motion(void *data, struct wl_data_device *wl_data_device, uint32_t time, wl_fixed_t x, wl_fixed_t y) {
+static void motion(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t time UNUSED, wl_fixed_t x UNUSED, wl_fixed_t y UNUSED) {
 }
 
-const static struct wl_data_device_listener data_device_listener = {
+static const struct wl_data_device_listener data_device_listener = {
     .data_offer = handle_data_offer,
     .selection = mark_selection_offer,
     .enter = drag_enter,
@@ -1776,7 +1775,7 @@ const static struct wl_data_device_listener data_device_listener = {
     .leave = drag_leave,
 };
 
-const static struct zwp_primary_selection_device_v1_listener primary_selection_device_listener = {
+static const struct zwp_primary_selection_device_v1_listener primary_selection_device_listener = {
     .data_offer = handle_primary_selection_offer,
     .selection = mark_primary_selection_offer,
 };
@@ -1856,7 +1855,7 @@ void _glfwPlatformSetClipboardString(const char* string)
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "STRING");
     wl_data_source_offer(_glfw.wl.dataSourceForClipboard, "UTF8_STRING");
     struct wl_callback *callback = wl_display_sync(_glfw.wl.display);
-    const static struct wl_callback_listener clipboard_copy_callback_listener = {.done = clipboard_copy_callback_done};
+    static const struct wl_callback_listener clipboard_copy_callback_listener = {.done = clipboard_copy_callback_done};
     wl_callback_add_listener(callback, &clipboard_copy_callback_listener, _glfw.wl.dataSourceForClipboard);
 }
 
@@ -1905,7 +1904,7 @@ void _glfwPlatformSetPrimarySelectionString(const char* string)
     zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "STRING");
     zwp_primary_selection_source_v1_offer(_glfw.wl.dataSourceForPrimarySelection, "UTF8_STRING");
     struct wl_callback *callback = wl_display_sync(_glfw.wl.display);
-    const static struct wl_callback_listener primary_selection_copy_callback_listener = {.done = primary_selection_copy_callback_done};
+    static const struct wl_callback_listener primary_selection_copy_callback_listener = {.done = primary_selection_copy_callback_done};
     wl_callback_add_listener(callback, &primary_selection_copy_callback_listener, _glfw.wl.dataSourceForPrimarySelection);
 }
 
@@ -1995,7 +1994,7 @@ _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c, int 
 }
 
 static void
-frame_handle_redraw(void *data, struct wl_callback *callback, uint32_t time) {
+frame_handle_redraw(void *data, struct wl_callback *callback, uint32_t time UNUSED) {
     _GLFWwindow* window = (_GLFWwindow*) data;
     if (callback == window->wl.frameCallbackData.current_wl_callback) {
         window->wl.frameCallbackData.callback(window->wl.frameCallbackData.id);
@@ -2046,4 +2045,3 @@ GLFWAPI unsigned long long glfwDBusUserNotify(const char *app_name, const char* 
 GLFWAPI void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler) {
     glfw_dbus_set_user_notification_activated_handler(handler);
 }
-

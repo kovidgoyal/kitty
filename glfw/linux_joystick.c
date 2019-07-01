@@ -385,7 +385,7 @@ void _glfwDetectJoystickConnectionLinux(void)
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-int _glfwPlatformPollJoystick(_GLFWjoystick* js, int mode)
+int _glfwPlatformPollJoystick(_GLFWjoystick* js, int mode UNUSED)
 {
     // Read all queued events (non-blocking)
     for (;;)
@@ -425,6 +425,6 @@ int _glfwPlatformPollJoystick(_GLFWjoystick* js, int mode)
     return js->present;
 }
 
-void _glfwPlatformUpdateGamepadGUID(char* guid)
+void _glfwPlatformUpdateGamepadGUID(char* guid UNUSED)
 {
 }

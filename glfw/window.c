@@ -82,7 +82,7 @@ _GLFWwindow* _glfwFocusedWindow() {
 _GLFWwindow* _glfwWindowForId(GLFWid id) {
     _GLFWwindow *w = _glfw.windowListHead;
     while (w) {
-        if (w->id == _glfw.focusedWindowId) return w;
+        if (w->id == id) return w;
         w = w->next;
     }
     return NULL;

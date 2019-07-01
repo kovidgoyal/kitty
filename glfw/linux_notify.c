@@ -43,8 +43,7 @@ notification_created(DBusMessage *msg, const char* errmsg, void *data) {
 }
 
 static DBusHandlerResult
-message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data) {
-    (void)(user_data);
+message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data UNUSED) {
     /* printf("session_bus message_handler invoked interface: %s member: %s\n", dbus_message_get_interface(msg), dbus_message_get_member(msg)); */
     if (dbus_message_is_signal(msg, NOTIFICATIONS_IFACE, "ActionInvoked")) {
         uint32_t notification_id;

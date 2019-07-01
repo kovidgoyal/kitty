@@ -172,8 +172,8 @@ void _glfwPollMonitorsX11(void)
             {
                 if (screens[j].x_org == ci->x &&
                     screens[j].y_org == ci->y &&
-                    screens[j].width == ci->width &&
-                    screens[j].height == ci->height)
+                    screens[j].width == (short int)ci->width &&
+                    screens[j].height == (short int)ci->height)
                 {
                     monitor->x11.index = j;
                     break;
@@ -301,7 +301,7 @@ void _glfwRestoreVideoModeX11(_GLFWmonitor* monitor)
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor)
+void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor UNUSED)
 {
 }
 
@@ -325,7 +325,7 @@ void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos)
     }
 }
 
-void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
+void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor UNUSED,
                                          float* xscale, float* yscale)
 {
     if (xscale)
@@ -547,7 +547,7 @@ void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
 {
     if (_glfw.x11.randr.available && !_glfw.x11.randr.gammaBroken)
     {
-        if (XRRGetCrtcGammaSize(_glfw.x11.display, monitor->x11.crtc) != ramp->size)
+        if (XRRGetCrtcGammaSize(_glfw.x11.display, monitor->x11.crtc) != (int)ramp->size)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
                             "X11: Gamma ramp size must match current ramp size");

@@ -117,7 +117,7 @@ send_text(const char *text, int state) {
 // Connection handling {{{
 
 static DBusHandlerResult
-message_handler(DBusConnection *conn, DBusMessage *msg, void *user_data) {
+message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data) {
     // To monitor signals from IBUS, use
     //  dbus-monitor --address `ibus address` "type='signal',interface='org.freedesktop.IBus.InputContext'"
     _GLFWIBUSData *ibus = (_GLFWIBUSData*)user_data;

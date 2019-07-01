@@ -43,15 +43,14 @@ static void swapBuffersNSGL(_GLFWwindow* window)
     [window->context.nsgl.object flushBuffer];
 }
 
-static void swapIntervalNSGL(int interval)
+static void swapIntervalNSGL(int interval UNUSED)
 {
     // As of Mojave this does not work so we use CVDisplayLink instead
-    (void)(interval);
     _glfwInputError(GLFW_API_UNAVAILABLE,
                     "NSGL: Swap intervals do not work on macOS");
 }
 
-static int extensionSupportedNSGL(const char* extension)
+static int extensionSupportedNSGL(const char* extension UNUSED)
 {
     // There are no NSGL extensions
     return false;
@@ -63,8 +62,9 @@ static GLFWglproc getProcAddressNSGL(const char* procname)
                                                        procname,
                                                        kCFStringEncodingASCII);
 
-    GLFWglproc symbol = CFBundleGetFunctionPointerForName(_glfw.nsgl.framework,
-                                                          symbolName);
+    GLFWglproc symbol;
+    *(void **) &symbol = CFBundleGetFunctionPointerForName(_glfw.nsgl.framework,
+                                                           symbolName);
 
     CFRelease(symbolName);
 

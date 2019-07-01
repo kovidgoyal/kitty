@@ -87,17 +87,17 @@ static void destroyContextOSMesa(_GLFWwindow* window)
     }
 }
 
-static void swapBuffersOSMesa(_GLFWwindow* window)
+static void swapBuffersOSMesa(_GLFWwindow* window UNUSED)
 {
     // No double buffering on OSMesa
 }
 
-static void swapIntervalOSMesa(int interval)
+static void swapIntervalOSMesa(int interval UNUSED)
 {
     // No swap interval on OSMesa
 }
 
-static int extensionSupportedOSMesa(const char* extension)
+static int extensionSupportedOSMesa(const char* extension UNUSED)
 {
     // OSMesa does not have extensions
     return false;
@@ -145,20 +145,13 @@ bool _glfwInitOSMesa(void)
         return false;
     }
 
-    _glfw.osmesa.CreateContextExt = (PFN_OSMesaCreateContextExt)
-        _glfw_dlsym(_glfw.osmesa.handle, "OSMesaCreateContextExt");
-    _glfw.osmesa.CreateContextAttribs = (PFN_OSMesaCreateContextAttribs)
-        _glfw_dlsym(_glfw.osmesa.handle, "OSMesaCreateContextAttribs");
-    _glfw.osmesa.DestroyContext = (PFN_OSMesaDestroyContext)
-        _glfw_dlsym(_glfw.osmesa.handle, "OSMesaDestroyContext");
-    _glfw.osmesa.MakeCurrent = (PFN_OSMesaMakeCurrent)
-        _glfw_dlsym(_glfw.osmesa.handle, "OSMesaMakeCurrent");
-    _glfw.osmesa.GetColorBuffer = (PFN_OSMesaGetColorBuffer)
-        _glfw_dlsym(_glfw.osmesa.handle, "OSMesaGetColorBuffer");
-    _glfw.osmesa.GetDepthBuffer = (PFN_OSMesaGetDepthBuffer)
-        _glfw_dlsym(_glfw.osmesa.handle, "OSMesaGetDepthBuffer");
-    _glfw.osmesa.GetProcAddress = (PFN_OSMesaGetProcAddress)
-        _glfw_dlsym(_glfw.osmesa.handle, "OSMesaGetProcAddress");
+    glfw_dlsym(_glfw.osmesa.CreateContextExt, _glfw.osmesa.handle, "OSMesaCreateContextExt");
+    glfw_dlsym(_glfw.osmesa.CreateContextAttribs, _glfw.osmesa.handle, "OSMesaCreateContextAttribs");
+    glfw_dlsym(_glfw.osmesa.DestroyContext, _glfw.osmesa.handle, "OSMesaDestroyContext");
+    glfw_dlsym(_glfw.osmesa.MakeCurrent, _glfw.osmesa.handle, "OSMesaMakeCurrent");
+    glfw_dlsym(_glfw.osmesa.GetColorBuffer, _glfw.osmesa.handle, "OSMesaGetColorBuffer");
+    glfw_dlsym(_glfw.osmesa.GetDepthBuffer, _glfw.osmesa.handle, "OSMesaGetDepthBuffer");
+    glfw_dlsym(_glfw.osmesa.GetProcAddress, _glfw.osmesa.handle, "OSMesaGetProcAddress");
 
     if (!_glfw.osmesa.CreateContextExt ||
         !_glfw.osmesa.DestroyContext ||

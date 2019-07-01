@@ -295,7 +295,7 @@ typedef struct _GLFWlibraryWayland
 typedef struct _GLFWmonitorWayland
 {
     struct wl_output*           output;
-    int                         name;
+    uint32_t                    name;
     int                         currentMode;
 
     int                         x;
@@ -321,4 +321,3 @@ void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);
 void animateCursorImage(id_type timer_id, void *data);
 struct wl_cursor* _glfwLoadCursor(GLFWCursorShape);
-
