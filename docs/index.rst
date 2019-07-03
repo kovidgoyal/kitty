@@ -368,6 +368,8 @@ Mouse features
   columns.
 * Selecting text automatically copies it to the primary clipboard (on
   platforms with a primary clipboard).
+* You can select text with kitty even when a terminal program has grabbed
+  the mouse by holding down the :kbd:`shift` key.
 
 
 Font control
