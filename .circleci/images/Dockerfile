@@ -31,7 +31,7 @@ ENV LANG=en_US.UTF-8
 RUN apt-get install -y libreadline-dev zlib1g-dev libssl-dev libbz2-dev libsqlite3-dev libffi-dev
 
 # kitty deps
-RUN apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libpng-dev libfontconfig-dev libpython3-dev libxkbcommon-x11-dev python3-pygments
+RUN apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev libpng-dev libfontconfig-dev libpython3-dev libxkbcommon-x11-dev python3-pygments libcanberra-dev
 
 # Needed to build kitty docs
 RUN pip3 install sphinx
