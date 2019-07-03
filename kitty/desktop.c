@@ -7,6 +7,7 @@
 
 #include "data-types.h"
 #include <dlfcn.h>
+#include <canberra.h>
 
 #define FUNC(name, restype, ...) typedef restype (*name##_func)(__VA_ARGS__); static name##_func name = NULL
 #define LOAD_FUNC(handle, name) {\
@@ -89,9 +90,25 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+static ca_context *canberra_ctx = NULL;
+
+void
+play_canberra_sound(const char *which_sound, const char *event_id) {
+    if (canberra_ctx == NULL) ca_context_create(&canberra_ctx);
+    ca_context_play(
+        canberra_ctx, 0,
+        CA_PROP_EVENT_ID, which_sound,
+		CA_PROP_EVENT_DESCRIPTION, event_id,
+		NULL
+    );
+}
+
 static void
 finalize(void) {
     if (libsn_handle) dlclose(libsn_handle);
+    libsn_handle = NULL;
+    if (canberra_ctx) ca_context_destroy(canberra_ctx);
+    canberra_ctx = NULL;
 }
 
 bool

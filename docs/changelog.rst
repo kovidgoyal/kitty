@@ -38,6 +38,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix an out of bounds read causing a crash when selecting text with the mouse
   in the alternate screen mode (:iss:`1578`)
 
+- Linux: Use the system "bell" sound for the terminal bell. Adds libcanberra
+  as a new dependency to play the system sound.
+
 
 0.14.2 [2019-06-09]
 ---------------------
