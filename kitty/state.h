@@ -19,6 +19,7 @@ typedef struct {
     CursorShape cursor_shape;
     unsigned int open_url_modifiers;
     unsigned int rectangle_select_modifiers;
+    unsigned int terminal_select_modifiers;
     unsigned int url_style;
     unsigned int scrollback_pager_history_size;
     char_type select_by_word_characters[256]; size_t select_by_word_characters_count;

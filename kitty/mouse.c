@@ -170,7 +170,7 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
         }
         else {
             global_state.active_drag_in_window = w->id;
-            screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, modifiers == (int)OPT(rectangle_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | GLFW_MOD_SHIFT), EXTEND_CELL);
+            screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, modifiers == (int)OPT(rectangle_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers)), EXTEND_CELL);
         }
     } else if (screen->selection.in_progress) {
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, false);
@@ -283,7 +283,7 @@ HANDLER(handle_move_event) {
     bool handle_in_kitty = (
             (screen->modes.mouse_tracking_mode == ANY_MODE ||
             (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0)) &&
-            !(global_state.callback_os_window->is_key_pressed[GLFW_KEY_LEFT_SHIFT] || global_state.callback_os_window->is_key_pressed[GLFW_KEY_RIGHT_SHIFT])
+            (modifiers & OPT(terminal_select_modifiers))
     ) ? false : true;
     if (handle_in_kitty) {
         if (screen->selection.in_progress && button == GLFW_MOUSE_BUTTON_LEFT) {
@@ -378,7 +378,7 @@ HANDLER(handle_button_event) {
     Screen *screen = w->render_data.screen;
     if (!screen) return;
     bool handle_in_kitty = (
-            modifiers == GLFW_MOD_SHIFT || modifiers == ((int)OPT(rectangle_select_modifiers) | GLFW_MOD_SHIFT) ||
+            modifiers == (int)OPT(terminal_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers)) ||
             screen->modes.mouse_tracking_mode == 0 ||
             button == GLFW_MOUSE_BUTTON_MIDDLE ||
             (modifiers == (int)OPT(open_url_modifiers) && button == GLFW_MOUSE_BUTTON_LEFT)

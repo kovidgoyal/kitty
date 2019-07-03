@@ -12,10 +12,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow passing a ``!neighbor`` argument to the new_window mapping to open a
   new window next to the active window (:iss:`1746`)
 
-- Fix an out of bounds read causing a crash when selecting text with the mouse
-  in the alternate screen mode (:iss:`1578`)
-
 - Document the kitty remote control protocol (:iss:`1646`)
+
+- Add an option :opt:`terminal_select_modifiers` to control which
+  modifiers are used to override mouse selection (:iss:`1774`)
 
 - When piping data to a child in the pipe command do it in a thread so as not
   to block the UI (:iss:`1708`)
@@ -34,6 +34,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix finding fallback font for private use unicode symbols not working
   reliably (:iss:`1650`)
+
+- Fix an out of bounds read causing a crash when selecting text with the mouse
+  in the alternate screen mode (:iss:`1578`)
 
 
 0.14.2 [2019-06-09]
