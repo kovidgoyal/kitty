@@ -350,7 +350,9 @@ default=(?m)^\s*(.+)\s*$
 The regular expression to use when :option:`kitty +kitten hints --type`=regex.
 If you specify a group in the regular expression only the group
 will be matched. This allow you to match text ignoring a prefix/suffix, as
-needed. The default expression matches lines.
+needed. The default expression matches lines. To match text over
+multiple lines you should prefix the regular expression with :code:`(?ms)`,
+which turns on MULTILINE and DOTALL modes for the regex engine.
 
 
 --url-prefixes
