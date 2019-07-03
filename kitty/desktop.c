@@ -98,8 +98,8 @@ play_canberra_sound(const char *which_sound, const char *event_id) {
     ca_context_play(
         canberra_ctx, 0,
         CA_PROP_EVENT_ID, which_sound,
-		CA_PROP_EVENT_DESCRIPTION, event_id,
-		NULL
+        CA_PROP_EVENT_DESCRIPTION, event_id,
+        NULL
     );
 }
 
