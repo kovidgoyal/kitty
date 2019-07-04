@@ -649,13 +649,18 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     [super dealloc];
 }
 
+- (void) removeGLFWWindow
+{
+    window = NULL;
+}
+
 - (_GLFWwindow*)glfwWindow {
     return window;
 }
 
 - (BOOL)isOpaque
 {
-    return [window->ns.object isOpaque];
+    return window && [window->ns.object isOpaque];
 }
 
 - (BOOL)canBecomeKeyView
@@ -670,11 +675,13 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void) viewWillStartLiveResize
 {
+    if (!window) return;
     _glfwInputLiveResize(window, true);
 }
 
 - (void)viewDidEndLiveResize
 {
+    if (!window) return;
     _glfwInputLiveResize(window, false);
 }
 
@@ -685,6 +692,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void)updateLayer
 {
+    if (!window) return;
     if (window->context.client != GLFW_NO_API) {
         @try {
             [window->context.nsgl.object update];
@@ -701,7 +709,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 - (void)cursorUpdate:(NSEvent *)event
 {
     (void)event;
-    updateCursorImage(window);
+    if (window) updateCursorImage(window);
 }
 
 - (BOOL)acceptsFirstMouse:(NSEvent *)event
@@ -712,10 +720,12 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void)mouseDown:(NSEvent *)event
 {
-    _glfwInputMouseClick(window,
-                         GLFW_MOUSE_BUTTON_LEFT,
-                         GLFW_PRESS,
-                         translateFlags([event modifierFlags]));
+    if (!window) return;
+    _glfwInputMouseClick(
+            window,
+            GLFW_MOUSE_BUTTON_LEFT,
+            GLFW_PRESS,
+            translateFlags([event modifierFlags]));
 }
 
 - (void)mouseDragged:(NSEvent *)event
@@ -725,14 +735,17 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void)mouseUp:(NSEvent *)event
 {
-    _glfwInputMouseClick(window,
-                         GLFW_MOUSE_BUTTON_LEFT,
-                         GLFW_RELEASE,
-                         translateFlags([event modifierFlags]));
+    if (!window) return;
+    _glfwInputMouseClick(
+            window,
+            GLFW_MOUSE_BUTTON_LEFT,
+            GLFW_RELEASE,
+            translateFlags([event modifierFlags]));
 }
 
 - (void)mouseMoved:(NSEvent *)event
 {
+    if (!window) return;
     if (window->cursorMode == GLFW_CURSOR_DISABLED)
     {
         const double dx = [event deltaX] - window->ns.cursorWarpDeltaX;
@@ -757,6 +770,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void)rightMouseDown:(NSEvent *)event
 {
+    if (!window) return;
     _glfwInputMouseClick(window,
                          GLFW_MOUSE_BUTTON_RIGHT,
                          GLFW_PRESS,
@@ -770,6 +784,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void)rightMouseUp:(NSEvent *)event
 {
+    if (!window) return;
     _glfwInputMouseClick(window,
                          GLFW_MOUSE_BUTTON_RIGHT,
                          GLFW_RELEASE,
@@ -778,6 +793,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void)otherMouseDown:(NSEvent *)event
 {
+    if (!window) return;
     _glfwInputMouseClick(window,
                          (int) [event buttonNumber],
                          GLFW_PRESS,
@@ -791,6 +807,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 
 - (void)otherMouseUp:(NSEvent *)event
 {
+    if (!window) return;
     _glfwInputMouseClick(window,
                          (int) [event buttonNumber],
                          GLFW_RELEASE,
@@ -800,17 +817,20 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 - (void)mouseExited:(NSEvent *)event
 {
     (void)event;
+    if (!window) return;
     _glfwInputCursorEnter(window, false);
 }
 
 - (void)mouseEntered:(NSEvent *)event
 {
     (void)event;
+    if (!window) return;
     _glfwInputCursorEnter(window, true);
 }
 
 - (void)viewDidChangeBackingProperties
 {
+    if (!window) return;
     const NSRect contentRect = [window->ns.view frame];
     const NSRect fbRect = [window->ns.view convertRectToBacking:contentRect];
 
@@ -839,6 +859,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 - (void)drawRect:(NSRect)rect
 {
     (void)rect;
+    if (!window) return;
     _glfwInputWindowDamage(window);
 }
 
@@ -1530,6 +1551,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     [window->ns.delegate release];
     window->ns.delegate = nil;
 
+    [window->ns.view removeGLFWWindow];
     [window->ns.view release];
     window->ns.view = nil;
 
