@@ -325,7 +325,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
             if (w > width) width = w;
         }
     }
-    *cell_width = MAX(1, width);
+    *cell_width = MAX(1u, width);
     *underline_position = floor(self->ascent - self->underline_position + 0.5);
     *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
     *baseline = (unsigned int)self->ascent;
@@ -347,7 +347,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     CTFrameGetLineOrigins(test_frame, CFRangeMake(1, 1), &origin2);
     CGFloat line_height = origin1.y - origin2.y;
     CFRelease(test_frame); CFRelease(path); CFRelease(framesetter);
-    *cell_height = MAX(4, (unsigned int)ceilf(line_height));
+    *cell_height = MAX(4u, (unsigned int)ceilf(line_height));
 #undef count
 }
 
