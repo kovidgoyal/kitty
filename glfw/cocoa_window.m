@@ -390,9 +390,7 @@ static NSUInteger translateKeyToModifierFlag(int key)
 static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 
-//------------------------------------------------------------------------
-// Delegate for window related notifications
-//------------------------------------------------------------------------
+// Delegate for window related notifications {{{
 
 @interface GLFWWindowDelegate : NSObject
 {
@@ -533,12 +531,9 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 }
 
 
-@end
+@end // }}}
 
-
-//------------------------------------------------------------------------
-// Delegate for application related notifications
-//------------------------------------------------------------------------
+// Delegate for application related notifications {{{
 
 @interface GLFWApplicationDelegate : NSObject
 @end
@@ -605,11 +600,9 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 }
 
 @end
+// }}}
 
-
-//------------------------------------------------------------------------
-// Content view class for the GLFW window
-//------------------------------------------------------------------------
+// Content view class for the GLFW window {{{
 
 @interface GLFWContentView : NSView <NSTextInputClient>
 {
@@ -619,6 +612,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     NSRect markedRect;
 }
 
+- (void) removeGLFWWindow;
 - (instancetype)initWithGlfwWindow:(_GLFWwindow *)initWindow;
 
 @end
@@ -1205,16 +1199,39 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c,
 }
 
 @end
+// }}}
 
+// GLFW Window class {{{
 
-//------------------------------------------------------------------------
-// GLFW window class
-//------------------------------------------------------------------------
+@interface GLFWWindow : NSWindow {
+    _GLFWwindow* glfw_window;
+}
 
-@interface GLFWWindow : NSWindow {}
+- (instancetype)initWithGlfwWindow:(NSRect)contentRect
+                         styleMask:(NSWindowStyleMask)style
+                           backing:(NSBackingStoreType)backingStoreType
+                        initWindow:(_GLFWwindow *)initWindow;
+
+- (void) removeGLFWWindow;
 @end
 
 @implementation GLFWWindow
+
+- (instancetype)initWithGlfwWindow:(NSRect)contentRect
+                         styleMask:(NSWindowStyleMask)style
+                           backing:(NSBackingStoreType)backingStoreType
+                        initWindow:(_GLFWwindow *)initWindow
+{
+    self = [super initWithContentRect:contentRect styleMask:style backing:backingStoreType defer:NO];
+    if (self != nil) glfw_window = initWindow;
+    return self;
+}
+
+- (void) removeGLFWWindow
+{
+    glfw_window = NULL;
+}
+
 
 - (BOOL)canBecomeKeyWindow
 {
@@ -1229,18 +1246,13 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c,
 
 - (void)toggleFullScreen:(nullable id)sender
 {
-    GLFWContentView *view = [self contentView];
-    if (view)
-    {
-        _GLFWwindow *window = [view glfwWindow];
-        if (window && window->ns.toggleFullscreenCallback && window->ns.toggleFullscreenCallback((GLFWwindow*)window) == 1)
+    if (glfw_window && glfw_window->ns.toggleFullscreenCallback && glfw_window->ns.toggleFullscreenCallback((GLFWwindow*)glfw_window) == 1)
             return;
-    }
     [super toggleFullScreen:sender];
 }
 
 @end
-
+// }}}
 
 // Set up the menu bar (manually)
 // This is nasty, nasty stuff -- calls to undocumented semi-private APIs that
@@ -1421,10 +1433,11 @@ static bool createNativeWindow(_GLFWwindow* window,
         contentRect = NSMakeRect(0, 0, wndconfig->width, wndconfig->height);
 
     window->ns.object = [[GLFWWindow alloc]
-        initWithContentRect:contentRect
+        initWithGlfwWindow:contentRect
                   styleMask:getStyleMask(window)
                     backing:NSBackingStoreBuffered
-                      defer:NO];
+                 initWindow:window
+    ];
 
     if (window->ns.object == nil)
     {
@@ -1555,6 +1568,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     [window->ns.view release];
     window->ns.view = nil;
 
+    [window->ns.object removeGLFWWindow];
     [window->ns.object close];
     window->ns.object = nil;
 }
