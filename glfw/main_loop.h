@@ -28,7 +28,7 @@ void _glfwPlatformRunMainLoop(GLFWtickcallback tick_callback, void* data) {
     keep_going = true;
     while(keep_going) {
         _glfwPlatformWaitEvents();
-		EVDBG("loop tick");
+        EVDBG("loop tick");
         tick_callback(data);
     }
 }
