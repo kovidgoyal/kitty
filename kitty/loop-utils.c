@@ -10,8 +10,13 @@
 
 bool
 init_loop_data(LoopData *ld) {
+#ifdef HAS_EVENT_FD
+    ld->wakeup_read_fd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
+    if (ld->wakeup_read_fd < 0) return false;
+#else
     if (!self_pipe(ld->wakeup_fds, true)) return false;
     ld->wakeup_read_fd = ld->wakeup_fds[0];
+#endif
     ld->signal_read_fd = -1;
 #ifndef HAS_SIGNAL_FD
     ld->signal_fds[0] = -1; ld->signal_fds[1] = -1;
@@ -44,7 +49,9 @@ handle_signal(int sig_num) {
 void
 free_loop_data(LoopData *ld) {
 #define CLOSE(which, idx) if (ld->which[idx] > -1) safe_close(ld->which[idx]); ld->which[idx] = -1;
+#ifndef HAS_EVENT_FD
     CLOSE(wakeup_fds, 0); CLOSE(wakeup_fds, 1);
+#endif
 #ifndef HAS_SIGNAL_FD
     CLOSE(signal_fds, 0); CLOSE(signal_fds, 1);
 #endif
@@ -61,6 +68,9 @@ free_loop_data(LoopData *ld) {
         signal(SIGTERM, SIG_DFL);
         signal(SIGCHLD, SIG_DFL);
     }
+#ifdef HAS_EVENT_FD
+    safe_close(ld->wakeup_read_fd);
+#endif
     ld->signal_read_fd = -1; ld->wakeup_read_fd = -1;
 }
 
@@ -68,7 +78,12 @@ free_loop_data(LoopData *ld) {
 void
 wakeup_loop(LoopData *ld, bool in_signal_handler) {
     while(true) {
+#ifdef HAS_EVENT_FD
+        static const int64_t value = 1;
+        ssize_t ret = write(ld->wakeup_read_fd, &value, sizeof value);
+#else
         ssize_t ret = write(ld->wakeup_fds[1], "w", 1);
+#endif
         if (ret < 0) {
             if (errno == EINTR) continue;
             if (!in_signal_handler) log_error("Failed to write to loop wakeup fd with error: %s", strerror(errno));

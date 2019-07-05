@@ -15,8 +15,15 @@
 #include <sys/signalfd.h>
 #endif
 
+#if __has_include(<sys/eventfd.h>)
+#define HAS_EVENT_FD
+#include <sys/eventfd.h>
+#endif
+
 typedef struct {
+#ifndef HAS_EVENT_FD
     int wakeup_fds[2];
+#endif
 #ifndef HAS_SIGNAL_FD
     int signal_fds[2];
 #endif
