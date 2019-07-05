@@ -231,7 +231,7 @@ bool
 initPollData(EventLoopData *eld, int display_fd) {
     if (!addWatch(eld, "display", display_fd, POLLIN, 1, NULL, NULL)) return false;
 #ifdef HAS_EVENT_FD
-    eld->wakeupFd = eventfd(0, 0);
+    eld->wakeupFd = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
     if (eld->wakeupFd == -1) return false;
     const int wakeup_fd = eld->wakeupFd;
 #else
