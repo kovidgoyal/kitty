@@ -420,13 +420,12 @@ class CompilationDatabase:
         queue.append(Command(desc, cmd, is_newer_func, on_success, key, keyfile))
 
     def build_all(self):
-        items = []
-
         def sort_key(compile_cmd):
             if compile_cmd.keyfile:
                 return os.path.getsize(compile_cmd.keyfile)
             return 0
 
+        items = []
         for compile_cmd in self.compile_commands:
             if not self.incremental or self.cmd_changed(compile_cmd) or compile_cmd.is_newer_func():
                 items.append(compile_cmd)
@@ -468,7 +467,7 @@ class CompilationDatabase:
             json.dump(compilation_database, f, indent=2, sort_keys=True)
 
 
-def compile_c_extension(kenv, module, compilation_database, sources, headers):
+def compile_c_extension(kenv, module, compilation_database, sources, headers, desc_prefix=''):
     prefix = os.path.basename(module)
     objects = [
         os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
@@ -488,12 +487,12 @@ def compile_c_extension(kenv, module, compilation_database, sources, headers):
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         cmd += ['-c', src] + ['-o', dest]
         key = CompileKey(original_src, os.path.basename(dest))
-        desc = 'Compiling {} ...'.format(emphasis(src))
+        desc = 'Compiling {} ...'.format(emphasis(desc_prefix + src))
         compilation_database.add_command(desc, cmd, partial(newer, dest, *dependecies_for(os.path.join(base, src), dest, headers)), key=key, keyfile=src)
     dest = os.path.join(build_dir, module + '.so')
     real_dest = os.path.join(base, module + '.so')
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    desc = 'Linking {} ...'.format(emphasis(module))
+    desc = 'Linking {} ...'.format(emphasis(desc_prefix + module))
     # Old versions of clang don't like -pthread being passed to the linker
     # Don't treat linker warnings as errors (linker generates spurious
     # warnings on some old systems)
@@ -544,7 +543,9 @@ def compile_glfw(compilation_database):
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
                 continue
-        compile_c_extension(genv, 'kitty/glfw-' + module, compilation_database, sources, all_headers)
+        compile_c_extension(
+            genv, 'kitty/glfw-' + module, compilation_database,
+            sources, all_headers, desc_prefix='[{}] '.format(module))
 
 
 def kittens_env():
