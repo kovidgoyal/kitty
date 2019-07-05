@@ -62,6 +62,7 @@ typedef struct {
     Screen *screen;
     bool needs_removal;
     int fd;
+    int tee_fd;
     unsigned long id;
     pid_t pid;
 } Child;
@@ -211,10 +212,33 @@ add_child(ChildMonitor *self, PyObject *args) {
         return NULL;
     }
 #undef A
+    add_queue[add_queue_count].tee_fd = -1;
     INCREF_CHILD(add_queue[add_queue_count]);
     add_queue_count++;
     children_mutex(unlock);
     wakeup_io_loop(self, false);
+    Py_RETURN_NONE;
+}
+
+static PyObject *
+set_child_teefd(ChildMonitor *self, PyObject *args) {
+#define set_child_teefd_doc "set_child_teefd(id, teefd) -> Set a child's tee_fd."
+    unsigned int i, id;
+    int tee_fd;
+    children_mutex(lock);
+    if (!PyArg_ParseTuple(args, "ki", &id, &tee_fd)) {
+        children_mutex(unlock);
+        return NULL;
+    }
+#undef A
+    for (i = 0; i < self->count; i++) {
+        if (children[i].id == id) {
+            children[i].tee_fd = tee_fd;
+            break;
+        } 
+    }
+    children_mutex(unlock);
+    wakeup_io_loop(false);
     Py_RETURN_NONE;
 }
 
@@ -1032,7 +1056,7 @@ remove_children(ChildMonitor *self) {
 
 
 static bool
-read_bytes(int fd, Screen *screen) {
+read_bytes(int fd, Screen *screen, int tee_fd) {
     ssize_t len;
     size_t available_buffer_space, orig_sz;
 
@@ -1058,6 +1082,9 @@ read_bytes(int fd, Screen *screen) {
     if (orig_sz != screen->read_buf_sz) {
         // The other thread consumed some of the screen read buffer
         memmove(screen->read_buf + screen->read_buf_sz, screen->read_buf + orig_sz, len);
+        if (tee_fd != -1) {
+            write(tee_fd, screen->read_buf + orig_sz, len);
+        }
     }
     screen->read_buf_sz += len;
     screen_mutex(unlock, read);
@@ -1211,7 +1238,7 @@ io_loop(void *data) {
             for (i = 0; i < self->count; i++) {
                 if (fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
                     data_received = true;
-                    has_more = read_bytes(fds[EXTRA_FDS + i].fd, children[i].screen);
+                    has_more = read_bytes(fds[EXTRA_FDS + i].fd, children[i].screen, children[i].tee_fd);
                     if (!has_more) {
                         // child is dead
                         children_mutex(lock);
@@ -1522,6 +1549,7 @@ send_response(int fd, const char *msg, size_t msg_sz) {
 // Boilerplate {{{
 static PyMethodDef methods[] = {
     METHOD(add_child, METH_VARARGS)
+    METHOD(set_child_teefd, METH_VARARGS)
     METHOD(needs_write, METH_VARARGS)
     METHOD(start, METH_NOARGS)
     METHOD(wakeup, METH_NOARGS)
