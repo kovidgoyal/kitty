@@ -204,7 +204,6 @@ class Child:
         remove_cloexec(ready_read_fd)
         if stdin is not None:
             if isinstance(stdin, int):
-                print("stdin is %d" % stdin)
                 stdin_read_fd = stdin
                 stdin_write_fd = -1
                 remove_cloexec(stdin_read_fd)
