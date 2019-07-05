@@ -236,7 +236,7 @@ set_child_teefd(ChildMonitor *self, PyObject *args) {
         if (children[i].id == id) {
             children[i].tee_fd = tee_fd;
             break;
-        } 
+        }
     }
     children_mutex(unlock);
     wakeup_io_loop(self, false);
