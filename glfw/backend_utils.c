@@ -11,6 +11,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
 #include <errno.h>
 #include <float.h>
 #include <time.h>
@@ -225,12 +227,34 @@ drain_wakeup_fd(int fd, int events UNUSED, void* data UNUSED) {
     while(read(fd, drain_buf, sizeof(drain_buf)) < 0 && errno == EINTR);
 }
 
-void
-initPollData(EventLoopData *eld, int wakeup_fd, int display_fd) {
+bool
+initPollData(EventLoopData *eld, int display_fd) {
+    if (pipe2(eld->wakeupFds, O_CLOEXEC | O_NONBLOCK) != 0) return false;
     addWatch(eld, "display", display_fd, POLLIN, 1, NULL, NULL);
-    addWatch(eld, "wakeup", wakeup_fd, POLLIN, 1, drain_wakeup_fd, NULL);
+    addWatch(eld, "wakeup", eld->wakeupFds[0], POLLIN, 1, drain_wakeup_fd, NULL);
+    return true;
 }
 
+void
+wakeupEventLoop(EventLoopData *eld) {
+    while (write(eld->wakeupFds[1], "w", 1) < 0 && errno == EINTR);
+}
+
+static void
+closeFds(int *fds, size_t count) {
+    while(count--) {
+        if (*fds > 0) {
+            close(*fds);
+            *fds = -1;
+        }
+        fds++;
+    }
+}
+
+void
+finalizePollData(EventLoopData *eld) {
+    closeFds(eld->wakeupFds, arraysz(eld->wakeupFds));
+}
 
 int
 pollForEvents(EventLoopData *eld, double timeout) {
@@ -268,17 +292,6 @@ pollForEvents(EventLoopData *eld, double timeout) {
         }
     }
     return read_ok;
-}
-
-void
-closeFds(int *fds, size_t count) {
-    while(count--) {
-        if (*fds > 0) {
-            close(*fds);
-            *fds = -1;
-        }
-        fds++;
-    }
 }
 
 // Splits and translates a text/uri-list into separate file paths

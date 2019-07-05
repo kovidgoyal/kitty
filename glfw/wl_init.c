@@ -685,13 +685,6 @@ glfwWaylandCheckForServerSideDecorations(void) {
 
 int _glfwPlatformInit(void)
 {
-    if (pipe2(_glfw.wl.eventLoopData.wakeupFds, O_CLOEXEC | O_NONBLOCK) != 0)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                "Wayland: failed to create self pipe");
-        return false;
-    }
-
     _glfw.wl.cursor.handle = _glfw_dlopen("libwayland-cursor.so.0");
     if (!_glfw.wl.cursor.handle)
     {
@@ -724,7 +717,10 @@ int _glfwPlatformInit(void)
                         "Wayland: Failed to connect to display");
         return false;
     }
-    initPollData(&_glfw.wl.eventLoopData, _glfw.wl.eventLoopData.wakeupFds[0], wl_display_get_fd(_glfw.wl.display));
+    if (!initPollData(&_glfw.wl.eventLoopData, wl_display_get_fd(_glfw.wl.display))) {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Wayland: Failed to initialize event loop data");
+    }
     glfw_dbus_init(&_glfw.wl.dbus, &_glfw.wl.eventLoopData);
     _glfw.wl.keyRepeatInfo.keyRepeatTimer = addTimer(&_glfw.wl.eventLoopData, "wayland-key-repeat", 0.5, 0, true, dispatchPendingKeyRepeats, NULL, NULL);
     _glfw.wl.cursorAnimationTimer = addTimer(&_glfw.wl.eventLoopData, "wayland-cursor-animation", 0.5, 0, true, animateCursorImage, NULL, NULL);
@@ -852,7 +848,7 @@ void _glfwPlatformTerminate(void)
         wl_display_flush(_glfw.wl.display);
         wl_display_disconnect(_glfw.wl.display);
     }
-    closeFds(_glfw.wl.eventLoopData.wakeupFds, sizeof(_glfw.wl.eventLoopData.wakeupFds)/sizeof(_glfw.wl.eventLoopData.wakeupFds[0]));
+    finalizePollData(&_glfw.wl.eventLoopData);
     free(_glfw.wl.clipboardString); _glfw.wl.clipboardString = NULL;
     free(_glfw.wl.primarySelectionString); _glfw.wl.primarySelectionString = NULL;
     free(_glfw.wl.pasteString); _glfw.wl.pasteString = NULL;

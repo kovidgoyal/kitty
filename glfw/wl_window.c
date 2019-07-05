@@ -1229,7 +1229,7 @@ void _glfwPlatformWaitEventsTimeout(double timeout)
 
 void _glfwPlatformPostEmptyEvent(void)
 {
-    while (write(_glfw.wl.eventLoopData.wakeupFds[1], "w", 1) < 0 && errno == EINTR);
+    wakeupEventLoop(&_glfw.wl.eventLoopData);
 }
 
 void _glfwPlatformGetCursorPos(_GLFWwindow* window, double* xpos, double* ypos)

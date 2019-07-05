@@ -588,13 +588,6 @@ int _glfwPlatformInit(void)
     XInitThreads();
     XrmInitialize();
 
-    if (pipe2(_glfw.x11.eventLoopData.wakeupFds, O_CLOEXEC | O_NONBLOCK) != 0)
-    {
-        _glfwInputError(GLFW_PLATFORM_ERROR,
-                "X11: failed to create self pipe");
-        return false;
-    }
-
     _glfw.x11.display = XOpenDisplay(NULL);
     if (!_glfw.x11.display)
     {
@@ -613,7 +606,10 @@ int _glfwPlatformInit(void)
         return false;
     }
 
-    initPollData(&_glfw.x11.eventLoopData, _glfw.x11.eventLoopData.wakeupFds[0], ConnectionNumber(_glfw.x11.display));
+    if (!initPollData(&_glfw.x11.eventLoopData, ConnectionNumber(_glfw.x11.display))) {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "X11: Failed to initialize event loop data");
+    }
     glfw_dbus_init(&_glfw.x11.dbus, &_glfw.x11.eventLoopData);
 
     _glfw.x11.screen = DefaultScreen(_glfw.x11.display);
@@ -722,7 +718,7 @@ void _glfwPlatformTerminate(void)
 #if defined(__linux__)
     _glfwTerminateJoysticksLinux();
 #endif
-    closeFds(_glfw.x11.eventLoopData.wakeupFds, sizeof(_glfw.x11.eventLoopData.wakeupFds)/sizeof(_glfw.x11.eventLoopData.wakeupFds[0]));
+    finalizePollData(&_glfw.x11.eventLoopData);
 }
 
 const char* _glfwPlatformGetVersionString(void)
