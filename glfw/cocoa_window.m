@@ -67,13 +67,12 @@ static unsigned long long display_link_shutdown_timer = 0;
 
 void
 _glfwShutdownCVDisplayLink(unsigned long long timer_id UNUSED, void *user_data UNUSED) {
-    [_glfw.ns.displayLinks.lock lock];
     display_link_shutdown_timer = 0;
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayLink) CVDisplayLinkStop(dl->displayLink);
+        dl->lastRenderFrameRequestedAt = 0;
     }
-    [_glfw.ns.displayLinks.lock unlock];
 }
 
 static inline void
@@ -86,23 +85,26 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
     w->ns.renderFrameCallback = callback;
     w->ns.renderFrameRequested = true;
     CGDirectDisplayID displayID = displayIDForWindow(w);
-    [_glfw.ns.displayLinks.lock lock];
     if (display_link_shutdown_timer) {
         _glfwPlatformUpdateTimer(display_link_shutdown_timer, DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL, true);
     } else {
         display_link_shutdown_timer = _glfwPlatformAddTimer(DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL, false, _glfwShutdownCVDisplayLink, NULL, NULL);
     }
+    double now = glfwGetTime();
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayID == displayID) {
-            dl->renderFrameRequested = true;
+            dl->lastRenderFrameRequestedAt = now;
             if (!CVDisplayLinkIsRunning(dl->displayLink)) {
                 CVDisplayLinkStart(dl->displayLink);
+            } else {
+                if (dl->lastRenderFrameRequestedAt && now - dl->lastRenderFrameRequestedAt) {
+                    if (dl->displayLink) CVDisplayLinkStop(dl->displayLink);
+                    dl->lastRenderFrameRequestedAt = 0;
+                }
             }
-            break;
         }
     }
-    [_glfw.ns.displayLinks.lock unlock];
 }
 
 void

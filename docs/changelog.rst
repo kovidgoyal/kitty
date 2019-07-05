@@ -41,6 +41,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Use the system "bell" sound for the terminal bell. Adds libcanberra
   as a new dependency to play the system sound.
 
+- macOS: Fix a rare deadlock causing kitty to hang (:iss:`1779`)
+
 
 0.14.2 [2019-06-09]
 ---------------------

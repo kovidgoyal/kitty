@@ -144,7 +144,7 @@ typedef struct _GLFWDisplayLinkNS
 {
     CVDisplayLinkRef displayLink;
     CGDirectDisplayID displayID;
-    bool renderFrameRequested;
+    double lastRenderFrameRequestedAt;
 } _GLFWDisplayLinkNS;
 
 // Cocoa-specific global data
@@ -183,7 +183,6 @@ typedef struct _GLFWlibraryNS
     struct {
         _GLFWDisplayLinkNS entries[256];
         size_t count;
-        id lock;
     } displayLinks;
 
 } _GLFWlibraryNS;

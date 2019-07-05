@@ -399,7 +399,6 @@ int _glfwPlatformInit(void)
     if (!initializeTIS())
         return false;
 
-    _glfw.ns.displayLinks.lock = [NSLock new];
     _glfwInitTimerNS();
     _glfwInitJoysticksNS();
 
@@ -413,11 +412,7 @@ void _glfwPlatformTerminate(void)
 {
     @autoreleasepool {
 
-    if (_glfw.ns.displayLinks.lock) {
-        _glfwClearDisplayLinks();
-        [_glfw.ns.displayLinks.lock release];
-        _glfw.ns.displayLinks.lock = nil;
-    }
+    _glfwClearDisplayLinks();
 
     if (_glfw.ns.inputSource)
     {
