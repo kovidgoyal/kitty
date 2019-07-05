@@ -29,6 +29,11 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#if __has_include(<sys/eventfd.h>)
+#define HAS_EVENT_FD
+#include <sys/eventfd.h>
+#endif
+
 typedef unsigned long long id_type;
 typedef void(*watch_callback_func)(int, int, void*);
 typedef void(*timer_callback_func)(id_type, void*);
@@ -56,7 +61,11 @@ typedef struct {
 
 typedef struct {
     struct pollfd fds[32];
+#ifdef HAS_EVENT_FD
+    int wakeupFd;
+#else
     int wakeupFds[2];
+#endif
     nfds_t watches_count, timers_count;
     Watch watches[32];
     Timer timers[128];

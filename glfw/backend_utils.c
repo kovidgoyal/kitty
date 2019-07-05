@@ -229,18 +229,30 @@ drain_wakeup_fd(int fd, int events UNUSED, void* data UNUSED) {
 
 bool
 initPollData(EventLoopData *eld, int display_fd) {
-    if (pipe2(eld->wakeupFds, O_CLOEXEC | O_NONBLOCK) != 0) return false;
     addWatch(eld, "display", display_fd, POLLIN, 1, NULL, NULL);
+#ifdef HAS_EVENT_FD
+    eld->wakeupFd = eventfd(0, 0);
+    if (eld->wakeupFd == -1) return false;
+    addWatch(eld, "wakeup", eld->wakeupFd, POLLIN, 1, drain_wakeup_fd, NULL);
+#else
+    if (pipe2(eld->wakeupFds, O_CLOEXEC | O_NONBLOCK) != 0) return false;
     addWatch(eld, "wakeup", eld->wakeupFds[0], POLLIN, 1, drain_wakeup_fd, NULL);
+#endif
     return true;
 }
 
 void
 wakeupEventLoop(EventLoopData *eld) {
+#ifdef HAS_EVENT_FD
+    static const int64_t value = 1;
+    while (write(eld->wakeupFd, &value, sizeof value) < 0 && errno == EINTR);
+#else
     while (write(eld->wakeupFds[1], "w", 1) < 0 && errno == EINTR);
+#endif
 }
 
-static void
+#ifndef HAS_EVENT_FD
+static inline void
 closeFds(int *fds, size_t count) {
     while(count--) {
         if (*fds > 0) {
@@ -250,10 +262,15 @@ closeFds(int *fds, size_t count) {
         fds++;
     }
 }
+#endif
 
 void
 finalizePollData(EventLoopData *eld) {
+#ifdef HAS_EVENT_FD
+    close(eld->wakeupFd); eld->wakeupFd = -1;
+#else
     closeFds(eld->wakeupFds, arraysz(eld->wakeupFds));
+#endif
 }
 
 int
