@@ -421,7 +421,7 @@ class CompilationDatabase:
         self.link_commands = []
 
     def add_command(self, desc, cmd, is_newer_func, key=None, on_success=None, keyfile=None):
-        queue = self.link_commands if key is None else self.compile_commands
+        queue = self.link_commands if keyfile is None else self.compile_commands
         queue.append(Command(desc, cmd, is_newer_func, on_success, key, keyfile))
 
     def build_all(self):
@@ -450,15 +450,22 @@ class CompilationDatabase:
     def __enter__(self):
         self.all_keys = set()
         self.dbpath = os.path.abspath('compile_commands.json')
+        self.linkdbpath = os.path.join(os.path.dirname(self.dbpath), 'link_commands.json')
         try:
             with open(self.dbpath) as f:
                 compilation_database = json.load(f)
         except FileNotFoundError:
             compilation_database = []
+        try:
+            with open(self.linkdbpath) as f:
+                link_database = json.load(f)
+        except FileNotFoundError:
+            link_database = []
         compilation_database = {
             CompileKey(k['file'], k['output']): k['arguments'] for k in compilation_database
         }
         self.db = compilation_database
+        self.linkdb = {k['output']: k['arguments'] for k in link_database}
         return self
 
     def __exit__(self, *a):
@@ -470,6 +477,8 @@ class CompilationDatabase:
         ]
         with open(self.dbpath, 'w') as f:
             json.dump(compilation_database, f, indent=2, sort_keys=True)
+        with open(self.linkdbpath, 'w') as f:
+            json.dump([{'output': c.key, 'arguments': c.cmd, 'directory': base} for c in self.link_commands], f, indent=2, sort_keys=True)
 
 
 def compile_c_extension(kenv, module, compilation_database, sources, headers, desc_prefix=''):
@@ -508,7 +517,7 @@ def compile_c_extension(kenv, module, compilation_database, sources, headers, de
     def on_success():
         os.rename(dest, real_dest)
 
-    compilation_database.add_command(desc, cmd, partial(newer, real_dest, *objects), on_success=on_success)
+    compilation_database.add_command(desc, cmd, partial(newer, real_dest, *objects), on_success=on_success, key=module + '.so')
 
 
 def find_c_files():

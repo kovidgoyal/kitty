@@ -6,6 +6,7 @@ build
 linux-package
 kitty.app
 compile_commands.json
+link_commands.json
 glad/out
 kitty/launcher
 *.dSYM
