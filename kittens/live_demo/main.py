@@ -2,9 +2,9 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import select
 import sys
 from ..tui.operations import styled
-
 
 def main(args):
     text = ''
@@ -16,19 +16,21 @@ def main(args):
 
     try:
         while True:
-            text = sys.stdin.buffer.read().decode('utf-8')
-            text = text.replace("hello", styled("hell", bold=True, bg="green", fg="black"))
-            sys.stdout.write(text)
+            if select.select([sys.__stdin__], [], [], 0) == ([sys.__stdin__], [], []):
+                text = sys.__stdin__.read()
+                text = text.replace("hello", styled("hello", bold=True, bg="green", fg="black"))
+                sys.stdout.write(text)
     except KeyboardInterrupt:
         pass
     return
 
 
 def handle_result(args, data, target_window_id, boss):
+    print("in handle_result")
     pass
 
 
-handle_result.type_of_input = 'screen'
+handle_result.type_of_input = 'live'
 
 
 if __name__ == '__main__':
