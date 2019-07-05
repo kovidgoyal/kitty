@@ -18,6 +18,7 @@
 #include <sys/ioctl.h>
 #include <sys/wait.h>
 #include <sys/socket.h>
+#include <signal.h>
 extern PyTypeObject Screen_Type;
 
 #define EXTRA_FDS 2
