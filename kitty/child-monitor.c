@@ -239,7 +239,7 @@ set_child_teefd(ChildMonitor *self, PyObject *args) {
         } 
     }
     children_mutex(unlock);
-    wakeup_io_loop(false);
+    wakeup_io_loop(self, false);
     Py_RETURN_NONE;
 }
 
@@ -1085,7 +1085,10 @@ read_bytes(int fd, Screen *screen, int tee_fd) {
         memmove(screen->read_buf + screen->read_buf_sz, screen->read_buf + orig_sz, len);
     }
     if (tee_fd != -1) {
-        write(tee_fd, screen->read_buf + orig_sz, len);
+        int write_len = write(tee_fd, screen->read_buf + orig_sz, len);
+        if (write_len < 0) {
+            perror("Call to write() to the tee_fd failed");
+        }
     }
     screen->read_buf_sz += len;
     screen_mutex(unlock, read);
