@@ -223,7 +223,8 @@ add_child(ChildMonitor *self, PyObject *args) {
 static PyObject *
 set_child_teefd(ChildMonitor *self, PyObject *args) {
 #define set_child_teefd_doc "set_child_teefd(id, teefd) -> Set a child's tee_fd."
-    unsigned int i, id;
+    ssize_t i;
+    unsigned long id;
     int tee_fd;
     children_mutex(lock);
     if (!PyArg_ParseTuple(args, "ki", &id, &tee_fd)) {
