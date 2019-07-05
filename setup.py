@@ -25,7 +25,7 @@ sys.path.insert(0, os.path.join(base, 'glfw'))
 glfw = importlib.import_module('glfw')
 verbose = False
 del sys.path[0]
-build_dir = os.path.join(base, 'build')
+build_dir = 'build'
 constants = os.path.join(base, 'kitty', 'constants.py')
 with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
