@@ -709,10 +709,16 @@ class Boss:
                             add_history='history' in type_of_input,
                             add_wrap_markers='screen' in type_of_input
                     ).encode('utf-8')
-                elif type_of_input == 'live':
+                elif type_of_input in ('live', 'live-history'):
                     if not w.child.tee_fd_reader and not w.child.tee_fd_writer:
                         w.child.tee_fd_reader, w.child.tee_fd_writer = os.pipe()
                         fcntl.fcntl(w.child.tee_fd_reader, fcntl.F_SETFL, os.O_NONBLOCK)
+                        current_data = w.as_text(
+                            as_ansi=True,
+                            add_history='history' in type_of_input,
+                            add_wrap_markers=True
+                        ).encode('utf-8')
+                        os.write(w.child.tee_fd_writer, current_data)
                         data = w.child.tee_fd_reader
                         self.child_monitor.set_child_teefd(w.id, w.child.tee_fd_writer)
                 elif type_of_input is None:
