@@ -179,7 +179,7 @@ close_tty(PyObject *self UNUSED, PyObject *args) {
     TTY_ARGS
     tcsetattr(fd, TCSAFLUSH, termios_p);  // deliberately ignore failure
     free(termios_p);
-    close(fd);
+    safe_close(fd);
     Py_RETURN_NONE;
 }
 

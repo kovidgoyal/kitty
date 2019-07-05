@@ -746,7 +746,7 @@ thread_write(void *x) {
     if (pos < data->sz) {
         log_error("Failed to write all data to STDIN of child process with error: %s", strerror(errno));
     }
-    close(data->fd);
+    safe_close(data->fd);
     free_twd(data);
     return 0;
 }
@@ -763,7 +763,7 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     data->fd = fd;
     memcpy(data->buf, buf, data->sz);
     int ret = pthread_create(&thread, NULL, thread_write, data);
-    if (ret != 0) { close(fd); free_twd(data); return PyErr_SetFromErrno(PyExc_OSError); }
+    if (ret != 0) { safe_close(fd); free_twd(data); return PyErr_SetFromErrno(PyExc_OSError); }
     pthread_detach(thread);
     Py_RETURN_NONE;
 }
@@ -977,7 +977,7 @@ hangup(pid_t pid) {
 
 static inline void
 cleanup_child(ssize_t i) {
-    close(children[i].fd);
+    safe_close(children[i].fd);
     hangup(children[i].pid);
 }
 
@@ -1268,7 +1268,7 @@ typedef struct {
 static TalkData talk_data = {0};
 typedef struct pollfd PollFD;
 #define PEER_LIMIT 256
-#define nuke_socket(s) { shutdown(s, SHUT_RDWR); close(s); }
+#define nuke_socket(s) { shutdown(s, SHUT_RDWR); safe_close(s); }
 
 static inline bool
 accept_peer(int listen_fd, bool shutting_down) {
@@ -1389,7 +1389,7 @@ prune_finished_writes(void) {
         PeerWriteData *wd = talk_data.writes + i;
         if (wd->finished) {
             remove_poll_fd(wd->fd);
-            shutdown(wd->fd, SHUT_WR); close(wd->fd);
+            shutdown(wd->fd, SHUT_WR); safe_close(wd->fd);
             free(wd->data);
             ssize_t num_to_right = talk_data.num_writes - 1 - i;
             if (num_to_right > 0) memmove(talk_data.writes + i, talk_data.writes + i + 1, num_to_right * sizeof(PeerWriteData));
@@ -1487,8 +1487,8 @@ add_peer_writer(int fd, const char* msg, size_t msg_sz) {
 
 static void
 send_response(int fd, const char *msg, size_t msg_sz) {
-    if (msg == NULL) { shutdown(fd, SHUT_WR); close(fd); return; }
-    if (!add_peer_writer(fd, msg, msg_sz)) { shutdown(fd, SHUT_WR); close(fd); }
+    if (msg == NULL) { shutdown(fd, SHUT_WR); safe_close(fd); return; }
+    if (!add_peer_writer(fd, msg, msg_sz)) { shutdown(fd, SHUT_WR); safe_close(fd); }
     else wakeup_talk_loop(false);
 }
 

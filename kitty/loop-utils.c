@@ -43,7 +43,7 @@ handle_signal(int sig_num) {
 
 void
 free_loop_data(LoopData *ld) {
-#define CLOSE(which, idx) if (ld->which[idx] > -1) close(ld->which[idx]); ld->which[idx] = -1;
+#define CLOSE(which, idx) if (ld->which[idx] > -1) safe_close(ld->which[idx]); ld->which[idx] = -1;
     CLOSE(wakeup_fds, 0); CLOSE(wakeup_fds, 1);
 #ifndef HAS_SIGNAL_FD
     CLOSE(signal_fds, 0); CLOSE(signal_fds, 1);
@@ -51,7 +51,7 @@ free_loop_data(LoopData *ld) {
 #undef CLOSE
     if (ld->signal_read_fd) {
 #ifdef HAS_SIGNAL_FD
-        close(ld->signal_read_fd);
+        safe_close(ld->signal_read_fd);
         SIGNAL_SET
         sigprocmask(SIG_UNBLOCK, &signals, NULL);
 #else
