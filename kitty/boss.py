@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
+import fcntl
 import json
 import os
 import re
@@ -708,6 +709,12 @@ class Boss:
                             add_history='history' in type_of_input,
                             add_wrap_markers='screen' in type_of_input
                     ).encode('utf-8')
+                elif type_of_input == 'live':
+                    if not w.child.tee_fd_reader and not w.child.tee_fd_writer:
+                        w.child.tee_fd_reader, w.child.tee_fd_writer = os.pipe()
+                        fcntl.fcntl(w.child.tee_fd_reader, fcntl.F_SETFL, os.O_NONBLOCK)
+                        data = w.child.tee_fd_reader
+                        self.child_monitor.set_child_teefd(w.id, w.child.tee_fd_writer)
                 elif type_of_input is None:
                     data = None
                 else:
@@ -751,6 +758,12 @@ class Boss:
         data = deserialize(output)
         if data is not None:
             end_kitten(data, target_window_id, self)
+        w = self.window_id_map[target_window_id]
+        if w.child.tee_fd_reader or w.child.tee_fd_writer:
+            self.child_monitor.set_child_teefd(target_window_id, -1)
+            os.close(w.child.tee_fd_reader)
+            os.close(w.child.tee_fd_writer)
+            w.child.tee_fd_reader = w.child.tee_fd_writer = None
 
     def input_unicode_character(self):
         self._run_kitten('unicode_input')
