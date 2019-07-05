@@ -159,6 +159,7 @@ class Child:
 
     child_fd = pid = None
     forked = False
+    tee_fd_reader = tee_fd_writer = None
 
     def __init__(self, argv, cwd, opts, stdin=None, env=None, cwd_from=None, allow_remote_control=False):
         self.allow_remote_control = allow_remote_control
@@ -202,8 +203,14 @@ class Child:
         ready_read_fd, ready_write_fd = os.pipe()
         remove_cloexec(ready_read_fd)
         if stdin is not None:
-            stdin_read_fd, stdin_write_fd = os.pipe()
-            remove_cloexec(stdin_read_fd)
+            if isinstance(stdin, int):
+                print("stdin is %d" % stdin)
+                stdin_read_fd = stdin
+                stdin_write_fd = -1
+                remove_cloexec(stdin_read_fd)
+            else:
+                stdin_read_fd, stdin_write_fd = os.pipe()
+                remove_cloexec(stdin_read_fd)
         else:
             stdin_read_fd = stdin_write_fd = -1
         env = self.final_env
@@ -230,7 +237,7 @@ class Child:
         os.close(slave)
         self.pid = pid
         self.child_fd = master
-        if stdin is not None:
+        if stdin is not None and not isinstance(stdin, int):
             os.close(stdin_read_fd)
             fast_data_types.thread_write(stdin_write_fd, stdin)
         os.close(ready_read_fd)
