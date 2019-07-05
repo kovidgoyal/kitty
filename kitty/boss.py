@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
-import fcntl
 import json
 import os
 import re
@@ -712,7 +711,6 @@ class Boss:
                 elif type_of_input in ('live', 'live-history'):
                     if not w.child.tee_fd_reader and not w.child.tee_fd_writer:
                         w.child.tee_fd_reader, w.child.tee_fd_writer = os.pipe()
-                        fcntl.fcntl(w.child.tee_fd_reader, fcntl.F_SETFL, os.O_NONBLOCK)
                         current_data = w.as_text(
                             as_ansi=True,
                             add_history='history' in type_of_input,

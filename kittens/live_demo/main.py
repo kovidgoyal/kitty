@@ -2,6 +2,8 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import fcntl
+import os
 import select
 import sys
 from ..tui.operations import styled
@@ -15,6 +17,7 @@ def main(args):
             input('Press Enter to quit')
             return
 
+    fcntl.fcntl(sys.__stdin__.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
     try:
         while True:
             if select.select([sys.__stdin__], [], [], 0) == ([sys.__stdin__], [], []):
