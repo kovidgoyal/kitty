@@ -15,6 +15,7 @@ import subprocess
 import sys
 import sysconfig
 import time
+from functools import partial
 from collections import namedtuple
 from contextlib import suppress
 from pathlib import Path
@@ -367,12 +368,12 @@ def dependecies_for(src, obj, all_headers):
                     yield path
 
 
-def parallel_run(todo, desc='Compiling {} ...'):
+def parallel_run(items):
     try:
         num_workers = max(2, os.cpu_count())
     except Exception:
         num_workers = 2
-    items = list(reversed(tuple(todo.items())))
+    items = list(reversed(items))
     workers = {}
     failed = None
 
@@ -381,37 +382,66 @@ def parallel_run(todo, desc='Compiling {} ...'):
         if not workers:
             return
         pid, s = os.wait()
-        name, cmd, w = workers.pop(pid, (None, None, None))
-        if name is not None and ((s & 0xff) != 0 or ((s >> 8) & 0xff) != 0) and failed is None:
-            failed = name, cmd
+        compile_cmd, w = workers.pop(pid, (None, None))
+        if compile_cmd is not None and ((s & 0xff) != 0 or ((s >> 8) & 0xff) != 0) and failed is None:
+            failed = compile_cmd
+        elif compile_cmd.on_success is not None:
+            compile_cmd.on_success()
 
     while items and failed is None:
         while len(workers) < num_workers and items:
-            name, cmd = items.pop()
+            compile_cmd = items.pop()
             if verbose:
-                print(' '.join(cmd))
+                print(' '.join(compile_cmd.cmd))
             else:
-                print(desc.format(emphasis(name)))
-            w = subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
-            workers[w.pid] = name, cmd, w
+                print(compile_cmd.desc)
+            w = subprocess.Popen(compile_cmd.cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            workers[w.pid] = compile_cmd, w
         wait()
     while len(workers):
         wait()
     if failed:
-        run_tool(failed[1])
+        run_tool(failed.cmd)
 
 
 CompileKey = namedtuple('CompileKey', 'src dest')
+Command = namedtuple('Command', 'desc cmd is_newer_func on_success key keyfile')
 
 
 class CompilationDatabase:
 
-    def cmd_changed(self, key, cmd):
-        self.all_keys.add(key)
-        return self.db.get(key) != cmd
+    def __init__(self, incremental):
+        self.incremental = incremental
+        self.compile_commands = []
+        self.link_commands = []
 
-    def update_cmd(self, key, cmd):
-        self.db[key] = cmd
+    def add_command(self, desc, cmd, is_newer_func, key=None, on_success=None, keyfile=None):
+        queue = self.link_commands if key is None else self.compile_commands
+        queue.append(Command(desc, cmd, is_newer_func, on_success, key, keyfile))
+
+    def build_all(self):
+        items = []
+
+        def sort_key(compile_cmd):
+            if compile_cmd.keyfile:
+                return os.path.getsize(compile_cmd.keyfile)
+            return 0
+
+        for compile_cmd in self.compile_commands:
+            if not self.incremental or self.cmd_changed(compile_cmd) or compile_cmd.is_newer_func():
+                items.append(compile_cmd)
+        items.sort(key=sort_key, reverse=True)
+        parallel_run(items)
+
+        items = []
+        for compile_cmd in self.link_commands:
+            if not self.incremental or compile_cmd.is_newer_func():
+                items.append(compile_cmd)
+        parallel_run(items)
+
+    def cmd_changed(self, compile_cmd):
+        key, cmd = compile_cmd.key, compile_cmd.cmd
+        return self.db.get(key) != cmd
 
     def __enter__(self):
         self.all_keys = set()
@@ -432,20 +462,18 @@ class CompilationDatabase:
         for key in set(cdb) - self.all_keys:
             del cdb[key]
         compilation_database = [
-            {'file': k.src, 'arguments': v, 'directory': base, 'output': k.dest} for k, v in cdb.items()
+            {'file': c.key.src, 'arguments': c.cmd, 'directory': base, 'output': c.key.dest} for c in self.compile_commands
         ]
         with open(self.dbpath, 'w') as f:
             json.dump(compilation_database, f, indent=2, sort_keys=True)
 
 
-def compile_c_extension(kenv, module, incremental, compilation_database, sources, headers):
+def compile_c_extension(kenv, module, compilation_database, sources, headers):
     prefix = os.path.basename(module)
     objects = [
         os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
         for src in sources
     ]
-
-    todo = {}
 
     for original_src, dest in zip(sources, objects):
         src = original_src
@@ -460,32 +488,23 @@ def compile_c_extension(kenv, module, incremental, compilation_database, sources
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         cmd += ['-c', src] + ['-o', dest]
         key = CompileKey(original_src, os.path.basename(dest))
-        cmd_changed = compilation_database.cmd_changed(key, cmd)
-        must_compile = not incremental or cmd_changed
-        src = os.path.join(base, src)
-        if must_compile or newer(
-            dest, *dependecies_for(src, dest, headers)
-        ):
-            compilation_database.update_cmd(key, cmd)
-            todo[original_src] = cmd
-    if todo:
-        parallel_run(todo)
+        desc = 'Compiling {} ...'.format(emphasis(src))
+        compilation_database.add_command(desc, cmd, partial(newer, dest, *dependecies_for(os.path.join(base, src), dest, headers)), key=key, keyfile=src)
     dest = os.path.join(build_dir, module + '.so')
     real_dest = os.path.join(base, module + '.so')
     os.makedirs(os.path.dirname(dest), exist_ok=True)
-    if not incremental or newer(real_dest, *objects):
-        # Old versions of clang don't like -pthread being passed to the linker
-        # Don't treat linker warnings as errors (linker generates spurious
-        # warnings on some old systems)
-        unsafe = {'-pthread', '-Werror', '-pedantic-errors'}
-        linker_cflags = list(filter(lambda x: x not in unsafe, kenv.cflags))
-        try:
-            run_tool([kenv.cc] + linker_cflags + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest], desc='Linking {} ...'.format(emphasis(module)))
-        except Exception:
-            with suppress(EnvironmentError):
-                os.remove(dest)
-        else:
-            os.rename(dest, real_dest)
+    desc = 'Linking {} ...'.format(emphasis(module))
+    # Old versions of clang don't like -pthread being passed to the linker
+    # Don't treat linker warnings as errors (linker generates spurious
+    # warnings on some old systems)
+    unsafe = {'-pthread', '-Werror', '-pedantic-errors'}
+    linker_cflags = list(filter(lambda x: x not in unsafe, kenv.cflags))
+    cmd = [kenv.cc] + linker_cflags + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest]
+
+    def on_success():
+        os.rename(dest, real_dest)
+
+    compilation_database.add_command(desc, cmd, partial(newer, real_dest, *objects), on_success=on_success)
 
 
 def find_c_files():
@@ -505,7 +524,7 @@ def find_c_files():
     return tuple(ans), tuple(headers)
 
 
-def compile_glfw(incremental, compilation_database):
+def compile_glfw(compilation_database):
     modules = 'cocoa' if is_macos else 'x11 wayland'
     for module in modules.split():
         try:
@@ -525,7 +544,7 @@ def compile_glfw(incremental, compilation_database):
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
                 continue
-        compile_c_extension(genv, 'kitty/glfw-' + module, incremental, compilation_database, sources, all_headers)
+        compile_c_extension(genv, 'kitty/glfw-' + module, compilation_database, sources, all_headers)
 
 
 def kittens_env():
@@ -538,7 +557,7 @@ def kittens_env():
     return kenv
 
 
-def compile_kittens(incremental, compilation_database):
+def compile_kittens(compilation_database):
     kenv = kittens_env()
 
     def list_files(q):
@@ -559,17 +578,17 @@ def compile_kittens(incremental, compilation_database):
             filter_sources=lambda x: 'windows_compat.c' not in x),
     ):
         compile_c_extension(
-            kenv, dest, incremental, compilation_database, sources, all_headers + ['kitty/data-types.h'])
+            kenv, dest, compilation_database, sources, all_headers + ['kitty/data-types.h'])
 
 
 def build(args, native_optimizations=True):
     global env
     env = init_env(args.debug, args.sanitize, native_optimizations, args.profile, args.extra_logging)
     compile_c_extension(
-        kitty_env(), 'kitty/fast_data_types', args.incremental, args.compilation_database, *find_c_files()
+        kitty_env(), 'kitty/fast_data_types', args.compilation_database, *find_c_files()
     )
-    compile_glfw(args.incremental, args.compilation_database)
-    compile_kittens(args.incremental, args.compilation_database)
+    compile_glfw(args.compilation_database)
+    compile_kittens(args.compilation_database)
 
 
 def safe_makedirs(path):
@@ -618,10 +637,9 @@ def build_launcher(args, launcher_dir='.', bundle_type='source'):
     cmd = [env.cc] + cppflags + cflags + [
            src, '-o', dest] + ldflags + libs + pylib
     key = CompileKey('launcher.c', 'kitty')
-    must_compile = not args.incremental or args.compilation_database.cmd_changed(key, cmd)
-    if must_compile or newer(dest, src):
-        run_tool(cmd, 'Building {}...'.format(emphasis('launcher')))
-        args.compilation_database.update_cmd(key, cmd)
+    desc = 'Building {}...'.format(emphasis('launcher'))
+    args.compilation_database.add_command(desc, cmd, partial(newer, dest, src), key=key, keyfile=src)
+    args.compilation_database.build_all()
 
 
 # Packaging {{{
@@ -959,7 +977,7 @@ def main():
         clean()
         return
 
-    with CompilationDatabase() as cdb:
+    with CompilationDatabase(args.incremental) as cdb:
         args.compilation_database = cdb
         if args.action == 'build':
             build(args)
