@@ -6,6 +6,7 @@ import select
 import sys
 from ..tui.operations import styled
 
+
 def main(args):
     text = ''
     if sys.stdin.isatty():
