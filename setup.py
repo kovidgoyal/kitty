@@ -376,6 +376,7 @@ def parallel_run(items):
     items = list(reversed(items))
     workers = {}
     failed = None
+    num, total = 0, len(items)
 
     def wait():
         nonlocal failed
@@ -391,16 +392,20 @@ def parallel_run(items):
     while items and failed is None:
         while len(workers) < num_workers and items:
             compile_cmd = items.pop()
+            num += 1
             if verbose:
                 print(' '.join(compile_cmd.cmd))
             else:
-                print(compile_cmd.desc)
+                print('\r\x1b[K[{}/{}] {}'.format(num, total, compile_cmd.desc), end='')
             w = subprocess.Popen(compile_cmd.cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             workers[w.pid] = compile_cmd, w
         wait()
     while len(workers):
         wait()
+    if not verbose:
+        print()
     if failed:
+        print(failed.desc)
         run_tool(failed.cmd)
 
 
