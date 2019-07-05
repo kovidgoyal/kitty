@@ -12,10 +12,14 @@ bool
 init_loop_data(LoopData *ld) {
     if (!self_pipe(ld->wakeup_fds, true)) return false;
     ld->wakeup_read_fd = ld->wakeup_fds[0];
-    ld->signal_fds[0] = -1; ld->signal_fds[1] = -1; ld->signal_read_fd = -1;
+    ld->signal_read_fd = -1;
+#ifndef HAS_SIGNAL_FD
+    ld->signal_fds[0] = -1; ld->signal_fds[1] = -1;
+#endif
     return true;
 }
 
+#ifndef HAS_SIGNAL_FD
 static int signal_write_fd = -1;
 
 static void
@@ -29,16 +33,30 @@ handle_signal(int sig_num) {
     }
     errno = save_err;
 }
+#endif
 
+
+#define SIGNAL_SET \
+    sigset_t signals = {0}; \
+    sigemptyset(&signals); \
+    sigaddset(&signals, SIGINT); sigaddset(&signals, SIGTERM); sigaddset(&signals, SIGCHLD); \
 
 void
 free_loop_data(LoopData *ld) {
 #define CLOSE(which, idx) if (ld->which[idx] > -1) close(ld->which[idx]); ld->which[idx] = -1;
     CLOSE(wakeup_fds, 0); CLOSE(wakeup_fds, 1);
+#ifndef HAS_SIGNAL_FD
     CLOSE(signal_fds, 0); CLOSE(signal_fds, 1);
+#endif
 #undef CLOSE
     if (ld->signal_read_fd) {
+#ifdef HAS_SIGNAL_FD
+        close(ld->signal_read_fd);
+        SIGNAL_SET
+        sigprocmask(SIG_UNBLOCK, &signals, NULL);
+#else
         signal_write_fd = -1;
+#endif
         signal(SIGINT, SIG_DFL);
         signal(SIGTERM, SIG_DFL);
         signal(SIGCHLD, SIG_DFL);
@@ -60,9 +78,14 @@ wakeup_loop(LoopData *ld, bool in_signal_handler) {
 }
 
 
-
 bool
 install_signal_handlers(LoopData *ld) {
+#ifdef HAS_SIGNAL_FD
+    SIGNAL_SET
+    if (sigprocmask(SIG_BLOCK, &signals, NULL) == -1) return false;
+    ld->signal_read_fd = signalfd(-1, &signals, SFD_NONBLOCK | SFD_CLOEXEC);
+    if (ld->signal_read_fd == -1) return false;
+#else
     if (!self_pipe(ld->signal_fds, true)) return false;
     signal_write_fd = ld->signal_fds[1];
     struct sigaction act = {.sa_handler=handle_signal};
@@ -70,25 +93,42 @@ install_signal_handlers(LoopData *ld) {
     SA(SIGINT); SA(SIGTERM); SA(SIGCHLD);
 #undef SA
     ld->signal_read_fd = ld->signal_fds[0];
+#endif
     return true;
 }
 
-static inline void
-read_signals_from_pipe_fd(int fd, handle_signal_func callback, void *data) {
+
+void
+read_signals(int fd, handle_signal_func callback, void *data) {
+#ifdef HAS_SIGNAL_FD
+    static struct signalfd_siginfo fdsi[32];
+    while (true) {
+        ssize_t s = read(fd, &fdsi, sizeof(fdsi));
+        if (s < 0) {
+            if (errno == EINTR) continue;
+            if (errno == EAGAIN) break;
+            log_error("Call to read() from read_signals() failed with error: %s", strerror(errno));
+            break;
+        }
+        if (s == 0) break;
+        size_t num_signals = s / sizeof(struct signalfd_siginfo);
+        if (num_signals == 0 || num_signals * sizeof(struct signalfd_siginfo) != (size_t)s) {
+            log_error("Incomplete signal read from signalfd");
+            break;
+        }
+        for (size_t i = 0; i < num_signals; i++) callback(fdsi[i].ssi_signo, data);
+    }
+#else
     static char buf[256];
     while(true) {
         ssize_t len = read(fd, buf, sizeof(buf));
         if (len < 0) {
             if (errno == EINTR) continue;
-            if (errno != EIO && errno != EAGAIN) log_error("Call to read() from read_signals_from_pipe_fd() failed with error: %s", strerror(errno));
+            if (errno != EIO && errno != EAGAIN) log_error("Call to read() from read_signals() failed with error: %s", strerror(errno));
             break;
         }
         for (ssize_t i = 0; i < len; i++) callback(buf[i], data);
         if (len == 0) break;
     }
-}
-
-void
-read_signals(int fd, handle_signal_func callback, void *data) {
-    read_signals_from_pipe_fd(fd, callback, data);
+#endif
 }

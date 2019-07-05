@@ -10,9 +10,16 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#if __has_include(<sys/signalfd.h>)
+#define HAS_SIGNAL_FD
+#include <sys/signalfd.h>
+#endif
+
 typedef struct {
     int wakeup_fds[2];
+#ifndef HAS_SIGNAL_FD
     int signal_fds[2];
+#endif
     int wakeup_read_fd;
     int signal_read_fd;
 } LoopData;
