@@ -229,15 +229,16 @@ drain_wakeup_fd(int fd, int events UNUSED, void* data UNUSED) {
 
 bool
 initPollData(EventLoopData *eld, int display_fd) {
-    addWatch(eld, "display", display_fd, POLLIN, 1, NULL, NULL);
+    if (!addWatch(eld, "display", display_fd, POLLIN, 1, NULL, NULL)) return false;
 #ifdef HAS_EVENT_FD
     eld->wakeupFd = eventfd(0, 0);
     if (eld->wakeupFd == -1) return false;
-    addWatch(eld, "wakeup", eld->wakeupFd, POLLIN, 1, drain_wakeup_fd, NULL);
+    const int wakeup_fd = eld->wakeupFd;
 #else
     if (pipe2(eld->wakeupFds, O_CLOEXEC | O_NONBLOCK) != 0) return false;
-    addWatch(eld, "wakeup", eld->wakeupFds[0], POLLIN, 1, drain_wakeup_fd, NULL);
+    const int wakeup_fd = eld->wakeupFds[0];
 #endif
+    if (!addWatch(eld, "wakeup", wakeup_fd, POLLIN, 1, drain_wakeup_fd, NULL)) return false;
     return true;
 }
 
