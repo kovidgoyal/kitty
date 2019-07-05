@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#include "loop-utils.h"
 #include "state.h"
 #include "threading.h"
 #include "screen.h"
@@ -16,7 +17,6 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 #include <sys/wait.h>
-#include <signal.h>
 #include <sys/socket.h>
 extern PyTypeObject Screen_Type;
 
@@ -46,6 +46,7 @@ typedef struct {
     int talk_fd, listen_fd;
     Message *messages;
     size_t messages_capacity, messages_count;
+    LoopData io_loop_data;
 } ChildMonitor;
 
 
@@ -77,7 +78,6 @@ static pthread_mutex_t children_lock;
 static bool kill_signal_received = false;
 static ChildMonitor *the_monitor = NULL;
 static uint8_t drain_buf[1024];
-static int signal_fds[2], wakeup_fds[2];
 
 
 typedef struct {
@@ -110,43 +110,6 @@ set_maximum_wait(double val) {
     if (val >= 0 && (val < maximum_wait || maximum_wait < 0)) maximum_wait = val;
 }
 
-static void
-handle_signal(int sig_num) {
-    int save_err = errno;
-    unsigned char byte = (unsigned char)sig_num;
-    while(true) {
-        ssize_t ret = write(signal_fds[1], &byte, 1);
-        if (ret < 0 && errno == EINTR) continue;
-        break;
-    }
-    errno = save_err;
-}
-
-static inline bool
-self_pipe(int fds[2], bool nonblock) {
-#ifdef __APPLE__
-    int flags;
-    flags = pipe(fds);
-    if (flags != 0) return false;
-    for (int i = 0; i < 2; i++) {
-        flags = fcntl(fds[i], F_GETFD);
-        if (flags == -1) {  return false; }
-        if (fcntl(fds[i], F_SETFD, flags | FD_CLOEXEC) == -1) { return false; }
-        if (nonblock) {
-            flags = fcntl(fds[i], F_GETFL);
-            if (flags == -1) { return false; }
-            if (fcntl(fds[i], F_SETFL, flags | O_NONBLOCK) == -1) { return false; }
-        }
-    }
-    return true;
-#else
-    int flags = O_CLOEXEC;
-    if (nonblock) flags |= O_NONBLOCK;
-    return pipe2(fds, flags) == 0;
-#endif
-}
-
-
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
@@ -160,13 +123,9 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
     }
-    if (!self_pipe(wakeup_fds, true)) return PyErr_SetFromErrno(PyExc_OSError);
-    if (!self_pipe(signal_fds, true)) return PyErr_SetFromErrno(PyExc_OSError);
-    struct sigaction act = {.sa_handler=handle_signal};
-#define SA(which) { if (sigaction(which, &act, NULL) != 0) return PyErr_SetFromErrno(PyExc_OSError); if (siginterrupt(which, false) != 0) return PyErr_SetFromErrno(PyExc_OSError);}
-    SA(SIGINT); SA(SIGTERM); SA(SIGCHLD);
-#undef SA
     self = (ChildMonitor *)type->tp_alloc(type, 0);
+    if (!init_loop_data(&self->io_loop_data)) return PyErr_SetFromErrno(PyExc_OSError);
+    if (!install_signal_handlers(&self->io_loop_data)) return PyErr_SetFromErrno(PyExc_OSError);
     self->talk_fd = talk_fd;
     self->listen_fd = listen_fd;
     if (self == NULL) return PyErr_NoMemory();
@@ -176,7 +135,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         parse_func = parse_worker_dump;
     } else parse_func = parse_worker;
     self->count = 0;
-    fds[0].fd = wakeup_fds[0]; fds[1].fd = signal_fds[0];
+    fds[0].fd = self->io_loop_data.wakeup_read_fd; fds[1].fd = self->io_loop_data.signal_read_fd;
     fds[0].events = POLLIN; fds[1].events = POLLIN;
     the_monitor = self;
 
@@ -197,22 +156,12 @@ dealloc(ChildMonitor* self) {
         add_queue_count--;
         FREE_CHILD(add_queue[add_queue_count]);
     }
-    close(wakeup_fds[0]);
-    close(wakeup_fds[1]);
-    close(signal_fds[0]);
-    close(signal_fds[1]);
+    free_loop_data(&self->io_loop_data);
 }
 
-void
-wakeup_io_loop(bool in_signal_handler) {
-    while(true) {
-        ssize_t ret = write(wakeup_fds[1], "w", 1);
-        if (ret < 0) {
-            if (errno == EINTR) continue;
-            if (!in_signal_handler) perror("Failed to write to wakeup fd with error");
-        }
-        break;
-    }
+static void
+wakeup_io_loop(ChildMonitor *self, bool in_signal_handler) {
+    wakeup_loop(&self->io_loop_data, in_signal_handler);
 }
 
 static void* io_loop(void *data);
@@ -236,9 +185,9 @@ start(PyObject *s, PyObject *a UNUSED) {
 }
 
 static PyObject *
-wakeup(PYNOARG) {
+wakeup(ChildMonitor *self, PyObject *args UNUSED) {
 #define wakeup_doc "wakeup() -> wakeup the ChildMonitor I/O thread, forcing it to exit from poll() if it is waiting there."
-    wakeup_io_loop(false);
+    wakeup_io_loop(self, false);
     Py_RETURN_NONE;
 }
 
@@ -257,7 +206,7 @@ add_child(ChildMonitor *self, PyObject *args) {
     INCREF_CHILD(add_queue[add_queue_count]);
     add_queue_count++;
     children_mutex(unlock);
-    wakeup_io_loop(false);
+    wakeup_io_loop(self, false);
     Py_RETURN_NONE;
 }
 
@@ -304,7 +253,7 @@ schedule_write_to_child(unsigned long id, unsigned int num, ...) {
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
                 if (screen->write_buf == NULL) { fatal("Out of memory."); }
             }
-            if (screen->write_buf_used) wakeup_io_loop(false);
+            if (screen->write_buf_used) wakeup_io_loop(self, false);
             screen_mutex(unlock, write);
             break;
         }
@@ -326,12 +275,9 @@ needs_write(ChildMonitor UNUSED *self, PyObject *args) {
 static PyObject *
 shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
 #define shutdown_monitor_doc "shutdown_monitor() -> Shutdown the monitor loop."
-    signal(SIGINT, SIG_DFL);
-    signal(SIGTERM, SIG_DFL);
-    signal(SIGCHLD, SIG_DFL);
     self->shutting_down = true;
     wakeup_talk_loop(false);
-    wakeup_io_loop(false);
+    wakeup_io_loop(self, false);
     int ret = pthread_join(self->io_thread, NULL);
     if (ret != 0) return PyErr_Format(PyExc_OSError, "Failed to join() I/O thread with error: %s", strerror(ret));
     if (talk_thread_started) {
@@ -350,7 +296,7 @@ do_parse(ChildMonitor *self, Screen *screen, double now) {
         if (time_since_new_input >= OPT(input_delay)) {
             bool read_buf_full = screen->read_buf_sz >= READ_BUF_SZ;
             parse_func(screen, self->dump_callback, now);
-            if (read_buf_full) wakeup_io_loop(false);  // Ensure the read fd has POLLIN set
+            if (read_buf_full) wakeup_io_loop(self, false);  // Ensure the read fd has POLLIN set
             screen->new_input_at = 0;
             if (screen->pending_mode.activated_at) {
                 double time_since_pending = MAX(0, now - screen->pending_mode.activated_at);
@@ -435,7 +381,7 @@ mark_child_for_close(ChildMonitor *self, id_type window_id) {
         }
     }
     children_mutex(unlock);
-    wakeup_io_loop(false);
+    wakeup_io_loop(self, false);
 }
 
 
@@ -1106,28 +1052,21 @@ drain_fd(int fd) {
     }
 }
 
-static inline void
-read_signals(int fd, bool *kill_signal, bool *child_died) {
-    static char buf[256];
-    while(true) {
-        ssize_t len = read(fd, buf, sizeof(buf));
-        if (len < 0) {
-            if (errno == EINTR) continue;
-            if (errno != EIO) perror("Call to read() from read_signals() failed");
+typedef struct { bool kill_signal, child_died; } SignalSet;
+
+static void
+handle_signal(int signum, void *data) {
+    SignalSet *ss = data;
+    switch(signum) {
+        case SIGINT:
+        case SIGTERM:
+            ss->kill_signal = true;
             break;
-        }
-        for (ssize_t i = 0; i < len; i++) {
-            switch(buf[i]) {
-                case SIGCHLD:
-                    *child_died = true; break;
-                case SIGINT:
-                case SIGTERM:
-                    *kill_signal = true; break;
-                default:
-                    break;
-            }
-        }
-        break;
+        case SIGCHLD:
+            ss->child_died = true;
+            break;
+        default:
+            break;
     }
 }
 
@@ -1237,11 +1176,11 @@ io_loop(void *data) {
         if (ret > 0) {
             if (fds[0].revents && POLLIN) drain_fd(fds[0].fd); // wakeup
             if (fds[1].revents && POLLIN) {
+                SignalSet ss = {0};
                 data_received = true;
-                bool kill_signal = false, child_died = false;
-                read_signals(fds[1].fd, &kill_signal, &child_died);
-                if (kill_signal) { children_mutex(lock); kill_signal_received = true; children_mutex(unlock); }
-                if (child_died) reap_children(self, OPT(close_on_child_death));
+                read_signals(fds[1].fd, handle_signal, &ss);
+                if (ss.kill_signal) { children_mutex(lock); kill_signal_received = true; children_mutex(unlock); }
+                if (ss.child_died) reap_children(self, OPT(close_on_child_death));
             }
             for (i = 0; i < self->count; i++) {
                 if (fds[EXTRA_FDS + i].revents & (POLLIN | POLLHUP)) {
@@ -1321,7 +1260,7 @@ typedef struct {
     PeerReadData *reads;
     PeerWriteData *writes;
     PeerWriteData *queued_writes;
-    int wakeup_fds[2];
+    LoopData loop_data;
     pthread_mutex_t peer_lock;
 } TalkData;
 
@@ -1461,15 +1400,7 @@ prune_finished_writes(void) {
 
 static void
 wakeup_talk_loop(bool in_signal_handler) {
-    if (talk_data.wakeup_fds[1] <= 0) return;
-    while(true) {
-        ssize_t ret = write(talk_data.wakeup_fds[1], "w", 1);
-        if (ret < 0) {
-            if (errno == EINTR) continue;
-            if (!in_signal_handler) perror("Failed to write to talk wakeup fd with error");
-        }
-        break;
-    }
+    wakeup_loop(&talk_data.loop_data, in_signal_handler);
 }
 
 static inline void
@@ -1498,7 +1429,7 @@ talk_loop(void *data) {
     ChildMonitor *self = (ChildMonitor*)data;
     set_thread_name("KittyPeerMon");
     if ((pthread_mutex_init(&talk_data.peer_lock, NULL)) != 0) { perror("Failed to create peer mutex"); return 0; }
-    if (!self_pipe(talk_data.wakeup_fds, true)) { perror("Failed to create wakeup fds for talk thread"); return 0; }
+    if (!init_loop_data(&talk_data.loop_data)) { log_error("Failed to create wakeup fd for talk thread with error: %s", strerror(errno)); }
     ensure_space_for(&talk_data, fds, PollFD, 8, fds_capacity, 8, false);
 #define add_listener(which) \
     if (self->which > -1) { \
@@ -1506,7 +1437,7 @@ talk_loop(void *data) {
     }
     add_listener(talk_fd); add_listener(listen_fd);
 #undef add_listener
-    talk_data.fds[talk_data.num_listen_fds].fd = talk_data.wakeup_fds[0]; talk_data.fds[talk_data.num_listen_fds++].events = POLLIN;
+    talk_data.fds[talk_data.num_listen_fds].fd = talk_data.loop_data.wakeup_read_fd; talk_data.fds[talk_data.num_listen_fds++].events = POLLIN;
 
     while (LIKELY(!self->shutting_down)) {
         for (size_t i = 0; i < talk_data.num_listen_fds + talk_data.num_talk_fds; i++) { talk_data.fds[i].revents = 0; }
@@ -1529,7 +1460,7 @@ talk_loop(void *data) {
         } else if (ret < 0) { if (errno != EAGAIN && errno != EINTR) perror("poll() on talk fds failed"); }
     }
 end:
-    close(talk_data.wakeup_fds[0]); close(talk_data.wakeup_fds[1]);
+    free_loop_data(&talk_data.loop_data);
     free(talk_data.fds); free(talk_data.reads); free(talk_data.writes); free(talk_data.queued_writes);
     return 0;
 }
