@@ -1083,9 +1083,9 @@ read_bytes(int fd, Screen *screen, int tee_fd) {
     if (orig_sz != screen->read_buf_sz) {
         // The other thread consumed some of the screen read buffer
         memmove(screen->read_buf + screen->read_buf_sz, screen->read_buf + orig_sz, len);
-        if (tee_fd != -1) {
-            write(tee_fd, screen->read_buf + orig_sz, len);
-        }
+    }
+    if (tee_fd != -1) {
+        write(tee_fd, screen->read_buf + orig_sz, len);
     }
     screen->read_buf_sz += len;
     screen_mutex(unlock, read);
