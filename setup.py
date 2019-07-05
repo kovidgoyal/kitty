@@ -403,7 +403,7 @@ def parallel_run(items):
     while len(workers):
         wait()
     if not verbose:
-        print()
+        print(' done')
     if failed:
         print(failed.desc)
         run_tool(failed.cmd)
@@ -552,7 +552,7 @@ def compile_glfw(compilation_database):
         all_headers = [os.path.join('glfw', x) for x in genv.all_headers]
         if module == 'wayland':
             try:
-                glfw.build_wayland_protocols(genv, run_tool, emphasis, newer, os.path.join(base, 'glfw'))
+                glfw.build_wayland_protocols(genv, Command, parallel_run, emphasis, newer, os.path.join(base, 'glfw'))
             except SystemExit as err:
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
