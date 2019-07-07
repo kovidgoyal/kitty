@@ -278,6 +278,7 @@ int
 pollForEvents(EventLoopData *eld, double timeout) {
     int read_ok = 0;
     timeout = prepareForPoll(eld, timeout);
+    EVDBG("pollForEvents final timeout: %.3f", timeout);
     int result;
     double end_time = monotonic() + timeout;
 

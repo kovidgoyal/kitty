@@ -471,8 +471,6 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 #undef INCREF_CHILD
 #undef DECREF_CHILD
 
-static double last_render_at = -DBL_MAX;
-
 extern void cocoa_update_title(PyObject*);
 
 static inline void
@@ -631,6 +629,7 @@ no_render_frame_received_recently(OSWindow *w, double now, double max_wait) {
 
 static inline void
 render(double now) {
+    static double last_render_at = -DBL_MAX;
     double time_since_last_render = now - last_render_at;
     if (time_since_last_render < OPT(repaint_delay)) {
         set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
@@ -884,9 +883,13 @@ set_cocoa_pending_action(CocoaPendingAction action, const char *wd) {
 static void process_global_state(void *data);
 
 static void
-do_state_check(id_type timer_id UNUSED, void *data) {
-    ChildMonitor *self = data;
-    process_global_state(self);
+do_state_check(id_type timer_id UNUSED, void *data UNUSED) {
+#ifdef __APPLE__
+    process_global_state(data);
+#endif
+    // We don't actually do anything here as process_global_state
+    // will be called when the loop ticks on Linux
+
 }
 
 static id_type state_check_timer = 0;

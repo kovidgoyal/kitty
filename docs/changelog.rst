@@ -43,6 +43,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix a rare deadlock causing kitty to hang (:iss:`1779`)
 
+- Linux: Fix a regression in 0.14.0 that caused the event loop to tick
+  continuously, wasting CPU even when idle (:iss:`1782`)
+
 
 0.14.2 [2019-06-09]
 ---------------------
