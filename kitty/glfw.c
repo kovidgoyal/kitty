@@ -66,6 +66,22 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     }
 }
 
+void
+log_event(const char *format, ...) {
+    if (format)
+    {
+        va_list vl;
+
+        fprintf(stderr, "[%.4f] ", glfwGetTime());
+        va_start(vl, format);
+        vfprintf(stderr, format, vl);
+        va_end(vl);
+        fprintf(stderr, "\n");
+    }
+
+}
+
+
 // callbacks {{{
 
 void

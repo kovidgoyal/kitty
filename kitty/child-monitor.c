@@ -21,6 +21,12 @@
 #include <signal.h>
 extern PyTypeObject Screen_Type;
 
+#ifdef DEBUG_EVENT_LOOP
+#define EVDBG(...) log_event(__VA_ARGS__)
+#else
+#define EVDBG(...)
+#endif
+
 #define EXTRA_FDS 2
 #ifndef MSG_NOSIGNAL
 // Apple does not implement MSG_NOSIGNAL
@@ -884,6 +890,7 @@ static void process_global_state(void *data);
 
 static void
 do_state_check(id_type timer_id UNUSED, void *data UNUSED) {
+    EVDBG("State check timer fired");
 #ifdef __APPLE__
     process_global_state(data);
 #endif
@@ -896,6 +903,7 @@ static id_type state_check_timer = 0;
 
 static void
 process_global_state(void *data) {
+    EVDBG("Processing global state");
     ChildMonitor *self = data;
     maximum_wait = -1;
     bool state_check_timer_enabled = false;
