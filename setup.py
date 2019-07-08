@@ -705,6 +705,8 @@ def compile_python(base_path):
 
 
 def create_linux_bundle_gunk(ddir, libdir_name):
+    if not os.path.exists(os.path.join(base, 'docs/_build/html')):
+        run_tool(['make', 'docs'])
     copy_man_pages(ddir)
     copy_html_docs(ddir)
     icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
@@ -865,9 +867,6 @@ def package(args, bundle_type):
             path = os.path.join(root, f)
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
     if not is_macos:
-        if bundle_type.startswith('linux-'):
-            if not os.path.exists(os.path.join(base, 'docs/_build/html')):
-                run_tool(['make', 'docs'])
         create_linux_bundle_gunk(ddir, args.libdir_name)
 
     if bundle_type.startswith('macos-'):
