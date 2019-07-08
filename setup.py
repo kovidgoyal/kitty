@@ -385,6 +385,7 @@ def parallel_run(items):
         elif compile_cmd.on_success is not None:
             compile_cmd.on_success()
 
+    printed = False
     while items and failed is None:
         while len(workers) < num_workers and items:
             compile_cmd = items.pop()
@@ -393,12 +394,13 @@ def parallel_run(items):
                 print(' '.join(compile_cmd.cmd))
             else:
                 print('\r\x1b[K[{}/{}] {}'.format(num, total, compile_cmd.desc), end='')
+            printed = True
             w = subprocess.Popen(compile_cmd.cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             workers[w.pid] = compile_cmd, w
         wait()
     while len(workers):
         wait()
-    if not verbose:
+    if not verbose and printed:
         print(' done')
     if failed:
         print(failed.desc)
