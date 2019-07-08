@@ -19,7 +19,7 @@ static char glbuf[4096];
 #define GLSL_VERSION (OPENGL_REQUIRED_VERSION_MAJOR * 100 + OPENGL_REQUIRED_VERSION_MINOR * 10)
 
 static void
-check_for_gl_error(const char *name, void UNUSED *funcptr, int UNUSED len_args, ...) {
+check_for_gl_error(void UNUSED *ret, const char *name, GLADapiproc UNUSED funcptr, int UNUSED len_args, ...) {
 #define f(msg) fatal("OpenGL error: %s (calling function: %s)", msg, name); break;
     GLenum code = glad_glGetError();
     switch(code) {
@@ -48,10 +48,14 @@ void
 gl_init() {
     static bool glad_loaded = false;
     if (!glad_loaded) {
-        if (!init_glad((GLADloadproc) glfwGetProcAddress, global_state.debug_gl)) {
+        int gl_version = gladLoadGL(glfwGetProcAddress);
+        if (!gl_version) {
             fatal("Loading the OpenGL library failed");
         }
-        glad_set_post_callback(check_for_gl_error);
+        if (!global_state.debug_gl) {
+            gladUninstallGLDebug();
+        }
+        gladSetGLPostCallback(check_for_gl_error);
 #define ARB_TEST(name) \
         if (!GLAD_GL_ARB_##name) { \
             fatal("The OpenGL driver on this system is missing the required extension: ARB_%s", #name); \
@@ -59,9 +63,11 @@ gl_init() {
         ARB_TEST(texture_storage);
 #undef ARB_TEST
         glad_loaded = true;
-        if (global_state.debug_gl) printf("GL version string: '%s' Detected version: %d.%d\n", glGetString(GL_VERSION), GLVersion.major, GLVersion.minor);
-        if (GLVersion.major < OPENGL_REQUIRED_VERSION_MAJOR || (GLVersion.major == OPENGL_REQUIRED_VERSION_MAJOR && GLVersion.minor < OPENGL_REQUIRED_VERSION_MINOR)) {
-            fatal("OpenGL version is %d.%d, version >= 3.3 required for kitty", GLVersion.major, GLVersion.minor);
+        int gl_major = GLAD_VERSION_MAJOR(gl_version);
+        int gl_minor = GLAD_VERSION_MINOR(gl_version);
+        if (global_state.debug_gl) printf("GL version string: '%s' Detected version: %d.%d\n", glGetString(GL_VERSION), gl_major, gl_minor);
+        if (gl_major < OPENGL_REQUIRED_VERSION_MAJOR || (gl_major == OPENGL_REQUIRED_VERSION_MAJOR && gl_minor < OPENGL_REQUIRED_VERSION_MINOR)) {
+            fatal("OpenGL version is %d.%d, version >= 3.3 required for kitty", gl_major, gl_minor);
         }
     }
 }
