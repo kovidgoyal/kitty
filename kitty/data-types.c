@@ -89,7 +89,9 @@ static inline double monotonic_(void) {
 }
 #endif
 
-double monotonic() { return monotonic_(); }
+static double start_time = 0;
+
+double monotonic() { return monotonic_() - start_time; }
 
 static PyObject*
 redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
@@ -254,6 +256,7 @@ PyInit_fast_data_types(void) {
 #ifdef __APPLE__
     mach_timebase_info(&timebase);
 #endif
+    start_time = monotonic_();
 
     if (m != NULL) {
         if (!init_logging(m)) return NULL;
