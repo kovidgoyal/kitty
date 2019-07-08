@@ -2473,14 +2473,12 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
 }
 
 static inline unsigned
-dispatch_x11_queued_events(void) {
-    unsigned dispatched = 0;
-    while (XQLength(_glfw.x11.display) > 0)
-    {
+dispatch_x11_queued_events(int num_events) {
+    unsigned dispatched = num_events > 0 ? num_events : 0;
+    while (num_events-- > 0) {
         XEvent event;
         XNextEvent(_glfw.x11.display, &event);
         processEvent(&event);
-        dispatched += 1;
     }
     return dispatched;
 }
@@ -2493,8 +2491,7 @@ _glfwDispatchX11Events(void) {
 #if defined(__linux__)
     _glfwDetectJoystickConnectionLinux();
 #endif
-    XPending(_glfw.x11.display);
-    dispatched += dispatch_x11_queued_events();
+    dispatched += dispatch_x11_queued_events(XEventsQueued(_glfw.x11.display, QueuedAfterFlush));
 
     window = _glfw.x11.disabledCursorWindow;
     if (window)
@@ -2512,8 +2509,10 @@ _glfwDispatchX11Events(void) {
     }
 
     XFlush(_glfw.x11.display);
-    // XFlush can cause events to be queued
-    dispatched += dispatch_x11_queued_events();
+    // XFlush can cause events to be queued, we dont use QueuedAfterFlush here
+    // as something might have inserted events into the queue, but we want to guarantee
+    // a flush.
+    dispatched += dispatch_x11_queued_events(XEventsQueued(_glfw.x11.display, QueuedAlready));
     return dispatched;
 }
 
