@@ -205,11 +205,7 @@ def init_env(
     optimize = df if debug or sanitize else '-O3'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cppflags = os.environ.get(
-        'OVERRIDE_CPPFLAGS', (
-            '-D{}DEBUG'
-        ).format(
-            ('' if debug else 'N'),
-        )
+        'OVERRIDE_CPPFLAGS', '-D{}DEBUG'.format('' if debug else 'N'),
     )
     cppflags = shlex.split(cppflags)
     for el in extra_logging:
@@ -832,6 +828,9 @@ def package(args, bundle_type):
     libdir = os.path.join(ddir, args.libdir_name.strip('/'), 'kitty')
     if os.path.exists(libdir):
         shutil.rmtree(libdir)
+    launcher_dir = os.path.join(ddir, 'bin')
+    safe_makedirs(launcher_dir)
+    build_launcher(args, launcher_dir, bundle_type)
     os.makedirs(os.path.join(libdir, 'logo'))
     build_terminfo = runpy.run_path('build-terminfo', run_name='import_build')
     for x in (libdir, os.path.join(ddir, 'share')):
@@ -865,10 +864,10 @@ def package(args, bundle_type):
         for f in files:
             path = os.path.join(root, f)
             os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
-    launcher_dir = os.path.join(ddir, 'bin')
-    safe_makedirs(launcher_dir)
-    build_launcher(args, launcher_dir, bundle_type)
     if not is_macos:
+        if bundle_type.startswith('linux-'):
+            if not os.path.exists(os.path.join(base, 'docs/_build/html')):
+                run_tool(['make', 'docs'])
         create_linux_bundle_gunk(ddir, args.libdir_name)
 
     if bundle_type.startswith('macos-'):
@@ -1006,13 +1005,9 @@ def main():
                 build_launcher(args, launcher_dir=launcher_dir)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
-            if not os.path.exists(os.path.join(base, 'docs/_build/html')):
-                run_tool(['make', 'docs'])
             package(args, bundle_type='linux-package')
         elif args.action == 'linux-freeze':
             build(args, native_optimizations=False)
-            if not os.path.exists(os.path.join(base, 'docs/_build/html')):
-                run_tool(['make', 'docs'])
             package(args, bundle_type='linux-freeze')
         elif args.action == 'macos-freeze':
             build(args, native_optimizations=False)
