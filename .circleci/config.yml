@@ -13,6 +13,12 @@ jobs:
         - run: ./kitty/launcher/kitty +launch test.py
         - run: make FAIL_WARN=-W man
         - run: make FAIL_WARN=-W html
+
+  lin-package:
+    docker:
+        - image: kovidgoyal/kitty-test:latest
+    steps:
+        - checkout
         - run: python3 setup.py linux-package --update-check-interval=0
 
   lin-35:
@@ -93,5 +99,6 @@ workflows:
             - lin-sys
             - lin-35
             - lin-37
+            - lin-package
             - lin-bundle
             - mac-brew
