@@ -245,7 +245,7 @@ initPollData(EventLoopData *eld, int display_fd) {
 void
 wakeupEventLoop(EventLoopData *eld) {
 #ifdef HAS_EVENT_FD
-    static const int64_t value = 1;
+    static const uint64_t value = 1;
     while (write(eld->wakeupFd, &value, sizeof value) < 0 && (errno == EINTR || errno == EAGAIN));
 #else
     while (write(eld->wakeupFds[1], "w", 1) < 0 && (errno == EINTR || errno == EAGAIN));
