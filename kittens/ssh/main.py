@@ -4,6 +4,7 @@
 
 import os
 import re
+import shlex
 import subprocess
 import sys
 
@@ -93,6 +94,18 @@ def parse_ssh_args(args):
     return ssh_args, server_args, passthrough
 
 
+def quote(x):
+    # we have to escape unbalanced quotes and other unparseable
+    # args as they will break the shell script
+    # But we do not want to quote things like * or 'echo hello'
+    # See https://github.com/kovidgoyal/kitty/issues/1787
+    try:
+        shlex.split(x)
+    except ValueError:
+        x = shlex.quote(x)
+    return x
+
+
 def main(args):
     ssh_args, server_args, passthrough = parse_ssh_args(args[1:])
     if passthrough:
@@ -101,7 +114,7 @@ def main(args):
         terminfo = subprocess.check_output(['infocmp']).decode('utf-8')
         sh_script = SHELL_SCRIPT.replace('TERMINFO', terminfo, 1)
         if len(server_args) > 1:
-            command_to_execute = ["'{}'".format(c.replace("'", """'"'"'""")) for c in server_args[1:]]
+            command_to_execute = [quote(c) for c in server_args[1:]]
             command_to_execute = 'exec ' + ' '.join(command_to_execute)
         else:
             command_to_execute = ''

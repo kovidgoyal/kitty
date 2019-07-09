@@ -46,6 +46,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Fix a regression in 0.14.0 that caused the event loop to tick
   continuously, wasting CPU even when idle (:iss:`1782`)
 
+- ssh kitten: Make argument parsing more like ssh (:iss:`1787`)
+
 
 0.14.2 [2019-06-09]
 ---------------------
