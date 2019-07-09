@@ -1057,9 +1057,9 @@ drain_fd(int fd) {
         ssize_t len = read(fd, drain_buf, sizeof(drain_buf));
         if (len < 0) {
             if (errno == EINTR) continue;
-            if (errno != EIO) perror("Call to read() from drain fd failed");
             break;
         }
+        if (len > 0) continue;
         break;
     }
 }

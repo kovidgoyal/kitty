@@ -224,7 +224,15 @@ dispatchTimers(EventLoopData *eld) {
 static void
 drain_wakeup_fd(int fd, int events UNUSED, void* data UNUSED) {
     static char drain_buf[64];
-    while(read(fd, drain_buf, sizeof(drain_buf)) < 0 && errno == EINTR);
+    while(true) {
+        ssize_t ret = read(fd, drain_buf, sizeof(drain_buf));
+        if (ret < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        if (ret > 0) continue;
+        break;
+    }
 }
 
 bool
