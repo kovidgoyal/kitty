@@ -877,7 +877,6 @@ def package(args, bundle_type):
 
 
 def clean():
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
     def safe_remove(*entries):
         for x in entries:
@@ -986,7 +985,7 @@ def main():
     args = option_parser().parse_args()
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+    os.chdir(base)
     if args.action == 'test':
         os.execlp(
             sys.executable, sys.executable, 'test.py'
