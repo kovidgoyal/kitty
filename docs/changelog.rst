@@ -14,8 +14,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Document the kitty remote control protocol (:iss:`1646`)
 
-- Add an option :opt:`terminal_select_modifiers` to control which
-  modifiers are used to override mouse selection (:iss:`1774`)
+- Add an option :opt:`terminal_select_modifiers` to control which modifiers
+  are used to override mouse selection even when a terminal application has
+  grabbed the mouse (:iss:`1774`)
 
 - When piping data to a child in the pipe command do it in a thread so as not
   to block the UI (:iss:`1708`)
