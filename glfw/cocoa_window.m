@@ -95,14 +95,10 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
         _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayID == displayID) {
             dl->lastRenderFrameRequestedAt = now;
-            if (!CVDisplayLinkIsRunning(dl->displayLink)) {
-                CVDisplayLinkStart(dl->displayLink);
-            } else {
-                if (dl->lastRenderFrameRequestedAt && now - dl->lastRenderFrameRequestedAt) {
-                    if (dl->displayLink) CVDisplayLinkStop(dl->displayLink);
-                    dl->lastRenderFrameRequestedAt = 0;
-                }
-            }
+            if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
+        } else if (dl->displayLink && dl->lastRenderFrameRequestedAt && now - dl->lastRenderFrameRequestedAt >= DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL) {
+            CVDisplayLinkStop(dl->displayLink);
+            dl->lastRenderFrameRequestedAt = 0;
         }
     }
 }
