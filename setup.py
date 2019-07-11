@@ -21,12 +21,12 @@ from contextlib import suppress
 from pathlib import Path
 
 base = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(base, 'glfw'))
+sys.path.insert(0, 'glfw')
 glfw = importlib.import_module('glfw')
 verbose = False
 del sys.path[0]
 build_dir = 'build'
-constants = os.path.join(base, 'kitty', 'constants.py')
+constants = os.path.join('kitty', 'constants.py')
 with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
 appname = re.search(r"^appname = '([^']+)'", constants, re.MULTILINE).group(1)
@@ -500,9 +500,9 @@ def compile_c_extension(kenv, module, compilation_database, sources, headers, de
         cmd += ['-c', src] + ['-o', dest]
         key = CompileKey(original_src, os.path.basename(dest))
         desc = 'Compiling {} ...'.format(emphasis(desc_prefix + src))
-        compilation_database.add_command(desc, cmd, partial(newer, dest, *dependecies_for(os.path.join(base, src), dest, headers)), key=key, keyfile=src)
+        compilation_database.add_command(desc, cmd, partial(newer, dest, *dependecies_for(src, dest, headers)), key=key, keyfile=src)
     dest = os.path.join(build_dir, module + '.so')
-    real_dest = os.path.join(base, module + '.so')
+    real_dest = module + '.so'
     os.makedirs(os.path.dirname(dest), exist_ok=True)
     desc = 'Linking {} ...'.format(emphasis(desc_prefix + module))
     # Old versions of clang don't like -pthread being passed to the linker
@@ -520,7 +520,7 @@ def compile_c_extension(kenv, module, compilation_database, sources, headers, de
 
 def find_c_files():
     ans, headers = [], []
-    d = os.path.join(base, 'kitty')
+    d = 'kitty'
     exclude = {'fontconfig.c', 'freetype.c', 'desktop.c'} if is_macos else {'core_text.m', 'cocoa_window.m', 'macos_process_info.c'}
     for x in os.listdir(d):
         ext = os.path.splitext(x)[1]
@@ -529,7 +529,7 @@ def find_c_files():
         elif ext == '.h':
             headers.append(os.path.join('kitty', x))
     ans.sort(
-        key=lambda x: os.path.getmtime(os.path.join(base, x)), reverse=True
+        key=lambda x: os.path.getmtime(x), reverse=True
     )
     ans.append('kitty/parser_dump.c')
     return tuple(ans), tuple(headers)
@@ -550,7 +550,7 @@ def compile_glfw(compilation_database):
         all_headers = [os.path.join('glfw', x) for x in genv.all_headers]
         if module == 'wayland':
             try:
-                glfw.build_wayland_protocols(genv, Command, parallel_run, emphasis, newer, os.path.join(base, 'glfw'))
+                glfw.build_wayland_protocols(genv, Command, parallel_run, emphasis, newer, 'glfw')
             except SystemExit as err:
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
@@ -574,7 +574,7 @@ def compile_kittens(compilation_database):
     kenv = kittens_env()
 
     def list_files(q):
-        return [os.path.relpath(x, base) for x in glob.glob(q)]
+        return glob.glob(q)
 
     def files(kitten, output, extra_headers=(), extra_sources=(), filter_sources=None):
         sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('kittens', kitten, '*.c'))))
@@ -663,7 +663,7 @@ def copy_man_pages(ddir):
     safe_makedirs(mandir)
     with suppress(FileNotFoundError):
         shutil.rmtree(os.path.join(mandir, 'man1'))
-    src = os.path.join(base, 'docs/_build/man')
+    src = 'docs/_build/man'
     if not os.path.exists(src):
         raise SystemExit('''\
 The kitty man page is missing. If you are building from git then run:
@@ -678,7 +678,7 @@ def copy_html_docs(ddir):
     safe_makedirs(os.path.dirname(htmldir))
     with suppress(FileNotFoundError):
         shutil.rmtree(htmldir)
-    src = os.path.join(base, 'docs/_build/html')
+    src = 'docs/_build/html'
     if not os.path.exists(src):
         raise SystemExit('''\
 The kitty html docs are missing. If you are building from git then run:
@@ -707,7 +707,7 @@ def compile_python(base_path):
 
 
 def create_linux_bundle_gunk(ddir, libdir_name):
-    if not os.path.exists(os.path.join(base, 'docs/_build/html')):
+    if not os.path.exists('docs/_build/html'):
         run_tool(['make', 'docs'])
     copy_man_pages(ddir)
     copy_html_docs(ddir)
@@ -989,7 +989,7 @@ def main():
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     if args.action == 'test':
         os.execlp(
-            sys.executable, sys.executable, os.path.join(base, 'test.py')
+            sys.executable, sys.executable, 'test.py'
         )
     if args.action == 'clean':
         clean()
