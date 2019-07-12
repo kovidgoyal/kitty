@@ -202,7 +202,11 @@ class Child:
         ready_read_fd, ready_write_fd = os.pipe()
         remove_cloexec(ready_read_fd)
         if stdin is not None:
-            stdin_read_fd, stdin_write_fd = os.pipe()
+            if isinstance(stdin, int):
+                stdin_read_fd = stdin
+                stdin_write_fd = -1
+            else:
+                stdin_read_fd, stdin_write_fd = os.pipe()
             remove_cloexec(stdin_read_fd)
         else:
             stdin_read_fd = stdin_write_fd = -1
@@ -230,7 +234,7 @@ class Child:
         os.close(slave)
         self.pid = pid
         self.child_fd = master
-        if stdin is not None:
+        if stdin is not None and not isinstance(stdin, int):
             os.close(stdin_read_fd)
             fast_data_types.thread_write(stdin_write_fd, stdin)
         os.close(ready_read_fd)
