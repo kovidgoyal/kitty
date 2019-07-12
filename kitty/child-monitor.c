@@ -218,6 +218,28 @@ add_child(ChildMonitor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject *
+set_child_fd(ChildMonitor *self, PyObject *args) {
+#define set_child_fd_doc "set_child_fd(id, fd) -> Set a child's output fd."
+    unsigned long id;
+    unsigned int fd;
+    children_mutex(lock);
+    if (!PyArg_ParseTuple(args, "ki", &id, &fd)) {
+        children_mutex(unlock);
+        return NULL;
+    }
+    for (unsigned int i = 0; i < self->count; i++) {
+        if (children[i].id == id) {
+            children[i].fd = fd;
+            fds[EXTRA_FDS + i].fd = fd;
+            break;
+        }
+    }
+    children_mutex(unlock);
+    wakeup_io_loop(self, false);
+    Py_RETURN_NONE;
+}
+
 bool
 schedule_write_to_child(unsigned long id, unsigned int num, ...) {
     ChildMonitor *self = the_monitor;
@@ -1522,6 +1544,7 @@ send_response(int fd, const char *msg, size_t msg_sz) {
 // Boilerplate {{{
 static PyMethodDef methods[] = {
     METHOD(add_child, METH_VARARGS)
+    METHOD(set_child_fd, METH_VARARGS)
     METHOD(needs_write, METH_VARARGS)
     METHOD(start, METH_NOARGS)
     METHOD(wakeup, METH_NOARGS)
