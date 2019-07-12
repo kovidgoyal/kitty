@@ -7,6 +7,7 @@
 
 #include "fonts.h"
 #include "gl.h"
+#include <stddef.h>
 
 enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT };
@@ -533,7 +534,7 @@ static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
 init_borders_program(void) {
-    Program *p = programs + BORDERS_PROGRAM;
+    Program *p = program_ptr(BORDERS_PROGRAM);
     int left = NUM_BORDER_UNIFORMS;
     for (int i = 0; i < p->num_of_uniforms; i++, left--) {
 #define SET_LOC(which) (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].location
@@ -598,18 +599,20 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
     GLuint vertex_shader_id = 0, fragment_shader_id = 0;
     if (!PyArg_ParseTuple(args, "iss", &which, &vertex_shader, &fragment_shader)) return NULL;
     if (which < 0 || which >= NUM_PROGRAMS) { PyErr_Format(PyExc_ValueError, "Unknown program: %d", which); return NULL; }
-    if (programs[which].id != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
-    programs[which].id = glCreateProgram();
+    Program *program = program_ptr(which);
+    if (program->id != 0) { PyErr_SetString(PyExc_ValueError, "program already compiled"); return NULL; }
+    program->id = glCreateProgram();
     vertex_shader_id = compile_shader(GL_VERTEX_SHADER, vertex_shader);
     fragment_shader_id = compile_shader(GL_FRAGMENT_SHADER, fragment_shader);
-    glAttachShader(programs[which].id, vertex_shader_id);
-    glAttachShader(programs[which].id, fragment_shader_id);
-    glLinkProgram(programs[which].id);
+    glAttachShader(program->id, vertex_shader_id);
+    glAttachShader(program->id, fragment_shader_id);
+    glLinkProgram(program->id);
     GLint ret = GL_FALSE;
-    glGetProgramiv(programs[which].id, GL_LINK_STATUS, &ret);
+    glGetProgramiv(program->id, GL_LINK_STATUS, &ret);
     if (ret != GL_TRUE) {
         GLsizei len;
-        glGetProgramInfoLog(programs[which].id, sizeof(glbuf), &len, glbuf);
+        static char glbuf[4096];
+        glGetProgramInfoLog(program->id, sizeof(glbuf), &len, glbuf);
         log_error("Failed to compile GLSL shader!\n%s", glbuf);
         PyErr_SetString(PyExc_ValueError, "Failed to compile shader");
         goto end;
@@ -619,8 +622,8 @@ compile_program(PyObject UNUSED *self, PyObject *args) {
 end:
     if (vertex_shader_id != 0) glDeleteShader(vertex_shader_id);
     if (fragment_shader_id != 0) glDeleteShader(fragment_shader_id);
-    if (PyErr_Occurred()) { glDeleteProgram(programs[which].id); programs[which].id = 0; return NULL;}
-    return Py_BuildValue("I", programs[which].id);
+    if (PyErr_Occurred()) { glDeleteProgram(program->id); program->id = 0; return NULL;}
+    return Py_BuildValue("I", program->id);
     Py_RETURN_NONE;
 }
 
