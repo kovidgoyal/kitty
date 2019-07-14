@@ -780,7 +780,6 @@ Don't wait for a response indicating the success of the action. Note that
 using this option means that you will not be notified of failures.
 ''',
     argspec='',
-    no_response=True,
 )
 def cmd_focus_tab(global_opts, opts, args):
     '''
