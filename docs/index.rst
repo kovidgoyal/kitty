@@ -450,6 +450,12 @@ Add the following to your :file:`~/.bashrc`
 
    source <(kitty + complete setup bash)
 
+   # Some versions of bash (e.g., v3.2) do not support
+   # process substitution with the source command, in which
+   # case you may try an alternative:
+
+   # source /dev/stdin <<<"$(kitty + complete setup bash)"
+
 
 zsh
 ~~~~~~~~~
