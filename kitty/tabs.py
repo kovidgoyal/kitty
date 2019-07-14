@@ -478,8 +478,9 @@ class TabManager:  # {{{
         try:
             idx = self.tabs.index(tab)
         except Exception:
-            return
+            return False
         self.set_active_tab_idx(idx)
+        return True
 
     def next_tab(self, delta=1):
         if len(self.tabs) > 1:

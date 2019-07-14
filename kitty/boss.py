@@ -846,7 +846,8 @@ class Boss:
     def set_active_tab(self, tab):
         tm = self.active_tab_manager
         if tm is not None:
-            tm.set_active_tab(tab)
+            return tm.set_active_tab(tab)
+        return False
 
     def next_tab(self):
         tm = self.active_tab_manager
