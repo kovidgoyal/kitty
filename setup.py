@@ -481,12 +481,13 @@ class CompilationDatabase:
 
 def compile_c_extension(kenv, module, compilation_database, sources, headers, desc_prefix=''):
     prefix = os.path.basename(module)
+    sorted_sources = sorted(sources)
     objects = [
         os.path.join(build_dir, prefix + '-' + os.path.basename(src) + '.o')
-        for src in sources
+        for src in sorted_sources
     ]
 
-    for original_src, dest in zip(sources, objects):
+    for original_src, dest in zip(sorted_sources, objects):
         src = original_src
         cppflags = kenv.cppflags[:]
         is_special = src in SPECIAL_SOURCES
