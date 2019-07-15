@@ -1152,7 +1152,8 @@ stop_main_loop(void) {
 
 static PyObject*
 test_empty_event(PYNOARG) {
-
+    // To run this, use
+    // kitty +runpy "from kitty.main import init_glfw_module; init_glfw_module('x11'); from kitty.fast_data_types import glfw_test_empty_event; glfw_test_empty_event()"
     int ret = empty_main();
     if (ret != EXIT_SUCCESS) {
         PyErr_Format(PyExc_RuntimeError, "Empty test returned failure code: %d", ret);
