@@ -49,6 +49,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - ssh kitten: Make argument parsing more like ssh (:iss:`1787`)
 
+- When using :opt:`strip_trailing_spaces` do not remove empty lines
+  (:iss:`1802`)
+
 
 0.14.2 [2019-06-09]
 ---------------------
