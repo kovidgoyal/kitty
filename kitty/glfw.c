@@ -5,6 +5,7 @@
  */
 
 #include "state.h"
+#include "glfw_tests.h"
 #include "fonts.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
@@ -27,11 +28,9 @@ static GLFWcursor *standard_cursor = NULL, *click_cursor = NULL, *arrow_cursor =
 static void set_os_window_dpi(OSWindow *w);
 
 
-static void
+void
 request_tick_callback(void) {
-#ifdef __APPLE__
     glfwRequestTickCallback();
-#endif
 }
 
 static int min_width = 100, min_height = 100;
@@ -1150,6 +1149,18 @@ stop_main_loop(void) {
     glfwStopMainLoop();
 }
 
+
+static PyObject*
+test_empty_event(PYNOARG) {
+
+    int ret = empty_main();
+    if (ret != EXIT_SUCCESS) {
+        PyErr_Format(PyExc_RuntimeError, "Empty test returned failure code: %d", ret);
+        return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -1178,6 +1189,7 @@ static PyMethodDef module_methods[] = {
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""},
     {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""},
     {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""},
+    {"glfw_test_empty_event", (PyCFunction)test_empty_event, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

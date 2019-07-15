@@ -889,14 +889,9 @@ set_cocoa_pending_action(CocoaPendingAction action, const char *wd) {
 static void process_global_state(void *data);
 
 static void
-do_state_check(id_type timer_id UNUSED, void *data UNUSED) {
+do_state_check(id_type timer_id UNUSED, void *data) {
     EVDBG("State check timer fired");
-#ifdef __APPLE__
     process_global_state(data);
-#endif
-    // We don't actually do anything here as process_global_state
-    // will be called when the loop ticks on Linux
-
 }
 
 static id_type state_check_timer = 0;
@@ -937,7 +932,8 @@ process_global_state(void *data) {
     if (global_state.has_pending_closes) has_open_windows = process_pending_closes(self);
     if (has_open_windows) {
         if (maximum_wait >= 0) {
-            state_check_timer_enabled = true;
+            if (maximum_wait == 0) request_tick_callback();
+            else state_check_timer_enabled = true;
         }
     } else {
         stop_main_loop();
