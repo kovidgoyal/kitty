@@ -450,6 +450,14 @@ Add the following to your :file:`~/.bashrc`
 
    source <(kitty + complete setup bash)
 
+Older versions of bash (for example, v3.2) do not support
+process substitution with the source command, in which
+case you can try an alternative:
+
+.. code-block:: sh
+
+    source /dev/stdin <<<"$(kitty + complete setup bash)"
+
 
 zsh
 ~~~~~~~~~
