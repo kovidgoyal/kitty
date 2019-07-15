@@ -84,10 +84,14 @@ def load_all_shaders(semi_transparent=0):
     load_borders_program()
 
 
-def init_glfw(opts, debug_keyboard=False):
-    glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland(opts) else 'x11')
+def init_glfw_module(glfw_module, debug_keyboard=False):
     if not glfw_init(glfw_path(glfw_module), debug_keyboard):
         raise SystemExit('GLFW initialization failed')
+
+
+def init_glfw(opts, debug_keyboard=False):
+    glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland(opts) else 'x11')
+    init_glfw_module(glfw_module, debug_keyboard)
     return glfw_module
 
 
