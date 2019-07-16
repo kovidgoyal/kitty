@@ -528,9 +528,6 @@ def find_c_files():
             ans.append(os.path.join('kitty', x))
         elif ext == '.h':
             headers.append(os.path.join('kitty', x))
-    ans.sort(
-        key=lambda x: os.path.getmtime(x), reverse=True
-    )
     ans.append('kitty/parser_dump.c')
     return tuple(ans), tuple(headers)
 
