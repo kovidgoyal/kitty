@@ -574,7 +574,7 @@ def compile_kittens(compilation_database):
     kenv = kittens_env()
 
     def list_files(q):
-        return glob.glob(q)
+        return sorted(glob.glob(q))
 
     def files(kitten, output, extra_headers=(), extra_sources=(), filter_sources=None):
         sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('kittens', kitten, '*.c'))))
