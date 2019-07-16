@@ -522,7 +522,7 @@ def find_c_files():
     ans, headers = [], []
     d = 'kitty'
     exclude = {'fontconfig.c', 'freetype.c', 'desktop.c'} if is_macos else {'core_text.m', 'cocoa_window.m', 'macos_process_info.c'}
-    for x in os.listdir(d):
+    for x in sorted(os.listdir(d)):
         ext = os.path.splitext(x)[1]
         if ext in ('.c', '.m') and os.path.basename(x) not in exclude:
             ans.append(os.path.join('kitty', x))
