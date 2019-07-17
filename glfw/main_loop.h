@@ -13,7 +13,7 @@
 #define GLFW_LOOP_BACKEND x11
 #endif
 
-static atomic_int keep_going = 0, tick_callback_requested = 0;
+static volatile atomic_int keep_going = 0, tick_callback_requested = 0;
 
 void _glfwPlatformRequestTickCallback() {
     EVDBG("tick_callback requested");
