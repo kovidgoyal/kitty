@@ -7,21 +7,22 @@
 #pragma once
 
 #include "internal.h"
+#include <stdatomic.h>
 
 #ifndef GLFW_LOOP_BACKEND
 #define GLFW_LOOP_BACKEND x11
 #endif
 
-static bool keep_going = false, tick_callback_requested = false;
+static atomic_int keep_going = 0, tick_callback_requested = 0;
 
 void _glfwPlatformRequestTickCallback() {
     EVDBG("tick_callback requested");
-    tick_callback_requested = true;
+    tick_callback_requested = 1;
 }
 
 void _glfwPlatformStopMainLoop(void) {
     if (keep_going) {
-        keep_going = false;
+        keep_going = 0;
         _glfwPlatformPostEmptyEvent();
     }
 }
@@ -30,14 +31,14 @@ static inline void
 dispatch_tick_callbacks(GLFWtickcallback tick_callback, void *data) {
     while (tick_callback_requested) {
         EVDBG("Calling tick callback");
-        tick_callback_requested = false;
+        tick_callback_requested = 0;
         tick_callback(data);
     }
 }
 
 void _glfwPlatformRunMainLoop(GLFWtickcallback tick_callback, void* data) {
-    keep_going = true;
-    tick_callback_requested = false;
+    keep_going = 1;
+    tick_callback_requested = 0;
     while(keep_going) {
         EVDBG("loop tick, tick_callback_requested: %d", tick_callback_requested);
         dispatch_tick_callbacks(tick_callback, data);
