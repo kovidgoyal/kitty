@@ -112,16 +112,11 @@ static int run_embedded(const char* exe_dir_, const char *libpath, int argc, wch
 // read_exe_path() {{{
 #ifdef __APPLE__
 static inline bool
-read_exe_path(char *exe, size_t buf_sz, bool *is_symlink) {
+read_exe_path(char *exe, size_t buf_sz) {
     (void)buf_sz;
-    *is_symlink = false;
     uint32_t size = PATH_MAX;
     char apple[PATH_MAX+1] = {0};
     if (_NSGetExecutablePath(apple, &size) != 0) { fprintf(stderr, "Failed to get path to executable\n"); return false; }
-    struct stat buf;
-    if (lstat(apple, &buf) == 0) {
-        *is_symlink = S_ISLNK(buf.st_mode);
-    }
     if (!safe_realpath(apple, exe, buf_sz)) { fprintf(stderr, "realpath() failed on the executable's path\n"); return false; }
     return true;
 }
@@ -130,8 +125,7 @@ read_exe_path(char *exe, size_t buf_sz, bool *is_symlink) {
 #include <sys/sysctl.h>
 
 static inline bool
-read_exe_path(char *exe, size_t buf_sz, bool *is_symlink) {
-    *is_symlink = false;
+read_exe_path(char *exe, size_t buf_sz) {
     int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
     size_t length = buf_sz;
     int error = sysctl(name, 4, exe, &length, NULL, 0);
@@ -144,8 +138,7 @@ read_exe_path(char *exe, size_t buf_sz, bool *is_symlink) {
 #elif defined(__NetBSD__)
 
 static inline bool
-read_exe_path(char *exe, size_t buf_sz, bool *is_symlink) {
-    *is_symlink = false;
+read_exe_path(char *exe, size_t buf_sz) {
     if (!safe_realpath("/proc/curproc/exe", exe, buf_sz)) { fprintf(stderr, "Failed to read /proc/curproc/exe\n"); return false; }
     return true;
 }
@@ -153,8 +146,7 @@ read_exe_path(char *exe, size_t buf_sz, bool *is_symlink) {
 #else
 
 static inline bool
-read_exe_path(char *exe, size_t buf_sz, bool *is_symlink) {
-    *is_symlink = false;
+read_exe_path(char *exe, size_t buf_sz) {
     if (!safe_realpath("/proc/self/exe", exe, buf_sz)) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return false; }
     return true;
 }
@@ -162,12 +154,7 @@ read_exe_path(char *exe, size_t buf_sz, bool *is_symlink) {
 
 int main(int argc, char *argv[]) {
     char exe[PATH_MAX+1] = {0};
-    bool is_symlink = false;
-    if (!read_exe_path(exe, sizeof(exe), &is_symlink)) return 1;
-#ifdef __APPLE__
-    // Cocoa has issues with bundle executables launched via symlinks
-    if (is_symlink) execv(exe, argv);
-#endif
+    if (!read_exe_path(exe, sizeof(exe))) return 1;
 
     char *exe_dir = dirname(exe);
     int num, num_args, i, ret=0;

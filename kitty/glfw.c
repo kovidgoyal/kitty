@@ -12,7 +12,7 @@
 extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
 extern void cocoa_create_global_menu(void);
-extern void cocoa_set_hide_from_tasks(void);
+extern void cocoa_set_activation_policy(bool);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
@@ -498,6 +498,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwWindowHint(GLFW_DEPTH_BITS, 0);
         glfwWindowHint(GLFW_STENCIL_BITS, 0);
 #ifdef __APPLE__
+        cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
         glfwSetApplicationShouldHandleReopen(on_application_reopen);
         if (OPT(hide_window_decorations)) glfwWindowHint(GLFW_DECORATED, false);
@@ -575,8 +576,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         Py_DECREF(ret);
 #ifdef __APPLE__
         cocoa_create_global_menu();
-        // This needs to be done only after the first window has been created, because glfw only sets the activation policy once upon initialization.
-        if (OPT(macos_hide_from_tasks)) cocoa_set_hide_from_tasks();
 #endif
 #define CC(dest, shape) {\
     if (!dest##_cursor) { \

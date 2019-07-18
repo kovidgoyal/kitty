@@ -425,8 +425,8 @@ cocoa_cursor_blink_interval(void) {
 }
 
 void
-cocoa_set_hide_from_tasks(void) {
-    [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+cocoa_set_activation_policy(bool hide_from_tasks) {
+    [NSApp setActivationPolicy:(hide_from_tasks ? NSApplicationActivationPolicyAccessory : NSApplicationActivationPolicyRegular)];
 }
 
 void
