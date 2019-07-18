@@ -78,8 +78,14 @@ spawn(PyObject *self UNUSED, PyObject *args) {
 
     pid_t pid = fork();
     switch(pid) {
-        case 0:
+        case 0: {
             // child
+            sigset_t signals = {0};
+            struct sigaction act = {.sa_handler=SIG_DFL};
+#define SA(which) { if (sigaction(which, &act, NULL) != 0) exit_on_err("sigaction() in child process failed"); }
+            SA(SIGINT); SA(SIGTERM); SA(SIGCHLD);
+#undef SA
+            if (sigprocmask(SIG_SETMASK, &signals, NULL) != 0) exit_on_err("sigprocmask() in child process failed");
             // Use only signal-safe functions (man 7 signal-safety)
             if (chdir(cwd) != 0) { if (chdir("/") != 0) {} };  // ignore failure to chdir to /
             if (setsid() == -1) exit_on_err("setsid() in child process failed");
@@ -129,6 +135,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             execlp("sh", "sh", "-c", "read w", NULL);
             exit(EXIT_FAILURE);
             break;
+        }
         case -1:
             PyErr_SetFromErrno(PyExc_OSError);
             break;
