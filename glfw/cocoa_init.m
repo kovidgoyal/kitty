@@ -23,6 +23,8 @@
 //    distribution.
 //
 //========================================================================
+// It is fine to use C99 in this file because it will not be built with VS
+//========================================================================
 
 #include "internal.h"
 #include <sys/param.h> // For MAXPATHLEN
