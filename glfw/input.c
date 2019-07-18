@@ -256,7 +256,7 @@ static bool parseMapping(_GLFWmapping* mapping, const char* string)
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
 
-// Notifies shared code of a key event
+// Notifies shared code of a physical key event
 //
 void _glfwInputKeyboard(_GLFWwindow* window, int key, int scancode, int action, int mods, const char* text, int state)
 {
@@ -568,7 +568,7 @@ const char* _glfwGetKeyName(int key)
     }
 }
 
-// Center the cursor in the middle of the content area of the specified window
+// Center the cursor in the content area of the specified window
 //
 void _glfwCenterCursorInContentArea(_GLFWwindow* window)
 {
