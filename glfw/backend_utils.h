@@ -66,12 +66,14 @@ typedef struct {
 #else
     int wakeupFds[2];
 #endif
+    bool wakeup_data_read, wakeup_fd_ready;
     nfds_t watches_count, timers_count;
     Watch watches[32];
     Timer timers[128];
 } EventLoopData;
 
 
+void check_for_wakeup_events(EventLoopData *eld);
 id_type addWatch(EventLoopData *eld, const char *name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
 void removeWatch(EventLoopData *eld, id_type watch_id);
 void toggleWatch(EventLoopData *eld, id_type watch_id, int enabled);

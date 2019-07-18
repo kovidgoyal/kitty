@@ -30,7 +30,7 @@ static void set_os_window_dpi(OSWindow *w);
 
 void
 request_tick_callback(void) {
-    glfwRequestTickCallback();
+    glfwPostEmptyEvent();
 }
 
 static int min_width = 100, min_height = 100;
@@ -934,12 +934,7 @@ swap_window_buffers(OSWindow *os_window) {
 
 void
 wakeup_main_loop() {
-    request_tick_callback();
-#ifndef __APPLE__
-    // On Cocoa request_tick_callback() uses performSelectorOnMainLoop which
-    // wakes up the main loop anyway
     glfwPostEmptyEvent();
-#endif
 }
 
 void

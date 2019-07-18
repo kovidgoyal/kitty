@@ -295,13 +295,15 @@ shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
     Py_RETURN_NONE;
 }
 
-static inline void
+static inline bool
 do_parse(ChildMonitor *self, Screen *screen, double now) {
+    bool input_read = false;
     screen_mutex(lock, read);
     if (screen->read_buf_sz || screen->pending_mode.used) {
         double time_since_new_input = now - screen->new_input_at;
         if (time_since_new_input >= OPT(input_delay)) {
             bool read_buf_full = screen->read_buf_sz >= READ_BUF_SZ;
+            input_read = true;
             parse_func(screen, self->dump_callback, now);
             if (read_buf_full) wakeup_io_loop(self, false);  // Ensure the read fd has POLLIN set
             screen->new_input_at = 0;
@@ -312,12 +314,14 @@ do_parse(ChildMonitor *self, Screen *screen, double now) {
         } else set_maximum_wait(OPT(input_delay) - time_since_new_input);
     }
     screen_mutex(unlock, read);
+    return input_read;
 }
 
-static void
+static bool
 parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
     size_t count = 0, remove_count = 0;
+    bool input_read = false;
     double now = monotonic();
     PyObject *msg = NULL;
     children_mutex(lock);
@@ -372,10 +376,11 @@ parse_input(ChildMonitor *self) {
 
     for (size_t i = 0; i < count; i++) {
         if (!scratch[i].needs_removal) {
-            do_parse(self, scratch[i].screen, now);
+            if (do_parse(self, scratch[i].screen, now)) input_read = true;
         }
         DECREF_CHILD(scratch[i]);
     }
+    return input_read;
 }
 
 static inline void
@@ -634,10 +639,11 @@ no_render_frame_received_recently(OSWindow *w, double now, double max_wait) {
 }
 
 static inline void
-render(double now) {
+render(double now, bool input_read) {
+    EVDBG("input_read: %d", input_read);
     static double last_render_at = -DBL_MAX;
     double time_since_last_render = now - last_render_at;
-    if (time_since_last_render < OPT(repaint_delay)) {
+    if (!input_read && time_since_last_render < OPT(repaint_delay)) {
         set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
         return;
     }
@@ -905,7 +911,8 @@ process_global_state(void *data) {
 
     double now = monotonic();
     if (global_state.has_pending_resizes) process_pending_resizes(now);
-    render(now);
+    bool input_read = parse_input(self);
+    render(now, input_read);
 #ifdef __APPLE__
         if (cocoa_pending_actions) {
             if (cocoa_pending_actions & PREFERENCES_WINDOW) { call_boss(edit_config_file, NULL); }
@@ -919,7 +926,6 @@ process_global_state(void *data) {
             cocoa_pending_actions = 0;
         }
 #endif
-    parse_input(self);
     if (global_state.terminate) {
         global_state.terminate = false;
         close_all_windows();

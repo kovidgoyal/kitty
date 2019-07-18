@@ -222,17 +222,23 @@ dispatchTimers(EventLoopData *eld) {
 }
 
 static void
-drain_wakeup_fd(int fd, int events UNUSED, void* data UNUSED) {
+drain_wakeup_fd(int fd, EventLoopData* eld) {
     static char drain_buf[64];
+    eld->wakeup_data_read = false;
     while(true) {
         ssize_t ret = read(fd, drain_buf, sizeof(drain_buf));
         if (ret < 0) {
             if (errno == EINTR) continue;
             break;
         }
-        if (ret > 0) continue;
+        if (ret > 0) { eld->wakeup_data_read = true; continue; }
         break;
     }
+}
+
+static void
+mark_wakep_fd_ready(int fd UNUSED, int events UNUSED, void *data) {
+    ((EventLoopData*)(data))->wakeup_fd_ready = true;
 }
 
 bool
@@ -246,8 +252,18 @@ initPollData(EventLoopData *eld, int display_fd) {
     if (pipe2(eld->wakeupFds, O_CLOEXEC | O_NONBLOCK) != 0) return false;
     const int wakeup_fd = eld->wakeupFds[0];
 #endif
-    if (!addWatch(eld, "wakeup", wakeup_fd, POLLIN, 1, drain_wakeup_fd, NULL)) return false;
+    if (!addWatch(eld, "wakeup", wakeup_fd, POLLIN, 1, mark_wakep_fd_ready, eld)) return false;
     return true;
+}
+
+void
+check_for_wakeup_events(EventLoopData *eld) {
+#ifdef HAS_EVENT_FD
+    int fd = eld->wakeupFd;
+#else
+    int fd = eld->wakeupFds[0];
+#endif
+    drain_wakeup_fd(fd, eld);
 }
 
 void
@@ -289,6 +305,7 @@ pollForEvents(EventLoopData *eld, double timeout) {
     EVDBG("pollForEvents final timeout: %.3f", timeout);
     int result;
     double end_time = monotonic() + timeout;
+    eld->wakeup_fd_ready = false;
 
     while(1) {
         if (timeout >= 0) {

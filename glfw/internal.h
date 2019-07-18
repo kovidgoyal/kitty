@@ -822,7 +822,6 @@ const char* _glfwGetVulkanResultString(VkResult result);
 _GLFWwindow* _glfwFocusedWindow(void);
 _GLFWwindow* _glfwWindowForId(GLFWid id);
 void _glfwPlatformRunMainLoop(GLFWtickcallback, void*);
-void _glfwPlatformRequestTickCallback(void);
 void _glfwPlatformStopMainLoop(void);
 unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback);
 void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, bool enabled);

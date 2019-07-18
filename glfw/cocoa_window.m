@@ -579,7 +579,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     [NSApp stop:nil];
 
     CGDisplayRegisterReconfigurationCallback(display_reconfigured, NULL);
-    _glfwPlatformPostEmptyEvent();
+    _glfwCocoaPostEmptyEvent();
 }
 
 - (void)applicationWillTerminate:(NSNotification *)aNotification
@@ -1916,29 +1916,6 @@ _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
     }
 }
 
-void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start)
-{
-    @autoreleasepool {
-
-    NSEvent* event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
-                                        location:NSMakePoint(0, 0)
-                                   modifierFlags:0
-                                       timestamp:0
-                                    windowNumber:0
-                                         context:nil
-                                         subtype:subtype
-                                           data1:data1
-                                           data2:0];
-    [NSApp postEvent:event atStart:at_start ? YES : NO];
-
-    } // autoreleasepool
-}
-
-void _glfwPlatformPostEmptyEvent(void)
-{
-    _glfwCocoaPostEmptyEvent(0, 0, true);
-}
-
 void _glfwPlatformGetCursorPos(_GLFWwindow* window, double* xpos, double* ypos)
 {
     const NSRect contentRect = [window->ns.view frame];
@@ -2380,4 +2357,17 @@ END_ALLOW_CASE_RANGE
 float _glfwTransformYNS(float y)
 {
     return CGDisplayBounds(CGMainDisplayID()).size.height - y - 1;
+}
+
+void _glfwCocoaPostEmptyEvent(void) {
+    NSEvent* event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
+                                        location:NSMakePoint(0, 0)
+                                   modifierFlags:0
+                                       timestamp:0
+                                    windowNumber:0
+                                         context:nil
+                                         subtype:0
+                                           data1:0
+                                           data2:0];
+    [NSApp postEvent:event atStart:YES];
 }

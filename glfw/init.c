@@ -342,10 +342,6 @@ GLFWAPI void glfwRunMainLoop(GLFWtickcallback callback, void *data)
     _glfwPlatformRunMainLoop(callback, data);
 }
 
-GLFWAPI void glfwRequestTickCallback(void) {
-    _glfwPlatformRequestTickCallback();
-}
-
 GLFWAPI void glfwStopMainLoop(void) {
     _GLFW_REQUIRE_INIT();
     _glfwPlatformStopMainLoop();

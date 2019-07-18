@@ -783,6 +783,7 @@ handleEvents(double timeout)
     }
     glfw_ibus_dispatch(&_glfw.wl.xkb.ibus);
     glfw_dbus_session_bus_dispatch();
+    if (_glfw.wl.eventLoopData.wakeup_fd_ready) check_for_wakeup_events(&_glfw.wl.eventLoopData);
 }
 
 static struct wl_cursor*

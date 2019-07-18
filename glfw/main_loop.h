@@ -13,36 +13,26 @@
 #define GLFW_LOOP_BACKEND x11
 #endif
 
-static volatile atomic_int keep_going = 0, tick_callback_requested = 0;
+static bool keep_going = false;
 
-void _glfwPlatformRequestTickCallback() {
-    EVDBG("tick_callback requested");
-    tick_callback_requested = 1;
-}
 
 void _glfwPlatformStopMainLoop(void) {
     if (keep_going) {
-        keep_going = 0;
+        keep_going = false;
         _glfwPlatformPostEmptyEvent();
-    }
-}
-
-static inline void
-dispatch_tick_callbacks(GLFWtickcallback tick_callback, void *data) {
-    while (tick_callback_requested) {
-        EVDBG("Calling tick callback");
-        tick_callback_requested = 0;
-        tick_callback(data);
     }
 }
 
 void _glfwPlatformRunMainLoop(GLFWtickcallback tick_callback, void* data) {
     keep_going = 1;
-    tick_callback_requested = 0;
+    EventLoopData *eld = &_glfw.GLFW_LOOP_BACKEND.eventLoopData;
     while(keep_going) {
-        EVDBG("loop tick, tick_callback_requested: %d", tick_callback_requested);
-        dispatch_tick_callbacks(tick_callback, data);
         _glfwPlatformWaitEvents();
+        EVDBG("--------- loop tick, wakeups_happened: %d ----------", eld->wakeup_data_read);
+        if (eld->wakeup_data_read) {
+            eld->wakeup_data_read = false;
+            tick_callback(data);
+        }
     }
     EVDBG("main loop exiting");
 }

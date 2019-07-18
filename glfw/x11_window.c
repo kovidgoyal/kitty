@@ -71,6 +71,7 @@ handleEvents(double timeout) {
     glfw_ibus_dispatch(&_glfw.x11.xkb.ibus);
     glfw_dbus_session_bus_dispatch();
     EVDBG("other dispatch done");
+    if (_glfw.x11.eventLoopData.wakeup_fd_ready) check_for_wakeup_events(&_glfw.x11.eventLoopData);
 }
 
 static bool

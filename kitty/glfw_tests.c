@@ -25,8 +25,7 @@ static void* empty_thread_main(void* data UNUSED)
     while (running)
     {
         nanosleep(&time, NULL);
-        glfwRequestTickCallback();
-        glfwPostEmptyEvent();
+        wakeup_main_loop();
     }
 
     return 0;
@@ -43,7 +42,6 @@ static void key_callback(GLFWwindow *w UNUSED, int key, int scancode UNUSED, int
 static void
 window_close_callback(GLFWwindow* window) {
     glfwSetWindowShouldClose(window, true);
-    glfwRequestTickCallback();
     wakeup_main_loop();
 }
 

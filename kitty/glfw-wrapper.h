@@ -1403,10 +1403,6 @@ typedef void (*glfwStopMainLoop_func)(void);
 glfwStopMainLoop_func glfwStopMainLoop_impl;
 #define glfwStopMainLoop glfwStopMainLoop_impl
 
-typedef void (*glfwRequestTickCallback_func)(void);
-glfwRequestTickCallback_func glfwRequestTickCallback_impl;
-#define glfwRequestTickCallback glfwRequestTickCallback_impl
-
 typedef unsigned long long (*glfwAddTimer_func)(double, bool, GLFWuserdatafun, void *, GLFWuserdatafun);
 glfwAddTimer_func glfwAddTimer_impl;
 #define glfwAddTimer glfwAddTimer_impl

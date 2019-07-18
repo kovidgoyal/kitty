@@ -26,6 +26,7 @@
 
 #include "internal.h"
 #include <sys/param.h> // For MAXPATHLEN
+#include <pthread.h>
 
 // Change to our application bundle's resources directory, if present
 //
@@ -471,32 +472,56 @@ const char* _glfwPlatformGetVersionString(void)
 static GLFWtickcallback tick_callback = NULL;
 static void* tick_callback_data = NULL;
 static bool tick_callback_requested = false;
+static pthread_t main_thread;
+static NSLock *tick_lock = NULL;
 
 
 void _glfwDispatchTickCallback() {
-    if (tick_callback) {
-        tick_callback_requested = false;
-        tick_callback(tick_callback_data);
+    if (tick_lock && tick_callback) {
+        [tick_lock lock];
+        while(tick_callback_requested) {
+            tick_callback_requested = false;
+            tick_callback(tick_callback_data);
+        }
+        [tick_lock unlock];
     }
 }
 
-void _glfwPlatformRequestTickCallback() {
+static void
+request_tick_callback() {
     if (!tick_callback_requested) {
         tick_callback_requested = true;
         [NSApp performSelectorOnMainThread:@selector(tick_callback) withObject:nil waitUntilDone:NO];
     }
 }
 
+void _glfwPlatformPostEmptyEvent(void)
+{
+    if (pthread_equal(pthread_self(), main_thread)) {
+        request_tick_callback();
+    } else if (tick_lock) {
+        [tick_lock lock];
+        request_tick_callback();
+        [tick_lock unlock];
+    }
+}
+
+
 void _glfwPlatformStopMainLoop(void) {
-    tick_callback = NULL;
     [NSApp stop:nil];
-    _glfwPlatformPostEmptyEvent();
+    _glfwCocoaPostEmptyEvent();
 }
 
 void _glfwPlatformRunMainLoop(GLFWtickcallback callback, void* data) {
+    main_thread = pthread_self();
     tick_callback = callback;
     tick_callback_data = data;
+    tick_lock = [NSLock new];
     [NSApp run];
+    [tick_lock release];
+    tick_lock = NULL;
+    tick_callback = NULL;
+    tick_callback_data = NULL;
 }
 
 

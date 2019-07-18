@@ -23,9 +23,6 @@ load_glfw(const char* path) {
     *(void **) (&glfwStopMainLoop_impl) = dlsym(handle, "glfwStopMainLoop");
     if (glfwStopMainLoop_impl == NULL) fail("Failed to load glfw function glfwStopMainLoop with error: %s", dlerror());
 
-    *(void **) (&glfwRequestTickCallback_impl) = dlsym(handle, "glfwRequestTickCallback");
-    if (glfwRequestTickCallback_impl == NULL) fail("Failed to load glfw function glfwRequestTickCallback with error: %s", dlerror());
-
     *(void **) (&glfwAddTimer_impl) = dlsym(handle, "glfwAddTimer");
     if (glfwAddTimer_impl == NULL) fail("Failed to load glfw function glfwAddTimer with error: %s", dlerror());
 

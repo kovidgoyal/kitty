@@ -225,7 +225,7 @@ float _glfwTransformYNS(float y);
 
 void _glfwClearDisplayLinks(void);
 void _glfwRestartDisplayLinks(void);
-void _glfwCocoaPostEmptyEvent(short subtype, long data1, bool at_start);
 void _glfwDispatchTickCallback(void);
 void _glfwDispatchRenderFrame(CGDirectDisplayID);
 void _glfwShutdownCVDisplayLink(unsigned long long, void*);
+void _glfwCocoaPostEmptyEvent(void);

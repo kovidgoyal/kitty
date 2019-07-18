@@ -1628,7 +1628,6 @@ typedef struct GLFWgamepadstate
 GLFWAPI int glfwInit(void);
 GLFWAPI void glfwRunMainLoop(GLFWtickcallback callback, void *callback_data);
 GLFWAPI void glfwStopMainLoop(void);
-GLFWAPI void glfwRequestTickCallback(void);
 GLFWAPI unsigned long long glfwAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void * callback_data, GLFWuserdatafun free_callback);
 GLFWAPI void glfwUpdateTimer(unsigned long long timer_id, double interval, bool enabled);
 GLFWAPI void glfwRemoveTimer(unsigned long long);
