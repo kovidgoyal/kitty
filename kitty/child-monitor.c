@@ -235,7 +235,6 @@ set_child_fd(ChildMonitor *self, PyObject *args) {
     }
     for (unsigned int i = 0; i < self->count; i++) {
         if (children[i].id == id) {
-            
             update_queue[update_queue_count] = children[i];
             update_queue[update_queue_count].input_fd = fd;
             update_queue_count++;
