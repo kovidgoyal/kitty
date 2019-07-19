@@ -324,6 +324,18 @@ convert_mods(PyObject *obj) {
     return resolve_mods(PyLong_AsLong(obj));
 }
 
+static MouseShape
+pointer_shape(PyObject *shape_name) {
+    const char *name = PyUnicode_AsUTF8(shape_name);
+    switch(name[0]) {
+        case 'a': return ARROW;
+        case 'h': return HAND;
+        case 'b': return BEAM;
+        default: break;
+    }
+    return BEAM;
+}
+
 static inline void
 set_special_keys(PyObject *dict) {
     dict_iter(dict) {
@@ -410,6 +422,7 @@ PYWRAP1(set_options) {
     S(tab_bar_min_tabs, PyLong_AsUnsignedLong);
     S(disable_ligatures, PyLong_AsLong);
     S(resize_draw_strategy, PyLong_AsLong);
+    S(pointer_shape_when_grabbed, pointer_shape);
 
     GA(tab_bar_style);
     global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;

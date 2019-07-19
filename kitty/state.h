@@ -44,6 +44,7 @@ typedef struct {
     bool window_alert_on_bell;
     bool debug_keyboard;
     double resize_debounce_time;
+    MouseShape pointer_shape_when_grabbed;
 } Options;
 
 typedef struct {

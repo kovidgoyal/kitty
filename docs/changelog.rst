@@ -14,6 +14,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Document the kitty remote control protocol (:iss:`1646`)
 
+- Add a new option :opt:`pointer_shape_when_grabbed` that allows you to control
+  the mouse pointer shape when the terminal programs grabs the pointer
+  (:iss:`1808`)
+
 - Add an option :opt:`terminal_select_modifiers` to control which modifiers
   are used to override mouse selection even when a terminal application has
   grabbed the mouse (:iss:`1774`)

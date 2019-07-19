@@ -472,6 +472,10 @@ o('focus_follows_mouse', False, long_text=_('''
 Set the active window to the window under the mouse when
 moving the mouse around'''))
 
+o('pointer_shape_when_grabbed', 'arrow', option_type=choices('arrow', 'beam', 'hand'), long_text=('''
+The shape of the mouse pointer when the program running in the terminal grabs the mouse.
+'''))
+
 # }}}
 
 g('performance')  # {{{

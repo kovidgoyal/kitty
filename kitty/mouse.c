@@ -244,6 +244,11 @@ get_url_sentinel(Line *line, index_type url_start) {
 }
 
 static inline void
+set_mouse_cursor_for_screen(Screen *screen) {
+    mouse_cursor_shape = screen->modes.mouse_tracking_mode == NO_TRACKING ? BEAM : OPT(pointer_shape_when_grabbed);
+}
+
+static inline void
 detect_url(Screen *screen, unsigned int x, unsigned int y) {
     bool has_url = false;
     index_type url_start, url_end = 0;
@@ -261,7 +266,7 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
         extend_url(screen, line, &url_end, &y_extended, sentinel);
         screen_mark_url(screen, url_start, y, url_end, y_extended);
     } else {
-        mouse_cursor_shape = BEAM;
+        set_mouse_cursor_for_screen(screen);
         screen_mark_url(screen, 0, 0, 0, 0);
     }
 }
@@ -491,9 +496,12 @@ focus_in_event() {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     mouse_cursor_shape = BEAM;
-    set_mouse_cursor(BEAM);
     Window *w = window_for_event(&window_idx, &in_tab_bar);
-    if (w && w->render_data.screen) screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
+    if (w && w->render_data.screen) {
+        screen_mark_url(w->render_data.screen, 0, 0, 0, 0);
+        set_mouse_cursor_for_screen(w->render_data.screen);
+    }
+    set_mouse_cursor(mouse_cursor_shape);
 }
 
 void
