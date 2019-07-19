@@ -280,11 +280,11 @@ HANDLER(handle_move_event) {
     detect_url(screen, x, y);
     bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
-    bool handle_in_kitty = (
-            (screen->modes.mouse_tracking_mode == ANY_MODE ||
-            (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0)) &&
-            (modifiers & OPT(terminal_select_modifiers))
-    ) ? false : true;
+    bool in_tracking_mode = (
+        screen->modes.mouse_tracking_mode == ANY_MODE ||
+        (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0));
+    bool has_terminal_select_modifiers = modifiers == (int)OPT(terminal_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers));
+    bool handle_in_kitty = !in_tracking_mode || has_terminal_select_modifiers;
     if (handle_in_kitty) {
         if (screen->selection.in_progress && button == GLFW_MOUSE_BUTTON_LEFT) {
             double now = monotonic();
