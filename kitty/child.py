@@ -247,7 +247,6 @@ class Child:
             return
         os.close(self.child_fd)
 
-
     def mark_terminal_ready(self):
         os.close(self.terminal_ready_fd)
         self.terminal_ready_fd = -1
