@@ -429,6 +429,25 @@ def handle_deprecated_hide_window_decorations_aliases(key, val, ans):
             ans['hide_window_decorations'] = True
 
 
+@deprecated_handler('macos_show_window_title_in_menubar')
+def handle_deprecated_macos_show_window_title_in_menubar_alias(key, val, ans):
+    if not hasattr(handle_deprecated_macos_show_window_title_in_menubar_alias, key):
+        handle_deprecated_macos_show_window_title_in_menubar_alias.key = True
+        log_error('The option {} is deprecated. Use macos_show_window_title_in menubar instead.'.format(key))
+    macos_show_window_title_in = ans.get('macos_show_window_title_in', 'all')
+    if to_bool(val):
+        if macos_show_window_title_in == 'none':
+            macos_show_window_title_in = 'menubar'
+        elif macos_show_window_title_in == 'window':
+            macos_show_window_title_in = 'all'
+    else:
+        if macos_show_window_title_in == 'all':
+            macos_show_window_title_in = 'window'
+        elif macos_show_window_title_in == 'menubar':
+            macos_show_window_title_in = 'none'
+    ans['macos_show_window_title_in'] = macos_show_window_title_in
+
+
 def expandvars(val, env):
 
     def sub(m):

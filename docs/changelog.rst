@@ -212,7 +212,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix :kbd:`cmd+period` key not working (:iss:`1318`)
 
-- macOS: Add an option :opt:`macos_show_window_title_in_menubar` to not
+- macOS: Add an option `macos_show_window_title_in_menubar` to not
   show the current window title in the menu-bar (:iss:`1066`)
 
 - macOS: Workaround for cocoa bug that could cause the mouse cursor to become

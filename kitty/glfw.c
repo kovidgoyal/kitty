@@ -12,6 +12,7 @@
 extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
 extern void cocoa_create_global_menu(void);
+extern void cocoa_hide_window_title(void *w);
 extern void cocoa_set_activation_policy(bool);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
@@ -580,6 +581,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         Py_DECREF(ret);
 #ifdef __APPLE__
         cocoa_create_global_menu();
+        if (!(OPT(macos_show_window_title_in) & WINDOW)) {
+            if (glfwGetCocoaWindow) cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
+            else log_error("Failed to load glfwGetCocoaWindow");
+        }
 #endif
 #define CC(dest, shape) {\
     if (!dest##_cursor) { \
