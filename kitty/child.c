@@ -88,7 +88,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             if (sigprocmask(SIG_SETMASK, &signals, NULL) != 0) exit_on_err("sigprocmask() in child process failed");
             // Use only signal-safe functions (man 7 signal-safety)
             if (chdir(cwd) != 0) { if (chdir("/") != 0) {} };  // ignore failure to chdir to /
-            if (setsid() == -1) exit_on_err("setsid() in child process failed");
+            if (stdin_read_fd == -1 && setsid() == -1) exit_on_err("setsid() in child process failed");
 
             // Establish the controlling terminal (see man 7 credentials)
             int tfd = open(name, O_RDWR);

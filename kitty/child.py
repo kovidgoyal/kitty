@@ -242,6 +242,12 @@ class Child:
         remove_blocking(self.child_fd)
         return pid
 
+    def kill(self):
+        if not self.forked:
+            return
+        os.close(self.child_fd)
+
+
     def mark_terminal_ready(self):
         os.close(self.terminal_ready_fd)
         self.terminal_ready_fd = -1

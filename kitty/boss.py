@@ -126,6 +126,7 @@ class Boss:
         self.child_monitor = ChildMonitor(
             self.on_child_death,
             DumpCommands(args) if args.dump_commands or args.dump_bytes else None,
+            self.on_filter_death,
             talk_fd, listen_fd
         )
         set_boss(self)
@@ -323,15 +324,11 @@ class Boss:
             if window is not None:
                 window.send_cmd_response(response)
 
-    def _cleanup_tab_after_window_removal(self, src_tab):
-        if len(src_tab) < 1:
-            tm = src_tab.tab_manager_ref()
-            if tm is not None:
-                tm.remove(src_tab)
-                src_tab.destroy()
-                if len(tm) == 0:
-                    if not self.shutting_down:
-                        mark_os_window_for_close(src_tab.os_window_id)
+    def on_filter_death(self, window_id):
+        window = self.window_id_map.pop(window_id, None)
+        if window is None:
+            return
+        window.filter = None
 
     def on_child_death(self, window_id):
         window = self.window_id_map.pop(window_id, None)
@@ -684,7 +681,20 @@ class Boss:
             output += str(s.linebuf.line(i))
         return output
 
-    def _run_kitten(self, kitten, args=(), input_data=None, window=None, custom_callback=None, action_on_removal=None):
+    def _launch_filter(self, command, window=None):
+        if window is None:
+            window = self.active_window
+        window.launch_filter(command)
+        self.child_monitor.set_child_fd(window.id, window.filter.child_fd)
+
+    def _remove_filter(self, window=None):
+        if window is None:
+            window = self.active_window
+        self.child_monitor.set_child_fd(window.id, window.child.child_fd)
+        window.filter.kill()
+        window.filter = None
+
+    def _run_kitten(self, kitten, args=(), input_data=None, window=None):
         orig_args, args = list(args), list(args)
         from kittens.runner import create_kitten_handler
         end_kitten = create_kitten_handler(kitten, orig_args)

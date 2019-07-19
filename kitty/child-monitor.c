@@ -46,7 +46,7 @@ typedef struct {
 typedef struct {
     PyObject_HEAD
 
-    PyObject *dump_callback, *update_screen, *death_notify;
+    PyObject *dump_callback, *update_screen, *death_notify, *filter_death_notify;
     unsigned int count;
     bool shutting_down;
     pthread_t io_thread, talk_thread;
@@ -61,7 +61,9 @@ typedef struct {
 typedef struct {
     Screen *screen;
     bool needs_removal;
-    int fd;
+    bool needs_temp_removal;
+    int input_fd;
+    int output_fd;
     unsigned long id;
     pid_t pid;
 } Child;
@@ -78,9 +80,9 @@ static const Child EMPTY_CHILD = {0};
 
 static Child children[MAX_CHILDREN] = {{0}};
 static Child scratch[MAX_CHILDREN] = {{0}};
-static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}};
+static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}}, update_queue[MAX_CHILDREN] = {{0}};
 static unsigned long remove_notify[MAX_CHILDREN] = {0};
-static size_t add_queue_count = 0, remove_queue_count = 0;
+static size_t add_queue_count = 0, remove_queue_count = 0, update_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock;
 static bool kill_signal_received = false;
@@ -121,12 +123,12 @@ set_maximum_wait(monotonic_t val) {
 static PyObject *
 new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     ChildMonitor *self;
-    PyObject *dump_callback, *death_notify;
+    PyObject *dump_callback, *death_notify, *filter_death_notify;
     int talk_fd = -1, listen_fd = -1;
     int ret;
 
     if (the_monitor) { PyErr_SetString(PyExc_RuntimeError, "Can have only a single ChildMonitor instance"); return NULL; }
-    if (!PyArg_ParseTuple(args, "OO|ii", &death_notify, &dump_callback, &talk_fd, &listen_fd)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOO|ii", &death_notify, &dump_callback, &filter_death_notify, &talk_fd, &listen_fd)) return NULL;
     if ((ret = pthread_mutex_init(&children_lock, NULL)) != 0) {
         PyErr_Format(PyExc_RuntimeError, "Failed to create children_lock mutex: %s", strerror(ret));
         return NULL;
@@ -138,6 +140,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
     self->listen_fd = listen_fd;
     if (self == NULL) return PyErr_NoMemory();
     self->death_notify = death_notify; Py_INCREF(death_notify);
+    self->filter_death_notify = filter_death_notify; Py_INCREF(filter_death_notify);
     if (dump_callback != Py_None) {
         self->dump_callback = dump_callback; Py_INCREF(dump_callback);
         parse_func = parse_worker_dump;
@@ -155,6 +158,7 @@ dealloc(ChildMonitor* self) {
     pthread_mutex_destroy(&children_lock);
     Py_CLEAR(self->dump_callback);
     Py_CLEAR(self->death_notify);
+    Py_CLEAR(self->filter_death_notify);
     Py_TYPE(self)->tp_free((PyObject*)self);
     while (remove_queue_count) {
         remove_queue_count--;
@@ -206,11 +210,12 @@ add_child(ChildMonitor *self, PyObject *args) {
     if (self->count + add_queue_count >= MAX_CHILDREN) { PyErr_SetString(PyExc_ValueError, "Too many children"); children_mutex(unlock); return NULL; }
     add_queue[add_queue_count] = EMPTY_CHILD;
 #define A(attr) &add_queue[add_queue_count].attr
-    if (!PyArg_ParseTuple(args, "kiiO", A(id), A(pid), A(fd), A(screen))) {
+    if (!PyArg_ParseTuple(args, "kiiO", A(id), A(pid), A(input_fd), A(screen))) {
         children_mutex(unlock);
         return NULL;
     }
 #undef A
+    add_queue[add_queue_count].output_fd = add_queue[add_queue_count].input_fd;
     INCREF_CHILD(add_queue[add_queue_count]);
     add_queue_count++;
     children_mutex(unlock);
@@ -221,7 +226,7 @@ add_child(ChildMonitor *self, PyObject *args) {
 static PyObject *
 set_child_fd(ChildMonitor *self, PyObject *args) {
 #define set_child_fd_doc "set_child_fd(id, fd) -> Set a child's output fd."
-    unsigned long id;
+    unsigned long long id;
     unsigned int fd;
     children_mutex(lock);
     if (!PyArg_ParseTuple(args, "ki", &id, &fd)) {
@@ -230,8 +235,10 @@ set_child_fd(ChildMonitor *self, PyObject *args) {
     }
     for (unsigned int i = 0; i < self->count; i++) {
         if (children[i].id == id) {
-            children[i].fd = fd;
-            fds[EXTRA_FDS + i].fd = fd;
+            
+            update_queue[update_queue_count] = children[i];
+            update_queue[update_queue_count].input_fd = fd;
+            update_queue_count++;
             break;
         }
     }
@@ -455,7 +462,7 @@ resize_pty(ChildMonitor *self, PyObject *args) {
 #define FIND(queue, count) { \
     for (size_t i = 0; i < count; i++) { \
         if (queue[i].id == window_id) { \
-            fd = queue[i].fd; \
+            fd = queue[i].input_fd; \
             break; \
         } \
     }}
@@ -1003,9 +1010,23 @@ add_children(ChildMonitor *self) {
         add_queue_count--;
         children[self->count] = add_queue[add_queue_count];
         add_queue[add_queue_count] = EMPTY_CHILD;
-        fds[EXTRA_FDS + self->count].fd = children[self->count].fd;
+        fds[EXTRA_FDS + self->count].fd = children[self->count].input_fd;
         fds[EXTRA_FDS + self->count].events = POLLIN;
         self->count++;
+    }
+}
+static inline void
+update_children(ChildMonitor *self) {
+    for (; update_queue_count > 0;) {
+        update_queue_count--;
+        for (unsigned int i = 0; i < self->count; i++) {
+            if (children[i].id == update_queue[update_queue_count].id) {
+                children[i] = update_queue[update_queue_count];
+                fds[EXTRA_FDS + i].fd = children[i].input_fd;
+                fds[EXTRA_FDS + i].events = POLLIN;
+                break;
+            }
+        }
     }
 }
 
@@ -1024,7 +1045,10 @@ hangup(pid_t pid) {
 
 static inline void
 cleanup_child(ssize_t i) {
-    safe_close(children[i].fd);
+    safe_close(children[i].input_fd);
+    if (children[i].input_fd != children[i].output_fd) {
+        safe_close(children[i].output_fd);
+    }
     hangup(children[i].pid);
 }
 
@@ -1034,9 +1058,11 @@ remove_children(ChildMonitor *self) {
     if (self->count > 0) {
         size_t count = 0;
         for (ssize_t i = self->count - 1; i >= 0; i--) {
-            if (children[i].needs_removal) {
+            if (children[i].needs_removal || children[i].needs_temp_removal) {
                 count++;
-                cleanup_child(i);
+                if (!children[i].needs_temp_removal) {
+                    cleanup_child(i);
+                }
                 remove_queue[remove_queue_count] = children[i];
                 remove_queue_count++;
                 children[i] = EMPTY_CHILD;
@@ -1073,7 +1099,9 @@ read_bytes(int fd, Screen *screen) {
         }
         break;
     }
-    if (UNLIKELY(len == 0)) return false;
+    if (UNLIKELY(len == 0)) {
+        return false;
+    }
 
     screen_mutex(lock, read);
     if (screen->new_input_at == 0) screen->new_input_at = monotonic();
@@ -1203,6 +1231,7 @@ io_loop(void *data) {
         children_mutex(lock);
         remove_children(self);
         add_children(self);
+        update_children(self);
         children_mutex(unlock);
         data_received = false;
         for (i = 0; i < self->count + EXTRA_FDS; i++) fds[i].revents = 0;
@@ -1237,12 +1266,21 @@ io_loop(void *data) {
                     if (!has_more) {
                         // child is dead
                         children_mutex(lock);
-                        children[i].needs_removal = true;
+                        if (children[i].input_fd != children[i].output_fd) {
+                            // child had a filter program which died, restore the input_fd and notify boss
+                            children[i].input_fd = children[i].output_fd;
+                            fds[EXTRA_FDS + i].fd = children[i].input_fd;
+                            PyObject *t = PyObject_CallFunction(self->filter_death_notify, "k", children[i].id);
+                            if (t == NULL) PyErr_Print();
+                            else Py_DECREF(t);
+                        } else {
+                            children[i].needs_removal = true;
+                        }
                         children_mutex(unlock);
                     }
                 }
                 if (fds[EXTRA_FDS + i].revents & POLLOUT) {
-                    write_to_child(children[i].fd, children[i].screen);
+                    write_to_child(children[i].output_fd, children[i].screen);
                 }
                 if (fds[EXTRA_FDS + i].revents & POLLNVAL) {
                     // fd was closed

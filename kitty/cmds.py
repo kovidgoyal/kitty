@@ -1247,6 +1247,65 @@ def kitten(boss, window, payload):
 # }}}
 
 
+# launch_filter {{{
+@cmd(
+    'Start a filter program',
+    'Start a filter over the specified window (active window by default).',
+    options_spec=MATCH_WINDOW_OPTION,
+)
+def cmd_launch_filter(global_opts, opts, args):
+    '''
+    cmd: The command to run as a filter
+    match: The window to run the filter over
+    '''
+    if len(args) < 1:
+        raise SystemExit('Must specify filter program name')
+    return {'match': opts.match, 'command': list(args)}
+
+
+def launch_filter(boss, window, payload):
+    windows = [window or boss.active_window]
+    pg = cmd_launch_filter.payload_get
+    match = pg(payload, 'match')
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise MatchError(match)
+    for window in windows:
+        if window:
+            boss._launch_filter(command=tuple(payload.get('command', ())), window=window)
+            break
+# }}}
+
+
+# remove_filter {{{
+@cmd(
+    'Remove filter program',
+    'Remove the currently running filter program for the specified window (active window by default).',
+    options_spec=MATCH_WINDOW_OPTION,
+)
+def cmd_remove_filter(global_opts, opts, args):
+    '''
+    match: The window for which the filter should be removed
+    '''
+    return {'match': opts.match}
+
+
+def remove_filter(boss, window, payload):
+    windows = [window or boss.active_window]
+    pg = cmd_remove_filter.payload_get
+    match = pg(payload, 'match')
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise MatchError(match)
+    for window in windows:
+        if window:
+            boss._remove_filter(window=window)
+            break
+# }}}
+
+
 def cli_params_for(func):
     return (func.options_spec or '\n').format, func.argspec, func.desc, '{} @ {}'.format(appname, func.name)
 

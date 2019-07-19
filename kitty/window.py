@@ -10,6 +10,7 @@ from collections import deque
 from enum import IntEnum
 from itertools import chain
 
+from .child import Child
 from .config import build_ansi_color_table
 from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
@@ -156,6 +157,7 @@ class Window:
         self.needs_layout = True
         self.is_visible_in_layout = True
         self.child, self.opts = child, opts
+        self.filter = None
         cell_width, cell_height = cell_size_for_window(self.os_window_id)
         self.screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
         if copy_colors_from is not None:
@@ -482,6 +484,9 @@ class Window:
 
     def destroy(self):
         self.destroyed = True
+        if self.filter:
+            self.filter.kill()
+            self.filter = None
         if self.screen is not None:
             # Remove cycles so that screen is de-allocated immediately
             self.screen.reset_callbacks()
@@ -597,4 +602,10 @@ class Window:
     def scroll_end(self):
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, False)
+
+    def launch_filter(self, cmd, env=None):
+        assert self.filter is None
+        self.filter = Child(cmd, self.child.cwd, self.child.opts, self.child.child_fd, env, None)
+        self.filter.fork()
+        self.filter.mark_terminal_ready()
     # }}}
