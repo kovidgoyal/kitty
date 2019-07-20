@@ -756,6 +756,7 @@ handleEvents(double timeout)
                 if (errno == EAGAIN) continue;
                 int last_error = wl_display_get_error(display);
                 if (last_error) abortOnFatalError(last_error);
+                wl_display_cancel_read(display);
                 return;
             }
             break;
