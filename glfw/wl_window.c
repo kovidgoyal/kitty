@@ -752,7 +752,6 @@ handleEvents(double timeout)
         while(1) {
             errno = 0;
             int num_dispatched = wl_display_dispatch_pending(display);
-            if (num_dispatched == 0) return;
             if (num_dispatched < 0) {
                 if (errno == EAGAIN) continue;
                 int last_error = wl_display_get_error(display);
