@@ -738,6 +738,8 @@ abortOnFatalError(int last_error) {
         _glfwInputWindowCloseRequest(window);
         window = window->next;
     }
+    // ensure the tick callback is called
+    _glfw.wl.eventLoopData.wakeup_data_read = true;
 }
 
 static void
