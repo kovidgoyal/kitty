@@ -747,6 +747,7 @@ handleEvents(double timeout)
 {
     struct wl_display* display = _glfw.wl.display;
     errno = 0;
+    EVDBG("starting handleEvents(%.2f)", timeout);
 
     while (wl_display_prepare_read(display) != 0) {
         while(1) {
@@ -775,9 +776,12 @@ handleEvents(double timeout)
     }
 
     bool display_read_ok = pollForEvents(&_glfw.wl.eventLoopData, timeout);
+    EVDBG("display_read_ok: %d", display_read_ok);
     if (display_read_ok) {
         wl_display_read_events(display);
-        wl_display_dispatch_pending(display);
+        int num = wl_display_dispatch_pending(display);
+        (void)num;
+        EVDBG("dispatched %d Wayland events", num);
     }
     else
     {
@@ -785,6 +789,7 @@ handleEvents(double timeout)
     }
     glfw_ibus_dispatch(&_glfw.wl.xkb.ibus);
     glfw_dbus_session_bus_dispatch();
+    EVDBG("other dispatch done");
     if (_glfw.wl.eventLoopData.wakeup_fd_ready) check_for_wakeup_events(&_glfw.wl.eventLoopData);
 }
 
