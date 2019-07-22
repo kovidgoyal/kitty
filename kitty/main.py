@@ -203,9 +203,31 @@ def macos_cmdline(argv_args):
     return ans
 
 
+def read_shell_environment(opts):
+    if not hasattr(read_shell_environment, 'ans'):
+        import subprocess
+        from .session import resolved_shell
+        shell = resolved_shell(opts)
+        p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=subprocess.PIPE)
+        raw = p.stdout.read()
+        if p.wait() == 0:
+            raw = raw.decode('utf-8', 'replace')
+            ans = read_shell_environment.ans = {}
+            for line in raw.splitlines():
+                k, v = line.partition('=')[::2]
+                if k and v:
+                    ans[k] = v
+    return read_shell_environment.ans
+
+
 def setup_environment(opts, args):
     extra_env = opts.env.copy()
-    if opts.editor != '.':
+    if opts.editor == '.':
+        if 'EDITOR' not in os.environ:
+            shell_env = read_shell_environment(opts)
+            if 'EDITOR' in shell_env:
+                os.environ['EDITOR'] = shell_env['EDITOR']
+    else:
         os.environ['EDITOR'] = opts.editor
     if args.listen_on:
         os.environ['KITTY_LISTEN_ON'] = args.listen_on
