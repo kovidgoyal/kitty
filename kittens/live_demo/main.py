@@ -5,6 +5,7 @@
 from contextlib import suppress
 import fcntl
 import os
+import re
 import select
 import sys
 from ..tui.operations import alternate_screen, styled
@@ -28,18 +29,23 @@ def main(args):
     term = ""
     with alternate_screen():
         with suppress(KeyboardInterrupt, EOFError):
-            term = input("Enter search term: ")
+            term = input("Enter search regex: ")
     if term == "":
         return
 
     fcntl.fcntl(sys.__stdin__.fileno(), fcntl.F_SETFL, os.O_NONBLOCK)
+
+    def replace_func(matchobj):
+        return styled(matchobj.group(0), bold=True, fg="black", bg="green")
+
     try:
         while True:
             if select.select([sys.__stdin__], [], [], 0) == ([sys.__stdin__], [], []):
                 text = sys.__stdin__.read()
-                text = text.replace(term, styled(term, bold=True, bg="green", fg="black"))
+                text =  re.sub(term, replace_func, text, count=0)
                 sys.stdout.write(text)
     except KeyboardInterrupt:
+        sys.stderr.write("exiting\n")
         pass
     return
 
