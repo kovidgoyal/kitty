@@ -271,9 +271,9 @@ update_url_cursor_shape(MouseTrackingMode mouse_tracking_mode, int modifiers) {
 static inline void
 detect_url(Screen *screen, unsigned int x, unsigned int y, int modifiers) {
     url_under_mouse_cursor = false;
-    index_type url_start, url_end = 0;
+    index_type url_start = 0, url_end = 0;
     Line *line = screen_visual_line(screen, y);
-    char_type sentinel;
+    char_type sentinel = 0;
     if (line) {
         url_start = line_url_start_at(line, x);
         sentinel = get_url_sentinel(line, url_start);
