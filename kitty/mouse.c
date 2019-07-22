@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+
 #include "state.h"
 #include "screen.h"
 #include "lineops.h"
