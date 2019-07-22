@@ -362,7 +362,6 @@ HANDLER(add_click) {
            ) {
             multi_click(w, 2);
         }
-
     }
 #undef N
 }
