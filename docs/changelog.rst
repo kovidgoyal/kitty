@@ -56,6 +56,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When using :opt:`strip_trailing_spaces` do not remove empty lines
   (:iss:`1802`)
 
+- Fix a crash when displaying very large number of images (:iss:`1825`)
+
 
 0.14.2 [2019-06-09]
 ---------------------
