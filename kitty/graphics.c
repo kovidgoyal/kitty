@@ -101,10 +101,10 @@ remove_image(GraphicsManager *self, size_t idx) {
 }
 
 static inline void
-remove_images(GraphicsManager *self, bool(*predicate)(Image*), Image* skip_image) {
+remove_images(GraphicsManager *self, bool(*predicate)(Image*), id_type skip_image_internal_id) {
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
-        if (img != skip_image && predicate(img)) {
+        if (img->internal_id != skip_image_internal_id && predicate(img)) {
             remove_image(self, i);
         }
     }
@@ -126,9 +126,9 @@ oldest_last(const void* a, const void *b) {
 }
 
 static inline void
-apply_storage_quota(GraphicsManager *self, size_t storage_limit, Image *currently_added_image) {
+apply_storage_quota(GraphicsManager *self, size_t storage_limit, id_type currently_added_image_internal_id) {
     // First remove unreferenced images, even if they have an id
-    remove_images(self, trim_predicate, currently_added_image);
+    remove_images(self, trim_predicate, currently_added_image_internal_id);
     if (self->used_storage < storage_limit) return;
 
     qsort(self->images, self->image_count, sizeof(Image), oldest_last);
@@ -280,7 +280,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         self->last_init_graphics_command.id = iid;
         self->loading_image = 0;
         if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
-        remove_images(self, add_trim_predicate, NULL);
+        remove_images(self, add_trim_predicate, 0);
         img = find_or_create_image(self, iid, &existing);
         if (existing) {
             free_load_data(&img->load_data);
@@ -778,8 +778,9 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             image = handle_add_command(self, g, payload, is_dirty, iid);
             ret = create_add_response(self, image != NULL, g->action == 'q' ? q_iid: self->last_init_graphics_command.id);
             if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image, cell);
-            if (g->action == 'q') remove_images(self, add_trim_predicate, NULL);
-            if (self->used_storage > STORAGE_LIMIT) apply_storage_quota(self, STORAGE_LIMIT, image);
+            id_type added_image_id = image ? image->internal_id : 0;
+            if (g->action == 'q') remove_images(self, add_trim_predicate, 0);
+            if (self->used_storage > STORAGE_LIMIT) apply_storage_quota(self, STORAGE_LIMIT, added_image_id);
             break;
         case 'p':
             if (!g->id) {
