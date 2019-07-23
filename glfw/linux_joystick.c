@@ -315,7 +315,7 @@ bool _glfwInitJoysticksLinux(void)
 
     // Continue with no joysticks if enumeration fails
 
-    qsort(_glfw.joysticks, count, sizeof(_GLFWjoystick), compareJoysticks);
+    qsort(_glfw.joysticks, count, sizeof(_glfw.joysticks[0]), compareJoysticks);
     return true;
 }
 

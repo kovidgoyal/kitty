@@ -131,7 +131,7 @@ apply_storage_quota(GraphicsManager *self, size_t storage_limit, id_type current
     remove_images(self, trim_predicate, currently_added_image_internal_id);
     if (self->used_storage < storage_limit) return;
 
-    qsort(self->images, self->image_count, sizeof(Image), oldest_last);
+    qsort(self->images, self->image_count, sizeof(self->images[0]), oldest_last);
     while (self->used_storage > storage_limit && self->image_count > 0) {
         remove_image(self, self->image_count - 1);
     }
@@ -576,7 +576,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     }}
     if (!self->count) return false;
     // Sort visible refs in draw order (z-index, img)
-    qsort(self->render_data, self->count, sizeof(ImageRenderData), cmp_by_zindex_and_image);
+    qsort(self->render_data, self->count, sizeof(self->render_data[0]), cmp_by_zindex_and_image);
     // Calculate the group counts
     i = 0;
     while (i < self->count) {

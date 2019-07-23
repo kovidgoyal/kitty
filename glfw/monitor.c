@@ -74,7 +74,7 @@ static bool refreshVideoModes(_GLFWmonitor* monitor)
     if (!modes)
         return false;
 
-    qsort(modes, modeCount, sizeof(GLFWvidmode), compareVideoModes);
+    qsort(modes, modeCount, sizeof(modes[0]), compareVideoModes);
 
     free(monitor->modes);
     monitor->modes = modes;
