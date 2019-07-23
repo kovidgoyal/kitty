@@ -590,21 +590,16 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 
 static inline void
 filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
-    Image *img; ImageRef *ref;
-    size_t i, j;
-
-    if (self->image_count) {
-        for (i = self->image_count; i-- > 0;) {
-            img = self->images + i;
-            for (j = img->refcnt; j-- > 0;) {
-                ref = img->refs + j;
-                if (filter_func(ref, img, data, cell)) {
-                    remove_i_from_array(img->refs, j, img->refcnt);
-                }
+    self->layers_dirty = self->image_count > 0;
+    for (size_t i = self->image_count; i-- > 0;) {
+        Image *img = self->images + i;
+        for (size_t j = img->refcnt; j-- > 0;) {
+            ImageRef *ref = img->refs + j;
+            if (filter_func(ref, img, data, cell)) {
+                remove_i_from_array(img->refs, j, img->refcnt);
             }
-            if (img->refcnt == 0 && (free_images || img->client_id == 0)) remove_image(self, i);
         }
-        self->layers_dirty = true;
+        if (img->refcnt == 0 && (free_images || img->client_id == 0)) remove_image(self, i);
     }
 }
 
@@ -764,24 +759,23 @@ grman_rescale(GraphicsManager *self, CellPixelSize cell) {
 
 const char*
 grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize cell) {
-    Image *image;
     const char *ret = NULL;
-    uint32_t iid, q_iid;
 
     switch(g->action) {
         case 0:
         case 't':
         case 'T':
-        case 'q':
-            iid = g->id; q_iid = iid;
+        case 'q': {
+            uint32_t iid = g->id, q_iid = iid;
             if (g->action == 'q') { iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
-            image = handle_add_command(self, g, payload, is_dirty, iid);
+            Image *image = handle_add_command(self, g, payload, is_dirty, iid);
             ret = create_add_response(self, image != NULL, g->action == 'q' ? q_iid: self->last_init_graphics_command.id);
             if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image, cell);
             id_type added_image_id = image ? image->internal_id : 0;
             if (g->action == 'q') remove_images(self, add_trim_predicate, 0);
             if (self->used_storage > STORAGE_LIMIT) apply_storage_quota(self, STORAGE_LIMIT, added_image_id);
             break;
+        }
         case 'p':
             if (!g->id) {
                 REPORT_ERROR("Put graphics command without image id");
