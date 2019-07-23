@@ -31,6 +31,9 @@
 #include <sys/param.h> // For MAXPATHLEN
 #include <pthread.h>
 
+// Needed for _NSGetProgname
+#include <crt_externs.h>
+
 // Change to our application bundle's resources directory, if present
 //
 static void changeToResourcesDirectory(void)
@@ -65,6 +68,111 @@ static void changeToResourcesDirectory(void)
     CFRelease(resourcesURL);
 
     chdir(resourcesPath);
+}
+
+// Set up the menu bar (manually)
+// This is nasty, nasty stuff -- calls to undocumented semi-private APIs that
+// could go away at any moment, lots of stuff that really should be
+// localize(d|able), etc.  Add a nib to save us this horror.
+//
+static void createMenuBar(void)
+{
+    size_t i;
+    NSString* appName = nil;
+    NSDictionary* bundleInfo = [[NSBundle mainBundle] infoDictionary];
+    NSString* nameKeys[] =
+    {
+        @"CFBundleDisplayName",
+        @"CFBundleName",
+        @"CFBundleExecutable",
+    };
+
+    // Try to figure out what the calling application is called
+
+    for (i = 0;  i < sizeof(nameKeys) / sizeof(nameKeys[0]);  i++)
+    {
+        id name = bundleInfo[nameKeys[i]];
+        if (name &&
+            [name isKindOfClass:[NSString class]] &&
+            ![name isEqualToString:@""])
+        {
+            appName = name;
+            break;
+        }
+    }
+
+    if (!appName)
+    {
+        char** progname = _NSGetProgname();
+        if (progname && *progname)
+            appName = @(*progname);
+        else
+            appName = @"GLFW Application";
+    }
+
+    NSMenu* bar = [[NSMenu alloc] init];
+    [NSApp setMainMenu:bar];
+
+    NSMenuItem* appMenuItem =
+        [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+    NSMenu* appMenu = [[NSMenu alloc] init];
+    [appMenuItem setSubmenu:appMenu];
+
+    [appMenu addItemWithTitle:[NSString stringWithFormat:@"About %@", appName]
+                       action:@selector(orderFrontStandardAboutPanel:)
+                keyEquivalent:@""];
+    [appMenu addItem:[NSMenuItem separatorItem]];
+    NSMenu* servicesMenu = [[NSMenu alloc] init];
+    [NSApp setServicesMenu:servicesMenu];
+    [[appMenu addItemWithTitle:@"Services"
+                       action:NULL
+                keyEquivalent:@""] setSubmenu:servicesMenu];
+    [servicesMenu release];
+    [appMenu addItem:[NSMenuItem separatorItem]];
+    [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", appName]
+                       action:@selector(hide:)
+                keyEquivalent:@"h"];
+    [[appMenu addItemWithTitle:@"Hide Others"
+                       action:@selector(hideOtherApplications:)
+                keyEquivalent:@"h"]
+        setKeyEquivalentModifierMask:NSEventModifierFlagOption | NSEventModifierFlagCommand];
+    [appMenu addItemWithTitle:@"Show All"
+                       action:@selector(unhideAllApplications:)
+                keyEquivalent:@""];
+    [appMenu addItem:[NSMenuItem separatorItem]];
+    [appMenu addItemWithTitle:[NSString stringWithFormat:@"Quit %@", appName]
+                       action:@selector(terminate:)
+                keyEquivalent:@"q"];
+
+    NSMenuItem* windowMenuItem =
+        [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+    [bar release];
+    NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
+    [NSApp setWindowsMenu:windowMenu];
+    [windowMenuItem setSubmenu:windowMenu];
+
+    [windowMenu addItemWithTitle:@"Minimize"
+                          action:@selector(performMiniaturize:)
+                   keyEquivalent:@"m"];
+    [windowMenu addItemWithTitle:@"Zoom"
+                          action:@selector(performZoom:)
+                   keyEquivalent:@""];
+    [windowMenu addItem:[NSMenuItem separatorItem]];
+    [windowMenu addItemWithTitle:@"Bring All to Front"
+                          action:@selector(arrangeInFront:)
+                   keyEquivalent:@""];
+
+    // TODO: Make this appear at the bottom of the menu (for consistency)
+    [windowMenu addItem:[NSMenuItem separatorItem]];
+    [[windowMenu addItemWithTitle:@"Enter Full Screen"
+                           action:@selector(toggleFullScreen:)
+                    keyEquivalent:@"f"]
+     setKeyEquivalentModifierMask:NSEventModifierFlagControl | NSEventModifierFlagCommand];
+
+    // Prior to Snow Leopard, we need to use this oddly-named semi-private API
+    // to get the application menu working properly.
+    SEL setAppleMenuSelector = NSSelectorFromString(@"setAppleMenu:");
+    [NSApp performSelector:setAppleMenuSelector withObject:appMenu];
 }
 
 // Create key code translation tables
@@ -277,6 +385,17 @@ static bool initializeTIS(void)
     return updateUnicodeDataNS();
 }
 
+static void
+display_reconfigured(CGDirectDisplayID display UNUSED, CGDisplayChangeSummaryFlags flags, void *userInfo UNUSED)
+{
+    if (flags & kCGDisplayBeginConfigurationFlag) {
+        return;
+    }
+    if (flags & kCGDisplaySetModeFlag) {
+        // GPU possibly changed
+    }
+}
+
 @interface GLFWHelper : NSObject
 @end
 
@@ -294,6 +413,100 @@ static bool initializeTIS(void)
 }
 
 @end // GLFWHelper
+
+// Delegate for application related notifications {{{
+
+@interface GLFWApplicationDelegate : NSObject <NSApplicationDelegate>
+@end
+
+@implementation GLFWApplicationDelegate
+
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender
+{
+    (void)sender;
+    _GLFWwindow* window;
+
+    for (window = _glfw.windowListHead;  window;  window = window->next)
+        _glfwInputWindowCloseRequest(window);
+
+    return NSTerminateCancel;
+}
+
+static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
+
+- (BOOL)applicationShouldHandleReopen:(NSApplication *)sender hasVisibleWindows:(BOOL)flag
+{
+    (void)sender;
+    if (!handle_reopen_callback) return YES;
+    if (handle_reopen_callback(flag)) return YES;
+    return NO;
+}
+
+- (void)applicationDidChangeScreenParameters:(NSNotification *) notification
+{
+    (void)notification;
+    _GLFWwindow* window;
+
+    for (window = _glfw.windowListHead;  window;  window = window->next)
+    {
+        if (window->context.client != GLFW_NO_API)
+            [window->context.nsgl.object update];
+    }
+
+    _glfwPollMonitorsNS();
+}
+
+- (void)applicationWillFinishLaunching:(NSNotification *)notification
+{
+    (void)notification;
+    if (_glfw.hints.init.ns.menubar)
+    {
+        // In case we are unbundled, make us a proper UI application
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
+
+        // Menu bar setup must go between sharedApplication above and
+        // finishLaunching below, in order to properly emulate the behavior
+        // of NSApplicationMain
+
+        // disabled by Kovid
+        /* if ([[NSBundle mainBundle] pathForResource:@"MainMenu" ofType:@"nib"])
+        {
+            [[NSBundle mainBundle] loadNibNamed:@"MainMenu"
+                                          owner:NSApp
+                                topLevelObjects:&_glfw.ns.nibObjects];
+        }
+        else */
+            createMenuBar();
+    }
+}
+
+- (void)applicationDidFinishLaunching:(NSNotification *)notification
+{
+    (void)notification;
+    [NSApp stop:nil];
+
+    CGDisplayRegisterReconfigurationCallback(display_reconfigured, NULL);
+    _glfwCocoaPostEmptyEvent();
+}
+
+- (void)applicationWillTerminate:(NSNotification *)aNotification
+{
+    (void)aNotification;
+    CGDisplayRemoveReconfigurationCallback(display_reconfigured, NULL);
+}
+
+- (void)applicationDidHide:(NSNotification *)notification
+{
+    (void)notification;
+    int i;
+
+    for (i = 0;  i < _glfw.monitorCount;  i++)
+        _glfwRestoreVideoModeNS(_glfw.monitors[i]);
+}
+
+@end // GLFWApplicationDelegate
+// }}}
+
 
 @interface GLFWApplication : NSApplication
 - (void)tick_callback;
@@ -336,6 +549,12 @@ is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
     return false;
 }
 
+GLFWAPI GLFWapplicationshouldhandlereopenfun glfwSetApplicationShouldHandleReopen(GLFWapplicationshouldhandlereopenfun callback) {
+    GLFWapplicationshouldhandlereopenfun previous = handle_reopen_callback;
+    handle_reopen_callback = callback;
+    return previous;
+}
+
 int _glfwPlatformInit(void)
 {
     @autoreleasepool {
@@ -347,6 +566,16 @@ int _glfwPlatformInit(void)
                            withObject:nil];
 
     [GLFWApplication sharedApplication];
+
+    _glfw.ns.delegate = [[GLFWApplicationDelegate alloc] init];
+    if (_glfw.ns.delegate == nil)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Cocoa: Failed to create application delegate");
+        return false;
+    }
+
+    [NSApp setDelegate:_glfw.ns.delegate];
 
     NSEvent* (^keydown_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
@@ -385,6 +614,10 @@ int _glfwPlatformInit(void)
 
     if (_glfw.hints.init.ns.chdir)
         changeToResourcesDirectory();
+
+    // Press and Hold prevents some keys from emitting repeated characters
+    NSDictionary* defaults = @{@"ApplePressAndHoldEnabled":@NO};
+    [[NSUserDefaults standardUserDefaults] registerDefaults:defaults];
 
     [[NSNotificationCenter defaultCenter]
         addObserver:_glfw.ns.helper

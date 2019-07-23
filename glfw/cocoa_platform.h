@@ -153,6 +153,7 @@ typedef struct _GLFWlibraryNS
 {
     CGEventSourceRef    eventSource;
     id                  delegate;
+    bool                finishedLaunching;
     bool                cursorHidden;
     TISInputSourceRef   inputSource;
     IOHIDManagerRef     hidManager;
@@ -160,6 +161,7 @@ typedef struct _GLFWlibraryNS
     id                  helper;
     id                  keyUpMonitor;
     id                  keyDownMonitor;
+    id                  nibObjects;
 
     char                keyName[64];
     char                text[256];
