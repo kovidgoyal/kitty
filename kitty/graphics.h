@@ -43,7 +43,7 @@ typedef struct {
 
 typedef struct {
     uint32_t texture_id, client_id, width, height;
-    size_t internal_id;
+    id_type internal_id;
 
     bool data_loaded;
     LoadData load_data;
@@ -58,13 +58,14 @@ typedef struct {
     float vertices[16];
     uint32_t texture_id, group_count;
     int z_index;
-    size_t image_id;
+    id_type image_id;
 } ImageRenderData;
 
 typedef struct {
     PyObject_HEAD
 
-    size_t image_count, images_capacity, loading_image;
+    size_t image_count, images_capacity;
+    id_type loading_image;
     GraphicsCommand last_init_graphics_command;
     Image *images;
     size_t count, capacity;

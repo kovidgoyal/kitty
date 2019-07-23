@@ -19,7 +19,7 @@
 #include "png-reader.h"
 PyTypeObject GraphicsManager_Type;
 
-#define STORAGE_LIMIT (320 * (1024 * 1024))
+#define STORAGE_LIMIT (320u * (1024u * 1024u))
 
 #define REPORT_ERROR(...) { log_error(__VA_ARGS__); }
 
@@ -75,10 +75,10 @@ dealloc(GraphicsManager* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static size_t internal_id_counter = 1;
+static id_type internal_id_counter = 1;
 
 static inline Image*
-img_by_internal_id(GraphicsManager *self, size_t id) {
+img_by_internal_id(GraphicsManager *self, id_type id) {
     for (size_t i = 0; i < self->image_count; i++) {
         if (self->images[i].internal_id == id) return self->images + i;
     }
@@ -574,7 +574,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     // Calculate the group counts
     i = 0;
     while (i < self->count) {
-        size_t image_id = self->render_data[i].image_id, start = i;
+        id_type image_id = self->render_data[i].image_id, start = i;
         if (start == self->count - 1) i = self->count;
         else {
             while (i < self->count - 1 && self->render_data[++i].image_id == image_id) {}
@@ -811,7 +811,7 @@ new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 static inline PyObject*
 image_as_dict(Image *img) {
 #define U(x) #x, img->x
-    return Py_BuildValue("{sI sI sI sI sI sI sO sO sN}",
+    return Py_BuildValue("{sI sI sI sI sK sI sO sO sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt),
         "data_loaded", img->data_loaded ? Py_True : Py_False,
         "is_4byte_aligned", img->load_data.is_4byte_aligned ? Py_True : Py_False,
@@ -871,7 +871,7 @@ W(update_layers) {
         ImageRenderData *r = self->render_data + i;
 #define R(offset) Py_BuildValue("{sf sf sf sf}", "left", r->vertices[offset + 8], "top", r->vertices[offset + 1], "right", r->vertices[offset], "bottom", r->vertices[offset + 5])
         PyTuple_SET_ITEM(ans, i,
-            Py_BuildValue("{sN sN sI si sI}", "src_rect", R(0), "dest_rect", R(2), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
+            Py_BuildValue("{sN sN sI si sK}", "src_rect", R(0), "dest_rect", R(2), "group_count", r->group_count, "z_index", r->z_index, "image_id", r->image_id)
         );
 #undef R
     }
