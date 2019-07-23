@@ -1548,7 +1548,7 @@ static PyMethodDef module_methods[] = {
     {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
     {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
     METHODB(monitor_pid, METH_VARARGS),
-    {"set_iutf8", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
+    {"set_iutf8_winid", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
 

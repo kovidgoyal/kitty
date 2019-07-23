@@ -180,7 +180,7 @@ class Child:
         self.forked = True
         master, slave = os.openpty()  # Note that master and slave are in blocking mode
         remove_cloexec(slave)
-        fast_data_types.set_iutf8(master, True)
+        fast_data_types.set_iutf8_fd(master, True)
         stdin, self.stdin = self.stdin, None
         ready_read_fd, ready_write_fd = os.pipe()
         remove_cloexec(ready_read_fd)
