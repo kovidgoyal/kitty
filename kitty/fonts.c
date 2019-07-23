@@ -32,7 +32,7 @@ typedef struct {
 typedef struct SpritePosition SpritePosition;
 struct SpritePosition {
     SpritePosition *next;
-    bool filled, rendered, colored;
+    bool filled, rendered, colored, subpixel;
     sprite_index x, y, z;
     uint8_t ligature_index;
     glyph_index glyph;
@@ -247,6 +247,7 @@ sprite_position_for(FontGroup *fg, Font *font, glyph_index glyph, ExtraGlyphs *e
     s->filled = true;
     s->rendered = false;
     s->colored = false;
+    s->subpixel = false;
     s->x = fg->sprite_tracker.x; s->y = fg->sprite_tracker.y; s->z = fg->sprite_tracker.z;
     do_increment(fg, error);
     return s;
@@ -301,7 +302,7 @@ free_maps(Font *font) {
 
 void
 clear_sprite_map(Font *font) {
-#define CLEAR(s) s->filled = false; s->rendered = false; s->colored = false; s->glyph = 0; memset(&s->extra_glyphs, 0, sizeof(ExtraGlyphs)); s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
+#define CLEAR(s) s->filled = false; s->rendered = false; s->colored = false; s->subpixel = false; s->glyph = 0; memset(&s->extra_glyphs, 0, sizeof(ExtraGlyphs)); s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
     SpritePosition *s;
     for (size_t i = 0; i < sizeof(font->sprite_map)/sizeof(font->sprite_map[0]); i++) {
         s = font->sprite_map + i;
@@ -606,6 +607,7 @@ render_box_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
     if (sp->rendered) return;
     sp->rendered = true;
     sp->colored = false;
+    sp->subpixel = false;
     PyObject *ret = PyObject_CallFunction(box_drawing_function, "IIId", cpu_cell->ch, fg->cell_width, fg->cell_height, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0);
     if (ret == NULL) { PyErr_Print(); return; }
     uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0));
@@ -640,6 +642,7 @@ static inline void
 set_cell_sprite(GPUCell *cell, SpritePosition *sp) {
     cell->sprite_x = sp->x; cell->sprite_y = sp->y; cell->sprite_z = sp->z;
     if (sp->colored) cell->sprite_z |= 0x4000;
+    if (sp->subpixel) cell->sprite_z |= 0x8000;
 }
 
 static inline pixel*
@@ -666,12 +669,14 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
 
     clear_canvas(fg);
     bool was_colored = (gpu_cells->attrs & WIDTH_MASK) == 2 && is_emoji(cpu_cells->ch);
-    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
+    bool was_subpixel = false;
+    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, &was_subpixel, (FONTS_DATA_HANDLE)fg, center_glyph);
     if (PyErr_Occurred()) PyErr_Print();
 
     for (unsigned int i = 0; i < num_cells; i++) {
         sprite_position[i]->rendered = true;
         sprite_position[i]->colored = was_colored;
+        sprite_position[i]->subpixel = was_subpixel;
         set_cell_sprite(gpu_cells + i, sprite_position[i]);
         pixel *buf = num_cells == 1 ? fg->canvas : extract_cell_from_canvas(fg, i, num_cells);
         current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sprite_position[i]->x, sprite_position[i]->y, sprite_position[i]->z, buf);

@@ -508,7 +508,7 @@ do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_g
 }
 
 bool
-render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE fg, bool center_glyph) {
+render_glyphs_in_cells(PyObject *s, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool UNUSED *was_subpixel, FONTS_DATA_HANDLE fg, bool center_glyph) {
     CTFace *self = (CTFace*)s;
     for (unsigned i=0; i < num_glyphs; i++) glyphs[i] = info[i].codepoint;
     return do_render(self->ct_font, bold, italic, info, hb_positions, num_glyphs, canvas, cell_width, cell_height, num_cells, baseline, was_colored, true, fg, center_glyph);

@@ -295,6 +295,12 @@ a pixel value. There must be four values corresponding to thin, normal, thick,
 and very thick lines.
 '''))
 
+o('subpixel_rendering', False, long_text=_('''
+Use subpixel rendering instead of grayscale in freetype. Impacts performance,
+but may look better on low DPI screens. Possible values are :code:`none`,
+:code:`lcd`, and :code:`lcd_v`.
+'''))
+
 # }}}
 
 g('cursor')  # {{{

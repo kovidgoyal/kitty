@@ -79,8 +79,8 @@ def talk_to_instance(args):
         conn.close()
 
 
-def load_all_shaders(semi_transparent=0):
-    load_shader_programs(semi_transparent)
+def load_all_shaders(semi_transparent=False, subpixel_enabled=False):
+    load_shader_programs(semi_transparent, subpixel_enabled)
     load_borders_program()
 
 

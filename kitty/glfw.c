@@ -575,7 +575,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwShowWindow(glfw_window);
     }
     if (is_first_window) {
-        PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
+        PyObject *ret = PyObject_CallFunction(load_programs, "OO", is_semi_transparent ? Py_True : Py_False, OPT(subpixel_rendering) ? Py_True : Py_False);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
 #ifdef __APPLE__

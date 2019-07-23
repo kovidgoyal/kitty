@@ -1,8 +1,9 @@
 #version GLSL_VERSION
 #define WHICH_PROGRAM
 #define NOT_TRANSPARENT
+#define NOT_SUBPIXEL
 
-#if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL)
+#if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL) || defined(SUBPIXEL)
 #define NEEDS_BACKROUND
 #endif
 
@@ -28,6 +29,7 @@ in vec3 foreground;
 in vec4 cursor_color_vec;
 in vec3 decoration_fg;
 in float colored_sprite;
+in float subpixel;
 #endif
 
 out vec4 final_color;
@@ -94,8 +96,23 @@ vec4 blend_onto_opaque_premul(vec3 over, float over_alpha, vec3 under) {
 vec4 calculate_foreground() {
     // returns the effective foreground color in pre-multiplied form
     vec4 text_fg = texture(sprites, sprite_pos);
+#ifdef SUBPIXEL
+    vec3 unblended_fg = mix(foreground, text_fg.rgb, colored_sprite);
+#ifdef TRANSPARENT
+    float alpha = text_fg.g; // Cairo uses green channel to convert FreeType's subpixel buffer to ARGB
+    float scale_coeff = mix(1, alpha, alpha > 0);
+    vec3 scaled_mask = text_fg.rgb / scale_coeff;
+    vec3 blended_fg = foreground * scaled_mask;
+    float text_alpha = mix(text_fg.a, alpha, subpixel);
+#else
+    vec3 blended_fg = mix(background, foreground, text_fg.rgb);
+    float text_alpha = text_fg.a;
+#endif
+    vec3 fg = mix(unblended_fg, blended_fg, subpixel);
+#else
     vec3 fg = mix(foreground, text_fg.rgb, colored_sprite);
     float text_alpha = text_fg.a;
+#endif
     float underline_alpha = texture(sprites, underline_pos).a;
     float strike_alpha = texture(sprites, strike_pos).a;
     float cursor_alpha = texture(sprites, cursor_pos).a;

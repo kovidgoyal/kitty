@@ -56,7 +56,7 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def load_shader_programs(semi_transparent=False):
+def load_shader_programs(semi_transparent=False, subpixel_enabled=False):
     compile_program(BLIT_PROGRAM, *load_shaders('blit'))
     v, f = load_shaders('cell')
 
@@ -77,6 +77,9 @@ def load_shader_programs(semi_transparent=False):
         if semi_transparent:
             vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
             ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
+        if subpixel_enabled:
+            vv = vv.replace('#define NOT_SUBPIXEL', '#define SUBPIXEL')
+            ff = ff.replace('#define NOT_SUBPIXEL', '#define SUBPIXEL')
         if not load_shader_programs.use_selection_fg:
             vv = vv.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
             ff = ff.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
