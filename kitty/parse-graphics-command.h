@@ -11,7 +11,7 @@ static inline void parse_graphics_code(Screen *screen,
   unsigned int i, code;
   uint64_t lcode;
   bool is_negative;
-  memset(&g, 0, sizeof(g));
+  zero_at_ptr(&g);
   size_t sz;
   static uint8_t payload[4096];
 

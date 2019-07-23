@@ -261,7 +261,7 @@ find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
     *existing = false;
     ensure_space_for(self, images, Image, self->image_count + 1, images_capacity, 64, true);
     Image *ans = self->images + self->image_count++;
-    memset(ans, 0, sizeof(ans[0]));
+    zero_at_ptr(ans);
     return ans;
 }
 
@@ -494,7 +494,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     }
     if (ref == NULL) {
         ref = img->refs + img->refcnt++;
-        memset(ref, 0, sizeof(ref[0]));
+        zero_at_ptr(ref);
     }
     img->atime = monotonic();
     ref->src_x = g->x_offset; ref->src_y = g->y_offset; ref->src_width = g->width ? g->width : img->width; ref->src_height = g->height ? g->height : img->height;
@@ -568,7 +568,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
         ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 64, true);
         ImageRenderData *rd = self->render_data + self->count;
-        memset(rd, 0, sizeof(rd[0]));
+        zero_at_ptr(rd);
         set_vertex_data(rd, ref, &r);
         self->count++;
         rd->z_index = ref->z_index; rd->image_id = img->internal_id;

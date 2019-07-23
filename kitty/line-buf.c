@@ -29,9 +29,9 @@ clear_chars_to(LineBuf* linebuf, index_type y, char_type ch) {
 
 void
 linebuf_clear(LineBuf *self, char_type ch) {
-    memset(self->cpu_cell_buf, 0, self->xnum * self->ynum * sizeof(CPUCell));
-    memset(self->gpu_cell_buf, 0, self->xnum * self->ynum * sizeof(GPUCell));
-    memset(self->line_attrs, 0, self->ynum * sizeof(line_attrs_type));
+    zero_at_ptr_count(self->cpu_cell_buf, self->xnum * self->ynum);
+    zero_at_ptr_count(self->gpu_cell_buf, self->xnum * self->ynum);
+    zero_at_ptr_count(self->line_attrs, self->ynum);
     for (index_type i = 0; i < self->ynum; i++) self->line_map[i] = i;
     if (ch != 0) {
         for (index_type i = 0; i < self->ynum; i++) {
@@ -243,8 +243,8 @@ copy_line_to(LineBuf *self, PyObject *args) {
 
 static inline void
 clear_line_(Line *l, index_type xnum) {
-    memset(l->cpu_cells, 0, xnum * sizeof(CPUCell));
-    memset(l->gpu_cells, 0, xnum * sizeof(GPUCell));
+    zero_at_ptr_count(l->cpu_cells, xnum);
+    zero_at_ptr_count(l->gpu_cells, xnum);
     if (BLANK_CHAR != 0) clear_chars_in_line(l->cpu_cells, l->gpu_cells, xnum, BLANK_CHAR);
     l->has_dirty_text = false;
 }

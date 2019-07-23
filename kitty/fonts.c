@@ -163,7 +163,7 @@ font_group_for(double font_sz_in_pts, double logical_dpi_x, double logical_dpi_y
     }
     add_font_group();
     FontGroup *fg = font_groups + num_font_groups - 1;
-    memset(fg, 0, sizeof(FontGroup));
+    zero_at_ptr(fg);
     fg->font_sz_in_pts = font_sz_in_pts;
     fg->logical_dpi_x = logical_dpi_x;
     fg->logical_dpi_y = logical_dpi_y;
@@ -301,7 +301,7 @@ free_maps(Font *font) {
 
 void
 clear_sprite_map(Font *font) {
-#define CLEAR(s) s->filled = false; s->rendered = false; s->colored = false; s->glyph = 0; memset(&s->extra_glyphs, 0, sizeof(ExtraGlyphs)); s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
+#define CLEAR(s) s->filled = false; s->rendered = false; s->colored = false; s->glyph = 0; zero_at_ptr(&s->extra_glyphs); s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
     SpritePosition *s;
     for (size_t i = 0; i < sizeof(font->sprite_map)/sizeof(font->sprite_map[0]); i++) {
         s = font->sprite_map + i;
@@ -728,7 +728,7 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.current_cell_data.num_codepoints = num_codepoints_in_cell(first_cpu_cell);
     group_state.current_cell_data.codepoints_consumed = 0;
     group_state.current_cell_data.current_codepoint = first_cpu_cell->ch;
-    memset(group_state.groups, 0, sizeof(Group) * group_state.groups_capacity);
+    zero_at_ptr_count(group_state.groups, group_state.groups_capacity);
     group_state.group_idx = 0;
     group_state.glyph_idx = 0;
     group_state.cell_idx = 0;

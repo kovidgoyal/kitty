@@ -31,6 +31,9 @@
 #define xstr(s) str(s)
 #define str(s) #s
 #define arraysz(x) (sizeof(x)/sizeof(x[0]))
+#define zero_at_i(array, idx) memset((array) + (idx), 0, sizeof((array)[0]))
+#define zero_at_ptr(p) memset((p), 0, sizeof((p)[0]))
+#define zero_at_ptr_count(p, count) memset((p), 0, (count) * sizeof((p)[0]))
 void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 #define fatal(...) { log_error(__VA_ARGS__); exit(EXIT_FAILURE); }
 

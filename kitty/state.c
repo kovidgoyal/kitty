@@ -14,7 +14,7 @@ GlobalState global_state = {{0}};
     for (size_t i = 0; i < count; i++) { \
         if (array[i].id == qid) { \
             destroy(array + i); \
-            memset(array + i, 0, sizeof(array[0])); \
+            zero_at_i(array, i); \
             remove_i_from_array(array, i, count); \
             break; \
         } \
@@ -76,7 +76,7 @@ add_os_window() {
     WITH_OS_WINDOW_REFS
     ensure_space_for(&global_state, os_windows, OSWindow, global_state.num_os_windows + 1, capacity, 1, true);
     OSWindow *ans = global_state.os_windows + global_state.num_os_windows++;
-    memset(ans, 0, sizeof(OSWindow));
+    zero_at_ptr(ans);
     ans->id = ++global_state.os_window_id_counter;
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
     ans->gvao_idx = create_graphics_vao();
@@ -91,7 +91,7 @@ add_tab(id_type os_window_id) {
     WITH_OS_WINDOW(os_window_id)
         make_os_window_context_current(os_window);
         ensure_space_for(os_window, tabs, Tab, os_window->num_tabs + 1, capacity, 1, true);
-        memset(os_window->tabs + os_window->num_tabs, 0, sizeof(Tab));
+        zero_at_i(os_window->tabs, os_window->num_tabs);
         os_window->tabs[os_window->num_tabs].id = ++global_state.tab_id_counter;
         os_window->tabs[os_window->num_tabs].border_rects.vao_idx = create_border_vao();
         return os_window->tabs[os_window->num_tabs++].id;
@@ -104,7 +104,7 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
     WITH_TAB(os_window_id, tab_id);
         ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
         make_os_window_context_current(osw);
-        memset(tab->windows + tab->num_windows, 0, sizeof(Window));
+        zero_at_i(tab->windows, tab->num_windows);
         tab->windows[tab->num_windows].id = ++global_state.window_id_counter;
         tab->windows[tab->num_windows].visible = true;
         tab->windows[tab->num_windows].title = title;
@@ -265,7 +265,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
                 break;
         }
     } else {
-        memset(tab_bar, 0, sizeof(Region));
+        zero_at_ptr(tab_bar);
         central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
         central->bottom = os_window->viewport_height - 1;
     }

@@ -46,6 +46,6 @@ right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
     size_t r;
     for (r = 0, src = canvas; r < height; r++, src += width) {
         memmove(src + amt, src, sizeof(pixel) * (width - amt));
-        memset(src, 0, sizeof(pixel) * amt);
+        zero_at_ptr_count(src, amt);
     }
 }
