@@ -440,7 +440,7 @@ cocoa_set_titlebar_color(void *w, color_type titlebar_color)
 {
     @autoreleasepool {
 
-    NSWindow *window = (NSWindow *)w;
+    NSWindow *window = (NSWindow*)w;
 
     double red = ((titlebar_color >> 16) & 0xFF) / 255.0;
     double green = ((titlebar_color >> 8) & 0xFF) / 255.0;
