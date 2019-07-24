@@ -482,7 +482,7 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 #undef INCREF_CHILD
 #undef DECREF_CHILD
 
-extern void cocoa_update_title(PyObject*);
+extern void cocoa_update_menu_bar_title(PyObject*);
 
 static inline void
 collect_cursor_info(CursorRenderInfo *ans, Window *w, double now, OSWindow *os_window) {
@@ -518,7 +518,7 @@ update_window_title(Window *w, OSWindow *os_window) {
         Py_INCREF(os_window->window_title);
         set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
 #ifdef __APPLE__
-        if (os_window->is_focused && OPT(macos_show_window_title_in_menubar)) cocoa_update_title(w->title);
+        if (os_window->is_focused && OPT(macos_show_window_title_in_menubar)) cocoa_update_menu_bar_title(w->title);
 #endif
         return true;
     }

@@ -327,7 +327,7 @@ cocoa_create_global_menu(void) {
 }
 
 void
-cocoa_update_title(PyObject *pytitle) {
+cocoa_update_menu_bar_title(PyObject *pytitle) {
     NSString *title = [[NSString alloc] initWithUTF8String:PyUnicode_AsUTF8(pytitle)];
     NSMenu *bar = [NSApp mainMenu];
     if (title_menu != NULL) {
