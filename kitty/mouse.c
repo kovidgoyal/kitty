@@ -295,7 +295,7 @@ HANDLER(handle_move_event) {
             double now = monotonic();
             if ((now - w->last_drag_scroll_at) >= 0.02 || mouse_cell_changed) {
                 update_drag(false, w, false, 0);
-                w->last_drag_scroll_at = monotonic();
+                w->last_drag_scroll_at = now;
             }
         }
     } else {
