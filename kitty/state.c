@@ -305,10 +305,6 @@ repaint_delay(PyObject *val) {
     return (double)(PyLong_AsUnsignedLong(val)) / 1000.0;
 }
 
-#define dict_iter(d) { \
-    PyObject *key, *value; Py_ssize_t pos = 0; \
-    while (PyDict_Next(d, &pos, &key, &value))
-
 static int kitty_mod = 0;
 
 static inline int
@@ -335,6 +331,10 @@ pointer_shape(PyObject *shape_name) {
     }
     return BEAM;
 }
+
+#define dict_iter(d) { \
+    PyObject *key, *value; Py_ssize_t pos = 0; \
+    while (PyDict_Next(d, &pos, &key, &value))
 
 static inline void
 set_special_keys(PyObject *dict) {
