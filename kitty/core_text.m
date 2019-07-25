@@ -135,7 +135,7 @@ font_descriptor_from_python(PyObject *src) {
 
 #define SET(x, attr) \
     t = PyDict_GetItemString(src, #x); \
-    if (t) attrs[(id)attr] = [NSString stringWithUTF8String:PyUnicode_AsUTF8(t)];
+    if (t) attrs[(id)attr] = @(PyUnicode_AsUTF8(t));
 
     SET(family, kCTFontFamilyNameAttribute);
     SET(style, kCTFontStyleNameAttribute);
