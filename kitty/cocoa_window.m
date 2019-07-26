@@ -49,7 +49,7 @@ find_app_name(void) {
 
     for (i = 0;  i < sizeof(name_keys) / sizeof(name_keys[0]);  i++)
     {
-        id name = [infoDictionary objectForKey:name_keys[i]];
+        id name = infoDictionary[name_keys[i]];
         if (name &&
             [name isKindOfClass:[NSString class]] &&
             ![name isEqualToString:@""])
@@ -60,7 +60,7 @@ find_app_name(void) {
 
     char** progname = _NSGetProgname();
     if (progname && *progname)
-        return [NSString stringWithUTF8String:*progname];
+        return @(*progname);
 
     // Really shouldn't get here
     return @"kitty";
@@ -171,7 +171,7 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     NSUserNotification *n = [NSUserNotification new];
     NSImage *img = nil;
     if (path_to_image) {
-        NSString *p = [NSString stringWithUTF8String:path_to_image];
+        NSString *p = @(path_to_image);
         NSURL *url = [NSURL fileURLWithPath:p];
         img = [[NSImage alloc] initWithContentsOfURL:url];
         [url release]; [p release];
@@ -183,14 +183,14 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     }
 #define SET(x) { \
     if (x) { \
-        NSString *t = [NSString stringWithUTF8String:x]; \
+        NSString *t = @(x); \
         n.x = t; \
         [t release]; \
     }}
     SET(title); SET(subtitle); SET(informativeText);
 #undef SET
     if (identifier) {
-        n.userInfo = @{@"user_id": [NSString stringWithUTF8String:identifier]};
+        n.userInfo = @{@"user_id": @(identifier)};
     }
     [center deliverNotification:n];
     Py_RETURN_NONE;
