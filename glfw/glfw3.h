@@ -905,62 +905,62 @@ extern "C" {
 #define GLFW_CLIENT_API             0x00022001
 /*! @brief Context client API major version hint and attribute.
  *
- *  Context client API major version [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  Context client API major version [hint](@ref GLFW_CONTEXT_VERSION_MAJOR_hint)
+ *  and [attribute](@ref GLFW_CONTEXT_VERSION_MAJOR_attrib).
  */
 #define GLFW_CONTEXT_VERSION_MAJOR  0x00022002
 /*! @brief Context client API minor version hint and attribute.
  *
- *  Context client API minor version [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  Context client API minor version [hint](@ref GLFW_CONTEXT_VERSION_MINOR_hint)
+ *  and [attribute](@ref GLFW_CONTEXT_VERSION_MINOR_attrib).
  */
 #define GLFW_CONTEXT_VERSION_MINOR  0x00022003
 /*! @brief Context client API revision number hint and attribute.
  *
- *  Context client API revision number [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  Context client API revision number
+ *  [attribute](@ref GLFW_CONTEXT_REVISION_attrib).
  */
 #define GLFW_CONTEXT_REVISION       0x00022004
 /*! @brief Context robustness hint and attribute.
  *
- *  Context client API revision number [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  Context client API revision number [hint](@ref GLFW_CONTEXT_ROBUSTNESS_hint)
+ *  and [attribute](@ref GLFW_CONTEXT_ROBUSTNESS_attrib).
  */
 #define GLFW_CONTEXT_ROBUSTNESS     0x00022005
 /*! @brief OpenGL forward-compatibility hint and attribute.
  *
- *  OpenGL forward-compatibility [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  OpenGL forward-compatibility [hint](@ref GLFW_OPENGL_FORWARD_COMPAT_hint)
+ *  and [attribute](@ref GLFW_OPENGL_FORWARD_COMPAT_attrib).
  */
 #define GLFW_OPENGL_FORWARD_COMPAT  0x00022006
 /*! @brief OpenGL debug context hint and attribute.
  *
- *  OpenGL debug context [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  OpenGL debug context [hint](@ref GLFW_OPENGL_DEBUG_CONTEXT_hint) and
+ *  [attribute](@ref GLFW_OPENGL_DEBUG_CONTEXT_attrib).
  */
 #define GLFW_OPENGL_DEBUG_CONTEXT   0x00022007
 /*! @brief OpenGL profile hint and attribute.
  *
- *  OpenGL profile [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  OpenGL profile [hint](@ref GLFW_OPENGL_PROFILE_hint) and
+ *  [attribute](@ref GLFW_OPENGL_PROFILE_attrib).
  */
 #define GLFW_OPENGL_PROFILE         0x00022008
 /*! @brief Context flush-on-release hint and attribute.
  *
- *  Context flush-on-release [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  Context flush-on-release [hint](@ref GLFW_CONTEXT_RELEASE_BEHAVIOR_hint) and
+ *  [attribute](@ref GLFW_CONTEXT_RELEASE_BEHAVIOR_attrib).
  */
 #define GLFW_CONTEXT_RELEASE_BEHAVIOR 0x00022009
 /*! @brief Context error suppression hint and attribute.
  *
- *  Context error suppression [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  Context error suppression [hint](@ref GLFW_CONTEXT_NO_ERROR_hint) and
+ *  [attribute](@ref GLFW_CONTEXT_NO_ERROR_attrib).
  */
 #define GLFW_CONTEXT_NO_ERROR       0x0002200A
 /*! @brief Context creation API hint and attribute.
  *
- *  Context creation API [hint](@ref GLFW_CLIENT_API_hint) and
- *  [attribute](@ref GLFW_CLIENT_API_attrib).
+ *  Context creation API [hint](@ref GLFW_CONTEXT_CREATION_API_hint) and
+ *  [attribute](@ref GLFW_CONTEXT_CREATION_API_attrib).
  */
 #define GLFW_CONTEXT_CREATION_API   0x0002200B
 /*! @brief Window content area scaling window
