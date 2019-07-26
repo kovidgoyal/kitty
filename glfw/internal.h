@@ -267,12 +267,12 @@ struct _GLFWerror
 //
 struct _GLFWinitconfig
 {
-    bool      hatButtons;
-    bool      debugKeyboard;
-    bool      enableJoysticks;
+    bool          hatButtons;
+    bool          debugKeyboard;
+    bool          enableJoysticks;
     struct {
-        bool  menubar;
-        bool  chdir;
+        bool      menubar;
+        bool      chdir;
     } ns;
 };
 
@@ -287,18 +287,18 @@ struct _GLFWwndconfig
     int           width;
     int           height;
     const char*   title;
-    bool      resizable;
-    bool      visible;
-    bool      decorated;
-    bool      focused;
-    bool      autoIconify;
-    bool      floating;
-    bool      maximized;
-    bool      centerCursor;
-    bool      focusOnShow;
-    bool      scaleToMonitor;
+    bool          resizable;
+    bool          visible;
+    bool          decorated;
+    bool          focused;
+    bool          autoIconify;
+    bool          floating;
+    bool          maximized;
+    bool          centerCursor;
+    bool          focusOnShow;
+    bool          scaleToMonitor;
     struct {
-        bool  retina;
+        bool      retina;
         char      frameName[256];
     } ns;
     struct {
@@ -322,15 +322,15 @@ struct _GLFWctxconfig
     int           source;
     int           major;
     int           minor;
-    bool      forward;
-    bool      debug;
-    bool      noerror;
+    bool          forward;
+    bool          debug;
+    bool          noerror;
     int           profile;
     int           robustness;
     int           release;
     _GLFWwindow*  share;
     struct {
-        bool  offline;
+        bool      offline;
     } nsgl;
 };
 
@@ -355,11 +355,11 @@ struct _GLFWfbconfig
     int         accumBlueBits;
     int         accumAlphaBits;
     int         auxBuffers;
-    bool    stereo;
+    bool        stereo;
     int         samples;
-    bool    sRGB;
-    bool    doublebuffer;
-    bool    transparent;
+    bool        sRGB;
+    bool        doublebuffer;
+    bool        transparent;
     uintptr_t   handle;
 };
 
@@ -370,7 +370,7 @@ struct _GLFWcontext
     int                 client;
     int                 source;
     int                 major, minor, revision;
-    bool            forward, debug, noerror;
+    bool                forward, debug, noerror;
     int                 profile;
     int                 robustness;
     int                 release;
@@ -401,12 +401,12 @@ struct _GLFWwindow
     struct _GLFWwindow* next;
 
     // Window settings and state
-    bool            resizable;
-    bool            decorated;
-    bool            autoIconify;
-    bool            floating;
-    bool            focusOnShow;
-    bool            shouldClose;
+    bool                resizable;
+    bool                decorated;
+    bool                autoIconify;
+    bool                floating;
+    bool                focusOnShow;
+    bool                shouldClose;
     void*               userPointer;
     GLFWid              id;
     GLFWvidmode         videoMode;
@@ -417,9 +417,9 @@ struct _GLFWwindow
     int                 maxwidth, maxheight;
     int                 numer, denom;
 
-    bool            stickyKeys;
-    bool            stickyMouseButtons;
-    bool            lockKeyMods;
+    bool                stickyKeys;
+    bool                stickyMouseButtons;
+    bool                lockKeyMods;
     int                 cursorMode;
     char                mouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
     char                keys[GLFW_KEY_LAST + 1];
@@ -510,7 +510,7 @@ struct _GLFWmapping
 //
 struct _GLFWjoystick
 {
-    bool        present;
+    bool            present;
     float*          axes;
     int             axisCount;
     unsigned char*  buttons;
@@ -546,7 +546,7 @@ struct _GLFWmutex
 //
 struct _GLFWlibrary
 {
-    bool            initialized;
+    bool                initialized;
 
     struct {
         _GLFWinitconfig init;
@@ -579,23 +579,23 @@ struct _GLFWlibrary
     } timer;
 
     struct {
-        bool        available;
+        bool            available;
         void*           handle;
         char*           extensions[2];
 #if !defined(_GLFW_VULKAN_STATIC)
         PFN_vkEnumerateInstanceExtensionProperties EnumerateInstanceExtensionProperties;
         PFN_vkGetInstanceProcAddr GetInstanceProcAddr;
 #endif
-        bool        KHR_surface;
+        bool            KHR_surface;
 #if defined(_GLFW_WIN32)
-        bool        KHR_win32_surface;
+        bool            KHR_win32_surface;
 #elif defined(_GLFW_COCOA)
-        bool        MVK_macos_surface;
+        bool            MVK_macos_surface;
 #elif defined(_GLFW_X11)
-        bool        KHR_xlib_surface;
-        bool        KHR_xcb_surface;
+        bool            KHR_xlib_surface;
+        bool            KHR_xcb_surface;
 #elif defined(_GLFW_WAYLAND)
-        bool        KHR_wayland_surface;
+        bool            KHR_wayland_surface;
 #endif
     } vk;
 
