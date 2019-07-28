@@ -162,3 +162,22 @@ Bringing up applications on a single key press is the job of the window
 manager/desktop environment. For ways to do it with kitty (or indeed any
 terminal) in different environments,
 see `here <https://github.com/kovidgoyal/kitty/issues/45>`_.
+
+How do I map external shortcuts to send key combos internally? (ex: Cmd-S -> Ctrl-S)
+--------------------------------------------------------------------------------------
+
+This is accomplished by using ``map`` with ``send_text`` in your ``kitty.conf``.
+It will look something like this::
+
+    map cmd+s send_text all \x13
+
+In this example, we map ``cmd+s`` to ``cntrl+s``. But how do you figure out that ``cntrl+s`` is ``\x13``.
+On linux, you can simply invoke the following command in order to see the codes for keys::
+
+    showkey -a
+
+On mac, this utility is currently not available. The manual way to figure it out is:
+
+1. Look up your key combo's decimal value in the table at the bottom of `this page <http://ascii-table.com/ansi-escape-sequences.php>`_ or any ANSI escape sequence table. Theres different modifiers for ``ctrl``, ``alt``, etc. For ex, for ``ctrl+s``, find the ``S`` row and look at the third column value, ``19``.
+2. Convert the decimal value to hex. You can do this in google for example by typing something like: ``19 in hex``. This shows the hex value, ``13`` in this case. Or do it in your head if you still remeber how 😋
+3. Use ``\x(hexval)`` in your ``send_text`` command in kitty. So in the example, ``\x13``
