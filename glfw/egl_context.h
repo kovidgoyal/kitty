@@ -173,13 +173,13 @@ typedef struct _GLFWlibraryEGL
 {
     EGLDisplay      display;
     EGLint          major, minor;
-    bool        prefix;
+    bool            prefix;
 
-    bool        KHR_create_context;
-    bool        KHR_create_context_no_error;
-    bool        KHR_gl_colorspace;
-    bool        KHR_get_all_proc_addresses;
-    bool        KHR_context_flush_control;
+    bool            KHR_create_context;
+    bool            KHR_create_context_no_error;
+    bool            KHR_gl_colorspace;
+    bool            KHR_get_all_proc_addresses;
+    bool            KHR_context_flush_control;
 
     void*           handle;
 
