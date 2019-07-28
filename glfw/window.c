@@ -183,7 +183,6 @@ void _glfwInputWindowMonitor(_GLFWwindow* window, _GLFWmonitor* monitor)
     window->monitor = monitor;
 }
 
-
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW public API                       //////
 //////////////////////////////////////////////////////////////////////////
@@ -1167,6 +1166,5 @@ GLFWAPI GLFWwindowcontentscalefun glfwSetWindowContentScaleCallback(GLFWwindow* 
 GLFWAPI void glfwPostEmptyEvent(void)
 {
     _GLFW_REQUIRE_INIT();
-
     _glfwPlatformPostEmptyEvent();
 }

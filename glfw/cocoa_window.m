@@ -715,11 +715,10 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 - (void)mouseDown:(NSEvent *)event
 {
     if (!window) return;
-    _glfwInputMouseClick(
-            window,
-            GLFW_MOUSE_BUTTON_LEFT,
-            GLFW_PRESS,
-            translateFlags([event modifierFlags]));
+    _glfwInputMouseClick(window,
+                         GLFW_MOUSE_BUTTON_LEFT,
+                         GLFW_PRESS,
+                         translateFlags([event modifierFlags]));
 }
 
 - (void)mouseDragged:(NSEvent *)event
@@ -730,11 +729,10 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
 - (void)mouseUp:(NSEvent *)event
 {
     if (!window) return;
-    _glfwInputMouseClick(
-            window,
-            GLFW_MOUSE_BUTTON_LEFT,
-            GLFW_RELEASE,
-            translateFlags([event modifierFlags]));
+    _glfwInputMouseClick(window,
+                         GLFW_MOUSE_BUTTON_LEFT,
+                         GLFW_RELEASE,
+                         translateFlags([event modifierFlags]));
 }
 
 - (void)mouseMoved:(NSEvent *)event
