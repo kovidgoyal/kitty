@@ -403,7 +403,8 @@ def handle_deprecated_hide_window_decorations_aliases(key, val, ans):
         handle_deprecated_hide_window_decorations_aliases.key = True
         log_error('The option {} is deprecated. Use hide_window_decorations instead.'.format(key))
     if to_bool(val):
-        ans['hide_window_decorations'] = True
+        if is_macos and key == 'macos_hide_titlebar' or (not is_macos and key == 'x11_hide_window_decorations'):
+            ans['hide_window_decorations'] = True
 
 
 def expandvars(val, env):
@@ -628,6 +629,4 @@ def load_config(*paths, overrides=None, accumulate_bad_lines=None):
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
         log_error('Cannot use both macos_titlebar_color and background_opacity')
         opts.macos_titlebar_color = 0
-    if (is_macos and getattr(opts, 'macos_hide_titlebar', False)) or (not is_macos and getattr(opts, 'x11_hide_window_decorations', False)):
-        opts.hide_window_decorations = True
     return opts
