@@ -10,7 +10,6 @@ link_commands.json
 glad/out
 kitty/launcher
 *.dSYM
-dev
 __pycache__
 glfw/wayland-*-client-protocol.[ch]
 docs/_build
