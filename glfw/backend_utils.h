@@ -29,7 +29,12 @@
 #include <unistd.h>
 #include <stdbool.h>
 
+#ifdef __has_include
 #if __has_include(<sys/eventfd.h>)
+#define HAS_EVENT_FD
+#include <sys/eventfd.h>
+#endif
+#else
 #define HAS_EVENT_FD
 #include <sys/eventfd.h>
 #endif

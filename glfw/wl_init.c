@@ -41,10 +41,14 @@
 #include <fcntl.h>
 #include <wayland-client.h>
 // Needed for the BTN_* defines
+#ifdef __has_include
 #if __has_include(<linux/input.h>)
 #include <linux/input.h>
 #elif __has_include(<dev/evdev/input.h>)
 #include <dev/evdev/input.h>
+#endif
+#else
+#include <linux/input.h>
 #endif
 
 

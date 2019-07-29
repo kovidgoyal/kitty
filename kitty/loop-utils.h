@@ -10,12 +10,19 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#ifdef __has_include
 #if __has_include(<sys/signalfd.h>)
 #define HAS_SIGNAL_FD
 #include <sys/signalfd.h>
 #endif
 
 #if __has_include(<sys/eventfd.h>)
+#define HAS_EVENT_FD
+#include <sys/eventfd.h>
+#endif
+#else
+#define HAS_SIGNAL_FD
+#include <sys/signalfd.h>
 #define HAS_EVENT_FD
 #include <sys/eventfd.h>
 #endif
