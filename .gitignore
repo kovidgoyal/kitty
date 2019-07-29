@@ -2,7 +2,7 @@
 *.pyc
 *.pyo
 tags
-build
+/build
 linux-package
 kitty.app
 compile_commands.json
