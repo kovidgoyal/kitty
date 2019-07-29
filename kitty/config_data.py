@@ -1209,7 +1209,7 @@ You can create shortcuts to clear/reset the terminal. For example::
     # Scroll the contents of the screen into the scrollback
     map kitty_mod+f12 clear_terminal scroll active
 
-If you want to operate on all windows instead of just the current one, use :italic:`all` instead of :italic`active`.
+If you want to operate on all windows instead of just the current one, use :italic:`all` instead of :italic:`active`.
 
 It is also possible to remap Ctrl+L to both scroll the current screen contents into the scrollback buffer
 and clear the screen, instead of just clearing the screen::

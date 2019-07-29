@@ -525,9 +525,12 @@ def process_shortcut_link(env, refnode, has_explicit_title, title, target):
         conf_name, slug = 'kitty', conf_name
     full_name = conf_name + '.' + slug
     try:
-        target, title = shortcut_slugs[full_name]
+        target, stitle = shortcut_slugs[full_name]
     except KeyError:
         logger.warning('Unknown shortcut: {}'.format(target), location=refnode)
+    else:
+        if not has_explicit_title:
+            title = stitle
     return title, target
 
 

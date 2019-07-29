@@ -162,3 +162,31 @@ Bringing up applications on a single key press is the job of the window
 manager/desktop environment. For ways to do it with kitty (or indeed any
 terminal) in different environments,
 see `here <https://github.com/kovidgoyal/kitty/issues/45>`_.
+
+
+How do I map key presses in kitty to different keys in the terminal program?
+--------------------------------------------------------------------------------------
+
+This is accomplished by using ``map`` with :sc:`send_text <send_text>` in :file:`kitty.conf`.
+For example::
+
+    map alt+s send_text all \x13
+
+This maps :kbd:`alt+s`` to :kbd:`ctrl+s`. To figure out what bytes to use for
+the :sc:`send_text <send_text>` you can use the ``showkey`` utility. Run::
+
+    showkey -a
+
+Then press the key you want to emulate. On macOS, this utility is currently not
+available. The manual way to figure it out is:
+
+    1. Look up your key's decimal value in the table at the bottom of `this
+       page <http://ascii-table.com/ansi-escape-sequences.php>`_ or any
+       ANSI escape sequence table. There are different modifiers for :kbd:`ctrl`,
+       :kbd:`alt`, etc. For e.g., for :kbd:`ctrl+s`, find the ``S`` row and look at
+       the third column value, ``19``.
+
+    2. Convert the decimal value to hex with ``kitty +runpy "print(hex(19))"``.
+       This shows the hex value, ``13`` in this case.
+
+    3. Use ``\x(hexval)`` in your ``send_text`` command in kitty. So in this example, ``\x13``
