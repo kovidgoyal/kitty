@@ -7,7 +7,6 @@
 #pragma once
 
 #include "internal.h"
-#include <stdatomic.h>
 
 #ifndef GLFW_LOOP_BACKEND
 #define GLFW_LOOP_BACKEND x11
