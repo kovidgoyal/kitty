@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.14.3 [future]
+0.14.3 [2019-07-29]
 ---------------------
 
 - Remote control: Add a command `kitty @ scroll-window` to scroll windows
