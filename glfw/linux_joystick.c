@@ -144,10 +144,10 @@ static bool openJoystickDevice(const char* path)
     char absBits[(ABS_CNT + 7) / 8] = {0};
     struct input_id id;
 
-    if (ioctl(linjs.fd, EVIOCGBIT(0, sizeof(evBits)), evBits) < 0 ||
-        ioctl(linjs.fd, EVIOCGBIT(EV_KEY, sizeof(keyBits)), keyBits) < 0 ||
-        ioctl(linjs.fd, EVIOCGBIT(EV_ABS, sizeof(absBits)), absBits) < 0 ||
-        ioctl(linjs.fd, EVIOCGID, &id) < 0)
+    if (ioctl(linjs.fd, (int32_t)EVIOCGBIT(0, sizeof(evBits)), evBits) < 0 ||
+        ioctl(linjs.fd, (int32_t)EVIOCGBIT(EV_KEY, sizeof(keyBits)), keyBits) < 0 ||
+        ioctl(linjs.fd, (int32_t)EVIOCGBIT(EV_ABS, sizeof(absBits)), absBits) < 0 ||
+        ioctl(linjs.fd, (int32_t)EVIOCGID, &id) < 0)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Linux: Failed to query input device: %s",
@@ -165,7 +165,7 @@ static bool openJoystickDevice(const char* path)
 
     char name[256] = "";
 
-    if (ioctl(linjs.fd, EVIOCGNAME(sizeof(name)), name) < 0)
+    if (ioctl(linjs.fd, (int32_t)EVIOCGNAME(sizeof(name)), name) < 0)
         strncpy(name, "Unknown", sizeof(name));
 
     char guid[33] = "";
