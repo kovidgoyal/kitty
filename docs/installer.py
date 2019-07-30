@@ -20,6 +20,10 @@ import tempfile
 py3 = sys.version_info[0] > 2
 is64bit = platform.architecture()[0] == '64bit'
 is_macos = 'darwin' in sys.platform.lower()
+if is_macos:
+    mac_ver = tuple(map(int, platform.mac_ver()[0].split('.')))
+    if mac_ver[:2] < (10, 12):
+        raise SystemExit('Your version of macOS is too old, at least 10.12 is required')
 
 try:
     __file__
