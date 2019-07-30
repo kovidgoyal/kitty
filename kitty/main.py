@@ -210,13 +210,14 @@ def read_shell_environment(opts):
         shell = resolved_shell(opts)
         p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=subprocess.PIPE)
         raw = p.stdout.read()
-        if p.wait() == 0:
-            raw = raw.decode('utf-8', 'replace')
-            ans = read_shell_environment.ans = {}
-            for line in raw.splitlines():
-                k, v = line.partition('=')[::2]
-                if k and v:
-                    ans[k] = v
+        if p.wait() != 0:
+            return {}
+        raw = raw.decode('utf-8', 'replace')
+        ans = read_shell_environment.ans = {}
+        for line in raw.splitlines():
+            k, v = line.partition('=')[::2]
+            if k and v:
+                ans[k] = v
     return read_shell_environment.ans
 
 
