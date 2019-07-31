@@ -10,7 +10,7 @@ from contextlib import contextmanager, suppress
 
 from .borders import load_borders_program
 from .boss import Boss
-from .child import set_default_env
+from .child import set_default_env, openpty, remove_blocking
 from .cli import create_opts, parse_args
 from .config import cached_values_for, initial_window_size_func
 from .constants import (
@@ -203,23 +203,37 @@ def macos_cmdline(argv_args):
     return ans
 
 
-def read_shell_environment(opts):
+def read_shell_environment(opts=None):
     if not hasattr(read_shell_environment, 'ans'):
         import subprocess
         from .session import resolved_shell
         shell = resolved_shell(opts)
-        p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=subprocess.PIPE)
-        raw = p.stdout.read()
-        if p.wait() == 0:
-            raw = raw.decode('utf-8', 'replace')
-            ans = read_shell_environment.ans = {}
-            for line in raw.splitlines():
-                k, v = line.partition('=')[::2]
-                if k and v:
-                    ans[k] = v
-        else:
-            log_error('Failed to run shell to read its environment')
-            read_shell_environment.ans = {}
+        master, slave = openpty()
+        remove_blocking(master)
+        p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True)
+        with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
+            raw = b''
+            while p.wait(0.01) is None:
+                with suppress(Exception):
+                    raw += stdout.read()
+            if p.returncode == 0:
+                while True:
+                    try:
+                        x = stdout.read()
+                    except Exception:
+                        break
+                    if not x:
+                        break
+                    raw += x
+                raw = raw.decode('utf-8', 'replace')
+                ans = read_shell_environment.ans = {}
+                for line in raw.splitlines():
+                    k, v = line.partition('=')[::2]
+                    if k and v:
+                        ans[k] = v
+            else:
+                log_error('Failed to run shell to read its environment')
+                read_shell_environment.ans = {}
     return read_shell_environment.ans
 
 

@@ -118,6 +118,10 @@ def remove_cloexec(fd):
     fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
 
 
+def remove_blocking(fd):
+    os.set_blocking(fd, False)
+
+
 def default_env():
     try:
         return default_env.env
@@ -130,6 +134,13 @@ def set_default_env(val=None):
     if val:
         env.update(val)
     default_env.env = env
+
+
+def openpty():
+    master, slave = os.openpty()  # Note that master and slave are in blocking mode
+    remove_cloexec(slave)
+    fast_data_types.set_iutf8_fd(master, True)
+    return master, slave
 
 
 class Child:
@@ -178,9 +189,7 @@ class Child:
         if self.forked:
             return
         self.forked = True
-        master, slave = os.openpty()  # Note that master and slave are in blocking mode
-        remove_cloexec(slave)
-        fast_data_types.set_iutf8_fd(master, True)
+        master, slave = openpty()
         stdin, self.stdin = self.stdin, None
         ready_read_fd, ready_write_fd = os.pipe()
         remove_cloexec(ready_read_fd)
@@ -206,7 +215,7 @@ class Child:
             fast_data_types.thread_write(stdin_write_fd, stdin)
         os.close(ready_read_fd)
         self.terminal_ready_fd = ready_write_fd
-        fcntl.fcntl(self.child_fd, fcntl.F_SETFL, fcntl.fcntl(self.child_fd, fcntl.F_GETFL) | os.O_NONBLOCK)
+        remove_blocking(self.child_fd)
         return pid
 
     def mark_terminal_ready(self):

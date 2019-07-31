@@ -74,8 +74,8 @@ class Session:
         self.tabs[-1].cwd = val
 
 
-def resolved_shell(opts):
-    ans = opts.shell
+def resolved_shell(opts=None):
+    ans = getattr(opts, 'shell', '.')
     if ans == '.':
         ans = [shell_path]
     else:
