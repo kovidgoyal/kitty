@@ -203,8 +203,20 @@ class Child:
         argv = list(self.argv)
         exe = argv[0]
         if is_macos and exe == shell_path:
-            # Some macOS machines need the shell to have argv[0] prefixed by
-            # hyphen, see https://github.com/kovidgoyal/kitty/issues/247
+            # bash will only source ~/.bash_profile if it detects it is a login
+            # shell (see the invocation section of the bash man page), which it
+            # does if argv[0] is prefixed by a hyphen see
+            # https://github.com/kovidgoyal/kitty/issues/247
+            # it is apparently common to use ~/.bash_profile instead of the
+            # more correct ~/.bashrc on macOS to setup env vars, so if
+            # the default shell is used prefix argv[0] by '-'
+            #
+            # it is arguable whether graphical terminals should start shells
+            # in login mode in general, there are at least a few Linux users
+            # that also make this incorrect assumption, see for example
+            # https://github.com/kovidgoyal/kitty/issues/1870
+            # xterm, urxvt, konsole and gnome-terminal do not do it in my
+            # testing.
             argv[0] = ('-' + exe.split('/')[-1])
         pid = fast_data_types.spawn(exe, self.cwd, tuple(argv), env, master, slave, stdin_read_fd, stdin_write_fd, ready_read_fd, ready_write_fd)
         os.close(slave)
