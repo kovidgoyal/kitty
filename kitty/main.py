@@ -217,6 +217,9 @@ def read_shell_environment(opts):
                 k, v = line.partition('=')[::2]
                 if k and v:
                     ans[k] = v
+        else:
+            log_error('Failed to run shell to read its environment')
+            read_shell_environment.ans = {}
     return read_shell_environment.ans
 
 

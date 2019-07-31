@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.14.4 [future]
+---------------------
+
+- Dont fail to start if running the shell to read the EDITOR env var fails
+  (:iss:`1869`)
+
+
 0.14.3 [2019-07-29]
 ---------------------
 
