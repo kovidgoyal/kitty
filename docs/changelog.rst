@@ -10,6 +10,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Dont fail to start if running the shell to read the EDITOR env var fails
   (:iss:`1869`)
 
+- Disable the ``liga`` and ``dlig`` OpenType features so that kitty works with
+  "so-called" monospace fonts such as Nimbus Mono that have non-programming
+  ligatures.
+
 
 0.14.3 [2019-07-29]
 ---------------------

@@ -58,7 +58,7 @@ typedef struct {
 
 
 static hb_buffer_t *harfbuzz_buffer = NULL;
-static hb_feature_t no_calt_feature = {0};
+static hb_feature_t hb_features[3] = {{0}};
 static char_type shape_buffer[4096] = {0};
 static size_t max_texture_size = 1024, max_array_len = 1024;
 
@@ -739,11 +739,8 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.last_gpu_cell = first_gpu_cell + (num_cells ? num_cells - 1 : 0);
     load_hb_buffer(first_cpu_cell, first_gpu_cell, num_cells);
 
-    if (disable_ligature) {
-        hb_shape(font, harfbuzz_buffer, &no_calt_feature, 1);
-    } else {
-        hb_shape(font, harfbuzz_buffer, NULL, 0);
-    }
+    size_t num_features = arraysz(hb_features) - (disable_ligature ? 0 : 1);
+    hb_shape(font, harfbuzz_buffer, hb_features, num_features);
 
     unsigned int info_length, positions_length;
     group_state.info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
@@ -1414,12 +1411,15 @@ init_fonts(PyObject *module) {
     harfbuzz_buffer = hb_buffer_create();
     if (harfbuzz_buffer == NULL || !hb_buffer_allocation_successful(harfbuzz_buffer) || !hb_buffer_pre_allocate(harfbuzz_buffer, 2048)) { PyErr_NoMemory(); return false; }
     hb_buffer_set_cluster_level(harfbuzz_buffer, HB_BUFFER_CLUSTER_LEVEL_MONOTONE_CHARACTERS);
-#define feature_str "-calt"
-    if (!hb_feature_from_string(feature_str, sizeof(feature_str) - 1, &no_calt_feature)) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to create -calt harfbuzz feature");
-        return false;
-    }
-#undef feature_str
+#define create_feature(feature, where) {\
+    if (!hb_feature_from_string(feature, sizeof(feature) - 1, &hb_features[where])) { \
+        PyErr_SetString(PyExc_RuntimeError, "Failed to create " feature " harfbuzz feature"); \
+        return false; \
+    }}
+    create_feature("-liga", 0);
+    create_feature("-dlig", 1);
+    create_feature("-calt", 2);
+#undef create_feature
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     current_send_sprite_to_gpu = send_sprite_to_gpu;
     return true;
