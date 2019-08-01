@@ -20,7 +20,7 @@ from ..tui.loop import Loop
 from ..tui.operations import faint, styled
 
 URL_PREFIXES = 'http https file ftp'.split()
-HINT_ALPHABET = string.digits + string.ascii_lowercase
+DEFAULT_HINT_ALPHABET = string.digits + string.ascii_lowercase
 screen_size = screen_size_function()
 
 
@@ -34,12 +34,12 @@ class Mark:
 
 
 @lru_cache(maxsize=2048)
-def encode_hint(num):
+def encode_hint(num, alphabet):
     res = ''
-    d = len(HINT_ALPHABET)
+    d = len(alphabet)
     while not res or num > 0:
         num, i = divmod(num, d)
-        res = HINT_ALPHABET[i] + res
+        res = alphabet[i] + res
     return res
 
 
@@ -47,8 +47,8 @@ def decode_hint(x):
     return int(x, 36)
 
 
-def highlight_mark(m, text, current_input):
-    hint = encode_hint(m.index)
+def highlight_mark(m, text, current_input, alphabet):
+    hint = encode_hint(m.index, alphabet)
     if current_input and not hint.startswith(current_input):
         return faint(text)
     hint = hint[len(current_input):] or ' '
@@ -63,11 +63,11 @@ def highlight_mark(m, text, current_input):
     )
 
 
-def render(text, current_input, all_marks, ignore_mark_indices):
+def render(text, current_input, all_marks, ignore_mark_indices, alphabet):
     for mark in reversed(all_marks):
         if mark.index in ignore_mark_indices:
             continue
-        mtext = highlight_mark(mark, text[mark.start:mark.end], current_input)
+        mtext = highlight_mark(mark, text[mark.start:mark.end], current_input, alphabet)
         text = text[:mark.start] + mtext + text[mark.end:]
 
     text = text.replace('\0', '')
@@ -79,6 +79,7 @@ class Hints(Handler):
 
     def __init__(self, text, all_marks, index_map, args):
         self.text, self.index_map = text, index_map
+        self.alphabet = args.alphabet or DEFAULT_HINT_ALPHABET
         self.all_marks = all_marks
         self.ignore_mark_indices = set()
         self.args = args
@@ -111,13 +112,13 @@ class Hints(Handler):
     def on_text(self, text, in_bracketed_paste):
         changed = False
         for c in text:
-            if c in HINT_ALPHABET:
+            if c in self.alphabet:
                 self.current_input += c
                 changed = True
         if changed:
             matches = [
                 m for idx, m in self.index_map.items()
-                if encode_hint(idx).startswith(self.current_input)
+                if encode_hint(idx, self.alphabet).startswith(self.current_input)
             ]
             if len(matches) == 1:
                 self.chosen.append(matches[0].text + self.match_suffix)
@@ -164,7 +165,7 @@ class Hints(Handler):
 
     def draw_screen(self):
         if self.current_text is None:
-            self.current_text = render(self.text, self.current_input, self.all_marks, self.ignore_mark_indices)
+            self.current_text = render(self.text, self.current_input, self.all_marks, self.ignore_mark_indices, self.alphabet)
         self.cmd.clear_screen()
         self.write(self.current_text)
 
@@ -420,7 +421,6 @@ def parse_hints_args(args):
 
 
 def main(args):
-    global HINT_ALPHABET
     text = ''
     if sys.stdin.isatty():
         if '--help' not in args and '-h' not in args:
@@ -440,14 +440,7 @@ def main(args):
     if items:
         print('Extra command line arguments present: {}'.format(' '.join(items)), file=sys.stderr)
         input(_('Press Enter to quit'))
-        return
-    orig = HINT_ALPHABET
-    try:
-        if args.alphabet:
-            HINT_ALPHABET = args.alphabet
-        return run(args, text)
-    finally:
-        HINT_ALPHABET = orig
+    return run(args, text)
 
 
 def handle_result(args, data, target_window_id, boss):
