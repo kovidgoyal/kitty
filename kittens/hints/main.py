@@ -43,8 +43,13 @@ def encode_hint(num, alphabet):
     return res
 
 
-def decode_hint(x):
-    return int(x, 36)
+def decode_hint(x, alphabet=DEFAULT_HINT_ALPHABET):
+    base = len(alphabet)
+    index_map = {c: i for i, c in enumerate(alphabet)}
+    i = 0
+    for char in x:
+        i = i * base + index_map[char]
+    return i
 
 
 def highlight_mark(m, text, current_input, alphabet):
@@ -138,7 +143,7 @@ class Hints(Handler):
             self.draw_screen()
         elif key_event is enter_key and self.current_input:
             try:
-                idx = decode_hint(self.current_input)
+                idx = decode_hint(self.current_input, self.alphabet)
                 self.chosen.append(self.index_map[idx].text + self.match_suffix)
                 self.ignore_mark_indices.add(idx)
             except Exception:
