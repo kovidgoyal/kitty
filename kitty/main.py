@@ -213,9 +213,16 @@ def read_shell_environment(opts=None):
         p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True)
         with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
             raw = b''
-            while p.wait(0.01) is None:
+            from subprocess import TimeoutExpired
+            while True:
+                try:
+                    ret = p.wait(0.01)
+                except TimeoutExpired:
+                    ret = None
                 with suppress(Exception):
                     raw += stdout.read()
+                if ret is not None:
+                    break
             if p.returncode == 0:
                 while True:
                     try:
