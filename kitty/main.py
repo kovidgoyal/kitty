@@ -219,8 +219,9 @@ def read_shell_environment(opts=None):
                     ret = p.wait(0.01)
                 except TimeoutExpired:
                     ret = None
-                with suppress(Exception):
-                    raw += stdout.read()
+                read = stdout.read()
+                if read is not None:
+                    raw += read
                 if ret is not None:
                     break
             if p.returncode == 0:
