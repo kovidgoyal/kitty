@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.14.4 [future]
 ---------------------
 
+- hints kitten: Add a :option:`kitty +kitten hints --alphabet` option to
+  control what alphabets are used for hints (:iss:`1879`)
+
 - Dont fail to start if running the shell to read the EDITOR env var fails
   (:iss:`1869`)
 

@@ -401,6 +401,15 @@ default=1
 type=int
 The offset (from zero) at which to start hint numbering. Note that only numbers
 greater than or equal to zero are respected.
+
+
+--alphabet
+The list of characters to use for hints. The default is to use numbers and lowercase
+English alphabets. Specify your preference as a string of characters. Note that
+unless you specify the hints offset as zero the first match will be highlighted with
+the second character you specify.
+
+
 '''.format(','.join(sorted(URL_PREFIXES))).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
 usage = ''
@@ -411,6 +420,7 @@ def parse_hints_args(args):
 
 
 def main(args):
+    global HINT_ALPHABET
     text = ''
     if sys.stdin.isatty():
         if '--help' not in args and '-h' not in args:
@@ -431,7 +441,13 @@ def main(args):
         print('Extra command line arguments present: {}'.format(' '.join(items)), file=sys.stderr)
         input(_('Press Enter to quit'))
         return
-    return run(args, text)
+    orig = HINT_ALPHABET
+    try:
+        if args.alphabet:
+            HINT_ALPHABET = args.alphabet
+        return run(args, text)
+    finally:
+        HINT_ALPHABET = orig
 
 
 def handle_result(args, data, target_window_id, boss):
