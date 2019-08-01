@@ -835,14 +835,15 @@ if __name__ == '__main__':
     import sys
     import pprint
     data = {}
-    for line in open(sys.argv[-1]):
-        line = line.strip()
-        if not line or line.startswith('!'):
-            continue
-        parts = line.split()
-        r, g, b = map(int, parts[:3])
-        name = ' '.join(parts[3:]).lower()
-        data[name] = data[name.replace(' ', '')] = r, g, b
+    with open(sys.argv[-1]) as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('!'):
+                continue
+            parts = line.split()
+            r, g, b = map(int, parts[:3])
+            name = ' '.join(parts[3:]).lower()
+            data[name] = data[name.replace(' ', '')] = r, g, b
     data = pprint.pformat(data).replace('{', '{\n ').replace('(', 'Color(')
     with open(__file__, 'r+') as src:
         raw = src.read()

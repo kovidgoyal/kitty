@@ -293,99 +293,99 @@ def generate_key_table():
     # To run this, use: python3 . +runpy "from kitty.keys import *; generate_key_table()"
     import os
     from functools import partial
-    f = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keys.h'), 'w')
-    w = partial(print, file=f)
-    w('// auto-generated from keys.py, do not edit!')
-    w('#pragma once')
-    w('#include <stddef.h>')
-    w('#include <stdint.h>')
-    w('#include <stdbool.h>')
-    w('#include <limits.h>')
-    number_of_keys = defines.GLFW_KEY_LAST + 1
-    w('// map glfw key numbers to 7-bit numbers for compact data storage')
-    w('static const uint8_t key_map[%d] = {' % number_of_keys)
-    key_count = 0
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keys.h'), 'w') as f:
+        w = partial(print, file=f)
+        w('// auto-generated from keys.py, do not edit!')
+        w('#pragma once')
+        w('#include <stddef.h>')
+        w('#include <stdint.h>')
+        w('#include <stdbool.h>')
+        w('#include <limits.h>')
+        number_of_keys = defines.GLFW_KEY_LAST + 1
+        w('// map glfw key numbers to 7-bit numbers for compact data storage')
+        w('static const uint8_t key_map[%d] = {' % number_of_keys)
+        key_count = 0
 
-    def key_name(k):
-        return k[len('GLFW_KEY_'):]
+        def key_name(k):
+            return k[len('GLFW_KEY_'):]
 
-    keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in {'GLFW_KEY_LAST', 'GLFW_KEY_UNKNOWN'}}
-    key_rmap = []
-    for i in range(number_of_keys):
-        k = keys.get(i)
-        if k is None:
-            w('UINT8_MAX,')
-        else:
-            w('%d, /* %s */' % (key_count, key_name(k)))
-            key_rmap.append(i)
-            key_count += 1
-            if key_count > 128:
-                raise OverflowError('Too many keys')
-    w('};\n')
-    w('static inline const char* key_name(int key) { switch(key) {')
-    for i in range(number_of_keys):
-        k = keys.get(i)
-        if k is not None:
-            w('case %d: return "%s";' % (i, key_name(k)))
-    w('default: return NULL; }}\n')
-    w('typedef enum { NORMAL, APPLICATION, EXTENDED } KeyboardMode;\n')
-    w('static inline const char*\nkey_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {')
-    i = 1
-
-    def ind(*a):
-        w(('  ' * i)[:-1], *a)
-    ind('switch(mode) {')
-    mmap = [(False, False), (True, False), (False, True)]
-    for (smkx, extended), mode in zip(mmap, 'NORMAL APPLICATION EXTENDED'.split()):
-        i += 1
-        ind('case {}:'.format(mode))
-        i += 1
-        ind('switch(action & 3) { case 3: return NULL;')
-        for action in (defines.GLFW_RELEASE, defines.GLFW_PRESS, defines.GLFW_REPEAT):
-            i += 1
-            ind('case {}: // {}'.format(action, 'RELEASE PRESS REPEAT'.split()[action]))
-            i += 1
-            if action != defines.GLFW_RELEASE or mode == 'EXTENDED':
-                ind('switch (mods & 0xf) {')
-                i += 1
-                for mods in range(16):
-                    key_bytes = {}
-                    for key in range(key_count):
-                        glfw_key = key_rmap[key]
-                        data = key_to_bytes(glfw_key, smkx, extended, mods, action)
-                        if data:
-                            key_bytes[key] = data, glfw_key
-                    i += 1
-                    ind('case 0x{:x}:'.format(mods))
-                    i += 1
-                    if key_bytes:
-                        ind('switch(key & 0x7f) { default: return NULL;')
-                        i += 1
-                        for key, (data, glfw_key) in key_bytes.items():
-                            ind('case {}: // {}'.format(key, key_name(keys[glfw_key])))
-                            i += 1
-                            items = bytearray(data)
-                            items.insert(0, len(items))
-                            ind('return "{}";'.format(''.join('\\x{:02x}'.format(x) for x in items)))
-                            i -= 1
-                        i -= 1
-                        ind('} // end switch(key)')
-                    else:
-                        ind('return NULL;')
-                    i -= 2
-                i -= 1
-                ind('}  // end switch(mods)')
-                ind('break;\n')
-                i -= 1
+        keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in {'GLFW_KEY_LAST', 'GLFW_KEY_UNKNOWN'}}
+        key_rmap = []
+        for i in range(number_of_keys):
+            k = keys.get(i)
+            if k is None:
+                w('UINT8_MAX,')
             else:
-                ind('return NULL;\n')
+                w('%d, /* %s */' % (key_count, key_name(k)))
+                key_rmap.append(i)
+                key_count += 1
+                if key_count > 128:
+                    raise OverflowError('Too many keys')
+        w('};\n')
+        w('static inline const char* key_name(int key) { switch(key) {')
+        for i in range(number_of_keys):
+            k = keys.get(i)
+            if k is not None:
+                w('case %d: return "%s";' % (i, key_name(k)))
+        w('default: return NULL; }}\n')
+        w('typedef enum { NORMAL, APPLICATION, EXTENDED } KeyboardMode;\n')
+        w('static inline const char*\nkey_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {')
+        i = 1
+
+        def ind(*a):
+            w(('  ' * i)[:-1], *a)
+        ind('switch(mode) {')
+        mmap = [(False, False), (True, False), (False, True)]
+        for (smkx, extended), mode in zip(mmap, 'NORMAL APPLICATION EXTENDED'.split()):
+            i += 1
+            ind('case {}:'.format(mode))
+            i += 1
+            ind('switch(action & 3) { case 3: return NULL;')
+            for action in (defines.GLFW_RELEASE, defines.GLFW_PRESS, defines.GLFW_REPEAT):
+                i += 1
+                ind('case {}: // {}'.format(action, 'RELEASE PRESS REPEAT'.split()[action]))
+                i += 1
+                if action != defines.GLFW_RELEASE or mode == 'EXTENDED':
+                    ind('switch (mods & 0xf) {')
+                    i += 1
+                    for mods in range(16):
+                        key_bytes = {}
+                        for key in range(key_count):
+                            glfw_key = key_rmap[key]
+                            data = key_to_bytes(glfw_key, smkx, extended, mods, action)
+                            if data:
+                                key_bytes[key] = data, glfw_key
+                        i += 1
+                        ind('case 0x{:x}:'.format(mods))
+                        i += 1
+                        if key_bytes:
+                            ind('switch(key & 0x7f) { default: return NULL;')
+                            i += 1
+                            for key, (data, glfw_key) in key_bytes.items():
+                                ind('case {}: // {}'.format(key, key_name(keys[glfw_key])))
+                                i += 1
+                                items = bytearray(data)
+                                items.insert(0, len(items))
+                                ind('return "{}";'.format(''.join('\\x{:02x}'.format(x) for x in items)))
+                                i -= 1
+                            i -= 1
+                            ind('} // end switch(key)')
+                        else:
+                            ind('return NULL;')
+                        i -= 2
+                    i -= 1
+                    ind('}  // end switch(mods)')
+                    ind('break;\n')
+                    i -= 1
+                else:
+                    ind('return NULL;\n')
+                    i -= 1
                 i -= 1
+            ind('}}  // end switch(action) in mode {}'.format(mode))
+            ind('break;\n\n')
             i -= 1
-        ind('}}  // end switch(action) in mode {}'.format(mode))
-        ind('break;\n\n')
         i -= 1
-    i -= 1
-    ind('}')
-    ind('return NULL;')
-    i -= 1
-    w('}')
+        ind('}')
+        ind('return NULL;')
+        i -= 1
+        w('}')

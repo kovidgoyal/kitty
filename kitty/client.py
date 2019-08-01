@@ -157,7 +157,8 @@ def replay(raw):
 
 
 def main(path):
-    raw = open(path).read()
+    with open(path) as f:
+        raw = f.read()
     replay(raw)
     with suppress(EOFError, KeyboardInterrupt):
         input()

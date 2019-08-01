@@ -315,7 +315,8 @@ def get_vcs_rev_defines():
                 with open('.git/refs/heads/master') as f:
                     rev = f.read()
             except NotADirectoryError:
-                gitloc = open('.git').read()
+                with open('.git') as f:
+                    gitloc = f.read()
                 with open(os.path.join(gitloc, 'refs/heads/master')) as f:
                     rev = f.read()
 
@@ -343,7 +344,8 @@ def newer(dest, *sources):
 def dependecies_for(src, obj, all_headers):
     dep_file = obj.rpartition('.')[0] + '.d'
     try:
-        deps = open(dep_file).read()
+        with open(dep_file) as f:
+            deps = f.read()
     except FileNotFoundError:
         yield src
         yield from iter(all_headers)

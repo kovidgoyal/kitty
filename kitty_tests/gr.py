@@ -56,7 +56,8 @@ def main():
         raise SystemExit('Must specify a PNG file to display')
     clear_screen()
     display(b'\xdd\xdd\xdd\xff', 1, 1, 0, 0, -10, 40, 20)
-    display(open(os.path.join(base, '../logo/kitty.rgba'), 'rb').read(), 256, 256, 0, 5, -9)
+    with open(os.path.join(base, '../logo/kitty.rgba'), 'rb') as f:
+        display(f.read(), 256, 256, 0, 5, -9)
     display(b'\0\0\0\xaa', 1, 1, 0, 7, -8, 40, 3)
     move_cursor(5, 8)
     print('kitty is \033[3m\033[32mawesome\033[m!')

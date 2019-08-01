@@ -44,7 +44,8 @@ def run(what):
         raise SystemExit(ret.returncode)
 
 
-script = open(__file__, 'rb').read().decode('utf-8')
+with open(__file__, 'rb') as f:
+    script = f.read().decode('utf-8')
 script = script[:script.find('# EOF_REMOTE')].replace('if False:', 'if True:', 1)
 os.chdir(os.path.expanduser('~/work/build-kitty'))
 with tempfile.NamedTemporaryFile(prefix='install-tarball-', suffix='.py') as f:

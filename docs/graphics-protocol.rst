@@ -107,7 +107,8 @@ features of the graphics protocol:
          sys.stdout.flush()
          cmd.clear()
 
-   write_chunked({'a': 'T', 'f': 100}, open(sys.argv[-1], 'rb').read())
+   with open(sys.argv[-1], 'rb') as f:
+      write_chunked({'a': 'T', 'f': 100}, f.read())
 
 
 Save this script as :file:`png.py`, then you can use it to display any PNG

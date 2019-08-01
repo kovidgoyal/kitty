@@ -249,7 +249,8 @@ class ImageManager:
                 cmd, standard_b64encode(rgba_path.encode(fsenc)))
         else:
             import zlib
-            data = open(rgba_path, 'rb').read()
+            with open(rgba_path, 'rb') as f:
+                data = f.read()
             cmd['S'] = len(data)
             data = zlib.compress(data)
             cmd['o'] = 'z'

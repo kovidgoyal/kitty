@@ -728,9 +728,11 @@ def create_opts(args, debug_config=False, accumulate_bad_lines=None):
             import subprocess
             print(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
         if os.path.exists('/etc/issue'):
-            print(open('/etc/issue', encoding='utf-8', errors='replace').read().strip())
+            with open('/etc/issue', encoding='utf-8', errors='replace') as f:
+                print(f.read().strip())
         if os.path.exists('/etc/lsb-release'):
-            print(open('/etc/lsb-release', encoding='utf-8', errors='replace').read().strip())
+            with open('/etc/lsb-release', encoding='utf-8', errors='replace') as f:
+                print(f.read().strip())
         config = tuple(x for x in config if os.path.exists(x))
         if config:
             print(green('Loaded config files:'), ', '.join(config))

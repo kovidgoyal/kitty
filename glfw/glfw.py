@@ -38,7 +38,8 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
         )
     else:
         ans.ldpaths.extend('-lrt -lm -ldl'.split())
-    sinfo = json.load(open(os.path.join(base, 'source-info.json')))
+    with open(os.path.join(base, 'source-info.json')) as f:
+        sinfo = json.load(f)
     module_sources = list(sinfo[module]['sources'])
     if module in ('x11', 'wayland'):
         remove = 'linux_joystick.c' if is_bsd else 'null_joystick.c'
@@ -157,7 +158,8 @@ class Function:
 
 
 def generate_wrappers(glfw_header):
-    src = open(glfw_header).read()
+    with open(glfw_header) as f:
+        src = f.read()
     functions = []
     first = None
     for m in re.finditer(r'^GLFWAPI\s+(.+[)]);\s*$', src, flags=re.MULTILINE):

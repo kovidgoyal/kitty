@@ -177,12 +177,11 @@ def load_config(Options, defaults, parse_config, merge_configs, *paths, override
         if not path:
             continue
         try:
-            f = open(path, encoding='utf-8', errors='replace')
+            with open(path, encoding='utf-8', errors='replace') as f:
+                vals = parse_config(f)
         except FileNotFoundError:
             continue
-        with f:
-            vals = parse_config(f)
-            ans = merge_configs(ans, vals)
+        ans = merge_configs(ans, vals)
     if overrides is not None:
         vals = parse_config(overrides)
         ans = merge_configs(ans, vals)

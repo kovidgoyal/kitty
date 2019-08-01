@@ -29,10 +29,12 @@ def get_data(fname, folder='UCD'):
     bn = os.path.basename(url)
     local = os.path.join('/tmp', bn)
     if os.path.exists(local):
-        data = open(local, 'rb').read()
+        with open(local, 'rb') as f:
+            data = f.read()
     else:
         data = urlopen(url).read()
-        open(local, 'wb').write(data)
+        with open(local, 'wb') as f:
+            f.write(data)
     for line in data.decode('utf-8').splitlines():
         line = line.strip()
         if line and not line.startswith('#'):
@@ -166,21 +168,20 @@ def write_case(spec, p):
 
 @contextmanager
 def create_header(path, include_data_types=True):
-    f = open(path, 'w')
-    p = partial(print, file=f)
-    p('// unicode data, built from the unicode standard on:', date.today())
-    p('// see gen-wcwidth.py')
-    if path.endswith('.h'):
-        p('#pragma once')
-    if include_data_types:
-        p('#include "data-types.h"\n')
-        p('START_ALLOW_CASE_RANGE')
-    p()
-    yield p
-    p()
-    if include_data_types:
-        p('END_ALLOW_CASE_RANGE')
-    f.close()
+    with open(path, 'w') as f:
+        p = partial(print, file=f)
+        p('// unicode data, built from the unicode standard on:', date.today())
+        p('// see gen-wcwidth.py')
+        if path.endswith('.h'):
+            p('#pragma once')
+        if include_data_types:
+            p('#include "data-types.h"\n')
+            p('START_ALLOW_CASE_RANGE')
+        p()
+        yield p
+        p()
+        if include_data_types:
+            p('END_ALLOW_CASE_RANGE')
 
 
 def gen_emoji():
@@ -282,7 +283,9 @@ def gen_ucd():
         p('combining_type mark_for_codepoint(char_type c) {')
         rmap = codepoint_to_mark_map(p, mark_map)
         p('}\n')
-        expected = int(re.search(r'^#define VS15 (\d+)', open('kitty/unicode-data.h').read(), re.M).group(1))
+        with open('kitty/unicode-data.h') as f:
+            unicode_data = f.read()
+        expected = int(re.search(r'^#define VS15 (\d+)', unicode_data, re.M).group(1))
         if rmap[0xfe0e] != expected:
             raise ValueError('The mark for 0xfe0e has changed, you have to update VS15 to {} and VS16 to {} in unicode-data.h'.format(
                 rmap[0xfe0e], rmap[0xfe0f]
