@@ -477,6 +477,17 @@ cleanup() {
     } // autoreleasepool
 }
 
+void
+cocoa_hide_window_title(void *w)
+{
+    @autoreleasepool {
+
+    NSWindow *window = (NSWindow*)w;
+    [window setTitleVisibility:NSWindowTitleHidden];
+
+    } // autoreleasepool
+}
+
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_new_window_trigger", (PyCFunction)cocoa_set_new_window_trigger, METH_VARARGS, ""},

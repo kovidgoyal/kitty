@@ -320,6 +320,19 @@ convert_mods(PyObject *obj) {
     return resolve_mods(PyLong_AsLong(obj));
 }
 
+static WindowTitleIn
+window_title_in(PyObject *title_in) {
+    const char *in = PyUnicode_AsUTF8(title_in);
+    switch(in[0]) {
+        case 'a': return ALL;
+        case 'w': return WINDOW;
+        case 'm': return MENUBAR;
+        case 'n': return NONE;
+        default: break;
+    }
+    return ALL;
+}
+
 static MouseShape
 pointer_shape(PyObject *shape_name) {
     const char *name = PyUnicode_AsUTF8(shape_name);
@@ -415,7 +428,7 @@ PYWRAP1(set_options) {
     S(macos_option_as_alt, PyLong_AsUnsignedLong);
     S(macos_traditional_fullscreen, PyObject_IsTrue);
     S(macos_quit_when_last_window_closed, PyObject_IsTrue);
-    S(macos_show_window_title_in_menubar, PyObject_IsTrue);
+    S(macos_show_window_title_in, window_title_in);
     S(macos_window_resizable, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
     S(macos_thicken_font, PyFloat_AsDouble);

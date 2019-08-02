@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a :opt:`kitten_alias` option that can be used to alias kitten invocation
   for brevity and to change kitten option defaults globally (:iss:`1879`)
 
+- macOS: Add an option :opt:`macos_show_window_title_in` to control
+  showing the window title in the menubar/titlebar (:pull:`1837`)
+
 - Dont fail to start if running the shell to read the EDITOR env var fails
   (:iss:`1869`)
 
@@ -212,7 +215,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix :kbd:`cmd+period` key not working (:iss:`1318`)
 
-- macOS: Add an option :opt:`macos_show_window_title_in_menubar` to not
+- macOS: Add an option `macos_show_window_title_in_menubar` to not
   show the current window title in the menu-bar (:iss:`1066`)
 
 - macOS: Workaround for cocoa bug that could cause the mouse cursor to become
