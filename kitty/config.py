@@ -263,6 +263,21 @@ class KeyDefinition:
         self.trigger = defines.resolve_key_mods(kitty_mod, self.trigger[0]), self.trigger[1], self.trigger[2]
         self.rest = tuple((defines.resolve_key_mods(kitty_mod, mods), is_native, key) for mods, is_native, key in self.rest)
 
+    def resolve_kitten_aliases(self, aliases):
+        if not self.action.args:
+            return
+        kitten = self.action.args[0]
+        rest = self.action.args[1] if len(self.action.args) > 1 else ''
+        changed = False
+        for key, expanded in aliases.items():
+            if key == kitten:
+                changed = True
+                kitten = expanded[0]
+                if len(expanded) > 1:
+                    rest = expanded[1] + ' ' + rest
+        if changed:
+            self.action = self.action._replace(args=[kitten + (' ' + rest).rstrip()])
+
 
 def parse_key(val, key_definitions):
     parts = val.split(maxsplit=1)
@@ -386,6 +401,13 @@ def handle_symbol_map(key, val, ans):
 
 
 @special_handler
+def handle_kitten_alias(key, val, ans):
+    parts = val.split(maxsplit=2)
+    if len(parts) >= 2:
+        ans['kitten_aliases'][parts[0]] = parts[1:]
+
+
+@special_handler
 def handle_send_text(key, val, ans):
     # For legacy compatibility
     parse_send_text(val, ans['key_definitions'])
@@ -444,7 +466,7 @@ def option_names_for_completion():
 
 
 def parse_config(lines, check_keys=True, accumulate_bad_lines=None):
-    ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [], 'env': {}}
+    ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [], 'env': {}, 'kitten_aliases': {}}
     parse_config_base(
         lines,
         defaults,
@@ -594,8 +616,11 @@ def finalize_keys(opts):
             defns = []
         else:
             defns.append(d)
+    kitten_aliases = opts.kitten_aliases
     for d in defns:
         d.resolve(opts.kitty_mod)
+        if kitten_aliases and d.action.func == 'kitten':
+            d.resolve_kitten_aliases(kitten_aliases)
     keymap = {}
     sequence_map = {}
 

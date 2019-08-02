@@ -992,6 +992,14 @@ o('clear_all_shortcuts', False, long_text=_('''
 You can have kitty remove all shortcut definition seen up to this point. Useful, for
 instance, to remove the default shortcuts.'''))
 
+o('kitten_alias', 'hints hints --hints-offset=0', add_to_default=False, long_text=_('''
+You can create aliases for kitten names, this allows overriding the defaults
+for kitten options and can also be used to shorten repeated mappings of the same
+kitten with a specific group of options. For example, the above alias
+changes the default value of :option:`kitty +kitten hints --hints-offset`
+to zero for all mappings, including the builtin ones.
+'''))
+
 g('shortcuts.clipboard')  # {{{
 k('copy_to_clipboard', 'kitty_mod+c', 'copy_to_clipboard', _('Copy to clipboard'), long_text=_('''
 There is also a :code:`copy_or_interrupt` action that can be optionally mapped to :kbd:`Ctrl+c`.
