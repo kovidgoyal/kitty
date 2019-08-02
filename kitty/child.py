@@ -30,14 +30,16 @@ if is_macos:
 else:
 
     def cmdline_of_process(pid):
-        return list(filter(None, open('/proc/{}/cmdline'.format(pid), 'rb').read().decode('utf-8').split('\0')))
+        with open('/proc/{}/cmdline'.format(pid), 'rb') as f:
+            return list(filter(None, f.read().decode('utf-8').split('\0')))
 
     def cwd_of_process(pid):
         ans = '/proc/{}/cwd'.format(pid)
         return os.path.realpath(ans)
 
     def _environ_of_process(pid):
-        return open('/proc/{}/environ'.format(pid), 'rb').read().decode('utf-8')
+        with open('/proc/{}/environ'.format(pid), 'rb') as f:
+            return f.read().decode('utf-8')
 
     def process_group_map():
         ans = defaultdict(list)
@@ -47,7 +49,8 @@ else:
             except Exception:
                 continue
             try:
-                raw = open('/proc/' + x + '/stat', 'rb').read().decode('utf-8')
+                with open('/proc/' + x + '/stat', 'rb') as f:
+                    raw = f.read().decode('utf-8')
             except EnvironmentError:
                 continue
             try:

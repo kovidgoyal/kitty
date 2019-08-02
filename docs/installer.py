@@ -229,7 +229,8 @@ def script_launch():
 
 def update_intaller_wrapper():
     # To run: python3 -c "import runpy; runpy.run_path('installer.py', run_name='update_wrapper')" installer.sh
-    src = open(__file__, 'rb').read().decode('utf-8')
+    with open(__file__, 'rb') as f:
+        src = f.read().decode('utf-8')
     wrapper = sys.argv[-1]
     with open(wrapper, 'r+b') as f:
         raw = f.read().decode('utf-8')

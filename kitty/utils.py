@@ -23,8 +23,10 @@ BASE = os.path.dirname(os.path.abspath(__file__))
 
 def load_shaders(name):
     from .fast_data_types import GLSL_VERSION
-    vert = open(os.path.join(BASE, '{}_vertex.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
-    frag = open(os.path.join(BASE, '{}_fragment.glsl'.format(name))).read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
+    with open(os.path.join(BASE, '{}_vertex.glsl'.format(name))) as f:
+        vert = f.read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
+    with open(os.path.join(BASE, '{}_fragment.glsl'.format(name))) as f:
+        frag = f.read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
     return vert, frag
 
 

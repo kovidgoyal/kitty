@@ -23,7 +23,8 @@ os.chdir(os.path.dirname(os.path.abspath(__file__)))
 build_path = os.path.abspath('../build-kitty')
 docs_dir = os.path.abspath('docs')
 publish_dir = os.path.abspath(os.path.join('..', 'kovidgoyal.github.io', 'kitty'))
-raw = open('kitty/constants.py').read()
+with open('kitty/constants.py') as f:
+    raw = f.read()
 nv = re.search(
     r'^version\s+=\s+\((\d+), (\d+), (\d+)\)', raw, flags=re.MULTILINE)
 version = '%s.%s.%s' % (nv.group(1), nv.group(2), nv.group(3))
