@@ -252,7 +252,7 @@ def run_loop(args, text, all_marks, index_map):
     handler = Hints(text, all_marks, index_map, args)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
-        return {'match': handler.chosen, 'program': args.program,
+        return {'match': handler.chosen, 'programs': args.program,
                 'multiple_joiner': args.multiple_joiner,
                 'type': args.type}
     raise SystemExit(loop.return_code)
@@ -339,10 +339,12 @@ def run(args, text):
 # CLI {{{
 OPTIONS = r'''
 --program
-default=default
+type=list
 What program to use to open matched text. Defaults to the default open program
 for the operating system.  Use a value of :file:`-` to paste the match into the
 terminal window instead. A value of :file:`@` will copy the match to the clipboard.
+A value of :file:`default` will run the default open program.  Can be specified
+multiple times to run multiple programs.
 
 
 --type
@@ -449,7 +451,7 @@ def main(args):
 
 
 def handle_result(args, data, target_window_id, boss):
-    program = data['program']
+    programs = data['programs'] or ('default',)
     matches = tuple(filter(None, data['match']))
     joiner = data['multiple_joiner']
     try:
@@ -458,6 +460,7 @@ def handle_result(args, data, target_window_id, boss):
         is_int = None
     text_type = data['type']
 
+    @lru_cache()
     def joined_text():
         if is_int is not None:
             try:
@@ -473,20 +476,21 @@ def handle_result(args, data, target_window_id, boss):
             q = {'newline': '\n\r', 'space': ' '}.get(joiner, '')
         return q.join(matches)
 
-    if program == '-':
-        w = boss.window_id_map.get(target_window_id)
-        if w is not None:
-            w.paste(joined_text())
-    elif program == '@':
-        set_clipboard_string(joined_text())
-    else:
-        cwd = None
-        w = boss.window_id_map.get(target_window_id)
-        if w is not None:
-            cwd = w.cwd_of_child
-        program = None if program == 'default' else program
-        for m in matches:
-            boss.open_url(m, program, cwd=cwd)
+    for program in programs:
+        if program == '-':
+            w = boss.window_id_map.get(target_window_id)
+            if w is not None:
+                w.paste(joined_text())
+        elif program == '@':
+            set_clipboard_string(joined_text())
+        else:
+            cwd = None
+            w = boss.window_id_map.get(target_window_id)
+            if w is not None:
+                cwd = w.cwd_of_child
+            program = None if program == 'default' else program
+            for m in matches:
+                boss.open_url(m, program, cwd=cwd)
 
 
 handle_result.type_of_input = 'screen'
