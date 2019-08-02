@@ -289,12 +289,7 @@ def shortcut_matches(s, mods, key, scancode):
     return s[0] & 0b1111 == mods & 0b1111 and s[2] == q
 
 
-def generate_key_table():
-    # To run this, use: python3 . +runpy "from kitty.keys import *; generate_key_table()"
-    import os
-    from functools import partial
-    f = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keys.h'), 'w')
-    w = partial(print, file=f)
+def generate_key_table_impl(w):
     w('// auto-generated from keys.py, do not edit!')
     w('#pragma once')
     w('#include <stddef.h>')
@@ -389,3 +384,12 @@ def generate_key_table():
     ind('return NULL;')
     i -= 1
     w('}')
+
+
+def generate_key_table():
+    # To run this, use: python3 . +runpy "from kitty.keys import *; generate_key_table()"
+    import os
+    from functools import partial
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keys.h'), 'w') as f:
+        w = partial(print, file=f)
+        generate_key_table_impl(w)
