@@ -27,6 +27,7 @@
 //========================================================================
 
 #include "internal.h"
+#include "../kitty/monotonic.h"
 
 #include <float.h>
 #include <string.h>
@@ -120,7 +121,7 @@ CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
 }
 
 static unsigned long long display_link_shutdown_timer = 0;
-#define DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL 30
+#define DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL s_to_monotonic_t(30ll)
 
 void
 _glfwShutdownCVDisplayLink(unsigned long long timer_id UNUSED, void *user_data UNUSED) {
@@ -147,7 +148,7 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
     } else {
         display_link_shutdown_timer = _glfwPlatformAddTimer(DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL, false, _glfwShutdownCVDisplayLink, NULL, NULL);
     }
-    double now = glfwGetTime();
+    monotonic_t now = glfwGetTime();
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayID == displayID) {
@@ -1853,9 +1854,9 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
         *yscale = (float) (pixels.size.height / points.size.height);
 }
 
-double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
+monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
 {
-    return [NSEvent doubleClickInterval];
+    return s_double_to_monotonic_t([NSEvent doubleClickInterval]);
 }
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)

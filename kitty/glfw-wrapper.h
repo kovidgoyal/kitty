@@ -7,6 +7,7 @@
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+#include "../kitty/monotonic.h"
 
 
 
@@ -1487,11 +1488,11 @@ typedef void (*glfwStopMainLoop_func)(void);
 glfwStopMainLoop_func glfwStopMainLoop_impl;
 #define glfwStopMainLoop glfwStopMainLoop_impl
 
-typedef unsigned long long (*glfwAddTimer_func)(double, bool, GLFWuserdatafun, void *, GLFWuserdatafun);
+typedef unsigned long long (*glfwAddTimer_func)(monotonic_t, bool, GLFWuserdatafun, void *, GLFWuserdatafun);
 glfwAddTimer_func glfwAddTimer_impl;
 #define glfwAddTimer glfwAddTimer_impl
 
-typedef void (*glfwUpdateTimer_func)(unsigned long long, double, bool);
+typedef void (*glfwUpdateTimer_func)(unsigned long long, monotonic_t, bool);
 glfwUpdateTimer_func glfwUpdateTimer_impl;
 #define glfwUpdateTimer glfwUpdateTimer_impl
 
@@ -1659,7 +1660,7 @@ typedef void (*glfwGetWindowContentScale_func)(GLFWwindow*, float*, float*);
 glfwGetWindowContentScale_func glfwGetWindowContentScale_impl;
 #define glfwGetWindowContentScale glfwGetWindowContentScale_impl
 
-typedef double (*glfwGetDoubleClickInterval_func)(GLFWwindow*);
+typedef monotonic_t (*glfwGetDoubleClickInterval_func)(GLFWwindow*);
 glfwGetDoubleClickInterval_func glfwGetDoubleClickInterval_impl;
 #define glfwGetDoubleClickInterval glfwGetDoubleClickInterval_impl
 
@@ -1911,11 +1912,11 @@ typedef const char* (*glfwGetClipboardString_func)(GLFWwindow*);
 glfwGetClipboardString_func glfwGetClipboardString_impl;
 #define glfwGetClipboardString glfwGetClipboardString_impl
 
-typedef double (*glfwGetTime_func)(void);
+typedef monotonic_t (*glfwGetTime_func)(void);
 glfwGetTime_func glfwGetTime_impl;
 #define glfwGetTime glfwGetTime_impl
 
-typedef void (*glfwSetTime_func)(double);
+typedef void (*glfwSetTime_func)(monotonic_t);
 glfwSetTime_func glfwSetTime_impl;
 #define glfwSetTime glfwSetTime_impl
 

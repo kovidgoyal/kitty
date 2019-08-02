@@ -6,6 +6,7 @@
 
 #pragma once
 #include "data-types.h"
+#include "monotonic.h"
 
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
@@ -50,7 +51,7 @@ typedef struct {
 
     ImageRef *refs;
     size_t refcnt, refcap;
-    double atime;
+    monotonic_t atime;
     size_t used_storage;
 } Image;
 

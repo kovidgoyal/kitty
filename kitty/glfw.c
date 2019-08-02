@@ -7,6 +7,7 @@
 #include "state.h"
 #include "glfw_tests.h"
 #include "fonts.h"
+#include "monotonic.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w, bool);
@@ -17,7 +18,7 @@ extern void cocoa_set_activation_policy(bool);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
 extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz);
-extern double cocoa_cursor_blink_interval(void);
+extern monotonic_t cocoa_cursor_blink_interval(void);
 
 
 #if GLFW_KEY_LAST >= MAX_KEY_COUNT
@@ -83,7 +84,7 @@ log_event(const char *format, ...) {
     {
         va_list vl;
 
-        fprintf(stderr, "[%.4f] ", glfwGetTime());
+        fprintf(stderr, "[%.4f] ", monotonic_t_to_s_double(glfwGetTime()));
         va_start(vl, format);
         vfprintf(stderr, format, vl);
         va_end(vl);
@@ -248,7 +249,7 @@ cursor_enter_callback(GLFWwindow *w, int entered) {
     if (!set_callback_window(w)) return;
     if (entered) {
         show_mouse_cursor(w);
-        double now = monotonic();
+        monotonic_t now = monotonic();
         global_state.callback_os_window->last_mouse_activity_at = now;
         if (is_window_ready_for_callbacks()) enter_event();
         request_tick_callback();
@@ -261,7 +262,7 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     if (!set_callback_window(w)) return;
     show_mouse_cursor(w);
     mods_at_last_key_or_button_event = mods;
-    double now = monotonic();
+    monotonic_t now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < arraysz(global_state.callback_os_window->mouse_button_pressed)) {
         global_state.callback_os_window->mouse_button_pressed[button] = action == GLFW_PRESS ? true : false;
@@ -275,7 +276,7 @@ static void
 cursor_pos_callback(GLFWwindow *w, double x, double y) {
     if (!set_callback_window(w)) return;
     show_mouse_cursor(w);
-    double now = monotonic();
+    monotonic_t now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
     global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
@@ -289,7 +290,7 @@ static void
 scroll_callback(GLFWwindow *w, double xoffset, double yoffset, int flags) {
     if (!set_callback_window(w)) return;
     show_mouse_cursor(w);
-    double now = monotonic();
+    monotonic_t now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     if (is_window_ready_for_callbacks()) scroll_event(xoffset, yoffset, flags);
     request_tick_callback();
@@ -308,7 +309,7 @@ window_focus_callback(GLFWwindow *w, int focused) {
         focus_in_event();
         global_state.callback_os_window->last_focused_counter = ++focus_counter;
     }
-    double now = monotonic();
+    monotonic_t now = monotonic();
     global_state.callback_os_window->last_mouse_activity_at = now;
     global_state.callback_os_window->cursor_blink_zero_time = now;
     if (is_window_ready_for_callbacks()) {
@@ -602,10 +603,10 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #undef CC
         if (OPT(click_interval) < 0) OPT(click_interval) = glfwGetDoubleClickInterval(glfw_window);
         if (OPT(cursor_blink_interval) < 0) {
-            OPT(cursor_blink_interval) = 0.5;
+            OPT(cursor_blink_interval) = ms_to_monotonic_t(500ll);
 #ifdef __APPLE__
-            double cbi = cocoa_cursor_blink_interval();
-            if (cbi >= 0) OPT(cursor_blink_interval) = cbi / 2000.0;
+            monotonic_t cbi = cocoa_cursor_blink_interval();
+            if (cbi >= 0) OPT(cursor_blink_interval) = cbi / 2;
 #endif
         }
         is_first_window = false;
@@ -655,7 +656,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));
     } else log_error("Failed to load glfwGetCocoaWindow");
 #endif
-    double now = monotonic();
+    monotonic_t now = monotonic();
     w->is_focused = true;
     w->cursor_blink_zero_time = now;
     w->last_mouse_activity_at = now;
@@ -854,9 +855,9 @@ get_clipboard_string(PYNOARG) {
 
 void
 ring_audio_bell(OSWindow *w UNUSED) {
-    static double last_bell_at = -1;
-    double now = monotonic();
-    if (now - last_bell_at <= 0.1) return;
+    static monotonic_t last_bell_at = -1;
+    monotonic_t now = monotonic();
+    if (now - last_bell_at <= ms_to_monotonic_t(100ll)) return;
     last_bell_at = now;
 #ifdef __APPLE__
     if (w->handle) {
@@ -1139,12 +1140,12 @@ dbus_send_notification(PyObject *self UNUSED, PyObject *args) {
 #endif
 
 id_type
-add_main_loop_timer(double interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback) {
+add_main_loop_timer(monotonic_t interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback) {
     return glfwAddTimer(interval, repeats, callback, callback_data, free_callback);
 }
 
 void
-update_main_loop_timer(id_type timer_id, double interval, bool enabled) {
+update_main_loop_timer(id_type timer_id, monotonic_t interval, bool enabled) {
     glfwUpdateTimer(timer_id, interval, enabled);
 }
 

@@ -27,6 +27,7 @@
 //========================================================================
 
 #include "internal.h"
+#include "../kitty/monotonic.h"
 #include <sys/param.h> // For MAXPATHLEN
 #include <pthread.h>
 
@@ -531,7 +532,7 @@ typedef struct {
     NSTimer *os_timer;
     unsigned long long id;
     bool repeats;
-    double interval;
+    monotonic_t interval;
     GLFWuserdatafun callback;
     void *callback_data;
     GLFWuserdatafun free_callback_data;
@@ -551,7 +552,7 @@ remove_timer_at(size_t idx) {
 }
 
 static void schedule_timer(Timer *t) {
-    t->os_timer = [NSTimer scheduledTimerWithTimeInterval:t->interval repeats:(t->repeats ? YES: NO) block:^(NSTimer *os_timer) {
+    t->os_timer = [NSTimer scheduledTimerWithTimeInterval:monotonic_t_to_s_double(t->interval) repeats:(t->repeats ? YES: NO) block:^(NSTimer *os_timer) {
         for (size_t i = 0; i < num_timers; i++) {
             if (timers[i].os_timer == os_timer) {
                 timers[i].callback(timers[i].id, timers[i].callback_data);
@@ -562,7 +563,7 @@ static void schedule_timer(Timer *t) {
     }];
 }
 
-unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback) {
+unsigned long long _glfwPlatformAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback) {
     static unsigned long long timer_counter = 0;
     if (num_timers >= sizeof(timers)/sizeof(timers[0]) - 1) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Too many timers added");
@@ -588,7 +589,7 @@ void _glfwPlatformRemoveTimer(unsigned long long timer_id) {
     }
 }
 
-void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, bool enabled) {
+void _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool enabled) {
     for (size_t i = 0; i < num_timers; i++) {
         if (timers[i].id == timer_id) {
             Timer *t = timers + i;

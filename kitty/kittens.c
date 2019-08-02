@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "monotonic.h"
 
 #define CMD_BUF_SZ 2048
 
@@ -34,13 +35,13 @@ add_char(char buf[CMD_BUF_SZ], size_t *pos, char ch, PyObject *ans) {
 }
 
 static inline bool
-read_response(int fd, double timeout, PyObject *ans) {
+read_response(int fd, monotonic_t timeout, PyObject *ans) {
     static char buf[CMD_BUF_SZ];
     size_t pos = 0;
     enum ReadState {START, STARTING_ESC, P, AT, K, I, T, T2, Y, HYPHEN, C, M, BODY, TRAILING_ESC};
     enum ReadState state = START;
     char ch;
-    double end_time = monotonic() + timeout;
+    monotonic_t end_time = monotonic() + timeout;
     while(monotonic() <= end_time) {
         ssize_t len = read(fd, &ch, 1);
         if (len == 0) continue;
@@ -94,7 +95,7 @@ read_command_response(PyObject *self UNUSED, PyObject *args) {
     int fd;
     PyObject *ans;
     if (!PyArg_ParseTuple(args, "idO!", &fd, &timeout, &PyList_Type, &ans)) return NULL;
-    if (!read_response(fd, timeout, ans)) return NULL;
+    if (!read_response(fd, s_double_to_monotonic_t(timeout), ans)) return NULL;
     Py_RETURN_NONE;
 }
 

@@ -27,6 +27,7 @@
 
 #include "internal.h"
 #include "dbus_glfw.h"
+#include "../kitty/monotonic.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -107,7 +108,7 @@ on_dbus_timer_ready(id_type timer_id UNUSED, void *data) {
 static dbus_bool_t
 add_dbus_timeout(DBusTimeout *timeout, void *data) {
     int enabled = dbus_timeout_get_enabled(timeout) ? 1 : 0;
-    double interval = ((double)dbus_timeout_get_interval(timeout)) / 1000.0;
+    monotonic_t interval = ms_to_monotonic_t(dbus_timeout_get_interval(timeout));
     if (interval < 0) return FALSE;
     id_type timer_id = addTimer(dbus_data->eld, data, interval, enabled, true, on_dbus_timer_ready, timeout, NULL);
     if (!timer_id) return FALSE;

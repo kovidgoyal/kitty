@@ -32,6 +32,7 @@
 #include "backend_utils.h"
 #include "memfd.h"
 #include "linux_notify.h"
+#include "../kitty/monotonic.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -684,7 +685,7 @@ setCursorImage(_GLFWcursorWayland* cursorWayland)
         image = cursorWayland->cursor->images[cursorWayland->currentImage];
         buffer = wl_cursor_image_get_buffer(image);
         if (image->delay) {
-            changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, ((double)image->delay) / 1000.0);
+            changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, ms_to_monotonic_t(image->delay));
             toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 1);
         } else {
             toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
@@ -745,11 +746,11 @@ abortOnFatalError(int last_error) {
 }
 
 static void
-handleEvents(double timeout)
+handleEvents(monotonic_t timeout)
 {
     struct wl_display* display = _glfw.wl.display;
     errno = 0;
-    EVDBG("starting handleEvents(%.2f)", timeout);
+    EVDBG("starting handleEvents(%.2f)", monotonic_t_to_s_double(timeout));
 
     while (wl_display_prepare_read(display) != 0) {
         while(1) {
@@ -1052,9 +1053,9 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
         *yscale = (float) window->wl.scale;
 }
 
-double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
+monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
 {
-    return 0.5;
+    return ms_to_monotonic_t(500ll);
 }
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
@@ -1227,11 +1228,11 @@ void _glfwPlatformPollEvents(void)
 
 void _glfwPlatformWaitEvents(void)
 {
-    double timeout = wl_display_dispatch_pending(_glfw.wl.display) > 0 ? 0 : -1;
+    monotonic_t timeout = wl_display_dispatch_pending(_glfw.wl.display) > 0 ? 0 : -1;
     handleEvents(timeout);
 }
 
-void _glfwPlatformWaitEventsTimeout(double timeout)
+void _glfwPlatformWaitEventsTimeout(monotonic_t timeout)
 {
     if (wl_display_dispatch_pending(_glfw.wl.display) > 0) timeout = 0;
     handleEvents(timeout);
@@ -1462,8 +1463,8 @@ static void send_text(char *text, int fd)
 {
     if (text) {
         size_t len = strlen(text), pos = 0;
-        double start = glfwGetTime();
-        while (pos < len && glfwGetTime() - start < 2.0) {
+        monotonic_t start = glfwGetTime();
+        while (pos < len && glfwGetTime() - start < s_to_monotonic_t(2ll)) {
             ssize_t ret = write(fd, text + pos, len - pos);
             if (ret < 0) {
                 if (errno == EAGAIN || errno == EINTR) continue;
@@ -1496,7 +1497,7 @@ static char* read_offer_string(int data_pipe) {
     struct pollfd fds;
     fds.fd = data_pipe;
     fds.events = POLLIN;
-    double start = glfwGetTime();
+    monotonic_t start = glfwGetTime();
 #define bail(...) { \
     _glfwInputError(GLFW_PLATFORM_ERROR, __VA_ARGS__); \
     free(buf); buf = NULL; \
@@ -1504,7 +1505,7 @@ static char* read_offer_string(int data_pipe) {
     return NULL; \
 }
 
-    while (glfwGetTime() - start < 2) {
+    while (glfwGetTime() - start < s_to_monotonic_t(2ll)) {
         int ret = poll(&fds, 1, 2000);
         if (ret == -1) {
             if (errno == EINTR) continue;

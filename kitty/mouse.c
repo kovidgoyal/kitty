@@ -13,6 +13,7 @@
 #include <math.h>
 #include "glfw-wrapper.h"
 #include "control-codes.h"
+#include "monotonic.h"
 
 static MouseShape mouse_cursor_shape = BEAM;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
@@ -292,8 +293,8 @@ HANDLER(handle_move_event) {
     bool handle_in_kitty = !in_tracking_mode || has_terminal_select_modifiers;
     if (handle_in_kitty) {
         if (screen->selection.in_progress && button == GLFW_MOUSE_BUTTON_LEFT) {
-            double now = monotonic();
-            if ((now - w->last_drag_scroll_at) >= 0.02 || mouse_cell_changed) {
+            monotonic_t now = monotonic();
+            if ((now - w->last_drag_scroll_at) >= ms_to_monotonic_t(20ll) || mouse_cell_changed) {
                 update_drag(false, w, false, 0);
                 w->last_drag_scroll_at = now;
             }
@@ -338,7 +339,7 @@ distance(double x1, double y1, double x2, double y2) {
 HANDLER(add_click) {
     ClickQueue *q = &w->click_queue;
     if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
-    double now = monotonic();
+    monotonic_t now = monotonic();
 #define N(n) (q->clicks[q->length - n])
     N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = w->mouse_pos.x; N(0).y = w->mouse_pos.y;
     q->length++;

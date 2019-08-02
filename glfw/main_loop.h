@@ -7,6 +7,7 @@
 #pragma once
 
 #include "internal.h"
+#include "../kitty/monotonic.h"
 
 #ifndef GLFW_LOOP_BACKEND
 #define GLFW_LOOP_BACKEND x11
@@ -36,7 +37,7 @@ void _glfwPlatformRunMainLoop(GLFWtickcallback tick_callback, void* data) {
     EVDBG("main loop exiting");
 }
 
-unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuserdatafreefun callback, void *callback_data, GLFWuserdatafreefun free_callback) {
+unsigned long long _glfwPlatformAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafreefun callback, void *callback_data, GLFWuserdatafreefun free_callback) {
     return addTimer(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, "user timer", interval, 1, repeats, callback, callback_data, free_callback);
 }
 
@@ -44,7 +45,7 @@ void _glfwPlatformRemoveTimer(unsigned long long timer_id) {
     removeTimer(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, timer_id);
 }
 
-void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, bool enabled) {
+void _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool enabled) {
     changeTimerInterval(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, timer_id, interval);
     toggleTimer(&_glfw.GLFW_LOOP_BACKEND.eventLoopData, timer_id, enabled);
 }

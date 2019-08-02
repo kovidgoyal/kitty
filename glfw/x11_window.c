@@ -31,6 +31,7 @@
 #include "internal.h"
 #include "backend_utils.h"
 #include "linux_notify.h"
+#include "../kitty/monotonic.h"
 
 #include <X11/cursorfont.h>
 #include <X11/Xmd.h>
@@ -61,8 +62,8 @@
 static unsigned _glfwDispatchX11Events(void);
 
 static void
-handleEvents(double timeout) {
-    EVDBG("starting handleEvents(%.2f)", timeout);
+handleEvents(monotonic_t timeout) {
+    EVDBG("starting handleEvents(%.2f)", monotonic_t_to_s_double(timeout));
     int display_read_ok = pollForEvents(&_glfw.x11.eventLoopData, timeout);
     EVDBG("display_read_ok: %d", display_read_ok);
     if (display_read_ok) {
@@ -77,9 +78,9 @@ handleEvents(double timeout) {
 }
 
 static bool
-waitForX11Event(double timeout) {
+waitForX11Event(monotonic_t timeout) {
     // returns true if there is X11 data waiting to be read, does not run watches and timers
-    double end_time = glfwGetTime() + timeout;
+    monotonic_t end_time = glfwGetTime() + timeout;
     while(true) {
         if (timeout >= 0) {
             const int result = pollWithTimeout(_glfw.x11.eventLoopData.fds, 1, timeout);
@@ -109,7 +110,7 @@ static bool waitForVisibilityNotify(_GLFWwindow* window)
                                    VisibilityNotify,
                                    &dummy))
     {
-        if (!waitForX11Event(0.1))
+        if (!waitForX11Event(ms_to_monotonic_t(100ll)))
             return false;
     }
 
@@ -880,7 +881,7 @@ static const char* getSelectionString(Atom selection)
         Atom actualType;
         int actualFormat;
         unsigned long itemCount, bytesAfter;
-        double start = glfwGetTime();
+        monotonic_t start = glfwGetTime();
         XEvent notification, dummy;
 
         XConvertSelection(_glfw.x11.display,
@@ -895,10 +896,10 @@ static const char* getSelectionString(Atom selection)
                                        SelectionNotify,
                                        &notification))
         {
-            double time = glfwGetTime();
-            if (time - start > 2)
+            monotonic_t time = glfwGetTime();
+            if (time - start > 2ll)
                 return "";
-            waitForX11Event(2.0 - (time - start));
+            waitForX11Event(s_to_monotonic_t(2ll) - (time - start));
         }
 
         if (notification.xselection.property == None)
@@ -935,10 +936,10 @@ static const char* getSelectionString(Atom selection)
                                       isSelPropNewValueNotify,
                                       (XPointer) &notification))
                 {
-                    double time = glfwGetTime();
-                    if (time - start > 2)
+                    monotonic_t time = glfwGetTime();
+                    if (time - start > s_to_monotonic_t(2ll))
                         return "";
-                    waitForX11Event(2.0 - (time - start));
+                    waitForX11Event(s_to_monotonic_t(2ll) - (time - start));
                 }
 
                 XFree(data);
@@ -2066,7 +2067,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
                               isFrameExtentsEvent,
                               (XPointer) window))
         {
-            if (!waitForX11Event(0.5))
+            if (!waitForX11Event(ms_to_monotonic_t(500ll)))
             {
                 _glfwInputError(GLFW_PLATFORM_ERROR,
                                 "X11: The window manager has a broken _NET_REQUEST_FRAME_EXTENTS implementation; please report this issue");
@@ -2103,9 +2104,9 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window UNUSED,
         *yscale = _glfw.x11.contentScaleY;
 }
 
-double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
+monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
 {
-    return 0.5;
+    return ms_to_monotonic_t(500ll);
 }
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window)
@@ -2527,11 +2528,11 @@ void _glfwPlatformPollEvents(void)
 
 void _glfwPlatformWaitEvents(void)
 {
-    double timeout = _glfwDispatchX11Events() ? 0 : -1;
+    monotonic_t timeout = _glfwDispatchX11Events() ? 0 : -1;
     handleEvents(timeout);
 }
 
-void _glfwPlatformWaitEventsTimeout(double timeout)
+void _glfwPlatformWaitEventsTimeout(monotonic_t timeout)
 {
     if (_glfwDispatchX11Events()) timeout = 0;
     handleEvents(timeout);

@@ -300,9 +300,14 @@ color_as_int(PyObject *color) {
 #undef I
 }
 
-static inline double
-repaint_delay(PyObject *val) {
-    return (double)(PyLong_AsUnsignedLong(val)) / 1000.0;
+static inline monotonic_t
+parse_s_double_to_monotonic_t(PyObject *val) {
+    return s_double_to_monotonic_t(PyFloat_AsDouble(val));
+}
+
+static inline monotonic_t
+parse_ms_long_to_monotonic_t(PyObject *val) {
+    return ms_to_monotonic_t(PyLong_AsUnsignedLong(val));
 }
 
 static int kitty_mod = 0;
@@ -390,11 +395,11 @@ PYWRAP1(set_options) {
 #define S(name, convert) SS(name, OPT(name), convert)
     SS(kitty_mod, kitty_mod, PyLong_AsLong);
     S(hide_window_decorations, PyObject_IsTrue);
-    S(visual_bell_duration, PyFloat_AsDouble);
+    S(visual_bell_duration, parse_s_double_to_monotonic_t);
     S(enable_audio_bell, PyObject_IsTrue);
     S(focus_follows_mouse, PyObject_IsTrue);
-    S(cursor_blink_interval, PyFloat_AsDouble);
-    S(cursor_stop_blinking_after, PyFloat_AsDouble);
+    S(cursor_blink_interval, parse_s_double_to_monotonic_t);
+    S(cursor_stop_blinking_after, parse_s_double_to_monotonic_t);
     S(background_opacity, PyFloat_AsDouble);
     S(dim_opacity, PyFloat_AsDouble);
     S(dynamic_background_opacity, PyObject_IsTrue);
@@ -404,14 +409,14 @@ PYWRAP1(set_options) {
     S(cursor_shape, PyLong_AsLong);
     S(url_style, PyLong_AsUnsignedLong);
     S(tab_bar_edge, PyLong_AsLong);
-    S(mouse_hide_wait, PyFloat_AsDouble);
+    S(mouse_hide_wait, parse_s_double_to_monotonic_t);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
     S(touch_scroll_multiplier, PyFloat_AsDouble);
     S(open_url_modifiers, convert_mods);
     S(rectangle_select_modifiers, convert_mods);
     S(terminal_select_modifiers, convert_mods);
-    S(click_interval, PyFloat_AsDouble);
-    S(resize_debounce_time, PyFloat_AsDouble);
+    S(click_interval, parse_s_double_to_monotonic_t);
+    S(resize_debounce_time, parse_s_double_to_monotonic_t);
     S(url_color, color_as_int);
     S(background, color_as_int);
     S(foreground, color_as_int);
@@ -420,8 +425,8 @@ PYWRAP1(set_options) {
     default_color = 0;
     S(inactive_border_color, color_as_int);
     S(bell_border_color, color_as_int);
-    S(repaint_delay, repaint_delay);
-    S(input_delay, repaint_delay);
+    S(repaint_delay, parse_ms_long_to_monotonic_t);
+    S(input_delay, parse_ms_long_to_monotonic_t);
     S(sync_to_monitor, PyObject_IsTrue);
     S(close_on_child_death, PyObject_IsTrue);
     S(window_alert_on_bell, PyObject_IsTrue);

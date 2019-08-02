@@ -9,6 +9,7 @@
 #include "screen.h"
 #include "graphics.h"
 #include "charsets.h"
+#include "monotonic.h"
 #include <time.h>
 
 extern PyTypeObject Screen_Type;
@@ -1196,7 +1197,7 @@ end:
 }
 
 static inline void
-do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz, double now, PyObject *dump_callback DUMP_UNUSED) {
+do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz, monotonic_t now, PyObject *dump_callback DUMP_UNUSED) {
     enum STATE {START, PARSE_PENDING, PARSE_READ_BUF, QUEUE_PENDING};
     enum STATE state = START;
     size_t read_buf_pos = 0;
@@ -1272,7 +1273,7 @@ FNAME(parse_bytes)(PyObject UNUSED *self, PyObject *args) {
 
 
 void
-FNAME(parse_worker)(Screen *screen, PyObject *dump_callback, double now) {
+FNAME(parse_worker)(Screen *screen, PyObject *dump_callback, monotonic_t now) {
 #ifdef DUMP_COMMANDS
     if (screen->read_buf_sz) {
         Py_XDECREF(PyObject_CallFunction(dump_callback, "sy#", "bytes", screen->read_buf, screen->read_buf_sz)); PyErr_Clear();

@@ -292,7 +292,6 @@ void apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, unsigned i
 const char* cell_as_sgr(const GPUCell *, const GPUCell *);
 const char* cursor_as_sgr(const Cursor *);
 
-double monotonic(void);
 PyObject* cm_thread_write(PyObject *self, PyObject *args);
 bool schedule_write_to_child(unsigned long id, unsigned int num, ...);
 bool set_iutf8(int, bool);

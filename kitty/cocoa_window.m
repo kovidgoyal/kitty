@@ -7,6 +7,7 @@
 
 
 #include "state.h"
+#include "monotonic.h"
 #include <Cocoa/Cocoa.h>
 
 #include <AvailabilityMacros.h>
@@ -411,7 +412,7 @@ cocoa_get_lang(PyObject UNUSED *self) {
     } // autoreleasepool
 }
 
-double
+monotonic_t
 cocoa_cursor_blink_interval(void) {
     @autoreleasepool {
 
@@ -425,7 +426,7 @@ cocoa_cursor_blink_interval(void) {
     } else if (period_ms) {
         ans = period_ms;
     }
-    return ans > max_value ? 0.0 : ans;
+    return ans > max_value ? 0ll : ms_double_to_monotonic_t(ans);
 
     } // autoreleasepool
 }
