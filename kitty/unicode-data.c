@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2019-03-06
+// unicode data, built from the unicode standard on: 2019-08-02
 // see gen-wcwidth.py
 #include "data-types.h"
 
@@ -2793,3 +2793,5 @@ default: return 0;
 	} // }}}
 }
 
+
+END_ALLOW_CASE_RANGE

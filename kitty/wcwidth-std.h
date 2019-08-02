@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2019-03-06
+// unicode data, built from the unicode standard on: 2019-08-02
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -1227,7 +1227,7 @@ wcwidth_std(int32_t code) {
 			return -2;
 		// }}}
 
-		// East Asian double width (181867 codepoints) {{{
+		// East Asian double width (181868 codepoints) {{{
 		case 0x1100 ... 0x115f:
 			return 2;
 		case 0x231a ... 0x231b:
@@ -1332,9 +1332,7 @@ wcwidth_std(int32_t code) {
 			return 2;
 		case 0x3298:
 			return 2;
-		case 0x329a ... 0x32fe:
-			return 2;
-		case 0x3300 ... 0x4dbf:
+		case 0x329a ... 0x4dbf:
 			return 2;
 		case 0x4e00 ... 0xa48c:
 			return 2;
@@ -1475,7 +1473,7 @@ wcwidth_std(int32_t code) {
 			return 2;
 		// }}}
 
-		// Not assigned in the unicode character database (766327 codepoints) {{{
+		// Not assigned in the unicode character database (766326 codepoints) {{{
 		case 0x378 ... 0x379:
 			return -4;
 		case 0x380 ... 0x383:
@@ -2043,8 +2041,6 @@ wcwidth_std(int32_t code) {
 		case 0x31e4 ... 0x31ef:
 			return -4;
 		case 0x321f:
-			return -4;
-		case 0x32ff:
 			return -4;
 		case 0xa48d ... 0xa48f:
 			return -4;
