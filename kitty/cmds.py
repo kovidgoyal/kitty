@@ -999,7 +999,7 @@ def cmd_set_background_opacity(global_opts, opts, args):
 def set_background_opacity(boss, window, payload):
     if not boss.opts.dynamic_background_opacity:
         raise OpacityError('You must turn on the dynamic_background_opacity option in kitty.conf to be able to set background opacity')
-    windows = windows_for_payload(payload)
+    windows = windows_for_payload(boss, window, payload)
     for os_window_id in {w.os_window_id for w in windows}:
         boss._set_os_window_background_opacity(os_window_id, payload['opacity'])
 # }}}

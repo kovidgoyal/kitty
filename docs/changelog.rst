@@ -26,6 +26,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   "so-called" monospace fonts such as Nimbus Mono that have non-programming
   ligatures.
 
+- Fix a regression that broke setting background_opacity via remote control
+  (:iss:`1895`)
+
 
 0.14.3 [2019-07-29]
 ---------------------
