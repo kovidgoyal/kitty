@@ -1,8 +1,8 @@
 ifdef V
-		VVAL=--verbose
+	VVAL=--verbose
 endif
 ifdef VERBOSE
-		VVAL=--verbose
+	VVAL=--verbose
 endif
 
 all:
