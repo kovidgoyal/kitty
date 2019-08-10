@@ -998,6 +998,8 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         if (face == NULL) return NULL;
         font = calloc(1, sizeof(Font));
         font->face = face;
+        font->hb_features[0] = hb_features[CALT_FEATURE];
+        font->num_hb_features = 1;
     } else {
         FontGroup *fg = font_groups;
         font = fg->fonts + fg->medium_font_idx;
