@@ -272,6 +272,13 @@ repr(Face *self) {
 }
 
 
+const char*
+postscript_name_for_face(const PyObject *face_) {
+    const Face *self = (const Face*)face_;
+    const char *ps_name = FT_Get_Postscript_Name(self->face);
+    return ps_name ? ps_name : "";
+}
+
 static inline unsigned int
 calc_cell_width(Face *self) {
     unsigned int ans = 0;

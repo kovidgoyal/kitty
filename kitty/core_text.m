@@ -530,6 +530,14 @@ static PyMethodDef methods[] = {
     {NULL}  /* Sentinel */
 };
 
+const char*
+postscript_name_for_face(const PyObject *face_) {
+    const CTFace *self = (const CTFace*)face_;
+    if (self->postscript_name) return PyUnicode_AsUTF8(self->postscript_name);
+    return "";
+}
+
+
 static PyObject *
 repr(CTFace *self) {
     char buf[1024] = {0};
