@@ -32,10 +32,6 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
 
     if is_macos:
         ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
-        ans.ldpaths.extend(
-            "-framework Cocoa -framework IOKit -framework CoreFoundation -framework CoreVideo".
-            split()
-        )
     else:
         ans.ldpaths.extend('-lrt -lm -ldl'.split())
     with open(os.path.join(base, 'source-info.json')) as f:
