@@ -8,7 +8,6 @@ import re
 import sys
 
 _plat = sys.platform.lower()
-is_macos = 'darwin' in _plat
 is_freebsd = 'freebsd' in _plat
 is_netbsd = 'netbsd' in _plat
 is_dragonflybsd = 'dragonfly' in _plat
@@ -23,17 +22,10 @@ def wayland_protocol_file_name(base, ext='c'):
 
 def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
     ans = env.copy()
-    if not is_macos:
-        ans.cflags.append('-pthread')
-        ans.ldpaths.append('-pthread')
     ans.cflags.append('-fpic')
     ans.cppflags.append('-D_GLFW_' + module.upper())
     ans.cppflags.append('-D_GLFW_BUILD_DLL')
 
-    if is_macos:
-        ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
-    else:
-        ans.ldpaths.extend('-lrt -lm -ldl'.split())
     with open(os.path.join(base, 'source-info.json')) as f:
         sinfo = json.load(f)
     module_sources = list(sinfo[module]['sources'])
@@ -45,6 +37,9 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
     ans.all_headers = [x for x in os.listdir(base) if x.endswith('.h')]
 
     if module in ('x11', 'wayland'):
+        ans.cflags.append('-pthread')
+        ans.ldpaths.append('-pthread')
+        ans.ldpaths.extend('-lrt -lm -ldl'.split())
         at_least_version('xkbcommon', 0, 5)
 
     if module == 'x11':
@@ -53,6 +48,7 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
 
     elif module == 'cocoa':
+        ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
         for f in 'Cocoa IOKit CoreFoundation CoreVideo'.split():
             ans.ldpaths.extend(('-framework', f))
 
