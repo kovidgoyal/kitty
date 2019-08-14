@@ -581,10 +581,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         Py_DECREF(ret);
 #ifdef __APPLE__
         cocoa_create_global_menu();
-        if (!(OPT(macos_show_window_title_in) & WINDOW)) {
-            if (glfwGetCocoaWindow) cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
-            else log_error("Failed to load glfwGetCocoaWindow");
-        }
 #endif
 #define CC(dest, shape) {\
     if (!dest##_cursor) { \
@@ -641,8 +637,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetKeyboardCallback(glfw_window, key_callback);
     glfwSetDropCallback(glfw_window, drop_callback);
 #ifdef __APPLE__
-    if (glfwGetCocoaWindow) cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));
-    else log_error("Failed to load glfwGetCocoaWindow");
+    if (glfwGetCocoaWindow) {
+        if (!(OPT(macos_show_window_title_in) & WINDOW)) {
+            cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
+        }
+        cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));
+    } else log_error("Failed to load glfwGetCocoaWindow");
 #endif
     double now = monotonic();
     w->is_focused = true;
