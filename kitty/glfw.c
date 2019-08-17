@@ -44,10 +44,20 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height) {
         return; // no change, ignore
     }
-    if (fw / w > 5 || fh / h > 5 || fw < min_width || fh < min_height || fw < w || fh < h) {
+    if (w <= 0 || h <= 0 || fw / w > 5 || fh / h > 5 || fw < min_width || fh < min_height || fw < w || fh < h) {
         log_error("Invalid geometry ignored: framebuffer: %dx%d window: %dx%d\n", fw, fh, w, h);
+        if (!window->viewport_updated_at_least_once) {
+            window->viewport_width = min_width; window->viewport_height = min_height;
+            window->window_width = min_width; window->window_height = min_height;
+            window->viewport_x_ratio = 1; window->viewport_y_ratio = 1;
+            window->viewport_size_dirty = true;
+            if (notify_boss) {
+                call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, Py_False);
+            }
+        }
         return;
     }
+    window->viewport_updated_at_least_once = true;
     window->viewport_width = fw; window->viewport_height = fh;
     double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
     window->viewport_x_ratio = w > 0 ? (double)window->viewport_width / (double)w : xr;
@@ -59,8 +69,8 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     window->viewport_size_dirty = true;
     window->viewport_width = MAX(window->viewport_width, min_width);
     window->viewport_height = MAX(window->viewport_height, min_height);
-    window->window_width = MAX(w, 100);
-    window->window_height = MAX(h, 100);
+    window->window_width = MAX(w, min_width);
+    window->window_height = MAX(h, min_height);
     if (notify_boss) {
         call_boss(on_window_resize, "KiiO", window->id, window->viewport_width, window->viewport_height, dpi_changed ? Py_True : Py_False);
     }

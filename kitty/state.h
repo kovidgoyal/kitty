@@ -140,7 +140,7 @@ typedef struct {
     bool mouse_button_pressed[20];
     PyObject *window_title;
     bool is_key_pressed[MAX_KEY_COUNT];
-    bool viewport_size_dirty;
+    bool viewport_size_dirty, viewport_updated_at_least_once;
     LiveResizeInfo live_resize;
     bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
     uint32_t offscreen_texture_id;
