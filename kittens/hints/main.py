@@ -341,9 +341,9 @@ OPTIONS = r'''
 --program
 type=list
 What program to use to open matched text. Defaults to the default open program
-for the operating system.  Use a value of :file:`-` to paste the match into the
+for the operating system. Use a value of :file:`-` to paste the match into the
 terminal window instead. A value of :file:`@` will copy the match to the clipboard.
-A value of :file:`default` will run the default open program.  Can be specified
+A value of :file:`default` will run the default open program. Can be specified
 multiple times to run multiple programs.
 
 
@@ -356,11 +356,11 @@ The type of text to search for.
 --regex
 default=(?m)^\s*(.+)\s*$
 The regular expression to use when :option:`kitty +kitten hints --type`=regex.
-If you specify a group in the regular expression only the group
-will be matched. This allow you to match text ignoring a prefix/suffix, as
-needed. The default expression matches lines. To match text over
-multiple lines you should prefix the regular expression with :code:`(?ms)`,
-which turns on MULTILINE and DOTALL modes for the regex engine.
+The regular expression is in python syntax. If you specify a group in
+the regular expression only the group will be matched. This allow you to match
+text ignoring a prefix/suffix, as needed. The default expression matches lines.
+To match text over multiple lines you should prefix the regular expression with
+:code:`(?ms)`, which turns on MULTILINE and DOTALL modes for the regex engine.
 
 
 --url-prefixes
