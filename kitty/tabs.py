@@ -232,9 +232,13 @@ class Tab:  # {{{
         ans.fork()
         return ans
 
-    def new_window(self, use_shell=True, cmd=None, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None, env=None, location=None):
+    def new_window(
+        self, use_shell=True, cmd=None, stdin=None, override_title=None,
+        cwd_from=None, cwd=None, overlay_for=None, env=None, location=None,
+        copy_colors_from=None
+    ):
         child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env)
-        window = Window(self, child, self.opts, self.args, override_title=override_title)
+        window = Window(self, child, self.opts, self.args, override_title=override_title, copy_colors_from=copy_colors_from)
         if overlay_for is not None:
             overlaid = next(w for w in self.windows if w.id == overlay_for)
             window.overlay_for = overlay_for
@@ -245,8 +249,8 @@ class Tab:  # {{{
         self.relayout_borders()
         return window
 
-    def new_special_window(self, special_window, location=None):
-        return self.new_window(False, *special_window, location=location)
+    def new_special_window(self, special_window, location=None, copy_colors_from=None):
+        return self.new_window(False, *special_window, location=location, copy_colors_from=copy_colors_from)
 
     def close_window(self):
         if self.windows:

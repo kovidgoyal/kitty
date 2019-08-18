@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Add an option :opt:`macos_show_window_title_in` to control
   showing the window title in the menubar/titlebar (:pull:`1837`)
 
+- When running kittens, use the colorscheme of the current window
+  rather than the configured colorscheme (:iss:`1906`)
+
 - Dont fail to start if running the shell to read the EDITOR env var fails
   (:iss:`1869`)
 

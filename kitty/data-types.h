@@ -278,6 +278,7 @@ Cursor* alloc_cursor(void);
 LineBuf* alloc_linebuf(unsigned int, unsigned int);
 HistoryBuf* alloc_historybuf(unsigned int, unsigned int, unsigned int);
 ColorProfile* alloc_color_profile(void);
+void copy_color_profile(ColorProfile*, ColorProfile*);
 PyObject* create_256_color_table(void);
 PyObject* parse_bytes_dump(PyObject UNUSED *, PyObject *);
 PyObject* parse_bytes(PyObject UNUSED *, PyObject *);

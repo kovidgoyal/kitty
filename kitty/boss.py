@@ -716,7 +716,9 @@ class Boss:
                     },
                     cwd=w.cwd_of_child,
                     overlay_for=w.id
-                ))
+                ),
+                copy_colors_from=w
+            )
             overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, end_kitten)
             return overlay_window
 

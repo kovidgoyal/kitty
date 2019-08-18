@@ -1990,6 +1990,12 @@ is_rectangle_select(Screen *self, PyObject *a UNUSED) {
 }
 
 static PyObject*
+copy_colors_from(Screen *self, Screen *other) {
+    copy_color_profile(self->color_profile, other->color_profile);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 text_for_selection(Screen *self, PyObject *a UNUSED) {
     FullSelectionBoundary start, end;
     full_selection_limits_(selection, &start, &end);
@@ -2294,6 +2300,7 @@ static PyMethodDef methods[] = {
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
     MND(paste, METH_O)
+    MND(copy_colors_from, METH_O)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */

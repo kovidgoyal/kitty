@@ -131,7 +131,7 @@ def text_sanitizer(as_ansi, add_wrap_markers):
 
 class Window:
 
-    def __init__(self, tab, child, opts, args, override_title=None):
+    def __init__(self, tab, child, opts, args, override_title=None, copy_colors_from=None):
         self.action_on_close = None
         self.layout_data = None
         self.pty_resized_once = False
@@ -158,7 +158,10 @@ class Window:
         self.child, self.opts = child, opts
         cell_width, cell_height = cell_size_for_window(self.os_window_id)
         self.screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
-        setup_colors(self.screen, opts)
+        if copy_colors_from is not None:
+            self.screen.copy_colors_from(copy_colors_from.screen)
+        else:
+            setup_colors(self.screen, opts)
 
     @property
     def title(self):

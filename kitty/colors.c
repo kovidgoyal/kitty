@@ -98,6 +98,15 @@ update_ansi_color_table(ColorProfile *self, PyObject *val) {
     Py_RETURN_NONE;
 }
 
+void
+copy_color_profile(ColorProfile *dest, ColorProfile *src) {
+    memcpy(dest->color_table, src->color_table, sizeof(dest->color_table));
+    memcpy(dest->orig_color_table, src->orig_color_table, sizeof(dest->color_table));
+    memcpy(&dest->configured, &src->configured, sizeof(dest->configured));
+    memcpy(&dest->overridden, &src->overridden, sizeof(dest->overridden));
+    dest->dirty = true;
+}
+
 static PyObject*
 patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
     PyObject *spec, *profiles, *v; ColorProfile *self; int change_configured; PyObject *cursor_text_color;
