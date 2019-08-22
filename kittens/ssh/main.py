@@ -95,7 +95,7 @@ def parse_ssh_args(args):
 
 
 def quote(x):
-    # we have to escape unbalanced quotes and other unparseable
+    # we have to escape unbalanced quotes and other unparsable
     # args as they will break the shell script
     # But we do not want to quote things like * or 'echo hello'
     # See https://github.com/kovidgoyal/kitty/issues/1787

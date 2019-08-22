@@ -78,7 +78,7 @@ handleEvents(double timeout) {
 
 static bool
 waitForX11Event(double timeout) {
-    // returns true iff there is X11 data waiting to be read, does not run watches and timers
+    // returns true if there is X11 data waiting to be read, does not run watches and timers
     double end_time = glfwGetTime() + timeout;
     while(true) {
         if (timeout >= 0) {
@@ -2512,7 +2512,7 @@ _glfwDispatchX11Events(void) {
     }
 
     XFlush(_glfw.x11.display);
-    // XFlush can cause events to be queued, we dont use QueuedAfterFlush here
+    // XFlush can cause events to be queued, we don't use QueuedAfterFlush here
     // as something might have inserted events into the queue, but we want to guarantee
     // a flush.
     dispatched += dispatch_x11_queued_events(XEventsQueued(_glfw.x11.display, QueuedAlready));
