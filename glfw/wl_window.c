@@ -1836,7 +1836,7 @@ static inline bool _glfwEnsureDataDevice(void) {
         if (!_glfw.wl.dataDevice)
         {
             _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Wayland: Cannot use clipboard, failed to create data device");
+                            "Wayland: Cannot use clipboard, failed to create data device");
             return false;
         }
     }

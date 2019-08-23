@@ -692,8 +692,8 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
             [window->context.nsgl.object update];
         } @catch (NSException *e) {
             _glfwInputError(GLFW_PLATFORM_ERROR,
-                    "Failed to update NSGL Context object with error: %s (%s)",
-                    [[e name] UTF8String], [[e reason] UTF8String]);
+                            "Failed to update NSGL Context object with error: %s (%s)",
+                            [[e name] UTF8String], [[e reason] UTF8String]);
         }
     }
 
