@@ -33,6 +33,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix piping PNG images into the icat kitten not working (:iss:`1920`)
 
+- When the OS returns a fallback font that does not actually contain glyphs
+  for the text, do not exhaust the list of fallback fonts (:iss:`1918`)
+
 
 0.14.3 [2019-07-29]
 ---------------------

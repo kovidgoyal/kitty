@@ -497,6 +497,20 @@ load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool em
     Font *af = &fg->fonts[ans];
     if (!init_font(af, face, bold, italic, emoji_presentation)) fatal("Out of memory");
     Py_DECREF(face);
+    if (!has_cell_text(af, cell)) {
+        if (global_state.debug_font_fallback) {
+            printf("The font chosen by the OS for the text: ");
+            printf("U+%x ", cell->ch);
+            for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
+                printf("U+%x ", codepoint_for_mark(cell->cc_idx[i]));
+            }
+            printf("is ");
+            PyObject_Print(af->face, stdout, 0);
+            printf(" but it does not actually contain glyphs for that text\n");
+        }
+        del_font(af);
+        return MISSING_FONT;
+    }
     fg->fallback_fonts_count++;
     fg->fonts_count++;
     return ans;
