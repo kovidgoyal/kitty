@@ -319,13 +319,13 @@ window_focus_callback(GLFWwindow *w, int focused) {
 }
 
 static void
-drop_callback(GLFWwindow *w, int count, const char **paths) {
+drop_callback(GLFWwindow *w, int count, const char **strings) {
     if (!set_callback_window(w)) return;
-    PyObject *p = PyTuple_New(count);
-    if (p) {
-        for (int i = 0; i < count; i++) PyTuple_SET_ITEM(p, i, PyUnicode_FromString(paths[i]));
-        WINDOW_CALLBACK(on_drop, "O", p);
-        Py_CLEAR(p);
+    PyObject *s = PyTuple_New(count);
+    if (s) {
+        for (int i = 0; i < count; i++) PyTuple_SET_ITEM(s, i, PyUnicode_FromString(strings[i]));
+        WINDOW_CALLBACK(on_drop, "O", s);
+        Py_CLEAR(s);
         request_tick_callback();
     }
     global_state.callback_os_window = NULL;

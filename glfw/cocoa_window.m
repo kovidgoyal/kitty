@@ -630,7 +630,7 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
         markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
 
         [self updateTrackingAreas];
-        [self registerForDraggedTypes:@[NSPasteboardTypeFileURL]];
+        [self registerForDraggedTypes:@[NSPasteboardTypeFileURL, NSPasteboardTypeString]];
     }
 
     return self;
@@ -1073,16 +1073,27 @@ is_ascii_control_char(char x) {
 
     NSPasteboard* pasteboard = [sender draggingPasteboard];
     NSDictionary* options = @{NSPasteboardURLReadingFileURLsOnlyKey:@YES};
-    NSArray* urls = [pasteboard readObjectsForClasses:@[[NSURL class]]
+    NSArray* objs = [pasteboard readObjectsForClasses:@[[NSURL class], [NSString class]]
                                               options:options];
-    if (!urls) return NO;
-    const NSUInteger count = [urls count];
+    if (!objs) return NO;
+    const NSUInteger count = [objs count];
     if (count)
     {
         char** paths = calloc(count, sizeof(char*));
 
         for (NSUInteger i = 0;  i < count;  i++)
-            paths[i] = _glfw_strdup([urls[i] fileSystemRepresentation]);
+        {
+            id obj = objs[i];
+            if ([obj isKindOfClass:[NSURL class]]) {
+                paths[i] = _glfw_strdup([obj fileSystemRepresentation]);
+            } else if ([obj isKindOfClass:[NSString class]]) {
+                paths[i] = _glfw_strdup([obj UTF8String]);
+            } else {
+                _glfwInputError(GLFW_PLATFORM_ERROR,
+                                "Cocoa: Object is neither a URL nor a string");
+                paths[i] = _glfw_strdup("");
+            }
+        }
 
         _glfwInputDrop(window, (int) count, (const char**) paths);
 
