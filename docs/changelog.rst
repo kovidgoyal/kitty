@@ -31,6 +31,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression that broke setting background_opacity via remote control
   (:iss:`1895`)
 
+- Fix piping PNG images into the icat kitten not working (:iss:`1920`)
+
 
 0.14.3 [2019-07-29]
 ---------------------

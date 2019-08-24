@@ -194,11 +194,13 @@ def process(path, args, is_tempfile):
     available_height = args.place.height * (ss.height / ss.rows) if args.place else 10 * m.height
     needs_scaling = m.width > available_width or m.height > available_height
     needs_scaling = needs_scaling or args.scale_up
+    file_removed = False
     if m.fmt == 'png' and not needs_scaling:
         outfile = path
         transmit_mode = 't' if is_tempfile else 'f'
         fmt = 100
         width, height = m.width, m.height
+        file_removed = transmit_mode == 't'
     else:
         fmt = 24 if m.mode == 'rgb' else 32
         transmit_mode = 't'
@@ -206,6 +208,7 @@ def process(path, args, is_tempfile):
     show(outfile, width, height, fmt, transmit_mode, align=args.align, place=args.place)
     if not args.place:
         print()  # ensure cursor is on a new line
+    return file_removed
 
 
 def scan(d):
@@ -272,6 +275,7 @@ usage = 'image-file-or-url-or-directory ...'
 
 def process_single_item(item, args, url_pat=None, maybe_dir=True):
     is_tempfile = False
+    file_removed = False
     try:
         if isinstance(item, bytes):
             tf = NamedTemporaryFile(prefix='stdin-image-data-', delete=False)
@@ -287,7 +291,7 @@ def process_single_item(item, args, url_pat=None, maybe_dir=True):
                     raise SystemExit('Failed to download image at URL: {} with error: {}'.format(item, e))
                 item = tf.name
             is_tempfile = True
-            process(item, args, is_tempfile)
+            file_removed = process(item, args, is_tempfile)
         elif item.lower().startswith('file://'):
             from urllib.parse import urlparse
             from urllib.request import url2pathname
@@ -297,15 +301,15 @@ def process_single_item(item, args, url_pat=None, maybe_dir=True):
             else:
                 item = item.path
             item = url2pathname(item)
-            process(item, args, is_tempfile)
+            file_removed = process(item, args, is_tempfile)
         else:
             if maybe_dir and os.path.isdir(item):
                 for (x, mt) in scan(item):
                     process_single_item(x, args, url_pat=None, maybe_dir=False)
             else:
-                process(item, args, is_tempfile)
+                file_removed = process(item, args, is_tempfile)
     finally:
-        if is_tempfile:
+        if is_tempfile and not file_removed:
             os.remove(item)
 
 
