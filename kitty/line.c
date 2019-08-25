@@ -268,9 +268,9 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated, GPUCe
     char_type previous_width = 0;
 
     GPUCell blank_cell = { 0 };
-    GPUCell *cell;
+    GPUCell *cell, *temp_cell = &blank_cell;
     if (prev_cell == NULL || *prev_cell == NULL) {
-        *prev_cell = &blank_cell;
+        prev_cell = &temp_cell;
     }
 
     for (index_type pos=0; pos < limit; pos++) {
