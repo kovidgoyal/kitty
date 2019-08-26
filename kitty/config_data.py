@@ -461,7 +461,7 @@ The modifiers to override mouse selection even when a terminal application has g
 
 o('select_by_word_characters', ':@-./_~?&=%+#', long_text=_('''
 Characters considered part of a word when double clicking. In addition to these characters
-any character that is marked as an alpha-numeric character in the unicode
+any character that is marked as an alphanumeric character in the unicode
 database will be matched.'''))
 
 o('click_interval', -1.0, option_type=float, long_text=_('''

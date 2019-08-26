@@ -434,7 +434,7 @@ glfw_xkb_key_from_ime(KeyEvent *ev, bool handled_by_ime, bool failed) {
     }
     static xkb_keycode_t last_handled_press_keycode = 0;
     // We filter out release events that correspond to the last press event
-    // handled by the IME system. This wont fix the case of multiple key
+    // handled by the IME system. This won't fix the case of multiple key
     // presses before a release, but is better than nothing. For that case
     // you'd need to implement a ring buffer to store pending key presses.
     xkb_keycode_t prev_handled_press = last_handled_press_keycode;

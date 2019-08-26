@@ -370,7 +370,7 @@ Comma separated list of recognized URL prefixes.
 
 --word-characters
 Characters to consider as part of a word. In addition, all characters marked as
-alpha-numeric in the unicode database will be considered as word characters.
+alphanumeric in the unicode database will be considered as word characters.
 Defaults to the select_by_word_characters setting from kitty.conf.
 
 

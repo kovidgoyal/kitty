@@ -114,7 +114,7 @@ vec3 choose_color(float q, vec3 a, vec3 b) {
     return mix(b, a, q);
 }
 
-float are_integers_equal(float a, float b) { // return 1 iff equal otherwise 0
+float are_integers_equal(float a, float b) { // return 1 if equal otherwise 0
     float delta = abs(a - b);  // delta can be 0, 1 or larger
     return step(delta, 0.5); // 0 if 0.5 < delta else 1
 }
