@@ -61,7 +61,7 @@ void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
 index_type line_url_start_at(Line *self, index_type x);
 index_type line_url_end_at(Line *self, index_type x, bool, char_type);
-index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool*);
+index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool*, const GPUCell**) __attribute__((nonnull));
 unsigned int line_length(Line *self);
 size_t cell_as_unicode(CPUCell *cell, bool include_cc, Py_UCS4 *buf, char_type);
 size_t cell_as_unicode_for_fallback(CPUCell *cell, Py_UCS4 *buf);
@@ -100,6 +100,7 @@ void historybuf_clear(HistoryBuf *self);
     Py_UCS4 *buf = NULL; \
     PyObject *nl = PyUnicode_FromString("\n"); \
     PyObject *cr = PyUnicode_FromString("\r"); \
+    const GPUCell *prev_cell = NULL; \
     if (nl == NULL || cr == NULL) goto end; \
     if (as_ansi) { \
         buf = malloc(sizeof(Py_UCS4) * columns * 100); \
@@ -114,7 +115,7 @@ void historybuf_clear(HistoryBuf *self);
         } \
         if (as_ansi) { \
             bool truncated; \
-            index_type num = line_as_ansi(line, buf, columns * 100 - 2, &truncated); \
+            index_type num = line_as_ansi(line, buf, columns * 100 - 2, &truncated, &prev_cell); \
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num); \
         } else { \
             t = line_as_unicode(line); \

@@ -39,6 +39,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When the OS returns a fallback font that does not actually contain glyphs
   for the text, do not exhaust the list of fallback fonts (:iss:`1918`)
 
+- Fix formatting attributes not reset across line boundaries when passing
+  buffer as ANSI (:iss:`1924`)
+
 
 0.14.3 [2019-07-29]
 ---------------------

@@ -398,16 +398,17 @@ as_ansi(LineBuf *self, PyObject *callback) {
     // remove trailing empty lines
     index_type ylimit = self->ynum - 1;
     bool truncated;
+    const GPUCell *prev_cell = NULL;
     do {
         init_line(self, (&l), self->line_map[ylimit]);
-        if (line_as_ansi(&l, t, 5120, &truncated) != 0) break;
+        if (line_as_ansi(&l, t, 5120, &truncated, &prev_cell) != 0) break;
         ylimit--;
     } while(ylimit > 0);
 
     for(index_type i = 0; i <= ylimit; i++) {
         l.continued = ((i < self->ynum - 1) ? self->line_attrs[i+1] : self->line_attrs[i]) & CONTINUED_MASK;
         init_line(self, (&l), self->line_map[i]);
-        index_type num = line_as_ansi(&l, t, 5120, &truncated);
+        index_type num = line_as_ansi(&l, t, 5120, &truncated, &prev_cell);
         if (!(l.continued) && num < 5119) t[num++] = 10; // 10 = \n
         PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
         if (ans == NULL) return PyErr_NoMemory();

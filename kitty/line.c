@@ -258,7 +258,7 @@ write_sgr(const char *val, Py_UCS4 *buf, index_type buflen, index_type *i) {
 }
 
 index_type
-line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated) {
+line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated, const GPUCell** prev_cell) {
 #define WRITE_SGR(val) { if (!write_sgr(val, buf, buflen, &i)) { *truncated = true; return i; } }
 #define WRITE_CH(val) if (i > buflen - 1) { *truncated = true; return i; } buf[i++] = val;
 
@@ -267,8 +267,9 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated) {
     if (limit == 0) return 0;
     char_type previous_width = 0;
 
-    GPUCell blank_cell = { 0 };
-    GPUCell *cell, *prev_cell = &blank_cell;
+    static const GPUCell blank_cell = { 0 };
+    GPUCell *cell;
+    if (*prev_cell == NULL) *prev_cell = &blank_cell;
 
     for (index_type pos=0; pos < limit; pos++) {
         char_type ch = self->cpu_cells[pos].ch;
@@ -279,13 +280,13 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated) {
 
         cell = &self->gpu_cells[pos];
 
-#define CMP_ATTRS (cell->attrs & ATTRS_MASK_WITHOUT_WIDTH) != (prev_cell->attrs & ATTRS_MASK_WITHOUT_WIDTH)
-#define CMP(x) cell->x != prev_cell->x
+#define CMP_ATTRS (cell->attrs & ATTRS_MASK_WITHOUT_WIDTH) != ((*prev_cell)->attrs & ATTRS_MASK_WITHOUT_WIDTH)
+#define CMP(x) cell->x != (*prev_cell)->x
         if (CMP_ATTRS || CMP(fg) || CMP(bg) || CMP(decoration_fg)) {
-            const char *sgr = cell_as_sgr(cell, prev_cell);
+            const char *sgr = cell_as_sgr(cell, *prev_cell);
             if (*sgr) WRITE_SGR(sgr);
         }
-        prev_cell = cell;
+        *prev_cell = cell;
         WRITE_CH(ch);
         for(unsigned c = 0; c < arraysz(self->cpu_cells[pos].cc_idx) && self->cpu_cells[pos].cc_idx[c]; c++) {
             WRITE_CH(codepoint_for_mark(self->cpu_cells[pos].cc_idx[c]));
@@ -304,7 +305,8 @@ as_ansi(Line* self, PyObject *a UNUSED) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
     static Py_UCS4 t[5120] = {0};
     bool truncated;
-    index_type num = line_as_ansi(self, t, 5120, &truncated);
+    const GPUCell *prev_cell = NULL;
+    index_type num = line_as_ansi(self, t, 5120, &truncated, &prev_cell);
     PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
     return ans;
 }
@@ -589,7 +591,7 @@ decoration_as_sgr(uint8_t decoration) {
 
 
 const char*
-cell_as_sgr(GPUCell *cell, GPUCell *prev) {
+cell_as_sgr(const GPUCell *cell, const GPUCell *prev) {
     static char buf[128];
 #define SZ sizeof(buf) - (p - buf) - 2
 #define P(s) { size_t len = strlen(s); if (SZ > len) { memcpy(p, s, len); p += len; } }

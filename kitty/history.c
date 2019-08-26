@@ -179,6 +179,7 @@ pagerhist_push(HistoryBuf *self) {
     PagerHistoryBuf *ph = self->pagerhist;
     if (!ph) return;
     bool truncated;
+    const GPUCell *prev_cell = NULL;
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
 #define EXPAND_IF_FULL(sz) { \
@@ -193,7 +194,7 @@ pagerhist_push(HistoryBuf *self) {
         ph->buffer[ph->end++] = '\n';
     }
     while(sz < ph->maxsz - 2) {
-        size_t num = line_as_ansi(&l, ph->buffer + ph->end, ph->bufsize - ph->end - 2, &truncated);
+        size_t num = line_as_ansi(&l, ph->buffer + ph->end, ph->bufsize - ph->end - 2, &truncated, &prev_cell);
         if (!truncated) {
             ph->end += num;
             ph->buffer[ph->end++] = '\r';
@@ -270,12 +271,13 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     static Py_UCS4 t[5120];
     Line l = {.xnum=self->xnum};
     bool truncated;
+    const GPUCell *prev_cell = NULL;
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
         if (i < self->count - 1) {
             l.continued = *attrptr(self, index_of(self, i + 1)) & CONTINUED_MASK;
         } else l.continued = false;
-        index_type num = line_as_ansi(&l, t, 5120, &truncated);
+        index_type num = line_as_ansi(&l, t, 5120, &truncated, &prev_cell);
         if (!(l.continued) && num < 5119) t[num++] = 10; // 10 = \n
         PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
         if (ans == NULL) return PyErr_NoMemory();
