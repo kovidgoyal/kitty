@@ -497,8 +497,11 @@ class Window:
                 sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
                 h = list(map(sanitizer, h))
             self.screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
-            if not self.screen.linebuf.is_continued(0) and h:
-                h[-1] += '\n'
+            if h:
+                if not self.screen.linebuf.is_continued(0):
+                    h[-1] += '\n'
+                if as_ansi:
+                    h[-1] += '\x1b[m'
             lines = chain(h, lines)
         return ''.join(lines)
 
