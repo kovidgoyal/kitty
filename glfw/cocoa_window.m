@@ -263,7 +263,16 @@ format_text(const char *src) {
     char *p = buf;
     if (!src[0]) return "<none>";
     while (*src) {
-        p += snprintf(p, sizeof(buf) - (p - buf), "0x%x ", (unsigned char)*(src++));
+        int max_new_chars = sizeof(buf) - (p - buf);
+        int new_chars = snprintf(p, max_new_chars, "0x%x ", (unsigned char)*(src++));
+        if (new_chars < 0) {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                            "Cocoa: Failed to format string");
+            return "<error>";
+        } else if (new_chars > max_new_chars) { // buf was too short when new_chars >= max_new_chars but we only need to check for >
+            new_chars = max_new_chars;
+        }
+        p += new_chars;
     }
     if (p != buf) *(--p) = 0;
     return buf;
