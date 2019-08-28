@@ -261,9 +261,13 @@ static inline const char*
 format_text(const char *src) {
     static char buf[256];
     char *p = buf;
+    const char *last_char = buf + sizeof(buf) - 1;
     if (!src[0]) return "<none>";
     while (*src) {
-        p += snprintf(p, sizeof(buf) - (p - buf), "0x%x ", (unsigned char)*(src++));
+        int num = snprintf(p, sizeof(buf) - (p - buf), "0x%x ", (unsigned char)*(src++));
+        if (num < 0) return "<error>";
+        if (p + num >= last_char) break;
+        p += num;
     }
     if (p != buf) *(--p) = 0;
     return buf;
