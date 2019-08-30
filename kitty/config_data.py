@@ -112,7 +112,9 @@ Here, the key name for the :kbd:`A` key is :kbd:`0x61` and you can use it with::
 to map :kbd:`ctrl+a` to something.
 
 You can use the special action :code:`no_op` to unmap a keyboard shortcut that is
-assigned in the default configuration.
+assigned in the default configuration::
+
+    map kitty_mod+space no_op
 
 You can combine multiple actions to be triggered by a single shortcut, using the
 syntax below::
