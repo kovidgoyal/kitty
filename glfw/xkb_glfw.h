@@ -67,8 +67,8 @@ typedef struct {
 
 #ifdef _GLFW_X11
     int32_t                 keyboard_device_id;
-    bool                available;
-    bool                detectable;
+    bool                    available;
+    bool                    detectable;
     int                     majorOpcode;
     int                     eventBase;
     int                     errorBase;
