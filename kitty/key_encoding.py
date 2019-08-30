@@ -129,7 +129,8 @@ ENCODING = {
     'Y': 'q',
     'Z': 'r',
     'PLUS': 'Bi',
-    'UNDERSCORE': 'Bj'
+    'UNDERSCORE': 'Bj',
+    'MENU': 'Bk'
 }
 KEY_MAP = {
     32: 'A',
@@ -252,7 +253,8 @@ KEY_MAP = {
     344: 'Be',
     345: 'Bf',
     346: 'Bg',
-    347: 'Bh'
+    347: 'Bh',
+    348: 'Bk'
 }
 # END_ENCODING }}}
 
