@@ -952,13 +952,13 @@ is_ascii_control_char(char x) {
                     &char_count,
                     text
                     ) != noErr) {
-            debug_key(@"UCKeyTranslate failed for scancode: 0x%x (%s) %s\n",
-                    scancode, safe_name_for_scancode(scancode), format_mods(mods));
+            debug_key(@"UCKeyTranslate failed for scancode: 0x%x (%@) %@\n",
+                    scancode, @(safe_name_for_scancode(scancode)), @(format_mods(mods)));
             window->ns.deadKeyState = 0;
             return;
         }
-        debug_key(@"scancode: 0x%x (%s) %schar_count: %lu deadKeyState: %u repeat: %d",
-                scancode, safe_name_for_scancode(scancode), format_mods(mods), char_count, window->ns.deadKeyState, event.ARepeat);
+        debug_key(@"scancode: 0x%x (%@) %@char_count: %lu deadKeyState: %u repeat: %d",
+                scancode, @(safe_name_for_scancode(scancode)), @(format_mods(mods)), char_count, window->ns.deadKeyState, event.ARepeat);
         if (process_text) {
             // this will call insertText which will fill up _glfw.ns.text
             [self interpretKeyEvents:[NSArray arrayWithObject:event]];
@@ -967,7 +967,7 @@ is_ascii_control_char(char x) {
         }
         if (window->ns.deadKeyState && (char_count == 0 || scancode == 0x75)) {
             // 0x75 is the delete key which needs to be ignored during a compose sequence
-            debug_key(@"Sending pre-edit text for dead key (text: %s markedText: %@).\n", format_text(_glfw.ns.text), markedText);
+            debug_key(@"Sending pre-edit text for dead key (text: %@ markedText: %@).\n", @(format_text(_glfw.ns.text)), markedText);
             _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
                                [[markedText string] UTF8String], 1); // update pre-edit text
             return;
@@ -979,8 +979,8 @@ is_ascii_control_char(char x) {
         }
     }
     if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
-    debug_key(@"text: %s glfw_key: %s marked_text: %@\n",
-            format_text(_glfw.ns.text), _glfwGetKeyName(key), markedText);
+    debug_key(@"text: %@ glfw_key: %@ marked_text: %@\n",
+            @(format_text(_glfw.ns.text)), @(_glfwGetKeyName(key)), markedText);
     if (!window->ns.deadKeyState) {
         if ([self hasMarkedText]) {
             _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
