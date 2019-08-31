@@ -9,7 +9,7 @@ from collections import namedtuple
 from contextlib import suppress
 
 appname = 'kitty'
-version = (0, 14, 3)
+version = (0, 14, 4)
 str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
