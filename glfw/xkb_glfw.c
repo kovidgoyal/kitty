@@ -38,18 +38,21 @@ START_ALLOW_CASE_RANGE
     switch(key) { \
         S(space, SPACE); \
         S(apostrophe, APOSTROPHE); \
+        S(plus, PLUS); \
         S(comma, COMMA); \
         S(minus, MINUS); \
         S(period, PERIOD); \
         S(slash, SLASH); \
+        R(0, 9, 0, 9); \
         S(semicolon, SEMICOLON); \
         S(equal, EQUAL); \
+        D(A, Z, A, Z); \
         S(bracketleft, LEFT_BRACKET); \
         S(backslash, BACKSLASH); \
         S(bracketright, RIGHT_BRACKET); \
-        S(plus, PLUS); \
         S(underscore, UNDERSCORE); \
         S(grave, GRAVE_ACCENT); \
+        R(a, z, A, Z); \
         S(Escape, ESCAPE); \
         S(Return, ENTER); \
         S(Tab, TAB); \
@@ -91,9 +94,6 @@ START_ALLOW_CASE_RANGE
         S(Alt_R, RIGHT_ALT); \
         S(Super_R, RIGHT_SUPER); \
         S(Menu, MENU); \
-        R(0, 9, 0, 9); \
-        R(a, z, A, Z); \
-        D(A, Z, A, Z); \
         R(F1, F25, F1, F25); \
         R(KP_0, KP_9, KP_0, KP_9); \
 

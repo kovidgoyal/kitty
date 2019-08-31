@@ -1235,6 +1235,7 @@ init_glfw(PyObject *m) {
 // --- Printable keys ----------------------------------------------------------
     ADDC(GLFW_KEY_SPACE);
     ADDC(GLFW_KEY_APOSTROPHE);
+    ADDC(GLFW_KEY_PLUS);
     ADDC(GLFW_KEY_COMMA);
     ADDC(GLFW_KEY_MINUS);
     ADDC(GLFW_KEY_PERIOD);
@@ -1280,11 +1281,10 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_KEY_LEFT_BRACKET);
     ADDC(GLFW_KEY_BACKSLASH);
     ADDC(GLFW_KEY_RIGHT_BRACKET);
+    ADDC(GLFW_KEY_UNDERSCORE);
     ADDC(GLFW_KEY_GRAVE_ACCENT);
     ADDC(GLFW_KEY_WORLD_1);
     ADDC(GLFW_KEY_WORLD_2);
-    ADDC(GLFW_KEY_PLUS);
-    ADDC(GLFW_KEY_UNDERSCORE);
     ADDC(GLFW_KEY_LAST_PRINTABLE);
 
 // --- Function keys -----------------------------------------------------------

@@ -100,6 +100,7 @@
 /* Printable keys */
 #define GLFW_KEY_SPACE              32
 #define GLFW_KEY_APOSTROPHE         39  /* ' */
+#define GLFW_KEY_PLUS               43  /* + */
 #define GLFW_KEY_COMMA              44  /* , */
 #define GLFW_KEY_MINUS              45  /* - */
 #define GLFW_KEY_PERIOD             46  /* . */
@@ -145,11 +146,10 @@
 #define GLFW_KEY_LEFT_BRACKET       91  /* [ */
 #define GLFW_KEY_BACKSLASH          92  /* \ */
 #define GLFW_KEY_RIGHT_BRACKET      93  /* ] */
+#define GLFW_KEY_UNDERSCORE         95  /* _ */
 #define GLFW_KEY_GRAVE_ACCENT       96  /* ` */
 #define GLFW_KEY_WORLD_1            161 /* non-US #1 */
 #define GLFW_KEY_WORLD_2            162 /* non-US #2 */
-#define GLFW_KEY_PLUS               163
-#define GLFW_KEY_UNDERSCORE         164
 
 #define GLFW_KEY_LAST_PRINTABLE     GLFW_KEY_UNDERSCORE
 

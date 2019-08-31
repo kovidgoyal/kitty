@@ -439,6 +439,25 @@ const char* _glfwGetKeyName(int key)
     switch (key)
     {
         // Printable keys
+        case GLFW_KEY_SPACE:        return "SPACE";
+        case GLFW_KEY_APOSTROPHE:   return "APOSTROPHE";
+        case GLFW_KEY_PLUS:         return "PLUS";
+        case GLFW_KEY_COMMA:        return "COMMA";
+        case GLFW_KEY_MINUS:        return "MINUS";
+        case GLFW_KEY_PERIOD:       return "PERIOD";
+        case GLFW_KEY_SLASH:        return "SLASH";
+        case GLFW_KEY_0:            return "0";
+        case GLFW_KEY_1:            return "1";
+        case GLFW_KEY_2:            return "2";
+        case GLFW_KEY_3:            return "3";
+        case GLFW_KEY_4:            return "4";
+        case GLFW_KEY_5:            return "5";
+        case GLFW_KEY_6:            return "6";
+        case GLFW_KEY_7:            return "7";
+        case GLFW_KEY_8:            return "8";
+        case GLFW_KEY_9:            return "9";
+        case GLFW_KEY_SEMICOLON:    return "SEMICOLON";
+        case GLFW_KEY_EQUAL:        return "EQUAL";
         case GLFW_KEY_A:            return "A";
         case GLFW_KEY_B:            return "B";
         case GLFW_KEY_C:            return "C";
@@ -465,32 +484,13 @@ const char* _glfwGetKeyName(int key)
         case GLFW_KEY_X:            return "X";
         case GLFW_KEY_Y:            return "Y";
         case GLFW_KEY_Z:            return "Z";
-        case GLFW_KEY_1:            return "1";
-        case GLFW_KEY_2:            return "2";
-        case GLFW_KEY_3:            return "3";
-        case GLFW_KEY_4:            return "4";
-        case GLFW_KEY_5:            return "5";
-        case GLFW_KEY_6:            return "6";
-        case GLFW_KEY_7:            return "7";
-        case GLFW_KEY_8:            return "8";
-        case GLFW_KEY_9:            return "9";
-        case GLFW_KEY_0:            return "0";
-        case GLFW_KEY_SPACE:        return "SPACE";
-        case GLFW_KEY_MINUS:        return "MINUS";
-        case GLFW_KEY_EQUAL:        return "EQUAL";
-        case GLFW_KEY_LEFT_BRACKET: return "LEFT BRACKET";
-        case GLFW_KEY_RIGHT_BRACKET: return "RIGHT BRACKET";
+        case GLFW_KEY_LEFT_BRACKET: return "LEFT_BRACKET";
         case GLFW_KEY_BACKSLASH:    return "BACKSLASH";
-        case GLFW_KEY_SEMICOLON:    return "SEMICOLON";
-        case GLFW_KEY_APOSTROPHE:   return "APOSTROPHE";
-        case GLFW_KEY_GRAVE_ACCENT: return "GRAVE ACCENT";
-        case GLFW_KEY_COMMA:        return "COMMA";
-        case GLFW_KEY_PERIOD:       return "PERIOD";
-        case GLFW_KEY_SLASH:        return "SLASH";
-        case GLFW_KEY_WORLD_1:      return "WORLD 1";
-        case GLFW_KEY_WORLD_2:      return "WORLD 2";
-        case GLFW_KEY_PLUS:         return "PLUS";
+        case GLFW_KEY_RIGHT_BRACKET: return "RIGHT_BRACKET";
         case GLFW_KEY_UNDERSCORE:   return "UNDERSCORE";
+        case GLFW_KEY_GRAVE_ACCENT: return "GRAVE_ACCENT";
+        case GLFW_KEY_WORLD_1:      return "WORLD_1";
+        case GLFW_KEY_WORLD_2:      return "WORLD_2";
 
         // Function keys
         case GLFW_KEY_ESCAPE:       return "ESCAPE";

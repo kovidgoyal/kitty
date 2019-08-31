@@ -343,6 +343,7 @@ extern "C" {
 /* Printable keys */
 #define GLFW_KEY_SPACE              32
 #define GLFW_KEY_APOSTROPHE         39  /* ' */
+#define GLFW_KEY_PLUS               43  /* + */
 #define GLFW_KEY_COMMA              44  /* , */
 #define GLFW_KEY_MINUS              45  /* - */
 #define GLFW_KEY_PERIOD             46  /* . */
@@ -388,11 +389,10 @@ extern "C" {
 #define GLFW_KEY_LEFT_BRACKET       91  /* [ */
 #define GLFW_KEY_BACKSLASH          92  /* \ */
 #define GLFW_KEY_RIGHT_BRACKET      93  /* ] */
+#define GLFW_KEY_UNDERSCORE         95  /* _ */
 #define GLFW_KEY_GRAVE_ACCENT       96  /* ` */
 #define GLFW_KEY_WORLD_1            161 /* non-US #1 */
 #define GLFW_KEY_WORLD_2            162 /* non-US #2 */
-#define GLFW_KEY_PLUS               163
-#define GLFW_KEY_UNDERSCORE         164
 
 #define GLFW_KEY_LAST_PRINTABLE     GLFW_KEY_UNDERSCORE
 
@@ -3851,15 +3851,15 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* window, int mode, int value);
  *  - `GLFW_KEY_MINUS`
  *  - `GLFW_KEY_PERIOD`
  *  - `GLFW_KEY_SLASH`
+ *  - `GLFW_KEY_0` to `GLFW_KEY_9`
  *  - `GLFW_KEY_SEMICOLON`
  *  - `GLFW_KEY_EQUAL`
+ *  - `GLFW_KEY_A` to `GLFW_KEY_Z`
  *  - `GLFW_KEY_LEFT_BRACKET`
- *  - `GLFW_KEY_RIGHT_BRACKET`
  *  - `GLFW_KEY_BACKSLASH`
+ *  - `GLFW_KEY_RIGHT_BRACKET`
  *  - `GLFW_KEY_WORLD_1`
  *  - `GLFW_KEY_WORLD_2`
- *  - `GLFW_KEY_0` to `GLFW_KEY_9`
- *  - `GLFW_KEY_A` to `GLFW_KEY_Z`
  *  - `GLFW_KEY_KP_0` to `GLFW_KEY_KP_9`
  *  - `GLFW_KEY_KP_DECIMAL`
  *  - `GLFW_KEY_KP_DIVIDE`

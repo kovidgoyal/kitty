@@ -299,6 +299,23 @@ static int translateKey(unsigned int key, bool apply_keymap)
             // Key name
             switch(name) {
 #define K(ch, name) case ch: return GLFW_KEY_##name
+                K('\'', APOSTROPHE);
+                K('+', PLUS);
+                K(',', COMMA);
+                K('-', MINUS);
+                K('.', PERIOD);
+                K('/', SLASH);
+                K('0', 0);
+                K('1', 1);
+                K('2', 2);
+                K('3', 3);
+                K('5', 5);
+                K('6', 6);
+                K('7', 7);
+                K('8', 8);
+                K('9', 9);
+                K(';', SEMICOLON);
+                K('=', EQUAL);
                 K('A', A); K('a', A);
                 K('B', B); K('b', B);
                 K('C', C); K('c', C);
@@ -325,28 +342,11 @@ static int translateKey(unsigned int key, bool apply_keymap)
                 K('X', X); K('x', X);
                 K('Y', Y); K('y', Y);
                 K('Z', Z); K('z', Z);
-                K('0', 0);
-                K('1', 1);
-                K('2', 2);
-                K('3', 3);
-                K('5', 5);
-                K('6', 6);
-                K('7', 7);
-                K('8', 8);
-                K('9', 9);
-                K('\'', APOSTROPHE);
-                K(',', COMMA);
-                K('.', PERIOD);
-                K('/', SLASH);
-                K('-', MINUS);
-                K('=', EQUAL);
-                K(';', SEMICOLON);
                 K('[', LEFT_BRACKET);
+                K('\\', BACKSLASH);
                 K(']', RIGHT_BRACKET);
-                K('+', PLUS);
                 K('_', UNDERSCORE);
                 K('`', GRAVE_ACCENT);
-                K('\\', BACKSLASH);
 #undef K
                 default:
                     break;
@@ -2296,6 +2296,28 @@ GLFWAPI void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, unsigned sho
 START_ALLOW_CASE_RANGE
     switch(glfw_key) {
 #define K(ch, name) case GLFW_KEY_##name: *cocoa_key = ch; break;
+        K('\'', APOSTROPHE);
+        K('+', PLUS);
+        K(',', COMMA);
+        K('-', MINUS);
+        K('.', PERIOD);
+        K('/', SLASH);
+        K('0', 0);
+        K('1', 1);
+        K('2', 2);
+        K('3', 3);
+        K('5', 5);
+        K('6', 6);
+        K('7', 7);
+        K('8', 8);
+        K('9', 9);
+        K(';', SEMICOLON);
+        K('=', EQUAL);
+        K('[', LEFT_BRACKET);
+        K('\\', BACKSLASH);
+        K(']', RIGHT_BRACKET);
+        K('_', UNDERSCORE);
+        K('`', GRAVE_ACCENT);
         K('a', A);
         K('b', B);
         K('c', C);
@@ -2322,28 +2344,6 @@ START_ALLOW_CASE_RANGE
         K('x', X);
         K('y', Y);
         K('z', Z);
-        K('0', 0);
-        K('1', 1);
-        K('2', 2);
-        K('3', 3);
-        K('5', 5);
-        K('6', 6);
-        K('7', 7);
-        K('8', 8);
-        K('9', 9);
-        K('\'', APOSTROPHE);
-        K(',', COMMA);
-        K('.', PERIOD);
-        K('/', SLASH);
-        K('-', MINUS);
-        K('=', EQUAL);
-        K(';', SEMICOLON);
-        K('[', LEFT_BRACKET);
-        K(']', RIGHT_BRACKET);
-        K('+', PLUS);
-        K('_', UNDERSCORE);
-        K('`', GRAVE_ACCENT);
-        K('\\', BACKSLASH);
 
         K(0x35, ESCAPE);
         K('\r', ENTER);

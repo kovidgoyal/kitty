@@ -26,7 +26,6 @@ named_keys = {
     "'": 'APOSTROPHE',
     ',': 'COMMA',
     '-': 'MINUS',
-    '_': 'UNDERSCORE',
     '.': 'PERIOD',
     '/': 'SLASH',
     ';': 'SEMICOLON',
@@ -34,6 +33,7 @@ named_keys = {
     '[': 'LEFT_BRACKET',
     '\\': 'BACKSLASH',
     ']': 'RIGHT_BRACKET',
+    '_': 'UNDERSCORE',
     '`': 'GRAVE_ACCENT'
 }
 
