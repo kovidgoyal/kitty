@@ -51,7 +51,7 @@ def parse_shortcut(sc):
     if key is None:
         q = parts[-1]
         if q.startswith('0x'):
-            with suppress(Exception):
+            with suppress(ValueError):
                 key = int(q, 16)
         else:
             key = get_key_name_lookup()(q)
