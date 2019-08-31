@@ -737,6 +737,24 @@ screen_tab(Screen *self) {
     }
     if (!found) found = self->columns - 1;
     if (found != self->cursor->x) {
+        if (self->cursor->x < self->columns) {
+            linebuf_init_line(self->linebuf, self->cursor->y);
+            combining_type diff = found - self->cursor->x;
+            CPUCell *cpu_cell = self->linebuf->line->cpu_cells + self->cursor->x;
+            bool ok = true;
+            for (combining_type i = 0; i < diff; i++) {
+                CPUCell *c = cpu_cell + i;
+                if (c->ch != ' ' && c->ch != 0) { ok = false; break; }
+            }
+            if (ok) {
+                for (combining_type i = 0; i < diff; i++) {
+                    CPUCell *c = cpu_cell + i;
+                    c->ch = ' '; zero_at_ptr_count(c->cc_idx, arraysz(c->cc_idx));
+                }
+                cpu_cell->ch = '\t';
+                cpu_cell->cc_idx[0] = diff;
+            }
+        }
         self->cursor->x = found;
     }
 }

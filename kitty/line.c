@@ -187,15 +187,19 @@ size_t
 cell_as_unicode_for_fallback(CPUCell *cell, Py_UCS4 *buf) {
     size_t n = 1;
     buf[0] = cell->ch ? cell->ch : ' ';
-    for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
-        if (cell->cc_idx[i] != VS15 && cell->cc_idx[i] != VS16) buf[n++] = codepoint_for_mark(cell->cc_idx[i]);
-    }
+    if (buf[0] != '\t') {
+        for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
+            if (cell->cc_idx[i] != VS15 && cell->cc_idx[i] != VS16) buf[n++] = codepoint_for_mark(cell->cc_idx[i]);
+        }
+    } else buf[0] = ' ';
     return n;
 }
 
 size_t
 cell_as_utf8(CPUCell *cell, bool include_cc, char *buf, char_type zero_char) {
-    size_t n = encode_utf8(cell->ch ? cell->ch : zero_char, buf);
+    char_type ch = cell->ch ? cell->ch : zero_char;
+    if (ch == '\t') { include_cc = false; }
+    size_t n = encode_utf8(ch, buf);
     if (include_cc) {
         for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) n += encode_utf8(codepoint_for_mark(cell->cc_idx[i]), buf + n);
     }
@@ -205,10 +209,15 @@ cell_as_utf8(CPUCell *cell, bool include_cc, char *buf, char_type zero_char) {
 
 size_t
 cell_as_utf8_for_fallback(CPUCell *cell, char *buf) {
-    size_t n = encode_utf8(cell->ch ? cell->ch : ' ', buf);
-    for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
-        if (cell->cc_idx[i] != VS15 && cell->cc_idx[i] != VS16) {
-            n += encode_utf8(codepoint_for_mark(cell->cc_idx[i]), buf + n);
+    char_type ch = cell->ch ? cell->ch : ' ';
+    bool include_cc = true;
+    if (ch == '\t') { ch = ' '; include_cc = false; }
+    size_t n = encode_utf8(ch, buf);
+    if (include_cc) {
+        for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
+            if (cell->cc_idx[i] != VS15 && cell->cc_idx[i] != VS16) {
+                n += encode_utf8(codepoint_for_mark(cell->cc_idx[i]), buf + n);
+            }
         }
     }
     buf[n] = 0;
@@ -228,7 +237,16 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; };
         }
-        n += cell_as_unicode(self->cpu_cells + i, include_cc, buf + n, ' ');
+        if (ch == '\t') {
+            buf[n++] = '\t';
+            unsigned num_cells_to_skip_for_tab = self->cpu_cells[i].cc_idx[0];
+            while (num_cells_to_skip_for_tab && i + 1 < limit && self->cpu_cells[i+1].ch == ' ') {
+                i++;
+                num_cells_to_skip_for_tab--;
+            }
+        } else {
+            n += cell_as_unicode(self->cpu_cells + i, include_cc, buf + n, ' ');
+        }
         previous_width = self->gpu_cells[i].attrs & WIDTH_MASK;
     }
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
@@ -288,8 +306,15 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated, const
         }
         *prev_cell = cell;
         WRITE_CH(ch);
-        for(unsigned c = 0; c < arraysz(self->cpu_cells[pos].cc_idx) && self->cpu_cells[pos].cc_idx[c]; c++) {
-            WRITE_CH(codepoint_for_mark(self->cpu_cells[pos].cc_idx[c]));
+        if (ch == '\t') {
+            unsigned num_cells_to_skip_for_tab = self->cpu_cells[pos].cc_idx[0];
+            while (num_cells_to_skip_for_tab && pos + 1 < limit && self->cpu_cells[pos+1].ch == ' ') {
+                num_cells_to_skip_for_tab--; pos++;
+            }
+        } else {
+            for(unsigned c = 0; c < arraysz(self->cpu_cells[pos].cc_idx) && self->cpu_cells[pos].cc_idx[c]; c++) {
+                WRITE_CH(codepoint_for_mark(self->cpu_cells[pos].cc_idx[c]));
+            }
         }
         previous_width = cell->attrs & WIDTH_MASK;
     }

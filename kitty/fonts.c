@@ -550,6 +550,7 @@ START_ALLOW_CASE_RANGE
     switch(cpu_cell->ch) {
         case 0:
         case ' ':
+        case '\t':
             return BLANK_FONT;
         case 0x2500 ... 0x2570:
         case 0x2574 ... 0x259f:
