@@ -32,6 +32,7 @@ named_keys = {
     ';': 'SEMICOLON',
     '=': 'EQUAL',
     '[': 'LEFT_BRACKET',
+    '\\': 'BACKSLASH',
     ']': 'RIGHT_BRACKET',
     '`': 'GRAVE_ACCENT'
 }
