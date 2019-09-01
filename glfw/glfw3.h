@@ -394,6 +394,8 @@ extern "C" {
 #define GLFW_KEY_PLUS               163
 #define GLFW_KEY_UNDERSCORE         164
 
+#define GLFW_KEY_LAST_PRINTABLE     GLFW_KEY_UNDERSCORE
+
 /* Function keys */
 #define GLFW_KEY_ESCAPE             256
 #define GLFW_KEY_ENTER              257
