@@ -34,6 +34,61 @@
 // Needed for _NSGetProgname
 #include <crt_externs.h>
 
+
+#define PARAGRAPH_UTF_8                        0xc2a7 // §
+#define MASCULINE_UTF_8                        0xc2ba // º
+#define A_DIAERESIS_UPPER_CASE_UTF_8           0xc384 // Ä
+#define O_DIAERESIS_UPPER_CASE_UTF_8           0xc396 // Ö
+#define U_DIAERESIS_UPPER_CASE_UTF_8           0xc39c // Ü
+#define S_SHARP_UTF_8                          0xc39f // ß
+#define A_GRAVE_LOWER_CASE_UTF_8               0xc3a0 // à
+#define A_DIAERESIS_LOWER_CASE_UTF_8           0xc3a4 // ä
+#define A_RING_LOWER_CASE_UTF_8                0xc3a5 // å
+#define AE_LOWER_CASE_UTF_8                    0xc3a6 // æ
+#define C_CEDILLA_LOWER_CASE_UTF_8             0xc3a7 // ç
+#define E_GRAVE_LOWER_CASE_UTF_8               0xc3a8 // è
+#define E_ACUTE_LOWER_CASE_UTF_8               0xc3a9 // é
+#define I_GRAVE_LOWER_CASE_UTF_8               0xc3ac // ì
+#define N_TILDE_LOWER_CASE_UTF_8               0xc3b1 // ñ
+#define O_GRAVE_LOWER_CASE_UTF_8               0xc3b2 // ò
+#define O_DIAERESIS_LOWER_CASE_UTF_8           0xc3b6 // ö
+#define O_SLASH_LOWER_CASE_UTF_8               0xc3b8 // ø
+#define U_GRAVE_LOWER_CASE_UTF_8               0xc3b9 // ù
+#define U_DIAERESIS_LOWER_CASE_UTF_8           0xc3bc // ü
+#define CYRILLIC_A_LOWER_CASE_UTF_8            0xd0b0 // а
+#define CYRILLIC_BE_LOWER_CASE_UTF_8           0xd0b1 // б
+#define CYRILLIC_VE_LOWER_CASE_UTF_8           0xd0b2 // в
+#define CYRILLIC_GHE_LOWER_CASE_UTF_8          0xd0b3 // г
+#define CYRILLIC_DE_LOWER_CASE_UTF_8           0xd0b4 // д
+#define CYRILLIC_IE_LOWER_CASE_UTF_8           0xd0b5 // е
+#define CYRILLIC_ZHE_LOWER_CASE_UTF_8          0xd0b6 // ж
+#define CYRILLIC_ZE_LOWER_CASE_UTF_8           0xd0b7 // з
+#define CYRILLIC_I_LOWER_CASE_UTF_8            0xd0b8 // и
+#define CYRILLIC_SHORT_I_LOWER_CASE_UTF_8      0xd0b9 // й
+#define CYRILLIC_KA_LOWER_CASE_UTF_8           0xd0ba // к
+#define CYRILLIC_EL_LOWER_CASE_UTF_8           0xd0bb // л
+#define CYRILLIC_EM_LOWER_CASE_UTF_8           0xd0bc // м
+#define CYRILLIC_EN_LOWER_CASE_UTF_8           0xd0bd // н
+#define CYRILLIC_O_LOWER_CASE_UTF_8            0xd0be // о
+#define CYRILLIC_PE_LOWER_CASE_UTF_8           0xd0bf // п
+#define CYRILLIC_ER_LOWER_CASE_UTF_8           0xd180 // р
+#define CYRILLIC_ES_LOWER_CASE_UTF_8           0xd181 // с
+#define CYRILLIC_TE_LOWER_CASE_UTF_8           0xd182 // т
+#define CYRILLIC_U_LOWER_CASE_UTF_8            0xd183 // у
+#define CYRILLIC_EF_LOWER_CASE_UTF_8           0xd184 // ф
+#define CYRILLIC_HA_LOWER_CASE_UTF_8           0xd185 // х
+#define CYRILLIC_TSE_LOWER_CASE_UTF_8          0xd186 // ц
+#define CYRILLIC_CHE_LOWER_CASE_UTF_8          0xd187 // ч
+#define CYRILLIC_SHA_LOWER_CASE_UTF_8          0xd188 // ш
+#define CYRILLIC_SHCHA_LOWER_CASE_UTF_8        0xd189 // щ
+#define CYRILLIC_HARD_SIGN_LOWER_CASE_UTF_8    0xd18a // ъ
+#define CYRILLIC_YERU_LOWER_CASE_UTF_8         0xd18b // ы
+#define CYRILLIC_SOFT_SIGN_LOWER_CASE_UTF_8    0xd18c // ь
+#define CYRILLIC_E_LOWER_CASE_UTF_8            0xd18d // э
+#define CYRILLIC_YU_LOWER_CASE_UTF_8           0xd18e // ю
+#define CYRILLIC_YA_LOWER_CASE_UTF_8           0xd18f // я
+#define CYRILLIC_IO_LOWER_CASE_UTF_8           0xd191 // ё
+
 // Returns the style mask corresponding to the window settings
 //
 static NSUInteger getStyleMask(_GLFWwindow* window)
@@ -299,7 +354,14 @@ static int translateKey(unsigned int key, bool apply_keymap)
             // Key name
             switch(name) {
 #define K(ch, name) case ch: return GLFW_KEY_##name
+                K('!', EXCLAM);
+                K('"', DOUBLE_QUOTE);
+                K('#', NUMBER_SIGN);
+                K('$', DOLLAR);
+                K('&', AMPERSAND);
                 K('\'', APOSTROPHE);
+                K('(', PARENTHESIS_LEFT);
+                K(')', PARENTHESIS_RIGHT);
                 K('+', PLUS);
                 K(',', COMMA);
                 K('-', MINUS);
@@ -314,8 +376,12 @@ static int translateKey(unsigned int key, bool apply_keymap)
                 K('7', 7);
                 K('8', 8);
                 K('9', 9);
+                K(':', COLON);
                 K(';', SEMICOLON);
+                K('<', LESS);
                 K('=', EQUAL);
+                K('>', GREATER);
+                K('@', AT);
                 K('A', A); K('a', A);
                 K('B', B); K('b', B);
                 K('C', C); K('c', C);
@@ -347,6 +413,59 @@ static int translateKey(unsigned int key, bool apply_keymap)
                 K(']', RIGHT_BRACKET);
                 K('_', UNDERSCORE);
                 K('`', GRAVE_ACCENT);
+                K(PARAGRAPH_UTF_8, PARAGRAPH);
+                K(MASCULINE_UTF_8, MASCULINE);
+                K(A_DIAERESIS_UPPER_CASE_UTF_8, A_DIAERESIS);
+                K(O_DIAERESIS_UPPER_CASE_UTF_8, O_DIAERESIS);
+                K(U_DIAERESIS_UPPER_CASE_UTF_8, U_DIAERESIS);
+                K(S_SHARP_UTF_8, S_SHARP);
+                K(A_GRAVE_LOWER_CASE_UTF_8, A_GRAVE);
+                K(A_DIAERESIS_LOWER_CASE_UTF_8, A_DIAERESIS);
+                K(A_RING_LOWER_CASE_UTF_8, A_RING);
+                K(AE_LOWER_CASE_UTF_8, AE);
+                K(C_CEDILLA_LOWER_CASE_UTF_8, C_CEDILLA);
+                K(E_GRAVE_LOWER_CASE_UTF_8, E_GRAVE);
+                K(E_ACUTE_LOWER_CASE_UTF_8, E_ACUTE);
+                K(I_GRAVE_LOWER_CASE_UTF_8, I_GRAVE);
+                K(N_TILDE_LOWER_CASE_UTF_8, N_TILDE);
+                K(O_GRAVE_LOWER_CASE_UTF_8, O_GRAVE);
+                K(O_DIAERESIS_LOWER_CASE_UTF_8, O_DIAERESIS);
+                K(O_SLASH_LOWER_CASE_UTF_8, O_SLASH);
+                K(U_GRAVE_LOWER_CASE_UTF_8, U_GRAVE);
+                K(U_DIAERESIS_LOWER_CASE_UTF_8, U_DIAERESIS);
+                K(CYRILLIC_A_LOWER_CASE_UTF_8, CYRILLIC_A);
+                K(CYRILLIC_BE_LOWER_CASE_UTF_8, CYRILLIC_BE);
+                K(CYRILLIC_VE_LOWER_CASE_UTF_8, CYRILLIC_VE);
+                K(CYRILLIC_GHE_LOWER_CASE_UTF_8, CYRILLIC_GHE);
+                K(CYRILLIC_DE_LOWER_CASE_UTF_8, CYRILLIC_DE);
+                K(CYRILLIC_IE_LOWER_CASE_UTF_8, CYRILLIC_IE);
+                K(CYRILLIC_ZHE_LOWER_CASE_UTF_8, CYRILLIC_ZHE);
+                K(CYRILLIC_ZE_LOWER_CASE_UTF_8, CYRILLIC_ZE);
+                K(CYRILLIC_I_LOWER_CASE_UTF_8, CYRILLIC_I);
+                K(CYRILLIC_SHORT_I_LOWER_CASE_UTF_8, CYRILLIC_SHORT_I);
+                K(CYRILLIC_KA_LOWER_CASE_UTF_8, CYRILLIC_KA);
+                K(CYRILLIC_EL_LOWER_CASE_UTF_8, CYRILLIC_EL);
+                K(CYRILLIC_EM_LOWER_CASE_UTF_8, CYRILLIC_EM);
+                K(CYRILLIC_EN_LOWER_CASE_UTF_8, CYRILLIC_EN);
+                K(CYRILLIC_O_LOWER_CASE_UTF_8, CYRILLIC_O);
+                K(CYRILLIC_PE_LOWER_CASE_UTF_8, CYRILLIC_PE);
+                K(CYRILLIC_ER_LOWER_CASE_UTF_8, CYRILLIC_ER);
+                K(CYRILLIC_ES_LOWER_CASE_UTF_8, CYRILLIC_ES);
+                K(CYRILLIC_TE_LOWER_CASE_UTF_8, CYRILLIC_TE);
+                K(CYRILLIC_U_LOWER_CASE_UTF_8, CYRILLIC_U);
+                K(CYRILLIC_EF_LOWER_CASE_UTF_8, CYRILLIC_EF);
+                K(CYRILLIC_HA_LOWER_CASE_UTF_8, CYRILLIC_HA);
+                K(CYRILLIC_TSE_LOWER_CASE_UTF_8, CYRILLIC_TSE);
+                K(CYRILLIC_CHE_LOWER_CASE_UTF_8, CYRILLIC_CHE);
+                K(CYRILLIC_SHA_LOWER_CASE_UTF_8, CYRILLIC_SHA);
+                K(CYRILLIC_SHCHA_LOWER_CASE_UTF_8, CYRILLIC_SHCHA);
+                K(CYRILLIC_HARD_SIGN_LOWER_CASE_UTF_8, CYRILLIC_HARD_SIGN);
+                K(CYRILLIC_YERU_LOWER_CASE_UTF_8, CYRILLIC_YERU);
+                K(CYRILLIC_SOFT_SIGN_LOWER_CASE_UTF_8, CYRILLIC_SOFT_SIGN);
+                K(CYRILLIC_E_LOWER_CASE_UTF_8, CYRILLIC_E);
+                K(CYRILLIC_YU_LOWER_CASE_UTF_8, CYRILLIC_YU);
+                K(CYRILLIC_YA_LOWER_CASE_UTF_8, CYRILLIC_YA);
+                K(CYRILLIC_IO_LOWER_CASE_UTF_8, CYRILLIC_IO);
 #undef K
                 default:
                     break;
@@ -2296,7 +2415,14 @@ GLFWAPI void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, unsigned sho
 START_ALLOW_CASE_RANGE
     switch(glfw_key) {
 #define K(ch, name) case GLFW_KEY_##name: *cocoa_key = ch; break;
+        K('!', EXCLAM);
+        K('"', DOUBLE_QUOTE);
+        K('#', NUMBER_SIGN);
+        K('$', DOLLAR);
+        K('&', AMPERSAND);
         K('\'', APOSTROPHE);
+        K('(', PARENTHESIS_LEFT);
+        K(')', PARENTHESIS_RIGHT);
         K('+', PLUS);
         K(',', COMMA);
         K('-', MINUS);
@@ -2311,8 +2437,12 @@ START_ALLOW_CASE_RANGE
         K('7', 7);
         K('8', 8);
         K('9', 9);
+        K(':', COLON);
         K(';', SEMICOLON);
+        K('<', LESS);
         K('=', EQUAL);
+        K('>', GREATER);
+        K('@', AT);
         K('[', LEFT_BRACKET);
         K('\\', BACKSLASH);
         K(']', RIGHT_BRACKET);
@@ -2344,6 +2474,56 @@ START_ALLOW_CASE_RANGE
         K('x', X);
         K('y', Y);
         K('z', Z);
+        K(PARAGRAPH_UTF_8, PARAGRAPH);
+        K(MASCULINE_UTF_8, MASCULINE);
+        K(S_SHARP_UTF_8, S_SHARP);
+        K(A_GRAVE_LOWER_CASE_UTF_8, A_GRAVE);
+        K(A_DIAERESIS_LOWER_CASE_UTF_8, A_DIAERESIS);
+        K(A_RING_LOWER_CASE_UTF_8, A_RING);
+        K(AE_LOWER_CASE_UTF_8, AE);
+        K(C_CEDILLA_LOWER_CASE_UTF_8, C_CEDILLA);
+        K(E_GRAVE_LOWER_CASE_UTF_8, E_GRAVE);
+        K(E_ACUTE_LOWER_CASE_UTF_8, E_ACUTE);
+        K(I_GRAVE_LOWER_CASE_UTF_8, I_GRAVE);
+        K(N_TILDE_LOWER_CASE_UTF_8, N_TILDE);
+        K(O_GRAVE_LOWER_CASE_UTF_8, O_GRAVE);
+        K(O_DIAERESIS_LOWER_CASE_UTF_8, O_DIAERESIS);
+        K(O_SLASH_LOWER_CASE_UTF_8, O_SLASH);
+        K(U_GRAVE_LOWER_CASE_UTF_8, U_GRAVE);
+        K(U_DIAERESIS_LOWER_CASE_UTF_8, U_DIAERESIS);
+        K(CYRILLIC_A_LOWER_CASE_UTF_8, CYRILLIC_A);
+        K(CYRILLIC_BE_LOWER_CASE_UTF_8, CYRILLIC_BE);
+        K(CYRILLIC_VE_LOWER_CASE_UTF_8, CYRILLIC_VE);
+        K(CYRILLIC_GHE_LOWER_CASE_UTF_8, CYRILLIC_GHE);
+        K(CYRILLIC_DE_LOWER_CASE_UTF_8, CYRILLIC_DE);
+        K(CYRILLIC_IE_LOWER_CASE_UTF_8, CYRILLIC_IE);
+        K(CYRILLIC_ZHE_LOWER_CASE_UTF_8, CYRILLIC_ZHE);
+        K(CYRILLIC_ZE_LOWER_CASE_UTF_8, CYRILLIC_ZE);
+        K(CYRILLIC_I_LOWER_CASE_UTF_8, CYRILLIC_I);
+        K(CYRILLIC_SHORT_I_LOWER_CASE_UTF_8, CYRILLIC_SHORT_I);
+        K(CYRILLIC_KA_LOWER_CASE_UTF_8, CYRILLIC_KA);
+        K(CYRILLIC_EL_LOWER_CASE_UTF_8, CYRILLIC_EL);
+        K(CYRILLIC_EM_LOWER_CASE_UTF_8, CYRILLIC_EM);
+        K(CYRILLIC_EN_LOWER_CASE_UTF_8, CYRILLIC_EN);
+        K(CYRILLIC_O_LOWER_CASE_UTF_8, CYRILLIC_O);
+        K(CYRILLIC_PE_LOWER_CASE_UTF_8, CYRILLIC_PE);
+        K(CYRILLIC_ER_LOWER_CASE_UTF_8, CYRILLIC_ER);
+        K(CYRILLIC_ES_LOWER_CASE_UTF_8, CYRILLIC_ES);
+        K(CYRILLIC_TE_LOWER_CASE_UTF_8, CYRILLIC_TE);
+        K(CYRILLIC_U_LOWER_CASE_UTF_8, CYRILLIC_U);
+        K(CYRILLIC_EF_LOWER_CASE_UTF_8, CYRILLIC_EF);
+        K(CYRILLIC_HA_LOWER_CASE_UTF_8, CYRILLIC_HA);
+        K(CYRILLIC_TSE_LOWER_CASE_UTF_8, CYRILLIC_TSE);
+        K(CYRILLIC_CHE_LOWER_CASE_UTF_8, CYRILLIC_CHE);
+        K(CYRILLIC_SHA_LOWER_CASE_UTF_8, CYRILLIC_SHA);
+        K(CYRILLIC_SHCHA_LOWER_CASE_UTF_8, CYRILLIC_SHCHA);
+        K(CYRILLIC_HARD_SIGN_LOWER_CASE_UTF_8, CYRILLIC_HARD_SIGN);
+        K(CYRILLIC_YERU_LOWER_CASE_UTF_8, CYRILLIC_YERU);
+        K(CYRILLIC_SOFT_SIGN_LOWER_CASE_UTF_8, CYRILLIC_SOFT_SIGN);
+        K(CYRILLIC_E_LOWER_CASE_UTF_8, CYRILLIC_E);
+        K(CYRILLIC_YU_LOWER_CASE_UTF_8, CYRILLIC_YU);
+        K(CYRILLIC_YA_LOWER_CASE_UTF_8, CYRILLIC_YA);
+        K(CYRILLIC_IO_LOWER_CASE_UTF_8, CYRILLIC_IO);
 
         K(0x35, ESCAPE);
         K('\r', ENTER);

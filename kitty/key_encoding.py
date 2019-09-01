@@ -258,7 +258,11 @@ KEY_MAP = {
 }
 # END_ENCODING }}}
 
-text_keys = string.ascii_uppercase + string.ascii_lowercase + string.digits + '`~!@#$%^&*()_-+=[{]}\\|<,>./?;:\'" '
+text_keys = (
+    string.ascii_uppercase + string.ascii_lowercase + string.digits +
+    '`~!@#$%^&*()_-+=[{]}\\|<,>./?;:\'" '
+    'ÄäÖöÜüß§ºàåæçèéìñòøùабвгдежзийклмнопрстуфхцчшщъыьэюяё'
+)
 
 
 def text_match(key):
