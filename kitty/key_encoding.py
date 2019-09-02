@@ -296,11 +296,11 @@ def update_encoding():
     key_map = {}
     i = len(ans)
     for k in sorted(keys, key=lambda k: getattr(defines, k)):
+        if k in ('GLFW_KEY_LAST', 'GLFW_KEY_LAST_PRINTABLE'):
+            continue
         val = getattr(defines, k)
         name = symbolic_name(k)
-        if val <= defines.GLFW_KEY_LAST and name not in (
-            'LAST', 'LAST_PRINTABLE'
-        ) and val != defines.GLFW_KEY_UNKNOWN:
+        if val <= defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN:
             if name not in ans:
                 ans[name] = encode(i)
                 i += 1
