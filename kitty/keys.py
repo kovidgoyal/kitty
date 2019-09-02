@@ -161,7 +161,7 @@ action_map = {
 def extended_key_event(key, mods, action):
     if key >= defines.GLFW_KEY_LAST or key == defines.GLFW_KEY_UNKNOWN or (
         # Shifted printable key should be handled by on_text_input()
-        mods <= defines.GLFW_MOD_SHIFT and 32 <= key <= 126
+        mods <= defines.GLFW_MOD_SHIFT and defines.GLFW_KEY_SPACE <= key <= defines.GLFW_KEY_LAST_PRINTABLE
     ):
         return b''
     if mods == 0 and key in (
