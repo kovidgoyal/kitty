@@ -1285,6 +1285,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_KEY_WORLD_2);
     ADDC(GLFW_KEY_PLUS);
     ADDC(GLFW_KEY_UNDERSCORE);
+    ADDC(GLFW_KEY_LAST_PRINTABLE);
 
 // --- Function keys -----------------------------------------------------------
     ADDC(GLFW_KEY_ESCAPE);
