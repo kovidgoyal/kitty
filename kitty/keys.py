@@ -304,7 +304,7 @@ def generate_key_table_impl(w):
     def key_name(k):
         return k[len('GLFW_KEY_'):]
 
-    keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in {'GLFW_KEY_LAST', 'GLFW_KEY_UNKNOWN'}}
+    keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in {'GLFW_KEY_LAST', 'GLFW_KEY_LAST_PRINTABLE', 'GLFW_KEY_UNKNOWN'}}
     key_rmap = []
     for i in range(number_of_keys):
         k = keys.get(i)
