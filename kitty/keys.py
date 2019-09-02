@@ -314,7 +314,7 @@ def generate_key_table_impl(w):
             w('%d, /* %s */' % (key_count, key_name(k)))
             key_rmap.append(i)
             key_count += 1
-            if key_count > 128:
+            if key_count > 256:
                 raise OverflowError('Too many keys')
     w('};\n')
     w('static inline const char* key_name(int key) { switch(key) {')
@@ -354,7 +354,7 @@ def generate_key_table_impl(w):
                     ind('case 0x{:x}:'.format(mods))
                     i += 1
                     if key_bytes:
-                        ind('switch(key & 0x7f) { default: return NULL;')
+                        ind('switch(key & 0xff) { default: return NULL;')
                         i += 1
                         for key, (data, glfw_key) in key_bytes.items():
                             ind('case {}: // {}'.format(key, key_name(keys[glfw_key])))
