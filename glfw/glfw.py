@@ -8,10 +8,7 @@ import re
 import sys
 
 _plat = sys.platform.lower()
-is_freebsd = 'freebsd' in _plat
-is_netbsd = 'netbsd' in _plat
-is_dragonflybsd = 'dragonfly' in _plat
-is_bsd = is_freebsd or is_netbsd or is_dragonflybsd
+is_linux = 'linux' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -30,7 +27,7 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
         sinfo = json.load(f)
     module_sources = list(sinfo[module]['sources'])
     if module in ('x11', 'wayland'):
-        remove = 'linux_joystick.c' if is_bsd else 'null_joystick.c'
+        remove = 'null_joystick.c' if is_linux else 'linux_joystick.c'
         module_sources.remove(remove)
 
     ans.sources = sinfo['common']['sources'] + module_sources
