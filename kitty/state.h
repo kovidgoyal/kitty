@@ -207,7 +207,7 @@ OSWindow* add_os_window(void);
 OSWindow* current_os_window(void);
 void os_window_regions(OSWindow*, Region *main, Region *tab_bar);
 bool drag_scroll(Window *, OSWindow*);
-void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type, unsigned int, OSWindow *w);
+void draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type, unsigned int, bool, OSWindow *w);
 ssize_t create_cell_vao(void);
 ssize_t create_graphics_vao(void);
 ssize_t create_border_vao(void);

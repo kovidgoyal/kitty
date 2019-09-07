@@ -526,7 +526,7 @@ update_window_title(Window *w, OSWindow *os_window) {
 }
 
 static inline bool
-prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows) {
+prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg) {
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
@@ -543,11 +543,17 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
     }
     Tab *tab = os_window->tabs + os_window->active_tab;
     *active_window_bg = OPT(background);
+    *all_windows_have_same_bg = true;
+    *num_visible_windows = 0;
+    color_type first_window_bg = 0;
     for (unsigned int i = 0; i < tab->num_windows; i++) {
         Window *w = tab->windows + i;
 #define WD w->render_data
         if (w->visible && WD.screen) {
             *num_visible_windows += 1;
+            color_type window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg);
+            if (*num_visible_windows == 1) first_window_bg = window_bg;
+            if (first_window_bg != window_bg) all_windows_have_same_bg = false;
             if (w->last_drag_scroll_at > 0) {
                 if (now - w->last_drag_scroll_at >= 0.02) {
                     if (drag_scroll(w, os_window)) {
@@ -563,7 +569,7 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
                 collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
                 if (w->cursor_visible_at_last_render != WD.screen->cursor_render_info.is_visible || w->last_cursor_x != WD.screen->cursor_render_info.x || w->last_cursor_y != WD.screen->cursor_render_info.y || w->last_cursor_shape != WD.screen->cursor_render_info.shape) needs_render = true;
                 update_window_title(w, os_window);
-                *active_window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg);
+                *active_window_bg = window_bg;
             } else WD.screen->cursor_render_info.is_visible = false;
             if (send_cell_data_to_gpu(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
@@ -573,7 +579,7 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
 }
 
 static inline void
-render_os_window(OSWindow *os_window, double now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows) {
+render_os_window(OSWindow *os_window, double now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
     // ensure all pixels are cleared to background color at least once in every buffer
     if (os_window->clear_count++ < 3) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
@@ -585,7 +591,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
         y_ratio = os_window->viewport_height / (double) os_window->live_resize.height;
     }
     if (!static_live_resize_in_progress) {
-        draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, os_window);
+        draw_borders(br->vao_idx, br->num_border_rects, br->rect_buf, br->is_dirty, os_window->viewport_width, os_window->viewport_height, active_window_bg, num_visible_windows, all_windows_have_same_bg, os_window);
         br->is_dirty = false;
     }
     if (TD.screen && os_window->num_tabs >= OPT(tab_bar_min_tabs)) draw_cells(TD.vao_idx, 0, TD.xstart, TD.ystart, TD.dx * x_ratio, TD.dy * y_ratio, TD.screen, os_window, true, false);
@@ -676,11 +682,12 @@ render(double now, bool input_read) {
             needs_render = true;
         }
         unsigned int active_window_id = 0, num_visible_windows = 0;
+        bool all_windows_have_same_bg;
         color_type active_window_bg = 0;
         if (!w->fonts_data) { log_error("No fonts data found for window id: %llu", w->id); continue; }
-        if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows)) needs_render = true;
+        if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows, &all_windows_have_same_bg)) needs_render = true;
         if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
-        if (needs_render) render_os_window(w, now, active_window_id, active_window_bg, num_visible_windows);
+        if (needs_render) render_os_window(w, now, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg);
     }
     last_render_at = now;
 #undef TD

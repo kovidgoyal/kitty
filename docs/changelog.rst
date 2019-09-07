@@ -10,6 +10,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Implement a hack to (mostly) preserve tabs when cat a file with them and then
   copying the text or passing screen contents to another program (:iss:`1829`)
 
+- When all visible windows have the same background color, use that as the
+  color for the global padding, instead of the configured background color
+  (:iss:`1957`)
+
 
 0.14.4 [2019-08-31]
 ---------------------

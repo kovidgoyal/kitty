@@ -564,7 +564,7 @@ create_border_vao(void) {
 }
 
 void
-draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows, OSWindow *w) {
+draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
     if (num_border_rects) {
         if (rect_data_is_dirty) {
             size_t sz = sizeof(GLuint) * 5 * num_border_rects;
@@ -579,7 +579,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
         glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
-        color_type default_bg = num_visible_windows > 1 ? OPT(background) : active_window_bg;
+        color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
         glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));
 #undef CV3
         bind_vertex_array(vao_idx);
