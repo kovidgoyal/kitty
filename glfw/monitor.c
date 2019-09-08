@@ -56,6 +56,10 @@ static int compareVideoModes(const void* fp, const void* sp)
     if (farea != sarea)
         return farea - sarea;
 
+    // Then sort on width
+    if (fm->width != sm->width)
+        return fm->width - sm->width;
+
     // Lastly sort on refresh rate
     return fm->refreshRate - sm->refreshRate;
 }
