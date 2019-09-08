@@ -3,13 +3,13 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import shlex
+import sys
 from collections import namedtuple
 
 from .config_data import to_layout_names
-from .constants import shell_path, kitty_exe
+from .constants import kitty_exe, shell_path
 from .layout import all_layouts
 from .utils import log_error
-
 
 WindowSizeOpts = namedtuple(
     'WindowSizeOpts', 'initial_window_width initial_window_height window_margin_width window_padding_width remember_window_size')
@@ -131,9 +131,14 @@ def parse_session(raw, opts, default_title=None):
 
 def create_sessions(opts, args=None, special_window=None, cwd_from=None, respect_cwd=False, default_session=None):
     if args and args.session:
-        with open(args.session) as f:
-            yield from parse_session(f.read(), opts, getattr(args, 'title', None))
-            return
+        if args.session == '-':
+            f = sys.stdin
+        else:
+            f = open(args.session)
+        with f:
+            session_data = f.read()
+        yield from parse_session(session_data, opts, getattr(args, 'title', None))
+        return
     if default_session and default_session != 'none':
         try:
             with open(default_session) as f:

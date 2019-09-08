@@ -514,7 +514,7 @@ Detach from the controlling terminal, if any
 
 --session
 Path to a file containing the startup :italic:`session` (tabs, windows, layout, programs).
-See the README file for details and an example.
+Use - to read from STDIN. See the README file for details and an example.
 
 
 --hold
