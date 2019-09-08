@@ -6,6 +6,7 @@ import string
 from collections import namedtuple
 
 from . import fast_data_types as defines
+from .key_names import key_name_aliases
 
 # ENCODING {{{
 ENCODING = {
@@ -348,19 +349,7 @@ for key_name, enc in ENCODING.items():
     g[key_name] = config_key_map[key_name] = key_name
     key_rmap[enc] = key_name
 config_key_map.update({
-    '`': g['GRAVE_ACCENT'],
-    '-': g['MINUS'],
-    '=': g['EQUAL'],
-    '[': g['LEFT_BRACKET'],
-    ']': g['RIGHT_BRACKET'],
-    '\\': g['BACKSLASH'],
-    ';': g['SEMICOLON'],
-    "'": g['APOSTROPHE'],
-    ',': g['COMMA'],
-    '.': g['PERIOD'],
-    '/': g['SLASH'],
-    'ESC': g['ESCAPE'],
-    '+': g['PLUS'],
+    k: g[v] for k, v in key_name_aliases.items()
 })
 
 enter_key = KeyEvent(PRESS, 0, g['ENTER'])

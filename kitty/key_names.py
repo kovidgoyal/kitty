@@ -8,6 +8,34 @@ from contextlib import suppress
 from .constants import is_macos
 
 
+key_name_aliases = {
+    "'": 'APOSTROPHE',
+    ',': 'COMMA',
+    '-': 'MINUS',
+    '_': 'UNDERSCORE',
+    '.': 'PERIOD',
+    '/': 'SLASH',
+    ';': 'SEMICOLON',
+    '=': 'EQUAL',
+    '[': 'LEFT_BRACKET',
+    '\\': 'BACKSLASH',
+    ']': 'RIGHT_BRACKET',
+    '`': 'GRAVE_ACCENT',
+    '+': 'PLUS',
+
+    'ESC': 'ESCAPE',
+    'PGUP': 'PAGE_UP',
+    'PAGEUP': 'PAGE_UP',
+    'PGDN': 'PAGE_DOWN',
+    'PAGEDOWN': 'PAGE_DOWN',
+    'RETURN': 'ENTER',
+    'ARROWUP': 'UP',
+    'ARROWDOWN': 'DOWN',
+    'ARROWRIGHT': 'RIGHT',
+    'ARROWLEFT': 'LEFT',
+}
+
+
 def null_lookup(name, case_sensitive=False):
     pass
 

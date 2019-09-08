@@ -20,22 +20,7 @@ from .conf.utils import (
 from .config_data import all_options, parse_mods, type_map
 from .constants import cache_dir, defconf, is_macos
 from .utils import log_error
-from .key_names import get_key_name_lookup
-
-named_keys = {
-    "'": 'APOSTROPHE',
-    ',': 'COMMA',
-    '-': 'MINUS',
-    '_': 'UNDERSCORE',
-    '.': 'PERIOD',
-    '/': 'SLASH',
-    ';': 'SEMICOLON',
-    '=': 'EQUAL',
-    '[': 'LEFT_BRACKET',
-    '\\': 'BACKSLASH',
-    ']': 'RIGHT_BRACKET',
-    '`': 'GRAVE_ACCENT'
-}
+from .key_names import get_key_name_lookup, key_name_aliases
 
 
 def parse_shortcut(sc):
@@ -46,7 +31,7 @@ def parse_shortcut(sc):
         if mods is None:
             return None, None, None
     key = parts[-1].upper()
-    key = getattr(defines, 'GLFW_KEY_' + named_keys.get(key, key), None)
+    key = getattr(defines, 'GLFW_KEY_' + key_name_aliases.get(key, key), None)
     is_native = False
     if key is None:
         q = parts[-1]
