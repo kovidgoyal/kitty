@@ -168,7 +168,7 @@ dealloc(ChildMonitor* self) {
 
 static void
 wakeup_io_loop(ChildMonitor *self, bool in_signal_handler) {
-    wakeup_loop(&self->io_loop_data, in_signal_handler);
+    wakeup_loop(&self->io_loop_data, in_signal_handler, "io_loop");
 }
 
 static void* io_loop(void *data);
@@ -1421,7 +1421,7 @@ prune_finished_writes(void) {
 
 static void
 wakeup_talk_loop(bool in_signal_handler) {
-    wakeup_loop(&talk_data.loop_data, in_signal_handler);
+    wakeup_loop(&talk_data.loop_data, in_signal_handler, "talk_loop");
 }
 
 static inline void

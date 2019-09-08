@@ -76,7 +76,7 @@ free_loop_data(LoopData *ld) {
 
 
 void
-wakeup_loop(LoopData *ld, bool in_signal_handler) {
+wakeup_loop(LoopData *ld, bool in_signal_handler, const char *loop_name) {
     while(true) {
 #ifdef HAS_EVENT_FD
         static const int64_t value = 1;
@@ -86,7 +86,7 @@ wakeup_loop(LoopData *ld, bool in_signal_handler) {
 #endif
         if (ret < 0) {
             if (errno == EINTR) continue;
-            if (!in_signal_handler) log_error("Failed to write to loop wakeup fd with error: %s", strerror(errno));
+            if (!in_signal_handler) log_error("Failed to write to %s wakeup fd with error: %s", loop_name, strerror(errno));
         }
         break;
     }

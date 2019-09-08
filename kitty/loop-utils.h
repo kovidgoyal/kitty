@@ -41,7 +41,7 @@ typedef void(*handle_signal_func)(int, void *data);
 
 bool init_loop_data(LoopData *ld);
 void free_loop_data(LoopData *ld);
-void wakeup_loop(LoopData *ld, bool in_signal_handler);
+void wakeup_loop(LoopData *ld, bool in_signal_handler, const char*);
 bool install_signal_handlers(LoopData *ld);
 void read_signals(int fd, handle_signal_func callback, void *data);
 
