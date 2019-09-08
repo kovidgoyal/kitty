@@ -1421,7 +1421,7 @@ prune_finished_writes(void) {
 
 static void
 wakeup_talk_loop(bool in_signal_handler) {
-    wakeup_loop(&talk_data.loop_data, in_signal_handler, "talk_loop");
+    if (talk_thread_started) wakeup_loop(&talk_data.loop_data, in_signal_handler, "talk_loop");
 }
 
 static inline void
