@@ -1638,7 +1638,14 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
             acquireMonitor(window);
     }
     else
-        [window->ns.object setContentSize:NSMakeSize(width, height)];
+    {
+        NSRect contentRect =
+            [window->ns.object contentRectForFrameRect:[window->ns.object frame]];
+        contentRect.origin.y += contentRect.size.height - height;
+        contentRect.size = NSMakeSize(width, height);
+        [window->ns.object setFrame:[window->ns.object frameRectForContentRect:contentRect]
+                            display:YES];
+    }
 }
 
 void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
