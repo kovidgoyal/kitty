@@ -14,6 +14,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   color for the global padding, instead of the configured background color
   (:iss:`1957`)
 
+- When resetting the terminal, also reset parser state, this allows easy
+  recovery from incomplete escape codes (:iss:`1961`)
+
 
 0.14.4 [2019-08-31]
 ---------------------

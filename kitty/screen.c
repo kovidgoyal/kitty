@@ -153,6 +153,10 @@ screen_reset(Screen *self) {
     set_dynamic_color(self, 110, NULL);
     set_dynamic_color(self, 111, NULL);
     set_color_table_color(self, 104, NULL);
+    self->parser_state = 0;
+    self->parser_text_start = 0;
+    self->parser_buf_pos = 0;
+    self->parser_has_pending_text = false;
 }
 
 void
