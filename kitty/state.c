@@ -387,7 +387,7 @@ PYWRAP1(set_options) {
     global_state.debug_font_fallback = debug_font_fallback ? true : false;
 #define GA(name) ret = PyObject_GetAttrString(opts, #name); if (ret == NULL) return NULL;
 #define SS(name, dest, convert) { GA(name); dest = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
-#define S(name, convert) SS(name, global_state.opts.name, convert)
+#define S(name, convert) SS(name, OPT(name), convert)
     SS(kitty_mod, kitty_mod, PyLong_AsLong);
     S(hide_window_decorations, PyObject_IsTrue);
     S(visual_bell_duration, PyFloat_AsDouble);
@@ -724,7 +724,7 @@ PYWRAP1(patch_global_colors) {
 #define P(name) { \
     PyObject *val = PyDict_GetItemString(spec, #name); \
     if (val) { \
-        global_state.opts.name = PyLong_AsLong(val); \
+        OPT(name) = PyLong_AsLong(val); \
     } \
 }
     P(active_border_color); P(inactive_border_color); P(bell_border_color);

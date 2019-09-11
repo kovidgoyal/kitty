@@ -437,7 +437,7 @@ render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned 
     CGContextSetShouldSmoothFonts(render_ctx, true);
     CGContextSetGrayFillColor(render_ctx, 1, 1); // white glyphs
     CGContextSetGrayStrokeColor(render_ctx, 1, 1);
-    CGContextSetLineWidth(render_ctx, global_state.opts.macos_thicken_font);
+    CGContextSetLineWidth(render_ctx, OPT(macos_thicken_font));
     CGContextSetTextDrawingMode(render_ctx, kCGTextFillStroke);
     CGContextSetTextMatrix(render_ctx, CGAffineTransformIdentity);
     CGContextSetTextPosition(render_ctx, 0, height - baseline);

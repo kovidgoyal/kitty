@@ -781,7 +781,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     // Joysticks cause slow startup on some linux systems, see
     // https://github.com/kovidgoyal/kitty/issues/830
     glfwInitHint(GLFW_ENABLE_JOYSTICKS, 0);
-    global_state.opts.debug_keyboard = debug_keyboard != 0;
+    OPT(debug_keyboard) = debug_keyboard != 0;
 #ifdef __APPLE__
     glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, 0);
     glfwInitHint(GLFW_COCOA_MENUBAR, 0);
