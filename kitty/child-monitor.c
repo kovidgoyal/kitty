@@ -601,7 +601,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
             bool is_active_window = i == tab->active_window;
             draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx * x_ratio, WD.dy * y_ratio, WD.screen, os_window, is_active_window, true);
             if (WD.screen->start_visual_bell_at != 0) {
-                double bell_left = global_state.opts.visual_bell_duration - (now - WD.screen->start_visual_bell_at);
+                double bell_left = OPT(visual_bell_duration) - (now - WD.screen->start_visual_bell_at);
                 set_maximum_wait(bell_left);
             }
             w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
