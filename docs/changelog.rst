@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow mapping keys commonly found on European keyboards (:pull:`1928`)
 
+- Fix incorrect rendering of some symbols when followed by a space while using
+  the PowerLine font which does not have a space glyph (:iss:`1225`)
+
 
 0.14.4 [2019-08-31]
 ---------------------
