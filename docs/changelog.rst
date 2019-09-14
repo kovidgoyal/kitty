@@ -17,6 +17,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When resetting the terminal, also reset parser state, this allows easy
   recovery from incomplete escape codes (:iss:`1961`)
 
+- Allow mapping keys commonly found on European keyboards (:pull:`1928`)
+
 
 0.14.4 [2019-08-31]
 ---------------------
