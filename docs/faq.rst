@@ -154,6 +154,26 @@ monospace. On Linux you can list all monospace fonts with::
 
     fc-list : family spacing | grep spacing=100
 
+Note that the spacing property is calculated by fontconfig based on actual
+glyph widths in the font. If for some reason fontconfig concludes your favorite
+monospace font does not have ``spacing=100`` you can override it by using the
+following :file:`~/.config/fontconfig/fonts.conf`::
+
+    <?xml version="1.0"?>
+    <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
+    <fontconfig>
+    <match target="scan">
+        <test name="family">
+            <string>Your Font Family Name</string>
+        </test>
+        <edit name="spacing">
+            <int>100</int>
+        </edit>
+    </match>
+    </fontconfig>
+
+Then, the font will be available in ``kitty list-fonts``.
+
 
 How can I assign a single global shortcut to bring up the kitty terminal?
 -----------------------------------------------------------------------------
