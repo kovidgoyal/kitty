@@ -474,7 +474,7 @@ for key_name, enc in ENCODING.items():
     key_name = key_name.replace(' ', '_')
     g[key_name] = config_key_map[key_name] = key_name
     key_rmap[enc] = key_name
-config_key_map.update({k: g[v] for k, v in key_name_aliases.items()})
+config_key_map.update({k: g[v] for k, v in key_name_aliases.items() if v in g})
 
 enter_key = KeyEvent(PRESS, 0, g['ENTER'])
 backspace_key = KeyEvent(PRESS, 0, g['BACKSPACE'])
