@@ -161,7 +161,7 @@ action_map = {
 def extended_key_event(key, mods, action):
     if key >= defines.GLFW_KEY_LAST or key == defines.GLFW_KEY_UNKNOWN or (
         # Shifted printable key should be handled by on_text_input()
-        mods <= defines.GLFW_MOD_SHIFT and 32 <= key <= 126
+        mods <= defines.GLFW_MOD_SHIFT and defines.GLFW_KEY_SPACE <= key <= defines.GLFW_KEY_LAST_PRINTABLE
     ):
         return b''
     if mods == 0 and key in (
@@ -304,7 +304,7 @@ def generate_key_table_impl(w):
     def key_name(k):
         return k[len('GLFW_KEY_'):]
 
-    keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in {'GLFW_KEY_LAST', 'GLFW_KEY_UNKNOWN'}}
+    keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in {'GLFW_KEY_LAST', 'GLFW_KEY_LAST_PRINTABLE', 'GLFW_KEY_UNKNOWN'}}
     key_rmap = []
     for i in range(number_of_keys):
         k = keys.get(i)
@@ -314,7 +314,7 @@ def generate_key_table_impl(w):
             w('%d, /* %s */' % (key_count, key_name(k)))
             key_rmap.append(i)
             key_count += 1
-            if key_count > 128:
+            if key_count > 256:
                 raise OverflowError('Too many keys')
     w('};\n')
     w('static inline const char* key_name(int key) { switch(key) {')
@@ -354,7 +354,7 @@ def generate_key_table_impl(w):
                     ind('case 0x{:x}:'.format(mods))
                     i += 1
                     if key_bytes:
-                        ind('switch(key & 0x7f) { default: return NULL;')
+                        ind('switch(key & 0xff) { default: return NULL;')
                         i += 1
                         for key, (data, glfw_key) in key_bytes.items():
                             ind('case {}: // {}'.format(key, key_name(keys[glfw_key])))

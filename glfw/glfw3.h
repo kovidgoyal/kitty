@@ -342,7 +342,15 @@ extern "C" {
 
 /* Printable keys */
 #define GLFW_KEY_SPACE              32
+#define GLFW_KEY_EXCLAM             33  /* ! */
+#define GLFW_KEY_DOUBLE_QUOTE       34  /* " */
+#define GLFW_KEY_NUMBER_SIGN        35  /* # */
+#define GLFW_KEY_DOLLAR             36  /* $ */
+#define GLFW_KEY_AMPERSAND          38  /* & */
 #define GLFW_KEY_APOSTROPHE         39  /* ' */
+#define GLFW_KEY_PARENTHESIS_LEFT   40  /* ( */
+#define GLFW_KEY_PARENTHESIS_RIGHT  41  /* ) */
+#define GLFW_KEY_PLUS               43  /* + */
 #define GLFW_KEY_COMMA              44  /* , */
 #define GLFW_KEY_MINUS              45  /* - */
 #define GLFW_KEY_PERIOD             46  /* . */
@@ -357,8 +365,12 @@ extern "C" {
 #define GLFW_KEY_7                  55
 #define GLFW_KEY_8                  56
 #define GLFW_KEY_9                  57
+#define GLFW_KEY_COLON              58  /* : */
 #define GLFW_KEY_SEMICOLON          59  /* ; */
+#define GLFW_KEY_LESS               60  /* < */
 #define GLFW_KEY_EQUAL              61  /* = */
+#define GLFW_KEY_GREATER            62  /* > */
+#define GLFW_KEY_AT                 64  /* @ */
 #define GLFW_KEY_A                  65
 #define GLFW_KEY_B                  66
 #define GLFW_KEY_C                  67
@@ -388,13 +400,62 @@ extern "C" {
 #define GLFW_KEY_LEFT_BRACKET       91  /* [ */
 #define GLFW_KEY_BACKSLASH          92  /* \ */
 #define GLFW_KEY_RIGHT_BRACKET      93  /* ] */
+#define GLFW_KEY_UNDERSCORE         95  /* _ */
 #define GLFW_KEY_GRAVE_ACCENT       96  /* ` */
 #define GLFW_KEY_WORLD_1            161 /* non-US #1 */
 #define GLFW_KEY_WORLD_2            162 /* non-US #2 */
-#define GLFW_KEY_PLUS               163
-#define GLFW_KEY_UNDERSCORE         164
+#define GLFW_KEY_PARAGRAPH          167 /* § */
+#define GLFW_KEY_MASCULINE          186 /* º */
+#define GLFW_KEY_A_GRAVE            192 /* À */
+#define GLFW_KEY_A_DIAERESIS        196 /* Ä */
+#define GLFW_KEY_A_RING             197 /* Å */
+#define GLFW_KEY_AE                 198 /* Æ */
+#define GLFW_KEY_C_CEDILLA          199 /* Ç */
+#define GLFW_KEY_E_GRAVE            200 /* È */
+#define GLFW_KEY_E_ACUTE            201 /* É */
+#define GLFW_KEY_I_GRAVE            204 /* Ì */
+#define GLFW_KEY_N_TILDE            209 /* Ñ */
+#define GLFW_KEY_O_GRAVE            210 /* Ò */
+#define GLFW_KEY_O_DIAERESIS        214 /* Ö */
+#define GLFW_KEY_O_SLASH            216 /* Ø */
+#define GLFW_KEY_U_GRAVE            217 /* Ù */
+#define GLFW_KEY_U_DIAERESIS        220 /* Ü */
+#define GLFW_KEY_S_SHARP            222 /* ß */
+#define GLFW_KEY_CYRILLIC_A         223 /* А */
+#define GLFW_KEY_CYRILLIC_BE        224 /* Б */
+#define GLFW_KEY_CYRILLIC_VE        225 /* В */
+#define GLFW_KEY_CYRILLIC_GHE       226 /* Г */
+#define GLFW_KEY_CYRILLIC_DE        227 /* Д */
+#define GLFW_KEY_CYRILLIC_IE        228 /* Е */
+#define GLFW_KEY_CYRILLIC_ZHE       229 /* Ж */
+#define GLFW_KEY_CYRILLIC_ZE        230 /* З */
+#define GLFW_KEY_CYRILLIC_I         231 /* И */
+#define GLFW_KEY_CYRILLIC_SHORT_I   232 /* Й */
+#define GLFW_KEY_CYRILLIC_KA        233 /* К */
+#define GLFW_KEY_CYRILLIC_EL        234 /* Л */
+#define GLFW_KEY_CYRILLIC_EM        235 /* М */
+#define GLFW_KEY_CYRILLIC_EN        236 /* Н */
+#define GLFW_KEY_CYRILLIC_O         237 /* О */
+#define GLFW_KEY_CYRILLIC_PE        238 /* П */
+#define GLFW_KEY_CYRILLIC_ER        239 /* Р */
+#define GLFW_KEY_CYRILLIC_ES        240 /* С */
+#define GLFW_KEY_CYRILLIC_TE        241 /* Т */
+#define GLFW_KEY_CYRILLIC_U         242 /* У */
+#define GLFW_KEY_CYRILLIC_EF        243 /* Ф */
+#define GLFW_KEY_CYRILLIC_HA        244 /* Х */
+#define GLFW_KEY_CYRILLIC_TSE       245 /* Ц */
+#define GLFW_KEY_CYRILLIC_CHE       246 /* Ч */
+#define GLFW_KEY_CYRILLIC_SHA       247 /* Ш */
+#define GLFW_KEY_CYRILLIC_SHCHA     248 /* Щ */
+#define GLFW_KEY_CYRILLIC_HARD_SIGN 249 /* Ъ */
+#define GLFW_KEY_CYRILLIC_YERU      250 /* Ы */
+#define GLFW_KEY_CYRILLIC_SOFT_SIGN 251 /* Ь */
+#define GLFW_KEY_CYRILLIC_E         252 /* Э */
+#define GLFW_KEY_CYRILLIC_YU        253 /* Ю */
+#define GLFW_KEY_CYRILLIC_YA        254 /* Я */
+#define GLFW_KEY_CYRILLIC_IO        255 /* Ё */
 
-#define GLFW_KEY_LAST_PRINTABLE     GLFW_KEY_UNDERSCORE
+#define GLFW_KEY_LAST_PRINTABLE     GLFW_KEY_CYRILLIC_IO
 
 /* Function keys */
 #define GLFW_KEY_ESCAPE             256
@@ -3846,20 +3907,85 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* window, int mode, int value);
  *  [key callback](@ref input_key) without modification.
  *
  *  The printable keys are:
+ *  - `GLFW_KEY_SPACE`
+ *  - `GLFW_KEY_EXCLAM`
+ *  - `GLFW_KEY_DOUBLE_QUOTE`
+ *  - `GLFW_KEY_NUMBER_SIGN`
+ *  - `GLFW_KEY_DOLLAR`
+ *  - `GLFW_KEY_AMPERSAND`
  *  - `GLFW_KEY_APOSTROPHE`
+ *  - `GLFW_KEY_PARENTHESIS_LEFT`
+ *  - `GLFW_KEY_PARENTHESIS_RIGHT`
+ *  - `GLFW_KEY_PLUS`
  *  - `GLFW_KEY_COMMA`
  *  - `GLFW_KEY_MINUS`
  *  - `GLFW_KEY_PERIOD`
  *  - `GLFW_KEY_SLASH`
+ *  - `GLFW_KEY_0` to `GLFW_KEY_9`
+ *  - `GLFW_KEY_COLON`
  *  - `GLFW_KEY_SEMICOLON`
+ *  - `GLFW_KEY_LESS`
  *  - `GLFW_KEY_EQUAL`
+ *  - `GLFW_KEY_GREATER`
+ *  - `GLFW_KEY_AT`
+ *  - `GLFW_KEY_A` to `GLFW_KEY_Z`
  *  - `GLFW_KEY_LEFT_BRACKET`
- *  - `GLFW_KEY_RIGHT_BRACKET`
  *  - `GLFW_KEY_BACKSLASH`
+ *  - `GLFW_KEY_RIGHT_BRACKET`
+ *  - `GLFW_KEY_UNDERSCORE`
+ *  - `GLFW_KEY_GRAVE_ACCENT`
  *  - `GLFW_KEY_WORLD_1`
  *  - `GLFW_KEY_WORLD_2`
- *  - `GLFW_KEY_0` to `GLFW_KEY_9`
- *  - `GLFW_KEY_A` to `GLFW_KEY_Z`
+ *  - `GLFW_KEY_PARAGRAPH`
+ *  - `GLFW_KEY_MASCULINE`
+ *  - `GLFW_KEY_A_GRAVE`
+ *  - `GLFW_KEY_A_DIAERESIS`
+ *  - `GLFW_KEY_A_RING`
+ *  - `GLFW_KEY_AE`
+ *  - `GLFW_KEY_C_CEDILLA`
+ *  - `GLFW_KEY_E_GRAVE`
+ *  - `GLFW_KEY_E_ACUTE`
+ *  - `GLFW_KEY_I_GRAVE`
+ *  - `GLFW_KEY_N_TILDE`
+ *  - `GLFW_KEY_O_GRAVE`
+ *  - `GLFW_KEY_O_DIAERESIS`
+ *  - `GLFW_KEY_O_SLASH`
+ *  - `GLFW_KEY_U_GRAVE`
+ *  - `GLFW_KEY_U_DIAERESIS`
+ *  - `GLFW_KEY_S_SHARP`
+ *  - `GLFW_KEY_CYRILLIC_A`
+ *  - `GLFW_KEY_CYRILLIC_BE`
+ *  - `GLFW_KEY_CYRILLIC_VE`
+ *  - `GLFW_KEY_CYRILLIC_GHE`
+ *  - `GLFW_KEY_CYRILLIC_DE`
+ *  - `GLFW_KEY_CYRILLIC_IE`
+ *  - `GLFW_KEY_CYRILLIC_ZHE`
+ *  - `GLFW_KEY_CYRILLIC_ZE`
+ *  - `GLFW_KEY_CYRILLIC_I`
+ *  - `GLFW_KEY_CYRILLIC_SHORT_I`
+ *  - `GLFW_KEY_CYRILLIC_KA`
+ *  - `GLFW_KEY_CYRILLIC_EL`
+ *  - `GLFW_KEY_CYRILLIC_EM`
+ *  - `GLFW_KEY_CYRILLIC_EN`
+ *  - `GLFW_KEY_CYRILLIC_O`
+ *  - `GLFW_KEY_CYRILLIC_PE`
+ *  - `GLFW_KEY_CYRILLIC_ER`
+ *  - `GLFW_KEY_CYRILLIC_ES`
+ *  - `GLFW_KEY_CYRILLIC_TE`
+ *  - `GLFW_KEY_CYRILLIC_U`
+ *  - `GLFW_KEY_CYRILLIC_EF`
+ *  - `GLFW_KEY_CYRILLIC_HA`
+ *  - `GLFW_KEY_CYRILLIC_TSE`
+ *  - `GLFW_KEY_CYRILLIC_CHE`
+ *  - `GLFW_KEY_CYRILLIC_SHA`
+ *  - `GLFW_KEY_CYRILLIC_SHCHA`
+ *  - `GLFW_KEY_CYRILLIC_HARD_SIGN`
+ *  - `GLFW_KEY_CYRILLIC_YERU`
+ *  - `GLFW_KEY_CYRILLIC_SOFT_SIGN`
+ *  - `GLFW_KEY_CYRILLIC_E`
+ *  - `GLFW_KEY_CYRILLIC_YU`
+ *  - `GLFW_KEY_CYRILLIC_YA`
+ *  - `GLFW_KEY_CYRILLIC_IO`
  *  - `GLFW_KEY_KP_0` to `GLFW_KEY_KP_9`
  *  - `GLFW_KEY_KP_DECIMAL`
  *  - `GLFW_KEY_KP_DIVIDE`

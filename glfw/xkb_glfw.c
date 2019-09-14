@@ -37,19 +37,130 @@ START_ALLOW_CASE_RANGE
 #define map_key(key) \
     switch(key) { \
         S(space, SPACE); \
+        S(exclam, EXCLAM); \
+        S(quotedbl, DOUBLE_QUOTE); \
+        S(numbersign, NUMBER_SIGN); \
+        S(dollar, DOLLAR); \
+        S(ampersand, AMPERSAND); \
         S(apostrophe, APOSTROPHE); \
+        S(parenleft, PARENTHESIS_LEFT); \
+        S(parenright, PARENTHESIS_RIGHT); \
+        S(plus, PLUS); \
         S(comma, COMMA); \
         S(minus, MINUS); \
         S(period, PERIOD); \
         S(slash, SLASH); \
+        R(0, 9, 0, 9); \
+        S(colon, COLON); \
         S(semicolon, SEMICOLON); \
+        S(less, LESS); \
         S(equal, EQUAL); \
+        S(greater, GREATER); \
+        S(at, AT); \
+        D(A, Z, A, Z); \
         S(bracketleft, LEFT_BRACKET); \
         S(backslash, BACKSLASH); \
         S(bracketright, RIGHT_BRACKET); \
-        S(plus, PLUS); \
         S(underscore, UNDERSCORE); \
         S(grave, GRAVE_ACCENT); \
+        R(a, z, A, Z); \
+        S(paragraph, PARAGRAPH); \
+        S(masculine, MASCULINE); \
+        S(agrave, A_GRAVE); \
+        F(Agrave, A_GRAVE); \
+        S(adiaeresis, A_DIAERESIS); \
+        F(Adiaeresis, A_DIAERESIS); \
+        S(aring, A_RING); \
+        F(Aring, A_RING); \
+        S(ae, AE); \
+        F(AE, AE); \
+        S(ccedilla, C_CEDILLA); \
+        F(Ccedilla, C_CEDILLA); \
+        S(egrave, E_GRAVE); \
+        F(Egrave, E_GRAVE); \
+        S(aacute, E_ACUTE); \
+        F(Eacute, E_ACUTE); \
+        S(igrave, I_GRAVE); \
+        F(Igrave, I_GRAVE); \
+        S(ntilde, N_TILDE); \
+        F(Ntilde, N_TILDE); \
+        S(ograve, O_GRAVE); \
+        F(Ograve, O_GRAVE); \
+        S(odiaeresis, O_DIAERESIS); \
+        F(Odiaeresis, O_DIAERESIS); \
+        S(oslash, O_SLASH); \
+        F(Oslash, O_SLASH); \
+        S(ugrave, U_GRAVE); \
+        F(Ugrave, U_GRAVE); \
+        S(udiaeresis, U_DIAERESIS); \
+        F(Udiaeresis, U_DIAERESIS); \
+        S(ssharp, S_SHARP); \
+        S(Cyrillic_a, CYRILLIC_A); \
+        F(Cyrillic_A, CYRILLIC_A); \
+        S(Cyrillic_be, CYRILLIC_BE); \
+        F(Cyrillic_BE, CYRILLIC_BE); \
+        S(Cyrillic_ve, CYRILLIC_VE); \
+        F(Cyrillic_VE, CYRILLIC_VE); \
+        S(Cyrillic_ghe, CYRILLIC_GHE); \
+        F(Cyrillic_GHE, CYRILLIC_GHE); \
+        S(Cyrillic_de, CYRILLIC_DE); \
+        F(Cyrillic_DE, CYRILLIC_DE); \
+        S(Cyrillic_ie, CYRILLIC_IE); \
+        F(Cyrillic_IE, CYRILLIC_IE); \
+        S(Cyrillic_zhe, CYRILLIC_ZHE); \
+        F(Cyrillic_ZHE, CYRILLIC_ZHE); \
+        S(Cyrillic_ze, CYRILLIC_ZE); \
+        F(Cyrillic_ZE, CYRILLIC_ZE); \
+        S(Cyrillic_i, CYRILLIC_I); \
+        F(Cyrillic_I, CYRILLIC_I); \
+        S(Cyrillic_shorti, CYRILLIC_SHORT_I); \
+        F(Cyrillic_SHORTI, CYRILLIC_SHORT_I); \
+        S(Cyrillic_ka, CYRILLIC_KA); \
+        F(Cyrillic_KA, CYRILLIC_KA); \
+        S(Cyrillic_el, CYRILLIC_EL); \
+        F(Cyrillic_EL, CYRILLIC_EL); \
+        S(Cyrillic_em, CYRILLIC_EM); \
+        F(Cyrillic_EM, CYRILLIC_EM); \
+        S(Cyrillic_en, CYRILLIC_EN); \
+        F(Cyrillic_EN, CYRILLIC_EN); \
+        S(Cyrillic_o, CYRILLIC_O); \
+        F(Cyrillic_O, CYRILLIC_O); \
+        S(Cyrillic_pe, CYRILLIC_PE); \
+        F(Cyrillic_PE, CYRILLIC_PE); \
+        S(Cyrillic_er, CYRILLIC_ER); \
+        F(Cyrillic_ER, CYRILLIC_ER); \
+        S(Cyrillic_es, CYRILLIC_ES); \
+        F(Cyrillic_ES, CYRILLIC_ES); \
+        S(Cyrillic_te, CYRILLIC_TE); \
+        F(Cyrillic_TE, CYRILLIC_TE); \
+        S(Cyrillic_u, CYRILLIC_U); \
+        F(Cyrillic_U, CYRILLIC_U); \
+        S(Cyrillic_ef, CYRILLIC_EF); \
+        F(Cyrillic_EF, CYRILLIC_EF); \
+        S(Cyrillic_ha, CYRILLIC_HA); \
+        F(Cyrillic_HA, CYRILLIC_HA); \
+        S(Cyrillic_tse, CYRILLIC_TSE); \
+        F(Cyrillic_TSE, CYRILLIC_TSE); \
+        S(Cyrillic_che, CYRILLIC_CHE); \
+        F(Cyrillic_CHE, CYRILLIC_CHE); \
+        S(Cyrillic_sha, CYRILLIC_SHA); \
+        F(Cyrillic_SHA, CYRILLIC_SHA); \
+        S(Cyrillic_shcha, CYRILLIC_SHCHA); \
+        F(Cyrillic_SHCHA, CYRILLIC_SHCHA); \
+        S(Cyrillic_hardsign, CYRILLIC_HARD_SIGN); \
+        F(Cyrillic_HARDSIGN, CYRILLIC_HARD_SIGN); \
+        S(Cyrillic_yeru, CYRILLIC_YERU); \
+        F(Cyrillic_YERU, CYRILLIC_YERU); \
+        S(Cyrillic_softsign, CYRILLIC_SOFT_SIGN); \
+        F(Cyrillic_SOFTSIGN, CYRILLIC_SOFT_SIGN); \
+        S(Cyrillic_e, CYRILLIC_E); \
+        F(Cyrillic_E, CYRILLIC_E); \
+        S(Cyrillic_yu, CYRILLIC_YU); \
+        F(Cyrillic_YU, CYRILLIC_YU); \
+        S(Cyrillic_ya, CYRILLIC_YA); \
+        F(Cyrillic_YA, CYRILLIC_YA); \
+        S(Cyrillic_io, CYRILLIC_IO); \
+        F(Cyrillic_IO, CYRILLIC_IO); \
         S(Escape, ESCAPE); \
         S(Return, ENTER); \
         S(Tab, TAB); \
@@ -91,9 +202,6 @@ START_ALLOW_CASE_RANGE
         S(Alt_R, RIGHT_ALT); \
         S(Super_R, RIGHT_SUPER); \
         S(Menu, MENU); \
-        R(0, 9, 0, 9); \
-        R(a, z, A, Z); \
-        D(A, Z, A, Z); \
         R(F1, F25, F1, F25); \
         R(KP_0, KP_9, KP_0, KP_9); \
 

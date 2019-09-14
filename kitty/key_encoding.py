@@ -131,11 +131,80 @@ ENCODING = {
     'Z': 'r',
     'PLUS': 'Bi',
     'UNDERSCORE': 'Bj',
-    'MENU': 'Bk'
+    'MENU': 'Bk',
+    'EXCLAM': 'Bl',
+    'DOUBLE QUOTE': 'Bm',
+    'NUMBER SIGN': 'Bn',
+    'DOLLAR': 'Bo',
+    'AMPERSAND': 'Bp',
+    'PARENTHESIS LEFT': 'Bq',
+    'PARENTHESIS RIGHT': 'Br',
+    'COLON': 'Bs',
+    'LESS': 'Bt',
+    'GREATER': 'Bu',
+    'AT': 'Bv',
+    'PARAGRAPH': 'Bw',
+    'MASCULINE': 'Bx',
+    'A GRAVE': 'By',
+    'A DIAERESIS': 'Bz',
+    'A RING': 'B0',
+    'AE': 'B1',
+    'C CEDILLA': 'B2',
+    'E GRAVE': 'B3',
+    'E ACUTE': 'B4',
+    'I GRAVE': 'B5',
+    'N TILDE': 'B6',
+    'O GRAVE': 'B7',
+    'O DIAERESIS': 'B8',
+    'O SLASH': 'B9',
+    'U GRAVE': 'B.',
+    'U DIAERESIS': 'B-',
+    'S SHARP': 'B:',
+    'CYRILLIC A': 'B+',
+    'CYRILLIC BE': 'B=',
+    'CYRILLIC VE': 'B^',
+    'CYRILLIC GHE': 'B!',
+    'CYRILLIC DE': 'B/',
+    'CYRILLIC IE': 'B*',
+    'CYRILLIC ZHE': 'B?',
+    'CYRILLIC ZE': 'B&',
+    'CYRILLIC I': 'B<',
+    'CYRILLIC SHORT I': 'B>',
+    'CYRILLIC KA': 'B(',
+    'CYRILLIC EL': 'B)',
+    'CYRILLIC EM': 'B[',
+    'CYRILLIC EN': 'B]',
+    'CYRILLIC O': 'B{',
+    'CYRILLIC PE': 'B}',
+    'CYRILLIC ER': 'B@',
+    'CYRILLIC ES': 'B%',
+    'CYRILLIC TE': 'B$',
+    'CYRILLIC U': 'B#',
+    'CYRILLIC EF': 'CA',
+    'CYRILLIC HA': 'CB',
+    'CYRILLIC TSE': 'CC',
+    'CYRILLIC CHE': 'CD',
+    'CYRILLIC SHA': 'CE',
+    'CYRILLIC SHCHA': 'CF',
+    'CYRILLIC HARD SIGN': 'CG',
+    'CYRILLIC YERU': 'CH',
+    'CYRILLIC SOFT SIGN': 'CI',
+    'CYRILLIC E': 'CJ',
+    'CYRILLIC YU': 'CK',
+    'CYRILLIC YA': 'CL',
+    'CYRILLIC IO': 'CM'
 }
 KEY_MAP = {
     32: 'A',
+    33: 'Bl',
+    34: 'Bm',
+    35: 'Bn',
+    36: 'Bo',
+    38: 'Bp',
     39: 'B',
+    40: 'Bq',
+    41: 'Br',
+    43: 'Bi',
     44: 'C',
     45: 'D',
     46: 'E',
@@ -150,8 +219,12 @@ KEY_MAP = {
     55: 'N',
     56: 'O',
     57: 'P',
+    58: 'Bs',
     59: 'Q',
+    60: 'Bt',
     61: 'R',
+    62: 'Bu',
+    64: 'Bv',
     65: 'S',
     66: 'T',
     67: 'U',
@@ -181,11 +254,60 @@ KEY_MAP = {
     91: 's',
     92: 't',
     93: 'u',
+    95: 'Bj',
     96: 'v',
     161: 'w',
     162: 'x',
-    163: 'Bi',
-    164: 'Bj',
+    167: 'Bw',
+    186: 'Bx',
+    192: 'By',
+    196: 'Bz',
+    197: 'B0',
+    198: 'B1',
+    199: 'B2',
+    200: 'B3',
+    201: 'B4',
+    204: 'B5',
+    209: 'B6',
+    210: 'B7',
+    214: 'B8',
+    216: 'B9',
+    217: 'B.',
+    220: 'B-',
+    222: 'B:',
+    223: 'B+',
+    224: 'B=',
+    225: 'B^',
+    226: 'B!',
+    227: 'B/',
+    228: 'B*',
+    229: 'B?',
+    230: 'B&',
+    231: 'B<',
+    232: 'B>',
+    233: 'B(',
+    234: 'B)',
+    235: 'B[',
+    236: 'B]',
+    237: 'B{',
+    238: 'B}',
+    239: 'B@',
+    240: 'B%',
+    241: 'B$',
+    242: 'B#',
+    243: 'CA',
+    244: 'CB',
+    245: 'CC',
+    246: 'CD',
+    247: 'CE',
+    248: 'CF',
+    249: 'CG',
+    250: 'CH',
+    251: 'CI',
+    252: 'CJ',
+    253: 'CK',
+    254: 'CL',
+    255: 'CM',
     256: 'y',
     257: 'z',
     258: '0',
@@ -259,7 +381,11 @@ KEY_MAP = {
 }
 # END_ENCODING }}}
 
-text_keys = string.ascii_uppercase + string.ascii_lowercase + string.digits + '`~!@#$%^&*()_-+=[{]}\\|<,>./?;:\'" '
+text_keys = (
+    string.ascii_uppercase + string.ascii_lowercase + string.digits +
+    '`~!@#$%^&*()_-+=[{]}\\|<,>./?;:\'" '
+    'ÄäÖöÜüß§ºàåæçèéìñòøùабвгдежзийклмнопрстуфхцчшщъыьэюяё'
+)
 
 
 def text_match(key):
@@ -297,11 +423,11 @@ def update_encoding():
     key_map = {}
     i = len(ans)
     for k in sorted(keys, key=lambda k: getattr(defines, k)):
+        if k in ('GLFW_KEY_LAST', 'GLFW_KEY_LAST_PRINTABLE'):
+            continue
         val = getattr(defines, k)
         name = symbolic_name(k)
-        if val <= defines.GLFW_KEY_LAST and name not in (
-            'LAST', 'LAST_PRINTABLE'
-        ) and val != defines.GLFW_KEY_UNKNOWN:
+        if val <= defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN:
             if name not in ans:
                 ans[name] = encode(i)
                 i += 1
@@ -348,9 +474,7 @@ for key_name, enc in ENCODING.items():
     key_name = key_name.replace(' ', '_')
     g[key_name] = config_key_map[key_name] = key_name
     key_rmap[enc] = key_name
-config_key_map.update({
-    k: g[v] for k, v in key_name_aliases.items()
-})
+config_key_map.update({k: g[v] for k, v in key_name_aliases.items()})
 
 enter_key = KeyEvent(PRESS, 0, g['ENTER'])
 backspace_key = KeyEvent(PRESS, 0, g['BACKSPACE'])
