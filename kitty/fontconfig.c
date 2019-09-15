@@ -83,19 +83,19 @@ font_set(FcFontSet *fs) {
 
 static PyObject*
 fc_list(PyObject UNUSED *self, PyObject *args) {
-    int allow_bitmapped_fonts = 0, only_monospaced_fonts = 1;
+    int allow_bitmapped_fonts = 0, spacing = -1;
     PyObject *ans = NULL;
     FcObjectSet *os = NULL;
     FcPattern *pat = NULL;
     FcFontSet *fs = NULL;
-    if (!PyArg_ParseTuple(args, "|pp", &only_monospaced_fonts, &allow_bitmapped_fonts)) return NULL;
+    if (!PyArg_ParseTuple(args, "|ip", &spacing, &allow_bitmapped_fonts)) return NULL;
     pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
     if (!allow_bitmapped_fonts) {
         AP(FcPatternAddBool, FC_OUTLINE, true, "outline");
         AP(FcPatternAddBool, FC_SCALABLE, true, "scalable");
     }
-    if (only_monospaced_fonts) AP(FcPatternAddInteger, FC_SPACING, FC_MONO, "spacing");
+    if (spacing > -1) AP(FcPatternAddInteger, FC_SPACING, spacing, "spacing");
     os = FcObjectSetBuild(FC_FILE, FC_POSTSCRIPT_NAME, FC_FAMILY, FC_STYLE, FC_FULLNAME, FC_WEIGHT, FC_WIDTH, FC_SLANT, FC_HINT_STYLE, FC_INDEX, FC_HINTING, FC_SCALABLE, FC_OUTLINE, FC_COLOR, FC_SPACING, NULL);
     if (!os) { PyErr_SetString(PyExc_ValueError, "Failed to create fontconfig object set"); goto end; }
     fs = FcFontList(NULL, pat, os);
@@ -147,21 +147,21 @@ end:
 static PyObject*
 fc_match(PyObject UNUSED *self, PyObject *args) {
     char *family = NULL;
-    int bold = 0, italic = 0, allow_bitmapped_fonts = 0, monospaced = 0;
+    int bold = 0, italic = 0, allow_bitmapped_fonts = 0, spacing = FC_MONO;
     double size_in_pts = 0, dpi = 0;
     FcPattern *pat = NULL;
     PyObject *ans = NULL;
 
-    if (!PyArg_ParseTuple(args, "|zppppdd", &family, &bold, &italic, &monospaced, &allow_bitmapped_fonts, &size_in_pts, &dpi)) return NULL;
+    if (!PyArg_ParseTuple(args, "|zppppdd", &family, &bold, &italic, &spacing, &allow_bitmapped_fonts, &size_in_pts, &dpi)) return NULL;
     pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
 
     if (family && strlen(family) > 0) AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
-    if (monospaced) {
+    if (spacing >= FC_DUAL) {
         // pass the family,monospace as the family parameter to fc-match,
         // which will fallback to using monospace if the family does not match.
         AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)"monospace", "family");
-        AP(FcPatternAddInteger, FC_SPACING, FC_MONO, "spacing");
+        AP(FcPatternAddInteger, FC_SPACING, spacing, "spacing");
     }
     if (!allow_bitmapped_fonts) {
         AP(FcPatternAddBool, FC_OUTLINE, true, "outline");
@@ -243,5 +243,9 @@ init_fontconfig_library(PyObject *module) {
     PyModule_AddIntMacro(module, FC_WEIGHT_BOLD);
     PyModule_AddIntMacro(module, FC_SLANT_ITALIC);
     PyModule_AddIntMacro(module, FC_SLANT_ROMAN);
+    PyModule_AddIntMacro(module, FC_PROPORTIONAL);
+    PyModule_AddIntMacro(module, FC_DUAL);
+    PyModule_AddIntMacro(module, FC_MONO);
+    PyModule_AddIntMacro(module, FC_CHARCELL);
     return true;
 }
