@@ -192,7 +192,7 @@ For example::
 
     map alt+s send_text all \x13
 
-This maps :kbd:`alt+s`` to :kbd:`ctrl+s`. To figure out what bytes to use for
+This maps :kbd:`alt+s` to :kbd:`ctrl+s`. To figure out what bytes to use for
 the :sc:`send_text <send_text>` you can use the ``showkey`` utility. Run::
 
     showkey -a
