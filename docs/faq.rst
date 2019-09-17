@@ -59,6 +59,18 @@ If you are behind a proxy (like Balabit) that prevents this, you must redirect t
 connect to a server, embedded or Android system that doesn't have ``tic``, copy over
 your local file terminfo to the other system as :file:`~/.terminfo/x/xterm-kitty`.
 
+If the server is running FreeBSD, or another system that relies on termcap
+rather than terminfo, you will need to convert the terminfo file on your local
+machine by running (on local machine with |kitty|)::
+
+    infocmp -C xterm-kitty
+
+The output of this command is the termcap description, which should be appended
+to |/usr/share/misc/termcap| on the remote server. Then run the following
+command to apply your change (on the server)::
+
+    cap_mkdb /usr/share/misc/termcap
+
 Really, the correct solution for this is to convince the OpenSSH maintainers to
 have ssh do this automatically, if possible, when connecting to a server, so that
 all terminals work transparently.
