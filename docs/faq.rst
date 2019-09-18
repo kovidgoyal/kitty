@@ -63,6 +63,18 @@ Really, the correct solution for this is to convince the OpenSSH maintainers to
 have ssh do this automatically, if possible, when connecting to a server, so that
 all terminals work transparently.
 
+If the server is running FreeBSD, or another system that relies on termcap
+rather than terminfo, you will need to convert the terminfo file on your local
+machine by running (on local machine with |kitty|)::
+
+    infocmp -C xterm-kitty
+
+The output of this command is the termcap description, which should be appended
+to :file:`/usr/share/misc/termcap` on the remote server. Then run the following
+command to apply your change (on the server)::
+
+    cap_mkdb /usr/share/misc/termcap
+
 
 Keys such as arrow keys, backspace, delete, home/end, etc. do not work when using su or sudo?
 -------------------------------------------------------------------------------------------------
