@@ -21,7 +21,6 @@ key_name_aliases = {
     '\\': 'BACKSLASH',
     ']': 'RIGHT_BRACKET',
     '`': 'GRAVE_ACCENT',
-    '+': 'PLUS',
 
     'ESC': 'ESCAPE',
     'PGUP': 'PAGE_UP',
