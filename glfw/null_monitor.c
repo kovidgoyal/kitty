@@ -34,15 +34,15 @@
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor)
+void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor UNUSED)
 {
 }
 
-void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos)
+void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor UNUSED, int* xpos UNUSED, int* ypos UNUSED)
 {
 }
 
-void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
+void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor UNUSED,
                                          float* xscale, float* yscale)
 {
     if (xscale)
@@ -51,27 +51,27 @@ void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor,
         *yscale = 1.f;
 }
 
-void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor,
-                                     int* xpos, int* ypos,
-                                     int* width, int* height)
+void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor UNUSED,
+                                     int* xpos UNUSED, int* ypos UNUSED,
+                                     int* width UNUSED, int* height UNUSED)
 {
 }
 
-GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* found)
+GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor UNUSED, int* found UNUSED)
 {
     return NULL;
 }
 
-void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
+void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor UNUSED, GLFWvidmode* mode UNUSED)
 {
 }
 
-bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor, GLFWgammaramp* ramp)
+bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor UNUSED, GLFWgammaramp* ramp UNUSED)
 {
     return false;
 }
 
-void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor, const GLFWgammaramp* ramp)
+void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor UNUSED, const GLFWgammaramp* ramp UNUSED)
 {
 }
 
