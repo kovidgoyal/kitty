@@ -25,6 +25,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Allow using fonts with spacing=90 in addition to fonts with
   spacing=100 (:iss:`1968`)
 
+- Use selection foreground color for underlines as well (:iss:`1982`)
 
 0.14.4 [2019-08-31]
 ---------------------
