@@ -9,30 +9,29 @@ from .constants import is_macos
 
 
 key_name_aliases = {
+    '!': 'EXCLAM',
+    '"': 'DOUBLE_QUOTE',
+    '#': 'NUMBER_SIGN',
+    '$': 'DOLLAR',
+    '&': 'AMPERSAND',
     "'": 'APOSTROPHE',
+    '(': 'PARENTHESIS_LEFT',
+    ')': 'PARENTHESIS_RIGHT',
     ',': 'COMMA',
     '-': 'MINUS',
-    '_': 'UNDERSCORE',
     '.': 'PERIOD',
     '/': 'SLASH',
+    ':': 'COLON',
     ';': 'SEMICOLON',
+    '<': 'LESS',
     '=': 'EQUAL',
+    '>': 'GREATER',
+    '@': 'AT',
     '[': 'LEFT_BRACKET',
     '\\': 'BACKSLASH',
     ']': 'RIGHT_BRACKET',
+    '_': 'UNDERSCORE',
     '`': 'GRAVE_ACCENT',
-
-    'ESC': 'ESCAPE',
-    'PGUP': 'PAGE_UP',
-    'PAGEUP': 'PAGE_UP',
-    'PGDN': 'PAGE_DOWN',
-    'PAGEDOWN': 'PAGE_DOWN',
-    'RETURN': 'ENTER',
-    'ARROWUP': 'UP',
-    'ARROWDOWN': 'DOWN',
-    'ARROWRIGHT': 'RIGHT',
-    'ARROWLEFT': 'LEFT',
-
     '§': 'PARAGRAPH',
     'º': 'MASCULINE',
     'À': 'A_GRAVE',
@@ -82,8 +81,18 @@ key_name_aliases = {
     'Э': 'CYRILLIC_E',
     'Ю': 'CYRILLIC_YU',
     'Я': 'CYRILLIC_YA',
-    'Ё': 'CYRILLIC_IO'
+    'Ё': 'CYRILLIC_IO',
 
+    'ESC': 'ESCAPE',
+    'PGUP': 'PAGE_UP',
+    'PAGEUP': 'PAGE_UP',
+    'PGDN': 'PAGE_DOWN',
+    'PAGEDOWN': 'PAGE_DOWN',
+    'RETURN': 'ENTER',
+    'ARROWUP': 'UP',
+    'ARROWDOWN': 'DOWN',
+    'ARROWRIGHT': 'RIGHT',
+    'ARROWLEFT': 'LEFT'
 }
 
 
