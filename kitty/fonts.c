@@ -1260,7 +1260,6 @@ send_prerendered_sprites_for_window(OSWindow *w) {
     FontGroup *fg = (FontGroup*)w->fonts_data;
     if (!fg->sprite_map) {
         fg->sprite_map = alloc_sprite_map(fg->cell_width, fg->cell_height);
-        if (!fg->sprite_map) fatal("Out of memory allocating a sprite map");
         send_prerendered_sprites(fg);
     }
 }

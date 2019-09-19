@@ -37,12 +37,11 @@ alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
         sprite_tracker_set_limits(max_texture_size, max_array_texture_layers);
     }
     SpriteMap *ans = calloc(1, sizeof(SpriteMap));
-    if (ans) {
-        *ans = NEW_SPRITE_MAP;
-        ans->max_texture_size = max_texture_size;
-        ans->max_array_texture_layers = max_array_texture_layers;
-        ans->cell_width = cell_width; ans->cell_height = cell_height;
-    }
+    if (!ans) fatal("Out of memory allocating a sprite map");
+    *ans = NEW_SPRITE_MAP;
+    ans->max_texture_size = max_texture_size;
+    ans->max_array_texture_layers = max_array_texture_layers;
+    ans->cell_width = cell_width; ans->cell_height = cell_height;
     return (SPRITE_MAP_HANDLE)ans;
 }
 
