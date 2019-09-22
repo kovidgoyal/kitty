@@ -209,6 +209,13 @@ def complete_kitty_cli_arg(ans, opt, prefix):
         k = 'Start as'
         ans.match_groups[k] = {x: x for x in 'normal,fullscreen,maximized,minimized'.split(',') if x.startswith(prefix)}
         ans.no_space_groups.add(k)
+    elif dest == 'listen_on':
+        if ':' not in prefix:
+            k = 'Address type'
+            ans.match_groups[k] = {x: x for x in ('unix:', 'tcp:') if x.startswith(prefix)}
+            ans.no_space_groups.add(k)
+        elif prefix.startswith('unix:') and not prefix.startswith('@'):
+            complete_files_and_dirs(ans, prefix[len('unix:'):], files_group_name='UNIX sockets', add_prefix='unix:')
 
 
 def complete_alias_map(ans, words, new_word, option_map, complete_args=None):
@@ -292,9 +299,12 @@ def path_completion(prefix=''):
     return dirs, files
 
 
-def complete_files_and_dirs(ans, prefix, files_group_name='Files', predicate=None):
+def complete_files_and_dirs(ans, prefix, files_group_name='Files', predicate=None, add_prefix=None):
     dirs, files = path_completion(prefix or '')
     files = filter(predicate, files)
+    if add_prefix:
+        dirs = (add_prefix + x for x in dirs)
+        files = (add_prefix + x for x in files)
 
     if dirs:
         ans.match_groups['Directories'] = dict.fromkeys(dirs)
