@@ -185,11 +185,22 @@ def kitty_cli_opts(ans, prefix=None):
 
 def complete_kitty_cli_arg(ans, opt, prefix):
     prefix = prefix or ''
-    if opt and opt['dest'] == 'override':
+    if not opt:
+        return
+    dest = opt['dest']
+    if dest == 'override':
         from kitty.config import option_names_for_completion
         k = 'Config directives'
         ans.match_groups[k] = {k+'=': None for k in option_names_for_completion() if k.startswith(prefix)}
         ans.no_space_groups.add(k)
+    elif dest == 'config':
+
+        def is_conf_file(x):
+            if os.path.isdir(x):
+                return True
+            return x.lower().endswith('.conf')
+
+        complete_files_and_dirs(ans, prefix, files_group_name='Config files', predicate=is_conf_file)
 
 
 def complete_alias_map(ans, words, new_word, option_map, complete_args=None):
