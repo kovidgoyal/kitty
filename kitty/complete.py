@@ -201,6 +201,14 @@ def complete_kitty_cli_arg(ans, opt, prefix):
             return x.lower().endswith('.conf')
 
         complete_files_and_dirs(ans, prefix, files_group_name='Config files', predicate=is_conf_file)
+    elif dest == 'session':
+        complete_files_and_dirs(ans, prefix, files_group_name='Session files')
+    elif dest == 'directory':
+        complete_files_and_dirs(ans, prefix, files_group_name='Session files', predicate=os.path.isdir)
+    elif dest == 'start_as':
+        k = 'Start as'
+        ans.match_groups[k] = {x: x for x in 'normal,fullscreen,maximized,minimized'.split(',') if x.startswith(prefix)}
+        ans.no_space_groups.add(k)
 
 
 def complete_alias_map(ans, words, new_word, option_map, complete_args=None):
