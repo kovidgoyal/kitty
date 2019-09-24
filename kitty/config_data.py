@@ -1100,7 +1100,9 @@ with::
 '''))
 if is_macos:
     k('new_window', 'cmd+enter', 'new_window', _('New window'), add_to_docs=False)
-k('new_os_window', 'kitty_mod+n', 'new_os_window', _('New OS window'))
+k('new_os_window', 'kitty_mod+n', 'new_os_window', _('New OS window'), _(
+    'Works like new_window above, except that it opens a top level OS kitty window.'
+    ' In particular you can use new_os_window_with_cwd to open a window with the current working directory.'))
 if is_macos:
     k('new_os_window', 'cmd+n', 'new_os_window', _('New OS window'), add_to_docs=False)
 k('close_window', 'kitty_mod+w', 'close_window', _('Close window'))
