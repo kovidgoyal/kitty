@@ -121,16 +121,24 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
 #define debug(...) if (OPT(debug_keyboard)) printf(__VA_ARGS__);
 
 void
-on_key_input(int key, int scancode, int action, int mods, const char* text, int state) {
+on_key_input(GLFWkeyevent *ev) {
     Window *w = active_window();
+    int action, scancode, key, mods;
+    const char *text;
+    action = ev->action;
+    scancode = ev->scancode;
+    key = ev->key;
+    mods = ev->mods;
+    text = ev->text;
+
     debug("on_key_input: glfw key: %d native_code: 0x%x action: %s mods: 0x%x text: '%s' state: %d ",
             key, scancode,
             (action == GLFW_RELEASE ? "RELEASE" : (action == GLFW_PRESS ? "PRESS" : "REPEAT")),
-            mods, text, state);
+            mods, text, ev->ime_state);
     if (!w) { debug("no active window, ignoring\n"); return; }
     if (OPT(mouse_hide_wait) < 0 && !is_modifier_key(key)) hide_mouse(global_state.callback_os_window);
     Screen *screen = w->render_data.screen;
-    switch(state) {
+    switch(ev->ime_state) {
         case 1:  // update pre-edit text
             update_ime_position(global_state.callback_os_window, w, screen);
             screen_draw_overlay_text(screen, text);

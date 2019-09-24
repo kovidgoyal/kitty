@@ -27,6 +27,7 @@
 
 #pragma once
 
+#include "internal.h"
 #include "dbus_glfw.h"
 #include <xkbcommon/xkbcommon.h>
 
@@ -38,18 +39,16 @@ typedef struct {
 } _GLFWIBUSData;
 
 typedef struct {
-    xkb_keycode_t keycode, ibus_keycode;
-    xkb_keysym_t keysym, ibus_sym;
-    unsigned int glfw_modifiers;
-    int action;
+    xkb_keycode_t ibus_keycode;
+    xkb_keysym_t ibus_keysym;
     GLFWid window_id;
-    int glfw_keycode;
-    char text[64];
-} KeyEvent;
+    GLFWkeyevent glfw_ev;
+    char __embedded_text[64];
+} _GLFWIBUSKeyEvent;
 
 void glfw_connect_to_ibus(_GLFWIBUSData *ibus);
 void glfw_ibus_terminate(_GLFWIBUSData *ibus);
 void glfw_ibus_set_focused(_GLFWIBUSData *ibus, bool focused);
 void glfw_ibus_dispatch(_GLFWIBUSData *ibus);
-bool ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus);
+bool ibus_process_key(const _GLFWIBUSKeyEvent *ev_, _GLFWIBUSData *ibus);
 void glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h);
