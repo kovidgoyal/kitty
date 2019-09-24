@@ -345,10 +345,12 @@ static int translateKey(unsigned int key, bool apply_keymap)
         // Look for the effective key name after applying any keyboard layouts/mappings
         const char *name_chars = _glfwPlatformGetScancodeName(key);
         uint32_t name = 0;
-        for (int i = 0; i < 4; i++) {
-            if (!name_chars[i]) break;
-            name <<= 8;
-            name |= (uint8_t)name_chars[i];
+        if (name_chars) {
+            for (int i = 0; i < 4; i++) {
+                if (!name_chars[i]) break;
+                name <<= 8;
+                name |= (uint8_t)name_chars[i];
+            }
         }
         if (name) {
             // Key name

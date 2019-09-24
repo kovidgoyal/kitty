@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.14.6 [2019-09-23]
+---------------------
+
+- macOS: Fix a regression in the previous release that caused a crash when
+  pressing a unprintable key, such as the POWER key (:iss:`1997`)
+
+
 0.14.5 [2019-09-23]
 ---------------------
 
