@@ -41,7 +41,10 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     int w, h, fw, fh;
     glfwGetFramebufferSize(window->handle, &fw, &fh);
     glfwGetWindowSize(window->handle, &w, &h);
-    if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height) {
+    double xdpi = window->logical_dpi_x, ydpi = window->logical_dpi_y;
+    set_os_window_dpi(window);
+
+    if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height && xdpi == window->logical_dpi_x && ydpi == window->logical_dpi_y) {
         return; // no change, ignore
     }
     if (w <= 0 || h <= 0 || fw / w > 5 || fh / h > 5 || fw < min_width || fh < min_height || fw < w || fh < h) {
@@ -62,8 +65,6 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     double xr = window->viewport_x_ratio, yr = window->viewport_y_ratio;
     window->viewport_x_ratio = w > 0 ? (double)window->viewport_width / (double)w : xr;
     window->viewport_y_ratio = h > 0 ? (double)window->viewport_height / (double)h : yr;
-    double xdpi = window->logical_dpi_x, ydpi = window->logical_dpi_y;
-    set_os_window_dpi(window);
     bool dpi_changed = (xr != 0.0 && xr != window->viewport_x_ratio) || (yr != 0.0 && yr != window->viewport_y_ratio) || (xdpi != window->logical_dpi_x) || (ydpi != window->logical_dpi_y);
 
     window->viewport_size_dirty = true;
