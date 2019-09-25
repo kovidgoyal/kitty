@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.14.6 [future]
+0.14.6 [2019-09-25]
 ---------------------
 
 - macOS: Fix a regression in the previous release that caused a crash when
