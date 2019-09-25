@@ -117,6 +117,6 @@ def update_check(timer_id=None):
     return True
 
 
-def run_update_check(interval=24 * 60 * 60):
+def run_update_check(interval=CHECK_INTERVAL):
     if update_check():
         add_timer(update_check, interval)
