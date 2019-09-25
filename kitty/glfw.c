@@ -231,14 +231,14 @@ refresh_callback(GLFWwindow *w) {
 static int mods_at_last_key_or_button_event = 0;
 
 static void
-key_callback(GLFWwindow *w, int key, int scancode, int action, int mods, const char* text, int state) {
+key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
     if (!set_callback_window(w)) return;
-    mods_at_last_key_or_button_event = mods;
+    mods_at_last_key_or_button_event = ev->mods;
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
-    if (key >= 0 && key <= GLFW_KEY_LAST) {
-        global_state.callback_os_window->is_key_pressed[key] = action == GLFW_RELEASE ? false : true;
+    if (ev->key >= 0 && ev->key <= GLFW_KEY_LAST) {
+        global_state.callback_os_window->is_key_pressed[ev->key] = ev->action == GLFW_RELEASE ? false : true;
     }
-    if (is_window_ready_for_callbacks()) on_key_input(key, scancode, action, mods, text, state);
+    if (is_window_ready_for_callbacks()) on_key_input(ev);
     global_state.callback_os_window = NULL;
     request_tick_callback();
 }

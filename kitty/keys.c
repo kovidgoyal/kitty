@@ -121,23 +121,26 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
 #define debug(...) if (OPT(debug_keyboard)) printf(__VA_ARGS__);
 
 void
-on_key_input(int key, int scancode, int action, int mods, const char* text, int state) {
+on_key_input(GLFWkeyevent *ev) {
     Window *w = active_window();
+    int action = ev->action, scancode = ev->scancode, key = ev->key, mods = ev->mods;
+    const char *text = ev->text ? ev->text : "";
+
     debug("on_key_input: glfw key: %d native_code: 0x%x action: %s mods: 0x%x text: '%s' state: %d ",
             key, scancode,
             (action == GLFW_RELEASE ? "RELEASE" : (action == GLFW_PRESS ? "PRESS" : "REPEAT")),
-            mods, text, state);
+            mods, text, ev->ime_state);
     if (!w) { debug("no active window, ignoring\n"); return; }
     if (OPT(mouse_hide_wait) < 0 && !is_modifier_key(key)) hide_mouse(global_state.callback_os_window);
     Screen *screen = w->render_data.screen;
-    switch(state) {
+    switch(ev->ime_state) {
         case 1:  // update pre-edit text
             update_ime_position(global_state.callback_os_window, w, screen);
             screen_draw_overlay_text(screen, text);
             debug("updated pre-edit text: '%s'\n", text);
             return;
         case 2:  // commit text
-            if (text && *text) {
+            if (*text) {
                 schedule_write_to_child(w->id, 1, text, strlen(text));
                 debug("committed pre-edit text: %s\n", text);
             } else debug("committed pre-edit text: (null)\n");
@@ -161,7 +164,7 @@ on_key_input(int key, int scancode, int action, int mods, const char* text, int 
         ) call_boss(process_sequence, "iiii", key, scancode, action, mods);
         return;
     }
-    bool has_text = text && !is_ascii_control_char(text[0]);
+    bool has_text = text[0] && !is_ascii_control_char(text[0]);
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         if (check_if_special(key, mods, scancode)) {
             PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_special_key", "iiii", key, scancode, action, mods);

@@ -13,6 +13,7 @@
 #include <stdbool.h>
 #include <poll.h>
 #include <pthread.h>
+#include "glfw-wrapper.h"
 // Required minimum OpenGL version
 #define OPENGL_REQUIRED_VERSION_MAJOR 3
 #define OPENGL_REQUIRED_VERSION_MINOR 3
@@ -309,7 +310,7 @@ void focus_in_event(void);
 void scroll_event(double, double, int);
 void fake_scroll(int, bool);
 void set_special_key_combo(int glfw_key, int mods, bool is_native);
-void on_key_input(int key, int scancode, int action, int mods, const char*, int);
+void on_key_input(GLFWkeyevent *ev);
 void request_window_attention(id_type, bool);
 #ifndef __APPLE__
 void play_canberra_sound(const char *which_sound, const char *event_id);

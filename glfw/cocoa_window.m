@@ -1055,6 +1055,8 @@ is_ascii_control_char(char x) {
     const bool previous_has_marked_text = [self hasMarkedText];
     [self unmarkText];
     _glfw.ns.text[0] = 0;
+    GLFWkeyevent glfw_keyevent;
+    _glfwInitializeKeyEvent(&glfw_keyevent, key, scancode, GLFW_PRESS, mods);
     if (!_glfw.ns.unicodeData) {
         // Using the cocoa API for key handling is disabled, as there is no
         // reliable way to handle dead keys using it. Only use it if the
@@ -1095,14 +1097,16 @@ is_ascii_control_char(char x) {
         if (window->ns.deadKeyState && (char_count == 0 || scancode == 0x75)) {
             // 0x75 is the delete key which needs to be ignored during a compose sequence
             debug_key(@"Sending pre-edit text for dead key (text: %@ markedText: %@).\n", @(format_text(_glfw.ns.text)), markedText);
-            _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
-                               [[markedText string] UTF8String], 1); // update pre-edit text
+            glfw_keyevent.text = [[markedText string] UTF8String];
+            glfw_keyevent.ime_state = 1;
+            _glfwInputKeyboard(window, &glfw_keyevent); // update pre-edit text
             return;
         }
         if (in_compose_sequence) {
             debug_key(@"Clearing pre-edit text at end of compose sequence\n");
-            _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
-                               NULL, 1); // clear pre-edit text
+            glfw_keyevent.text = NULL;
+            glfw_keyevent.ime_state = 1;
+            _glfwInputKeyboard(window, &glfw_keyevent); // clear pre-edit text
         }
     }
     if (is_ascii_control_char(_glfw.ns.text[0])) _glfw.ns.text[0] = 0;  // don't send text for ascii control codes
@@ -1110,18 +1114,22 @@ is_ascii_control_char(char x) {
             @(format_text(_glfw.ns.text)), @(_glfwGetKeyName(key)), markedText);
     if (!window->ns.deadKeyState) {
         if ([self hasMarkedText]) {
-            _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
-                               [[markedText string] UTF8String], 1); // update pre-edit text
+            glfw_keyevent.text = [[markedText string] UTF8String];
+            glfw_keyevent.ime_state = 1;
+            _glfwInputKeyboard(window, &glfw_keyevent); // update pre-edit text
         } else if (previous_has_marked_text) {
-            _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods,
-                               NULL, 1); // clear pre-edit text
+            glfw_keyevent.text = NULL;
+            glfw_keyevent.ime_state = 1;
+            _glfwInputKeyboard(window, &glfw_keyevent); // clear pre-edit text
         }
         if (([self hasMarkedText] || previous_has_marked_text) && !_glfw.ns.text[0]) {
             // do not pass keys like BACKSPACE while there's pre-edit text, let IME handle it
             return;
         }
     }
-    _glfwInputKeyboard(window, key, scancode, GLFW_PRESS, mods, _glfw.ns.text, 0);
+    glfw_keyevent.text = _glfw.ns.text;
+    glfw_keyevent.ime_state = 0;
+    _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
 - (void)flagsChanged:(NSEvent *)event
@@ -1143,14 +1151,19 @@ is_ascii_control_char(char x) {
     else
         action = GLFW_RELEASE;
 
-    _glfwInputKeyboard(window, key, [event keyCode], action, mods, "", 0);
+    GLFWkeyevent glfw_keyevent;
+    _glfwInitializeKeyEvent(&glfw_keyevent, key, [event keyCode], action, mods);
+    _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
 - (void)keyUp:(NSEvent *)event
 {
     const int key = translateKey([event keyCode], true);
     const int mods = translateFlags([event modifierFlags]);
-    _glfwInputKeyboard(window, key, [event keyCode], GLFW_RELEASE, mods, "", 0);
+
+    GLFWkeyevent glfw_keyevent;
+    _glfwInitializeKeyEvent(&glfw_keyevent, key, [event keyCode], GLFW_RELEASE, mods);
+    _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
 - (void)scrollWheel:(NSEvent *)event

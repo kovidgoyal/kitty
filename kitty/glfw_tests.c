@@ -31,9 +31,9 @@ static void* empty_thread_main(void* data UNUSED)
     return 0;
 }
 
-static void key_callback(GLFWwindow *w UNUSED, int key, int scancode UNUSED, int action, int mods UNUSED, const char* text UNUSED, int state UNUSED)
+static void key_callback(GLFWwindow *w UNUSED, GLFWkeyevent *ev)
 {
-    if (key == GLFW_KEY_ESCAPE && action == GLFW_PRESS) {
+    if (ev->key == GLFW_KEY_ESCAPE && ev->action == GLFW_PRESS) {
         glfwSetWindowShouldClose(w, true);
         wakeup_main_loop();
     }

@@ -256,33 +256,44 @@ static bool parseMapping(_GLFWmapping* mapping, const char* string)
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
 
+void _glfwInitializeKeyEvent(GLFWkeyevent *ev, int key, int scancode, int action, int mods)
+{
+    ev->key = key;
+    ev->scancode = scancode;
+    ev->action = action;
+    ev->mods = mods;
+    ev->text = NULL;
+    ev->ime_state = 0;
+}
+
 // Notifies shared code of a physical key event
 //
-void _glfwInputKeyboard(_GLFWwindow* window, int key, int scancode, int action, int mods, const char* text, int state)
+void _glfwInputKeyboard(_GLFWwindow* window, GLFWkeyevent* ev)
 {
-    if (key >= 0 && key <= GLFW_KEY_LAST)
+    if (ev->key >= 0 && ev->key <= GLFW_KEY_LAST)
     {
         bool repeated = false;
 
-        if (action == GLFW_RELEASE && window->keys[key] == GLFW_RELEASE)
+        if (ev->action == GLFW_RELEASE && window->keys[ev->key] == GLFW_RELEASE)
             return;
 
-        if (action == GLFW_PRESS && window->keys[key] == GLFW_PRESS)
+        if (ev->action == GLFW_PRESS && window->keys[ev->key] == GLFW_PRESS)
             repeated = true;
 
-        if (action == GLFW_RELEASE && window->stickyKeys)
-            window->keys[key] = _GLFW_STICK;
+        if (ev->action == GLFW_RELEASE && window->stickyKeys)
+            window->keys[ev->key] = _GLFW_STICK;
         else
-            window->keys[key] = (char) action;
+            window->keys[ev->key] = (char) ev->action;
 
         if (repeated)
-            action = GLFW_REPEAT;
+            ev->action = GLFW_REPEAT;
     }
 
 
+    // FIXME: will need to update ev->virtual_mods here too?
     if (window->callbacks.keyboard) {
-        if (!window->lockKeyMods) mods &= ~(GLFW_MOD_CAPS_LOCK | GLFW_MOD_NUM_LOCK);
-        window->callbacks.keyboard((GLFWwindow*) window, key, scancode, action, mods, text, state);
+        if (!window->lockKeyMods) ev->mods &= ~(GLFW_MOD_CAPS_LOCK | GLFW_MOD_NUM_LOCK);
+        window->callbacks.keyboard((GLFWwindow*) window, ev);
     }
 }
 

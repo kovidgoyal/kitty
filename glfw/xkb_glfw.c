@@ -445,16 +445,14 @@ glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode) {
 }
 
 
-static KeyEvent key_event = {0};
-
 static inline xkb_keysym_t
-compose_symbol(struct xkb_compose_state *composeState, xkb_keysym_t sym, int *compose_completed) {
+compose_symbol(struct xkb_compose_state *composeState, xkb_keysym_t sym, int *compose_completed, char *key_text, int n) {
     *compose_completed = 0;
     if (sym == XKB_KEY_NoSymbol || !composeState) return sym;
     if (xkb_compose_state_feed(composeState, sym) != XKB_COMPOSE_FEED_ACCEPTED) return sym;
     switch (xkb_compose_state_get_status(composeState)) {
         case XKB_COMPOSE_COMPOSED:
-            xkb_compose_state_get_utf8(composeState, key_event.text, sizeof(key_event.text));
+            xkb_compose_state_get_utf8(composeState, key_text, n);
             *compose_completed = 1;
             return xkb_compose_state_get_one_sym(composeState);
         case XKB_COMPOSE_COMPOSING:
@@ -534,11 +532,14 @@ glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, int which, int a, i
 }
 
 void
-glfw_xkb_key_from_ime(KeyEvent *ev, bool handled_by_ime, bool failed) {
+glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
     _GLFWwindow *window = _glfwWindowForId(ev->window_id);
     if (failed && window && window->callbacks.keyboard) {
         // notify application to remove any existing pre-edit text
-        window->callbacks.keyboard((GLFWwindow*) window, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0, "", 1);
+        GLFWkeyevent fake_ev;
+        _glfwInitializeKeyEvent(&fake_ev, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0);
+        fake_ev.ime_state = 1;
+        window->callbacks.keyboard((GLFWwindow*) window, &fake_ev);
     }
     static xkb_keycode_t last_handled_press_keycode = 0;
     // We filter out release events that correspond to the last press event
@@ -547,53 +548,57 @@ glfw_xkb_key_from_ime(KeyEvent *ev, bool handled_by_ime, bool failed) {
     // you'd need to implement a ring buffer to store pending key presses.
     xkb_keycode_t prev_handled_press = last_handled_press_keycode;
     last_handled_press_keycode = 0;
-    bool is_release = ev->action == GLFW_RELEASE;
-    debug("From IBUS: scancode: 0x%x name: %s is_release: %d\n", ev->keycode, glfw_xkb_keysym_name(ev->keysym), is_release);
-    if (window && !handled_by_ime && !(is_release && ev->keycode == prev_handled_press)) {
+    bool is_release = ev->glfw_ev.action == GLFW_RELEASE;
+    debug("From IBUS: scancode: 0x%x name: %s is_release: %d\n", ev->glfw_ev.scancode, glfw_xkb_keysym_name(ev->glfw_ev.key), is_release);
+    if (window && !handled_by_ime && !(is_release && ev->glfw_ev.scancode == (int) prev_handled_press)) {
         debug("↳ to application: glfw_keycode: 0x%x (%s) keysym: 0x%x (%s) action: %s %s text: %s\n",
-            ev->glfw_keycode, _glfwGetKeyName(ev->glfw_keycode), ev->keysym, glfw_xkb_keysym_name(ev->keysym),
-            (ev->action == GLFW_RELEASE ? "RELEASE" : (ev->action == GLFW_PRESS ? "PRESS" : "REPEAT")),
-            format_mods(ev->glfw_modifiers), ev->text
+            ev->glfw_ev.scancode, _glfwGetKeyName(ev->glfw_ev.scancode), ev->glfw_ev.key, glfw_xkb_keysym_name(ev->glfw_ev.key),
+            (ev->glfw_ev.action == GLFW_RELEASE ? "RELEASE" : (ev->glfw_ev.action == GLFW_PRESS ? "PRESS" : "REPEAT")),
+            format_mods(ev->glfw_ev.mods), ev->glfw_ev.text
         );
-        _glfwInputKeyboard(window, ev->glfw_keycode, ev->keysym, ev->action, ev->glfw_modifiers, ev->text, 0);
+
+        ev->glfw_ev.ime_state = 0;
+        _glfwInputKeyboard(window, &ev->glfw_ev);
     } else debug("↳ discarded\n");
-    if (!is_release && handled_by_ime) last_handled_press_keycode = ev->keycode;
+    if (!is_release && handled_by_ime) last_handled_press_keycode = ev->glfw_ev.scancode;
 }
 
 void
 glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action) {
+    static char key_text[64] = {0};
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
-    xkb_keysym_t glfw_sym;
-    xkb_keycode_t code_for_sym = scancode;
-    key_event.ibus_keycode = scancode;
+    xkb_keysym_t xkb_sym;
+    xkb_keycode_t code_for_sym = scancode, ibus_keycode = scancode;
+    GLFWkeyevent glfw_ev;
+    _glfwInitializeKeyEvent(&glfw_ev, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0); // init with default values
 #ifdef _GLFW_WAYLAND
     code_for_sym += 8;
 #else
-    key_event.ibus_keycode -= 8;
+    ibus_keycode -= 8;
 #endif
     debug("%s scancode: 0x%x ", action == GLFW_RELEASE ? "Release" : "Press", scancode);
     XKBStateGroup *sg = &xkb->states;
     int num_syms = xkb_state_key_get_syms(sg->state, code_for_sym, &syms);
     int num_clean_syms = xkb_state_key_get_syms(sg->clean_state, code_for_sym, &clean_syms);
-    key_event.text[0] = 0;
+    key_text[0] = 0;
     // According to the documentation of xkb_compose_state_feed it does not
     // support multi-sym events, so we ignore them
     if (num_syms != 1 || num_clean_syms != 1) {
         debug("num_syms: %d num_clean_syms: %d ignoring event\n", num_syms, num_clean_syms);
         return;
     }
-    glfw_sym = clean_syms[0];
+    xkb_sym = clean_syms[0];
     debug("clean_sym: %s ", glfw_xkb_keysym_name(clean_syms[0]));
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         const char *text_type = "composed_text";
         int compose_completed;
-        glfw_sym = compose_symbol(sg->composeState, syms[0], &compose_completed);
-        if (glfw_sym == XKB_KEY_NoSymbol && !compose_completed) {
+        xkb_sym = compose_symbol(sg->composeState, syms[0], &compose_completed, key_text, sizeof(key_text));
+        if (xkb_sym == XKB_KEY_NoSymbol && !compose_completed) {
             debug("compose not complete, ignoring.\n");
             return;
         }
-        debug("composed_sym: %s ", glfw_xkb_keysym_name(glfw_sym));
-        if (glfw_sym == syms[0]) { // composed sym is the same as non-composed sym
+        debug("composed_sym: %s ", glfw_xkb_keysym_name(xkb_sym));
+        if (xkb_sym == syms[0]) { // composed sym is the same as non-composed sym
             // Only use the clean_sym if no mods other than the mods we report
             // are active (for example if ISO_Shift_Level_* mods are active
             // they are not reported by GLFW so the key should be the shifted
@@ -601,37 +606,49 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
             xkb_mod_mask_t consumed_unknown_mods = xkb_state_key_get_consumed_mods(sg->state, code_for_sym) & sg->activeUnknownModifiers;
             if (sg->activeUnknownModifiers) debug("%s", format_xkb_mods(xkb, "active_unknown_mods", sg->activeUnknownModifiers));
             if (consumed_unknown_mods) { debug("%s", format_xkb_mods(xkb, "consumed_unknown_mods", consumed_unknown_mods)); }
-            else glfw_sym = clean_syms[0];
+            else xkb_sym = clean_syms[0];
             // xkb returns text even if alt and/or super are pressed
-            if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER) & sg->modifiers) == 0) xkb_state_key_get_utf8(sg->state, code_for_sym, key_event.text, sizeof(key_event.text));
+            if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER) & sg->modifiers) == 0) {
+              xkb_state_key_get_utf8(sg->state, code_for_sym, key_text, sizeof(key_text));
+            }
             text_type = "text";
         }
-        if ((1 <= key_event.text[0] && key_event.text[0] <= 31) || key_event.text[0] == 127) key_event.text[0] = 0;  // don't send text for ascii control codes
-        if (key_event.text[0]) { debug("%s: %s ", text_type, key_event.text); }
+        if ((1 <= key_text[0] && key_text[0] <= 31) || key_text[0] == 127) {
+          key_text[0] = 0;  // don't send text for ascii control codes
+        }
+        if (key_text[0]) { debug("%s: %s ", text_type, key_text); }
     }
-    int glfw_keycode = glfw_key_for_sym(glfw_sym);
+    int glfw_sym = glfw_key_for_sym(xkb_sym);
     bool is_fallback = false;
-    if (glfw_keycode == GLFW_KEY_UNKNOWN && !key_event.text[0]) {
+    if (glfw_sym == GLFW_KEY_UNKNOWN && !key_text[0]) {
         int num_default_syms = xkb_state_key_get_syms(sg->default_state, code_for_sym, &default_syms);
         if (num_default_syms > 0) {
-            glfw_sym = default_syms[0];
-            glfw_keycode = glfw_key_for_sym(glfw_sym);
+            xkb_sym = default_syms[0];
+            glfw_sym = glfw_key_for_sym(xkb_sym);
             is_fallback = true;
         }
     }
     debug(
         "%s%s: %d (%s) xkb_key: %d (%s)\n",
         format_mods(sg->modifiers),
-        is_fallback ? "glfw_fallback_key" : "glfw_key", glfw_keycode, _glfwGetKeyName(glfw_keycode),
-        glfw_sym, glfw_xkb_keysym_name(glfw_sym)
+        is_fallback ? "glfw_fallback_key" : "glfw_key", glfw_sym, _glfwGetKeyName(glfw_sym),
+        xkb_sym, glfw_xkb_keysym_name(xkb_sym)
     );
-    key_event.action = action; key_event.glfw_modifiers = sg->modifiers;
-    key_event.keycode = scancode; key_event.keysym = glfw_sym;
-    key_event.window_id = window->id; key_event.glfw_keycode = glfw_keycode;
-    key_event.ibus_sym = syms[0];
-    if (ibus_process_key(&key_event, &xkb->ibus)) {
-        debug("↳ to IBUS: keycode: 0x%x keysym: 0x%x (%s) %s\n", key_event.ibus_keycode, key_event.ibus_sym, glfw_xkb_keysym_name(key_event.ibus_sym), format_mods(key_event.glfw_modifiers));
+
+    glfw_ev.action = action;
+    glfw_ev.scancode = xkb_sym;
+    glfw_ev.key = glfw_sym;
+    glfw_ev.mods = sg->modifiers;
+    glfw_ev.text = key_text;
+
+    _GLFWIBUSKeyEvent ibus_ev;
+    ibus_ev.glfw_ev = glfw_ev;
+    ibus_ev.ibus_keycode = ibus_keycode;
+    ibus_ev.window_id = window->id;
+    ibus_ev.ibus_keysym = syms[0];
+    if (ibus_process_key(&ibus_ev, &xkb->ibus)) {
+        debug("↳ to IBUS: scancode: 0x%x keysym: 0x%x (%s) %s\n", ibus_ev.ibus_keycode, ibus_ev.ibus_keysym, glfw_xkb_keysym_name(ibus_ev.ibus_keysym), format_mods(ibus_ev.glfw_ev.mods));
     } else {
-        _glfwInputKeyboard(window, glfw_keycode, glfw_sym, action, sg->modifiers, key_event.text, 0);
+        _glfwInputKeyboard(window, &glfw_ev);
     }
 }

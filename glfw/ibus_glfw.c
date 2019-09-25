@@ -107,10 +107,14 @@ get_ibus_text_from_message(DBusMessage *msg) {
 }
 
 static inline void
-send_text(const char *text, int state) {
+send_text(const char *text, int ime_state) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {
-        w->callbacks.keyboard((GLFWwindow*) w, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0, text, state);
+        GLFWkeyevent fake_ev;
+        _glfwInitializeKeyEvent(&fake_ev, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0);
+        fake_ev.text = text;
+        fake_ev.ime_state = ime_state;
+        w->callbacks.keyboard((GLFWwindow*) w, &fake_ev);
     }
 }
 
@@ -393,31 +397,36 @@ ibus_key_state(unsigned int glfw_modifiers, int action) {
 void
 key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
     uint32_t handled = 0;
-    KeyEvent *ev = (KeyEvent*)data;
-    bool is_release = ev->action == GLFW_RELEASE;
+    _GLFWIBUSKeyEvent *ev = (_GLFWIBUSKeyEvent*)data;
+    // Restore key's text from the text embedded in the structure.
+    ev->glfw_ev.text = ev->__embedded_text;
+    bool is_release = ev->glfw_ev.action == GLFW_RELEASE;
     bool failed = false;
     if (errmsg) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to process key with error: %s", errmsg);
         failed = true;
     } else {
         glfw_dbus_get_args(msg, "Failed to get IBUS handled key from reply", DBUS_TYPE_BOOLEAN, &handled, DBUS_TYPE_INVALID);
-        debug("IBUS processed scancode: 0x%x release: %d handled: %u\n", ev->keycode, is_release, handled);
+        debug("IBUS processed scancode: 0x%x release: %d handled: %u\n", ev->glfw_ev.scancode, is_release, handled);
     }
     glfw_xkb_key_from_ime(ev, handled ? true : false, failed);
     free(ev);
 }
 
 bool
-ibus_process_key(const KeyEvent *ev_, _GLFWIBUSData *ibus) {
+ibus_process_key(const _GLFWIBUSKeyEvent *ev_, _GLFWIBUSData *ibus) {
     if (!check_connection(ibus)) return false;
-    KeyEvent *ev = malloc(sizeof(KeyEvent));
+    _GLFWIBUSKeyEvent *ev = calloc(1, sizeof(_GLFWIBUSKeyEvent));
     if (!ev) return false;
-    memcpy(ev, ev_, sizeof(KeyEvent));
-    uint32_t state = ibus_key_state(ev->glfw_modifiers, ev->action);
+    memcpy(ev, ev_, sizeof(_GLFWIBUSKeyEvent));
+    // Put the key's text in a field IN the structure, for proper serialization.
+    if (ev->glfw_ev.text) strncpy(ev->__embedded_text, ev->glfw_ev.text, sizeof(ev->__embedded_text) - 1);
+    ev->glfw_ev.text = NULL;
+    uint32_t state = ibus_key_state(ev->glfw_ev.mods, ev->glfw_ev.action);
     if (!glfw_dbus_call_method_with_reply(
             ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "ProcessKeyEvent",
             3000, key_event_processed, ev,
-            DBUS_TYPE_UINT32, &ev->ibus_sym, DBUS_TYPE_UINT32, &ev->ibus_keycode, DBUS_TYPE_UINT32,
+            DBUS_TYPE_UINT32, &ev->ibus_keysym, DBUS_TYPE_UINT32, &ev->ibus_keycode, DBUS_TYPE_UINT32,
             &state, DBUS_TYPE_INVALID)) {
         free(ev);
         return false;
