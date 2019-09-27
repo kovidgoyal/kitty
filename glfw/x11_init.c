@@ -468,7 +468,7 @@ void _glfwGetSystemContentScaleX11(float* xscale, float* yscale, bool bypass_cac
             if (XrmGetResource(db, "Xft.dpi", "Xft.Dpi", &type, &value))
             {
                 if (type && strcmp(type, "String") == 0)
-                    xdpi = ydpi = atof(value.addr);
+                    xdpi = ydpi = (float)atof(value.addr);
             }
 
             XrmDestroyDatabase(db);

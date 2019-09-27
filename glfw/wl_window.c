@@ -546,9 +546,9 @@ static void xdgToplevelHandleConfigure(void* data,
                 aspectRatio = (float)width / (float)height;
                 targetRatio = (float)window->numer / (float)window->denom;
                 if (aspectRatio < targetRatio)
-                    height = width / targetRatio;
+                    height = (int32_t)((float)width / targetRatio);
                 else if (aspectRatio > targetRatio)
-                    width = height * targetRatio;
+                    width = (int32_t)((float)height * targetRatio);
             }
         }
     }

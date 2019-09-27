@@ -816,8 +816,8 @@ get_physical_dpi(GLFWmonitor *m) {
     if (width == 0 || height == 0) { PyErr_SetString(PyExc_ValueError, "Failed to get primary monitor size"); return NULL; }
     const GLFWvidmode *vm = glfwGetVideoMode(m);
     if (vm == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to get video mode for monitor"); return NULL; }
-    float dpix = vm->width / (width / 25.4);
-    float dpiy = vm->height / (height / 25.4);
+    float dpix = (float)(vm->width / (width / 25.4));
+    float dpiy = (float)(vm->height / (height / 25.4));
     return Py_BuildValue("ff", dpix, dpiy);
 }
 

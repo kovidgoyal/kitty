@@ -285,8 +285,8 @@ static void pointerHandleButton(void* data UNUSED,
         {
             xdg_toplevel_show_window_menu(window->wl.xdg.toplevel,
                                           _glfw.wl.seat, serial,
-                                          window->wl.cursorPosX,
-                                          window->wl.cursorPosY);
+                                          (int32_t)window->wl.cursorPosX,
+                                          (int32_t)window->wl.cursorPosY);
             return;
         }
     }

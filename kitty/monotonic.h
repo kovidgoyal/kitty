@@ -54,7 +54,7 @@ static inline monotonic_t ms_to_monotonic_t(monotonic_t time) {
 }
 
 static inline int monotonic_t_to_ms(monotonic_t time) {
-    return time / 1000ll / 1000ll;
+    return (int)(time / 1000ll / 1000ll);
 }
 
 static inline double monotonic_t_to_s_double(monotonic_t time) {

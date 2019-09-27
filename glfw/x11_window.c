@@ -509,8 +509,8 @@ static bool createNativeWindow(_GLFWwindow* window,
 
     if (wndconfig->scaleToMonitor)
     {
-        width *= _glfw.x11.contentScaleX;
-        height *= _glfw.x11.contentScaleY;
+        width *= (int)_glfw.x11.contentScaleX;
+        height *= (int)_glfw.x11.contentScaleY;
     }
 
     // Create a colormap based on the visual used by the current context

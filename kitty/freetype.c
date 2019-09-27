@@ -77,12 +77,12 @@ static FT_Library  library;
 
 static inline int
 font_units_to_pixels_y(Face *self, int x) {
-    return ceil((double)FT_MulFix(x, self->face->size->metrics.y_scale) / 64.0);
+    return (int)ceil((double)FT_MulFix(x, self->face->size->metrics.y_scale) / 64.0);
 }
 
 static inline int
 font_units_to_pixels_x(Face *self, int x) {
-    return ceil((double)FT_MulFix(x, self->face->size->metrics.x_scale) / 64.0);
+    return (int)ceil((double)FT_MulFix(x, self->face->size->metrics.x_scale) / 64.0);
 }
 
 
@@ -140,7 +140,7 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
     if (!error) {
         unsigned int ch = calc_cell_height(self, false);
         if (desired_height && ch != desired_height) {
-            FT_F26Dot6 h = floor((double)char_height * (double)desired_height / (double) ch);
+            FT_F26Dot6 h = (FT_F26Dot6)floor((double)char_height * (double)desired_height / (double) ch);
             return set_font_size(self, 0, h, xdpi, ydpi, 0, cell_height);
         }
         self->char_width = char_width; self->char_height = char_height; self->xdpi = xdpi; self->ydpi = ydpi;
@@ -160,8 +160,8 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
             int32_t min_diff = INT32_MAX;
             if (desired_height == 0) desired_height = cell_height;
             if (desired_height == 0) {
-                desired_height = ceil(((double)char_height / 64.) * (double)ydpi / 72.);
-                desired_height += ceil(0.2 * desired_height);
+                desired_height = (unsigned int)ceil(((double)char_height / 64.) * (double)ydpi / 72.);
+                desired_height += (unsigned int)ceil(0.2 * desired_height);
             }
             FT_Int strike_index = -1;
             for (FT_Int i = 0; i < self->face->num_fixed_sizes; i++) {
@@ -190,7 +190,7 @@ set_size_for_face(PyObject *s, unsigned int desired_height, bool force, FONTS_DA
     FT_F26Dot6 w = (FT_F26Dot6)(ceil(fg->font_sz_in_pts * 64.0));
     FT_UInt xdpi = (FT_UInt)fg->logical_dpi_x, ydpi = (FT_UInt)fg->logical_dpi_y;
     if (!force && (self->char_width == w && self->char_height == w && self->xdpi == xdpi && self->ydpi == ydpi)) return true;
-    ((Face*)self)->size_in_pts = fg->font_sz_in_pts;
+    ((Face*)self)->size_in_pts = (float)fg->font_sz_in_pts;
     return set_font_size(self, w, w, xdpi, ydpi, desired_height, fg->cell_height);
 }
 
@@ -438,7 +438,7 @@ downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_hei
     // better with bi-cubic or lanczos, but at these small sizes I don't think
     // it matters
     float ratio = MAX((float)bm->width / width, (float)bm->rows / cell_height);
-    int factor = ceilf(ratio);
+    int factor = (int)ceilf(ratio);
     uint8_t *dest = calloc(4, width * cell_height);
     if (dest == NULL) fatal("Out of memory");
     uint8_t *d = dest;
@@ -499,8 +499,8 @@ render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int
     ans->rows = bitmap->rows;
     ans->pixel_mode = bitmap->pixel_mode;
     if (ans->width > num_cells * cell_width + 2) downsample_bitmap(ans, num_cells * cell_width, cell_height);
-    ans->bitmap_top = (float)self->face->glyph->bitmap_top / ans->factor;
-    ans->bitmap_left = (float)self->face->glyph->bitmap_left / ans->factor;
+    ans->bitmap_top = (int)((float)self->face->glyph->bitmap_top / ans->factor);
+    ans->bitmap_left = (int)((float)self->face->glyph->bitmap_left / ans->factor);
     detect_right_edge(ans);
     return true;
 }

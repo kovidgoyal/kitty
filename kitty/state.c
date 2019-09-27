@@ -365,6 +365,11 @@ set_special_keys(PyObject *dict) {
     }}
 }
 
+static inline float
+PyFloat_AsFloat(PyObject *o) {
+    return (float)PyFloat_AsDouble(o);
+}
+
 PYWRAP0(next_window_id) {
     return PyLong_FromUnsignedLongLong(global_state.window_id_counter + 1);
 }
@@ -400,11 +405,11 @@ PYWRAP1(set_options) {
     S(focus_follows_mouse, PyObject_IsTrue);
     S(cursor_blink_interval, parse_s_double_to_monotonic_t);
     S(cursor_stop_blinking_after, parse_s_double_to_monotonic_t);
-    S(background_opacity, PyFloat_AsDouble);
-    S(dim_opacity, PyFloat_AsDouble);
+    S(background_opacity, PyFloat_AsFloat);
+    S(dim_opacity, PyFloat_AsFloat);
     S(dynamic_background_opacity, PyObject_IsTrue);
-    S(inactive_text_alpha, PyFloat_AsDouble);
-    S(window_padding_width, PyFloat_AsDouble);
+    S(inactive_text_alpha, PyFloat_AsFloat);
+    S(window_padding_width, PyFloat_AsFloat);
     S(scrollback_pager_history_size, PyLong_AsUnsignedLong);
     S(cursor_shape, PyLong_AsLong);
     S(url_style, PyLong_AsUnsignedLong);
@@ -436,7 +441,7 @@ PYWRAP1(set_options) {
     S(macos_show_window_title_in, window_title_in);
     S(macos_window_resizable, PyObject_IsTrue);
     S(macos_hide_from_tasks, PyObject_IsTrue);
-    S(macos_thicken_font, PyFloat_AsDouble);
+    S(macos_thicken_font, PyFloat_AsFloat);
     S(tab_bar_min_tabs, PyLong_AsUnsignedLong);
     S(disable_ligatures, PyLong_AsLong);
     S(resize_draw_strategy, PyLong_AsLong);

@@ -409,9 +409,9 @@ calc_cell_metrics(FontGroup *fg) {
     unsigned int before_cell_height = cell_height;
     int cw = cell_width, ch = cell_height;
     if (OPT(adjust_line_height_px) != 0) ch += OPT(adjust_line_height_px);
-    if (OPT(adjust_line_height_frac) != 0.f) ch *= OPT(adjust_line_height_frac);
+    if (OPT(adjust_line_height_frac) != 0.f) ch = (int)(ch * OPT(adjust_line_height_frac));
     if (OPT(adjust_column_width_px != 0)) cw += OPT(adjust_column_width_px);
-    if (OPT(adjust_column_width_frac) != 0.f) cw *= OPT(adjust_column_width_frac);
+    if (OPT(adjust_column_width_frac) != 0.f) cw = (int)(cw * OPT(adjust_column_width_frac));
 #define MAX_DIM 1000
 #define MIN_WIDTH 2
 #define MIN_HEIGHT 4
@@ -1107,7 +1107,7 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 glyph_index glyph_id = glyph_id_for_codepoint(font->face, cpu_cell->ch);
 
                 int width = get_glyph_width(font->face, glyph_id);
-                desired_cells = ceilf((float)width / fg->cell_width);
+                desired_cells = (unsigned int)ceilf((float)width / fg->cell_width);
             }
 
             unsigned int num_spaces = 0;
