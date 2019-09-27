@@ -250,7 +250,7 @@ typedef struct _GLFWlibraryWayland
     uint32_t                    pointerSerial;
 
     int32_t                     keyboardRepeatRate;
-    int32_t                     keyboardRepeatDelay;
+    monotonic_t                 keyboardRepeatDelay;
     struct {
         uint32_t                key;
         id_type                 keyRepeatTimer;

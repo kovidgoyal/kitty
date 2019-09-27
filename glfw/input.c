@@ -28,6 +28,7 @@
 //========================================================================
 
 #include "internal.h"
+#include "../kitty/monotonic.h"
 
 #include <assert.h>
 #include <float.h>
@@ -1477,25 +1478,23 @@ GLFWAPI const char* glfwGetPrimarySelectionString(GLFWwindow* handle UNUSED)
 }
 #endif
 
-GLFWAPI double glfwGetTime(void)
+GLFWAPI monotonic_t glfwGetTime(void)
 {
-    _GLFW_REQUIRE_INIT_OR_RETURN(0.0);
-    return (double) (_glfwPlatformGetTimerValue() - _glfw.timer.offset) /
-        _glfwPlatformGetTimerFrequency();
+    _GLFW_REQUIRE_INIT_OR_RETURN(0);
+    return monotonic();
 }
 
-GLFWAPI void glfwSetTime(double time)
+GLFWAPI void glfwSetTime(monotonic_t time)
 {
     _GLFW_REQUIRE_INIT();
 
-    if (time != time || time < 0.0 || time > 18446744073.0)
+    if (time < 0)
     {
-        _glfwInputError(GLFW_INVALID_VALUE, "Invalid time %f", time);
+        _glfwInputError(GLFW_INVALID_VALUE, "Invalid time %f", monotonic_t_to_s_double(time));
         return;
     }
 
-    _glfw.timer.offset = _glfwPlatformGetTimerValue() -
-        (uint64_t) (time * _glfwPlatformGetTimerFrequency());
+    // Do nothing
 }
 
 GLFWAPI uint64_t glfwGetTimerValue(void)

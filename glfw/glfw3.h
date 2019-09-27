@@ -1707,8 +1707,8 @@ typedef struct GLFWgamepadstate
 GLFWAPI int glfwInit(void);
 GLFWAPI void glfwRunMainLoop(GLFWtickcallback callback, void *callback_data);
 GLFWAPI void glfwStopMainLoop(void);
-GLFWAPI unsigned long long glfwAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void * callback_data, GLFWuserdatafun free_callback);
-GLFWAPI void glfwUpdateTimer(unsigned long long timer_id, double interval, bool enabled);
+GLFWAPI unsigned long long glfwAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafun callback, void * callback_data, GLFWuserdatafun free_callback);
+GLFWAPI void glfwUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool enabled);
 GLFWAPI void glfwRemoveTimer(unsigned long long);
 
 /*! @brief Terminates the GLFW library.
@@ -3072,7 +3072,7 @@ GLFWAPI void glfwGetWindowContentScale(GLFWwindow* window, float* xscale, float*
  *
  *  @ingroup window
  */
-GLFWAPI double glfwGetDoubleClickInterval(GLFWwindow* window);
+GLFWAPI monotonic_t glfwGetDoubleClickInterval(GLFWwindow* window);
 
 /*! @brief Returns the opacity of the whole window.
  *
@@ -5002,7 +5002,7 @@ GLFWAPI const char* glfwGetClipboardString(GLFWwindow* window);
  *
  *  @ingroup input
  */
-GLFWAPI double glfwGetTime(void);
+GLFWAPI monotonic_t glfwGetTime(void);
 
 /*! @brief Sets the GLFW timer.
  *
@@ -5029,7 +5029,7 @@ GLFWAPI double glfwGetTime(void);
  *
  *  @ingroup input
  */
-GLFWAPI void glfwSetTime(double time);
+GLFWAPI void glfwSetTime(monotonic_t time);
 
 /*! @brief Returns the current value of the raw timer.
  *

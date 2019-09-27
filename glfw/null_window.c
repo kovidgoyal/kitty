@@ -28,6 +28,7 @@
 //========================================================================
 
 #include "internal.h"
+#include "../kitty/monotonic.h"
 
 
 static int createNativeWindow(_GLFWwindow* window,
@@ -150,9 +151,9 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window UNUSED,
         *yscale = 1.f;
 }
 
-double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
+monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
 {
-    return 0.5;
+    return ms_to_monotonic_t(500ll);
 }
 
 void _glfwPlatformIconifyWindow(_GLFWwindow* window UNUSED)
@@ -257,7 +258,7 @@ void _glfwPlatformWaitEvents(void)
 {
 }
 
-void _glfwPlatformWaitEventsTimeout(double timeout UNUSED)
+void _glfwPlatformWaitEventsTimeout(monotonic_t timeout UNUSED)
 {
 }
 

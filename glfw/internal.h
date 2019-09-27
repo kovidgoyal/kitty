@@ -27,6 +27,8 @@
 
 #pragma once
 
+#include "../kitty/monotonic.h"
+
 #if defined(_GLFW_USE_CONFIG_H)
  #include "glfw_config.h"
 #endif
@@ -687,7 +689,7 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
                                      int* right, int* bottom);
 void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
                                         float* xscale, float* yscale);
-double _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window);
+monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window);
 void _glfwPlatformIconifyWindow(_GLFWwindow* window);
 void _glfwPlatformRestoreWindow(_GLFWwindow* window);
 void _glfwPlatformMaximizeWindow(_GLFWwindow* window);
@@ -716,7 +718,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c,
 
 void _glfwPlatformPollEvents(void);
 void _glfwPlatformWaitEvents(void);
-void _glfwPlatformWaitEventsTimeout(double timeout);
+void _glfwPlatformWaitEventsTimeout(monotonic_t timeout);
 void _glfwPlatformPostEmptyEvent(void);
 
 void _glfwPlatformGetRequiredInstanceExtensions(char** extensions);
@@ -824,8 +826,8 @@ _GLFWwindow* _glfwFocusedWindow(void);
 _GLFWwindow* _glfwWindowForId(GLFWid id);
 void _glfwPlatformRunMainLoop(GLFWtickcallback, void*);
 void _glfwPlatformStopMainLoop(void);
-unsigned long long _glfwPlatformAddTimer(double interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback);
-void _glfwPlatformUpdateTimer(unsigned long long timer_id, double interval, bool enabled);
+unsigned long long _glfwPlatformAddTimer(monotonic_t interval, bool repeats, GLFWuserdatafun callback, void *callback_data, GLFWuserdatafun free_callback);
+void _glfwPlatformUpdateTimer(unsigned long long timer_id, monotonic_t interval, bool enabled);
 void _glfwPlatformRemoveTimer(unsigned long long timer_id);
 
 char* _glfw_strdup(const char* source);

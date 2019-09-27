@@ -1730,7 +1730,7 @@ static PyObject*
 set_pending_timeout(Screen *self, PyObject *val) {
     if (!PyFloat_Check(val)) { PyErr_SetString(PyExc_TypeError, "timeout must be a float"); return NULL; }
     PyObject *ans = PyFloat_FromDouble(self->pending_mode.wait_time);
-    self->pending_mode.wait_time = PyFloat_AS_DOUBLE(val);
+    self->pending_mode.wait_time = s_double_to_monotonic_t(PyFloat_AS_DOUBLE(val));
     return ans;
 }
 

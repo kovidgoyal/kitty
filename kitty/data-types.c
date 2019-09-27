@@ -22,31 +22,10 @@
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
-
-/* To millisecond (10^-3) */
-#define SEC_TO_MS 1000
-
-/* To microseconds (10^-6) */
-#define MS_TO_US 1000
-#define SEC_TO_US (SEC_TO_MS * MS_TO_US)
-
-/* To nanoseconds (10^-9) */
-#define US_TO_NS 1000
-#define MS_TO_NS (MS_TO_US * US_TO_NS)
-#define SEC_TO_NS (SEC_TO_MS * MS_TO_NS)
-
-/* Conversion from nanoseconds */
-#define NS_TO_MS (1000 * 1000)
-#define NS_TO_US (1000)
+#include "monotonic.h"
 
 #ifdef __APPLE__
 #include <libproc.h>
-#include <mach/mach_time.h>
-static mach_timebase_info_data_t timebase = {0};
-
-static inline double monotonic_(void) {
-    return ((double)(mach_absolute_time() * timebase.numer) / timebase.denom)/SEC_TO_NS;
-}
 
 static PyObject*
 user_cache_dir() {
@@ -73,25 +52,7 @@ process_group_map() {
     free(buf);
     return ans;
 }
-
-#else
-#include <time.h>
-static inline double monotonic_(void) {
-    struct timespec ts = {0};
-#ifdef CLOCK_HIGHRES
-    clock_gettime(CLOCK_HIGHRES, &ts);
-#elif CLOCK_MONOTONIC_RAW
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-#else
-    clock_gettime(CLOCK_MONOTONIC, &ts);
 #endif
-    return (((double)ts.tv_nsec) / SEC_TO_NS) + (double)ts.tv_sec;
-}
-#endif
-
-static double start_time = 0;
-
-double monotonic() { return monotonic_() - start_time; }
 
 static PyObject*
 redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
@@ -253,10 +214,7 @@ PyInit_fast_data_types(void) {
 
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;
-#ifdef __APPLE__
-    mach_timebase_info(&timebase);
-#endif
-    start_time = monotonic_();
+    init_monotonic();
 
     if (m != NULL) {
         if (!init_logging(m)) return NULL;

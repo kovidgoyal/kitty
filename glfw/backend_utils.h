@@ -25,6 +25,7 @@
 //========================================================================
 
 #pragma once
+#include "../kitty/monotonic.h"
 #include <poll.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -55,7 +56,7 @@ typedef struct {
 
 typedef struct {
     id_type id;
-    double interval, trigger_at;
+    monotonic_t interval, trigger_at;
     timer_callback_func callback;
     void *callback_data;
     GLFWuserdatafreefun free;
@@ -82,14 +83,14 @@ void check_for_wakeup_events(EventLoopData *eld);
 id_type addWatch(EventLoopData *eld, const char *name, int fd, int events, int enabled, watch_callback_func cb, void *cb_data);
 void removeWatch(EventLoopData *eld, id_type watch_id);
 void toggleWatch(EventLoopData *eld, id_type watch_id, int enabled);
-id_type addTimer(EventLoopData *eld, const char *name, double interval, int enabled, bool repeats, timer_callback_func cb, void *cb_data, GLFWuserdatafreefun free);
+id_type addTimer(EventLoopData *eld, const char *name, monotonic_t interval, int enabled, bool repeats, timer_callback_func cb, void *cb_data, GLFWuserdatafreefun free);
 void removeTimer(EventLoopData *eld, id_type timer_id);
 void removeAllTimers(EventLoopData *eld);
 void toggleTimer(EventLoopData *eld, id_type timer_id, int enabled);
-void changeTimerInterval(EventLoopData *eld, id_type timer_id, double interval);
-double prepareForPoll(EventLoopData *eld, double timeout);
-int pollWithTimeout(struct pollfd *fds, nfds_t nfds, double timeout);
-int pollForEvents(EventLoopData *eld, double timeout);
+void changeTimerInterval(EventLoopData *eld, id_type timer_id, monotonic_t interval);
+monotonic_t prepareForPoll(EventLoopData *eld, monotonic_t timeout);
+int pollWithTimeout(struct pollfd *fds, nfds_t nfds, monotonic_t timeout);
+int pollForEvents(EventLoopData *eld, monotonic_t timeout);
 unsigned dispatchTimers(EventLoopData *eld);
 void finalizePollData(EventLoopData *eld);
 bool initPollData(EventLoopData *eld, int display_fd);

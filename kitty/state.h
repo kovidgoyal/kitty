@@ -7,6 +7,7 @@
 #pragma once
 #include "data-types.h"
 #include "screen.h"
+#include "monotonic.h"
 
 #define OPT(name) global_state.opts.name
 
@@ -14,7 +15,8 @@ typedef enum { LEFT_EDGE, TOP_EDGE, RIGHT_EDGE, BOTTOM_EDGE } Edge;
 typedef enum { RESIZE_DRAW_STATIC, RESIZE_DRAW_SCALED, RESIZE_DRAW_BLANK, RESIZE_DRAW_SIZE } ResizeDrawStrategy;
 
 typedef struct {
-    double visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval, wheel_scroll_multiplier, touch_scroll_multiplier;
+    monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval;
+    double wheel_scroll_multiplier, touch_scroll_multiplier;
     bool enable_audio_bell;
     CursorShape cursor_shape;
     unsigned int open_url_modifiers;
@@ -24,7 +26,7 @@ typedef struct {
     unsigned int scrollback_pager_history_size;
     char_type select_by_word_characters[256]; size_t select_by_word_characters_count;
     color_type url_color, background, foreground, active_border_color, inactive_border_color, bell_border_color;
-    double repaint_delay, input_delay;
+    monotonic_t repaint_delay, input_delay;
     bool focus_follows_mouse, hide_window_decorations;
     bool macos_hide_from_tasks, macos_quit_when_last_window_closed, macos_window_resizable, macos_traditional_fullscreen;
     unsigned int macos_option_as_alt;
@@ -44,7 +46,7 @@ typedef struct {
     bool close_on_child_death;
     bool window_alert_on_bell;
     bool debug_keyboard;
-    double resize_debounce_time;
+    monotonic_t resize_debounce_time;
     MouseShape pointer_shape_when_grabbed;
 } Options;
 
@@ -59,7 +61,7 @@ typedef struct {
 } WindowGeometry;
 
 typedef struct {
-    double at;
+    monotonic_t at;
     int button, modifiers;
     double x, y;
 } Click;
@@ -83,7 +85,7 @@ typedef struct {
     } mouse_pos;
     WindowGeometry geometry;
     ClickQueue click_queue;
-    double last_drag_scroll_at;
+    monotonic_t last_drag_scroll_at;
 } Window;
 
 typedef struct {
@@ -114,7 +116,7 @@ typedef struct {
 enum RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
 
 typedef struct {
-    double last_resize_event_at;
+    monotonic_t last_resize_event_at;
     bool in_progress;
     bool from_os_notification;
     bool os_says_resize_complete;
@@ -134,7 +136,7 @@ typedef struct {
     ScreenRenderData tab_bar_render_data;
     bool tab_bar_data_updated;
     bool is_focused;
-    double cursor_blink_zero_time, last_mouse_activity_at;
+    monotonic_t cursor_blink_zero_time, last_mouse_activity_at;
     double mouse_x, mouse_y;
     double logical_dpi_x, logical_dpi_y, font_sz_in_pts;
     bool mouse_button_pressed[20];
@@ -151,7 +153,7 @@ typedef struct {
     id_type temp_font_group_id;
     double pending_scroll_pixels;
     enum RENDER_STATE render_state;
-    double last_render_frame_received_at;
+    monotonic_t last_render_frame_received_at;
     id_type last_focused_counter;
     ssize_t gvao_idx;
 } OSWindow;
@@ -239,8 +241,8 @@ void request_frame_render(OSWindow *w);
 void request_tick_callback(void);
 typedef void (* timer_callback_fun)(id_type, void*);
 typedef void (* tick_callback_fun)(void*);
-id_type add_main_loop_timer(double interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback);
+id_type add_main_loop_timer(monotonic_t interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback);
 void remove_main_loop_timer(id_type timer_id);
-void update_main_loop_timer(id_type timer_id, double interval, bool enabled);
+void update_main_loop_timer(id_type timer_id, monotonic_t interval, bool enabled);
 void run_main_loop(tick_callback_fun, void*);
 void stop_main_loop(void);

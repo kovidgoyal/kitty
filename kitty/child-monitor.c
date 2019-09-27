@@ -11,6 +11,7 @@
 #include "screen.h"
 #include "fonts.h"
 #include "charsets.h"
+#include "monotonic.h"
 #include <termios.h>
 #include <unistd.h>
 #include <float.h>
@@ -34,7 +35,7 @@ extern PyTypeObject Screen_Type;
 #endif
 #define USE_RENDER_FRAMES (global_state.has_render_frames && OPT(sync_to_monitor))
 
-static void (*parse_func)(Screen*, PyObject*, double);
+static void (*parse_func)(Screen*, PyObject*, monotonic_t);
 
 typedef struct {
     char *data;
@@ -110,10 +111,10 @@ static size_t reaped_pids_count = 0;
 
 // The max time (in secs) to wait for events from the window system
 // before ticking over the main loop. Negative values mean wait forever.
-static double maximum_wait = -1.0;
+static monotonic_t maximum_wait = -1;
 
 static inline void
-set_maximum_wait(double val) {
+set_maximum_wait(monotonic_t val) {
     if (val >= 0 && (val < maximum_wait || maximum_wait < 0)) maximum_wait = val;
 }
 
@@ -296,11 +297,11 @@ shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
 }
 
 static inline bool
-do_parse(ChildMonitor *self, Screen *screen, double now) {
+do_parse(ChildMonitor *self, Screen *screen, monotonic_t now) {
     bool input_read = false;
     screen_mutex(lock, read);
     if (screen->read_buf_sz || screen->pending_mode.used) {
-        double time_since_new_input = now - screen->new_input_at;
+        monotonic_t time_since_new_input = now - screen->new_input_at;
         if (time_since_new_input >= OPT(input_delay)) {
             bool read_buf_full = screen->read_buf_sz >= READ_BUF_SZ;
             input_read = true;
@@ -308,7 +309,7 @@ do_parse(ChildMonitor *self, Screen *screen, double now) {
             if (read_buf_full) wakeup_io_loop(self, false);  // Ensure the read fd has POLLIN set
             screen->new_input_at = 0;
             if (screen->pending_mode.activated_at) {
-                double time_since_pending = MAX(0, now - screen->pending_mode.activated_at);
+                monotonic_t time_since_pending = MAX(0, now - screen->pending_mode.activated_at);
                 set_maximum_wait(screen->pending_mode.wait_time - time_since_pending);
             }
         } else set_maximum_wait(OPT(input_delay) - time_since_new_input);
@@ -322,7 +323,7 @@ parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
     size_t count = 0, remove_count = 0;
     bool input_read = false;
-    double now = monotonic();
+    monotonic_t now = monotonic();
     PyObject *msg = NULL;
     children_mutex(lock);
     while (remove_queue_count) {
@@ -485,22 +486,22 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 extern void cocoa_update_menu_bar_title(PyObject*);
 
 static inline void
-collect_cursor_info(CursorRenderInfo *ans, Window *w, double now, OSWindow *os_window) {
+collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow *os_window) {
     ScreenRenderData *rd = &w->render_data;
     Cursor *cursor = rd->screen->cursor;
     ans->x = cursor->x; ans->y = cursor->y;
     ans->is_visible = false;
     if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return;
-    double time_since_start_blink = now - os_window->cursor_blink_zero_time;
+    monotonic_t time_since_start_blink = now - os_window->cursor_blink_zero_time;
     bool cursor_blinking = OPT(cursor_blink_interval) > 0 && os_window->is_focused && (OPT(cursor_stop_blinking_after) == 0 || time_since_start_blink <= OPT(cursor_stop_blinking_after));
     bool do_draw_cursor = true;
     if (cursor_blinking) {
-        int t = (int)(time_since_start_blink * 1000);
-        int d = (int)(OPT(cursor_blink_interval) * 1000);
+        int t = monotonic_t_to_ms(time_since_start_blink);
+        int d = monotonic_t_to_ms(OPT(cursor_blink_interval));
         int n = t / d;
         do_draw_cursor = n % 2 == 0 ? true : false;
-        double bucket = (n + 1) * d;
-        double delay = (bucket / 1000.0) - time_since_start_blink;
+        monotonic_t bucket = ms_to_monotonic_t((n + 1) * d);
+        monotonic_t delay = bucket - time_since_start_blink;
         set_maximum_wait(delay);
     }
     if (!do_draw_cursor) { ans->is_visible = false; return; }
@@ -526,7 +527,7 @@ update_window_title(Window *w, OSWindow *os_window) {
 }
 
 static inline bool
-prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg) {
+prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg) {
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
@@ -555,10 +556,10 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
             if (*num_visible_windows == 1) first_window_bg = window_bg;
             if (first_window_bg != window_bg) all_windows_have_same_bg = false;
             if (w->last_drag_scroll_at > 0) {
-                if (now - w->last_drag_scroll_at >= 0.02) {
+                if (now - w->last_drag_scroll_at >= ms_to_monotonic_t(20ll)) {
                     if (drag_scroll(w, os_window)) {
                         w->last_drag_scroll_at = now;
-                        set_maximum_wait(0.02);
+                        set_maximum_wait(ms_to_monotonic_t(20ll));
                         needs_render = true;
                     } else w->last_drag_scroll_at = 0;
                 } else set_maximum_wait(now - w->last_drag_scroll_at);
@@ -579,7 +580,7 @@ prepare_to_render_os_window(OSWindow *os_window, double now, unsigned int *activ
 }
 
 static inline void
-render_os_window(OSWindow *os_window, double now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
+render_os_window(OSWindow *os_window, monotonic_t now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
     // ensure all pixels are cleared to background color at least once in every buffer
     if (os_window->clear_count++ < 3) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
@@ -601,7 +602,7 @@ render_os_window(OSWindow *os_window, double now, unsigned int active_window_id,
             bool is_active_window = i == tab->active_window;
             draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx * x_ratio, WD.dy * y_ratio, WD.screen, os_window, is_active_window, true);
             if (WD.screen->start_visual_bell_at != 0) {
-                double bell_left = OPT(visual_bell_duration) - (now - WD.screen->start_visual_bell_at);
+                monotonic_t bell_left = OPT(visual_bell_duration) - (now - WD.screen->start_visual_bell_at);
                 set_maximum_wait(bell_left);
             }
             w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
@@ -638,17 +639,17 @@ draw_resizing_text(OSWindow *w) {
 }
 
 static inline bool
-no_render_frame_received_recently(OSWindow *w, double now, double max_wait) {
+no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_wait) {
     bool ans = now - w->last_render_frame_received_at > max_wait;
-    if (ans) log_error("No render frame received in %f seconds, re-requesting at: %f", max_wait, now);
+    if (ans) log_error("No render frame received in %f seconds, re-requesting at: %f", monotonic_t_to_s_double(max_wait), monotonic_t_to_s_double(now));
     return ans;
 }
 
 static inline void
-render(double now, bool input_read) {
+render(monotonic_t now, bool input_read) {
     EVDBG("input_read: %d", input_read);
-    static double last_render_at = -DBL_MAX;
-    double time_since_last_render = now - last_render_at;
+    static monotonic_t last_render_at = MONOTONIC_T_MIN;
+    monotonic_t time_since_last_render = now - last_render_at;
     if (!input_read && time_since_last_render < OPT(repaint_delay)) {
         set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
         return;
@@ -662,7 +663,7 @@ render(double now, bool input_read) {
             continue;
         }
         if (USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
-            if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, 0.25)) request_frame_render(w);
+            if (w->render_state == RENDER_FRAME_NOT_REQUESTED || no_render_frame_received_recently(w, now, ms_to_monotonic_t(250ll))) request_frame_render(w);
             continue;
         }
         make_os_window_context_current(w);
@@ -806,7 +807,7 @@ add_python_timer(PyObject *self UNUSED, PyObject *args) {
     double interval;
     int repeats = 1;
     if (!PyArg_ParseTuple(args, "Od|p", &callback, &interval, &repeats)) return NULL;
-    unsigned long long timer_id = add_main_loop_timer(interval, repeats ? true: false, python_timer_callback, callback, python_timer_cleanup);
+    unsigned long long timer_id = add_main_loop_timer(s_double_to_monotonic_t(interval), repeats ? true: false, python_timer_callback, callback, python_timer_cleanup);
     Py_INCREF(callback);
     return Py_BuildValue("K", timer_id);
 }
@@ -821,7 +822,7 @@ remove_python_timer(PyObject *self UNUSED, PyObject *args) {
 
 
 static inline void
-process_pending_resizes(double now) {
+process_pending_resizes(monotonic_t now) {
     global_state.has_pending_resizes = false;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
@@ -830,11 +831,11 @@ process_pending_resizes(double now) {
             if (w->live_resize.from_os_notification) {
                 if (w->live_resize.os_says_resize_complete || (now - w->live_resize.last_resize_event_at) > 1) update_viewport = true;
             } else {
-                double debounce_time = OPT(resize_debounce_time);
+                monotonic_t debounce_time = OPT(resize_debounce_time);
                 // if more than one resize event has occurred, wait at least 0.2 secs
                 // before repainting, to avoid rapid transitions between the cells banner
                 // and the normal screen
-                if (w->live_resize.num_of_resize_events > 1 && OPT(resize_draw_strategy) == RESIZE_DRAW_SIZE) debounce_time = MAX(0.2, debounce_time);
+                if (w->live_resize.num_of_resize_events > 1 && OPT(resize_draw_strategy) == RESIZE_DRAW_SIZE) debounce_time = MAX(ms_to_monotonic_t(200ll), debounce_time);
                 if (now - w->live_resize.last_resize_event_at >= debounce_time) update_viewport = true;
                 else {
                     global_state.has_pending_resizes = true;
@@ -916,7 +917,7 @@ process_global_state(void *data) {
     maximum_wait = -1;
     bool state_check_timer_enabled = false;
 
-    double now = monotonic();
+    monotonic_t now = monotonic();
     if (global_state.has_pending_resizes) process_pending_resizes(now);
     bool input_read = parse_input(self);
     render(now, input_read);
@@ -1167,7 +1168,7 @@ io_loop(void *data) {
     size_t i;
     int ret;
     bool has_more, data_received, has_pending_wakeups = false;
-    double last_main_loop_wakeup_at = -1, now = -1;
+    monotonic_t last_main_loop_wakeup_at = -1, now = -1;
     Screen *screen;
     ChildMonitor *self = (ChildMonitor*)data;
     set_thread_name("KittyChildMon");
@@ -1188,8 +1189,8 @@ io_loop(void *data) {
         }
         if (has_pending_wakeups) {
             now = monotonic();
-            double time_delta = OPT(input_delay) - (now - last_main_loop_wakeup_at);
-            if (time_delta >= 0) ret = poll(fds, self->count + EXTRA_FDS, (int)ceil(1000 * time_delta));
+            monotonic_t time_delta = OPT(input_delay) - (now - last_main_loop_wakeup_at);
+            if (time_delta >= 0) ret = poll(fds, self->count + EXTRA_FDS, monotonic_t_to_ms(time_delta));
             else ret = 0;
         } else {
             ret = poll(fds, self->count + EXTRA_FDS, -1);

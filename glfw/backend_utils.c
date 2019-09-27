@@ -22,19 +22,6 @@
 #define ppoll pollts
 #endif
 
-static inline double
-monotonic(void) {
-    struct timespec ts = {0};
-#ifdef CLOCK_HIGHRES
-    clock_gettime(CLOCK_HIGHRES, &ts);
-#elif CLOCK_MONOTONIC_RAW
-    clock_gettime(CLOCK_MONOTONIC_RAW, &ts);
-#else
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-#endif
-    return (((double)ts.tv_nsec) / 1e9) + (double)ts.tv_sec;
-}
-
 void
 update_fds(EventLoopData *eld) {
     for (nfds_t i = 0; i < eld->watches_count; i++) {
@@ -109,7 +96,7 @@ update_timers(EventLoopData *eld) {
 }
 
 id_type
-addTimer(EventLoopData *eld, const char *name, double interval, int enabled, bool repeats, timer_callback_func cb, void *cb_data, GLFWuserdatafreefun free) {
+addTimer(EventLoopData *eld, const char *name, monotonic_t interval, int enabled, bool repeats, timer_callback_func cb, void *cb_data, GLFWuserdatafreefun free) {
     if (eld->timers_count >= sizeof(eld->timers)/sizeof(eld->timers[0])) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Too many timers added");
         return 0;
@@ -117,7 +104,7 @@ addTimer(EventLoopData *eld, const char *name, double interval, int enabled, boo
     Timer *t = eld->timers + eld->timers_count++;
     t->interval = interval;
     t->name = name;
-    t->trigger_at = enabled ? monotonic() + interval : DBL_MAX;
+    t->trigger_at = enabled ? monotonic() + interval : MONOTONIC_T_MAX;
     t->repeats = repeats;
     t->callback = cb;
     t->callback_data = cb_data;
@@ -144,7 +131,7 @@ void
 toggleTimer(EventLoopData *eld, id_type timer_id, int enabled) {
     for (nfds_t i = 0; i < eld->timers_count; i++) {
         if (eld->timers[i].id == timer_id) {
-            double trigger_at = enabled ? (monotonic() + eld->timers[i].interval) : DBL_MAX;
+            monotonic_t trigger_at = enabled ? (monotonic() + eld->timers[i].interval) : MONOTONIC_T_MAX;
             if (trigger_at != eld->timers[i].trigger_at) {
                 eld->timers[i].trigger_at = trigger_at;
                 update_timers(eld);
@@ -155,7 +142,7 @@ toggleTimer(EventLoopData *eld, id_type timer_id, int enabled) {
 }
 
 void
-changeTimerInterval(EventLoopData *eld, id_type timer_id, double interval) {
+changeTimerInterval(EventLoopData *eld, id_type timer_id, monotonic_t interval) {
     for (nfds_t i = 0; i < eld->timers_count; i++) {
         if (eld->timers[i].id == timer_id) {
             eld->timers[i].interval = interval;
@@ -165,11 +152,11 @@ changeTimerInterval(EventLoopData *eld, id_type timer_id, double interval) {
 }
 
 
-double
-prepareForPoll(EventLoopData *eld, double timeout) {
+monotonic_t
+prepareForPoll(EventLoopData *eld, monotonic_t timeout) {
     for (nfds_t i = 0; i < eld->watches_count; i++) eld->fds[i].revents = 0;
-    if (!eld->timers_count || eld->timers[0].trigger_at == DBL_MAX) return timeout;
-    double now = monotonic(), next_repeat_at = eld->timers[0].trigger_at;
+    if (!eld->timers_count || eld->timers[0].trigger_at == MONOTONIC_T_MAX) return timeout;
+    monotonic_t now = monotonic(), next_repeat_at = eld->timers[0].trigger_at;
     if (timeout < 0 || now + timeout > next_repeat_at) {
         timeout = next_repeat_at <= now ? 0 : next_repeat_at - now;
     }
@@ -177,10 +164,8 @@ prepareForPoll(EventLoopData *eld, double timeout) {
 }
 
 int
-pollWithTimeout(struct pollfd *fds, nfds_t nfds, double timeout) {
-    const long seconds = (long) timeout;
-    const long nanoseconds = (long) ((timeout - seconds) * 1e9);
-    struct timespec tv = { seconds, nanoseconds };
+pollWithTimeout(struct pollfd *fds, nfds_t nfds, monotonic_t timeout) {
+    struct timespec tv = calc_time(timeout);
     return ppoll(fds, nfds, &tv, NULL);
 }
 
@@ -198,10 +183,10 @@ dispatchEvents(EventLoopData *eld) {
 
 unsigned
 dispatchTimers(EventLoopData *eld) {
-    if (!eld->timers_count || eld->timers[0].trigger_at == DBL_MAX) return 0;
+    if (!eld->timers_count || eld->timers[0].trigger_at == MONOTONIC_T_MAX) return 0;
     static struct { timer_callback_func func; id_type id; void* data; bool repeats; } dispatches[sizeof(eld->timers)/sizeof(eld->timers[0])];
     unsigned num_dispatches = 0;
-    double now = monotonic();
+    monotonic_t now = monotonic();
     for (nfds_t i = 0; i < eld->timers_count && eld->timers[i].trigger_at <= now; i++) {
         eld->timers[i].trigger_at = now + eld->timers[i].interval;
         dispatches[num_dispatches].func = eld->timers[i].callback;
@@ -299,12 +284,12 @@ finalizePollData(EventLoopData *eld) {
 }
 
 int
-pollForEvents(EventLoopData *eld, double timeout) {
+pollForEvents(EventLoopData *eld, monotonic_t timeout) {
     int read_ok = 0;
     timeout = prepareForPoll(eld, timeout);
-    EVDBG("pollForEvents final timeout: %.3f", timeout);
+    EVDBG("pollForEvents final timeout: %.3f", monotonic_t_to_s_double(timeout));
     int result;
-    double end_time = monotonic() + timeout;
+    monotonic_t end_time = monotonic() + timeout;
     eld->wakeup_fd_ready = false;
 
     while(1) {
