@@ -421,9 +421,9 @@ cocoa_cursor_blink_interval(void) {
     double off_period_ms = [defaults doubleForKey:@"NSTextInsertionPointBlinkPeriodOff"];
     double period_ms = [defaults doubleForKey:@"NSTextInsertionPointBlinkPeriod"];
     double max_value = 60 * 1000.0, ans = -1.0;
-    if (on_period_ms || off_period_ms) {
+    if (on_period_ms != 0. || off_period_ms != 0.) {
         ans = on_period_ms + off_period_ms;
-    } else if (period_ms) {
+    } else if (period_ms != 0.) {
         ans = period_ms;
     }
     return ans > max_value ? 0ll : ms_double_to_monotonic_t(ans);
