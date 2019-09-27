@@ -278,7 +278,7 @@ get_glyph_width(PyObject *s, glyph_index g) {
     CGGlyph gg = g;
     CGRect bounds;
     CTFontGetBoundingRectsForGlyphs(self->ct_font, kCTFontOrientationHorizontal, &gg, &bounds, 1);
-    return bounds.size.width;
+    return (int)ceil(bounds.size.width);
 }
 
 static inline float
@@ -326,7 +326,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
         }
     }
     *cell_width = MAX(1u, width);
-    *underline_position = floor(self->ascent - self->underline_position + 0.5);
+    *underline_position = (unsigned int)floor(self->ascent - self->underline_position + 0.5);
     *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
     *baseline = (unsigned int)self->ascent;
     // float line_height = MAX(1, floor(self->ascent + self->descent + MAX(0, self->leading) + 0.5));
@@ -457,7 +457,7 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     CTFontGetGlyphsForCharacters(font, chars, glyphs, num_chars);
     CTFontGetAdvancesForGlyphs(font, kCTFontOrientationDefault, glyphs, advances, num_chars);
     CGRect bounding_box = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationDefault, glyphs, boxes, num_chars);
-    StringCanvas ans = { .width = 0, .height = 2 * bounding_box.size.height };
+    StringCanvas ans = { .width = 0, .height = (size_t)(2 * bounding_box.size.height) };
     for (size_t i = 0, y = 0; i < num_chars; i++) {
         positions[i] = CGPointMake(ans.width, y);
         ans.width += advances[i].width; y += advances[i].height;
