@@ -27,6 +27,7 @@
 // Please use C89 style variable declarations in this file because VS 2010
 //========================================================================
 
+#define MONOTONIC_START_MODULE
 #include "internal.h"
 #include "mappings.h"
 
@@ -214,10 +215,11 @@ _glfwDebug(const char *format, ...) {
 //////                        GLFW public API                       //////
 //////////////////////////////////////////////////////////////////////////
 
-GLFWAPI int glfwInit(void)
+GLFWAPI int glfwInit(monotonic_t start_time)
 {
     if (_glfw.initialized)
         return true;
+    monotonic_start_time = start_time;
 
     memset(&_glfw, 0, sizeof(_glfw));
     _glfw.hints.init = _glfwInitHints;

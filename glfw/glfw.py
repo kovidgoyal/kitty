@@ -194,6 +194,7 @@ const char *action_text, int32_t timeout, GLFWDBusnotificationcreatedfun callbac
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
+#include "monotonic.h"
 
 {}
 

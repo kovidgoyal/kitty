@@ -792,7 +792,7 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         glfwDBusSetUserNotificationHandler(dbus_user_notification_activated);
     }
 #endif
-    PyObject *ans = glfwInit() ? Py_True: Py_False;
+    PyObject *ans = glfwInit(monotonic_start_time) ? Py_True: Py_False;
     if (ans == Py_True) {
         OSWindow w = {0};
         set_os_window_dpi(&w);
