@@ -897,7 +897,7 @@ static const char* getSelectionString(Atom selection)
                                        &notification))
         {
             monotonic_t time = glfwGetTime();
-            if (time - start > 2ll)
+            if (time - start > s_to_monotonic_t(2ll))
                 return "";
             waitForX11Event(s_to_monotonic_t(2ll) - (time - start));
         }
