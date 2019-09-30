@@ -398,6 +398,7 @@ static void keyboardHandleLeave(void* data UNUSED,
 
     _glfw.wl.keyboardFocus = NULL;
     _glfwInputWindowFocus(window, false);
+    toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 0);
 }
 
 static void

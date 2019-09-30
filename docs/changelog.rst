@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.15.0 [future]
+--------------------
+
+- Wayland: Fix key repeat not being stopped when focus leaves window. This is
+  expected behavior on Wayland, apparently (:iss:`2014`)
+
+
 0.14.6 [2019-09-25]
 ---------------------
 
