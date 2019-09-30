@@ -368,7 +368,7 @@ static void keyboardHandleEnter(void* data UNUSED,
                                 struct wl_keyboard* keyboard UNUSED,
                                 uint32_t serial UNUSED,
                                 struct wl_surface* surface,
-                                struct wl_array* keys UNUSED)
+                                struct wl_array* keys)
 {
     // Happens in the case we just destroyed the surface.
     if (!surface)
@@ -384,6 +384,15 @@ static void keyboardHandleEnter(void* data UNUSED,
 
     _glfw.wl.keyboardFocus = window;
     _glfwInputWindowFocus(window, true);
+    uint32_t* key;
+    if (keys && _glfw.wl.keyRepeatInfo.key) {
+        wl_array_for_each(key, keys) {
+            if (*key == _glfw.wl.keyRepeatInfo.key) {
+                toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
+                break;
+            }
+        }
+    }
 }
 
 static void keyboardHandleLeave(void* data UNUSED,
@@ -423,6 +432,7 @@ static void keyboardHandleKey(void* data UNUSED,
     int action = state == WL_KEYBOARD_KEY_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE;
     glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, key, action);
     bool repeatable = false;
+    _glfw.wl.keyRepeatInfo.key = 0;
 
     if (action == GLFW_PRESS && _glfw.wl.keyboardRepeatRate > 0 && glfw_xkb_should_repeat(&_glfw.wl.xkb, key))
     {
