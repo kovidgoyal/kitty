@@ -43,6 +43,7 @@ def get_data(fname, folder='UCD'):
 
 # Map of class names to set of codepoints in class
 class_maps = {}
+all_symbols = set()
 name_map = {}
 word_search_map = defaultdict(set)
 zwj = 0x200d
@@ -89,6 +90,8 @@ def parse_ucd():
             not_assigned.discard(codepoint)
             if category.startswith('M'):
                 marks.add(codepoint)
+            elif category.startswith('S'):
+                all_symbols.add(codepoint)
 
     # Some common synonyms
     word_search_map['bee'] |= word_search_map['honeybee']
@@ -194,9 +197,19 @@ def gen_emoji():
         p('\t\tdefault: return false;')
         p('\t}')
         p('\treturn false;\n}')
+
         p('static inline bool\nis_emoji_modifier(char_type code) {')
         p('\tswitch(code) {')
         for spec in get_ranges(list(emoji_categories['Emoji_Modifier'])):
+            write_case(spec, p)
+            p('\t\t\treturn true;')
+        p('\t\tdefault: return false;')
+        p('\t}')
+        p('\treturn false;\n}')
+
+        p('static inline bool\nis_symbol(char_type code) {')
+        p('\tswitch(code) {')
+        for spec in get_ranges(list(all_symbols)):
             write_case(spec, p)
             p('\t\t\treturn true;')
         p('\t\tdefault: return false;')
