@@ -10,6 +10,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Wayland: Fix key repeat not being stopped when focus leaves window. This is
   expected behavior on Wayland, apparently (:iss:`2014`)
 
+- When drawing unicode symbols that are followed by spaces, use multiple cells
+  to avoid resized or cut-off glyphs (:iss:`1452`)
+
 
 0.14.6 [2019-09-25]
 ---------------------

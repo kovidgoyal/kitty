@@ -543,8 +543,10 @@ in_symbol_maps(FontGroup *fg, char_type ch) {
 }
 
 
-static ssize_t
-font_for_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
+static inline ssize_t
+font_for_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell, bool *is_secondary_font, bool *is_emoji_presentation) {
+    *is_secondary_font = false;
+    *is_emoji_presentation = false;
 START_ALLOW_CASE_RANGE
     ssize_t ans;
     switch(cpu_cell->ch) {
@@ -561,7 +563,7 @@ START_ALLOW_CASE_RANGE
             return BOX_FONT;
         default:
             ans = in_symbol_maps(fg, cpu_cell->ch);
-            if (ans > -1) return ans;
+            if (ans > -1) { *is_secondary_font = true; return ans; }
             switch(BI_VAL(gpu_cell->attrs)) {
                 case 0:
                     ans = fg->medium_font_idx; break;
@@ -573,7 +575,9 @@ START_ALLOW_CASE_RANGE
                     ans = fg->bi_font_idx; break;
             }
             if (ans < 0) ans = fg->medium_font_idx;
-            if (!has_emoji_presentation(cpu_cell, gpu_cell) && has_cell_text(fg->fonts + ans, cpu_cell)) return ans;
+            *is_emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);
+            if (!*is_emoji_presentation && has_cell_text(fg->fonts + ans, cpu_cell)) return ans;
+            *is_secondary_font = true;
             return fallback_font(fg, cpu_cell, gpu_cell);
     }
 END_ALLOW_CASE_RANGE
@@ -1096,11 +1100,13 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
         if (prev_width == 2) { prev_width = 0; continue; }
         CPUCell *cpu_cell = line->cpu_cells + i;
         GPUCell *gpu_cell = line->gpu_cells + i;
-        ssize_t cell_font_idx = font_for_cell(fg, cpu_cell, gpu_cell);
+        bool is_secondary_font, is_emoji_presentation;
+        ssize_t cell_font_idx = font_for_cell(fg, cpu_cell, gpu_cell, &is_secondary_font, &is_emoji_presentation);
 
-        if (is_private_use(cpu_cell->ch)
-                && cell_font_idx != BOX_FONT
-                && cell_font_idx != MISSING_FONT) {
+        if (
+                cell_font_idx != MISSING_FONT &&
+                ((is_secondary_font && !is_emoji_presentation && is_symbol(cpu_cell->ch)) || (cell_font_idx != BOX_FONT && is_private_use(cpu_cell->ch)))
+        ) {
             unsigned int desired_cells = 1;
             if (cell_font_idx > 0) {
                 Font *font = (fg->fonts + cell_font_idx);
