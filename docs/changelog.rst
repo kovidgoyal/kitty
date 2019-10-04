@@ -13,6 +13,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When drawing unicode symbols that are followed by spaces, use multiple cells
   to avoid resized or cut-off glyphs (:iss:`1452`)
 
+- diff kitten: Allow diffing remote files easily via ssh (:iss:`727`)
+
 
 0.14.6 [2019-09-25]
 ---------------------

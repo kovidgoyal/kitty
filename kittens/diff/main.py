@@ -2,14 +2,17 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+import atexit
 import os
 import signal
+import subprocess
 import sys
+import tempfile
 import warnings
 from collections import defaultdict
+from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
-from contextlib import suppress
 
 from kitty.cli import CONFIG_HELP, parse_args
 from kitty.constants import appname
@@ -506,7 +509,7 @@ def showwarning(message, category, filename, lineno, file=None, line=None):
 
 
 showwarning.warnings = []
-help_text = 'Show a side-by-side diff of the specified files/directories'
+help_text = 'Show a side-by-side diff of the specified files/directories. You can also use ssh:hostname:remote-file-path to diff remote files.'
 usage = 'file_or_directory_left file_or_directory_right'
 
 
@@ -514,6 +517,20 @@ def terminate_processes(processes):
     for pid in processes:
         with suppress(Exception):
             os.kill(pid, signal.SIGKILL)
+
+
+def get_remote_file(path):
+    if path.startswith('ssh:'):
+        parts = path.split(':', 2)
+        if len(parts) == 3:
+            hostname, rpath = parts[1:]
+            with tempfile.NamedTemporaryFile(suffix='-' + os.path.basename(rpath), prefix='remote:', delete=False) as tf:
+                atexit.register(os.remove, tf.name)
+                p = subprocess.Popen(['ssh', hostname, 'cat', rpath], stdout=tf)
+                if p.wait() != 0:
+                    raise SystemExit(p.returncode)
+                return tf.name
+    return path
 
 
 def main(args):
@@ -528,6 +545,7 @@ def main(args):
     opts = init_config(args)
     set_diff_command(opts.diff_cmd)
     lines_for_path.replace_tab_by = opts.replace_tab_by
+    left, right = map(get_remote_file, (left, right))
     for f in left, right:
         if not os.path.exists(f):
             raise SystemExit('{} does not exist'.format(f))
