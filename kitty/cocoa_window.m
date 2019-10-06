@@ -331,7 +331,7 @@ cocoa_create_global_menu(void) {
 
 void
 cocoa_update_menu_bar_title(PyObject *pytitle) {
-    NSString *title = [[NSString alloc] initWithUTF8String:PyUnicode_AsUTF8(pytitle)];
+    NSString *title = @(PyUnicode_AsUTF8(pytitle));
     NSMenu *bar = [NSApp mainMenu];
     if (title_menu != NULL) {
         [bar removeItem:title_menu];
@@ -340,7 +340,6 @@ cocoa_update_menu_bar_title(PyObject *pytitle) {
     NSMenu *m = [[NSMenu alloc] initWithTitle:[NSString stringWithFormat:@" :: %@", title]];
     [title_menu setSubmenu:m];
     [m release];
-    [title release];
 } // }}}
 
 bool
