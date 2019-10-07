@@ -354,8 +354,9 @@ void _glfwPollMonitorsNS(void)
 void _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired)
 {
     GLFWvidmode current;
-    const GLFWvidmode* best = _glfwChooseVideoMode(monitor, desired);
     _glfwPlatformGetVideoMode(monitor, &current);
+
+    const GLFWvidmode* best = _glfwChooseVideoMode(monitor, desired);
     if (_glfwCompareVideoModes(&current, best) == 0)
         return;
 
@@ -505,7 +506,6 @@ GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count)
 void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode *mode)
 {
     CVDisplayLinkRef link;
-
     CVDisplayLinkCreateWithCGDisplay(monitor->ns.displayID, &link);
 
     CGDisplayModeRef native = CGDisplayCopyDisplayMode(monitor->ns.displayID);

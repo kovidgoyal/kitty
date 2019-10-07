@@ -222,7 +222,8 @@ static bool openJoystickDevice(const char* path)
         }
     }
 
-    _GLFWjoystick* js = _glfwAllocJoystick(name, guid, axisCount, buttonCount, hatCount);
+    _GLFWjoystick* js =
+        _glfwAllocJoystick(name, guid, axisCount, buttonCount, hatCount);
     if (!js)
     {
         close(linjs.fd);
