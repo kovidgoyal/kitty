@@ -1995,7 +1995,7 @@ GLFWAPI void glfwGetMonitorPos(GLFWmonitor* monitor, int* xpos, int* ypos);
  *  @param[out] xpos Where to store the monitor x-coordinate, or `NULL`.
  *  @param[out] ypos Where to store the monitor y-coordinate, or `NULL`.
  *  @param[out] width Where to store the monitor width, or `NULL`.
-￼*  @param[out] height Where to store the monitor height, or `NULL`.
+ *  @param[out] height Where to store the monitor height, or `NULL`.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_PLATFORM_ERROR.
