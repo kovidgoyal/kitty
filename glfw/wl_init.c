@@ -619,8 +619,7 @@ static void registryHandleGlobal(void* data UNUSED,
             _glfwSetupWaylandDataDevice();
         }
     }
-    else if (strcmp(interface, "zwp_primary_selection_device_manager_v1") == 0 ||
-        strcmp(interface, "gtk_primary_selection_device_manager") == 0)
+    else if (strcmp(interface, "zwp_primary_selection_device_manager_v1") == 0)
     {
         _glfw.wl.primarySelectionDeviceManager =
             wl_registry_bind(registry, name,
