@@ -12,7 +12,7 @@ from .child import Child
 from .constants import appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
     add_tab, mark_tab_bar_dirty, next_window_id,
-    pt_to_px, remove_tab, remove_window, ring_bell, set_active_tab, swap_tabs,
+    pt_to_px, remove_tab, remove_window, ring_bell, set_active_tab, swap_tabs, change_window_tab,
     x11_window_id
 )
 from .layout import create_layout_object_for, evict_cached_layouts
@@ -38,7 +38,7 @@ def add_active_id_to_history(items, item_id, maxlen=64):
 
 class Tab:  # {{{
 
-    def __init__(self, tab_manager, session_tab=None, special_window=None, cwd_from=None):
+    def __init__(self, tab_manager, session_tab=None, special_window=None, existing_window=None, cwd_from=None):
         self._active_window_idx = 0
         self.tab_manager_ref = weakref.ref(tab_manager)
         self.os_window_id = tab_manager.os_window_id
@@ -61,7 +61,9 @@ class Tab:  # {{{
             self.cwd = self.args.directory
             sl = self.enabled_layouts[0]
             self._set_current_layout(sl)
-            if special_window is None:
+            if existing_window is not None:
+                self.add_window(existing_window)
+            elif special_window is None:
                 self.new_window(cwd_from=cwd_from)
             else:
                 self.new_special_window(special_window)
@@ -232,6 +234,11 @@ class Tab:  # {{{
         ans.fork()
         return ans
 
+    def add_window(self, window, location=None):
+        self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx, location)
+        self.relayout_borders()
+        return window
+
     def new_window(
         self, use_shell=True, cmd=None, stdin=None, override_title=None,
         cwd_from=None, cwd=None, overlay_for=None, env=None, location=None,
@@ -245,8 +252,7 @@ class Tab:  # {{{
             overlaid.overlay_window_id = window.id
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx, location)
-        self.relayout_borders()
+        self.add_window(window, location=location)
         return window
 
     def new_special_window(self, special_window, location=None, copy_colors_from=None):
@@ -265,13 +271,14 @@ class Tab:  # {{{
             if w.id == old_window_id:
                 return idx
 
-    def remove_window(self, window):
+    def remove_window(self, window, destroy=True):
         idx = self.previous_active_window_idx(1)
         next_window_id = None
         if idx is not None:
             next_window_id = self.windows[idx].id
         active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
-        remove_window(self.os_window_id, self.id, window.id)
+        if destroy:
+            remove_window(self.os_window_id, self.id, window.id)
         if window.overlay_for is not None:
             for idx, q in enumerate(self.windows):
                 if q.id == window.overlay_for:
@@ -545,11 +552,29 @@ class TabManager:  # {{{
             self._set_active_tab(nidx)
             self.mark_tab_bar_dirty()
 
-    def new_tab(self, special_window=None, cwd_from=None, as_neighbor=False):
+    def new_tab(self, special_window=None, existing_window=None, cwd_from=None, as_neighbor=False):
         nidx = self.active_tab_idx + 1
         idx = len(self.tabs)
-        self._add_tab(Tab(self, special_window=special_window, cwd_from=cwd_from))
+        if existing_window is not None:
+            for tab in self.tabs:
+                if existing_window not in tab:
+                    continue
+                if len(tab) == 1:
+                    return tab
+                tab.remove_window(existing_window, destroy=False)
+                old_tab = tab
+                break
+        self._add_tab(Tab(self, special_window=special_window, existing_window=existing_window, cwd_from=cwd_from))
         self._set_active_tab(idx)
+
+        if existing_window is not None:
+            active_tab = self.active_tab
+            change_window_tab(existing_window.id,
+                              old_tab.os_window_id, old_tab.id,
+                              active_tab.os_window_id, active_tab.id)
+            existing_window.os_window_id = active_tab.os_window_id
+            existing_window.tab_id = active_tab.id
+
         if len(self.tabs) > 2 and as_neighbor and idx != nidx:
             for i in range(idx, nidx, -1):
                 self.tabs[i], self.tabs[i-1] = self.tabs[i-1], self.tabs[i]

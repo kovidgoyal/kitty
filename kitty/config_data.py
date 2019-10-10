@@ -1074,6 +1074,12 @@ see :doc:`pipe`.
 # }}}
 
 g('shortcuts.window')  # {{{
+k('move_window_to_tab', 'kitty_mod+x', 'move_window_to_tab', _(''), long_text=_('''
+You can move a window into a separate tab, for example::
+
+    map kitty_mod+x      move_window_to_tab
+
+'''))
 k('new_window', 'kitty_mod+enter', 'new_window', _(''), long_text=_('''
 You can open a new window running an arbitrary program, for example::
 

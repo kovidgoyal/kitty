@@ -39,6 +39,7 @@ from .utils import (
     log_error, open_url, parse_address_spec, remove_socket_file, safe_print,
     set_primary_selection, single_instance, startup_notification_handler
 )
+from .window import Window
 
 
 def listen_on(spec):
@@ -960,14 +961,20 @@ class Boss:
 
     def _new_tab(self, args, cwd_from=None, as_neighbor=False):
         special_window = None
+        existing_window = None
         if args:
             if isinstance(args, SpecialWindowInstance):
                 special_window = args
+            elif isinstance(args, Window):
+                existing_window = args
             else:
                 special_window = self.args_to_special_window(args, cwd_from=cwd_from)
         tm = self.active_tab_manager
         if tm is not None:
-            return tm.new_tab(special_window=special_window, cwd_from=cwd_from, as_neighbor=as_neighbor)
+            return tm.new_tab(special_window=special_window,
+                              existing_window=existing_window,
+                              cwd_from=cwd_from,
+                              as_neighbor=as_neighbor)
 
     def _create_tab(self, args, cwd_from=None):
         as_neighbor = False
@@ -1019,6 +1026,13 @@ class Boss:
         tm = self.active_tab_manager
         if tm is not None:
             tm.move_tab(-1)
+
+    def _move_window_to_tab(self, args, cmd_from=None):
+        window = self.active_window
+        self._new_tab(window)
+
+    def move_window_to_tab(self, *args):
+        self._move_window_to_tab(args)
 
     def disable_ligatures_in(self, where, strategy):
         if isinstance(where, str):
