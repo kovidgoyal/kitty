@@ -59,7 +59,7 @@ See the :doc:`binary install instructions </binary>`. You can also
 You can also use your favorite package manager to install the |kitty| package.
 |kitty| packages are available for:
 `macOS with Homebrew (Cask) <https://formulae.brew.sh/cask/kitty>`_,
-`macOS and Linux with Nix <https://nixos.org/nixos/packages.html#kitty>`_,
+`macOS and Linux with Nix <https://nixos.org/nixos/packages.html?channel=nixpkgs-unstable&query=kitty>`_,
 `Ubuntu <https://launchpad.net/ubuntu/+source/kitty>`_,
 `Debian <https://packages.debian.org/buster/kitty>`_,
 `openSUSE <https://build.opensuse.org/package/show/X11:terminals/kitty>`_,
