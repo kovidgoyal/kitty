@@ -301,6 +301,7 @@ extern "C" {
 /*! @} */
 
 /*! @defgroup hat_state Joystick hat states
+ *  @brief Joystick hat states.
  *
  *  See [joystick hat input](@ref joystick_hat) for how these are used.
  *
@@ -1034,12 +1035,25 @@ extern "C" {
  *  [window hint](@ref GLFW_SCALE_TO_MONITOR).
  */
 #define GLFW_SCALE_TO_MONITOR       0x0002200C
-
+/*! @brief macOS specific
+ *  [window hint](@ref GLFW_COCOA_RETINA_FRAMEBUFFER_hint).
+ */
 #define GLFW_COCOA_RETINA_FRAMEBUFFER 0x00023001
+/*! @brief macOS specific
+ *  [window hint](@ref GLFW_COCOA_FRAME_NAME_hint).
+ */
 #define GLFW_COCOA_FRAME_NAME         0x00023002
+/*! @brief macOS specific
+ *  [window hint](@ref GLFW_COCOA_GRAPHICS_SWITCHING_hint).
+ */
 #define GLFW_COCOA_GRAPHICS_SWITCHING 0x00023003
-
+/*! @brief X11 specific
+ *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
+ */
 #define GLFW_X11_CLASS_NAME         0x00024001
+/*! @brief X11 specific
+ *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
+ */
 #define GLFW_X11_INSTANCE_NAME      0x00024002
 
 #define GLFW_WAYLAND_APP_ID         0x00025001
@@ -1102,11 +1116,22 @@ typedef enum {
 
 /*! @addtogroup init
  *  @{ */
+/*! @brief Joystick hat buttons init hint.
+ *
+ *  Joystick hat buttons [init hint](@ref GLFW_JOYSTICK_HAT_BUTTONS).
+ */
 #define GLFW_JOYSTICK_HAT_BUTTONS   0x00050001
 #define GLFW_DEBUG_KEYBOARD         0x00050002
 #define GLFW_ENABLE_JOYSTICKS       0x00050003
-
+/*! @brief macOS specific init hint.
+ *
+ *  macOS specific [init hint](@ref GLFW_COCOA_CHDIR_RESOURCES_hint).
+ */
 #define GLFW_COCOA_CHDIR_RESOURCES  0x00051001
+/*! @brief macOS specific init hint.
+ *
+ *  macOS specific [init hint](@ref GLFW_COCOA_MENUBAR_hint).
+ */
 #define GLFW_COCOA_MENUBAR          0x00051002
 /*! @} */
 
@@ -1177,7 +1202,7 @@ typedef struct GLFWwindow GLFWwindow;
  *
  *  @since Added in version 3.1.
  *
- *  @ingroup cursor
+ *  @ingroup input
  */
 typedef struct GLFWcursor GLFWcursor;
 
@@ -1711,6 +1736,8 @@ typedef struct GLFWgammaramp
  *
  *  @since Added in version 2.1.
  *  @glfw3 Removed format and bytes-per-pixel members.
+ *
+ *  @ingroup window
  */
 typedef struct GLFWimage
 {
@@ -1733,6 +1760,8 @@ typedef struct GLFWimage
  *  @sa @ref glfwGetGamepadState
  *
  *  @since Added in version 3.3.
+ *
+ *  @ingroup input
  */
 typedef struct GLFWgamepadstate
 {
@@ -2070,12 +2099,14 @@ GLFWAPI void glfwGetMonitorPos(GLFWmonitor* monitor, int* xpos, int* ypos);
 /*! @brief Retrieves the work area of the monitor.
  *
  *  This function returns the position, in screen coordinates, of the upper-left
- *  corner of the specified monitor alongwith the work area size in screen co-ordinates.
- *  The work area is defined as the area of the monitor not occluded by the operating
- *  system chrome (task bar, global menubar, etc.).
+ *  corner of the work area of the specified monitor along with the work area
+ *  size in screen coordinates. The work area is defined as the area of the
+ *  monitor not occluded by the operating system task bar where present. If no
+ *  task bar exists then the work area is the monitor resolution in screen
+ *  coordinates.
  *
- *  Any or all of the position and size arguments may be `NULL`.  If an error occurs, all
- *  non-`NULL` position and size arguments will be set to zero.
+ *  Any or all of the position and size arguments may be `NULL`.  If an error
+ *  occurs, all non-`NULL` position and size arguments will be set to zero.
  *
  *  @param[in] monitor The monitor to query.
  *  @param[out] xpos Where to store the monitor x-coordinate, or `NULL`.
@@ -2094,7 +2125,7 @@ GLFWAPI void glfwGetMonitorPos(GLFWmonitor* monitor, int* xpos, int* ypos);
  *
  *  @ingroup monitor
  */
-GLFWAPI void glfwGetMonitorWorkarea(GLFWmonitor* monitor, int* xpos, int* ypos, int *width, int *height);
+GLFWAPI void glfwGetMonitorWorkarea(GLFWmonitor* monitor, int* xpos, int* ypos, int* width, int* height);
 
 /*! @brief Returns the physical size of the monitor.
  *
@@ -2134,9 +2165,11 @@ GLFWAPI void glfwGetMonitorPhysicalSize(GLFWmonitor* monitor, int* widthMM, int*
  *
  *  This function retrieves the content scale for the specified monitor.  The
  *  content scale is the ratio between the current DPI and the platform's
- *  default DPI.  If you scale all pixel dimensions by this scale then your
- *  content should appear at an appropriate size.  This is especially important
- *  for text and any UI elements.
+ *  default DPI.  This is especially important for text and any UI elements.  If
+ *  the pixel dimensions of your UI scaled by this look appropriate on your
+ *  machine then it should appear at a reasonable size on other machines
+ *  regardless of their DPI and scaling settings.  This relies on the system DPI
+ *  and scaling settings being somewhat correct.
  *
  *  The content scale may depend on both the monitor resolution and pixel
  *  density and on user settings.  It may be very different from the raw DPI
@@ -2329,9 +2362,9 @@ GLFWAPI const GLFWvidmode* glfwGetVideoMode(GLFWmonitor* monitor);
 
 /*! @brief Generates a gamma ramp and sets it for the specified monitor.
  *
- *  This function generates an appropriately sized gamma ramp from the
- *  specified exponent and then calls @ref glfwSetGammaRamp with it.  The value
- *  must be a finite number greater than zero.
+ *  This function generates an appropriately sized gamma ramp from the specified
+ *  exponent and then calls @ref glfwSetGammaRamp with it.  The value must be
+ *  a finite number greater than zero.
  *
  *  The software controlled gamma ramp is applied _in addition_ to the hardware
  *  gamma correction, which today is usually an approximation of sRGB gamma.
@@ -2647,9 +2680,10 @@ GLFWAPI void glfwWindowHintString(int hint, const char* value);
  *  @remark @x11 The class part of the `WM_CLASS` window property will by
  *  default be set to the window title passed to this function.  The instance
  *  part will use the contents of the `RESOURCE_NAME` environment variable, if
- *  present and not empty, or fall back to the window title.  Set the @ref
- *  GLFW_X11_CLASS_NAME and @ref GLFW_X11_INSTANCE_NAME window hints to override
- *  this.
+ *  present and not empty, or fall back to the window title.  Set the
+ *  [GLFW_X11_CLASS_NAME](@ref GLFW_X11_CLASS_NAME_hint) and
+ *  [GLFW_X11_INSTANCE_NAME](@ref GLFW_X11_INSTANCE_NAME_hint) window hints to
+ *  override this.
  *
  *  @remark @wayland Compositors should implement the xdg-decoration protocol
  *  for GLFW to decorate the window properly.  If this protocol isn't
@@ -3114,9 +3148,11 @@ GLFWAPI void glfwGetWindowFrameSize(GLFWwindow* window, int* left, int* top, int
  *
  *  This function retrieves the content scale for the specified window.  The
  *  content scale is the ratio between the current DPI and the platform's
- *  default DPI.  If you scale all pixel dimensions by this scale then your
- *  content should appear at an appropriate size.  This is especially important
- *  for text and any UI elements.
+ *  default DPI.  This is especially important for text and any UI elements.  If
+ *  the pixel dimensions of your UI scaled by this look appropriate on your
+ *  machine then it should appear at a reasonable size on other machines
+ *  regardless of their DPI and scaling settings.  This relies on the system DPI
+ *  and scaling settings being somewhat correct.
  *
  *  On systems where each monitors can have its own content scale, the window
  *  content scale will depend on which monitor the system considers the window
@@ -3237,8 +3273,9 @@ GLFWAPI void glfwSetWindowOpacity(GLFWwindow* window, float opacity);
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_PLATFORM_ERROR.
  *
- *  @remark @wayland Once a window is iconified it cannot be restored
- *  except by the compositor, this is a design decision of xdg-shell.
+ *  @remark @wayland Once a window is iconified, @ref glfwRestoreWindow won’t
+ *  be able to restore it.  This is a design decision of the xdg-shell
+ *  protocol.
  *
  *  @thread_safety This function must only be called from the main thread.
  *
@@ -3491,8 +3528,8 @@ GLFWAPI GLFWmonitor* glfwGetWindowMonitor(GLFWwindow* window);
  *  content area.
  *  @param[in] ypos The desired y-coordinate of the upper-left corner of the
  *  content area.
- *  @param[in] width The desired with, in screen coordinates, of the content area
- *  or video mode.
+ *  @param[in] width The desired with, in screen coordinates, of the content
+ *  area or video mode.
  *  @param[in] height The desired height, in screen coordinates, of the content
  *  area or video mode.
  *  @param[in] refreshRate The desired refresh rate, in Hz, of the video mode,
@@ -3643,8 +3680,8 @@ GLFWAPI void* glfwGetWindowUserPointer(GLFWwindow* window);
  *
  *  This function sets the position callback of the specified window, which is
  *  called when the window is moved.  The callback is provided with the
- *  position, in screen coordinates, of the upper-left corner of the content area
- *  of the window.
+ *  position, in screen coordinates, of the upper-left corner of the content
+ *  area of the window.
  *
  *  @param[in] window The window whose callback to set.
  *  @param[in] callback The new callback, or `NULL` to remove the currently set
@@ -3859,6 +3896,13 @@ GLFWAPI GLFWwindowocclusionfun glfwSetWindowOcclusionCallback(GLFWwindow* window
  *  callback.
  *  @return The previously set callback, or `NULL` if no callback was set or the
  *  library had not been [initialized](@ref intro_init).
+ *
+ *  @callback_signature
+ *  @code
+ *  void function_name(GLFWwindow* window, int iconified)
+ *  @endcode
+ *  For more information about the callback parameters, see the
+ *  [function pointer type](@ref GLFWwindowiconifyfun).
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
  *
@@ -4177,9 +4221,11 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* window, int mode, int value);
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_PLATFORM_ERROR.
  *
+ *  @remark The contents of the returned string may change when a keyboard
+ *  layout change event is received.
+ *
  *  @pointer_lifetime The returned string is allocated and freed by GLFW.  You
- *  should not free it yourself.  It is valid until the next call to @ref
- *  glfwGetKeyName, or until the library is terminated.
+ *  should not free it yourself.  It is valid until the library is terminated.
  *
  *  @thread_safety This function must only be called from the main thread.
  *
@@ -4777,7 +4823,7 @@ GLFWAPI const unsigned char* glfwGetJoystickButtons(int jid, int* count);
  *  Each element in the array is one of the following values:
  *
  *  Name                  | Value
- *  --------------------- | --------------------------------
+ *  ----                  | -----
  *  `GLFW_HAT_CENTERED`   | 0
  *  `GLFW_HAT_UP`         | 1
  *  `GLFW_HAT_RIGHT`      | 2
@@ -5175,23 +5221,26 @@ GLFWAPI void glfwSetClipboardString(GLFWwindow* window, const char* string);
  */
 GLFWAPI const char* glfwGetClipboardString(GLFWwindow* window);
 
-/*! @brief Returns the value of the GLFW timer.
+/*! @brief Returns the GLFW time.
  *
- *  This function returns the value of the GLFW timer.  Unless the timer has
- *  been set using @ref glfwSetTime, the timer measures time elapsed since GLFW
- *  was initialized.
+ *  This function returns the current GLFW time, in seconds.  Unless the time
+ *  has been set using @ref glfwSetTime it measures time elapsed since GLFW was
+ *  initialized.
+ *
+ *  This function and @ref glfwSetTime are helper functions on top of @ref
+ *  glfwGetTimerFrequency and @ref glfwGetTimerValue.
  *
  *  The resolution of the timer is system dependent, but is usually on the order
  *  of a few micro- or nanoseconds.  It uses the highest-resolution monotonic
  *  time source on each supported platform.
  *
- *  @return The current value, in seconds, or zero if an
+ *  @return The current time, in seconds, or zero if an
  *  [error](@ref error_handling) occurred.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
  *
  *  @thread_safety This function may be called from any thread.  Reading and
- *  writing of the internal timer offset is not atomic, so it needs to be
+ *  writing of the internal base time is not atomic, so it needs to be
  *  externally synchronized with calls to @ref glfwSetTime.
  *
  *  @sa @ref time
@@ -5202,23 +5251,26 @@ GLFWAPI const char* glfwGetClipboardString(GLFWwindow* window);
  */
 GLFWAPI monotonic_t glfwGetTime(void);
 
-/*! @brief Sets the GLFW timer.
+/*! @brief Sets the GLFW time.
  *
- *  This function sets the value of the GLFW timer.  It then continues to count
- *  up from that value.  The value must be a positive finite number less than
- *  or equal to 18446744073.0, which is approximately 584.5 years.
+ *  This function sets the current GLFW time, in seconds.  The value must be
+ *  a positive finite number less than or equal to 18446744073.0, which is
+ *  approximately 584.5 years.
+ *
+ *  This function and @ref glfwGetTime are helper functions on top of @ref
+ *  glfwGetTimerFrequency and @ref glfwGetTimerValue.
  *
  *  @param[in] time The new value, in seconds.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_INVALID_VALUE.
  *
- *  @remark The upper limit of the timer is calculated as
+ *  @remark The upper limit of GLFW time is calculated as
  *  floor((2<sup>64</sup> - 1) / 10<sup>9</sup>) and is due to implementations
  *  storing nanoseconds in 64 bits.  The limit may be increased in the future.
  *
  *  @thread_safety This function may be called from any thread.  Reading and
- *  writing of the internal timer offset is not atomic, so it needs to be
+ *  writing of the internal base time is not atomic, so it needs to be
  *  externally synchronized with calls to @ref glfwGetTime.
  *
  *  @sa @ref time
@@ -5522,7 +5574,7 @@ GLFWAPI int glfwVulkanSupported(void);
  *
  *  This function returns an array of names of Vulkan instance extensions required
  *  by GLFW for creating Vulkan surfaces for GLFW windows.  If successful, the
- *  list will always contains `VK_KHR_surface`, so if you don't require any
+ *  list will always contain `VK_KHR_surface`, so if you don't require any
  *  additional extensions you can pass this list directly to the
  *  `VkInstanceCreateInfo` struct.
  *
