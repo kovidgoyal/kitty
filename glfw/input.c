@@ -756,7 +756,7 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* handle, int mode, int value)
         _glfwInputError(GLFW_INVALID_ENUM, "Invalid input mode 0x%08X", mode);
 }
 
-GLFWAPI const char* glfwGetKeyName(int key, int scancode)
+GLFWAPI const char* glfwGetKeyName(int key, int native_key)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
 
@@ -769,10 +769,10 @@ GLFWAPI const char* glfwGetKeyName(int key, int scancode)
             return NULL;
         }
 
-        scancode = _glfwPlatformGetKeyScancode(key);
+        native_key = _glfwPlatformGetKeyScancode(key);
     }
 
-    return _glfwPlatformGetScancodeName(scancode);
+    return _glfwPlatformGetScancodeName(native_key);
 }
 
 GLFWAPI int glfwGetKeyScancode(int key)

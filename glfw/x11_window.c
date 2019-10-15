@@ -2586,13 +2586,13 @@ void _glfwPlatformSetCursorMode(_GLFWwindow* window, int mode)
     XFlush(_glfw.x11.display);
 }
 
-const char* _glfwPlatformGetScancodeName(int scancode)
+const char* _glfwPlatformGetScancodeName(int native_key) // FIXME: s/Scancode/NativeKey ?
 {
 
-    return glfw_xkb_keysym_name(scancode);
+    return glfw_xkb_keysym_name(native_key);
 }
 
-int _glfwPlatformGetKeyScancode(int key)
+int _glfwPlatformGetKeyScancode(int key) // FIXME: rename _glfwPlatformGetNativeKeyForKey ?
 {
     return glfw_xkb_sym_for_key(key);
 }
@@ -2871,7 +2871,7 @@ GLFWAPI Window glfwGetX11Window(GLFWwindow* handle)
     return window->x11.handle;
 }
 
-GLFWAPI int glfwGetXKBScancode(const char* keyName, bool caseSensitive) {
+GLFWAPI int glfwGetXKBScancode(const char* keyName, bool caseSensitive) { // FIXME: s/Scancode/Keycode ?
     return glfw_xkb_keysym_from_name(keyName, caseSensitive);
 }
 

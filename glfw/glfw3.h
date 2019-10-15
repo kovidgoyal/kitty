@@ -4114,9 +4114,9 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* window, int mode, int value);
  *  __Do not use this function__ for [text input](@ref input_char).  You will
  *  break text input for many languages even if it happens to work for yours.
  *
- *  If the key is `GLFW_KEY_UNKNOWN`, the scancode is used to identify the key,
- *  otherwise the scancode is ignored.  If you specify a non-printable key, or
- *  `GLFW_KEY_UNKNOWN` and a scancode that maps to a non-printable key, this
+ *  If the key is `GLFW_KEY_UNKNOWN`, the keycode is used to identify the key,
+ *  otherwise the keycode is ignored.  If you specify a non-printable key, or
+ *  `GLFW_KEY_UNKNOWN` and a keycode that maps to a non-printable key, this
  *  function returns `NULL` but does not emit an error.
  *
  *  This behavior allows you to always pass in the arguments in the
@@ -4215,7 +4215,7 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* window, int mode, int value);
  *  language and should be localized along with other user interface text.
  *
  *  @param[in] key The key to query, or `GLFW_KEY_UNKNOWN`.
- *  @param[in] scancode The scancode of the key to query.
+ *  @param[in] native_key The native key identifier of the key to query.
  *  @return The UTF-8 encoded, layout-specific name of the key, or `NULL`.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
@@ -4235,7 +4235,7 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* window, int mode, int value);
  *
  *  @ingroup input
  */
-GLFWAPI const char* glfwGetKeyName(int key, int scancode);
+GLFWAPI const char* glfwGetKeyName(int key, int native_key);
 
 /*! @brief Returns the platform-specific scancode of the specified key.
  *
@@ -4259,7 +4259,7 @@ GLFWAPI const char* glfwGetKeyName(int key, int scancode);
  *
  *  @ingroup input
  */
-GLFWAPI int glfwGetKeyScancode(int key);
+GLFWAPI int glfwGetKeyScancode(int key); // FIXME: s/Scancode/NativeKey ? (and fix doc above)
 
 /*! @brief Returns the last reported state of a keyboard key for the specified
  *  window.

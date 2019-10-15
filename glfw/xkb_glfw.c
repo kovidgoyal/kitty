@@ -437,11 +437,11 @@ glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_m
 }
 
 bool
-glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode) {
+glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t xkb_keycode) {
 #ifdef _GLFW_WAYLAND
-    scancode += 8;
+    xkb_keycode += 8;
 #endif
-    return xkb_keymap_key_repeats(xkb->keymap, scancode);
+    return xkb_keymap_key_repeats(xkb->keymap, xkb_keycode);
 }
 
 
@@ -565,11 +565,12 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
 }
 
 void
-glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action) {
+glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t xkb_keycode, int action) {
     static char key_text[64] = {0};
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
+    // NOTE: there is no such thing as a `glfw_keycode`, => we could remove the `xkb_` prefix (?)
     xkb_keysym_t xkb_sym;
-    xkb_keycode_t code_for_sym = scancode, ibus_keycode = scancode;
+    xkb_keycode_t code_for_sym = xkb_keycode, ibus_keycode = xkb_keycode;
     GLFWkeyevent glfw_ev;
     _glfwInitializeKeyEvent(&glfw_ev, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0); // init with default values
 #ifdef _GLFW_WAYLAND
@@ -577,7 +578,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
 #else
     ibus_keycode -= 8;
 #endif
-    debug("%s scancode: 0x%x ", action == GLFW_RELEASE ? "Release" : "Press", scancode);
+    debug("%s xkb_keycode: 0x%x ", action == GLFW_RELEASE ? "Release" : "Press", xkb_keycode);
     XKBStateGroup *sg = &xkb->states;
     int num_syms = xkb_state_key_get_syms(sg->state, code_for_sym, &syms);
     int num_clean_syms = xkb_state_key_get_syms(sg->clean_state, code_for_sym, &clean_syms);
