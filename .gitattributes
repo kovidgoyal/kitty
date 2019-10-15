@@ -7,6 +7,7 @@ kitty/unicode-data.c linguist-generated=true
 kitty/rgb.py linguist-generated=true
 kitty/gl-wrapper.* linguist-generated=true
 kitty/glfw-wrapper.* linguist-generated=true
+kitty/parse-graphics-command.h linguist-generated=true
 glfw/*.c linguist-vendored=true
 glfw/*.h linguist-vendored=true
 kittens/unicode_input/names.h linguist-generated=true
