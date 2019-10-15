@@ -549,10 +549,10 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
     xkb_keycode_t prev_handled_press = last_handled_press_keycode;
     last_handled_press_keycode = 0;
     bool is_release = ev->glfw_ev.action == GLFW_RELEASE;
-    debug("From IBUS: scancode: 0x%x name: %s is_release: %d\n", ev->glfw_ev.scancode, glfw_xkb_keysym_name(ev->glfw_ev.key), is_release);
-    if (window && !handled_by_ime && !(is_release && ev->glfw_ev.scancode == (int) prev_handled_press)) {
+    debug("From IBUS: native_key: 0x%x name: %s is_release: %d\n", ev->glfw_ev.native_key, glfw_xkb_keysym_name(ev->glfw_ev.key), is_release);
+    if (window && !handled_by_ime && !(is_release && ev->glfw_ev.native_key == (int) prev_handled_press)) {
         debug("↳ to application: glfw_keycode: 0x%x (%s) keysym: 0x%x (%s) action: %s %s text: %s\n",
-            ev->glfw_ev.scancode, _glfwGetKeyName(ev->glfw_ev.scancode), ev->glfw_ev.key, glfw_xkb_keysym_name(ev->glfw_ev.key),
+            ev->glfw_ev.native_key, _glfwGetKeyName(ev->glfw_ev.native_key), ev->glfw_ev.key, glfw_xkb_keysym_name(ev->glfw_ev.key),
             (ev->glfw_ev.action == GLFW_RELEASE ? "RELEASE" : (ev->glfw_ev.action == GLFW_PRESS ? "PRESS" : "REPEAT")),
             format_mods(ev->glfw_ev.mods), ev->glfw_ev.text
         );
@@ -560,7 +560,8 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
         ev->glfw_ev.ime_state = 0;
         _glfwInputKeyboard(window, &ev->glfw_ev);
     } else debug("↳ discarded\n");
-    if (!is_release && handled_by_ime) last_handled_press_keycode = ev->glfw_ev.scancode;
+    if (!is_release && handled_by_ime)
+      last_handled_press_keycode = ev->glfw_ev.native_key;
 }
 
 void
@@ -635,8 +636,17 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         xkb_sym, glfw_xkb_keysym_name(xkb_sym)
     );
 
+    // NOTE: On linux, the reported native key identifier is the XKB keysym value.
+    // Do not confuse `native_key` with `xkb_keycode` (the native keycode reported for the
+    // glfw event VS the X internal code for a key).
+    //
+    // We use the XKB keysym instead of the X keycode to be able to go back-and-forth between
+    // the GLFW keysym and the XKB keysym when needed, which is not possible using the X keycode,
+    // because of the lost information when resolving the keycode to the keysym, like consumed
+    // mods.
+    glfw_ev.native_key = xkb_sym;
+
     glfw_ev.action = action;
-    glfw_ev.scancode = xkb_sym;
     glfw_ev.key = glfw_sym;
     glfw_ev.mods = sg->modifiers;
     glfw_ev.text = key_text;

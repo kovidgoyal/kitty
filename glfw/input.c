@@ -257,10 +257,10 @@ static bool parseMapping(_GLFWmapping* mapping, const char* string)
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwInitializeKeyEvent(GLFWkeyevent *ev, int key, int scancode, int action, int mods)
+void _glfwInitializeKeyEvent(GLFWkeyevent *ev, int key, int native_key, int action, int mods)
 {
     ev->key = key;
-    ev->scancode = scancode;
+    ev->native_key = native_key;
     ev->action = action;
     ev->mods = mods;
     ev->text = NULL;
