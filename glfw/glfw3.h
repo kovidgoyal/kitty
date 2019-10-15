@@ -2067,7 +2067,7 @@ GLFWAPI GLFWmonitor* glfwGetPrimaryMonitor(void);
  */
 GLFWAPI void glfwGetMonitorPos(GLFWmonitor* monitor, int* xpos, int* ypos);
 
-/*! @brief Returns the work area of the monitor.
+/*! @brief Retrieves the work area of the monitor.
  *
  *  This function returns the position, in screen coordinates, of the upper-left
  *  corner of the specified monitor alongwith the work area size in screen co-ordinates.
