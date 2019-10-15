@@ -61,6 +61,7 @@
 /*! @} */
 
 /*! @defgroup hat_state Joystick hat states
+ *  @brief Joystick hat states.
  *
  *  See [joystick hat input](@ref joystick_hat) for how these are used.
  *
@@ -794,12 +795,25 @@
  *  [window hint](@ref GLFW_SCALE_TO_MONITOR).
  */
 #define GLFW_SCALE_TO_MONITOR       0x0002200C
-
+/*! @brief macOS specific
+ *  [window hint](@ref GLFW_COCOA_RETINA_FRAMEBUFFER_hint).
+ */
 #define GLFW_COCOA_RETINA_FRAMEBUFFER 0x00023001
+/*! @brief macOS specific
+ *  [window hint](@ref GLFW_COCOA_FRAME_NAME_hint).
+ */
 #define GLFW_COCOA_FRAME_NAME         0x00023002
+/*! @brief macOS specific
+ *  [window hint](@ref GLFW_COCOA_GRAPHICS_SWITCHING_hint).
+ */
 #define GLFW_COCOA_GRAPHICS_SWITCHING 0x00023003
-
+/*! @brief X11 specific
+ *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
+ */
 #define GLFW_X11_CLASS_NAME         0x00024001
+/*! @brief X11 specific
+ *  [window hint](@ref GLFW_X11_CLASS_NAME_hint).
+ */
 #define GLFW_X11_INSTANCE_NAME      0x00024002
 
 #define GLFW_WAYLAND_APP_ID         0x00025001
@@ -862,11 +876,22 @@ typedef enum {
 
 /*! @addtogroup init
  *  @{ */
+/*! @brief Joystick hat buttons init hint.
+ *
+ *  Joystick hat buttons [init hint](@ref GLFW_JOYSTICK_HAT_BUTTONS).
+ */
 #define GLFW_JOYSTICK_HAT_BUTTONS   0x00050001
 #define GLFW_DEBUG_KEYBOARD         0x00050002
 #define GLFW_ENABLE_JOYSTICKS       0x00050003
-
+/*! @brief macOS specific init hint.
+ *
+ *  macOS specific [init hint](@ref GLFW_COCOA_CHDIR_RESOURCES_hint).
+ */
 #define GLFW_COCOA_CHDIR_RESOURCES  0x00051001
+/*! @brief macOS specific init hint.
+ *
+ *  macOS specific [init hint](@ref GLFW_COCOA_MENUBAR_hint).
+ */
 #define GLFW_COCOA_MENUBAR          0x00051002
 /*! @} */
 
@@ -937,7 +962,7 @@ typedef struct GLFWwindow GLFWwindow;
  *
  *  @since Added in version 3.1.
  *
- *  @ingroup cursor
+ *  @ingroup input
  */
 typedef struct GLFWcursor GLFWcursor;
 
@@ -964,12 +989,20 @@ typedef struct GLFWkeyevent
     int ime_state;
 } GLFWkeyevent;
 
-/*! @brief The function signature for error callbacks.
+/*! @brief The function pointer type for error callbacks.
  *
- *  This is the function signature for error callback functions.
+ *  This is the function pointer type for error callbacks.  An error callback
+ *  function has the following signature:
+ *  @code
+ *  void callback_name(int error_code, const char* description)
+ *  @endcode
  *
- *  @param[in] error An [error code](@ref errors).
+ *  @param[in] error_code An [error code](@ref errors).  Future releases may add
+ *  more error codes.
  *  @param[in] description A UTF-8 encoded string describing the error.
+ *
+ *  @pointer_lifetime The error description string is valid until the callback
+ *  function returns.
  *
  *  @sa @ref error_handling
  *  @sa @ref glfwSetErrorCallback
@@ -980,9 +1013,13 @@ typedef struct GLFWkeyevent
  */
 typedef void (* GLFWerrorfun)(int,const char*);
 
-/*! @brief The function signature for window position callbacks.
+/*! @brief The function pointer type for window position callbacks.
  *
- *  This is the function signature for window position callback functions.
+ *  This is the function pointer type for window position callbacks.  A window
+ *  position callback function has the following signature:
+ *  @code
+ *  void callback_name(GLFWwindow* window, int xpos, int ypos)
+ *  @endcode
  *
  *  @param[in] window The window that was moved.
  *  @param[in] xpos The new x-coordinate, in screen coordinates, of the
@@ -999,9 +1036,13 @@ typedef void (* GLFWerrorfun)(int,const char*);
  */
 typedef void (* GLFWwindowposfun)(GLFWwindow*,int,int);
 
-/*! @brief The function signature for window resize callbacks.
+/*! @brief The function pointer type for window size callbacks.
  *
- *  This is the function signature for window size callback functions.
+ *  This is the function pointer type for window size callbacks.  A window size
+ *  callback function has the following signature:
+ *  @code
+ *  void callback_name(GLFWwindow* window, int width, int height)
+ *  @endcode
  *
  *  @param[in] window The window that was resized.
  *  @param[in] width The new width, in screen coordinates, of the window.
@@ -1017,9 +1058,13 @@ typedef void (* GLFWwindowposfun)(GLFWwindow*,int,int);
  */
 typedef void (* GLFWwindowsizefun)(GLFWwindow*,int,int);
 
-/*! @brief The function signature for window close callbacks.
+/*! @brief The function pointer type for window close callbacks.
  *
- *  This is the function signature for window close callback functions.
+ *  This is the function pointer type for window close callbacks.  A window
+ *  close callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window)
+ *  @endcode
  *
  *  @param[in] window The window that the user attempted to close.
  *
@@ -1033,9 +1078,13 @@ typedef void (* GLFWwindowsizefun)(GLFWwindow*,int,int);
  */
 typedef void (* GLFWwindowclosefun)(GLFWwindow*);
 
-/*! @brief The function signature for window content refresh callbacks.
+/*! @brief The function pointer type for window content refresh callbacks.
  *
- *  This is the function signature for window refresh callback functions.
+ *  This is the function pointer type for window content refresh callbacks.
+ *  A window content refresh callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window);
+ *  @endcode
  *
  *  @param[in] window The window whose content needs to be refreshed.
  *
@@ -1049,9 +1098,13 @@ typedef void (* GLFWwindowclosefun)(GLFWwindow*);
  */
 typedef void (* GLFWwindowrefreshfun)(GLFWwindow*);
 
-/*! @brief The function signature for window focus/defocus callbacks.
+/*! @brief The function pointer type for window focus callbacks.
  *
- *  This is the function signature for window focus callback functions.
+ *  This is the function pointer type for window focus callbacks.  A window
+ *  focus callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int focused)
+ *  @endcode
  *
  *  @param[in] window The window that gained or lost input focus.
  *  @param[in] focused `true` if the window was given input focus, or
@@ -1084,10 +1137,13 @@ typedef void (* GLFWwindowfocusfun)(GLFWwindow*,int);
 typedef void (* GLFWwindowocclusionfun)(GLFWwindow*, bool);
 
 
-/*! @brief The function signature for window iconify/restore callbacks.
+/*! @brief The function pointer type for window iconify callbacks.
  *
- *  This is the function signature for window iconify/restore callback
- *  functions.
+ *  This is the function pointer type for window iconify callbacks.  A window
+ *  iconify callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int iconified)
+ *  @endcode
  *
  *  @param[in] window The window that was iconified or restored.
  *  @param[in] iconified `true` if the window was iconified, or
@@ -1102,10 +1158,13 @@ typedef void (* GLFWwindowocclusionfun)(GLFWwindow*, bool);
  */
 typedef void (* GLFWwindowiconifyfun)(GLFWwindow*,int);
 
-/*! @brief The function signature for window maximize/restore callbacks.
+/*! @brief The function pointer type for window maximize callbacks.
  *
- *  This is the function signature for window maximize/restore callback
- *  functions.
+ *  This is the function pointer type for window maximize callbacks.  A window
+ *  maximize callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int maximized)
+ *  @endcode
  *
  *  @param[in] window The window that was maximized or restored.
  *  @param[in] iconified `true` if the window was maximized, or
@@ -1120,10 +1179,13 @@ typedef void (* GLFWwindowiconifyfun)(GLFWwindow*,int);
  */
 typedef void (* GLFWwindowmaximizefun)(GLFWwindow*,int);
 
-/*! @brief The function signature for framebuffer resize callbacks.
+/*! @brief The function pointer type for framebuffer size callbacks.
  *
- *  This is the function signature for framebuffer resize callback
- *  functions.
+ *  This is the function pointer type for framebuffer size callbacks.
+ *  A framebuffer size callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int width, int height)
+ *  @endcode
  *
  *  @param[in] window The window whose framebuffer was resized.
  *  @param[in] width The new width, in pixels, of the framebuffer.
@@ -1138,10 +1200,13 @@ typedef void (* GLFWwindowmaximizefun)(GLFWwindow*,int);
  */
 typedef void (* GLFWframebuffersizefun)(GLFWwindow*,int,int);
 
-/*! @brief The function signature for window content scale callbacks.
+/*! @brief The function pointer type for window content scale callbacks.
  *
- *  This is the function signature for window content scale callback
- *  functions.
+ *  This is the function pointer type for window content scale callbacks.
+ *  A window content scale callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, float xscale, float yscale)
+ *  @endcode
  *
  *  @param[in] window The window whose content scale changed.
  *  @param[in] xscale The new x-axis content scale of the window.
@@ -1156,14 +1221,19 @@ typedef void (* GLFWframebuffersizefun)(GLFWwindow*,int,int);
  */
 typedef void (* GLFWwindowcontentscalefun)(GLFWwindow*,float,float);
 
-/*! @brief The function signature for mouse button callbacks.
+/*! @brief The function pointer type for mouse button callbacks.
  *
- *  This is the function signature for mouse button callback functions.
+ *  This is the function pointer type for mouse button callback functions.
+ *  A mouse button callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int button, int action, int mods)
+ *  @endcode
  *
  *  @param[in] window The window that received the event.
  *  @param[in] button The [mouse button](@ref buttons) that was pressed or
  *  released.
- *  @param[in] action One of `GLFW_PRESS` or `GLFW_RELEASE`.
+ *  @param[in] action One of `GLFW_PRESS` or `GLFW_RELEASE`.  Future releases
+ *  may add more actions.
  *  @param[in] mods Bit field describing which [modifier keys](@ref mods) were
  *  held down.
  *
@@ -1177,9 +1247,13 @@ typedef void (* GLFWwindowcontentscalefun)(GLFWwindow*,float,float);
  */
 typedef void (* GLFWmousebuttonfun)(GLFWwindow*,int,int,int);
 
-/*! @brief The function signature for cursor position callbacks.
+/*! @brief The function pointer type for cursor position callbacks.
  *
- *  This is the function signature for cursor position callback functions.
+ *  This is the function pointer type for cursor position callbacks.  A cursor
+ *  position callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, double xpos, double ypos);
+ *  @endcode
  *
  *  @param[in] window The window that received the event.
  *  @param[in] xpos The new cursor x-coordinate, relative to the left edge of
@@ -1196,12 +1270,16 @@ typedef void (* GLFWmousebuttonfun)(GLFWwindow*,int,int,int);
  */
 typedef void (* GLFWcursorposfun)(GLFWwindow*,double,double);
 
-/*! @brief The function signature for cursor enter/leave callbacks.
+/*! @brief The function pointer type for cursor enter/leave callbacks.
  *
- *  This is the function signature for cursor enter/leave callback functions.
+ *  This is the function pointer type for cursor enter/leave callbacks.
+ *  A cursor enter/leave callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int entered)
+ *  @endcode
  *
  *  @param[in] window The window that received the event.
- *  @param[in] entered `true` if the cursor entered the window's client
+ *  @param[in] entered `true` if the cursor entered the window's content
  *  area, or `false` if it left it.
  *
  *  @sa @ref cursor_enter
@@ -1213,9 +1291,13 @@ typedef void (* GLFWcursorposfun)(GLFWwindow*,double,double);
  */
 typedef void (* GLFWcursorenterfun)(GLFWwindow*,int);
 
-/*! @brief The function signature for scroll callbacks.
+/*! @brief The function pointer type for scroll callbacks.
  *
- *  This is the function signature for scroll callback functions.
+ *  This is the function pointer type for scroll callbacks.  A scroll callback
+ *  function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, double xoffset, double yoffset)
+ *  @endcode
  *
  *  @param[in] window The window that received the event.
  *  @param[in] xoffset The scroll offset along the x-axis.
@@ -1238,9 +1320,13 @@ typedef void (* GLFWcursorenterfun)(GLFWwindow*,int);
  */
 typedef void (* GLFWscrollfun)(GLFWwindow*,double,double,int);
 
-/*! @brief The function signature for key callbacks.
+/*! @brief The function pointer type for key callbacks.
  *
- *  This is the function signature for key callback functions.
+ *  This is the function pointer type for key callbacks.  A keyboard
+ *  key callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int key, int scancode, int action, int mods)
+ *  @endcode
  *  The semantics of this function are that the key that is interacted with on the
  *  keyboard is reported, and the text, if any generated by the key is reported.
  *  So, for example, if on a US-ASCII keyboard the user presses Shift+= GLFW
@@ -1266,13 +1352,20 @@ typedef void (* GLFWscrollfun)(GLFWwindow*,double,double,int);
  */
 typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
 
-/*! @brief The function signature for file drop callbacks.
+/*! @brief The function pointer type for path drop callbacks.
  *
- *  This is the function signature for file drop callbacks.
+ *  This is the function pointer type for path drop callbacks.  A path drop
+ *  callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWwindow* window, int path_count, const char* paths[])
+ *  @endcode
  *
  *  @param[in] window The window that received the event.
- *  @param[in] count The number of dropped files.
+ *  @param[in] path_count The number of dropped paths.
  *  @param[in] paths The UTF-8 encoded file and/or directory path names.
+ *
+ *  @pointer_lifetime The path array and its strings are valid until the
+ *  callback function returns.
  *
  *  @sa @ref path_drop
  *  @sa @ref glfwSetDropCallback
@@ -1281,17 +1374,21 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *
  *  @ingroup input
  */
-typedef void (* GLFWdropfun)(GLFWwindow*,int,const char**);
+typedef void (* GLFWdropfun)(GLFWwindow*,int,const char*[]);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 
-/*! @brief The function signature for monitor configuration callbacks.
+/*! @brief The function pointer type for monitor configuration callbacks.
  *
- *  This is the function signature for monitor configuration callback functions.
+ *  This is the function pointer type for monitor configuration callbacks.
+ *  A monitor callback function has the following signature:
+ *  @code
+ *  void function_name(GLFWmonitor* monitor, int event)
+ *  @endcode
  *
  *  @param[in] monitor The monitor that was connected or disconnected.
- *  @param[in] event One of `GLFW_CONNECTED` or `GLFW_DISCONNECTED`.  Remaining
- *  values reserved for future use.
+ *  @param[in] event One of `GLFW_CONNECTED` or `GLFW_DISCONNECTED`.  Future
+ *  releases may add more events.
  *
  *  @sa @ref monitor_event
  *  @sa @ref glfwSetMonitorCallback
@@ -1302,14 +1399,17 @@ typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
  */
 typedef void (* GLFWmonitorfun)(GLFWmonitor*,int);
 
-/*! @brief The function signature for joystick configuration callbacks.
+/*! @brief The function pointer type for joystick configuration callbacks.
  *
- *  This is the function signature for joystick configuration callback
- *  functions.
+ *  This is the function pointer type for joystick configuration callbacks.
+ *  A joystick configuration callback function has the following signature:
+ *  @code
+ *  void function_name(int jid, int event)
+ *  @endcode
  *
  *  @param[in] jid The joystick that was connected or disconnected.
- *  @param[in] event One of `GLFW_CONNECTED` or `GLFW_DISCONNECTED`.  Remaining
- *  values reserved for future use.
+ *  @param[in] event One of `GLFW_CONNECTED` or `GLFW_DISCONNECTED`.  Future
+ *  releases may add more events.
  *
  *  @sa @ref joystick_event
  *  @sa @ref glfwSetJoystickCallback
@@ -1396,6 +1496,8 @@ typedef struct GLFWgammaramp
  *
  *  @since Added in version 2.1.
  *  @glfw3 Removed format and bytes-per-pixel members.
+ *
+ *  @ingroup window
  */
 typedef struct GLFWimage
 {
@@ -1418,6 +1520,8 @@ typedef struct GLFWimage
  *  @sa @ref glfwGetGamepadState
  *
  *  @since Added in version 3.3.
+ *
+ *  @ingroup input
  */
 typedef struct GLFWgamepadstate
 {
