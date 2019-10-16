@@ -48,7 +48,10 @@ particular desktop, but it should work for most major desktop environments.
     # Update the path to the kitty icon in the kitty.desktop file
     sed -i "s/Icon\=kitty/Icon\=\/home\/$USER\/.local\/kitty.app\/share\/icons\/hicolor\/256x256\/apps\/kitty.png/g" ~/.local/share/applications/kitty.desktop
 
+Ensuring terminfo to fix terminal glitches
+------------------------------------------
 
+You might encounter issues when using kitty to ssh into other computers. This is due to missing terminfo in the remote host. Make sure you copy `~/.local/kitty.app/share/terminfo/x/xterm-kitty` (from your install path) to the hosts terminfo directory (regular users can copy to `$HOME/.terminfo/x`, creating the directory if necessary). Alternatively, you can just `export TERM=xterm` in the remote session to avoid issues (although you might miss some kitty features).
 
 Customizing the installation
 --------------------------------
