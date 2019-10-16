@@ -971,7 +971,7 @@ typedef struct GLFWkeyevent
     // The [keyboard key](@ref keys) that was pressed or released.
     int key;
 
-    // The native key identifier of the key.
+    // The platform-specific identifier of the key.
     int native_key;
 
     // The event action. Either `GLFW_PRESS`, `GLFW_RELEASE` or `GLFW_REPEAT`.

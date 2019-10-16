@@ -1211,7 +1211,7 @@ typedef struct GLFWkeyevent
     // The [keyboard key](@ref keys) that was pressed or released.
     int key;
 
-    // The native key identifier of the key.
+    // The platform-specific identifier of the key.
     int native_key;
 
     // The event action. Either `GLFW_PRESS`, `GLFW_RELEASE` or `GLFW_REPEAT`.
@@ -4215,7 +4215,7 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* window, int mode, int value);
  *  language and should be localized along with other user interface text.
  *
  *  @param[in] key The key to query, or `GLFW_KEY_UNKNOWN`.
- *  @param[in] native_key The native key identifier of the key to query.
+ *  @param[in] native_key The platform-specifc identifier of the key to query.
  *  @return The UTF-8 encoded, layout-specific name of the key, or `NULL`.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
