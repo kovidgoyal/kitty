@@ -2592,7 +2592,7 @@ const char* _glfwPlatformGetNativeKeyName(int native_key)
     return glfw_xkb_keysym_name(native_key);
 }
 
-int _glfwPlatformGetNativeKeyForKey(int key) // FIXME: rename _glfwPlatformGetNativeKeyForKey ?
+int _glfwPlatformGetNativeKeyForKey(int key)
 {
     return glfw_xkb_sym_for_key(key);
 }
