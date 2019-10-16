@@ -568,7 +568,6 @@ void
 glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t xkb_keycode, int action) {
     static char key_text[64] = {0};
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
-    // NOTE: there is no such thing as a `glfw_keycode`, => we could remove the `xkb_` prefix (?)
     xkb_keysym_t xkb_sym;
     xkb_keycode_t code_for_sym = xkb_keycode, ibus_keycode = xkb_keycode;
     GLFWkeyevent glfw_ev;
