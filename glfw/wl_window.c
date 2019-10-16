@@ -1269,12 +1269,12 @@ void _glfwPlatformSetCursorMode(_GLFWwindow* window, int mode UNUSED)
     _glfwPlatformSetCursor(window, window->wl.currentCursor);
 }
 
-const char* _glfwPlatformGetScancodeName(int scancode)
+const char* _glfwPlatformGetNativeKeyName(int native_key)
 {
-    return glfw_xkb_keysym_name(scancode);
+    return glfw_xkb_keysym_name(native_key);
 }
 
-int _glfwPlatformGetKeyScancode(int key)
+int _glfwPlatformGetNativeKeyForKey(int key)
 {
     return glfw_xkb_sym_for_key(key);
 }
@@ -2032,7 +2032,7 @@ GLFWAPI struct wl_surface* glfwGetWaylandWindow(GLFWwindow* handle)
     return window->wl.surface;
 }
 
-GLFWAPI int glfwGetXKBScancode(const char* keyName, bool caseSensitive) {
+GLFWAPI int glfwGetNativeKeyForName(const char* keyName, bool caseSensitive) {
     return glfw_xkb_keysym_from_name(keyName, caseSensitive);
 }
 

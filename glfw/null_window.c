@@ -307,12 +307,12 @@ const char* _glfwPlatformGetClipboardString(void)
     return NULL;
 }
 
-const char* _glfwPlatformGetScancodeName(int scancode UNUSED)
+const char* _glfwPlatformGetNativeKeyName(int native_key UNUSED)
 {
     return "";
 }
 
-int _glfwPlatformGetKeyScancode(int key UNUSED)
+int _glfwPlatformGetNativeKeyForKey(int key UNUSED)
 {
     return -1;
 }

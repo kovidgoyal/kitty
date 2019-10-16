@@ -451,7 +451,7 @@ toggle_maximized_for_os_window(OSWindow *w) {
 
 #ifdef __APPLE__
 static int
-filter_option(int key UNUSED, int mods, unsigned int scancode UNUSED, unsigned long flags) {
+filter_option(int key UNUSED, int mods, unsigned int native_key UNUSED, unsigned long flags) {
     if ((mods == GLFW_MOD_ALT) || (mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))) {
         if (OPT(macos_option_as_alt) == 3) return 1;
         if (cocoa_alt_option_key_pressed(flags)) return 1;
@@ -830,9 +830,9 @@ glfw_get_physical_dpi(PYNOARG) {
 
 static PyObject*
 glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
-    int key, scancode;
-    if (!PyArg_ParseTuple(args, "ii", &key, &scancode)) return NULL;
-    return Py_BuildValue("s", glfwGetKeyName(key, scancode));
+    int key, native_key;
+    if (!PyArg_ParseTuple(args, "ii", &key, &native_key)) return NULL;
+    return Py_BuildValue("s", glfwGetKeyName(key, native_key));
 }
 
 static PyObject*

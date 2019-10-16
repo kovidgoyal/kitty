@@ -640,9 +640,8 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape
 void _glfwPlatformDestroyCursor(_GLFWcursor* cursor);
 void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor);
 
-// FIXME: s/Scancode/NativeKey ?
-const char* _glfwPlatformGetScancodeName(int native_key);
-int _glfwPlatformGetKeyScancode(int key);
+const char* _glfwPlatformGetNativeKeyName(int native_key);
+int _glfwPlatformGetNativeKeyForKey(int key);
 
 void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor);
 void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos);

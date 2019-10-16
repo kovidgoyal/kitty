@@ -769,13 +769,13 @@ GLFWAPI const char* glfwGetKeyName(int key, int native_key)
             return NULL;
         }
 
-        native_key = _glfwPlatformGetKeyScancode(key);
+        native_key = _glfwPlatformGetNativeKeyForKey(key);
     }
 
-    return _glfwPlatformGetScancodeName(native_key);
+    return _glfwPlatformGetNativeKeyName(native_key);
 }
 
-GLFWAPI int glfwGetKeyScancode(int key)
+GLFWAPI int glfwGetNativeKeyForKey(int key)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(-1);
 
@@ -785,7 +785,7 @@ GLFWAPI int glfwGetKeyScancode(int key)
         return GLFW_RELEASE;
     }
 
-    return _glfwPlatformGetKeyScancode(key);
+    return _glfwPlatformGetNativeKeyForKey(key);
 }
 
 GLFWAPI int glfwGetKey(GLFWwindow* handle, int key)

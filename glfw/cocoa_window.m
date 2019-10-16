@@ -328,7 +328,7 @@ format_text(const char *src) {
 
 static const char*
 safe_name_for_scancode(unsigned int scancode) {
-    const char *ans = _glfwPlatformGetScancodeName(scancode);
+    const char *ans = _glfwPlatformGetNativeKeyName(scancode);
     if (!ans) return "<noname>";
     if ((1 <= ans[0] && ans[0] <= 31) || ans[0] == 127) ans = "<cc>";
     return ans;
@@ -341,7 +341,7 @@ static int translateKey(unsigned int key, bool apply_keymap)
 {
     if (apply_keymap) {
         // Look for the effective key name after applying any keyboard layouts/mappings
-        const char *name_chars = _glfwPlatformGetScancodeName(key);
+        const char *name_chars = _glfwPlatformGetNativeKeyName(key);
         uint32_t name = 0;
         if (name_chars) {
             for (int i = 0; i < 4; i++) {
@@ -1896,7 +1896,7 @@ void _glfwPlatformSetCursorMode(_GLFWwindow* window, int mode UNUSED)
         updateCursorMode(window);
 }
 
-const char* _glfwPlatformGetScancodeName(int scancode)
+const char* _glfwPlatformGetNativeKeyName(int scancode)
 {
     UInt32 deadKeyState = 0;
     UniChar characters[8];
@@ -1923,7 +1923,7 @@ const char* _glfwPlatformGetScancodeName(int scancode)
     return _glfw.ns.keyName;
 }
 
-int _glfwPlatformGetKeyScancode(int key)
+int _glfwPlatformGetNativeKeyForKey(int key)
 {
     return _glfw.ns.scancodes[key];
 }

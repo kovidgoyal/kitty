@@ -407,7 +407,7 @@ key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
         failed = true;
     } else {
         glfw_dbus_get_args(msg, "Failed to get IBUS handled key from reply", DBUS_TYPE_BOOLEAN, &handled, DBUS_TYPE_INVALID);
-        debug("IBUS processed scancode: 0x%x release: %d handled: %u\n", ev->glfw_ev.scancode, is_release, handled);
+        debug("IBUS processed native_key: 0x%x release: %d handled: %u\n", ev->glfw_ev.native_key, is_release, handled);
     }
     glfw_xkb_key_from_ime(ev, handled ? true : false, failed);
     free(ev);

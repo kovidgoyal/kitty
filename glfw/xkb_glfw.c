@@ -437,11 +437,11 @@ glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_m
 }
 
 bool
-glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t xkb_keycode) {
+glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t keycode) {
 #ifdef _GLFW_WAYLAND
-    xkb_keycode += 8;
+    keycode += 8;
 #endif
-    return xkb_keymap_key_repeats(xkb->keymap, xkb_keycode);
+    return xkb_keymap_key_repeats(xkb->keymap, keycode);
 }
 
 
@@ -658,7 +658,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     ibus_ev.window_id = window->id;
     ibus_ev.ibus_keysym = syms[0];
     if (ibus_process_key(&ibus_ev, &xkb->ibus)) {
-        debug("↳ to IBUS: scancode: 0x%x keysym: 0x%x (%s) %s\n", ibus_ev.ibus_keycode, ibus_ev.ibus_keysym, glfw_xkb_keysym_name(ibus_ev.ibus_keysym), format_mods(ibus_ev.glfw_ev.mods));
+        debug("↳ to IBUS: keycode: 0x%x keysym: 0x%x (%s) %s\n", ibus_ev.ibus_keycode, ibus_ev.ibus_keysym, glfw_xkb_keysym_name(ibus_ev.ibus_keysym), format_mods(ibus_ev.glfw_ev.mods));
     } else {
         _glfwInputKeyboard(window, &glfw_ev);
     }

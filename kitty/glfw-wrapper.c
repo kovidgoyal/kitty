@@ -245,8 +245,8 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetKeyName_impl) = dlsym(handle, "glfwGetKeyName");
     if (glfwGetKeyName_impl == NULL) fail("Failed to load glfw function glfwGetKeyName with error: %s", dlerror());
 
-    *(void **) (&glfwGetKeyScancode_impl) = dlsym(handle, "glfwGetKeyScancode");
-    if (glfwGetKeyScancode_impl == NULL) fail("Failed to load glfw function glfwGetKeyScancode with error: %s", dlerror());
+    *(void **) (&glfwGetNativeKeyForKey_impl) = dlsym(handle, "glfwGetNativeKeyForKey");
+    if (glfwGetNativeKeyForKey_impl == NULL) fail("Failed to load glfw function glfwGetNativeKeyForKey with error: %s", dlerror());
 
     *(void **) (&glfwGetKey_impl) = dlsym(handle, "glfwGetKey");
     if (glfwGetKey_impl == NULL) fail("Failed to load glfw function glfwGetKey with error: %s", dlerror());
@@ -401,7 +401,7 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwGetPrimarySelectionString_impl) = dlsym(handle, "glfwGetPrimarySelectionString");
 
-    *(void **) (&glfwGetXKBScancode_impl) = dlsym(handle, "glfwGetXKBScancode");
+    *(void **) (&glfwGetNativeKeyForName_impl) = dlsym(handle, "glfwGetNativeKeyForName");
 
     *(void **) (&glfwRequestWaylandFrameEvent_impl) = dlsym(handle, "glfwRequestWaylandFrameEvent");
 
