@@ -16,7 +16,7 @@ from .shell import options_for_cmd
 To add completion for a new shell, you need to:
 
 1) Add an entry to completion scripts for your shell, this is
-a simple function that call's kitty's completion code and passes the
+a simple function that calls kitty's completion code and passes the
 results to the shell's completion system. This can be output by
 `kitty +complete setup shell_name` and its output goes into
 your shell's rc file.
