@@ -179,10 +179,10 @@ static void createMenuBar(void)
 //
 static void createKeyTables(void)
 {
-    int scancode;
+    int keycode;
 
     memset(_glfw.ns.keycodes, -1, sizeof(_glfw.ns.keycodes));
-    memset(_glfw.ns.scancodes, -1, sizeof(_glfw.ns.scancodes));
+    memset(_glfw.ns.key_to_keycode, -1, sizeof(_glfw.ns.key_to_keycode));
 
     _glfw.ns.keycodes[0x1D] = GLFW_KEY_0;
     _glfw.ns.keycodes[0x12] = GLFW_KEY_1;
@@ -299,11 +299,11 @@ static void createKeyTables(void)
     _glfw.ns.keycodes[0x43] = GLFW_KEY_KP_MULTIPLY;
     _glfw.ns.keycodes[0x4E] = GLFW_KEY_KP_SUBTRACT;
 
-    for (scancode = 0;  scancode < 256;  scancode++)
+    for (keycode = 0; keycode < 256; keycode++)
     {
         // Store the reverse translation for faster key name lookup
-        if (_glfw.ns.keycodes[scancode] >= 0)
-            _glfw.ns.scancodes[_glfw.ns.keycodes[scancode]] = scancode;
+        if (_glfw.ns.keycodes[keycode] >= 0)
+            _glfw.ns.key_to_keycode[_glfw.ns.keycodes[keycode]] = keycode;
     }
 }
 
