@@ -1,2 +1,27 @@
-#!/usr/bin/env bash
-cloc --exclude-list-file <(echo -e 'kitty/wcwidth-std.h\nkitty/glfw.c\nkitty/keys.h\nkitty/charsets.c\nkitty/unicode-data.c\nkitty/key_encoding.py\nkitty/rgb.py\nkitty/gl.h\nkitty/gl-wrapper.h\nkitty/gl-wrapper.c\nkitty/glfw-wrapper.h\nkitty/glfw-wrapper.c\nkitty/emoji.h\nkittens/unicode_input/names.h\nkitty/parse-graphics-command.h') kitty kittens
+#!/usr/bin/env python
+
+import subprocess
+
+files_to_exclude = '''\
+kitty/wcwidth-std.h
+kitty/glfw.c
+kitty/keys.h
+kitty/charsets.c
+kitty/unicode-data.c
+kitty/key_encoding.py
+kitty/rgb.py
+kitty/gl.h
+kitty/gl-wrapper.h
+kitty/gl-wrapper.c
+kitty/glfw-wrapper.h
+kitty/glfw-wrapper.c
+kitty/emoji.h
+kittens/unicode_input/names.h
+kitty/parse-graphics-command.h
+'''
+
+p = subprocess.Popen([
+    'cloc', '--exclude-list-file', '/dev/stdin', 'kitty', 'kittens'
+], stdin=subprocess.PIPE)
+p.communicate(files_to_exclude.encode('utf-8'))
+raise SystemExit(p.wait())
