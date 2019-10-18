@@ -604,21 +604,21 @@ box_glyph_id(char_type ch) {
 START_ALLOW_CASE_RANGE
     switch(ch) {
         case 0x2500 ... 0x259f:
-            return ch - 0x2500;
-        case 0xe0b0 ... 0xe0d4:
-            return 0xa0 + ch - 0xe0b0;
+            return ch - 0x2500; // IDs from 0x00 to 0x9f
+        case 0xe0b0 ... 0xe0b4:
+            return 0xa0 + ch - 0xe0b0; // IDs from 0xa0 to 0xa4
         case 0xe0b6: // 
-            return 0x0fd;
+            return 0xa5;
         case 0xe0b8: // 
-            return 0x0fe;
+            return 0xa6;
         case 0xe0ba: // 
-            return 0x0ff;
+            return 0xa7;
         case 0xe0bc: // 
-            return 0x100;
+            return 0xa7;
         case 0xe0be: // 
-            return 0x101;
+            return 0xa8;
         default:
-            return 0xfff;
+            return 0xff;
     }
 END_ALLOW_CASE_RANGE
 }
