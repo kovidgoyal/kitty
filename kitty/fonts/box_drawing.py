@@ -192,7 +192,7 @@ def corner_triangle(buf, width, height, corner):
             xlimits = [(diagonal_y(x), height - 1) for x in range(width)]
     fill_region(buf, width, height, xlimits)
 
-    
+
 def antialiased_1px_line(buf, width, height, p1, p2):
     # Draw an antialiased line using the Wu algorithm
     x1, y1 = p1
