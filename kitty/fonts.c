@@ -556,10 +556,14 @@ START_ALLOW_CASE_RANGE
             return BLANK_FONT;
         case 0x2500 ... 0x2570:
         case 0x2574 ... 0x259f:
-        case 0xe0b0:
-        case 0xe0b2:
-        case 0xe0b4:
-        case 0xe0b6:
+        case 0xe0b0: // 
+        case 0xe0b2: // 
+        case 0xe0b4: // 
+        case 0xe0b6: // 
+        case 0xe0b8: // 
+        case 0xe0ba: //   
+        case 0xe0bc: // 
+        case 0xe0be: //   
             return BOX_FONT;
         default:
             ans = in_symbol_maps(fg, cpu_cell->ch);
