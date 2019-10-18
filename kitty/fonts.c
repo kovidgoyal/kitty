@@ -543,6 +543,14 @@ in_symbol_maps(FontGroup *fg, char_type ch) {
 }
 
 
+// Decides which 'font' to use for a given cell.
+//
+// Possible results:
+// - NO_FONT
+// - MISSING_FONT
+// - BLANK_FONT
+// - BOX_FONT
+// - an index in the fonts list
 static inline ssize_t
 font_for_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell, bool *is_fallback_font, bool *is_emoji_presentation) {
     *is_fallback_font = false;
@@ -592,22 +600,31 @@ set_sprite(GPUCell *cell, sprite_index x, sprite_index y, sprite_index z) {
     cell->sprite_x = x; cell->sprite_y = y; cell->sprite_z = z;
 }
 
+// Gives a unique (arbitrary) id to a box glyph
 static inline glyph_index
 box_glyph_id(char_type ch) {
 START_ALLOW_CASE_RANGE
     switch(ch) {
         case 0x2500 ... 0x259f:
             return ch - 0x2500;
-        case 0xe0b0:
-            return 0xfa;
-        case 0xe0b2:
-            return 0xfb;
-        case 0xe0b4:
-            return 0xfc;
-        case 0xe0b6:
-            return 0xfd;
+        case 0xe0b0: // 
+            return 0x0fa;
+        case 0xe0b2: // 
+            return 0x0fb;
+        case 0xe0b4: // 
+            return 0x0fc;
+        case 0xe0b6: // 
+            return 0x0fd;
+        case 0xe0b8: // 
+            return 0x0fe;
+        case 0xe0ba: // 
+            return 0x0ff;
+        case 0xe0bc: // 
+            return 0x100;
+        case 0xe0be: // 
+            return 0x101;
         default:
-            return 0xff;
+            return 0xfff;
     }
 END_ALLOW_CASE_RANGE
 }

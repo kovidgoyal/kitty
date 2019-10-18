@@ -2,6 +2,11 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+#
+# NOTE: to add a new glyph, add an entry to the `box_chars` dict, then update
+# the functions `font_for_cell` and `box_glyph_id` in `kitty/fonts.c`.
+#
+
 import math
 from functools import partial as p
 from itertools import repeat
@@ -173,7 +178,6 @@ def triangle(buf, width, height, left=True):
 
 
 def corner_triangle(buf, width, height, corner):
-    print(f"corner_triangle: corner is '{corner}'")
     if corner == 'top-right' or corner == 'bottom-left':
         diagonal_y = line_equation(0, 0, width - 1, height - 1)
         if corner == 'top-right':
