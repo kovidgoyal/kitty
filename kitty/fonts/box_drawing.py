@@ -576,7 +576,7 @@ def render_missing_glyph(buf, width, height):
 
 
 def test_char(ch, sz=48):
-    # kitty +runpy "from kitty.fonts.box_drawing import test_char; import sys; test_char('XXX')"
+    # kitty +runpy "from kitty.fonts.box_drawing import test_char; test_char('XXX')"
     from .render import display_bitmap, setup_for_testing
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
     with setup_for_testing('monospace', sz) as (_, width, height):
