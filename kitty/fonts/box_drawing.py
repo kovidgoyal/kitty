@@ -172,7 +172,7 @@ def triangle(buf, width, height, left=True):
     fill_region(buf, width, height, xlimits)
 
 
-def antialiased_line(buf, width, height, p1, p2):
+def antialiased_1px_line(buf, width, height, p1, p2):
     # Draw an antialiased line using the Wu algorithm
     x1, y1 = p1
     x2, y2 = p2
@@ -192,47 +192,75 @@ def antialiased_line(buf, width, height, p1, p2):
     if x2 < x1:
         x1, x2, y1, y2 = x2, x1, y2, y1
 
-    def _fpart(x):
+    def fpart(x):
         return x - int(x)
 
-    def _rfpart(x):
-        return 1 - _fpart(x)
+    def rfpart(x):
+        return 1 - fpart(x)
 
     def putpixel(p, alpha):
         x, y = p
         off = int(x + y * width)
         if 0 <= off < off_limit:
-            buf[off] = min(buf[off] + (alpha * 255), 255)
+            buf[off] = int(min(buf[off] + (alpha * 255), 255))
 
     def draw_endpoint(pt):
         x, y = pt
         xend = round(x)
         yend = y + grad * (xend - x)
-        xgap = _rfpart(x + 0.5)
+        xgap = rfpart(x + 0.5)
         px, py = int(xend), int(yend)
-        putpixel(p(px, py), _rfpart(yend) * xgap)
-        putpixel(p(px, py+1), _fpart(yend) * xgap)
+        putpixel(p(px, py), rfpart(yend) * xgap)
+        putpixel(p(px, py+1), fpart(yend) * xgap)
         return px
 
     grad = dy/dx
-    intery = y1 + _rfpart(x1) * grad
+    intery = y1 + rfpart(x1) * grad
 
     xstart = draw_endpoint(p(*p1)) + 1
     xend = draw_endpoint(p(*p2))
 
     for x in range(xstart, xend):
         y = int(intery)
-        putpixel(p(x, y), _rfpart(intery))
-        putpixel(p(x, y+1), _fpart(intery))
+        putpixel(p(x, y), rfpart(intery))
+        putpixel(p(x, y+1), fpart(intery))
         intery += grad
 
 
-def cross_line(buf, width, height, left=True):
+def antialiased_line(buf, width, height, p1, p2, level=1):
+    th = thickness(level)
+    if th < 2:
+        return antialiased_1px_line(buf, width, height, p1, p2)
+    (x1, y1), (x2, y2) = p1, p2
+    dh = th // 2
+    items = range(-dh, dh + (th % 2))
+    for delta in items:
+        antialiased_1px_line(buf, width, height, (x1, y1 + delta), (x2, y2 + delta))
+
+
+def cross_line(buf, width, height, left=True, level=1):
     if left:
         p1, p2 = (0, 0), (width - 1, height - 1)
     else:
         p1, p2 = (width - 1, 0), (0, height - 1)
-    antialiased_line(buf, width, height, p1, p2)
+    antialiased_line(buf, width, height, p1, p2, level=level)
+
+
+def half_cross_line(buf, width, height, which='tl', level=1):
+    my = (height - 1) // 2
+    if which == 'tl':
+        p1 = 0, 0
+        p2 = width - 1, my
+    elif which == 'bl':
+        p2 = 0, height - 1
+        p1 = width - 1, my
+    elif which == 'tr':
+        p1 = width - 1, 0
+        p2 = 0, my
+    else:
+        p2 = width - 1, height - 1
+        p1 = 0, my
+    antialiased_line(buf, width, height, p1, p2, level=level)
 
 
 def cubic_bezier(start, end, c1, c2):
@@ -522,6 +550,8 @@ box_chars = {
     '': [p(triangle, left=False)],
     '': [D],
     '': [p(D, left=False)],
+    '': [p(half_cross_line, which='tl'), p(half_cross_line, which='bl')],
+    '': [p(half_cross_line, which='tr'), p(half_cross_line, which='br')],
     '═': [dhline],
     '║': [dvline],
     '╞': [vline, p(half_dhline, which='right')],
