@@ -15,6 +15,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - diff kitten: Allow diffing remote files easily via ssh (:iss:`727`)
 
+- Add specialised rendering for a few more box powerline and unicode symbols
+  (:pull:`2074` and :pull:`2021`)
+
 
 0.14.6 [2019-09-25]
 ---------------------
