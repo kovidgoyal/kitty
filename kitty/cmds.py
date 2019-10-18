@@ -415,6 +415,63 @@ def goto_layout(boss, window, payload):
 # }}}
 
 
+# set_tab_color {{{
+@cmd(
+    'Set the tab color',
+    'Set the color for the specified tab(s). If you use the :option:`kitty @ set-tab-color --match` option'
+    ' the color will be set for all matched tabs. By default, only the tab'
+    ' in which the command is run is affected.',
+    options_spec=MATCH_TAB_OPTION,
+    argspec='COLOR ...'
+)
+def cmd_set_tab_color(global_opts, opts, args):
+    return {'color': ' '.join(args)}
+
+
+def set_tab_color(boss, window, payload):
+    from .rgb import color_as_int, parse_sharp
+
+    pg = cmd_set_tab_color.payload_get
+    match = pg(payload, 'match')
+    color = color_as_int(parse_sharp(payload['color'][1:]))
+    if match:
+        tabs = tuple(boss.match_tabs(match))
+        if not tabs:
+            raise MatchError(match, 'tabs')
+    else:
+        tabs = [boss.tab_for_window(window) if window else boss.active_tab]
+    for tab in tabs:
+        if tab:
+            tab.set_color(color)
+# }}}
+
+
+# get_tab_color {{{
+@cmd(
+    'Get the tab color',
+    'Get the color for the specified tab. By default, only the tab'
+    ' in which the command is run is affected.',
+    options_spec=MATCH_TAB_OPTION,
+)
+def cmd_get_tab_color(global_opts, opts, args):
+    return {'match': opts.match}
+
+
+def get_tab_color(boss, window, payload):
+    from .rgb import color_as_sharp, color_from_int
+
+    pg = cmd_set_tab_color.payload_get
+    match = pg(payload, 'match')
+    if match:
+        tabs = tuple(boss.match_tabs(match))
+        if not tabs:
+            raise MatchError(match, 'tabs')
+    else:
+        tabs = [boss.tab_for_window(window) if window else boss.active_tab]
+    return color_as_sharp(color_from_int(tabs[0].color))
+# }}}
+
+
 # last_used_layout {{{
 @cmd(
     'Switch to the last used layout',

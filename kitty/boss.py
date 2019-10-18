@@ -756,6 +756,22 @@ class Boss:
                     tab.set_title(title)
                     break
 
+    def set_tab_color(self):
+        tab = self.active_tab
+        if tab:
+            args = ['--name=tab-color', '--message', _('Enter the new color for tab below.'), 'do_set_tab_color', str(tab.id)]
+            self._run_kitten('ask', args)
+
+    def do_set_tab_color(self, color, tab_id):
+        tm = self.active_tab_manager
+        if tm is not None and color:
+            tab_id = int(tab_id)
+            for tab in tm.tabs:
+                if tab.id == tab_id:
+                    tab.set_color(color)
+                    break
+        pass
+
     def kitty_shell(self, window_type):
         cmd = ['@', kitty_exe(), '@']
         if window_type == 'tab':

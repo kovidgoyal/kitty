@@ -51,6 +51,7 @@ class Tab:  # {{{
             lambda x: pt_to_px(getattr(self.opts, x), self.os_window_id), (
                 'window_margin_width', 'window_padding_width', 'single_window_margin_width'))
         self.name = getattr(session_tab, 'name', '')
+        self._color = None
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id, self.opts, pt_to_px(self.opts.window_border_width, self.os_window_id), self.padding_width)
         self.windows = deque()
@@ -120,13 +121,29 @@ class Tab:  # {{{
     def title(self):
         return getattr(self.active_window, 'title', appname)
 
+    @property
+    def color(self):
+        return self._color
+
     def set_title(self, title):
         self.name = title or ''
         tm = self.tab_manager_ref()
         if tm is not None:
             tm.mark_tab_bar_dirty()
 
+    def set_color(self, color):
+        self._color = color
+        tm = self.tab_manager_ref()
+        if tm is not None:
+            tm.mark_tab_bar_dirty()
+
     def title_changed(self, window):
+        if window is self.active_window:
+            tm = self.tab_manager_ref()
+            if tm is not None:
+                tm.mark_tab_bar_dirty()
+
+    def tab_color_changed(self, window):
         if window is self.active_window:
             tm = self.tab_manager_ref()
             if tm is not None:
@@ -596,7 +613,7 @@ class TabManager:  # {{{
                 if w.needs_attention:
                     needs_attention = True
                     break
-            ans.append(TabBarData(title, t is at, needs_attention))
+            ans.append(TabBarData(title, t is at, needs_attention, t.color))
         return ans
 
     def activate_tab_at(self, x):
