@@ -562,12 +562,10 @@ START_ALLOW_CASE_RANGE
         case ' ':
         case '\t':
             return BLANK_FONT;
-        case 0x2500 ... 0x2570:
+        case 0x2500 ... 0x2573:
         case 0x2574 ... 0x259f:
-        case 0xe0b0: // 
-        case 0xe0b2: // 
-        case 0xe0b4: // 
-        case 0xe0b6: // 
+        case 0xe0b0 ... 0xe0b4:
+        case 0xe0b6:
         case 0xe0b8: // 
         case 0xe0ba: //   
         case 0xe0bc: // 
@@ -607,12 +605,8 @@ START_ALLOW_CASE_RANGE
     switch(ch) {
         case 0x2500 ... 0x259f:
             return ch - 0x2500;
-        case 0xe0b0: // 
-            return 0x0fa;
-        case 0xe0b2: // 
-            return 0x0fb;
-        case 0xe0b4: // 
-            return 0x0fc;
+        case 0xe0b0 ... 0xe0d4:
+            return 0xa0 + ch - 0xe0b0;
         case 0xe0b6: // 
             return 0x0fd;
         case 0xe0b8: // 
