@@ -543,6 +543,14 @@ in_symbol_maps(FontGroup *fg, char_type ch) {
 }
 
 
+// Decides which 'font' to use for a given cell.
+//
+// Possible results:
+// - NO_FONT
+// - MISSING_FONT
+// - BLANK_FONT
+// - BOX_FONT
+// - an index in the fonts list
 static inline ssize_t
 font_for_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell, bool *is_fallback_font, bool *is_emoji_presentation) {
     *is_fallback_font = false;
@@ -558,6 +566,10 @@ START_ALLOW_CASE_RANGE
         case 0x2574 ... 0x259f:
         case 0xe0b0 ... 0xe0b4:
         case 0xe0b6:
+        case 0xe0b8: // 
+        case 0xe0ba: //   
+        case 0xe0bc: // 
+        case 0xe0be: //   
             return BOX_FONT;
         default:
             ans = in_symbol_maps(fg, cpu_cell->ch);
@@ -586,14 +598,15 @@ set_sprite(GPUCell *cell, sprite_index x, sprite_index y, sprite_index z) {
     cell->sprite_x = x; cell->sprite_y = y; cell->sprite_z = z;
 }
 
+// Gives a unique (arbitrary) id to a box glyph
 static inline glyph_index
 box_glyph_id(char_type ch) {
 START_ALLOW_CASE_RANGE
     switch(ch) {
         case 0x2500 ... 0x259f:
-            return ch - 0x2500;
+            return ch - 0x2500; // IDs from 0x00 to 0x9f
         case 0xe0b0 ... 0xe0d4:
-            return 0xa0 + ch - 0xe0b0;
+            return 0xa0 + ch - 0xe0b0; // IDs from 0xa0 to 0xc4
         default:
             return 0xff;
     }
