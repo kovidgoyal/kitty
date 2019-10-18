@@ -172,6 +172,16 @@ def triangle(buf, width, height, left=True):
     fill_region(buf, width, height, xlimits)
 
 
+def corner_triangle(buf, width, height, corner):
+    diagonal_y = line_equation(0, 0, width - 1, height - 1)
+
+    if corner == 'top-right':
+        xlimits = [(0, diagonal_y(x)) for x in range(width)]
+    elif corner == 'bottom-left':
+        xlimits = [(diagonal_y(x), height - 1) for x in range(width)]
+    fill_region(buf, width, height, xlimits)
+
+
 def cubic_bezier(start, end, c1, c2):
 
     def bezier_eq(p0, p1, p2, p3):
@@ -459,6 +469,8 @@ box_chars = {
     '': [p(triangle, left=False)],
     '': [D],
     '': [p(D, left=False)],
+    '': [p(corner_triangle, corner='top-right')],
+    '': [p(corner_triangle, corner='bottom-left')],
     '═': [dhline],
     '║': [dvline],
     '╞': [vline, p(half_dhline, which='right')],
