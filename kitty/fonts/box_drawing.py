@@ -554,57 +554,57 @@ def test_char(ch, sz=48):
     # kitty +runpy "from kitty.fonts.box_drawing import test_char; import sys; test_char('XXX')"
     from .render import display_bitmap, setup_for_testing
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
-    width, height = setup_for_testing('monospace', sz)[1:]
-    buf = bytearray(width * height)
-    try:
-        render_box_char(ch, buf, width, height)
+    with setup_for_testing('monospace', sz) as (_, width, height):
+        buf = bytearray(width * height)
+        try:
+            render_box_char(ch, buf, width, height)
 
-        def join_cells(*cells):
-            cells = tuple(bytes(x) for x in cells)
-            return concat_cells(width, height, False, cells)
+            def join_cells(*cells):
+                cells = tuple(bytes(x) for x in cells)
+                return concat_cells(width, height, False, cells)
 
-        rgb_data = join_cells(buf)
-        display_bitmap(rgb_data, width, height)
-        print()
-    finally:
-        set_send_sprite_to_gpu(None)
+            rgb_data = join_cells(buf)
+            display_bitmap(rgb_data, width, height)
+            print()
+        finally:
+            set_send_sprite_to_gpu(None)
 
 
 def test_drawing(sz=48, family='monospace'):
     from .render import display_bitmap, setup_for_testing
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
 
-    width, height = setup_for_testing(family, sz)[1:]
-    space = bytearray(width * height)
+    with setup_for_testing(family, sz) as (_, width, height):
+        space = bytearray(width * height)
 
-    def join_cells(cells):
-        cells = tuple(bytes(x) for x in cells)
-        return concat_cells(width, height, False, cells)
+        def join_cells(cells):
+            cells = tuple(bytes(x) for x in cells)
+            return concat_cells(width, height, False, cells)
 
-    def render_chr(ch):
-        if ch in box_chars:
-            cell = bytearray(len(space))
-            render_box_char(ch, cell, width, height)
-            return cell
-        return space
+        def render_chr(ch):
+            if ch in box_chars:
+                cell = bytearray(len(space))
+                render_box_char(ch, cell, width, height)
+                return cell
+            return space
 
-    pos = 0x2500
-    rows = []
-    space_row = join_cells(repeat(space, 32))
+        pos = 0x2500
+        rows = []
+        space_row = join_cells(repeat(space, 32))
 
-    try:
-        for r in range(10):
-            row = []
-            for i in range(16):
-                row.append(render_chr(chr(pos)))
-                row.append(space)
-                pos += 1
-            rows.append(join_cells(row))
-            rows.append(space_row)
-        rgb_data = b''.join(rows)
-        width *= 32
-        height *= len(rows)
-        assert len(rgb_data) == width * height * 4, '{} != {}'.format(len(rgb_data), width * height * 4)
-        display_bitmap(rgb_data, width, height)
-    finally:
-        set_send_sprite_to_gpu(None)
+        try:
+            for r in range(10):
+                row = []
+                for i in range(16):
+                    row.append(render_chr(chr(pos)))
+                    row.append(space)
+                    pos += 1
+                rows.append(join_cells(row))
+                rows.append(space_row)
+            rgb_data = b''.join(rows)
+            width *= 32
+            height *= len(rows)
+            assert len(rgb_data) == width * height * 4, '{} != {}'.format(len(rgb_data), width * height * 4)
+            display_bitmap(rgb_data, width, height)
+        finally:
+            set_send_sprite_to_gpu(None)
