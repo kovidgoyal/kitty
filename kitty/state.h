@@ -151,7 +151,6 @@ typedef struct {
     float background_opacity;
     FONTS_DATA_HANDLE fonts_data;
     id_type temp_font_group_id;
-    double pending_scroll_pixels;
     enum RENDER_STATE render_state;
     monotonic_t last_render_frame_received_at;
     id_type last_focused_counter;

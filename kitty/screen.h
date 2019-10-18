@@ -67,6 +67,7 @@ typedef struct {
 
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by;
     unsigned int last_rendered_cursor_x, last_rendered_cursor_y;
+    double pending_scroll_pixels;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
     id_type window_id;

@@ -609,16 +609,16 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
 
     if (is_high_resolution) {
         yoffset *= OPT(touch_scroll_multiplier);
-        if (yoffset * global_state.callback_os_window->pending_scroll_pixels < 0) {
-            global_state.callback_os_window->pending_scroll_pixels = 0;  // change of direction
+        if (yoffset * screen->pending_scroll_pixels < 0) {
+            screen->pending_scroll_pixels = 0;  // change of direction
         }
-        double pixels = global_state.callback_os_window->pending_scroll_pixels + yoffset;
+        double pixels = screen->pending_scroll_pixels + yoffset;
         if (fabs(pixels) < global_state.callback_os_window->fonts_data->cell_height) {
-            global_state.callback_os_window->pending_scroll_pixels = pixels;
+            screen->pending_scroll_pixels = pixels;
             return;
         }
         s = (int)round(pixels) / (int)global_state.callback_os_window->fonts_data->cell_height;
-        global_state.callback_os_window->pending_scroll_pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
+        screen->pending_scroll_pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
     } else {
         if (screen->linebuf == screen->main_linebuf || !screen->modes.mouse_tracking_mode) {
             // Only use wheel_scroll_multiplier if we are scrolling kitty scrollback or in mouse
@@ -633,7 +633,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
         // apparently on cocoa some mice generate really small yoffset values
         // when scrolling slowly https://github.com/kovidgoyal/kitty/issues/1238
         if (s == 0 && yoffset != 0) s = yoffset > 0 ? 1 : -1;
-        global_state.callback_os_window->pending_scroll_pixels = 0;
+        screen->pending_scroll_pixels = 0;
     }
     if (s == 0) return;
     bool upwards = s > 0;
