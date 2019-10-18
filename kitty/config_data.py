@@ -679,10 +679,10 @@ Which edge to show the tab bar on, top or bottom'''))
 o('tab_bar_margin_width', 0.0, option_type=positive_float, long_text=_('''
 The margin to the left and right of the tab bar (in pts)'''))
 
-o('tab_bar_style', 'fade', option_type=choices('fade', 'separator', 'hidden'), long_text=_('''
-The tab bar style, can be one of: :code:`fade`, :code:`separator` or :code:`hidden`. In the fade style,
-each tab's edges fade into the background color, in the separator style, tabs are
-separated by a configurable separator.
+o('tab_bar_style', 'fade', option_type=choices('fade', 'separator', 'powerline', 'hidden'), long_text=_('''
+The tab bar style, can be one of: :code:`fade`, :code:`separator`, :code:`powerline`, or :code:`hidden`.
+In the fade style, each tab's edges fade into the background color, in the separator style, tabs are
+separated by a configurable separator, and the powerline shows the tabs as a continuous line.
 '''))
 
 o('tab_bar_min_tabs', 2, option_type=lambda x: max(1, positive_int(x)), long_text=_('''
