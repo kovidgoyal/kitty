@@ -22,7 +22,6 @@ from ..tui.images import (
 )
 from ..tui.operations import clear_images_on_screen, serialize_gr_command
 
-screen_size = None
 OPTIONS = '''\
 --align
 type=choices
@@ -97,6 +96,16 @@ Do not print out anything to stdout during operation.
 '''
 
 
+screen_size = None
+
+
+def get_screen_size():
+    global screen_size
+    if screen_size is None:
+        screen_size = screen_size_function()
+    return screen_size()
+
+
 def options_spec():
     if not hasattr(options_spec, 'ans'):
         options_spec.ans = OPTIONS.format(
@@ -122,7 +131,7 @@ def calculate_in_cell_x_offset(width, cell_width, align):
 
 
 def set_cursor(cmd, width, height, align):
-    ss = screen_size()
+    ss = get_screen_size()
     cw = int(ss.width / ss.cols)
     num_of_cells_needed = int(ceil(width / cw))
     if num_of_cells_needed > ss.cols:
@@ -143,7 +152,7 @@ def set_cursor(cmd, width, height, align):
 
 def set_cursor_for_place(place, cmd, width, height, align):
     x = place.left + 1
-    ss = screen_size()
+    ss = get_screen_size()
     cw = int(ss.width / ss.cols)
     num_of_cells_needed = int(ceil(width / cw))
     cmd['X'] = calculate_in_cell_x_offset(width, cw, align)
@@ -189,7 +198,7 @@ def show(outfile, width, height, fmt, transmit_mode='t', align='center', place=N
 
 def process(path, args, is_tempfile):
     m = identify(path)
-    ss = screen_size()
+    ss = get_screen_size()
     available_width = args.place.width * (ss.width / ss.cols) if args.place else ss.width
     available_height = args.place.height * (ss.height / ss.rows) if args.place else 10 * m.height
     needs_scaling = m.width > available_width or m.height > available_height
@@ -334,7 +343,7 @@ def main(args=sys.argv):
         sys.stdin.close()
         sys.stdin = open(os.ctermid(), 'r')
 
-    screen_size = screen_size_function()
+    screen_size = get_screen_size()
     signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
     if screen_size().width == 0:
         if args.detect_support:
