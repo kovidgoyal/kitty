@@ -172,6 +172,69 @@ def triangle(buf, width, height, left=True):
     fill_region(buf, width, height, xlimits)
 
 
+def antialiased_line(buf, width, height, p1, p2):
+    # Draw an antialiased line using the Wu algorithm
+    x1, y1 = p1
+    x2, y2 = p2
+    dx, dy = x2 - x1, y2 - y1
+    off_limit = height * width
+    steep = abs(dx) < abs(dy)
+
+    if steep:
+        x1, y1, x2, y2, dx, dy = y1, x1, y2, x2, dy, dx
+
+        def p(x, y):
+            return y, x
+    else:
+        def p(x, y):
+            return x, y
+
+    if x2 < x1:
+        x1, x2, y1, y2 = x2, x1, y2, y1
+
+    def _fpart(x):
+        return x - int(x)
+
+    def _rfpart(x):
+        return 1 - _fpart(x)
+
+    def putpixel(p, alpha):
+        x, y = p
+        off = int(x + y * width)
+        if 0 <= off < off_limit:
+            buf[off] = min(buf[off] + (alpha * 255), 255)
+
+    def draw_endpoint(pt):
+        x, y = pt
+        xend = round(x)
+        yend = y + grad * (xend - x)
+        xgap = _rfpart(x + 0.5)
+        px, py = int(xend), int(yend)
+        putpixel(p(px, py), _rfpart(yend) * xgap)
+        putpixel(p(px, py+1), _fpart(yend) * xgap)
+        return px
+
+    grad = dy/dx
+    intery = y1 + _rfpart(x1) * grad
+
+    xstart = draw_endpoint(p(*p1)) + 1
+    xend = draw_endpoint(p(*p2))
+
+    for x in range(xstart, xend):
+        y = int(intery)
+        putpixel(p(x, y), _rfpart(intery))
+        putpixel(p(x, y+1), _fpart(intery))
+        intery += grad
+
+
+def cross_line(buf, width, height, left=True):
+    if left:
+        p1, p2 = (0, 0), (width - 1, height - 1)
+    else:
+        p1, p2 = (width - 1, 0), (0, height - 1)
+    antialiased_line(buf, width, height, p1, p2)
+
+
 def cubic_bezier(start, end, c1, c2):
 
     def bezier_eq(p0, p1, p2, p3):
@@ -472,6 +535,9 @@ box_chars = {
     '╣': [p(inner_corner, which='tl'), p(inner_corner, which='bl'), p(dvline, only='right')],
     '╦': [p(inner_corner, which='bl'), p(inner_corner, which='br'), p(dhline, only='top')],
     '╩': [p(inner_corner, which='tl'), p(inner_corner, which='tr'), p(dhline, only='bottom')],
+    '╱': [p(cross_line, left=False)],
+    '╲': [cross_line],
+    '╳': [cross_line, p(cross_line, left=False)],
     '▀': [p(vblock, frac=1/2)],
     '▁': [p(vblock, frac=1/8, gravity='bottom')],
     '▂': [p(vblock, frac=1/4, gravity='bottom')],
