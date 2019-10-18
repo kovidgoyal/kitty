@@ -7,6 +7,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.15.0 [future]
 --------------------
 
+- Add a new style ``powerline`` for tab bar rendering, see :opt:`tab_bar_style` (:pull:`2021`)
+
 - Wayland: Fix key repeat not being stopped when focus leaves window. This is
   expected behavior on Wayland, apparently (:iss:`2014`)
 
