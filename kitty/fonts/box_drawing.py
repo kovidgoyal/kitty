@@ -238,8 +238,12 @@ def antialiased_1px_line(buf, width, height, p1, p2):
     grad = dy/dx
     intery = y1 + rfpart(x1) * grad
 
-    xstart = draw_endpoint(p(*p1)) + 1
+    xstart = draw_endpoint(p(*p1))
     xend = draw_endpoint(p(*p2))
+
+    if xstart > xend:
+        xstart, xend = xend, xstart
+    xstart += 1
 
     for x in range(xstart, xend):
         y = int(intery)
