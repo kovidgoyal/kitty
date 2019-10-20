@@ -99,10 +99,15 @@ Do not print out anything to stdout during operation.
 screen_size = None
 
 
-def get_screen_size():
+def get_screen_size_function():
     global screen_size
     if screen_size is None:
         screen_size = screen_size_function()
+    return screen_size
+
+
+def get_screen_size():
+    screen_size = get_screen_size_function()
     return screen_size()
 
 
@@ -323,7 +328,6 @@ def process_single_item(item, args, url_pat=None, maybe_dir=True):
 
 
 def main(args=sys.argv):
-    global screen_size
     args, items = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname))
 
     if args.print_window_size:
@@ -343,7 +347,7 @@ def main(args=sys.argv):
         sys.stdin.close()
         sys.stdin = open(os.ctermid(), 'r')
 
-    screen_size = get_screen_size()
+    screen_size = get_screen_size_function()
     signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
     if screen_size().width == 0:
         if args.detect_support:
