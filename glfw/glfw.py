@@ -171,7 +171,7 @@ def generate_wrappers(glfw_header):
     int32_t glfwGetX11Window(GLFWwindow* window)
     void glfwSetPrimarySelectionString(GLFWwindow* window, const char* string)
     const char* glfwGetPrimarySelectionString(GLFWwindow* window, void)
-    int glfwGetXKBScancode(const char* key_name, int case_sensitive)
+    int glfwGetNativeKeyForName(const char* key_name, int case_sensitive)
     void glfwRequestWaylandFrameEvent(GLFWwindow *handle, unsigned long long id, GLFWwaylandframecallbackfunc callback)
     unsigned long long glfwDBusUserNotify(const char *app_name, const char* icon, const char *summary, const char *body, \
 const char *action_text, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *data)

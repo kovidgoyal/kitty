@@ -512,27 +512,27 @@ class Boss:
         if t is not None:
             return t.active_window
 
-    def dispatch_special_key(self, key, scancode, action, mods):
+    def dispatch_special_key(self, key, native_key, action, mods):
         # Handles shortcuts, return True if the key was consumed
-        key_action = get_shortcut(self.keymap, mods, key, scancode)
+        key_action = get_shortcut(self.keymap, mods, key, native_key)
         if key_action is None:
-            sequences = get_shortcut(self.opts.sequence_map, mods, key, scancode)
+            sequences = get_shortcut(self.opts.sequence_map, mods, key, native_key)
             if sequences:
                 self.pending_sequences = sequences
                 set_in_sequence_mode(True)
                 return True
         else:
-            self.current_key_press_info = key, scancode, action, mods
+            self.current_key_press_info = key, native_key, action, mods
             return self.dispatch_action(key_action)
 
-    def process_sequence(self, key, scancode, action, mods):
+    def process_sequence(self, key, native_key, action, mods):
         if not self.pending_sequences:
             set_in_sequence_mode(False)
 
         remaining = {}
         matched_action = None
         for seq, key_action in self.pending_sequences.items():
-            if shortcut_matches(seq[0], mods, key, scancode):
+            if shortcut_matches(seq[0], mods, key, native_key):
                 seq = seq[1:]
                 if seq:
                     remaining[seq] = key_action

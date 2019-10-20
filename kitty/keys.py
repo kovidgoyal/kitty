@@ -264,7 +264,7 @@ def key_to_bytes(key, smkx, extended, mods, action):
     return bytes(data)
 
 
-def interpret_key_event(key, scancode, mods, window, action):
+def interpret_key_event(key, native_key, mods, window, action):
     screen = window.screen
     if (
             action == defines.GLFW_PRESS or
@@ -275,17 +275,17 @@ def interpret_key_event(key, scancode, mods, window, action):
     return b''
 
 
-def get_shortcut(keymap, mods, key, scancode):
+def get_shortcut(keymap, mods, key, native_key):
     mods &= 0b1111
     ans = keymap.get((mods, False, key))
     if ans is None:
-        ans = keymap.get((mods, True, scancode))
+        ans = keymap.get((mods, True, native_key))
     return ans
 
 
-def shortcut_matches(s, mods, key, scancode):
+def shortcut_matches(s, mods, key, native_key):
     mods &= 0b1111
-    q = scancode if s[1] else key
+    q = native_key if s[1] else key
     return s[0] & 0b1111 == mods & 0b1111 and s[2] == q
 
 

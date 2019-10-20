@@ -640,8 +640,8 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape
 void _glfwPlatformDestroyCursor(_GLFWcursor* cursor);
 void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor);
 
-const char* _glfwPlatformGetScancodeName(int scancode);
-int _glfwPlatformGetKeyScancode(int key);
+const char* _glfwPlatformGetNativeKeyName(int native_key);
+int _glfwPlatformGetNativeKeyForKey(int key);
 
 void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor);
 void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos);
@@ -758,7 +758,7 @@ void _glfwInputWindowDamage(_GLFWwindow* window);
 void _glfwInputWindowCloseRequest(_GLFWwindow* window);
 void _glfwInputWindowMonitor(_GLFWwindow* window, _GLFWmonitor* monitor);
 
-void _glfwInitializeKeyEvent(GLFWkeyevent *ev, int key, int scancode, int action, int mods);
+void _glfwInitializeKeyEvent(GLFWkeyevent *ev, int key, int native_key, int action, int mods);
 void _glfwInputKeyboard(_GLFWwindow *window, GLFWkeyevent *ev);
 void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset, int flags);
 void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods);

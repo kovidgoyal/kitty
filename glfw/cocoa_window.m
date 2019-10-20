@@ -327,8 +327,8 @@ format_text(const char *src) {
 }
 
 static const char*
-safe_name_for_scancode(unsigned int scancode) {
-    const char *ans = _glfwPlatformGetScancodeName(scancode);
+safe_name_for_keycode(unsigned int keycode) {
+    const char *ans = _glfwPlatformGetNativeKeyName(keycode);
     if (!ans) return "<noname>";
     if ((1 <= ans[0] && ans[0] <= 31) || ans[0] == 127) ans = "<cc>";
     return ans;
@@ -341,7 +341,7 @@ static int translateKey(unsigned int key, bool apply_keymap)
 {
     if (apply_keymap) {
         // Look for the effective key name after applying any keyboard layouts/mappings
-        const char *name_chars = _glfwPlatformGetScancodeName(key);
+        const char *name_chars = _glfwPlatformGetNativeKeyName(key);
         uint32_t name = 0;
         if (name_chars) {
             for (int i = 0; i < 4; i++) {
@@ -965,16 +965,16 @@ is_ascii_control_char(char x) {
 
 - (void)keyDown:(NSEvent *)event
 {
-    const unsigned int scancode = [event keyCode];
+    const unsigned int keycode = [event keyCode];
     const NSUInteger flags = [event modifierFlags];
     const int mods = translateFlags(flags);
-    const int key = translateKey(scancode, true);
-    const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, scancode, flags) != 1;
+    const int key = translateKey(keycode, true);
+    const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, flags) != 1;
     const bool previous_has_marked_text = [self hasMarkedText];
     [self unmarkText];
     _glfw.ns.text[0] = 0;
     GLFWkeyevent glfw_keyevent;
-    _glfwInitializeKeyEvent(&glfw_keyevent, key, scancode, GLFW_PRESS, mods);
+    _glfwInitializeKeyEvent(&glfw_keyevent, key, keycode, GLFW_PRESS, mods);
     if (!_glfw.ns.unicodeData) {
         // Using the cocoa API for key handling is disabled, as there is no
         // reliable way to handle dead keys using it. Only use it if the
@@ -989,7 +989,7 @@ is_ascii_control_char(char x) {
         const bool in_compose_sequence = window->ns.deadKeyState != 0;
         if (UCKeyTranslate(
                     [(NSData*) _glfw.ns.unicodeData bytes],
-                    scancode,
+                    keycode,
                     kUCKeyActionDown,
                     convert_cocoa_to_carbon_modifiers(flags),
                     LMGetKbdType(),
@@ -999,20 +999,20 @@ is_ascii_control_char(char x) {
                     &char_count,
                     text
                     ) != noErr) {
-            debug_key(@"UCKeyTranslate failed for scancode: 0x%x (%@) %@\n",
-                    scancode, @(safe_name_for_scancode(scancode)), @(format_mods(mods)));
+            debug_key(@"UCKeyTranslate failed for keycode: 0x%x (%@) %@\n",
+                    keycode, @(safe_name_for_keycode(keycode)), @(format_mods(mods)));
             window->ns.deadKeyState = 0;
             return;
         }
-        debug_key(@"scancode: 0x%x (%@) %@char_count: %lu deadKeyState: %u repeat: %d",
-                scancode, @(safe_name_for_scancode(scancode)), @(format_mods(mods)), char_count, window->ns.deadKeyState, event.ARepeat);
+        debug_key(@"keycode: 0x%x (%@) %@char_count: %lu deadKeyState: %u repeat: %d",
+                keycode, @(safe_name_for_keycode(keycode)), @(format_mods(mods)), char_count, window->ns.deadKeyState, event.ARepeat);
         if (process_text) {
             // this will call insertText which will fill up _glfw.ns.text
             [self interpretKeyEvents:[NSArray arrayWithObject:event]];
         } else {
             window->ns.deadKeyState = 0;
         }
-        if (window->ns.deadKeyState && (char_count == 0 || scancode == 0x75)) {
+        if (window->ns.deadKeyState && (char_count == 0 || keycode == 0x75)) {
             // 0x75 is the delete key which needs to be ignored during a compose sequence
             debug_key(@"Sending pre-edit text for dead key (text: %@ markedText: %@).\n", @(format_text(_glfw.ns.text)), markedText);
             glfw_keyevent.text = [[markedText string] UTF8String];
@@ -1896,14 +1896,14 @@ void _glfwPlatformSetCursorMode(_GLFWwindow* window, int mode UNUSED)
         updateCursorMode(window);
 }
 
-const char* _glfwPlatformGetScancodeName(int scancode)
+const char* _glfwPlatformGetNativeKeyName(int keycode)
 {
     UInt32 deadKeyState = 0;
     UniChar characters[8];
     UniCharCount characterCount = 0;
 
     if (UCKeyTranslate([(NSData*) _glfw.ns.unicodeData bytes],
-                       scancode,
+                       keycode,
                        kUCKeyActionDisplay,
                        0,
                        LMGetKbdType(),
@@ -1923,9 +1923,9 @@ const char* _glfwPlatformGetScancodeName(int scancode)
     return _glfw.ns.keyName;
 }
 
-int _glfwPlatformGetKeyScancode(int key)
+int _glfwPlatformGetNativeKeyForKey(int key)
 {
-    return _glfw.ns.scancodes[key];
+    return _glfw.ns.key_to_keycode[key];
 }
 
 int _glfwPlatformCreateCursor(_GLFWcursor* cursor,

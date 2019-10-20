@@ -437,11 +437,11 @@ glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_m
 }
 
 bool
-glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t scancode) {
+glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t keycode) {
 #ifdef _GLFW_WAYLAND
-    scancode += 8;
+    keycode += 8;
 #endif
-    return xkb_keymap_key_repeats(xkb->keymap, scancode);
+    return xkb_keymap_key_repeats(xkb->keymap, keycode);
 }
 
 
@@ -549,10 +549,10 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
     xkb_keycode_t prev_handled_press = last_handled_press_keycode;
     last_handled_press_keycode = 0;
     bool is_release = ev->glfw_ev.action == GLFW_RELEASE;
-    debug("From IBUS: scancode: 0x%x name: %s is_release: %d\n", ev->glfw_ev.scancode, glfw_xkb_keysym_name(ev->glfw_ev.key), is_release);
-    if (window && !handled_by_ime && !(is_release && ev->glfw_ev.scancode == (int) prev_handled_press)) {
+    debug("From IBUS: native_key: 0x%x name: %s is_release: %d\n", ev->glfw_ev.native_key, glfw_xkb_keysym_name(ev->glfw_ev.key), is_release);
+    if (window && !handled_by_ime && !(is_release && ev->glfw_ev.native_key == (int) prev_handled_press)) {
         debug("↳ to application: glfw_keycode: 0x%x (%s) keysym: 0x%x (%s) action: %s %s text: %s\n",
-            ev->glfw_ev.scancode, _glfwGetKeyName(ev->glfw_ev.scancode), ev->glfw_ev.key, glfw_xkb_keysym_name(ev->glfw_ev.key),
+            ev->glfw_ev.native_key, _glfwGetKeyName(ev->glfw_ev.native_key), ev->glfw_ev.key, glfw_xkb_keysym_name(ev->glfw_ev.key),
             (ev->glfw_ev.action == GLFW_RELEASE ? "RELEASE" : (ev->glfw_ev.action == GLFW_PRESS ? "PRESS" : "REPEAT")),
             format_mods(ev->glfw_ev.mods), ev->glfw_ev.text
         );
@@ -560,15 +560,16 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
         ev->glfw_ev.ime_state = 0;
         _glfwInputKeyboard(window, &ev->glfw_ev);
     } else debug("↳ discarded\n");
-    if (!is_release && handled_by_ime) last_handled_press_keycode = ev->glfw_ev.scancode;
+    if (!is_release && handled_by_ime)
+      last_handled_press_keycode = ev->glfw_ev.native_key;
 }
 
 void
-glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t scancode, int action) {
+glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t xkb_keycode, int action) {
     static char key_text[64] = {0};
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
     xkb_keysym_t xkb_sym;
-    xkb_keycode_t code_for_sym = scancode, ibus_keycode = scancode;
+    xkb_keycode_t code_for_sym = xkb_keycode, ibus_keycode = xkb_keycode;
     GLFWkeyevent glfw_ev;
     _glfwInitializeKeyEvent(&glfw_ev, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0); // init with default values
 #ifdef _GLFW_WAYLAND
@@ -576,7 +577,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
 #else
     ibus_keycode -= 8;
 #endif
-    debug("%s scancode: 0x%x ", action == GLFW_RELEASE ? "Release" : "Press", scancode);
+    debug("%s xkb_keycode: 0x%x ", action == GLFW_RELEASE ? "Release" : "Press", xkb_keycode);
     XKBStateGroup *sg = &xkb->states;
     int num_syms = xkb_state_key_get_syms(sg->state, code_for_sym, &syms);
     int num_clean_syms = xkb_state_key_get_syms(sg->clean_state, code_for_sym, &clean_syms);
@@ -635,8 +636,17 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         xkb_sym, glfw_xkb_keysym_name(xkb_sym)
     );
 
+    // NOTE: On linux, the reported native key identifier is the XKB keysym value.
+    // Do not confuse `native_key` with `xkb_keycode` (the native keycode reported for the
+    // glfw event VS the X internal code for a key).
+    //
+    // We use the XKB keysym instead of the X keycode to be able to go back-and-forth between
+    // the GLFW keysym and the XKB keysym when needed, which is not possible using the X keycode,
+    // because of the lost information when resolving the keycode to the keysym, like consumed
+    // mods.
+    glfw_ev.native_key = xkb_sym;
+
     glfw_ev.action = action;
-    glfw_ev.scancode = xkb_sym;
     glfw_ev.key = glfw_sym;
     glfw_ev.mods = sg->modifiers;
     glfw_ev.text = key_text;
@@ -647,7 +657,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     ibus_ev.window_id = window->id;
     ibus_ev.ibus_keysym = syms[0];
     if (ibus_process_key(&ibus_ev, &xkb->ibus)) {
-        debug("↳ to IBUS: scancode: 0x%x keysym: 0x%x (%s) %s\n", ibus_ev.ibus_keycode, ibus_ev.ibus_keysym, glfw_xkb_keysym_name(ibus_ev.ibus_keysym), format_mods(ibus_ev.glfw_ev.mods));
+        debug("↳ to IBUS: keycode: 0x%x keysym: 0x%x (%s) %s\n", ibus_ev.ibus_keycode, ibus_ev.ibus_keysym, glfw_xkb_keysym_name(ibus_ev.ibus_keysym), format_mods(ibus_ev.glfw_ev.mods));
     } else {
         _glfwInputKeyboard(window, &glfw_ev);
     }
