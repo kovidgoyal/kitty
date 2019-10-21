@@ -193,6 +193,15 @@ def pipe(func, rest):
     return func, rest
 
 
+@func_with_args('set_colors')
+def set_colors(func, rest):
+    import shlex
+    rest = shlex.split(rest)
+    if len(rest) < 1:
+        log_error('Too few arguments to set_colors function')
+    return func, rest
+
+
 @func_with_args('nth_window')
 def nth_window(func, rest):
     try:

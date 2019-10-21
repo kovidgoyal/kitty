@@ -109,8 +109,13 @@ How do I change the colors in a running kitty instance?
 
 You can either use the
 `OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Operating-System-Commands>`_
-to set colors or you can enable :doc:`remote control <remote-control>`
-for |kitty| and use :ref:`at_set-colors`.
+to set colors or you can define keyboard shortcuts to set colors, for example::
+
+    map f1 set_colors --configured /path/to/some/config/file/colors.conf
+
+Or you can enable :doc:`remote control <remote-control>` for |kitty| and use :ref:`at_set-colors`.
+The shortcut mapping technique has the same syntax as the remote control
+command, for details, see :ref:`at_set-colors`.
 
 A list of pre-made color themes for kitty is available at:
 `kitty-themes <https://github.com/dexpota/kitty-themes>`_

@@ -9,6 +9,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add a new style ``powerline`` for tab bar rendering, see :opt:`tab_bar_style` (:pull:`2021`)
 
+- Allow changing colors by mapping a keyboard shortcut to read a kitty config
+  file with color definitions. See the :doc:`FAQ <faq>` for details
+  (:iss:`2083`)
+
 - Wayland: Fix key repeat not being stopped when focus leaves window. This is
   expected behavior on Wayland, apparently (:iss:`2014`)
 

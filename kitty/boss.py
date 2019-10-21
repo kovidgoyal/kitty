@@ -1096,3 +1096,9 @@ class Boss:
 
         msg = '\n'.join(map(format_bad_line, bad_lines)).rstrip()
         self.show_error(_('Errors in kitty.conf'), msg)
+
+    def set_colors(self, *args):
+        from .cmds import parse_subcommand_cli, cmd_set_colors, set_colors
+        opts, items = parse_subcommand_cli(cmd_set_colors, ['set-colors'] + list(args))
+        payload = cmd_set_colors(None, opts, items)
+        set_colors(self, self.active_window, payload)
