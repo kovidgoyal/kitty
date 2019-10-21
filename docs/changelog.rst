@@ -21,7 +21,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   (:pull:`2074` and :pull:`2021`)
 
 - Add a new socket only mode for :opt:`allow_remote_control`. This makes
-  it possible to programs running on the local machine to control kitty
+  it possible for programs running on the local machine to control kitty
   but not programs running over ssh.
 
 
