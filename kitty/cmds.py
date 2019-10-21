@@ -882,7 +882,7 @@ this option, any color arguments are ignored and --configured and --all are impl
 def cmd_set_colors(global_opts, opts, args):
     '''
     colors+: An object mapping names to colors as 24-bit RGB integers
-    cursor_text_color: A 24-bit clor for text under the cursor
+    cursor_text_color: A 24-bit color for text under the cursor
     match_window: Window to change colors in
     match_tab: Tab to change colors in
     all: Boolean indicating change colors everywhere or not
