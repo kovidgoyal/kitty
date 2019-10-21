@@ -121,7 +121,7 @@ class Boss:
         talk_fd = getattr(single_instance, 'socket', None)
         talk_fd = -1 if talk_fd is None else talk_fd.fileno()
         listen_fd = -1
-        if opts.allow_remote_control and args.listen_on:
+        if args.listen_on and (opts.allow_remote_control in ('y', 'socket-only')):
             listen_fd = listen_on(args.listen_on)
         self.child_monitor = ChildMonitor(
             self.on_child_death,
@@ -276,9 +276,9 @@ class Boss:
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
-    def _handle_remote_command(self, cmd, window=None):
+    def _handle_remote_command(self, cmd, window=None, from_peer=False):
         response = None
-        if self.opts.allow_remote_control or getattr(window, 'allow_remote_control', False):
+        if self.opts.allow_remote_control == 'y' or from_peer or getattr(window, 'allow_remote_control', False):
             try:
                 response = handle_cmd(self, window, cmd)
             except Exception as err:
@@ -287,7 +287,7 @@ class Boss:
                 if not getattr(err, 'hide_traceback', False):
                     response['tb'] = traceback.format_exc()
         else:
-            response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control yes to your kitty.conf'}
+            response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
         return response
 
     def peer_message_received(self, msg):
@@ -295,7 +295,7 @@ class Boss:
         cmd_prefix = '\x1bP@kitty-cmd'
         if msg.startswith(cmd_prefix):
             cmd = msg[len(cmd_prefix):-2]
-            response = self._handle_remote_command(cmd)
+            response = self._handle_remote_command(cmd, from_peer=True)
             if response is not None:
                 response = (cmd_prefix + json.dumps(response) + '\x1b\\').encode('utf-8')
             return response

@@ -826,11 +826,23 @@ Note that setting it to yes means that any background processes still using the
 terminal can fail silently because their stdout/stderr/stdin no longer work.
 '''))
 
-o('allow_remote_control', False, long_text=_('''
+
+def allow_remote_control(x):
+    if x != 'socket-only':
+        x = 'y' if to_bool(x) else 'n'
+    return x
+
+
+o('allow_remote_control', 'no', option_type=allow_remote_control, long_text=_('''
 Allow other programs to control kitty. If you turn this on other programs can
-control all aspects of kitty, including sending text to kitty windows,
-opening new windows, closing windows, reading the content of windows, etc.
-Note that this even works over ssh connections.
+control all aspects of kitty, including sending text to kitty windows, opening
+new windows, closing windows, reading the content of windows, etc.  Note that
+this even works over ssh connections. You can chose to either allow any program
+running within kitty to control it, with :code:`yes` or only programs that
+connect to the socket specified with the :option:`kitty --listen-on` command
+line option, if you use the value :code:`socket-only`. The latter is useful if
+you want to prevent programs running on a remote computer over ssh from
+controlling kitty.
 '''))
 
 o(
