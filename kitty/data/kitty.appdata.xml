@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2019 Artem Polishchuk <ego.cordatus@gmail.com> -->
+<component type="desktop">
+  <id>kitty</id>
+  <metadata_license>CC0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>kitty</name>
+  <summary>Cross-platform, fast, feature full, GPU based terminal emulator</summary>
+  <description>
+    <p>Qt5 image viewer. Fast, configurable, easy to use. Optional video support.
+
+Key features:
+
+- Simple UI
+- Fast
+- Easy to use
+- Fully configurable, including shortcuts
+- Basic image editing: Crop, Rotate and Resize
+- Ability to quickly copy / move images to different folders
+- Experimental video playback via libmpv
+- Ability to run shell scripts
+- A nice dark theme, should look identical on every OS / DE</p>
+  </description>
+  <provides>
+    <binary>kitty</binary>
+  </provides>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://sw.kovidgoyal.net/kitty/_images/screenshot.png</image>
+    </screenshot>
+  </screenshots>
+  <developer_name>Kovid Goyal</developer_name>
+  <url type="homepage">https://sw.kovidgoyal.net/kitty</url>
+  <url type="bugtracker">https://github.com/kovidgoyal/kitty/issues</url>
+  <url type="donation">https://sw.kovidgoyal.net/kitty/support.html</url>
+</component>
