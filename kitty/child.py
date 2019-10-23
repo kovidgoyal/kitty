@@ -4,9 +4,9 @@
 
 import fcntl
 import os
+import sys
 from collections import defaultdict
-from contextlib import contextmanager
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 
 import kitty.fast_data_types as fast_data_types
 
@@ -125,15 +125,24 @@ def remove_blocking(fd):
     os.set_blocking(fd, False)
 
 
+def process_env():
+    ans = os.environ
+    ssl_env_var = getattr(sys, 'kitty_ssl_env_var', None)
+    if ssl_env_var is not None:
+        ans = ans.copy()
+        ans.pop(ssl_env_var, None)
+    return ans
+
+
 def default_env():
     try:
         return default_env.env
     except AttributeError:
-        return os.environ
+        return process_env()
 
 
 def set_default_env(val=None):
-    env = os.environ.copy()
+    env = process_env().copy()
     if val:
         env.update(val)
     default_env.env = env

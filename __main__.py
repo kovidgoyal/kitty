@@ -92,8 +92,10 @@ def setup_openssl_environment():
     if 'SSL_CERT_FILE' not in os.environ and 'SSL_CERT_DIR' not in os.environ:
         if os.access('/etc/pki/tls/certs/ca-bundle.crt', os.R_OK):
             os.environ['SSL_CERT_FILE'] = '/etc/pki/tls/certs/ca-bundle.crt'
+            sys.kitty_ssl_env_var = 'SSL_CERT_FILE'
         elif os.path.isdir('/etc/ssl/certs'):
             os.environ['SSL_CERT_DIR'] = '/etc/ssl/certs'
+            sys.kitty_ssl_env_var = 'SSL_CERT_DIR'
 
 
 def main():
