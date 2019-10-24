@@ -270,9 +270,6 @@ def kitty_env():
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
     ans.ldpaths += pylib + font_libs + gl_libs + libpng
-    if not is_macos:
-        cflags.extend(pkg_config('libcanberra', '--cflags-only-I'))
-        ans.ldpaths += pkg_config('libcanberra', '--libs')
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
     else:
