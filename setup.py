@@ -379,8 +379,9 @@ def parallel_run(items):
             return
         pid, s = os.wait()
         compile_cmd, w = workers.pop(pid, (None, None))
-        if compile_cmd is not None and ((s & 0xff) != 0 or ((s >> 8) & 0xff) != 0) and failed is None:
-            failed = compile_cmd
+        if compile_cmd is not None and ((s & 0xff) != 0 or ((s >> 8) & 0xff) != 0):
+            if failed is None:
+                failed = compile_cmd
         elif compile_cmd.on_success is not None:
             compile_cmd.on_success()
 
