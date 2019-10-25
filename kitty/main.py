@@ -247,19 +247,19 @@ def read_shell_environment(opts=None):
 def setup_environment(opts, args):
     extra_env = opts.env.copy()
     if opts.editor == '.':
-        if 'EDITOR' not in os.environ:
+        if 'VISUAL' not in os.environ and 'EDITOR' not in os.environ:
             shell_env = read_shell_environment(opts)
-            if 'EDITOR' in shell_env:
-                editor = shell_env['EDITOR']
-                if 'PATH' in shell_env:
-                    import shlex
-                    editor_cmd = shlex.split(editor)
-                    if not os.path.isabs(editor_cmd[0]):
-                        editor_cmd[0] = shutil.which(editor_cmd[0], path=shell_env['PATH'])
-                        if editor_cmd[0]:
-                            editor = ' '.join(map(shlex.quote, editor_cmd))
-                        else:
-                            editor = None
+            if 'VISUAL' in shell_env or 'EDITOR' in shell_env:
+                for editor in (shell_env['VISUAL'], shell_env['EDITOR']):
+                    if 'PATH' in shell_env:
+                        import shlex
+                        editor_cmd = shlex.split(editor)
+                        if not os.path.isabs(editor_cmd[0]):
+                            editor_cmd[0] = shutil.which(editor_cmd[0], path=shell_env['PATH'])
+                            if editor_cmd[0]:
+                                editor = ' '.join(map(shlex.quote, editor_cmd))
+                            else:
+                                editor = None
                 if editor:
                     os.environ['EDITOR'] = editor
     else:
