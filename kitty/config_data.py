@@ -812,9 +812,9 @@ ensure that the shell starts in interactive mode and reads its startup rc files.
 
 o('editor', '.', long_text=_('''
 The console editor to use when editing the kitty config file or similar tasks.
-A value of . means to use the environment variable EDITOR. Note that this
-environment variable has to be set not just in your shell startup scripts but
-system-wide, otherwise kitty will not see it.
+A value of . means to use the environment variables VISUAL and EDITOR in that
+order. Note that this environment variable has to be set not just in your shell
+startup scripts but system-wide, otherwise kitty will not see it.
 '''))
 
 o('close_on_child_death', False, long_text=_('''

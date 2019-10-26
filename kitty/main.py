@@ -244,24 +244,32 @@ def read_shell_environment(opts=None):
     return read_shell_environment.ans
 
 
+def get_editor_from_env(shell_env):
+    for var in ('VISUAL', 'EDITOR'):
+        editor = shell_env.get(var)
+        if editor:
+            if 'PATH' in shell_env:
+                import shlex
+                editor_cmd = shlex.split(editor)
+                if not os.path.isabs(editor_cmd[0]):
+                    editor_cmd[0] = shutil.which(editor_cmd[0], path=shell_env['PATH'])
+                    if editor_cmd[0]:
+                        editor = ' '.join(map(shlex.quote, editor_cmd))
+                    else:
+                        editor = None
+            if editor:
+                return editor
+
+
 def setup_environment(opts, args):
     extra_env = opts.env.copy()
     if opts.editor == '.':
-        if 'EDITOR' not in os.environ:
+        editor = get_editor_from_env(os.environ)
+        if not editor:
             shell_env = read_shell_environment(opts)
-            if 'EDITOR' in shell_env:
-                editor = shell_env['EDITOR']
-                if 'PATH' in shell_env:
-                    import shlex
-                    editor_cmd = shlex.split(editor)
-                    if not os.path.isabs(editor_cmd[0]):
-                        editor_cmd[0] = shutil.which(editor_cmd[0], path=shell_env['PATH'])
-                        if editor_cmd[0]:
-                            editor = ' '.join(map(shlex.quote, editor_cmd))
-                        else:
-                            editor = None
-                if editor:
-                    os.environ['EDITOR'] = editor
+            editor = get_editor_from_env(shell_env)
+        if editor:
+            os.environ['EDITOR'] = editor
     else:
         os.environ['EDITOR'] = opts.editor
     if args.listen_on:
