@@ -25,7 +25,7 @@ def kitty_exe():
     if ans is None:
         rpath = sys._xoptions.get('bundle_exe_dir')
         if not rpath:
-            items = os.environ['PATH'].split(os.pathsep)
+            items = filter(None, os.environ.get('PATH', '').split(os.pathsep))
             seen = set()
             for candidate in items:
                 if candidate not in seen:
