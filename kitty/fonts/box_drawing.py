@@ -179,17 +179,17 @@ def triangle(buf, width, height, left=True):
 
 def corner_triangle(buf, width, height, corner):
     if corner == 'top-right' or corner == 'bottom-left':
-        diagonal_y = line_equation(0, 0, width - 1, height - 1)
+        diagonal_y = line_equation(0, 0, width - 1, height)
         if corner == 'top-right':
             xlimits = [(0, diagonal_y(x)) for x in range(width)]
         elif corner == 'bottom-left':
-            xlimits = [(diagonal_y(x), height - 1) for x in range(width)]
+            xlimits = [(diagonal_y(x), height) for x in range(width)]
     else:
-        diagonal_y = line_equation(width - 1, 0, 0, height - 1)
+        diagonal_y = line_equation(width - 1, 0, 0, height)
         if corner == 'top-left':
             xlimits = [(0, diagonal_y(x)) for x in range(width)]
         elif corner == 'bottom-right':
-            xlimits = [(diagonal_y(x), height - 1) for x in range(width)]
+            xlimits = [(diagonal_y(x), height) for x in range(width)]
     fill_region(buf, width, height, xlimits)
 
 
