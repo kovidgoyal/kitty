@@ -4,6 +4,7 @@
 
 import os
 import sys
+from contextlib import suppress
 
 from kitty.cli import parse_args
 
@@ -30,9 +31,8 @@ def real_main(args):
 
 def main(args):
     try:
-        real_main(args)
-    except KeyboardInterrupt:
-        pass
+        with suppress(KeyboardInterrupt):
+            real_main(args)
     except Exception:
         import traceback
         traceback.print_exc()
