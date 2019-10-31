@@ -433,12 +433,10 @@ static bool initExtensions(void)
 //
 void _glfwGetSystemContentScaleX11(float* xscale, float* yscale, bool bypass_cache)
 {
-    // NOTE: Default to the display-wide DPI as we don't currently have a policy
-    //       for which monitor a window is considered to be on
-    float xdpi = DisplayWidth(_glfw.x11.display, _glfw.x11.screen) *
-        25.4f / DisplayWidthMM(_glfw.x11.display, _glfw.x11.screen);
-    float ydpi = DisplayHeight(_glfw.x11.display, _glfw.x11.screen) *
-        25.4f / DisplayHeightMM(_glfw.x11.display, _glfw.x11.screen);
+    // Start by assuming the default X11 DPI
+    // NOTE: Some desktop environments (KDE) may remove the Xft.dpi field when it
+    //       would be set to 96, so assume that is the case if we cannot find it
+    float xdpi = 96.f, ydpi = 96.f;
 
     // NOTE: Basing the scale on Xft.dpi where available should provide the most
     //       consistent user experience (matches Qt, Gtk, etc), although not
