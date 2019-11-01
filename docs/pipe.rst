@@ -56,6 +56,9 @@ Input placeholders
 
 There are various different kinds of placeholders
 
+``@selection``
+   Plain text, currently selected text
+
 ``@text``
    Plain text, current screen + scrollback buffer
 
