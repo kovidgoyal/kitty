@@ -78,6 +78,8 @@ body div.document {
 div.sphinxsidebar {
     font-size: inherit;
     line-height: inherit;
+    max-height: 100%;
+    overflow-y: auto;
 }
 
 #sidebartoc li {
