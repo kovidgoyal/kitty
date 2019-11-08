@@ -478,7 +478,8 @@ completions happens after the call to :file:`compinit`.
 fish
 ~~~~~~~~
 
-Add the following to your :file:`~/.config/fish/config.fish`
+For versions of fish earlier than 3.0.0, add the following to your
+:file:`~/.config/fish/config.fish`. Later versions source completions by default.
 
 .. code-block:: sh
 
