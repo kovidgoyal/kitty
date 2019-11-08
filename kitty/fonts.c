@@ -27,6 +27,7 @@ enum {NO_FONT=-3, MISSING_FONT=-2, BLANK_FONT=-1, BOX_FONT=0};
 
 typedef struct {
     glyph_index data[MAX_NUM_EXTRA_GLYPHS];
+    uint8_t space_ligature_size;
 } ExtraGlyphs;
 
 typedef struct SpritePosition SpritePosition;
@@ -218,6 +219,7 @@ do_increment(FontGroup *fg, int *error) {
 
 static inline bool
 extra_glyphs_equal(ExtraGlyphs *a, ExtraGlyphs *b) {
+    if (a->space_ligature_size != b->space_ligature_size) return false;
     for (size_t i = 0; i < MAX_NUM_EXTRA_GLYPHS; i++) {
         if (a->data[i] != b->data[i]) return false;
         if (a->data[i] == 0) return true;
@@ -691,7 +693,7 @@ static inline void
 render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, bool center_glyph) {
     static SpritePosition* sprite_position[16];
     int error = 0;
-    num_cells = MIN(sizeof(sprite_position)/sizeof(sprite_position[0]), num_cells);
+    num_cells = MIN(arraysz(sprite_position), num_cells);
     for (unsigned int i = 0; i < num_cells; i++) {
         sprite_position[i] = sprite_position_for(fg, font, glyph, extra_glyphs, (uint8_t)i, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
@@ -726,6 +728,7 @@ typedef struct {
 
 typedef struct {
     unsigned int first_glyph_idx, first_cell_idx, num_glyphs, num_cells;
+    uint8_t space_ligature_size;
     bool has_special_glyph;
 } Group;
 
@@ -971,6 +974,7 @@ merge_groups_for_pua_space_ligature(void) {
         /* g->num_glyphs = MIN(g->num_glyphs, MAX_NUM_EXTRA_GLYPHS + 1); */
         G(group_idx)--;
     }
+    G(groups)->space_ligature_size = (uint8_t)G(groups)->num_cells;
 }
 
 static inline void
@@ -1004,6 +1008,7 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph) {
         int last = -1;
         for (i = 1; i < MIN(arraysz(ed.data) + 1, group->num_glyphs); i++) { last = i - 1; ed.data[last] = G(info)[group->first_glyph_idx + i].codepoint; }
         if ((size_t)(last + 1) < arraysz(ed.data)) ed.data[last + 1] = 0;
+        ed.space_ligature_size = group->space_ligature_size;
         render_group(fg, group->num_cells, group->num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed, center_glyph);
         idx++;
     }

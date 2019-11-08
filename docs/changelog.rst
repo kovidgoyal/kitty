@@ -28,6 +28,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   it possible for programs running on the local machine to control kitty
   but not programs running over ssh.
 
+- Fix a regression in 0.14.5 that caused rendering of private use glyphs
+  with and without spaces to be identical (:iss:`2117`)
+
 
 0.14.6 [2019-09-25]
 ---------------------
