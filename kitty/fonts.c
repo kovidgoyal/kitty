@@ -27,7 +27,6 @@ enum {NO_FONT=-3, MISSING_FONT=-2, BLANK_FONT=-1, BOX_FONT=0};
 
 typedef struct {
     glyph_index data[MAX_NUM_EXTRA_GLYPHS];
-    uint8_t space_ligature_size;
 } ExtraGlyphs;
 
 typedef struct SpritePosition SpritePosition;
@@ -219,7 +218,6 @@ do_increment(FontGroup *fg, int *error) {
 
 static inline bool
 extra_glyphs_equal(ExtraGlyphs *a, ExtraGlyphs *b) {
-    if (a->space_ligature_size != b->space_ligature_size) return false;
     for (size_t i = 0; i < MAX_NUM_EXTRA_GLYPHS; i++) {
         if (a->data[i] != b->data[i]) return false;
         if (a->data[i] == 0) return true;
@@ -728,8 +726,7 @@ typedef struct {
 
 typedef struct {
     unsigned int first_glyph_idx, first_cell_idx, num_glyphs, num_cells;
-    uint8_t space_ligature_size;
-    bool has_special_glyph;
+    bool has_special_glyph, is_space_ligature;
 } Group;
 
 typedef struct {
@@ -967,14 +964,11 @@ merge_groups_for_pua_space_ligature(void) {
     while (G(group_idx) > 0) {
         Group *g = G(groups), *g1 = G(groups) + 1;
         g->num_cells += g1->num_cells;
-        // We dont want the space glyphs rendered because some stupid
-        // fonts like PowerLine dont have a space glyph
-        // https://github.com/kovidgoyal/kitty/issues/1225
-        /* g->num_glyphs += g1->num_glyphs; */
-        /* g->num_glyphs = MIN(g->num_glyphs, MAX_NUM_EXTRA_GLYPHS + 1); */
+        g->num_glyphs += g1->num_glyphs;
+        g->num_glyphs = MIN(g->num_glyphs, MAX_NUM_EXTRA_GLYPHS + 1);
         G(group_idx)--;
     }
-    G(groups)->space_ligature_size = (uint8_t)G(groups)->num_cells;
+    G(groups)->is_space_ligature = true;
 }
 
 static inline void
@@ -1008,8 +1002,11 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph) {
         int last = -1;
         for (i = 1; i < MIN(arraysz(ed.data) + 1, group->num_glyphs); i++) { last = i - 1; ed.data[last] = G(info)[group->first_glyph_idx + i].codepoint; }
         if ((size_t)(last + 1) < arraysz(ed.data)) ed.data[last + 1] = 0;
-        ed.space_ligature_size = group->space_ligature_size;
-        render_group(fg, group->num_cells, group->num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed, center_glyph);
+        // We dont want to render the spaces in a space ligature because
+        // there exist stupid fonts like Powerline that have no space glyph,
+        // so special case it: https://github.com/kovidgoyal/kitty/issues/1225
+        unsigned int num_glyphs = group->is_space_ligature ? 1 : group->num_glyphs;
+        render_group(fg, group->num_cells, num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed, center_glyph);
         idx++;
     }
 }
