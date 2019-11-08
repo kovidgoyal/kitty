@@ -4,14 +4,14 @@
 
 import weakref
 from collections import deque, namedtuple
-from functools import partial
 from contextlib import suppress
+from functools import partial
 
 from .borders import Borders
 from .child import Child
 from .constants import appname, get_boss, is_macos, is_wayland
 from .fast_data_types import (
-    add_tab, mark_tab_bar_dirty, next_window_id,
+    add_tab, attach_window, detach_window, mark_tab_bar_dirty, next_window_id,
     pt_to_px, remove_tab, remove_window, ring_bell, set_active_tab, swap_tabs,
     x11_window_id
 )
@@ -232,6 +232,10 @@ class Tab:  # {{{
         ans.fork()
         return ans
 
+    def _add_window(self, window, location=None):
+        self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx, location)
+        self.relayout_borders()
+
     def new_window(
         self, use_shell=True, cmd=None, stdin=None, override_title=None,
         cwd_from=None, cwd=None, overlay_for=None, env=None, location=None,
@@ -245,8 +249,7 @@ class Tab:  # {{{
             overlaid.overlay_window_id = window.id
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
-        self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx, location)
-        self.relayout_borders()
+        self._add_window(window, location=location)
         return window
 
     def new_special_window(self, special_window, location=None, copy_colors_from=None):
@@ -265,13 +268,16 @@ class Tab:  # {{{
             if w.id == old_window_id:
                 return idx
 
-    def remove_window(self, window):
+    def remove_window(self, window, destroy=True):
         idx = self.previous_active_window_idx(1)
         next_window_id = None
         if idx is not None:
             next_window_id = self.windows[idx].id
         active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
-        remove_window(self.os_window_id, self.id, window.id)
+        if destroy:
+            remove_window(self.os_window_id, self.id, window.id)
+        else:
+            detach_window(self.os_window_id, self.id, window.id)
         if window.overlay_for is not None:
             for idx, q in enumerate(self.windows):
                 if q.id == window.overlay_for:
@@ -293,6 +299,33 @@ class Tab:  # {{{
         active_window = self.active_window
         if active_window:
             self.title_changed(active_window)
+
+    def detach_window(self, window):
+        underlaid_window = None
+        overlaid_window = window
+        if window.overlay_for:
+            for x in self.windows:
+                if x.id == window.overlay_for:
+                    underlaid_window = x
+                    break
+        elif window.overlay_window_id:
+            underlaid_window = window
+            overlaid_window = None
+            for x in self.windows:
+                if x.id == window.overlay_window_id:
+                    overlaid_window = x
+                    break
+        if overlaid_window is not None:
+            self.remove_window(overlaid_window, destroy=False)
+        if underlaid_window is not None:
+            self.remove_window(underlaid_window, destroy=False)
+        return underlaid_window, overlaid_window
+
+    def attach_window(self, window):
+        window.tab_id = self.id
+        window.os_window_id = self.os_window_id
+        attach_window(self.os_window_id, self.id, window.id)
+        self._add_window(window)
 
     def set_active_window_idx(self, idx):
         if idx != self.active_window_idx:
