@@ -68,6 +68,7 @@ is_modifier_key(int key) {
         case GLFW_KEY_RIGHT_CONTROL:
         case GLFW_KEY_LEFT_SUPER:
         case GLFW_KEY_RIGHT_SUPER:
+        case GLFW_KEY_CAPS_LOCK:
             return true;
         default:
             return false;
