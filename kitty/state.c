@@ -116,6 +116,31 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
     return 0;
 }
 
+static inline id_type
+change_window_tab(id_type window_id, id_type old_tab_os_window_id, id_type old_tab_id, id_type new_tab_os_window_id, id_type new_tab_id) {
+    // move the window description from one tab to another
+    Window* new_window_description = 0;
+    WITH_TAB(new_tab_os_window_id, new_tab_id);
+        ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
+        make_os_window_context_current(osw);
+        zero_at_i(tab->windows, tab->num_windows);
+        new_window_description = &tab->windows[tab->num_windows];
+        ++tab->num_windows;
+    END_WITH_TAB;
+    if (new_window_description == 0) return 0; // could not find the window inside the old tab
+    WITH_TAB(old_tab_os_window_id, old_tab_id);
+    for (size_t i = 0; i < tab->num_windows; i++) {
+        if (tab->windows[i].id == window_id) {
+            memcpy(new_window_description, &tab->windows[i], sizeof(Window));
+            zero_at_i(tab->windows, i);
+            remove_i_from_array(tab->windows, i, tab->num_windows);
+            break;
+        }
+    }
+    END_WITH_TAB;
+    return new_window_description->id;
+}
+
 static inline void
 update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyObject *title) {
     WITH_TAB(os_window_id, tab_id);
@@ -756,6 +781,7 @@ THREE_ID(remove_window)
 PYWRAP1(resolve_key_mods) { int mods; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(mods)); }
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
 PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); return PyLong_FromUnsignedLongLong(add_window(a, b, title)); }
+PYWRAP1(change_window_tab) { id_type a, b, c, d, e; PA("KKKKK", &a, &b, &c, &d, &e); return PyLong_FromUnsignedLongLong(change_window_tab(a, b, c, d, e)); }
 PYWRAP0(current_os_window) { OSWindow *w = current_os_window(); if (!w) Py_RETURN_NONE; return PyLong_FromUnsignedLongLong(w->id); }
 TWO_ID(remove_tab)
 KI(set_active_tab)
@@ -777,6 +803,7 @@ static PyMethodDef module_methods[] = {
     MW(pt_to_px, METH_VARARGS),
     MW(add_tab, METH_O),
     MW(add_window, METH_VARARGS),
+    MW(change_window_tab, METH_VARARGS),
     MW(update_window_title, METH_VARARGS),
     MW(remove_tab, METH_VARARGS),
     MW(remove_window, METH_VARARGS),
