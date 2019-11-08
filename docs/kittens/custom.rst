@@ -130,6 +130,18 @@ layout, by simply adding the line::
 
 to the ``handle_result()`` function, above.
 
+
+Debugging kittens
+--------------------
+
+The part of the kitten that runs in ``main()`` is just a normal programs and
+the output of print statements will be visible in the kitten window.
+
+The ``handle_result()`` part of the kitten runs inside the kitty process.
+The output of print statements will go to the ``STDOUT`` of the kitty process.
+So if you run kitty from another kitty instance, the output will be visible
+in the first kitty instance.
+
 .. _external_kittens:
 
 Kittens created by kitty users
