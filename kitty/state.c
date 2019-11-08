@@ -178,14 +178,29 @@ detach_window(id_type os_window_id, id_type tab_id, id_type id) {
 
 
 static inline void
+resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
+    if (screen) {
+        screen->cell_size.width = os_window->fonts_data->cell_width;
+        screen->cell_size.height = os_window->fonts_data->cell_height;
+        screen_dirty_sprite_positions(screen);
+        if (has_graphics) screen_rescale_images(screen);
+    }
+}
+
+static inline void
 attach_window(id_type os_window_id, id_type tab_id, id_type id) {
     WITH_TAB(os_window_id, tab_id);
         for (size_t i = 0; i < detached_windows.num_windows; i++) {
             if (detached_windows.windows[i].id == id) {
                 ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
-                memcpy(tab->windows + tab->num_windows++, detached_windows.windows + i, sizeof(Window));
+                Window *w = tab->windows + tab->num_windows++;
+                memcpy(w, detached_windows.windows + i, sizeof(Window));
                 zero_at_i(detached_windows.windows, i);
                 remove_i_from_array(detached_windows.windows, i, detached_windows.num_windows);
+                if (
+                    w->render_data.screen->cell_size.width != osw->fonts_data->cell_width ||
+                    w->render_data.screen->cell_size.height != osw->fonts_data->cell_height
+                ) resize_screen(osw, w->render_data.screen, true);
                 break;
             }
         }
@@ -726,16 +741,6 @@ PYWRAP1(global_font_size) {
     PA("|d", &set_val);
     if (set_val > 0) global_state.font_sz_in_pts = set_val;
     return Py_BuildValue("d", global_state.font_sz_in_pts);
-}
-
-static inline void
-resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
-    if (screen) {
-        screen->cell_size.width = os_window->fonts_data->cell_width;
-        screen->cell_size.height = os_window->fonts_data->cell_height;
-        screen_dirty_sprite_positions(screen);
-        if (has_graphics) screen_rescale_images(screen);
-    }
 }
 
 PYWRAP1(os_window_font_size) {
