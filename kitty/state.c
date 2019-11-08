@@ -149,9 +149,6 @@ remove_window(id_type os_window_id, id_type tab_id, id_type id) {
     END_WITH_TAB;
 }
 
-static inline void
-no_op_on_window(Window *w UNUSED) {}
-
 typedef struct {
     unsigned int num_windows, capacity;
     Window *windows;
