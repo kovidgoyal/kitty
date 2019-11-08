@@ -146,9 +146,9 @@ class Boss:
             from .fast_data_types import cocoa_set_notification_activated_callback
             cocoa_set_notification_activated_callback(self.notification_activated)
 
-    def add_os_window(self, startup_session, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
+    def add_os_window(self, startup_session=None, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
         if os_window_id is None:
-            opts_for_size = opts_for_size or startup_session.os_window_size or self.opts
+            opts_for_size = opts_for_size or getattr(startup_session, 'os_window_size', None) or self.opts
             cls = wclass or self.args.cls or appname
             with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
                 os_window_id = create_os_window(
@@ -1102,3 +1102,30 @@ class Boss:
         opts, items = parse_subcommand_cli(cmd_set_colors, ['set-colors'] + list(args))
         payload = cmd_set_colors(None, opts, items)
         set_colors(self, self.active_window, payload)
+
+    def _move_window_to(self, window=None, target_tab_id=None, target_os_window_id=None):
+        src_tab = self.tab_for_window(window or self.active_window)
+        if src_tab is None:
+            return
+        if target_os_window_id == 'new':
+            target_os_window_id = self.add_os_window()
+            tm = self.os_window_map[target_os_window_id]
+            target_tab = tm.new_tab(empty_tab=True)
+        else:
+            target_os_window_id = target_os_window_id or current_os_window()
+            if target_tab_id == 'new':
+                tm = self.os_window_map[target_os_window_id]
+                target_tab = tm.new_tab(empty_tab=True)
+            else:
+                for tab in self.all_tabs:
+                    if tab.id == target_tab_id:
+                        target_tab = tab
+                        target_os_window_id = tab.os_window_id
+                        break
+                else:
+                    return
+
+        underlaid_window, overlaid_window = src_tab.detach_window(window)
+        target_tab.attach_window(underlaid_window)
+        if overlaid_window:
+            target_tab.attach_window(overlaid_window)

@@ -38,7 +38,7 @@ def add_active_id_to_history(items, item_id, maxlen=64):
 
 class Tab:  # {{{
 
-    def __init__(self, tab_manager, session_tab=None, special_window=None, cwd_from=None):
+    def __init__(self, tab_manager, session_tab=None, special_window=None, cwd_from=None, no_initial_window=False):
         self._active_window_idx = 0
         self.tab_manager_ref = weakref.ref(tab_manager)
         self.os_window_id = tab_manager.os_window_id
@@ -57,7 +57,9 @@ class Tab:  # {{{
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
         self._last_used_layout = self._current_layout_name = None
-        if session_tab is None:
+        if no_initial_window:
+            pass
+        elif session_tab is None:
             self.cwd = self.args.directory
             sl = self.enabled_layouts[0]
             self._set_current_layout(sl)
@@ -420,7 +422,7 @@ class Tab:  # {{{
 
 class TabManager:  # {{{
 
-    def __init__(self, os_window_id, opts, args, startup_session):
+    def __init__(self, os_window_id, opts, args, startup_session=None):
         self.os_window_id = os_window_id
         self.last_active_tab_id = None
         self.opts, self.args = opts, args
@@ -430,9 +432,10 @@ class TabManager:  # {{{
         self.tab_bar = TabBar(self.os_window_id, opts)
         self._active_tab_idx = 0
 
-        for t in startup_session.tabs:
-            self._add_tab(Tab(self, session_tab=t))
-        self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
+        if startup_session is not None:
+            for t in startup_session.tabs:
+                self._add_tab(Tab(self, session_tab=t))
+            self._set_active_tab(max(0, min(startup_session.active_tab_idx, len(self.tabs) - 1)))
 
     @property
     def active_tab_idx(self):
@@ -578,10 +581,10 @@ class TabManager:  # {{{
             self._set_active_tab(nidx)
             self.mark_tab_bar_dirty()
 
-    def new_tab(self, special_window=None, cwd_from=None, as_neighbor=False):
+    def new_tab(self, special_window=None, cwd_from=None, as_neighbor=False, empty_tab=False):
         nidx = self.active_tab_idx + 1
         idx = len(self.tabs)
-        self._add_tab(Tab(self, special_window=special_window, cwd_from=cwd_from))
+        self._add_tab(Tab(self, no_initial_window=True) if empty_tab else Tab(self, special_window=special_window, cwd_from=cwd_from))
         self._set_active_tab(idx)
         if len(self.tabs) > 2 and as_neighbor and idx != nidx:
             for i in range(idx, nidx, -1):
