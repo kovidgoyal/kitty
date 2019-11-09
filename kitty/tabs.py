@@ -417,6 +417,11 @@ class Tab:  # {{{
 
     def __repr__(self):
         return 'Tab(title={}, id={})'.format(self.name or self.title, hex(id(self)))
+
+    def make_active(self):
+        tm = self.tab_manager_ref()
+        if tm is not None:
+            tm.set_active_tab(self)
 # }}}
 
 

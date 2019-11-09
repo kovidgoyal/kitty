@@ -1139,6 +1139,7 @@ class Boss:
         if overlaid_window:
             target_tab.attach_window(overlaid_window)
         self._cleanup_tab_after_window_removal(src_tab)
+        target_tab.make_active()
 
     def detach_window(self, *args):
         if not args:
