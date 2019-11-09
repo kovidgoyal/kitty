@@ -163,6 +163,11 @@ class Window:
         else:
             setup_colors(self.screen, opts)
 
+    def change_tab(self, tab):
+        self.tab_id = tab.id
+        self.os_window_id = tab.os_window_id
+        self.tabref = weakref.ref(tab)
+
     @property
     def title(self):
         return self.override_title or self.child_title

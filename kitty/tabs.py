@@ -324,8 +324,7 @@ class Tab:  # {{{
         return underlaid_window, overlaid_window
 
     def attach_window(self, window):
-        window.tab_id = self.id
-        window.os_window_id = self.os_window_id
+        window.change_tab(self)
         attach_window(self.os_window_id, self.id, window.id)
         self._add_window(window)
 
