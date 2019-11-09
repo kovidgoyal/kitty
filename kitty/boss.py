@@ -1104,7 +1104,10 @@ class Boss:
         set_colors(self, self.active_window, payload)
 
     def _move_window_to(self, window=None, target_tab_id=None, target_os_window_id=None):
-        src_tab = self.tab_for_window(window or self.active_window)
+        window = window or self.active_window
+        if not window:
+            return
+        src_tab = self.tab_for_window(window)
         if src_tab is None:
             return
         if target_os_window_id == 'new':
@@ -1126,6 +1129,12 @@ class Boss:
                     return
 
         underlaid_window, overlaid_window = src_tab.detach_window(window)
-        target_tab.attach_window(underlaid_window)
+        if underlaid_window:
+            target_tab.attach_window(underlaid_window)
         if overlaid_window:
             target_tab.attach_window(overlaid_window)
+
+    def detach_window(self, *args):
+        if not args:
+            return self._move_window_to(target_tab_id='new')
+        # TODO: Implementthis

@@ -58,7 +58,7 @@ class Tab:  # {{{
             setattr(self, which + '_window', partial(self.nth_window, num=i))
         self._last_used_layout = self._current_layout_name = None
         if no_initial_window:
-            pass
+            self._set_current_layout(self.enabled_layouts[0])
         elif session_tab is None:
             self.cwd = self.args.directory
             sl = self.enabled_layouts[0]

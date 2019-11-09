@@ -92,6 +92,11 @@ def goto_tab_parse(func, rest):
     return func, args
 
 
+@func_with_args('detach_window')
+def detach_window_parse(func, rest):
+    return func, to_cmdline(rest)
+
+
 @func_with_args('set_background_opacity', 'goto_layout', 'kitty_shell')
 def simple_parse(func, rest):
     return func, [rest]
