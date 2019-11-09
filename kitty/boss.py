@@ -321,6 +321,16 @@ class Boss:
             if window is not None:
                 window.send_cmd_response(response)
 
+    def _cleanup_tab_after_window_removal(self, src_tab):
+        if len(src_tab) < 1:
+            tm = src_tab.tab_manager_ref()
+            if tm is not None:
+                tm.remove(src_tab)
+                src_tab.destroy()
+                if len(tm) == 0:
+                    if not self.shutting_down:
+                        mark_os_window_for_close(src_tab.os_window_id)
+
     def on_child_death(self, window_id):
         window = self.window_id_map.pop(window_id, None)
         if window is None:
@@ -342,12 +352,7 @@ class Boss:
         else:
             return
         tab.remove_window(window)
-        if len(tab) == 0:
-            tm.remove(tab)
-            tab.destroy()
-            if len(tm) == 0:
-                if not self.shutting_down:
-                    mark_os_window_for_close(os_window_id)
+        self._cleanup_tab_after_window_removal(tab)
 
     def close_window(self, window=None):
         if window is None:
@@ -1133,6 +1138,7 @@ class Boss:
             target_tab.attach_window(underlaid_window)
         if overlaid_window:
             target_tab.attach_window(overlaid_window)
+        self._cleanup_tab_after_window_removal(src_tab)
 
     def detach_window(self, *args):
         if not args:
