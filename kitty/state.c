@@ -99,6 +99,19 @@ add_tab(id_type os_window_id) {
     return 0;
 }
 
+static inline void
+create_gpu_resources_for_window(Window *w) {
+    w->render_data.vao_idx = create_cell_vao();
+    w->render_data.gvao_idx = create_graphics_vao();
+}
+
+static inline void
+release_gpu_resources_for_window(Window *w) {
+    remove_vao(w->render_data.vao_idx); remove_vao(w->render_data.gvao_idx);
+    w->render_data.vao_idx = 0; w->render_data.gvao_idx = 0;
+}
+
+
 static inline id_type
 add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
     WITH_TAB(os_window_id, tab_id);
@@ -108,8 +121,7 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
         tab->windows[tab->num_windows].id = ++global_state.window_id_counter;
         tab->windows[tab->num_windows].visible = true;
         tab->windows[tab->num_windows].title = title;
-        tab->windows[tab->num_windows].render_data.vao_idx = create_cell_vao();
-        tab->windows[tab->num_windows].render_data.gvao_idx = create_graphics_vao();
+        create_gpu_resources_for_window(&tab->windows[tab->num_windows]);
         Py_INCREF(tab->windows[tab->num_windows].title);
         return tab->windows[tab->num_windows++].id;
     END_WITH_TAB;
@@ -133,7 +145,7 @@ update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyO
 static inline void
 destroy_window(Window *w) {
     Py_CLEAR(w->render_data.screen); Py_CLEAR(w->title);
-    remove_vao(w->render_data.vao_idx); remove_vao(w->render_data.gvao_idx);
+    release_gpu_resources_for_window(w);
 }
 
 static inline void
@@ -168,9 +180,12 @@ detach_window(id_type os_window_id, id_type tab_id, id_type id) {
     WITH_TAB(os_window_id, tab_id);
         for (size_t i = 0; i < tab->num_windows; i++) {
             if (tab->windows[i].id == id) {
+                make_os_window_context_current(osw);
+                release_gpu_resources_for_window(&tab->windows[i]);
                 add_detached_window(tab->windows + i);
                 zero_at_i(tab->windows, i);
                 remove_i_from_array(tab->windows, i, tab->num_windows);
+                break;
             }
         }
     END_WITH_TAB;
@@ -197,10 +212,13 @@ attach_window(id_type os_window_id, id_type tab_id, id_type id) {
                 memcpy(w, detached_windows.windows + i, sizeof(Window));
                 zero_at_i(detached_windows.windows, i);
                 remove_i_from_array(detached_windows.windows, i, detached_windows.num_windows);
+                make_os_window_context_current(osw);
+                create_gpu_resources_for_window(w);
                 if (
                     w->render_data.screen->cell_size.width != osw->fonts_data->cell_width ||
                     w->render_data.screen->cell_size.height != osw->fonts_data->cell_height
                 ) resize_screen(osw, w->render_data.screen, true);
+                else screen_dirty_sprite_positions(w->render_data.screen);
                 break;
             }
         }
