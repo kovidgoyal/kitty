@@ -675,7 +675,7 @@ class Boss:
             output += str(s.linebuf.line(i))
         return output
 
-    def _run_kitten(self, kitten, args=(), input_data=None, window=None):
+    def _run_kitten(self, kitten, args=(), input_data=None, window=None, custom_callback=None):
         orig_args, args = list(args), list(args)
         from kittens.runner import create_kitten_handler
         end_kitten = create_kitten_handler(kitten, orig_args)
@@ -724,7 +724,7 @@ class Boss:
                 ),
                 copy_colors_from=w
             )
-            overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, end_kitten)
+            overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, custom_callback or end_kitten)
             return overlay_window
 
     def kitten(self, kitten, *args):
@@ -1142,6 +1142,28 @@ class Boss:
         target_tab.make_active()
 
     def detach_window(self, *args):
-        if not args:
+        if not args or args[0] == 'new':
+            return self._move_window_to(target_os_window_id='new')
+        if args[0] == 'new-tab':
             return self._move_window_to(target_tab_id='new')
-        # TODO: Implementthis
+        lines = [
+            'Choose a tab to move the window to',
+            ''
+        ]
+        tab_id_map = {}
+        for i, tab in enumerate(self.all_tabs):
+            tab_id_map[i + 1] = tab.id
+            lines.append('{} {}'.format(i + 1, tab.title))
+
+        def done(data, target_window_id, self):
+            target_window = None
+            for w in self.all_windows:
+                if w.id == target_window_id:
+                    target_window = w
+                    break
+            tab_id = tab_id_map[int(data['match'][0].partition(' ')[0])]
+            self._move_window_to(window=target_window, target_tab_id=tab_id)
+
+        self._run_kitten(
+                'hints', args=('--type=regex', r'--regex=(?m)^\d+ .+$',),
+                input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done)
