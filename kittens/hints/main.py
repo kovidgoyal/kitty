@@ -26,11 +26,12 @@ screen_size = screen_size_function()
 
 class Mark:
 
-    __slots__ = ('index', 'start', 'end', 'text')
+    __slots__ = ('index', 'start', 'end', 'text', 'groupdict')
 
-    def __init__(self, index, start, end, text):
+    def __init__(self, index, start, end, text, groupdict):
         self.index, self.start, self.end = index, start, end
         self.text = text
+        self.groupdict = groupdict
 
 
 @lru_cache(maxsize=2048)
@@ -94,6 +95,14 @@ class Hints(Handler):
         self.chosen = []
         self.reset()
 
+    @property
+    def text_matches(self):
+        return [m.text + self.match_suffix for m in self.chosen]
+
+    @property
+    def groupdicts(self):
+        return [m.groupdict for m in self.chosen]
+
     def get_match_suffix(self, args):
         if args.add_trailing_space == 'always':
             return ' '
@@ -126,7 +135,7 @@ class Hints(Handler):
                 if encode_hint(idx, self.alphabet).startswith(self.current_input)
             ]
             if len(matches) == 1:
-                self.chosen.append(matches[0].text + self.match_suffix)
+                self.chosen.append(matches[0])
                 if self.multiple:
                     self.ignore_mark_indices.add(matches[0].index)
                     self.reset()
@@ -144,7 +153,7 @@ class Hints(Handler):
         elif key_event is enter_key and self.current_input:
             try:
                 idx = decode_hint(self.current_input, self.alphabet)
-                self.chosen.append(self.index_map[idx].text + self.match_suffix)
+                self.chosen.append(self.index_map[idx])
                 self.ignore_mark_indices.add(idx)
             except Exception:
                 self.current_input = ''
@@ -176,12 +185,13 @@ class Hints(Handler):
 
 
 def regex_finditer(pat, minimum_match_length, text):
+    has_named_groups = bool(pat.groupindex)
     for m in pat.finditer(text):
-        s, e = m.span(pat.groups)
+        s, e = m.span(0 if has_named_groups else pat.groups)
         while e > s + 1 and text[e-1] == '\0':
             e -= 1
         if e - s >= minimum_match_length:
-            yield s, e
+            yield s, e, m.groupdict()
 
 
 closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>', '*': '*', '"': '"', "'": "'"}
@@ -240,11 +250,11 @@ def quotes(text, s, e):
 
 def mark(pattern, post_processors, text, args):
     pat = re.compile(pattern)
-    for idx, (s, e) in enumerate(regex_finditer(pat, args.minimum_match_length, text)):
+    for idx, (s, e, groupdict) in enumerate(regex_finditer(pat, args.minimum_match_length, text)):
         for func in post_processors:
             s, e = func(text, s, e)
         mark_text = text[s:e].replace('\n', '').replace('\0', '')
-        yield Mark(idx, s, e, mark_text)
+        yield Mark(idx, s, e, mark_text, groupdict)
 
 
 def run_loop(args, text, all_marks, index_map):
@@ -252,9 +262,9 @@ def run_loop(args, text, all_marks, index_map):
     handler = Hints(text, all_marks, index_map, args)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
-        return {'match': handler.chosen, 'programs': args.program,
+        return {'match': handler.text_matches, 'programs': args.program,
                 'multiple_joiner': args.multiple_joiner,
-                'type': args.type}
+                'type': args.type, 'groupdicts': handler.groupdicts}
     raise SystemExit(loop.return_code)
 
 
@@ -356,11 +366,14 @@ The type of text to search for.
 --regex
 default=(?m)^\s*(.+)\s*$
 The regular expression to use when :option:`kitty +kitten hints --type`=regex.
-The regular expression is in python syntax. If you specify a group in
+The regular expression is in python syntax. If you specify a numbered group in
 the regular expression only the group will be matched. This allow you to match
 text ignoring a prefix/suffix, as needed. The default expression matches lines.
 To match text over multiple lines you should prefix the regular expression with
 :code:`(?ms)`, which turns on MULTILINE and DOTALL modes for the regex engine.
+If you specify named groups and a :option:`kitty +kitten hints --program` then
+the program will be passed arguments corresponding to each named group of
+the form key=value.
 
 
 --url-prefixes
@@ -452,7 +465,10 @@ def main(args):
 
 def handle_result(args, data, target_window_id, boss):
     programs = data['programs'] or ('default',)
-    matches = tuple(filter(None, data['match']))
+    matches, groupdicts = [], []
+    for m, g in zip(data['match'], data['groupdicts']):
+        if m:
+            matches.append(m), groupdicts.append(g)
     joiner = data['multiple_joiner']
     try:
         is_int = int(joiner)
@@ -489,7 +505,11 @@ def handle_result(args, data, target_window_id, boss):
             if w is not None:
                 cwd = w.cwd_of_child
             program = None if program == 'default' else program
-            for m in matches:
+            for m, groupdict in zip(matches, groupdicts):
+                if groupdict:
+                    m = []
+                    for k, v in groupdict.items():
+                        m.append('{}={}'.format(k, v or ''))
                 boss.open_url(m, program, cwd=cwd)
 
 

@@ -164,7 +164,10 @@ def open_cmd(cmd, arg=None, cwd=None):
     import subprocess
     if arg is not None:
         cmd = list(cmd)
-        cmd.append(arg)
+        if isinstance(arg, (list, tuple)):
+            cmd.extend(arg)
+        else:
+            cmd.append(arg)
     return subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None)
 
 

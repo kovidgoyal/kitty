@@ -31,6 +31,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   it possible for programs running on the local machine to control kitty
   but not programs running over ssh.
 
+- hints kitten: Allow using named groups in the regular expression. The named
+  groups are passed to the invoked program for further processing.
+
 - Fix a regression in 0.14.5 that caused rendering of private use glyphs
   with and without spaces to be identical (:iss:`2117`)
 
