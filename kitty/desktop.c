@@ -132,13 +132,14 @@ load_libcanberra(void) {
 }
 
 void
-play_canberra_sound(const char *which_sound, const char *event_id) {
+play_canberra_sound(const char *which_sound, const char *event_id, const char *theme_name) {
     load_libcanberra();
     if (libcanberra_handle == NULL || canberra_ctx == NULL) return;
     ca_context_play(
         canberra_ctx, 0,
         "event.id", which_sound,
         "event.description", event_id,
+        "canberra.xdg-theme.name", theme_name,
         NULL
     );
 }

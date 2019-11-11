@@ -864,7 +864,7 @@ ring_audio_bell(OSWindow *w UNUSED) {
         glfwWindowBell(w->handle);
     }
 #else
-    play_canberra_sound("bell", "kitty bell");
+    play_canberra_sound("bell", "kitty bell", OPT(bell_theme_name));
 #endif
 }
 

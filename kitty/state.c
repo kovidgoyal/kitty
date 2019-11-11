@@ -401,6 +401,11 @@ convert_mods(PyObject *obj) {
     return resolve_mods(PyLong_AsLong(obj));
 }
 
+static const char *
+pyunicode_as_char(PyObject *str) {
+   return PyUnicode_AsUTF8(str);
+}
+
 static WindowTitleIn
 window_title_in(PyObject *title_in) {
     const char *in = PyUnicode_AsUTF8(title_in);
@@ -478,6 +483,7 @@ PYWRAP1(set_options) {
     S(hide_window_decorations, PyObject_IsTrue);
     S(visual_bell_duration, parse_s_double_to_monotonic_t);
     S(enable_audio_bell, PyObject_IsTrue);
+    S(bell_theme_name, pyunicode_as_char);
     S(focus_follows_mouse, PyObject_IsTrue);
     S(cursor_blink_interval, parse_s_double_to_monotonic_t);
     S(cursor_stop_blinking_after, parse_s_double_to_monotonic_t);

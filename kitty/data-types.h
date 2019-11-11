@@ -312,7 +312,7 @@ void set_special_key_combo(int glfw_key, int mods, bool is_native);
 void on_key_input(GLFWkeyevent *ev);
 void request_window_attention(id_type, bool);
 #ifndef __APPLE__
-void play_canberra_sound(const char *which_sound, const char *event_id);
+void play_canberra_sound(const char *which_sound, const char *event_id, const char *theme_name);
 #endif
 SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);
 SPRITE_MAP_HANDLE free_sprite_map(SPRITE_MAP_HANDLE);
