@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   file with color definitions. See the :doc:`FAQ <faq>` for details
   (:iss:`2083`)
 
+- hints kitten: Allow completely customizing the matching and actions performed
+  by the kitten using your own script (:iss:`2124`)
+
 - Wayland: Fix key repeat not being stopped when focus leaves window. This is
   expected behavior on Wayland, apparently (:iss:`2014`)
 

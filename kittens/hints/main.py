@@ -262,9 +262,11 @@ def run_loop(args, text, all_marks, index_map):
     handler = Hints(text, all_marks, index_map, args)
     loop.loop(handler)
     if handler.chosen and loop.return_code == 0:
-        return {'match': handler.text_matches, 'programs': args.program,
-                'multiple_joiner': args.multiple_joiner,
-                'type': args.type, 'groupdicts': handler.groupdicts}
+        return {
+            'match': handler.text_matches, 'programs': args.program,
+            'multiple_joiner': args.multiple_joiner, 'customize_processing': args.customize_processing,
+            'type': args.type, 'groupdicts': handler.groupdicts
+        }
     raise SystemExit(loop.return_code)
 
 
@@ -321,11 +323,25 @@ def parse_input(text):
     return convert_text(text, cols)
 
 
+def load_custom_processor(customize_processing):
+    from kitty.constants import config_dir
+    custom_path = os.path.join(config_dir, customize_processing)
+    import runpy
+    return runpy.run_path(custom_path, run_name='__main__')
+
+
 def run(args, text):
     try:
-        pattern, post_processors = functions_for(args)
         text = parse_input(text)
-        all_marks = tuple(mark(pattern, post_processors, text, args))
+        pattern, post_processors = functions_for(args)
+        if args.customize_processing:
+            m = load_custom_processor(args.customize_processing)
+            if 'mark' in m:
+                all_marks = tuple(m['mark'](text, args, Mark))
+            else:
+                all_marks = tuple(mark(pattern, post_processors, text, args))
+        else:
+            all_marks = tuple(mark(pattern, post_processors, text, args))
         if not all_marks:
             input(_('No {} found, press Enter to quit.').format(
                 'URLs' if args.type == 'url' else 'matches'
@@ -431,6 +447,13 @@ unless you specify the hints offset as zero the first match will be highlighted 
 the second character you specify.
 
 
+--customize-processing
+Name of a python file in the kitty config directory which will be imported to provide
+custom implementations for pattern finding and performing actions
+on selected matches. See https://sw.kovidgoyal.net/kitty/kittens/hints.html
+for details.
+
+
 '''.format(','.join(sorted(URL_PREFIXES))).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
 usage = ''
@@ -464,6 +487,11 @@ def main(args):
 
 
 def handle_result(args, data, target_window_id, boss):
+    if data['customize_processing']:
+        m = load_custom_processor(data['customize_processing'])
+        if 'handle_result' in m:
+            return m['handle_result'](args, data, target_window_id, boss)
+
     programs = data['programs'] or ('default',)
     matches, groupdicts = [], []
     for m, g in zip(data['match'], data['groupdicts']):
