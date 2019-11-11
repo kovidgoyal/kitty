@@ -7,7 +7,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.15.0 [future]
 --------------------
 
-- Add a new action :ref:`detach_window` that can be used to move the current
+- Add a new action :ref:`detach_window <detach_window>` that can be used to move the current
   window into a different tab (:iss:`1310`)
 
 - Add a new style ``powerline`` for tab bar rendering, see :opt:`tab_bar_style` (:pull:`2021`)
