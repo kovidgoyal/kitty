@@ -132,7 +132,7 @@ def text_sanitizer(as_ansi, add_wrap_markers):
 class Window:
 
     def __init__(self, tab, child, opts, args, override_title=None, copy_colors_from=None):
-        self.action_on_close = None
+        self.action_on_close = self.action_on_removal = None
         self.layout_data = None
         self.pty_resized_once = False
         self.needs_attention = False

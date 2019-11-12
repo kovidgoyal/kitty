@@ -344,15 +344,22 @@ class Boss:
         os_window_id = window.os_window_id
         window.destroy()
         tm = self.os_window_map.get(os_window_id)
-        if tm is None:
-            return
-        for tab in tm:
-            if window in tab:
-                break
-        else:
-            return
-        tab.remove_window(window)
-        self._cleanup_tab_after_window_removal(tab)
+        tab = None
+        if tm is not None:
+            for q in tm:
+                if window in q:
+                    tab = q
+                    break
+        if tab is not None:
+            tab.remove_window(window)
+            self._cleanup_tab_after_window_removal(tab)
+        if window.action_on_removal:
+            try:
+                window.action_on_removal(window)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+        window.action_on_close = window.action_on_removal = None
 
     def close_window(self, window=None):
         if window is None:
@@ -675,7 +682,7 @@ class Boss:
             output += str(s.linebuf.line(i))
         return output
 
-    def _run_kitten(self, kitten, args=(), input_data=None, window=None, custom_callback=None):
+    def _run_kitten(self, kitten, args=(), input_data=None, window=None, custom_callback=None, action_on_removal=None):
         orig_args, args = list(args), list(args)
         from kittens.runner import create_kitten_handler
         end_kitten = create_kitten_handler(kitten, orig_args)
@@ -724,7 +731,10 @@ class Boss:
                 ),
                 copy_colors_from=w
             )
-            overlay_window.action_on_close = partial(self.on_kitten_finish, w.id, custom_callback or end_kitten)
+            wid = w.id
+            overlay_window.action_on_close = partial(self.on_kitten_finish, wid, custom_callback or end_kitten)
+            if action_on_removal is not None:
+                overlay_window.action_on_removal = lambda *a: action_on_removal(wid, self)
             return overlay_window
 
     def kitten(self, kitten, *args):
@@ -1176,12 +1186,15 @@ class Boss:
         lines.append('{} {}'.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
+            done.tab_id = tab_id_map[int(data['match'][0].partition(' ')[0])]
+
+        def done2(target_window_id, self):
+            tab_id = done.tab_id
             target_window = None
             for w in self.all_windows:
                 if w.id == target_window_id:
                     target_window = w
                     break
-            tab_id = tab_id_map[int(data['match'][0].partition(' ')[0])]
             if tab_id is None:
                 self._move_window_to(window=target_window, target_os_window_id='new')
             else:
@@ -1189,7 +1202,7 @@ class Boss:
 
         self._run_kitten(
                 'hints', args=('--type=regex', r'--regex=(?m)^\d+ .+$',),
-                input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done)
+                input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2)
 
     def detach_tab(self, *args):
         if not args or args[0] == 'new':
@@ -1211,16 +1224,19 @@ class Boss:
         lines.append('{} {}'.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
+            done.os_window_id = os_window_id_map[int(data['match'][0].partition(' ')[0])]
+
+        def done2(target_window_id, self):
+            os_window_id = done.os_window_id
             target_tab = self.active_tab
             for w in self.all_windows:
                 if w.id == target_window_id:
                     target_tab = w.tabref()
                     break
-            os_window_id = os_window_id_map[int(data['match'][0].partition(' ')[0])]
             if target_tab and target_tab.os_window_id == os_window_id:
                 return
             self._move_tab_to(tab=target_tab, target_os_window_id=os_window_id)
 
         self._run_kitten(
                 'hints', args=('--type=regex', r'--regex=(?m)^\d+ .+$',),
-                input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done)
+                input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2)
