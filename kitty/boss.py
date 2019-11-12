@@ -1142,8 +1142,7 @@ class Boss:
         target_tab.make_active()
 
     def _move_tab_to(self, tab=None, target_os_window_id=None):
-        if tab is None:
-            tab = self.active_tab
+        tab = tab or self.active_tab
         if tab is None:
             return
         if target_os_window_id is None:
@@ -1169,6 +1168,12 @@ class Boss:
             if tab is not current_tab:
                 tab_id_map[i + 1] = tab.id
                 lines.append('{} {}'.format(i + 1, tab.title))
+        new_idx = len(tab_id_map) + 1
+        tab_id_map[new_idx] = 'new'
+        lines.append('{} {}'.format(new_idx, 'New tab'))
+        new_idx = len(tab_id_map) + 1
+        tab_id_map[new_idx] = None
+        lines.append('{} {}'.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
             target_window = None
@@ -1177,7 +1182,10 @@ class Boss:
                     target_window = w
                     break
             tab_id = tab_id_map[int(data['match'][0].partition(' ')[0])]
-            self._move_window_to(window=target_window, target_tab_id=tab_id)
+            if tab_id is None:
+                self._move_window_to(window=target_window, target_os_window_id='new')
+            else:
+                self._move_window_to(window=target_window, target_tab_id=tab_id)
 
         self._run_kitten(
                 'hints', args=('--type=regex', r'--regex=(?m)^\d+ .+$',),
@@ -1198,9 +1206,12 @@ class Boss:
             if current_os_window != osw and tm.active_tab and tm.active_tab:
                 os_window_id_map[i + 1] = osw
                 lines.append('{} {}'.format(i + 1, tm.active_tab.title))
+        new_idx = len(os_window_id_map) + 1
+        os_window_id_map[new_idx] = None
+        lines.append('{} {}'.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
-            target_tab = None
+            target_tab = self.active_tab
             for w in self.all_windows:
                 if w.id == target_window_id:
                     target_tab = w.tabref()
