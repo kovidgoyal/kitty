@@ -134,7 +134,7 @@ To the ``handle_result()`` function, above.
 Debugging kittens
 --------------------
 
-The part of the kitten that runs in ``main()`` is just a normal programs and
+The part of the kitten that runs in ``main()`` is just a normal program and
 the output of print statements will be visible in the kitten window. Or
 alternately, you can use::
 
