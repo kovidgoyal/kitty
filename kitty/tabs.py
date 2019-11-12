@@ -75,7 +75,7 @@ class Tab:  # {{{
             self.startup(session_tab)
 
     def take_over_from(self, other_tab):
-        self.name = getattr(other_tab, 'name', '')
+        self.name, self.cwd = other_tab.name, other_tab.cwd
         self.enabled_layouts = list(other_tab.enabled_layouts)
         self._set_current_layout(other_tab._current_layout_name)
         self._last_used_layout = other_tab._last_used_layout
