@@ -73,6 +73,26 @@ class Tab:  # {{{
             self._set_current_layout(l0)
             self.startup(session_tab)
 
+    def take_over_from(self, other_tab):
+        self.name = getattr(other_tab, 'name', '')
+        self.enabled_layouts = list(other_tab.enabled_layouts)
+        self._set_current_layout(other_tab._current_layout_name)
+        self._last_used_layout = other_tab._last_used_layout
+
+        orig_windows = deque(other_tab.windows)
+        orig_history = deque(other_tab.active_window_history)
+        orig_active = other_tab._active_window_idx
+        while other_tab.windows:
+            underlaid_window, overlaid_window = other_tab.detach_window(other_tab.windows[0])
+            if underlaid_window:
+                self.attach_window(underlaid_window)
+            if overlaid_window:
+                self.attach_window(overlaid_window)
+
+        self.active_window_history = orig_history
+        self.windows = orig_windows
+        self._active_window_idx = orig_active
+
     def _set_current_layout(self, layout_name):
         self._last_used_layout = self._current_layout_name
         self.current_layout = self.create_layout_object(layout_name)

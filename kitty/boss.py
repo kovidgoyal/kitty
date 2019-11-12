@@ -1141,6 +1141,19 @@ class Boss:
         self._cleanup_tab_after_window_removal(src_tab)
         target_tab.make_active()
 
+    def _move_tab_to(self, tab=None, target_os_window_id=None):
+        if tab is None:
+            tab = self.active_tab
+        if tab is None:
+            return
+        if target_os_window_id is None:
+            target_os_window_id = self.add_os_window()
+        tm = self.os_window_map[target_os_window_id]
+        target_tab = tm.new_tab(empty_tab=True)
+        target_tab.take_over_from(tab)
+        self._cleanup_tab_after_window_removal(tab)
+        target_tab.make_active()
+
     def detach_window(self, *args):
         if not args or args[0] == 'new':
             return self._move_window_to(target_os_window_id='new')
@@ -1151,9 +1164,11 @@ class Boss:
             ''
         ]
         tab_id_map = {}
+        current_tab = self.active_tab
         for i, tab in enumerate(self.all_tabs):
-            tab_id_map[i + 1] = tab.id
-            lines.append('{} {}'.format(i + 1, tab.title))
+            if tab is not current_tab:
+                tab_id_map[i + 1] = tab.id
+                lines.append('{} {}'.format(i + 1, tab.title))
 
         def done(data, target_window_id, self):
             target_window = None
@@ -1163,6 +1178,37 @@ class Boss:
                     break
             tab_id = tab_id_map[int(data['match'][0].partition(' ')[0])]
             self._move_window_to(window=target_window, target_tab_id=tab_id)
+
+        self._run_kitten(
+                'hints', args=('--type=regex', r'--regex=(?m)^\d+ .+$',),
+                input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done)
+
+    def detach_tab(self, *args):
+        if not args or args[0] == 'new':
+            return self._move_tab_to()
+
+        lines = [
+            'Choose an OS window to move the tab to',
+            ''
+        ]
+        os_window_id_map = {}
+        current_os_window = getattr(self.active_tab, 'os_window_id', 0)
+        for i, osw in enumerate(self.os_window_map):
+            tm = self.os_window_map[osw]
+            if current_os_window != osw and tm.active_tab and tm.active_tab:
+                os_window_id_map[i + 1] = osw
+                lines.append('{} {}'.format(i + 1, tm.active_tab.title))
+
+        def done(data, target_window_id, self):
+            target_tab = None
+            for w in self.all_windows:
+                if w.id == target_window_id:
+                    target_tab = w.tabref()
+                    break
+            os_window_id = os_window_id_map[int(data['match'][0].partition(' ')[0])]
+            if target_tab and target_tab.os_window_id == os_window_id:
+                return
+            self._move_tab_to(tab=target_tab, target_os_window_id=os_window_id)
 
         self._run_kitten(
                 'hints', args=('--type=regex', r'--regex=(?m)^\d+ .+$',),

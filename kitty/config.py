@@ -99,6 +99,13 @@ def detach_window_parse(func, rest):
     return func, (rest,)
 
 
+@func_with_args('detach_tab')
+def detach_tab_parse(func, rest):
+    if rest not in ('new', 'ask'):
+        rest = 'new'
+    return func, (rest,)
+
+
 @func_with_args('set_background_opacity', 'goto_layout', 'kitty_shell')
 def simple_parse(func, rest):
     return func, [rest]
