@@ -11,7 +11,9 @@ from kitty.fast_data_types import (
     test_render_line, test_sprite_position_for, wcwidth
 )
 from kitty.fonts.box_drawing import box_chars
-from kitty.fonts.render import render_string, setup_for_testing, shape_string
+from kitty.fonts.render import (
+    coalesce_symbol_maps, render_string, setup_for_testing, shape_string
+)
 
 from . import BaseTest
 
@@ -122,3 +124,7 @@ class Rendering(BaseTest):
         finally:
             sys.stderr = orig
         self.assertIn('LastResort', buf.getvalue())
+
+    def test_coalesce_symbol_maps(self):
+        q = {(2, 3): 'a', (4, 6): 'b', (5, 5): 'b', (7, 7): 'b', (9, 9): 'b', (1, 1): 'a'}
+        self.ae(coalesce_symbol_maps(q), {(1, 3): 'a', (4, 7): 'b', (9, 9): 'b'})
