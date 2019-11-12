@@ -142,7 +142,7 @@ alternately, you can use::
     debug('whatever')
 
 The ``debug()`` function is just like ``print()`` except that the output
-will appear in the stdout of the kitty process inside which the kitten is
+will appear in the ``STDOUT`` of the kitty process inside which the kitten is
 running.
 
 The ``handle_result()`` part of the kitten runs inside the kitty process.
