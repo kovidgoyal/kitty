@@ -57,10 +57,10 @@ class Tab:  # {{{
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
         self._last_used_layout = self._current_layout_name = None
+        self.cwd = self.args.directory
         if no_initial_window:
             self._set_current_layout(self.enabled_layouts[0])
         elif session_tab is None:
-            self.cwd = self.args.directory
             sl = self.enabled_layouts[0]
             self._set_current_layout(sl)
             if special_window is None:
@@ -68,7 +68,8 @@ class Tab:  # {{{
             else:
                 self.new_special_window(special_window)
         else:
-            self.cwd = session_tab.cwd or self.args.directory
+            if session_tab.cwd:
+                self.cwd = session_tab.cwd
             l0 = session_tab.layout
             self._set_current_layout(l0)
             self.startup(session_tab)
