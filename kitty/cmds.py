@@ -375,6 +375,56 @@ def set_tab_title(boss, window, payload):
 # }}}
 
 
+# detach_window {{{
+@cmd(
+    'Detach a window and place it in a different/new tab',
+    'Detach the specified window and either move it into a new tab, a new OS window'
+    ' or add it to the specified tab. Use the special value :code:`new` for --target-tab'
+    ' to move to a new tab. If no target tab is specified the window is moved to a new OS window.',
+    options_spec=MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--target-tab -t') + '''\n
+--self
+type=bool-set
+If specified detach the window this command is run in, rather than the active window.
+''',
+    argspec=''
+)
+def cmd_detach_window(global_opts, opts, args):
+    '''
+    match: Which window to detach
+    target: Which tab to move the detached window to
+    self: Boolean indicating whether to detach the window the command is run in
+    '''
+    return {'match': opts.match, 'target': opts.target_tab, 'self': opts.self}
+
+
+def detach_window(boss, window, payload):
+    pg = cmd_detach_window.payload_get
+    match = pg(payload, 'match')
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise MatchError(match)
+    else:
+        windows = [window if window and pg(payload, 'self') else boss.active_window]
+    match = pg(payload, 'target_tab')
+    kwargs = {}
+    if match:
+        if match == 'new':
+            kwargs['target_tab_id'] = 'new'
+        else:
+            tabs = tuple(boss.match_tabs(match))
+            if not tabs:
+                raise MatchError(match, 'tabs')
+            kwargs['target_tab_id'] = tabs[0].id
+    if not kwargs:
+        kwargs['target_os_window_id'] = 'new'
+
+    for window in windows:
+        boss._move_window_to(window=window, **kwargs)
+
+# }}}
+
+
 # goto_layout {{{
 @cmd(
     'Set the window layout',
