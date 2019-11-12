@@ -83,16 +83,17 @@ class Tab:  # {{{
         orig_windows = deque(other_tab.windows)
         orig_history = deque(other_tab.active_window_history)
         orig_active = other_tab._active_window_idx
-        while other_tab.windows:
-            underlaid_window, overlaid_window = other_tab.detach_window(other_tab.windows[0])
-            if underlaid_window:
-                self.attach_window(underlaid_window)
-            if overlaid_window:
-                self.attach_window(overlaid_window)
-
+        for window in other_tab.windows:
+            detach_window(other_tab.os_window_id, other_tab.id, window.id)
+        other_tab.windows = deque()
+        other_tab._active_window_idx = 0
         self.active_window_history = orig_history
         self.windows = orig_windows
         self._active_window_idx = orig_active
+        for window in self.windows:
+            window.change_tab(self)
+            attach_window(self.os_window_id, self.id, window.id)
+        self.relayout()
 
     def _set_current_layout(self, layout_name):
         self._last_used_layout = self._current_layout_name
