@@ -69,7 +69,7 @@ Now run kitty with::
 
     kitty -o 'map f1 kitten hints --customize-processing custom-hints.py'
 
-and when you press the :kbd:`F1` key you will be able to select a word to
+When you press the :kbd:`F1` key you will be able to select a word to
 look it up in the Google dictionary.
 
 
