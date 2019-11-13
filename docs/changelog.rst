@@ -10,7 +10,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a new action :ref:`detach_window <detach_window>` that can be used to move the current
   window into a different tab (:iss:`1310`)
 
-- Add a new action :doc:`launch <launch>` that unifies launching of proceses
+- Add a new action :doc:`launch <launch>` that unifies launching of processes
   in new kitty windows/tabs.
 
 - Add a new style ``powerline`` for tab bar rendering, see :opt:`tab_bar_style` (:pull:`2021`)
