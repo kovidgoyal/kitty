@@ -76,6 +76,33 @@ control kitty. It can, however, be useful to block programs running on other
 computers (for example, over ssh) or as other users.
 
 
+--stdin-source
+type=choices
+default=none
+choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollback
+Pass the screen contents as :code:`STDIN` to the child process. @selection is
+the currently selected text. @screen is the contents of the currently active
+window. @screen_scrollback is the same as @screen, but includes the scrollback
+buffer as well. @alternate is the secondary screen of the current active
+window. For example if you run a full screen terminal application, the
+secondary screen will be the screen you return to when quitting the
+application.
+
+
+--stdin-add-formatting
+type=bool-set
+When using :code:`--stdin-source` add formatting escape codes, without this
+only plain text will be sent.
+
+
+--stdin-add-line-wrap-markers
+type=bool-set
+When using :code:`--stdin-source` add a carriage return at every line wrap
+location (where long lines are wrapped at screen edges). This is useful if you
+want to pipe to program that wants to duplicate the screen layout of the
+screen.
+
+
 '''
         options_spec.ans = OPTIONS
     return options_spec.ans
@@ -117,8 +144,8 @@ def launch(boss, opts, args):
         tab = boss.active_tab
     active = boss.active_window_for_cwd
     active_child = getattr(active, 'child', None)
+    env = get_env(opts, active_child)
     kw = {
-        'env': get_env(opts, active_child) or None,
         'allow_remote_control': opts.allow_remote_control
     }
     if opts.cwd:
@@ -140,5 +167,14 @@ def launch(boss, opts, args):
         kw['cmd'] = cmd
     if opts.type == 'overlay' and active and not active.overlay_window_id:
         kw['overlay_for'] = active.id
+    if opts.stdin_source:
+        q = opts.stdin_source
+        if opts.stdin_add_line_wrap_markers:
+            q += '_wrap'
+        penv, stdin = boss.process_stdin_source(window=active, stdin=q)
+        if stdin:
+            kw['stdin'] = stdin
+            if penv:
+                env.update(penv)
 
-    return tab.new_window(**kw)
+    return tab.new_window(env=env or None, **kw)
