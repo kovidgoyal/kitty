@@ -60,7 +60,7 @@ contents:
         for m, g in zip(data['match'], data['groupdicts']):
             if m:
                 matches.append(m), groupdicts.append(g)
-        for word, data in zip(matches, groupdicts):
+        for word, match_data in zip(matches, groupdicts):
             # Lookup the word in a dictionary, the open_url function
             # will open the provided url in the system browser
             boss.open_url(f'https://www.google.com/search?q=define:{word}')
