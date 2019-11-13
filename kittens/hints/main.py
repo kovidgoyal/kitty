@@ -257,7 +257,7 @@ def mark(pattern, post_processors, text, args):
         yield Mark(idx, s, e, mark_text, groupdict)
 
 
-def run_loop(args, text, all_marks, index_map):
+def run_loop(args, text, all_marks, index_map, extra_cli_args=()):
     loop = Loop()
     handler = Hints(text, all_marks, index_map, args)
     loop.loop(handler)
@@ -265,7 +265,7 @@ def run_loop(args, text, all_marks, index_map):
         return {
             'match': handler.text_matches, 'programs': args.program,
             'multiple_joiner': args.multiple_joiner, 'customize_processing': args.customize_processing,
-            'type': args.type, 'groupdicts': handler.groupdicts
+            'type': args.type, 'groupdicts': handler.groupdicts, 'extra_cli_args': extra_cli_args
         }
     raise SystemExit(loop.return_code)
 
@@ -330,14 +330,14 @@ def load_custom_processor(customize_processing):
     return runpy.run_path(custom_path, run_name='__main__')
 
 
-def run(args, text):
+def run(args, text, extra_cli_args=()):
     try:
         text = parse_input(text)
         pattern, post_processors = functions_for(args)
         if args.customize_processing:
             m = load_custom_processor(args.customize_processing)
             if 'mark' in m:
-                all_marks = tuple(m['mark'](text, args, Mark))
+                all_marks = tuple(m['mark'](text, args, Mark, extra_cli_args))
             else:
                 all_marks = tuple(mark(pattern, post_processors, text, args))
         else:
@@ -359,7 +359,7 @@ def run(args, text):
         input('Press Enter to quit.')
         raise SystemExit(1)
 
-    return run_loop(args, text, all_marks, index_map)
+    return run_loop(args, text, all_marks, index_map, extra_cli_args)
 
 
 # CLI {{{
@@ -480,17 +480,17 @@ def main(args):
             print(e.args[0], file=sys.stderr)
             input(_('Press Enter to quit'))
         return
-    if items:
+    if items and not args.customize_processing:
         print('Extra command line arguments present: {}'.format(' '.join(items)), file=sys.stderr)
         input(_('Press Enter to quit'))
-    return run(args, text)
+    return run(args, text, items)
 
 
 def handle_result(args, data, target_window_id, boss):
     if data['customize_processing']:
         m = load_custom_processor(data['customize_processing'])
         if 'handle_result' in m:
-            return m['handle_result'](args, data, target_window_id, boss)
+            return m['handle_result'](args, data, target_window_id, boss, data['extra_cli_args'])
 
     programs = data['programs'] or ('default',)
     matches, groupdicts = [], []

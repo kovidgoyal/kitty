@@ -38,9 +38,10 @@ contents:
 
     import re
 
-    def mark(text, args, Mark, *a):
+    def mark(text, args, Mark, extra_cli_args, *a):
         # This function is responsible for finding all
-        # matching text.
+        # matching text. extra_cli_args are any extra arguments
+        # passed on the command line when invoking the kitten.
         # We mark all individual word for potential selection
         for idx, m in enumerate(re.finditer(r'\w+', text)):
             start, end = m.span()
@@ -50,7 +51,7 @@ contents:
             yield Mark(idx, start, end, mark_text, {})
 
 
-    def handle_result(args, data, target_window_id, boss):
+    def handle_result(args, data, target_window_id, boss, extra_cli_args, *a):
         # This function is responsible for performing some
         # action on the selected text.
         # matches is a list of the selected entries and groupdicts contains
