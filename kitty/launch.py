@@ -4,6 +4,8 @@
 
 
 from kitty.cli import parse_args
+from kitty.fast_data_types import set_clipboard_string
+from kitty.utils import set_primary_selection
 
 
 def options_spec():
@@ -22,11 +24,14 @@ of the actie window in the tab is used as the tab title.
 --type
 type=choices
 default=window
-choices=window,tab,os-window,overlay
+choices=window,tab,os-window,overlay,background,clipboard,primary
 Where to launch the child process, in a new kitty window in the current tab,
 a new tab, or a new OS window or an overlay over the current window.
 Note that if the current window already has an overlay, then it will
-open a new window.
+open a new window. The value of none means the process will be
+run in the background. The values clipboard and primary are meant
+to work with :option:`launch --stdin-source` to copy data to the system
+clipboard or primary selection.
 
 
 --keep-focus
@@ -197,8 +202,15 @@ def launch(boss, opts, args, target_tab=None):
             if penv:
                 env.update(penv)
 
-    tab = tab_for_window(boss, opts, target_tab)
-    new_window = tab.new_window(env=env or None, **kw)
-    if opts.keep_focus and active:
-        boss.set_active_window(active, switch_os_window_if_needed=True)
-    return new_window
+    if opts.type == 'background':
+        boss.run_background_process(kw['cmd'], cwd=kw.get('cwd'), cwd_from=kw.get('cwd_from'), env=env or None, stdin=kw.get('stdin'))
+    elif opts.type in ('clipboard', 'primary'):
+        if 'stdin' in kw:
+            func = set_clipboard_string if opts.type == 'clipboard' else set_primary_selection
+            func(kw['stdin'])
+    else:
+        tab = tab_for_window(boss, opts, target_tab)
+        new_window = tab.new_window(env=env or None, **kw)
+        if opts.keep_focus and active:
+            boss.set_active_window(active, switch_os_window_if_needed=True)
+        return new_window

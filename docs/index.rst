@@ -415,7 +415,7 @@ comfortably within the pager.
 Additionally, you can pipe the contents of the scrollback buffer to an
 arbitrary, command running in a new window, tab or overlay, for example::
 
-   map f1 pipe @ansi window less +G -R
+   map f1 launch --stdin-source=@screen_scrollback --stdin-add-formatting less +G -R
 
 Would open the scrollback buffer in a new window when you press the :kbd:`F1`
 key. See :sc:`show_scrollback` for details.

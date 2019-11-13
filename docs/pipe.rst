@@ -1,6 +1,9 @@
 Working with the screen and history buffer contents
 ======================================================
 
+.. warning::
+    The pipe action has been deprecated in favor of the
+    :doc:`launch <launch>` action which is more powerful.
 
 You can pipe the contents of the current screen and history buffer as
 :file:`STDIN` to an arbitrary program using the ``pipe`` function. The program

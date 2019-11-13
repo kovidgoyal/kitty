@@ -1073,13 +1073,13 @@ if is_macos:
 k('show_scrollback', 'kitty_mod+h', 'show_scrollback', _('Browse scrollback buffer in less'), long_text=_('''
 
 You can pipe the contents of the current screen + history buffer as
-:file:`STDIN` to an arbitrary program using the ``pipe`` function. For example,
+:file:`STDIN` to an arbitrary program using the ``launch`` function. For example,
 the following opens the scrollback buffer in less in an overlay window::
 
-    map f1 pipe @ansi overlay less +G -R
+    map f1 launch --stdin-source=@screen_scrollback --stdin-add-formatting --type=overlay less +G -R
 
 For more details on piping screen and buffer contents to external programs,
-see :doc:`pipe`.
+see :doc:`launch`.
 '''))
 
 

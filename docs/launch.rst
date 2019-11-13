@@ -35,6 +35,20 @@ To pass the contents of the current screen and scrollback to the started process
 
 There are many more powerful options, refer to the complete list below.
 
+The piping environment
+--------------------------
+
+When using :option:`launch --stdin-source`, the program to which the data is
+piped has a special environment variable declared, ``KITTY_PIPE_DATA`` whose
+contents are::
+
+   KITTY_PIPE_DATA={scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}
+
+where ``scrolled_by`` is the number of lines kitty is currently scrolled by,
+``cursor_(x|y)`` is the position of the cursor on the screen with ``(1,1)``
+being the top left corner and ``{lines},{columns}`` being the number of rows
+and columns of the screen.
+
 
 Syntax reference
 ------------------

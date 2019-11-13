@@ -914,6 +914,25 @@ class Boss:
         overlay_for = w.id if as_overlay and w.overlay_for is None else None
         return SpecialWindow(cmd, stdin, cwd_from=cwd_from, overlay_for=overlay_for, env=env)
 
+    def run_background_process(self, cmd, cwd=None, env=None, stdin=None, cwd_from=None):
+        import subprocess
+        if cwd_from:
+            with suppress(Exception):
+                cwd = cwd_of_process(cwd_from)
+
+        if stdin:
+            r, w = safe_pipe(False)
+            try:
+                subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd)
+            except Exception:
+                os.close(w)
+            else:
+                thread_write(w, stdin)
+            finally:
+                os.close(r)
+        else:
+            subprocess.Popen(cmd, env=env, cwd=cwd)
+
     def pipe(self, source, dest, exe, *args):
         cmd = [exe] + list(args)
         window = self.active_window
@@ -939,24 +958,8 @@ class Boss:
                 func = set_clipboard_string if dest == 'clipboard' else set_primary_selection
                 func(stdin)
         else:
-            import subprocess
             env, stdin = self.process_stdin_source(stdin=source, window=window)
-            cwd = None
-            if cwd_from:
-                with suppress(Exception):
-                    cwd = cwd_of_process(cwd_from)
-            if stdin:
-                r, w = safe_pipe(False)
-                try:
-                    subprocess.Popen(cmd, env=env, stdin=r, cwd=cwd)
-                except Exception:
-                    os.close(w)
-                else:
-                    thread_write(w, stdin)
-                finally:
-                    os.close(r)
-            else:
-                subprocess.Popen(cmd, env=env, cwd=cwd)
+            self.run_background_process(cmd, cwd_from=cwd_from, stdin=stdin, env=env)
 
     def args_to_special_window(self, args, cwd_from=None):
         args = list(args)

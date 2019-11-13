@@ -792,7 +792,7 @@ Do not print out the id of the newly created window.
 type=bool-set
 If specified the tab containing the window this command is run in is used
 instead of the active tab
-    ''' + '\n\n' + launch_options_spec(),
+    ''' + '\n\n' + launch_options_spec().replace(':option:`launch', ':option:`kitty @ launch'),
     argspec='[CMD ...]'
 )
 def cmd_launch(global_opts, opts, args):
@@ -841,7 +841,7 @@ def launch(boss, window, payload):
             tabs = [window.tabref()]
     tab = tabs[0]
     w = do_launch(boss, opts, pg(payload, 'args') or None, target_tab=tab)
-    return None if pg(payload, 'no_response') else str(w.id)
+    return None if pg(payload, 'no_response') else str(getattr(w, 'id', 0))
 # }}}
 
 
