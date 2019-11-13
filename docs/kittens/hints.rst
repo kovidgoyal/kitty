@@ -65,7 +65,7 @@ contents:
             # will open the provided url in the system browser
             boss.open_url(f'https://www.google.com/search?q=define:{word}')
 
-Nor run kitty with::
+Now run kitty with::
 
     kitty -o 'map f1 kitten hints --customize-processing custom-hints.py'
 
