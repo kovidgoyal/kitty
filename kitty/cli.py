@@ -423,8 +423,8 @@ class Options:
 class Namespace:
 
     def __init__(self, kwargs):
-        for name in kwargs:
-            setattr(self, name, kwargs[name])
+        for name, val in kwargs.items():
+            setattr(self, name, val)
 
 
 def parse_cmdline(oc, disabled, args=None):
