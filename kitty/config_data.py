@@ -1089,26 +1089,27 @@ g('shortcuts.window')  # {{{
 k('new_window', 'kitty_mod+enter', 'new_window', _(''), long_text=_('''
 You can open a new window running an arbitrary program, for example::
 
-    map kitty_mod+y      new_window mutt
+    map kitty_mod+y      launch mutt
 
 You can open a new window with the current working directory set to the
 working directory of the current window using::
 
-    map ctrl+alt+enter    new_window_with_cwd
+    map ctrl+alt+enter    launch --cwd=current
 
 You can open a new window that is allowed to control kitty via
 the kitty remote control facility by prefixing the command line with @.
 Any programs running in that window will be allowed to control kitty.
 For example::
 
-    map ctrl+enter new_window @ some_program
+    map ctrl+enter launch --allow-remote-control some_program
 
 You can open a new window next to the currently active window or as the first window,
 with::
 
-    map ctrl+n new_window !neighbor some_program
-    map ctrl+f new_window !first some_program
+    map ctrl+n launch --location=neighbor some_program
+    map ctrl+f launch --location=first some_program
 
+For more details, see :doc:`launch`.
 '''))
 if is_macos:
     k('new_window', 'cmd+enter', 'new_window', _('New window'), add_to_docs=False)

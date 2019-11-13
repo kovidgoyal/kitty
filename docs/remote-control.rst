@@ -126,7 +126,7 @@ If you do not want to allow all programs running in |kitty| to control it, you c
 enable remote control for only some |kitty| windows. Simply create a shortcut
 such as::
 
-    map ctrl+k new_window @ some_program
+    map ctrl+k launch --allow-remote-control some_program
 
 Then programs running in windows created with that shortcut can use ``kitty @``
 to control kitty. Note that any program with the right level of permissions can
