@@ -29,6 +29,12 @@ Note that if the current window already has an overlay, then it will
 open a new window.
 
 
+--keep-focus
+type=bool-set
+Keep the focus on the currently active window instead of switching
+to the newly opened window.
+
+
 --cwd
 The working directory for the newly launched child. Use the special value
 :code:`current` to use the working directory of the currently active window.
@@ -91,13 +97,13 @@ application.
 
 --stdin-add-formatting
 type=bool-set
-When using :code:`--stdin-source` add formatting escape codes, without this
+When using :option:`launch --stdin-source` add formatting escape codes, without this
 only plain text will be sent.
 
 
 --stdin-add-line-wrap-markers
 type=bool-set
-When using :code:`--stdin-source` add a carriage return at every line wrap
+When using :option:`launch --stdin-source` add a carriage return at every line wrap
 location (where long lines are wrapped at screen edges). This is useful if you
 want to pipe to program that wants to duplicate the screen layout of the
 screen.
@@ -184,4 +190,7 @@ def launch(boss, opts, args):
             if penv:
                 env.update(penv)
 
-    return tab.new_window(env=env or None, **kw)
+    new_window = tab.new_window(env=env or None, **kw)
+    if opts.keep_focus and active:
+        boss.set_active_window(active)
+    return new_window
