@@ -134,9 +134,7 @@ def get_env(opts, active_child):
     return env
 
 
-def launch(boss, opts, args, target_tab=None):
-    active = boss.active_window_for_cwd
-    active_child = getattr(active, 'child', None)
+def tab_for_window(boss, opts, target_tab=None):
     if opts.type == 'tab':
         tm = boss.active_tab_manager
         tab = tm.new_tab(empty_tab=True)
@@ -150,6 +148,13 @@ def launch(boss, opts, args, target_tab=None):
             tab.set_title(opts.tab_title)
     else:
         tab = target_tab or boss.active_tab
+
+    return tab
+
+
+def launch(boss, opts, args, target_tab=None):
+    active = boss.active_window_for_cwd
+    active_child = getattr(active, 'child', None)
     env = get_env(opts, active_child)
     kw = {
         'allow_remote_control': opts.allow_remote_control
@@ -190,6 +195,7 @@ def launch(boss, opts, args, target_tab=None):
             if penv:
                 env.update(penv)
 
+    tab = tab_for_window(boss, opts, target_tab)
     new_window = tab.new_window(env=env or None, **kw)
     if opts.keep_focus and active:
         boss.set_active_window(active)
