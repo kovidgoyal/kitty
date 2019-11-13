@@ -70,7 +70,9 @@ type=choices
 default=last
 choices=first,neighbor,last
 Where to place the newly created window when it is added to a tab which
-already has existing windows in it.
+already has existing windows in it. Also applies to creating a new tab,
+where the value of neighbor will cause the new tab to be placed next to
+the current tab instead of at the end.
 
 
 --allow-remote-control
@@ -137,7 +139,7 @@ def get_env(opts, active_child):
 def tab_for_window(boss, opts, target_tab=None):
     if opts.type == 'tab':
         tm = boss.active_tab_manager
-        tab = tm.new_tab(empty_tab=True)
+        tab = tm.new_tab(empty_tab=True, as_neighbor=opts.location == 'neighbor')
         if opts.tab_title:
             tab.set_title(opts.tab_title)
     elif opts.type == 'os-window':
