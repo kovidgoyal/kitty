@@ -896,6 +896,9 @@ class Boss:
                 stdin = stdin.encode('utf-8')
         return env, stdin
 
+    def data_for_at(self, which, window=None, add_wrap_markers=False):
+        return data_for_at(window or self.active_window, which, add_wrap_markers=add_wrap_markers)
+
     def special_window_for_cmd(self, cmd, window=None, stdin=None, cwd_from=None, as_overlay=False):
         w = window or self.active_window
         env, stdin = self.process_stdin_source(w, stdin)

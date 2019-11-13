@@ -164,7 +164,14 @@ def launch(boss, opts, args):
     if opts.copy_cmdline and active_child:
         cmd = active_child.foreground_cmdline
     if cmd:
-        kw['cmd'] = cmd
+        final_cmd = []
+        for x in cmd:
+            if x == '@selection' and active and not opts.copy_cmdline:
+                s = boss.data_for_at(active, x)
+                if s:
+                    x = s
+            final_cmd.append(x)
+        kw['cmd'] = final_cmd
     if opts.type == 'overlay' and active and not active.overlay_window_id:
         kw['overlay_for'] = active.id
     if opts.stdin_source:

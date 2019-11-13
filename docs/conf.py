@@ -249,7 +249,9 @@ def write_cli_docs(all_kitten_names):
         f.write(option_spec_as_rst(
             appname='launch', ospec=launch_options_spec, heading_char='_',
             message='''\
-Launch an arbitrary program in a new kitty window/tab
+Launch an arbitrary program in a new kitty window/tab. Note that
+if you specify a program-to-run you can use the special placeholder
+:code:`@selection` which will be replaced by the current selection.
 '''
         ))
     with open('generated/cli-kitty.rst', 'w') as f:
