@@ -114,7 +114,7 @@ screen.
     return options_spec.ans
 
 
-def parse_launch_args(args):
+def parse_launch_args(args=None):
     args = list(args or ())
     try:
         opts, args = parse_args(args=args, ospec=options_spec)
@@ -134,7 +134,9 @@ def get_env(opts, active_child):
     return env
 
 
-def launch(boss, opts, args):
+def launch(boss, opts, args, target_tab=None):
+    active = boss.active_window_for_cwd
+    active_child = getattr(active, 'child', None)
     if opts.type == 'tab':
         tm = boss.active_tab_manager
         tab = tm.new_tab(empty_tab=True)
@@ -147,9 +149,7 @@ def launch(boss, opts, args):
         if opts.tab_title:
             tab.set_title(opts.tab_title)
     else:
-        tab = boss.active_tab
-    active = boss.active_window_for_cwd
-    active_child = getattr(active, 'child', None)
+        tab = target_tab or boss.active_tab
     env = get_env(opts, active_child)
     kw = {
         'allow_remote_control': opts.allow_remote_control
@@ -180,7 +180,7 @@ def launch(boss, opts, args):
         kw['cmd'] = final_cmd
     if opts.type == 'overlay' and active and not active.overlay_window_id:
         kw['overlay_for'] = active.id
-    if opts.stdin_source:
+    if opts.stdin_source and opts.stdin_source != 'none':
         q = opts.stdin_source
         if opts.stdin_add_line_wrap_markers:
             q += '_wrap'
