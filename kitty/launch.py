@@ -22,9 +22,11 @@ of the actie window in the tab is used as the tab title.
 --type
 type=choices
 default=window
-choices=window,tab,os-window
+choices=window,tab,os-window,overlay
 Where to launch the child process, in a new kitty window in the current tab,
-a new tab, or a new OS window.
+a new tab, or a new OS window or an overlay over the current window.
+Note that if the current window already has an overlay, then it will
+open a new window.
 
 
 --cwd
@@ -136,5 +138,7 @@ def launch(boss, opts, args):
         cmd = active_child.foreground_cmdline
     if cmd:
         kw['cmd'] = cmd
+    if opts.type == 'overlay' and active and not active.overlay_window_id:
+        kw['overlay_for'] = active.id
 
     return tab.new_window(**kw)
