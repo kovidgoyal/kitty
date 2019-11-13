@@ -140,6 +140,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetWindowAspectRatio_impl) = dlsym(handle, "glfwSetWindowAspectRatio");
     if (glfwSetWindowAspectRatio_impl == NULL) fail("Failed to load glfw function glfwSetWindowAspectRatio with error: %s", dlerror());
 
+    *(void **) (&glfwSetWindowSizeIncrements_impl) = dlsym(handle, "glfwSetWindowSizeIncrements");
+    if (glfwSetWindowSizeIncrements_impl == NULL) fail("Failed to load glfw function glfwSetWindowSizeIncrements with error: %s", dlerror());
+
     *(void **) (&glfwSetWindowSize_impl) = dlsym(handle, "glfwSetWindowSize");
     if (glfwSetWindowSize_impl == NULL) fail("Failed to load glfw function glfwSetWindowSize with error: %s", dlerror());
 

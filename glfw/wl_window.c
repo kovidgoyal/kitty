@@ -1028,6 +1028,13 @@ void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window UNUSED,
     // The actual limits are checked in the xdg_toplevel::configure handler.
 }
 
+void _glfwPlatformSetWindowSizeIncrements(_GLFWwindow* window UNUSED,
+                                          int widthincr UNUSED, int heightincr UNUSED)
+{
+    // TODO: find out how to trigger a resize.
+    // The actual limits are checked in the xdg_toplevel::configure handler.
+}
+
 void _glfwPlatformGetFramebufferSize(_GLFWwindow* window,
                                      int* width, int* height)
 {

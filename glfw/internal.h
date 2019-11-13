@@ -418,6 +418,7 @@ struct _GLFWwindow
     int                 minwidth, minheight;
     int                 maxwidth, maxheight;
     int                 numer, denom;
+    int                 widthincr, heightincr;
 
     bool                stickyKeys;
     bool                stickyMouseButtons;
@@ -682,6 +683,7 @@ void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
                                       int minwidth, int minheight,
                                       int maxwidth, int maxheight);
 void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window, int numer, int denom);
+void _glfwPlatformSetWindowSizeIncrements(_GLFWwindow* window, int widthincr, int heightincr);
 void _glfwPlatformGetFramebufferSize(_GLFWwindow* window, int* width, int* height);
 void _glfwInputLiveResize(_GLFWwindow* window, bool started);
 void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,

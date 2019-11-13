@@ -1750,6 +1750,10 @@ typedef void (*glfwSetWindowAspectRatio_func)(GLFWwindow*, int, int);
 glfwSetWindowAspectRatio_func glfwSetWindowAspectRatio_impl;
 #define glfwSetWindowAspectRatio glfwSetWindowAspectRatio_impl
 
+typedef void (*glfwSetWindowSizeIncrements_func)(GLFWwindow*, int, int);
+glfwSetWindowSizeIncrements_func glfwSetWindowSizeIncrements_impl;
+#define glfwSetWindowSizeIncrements glfwSetWindowSizeIncrements_impl
+
 typedef void (*glfwSetWindowSize_func)(GLFWwindow*, int, int);
 glfwSetWindowSize_func glfwSetWindowSize_impl;
 #define glfwSetWindowSize glfwSetWindowSize_impl

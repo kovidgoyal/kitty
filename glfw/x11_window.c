@@ -255,6 +255,14 @@ static void updateNormalHints(_GLFWwindow* window, int width, int height)
                 hints->min_aspect.x = hints->max_aspect.x = window->numer;
                 hints->min_aspect.y = hints->max_aspect.y = window->denom;
             }
+
+            if (window->widthincr != GLFW_DONT_CARE &&
+                window->heightincr != GLFW_DONT_CARE)
+            {
+                hints->flags |= PResizeInc;
+                hints->width_inc = window->widthincr;
+                hints->height_inc = window->heightincr;
+            }
         }
         else
         {
@@ -2027,6 +2035,14 @@ void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
 }
 
 void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window, int numer UNUSED, int denom UNUSED)
+{
+    int width, height;
+    _glfwPlatformGetWindowSize(window, &width, &height);
+    updateNormalHints(window, width, height);
+    XFlush(_glfw.x11.display);
+}
+
+void _glfwPlatformSetWindowSizeIncrements(_GLFWwindow* window, int widthincr UNUSED, int heightincr UNUSED)
 {
     int width, height;
     _glfwPlatformGetWindowSize(window, &width, &height);
