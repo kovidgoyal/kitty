@@ -236,7 +236,7 @@ class Tab:  # {{{
         if self.current_layout.remove_all_biases():
             self.relayout()
 
-    def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None, cwd=None, env=None):
+    def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None, cwd=None, env=None, allow_remote_control=False):
         if cmd is None:
             if use_shell:
                 cmd = resolved_shell(self.opts)
@@ -252,7 +252,7 @@ class Tab:  # {{{
             except Exception:
                 import traceback
                 traceback.print_exc()
-        ans = Child(cmd, cwd or self.cwd, self.opts, stdin, fenv, cwd_from)
+        ans = Child(cmd, cwd or self.cwd, self.opts, stdin, fenv, cwd_from, allow_remote_control=allow_remote_control)
         ans.fork()
         return ans
 
@@ -263,9 +263,10 @@ class Tab:  # {{{
     def new_window(
         self, use_shell=True, cmd=None, stdin=None, override_title=None,
         cwd_from=None, cwd=None, overlay_for=None, env=None, location=None,
-        copy_colors_from=None
+        copy_colors_from=None, allow_remote_control=False
     ):
-        child = self.launch_child(use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env)
+        child = self.launch_child(
+            use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env, allow_remote_control=allow_remote_control)
         window = Window(self, child, self.opts, self.args, override_title=override_title, copy_colors_from=copy_colors_from)
         if overlay_for is not None:
             overlaid = next(w for w in self.windows if w.id == overlay_for)
@@ -276,8 +277,8 @@ class Tab:  # {{{
         self._add_window(window, location=location)
         return window
 
-    def new_special_window(self, special_window, location=None, copy_colors_from=None):
-        return self.new_window(False, *special_window, location=location, copy_colors_from=copy_colors_from)
+    def new_special_window(self, special_window, location=None, copy_colors_from=None, allow_remote_control=False):
+        return self.new_window(False, *special_window, location=location, copy_colors_from=copy_colors_from, allow_remote_control=allow_remote_control)
 
     def close_window(self):
         if self.windows:

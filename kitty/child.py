@@ -160,12 +160,8 @@ class Child:
     child_fd = pid = None
     forked = False
 
-    def __init__(self, argv, cwd, opts, stdin=None, env=None, cwd_from=None):
-        self.allow_remote_control = False
-        if argv and argv[0] == '@':
-            self.allow_remote_control = True
-            if len(argv) > 1:
-                argv = argv[1:]
+    def __init__(self, argv, cwd, opts, stdin=None, env=None, cwd_from=None, allow_remote_control=False):
+        self.allow_remote_control = allow_remote_control
         self.argv = argv
         if cwd_from is not None:
             try:
@@ -272,6 +268,13 @@ class Child:
             return list(self.argv)
 
     @property
+    def foreground_cmdline(self):
+        try:
+            return cmdline_of_process(self.pid_for_cwd) or self.cmdline
+        except Exception:
+            return self.cmdline
+
+    @property
     def environ(self):
         try:
             return environ_of_process(self.pid)
@@ -296,3 +299,14 @@ class Child:
     def foreground_cwd(self):
         with suppress(Exception):
             return cwd_of_process(self.pid_for_cwd) or None
+
+    @property
+    def foreground_environ(self):
+        try:
+            return environ_of_process(self.pid_for_cwd)
+        except Exception:
+            try:
+                return environ_of_process(self.pid)
+            except Exception:
+                pass
+        return {}

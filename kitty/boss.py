@@ -1006,14 +1006,20 @@ class Boss:
     def _new_window(self, args, cwd_from=None):
         tab = self.active_tab
         if tab is not None:
+            allow_remote_control = False
             location = None
             if args and args[0].startswith('!'):
                 location = args[0][1:].lower()
                 args = args[1:]
+            if args and args[0] == '@':
+                args = args[1:]
+                allow_remote_control = True
             if args:
-                return tab.new_special_window(self.args_to_special_window(args, cwd_from=cwd_from), location=location)
+                return tab.new_special_window(
+                    self.args_to_special_window(args, cwd_from=cwd_from),
+                    location=location, allow_remote_control=allow_remote_control)
             else:
-                return tab.new_window(cwd_from=cwd_from, location=location)
+                return tab.new_window(cwd_from=cwd_from, location=location, allow_remote_control=allow_remote_control)
 
     def new_window(self, *args):
         self._new_window(args)
@@ -1024,6 +1030,11 @@ class Boss:
             return self.new_window(*args)
         cwd_from = w.child.pid_for_cwd if w is not None else None
         self._new_window(args, cwd_from=cwd_from)
+
+    def launch(self, *args):
+        from kitty.launch import parse_launch_args, launch
+        opts, args = parse_launch_args(args)
+        launch(self, opts, args)
 
     def move_tab_forward(self):
         tm = self.active_tab_manager
