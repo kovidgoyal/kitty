@@ -23,10 +23,10 @@ from .constants import (
 from .fast_data_types import (
     ChildMonitor, background_opacity_of, change_background_opacity,
     change_os_window_state, create_os_window, current_os_window,
-    destroy_global_data, get_clipboard_string, global_font_size,
-    mark_os_window_for_close, os_window_font_size, patch_global_colors,
-    safe_pipe, set_clipboard_string, set_in_sequence_mode, thread_write,
-    toggle_fullscreen, toggle_maximized
+    destroy_global_data, focus_os_window, get_clipboard_string,
+    global_font_size, mark_os_window_for_close, os_window_font_size,
+    patch_global_colors, safe_pipe, set_clipboard_string, set_in_sequence_mode,
+    thread_write, toggle_fullscreen, toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout import set_layout_options
@@ -235,7 +235,7 @@ class Boss:
                 if tab:
                     yield tab
 
-    def set_active_window(self, window):
+    def set_active_window(self, window, switch_os_window_if_needed=False):
         for os_window_id, tm in self.os_window_map.items():
             for tab in tm:
                 for w in tab:
@@ -243,6 +243,8 @@ class Boss:
                         if tab is not self.active_tab:
                             tm.set_active_tab(tab)
                         tab.set_active_window(w)
+                        if switch_os_window_if_needed and current_os_window() != os_window_id:
+                            focus_os_window(os_window_id, True)
                         return os_window_id
 
     def _new_os_window(self, args, cwd_from=None):

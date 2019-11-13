@@ -198,5 +198,5 @@ def launch(boss, opts, args, target_tab=None):
     tab = tab_for_window(boss, opts, target_tab)
     new_window = tab.new_window(env=env or None, **kw)
     if opts.keep_focus and active:
-        boss.set_active_window(active)
+        boss.set_active_window(active, switch_os_window_if_needed=True)
     return new_window
