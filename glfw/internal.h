@@ -710,6 +710,7 @@ int _glfwPlatformWindowMaximized(_GLFWwindow* window);
 int _glfwPlatformWindowHovered(_GLFWwindow* window);
 int _glfwPlatformFramebufferTransparent(_GLFWwindow* window);
 float _glfwPlatformGetWindowOpacity(_GLFWwindow* window);
+int _glfwGetMonitorCount(_GLFWwindow* window);
 void _glfwPlatformSetWindowResizable(_GLFWwindow* window, bool enabled);
 void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, bool enabled);
 void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled);

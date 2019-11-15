@@ -139,6 +139,7 @@ typedef struct {
     monotonic_t cursor_blink_zero_time, last_mouse_activity_at;
     double mouse_x, mouse_y;
     double logical_dpi_x, logical_dpi_y, font_sz_in_pts;
+    float xscale, yscale;
     bool mouse_button_pressed[20];
     PyObject *window_title;
     bool is_key_pressed[MAX_KEY_COUNT];
@@ -175,6 +176,7 @@ typedef struct {
     bool tab_bar_hidden;
     double font_sz_in_pts;
     struct { double x, y; } default_dpi;
+    struct { float x, y; } default_scale;
     id_type active_drag_in_window;
 } GlobalState;
 

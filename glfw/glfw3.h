@@ -3229,6 +3229,7 @@ GLFWAPI monotonic_t glfwGetDoubleClickInterval(GLFWwindow* window);
  *  @ingroup window
  */
 GLFWAPI float glfwGetWindowOpacity(GLFWwindow* window);
+GLFWAPI int glfwGetMonitorCount(GLFWwindow* window);
 
 /*! @brief Sets the opacity of the whole window.
  *

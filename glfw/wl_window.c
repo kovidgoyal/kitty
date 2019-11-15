@@ -1053,6 +1053,11 @@ void _glfwPlatformGetWindowContentScale(_GLFWwindow* window,
         *yscale = (float) window->wl.scale;
 }
 
+int _glfwGetMonitorCount(_GLFWwindow* window UNUSED)
+{
+    return window->wl.monitorsCount;
+}
+
 monotonic_t _glfwPlatformGetDoubleClickInterval(_GLFWwindow* window UNUSED)
 {
     return ms_to_monotonic_t(500ll);

@@ -1765,6 +1765,10 @@ typedef void (*glfwGetWindowContentScale_func)(GLFWwindow*, float*, float*);
 glfwGetWindowContentScale_func glfwGetWindowContentScale_impl;
 #define glfwGetWindowContentScale glfwGetWindowContentScale_impl
 
+typedef int (*glfwGetMonitorCount_func)(GLFWwindow*);
+glfwGetMonitorCount_func glfwGetMonitorCount_impl;
+#define glfwGetMonitorCount glfwGetMonitorCount_impl
+
 typedef monotonic_t (*glfwGetDoubleClickInterval_func)(GLFWwindow*);
 glfwGetDoubleClickInterval_func glfwGetDoubleClickInterval_impl;
 #define glfwGetDoubleClickInterval glfwGetDoubleClickInterval_impl

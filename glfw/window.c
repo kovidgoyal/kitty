@@ -739,6 +739,15 @@ GLFWAPI void glfwGetWindowContentScale(GLFWwindow* handle,
     _glfwPlatformGetWindowContentScale(window, xscale, yscale);
 }
 
+GLFWAPI int glfwGetMonitorCount(GLFWwindow* handle)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+
+    _GLFW_REQUIRE_INIT_OR_RETURN(99);
+    return _glfwGetMonitorCount(window);
+}
+
 GLFWAPI monotonic_t glfwGetDoubleClickInterval(GLFWwindow* handle)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;

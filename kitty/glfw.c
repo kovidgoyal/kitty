@@ -378,7 +378,19 @@ make_os_window_context_current(OSWindow *w) {
 
 static inline void
 get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
-    if (w) glfwGetWindowContentScale(w, xscale, yscale);
+    if (w) {
+        if (global_state.is_wayland) {
+            int monitor_count = glfwGetMonitorCount(w);
+            if (monitor_count == 0) {
+                *xscale = global_state.default_scale.x;
+                *yscale = global_state.default_scale.y;
+            } else {
+                glfwGetWindowContentScale(w, xscale, yscale);
+            }
+        } else {
+            glfwGetWindowContentScale(w, xscale, yscale);
+        }
+    }
     else {
         GLFWmonitor *monitor = glfwGetPrimaryMonitor();
         if (monitor) glfwGetMonitorContentScale(monitor, xscale, yscale);
@@ -396,14 +408,14 @@ get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xd
 }
 
 static inline void
-get_window_dpi(GLFWwindow *w, double *x, double *y) {
-    float xscale = 1, yscale = 1;
-    get_window_content_scale(w, &xscale, &yscale, x, y);
+get_window_dpi(GLFWwindow *w, double *x, double *y, float *xscale, float *yscale) {
+    *xscale = 1; *yscale = 1;
+    get_window_content_scale(w, xscale, yscale, x, y);
 }
 
 static void
 set_os_window_dpi(OSWindow *w) {
-    get_window_dpi(w->handle, &w->logical_dpi_x, &w->logical_dpi_y);
+    get_window_dpi(w->handle, &w->logical_dpi_x, &w->logical_dpi_y, &w->xscale, &w->yscale);
 }
 
 static inline bool
@@ -798,6 +810,8 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
         set_os_window_dpi(&w);
         global_state.default_dpi.x = w.logical_dpi_x;
         global_state.default_dpi.y = w.logical_dpi_y;
+        global_state.default_scale.x = w.xscale;
+        global_state.default_scale.y = w.yscale;
     }
     Py_INCREF(ans);
     return ans;

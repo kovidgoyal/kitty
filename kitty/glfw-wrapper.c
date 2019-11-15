@@ -152,6 +152,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetWindowContentScale_impl) = dlsym(handle, "glfwGetWindowContentScale");
     if (glfwGetWindowContentScale_impl == NULL) fail("Failed to load glfw function glfwGetWindowContentScale with error: %s", dlerror());
 
+    *(void **) (&glfwGetMonitorCount_impl) = dlsym(handle, "glfwGetMonitorCount");
+    if (glfwGetMonitorCount_impl == NULL) fail("Failed to load glfw function glfwGetMonitorCount with error: %s", dlerror());
+
     *(void **) (&glfwGetDoubleClickInterval_impl) = dlsym(handle, "glfwGetDoubleClickInterval");
     if (glfwGetDoubleClickInterval_impl == NULL) fail("Failed to load glfw function glfwGetDoubleClickInterval with error: %s", dlerror());
 
