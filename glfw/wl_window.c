@@ -75,6 +75,10 @@ static bool checkScaleChange(_GLFWwindow* window)
         wl_surface_set_buffer_scale(window->wl.surface, scale);
         return true;
     }
+    if (window->wl.monitorsCount > 0 && !window->wl.initial_scale_notified) {
+        window->wl.initial_scale_notified = true;
+        return true;
+    }
     return false;
 }
 

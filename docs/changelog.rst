@@ -43,6 +43,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.14.5 that caused rendering of private use glyphs
   with and without spaces to be identical (:iss:`2117`)
 
+- Wayland: Fix incorrect scale used when first creating an OS window
+  (:iss:`2133`)
+
 
 0.14.6 [2019-09-25]
 ---------------------
