@@ -549,8 +549,13 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     if (!common_context) common_context = application_quit_canary;
 #endif
 
-    GLFWwindow *temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
-    if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
+    GLFWwindow *temp_window = NULL;
+    if (!global_state.is_wayland) {
+        // On Wayland windows dont get a content scale until they receive an enterEvent anyway
+        // which wont happen until the event loop ticks, so using a temp window is useless.
+        temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
+        if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
+    }
     float xscale, yscale;
     double xdpi, ydpi;
     get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
@@ -565,8 +570,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     // is no startup notification in Wayland anyway. It amazes me that anyone
     // uses Wayland as anything other than a butt for jokes.
     if (global_state.is_wayland) glfwWindowHint(GLFW_VISIBLE, true);
-    GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window);
-    glfwDestroyWindow(temp_window); temp_window = NULL;
+    GLFWwindow *glfw_window = glfwCreateWindow(width, height, title, NULL, temp_window ? temp_window : common_context);
+    if (temp_window) { glfwDestroyWindow(temp_window); temp_window = NULL; }
     if (glfw_window == NULL) { PyErr_SetString(PyExc_ValueError, "Failed to create GLFWwindow"); return NULL; }
     glfwMakeContextCurrent(glfw_window);
     if (is_first_window) {
