@@ -55,12 +55,17 @@ static bool checkScaleChange(_GLFWwindow* window)
     if (_glfw.wl.compositorVersion < 3)
         return false;
 
-    // Get the scale factor from the highest scale monitor.
+    // Get the scale factor from the highest scale monitor that this window is on
     for (i = 0; i < window->wl.monitorsCount; ++i)
     {
         monitorScale = window->wl.monitors[i]->wl.scale;
         if (scale < monitorScale)
             scale = monitorScale;
+    }
+    if (window->wl.monitorsCount < 1 && _glfw.monitorCount > 0) {
+        // The window has not yet been assigned to any monitors, use the primary monitor
+        _GLFWmonitor *m = _glfw.monitors[0];
+        if (m && m->wl.scale > scale) scale = m->wl.scale;
     }
 
     // Only change the framebuffer size if the scale changed.
