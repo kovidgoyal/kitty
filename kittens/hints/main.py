@@ -325,7 +325,11 @@ def parse_input(text):
 
 def load_custom_processor(customize_processing):
     from kitty.constants import config_dir
-    custom_path = os.path.join(config_dir, customize_processing)
+    customize_processing = os.path.expandvars(os.path.expanduser(customize_processing))
+    if os.path.isabs(customize_processing):
+        custom_path = customize_processing
+    else:
+        custom_path = os.path.join(config_dir, customize_processing)
     import runpy
     return runpy.run_path(custom_path, run_name='__main__')
 
@@ -451,7 +455,7 @@ the second character you specify.
 Name of a python file in the kitty config directory which will be imported to provide
 custom implementations for pattern finding and performing actions
 on selected matches. See https://sw.kovidgoyal.net/kitty/kittens/hints.html
-for details.
+for details. You can also specify absolute paths to load the script from elsewhere.
 
 
 '''.format(','.join(sorted(URL_PREFIXES))).format
