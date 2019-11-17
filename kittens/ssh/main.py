@@ -76,6 +76,9 @@ def parse_ssh_args(args):
                 if arg in boolean_ssh_args:
                     ssh_args.append(arg)
                     continue
+                if arg.startswith('-p') and arg[2:].isdigit():
+                    ssh_args.append(arg)
+                    continue
                 if arg in other_ssh_args:
                     if i != len(all_args) - 1:
                         raise SystemExit('Option {} cannot occur in the middle'.format(arg))
