@@ -2267,6 +2267,13 @@ wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
     return PyLong_FromLong(wcwidth_std(PyLong_AsLong(chr)));
 }
 
+static PyObject*
+screen_is_emoji_presentation_base(PyObject UNUSED *self, PyObject *code_) {
+    unsigned long code = PyLong_AsUnsignedLong(code_);
+    if (is_emoji_presentation_base(code)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
@@ -2380,6 +2387,7 @@ PyTypeObject Screen_Type = {
 static PyMethodDef module_methods[] = {
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
     {"wcswidth", (PyCFunction)screen_wcswidth, METH_O, ""},
+    {"is_emoji_presentation_base", (PyCFunction)screen_is_emoji_presentation_base, METH_O, ""},
     {"truncate_point_for_length", (PyCFunction)screen_truncate_point_for_length, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };

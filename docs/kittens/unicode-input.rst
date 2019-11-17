@@ -22,3 +22,8 @@ In :guilabel:`Name` mode you instead type words from the character name and use 
 keys/tab to select the character from the displayed matches. You can also type
 a leading period and the index for the match if you don't like to use arrow
 keys.
+
+Command Line Interface
+-------------------------
+
+.. include:: ../generated/cli-kitten-unicode_input.rst

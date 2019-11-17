@@ -30,6 +30,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - diff kitten: Allow diffing remote files easily via ssh (:iss:`727`)
 
+- unicode input kitten: Add an option :option:`kitty +kitten unicode_input
+  --emoji-variation` to control the presentation variant of selected emojis
+  (:iss:`2139`)
+
 - Add specialised rendering for a few more box powerline and unicode symbols
   (:pull:`2074` and :pull:`2021`)
 

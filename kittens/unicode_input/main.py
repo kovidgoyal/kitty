@@ -5,25 +5,27 @@
 import os
 import string
 import subprocess
+import sys
+from contextlib import suppress
 from functools import lru_cache
 from gettext import gettext as _
-from contextlib import suppress
 
+from kitty.cli import parse_args
 from kitty.config import cached_values_for
 from kitty.constants import config_dir
-from kitty.utils import get_editor
-from kitty.fast_data_types import wcswidth
+from kitty.fast_data_types import wcswidth, is_emoji_presentation_base
 from kitty.key_encoding import (
     DOWN, ESCAPE, F1, F2, F3, F4, F12, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP,
     enter_key
 )
+from kitty.utils import get_editor
 
-from ..tui.line_edit import LineEdit
 from ..tui.handler import Handler
+from ..tui.line_edit import LineEdit
 from ..tui.loop import Loop
 from ..tui.operations import (
-    clear_screen, colored, cursor, faint, set_line_wrapping,
-    set_window_title, sgr, styled
+    clear_screen, colored, cursor, faint, set_line_wrapping, set_window_title,
+    sgr, styled
 )
 
 HEX, NAME, EMOTICONS, FAVORITES = 'HEX', 'NAME', 'EMOTICONS', 'FAVORITES'
@@ -131,7 +133,8 @@ def decode_hint(x):
 
 class Table:
 
-    def __init__(self):
+    def __init__(self, emoji_variation):
+        self.emoji_variation = emoji_variation
         self.layout_dirty = True
         self.last_rows = self.last_cols = -1
         self.codepoints = []
@@ -161,7 +164,10 @@ class Table:
         self.layout_dirty = False
 
         def safe_chr(codepoint):
-            return chr(codepoint).encode('utf-8', 'replace').decode('utf-8')
+            ans = chr(codepoint).encode('utf-8', 'replace').decode('utf-8')
+            if self.emoji_variation and is_emoji_presentation_base(codepoint):
+                ans += self.emoji_variation
+            return ans
 
         if self.mode is NAME:
             def as_parts(i, codepoint):
@@ -248,8 +254,13 @@ def is_index(w):
 
 class UnicodeInput(Handler):
 
-    def __init__(self, cached_values):
+    def __init__(self, cached_values, emoji_variation='none'):
         self.cached_values = cached_values
+        self.emoji_variation = ''
+        if emoji_variation == 'text':
+            self.emoji_variation = '\ufe0e'
+        elif emoji_variation == 'graphic':
+            self.emoji_variation = '\ufe0f'
         self.line_edit = LineEdit()
         self.recent = list(self.cached_values.get('recent', DEFAULT_SET))
         self.current_char = None
@@ -257,8 +268,16 @@ class UnicodeInput(Handler):
         self.last_updated_code_point_at = None
         self.choice_line = ''
         self.mode = globals().get(cached_values.get('mode', 'HEX'), 'HEX')
-        self.table = Table()
+        self.table = Table(self.emoji_variation)
         self.update_prompt()
+
+    @property
+    def resolved_current_char(self):
+        ans = self.current_char
+        if ans:
+            if self.emoji_variation and is_emoji_presentation_base(ord(ans[0])):
+                ans += self.emoji_variation
+        return ans
 
     def update_codepoints(self):
         codepoints = None
@@ -320,8 +339,10 @@ class UnicodeInput(Handler):
             self.choice_line = ''
         else:
             c, color = self.current_char, 'green'
+            if self.emoji_variation and is_emoji_presentation_base(ord(c[0])):
+                c += self.emoji_variation
             self.choice_line = _('Chosen:') + ' {} U+{} {}'.format(
-                colored(c, 'green'), hex(ord(c))[2:], faint(styled(name(c) or '', italic=True)))
+                colored(c, 'green'), hex(ord(c[0]))[2:], faint(styled(name(c) or '', italic=True)))
         self.prompt = self.prompt_template.format(colored(c, color))
 
     def init_terminal_state(self):
@@ -475,17 +496,43 @@ class UnicodeInput(Handler):
         self.refresh()
 
 
+help_text = 'Input a unicode character'
+usage = ''
+OPTIONS = '''
+--emoji-variation
+type=choices
+default=none
+choices=none,graphic,text
+Whether to use the textual or the graphical form for emoji. By default the
+default form specified in the unicode standard for the symbol is used.
+
+
+'''.format
+
+
+def parse_unicode_input_args(args):
+    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten unicode_input')
+
+
 def main(args):
+    try:
+        args, items = parse_unicode_input_args(args[1:])
+    except SystemExit as e:
+        if e.code != 0:
+            print(e.args[0], file=sys.stderr)
+            input(_('Press Enter to quit'))
+        return
+
     loop = Loop()
     with cached_values_for('unicode-input') as cached_values:
-        handler = UnicodeInput(cached_values)
+        handler = UnicodeInput(cached_values, args.emoji_variation)
         loop.loop(handler)
         if handler.current_char and loop.return_code == 0:
             with suppress(Exception):
                 handler.recent.remove(ord(handler.current_char))
             recent = [ord(handler.current_char)] + handler.recent
             cached_values['recent'] = recent[:len(DEFAULT_SET)]
-            return handler.current_char
+            return handler.resolved_current_char
     if loop.return_code != 0:
         raise SystemExit(loop.return_code)
 
@@ -497,10 +544,10 @@ def handle_result(args, current_char, target_window_id, boss):
 
 
 if __name__ == '__main__':
-    import sys
-    if '-h' in sys.argv or '--help' in sys.argv:
-        print('Choose a unicode character to input into the terminal')
-        raise SystemExit(0)
     ans = main(sys.argv)
     if ans:
         print(ans)
+elif __name__ == '__doc__':
+    sys.cli_docs['usage'] = usage
+    sys.cli_docs['options'] = OPTIONS
+    sys.cli_docs['help_text'] = help_text
