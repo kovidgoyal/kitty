@@ -214,7 +214,9 @@ def read_shell_environment(opts=None):
         with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
             raw = b''
             from subprocess import TimeoutExpired
-            while True:
+            from time import monotonic
+            start_time = monotonic()
+            while monotonic() - start_time < 1.5:
                 try:
                     ret = p.wait(0.01)
                 except TimeoutExpired:
@@ -223,7 +225,10 @@ def read_shell_environment(opts=None):
                     raw += stdout.read()
                 if ret is not None:
                     break
-            if p.returncode == 0:
+            if p.returncode is None:
+                log_error('Timed out waiting for shell to quit while reading shell environment')
+                p.kill()
+            elif p.returncode == 0:
                 while True:
                     try:
                         x = stdout.read()
