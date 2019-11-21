@@ -83,6 +83,11 @@ find_app_name(void) {
     set_cocoa_pending_action(NEW_OS_WINDOW, NULL);
 }
 
+- (void)open_kitty_website_url:(id)sender {
+    (void)sender;
+    [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://sw.kovidgoyal.net/kitty/"]];
+}
+
 
 + (GlobalMenuTarget *) shared_instance
 {
@@ -312,6 +317,18 @@ cocoa_create_global_menu(void) {
      setKeyEquivalentModifierMask:NSEventModifierFlagControl | NSEventModifierFlagCommand];
     [NSApp setWindowsMenu:windowMenu];
     [windowMenu release];
+
+    NSMenuItem* helpMenuItem =
+        [bar addItemWithTitle:@"Help"
+                       action:NULL
+                keyEquivalent:@""];
+    NSMenu* helpMenu = [[NSMenu alloc] initWithTitle:@"Help"];
+    [helpMenuItem setSubmenu:helpMenu];
+    [[helpMenu addItemWithTitle:[NSString stringWithFormat:@"Visit %@ website", app_name]
+                         action:@selector(open_kitty_website_url:)
+                  keyEquivalent:@"?"]
+                      setTarget:global_menu_target];
+    [helpMenu release];
 
     [bar release];
 
