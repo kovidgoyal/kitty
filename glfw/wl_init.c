@@ -176,43 +176,45 @@ static void pointerHandleMotion(void* data UNUSED,
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     GLFWCursorShape cursorShape = GLFW_ARROW_CURSOR;
+    double x, y;
 
     if (!window)
         return;
 
     if (window->cursorMode == GLFW_CURSOR_DISABLED)
         return;
-    window->wl.cursorPosX = wl_fixed_to_double(sx);
-    window->wl.cursorPosY = wl_fixed_to_double(sy);
+    x = wl_fixed_to_double(sx);
+    y = wl_fixed_to_double(sy);
 
     switch (window->wl.decorations.focus)
     {
         case mainWindow:
-            _glfwInputCursorPos(window,
-                                window->wl.cursorPosX, window->wl.cursorPosY);
+            window->wl.cursorPosX = x;
+            window->wl.cursorPosY = y;
+            _glfwInputCursorPos(window, x, y);
             return;
         case topDecoration:
-            if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
+            if (y < _GLFW_DECORATION_WIDTH)
                 cursorShape = GLFW_VRESIZE_CURSOR;
             else
                 cursorShape = GLFW_ARROW_CURSOR;
             break;
         case leftDecoration:
-            if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
+            if (y < _GLFW_DECORATION_WIDTH)
                 cursorShape = GLFW_NW_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_HRESIZE_CURSOR;
             break;
         case rightDecoration:
-            if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
+            if (y < _GLFW_DECORATION_WIDTH)
                 cursorShape = GLFW_NE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_HRESIZE_CURSOR;
             break;
         case bottomDecoration:
-            if (window->wl.cursorPosX < _GLFW_DECORATION_WIDTH)
+            if (x < _GLFW_DECORATION_WIDTH)
                 cursorShape = GLFW_SW_RESIZE_CURSOR;
-            else if (window->wl.cursorPosX > window->wl.width + _GLFW_DECORATION_WIDTH)
+            else if (x > window->wl.width + _GLFW_DECORATION_WIDTH)
                 cursorShape = GLFW_SE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_VRESIZE_CURSOR;
