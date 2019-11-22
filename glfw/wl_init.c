@@ -165,6 +165,7 @@ static void setCursor(GLFWCursorShape shape)
     wl_surface_damage(surface, 0, 0,
                       image->width, image->height);
     wl_surface_commit(surface);
+    _glfw.wl.cursorPreviousShape = shape;
 }
 
 static void pointerHandleMotion(void* data UNUSED,
@@ -219,7 +220,8 @@ static void pointerHandleMotion(void* data UNUSED,
         default:
             assert(0);
     }
-    setCursor(cursorShape);
+    if (_glfw.wl.cursorPreviousShape != cursorShape)
+        setCursor(cursorShape);
 }
 
 static void pointerHandleButton(void* data UNUSED,

@@ -248,6 +248,7 @@ typedef struct _GLFWlibraryWayland
 
     struct wl_cursor_theme*     cursorTheme;
     struct wl_surface*          cursorSurface;
+    GLFWCursorShape             cursorPreviousShape;
     uint32_t                    pointerSerial;
 
     int32_t                     keyboardRepeatRate;
