@@ -456,6 +456,8 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
     _glfwPollMonitorsNS();
 }
 
+static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
+
 - (void)applicationWillFinishLaunching:(NSNotification *)notification
 {
     (void)notification;
@@ -478,6 +480,8 @@ static GLFWapplicationshouldhandlereopenfun handle_reopen_callback = NULL;
         else */
             createMenuBar();
     }
+    if (finish_launching_callback)
+        finish_launching_callback();
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
@@ -552,6 +556,12 @@ is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
 GLFWAPI GLFWapplicationshouldhandlereopenfun glfwSetApplicationShouldHandleReopen(GLFWapplicationshouldhandlereopenfun callback) {
     GLFWapplicationshouldhandlereopenfun previous = handle_reopen_callback;
     handle_reopen_callback = callback;
+    return previous;
+}
+
+GLFWAPI GLFWapplicationwillfinishlaunchingfun glfwSetApplicationWillFinishLaunching(GLFWapplicationwillfinishlaunchingfun callback) {
+    GLFWapplicationwillfinishlaunchingfun previous = finish_launching_callback;
+    finish_launching_callback = callback;
     return previous;
 }
 

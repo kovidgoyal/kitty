@@ -1576,6 +1576,7 @@ typedef struct GLFWgamepadstate
 
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int,unsigned long);
 typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
+typedef void (* GLFWapplicationwillfinishlaunchingfun)(void);
 typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
@@ -2088,6 +2089,10 @@ glfwSetCocoaToggleFullscreenIntercept_func glfwSetCocoaToggleFullscreenIntercept
 typedef GLFWapplicationshouldhandlereopenfun (*glfwSetApplicationShouldHandleReopen_func)(GLFWapplicationshouldhandlereopenfun);
 glfwSetApplicationShouldHandleReopen_func glfwSetApplicationShouldHandleReopen_impl;
 #define glfwSetApplicationShouldHandleReopen glfwSetApplicationShouldHandleReopen_impl
+
+typedef GLFWapplicationwillfinishlaunchingfun (*glfwSetApplicationWillFinishLaunching_func)(GLFWapplicationwillfinishlaunchingfun);
+glfwSetApplicationWillFinishLaunching_func glfwSetApplicationWillFinishLaunching_impl;
+#define glfwSetApplicationWillFinishLaunching glfwSetApplicationWillFinishLaunching_impl
 
 typedef void (*glfwGetCocoaKeyEquivalent_func)(int, int, void*, void*);
 glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;

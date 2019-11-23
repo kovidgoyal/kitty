@@ -517,6 +517,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
         glfwSetApplicationShouldHandleReopen(on_application_reopen);
+        glfwSetApplicationWillFinishLaunching(cocoa_create_global_menu);
         if (OPT(hide_window_decorations)) glfwWindowHint(GLFW_DECORATED, false);
 #endif
 
@@ -595,9 +596,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
         if (ret == NULL) return NULL;
         Py_DECREF(ret);
-#ifdef __APPLE__
-        cocoa_create_global_menu();
-#endif
 #define CC(dest, shape) {\
     if (!dest##_cursor) { \
         dest##_cursor = glfwCreateStandardCursor(GLFW_##shape##_CURSOR); \
