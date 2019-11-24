@@ -393,10 +393,13 @@ Use negative numbers to change scroll direction.'''))
 
 g('mouse')  # {{{
 
-o('mouse_hide_wait', 3.0, option_type=float, long_text=_('''
+o('mouse_hide_wait', 0.0 if is_macos else 3.0, option_type=float, long_text=_('''
 Hide mouse cursor after the specified number of seconds
 of the mouse not being used. Set to zero to disable mouse cursor hiding.
-Set to a negative value to hide the mouse cursor immediately when typing text.'''))
+Set to a negative value to hide the mouse cursor immediately when typing text.
+Disabled by default on macOS as getting it to work robustly with
+the ever-changing sea of bugs that is Cocoa is too much effort.
+'''))
 
 o('url_color', '#0087bd', option_type=to_color, long_text=_('''
 The color and style for highlighting URLs on mouse-over.

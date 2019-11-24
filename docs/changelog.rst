@@ -50,6 +50,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Wayland: Fix incorrect scale used when first creating an OS window
   (:iss:`2133`)
 
+- macOS: Disable mouse hiding by default as getting it to work robustly
+  on Cocoa is too much effort (:iss:`2158`)
+
 
 0.14.6 [2019-09-25]
 ---------------------
