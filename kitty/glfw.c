@@ -465,7 +465,6 @@ static int
 on_application_reopen(int has_visible_windows) {
     if (has_visible_windows) return true;
     set_cocoa_pending_action(NEW_OS_WINDOW, NULL);
-    // Without unjam wait_for_events() blocks until the next event
     return false;
 }
 
