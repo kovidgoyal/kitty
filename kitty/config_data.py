@@ -649,6 +649,13 @@ A value of :code:`blank` means draw a blank window.
 A value of :code:`size` means show the window size in cells.
 '''))
 
+o('resize_in_steps', False, long_text=_('''
+Resize the OS window in steps as large as the cells, instead of with the usual pixel accuracy.
+Combined with an :opt:`initial_window_width` and :opt:`initial_window_height` in number of cells,
+this option can be used to keep the margins as small as possible when resizing the OS window.
+Note that this does not currently work on Wayland.
+'''))
+
 # }}}
 
 g('tabbar')   # {{{

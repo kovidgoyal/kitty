@@ -42,6 +42,7 @@ typedef struct {
     unsigned long tab_bar_min_tabs;
     DisableLigature disable_ligatures;
     ResizeDrawStrategy resize_draw_strategy;
+    bool resize_in_steps;
     bool sync_to_monitor;
     bool close_on_child_death;
     bool window_alert_on_bell;

@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix :opt:`background_opacity` incorrectly applying to selected text and
   reverse video text (:iss:`2177`)
 
+- Add a :opt:`resize_in_steps` option that can be used resize the OS window
+  in steps as large as the cells (:pull:`2131`)
+
 0.15.0 [2019-11-27]
 --------------------
 
