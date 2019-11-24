@@ -470,14 +470,13 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
         // finishLaunching below, in order to properly emulate the behavior
         // of NSApplicationMain
 
-        // disabled by Kovid
-        /* if ([[NSBundle mainBundle] pathForResource:@"MainMenu" ofType:@"nib"])
+        if ([[NSBundle mainBundle] pathForResource:@"MainMenu" ofType:@"nib"])
         {
             [[NSBundle mainBundle] loadNibNamed:@"MainMenu"
                                           owner:NSApp
                                 topLevelObjects:&_glfw.ns.nibObjects];
         }
-        else */
+        else
             createMenuBar();
     }
     if (finish_launching_callback)
