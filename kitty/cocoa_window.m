@@ -232,8 +232,6 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
 // global menu {{{
 void
 cocoa_create_global_menu(void) {
-    @autoreleasepool {
-
     NSString* app_name = find_app_name();
     NSMenu* bar = [[NSMenu alloc] init];
     GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
@@ -325,8 +323,6 @@ cocoa_create_global_menu(void) {
 
 
     [NSApp setServicesProvider:[[[ServiceProvider alloc] init] autorelease]];
-
-    } // autoreleasepool
 }
 
 void
