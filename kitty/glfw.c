@@ -461,19 +461,19 @@ filter_option(int key UNUSED, int mods, unsigned int native_key UNUSED, unsigned
 
 static GLFWwindow *application_quit_canary = NULL;
 
-static int
+static bool
 on_application_reopen(int has_visible_windows) {
     if (has_visible_windows) return true;
     set_cocoa_pending_action(NEW_OS_WINDOW, NULL);
     return false;
 }
 
-static int
+static bool
 intercept_cocoa_fullscreen(GLFWwindow *w) {
-    if (!OPT(macos_traditional_fullscreen) || !set_callback_window(w)) return 0;
+    if (!OPT(macos_traditional_fullscreen) || !set_callback_window(w)) return false;
     toggle_fullscreen_for_os_window(global_state.callback_os_window);
     global_state.callback_os_window = NULL;
-    return 1;
+    return true;
 }
 #endif
 
