@@ -1255,7 +1255,7 @@ def kitten(boss, window, payload):
 )
 def cmd_launch_filter(global_opts, opts, args):
     '''
-    cmd: The command to run as a filter
+    command: The command to run as a filter
     match: The window to run the filter over
     '''
     if len(args) < 1:
