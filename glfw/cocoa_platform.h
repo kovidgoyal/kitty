@@ -67,9 +67,9 @@ typedef void* CVDisplayLinkRef;
 
 typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int, unsigned long);
-typedef int (* GLFWapplicationshouldhandlereopenfun)(int);
+typedef bool (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef void (* GLFWapplicationwillfinishlaunchingfun)(void);
-typedef int (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
+typedef bool (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 
 typedef struct VkMacOSSurfaceCreateInfoMVK
