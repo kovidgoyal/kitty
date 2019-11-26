@@ -757,7 +757,7 @@ def macos_info_plist():
         NSRequiresAquaSystemAppearance='NO',
         NSHumanReadableCopyright=time.strftime(
             'Copyright %Y, Kovid Goyal'),
-        CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://sw.kovidgoyal.net/kitty',
+        CFBundleGetInfoString='kitty, an OpenGL based terminal emulator https://sw.kovidgoyal.net/kitty/',
         CFBundleIconFile=appname + '.icns',
         NSHighResolutionCapable=True,
         NSSupportsAutomaticGraphicsSwitching=True,

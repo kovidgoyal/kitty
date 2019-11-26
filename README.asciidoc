@@ -1,5 +1,5 @@
 = kitty - the fast, featureful, GPU based, terminal emulator
 
-See https://sw.kovidgoyal.net/kitty
+See https://sw.kovidgoyal.net/kitty/
 
 image:https://circleci.com/gh/kovidgoyal/kitty.svg?style=svg["Build status", link="https://circleci.com/gh/kovidgoyal/kitty"]
