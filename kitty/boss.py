@@ -58,7 +58,7 @@ def data_for_at(w, arg, add_wrap_markers=False):
 
     if arg == '@selection':
         return w.text_for_selection()
-    if arg == '@ansi' or '@ansi_screen_scrollback':
+    if arg == '@ansi' or arg == '@ansi_screen_scrollback':
         return as_text(as_ansi=True, add_history=True)
     if arg == '@text' or arg == '@screen_scrollback':
         return as_text(add_history=True)
