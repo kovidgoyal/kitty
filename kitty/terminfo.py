@@ -428,6 +428,21 @@ def generate_terminfo():
     return ',\n\t'.join(ans) + ',\n'
 
 
+def print_termcap():
+    inv_termcap_aliases = {v: k for k, v in termcap_aliases.items()}
+    ans = ['|'.join(names)]
+    for cap in sorted(bool_capabilities):
+        if cap not in no_termcap_for:
+            ans.append(inv_termcap_aliases[cap])
+    for k in sorted(numeric_capabilities):
+        if k not in no_termcap_for:
+            ans.append('{}#{}'.format(inv_termcap_aliases[k], numeric_capabilities[k]))
+    for k in sorted(string_capabilities):
+        if k not in no_termcap_for:
+            ans.append('{}={}'.format(inv_termcap_aliases[k], string_capabilities[k]))
+    print(':\\\n\t:'.join(ans) + ':\n')
+
+
 octal_escape = re.compile(r'\\([0-7]{3})')
 escape_escape = re.compile(r'\\[eE]')
 
