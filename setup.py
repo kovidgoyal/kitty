@@ -212,12 +212,14 @@ def init_env(
     cppflags = shlex.split(cppflags)
     for el in extra_logging:
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
+    # gnu11 is needed to get monotonic.h to build on older Linux distros
+    std = 'c' if is_macos or ccver[0] >= 5 else 'gnu'
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
-            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
+            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std={}11'
             ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
-            float_conversion,
+            float_conversion, std,
             optimize,
             ' '.join(sanitize_args),
             stack_protector,
