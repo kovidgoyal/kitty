@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.15.0 [future]
+0.15.0 [2019-11-27]
 --------------------
 
 - Add a new action :ref:`detach_window <detach_window>` that can be used to move the current
