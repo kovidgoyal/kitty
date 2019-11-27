@@ -200,8 +200,10 @@ def init_env(
     if ccver < (5, 2) and cc == 'gcc':
         missing_braces = '-Wno-missing-braces'
     df = '-g3'
+    float_conversion = ''
     if ccver >= (5, 0):
         df += ' -Og'
+        float_conversion = '-Wfloat-conversion'
     optimize = df if debug or sanitize else '-O3'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cppflags = os.environ.get(
@@ -212,9 +214,10 @@ def init_env(
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
-            '-Wextra -Wfloat-conversion -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
+            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
             ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
+            float_conversion,
             optimize,
             ' '.join(sanitize_args),
             stack_protector,
