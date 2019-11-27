@@ -189,6 +189,11 @@ following :file:`~/.config/fontconfig/fonts.conf`::
     </match>
     </fontconfig>
 
+After creating (or modifying) this file, you may need to run the following
+command to rebuild your fontconfig cache::
+
+    fc-cache -r
+
 Then, the font will be available in ``kitty list-fonts``.
 
 
