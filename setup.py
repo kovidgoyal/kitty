@@ -212,14 +212,13 @@ def init_env(
     cppflags = shlex.split(cppflags)
     for el in extra_logging:
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
-    # gnu11 is needed to get monotonic.h to build on older Linux distros
-    std = 'c' if is_macos or ccver[0] >= 5 else 'gnu'
+    # _POSIX_C_SOURCE is needed for clock_gettime() in monotonic.h
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
-            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std={}11'
+            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -D_POSIX_C_SOURCE=200809L -std=c11'
             ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden'
         ).format(
-            float_conversion, std,
+            float_conversion,
             optimize,
             ' '.join(sanitize_args),
             stack_protector,
