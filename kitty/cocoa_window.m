@@ -73,12 +73,12 @@ find_app_name(void) {
 
 @implementation GlobalMenuTarget
 
-- (void) show_preferences              : (id)sender {
+- (void)show_preferences:(id)sender {
     (void)sender;
     set_cocoa_pending_action(PREFERENCES_WINDOW, NULL);
 }
 
-- (void) new_os_window              : (id)sender {
+- (void)new_os_window:(id)sender {
     (void)sender;
     set_cocoa_pending_action(NEW_OS_WINDOW, NULL);
 }
@@ -118,9 +118,10 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
     if (!dockMenu) {
         GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
         dockMenu = [[NSMenu alloc] init];
-        NSMenuItem *newWindowItem = [dockMenu addItemWithTitle:@"New OS window"
-                            action:@selector(new_os_window:)
-                            keyEquivalent:@""];
+        NSMenuItem *newWindowItem =
+            [dockMenu addItemWithTitle:@"New OS window"
+                                action:@selector(new_os_window:)
+                         keyEquivalent:@""];
         [newWindowItem setTarget:global_menu_target];
     }
     return dockMenu;
@@ -238,13 +239,15 @@ cocoa_create_global_menu(void) {
     [NSApp setMainMenu:bar];
 
     NSMenuItem* appMenuItem =
-        [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+        [bar addItemWithTitle:@""
+                       action:NULL
+                keyEquivalent:@""];
     NSMenu* appMenu = [[NSMenu alloc] init];
     [appMenuItem setSubmenu:appMenu];
 
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"About %@", app_name]
                        action:@selector(orderFrontStandardAboutPanel:)
-                       keyEquivalent:@""];
+                keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
     NSMenuItem* preferences_menu_item = [[NSMenuItem alloc] initWithTitle:@"Preferences..." action:@selector(show_preferences:) keyEquivalent:@","], *new_os_window_menu_item = NULL;
     [preferences_menu_item setTarget:global_menu_target];
@@ -263,8 +266,8 @@ cocoa_create_global_menu(void) {
                        action:@selector(hide:)
                 keyEquivalent:@"h"];
     [[appMenu addItemWithTitle:@"Hide Others"
-                       action:@selector(hideOtherApplications:)
-                keyEquivalent:@"h"]
+                        action:@selector(hideOtherApplications:)
+                 keyEquivalent:@"h"]
         setKeyEquivalentModifierMask:NSEventModifierFlagOption | NSEventModifierFlagCommand];
     [appMenu addItemWithTitle:@"Show All"
                        action:@selector(unhideAllApplications:)
@@ -274,19 +277,21 @@ cocoa_create_global_menu(void) {
     NSMenu* servicesMenu = [[NSMenu alloc] init];
     [NSApp setServicesMenu:servicesMenu];
     [[appMenu addItemWithTitle:@"Services"
-                       action:NULL
-                keyEquivalent:@""] setSubmenu:servicesMenu];
+                        action:NULL
+                 keyEquivalent:@""] setSubmenu:servicesMenu];
     [servicesMenu release];
 
     [appMenu addItem:[NSMenuItem separatorItem]];
 
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Quit %@", app_name]
                        action:@selector(terminate:)
-                       keyEquivalent:@"q"];
+                keyEquivalent:@"q"];
     [appMenu release];
 
     NSMenuItem* windowMenuItem =
-        [bar addItemWithTitle:@"" action:NULL keyEquivalent:@""];
+        [bar addItemWithTitle:@""
+                       action:NULL
+                keyEquivalent:@""];
     NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
     [windowMenuItem setSubmenu:windowMenu];
 
@@ -316,10 +321,10 @@ cocoa_create_global_menu(void) {
     [bar release];
 
     class_addMethod(
-            object_getClass([NSApp delegate]),
-            @selector(applicationDockMenu:),
-            (IMP)get_dock_menu,
-            "@@:@");
+        object_getClass([NSApp delegate]),
+        @selector(applicationDockMenu:),
+        (IMP)get_dock_menu,
+        "@@:@");
 
 
     [NSApp setServicesProvider:[[[ServiceProvider alloc] init] autorelease]];
