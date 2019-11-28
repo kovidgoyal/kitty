@@ -239,7 +239,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
 
     // Send the uniform data
     rd = (struct CellRenderData*)map_vao_buffer(vao_idx, uniform_buffer, GL_WRITE_ONLY);
-    if (UNLIKELY(screen->color_profile->dirty)) {
+    if (UNLIKELY(screen->color_profile->dirty || screen->reload_all_gpu_data)) {
         copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
     }
     // Cursor position
@@ -295,7 +295,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
                            || screen->cursor->y != screen->last_rendered_cursor_y;
     bool disable_ligatures = screen->disable_ligatures == DISABLE_LIGATURES_CURSOR;
 
-    if (screen->scroll_changed || screen->is_dirty || (disable_ligatures && cursor_pos_changed)) {
+    if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || (disable_ligatures && cursor_pos_changed)) {
         sz = sizeof(GPUCell) * screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed);
@@ -308,7 +308,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         screen->last_rendered_cursor_y = screen->cursor->y;
     }
 
-    if (screen_is_selection_dirty(screen)) {
+    if (screen->reload_all_gpu_data || screen_is_selection_dirty(screen)) {
         sz = screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_apply_selection(screen, address, sz);
@@ -453,8 +453,8 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
 }
 
 static inline void
-set_cell_uniforms(float current_inactive_text_alpha) {
-    if (!cell_uniform_data.constants_set) {
+set_cell_uniforms(float current_inactive_text_alpha, bool force) {
+    if (!cell_uniform_data.constants_set || force) {
         cell_uniform_data.gploc = glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.gpploc = glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
@@ -467,7 +467,7 @@ set_cell_uniforms(float current_inactive_text_alpha) {
 #undef S
         cell_uniform_data.constants_set = true;
     }
-    if (current_inactive_text_alpha != cell_uniform_data.prev_inactive_text_alpha) {
+    if (current_inactive_text_alpha != cell_uniform_data.prev_inactive_text_alpha || force) {
         cell_uniform_data.prev_inactive_text_alpha = current_inactive_text_alpha;
 #define S(prog, loc) { bind_program(prog); glUniform1f(cell_uniform_data.loc, current_inactive_text_alpha); }
         S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc); S(GRAPHICS_PROGRAM, gploc); S(GRAPHICS_PREMULT_PROGRAM, gpploc);
@@ -503,7 +503,8 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     bind_vertex_array(vao_idx);
 
     float current_inactive_text_alpha = (!can_be_focused || screen->cursor_render_info.is_focused) && is_active_window ? 1.0f : (float)OPT(inactive_text_alpha);
-    set_cell_uniforms(current_inactive_text_alpha);
+    set_cell_uniforms(current_inactive_text_alpha, screen->reload_all_gpu_data);
+    screen->reload_all_gpu_data = false;
     GLfloat w = (GLfloat)screen->columns * dx, h = (GLfloat)screen->lines * dy;
     // The scissor limits below are calculated to ensure that they do not
     // overlap with the pixels outside the draw area,

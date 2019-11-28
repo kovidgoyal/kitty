@@ -219,6 +219,7 @@ attach_window(id_type os_window_id, id_type tab_id, id_type id) {
                     w->render_data.screen->cell_size.height != osw->fonts_data->cell_height
                 ) resize_screen(osw, w->render_data.screen, true);
                 else screen_dirty_sprite_positions(w->render_data.screen);
+                w->render_data.screen->reload_all_gpu_data = true;
                 break;
             }
         }

@@ -76,7 +76,7 @@ typedef struct {
     Selection selection;
     SelectionBoundary last_rendered_selection_start, last_rendered_selection_end, last_rendered_url_start, last_rendered_url_end;
     Selection url_range;
-    bool use_latin1, selection_updated_once, is_dirty, scroll_changed;
+    bool use_latin1, selection_updated_once, is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
     SavemodesBuffer modes_savepoints;
