@@ -118,11 +118,10 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
     if (!dockMenu) {
         GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
         dockMenu = [[NSMenu alloc] init];
-        NSMenuItem *newWindowItem =
-            [dockMenu addItemWithTitle:@"New OS window"
-                                action:@selector(new_os_window:)
-                         keyEquivalent:@""];
-        [newWindowItem setTarget:global_menu_target];
+        [[dockMenu addItemWithTitle:@"New OS window"
+                             action:@selector(new_os_window:)
+                      keyEquivalent:@""]
+                          setTarget:global_menu_target];
     }
     return dockMenu;
 }
@@ -249,15 +248,18 @@ cocoa_create_global_menu(void) {
                        action:@selector(orderFrontStandardAboutPanel:)
                 keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
-    NSMenuItem* preferences_menu_item = [[NSMenuItem alloc] initWithTitle:@"Preferences..." action:@selector(show_preferences:) keyEquivalent:@","], *new_os_window_menu_item = NULL;
-    [preferences_menu_item setTarget:global_menu_target];
-    [appMenu addItem:preferences_menu_item];
+    [[appMenu addItemWithTitle:@"Preferences..."
+                       action:@selector(show_preferences:)
+                keyEquivalent:@","]
+                    setTarget:global_menu_target];
+
     if (new_window_key[0]) {
-        NSString *s = @(new_window_key);
-        new_os_window_menu_item = [[NSMenuItem alloc] initWithTitle:@"New OS window" action:@selector(new_os_window:) keyEquivalent:s];
+        NSMenuItem* new_os_window_menu_item =
+            [appMenu addItemWithTitle:@"New OS window"
+                               action:@selector(new_os_window:)
+                        keyEquivalent:@(new_window_key)];
         [new_os_window_menu_item setKeyEquivalentModifierMask:new_window_mods];
         [new_os_window_menu_item setTarget:global_menu_target];
-        [appMenu addItem:new_os_window_menu_item];
     }
 
 
@@ -312,10 +314,6 @@ cocoa_create_global_menu(void) {
      setKeyEquivalentModifierMask:NSEventModifierFlagControl | NSEventModifierFlagCommand];
     [NSApp setWindowsMenu:windowMenu];
     [windowMenu release];
-    [preferences_menu_item release];
-    if (new_os_window_menu_item) {
-        [new_os_window_menu_item release];
-    }
 
     [bar release];
 
