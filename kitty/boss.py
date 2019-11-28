@@ -1191,21 +1191,22 @@ class Boss:
             'Choose a tab to move the window to',
             ''
         ]
+        fmt = '{} {}'
         tab_id_map = {}
         current_tab = self.active_tab
         for i, tab in enumerate(self.all_tabs):
             if tab is not current_tab:
                 tab_id_map[i + 1] = tab.id
-                lines.append('{} {}'.format(i + 1, tab.title))
+                lines.append(fmt.format(i + 1, tab.title))
         new_idx = len(tab_id_map) + 1
         tab_id_map[new_idx] = 'new'
-        lines.append('{} {}'.format(new_idx, 'New tab'))
+        lines.append(fmt.format(new_idx, 'New tab'))
         new_idx = len(tab_id_map) + 1
         tab_id_map[new_idx] = None
-        lines.append('{} {}'.format(new_idx, 'New OS Window'))
+        lines.append(fmt.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
-            done.tab_id = tab_id_map[int(data['match'][0].partition(' ')[0])]
+            done.tab_id = tab_id_map[int(data['match'][0].strip().partition(' ')[0])]
 
         def done2(target_window_id, self):
             tab_id = done.tab_id
@@ -1220,7 +1221,7 @@ class Boss:
                 self._move_window_to(window=target_window, target_tab_id=tab_id)
 
         self._run_kitten(
-                'hints', args=('--type=regex', r'--regex=(?m)^\d+ .+$',),
+                'hints', args=('--ascending', '--type=regex', r'--regex=(?m)^\s*\d+ .+$',),
                 input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2)
 
     def detach_tab(self, *args):
