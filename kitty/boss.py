@@ -1258,5 +1258,5 @@ class Boss:
             self._move_tab_to(tab=target_tab, target_os_window_id=os_window_id)
 
         self._run_kitten(
-                'hints', args=('--type=regex', r'--regex=(?m)^\d+ .+$',),
+                'hints', args=('--ascending', '--type=regex', r'--regex=(?m)^\d+ .+$',),
                 input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2)
