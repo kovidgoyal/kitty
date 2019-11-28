@@ -324,6 +324,10 @@ def parse_input(text):
 
 
 def load_custom_processor(customize_processing):
+    if customize_processing.startswith('::import::'):
+        import importlib
+        m = importlib.import_module(customize_processing[len('::import::'):])
+        return {k: getattr(m, k) for k in dir(m)}
     from kitty.constants import config_dir
     customize_processing = os.path.expandvars(os.path.expanduser(customize_processing))
     if os.path.isabs(customize_processing):

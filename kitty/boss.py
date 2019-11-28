@@ -1191,7 +1191,7 @@ class Boss:
             'Choose a tab to move the window to',
             ''
         ]
-        fmt = '{} {}'
+        fmt = ': {1}'
         tab_id_map = {}
         current_tab = self.active_tab
         for i, tab in enumerate(self.all_tabs):
@@ -1206,7 +1206,7 @@ class Boss:
         lines.append(fmt.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
-            done.tab_id = tab_id_map[int(data['match'][0].strip().partition(' ')[0])]
+            done.tab_id = tab_id_map[int(data['groupdicts'][0]['index']) + 1]
 
         def done2(target_window_id, self):
             if not hasattr(done, 'tab_id'):
@@ -1223,8 +1223,11 @@ class Boss:
                 self._move_window_to(window=target_window, target_tab_id=tab_id)
 
         self._run_kitten(
-                'hints', args=('--ascending', '--type=regex', r'--regex=(?m)^\s*\d+ .+$',),
-                input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2)
+            'hints', args=(
+                '--ascending', '--customize-processing=::import::kitty.choose_entry',
+                r'--regex=(?m)^:\s+.+$',
+            ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
+        )
 
     def detach_tab(self, *args):
         if not args or args[0] == 'new':
@@ -1234,16 +1237,17 @@ class Boss:
             'Choose an OS window to move the tab to',
             ''
         ]
+        fmt = ': {1}'
         os_window_id_map = {}
         current_os_window = getattr(self.active_tab, 'os_window_id', 0)
         for i, osw in enumerate(self.os_window_map):
             tm = self.os_window_map[osw]
             if current_os_window != osw and tm.active_tab and tm.active_tab:
                 os_window_id_map[i + 1] = osw
-                lines.append('{} {}'.format(i + 1, tm.active_tab.title))
+                lines.append(fmt.format(i + 1, tm.active_tab.title))
         new_idx = len(os_window_id_map) + 1
         os_window_id_map[new_idx] = None
-        lines.append('{} {}'.format(new_idx, 'New OS Window'))
+        lines.append(fmt.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
             done.os_window_id = os_window_id_map[int(data['match'][0].partition(' ')[0])]
@@ -1262,5 +1266,8 @@ class Boss:
             self._move_tab_to(tab=target_tab, target_os_window_id=os_window_id)
 
         self._run_kitten(
-                'hints', args=('--ascending', '--type=regex', r'--regex=(?m)^\d+ .+$',),
-                input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2)
+            'hints', args=(
+                '--ascending', '--customize-processing=::import::kitty.choose_entry',
+                r'--regex=(?m)^:\s+.+$',
+            ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
+        )
