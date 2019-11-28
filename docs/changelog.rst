@@ -10,6 +10,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a crash/incorrect rendering when detaching a window in some circumstances
   (:iss:`2173`)
 
+- hints kitten: Add an option :option:`kitty +kitten hints --ascending` to
+  control if the hints numbers increase or decrease from top to bottom
+
 
 0.15.0 [2019-11-27]
 --------------------

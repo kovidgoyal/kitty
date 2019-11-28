@@ -355,7 +355,10 @@ def run(args, text, extra_cli_args=()):
         largest_index = all_marks[-1].index
         offset = max(0, args.hints_offset)
         for m in all_marks:
-            m.index = largest_index - m.index + offset
+            if args.ascending:
+                m.index += offset
+            else:
+                m.index = largest_index - m.index + offset
         index_map = {m.index: m for m in all_marks}
     except Exception:
         import traceback
@@ -449,6 +452,11 @@ The list of characters to use for hints. The default is to use numbers and lower
 English alphabets. Specify your preference as a string of characters. Note that
 unless you specify the hints offset as zero the first match will be highlighted with
 the second character you specify.
+
+
+--ascending
+type=bool-set
+Have the hints increase from top to bottom instead of decreasing from top to bottom.
 
 
 --customize-processing
