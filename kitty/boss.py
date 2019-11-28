@@ -1250,7 +1250,7 @@ class Boss:
         lines.append(fmt.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
-            done.os_window_id = os_window_id_map[int(data['match'][0].partition(' ')[0])]
+            done.os_window_id = os_window_id_map[int(data['groupdicts'][0]['index']) + 1]
 
         def done2(target_window_id, self):
             if not hasattr(done, 'os_window_id'):
