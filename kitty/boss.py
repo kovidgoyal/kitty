@@ -1209,6 +1209,8 @@ class Boss:
             done.tab_id = tab_id_map[int(data['match'][0].strip().partition(' ')[0])]
 
         def done2(target_window_id, self):
+            if not hasattr(done, 'tab_id'):
+                return
             tab_id = done.tab_id
             target_window = None
             for w in self.all_windows:
@@ -1247,6 +1249,8 @@ class Boss:
             done.os_window_id = os_window_id_map[int(data['match'][0].partition(' ')[0])]
 
         def done2(target_window_id, self):
+            if not hasattr(done, 'os_window_id'):
+                return
             os_window_id = done.os_window_id
             target_tab = self.active_tab
             for w in self.all_windows:
