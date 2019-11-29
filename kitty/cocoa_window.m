@@ -368,7 +368,7 @@ cocoa_make_window_resizable(void *w, bool resizable) {
 bool
 cocoa_alt_option_key_pressed(NSUInteger flags) {
     NSUInteger q = (OPT(macos_option_as_alt) == 1) ? NSRightAlternateKeyMask : NSLeftAlternateKeyMask;
-    return ((q & flags) == q) ? true : false;
+    return (q & flags) == q;
 }
 
 void
