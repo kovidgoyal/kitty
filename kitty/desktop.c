@@ -113,8 +113,8 @@ load_libcanberra(void) {
     if (done) return;
     done = true;
     libcanberra_handle = dlopen(libname, RTLD_LAZY);
-    if (libcanberra_handle == NULL) libsn_handle = dlopen(libname2, RTLD_LAZY);
-    if (libcanberra_handle == NULL) libsn_handle = dlopen(libname3, RTLD_LAZY);
+    if (libcanberra_handle == NULL) libcanberra_handle = dlopen(libname2, RTLD_LAZY);
+    if (libcanberra_handle == NULL) libcanberra_handle = dlopen(libname3, RTLD_LAZY);
     if (libcanberra_handle == NULL) {
         fprintf(stderr, "Failed to load %s, cannot play beep sound, with error: %s\n", libname, dlerror());
         return;
