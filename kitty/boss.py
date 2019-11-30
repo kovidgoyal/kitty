@@ -1196,17 +1196,17 @@ class Boss:
         current_tab = self.active_tab
         for i, tab in enumerate(self.all_tabs):
             if tab is not current_tab:
-                tab_id_map[i + 1] = tab.id
+                tab_id_map[len(tab_id_map)] = tab.id
                 lines.append(fmt.format(i + 1, tab.title))
         new_idx = len(tab_id_map) + 1
-        tab_id_map[new_idx] = 'new'
+        tab_id_map[new_idx - 1] = 'new'
         lines.append(fmt.format(new_idx, 'New tab'))
         new_idx = len(tab_id_map) + 1
-        tab_id_map[new_idx] = None
+        tab_id_map[new_idx - 1] = None
         lines.append(fmt.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
-            done.tab_id = tab_id_map[int(data['groupdicts'][0]['index']) + 1]
+            done.tab_id = tab_id_map[int(data['groupdicts'][0]['index'])]
 
         def done2(target_window_id, self):
             if not hasattr(done, 'tab_id'):
@@ -1243,14 +1243,14 @@ class Boss:
         for i, osw in enumerate(self.os_window_map):
             tm = self.os_window_map[osw]
             if current_os_window != osw and tm.active_tab and tm.active_tab:
-                os_window_id_map[i + 1] = osw
+                os_window_id_map[len(os_window_id_map)] = osw
                 lines.append(fmt.format(i + 1, tm.active_tab.title))
         new_idx = len(os_window_id_map) + 1
-        os_window_id_map[new_idx] = None
+        os_window_id_map[new_idx - 1] = None
         lines.append(fmt.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
-            done.os_window_id = os_window_id_map[int(data['groupdicts'][0]['index']) + 1]
+            done.os_window_id = os_window_id_map[int(data['groupdicts'][0]['index'])]
 
         def done2(target_window_id, self):
             if not hasattr(done, 'os_window_id'):
