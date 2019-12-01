@@ -13,6 +13,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - hints kitten: Add an option :option:`kitty +kitten hints --ascending` to
   control if the hints numbers increase or decrease from top to bottom
 
+- Fix :opt:`background_opacity` incorrectly applying to selected text and
+  reverse video text (:iss:`2177`)
 
 0.15.0 [2019-11-27]
 --------------------

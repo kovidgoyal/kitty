@@ -151,7 +151,8 @@ void main() {
     // set cell color indices {{{
     uvec2 default_colors = uvec2(default_fg, default_bg);
     uint text_attrs = sprite_coords[3];
-    uint is_inverted = ((text_attrs >> REVERSE_SHIFT) & ONE) + inverted;
+    uint is_reversed = ((text_attrs >> REVERSE_SHIFT) & ONE);
+    uint is_inverted = is_reversed + inverted;
     int fg_index = fg_index_map[is_inverted];
     int bg_index = 1 - fg_index;
     float cell_has_cursor = is_cursor(c, r);
@@ -200,22 +201,25 @@ void main() {
     background = bg;
 #endif
 
-#if defined(TRANSPARENT) && !defined(SPECIAL)
-    // If the background color is default, set its opacity to background_opacity, otherwise it should be opaque
-    bg_alpha = step(0.5, float(colors[bg_index] & BYTE_MASK));
-    // Cursor must not be affected by background_opacity
-    bg_alpha = mix(bg_alpha, 1.0, cell_has_block_cursor);
+#if defined(TRANSPARENT)
+    // Set bg_alpha to background_opacity on cells that have the default background color
+    // Which means they must not have a block cursor or a selection or reverse video
+    // On other cells it should be 1. For the SPECIAL program it should be 1 on cells with
+    // selections/block cursor and 0 everywhere else.
+    float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);
+#ifndef SPECIAL
+    is_special_cell += float(colors[bg_index] & BYTE_MASK) + float(is_reversed);
+#endif
+    bg_alpha = step(0.5, is_special_cell);
+#ifndef SPECIAL
     bg_alpha = bg_alpha + (1.0f - bg_alpha) * background_opacity;
+#endif
 #endif
 
 #if defined(SPECIAL) || defined(SIMPLE)
     // Selection and cursor
     bg = choose_color(float(is_selected & ONE), color_to_vec(highlight_bg), bg);
     background = choose_color(cell_has_block_cursor, color_to_vec(cursor_color), bg);
-#ifdef SPECIAL
-    // bg_alpha should be 1 if cursor/selection otherwise 0
-    bg_alpha = mix(0.0, 1.0, step(0.5, float(is_selected & ONE) + cell_has_block_cursor));
-#endif
 #endif
 
 #endif
