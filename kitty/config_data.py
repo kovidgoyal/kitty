@@ -479,6 +479,7 @@ moving the mouse around'''))
 
 o('pointer_shape_when_grabbed', 'arrow', option_type=choices('arrow', 'beam', 'hand'), long_text=('''
 The shape of the mouse pointer when the program running in the terminal grabs the mouse.
+Valid values are: :code:`arrow`, :code:`beam` and :code:`hand`
 '''))
 
 # }}}
