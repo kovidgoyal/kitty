@@ -220,6 +220,10 @@ void main() {
     // Selection and cursor
     bg = choose_color(float(is_selected & ONE), color_to_vec(highlight_bg), bg);
     background = choose_color(cell_has_block_cursor, color_to_vec(cursor_color), bg);
+#if !defined(TRANSPARENT) && defined(SPECIAL)
+    float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);
+    bg_alpha = step(0.5, is_special_cell);
+#endif
 #endif
 
 #endif
