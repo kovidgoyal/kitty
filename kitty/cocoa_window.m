@@ -97,7 +97,7 @@ find_app_name(void) {
 
 @end
 
-static unichar new_window_key = 0;
+static char* new_window_key = NULL;
 static NSEventModifierFlags new_window_mods = 0;
 
 static PyObject*
@@ -253,7 +253,7 @@ cocoa_create_global_menu(void) {
     [preferences_menu_item setTarget:global_menu_target];
     [appMenu addItem:preferences_menu_item];
     if (new_window_key) {
-        NSString *s = [NSString stringWithCharacters:&new_window_key length:1];
+        NSString *s = @(new_window_key);
         new_os_window_menu_item = [[NSMenuItem alloc] initWithTitle:@"New OS window" action:@selector(new_os_window:) keyEquivalent:s];
         [new_os_window_menu_item setKeyEquivalentModifierMask:new_window_mods];
         [new_os_window_menu_item setTarget:global_menu_target];
@@ -473,6 +473,8 @@ cleanup() {
     dockMenu = nil;
     if (notification_activated_callback) Py_DECREF(notification_activated_callback);
     notification_activated_callback = NULL;
+    free(new_window_key);
+    new_window_key = NULL;
 
     } // autoreleasepool
 }
