@@ -5,6 +5,7 @@
 import os
 import pwd
 import sys
+import errno
 from collections import namedtuple
 from contextlib import suppress
 
@@ -57,13 +58,7 @@ def _get_config_dir():
             if os.access(q, os.W_OK) and os.path.exists(os.path.join(q, 'kitty.conf')):
                 return q
 
-    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or '~/.config'))
-    ans = os.path.join(candidate, appname)
-    try:
-        os.makedirs(ans, exist_ok=True)
-    except FileExistsError:
-        raise SystemExit('A file {} already exists. It must be a directory, not a file.'.format(ans))
-    except PermissionError:
+    def make_tmp_conf():
         import tempfile
         import atexit
         ans = tempfile.mkdtemp(prefix='kitty-conf-')
@@ -73,6 +68,19 @@ def _get_config_dir():
             with suppress(Exception):
                 shutil.rmtree(ans)
         atexit.register(cleanup)
+
+    candidate = os.path.abspath(os.path.expanduser(os.environ.get('XDG_CONFIG_HOME') or '~/.config'))
+    ans = os.path.join(candidate, appname)
+    try:
+        os.makedirs(ans, exist_ok=True)
+    except FileExistsError:
+        raise SystemExit('A file {} already exists. It must be a directory, not a file.'.format(ans))
+    except PermissionError:
+        make_tmp_conf()
+    except OSError as err:
+        if err.errno != errno.EROFS:  # Error other than read-only file system
+            raise
+        make_tmp_conf()
     return ans
 
 
