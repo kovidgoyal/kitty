@@ -61,14 +61,21 @@ static inline double monotonic_t_to_s_double(monotonic_t time) {
     return (double)time / 1000.0 / 1000.0 / 1000.0;
 }
 
-#ifdef MONOTONIC_START_MODULE
-monotonic_t monotonic_start_time = 0;
-#else
 extern monotonic_t monotonic_start_time;
-#endif
+extern monotonic_t monotonic_(void);
 
+static inline monotonic_t monotonic(void) {
+	return monotonic_() - monotonic_start_time;
+}
 
-static inline monotonic_t monotonic_(void) {
+static inline void init_monotonic(void) {
+	monotonic_start_time = monotonic_();
+}
+
+#ifdef MONOTONIC_IMPLEMENTATION
+monotonic_t monotonic_start_time = 0;
+
+monotonic_t monotonic_(void) {
     struct timespec ts = {0};
 #ifdef CLOCK_HIGHRES
     clock_gettime(CLOCK_HIGHRES, &ts);
@@ -79,11 +86,4 @@ static inline monotonic_t monotonic_(void) {
 #endif
     return calc_nano_time(ts);
 }
-
-static inline monotonic_t monotonic(void) {
-	return monotonic_() - monotonic_start_time;
-}
-
-static inline void init_monotonic(void) {
-	monotonic_start_time = monotonic_();
-}
+#endif

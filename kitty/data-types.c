@@ -5,7 +5,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#define MONOTONIC_START_MODULE
 #ifdef __APPLE__
 // Needed for _CS_DARWIN_USER_CACHE_DIR
 #define _DARWIN_C_SOURCE

@@ -27,7 +27,6 @@
 // Please use C89 style variable declarations in this file because VS 2010
 //========================================================================
 
-#define MONOTONIC_START_MODULE
 #include "internal.h"
 #include "mappings.h"
 
