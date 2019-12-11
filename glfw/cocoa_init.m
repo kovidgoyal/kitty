@@ -485,10 +485,10 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
     (void)notification;
-    [NSApp stop:nil];
-
+    _glfw.ns.finishedLaunching = true;
     CGDisplayRegisterReconfigurationCallback(display_reconfigured, NULL);
     _glfwCocoaPostEmptyEvent();
+    [NSApp stop:nil];
 }
 
 - (void)applicationWillTerminate:(NSNotification *)aNotification
@@ -744,6 +744,9 @@ request_tick_callback() {
 
 void _glfwPlatformPostEmptyEvent(void)
 {
+    if (!_glfw.ns.finishedLaunching)
+        [NSApp run];
+
     if (pthread_equal(pthread_self(), main_thread)) {
         request_tick_callback();
     } else if (tick_lock) {

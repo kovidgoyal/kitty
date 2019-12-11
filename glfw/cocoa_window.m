@@ -1429,10 +1429,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 {
     window->ns.deadKeyState = 0;
     if (!_glfw.ns.finishedLaunching)
-    {
         [NSApp run];
-        _glfw.ns.finishedLaunching = true;
-    }
 
     if (!createNativeWindow(window, wndconfig, fbconfig))
         return false;
@@ -2349,6 +2346,9 @@ float _glfwTransformYNS(float y)
 }
 
 void _glfwCocoaPostEmptyEvent(void) {
+    if (!_glfw.ns.finishedLaunching)
+        [NSApp run];
+
     NSEvent* event = [NSEvent otherEventWithType:NSEventTypeApplicationDefined
                                         location:NSMakePoint(0, 0)
                                    modifierFlags:0
