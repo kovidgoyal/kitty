@@ -1498,7 +1498,7 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     window->ns.object = nil;
 }
 
-void _glfwPlatformSetWindowTitle(_GLFWwindow* window UNUSED, const char *title)
+void _glfwPlatformSetWindowTitle(_GLFWwindow* window UNUSED, const char* title)
 {
     NSString* string = @(title);
     [window->ns.object setTitle:string];
