@@ -321,7 +321,7 @@ class GitHub(Base):  # {{{
 
 
 def get_github_data():
-    with open(os.environ['PENV'] + '/github') as f:
+    with open(os.environ['PENV'] + '/github-token') as f:
         un, pw = f.read().strip().split(':')
     return {'username': un, 'password': pw}
 
