@@ -580,6 +580,7 @@ class TabManager:  # {{{
                 'title': tab.name or tab.title,
                 'layout': tab.current_layout.name,
                 'windows': list(tab.list_windows(active_window)),
+                'active_window_history': list(tab.active_window_history),
             }
 
     @property
