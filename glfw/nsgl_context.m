@@ -293,8 +293,7 @@ bool _glfwCreateContextNSGL(_GLFWwindow* window,
                                   forParameter:NSOpenGLContextParameterSurfaceOpacity];
     }
 
-    if (window->ns.retina)
-        [window->ns.view setWantsBestResolutionOpenGLSurface:YES];
+    [window->ns.view setWantsBestResolutionOpenGLSurface:window->ns.retina];
 
     GLint interval = 0;
     [window->context.nsgl.object setValues:&interval
