@@ -512,10 +512,10 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     // kitty -o background=cyan -o background_opacity=0.7 -o window_margin_width=40 sh -c "kitty +kitten icat logo/kitty.png; read"
 #define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
     glScissor(
-            (GLint)(ceilf(SCALE(width, (xstart + 1.0f) / 2.0f))), // x
-            (GLint)(ceilf(SCALE(height, ((ystart - h) + 1.0f) / 2.0f))), // y
-            (GLsizei)(floorf(SCALE(width, w / 2.0f))), // width
-            (GLsizei)(floorf(SCALE(height, h / 2.0f))) // height
+            (GLint)(round(SCALE(width, (xstart + 1.0f) / 2.0f))), // x
+            (GLint)(round(SCALE(height, ((ystart - h) + 1.0f) / 2.0f))), // y
+            (GLsizei)(round(SCALE(width, w / 2.0f))), // width
+            (GLsizei)(round(SCALE(height, h / 2.0f))) // height
     );
 #undef SCALE
     if (os_window->is_semi_transparent) {
