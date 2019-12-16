@@ -27,6 +27,8 @@
 //========================================================================
 
 #define _GNU_SOURCE
+#define _POSIX_C_SOURCE 199309L
+
 #include "internal.h"
 #include "backend_utils.h"
 #include "../kitty/monotonic.h"
@@ -40,6 +42,7 @@
 #include <sys/mman.h>
 #include <unistd.h>
 #include <fcntl.h>
+#include <time.h>
 #include <wayland-client.h>
 // Needed for the BTN_* defines
 #ifdef __has_include

@@ -38,6 +38,7 @@
 #include <limits.h>
 #include <stdio.h>
 #include <locale.h>
+#include <unistd.h>
 #include <fcntl.h>
 #include <unistd.h>
 
