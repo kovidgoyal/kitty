@@ -738,7 +738,8 @@ o('active_tab_font_style', 'bold-italic', option_type=tab_font_style)
 o('inactive_tab_foreground', '#444', option_type=to_color)
 o('inactive_tab_background', '#999', option_type=to_color)
 o('inactive_tab_font_style', 'normal', option_type=tab_font_style)
-o('tab_bar_background', 'none', option_type=to_color_or_none)
+o('tab_bar_background', 'none', option_type=to_color_or_none, long_text=_('''
+Background color for the tab bar. Defaults to using the terminal background color.'''))
 
 # }}}
 
