@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a new option :opt:`tab_bar_background` to specify a different color
   for the tab bar (:iss:`2198`)
 
+- Add a new option :opt:`active_tab_title_template` to specify a different
+  template for active tab titles (:iss:`2198`)
+
 0.15.0 [2019-11-27]
 --------------------
 

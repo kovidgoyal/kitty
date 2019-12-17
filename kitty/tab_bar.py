@@ -18,11 +18,15 @@ from .rgb import alpha_blend, color_from_int
 TabBarData = namedtuple('TabBarData', 'title is_active needs_attention')
 DrawData = namedtuple(
     'DrawData', 'leading_spaces sep trailing_spaces bell_on_tab'
-    ' bell_fg alpha active_fg active_bg inactive_fg inactive_bg default_bg title_template')
+    ' bell_fg alpha active_fg active_bg inactive_fg inactive_bg'
+    ' default_bg title_template active_title_template')
 
 
 def as_rgb(x):
     return (x << 8) | 2
+
+
+template_failures = set()
 
 
 def draw_title(draw_data, screen, tab, index):
@@ -31,12 +35,15 @@ def draw_title(draw_data, screen, tab, index):
         screen.cursor.fg = draw_data.bell_fg
         screen.draw('🔔 ')
         screen.cursor.fg = fg
+    template = draw_data.title_template
+    if tab.is_active and draw_data.active_title_template is not None:
+        template = draw_data.active_title_template
     try:
-        title = draw_data.title_template.format(title=tab.title, index=index)
+        title = template.format(title=tab.title, index=index)
     except Exception as e:
-        if not hasattr(draw_title, 'template_failure_reported'):
-            draw_title.template_failure_reported = True
-            log_error('Invalid tab title template: "{}" with error: {}'.format(draw_data.title_template, e))
+        if template not in template_failures:
+            template_failures.add(template)
+            log_error('Invalid tab title template: "{}" with error: {}'.format(template, e))
         title = tab.title
     screen.draw(title)
 
@@ -144,7 +151,6 @@ class TabBar:
     def __init__(self, os_window_id, opts):
         self.os_window_id = os_window_id
         self.opts = opts
-        draw_title.template = opts.tab_title_template
         self.num_tabs = 1
         self.margin_width = pt_to_px(self.opts.tab_bar_margin_width, self.os_window_id)
         self.cell_width, cell_height = cell_size_for_window(self.os_window_id)
@@ -177,7 +183,8 @@ class TabBar:
             self.leading_spaces, self.sep, self.trailing_spaces, self.opts.bell_on_tab, self.bell_fg,
             self.opts.tab_fade, self.opts.active_tab_foreground, self.opts.active_tab_background,
             self.opts.inactive_tab_foreground, self.opts.inactive_tab_background,
-            self.opts.tab_bar_background or self.opts.background, self.opts.tab_title_template
+            self.opts.tab_bar_background or self.opts.background, self.opts.tab_title_template,
+            self.opts.active_tab_title_template
         )
         if self.opts.tab_bar_style == 'separator':
             self.draw_func = draw_tab_with_separator
