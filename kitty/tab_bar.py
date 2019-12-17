@@ -177,7 +177,7 @@ class TabBar:
             self.leading_spaces, self.sep, self.trailing_spaces, self.opts.bell_on_tab, self.bell_fg,
             self.opts.tab_fade, self.opts.active_tab_foreground, self.opts.active_tab_background,
             self.opts.inactive_tab_foreground, self.opts.inactive_tab_background,
-            self.opts.background, self.opts.tab_title_template
+            self.opts.tab_bar_background or self.opts.background, self.opts.tab_title_template
         )
         if self.opts.tab_bar_style == 'separator':
             self.draw_func = draw_tab_with_separator
@@ -194,7 +194,9 @@ class TabBar:
             self.draw_data = self.draw_data._replace(active_bg=color_from_int(spec['active_tab_background']))
         if 'inactive_tab_background' in spec:
             self.draw_data = self.draw_data._replace(inactive_bg=color_from_int(spec['inactive_tab_background']))
-        if 'background' in spec:
+        if 'tab_bar_background' in spec:
+            self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['tab_bar_background']))
+        elif 'background' in spec and not self.opts.tab_bar_background:
             self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['background']))
         self.screen.color_profile.set_configured_colors(
                 spec.get('inactive_tab_foreground', color_as_int(self.opts.inactive_tab_foreground)),

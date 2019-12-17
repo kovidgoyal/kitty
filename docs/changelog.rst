@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix :opt:`background_opacity` incorrectly applying to selected text and
   reverse video text (:iss:`2177`)
 
+- Add a new option :opt:`tab_bar_background` to specify a different color
+  for the tab bar (:iss:`2198`)
+
 0.15.0 [2019-11-27]
 --------------------
 
