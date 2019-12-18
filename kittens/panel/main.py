@@ -130,8 +130,8 @@ def main(sys_args):
     if not items:
         raise SystemExit('You must specify the program to run')
     sys.argv = ['kitty']
-    if args.config:
-        sys.argv.append('--config={}'.format(args.config))
+    for config in args.config:
+        sys.argv.append('--config={}'.format(config))
     for override in args.override:
         sys.argv.append('--override={}'.format(override))
     sys.argv.extend(items)
