@@ -2146,18 +2146,67 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
 
 void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
 {
-    if (_glfw.x11.NET_WM_STATE &&
-        _glfw.x11.NET_WM_STATE_MAXIMIZED_VERT &&
-        _glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ)
+    if (!_glfw.x11.NET_WM_STATE ||
+        !_glfw.x11.NET_WM_STATE_MAXIMIZED_VERT ||
+        !_glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ)
+    {
+        return;
+    }
+
+    if (_glfwPlatformWindowVisible(window))
     {
         sendEventToWM(window,
-                      _glfw.x11.NET_WM_STATE,
-                      _NET_WM_STATE_ADD,
-                      _glfw.x11.NET_WM_STATE_MAXIMIZED_VERT,
-                      _glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ,
-                      1, 0);
-        XFlush(_glfw.x11.display);
+                    _glfw.x11.NET_WM_STATE,
+                    _NET_WM_STATE_ADD,
+                    _glfw.x11.NET_WM_STATE_MAXIMIZED_VERT,
+                    _glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ,
+                    1, 0);
     }
+    else
+    {
+        Atom* states = NULL;
+        unsigned long count =
+            _glfwGetWindowPropertyX11(window->x11.handle,
+                                      _glfw.x11.NET_WM_STATE,
+                                      XA_ATOM,
+                                      (unsigned char**) &states);
+
+        // NOTE: We don't check for failure as this property may not exist yet
+        //       and that's fine (and we'll create it implicitly with append)
+
+        Atom missing[2] =
+        {
+            _glfw.x11.NET_WM_STATE_MAXIMIZED_VERT,
+            _glfw.x11.NET_WM_STATE_MAXIMIZED_HORZ
+        };
+        unsigned long missingCount = 2;
+
+        for (unsigned long i = 0;  i < count;  i++)
+        {
+            for (unsigned long j = 0;  j < missingCount;  j++)
+            {
+                if (states[i] == missing[j])
+                {
+                    missing[j] = missing[missingCount - 1];
+                    missingCount--;
+                }
+            }
+        }
+
+        if (states)
+            XFree(states);
+
+        if (!missingCount)
+            return;
+
+        XChangeProperty(_glfw.x11.display, window->x11.handle,
+                        _glfw.x11.NET_WM_STATE, XA_ATOM, 32,
+                        PropModeAppend,
+                        (unsigned char*) missing,
+                        missingCount);
+    }
+
+    XFlush(_glfw.x11.display);
 }
 
 void _glfwPlatformShowWindow(_GLFWwindow* window)
