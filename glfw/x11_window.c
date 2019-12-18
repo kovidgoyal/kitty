@@ -2483,7 +2483,7 @@ void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled)
 
             XChangeProperty(_glfw.x11.display, window->x11.handle,
                             _glfw.x11.NET_WM_STATE, XA_ATOM, 32,
-                            PropModeReplace, (unsigned char*) &states, count);
+                            PropModeReplace, (unsigned char*) states, count);
         }
 
         XFree(states);
