@@ -2443,15 +2443,16 @@ void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled)
     }
     else
     {
-        Atom* states;
+        Atom* states = NULL;
         unsigned long i, count;
 
         count = _glfwGetWindowPropertyX11(window->x11.handle,
                                           _glfw.x11.NET_WM_STATE,
                                           XA_ATOM,
                                           (unsigned char**) &states);
-        if (!states)
-            return;
+
+        // NOTE: We don't check for failure as this property may not exist yet
+        //       and that's fine (and we'll create it implicitly with append)
 
         if (enabled)
         {
@@ -2461,32 +2462,36 @@ void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled)
                     break;
             }
 
-            if (i == count)
-            {
-                XChangeProperty(_glfw.x11.display, window->x11.handle,
-                                _glfw.x11.NET_WM_STATE, XA_ATOM, 32,
-                                PropModeAppend,
-                                (unsigned char*) &_glfw.x11.NET_WM_STATE_ABOVE,
-                                1);
-            }
+            if (i < count)
+                return;
+
+            XChangeProperty(_glfw.x11.display, window->x11.handle,
+                            _glfw.x11.NET_WM_STATE, XA_ATOM, 32,
+                            PropModeAppend,
+                            (unsigned char*) &_glfw.x11.NET_WM_STATE_ABOVE,
+                            1);
         }
-        else
+        else if (states)
         {
             for (i = 0;  i < count;  i++)
             {
                 if (states[i] == _glfw.x11.NET_WM_STATE_ABOVE)
-                {
-                    states[i] = states[count - 1];
-                    count--;
-                }
+                    break;
             }
+
+            if (i == count)
+                return;
+
+            states[i] = states[count - 1];
+            count--;
 
             XChangeProperty(_glfw.x11.display, window->x11.handle,
                             _glfw.x11.NET_WM_STATE, XA_ATOM, 32,
                             PropModeReplace, (unsigned char*) states, count);
         }
 
-        XFree(states);
+        if (states)
+            XFree(states);
     }
 
     XFlush(_glfw.x11.display);
