@@ -137,7 +137,7 @@ static void pointerHandleLeave(void* data UNUSED,
     _glfw.wl.pointerSerial = serial;
     _glfw.wl.pointerFocus = NULL;
     _glfwInputCursorEnter(window, false);
-    _glfw.wl.cursorPreviousShape = NULL;
+    _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
 }
 
 static void setCursor(GLFWCursorShape shape)
@@ -193,7 +193,7 @@ static void pointerHandleMotion(void* data UNUSED,
             window->wl.cursorPosX = x;
             window->wl.cursorPosY = y;
             _glfwInputCursorPos(window, x, y);
-            _glfw.wl.cursorPreviousShape = NULL;
+            _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
             return;
         case topDecoration:
             if (y < _GLFW_DECORATION_WIDTH)
