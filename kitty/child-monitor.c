@@ -109,7 +109,7 @@ static size_t reaped_pids_count = 0;
 #define INCREF_CHILD(x) XREF_CHILD(x, Py_INCREF)
 #define DECREF_CHILD(x) XREF_CHILD(x, Py_DECREF)
 
-// The max time (in secs) to wait for events from the window system
+// The max time to wait for events from the window system
 // before ticking over the main loop. Negative values mean wait forever.
 static monotonic_t maximum_wait = -1;
 
