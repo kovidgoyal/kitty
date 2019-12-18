@@ -466,9 +466,8 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
         // In case we are unbundled, make us a proper UI application
         [NSApp setActivationPolicy:NSApplicationActivationPolicyRegular];
 
-        // Menu bar setup must go between sharedApplication above and
-        // finishLaunching below, in order to properly emulate the behavior
-        // of NSApplicationMain
+        // Menu bar setup must go between sharedApplication and finishLaunching
+        // in order to properly emulate the behavior of NSApplicationMain
 
         if ([[NSBundle mainBundle] pathForResource:@"MainMenu" ofType:@"nib"])
         {
