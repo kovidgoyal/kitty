@@ -221,8 +221,6 @@ typedef struct _GLFWtimerNS
 } _GLFWtimerNS;
 
 
-void _glfwInitTimerNS(void);
-
 void _glfwPollMonitorsNS(void);
 void _glfwSetVideoModeNS(_GLFWmonitor* monitor, const GLFWvidmode* desired);
 void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor);

@@ -647,7 +647,6 @@ int _glfwPlatformInit(void)
     if (!initializeTIS())
         return false;
 
-    _glfwInitTimerNS();
     _glfwInitJoysticksNS();
 
     _glfwPollMonitorsNS();
