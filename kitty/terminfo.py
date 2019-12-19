@@ -215,7 +215,7 @@ string_capabilities = {
     'smam': r'\E[?7h',
     # Start alternate screen
     'smcup': r'\E[?1049h',
-    # Enster insert mode
+    # Enter insert mode
     'smir': r'\E[4h',
     # Enter application keymap mode
     'smkx': r'\E[?1h',
