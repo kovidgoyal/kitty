@@ -17,37 +17,32 @@ typedef int64_t monotonic_t;
 
 static inline monotonic_t
 s_double_to_monotonic_t(double time) {
-    time *= 1000.0;
-    time *= 1000.0;
-    time *= 1000.0;
-    return (monotonic_t)time;
+    return (monotonic_t)(time * 1e9);
 }
 
 static inline monotonic_t
 ms_double_to_monotonic_t(double time) {
-    time *= 1000.0;
-    time *= 1000.0;
-    return (monotonic_t)time;
+    return (monotonic_t)(time * 1e6);
 }
 
 static inline monotonic_t
 s_to_monotonic_t(monotonic_t time) {
-    return time * 1000ll * 1000ll * 1000ll;
+    return time * (monotonic_t)1e9;
 }
 
 static inline monotonic_t
 ms_to_monotonic_t(monotonic_t time) {
-    return time * 1000ll * 1000ll;
+    return time * (monotonic_t)1e6;
 }
 
 static inline int
 monotonic_t_to_ms(monotonic_t time) {
-    return (int)(time / 1000ll / 1000ll);
+    return (int)(time / ((monotonic_t)1e6));
 }
 
 static inline double
 monotonic_t_to_s_double(monotonic_t time) {
-    return (double)time / 1000.0 / 1000.0 / 1000.0;
+    return ((double)time) / 1e9;
 }
 
 extern monotonic_t monotonic_start_time;
@@ -69,10 +64,7 @@ monotonic_t monotonic_start_time = 0;
 
 static inline monotonic_t
 calc_nano_time(struct timespec time) {
-    int64_t result = (monotonic_t)time.tv_sec;
-    result *= 1000LL;
-    result *= 1000LL;
-    result *= 1000LL;
+    int64_t result = (monotonic_t)time.tv_sec * (monotonic_t)1e9;
     result += (monotonic_t)time.tv_nsec;
     return result;
 }
