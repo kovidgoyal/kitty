@@ -18,7 +18,7 @@ from .constants import (
     is_wayland, kitty_exe, logo_data_file
 )
 from .fast_data_types import (
-    GLFW_IBEAM_CURSOR, GLFW_MOD_SUPER, create_os_window, free_font_data,
+    GLFW_IBEAM_CURSOR, create_os_window, free_font_data,
     glfw_init, glfw_terminate, load_png_data, set_custom_cursor,
     set_default_window_icon, set_options
 )
@@ -95,10 +95,6 @@ def init_glfw(opts, debug_keyboard=False):
     return glfw_module
 
 
-def prefer_cmd_shortcuts(x):
-    return x[0] == GLFW_MOD_SUPER
-
-
 def get_new_os_window_trigger(opts):
     new_os_window_trigger = None
     if is_macos:
@@ -108,8 +104,8 @@ def get_new_os_window_trigger(opts):
                 new_os_window_shortcuts.append(k)
         if new_os_window_shortcuts:
             from .fast_data_types import cocoa_set_new_window_trigger
-            new_os_window_shortcuts.sort(key=prefer_cmd_shortcuts, reverse=True)
-            for candidate in new_os_window_shortcuts:
+            # Reverse list so that later defined keyboard shortcts take priority over earlier defined ones
+            for candidate in reversed(new_os_window_shortcuts):
                 if cocoa_set_new_window_trigger(candidate[0], candidate[2]):
                     new_os_window_trigger = candidate
                     break
