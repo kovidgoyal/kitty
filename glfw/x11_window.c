@@ -2226,6 +2226,9 @@ void _glfwPlatformHideWindow(_GLFWwindow* window)
 
 void _glfwPlatformRequestWindowAttention(_GLFWwindow* window)
 {
+    if (!_glfw.x11.NET_WM_STATE || !_glfw.x11.NET_WM_STATE_DEMANDS_ATTENTION)
+        return;
+
     sendEventToWM(window,
                   _glfw.x11.NET_WM_STATE,
                   _NET_WM_STATE_ADD,
