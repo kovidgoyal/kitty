@@ -1483,28 +1483,3 @@ GLFWAPI monotonic_t glfwGetTime(void)
     _GLFW_REQUIRE_INIT_OR_RETURN(0);
     return monotonic();
 }
-
-GLFWAPI void glfwSetTime(monotonic_t time)
-{
-    _GLFW_REQUIRE_INIT();
-
-    if (time < 0)
-    {
-        _glfwInputError(GLFW_INVALID_VALUE, "Invalid time %f", monotonic_t_to_s_double(time));
-        return;
-    }
-
-    // Do nothing
-}
-
-GLFWAPI uint64_t glfwGetTimerValue(void)
-{
-    _GLFW_REQUIRE_INIT_OR_RETURN(0);
-    return _glfwPlatformGetTimerValue();
-}
-
-GLFWAPI uint64_t glfwGetTimerFrequency(void)
-{
-    _GLFW_REQUIRE_INIT_OR_RETURN(0);
-    return _glfwPlatformGetTimerFrequency();
-}

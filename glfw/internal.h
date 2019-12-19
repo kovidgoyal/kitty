@@ -575,12 +575,6 @@ struct _GLFWlibrary
     _GLFWmutex          errorLock;
 
     struct {
-        uint64_t        offset;
-        // This is defined in the platform's time.h
-        _GLFW_PLATFORM_LIBRARY_TIMER_STATE;
-    } timer;
-
-    struct {
         bool            available;
         void*           handle;
         char*           extensions[2];
@@ -662,9 +656,6 @@ const char* _glfwPlatformGetPrimarySelectionString(void);
 
 int _glfwPlatformPollJoystick(_GLFWjoystick* js, int mode);
 void _glfwPlatformUpdateGamepadGUID(char* guid);
-
-uint64_t _glfwPlatformGetTimerValue(void);
-uint64_t _glfwPlatformGetTimerFrequency(void);
 
 int _glfwPlatformCreateWindow(_GLFWwindow* window,
                               const _GLFWwndconfig* wndconfig,

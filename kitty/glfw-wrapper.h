@@ -2022,18 +2022,6 @@ typedef monotonic_t (*glfwGetTime_func)(void);
 glfwGetTime_func glfwGetTime_impl;
 #define glfwGetTime glfwGetTime_impl
 
-typedef void (*glfwSetTime_func)(monotonic_t);
-glfwSetTime_func glfwSetTime_impl;
-#define glfwSetTime glfwSetTime_impl
-
-typedef uint64_t (*glfwGetTimerValue_func)(void);
-glfwGetTimerValue_func glfwGetTimerValue_impl;
-#define glfwGetTimerValue glfwGetTimerValue_impl
-
-typedef uint64_t (*glfwGetTimerFrequency_func)(void);
-glfwGetTimerFrequency_func glfwGetTimerFrequency_impl;
-#define glfwGetTimerFrequency glfwGetTimerFrequency_impl
-
 typedef void (*glfwMakeContextCurrent_func)(GLFWwindow*);
 glfwMakeContextCurrent_func glfwMakeContextCurrent_impl;
 #define glfwMakeContextCurrent glfwMakeContextCurrent_impl

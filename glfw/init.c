@@ -240,7 +240,6 @@ GLFWAPI int glfwInit(monotonic_t start_time)
     _glfwPlatformSetTls(&_glfw.errorSlot, &_glfwMainThreadError);
 
     _glfw.initialized = true;
-    _glfw.timer.offset = _glfwPlatformGetTimerValue();
 
     glfwDefaultWindowHints();
 

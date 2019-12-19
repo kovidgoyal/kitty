@@ -344,15 +344,6 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetTime_impl) = dlsym(handle, "glfwGetTime");
     if (glfwGetTime_impl == NULL) fail("Failed to load glfw function glfwGetTime with error: %s", dlerror());
 
-    *(void **) (&glfwSetTime_impl) = dlsym(handle, "glfwSetTime");
-    if (glfwSetTime_impl == NULL) fail("Failed to load glfw function glfwSetTime with error: %s", dlerror());
-
-    *(void **) (&glfwGetTimerValue_impl) = dlsym(handle, "glfwGetTimerValue");
-    if (glfwGetTimerValue_impl == NULL) fail("Failed to load glfw function glfwGetTimerValue with error: %s", dlerror());
-
-    *(void **) (&glfwGetTimerFrequency_impl) = dlsym(handle, "glfwGetTimerFrequency");
-    if (glfwGetTimerFrequency_impl == NULL) fail("Failed to load glfw function glfwGetTimerFrequency with error: %s", dlerror());
-
     *(void **) (&glfwMakeContextCurrent_impl) = dlsym(handle, "glfwMakeContextCurrent");
     if (glfwMakeContextCurrent_impl == NULL) fail("Failed to load glfw function glfwMakeContextCurrent with error: %s", dlerror());
 

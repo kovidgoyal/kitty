@@ -36,7 +36,6 @@
 
 int _glfwPlatformInit(void)
 {
-    _glfwInitTimerPOSIX();
     return true;
 }
 
@@ -49,4 +48,3 @@ const char* _glfwPlatformGetVersionString(void)
 {
     return _GLFW_VERSION_NUMBER " null OSMesa";
 }
-

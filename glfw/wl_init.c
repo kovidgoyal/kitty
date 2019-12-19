@@ -766,7 +766,6 @@ int _glfwPlatformInit(void)
     }
 #endif
 
-    _glfwInitTimerPOSIX();
     if (!_glfw.wl.wmBase)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,

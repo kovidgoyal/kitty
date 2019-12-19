@@ -13,7 +13,6 @@
       "cocoa_joystick.m",
       "cocoa_monitor.m",
       "cocoa_window.m",
-      "cocoa_time.c",
       "posix_thread.c",
       "nsgl_context.m",
       "egl_context.c",
@@ -39,7 +38,6 @@
     "headers": [
       "null_platform.h",
       "null_joystick.h",
-      "posix_time.h",
       "posix_thread.h",
       "osmesa_context.h"
     ],
@@ -48,7 +46,6 @@
       "null_monitor.c",
       "null_window.c",
       "null_joystick.c",
-      "posix_time.c",
       "posix_thread.c",
       "osmesa_context.c"
     ]
@@ -56,7 +53,6 @@
   "wayland": {
     "headers": [
       "wl_platform.h",
-      "posix_time.h",
       "posix_thread.h",
       "xkb_glfw.h",
       "dbus_glfw.h",
@@ -82,7 +78,6 @@
       "wl_init.c",
       "wl_monitor.c",
       "wl_window.c",
-      "posix_time.c",
       "posix_thread.c",
       "xkb_glfw.c",
       "dbus_glfw.c",
@@ -126,7 +121,6 @@
       "dbus_glfw.h",
       "ibus_glfw.h",
       "backend_utils.h",
-      "posix_time.h",
       "posix_thread.h",
       "glx_context.h",
       "egl_context.h",
@@ -143,7 +137,6 @@
       "xkb_glfw.c",
       "dbus_glfw.c",
       "ibus_glfw.c",
-      "posix_time.c",
       "posix_thread.c",
       "glx_context.c",
       "egl_context.c",
