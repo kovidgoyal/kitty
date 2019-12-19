@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a new option :opt:`active_tab_title_template` to specify a different
   template for active tab titles (:iss:`2198`)
 
+- Fix lines at the edge of the window at certain windows sizes when drawing
+  images on a transparent window (:iss:`2079`)
+
 0.15.0 [2019-11-27]
 --------------------
 

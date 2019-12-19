@@ -509,13 +509,15 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     // The scissor limits below are calculated to ensure that they do not
     // overlap with the pixels outside the draw area,
     // for a test case (scissor is also used to blit framebuffer in draw_cells_interleaved_premult) run:
-    // kitty -o background=cyan -o background_opacity=0.7 -o window_margin_width=40 sh -c "kitty +kitten icat logo/kitty.png; read"
+    // kitty -o background=cyan -o background_opacity=0.7 -o cursor_blink_interval=0 -o window_margin_width=40 sh -c "kitty +kitten icat logo/kitty.png; read"
 #define SCALE(w, x) ((GLfloat)(os_window->viewport_##w) * (GLfloat)(x))
+    /* printf("columns=%d dx=%f w=%f vw=%d vh=%d left=%f width=%f\n", screen->columns, dx, w, os_window->viewport_width, os_window->viewport_height, SCALE(width, (xstart + 1.f)/2.f), SCALE(width, w / 2.f)); */
+
     glScissor(
-            (GLint)(ceilf(SCALE(width, (xstart + 1.0f) / 2.0f))), // x
-            (GLint)(ceilf(SCALE(height, ((ystart - h) + 1.0f) / 2.0f))), // y
-            (GLsizei)(floorf(SCALE(width, w / 2.0f))), // width
-            (GLsizei)(floorf(SCALE(height, h / 2.0f))) // height
+        (GLint)roundf(SCALE(width, (xstart + 1.f)/2.f)),  // x
+        (GLint)roundf(SCALE(height, (ystart - h + 1.f)/2.f)),  // y
+        (GLsizei)roundf(SCALE(width, w / 2.f)),  // width
+        (GLsizei)roundf(SCALE(height, h / 2.f)) // height
     );
 #undef SCALE
     if (os_window->is_semi_transparent) {
