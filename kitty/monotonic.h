@@ -12,6 +12,8 @@
 
 #define MONOTONIC_T_MAX INT64_MAX
 #define MONOTONIC_T_MIN INT64_MIN
+#define MONOTONIC_T_1e6 1000000ll
+#define MONOTONIC_T_1e9 1000000000ll
 
 typedef int64_t monotonic_t;
 
@@ -27,17 +29,17 @@ ms_double_to_monotonic_t(double time) {
 
 static inline monotonic_t
 s_to_monotonic_t(monotonic_t time) {
-    return time * (monotonic_t)1e9;
+    return time * MONOTONIC_T_1e9;
 }
 
 static inline monotonic_t
 ms_to_monotonic_t(monotonic_t time) {
-    return time * (monotonic_t)1e6;
+    return time * MONOTONIC_T_1e6;
 }
 
 static inline int
 monotonic_t_to_ms(monotonic_t time) {
-    return (int)(time / ((monotonic_t)1e6));
+    return (int)(time / MONOTONIC_T_1e6);
 }
 
 static inline double
@@ -64,9 +66,7 @@ monotonic_t monotonic_start_time = 0;
 
 static inline monotonic_t
 calc_nano_time(struct timespec time) {
-    int64_t result = (monotonic_t)time.tv_sec * (monotonic_t)1e9;
-    result += (monotonic_t)time.tv_nsec;
-    return result;
+    return ((monotonic_t)time.tv_sec * MONOTONIC_T_1e9) + (monotonic_t)time.tv_nsec;
 }
 
 monotonic_t
