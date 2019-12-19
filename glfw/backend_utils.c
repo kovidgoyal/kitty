@@ -163,6 +163,14 @@ prepareForPoll(EventLoopData *eld, monotonic_t timeout) {
     return timeout;
 }
 
+static inline struct timespec
+calc_time(monotonic_t nsec) {
+    struct timespec result;
+    result.tv_sec  = nsec / (1000LL * 1000LL * 1000LL);
+    result.tv_nsec = nsec % (1000LL * 1000LL * 1000LL);
+    return result;
+}
+
 int
 pollWithTimeout(struct pollfd *fds, nfds_t nfds, monotonic_t timeout) {
     struct timespec tv = calc_time(timeout);
