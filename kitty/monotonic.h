@@ -9,7 +9,6 @@
 
 
 #include <stdint.h>
-#include <time.h>
 
 #define MONOTONIC_T_MAX INT64_MAX
 #define MONOTONIC_T_MIN INT64_MIN
@@ -65,6 +64,7 @@ init_monotonic(void) {
 }
 
 #ifdef MONOTONIC_IMPLEMENTATION
+#include <time.h>
 monotonic_t monotonic_start_time = 0;
 
 static inline monotonic_t
