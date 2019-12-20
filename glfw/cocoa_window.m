@@ -2200,7 +2200,6 @@ START_ALLOW_CASE_RANGE
     switch(glfw_key) {
 #define K8(ch, name) case GLFW_KEY_##name: utf_8_key = ch; break;
 #define K16(ch, name) case GLFW_KEY_##name: utf_16_key = ch; break;
-#define K16_numpad(ch, mods, name) case GLFW_KEY_##name: utf_16_key = ch; *cocoa_mods |= mods; break;
         K8('!', EXCLAM);
         K8('"', DOUBLE_QUOTE);
         K8('#', NUMBER_SIGN);
@@ -2329,17 +2328,8 @@ START_ALLOW_CASE_RANGE
         K16(NSPrintFunctionKey, PRINT_SCREEN);
         case GLFW_KEY_F1 ... GLFW_KEY_F24:
             utf_16_key = NSF1FunctionKey + (glfw_key - GLFW_KEY_F1); break;
-        case GLFW_KEY_KP_0 ... GLFW_KEY_KP_9:
-            utf_16_key = 0x52 + (glfw_key - GLFW_KEY_KP_0); *cocoa_mods |= NSEventModifierFlagNumericPad; break;
-        K16_numpad(0x41, NSEventModifierFlagNumericPad, KP_DECIMAL);
-        K16_numpad(0x43, NSEventModifierFlagNumericPad, KP_MULTIPLY);
-        K16_numpad(0x45, NSEventModifierFlagNumericPad, KP_ADD);
-        K16_numpad(0x4B, NSEventModifierFlagNumericPad, KP_DIVIDE);
-        K16_numpad(0x4E, NSEventModifierFlagNumericPad, KP_SUBTRACT);
-        K16_numpad(0x51, NSEventModifierFlagNumericPad, KP_EQUAL);
 #undef K8
 #undef K16
-#undef K16_numpad
 END_ALLOW_CASE_RANGE
     }
     if (utf_16_key != 0) {
