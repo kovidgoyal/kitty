@@ -104,7 +104,7 @@ def get_new_os_window_trigger(opts):
                 new_os_window_shortcuts.append(k)
         if new_os_window_shortcuts:
             from .fast_data_types import cocoa_set_new_window_trigger
-            # Reverse list so that later defined keyboard shortcts take priority over earlier defined ones
+            # Reverse list so that later defined keyboard shortcuts take priority over earlier defined ones
             for candidate in reversed(new_os_window_shortcuts):
                 if cocoa_set_new_window_trigger(candidate[0], candidate[2]):
                     new_os_window_trigger = candidate
