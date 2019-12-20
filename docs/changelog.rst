@@ -25,6 +25,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix lines at the edge of the window at certain windows sizes when drawing
   images on a transparent window (:iss:`2079`)
 
+- Fix window not being rendered for the first time until some input has been
+  received from child process (:iss:`2216`)
+
+
 0.15.0 [2019-11-27]
 --------------------
 
