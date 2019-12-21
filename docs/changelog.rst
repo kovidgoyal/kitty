@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.15.1 [future]
+0.15.1 [2019-12-21]
 --------------------
 
 - Fix a crash/incorrect rendering when detaching a window in some circumstances
