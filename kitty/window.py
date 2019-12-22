@@ -17,7 +17,7 @@ from .constants import (
 from .fast_data_types import (
     BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
     CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
-    GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
+    GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_ALPHA_MASK_PREMULT_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, STRIKETHROUGH, Screen,
     add_window, cell_size_for_window, compile_program, get_clipboard_string,
     init_cell_program, set_clipboard_string, set_titlebar_color,
@@ -82,12 +82,17 @@ def load_shader_programs(semi_transparent=False):
             ff = ff.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
         compile_program(p, vv, ff)
     v, f = load_shaders('graphics')
-    for which, p in {
-            'SIMPLE': GRAPHICS_PROGRAM,
-            'PREMULT': GRAPHICS_PREMULT_PROGRAM,
-            'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
+    for (alpha_mask, premult), p in {
+            (False, False): GRAPHICS_PROGRAM,
+            (False, True): GRAPHICS_PREMULT_PROGRAM,
+            (True, False): GRAPHICS_ALPHA_MASK_PROGRAM,
+            (True, True): GRAPHICS_ALPHA_MASK_PREMULT_PROGRAM,
     }.items():
-        ff = f.replace('ALPHA_TYPE', which)
+        ff = f
+        if alpha_mask:
+            ff = ff.replace('#define NOT_ALPHA_MASK', '#define ALPHA_MASK')
+        if premult:
+            ff = ff.replace('#define NOT_PREMULT', '#define PREMULT')
         compile_program(p, v, ff)
     init_cell_program()
 

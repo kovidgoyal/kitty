@@ -1,5 +1,6 @@
 #version GLSL_VERSION
-#define ALPHA_TYPE
+#define NOT_ALPHA_MASK
+#define NOT_PREMULT
 
 uniform sampler2D image;
 #ifdef ALPHA_MASK
@@ -27,7 +28,11 @@ vec3 color_to_vec(uint c) {
 void main() {
     color = texture(image, texcoord);
 #ifdef ALPHA_MASK
+#ifdef PREMULT
+    color = vec4(color_to_vec(fg) * color.r, color.r);
+#else
     color = vec4(color_to_vec(fg), color.r);
+#endif
 #else
     color.a *= inactive_text_alpha;
 #ifdef PREMULT

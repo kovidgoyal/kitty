@@ -9,7 +9,7 @@
 #include "gl.h"
 #include <stddef.h>
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_ALPHA_MASK_PREMULT_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT };
 
 // Sprites {{{
@@ -347,7 +347,7 @@ draw_graphics(int program, ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *d
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
 void
-draw_centered_alpha_mask(ssize_t gvao_idx, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas) {
+draw_centered_alpha_mask(bool is_semi_transparent, ssize_t gvao_idx, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas) {
     static ImageRenderData data = {.group_count=1};
     gpu_data_for_centered_image(&data, screen_width, screen_height, width, height);
     if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
@@ -358,17 +358,31 @@ draw_centered_alpha_mask(ssize_t gvao_idx, size_t screen_width, size_t screen_he
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, width, height, 0, GL_RED, GL_UNSIGNED_BYTE, canvas);
-    bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
+    if (is_semi_transparent) {
+        bind_program(GRAPHICS_ALPHA_MASK_PREMULT_PROGRAM);
+    } else {
+        bind_program(GRAPHICS_ALPHA_MASK_PROGRAM);
+    }
     if (!cell_uniform_data.alpha_mask_fg_set) {
         cell_uniform_data.alpha_mask_fg_set = true;
-        glUniform1i(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "image"), GRAPHICS_UNIT);
-        glUniform1ui(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "fg"), OPT(foreground));
+        if (is_semi_transparent) {
+            glUniform1i(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PREMULT_PROGRAM), "image"), GRAPHICS_UNIT);
+            glUniform1ui(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PREMULT_PROGRAM), "fg"), OPT(foreground));
+        } else {
+            glUniform1i(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "image"), GRAPHICS_UNIT);
+            glUniform1ui(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "fg"), OPT(foreground));
+        }
     }
     glScissor(0, 0, screen_width, screen_height);
     send_graphics_data_to_gpu(1, gvao_idx, &data);
     glEnable(GL_BLEND);
-    BLEND_ONTO_OPAQUE;
-    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, gvao_idx, &data, 0, 1);
+    if (is_semi_transparent) {
+        BLEND_PREMULT;
+        draw_graphics(GRAPHICS_ALPHA_MASK_PREMULT_PROGRAM, 0, gvao_idx, &data, 0, 1);
+    } else {
+        BLEND_ONTO_OPAQUE;
+        draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, gvao_idx, &data, 0, 1);
+    }
     glDisable(GL_BLEND);
 }
 
@@ -686,7 +700,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(GRAPHICS_ALPHA_MASK_PREMULT_PROGRAM); C(BLIT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
