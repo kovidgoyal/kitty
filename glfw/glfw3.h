@@ -405,6 +405,7 @@ extern "C" {
 #define GLFW_KEY_LEFT_BRACKET       91  /* [ */
 #define GLFW_KEY_BACKSLASH          92  /* \ */
 #define GLFW_KEY_RIGHT_BRACKET      93  /* ] */
+#define GLFW_KEY_CIRCUMFLEX         94  /* ^ */
 #define GLFW_KEY_UNDERSCORE         95  /* _ */
 #define GLFW_KEY_GRAVE_ACCENT       96  /* ` */
 #define GLFW_KEY_WORLD_1            161 /* non-US #1 */
@@ -4148,6 +4149,7 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* window, int mode, int value);
  *  - `GLFW_KEY_LEFT_BRACKET`
  *  - `GLFW_KEY_BACKSLASH`
  *  - `GLFW_KEY_RIGHT_BRACKET`
+ *  - `GLFW_KEY_CIRCUMFLEX`
  *  - `GLFW_KEY_UNDERSCORE`
  *  - `GLFW_KEY_GRAVE_ACCENT`
  *  - `GLFW_KEY_WORLD_1`

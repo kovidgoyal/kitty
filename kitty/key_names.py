@@ -30,6 +30,7 @@ key_name_aliases = {
     '[': 'LEFT_BRACKET',
     '\\': 'BACKSLASH',
     ']': 'RIGHT_BRACKET',
+    '^': 'CIRCUMFLEX',
     '_': 'UNDERSCORE',
     '`': 'GRAVE_ACCENT',
     '§': 'PARAGRAPH',

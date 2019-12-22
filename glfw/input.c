@@ -510,6 +510,7 @@ const char* _glfwGetKeyName(int key)
         case GLFW_KEY_LEFT_BRACKET:       return "LEFT_BRACKET";
         case GLFW_KEY_BACKSLASH:          return "BACKSLASH";
         case GLFW_KEY_RIGHT_BRACKET:      return "RIGHT_BRACKET";
+        case GLFW_KEY_CIRCUMFLEX:         return "CIRCUMFLEX";
         case GLFW_KEY_UNDERSCORE:         return "UNDERSCORE";
         case GLFW_KEY_GRAVE_ACCENT:       return "GRAVE_ACCENT";
         case GLFW_KEY_WORLD_1:            return "WORLD_1";

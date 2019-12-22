@@ -192,7 +192,8 @@ ENCODING = {
     'CYRILLIC E': 'CJ',
     'CYRILLIC YU': 'CK',
     'CYRILLIC YA': 'CL',
-    'CYRILLIC IO': 'CM'
+    'CYRILLIC IO': 'CM',
+    'CIRCUMFLEX': 'CN'
 }
 KEY_MAP = {
     32: 'A',
@@ -254,6 +255,7 @@ KEY_MAP = {
     91: 's',
     92: 't',
     93: 'u',
+    94: 'CN',
     95: 'Bj',
     96: 'v',
     161: 'w',
