@@ -61,6 +61,7 @@ START_ALLOW_CASE_RANGE
         S(bracketleft, LEFT_BRACKET); \
         S(backslash, BACKSLASH); \
         S(bracketright, RIGHT_BRACKET); \
+        S(asciicircum, CIRCUMFLEX); \
         S(underscore, UNDERSCORE); \
         S(grave, GRAVE_ACCENT); \
         R(a, z, A, Z); \

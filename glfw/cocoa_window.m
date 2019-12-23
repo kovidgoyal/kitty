@@ -410,6 +410,7 @@ static int translateKey(unsigned int key, bool apply_keymap)
                 K('[', LEFT_BRACKET);
                 K('\\', BACKSLASH);
                 K(']', RIGHT_BRACKET);
+                K('^', CIRCUMFLEX);
                 K('_', UNDERSCORE);
                 K('`', GRAVE_ACCENT);
                 K(PARAGRAPH_UTF_8, PARAGRAPH);
@@ -2227,6 +2228,7 @@ START_ALLOW_CASE_RANGE
         K('[', LEFT_BRACKET);
         K('\\', BACKSLASH);
         K(']', RIGHT_BRACKET);
+        K('^', CIRCUMFLEX);
         K('_', UNDERSCORE);
         K('`', GRAVE_ACCENT);
         K('a', A);
