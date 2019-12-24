@@ -387,7 +387,7 @@ def generate_key_table_impl(w):
 
 
 def generate_key_table():
-    # To run this, use: python3 . +runpy "from kitty.keys import *; generate_key_table()"
+    # To run this, use: ./kitty/launcher/kitty +runpy "from kitty.keys import *; generate_key_table()"
     import os
     from functools import partial
     with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'keys.h'), 'w') as f:
