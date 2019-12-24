@@ -4,6 +4,7 @@
 uniform sampler2D image;
 #ifdef ALPHA_MASK
 uniform uint fg;
+uniform float alpha_mask_premult;
 #else
 uniform float inactive_text_alpha;
 #endif
@@ -28,6 +29,7 @@ void main() {
     color = texture(image, texcoord);
 #ifdef ALPHA_MASK
     color = vec4(color_to_vec(fg), color.r);
+    color = mix(color, vec4(color.rgb * color.a, color.a), alpha_mask_premult);
 #else
     color.a *= inactive_text_alpha;
 #ifdef PREMULT

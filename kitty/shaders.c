@@ -211,7 +211,7 @@ create_graphics_vao() {
 struct CellUniformData {
     bool constants_set;
     bool alpha_mask_fg_set;
-    GLint gploc, gpploc, cploc, cfploc, fg_loc;
+    GLint gploc, gpploc, cploc, cfploc, fg_loc, amask_premult_loc;
     GLfloat prev_inactive_text_alpha;
 };
 
@@ -347,7 +347,7 @@ draw_graphics(int program, ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *d
 #define BLEND_PREMULT glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);  // blending of pre-multiplied colors
 
 void
-draw_centered_alpha_mask(ssize_t gvao_idx, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas) {
+draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas) {
     static ImageRenderData data = {.group_count=1};
     gpu_data_for_centered_image(&data, screen_width, screen_height, width, height);
     if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
@@ -364,11 +364,15 @@ draw_centered_alpha_mask(ssize_t gvao_idx, size_t screen_width, size_t screen_he
         glUniform1i(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "image"), GRAPHICS_UNIT);
         glUniform1ui(glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "fg"), OPT(foreground));
     }
-    glScissor(0, 0, screen_width, screen_height);
-    send_graphics_data_to_gpu(1, gvao_idx, &data);
+    glUniform1f(cell_uniform_data.amask_premult_loc, os_window->is_semi_transparent ? 1.f : 0.f);
+    send_graphics_data_to_gpu(1, os_window->gvao_idx, &data);
     glEnable(GL_BLEND);
-    BLEND_ONTO_OPAQUE;
-    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, gvao_idx, &data, 0, 1);
+    if (os_window->is_semi_transparent) {
+        BLEND_PREMULT;
+    } else {
+        BLEND_ONTO_OPAQUE;
+    }
+    draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, os_window->gvao_idx, &data, 0, 1);
     glDisable(GL_BLEND);
 }
 
@@ -459,6 +463,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         cell_uniform_data.gpploc = glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
         cell_uniform_data.cfploc = glGetUniformLocation(program_id(CELL_FG_PROGRAM), "inactive_text_alpha");
+        cell_uniform_data.amask_premult_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "alpha_mask_premult");
 #define S(prog, name, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), val); }
         S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT, 1i);
         S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT, 1i);
