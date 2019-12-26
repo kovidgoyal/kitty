@@ -258,7 +258,6 @@ cocoa_create_global_menu(void) {
         [new_os_window_menu_item setKeyEquivalentModifierMask:new_window_mods];
         [new_os_window_menu_item setTarget:global_menu_target];
         [appMenu addItem:new_os_window_menu_item];
-        [s release];
     }
 
 
