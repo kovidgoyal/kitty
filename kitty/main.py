@@ -201,6 +201,7 @@ def macos_cmdline(argv_args):
 
 def read_shell_environment(opts=None):
     if not hasattr(read_shell_environment, 'ans'):
+        ans = read_shell_environment.ans = {}
         import subprocess
         from .session import resolved_shell
         shell = resolved_shell(opts)
@@ -234,14 +235,12 @@ def read_shell_environment(opts=None):
                         break
                     raw += x
                 raw = raw.decode('utf-8', 'replace')
-                ans = read_shell_environment.ans = {}
                 for line in raw.splitlines():
                     k, v = line.partition('=')[::2]
                     if k and v:
                         ans[k] = v
             else:
                 log_error('Failed to run shell to read its environment')
-                read_shell_environment.ans = {}
     return read_shell_environment.ans
 
 
