@@ -207,7 +207,11 @@ def read_shell_environment(opts=None):
         shell = resolved_shell(opts)
         master, slave = openpty()
         remove_blocking(master)
-        p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True)
+        try:
+            p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True)
+        except FileNotFoundError:
+            log_error('Could not find shell to read environment')
+            return ans
         with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
             raw = b''
             from subprocess import TimeoutExpired
