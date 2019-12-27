@@ -53,7 +53,7 @@ Quickstart
 --------------
 
 Pre-built binaries of |kitty| are available for both macOS and Linux.
-See the :doc:`binary install instructions </binary>`. You can also
+See the :doc:`binary install instructions </binary>`. You can
 :doc:`build from source </build>`.
 
 You can also use your favorite package manager to install the |kitty| package.
