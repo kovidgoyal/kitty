@@ -166,7 +166,7 @@ def generate_wrappers(glfw_header):
     GLFWcocoatogglefullscreenfun glfwSetCocoaToggleFullscreenIntercept(GLFWwindow *window, GLFWcocoatogglefullscreenfun callback)
     GLFWapplicationshouldhandlereopenfun glfwSetApplicationShouldHandleReopen(GLFWapplicationshouldhandlereopenfun callback)
     GLFWapplicationwillfinishlaunchingfun glfwSetApplicationWillFinishLaunching(GLFWapplicationwillfinishlaunchingfun callback)
-    void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, void* cocoa_key, int* cocoa_mods)
+    void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, char cocoa_key[32], int* cocoa_mods)
     void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback)
     void* glfwGetX11Display(void)
     int32_t glfwGetX11Window(GLFWwindow* window)

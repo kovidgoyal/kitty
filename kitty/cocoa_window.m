@@ -97,7 +97,7 @@ find_app_name(void) {
 
 @end
 
-static unichar new_window_key = 0;
+static char new_window_key[32] = {0};
 static NSEventModifierFlags new_window_mods = 0;
 
 static PyObject*
@@ -105,9 +105,10 @@ cocoa_set_new_window_trigger(PyObject *self UNUSED, PyObject *args) {
     int mods, key;
     if (!PyArg_ParseTuple(args, "ii", &mods, &key)) return NULL;
     int nwm;
-    get_cocoa_key_equivalent(key, mods, &new_window_key, &nwm);
+    memset(new_window_key, 0, sizeof(new_window_key));
+    get_cocoa_key_equivalent(key, mods, new_window_key, &nwm);
     new_window_mods = nwm;
-    if (new_window_key) Py_RETURN_TRUE;
+    if (new_window_key[0]) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
 }
 
@@ -252,8 +253,8 @@ cocoa_create_global_menu(void) {
     NSMenuItem* preferences_menu_item = [[NSMenuItem alloc] initWithTitle:@"Preferences..." action:@selector(show_preferences:) keyEquivalent:@","], *new_os_window_menu_item = NULL;
     [preferences_menu_item setTarget:global_menu_target];
     [appMenu addItem:preferences_menu_item];
-    if (new_window_key) {
-        NSString *s = [NSString stringWithCharacters:&new_window_key length:1];
+    if (new_window_key[0]) {
+        NSString *s = @(new_window_key);
         new_os_window_menu_item = [[NSMenuItem alloc] initWithTitle:@"New OS window" action:@selector(new_os_window:) keyEquivalent:s];
         [new_os_window_menu_item setKeyEquivalentModifierMask:new_window_mods];
         [new_os_window_menu_item setTarget:global_menu_target];
@@ -473,7 +474,6 @@ cleanup() {
     dockMenu = nil;
     if (notification_activated_callback) Py_DECREF(notification_activated_callback);
     notification_activated_callback = NULL;
-
     } // autoreleasepool
 }
 
