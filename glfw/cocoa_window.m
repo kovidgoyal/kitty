@@ -2179,9 +2179,9 @@ GLFWAPI void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun 
     requestRenderFrame((_GLFWwindow*)w, callback);
 }
 
-GLFWAPI void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, char cocoa_key[32], int *cocoa_mods) {
+GLFWAPI void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, char *cocoa_key, size_t key_sz, int *cocoa_mods) {
     *cocoa_mods = 0;
-    memset(cocoa_key, 0, sizeof(cocoa_key));
+    memset(cocoa_key, 0, key_sz);
 
     if (glfw_mods & GLFW_MOD_SHIFT)
         *cocoa_mods |= NSEventModifierFlagShift;
@@ -2334,13 +2334,13 @@ START_ALLOW_CASE_RANGE
 END_ALLOW_CASE_RANGE
     }
     if (utf_16_key != 0) {
-         strncpy(cocoa_key, [[NSString stringWithCharacters:&utf_16_key length:1] UTF8String], sizeof(cocoa_key) - 1);
+         strncpy(cocoa_key, [[NSString stringWithCharacters:&utf_16_key length:1] UTF8String], key_sz - 1);
     } else {
         unsigned str_pos = 0;
-        for (unsigned i = 0; i < 4 && str_pos < sizeof(cocoa_key) - 1; i++) {
+        for (unsigned i = 0; i < 4 && str_pos < key_sz - 1; i++) {
             uint8_t byte = (utf_8_key >> 24) & 0xff;
             utf_8_key <<= 8;
-            if (byte != 0) tmp_cocoa_key[str_pos++] = byte;
+            if (byte != 0) cocoa_key[str_pos++] = byte;
         }
         cocoa_key[str_pos] = 0;
     }

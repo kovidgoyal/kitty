@@ -1079,8 +1079,8 @@ set_custom_cursor(PyObject *self UNUSED, PyObject *args) {
 
 #ifdef __APPLE__
 void
-get_cocoa_key_equivalent(int key, int mods, char cocoa_key[32], int *cocoa_mods) {
-    glfwGetCocoaKeyEquivalent(key, mods, cocoa_key, cocoa_mods);
+get_cocoa_key_equivalent(int key, int mods, char cocoa_key, size_t key_sz, int *cocoa_mods) {
+    glfwGetCocoaKeyEquivalent(key, mods, cocoa_key, key_sz, cocoa_mods);
 }
 
 static void
