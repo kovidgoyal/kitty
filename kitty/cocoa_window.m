@@ -105,7 +105,6 @@ cocoa_set_new_window_trigger(PyObject *self UNUSED, PyObject *args) {
     int mods, key;
     if (!PyArg_ParseTuple(args, "ii", &mods, &key)) return NULL;
     int nwm;
-    memset(new_window_key, 0, sizeof(new_window_key));
     get_cocoa_key_equivalent(key, mods, new_window_key, &nwm);
     new_window_mods = nwm;
     if (new_window_key[0]) Py_RETURN_TRUE;

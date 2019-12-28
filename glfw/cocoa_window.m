@@ -2181,6 +2181,7 @@ GLFWAPI void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun 
 
 GLFWAPI void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, char cocoa_key[32], int *cocoa_mods) {
     *cocoa_mods = 0;
+    memset(cocoa_key, 0, sizeof(cocoa_key));
 
     if (glfw_mods & GLFW_MOD_SHIFT)
         *cocoa_mods |= NSEventModifierFlagShift;
