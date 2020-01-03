@@ -513,12 +513,12 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         // We don't use depth and stencil buffers
         glfwWindowHint(GLFW_DEPTH_BITS, 0);
         glfwWindowHint(GLFW_STENCIL_BITS, 0);
+        if (OPT(hide_window_decorations)) glfwWindowHint(GLFW_DECORATED, false);
 #ifdef __APPLE__
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
         glfwSetApplicationShouldHandleReopen(on_application_reopen);
         glfwSetApplicationWillFinishLaunching(cocoa_create_global_menu);
-        if (OPT(hide_window_decorations)) glfwWindowHint(GLFW_DECORATED, false);
 #endif
 
     }
@@ -527,7 +527,6 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwWindowHintString(GLFW_X11_INSTANCE_NAME, wm_class_name);
     glfwWindowHintString(GLFW_X11_CLASS_NAME, wm_class_class);
     glfwWindowHintString(GLFW_WAYLAND_APP_ID, wm_class_class);
-    if (OPT(hide_window_decorations)) glfwWindowHint(GLFW_DECORATED, false);
 #endif
 
     if (global_state.num_os_windows >= MAX_CHILDREN) {
