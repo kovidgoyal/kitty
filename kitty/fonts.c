@@ -1203,7 +1203,7 @@ DescriptorIndices descriptor_indices = {0};
 static PyObject*
 set_font_data(PyObject UNUSED *m, PyObject *args) {
     PyObject *sm;
-    Py_CLEAR(box_drawing_function); Py_CLEAR(prerender_function); Py_CLEAR(descriptor_for_idx);
+    Py_CLEAR(box_drawing_function); Py_CLEAR(prerender_function); Py_CLEAR(descriptor_for_idx); Py_CLEAR(font_feature_settings);
     if (!PyArg_ParseTuple(args, "OOOIIIIO!dO",
                 &box_drawing_function, &prerender_function, &descriptor_for_idx,
                 &descriptor_indices.bold, &descriptor_indices.italic, &descriptor_indices.bi, &descriptor_indices.num_symbol_fonts,
@@ -1310,6 +1310,7 @@ finalize(void) {
     Py_CLEAR(box_drawing_function);
     Py_CLEAR(prerender_function);
     Py_CLEAR(descriptor_for_idx);
+    Py_CLEAR(font_feature_settings);
     free_font_groups();
     if (harfbuzz_buffer) { hb_buffer_destroy(harfbuzz_buffer); harfbuzz_buffer = NULL; }
     free(group_state.groups); group_state.groups = NULL; group_state.groups_capacity = 0;
