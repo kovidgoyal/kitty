@@ -14,6 +14,7 @@ extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_hide_window_title(void *w);
+extern void cocoa_hide_titlebar(void *w);
 extern void cocoa_set_activation_policy(bool);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
@@ -513,7 +514,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         // We don't use depth and stencil buffers
         glfwWindowHint(GLFW_DEPTH_BITS, 0);
         glfwWindowHint(GLFW_STENCIL_BITS, 0);
-        if (OPT(hide_window_decorations)) glfwWindowHint(GLFW_DECORATED, false);
+        if (OPT(hide_window_decorations) & 1) glfwWindowHint(GLFW_DECORATED, false);
 #ifdef __APPLE__
         cocoa_set_activation_policy(OPT(macos_hide_from_tasks));
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
@@ -652,7 +653,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     glfwSetDropCallback(glfw_window, drop_callback);
 #ifdef __APPLE__
     if (glfwGetCocoaWindow) {
-        if (!(OPT(macos_show_window_title_in) & WINDOW)) {
+        if (OPT(hide_window_decorations) & 2) {
+            cocoa_hide_titlebar(glfwGetCocoaWindow(glfw_window));
+        } else if (!(OPT(macos_show_window_title_in) & WINDOW)) {
             cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
         }
         cocoa_make_window_resizable(glfwGetCocoaWindow(glfw_window), OPT(macos_window_resizable));

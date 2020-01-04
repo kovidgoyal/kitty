@@ -662,8 +662,18 @@ Fade the text in inactive windows by the specified amount (a number between
 zero and one, with zero being fully faded).
 '''))
 
-o('hide_window_decorations', False, long_text=_('''
-Hide the window decorations (title-bar and window borders).
+
+def hide_window_decorations(x):
+    if x == 'titlebar-only':
+        return 0b10
+    elif to_bool(x):
+        return 0b01
+    return 0b00
+
+
+o('hide_window_decorations', 'no', option_type=hide_window_decorations, long_text=_('''
+Hide the window decorations (title-bar and window borders) with :code:`yes`.
+On macOS, :code:`titlebar-only` can be used to only hide the titlebar.
 Whether this works and exactly what effect it has depends on the
 window manager/operating system.
 '''))
