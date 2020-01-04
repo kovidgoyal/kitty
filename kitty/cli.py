@@ -176,7 +176,7 @@ def version(add_rev=False):
     from . import fast_data_types
     if add_rev and hasattr(fast_data_types, 'KITTY_VCS_REV'):
         rev = ' ({})'.format(fast_data_types.KITTY_VCS_REV[:10])
-    return '{} {}{} created by {}'.format(italic(appname), green(str_version), rev, title('Kovid Goyal'))
+    return f'{italic(appname)} {green(str_version)}{rev} created by {title("Kovid Goyal")}'
 
 
 def wrap(text, limit=80):
