@@ -180,6 +180,7 @@ typedef struct _GLFWwindowX11
 {
     Colormap        colormap;
     Window          handle;
+    Window          parent;
 
     bool            iconified;
     bool            maximized;
