@@ -277,7 +277,8 @@ or by defining shortcuts for it in kitty.conf, for example::
     map alt+2 disable_ligatures_in all never
     map alt+3 disable_ligatures_in tab cursor
 
-Note: If font_feature_settings is enabled, this feature has no effect.
+Note: This function is equivalent to setting :code:`font_feature_settings` to
+:code:`-liga -dlig -calt`.
 '''))
 
 o('font_feature_settings', 'none', long_text=_('''
@@ -292,12 +293,8 @@ Note that this code is indexed by PostScript name, and not TTF name or font
 family; this allows you to define very precise feature settings; e.g. you can
 disable a feature in the italic font but not in the regular font.
 
-Note that this feature ignores the value of :code:`disable_ligatures`, because
-it assumes you want to fine tune exactly which OpenType tags are
-enabled/disabled.  See examples below.
-
 To get the PostScript name for a font, ask Fontconfig for it, using your family
-name:
+name::
 
     $ fc-match "Fira Code" postscriptname
     :postscriptname=FiraCode-Regular
@@ -306,16 +303,16 @@ name:
     $ fc-match "TT2020Base:style=italic" postscriptname
     :postscriptname=TT2020Base-Italic
 
-Enable alternate zero and oldstyle numerals:
+Enable alternate zero and oldstyle numerals::
 
     font_feature_settings FiraCode-Retina: +zero +onum
 
-Enable only alternate zero:
+Enable only alternate zero::
 
     font_feature_settings FiraCode-Retina: +zero
 
 Disable the normal ligatures, but keep the :code:`calt` feature which (in this
-font) breaks up monotony:
+font) breaks up monotony::
 
     font_feature_settings TT2020StyleB-Regular: -liga +calt
 '''))

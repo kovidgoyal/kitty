@@ -360,24 +360,24 @@ init_font(Font *f, PyObject *face, bool bold, bool italic, bool emoji_presentati
     f->bold = bold; f->italic = italic; f->emoji_presentation = emoji_presentation;
     f->num_hb_features = 0;
     const char *psname = postscript_name_for_face(face);
-    if (strstr(psname, "NimbusMonoPS-") == psname) {
-        copy_hb_feature(f, LIGA_FEATURE); copy_hb_feature(f, DLIG_FEATURE);
-    }
+    copy_hb_feature(f, LIGA_FEATURE);
+    copy_hb_feature(f, DLIG_FEATURE);
     copy_hb_feature(f, CALT_FEATURE);
     if (font_feature_settings != NULL){
-        const char* face = postscript_name_for_face(f->face);
-
-        PyObject* o = PyDict_GetItemString(font_feature_settings, face);
+        PyObject* o = PyDict_GetItemString(font_feature_settings, psname);
         if (o != NULL) {
             long len = PyList_Size(o);
-            hb_feature_t* hb_feat = calloc(len, sizeof(hb_feature_t));
+            if (len==0) return true;
+            f->num_ffs_hb_features = len + f->num_hb_features;
+            hb_feature_t* hb_feat = calloc(f->num_ffs_hb_features, sizeof(hb_feature_t));
             for (long i = len-1; i >= 0; i--) {
                 PyObject* item = PyList_GetItem(o, i);
                 const char* feat = PyUnicode_AsUTF8(item);
                 hb_feature_from_string(feat, -1, &hb_feat[i]);
             }
+            for (size_t i = 0; i < f->num_hb_features; i++)
+            hb_feat[len+i] = hb_features[i];
             f->ffs_hb_features = hb_feat;
-            f->num_ffs_hb_features = len;
         }
     }
     return true;
@@ -386,6 +386,8 @@ init_font(Font *f, PyObject *face, bool bold, bool italic, bool emoji_presentati
 static inline void
 del_font(Font *f) {
     Py_CLEAR(f->face);
+    if (f->num_ffs_hb_features > 0)
+    free(f->ffs_hb_features);
     free_maps(f);
     f->bold = false; f->italic = false;
 }
@@ -794,9 +796,9 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     load_hb_buffer(first_cpu_cell, first_gpu_cell, num_cells);
 
     if (fobj->num_ffs_hb_features > 0)
-        hb_shape(font, harfbuzz_buffer, fobj->ffs_hb_features, fobj->num_ffs_hb_features);
+        hb_shape(font, harfbuzz_buffer, fobj->ffs_hb_features, fobj->num_ffs_hb_features - (disable_ligature ? 0 : fobj->num_hb_features));
     else
-        hb_shape(font, harfbuzz_buffer, fobj->hb_features, fobj->num_hb_features - (disable_ligature ? 0 : 1));
+        hb_shape(font, harfbuzz_buffer, fobj->hb_features, fobj->num_hb_features - (disable_ligature ? 0 : fobj->num_hb_features));
 
     unsigned int info_length, positions_length;
     group_state.info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
@@ -1079,7 +1081,7 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
         default:
             shape_run(first_cpu_cell, first_gpu_cell, num_cells, &fg->fonts[font_idx], disable_ligature_strategy == DISABLE_LIGATURES_ALWAYS);
             if (pua_space_ligature) merge_groups_for_pua_space_ligature();
-            else if (cursor_offset > -1) {
+            else if (cursor_offset > -1) { // false if DISABLE_LIGATURES_NEVER
                 index_type left, right;
                 split_run_at_offset(cursor_offset, &left, &right);
                 if (right > left) {
