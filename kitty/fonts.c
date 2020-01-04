@@ -81,7 +81,7 @@ typedef struct {
     size_t num_hb_features;
     size_t num_ffs_hb_features;
     SpecialGlyphCache special_glyph_cache[SPECIAL_GLYPH_CACHE_SIZE];
-    bool bold, italic, emoji_presentation, ffs_set;
+    bool bold, italic, emoji_presentation;
 } Font;
 
 typedef struct {
