@@ -291,15 +291,17 @@ Note that this code is indexed by PostScript name, and not the font
 family. This allows you to define very precise feature settings; e.g. you can
 disable a feature in the italic font but not in the regular font.
 
-To get the PostScript name for a font, ask Fontconfig for it, using the family
-name::
+To get the PostScript name for a font, use :code:`kitty + list-fonts --psnames`::
 
-    $ fc-match "Fira Code" postscriptname
-    :postscriptname=FiraCode-Regular
-    $ fc-match "Fira Code Retina" postscriptname
-    :postscriptname=FiraCode-Retina
-    $ fc-match "TT2020Base:style=italic" postscriptname
-    :postscriptname=TT2020Base-Italic
+    $ kitty + list-fonts --psnames | grep Fira
+    Fira Code
+    Fira Code Bold (FiraCode-Bold)
+    Fira Code Light (FiraCode-Light)
+    Fira Code Medium (FiraCode-Medium)
+    Fira Code Regular (FiraCode-Regular)
+    Fira Code Retina (FiraCode-Retina)
+
+The part in brackets is the PostScript name.
 
 Enable alternate zero and oldstyle numerals::
 

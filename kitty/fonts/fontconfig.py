@@ -45,7 +45,7 @@ def list_fonts():
         if f:
             fn = fd.get('full_name') or (f + ' ' + fd.get('style', '')).strip()
             is_mono = fd.get('spacing') in ('MONO', 'DUAL')
-            yield {'family': f, 'full_name': fn, 'is_monospace': is_mono}
+            yield {'family': f, 'full_name': fn, 'postscript_name': fd.get('postscript_name', ''), 'is_monospace': is_mono}
 
 
 def family_name_to_key(family):

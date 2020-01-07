@@ -38,7 +38,7 @@ def list_fonts():
         if f:
             fn = (f + ' ' + (fd['style'] or '')).strip()
             is_mono = bool(fd['monospace'])
-            yield {'family': f, 'full_name': fn, 'is_monospace': is_mono}
+            yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': is_mono}
 
 
 def find_best_match(family, bold=False, italic=False):

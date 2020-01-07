@@ -20,6 +20,7 @@ def create_family_groups(monospaced=True):
 
 
 def main(argv):
+    psnames = '--psnames' in argv
     isatty = sys.stdout.isatty()
     groups = create_family_groups()
     for k in sorted(groups, key=lambda x: x.lower()):
@@ -31,5 +32,7 @@ def main(argv):
             p = f['full_name']
             if isatty:
                 p = '\033[3m' + p + '\033[m'
+            if psnames:
+                p += ' ({})'.format(f['postscript_name'])
             print('   ', p)
         print()
