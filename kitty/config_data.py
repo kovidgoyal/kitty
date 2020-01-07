@@ -276,6 +276,45 @@ or by defining shortcuts for it in kitty.conf, for example::
     map alt+1 disable_ligatures_in active always
     map alt+2 disable_ligatures_in all never
     map alt+3 disable_ligatures_in tab cursor
+
+Note: This function is equivalent to setting :code:`font_feature_settings` to
+:code:`-liga -dlig -calt`.
+'''))
+
+o('font_feature_settings', 'none', long_text=_('''
+Choose exactly which OpenType features to enable or disable. This is useful as
+some fonts might have many features worthwhile in a terminal—for example, Fira
+Code Retina includes a discretionary feature, :code:`zero`, which in that font
+changes the appearance of the zero (0), to make it more easily distinguishable
+from Ø. Fira Code Retina also includes other discretionary features known as
+Stylistic Sets which have the tags :code:`ss01` through :code:`ss20`.
+
+Note that this code is indexed by PostScript name, and not TTF name or font
+family; this allows you to define very precise feature settings; e.g. you can
+disable a feature in the italic font but not in the regular font.
+
+To get the PostScript name for a font, ask Fontconfig for it, using your family
+name::
+
+    $ fc-match "Fira Code" postscriptname
+    :postscriptname=FiraCode-Regular
+    $ fc-match "Fira Code Retina" postscriptname
+    :postscriptname=FiraCode-Retina
+    $ fc-match "TT2020Base:style=italic" postscriptname
+    :postscriptname=TT2020Base-Italic
+
+Enable alternate zero and oldstyle numerals::
+
+    font_feature_settings FiraCode-Retina: +zero +onum
+
+Enable only alternate zero::
+
+    font_feature_settings FiraCode-Retina: +zero
+
+Disable the normal ligatures, but keep the :code:`calt` feature which (in this
+font) breaks up monotony::
+
+    font_feature_settings TT2020StyleB-Regular: -liga +calt
 '''))
 
 
