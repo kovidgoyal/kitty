@@ -1578,10 +1578,18 @@ void _glfwPlatformSetWindowSizeLimits(_GLFWwindow* window,
 
 void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window, int numer, int denom)
 {
-    if (numer == GLFW_DONT_CARE || denom == GLFW_DONT_CARE)
-        [window->ns.object setResizeIncrements:NSMakeSize(1.0, 1.0)];
-    else
+    if (numer != GLFW_DONT_CARE && denom != GLFW_DONT_CARE)
         [window->ns.object setContentAspectRatio:NSMakeSize(numer, denom)];
+    else
+        [window->ns.object setResizeIncrements:NSMakeSize(1.0, 1.0)];
+}
+
+void _glfwPlatformSetWindowSizeIncrements(_GLFWwindow* window, int widthincr, int heightincr)
+{
+    if (widthincr != GLFW_DONT_CARE && heightincr != GLFW_DONT_CARE)
+        [window->ns.object setResizeIncrements:NSMakeSize(widthincr, heightincr)];
+    else
+        [window->ns.object setResizeIncrements:NSMakeSize(1.0, 1.0)];
 }
 
 void _glfwPlatformGetFramebufferSize(_GLFWwindow* window, int* width, int* height)

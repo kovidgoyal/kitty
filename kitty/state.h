@@ -42,6 +42,7 @@ typedef struct {
     unsigned long tab_bar_min_tabs;
     DisableLigature disable_ligatures;
     ResizeDrawStrategy resize_draw_strategy;
+    bool resize_in_steps;
     bool sync_to_monitor;
     bool close_on_child_death;
     bool window_alert_on_bell;
@@ -245,3 +246,4 @@ void remove_main_loop_timer(id_type timer_id);
 void update_main_loop_timer(id_type timer_id, monotonic_t interval, bool enabled);
 void run_main_loop(tick_callback_fun, void*);
 void stop_main_loop(void);
+void os_window_update_size_increments(OSWindow *window);

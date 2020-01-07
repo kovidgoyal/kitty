@@ -3036,6 +3036,46 @@ GLFWAPI void glfwSetWindowSizeLimits(GLFWwindow* window, int minwidth, int minhe
  *
  *  @ingroup window
  */
+
+GLFWAPI void glfwSetWindowSizeIncrements(GLFWwindow* window, int widthincr, int heightincr);
+
+/*! @brief Sets the size increments of the specified window.
+ *
+ *  This function sets the size increments of the content area of the specified
+ *  window.  If the window is full screen, the size limits only take effect
+ *  once it is made windowed.  If the window is not resizable, this function
+ *  does nothing.
+ *
+ *  The size increments are applied immediately to a windowed mode window and
+ *  may cause it to be resized.
+ *
+ *  The dimension increments must be greater than zero.
+ *
+ *  @param[in] window The window to set limits for.
+ *  @param[in] widthincr The width increments, in screen coordinates, of the
+ *  content area, or `GLFW_DONT_CARE`.
+ *  @param[in] heightincr The height increments, in screen coordinates, of the
+ *  content area, or `GLFW_DONT_CARE`.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
+ *  GLFW_INVALID_VALUE and @ref GLFW_PLATFORM_ERROR.
+ *
+ *  @remark If you set size limits and an aspect ratio that conflict, the
+ *  results are undefined.
+ *
+ *  @remark @wayland The size limits will not be applied until the window is
+ *  actually resized, either by the user or by the compositor.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref window_sizelimits
+ *  @sa @ref glfwSetWindowSizeLimits
+ *
+ *  @since Added in version 3.2.
+ *
+ *  @ingroup window
+ */
+
 GLFWAPI void glfwSetWindowAspectRatio(GLFWwindow* window, int numer, int denom);
 
 /*! @brief Sets the size of the content area of the specified window.

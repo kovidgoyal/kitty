@@ -254,6 +254,8 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     window->maxheight   = GLFW_DONT_CARE;
     window->numer       = GLFW_DONT_CARE;
     window->denom       = GLFW_DONT_CARE;
+    window->widthincr   = GLFW_DONT_CARE;
+    window->heightincr  = GLFW_DONT_CARE;
 
     // Open the actual window and create its context
     if (!_glfwPlatformCreateWindow(window, &wndconfig, &ctxconfig, &fbconfig))
@@ -688,6 +690,20 @@ GLFWAPI void glfwSetWindowAspectRatio(GLFWwindow* handle, int numer, int denom)
         return;
 
     _glfwPlatformSetWindowAspectRatio(window, numer, denom);
+}
+
+GLFWAPI void glfwSetWindowSizeIncrements(GLFWwindow* handle, int widthincr, int heightincr)
+{
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    assert(window != NULL);
+    assert(widthincr >= 0);
+    assert(heightincr >= 0);
+
+    _GLFW_REQUIRE_INIT();
+
+    window->widthincr  = widthincr;
+    window->heightincr = heightincr;
+    _glfwPlatformSetWindowSizeIncrements(window, window->widthincr, window->heightincr);
 }
 
 GLFWAPI void glfwGetFramebufferSize(GLFWwindow* handle, int* width, int* height)

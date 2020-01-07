@@ -522,6 +522,7 @@ PYWRAP1(set_options) {
     S(tab_bar_min_tabs, PyLong_AsUnsignedLong);
     S(disable_ligatures, PyLong_AsLong);
     S(resize_draw_strategy, PyLong_AsLong);
+    S(resize_in_steps, PyObject_IsTrue);
     S(pointer_shape_when_grabbed, pointer_shape);
 
     GA(tab_bar_style);
@@ -781,6 +782,7 @@ PYWRAP1(os_window_font_size) {
                     resize_screen(os_window, w->render_data.screen, true);
                 }
             }
+            if (OPT(resize_in_steps)) os_window_update_size_increments(os_window);
         }
         return Py_BuildValue("d", os_window->font_sz_in_pts);
     END_WITH_OS_WINDOW

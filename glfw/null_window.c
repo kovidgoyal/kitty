@@ -128,6 +128,10 @@ void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window UNUSED, int n UNUSED,
 {
 }
 
+void _glfwPlatformSetWindowSizeIncrements(_GLFWwindow* window UNUSED, int widthincr UNUSED, int heightincr UNUSED)
+{
+}
+
 void _glfwPlatformGetFramebufferSize(_GLFWwindow* window, int* width, int* height)
 {
     if (width)
