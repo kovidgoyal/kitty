@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.15.12 [future]
+0.15.2 [future]
 --------------------
 
 - Allow choosing OpenType features for individual fonts via the
