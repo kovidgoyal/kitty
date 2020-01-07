@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.15.12 [future]
+--------------------
+
+- Allow choosing OpenType features for individual fonts via the
+  :opt:`font_features` option.
+
+
 0.15.1 [2019-12-21]
 --------------------
 

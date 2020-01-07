@@ -411,16 +411,13 @@ def handle_symbol_map(key, val, ans):
 
 
 @special_handler
-def handle_font_feature_settings(key, val, ans):
-    parts = val.split(':', maxsplit=2)
-    if len(parts) != 2:
-        if parts[0] == "none":
-            return
+def handle_font_features(key, val, ans):
+    if val != 'none':
+        parts = val.split()
+        if len(parts) < 2:
+            log_error("Ignoring invalid font_features {}".format(val))
         else:
-            log_error("Ignoring invalid font_feature_settings for font {}".format(parts[0]))
-    else:
-        font, features = parts
-        ans['font_feature_settings'].update({font.strip(): features.strip().split()})
+            ans['font_features'][parts[0]] = parts[1:]
 
 
 @special_handler
@@ -508,7 +505,7 @@ def option_names_for_completion():
 
 
 def parse_config(lines, check_keys=True, accumulate_bad_lines=None):
-    ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [], 'env': {}, 'kitten_aliases': {}, 'font_feature_settings': {}}
+    ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [], 'env': {}, 'kitten_aliases': {}, 'font_features': {}}
     parse_config_base(
         lines,
         defaults,

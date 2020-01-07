@@ -76,9 +76,7 @@ typedef struct {
     PyObject *face;
     // Map glyphs to sprite map co-ords
     SpritePosition sprite_map[1024];
-    hb_feature_t hb_features[8];
     hb_feature_t* ffs_hb_features;
-    size_t num_hb_features;
     size_t num_ffs_hb_features;
     SpecialGlyphCache special_glyph_cache[SPECIAL_GLYPH_CACHE_SIZE];
     bool bold, italic, emoji_presentation;
@@ -349,36 +347,39 @@ desc_to_face(PyObject *desc, FONTS_DATA_HANDLE fg) {
     return ans;
 }
 
-static inline void
-copy_hb_feature(Font *f, HBFeature which) {
-    memcpy(f->hb_features + f->num_hb_features++, hb_features + which, sizeof(hb_features[0]));
-}
-
 static inline bool
 init_font(Font *f, PyObject *face, bool bold, bool italic, bool emoji_presentation) {
     f->face = face; Py_INCREF(f->face);
     f->bold = bold; f->italic = italic; f->emoji_presentation = emoji_presentation;
-    f->num_hb_features = 0;
+    f->num_ffs_hb_features = 0;
     const char *psname = postscript_name_for_face(face);
-    copy_hb_feature(f, LIGA_FEATURE);
-    copy_hb_feature(f, DLIG_FEATURE);
-    copy_hb_feature(f, CALT_FEATURE);
     if (font_feature_settings != NULL){
         PyObject* o = PyDict_GetItemString(font_feature_settings, psname);
         if (o != NULL) {
-            long len = PyList_Size(o);
-            if (len==0) return true;
-            f->num_ffs_hb_features = len + f->num_hb_features;
-            hb_feature_t* hb_feat = calloc(f->num_ffs_hb_features, sizeof(hb_feature_t));
-            for (long i = len-1; i >= 0; i--) {
-                PyObject* item = PyList_GetItem(o, i);
-                const char* feat = PyUnicode_AsUTF8(item);
-                hb_feature_from_string(feat, -1, &hb_feat[i]);
+            Py_ssize_t len = PySequence_Size(o);
+            if (len > 0) {
+                f->num_ffs_hb_features = len + 1;
+                f->ffs_hb_features = calloc(f->num_ffs_hb_features, sizeof(hb_feature_t));
+                if (!f->ffs_hb_features) return false;
+                for (Py_ssize_t i = 0; i < len; i++) {
+                    PyObject* item = PySequence_GetItem(o, i);
+                    if (!PyUnicode_Check(item)) fatal("A font feature is not a unicode string");
+                    if (!hb_feature_from_string(PyUnicode_AsUTF8(item), -1, &f->ffs_hb_features[i])) {
+                        fatal("Invalid font feature: %s", PyUnicode_AsUTF8(item));
+                    }
+                }
+                memcpy(f->ffs_hb_features + len, &hb_features[CALT_FEATURE], sizeof(hb_feature_t));
             }
-            for (size_t i = 0; i < f->num_hb_features; i++)
-            hb_feat[len+i] = hb_features[i];
-            f->ffs_hb_features = hb_feat;
         }
+    }
+    if (!f->num_ffs_hb_features) {
+        f->ffs_hb_features = calloc(4, sizeof(hb_feature_t));
+        if (!f->ffs_hb_features) return false;
+        if (strstr(psname, "NimbusMonoPS-") == psname) {
+            memcpy(f->ffs_hb_features + f->num_ffs_hb_features++, &hb_features[LIGA_FEATURE], sizeof(hb_feature_t));
+            memcpy(f->ffs_hb_features + f->num_ffs_hb_features++, &hb_features[DLIG_FEATURE], sizeof(hb_feature_t));
+        }
+        memcpy(f->ffs_hb_features + f->num_ffs_hb_features++, &hb_features[CALT_FEATURE], sizeof(hb_feature_t));
     }
     return true;
 }
@@ -386,8 +387,7 @@ init_font(Font *f, PyObject *face, bool bold, bool italic, bool emoji_presentati
 static inline void
 del_font(Font *f) {
     Py_CLEAR(f->face);
-    if (f->num_ffs_hb_features > 0)
-    free(f->ffs_hb_features);
+    free(f->ffs_hb_features); f->ffs_hb_features = NULL;
     free_maps(f);
     f->bold = false; f->italic = false;
 }
@@ -795,10 +795,9 @@ shape(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, hb
     group_state.last_gpu_cell = first_gpu_cell + (num_cells ? num_cells - 1 : 0);
     load_hb_buffer(first_cpu_cell, first_gpu_cell, num_cells);
 
-    if (fobj->num_ffs_hb_features > 0)
-        hb_shape(font, harfbuzz_buffer, fobj->ffs_hb_features, fobj->num_ffs_hb_features - (disable_ligature ? 0 : fobj->num_hb_features));
-    else
-        hb_shape(font, harfbuzz_buffer, fobj->hb_features, fobj->num_hb_features - (disable_ligature ? 0 : fobj->num_hb_features));
+    size_t num_features = fobj->num_ffs_hb_features;
+    if (num_features && !disable_ligature) num_features--;  // the last feature is always -calt
+    hb_shape(font, harfbuzz_buffer, fobj->ffs_hb_features, num_features);
 
     unsigned int info_length, positions_length;
     group_state.info = hb_buffer_get_glyph_infos(harfbuzz_buffer, &info_length);
@@ -1049,8 +1048,6 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         if (face == NULL) return NULL;
         font = calloc(1, sizeof(Font));
         font->face = face;
-        font->hb_features[0] = hb_features[CALT_FEATURE];
-        font->num_hb_features = 1;
     } else {
         FontGroup *fg = font_groups;
         font = fg->fonts + fg->medium_font_idx;

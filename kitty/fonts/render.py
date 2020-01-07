@@ -103,7 +103,7 @@ def set_font_family(opts=None, override_font_size=None, debug_font_matching=Fals
     set_font_data(
         render_box_drawing, prerender_function, descriptor_for_idx,
         indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,
-        sm, sz, opts['font_feature_settings']
+        sm, sz, opts.font_features
     )
 
 
