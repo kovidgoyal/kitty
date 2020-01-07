@@ -410,6 +410,14 @@ def handle_symbol_map(key, val, ans):
     ans['symbol_map'].update(parse_symbol_map(val))
 
 
+class FontFeature(str):
+
+    def __new__(cls, name, parsed):
+        ans = str.__new__(cls, name)
+        ans.parsed = parsed
+        return ans
+
+
 @special_handler
 def handle_font_features(key, val, ans):
     if val != 'none':
@@ -417,7 +425,16 @@ def handle_font_features(key, val, ans):
         if len(parts) < 2:
             log_error("Ignoring invalid font_features {}".format(val))
         else:
-            ans['font_features'][parts[0]] = parts[1:]
+            features = []
+            for feat in parts[1:]:
+                try:
+                    parsed = defines.parse_font_feature(feat)
+                except ValueError:
+                    log_error('Ignoring invalid font feature: {}'.format(feat))
+                else:
+                    features.append(FontFeature(feat, parsed))
+            if features:
+                ans['font_features'][parts[0]] = tuple(features)
 
 
 @special_handler

@@ -355,17 +355,17 @@ init_font(Font *f, PyObject *face, bool bold, bool italic, bool emoji_presentati
     const char *psname = postscript_name_for_face(face);
     if (font_feature_settings != NULL){
         PyObject* o = PyDict_GetItemString(font_feature_settings, psname);
-        if (o != NULL) {
-            Py_ssize_t len = PySequence_Size(o);
+        if (o != NULL && PyTuple_Check(o)) {
+            Py_ssize_t len = PyTuple_GET_SIZE(o);
             if (len > 0) {
                 f->num_ffs_hb_features = len + 1;
                 f->ffs_hb_features = calloc(f->num_ffs_hb_features, sizeof(hb_feature_t));
                 if (!f->ffs_hb_features) return false;
                 for (Py_ssize_t i = 0; i < len; i++) {
-                    PyObject* item = PySequence_GetItem(o, i);
-                    if (!PyUnicode_Check(item)) fatal("A font feature is not a unicode string");
-                    if (!hb_feature_from_string(PyUnicode_AsUTF8(item), -1, &f->ffs_hb_features[i])) {
-                        fatal("Invalid font feature: %s", PyUnicode_AsUTF8(item));
+                    PyObject* parsed = PyObject_GetAttrString(PyTuple_GET_ITEM(o, i), "parsed");
+                    if (parsed) {
+                        memcpy(f->ffs_hb_features + i, PyBytes_AS_STRING(parsed), sizeof(hb_feature_t));
+                        Py_DECREF(parsed);
                     }
                 }
                 memcpy(f->ffs_hb_features + len, &hb_features[CALT_FEATURE], sizeof(hb_feature_t));
@@ -1455,9 +1455,26 @@ free_font_data(PyObject *self UNUSED, PyObject *args UNUSED) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+parse_font_feature(PyObject *self UNUSED, PyObject *feature) {
+    if (!PyUnicode_Check(feature)) {
+        PyErr_SetString(PyExc_TypeError, "feature must be a unicode object");
+        return NULL;
+    }
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, sizeof(hb_feature_t));
+    if (!ans) return NULL;
+    if (!hb_feature_from_string(PyUnicode_AsUTF8(feature), -1, (hb_feature_t*)PyBytes_AS_STRING(ans))) {
+        Py_CLEAR(ans);
+        PyErr_Format(PyExc_ValueError, "%U is not a valid font feature", feature);
+        return NULL;
+    }
+    return ans;
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(set_font_data, METH_VARARGS),
     METHODB(free_font_data, METH_NOARGS),
+    METHODB(parse_font_feature, METH_O),
     METHODB(create_test_font_group, METH_VARARGS),
     METHODB(sprite_map_set_layout, METH_VARARGS),
     METHODB(test_sprite_position_for, METH_VARARGS),
