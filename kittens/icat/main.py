@@ -93,6 +93,12 @@ but you can turn it off or on explicitly, if needed.
 --silent
 type=bool-set
 Do not print out anything to stdout during operation.
+
+
+--z-index -z
+type=int
+default=0
+Z-index of the image. When negative, text will be displayed on top of the image.
 '''
 
 
@@ -182,8 +188,8 @@ def write_chunked(cmd, data):
         cmd.clear()
 
 
-def show(outfile, width, height, fmt, transmit_mode='t', align='center', place=None):
-    cmd = {'a': 'T', 'f': fmt, 's': width, 'v': height}
+def show(outfile, width, height, zindex, fmt, transmit_mode='t', align='center', place=None):
+    cmd = {'a': 'T', 'f': fmt, 's': width, 'v': height, 'z': zindex}
     if place:
         set_cursor_for_place(place, cmd, width, height, align)
     else:
@@ -219,7 +225,7 @@ def process(path, args, is_tempfile):
         fmt = 24 if m.mode == 'rgb' else 32
         transmit_mode = 't'
         outfile, width, height = convert(path, m, available_width, available_height, args.scale_up)
-    show(outfile, width, height, fmt, transmit_mode, align=args.align, place=args.place)
+    show(outfile, width, height, args.z_index, fmt, transmit_mode, align=args.align, place=args.place)
     if not args.place:
         print()  # ensure cursor is on a new line
     return file_removed
