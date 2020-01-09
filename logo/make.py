@@ -17,7 +17,7 @@ def abspath(x):
 def run(*args):
     try:
         subprocess.check_call(args)
-    except EnvironmentError:
+    except OSError:
         raise SystemExit('You are missing the {} program needed to generate the kitty logo'.format(args[0]))
 
 

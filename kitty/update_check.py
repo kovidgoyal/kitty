@@ -109,7 +109,7 @@ def update_check(timer_id=None):
             kitty_exe(), '+runpy',
             'from kitty.update_check import run_worker; run_worker()'
         ], stdout=subprocess.PIPE)
-    except EnvironmentError as e:
+    except OSError as e:
         log_error('Failed to run kitty for update check, with error: {}'.format(e))
         return False
     monitor_pid(p.pid)

@@ -80,7 +80,7 @@ def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_in
                 _parse(include, type_map, special_handling, ans, all_keys)
         except FileNotFoundError:
             log_error('Could not find included config file: {}, ignoring'.format(val))
-        except EnvironmentError:
+        except OSError:
             log_error('Could not read from included config file: {}, ignoring'.format(val))
         return
     if all_keys is not None and key not in all_keys:

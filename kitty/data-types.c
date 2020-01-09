@@ -58,9 +58,9 @@ static PyObject*
 redirect_std_streams(PyObject UNUSED *self, PyObject *args) {
     char *devnull = NULL;
     if (!PyArg_ParseTuple(args, "s", &devnull)) return NULL;
-    if (freopen(devnull, "r", stdin) == NULL) return PyErr_SetFromErrno(PyExc_EnvironmentError);
-    if (freopen(devnull, "w", stdout) == NULL) return PyErr_SetFromErrno(PyExc_EnvironmentError);
-    if (freopen(devnull, "w", stderr) == NULL)  return PyErr_SetFromErrno(PyExc_EnvironmentError);
+    if (freopen(devnull, "r", stdin) == NULL) return PyErr_SetFromErrno(PyExc_OSError);
+    if (freopen(devnull, "w", stdout) == NULL) return PyErr_SetFromErrno(PyExc_OSError);
+    if (freopen(devnull, "w", stderr) == NULL)  return PyErr_SetFromErrno(PyExc_OSError);
     Py_RETURN_NONE;
 }
 

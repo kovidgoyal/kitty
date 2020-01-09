@@ -260,10 +260,10 @@ class startup_notification_handler:
 
 
 def remove_socket_file(s, path=None):
-    with suppress(EnvironmentError):
+    with suppress(OSError):
         s.close()
     if path:
-        with suppress(EnvironmentError):
+        with suppress(OSError):
             os.unlink(path)
 
 
@@ -287,7 +287,7 @@ def single_instance_unix(name):
         fd = os.open(path, os.O_CREAT | os.O_WRONLY | os.O_TRUNC | os.O_CLOEXEC)
         try:
             fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-        except EnvironmentError as err:
+        except OSError as err:
             if err.errno in (errno.EAGAIN, errno.EACCES):
                 # Client
                 s = socket.socket(family=socket.AF_UNIX)
@@ -298,7 +298,7 @@ def single_instance_unix(name):
         s = socket.socket(family=socket.AF_UNIX)
         try:
             s.bind(socket_path)
-        except EnvironmentError as err:
+        except OSError as err:
             if err.errno in (errno.EADDRINUSE, errno.EEXIST):
                 os.unlink(socket_path)
                 s.bind(socket_path)
@@ -322,7 +322,7 @@ def single_instance(group_id=None):
     addr = '\0' + name
     try:
         s.bind(addr)
-    except EnvironmentError as err:
+    except OSError as err:
         if err.errno == errno.ENOENT:
             return single_instance_unix(name)
         if err.errno == errno.EADDRINUSE:

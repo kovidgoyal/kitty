@@ -657,7 +657,7 @@ class Boss:
         with suppress(Exception):
             s.connect(address)
             s.sendall(b'c')
-            with suppress(EnvironmentError):
+            with suppress(OSError):
                 s.shutdown(socket.SHUT_RDWR)
             s.close()
 

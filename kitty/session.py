@@ -143,7 +143,7 @@ def create_sessions(opts, args=None, special_window=None, cwd_from=None, respect
         try:
             with open(default_session) as f:
                 session_data = f.read()
-        except EnvironmentError:
+        except OSError:
             log_error('Failed to read from session file, ignoring: {}'.format(default_session))
         else:
             yield from parse_session(session_data, opts, getattr(args, 'title', None))
