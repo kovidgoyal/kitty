@@ -336,11 +336,9 @@ def newer(dest, *sources):
     except EnvironmentError:
         return True
     for s in sources:
-        try:
+        with suppress(FileNotFoundError):
             if os.path.getmtime(s) >= dtime:
                 return True
-        except FileNotFoundError:
-            pass
     return False
 
 
