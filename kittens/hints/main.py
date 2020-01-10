@@ -21,6 +21,7 @@ from ..tui.operations import faint, styled
 
 URL_PREFIXES = 'http https file ftp'.split()
 DEFAULT_HINT_ALPHABET = string.digits + string.ascii_lowercase
+DEFAULT_REGEX = r'(?m)^\s*(.+)\s*$'
 screen_size = screen_size_function()
 
 
@@ -265,7 +266,7 @@ def run_loop(args, text, all_marks, index_map, extra_cli_args=()):
         return {
             'match': handler.text_matches, 'programs': args.program,
             'multiple_joiner': args.multiple_joiner, 'customize_processing': args.customize_processing,
-            'type': args.type, 'groupdicts': handler.groupdicts, 'extra_cli_args': extra_cli_args
+            'type': args.type, 'groupdicts': handler.groupdicts, 'extra_cli_args': extra_cli_args, 'linenum_action': args.linenum_action
         }
     raise SystemExit(loop.return_code)
 
@@ -323,11 +324,20 @@ def parse_input(text):
     return convert_text(text, cols)
 
 
+def linenum_marks(text, args, Mark, extra_cli_args, *a):
+    regex = args.regex
+    if regex == DEFAULT_REGEX:
+        regex = r'(?P<path>(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,7})):(?P<line>\d+)'
+    yield from mark(regex, [brackets, quotes], text, args)
+
+
 def load_custom_processor(customize_processing):
     if customize_processing.startswith('::import::'):
         import importlib
         m = importlib.import_module(customize_processing[len('::import::'):])
         return {k: getattr(m, k) for k in dir(m)}
+    if customize_processing == '::linenum::':
+        return {'mark': linenum_marks, 'handle_result': linenum_handle_result}
     from kitty.constants import config_dir
     customize_processing = os.path.expandvars(os.path.expanduser(customize_processing))
     if os.path.isabs(customize_processing):
@@ -342,6 +352,8 @@ def run(args, text, extra_cli_args=()):
     try:
         text = parse_input(text)
         pattern, post_processors = functions_for(args)
+        if args.type == 'linenum':
+            args.customize_processing = '::linenum::'
         if args.customize_processing:
             m = load_custom_processor(args.customize_processing)
             if 'mark' in m:
@@ -386,12 +398,15 @@ multiple times to run multiple programs.
 
 --type
 default=url
-choices=url,regex,path,line,hash,word
-The type of text to search for.
+choices=url,regex,path,line,hash,word,linenum
+The type of text to search for. A value of :code:`linenum` looks for error messages
+using the pattern specified with :option:`--regex`, which must have the named groups,
+path and line. If not specified, will look for :code:`path:line`.
+The :option:`--linenum-action` option controls what to do with the selected error message.
 
 
 --regex
-default=(?m)^\s*(.+)\s*$
+default={default_regex}
 The regular expression to use when :option:`kitty +kitten hints --type`=regex.
 The regular expression is in python syntax. If you specify a numbered group in
 the regular expression only the group will be matched. This allow you to match
@@ -403,8 +418,21 @@ the program will be passed arguments corresponding to each named group of
 the form key=value.
 
 
+--linenum-action
+default=self
+type=choice
+choices=self,window,tab,os_window,background
+The action to perform on the matched errors. The actual action is whatever
+arguments are provided to the kitten, for example:
+:code:`kitty + kitten hints --type=linenum vim +{line} {path}`
+will open the matched path at the matched line number in vim. This option
+controls where the action is executed: :code:`self` means the current window,
+:code:`window` a new kitty window, :code:`tab` a new tab, :code:`os_window`
+a new OS window and :code:`background` run in the background.
+
+
 --url-prefixes
-default={0}
+default={url_prefixes}
 Comma separated list of recognized URL prefixes.
 
 
@@ -470,7 +498,10 @@ on selected matches. See https://sw.kovidgoyal.net/kitty/kittens/hints.html
 for details. You can also specify absolute paths to load the script from elsewhere.
 
 
-'''.format(','.join(sorted(URL_PREFIXES))).format
+'''.format(
+    default_regex=DEFAULT_REGEX, url_prefixes=','.join(sorted(URL_PREFIXES)),
+    line='{{line}}', path='{{path}}'
+).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
 usage = ''
 
@@ -496,10 +527,37 @@ def main(args):
             print(e.args[0], file=sys.stderr)
             input(_('Press Enter to quit'))
         return
-    if items and not args.customize_processing:
+    if items and not (args.customize_processing or args.type == 'linenum'):
         print('Extra command line arguments present: {}'.format(' '.join(items)), file=sys.stderr)
         input(_('Press Enter to quit'))
     return run(args, text, items)
+
+
+def linenum_handle_result(args, data, target_window_id, boss, extra_cli_args, *a):
+    for m, g in zip(data['match'], data['groupdicts']):
+        if m:
+            path, line = g['path'], g['line']
+            path = path.split(':')[-1]
+            line = int(line)
+            break
+    else:
+        return
+
+    cmd = [x.format(path=path, line=line) for x in extra_cli_args or ('vim', '+{line}', '{path}')]
+    w = boss.window_id_map.get(target_window_id)
+    action = data['linenum_action']
+
+    if action == 'self':
+        if w is not None:
+            import shlex
+            w.paste_bytes(shlex.join(cmd) + '\r')
+    elif action == 'background':
+        import subprocess
+        subprocess.Popen(cmd)
+    else:
+        getattr(boss, {
+            'window': 'new_window_with_cwd', 'tab': 'new_tab_with_cwd', 'os_window': 'new_os_window_with_cwd'
+            }[action])(*cmd)
 
 
 def handle_result(args, data, target_window_id, boss):

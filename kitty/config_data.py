@@ -1274,6 +1274,11 @@ k('insert_selected_hash', 'kitty_mod+p>h', 'kitten hints --type hash --program -
 Select something that looks like a hash and insert it into the terminal.
 Useful with git, which uses sha1 hashes to identify commits'''))
 
+k('goto_file_line', 'kitty_mod+p>n', 'kitten hints --type linenum', _('Open the selected file at the selected line'), long_text=_('''
+Select something that looks like :code:`filename:linenum` and open it in vim at
+the specified line number.'''))
+
+
 # }}}
 
 g('shortcuts.misc')  # {{{

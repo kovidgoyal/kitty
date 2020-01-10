@@ -2243,11 +2243,20 @@ send_escape_code_to_child(Screen *self, PyObject *args) {
 
 static PyObject*
 paste(Screen *self, PyObject *bytes) {
+    if (!PyBytes_Check(bytes)) { PyErr_SetString(PyExc_TypeError, "Must paste() bytes"); return NULL; }
     if (self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_START);
     write_to_child(self, PyBytes_AS_STRING(bytes), PyBytes_GET_SIZE(bytes));
     if (self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_END);
     Py_RETURN_NONE;
 }
+
+static PyObject*
+paste_bytes(Screen *self, PyObject *bytes) {
+    if (!PyBytes_Check(bytes)) { PyErr_SetString(PyExc_TypeError, "Must paste() bytes"); return NULL; }
+    write_to_child(self, PyBytes_AS_STRING(bytes), PyBytes_GET_SIZE(bytes));
+    Py_RETURN_NONE;
+}
+
 
 WRAP2(cursor_position, 1, 1)
 
@@ -2329,6 +2338,7 @@ static PyMethodDef methods[] = {
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
     MND(paste, METH_O)
+    MND(paste_bytes, METH_O)
     MND(copy_colors_from, METH_O)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 

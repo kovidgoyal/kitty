@@ -18,6 +18,11 @@ select anything that looks like a path or filename and then insert it into the
 terminal, very useful for picking files from the output of a ``git`` or ``ls`` command and
 adding them to the command line for the next command.
 
+You can also press :sc:`goto_file_line` to select anything that looks
+like a path or filename followed by a colon and a line number and open
+the file in vim at the specified line number. The patterns and editor
+to be used can be modified using options passed to the kitten.
+
 The hints kitten is very powerful to see more detailed help on its various
 options and modes of operation, see below. You can use these options to
 create mappings in :file:`kitty.conf` to select various different text
