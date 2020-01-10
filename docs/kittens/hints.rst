@@ -21,7 +21,11 @@ adding them to the command line for the next command.
 You can also press :sc:`goto_file_line` to select anything that looks
 like a path or filename followed by a colon and a line number and open
 the file in vim at the specified line number. The patterns and editor
-to be used can be modified using options passed to the kitten.
+to be used can be modified using options passed to the kitten. For example::
+
+    map ctrl+g kitten hints --type=linenum --linenum-action=tab nvim +{line} +{path}
+
+will open the selected file in a new tab inside neovim.
 
 The hints kitten is very powerful to see more detailed help on its various
 options and modes of operation, see below. You can use these options to
