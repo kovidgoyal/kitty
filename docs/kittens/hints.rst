@@ -25,7 +25,8 @@ to be used can be modified using options passed to the kitten. For example::
 
     map ctrl+g kitten hints --type=linenum --linenum-action=tab nvim +{line} +{path}
 
-will open the selected file in a new tab inside neovim.
+will open the selected file in a new tab inside neovim when you press
+:kbd:`ctrl+g`.
 
 The hints kitten is very powerful to see more detailed help on its various
 options and modes of operation, see below. You can use these options to
