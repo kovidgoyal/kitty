@@ -708,6 +708,7 @@ apply_marker(Marker *marker, Line *line, const PyObject *text) {
     }
     while(x < line->xnum) line->gpu_cells[x++].attrs &= ATTRS_MASK_WITHOUT_MARK;
     Py_DECREF(iter);
+#undef INCREMENT_MATCH_POS
 }
 
 void
