@@ -129,18 +129,19 @@ void main() {
 #endif
 
 #if (defined(DEFAULTBG) || defined(BACKGROUND))
+    float bgfac = 1-float(equal(background, defaultbg));
 #if defined(DEFAULTBG)
-    if (background == defaultbg)
-#elif defined(BACKGROUND)
-    if (background != defaultbg)
+    bgfac += 1;
 #endif
 #if defined(TRANSPARENT)
-    final_color = vec4(background.rgb * bg_alpha, bg_alpha);
+    final_color = vec4(bgfac * background.rgb * bg_alpha, bg_alpha * bgfac);
 #else
-    final_color = vec4(background.rgb, 1.0f);
+#if defined(DEFAULTBG)
+    final_color = vec4(bgfac * background.rgb, 1.0f);
+#else
+    final_color = vec4(bgfac * background.rgb, 1.0f * bgfac);
 #endif
-    else
-    final_color = vec4(0);
+#endif
 #endif
 
 #ifdef FOREGROUND
