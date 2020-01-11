@@ -12,7 +12,6 @@
 
 #ifdef NEEDS_BACKROUND
 in vec3 background;
-in vec3 defaultbg;
 in float bgfac;
 #if defined(TRANSPARENT) || defined(SPECIAL)
 in float bg_alpha;

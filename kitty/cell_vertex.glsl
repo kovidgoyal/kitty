@@ -45,7 +45,6 @@ const uvec2 cell_pos_map[] = uvec2[4](
 
 #ifdef NEEDS_BACKROUND
 out vec3 background;
-out vec3 defaultbg;
 out float bgfac;
 #if defined(TRANSPARENT) || defined(SPECIAL)
 out float bg_alpha;
@@ -201,7 +200,7 @@ void main() {
 
 #if defined(BACKGROUND) || defined(DEFAULTBG)
     background = bg;
-    defaultbg = to_color(colors[2], default_colors[bg_index]);
+    vec3 defaultbg = to_color(colors[2], default_colors[bg_index]);
     bgfac = 1-float(equal(background, defaultbg));
 #if defined(DEFAULTBG)
     bgfac += 1;
