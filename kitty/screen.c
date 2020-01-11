@@ -105,6 +105,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->callbacks = callbacks; Py_INCREF(callbacks);
         self->test_child = test_child; Py_INCREF(test_child);
         self->cursor = alloc_cursor();
+        self->markers.callbacks = PyList_New(0);
         self->color_profile = alloc_color_profile();
         self->main_linebuf = alloc_linebuf(lines, columns); self->alt_linebuf = alloc_linebuf(lines, columns);
         self->linebuf = self->main_linebuf;
@@ -115,7 +116,11 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->pending_mode.wait_time = 2.0;
         self->disable_ligatures = OPT(disable_ligatures);
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
-        if (self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL || self->main_tabstops == NULL || self->historybuf == NULL || self->main_grman == NULL || self->alt_grman == NULL || self->color_profile == NULL) {
+        if (
+            self->cursor == NULL || self->main_linebuf == NULL || self->alt_linebuf == NULL ||
+            self->main_tabstops == NULL || self->historybuf == NULL || self->main_grman == NULL ||
+            self->alt_grman == NULL || self->color_profile == NULL || self->markers.callbacks == NULL
+        ) {
             Py_CLEAR(self); return NULL;
         }
         self->alt_tabstops = self->main_tabstops + self->columns * sizeof(bool);
@@ -278,6 +283,7 @@ dealloc(Screen* self) {
     Py_CLEAR(self->alt_linebuf);
     Py_CLEAR(self->historybuf);
     Py_CLEAR(self->color_profile);
+    Py_CLEAR(self->markers.callbacks);
     PyMem_Free(self->overlay_line.cpu_cells);
     PyMem_Free(self->overlay_line.gpu_cells);
     PyMem_Free(self->main_tabstops);
@@ -2242,6 +2248,30 @@ send_escape_code_to_child(Screen *self, PyObject *args) {
 }
 
 static PyObject*
+add_marker(Screen *self, PyObject *marker) {
+    if (!PyCallable_Check(marker)) {
+        PyErr_SetString(PyExc_TypeError, "marker must be a callable");
+        return NULL;
+    }
+    if (!PySequence_Contains(self->markers.callbacks, marker)) {
+        if (PyList_Append(self->markers.callbacks, marker) != 0) return NULL;
+        self->markers.dirty = true;
+    }
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+remove_marker(Screen *self, PyObject *marker) {
+    Py_ssize_t idx = PySequence_Index(self->markers.callbacks, marker);
+    if (idx > -1) {
+        PySequence_DelItem(self->markers.callbacks, idx);
+        self->markers.dirty = true;
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+static PyObject*
 paste(Screen *self, PyObject *bytes) {
     if (!PyBytes_Check(bytes)) { PyErr_SetString(PyExc_TypeError, "Must paste() bytes"); return NULL; }
     if (self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_START);
@@ -2340,6 +2370,8 @@ static PyMethodDef methods[] = {
     MND(paste, METH_O)
     MND(paste_bytes, METH_O)
     MND(copy_colors_from, METH_O)
+    MND(add_marker, METH_O)
+    MND(remove_marker, METH_O)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */

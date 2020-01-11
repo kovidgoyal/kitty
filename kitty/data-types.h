@@ -68,6 +68,8 @@ typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 #define REVERSE_SHIFT 6
 #define STRIKE_SHIFT 7
 #define DIM_SHIFT 8
+#define MARK_SHIFT 9
+#define MARK_MASK 3
 #define COL_MASK 0xFFFFFFFF
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1

@@ -109,6 +109,11 @@ typedef struct {
     } pending_mode;
     DisableLigature disable_ligatures;
 
+    struct {
+        PyObject *callbacks;
+        bool dirty;
+    } markers;
+
 } Screen;
 
 
