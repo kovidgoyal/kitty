@@ -334,7 +334,8 @@ Finally, you can specify the image *z-index*, i.e. the vertical stacking order. 
 placed in the same location with different z-index values will be blended if
 they are semi-transparent. You can specify z-index values using the ``z`` key.
 Negative z-index values mean that the images will be drawn under the text. This
-allows rendering of text on top of images.
+allows rendering of text on top of images. Negative z-index values below
+INT32_MIN/2 will be drawn under the background.
 
 Deleting images
 ---------------------
@@ -417,7 +418,7 @@ Key      Value                 Default    Description
 ``Y``    Positive integer      ``0``      The y-offset within the first cell at which to start displaying the image
 ``c``    Positive integer      ``0``      The number of columns to display the image over
 ``r``    Positive integer      ``0``      The number of rows to display the image over
-``z``    Integer               ``0``      The *z-index* vertical stacking order of the image
+``z``    32-bit integer        ``0``      The *z-index* vertical stacking order of the image
 **Keys for deleting images**
 -----------------------------------------------------------
 ``d``    Single character.     ``a``      What to delete.

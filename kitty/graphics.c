@@ -544,7 +544,9 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     if (!self->layers_dirty) return false;
     self->layers_dirty = false;
     size_t i, j;
-    self->num_of_negative_refs = 0; self->num_of_positive_refs = 0;
+    self->num_of_below_refs = 0;
+    self->num_of_negative_refs = 0;
+    self->num_of_positive_refs = 0;
     Image *img; ImageRef *ref;
     ImageRect r;
     float screen_width = dx * num_cols, screen_height = dy * num_rows;
@@ -565,7 +567,12 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         if (ref->num_cols > 0) r.right = screen_left + (ref->start_column + (int32_t)ref->num_cols) * dx;
         else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
 
-        if (ref->z_index < 0) self->num_of_negative_refs++; else self->num_of_positive_refs++;
+        if (ref->z_index < ((int32_t)INT32_MIN/2))
+            self->num_of_below_refs++;
+        else if (ref->z_index < 0)
+            self->num_of_negative_refs++;
+        else
+            self->num_of_positive_refs++;
         ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 64, true);
         ImageRenderData *rd = self->render_data + self->count;
         zero_at_ptr(rd);

@@ -72,7 +72,8 @@ typedef struct {
     size_t count, capacity;
     ImageRenderData *render_data;
     bool layers_dirty;
-    size_t num_of_negative_refs, num_of_positive_refs;
+    // The number of images below MIN_ZINDEX / 2, then the number of refs between MIN_ZINDEX / 2 and -1 inclusive, then the number of refs above 0 inclusive.
+    size_t num_of_below_refs, num_of_negative_refs, num_of_positive_refs;
     unsigned int last_scrolled_by;
     size_t used_storage;
 } GraphicsManager;

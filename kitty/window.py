@@ -15,7 +15,7 @@ from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
 )
 from .fast_data_types import (
-    BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
+    BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_DEFAULT_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
     CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE, STRIKETHROUGH, Screen,
@@ -63,6 +63,7 @@ def load_shader_programs(semi_transparent=False):
     for which, p in {
             'SIMPLE': CELL_PROGRAM,
             'BACKGROUND': CELL_BG_PROGRAM,
+            'DEFAULTBG': CELL_DEFAULT_BG_PROGRAM,
             'SPECIAL': CELL_SPECIAL_PROGRAM,
             'FOREGROUND': CELL_FG_PROGRAM,
     }.items():
