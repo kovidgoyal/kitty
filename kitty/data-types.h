@@ -58,7 +58,7 @@ typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 
 #define MAX_CHILDREN 512
 #define BLANK_CHAR 0
-#define ATTRS_MASK_WITHOUT_WIDTH 0xFFC
+#define ATTRS_MASK_WITHOUT_WIDTH 0xFFFC
 #define WIDTH_MASK  3
 #define DECORATION_SHIFT  2
 #define DECORATION_MASK 3
@@ -69,7 +69,7 @@ typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 #define STRIKE_SHIFT 7
 #define DIM_SHIFT 8
 #define MARK_SHIFT 9
-#define MARK_MASK 3
+#define ATTRS_MASK_WITHOUT_MARK 0xf9ff
 #define COL_MASK 0xFFFFFFFF
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1
@@ -142,6 +142,12 @@ typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 #define ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic ignored \"-Wunused-result\"")
 #define END_ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic pop")
 #endif
+
+typedef struct {
+    PyObject *callback;
+    const char *name;
+} Marker;
+
 
 typedef struct {
     uint32_t left, top, right, bottom;

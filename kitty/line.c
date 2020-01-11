@@ -665,6 +665,18 @@ __eq__(Line *a, Line *b) {
     return a->xnum == b->xnum && memcmp(a->cpu_cells, b->cpu_cells, sizeof(CPUCell) * a->xnum) == 0 && memcmp(a->gpu_cells, b->gpu_cells, sizeof(GPUCell) * a->xnum) == 0;
 }
 
+
+void
+mark_text_in_line(Marker *markers, size_t markers_count, Line *line) {
+    if (!markers_count) {
+        for (index_type i = 0; i < line->xnum; i++) {
+            line->gpu_cells[i].attrs &= ATTRS_MASK_WITHOUT_MARK;
+        }
+        return;
+    }
+    (void)markers;
+}
+
 // Boilerplate {{{
 static PyObject*
 copy_char(Line* self, PyObject *args);
