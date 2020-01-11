@@ -51,7 +51,7 @@ else:
             try:
                 with open('/proc/' + x + '/stat', 'rb') as f:
                     raw = f.read().decode('utf-8')
-            except EnvironmentError:
+            except OSError:
                 continue
             try:
                 q = int(raw.split(' ', 5)[4])

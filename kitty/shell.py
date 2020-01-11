@@ -23,7 +23,7 @@ match_commands = tuple(sorted(all_commands + ('exit', 'help', 'quit')))
 def init_readline(readline):
     try:
         readline.read_init_file()
-    except EnvironmentError:
+    except OSError:
         if not is_macos:
             raise
     if 'libedit' in readline.__doc__:

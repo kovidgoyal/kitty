@@ -17,9 +17,9 @@ if False:
     os.makedirs(dest)
     os.chdir(dest)
     dest = os.path.expanduser('~/.local/bin/kitty')
-    with suppress(EnvironmentError):
+    with suppress(OSError):
         os.remove(dest)
-    with suppress(EnvironmentError):
+    with suppress(OSError):
         os.makedirs(os.path.dirname(dest))
     subprocess.check_call(['tar', 'xJf', tarball])
     os.symlink(os.path.abspath('bin/kitty'), dest)

@@ -67,14 +67,14 @@ def talk_to_instance(args):
 
     data = json.dumps(data, ensure_ascii=False).encode('utf-8')
     single_instance.socket.sendall(data)
-    with suppress(EnvironmentError):
+    with suppress(OSError):
         single_instance.socket.shutdown(socket.SHUT_RDWR)
     single_instance.socket.close()
 
     if args.wait_for_single_instance_window_close:
         conn = notify_socket.accept()[0]
         conn.recv(1)
-        with suppress(EnvironmentError):
+        with suppress(OSError):
             conn.shutdown(socket.SHUT_RDWR)
         conn.close()
 

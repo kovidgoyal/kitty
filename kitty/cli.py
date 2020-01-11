@@ -233,7 +233,7 @@ def print_help_for_seq(seq, usage, message, appname):
     screen_size = screen_size_function()
     try:
         linesz = min(screen_size().cols, 76)
-    except EnvironmentError:
+    except OSError:
         linesz = 76
     blocks = []
     a = blocks.append

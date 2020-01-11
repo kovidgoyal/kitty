@@ -68,7 +68,7 @@ class SocketIO:
 
     def __exit__(self, *a):
         import socket
-        with suppress(EnvironmentError):  # on some OSes such as macOS the socket is already closed at this point
+        with suppress(OSError):  # on some OSes such as macOS the socket is already closed at this point
             self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
 
