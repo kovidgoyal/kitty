@@ -13,6 +13,7 @@
 #ifdef NEEDS_BACKROUND
 in vec3 background;
 in vec3 defaultbg;
+in float bgfac;
 #if defined(TRANSPARENT) || defined(SPECIAL)
 in float bg_alpha;
 #endif
@@ -129,10 +130,6 @@ void main() {
 #endif
 
 #if (defined(DEFAULTBG) || defined(BACKGROUND))
-    float bgfac = 1-float(equal(background, defaultbg));
-#if defined(DEFAULTBG)
-    bgfac += 1;
-#endif
 #if defined(TRANSPARENT)
     final_color = vec4(bgfac * background.rgb * bg_alpha, bg_alpha * bgfac);
 #else
