@@ -665,16 +665,66 @@ __eq__(Line *a, Line *b) {
     return a->xnum == b->xnum && memcmp(a->cpu_cells, b->cpu_cells, sizeof(CPUCell) * a->xnum) == 0 && memcmp(a->gpu_cells, b->gpu_cells, sizeof(GPUCell) * a->xnum) == 0;
 }
 
+static inline void
+apply_marker(Marker *marker, Line *line, const PyObject *text) {
+    unsigned int l=0, r=0, col=0, match_pos=0;
+    PyObject *pl = PyLong_FromVoidPtr(&l), *pr = PyLong_FromVoidPtr(&r), *pcol = PyLong_FromVoidPtr(&col);
+    if (!pl || !pr || !pcol) { PyErr_Clear(); return; }
+    PyObject *iter = PyObject_CallFunctionObjArgs(marker->callback, text, pl, pr, pcol, NULL);
+    Py_DECREF(pl); Py_DECREF(pr); Py_DECREF(pcol);
+
+    if (iter == NULL) {
+        if (!marker->error_reported) {
+            PyErr_Print();
+            marker->error_reported = true;
+        }
+        else PyErr_Clear();
+        return;
+    }
+    PyObject *match;
+    index_type x = 0;
+#define INCREMENT_MATCH_POS { \
+    if (line->cpu_cells[x].ch) { \
+        match_pos++; \
+        for (index_type i = 0; i < arraysz(line->cpu_cells[x].cc_idx); i++) { \
+            if (line->cpu_cells[x].cc_idx[i]) match_pos++; \
+}}}
+
+    while ((match = PyIter_Next(iter)) && x < line->xnum) {
+        Py_DECREF(match);
+        while (match_pos < l && x < line->xnum) {
+            line->gpu_cells[x].attrs &= ATTRS_MASK_WITHOUT_MARK;
+            INCREMENT_MATCH_POS;
+            x++;
+        }
+        attrs_type am = (col & MARK_MASK) << MARK_SHIFT;
+        while(x < line->xnum && match_pos <= r) {
+            line->gpu_cells[x].attrs &= ATTRS_MASK_WITHOUT_MARK;
+            line->gpu_cells[x].attrs |= am;
+            INCREMENT_MATCH_POS;
+            x++;
+        }
+
+    }
+    while(x < line->xnum) line->gpu_cells[x++].attrs &= ATTRS_MASK_WITHOUT_MARK;
+    Py_DECREF(iter);
+}
 
 void
 mark_text_in_line(Marker *markers, size_t markers_count, Line *line) {
     if (!markers_count) {
-        for (index_type i = 0; i < line->xnum; i++) {
-            line->gpu_cells[i].attrs &= ATTRS_MASK_WITHOUT_MARK;
-        }
+        for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs &= ATTRS_MASK_WITHOUT_MARK;
         return;
     }
-    (void)markers;
+    PyObject *text = line_as_unicode(line);
+    if (PyUnicode_GET_LENGTH(text) > 0) {
+        for (size_t i = 0; i < markers_count; i++) {
+            apply_marker(markers + i, line, text);
+        }
+    } else {
+        for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs &= ATTRS_MASK_WITHOUT_MARK;
+    }
+    Py_DECREF(text);
 }
 
 // Boilerplate {{{

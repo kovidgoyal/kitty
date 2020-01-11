@@ -70,6 +70,7 @@ typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 #define DIM_SHIFT 8
 #define MARK_SHIFT 9
 #define ATTRS_MASK_WITHOUT_MARK 0xf9ff
+#define MARK_MASK 3
 #define COL_MASK 0xFFFFFFFF
 #define UTF8_ACCEPT 0
 #define UTF8_REJECT 1
@@ -146,6 +147,7 @@ typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 typedef struct {
     PyObject *callback;
     const char *name;
+    bool error_reported;
 } Marker;
 
 
