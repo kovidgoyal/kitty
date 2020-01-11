@@ -822,6 +822,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x01\x1c";
                   case 58: // RIGHT_BRACKET
                     return "\x01\x1d";
+                  case 59: // CIRCUMFLEX
+                    return "\x01\x1e";
                   case 60: // UNDERSCORE
                     return "\x01\x00";
                   case 61: // GRAVE_ACCENT
@@ -2487,6 +2489,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                     return "\x01\x1c";
                   case 58: // RIGHT_BRACKET
                     return "\x01\x1d";
+                  case 59: // CIRCUMFLEX
+                    return "\x01\x1e";
                   case 60: // UNDERSCORE
                     return "\x01\x00";
                   case 61: // GRAVE_ACCENT
@@ -4161,6 +4165,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x01\x1c";
                     case 58: // RIGHT_BRACKET
                       return "\x01\x1d";
+                    case 59: // CIRCUMFLEX
+                      return "\x01\x1e";
                     case 60: // UNDERSCORE
                       return "\x01\x00";
                     case 61: // GRAVE_ACCENT
@@ -5826,6 +5832,8 @@ key_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {
                       return "\x01\x1c";
                     case 58: // RIGHT_BRACKET
                       return "\x01\x1d";
+                    case 59: // CIRCUMFLEX
+                      return "\x01\x1e";
                     case 60: // UNDERSCORE
                       return "\x01\x00";
                     case 61: // GRAVE_ACCENT
