@@ -241,6 +241,47 @@ def disable_ligatures_in(func, rest):
     return func, [where, strategy]
 
 
+@func_with_args('add_marker')
+def add_marker(func, rest):
+    parts = rest.split(maxsplit=1)
+    if len(parts) != 2:
+        raise ValueError('{} if not a valid marker specification'.format(rest))
+    name = parts[0]
+    parts = parts[1].split(':', maxsplit=1)
+    if len(parts) != 2:
+        raise ValueError('{} if not a valid marker specification'.format(rest))
+    ftype, spec = parts
+    color = None
+    if ftype in ('text', 'itext', 'regex'):
+        flags = re.UNICODE
+        parts = spec.split(':', maxsplit=1)
+        if len(parts) != 2:
+            raise ValueError('No color specified in marker: {}'.format(spec))
+        try:
+            color = int(parts[0])
+        except Exception:
+            raise ValueError('color {} in marker specification is not an integer'.format(parts[0]))
+        spec = parts[1]
+        if ftype in ('text', 'itext'):
+            spec = re.escape(spec)
+            flags |= re.IGNORECASE
+            ftype = 'regex'
+        try:
+            spec = re.compile(spec, flgas=flags)
+        except Exception:
+            raise ValueError('{} is not a valid regular expression'.format(spec))
+    elif ftype == 'function':
+        pass
+    else:
+        raise ValueError('Unknown marker type: {}'.format(ftype))
+    return func, [name, ftype, spec, color]
+
+
+@func_with_args('remove_marker')
+def remove_marker(func, rest):
+    return func, [rest]
+
+
 def parse_key_action(action):
     parts = action.strip().split(maxsplit=1)
     func = parts[0]

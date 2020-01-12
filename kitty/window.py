@@ -12,7 +12,7 @@ from itertools import chain
 
 from .config import build_ansi_color_table
 from .constants import (
-    ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
+    ScreenGeometry, WindowGeometry, appname, get_boss, wakeup, config_dir
 )
 from .fast_data_types import (
     BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
@@ -603,4 +603,21 @@ class Window:
     def scroll_end(self):
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, False)
+
+    def add_marker(self, name, ftype, spec, color):
+        from .marks import marker_from_regex, marker_from_function
+        if ftype == 'regex':
+            marker = marker_from_regex(spec, color)
+        elif ftype == 'function':
+            import runpy
+            path = spec
+            if not os.path.isabs(path):
+                path = os.path.join(config_dir, path)
+            marker = marker_from_function(runpy.run_path(path, run_name='__marker__').marker)
+        else:
+            raise ValueError('Unknown marker type: {}'.format(ftype))
+        self.screen.add_marker(name, marker)
+
+    def remove_marker(self, name):
+        self.screen.remove_marker(name)
     # }}}

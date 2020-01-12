@@ -23,7 +23,10 @@ def get_output_variables(left_address, right_address, color_address):
 
 def marker_from_regex(expression, color):
     color = max(1, min(color, 3))
-    pat = re.compile(expression)
+    if isinstance(expression, str):
+        pat = re.compile(expression)
+    else:
+        pat = expression
 
     def marker(text, left_address, right_address, color_address):
         left, right, colorv = get_output_variables(left_address, right_address, color_address)
