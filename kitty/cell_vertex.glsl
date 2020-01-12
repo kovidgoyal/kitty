@@ -201,8 +201,7 @@ void main() {
 
     // Background {{{
 #ifdef NEEDS_BACKROUND
-    float cell_has_default_bg = 1 - step(ONE, colors[bg_index] & BYTE_MASK);
-    float cell_has_non_default_bg = 1 - cell_has_default_bg;
+    float cell_has_non_default_bg = step(ONE, colors[bg_index] & BYTE_MASK);
 
 #if defined(BACKGROUND)
     background = bg;
