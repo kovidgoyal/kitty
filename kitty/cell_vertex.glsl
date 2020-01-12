@@ -18,6 +18,9 @@ layout(std140) uniform CellRenderData {
 
     uint color_table[256];
 };
+#ifdef BACKGROUND
+uniform float draw_default_bg;
+#endif
 
 // Have to use fixed locations here as all variants of the cell program share the same VAO
 layout(location=0) in uvec3 colors;
@@ -35,7 +38,7 @@ const uvec2 cell_pos_map[] = uvec2[4](
 // }}}
 
 
-#if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL) || defined(DEFAULTBG)
+#if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL)
 #define NEEDS_BACKROUND
 #endif
 
@@ -45,7 +48,7 @@ const uvec2 cell_pos_map[] = uvec2[4](
 
 #ifdef NEEDS_BACKROUND
 out vec3 background;
-out float bgfac;
+out float draw_bg;
 #if defined(TRANSPARENT) || defined(SPECIAL)
 out float bg_alpha;
 #endif
@@ -159,7 +162,8 @@ void main() {
     float cell_has_cursor = is_cursor(c, r);
     float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
     float cell_has_block_cursor = cell_has_cursor * is_block_cursor;
-    vec3 bg = to_color(colors[bg_index], default_colors[bg_index]);
+    uint bg_as_uint = resolve_color(colors[bg_index], default_colors[bg_index]);
+    vec3 bg = color_to_vec(bg_as_uint);
     // }}}
 
     // Foreground {{{
@@ -198,13 +202,13 @@ void main() {
     // Background {{{
 #ifdef NEEDS_BACKROUND
 
-#if defined(BACKGROUND) || defined(DEFAULTBG)
+#if defined(BACKGROUND)
     background = bg;
-    vec3 defaultbg = to_color(colors[2], default_colors[bg_index]);
-    bgfac = 1-float(equal(background, defaultbg));
-#if defined(DEFAULTBG)
-    bgfac += 1;
-#endif
+    uint defaultbg = resolve_color(colors[2], default_colors[bg_index]);
+    float cell_has_non_default_bg = abs(defaultbg - bg_as_uint);
+    // draw background only if it is either non-default or the draw_default_bg
+    // uniform is set
+    draw_bg = step(ONE, draw_default_bg + cell_has_non_default_bg);
 #endif
 
 #if defined(TRANSPARENT)

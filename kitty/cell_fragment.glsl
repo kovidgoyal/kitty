@@ -2,7 +2,7 @@
 #define WHICH_PROGRAM
 #define NOT_TRANSPARENT
 
-#if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL) || defined(DEFAULTBG)
+#if defined(SIMPLE) || defined(BACKGROUND) || defined(SPECIAL)
 #define NEEDS_BACKROUND
 #endif
 
@@ -12,7 +12,7 @@
 
 #ifdef NEEDS_BACKROUND
 in vec3 background;
-in float bgfac;
+in float draw_bg;
 #if defined(TRANSPARENT) || defined(SPECIAL)
 in float bg_alpha;
 #endif
@@ -128,15 +128,11 @@ void main() {
 #endif
 #endif
 
-#if (defined(DEFAULTBG) || defined(BACKGROUND))
+#ifdef BACKGROUND
 #if defined(TRANSPARENT)
-    final_color = vec4(bgfac * background.rgb * bg_alpha, bg_alpha * bgfac);
+    final_color = vec4(background.rgb * bg_alpha, bg_alpha * draw_bg);
 #else
-#if defined(DEFAULTBG)
-    final_color = vec4(bgfac * background.rgb, 1.0f);
-#else
-    final_color = vec4(bgfac * background.rgb, 1.0f * bgfac);
-#endif
+    final_color = vec4(background.rgb, draw_bg);
 #endif
 #endif
 

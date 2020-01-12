@@ -41,6 +41,7 @@ GLuint program_id(int program);
 Program* program_ptr(int program);
 GLuint block_index(int program, const char *name);
 GLint block_size(int program, GLuint block_index);
+GLint get_uniform_location(int program, const char *name);
 GLint get_uniform_information(int program, const char *name, GLenum information_type);
 GLint attrib_location(int program, const char *name);
 ssize_t create_vao(void);

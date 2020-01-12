@@ -335,7 +335,7 @@ placed in the same location with different z-index values will be blended if
 they are semi-transparent. You can specify z-index values using the ``z`` key.
 Negative z-index values mean that the images will be drawn under the text. This
 allows rendering of text on top of images. Negative z-index values below
-INT32_MIN/2 (-1073741824) will be drawn under cells with non-default background
+INT32_MIN/2 (-1,073,741,824) will be drawn under cells with non-default background
 colors.
 
 Deleting images

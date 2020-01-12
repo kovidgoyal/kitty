@@ -127,6 +127,12 @@ init_uniforms(int program) {
 }
 
 GLint
+get_uniform_location(int program, const char *name) {
+    Program *p = programs + program;
+    return glGetUniformLocation(p->id, name);
+}
+
+GLint
 get_uniform_information(int program, const char *name, GLenum information_type) {
     GLint q; GLuint t;
     static const char* names[] = {""};
