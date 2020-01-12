@@ -96,9 +96,10 @@ Do not print out anything to stdout during operation.
 
 
 --z-index -z
-type=int
 default=0
-Z-index of the image. When negative, text will be displayed on top of the image.
+Z-index of the image. When negative, text will be displayed on top of the image. Use
+a double minus for values under the threshold for drawing images under cell background
+colors. For example, --1 evaluates as -1,073,741,825.
 '''
 
 
@@ -205,6 +206,14 @@ def show(outfile, width, height, zindex, fmt, transmit_mode='t', align='center',
         if fmt == 100:
             cmd['S'] = len(data)
         write_chunked(cmd, data)
+
+
+def parse_z_index(val):
+    origin = 0
+    if val.startswith('--'):
+        val = val[1:]
+        origin = -1073741824
+    return origin + int(val)
 
 
 def process(path, args, is_tempfile):
@@ -365,6 +374,11 @@ def main(args=sys.argv):
         args.place = parse_place(args.place)
     except Exception:
         raise SystemExit('Not a valid place specification: {}'.format(args.place))
+
+    try:
+        args.z_index = parse_z_index(args.z_index)
+    except Exception:
+        raise SystemExit('Not a valid z-index specification: {}'.format(args.z_index))
 
     if args.detect_support:
         if not detect_support(wait_for=args.detection_timeout, silent=True):
