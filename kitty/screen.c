@@ -2322,6 +2322,26 @@ remove_marker(Screen *self, PyObject *args) {
 }
 
 static PyObject*
+marked_cells(Screen *self, PyObject *o UNUSED) {
+    PyObject *ans = PyList_New(0);
+    if (!ans) return ans;
+    for (index_type y = 0; y < self->lines; y++) {
+        linebuf_init_line(self->linebuf, y);
+        for (index_type x = 0; x < self->columns; x++) {
+            GPUCell *gpu_cell = self->linebuf->line->gpu_cells + x;
+            unsigned int mark = (gpu_cell->attrs >> MARK_SHIFT) & MARK_MASK;
+            if (mark) {
+                PyObject *t = Py_BuildValue("III", x, y, mark);
+                if (!t) { Py_DECREF(ans); return NULL; }
+                if (PyList_Append(ans, t) != 0) { Py_DECREF(t); Py_DECREF(ans); return NULL; }
+                Py_DECREF(t);
+            }
+        }
+    }
+    return ans;
+}
+
+static PyObject*
 paste(Screen *self, PyObject *bytes) {
     if (!PyBytes_Check(bytes)) { PyErr_SetString(PyExc_TypeError, "Must paste() bytes"); return NULL; }
     if (self->modes.mBRACKETED_PASTE) write_escape_code_to_child(self, CSI, BRACKETED_PASTE_START);
@@ -2422,6 +2442,7 @@ static PyMethodDef methods[] = {
     MND(copy_colors_from, METH_O)
     MND(add_marker, METH_VARARGS)
     MND(remove_marker, METH_VARARGS)
+    MND(marked_cells, METH_NOARGS)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */
