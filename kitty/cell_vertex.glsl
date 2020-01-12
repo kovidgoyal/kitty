@@ -201,11 +201,11 @@ void main() {
 
     // Background {{{
 #ifdef NEEDS_BACKROUND
+    float cell_has_default_bg = 1 - step(ONE, colors[bg_index] & BYTE_MASK);
+    float cell_has_non_default_bg = 1 - cell_has_default_bg;
 
 #if defined(BACKGROUND)
     background = bg;
-    uint defaultbg = resolve_color(colors[2], default_colors[bg_index]);
-    float cell_has_non_default_bg = abs(defaultbg - bg_as_uint);
     // draw background only if it is either non-default or the draw_default_bg
     // uniform is set
     draw_bg = step(ONE, draw_default_bg + cell_has_non_default_bg);
@@ -218,7 +218,7 @@ void main() {
     // selections/block cursor and 0 everywhere else.
     float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);
 #ifndef SPECIAL
-    is_special_cell += float(colors[bg_index] & BYTE_MASK) + float(is_reversed);
+    is_special_cell += cell_has_non_default_bg + float(is_reversed);
 #endif
     bg_alpha = step(0.5, is_special_cell);
 #ifndef SPECIAL
