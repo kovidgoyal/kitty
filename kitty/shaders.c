@@ -150,7 +150,7 @@ send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei heigh
 typedef struct {
     UniformBlock render_data;
     ArrayInformation color_table;
-    GLint draw_default_bg_location;
+    GLint draw_bg_bitfield_location;
 } CellProgramLayout;
 
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
@@ -166,7 +166,7 @@ init_cell_program(void) {
         cell_program_layouts[i].color_table.offset = get_uniform_information(i, "color_table[0]", GL_UNIFORM_OFFSET);
         cell_program_layouts[i].color_table.stride = get_uniform_information(i, "color_table[0]", GL_UNIFORM_ARRAY_STRIDE);
     }
-    cell_program_layouts[CELL_BG_PROGRAM].draw_default_bg_location = get_uniform_location(CELL_BG_PROGRAM, "draw_default_bg");
+    cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location = get_uniform_location(CELL_BG_PROGRAM, "draw_bg_bitfield");
     // Sanity check to ensure the attribute location binding worked
 #define C(p, name, expected) { int aloc = attrib_location(p, #name); if (aloc != expected && aloc != -1) fatal("The attribute location for %s is %d != %d in program: %d", #name, aloc, expected, p); }
     for (int p = CELL_PROGRAM; p < BORDERS_PROGRAM; p++) {
@@ -396,13 +396,15 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     BLEND_ONTO_OPAQUE;
 
     bind_program(CELL_BG_PROGRAM);
-    glUniform1f(cell_program_layouts[CELL_BG_PROGRAM].draw_default_bg_location, 1.f);
+    // draw background for all cells
+    glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
 
     if (screen->grman->num_of_below_refs) {
         draw_graphics(GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
         bind_program(CELL_BG_PROGRAM);
-        glUniform1f(cell_program_layouts[CELL_BG_PROGRAM].draw_default_bg_location, 0.f);
+        // draw background for non-default bg cells
+        glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 2);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     }
 
@@ -435,7 +437,8 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, os_window->offscreen_texture_id, 0);
     /* if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) fatal("Offscreen framebuffer not complete"); */
     bind_program(CELL_BG_PROGRAM);
-    glUniform1f(cell_program_layouts[CELL_BG_PROGRAM].draw_default_bg_location, 1.f);
+    // draw background for all cells
+    glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     glEnable(GL_BLEND);
     BLEND_PREMULT;
@@ -443,7 +446,8 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     if (screen->grman->num_of_below_refs) {
         draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
         bind_program(CELL_BG_PROGRAM);
-        glUniform1f(cell_program_layouts[CELL_BG_PROGRAM].draw_default_bg_location, 0.f);
+        // Draw background for non-default bg cells
+        glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 2);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     }
 

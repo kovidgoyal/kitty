@@ -19,7 +19,7 @@ layout(std140) uniform CellRenderData {
     uint color_table[256];
 };
 #ifdef BACKGROUND
-uniform float draw_default_bg;
+uniform uint draw_bg_bitfield;
 #endif
 
 // Have to use fixed locations here as all variants of the cell program share the same VAO
@@ -204,12 +204,12 @@ void main() {
 
 #if defined(BACKGROUND)
     background = bg;
-    // draw background only if it is either non-default or the draw_default_bg
-    // uniform is set
-    draw_bg = step(ONE, draw_default_bg + cell_has_non_default_bg);
+    // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
+    uint draw_bg_mask = uint(2 * cell_has_non_default_bg + (1 - cell_has_non_default_bg));
+    draw_bg = step(ONE, draw_bg_bitfield & draw_bg_mask);
 #endif
 
-#if defined(TRANSPARENT)
+#ifdef TRANSPARENT
     // Set bg_alpha to background_opacity on cells that have the default background color
     // Which means they must not have a block cursor or a selection or reverse video
     // On other cells it should be 1. For the SPECIAL program it should be 1 on cells with

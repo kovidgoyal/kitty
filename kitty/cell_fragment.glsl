@@ -77,7 +77,7 @@ vec4 blend_onto_opaque_premul(vec3 over, float over_alpha, vec3 under) {
  *
  *    2a) Opaque bg with images under text
  *        There are multiple passes, each pass is blended onto the previous using the opaque blend func (alpha, 1- alpha):
- *        1) Draw only the default background
+ *        1) Draw background for all cells
  *        2) Draw the images that are supposed to be below both the background and text, if any. This happens in the graphics shader
  *        3) Draw the background of cells that don't have the default background if any images were drawn in 2 above
           4) Draw the images that are supposed to be below text but not background, again in graphics shader.
