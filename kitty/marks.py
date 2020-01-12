@@ -15,9 +15,9 @@ def null_marker(*a):
 
 def get_output_variables(left_address, right_address, color_address):
     return (
-        cast(c_void_p(left_address, pointer_to_uint)).contents,
-        cast(c_void_p(right_address, pointer_to_uint)).contents,
-        cast(c_void_p(color_address, pointer_to_uint)).contents,
+        cast(c_void_p(left_address), pointer_to_uint).contents,
+        cast(c_void_p(right_address), pointer_to_uint).contents,
+        cast(c_void_p(color_address), pointer_to_uint).contents,
     )
 
 
@@ -33,7 +33,7 @@ def marker_from_regex(expression, color):
         colorv.value = color
         for match in pat.finditer(text):
             left.value = match.start()
-            right.value = match.end()
+            right.value = match.end() - 1
             yield
 
     return marker
