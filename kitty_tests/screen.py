@@ -4,7 +4,7 @@
 
 from . import BaseTest
 from kitty.fast_data_types import DECAWM, IRM, Cursor, DECCOLM, DECOM
-from kitty.marks import marker_from_regex
+from kitty.marks import marker_from_regex, marker_from_function
 
 
 class TestScreen(BaseTest):
@@ -458,5 +458,19 @@ class TestScreen(BaseTest):
     def test_user_marking(self):
         s = self.create_screen()
         s.draw('abaa')
+        s.carriage_return(), s.linefeed()
+        s.draw('xyxyx')
         s.add_marker('a', marker_from_regex('a', 3))
         self.ae(s.marked_cells(), [(0, 0, 3), (2, 0, 3), (3, 0, 3)])
+        s.remove_marker('a')
+        self.ae(s.marked_cells(), [])
+
+        def mark_x(text):
+            col = 0
+            for i, c in enumerate(text):
+                if c == 'x':
+                    col += 1
+                    yield i, i, col
+
+        s.add_marker('x', marker_from_function(mark_x))
+        self.ae(s.marked_cells(), [(0, 1, 1), (2, 1, 2), (4, 1, 3)])
