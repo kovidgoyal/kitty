@@ -162,8 +162,7 @@ void main() {
     float cell_has_cursor = is_cursor(c, r);
     float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
     float cell_has_block_cursor = cell_has_cursor * is_block_cursor;
-    uint bg_as_uint = resolve_color(colors[bg_index], default_colors[bg_index]);
-    vec3 bg = color_to_vec(bg_as_uint);
+    vec3 bg = color_to_vec(resolve_color(colors[bg_index], default_colors[bg_index]));
     // }}}
 
     // Foreground {{{
