@@ -6,7 +6,7 @@
  */
 
 #define EXTRA_INIT if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-#include "data-types.h"
+#include "state.h"
 #include <structmember.h>
 
 PyTypeObject ColorProfile_Type;
@@ -282,9 +282,12 @@ void
 copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size_t stride) {
     size_t i;
     stride = MAX(1u, stride);
-    for (i = 0, buf = buf + offset; i < sizeof(self->color_table)/sizeof(self->color_table[0]); i++, buf += stride) {
-        *buf = self->color_table[i];
-    }
+    for (i = 0, buf = buf + offset; i < arraysz(self->color_table); i++, buf += stride) *buf = self->color_table[i];
+    // Copy the mark colors
+#define C(val) *buf = val; buf += stride;
+    C(0); C(OPT(mark1_background)); C(OPT(mark2_background)); C(OPT(mark3_background));
+    C(0); C(OPT(mark1_foreground)); C(OPT(mark2_foreground)); C(OPT(mark3_foreground));
+#undef C
     self->dirty = false;
 }
 

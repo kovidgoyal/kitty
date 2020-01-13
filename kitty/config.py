@@ -267,7 +267,7 @@ def add_marker(func, rest):
             flags |= re.IGNORECASE
             ftype = 'regex'
         try:
-            spec = re.compile(spec, flgas=flags)
+            spec = re.compile(spec, flags=flags)
         except Exception:
             raise ValueError('{} is not a valid regular expression'.format(spec))
     elif ftype == 'function':

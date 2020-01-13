@@ -499,6 +499,12 @@ PYWRAP1(set_options) {
     S(terminal_select_modifiers, convert_mods);
     S(click_interval, parse_s_double_to_monotonic_t);
     S(resize_debounce_time, parse_s_double_to_monotonic_t);
+    S(mark1_foreground, color_as_int);
+    S(mark1_background, color_as_int);
+    S(mark2_foreground, color_as_int);
+    S(mark2_background, color_as_int);
+    S(mark3_foreground, color_as_int);
+    S(mark3_background, color_as_int);
     S(url_color, color_as_int);
     S(background, color_as_int);
     S(foreground, color_as_int);

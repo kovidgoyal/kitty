@@ -2274,10 +2274,11 @@ screen_mark_all(Screen *self) {
         linebuf_init_line(self->alt_linebuf, y);
         mark_text_in_line(self->markers.items, self->markers.count, self->alt_linebuf->line);
     }
-    for (index_type y = 0; y < self->historybuf->ynum; y++) {
+    for (index_type y = 0; y < self->historybuf->count; y++) {
         historybuf_init_line(self->historybuf, y, self->historybuf->line);
         mark_text_in_line(self->markers.items, self->markers.count, self->historybuf->line);
     }
+    self->is_dirty = true;
 }
 
 static PyObject*
@@ -2291,6 +2292,7 @@ add_marker(Screen *self, PyObject *args) {
     }
     for (size_t i = 0; i < self->markers.count; i++) {
         if (strcmp(self->markers.items[i].name, name) == 0) {
+            if (self->markers.items[i].callback == marker) Py_RETURN_NONE;
             Py_DECREF(self->markers.items[i].callback);
             self->markers.items[i].callback = marker;
             Py_INCREF(marker);

@@ -5,7 +5,10 @@
 #define REVERSE_SHIFT {REVERSE_SHIFT}
 #define STRIKE_SHIFT {STRIKE_SHIFT}
 #define DIM_SHIFT {DIM_SHIFT}
+#define MARK_SHIFT {MARK_SHIFT}
+#define MARK_MASK {MARK_MASK}
 #define USE_SELECTION_FG
+#define NUM_COLORS 256
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
@@ -16,7 +19,7 @@ layout(std140) uniform CellRenderData {
     uint xnum, ynum, cursor_fg_sprite_idx;
     float cursor_x, cursor_y, cursor_w;
 
-    uint color_table[256];
+    uint color_table[NUM_COLORS + MARK_MASK + MARK_MASK + 2];
 };
 #ifdef BACKGROUND
 uniform uint draw_bg_bitfield;
@@ -162,7 +165,10 @@ void main() {
     float cell_has_cursor = is_cursor(c, r);
     float is_block_cursor = step(float(cursor_fg_sprite_idx), 0.5);
     float cell_has_block_cursor = cell_has_cursor * is_block_cursor;
+    int mark = int(text_attrs >> MARK_SHIFT) & MARK_MASK;
+    uint has_mark = uint(step(1, float(mark)));
     uint bg_as_uint = resolve_color(colors[bg_index], default_colors[bg_index]);
+    bg_as_uint = has_mark * color_table[NUM_COLORS + mark] + (ONE - has_mark) * bg_as_uint;
     vec3 bg = color_to_vec(bg_as_uint);
     // }}}
 
@@ -174,12 +180,13 @@ void main() {
     colored_sprite = float((sprite_coords.z & COLOR_MASK) >> 14);
 
     // Foreground
-    uint resolved_fg = resolve_color(colors[fg_index], default_colors[fg_index]);
-    foreground = color_to_vec(resolved_fg);
+    uint fg_as_uint = resolve_color(colors[fg_index], default_colors[fg_index]);
+    fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + 1 + mark] + (ONE - has_mark) * fg_as_uint;
+    foreground = color_to_vec(fg_as_uint);
     float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
     effective_text_alpha = inactive_text_alpha * mix(1.0, dim_opacity, has_dim);
     float in_url = float((is_selected & TWO) >> 1);
-    decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], resolved_fg));
+    decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], fg_as_uint));
 #ifdef USE_SELECTION_FG
     // Selection
     vec3 selection_color = color_to_vec(highlight_fg);
