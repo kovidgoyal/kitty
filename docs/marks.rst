@@ -33,3 +33,54 @@ can control the colors used for these groups in :file:`kitty.conf` with::
     mark1_background gray
     mark2_foreground green
     ...
+
+
+.. note::
+    For performance reasons, matching is done per line only, and only when that line is
+    altered in anyway. So you cannot match text that stretches across multiple
+    lines.
+
+
+The full syntax for creating marks
+-------------------------------------
+
+The syntax of the :code:`toggle_marker` command is::
+
+    toggle_marker <marker-type> <specification>
+
+Here :code:`marker-type` is one of:
+
+    * :code:`text` - simple substring matching
+    * :code:`itext` - case-insensitive substring matching
+    * :code:`regex` - A python regular expression
+    * :code:`iregex` - A case-insensitive python regular expression
+    * :code:`function` - An arbitrary function defined in a python file, see
+      :ref:`marker_funcs`.
+
+.. _marker_funcs:
+
+Arbitrary marker functions
+-----------------------------
+
+You can create your own marker functions. Create a python file named
+:file:`mymarker.py` and in it create a :code:`marker` function. This
+function receives the text of the line as input and must yield three numbers,
+the starting character position, the ending character position and the mark
+group (1-3). For example:
+
+.. code-block::
+
+    def marker(text):
+        # Function to highlight the letter X
+        for i, ch in enumerate(text):
+            if ch.lower() == 'x':
+                yield i, i, 3
+
+
+Save this file somewhere and in :file:`kitty.conf`, use::
+
+    map f1 toggle_marker function /path/to/mymarker.py
+
+If you save the file in the kitty config directory, you can use::
+
+    map f1 toggle_marker function mymarker.py
