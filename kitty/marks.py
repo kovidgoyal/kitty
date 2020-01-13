@@ -2,9 +2,11 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 import re
-from ctypes import c_void_p, cast, c_uint, POINTER
+from ctypes import POINTER, c_uint, c_void_p, cast
 
+from .constants import config_dir
 
 pointer_to_uint = POINTER(c_uint)
 
@@ -75,3 +77,17 @@ def marker_from_function(func):
             yield
 
     return marker
+
+
+def marker_from_spec(ftype, spec, flags):
+    if ftype == 'regex':
+        if len(spec) == 1:
+            return marker_from_regex(spec[0][1], spec[0][0], flags=flags)
+        return marker_from_multiple_regex(spec, flags=flags)
+    if ftype == 'function':
+        import runpy
+        path = spec
+        if not os.path.isabs(path):
+            path = os.path.join(config_dir, path)
+        return marker_from_function(runpy.run_path(path, run_name='__marker__').marker)
+    raise ValueError('Unknown marker type: {}'.format(ftype))

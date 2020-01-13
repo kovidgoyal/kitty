@@ -12,7 +12,7 @@ from itertools import chain
 
 from .config import build_ansi_color_table
 from .constants import (
-    ScreenGeometry, WindowGeometry, appname, config_dir, get_boss, wakeup
+    ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
 )
 from .fast_data_types import (
     BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
@@ -608,25 +608,20 @@ class Window:
             self.screen.scroll(SCROLL_FULL, False)
 
     def toggle_marker(self, ftype, spec, flags):
-        from .marks import marker_from_regex, marker_from_function, marker_from_multiple_regex
+        from .marks import marker_from_spec
         key = ftype, spec
         if key == self.current_marker_spec:
             self.remove_marker()
             return
-        if ftype == 'regex':
-            if len(spec) == 1:
-                marker = marker_from_regex(spec[0][1], spec[0][0], flags=flags)
-            else:
-                marker = marker_from_multiple_regex(spec, flags=flags)
-        elif ftype == 'function':
-            import runpy
-            path = spec
-            if not os.path.isabs(path):
-                path = os.path.join(config_dir, path)
-            marker = marker_from_function(runpy.run_path(path, run_name='__marker__').marker)
-        else:
-            raise ValueError('Unknown marker type: {}'.format(ftype))
-        self.screen.set_marker(marker)
+        self.screen.set_marker(marker_from_spec(ftype, spec, flags))
+        self.current_marker_spec = key
+
+    def set_marker(self, spec):
+        from .config import toggle_marker
+        from .marks import marker_from_spec
+        func, (ftype, spec, flags) = toggle_marker('toggle_marker', spec)
+        key = ftype, spec
+        self.screen.set_marker(marker_from_spec(ftype, spec, flags))
         self.current_marker_spec = key
 
     def remove_marker(self):

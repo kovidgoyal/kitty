@@ -761,9 +761,6 @@ class Boss:
             args = ['--name=tab-title', '--message', _('Enter the new title for this tab below.'), 'do_set_tab_title', str(tab.id)]
             self._run_kitten('ask', args)
 
-    def show_error(self, title, msg):
-        self._run_kitten('show_error', args=['--title', title], input_data=msg)
-
     def do_set_tab_title(self, title, tab_id):
         tm = self.active_tab_manager
         if tm is not None and title:
@@ -772,6 +769,32 @@ class Boss:
                 if tab.id == tab_id:
                     tab.set_title(title)
                     break
+
+    def show_error(self, title, msg):
+        self._run_kitten('show_error', args=['--title', title], input_data=msg)
+
+    def create_marker(self):
+        w = self.active_window
+        if w:
+            spec = None
+
+            def done(data, target_window_id, self):
+                nonlocal spec
+                spec = data['response']
+
+            def done2(target_window_id, self):
+                w = self.window_id_map.get(target_window_id)
+                if w is not None and spec:
+                    try:
+                        w.set_marker(spec)
+                    except Exception as err:
+                        self.show_error(_('Invalid marker specification'), str(err))
+
+            self._run_kitten('ask', [
+                '--name=create-marker', '--message',
+                _('Create marker, for example:\ntext 1 ERROR')
+                ],
+                custom_callback=done, action_on_removal=done2)
 
     def kitty_shell(self, window_type):
         cmd = ['@', kitty_exe(), '@']

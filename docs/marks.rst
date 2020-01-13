@@ -41,6 +41,19 @@ can control the colors used for these groups in :file:`kitty.conf` with::
     lines.
 
 
+Creating markers dynamically
+---------------------------------
+
+If you want to create markers dynamically rather than pre-defining them in
+:file:`kitty.conf` you can do so as follows::
+
+    map f1 create_marker
+    map f2 remove_marker
+
+Then pressing :kbd:`F1` will allow you to enter the marker definition and set
+it and pressing :kbd:`F2` will remove the marker.
+
+
 The full syntax for creating marks
 -------------------------------------
 
