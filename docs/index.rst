@@ -441,6 +441,14 @@ internal buffer named ``a`` and :kbd:`F2` to paste from that buffer. The buffer
 names are arbitrary strings, so you can define as many such buffers as you
 need.
 
+Marks
+-------------
+
+kitty has the ability to mark text on the screen based on regular expressions.
+This can be useful to highlight words or phrases when browsing output from long
+running programs or similar. To learn how this feature works, see :doc:`marks`.
+
+
 Frequently Asked Questions
 ---------------------------------
 
