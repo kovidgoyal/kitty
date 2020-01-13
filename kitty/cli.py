@@ -223,7 +223,7 @@ def get_defaults_from_seq(seq):
 default_msg = ('''\
 Run the :italic:`{appname}` terminal emulator. You can also specify the :italic:`program`
 to run inside :italic:`{appname}` as normal arguments following the :italic:`options`.
-For example: {appname} /bin/sh
+For example: {appname} sh -c "echo hello, world. Press ENTER to quit; read"
 
 For comprehensive documentation for kitty, please see: https://sw.kovidgoyal.net/kitty/''').format(appname=appname)
 
