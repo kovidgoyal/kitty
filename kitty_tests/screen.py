@@ -460,9 +460,9 @@ class TestScreen(BaseTest):
         s.draw('abaa')
         s.carriage_return(), s.linefeed()
         s.draw('xyxyx')
-        s.add_marker('a', marker_from_regex('a', 3))
+        s.set_marker(marker_from_regex('a', 3))
         self.ae(s.marked_cells(), [(0, 0, 3), (2, 0, 3), (3, 0, 3)])
-        s.remove_marker('a')
+        s.set_marker()
         self.ae(s.marked_cells(), [])
 
         def mark_x(text):
@@ -472,5 +472,5 @@ class TestScreen(BaseTest):
                     col += 1
                     yield i, i, col
 
-        s.add_marker('x', marker_from_function(mark_x))
+        s.set_marker(marker_from_function(mark_x))
         self.ae(s.marked_cells(), [(0, 1, 1), (2, 1, 2), (4, 1, 3)])

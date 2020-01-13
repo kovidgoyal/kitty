@@ -136,6 +136,7 @@ class Window:
     def __init__(self, tab, child, opts, args, override_title=None, copy_colors_from=None):
         self.action_on_close = self.action_on_removal = None
         self.layout_data = None
+        self.current_marker_spec = None
         self.pty_resized_once = False
         self.needs_attention = False
         self.override_title = override_title
@@ -606,10 +607,17 @@ class Window:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, False)
 
-    def add_marker(self, name, ftype, spec, color):
-        from .marks import marker_from_regex, marker_from_function
+    def toggle_marker(self, ftype, spec, flags):
+        from .marks import marker_from_regex, marker_from_function, marker_from_multiple_regex
+        key = ftype, spec
+        if key == self.current_marker_spec:
+            self.remove_marker()
+            return
         if ftype == 'regex':
-            marker = marker_from_regex(spec, color)
+            if len(spec) == 1:
+                marker = marker_from_regex(spec[0][1], spec[0][0], flags=flags)
+            else:
+                marker = marker_from_multiple_regex(spec, flags=flags)
         elif ftype == 'function':
             import runpy
             path = spec
@@ -618,8 +626,11 @@ class Window:
             marker = marker_from_function(runpy.run_path(path, run_name='__marker__').marker)
         else:
             raise ValueError('Unknown marker type: {}'.format(ftype))
-        self.screen.add_marker(name, marker)
+        self.screen.set_marker(marker)
+        self.current_marker_spec = key
 
-    def remove_marker(self, name):
-        self.screen.remove_marker(name)
+    def remove_marker(self):
+        if self.current_marker_spec is not None:
+            self.screen.set_marker()
+            self.current_marker_spec = None
     # }}}

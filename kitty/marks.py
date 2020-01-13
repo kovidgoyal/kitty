@@ -21,10 +21,10 @@ def get_output_variables(left_address, right_address, color_address):
     )
 
 
-def marker_from_regex(expression, color):
+def marker_from_regex(expression, color, flags=re.UNICODE):
     color = max(1, min(color, 3))
     if isinstance(expression, str):
-        pat = re.compile(expression)
+        pat = re.compile(expression, flags=flags)
     else:
         pat = expression
 
@@ -34,6 +34,28 @@ def marker_from_regex(expression, color):
         for match in pat.finditer(text):
             left.value = match.start()
             right.value = match.end() - 1
+            yield
+
+    return marker
+
+
+def marker_from_multiple_regex(regexes, flags=re.UNICODE):
+    expr = ''
+    color_map = {}
+    for i, (color, spec) in enumerate(regexes):
+        grp = 'mcg{}'.format(i)
+        expr += '|(?P<{}>{})'.format(grp, spec)
+        color_map[grp] = color
+    expr = expr[1:]
+    pat = re.compile(expr, flags=flags)
+
+    def marker(text, left_address, right_address, color_address):
+        left, right, color = get_output_variables(left_address, right_address, color_address)
+        for match in pat.finditer(text):
+            left.value = match.start()
+            right.value = match.end() - 1
+            grp = next(k for k, v in match.groupdict().items() if v is not None)
+            color.value = color_map[grp]
             yield
 
     return marker

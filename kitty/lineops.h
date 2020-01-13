@@ -90,7 +90,7 @@ void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
 void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
-void mark_text_in_line(Marker *markers, size_t markers_count, Line *line);
+void mark_text_in_line(PyObject *marker, Line *line);
 
 
 #define as_text_generic(args, container, get_line, lines, columns) { \

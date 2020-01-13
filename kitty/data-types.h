@@ -144,12 +144,6 @@ typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 #define END_ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic pop")
 #endif
 
-typedef struct {
-    PyObject *callback;
-    const char *name;
-    bool error_reported;
-} Marker;
-
 
 typedef struct {
     uint32_t left, top, right, bottom;

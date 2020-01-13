@@ -269,12 +269,6 @@ reset_callbacks(Screen *self, PyObject *a UNUSED) {
 }
 
 static void
-free_marker(Marker *marker) {
-    Py_CLEAR(marker->callback);
-    free((void*)marker->name);
-}
-
-static void
 dealloc(Screen* self) {
     pthread_mutex_destroy(&self->read_buf_lock);
     pthread_mutex_destroy(&self->write_buf_lock);
@@ -288,10 +282,7 @@ dealloc(Screen* self) {
     Py_CLEAR(self->alt_linebuf);
     Py_CLEAR(self->historybuf);
     Py_CLEAR(self->color_profile);
-    if (self->markers.items) {
-        for (size_t i = 0; i < self->markers.count; i++) free_marker(self->markers.items + i);
-        free(self->markers.items);
-    }
+    Py_CLEAR(self->marker);
     PyMem_Free(self->overlay_line.cpu_cells);
     PyMem_Free(self->overlay_line.gpu_cells);
     PyMem_Free(self->main_tabstops);
@@ -1518,8 +1509,8 @@ screen_reset_dirty(Screen *self) {
 }
 
 static inline bool
-screen_has_markers(Screen *self) {
-    return self->markers.count > 0;
+screen_has_marker(Screen *self) {
+    return self->marker != NULL;
 }
 
 
@@ -1536,7 +1527,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
         if (self->historybuf->line->has_dirty_text) {
             render_line(fonts_data, self->historybuf->line, lnum, self->cursor, self->disable_ligatures);
-            if (screen_has_markers(self)) mark_text_in_line(self->markers.items, self->markers.count, self->historybuf->line);
+            if (screen_has_marker(self)) mark_text_in_line(self->marker, self->historybuf->line);
             historybuf_mark_line_clean(self->historybuf, lnum);
         }
         update_line_data(self->historybuf->line, y, address);
@@ -1547,7 +1538,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         if (self->linebuf->line->has_dirty_text ||
             (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered_cursor_y == lnum))) {
             render_line(fonts_data, self->linebuf->line, lnum, self->cursor, self->disable_ligatures);
-            if (self->linebuf->line->has_dirty_text && screen_has_markers(self)) mark_text_in_line(self->markers.items, self->markers.count, self->linebuf->line);
+            if (self->linebuf->line->has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, self->linebuf->line);
 
             linebuf_mark_line_clean(self->linebuf, lnum);
         }
@@ -2268,59 +2259,38 @@ static inline void
 screen_mark_all(Screen *self) {
     for (index_type y = 0; y < self->main_linebuf->ynum; y++) {
         linebuf_init_line(self->main_linebuf, y);
-        mark_text_in_line(self->markers.items, self->markers.count, self->main_linebuf->line);
+        mark_text_in_line(self->marker, self->main_linebuf->line);
     }
     for (index_type y = 0; y < self->alt_linebuf->ynum; y++) {
         linebuf_init_line(self->alt_linebuf, y);
-        mark_text_in_line(self->markers.items, self->markers.count, self->alt_linebuf->line);
+        mark_text_in_line(self->marker, self->alt_linebuf->line);
     }
     for (index_type y = 0; y < self->historybuf->count; y++) {
         historybuf_init_line(self->historybuf, y, self->historybuf->line);
-        mark_text_in_line(self->markers.items, self->markers.count, self->historybuf->line);
+        mark_text_in_line(self->marker, self->historybuf->line);
     }
     self->is_dirty = true;
 }
 
 static PyObject*
-add_marker(Screen *self, PyObject *args) {
-    const char *name;
-    PyObject *marker;
-    if (!PyArg_ParseTuple(args, "sO", &name, &marker)) return NULL;
+set_marker(Screen *self, PyObject *args) {
+    PyObject *marker = NULL;
+    if (!PyArg_ParseTuple(args, "|O", &marker)) return NULL;
+    if (!marker) {
+        if (self->marker) {
+            Py_CLEAR(self->marker);
+            screen_mark_all(self);
+        }
+        Py_RETURN_NONE;
+    }
     if (!PyCallable_Check(marker)) {
         PyErr_SetString(PyExc_TypeError, "marker must be a callable");
         return NULL;
     }
-    for (size_t i = 0; i < self->markers.count; i++) {
-        if (strcmp(self->markers.items[i].name, name) == 0) {
-            if (self->markers.items[i].callback == marker) Py_RETURN_NONE;
-            Py_DECREF(self->markers.items[i].callback);
-            self->markers.items[i].callback = marker;
-            Py_INCREF(marker);
-            screen_mark_all(self);
-            Py_RETURN_NONE;
-        }
-    }
-    ensure_space_for(&self->markers, items, Marker, 1, capacity, 8, true);
-    self->markers.items[self->markers.count].name = strdup(name);
-    self->markers.items[self->markers.count++].callback = marker;
+    self->marker = marker;
     Py_INCREF(marker);
     screen_mark_all(self);
     Py_RETURN_NONE;
-}
-
-static PyObject*
-remove_marker(Screen *self, PyObject *args) {
-    const char *name;
-    if (!PyArg_ParseTuple(args, "s", &name)) return NULL;
-    for (size_t i = 0; i < self->markers.count; i++) {
-        if (strcmp(self->markers.items[i].name, name) == 0) {
-            free_marker(self->markers.items + i);
-            remove_i_from_array(self->markers.items, i, self->markers.count);
-            screen_mark_all(self);
-            Py_RETURN_TRUE;
-        }
-    }
-    Py_RETURN_FALSE;
 }
 
 static PyObject*
@@ -2442,8 +2412,7 @@ static PyMethodDef methods[] = {
     MND(paste, METH_O)
     MND(paste_bytes, METH_O)
     MND(copy_colors_from, METH_O)
-    MND(add_marker, METH_VARARGS)
-    MND(remove_marker, METH_VARARGS)
+    MND(set_marker, METH_VARARGS)
     MND(marked_cells, METH_NOARGS)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 

@@ -241,41 +241,36 @@ def disable_ligatures_in(func, rest):
     return func, [where, strategy]
 
 
-@func_with_args('add_marker')
-def add_marker(func, rest):
-    parts = rest.split(maxsplit=2)
-    if len(parts) != 3:
+@func_with_args('toggle_marker')
+def toggle_marker(func, rest):
+    parts = rest.split(maxsplit=1)
+    if len(parts) != 2:
         raise ValueError('{} if not a valid marker specification'.format(rest))
-    name, ftype, spec = parts
-    color = None
-    if ftype in ('text', 'itext', 'regex'):
-        flags = re.UNICODE
-        parts = spec.split(maxsplit=1)
-        if len(parts) != 2:
-            raise ValueError('No color specified in marker: {}'.format(spec))
-        try:
-            color = max(1, min(int(parts[0]), 3))
-        except Exception:
-            raise ValueError('color {} in marker specification is not an integer'.format(parts[0]))
-        spec = parts[1]
-        if ftype in ('text', 'itext'):
-            spec = re.escape(spec)
+    ftype, spec = parts
+    flags = re.UNICODE
+    if ftype in ('text', 'itext', 'regex', 'iregex'):
+        parts = spec.split()
+        if ftype.startswith('i'):
             flags |= re.IGNORECASE
-            ftype = 'regex'
-        try:
-            spec = re.compile(spec, flags=flags)
-        except Exception:
-            raise ValueError('{} is not a valid regular expression'.format(spec))
+        if not parts or len(parts) % 2 != 0:
+            raise ValueError('No color specified in marker: {}'.format(spec))
+        ans = []
+        for i in range(0, len(parts), 2):
+            try:
+                color = max(1, min(int(parts[i]), 3))
+            except Exception:
+                raise ValueError('color {} in marker specification is not an integer'.format(parts[i]))
+            spec = parts[i + 1]
+            if 'regex' not in ftype:
+                spec = re.escape(spec)
+            ans.append((color, spec))
+        ftype = 'regex'
+        spec = tuple(ans)
     elif ftype == 'function':
         pass
     else:
         raise ValueError('Unknown marker type: {}'.format(ftype))
-    return func, [name, ftype, spec, color]
-
-
-@func_with_args('remove_marker')
-def remove_marker(func, rest):
-    return func, [rest]
+    return func, [ftype, spec, flags]
 
 
 def parse_key_action(action):
@@ -288,8 +283,8 @@ def parse_key_action(action):
     if parser is not None:
         try:
             func, args = parser(func, rest)
-        except Exception:
-            log_error('Ignoring invalid key action: {}'.format(action))
+        except Exception as err:
+            log_error('Ignoring invalid key action: {} with err: {}'.format(action, err))
         else:
             return KeyAction(func, args)
 

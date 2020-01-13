@@ -666,21 +666,22 @@ __eq__(Line *a, Line *b) {
 }
 
 static inline void
-apply_marker(Marker *marker, Line *line, const PyObject *text) {
+report_marker_error(PyObject *marker) {
+    if (!PyObject_HasAttrString(marker, "error_reported")) {
+        PyErr_Print();
+        if (PyObject_SetAttrString(marker, "error_reported", Py_True) != 0) PyErr_Clear();
+    } else PyErr_Clear();
+}
+
+static inline void
+apply_marker(PyObject *marker, Line *line, const PyObject *text) {
     unsigned int l=0, r=0, col=0, match_pos=0;
     PyObject *pl = PyLong_FromVoidPtr(&l), *pr = PyLong_FromVoidPtr(&r), *pcol = PyLong_FromVoidPtr(&col);
     if (!pl || !pr || !pcol) { PyErr_Clear(); return; }
-    PyObject *iter = PyObject_CallFunctionObjArgs(marker->callback, text, pl, pr, pcol, NULL);
+    PyObject *iter = PyObject_CallFunctionObjArgs(marker, text, pl, pr, pcol, NULL);
     Py_DECREF(pl); Py_DECREF(pr); Py_DECREF(pcol);
 
-    if (iter == NULL) {
-        if (!marker->error_reported) {
-            PyErr_Print();
-            marker->error_reported = true;
-        }
-        else PyErr_Clear();
-        return;
-    }
+    if (iter == NULL) { report_marker_error(marker); return; }
     PyObject *match;
     index_type x = 0;
 #define INCREMENT_MATCH_POS { \
@@ -708,20 +709,19 @@ apply_marker(Marker *marker, Line *line, const PyObject *text) {
     }
     while(x < line->xnum) line->gpu_cells[x++].attrs &= ATTRS_MASK_WITHOUT_MARK;
     Py_DECREF(iter);
+    if (PyErr_Occurred()) report_marker_error(marker);
 #undef INCREMENT_MATCH_POS
 }
 
 void
-mark_text_in_line(Marker *markers, size_t markers_count, Line *line) {
-    if (!markers_count) {
+mark_text_in_line(PyObject *marker, Line *line) {
+    if (!marker) {
         for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs &= ATTRS_MASK_WITHOUT_MARK;
         return;
     }
     PyObject *text = line_as_unicode(line);
     if (PyUnicode_GET_LENGTH(text) > 0) {
-        for (size_t i = 0; i < markers_count; i++) {
-            apply_marker(markers + i, line, text);
-        }
+        apply_marker(marker, line, text);
     } else {
         for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs &= ATTRS_MASK_WITHOUT_MARK;
     }

@@ -107,10 +107,7 @@ typedef struct {
         uint8_t stop_buf[32];
     } pending_mode;
     DisableLigature disable_ligatures;
-    struct {
-        Marker *items;
-        size_t count, capacity;
-    } markers;
+    PyObject *marker;
 } Screen;
 
 
