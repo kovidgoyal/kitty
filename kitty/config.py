@@ -243,22 +243,18 @@ def disable_ligatures_in(func, rest):
 
 @func_with_args('add_marker')
 def add_marker(func, rest):
-    parts = rest.split(maxsplit=1)
-    if len(parts) != 2:
+    parts = rest.split(maxsplit=2)
+    if len(parts) != 3:
         raise ValueError('{} if not a valid marker specification'.format(rest))
-    name = parts[0]
-    parts = parts[1].split(':', maxsplit=1)
-    if len(parts) != 2:
-        raise ValueError('{} if not a valid marker specification'.format(rest))
-    ftype, spec = parts
+    name, ftype, spec = parts
     color = None
     if ftype in ('text', 'itext', 'regex'):
         flags = re.UNICODE
-        parts = spec.split(':', maxsplit=1)
+        parts = spec.split(maxsplit=1)
         if len(parts) != 2:
             raise ValueError('No color specified in marker: {}'.format(spec))
         try:
-            color = int(parts[0])
+            color = max(1, min(int(parts[0]), 3))
         except Exception:
             raise ValueError('color {} in marker specification is not an integer'.format(parts[0]))
         spec = parts[1]
