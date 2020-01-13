@@ -858,7 +858,7 @@ o('color7', '#dddddd', long_text=_('white'), option_type=to_color)
 o('color15', '#ffffff', option_type=to_color)
 
 o('mark1_foreground', 'black', long_text=_('Color for marks of type 1'), option_type=to_color)
-o('mark1_background', '#cdc8ca', long_text=_('Color for marks of type 1 (light gray)'), option_type=to_color)
+o('mark1_background', '#98d3cb', long_text=_('Color for marks of type 1 (light steel blue)'), option_type=to_color)
 o('mark2_foreground', 'black', long_text=_('Color for marks of type 2'), option_type=to_color)
 o('mark2_background', '#f2dcd3', long_text=_('Color for marks of type 1 (beige)'), option_type=to_color)
 o('mark3_foreground', 'black', long_text=_('Color for marks of type 3'), option_type=to_color)
