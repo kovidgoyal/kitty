@@ -763,7 +763,6 @@ handleEvents(monotonic_t timeout)
 
     while (wl_display_prepare_read(display) != 0) {
         while(1) {
-            errno = 0;
             int num_dispatched = wl_display_dispatch_pending(display);
             if (num_dispatched < 0) {
                 if (errno == EAGAIN) continue;
@@ -778,7 +777,6 @@ handleEvents(monotonic_t timeout)
     // If an error different from EAGAIN happens, we have likely been
     // disconnected from the Wayland session, try to handle that the best we
     // can.
-    errno = 0;
     if (wl_display_flush(display) < 0 && errno != EAGAIN)
     {
         wl_display_cancel_read(display);
