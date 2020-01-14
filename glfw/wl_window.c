@@ -768,7 +768,6 @@ handleEvents(monotonic_t timeout)
             if (num_dispatched < 0) {
                 if (errno == EAGAIN) continue;
                 int last_error = wl_display_get_error(display);
-                wl_display_cancel_read(display);
                 if (last_error) abortOnFatalError(last_error);
                 return;
             }
