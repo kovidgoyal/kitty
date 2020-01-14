@@ -617,9 +617,12 @@ class Window:
         self.current_marker_spec = key
 
     def set_marker(self, spec):
-        from .config import toggle_marker
+        from .config import toggle_marker, parse_marker_spec
         from .marks import marker_from_spec
-        func, (ftype, spec, flags) = toggle_marker('toggle_marker', spec)
+        if isinstance(spec, str):
+            func, (ftype, spec, flags) = toggle_marker('toggle_marker', spec)
+        else:
+            ftype, spec, flags = parse_marker_spec(spec[0], spec[1:])
         key = ftype, spec
         self.screen.set_marker(marker_from_spec(ftype, spec, flags))
         self.current_marker_spec = key

@@ -241,19 +241,13 @@ def disable_ligatures_in(func, rest):
     return func, [where, strategy]
 
 
-@func_with_args('toggle_marker')
-def toggle_marker(func, rest):
-    parts = rest.split(maxsplit=1)
-    if len(parts) != 2:
-        raise ValueError('{} if not a valid marker specification'.format(rest))
-    ftype, spec = parts
+def parse_marker_spec(ftype, parts):
     flags = re.UNICODE
     if ftype in ('text', 'itext', 'regex', 'iregex'):
-        parts = spec.split()
         if ftype.startswith('i'):
             flags |= re.IGNORECASE
         if not parts or len(parts) % 2 != 0:
-            raise ValueError('No color specified in marker: {}'.format(spec))
+            raise ValueError('No color specified in marker: {}'.format(' '.join(parts)))
         ans = []
         for i in range(0, len(parts), 2):
             try:
@@ -267,10 +261,20 @@ def toggle_marker(func, rest):
         ftype = 'regex'
         spec = tuple(ans)
     elif ftype == 'function':
-        pass
+        spec = ' '.join(parts)
     else:
         raise ValueError('Unknown marker type: {}'.format(ftype))
-    return func, [ftype, spec, flags]
+    return ftype, spec, flags
+
+
+@func_with_args('toggle_marker')
+def toggle_marker(func, rest):
+    parts = rest.split(maxsplit=1)
+    if len(parts) != 2:
+        raise ValueError('{} if not a valid marker specification'.format(rest))
+    ftype, spec = parts
+    parts = spec.split()
+    return func, list(parse_marker_spec(ftype, parts))
 
 
 def parse_key_action(action):

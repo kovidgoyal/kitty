@@ -37,7 +37,7 @@ can control the colors used for these groups in :file:`kitty.conf` with::
 
 .. note::
     For performance reasons, matching is done per line only, and only when that line is
-    altered in anyway. So you cannot match text that stretches across multiple
+    altered in any way. So you cannot match text that stretches across multiple
     lines.
 
 
@@ -52,6 +52,9 @@ If you want to create markers dynamically rather than pre-defining them in
 
 Then pressing :kbd:`F1` will allow you to enter the marker definition and set
 it and pressing :kbd:`F2` will remove the marker.
+
+You can also use the facilities for :doc:`remote-control` to dynamically
+add/remove markers.
 
 
 The full syntax for creating marks

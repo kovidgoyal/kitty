@@ -381,6 +381,82 @@ def set_tab_title(boss, window, payload):
 # }}}
 
 
+# create_marker {{{
+@cmd(
+    'Create a marker that highlights specified text',
+    'Create a marker which can highlight text in the specified window. For example: '
+    'create_marker text 1 ERROR. For full details see: https://sw.kovidgoyal.net/kitty/marks.html',
+    options_spec=MATCH_WINDOW_OPTION + '''\n
+--self
+type=bool-set
+If specified apply marker to the window this command is run in, rather than the active window.
+''',
+    argspec='MARKER SPECIFICATION'
+)
+def cmd_create_marker(global_opts, opts, args):
+    '''
+    match: Which window to detach
+    self: Boolean indicating whether to detach the window the command is run in
+    marker_spec: A list or arguments that define the marker specification, for example: ['text', '1', 'ERROR']
+    '''
+    from .config import parse_marker_spec
+    if len(args) < 2:
+        raise ValueError('Invalid marker specification: {}'.format(' '.join(args)))
+    parse_marker_spec(args[0], args[1:])
+    return {'match': opts.match, 'self': opts.self, 'marker_spec': args}
+
+
+def create_marker(boss, window, payload):
+    pg = cmd_create_marker.payload_get
+    match = pg(payload, 'match')
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise MatchError(match)
+    else:
+        windows = [window if window and pg(payload, 'self') else boss.active_window]
+    args = pg(payload, 'marker_spec')
+
+    for window in windows:
+        window.set_marker(args)
+
+# }}}
+
+
+# remove_marker {{{
+@cmd(
+    'Remove the currently set marker, if any.',
+    options_spec=MATCH_WINDOW_OPTION + '''\n
+--self
+type=bool-set
+If specified apply marker to the window this command is run in, rather than the active window.
+''',
+    argspec=''
+)
+def cmd_remove_marker(global_opts, opts, args):
+    '''
+    match: Which window to detach
+    self: Boolean indicating whether to detach the window the command is run in
+    '''
+    return {'match': opts.match, 'self': opts.self}
+
+
+def remove_marker(boss, window, payload):
+    pg = cmd_create_marker.payload_get
+    match = pg(payload, 'match')
+    if match:
+        windows = tuple(boss.match_windows(match))
+        if not windows:
+            raise MatchError(match)
+    else:
+        windows = [window if window and pg(payload, 'self') else boss.active_window]
+
+    for window in windows:
+        window.remove_marker()
+
+# }}}
+
+
 # detach_window {{{
 @cmd(
     'Detach a window and place it in a different/new tab',
