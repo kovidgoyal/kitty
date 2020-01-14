@@ -792,7 +792,7 @@ class Boss:
 
             self._run_kitten('ask', [
                 '--name=create-marker', '--message',
-                _('Create marker, for example:\ntext 1 ERROR')
+                _('Create marker, for example:\ntext 1 ERROR\nSee https://sw.kovidgoyal.net/kitty/marks.html\n')
                 ],
                 custom_callback=done, action_on_removal=done2)
 
