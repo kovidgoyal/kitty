@@ -763,7 +763,7 @@ handleEvents(monotonic_t timeout)
 
     while (wl_display_prepare_read(display) != 0) {
         if (wl_display_dispatch_pending(display) == -1) {
-            abortOnFatalError(wl_display_get_error(display));
+            abortOnFatalError(errno);
             return;
         }
     }
