@@ -782,8 +782,8 @@ handleEvents(monotonic_t timeout)
     errno = 0;
     if (wl_display_flush(display) < 0 && errno != EAGAIN)
     {
-        abortOnFatalError(errno);
         wl_display_cancel_read(display);
+        abortOnFatalError(errno);
         return;
     }
 
