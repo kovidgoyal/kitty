@@ -840,6 +840,9 @@ static PyObject*
 glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
     int key, native_key;
     if (!PyArg_ParseTuple(args, "ii", &key, &native_key)) return NULL;
+    if (!glfwGetKeyName) {
+        return PyUnicode_FromFormat("key: %d native_key: %d", key, native_key);
+    }
     return Py_BuildValue("z", glfwGetKeyName(key, native_key));
 }
 

@@ -16,6 +16,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a :opt:`resize_in_steps` option that can be used to resize the OS window
   in steps as large as character cells (:pull:`2131`)
 
+- Fix a segfault when using :opt:`--debug-config` with maps (:iss:`2270`)
+
 
 0.15.1 [2019-12-21]
 --------------------
