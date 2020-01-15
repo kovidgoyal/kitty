@@ -542,6 +542,7 @@ static bool createNativeWindow(_GLFWwindow* window,
 
     _glfwGrabErrorHandlerX11();
 
+    window->x11.parent = _glfw.x11.root;
     window->x11.handle = XCreateWindow(_glfw.x11.display,
                                        _glfw.x11.root,
                                        0, 0,   // Position
@@ -1184,6 +1185,12 @@ static void processEvent(XEvent *event)
 
     switch (event->type)
     {
+        case ReparentNotify:
+        {
+            window->x11.parent = event->xreparent.parent;
+            return;
+        }
+
         case KeyPress:
         {
             UPDATE_KEYMAP_IF_NEEDED;
@@ -1377,18 +1384,28 @@ static void processEvent(XEvent *event)
                 window->x11.height = event->xconfigure.height;
             }
 
-            if (event->xconfigure.x != window->x11.xpos ||
-                event->xconfigure.y != window->x11.ypos)
-            {
-                if (event->xany.send_event)
-                {
-                    _glfwInputWindowPos(window,
-                                        event->xconfigure.x,
-                                        event->xconfigure.y);
+            int xpos = event->xconfigure.x;
+            int ypos = event->xconfigure.y;
 
-                    window->x11.xpos = event->xconfigure.x;
-                    window->x11.ypos = event->xconfigure.y;
-                }
+            // NOTE: ConfigureNotify events from the server are in local
+            //       coordinates, so if we are reparented we need to translate
+            //       the position into root (screen) coordinates
+            if (!event->xany.send_event && window->x11.parent != _glfw.x11.root)
+            {
+                Window dummy;
+                XTranslateCoordinates(_glfw.x11.display,
+                                      window->x11.parent,
+                                      _glfw.x11.root,
+                                      xpos, ypos,
+                                      &xpos, &ypos,
+                                      &dummy);
+            }
+
+            if (xpos != window->x11.xpos || ypos != window->x11.ypos)
+            {
+                _glfwInputWindowPos(window, xpos, ypos);
+                window->x11.xpos = xpos;
+                window->x11.ypos = ypos;
             }
 
             return;
