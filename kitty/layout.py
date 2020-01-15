@@ -395,8 +395,11 @@ class Layout:  # {{{
         br = self.blank_rects
         left_blank_rect(first_window, br), top_blank_rect(first_window, br), right_blank_rect(last_window, br)
 
-    def between_blank_rect(self, left_window, right_window):
-        self.blank_rects.append(Rect(left_window.geometry.right, central.top, right_window.geometry.left, central.bottom + 1))
+    def between_blank_rect(self, left_window, right_window, vertical=True):
+        if vertical:
+            self.blank_rects.append(Rect(left_window.geometry.right, central.top, right_window.geometry.left, central.bottom + 1))
+        else:
+            self.blank_rects.append(Rect(central.left, left_window.geometry.top, central.right + 1, right_window.geometry.bottom))
 
     def bottom_blank_rect(self, window):
         self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, central.bottom + 1))
@@ -449,28 +452,34 @@ class Tall(Layout):  # {{{
     only_between_border = False, False, False, True
     only_main_border = False, False, True, False
 
+    @property
+    def num_full_size_windows(self):
+        return self.layout_opts['full_size']
+
     def remove_all_biases(self):
         self.main_bias = list(self.layout_opts['bias'])
         self.biased_map = {}
         return True
 
     def variable_layout(self, num_windows, biased_map):
-        num_windows -= 1
+        num_windows -= self.num_full_size_windows
         return self.vlayout(num_windows, bias=variable_bias(num_windows, biased_map) if num_windows > 1 else None)
 
     def apply_bias(self, idx, increment, num_windows, is_horizontal):
         if self.main_is_horizontal == is_horizontal:
             before = self.main_bias
-            if idx == 0:
-                self.main_bias = [safe_increment_bias(self.main_bias[0], increment), safe_increment_bias(self.main_bias[1], -increment)]
-            else:
-                self.main_bias = [safe_increment_bias(self.main_bias[0], -increment), safe_increment_bias(self.main_bias[1], increment)]
+            ncols = self.num_full_size_windows + 1
+            biased_col = idx if idx < self.num_full_size_windows else (ncols - 1)
+            self.main_bias = [
+                safe_increment_bias(self.main_bias[i], increment * (1 if i == biased_col else -1)) for i in range(ncols)
+            ]
             self.main_bias = normalize_biases(self.main_bias)
             after = self.main_bias
         else:
-            if idx == 0 or num_windows < 3:
+            num_of_short_windows = num_windows - self.num_full_size_windows
+            if idx < self.num_full_size_windows or num_of_short_windows < 2:
                 return False
-            idx -= 1
+            idx -= self.num_full_size_windows
             before_layout = list(self.variable_layout(num_windows, self.biased_map))
             candidate = self.biased_map.copy()
             before = candidate.get(idx, 0)
@@ -484,40 +493,70 @@ class Tall(Layout):  # {{{
     def parse_layout_opts(self, layout_opts):
         ans = Layout.parse_layout_opts(self, layout_opts)
         try:
-            ans['bias'] = int(ans.get('bias', 50)) / 100
+            ans['full_size'] = int(ans.get('full_size', 1))
         except Exception:
-            ans['bias'] = 0.5
-        ans['bias'] = max(0.1, min(ans['bias'], 0.9))
-        ans['bias'] = ans['bias'], 1.0 - ans['bias']
+            ans['full_size'] = 1
+        ans['full_size'] = fs = max(1, min(ans['full_size'], 100))
+        try:
+            b = int(ans.get('bias', 50)) / 100
+        except Exception:
+            b = 0.5
+        b = max(0.1, min(b, 0.9))
+        ans['bias'] = tuple(repeat(b / fs, fs)) + (1.0 - b,)
         return ans
 
     def do_layout(self, windows, active_window_idx):
         if len(windows) == 1:
             return self.layout_single_window(windows[0])
-        xlayout = self.xlayout(2, bias=self.main_bias)
-        xstart, xnum = next(xlayout)
-        ystart, ynum = next(self.vlayout(1))
-        windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
-        xstart, xnum = next(xlayout)
-        ylayout = self.variable_layout(len(windows), self.biased_map)
-        for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, 1, None), ylayout)):
-            w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
-            # right bottom blank rect
-            self.bottom_blank_rect(windows[i + 1])
+        y, ynum = next(self.vlayout(1))
+        if len(windows) <= self.num_full_size_windows:
+            bias = normalize_biases(self.main_bias[:-1])
+            xlayout = self.xlayout(self.num_full_size_windows, bias=bias)
+            for i, (w, (x, xnum)) in enumerate(zip(windows, xlayout)):
+                w.set_geometry(i, window_geometry(x, xnum, y, ynum))
+                if i > 0:
+                    self.between_blank_rect(windows[i-1], windows[i])
+                # bottom blank rect
+                self.bottom_blank_rect(windows[i])
 
+            # left, top and right blank rects
+            self.simple_blank_rects(windows[0], windows[-1])
+            return
+
+        xlayout = self.xlayout(self.num_full_size_windows + 1, bias=self.main_bias)
+        for i in range(self.num_full_size_windows):
+            w = windows[i]
+            x, xnum = next(xlayout)
+            w.set_geometry(i, window_geometry(x, xnum, y, ynum))
+            self.between_blank_rect(windows[i], windows[i+1])
+            # bottom blank rect
+            self.bottom_blank_rect(windows[i])
+        x, xnum = next(xlayout)
+        ylayout = self.variable_layout(len(windows), self.biased_map)
+        for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, self.num_full_size_windows, None), ylayout)):
+            w.set_geometry(i + self.num_full_size_windows, window_geometry(x, xnum, ystart, ynum))
+        # right bottom blank rect
+        self.bottom_blank_rect(windows[-1])
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
-        # between blank rect
-        self.between_blank_rect(windows[0], windows[1])
-        # left bottom blank rect
-        self.bottom_blank_rect(windows[0])
 
     def neighbors_for_window(self, window, windows):
-        if window is windows[0]:
-            return {'left': [], 'right': windows[1:], 'top': [], 'bottom': []}
         idx = windows.index(window)
-        return {'left': [windows[0]], 'right': [], 'top': [] if idx <= 1 else [windows[idx-1]],
-                'bottom': [] if window is windows[-1] else [windows[idx+1]]}
+        prev = None if idx == 0 else windows[idx-1]
+        nxt = None if idx == len(windows) - 1 else windows[idx+1]
+        ans = {'left': [prev] if prev is not None else [], 'right': [], 'top': [], 'bottom': []}
+        if idx < self.num_full_size_windows - 1:
+            if nxt is not None:
+                ans['right'] = [nxt]
+        elif idx == self.num_full_size_windows - 1:
+            ans['right'] = windows[idx+1:]
+        else:
+            ans['left'] = [windows[self.num_full_size_windows - 1]]
+            if idx > self.num_full_size_windows:
+                ans['top'] = [prev]
+            if nxt is not None:
+                ans['bottom'] = [nxt]
+        return ans
 
     def minimal_borders(self, windows, active_window, needs_borders_map):
         last_i = len(windows) - 1
@@ -525,11 +564,11 @@ class Tall(Layout):  # {{{
             if needs_borders_map[w.id]:
                 yield all_borders
                 continue
-            if i == 0:
-                if last_i == 1 and needs_borders_map[windows[1].id]:
+            if i < self.num_full_size_windows:
+                if (last_i == i+1 or i+1 < self.num_full_size_windows) and needs_borders_map[windows[i+1].id]:
                     yield no_borders
                 else:
-                    yield self.only_main_border
+                    yield no_borders if i == last_i else self.only_main_border
                 continue
             if i == last_i:
                 yield no_borders
@@ -552,31 +591,53 @@ class Fat(Tall):  # {{{
     def do_layout(self, windows, active_window_idx):
         if len(windows) == 1:
             return self.layout_single_window(windows[0])
-        xstart, xnum = next(self.xlayout(1))
-        ylayout = self.ylayout(2, bias=self.main_bias)
-        ystart, ynum = next(ylayout)
-        windows[0].set_geometry(0, window_geometry(xstart, xnum, ystart, ynum))
+        x, xnum = next(self.vlayout(1))
+        if len(windows) <= self.num_full_size_windows:
+            bias = normalize_biases(self.main_bias[:-1])
+            ylayout = self.ylayout(self.num_full_size_windows, bias=bias)
+            for i, (w, (y, ynum)) in enumerate(zip(windows, ylayout)):
+                w.set_geometry(i, window_geometry(x, xnum, y, ynum))
+                if i > 0:
+                    self.between_blank_rect(windows[i-1], windows[i], vertical=False)
+            # bottom blank rect
+            self.bottom_blank_rect(windows[-1])
+            # left, top and right blank rects
+            self.simple_blank_rects(windows[0], windows[-1])
+            return
+
+        ylayout = self.ylayout(self.num_full_size_windows + 1, bias=self.main_bias)
+        for i in range(self.num_full_size_windows):
+            w = windows[i]
+            y, ynum = next(ylayout)
+            w.set_geometry(i, window_geometry(x, xnum, y, ynum))
+            self.between_blank_rect(windows[i], windows[i+1], vertical=False)
+        y, ynum = next(ylayout)
         xlayout = self.variable_layout(len(windows), self.biased_map)
-        ystart, ynum = next(ylayout)
-        for i, (w, (xstart, xnum)) in enumerate(zip(islice(windows, 1, None), xlayout)):
-            w.set_geometry(i + 1, window_geometry(xstart, xnum, ystart, ynum))
-            if i > 0:
-                # bottom between blank rect
-                self.between_blank_rect(windows[i - 1], windows[i])
+        for i, (w, (x, xnum)) in enumerate(zip(islice(windows, self.num_full_size_windows, None), xlayout)):
+            w.set_geometry(i + self.num_full_size_windows, window_geometry(x, xnum, y, ynum))
+            # bottom blank rect
+            self.bottom_blank_rect(windows[i])
 
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
-        # top bottom blank rect
-        self.bottom_blank_rect(windows[0])
-        # bottom blank rect
-        self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
 
     def neighbors_for_window(self, window, windows):
-        if window is windows[0]:
-            return {'left': [], 'bottom': windows[1:], 'top': [], 'right': []}
         idx = windows.index(window)
-        return {'top': [windows[0]], 'bottom': [], 'left': [] if idx <= 1 else [windows[idx-1]],
-                'right': [] if window is windows[-1] else [windows[idx+1]]}
+        prev = None if idx == 0 else windows[idx-1]
+        nxt = None if idx == len(windows) - 1 else windows[idx+1]
+        ans = {'left': [], 'right': [], 'top': [] if prev is None else [prev], 'bottom': []}
+        if idx < self.num_full_size_windows - 1:
+            if nxt is not None:
+                ans['bottom'] = [nxt]
+        elif idx == self.num_full_size_windows - 1:
+            ans['bottom'] = windows[idx+1:]
+        else:
+            ans['top'] = [windows[self.num_full_size_windows - 1]]
+            if idx > self.num_full_size_windows:
+                ans['left'] = [prev]
+            if nxt is not None:
+                ans['right'] = [nxt]
+        return ans
 
 # }}}
 

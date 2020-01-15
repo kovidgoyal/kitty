@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - hints kitten: Allow pressing :sc:`goto_file_line` to quickly open
   the selected file at the selected line in vim or a configurable editor (:iss:`2268`)
 
+- Allow having more than one full height window in the :code:`tall` layout
+  (:iss:`2276`)
+
 - Allow choosing OpenType features for individual fonts via the
   :opt:`font_features` option.
 

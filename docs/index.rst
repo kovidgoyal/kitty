@@ -225,8 +225,8 @@ using the :sc:`new_window` key combination.
 Currently, there are five layouts available,
 
 * **Stack** -- Only a single maximized window is shown at a time
-* **Tall** -- One window is shown full height on the left, the rest of the windows are shown one below the other on the right
-* **Fat** -- One window is shown full width on the top, the rest of the windows are shown side-by-side on the bottom
+* **Tall** -- One (or optionally more) windows are shown full height on the left, the rest of the windows are shown one below the other on the right
+* **Fat** -- One (or optionally more) windows are shown full width on the top, the rest of the windows are shown side-by-side on the bottom
 * **Grid** -- All windows are shown in a grid
 * **Horizontal** -- All windows are shown side-by-side
 * **Vertical** -- All windows are shown one below the other
@@ -256,13 +256,15 @@ the resizing increment (a positive integer that defaults to 1).
 
 
 Some layouts take options to control their behavior. For example, the ``fat``
-and ``tall`` layouts accept the ``bias`` option to control how the available
-space is split up. To specify the option, in :opt:`kitty.conf <enabled_layouts>` use::
+and ``tall`` layouts accept the ``bias`` and ``full_size`` options to control
+how the available space is split up.
+To specify the option, in :opt:`kitty.conf <enabled_layouts>` use::
 
-    enabled_layouts tall:bias=70
+    enabled_layouts tall:bias=70;full_size=2
 
-This will make the tall window occupy ``70%`` of available width. ``bias`` can be
-any number between 10 and 90.
+This will have ``2`` instead of a single tall window, that occupy ``70%``
+instead of ``50%`` of available width. ``bias`` can be any number between 10
+and 90.
 
 Writing a new layout only requires about a hundred lines of code, so if there
 is some layout you want, take a look at `layout.py
