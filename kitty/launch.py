@@ -18,7 +18,7 @@ child process.
 
 --tab-title
 The title for the new tab if launching in a new tab. By default, the title
-of the actie window in the tab is used as the tab title.
+of the active window in the tab is used as the tab title.
 
 
 --type
