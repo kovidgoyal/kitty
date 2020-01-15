@@ -69,6 +69,9 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
         init_FG_BG_table();
         memcpy(self->color_table, FG_BG_256, sizeof(FG_BG_256));
         memcpy(self->orig_color_table, FG_BG_256, sizeof(FG_BG_256));
+#define S(which) self->mark_foregrounds[which] = OPT(mark##which##_foreground); self->mark_backgrounds[which] = OPT(mark##which##_background)
+        S(1); S(2); S(3);
+#undef S
         self->dirty = true;
     }
     return (PyObject*) self;
@@ -107,6 +110,32 @@ copy_color_profile(ColorProfile *dest, ColorProfile *src) {
     dest->dirty = true;
 }
 
+static inline void
+patch_color_table(const char *key, PyObject *profiles, PyObject *spec, size_t which, int change_configured) {
+    PyObject *v = PyDict_GetItemString(spec, key);
+    if (v) {
+        color_type color = PyLong_AsUnsignedLong(v);
+        for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) {
+            ColorProfile *self = (ColorProfile*)PyTuple_GET_ITEM(profiles, j);
+            self->color_table[which] = color;
+            if (change_configured) self->orig_color_table[which] = color;
+            self->dirty = true;
+        }
+    }
+
+}
+
+#define patch_mark_color(key, profiles, spec, array, i) { \
+    PyObject *v = PyDict_GetItemString(spec, key); \
+    if (v) { \
+        color_type color = PyLong_AsUnsignedLong(v); \
+        for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) { \
+            ColorProfile *self = (ColorProfile*)PyTuple_GET_ITEM(profiles, j); \
+            self->array[i] = color; \
+            self->dirty = true; \
+} } }
+
+
 static PyObject*
 patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
     PyObject *spec, *profiles, *v; ColorProfile *self; int change_configured; PyObject *cursor_text_color;
@@ -114,16 +143,12 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
     char key[32] = {0};
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) {
         snprintf(key, sizeof(key) - 1, "color%zu", i);
-        v = PyDict_GetItemString(spec, key);
-        if (v) {
-            color_type color = PyLong_AsUnsignedLong(v);
-            for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) {
-                self = (ColorProfile*)PyTuple_GET_ITEM(profiles, j);
-                self->color_table[i] = color;
-                if (change_configured) self->orig_color_table[i] = color;
-                self->dirty = true;
-            }
-        }
+        patch_color_table(key, profiles, spec, i, change_configured);
+    }
+    for (size_t i = 1; i <= MARK_MASK; i++) {
+#define S(which, i) snprintf(key, sizeof(key) - 1, "mark%zu_" #which, i); patch_mark_color(key, profiles, spec, mark_##which##s, i)
+    S(background, i); S(foreground, i);
+#undef S
     }
 #define S(config_name, profile_name) { \
     v = PyDict_GetItemString(spec, #config_name); \
@@ -284,10 +309,12 @@ copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size
     stride = MAX(1u, stride);
     for (i = 0, buf = buf + offset; i < arraysz(self->color_table); i++, buf += stride) *buf = self->color_table[i];
     // Copy the mark colors
-#define C(val) *buf = val; buf += stride;
-    C(0); C(OPT(mark1_background)); C(OPT(mark2_background)); C(OPT(mark3_background));
-    C(0); C(OPT(mark1_foreground)); C(OPT(mark2_foreground)); C(OPT(mark3_foreground));
-#undef C
+    for (i = 0; i < arraysz(self->mark_backgrounds); i++) {
+        *buf = self->mark_backgrounds[i]; buf += stride;
+    }
+    for (i = 0; i < arraysz(self->mark_foregrounds); i++) {
+        *buf = self->mark_foregrounds[i]; buf += stride;
+    }
     self->dirty = false;
 }
 

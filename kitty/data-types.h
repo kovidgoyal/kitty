@@ -235,6 +235,7 @@ typedef struct {
     DynamicColor dynamic_color_stack[10];
     size_t dynamic_color_stack_idx;
     DynamicColor configured, overridden;
+    color_type mark_foregrounds[MARK_MASK+1], mark_backgrounds[MARK_MASK+1];
 } ColorProfile;
 
 typedef struct {
