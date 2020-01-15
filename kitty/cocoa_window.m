@@ -513,7 +513,7 @@ cocoa_hide_titlebar(void *w)
     button = [window standardWindowButton: NSWindowCloseButton];
     if (button) button.hidden = true;
     button = [window standardWindowButton: NSWindowMiniaturizeButton];
-    if (button).hidden = true;
+    if (button) button.hidden = true;
     button = [window standardWindowButton: NSWindowZoomButton];
     if (button) button.hidden = true;
 
