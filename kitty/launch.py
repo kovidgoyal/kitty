@@ -116,6 +116,9 @@ want to pipe to program that wants to duplicate the screen layout of the
 screen.
 
 
+--marker
+Create a marker that highlights text in the newly created window. The syntax is
+the same as for the :opt:`toggle_marker` map action.
 '''
         options_spec.ans = OPTIONS
     return options_spec.ans
@@ -178,6 +181,8 @@ def launch(boss, opts, args, target_tab=None):
         kw['override_title'] = opts.window_title
     if opts.copy_colors and active:
         kw['copy_colors_from'] = active
+    if opts.marker:
+        kw['marker'] = opts.marker
     cmd = args or None
     if opts.copy_cmdline and active_child:
         cmd = active_child.foreground_cmdline

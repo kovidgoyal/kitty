@@ -263,7 +263,7 @@ class Tab:  # {{{
     def new_window(
         self, use_shell=True, cmd=None, stdin=None, override_title=None,
         cwd_from=None, cwd=None, overlay_for=None, env=None, location=None,
-        copy_colors_from=None, allow_remote_control=False
+        copy_colors_from=None, allow_remote_control=False, marker=None
     ):
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env, allow_remote_control=allow_remote_control)
@@ -275,6 +275,12 @@ class Tab:  # {{{
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
         self._add_window(window, location=location)
+        if marker:
+            try:
+                window.set_marker(marker)
+            except Exception:
+                import traceback
+                traceback.print_exc()
         return window
 
     def new_special_window(self, special_window, location=None, copy_colors_from=None, allow_remote_control=False):

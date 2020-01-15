@@ -890,6 +890,7 @@ def cmd_launch(global_opts, opts, args):
     stdin_add_formatting: Boolean indicating whether to add formatting codes to stdin
     stdin_add_line_wrap_markers: Boolean indicating whether to add line wrap markers to stdin
     no_response: Boolean indicating whether to send back the window id
+    marker: Specification for marker for new window, for example: "text 1 ERROR"
     '''
     if opts.no_response:
         global_opts.no_command_response = True
