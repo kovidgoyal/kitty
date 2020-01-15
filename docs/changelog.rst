@@ -28,6 +28,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When triple-click+dragging to select multiple lines, extend the selection
   of the first line to match the rest on the left (:pull:`2284`)
 
+- macOS: Add a :code:`titlebar-only` setting to
+  :opt:`hide_window_decorations` to only hide the title bar (:pull:`2286`)
+
 - Fix a segfault when using :option:`kitty --debug-config` with maps (:iss:`2270`)
 
 
