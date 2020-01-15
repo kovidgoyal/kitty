@@ -500,6 +500,30 @@ cocoa_hide_window_title(void *w)
     } // autoreleasepool
 }
 
+void
+cocoa_hide_titlebar(void *w)
+{
+    @autoreleasepool {
+
+    cocoa_hide_window_title(w);
+
+    NSWindow *window = (NSWindow*)w;
+    NSButton *button;
+
+    button = [window standardWindowButton: NSWindowCloseButton];
+    if (button) button.hidden = true;
+    button = [window standardWindowButton: NSWindowMiniaturizeButton];
+    if (button).hidden = true;
+    button = [window standardWindowButton: NSWindowZoomButton];
+    if (button) button.hidden = true;
+
+    [window setTitlebarAppearsTransparent:YES];
+    [window setStyleMask:
+        [window styleMask] | NSWindowStyleMaskFullSizeContentView];
+
+    } // autoreleasepool
+}
+
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_new_window_trigger", (PyCFunction)cocoa_set_new_window_trigger, METH_VARARGS, ""},

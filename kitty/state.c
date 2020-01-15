@@ -476,7 +476,7 @@ PYWRAP1(set_options) {
 #define SS(name, dest, convert) { GA(name); dest = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
 #define S(name, convert) SS(name, OPT(name), convert)
     SS(kitty_mod, kitty_mod, PyLong_AsLong);
-    S(hide_window_decorations, PyObject_IsTrue);
+    S(hide_window_decorations, PyLong_AsUnsignedLong);
     S(visual_bell_duration, parse_s_double_to_monotonic_t);
     S(enable_audio_bell, PyObject_IsTrue);
     S(focus_follows_mouse, PyObject_IsTrue);
