@@ -2197,12 +2197,13 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
             index_type bottom_line = extending_leftwards ? self->selection.start_y : self->selection.end_y;
             while(top_line > 0 && visual_line_(self, top_line)->continued) top_line--;
             while(bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->continued) bottom_line++;
+            bool multiline = self->selection.end_y - self->selection.start_y >= 1;
             found = screen_selection_range_for_line(self, top_line, &start, &end);
             if (found) {
                 if (extending_leftwards) {
-                    self->selection.end_x = start; self->selection.end_y = top_line;
+                    self->selection.end_x = multiline ? 0 : start; self->selection.end_y = top_line;
                 } else {
-                    self->selection.start_x = start; self->selection.start_y = top_line;
+                    self->selection.start_x = multiline ? 0 : start; self->selection.start_y = top_line;
                 }
             }
             found = screen_selection_range_for_line(self, bottom_line, &start, &end);
