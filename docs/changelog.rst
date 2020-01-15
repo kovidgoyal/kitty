@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow choosing OpenType features for individual fonts via the
   :opt:`font_features` option.
 
+- Allow opening new tabs/windows before the current tab/window as well as after
+  it with the :option:`launch --location` option.
+
 - Add a :opt:`resize_in_steps` option that can be used to resize the OS window
   in steps as large as character cells (:pull:`2131`)
 

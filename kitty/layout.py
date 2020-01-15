@@ -279,8 +279,12 @@ class Layout:  # {{{
                 all_windows[i] = window
                 active_window_idx = i
         elif location is not None:
-            if location == 'neighbor' and current_active_window_idx is not None and len(all_windows) > 1:
+            if location == 'neighbor':
+                location = 'after'
+            if location == 'after' and current_active_window_idx is not None and len(all_windows) > 1:
                 active_window_idx = min(current_active_window_idx + 1, len(all_windows))
+            elif location == 'before' and current_active_window_idx is not None and len(all_windows) > 1:
+                active_window_idx = current_active_window_idx
             elif location == 'first':
                 active_window_idx = 0
             if active_window_idx is not None:

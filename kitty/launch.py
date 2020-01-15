@@ -73,11 +73,12 @@ newly launched child process.
 --location
 type=choices
 default=last
-choices=first,neighbor,last
+choices=first,after,before,neighbor,last
 Where to place the newly created window when it is added to a tab which
-already has existing windows in it. Also applies to creating a new tab,
-where the value of neighbor will cause the new tab to be placed next to
-the current tab instead of at the end.
+already has existing windows in it. :code:`after` and :code:`before` place the new
+window before or after the active window. :code:`neighbor` is a synonym for :code:`after`.
+Also applies to creating a new tab, where the value of :code:`after`
+will cause the new tab to be placed next to the current tab instead of at the end.
 
 
 --allow-remote-control
@@ -118,7 +119,7 @@ screen.
 
 --marker
 Create a marker that highlights text in the newly created window. The syntax is
-the same as for the :opt:`toggle_marker` map action.
+the same as for the :code:`toggle_marker` map action (see :doc:`/marks`).
 '''
         options_spec.ans = OPTIONS
     return options_spec.ans
@@ -147,7 +148,7 @@ def get_env(opts, active_child):
 def tab_for_window(boss, opts, target_tab=None):
     if opts.type == 'tab':
         tm = boss.active_tab_manager
-        tab = tm.new_tab(empty_tab=True, as_neighbor=opts.location == 'neighbor')
+        tab = tm.new_tab(empty_tab=True, location=opts.location)
         if opts.tab_title:
             tab.set_title(opts.tab_title)
     elif opts.type == 'os-window':

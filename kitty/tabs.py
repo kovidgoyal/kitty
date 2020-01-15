@@ -615,17 +615,26 @@ class TabManager:  # {{{
             self._set_active_tab(nidx)
             self.mark_tab_bar_dirty()
 
-    def new_tab(self, special_window=None, cwd_from=None, as_neighbor=False, empty_tab=False):
-        nidx = self.active_tab_idx + 1
+    def new_tab(self, special_window=None, cwd_from=None, as_neighbor=False, empty_tab=False, location='last'):
         idx = len(self.tabs)
+        orig_active_tab_idx = self.active_tab_idx
         self._add_tab(Tab(self, no_initial_window=True) if empty_tab else Tab(self, special_window=special_window, cwd_from=cwd_from))
         self._set_active_tab(idx)
-        if len(self.tabs) > 2 and as_neighbor and idx != nidx:
-            for i in range(idx, nidx, -1):
-                self.tabs[i], self.tabs[i-1] = self.tabs[i-1], self.tabs[i]
-                swap_tabs(self.os_window_id, i, i-1)
-            self._set_active_tab(nidx)
-            idx = nidx
+        if as_neighbor:
+            location = 'after'
+        if location == 'neighbor':
+            location = 'after'
+        if len(self.tabs) > 1 and location != 'last':
+            if location == 'first':
+                desired_idx = 0
+            else:
+                desired_idx = orig_active_tab_idx + (0 if location == 'before' else 1)
+            if idx != desired_idx:
+                for i in range(idx, desired_idx, -1):
+                    self.tabs[i], self.tabs[i-1] = self.tabs[i-1], self.tabs[i]
+                    swap_tabs(self.os_window_id, i, i-1)
+                self._set_active_tab(desired_idx)
+                idx = desired_idx
         self.mark_tab_bar_dirty()
         return self.tabs[idx]
 
