@@ -762,17 +762,9 @@ handleEvents(monotonic_t timeout)
     EVDBG("starting handleEvents(%.2f)", monotonic_t_to_s_double(timeout));
 
     while (wl_display_prepare_read(display) != 0) {
-        while(1) {
-            errno = 0;
-            int num_dispatched = wl_display_dispatch_pending(display);
-            if (num_dispatched < 0) {
-                if (errno == EAGAIN) continue;
-                int last_error = wl_display_get_error(display);
-                wl_display_cancel_read(display);
-                if (last_error) abortOnFatalError(last_error);
-                return;
-            }
-            break;
+        if (wl_display_dispatch_pending(display) == -1) {
+            abortOnFatalError(errno);
+            return;
         }
     }
 
@@ -782,8 +774,8 @@ handleEvents(monotonic_t timeout)
     errno = 0;
     if (wl_display_flush(display) < 0 && errno != EAGAIN)
     {
-        abortOnFatalError(errno);
         wl_display_cancel_read(display);
+        abortOnFatalError(errno);
         return;
     }
 
