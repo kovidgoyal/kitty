@@ -25,6 +25,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a :opt:`resize_in_steps` option that can be used to resize the OS window
   in steps as large as character cells (:pull:`2131`)
 
+- When triple-click+dragging to select multiple lines, extend the selection
+  of the first line to match the rest on the left (:pull:`2284`)
+
 - Fix a segfault when using :option:`kitty --debug-config` with maps (:iss:`2270`)
 
 
