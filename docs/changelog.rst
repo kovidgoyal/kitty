@@ -7,8 +7,11 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.15.2 [future]
 --------------------
 
+- A new :doc:`marks` feature that allows highlighting and scrolling to arbitrary
+  text in the terminal window.
+
 - hints kitten: Allow pressing :sc:`goto_file_line` to quickly open
-  the selected file at the selected line in vim (:iss:`2268`)
+  the selected file at the selected line in vim or a configurable editor (:iss:`2268`)
 
 - Allow choosing OpenType features for individual fonts via the
   :opt:`font_features` option.
