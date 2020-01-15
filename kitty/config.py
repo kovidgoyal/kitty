@@ -277,6 +277,22 @@ def toggle_marker(func, rest):
     return func, list(parse_marker_spec(ftype, parts))
 
 
+@func_with_args('scroll_to_mark')
+def scroll_to_mark(func, rest):
+    parts = rest.split()
+    if not parts or not rest:
+        return func, [True, 0]
+    if len(parts) == 1:
+        q = parts[0].lower()
+        if q in ('prev', 'previous', 'next'):
+            return func, [q != 'next', 0]
+        try:
+            return func, [True, max(0, min(int(q), 3))]
+        except Exception:
+            raise ValueError('{} is not a valid scroll_to_mark destination'.format(rest))
+    return func, [parts[0] != 'next', max(0, min(int(parts[1]), 3))]
+
+
 def parse_key_action(action):
     parts = action.strip().split(maxsplit=1)
     func = parts[0]

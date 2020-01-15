@@ -474,3 +474,17 @@ class TestScreen(BaseTest):
 
         s.set_marker(marker_from_function(mark_x))
         self.ae(s.marked_cells(), [(0, 1, 1), (2, 1, 2), (4, 1, 3)])
+        s = self.create_screen(lines=5, scrollback=10)
+        for i in range(15):
+            s.draw(str(i))
+            if i != 14:
+                s.carriage_return(), s.linefeed()
+        s.set_marker(marker_from_regex(r'\d+', 3))
+        for i in range(10):
+            self.assertTrue(s.scroll_to_next_mark())
+            self.ae(s.scrolled_by, i + 1)
+        self.ae(s.scrolled_by, 10)
+        for i in range(10):
+            self.assertTrue(s.scroll_to_next_mark(0, False))
+            self.ae(s.scrolled_by, 10 - i - 1)
+        self.ae(s.scrolled_by, 0)

@@ -665,6 +665,15 @@ __eq__(Line *a, Line *b) {
     return a->xnum == b->xnum && memcmp(a->cpu_cells, b->cpu_cells, sizeof(CPUCell) * a->xnum) == 0 && memcmp(a->gpu_cells, b->gpu_cells, sizeof(GPUCell) * a->xnum) == 0;
 }
 
+bool
+line_has_mark(Line *line, attrs_type mark) {
+    for (index_type x = 0; x < line->xnum; x++) {
+        attrs_type m = (line->gpu_cells[x].attrs >> MARK_SHIFT) & MARK_MASK;
+        if (m && (!mark || mark == m)) return true;
+    }
+    return false;
+}
+
 static inline void
 report_marker_error(PyObject *marker) {
     if (!PyObject_HasAttrString(marker, "error_reported")) {

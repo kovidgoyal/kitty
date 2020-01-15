@@ -631,4 +631,7 @@ class Window:
         if self.current_marker_spec is not None:
             self.screen.set_marker()
             self.current_marker_spec = None
+
+    def scroll_to_mark(self, prev=True, mark=0):
+        self.screen.scroll_to_next_mark(mark, prev)
     # }}}

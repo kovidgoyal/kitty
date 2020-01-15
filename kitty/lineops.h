@@ -91,6 +91,7 @@ void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
 void mark_text_in_line(PyObject *marker, Line *line);
+bool line_has_mark(Line *, attrs_type mark);
 
 
 #define as_text_generic(args, container, get_line, lines, columns) { \

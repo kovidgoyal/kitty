@@ -2293,6 +2293,40 @@ set_marker(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+
+static PyObject*
+scroll_to_next_mark(Screen *self, PyObject *args) {
+    int backwards = 1;
+    unsigned int mark = 0;
+    if (!PyArg_ParseTuple(args, "|Ip", &mark, &backwards)) return NULL;
+    if (!screen_has_marker(self) || self->linebuf == self->alt_linebuf) Py_RETURN_FALSE;
+    if (backwards) {
+        for (unsigned int y = self->scrolled_by; y < self->historybuf->count; y++) {
+            historybuf_init_line(self->historybuf, y, self->historybuf->line);
+            if (line_has_mark(self->historybuf->line, mark)) {
+                screen_history_scroll(self, y - self->scrolled_by + 1, true);
+                Py_RETURN_TRUE;
+            }
+        }
+    } else {
+        Line *line;
+        for (unsigned int y = self->scrolled_by; y > 0; y--) {
+            if (y > self->lines) {
+                historybuf_init_line(self->historybuf, y - self->lines, self->historybuf->line);
+                line = self->historybuf->line;
+            } else {
+                linebuf_init_line(self->linebuf, self->lines - y);
+                line = self->linebuf->line;
+            }
+            if (line_has_mark(line, mark)) {
+                screen_history_scroll(self, self->scrolled_by - y + 1, false);
+                Py_RETURN_TRUE;
+            }
+        }
+    }
+    Py_RETURN_FALSE;
+}
+
 static PyObject*
 marked_cells(Screen *self, PyObject *o UNUSED) {
     PyObject *ans = PyList_New(0);
@@ -2414,6 +2448,7 @@ static PyMethodDef methods[] = {
     MND(copy_colors_from, METH_O)
     MND(set_marker, METH_VARARGS)
     MND(marked_cells, METH_NOARGS)
+    MND(scroll_to_next_mark, METH_VARARGS)
     {"select_graphic_rendition", (PyCFunction)_select_graphic_rendition, METH_VARARGS, ""},
 
     {NULL}  /* Sentinel */

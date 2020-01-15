@@ -57,6 +57,26 @@ You can also use the facilities for :doc:`remote-control` to dynamically
 add/remove markers.
 
 
+Scrolling to marks
+--------------------
+
+kitty has an action to scroll to the next line that contains a mark. You can
+use it by mapping it to some shortcut in :file:`kitty.conf`::
+
+    map ctrl+p scroll_to_mark prev
+    map ctrl+n scroll_to_mark next
+
+Then pressing :kbd:`ctrl+p` will scroll to the first line in the scrollback
+buffer above the current top line that contains a mark. Pressing :kbd:`ctrl+n`
+will scroll to show the first line below the current last line that contains
+a mark. If you wish to jump to a mark of a specific type, you can add that to
+the mapping::
+
+    map ctrl+1 scroll_to_mark prev 1
+
+Which will scroll only to marks of type 1.
+
+
 The full syntax for creating marks
 -------------------------------------
 
