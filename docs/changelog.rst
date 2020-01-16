@@ -33,6 +33,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix a segfault when using :option:`kitty --debug-config` with maps (:iss:`2270`)
 
+- ``goto_tab`` now maps numbers larger than the last tab to the last tab
+  (:iss:`2291`)
+
 
 0.15.1 [2019-12-21]
 --------------------

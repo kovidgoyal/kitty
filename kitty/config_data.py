@@ -144,7 +144,8 @@ For example::
             _('Tab management'), '',
             _('''\
 You can also create shortcuts to go to specific tabs, with 1 being the first
-tab, 2 the second tab and -1 being the previously active tab::
+tab, 2 the second tab and -1 being the previously active tab, and any number
+larger than the last tab being the last tab::
 
     map ctrl+alt+1 goto_tab 1
     map ctrl+alt+2 goto_tab 2

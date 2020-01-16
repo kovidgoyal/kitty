@@ -560,9 +560,11 @@ class TabManager:  # {{{
             self.set_active_tab_idx((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
 
     def goto_tab(self, tab_num):
-        if 0 <= tab_num < len(self.tabs):
+        if tab_num >= len(self.tabs):
+            tab_num = max(0, len(self.tabs) - 1)
+        if tab_num >= 0:
             self.set_active_tab_idx(tab_num)
-        elif tab_num < 0:
+        else:
             try:
                 old_active_tab_id = self.active_tab_history[tab_num]
             except IndexError:
