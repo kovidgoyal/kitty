@@ -177,7 +177,8 @@ def setup_profiling(args):
         exe = kitty_exe()
         cg = '/tmp/kitty-profile.callgrind'
         print('Post processing profile data for', exe, '...')
-        subprocess.call(['pprof', '--callgrind', exe, '/tmp/kitty-profile.log'], stdout=open(cg, 'wb'))
+        with open(cg, 'wb') as f:
+            subprocess.call(['pprof', '--callgrind', exe, '/tmp/kitty-profile.log'], stdout=f)
         try:
             subprocess.Popen(['kcachegrind', cg])
         except FileNotFoundError:
