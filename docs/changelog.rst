@@ -36,6 +36,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - ``goto_tab`` now maps numbers larger than the last tab to the last tab
   (:iss:`2291`)
 
+- Fix URL detection not working for urls of the form scheme:///url
+  (:iss:`2292`)
+
 
 0.15.1 [2019-12-21]
 --------------------

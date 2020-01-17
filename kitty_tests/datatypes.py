@@ -238,6 +238,9 @@ class TestDataTypes(BaseTest):
             lf.set_text(t, 0, len(t), C())
             return lf
 
+        l0 = create('file:///etc/test')
+        self.ae(l0.url_start_at(0), 0)
+
         for trail in '.,]>)\\':
             lx = create("http://xyz.com" + trail)
             self.ae(lx.url_end_at(0), len(lx) - 2)

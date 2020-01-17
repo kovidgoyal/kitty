@@ -50,7 +50,7 @@ cell_text(CPUCell *cell) {
 // URL detection {{{
 
 static const char* url_prefixes[4] = {"https", "http", "file", "ftp"};
-static size_t url_prefix_lengths[sizeof(url_prefixes)/sizeof(url_prefixes[0])] = {0};
+static size_t url_prefix_lengths[arraysz(url_prefixes)] = {0};
 
 static inline index_type
 find_colon_slash(Line *self, index_type x, index_type limit) {
@@ -79,7 +79,7 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
                 break;
             case SECOND_SLASH:
                 if (ch == ':') return pos;
-                state = ANY;
+                state = ch == '/' ? SECOND_SLASH : ANY;
                 break;
         }
         pos--;
@@ -100,9 +100,9 @@ prefix_matches(Line *self, index_type at, const char* prefix, index_type prefix_
 static inline bool
 has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_type *ans) {
     if (UNLIKELY(!url_prefix_lengths[0])) {
-        for (index_type i = 0; i < sizeof(url_prefixes)/sizeof(url_prefixes[0]); i++) url_prefix_lengths[i] = strlen(url_prefixes[i]);
+        for (index_type i = 0; i < arraysz(url_prefixes); i++) url_prefix_lengths[i] = strlen(url_prefixes[i]);
     }
-    for (index_type i = 0; i < sizeof(url_prefixes)/sizeof(url_prefixes[0]); i++) {
+    for (index_type i = 0; i < arraysz(url_prefixes); i++) {
         index_type prefix_len = url_prefix_lengths[i];
         if (at < prefix_len || prefix_len < min_prefix_len) continue;
         if (prefix_matches(self, at, url_prefixes[i], prefix_len)) { *ans = at - prefix_len; return true; }
