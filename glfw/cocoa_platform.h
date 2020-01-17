@@ -65,12 +65,14 @@ typedef void* CVDisplayLinkRef;
 #endif
 
 
-typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int, unsigned long);
 typedef bool (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef void (* GLFWapplicationwillfinishlaunchingfun)(void);
 typedef bool (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
+
+#if defined(VK_USE_PLATFORM_MACOS_MVK)
+typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
 
 typedef struct VkMacOSSurfaceCreateInfoMVK
 {
@@ -81,6 +83,23 @@ typedef struct VkMacOSSurfaceCreateInfoMVK
 } VkMacOSSurfaceCreateInfoMVK;
 
 typedef VkResult (APIENTRY *PFN_vkCreateMacOSSurfaceMVK)(VkInstance,const VkMacOSSurfaceCreateInfoMVK*,const VkAllocationCallbacks*,VkSurfaceKHR*);
+
+#elif defined(VK_USE_PLATFORM_METAL_EXT)
+#define VK_EXT_metal_surface 1
+typedef void CAMetalLayer;
+
+#define VK_EXT_METAL_SURFACE_SPEC_VERSION 1
+#define VK_EXT_METAL_SURFACE_EXTENSION_NAME "VK_EXT_metal_surface"
+typedef VkFlags VkMetalSurfaceCreateFlagsEXT;
+typedef struct VkMetalSurfaceCreateInfoEXT {
+    VkStructureType                 sType;
+    const void*                     pNext;
+    VkMetalSurfaceCreateFlagsEXT    flags;
+    const CAMetalLayer*             pLayer;
+} VkMetalSurfaceCreateInfoEXT;
+
+typedef VkResult (APIENTRY *PFN_vkCreateMetalSurfaceEXT)(VkInstance, const VkMetalSurfaceCreateInfoEXT*, const VkAllocationCallbacks*, VkSurfaceKHR*);
+#endif
 
 #include "posix_thread.h"
 #include "cocoa_joystick.h"
