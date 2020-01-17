@@ -57,6 +57,8 @@ bool _glfwInitVulkan(int mode)
     _glfw.vk.handle = _glfw_dlopen("vulkan-1.dll");
 #elif defined(_GLFW_COCOA)
     _glfw.vk.handle = _glfw_dlopen("libvulkan.1.dylib");
+    if (!_glfw.vk.handle)
+        _glfw.vk.handle = _glfwLoadLocalVulkanLoaderNS();
 #else
     _glfw.vk.handle = _glfw_dlopen("libvulkan.so.1");
 #endif

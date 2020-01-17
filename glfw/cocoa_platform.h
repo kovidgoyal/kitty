@@ -239,6 +239,8 @@ void _glfwRestoreVideoModeNS(_GLFWmonitor* monitor);
 
 float _glfwTransformYNS(float y);
 
+void* _glfwLoadLocalVulkanLoaderNS(void);
+
 void _glfwClearDisplayLinks(void);
 void _glfwRestartDisplayLinks(void);
 void _glfwDispatchTickCallback(void);
