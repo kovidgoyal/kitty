@@ -224,11 +224,11 @@ using the :sc:`new_window` key combination.
 
 Currently, there are five layouts available,
 
-* **Stack** -- Only a single maximized window is shown at a time
-* **Tall** -- One (or optionally more) windows are shown full height on the left, the rest of the windows are shown one below the other on the right
 * **Fat** -- One (or optionally more) windows are shown full width on the top, the rest of the windows are shown side-by-side on the bottom
 * **Grid** -- All windows are shown in a grid
 * **Horizontal** -- All windows are shown side-by-side
+* **Stack** -- Only a single maximized window is shown at a time
+* **Tall** -- One (or optionally more) windows are shown full height on the left, the rest of the windows are shown one below the other on the right
 * **Vertical** -- All windows are shown one below the other
 
 You can switch between layouts using the :sc:`next_layout` key combination. You can

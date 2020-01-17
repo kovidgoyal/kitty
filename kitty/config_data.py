@@ -609,7 +609,8 @@ def to_layout_names(raw):
 o('enabled_layouts', '*', option_type=to_layout_names, long_text=_('''
 The enabled window layouts. A comma separated list of layout names. The special
 value :code:`all` means all layouts. The first listed layout will be used as the
-startup layout. For a list of available layouts, see the :ref:`layouts`.
+startup layout. Default configuration is all layouts in alphabetical order.
+For a list of available layouts, see the :ref:`layouts`.
 '''))
 
 o('window_resize_step_cells', 2, option_type=positive_int, long_text=_('''
