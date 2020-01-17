@@ -234,7 +234,11 @@ appears to be ם actually writes into the selection buffer the character י.
 
 Kitty's default behavior is useful in conjunction with a filter to reverse the
 word order, however, if you wish to manipulate RTL glyphs, it can be very
-challenging to work with, so this option is provided to turn it off."""))
+challenging to work with, so this option is provided to turn it off.
+Furthermore, this option can be used with the command line program
+:link:`GNU FriBidi <https://github.com/fribidi/fribidi#executable>` to get BIDI
+support, because it will force HarfBuzz to always treat the text as LTR, which
+FriBidi expects for terminals."""))
 
 
 def adjust_line_height(x):
