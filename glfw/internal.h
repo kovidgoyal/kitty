@@ -132,6 +132,7 @@ typedef enum VkStructureType
     VK_STRUCTURE_TYPE_WAYLAND_SURFACE_CREATE_INFO_KHR = 1000006000,
     VK_STRUCTURE_TYPE_WIN32_SURFACE_CREATE_INFO_KHR = 1000009000,
     VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK = 1000123000,
+    VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT = 1000217000,
     VK_STRUCTURE_TYPE_MAX_ENUM = 0x7FFFFFFF
 } VkStructureType;
 
@@ -588,6 +589,7 @@ struct _GLFWlibrary
         bool            KHR_win32_surface;
 #elif defined(_GLFW_COCOA)
         bool            MVK_macos_surface;
+        bool            EXT_metal_surface;
 #elif defined(_GLFW_X11)
         bool            KHR_xlib_surface;
         bool            KHR_xcb_surface;
