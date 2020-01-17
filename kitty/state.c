@@ -527,6 +527,7 @@ PYWRAP1(set_options) {
     S(macos_thicken_font, PyFloat_AsFloat);
     S(tab_bar_min_tabs, PyLong_AsUnsignedLong);
     S(disable_ligatures, PyLong_AsLong);
+    S(force_ltr, PyObject_IsTrue);
     S(resize_draw_strategy, PyLong_AsLong);
     S(resize_in_steps, PyObject_IsTrue);
     S(pointer_shape_when_grabbed, pointer_shape);

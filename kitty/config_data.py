@@ -223,6 +223,19 @@ def to_font_size(x):
 
 o('font_size', 11.0, long_text=_('Font size (in pts)'), option_type=to_font_size)
 
+o('force_ltr', False, long_text=_("""
+Kitty does not yet support BIDI (bidirectional text), however, for RTL scripts,
+HarfBuzz will "helpfully" shape text as if we were laying it out RTL. That is
+to say, in an RTL script, the words "HELLO WORLD" display in Kitty as "WORLD
+HELLO", and if you try to select a substring of an RTL-shaped string, you will
+get the character that _would_ be there were the string LTR. For example,
+assuming the Hebrew word ירושלים, selecting the character that on the screen
+appears to be ם actually writes into the selection buffer the character י.
+
+Kitty's default behavior is useful in conjunction with a filter to reverse the
+word order, however, if you wish to manipulate RTL glyphs, it can be very
+challenging to work with, so this option is provided to turn it off."""))
+
 
 def adjust_line_height(x):
     if x.endswith('%'):
@@ -315,6 +328,12 @@ Disable the normal ligatures, but keep the :code:`calt` feature which (in this
 font) breaks up monotony::
 
     font_features TT2020StyleB-Regular -liga +calt
+
+In conjunction with :opt:`force_ltr`, you may want to disable Arabic shaping
+entirely, and only look at their isolated forms if they show up in a document.
+You can do this with e.g.::
+
+    font_features UnifontMedium +isol -medi -fina -init
 '''))
 
 
