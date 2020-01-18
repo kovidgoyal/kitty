@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow choosing OpenType features for individual fonts via the
   :opt:`font_features` option.
 
+- Add an option :opt:`force_ltr` to turn off the display of text in RTL scripts
+  in right-to-eft order (:pull:`2293)
+
 - Allow opening new tabs/windows before the current tab/window as well as after
   it with the :option:`launch --location` option.
 

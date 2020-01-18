@@ -689,6 +689,7 @@ load_hb_buffer(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_
         hb_buffer_add_utf32(harfbuzz_buffer, shape_buffer, num, 0, num);
     }
     hb_buffer_guess_segment_properties(harfbuzz_buffer);
+    if (OPT(force_ltr)) hb_buffer_set_direction(harfbuzz_buffer, HB_DIRECTION_LTR);
 }
 
 
