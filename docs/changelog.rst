@@ -17,7 +17,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   (:iss:`2276`)
 
 - Allow choosing OpenType features for individual fonts via the
-  :opt:`font_features` option.
+  :opt:`font_features` option. (:pull:`2248`)
 
 - Add an option :opt:`force_ltr` to turn off the display of text in RTL scripts
   in right-to-left order (:pull:`2293`)
