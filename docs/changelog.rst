@@ -20,7 +20,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   :opt:`font_features` option.
 
 - Add an option :opt:`force_ltr` to turn off the display of text in RTL scripts
-  in right-to-eft order (:pull:`2293)
+  in right-to-left order (:pull:`2293`)
 
 - Allow opening new tabs/windows before the current tab/window as well as after
   it with the :option:`launch --location` option.
