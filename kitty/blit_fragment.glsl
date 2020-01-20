@@ -7,5 +7,4 @@ out vec4 color;
 
 void main() {
     color = texture(image, texcoord);
-    color = vec4(color.rgb, color.a);
 }
