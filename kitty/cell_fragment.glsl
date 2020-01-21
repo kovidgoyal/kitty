@@ -130,7 +130,7 @@ void main() {
 
 #ifdef BACKGROUND
 #if defined(TRANSPARENT)
-    final_color = vec4(background.rgb * bg_alpha, bg_alpha * draw_bg);
+    final_color = vec4(background.rgb * bg_alpha, bg_alpha);
 #else
     final_color = vec4(background.rgb, draw_bg);
 #endif

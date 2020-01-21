@@ -209,6 +209,7 @@ void main() {
     // Background {{{
 #ifdef NEEDS_BACKROUND
     float cell_has_non_default_bg = step(1, float(abs(bg_as_uint - default_colors[bg_index])));
+    draw_bg = 1;
 
 #if defined(BACKGROUND)
     background = bg;
@@ -229,6 +230,7 @@ void main() {
     bg_alpha = step(0.5, is_special_cell);
 #ifndef SPECIAL
     bg_alpha = bg_alpha + (1.0f - bg_alpha) * background_opacity;
+    bg_alpha *= draw_bg;
 #endif
 #endif
 
