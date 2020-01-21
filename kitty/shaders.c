@@ -449,6 +449,10 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
         // Draw background for non-default bg cells
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 2);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
+    } else {
+        // Apply background_opacity
+        glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 0);
+        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
     }
 
     bind_program(CELL_BG_PROGRAM);
