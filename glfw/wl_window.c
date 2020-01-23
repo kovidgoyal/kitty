@@ -788,6 +788,8 @@ handleEvents(monotonic_t timeout)
 
     // we pass in wayland_read_events to ensure that the above wl_display_prepare_read call
     // is followed by either wl_display_cancel_read or wl_display_read_events
+    // before any events/timers are dispatched. This allows other wayland functions
+    // to be called in the event/timer handlers without causing a deadlock
     bool display_read_ok = pollForEvents(&_glfw.wl.eventLoopData, timeout, wayland_read_events);
     EVDBG("display_read_ok: %d", display_read_ok);
     if (display_read_ok) {
