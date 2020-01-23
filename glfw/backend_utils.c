@@ -292,7 +292,7 @@ finalizePollData(EventLoopData *eld) {
 }
 
 int
-pollForEvents(EventLoopData *eld, monotonic_t timeout) {
+pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func display_callback) {
     int read_ok = 0;
     timeout = prepareForPoll(eld, timeout);
     EVDBG("pollForEvents final timeout: %.3f", monotonic_t_to_s_double(timeout));
@@ -305,6 +305,7 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout) {
             errno = 0;
             result = pollWithTimeout(eld->fds, eld->watches_count, timeout);
             int saved_errno = errno;
+            if (display_callback) display_callback(result, eld->fds[0].revents && eld->watches[0].events, NULL);
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);
@@ -319,6 +320,7 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout) {
             errno = 0;
             result = poll(eld->fds, eld->watches_count, -1);
             int saved_errno = errno;
+            if (display_callback) display_callback(result, eld->fds[0].revents && eld->watches[0].events, NULL);
             dispatchTimers(eld);
             if (result > 0) {
                 dispatchEvents(eld);

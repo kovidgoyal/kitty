@@ -68,7 +68,7 @@ static unsigned _glfwDispatchX11Events(void);
 static void
 handleEvents(monotonic_t timeout) {
     EVDBG("starting handleEvents(%.2f)", monotonic_t_to_s_double(timeout));
-    int display_read_ok = pollForEvents(&_glfw.x11.eventLoopData, timeout);
+    int display_read_ok = pollForEvents(&_glfw.x11.eventLoopData, timeout, NULL);
     EVDBG("display_read_ok: %d", display_read_ok);
     if (display_read_ok) {
         unsigned dispatched = _glfwDispatchX11Events();

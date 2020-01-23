@@ -755,6 +755,13 @@ abortOnFatalError(int last_error) {
 }
 
 static void
+wayland_read_events(int poll_result, int events, void *data UNUSED) {
+    EVDBG("wayland_read_events poll_result: %d events: %d", poll_result, events);
+    if (poll_result > 0 && events) wl_display_read_events(_glfw.wl.display);
+    else wl_display_cancel_read(_glfw.wl.display);
+}
+
+static void
 handleEvents(monotonic_t timeout)
 {
     struct wl_display* display = _glfw.wl.display;
@@ -779,17 +786,14 @@ handleEvents(monotonic_t timeout)
         return;
     }
 
-    bool display_read_ok = pollForEvents(&_glfw.wl.eventLoopData, timeout);
+    // we pass in wayland_read_events to ensure that the above wl_display_prepare_read call
+    // is followed by either wl_display_cancel_read or wl_display_read_events
+    bool display_read_ok = pollForEvents(&_glfw.wl.eventLoopData, timeout, wayland_read_events);
     EVDBG("display_read_ok: %d", display_read_ok);
     if (display_read_ok) {
-        wl_display_read_events(display);
         int num = wl_display_dispatch_pending(display);
         (void)num;
         EVDBG("dispatched %d Wayland events", num);
-    }
-    else
-    {
-        wl_display_cancel_read(display);
     }
     glfw_ibus_dispatch(&_glfw.wl.xkb.ibus);
     glfw_dbus_session_bus_dispatch();

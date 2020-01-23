@@ -90,7 +90,7 @@ void toggleTimer(EventLoopData *eld, id_type timer_id, int enabled);
 void changeTimerInterval(EventLoopData *eld, id_type timer_id, monotonic_t interval);
 monotonic_t prepareForPoll(EventLoopData *eld, monotonic_t timeout);
 int pollWithTimeout(struct pollfd *fds, nfds_t nfds, monotonic_t timeout);
-int pollForEvents(EventLoopData *eld, monotonic_t timeout);
+int pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func);
 unsigned dispatchTimers(EventLoopData *eld);
 void finalizePollData(EventLoopData *eld);
 bool initPollData(EventLoopData *eld, int display_fd);

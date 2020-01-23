@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow choosing OpenType features for individual fonts via the
   :opt:`font_features` option. (:pull:`2248`)
 
+- Wayland: Fix a freeze in rare circumstances when having multiple OS Windows
+  (:iss:`2307` and :iss:`1722`)
+
 - Add an option :opt:`force_ltr` to turn off the display of text in RTL scripts
   in right-to-left order (:pull:`2293`)
 
