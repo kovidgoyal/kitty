@@ -131,6 +131,7 @@ typedef struct {
 typedef struct {
     void *handle;
     id_type id;
+    uint32_t offscreen_framebuffer;
     OSWindowGeometry before_fullscreen;
     int viewport_width, viewport_height, window_width, window_height;
     double viewport_x_ratio, viewport_y_ratio;
@@ -221,6 +222,7 @@ void draw_cells(ssize_t, ssize_t, float, float, float, float, Screen *, OSWindow
 void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_height, size_t width, size_t height, uint8_t *canvas);
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
+void free_framebuffer(uint32_t*);
 void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);
 void send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
 void blank_canvas(float, color_type);

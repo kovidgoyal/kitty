@@ -45,6 +45,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix URL detection not working for urls of the form scheme:///url
   (:iss:`2292`)
 
+- When windows are semi-transparent and all contain graphics, correctly render
+  them. (:iss:`2310`)
 
 0.15.1 [2019-12-21]
 --------------------
