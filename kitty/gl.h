@@ -35,6 +35,7 @@ typedef struct {
 void gl_init(void);
 void update_surface_size(int w, int h, GLuint offscreen_texture_id);
 void free_texture(GLuint *tex_id);
+void free_framebuffer(GLuint *fb_id);
 void remove_vao(ssize_t vao_idx);
 void init_uniforms(int program);
 GLuint program_id(int program);

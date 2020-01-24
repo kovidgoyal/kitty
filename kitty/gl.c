@@ -81,6 +81,11 @@ free_texture(GLuint *tex_id) {
     *tex_id = 0;
 }
 
+void
+free_framebuffer(GLuint *fb_id) {
+    glDeleteFramebuffers(1, fb_id);
+    *fb_id = 0;
+}
 
 // }}}
 
