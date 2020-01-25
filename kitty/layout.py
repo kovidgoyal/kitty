@@ -162,7 +162,6 @@ class Layout:  # {{{
     name = None
     needs_window_borders = True
     only_active_window_visible = False
-    layout_data_class = None
 
     def __init__(self, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts=''):
         self.os_window_id = os_window_id
@@ -405,10 +404,6 @@ class Layout:  # {{{
     def bottom_blank_rect(self, window):
         self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, central.bottom + 1))
     # }}}
-
-    def layout_data_for_window(self, w):
-        if self.layout_data_class is not None and isinstance(w.layout_data, self.layout_data_class):
-            return w.layout_data
 
     def do_layout(self, windows, active_window_idx):
         raise NotImplementedError()
