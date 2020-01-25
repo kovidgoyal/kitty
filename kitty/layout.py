@@ -11,6 +11,7 @@ from .fast_data_types import (
     Region, set_active_window, swap_windows, viewport_for_window
 )
 
+
 # Utils {{{
 central = Region((0, 0, 199, 199, 200, 200))
 cell_width = cell_height = 20
@@ -162,6 +163,7 @@ class Layout:  # {{{
     name = None
     needs_window_borders = True
     only_active_window_visible = False
+    layout_data_class = None
 
     def __init__(self, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts=''):
         self.os_window_id = os_window_id
@@ -405,6 +407,10 @@ class Layout:  # {{{
         self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, central.bottom + 1))
     # }}}
 
+    def layout_data_for_window(self, w):
+        if self.layout_data_class is not None and isinstance(w.layout_data, self.layout_data_class):
+            return w.layout_data
+
     def do_layout(self, windows, active_window_idx):
         raise NotImplementedError()
 
@@ -645,6 +651,7 @@ class Fat(Tall):  # {{{
 class Grid(Layout):  # {{{
 
     name = 'grid'
+    layout_data_class = namedtuple('GridLayoutData', 'n, ncols, nrows, special_rows, special_col')
 
     def remove_all_biases(self):
         self.biased_rows = {}
@@ -733,7 +740,7 @@ class Grid(Layout):  # {{{
         if n == 1:
             return self.layout_single_window(windows[0])
         ncols, nrows, special_rows, special_col = self.calc_grid_size(n)
-        layout_data = n, ncols, nrows, special_rows, special_col
+        layout_data = self.layout_data_class(n, ncols, nrows, special_rows, special_col)
         for w in windows:
             w.layout_data = layout_data
 
@@ -759,7 +766,7 @@ class Grid(Layout):  # {{{
 
     def minimal_borders(self, windows, active_window, needs_borders_map):
         try:
-            n, ncols, nrows, special_rows, special_col = windows[0].layout_data
+            n, ncols, nrows, special_rows, special_col = self.layout_data_for_window(windows[0])
         except Exception:
             n = -1
         if n != len(windows):
@@ -805,7 +812,7 @@ class Grid(Layout):  # {{{
         if n < 4:
             return Tall.neighbors_for_window(self, window, windows)
         try:
-            n, ncols, nrows, special_rows, special_col = windows[0].layout_data
+            n, ncols, nrows, special_rows, special_col = self.layout_data_for_window(windows[0])
         except Exception:
             n = -1
         if n != len(windows):
