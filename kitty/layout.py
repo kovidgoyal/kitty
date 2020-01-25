@@ -3,14 +3,13 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import namedtuple
-from functools import partial
+from functools import lru_cache, partial
 from itertools import islice, repeat
 
 from .constants import WindowGeometry
 from .fast_data_types import (
     Region, set_active_window, swap_windows, viewport_for_window
 )
-
 
 # Utils {{{
 central = Region((0, 0, 199, 199, 200, 200))
@@ -648,10 +647,23 @@ class Fat(Tall):  # {{{
 # }}}
 
 
+@lru_cache()
+def calc_grid_size(n):
+    if n <= 5:
+        ncols = 1 if n == 1 else 2
+    else:
+        for ncols in range(3, (n // 2) + 1):
+            if ncols * ncols >= n:
+                break
+    nrows = n // ncols
+    special_rows = n - (nrows * (ncols - 1))
+    special_col = 0 if special_rows < nrows else ncols - 1
+    return ncols, nrows, special_rows, special_col
+
+
 class Grid(Layout):  # {{{
 
     name = 'grid'
-    layout_data_class = namedtuple('GridLayoutData', 'n, ncols, nrows, special_rows, special_col')
 
     def remove_all_biases(self):
         self.biased_rows = {}
@@ -663,7 +675,7 @@ class Grid(Layout):  # {{{
 
     def apply_bias(self, idx, increment, num_windows, is_horizontal):
         b = self.biased_cols if is_horizontal else self.biased_rows
-        ncols, nrows, special_rows, special_col = self.calc_grid_size(num_windows)
+        ncols, nrows, special_rows, special_col = calc_grid_size(num_windows)
 
         def position_for_window_idx(idx):
             row_num = col_num = 0
@@ -705,18 +717,6 @@ class Grid(Layout):  # {{{
         setattr(self, attr, candidate)
         return True
 
-    def calc_grid_size(self, n):
-        if n <= 5:
-            ncols = 1 if n == 1 else 2
-        else:
-            for ncols in range(3, (n // 2) + 1):
-                if ncols * ncols >= n:
-                    break
-        nrows = n // ncols
-        special_rows = n - (nrows * (ncols - 1))
-        special_col = 0 if special_rows < nrows else ncols - 1
-        return ncols, nrows, special_rows, special_col
-
     def layout_windows(self, num_windows, nrows, ncols, special_rows, special_col, on_col_done=lambda col_windows: None):
         # Distribute windows top-to-bottom, left-to-right (i.e. in columns)
         xlayout = self.variable_layout(self.xlayout, ncols, self.biased_cols)
@@ -739,10 +739,7 @@ class Grid(Layout):  # {{{
         n = len(windows)
         if n == 1:
             return self.layout_single_window(windows[0])
-        ncols, nrows, special_rows, special_col = self.calc_grid_size(n)
-        layout_data = self.layout_data_class(n, ncols, nrows, special_rows, special_col)
-        for w in windows:
-            w.layout_data = layout_data
+        ncols, nrows, special_rows, special_col = calc_grid_size(n)
 
         win_col_map = []
 
@@ -765,14 +762,8 @@ class Grid(Layout):  # {{{
             self.between_blank_rect(win_col_map[i][0], win_col_map[i + 1][0])
 
     def minimal_borders(self, windows, active_window, needs_borders_map):
-        try:
-            n, ncols, nrows, special_rows, special_col = self.layout_data_for_window(windows[0])
-        except Exception:
-            n = -1
-        if n != len(windows):
-            # Something bad happened
-            yield from Layout.minimal_borders(self, windows, active_window, needs_borders_map)
-            return
+        n = len(windows)
+        ncols, nrows, special_rows, special_col = calc_grid_size(n)
         blank_row = [None for i in range(ncols)]
         matrix = tuple(blank_row[:] for j in range(max(nrows, special_rows)))
         wi = iter(windows)
@@ -811,14 +802,7 @@ class Grid(Layout):  # {{{
         n = len(windows)
         if n < 4:
             return Tall.neighbors_for_window(self, window, windows)
-        try:
-            n, ncols, nrows, special_rows, special_col = self.layout_data_for_window(windows[0])
-        except Exception:
-            n = -1
-        if n != len(windows):
-            # Something bad happened
-            return Layout.neighbors_for_window(self, window, windows)
-
+        ncols, nrows, special_rows, special_col = calc_grid_size(n)
         blank_row = [None for i in range(ncols)]
         matrix = tuple(blank_row[:] for j in range(max(nrows, special_rows)))
         wi = iter(windows)
