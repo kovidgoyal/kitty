@@ -642,6 +642,7 @@ class Fat(Tall):  # {{{
 # }}}
 
 
+# Grid {{{
 @lru_cache()
 def calc_grid_size(n):
     if n <= 5:
@@ -656,7 +657,7 @@ def calc_grid_size(n):
     return ncols, nrows, special_rows, special_col
 
 
-class Grid(Layout):  # {{{
+class Grid(Layout):
 
     name = 'grid'
 
