@@ -460,7 +460,7 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     StringCanvas ans = { .width = 0, .height = (size_t)(2 * bounding_box.size.height) };
     for (size_t i = 0, y = 0; i < num_chars; i++) {
         positions[i] = CGPointMake(ans.width, y);
-        ans.width += advances[i].width; y += advances[i].height;
+        ans.width += (size_t)advances[i].width; y += (size_t)advances[i].height;
     }
     ensure_render_space(ans.width, ans.height);
     render_glyphs(font, ans.width, ans.height, baseline, num_chars);
