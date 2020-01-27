@@ -161,6 +161,7 @@ class Layout:  # {{{
 
     name = None
     needs_window_borders = True
+    needs_all_windows = False
     only_active_window_visible = False
 
     def __init__(self, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts=''):
@@ -370,7 +371,10 @@ class Layout:  # {{{
             windows = all_windows
         self.update_visibility(all_windows, active_window, overlaid_windows)
         self.blank_rects = []
-        self.do_layout(windows, active_window_idx)
+        if self.needs_all_windows:
+            self.do_layout(windows, active_window_idx, all_windows)
+        else:
+            self.do_layout(windows, active_window_idx)
         return idx_for_id(active_window.id, all_windows)
 
     # Utils {{{
@@ -381,15 +385,23 @@ class Layout:  # {{{
         w.set_geometry(0, wg)
         self.blank_rects = blank_rects_for_window(w)
 
-    def xlayout(self, num, bias=None):
+    def xlayout(self, num, bias=None, left=None, width=None):
         decoration = self.margin_width + self.border_width + self.padding_width
         decoration_pairs = tuple(repeat((decoration, decoration), num))
-        return layout_dimension(central.left, central.width, cell_width, decoration_pairs, bias=bias, left_align=align_top_left)
+        if left is None:
+            left = central.left
+        if width is None:
+            width = central.width
+        return layout_dimension(left, width, cell_width, decoration_pairs, bias=bias, left_align=align_top_left)
 
-    def ylayout(self, num, left_align=True, bias=None):
+    def ylayout(self, num, left_align=True, bias=None, top=None, height=None):
         decoration = self.margin_width + self.border_width + self.padding_width
         decoration_pairs = tuple(repeat((decoration, decoration), num))
-        return layout_dimension(central.top, central.height, cell_height, decoration_pairs, bias=bias, left_align=align_top_left)
+        if top is None:
+            top = central.top
+        if height is None:
+            height = central.height
+        return layout_dimension(top, height, cell_height, decoration_pairs, bias=bias, left_align=align_top_left)
 
     def simple_blank_rects(self, first_window, last_window):
         br = self.blank_rects
@@ -933,6 +945,177 @@ class Horizontal(Vertical):  # {{{
         self.simple_blank_rects(windows[0], windows[-1])
         # bottom blank rect
         self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
+
+# }}}
+
+
+# Splits {{{
+class Pair:
+
+    def __init__(self, horizontal=True):
+        self.horizontal = horizontal
+        self.one = self.two = None
+
+    def all_window_ids(self):
+        if self.one is not None:
+            if isinstance(self.one, Pair):
+                yield from self.one.all_window_ids()
+            yield self.one
+        if self.two is not None:
+            if isinstance(self.two, Pair):
+                yield from self.two.all_window_ids()
+            yield self.two
+
+    def self_and_descendants(self):
+        yield self
+        if isinstance(self.one, Pair):
+            yield from self.one.self_and_descendants()
+        if isinstance(self.two, Pair):
+            yield from self.two.self_and_descendants()
+
+    def remove_windows(self, window_ids):
+        if isinstance(self.one, int) and self.one in window_ids:
+            self.one = None
+        if isinstance(self.two, int) and self.two in window_ids:
+            self.two = None
+        if self.one is None and self.two is not None:
+            self.one, self.two = self.two, None
+
+    @property
+    def is_redundant(self):
+        return self.one is None or self.two is None
+
+    def collapse_redundant_pairs(self):
+        while isinstance(self.one, Pair) and self.one.is_redundant:
+            self.one = self.one.one or self.one.two
+        while isinstance(self.two, Pair) and self.two.is_redundant:
+            self.two = self.two.one or self.two.two
+        if isinstance(self.one, Pair):
+            self.one.collapse_redundant_pairs()
+        if isinstance(self.two, Pair):
+            self.two.collapse_redundant_pairs()
+
+    def balanced_add(self, window_id):
+        if self.one is None or self.two is None:
+            if self.one is None:
+                if self.two is None:
+                    self.one = window_id
+                    return self
+                self.one, self.two = self.two, self.one
+            self.two = window_id
+            return self
+        if isinstance(self.one, Pair) and isinstance(self.two, Pair):
+            one_count = sum(1 for _ in self.one.all_window_ids())
+            two_count = sum(1 for _ in self.two.all_window_ids())
+            q = self.one if one_count < two_count else self.two
+            return q.balanced_add(window_id)
+        if not isinstance(self.one, Pair) and not isinstance(self.two, Pair):
+            pair = Pair(horizontal=self.horizontal)
+            pair.balanced_add(self.one)
+            pair.balanced_add(self.two)
+            self.one, self.two = pair, window_id
+            return self
+        if isinstance(self.one, Pair):
+            window_to_be_split = self.two
+            self.two = pair = Pair(horizontal=self.horizontal)
+        else:
+            window_to_be_split = self.one
+            self.one = pair = Pair(horizontal=self.horizontal)
+        pair.balanced_add(window_to_be_split)
+        pair.balanced_add(window_id)
+        return pair
+
+    def apply_window_geometry(self, window_id, window_geometry, id_window_map, id_idx_map):
+        w = id_window_map[window_id]
+        w.set_geometry(id_idx_map[window_id], window_geometry)
+        if w.overlay_window_id is not None:
+            w = id_window_map.get(w.overlay_window_id)
+            if w is not None:
+                w.set_geometry(id_idx_map[w.id], window_geometry)
+
+    def layout_pair(self, left, top, width, height, id_window_map, id_idx_map, layout_object):
+        if self.one is None or self.two is None:
+            q = self.one or self.two
+            if isinstance(q, Pair):
+                return q.layout_pair(left, top, width, height, id_window_map, id_idx_map, layout_object)
+            if q is None:
+                return
+            xstart, xnum = next(layout_object.xlayout(1, left=left, width=width))
+            ystart, ynum = next(layout_object.ylayout(1, top=top, height=height))
+            geom = window_geometry(xstart, xnum, ystart, ynum)
+            self.apply_window_geometry(q, geom, id_window_map, id_idx_map)
+            return
+        if self.horizontal:
+            ystart, ynum = next(layout_object.ylayout(1, top=top, height=height))
+            w1 = width // 2
+            w2 = width - w1
+            if isinstance(self.one, Pair):
+                self.one.layout_pair(left, top, w1, height, id_window_map, id_idx_map, layout_object)
+            else:
+                xstart, xnum = next(layout_object.xlayout(1, left=left, width=w1))
+                self.apply_window_geometry(self.one, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
+            if isinstance(self.two, Pair):
+                self.two.layout_pair(left + w1, top, w2, height, id_window_map, id_idx_map, layout_object)
+            else:
+                xstart, xnum = next(layout_object.xlayout(1, left=left + w1, width=w2))
+                self.apply_window_geometry(self.two, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
+        else:
+            xstart, xnum = next(layout_object.xlayout(1, left=left, width=width))
+            h1 = height // 2
+            h2 = height - h1
+            if isinstance(self.one, Pair):
+                self.one.layout_pair(left, top, width, h1, id_window_map, id_idx_map, layout_object)
+            else:
+                ystart, ynum = next(layout_object.ylayout(1, top=top, height=h1))
+                self.apply_window_geometry(self.one, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
+            if isinstance(self.two, Pair):
+                self.two.layout_pair(left, top + h1, width, h2, id_window_map, id_idx_map, layout_object)
+            else:
+                ystart, ynum = next(layout_object.ylayout(1, top=top + h1, height=h2))
+                self.apply_window_geometry(self.two, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
+
+
+class Splits(Layout):
+    name = 'splits'
+    needs_all_windows = True
+
+    @property
+    def default_axis_is_horizontal(self):
+        return self.layout_opts['default_axis_is_horizontal']
+
+    def parse_layout_opts(self, layout_opts):
+        ans = Layout.parse_layout_opts(self, layout_opts)
+        ans['default_axis_is_horizontal'] = ans.get('split_axis', 'horizontal') == 'horizontal'
+        return ans
+
+    def do_layout(self, windows, active_window_idx, all_windows):
+        window_count = len(windows)
+        root = getattr(self, 'pairs_root', None)
+        if root is None:
+            self.pairs_root = root = Pair(horizontal=self.default_axis_is_horizontal)
+        all_present_window_ids = frozenset(w.overlay_for or w.id for w in windows)
+        already_placed_window_ids = frozenset(root.all_window_ids())
+        windows_to_remove = already_placed_window_ids - all_present_window_ids
+
+        if windows_to_remove:
+            for pair in root.self_and_descendants():
+                pair.remove_windows(windows_to_remove)
+            root.collapse_redundant_pairs()
+            if root.one is None or root.two is None:
+                q = root.one or root.two
+                if isinstance(q, Pair):
+                    root = self.pairs_root = q
+        id_window_map = {w.id: w for w in all_windows}
+        id_idx_map = {w.id: i for i, w in enumerate(all_windows)}
+        windows_to_add = all_present_window_ids - already_placed_window_ids
+        if windows_to_add:
+            for wid in sorted(windows_to_add, key=id_idx_map.__getitem__):
+                root.balanced_add(wid)
+
+        if window_count == 1:
+            self.layout_single_window(windows[0])
+        else:
+            root.layout_pair(central.left, central.top, central.width, central.height, id_window_map, id_idx_map, self)
 
 # }}}
 
