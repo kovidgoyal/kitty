@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Wayland: Fix a freeze in rare circumstances when having multiple OS Windows
   (:iss:`2307` and :iss:`1722`)
 
+- Wayland: Fix window titles being set to very long strings on the order of 8KB
+  causing a crash (:iss:`1526`)
+
 - Add an option :opt:`force_ltr` to turn off the display of text in RTL scripts
   in right-to-left order (:pull:`2293`)
 
