@@ -1273,9 +1273,13 @@ def cmd_disable_ligatures(global_opts, opts, args):
     match_tab: Tab to change opacity in
     all: Boolean indicating operate on all windows
     '''
+    if not args:
+        raise SystemExit(
+            'You must specify the STRATEGY for disabling ligatures, must be one of'
+            ' never, always or cursor')
     strategy = args[0]
     if strategy not in ('never', 'always', 'cursor'):
-        raise ValueError('{} is not a valid disable_ligatures strategy'.format('strategy'))
+        raise SystemExit('{} is not a valid disable_ligatures strategy'.format('strategy'))
     return {
         'strategy': strategy, 'match_window': opts.match, 'match_tab': opts.match_tab,
         'all': opts.all,
