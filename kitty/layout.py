@@ -991,6 +991,11 @@ class Pair:
             ans = self.two.pair_for_window(window_id)
         return ans
 
+    def parent(self, root):
+        for q in root.self_and_descendants():
+            if q.one is self or q.two is self:
+                return q
+
     def remove_windows(self, window_ids):
         if isinstance(self.one, int) and self.one in window_ids:
             self.one = None
@@ -1130,15 +1135,19 @@ class Pair:
                 self.apply_window_geometry(self.two, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
                 self.blank_rects_for_window(layout_object, id_window_map[self.two], left, top + h1, width, h2)
 
-    def modify_size_of_window(self, window_id: int, increment: float, is_horizontal: bool, layout_object: 'Splits'):
-        if is_horizontal == self.horizontal:
-            if self.two == window_id:
+    def modify_size_of_child(self, which: int, increment: float, is_horizontal: bool, layout_object: 'Splits'):
+        if is_horizontal == self.horizontal and not self.is_redundant:
+            if which == 2:
                 increment *= -1
             new_bias = max(0.1, min(self.bias + increment, 0.9))
             if new_bias != self.bias:
                 self.bias = new_bias
                 return True
             return False
+        parent = self.parent(layout_object.pairs_root)
+        if parent is not None:
+            which = 1 if parent.one is self else 2
+            return parent.modify_size_of_child(which, increment, is_horizontal, layout_object)
         return False
 
 
@@ -1230,7 +1239,13 @@ class Splits(Layout):
         pair = self.pairs_root.pair_for_window(window_id)
         if pair is None:
             return False
-        return self.pairs_root.modify_size_of_window(window_id, increment, is_horizontal, self)
+        which = 1 if pair.one == window_id else 2
+        return pair.modify_size_of_child(which, increment, is_horizontal, self)
+
+    def remove_all_biases(self):
+        for pair in self.pairs_root.self_and_descendants():
+            pair.bias = 0.5
+        return True
 # }}}
 
 
