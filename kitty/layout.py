@@ -964,6 +964,10 @@ class Pair:
         self.one = self.two = None
         self.bias = 0.5
 
+    def __repr__(self):
+        return 'Pair(horizontal={}, bias={:.2f}, one={}, two={})'.format(
+                self.horizontal, self.bias, self.one, self.two)
+
     def all_window_ids(self):
         if self.one is not None:
             if isinstance(self.one, Pair):
