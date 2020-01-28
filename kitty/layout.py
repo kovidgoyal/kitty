@@ -1065,6 +1065,24 @@ class Pair:
             if w is not None:
                 w.set_geometry(id_idx_map[w.id], window_geometry)
 
+    def blank_rects_for_window(self, layout_object: Layout, window, left: float, top: float, width: float, height: float):
+        right = left + width - 1
+        bottom = top + height - 1
+        g: WindowGeometry = window.geometry
+        rects: list = layout_object.blank_rects
+        lt = g.left
+        if lt > left:
+            rects.append(Rect(left, top, lt, bottom + 1))
+        r = g.right
+        if r <= right:
+            rects.append(Rect(r, top, right + 1, bottom + 1))
+        t = g.top
+        if t > top:
+            rects.append(Rect(left, top, right + 1, t))
+        b = g.bottom
+        if b <= bottom:
+            rects.append(Rect(left, b, right + 1, bottom + 1))
+
     def layout_pair(self, left, top, width, height, id_window_map, id_idx_map, layout_object):
         if self.one is None or self.two is None:
             q = self.one or self.two
@@ -1076,6 +1094,7 @@ class Pair:
             ystart, ynum = next(layout_object.ylayout(1, top=top, height=height))
             geom = window_geometry(xstart, xnum, ystart, ynum)
             self.apply_window_geometry(q, geom, id_window_map, id_idx_map)
+            self.blank_rects_for_window(layout_object, id_window_map[q], left, top, width, height)
             return
         if self.horizontal:
             ystart, ynum = next(layout_object.ylayout(1, top=top, height=height))
@@ -1086,11 +1105,13 @@ class Pair:
             else:
                 xstart, xnum = next(layout_object.xlayout(1, left=left, width=w1))
                 self.apply_window_geometry(self.one, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
+                self.blank_rects_for_window(layout_object, id_window_map[self.one], left, top, w1, height)
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left + w1, top, w2, height, id_window_map, id_idx_map, layout_object)
             else:
                 xstart, xnum = next(layout_object.xlayout(1, left=left + w1, width=w2))
                 self.apply_window_geometry(self.two, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
+                self.blank_rects_for_window(layout_object, id_window_map[self.two], left + w1, top, w2, height)
         else:
             xstart, xnum = next(layout_object.xlayout(1, left=left, width=width))
             h1 = height // 2
@@ -1100,11 +1121,13 @@ class Pair:
             else:
                 ystart, ynum = next(layout_object.ylayout(1, top=top, height=h1))
                 self.apply_window_geometry(self.one, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
+                self.blank_rects_for_window(layout_object, id_window_map[self.one], left, top, width, h1)
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left, top + h1, width, h2, id_window_map, id_idx_map, layout_object)
             else:
                 ystart, ynum = next(layout_object.ylayout(1, top=top + h1, height=h2))
                 self.apply_window_geometry(self.two, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
+                self.blank_rects_for_window(layout_object, id_window_map[self.two], left, top + h1, width, h2)
 
 
 class Splits(Layout):
