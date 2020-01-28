@@ -279,10 +279,19 @@ class Layout:  # {{{
                 all_windows.append(all_windows[i])
                 all_windows[i] = window
                 active_window_idx = i
-        elif location is not None:
+        if active_window_idx is None:
             if location == 'neighbor':
                 location = 'after'
-            if location == 'after' and current_active_window_idx is not None and len(all_windows) > 1:
+            active_window_idx = self.do_add_window(all_windows, window, current_active_window_idx, location)
+
+        self(all_windows, active_window_idx)
+        self.set_active_window_in_os_window(active_window_idx)
+        return active_window_idx
+
+    def do_add_window(self, all_windows, window, current_active_window_idx, location):
+        active_window_idx = None
+        if location is not None:
+            if location in ('after', 'vsplit', 'hsplit') and current_active_window_idx is not None and len(all_windows) > 1:
                 active_window_idx = min(current_active_window_idx + 1, len(all_windows))
             elif location == 'before' and current_active_window_idx is not None and len(all_windows) > 1:
                 active_window_idx = current_active_window_idx
@@ -296,8 +305,6 @@ class Layout:  # {{{
         if active_window_idx is None:
             active_window_idx = len(all_windows)
             all_windows.append(window)
-        self(all_windows, active_window_idx)
-        self.set_active_window_in_os_window(active_window_idx)
         return active_window_idx
 
     def remove_window(self, all_windows, window, current_active_window_idx, swapped=False):
@@ -973,6 +980,16 @@ class Pair:
         if isinstance(self.two, Pair):
             yield from self.two.self_and_descendants()
 
+    def pair_for_window(self, window_id):
+        if self.one == window_id or self.two == window_id:
+            return self
+        ans = None
+        if isinstance(self.one, Pair):
+            ans = self.one.pair_for_window(window_id)
+        if ans is None and isinstance(self.two, Pair):
+            ans = self.two.pair_for_window(window_id)
+        return ans
+
     def remove_windows(self, window_ids):
         if isinstance(self.one, int) and self.one in window_ids:
             self.one = None
@@ -1023,6 +1040,21 @@ class Pair:
             self.one = pair = Pair(horizontal=self.horizontal)
         pair.balanced_add(window_to_be_split)
         pair.balanced_add(window_id)
+        return pair
+
+    def split_and_add(self, existing_window_id, new_window_id, horizontal, after):
+        q = (existing_window_id, new_window_id) if after else (new_window_id, existing_window_id)
+        if self.is_redundant:
+            pair = self
+            pair.horizontal = horizontal
+            self.one, self.two = q
+        else:
+            pair = Pair(horizontal=horizontal)
+            if self.one == existing_window_id:
+                self.one = pair
+            else:
+                self.two = pair
+            tuple(map(pair.balanced_add, q))
         return pair
 
     def apply_window_geometry(self, window_id, window_geometry, id_window_map, id_idx_map):
@@ -1083,6 +1115,17 @@ class Splits(Layout):
     def default_axis_is_horizontal(self):
         return self.layout_opts['default_axis_is_horizontal']
 
+    @property
+    def pairs_root(self):
+        root = getattr(self, '_pairs_root', None)
+        if root is None:
+            self._pairs_root = root = Pair(horizontal=self.default_axis_is_horizontal)
+        return root
+
+    @pairs_root.setter
+    def pairs_root(self, root):
+        self._pairs_root = root
+
     def parse_layout_opts(self, layout_opts):
         ans = Layout.parse_layout_opts(self, layout_opts)
         ans['default_axis_is_horizontal'] = ans.get('split_axis', 'horizontal') == 'horizontal'
@@ -1090,9 +1133,7 @@ class Splits(Layout):
 
     def do_layout(self, windows, active_window_idx, all_windows):
         window_count = len(windows)
-        root = getattr(self, 'pairs_root', None)
-        if root is None:
-            self.pairs_root = root = Pair(horizontal=self.default_axis_is_horizontal)
+        root = self.pairs_root
         all_present_window_ids = frozenset(w.overlay_for or w.id for w in windows)
         already_placed_window_ids = frozenset(root.all_window_ids())
         windows_to_remove = already_placed_window_ids - all_present_window_ids
@@ -1116,6 +1157,34 @@ class Splits(Layout):
             self.layout_single_window(windows[0])
         else:
             root.layout_pair(central.left, central.top, central.width, central.height, id_window_map, id_idx_map, self)
+
+    def do_add_window(self, all_windows, window, current_active_window_idx, location):
+        horizontal = self.default_axis_is_horizontal
+        after = True
+        if location is not None:
+            if location == 'vsplit':
+                horizontal = True
+            elif location == 'hsplit':
+                horizontal = False
+            if location in ('before', 'first'):
+                after = False
+        active_window_idx = None
+        if 0 <= current_active_window_idx < len(all_windows):
+            cw = all_windows[current_active_window_idx]
+            window_id = cw.overlay_for or cw.id
+            pair = self.pairs_root.pair_for_window(window_id)
+            if pair is not None:
+                pair.split_and_add(window_id, window.id, horizontal, after)
+                active_window_idx = current_active_window_idx
+                if after:
+                    active_window_idx += 1
+                for i in range(len(all_windows), active_window_idx, -1):
+                    self.swap_windows_in_os_window(i, i - 1)
+                all_windows.insert(active_window_idx, window)
+        if active_window_idx is None:
+            active_window_idx = len(all_windows)
+            all_windows.append(window)
+        return active_window_idx
 
 # }}}
 
