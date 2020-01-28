@@ -962,6 +962,7 @@ class Pair:
     def __init__(self, horizontal=True):
         self.horizontal = horizontal
         self.one = self.two = None
+        self.bias = 0.5
 
     def all_window_ids(self):
         if self.one is not None:
@@ -1065,7 +1066,7 @@ class Pair:
             if w is not None:
                 w.set_geometry(id_idx_map[w.id], window_geometry)
 
-    def blank_rects_for_window(self, layout_object: Layout, window, left: float, top: float, width: float, height: float):
+    def blank_rects_for_window(self, layout_object: 'Splits', window, left: float, top: float, width: float, height: float):
         right = left + width - 1
         bottom = top + height - 1
         g: WindowGeometry = window.geometry
@@ -1098,7 +1099,7 @@ class Pair:
             return
         if self.horizontal:
             ystart, ynum = next(layout_object.ylayout(1, top=top, height=height))
-            w1 = width // 2
+            w1 = int(self.bias * width)
             w2 = width - w1
             if isinstance(self.one, Pair):
                 self.one.layout_pair(left, top, w1, height, id_window_map, id_idx_map, layout_object)
@@ -1114,7 +1115,7 @@ class Pair:
                 self.blank_rects_for_window(layout_object, id_window_map[self.two], left + w1, top, w2, height)
         else:
             xstart, xnum = next(layout_object.xlayout(1, left=left, width=width))
-            h1 = height // 2
+            h1 = int(self.bias * height)
             h2 = height - h1
             if isinstance(self.one, Pair):
                 self.one.layout_pair(left, top, width, h1, id_window_map, id_idx_map, layout_object)
@@ -1128,6 +1129,17 @@ class Pair:
                 ystart, ynum = next(layout_object.ylayout(1, top=top + h1, height=h2))
                 self.apply_window_geometry(self.two, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
                 self.blank_rects_for_window(layout_object, id_window_map[self.two], left, top + h1, width, h2)
+
+    def modify_size_of_window(self, window_id: int, increment: float, is_horizontal: bool, layout_object: 'Splits'):
+        if is_horizontal == self.horizontal:
+            if self.two == window_id:
+                increment *= -1
+            new_bias = max(0.1, min(self.bias + increment, 0.9))
+            if new_bias != self.bias:
+                self.bias = new_bias
+                return True
+            return False
+        return False
 
 
 class Splits(Layout):
@@ -1209,6 +1221,16 @@ class Splits(Layout):
             all_windows.append(window)
         return active_window_idx
 
+    def modify_size_of_window(self, all_windows, window_id, increment, is_horizontal=True):
+        idx = idx_for_id(window_id, all_windows)
+        if idx is None:
+            return False
+        w = all_windows[idx]
+        window_id = w.overlay_for or w.id
+        pair = self.pairs_root.pair_for_window(window_id)
+        if pair is None:
+            return False
+        return self.pairs_root.modify_size_of_window(window_id, increment, is_horizontal, self)
 # }}}
 
 
