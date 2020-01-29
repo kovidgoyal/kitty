@@ -1108,8 +1108,8 @@ class Pair:
             return
         if self.horizontal:
             ystart, ynum = next(layout_object.ylayout(1, top=top, height=height))
-            w1 = int(self.bias * width)
-            w2 = width - w1
+            w1 = max(2*cell_width + 1, int(self.bias * width))
+            w2 = max(2*cell_width + 1, width - w1)
             if isinstance(self.one, Pair):
                 self.one.layout_pair(left, top, w1, height, id_window_map, id_idx_map, layout_object)
             else:
@@ -1124,8 +1124,9 @@ class Pair:
                 self.blank_rects_for_window(layout_object, id_window_map[self.two], left + w1, top, w2, height)
         else:
             xstart, xnum = next(layout_object.xlayout(1, left=left, width=width))
-            h1 = int(self.bias * height)
-            h2 = height - h1
+            h1 = max(2*cell_height + 1, int(self.bias * height))
+            h2 = max(2*cell_height + 1, height - h1)
+
             if isinstance(self.one, Pair):
                 self.one.layout_pair(left, top, width, h1, id_window_map, id_idx_map, layout_object)
             else:
