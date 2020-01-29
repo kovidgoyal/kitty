@@ -51,7 +51,10 @@ If you want to create markers dynamically rather than pre-defining them in
     map f2 remove_marker
 
 Then pressing :kbd:`F1` will allow you to enter the marker definition and set
-it and pressing :kbd:`F2` will remove the marker.
+it and pressing :kbd:`F2` will remove the marker. ``create_marker`` accepts
+the same syntax as ``toggle_marker`` above. Note that while creating
+markers, the prompt has history so you can easily re-use previous marker
+expressions.
 
 You can also use the facilities for :doc:`remote-control` to dynamically
 add/remove markers.
