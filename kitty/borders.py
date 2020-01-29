@@ -90,3 +90,7 @@ class Borders:
                 colors = (window_bg, window_bg, window_bg, window_bg)
                 draw_edges(
                     self.os_window_id, self.tab_id, colors, pw, g)
+
+        color = BorderColor.inactive
+        for (left, top, right, bottom) in current_layout.window_independent_borders(windows, active_window):
+            add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, color)

@@ -430,19 +430,26 @@ class Layout:  # {{{
     def neighbors_for_window(self, window, windows):
         return {'left': [], 'right': [], 'top': [], 'bottom': []}
 
+    def compute_needs_borders_map(self, windows, active_window):
+        return {w.id: ((w is active_window and draw_active_borders) or w.needs_attention) for w in windows}
+
     def resolve_borders(self, windows, active_window):
         if draw_minimal_borders:
-            needs_borders_map = {w.id: ((w is active_window and draw_active_borders) or w.needs_attention) for w in windows}
+            needs_borders_map = self.compute_needs_borders_map(windows, active_window)
             yield from self.minimal_borders(windows, active_window, needs_borders_map)
         else:
             yield from Layout.minimal_borders(self, windows, active_window, None)
 
+    def window_independent_borders(self, windows, active_windows):
+        return
+        yield
+
     def minimal_borders(self, windows, active_window, needs_borders_map):
         for w in windows:
-            if w is active_window and not draw_active_borders and not w.needs_attention:
-                yield no_borders
-            else:
+            if (w is active_window and draw_active_borders) or w.needs_attention:
                 yield all_borders
+            else:
+                yield no_borders
 # }}}
 
 
@@ -963,10 +970,11 @@ class Pair:
         self.horizontal = horizontal
         self.one = self.two = None
         self.bias = 0.5
+        self.between_border = None
 
     def __repr__(self):
-        return 'Pair(horizontal={}, bias={:.2f}, one={}, two={})'.format(
-                self.horizontal, self.bias, self.one, self.two)
+        return 'Pair(horizontal={}, bias={:.2f}, one={}, two={}, between_border={})'.format(
+                self.horizontal, self.bias, self.one, self.two, self.between_border)
 
     def all_window_ids(self):
         if self.one is not None:
@@ -1094,6 +1102,7 @@ class Pair:
             rects.append(Rect(left, b, right + 1, bottom + 1))
 
     def layout_pair(self, left, top, width, height, id_window_map, id_idx_map, layout_object):
+        self.between_border = None
         if self.one is None or self.two is None:
             q = self.one or self.two
             if isinstance(q, Pair):
@@ -1106,16 +1115,22 @@ class Pair:
             self.apply_window_geometry(q, geom, id_window_map, id_idx_map)
             self.blank_rects_for_window(layout_object, id_window_map[q], left, top, width, height)
             return
+        bw = layout_object.border_width if draw_minimal_borders else 0
+        b1 = bw // 2
+        b2 = bw - b1
         if self.horizontal:
             ystart, ynum = next(layout_object.ylayout(1, top=top, height=height))
-            w1 = max(2*cell_width + 1, int(self.bias * width))
-            w2 = max(2*cell_width + 1, width - w1)
+            w1 = max(2*cell_width + 1, int(self.bias * width) - b1)
+            w2 = max(2*cell_width + 1, width - w1 - b1 - b2)
             if isinstance(self.one, Pair):
                 self.one.layout_pair(left, top, w1, height, id_window_map, id_idx_map, layout_object)
             else:
                 xstart, xnum = next(layout_object.xlayout(1, left=left, width=w1))
                 self.apply_window_geometry(self.one, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
                 self.blank_rects_for_window(layout_object, id_window_map[self.one], left, top, w1, height)
+            if b1 + b2:
+                self.between_border = (left + w1, top, left + w1 + b1 + b2, top + height)
+            left += b1 + b2
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left + w1, top, w2, height, id_window_map, id_idx_map, layout_object)
             else:
@@ -1124,15 +1139,17 @@ class Pair:
                 self.blank_rects_for_window(layout_object, id_window_map[self.two], left + w1, top, w2, height)
         else:
             xstart, xnum = next(layout_object.xlayout(1, left=left, width=width))
-            h1 = max(2*cell_height + 1, int(self.bias * height))
-            h2 = max(2*cell_height + 1, height - h1)
-
+            h1 = max(2*cell_height + 1, int(self.bias * height) - b1)
+            h2 = max(2*cell_height + 1, height - h1 - b1 - b2)
             if isinstance(self.one, Pair):
                 self.one.layout_pair(left, top, width, h1, id_window_map, id_idx_map, layout_object)
             else:
                 ystart, ynum = next(layout_object.ylayout(1, top=top, height=h1))
                 self.apply_window_geometry(self.one, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
                 self.blank_rects_for_window(layout_object, id_window_map[self.one], left, top, width, h1)
+            if b1 + b2:
+                self.between_border = (left, top + h1, left + width, top + h1 + b1 + b2)
+            top += b1 + b2
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left, top + h1, width, h2, id_window_map, id_idx_map, layout_object)
             else:
@@ -1251,6 +1268,14 @@ class Splits(Layout):
         for pair in self.pairs_root.self_and_descendants():
             pair.bias = 0.5
         return True
+
+    def window_independent_borders(self, windows, active_windows):
+        if not draw_minimal_borders:
+            return
+        for pair in self.pairs_root.self_and_descendants():
+            if pair.between_border is not None:
+                yield pair.between_border
+
 # }}}
 
 
