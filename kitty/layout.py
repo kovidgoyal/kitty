@@ -259,17 +259,21 @@ class Layout:  # {{{
         else:
             delta = delta.lower()
             delta = {'up': 'top', 'down': 'bottom'}.get(delta, delta)
-            neighbors = self.neighbors_for_window(w, windows)
+            neighbors = self.neighbors_for_window(w, all_windows if self.needs_all_windows else windows)
             if not neighbors.get(delta):
                 return active_window_idx
-            nidx = idx_for_id(neighbors[delta][0].id, windows)
+            w = neighbors[delta][0]
+            nidx = idx_for_id(getattr(w, 'id', w), windows)
 
         nw = windows[nidx]
         nidx = idx_for_id(nw.id, all_windows)
         idx = active_window_idx
-        all_windows[nidx], all_windows[idx] = all_windows[idx], all_windows[nidx]
+        self.swap_windows_in_layout(all_windows, nidx, idx)
         self.swap_windows_in_os_window(nidx, idx)
         return self.set_active_window(all_windows, nidx)
+
+    def swap_windows_in_layout(self, all_windows, a, b):
+        all_windows[a], all_windows[b] = all_windows[b], all_windows[a]
 
     def add_window(self, all_windows, window, current_active_window_idx, location=None):
         active_window_idx = None
@@ -319,7 +323,7 @@ class Layout:  # {{{
             nidx = idx_for_id(window.overlay_for, all_windows)
             if nidx is not None:
                 idx = all_windows.index(window)
-                all_windows[nidx], all_windows[idx] = all_windows[idx], all_windows[nidx]
+                self.swap_windows_in_layout(all_windows, nidx, idx)
                 self.swap_windows_in_os_window(nidx, idx)
                 return self.remove_window(all_windows, window, current_active_window_idx, swapped=True)
 
@@ -1338,6 +1342,27 @@ class Splits(Layout):
         if pair is not None:
             pair.neighbors_for_window(window_id, ans, self)
         return ans
+
+    def swap_windows_in_layout(self, all_windows, a, b):
+        w1, w2 = all_windows[a], all_windows[b]
+        super().swap_windows_in_layout(all_windows, a, b)
+        w1 = w1.overlay_for or w1.id
+        w2 = w2.overlay_for or w2.id
+        p1 = self.pairs_root.pair_for_window(w1)
+        p2 = self.pairs_root.pair_for_window(w2)
+        if p1 and p2:
+            if p1 is p2:
+                p1.one, p1.two = p1.two, p1.one
+            else:
+                if p1.one == w1:
+                    p1.one = w2
+                else:
+                    p1.two = w2
+                if p2.one == w2:
+                    p2.one = w1
+                else:
+                    p2.two = w1
+
 # }}}
 
 
