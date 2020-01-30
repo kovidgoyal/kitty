@@ -5,7 +5,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "gl.h"
 #include "graphics.h"
 #include "state.h"
 

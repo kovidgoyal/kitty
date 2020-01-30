@@ -7,8 +7,6 @@
 
 #include "fonts.h"
 #include "gl.h"
-#include "png-reader.h"
-#include <png.h>
 #include <stddef.h>
 
 enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, BGIMAGE_TILED_PROGRAM, NUM_PROGRAMS };
@@ -24,7 +22,6 @@ typedef struct {
 
 static const SpriteMap NEW_SPRITE_MAP = { .xnum = 1, .ynum = 1, .last_num_of_layers = 1, .last_ynum = -1 };
 static GLint max_texture_size = 0, max_array_texture_layers = 0;
-//static uint8_t *bg_image = NULL;
 
 SPRITE_MAP_HANDLE
 alloc_sprite_map(unsigned int cell_width, unsigned int cell_height) {
