@@ -323,7 +323,7 @@ class Layout:  # {{{
             nidx = idx_for_id(window.overlay_for, all_windows)
             if nidx is not None:
                 idx = all_windows.index(window)
-                self.swap_windows_in_layout(all_windows, nidx, idx)
+                all_windows[nidx], all_windows[idx] = all_windows[idx], all_windows[nidx]
                 self.swap_windows_in_os_window(nidx, idx)
                 return self.remove_window(all_windows, window, current_active_window_idx, swapped=True)
 
