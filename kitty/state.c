@@ -81,6 +81,39 @@ add_os_window() {
     ans->tab_bar_render_data.vao_idx = create_cell_vao();
     ans->gvao_idx = create_graphics_vao();
     ans->background_opacity = OPT(background_opacity);
+
+    bool wants_bg = OPT(background_image) != NULL;
+    if (wants_bg) {
+        bool has_bg;
+        has_bg = global_state.bgimage != NULL;
+
+        if (!has_bg) {
+            BackgroundImage* bgimage = calloc(1, sizeof(BackgroundImage));
+            size_t size;
+
+            has_bg = png_path_to_bitmap(&bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
+            if (has_bg) {
+                bgimage->texture_id = 0;
+                RepeatStrategy r;
+                switch (OPT(background_image_layout)) {
+                    case TILING:
+                        r = REPEAT_DEFAULT; break;
+                    case SCALED:
+                        r = REPEAT_CLAMP; break;
+                    case MIRRORED:
+                        r = REPEAT_MIRROR;
+                }
+                send_image_to_gpu(&bgimage->texture_id, bgimage->bitmap, bgimage->width,
+                        bgimage->height, false, true, false, r);
+                ans->bgimage = bgimage;
+                global_state.bgimage = bgimage;
+            }
+        } else {
+            // Reusing already loaded bgimage
+            ans->bgimage = global_state.bgimage;
+        }
+    }
+
     ans->font_sz_in_pts = global_state.font_sz_in_pts;
     END_WITH_OS_WINDOW_REFS
     return ans;
@@ -416,6 +449,17 @@ window_title_in(PyObject *title_in) {
     return ALL;
 }
 
+static BackgroundImageLayout bglayout(PyObject *layout_name) {
+    const char *name = PyUnicode_AsUTF8(layout_name);
+    switch(name[0]) {
+        case 't': return TILING;
+        case 'm': return MIRRORED;
+        case 's': return SCALED;
+        default: break;
+    }
+    return TILING;
+}
+
 static MouseShape
 pointer_shape(PyObject *shape_name) {
     const char *name = PyUnicode_AsUTF8(shape_name);
@@ -484,6 +528,10 @@ PYWRAP1(set_options) {
     S(cursor_blink_interval, parse_s_double_to_monotonic_t);
     S(cursor_stop_blinking_after, parse_s_double_to_monotonic_t);
     S(background_opacity, PyFloat_AsFloat);
+    S(background_image_opacity, PyFloat_AsFloat);
+    S(background_image_scale, PyFloat_AsFloat);
+    S(background_image_layout, bglayout);
+    S(background_image, (char*)PyUnicode_AsUTF8);
     S(dim_opacity, PyFloat_AsFloat);
     S(dynamic_background_opacity, PyObject_IsTrue);
     S(inactive_text_alpha, PyFloat_AsFloat);

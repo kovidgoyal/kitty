@@ -15,14 +15,14 @@ from .constants import (
     ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
 )
 from .fast_data_types import (
-    BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM, CELL_PROGRAM,
-    CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
-    GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
-    MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    STRIKETHROUGH, Screen, add_window, cell_size_for_window, compile_program,
-    get_clipboard_string, init_cell_program, set_clipboard_string,
-    set_titlebar_color, set_window_render_data, update_window_title,
-    update_window_visibility, viewport_for_window
+    BLIT_PROGRAM, BGIMAGE_PROGRAM, BGIMAGE_TILED_PROGRAM, CELL_BG_PROGRAM,
+    CELL_FG_PROGRAM, CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION,
+    DIM, GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM,
+    GRAPHICS_PROGRAM, MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
+    SCROLL_PAGE, STRIKETHROUGH, Screen, add_window, cell_size_for_window,
+    compile_program, get_clipboard_string, init_cell_program,
+    set_clipboard_string, set_titlebar_color, set_window_render_data,
+    update_window_title, update_window_visibility, viewport_for_window
 )
 from .keys import defines, extended_key_event, keyboard_mode_name
 from .rgb import to_color
@@ -83,6 +83,7 @@ def load_shader_programs(semi_transparent=False):
             vv = vv.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
             ff = ff.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
         compile_program(p, vv, ff)
+
     v, f = load_shaders('graphics')
     for which, p in {
             'SIMPLE': GRAPHICS_PROGRAM,
@@ -91,6 +92,15 @@ def load_shader_programs(semi_transparent=False):
     }.items():
         ff = f.replace('ALPHA_TYPE', which)
         compile_program(p, v, ff)
+
+    v, f = load_shaders('bgimage')
+    for which, p in {
+            'SIMPLE': BGIMAGE_PROGRAM,
+            'TILED': BGIMAGE_TILED_PROGRAM,
+    }.items():
+        ff = f.replace('LAYOUT_TYPE', which)
+        compile_program(p, v, ff)
+
     init_cell_program()
 
 

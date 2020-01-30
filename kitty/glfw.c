@@ -377,7 +377,7 @@ make_os_window_context_current(OSWindow *w) {
 }
 
 
-static inline void
+void
 get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
     if (w) glfwGetWindowContentScale(w, xscale, yscale);
     else {

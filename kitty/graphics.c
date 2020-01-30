@@ -5,6 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#include "gl.h"
 #include "graphics.h"
 #include "state.h"
 
@@ -29,9 +30,8 @@ static bool send_to_gpu = true;
 GraphicsManager*
 grman_alloc() {
     GraphicsManager *self = (GraphicsManager *)GraphicsManager_Type.tp_alloc(&GraphicsManager_Type, 0);
-    self->images_capacity = 64;
+    self->images_capacity = self->capacity = 64;
     self->images = calloc(self->images_capacity, sizeof(Image));
-    self->capacity = 64;
     self->render_data = calloc(self->capacity, sizeof(ImageRenderData));
     if (self->images == NULL || self->render_data == NULL) {
         PyErr_NoMemory();
@@ -248,6 +248,38 @@ add_trim_predicate(Image *img) {
     return !img->data_loaded || (!img->client_id && !img->refcnt);
 }
 
+bool png_path_to_bitmap(uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz) {
+    const char* path = OPT(background_image);
+    if (access(path, R_OK) != 0) {
+        log_error("File %s, (requested background image,) does not exist (%d)", path, errno);
+        return false;
+    }
+    FILE* fp = fopen(path, "r");
+    if (fp == NULL) {
+        log_error("File %s, (requested background image,) could not be opened", path);
+        return false;
+    }
+    fseek(fp, 0L, SEEK_END);
+    size_t filesize = ftell(fp);
+    *data = calloc(filesize, sizeof(char));
+    fseek(fp, 0L, SEEK_SET); // rewind() deprecated on some platforms
+    fread(*data, sizeof(char), filesize, fp);
+    fclose(fp);
+    png_read_data d;
+    memset(&d, 0, sizeof(png_read_data));
+    inflate_png_inner(&d, *data, filesize);
+    if (!d.ok) {
+        log_error("File %s, (requested background image,) not readable by libpng", path);
+        return false;
+    }
+    free(*data);
+    *data = d.decompressed;
+    *sz = d.sz;
+    *height = d.height; *width = d.width;
+    return true;
+}
+
+
 static inline Image*
 find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
     if (id) {
@@ -421,7 +453,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     size_t required_sz = (img->load_data.is_opaque ? 3 : 4) * img->width * img->height;
     if (img->load_data.data_sz != required_sz) ABRT(EINVAL, "Image dimensions: %ux%u do not match data size: %zu, expected size: %zu", img->width, img->height, img->load_data.data_sz, required_sz);
     if (LIKELY(img->data_loaded && send_to_gpu)) {
-        send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->load_data.is_opaque, img->load_data.is_4byte_aligned);
+        send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->load_data.is_opaque, img->load_data.is_4byte_aligned, false, REPEAT_CLAMP);
         free_load_data(&img->load_data);
         self->used_storage += required_sz;
         img->used_storage = required_sz;

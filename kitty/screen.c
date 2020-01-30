@@ -111,6 +111,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns, OPT(scrollback_pager_history_size));
         self->main_grman = grman_alloc();
         self->alt_grman = grman_alloc();
+
         self->grman = self->main_grman;
         self->pending_mode.wait_time = 2.0;
         self->disable_ligatures = OPT(disable_ligatures);

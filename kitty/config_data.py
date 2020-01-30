@@ -846,6 +846,37 @@ of windows set :opt:`dynamic_background_opacity` to :code:`yes` (this is off by
 default as it has a performance cost)
 '''))
 
+
+def startup_session(x):
+    if x.lower() == 'none':
+        return
+    x = os.path.expanduser(x)
+    x = os.path.expandvars(x)
+    if not os.path.isabs(x):
+        x = os.path.join(config_dir, x)
+    return x
+
+
+o('background_image', 'none', option_type=startup_session, long_text=_('''
+Path to a background image. Must be PNG.'''))
+
+o('background_image_layout', 'tiling', option_type=choices('tiling', 'scaled', 'mirror_tiled'), long_text=_('''
+Whether to tile or scale the background image.'''))
+
+o('background_image_linear', False, long_text=_('''
+When background image is scaled, whether linear interpolation should be used.'''))
+
+o('background_image_opacity', 0.5, option_type=positive_float, long_text=_('''
+Background image opacity, between 0.0 and 1.0 inclusive. This
+can only ever decrease a background's opacity, if the image is already
+semi-transparent, "1" is interpreted as the image's current transparency.'''))
+
+o('background_image_scale', 1.0, option_type=positive_float, long_text=_('''
+Only has an effect if :opt:`background_image_layout` is tiling, should be positive.'''))
+
+o('background_image_scale', 1.0, option_type=positive_float, long_text=_('''
+Only has an effect if :opt:`background_image_layout` is tiling, should be positive.'''))
+
 o('dynamic_background_opacity', False, long_text=_('''
 Allow changing of the :opt:`background_opacity` dynamically, using either keyboard
 shortcuts (:sc:`increase_background_opacity` and :sc:`decrease_background_opacity`)
@@ -964,16 +995,6 @@ Periodically check if an update to kitty is available. If an update is found
 a system notification is displayed informing you of the available update.
 The default is to check every 24 hrs, set to zero to disable.
 '''))
-
-
-def startup_session(x):
-    if x.lower() == 'none':
-        return
-    x = os.path.expanduser(x)
-    x = os.path.expandvars(x)
-    if not os.path.isabs(x):
-        x = os.path.join(config_dir, x)
-    return x
 
 
 o('startup_session', 'none', option_type=startup_session, long_text=_('''
