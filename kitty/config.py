@@ -241,6 +241,14 @@ def disable_ligatures_in(func, rest):
     return func, [where, strategy]
 
 
+@func_with_args('layout_action')
+def layout_action(func, rest):
+    parts = rest.split(maxsplit=1)
+    if not parts:
+        raise ValueError('layout_action must have at least one argument')
+    return func, [parts[0], tuple(parts[1:])]
+
+
 def parse_marker_spec(ftype, parts):
     flags = re.UNICODE
     if ftype in ('text', 'itext', 'regex', 'iregex'):

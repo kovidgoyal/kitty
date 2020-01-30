@@ -457,6 +457,9 @@ class Layout:  # {{{
                 yield all_borders
             else:
                 yield no_borders
+
+    def layout_action(self, action_name, args, all_windows, active_window_idx):
+        pass
 # }}}
 
 
@@ -1362,6 +1365,27 @@ class Splits(Layout):
                     p2.one = w1
                 else:
                     p2.two = w1
+
+    def layout_action(self, action_name, args, all_windows, active_window_idx):
+        if action_name == 'rotate':
+            args = args or ('90',)
+            try:
+                amt = int(args[0])
+            except Exception:
+                amt = 90
+            if amt not in (90, 180, 270):
+                amt = 90
+            rotate = amt in (90, 270)
+            swap = amt in (180, 270)
+            w = all_windows[active_window_idx]
+            wid = w.overlay_for or w.id
+            pair = self.pairs_root.pair_for_window(wid)
+            if pair is not None and not pair.is_redundant:
+                if rotate:
+                    pair.horizontal = not pair.horizontal
+                if swap:
+                    pair.one, pair.two = pair.two, pair.one
+                return True
 
 # }}}
 

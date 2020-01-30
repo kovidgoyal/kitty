@@ -236,6 +236,15 @@ class Tab:  # {{{
         if self.current_layout.remove_all_biases():
             self.relayout()
 
+    def layout_action(self, action_name, args):
+        ret = self.current_layout.layout_action(action_name, args, self.windows, self.active_window_idx)
+        if ret is None:
+            ring_bell()
+            return
+        if isinstance(ret, int) and not isinstance(ret, bool):
+            self.active_window_idx = ret
+        self.relayout()
+
     def launch_child(self, use_shell=False, cmd=None, stdin=None, cwd_from=None, cwd=None, env=None, allow_remote_control=False):
         if cmd is None:
             if use_shell:
