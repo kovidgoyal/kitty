@@ -96,12 +96,13 @@ add_os_window() {
                 bgimage->texture_id = 0;
                 RepeatStrategy r;
                 switch (OPT(background_image_layout)) {
-                    case TILING:
-                        r = REPEAT_DEFAULT; break;
                     case SCALED:
                         r = REPEAT_CLAMP; break;
                     case MIRRORED:
-                        r = REPEAT_MIRROR;
+                        r = REPEAT_MIRROR; break;
+                    case TILING:
+                    default:
+                        r = REPEAT_DEFAULT; break;
                 }
                 send_image_to_gpu(&bgimage->texture_id, bgimage->bitmap, bgimage->width,
                         bgimage->height, false, true, false, r);
