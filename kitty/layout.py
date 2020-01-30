@@ -235,10 +235,13 @@ class Layout:  # {{{
 
     def neighbors(self, all_windows, active_window_idx):
         w = all_windows[active_window_idx]
-        windows = process_overlaid_windows(all_windows)[1]
+        if self.needs_all_windows:
+            windows = all_windows
+        else:
+            windows = process_overlaid_windows(all_windows)[1]
         ans = self.neighbors_for_window(w, windows)
         for values in ans.values():
-            values[:] = [idx_for_id(w.id, all_windows) for w in values]
+            values[:] = [idx_for_id(getattr(w, 'id', w), all_windows) for w in values]
         return ans
 
     def move_window(self, all_windows, active_window_idx, delta=1):
@@ -1327,13 +1330,6 @@ class Splits(Layout):
         for pair in self.pairs_root.self_and_descendants():
             if pair.between_border is not None:
                 yield pair.between_border
-
-    def neighbors(self, all_windows, active_window_idx):
-        w = all_windows[active_window_idx]
-        ans = self.neighbors_for_window(w, all_windows)
-        for values in ans.values():
-            values[:] = [idx_for_id(wid, all_windows) for wid in values]
-        return ans
 
     def neighbors_for_window(self, window, windows):
         window_id = window.overlay_for or window.id
