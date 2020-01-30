@@ -138,7 +138,7 @@ define a few extra keybindings in :file:`kitty.conf`::
 Now you can create horizontal and vertical splits by using :kbd:`F5` and
 :kbd:`F6`. You can move them around using :kbd:`shift+arrow keys`
 and you can move focus to neighboring windows using :kbd:`ctrl+arrow keys`.
-And you can switch an existing split from horizontal to vertical and vice versa
+You can switch an existing split from horizontal to vertical and vice versa
 using :kbd:`F7`. Finally, windows can be resized using :ref:`window_resizing`.
 
 This layout takes one option, ``split_axis`` that control if new windows
