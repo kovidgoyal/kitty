@@ -1172,6 +1172,58 @@ class Pair:
             return parent.modify_size_of_child(which, increment, is_horizontal, layout_object)
         return False
 
+    def neighbors_for_window(self, window_id: int, ans: dict, layout_object: 'Splits'):
+
+        def quadrant(is_horizontal, is_first):
+            if is_horizontal:
+                edge, which = ('left', 'right') if is_first else ('right', 'left')
+            else:
+                edge, which = ('top', 'bottom') if is_first else ('bottom', 'top')
+            return edge, which
+
+        def extend(other, edge, which):
+            if not ans[which] and other:
+                if isinstance(other, Pair):
+                    ans[which].extend(other.edge_windows(edge))
+                else:
+                    ans[which].append(other)
+
+        other = self.two if self.one == window_id else self.one
+        extend(other, *quadrant(self.horizontal, self.one == window_id))
+
+        child = self
+        while True:
+            parent = child.parent(layout_object.pairs_root)
+            if parent is None:
+                break
+            other = parent.two if child is parent.one else parent.one
+            extend(other, *quadrant(parent.horizontal, child is parent.one))
+            child = parent
+
+    def edge_windows(self, edge):
+        if self.is_redundant:
+            q = self.one or self.two
+            if q:
+                if isinstance(q, Pair):
+                    yield from q.edge_windows(edge)
+                else:
+                    yield q
+        edges = ('left', 'right') if self.horizontal else ('top', 'bottom')
+        if edge in edges:
+            q = self.one if edge in ('left', 'top') else self.two
+            if q:
+                if isinstance(q, Pair):
+                    yield from q.edge_windows(edge)
+                else:
+                    yield q
+        else:
+            for q in (self.one, self.two):
+                if q:
+                    if isinstance(q, Pair):
+                        yield from q.edge_windows(edge)
+                    else:
+                        yield q
+
 
 class Splits(Layout):
     name = 'splits'
@@ -1276,6 +1328,20 @@ class Splits(Layout):
             if pair.between_border is not None:
                 yield pair.between_border
 
+    def neighbors(self, all_windows, active_window_idx):
+        w = all_windows[active_window_idx]
+        ans = self.neighbors_for_window(w, all_windows)
+        for values in ans.values():
+            values[:] = [idx_for_id(wid, all_windows) for wid in values]
+        return ans
+
+    def neighbors_for_window(self, window, windows):
+        window_id = window.overlay_for or window.id
+        pair = self.pairs_root.pair_for_window(window_id)
+        ans = {'left': [], 'right': [], 'top': [], 'bottom': []}
+        if pair is not None:
+            pair.neighbors_for_window(window_id, ans, self)
+        return ans
 # }}}
 
 
