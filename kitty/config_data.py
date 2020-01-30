@@ -834,7 +834,8 @@ o('background_opacity', 1.0, option_type=unit_float, long_text=_('''
 The opacity of the background. A number between 0 and 1, where 1 is opaque and
 0 is fully transparent.  This will only work if supported by the OS (for
 instance, when using a compositor under X11). Note that it only sets the
-default background color's opacity. This is so that things like the status bar
+background color's opacity in cells that have the same background color as
+the default terminal background. This is so that things like the status bar
 in vim, powerline prompts, etc. still look good.  But it means that if you use
 a color theme with a background color in your editor, it will not be rendered
 as transparent.  Instead you should change the default background color in your
