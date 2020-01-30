@@ -1093,11 +1093,11 @@ class Pair:
             if w is not None:
                 w.set_geometry(id_idx_map[w.id], window_geometry)
 
-    def blank_rects_for_window(self, layout_object: 'Splits', window, left: float, top: float, width: float, height: float):
+    def blank_rects_for_window(self, layout_object, window, left, top, width, height):
         right = left + width - 1
         bottom = top + height - 1
-        g: WindowGeometry = window.geometry
-        rects: list = layout_object.blank_rects
+        g = window.geometry
+        rects = layout_object.blank_rects
         lt = g.left
         if lt > left:
             rects.append(Rect(left, top, lt, bottom + 1))
@@ -1167,7 +1167,7 @@ class Pair:
                 self.apply_window_geometry(self.two, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
                 self.blank_rects_for_window(layout_object, id_window_map[self.two], left, top + h1, width, h2)
 
-    def modify_size_of_child(self, which: int, increment: float, is_horizontal: bool, layout_object: 'Splits'):
+    def modify_size_of_child(self, which, increment, is_horizontal, layout_object):
         if is_horizontal == self.horizontal and not self.is_redundant:
             if which == 2:
                 increment *= -1
@@ -1182,7 +1182,7 @@ class Pair:
             return parent.modify_size_of_child(which, increment, is_horizontal, layout_object)
         return False
 
-    def neighbors_for_window(self, window_id: int, ans: dict, layout_object: 'Splits'):
+    def neighbors_for_window(self, window_id, ans, layout_object):
 
         def quadrant(is_horizontal, is_first):
             if is_horizontal:
