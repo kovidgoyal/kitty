@@ -105,7 +105,7 @@ add_os_window() {
                         r = REPEAT_DEFAULT; break;
                 }
                 send_image_to_gpu(&bgimage->texture_id, bgimage->bitmap, bgimage->width,
-                        bgimage->height, false, true, false, r);
+                        bgimage->height, false, true, OPT(background_image_linear), r);
                 ans->bgimage = bgimage;
                 global_state.bgimage = bgimage;
             }
@@ -533,6 +533,7 @@ PYWRAP1(set_options) {
     S(background_image_scale, PyFloat_AsFloat);
     S(background_image_layout, bglayout);
     S(background_image, (char*)PyUnicode_AsUTF8);
+    S(background_image_linear, PyObject_IsTrue);
     S(dim_opacity, PyFloat_AsFloat);
     S(dynamic_background_opacity, PyObject_IsTrue);
     S(inactive_text_alpha, PyFloat_AsFloat);
