@@ -867,9 +867,6 @@ Whether to tile or scale the background image.'''))
 o('background_image_linear', False, long_text=_('''
 When background image is scaled, whether linear interpolation should be used.'''))
 
-o('background_image_scale', 1.0, option_type=positive_float, long_text=_('''
-Only has an effect if :opt:`background_image_layout` is tiling, should be positive.'''))
-
 o('dynamic_background_opacity', False, long_text=_('''
 Allow changing of the :opt:`background_opacity` dynamically, using either keyboard
 shortcuts (:sc:`increase_background_opacity` and :sc:`decrease_background_opacity`)

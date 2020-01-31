@@ -9,7 +9,7 @@
 #include "gl.h"
 #include <stddef.h>
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, BGIMAGE_TILED_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT, BGIMAGE_UNIT };
 
 // Sprites {{{
@@ -164,6 +164,10 @@ typedef struct {
 
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
 static ssize_t blit_vertex_array;
+typedef struct {
+    GLint image_location, tiled_location, sizes_location, opacity_location;
+} BGImageProgramLayout;
+static BGImageProgramLayout bgimage_program_layout = {0};
 
 static void
 init_cell_program(void) {
@@ -182,6 +186,10 @@ init_cell_program(void) {
     }
 #undef C
     blit_vertex_array = create_vao();
+    bgimage_program_layout.image_location = get_uniform_location(BGIMAGE_PROGRAM, "image");
+    bgimage_program_layout.opacity_location = get_uniform_location(BGIMAGE_PROGRAM, "opacity");
+    bgimage_program_layout.sizes_location = get_uniform_location(BGIMAGE_PROGRAM, "sizes");
+    bgimage_program_layout.tiled_location = get_uniform_location(BGIMAGE_PROGRAM, "tiled");
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
@@ -334,25 +342,24 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
 }
 
 static void
-draw_bg(int program, OSWindow *w) {
+draw_bg(OSWindow *w) {
     blank_canvas(w->is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
-    bind_program(program);
+    bind_program(BGIMAGE_PROGRAM);
     bind_vertex_array(blit_vertex_array);
 
     static bool bgimage_constants_set = false;
     if (!bgimage_constants_set) {
-        glUniform1i(glGetUniformLocation(program_id(program), "image"), BGIMAGE_UNIT);
-        glUniform1f(glGetUniformLocation(program_id(program), "bgimage_scale"), OPT(background_image_scale));
-        glUniform1f(glGetUniformLocation(program_id(program), "bgimage_opacity"), OPT(background_opacity));
+        glUniform1i(bgimage_program_layout.image_location, BGIMAGE_UNIT);
+        glUniform1f(bgimage_program_layout.opacity_location, OPT(background_opacity));
+        GLfloat tiled = (OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED) ? 1 : 0;
+        glUniform1f(bgimage_program_layout.tiled_location, tiled);
         bgimage_constants_set = true;
     }
-    glUniform1f(glGetUniformLocation(program_id(program), "height"), (float)(w->window_height));
-    glUniform1f(glGetUniformLocation(program_id(program), "width"), (float)(w->window_width));
+    glUniform4f(bgimage_program_layout.sizes_location,
+        (GLfloat)w->window_width, (GLfloat)w->window_height, (GLfloat)w->bgimage.width, (GLfloat)w->bgimage.height);
     glActiveTexture(GL_TEXTURE0 + BGIMAGE_UNIT);
-
     glBindTexture(GL_TEXTURE_2D, w->bgimage.texture_id);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
-
     unbind_vertex_array();
     unbind_program();
 }
@@ -647,7 +654,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
     if (w->bgimage.texture_id) {
         glEnable(GL_BLEND);
         BLEND_ONTO_OPAQUE;
-        draw_bg((OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED) ? BGIMAGE_TILED_PROGRAM : BGIMAGE_PROGRAM, w);
+        draw_bg(w);
     }
 
     if (num_border_rects) {
@@ -769,7 +776,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(BGIMAGE_TILED_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
