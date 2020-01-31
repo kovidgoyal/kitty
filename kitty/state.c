@@ -82,7 +82,7 @@ add_os_window() {
     ans->gvao_idx = create_graphics_vao();
     ans->background_opacity = OPT(background_opacity);
 
-    bool wants_bg = OPT(background_image) != NULL;
+    bool wants_bg = OPT(background_image) && OPT(background_image)[0] != 0;
     if (wants_bg) {
         bool has_bg;
         has_bg = global_state.bgimage != NULL;
@@ -450,7 +450,8 @@ window_title_in(PyObject *title_in) {
     return ALL;
 }
 
-static BackgroundImageLayout bglayout(PyObject *layout_name) {
+static BackgroundImageLayout
+bglayout(PyObject *layout_name) {
     const char *name = PyUnicode_AsUTF8(layout_name);
     switch(name[0]) {
         case 't': return TILING;
@@ -460,6 +461,18 @@ static BackgroundImageLayout bglayout(PyObject *layout_name) {
     }
     return TILING;
 }
+
+static void
+background_image(PyObject *src) {
+    if (OPT(background_image)) free(OPT(background_image));
+    OPT(background_image) = NULL;
+    if (src == Py_None || !PyUnicode_Check(src)) return;
+    Py_ssize_t sz;
+    const char *s = PyUnicode_AsUTF8AndSize(src, &sz);
+    OPT(background_image) = calloc(sz + 1, 1);
+    if (OPT(background_image)) memcpy(OPT(background_image), s, sz);
+}
+
 
 static MouseShape
 pointer_shape(PyObject *shape_name) {
@@ -532,7 +545,6 @@ PYWRAP1(set_options) {
     S(background_image_opacity, PyFloat_AsFloat);
     S(background_image_scale, PyFloat_AsFloat);
     S(background_image_layout, bglayout);
-    S(background_image, (char*)PyUnicode_AsUTF8);
     S(background_image_linear, PyObject_IsTrue);
     S(dim_opacity, PyFloat_AsFloat);
     S(dynamic_background_opacity, PyObject_IsTrue);
@@ -600,6 +612,8 @@ PYWRAP1(set_options) {
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
     GA(sequence_map); set_special_keys(ret);
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+
+    GA(background_image); background_image(ret); Py_CLEAR(ret);
 
 #define read_adjust(name) { \
     PyObject *al = PyObject_GetAttrString(opts, #name); \
@@ -945,6 +959,7 @@ finalize(void) {
     }
     if (detached_windows.windows) free(detached_windows.windows);
     detached_windows.capacity = 0;
+    if (OPT(background_image)) free(OPT(background_image));
 }
 
 bool

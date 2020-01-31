@@ -332,7 +332,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     return changed;
 }
 
-void
+static void
 draw_bg(int program, OSWindow *w) {
     if (w->bvao_idx == 0) {
         const GLfloat screenrect[4][2] = {
@@ -345,7 +345,7 @@ draw_bg(int program, OSWindow *w) {
         bind_vertex_array(w->bvao_idx);
         glGenBuffers(1, &w->vbo_idx);
         glBindBuffer(GL_ARRAY_BUFFER, w->vbo_idx);
-        glBufferData(GL_ARRAY_BUFFER, 4*2*sizeof(float), screenrect, GL_STATIC_DRAW);
+        glBufferData(GL_ARRAY_BUFFER, sizeof(screenrect), screenrect, GL_STATIC_DRAW);
     }
     bind_vertex_array(w->bvao_idx);
     glBindBuffer(GL_ARRAY_BUFFER, w->vbo_idx);

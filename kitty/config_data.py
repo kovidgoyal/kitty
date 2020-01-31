@@ -848,7 +848,7 @@ default as it has a performance cost)
 '''))
 
 
-def startup_session(x):
+def config_or_absolute_path(x):
     if x.lower() == 'none':
         return
     x = os.path.expanduser(x)
@@ -858,8 +858,8 @@ def startup_session(x):
     return x
 
 
-o('background_image', 'none', option_type=startup_session, long_text=_('''
-Path to a background image. Must be PNG.'''))
+o('background_image', 'none', option_type=config_or_absolute_path, long_text=_('''
+Path to a background image. Must be in PNG format.'''))
 
 o('background_image_layout', 'tiling', option_type=choices('tiling', 'scaled', 'mirror_tiled'), long_text=_('''
 Whether to tile or scale the background image.'''))
@@ -995,7 +995,7 @@ The default is to check every 24 hrs, set to zero to disable.
 '''))
 
 
-o('startup_session', 'none', option_type=startup_session, long_text=_('''
+o('startup_session', 'none', option_type=config_or_absolute_path, long_text=_('''
 Path to a session file to use for all kitty instances. Can be overridden
 by using the :option:`kitty --session` command line option for individual
 instances. See :ref:`sessions` in the kitty documentation for details. Note
