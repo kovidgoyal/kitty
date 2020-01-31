@@ -670,7 +670,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
     }
 
     if (num_border_rects) {
-    bind_vertex_array(vao_idx);
+        bind_vertex_array(vao_idx);
         bind_program(BORDERS_PROGRAM);
         if (rect_data_is_dirty) {
             size_t sz = sizeof(GLuint) * 5 * num_border_rects;
@@ -688,7 +688,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));
 #undef CV3
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
-    unbind_vertex_array();
+        unbind_vertex_array();
         unbind_program();
     }
     glDisable(GL_BLEND);

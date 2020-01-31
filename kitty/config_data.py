@@ -874,9 +874,6 @@ semi-transparent, "1" is interpreted as the image's current transparency.'''))
 o('background_image_scale', 1.0, option_type=positive_float, long_text=_('''
 Only has an effect if :opt:`background_image_layout` is tiling, should be positive.'''))
 
-o('background_image_scale', 1.0, option_type=positive_float, long_text=_('''
-Only has an effect if :opt:`background_image_layout` is tiling, should be positive.'''))
-
 o('dynamic_background_opacity', False, long_text=_('''
 Allow changing of the :opt:`background_opacity` dynamically, using either keyboard
 shortcuts (:sc:`increase_background_opacity` and :sc:`decrease_background_opacity`)

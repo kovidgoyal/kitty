@@ -263,8 +263,8 @@ bool png_path_to_bitmap(uint8_t** data, unsigned int* width, unsigned int* heigh
     *data = calloc(filesize, sizeof(char));
     fseek(fp, 0L, SEEK_SET); // rewind() deprecated on some platforms
     size_t r = fread(*data, sizeof(char), filesize, fp);
-    if (r != filesize) return false;
     fclose(fp);
+    if (r != filesize) return false;
     png_read_data d;
     memset(&d, 0, sizeof(png_read_data));
     inflate_png_inner(&d, *data, filesize);
