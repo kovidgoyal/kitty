@@ -867,11 +867,6 @@ Whether to tile or scale the background image.'''))
 o('background_image_linear', False, long_text=_('''
 When background image is scaled, whether linear interpolation should be used.'''))
 
-o('background_image_opacity', 0.5, option_type=positive_float, long_text=_('''
-Background image opacity, between 0.0 and 1.0 inclusive. This
-can only ever decrease a background's opacity, if the image is already
-semi-transparent, "1" is interpreted as the image's current transparency.'''))
-
 o('background_image_scale', 1.0, option_type=positive_float, long_text=_('''
 Only has an effect if :opt:`background_image_layout` is tiling, should be positive.'''))
 

@@ -540,7 +540,6 @@ PYWRAP1(set_options) {
     S(cursor_blink_interval, parse_s_double_to_monotonic_t);
     S(cursor_stop_blinking_after, parse_s_double_to_monotonic_t);
     S(background_opacity, PyFloat_AsFloat);
-    S(background_image_opacity, PyFloat_AsFloat);
     S(background_image_scale, PyFloat_AsFloat);
     S(background_image_layout, bglayout);
     S(background_image_linear, PyObject_IsTrue);

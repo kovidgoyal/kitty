@@ -280,6 +280,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
     rd->inverted = inverted ? 1 : 0;
     rd->background_opacity = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
+    if (os_window->bgimage.texture_id) rd->background_opacity = 0;
 
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
@@ -334,7 +335,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
 
 static void
 draw_bg(int program, OSWindow *w) {
-    glClear(GL_COLOR_BUFFER_BIT);
+    blank_canvas(w->is_semi_transparent ? OPT(background_opacity) : 1.0f, OPT(background));
     bind_program(program);
     bind_vertex_array(blit_vertex_array);
 
@@ -342,7 +343,7 @@ draw_bg(int program, OSWindow *w) {
     if (!bgimage_constants_set) {
         glUniform1i(glGetUniformLocation(program_id(program), "image"), BGIMAGE_UNIT);
         glUniform1f(glGetUniformLocation(program_id(program), "bgimage_scale"), OPT(background_image_scale));
-        glUniform1f(glGetUniformLocation(program_id(program), "bgimage_opacity"), OPT(background_image_opacity));
+        glUniform1f(glGetUniformLocation(program_id(program), "bgimage_opacity"), OPT(background_opacity));
         bgimage_constants_set = true;
     }
     glUniform1f(glGetUniformLocation(program_id(program), "height"), (float)(w->window_height));
@@ -428,13 +429,14 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
 
     bind_program(CELL_BG_PROGRAM);
     // draw background for all cells
-    glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
-    // This gives users a way to still use background images without a compositor.
-    if (OPT(background_opacity) != 0.0)
-    glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
+    if (!w->bgimage.texture_id) {
+        glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
+        glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
+    }
 
     if (screen->grman->num_of_below_refs || w->bgimage.texture_id) {
-        draw_graphics(GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
+        if (screen->grman->num_of_below_refs) draw_graphics(
+                GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
         bind_program(CELL_BG_PROGRAM);
         // draw background for non-default bg cells
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 2);
@@ -658,7 +660,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
             unmap_vao_buffer(vao_idx, 0);
         }
 #define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-        glUniform1f(border_uniform_locations[BORDER_background_opacity], w->is_semi_transparent ? MAX(w->background_opacity, OPT(background_image_opacity)) : 1.0f);
+        glUniform1f(border_uniform_locations[BORDER_background_opacity], w->is_semi_transparent ? w->background_opacity: 1.0f);
         glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
         glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
         glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));

@@ -41,7 +41,6 @@ typedef struct {
 
     char* background_image;
     BackgroundImageLayout background_image_layout;
-    float background_image_opacity;
     float background_image_scale;
     bool background_image_linear;
 
