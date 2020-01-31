@@ -169,8 +169,7 @@ typedef struct {
     monotonic_t last_render_frame_received_at;
     uint64_t render_calls;
     id_type last_focused_counter;
-    ssize_t gvao_idx, bvao_idx;
-    unsigned int vbo_idx;
+    ssize_t gvao_idx;
 } OSWindow;
 
 

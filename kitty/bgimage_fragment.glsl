@@ -6,17 +6,16 @@ uniform float bgimage_opacity;
 #ifdef TILED
 uniform float bgimage_scale;
 
-// These are of the window, not the screen.
-uniform float width;
-uniform float height;
+uniform float window_width;
+uniform float window_height;
 #endif
 in vec2 texcoord;
 out vec4 color;
 
 void main() {
 #ifdef TILED
-    vec2 txsz = vec2(width,height) / textureSize(image,0);
-    txsz /= bgimage_scale;
+    ivec2 image_size = textureSize(image, 0);
+    vec2 txsz = vec2(window_width / (float(image_size[0]) * bgimage_scale), window_height / (float(image_size[1]) * bgimage_scale));
     color = texture(image, texcoord * txsz);
 #endif
 #ifdef SIMPLE

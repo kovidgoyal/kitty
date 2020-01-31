@@ -334,28 +334,11 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
 
 static void
 draw_bg(int program, OSWindow *w) {
-    if (w->bvao_idx == 0) {
-        const GLfloat screenrect[4][2] = {
-            { -1.0,  1.0  },
-            { -1.0, -1.0  },
-            {  1.0, -1.0  },
-            {  1.0, 1.0  },
-        };
-        w->bvao_idx = create_vao();
-        bind_vertex_array(w->bvao_idx);
-        glGenBuffers(1, &w->vbo_idx);
-        glBindBuffer(GL_ARRAY_BUFFER, w->vbo_idx);
-        glBufferData(GL_ARRAY_BUFFER, sizeof(screenrect), screenrect, GL_STATIC_DRAW);
-    }
-    bind_vertex_array(w->bvao_idx);
-    glBindBuffer(GL_ARRAY_BUFFER, w->vbo_idx);
-
     glClear(GL_COLOR_BUFFER_BIT);
-    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
-    glEnableVertexAttribArray(0);
-
     bind_program(program);
-    static bool bgimage_constants_set;
+    bind_vertex_array(blit_vertex_array);
+
+    static bool bgimage_constants_set = false;
     if (!bgimage_constants_set) {
         glUniform1i(glGetUniformLocation(program_id(program), "image"), BGIMAGE_UNIT);
         glUniform1f(glGetUniformLocation(program_id(program), "bgimage_scale"), OPT(background_image_scale));
@@ -658,15 +641,11 @@ create_border_vao(void) {
 
 void
 draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
-    glEnable(GL_BLEND);
-    BLEND_ONTO_OPAQUE;
 
     if (w->bgimage != NULL) {
-        int program;
-        if (OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED) program = BGIMAGE_TILED_PROGRAM;
-        else program = BGIMAGE_PROGRAM;
-
-        draw_bg(program, w);
+        glEnable(GL_BLEND);
+        BLEND_ONTO_OPAQUE;
+        draw_bg((OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED) ? BGIMAGE_TILED_PROGRAM : BGIMAGE_PROGRAM, w);
     }
 
     if (num_border_rects) {
@@ -691,7 +670,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         unbind_vertex_array();
         unbind_program();
     }
-    glDisable(GL_BLEND);
+    if (w->bgimage != NULL) glDisable(GL_BLEND);
 }
 
 // }}}
