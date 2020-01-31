@@ -247,32 +247,41 @@ add_trim_predicate(Image *img) {
     return !img->data_loaded || (!img->client_id && !img->refcnt);
 }
 
-bool png_path_to_bitmap(uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz) {
-    const char* path = OPT(background_image);
-    if (access(path, R_OK) != 0) {
-        log_error("File %s, (requested background image,) does not exist (%d)", path, errno);
-        return false;
-    }
+bool
+png_path_to_bitmap(const char* path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz) {
     FILE* fp = fopen(path, "r");
     if (fp == NULL) {
-        log_error("File %s, (requested background image,) could not be opened", path);
+        log_error("The PNG image: %s could not be opened with error: %s", path, strerror(errno));
         return false;
     }
-    fseek(fp, 0L, SEEK_END);
-    size_t filesize = ftell(fp);
-    *data = calloc(filesize, sizeof(char));
-    fseek(fp, 0L, SEEK_SET); // rewind() deprecated on some platforms
-    size_t r = fread(*data, sizeof(char), filesize, fp);
-    fclose(fp);
-    if (r != filesize) return false;
-    png_read_data d;
-    memset(&d, 0, sizeof(png_read_data));
-    inflate_png_inner(&d, *data, filesize);
+    size_t capacity = 16*1024, pos = 0;
+    unsigned char *buf = malloc(capacity);
+    if (!buf) { log_error("Out of memory reading PNG file at: %s", path); fclose(fp); return false; }
+    while (!feof(fp)) {
+        if (pos - capacity < 1024) {
+            capacity *= 2;
+            buf = realloc(buf, capacity);
+            if (!buf) {
+                log_error("Out of memory reading PNG file at: %s", path); fclose(fp); return false;
+            }
+        }
+        pos += fread(buf + pos, sizeof(char), capacity - pos, fp);
+        int saved_errno = errno;
+        if (ferror(fp) && saved_errno != EINTR) {
+            log_error("Failed while reading from file: %s with error: %s", path, strerror(saved_errno));
+            fclose(fp);
+            free(buf);
+            return false;
+        }
+    }
+    fclose(fp); fp = NULL;
+    png_read_data d = {0};
+    inflate_png_inner(&d, buf, pos);
+    free(buf);
     if (!d.ok) {
-        log_error("File %s, (requested background image,) not readable by libpng", path);
+        log_error("Failed to decode PNG image at: %s", path);
         return false;
     }
-    free(*data);
     *data = d.decompressed;
     *sz = d.sz;
     *height = d.height; *width = d.width;

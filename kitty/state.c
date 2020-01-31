@@ -91,7 +91,7 @@ add_os_window() {
             BackgroundImage* bgimage = calloc(1, sizeof(BackgroundImage));
             size_t size;
 
-            has_bg = png_path_to_bitmap(&bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
+            has_bg = png_path_to_bitmap(OPT(background_image), &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
             if (has_bg) {
                 bgimage->texture_id = 0;
                 RepeatStrategy r;
