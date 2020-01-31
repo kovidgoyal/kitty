@@ -84,16 +84,9 @@ add_os_window() {
 
     bool wants_bg = OPT(background_image) && OPT(background_image)[0] != 0;
     if (wants_bg) {
-        bool has_bg;
-        has_bg = global_state.bgimage != NULL;
-
-        if (!has_bg) {
-            BackgroundImage* bgimage = calloc(1, sizeof(BackgroundImage));
+        if (!global_state.bgimage.texture_id && !global_state.bgimage.load_failed) {
             size_t size;
-
-            has_bg = png_path_to_bitmap(OPT(background_image), &bgimage->bitmap, &bgimage->width, &bgimage->height, &size);
-            if (has_bg) {
-                bgimage->texture_id = 0;
+            if (png_path_to_bitmap(OPT(background_image), &global_state.bgimage.bitmap, &global_state.bgimage.width, &global_state.bgimage.height, &size)) {
                 RepeatStrategy r;
                 switch (OPT(background_image_layout)) {
                     case SCALED:
@@ -104,14 +97,16 @@ add_os_window() {
                     default:
                         r = REPEAT_DEFAULT; break;
                 }
-                send_image_to_gpu(&bgimage->texture_id, bgimage->bitmap, bgimage->width,
-                        bgimage->height, false, true, OPT(background_image_linear), r);
-                ans->bgimage = bgimage;
-                global_state.bgimage = bgimage;
-            }
-        } else {
-            // Reusing already loaded bgimage
-            ans->bgimage = global_state.bgimage;
+                global_state.bgimage.texture_id = 0;
+                send_image_to_gpu(&global_state.bgimage.texture_id, global_state.bgimage.bitmap, global_state.bgimage.width,
+                        global_state.bgimage.height, false, true, OPT(background_image_linear), r);
+                global_state.bgimage.needs_free = true;
+                free(global_state.bgimage.bitmap); global_state.bgimage.bitmap = NULL;
+            } else global_state.bgimage.load_failed = true;
+        }
+        if (global_state.bgimage.texture_id) {
+            memcpy(&ans->bgimage, &global_state.bgimage, sizeof(global_state.bgimage));
+            ans->bgimage.needs_free = false;
         }
     }
 
@@ -293,6 +288,9 @@ destroy_os_window_item(OSWindow *w) {
     remove_vao(w->tab_bar_render_data.vao_idx);
     remove_vao(w->gvao_idx);
     free(w->tabs); w->tabs = NULL;
+    if (w->bgimage.needs_free) {
+        free(w->bgimage.bitmap); free_texture(&w->bgimage.texture_id);
+    }
 }
 
 bool
@@ -960,6 +958,13 @@ finalize(void) {
     if (detached_windows.windows) free(detached_windows.windows);
     detached_windows.capacity = 0;
     if (OPT(background_image)) free(OPT(background_image));
+    if (global_state.bgimage.needs_free) {
+        free(global_state.bgimage.bitmap);
+        // we leak the texture here since it is not guaranteed
+        // that freeing the texture will work during shutdown and
+        // the GPU driver should take care of it when the OpenGL context is
+        // destroyed.
+    }
 }
 
 bool
