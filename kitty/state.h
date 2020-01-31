@@ -13,6 +13,7 @@
 
 typedef enum { LEFT_EDGE, TOP_EDGE, RIGHT_EDGE, BOTTOM_EDGE } Edge;
 typedef enum { RESIZE_DRAW_STATIC, RESIZE_DRAW_SCALED, RESIZE_DRAW_BLANK, RESIZE_DRAW_SIZE } ResizeDrawStrategy;
+typedef enum { REPEAT_MIRROR, REPEAT_CLAMP, REPEAT_DEFAULT } RepeatStrategy;
 
 typedef struct {
     monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval;
@@ -37,6 +38,13 @@ typedef struct {
     int adjust_line_height_px, adjust_column_width_px;
     float adjust_line_height_frac, adjust_column_width_frac;
     float background_opacity, dim_opacity;
+
+    char* background_image;
+    BackgroundImageLayout background_image_layout;
+    float background_image_opacity;
+    float background_image_scale;
+    bool background_image_linear;
+
     bool dynamic_background_opacity;
     float inactive_text_alpha;
     float window_padding_width;
@@ -136,6 +144,7 @@ typedef struct {
     int viewport_width, viewport_height, window_width, window_height;
     double viewport_x_ratio, viewport_y_ratio;
     Tab *tabs;
+    BackgroundImage *bgimage;
     unsigned int active_tab, num_tabs, capacity, last_active_tab, last_num_tabs, last_active_window_id;
     bool focused_at_last_render, needs_render;
     ScreenRenderData tab_bar_render_data;
@@ -158,8 +167,10 @@ typedef struct {
     id_type temp_font_group_id;
     enum RENDER_STATE render_state;
     monotonic_t last_render_frame_received_at;
+    uint64_t render_calls;
     id_type last_focused_counter;
-    ssize_t gvao_idx;
+    ssize_t gvao_idx, bvao_idx;
+    unsigned int vbo_idx;
 } OSWindow;
 
 
@@ -168,6 +179,7 @@ typedef struct {
 
     id_type os_window_id_counter, tab_id_counter, window_id_counter;
     PyObject *boss;
+    BackgroundImage *bgimage;
     OSWindow *os_windows;
     size_t num_os_windows, capacity;
     OSWindow *callback_os_window;
@@ -223,7 +235,7 @@ void draw_centered_alpha_mask(OSWindow *w, size_t screen_width, size_t screen_he
 void update_surface_size(int, int, uint32_t);
 void free_texture(uint32_t*);
 void free_framebuffer(uint32_t*);
-void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool);
+void send_image_to_gpu(uint32_t*, const void*, int32_t, int32_t, bool, bool, bool, RepeatStrategy);
 void send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
 void blank_canvas(float, color_type);
 void blank_os_window(OSWindow *);

@@ -9,8 +9,8 @@
 #include "gl.h"
 #include <stddef.h>
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, NUM_PROGRAMS };
-enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, BGIMAGE_TILED_PROGRAM, NUM_PROGRAMS };
+enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT, BGIMAGE_UNIT };
 
 // Sprites {{{
 typedef struct {
@@ -132,14 +132,23 @@ send_sprite_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigne
 }
 
 void
-send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned) {
+send_image_to_gpu(GLuint *tex_id, const void* data, GLsizei width, GLsizei height, bool is_opaque, bool is_4byte_aligned, bool linear, RepeatStrategy repeat) {
     if (!(*tex_id)) { glGenTextures(1, tex_id);  }
     glBindTexture(GL_TEXTURE_2D, *tex_id);
     glPixelStorei(GL_UNPACK_ALIGNMENT, is_4byte_aligned ? 4 : 1);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, linear ? GL_LINEAR : GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, linear ? GL_LINEAR : GL_NEAREST);
+    RepeatStrategy r;
+    switch (repeat) {
+        case REPEAT_MIRROR:
+            r = GL_MIRRORED_REPEAT; break;
+        case REPEAT_CLAMP:
+            r = GL_CLAMP_TO_EDGE; break;
+        default:
+            r = GL_REPEAT;
+    }
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, r);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, r);
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, is_opaque ? GL_RGB : GL_RGBA, GL_UNSIGNED_BYTE, data);
 }
 
@@ -323,6 +332,47 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     return changed;
 }
 
+void
+draw_bg(int program, OSWindow *w) {
+    if (w->bvao_idx == 0) {
+        const GLfloat screenrect[4][2] = {
+            { -1.0,  1.0  },
+            { -1.0, -1.0  },
+            {  1.0, -1.0  },
+            {  1.0, 1.0  },
+        };
+        w->bvao_idx = create_vao();
+        bind_vertex_array(w->bvao_idx);
+        glGenBuffers(1, &w->vbo_idx);
+        glBindBuffer(GL_ARRAY_BUFFER, w->vbo_idx);
+        glBufferData(GL_ARRAY_BUFFER, 4*2*sizeof(float), screenrect, GL_STATIC_DRAW);
+    }
+    bind_vertex_array(w->bvao_idx);
+    glBindBuffer(GL_ARRAY_BUFFER, w->vbo_idx);
+
+    glClear(GL_COLOR_BUFFER_BIT);
+    glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 0, 0);
+    glEnableVertexAttribArray(0);
+
+    bind_program(program);
+    static bool bgimage_constants_set;
+    if (!bgimage_constants_set) {
+        glUniform1i(glGetUniformLocation(program_id(program), "image"), BGIMAGE_UNIT);
+        glUniform1f(glGetUniformLocation(program_id(program), "bgimage_scale"), OPT(background_image_scale));
+        glUniform1f(glGetUniformLocation(program_id(program), "bgimage_opacity"), OPT(background_image_opacity));
+        bgimage_constants_set = true;
+    }
+    glUniform1f(glGetUniformLocation(program_id(program), "height"), (float)(w->window_height));
+    glUniform1f(glGetUniformLocation(program_id(program), "width"), (float)(w->window_width));
+    glActiveTexture(GL_TEXTURE0 + BGIMAGE_UNIT);
+
+    glBindTexture(GL_TEXTURE_2D, w->bgimage->texture_id);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+
+    unbind_vertex_array();
+    unbind_program();
+}
+
 static void
 draw_graphics(int program, ssize_t vao_idx, ssize_t gvao_idx, ImageRenderData *data, GLuint start, GLuint count) {
     bind_program(program);
@@ -389,16 +439,18 @@ draw_cells_simple(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
 }
 
 static void
-draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
+draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *w) {
     glEnable(GL_BLEND);
     BLEND_ONTO_OPAQUE;
 
     bind_program(CELL_BG_PROGRAM);
     // draw background for all cells
     glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
+    // This gives users a way to still use background images without a compositor.
+    if (OPT(background_opacity) != 0.0)
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
 
-    if (screen->grman->num_of_below_refs) {
+    if (screen->grman->num_of_below_refs || w->bgimage != NULL) {
         draw_graphics(GRAPHICS_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
         bind_program(CELL_BG_PROGRAM);
         // draw background for non-default bg cells
@@ -435,12 +487,13 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, os_window->offscreen_framebuffer);
     glFramebufferTexture(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, os_window->offscreen_texture_id, 0);
     /* if (glCheckFramebufferStatus(GL_DRAW_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) fatal("Offscreen framebuffer not complete"); */
+    glEnable(GL_BLEND);
+    BLEND_PREMULT;
+    glClear(GL_COLOR_BUFFER_BIT);
     bind_program(CELL_BG_PROGRAM);
     // draw background for all cells
     glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
     glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    glEnable(GL_BLEND);
-    BLEND_PREMULT;
 
     if (screen->grman->num_of_below_refs) {
         draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, 0, screen->grman->num_of_below_refs);
@@ -469,11 +522,10 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
 
     if (screen->grman->num_of_positive_refs) draw_graphics(GRAPHICS_PREMULT_PROGRAM, vao_idx, gvao_idx, screen->grman->render_data, screen->grman->num_of_negative_refs + screen->grman->num_of_below_refs, screen->grman->num_of_positive_refs);
 
-    glDisable(GL_BLEND);
     glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+    glEnable(GL_SCISSOR_TEST);
 
     // Now render the framebuffer to the screen
-    glEnable(GL_SCISSOR_TEST);
     bind_program(BLIT_PROGRAM); bind_vertex_array(blit_vertex_array);
     static bool blit_constants_set = false;
     if (!blit_constants_set) {
@@ -484,6 +536,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     glBindTexture(GL_TEXTURE_2D, os_window->offscreen_texture_id);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glDisable(GL_SCISSOR_TEST);
+    glDisable(GL_BLEND);
 }
 
 static inline void
@@ -496,6 +549,7 @@ set_cell_uniforms(float current_inactive_text_alpha, bool force) {
         cell_uniform_data.amask_premult_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "alpha_mask_premult");
 #define S(prog, name, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), val); }
         S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT, 1i);
+        S(GRAPHICS_PROGRAM, image, BGIMAGE_UNIT, 1i);
         S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT, 1i);
         S(CELL_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i); S(CELL_FG_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i);
         S(CELL_PROGRAM, dim_opacity, OPT(dim_opacity), 1f); S(CELL_FG_PROGRAM, dim_opacity, OPT(dim_opacity), 1f);
@@ -558,10 +612,10 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
     );
 #undef SCALE
     if (os_window->is_semi_transparent) {
-        if (screen->grman->count) draw_cells_interleaved_premult(vao_idx, gvao_idx, screen, os_window);
+        if (screen->grman->count || os_window->bgimage != NULL) draw_cells_interleaved_premult(vao_idx, gvao_idx, screen, os_window);
         else draw_cells_simple(vao_idx, gvao_idx, screen);
     } else {
-        if (screen->grman->num_of_negative_refs || screen->grman->num_of_below_refs) draw_cells_interleaved(vao_idx, gvao_idx, screen);
+        if (screen->grman->num_of_negative_refs || screen->grman->num_of_below_refs || os_window->bgimage != NULL) draw_cells_interleaved(vao_idx, gvao_idx, screen, os_window);
         else draw_cells_simple(vao_idx, gvao_idx, screen);
     }
 }
@@ -604,16 +658,28 @@ create_border_vao(void) {
 
 void
 draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_buf, bool rect_data_is_dirty, uint32_t viewport_width, uint32_t viewport_height, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg, OSWindow *w) {
+    glEnable(GL_BLEND);
+    BLEND_ONTO_OPAQUE;
+
+    if (w->bgimage != NULL) {
+        int program;
+        if (OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED) program = BGIMAGE_TILED_PROGRAM;
+        else program = BGIMAGE_PROGRAM;
+
+        draw_bg(program, w);
+    }
+
     if (num_border_rects) {
+        bind_vertex_array(vao_idx);
+        bind_program(BORDERS_PROGRAM);
         if (rect_data_is_dirty) {
             size_t sz = sizeof(GLuint) * 5 * num_border_rects;
             void *borders_buf_address = alloc_and_map_vao_buffer(vao_idx, sz, 0, GL_STATIC_DRAW, GL_WRITE_ONLY);
             if (borders_buf_address) memcpy(borders_buf_address, rect_buf, sz);
             unmap_vao_buffer(vao_idx, 0);
         }
-        bind_program(BORDERS_PROGRAM);
 #define CV3(x) (((float)((x >> 16) & 0xff))/255.f), (((float)((x >> 8) & 0xff))/255.f), (((float)(x & 0xff))/255.f)
-        glUniform1f(border_uniform_locations[BORDER_background_opacity], w->is_semi_transparent ? w->background_opacity : 1.0f);
+        glUniform1f(border_uniform_locations[BORDER_background_opacity], w->is_semi_transparent ? MAX(w->background_opacity, OPT(background_image_opacity)) : 1.0f);
         glUniform3f(border_uniform_locations[BORDER_active_border_color], CV3(OPT(active_border_color)));
         glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
         glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
@@ -621,11 +687,11 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
         glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));
 #undef CV3
-        bind_vertex_array(vao_idx);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, num_border_rects);
         unbind_vertex_array();
         unbind_program();
     }
+    glDisable(GL_BLEND);
 }
 
 // }}}
@@ -722,7 +788,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(BGIMAGE_TILED_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
