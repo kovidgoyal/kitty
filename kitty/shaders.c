@@ -288,7 +288,6 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     rd->sprite_dx = 1.0f / (float)x; rd->sprite_dy = 1.0f / (float)y;
     rd->inverted = inverted ? 1 : 0;
     rd->background_opacity = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
-    if (os_window->bgimage.texture_id) rd->background_opacity = 0;
 
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
     rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
