@@ -28,7 +28,7 @@ const vec2 tex_map[] = vec2[4](
 
 
 float scale_factor(float window, float image) {
-    return max(1, window / image);
+    return window / image;
 }
 
 float tiling_factor(int i) {
