@@ -53,6 +53,7 @@ def cmd(
     argspec='...',
     string_return_is_error=False,
     args_count=None,
+    args_completion=None
 ):
 
     if options_spec:
@@ -86,6 +87,7 @@ def cmd(
         func.args_count = 0 if not argspec else args_count
         func.get_default = get_defaut_value
         func.payload_get = payload_get
+        func.args_completion = args_completion
         cmap[func.name] = func
         return func
     return w
@@ -1279,7 +1281,8 @@ How the image should be displayed. The value of configured will use the configur
 
 ''' + '\n\n' + MATCH_WINDOW_OPTION,
     argspec='PATH_TO_PNG_IMAGE',
-    args_count=1
+    args_count=1,
+    args_completion={'files': ('PNG Images', ('*.png',))}
 )
 def cmd_set_background_image(global_opts, opts, args):
     '''

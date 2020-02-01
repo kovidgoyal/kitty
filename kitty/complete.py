@@ -266,7 +266,11 @@ def complete_remote_command(ans, cmd_name, words, new_word):
     aliases, alias_map = options_for_cmd(cmd_name)
     if not alias_map:
         return
-    complete_alias_map(ans, words, new_word, alias_map)
+    args_completion = cmap[cmd_name].args_completion
+    args_completer = None
+    if 'files' in args_completion:
+        args_completer = remote_files_completer(args_completion['files'])
+    complete_alias_map(ans, words, new_word, alias_map, complete_args=args_completer)
 
 
 def path_completion(prefix=''):
@@ -324,6 +328,22 @@ def complete_icat_args(ans, opt, prefix):
 
     if opt is None:
         complete_files_and_dirs(ans, prefix, 'Images', icat_file_predicate)
+
+
+def remote_files_completer(spec):
+    name, matchers = spec
+
+    def complete_files_map(ans, opt, prefix):
+
+        def predicate(filename):
+            for m in matchers:
+                if isinstance(m, str):
+                    from fnmatch import fnmatch
+                    return fnmatch(filename, m)
+
+        if opt is None:
+            complete_files_and_dirs(ans, prefix, name, predicate)
+    return complete_files_map
 
 
 def config_file_predicate(filename):

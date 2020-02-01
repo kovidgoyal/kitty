@@ -58,7 +58,7 @@ def options_for_cmd(cmd):
     return tuple(sorted(ans)), alias_map
 
 
-def options_matching(prefix, aliases, alias_map):
+def options_matching(prefix, cmd, last_word, aliases, alias_map):
     for alias in aliases:
         if (not prefix or alias.startswith(prefix)) and alias.startswith('--'):
             yield alias + ' '
@@ -80,7 +80,7 @@ class Completer:
             if len(cmdline) < 2 and not line.endswith(' '):
                 self.matches = list(cmd_names_matching(text))
             else:
-                self.matches = list(options_matching(text, *options_for_cmd(cmdline[0])))
+                self.matches = list(options_matching(text, cmdline[0], cmdline[-1], *options_for_cmd(cmdline[0])))
         if state < len(self.matches):
             return self.matches[state]
 
