@@ -71,6 +71,37 @@ os_window_for_kitty_window(id_type kitty_window_id) {
     return NULL;
 }
 
+static void
+send_bgimage_to_gpu(BackgroundImageLayout layout, BackgroundImage *bgimage) {
+    RepeatStrategy r;
+    switch (layout) {
+        case SCALED:
+            r = REPEAT_CLAMP; break;
+        case MIRRORED:
+            r = REPEAT_MIRROR; break;
+        case TILING:
+        default:
+            r = REPEAT_DEFAULT; break;
+    }
+    bgimage->texture_id = 0;
+    send_image_to_gpu(&bgimage->texture_id, bgimage->bitmap, bgimage->width,
+            bgimage->height, false, true, OPT(background_image_linear), r);
+    free(bgimage->bitmap); bgimage->bitmap = NULL;
+}
+
+static void
+free_bgimage(BackgroundImage *bgimage, bool release_texture) {
+    if (bgimage && bgimage->refcnt) {
+        bgimage->refcnt--;
+        if (bgimage->refcnt == 0) {
+            free(bgimage->bitmap); bgimage->bitmap = NULL;
+            if (release_texture) free_texture(&bgimage->texture_id);
+        }
+    }
+}
+
+static BackgroundImage global_bg_image = {0};
+
 OSWindow*
 add_os_window() {
     WITH_OS_WINDOW_REFS
@@ -84,29 +115,17 @@ add_os_window() {
 
     bool wants_bg = OPT(background_image) && OPT(background_image)[0] != 0;
     if (wants_bg) {
-        if (!global_state.bgimage.texture_id && !global_state.bgimage.load_failed) {
+        if (!global_state.bgimage) {
+            global_state.bgimage = &global_bg_image;
+            global_state.bgimage->refcnt++;
             size_t size;
-            if (png_path_to_bitmap(OPT(background_image), &global_state.bgimage.bitmap, &global_state.bgimage.width, &global_state.bgimage.height, &size)) {
-                RepeatStrategy r;
-                switch (OPT(background_image_layout)) {
-                    case SCALED:
-                        r = REPEAT_CLAMP; break;
-                    case MIRRORED:
-                        r = REPEAT_MIRROR; break;
-                    case TILING:
-                    default:
-                        r = REPEAT_DEFAULT; break;
-                }
-                global_state.bgimage.texture_id = 0;
-                send_image_to_gpu(&global_state.bgimage.texture_id, global_state.bgimage.bitmap, global_state.bgimage.width,
-                        global_state.bgimage.height, false, true, OPT(background_image_linear), r);
-                global_state.bgimage.needs_free = true;
-                free(global_state.bgimage.bitmap); global_state.bgimage.bitmap = NULL;
-            } else global_state.bgimage.load_failed = true;
+            if (png_path_to_bitmap(OPT(background_image), &global_state.bgimage->bitmap, &global_state.bgimage->width, &global_state.bgimage->height, &size)) {
+                send_bgimage_to_gpu(OPT(background_image_layout), global_state.bgimage);
+            }
         }
-        if (global_state.bgimage.texture_id) {
-            memcpy(&ans->bgimage, &global_state.bgimage, sizeof(global_state.bgimage));
-            ans->bgimage.needs_free = false;
+        if (global_state.bgimage->texture_id) {
+            ans->bgimage = global_state.bgimage;
+            ans->bgimage->refcnt++;
         }
     }
 
@@ -288,9 +307,8 @@ destroy_os_window_item(OSWindow *w) {
     remove_vao(w->tab_bar_render_data.vao_idx);
     remove_vao(w->gvao_idx);
     free(w->tabs); w->tabs = NULL;
-    if (w->bgimage.needs_free) {
-        free(w->bgimage.bitmap); free_texture(&w->bgimage.texture_id);
-    }
+    free_bgimage(w->bgimage, true);
+    w->bgimage = NULL;
 }
 
 bool
@@ -884,6 +902,44 @@ PYWRAP1(patch_global_colors) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+pyset_background_image(PyObject *self UNUSED, PyObject *args) {
+    const char *path;
+    PyObject *layout_name = NULL;
+    PyObject *os_window_ids;
+    int configured = 0;
+    PA("sO&|pU", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name);
+    size_t size;
+    BackgroundImageLayout layout = layout_name ? bglayout(layout_name) : OPT(background_image_layout);
+    BackgroundImage *bgimage = calloc(1, sizeof(BackgroundImage));
+    if (!bgimage) return PyErr_NoMemory();
+    if (!png_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size)) {
+        PyErr_Format(PyExc_ValueError, "Failed to load image from: %s", path);
+        free(bgimage);
+        return NULL;
+    }
+    send_bgimage_to_gpu(layout, bgimage);
+    bgimage->refcnt++;
+    if (configured) {
+        free_bgimage(global_state.bgimage, true);
+        global_state.bgimage = bgimage;
+        bgimage->refcnt++;
+        OPT(background_image_layout) = layout;
+    }
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(os_window_ids); i++) {
+        id_type os_window_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(os_window_ids, i));
+        WITH_OS_WINDOW(os_window_id)
+            make_os_window_context_current(os_window);
+            free_bgimage(os_window->bgimage, true);
+            os_window->bgimage = bgimage;
+            os_window->render_calls = 0;
+            bgimage->refcnt++;
+        END_WITH_OS_WINDOW
+    }
+    free_bgimage(bgimage, true);
+    Py_RETURN_NONE;
+}
+
 PYWRAP0(destroy_global_data) {
     Py_CLEAR(global_state.boss);
     free(global_state.os_windows); global_state.os_windows = NULL;
@@ -940,6 +996,7 @@ static PyMethodDef module_methods[] = {
     MW(background_opacity_of, METH_O),
     MW(update_window_visibility, METH_VARARGS),
     MW(global_font_size, METH_VARARGS),
+    MW(set_background_image, METH_VARARGS),
     MW(os_window_font_size, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(patch_global_colors, METH_VARARGS),
@@ -956,13 +1013,12 @@ finalize(void) {
     if (detached_windows.windows) free(detached_windows.windows);
     detached_windows.capacity = 0;
     if (OPT(background_image)) free(OPT(background_image));
-    if (global_state.bgimage.needs_free) {
-        free(global_state.bgimage.bitmap);
-        // we leak the texture here since it is not guaranteed
-        // that freeing the texture will work during shutdown and
-        // the GPU driver should take care of it when the OpenGL context is
-        // destroyed.
-    }
+    // we leak the texture here since it is not guaranteed
+    // that freeing the texture will work during shutdown and
+    // the GPU driver should take care of it when the OpenGL context is
+    // destroyed.
+    free_bgimage(global_state.bgimage, false);
+    global_state.bgimage = NULL;
 }
 
 bool

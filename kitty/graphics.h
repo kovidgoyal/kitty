@@ -59,7 +59,7 @@ typedef struct {
     uint32_t texture_id;
     unsigned int height, width;
     uint8_t* bitmap;
-    bool load_failed, needs_free;
+    uint32_t refcnt;
 } BackgroundImage;
 
 typedef struct {
