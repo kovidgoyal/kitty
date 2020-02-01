@@ -12,7 +12,7 @@ from .cli import (
 )
 from .config import parse_config, parse_send_text_bytes
 from .constants import appname
-from .fast_data_types import focus_os_window
+from .fast_data_types import focus_os_window, set_background_image as set_background_image_impl
 from .launch import (
     launch as do_launch, options_spec as launch_options_spec,
     parse_launch_args
@@ -1249,6 +1249,68 @@ def set_background_opacity(boss, window, payload):
     windows = windows_for_payload(boss, window, payload)
     for os_window_id in {w.os_window_id for w in windows}:
         boss._set_os_window_background_opacity(os_window_id, payload['opacity'])
+# }}}
+
+
+# set_background_image {{{
+@cmd(
+    'Set the background_image',
+    'Set the background image for the specified OS windows.',
+    options_spec='''\
+--all -a
+type=bool-set
+By default, background image is only changed for the currently active OS window. This option will
+cause the image to be changed in all windows.
+
+
+--configured -c
+type=bool-set
+Change the configured background image which is used for new OS windows.
+
+
+--layout
+type=choices
+choices=tiled,scaled,mirror-tiled,configured
+How the image should be displayed. The value of configured will use the configured value.
+
+
+''' + '\n\n' + MATCH_WINDOW_OPTION,
+    argspec='PATH_TO_PNG_IMAGE',
+    args_count=1
+)
+def cmd_set_background_image(global_opts, opts, args):
+    '''
+    path: Path to a PNG image
+    match: Window to change opacity in
+    layout: The image layout
+    all: Boolean indicating operate on all windows
+    configured: Boolean indicating if the configured value should be changed
+    '''
+    if not args:
+        raise SystemExit('Must specify path to PNG image')
+    path = args[0]
+    import imghdr
+    if imghdr.what(path) != 'png':
+        raise SystemExit('{} is not a PNG image'.format(path))
+    return {
+        'path': path, 'match': opts.match, 'configured': opts.configured,
+        'layout': opts.layout, 'all': opts.all,
+    }
+
+
+def set_background_image(boss, window, payload):
+    pg = cmd_set_background_image.payload_get
+    windows = windows_for_payload(boss, window, payload)
+    os_windows = tuple({w.os_window_id for w in windows})
+    layout = pg(payload, 'layout')
+    try:
+        if layout:
+            set_background_image_impl(pg(payload, 'path'), os_windows, pg(payload, 'configured'), layout)
+        else:
+            set_background_image_impl(pg(payload, 'path'), os_windows, pg(payload, 'configured'))
+    except ValueError as err:
+        err.hide_traceback = True
+        raise
 # }}}
 
 

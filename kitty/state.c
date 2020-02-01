@@ -908,7 +908,7 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
     PyObject *layout_name = NULL;
     PyObject *os_window_ids;
     int configured = 0;
-    PA("sO&|pU", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name);
+    PA("sO!|pU", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name);
     size_t size;
     BackgroundImageLayout layout = layout_name ? bglayout(layout_name) : OPT(background_image_layout);
     BackgroundImage *bgimage = calloc(1, sizeof(BackgroundImage));

@@ -861,7 +861,7 @@ def config_or_absolute_path(x):
 o('background_image', 'none', option_type=config_or_absolute_path, long_text=_('''
 Path to a background image. Must be in PNG format.'''))
 
-o('background_image_layout', 'tiled', option_type=choices('tiled', 'scaled', 'mirror_tiled'), long_text=_('''
+o('background_image_layout', 'tiled', option_type=choices('tiled', 'scaled', 'mirror-tiled'), long_text=_('''
 Whether to tile or scale the background image.'''))
 
 o('background_image_linear', False, long_text=_('''
