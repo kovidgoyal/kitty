@@ -21,6 +21,9 @@ from .tabs import SpecialWindow
 from .utils import natsort_ints
 
 
+no_response = object()
+
+
 class MatchError(ValueError):
 
     hide_traceback = True
@@ -1280,37 +1283,66 @@ How the image should be displayed. The value of configured will use the configur
 )
 def cmd_set_background_image(global_opts, opts, args):
     '''
-    path: Path to a PNG image
+    data+: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image.
+    img_id+: Unique uuid (as string) used for chunking
     match: Window to change opacity in
     layout: The image layout
     all: Boolean indicating operate on all windows
     configured: Boolean indicating if the configured value should be changed
     '''
+    import imghdr
+    from uuid import uuid4
+    from base64 import standard_b64encode
     if not args:
         raise SystemExit('Must specify path to PNG image')
     path = args[0]
-    import imghdr
+    ret = {'match': opts.match, 'configured': opts.configured, 'layout': opts.layout, 'all': opts.all, 'img_id': str(uuid4())}
     if imghdr.what(path) != 'png':
         raise SystemExit('{} is not a PNG image'.format(path))
-    return {
-        'path': path, 'match': opts.match, 'configured': opts.configured,
-        'layout': opts.layout, 'all': opts.all,
-    }
+
+    def file_pipe(path):
+        with open(path, 'rb') as f:
+            while True:
+                data = f.read(512)
+                if not data:
+                    break
+                ret['data'] = standard_b64encode(data).decode('ascii')
+                yield ret
+        ret['data'] = ''
+        yield ret
+    return file_pipe(path)
 
 
 def set_background_image(boss, window, payload):
+    from base64 import standard_b64decode
+    import tempfile
     pg = cmd_set_background_image.payload_get
+    data = pg(payload, 'data')
+    img_id = pg(payload, 'img_id')
+    if img_id != set_background_image.current_img_id:
+        set_background_image.current_img_id = img_id
+        set_background_image.current_file_obj = tempfile.NamedTemporaryFile()
+    if data:
+        set_background_image.current_file_obj.write(standard_b64decode(data))
+        return no_response
+
+    f = set_background_image.current_file_obj
+    set_background_image.current_file_obj = None
+    f.flush()
     windows = windows_for_payload(boss, window, payload)
     os_windows = tuple({w.os_window_id for w in windows})
     layout = pg(payload, 'layout')
     try:
         if layout:
-            set_background_image_impl(pg(payload, 'path'), os_windows, pg(payload, 'configured'), layout)
+            set_background_image_impl(f.name, os_windows, pg(payload, 'configured'), layout)
         else:
-            set_background_image_impl(pg(payload, 'path'), os_windows, pg(payload, 'configured'))
+            set_background_image_impl(f.name, os_windows, pg(payload, 'configured'))
     except ValueError as err:
         err.hide_traceback = True
         raise
+
+
+set_background_image.current_img_id = set_background_image.current_file_obj = None
 # }}}
 
 

@@ -7,11 +7,13 @@ import os
 import re
 import sys
 import types
-from functools import partial
 from contextlib import suppress
+from functools import partial
 
 from .cli import emph, parse_args
-from .cmds import cmap, parse_subcommand_cli
+from .cmds import (
+    cmap, no_response as no_response_sentinel, parse_subcommand_cli
+)
 from .constants import appname, version
 from .fast_data_types import read_command_response
 from .utils import TTYIO, parse_address_spec
@@ -34,6 +36,8 @@ def handle_cmd(boss, window, cmd):
         if no_response:  # don't report errors if --no-response was used
             return
         raise
+    if ans is no_response_sentinel:
+        return
     response = {'ok': True}
     if ans is not None:
         response['data'] = ans
