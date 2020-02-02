@@ -25,8 +25,8 @@ from .fast_data_types import (
     change_os_window_state, create_os_window, current_os_window,
     destroy_global_data, focus_os_window, get_clipboard_string,
     global_font_size, mark_os_window_for_close, os_window_font_size,
-    patch_global_colors, safe_pipe, set_clipboard_string, set_in_sequence_mode,
-    thread_write, toggle_fullscreen, toggle_maximized
+    patch_global_colors, safe_pipe, set_background_image, set_clipboard_string,
+    set_in_sequence_mode, thread_write, toggle_fullscreen, toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout import set_layout_options
@@ -1294,3 +1294,11 @@ class Boss:
                 r'--regex=(?m)^:\s+.+$',
             ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
         )
+
+    def set_background_image(self, path, os_windows, configured, layout):
+        if layout:
+            set_background_image(path, os_windows, configured, layout)
+        else:
+            set_background_image(path, os_windows, configured)
+        for os_window_id in os_windows:
+            self.default_bg_changed_for(os_window_id)

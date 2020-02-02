@@ -12,7 +12,7 @@ from .cli import (
 )
 from .config import parse_config, parse_send_text_bytes
 from .constants import appname
-from .fast_data_types import focus_os_window, set_background_image as set_background_image_impl
+from .fast_data_types import focus_os_window
 from .launch import (
     launch as do_launch, options_spec as launch_options_spec,
     parse_launch_args
@@ -1348,10 +1348,7 @@ def set_background_image(boss, window, payload):
         f.flush()
 
     try:
-        if layout:
-            set_background_image_impl(path, os_windows, pg(payload, 'configured'), layout)
-        else:
-            set_background_image_impl(path, os_windows, pg(payload, 'configured'))
+        boss.set_background_image(path, os_windows, pg(payload, 'configured'), layout)
     except ValueError as err:
         err.hide_traceback = True
         raise
