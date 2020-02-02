@@ -165,7 +165,7 @@ typedef struct {
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
 static ssize_t blit_vertex_array;
 typedef struct {
-    GLint image_location, tiled_location, sizes_location, opacity_location;
+    GLint image_location, tiled_location, sizes_location, opacity_location, premult_location;
 } BGImageProgramLayout;
 static BGImageProgramLayout bgimage_program_layout = {0};
 typedef struct {
@@ -194,6 +194,7 @@ init_cell_program(void) {
     bgimage_program_layout.opacity_location = get_uniform_location(BGIMAGE_PROGRAM, "opacity");
     bgimage_program_layout.sizes_location = get_uniform_location(BGIMAGE_PROGRAM, "sizes");
     bgimage_program_layout.tiled_location = get_uniform_location(BGIMAGE_PROGRAM, "tiled");
+    bgimage_program_layout.premult_location = get_uniform_location(BGIMAGE_PROGRAM, "premult");
     tint_program_layout.tint_color_location = get_uniform_location(TINT_PROGRAM, "tint_color");
     tint_program_layout.edges_location = get_uniform_location(TINT_PROGRAM, "edges");
 }
@@ -362,6 +363,7 @@ draw_bg(OSWindow *w) {
     }
     glUniform4f(bgimage_program_layout.sizes_location,
         (GLfloat)w->window_width, (GLfloat)w->window_height, (GLfloat)w->bgimage->width, (GLfloat)w->bgimage->height);
+    glUniform1f(bgimage_program_layout.premult_location, w->is_semi_transparent ? 1.f : 0.f);
     glActiveTexture(GL_TEXTURE0 + BGIMAGE_UNIT);
     glBindTexture(GL_TEXTURE_2D, w->bgimage->texture_id);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
