@@ -919,22 +919,25 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
     PyObject *layout_name = NULL;
     PyObject *os_window_ids;
     int configured = 0;
-    PA("sO!|pU", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name);
+    PA("zO!|pU", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name);
     size_t size;
     BackgroundImageLayout layout = layout_name ? bglayout(layout_name) : OPT(background_image_layout);
-    BackgroundImage *bgimage = calloc(1, sizeof(BackgroundImage));
-    if (!bgimage) return PyErr_NoMemory();
-    if (!png_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size)) {
-        PyErr_Format(PyExc_ValueError, "Failed to load image from: %s", path);
-        free(bgimage);
-        return NULL;
+    BackgroundImage *bgimage = NULL;
+    if (path) {
+        bgimage = calloc(1, sizeof(BackgroundImage));
+        if (!bgimage) return PyErr_NoMemory();
+        if (!png_path_to_bitmap(path, &bgimage->bitmap, &bgimage->width, &bgimage->height, &size)) {
+            PyErr_Format(PyExc_ValueError, "Failed to load image from: %s", path);
+            free(bgimage);
+            return NULL;
+        }
+        send_bgimage_to_gpu(layout, bgimage);
+        bgimage->refcnt++;
     }
-    send_bgimage_to_gpu(layout, bgimage);
-    bgimage->refcnt++;
     if (configured) {
         free_bgimage(&global_state.bgimage, true);
         global_state.bgimage = bgimage;
-        bgimage->refcnt++;
+        if (bgimage) bgimage->refcnt++;
         OPT(background_image_layout) = layout;
     }
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(os_window_ids); i++) {
@@ -944,10 +947,10 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
             free_bgimage(&os_window->bgimage, true);
             os_window->bgimage = bgimage;
             os_window->render_calls = 0;
-            bgimage->refcnt++;
+            if (bgimage) bgimage->refcnt++;
         END_WITH_OS_WINDOW
     }
-    free_bgimage(&bgimage, true);
+    if (bgimage) free_bgimage(&bgimage, true);
     Py_RETURN_NONE;
 }
 

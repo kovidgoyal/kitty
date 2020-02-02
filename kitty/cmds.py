@@ -1260,7 +1260,9 @@ def set_background_opacity(boss, window, payload):
 # set_background_image {{{
 @cmd(
     'Set the background_image',
-    'Set the background image for the specified OS windows.',
+    'Set the background image for the specified OS windows. You must specify the path to a PNG image that'
+    ' will be used as the background. If you specify the special value "none" then any existing image will'
+    ' be removed.',
     options_spec='''\
 --all -a
 type=bool-set
@@ -1286,7 +1288,8 @@ How the image should be displayed. The value of configured will use the configur
 )
 def cmd_set_background_image(global_opts, opts, args):
     '''
-    data+: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image.
+    data+: Chunk of at most 512 bytes of PNG data, base64 encoded. Must send an empty chunk to indicate end of image. \
+    Or the special value - to indicate image must be removed.
     img_id+: Unique uuid (as string) used for chunking
     match: Window to change opacity in
     layout: The image layout
@@ -1300,6 +1303,9 @@ def cmd_set_background_image(global_opts, opts, args):
         raise SystemExit('Must specify path to PNG image')
     path = args[0]
     ret = {'match': opts.match, 'configured': opts.configured, 'layout': opts.layout, 'all': opts.all, 'img_id': str(uuid4())}
+    if path.lower() == 'none':
+        ret['data'] = '-'
+        return ret
     if imghdr.what(path) != 'png':
         raise SystemExit('{} is not a PNG image'.format(path))
 
@@ -1321,25 +1327,31 @@ def set_background_image(boss, window, payload):
     import tempfile
     pg = cmd_set_background_image.payload_get
     data = pg(payload, 'data')
-    img_id = pg(payload, 'img_id')
-    if img_id != set_background_image.current_img_id:
-        set_background_image.current_img_id = img_id
-        set_background_image.current_file_obj = tempfile.NamedTemporaryFile()
-    if data:
-        set_background_image.current_file_obj.write(standard_b64decode(data))
-        return no_response
+    if data != '-':
+        img_id = pg(payload, 'img_id')
+        if img_id != set_background_image.current_img_id:
+            set_background_image.current_img_id = img_id
+            set_background_image.current_file_obj = tempfile.NamedTemporaryFile()
+        if data:
+            set_background_image.current_file_obj.write(standard_b64decode(data))
+            return no_response
 
-    f = set_background_image.current_file_obj
-    set_background_image.current_file_obj = None
-    f.flush()
     windows = windows_for_payload(boss, window, payload)
     os_windows = tuple({w.os_window_id for w in windows})
     layout = pg(payload, 'layout')
+    if data == '-':
+        path = None
+    else:
+        f = set_background_image.current_file_obj
+        path = f.name
+        set_background_image.current_file_obj = None
+        f.flush()
+
     try:
         if layout:
-            set_background_image_impl(f.name, os_windows, pg(payload, 'configured'), layout)
+            set_background_image_impl(path, os_windows, pg(payload, 'configured'), layout)
         else:
-            set_background_image_impl(f.name, os_windows, pg(payload, 'configured'))
+            set_background_image_impl(path, os_windows, pg(payload, 'configured'))
     except ValueError as err:
         err.hide_traceback = True
         raise
