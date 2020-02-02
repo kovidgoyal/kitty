@@ -714,6 +714,15 @@ end:
 }
 
 
+PYWRAP1(os_window_has_background_image) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    WITH_OS_WINDOW(os_window_id)
+        if (os_window->bgimage && os_window->bgimage->texture_id > 0) { Py_RETURN_TRUE; }
+    END_WITH_OS_WINDOW
+    Py_RETURN_FALSE;
+}
+
 PYWRAP1(mark_os_window_for_close) {
     id_type os_window_id;
     int yes = 1;
@@ -990,6 +999,7 @@ static PyMethodDef module_methods[] = {
     MW(set_window_render_data, METH_VARARGS),
     MW(viewport_for_window, METH_VARARGS),
     MW(cell_size_for_window, METH_VARARGS),
+    MW(os_window_has_background_image, METH_VARARGS),
     MW(mark_os_window_for_close, METH_VARARGS),
     MW(set_titlebar_color, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
