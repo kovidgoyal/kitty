@@ -798,11 +798,21 @@ o('tab_separator', '"{}"'.format(default_tab_separator), option_type=tab_separat
 The separator between tabs in the tab bar when using :code:`separator` as the :opt:`tab_bar_style`.'''))
 
 
+def tab_title_template(x):
+    if x:
+        for q in '\'"':
+            if x.startswith(q) and x.endswith(q):
+                x = x[1:-1]
+                break
+    return x
+
+
 def active_tab_title_template(x):
+    x = tab_title_template(x)
     return None if x == 'none' else x
 
 
-o('tab_title_template', '{title}', long_text=_('''
+o('tab_title_template', '"{title}"', option_type=tab_title_template, long_text=_('''
 A template to render the tab title. The default just renders
 the title. If you wish to include the tab-index as well,
 use something like: :code:`{index}: {title}`. Useful
