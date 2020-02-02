@@ -444,7 +444,6 @@ has_bgimage(OSWindow *w) {
 static void
 draw_tint(bool premult, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height) {
     bind_program(TINT_PROGRAM);
-    bind_vertex_array(blit_vertex_array);
     color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg);
 #define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f))
     float alpha = OPT(background_tint);
