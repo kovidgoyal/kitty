@@ -864,12 +864,6 @@ Path to a background image. Must be in PNG format.'''))
 o('background_image_layout', 'tiled', option_type=choices('tiled', 'scaled', 'mirror-tiled'), long_text=_('''
 Whether to tile or scale the background image.'''))
 
-o('background_image_tint', 0.5, option_type=unit_float, long_text=_('''
-How much to tint the background image by the background area. The tint is applied
-only under the text area, not margin/borders. Makes it easier to read the text.
-Tinting is done using the current background color for each window.
-'''))
-
 o('background_image_linear', False, long_text=_('''
 When background image is scaled, whether linear interpolation should be used.'''))
 
@@ -877,6 +871,14 @@ o('dynamic_background_opacity', False, long_text=_('''
 Allow changing of the :opt:`background_opacity` dynamically, using either keyboard
 shortcuts (:sc:`increase_background_opacity` and :sc:`decrease_background_opacity`)
 or the remote control facility.
+'''))
+
+o('background_tint', 0.0, option_type=unit_float, long_text=_('''
+How much to tint the background image by the background color. The tint is applied
+only under the text area, not margin/borders. Makes it easier to read the text.
+Tinting is done using the current background color for each window. This setting
+applies only if :opt:`background_opacity` is set and transparent windows are supported
+or :opt:`background_image` is set.
 '''))
 
 o('dim_opacity', 0.75, option_type=unit_float, long_text=_('''

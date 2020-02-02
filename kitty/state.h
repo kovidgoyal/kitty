@@ -42,7 +42,7 @@ typedef struct {
     char* background_image;
     BackgroundImageLayout background_image_layout;
     bool background_image_linear;
-    float background_image_tint;
+    float background_tint;
 
     bool dynamic_background_opacity;
     float inactive_text_alpha;

@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add support for specifying a background image, see :opt:`background_image`
   (:iss:`163` and :pull:`2326`)
 
+- A new :opt:`background_tint` option to darken the background under the text
+  area when using background images and/or transparent windows.
+
 
 
 0.16.0 [2020-01-28]

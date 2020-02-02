@@ -446,7 +446,7 @@ draw_tint(bool premult, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat 
     bind_program(TINT_PROGRAM);
     color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg);
 #define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f))
-    float alpha = OPT(background_image_tint);
+    float alpha = OPT(background_tint);
     if (premult) glUniform4f(tint_program_layout.tint_color_location, C(16) * alpha, C(8) * alpha, C(0) * alpha, alpha);
     else glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), alpha);
 #undef C
@@ -464,7 +464,7 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
         bind_program(CELL_BG_PROGRAM);
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    } else if (OPT(background_image_tint) > 0) draw_tint(false, screen, xstart, ystart, width, height);
+    } else if (OPT(background_tint) > 0) draw_tint(false, screen, xstart, ystart, width, height);
 
     if (screen->grman->num_of_below_refs || has_bgimage(w)) {
         if (screen->grman->num_of_below_refs) draw_graphics(
@@ -490,7 +490,7 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
 
 static void
 draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *os_window, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height) {
-    if (has_bgimage(os_window) && OPT(background_image_tint) > 0.f) {
+    if (OPT(background_tint) > 0.f) {
         glEnable(GL_BLEND);
         BLEND_PREMULT;
         draw_tint(true, screen, xstart, ystart, width, height);
