@@ -90,17 +90,17 @@ send_bgimage_to_gpu(BackgroundImageLayout layout, BackgroundImage *bgimage) {
 }
 
 static void
-free_bgimage(BackgroundImage *bgimage, bool release_texture) {
-    if (bgimage && bgimage->refcnt) {
-        bgimage->refcnt--;
-        if (bgimage->refcnt == 0) {
-            free(bgimage->bitmap); bgimage->bitmap = NULL;
-            if (release_texture) free_texture(&bgimage->texture_id);
+free_bgimage(BackgroundImage **bgimage, bool release_texture) {
+    if (*bgimage && (*bgimage)->refcnt) {
+        (*bgimage)->refcnt--;
+        if ((*bgimage)->refcnt == 0) {
+            free((*bgimage)->bitmap); (*bgimage)->bitmap = NULL;
+            if (release_texture) free_texture(&(*bgimage)->texture_id);
+            free(*bgimage);
+            bgimage = NULL;
         }
     }
 }
-
-static BackgroundImage global_bg_image = {0};
 
 OSWindow*
 add_os_window() {
@@ -116,7 +116,8 @@ add_os_window() {
     bool wants_bg = OPT(background_image) && OPT(background_image)[0] != 0;
     if (wants_bg) {
         if (!global_state.bgimage) {
-            global_state.bgimage = &global_bg_image;
+            global_state.bgimage = calloc(1, sizeof(BackgroundImage));
+            if (!global_state.bgimage) fatal("Out of memory allocating the global bg image object");
             global_state.bgimage->refcnt++;
             size_t size;
             if (png_path_to_bitmap(OPT(background_image), &global_state.bgimage->bitmap, &global_state.bgimage->width, &global_state.bgimage->height, &size)) {
@@ -307,7 +308,7 @@ destroy_os_window_item(OSWindow *w) {
     remove_vao(w->tab_bar_render_data.vao_idx);
     remove_vao(w->gvao_idx);
     free(w->tabs); w->tabs = NULL;
-    free_bgimage(w->bgimage, true);
+    free_bgimage(&w->bgimage, true);
     w->bgimage = NULL;
 }
 
@@ -921,7 +922,7 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
     send_bgimage_to_gpu(layout, bgimage);
     bgimage->refcnt++;
     if (configured) {
-        free_bgimage(global_state.bgimage, true);
+        free_bgimage(&global_state.bgimage, true);
         global_state.bgimage = bgimage;
         bgimage->refcnt++;
         OPT(background_image_layout) = layout;
@@ -930,13 +931,13 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
         id_type os_window_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(os_window_ids, i));
         WITH_OS_WINDOW(os_window_id)
             make_os_window_context_current(os_window);
-            free_bgimage(os_window->bgimage, true);
+            free_bgimage(&os_window->bgimage, true);
             os_window->bgimage = bgimage;
             os_window->render_calls = 0;
             bgimage->refcnt++;
         END_WITH_OS_WINDOW
     }
-    free_bgimage(bgimage, true);
+    free_bgimage(&bgimage, true);
     Py_RETURN_NONE;
 }
 
@@ -1017,7 +1018,7 @@ finalize(void) {
     // that freeing the texture will work during shutdown and
     // the GPU driver should take care of it when the OpenGL context is
     // destroyed.
-    free_bgimage(global_state.bgimage, false);
+    free_bgimage(&global_state.bgimage, false);
     global_state.bgimage = NULL;
 }
 
