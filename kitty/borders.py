@@ -61,12 +61,10 @@ class Borders:
         current_layout,
         extra_blank_rects,
         draw_window_borders=True,
-        draw_blank_rects=False
     ):
         add_borders_rect(self.os_window_id, self.tab_id, 0, 0, 0, 0, BorderColor.default_bg)
-        if draw_blank_rects:
-            for br in chain(current_layout.blank_rects, extra_blank_rects):
-                add_borders_rect(self.os_window_id, self.tab_id, *br, BorderColor.default_bg)
+        for br in chain(current_layout.blank_rects, extra_blank_rects):
+            add_borders_rect(self.os_window_id, self.tab_id, *br, BorderColor.default_bg)
         bw, pw = self.border_width, self.padding_width
         if bw + pw <= 0:
             return
