@@ -864,6 +864,12 @@ Path to a background image. Must be in PNG format.'''))
 o('background_image_layout', 'tiled', option_type=choices('tiled', 'scaled', 'mirror-tiled'), long_text=_('''
 Whether to tile or scale the background image.'''))
 
+o('background_image_tint', 0.5, option_type=unit_float, long_text=_('''
+How much to tint the background image by the background area. The tint is applied
+only under the text area, not margin/borders. Makes it easier to read the text.
+Tinting is done using the current background color for each window.
+'''))
+
 o('background_image_linear', False, long_text=_('''
 When background image is scaled, whether linear interpolation should be used.'''))
 

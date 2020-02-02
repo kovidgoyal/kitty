@@ -9,7 +9,7 @@
 #include "gl.h"
 #include <stddef.h>
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT, BGIMAGE_UNIT };
 
 // Sprites {{{
@@ -168,6 +168,10 @@ typedef struct {
     GLint image_location, tiled_location, sizes_location, opacity_location;
 } BGImageProgramLayout;
 static BGImageProgramLayout bgimage_program_layout = {0};
+typedef struct {
+    GLint tint_color_location, edges_location;
+} TintProgramLayout;
+static TintProgramLayout tint_program_layout = {0};
 
 static void
 init_cell_program(void) {
@@ -190,6 +194,8 @@ init_cell_program(void) {
     bgimage_program_layout.opacity_location = get_uniform_location(BGIMAGE_PROGRAM, "opacity");
     bgimage_program_layout.sizes_location = get_uniform_location(BGIMAGE_PROGRAM, "sizes");
     bgimage_program_layout.tiled_location = get_uniform_location(BGIMAGE_PROGRAM, "tiled");
+    tint_program_layout.tint_color_location = get_uniform_location(TINT_PROGRAM, "tint_color");
+    tint_program_layout.edges_location = get_uniform_location(TINT_PROGRAM, "edges");
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
@@ -434,15 +440,23 @@ has_bgimage(OSWindow *w) {
 }
 
 static void
-draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *w) {
+draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *w, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height) {
     glEnable(GL_BLEND);
     BLEND_ONTO_OPAQUE;
 
-    bind_program(CELL_BG_PROGRAM);
     // draw background for all cells
     if (!has_bgimage(w)) {
+        bind_program(CELL_BG_PROGRAM);
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
+    } else if (OPT(background_image_tint) > 0) {
+        bind_program(TINT_PROGRAM);
+        color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg);
+#define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f))
+        glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), OPT(background_image_tint));
+#undef C
+        glUniform4f(tint_program_layout.edges_location, xstart, ystart - height, xstart + width, ystart);
+        glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     }
 
     if (screen->grman->num_of_below_refs || has_bgimage(w)) {
@@ -610,7 +624,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         if (screen->grman->count || has_bgimage(os_window)) draw_cells_interleaved_premult(vao_idx, gvao_idx, screen, os_window);
         else draw_cells_simple(vao_idx, gvao_idx, screen);
     } else {
-        if (screen->grman->num_of_negative_refs || screen->grman->num_of_below_refs || has_bgimage(os_window)) draw_cells_interleaved(vao_idx, gvao_idx, screen, os_window);
+        if (screen->grman->num_of_negative_refs || screen->grman->num_of_below_refs || has_bgimage(os_window)) draw_cells_interleaved(vao_idx, gvao_idx, screen, os_window, xstart, ystart, w, h);
         else draw_cells_simple(vao_idx, gvao_idx, screen);
     }
 }
@@ -779,7 +793,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);
