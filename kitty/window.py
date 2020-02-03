@@ -542,14 +542,15 @@ class Window:
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
         cmd = [x.replace('INPUT_LINE_NUMBER', str(data['input_line_number'])) for x in self.opts.scrollback_pager]
-        import shutil
-        exe = shutil.which(cmd[0])
-        if not os.path.isabs(cmd[0]) and not exe:
-            env = read_shell_environment(self.opts)
-            if env and 'PATH' in env:
-                exe = shutil.which(cmd[0], path=env['PATH'])
-                if exe:
-                    cmd[0] = exe
+        if not os.path.isabs(cmd[0]):
+            import shutil
+            exe = shutil.which(cmd[0])
+            if not exe:
+                env = read_shell_environment(self.opts)
+                if env and 'PATH' in env:
+                    exe = shutil.which(cmd[0], path=env['PATH'])
+                    if exe:
+                        cmd[0] = exe
         get_boss().display_scrollback(self, data['text'], cmd)
 
     def paste_bytes(self, text):
