@@ -10,11 +10,11 @@ import os
 import re
 import string
 import sys
-from time import monotonic
 from contextlib import suppress
+from time import monotonic
 
 from .constants import (
-    appname, is_macos, is_wayland, supports_primary_selection
+    appname, is_macos, is_wayland, shell_path, supports_primary_selection
 )
 from .rgb import Color, to_color
 
@@ -452,3 +452,62 @@ def func_name(f):
     if hasattr(f, 'func') and hasattr(f.func, '__name__'):
         return f.func.__name__
     return str(f)
+
+
+def resolved_shell(opts=None):
+    ans = getattr(opts, 'shell', '.')
+    if ans == '.':
+        ans = [shell_path]
+    else:
+        import shlex
+        ans = shlex.split(ans)
+    return ans
+
+
+def read_shell_environment(opts=None):
+    if not hasattr(read_shell_environment, 'ans'):
+        from .child import openpty, remove_blocking
+        ans = read_shell_environment.ans = {}
+        import subprocess
+        shell = resolved_shell(opts)
+        master, slave = openpty()
+        remove_blocking(master)
+        try:
+            p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True)
+        except FileNotFoundError:
+            log_error('Could not find shell to read environment')
+            return ans
+        with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
+            raw = b''
+            from subprocess import TimeoutExpired
+            from time import monotonic
+            start_time = monotonic()
+            while monotonic() - start_time < 1.5:
+                try:
+                    ret = p.wait(0.01)
+                except TimeoutExpired:
+                    ret = None
+                with suppress(Exception):
+                    raw += stdout.read()
+                if ret is not None:
+                    break
+            if p.returncode is None:
+                log_error('Timed out waiting for shell to quit while reading shell environment')
+                p.kill()
+            elif p.returncode == 0:
+                while True:
+                    try:
+                        x = stdout.read()
+                    except Exception:
+                        break
+                    if not x:
+                        break
+                    raw += x
+                raw = raw.decode('utf-8', 'replace')
+                for line in raw.splitlines():
+                    k, v = line.partition('=')[::2]
+                    if k and v:
+                        ans[k] = v
+            else:
+                log_error('Failed to run shell to read its environment')
+    return read_shell_environment.ans

@@ -10,7 +10,7 @@ from contextlib import contextmanager, suppress
 
 from .borders import load_borders_program
 from .boss import Boss
-from .child import set_default_env, openpty, remove_blocking
+from .child import set_default_env
 from .cli import create_opts, parse_args
 from .config import cached_values_for, initial_window_size_func
 from .constants import (
@@ -18,15 +18,15 @@ from .constants import (
     is_wayland, kitty_exe, logo_data_file
 )
 from .fast_data_types import (
-    GLFW_IBEAM_CURSOR, create_os_window, free_font_data,
-    glfw_init, glfw_terminate, load_png_data, set_custom_cursor,
-    set_default_window_icon, set_options
+    GLFW_IBEAM_CURSOR, create_os_window, free_font_data, glfw_init,
+    glfw_terminate, load_png_data, set_custom_cursor, set_default_window_icon,
+    set_options
 )
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
 from .utils import (
-    detach, log_error, single_instance, startup_notification_handler,
-    unix_socket_paths
+    detach, log_error, read_shell_environment, single_instance,
+    startup_notification_handler, unix_socket_paths
 )
 from .window import load_shader_programs
 
@@ -198,55 +198,6 @@ def macos_cmdline(argv_args):
     if ans and ans[0] == 'kitty':
         del ans[0]
     return ans
-
-
-def read_shell_environment(opts=None):
-    if not hasattr(read_shell_environment, 'ans'):
-        ans = read_shell_environment.ans = {}
-        import subprocess
-        from .session import resolved_shell
-        shell = resolved_shell(opts)
-        master, slave = openpty()
-        remove_blocking(master)
-        try:
-            p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True)
-        except FileNotFoundError:
-            log_error('Could not find shell to read environment')
-            return ans
-        with os.fdopen(master, 'rb') as stdout, os.fdopen(slave, 'wb'):
-            raw = b''
-            from subprocess import TimeoutExpired
-            from time import monotonic
-            start_time = monotonic()
-            while monotonic() - start_time < 1.5:
-                try:
-                    ret = p.wait(0.01)
-                except TimeoutExpired:
-                    ret = None
-                with suppress(Exception):
-                    raw += stdout.read()
-                if ret is not None:
-                    break
-            if p.returncode is None:
-                log_error('Timed out waiting for shell to quit while reading shell environment')
-                p.kill()
-            elif p.returncode == 0:
-                while True:
-                    try:
-                        x = stdout.read()
-                    except Exception:
-                        break
-                    if not x:
-                        break
-                    raw += x
-                raw = raw.decode('utf-8', 'replace')
-                for line in raw.splitlines():
-                    k, v = line.partition('=')[::2]
-                    if k and v:
-                        ans[k] = v
-            else:
-                log_error('Failed to run shell to read its environment')
-    return read_shell_environment.ans
 
 
 def get_editor_from_env(shell_env):

@@ -7,9 +7,9 @@ import sys
 from collections import namedtuple
 
 from .config_data import to_layout_names
-from .constants import kitty_exe, shell_path
+from .constants import kitty_exe
 from .layout import all_layouts
-from .utils import log_error
+from .utils import log_error, resolved_shell
 
 WindowSizeOpts = namedtuple(
     'WindowSizeOpts', 'initial_window_width initial_window_height window_margin_width window_padding_width remember_window_size')
@@ -72,15 +72,6 @@ class Session:
 
     def set_cwd(self, val):
         self.tabs[-1].cwd = val
-
-
-def resolved_shell(opts=None):
-    ans = getattr(opts, 'shell', '.')
-    if ans == '.':
-        ans = [shell_path]
-    else:
-        ans = shlex.split(ans)
-    return ans
 
 
 def parse_session(raw, opts, default_title=None):

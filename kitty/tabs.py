@@ -16,9 +16,8 @@ from .fast_data_types import (
     x11_window_id
 )
 from .layout import create_layout_object_for, evict_cached_layouts
-from .session import resolved_shell
 from .tab_bar import TabBar, TabBarData
-from .utils import log_error
+from .utils import log_error, resolved_shell
 from .window import Window
 
 SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from cwd overlay_for env')
