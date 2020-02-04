@@ -97,9 +97,9 @@ free_bgimage(BackgroundImage **bgimage, bool release_texture) {
             free((*bgimage)->bitmap); (*bgimage)->bitmap = NULL;
             if (release_texture) free_texture(&(*bgimage)->texture_id);
             free(*bgimage);
-            bgimage = NULL;
         }
     }
+    bgimage = NULL;
 }
 
 OSWindow*
