@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new :opt:`background_tint` option to darken the background under the text
   area when using background images and/or transparent windows.
 
+- A new :opt:`cursor_beam_thickness` option to control the thickness of the
+  beam cursor (:iss:`2337`)
+
 
 
 0.16.0 [2020-01-28]

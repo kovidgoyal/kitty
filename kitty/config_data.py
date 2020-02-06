@@ -395,7 +395,7 @@ background color of the cell underneath instead, use the special keyword: backgr
 o('cursor_shape', 'block', option_type=to_cursor_shape, long_text=_(
     'The cursor shape can be one of (block, beam, underline)'))
 o('cursor_beam_thickness', 1.5, option_type=positive_float, long_text=_(
-    'Defines the thickness of the beam cursor'))
+    'Defines the thickness of the beam cursor (in pts)'))
 o('cursor_blink_interval', -1, option_type=float, long_text=_('''
 The interval (in seconds) at which to blink the cursor. Set to zero to disable
 blinking. Negative values mean use system default. Note that numbers smaller
