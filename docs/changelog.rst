@@ -16,8 +16,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new :opt:`background_tint` option to darken the background under the text
   area when using background images and/or transparent windows.
 
-- A new :opt:`cursor_beam_thickness` option to control the thickness of the
-  beam cursor (:iss:`2337`)
+- New options :opt:`cursor_beam_thickness` and :opt:`cursor_underline_thickness` to control the thickness of the
+  beam and underline cursors (:iss:`2337` and :pull:`2342`)
 
 - X11: Fix arrow mouse cursor using right pointing instead of the default left
   pointing arrow (:iss:`2341`)

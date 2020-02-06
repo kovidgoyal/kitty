@@ -569,6 +569,7 @@ PYWRAP1(set_options) {
     S(scrollback_pager_history_size, PyLong_AsUnsignedLong);
     S(cursor_shape, PyLong_AsLong);
     S(cursor_beam_thickness, PyFloat_AsFloat);
+    S(cursor_underline_thickness, PyFloat_AsFloat);
     S(url_style, PyLong_AsUnsignedLong);
     S(tab_bar_edge, PyLong_AsLong);
     S(mouse_hide_wait, parse_s_double_to_monotonic_t);
