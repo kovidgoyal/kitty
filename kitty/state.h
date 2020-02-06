@@ -20,6 +20,7 @@ typedef struct {
     double wheel_scroll_multiplier, touch_scroll_multiplier;
     bool enable_audio_bell;
     CursorShape cursor_shape;
+    float cursor_beam_thickness;
     unsigned int open_url_modifiers;
     unsigned int rectangle_select_modifiers;
     unsigned int terminal_select_modifiers;

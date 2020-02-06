@@ -192,7 +192,7 @@ def render_special(
     return ans
 
 
-def render_cursor(which, cell_width=0, cell_height=0, dpi_x=0, dpi_y=0):
+def render_cursor(which, cursor_beam_thickness, cell_width=0, cell_height=0, dpi_x=0, dpi_y=0):
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     ans = CharTexture()
 
@@ -213,7 +213,7 @@ def render_cursor(which, cell_width=0, cell_height=0, dpi_x=0, dpi_y=0):
                 ans[offset + x] = 255
 
     if which == 1:  # beam
-        vert('left', 1.5)
+        vert('left', cursor_beam_thickness)
     elif which == 2:  # underline
         horz('bottom', 2.0)
     elif which == 3:  # hollow
@@ -221,13 +221,13 @@ def render_cursor(which, cell_width=0, cell_height=0, dpi_x=0, dpi_y=0):
     return ans
 
 
-def prerender_function(cell_width, cell_height, baseline, underline_position, underline_thickness, dpi_x, dpi_y):
+def prerender_function(cell_width, cell_height, baseline, underline_position, underline_thickness, cursor_beam_thickness, dpi_x, dpi_y):
     # Pre-render the special underline, strikethrough and missing and cursor cells
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
         underline_position=underline_position, underline_thickness=underline_thickness)
     c = partial(
-        render_cursor, cell_width=cell_width, cell_height=cell_height, dpi_x=dpi_x, dpi_y=dpi_y)
+        render_cursor, cursor_beam_thickness=cursor_beam_thickness, cell_width=cell_width, cell_height=cell_height, dpi_x=dpi_x, dpi_y=dpi_y)
     cells = f(1), f(2), f(3), f(0, True), f(missing=True), c(1), c(2), c(3)
     return tuple(map(ctypes.addressof, cells)) + (cells,)
 
