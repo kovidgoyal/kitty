@@ -21,6 +21,7 @@ typedef struct {
     bool enable_audio_bell;
     CursorShape cursor_shape;
     float cursor_beam_thickness;
+    float cursor_underline_thickness;
     unsigned int open_url_modifiers;
     unsigned int rectangle_select_modifiers;
     unsigned int terminal_select_modifiers;

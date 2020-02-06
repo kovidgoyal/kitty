@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new :opt:`cursor_beam_thickness` option to control the thickness of the
   beam cursor (:iss:`2337`)
 
+- A new :opt:`cursor_underline_thickness` option to control the thickness of the
+  underline cursor
+
 
 
 0.16.0 [2020-01-28]
