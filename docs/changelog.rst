@@ -23,7 +23,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   pointing arrow (:iss:`2341`)
 
 
-
 0.16.0 [2020-01-28]
 --------------------
 
