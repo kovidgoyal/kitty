@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new :opt:`cursor_beam_thickness` option to control the thickness of the
   beam cursor (:iss:`2337`)
 
+- X11: Fix arrow mouse cursor using right pointing instead of the default left
+  pointing arrow (:iss:`2341`)
+
 
 
 0.16.0 [2020-01-28]

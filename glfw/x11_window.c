@@ -2692,7 +2692,7 @@ int _glfwPlatformCreateStandardCursor(_GLFWcursor* cursor, GLFWCursorShape shape
     int native = 0;
 #define C(name, val) case name: native = val; break;
     switch(shape) {
-        C(GLFW_ARROW_CURSOR, XC_arrow);
+        C(GLFW_ARROW_CURSOR, XC_left_ptr);
         C(GLFW_IBEAM_CURSOR, XC_xterm);
         C(GLFW_CROSSHAIR_CURSOR, XC_crosshair);
         C(GLFW_HAND_CURSOR, XC_hand2);
