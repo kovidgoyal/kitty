@@ -221,7 +221,9 @@ def render_cursor(which, cursor_beam_thickness, cursor_underline_thickness, cell
     return ans
 
 
-def prerender_function(cell_width, cell_height, baseline, underline_position, underline_thickness, cursor_beam_thickness, cursor_underline_thickness, dpi_x, dpi_y):
+def prerender_function(
+        cell_width, cell_height, baseline, underline_position, underline_thickness,
+        cursor_beam_thickness, cursor_underline_thickness, dpi_x, dpi_y):
     # Pre-render the special underline, strikethrough and missing and cursor cells
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
