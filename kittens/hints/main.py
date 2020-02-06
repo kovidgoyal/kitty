@@ -550,7 +550,8 @@ def linenum_handle_result(args, data, target_window_id, boss, extra_cli_args, *a
     if action == 'self':
         if w is not None:
             import shlex
-            w.paste_bytes(shlex.join(cmd) + '\r')
+            text = ' '.join(shlex.quote(arg) for arg in cmd)
+            w.paste_bytes(text + '\r')
     elif action == 'background':
         import subprocess
         subprocess.Popen(cmd)
