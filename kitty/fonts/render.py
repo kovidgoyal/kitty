@@ -197,7 +197,7 @@ def render_cursor(which, cell_width=0, cell_height=0, dpi_x=0, dpi_y=0):
     ans = CharTexture()
 
     def vert(edge, width_pt=1):
-        width = max(1, int(round(width_pt * dpi_x / 72.0)))
+        width = max(1, min(int(round(width_pt * dpi_x / 72.0)), cell_width))
         left = 0 if edge == 'left' else max(0, cell_width - width)
         for y in range(cell_height):
             offset = y * cell_width + left
@@ -205,7 +205,7 @@ def render_cursor(which, cell_width=0, cell_height=0, dpi_x=0, dpi_y=0):
                 ans[x] = 255
 
     def horz(edge, height_pt=1):
-        height = max(1, int(round(height_pt * dpi_y / 72.0)))
+        height = max(1, min(int(round(height_pt * dpi_y / 72.0)), cell_height))
         top = 0 if edge == 'top' else max(0, cell_height - height)
         for y in range(top, top + height):
             offset = y * cell_width
