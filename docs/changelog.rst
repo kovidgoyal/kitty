@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - X11: Fix arrow mouse cursor using right pointing instead of the default left
   pointing arrow (:iss:`2341`)
 
+- unicode input kitten: Allow pressing :kbd:`ctrl+tab` to change the input mode
+  (:iss:`2343`)
+
 
 0.16.0 [2020-01-28]
 --------------------

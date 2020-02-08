@@ -23,6 +23,10 @@ keys/tab to select the character from the displayed matches. You can also type
 a leading period and the index for the match if you don't like to use arrow
 keys.
 
+You can switch between modes using either the function keys or by pressing
+:kbd:`Ctrl+Tab`.
+
+
 Command Line Interface
 -------------------------
 

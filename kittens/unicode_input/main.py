@@ -15,7 +15,7 @@ from kitty.config import cached_values_for
 from kitty.constants import config_dir
 from kitty.fast_data_types import wcswidth, is_emoji_presentation_base
 from kitty.key_encoding import (
-    DOWN, ESCAPE, F1, F2, F3, F4, F12, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP,
+    DOWN, ESCAPE, F1, F2, F3, F4, F12, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP, CTRL,
     enter_key
 )
 from kitty.utils import get_editor
@@ -38,6 +38,12 @@ DEFAULT_SET = tuple(map(
     'îïðñòóôõöøœš' 'ùúûüýÿþªºαΩ∞'
 ))
 EMOTICONS_SET = tuple(range(0x1f600, 0x1f64f + 1))
+all_modes = (
+    (_('Code'), 'F1', HEX),
+    (_('Name'), 'F2', NAME),
+    (_('Emoji'), 'F3', EMOTICONS),
+    (_('Favorites'), 'F4', FAVORITES),
+)
 
 
 def codepoint_ok(code):
@@ -355,12 +361,7 @@ class UnicodeInput(Handler):
 
     def draw_title_bar(self):
         entries = []
-        for name, key, mode in [
-                (_('Code'), 'F1', HEX),
-                (_('Name'), 'F2', NAME),
-                (_('Emoji'), 'F3', EMOTICONS),
-                (_('Favorites'), 'F4', FAVORITES),
-        ]:
+        for name, key, mode in all_modes:
             entry = ' {} ({}) '.format(name, key)
             if mode is self.mode:
                 entry = styled(entry, reverse=False, bold=True)
@@ -452,19 +453,24 @@ class UnicodeInput(Handler):
             return
         if key_event is enter_key:
             self.quit_loop(0)
-        elif key_event.type is RELEASE and not key_event.mods:
-            if key_event.key is ESCAPE:
-                self.quit_loop(1)
-            elif key_event.key is F1:
-                self.switch_mode(HEX)
-            elif key_event.key is F2:
-                self.switch_mode(NAME)
-            elif key_event.key is F3:
-                self.switch_mode(EMOTICONS)
-            elif key_event.key is F4:
-                self.switch_mode(FAVORITES)
-            elif key_event.key is F12 and self.mode is FAVORITES:
-                self.edit_favorites()
+        elif key_event.type is RELEASE:
+            if not key_event.mods:
+                if key_event.key is ESCAPE:
+                    self.quit_loop(1)
+                elif key_event.key is F1:
+                    self.switch_mode(HEX)
+                elif key_event.key is F2:
+                    self.switch_mode(NAME)
+                elif key_event.key is F3:
+                    self.switch_mode(EMOTICONS)
+                elif key_event.key is F4:
+                    self.switch_mode(FAVORITES)
+                elif key_event.key is F12 and self.mode is FAVORITES:
+                    self.edit_favorites()
+            elif key_event.mods == CTRL and key_event.key is TAB:
+                self.next_mode()
+            elif key_event.mods == CTRL | SHIFT and key_event.key is TAB:
+                self.next_mode(-1)
 
     def edit_favorites(self):
         if not os.path.exists(favorites_path):
@@ -485,6 +491,11 @@ class UnicodeInput(Handler):
             self.current_char = None
             self.choice_line = ''
             self.refresh()
+
+    def next_mode(self, delta=1):
+        modes = tuple(x[-1] for x in all_modes)
+        idx = (modes.index(self.mode) + delta + len(modes)) % len(modes)
+        self.switch_mode(modes[idx])
 
     def on_interrupt(self):
         self.quit_loop(1)
