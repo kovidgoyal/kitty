@@ -89,5 +89,5 @@ def marker_from_spec(ftype, spec, flags):
         path = spec
         if not os.path.isabs(path):
             path = os.path.join(config_dir, path)
-        return marker_from_function(runpy.run_path(path, run_name='__marker__').marker)
+        return marker_from_function(runpy.run_path(path, run_name='__marker__')["marker"])
     raise ValueError('Unknown marker type: {}'.format(ftype))
