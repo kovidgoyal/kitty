@@ -73,6 +73,14 @@ class Tab:  # {{{
             self._set_current_layout(l0)
             self.startup(session_tab)
 
+    def update_widths(self):
+        self.margin_width, self.padding_width, self.single_window_margin_width = map(
+            lambda x: pt_to_px(getattr(self.opts, x), self.os_window_id), (
+                'window_margin_width', 'window_padding_width', 'single_window_margin_width'))
+        self.borders.border_width = pt_to_px(self.opts.window_border_width, self.os_window_id)
+        self.borders.padding_width = self.padding_width
+        self._set_current_layout(self._current_layout_name)
+
     def take_over_from(self, other_tab):
         self.name, self.cwd = other_tab.name, other_tab.cwd
         self.enabled_layouts = list(other_tab.enabled_layouts)
@@ -167,6 +175,7 @@ class Tab:  # {{{
                 yield w
 
     def relayout(self):
+        self.update_widths()
         if self.windows:
             self.active_window_idx = self.current_layout(self.windows, self.active_window_idx)
         self.relayout_borders()
