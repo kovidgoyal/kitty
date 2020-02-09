@@ -28,6 +28,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a bug that prevented using custom functions with the new marks feature
   (:iss:`2344`)
 
+- Fix border/margin/padding sizes not being recalculated on DPI change
+  (:iss:`2346`)
+
 
 0.16.0 [2020-01-28]
 --------------------

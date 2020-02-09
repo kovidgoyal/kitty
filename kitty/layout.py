@@ -180,6 +180,12 @@ class Layout:  # {{{
         self.full_name = self.name + ((':' + layout_opts) if layout_opts else '')
         self.remove_all_biases()
 
+    def update_sizes(self, margin_width, single_window_margin_width, padding_width, border_width):
+        self.border_width = border_width
+        self.margin_width = margin_width
+        self.single_window_margin_width = single_window_margin_width
+        self.padding_width = padding_width
+
     def bias_increment_for_cell(self, is_horizontal):
         self._set_dimensions()
         if is_horizontal:
