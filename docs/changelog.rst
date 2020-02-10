@@ -31,6 +31,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix border/margin/padding sizes not being recalculated on DPI change
   (:iss:`2346`)
 
+- macOS: Fix menubar title not updating on OS Window focus change (:iss:`2350`)
+
 
 0.16.0 [2020-01-28]
 --------------------

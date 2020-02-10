@@ -512,15 +512,23 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
     ans->is_focused = os_window->is_focused;
 }
 
+static inline void
+change_menubar_title(PyObject *title UNUSED) {
+#ifdef __APPLE__
+    static PyObject *current_title = NULL;
+    if (title != current_title) {
+        current_title = title;
+        if (title && OPT(macos_show_window_title_in) & MENUBAR) cocoa_update_menu_bar_title(title);
+    }
+#endif
+}
+
 static inline bool
 update_window_title(Window *w, OSWindow *os_window) {
     if (w->title && w->title != os_window->window_title) {
         os_window->window_title = w->title;
         Py_INCREF(os_window->window_title);
         set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
-#ifdef __APPLE__
-        if (os_window->is_focused && (OPT(macos_show_window_title_in) & MENUBAR)) cocoa_update_menu_bar_title(w->title);
-#endif
         return true;
     }
     return false;
@@ -661,6 +669,7 @@ render(monotonic_t now, bool input_read) {
         if (!w->num_tabs) continue;
         if (!should_os_window_be_rendered(w)) {
             update_os_window_title(w);
+            if (w->is_focused) change_menubar_title(w->window_title);
             continue;
         }
         if (USE_RENDER_FRAMES && w->render_state != RENDER_FRAME_READY) {
@@ -691,6 +700,7 @@ render(monotonic_t now, bool input_read) {
         if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
         if (w->render_calls < 3 && w->bgimage && w->bgimage->texture_id) needs_render = true;
         if (needs_render) render_os_window(w, now, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg);
+        if (w->is_focused) change_menubar_title(w->window_title);
     }
     last_render_at = now;
 #undef TD
@@ -1557,12 +1567,23 @@ safe_pipe(PyObject *self UNUSED, PyObject *args) {
     return Py_BuildValue("ii", fds[0], fds[1]);
 }
 
+static PyObject*
+cocoa_set_menubar_title(PyObject *self UNUSED, PyObject *args UNUSED) {
+#ifdef __APPLE__
+    PyObject *title = NULL;
+    if (!PyArg_ParseTuple(args, "U", &title)) return NULL;
+    change_menubar_title(title);
+#endif
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(safe_pipe, METH_VARARGS),
     {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
     {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
     METHODB(monitor_pid, METH_VARARGS),
     {"set_iutf8_winid", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
+    METHODB(cocoa_set_menubar_title, METH_VARARGS),
     {NULL}  /* Sentinel */
 };
 
