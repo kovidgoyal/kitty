@@ -572,7 +572,7 @@ class Window:
             else:
                 # Workaround for broken editors like nano that cannot handle
                 # newlines in pasted text see https://github.com/kovidgoyal/kitty/issues/994
-                text = b'\r'.join(text.splitlines())
+                text = text.replace(b'\r\n', b'\n').replace(b'\n', b'\r')
             self.screen.paste(text)
 
     def copy_to_clipboard(self):
