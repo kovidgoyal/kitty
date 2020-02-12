@@ -349,6 +349,11 @@ distance(double x1, double y1, double x2, double y2) {
     return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
 }
 
+static inline void
+clear_click_queue(Window *w) {
+    w->click_queue.length = 0;
+}
+
 HANDLER(add_click) {
     ClickQueue *q = &w->click_queue;
     if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
@@ -683,12 +688,14 @@ test_encode_mouse(PyObject *self UNUSED, PyObject *args) {
 static PyObject*
 send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
     PyObject *capsule;
-    int button, modifiers, is_release;
+    int button, modifiers, is_release, clear_clicks;
     unsigned int x, y;
-    if (!PyArg_ParseTuple(args, "O!iipII", &PyCapsule_Type, &capsule, &button, &modifiers, &is_release, &x, &y)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!iipIIp", &PyCapsule_Type, &capsule, &button, &modifiers, &is_release, &x, &y, &clear_clicks)) return NULL;
     Window *w = PyCapsule_GetPointer(capsule, "Window");
     if (!w) return NULL;
+    if (clear_clicks) clear_click_queue(w);
     bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
+    w->mouse_pos.x = 10 * x; w->mouse_pos.y = 20 * y;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
     if (button < 0) {
         if (button == -2) do_drag_scroll(w, true);
