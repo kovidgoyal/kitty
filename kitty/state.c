@@ -156,8 +156,10 @@ create_gpu_resources_for_window(Window *w) {
 
 static inline void
 release_gpu_resources_for_window(Window *w) {
-    remove_vao(w->render_data.vao_idx); remove_vao(w->render_data.gvao_idx);
-    w->render_data.vao_idx = 0; w->render_data.gvao_idx = 0;
+    if (w->render_data.vao_idx > -1) remove_vao(w->render_data.vao_idx);
+    w->render_data.vao_idx = -1;
+    if (w->render_data.gvao_idx > -1) remove_vao(w->render_data.gvao_idx);
+    w->render_data.gvao_idx = -1;
 }
 
 
