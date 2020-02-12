@@ -977,7 +977,7 @@ destroy_mock_window(PyObject *capsule) {
     Window *w = PyCapsule_GetPointer(capsule, "Window");
     if (w) {
         destroy_window(w);
-        PyMem_Del(w);
+        PyMem_Free(w);
     }
 }
 
@@ -986,7 +986,7 @@ pycreate_mock_window(PyObject *self UNUSED, PyObject *args) {
     Screen *screen;
     PyObject *title = NULL;
     if (!PyArg_ParseTuple(args, "O|U", &screen, &title)) return NULL;
-    Window *w = PyMem_New(Window, 1);
+    Window *w = PyMem_Calloc(sizeof(Window), 1);
     if (!w) return NULL;
     Py_INCREF(screen);
     PyObject *ans = PyCapsule_New(w, "Window", destroy_mock_window);
