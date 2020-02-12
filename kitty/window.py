@@ -160,7 +160,6 @@ class Window:
         self.tabref = weakref.ref(tab)
         self.clipboard_control_buffers = {'p': '', 'c': ''}
         self.destroyed = False
-        self.click_queue = deque(maxlen=3)
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
         self.is_visible_in_layout = True
