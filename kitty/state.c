@@ -162,6 +162,18 @@ release_gpu_resources_for_window(Window *w) {
     w->render_data.gvao_idx = -1;
 }
 
+static inline void
+initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
+    w->id = ++global_state.window_id_counter;
+    w->visible = true;
+    w->title = title;
+    Py_XINCREF(title);
+    if (init_gpu_resources) create_gpu_resources_for_window(w);
+    else {
+        w->render_data.vao_idx = -1;
+        w->render_data.gvao_idx = -1;
+    }
+}
 
 static inline id_type
 add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
@@ -169,11 +181,7 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
         ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
         make_os_window_context_current(osw);
         zero_at_i(tab->windows, tab->num_windows);
-        tab->windows[tab->num_windows].id = ++global_state.window_id_counter;
-        tab->windows[tab->num_windows].visible = true;
-        tab->windows[tab->num_windows].title = title;
-        create_gpu_resources_for_window(&tab->windows[tab->num_windows]);
-        Py_INCREF(tab->windows[tab->num_windows].title);
+        initialize_window(tab->windows + tab->num_windows, title, true);
         return tab->windows[tab->num_windows++].id;
     END_WITH_TAB;
     return 0;
@@ -964,6 +972,31 @@ PYWRAP0(destroy_global_data) {
     Py_RETURN_NONE;
 }
 
+static void
+destroy_mock_window(PyObject *capsule) {
+    Window *w = PyCapsule_GetPointer(capsule, "Window");
+    if (w) {
+        destroy_window(w);
+        PyMem_Del(w);
+    }
+}
+
+static PyObject*
+pycreate_mock_window(PyObject *self UNUSED, PyObject *args) {
+    Screen *screen;
+    PyObject *title = NULL;
+    if (!PyArg_ParseTuple(args, "O|U", &screen, &title)) return NULL;
+    Window *w = PyMem_New(Window, 1);
+    if (!w) return NULL;
+    Py_INCREF(screen);
+    PyObject *ans = PyCapsule_New(w, "Window", destroy_mock_window);
+    if (ans != NULL) {
+        initialize_window(w, title, false);
+        w->render_data.screen = screen;
+    }
+    return ans;
+}
+
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 THREE_ID(detach_window)
@@ -1019,6 +1052,7 @@ static PyMethodDef module_methods[] = {
     MW(os_window_font_size, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(patch_global_colors, METH_VARARGS),
+    MW(create_mock_window, METH_VARARGS),
     MW(destroy_global_data, METH_NOARGS),
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
