@@ -280,11 +280,10 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
 }
 
 static inline void
-handle_mouse_movement_in_kitty(Window *w, int button, unsigned int x, unsigned int y) {
+handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
     Screen *screen = w->render_data.screen;
     if (screen->selection.in_progress && button == GLFW_MOUSE_BUTTON_LEFT) {
         monotonic_t now = monotonic();
-        bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
         if ((now - w->last_drag_scroll_at) >= ms_to_monotonic_t(20ll) || mouse_cell_changed) {
             update_drag(false, w, false, 0);
             w->last_drag_scroll_at = now;
@@ -304,6 +303,7 @@ HANDLER(handle_move_event) {
     if (!cell_for_pos(w, &x, &y, global_state.callback_os_window)) return;
     Screen *screen = w->render_data.screen;
     detect_url(screen, x, y);
+    bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
     bool in_tracking_mode = (
         screen->modes.mouse_tracking_mode == ANY_MODE ||
@@ -311,9 +311,8 @@ HANDLER(handle_move_event) {
     bool has_terminal_select_modifiers = modifiers == (int)OPT(terminal_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers));
     bool handle_in_kitty = !in_tracking_mode || has_terminal_select_modifiers;
     if (handle_in_kitty) {
-        handle_mouse_movement_in_kitty(w, button, x, y);
+        handle_mouse_movement_in_kitty(w, button, mouse_cell_changed);
     } else {
-        bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
         if (!mouse_cell_changed) return;
         int sz = encode_mouse_event(w, MAX(0, button), button >=0 ? DRAG : MOVE, 0);
         if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
@@ -357,7 +356,7 @@ HANDLER(add_click) {
 #define N(n) (q->clicks[q->length - n])
     N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = w->mouse_pos.x; N(0).y = w->mouse_pos.y;
     q->length++;
-    double multi_click_allowed_radius = 1.2 * global_state.callback_os_window->fonts_data->cell_height;
+    double multi_click_allowed_radius = 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
     // Now dispatch the multi-click if any
     if (q->length > 2) {
         // possible triple-click
@@ -684,16 +683,21 @@ test_encode_mouse(PyObject *self UNUSED, PyObject *args) {
 static PyObject*
 send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
     PyObject *capsule;
-    int button, modifiers, is_release, x, y;
-    if (!PyArg_ParseTuple(args, "O!iipii", &PyCapsule_Type, &capsule, &button, &modifiers, &is_release, &x, &y)) return NULL;
+    int button, modifiers, is_release;
+    unsigned int x, y;
+    if (!PyArg_ParseTuple(args, "O!iipII", &PyCapsule_Type, &capsule, &button, &modifiers, &is_release, &x, &y)) return NULL;
     Window *w = PyCapsule_GetPointer(capsule, "Window");
     if (!w) return NULL;
-    if (button == -1) {
-        if (y < 0) do_drag_scroll(w, true);
-        else if ((unsigned int)y >= w->render_data.screen->lines) do_drag_scroll(w, false);
-        else handle_mouse_movement_in_kitty(w, GLFW_MOUSE_BUTTON_LEFT, x, y);
+    bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
+    w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
+    if (button < 0) {
+        if (button == -2) do_drag_scroll(w, true);
+        else if (button == -3) do_drag_scroll(w, false);
+        else handle_mouse_movement_in_kitty(w, GLFW_MOUSE_BUTTON_LEFT, mouse_cell_changed);
     }
-    else handle_button_event_in_kitty(w, button, modifiers, is_release);
+    else {
+        handle_button_event_in_kitty(w, button, modifiers, (bool)is_release);
+    }
     Py_RETURN_NONE;
 }
 
