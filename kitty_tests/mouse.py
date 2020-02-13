@@ -5,20 +5,35 @@
 from functools import partial
 
 from kitty.fast_data_types import (
-    create_mock_window, send_mock_mouse_event_to_window, GLFW_MOUSE_BUTTON_LEFT
+    GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOUSE_BUTTON_LEFT, create_mock_window,
+    send_mock_mouse_event_to_window
 )
 
 from . import BaseTest
 
 
-def send_mouse_event(window, button=-1, modifiers=0, is_release=False, x=0, y=0, clear_click_queue=False):
-    send_mock_mouse_event_to_window(window, button, modifiers, is_release, x, y, clear_click_queue)
+def send_mouse_event(
+    window,
+    button=-1,
+    modifiers=0,
+    is_release=False,
+    x=0,
+    y=0,
+    clear_click_queue=False
+):
+    send_mock_mouse_event_to_window(
+        window, button, modifiers, is_release, x, y, clear_click_queue
+    )
 
 
 class TestMouse(BaseTest):
 
     def test_mouse_selection(self):
-        s = self.create_screen()
+        s = self.create_screen(
+            options=dict(
+                rectangle_select_modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL
+            )
+        )
         w = create_mock_window(s)
         ev = partial(send_mouse_event, w)
 
@@ -33,11 +48,17 @@ class TestMouse(BaseTest):
             s.draw('fghij')
             s.draw('klmno')
 
-        def press(x=0, y=0):
-            ev(GLFW_MOUSE_BUTTON_LEFT, x=x, y=y)
+        def press(x=0, y=0, modifiers=0):
+            ev(GLFW_MOUSE_BUTTON_LEFT, x=x, y=y, modifiers=modifiers)
 
         def release(x=0, y=0):
-            ev(GLFW_MOUSE_BUTTON_LEFT, x=x, y=y, is_release=True, clear_click_queue=True)
+            ev(
+                GLFW_MOUSE_BUTTON_LEFT,
+                x=x,
+                y=y,
+                is_release=True,
+                clear_click_queue=True
+            )
 
         def move(x=0, y=0):
             ev(x=x, y=y)
@@ -95,3 +116,11 @@ class TestMouse(BaseTest):
         self.ae(sel(), '1 2 3\n4 5 6')
         move()
         self.ae(sel(), str(s.line(0)))
+        release()
+
+        # Rectangle select
+        init()
+        press(x=1, y=1, modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL)
+        move(x=3, y=3)
+        self.ae(sel(), '789bcdghi')
+        release()
