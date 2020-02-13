@@ -73,6 +73,9 @@ class TestMouse(BaseTest):
                 count -= 1
                 ev(GLFW_MOUSE_BUTTON_LEFT, x=x, y=y)
 
+        def scroll(x=0, y=0, up=True):
+            move(x=x, y=y, button=-2 if up else -3)
+
         # Simple, click, move, release test
         init()
         press()
@@ -131,15 +134,14 @@ class TestMouse(BaseTest):
         release()
 
         # scrolling
-        UP, DOWN = -2, -3
         init()
         press(x=1)
-        move(x=1, button=UP)
+        scroll(x=1)
         self.ae(sel(), 'LMNO12')
-        move(x=1, button=UP)
+        scroll(x=1)
         self.ae(sel(), 'GHIJKLMNO12')
-        move(x=1, button=DOWN)
+        scroll(x=1, up=False)
         self.ae(sel(), 'LMNO12')
-        move(x=2, button=DOWN)
+        scroll(x=2, up=False)
         self.ae(sel(), '23')
         release()
