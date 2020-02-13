@@ -42,6 +42,11 @@ class TestMouse(BaseTest):
 
         def init():
             s.reset()
+            s.draw('pqrst')
+            s.draw('uvwxy')
+            s.draw('ABCDE')
+            s.draw('FGHIJ')
+            s.draw('KLMNO')
             s.draw('12345')
             s.draw('67890')
             s.draw('abcde')
@@ -60,8 +65,8 @@ class TestMouse(BaseTest):
                 clear_click_queue=True
             )
 
-        def move(x=0, y=0):
-            ev(x=x, y=y)
+        def move(x=0, y=0, button=-1):
+            ev(x=x, y=y, button=button)
 
         def multi_click(x=0, y=0, count=2):
             while count > 0:
@@ -123,4 +128,18 @@ class TestMouse(BaseTest):
         press(x=1, y=1, modifiers=GLFW_MOD_ALT | GLFW_MOD_CONTROL)
         move(x=3, y=3)
         self.ae(sel(), '789bcdghi')
+        release()
+
+        # scrolling
+        UP, DOWN = -2, -3
+        init()
+        press(x=1)
+        move(x=1, button=UP)
+        self.ae(sel(), 'LMNO12')
+        move(x=1, button=UP)
+        self.ae(sel(), 'GHIJKLMNO12')
+        move(x=1, button=DOWN)
+        self.ae(sel(), 'LMNO12')
+        move(x=2, button=DOWN)
+        self.ae(sel(), '23')
         release()
