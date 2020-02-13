@@ -75,9 +75,10 @@ class BaseTest(TestCase):
     maxDiff = 2000
 
     def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20, options=None):
-        if options is None:
-            options = {'scrollback_pager_history_size': 1024, 'click_interval': 0.5}
-        options = Options(merge_configs(defaults._asdict(), options))
+        final_options = {'scrollback_pager_history_size': 1024, 'click_interval': 0.5}
+        if options:
+            final_options.update(options)
+        options = Options(merge_configs(defaults._asdict(), final_options))
         set_options(options)
         c = Callbacks()
         return Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
