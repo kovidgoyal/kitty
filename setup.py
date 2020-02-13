@@ -204,6 +204,7 @@ def init_env(
     if ccver >= (5, 0):
         df += ' -Og'
         float_conversion = '-Wfloat-conversion'
+    fortify_source = '-D_FORTIFY_SOURCE=2' if cc == 'gcc' else ''
     optimize = df if debug or sanitize else '-O3'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cppflags = os.environ.get(
@@ -215,7 +216,7 @@ def init_env(
     cflags = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
-            ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden'
+            ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
         ).format(
             float_conversion,
             optimize,
@@ -223,6 +224,7 @@ def init_env(
             stack_protector,
             missing_braces,
             '-march=native' if native_optimizations else '',
+            fortify_source
         )
     )
     cflags = shlex.split(cflags) + shlex.split(
