@@ -474,10 +474,21 @@ has_emoji_presentation(CPUCell *cpu_cell, GPUCell *gpu_cell) {
 static inline bool
 has_cell_text(Font *self, CPUCell *cell) {
     if (!face_has_codepoint(self->face, cell->ch)) return false;
+    char_type combining_chars[arraysz(cell->cc_idx)];
+    unsigned num_cc = 0;
     for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
-        combining_type cc_idx = cell->cc_idx[i];
-        if (cc_idx == VS15 || cc_idx == VS16) continue;
-        if (!face_has_codepoint(self->face, codepoint_for_mark(cc_idx))) return false;
+        if (cell->cc_idx[i] == VS15 || cell->cc_idx[i] == VS16) continue;
+        combining_chars[num_cc++] = codepoint_for_mark(cell->cc_idx[i]);
+    }
+    if (num_cc == 0) return true;
+    if (num_cc == 1) {
+        if (face_has_codepoint(self->face, combining_chars[0])) return true;
+        char_type ch = 0;
+        if (hb_unicode_compose(hb_unicode_funcs_get_default(), ch, combining_chars[0], &ch) && face_has_codepoint(self->face, ch)) return true;
+        return false;
+    }
+    for (unsigned i = 0; i < num_cc; i++) {
+        if (!face_has_codepoint(self->face, combining_chars[i])) return false;
     }
     return true;
 }

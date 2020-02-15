@@ -33,6 +33,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix menubar title not updating on OS Window focus change (:iss:`2350`)
 
+- Fix rendering of combining characters with fonts that have glyphs for
+  precomposed characters but not decomposed versions (:iss:`2365`)
+
 
 0.16.0 [2020-01-28]
 --------------------
