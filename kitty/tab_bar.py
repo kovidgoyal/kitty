@@ -73,6 +73,7 @@ def draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, index, 
     for bg in fade_colors:
         screen.cursor.bg = bg
         screen.draw(' ')
+    screen.cursor.bg = as_rgb(color_as_int(tab_bg))
     draw_title(draw_data, screen, tab, index)
     extra = screen.cursor.x - before - max_title_length
     if extra > 0:
@@ -247,6 +248,7 @@ class TabBar:
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
             end = self.draw_func(self.draw_data, s, t, before, max_title_length, i + 1, t is last_tab)
+            s.cursor.bg = s.cursor.fg = 0
             cr.append((before, end))
             if s.cursor.x > s.columns - max_title_length and t is not last_tab:
                 s.cursor.x = s.columns - 2
