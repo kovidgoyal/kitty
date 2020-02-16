@@ -263,7 +263,7 @@ o('adjust_column_width', 0, option_type=adjust_line_height)
 
 o(
     '+symbol_map',
-    'U+E0A0-U+E0A2,U+E0B0-U+E0B3 PowerlineSymbols',
+    'U+E0A0-U+E0A3,U+E0C0-U+E0C7 PowerlineSymbols',
     add_to_default=False,
     long_text=_('''
 Map the specified unicode codepoints to a particular font. Useful if you need
