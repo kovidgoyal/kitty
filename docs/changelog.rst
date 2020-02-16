@@ -36,6 +36,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix rendering of combining characters with fonts that have glyphs for
   precomposed characters but not decomposed versions (:iss:`2365`)
 
+- Fix incorrect rendering of selection when using rectangular select and
+  scrolling (:iss:`2351`)
+
 
 0.16.0 [2020-01-28]
 --------------------

@@ -1557,13 +1557,13 @@ is_selection_empty(Screen *self, unsigned int start_x, unsigned int start_y, uns
 }
 
 static inline void
-selection_coord(Screen *self, unsigned int x, unsigned int y, unsigned int ydelta, SelectionBoundary *ans) {
+selection_coord(const Screen *self, unsigned int x, unsigned int y, unsigned int ydelta, SelectionBoundary *ans) {
     if (y + self->scrolled_by < ydelta) {
-        ans->x = 0; ans->y = 0;
+        ans->x = x; ans->y = 0;
     } else {
         y = y - ydelta + self->scrolled_by;
         if (y >= self->lines) {
-            ans->x = self->columns - 1; ans->y = self->lines - 1;
+            ans->x = MIN(x, self->columns - 1); ans->y = self->lines - 1;
         } else {
             ans->x = x; ans->y = y;
         }
