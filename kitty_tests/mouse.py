@@ -125,6 +125,16 @@ class TestMouse(BaseTest):
         move()
         self.ae(sel(), str(s.line(0)))
         release()
+        s.reset()
+        s.draw(' 123')
+        s.linefeed(), s.carriage_return()
+        s.draw(' 456')
+        s.linefeed(), s.carriage_return()
+        multi_click(x=1, count=3)
+        self.ae(sel(), '123')
+        move(x=2, y=1)
+        self.ae(sel(), ' 123\n 456')
+        release()
 
         # Rectangle select
         init()
