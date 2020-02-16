@@ -19,6 +19,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - New options :opt:`cursor_beam_thickness` and :opt:`cursor_underline_thickness` to control the thickness of the
   beam and underline cursors (:iss:`2337` and :pull:`2342`)
 
+- When the application running in the terminal grabs the mouse, pass middle
+  clicks to the application unless :opt:`terminal_select_modifiers` are
+  pressed (:iss:`2368`)
+
 - X11: Fix arrow mouse cursor using right pointing instead of the default left
   pointing arrow (:iss:`2341`)
 

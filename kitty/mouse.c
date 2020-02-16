@@ -402,7 +402,7 @@ handle_button_event_in_kitty(Window *w, int button, int modifiers, bool is_relea
             } else add_click(w, button, modifiers, 0);
             break;
         case GLFW_MOUSE_BUTTON_MIDDLE:
-            if (is_release && !modifiers) { call_boss(paste_from_selection, NULL); return; }
+            if (is_release) { call_boss(paste_from_selection, NULL); return; }
             break;
         case GLFW_MOUSE_BUTTON_RIGHT:
             if (is_release) { extend_selection(w); }
@@ -418,10 +418,10 @@ HANDLER(handle_button_event) {
     }
     Screen *screen = w->render_data.screen;
     if (!screen) return;
+    const int ts1 = OPT(terminal_select_modifiers), ts2 = OPT(terminal_select_modifiers) | OPT(rectangle_select_modifiers);
     bool handle_in_kitty = (
-            modifiers == (int)OPT(terminal_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers)) ||
+            modifiers == ts1 || modifiers == ts2 ||
             screen->modes.mouse_tracking_mode == 0 ||
-            button == GLFW_MOUSE_BUTTON_MIDDLE ||
             (modifiers == (int)OPT(open_url_modifiers) && button == GLFW_MOUSE_BUTTON_LEFT)
         );
     if (handle_in_kitty) handle_button_event_in_kitty(w, button, modifiers, is_release);
