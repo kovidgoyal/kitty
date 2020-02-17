@@ -95,3 +95,4 @@ unsigned dispatchTimers(EventLoopData *eld);
 void finalizePollData(EventLoopData *eld);
 bool initPollData(EventLoopData *eld, int display_fd);
 void wakeupEventLoop(EventLoopData *eld);
+char* utf_8_strndup(const char* source, size_t max_length);

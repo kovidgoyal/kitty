@@ -332,3 +332,21 @@ pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func displ
     }
     return read_ok;
 }
+
+// Duplicate a UTF-8 encoded string
+// but cut it so that it has at most max_length bytes plus the null byte.
+// This does not take combining characters into account.
+GLFWAPI char* utf_8_strndup(const char* source, size_t max_length) {
+    if (!source) return NULL;
+    size_t length = strnlen(source, max_length);
+    if (length >= max_length) {
+        for (length = max_length; length > 0; length--) {
+            if ((source[length] & 0xC0) != 0x80) break;
+        }
+    }
+
+    char* result = malloc(length + 1);
+    memcpy(result, source, length);
+    result[length] = 0;
+    return result;
+}
