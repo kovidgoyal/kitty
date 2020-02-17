@@ -43,6 +43,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix incorrect rendering of selection when using rectangular select and
   scrolling (:iss:`2351`)
 
+- macOS: When switching inpt method while a pending multi-key input is in
+  progress, clear the pending input (:iss:`2358`)
+
 
 0.16.0 [2020-01-28]
 --------------------

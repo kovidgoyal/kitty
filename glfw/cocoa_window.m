@@ -659,6 +659,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     NSTrackingArea* trackingArea;
     NSMutableAttributedString* markedText;
     NSRect markedRect;
+    NSString *input_source_at_last_key_event;
 }
 
 - (void) removeGLFWWindow;
@@ -677,6 +678,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
         trackingArea = nil;
         markedText = [[NSMutableAttributedString alloc] init];
         markedRect = NSMakeRect(0.0, 0.0, 0.0, 0.0);
+        input_source_at_last_key_event = nil;
 
         [self updateTrackingAreas];
         [self registerForDraggedTypes:@[NSPasteboardTypeFileURL, NSPasteboardTypeString]];
@@ -689,6 +691,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 {
     [trackingArea release];
     [markedText release];
+    if (input_source_at_last_key_event) [input_source_at_last_key_event release];
     [super dealloc];
 }
 
@@ -965,12 +968,19 @@ is_ascii_control_char(char x) {
 
 - (void)keyDown:(NSEvent *)event
 {
+    const bool previous_has_marked_text = [self hasMarkedText];
+    bool input_source_changed = false;
+    NSTextInputContext *inpctx = [NSTextInputContext currentInputContext];
+    if (inpctx && (!input_source_at_last_key_event || ![input_source_at_last_key_event isEqualToString:inpctx.selectedKeyboardInputSource])) {
+        input_source_at_last_key_event = [inpctx.selectedKeyboardInputSource retain];
+        input_source_changed = true;
+    }
+
     const unsigned int keycode = [event keyCode];
     const NSUInteger flags = [event modifierFlags];
     const int mods = translateFlags(flags);
     const int key = translateKey(keycode, true);
     const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, flags) != 1;
-    const bool previous_has_marked_text = [self hasMarkedText];
     [self unmarkText];
     _glfw.ns.text[0] = 0;
     GLFWkeyevent glfw_keyevent;
@@ -984,6 +994,14 @@ is_ascii_control_char(char x) {
             [self interpretKeyEvents:[NSArray arrayWithObject:event]];
         }
     } else {
+        if (input_source_changed) {
+            debug_key(@"Input source changed, clearing pre-edit text and resetting deadkey state\n");
+            glfw_keyevent.text = NULL;
+            glfw_keyevent.ime_state = 1;
+            window->ns.deadKeyState = 0;
+            _glfwInputKeyboard(window, &glfw_keyevent); // clear pre-edit text
+        }
+
         static UniChar text[256];
         UniCharCount char_count = 0;
         const bool in_compose_sequence = window->ns.deadKeyState != 0;
