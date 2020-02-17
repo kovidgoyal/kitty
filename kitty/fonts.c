@@ -484,7 +484,7 @@ has_cell_text(Font *self, CPUCell *cell) {
     if (num_cc == 1) {
         if (face_has_codepoint(self->face, combining_chars[0])) return true;
         char_type ch = 0;
-        if (hb_unicode_compose(hb_unicode_funcs_get_default(), ch, combining_chars[0], &ch) && face_has_codepoint(self->face, ch)) return true;
+        if (hb_unicode_compose(hb_unicode_funcs_get_default(), cell->ch, combining_chars[0], &ch) && face_has_codepoint(self->face, ch)) return true;
         return false;
     }
     for (unsigned i = 0; i < num_cc; i++) {
