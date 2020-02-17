@@ -84,19 +84,21 @@ as color16 to color255.''')
     'shortcuts': [
         _('Keyboard shortcuts'),
         _('''\
-For a list of key names, see: :link:`GLFW keys
-<https://www.glfw.org/docs/latest/group__keys.html>`. The name to use is the part
-after the :code:`GLFW_KEY_` prefix. For a list of modifier names, see:
+For a list of key names, see: :link:`the GLFW key macros
+<https://github.com/kovidgoyal/kitty/blob/master/glfw/glfw3.h#L349>`.
+The name to use is the part after the :code:`GLFW_KEY_` prefix.
+For a list of modifier names, see:
 :link:`GLFW mods <https://www.glfw.org/docs/latest/group__mods.html>`
 
 On Linux you can also use XKB key names to bind keys that are not supported by
 GLFW. See :link:`XKB keys
 <https://github.com/xkbcommon/libxkbcommon/blob/master/xkbcommon/xkbcommon-keysyms.h>`
 for a list of key names. The name to use is the part after the :code:`XKB_KEY_`
-prefix. Note that you should only use an XKB key name for keys that are not present
-in the list of GLFW keys.
+prefix. Note that you can only use an XKB key name for keys that are not known
+as GLFW keys.
 
-Finally, you can use raw system key codes to map keys. To see the system key code
+Finally, you can use raw system key codes to map keys, again only for keys that are not
+known as GLFW keys. To see the system key code
 for a key, start kitty with the :option:`kitty --debug-keyboard` option. Then kitty will
 output some debug text for every key event. In that text look for ``native_code``
 the value of that becomes the key name in the shortcut. For example:
