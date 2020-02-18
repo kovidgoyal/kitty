@@ -1996,6 +1996,15 @@ cursor_up(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+update_selection(Screen *self, PyObject *args) {
+    unsigned int x, y;
+    int in_left_half_of_cell = 0, ended = 1;
+    if (!PyArg_ParseTuple(args, "II|pp", &x, &y, &in_left_half_of_cell, &ended)) return NULL;
+    screen_update_selection(self, x, y, in_left_half_of_cell, ended);
+    Py_RETURN_NONE;
+}
+
 WRAP0x(index)
 WRAP0(reverse_index)
 WRAP0(reset)
@@ -2008,14 +2017,13 @@ WRAP0(carriage_return)
 WRAP2(resize, 1, 1)
 WRAP2(set_margins, 1, 1)
 WRAP0(rescale_images)
-WRAP2B(update_selection)
 
 static PyObject*
 start_selection(Screen *self, PyObject *args) {
     unsigned int x, y;
     int rectangle_select = 0, extend_mode = EXTEND_CELL;
     if (!PyArg_ParseTuple(args, "II|pi", &x, &y, &rectangle_select, &extend_mode)) return NULL;
-    screen_start_selection(self, x, y, rectangle_select, extend_mode);
+    screen_start_selection(self, x, y, false, rectangle_select, extend_mode);
     Py_RETURN_NONE;
 }
 
@@ -2045,13 +2053,15 @@ text_for_selection(Screen *self, PyObject *a UNUSED) {
 }
 
 bool
-screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end) {
+screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end, bool* start_in_left_half, bool* end_in_left_half) {
     if (y >= self->lines) { return false; }
     Line *line = visual_line_(self, y);
     index_type xlimit = line->xnum, xstart = 0;
     while (xlimit > 0 && CHAR_IS_BLANK(line->cpu_cells[xlimit - 1].ch)) xlimit--;
     while (xstart < xlimit && CHAR_IS_BLANK(line->cpu_cells[xstart].ch)) xstart++;
     *start = xstart; *end = xlimit > 0 ? xlimit - 1 : 0;
+    *start_in_left_half = true;
+    *end_in_left_half = false;
     return true;
 }
 
@@ -2064,8 +2074,9 @@ is_opt_word_char(char_type ch) {
 }
 
 bool
-screen_selection_range_for_word(Screen *self, index_type x, index_type *y1, index_type *y2, index_type *s, index_type *e, bool initial_selection) {
+screen_selection_range_for_word(Screen *self, index_type x, index_type *y1, index_type *y2, index_type *s, index_type *e, bool *start_in_left_half, bool *end_in_left_half, bool initial_selection) {
     if (*y1 >= self->lines || x >= self->columns) return false;
+    *start_in_left_half = true; *end_in_left_half = false;
     index_type start, end;
     Line *line = visual_line_(self, *y1);
     *y2 = *y1;
@@ -2145,10 +2156,10 @@ screen_is_selection_dirty(Screen *self) {
 }
 
 void
-screen_start_selection(Screen *self, index_type x, index_type y, bool rectangle_select, SelectionExtendMode extend_mode) {
+screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool rectangle_select, SelectionExtendMode extend_mode) {
 #define A(attr, val) self->selection.attr = val;
     A(start_x, x); A(end_x, x); A(start_y, y); A(end_y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
-    A(in_progress, true); A(rectangle_select, rectangle_select); A(extend_mode, extend_mode);
+    A(in_progress, true); A(rectangle_select, rectangle_select); A(extend_mode, extend_mode); A(start_in_left_half, in_left_half_of_cell); A(end_in_left_half, in_left_half_of_cell);
 #undef A
 }
 
@@ -2156,13 +2167,15 @@ void
 screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
 #define A(attr, val) self->url_range.attr = val;
     A(start_x, start_x); A(end_x, end_x); A(start_y, start_y); A(end_y, end_y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
+    A(start_in_left_half, true); A(end_in_left_half, false);
 #undef A
 }
 
 void
-screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
+screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool ended) {
     index_type orig_x = self->selection.end_x, orig_y = self->selection.end_y, orig_scrolled_by = self->selection.end_scrolled_by;
     self->selection.end_x = x; self->selection.end_y = y; self->selection.end_scrolled_by = self->scrolled_by;
+    self->selection.end_in_left_half = in_left_half_of_cell;
     if (ended) self->selection.in_progress = false;
     index_type start, end;
     bool found = false;
@@ -2170,19 +2183,19 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
     switch(self->selection.extend_mode) {
         case EXTEND_WORD: {
             index_type y1 = y, y2;
-            found = screen_selection_range_for_word(self, x, &y1, &y2, &start, &end, false);
+            found = screen_selection_range_for_word(self, x, &y1, &y2, &start, &end, &self->selection.start_in_left_half, &self->selection.end_in_left_half, false);
             if (found) {
                 if (extending_leftwards) {
                     self->selection.end_x = start; self->selection.end_y = y1;
                     y1 = self->selection.start_y;
-                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end, false);
+                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end, &self->selection.start_in_left_half, &self->selection.end_in_left_half, false);
                     if (found) {
                         self->selection.start_x = end; self->selection.start_y = y2;
                     }
                 } else {
                     self->selection.end_x = end; self->selection.end_y = y2;
                     y1 = self->selection.start_y;
-                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end, false);
+                    found = screen_selection_range_for_word(self, self->selection.start_x, &y1, &y2, &start, &end, &self->selection.start_in_left_half, &self->selection.end_in_left_half, false);
                     if (found) {
                         self->selection.start_x = start; self->selection.start_y = y1;
                     }
@@ -2199,7 +2212,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
             while(top_line > 0 && visual_line_(self, top_line)->continued) top_line--;
             while(bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->continued) bottom_line++;
             bool multiline = self->selection.end_y != self->selection.start_y;
-            found = screen_selection_range_for_line(self, top_line, &start, &end);
+            found = screen_selection_range_for_line(self, top_line, &start, &end, &self->selection.start_in_left_half, &self->selection.end_in_left_half);
             if (found) {
                 if (extending_leftwards) {
                     self->selection.end_x = multiline ? 0 : start; self->selection.end_y = top_line;
@@ -2207,7 +2220,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool ended) {
                     self->selection.start_x = multiline ? 0 : start; self->selection.start_y = top_line;
                 }
             }
-            found = screen_selection_range_for_line(self, bottom_line, &start, &end);
+            found = screen_selection_range_for_line(self, bottom_line, &start, &end, &self->selection.start_in_left_half, &self->selection.end_in_left_half);
             if (found) {
                 if (extending_leftwards) {
                     self->selection.start_x = end; self->selection.start_y = bottom_line;

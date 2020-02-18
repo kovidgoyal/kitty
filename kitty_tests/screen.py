@@ -421,7 +421,7 @@ class TestScreen(BaseTest):
                 s.carriage_return(), s.linefeed()
             s.draw(str(i) * s.columns)
         s.start_selection(0, 0, False)
-        s.update_selection(4, 4, True)
+        s.update_selection(4, 4)
         expected = ('55555', '\n66666', '\n77777', '\n88888', '\n99999')
         self.ae(s.text_for_selection(), expected)
         s.scroll(2, True)

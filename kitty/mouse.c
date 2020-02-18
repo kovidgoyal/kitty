@@ -174,14 +174,14 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
             global_state.active_drag_in_window = 0;
             w->last_drag_scroll_at = 0;
             if (screen->selection.in_progress)
-                screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, true);
+                screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, true);
         }
         else {
             global_state.active_drag_in_window = w->id;
-            screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, modifiers == (int)OPT(rectangle_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers)), EXTEND_CELL);
+            screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, modifiers == (int)OPT(rectangle_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers)), EXTEND_CELL);
         }
     } else if (screen->selection.in_progress) {
-        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, false);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false);
     }
 }
 
@@ -218,7 +218,7 @@ static inline void
 extend_selection(Window *w) {
     Screen *screen = w->render_data.screen;
     if (screen_has_selection(screen)) {
-        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, true);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, true);
     }
 }
 
@@ -335,21 +335,22 @@ multi_click(Window *w, unsigned int count) {
     bool found_selection = false;
     SelectionExtendMode mode = EXTEND_CELL;
     unsigned int y1 = w->mouse_pos.cell_y, y2 = w->mouse_pos.cell_y;
+    bool start_in_left_half = w->mouse_pos.in_left_half_of_cell, end_in_left_half = w->mouse_pos.in_left_half_of_cell;
     switch(count) {
         case 2:
-            found_selection = screen_selection_range_for_word(screen, w->mouse_pos.cell_x, &y1, &y2, &start, &end, true);
+            found_selection = screen_selection_range_for_word(screen, w->mouse_pos.cell_x, &y1, &y2, &start, &end, &start_in_left_half, &end_in_left_half, true);
             mode = EXTEND_WORD;
             break;
         case 3:
-            found_selection = screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end);
+            found_selection = screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end, &start_in_left_half, &end_in_left_half);
             mode = EXTEND_LINE;
             break;
         default:
             break;
     }
     if (found_selection) {
-        screen_start_selection(screen, start, y1, false, mode);
-        screen_update_selection(screen, end, y2, false);
+        screen_start_selection(screen, start, y1, start_in_left_half, false, mode);
+        screen_update_selection(screen, end, y2, end_in_left_half, false);
     }
 }
 
