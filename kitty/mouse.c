@@ -132,11 +132,12 @@ distance_to_window(Window *w, OSWindow *os_window) {
 static bool clamp_to_window = false;
 
 static inline bool
-cell_for_pos(Window *w, unsigned int *x, unsigned int *y, OSWindow *os_window) {
+cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_cell, OSWindow *os_window) {
     WindowGeometry *g = &w->geometry;
     Screen *screen = w->render_data.screen;
     if (!screen) return false;
     unsigned int qx = 0, qy = 0;
+    bool in_left_half = false;
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;
     double left = window_left(w, os_window), top = window_top(w, os_window), right = window_right(w, os_window), bottom = window_bottom(w, os_window);
@@ -147,11 +148,17 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, OSWindow *os_window) {
     w->mouse_pos.x = mouse_x - left; w->mouse_pos.y = mouse_y - top;
     if (mouse_x < left || mouse_y < top || mouse_x > right || mouse_y > bottom) return false;
     if (mouse_x >= g->right) qx = screen->columns - 1;
-    else if (mouse_x >= g->left) qx = (unsigned int)((double)(mouse_x - g->left) / os_window->fonts_data->cell_width);
+    else if (mouse_x >= g->left) {
+        double xval = (double)(mouse_x - g->left) / os_window->fonts_data->cell_width;
+        double fxval = floor(xval);
+        qx = (unsigned int)fxval;
+        if (xval - fxval <= 0.5) in_left_half = true;
+    }
     if (mouse_y >= g->bottom) qy = screen->lines - 1;
     else if (mouse_y >= g->top) qy = (unsigned int)((double)(mouse_y - g->top) / os_window->fonts_data->cell_height);
     if (qx < screen->columns && qy < screen->lines) {
         *x = qx; *y = qy;
+        *in_left_half_of_cell = in_left_half;
         return true;
     }
     return false;
@@ -300,11 +307,13 @@ HANDLER(handle_move_event) {
             call_boss(switch_focus_to, "I", window_idx);
         }
     }
-    if (!cell_for_pos(w, &x, &y, global_state.callback_os_window)) return;
+    bool in_left_half_of_cell = false;
+    if (!cell_for_pos(w, &x, &y, &in_left_half_of_cell, global_state.callback_os_window)) return;
     Screen *screen = w->render_data.screen;
     detect_url(screen, x, y);
     bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
+    w->mouse_pos.in_left_half_of_cell = in_left_half_of_cell;
     bool in_tracking_mode = (
         screen->modes.mouse_tracking_mode == ANY_MODE ||
         (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0));

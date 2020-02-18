@@ -95,6 +95,7 @@ typedef struct {
     struct {
         unsigned int cell_x, cell_y;
         double x, y;
+        bool in_left_half_of_cell;
     } mouse_pos;
     WindowGeometry geometry;
     ClickQueue click_queue;
