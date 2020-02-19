@@ -486,7 +486,29 @@ class Stack(Layout):  # {{{
 # }}}
 
 
-class Tall(Layout):  # {{{
+# Tall {{{
+
+
+def neighbors_for_tall_window(num_full_size_windows, window, windows):
+    idx = windows.index(window)
+    prev = None if idx == 0 else windows[idx-1]
+    nxt = None if idx == len(windows) - 1 else windows[idx+1]
+    ans = {'left': [prev] if prev is not None else [], 'right': [], 'top': [], 'bottom': []}
+    if idx < num_full_size_windows - 1:
+        if nxt is not None:
+            ans['right'] = [nxt]
+    elif idx == num_full_size_windows - 1:
+        ans['right'] = windows[idx+1:]
+    else:
+        ans['left'] = [windows[num_full_size_windows - 1]]
+        if idx > num_full_size_windows:
+            ans['top'] = [prev]
+        if nxt is not None:
+            ans['bottom'] = [nxt]
+    return ans
+
+
+class Tall(Layout):
 
     name = 'tall'
     vlayout = Layout.ylayout
@@ -583,22 +605,7 @@ class Tall(Layout):  # {{{
         self.simple_blank_rects(windows[0], windows[-1])
 
     def neighbors_for_window(self, window, windows):
-        idx = windows.index(window)
-        prev = None if idx == 0 else windows[idx-1]
-        nxt = None if idx == len(windows) - 1 else windows[idx+1]
-        ans = {'left': [prev] if prev is not None else [], 'right': [], 'top': [], 'bottom': []}
-        if idx < self.num_full_size_windows - 1:
-            if nxt is not None:
-                ans['right'] = [nxt]
-        elif idx == self.num_full_size_windows - 1:
-            ans['right'] = windows[idx+1:]
-        else:
-            ans['left'] = [windows[self.num_full_size_windows - 1]]
-            if idx > self.num_full_size_windows:
-                ans['top'] = [prev]
-            if nxt is not None:
-                ans['bottom'] = [nxt]
-        return ans
+        return neighbors_for_tall_window(self.num_full_size_windows, window, windows)
 
     def minimal_borders(self, windows, active_window, needs_borders_map):
         last_i = len(windows) - 1
@@ -839,8 +846,7 @@ class Grid(Layout):
     def neighbors_for_window(self, window, windows):
         n = len(windows)
         if n < 4:
-            self.num_full_size_windows = 1
-            return Tall.neighbors_for_window(self, window, windows)
+            return neighbors_for_tall_window(1, window, windows)
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
         blank_row = [None for i in range(ncols)]
         matrix = tuple(blank_row[:] for j in range(max(nrows, special_rows)))
