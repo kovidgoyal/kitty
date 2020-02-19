@@ -882,7 +882,7 @@ def cmd_launch(global_opts, opts, args):
     match: The tab to open the new window in
     window_title: Title for the new window
     cwd: Working directory for the new window
-    env: List of environment varibles of the form NAME=VALUE
+    env: List of environment variables of the form NAME=VALUE
     tab_title: Title for the new tab
     type: The type of window to open
     keep_focus: Boolean indicating whether the current window should retain focus or not
