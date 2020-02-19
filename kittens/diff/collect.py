@@ -134,7 +134,7 @@ def raw_data_for_path(path):
 
 
 def is_image(path):
-    return mime_type_for_path(path).startswith('image/')
+    return mime_type_for_path(path).startswith('image/') if path else False
 
 
 @lru_cache(maxsize=1024)

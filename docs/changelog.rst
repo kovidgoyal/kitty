@@ -35,6 +35,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix border/margin/padding sizes not being recalculated on DPI change
   (:iss:`2346`)
 
+- diff kitten: Fix directory diffing with removed binary files failing
+  (:iss:`2378`)
+
 - macOS: Fix menubar title not updating on OS Window focus change (:iss:`2350`)
 
 - Fix rendering of combining characters with fonts that have glyphs for
