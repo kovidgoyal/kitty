@@ -46,6 +46,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: When switching input method while a pending multi-key input is in
   progress, clear the pending input (:iss:`2358`)
 
+- Fix a regression in the previous release that broke switching to neighboring windows
+  in the Grid layout when there are less than four windows (:iss:`2377`)
+
 
 0.16.0 [2020-01-28]
 --------------------

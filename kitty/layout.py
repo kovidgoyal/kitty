@@ -839,6 +839,7 @@ class Grid(Layout):
     def neighbors_for_window(self, window, windows):
         n = len(windows)
         if n < 4:
+            self.num_full_size_windows = 1
             return Tall.neighbors_for_window(self, window, windows)
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
         blank_row = [None for i in range(ncols)]
