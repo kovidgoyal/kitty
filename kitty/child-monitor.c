@@ -562,7 +562,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
             *num_visible_windows += 1;
             color_type window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg);
             if (*num_visible_windows == 1) first_window_bg = window_bg;
-            if (first_window_bg != window_bg) all_windows_have_same_bg = false;
+            if (first_window_bg != window_bg) *all_windows_have_same_bg = false;
             if (w->last_drag_scroll_at > 0) {
                 if (now - w->last_drag_scroll_at >= ms_to_monotonic_t(20ll)) {
                     if (drag_scroll(w, os_window)) {
