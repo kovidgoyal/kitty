@@ -260,10 +260,12 @@ png_path_to_bitmap(const char* path, uint8_t** data, unsigned int* width, unsign
     while (!feof(fp)) {
         if (pos - capacity < 1024) {
             capacity *= 2;
-            buf = realloc(buf, capacity);
-            if (!buf) {
+            unsigned char *new_buf = realloc(buf, capacity);
+            if (!new_buf) {
+                free(buf);
                 log_error("Out of memory reading PNG file at: %s", path); fclose(fp); return false;
             }
+            buf = new_buf;
         }
         pos += fread(buf + pos, sizeof(char), capacity - pos, fp);
         int saved_errno = errno;
