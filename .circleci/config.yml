@@ -82,7 +82,8 @@ jobs:
           LANG: en_US.UTF-8
       steps:
           - checkout
-          - run: brew install pkg-config imagemagick harfbuzz python sphinx-doc
+          - run: brew install pkg-config imagemagick harfbuzz python
+          - run: python3 -m pip install sphinx
           - run: python3 setup.py build --debug --verbose
           - run: ./kitty/launcher/kitty +launch test.py
           - run: echo "export PATH=/usr/local/opt/sphinx-doc/bin:$PATH" >> $BASH_ENV
