@@ -233,22 +233,28 @@ def setup_environment(opts, args):
     set_default_env(extra_env)
 
 
-def _main():
-    with suppress(AttributeError):  # python compiled without threading
-        sys.setswitchinterval(1000.0)  # we have only a single python thread
+def set_locale():
     if is_macos:
         ensure_macos_locale()
     try:
         locale.setlocale(locale.LC_ALL, '')
     except Exception:
-        if not is_macos:
-            raise
         log_error('Failed to set locale with LANG:', os.environ.get('LANG'))
         os.environ.pop('LANG', None)
         try:
             locale.setlocale(locale.LC_ALL, '')
         except Exception:
-            log_error('Failed to set locale with no LANG, ignoring')
+            log_error('Failed to set locale with no LANG')
+
+
+def _main():
+    with suppress(AttributeError):  # python compiled without threading
+        sys.setswitchinterval(1000.0)  # we have only a single python thread
+
+    try:
+        set_locale()
+    except Exception:
+        log_error('Failed to set locale, ignoring')
 
     # Ensure the correct kitty is in PATH
     rpath = sys._xoptions.get('bundle_exe_dir')
