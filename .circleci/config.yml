@@ -76,7 +76,7 @@ jobs:
 
   mac-brew:
       macos:
-          xcode: "10.2.0"
+          xcode: "11.3.1"
       environment:
           LC_ALL: en_US.UTF-8
           LANG: en_US.UTF-8
