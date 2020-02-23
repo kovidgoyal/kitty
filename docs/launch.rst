@@ -55,10 +55,10 @@ Special arguments
 
 There are a few special placeholder arguments that can be specified as part of
 the command line. Namely ``@selection`` which is replaced by the current
-selection and ``@kitty_active_window_id`` which is replaced by the id of the
+selection and ``@active-kitty-window-id`` which is replaced by the id of the
 currently active kitty window. For example::
 
-    map f1 launch my-program @kitty-active-window-id
+    map f1 launch my-program @active-kitty-window-id
 
 
 Syntax reference
