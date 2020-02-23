@@ -33,7 +33,7 @@ clear_chars_in_line(CPUCell *cpu_cells, GPUCell *gpu_cells, index_type xnum, cha
 }
 
 static inline index_type
-xlimit_for_line(Line *line) {
+xlimit_for_line(const Line *line) {
     index_type xlimit = line->xnum;
     if (BLANK_CHAR == 0) {
         while (xlimit > 0 && (line->cpu_cells[xlimit - 1].ch) == BLANK_CHAR) xlimit--;

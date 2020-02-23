@@ -1734,7 +1734,7 @@ iteration_data(const Screen *self, Selection *sel, const bool rectangle) {
 }
 
 static inline XRange
-xrange_for_iteration(IterationData *idata, index_type y, Line *line) {
+xrange_for_iteration(const IterationData *idata, const index_type y, const Line *line) {
     XRange ans = {.x_limit=xlimit_for_line(line)};
     if (y == idata->y) {
         ans.x_limit = MIN(idata->first.x_limit, ans.x_limit);
