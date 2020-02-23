@@ -1733,30 +1733,33 @@ iteration_data(const Screen *self, Selection *sel, const bool rectangle) {
     return ans;
 }
 
-#define iterate_over_selection(screen, sel, line_func, rectangular) { \
-    IterationData idata = iteration_data(screen, sel, rectangular); \
-    for (index_type y = idata.y; y < idata.y_limit; y++) { \
-        Line *line = line_func(self, y); \
-        index_type xlimit = xlimit_for_line(line), x_start = 0; \
-        if (y == idata.y) { \
-            xlimit = MIN(idata.first.x_limit, xlimit); \
-            x_start = idata.first.x; \
-        } else if (y == idata.y_limit - 1) { \
-            xlimit = MIN(idata.last.x_limit, xlimit); \
-            x_start = idata.last.x; \
-        } else { \
-            xlimit = MIN(idata.body.x_limit, xlimit); \
-            x_start = idata.body.x; \
-        } \
+static inline XRange
+xrange_for_iteration(IterationData *idata, index_type y, Line *line) {
+    XRange ans = {.x_limit=xlimit_for_line(line)};
+    if (y == idata->y) {
+        ans.x_limit = MIN(idata->first.x_limit, ans.x_limit);
+        ans.x = idata->first.x;
+    } else if (y == idata->y_limit - 1) {
+        ans.x_limit = MIN(idata->last.x_limit, ans.x_limit);
+        ans.x = idata->last.x;
+    } else {
+        ans.x_limit = MIN(idata->body.x_limit, ans.x_limit);
+        ans.x = idata->body.x;
+    }
+    return ans;
+}
 
 
 static inline void
 apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, bool rectangle_select) {
     if (is_selection_empty_or_out_of_bounds(self, s)) return;
-    iterate_over_selection(self, s, visual_line_, rectangle_select)
+    IterationData idata = iteration_data(self, s, rectangle_select);
+    for (index_type y = idata.y; y < idata.y_limit; y++) {
+        Line *line = visual_line_(self, y);
         uint8_t *line_start = data + self->columns * y;
-        for (index_type x = x_start; x < xlimit; x++) line_start[x] |= set_mask;
-    }}
+        XRange xr = xrange_for_iteration(&idata, y, line);
+        for (index_type x = xr.x; x < xr.x_limit; x++) line_start[x] |= set_mask;
+    }
 }
 
 bool
@@ -1779,15 +1782,17 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
 
 static inline PyObject*
 text_for_range(Screen *self, Selection *sel, bool rectangle_select, bool insert_newlines, linefunc_t line_func) {
-    int num_of_lines = sel->end.y - sel->start.y + 1, i = 0;
-    PyObject *ans = PyTuple_New(num_of_lines);
+    IterationData idata = iteration_data(self, sel, rectangle_select);
+    PyObject *ans = PyTuple_New(idata.y_limit - idata.y);
     if (!ans) return NULL;
-    iterate_over_selection(self, sel, line_func, rectangle_select)
-        char leading_char = (i > 0 && insert_newlines && !line->continued) ? '\n' : 0; \
-        PyObject *text = unicode_in_range(line, x_start, xlimit, true, leading_char); \
-        if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); } \
-        PyTuple_SET_ITEM(ans, i++, text); \
-    }}
+    for (index_type y = idata.y, i = 0; y < idata.y_limit; y++, i++) {
+        Line *line = line_func(self, y);
+        XRange xr = xrange_for_iteration(&idata, y, line);
+        char leading_char = (i > 0 && insert_newlines && !line->continued) ? '\n' : 0;
+        PyObject *text = unicode_in_range(line, xr.x, xr.x_limit, true, leading_char);
+        if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
+        PyTuple_SET_ITEM(ans, i, text);
+    }
     return ans;
 }
 
