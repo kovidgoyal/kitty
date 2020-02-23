@@ -17,12 +17,14 @@ def send_mouse_event(
     button=-1,
     modifiers=0,
     is_release=False,
-    x=0,
+    x=0.0,
     y=0,
-    clear_click_queue=False
+    clear_click_queue=False,
 ):
+    ix = int(x)
+    in_left_half_of_cell = ix - int(x) > 0.5
     send_mock_mouse_event_to_window(
-        window, button, modifiers, is_release, x, y, clear_click_queue
+        window, button, modifiers, is_release, ix, y, clear_click_queue, in_left_half_of_cell
     )
 
 

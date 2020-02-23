@@ -21,15 +21,16 @@ typedef struct {
 
 typedef struct {
     unsigned int x, y;
+    bool in_left_half_of_cell;
 } SelectionBoundary;
 
 typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE } SelectionExtendMode;
 
 typedef struct {
-    unsigned int start_x, start_y, start_scrolled_by, end_x, end_y, end_scrolled_by;
+    SelectionBoundary start, end;
+    unsigned int start_scrolled_by, end_scrolled_by;
     bool in_progress, rectangle_select;
     SelectionExtendMode extend_mode;
-    bool start_in_left_half, end_in_left_half;
 } Selection;
 
 #define SAVEPOINTS_SZ 256
@@ -73,9 +74,10 @@ typedef struct {
     id_type window_id;
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     unsigned int current_charset;
-    Selection selection;
-    SelectionBoundary last_rendered_selection_start, last_rendered_selection_end, last_rendered_url_start, last_rendered_url_end;
-    Selection url_range;
+    Selection selection, url_range;
+    struct {
+        Selection selection, url;
+    } last_rendered;
     bool use_latin1, selection_updated_once, is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
     SavepointBuffer main_savepoints, alt_savepoints;
