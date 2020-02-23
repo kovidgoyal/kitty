@@ -103,7 +103,7 @@ class LineEdit:
 
     def end(self):
         orig = self.cursor_pos
-        self.cursor_pos = wcswidth(self.current_input) + 1
+        self.cursor_pos = wcswidth(self.current_input)
         return self.cursor_pos != orig
 
     def on_key(self, key_event):
