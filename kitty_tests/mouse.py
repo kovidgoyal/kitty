@@ -22,7 +22,7 @@ def send_mouse_event(
     clear_click_queue=False,
 ):
     ix = int(x)
-    in_left_half_of_cell = ix - int(x) > 0.5
+    in_left_half_of_cell = x - ix < 0.5
     send_mock_mouse_event_to_window(
         window, button, modifiers, is_release, ix, y, clear_click_queue, in_left_half_of_cell
     )
@@ -81,17 +81,26 @@ class TestMouse(BaseTest):
         # Simple, click, move, release test
         init()
         press()
-        move(x=3)
+        move(x=3.6)
         self.ae(sel(), '1234')
-        release(x=3)
+        release(x=3.6)
         self.ae(sel(), '1234')
+
+        # Single cell select
+        init()
+        press(), release(1)
+        self.ae(sel(), '1')
 
         # Multi-line click release
         init()
-        press(1, 1), release(3, 2)
+        press(1, 1), release(3.6, 2)
         self.ae(sel(), '7890abcd')
-        press(3, 4), release(2, 2)
+        press(1.6, 1), release(3, 2)
+        self.ae(sel(), '890abc')
+        press(3.6, 4), release(2, 2)
         self.ae(sel(), 'cdefghijklmn')
+        press(3, 4), release(2.6, 2)
+        self.ae(sel(), 'defghijklm')
 
         # Word select with drag
         s.reset()
