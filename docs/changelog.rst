@@ -26,6 +26,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - X11: Fix arrow mouse cursor using right pointing instead of the default left
   pointing arrow (:iss:`2341`)
 
+- Allow passing the currently active kitty window id in the launch command
+  (:iss:`2391`)
+
 - unicode input kitten: Allow pressing :kbd:`ctrl+tab` to change the input mode
   (:iss:`2343`)
 

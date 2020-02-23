@@ -193,10 +193,13 @@ def launch(boss, opts, args, target_tab=None):
     if cmd:
         final_cmd = []
         for x in cmd:
-            if x == '@selection' and active and not opts.copy_cmdline:
-                s = boss.data_for_at(active, x)
-                if s:
-                    x = s
+            if active and not opts.copy_cmdline:
+                if x == '@selection':
+                    s = boss.data_for_at(active, x)
+                    if s:
+                        x = s
+                elif x == '@active-kitty-window-id':
+                    x = str(active.id)
             final_cmd.append(x)
         kw['cmd'] = final_cmd
     if opts.type == 'overlay' and active and not active.overlay_window_id:

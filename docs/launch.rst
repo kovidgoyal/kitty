@@ -50,6 +50,17 @@ being the top left corner and ``{lines},{columns}`` being the number of rows
 and columns of the screen.
 
 
+Special arguments
+-------------------
+
+There are a few special placeholder arguments that can be specified as part of
+the command line. Namely ``@selection`` which is replaced by the current
+selection and ``@kitty_active_window_id`` which is replaced by the id of the
+currently active kitty window. For example::
+
+    map f1 launch my-program @kitty-active-window-id
+
+
 Syntax reference
 ------------------
 
