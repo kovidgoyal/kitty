@@ -90,6 +90,8 @@ class TestMouse(BaseTest):
         init()
         press(), release(1)
         self.ae(sel(), '1')
+        press(3), release(2)
+        self.ae(sel(), '3')
 
         # Multi-line click release
         init()
@@ -108,9 +110,9 @@ class TestMouse(BaseTest):
         s.draw(' f gh')
         s.draw(' stuv')
         s.draw('X Y')
-        multi_click(x=1)
+        multi_click(x=1.6)
         self.ae(sel(), 'ab')
-        move(3)
+        move(3.6)
         self.ae(sel(), 'ab cd')
         release(3, 1)
         self.ae(sel(), 'ab cd f gh')

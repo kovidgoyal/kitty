@@ -332,25 +332,21 @@ static inline void
 multi_click(Window *w, unsigned int count) {
     Screen *screen = w->render_data.screen;
     index_type start, end;
-    bool found_selection = false;
     SelectionExtendMode mode = EXTEND_CELL;
-    unsigned int y1 = w->mouse_pos.cell_y, y2 = w->mouse_pos.cell_y;
-    bool start_in_left_half = w->mouse_pos.in_left_half_of_cell, end_in_left_half = w->mouse_pos.in_left_half_of_cell;
+    unsigned int y1, y2;
     switch(count) {
         case 2:
-            found_selection = screen_selection_range_for_word(screen, w->mouse_pos.cell_x, &y1, &y2, &start, &end, &start_in_left_half, &end_in_left_half, true);
-            mode = EXTEND_WORD;
+            if (screen_selection_range_for_word(screen, w->mouse_pos.cell_x, &y1, &y2, &start, &end, true)) mode = EXTEND_WORD;
             break;
         case 3:
-            found_selection = screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end, &start_in_left_half, &end_in_left_half);
-            mode = EXTEND_LINE;
+            if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end)) mode = EXTEND_LINE;
             break;
         default:
             break;
     }
-    if (found_selection) {
-        screen_start_selection(screen, start, y1, start_in_left_half, false, mode);
-        screen_update_selection(screen, end, y2, end_in_left_half, false);
+    if (mode != EXTEND_CELL) {
+        screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, EXTEND_WORD);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false);
     }
 }
 

@@ -27,7 +27,7 @@ typedef struct {
 typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE } SelectionExtendMode;
 
 typedef struct {
-    SelectionBoundary start, end;
+    SelectionBoundary start, end, input_start, input_current;
     unsigned int start_scrolled_by, end_scrolled_by;
     bool in_progress, rectangle_select;
     SelectionExtendMode extend_mode;
@@ -184,8 +184,8 @@ bool screen_has_selection(Screen*);
 bool screen_invert_colors(Screen *self);
 void screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE, bool cursor_has_moved);
 bool screen_is_cursor_visible(Screen *self);
-bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end, bool*, bool*);
-bool screen_selection_range_for_word(Screen *self, index_type x, index_type *, index_type *, index_type *start, index_type *end, bool*, bool*, bool);
+bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
+bool screen_selection_range_for_word(Screen *self, index_type x, index_type *, index_type *, index_type *start, index_type *end, bool);
 void screen_start_selection(Screen *self, index_type x, index_type y, bool, bool, SelectionExtendMode);
 void screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half, bool ended);
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
