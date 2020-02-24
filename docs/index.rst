@@ -178,14 +178,19 @@ previously active windows for negative numbers.
 You can define shortcuts to detach the current window and
 move it to another tab or another OS window::
 
-    map ctrl+f2 detach_window         # moves the window into a new OS window
-    map ctrl+f3 detach_window new-tab # moves the window into a new Tab
-    map ctrl+f4 detach_window ask     # asks which tab to move the window into
+    # moves the window into a new OS window
+    map ctrl+f2 detach_window
+    # moves the window into a new Tab
+    map ctrl+f3 detach_window new-tab
+    # asks which tab to move the window into
+    map ctrl+f4 detach_window ask
 
 Similarly, you can detach the current tab, with::
 
-    map ctrl+f2 detach_tab         # moves the tab into a new OS window
-    map ctrl+f4 detach_tab ask     # asks which OS Window to move the tab into
+    # moves the tab into a new OS window
+    map ctrl+f2 detach_tab
+    # asks which OS Window to move the tab into
+    map ctrl+f4 detach_tab ask
 
 Other keyboard shortcuts
 ----------------------------------
