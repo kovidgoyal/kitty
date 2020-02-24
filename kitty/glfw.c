@@ -5,7 +5,6 @@
  */
 
 #include "state.h"
-#include "glfw_tests.h"
 #include "fonts.h"
 #include "monotonic.h"
 #include <structmember.h>
@@ -1179,18 +1178,6 @@ stop_main_loop(void) {
 }
 
 
-static PyObject*
-test_empty_event(PYNOARG) {
-    // To run this, use
-    // kitty +runpy "from kitty.main import init_glfw_module; init_glfw_module('x11'); from kitty.fast_data_types import glfw_test_empty_event; glfw_test_empty_event()"
-    int ret = empty_main();
-    if (ret != EXIT_SUCCESS) {
-        PyErr_Format(PyExc_RuntimeError, "Empty test returned failure code: %d", ret);
-        return NULL;
-    }
-    Py_RETURN_NONE;
-}
-
 // Boilerplate {{{
 
 static PyMethodDef module_methods[] = {
@@ -1219,7 +1206,6 @@ static PyMethodDef module_methods[] = {
     {"glfw_get_key_name", (PyCFunction)glfw_get_key_name, METH_VARARGS, ""},
     {"glfw_primary_monitor_size", (PyCFunction)primary_monitor_size, METH_NOARGS, ""},
     {"glfw_primary_monitor_content_scale", (PyCFunction)primary_monitor_content_scale, METH_NOARGS, ""},
-    {"glfw_test_empty_event", (PyCFunction)test_empty_event, METH_NOARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
