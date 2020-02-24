@@ -96,6 +96,7 @@ def goto_tab_parse(func, rest):
 @func_with_args('detach_window')
 def detach_window_parse(func, rest):
     if rest not in ('new', 'new-tab', 'ask'):
+        log_error('Ignoring invalid detach_window argument: {}'.format(rest))
         rest = 'new'
     return func, (rest,)
 
