@@ -312,6 +312,7 @@ HANDLER(handle_move_event) {
     Screen *screen = w->render_data.screen;
     detect_url(screen, x, y);
     bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
+    bool cell_half_changed = in_left_half_of_cell != w->mouse_pos.in_left_half_of_cell;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
     w->mouse_pos.in_left_half_of_cell = in_left_half_of_cell;
     bool in_tracking_mode = (
@@ -320,7 +321,7 @@ HANDLER(handle_move_event) {
     bool has_terminal_select_modifiers = modifiers == (int)OPT(terminal_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers));
     bool handle_in_kitty = !in_tracking_mode || has_terminal_select_modifiers;
     if (handle_in_kitty) {
-        handle_mouse_movement_in_kitty(w, button, mouse_cell_changed);
+        handle_mouse_movement_in_kitty(w, button, mouse_cell_changed | cell_half_changed);
     } else {
         if (!mouse_cell_changed) return;
         int sz = encode_mouse_event(w, MAX(0, button), button >=0 ? DRAG : MOVE, 0);
@@ -700,7 +701,7 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
     Window *w = PyCapsule_GetPointer(capsule, "Window");
     if (!w) return NULL;
     if (clear_clicks) clear_click_queue(w);
-    bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
+    bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y || w->mouse_pos.in_left_half_of_cell != in_left_half_of_cell;
     w->mouse_pos.x = 10 * x; w->mouse_pos.y = 20 * y;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
     w->mouse_pos.in_left_half_of_cell = in_left_half_of_cell;

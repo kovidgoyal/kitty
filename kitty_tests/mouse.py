@@ -67,8 +67,11 @@ class TestMouse(BaseTest):
                 clear_click_queue=True
             )
 
-        def move(x=0, y=0, button=-1):
+        def move(x=0, y=0, button=-1, q=None):
             ev(x=x, y=y, button=button)
+            if q is not None:
+                s = sel()
+                self.ae(s, q, '{!r} != {!r} after movement to x={} y={}'.format(s, q, x, y))
 
         def multi_click(x=0, y=0, count=2):
             while count > 0:
@@ -78,15 +81,29 @@ class TestMouse(BaseTest):
         def scroll(x=0, y=0, up=True):
             move(x=x, y=y, button=-2 if up else -3)
 
-        # Simple, click, move, release test
+        # Single line click, move, release test
         init()
         press()
-        move(x=3.6)
-        self.ae(sel(), '1234')
+        move(x=3.6, q='1234')
         release(x=3.6)
         self.ae(sel(), '1234')
         press(x=4), release(x=0.6)
         self.ae(sel(), '234')
+
+        # multi line movement
+        init()
+        press(x=2, y=2)
+        move(x=2, y=1, q='890ab')
+        move(x=2.6, y=1, q='90ab')
+        move(y=1, q='67890ab')
+        move(x=4, y=1, q='0ab')
+        move(x=4.6, y=1, q='ab')
+        move(q='1234567890ab')
+        move(x=2, y=3, q='cdefg')
+        move(y=3, q='cde')
+        move(x=0.6, y=3, q='cdef')
+        move(x=2.6, y=3, q='cdefgh')
+        move(x=4.6, y=3, q='cdefghij')
 
         # Single cell select
         init()

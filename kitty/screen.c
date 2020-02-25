@@ -1603,13 +1603,13 @@ iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int
     // empty selection
     if (start->x == end->x && start_y == end_y && start->in_left_half_of_cell == end->in_left_half_of_cell) return;
 
-    bool left_to_right = selection_is_left_to_right(sel);
     if (sel->rectangle_select) {
         // empty selection
         if (start->x == end->x && (!start->in_left_half_of_cell || end->in_left_half_of_cell)) return;
 
         ans->y = MIN(start_y, end_y); ans->y_limit = MAX(start_y, end_y) + 1;
         index_type x, x_limit;
+        bool left_to_right = selection_is_left_to_right(sel);
 
         if (start->x == end->x) {
             x = start->x; x_limit = start->x + 1;
@@ -1643,12 +1643,12 @@ iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int
                 ans->first.x = end->x + (end->in_left_half_of_cell ? 0 : 1);
                 ans->first.x_limit = 1 + start->x + (start->in_left_half_of_cell ? -1 : 0);
             }
-        } else if (start_y < end_y) {
+        } else if (start_y < end_y) { // downwards
             ans->body.x_limit = line_limit;
             ans->first.x_limit = line_limit;
             ans->first.x = start->x + (start->in_left_half_of_cell ? 0 : 1);
             ans->last.x_limit = 1 + end->x + (end->in_left_half_of_cell ? -1 : 0);
-        } else {
+        } else { // upwards
             ans->body.x_limit = line_limit;
             ans->first.x_limit = line_limit;
             ans->first.x = end->x + (end->in_left_half_of_cell ? 0 : 1);
