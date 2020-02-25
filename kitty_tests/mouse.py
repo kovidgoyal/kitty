@@ -184,13 +184,13 @@ class TestMouse(BaseTest):
 
         # scrolling
         init()
-        press(x=1)
-        scroll(x=1.6)
+        press(x=1.6)
+        scroll(x=1)
         self.ae(sel(), 'LMNO12')
         scroll(x=1)
         self.ae(sel(), 'GHIJKLMNO12')
         scroll(x=1, up=False)
         self.ae(sel(), 'LMNO12')
-        scroll(x=2, up=False)
-        self.ae(sel(), '23')
+        scroll(x=2.6, up=False)
+        self.ae(sel(), '3')
         release()
