@@ -1709,7 +1709,7 @@ iteration_data(const Screen *self, Selection *sel, const bool rectangle) {
                 } else return ans; // empty selection
             }
             // single line selection
-            if (left_to_right) {
+            if (start->x <= end->x) {
                 ans.first.x = start->x + (start->in_left_half_of_cell ? 0 : 1);
                 ans.first.x_limit = 1 + end->x + (end->in_left_half_of_cell ? -1 : 0);
             } else {
@@ -2098,7 +2098,7 @@ update_selection(Screen *self, PyObject *args) {
     unsigned int x, y;
     int in_left_half_of_cell = 0, ended = 1;
     if (!PyArg_ParseTuple(args, "II|pp", &x, &y, &in_left_half_of_cell, &ended)) return NULL;
-    screen_update_selection(self, x, y, in_left_half_of_cell, ended);
+    screen_update_selection(self, x, y, in_left_half_of_cell, ended, false);
     Py_RETURN_NONE;
 }
 
@@ -2265,48 +2265,54 @@ screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type
 }
 
 void
-screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool ended) {
+screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool ended, bool start_extended_selection) {
     if (ended) self->selection.in_progress = false;
     self->selection.input_current.x = x; self->selection.input_current.y = y;
     self->selection.input_current.in_left_half_of_cell = in_left_half_of_cell;
     SelectionBoundary start, end, *a, *b;
-    a = &self->selection.end, b = &self->selection.start;
-    if (selection_boundary_less_than(a, b)) { a = &self->selection.start; b = &self->selection.end; }
+    a = &self->selection.start, b = &self->selection.end;
     bool left_to_right = selection_is_left_to_right(&self->selection);
 
     switch(self->selection.extend_mode) {
         case EXTEND_WORD: {
+            if (selection_boundary_less_than(b, a)) { a = &self->selection.end; b = &self->selection.start; }
             bool found = false;
             index_type effective_x = x;
-            if (left_to_right && in_left_half_of_cell && x) effective_x--;
-            else if(!left_to_right && !in_left_half_of_cell && x < self->columns - 1) effective_x++;
+            if (!start_extended_selection) {
+                if (left_to_right && in_left_half_of_cell && x) effective_x--;
+                else if(!left_to_right && !in_left_half_of_cell && x < self->columns - 1) effective_x++;
+            }
             start.y = y;
             found = screen_selection_range_for_word(self, effective_x, &start.y, &end.y, &start.x, &end.x, false);
             if (found) {
+                start.in_left_half_of_cell = true; end.in_left_half_of_cell = false;
                 if (selection_boundary_less_than(&start, a)) *a = start;
                 if (selection_boundary_less_than(b, &end)) *b = end;
             }
             break;
         }
         case EXTEND_LINE: {
-            bool multiline = a->y != b->y;
-            if (y < a->y) {
-                index_type top_line = y;
-                while (top_line > 0 && visual_line_(self, top_line)->continued) top_line--;
-                if (screen_selection_range_for_line(self, top_line, &start.x, &end.x)) {
-                    a->y = top_line;
-                    a->x = multiline ? 0 : start.x;
-                    a->in_left_half_of_cell = start.in_left_half_of_cell;
-                }
+            index_type top_line, bottom_line;
+            if (start_extended_selection || y == self->selection.start.y) {
+                top_line = y; bottom_line = y;
+            } else if (y < self->selection.start.y) {
+                top_line = y; bottom_line = self->selection.start.y;
+                a = &self->selection.end; b = &self->selection.start;
+            } else if (y > self->selection.start.y) {
+                bottom_line = y; top_line = self->selection.start.y;
+            } else break;
+            while (top_line > 0 && visual_line_(self, top_line)->continued) {
+                if (!screen_selection_range_for_line(self, top_line - 1, &start.x, &end.x)) break;
+                top_line--;
             }
-            else if (y > b->y) {
-                index_type bottom_line = b->y;
-                while(bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->continued) bottom_line++;
-                if (screen_selection_range_for_line(self, bottom_line, &start.x, &end.x))
-                {
-                    b->y = bottom_line;
-                    b->x = end.x; b->in_left_half_of_cell = end.in_left_half_of_cell;
-                }
+            while (bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->continued) {
+                if (!screen_selection_range_for_line(self, bottom_line + 1, &start.x, &end.x)) break;
+                bottom_line++;
+            }
+            if (screen_selection_range_for_line(self, top_line, &start.x, &start.y) && screen_selection_range_for_line(self, bottom_line, &end.x, &end.y)) {
+                bool multiline = top_line != bottom_line;
+                a->x = multiline ? 0 : start.x; a->y = top_line; a->in_left_half_of_cell = true;
+                b->x = end.y; b->y = bottom_line; b->in_left_half_of_cell = false;
             }
             break;
         }
