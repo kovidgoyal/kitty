@@ -1596,7 +1596,7 @@ selection_is_left_to_right(const Selection *self) {
 }
 
 static void
-iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int min_y) {
+iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int min_y, bool add_scrolled_by) {
     memset(ans, 0, sizeof(IterationData));
     const SelectionBoundary *start = &sel->start, *end = &sel->end;
     int start_y = (int)start->y - sel->start_scrolled_by, end_y = (int)end->y - sel->end_scrolled_by;
@@ -1657,6 +1657,9 @@ iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int
         ans->y = MIN(start_y, end_y); ans->y_limit = MAX(start_y, end_y) + 1;
 
     }
+    if (add_scrolled_by) {
+        ans->y += self->scrolled_by; ans->y_limit += self->scrolled_by;
+    }
     ans->y = MAX(ans->y, min_y);
 }
 
@@ -1690,7 +1693,7 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 
 static inline void
 apply_selection(Screen *self, uint8_t *data, const Selection *s, IterationData *last_rendered, uint8_t set_mask) {
-    iteration_data(self, s, last_rendered, 0);
+    iteration_data(self, s, last_rendered, 0, true);
 
     for (int y = last_rendered->y; y < last_rendered->y_limit; y++) {
         Line *line = visual_line_(self, y);
@@ -1704,7 +1707,7 @@ bool
 screen_has_selection(Screen *self) {
     if (is_selection_empty(&self->selection)) return false;
     IterationData idata;
-    iteration_data(self, &self->selection, &idata, 0);
+    iteration_data(self, &self->selection, &idata, 0, true);
     if (iteration_data_is_empty(self, &idata)) return false;
     return true;
 }
@@ -1721,7 +1724,7 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
 static inline PyObject*
 text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
     IterationData idata;
-    iteration_data(self, sel, &idata, -self->historybuf->count);
+    iteration_data(self, sel, &idata, -self->historybuf->count, false);
     PyObject *ans = PyTuple_New(idata.y_limit - idata.y);
     if (!ans) return NULL;
     for (int i = 0, y = idata.y; y < idata.y_limit; y++, i++) {
@@ -2181,9 +2184,9 @@ scroll(Screen *self, PyObject *args) {
 bool
 screen_is_selection_dirty(Screen *self) {
     IterationData q;
-    iteration_data(self, &self->selection, &q, 0);
+    iteration_data(self, &self->selection, &q, 0, true);
     if (memcmp(&q, &self->last_rendered.selection, sizeof(IterationData)) != 0) return true;
-    iteration_data(self, &self->url_range, &q, 0);
+    iteration_data(self, &self->url_range, &q, 0, true);
     if (memcmp(&q, &self->last_rendered.url, sizeof(IterationData)) != 0) return true;
     return false;
 }
