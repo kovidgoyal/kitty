@@ -453,7 +453,7 @@ class TestScreen(BaseTest):
             return ''.join(d)
 
         self.ae(as_text(), 'ababababab\nc\n\n')
-        self.ae(as_text(True), 'ababababab\nc\n\n')
+        self.ae(as_text(True), '\x1b[mababa\x1b[mbabab\n\x1b[mc\n\n')
 
     def test_user_marking(self):
         s = self.create_screen()
