@@ -58,6 +58,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix colors in scrollback pager off if the window has redefined terminal
   colors using escape codes (:iss:`2381`)
 
+- Workaround for bug in less that causes colors to reset at wrapped lines
+  (:iss:`2381`)
+
 
 0.16.0 [2020-01-28]
 --------------------

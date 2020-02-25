@@ -746,6 +746,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
     Py_UCS4 *buf = NULL;
     PyObject *nl = PyUnicode_FromString("\n");
     PyObject *cr = PyUnicode_FromString("\r");
+    PyObject *sgr_reset = PyUnicode_FromString("\x1b[m");
     const GPUCell *prev_cell = NULL;
     if (nl == NULL || cr == NULL) goto end;
     if (as_ansi) {
@@ -761,8 +762,19 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         }
         if (as_ansi) {
             bool truncated;
+            // less has a bug where it resets colors when it sees a \r, so work
+            // around it by resetting SGR at the start of every line. This is
+            // pretty sad performance wise, but I guess it will remain till I
+            // get around to writing a nice pager kitten.
+            // see https://github.com/kovidgoyal/kitty/issues/2381
+            prev_cell = NULL;
             index_type num = line_as_ansi(line, buf, columns * 100 - 2, &truncated, &prev_cell);
             t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
+            if (t && num > 0) {
+                ret = PyObject_CallFunctionObjArgs(callback, sgr_reset, NULL);
+                if (ret == NULL) goto end;
+                Py_CLEAR(ret);
+            }
         } else {
             t = line_as_unicode(line);
         }
@@ -776,7 +788,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         }
     }
 end:
-    Py_CLEAR(nl); Py_CLEAR(cr); free(buf);
+    Py_CLEAR(nl); Py_CLEAR(cr); Py_CLEAR(sgr_reset); free(buf);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }
