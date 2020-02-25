@@ -2107,11 +2107,12 @@ is_opt_word_char(char_type ch) {
 }
 
 bool
-screen_selection_range_for_word(Screen *self, index_type x, index_type *y1, index_type *y2, index_type *s, index_type *e, bool initial_selection) {
-    if (*y1 >= self->lines || x >= self->columns) return false;
+screen_selection_range_for_word(Screen *self, const index_type x, const index_type y, index_type *y1, index_type *y2, index_type *s, index_type *e, bool initial_selection) {
+    if (y >= self->lines || x >= self->columns) return false;
     index_type start, end;
-    Line *line = visual_line_(self, *y1);
-    *y2 = *y1;
+    Line *line = visual_line_(self, y);
+    *y1 = y;
+    *y2 = y;
 #define is_ok(x) (is_word_char((line->cpu_cells[x].ch)) || is_opt_word_char(line->cpu_cells[x].ch))
     if (!is_ok(x)) {
         if (initial_selection) return false;
@@ -2224,8 +2225,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
                 if (left_to_right && in_left_half_of_cell && x) effective_x--;
                 else if(!left_to_right && !in_left_half_of_cell && x < self->columns - 1) effective_x++;
             }
-            start.y = y;
-            found = screen_selection_range_for_word(self, effective_x, &start.y, &end.y, &start.x, &end.x, false);
+            found = screen_selection_range_for_word(self, effective_x, y, &start.y, &end.y, &start.x, &end.x, false);
             if (found) {
                 start.in_left_half_of_cell = true; end.in_left_half_of_cell = false;
                 if (selection_boundary_less_than(&start, a)) *a = start;

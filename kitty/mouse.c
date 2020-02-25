@@ -337,8 +337,7 @@ multi_click(Window *w, unsigned int count) {
     unsigned int y1, y2;
     switch(count) {
         case 2:
-            y1 = w->mouse_pos.cell_y;
-            if (screen_selection_range_for_word(screen, w->mouse_pos.cell_x, &y1, &y2, &start, &end, true)) mode = EXTEND_WORD;
+            if (screen_selection_range_for_word(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, &y1, &y2, &start, &end, true)) mode = EXTEND_WORD;
             break;
         case 3:
             if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end)) mode = EXTEND_LINE;
