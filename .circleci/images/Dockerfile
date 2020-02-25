@@ -40,6 +40,7 @@ RUN pip3 install sphinx
 ADD install-python.py /tmp/install-python.py
 RUN python3 /tmp/install-python.py py3.5 https://www.python.org/ftp/python/3.5.6/Python-3.5.6.tar.xz
 RUN python3 /tmp/install-python.py py3.7 https://www.python.org/ftp/python/3.7.2/Python-3.7.2.tar.xz
+RUN python3 /tmp/install-python.py py3.8 https://www.python.org/ftp/python/3.8.1/Python-3.8.1.tar.xz
 
 # Install kitty bundle
 ENV SW=/home/circleci/sw
