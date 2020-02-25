@@ -379,12 +379,23 @@ end:
     Py_RETURN_NONE;
 }
 
+typedef struct {
+    Line line;
+    HistoryBuf *self;
+} GetLineWrapper;
+
+static Line*
+get_line_wrapper(void *x, int y) {
+    GetLineWrapper *glw = x;
+    get_line(glw->self, y, &glw->line);
+    return &glw->line;
+}
+
 static PyObject*
 as_text(HistoryBuf *self, PyObject *args) {
-    Line l = {.xnum=self->xnum};
-#define gl(self, y) get_line(self, y, &l);
-    as_text_generic(args, self, gl, self->count, self->xnum);
-#undef gl
+    GetLineWrapper glw = {.self=self};
+    glw.line.xnum = self->xnum;
+    return as_text_generic(args, &glw, get_line_wrapper, self->count, self->xnum);
 }
 
 

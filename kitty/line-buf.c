@@ -421,14 +421,15 @@ as_ansi(LineBuf *self, PyObject *callback) {
 }
 
 static inline Line*
-get_line(LineBuf *self, index_type y) {
-    linebuf_init_line(self, y);
+get_line(void *x, int y) {
+    LineBuf *self = (LineBuf*)x;
+    linebuf_init_line(self, MAX(0, y));
     return self->line;
 }
 
 static PyObject*
 as_text(LineBuf *self, PyObject *args) {
-    as_text_generic(args, self, get_line, self->ynum, self->xnum);
+    return as_text_generic(args, self, get_line, self->ynum, self->xnum);
 }
 
 

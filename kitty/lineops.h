@@ -54,6 +54,7 @@ line_reset_cells(Line *line, index_type start, index_type num, GPUCell *gpu_cell
     memcpy(line->cpu_cells + start, cpu_cells + start, sizeof(CPUCell) * num);
 }
 
+typedef Line*(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, bool);
@@ -92,47 +93,4 @@ void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
 void mark_text_in_line(PyObject *marker, Line *line);
 bool line_has_mark(Line *, attrs_type mark);
-
-
-#define as_text_generic(args, container, get_line, lines, columns) { \
-    PyObject *callback; \
-    int as_ansi = 0, insert_wrap_markers = 0; \
-    if (!PyArg_ParseTuple(args, "O|pp", &callback, &as_ansi, &insert_wrap_markers)) return NULL; \
-    PyObject *ret = NULL, *t = NULL; \
-    Py_UCS4 *buf = NULL; \
-    PyObject *nl = PyUnicode_FromString("\n"); \
-    PyObject *cr = PyUnicode_FromString("\r"); \
-    const GPUCell *prev_cell = NULL; \
-    if (nl == NULL || cr == NULL) goto end; \
-    if (as_ansi) { \
-        buf = malloc(sizeof(Py_UCS4) * columns * 100); \
-        if (buf == NULL) { PyErr_NoMemory(); goto end; } \
-    } \
-    for (index_type y = 0; y < lines; y++) { \
-        Line *line = get_line(container, y); \
-        if (!line->continued && y > 0) { \
-            ret = PyObject_CallFunctionObjArgs(callback, nl, NULL); \
-            if (ret == NULL) goto end; \
-            Py_CLEAR(ret); \
-        } \
-        if (as_ansi) { \
-            bool truncated; \
-            index_type num = line_as_ansi(line, buf, columns * 100 - 2, &truncated, &prev_cell); \
-            t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num); \
-        } else { \
-            t = line_as_unicode(line); \
-        } \
-        if (t == NULL) goto end; \
-        ret = PyObject_CallFunctionObjArgs(callback, t, NULL); \
-        Py_DECREF(t); if (ret == NULL) goto end; Py_DECREF(ret); \
-        if (insert_wrap_markers) { \
-            ret = PyObject_CallFunctionObjArgs(callback, cr, NULL); \
-            if (ret == NULL) goto end; \
-            Py_CLEAR(ret); \
-        }\
-    } \
-end: \
-    Py_CLEAR(nl); Py_CLEAR(cr); free(buf); \
-    if (PyErr_Occurred()) return NULL; \
-    Py_RETURN_NONE; \
-}
+PyObject* as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, index_type columns);

@@ -1749,26 +1749,29 @@ set_pending_timeout(Screen *self, PyObject *val) {
     return ans;
 }
 
+static Line* get_visual_line(void *x, int y) { return visual_line_(x, y); }
+static Line* get_range_line(void *x, int y) { return range_line_(x, y); }
+
 static PyObject*
 as_text(Screen *self, PyObject *args) {
-    as_text_generic(args, self, visual_line_, self->lines, self->columns);
+    return as_text_generic(args, self, get_visual_line, self->lines, self->columns);
 }
 
 static PyObject*
 as_text_non_visual(Screen *self, PyObject *args) {
-    as_text_generic(args, self, range_line_, self->lines, self->columns);
+    return as_text_generic(args, self, get_range_line, self->lines, self->columns);
 }
 
 static inline PyObject*
-as_text_generic_wrapper(Screen *self, PyObject *args, Line*(get_line)(Screen *, int)) {
-    as_text_generic(args, self, get_line, self->lines, self->columns);
+as_text_generic_wrapper(Screen *self, PyObject *args, get_line_func get_line) {
+    return as_text_generic(args, self, get_line, self->lines, self->columns);
 }
 
 static PyObject*
 as_text_alternate(Screen *self, PyObject *args) {
     LineBuf *original = self->linebuf;
     self->linebuf = original == self->main_linebuf ? self->alt_linebuf : self->main_linebuf;
-    PyObject *ans = as_text_generic_wrapper(self, args, range_line_);
+    PyObject *ans = as_text_generic_wrapper(self, args, get_range_line);
     self->linebuf = original;
     return ans;
 }
