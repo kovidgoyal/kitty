@@ -74,9 +74,11 @@ class TestMouse(BaseTest):
                 self.ae(s, q, '{!r} != {!r} after movement to x={} y={}'.format(s, q, x, y))
 
         def multi_click(x=0, y=0, count=2):
+            clear_click_queue = True
             while count > 0:
                 count -= 1
-                ev(GLFW_MOUSE_BUTTON_LEFT, x=x, y=y)
+                ev(GLFW_MOUSE_BUTTON_LEFT, x=x, y=y, clear_click_queue=clear_click_queue)
+                clear_click_queue = False
 
         def scroll(x=0, y=0, up=True):
             move(x=x, y=y, button=-2 if up else -3)
