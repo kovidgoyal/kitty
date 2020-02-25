@@ -298,7 +298,7 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated, const
 
         cell = &self->gpu_cells[pos];
 
-#define CMP_ATTRS (cell->attrs & ATTRS_MASK_WITHOUT_WIDTH) != ((*prev_cell)->attrs & ATTRS_MASK_WITHOUT_WIDTH)
+#define CMP_ATTRS (cell->attrs & ATTRS_MASK_FOR_SGR) != ((*prev_cell)->attrs & ATTRS_MASK_FOR_SGR)
 #define CMP(x) cell->x != (*prev_cell)->x
         if (CMP_ATTRS || CMP(fg) || CMP(bg) || CMP(decoration_fg)) {
             const char *sgr = cell_as_sgr(cell, *prev_cell);
