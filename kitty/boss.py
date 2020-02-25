@@ -671,8 +671,9 @@ class Boss:
         tab = self.active_tab
         if tab is not None and window.overlay_for is None:
             tab.new_special_window(
-                SpecialWindow(
-                    cmd, data, _('History'), overlay_for=window.id))
+                SpecialWindow(cmd, data, _('History'), overlay_for=window.id),
+                copy_colors_from=self.active_window
+                )
 
     def edit_config_file(self, *a):
         confpath = prepare_config_file_for_editing()

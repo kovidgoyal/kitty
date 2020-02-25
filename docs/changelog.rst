@@ -55,6 +55,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in the previous release that broke switching to neighboring windows
   in the Grid layout when there are less than four windows (:iss:`2377`)
 
+- Fix colors in scrollback pager off if the window has redefined terminal
+  colors using escape codes (:iss:`2381`)
+
 
 0.16.0 [2020-01-28]
 --------------------
