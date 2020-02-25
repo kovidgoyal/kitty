@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new :opt:`background_tint` option to darken the background under the text
   area when using background images and/or transparent windows.
 
+- Allow selection of single cells with the mouse. Also improve mouse selection
+  to follow semantics common to most programs (:iss:`945`)
+
 - New options :opt:`cursor_beam_thickness` and :opt:`cursor_underline_thickness` to control the thickness of the
   beam and underline cursors (:iss:`2337` and :pull:`2342`)
 
