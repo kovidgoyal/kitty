@@ -64,6 +64,15 @@ typedef struct {
 } OverlayLine;
 
 typedef struct {
+    index_type x, x_limit;
+} XRange;
+
+typedef struct {
+    int y, y_limit;
+    XRange first, body, last;
+} IterationData;
+
+typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by;
@@ -76,7 +85,7 @@ typedef struct {
     unsigned int current_charset;
     Selection selection, url_range;
     struct {
-        Selection selection, url;
+        IterationData selection, url;
     } last_rendered;
     bool use_latin1, selection_updated_once, is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;

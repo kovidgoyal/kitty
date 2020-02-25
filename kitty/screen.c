@@ -345,12 +345,8 @@ move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type
 
 static inline bool
 is_selection_empty(Selection *s) {
-    return s->start.x == s->end.x && s->start.in_left_half_of_cell == s->end.in_left_half_of_cell && s->start.y == s->end.y && s->start_scrolled_by == s->end_scrolled_by;
-}
-
-static inline bool
-is_selection_empty_or_out_of_bounds(Screen *self, Selection *s) {
-    return s->start.x >= self->columns || s->start.y >= self->lines || s->end.x >= self->columns || s->end.y >= self->lines || is_selection_empty(s);
+    int start_y = (int)s->start.y - (int)s->start_scrolled_by, end_y = (int)s->end.y - (int)s->end_scrolled_by;
+    return s->start.x == s->end.x && s->start.in_left_half_of_cell == s->end.in_left_half_of_cell && start_y == end_y;
 }
 
 static inline bool
@@ -1558,41 +1554,6 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
 }
 
 
-static inline void
-selection_coord(const Screen *self, SelectionBoundary *a, unsigned int scrolled_by, SelectionBoundary *ans) {
-    ans->in_left_half_of_cell = a->in_left_half_of_cell;
-    if (a->y + self->scrolled_by < scrolled_by) {
-        ans->x = a->x; ans->y = 0;
-    } else {
-        unsigned int y = a->y - scrolled_by + self->scrolled_by;
-        if (y >= self->lines) {
-            ans->x = a->x;
-            if (ans->x > self->columns - 1) {
-                ans->x = self->columns - 1;
-                ans->in_left_half_of_cell = false;
-            }
-            ans->y = self->lines - 1;
-        } else {
-            ans->x = a->x; ans->y = y;
-        }
-    }
-}
-
-static inline void
-full_selection_coord(Screen *self, SelectionBoundary *a, unsigned int scrolled_by, SelectionBoundary *ans) {
-    ans->in_left_half_of_cell = a->in_left_half_of_cell;
-    ans->x = a->x;
-    if (ans->x >= self->columns) {
-        ans->x = self->columns - 1;
-        ans->in_left_half_of_cell = false;
-    }
-    ans->y = a->y - scrolled_by;
-    if (ans->y >= self->lines) {
-        ans->x = self->columns - 1; ans->y = self->lines - 1;
-        ans->in_left_half_of_cell = false;
-    }
-}
-
 static inline bool
 selection_boundary_less_than(SelectionBoundary *a, SelectionBoundary *b) {
     if (a->y < b->y) return true;
@@ -1601,20 +1562,6 @@ selection_boundary_less_than(SelectionBoundary *a, SelectionBoundary *b) {
     if (a->x > b->x) return false;
     if (a->in_left_half_of_cell && !b->in_left_half_of_cell) return true;
     return false;
-}
-
-#define selection_limits_(which, left, right) { \
-    SelectionBoundary a, b; \
-    selection_coord(self, &self->which.start, self->which.start_scrolled_by, &a); \
-    selection_coord(self, &self->which.end, self->which.end_scrolled_by, &b); \
-    *(left) = a; *(right) = b; \
-}
-
-#define full_selection_limits_(which, left, right) { \
-    SelectionBoundary a, b; \
-    full_selection_coord(self, &self->which.start, self->which.start_scrolled_by, &a); \
-    full_selection_coord(self, &self->which.end, self->which.end_scrolled_by, &b); \
-    *(left) = a; *(right) = b; \
 }
 
 typedef Line*(linefunc_t)(Screen*, int);
@@ -1643,45 +1590,25 @@ range_line_(Screen *self, int y) {
     return self->linebuf->line;
 }
 
-static inline int
-clamp_for_range_line(Screen *self, int y) {
-    if (y < 0) {
-        unsigned int idx = -(y + 1);
-        if (idx >= self->historybuf->count) {
-            y += idx - self->historybuf->count + 1;
-        }
-        return y;
-    }
-    return MIN((unsigned int)y, self->lines - 1);
-}
-
-typedef struct {
-    index_type x, x_limit;
-} XRange;
-
-typedef struct {
-    index_type y, y_limit;
-    XRange first, body, last;
-} IterationData;
-
 static inline bool
-selection_is_left_to_right(Selection *self) {
+selection_is_left_to_right(const Selection *self) {
     return self->input_start.x < self->input_current.x || (self->input_start.x == self->input_current.x && self->input_start.in_left_half_of_cell);
 }
 
-static inline IterationData
-iteration_data(const Screen *self, Selection *sel, const bool rectangle) {
-    IterationData ans = {0};
-    SelectionBoundary *start = &sel->start, *end = &sel->end;
+static void
+iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int min_y) {
+    memset(ans, 0, sizeof(IterationData));
+    const SelectionBoundary *start = &sel->start, *end = &sel->end;
+    int start_y = (int)start->y - sel->start_scrolled_by, end_y = (int)end->y - sel->end_scrolled_by;
     // empty selection
-    if (start->x == end->x && start->y == end->y && start->in_left_half_of_cell == end->in_left_half_of_cell) return ans;
+    if (start->x == end->x && start_y == end_y && start->in_left_half_of_cell == end->in_left_half_of_cell) return;
 
     bool left_to_right = selection_is_left_to_right(sel);
-    if (rectangle) {
+    if (sel->rectangle_select) {
         // empty selection
-        if (start->x == end->x && (!start->in_left_half_of_cell || end->in_left_half_of_cell)) return ans;
+        if (start->x == end->x && (!start->in_left_half_of_cell || end->in_left_half_of_cell)) return;
 
-        ans.y = MIN(start->y, end->y); ans.y_limit = MAX(start->y, end->y) + 1;
+        ans->y = MIN(start_y, end_y); ans->y_limit = MAX(start_y, end_y) + 1;
         index_type x, x_limit;
 
         if (start->x == end->x) {
@@ -1695,46 +1622,46 @@ iteration_data(const Screen *self, Selection *sel, const bool rectangle) {
                 x_limit = 1 + start->x + (start->in_left_half_of_cell ? -1 : 0);
             }
         }
-        ans.first.x = x; ans.body.x = x; ans.last.x = x;
-        ans.first.x_limit = x_limit; ans.body.x_limit = x_limit; ans.last.x_limit = x_limit;
+        ans->first.x = x; ans->body.x = x; ans->last.x = x;
+        ans->first.x_limit = x_limit; ans->body.x_limit = x_limit; ans->last.x_limit = x_limit;
     } else {
         index_type line_limit = self->columns;
 
-        if (start->y == end->y) {
+        if (start_y == end_y) {
             if (start->x == end->x) {
                 if (start->in_left_half_of_cell && !end->in_left_half_of_cell) {
                     // single cell selection
-                    ans.first.x = start->x; ans.body.x = start->x; ans.last.x = start->x;
-                    ans.first.x_limit = start->x + 1; ans.body.x_limit = start->x + 1; ans.last.x_limit = start->x + 1;
-                } else return ans; // empty selection
+                    ans->first.x = start->x; ans->body.x = start->x; ans->last.x = start->x;
+                    ans->first.x_limit = start->x + 1; ans->body.x_limit = start->x + 1; ans->last.x_limit = start->x + 1;
+                } else return; // empty selection
             }
             // single line selection
             if (start->x <= end->x) {
-                ans.first.x = start->x + (start->in_left_half_of_cell ? 0 : 1);
-                ans.first.x_limit = 1 + end->x + (end->in_left_half_of_cell ? -1 : 0);
+                ans->first.x = start->x + (start->in_left_half_of_cell ? 0 : 1);
+                ans->first.x_limit = 1 + end->x + (end->in_left_half_of_cell ? -1 : 0);
             } else {
-                ans.first.x = end->x + (end->in_left_half_of_cell ? 0 : 1);
-                ans.first.x_limit = 1 + start->x + (start->in_left_half_of_cell ? -1 : 0);
+                ans->first.x = end->x + (end->in_left_half_of_cell ? 0 : 1);
+                ans->first.x_limit = 1 + start->x + (start->in_left_half_of_cell ? -1 : 0);
             }
-        } else if (start->y < end->y) {
-            ans.body.x_limit = line_limit;
-            ans.first.x_limit = line_limit;
-            ans.first.x = start->x + (start->in_left_half_of_cell ? 0 : 1);
-            ans.last.x_limit = 1 + end->x + (end->in_left_half_of_cell ? -1 : 0);
+        } else if (start_y < end_y) {
+            ans->body.x_limit = line_limit;
+            ans->first.x_limit = line_limit;
+            ans->first.x = start->x + (start->in_left_half_of_cell ? 0 : 1);
+            ans->last.x_limit = 1 + end->x + (end->in_left_half_of_cell ? -1 : 0);
         } else {
-            ans.body.x_limit = line_limit;
-            ans.first.x_limit = line_limit;
-            ans.first.x = end->x + (end->in_left_half_of_cell ? 0 : 1);
-            ans.last.x_limit = 1 + start->x + (start->in_left_half_of_cell ? -1 : 0);
+            ans->body.x_limit = line_limit;
+            ans->first.x_limit = line_limit;
+            ans->first.x = end->x + (end->in_left_half_of_cell ? 0 : 1);
+            ans->last.x_limit = 1 + start->x + (start->in_left_half_of_cell ? -1 : 0);
         }
-        ans.y = MIN(start->y, end->y); ans.y_limit = MAX(start->y, end->y) + 1;
+        ans->y = MIN(start_y, end_y); ans->y_limit = MAX(start_y, end_y) + 1;
 
     }
-    return ans;
+    ans->y = MAX(ans->y, min_y);
 }
 
 static inline XRange
-xrange_for_iteration(const IterationData *idata, const index_type y, const Line *line) {
+xrange_for_iteration(const IterationData *idata, const int y, const Line *line) {
     XRange ans = {.x_limit=xlimit_for_line(line)};
     if (y == idata->y) {
         ans.x_limit = MIN(idata->first.x_limit, ans.x_limit);
@@ -1749,24 +1676,37 @@ xrange_for_iteration(const IterationData *idata, const index_type y, const Line 
     return ans;
 }
 
+static inline bool
+iteration_data_is_empty(const Screen *self, const IterationData *idata) {
+    if (idata->y >= idata->y_limit) return true;
+    index_type xl = MIN(idata->first.x_limit, self->columns);
+    if (idata->first.x < xl) return false;
+    xl = MIN(idata->body.x_limit, self->columns);
+    if (idata->body.x < xl) return false;
+    xl = MIN(idata->last.x_limit, self->columns);
+    if (idata->last.x < xl) return false;
+    return true;
+}
 
 static inline void
-apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask, bool rectangle_select) {
-    if (is_selection_empty_or_out_of_bounds(self, s)) return;
-    IterationData idata = iteration_data(self, s, rectangle_select);
-    for (index_type y = idata.y; y < idata.y_limit; y++) {
+apply_selection(Screen *self, uint8_t *data, const Selection *s, IterationData *last_rendered, uint8_t set_mask) {
+    iteration_data(self, s, last_rendered, 0);
+
+    for (int y = last_rendered->y; y < last_rendered->y_limit; y++) {
         Line *line = visual_line_(self, y);
         uint8_t *line_start = data + self->columns * y;
-        XRange xr = xrange_for_iteration(&idata, y, line);
+        XRange xr = xrange_for_iteration(last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) line_start[x] |= set_mask;
     }
 }
 
 bool
 screen_has_selection(Screen *self) {
-    Selection s = {0};
-    selection_limits_(selection, &s.start, &s.end);
-    return !is_selection_empty_or_out_of_bounds(self, &s);
+    if (is_selection_empty(&self->selection)) return false;
+    IterationData idata;
+    iteration_data(self, &self->selection, &idata, 0);
+    if (iteration_data_is_empty(self, &idata)) return false;
+    return true;
 }
 
 void
@@ -1774,19 +1714,18 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
     memset(address, 0, size);
     self->last_selection_scrolled_by = self->scrolled_by;
     self->selection_updated_once = true;
-    selection_limits_(selection, &self->last_rendered.selection.start, &self->last_rendered.selection.end);
-    apply_selection(self, address, &self->last_rendered.selection, 1, self->selection.rectangle_select);
-    selection_limits_(url_range, &self->last_rendered.url.start, &self->last_rendered.url.end);
-    apply_selection(self, address, &self->last_rendered.url, 2, false);
+    apply_selection(self, address, &self->selection, &self->last_rendered.selection, 1);
+    apply_selection(self, address, &self->url_range, &self->last_rendered.url, 2);
 }
 
 static inline PyObject*
-text_for_range(Screen *self, Selection *sel, bool rectangle_select, bool insert_newlines, linefunc_t line_func) {
-    IterationData idata = iteration_data(self, sel, rectangle_select);
+text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
+    IterationData idata;
+    iteration_data(self, sel, &idata, -self->historybuf->count);
     PyObject *ans = PyTuple_New(idata.y_limit - idata.y);
     if (!ans) return NULL;
-    for (index_type y = idata.y, i = 0; y < idata.y_limit; y++, i++) {
-        Line *line = line_func(self, y);
+    for (int i = 0, y = idata.y; y < idata.y_limit; y++, i++) {
+        Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
         char leading_char = (i > 0 && insert_newlines && !line->continued) ? '\n' : 0;
         PyObject *text = unicode_in_range(line, xr.x, xr.x_limit, true, leading_char);
@@ -1798,14 +1737,20 @@ text_for_range(Screen *self, Selection *sel, bool rectangle_select, bool insert_
 
 bool
 screen_open_url(Screen *self) {
-    Selection s = {0};
-    selection_limits_(url_range, &s.start, &s.end);
-    if (is_selection_empty_or_out_of_bounds(self, &s)) return false;
-    s.input_start = s.start; s.input_current = s.end;
-    PyObject *url = text_for_range(self, &s, false, false, visual_line_);
-    if (url) { call_boss(open_url_lines, "(O)", url); Py_CLEAR(url); }
-    else PyErr_Print();
-    return true;
+    if (is_selection_empty(&self->url_range)) return false;
+    PyObject *lines = text_for_range(self, &self->url_range, false);
+    bool ret = false;
+    if (lines) {
+        PyObject *joiner = PyUnicode_FromString("");
+        if (joiner) {
+            PyObject *url = PyUnicode_Join(joiner, lines);
+            if (url) { call_boss(open_url_lines, "(O)", url); Py_CLEAR(url); ret = true; }
+            Py_CLEAR(joiner);
+        }
+        Py_CLEAR(lines);
+    }
+    if (PyErr_Occurred()) PyErr_Print();
+    return ret;
 }
 
 static void
@@ -2139,11 +2084,7 @@ copy_colors_from(Screen *self, Screen *other) {
 
 static PyObject*
 text_for_selection(Screen *self, PyObject *a UNUSED) {
-    Selection s = self->selection;
-    full_selection_limits_(selection, &s.start, &s.end);
-    s.start.y = clamp_for_range_line(self, s.start.y);
-    s.end.y = clamp_for_range_line(self, s.end.y);
-    return text_for_range(self, &s, self->selection.rectangle_select, true, range_line_);
+    return text_for_range(self, &self->selection, true);
 }
 
 bool
@@ -2238,11 +2179,11 @@ scroll(Screen *self, PyObject *args) {
 
 bool
 screen_is_selection_dirty(Screen *self) {
-    SelectionBoundary start, end;
-    selection_limits_(selection, &start, &end);
-    if (self->last_selection_scrolled_by != self->scrolled_by || start.x != self->last_rendered.selection.start.x || start.y != self->last_rendered.selection.start.y || end.x != self->last_rendered.selection.end.x || end.y != self->last_rendered.selection.end.y || !self->selection_updated_once) return true;
-    selection_limits_(url_range, &start, &end);
-    if (start.x != self->last_rendered.url.start.x || start.y != self->last_rendered.url.start.y || end.x != self->last_rendered.url.end.x || end.y != self->last_rendered.url.end.y) return true;
+    IterationData q;
+    iteration_data(self, &self->selection, &q, 0);
+    if (memcmp(&q, &self->last_rendered.selection, sizeof(IterationData)) != 0) return true;
+    iteration_data(self, &self->url_range, &q, 0);
+    if (memcmp(&q, &self->last_rendered.url, sizeof(IterationData)) != 0) return true;
     return false;
 }
 
@@ -2269,6 +2210,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
     if (ended) self->selection.in_progress = false;
     self->selection.input_current.x = x; self->selection.input_current.y = y;
     self->selection.input_current.in_left_half_of_cell = in_left_half_of_cell;
+    self->selection.end_scrolled_by = self->scrolled_by;
     SelectionBoundary start, end, *a, *b;
     a = &self->selection.start, b = &self->selection.end;
     bool left_to_right = selection_is_left_to_right(&self->selection);
