@@ -241,7 +241,6 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     self->is_dirty = true;
     self->selection = EMPTY_SELECTION;
     self->url_range = EMPTY_SELECTION;
-    self->selection_updated_once = false;
     /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor_x, cursor_y, cursor_is_beyond_content); */
     self->cursor->x = MIN(cursor_x, self->columns - 1);
     self->cursor->y = MIN(cursor_y, self->lines - 1);
@@ -1716,8 +1715,6 @@ screen_has_selection(Screen *self) {
 void
 screen_apply_selection(Screen *self, void *address, size_t size) {
     memset(address, 0, size);
-    self->last_selection_scrolled_by = self->scrolled_by;
-    self->selection_updated_once = true;
     apply_selection(self, address, &self->selection, &self->last_rendered.selection, 1);
     apply_selection(self, address, &self->url_range, &self->last_rendered.url, 2);
 }
