@@ -87,6 +87,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
             Py_CLEAR(self); PyErr_Format(PyExc_RuntimeError, "Failed to create Screen write_buf_lock mutex: %s", strerror(ret));
             return NULL;
         }
+        self->reload_all_gpu_data = true;
         self->cell_size.width = cell_width; self->cell_size.height = cell_height;
         self->columns = columns; self->lines = lines;
         self->write_buf = PyMem_RawMalloc(BUFSIZ);
