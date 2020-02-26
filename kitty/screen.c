@@ -1541,7 +1541,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         lnum = y - self->scrolled_by;
         linebuf_init_line(self->linebuf, lnum);
         if (self->linebuf->line->has_dirty_text ||
-            (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered_cursor_y == lnum))) {
+            (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered.cursor_y == lnum))) {
             render_line(fonts_data, self->linebuf->line, lnum, self->cursor, self->disable_ligatures);
             if (self->linebuf->line->has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, self->linebuf->line);
 

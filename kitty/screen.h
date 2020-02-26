@@ -76,7 +76,6 @@ typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by, last_selection_scrolled_by;
-    unsigned int last_rendered_cursor_x, last_rendered_cursor_y;
     double pending_scroll_pixels;
     CellPixelSize cell_size;
     OverlayLine overlay_line;
@@ -86,6 +85,7 @@ typedef struct {
     Selection selection, url_range;
     struct {
         IterationData selection, url;
+        unsigned int cursor_x, cursor_y;
     } last_rendered;
     bool use_latin1, selection_updated_once, is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;

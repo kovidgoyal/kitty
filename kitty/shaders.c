@@ -315,8 +315,8 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
 
     ensure_sprite_map(fonts_data);
 
-    bool cursor_pos_changed = screen->cursor->x != screen->last_rendered_cursor_x
-                           || screen->cursor->y != screen->last_rendered_cursor_y;
+    bool cursor_pos_changed = screen->cursor->x != screen->last_rendered.cursor_x
+                           || screen->cursor->y != screen->last_rendered.cursor_y;
     bool disable_ligatures = screen->disable_ligatures == DISABLE_LIGATURES_CURSOR;
 
     if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || (disable_ligatures && cursor_pos_changed)) {
@@ -328,8 +328,8 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     }
 
     if (cursor_pos_changed) {
-        screen->last_rendered_cursor_x = screen->cursor->x;
-        screen->last_rendered_cursor_y = screen->cursor->y;
+        screen->last_rendered.cursor_x = screen->cursor->x;
+        screen->last_rendered.cursor_y = screen->cursor->y;
     }
 
     if (screen->reload_all_gpu_data || screen_is_selection_dirty(screen)) {
