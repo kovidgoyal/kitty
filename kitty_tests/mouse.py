@@ -133,6 +133,8 @@ class TestMouse(BaseTest):
         s.draw('X Y')
         multi_click(x=1.4)
         self.ae(sel(), 'ab')
+        move(2.6)
+        self.ae(sel(), 'ab ')
         move(3.6)
         self.ae(sel(), 'ab cd')
         release(3.6, 1)
