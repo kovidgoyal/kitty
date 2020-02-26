@@ -46,6 +46,18 @@ jobs:
         - run: /opt/py3.7/bin/python3 setup.py build --debug --verbose --sanitize
         - run: ./kitty/launcher/kitty +launch test.py
 
+  lin-38:
+    docker:
+        - image: kovidgoyal/kitty-test:latest
+    environment:
+        CC: clang
+        LD_LIBRARY_PATH: /opt/py3.8/lib
+        ASAN_OPTIONS: leak_check_at_exit=0
+    steps:
+        - checkout
+        - run: /opt/py3.8/bin/python3 setup.py build --debug --verbose --sanitize
+        - run: ./kitty/launcher/kitty +launch test.py
+
   lin-bundle:
     docker:
         - image: kovidgoyal/kitty-test:latest
@@ -99,6 +111,7 @@ workflows:
             - lin-sys
             - lin-35
             - lin-37
+            - lin-38
             - lin-package
             - lin-bundle
             - mac-brew
