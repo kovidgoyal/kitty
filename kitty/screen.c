@@ -1696,6 +1696,7 @@ apply_selection(Screen *self, uint8_t *data, const Selection *s, IterationData *
     iteration_data(self, s, last_rendered, 0, true);
 
     for (int y = last_rendered->y; y < last_rendered->y_limit; y++) {
+        if (y > (int)self->lines - 1) break;
         Line *line = visual_line_(self, y);
         uint8_t *line_start = data + self->columns * y;
         XRange xr = xrange_for_iteration(last_rendered, y, line);
