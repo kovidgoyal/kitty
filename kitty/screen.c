@@ -1694,7 +1694,6 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 static inline void
 apply_selection(Screen *self, uint8_t *data, const Selection *s, IterationData *last_rendered, uint8_t set_mask) {
     iteration_data(self, s, last_rendered, 0, true);
-    printf("111111111 y: %u y_limit: %u lines: %u\n", last_rendered->y, last_rendered->y_limit, self->lines);
 
     for (int y = last_rendered->y; y < last_rendered->y_limit; y++) {
         if (y > (int)self->lines - 1) break;
