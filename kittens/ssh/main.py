@@ -12,7 +12,7 @@ SHELL_SCRIPT = '''\
 #!/bin/sh
 # macOS ships with an ancient version of tic that cannot read from stdin, so we
 # create a temp file for it
-tmp=$(mktemp /tmp/terminfo.XXXXXX)
+tmp=$(mktemp)
 cat >$tmp << 'TERMEOF'
 TERMINFO
 TERMEOF
