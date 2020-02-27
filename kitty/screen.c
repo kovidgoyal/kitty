@@ -1636,7 +1636,7 @@ iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int
                 } else return; // empty selection
             }
             // single line selection
-            if (start->x <= end->x) {
+            else if (start->x <= end->x) {
                 ans->first.x = start->x + (start->in_left_half_of_cell ? 0 : 1);
                 ans->first.x_limit = 1 + end->x + (end->in_left_half_of_cell ? -1 : 0);
             } else {
@@ -1694,6 +1694,7 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 static inline void
 apply_selection(Screen *self, uint8_t *data, const Selection *s, IterationData *last_rendered, uint8_t set_mask) {
     iteration_data(self, s, last_rendered, 0, true);
+    printf("111111111 y: %u y_limit: %u lines: %u\n", last_rendered->y, last_rendered->y_limit, self->lines);
 
     for (int y = last_rendered->y; y < last_rendered->y_limit; y++) {
         if (y > (int)self->lines - 1) break;
