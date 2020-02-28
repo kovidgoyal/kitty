@@ -1159,7 +1159,8 @@ to zero for all mappings, including the builtin ones.
 g('shortcuts.clipboard')  # {{{
 k('copy_to_clipboard', 'kitty_mod+c', 'copy_to_clipboard', _('Copy to clipboard'), long_text=_('''
 There is also a :code:`copy_or_interrupt` action that can be optionally mapped to :kbd:`Ctrl+c`.
-It will copy only if there is a selection and send an interrupt otherwise.'''))
+It will copy only if there is a selection and send an interrupt otherwise. Similarly, :code:`copy_and_clear_or_interrupt`
+will copy and clear the selection or send an interrupt if there is no selection.'''))
 if is_macos:
     k('copy_to_clipboard', 'cmd+c', 'copy_to_clipboard', _('Copy to clipboard'), add_to_docs=False)
 k('paste_from_clipboard', 'kitty_mod+v', 'paste_from_clipboard', _('Paste from clipboard'))

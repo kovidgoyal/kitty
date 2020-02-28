@@ -26,6 +26,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   clicks to the application unless :opt:`terminal_select_modifiers` are
   pressed (:iss:`2368`)
 
+- A new ``copy_and_clear_or_interrupt`` function (:iss:`2403`)
+
 - X11: Fix arrow mouse cursor using right pointing instead of the default left
   pointing arrow (:iss:`2341`)
 

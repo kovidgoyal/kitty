@@ -2048,6 +2048,12 @@ update_selection(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+clear_selection(Screen *self, PyObject *args UNUSED) {
+    self->selection = EMPTY_SELECTION;
+    Py_RETURN_NONE;
+}
+
 WRAP0x(index)
 WRAP0(reverse_index)
 WRAP0(reset)
@@ -2475,6 +2481,7 @@ static PyMethodDef methods[] = {
     MND(clear_tab_stop, METH_VARARGS)
     MND(start_selection, METH_VARARGS)
     MND(update_selection, METH_VARARGS)
+    MND(clear_selection, METH_NOARGS)
     MND(reverse_index, METH_NOARGS)
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)

@@ -588,6 +588,10 @@ class Window:
             text = extended_key_event(defines.GLFW_KEY_C, defines.GLFW_MOD_CONTROL, defines.GLFW_PRESS) if mode == 'kitty' else b'\x03'
             self.write_to_child(text)
 
+    def copy_and_clear_or_interrupt(self):
+        self.copy_or_interrupt()
+        self.screen.clear_selection()
+
     def pass_selection_to_program(self, *args):
         cwd = self.cwd_of_child
         text = self.text_for_selection()
