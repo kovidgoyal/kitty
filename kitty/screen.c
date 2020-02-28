@@ -2203,7 +2203,7 @@ void
 screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
 #define A(attr, val) self->url_range.attr = val;
     A(start.x, start_x); A(end.x, end_x); A(start.y, start_y); A(end.y, end_y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
-    A(start.in_left_half_of_cell, true); A(end.in_left_half_of_cell, start_x == end_x);
+    A(start.in_left_half_of_cell, true); A(end.in_left_half_of_cell, start_x == end_x && start_y == end_y);
 #undef A
 }
 
