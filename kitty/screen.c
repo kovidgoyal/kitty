@@ -2215,23 +2215,21 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
     self->selection.end_scrolled_by = self->scrolled_by;
     SelectionBoundary start, end, *a, *b;
     a = &self->selection.start, b = &self->selection.end;
-    bool left_to_right = selection_is_left_to_right(&self->selection);
 
     switch(self->selection.extend_mode) {
         case EXTEND_WORD: {
-            if (selection_boundary_less_than(b, a)) { a = &self->selection.end; b = &self->selection.start; }
-            bool found = false;
-            index_type effective_x = x;
-            if (!start_extended_selection) {
-                if (left_to_right && in_left_half_of_cell && x) effective_x--;
-                else if(!left_to_right && !in_left_half_of_cell && x < self->columns - 1) effective_x++;
+            SelectionBoundary *before = &self->selection.input_start, *after = &self->selection.input_current;
+            if (selection_boundary_less_than(after, before)) { before = after; after = &self->selection.input_start; }
+            bool found_at_start = screen_selection_range_for_word(self, before->x, before->y, &start.y, &end.y, &start.x, &end.x, true);
+            if (found_at_start) {
+                a->x = start.x; a->y = start.y; a->in_left_half_of_cell = true;
+                b->x = end.x; b->y = end.y; b->in_left_half_of_cell = false;
+            } else {
+                a->x = before->x; a->y = before->y; a->in_left_half_of_cell = before->in_left_half_of_cell;
+                b->x = a->x; b->y = a->y; b->in_left_half_of_cell = a->in_left_half_of_cell;
             }
-            found = screen_selection_range_for_word(self, effective_x, y, &start.y, &end.y, &start.x, &end.x, false);
-            if (found) {
-                start.in_left_half_of_cell = true; end.in_left_half_of_cell = false;
-                if (selection_boundary_less_than(&start, a)) *a = start;
-                if (selection_boundary_less_than(b, &end)) *b = end;
-            }
+            bool found_at_end = screen_selection_range_for_word(self, after->x, after->y, &start.y, &end.y, &start.x, &end.x, false);
+            if (found_at_end) { b->x = end.x; b->y = end.y; b->in_left_half_of_cell = false; }
             break;
         }
         case EXTEND_LINE: {
