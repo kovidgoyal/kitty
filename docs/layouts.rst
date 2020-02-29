@@ -141,7 +141,7 @@ and you can move focus to neighboring windows using :kbd:`ctrl+arrow keys`.
 You can switch an existing split from horizontal to vertical and vice versa
 using :kbd:`F7`. Finally, windows can be resized using :ref:`window_resizing`.
 
-This layout takes one option, ``split_axis`` that control if new windows
+This layout takes one option, ``split_axis`` that controls whether new windows
 are placed into vertical or horizontal splits, by default::
 
     enabled_layouts splits:split_axis=horizontal
