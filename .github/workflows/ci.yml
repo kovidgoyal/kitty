@@ -1,0 +1,128 @@
+name: CI
+on: [push, pull_request]
+env:
+    CI: 'true'
+    ASAN_OPTIONS: leak_check_at_exit=0
+    LC_ALL: en_US.UTF-8
+    LANG: en_US.UTF-8
+
+jobs:
+    linux:
+        name: Linux (python=${{ matrix.pyver }} cc=${{ matrix.cc }} sanitize=${{ matrix.sanitize }})
+        runs-on: ubuntu-latest
+        env:
+            CC: ${{ matrix.cc }}
+            KITTY_SANITIZE: ${{ matrix.sanitize }}
+
+        strategy:
+            matrix:
+                python: [a, b, c]
+                cc: [gcc, clang]
+                include:
+                    - python: a
+                      pyver: 3.5
+                      sanitize: 0
+
+                    - python: b
+                      pyver: 3.7
+                      sanitize: 1
+
+                    - python: c
+                      pyver: 3.8
+                      sanitize: 1
+
+
+                exclude:
+                    - python: a
+                      cc: clang
+                    - python: b
+                      cc: clang
+                    - python: c
+                      cc: gcc
+
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@master
+              with:
+                fetch-depth: 10
+            - name: Set up Python ${{ matrix.pyver }}
+              uses: actions/setup-python@master
+              with:
+                python-version: ${{ matrix.pyver }}
+
+            - name: Build kitty
+              run: python .github/workflows/ci.py build
+
+            - name: Test kitty
+              run: python .github/workflows/ci.py test
+
+    linux-package:
+        name: Linux package
+        runs-on: ubuntu-latest
+        env:
+            CFLAGS: -funsigned-char
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@master
+              with:
+                fetch-depth: 10
+
+            - name: Test for trailing whitespace
+              run: if grep -Inr '\s$' kitty kitty_tests kittens docs *.py *.asciidoc *.rst .gitattributes .gitignore; then echo Trailing whitespace found, aborting.; exit 1; fi
+
+            - name: Set up Python
+              uses: actions/setup-python@master
+              with:
+                python-version: 3.8
+
+            - name: Check python code
+              run: |
+                  pip install flake8 sphinx
+                  python -m flake8 --count .
+
+            - name: Build kitty package
+              run: python .github/workflows/ci.py package
+
+            - name: Build man page
+              run: make FAIL_WARN=-W man
+
+            - name: Build HTML docs
+              run: make FAIL_WARN=-W html
+
+    bundle:
+        name: Bundle test (${{ matrix.os }})
+        runs-on: ${{ matrix.os }}
+        strategy:
+            matrix:
+                os: [ubuntu-latest, macos-latest]
+        env:
+            KITTY_BUNDLE: 1
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@master
+              with:
+                fetch-depth: 10
+
+            - name: Build kitty
+              run: which python3 && python3 .github/workflows/ci.py build
+
+            - name: Test kitty
+              run: python3 .github/workflows/ci.py test
+
+    brew:
+        name: macOS Brew
+        runs-on: macos-latest
+        steps:
+            - name: Checkout source code
+              uses: actions/checkout@master
+              with:
+                  fetch-depth: 10
+
+            - name: Build kitty
+              run: python3 .github/workflows/ci.py build
+
+            - name: Test kitty
+              run: python3 .github/workflows/ci.py test
+
+            - name: Build kitty package
+              run: python3 .github/workflows/ci.py package
