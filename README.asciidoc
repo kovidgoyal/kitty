@@ -2,4 +2,4 @@
 
 See https://sw.kovidgoyal.net/kitty/
 
-image:https://circleci.com/gh/kovidgoyal/kitty.svg?style=svg["Build status", link="https://circleci.com/gh/kovidgoyal/kitty"]
+image:https://github.com/kovidgoyal/kitty/workflows/CI/badge.svg["Build status", link="https://github.com/kovidgoyal/kitty/actions?query=workflow%3ACI"]
