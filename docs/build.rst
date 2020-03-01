@@ -1,9 +1,9 @@
 Building kitty from source
 ==============================
 
-.. image:: https://circleci.com/gh/kovidgoyal/kitty.svg?style=svg
+.. image:: https://github.com/kovidgoyal/kitty/workflows/CI/badge.svg
   :alt: Build status
-  :target: https://circleci.com/gh/kovidgoyal/kitty
+  :target: https://github.com/kovidgoyal/kitty/actions?query=workflow%3ACI
 
 
 |kitty| is designed to run from source, for easy hackability. Make sure
