@@ -145,6 +145,7 @@ def main(sys_args):
 if __name__ == '__main__':
     main(sys.argv)
 elif __name__ == '__doc__':
-    sys.cli_docs['usage'] = usage
-    sys.cli_docs['options'] = OPTIONS
-    sys.cli_docs['help_text'] = help_text
+    cd: dict = sys.cli_docs  # type: ignore
+    cd['usage'] = usage
+    cd['options'] = OPTIONS
+    cd['help_text'] = help_text

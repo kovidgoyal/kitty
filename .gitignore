@@ -14,4 +14,5 @@ __pycache__/
 /glfw/wayland-*-client-protocol.[ch]
 /docs/_build/
 /docs/generated/
+/.mypy_cache
 .DS_Store

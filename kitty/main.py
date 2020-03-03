@@ -137,19 +137,24 @@ def _run_app(opts, args, bad_lines=()):
             boss.destroy()
 
 
-def run_app(opts, args, bad_lines=()):
-    set_scale(opts.box_drawing_scale)
-    set_options(opts, is_wayland(), args.debug_gl, args.debug_font_fallback)
-    set_font_family(opts, debug_font_matching=args.debug_font_fallback)
-    try:
-        _run_app(opts, args, bad_lines)
-    finally:
-        free_font_data()  # must free font data before glfw/freetype/fontconfig/opengl etc are finalized
+class AppRunner:
+
+    def __init__(self):
+        self.cached_values_name = 'main'
+        self.first_window_callback = lambda window_handle: None
+        self.initial_window_size_func = initial_window_size_func
+
+    def __call__(self, opts, args, bad_lines=()):
+        set_scale(opts.box_drawing_scale)
+        set_options(opts, is_wayland(), args.debug_gl, args.debug_font_fallback)
+        set_font_family(opts, debug_font_matching=args.debug_font_fallback)
+        try:
+            _run_app(opts, args, bad_lines)
+        finally:
+            free_font_data()  # must free font data before glfw/freetype/fontconfig/opengl etc are finalized
 
 
-run_app.cached_values_name = 'main'
-run_app.first_window_callback = lambda window_handle: None
-run_app.initial_window_size_func = initial_window_size_func
+run_app = AppRunner()
 
 
 def ensure_macos_locale():
