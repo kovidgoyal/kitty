@@ -844,12 +844,12 @@ if __name__ == '__main__':
             r, g, b = map(int, parts[:3])
             name = ' '.join(parts[3:]).lower()
             data[name] = data[name.replace(' ', '')] = r, g, b
-    data = pprint.pformat(data).replace('{', '{\n ').replace('(', 'Color(')
+    formatted_data = pprint.pformat(data).replace('{', '{\n ').replace('(', 'Color(')
     with open(__file__, 'r+') as src:
         raw = src.read()
         raw = re.sub(
             r'^# BEGIN_DATA_SECTION {{{$.*^# END_DATA_SECTION }}}',
-            '# BEGIN_DATA_SECTION {{{\ncolor_names = %s\n# END_DATA_SECTION }}}' % data,
+            '# BEGIN_DATA_SECTION {{{\ncolor_names = %s\n# END_DATA_SECTION }}}' % formatted_data,
             raw, flags=re.DOTALL | re.MULTILINE
         )
         src.seek(0), src.truncate(), src.write(raw)
