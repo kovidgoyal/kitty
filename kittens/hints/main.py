@@ -15,7 +15,7 @@ from kitty.fast_data_types import set_clipboard_string
 from kitty.key_encoding import key_defs as K, backspace_key, enter_key
 from kitty.utils import screen_size_function
 
-from ..tui.handler import Handler
+from ..tui.handler import Handler, result_handler
 from ..tui.loop import Loop
 from ..tui.operations import faint, styled
 
@@ -562,6 +562,7 @@ def linenum_handle_result(args, data, target_window_id, boss, extra_cli_args, *a
             }[action])(*cmd)
 
 
+@result_handler(type_of_input='screen')
 def handle_result(args, data, target_window_id, boss):
     if data['customize_processing']:
         m = load_custom_processor(data['customize_processing'])
@@ -617,16 +618,14 @@ def handle_result(args, data, target_window_id, boss):
                 boss.open_url(m, program, cwd=cwd)
 
 
-handle_result.type_of_input = 'screen'
-
-
 if __name__ == '__main__':
     # Run with kitty +kitten hints
     ans = main(sys.argv)
     if ans:
         print(ans)
 elif __name__ == '__doc__':
-    sys.cli_docs['usage'] = usage
-    sys.cli_docs['options'] = OPTIONS
-    sys.cli_docs['help_text'] = help_text
+    cd = sys.cli_docs  # type: ignore
+    cd['usage'] = usage
+    cd['options'] = OPTIONS
+    cd['help_text'] = help_text
 # }}}

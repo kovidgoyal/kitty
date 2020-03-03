@@ -17,13 +17,8 @@ from gettext import gettext as _
 from kitty.cli import CONFIG_HELP, parse_args
 from kitty.constants import appname
 from kitty.fast_data_types import wcswidth
-from kitty.key_encoding import key_defs as K, RELEASE, enter_key
+from kitty.key_encoding import RELEASE, enter_key, key_defs as K
 
-from ..tui.handler import Handler
-from ..tui.images import ImageManager
-from ..tui.line_edit import LineEdit
-from ..tui.loop import Loop
-from ..tui.operations import styled
 from .collect import (
     create_collection, data_for_path, lines_for_path, sanitize,
     set_highlight_data
@@ -32,11 +27,17 @@ from .config import init_config
 from .patch import Differ, set_diff_command, worker_processes
 from .render import ImageSupportWarning, LineRef, render_diff
 from .search import BadRegex, Search
+from ..tui.handler import Handler
+from ..tui.images import ImageManager
+from ..tui.line_edit import LineEdit
+from ..tui.loop import Loop
+from ..tui.operations import styled
 
 try:
     from .highlight import initialize_highlighter, highlight_collection
+    has_highlighter = True
 except ImportError:
-    initialize_highlighter = highlight_collection = None
+    has_highlighter = False
 
 
 INITIALIZING, COLLECTED, DIFFED, COMMAND, MESSAGE = range(5)
@@ -140,7 +141,7 @@ class DiffHandler(Handler):
                 self.current_position = self.restore_position
                 self.restore_position = None
             self.draw_screen()
-            if initialize_highlighter is not None and not self.highlighting_done:
+            if has_highlighter and not self.highlighting_done:
                 from .highlight import StyleNotFound
                 self.highlighting_done = True
                 try:
@@ -504,12 +505,17 @@ Syntax: :italic:`name=value`. For example: :italic:`-o background=gray`
 '''.format, config_help=CONFIG_HELP.format(conf_name='diff', appname=appname))
 
 
-def showwarning(message, category, filename, lineno, file=None, line=None):
-    if category is ImageSupportWarning:
-        showwarning.warnings.append(message)
+class ShowWarning:
+
+    def __init__(self):
+        self.warnings = []
+
+    def __call__(self, message, category, filename, lineno, file=None, line=None):
+        if category is ImageSupportWarning:
+            showwarning.warnings.append(message)
 
 
-showwarning.warnings = []
+showwarning = ShowWarning()
 help_text = 'Show a side-by-side diff of the specified files/directories. You can also use ssh:hostname:remote-file-path to diff remote files.'
 usage = 'file_or_directory_left file_or_directory_right'
 
@@ -570,9 +576,10 @@ def main(args):
 if __name__ == '__main__':
     main(sys.argv)
 elif __name__ == '__doc__':
-    sys.cli_docs['usage'] = usage
-    sys.cli_docs['options'] = OPTIONS
-    sys.cli_docs['help_text'] = help_text
+    cd = sys.cli_docs  # type: ignore
+    cd['usage'] = usage
+    cd['options'] = OPTIONS
+    cd['help_text'] = help_text
 elif __name__ == '__conf__':
     from .config import all_options
-    sys.all_options = all_options
+    sys.all_options = all_options  # type: ignore

@@ -3,12 +3,14 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+from typing import Callable, Optional, Type
+
 from .operations import commander
 
 
 class Handler:
 
-    image_manager_class = None
+    image_manager_class = None  # type: Type[ImageManagerBase]
 
     def _initialize(self, screen_size, term_manager, schedule_write, tui_loop, debug, image_manager=None):
         self.screen_size = screen_size
@@ -42,11 +44,11 @@ class Handler:
         self.debug.fobj = self
         self.initialize()
 
-    def __exit__(self, *a):
+    def __exit__(self, etype, value, tb):
         del self.debug.fobj
         self.finalize()
         if self.image_manager is not None:
-            self.image_manager.__exit__(*a)
+            self.image_manager.__exit__(etype, value, tb)
 
     def initialize(self):
         pass
@@ -98,3 +100,37 @@ class Handler:
 
     def suspend(self):
         return self._term_manager.suspend()
+
+
+class ImageManagerBase:
+
+    def __init__(self, handler: Handler):
+        pass
+
+    def __enter__(self):
+        pass
+
+    def __exit__(self, etype, value, tb):
+        pass
+
+
+class HandleResult:
+
+    type_of_input: Optional[str] = None
+    no_ui: bool = False
+
+    def __init__(self, impl, type_of_input: Optional[str], no_ui: bool):
+        self.impl = impl
+        self.no_ui = no_ui
+        self.type_of_input = type_of_input
+
+    def __call__(self, args, data, target_window_id, boss):
+        return self.impl(args, data, target_window_id, boss)
+
+
+def result_handler(type_of_input: Optional[str] = None, no_ui=False) -> Callable[[Callable], HandleResult]:
+
+    def wrapper(impl):
+        return HandleResult(impl, type_of_input, no_ui)
+
+    return wrapper

@@ -14,10 +14,10 @@ from kitty.cli import parse_args
 from kitty.config import cached_values_for
 from kitty.constants import config_dir
 from kitty.fast_data_types import is_emoji_presentation_base, wcswidth
-from kitty.key_encoding import CTRL, RELEASE, SHIFT, key_defs as K, enter_key
+from kitty.key_encoding import CTRL, RELEASE, SHIFT, enter_key, key_defs as K
 from kitty.utils import get_editor
 
-from ..tui.handler import Handler
+from ..tui.handler import Handler, result_handler
 from ..tui.line_edit import LineEdit
 from ..tui.loop import Loop
 from ..tui.operations import (
@@ -556,6 +556,7 @@ def main(args):
         raise SystemExit(loop.return_code)
 
 
+@result_handler()
 def handle_result(args, current_char, target_window_id, boss):
     w = boss.window_id_map.get(target_window_id)
     if w is not None:
@@ -567,6 +568,7 @@ if __name__ == '__main__':
     if ans:
         print(ans)
 elif __name__ == '__doc__':
-    sys.cli_docs['usage'] = usage
-    sys.cli_docs['options'] = OPTIONS
-    sys.cli_docs['help_text'] = help_text
+    cd = sys.cli_docs  # type: ignore
+    cd['usage'] = usage
+    cd['options'] = OPTIONS
+    cd['help_text'] = help_text

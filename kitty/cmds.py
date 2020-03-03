@@ -6,6 +6,7 @@ import json
 import os
 import sys
 from contextlib import suppress
+from typing import Optional, BinaryIO
 
 from .cli import (
     Namespace, get_defaults_from_seq, parse_args, parse_option_spec
@@ -1322,39 +1323,44 @@ def cmd_set_background_image(global_opts, opts, args):
     return file_pipe(path)
 
 
-def set_background_image(boss, window, payload):
-    from base64 import standard_b64decode
-    import tempfile
-    pg = cmd_set_background_image.payload_get
-    data = pg(payload, 'data')
-    if data != '-':
-        img_id = pg(payload, 'img_id')
-        if img_id != set_background_image.current_img_id:
-            set_background_image.current_img_id = img_id
-            set_background_image.current_file_obj = tempfile.NamedTemporaryFile()
-        if data:
-            set_background_image.current_file_obj.write(standard_b64decode(data))
-            return no_response
+class SetBackgroundImage:
 
-    windows = windows_for_payload(boss, window, payload)
-    os_windows = tuple({w.os_window_id for w in windows})
-    layout = pg(payload, 'layout')
-    if data == '-':
-        path = None
-    else:
-        f = set_background_image.current_file_obj
-        path = f.name
-        set_background_image.current_file_obj = None
-        f.flush()
+    current_img_id: Optional[str] = None
+    current_file_obj: Optional[BinaryIO] = None
 
-    try:
-        boss.set_background_image(path, os_windows, pg(payload, 'configured'), layout)
-    except ValueError as err:
-        err.hide_traceback = True
-        raise
+    def __call__(self, boss, window, payload):
+        from base64 import standard_b64decode
+        import tempfile
+        pg = cmd_set_background_image.payload_get
+        data = pg(payload, 'data')
+        if data != '-':
+            img_id = pg(payload, 'img_id')
+            if img_id != set_background_image.current_img_id:
+                set_background_image.current_img_id = img_id
+                set_background_image.current_file_obj = tempfile.NamedTemporaryFile()
+            if data:
+                set_background_image.current_file_obj.write(standard_b64decode(data))
+                return no_response
+
+        windows = windows_for_payload(boss, window, payload)
+        os_windows = tuple({w.os_window_id for w in windows})
+        layout = pg(payload, 'layout')
+        if data == '-':
+            path = None
+        else:
+            f = set_background_image.current_file_obj
+            path = f.name
+            set_background_image.current_file_obj = None
+            f.flush()
+
+        try:
+            boss.set_background_image(path, os_windows, pg(payload, 'configured'), layout)
+        except ValueError as err:
+            err.hide_traceback = True
+            raise
 
 
-set_background_image.current_img_id = set_background_image.current_file_obj = None
+set_background_image = SetBackgroundImage()
 # }}}
 
 

@@ -13,6 +13,7 @@ from contextlib import suppress
 from kitty.utils import fit_image
 
 from .operations import cursor
+from .handler import ImageManagerBase
 
 try:
     fsenc = sys.getfilesystemencoding() or 'utf-8'
@@ -109,7 +110,7 @@ def can_display_images():
     return ans
 
 
-class ImageManager:
+class ImageManager(ImageManagerBase):
 
     def __init__(self, handler):
         self.image_id_counter = count()
