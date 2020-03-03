@@ -17,7 +17,7 @@ from gettext import gettext as _
 from kitty.cli import CONFIG_HELP, parse_args
 from kitty.constants import appname
 from kitty.fast_data_types import wcswidth
-from kitty.key_encoding import ESCAPE, RELEASE, enter_key
+from kitty.key_encoding import K, RELEASE, enter_key
 
 from ..tui.handler import Handler
 from ..tui.images import ImageManager
@@ -40,6 +40,7 @@ except ImportError:
 
 
 INITIALIZING, COLLECTED, DIFFED, COMMAND, MESSAGE = range(5)
+ESCAPE = K['ESCAPE']
 
 
 def generate_diff(collection, context):

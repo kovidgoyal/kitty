@@ -3,7 +3,14 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
-from kitty.key_encoding import RELEASE, HOME, END, BACKSPACE, DELETE, LEFT, RIGHT
+from kitty.key_encoding import RELEASE, K
+
+HOME = K['HOME']
+END = K['END']
+BACKSPACE = K['BACKSPACE']
+DELETE = K['DELETE']
+LEFT = K['LEFT']
+RIGHT = K['RIGHT']
 
 
 class LineEdit:

@@ -459,7 +459,7 @@ rtype_map = {v: k for k, v in type_map.items()}
 mod_map = {c: i for i, c in enumerate('ABCDEFGHIJKLMNOP')}
 rmod_map = {v: k for k, v in mod_map.items()}
 key_rmap = {}
-g = globals()
+g = K = {}
 config_key_map = {}
 config_mod_map = {
     'SHIFT': SHIFT,

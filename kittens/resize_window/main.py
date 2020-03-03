@@ -8,7 +8,7 @@ import sys
 from kitty.cli import parse_args
 from kitty.cmds import cmap, parse_subcommand_cli
 from kitty.constants import version
-from kitty.key_encoding import CTRL, ESCAPE, RELEASE, N, S, T, W
+from kitty.key_encoding import CTRL, RELEASE, K
 from kitty.remote_control import encode_send, parse_rc_args
 
 from ..tui.handler import Handler
@@ -16,6 +16,11 @@ from ..tui.loop import Loop
 from ..tui.operations import styled
 
 global_opts = None
+ESCAPE = K['ESCAPE']
+N = K['N']
+S = K['S']
+T = K['T']
+W = K['W']
 
 
 class Resize(Handler):

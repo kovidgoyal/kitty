@@ -13,11 +13,8 @@ from gettext import gettext as _
 from kitty.cli import parse_args
 from kitty.config import cached_values_for
 from kitty.constants import config_dir
-from kitty.fast_data_types import wcswidth, is_emoji_presentation_base
-from kitty.key_encoding import (
-    DOWN, ESCAPE, F1, F2, F3, F4, F12, LEFT, RELEASE, RIGHT, SHIFT, TAB, UP, CTRL,
-    enter_key
-)
+from kitty.fast_data_types import is_emoji_presentation_base, wcswidth
+from kitty.key_encoding import CTRL, RELEASE, SHIFT, K, enter_key
 from kitty.utils import get_editor
 
 from ..tui.handler import Handler
@@ -29,6 +26,17 @@ from ..tui.operations import (
 )
 
 HEX, NAME, EMOTICONS, FAVORITES = 'HEX', 'NAME', 'EMOTICONS', 'FAVORITES'
+UP = K['UP']
+DOWN = K['DOWN']
+LEFT = K['LEFT']
+RIGHT = K['RIGHT']
+TAB = K['TAB']
+ESCAPE = K['ESCAPE']
+F1 = K['F1']
+F2 = K['F2']
+F3 = K['F3']
+F4 = K['F4']
+F12 = K['F12']
 favorites_path = os.path.join(config_dir, 'unicode-input-favorites.conf')
 INDEX_CHAR = '.'
 DEFAULT_SET = tuple(map(

@@ -12,7 +12,7 @@ from itertools import repeat
 
 from kitty.cli import parse_args
 from kitty.fast_data_types import set_clipboard_string
-from kitty.key_encoding import ESCAPE, backspace_key, enter_key
+from kitty.key_encoding import K, backspace_key, enter_key
 from kitty.utils import screen_size_function
 
 from ..tui.handler import Handler
@@ -23,6 +23,7 @@ URL_PREFIXES = 'http https file ftp'.split()
 DEFAULT_HINT_ALPHABET = string.digits + string.ascii_lowercase
 DEFAULT_REGEX = r'(?m)^\s*(.+)\s*$'
 screen_size = screen_size_function()
+ESCAPE = K['ESCAPE']
 
 
 class Mark:

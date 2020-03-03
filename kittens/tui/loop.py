@@ -19,13 +19,16 @@ from kitty.fast_data_types import (
     close_tty, normal_tty, open_tty, parse_input_from_terminal, raw_tty
 )
 from kitty.key_encoding import (
-    ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, C, D, backspace_key,
-    decode_key_event, enter_key
+    ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, backspace_key,
+    decode_key_event, enter_key, K
 )
 from kitty.utils import screen_size_function, write_all
 
 from .handler import Handler
 from .operations import init_state, reset_state
+
+
+C, D = K['C'], K['D']
 
 
 def debug(*a, **kw):
