@@ -14,7 +14,7 @@ from kitty.cli import parse_args
 from kitty.config import cached_values_for
 from kitty.constants import config_dir
 from kitty.fast_data_types import is_emoji_presentation_base, wcswidth
-from kitty.key_encoding import CTRL, RELEASE, SHIFT, K, enter_key
+from kitty.key_encoding import CTRL, RELEASE, SHIFT, key_defs as K, enter_key
 from kitty.utils import get_editor
 
 from ..tui.handler import Handler

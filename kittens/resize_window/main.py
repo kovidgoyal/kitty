@@ -8,7 +8,7 @@ import sys
 from kitty.cli import parse_args
 from kitty.cmds import cmap, parse_subcommand_cli
 from kitty.constants import version
-from kitty.key_encoding import CTRL, RELEASE, K
+from kitty.key_encoding import CTRL, RELEASE, key_defs as K
 from kitty.remote_control import encode_send, parse_rc_args
 
 from ..tui.handler import Handler

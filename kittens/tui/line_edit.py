@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
-from kitty.key_encoding import RELEASE, K
+from kitty.key_encoding import RELEASE, key_defs as K
 
 HOME = K['HOME']
 END = K['END']

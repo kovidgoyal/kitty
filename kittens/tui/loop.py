@@ -20,7 +20,7 @@ from kitty.fast_data_types import (
 )
 from kitty.key_encoding import (
     ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, backspace_key,
-    decode_key_event, enter_key, K
+    decode_key_event, enter_key, key_defs as K
 )
 from kitty.utils import screen_size_function, write_all
 

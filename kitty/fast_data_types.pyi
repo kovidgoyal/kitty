@@ -48,3 +48,11 @@ def glfw_init(path: str, debug_keyboard: bool = False) -> bool:
 
 def free_font_data() -> None:
     pass
+
+
+def toggle_maximized() -> bool:
+    pass
+
+
+def toggle_fullscreen() -> bool:
+    pass

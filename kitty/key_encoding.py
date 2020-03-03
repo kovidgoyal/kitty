@@ -459,7 +459,7 @@ rtype_map = {v: k for k, v in type_map.items()}
 mod_map = {c: i for i, c in enumerate('ABCDEFGHIJKLMNOP')}
 rmod_map = {v: k for k, v in mod_map.items()}
 key_rmap = {}
-g = K = {}
+key_defs = {}
 config_key_map = {}
 config_mod_map = {
     'SHIFT': SHIFT,
@@ -474,13 +474,14 @@ config_mod_map = {
 }
 for key_name, enc in ENCODING.items():
     key_name = key_name.replace(' ', '_')
-    g[key_name] = config_key_map[key_name] = key_name
+    key_defs[key_name] = config_key_map[key_name] = key_name
     key_rmap[enc] = key_name
-config_key_map.update({k: g[v] for k, v in key_name_aliases.items() if v in g})
+config_key_map.update({k: key_defs[v] for k, v in key_name_aliases.items() if v in key_defs})
 
-enter_key = KeyEvent(PRESS, 0, g['ENTER'])
-backspace_key = KeyEvent(PRESS, 0, g['BACKSPACE'])
-del key_name, enc, g
+enter_key = KeyEvent(PRESS, 0, key_defs['ENTER'])
+backspace_key = KeyEvent(PRESS, 0, key_defs['BACKSPACE'])
+globals().update(key_defs)
+del key_name, enc
 
 
 def decode_key_event(text):
