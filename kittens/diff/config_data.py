@@ -24,7 +24,7 @@ o, k, g, all_groups = option_func(all_options, {
 g('diff')
 
 
-def syntax_aliases(raw):
+def syntax_aliases(raw: str) -> Dict[str, str]:
     ans = {}
     for x in raw.split():
         a, b = x.partition(':')[::2]
@@ -33,7 +33,7 @@ def syntax_aliases(raw):
     return ans
 
 
-o('syntax_aliases', 'pyj:py recipe:py', option_type=syntax_aliases, long_text=_('''
+o('syntax_aliases', 'pyj:py pyi:py recipe:py', option_type=syntax_aliases, long_text=_('''
 File extension aliases for syntax highlight
 For example, to syntax highlight :file:`file.xyz` as
 :file:`file.abc` use a setting of :code:`xyz:abc`
