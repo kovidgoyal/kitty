@@ -5,7 +5,7 @@
 from collections import namedtuple
 from functools import lru_cache, partial
 from itertools import islice, repeat
-from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 
 from .constants import WindowGeometry
 from .fast_data_types import (
@@ -1416,7 +1416,7 @@ class Splits(Layout):
 
 # Instantiation {{{
 
-all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
+all_layouts = {cast(str, o.name): o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
 
 
 class CreateLayoutObjectFor:

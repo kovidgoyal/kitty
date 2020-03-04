@@ -6,61 +6,77 @@ import os
 import re
 import shlex
 from collections import namedtuple
+from typing import Callable, FrozenSet, List, Optional, Union, Dict, Any, Iterator, Type
 
-from ..rgb import to_color as as_color
+from ..rgb import Color, to_color as as_color
 from ..utils import log_error
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 BadLine = namedtuple('BadLine', 'number line exception')
 
 
-def to_color(x):
-    return as_color(x, validate=True)
+def to_color(x: str) -> Color:
+    ans = as_color(x, validate=True)
+    if ans is None:  # this is only for type-checking
+        ans = Color(0, 0, 0)
+    return ans
 
 
-def to_color_or_none(x):
+def to_color_or_none(x: str) -> Optional[Color]:
     return None if x.lower() == 'none' else to_color(x)
 
 
-def positive_int(x):
+ConvertibleToNumbers = Union[str, bytes, int, float]
+
+
+def positive_int(x: ConvertibleToNumbers) -> int:
     return max(0, int(x))
 
 
-def positive_float(x):
+def positive_float(x: ConvertibleToNumbers) -> float:
     return max(0, float(x))
 
 
-def unit_float(x):
+def unit_float(x: ConvertibleToNumbers) -> float:
     return max(0, min(float(x), 1))
 
 
-def to_bool(x):
+def to_bool(x: str) -> bool:
     return x.lower() in ('y', 'yes', 'true')
 
 
-def to_cmdline(x):
-    return list(map(
-        lambda y: os.path.expandvars(os.path.expanduser(y)), shlex.split(x)))
+def to_cmdline(x: str) -> List[str]:
+    return list(
+        map(
+            lambda y: os.path.expandvars(os.path.expanduser(y)),
+            shlex.split(x)
+        )
+    )
 
 
-def python_string(text):
+def python_string(text: str) -> str:
     import ast
     return ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''")
 
 
-def choices(*choices):
-    defval = choices[0]
-    choices = frozenset(choices)
+def choices(*choices) -> Callable[[str], str]:
+    defval: str = choices[0]
+    uc: FrozenSet[str] = frozenset(choices)
 
-    def choice(x):
+    def choice(x: str) -> str:
         x = x.lower()
-        if x not in choices:
+        if x not in uc:
             x = defval
         return x
+
     return choice
 
 
-def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_includes):
+def parse_line(
+    line: str, type_map: Dict[str, Any], special_handling: Callable,
+    ans: Dict[str, Any], all_keys: Optional[FrozenSet[str]],
+    base_path_for_includes: str
+) -> None:
     line = line.strip()
     if not line or line.startswith('#'):
         return
@@ -79,9 +95,15 @@ def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_in
             with open(val, encoding='utf-8', errors='replace') as include:
                 _parse(include, type_map, special_handling, ans, all_keys)
         except FileNotFoundError:
-            log_error('Could not find included config file: {}, ignoring'.format(val))
+            log_error(
+                'Could not find included config file: {}, ignoring'.
+                format(val)
+            )
         except OSError:
-            log_error('Could not read from included config file: {}, ignoring'.format(val))
+            log_error(
+                'Could not read from included config file: {}, ignoring'.
+                format(val)
+            )
         return
     if all_keys is not None and key not in all_keys:
         log_error('Ignoring unknown config key: {}'.format(key))
@@ -92,7 +114,14 @@ def parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_in
     ans[key] = val
 
 
-def _parse(lines, type_map, special_handling, ans, all_keys, accumulate_bad_lines=None):
+def _parse(
+    lines: Iterator[str],
+    type_map: Dict[str, Any],
+    special_handling: Callable,
+    ans: Dict[str, Any],
+    all_keys: Optional[FrozenSet[str]],
+    accumulate_bad_lines: Optional[List[BadLine]] = None
+) -> None:
     name = getattr(lines, 'name', None)
     if name:
         base_path_for_includes = os.path.dirname(os.path.abspath(name))
@@ -101,7 +130,10 @@ def _parse(lines, type_map, special_handling, ans, all_keys, accumulate_bad_line
         base_path_for_includes = config_dir
     for i, line in enumerate(lines):
         try:
-            parse_line(line, type_map, special_handling, ans, all_keys, base_path_for_includes)
+            parse_line(
+                line, type_map, special_handling, ans, all_keys,
+                base_path_for_includes
+            )
         except Exception as e:
             if accumulate_bad_lines is None:
                 raise
@@ -109,16 +141,23 @@ def _parse(lines, type_map, special_handling, ans, all_keys, accumulate_bad_line
 
 
 def parse_config_base(
-    lines, defaults, type_map, special_handling, ans, check_keys=True,
-    accumulate_bad_lines=None
+    lines: Iterator[str],
+    defaults: Any,
+    type_map: Dict[str, Any],
+    special_handling: Callable,
+    ans: Dict[str, Any],
+    check_keys=True,
+    accumulate_bad_lines: Optional[List[BadLine]] = None
 ):
-    all_keys = defaults._asdict() if check_keys else None
-    _parse(lines, type_map, special_handling, ans, all_keys, accumulate_bad_lines)
+    all_keys: Optional[FrozenSet[str]] = defaults._asdict() if check_keys else None
+    _parse(
+        lines, type_map, special_handling, ans, all_keys, accumulate_bad_lines
+    )
 
 
-def create_options_class(keys):
-    keys = tuple(sorted(keys))
-    slots = keys + ('_fields',)
+def create_options_class(all_keys: Iterator[str]) -> Type:
+    keys = tuple(sorted(all_keys))
+    slots = keys + ('_fields', )
 
     def __init__(self, kw):
         for k, v in kw.items():
@@ -146,11 +185,18 @@ def create_options_class(keys):
         ans.update(kw)
         return self.__class__(ans)
 
-    ans = type('Options', (), {
-        '__slots__': slots, '__init__': __init__, '_asdict': _asdict, '_replace': _replace, '__iter__': __iter__,
-        '__len__': __len__, '__getitem__': __getitem__
-    })
-    ans._fields = keys
+    ans = type(
+        'Options', (), {
+            '__slots__': slots,
+            '__init__': __init__,
+            '_asdict': _asdict,
+            '_replace': _replace,
+            '__iter__': __iter__,
+            '__len__': __len__,
+            '__getitem__': __getitem__
+        }
+    )
+    ans._fields = keys  # type: ignore
     return ans
 
 
@@ -171,7 +217,9 @@ def resolve_config(SYSTEM_CONF, defconf, config_files_on_cmd_line):
         yield defconf
 
 
-def load_config(Options, defaults, parse_config, merge_configs, *paths, overrides=None):
+def load_config(
+    Options, defaults, parse_config, merge_configs, *paths, overrides=None
+):
     ans = defaults._asdict()
     for path in paths:
         if not path:
@@ -196,17 +244,20 @@ def init_config(default_config_lines, parse_config):
 
 
 def key_func():
-    ans = {}
+    ans: Dict[str, Callable] = {}
 
     def func_with_args(*names):
 
         def w(f):
             for name in names:
                 if ans.setdefault(name, f) is not f:
-                    raise ValueError('the args_func {} is being redefined'.format(name))
+                    raise ValueError(
+                        'the args_func {} is being redefined'.format(name)
+                    )
             return f
 
         return w
+
     return func_with_args, ans
 
 
@@ -216,15 +267,17 @@ def parse_kittens_shortcut(sc):
         parts = list(filter(None, sc.rstrip('+').split('+') + ['+']))
     else:
         parts = sc.split('+')
-    mods = parts[:-1] or None
-    if mods is not None:
+    qmods = parts[:-1]
+    if qmods:
         resolved_mods = 0
-        for mod in mods:
+        for mod in qmods:
             m = config_mod_map.get(mod.upper())
             if m is None:
                 raise ValueError('Unknown shortcut modifiers: {}'.format(sc))
             resolved_mods |= m
-        mods = resolved_mods
+        mods: Optional[int] = resolved_mods
+    else:
+        mods = None
     is_text = False
     rkey = parts[-1]
     tkey = text_match(rkey)
@@ -260,7 +313,7 @@ def parse_kittens_func_args(action, args_funcs):
         raise ValueError('Unknown key action: {}'.format(action))
 
     if not isinstance(args, (list, tuple)):
-        args = (args,)
+        args = (args, )
 
     return func, tuple(args)
 

@@ -4,11 +4,12 @@
 
 import re
 from functools import partial
+from typing import Any, Dict, List, Set, Tuple, Union, get_type_hints, Optional
 
 from .utils import to_bool
 
 
-def to_string(x):
+def to_string(x: str) -> str:
     return x
 
 
@@ -32,6 +33,32 @@ class Option:
         self.add_to_default = add_to_default
         self.add_to_docs = add_to_docs
         self.line = self.name + ' ' + self.defval_as_string
+
+    def type_definition(self, is_multiple: bool, imports: Set[Tuple[str, str]]) -> str:
+
+        def type_name(x: type) -> str:
+            ans = x.__name__
+            if x.__module__ and x.__module__ != 'builtins':
+                imports.add((x.__module__, x.__name__))
+            if is_multiple:
+                ans = 'typing.Dict[str, str]'
+            return ans
+
+        def option_type_as_str(x: Any) -> str:
+            if hasattr(x, '__name__'):
+                return type_name(x)
+            ans = repr(x)
+            ans = ans.replace('NoneType', 'None')
+            return ans
+
+        if type(self.option_type) is type:
+            return type_name(self.option_type)
+        th = get_type_hints(self.option_type)
+        try:
+            rettype = th['return']
+        except KeyError:
+            raise ValueError('The Option {} has an unknown option_type: {}'.format(self.name, self.option_type))
+        return option_type_as_str(rettype)
 
 
 class Shortcut:
@@ -275,3 +302,18 @@ def config_lines(all_options):
             for sc in opt:
                 if sc.add_to_default:
                     yield sc.line
+
+
+def as_type_stub(all_options: Dict[str, Union[Option, List[Shortcut]]], special_types: Optional[Dict[str, str]] = None) -> str:
+    ans = ['import typing\n', '', 'class Options:']
+    imports: Set[Tuple[str, str]] = set()
+    overrides = special_types or {}
+    for name, val in all_options.items():
+        if isinstance(val, Option):
+            is_multiple = ' ' in name
+            field_name = name.partition(' ')[0]
+            ans.append('    {}: {}'.format(field_name, overrides.get(field_name, val.type_definition(is_multiple, imports))))
+    for mod, name in imports:
+        ans.insert(0, 'from {} import {}'.format(mod, name))
+        ans.insert(0, 'import {}'.format(mod))
+    return '\n'.join(ans)

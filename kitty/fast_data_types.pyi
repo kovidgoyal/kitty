@@ -402,7 +402,7 @@ def coretext_all_fonts() -> Tuple[Dict[str, Any], ...]:
     pass
 
 
-def add_timer(callback: Callable[[int], None], interval: float, repeats: bool = True) -> int:
+def add_timer(callback: Callable[[Optional[int]], bool], interval: float, repeats: bool = True) -> int:
     pass
 
 

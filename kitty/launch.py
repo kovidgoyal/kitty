@@ -3,14 +3,18 @@
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from kitty.cli import parse_args
-from kitty.fast_data_types import set_clipboard_string
-from kitty.utils import set_primary_selection
+from functools import lru_cache
+from typing import Dict
+
+from .child import Child
+from .cli import parse_args
+from .fast_data_types import set_clipboard_string
+from .utils import set_primary_selection
 
 
+@lru_cache(maxsize=2)
 def options_spec():
-    if not hasattr(options_spec, 'ans'):
-        OPTIONS = '''
+    return '''
 --window-title --title
 The title to set for the new window. By default, title is controlled by the
 child process.
@@ -124,8 +128,6 @@ screen.
 Create a marker that highlights text in the newly created window. The syntax is
 the same as for the :code:`toggle_marker` map action (see :doc:`/marks`).
 '''
-        options_spec.ans = OPTIONS
-    return options_spec.ans
 
 
 def parse_launch_args(args=None):
@@ -137,8 +139,8 @@ def parse_launch_args(args=None):
     return opts, args
 
 
-def get_env(opts, active_child):
-    env = {}
+def get_env(opts, active_child: Child) -> Dict[str, str]:
+    env: Dict[str, str] = {}
     if opts.copy_env and active_child:
         env.update(active_child.foreground_environ)
     for x in opts.env:

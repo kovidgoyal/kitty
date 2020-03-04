@@ -5,15 +5,16 @@
 import re
 from collections import namedtuple
 from contextlib import suppress
+from typing import Optional
 
 Color = namedtuple('Color', 'red green blue')
 
 
-def alpha_blend_channel(top_color, bottom_color, alpha):
+def alpha_blend_channel(top_color: int, bottom_color: int, alpha: float) -> int:
     return int(alpha * top_color + (1 - alpha) * bottom_color)
 
 
-def alpha_blend(top_color, bottom_color, alpha):
+def alpha_blend(top_color: Color, bottom_color: Color, alpha: float) -> Color:
     return Color(
             alpha_blend_channel(top_color.red, bottom_color.red, alpha),
             alpha_blend_channel(top_color.green, bottom_color.green, alpha),
@@ -21,48 +22,50 @@ def alpha_blend(top_color, bottom_color, alpha):
     )
 
 
-def parse_single_color(c):
+def parse_single_color(c: str) -> int:
     if len(c) == 1:
         c += c
     return int(c[:2], 16)
 
 
-def parse_sharp(spec):
+def parse_sharp(spec: str) -> Optional[Color]:
     if len(spec) in (3, 6, 9, 12):
         part_len = len(spec) // 3
         colors = re.findall(r'[a-fA-F0-9]{%d}' % part_len, spec)
         return Color(*map(parse_single_color, colors))
+    return None
 
 
-def parse_rgb(spec):
+def parse_rgb(spec: str) -> Optional[Color]:
     colors = spec.split('/')
     if len(colors) == 3:
         return Color(*map(parse_single_color, colors))
+    return None
 
 
-def color_from_int(x):
+def color_from_int(x: int) -> Color:
     return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
 
 
-def color_as_int(x):
+def color_as_int(x: Color) -> int:
     return x.red << 16 | x.green << 8 | x.blue
 
 
-def color_as_sharp(x):
+def color_as_sharp(x: Color) -> str:
     return '#{:02x}{:02x}{:02x}'.format(*x)
 
 
-def color_as_sgr(x):
+def color_as_sgr(x: Color) -> str:
     return ':2:{}:{}:{}'.format(*x)
 
 
-def to_color(raw, validate=False):
+def to_color(raw: str, validate: bool = False) -> Optional[Color]:
     # See man XParseColor
     x = raw.strip().lower()
     ans = color_names.get(x)
     if ans is not None:
         return ans
-    val = None
+    val: Optional[Color] = None
     with suppress(Exception):
         if raw.startswith('#'):
             val = parse_sharp(raw[1:])

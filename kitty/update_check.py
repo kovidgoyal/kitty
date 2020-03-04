@@ -7,6 +7,7 @@ import subprocess
 import time
 from collections import namedtuple
 from contextlib import suppress
+from typing import Optional
 from urllib.request import urlopen
 
 from .config import atomic_save
@@ -95,7 +96,7 @@ def process_current_release(raw):
         notify_new_version(release_version)
 
 
-def run_worker():
+def run_worker() -> None:
     import time
     import random
     time.sleep(random.randint(1000, 4000) / 1000)
@@ -103,7 +104,7 @@ def run_worker():
         print(get_released_version())
 
 
-def update_check(timer_id=None):
+def update_check(timer_id: Optional[int] = None) -> bool:
     try:
         p = subprocess.Popen([
             kitty_exe(), '+runpy',
@@ -113,10 +114,13 @@ def update_check(timer_id=None):
         log_error('Failed to run kitty for update check, with error: {}'.format(e))
         return False
     monitor_pid(p.pid)
-    get_boss().set_update_check_process(p)
-    return True
+    boss = get_boss()
+    if boss is not None:
+        boss.set_update_check_process(p)
+        return True
+    return False
 
 
-def run_update_check(interval=CHECK_INTERVAL):
+def run_update_check(interval: int = CHECK_INTERVAL) -> None:
     if update_check():
         add_timer(update_check, interval)

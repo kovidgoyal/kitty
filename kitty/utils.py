@@ -14,14 +14,13 @@ from collections import namedtuple
 from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, Optional, cast
 
 from .constants import (
     appname, is_macos, is_wayland, shell_path, supports_primary_selection
 )
+from .options_stub import Options
 from .rgb import Color, to_color
-if TYPE_CHECKING:
-    from .cli import Namespace  # noqa
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -468,7 +467,7 @@ def func_name(f):
     return str(f)
 
 
-def resolved_shell(opts: Optional['Namespace'] = None) -> List[str]:
+def resolved_shell(opts: Optional[Options] = None) -> List[str]:
     ans = getattr(opts, 'shell', '.')
     if ans == '.':
         ans = [shell_path]
@@ -478,7 +477,7 @@ def resolved_shell(opts: Optional['Namespace'] = None) -> List[str]:
     return ans
 
 
-def read_shell_environment(opts: Optional['Namespace'] = None) -> Dict[str, str]:
+def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
     ans = getattr(read_shell_environment, 'ans', None)
     if ans is None:
         from .child import openpty, remove_blocking
