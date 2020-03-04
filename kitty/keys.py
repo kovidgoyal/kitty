@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
+from typing import Dict, Tuple, Union
 
 from . import fast_data_types as defines
 from .key_encoding import KEY_MAP
@@ -16,7 +17,7 @@ def modify_complex_key(name, amt):
     return modify_key_bytes(name, amt)
 
 
-control_codes = {
+control_codes: Dict[int, Union[bytes, Tuple[int, ...]]] = {
     defines.GLFW_KEY_BACKSPACE: b'\x08'
 }
 smkx_key_map = {}
@@ -96,8 +97,8 @@ for f in range(13, 26):
     kn = 'kf{}'.format(f)
     smkx_key_map[kf] = key_as_bytes(kn)
 create_modifier_variants(defines.GLFW_KEY_MENU, b'\x1b[29~')
-f = {k: k for k in '0123456789'}
-f.update({
+f_ = {k: k for k in '0123456789'}
+f_.update({
     'COMMA': ',',
     'PERIOD': '.',
     'SEMICOLON': ';',
@@ -105,9 +106,9 @@ f.update({
     'MINUS': '-',
     'EQUAL': '=',
 })
-for kf, kn in f.items():
-    control_codes[getattr(defines, 'GLFW_KEY_' + kf)] = (ord(kn),)
-del f, kf, kn
+for kf_, kn_ in f_.items():
+    control_codes[getattr(defines, 'GLFW_KEY_' + kf_)] = (ord(kn_),)
+del f, f_, kf, kn, kf_, kn_
 
 smkx_key_map[defines.GLFW_KEY_ESCAPE] = b'\033'
 smkx_key_map[defines.GLFW_KEY_ENTER] = b'\r'
