@@ -5,6 +5,7 @@
 import sys
 from contextlib import contextmanager
 from functools import wraps
+from typing import List
 
 from kitty.rgb import Color, color_as_sharp, to_color
 
@@ -168,7 +169,7 @@ def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=No
 
 def serialize_gr_command(cmd, payload=None):
     cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
-    ans = []
+    ans: List[bytes] = []
     w = ans.append
     w(b'\033_G'), w(cmd.encode('ascii'))
     if payload:

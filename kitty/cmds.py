@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from contextlib import suppress
-from typing import Optional, BinaryIO
+from typing import Any, BinaryIO, Callable, Dict, List, Optional
 
 from .cli import (
     Namespace, get_defaults_from_seq, parse_args, parse_option_spec
@@ -20,7 +20,6 @@ from .launch import (
 )
 from .tabs import SpecialWindow
 from .utils import natsort_ints
-
 
 no_response = object()
 
@@ -43,7 +42,8 @@ class UnknownLayout(ValueError):
     hide_traceback = True
 
 
-cmap = {}
+CommandFunction = Callable[[Namespace, Namespace, List[str]], Optional[Dict[str, Any]]]
+cmap: Dict[str, CommandFunction] = {}
 
 
 def cmd(

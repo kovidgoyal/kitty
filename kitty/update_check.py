@@ -6,12 +6,12 @@ import os
 import subprocess
 import time
 from collections import namedtuple
-from urllib.request import urlopen
 from contextlib import suppress
+from urllib.request import urlopen
 
 from .config import atomic_save
-from .constants import cache_dir, get_boss, kitty_exe, version
-from .fast_data_types import add_timer, monitor_pid
+from .constants import cache_dir, kitty_exe, version
+from .fast_data_types import add_timer, get_boss, monitor_pid
 from .notify import notify
 from .utils import log_error, open_url
 

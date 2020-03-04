@@ -9,11 +9,11 @@ from functools import partial
 
 from .borders import Borders
 from .child import Child
-from .constants import appname, get_boss, is_macos, is_wayland
+from .constants import appname, is_macos, is_wayland
 from .fast_data_types import (
-    add_tab, attach_window, detach_window, mark_tab_bar_dirty, next_window_id,
-    pt_to_px, remove_tab, remove_window, ring_bell, set_active_tab, swap_tabs,
-    x11_window_id
+    add_tab, attach_window, detach_window, get_boss, mark_tab_bar_dirty,
+    next_window_id, pt_to_px, remove_tab, remove_window, ring_bell,
+    set_active_tab, swap_tabs, x11_window_id
 )
 from .layout import create_layout_object_for, evict_cached_layouts
 from .tab_bar import TabBar, TabBarData

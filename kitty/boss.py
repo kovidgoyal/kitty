@@ -17,8 +17,7 @@ from .conf.utils import to_cmdline
 from .config import initial_window_size_func, prepare_config_file_for_editing
 from .config_data import MINIMUM_FONT_SIZE
 from .constants import (
-    appname, config_dir, is_macos, kitty_exe, set_boss,
-    supports_primary_selection
+    appname, config_dir, is_macos, kitty_exe, supports_primary_selection
 )
 from .fast_data_types import (
     ChildMonitor, background_opacity_of, change_background_opacity,
@@ -26,7 +25,7 @@ from .fast_data_types import (
     current_os_window, destroy_global_data, focus_os_window,
     get_clipboard_string, global_font_size, mark_os_window_for_close,
     os_window_font_size, patch_global_colors, safe_pipe, set_background_image,
-    set_clipboard_string, set_in_sequence_mode, thread_write,
+    set_boss, set_clipboard_string, set_in_sequence_mode, thread_write,
     toggle_fullscreen, toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches

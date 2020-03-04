@@ -1,10 +1,11 @@
-from typing import (
-    Any, Callable, List, Dict, NewType, Optional, Tuple, Union
-)
+from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union
 
+from kitty.boss import Boss
 from kitty.cli import Namespace
 
 # Constants {{{
+ERROR_PREFIX: str
+GLSL_VERSION: int
 GLFW_IBEAM_CURSOR: int
 GLFW_KEY_UNKNOWN: int
 GLFW_KEY_SPACE: int
@@ -322,6 +323,42 @@ BORDERS_PROGRAM: int
 # }}}
 
 
+def log_error_string(s: str) -> None:
+    pass
+
+
+def set_primary_selection(x: bytes) -> None:
+    pass
+
+
+def get_primary_selection() -> Optional[bytes]:
+    pass
+
+
+def redirect_std_streams(devnull: str) -> None:
+    pass
+
+
+StartupCtx = NewType('StartupCtx', int)
+Display = NewType('Display', int)
+
+
+def init_x11_startup_notification(display: Display, window_id: int, startup_id: Optional[str] = None) -> StartupCtx:
+    pass
+
+
+def end_x11_startup_notification(ctx: StartupCtx) -> None:
+    pass
+
+
+def x11_display() -> Optional[Display]:
+    pass
+
+
+def user_cache_dir() -> str:
+    pass
+
+
 def process_group_map() -> Tuple[Tuple[int, int], ...]:
     pass
 
@@ -487,6 +524,14 @@ def set_background_image(
         path: Optional[str], os_window_ids: Tuple[int, ...],
         configured: bool = True, layout_name: Optional[str] = None
 ) -> None:
+    pass
+
+
+def set_boss(boss: Boss) -> None:
+    pass
+
+
+def get_boss() -> Optional[Boss]:
     pass
 
 
@@ -731,4 +776,7 @@ class ChildMonitor:
             dump_callback: Optional[Callable],
             talk_fd: int = -1, listen_fd: int = -1
     ):
+        pass
+
+    def wakeup(self) -> None:
         pass

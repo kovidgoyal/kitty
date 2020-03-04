@@ -11,16 +11,14 @@ from enum import IntEnum
 from itertools import chain
 
 from .config import build_ansi_color_table
-from .constants import (
-    ScreenGeometry, WindowGeometry, appname, get_boss, wakeup
-)
+from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     STRIKETHROUGH, TINT_PROGRAM, Screen, add_window, cell_size_for_window,
-    compile_program, get_clipboard_string, init_cell_program,
+    compile_program, get_boss, get_clipboard_string, init_cell_program,
     set_clipboard_string, set_titlebar_color, set_window_render_data,
     update_window_title, update_window_visibility, viewport_for_window
 )

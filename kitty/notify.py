@@ -23,8 +23,7 @@ if is_macos:
 
 else:
 
-    from .fast_data_types import dbus_send_notification
-    from .constants import get_boss
+    from .fast_data_types import dbus_send_notification, get_boss
 
     alloc_map: Dict[int, str] = {}
     identifier_map: Dict[str, int] = {}

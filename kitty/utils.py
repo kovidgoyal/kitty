@@ -10,13 +10,18 @@ import os
 import re
 import string
 import sys
+from collections import namedtuple
 from contextlib import suppress
+from functools import lru_cache
 from time import monotonic
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, cast
 
 from .constants import (
     appname, is_macos, is_wayland, shell_path, supports_primary_selection
 )
 from .rgb import Color, to_color
+if TYPE_CHECKING:
+    from .cli import Namespace  # noqa
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -77,31 +82,36 @@ def parse_color_set(raw):
             continue
 
 
-def screen_size_function(fd=None):
-    ans = getattr(screen_size_function, 'ans', None)
-    if ans is None:
-        from collections import namedtuple
-        import array
-        import fcntl
-        import termios
-        Size = namedtuple('Size', 'rows cols width height cell_width cell_height')
+ScreenSize = namedtuple('ScreenSize', 'rows cols width height cell_width cell_height')
+
+
+class ScreenSizeGetter:
+    changed = True
+    Size = ScreenSize
+    ans: Optional[ScreenSize] = None
+
+    def __init__(self, fd: Optional[int]):
         if fd is None:
-            fd = sys.stdout
+            fd = sys.stdout.fileno()
+        self.fd = fd
 
-        def screen_size():
-            if screen_size.changed:
-                buf = array.array('H', [0, 0, 0, 0])
-                fcntl.ioctl(fd, termios.TIOCGWINSZ, buf)
-                rows, cols, width, height = tuple(buf)
-                cell_width, cell_height = width // (cols or 1), height // (rows or 1)
-                screen_size.ans = Size(rows, cols, width, height, cell_width, cell_height)
-                screen_size.changed = False
-            return screen_size.ans
-        screen_size.changed = True
-        screen_size.Size = Size
-        ans = screen_size_function.ans = screen_size
+    def __call__(self) -> ScreenSize:
+        if self.changed:
+            import array
+            import fcntl
+            import termios
+            buf = array.array('H', [0, 0, 0, 0])
+            fcntl.ioctl(self.fd, termios.TIOCGWINSZ, cast(bytearray, buf))
+            rows, cols, width, height = tuple(buf)
+            cell_width, cell_height = width // (cols or 1), height // (rows or 1)
+            self.ans = ScreenSize(rows, cols, width, height, cell_width, cell_height)
+            self.changed = False
+        return cast(ScreenSize, self.ans)
 
-    return ans
+
+@lru_cache(maxsize=64)
+def screen_size_function(fd=None):
+    return ScreenSizeGetter(fd)
 
 
 def fit_image(width, height, pwidth, pheight):
@@ -311,30 +321,37 @@ def single_instance_unix(name):
         return True
 
 
-def single_instance(group_id=None):
-    import socket
-    name = '{}-ipc-{}'.format(appname, os.geteuid())
-    if group_id:
-        name += '-{}'.format(group_id)
+class SingleInstance:
 
-    s = socket.socket(family=socket.AF_UNIX)
-    # First try with abstract UDS
-    addr = '\0' + name
-    try:
-        s.bind(addr)
-    except OSError as err:
-        if err.errno == errno.ENOENT:
-            return single_instance_unix(name)
-        if err.errno == errno.EADDRINUSE:
-            s.connect(addr)
-            single_instance.socket = s
-            return False
-        raise
-    s.listen()
-    single_instance.socket = s  # prevent garbage collection from closing the socket
-    s.set_inheritable(False)
-    atexit.register(remove_socket_file, s)
-    return True
+    socket: Optional[Any] = None
+
+    def __call__(self, group_id: Optional[str] = None):
+        import socket
+        name = '{}-ipc-{}'.format(appname, os.geteuid())
+        if group_id:
+            name += '-{}'.format(group_id)
+
+        s = socket.socket(family=socket.AF_UNIX)
+        # First try with abstract UDS
+        addr = '\0' + name
+        try:
+            s.bind(addr)
+        except OSError as err:
+            if err.errno == errno.ENOENT:
+                return single_instance_unix(name)
+            if err.errno == errno.EADDRINUSE:
+                s.connect(addr)
+                single_instance.socket = s
+                return False
+            raise
+        s.listen()
+        single_instance.socket = s  # prevent garbage collection from closing the socket
+        s.set_inheritable(False)
+        atexit.register(remove_socket_file, s)
+        return True
+
+
+single_instance = SingleInstance()
 
 
 def parse_address_spec(spec):
@@ -414,19 +431,16 @@ def exe_exists(exe):
     return False
 
 
-def get_editor():
-    ans = getattr(get_editor, 'ans', False)
-    if ans is False:
-        import shlex
-        for ans in (os.environ.get('VISUAL'), os.environ.get('EDITOR'), 'vim',
-                    'nvim', 'vi', 'emacs', 'kak', 'micro', 'nano', 'vis'):
-            if ans and exe_exists(shlex.split(ans)[0]):
-                break
-        else:
-            ans = 'vim'
-        ans = shlex.split(ans)
-        get_editor.ans = ans
-    return ans
+@lru_cache(maxsize=2)
+def get_editor() -> List[str]:
+    import shlex
+    for ans in (os.environ.get('VISUAL'), os.environ.get('EDITOR'), 'vim',
+                'nvim', 'vi', 'emacs', 'kak', 'micro', 'nano', 'vis'):
+        if ans and exe_exists(shlex.split(ans)[0]):
+            break
+    else:
+        ans = 'vim'
+    return shlex.split(ans)
 
 
 def is_path_in_temp_dir(path):
@@ -454,7 +468,7 @@ def func_name(f):
     return str(f)
 
 
-def resolved_shell(opts=None):
+def resolved_shell(opts: Optional['Namespace'] = None) -> List[str]:
     ans = getattr(opts, 'shell', '.')
     if ans == '.':
         ans = [shell_path]
@@ -464,10 +478,12 @@ def resolved_shell(opts=None):
     return ans
 
 
-def read_shell_environment(opts=None):
-    if not hasattr(read_shell_environment, 'ans'):
+def read_shell_environment(opts: Optional['Namespace'] = None) -> Dict[str, str]:
+    ans = getattr(read_shell_environment, 'ans', None)
+    if ans is None:
         from .child import openpty, remove_blocking
-        ans = read_shell_environment.ans = {}
+        ans = {}
+        setattr(read_shell_environment, 'ans', ans)
         import subprocess
         shell = resolved_shell(opts)
         master, slave = openpty()
@@ -484,7 +500,7 @@ def read_shell_environment(opts=None):
             start_time = monotonic()
             while monotonic() - start_time < 1.5:
                 try:
-                    ret = p.wait(0.01)
+                    ret: Optional[int] = p.wait(0.01)
                 except TimeoutExpired:
                     ret = None
                 with suppress(Exception):
@@ -503,11 +519,11 @@ def read_shell_environment(opts=None):
                     if not x:
                         break
                     raw += x
-                raw = raw.decode('utf-8', 'replace')
-                for line in raw.splitlines():
+                draw = raw.decode('utf-8', 'replace')
+                for line in draw.splitlines():
                     k, v = line.partition('=')[::2]
                     if k and v:
                         ans[k] = v
             else:
                 log_error('Failed to run shell to read its environment')
-    return read_shell_environment.ans
+    return ans

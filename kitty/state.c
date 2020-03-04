@@ -905,6 +905,14 @@ PYWRAP1(set_boss) {
     Py_RETURN_NONE;
 }
 
+PYWRAP0(get_boss) {
+    if (global_state.boss) {
+        Py_INCREF(global_state.boss);
+        return global_state.boss;
+    }
+    Py_RETURN_NONE;
+}
+
 PYWRAP1(patch_global_colors) {
     PyObject *spec;
     int configured;
@@ -1051,6 +1059,7 @@ static PyMethodDef module_methods[] = {
     MW(set_background_image, METH_VARARGS),
     MW(os_window_font_size, METH_VARARGS),
     MW(set_boss, METH_O),
+    MW(get_boss, METH_NOARGS),
     MW(patch_global_colors, METH_VARARGS),
     MW(create_mock_window, METH_VARARGS),
     MW(destroy_global_data, METH_NOARGS),

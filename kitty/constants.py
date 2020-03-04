@@ -8,6 +8,8 @@ import sys
 import errno
 from collections import namedtuple
 from contextlib import suppress
+from functools import lru_cache
+from typing import Set
 
 appname = 'kitty'
 version = (0, 16, 0)
@@ -21,23 +23,21 @@ ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
 WindowGeometry = namedtuple('WindowGeometry', 'left top right bottom xnum ynum')
 
 
+@lru_cache(maxsize=2)
 def kitty_exe():
-    ans = getattr(kitty_exe, 'ans', None)
-    if ans is None:
-        rpath = sys._xoptions.get('bundle_exe_dir')
-        if not rpath:
-            items = filter(None, os.environ.get('PATH', '').split(os.pathsep))
-            seen = set()
-            for candidate in items:
-                if candidate not in seen:
-                    seen.add(candidate)
-                    if os.access(os.path.join(candidate, 'kitty'), os.X_OK):
-                        rpath = candidate
-                        break
-            else:
-                rpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'launcher')
-        ans = kitty_exe.ans = os.path.join(rpath, 'kitty')
-    return ans
+    rpath = sys._xoptions.get('bundle_exe_dir')
+    if not rpath:
+        items = filter(None, os.environ.get('PATH', '').split(os.pathsep))
+        seen: Set[str] = set()
+        for candidate in items:
+            if candidate not in seen:
+                seen.add(candidate)
+                if os.access(os.path.join(candidate, 'kitty'), os.X_OK):
+                    rpath = candidate
+                    break
+        else:
+            rpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'launcher')
+    return os.path.join(rpath, 'kitty')
 
 
 def _get_config_dir():
@@ -89,7 +89,8 @@ del _get_config_dir
 defconf = os.path.join(config_dir, 'kitty.conf')
 
 
-def _get_cache_dir():
+@lru_cache(maxsize=2)
+def cache_dir():
     if 'KITTY_CACHE_DIRECTORY' in os.environ:
         candidate = os.path.abspath(os.environ['KITTY_CACHE_DIRECTORY'])
     elif is_macos:
@@ -101,25 +102,11 @@ def _get_cache_dir():
     return candidate
 
 
-def cache_dir():
-    ans = getattr(cache_dir, 'ans', None)
-    if ans is None:
-        ans = cache_dir.ans = _get_cache_dir()
-    return ans
-
-
-def get_boss():
-    return get_boss.boss
-
-
-def set_boss(m):
-    from .fast_data_types import set_boss as set_c_boss
-    get_boss.boss = m
-    set_c_boss(m)
-
-
 def wakeup():
-    get_boss.boss.child_monitor.wakeup()
+    from .fast_data_types import get_boss
+    b = get_boss()
+    if b is not None:
+        b.child_monitor.wakeup()
 
 
 base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -173,7 +160,7 @@ def is_wayland(opts=None):
     if is_macos:
         return False
     if opts is None:
-        return is_wayland.ans
+        return getattr(is_wayland, 'ans')
     if opts.linux_display_server == 'auto':
         ans = detect_if_wayland_ok()
     else:
