@@ -3,18 +3,17 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+from functools import partial
 # Utils  {{{
 from gettext import gettext as _
-from functools import partial
+from typing import Dict, Union
 
-from kitty.conf.definition import option_func
-from kitty.conf.utils import (
-    positive_int, python_string, to_color
-)
+from kitty.conf.definition import Option, Shortcut, option_func
+from kitty.conf.utils import positive_int, python_string, to_color
 
 # }}}
 
-all_options = {}
+all_options: Dict[str, Union[Option, Shortcut]] = {}
 o, k, g, all_groups = option_func(all_options, {
     'colors': [_('Colors')],
     'diff': [_('Diffing'), ],
@@ -121,4 +120,4 @@ k('prev_match', '<', 'scroll_to prev-match', _('Scroll to previous search match'
 k('search_forward_simple', 'f', 'start_search substring forward', _('Search forward (no regex)'))
 k('search_backward_simple', 'b', 'start_search substring backward', _('Search backward (no regex)'))
 
-type_map = {o.name: o.option_type for o in all_options.values() if hasattr(o, 'option_type')}
+type_map = {o.name: o.option_type for o in all_options.values() if isinstance(o, Option)}

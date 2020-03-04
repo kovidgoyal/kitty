@@ -1866,7 +1866,7 @@ screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
 static PyObject*
 screen_truncate_point_for_length(PyObject UNUSED *self, PyObject *args) {
     PyObject *str; unsigned int num_cells, start_pos = 0;
-    if (!PyArg_ParseTuple(args, "OI|I", &str, &num_cells, &start_pos)) return NULL;
+    if (!PyArg_ParseTuple(args, "UI|I", &str, &num_cells, &start_pos)) return NULL;
     if (PyUnicode_READY(str) != 0) return NULL;
     int kind = PyUnicode_KIND(str);
     void *data = PyUnicode_DATA(str);

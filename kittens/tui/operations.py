@@ -71,7 +71,7 @@ def set_line_wrapping(yes_or_no: bool) -> str:
 
 
 def set_cursor_visible(yes_or_no: bool) -> str:
-    return set_mode('DECTEM') if yes_or_no else reset_mode('DECTCEM')
+    return set_mode('DECTCEM') if yes_or_no else reset_mode('DECTCEM')
 
 
 def set_cursor_position(x, y) -> str:  # (0, 0) is top left

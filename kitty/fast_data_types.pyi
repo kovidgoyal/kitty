@@ -719,6 +719,10 @@ def set_window_render_data(
     pass
 
 
+def truncate_point_for_length(text: str, num_cells: int, start_pos: int = 0) -> int:
+    pass
+
+
 class ChildMonitor:
 
     def __init__(

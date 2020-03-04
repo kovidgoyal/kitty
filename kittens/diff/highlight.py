@@ -6,10 +6,10 @@ import concurrent
 import os
 import re
 
-from pygments import highlight
-from pygments.formatter import Formatter
-from pygments.lexers import get_lexer_for_filename
-from pygments.util import ClassNotFound
+from pygments import highlight  # type: ignore
+from pygments.formatter import Formatter  # type: ignore
+from pygments.lexers import get_lexer_for_filename  # type: ignore
+from pygments.util import ClassNotFound  # type: ignore
 
 from kitty.rgb import color_as_sgr, parse_sharp
 

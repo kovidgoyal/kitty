@@ -4,12 +4,13 @@
 
 import os
 import re
+from contextlib import suppress
 from functools import lru_cache
 from hashlib import md5
 from mimetypes import guess_type
-from contextlib import suppress
+from typing import Dict
 
-path_name_map = {}
+path_name_map: Dict[str, str] = {}
 
 
 class Segment:
@@ -146,13 +147,17 @@ def data_for_path(path):
     return ans
 
 
-@lru_cache(maxsize=1024)
-def lines_for_path(path):
-    data = data_for_path(path).replace('\t', lines_for_path.replace_tab_by)
-    return tuple(sanitize(data).splitlines())
+class LinesForPath:
+
+    replace_tab_by = ' ' * 4
+
+    @lru_cache(maxsize=1024)
+    def __call__(self, path):
+        data = data_for_path(path).replace('\t', self.replace_tab_by)
+        return tuple(sanitize(data).splitlines())
 
 
-lines_for_path.replace_tab_by = ' ' * 4
+lines_for_path = LinesForPath()
 
 
 @lru_cache(maxsize=1024)
