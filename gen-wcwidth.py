@@ -12,6 +12,7 @@ from functools import partial
 from html.entities import html5
 from itertools import groupby
 from operator import itemgetter
+from typing import DefaultDict, Dict, Set
 from urllib.request import urlopen
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -42,10 +43,10 @@ def get_data(fname, folder='UCD'):
 
 
 # Map of class names to set of codepoints in class
-class_maps = {}
+class_maps: Dict[str, Set[int]] = {}
 all_symbols = set()
 name_map = {}
-word_search_map = defaultdict(set)
+word_search_map: DefaultDict[str, Set[int]] = defaultdict(set)
 zwj = 0x200d
 marks = set(emoji_skin_tone_modifiers) | {zwj}
 not_assigned = set(range(0, sys.maxunicode))
@@ -110,9 +111,9 @@ def split_two(line):
     return chars, rest
 
 
-all_emoji = set()
-emoji_categories = {}
-emoji_presentation_bases = set()
+all_emoji: Set[int] = set()
+emoji_categories: Dict[str, Set[int]] = {}
+emoji_presentation_bases: Set[int] = set()
 
 
 def parse_emoji():
@@ -130,7 +131,8 @@ def parse_emoji():
             emoji_presentation_bases.add(base)
 
 
-doublewidth, ambiguous = set(), set()
+doublewidth: Set[int] = set()
+ambiguous: Set[int] = set()
 
 
 def parse_eaw():

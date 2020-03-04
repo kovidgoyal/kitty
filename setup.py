@@ -19,6 +19,7 @@ from functools import partial
 from collections import namedtuple
 from contextlib import suppress
 from pathlib import Path
+from typing import cast
 
 base = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, 'glfw')
@@ -29,13 +30,13 @@ build_dir = 'build'
 constants = os.path.join('kitty', 'constants.py')
 with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
-appname = re.search(r"^appname = '([^']+)'", constants, re.MULTILINE).group(1)
+appname = cast(re.Match, re.search(r"^appname = '([^']+)'", constants, re.MULTILINE)).group(1)
 version = tuple(
     map(
         int,
-        re.search(
+        cast(re.Match, re.search(
             r"^version = \((\d+), (\d+), (\d+)\)", constants, re.MULTILINE
-        ).group(1, 2, 3)
+        )).group(1, 2, 3)
     )
 )
 _plat = sys.platform.lower()
