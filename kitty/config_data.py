@@ -5,9 +5,10 @@
 # Utils  {{{
 import os
 from gettext import gettext as _
+from typing import Mapping, Union
 
 from . import fast_data_types as defines
-from .conf.definition import option_func
+from .conf.definition import Option, Shortcut, option_func
 from .conf.utils import (
     choices, positive_float, positive_int, to_bool, to_cmdline, to_color,
     to_color_or_none, unit_float
@@ -54,7 +55,7 @@ def uniq(vals, result_type=list):
 # Groups {{{
 
 
-all_options = {}
+all_options: Mapping[str, Union[Option, Shortcut]] = {}
 
 
 o, k, g, all_groups = option_func(all_options, {
@@ -475,11 +476,11 @@ The color and style for highlighting URLs on mouse-over.
 :code:`url_style` can be one of: none, single, double, curly'''))
 
 
-def url_style(x):
-    return url_style.map.get(x, url_style.map['curly'])
+def url_style(x: str) -> int:
+    return url_style_map.get(x, url_style_map['curly'])
 
 
-url_style.map = dict(
+url_style_map = dict(
     ((v, i) for i, v in enumerate('none single double curly'.split()))
 )
 
@@ -1415,4 +1416,4 @@ the line (same as pressing the Home key)::
 # }}}
 # }}}
 
-type_map = {o.name: o.option_type for o in all_options.values() if hasattr(o, 'option_type')}
+type_map = {o.name: o.option_type for o in all_options.values() if isinstance(o, Option)}

@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
+from typing import Mapping
 
 from .constants import is_macos, logo_png_file
 
@@ -25,8 +26,8 @@ else:
     from .fast_data_types import dbus_send_notification
     from .constants import get_boss
 
-    alloc_map = {}
-    identifier_map = {}
+    alloc_map: Mapping[int, str] = {}
+    identifier_map: Mapping[str, int] = {}
 
     def dbus_notification_created(alloc_id, notification_id):
         identifier = alloc_map.pop(alloc_id, None)

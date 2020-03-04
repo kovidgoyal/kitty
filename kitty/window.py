@@ -57,51 +57,55 @@ def calculate_gl_geometry(window_geometry, viewport_width, viewport_height, cell
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
-def load_shader_programs(semi_transparent=False):
-    compile_program(BLIT_PROGRAM, *load_shaders('blit'))
-    v, f = load_shaders('cell')
+class LoadShaderPrograms:
 
-    for which, p in {
-            'SIMPLE': CELL_PROGRAM,
-            'BACKGROUND': CELL_BG_PROGRAM,
-            'SPECIAL': CELL_SPECIAL_PROGRAM,
-            'FOREGROUND': CELL_FG_PROGRAM,
-    }.items():
-        vv, ff = v.replace('WHICH_PROGRAM', which), f.replace('WHICH_PROGRAM', which)
-        for gln, pyn in {
-                'REVERSE_SHIFT': REVERSE,
-                'STRIKE_SHIFT': STRIKETHROUGH,
-                'DIM_SHIFT': DIM,
-                'DECORATION_SHIFT': DECORATION,
-                'MARK_SHIFT': MARK,
-                'MARK_MASK': MARK_MASK,
+    use_selection_fg = True
+
+    def __call__(self, semi_transparent=False):
+        compile_program(BLIT_PROGRAM, *load_shaders('blit'))
+        v, f = load_shaders('cell')
+
+        for which, p in {
+                'SIMPLE': CELL_PROGRAM,
+                'BACKGROUND': CELL_BG_PROGRAM,
+                'SPECIAL': CELL_SPECIAL_PROGRAM,
+                'FOREGROUND': CELL_FG_PROGRAM,
         }.items():
-            vv = vv.replace('{{{}}}'.format(gln), str(pyn), 1)
-        if semi_transparent:
-            vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-            ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
-        if not load_shader_programs.use_selection_fg:
-            vv = vv.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
-            ff = ff.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
-        compile_program(p, vv, ff)
+            vv, ff = v.replace('WHICH_PROGRAM', which), f.replace('WHICH_PROGRAM', which)
+            for gln, pyn in {
+                    'REVERSE_SHIFT': REVERSE,
+                    'STRIKE_SHIFT': STRIKETHROUGH,
+                    'DIM_SHIFT': DIM,
+                    'DECORATION_SHIFT': DECORATION,
+                    'MARK_SHIFT': MARK,
+                    'MARK_MASK': MARK_MASK,
+            }.items():
+                vv = vv.replace('{{{}}}'.format(gln), str(pyn), 1)
+            if semi_transparent:
+                vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
+                ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
+            if not load_shader_programs.use_selection_fg:
+                vv = vv.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
+                ff = ff.replace('#define USE_SELECTION_FG', '#define DONT_USE_SELECTION_FG')
+            compile_program(p, vv, ff)
 
-    v, f = load_shaders('graphics')
-    for which, p in {
-            'SIMPLE': GRAPHICS_PROGRAM,
-            'PREMULT': GRAPHICS_PREMULT_PROGRAM,
-            'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
-    }.items():
-        ff = f.replace('ALPHA_TYPE', which)
-        compile_program(p, v, ff)
+        v, f = load_shaders('graphics')
+        for which, p in {
+                'SIMPLE': GRAPHICS_PROGRAM,
+                'PREMULT': GRAPHICS_PREMULT_PROGRAM,
+                'ALPHA_MASK': GRAPHICS_ALPHA_MASK_PROGRAM,
+        }.items():
+            ff = f.replace('ALPHA_TYPE', which)
+            compile_program(p, v, ff)
 
-    v, f = load_shaders('bgimage')
-    compile_program(BGIMAGE_PROGRAM, v, f)
-    v, f = load_shaders('tint')
-    compile_program(TINT_PROGRAM, v, f)
-    init_cell_program()
+        v, f = load_shaders('bgimage')
+        compile_program(BGIMAGE_PROGRAM, v, f)
+        v, f = load_shaders('tint')
+        compile_program(TINT_PROGRAM, v, f)
+        init_cell_program()
 
 
-load_shader_programs.use_selection_fg = True
+load_shader_programs = LoadShaderPrograms()
 
 
 def setup_colors(screen, opts):

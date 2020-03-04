@@ -13,7 +13,7 @@ from .utils import load_shaders
 try:
     from enum import IntFlag
 except ImportError:
-    from enum import IntEnum as IntFlag
+    from enum import IntEnum as IntFlag  # type: ignore
 
 
 class BorderColor(IntFlag):

@@ -77,10 +77,11 @@ function, telling kitty what kind of input your kitten would like. For example:
 
    # in handle_result, STDIN is for the kitty process itself, rather
    # than the kitten process and should not be read from.
+   from kittens.tui.handler import result_handler
+   @result_handler(type_of_input='text')
    def handle_result(args, stdin_data, target_window_id, boss):
       pass
 
-   handle_result.type_of_input = 'text'
 
 This will send the plain text of the active window to the kitten's
 :file:`STDIN`. For text with formatting escape codes, use ``ansi``
@@ -106,6 +107,8 @@ Create a file in the kitty config folder, :file:`~/.config/kitty/zoom_toggle.py`
    def main(args):
       pass
 
+   from kittens.tui.handler import result_handler
+   @result_handler(no_ui=True)
    def handle_result(args, answer, target_window_id, boss):
       tab = boss.active_tab
       if tab is not None:
@@ -113,8 +116,6 @@ Create a file in the kitty config folder, :file:`~/.config/kitty/zoom_toggle.py`
             tab.last_used_layout()
          else:
             tab.goto_layout('stack')
-
-   handle_result.no_ui = True
 
 
 Now in kitty.conf add::

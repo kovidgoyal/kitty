@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import namedtuple
+from typing import Set
 
 from .config import build_ansi_color_table
 from .constants import WindowGeometry
@@ -26,7 +27,7 @@ def as_rgb(x):
     return (x << 8) | 2
 
 
-template_failures = set()
+template_failures: Set[str] = set()
 
 
 def draw_title(draw_data, screen, tab, index):

@@ -9,6 +9,7 @@ from kitty.cli import parse_args
 from kitty.constants import cache_dir
 
 from ..tui.operations import alternate_screen, styled
+from ..tui.handler import result_handler
 
 readline = None
 
@@ -108,6 +109,7 @@ def main(args):
     return ans
 
 
+@result_handler()
 def handle_result(args, data, target_window_id, boss):
     if 'response' in data:
         func, *args = data['items']

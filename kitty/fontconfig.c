@@ -152,7 +152,7 @@ fc_match(PyObject UNUSED *self, PyObject *args) {
     FcPattern *pat = NULL;
     PyObject *ans = NULL;
 
-    if (!PyArg_ParseTuple(args, "|zppppdd", &family, &bold, &italic, &spacing, &allow_bitmapped_fonts, &size_in_pts, &dpi)) return NULL;
+    if (!PyArg_ParseTuple(args, "|zppipdd", &family, &bold, &italic, &spacing, &allow_bitmapped_fonts, &size_in_pts, &dpi)) return NULL;
     pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
 

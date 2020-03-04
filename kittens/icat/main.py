@@ -423,6 +423,7 @@ def main(args=sys.argv):
 if __name__ == '__main__':
     main()
 elif __name__ == '__doc__':
-    sys.cli_docs['usage'] = usage
-    sys.cli_docs['options'] = options_spec
-    sys.cli_docs['help_text'] = help_text
+    cd = sys.cli_docs  # type: ignore
+    cd['usage'] = usage
+    cd['options'] = options_spec
+    cd['help_text'] = help_text

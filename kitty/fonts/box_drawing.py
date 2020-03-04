@@ -10,6 +10,8 @@
 import math
 from functools import partial as p
 from itertools import repeat
+from typing import cast, Callable
+
 
 scale = (0.001, 1, 1.5, 2)
 _dpi = 96.0
@@ -638,24 +640,24 @@ for start in '┌┐└┘':
 for ch, c in zip('╭╮╯╰', '┌┐┘└'):
     box_chars[ch] = [p(corner, which=c)]  # TODO: Make these rounded
 
-for i, (a, b, c, d) in enumerate((
+for i, (a_, b_, c_, d_) in enumerate((
         (t, t, t, t), (f, t, t, t), (t, f, t, t), (f, f, t, t), (t, t, f, t), (t, t, t, f), (t, t, f, f),
         (f, t, f, t), (t, f, f, t), (f, t, t, f), (t, f, t, f), (f, f, f, t), (f, f, t, f), (f, t, f, f),
         (t, f, f, f), (f, f, f, f)
 )):
-    box_chars[chr(ord('┼') + i)] = [p(cross, a=a, b=b, c=c, d=d)]
+    box_chars[chr(ord('┼') + i)] = [p(cross, a=a_, b=b_, c=c_, d=d_)]
 
 for starts, func, pattern in (
         ('├┤', vert_t, ((t, t, t), (t, f, t), (f, t, t), (t, t, f), (f, t, f), (f, f, t), (t, f, f), (f, f, f))),
         ('┬┴', horz_t, ((t, t, t), (f, t, t), (t, f, t), (f, f, t), (t, t, f), (f, t, f), (t, f, f), (f, f, f))),
 ):
     for start in starts:
-        for i, (a, b, c) in enumerate(pattern):
-            box_chars[chr(ord(start) + i)] = [p(func, which=start, a=a, b=b, c=c)]
+        for i, (a_, b_, c_) in enumerate(pattern):
+            box_chars[chr(ord(start) + i)] = [p(func, which=start, a=a_, b=b_, c=c_)]
 
-for chars, func in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('╔╗╚╝', dcorner), ('╟╢╤╧', dpip)):
+for chars, func_ in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('╔╗╚╝', dcorner), ('╟╢╤╧', dpip)):
     for ch in chars:
-        box_chars[ch] = [p(func, which=ch)]
+        box_chars[ch] = [p(cast(Callable, func_), which=ch)]
 
 
 def render_box_char(ch, buf, width, height, dpi=96.0):

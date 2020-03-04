@@ -749,7 +749,6 @@ end:
     if (fragment_shader_id != 0) glDeleteShader(fragment_shader_id);
     if (PyErr_Occurred()) { glDeleteProgram(program->id); program->id = 0; return NULL;}
     return Py_BuildValue("I", program->id);
-    Py_RETURN_NONE;
 }
 
 #define PYWRAP0(name) static PyObject* py##name(PYNOARG)
