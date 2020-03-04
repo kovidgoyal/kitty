@@ -7,6 +7,7 @@ import os
 import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
+from typing import DefaultDict, List
 
 import kitty.fast_data_types as fast_data_types
 
@@ -18,31 +19,31 @@ if is_macos:
             process_group_map as _process_group_map
     )
 
-    def cwd_of_process(pid):
+    def cwd_of_process(pid: int) -> str:
         return os.path.realpath(_cwd(pid))
 
-    def process_group_map():
-        ans = defaultdict(list)
+    def process_group_map() -> DefaultDict[int, List[int]]:
+        ans: DefaultDict[int, List] = defaultdict(list)
         for pid, pgid in _process_group_map():
             ans[pgid].append(pid)
         return ans
 
 else:
 
-    def cmdline_of_process(pid):
+    def cmdline_of_process(pid: int) -> List[str]:
         with open('/proc/{}/cmdline'.format(pid), 'rb') as f:
             return list(filter(None, f.read().decode('utf-8').split('\0')))
 
-    def cwd_of_process(pid):
+    def cwd_of_process(pid: int) -> str:
         ans = '/proc/{}/cwd'.format(pid)
         return os.path.realpath(ans)
 
-    def _environ_of_process(pid):
+    def _environ_of_process(pid: int) -> str:
         with open('/proc/{}/environ'.format(pid), 'rb') as f:
             return f.read().decode('utf-8')
 
-    def process_group_map():
-        ans = defaultdict(list)
+    def process_group_map() -> DefaultDict[int, List[int]]:
+        ans: DefaultDict[int, List[int]] = defaultdict(list)
         for x in os.listdir('/proc'):
             try:
                 pid = int(x)

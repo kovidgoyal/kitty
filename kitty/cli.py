@@ -228,71 +228,75 @@ For example: {appname} sh -c "echo hello, world. Press ENTER to quit; read"
 For comprehensive documentation for kitty, please see: https://sw.kovidgoyal.net/kitty/''').format(appname=appname)
 
 
-def print_help_for_seq(seq, usage, message, appname):
-    from kitty.utils import screen_size_function
-    screen_size = screen_size_function()
-    try:
-        linesz = min(screen_size().cols, 76)
-    except OSError:
-        linesz = 76
-    blocks = []
-    a = blocks.append
+class PrintHelpForSeq:
 
-    def wa(text, indent=0, leading_indent=None):
-        if leading_indent is None:
-            leading_indent = indent
-        j = '\n' + (' ' * indent)
-        lines = []
-        for l in text.splitlines():
-            if l:
-                lines.extend(wrap(l, limit=linesz - indent))
-            else:
-                lines.append('')
-        a((' ' * leading_indent) + j.join(lines))
+    allow_pager = True
 
-    usage = '[program-to-run ...]' if usage is None else usage
-    optstring = '[options] ' if seq else ''
-    a('{}: {} {}{}'.format(title('Usage'), bold(yellow(appname)), optstring, usage))
-    a('')
-    message = message or default_msg
-    wa(prettify(message))
-    a('')
-    if seq:
-        a('{}:'.format(title('Options')))
-    for opt in seq:
-        if isinstance(opt, str):
-            a('{}:'.format(title(opt)))
-            continue
-        help_text = opt['help']
-        if help_text == '!':
-            continue  # hidden option
-        a('  ' + ', '.join(map(green, sorted(opt['aliases']))))
-        if not opt.get('type', '').startswith('bool-'):
-            blocks[-1] += '={}'.format(italic(opt['dest'].upper()))
-        if opt.get('help'):
-            defval = opt.get('default')
-            t = help_text.replace('%default', str(defval))
-            wa(prettify(t.strip()), indent=4)
-            if defval is not None:
-                wa('Default: {}'.format(defval), indent=4)
-            if 'choices' in opt:
-                wa('Choices: {}'.format(', '.join(opt['choices'])), indent=4)
-            a('')
-
-    text = '\n'.join(blocks) + '\n\n' + version()
-    if print_help_for_seq.allow_pager and sys.stdout.isatty():
-        import subprocess
-        p = subprocess.Popen(['less', '-isRXF'], stdin=subprocess.PIPE)
+    def __call__(self, seq, usage, message, appname):
+        from kitty.utils import screen_size_function
+        screen_size = screen_size_function()
         try:
-            p.communicate(text.encode('utf-8'))
-        except KeyboardInterrupt:
-            raise SystemExit(1)
-        raise SystemExit(p.wait())
-    else:
-        print(text)
+            linesz = min(screen_size().cols, 76)
+        except OSError:
+            linesz = 76
+        blocks = []
+        a = blocks.append
+
+        def wa(text, indent=0, leading_indent=None):
+            if leading_indent is None:
+                leading_indent = indent
+            j = '\n' + (' ' * indent)
+            lines = []
+            for l in text.splitlines():
+                if l:
+                    lines.extend(wrap(l, limit=linesz - indent))
+                else:
+                    lines.append('')
+            a((' ' * leading_indent) + j.join(lines))
+
+        usage = '[program-to-run ...]' if usage is None else usage
+        optstring = '[options] ' if seq else ''
+        a('{}: {} {}{}'.format(title('Usage'), bold(yellow(appname)), optstring, usage))
+        a('')
+        message = message or default_msg
+        wa(prettify(message))
+        a('')
+        if seq:
+            a('{}:'.format(title('Options')))
+        for opt in seq:
+            if isinstance(opt, str):
+                a('{}:'.format(title(opt)))
+                continue
+            help_text = opt['help']
+            if help_text == '!':
+                continue  # hidden option
+            a('  ' + ', '.join(map(green, sorted(opt['aliases']))))
+            if not opt.get('type', '').startswith('bool-'):
+                blocks[-1] += '={}'.format(italic(opt['dest'].upper()))
+            if opt.get('help'):
+                defval = opt.get('default')
+                t = help_text.replace('%default', str(defval))
+                wa(prettify(t.strip()), indent=4)
+                if defval is not None:
+                    wa('Default: {}'.format(defval), indent=4)
+                if 'choices' in opt:
+                    wa('Choices: {}'.format(', '.join(opt['choices'])), indent=4)
+                a('')
+
+        text = '\n'.join(blocks) + '\n\n' + version()
+        if print_help_for_seq.allow_pager and sys.stdout.isatty():
+            import subprocess
+            p = subprocess.Popen(['less', '-isRXF'], stdin=subprocess.PIPE)
+            try:
+                p.communicate(text.encode('utf-8'))
+            except KeyboardInterrupt:
+                raise SystemExit(1)
+            raise SystemExit(p.wait())
+        else:
+            print(text)
 
 
-print_help_for_seq.allow_pager = True
+print_help_for_seq = PrintHelpForSeq()
 
 
 def seq_as_rst(seq, usage, message, appname, heading_char='-'):

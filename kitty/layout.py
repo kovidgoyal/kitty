@@ -5,6 +5,7 @@
 from collections import namedtuple
 from functools import lru_cache, partial
 from itertools import islice, repeat
+from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
 
 from .constants import WindowGeometry
 from .fast_data_types import (
@@ -19,6 +20,11 @@ no_borders = False, False, False, False
 draw_minimal_borders = False
 draw_active_borders = True
 align_top_left = False
+LayoutDimension = Generator[Tuple[int, int], None, None]
+XOrYLayout = Union[
+    Callable[['Layout', int, Optional[List[float]], Optional[int], Optional[int]], LayoutDimension],
+    Callable[['Layout', int, bool, Optional[List[float]], Optional[int], Optional[int]], LayoutDimension]
+]
 
 
 def idx_for_id(win_id, windows):
@@ -34,7 +40,10 @@ def set_layout_options(opts):
     align_top_left = opts.placement_strategy == 'top-left'
 
 
-def layout_dimension(start_at, length, cell_length, decoration_pairs, left_align=False, bias=None):
+def layout_dimension(
+        start_at, length, cell_length, decoration_pairs,
+        left_align=False, bias: Optional[List[float]] = None
+) -> LayoutDimension:
     number_of_windows = len(decoration_pairs)
     number_of_cells = length // cell_length
     space_needed_for_decorations = sum(map(sum, decoration_pairs))
@@ -159,7 +168,7 @@ def variable_bias(num_windows, candidate):
 
 class Layout:  # {{{
 
-    name = None
+    name: Optional[str] = None
     needs_window_borders = True
     needs_all_windows = False
     only_active_window_visible = False
@@ -405,7 +414,7 @@ class Layout:  # {{{
         w.set_geometry(0, wg)
         self.blank_rects = blank_rects_for_window(w)
 
-    def xlayout(self, num, bias=None, left=None, width=None):
+    def xlayout(self, num: int, bias: Optional[List[float]] = None, left: Optional[int] = None, width: Optional[int] = None) -> LayoutDimension:
         decoration = self.margin_width + self.border_width + self.padding_width
         decoration_pairs = tuple(repeat((decoration, decoration), num))
         if left is None:
@@ -414,7 +423,9 @@ class Layout:  # {{{
             width = central.width
         return layout_dimension(left, width, cell_width, decoration_pairs, bias=bias, left_align=align_top_left)
 
-    def ylayout(self, num, left_align=True, bias=None, top=None, height=None):
+    def ylayout(
+        self, num: int, left_align: bool = True, bias: Optional[List[float]] = None, top: Optional[int] = None, height: Optional[int] = None
+    ) -> LayoutDimension:
         decoration = self.margin_width + self.border_width + self.padding_width
         decoration_pairs = tuple(repeat((decoration, decoration), num))
         if top is None:
@@ -511,7 +522,7 @@ def neighbors_for_tall_window(num_full_size_windows, window, windows):
 class Tall(Layout):
 
     name = 'tall'
-    vlayout = Layout.ylayout
+    vlayout: XOrYLayout = Layout.ylayout
     main_is_horizontal = True
     only_between_border = False, False, False, True
     only_main_border = False, False, True, False
@@ -892,7 +903,7 @@ class Vertical(Layout):  # {{{
 
     name = 'vertical'
     main_is_horizontal = False
-    vlayout = Layout.ylayout
+    vlayout: XOrYLayout = Layout.ylayout
     only_between_border = False, False, False, True
 
     def variable_layout(self, num_windows, biased_map):
@@ -1408,17 +1419,20 @@ class Splits(Layout):
 all_layouts = {o.name: o for o in globals().values() if isinstance(o, type) and issubclass(o, Layout) and o is not Layout}
 
 
-def create_layout_object_for(name, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts=''):
-    key = name, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts
-    ans = create_layout_object_for.cache.get(key)
-    if ans is None:
-        name, layout_opts = name.partition(':')[::2]
-        ans = create_layout_object_for.cache[key] = all_layouts[name](
-            os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts)
-    return ans
+class CreateLayoutObjectFor:
+    cache: Dict[Tuple, Layout] = {}
+
+    def __call__(self, name, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts=''):
+        key = name, os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts
+        ans = create_layout_object_for.cache.get(key)
+        if ans is None:
+            name, layout_opts = name.partition(':')[::2]
+            ans = create_layout_object_for.cache[key] = all_layouts[name](
+                os_window_id, tab_id, margin_width, single_window_margin_width, padding_width, border_width, layout_opts)
+        return ans
 
 
-create_layout_object_for.cache = {}
+create_layout_object_for = CreateLayoutObjectFor()
 
 
 def evict_cached_layouts(tab_id):

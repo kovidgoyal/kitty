@@ -10,7 +10,7 @@ from .operations import commander
 
 class Handler:
 
-    image_manager_class = None  # type: Type[ImageManagerBase]
+    image_manager_class: Optional[Type['ImageManagerBase']] = None
 
     def _initialize(self, screen_size, term_manager, schedule_write, tui_loop, debug, image_manager=None):
         self.screen_size = screen_size

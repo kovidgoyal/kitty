@@ -36,12 +36,12 @@ MODES = dict(
 )
 
 
-def set_mode(which, private=True) -> str:
+def set_mode(which: str, private=True) -> str:
     num, private = MODES[which]
     return '\033[{}{}h'.format(private, num)
 
 
-def reset_mode(which) -> str:
+def reset_mode(which: str) -> str:
     num, private = MODES[which]
     return '\033[{}{}l'.format(private, num)
 
@@ -66,12 +66,12 @@ def set_window_title(value) -> str:
     return ('\033]2;' + value.replace('\033', '').replace('\x9c', '') + '\033\\')
 
 
-def set_line_wrapping(yes_or_no) -> str:
-    return (set_mode if yes_or_no else reset_mode)('DECAWM')
+def set_line_wrapping(yes_or_no: bool) -> str:
+    return set_mode('DECAWM') if yes_or_no else reset_mode('DECAWM')
 
 
-def set_cursor_visible(yes_or_no) -> str:
-    return (set_mode if yes_or_no else reset_mode)('DECTCEM')
+def set_cursor_visible(yes_or_no: bool) -> str:
+    return set_mode('DECTEM') if yes_or_no else reset_mode('DECTCEM')
 
 
 def set_cursor_position(x, y) -> str:  # (0, 0) is top left
@@ -151,13 +151,16 @@ def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=No
         end.append('4:0')
     if italic is not None:
         s, e = (start, end) if italic else (end, start)
-        s.append('3'), e.append('23')
+        s.append('3')
+        e.append('23')
     if bold is not None:
         s, e = (start, end) if bold else (end, start)
-        s.append('1'), e.append('22')
+        s.append('1')
+        e.append('22')
     if reverse is not None:
         s, e = (start, end) if reverse else (end, start)
-        s.append('7'), e.append('27')
+        s.append('7')
+        e.append('27')
     if not start:
         return text
     return '\033[{}m{}\033[{}m'.format(';'.join(start), text, ';'.join(end))

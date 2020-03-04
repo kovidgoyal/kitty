@@ -1,10 +1,10 @@
-from collections import namedtuple
 from typing import (
     Any, Callable, List, Dict, NewType, Optional, Tuple, Union
 )
 
 from kitty.cli import Namespace
 
+# Constants {{{
 GLFW_IBEAM_CURSOR: int
 GLFW_KEY_UNKNOWN: int
 GLFW_KEY_SPACE: int
@@ -319,6 +319,23 @@ FC_WEIGHT_BOLD: int
 FC_SLANT_ROMAN: int
 FC_SLANT_ITALIC: int
 BORDERS_PROGRAM: int
+# }}}
+
+
+def process_group_map() -> Tuple[Tuple[int, int], ...]:
+    pass
+
+
+def environ_of_process(pid: int) -> str:
+    pass
+
+
+def cmdline_of_process(pid: int) -> List[str]:
+    pass
+
+
+def cwd_of_process(pid: int) -> str:
+    pass
 
 
 def default_color_table() -> Tuple[int, ...]:
@@ -545,7 +562,15 @@ def swap_tabs(os_window_id: int, a: int, b: int) -> None:
     pass
 
 
+def swap_windows(os_window_id: int, tab_id: int, a: int, b: int) -> None:
+    pass
+
+
 def set_active_tab(os_window_id: int, a: int) -> None:
+    pass
+
+
+def set_active_window(os_window_id: int, tab_id: int, window_idx: int) -> None:
     pass
 
 
@@ -589,7 +614,16 @@ def cell_size_for_window(os_window_id: int) -> Tuple[int, int]:
     pass
 
 
-Region = namedtuple('Region', 'left top right bottom width height')
+class Region:
+    left: int
+    top: int
+    right: int
+    bottom: int
+    width: int
+    height: int
+
+    def __init__(self, x: Tuple[int, int, int, int, int, int]):
+        pass
 
 
 def viewport_for_window(os_window_id: int) -> Tuple[Region, Region, int, int, int, int]:
@@ -690,7 +724,7 @@ class ChildMonitor:
     def __init__(
             self,
             death_notify: Callable[[int], None],
-            dump_callback: Optional[callable],
+            dump_callback: Optional[Callable],
             talk_fd: int = -1, listen_fd: int = -1
     ):
         pass

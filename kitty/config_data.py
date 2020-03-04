@@ -5,7 +5,7 @@
 # Utils  {{{
 import os
 from gettext import gettext as _
-from typing import Mapping, Union
+from typing import Dict, Union
 
 from . import fast_data_types as defines
 from .conf.definition import Option, Shortcut, option_func
@@ -55,7 +55,7 @@ def uniq(vals, result_type=list):
 # Groups {{{
 
 
-all_options: Mapping[str, Union[Option, Shortcut]] = {}
+all_options: Dict[str, Union[Option, Shortcut]] = {}
 
 
 o, k, g, all_groups = option_func(all_options, {
