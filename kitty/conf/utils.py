@@ -73,7 +73,9 @@ def choices(*choices) -> Callable[[str], str]:
 
 
 def parse_line(
-    line: str, type_map: Dict[str, Any], special_handling: Callable,
+    line: str,
+    type_convert: Callable[[str, Any], Any],
+    special_handling: Callable,
     ans: Dict[str, Any], all_keys: Optional[FrozenSet[str]],
     base_path_for_includes: str
 ) -> None:
@@ -93,7 +95,7 @@ def parse_line(
             val = os.path.join(base_path_for_includes, val)
         try:
             with open(val, encoding='utf-8', errors='replace') as include:
-                _parse(include, type_map, special_handling, ans, all_keys)
+                _parse(include, type_convert, special_handling, ans, all_keys)
         except FileNotFoundError:
             log_error(
                 'Could not find included config file: {}, ignoring'.
@@ -108,15 +110,12 @@ def parse_line(
     if all_keys is not None and key not in all_keys:
         log_error('Ignoring unknown config key: {}'.format(key))
         return
-    tm = type_map.get(key)
-    if tm is not None:
-        val = tm(val)
-    ans[key] = val
+    ans[key] = type_convert(key, val)
 
 
 def _parse(
     lines: Iterator[str],
-    type_map: Dict[str, Any],
+    type_convert: Callable[[str, Any], Any],
     special_handling: Callable,
     ans: Dict[str, Any],
     all_keys: Optional[FrozenSet[str]],
@@ -131,7 +130,7 @@ def _parse(
     for i, line in enumerate(lines):
         try:
             parse_line(
-                line, type_map, special_handling, ans, all_keys,
+                line, type_convert, special_handling, ans, all_keys,
                 base_path_for_includes
             )
         except Exception as e:
@@ -143,7 +142,7 @@ def _parse(
 def parse_config_base(
     lines: Iterator[str],
     defaults: Any,
-    type_map: Dict[str, Any],
+    type_convert: Callable[[str, Any], Any],
     special_handling: Callable,
     ans: Dict[str, Any],
     check_keys=True,
@@ -151,7 +150,7 @@ def parse_config_base(
 ):
     all_keys: Optional[FrozenSet[str]] = defaults._asdict() if check_keys else None
     _parse(
-        lines, type_map, special_handling, ans, all_keys, accumulate_bad_lines
+        lines, type_convert, special_handling, ans, all_keys, accumulate_bad_lines
     )
 
 

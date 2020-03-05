@@ -6,6 +6,7 @@ import os
 import sys
 
 from kitty.cli import parse_args
+from kitty.cli_stub import ClipboardCLIOptions
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
@@ -81,7 +82,7 @@ usage = ''
 
 
 def main(args):
-    args, items = parse_args(args[1:], OPTIONS, usage, help_text, 'kitty +kitten clipboard')
+    args, items = parse_args(args[1:], OPTIONS, usage, help_text, 'kitty +kitten clipboard', result_class=ClipboardCLIOptions)
     if items:
         raise SystemExit('Unrecognized extra command line arguments')
     data = None

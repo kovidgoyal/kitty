@@ -7,9 +7,9 @@ import os
 import re
 import sys
 from collections import namedtuple
-from contextlib import contextmanager
-from contextlib import suppress
+from contextlib import contextmanager, suppress
 from functools import partial
+from typing import Type
 
 from . import fast_data_types as defines
 from .conf.definition import as_conf_file, config_lines
@@ -17,10 +17,11 @@ from .conf.utils import (
     init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, python_string, to_bool, to_cmdline
 )
-from .config_data import all_options, parse_mods, type_map
+from .config_data import all_options, parse_mods, type_convert
 from .constants import cache_dir, defconf, is_macos
-from .utils import log_error
 from .key_names import get_key_name_lookup, key_name_aliases
+from .options_stub import Options as OptionsStub
+from .utils import log_error
 
 
 def parse_shortcut(sc):
@@ -575,9 +576,6 @@ def special_handling(key, val, ans):
         return True
 
 
-defaults = None
-
-
 def option_names_for_completion():
     yield from defaults
     yield from special_handlers
@@ -585,10 +583,15 @@ def option_names_for_completion():
 
 def parse_config(lines, check_keys=True, accumulate_bad_lines=None):
     ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [], 'env': {}, 'kitten_aliases': {}, 'font_features': {}}
+    if check_keys:
+        defs = defaults
+    else:
+        defs = None
+
     parse_config_base(
         lines,
-        defaults,
-        type_map,
+        defs,
+        type_convert,
         special_handling,
         ans,
         check_keys=check_keys,
@@ -602,7 +605,9 @@ def parse_defaults(lines, check_keys=False):
     return ans
 
 
-Options, defaults = init_config(config_lines(all_options), parse_defaults)
+xc = init_config(config_lines(all_options), parse_defaults)
+Options: Type[OptionsStub] = xc[0]
+defaults: OptionsStub = xc[1]
 actions = frozenset(all_key_actions) | frozenset(
     'run_simple_kitten combine send_text goto_tab goto_layout set_font_size new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
     split()
@@ -763,7 +768,7 @@ def finalize_keys(opts):
     opts.sequence_map = sequence_map
 
 
-def load_config(*paths, overrides=None, accumulate_bad_lines=None):
+def load_config(*paths, overrides=None, accumulate_bad_lines=None) -> OptionsStub:
     parser = parse_config
     if accumulate_bad_lines is not None:
         parser = partial(parse_config, accumulate_bad_lines=accumulate_bad_lines)

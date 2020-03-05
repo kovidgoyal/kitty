@@ -6,6 +6,7 @@
 import sys
 
 from kitty.cli import parse_args
+from kitty.cli_stub import ResizeCLIOptions
 from kitty.cmds import cmap, parse_subcommand_cli
 from kitty.constants import version
 from kitty.key_encoding import CTRL, RELEASE, key_defs as K
@@ -119,7 +120,7 @@ The base vertical increment.
 def main(args):
     msg = 'Resize the current window'
     try:
-        args, items = parse_args(args[1:], OPTIONS, '', msg, 'resize_window')
+        args, items = parse_args(args[1:], OPTIONS, '', msg, 'resize_window', result_class=ResizeCLIOptions)
     except SystemExit as e:
         if e.code != 0:
             print(e.args[0], file=sys.stderr)

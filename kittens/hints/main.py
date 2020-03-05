@@ -11,6 +11,7 @@ from gettext import gettext as _
 from itertools import repeat
 
 from kitty.cli import parse_args
+from kitty.cli_stub import HintsCLIOptions
 from kitty.fast_data_types import set_clipboard_string
 from kitty.key_encoding import key_defs as K, backspace_key, enter_key
 from kitty.utils import screen_size_function
@@ -508,7 +509,7 @@ usage = ''
 
 
 def parse_hints_args(args):
-    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten hints')
+    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten hints', result_class=HintsCLIOptions)
 
 
 def main(args):

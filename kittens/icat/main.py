@@ -14,6 +14,7 @@ from math import ceil
 from tempfile import NamedTemporaryFile
 
 from kitty.cli import parse_args
+from kitty.cli_stub import IcatCLIOptions
 from kitty.constants import appname
 from kitty.utils import TTYIO, fit_image, screen_size_function
 
@@ -343,7 +344,7 @@ def process_single_item(item, args, url_pat=None, maybe_dir=True):
 
 
 def main(args=sys.argv):
-    args, items = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname))
+    args, items = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname), result_class=IcatCLIOptions)
 
     if args.print_window_size:
         screen_size_function.ans = None

@@ -2,8 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-import os
-
 
 class Options:
     pass
@@ -11,19 +9,23 @@ class Options:
 
 def generate_stub():
     from .config_data import all_options
-    from .conf.definition import as_type_stub
+    from .conf.definition import as_type_stub, save_type_stub
     text = as_type_stub(
         all_options,
         special_types={
             'symbol_map': 'typing.Dict[typing.Tuple[int, int], str]'
-        }
-    )
-    with open(__file__ + 'i', 'w') as f:
-        print(
-            '# Update this file by running: python {}'.format(os.path.relpath(os.path.abspath(__file__))),
-            file=f
+        },
+        preamble_lines=(
+            'from kitty.config import KeyAction',
+            'KeySpec = typing.Tuple[int, bool, int]',
+            'KeyMap = typing.Dict[KeySpec, KeyAction]',
+        ),
+        extra_fields=(
+            ('keymap', 'KeyMap'),
+            ('sequence_map', 'typing.Dict[KeySpec, KeyMap]'),
         )
-        f.write(text)
+    )
+    save_type_stub(text, __file__)
 
 
 if __name__ == '__main__':

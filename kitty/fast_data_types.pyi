@@ -1,9 +1,10 @@
 from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union
 
 from kitty.boss import Boss
-from kitty.cli import Namespace
+from kitty.options_stub import Options
 
 # Constants {{{
+KITTY_VCS_REV: str
 ERROR_PREFIX: str
 GLSL_VERSION: int
 GLFW_IBEAM_CURSOR: int
@@ -339,6 +340,10 @@ def redirect_std_streams(devnull: str) -> None:
     pass
 
 
+def glfw_get_key_name(key: int, native_key: int) -> Optional[str]:
+    pass
+
+
 StartupCtx = NewType('StartupCtx', int)
 Display = NewType('Display', int)
 
@@ -468,7 +473,7 @@ def update_window_visibility(os_window_id: int, tab_id: int, window_id: int, win
 
 
 def set_options(
-    opts: Namespace,
+    opts: Options,
     is_wayland: bool = False,
     debug_gl: bool = False,
     debug_font_fallback: bool = False

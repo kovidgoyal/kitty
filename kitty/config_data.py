@@ -6,7 +6,7 @@
 import os
 from gettext import gettext as _
 from typing import (
-    Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, TypeVar, Union
+    Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, TypeVar, Union
 )
 
 from . import fast_data_types as defines
@@ -1432,4 +1432,9 @@ the line (same as pressing the Home key)::
 # }}}
 # }}}
 
-type_map = {o.name: o.option_type for o in all_options.values() if isinstance(o, Option)}
+
+def type_convert(name: str, val: Any) -> Any:
+    o = all_options.get(name)
+    if isinstance(o, Option):
+        val = o.option_type(val)
+    return val

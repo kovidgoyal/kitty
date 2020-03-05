@@ -9,7 +9,7 @@ from contextlib import suppress
 from typing import Any, BinaryIO, Callable, Dict, List, Optional
 
 from .cli import (
-    Namespace, get_defaults_from_seq, parse_args, parse_option_spec
+    get_defaults_from_seq, parse_args, parse_option_spec
 )
 from .config import parse_config, parse_send_text_bytes
 from .constants import appname
@@ -42,7 +42,7 @@ class UnknownLayout(ValueError):
     hide_traceback = True
 
 
-CommandFunction = Callable[[Namespace, Namespace, List[str]], Optional[Dict[str, Any]]]
+CommandFunction = Callable[[Any, Any, List[str]], Optional[Dict[str, Any]]]
 cmap: Dict[str, CommandFunction] = {}
 
 
@@ -906,13 +906,16 @@ def cmd_launch(global_opts, opts, args):
     return ans
 
 
+class GlobalOpts:
+    pass
+
+
 def launch(boss, window, payload):
     pg = cmd_launch.payload_get
     default_opts = parse_launch_args()[0]
-    opts = {}
+    opts = GlobalOpts()
     for key, default_value in default_opts.__dict__.items():
-        opts[key] = payload.get(key, default_value)
-    opts = Namespace(opts)
+        setattr(opts, key, payload.get(key, default_value))
     match = pg(payload, 'match')
     if match:
         tabs = tuple(boss.match_tabs(match))
@@ -1444,8 +1447,12 @@ def cli_params_for(func):
     return (func.options_spec or '\n').format, func.argspec, func.desc, '{} @ {}'.format(appname, func.name)
 
 
+class SubCommandOptions:
+    pass
+
+
 def parse_subcommand_cli(func, args):
-    opts, items = parse_args(args[1:], *cli_params_for(func))
+    opts, items = parse_args(args[1:], *cli_params_for(func), result_class=SubCommandOptions)
     if func.args_count is not None and func.args_count != len(items):
         if func.args_count == 0:
             raise SystemExit('Unknown extra argument(s) supplied to {}'.format(func.name))
@@ -1455,4 +1462,4 @@ def parse_subcommand_cli(func, args):
 
 def display_subcommand_help(func):
     with suppress(SystemExit):
-        parse_args(['--help'], (func.options_spec or '\n').format, func.argspec, func.desc, func.name)
+        parse_args(['--help'], (func.options_spec or '\n').format, func.argspec, func.desc, func.name, result_class=SubCommandOptions)

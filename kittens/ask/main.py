@@ -7,6 +7,7 @@ from contextlib import suppress
 
 from kitty.cli import parse_args
 from kitty.constants import cache_dir
+from kitty.cli_stub import AskCLIOptions
 
 from ..tui.operations import alternate_screen, styled
 from ..tui.handler import result_handler
@@ -89,7 +90,7 @@ def main(args):
     from kitty.shell import init_readline
     msg = 'Ask the user for input'
     try:
-        args, items = parse_args(args[1:], option_text, '', msg, 'kitty ask')
+        args, items = parse_args(args[1:], option_text, '', msg, 'kitty ask', result_class=AskCLIOptions)
     except SystemExit as e:
         if e.code != 0:
             print(e.args[0])

@@ -8,6 +8,7 @@ import subprocess
 import sys
 
 from kitty.cli import parse_args
+from kitty.cli_stub import PanelCLIOptions
 from kitty.constants import is_macos
 
 OPTIONS = r'''
@@ -48,7 +49,7 @@ usage = 'program-to-run'
 
 
 def parse_panel_args(args):
-    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten panel')
+    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions)
 
 
 def call_xprop(*cmd, silent=False):

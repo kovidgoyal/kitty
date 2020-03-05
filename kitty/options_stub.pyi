@@ -3,6 +3,9 @@ import kitty.rgb
 from kitty.rgb import Color
 import typing
 
+from kitty.config import KeyAction
+KeySpec = typing.Tuple[int, bool, int]
+KeyMap = typing.Dict[KeySpec, KeyAction]
 
 class Options:
     font_family: str
@@ -381,3 +384,5 @@ class Options:
     kitty_mod: int
     clear_all_shortcuts: bool
     kitten_alias: str
+    keymap: KeyMap
+    sequence_map: typing.Dict[KeySpec, KeyMap]

@@ -3,10 +3,10 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from functools import partial
 # Utils  {{{
+from functools import partial
 from gettext import gettext as _
-from typing import Dict, Union
+from typing import Any, Dict, Union
 
 from kitty.conf.definition import Option, Shortcut, option_func
 from kitty.conf.utils import positive_int, python_string, to_color
@@ -120,4 +120,9 @@ k('prev_match', '<', 'scroll_to prev-match', _('Scroll to previous search match'
 k('search_forward_simple', 'f', 'start_search substring forward', _('Search forward (no regex)'))
 k('search_backward_simple', 'b', 'start_search substring backward', _('Search backward (no regex)'))
 
-type_map = {o.name: o.option_type for o in all_options.values() if isinstance(o, Option)}
+
+def type_convert(name: str, val: Any) -> Any:
+    o = all_options.get(name)
+    if isinstance(o, Option):
+        val = o.option_type(val)
+    return val

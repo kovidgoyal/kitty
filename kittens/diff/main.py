@@ -15,6 +15,7 @@ from functools import partial
 from gettext import gettext as _
 
 from kitty.cli import CONFIG_HELP, parse_args
+from kitty.cli_stub import DiffCLIOptions
 from kitty.constants import appname
 from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import RELEASE, enter_key, key_defs as K
@@ -542,7 +543,7 @@ def get_remote_file(path):
 
 def main(args):
     warnings.showwarning = showwarning
-    args, items = parse_args(args[1:], OPTIONS, usage, help_text, 'kitty +kitten diff')
+    args, items = parse_args(args[1:], OPTIONS, usage, help_text, 'kitty +kitten diff', result_class=DiffCLIOptions)
     if len(items) != 2:
         raise SystemExit('You must specify exactly two files/directories to compare')
     left, right = items

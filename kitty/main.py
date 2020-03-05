@@ -12,6 +12,7 @@ from .borders import load_borders_program
 from .boss import Boss
 from .child import set_default_env
 from .cli import create_opts, parse_args
+from .cli_stub import CLIOptions
 from .config import cached_values_for, initial_window_size_func
 from .constants import (
     appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
@@ -280,7 +281,7 @@ def _main():
         cwd_ok = False
     if not cwd_ok:
         os.chdir(os.path.expanduser('~'))
-    args, rest = parse_args(args=args)
+    args, rest = parse_args(result_class=CLIOptions, args=args)
     args.args = rest
     if args.debug_config:
         create_opts(args, debug_config=True)

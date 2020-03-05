@@ -4,7 +4,9 @@
 
 import re
 from functools import partial
-from typing import Any, Dict, List, Set, Tuple, Union, get_type_hints, Optional
+from typing import (
+    Any, Dict, Iterator, List, Optional, Set, Tuple, Union, get_type_hints
+)
 
 from .utils import to_bool
 
@@ -26,7 +28,7 @@ class Option:
 
     __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'add_to_default', 'add_to_docs', 'line'
 
-    def __init__(self, name, group, defval, option_type, long_text, add_to_default, add_to_docs):
+    def __init__(self, name: str, group: str, defval: str, option_type: Any, long_text: str, add_to_default: bool, add_to_docs: bool):
         self.name, self.group = name, group
         self.long_text, self.option_type = long_text.strip(), option_type
         self.defval_as_string = defval
@@ -158,8 +160,8 @@ def remove_markup(text):
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
 
 
-def iter_blocks(lines):
-    current_block = []
+def iter_blocks(lines: Iterator[str]):
+    current_block: List[str] = []
     prev_indent = 0
     for line in lines:
         indent_size = len(line) - len(line.lstrip())
@@ -180,9 +182,10 @@ def wrapped_block(lines):
     wrapper = getattr(wrapped_block, 'wrapper', None)
     if wrapper is None:
         import textwrap
-        wrapper = wrapped_block.wrapper = textwrap.TextWrapper(
+        wrapper = textwrap.TextWrapper(
             initial_indent='#: ', subsequent_indent='#: ', width=70, break_long_words=False
         )
+        setattr(wrapped_block, 'wrapper', wrapper)
     for block, indent_size in iter_blocks(lines):
         if indent_size > 0:
             for line in block:
@@ -278,9 +281,9 @@ def as_conf_file(all_options):
             else:
                 count += 1
         else:
-            if start is not None:
+            if start is not None and count is not None:
                 map_groups.append((start, count))
-                start = None
+                start = count = None
     for start, count in map_groups:
         r = range(start, start + count)
         sz = max(len(ans[i].split(' ', 3)[1]) for i in r)
@@ -304,8 +307,13 @@ def config_lines(all_options):
                     yield sc.line
 
 
-def as_type_stub(all_options: Dict[str, Union[Option, List[Shortcut]]], special_types: Optional[Dict[str, str]] = None) -> str:
-    ans = ['import typing\n', '', 'class Options:']
+def as_type_stub(
+    all_options: Dict[str, Union[Option, List[Shortcut]]],
+    special_types: Optional[Dict[str, str]] = None,
+    preamble_lines: Union[Tuple[str, ...], List[str], Iterator[str]] = (),
+    extra_fields: Union[Tuple[Tuple[str, str], ...], List[Tuple[str, str]], Iterator[Tuple[str, str]]] = ()
+) -> str:
+    ans = ['import typing\n'] + list(preamble_lines) + ['', 'class Options:']
     imports: Set[Tuple[str, str]] = set()
     overrides = special_types or {}
     for name, val in all_options.items():
@@ -316,4 +324,16 @@ def as_type_stub(all_options: Dict[str, Union[Option, List[Shortcut]]], special_
     for mod, name in imports:
         ans.insert(0, 'from {} import {}'.format(mod, name))
         ans.insert(0, 'import {}'.format(mod))
+    for field_name, type_def in extra_fields:
+        ans.append('    {}: {}'.format(field_name, type_def))
     return '\n'.join(ans)
+
+
+def save_type_stub(text: str, fpath: str) -> None:
+    import os
+    with open(fpath + 'i', 'w') as f:
+        print(
+            '# Update this file by running: python {}'.format(os.path.relpath(os.path.abspath(fpath))),
+            file=f
+        )
+        f.write(text)

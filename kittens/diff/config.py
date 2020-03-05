@@ -12,7 +12,7 @@ from kitty.conf.definition import config_lines
 from kitty.constants import config_dir
 from kitty.rgb import color_as_sgr
 
-from .config_data import type_map, all_options
+from .config_data import type_convert, all_options
 
 defaults = None
 
@@ -89,7 +89,7 @@ def parse_config(lines, check_keys=True):
     parse_config_base(
         lines,
         defaults,
-        type_map,
+        type_convert,
         special_handling,
         ans,
         check_keys=check_keys

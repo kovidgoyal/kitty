@@ -4,10 +4,11 @@
 
 
 from functools import lru_cache
-from typing import Dict
+from typing import Dict, List, Optional, Sequence, Tuple
 
 from .child import Child
 from .cli import parse_args
+from .cli_stub import LaunchCLIOptions
 from .fast_data_types import set_clipboard_string
 from .utils import set_primary_selection
 
@@ -130,16 +131,16 @@ the same as for the :code:`toggle_marker` map action (see :doc:`/marks`).
 '''
 
 
-def parse_launch_args(args=None):
+def parse_launch_args(args: Optional[Sequence[str]] = None) -> Tuple[LaunchCLIOptions, List[str]]:
     args = list(args or ())
     try:
-        opts, args = parse_args(args=args, ospec=options_spec)
+        opts, args = parse_args(result_class=LaunchCLIOptions, args=args, ospec=options_spec)
     except SystemExit as e:
         raise ValueError from e
     return opts, args
 
 
-def get_env(opts, active_child: Child) -> Dict[str, str]:
+def get_env(opts: LaunchCLIOptions, active_child: Child) -> Dict[str, str]:
     env: Dict[str, str] = {}
     if opts.copy_env and active_child:
         env.update(active_child.foreground_environ)
@@ -150,7 +151,7 @@ def get_env(opts, active_child: Child) -> Dict[str, str]:
     return env
 
 
-def tab_for_window(boss, opts, target_tab=None):
+def tab_for_window(boss, opts: LaunchCLIOptions, target_tab=None):
     if opts.type == 'tab':
         tm = boss.active_tab_manager
         tab = tm.new_tab(empty_tab=True, location=opts.location)
@@ -168,7 +169,7 @@ def tab_for_window(boss, opts, target_tab=None):
     return tab
 
 
-def launch(boss, opts, args, target_tab=None):
+def launch(boss, opts: LaunchCLIOptions, args: List[str], target_tab=None):
     active = boss.active_window_for_cwd
     active_child = getattr(active, 'child', None)
     env = get_env(opts, active_child)

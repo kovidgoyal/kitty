@@ -11,6 +11,7 @@ from functools import lru_cache
 from gettext import gettext as _
 
 from kitty.cli import parse_args
+from kitty.cli_stub import UnicodeCLIOptions
 from kitty.config import cached_values_for
 from kitty.constants import config_dir
 from kitty.fast_data_types import is_emoji_presentation_base, wcswidth
@@ -530,7 +531,7 @@ default form specified in the unicode standard for the symbol is used.
 
 
 def parse_unicode_input_args(args):
-    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten unicode_input')
+    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten unicode_input', result_class=UnicodeCLIOptions)
 
 
 def main(args):

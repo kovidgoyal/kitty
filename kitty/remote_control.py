@@ -138,13 +138,17 @@ cli_msg = (
 ).format(appname=appname)
 
 
+class RCOptions:
+    pass
+
+
 def parse_rc_args(args):
     cmds = ('  :green:`{}`\n    {}'.format(cmap[c].name, cmap[c].short_desc) for c in all_commands)
     msg = cli_msg + (
             '\n\n:title:`Commands`:\n{cmds}\n\n'
             'You can get help for each individual command by using:\n'
             '{appname} @ :italic:`command` -h').format(appname=appname, cmds='\n'.join(cmds))
-    return parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname))
+    return parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname), result_class=RCOptions)
 
 
 def main(args):

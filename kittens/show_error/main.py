@@ -7,6 +7,7 @@ import sys
 from contextlib import suppress
 
 from kitty.cli import parse_args
+from kitty.cli_stub import ErrorCLIOptions
 
 from ..tui.operations import styled
 
@@ -19,7 +20,7 @@ The title for the error message.
 
 def real_main(args):
     msg = 'Show an error message'
-    args, items = parse_args(args[1:], OPTIONS, '', msg, 'hints')
+    args, items = parse_args(args[1:], OPTIONS, '', msg, 'hints', result_class=ErrorCLIOptions)
     error_message = sys.stdin.buffer.read().decode('utf-8')
     sys.stdin = open(os.ctermid())
     print(styled(args.title, fg_intense=True, fg='red', bold=True))

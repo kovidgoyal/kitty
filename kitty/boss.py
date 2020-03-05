@@ -304,8 +304,9 @@ class Boss:
         else:
             msg = json.loads(msg)
             if isinstance(msg, dict) and msg.get('cmd') == 'new_instance':
+                from .cli_stub import CLIOptions
                 startup_id = msg.get('startup_id')
-                args, rest = parse_args(msg['args'][1:])
+                args, rest = parse_args(msg['args'][1:], result_class=CLIOptions)
                 args.args = rest
                 opts = create_opts(args)
                 if not os.path.isabs(args.directory):
