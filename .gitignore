@@ -1,6 +1,7 @@
 *.so
 *.pyc
 *.pyo
+*_stub.pyi
 /tags
 /build/
 /linux-package/

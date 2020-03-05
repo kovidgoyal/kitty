@@ -65,6 +65,15 @@ def filter_tests_by_module(suite, *names):
     return filter_tests(suite, q)
 
 
+def type_check():
+    init_env()
+    from kitty.cli_stub import generate_stub
+    generate_stub()
+    from kitty.options_stub import generate_stub
+    generate_stub()
+    os.execlp('mypy', 'mypy')
+
+
 def run_tests():
     import argparse
     parser = argparse.ArgumentParser()
@@ -73,6 +82,8 @@ def run_tests():
         help='The name of the test to run, for e.g. linebuf corresponds to test_linebuf. Can be specified multiple times')
     parser.add_argument('--verbosity', default=4, type=int, help='Test verbosity')
     args = parser.parse_args()
+    if args.name and args.name[0] in ('type-check', 'type_check', 'mypy'):
+        return type_check()
     tests = find_tests_in_dir(os.path.join(base, 'kitty_tests'))
     if args.name:
         tests = filter_tests_by_name(tests, *args.name)
