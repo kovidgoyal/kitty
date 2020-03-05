@@ -4,13 +4,21 @@
 
 
 from functools import lru_cache
-from typing import Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .child import Child
 from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .fast_data_types import set_clipboard_string
 from .utils import set_primary_selection
+from .window import Window
+from .boss import Boss
+from .tabs import Tab
+
+try:
+    from typing import TypedDict
+except ImportError:
+    TypedDict = Dict[str, Any]  # type: ignore
 
 
 @lru_cache(maxsize=2)
@@ -151,7 +159,7 @@ def get_env(opts: LaunchCLIOptions, active_child: Child) -> Dict[str, str]:
     return env
 
 
-def tab_for_window(boss, opts: LaunchCLIOptions, target_tab=None):
+def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab] = None) -> Tab:
     if opts.type == 'tab':
         tm = boss.active_tab_manager
         tab = tm.new_tab(empty_tab=True, location=opts.location)
@@ -169,12 +177,35 @@ def tab_for_window(boss, opts: LaunchCLIOptions, target_tab=None):
     return tab
 
 
-def launch(boss, opts: LaunchCLIOptions, args: List[str], target_tab=None):
+class LaunchKwds(TypedDict):
+
+    allow_remote_control: bool
+    cwd_from: Optional[int]
+    cwd: Optional[str]
+    location: Optional[str]
+    override_title: Optional[str]
+    copy_colors_from: Optional[Window]
+    marker: Optional[str]
+    cmd: Optional[List[str]]
+    overlay_for: Optional[int]
+    stdin: Optional[bytes]
+
+
+def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Optional[Tab] = None) -> Optional[Window]:
     active = boss.active_window_for_cwd
     active_child = getattr(active, 'child', None)
     env = get_env(opts, active_child)
-    kw = {
-        'allow_remote_control': opts.allow_remote_control
+    kw: LaunchKwds = {
+        'allow_remote_control': opts.allow_remote_control,
+        'cwd_from': None,
+        'cwd': None,
+        'location': None,
+        'override_title': opts.window_title or None,
+        'copy_colors_from': None,
+        'marker': opts.marker or None,
+        'cmd': None,
+        'overlay_for': None,
+        'stdin': None
     }
     if opts.cwd:
         if opts.cwd == 'current':
@@ -184,17 +215,13 @@ def launch(boss, opts: LaunchCLIOptions, args: List[str], target_tab=None):
             kw['cwd'] = opts.cwd
     if opts.location != 'last':
         kw['location'] = opts.location
-    if opts.window_title:
-        kw['override_title'] = opts.window_title
     if opts.copy_colors and active:
         kw['copy_colors_from'] = active
-    if opts.marker:
-        kw['marker'] = opts.marker
     cmd = args or None
     if opts.copy_cmdline and active_child:
         cmd = active_child.foreground_cmdline
     if cmd:
-        final_cmd = []
+        final_cmd: List[str] = []
         for x in cmd:
             if active and not opts.copy_cmdline:
                 if x == '@selection':
@@ -218,9 +245,9 @@ def launch(boss, opts: LaunchCLIOptions, args: List[str], target_tab=None):
                 env.update(penv)
 
     if opts.type == 'background':
-        boss.run_background_process(kw['cmd'], cwd=kw.get('cwd'), cwd_from=kw.get('cwd_from'), env=env or None, stdin=kw.get('stdin'))
+        boss.run_background_process(kw['cmd'], cwd=kw['cwd'], cwd_from=kw['cwd_from'], env=env or None, stdin=kw['stdin'])
     elif opts.type in ('clipboard', 'primary'):
-        if 'stdin' in kw:
+        if kw.get('stdin') is not None:
             func = set_clipboard_string if opts.type == 'clipboard' else set_primary_selection
             func(kw['stdin'])
     else:
@@ -229,3 +256,4 @@ def launch(boss, opts: LaunchCLIOptions, args: List[str], target_tab=None):
         if opts.keep_focus and active:
             boss.set_active_window(active, switch_os_window_if_needed=True)
         return new_window
+    return None

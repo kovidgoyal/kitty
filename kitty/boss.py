@@ -30,7 +30,6 @@ from .fast_data_types import (
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout import set_layout_options
-from .remote_control import handle_cmd
 from .rgb import Color, color_from_int
 from .session import create_sessions
 from .tabs import SpecialWindow, SpecialWindowInstance, TabManager
@@ -279,6 +278,7 @@ class Boss:
         self.window_id_map[window.id] = window
 
     def _handle_remote_command(self, cmd, window=None, from_peer=False):
+        from .remote_control import handle_cmd
         response = None
         if self.opts.allow_remote_control == 'y' or from_peer or getattr(window, 'allow_remote_control', False):
             try:
