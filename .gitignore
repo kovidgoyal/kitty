@@ -2,6 +2,7 @@
 *.pyc
 *.pyo
 *_stub.pyi
+/.dmypy.json
 /tags
 /build/
 /linux-package/

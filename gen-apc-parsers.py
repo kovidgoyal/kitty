@@ -4,18 +4,23 @@
 
 import subprocess
 from collections import defaultdict
+from typing import DefaultDict, Dict, FrozenSet, List, Tuple, Union
+
+KeymapType = Dict[str, Tuple[str, Union[FrozenSet[str], str]]]
 
 
-def resolve_keys(keymap):
-    ans = defaultdict(list)
+def resolve_keys(keymap: KeymapType):
+    ans: DefaultDict[str, List[str]] = defaultdict(list)
     for ch, (attr, atype) in keymap.items():
-        if atype not in ('int', 'uint'):
-            atype = 'flag'
-        ans[atype].append(ch)
+        if isinstance(atype, str) and atype in ('int', 'uint'):
+            q = atype
+        else:
+            q = 'flag'
+        ans[q].append(ch)
     return ans
 
 
-def enum(keymap):
+def enum(keymap: KeymapType):
     lines = []
     for ch, (attr, atype) in keymap.items():
         lines.append(f"{attr}='{ch}'")
@@ -26,15 +31,15 @@ def enum(keymap):
     '''.format(',\n'.join(lines))
 
 
-def parse_key(keymap):
+def parse_key(keymap: KeymapType):
     lines = []
     for attr, atype in keymap.values():
-        vs = atype.upper() if atype in ('uint', 'int') else 'FLAG'
+        vs = atype.upper() if isinstance(atype, str) and atype in ('uint', 'int') else 'FLAG'
         lines.append(f'case {attr}: value_state = {vs}; break;')
     return '        \n'.join(lines)
 
 
-def parse_flag(keymap, type_map, command_class):
+def parse_flag(keymap: KeymapType, type_map, command_class):
     lines = []
     for ch in type_map['flag']:
         attr, allowed_values = keymap[ch]
@@ -52,13 +57,13 @@ def parse_flag(keymap, type_map, command_class):
     return '        \n'.join(lines)
 
 
-def parse_number(keymap):
+def parse_number(keymap: KeymapType):
     int_keys = [f'I({attr})' for attr, atype in keymap.values() if atype == 'int']
     uint_keys = [f'U({attr})' for attr, atype in keymap.values() if atype == 'uint']
     return '; '.join(int_keys), '; '.join(uint_keys)
 
 
-def cmd_for_report(report_name, keymap, type_map, payload_allowed):
+def cmd_for_report(report_name, keymap: KeymapType, type_map, payload_allowed):
     def group(atype, conv):
         flag_fmt, flag_attrs = [], []
         cv = {'flag': 'c', 'int': 'i', 'uint': 'I'}[atype]
@@ -84,7 +89,7 @@ def cmd_for_report(report_name, keymap, type_map, payload_allowed):
     return '\n'.join(ans)
 
 
-def generate(function_name, callback_name, report_name, keymap, command_class, initial_key='a', payload_allowed=True):
+def generate(function_name, callback_name, report_name, keymap: KeymapType, command_class, initial_key='a', payload_allowed=True):
     type_map = resolve_keys(keymap)
     keys_enum = enum(keymap)
     handle_key = parse_key(keymap)
@@ -235,7 +240,7 @@ def write_header(text, path):
 
 def graphics_parser():
     flag = frozenset
-    keymap = {
+    keymap: KeymapType = {
         'a': ('action', flag('tTqpd')),
         'd': ('delete_action', flag('aAiIcCpPqQxXyYzZ')),
         't': ('transmission_type', flag('dfts')),

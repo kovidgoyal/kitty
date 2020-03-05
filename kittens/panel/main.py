@@ -136,11 +136,11 @@ def main(sys_args):
     for override in args.override:
         sys.argv.append('--override={}'.format(override))
     sys.argv.extend(items)
-    from kitty.main import run_app, main
+    from kitty.main import run_app, main as real_main
     run_app.cached_values_name = 'panel'
     run_app.first_window_callback = setup_x11_window
     run_app.initial_window_size_func = initial_window_size_func
-    main()
+    real_main()
 
 
 if __name__ == '__main__':

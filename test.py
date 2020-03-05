@@ -71,7 +71,10 @@ def type_check():
     generate_stub()
     from kitty.options_stub import generate_stub
     generate_stub()
-    os.execlp('mypy', 'mypy')
+    if 'CI' in os.environ:
+        os.execlp('mypy', 'mypy')
+    else:
+        os.execlp('dmypy', 'dmypy', 'run', '--', '--follow-imports=error')
 
 
 def run_tests():

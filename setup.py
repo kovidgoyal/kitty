@@ -870,9 +870,9 @@ def package(args, bundle_type):
             f.seek(0), f.truncate(), f.write(nraw)
     compile_python(libdir)
     for root, dirs, files in os.walk(libdir):
-        for f in files:
-            path = os.path.join(root, f)
-            os.chmod(path, 0o755 if f.endswith('.so') else 0o644)
+        for f_ in files:
+            path = os.path.join(root, f_)
+            os.chmod(path, 0o755 if f_.endswith('.so') else 0o644)
     if not is_macos:
         create_linux_bundle_gunk(ddir, args.libdir_name)
 
@@ -899,7 +899,9 @@ def clean():
     for root, dirs, files in os.walk('.', topdown=True):
         dirs[:] = [d for d in dirs if d not in exclude]
         remove_dirs = {d for d in dirs if d == '__pycache__' or d.endswith('.dSYM')}
-        [(shutil.rmtree(os.path.join(root, d)), dirs.remove(d)) for d in remove_dirs]
+        for d in remove_dirs:
+            shutil.rmtree(os.path.join(root, d))
+            dirs.remove(d)
         for f in files:
             ext = f.rpartition('.')[-1]
             if ext in ('so', 'dylib', 'pyc', 'pyo'):
