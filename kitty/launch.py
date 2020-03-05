@@ -18,7 +18,7 @@ from .tabs import Tab
 try:
     from typing import TypedDict
 except ImportError:
-    TypedDict = Dict[str, Any]  # type: ignore
+    TypedDict = Dict[str, Any]
 
 
 @lru_cache(maxsize=2)
@@ -162,7 +162,7 @@ def get_env(opts: LaunchCLIOptions, active_child: Child) -> Dict[str, str]:
 def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab] = None) -> Tab:
     if opts.type == 'tab':
         tm = boss.active_tab_manager
-        tab = tm.new_tab(empty_tab=True, location=opts.location)
+        tab: Tab = tm.new_tab(empty_tab=True, location=opts.location)
         if opts.tab_title:
             tab.set_title(opts.tab_title)
     elif opts.type == 'os-window':
@@ -252,7 +252,7 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
             func(kw['stdin'])
     else:
         tab = tab_for_window(boss, opts, target_tab)
-        new_window = tab.new_window(env=env or None, **kw)
+        new_window: Window = tab.new_window(env=env or None, **kw)
         if opts.keep_focus and active:
             boss.set_active_window(active, switch_os_window_if_needed=True)
         return new_window

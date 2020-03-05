@@ -483,7 +483,7 @@ def handle_symbol_map(key, val, ans):
 class FontFeature(str):
 
     def __new__(cls, name, parsed):
-        ans = str.__new__(cls, name)  # type: ignore
+        ans = str.__new__(cls, name)
         ans.parsed = parsed
         return ans
 
@@ -624,7 +624,7 @@ actions = frozenset(all_key_actions) | frozenset(
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
 
-def merge_configs(defaults, vals):
+def merge_configs(defaults: Dict, vals: Dict) -> Dict:
     ans = {}
     for k, v in defaults.items():
         if isinstance(v, dict):
@@ -777,7 +777,7 @@ def finalize_keys(opts: OptionsStub) -> None:
     opts.sequence_map = sequence_map
 
 
-def load_config(*paths: Tuple[str], overrides: Optional[Iterator[str]] = None, accumulate_bad_lines: Optional[List[BadLine]] = None) -> OptionsStub:
+def load_config(*paths: str, overrides: Optional[Iterator[str]] = None, accumulate_bad_lines: Optional[List[BadLine]] = None) -> OptionsStub:
     parser = parse_config
     if accumulate_bad_lines is not None:
         parser = partial(parse_config, accumulate_bad_lines=accumulate_bad_lines)

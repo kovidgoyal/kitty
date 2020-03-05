@@ -3,11 +3,14 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-from collections import namedtuple
 from contextlib import suppress
-from typing import Optional
+from typing import Optional, NamedTuple
 
-Color = namedtuple('Color', 'red green blue')
+
+class Color(NamedTuple):
+    red: int
+    green: int
+    blue: int
 
 
 def alpha_blend_channel(top_color: int, bottom_color: int, alpha: float) -> int:

@@ -63,8 +63,8 @@ def beep() -> str:
     return '\a'
 
 
-def set_window_title(value) -> str:
-    return ('\033]2;' + value.replace('\033', '').replace('\x9c', '') + '\033\\')
+def set_window_title(value: str) -> str:
+    return '\033]2;' + value.replace('\033', '').replace('\x9c', '') + '\033\\'
 
 
 def set_line_wrapping(yes_or_no: bool) -> str:
@@ -134,7 +134,7 @@ def faint(text) -> str:
     return colored(text, 'black', True)
 
 
-def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=None, bold=None, underline=None, underline_color=None, reverse=None) -> str:
+def styled(text: str, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=None, bold=None, underline=None, underline_color=None, reverse=None) -> str:
     start, end = [], []
     if fg is not None:
         start.append(color_code(fg, fg_intense))
@@ -167,7 +167,7 @@ def styled(text, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=No
     return '\033[{}m{}\033[{}m'.format(';'.join(start), text, ';'.join(end))
 
 
-def serialize_gr_command(cmd, payload=None):
+def serialize_gr_command(cmd, payload=None) -> bytes:
     cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
     ans: List[bytes] = []
     w = ans.append
@@ -180,11 +180,11 @@ def serialize_gr_command(cmd, payload=None):
 
 
 def gr_command(cmd, payload=None) -> str:
-    return serialize_gr_command(cmd, payload)
+    return serialize_gr_command(cmd, payload).decode('ascii')
 
 
 def clear_images_on_screen(delete_data=False) -> str:
-    return serialize_gr_command({'a': 'd', 'd': 'A' if delete_data else 'a'})
+    return serialize_gr_command({'a': 'd', 'd': 'A' if delete_data else 'a'}).decode('ascii')
 
 
 def init_state(alternate_screen=True):
@@ -255,8 +255,9 @@ def write_to_clipboard(data, use_primary=False) -> str:
     from base64 import standard_b64encode
     fmt = 'p' if use_primary else 'c'
 
-    def esc(chunk):
+    def esc(chunk: str) -> str:
         return '\x1b]52;{};{}\x07'.format(fmt, chunk)
+
     ans = esc('!')  # clear clipboard buffer
     for chunk in (data[i:i+512] for i in range(0, len(data), 512)):
         chunk = standard_b64encode(chunk).decode('ascii')

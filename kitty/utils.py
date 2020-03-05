@@ -468,17 +468,17 @@ def func_name(f):
 
 
 def resolved_shell(opts: Optional[Options] = None) -> List[str]:
-    ans = getattr(opts, 'shell', '.')
-    if ans == '.':
+    q: str = getattr(opts, 'shell', '.')
+    if q == '.':
         ans = [shell_path]
     else:
         import shlex
-        ans = shlex.split(ans)
+        ans = shlex.split(q)
     return ans
 
 
 def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
-    ans = getattr(read_shell_environment, 'ans', None)
+    ans: Optional[Dict[str, str]] = getattr(read_shell_environment, 'ans', None)
     if ans is None:
         from .child import openpty, remove_blocking
         ans = {}
@@ -506,7 +506,7 @@ def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
                     raw += stdout.read()
                 if ret is not None:
                     break
-            if p.returncode is None:
+            if cast(Optional[int], p.returncode) is None:
                 log_error('Timed out waiting for shell to quit while reading shell environment')
                 p.kill()
             elif p.returncode == 0:

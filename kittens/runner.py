@@ -6,7 +6,6 @@
 import importlib
 import os
 import sys
-from contextlib import suppress
 from functools import partial
 
 aliases = {'url_hints': 'hints'}
@@ -99,9 +98,11 @@ def run_kitten(kitten, run_name='__main__'):
     original_kitten_name = kitten
     kitten = resolved_kitten(kitten)
     set_debug(kitten)
-    with suppress(ImportError):
+    try:
         runpy.run_module('kittens.{}.main'.format(kitten), run_name=run_name)
         return
+    except ImportError:
+        pass
     # Look for a custom kitten
     if not kitten.endswith('.py'):
         kitten += '.py'

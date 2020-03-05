@@ -260,11 +260,12 @@ class Table:
             self.layout_dirty = True
 
 
-def is_index(w):
-    with suppress(Exception):
+def is_index(w: str) -> bool:
+    try:
         int(w.lstrip(INDEX_CHAR), 16)
         return True
-    return False
+    except Exception:
+        return False
 
 
 class UnicodeInput(Handler):

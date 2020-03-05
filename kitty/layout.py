@@ -466,7 +466,7 @@ class Layout:  # {{{
 
     def window_independent_borders(self, windows, active_windows):
         return
-        yield
+        yield  # type:ignore
 
     def minimal_borders(self, windows, active_window, needs_borders_map):
         for w in windows:

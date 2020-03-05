@@ -6,7 +6,10 @@ import os
 import re
 import shlex
 from collections import namedtuple
-from typing import Callable, FrozenSet, List, Optional, Union, Dict, Any, Iterator, Type
+from typing import (
+    Any, Callable, Dict, FrozenSet, Iterator, List, Optional, Sequence, Tuple,
+    Type, Union
+)
 
 from ..rgb import Color, to_color as as_color
 from ..utils import log_error
@@ -56,12 +59,13 @@ def to_cmdline(x: str) -> List[str]:
 
 def python_string(text: str) -> str:
     import ast
-    return ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''")
+    ans: str = ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''")
+    return ans
 
 
-def choices(*choices) -> Callable[[str], str]:
-    defval: str = choices[0]
-    uc: FrozenSet[str] = frozenset(choices)
+def choices(*choices: str) -> Callable[[str], str]:
+    defval = choices[0]
+    uc = frozenset(choices)
 
     def choice(x: str) -> str:
         x = x.lower()
@@ -199,13 +203,13 @@ def create_options_class(all_keys: Iterator[str]) -> Type:
     return ans
 
 
-def merge_dicts(defaults, newvals):
+def merge_dicts(defaults: Dict, newvals: Dict) -> Dict:
     ans = defaults.copy()
     ans.update(newvals)
     return ans
 
 
-def resolve_config(SYSTEM_CONF, defconf, config_files_on_cmd_line):
+def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Sequence[str]):
     if config_files_on_cmd_line:
         if 'NONE' not in config_files_on_cmd_line:
             yield SYSTEM_CONF
@@ -217,9 +221,14 @@ def resolve_config(SYSTEM_CONF, defconf, config_files_on_cmd_line):
 
 
 def load_config(
-    Options, defaults, parse_config, merge_configs, *paths, overrides=None
+        Options: Type,
+        defaults: Any,
+        parse_config: Callable[[Iterator[str]], Dict[str, Any]],
+        merge_configs: Callable[[Dict, Dict], Dict],
+        *paths: str,
+        overrides: Optional[Iterator[str]] = None
 ):
-    ans = defaults._asdict()
+    ans: Dict = defaults._asdict()
     for path in paths:
         if not path:
             continue
@@ -235,7 +244,7 @@ def load_config(
     return Options(ans)
 
 
-def init_config(default_config_lines, parse_config):
+def init_config(default_config_lines: Iterator[str], parse_config: Callable):
     defaults = parse_config(default_config_lines, check_keys=False)
     Options = create_options_class(defaults.keys())
     defaults = Options(defaults)
@@ -260,7 +269,7 @@ def key_func():
     return func_with_args, ans
 
 
-def parse_kittens_shortcut(sc):
+def parse_kittens_shortcut(sc: str) -> Tuple[Optional[int], str, bool]:
     from ..key_encoding import config_key_map, config_mod_map, text_match
     if sc.endswith('+'):
         parts = list(filter(None, sc.rstrip('+').split('+') + ['+']))
@@ -282,16 +291,17 @@ def parse_kittens_shortcut(sc):
     tkey = text_match(rkey)
     if tkey is None:
         rkey = rkey.upper()
-        rkey = config_key_map.get(rkey)
-        if rkey is None:
+        q = config_key_map.get(rkey)
+        if q is None:
             raise ValueError('Unknown shortcut key: {}'.format(sc))
+        rkey = q
     else:
         is_text = True
         rkey = tkey
     return mods, rkey, is_text
 
 
-def parse_kittens_func_args(action, args_funcs):
+def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> Tuple[str, Tuple[str, ...]]:
     parts = action.strip().split(' ', 1)
     func = parts[0]
     if len(parts) == 1:
@@ -317,10 +327,12 @@ def parse_kittens_func_args(action, args_funcs):
     return func, tuple(args)
 
 
-def parse_kittens_key(val, funcs_with_args):
+def parse_kittens_key(
+    val: str, funcs_with_args: Dict[str, Callable]
+) -> Optional[Tuple[Tuple[str, Tuple[str, ...]], str, Optional[int], bool]]:
     sc, action = val.partition(' ')[::2]
     if not sc or not action:
-        return
+        return None
     mods, key, is_text = parse_kittens_shortcut(sc)
-    action = parse_kittens_func_args(action, funcs_with_args)
-    return action, key, mods, is_text
+    ans = parse_kittens_func_args(action, funcs_with_args)
+    return ans, key, mods, is_text

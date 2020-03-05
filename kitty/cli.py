@@ -674,7 +674,8 @@ type=bool-set
             appname=appname, config_help=CONFIG_HELP.format(appname=appname, conf_name=appname)
 
         ))
-    return getattr(options_spec, 'ans')
+    ans: str = getattr(options_spec, 'ans')
+    return ans
 
 
 def options_for_completion() -> OptionSpecSeq:
@@ -703,7 +704,7 @@ def parse_args(
     usage: Optional[str] = None,
     message: Optional[str] = None,
     appname: Optional[str] = None,
-    result_class: Type[T] = None,
+    result_class: Optional[Type[T]] = None,
 ) -> Tuple[T, List[str]]:
     options = parse_option_spec(ospec())
     seq, disabled = options
