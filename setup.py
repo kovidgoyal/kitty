@@ -20,6 +20,8 @@ from collections import namedtuple
 from contextlib import suppress
 from pathlib import Path
 
+if sys.version_info[:2] < (3, 6):
+    raise SystemExit('kitty requires python >= 3.6')
 base = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, 'glfw')
 glfw = importlib.import_module('glfw')
