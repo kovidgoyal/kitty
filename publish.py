@@ -16,7 +16,6 @@ import sys
 import tempfile
 import time
 from contextlib import suppress
-from typing import cast
 
 import requests
 
@@ -26,11 +25,10 @@ docs_dir = os.path.abspath('docs')
 publish_dir = os.path.abspath(os.path.join('..', 'kovidgoyal.github.io', 'kitty'))
 with open('kitty/constants.py') as f:
     raw = f.read()
-nv = cast(re.Match, re.search(
-    r'^version\s+=\s+\((\d+), (\d+), (\d+)\)', raw, flags=re.MULTILINE))
-version = '%s.%s.%s' % (nv.group(1), nv.group(2), nv.group(3))
-appname = cast(re.Match, re.search(
-    r"^appname\s+=\s+'([^']+)'", raw, flags=re.MULTILINE)).group(1)
+nv = re.search(r'^version\s+=\s+\((\d+), (\d+), (\d+)\)', raw, flags=re.MULTILINE)
+if nv is not None:
+    version = '%s.%s.%s' % (nv.group(1), nv.group(2), nv.group(3))
+appname = re.search(r"^appname\s+=\s+'([^']+)'", raw, flags=re.MULTILINE).group(1)  # type: ignore
 
 ALL_ACTIONS = 'man html build tag sdist upload website'.split()
 
