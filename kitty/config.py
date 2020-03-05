@@ -9,12 +9,15 @@ import sys
 from collections import namedtuple
 from contextlib import contextmanager, suppress
 from functools import partial
-from typing import Type
+from typing import (
+    TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence, Tuple, Type,
+    cast
+)
 
 from . import fast_data_types as defines
 from .conf.definition import as_conf_file, config_lines
 from .conf.utils import (
-    init_config, key_func, load_config as _load_config, merge_dicts,
+    BadLine, init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, python_string, to_bool, to_cmdline
 )
 from .config_data import all_options, parse_mods, type_convert
@@ -22,6 +25,10 @@ from .constants import cache_dir, defconf, is_macos
 from .key_names import get_key_name_lookup, key_name_aliases
 from .options_stub import Options as OptionsStub
 from .utils import log_error
+
+if TYPE_CHECKING:
+    from .options_stub import SequenceMap, KeyMap
+    SequenceMap, KeyMap
 
 
 def parse_shortcut(sc):
@@ -121,19 +128,18 @@ def float_parse(func, rest):
 
 
 @func_with_args('change_font_size')
-def parse_change_font_size(func, rest):
+def parse_change_font_size(func: str, rest: str) -> Tuple[str, Tuple[bool, Optional[str], float]]:
     vals = rest.strip().split(maxsplit=1)
     if len(vals) != 2:
         log_error('Invalid change_font_size specification: {}, treating it as default'.format(rest))
-        args = [True, None, 0]
-    else:
-        args = [vals[0].lower() == 'all', None, 0]
-        amt = vals[1]
-        if amt[0] in '+-':
-            args[1] = amt[0]
-            amt = amt[1:]
-        args[2] = float(amt.strip())
-    return func, args
+        return func, (True, None, 0)
+    c_all = vals[0].lower() == 'all'
+    sign: Optional[str] = None
+    amt = vals[1]
+    if amt[0] in '+-':
+        sign = amt[0]
+        amt = amt[1:]
+    return func, (c_all, sign, float(amt.strip()))
 
 
 @func_with_args('clear_terminal')
@@ -336,7 +342,7 @@ class KeyDefinition:
         self.trigger = defines.resolve_key_mods(kitty_mod, self.trigger[0]), self.trigger[1], self.trigger[2]
         self.rest = tuple((defines.resolve_key_mods(kitty_mod, mods), is_native, key) for mods, is_native, key in self.rest)
 
-    def resolve_kitten_aliases(self, aliases):
+    def resolve_kitten_aliases(self, aliases: Dict[str, Sequence[str]]):
         if not self.action.args:
             return
         kitten = self.action.args[0]
@@ -363,7 +369,7 @@ def parse_key(val, key_definitions):
     is_sequence = sequence_sep in sc
     if is_sequence:
         trigger = None
-        rest = []
+        restl: List[Tuple[int, bool, int]] = []
         for part in sc.split(sequence_sep):
             mods, is_native, key = parse_shortcut(part)
             if key is None:
@@ -373,8 +379,8 @@ def parse_key(val, key_definitions):
             if trigger is None:
                 trigger = mods, is_native, key
             else:
-                rest.append((mods, is_native, key))
-        rest = tuple(rest)
+                restl.append((mods, is_native, key))
+        rest = tuple(restl)
     else:
         mods, is_native, key = parse_shortcut(sc)
         if key is None:
@@ -390,7 +396,8 @@ def parse_key(val, key_definitions):
         if paction is not None:
             all_key_actions.add(paction.func)
             if is_sequence:
-                key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], trigger[2], rest))
+                if trigger is not None:
+                    key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], trigger[2], rest))
             else:
                 key_definitions.append(KeyDefinition(False, paction, mods, is_native, key))
 
@@ -476,7 +483,7 @@ def handle_symbol_map(key, val, ans):
 class FontFeature(str):
 
     def __new__(cls, name, parsed):
-        ans = str.__new__(cls, name)
+        ans = str.__new__(cls, name)  # type: ignore
         ans.parsed = parsed
         return ans
 
@@ -581,12 +588,14 @@ def option_names_for_completion():
     yield from special_handlers
 
 
-def parse_config(lines, check_keys=True, accumulate_bad_lines=None):
-    ans = {'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [], 'env': {}, 'kitten_aliases': {}, 'font_features': {}}
+def parse_config(lines: Iterator[str], check_keys=True, accumulate_bad_lines: Optional[List[BadLine]] = None):
+    ans: Dict[str, Any] = {
+        'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [],
+        'env': {}, 'kitten_aliases': {}, 'font_features': {}
+    }
+    defs: Optional[OptionsStub] = None
     if check_keys:
         defs = defaults
-    else:
-        defs = None
 
     parse_config_base(
         lines,
@@ -659,7 +668,7 @@ def atomic_save(data, path):
 @contextmanager
 def cached_values_for(name):
     cached_path = os.path.join(cache_dir(), name + '.json')
-    cached_values = {}
+    cached_values: Dict = {}
     try:
         with open(cached_path, 'rb') as f:
             cached_values.update(json.loads(f.read().decode('utf-8')))
@@ -732,20 +741,20 @@ def prepare_config_file_for_editing():
     return defconf
 
 
-def finalize_keys(opts):
-    defns = []
-    for d in opts.key_definitions:
+def finalize_keys(opts: OptionsStub) -> None:
+    defns: List[KeyDefinition] = []
+    for d in getattr(opts, 'key_definitions'):
         if d is None:  # clear_all_shortcuts
             defns = []
         else:
             defns.append(d)
-    kitten_aliases = opts.kitten_aliases
+    kitten_aliases: List[Dict[str, Sequence[str]]] = getattr(opts, 'kitten_aliases')
     for d in defns:
         d.resolve(opts.kitty_mod)
         if kitten_aliases and d.action.func == 'kitten':
             d.resolve_kitten_aliases(kitten_aliases)
-    keymap = {}
-    sequence_map = {}
+    keymap: KeyMap = {}
+    sequence_map: SequenceMap = {}
 
     for defn in defns:
         is_no_op = defn.action.func in no_op_actions
@@ -768,11 +777,11 @@ def finalize_keys(opts):
     opts.sequence_map = sequence_map
 
 
-def load_config(*paths, overrides=None, accumulate_bad_lines=None) -> OptionsStub:
+def load_config(*paths: Tuple[str], overrides: Optional[Iterator[str]] = None, accumulate_bad_lines: Optional[List[BadLine]] = None) -> OptionsStub:
     parser = parse_config
     if accumulate_bad_lines is not None:
         parser = partial(parse_config, accumulate_bad_lines=accumulate_bad_lines)
-    opts = _load_config(Options, defaults, parser, merge_configs, *paths, overrides=overrides)
+    opts = cast(OptionsStub, _load_config(Options, defaults, parser, merge_configs, *paths, overrides=overrides))
     finalize_keys(opts)
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
         log_error('Cannot use both macos_titlebar_color and background_opacity')

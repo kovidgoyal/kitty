@@ -326,6 +326,8 @@ def as_type_stub(
         ans.insert(0, 'import {}'.format(mod))
     for field_name, type_def in extra_fields:
         ans.append('    {}: {}'.format(field_name, type_def))
+    ans.append('    def __iter__(self): pass')
+    ans.append('    def __len__(self): pass')
     return '\n'.join(ans)
 
 

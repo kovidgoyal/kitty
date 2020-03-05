@@ -481,6 +481,14 @@ def set_options(
     pass
 
 
+def resolve_key_mods(kitty_mod: int, mods: int) -> int:
+    pass
+
+
+def parse_font_feature(str) -> bytes:
+    pass
+
+
 def set_default_window_icon(data: bytes, width: int, height: int) -> None:
     pass
 

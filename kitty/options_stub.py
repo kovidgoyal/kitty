@@ -19,10 +19,11 @@ def generate_stub():
             'from kitty.config import KeyAction',
             'KeySpec = typing.Tuple[int, bool, int]',
             'KeyMap = typing.Dict[KeySpec, KeyAction]',
+            'SequenceMap = typing.Dict[KeySpec, KeyMap]',
         ),
         extra_fields=(
             ('keymap', 'KeyMap'),
-            ('sequence_map', 'typing.Dict[KeySpec, KeyMap]'),
+            ('sequence_map', 'SequenceMap'),
         )
     )
     save_type_stub(text, __file__)
