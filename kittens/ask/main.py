@@ -4,15 +4,19 @@
 
 import os
 from contextlib import suppress
+from typing import TYPE_CHECKING, Dict, List, Union
 
 from kitty.cli import parse_args
-from kitty.constants import cache_dir
 from kitty.cli_stub import AskCLIOptions
+from kitty.constants import cache_dir
 
-from ..tui.operations import alternate_screen, styled
 from ..tui.handler import result_handler
+from ..tui.operations import alternate_screen, styled
 
-readline = None
+if TYPE_CHECKING:
+    import readline
+else:
+    readline = None
 
 
 def get_history_items():
@@ -98,7 +102,7 @@ def main(args):
         raise SystemExit(e.code)
 
     init_readline(readline)
-    ans = {'items': items}
+    response = None
 
     with alternate_screen(), HistoryCompleter(args.name):
         if args.message:
@@ -106,7 +110,11 @@ def main(args):
 
         prompt = '> '
         with suppress(KeyboardInterrupt, EOFError):
-            ans['response'] = input(prompt)
+            response = input(prompt)
+    if response is None:
+        ans: Dict[str, Union[str, List[str]]] = {'items': items}
+    else:
+        ans = {'items': items, 'response': response}
     return ans
 
 

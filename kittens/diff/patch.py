@@ -7,14 +7,17 @@ import os
 import shlex
 import shutil
 import subprocess
+from typing import List, Optional, Tuple
 
+from . import global_data
 from .collect import lines_for_path
 from .diff_speedup import changed_center
 
-left_lines = right_lines = None
+left_lines: Tuple[str, ...] = ()
+right_lines: Tuple[str, ...] = ()
 GIT_DIFF = 'git diff --no-color --no-ext-diff --exit-code -U_CONTEXT_ --no-index --'
 DIFF_DIFF = 'diff -p -U _CONTEXT_ --'
-worker_processes = []
+worker_processes: List[int] = []
 
 
 def find_differ():
@@ -31,16 +34,17 @@ def set_diff_command(opt):
             raise SystemExit('Failed to find either the git or diff programs on your system')
     else:
         cmd = opt
-    set_diff_command.cmd = cmd
+    global_data.cmd = cmd
 
 
-def run_diff(file1, file2, context=3):
+def run_diff(file1: str, file2: str, context: int = 3):
     # returns: ok, is_different, patch
-    cmd = shlex.split(set_diff_command.cmd.replace('_CONTEXT_', str(context)))
+    cmd = shlex.split(global_data.cmd.replace('_CONTEXT_', str(context)))
     # we resolve symlinks because git diff does not follow symlinks, while diff
     # does. We want consistent behavior, also for integration with git difftool
     # we always want symlinks to be followed.
-    path1, path2 = map(os.path.realpath, (file1, file2))
+    path1 = os.path.realpath(file1)
+    path2 = os.path.realpath(file2)
     p = subprocess.Popen(
             cmd + [path1, path2],
             stdout=subprocess.PIPE, stderr=subprocess.PIPE, stdin=subprocess.DEVNULL)
@@ -96,7 +100,7 @@ class Hunk:
         self.title = title
         self.added_count = self.removed_count = 0
         self.chunks = []
-        self.current_chunk = None
+        self.current_chunk: Optional[Chunk] = None
         self.largest_line_number = max(self.left_start + self.left_count, self.right_start + self.right_count)
 
     def new_chunk(self, is_context=False):
@@ -125,20 +129,24 @@ class Hunk:
 
     def add_line(self):
         self.ensure_diff_chunk()
-        self.current_chunk.add_line()
+        if self.current_chunk is not None:
+            self.current_chunk.add_line()
         self.added_count += 1
 
     def remove_line(self):
         self.ensure_diff_chunk()
-        self.current_chunk.remove_line()
+        if self.current_chunk is not None:
+            self.current_chunk.remove_line()
         self.removed_count += 1
 
     def context_line(self):
         self.ensure_context_chunk()
-        self.current_chunk.context_line()
+        if self.current_chunk is not None:
+            self.current_chunk.context_line()
 
     def finalize(self):
-        self.chunks.append(self.current_chunk)
+        if self.current_chunk is not None:
+            self.chunks.append(self.current_chunk)
         del self.current_chunk
         # Sanity check
         c = self.chunks[-1]
@@ -158,7 +166,7 @@ def parse_range(x):
 
 
 def parse_hunk_header(line):
-    parts = tuple(filter(None, line.split('@@', 2)))
+    parts: Tuple[str, ...] = tuple(filter(None, line.split('@@', 2)))
     linespec = parts[0].strip()
     title = ''
     if len(parts) == 2:
@@ -208,7 +216,7 @@ def parse_patch(raw):
 
 class Differ:
 
-    diff_executor = None
+    diff_executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
 
     def __init__(self):
         self.jmap = {}
@@ -223,7 +231,8 @@ class Differ:
     def __call__(self, context=3):
         global left_lines, right_lines
         ans = {}
-        executor = Differ.diff_executor
+        executor = self.diff_executor
+        assert executor is not None
         jobs = {executor.submit(run_diff, key, self.jmap[key], context): key for key in self.jobs}
         for future in concurrent.futures.as_completed(jobs):
             key = jobs[future]

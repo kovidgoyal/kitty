@@ -5,6 +5,7 @@
 import concurrent
 import os
 import re
+from typing import List, Optional
 
 from pygments import highlight  # type: ignore
 from pygments.formatter import Formatter  # type: ignore
@@ -35,11 +36,15 @@ class DiffFormatter(Formatter):
         for token, style in self.style:
             start = []
             end = []
+            fstart = fend = ''
             # a style item is a tuple in the following form:
             # colors are readily specified in hex: 'RRGGBB'
-            if style['color']:
-                start.append('38' + color_as_sgr(parse_sharp(style['color'])))
-                end.append('39')
+            col = style['color']
+            if col:
+                pc = parse_sharp(col)
+                if pc is not None:
+                    start.append('38' + color_as_sgr(pc))
+                    end.append('39')
             if style['bold']:
                 start.append('1')
                 end.append('22')
@@ -50,9 +55,9 @@ class DiffFormatter(Formatter):
                 start.append('4')
                 end.append('24')
             if start:
-                start = '\033[{}m'.format(';'.join(start))
-                end = '\033[{}m'.format(';'.join(end))
-            self.styles[token] = start or '', end or ''
+                fstart = '\033[{}m'.format(';'.join(start))
+                fend = '\033[{}m'.format(';'.join(end))
+            self.styles[token] = fstart, fend
 
     def format(self, tokensource, outfile):
         for ttype, value in tokensource:
@@ -76,7 +81,7 @@ class DiffFormatter(Formatter):
                 outfile.write(value)
 
 
-formatter = None
+formatter: Optional[DiffFormatter] = None
 
 
 def initialize_highlighter(style='default'):
@@ -102,8 +107,8 @@ split_pat = re.compile(r'(\033\[.*?m)')
 
 
 def highlight_line(line):
-    ans = []
-    current = None
+    ans: List[Segment] = []
+    current: Optional[Segment] = None
     pos = 0
     for x in split_pat.split(line):
         if x.startswith('\033'):
@@ -133,7 +138,6 @@ def highlight_collection(collection, aliases=None):
     jobs = {}
     ans = {}
     with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
-        highlight_collection.processes = executor._processes
         for path, item_type, other_path in collection:
             if item_type != 'rename':
                 for p in (path, other_path):
@@ -156,8 +160,9 @@ def main():
     # kitty +runpy "from kittens.diff.highlight import main; main()" file
     import sys
     initialize_highlighter()
-    with open(sys.argv[-1]) as f:
-        highlighted = highlight_data(f.read(), f.name, defaults.syntax_aliases)
-    if highlighted is None:
-        raise SystemExit('Unknown filetype: {}'.format(sys.argv[-1]))
-    print(highlighted)
+    if defaults is not None:
+        with open(sys.argv[-1]) as f:
+            highlighted = highlight_data(f.read(), f.name, defaults.syntax_aliases)
+        if highlighted is None:
+            raise SystemExit('Unknown filetype: {}'.format(sys.argv[-1]))
+        print(highlighted)

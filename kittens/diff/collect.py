@@ -8,7 +8,7 @@ from contextlib import suppress
 from functools import lru_cache
 from hashlib import md5
 from mimetypes import guess_type
-from typing import Dict
+from typing import Dict, List, Set
 
 path_name_map: Dict[str, str] = {}
 
@@ -20,11 +20,12 @@ class Segment:
     def __init__(self, start, start_code):
         self.start = start
         self.start_code = start_code
+        self.end = None
+        self.end_code = None
 
     def __repr__(self):
         return 'Segment(start={!r}, start_code={!r}, end={!r}, end_code={!r})'.format(
-                self.start, self.start_code, getattr(self, 'end', None), getattr(self, 'end_code', None)
-        )
+            self.start, self.start_code, self.end, self.end_code)
 
 
 class Collection:
@@ -81,8 +82,10 @@ class Collection:
 
 
 def collect_files(collection, left, right):
-    left_names, right_names = set(), set()
-    left_path_map, right_path_map = {}, {}
+    left_names: Set[str] = set()
+    right_names: Set[str] = set()
+    left_path_map: Dict[str, str] = {}
+    right_path_map: Dict[str, str] = {}
 
     def walk(base, names, pmap):
         for dirpath, dirnames, filenames in os.walk(base):
@@ -178,7 +181,7 @@ def create_collection(left, right):
     return collection
 
 
-highlight_data = {}
+highlight_data: Dict[str, List] = {}
 
 
 def set_highlight_data(data):

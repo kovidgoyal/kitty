@@ -13,6 +13,7 @@ from collections import defaultdict
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
+from typing import DefaultDict, List, Tuple
 
 from kitty.cli import CONFIG_HELP, parse_args
 from kitty.cli_stub import DiffCLIOptions
@@ -24,9 +25,10 @@ from .collect import (
     create_collection, data_for_path, lines_for_path, sanitize,
     set_highlight_data
 )
+from . import global_data
 from .config import init_config
 from .patch import Differ, set_diff_command, worker_processes
-from .render import ImageSupportWarning, LineRef, render_diff
+from .render import ImageSupportWarning, LineRef, Reference, render_diff
 from .search import BadRegex, Search
 from ..tui.handler import Handler
 from ..tui.images import ImageManager
@@ -186,7 +188,7 @@ class DiffHandler(Handler):
     def render_diff(self):
         self.diff_lines = tuple(render_diff(self.collection, self.diff_map, self.args, self.screen_size.cols, self.image_manager))
         self.margin_size = render_diff.margin_size
-        self.ref_path_map = defaultdict(list)
+        self.ref_path_map: DefaultDict[str, List[Tuple[int, Reference]]] = defaultdict(list)
         for i, l in enumerate(self.diff_lines):
             self.ref_path_map[l.ref.path].append((i, l.ref))
         self.max_scroll_pos = len(self.diff_lines) - self.num_lines
@@ -271,7 +273,7 @@ class DiffHandler(Handler):
 
     def init_terminal_state(self):
         self.cmd.set_line_wrapping(False)
-        self.cmd.set_window_title(main.title)
+        self.cmd.set_window_title(global_data.title)
         self.cmd.set_default_colors(
             fg=self.opts.foreground, bg=self.opts.background,
             cursor=self.opts.foreground, select_fg=self.opts.select_fg,
@@ -547,7 +549,7 @@ def main(args):
     if len(items) != 2:
         raise SystemExit('You must specify exactly two files/directories to compare')
     left, right = items
-    main.title = _('{} vs. {}').format(left, right)
+    global_data.title = _('{} vs. {}').format(left, right)
     if os.path.isdir(left) != os.path.isdir(right):
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
     opts = init_config(args)

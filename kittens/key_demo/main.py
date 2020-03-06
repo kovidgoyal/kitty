@@ -28,15 +28,15 @@ class KeysHandler(Handler):
             REPEAT: 'REPEAT',
             RELEASE: 'RELEASE'
         }[key_event.type]
-        mods = []
+        lmods = []
         for m, name in {
                 SHIFT: 'Shift',
                 ALT: 'Alt',
                 CTRL: 'Ctrl',
                 SUPER: 'Super'}.items():
             if key_event.mods & m:
-                mods.append(name)
-        mods = '+'.join(mods)
+                lmods.append(name)
+        mods = '+'.join(lmods)
         if mods:
             mods += '+'
         self.print('Key {}: {}{} [{}]'.format(etype, mods, key_event.key, encode_key_event(key_event)))

@@ -207,7 +207,7 @@ def render_block(text):
 def as_conf_file(all_options):
     ans = ['# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', '']
     a = ans.append
-    current_group = None
+    current_group: Optional[Group] = None
     num_open_folds = 0
     all_options = list(all_options)
 
@@ -311,9 +311,10 @@ def as_type_stub(
     all_options: Dict[str, Union[Option, List[Shortcut]]],
     special_types: Optional[Dict[str, str]] = None,
     preamble_lines: Union[Tuple[str, ...], List[str], Iterator[str]] = (),
-    extra_fields: Union[Tuple[Tuple[str, str], ...], List[Tuple[str, str]], Iterator[Tuple[str, str]]] = ()
+    extra_fields: Union[Tuple[Tuple[str, str], ...], List[Tuple[str, str]], Iterator[Tuple[str, str]]] = (),
+    class_name: str = 'Options'
 ) -> str:
-    ans = ['import typing\n'] + list(preamble_lines) + ['', 'class Options:']
+    ans = ['import typing\n'] + list(preamble_lines) + ['', 'class {}:'.format(class_name)]
     imports: Set[Tuple[str, str]] = set()
     overrides = special_types or {}
     for name, val in all_options.items():
@@ -328,14 +329,14 @@ def as_type_stub(
         ans.append('    {}: {}'.format(field_name, type_def))
     ans.append('    def __iter__(self): pass')
     ans.append('    def __len__(self): pass')
-    return '\n'.join(ans)
+    return '\n'.join(ans) + '\n\n\n'
 
 
 def save_type_stub(text: str, fpath: str) -> None:
     import os
-    with open(fpath + 'i', 'w') as f:
-        print(
-            '# Update this file by running: python {}'.format(os.path.relpath(os.path.abspath(fpath))),
-            file=f
-        )
-        f.write(text)
+    fpath += 'i'
+    preamble = '# Update this file by running: python {}\n\n'.format(os.path.relpath(os.path.abspath(fpath)))
+    existing = open(fpath).read()
+    current = preamble + text
+    if existing != current:
+        open(fpath, 'w').write(current)

@@ -3,18 +3,20 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+from typing import Any, Dict, Optional, Type
 
-from kitty.conf.utils import (
-    init_config as _init_config, key_func, load_config as _load_config, merge_dicts,
-    parse_config_base, parse_kittens_key, resolve_config
-)
 from kitty.conf.definition import config_lines
+from kitty.conf.utils import (
+    init_config as _init_config, key_func, load_config as _load_config,
+    merge_dicts, parse_config_base, parse_kittens_key, resolve_config
+)
 from kitty.constants import config_dir
+from kitty.options_stub import DiffOptions
 from kitty.rgb import color_as_sgr
 
-from .config_data import type_convert, all_options
+from .config_data import all_options, type_convert
 
-defaults = None
+defaults: Optional[DiffOptions] = None
 
 formats = {
     'title': '',
@@ -79,13 +81,15 @@ def parse_start_search(func, rest):
 
 def special_handling(key, val, ans):
     if key == 'map':
-        action, *key_def = parse_kittens_key(val, args_funcs)
-        ans['key_definitions'][tuple(key_def)] = action
-        return True
+        x = parse_kittens_key(val, args_funcs)
+        if x is not None:
+            action, *key_def = x
+            ans['key_definitions'][tuple(key_def)] = action
+            return True
 
 
 def parse_config(lines, check_keys=True):
-    ans = {'key_definitions': {}}
+    ans: Dict[str, Any] = {'key_definitions': {}}
     parse_config_base(
         lines,
         defaults,
@@ -112,7 +116,9 @@ def parse_defaults(lines, check_keys=False):
     return parse_config(lines, check_keys)
 
 
-Options, defaults = _init_config(config_lines(all_options), parse_defaults)
+x = _init_config(config_lines(all_options), parse_defaults)
+Options: Type[DiffOptions] = x[0]
+defaults = x[1]
 
 
 def load_config(*paths, overrides=None):

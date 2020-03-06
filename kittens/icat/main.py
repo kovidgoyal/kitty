@@ -9,14 +9,17 @@ import signal
 import sys
 import zlib
 from base64 import standard_b64encode
-from collections import namedtuple
+from functools import lru_cache
 from math import ceil
 from tempfile import NamedTemporaryFile
+from typing import Dict, List, NamedTuple, Optional, Union
 
 from kitty.cli import parse_args
 from kitty.cli_stub import IcatCLIOptions
 from kitty.constants import appname
-from kitty.utils import TTYIO, fit_image, screen_size_function
+from kitty.utils import (
+    TTYIO, ScreenSize, ScreenSizeGetter, fit_image, screen_size_function
+)
 
 from ..tui.images import (
     ConvertFailed, NoImageMagick, OpenFailed, convert, fsenc, identify
@@ -104,27 +107,25 @@ colors. For example, --1 evaluates as -1,073,741,825.
 '''
 
 
-screen_size = None
+screen_size: Optional[ScreenSizeGetter] = None
+can_transfer_with_files = False
 
 
-def get_screen_size_function():
+def get_screen_size_function() -> ScreenSizeGetter:
     global screen_size
     if screen_size is None:
         screen_size = screen_size_function()
     return screen_size
 
 
-def get_screen_size():
+def get_screen_size() -> ScreenSize:
     screen_size = get_screen_size_function()
     return screen_size()
 
 
-def options_spec():
-    if not hasattr(options_spec, 'ans'):
-        options_spec.ans = OPTIONS.format(
-            appname='{}-icat'.format(appname),
-        )
-    return options_spec.ans
+@lru_cache(maxsize=2)
+def options_spec() -> str:
+    return OPTIONS.format(appname='{}-icat'.format(appname))
 
 
 def write_gr_cmd(cmd, payload=None):
@@ -196,7 +197,7 @@ def show(outfile, width, height, zindex, fmt, transmit_mode='t', align='center',
         set_cursor_for_place(place, cmd, width, height, align)
     else:
         set_cursor(cmd, width, height, align)
-    if detect_support.has_files:
+    if can_transfer_with_files:
         cmd['t'] = transmit_mode
         write_gr_cmd(cmd, standard_b64encode(os.path.abspath(outfile).encode(fsenc)))
     else:
@@ -250,20 +251,21 @@ def scan(d):
 
 
 def detect_support(wait_for=10, silent=False):
+    global can_transfer_with_files
     if not silent:
         print('Checking for graphics ({}s max. wait)...'.format(wait_for), end='\r')
     sys.stdout.flush()
     try:
         received = b''
-        responses = {}
+        responses: Dict[int, bool] = {}
 
         def parse_responses():
             for m in re.finditer(b'\033_Gi=([1|2]);(.+?)\033\\\\', received):
                 iid = m.group(1)
                 if iid in (b'1', b'2'):
-                    iid = int(iid.decode('ascii'))
-                    if iid not in responses:
-                        responses[iid] = m.group(2) == b'OK'
+                    iid_ = int(iid.decode('ascii'))
+                    if iid_ not in responses:
+                        responses[iid_] = m.group(2) == b'OK'
 
         def more_needed(data):
             nonlocal received
@@ -280,16 +282,24 @@ def detect_support(wait_for=10, silent=False):
     finally:
         if not silent:
             sys.stdout.buffer.write(b'\033[J'), sys.stdout.flush()
-    detect_support.has_files = bool(responses.get(2))
+    can_transfer_with_files = bool(responses.get(2))
     return responses.get(1, False)
 
 
-def parse_place(raw):
+class Place(NamedTuple):
+    width: int
+    height: int
+    left: int
+    top: int
+
+
+def parse_place(raw: str) -> Optional[Place]:
     if raw:
         area, pos = raw.split('@', 1)
         w, h = map(int, area.split('x'))
         l, t = map(int, pos.split('x'))
-        return namedtuple('Place', 'width height left top')(w, h, l, t)
+        return Place(w, h, l, t)
+    return None
 
 
 help_text = (
@@ -344,10 +354,12 @@ def process_single_item(item, args, url_pat=None, maybe_dir=True):
 
 
 def main(args=sys.argv):
-    args, items = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname), result_class=IcatCLIOptions)
+    global can_transfer_with_files
+    args, items_ = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname), result_class=IcatCLIOptions)
+    items: List[Union[str, bytes]] = list(items)
 
     if args.print_window_size:
-        screen_size_function.ans = None
+        screen_size_function.cache_clear()
         with open(os.ctermid()) as tty:
             ss = screen_size_function(tty)()
         print('{}x{}'.format(ss.width, ss.height), end='')
@@ -384,16 +396,16 @@ def main(args=sys.argv):
     if args.detect_support:
         if not detect_support(wait_for=args.detection_timeout, silent=True):
             raise SystemExit(1)
-        print('file' if detect_support.has_files else 'stream', end='', file=sys.stderr)
+        print('file' if can_transfer_with_files else 'stream', end='', file=sys.stderr)
         return
     if args.transfer_mode == 'detect':
         if not detect_support(wait_for=args.detection_timeout, silent=args.silent):
             raise SystemExit('This terminal emulator does not support the graphics protocol, use a terminal emulator such as kitty that does support it')
     else:
-        detect_support.has_files = args.transfer_mode == 'file'
+        can_transfer_with_files = args.transfer_mode == 'file'
     errors = []
     if args.clear:
-        sys.stdout.buffer.write(clear_images_on_screen(delete_data=True))
+        sys.stdout.write(clear_images_on_screen(delete_data=True))
         if not items:
             return
     if not items:

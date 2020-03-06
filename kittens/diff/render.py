@@ -3,31 +3,32 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import warnings
+from functools import lru_cache
 from gettext import gettext as _
 from itertools import repeat, zip_longest
 from math import ceil
+from typing import Callable, Iterable, List, Optional
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 
-from ..tui.images import can_display_images
 from .collect import (
     Segment, data_for_path, highlights_for_path, is_image, lines_for_path,
     path_name_map, sanitize
 )
 from .config import formats
 from .diff_speedup import split_with_highlights as _split_with_highlights
+from ..tui.images import can_display_images
 
 
 class ImageSupportWarning(Warning):
     pass
 
 
+@lru_cache(maxsize=2)
 def images_supported():
-    ans = getattr(images_supported, 'ans', None)
-    if ans is None:
-        images_supported.ans = ans = can_display_images()
-        if not ans:
-            warnings.warn('ImageMagick not found images cannot be displayed', ImageSupportWarning)
+    ans = can_display_images()
+    if not ans:
+        warnings.warn('ImageMagick not found images cannot be displayed', ImageSupportWarning)
     return ans
 
 
@@ -44,6 +45,8 @@ class Ref:
 class LineRef(Ref):
 
     __slots__ = ('src_line_number', 'wrapped_line_idx')
+    src_line_number: int
+    wrapped_line_idx: int
 
     def __init__(self, sln, wli=0):
         object.__setattr__(self, 'src_line_number', sln)
@@ -53,6 +56,8 @@ class LineRef(Ref):
 class Reference(Ref):
 
     __slots__ = ('path', 'extra')
+    path: str
+    extra: Optional[LineRef]
 
     def __init__(self, path, extra=None):
         object.__setattr__(self, 'path', path)
@@ -111,8 +116,8 @@ def place_in(text, sz):
     return fill_in(fit_in(text, sz), sz)
 
 
-def format_func(which):
-    def formatted(text):
+def format_func(which: str) -> Callable[[str], str]:
+    def formatted(text: str) -> str:
         fmt = formats[which]
         return '\x1b[' + fmt + 'm' + text + '\x1b[0m'
     formatted.__name__ = which + '_format'
@@ -226,7 +231,7 @@ class DiffData:
         return []
 
 
-def render_diff_line(number, text, ltype, margin_size, available_cols):
+def render_diff_line(number, text, ltype, margin_size, available_cols) -> str:
     margin = margin_bg_map[ltype](place_in(number, margin_size))
     content = text_bg_map[ltype](fill_in(text or '', available_cols))
     return margin + content
@@ -292,7 +297,8 @@ def lines_for_chunk(data, hunk_num, chunk, chunk_num):
     else:
         common = min(chunk.left_count, chunk.right_count)
         for i in range(max(chunk.left_count, chunk.right_count)):
-            ll, rl = [], []
+            ll: List[str] = []
+            rl: List[str] = []
             if i < chunk.left_count:
                 rln = ref_ln = chunk.left_start + i
                 ll.extend(render_half_line(
@@ -416,7 +422,8 @@ def render_image(path, is_left, available_cols, margin_size, image_manager):
 
 def image_lines(left_path, right_path, columns, margin_size, image_manager):
     available_cols = columns // 2 - margin_size
-    left_lines, right_lines = iter(()), iter(())
+    left_lines: Iterable[str] = iter(())
+    right_lines: Iterable[str] = iter(())
     if left_path is not None:
         left_lines = render_image(left_path, True, available_cols, margin_size, image_manager)
     if right_path is not None:
@@ -439,52 +446,59 @@ def image_lines(left_path, right_path, columns, margin_size, image_manager):
         is_change_start = False
 
 
-def render_diff(collection, diff_map, args, columns, image_manager):
-    largest_line_number = 0
-    for path, item_type, other_path in collection:
-        if item_type == 'diff':
-            patch = diff_map.get(path)
-            if patch is not None:
-                largest_line_number = max(largest_line_number, patch.largest_line_number)
+class RenderDiff:
 
-    margin_size = render_diff.margin_size = max(3, len(str(largest_line_number)) + 1)
-    last_item_num = len(collection) - 1
+    margin_size: int = 0
 
-    for i, (path, item_type, other_path) in enumerate(collection):
-        item_ref = Reference(path)
-        is_binary = isinstance(data_for_path(path), bytes)
-        if not is_binary and item_type == 'diff' and isinstance(data_for_path(other_path), bytes):
-            is_binary = True
-        is_img = is_binary and (is_image(path) or is_image(other_path)) and images_supported()
-        yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref, False)
-        if item_type == 'diff':
-            if is_binary:
-                if is_img:
-                    ans = image_lines(path, other_path, columns, margin_size, image_manager)
+    def __call__(self, collection, diff_map, args, columns, image_manager):
+        largest_line_number = 0
+        for path, item_type, other_path in collection:
+            if item_type == 'diff':
+                patch = diff_map.get(path)
+                if patch is not None:
+                    largest_line_number = max(largest_line_number, patch.largest_line_number)
+
+        margin_size = self.margin_size = max(3, len(str(largest_line_number)) + 1)
+        last_item_num = len(collection) - 1
+
+        for i, (path, item_type, other_path) in enumerate(collection):
+            item_ref = Reference(path)
+            is_binary = isinstance(data_for_path(path), bytes)
+            if not is_binary and item_type == 'diff' and isinstance(data_for_path(other_path), bytes):
+                is_binary = True
+            is_img = is_binary and (is_image(path) or is_image(other_path)) and images_supported()
+            yield from yield_lines_from(title_lines(path, other_path, args, columns, margin_size), item_ref, False)
+            if item_type == 'diff':
+                if is_binary:
+                    if is_img:
+                        ans = image_lines(path, other_path, columns, margin_size, image_manager)
+                    else:
+                        ans = yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
                 else:
-                    ans = yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
-            else:
-                ans = lines_for_diff(path, other_path, diff_map[path], args, columns, margin_size)
-        elif item_type == 'add':
-            if is_binary:
-                if is_img:
-                    ans = image_lines(None, path, columns, margin_size, image_manager)
+                    ans = lines_for_diff(path, other_path, diff_map[path], args, columns, margin_size)
+            elif item_type == 'add':
+                if is_binary:
+                    if is_img:
+                        ans = image_lines(None, path, columns, margin_size, image_manager)
+                    else:
+                        ans = yield_lines_from(binary_lines(None, path, columns, margin_size), item_ref)
                 else:
-                    ans = yield_lines_from(binary_lines(None, path, columns, margin_size), item_ref)
-            else:
-                ans = all_lines(path, args, columns, margin_size, is_add=True)
-        elif item_type == 'removal':
-            if is_binary:
-                if is_img:
-                    ans = image_lines(path, None, columns, margin_size, image_manager)
+                    ans = all_lines(path, args, columns, margin_size, is_add=True)
+            elif item_type == 'removal':
+                if is_binary:
+                    if is_img:
+                        ans = image_lines(path, None, columns, margin_size, image_manager)
+                    else:
+                        ans = yield_lines_from(binary_lines(path, None, columns, margin_size), item_ref)
                 else:
-                    ans = yield_lines_from(binary_lines(path, None, columns, margin_size), item_ref)
+                    ans = all_lines(path, args, columns, margin_size, is_add=False)
+            elif item_type == 'rename':
+                ans = yield_lines_from(rename_lines(path, other_path, args, columns, margin_size), item_ref)
             else:
-                ans = all_lines(path, args, columns, margin_size, is_add=False)
-        elif item_type == 'rename':
-            ans = yield_lines_from(rename_lines(path, other_path, args, columns, margin_size), item_ref)
-        else:
-            raise ValueError('Unsupported item type: {}'.format(item_type))
-        yield from ans
-        if i < last_item_num:
-            yield Line('', item_ref)
+                raise ValueError('Unsupported item type: {}'.format(item_type))
+            yield from ans
+            if i < last_item_num:
+                yield Line('', item_ref)
+
+
+render_diff = RenderDiff()

@@ -10,11 +10,10 @@ import os
 import re
 import string
 import sys
-from collections import namedtuple
 from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
-from typing import Any, Dict, List, Optional, cast
+from typing import Any, Dict, List, NamedTuple, Optional, cast
 
 from .constants import (
     appname, is_macos, is_wayland, shell_path, supports_primary_selection
@@ -81,7 +80,13 @@ def parse_color_set(raw):
             continue
 
 
-ScreenSize = namedtuple('ScreenSize', 'rows cols width height cell_width cell_height')
+class ScreenSize(NamedTuple):
+    rows: int
+    cols: int
+    width: int
+    height: int
+    cell_width: int
+    cell_height: int
 
 
 class ScreenSizeGetter:

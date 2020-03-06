@@ -9,11 +9,12 @@ import sys
 from functools import lru_cache
 from gettext import gettext as _
 from itertools import repeat
+from typing import Callable, Dict, List, Optional, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import HintsCLIOptions
 from kitty.fast_data_types import set_clipboard_string
-from kitty.key_encoding import key_defs as K, backspace_key, enter_key
+from kitty.key_encoding import backspace_key, enter_key, key_defs as K
 from kitty.utils import screen_size_function
 
 from ..tui.handler import Handler, result_handler
@@ -199,7 +200,7 @@ def regex_finditer(pat, minimum_match_length, text):
 
 closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>', '*': '*', '"': '"', "'": "'"}
 opening_brackets = ''.join(closing_bracket_map)
-postprocessor_map = {}
+postprocessor_map: Dict[str, Callable[[str, int, int], Tuple[int, int]]] = {}
 
 
 def postprocessor(func):
@@ -304,8 +305,8 @@ def functions_for(args):
     return pattern, post_processors
 
 
-def convert_text(text, cols):
-    lines = []
+def convert_text(text: str, cols: int) -> str:
+    lines: List[str] = []
     empty_line = '\0' * cols
     for full_line in text.split('\n'):
         if full_line:
@@ -574,10 +575,11 @@ def handle_result(args, data, target_window_id, boss):
     matches, groupdicts = [], []
     for m, g in zip(data['match'], data['groupdicts']):
         if m:
-            matches.append(m), groupdicts.append(g)
+            matches.append(m)
+            groupdicts.append(g)
     joiner = data['multiple_joiner']
     try:
-        is_int = int(joiner)
+        is_int: Optional[int] = int(joiner)
     except Exception:
         is_int = None
     text_type = data['type']

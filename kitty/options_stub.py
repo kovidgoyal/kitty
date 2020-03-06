@@ -7,6 +7,9 @@ class Options:
     pass
 
 
+DiffOptions = Options
+
+
 def generate_stub():
     from .config_data import all_options
     from .conf.definition import as_type_stub, save_type_stub
@@ -26,6 +29,10 @@ def generate_stub():
             ('sequence_map', 'SequenceMap'),
         )
     )
+
+    from kittens.diff.config_data import all_options
+    text += as_type_stub(all_options, class_name='DiffOptions')
+
     save_type_stub(text, __file__)
 
 
