@@ -18,12 +18,16 @@ from collections import namedtuple
 from contextlib import suppress
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Iterator
+from typing import (
+    Callable, Dict, Iterator, List, NamedTuple, Optional, Sequence, Tuple,
+    Union
+)
+
+from glfw import glfw
 
 if sys.version_info[:2] < (3, 6):
     raise SystemExit('kitty requires python >= 3.6')
 base = os.path.dirname(os.path.abspath(__file__))
-glfw = runpy.run_path('glfw/glfw.py')
 verbose = False
 del sys.path[0]
 build_dir = 'build'
@@ -563,7 +567,7 @@ def compile_glfw(compilation_database):
     modules = 'cocoa' if is_macos else 'x11 wayland'
     for module in modules.split():
         try:
-            genv = glfw['init_env'](env, pkg_config, at_least_version, test_compile, module)
+            genv = glfw.init_env(env, pkg_config, at_least_version, test_compile, module)
         except SystemExit as err:
             if module != 'wayland':
                 raise
@@ -574,7 +578,7 @@ def compile_glfw(compilation_database):
         all_headers = [os.path.join('glfw', x) for x in genv.all_headers]
         if module == 'wayland':
             try:
-                glfw['build_wayland_protocols'](genv, Command, parallel_run, emphasis, newer, 'glfw')
+                glfw.build_wayland_protocols(genv, Command, parallel_run, emphasis, newer, 'glfw')
             except SystemExit as err:
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
