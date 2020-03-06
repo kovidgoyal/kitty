@@ -23,13 +23,14 @@ from typing import (
     Union
 )
 
-from glfw import glfw
-
 if sys.version_info[:2] < (3, 6):
     raise SystemExit('kitty requires python >= 3.6')
 base = os.path.dirname(os.path.abspath(__file__))
-verbose = False
+sys.path.insert(0, base)
+from glfw import glfw  # noqa
 del sys.path[0]
+
+verbose = False
 build_dir = 'build'
 constants = os.path.join('kitty', 'constants.py')
 with open(constants, 'rb') as f:
