@@ -494,6 +494,7 @@ def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: Optional
         if state is NORMAL:
             if arg.startswith('-'):
                 if arg == '--':
+                    leftover_args = list(dargs)
                     break
                 parts = arg.split('=', 1)
                 needs_arg = oc.needs_arg(parts[0])
