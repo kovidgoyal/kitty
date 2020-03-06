@@ -12,7 +12,9 @@ from functools import partial
 from html.entities import html5
 from itertools import groupby
 from operator import itemgetter
-from typing import DefaultDict, Dict, Set
+from typing import (
+    DefaultDict, Dict, Generator, Iterable, List, Optional, Set, Tuple, Union
+)
 from urllib.request import urlopen
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
@@ -44,8 +46,8 @@ def get_data(fname, folder='UCD'):
 
 # Map of class names to set of codepoints in class
 class_maps: Dict[str, Set[int]] = {}
-all_symbols = set()
-name_map = {}
+all_symbols: Set[int] = set()
+name_map: Dict[int, str] = {}
 word_search_map: DefaultDict[str, Set[int]] = defaultdict(set)
 zwj = 0x200d
 marks = set(emoji_skin_tone_modifiers) | {zwj}
@@ -60,7 +62,7 @@ def parse_ucd():
         if len(w) > 1:
             word_search_map[w.lower()].add(c)
 
-    first = None
+    first: Optional[int] = None
     for word, c in html5.items():
         if len(c) == 1:
             add_word(word.rstrip(';'), ord(c))
@@ -78,7 +80,7 @@ def parse_ucd():
         category = parts[2]
         s = class_maps.setdefault(category, set())
         desc = parts[1]
-        codepoints = (codepoint,)
+        codepoints: Union[Tuple[int, ...], Iterable[int]] = (codepoint,)
         if first is None:
             if desc.endswith(', First>'):
                 first = codepoint
@@ -104,8 +106,8 @@ def split_two(line):
     spec, rest = line.split(';', 1)
     spec, rest = spec.strip(), rest.strip().split(' ', 1)[0].strip()
     if '..' in spec:
-        chars = tuple(map(lambda x: int(x, 16), filter(None, spec.split('.'))))
-        chars = set(range(chars[0], chars[1] + 1))
+        chars_ = tuple(map(lambda x: int(x, 16), filter(None, spec.split('.'))))
+        chars = set(range(chars_[0], chars_[1] + 1))
     else:
         chars = {int(spec, 16)}
     return chars, rest
@@ -137,7 +139,7 @@ ambiguous: Set[int] = set()
 
 def parse_eaw():
     global doublewidth, ambiguous
-    seen = set()
+    seen: Set[int] = set()
     for line in get_data('ucd/EastAsianWidth.txt'):
         chars, eaw = split_two(line)
         if eaw == 'A':
@@ -153,7 +155,7 @@ def parse_eaw():
     doublewidth |= set(range(0x30000, 0x3FFFD + 1)) - seen
 
 
-def get_ranges(items):
+def get_ranges(items: List[int]) -> Generator[Union[int, Tuple[int, int]], None, None]:
     items.sort()
     for k, g in groupby(enumerate(items), lambda m: m[0]-m[1]):
         group = tuple(map(itemgetter(1), g))
@@ -221,7 +223,7 @@ def gen_emoji():
 
 def category_test(name, p, classes, comment, static=False, extra_chars=frozenset(), exclude=frozenset()):
     static = 'static inline ' if static else ''
-    chars = set()
+    chars: Set[int] = set()
     for c in classes:
         chars |= class_maps[c]
     chars |= extra_chars
@@ -252,7 +254,7 @@ def codepoint_to_mark_map(p, mark_map):
 
 
 def classes_to_regex(classes, exclude=''):
-    chars = set()
+    chars: Set[int] = set()
     for c in classes:
         chars |= class_maps[c]
     for c in map(ord, exclude):
@@ -300,7 +302,9 @@ def gen_ucd():
         p('}\n')
         with open('kitty/unicode-data.h') as f:
             unicode_data = f.read()
-        expected = int(re.search(r'^#define VS15 (\d+)', unicode_data, re.M).group(1))
+        m = re.search(r'^#define VS15 (\d+)', unicode_data, re.M)
+        if m is not None:
+            expected = int(m.group(1))
         if rmap[0xfe0e] != expected:
             raise ValueError('The mark for 0xfe0e has changed, you have to update VS15 to {} and VS16 to {} in unicode-data.h'.format(
                 rmap[0xfe0e], rmap[0xfe0f]
@@ -364,7 +368,7 @@ def gen_names():
 
         # The trie
         p(f'typedef struct {{ uint32_t children_offset; uint32_t match_offset; }} word_trie;\n')
-        all_trie_nodes = []
+        all_trie_nodes: List['TrieNode'] = []
 
         class TrieNode:
 
@@ -411,7 +415,7 @@ def gen_names():
 
 
 def gen_wcwidth():
-    seen = set()
+    seen: Set[int] = set()
 
     def add(p, comment, chars_, ret):
         chars = chars_ - seen

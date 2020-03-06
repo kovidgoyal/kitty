@@ -4,6 +4,7 @@
 
 import sys
 from kitty.constants import is_macos
+from typing import Sequence
 
 if is_macos:
     from .core_text import list_fonts
@@ -19,7 +20,7 @@ def create_family_groups(monospaced=True):
     return g
 
 
-def main(argv):
+def main(argv: Sequence[str]) -> None:
     psnames = '--psnames' in argv
     isatty = sys.stdout.isatty()
     groups = create_family_groups()

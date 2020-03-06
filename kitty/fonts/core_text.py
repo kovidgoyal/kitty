@@ -3,9 +3,12 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
+from typing import Generator
 
 from kitty.fast_data_types import coretext_all_fonts
 from kitty.utils import log_error
+
+from . import ListedFont
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -32,7 +35,7 @@ def all_fonts_map():
     return ans
 
 
-def list_fonts():
+def list_fonts() -> Generator[ListedFont, None, None]:
     for fd in coretext_all_fonts():
         f = fd['family']
         if f:

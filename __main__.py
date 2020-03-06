@@ -13,13 +13,13 @@ def icat(args):
 
 
 def list_fonts(args):
-    from kitty.fonts.list import main
-    main(args)
+    from kitty.fonts.list import main as list_main
+    list_main(args)
 
 
 def remote_control(args):
-    from kitty.remote_control import main
-    main(args)
+    from kitty.remote_control import main as rc_main
+    rc_main(args)
 
 
 def runpy(args):
@@ -35,8 +35,8 @@ def hold(args):
 
 
 def complete(args):
-    from kitty.complete import main
-    main(args[1:], entry_points, namespaced_entry_points)
+    from kitty.complete import main as complete_main
+    complete_main(args[1:], entry_points, namespaced_entry_points)
 
 
 def launch(args):
@@ -92,10 +92,10 @@ def setup_openssl_environment():
     if 'SSL_CERT_FILE' not in os.environ and 'SSL_CERT_DIR' not in os.environ:
         if os.access('/etc/pki/tls/certs/ca-bundle.crt', os.R_OK):
             os.environ['SSL_CERT_FILE'] = '/etc/pki/tls/certs/ca-bundle.crt'
-            sys.kitty_ssl_env_var = 'SSL_CERT_FILE'
+            setattr(sys, 'kitty_ssl_env_var', 'SSL_CERT_FILE')
         elif os.path.isdir('/etc/ssl/certs'):
             os.environ['SSL_CERT_DIR'] = '/etc/ssl/certs'
-            sys.kitty_ssl_env_var = 'SSL_CERT_DIR'
+            setattr(sys, 'kitty_ssl_env_var', 'SSL_CERT_DIR')
 
 
 def main():
@@ -109,8 +109,8 @@ def main():
         elif first_arg.startswith('+'):
             namespaced(['+', first_arg[1:]] + sys.argv[2:])
         else:
-            from kitty.main import main
-            main()
+            from kitty.main import main as kitty_main
+            kitty_main()
     else:
         func(sys.argv[1:])
 

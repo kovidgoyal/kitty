@@ -127,16 +127,16 @@ def screen_manipulate_title_stack(op, which):
     write(CSI + '%d;%dt' % (op, which))
 
 
-def report_device_attributes(mode, char):
+def report_device_attributes(mode: int, char: int) -> None:
     x = CSI
     if char:
-        x += ord(char)
+        x += chr(char)
     if mode:
         x += str(mode)
     write(CSI + x + 'c')
 
 
-def write_osc(code, string=''):
+def write_osc(code: int, string='') -> None:
     if string:
         string = ';' + string
     write(OSC + str(code) + string + '\x07')

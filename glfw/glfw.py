@@ -46,8 +46,8 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
 
     elif module == 'cocoa':
         ans.cppflags.append('-DGL_SILENCE_DEPRECATION')
-        for f in 'Cocoa IOKit CoreFoundation CoreVideo'.split():
-            ans.ldpaths.extend(('-framework', f))
+        for f_ in 'Cocoa IOKit CoreFoundation CoreVideo'.split():
+            ans.ldpaths.extend(('-framework', f_))
 
     elif module == 'wayland':
         at_least_version('wayland-protocols', *sinfo['wayland_protocols'])

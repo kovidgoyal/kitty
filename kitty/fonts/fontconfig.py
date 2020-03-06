@@ -4,11 +4,14 @@
 
 import re
 from functools import lru_cache
+from typing import Generator
 
 from kitty.fast_data_types import (
-    FC_SLANT_ITALIC, FC_SLANT_ROMAN, FC_WEIGHT_BOLD, FC_WEIGHT_REGULAR,
-    fc_list, fc_match as fc_match_impl, FC_DUAL, FC_MONO
+    FC_DUAL, FC_MONO, FC_SLANT_ITALIC, FC_SLANT_ROMAN, FC_WEIGHT_BOLD,
+    FC_WEIGHT_REGULAR, fc_list, fc_match as fc_match_impl
 )
+
+from . import ListedFont
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -39,7 +42,7 @@ def all_fonts_map(monospaced=True):
     return create_font_map(ans)
 
 
-def list_fonts():
+def list_fonts() -> Generator[ListedFont, None, None]:
     for fd in fc_list():
         f = fd.get('family')
         if f:
