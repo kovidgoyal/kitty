@@ -563,7 +563,7 @@ def compile_glfw(compilation_database):
     modules = 'cocoa' if is_macos else 'x11 wayland'
     for module in modules.split():
         try:
-            genv = glfw.init_env(env, pkg_config, at_least_version, test_compile, module)
+            genv = glfw['init_env'](env, pkg_config, at_least_version, test_compile, module)
         except SystemExit as err:
             if module != 'wayland':
                 raise
@@ -574,7 +574,7 @@ def compile_glfw(compilation_database):
         all_headers = [os.path.join('glfw', x) for x in genv.all_headers]
         if module == 'wayland':
             try:
-                glfw.build_wayland_protocols(genv, Command, parallel_run, emphasis, newer, 'glfw')
+                glfw['build_wayland_protocols'](genv, Command, parallel_run, emphasis, newer, 'glfw')
             except SystemExit as err:
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)
