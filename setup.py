@@ -4,7 +4,6 @@
 
 import argparse
 import glob
-import importlib
 import json
 import os
 import re
@@ -19,13 +18,12 @@ from collections import namedtuple
 from contextlib import suppress
 from functools import partial
 from pathlib import Path
-from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
+from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union, Iterator
 
 if sys.version_info[:2] < (3, 6):
     raise SystemExit('kitty requires python >= 3.6')
 base = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, 'glfw')
-glfw = importlib.import_module('glfw')
+glfw = runpy.run_path('glfw/glfw.py')
 verbose = False
 del sys.path[0]
 build_dir = 'build'
@@ -349,7 +347,7 @@ def get_vcs_rev_defines():
     return ans
 
 
-SPECIAL_SOURCES = {
+SPECIAL_SOURCES: Dict[str, Tuple[str, Union[List[str], Callable[[], Iterator[str]]]]] = {
     'kitty/parser_dump.c': ('kitty/parser.c', ['DUMP_COMMANDS']),
     'kitty/data-types.c': ('kitty/data-types.c', get_vcs_rev_defines),
 }
@@ -602,7 +600,13 @@ def compile_kittens(compilation_database):
     def list_files(q):
         return sorted(glob.glob(q))
 
-    def files(kitten, output, extra_headers=(), extra_sources=(), filter_sources=None):
+    def files(
+            kitten: str,
+            output: str,
+            extra_headers: Sequence[str] = (),
+            extra_sources: Sequence[str] = (),
+            filter_sources: Optional[Callable[[str], bool]] = None
+    ) -> Tuple[List[str], List[str], str]:
         sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('kittens', kitten, '*.c'))))
         headers = list_files(os.path.join('kittens', kitten, '*.h')) + list(extra_headers)
         return (sources, headers, 'kittens/{}/{}'.format(kitten, output))
@@ -637,7 +641,7 @@ def safe_makedirs(path):
 def build_launcher(args, launcher_dir='.', bundle_type='source'):
     cflags = '-Wall -Werror -fpie'.split()
     cppflags = []
-    libs = []
+    libs: List[str] = []
     if args.profile or args.sanitize:
         if args.sanitize:
             cflags.append('-g3')
@@ -726,9 +730,13 @@ def compile_python(base_path):
             if f.rpartition('.')[-1] in ('pyc', 'pyo'):
                 os.remove(os.path.join(root, f))
     for optimize in (0, 1, 2):
+        try:
+            kw = {'invalidation_mode': py_compile.PycInvalidationMode.UNCHECKED_HASH}
+        except AttributeError:
+            kw = {}
         compileall.compile_dir(
             base_path, ddir='', force=True, optimize=optimize, quiet=1,
-            workers=num_workers, invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH
+            workers=num_workers, **kw  # type: ignore
         )
 
 
