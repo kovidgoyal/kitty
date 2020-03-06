@@ -38,9 +38,16 @@ from .utils import (
     log_error, open_url, parse_address_spec, remove_socket_file, safe_print,
     set_primary_selection, single_instance, startup_notification_handler
 )
+from .window import Window
 
 
-def listen_on(spec):
+def notification_activated(identifier: str) -> None:
+    if identifier == 'new-version':
+        from .update_check import notification_activated
+        notification_activated()
+
+
+def listen_on(spec: str) -> int:
     import socket
     family, address, socket_path = parse_address_spec(spec)
     s = socket.socket(family)
@@ -50,8 +57,8 @@ def listen_on(spec):
     return s.fileno()
 
 
-def data_for_at(w, arg, add_wrap_markers=False):
-    def as_text(**kw):
+def data_for_at(w: Window, arg: str, add_wrap_markers: bool = False) -> str:
+    def as_text(**kw) -> str:
         kw['add_wrap_markers'] = add_wrap_markers
         return w.as_text(**kw)
 
@@ -143,7 +150,7 @@ class Boss:
                     change_os_window_state(args.start_as)
         if is_macos:
             from .fast_data_types import cocoa_set_notification_activated_callback
-            cocoa_set_notification_activated_callback(self.notification_activated)
+            cocoa_set_notification_activated_callback(notification_activated)
 
     def add_os_window(self, startup_session=None, os_window_id=None, wclass=None, wname=None, opts_for_size=None, startup_id=None):
         if os_window_id is None:
@@ -1140,11 +1147,6 @@ class Boss:
                     process_current_release(raw)
                 except Exception as e:
                     log_error('Failed to process update check data {!r}, with error: {}'.format(raw, e))
-
-    def notification_activated(self, identifier):
-        if identifier == 'new-version':
-            from .update_check import notification_activated
-            notification_activated()
 
     def dbus_notification_callback(self, activated, *args):
         from .notify import dbus_notification_created, dbus_notification_activated

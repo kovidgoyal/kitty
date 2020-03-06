@@ -15,10 +15,11 @@ import subprocess
 import sys
 import sysconfig
 import time
-from functools import partial
 from collections import namedtuple
 from contextlib import suppress
+from functools import partial
 from pathlib import Path
+from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 if sys.version_info[:2] < (3, 6):
     raise SystemExit('kitty requires python >= 3.6')
@@ -42,9 +43,34 @@ version = tuple(
 )
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
-env = None
+
+
+class Env:
+
+    def __init__(
+        self, cc: str = '', cppflags: List[str] = [], cflags: List[str] = [], ldflags: List[str] = [],
+        ldpaths: Optional[List[str]] = None, ccver: Optional[Tuple[int, int]] = None
+    ):
+        self.cc, self.cppflags, self.cflags, self.ldflags, self.ldpaths = cc, cppflags, cflags, ldflags, [] if ldpaths is None else ldpaths
+        self.ccver = ccver
+
+    def copy(self):
+        return Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), list(self.ldpaths), self.ccver)
+
+
+env = Env()
 
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
+CompileKey = namedtuple('CompileKey', 'src dest')
+
+
+class Command(NamedTuple):
+    desc: str
+    cmd: Sequence[str]
+    is_newer_func: Callable[[], bool]
+    on_success: Callable[[], None]
+    key: Optional[CompileKey]
+    keyfile: Optional[str]
 
 
 def emphasis(text):
@@ -78,13 +104,15 @@ def at_least_version(package, major, minor=0):
     q = '{}.{}'.format(major, minor)
     if subprocess.run([PKGCONFIG, package, '--atleast-version=' + q]
                       ).returncode != 0:
+        qmajor = qminor = 0
         try:
             ver = subprocess.check_output([PKGCONFIG, package, '--modversion']
                                           ).decode('utf-8').strip()
-            qmajor, qminor = map(int, re.match(r'(\d+).(\d+)', ver).groups())
+            m = re.match(r'(\d+).(\d+)', ver)
+            if m is not None:
+                qmajor, qminor = map(int, m.groups())
         except Exception:
             ver = 'not found'
-            qmajor = qminor = 0
         if qmajor < major or (qmajor == major and qminor < minor):
             raise SystemExit(
                 '{} >= {}.{} is required, found version: {}'.format(
@@ -93,7 +121,7 @@ def at_least_version(package, major, minor=0):
             )
 
 
-def cc_version():
+def cc_version() -> Tuple[str, Tuple[int, int]]:
     if 'CC' in os.environ:
         cc = os.environ['CC']
     else:
@@ -107,9 +135,9 @@ def cc_version():
             else:
                 cc = 'cc'
     raw = subprocess.check_output([cc, '-dumpversion']).decode('utf-8')
-    ver = raw.split('.')[:2]
+    ver_ = raw.split('.')[:2]
     try:
-        ver = tuple(map(int, ver))
+        ver = int(ver_[0]), int(ver_[1])
     except Exception:
         ver = (0, 0)
     return cc, ver
@@ -125,9 +153,9 @@ def get_python_include_paths():
 
 def get_python_flags(cflags):
     cflags.extend('-I' + x for x in get_python_include_paths())
-    libs = []
-    libs += sysconfig.get_config_var('LIBS').split()
-    libs += sysconfig.get_config_var('SYSLIBS').split()
+    libs: List[str] = []
+    libs += (sysconfig.get_config_var('LIBS') or '').split()
+    libs += (sysconfig.get_config_var('SYSLIBS') or '').split()
     fw = sysconfig.get_config_var('PYTHONFRAMEWORK')
     if fw:
         for var in 'data include stdlib'.split():
@@ -141,15 +169,17 @@ def get_python_flags(cflags):
                     break
         else:
             raise SystemExit('Failed to find Python framework')
-        libs.append(
-            os.path.join(framework_dir, sysconfig.get_config_var('LDLIBRARY'))
-        )
+        ldlib = sysconfig.get_config_var('LDLIBRARY')
+        if ldlib:
+            libs.append(os.path.join(framework_dir, ldlib))
     else:
-        libs += ['-L' + sysconfig.get_config_var('LIBDIR')]
-        libs += [
-            '-lpython' + sysconfig.get_config_var('VERSION') + sys.abiflags
-        ]
-        libs += sysconfig.get_config_var('LINKFORSHARED').split()
+        ldlib = sysconfig.get_config_var('LIBDIR')
+        if ldlib:
+            libs += ['-L' + ldlib]
+        ldlib = sysconfig.get_config_var('VERSION')
+        if ldlib:
+            libs += ['-lpython' + ldlib + sys.abiflags]
+        libs += (sysconfig.get_config_var('LINKFORSHARED') or '').split()
     return libs
 
 
@@ -180,16 +210,6 @@ def first_successful_compile(cc, *cflags, src=None):
     return ''
 
 
-class Env:
-
-    def __init__(self, cc, cppflags, cflags, ldflags, ldpaths=None, ccver=None):
-        self.cc, self.cppflags, self.cflags, self.ldflags, self.ldpaths = cc, cppflags, cflags, ldflags, [] if ldpaths is None else ldpaths
-        self.ccver = ccver
-
-    def copy(self):
-        return Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), list(self.ldpaths), self.ccver)
-
-
 def init_env(
     debug=False, sanitize=False, native_optimizations=True, profile=False,
     extra_logging=()
@@ -209,13 +229,13 @@ def init_env(
     fortify_source = '-D_FORTIFY_SOURCE=2'
     optimize = df if debug or sanitize else '-O3'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
-    cppflags = os.environ.get(
+    cppflags_ = os.environ.get(
         'OVERRIDE_CPPFLAGS', '-D{}DEBUG'.format('' if debug else 'N'),
     )
-    cppflags = shlex.split(cppflags)
+    cppflags = shlex.split(cppflags_)
     for el in extra_logging:
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
-    cflags = os.environ.get(
+    cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
             '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
             ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
@@ -229,21 +249,22 @@ def init_env(
             fortify_source
         )
     )
-    cflags = shlex.split(cflags) + shlex.split(
-        sysconfig.get_config_var('CCSHARED')
+    cflags = shlex.split(cflags_) + shlex.split(
+        sysconfig.get_config_var('CCSHARED') or ''
     )
-    ldflags = os.environ.get(
+    ldflags_ = os.environ.get(
         'OVERRIDE_LDFLAGS',
         '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3')
     )
-    ldflags = shlex.split(ldflags)
+    ldflags = shlex.split(ldflags_)
     ldflags.append('-shared')
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
     if not debug and not sanitize:
         # See https://github.com/google/sanitizers/issues/647
-        cflags.append('-flto'), ldflags.append('-flto')
+        cflags.append('-flto')
+        ldflags.append('-flto')
 
     if profile:
         cppflags.append('-DWITH_PROFILER')
@@ -373,11 +394,11 @@ def dependecies_for(src, obj, all_headers):
 
 def parallel_run(items):
     try:
-        num_workers = max(2, os.cpu_count())
+        num_workers = max(2, os.cpu_count() or 1)
     except Exception:
         num_workers = 2
     items = list(reversed(items))
-    workers = {}
+    workers: Dict[int, Tuple[Optional[Command], Optional[subprocess.Popen]]] = {}
     failed = None
     num, total = 0, len(items)
 
@@ -387,7 +408,9 @@ def parallel_run(items):
             return
         pid, s = os.wait()
         compile_cmd, w = workers.pop(pid, (None, None))
-        if compile_cmd is not None and ((s & 0xff) != 0 or ((s >> 8) & 0xff) != 0):
+        if compile_cmd is None:
+            return
+        if ((s & 0xff) != 0 or ((s >> 8) & 0xff) != 0):
             if failed is None:
                 failed = compile_cmd
         elif compile_cmd.on_success is not None:
@@ -413,10 +436,6 @@ def parallel_run(items):
     if failed:
         print(failed.desc)
         run_tool(failed.cmd)
-
-
-CompileKey = namedtuple('CompileKey', 'src dest')
-Command = namedtuple('Command', 'desc cmd is_newer_func on_success key keyfile')
 
 
 class CompilationDatabase:
@@ -499,10 +518,12 @@ def compile_c_extension(kenv, module, compilation_database, sources, headers, de
         cppflags = kenv.cppflags[:]
         is_special = src in SPECIAL_SOURCES
         if is_special:
-            src, defines = SPECIAL_SOURCES[src]
-            if callable(defines):
-                defines = defines()
-            cppflags.extend(map(define, defines))
+            src, defines_ = SPECIAL_SOURCES[src]
+            if callable(defines_):
+                defines = defines_()
+                cppflags.extend(map(define, defines))
+            else:
+                cppflags.extend(map(define, defines_))
 
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         cmd += ['-c', src] + ['-o', dest]
@@ -697,7 +718,7 @@ def compile_python(base_path):
     import compileall
     import py_compile
     try:
-        num_workers = max(1, os.cpu_count())
+        num_workers = max(1, os.cpu_count() or 1)
     except Exception:
         num_workers = 1
     for root, dirs, files in os.walk(base_path):
@@ -705,10 +726,10 @@ def compile_python(base_path):
             if f.rpartition('.')[-1] in ('pyc', 'pyo'):
                 os.remove(os.path.join(root, f))
     for optimize in (0, 1, 2):
-        kwargs = dict(ddir='', force=True, optimize=optimize, quiet=1, workers=num_workers)
-        if hasattr(py_compile, 'PycInvalidationMode'):
-            kwargs['invalidation_mode'] = py_compile.PycInvalidationMode.UNCHECKED_HASH
-        compileall.compile_dir(base_path, **kwargs)
+        compileall.compile_dir(
+            base_path, ddir='', force=True, optimize=optimize, quiet=1,
+            workers=num_workers, invalidation_mode=py_compile.PycInvalidationMode.UNCHECKED_HASH
+        )
 
 
 def create_linux_bundle_gunk(ddir, libdir_name):
@@ -802,7 +823,8 @@ def create_minimal_macos_bundle(args, where):
         shutil.rmtree(where)
     bin_dir = os.path.join(where, 'kitty.app/Contents/MacOS')
     resources_dir = os.path.join(where, 'kitty.app/Contents/Resources')
-    os.makedirs(resources_dir), os.makedirs(bin_dir)
+    os.makedirs(resources_dir)
+    os.makedirs(bin_dir)
     with open(os.path.join(where, 'kitty.app/Contents/Info.plist'), 'wb') as f:
         f.write(macos_info_plist())
     build_launcher(args, bin_dir)
