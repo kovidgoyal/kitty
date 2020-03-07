@@ -356,7 +356,7 @@ def process_single_item(item, args, url_pat=None, maybe_dir=True):
 def main(args=sys.argv):
     global can_transfer_with_files
     args, items_ = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname), result_class=IcatCLIOptions)
-    items: List[Union[str, bytes]] = list(items)
+    items: List[Union[str, bytes]] = list(items_)
 
     if args.print_window_size:
         screen_size_function.cache_clear()
