@@ -21,7 +21,16 @@ from ..tui.handler import Handler, result_handler
 from ..tui.loop import Loop
 from ..tui.operations import faint, styled
 
-URL_PREFIXES = 'http https file ftp'.split()
+
+@lru_cache()
+def kitty_common_opts():
+    import json
+    v = os.environ.get('KITTY_COMMON_OPTS')
+    if v:
+        return json.loads(v)
+    return {}
+
+
 DEFAULT_HINT_ALPHABET = string.digits + string.ascii_lowercase
 DEFAULT_REGEX = r'(?m)^\s*(.+)\s*$'
 screen_size = screen_size_function()
@@ -281,9 +290,14 @@ def escape(chars):
 def functions_for(args):
     post_processors = []
     if args.type == 'url':
+        url_prefixes = args.url_prefixes
+        if url_prefixes == 'default':
+            url_prefixes = kitty_common_opts().get('url_prefixes', ('https', 'http', 'file', 'ftp'))
+        else:
+            url_prefixes = url_prefixes.split(',')
         from .url_regex import url_delimiters
         pattern = '(?:{})://[^{}]{{3,}}'.format(
-            '|'.join(args.url_prefixes.split(',')), url_delimiters
+            '|'.join(url_prefixes), url_delimiters
         )
         post_processors.append(url)
     elif args.type == 'path':
@@ -296,8 +310,7 @@ def functions_for(args):
     elif args.type == 'word':
         chars = args.word_characters
         if chars is None:
-            import json
-            chars = json.loads(os.environ['KITTY_COMMON_OPTS'])['select_by_word_characters']
+            chars = kitty_common_opts()['select_by_word_characters']
         pattern = r'(?u)[{}\w]{{{},}}'.format(escape(chars), args.minimum_match_length)
         post_processors.extend((brackets, quotes))
     else:
@@ -435,8 +448,9 @@ a new OS window and :code:`background` run in the background.
 
 
 --url-prefixes
-default={url_prefixes}
-Comma separated list of recognized URL prefixes.
+default=default
+Comma separated list of recognized URL prefixes. Defaults, to
+the list of prefixes defined in kitty.conf.
 
 
 --word-characters
@@ -502,7 +516,7 @@ for details. You can also specify absolute paths to load the script from elsewhe
 
 
 '''.format(
-    default_regex=DEFAULT_REGEX, url_prefixes=','.join(sorted(URL_PREFIXES)),
+    default_regex=DEFAULT_REGEX,
     line='{{line}}', path='{{path}}'
 ).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'

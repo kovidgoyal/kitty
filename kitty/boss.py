@@ -732,7 +732,7 @@ class Boss:
                 data = input_data
             if isinstance(data, str):
                 data = data.encode('utf-8')
-            copts = {k: self.opts[k] for k in ('select_by_word_characters', 'open_url_with')}
+            copts = {k: self.opts[k] for k in ('select_by_word_characters', 'open_url_with', 'url_prefixes')}
             overlay_window = tab.new_special_window(
                 SpecialWindow(
                     [kitty_exe(), '+runpy', 'from kittens.runner import main; main()'] + args,
