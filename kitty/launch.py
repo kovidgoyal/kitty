@@ -225,7 +225,7 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
         for x in cmd:
             if active and not opts.copy_cmdline:
                 if x == '@selection':
-                    s = boss.data_for_at(active, x)
+                    s = boss.data_for_at(which=x, window=active)
                     if s:
                         x = s
                 elif x == '@active-kitty-window-id':

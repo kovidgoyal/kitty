@@ -66,6 +66,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Workaround for bug in less that causes colors to reset at wrapped lines
   (:iss:`2381`)
 
+- Fix ``@selection`` placeholder not working with launch command (:iss:`2417`)
+
 - Drop support for python 3.5
 
 
