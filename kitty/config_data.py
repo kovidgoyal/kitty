@@ -6,7 +6,7 @@
 import os
 from gettext import gettext as _
 from typing import (
-    Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, TypeVar, Union, cast
+    Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, TypeVar, Union
 )
 
 from . import fast_data_types as defines
@@ -792,7 +792,7 @@ separated by a configurable separator, and the powerline shows the tabs as a con
 
 
 def tab_bar_min_tabs(x: str) -> int:
-    return cast(int, max(1, positive_int(x)))
+    return max(1, positive_int(x))
 
 
 o('tab_bar_min_tabs', 2, option_type=tab_bar_min_tabs, long_text=_('''
@@ -1076,7 +1076,7 @@ def macos_titlebar_color(x: str) -> int:
         return 0
     if x == 'background':
         return 1
-    return cast(int, (color_as_int(to_color(x)) << 8) | 2)
+    return (color_as_int(to_color(x)) << 8) | 2
 
 
 o('macos_titlebar_color', 'system', option_type=macos_titlebar_color, long_text=_('''

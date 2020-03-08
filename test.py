@@ -2,15 +2,16 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
-import unittest
+import importlib
 import os
 import sys
-import importlib
+import unittest
+from typing import NoReturn
 
 base = os.path.dirname(os.path.abspath(__file__))
 
 
-def init_env():
+def init_env() -> None:
     sys.path.insert(0, base)
 
 
@@ -65,16 +66,13 @@ def filter_tests_by_module(suite, *names):
     return filter_tests(suite, q)
 
 
-def type_check():
+def type_check() -> NoReturn:
     init_env()
-    from kitty.cli_stub import generate_stub
+    from kitty.cli_stub import generate_stub  # type:ignore
     generate_stub()
-    from kitty.options_stub import generate_stub
+    from kitty.options_stub import generate_stub  # type: ignore
     generate_stub()
-    if 'CI' in os.environ:
-        os.execlp('mypy', 'mypy')
-    else:
-        os.execlp('dmypy', 'dmypy', 'run', '--', '--follow-imports=error')
+    os.execlp('mypy', 'mypy', '--pretty')
 
 
 def run_tests():

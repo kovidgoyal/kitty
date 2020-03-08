@@ -290,11 +290,10 @@ def escape(chars):
 def functions_for(args):
     post_processors = []
     if args.type == 'url':
-        url_prefixes = args.url_prefixes
-        if url_prefixes == 'default':
+        if args.url_prefixes == 'default':
             url_prefixes = kitty_common_opts().get('url_prefixes', ('https', 'http', 'file', 'ftp'))
         else:
-            url_prefixes = url_prefixes.split(',')
+            url_prefixes = args.url_prefixes.split(',')
         from .url_regex import url_delimiters
         pattern = '(?:{})://[^{}]{{3,}}'.format(
             '|'.join(url_prefixes), url_delimiters
@@ -523,11 +522,11 @@ help_text = 'Select text from the screen using the keyboard. Defaults to searchi
 usage = ''
 
 
-def parse_hints_args(args):
+def parse_hints_args(args: List[str]) -> Tuple[HintsCLIOptions, List[str]]:
     return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten hints', result_class=HintsCLIOptions)
 
 
-def main(args):
+def main(args: List[str]):
     text = ''
     if sys.stdin.isatty():
         if '--help' not in args and '-h' not in args:
@@ -538,16 +537,16 @@ def main(args):
         text = sys.stdin.buffer.read().decode('utf-8')
         sys.stdin = open(os.ctermid())
     try:
-        args, items = parse_hints_args(args[1:])
+        opts, items = parse_hints_args(args[1:])
     except SystemExit as e:
         if e.code != 0:
             print(e.args[0], file=sys.stderr)
             input(_('Press Enter to quit'))
         return
-    if items and not (args.customize_processing or args.type == 'linenum'):
+    if items and not (opts.customize_processing or opts.type == 'linenum'):
         print('Extra command line arguments present: {}'.format(' '.join(items)), file=sys.stderr)
         input(_('Press Enter to quit'))
-    return run(args, text, items)
+    return run(opts, text, items)
 
 
 def linenum_handle_result(args, data, target_window_id, boss, extra_cli_args, *a):
