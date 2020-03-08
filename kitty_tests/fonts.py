@@ -50,11 +50,11 @@ class Rendering(BaseTest):
 
     def test_box_drawing(self):
         prerendered = len(self.sprites)
-        s = self.create_screen(cols=len(box_chars), lines=1, scrollback=0)
+        s = self.create_screen(cols=len(box_chars) + 1, lines=1, scrollback=0)
         s.draw(''.join(box_chars))
         line = s.line(0)
         test_render_line(line)
-        self.assertEqual(len(self.sprites), prerendered + len(box_chars))
+        self.assertEqual(len(self.sprites) - prerendered, len(box_chars))
 
     def test_font_rendering(self):
         render_string('ab\u0347\u0305你好|\U0001F601|\U0001F64f|\U0001F63a|')
