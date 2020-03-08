@@ -5,7 +5,7 @@
 import re
 from functools import partial
 from typing import (
-    Any, Dict, Iterator, List, Optional, Set, Tuple, Union, get_type_hints
+    Any, Dict, Iterable, List, Optional, Set, Tuple, Union, get_type_hints
 )
 
 from .utils import to_bool
@@ -160,7 +160,7 @@ def remove_markup(text):
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
 
 
-def iter_blocks(lines: Iterator[str]):
+def iter_blocks(lines: Iterable[str]):
     current_block: List[str] = []
     prev_indent = 0
     for line in lines:
@@ -204,7 +204,7 @@ def render_block(text):
     return '\n'.join(wrapped_block(lines))
 
 
-def as_conf_file(all_options):
+def as_conf_file(all_options: Iterable[Union[Option, Shortcut]]) -> List[str]:
     ans = ['# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', '']
     a = ans.append
     current_group: Optional[Group] = None
@@ -272,14 +272,16 @@ def as_conf_file(all_options):
             num_open_folds -= 1
 
     map_groups = []
-    start = count = None
+    start: Optional[int] = None
+    count: Optional[int] = None
     for i, line in enumerate(ans):
         if line.startswith('map '):
             if start is None:
                 start = i
                 count = 1
             else:
-                count += 1
+                if count is not None:
+                    count += 1
         else:
             if start is not None and count is not None:
                 map_groups.append((start, count))
@@ -310,8 +312,8 @@ def config_lines(all_options):
 def as_type_stub(
     all_options: Dict[str, Union[Option, List[Shortcut]]],
     special_types: Optional[Dict[str, str]] = None,
-    preamble_lines: Union[Tuple[str, ...], List[str], Iterator[str]] = (),
-    extra_fields: Union[Tuple[Tuple[str, str], ...], List[Tuple[str, str]], Iterator[Tuple[str, str]]] = (),
+    preamble_lines: Union[Tuple[str, ...], List[str], Iterable[str]] = (),
+    extra_fields: Union[Tuple[Tuple[str, str], ...], List[Tuple[str, str]], Iterable[Tuple[str, str]]] = (),
     class_name: str = 'Options'
 ) -> str:
     ans = ['import typing\n'] + list(preamble_lines) + ['', 'class {}:'.format(class_name)]
@@ -329,6 +331,7 @@ def as_type_stub(
         ans.append('    {}: {}'.format(field_name, type_def))
     ans.append('    def __iter__(self): pass')
     ans.append('    def __len__(self): pass')
+    ans.append('    def _replace(self, **kw) -> {}: pass'.format(class_name))
     return '\n'.join(ans) + '\n\n\n'
 
 

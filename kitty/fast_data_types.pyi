@@ -737,6 +737,14 @@ def ring_bell() -> None:
     pass
 
 
+def concat_cells(cell_width: int, cell_height: int, is_32_bit: bool, cells: Tuple[bytes, ...]) -> bytes:
+    pass
+
+
+def current_fonts() -> Dict[str, Any]:
+    pass
+
+
 def remove_window(os_window_id: int, tab_id: int, window_id: int) -> None:
     pass
 
@@ -820,7 +828,9 @@ def parse_input_from_terminal(
 
 
 class Line:
-    pass
+
+    def sprite_at(self, cell: int) -> Tuple[int, int, int]:
+        pass
 
 
 def test_shape(line: Line,
@@ -838,7 +848,7 @@ def sprite_map_set_limits(w: int, h: int) -> None:
 
 
 def set_send_sprite_to_gpu(
-    func: Callable[[int, int, int, bytes], None]
+    func: Optional[Callable[[int, int, int, bytes], None]]
 ) -> None:
     pass
 
@@ -906,6 +916,12 @@ class Screen:
             window_id: int = 0,
             test_child: Any = None
     ):
+        pass
+
+    def line(self, int) -> Line:
+        pass
+
+    def draw(self, text) -> None:
         pass
 
     def copy_colors_from(self, other: 'Screen') -> None:

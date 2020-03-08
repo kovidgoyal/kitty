@@ -6,7 +6,7 @@ import ctypes
 import sys
 from functools import partial
 from math import ceil, cos, floor, pi
-from typing import Any, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from kitty.config import defaults
 from kitty.constants import is_macos
@@ -16,6 +16,7 @@ from kitty.fast_data_types import (
     test_render_line, test_shape
 )
 from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
+from kitty.options_stub import Options as OptionsStub
 from kitty.utils import log_error
 
 if is_macos:
@@ -26,7 +27,7 @@ else:
 current_faces: List[Tuple[Any, bool, bool]] = []
 
 
-def coalesce_symbol_maps(maps):
+def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, int], str]:
     if not maps:
         return maps
     items = tuple((k, maps[k]) for k in sorted(maps))
@@ -47,9 +48,9 @@ def coalesce_symbol_maps(maps):
     return dict(ans)
 
 
-def create_symbol_map(opts):
+def create_symbol_map(opts: OptionsStub) -> Tuple[Tuple[int, int, int], ...]:
     val = coalesce_symbol_maps(opts.symbol_map)
-    family_map = {}
+    family_map: Dict[str, int] = {}
     count = 0
     for family in val.values():
         if family not in family_map:
@@ -284,11 +285,11 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
     for i in reversed(range(s.columns)):
         sp = list(line.sprite_at(i))
         sp[2] &= 0xfff
-        sp = tuple(sp)
-        if sp == (0, 0, 0) and not found_content:
+        tsp = tuple(sp)
+        if tsp == (0, 0, 0) and not found_content:
             continue
         found_content = True
-        cells.append(sprites[sp])
+        cells.append(sprites[tsp])
     return cell_width, cell_height, list(reversed(cells))
 
 
@@ -305,11 +306,11 @@ def display_bitmap(rgb_data, width, height):
     from kittens.icat.main import detect_support, show
     if not hasattr(display_bitmap, 'detected') and not detect_support():
         raise SystemExit('Your terminal does not support the graphics protocol')
-    display_bitmap.detected = True
+    setattr(display_bitmap, 'detected', True)
     with NamedTemporaryFile(suffix='.rgba', delete=False) as f:
         f.write(rgb_data)
     assert len(rgb_data) == 4 * width * height
-    show(f.name, width, height, 32, align='left')
+    show(f.name, width, height, 0, 32, align='left')
 
 
 def test_render_string(text='Hello, world!', family='monospace', size=64.0, dpi=96.0):
@@ -329,9 +330,12 @@ def test_render_string(text='Hello, world!', family='monospace', size=64.0, dpi=
     print('\n')
 
 
-def test_fallback_font(qtext=None, bold=False, italic=False):
+def test_fallback_font(qtext: Optional[str] = None, bold=False, italic=False):
     with setup_for_testing():
-        trials = (qtext,) if qtext else ('你', 'He\u0347\u0305', '\U0001F929')
+        if qtext:
+            trials = [qtext]
+        else:
+            trials = ['你', 'He\u0347\u0305', '\U0001F929']
         for text in trials:
             f = get_fallback_font(text, bold, italic)
             try:

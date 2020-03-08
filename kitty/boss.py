@@ -9,7 +9,7 @@ import re
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
-from typing import Dict, Optional
+from typing import Optional
 from weakref import WeakValueDictionary
 
 from .child import cached_process_data, cwd_of_process
