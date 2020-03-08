@@ -42,9 +42,9 @@ configured colors.
     def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
         ans = {k: getattr(boss.opts, k) for k in boss.opts if isinstance(getattr(boss.opts, k), Color)}
         if not payload_get('configured'):
-            windows = (window or boss.active_window,)
+            windows = [window or boss.active_window]
             if payload_get('match'):
-                windows = tuple(boss.match_windows(payload_get('match')))
+                windows = list(boss.match_windows(payload_get('match')))
                 if not windows:
                     raise MatchError(payload_get('match'))
             ans.update({k: color_from_int(v) for k, v in windows[0].current_colors.items()})

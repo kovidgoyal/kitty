@@ -45,7 +45,7 @@ If specified detach the window this command is run in, rather than the active wi
             if not windows:
                 raise MatchError(match)
         else:
-            windows = [window if window and payload_get('self') else boss.active_window]
+            windows = tuple(window if window and payload_get('self') else boss.active_window)
         match = payload_get('target_tab')
         kwargs = {}
         if match:

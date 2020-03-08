@@ -5,7 +5,7 @@
 from contextlib import suppress
 from typing import (
     TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Generator, List, NoReturn,
-    Optional, Tuple, Union
+    Optional, Tuple, Type, Union, cast
 )
 
 from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec
@@ -42,12 +42,26 @@ class UnknownLayout(ValueError):
     hide_traceback = True
 
 
+class PayloadGetter:
+
+    def __init__(self, cmd: 'RemoteCommand', payload: Dict[str, Any]):
+        self.payload = payload
+        self.cmd = cmd
+
+    def __call__(self, key: str, opt_name: Optional[str] = None, missing: Any = None):
+        ans = self.payload.get(key, payload_get)
+        if ans is not payload_get:
+            return ans
+        return self.cmd.get_default(opt_name or key, missing=missing)
+
+
 no_response = NoResponse()
+payload_get = object()
 ResponseType = Optional[Union[bool, str]]
 CmdReturnType = Union[Dict[str, Any], List, Tuple, str, int, float, bool]
 CmdGenerator = Generator[CmdReturnType, None, None]
 PayloadType = Optional[Union[CmdReturnType, CmdGenerator]]
-PayloadGetType = Callable[[str, str], Any]
+PayloadGetType = PayloadGetter
 ArgsType = List[str]
 
 
@@ -106,6 +120,7 @@ class RemoteCommand:
     args_count: Optional[int] = None
     args_completion: Optional[Dict[str, Tuple[str, Tuple[str, ...]]]] = None
     defaults: Optional[Dict[str, Any]] = None
+    options_class: Type = RCOptions
 
     def __init__(self):
         self.desc = self.desc or self.short_desc
@@ -124,13 +139,6 @@ class RemoteCommand:
             return self.defaults.get(name, missing)
         return missing
 
-    def payload_get(self, payload: Dict[str, Any], key: str, opt_name: Optional[str] = None) -> Any:
-        payload_get = object()
-        ans = payload.get(key, payload_get)
-        if ans is not payload_get:
-            return ans
-        return self.get_default(opt_name or key)
-
     def message_to_kitty(self, global_opts: RCOptions, opts: Any, args: ArgsType) -> PayloadType:
         raise NotImplementedError()
 
@@ -143,7 +151,7 @@ def cli_params_for(command: RemoteCommand) -> Tuple[Callable[[], str], str, str,
 
 
 def parse_subcommand_cli(command: RemoteCommand, args: ArgsType) -> Tuple[Any, ArgsType]:
-    opts, items = parse_args(args[1:], *cli_params_for(command))
+    opts, items = parse_args(args[1:], *cli_params_for(command), result_class=command.options_class)
     if command.args_count is not None and command.args_count != len(items):
         if command.args_count == 0:
             raise SystemExit('Unknown extra argument(s) supplied to {}'.format(command.name))
@@ -163,17 +171,17 @@ def command_for_name(cmd_name: str) -> RemoteCommand:
         m = import_module(f'kitty.rc.{cmd_name}')
     except ImportError:
         raise KeyError(f'{cmd_name} is not a known kitty remote control command')
-    return getattr(m, cmd_name)
+    return cast(RemoteCommand, getattr(m, cmd_name))
 
 
 def all_command_names() -> FrozenSet[str]:
     try:
         from importlib.resources import contents
     except ImportError:
-        from importlib_resources import contents
+        from importlib_resources import contents  # type:ignore
 
     def ok(name: str) -> bool:
         root, _, ext = name.rpartition('.')
-        return ext in ('py', 'pyc', 'pyo') and root and root not in ('base', '__init__')
+        return bool(ext in ('py', 'pyc', 'pyo') and root and root not in ('base', '__init__'))
 
     return frozenset({x.rpartition('.')[0] for x in filter(ok, contents('kitty.rc'))})

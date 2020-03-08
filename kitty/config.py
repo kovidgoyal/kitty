@@ -10,8 +10,8 @@ from collections import namedtuple
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
-    TYPE_CHECKING, Any, Dict, Iterator, List, Optional, Sequence, Tuple, Type,
-    cast
+    TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional,
+    Sequence, Set, Tuple, Type, cast
 )
 
 from . import fast_data_types as defines
@@ -310,7 +310,7 @@ def scroll_to_mark(func, rest):
     return func, [parts[0] != 'next', max(0, min(int(parts[1]), 3))]
 
 
-def parse_key_action(action):
+def parse_key_action(action: str) -> Optional[KeyAction]:
     parts = action.strip().split(maxsplit=1)
     func = parts[0]
     if len(parts) == 1:
@@ -324,9 +324,10 @@ def parse_key_action(action):
             log_error('Ignoring invalid key action: {} with err: {}'.format(action, err))
         else:
             return KeyAction(func, args)
+    return None
 
 
-all_key_actions = set()
+all_key_actions: Set[str] = set()
 sequence_sep = '>'
 
 
@@ -454,16 +455,17 @@ def parse_send_text(val, key_definitions):
     return parse_key(key_str, key_definitions)
 
 
-special_handlers = {}
+SpecialHandlerFunc = Callable[[str, str, Dict[str, Any]], None]
+special_handlers: Dict[str, SpecialHandlerFunc] = {}
 
 
-def special_handler(func):
+def special_handler(func: SpecialHandlerFunc) -> SpecialHandlerFunc:
     special_handlers[func.__name__.partition('_')[2]] = func
     return func
 
 
-def deprecated_handler(*names):
-    def special_handler(func):
+def deprecated_handler(*names: str) -> Callable[[SpecialHandlerFunc], SpecialHandlerFunc]:
+    def special_handler(func: SpecialHandlerFunc) -> SpecialHandlerFunc:
         for name in names:
             special_handlers[name] = func
         return func
@@ -588,7 +590,7 @@ def option_names_for_completion():
     yield from special_handlers
 
 
-def parse_config(lines: Iterator[str], check_keys=True, accumulate_bad_lines: Optional[List[BadLine]] = None):
+def parse_config(lines: Iterable[str], check_keys=True, accumulate_bad_lines: Optional[List[BadLine]] = None):
     ans: Dict[str, Any] = {
         'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [],
         'env': {}, 'kitten_aliases': {}, 'font_features': {}
@@ -777,7 +779,7 @@ def finalize_keys(opts: OptionsStub) -> None:
     opts.sequence_map = sequence_map
 
 
-def load_config(*paths: str, overrides: Optional[Iterator[str]] = None, accumulate_bad_lines: Optional[List[BadLine]] = None) -> OptionsStub:
+def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumulate_bad_lines: Optional[List[BadLine]] = None) -> OptionsStub:
     parser = parse_config
     if accumulate_bad_lines is not None:
         parser = partial(parse_config, accumulate_bad_lines=accumulate_bad_lines)

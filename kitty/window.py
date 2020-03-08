@@ -9,6 +9,7 @@ import weakref
 from collections import deque
 from enum import IntEnum
 from itertools import chain
+from typing import List
 
 from .config import build_ansi_color_table
 from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
@@ -483,7 +484,7 @@ class Window:
                     self.title_stack.append(self.child_title)
     # }}}
 
-    def text_for_selection(self):
+    def text_for_selection(self) -> str:
         lines = self.screen.text_for_selection()
         if self.opts.strip_trailing_spaces == 'always' or (
                 self.opts.strip_trailing_spaces == 'smart' and not self.screen.is_rectangle_select()):
@@ -497,8 +498,8 @@ class Window:
             self.screen.reset_callbacks()
         self.screen = None
 
-    def as_text(self, as_ansi=False, add_history=False, add_wrap_markers=False, alternate_screen=False):
-        lines = []
+    def as_text(self, as_ansi=False, add_history=False, add_wrap_markers=False, alternate_screen=False) -> str:
+        lines: List[str] = []
         add_history = add_history and not (self.screen.is_using_alternate_linebuf() ^ alternate_screen)
         if alternate_screen:
             f = self.screen.as_text_alternate
@@ -506,7 +507,7 @@ class Window:
             f = self.screen.as_text_non_visual if add_history else self.screen.as_text
         f(lines.append, as_ansi, add_wrap_markers)
         if add_history:
-            h = []
+            h: List[str] = []
             self.screen.historybuf.pagerhist_as_text(h.append)
             if h and (not as_ansi or not add_wrap_markers):
                 sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
@@ -517,7 +518,7 @@ class Window:
                     h[-1] += '\n'
                 if as_ansi:
                     h[-1] += '\x1b[m'
-            lines = chain(h, lines)
+            return ''.join(chain(h, lines))
         return ''.join(lines)
 
     @property

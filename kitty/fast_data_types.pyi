@@ -348,7 +348,11 @@ StartupCtx = NewType('StartupCtx', int)
 Display = NewType('Display', int)
 
 
-def init_x11_startup_notification(display: Display, window_id: int, startup_id: Optional[str] = None) -> StartupCtx:
+def init_x11_startup_notification(
+    display: Display,
+    window_id: int,
+    startup_id: Optional[str] = None
+) -> StartupCtx:
     pass
 
 
@@ -387,7 +391,10 @@ def default_color_table() -> Tuple[int, ...]:
 FontConfigPattern = Dict[str, Union[str, int, bool, float]]
 
 
-def fc_list(spacing: int = -1, allow_bitmapped_fonts: bool = False) -> Tuple[FontConfigPattern, ...]:
+def fc_list(
+    spacing: int = -1,
+    allow_bitmapped_fonts: bool = False
+) -> Tuple[FontConfigPattern, ...]:
     pass
 
 
@@ -407,7 +414,11 @@ def coretext_all_fonts() -> Tuple[Dict[str, Any], ...]:
     pass
 
 
-def add_timer(callback: Callable[[Optional[int]], bool], interval: float, repeats: bool = True) -> int:
+def add_timer(
+    callback: Callable[[Optional[int]], bool],
+    interval: float,
+    repeats: bool = True
+) -> int:
     pass
 
 
@@ -419,7 +430,9 @@ def add_window(os_window_id: int, tab_id: int, title: str) -> int:
     pass
 
 
-def compile_program(which: int, vertex_shader: str, fragment_shader: str) -> int:
+def compile_program(
+    which: int, vertex_shader: str, fragment_shader: str
+) -> int:
     pass
 
 
@@ -431,7 +444,10 @@ def set_titlebar_color(os_window_id: int, color: int) -> bool:
     pass
 
 
-def add_borders_rect(os_window_id: int, tab_id: int, left: int, top: int, right: int, bottom: int, color: int) -> None:
+def add_borders_rect(
+    os_window_id: int, tab_id: int, left: int, top: int, right: int,
+    bottom: int, color: int
+) -> None:
     pass
 
 
@@ -443,16 +459,30 @@ def os_window_has_background_image(os_window_id: int) -> bool:
     pass
 
 
-def dbus_send_notification(app_name: str, icon: str, summary: str, body: str, action_name: str, timeout: int = -1) -> int:
+def dbus_send_notification(
+    app_name: str,
+    icon: str,
+    summary: str,
+    body: str,
+    action_name: str,
+    timeout: int = -1
+) -> int:
     pass
 
 
-def cocoa_send_notification(identifier: Optional[str], title: str, informative_text: str, path_to_img: Optional[str], subtitle: Optional[str] = None) -> None:
+def cocoa_send_notification(
+    identifier: Optional[str],
+    title: str,
+    informative_text: str,
+    path_to_img: Optional[str],
+    subtitle: Optional[str] = None
+) -> None:
     pass
 
 
 def create_os_window(
-    get_window_size: Callable[[int, int, int, int, float, float], Tuple[int, int]],
+    get_window_size: Callable[[int, int, int, int, float, float], Tuple[int,
+                                                                        int]],
     pre_show_callback: Callable[[object], None],
     title: str,
     wm_class_name: str,
@@ -464,11 +494,16 @@ def create_os_window(
     pass
 
 
-def update_window_title(os_window_id: int, tab_id: int, window_id: int, title: str) -> None:
+def update_window_title(
+    os_window_id: int, tab_id: int, window_id: int, title: str
+) -> None:
     pass
 
 
-def update_window_visibility(os_window_id: int, tab_id: int, window_id: int, window_idx: int, visible: bool) -> None:
+def update_window_visibility(
+    os_window_id: int, tab_id: int, window_id: int, window_idx: int,
+    visible: bool
+) -> None:
     pass
 
 
@@ -501,7 +536,12 @@ def set_default_window_icon(data: bytes, width: int, height: int) -> None:
     pass
 
 
-def set_custom_cursor(cursor_type: int, images: Tuple[Tuple[bytes, int, int], ...], x: int = 0, y: int = 0) -> None:
+def set_custom_cursor(
+    cursor_type: int,
+    images: Tuple[Tuple[bytes, int, int], ...],
+    x: int = 0,
+    y: int = 0
+) -> None:
     pass
 
 
@@ -542,8 +582,10 @@ def set_clipboard_string(data: bytes) -> None:
 
 
 def set_background_image(
-        path: Optional[str], os_window_ids: Tuple[int, ...],
-        configured: bool = True, layout_name: Optional[str] = None
+    path: Optional[str],
+    os_window_ids: Tuple[int, ...],
+    configured: bool = True,
+    layout_name: Optional[str] = None
 ) -> None:
     pass
 
@@ -564,7 +606,20 @@ def patch_global_colors(spec: Dict[str, int], configured: bool) -> None:
     pass
 
 
-def os_window_font_size(os_window_id: int, new_sz: float = -1., force: bool = False) -> float:
+class ColorProfile:
+    pass
+
+
+def patch_color_profiles(
+    spec: Dict[str, int], cursor_text_color: Optional[Union[bool, int]],
+    profiles: Tuple[ColorProfile, ...], change_configured: bool
+) -> None:
+    pass
+
+
+def os_window_font_size(
+    os_window_id: int, new_sz: float = -1., force: bool = False
+) -> float:
     pass
 
 
@@ -692,7 +747,9 @@ class Region:
         pass
 
 
-def viewport_for_window(os_window_id: int) -> Tuple[Region, Region, int, int, int, int]:
+def viewport_for_window(
+    os_window_id: int
+) -> Tuple[Region, Region, int, int, int, int]:
     pass
 
 
@@ -716,14 +773,10 @@ def open_tty(read_with_timeout: bool = False) -> Tuple[int, TermiosPtr]:
 
 
 def parse_input_from_terminal(
-    text_callback: Callable[[str], None],
-    dcs_callback: Callable[[str], None],
-    csi_callback: Callable[[str], None],
-    osc_callback: Callable[[str], None],
-    pm_callback: Callable[[str], None],
-    apc_callback: Callable[[str], None],
-    data: str,
-    in_bracketed_paste: bool
+    text_callback: Callable[[str], None], dcs_callback: Callable[[str], None],
+    csi_callback: Callable[[str], None], osc_callback: Callable[[str], None],
+    pm_callback: Callable[[str], None], apc_callback: Callable[[str], None],
+    data: str, in_bracketed_paste: bool
 ):
     pass
 
@@ -732,7 +785,9 @@ class Line:
     pass
 
 
-def test_shape(line: Line, path: Optional[str] = None, index: int = 0) -> List[Tuple[int, int, int, Tuple[int, ...]]]:
+def test_shape(line: Line,
+               path: Optional[str] = None,
+               index: int = 0) -> List[Tuple[int, int, int, Tuple[int, ...]]]:
     pass
 
 
@@ -744,17 +799,21 @@ def sprite_map_set_limits(w: int, h: int) -> None:
     pass
 
 
-def set_send_sprite_to_gpu(func: Callable[[int, int, int, bytes], None]) -> None:
+def set_send_sprite_to_gpu(
+    func: Callable[[int, int, int, bytes], None]
+) -> None:
     pass
 
 
 def set_font_data(
-    box_drawing_func: Callable[[int, int, int, float], Tuple[int, Union[bytearray, bytes]]],
-    prerender_func: Callable[[int, int, int, int, int, float, float, float, float], Tuple[int, ...]],
-    descriptor_for_idx: Callable[[int], Tuple[dict, bool, bool]],
+    box_drawing_func: Callable[[int, int, int, float],
+                               Tuple[int, Union[bytearray, bytes]]],
+    prerender_func: Callable[
+        [int, int, int, int, int, float, float, float, float],
+        Tuple[int, ...]], descriptor_for_idx: Callable[[int], Tuple[dict, bool,
+                                                                    bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
-    symbol_maps: Tuple[Tuple[int, int, int], ...],
-    font_sz_in_pts: float,
+    symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,
     font_feature_settings: Dict[str, Tuple[bytes, ...]]
 ):
     pass
@@ -764,7 +823,8 @@ def get_fallback_font(text: str, bold: bool, italic: bool):
     pass
 
 
-def create_test_font_group(sz: float, dpix: float, dpiy: float) -> Tuple[int, int]:
+def create_test_font_group(sz: float, dpix: float,
+                           dpiy: float) -> Tuple[int, int]:
     pass
 
 
@@ -772,30 +832,35 @@ class Screen:
     pass
 
 
-def set_tab_bar_render_data(os_window_id: int, xstart: float, ystart: float, dx: float, dy: float, screen: Screen) -> None:
+def set_tab_bar_render_data(
+    os_window_id: int, xstart: float, ystart: float, dx: float, dy: float,
+    screen: Screen
+) -> None:
     pass
 
 
 def set_window_render_data(
-        os_window_id: int, tab_id: int, window_id: int, window_idx: int,
-        xstart: float, ystart: float, dx: float, dy: float,
-        screen: Screen,
-        left: int, top: int, right: int, bottom: int
+    os_window_id: int, tab_id: int, window_id: int, window_idx: int,
+    xstart: float, ystart: float, dx: float, dy: float, screen: Screen,
+    left: int, top: int, right: int, bottom: int
 ):
     pass
 
 
-def truncate_point_for_length(text: str, num_cells: int, start_pos: int = 0) -> int:
+def truncate_point_for_length(
+    text: str, num_cells: int, start_pos: int = 0
+) -> int:
     pass
 
 
 class ChildMonitor:
 
     def __init__(
-            self,
-            death_notify: Callable[[int], None],
-            dump_callback: Optional[Callable],
-            talk_fd: int = -1, listen_fd: int = -1
+        self,
+        death_notify: Callable[[int], None],
+        dump_callback: Optional[Callable],
+        talk_fd: int = -1,
+        listen_fd: int = -1
     ):
         pass
 

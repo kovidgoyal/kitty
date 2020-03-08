@@ -39,7 +39,7 @@ If specified close the tab this command is run in, rather than the active tab.
             if not tabs:
                 raise MatchError(match, 'tabs')
         else:
-            tabs = [boss.tab_for_window(window) if window and payload_get('self') else boss.active_tab]
+            tabs = tuple(boss.tab_for_window(window) if window and payload_get('self') else boss.active_tab)
         for tab in tabs:
             if window:
                 if tab:

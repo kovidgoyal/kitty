@@ -11,10 +11,9 @@ from .terminfo import key_as_bytes, modify_key_bytes
 from .utils import base64_encode
 
 
-def modify_complex_key(name, amt):
-    if not isinstance(name, bytes):
-        name = key_as_bytes(name)
-    return modify_key_bytes(name, amt)
+def modify_complex_key(name: Union[str, bytes], amt: int) -> bytes:
+    q = name if isinstance(name, bytes) else key_as_bytes(name)
+    return modify_key_bytes(q, amt)
 
 
 control_codes: Dict[int, Union[bytes, Tuple[int, ...]]] = {
@@ -48,7 +47,7 @@ SHIFTED_KEYS = {
 control_alt_codes = {
     defines.GLFW_KEY_SPACE: b'\x1b\0',
 }
-control_alt_shift_codes = {}
+control_alt_shift_codes: Dict[int, bytes] = {}
 ASCII_C0_SHIFTED = {
     # ^@
     '2': b'\x00',

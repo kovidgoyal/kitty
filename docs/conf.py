@@ -7,28 +7,28 @@
 # full list see the documentation:
 # https://www.sphinx-doc.org/en/master/config
 
-import importlib
 import os
 import re
 import subprocess
 import sys
 import time
 from functools import partial
+from typing import Optional, Dict, Tuple
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
-from pygments.lexer import RegexLexer, bygroups
-from pygments.token import (
+from pygments.lexer import RegexLexer, bygroups  # type: ignore
+from pygments.token import (  # type: ignore
     Comment, Keyword, Literal, Name, Number, String, Whitespace
 )
-from sphinx import addnodes
-from sphinx.environment.adapters.toctree import TocTree
-from sphinx.util.logging import getLogger
+from sphinx import addnodes  # type: ignore
+from sphinx.environment.adapters.toctree import TocTree  # type: ignore
+from sphinx.util.logging import getLogger  # type: ignore
 
 kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
-str_version = importlib.import_module('kitty.constants').str_version
+from kitty.constants import str_version  # noqa
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -77,7 +77,7 @@ master_doc = 'index'
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language: Optional[str] = None
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
@@ -205,7 +205,8 @@ def num_role(which, name, rawtext, text, lineno, inliner, options={}, content=[]
 def commit_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     ' Link to a github commit '
     try:
-        commit_id = subprocess.check_output(f'git rev-list --max-count=1 --skip=# {text}'.split()).decode('utf-8').strip()
+        commit_id = subprocess.check_output(
+            f'git rev-list --max-count=1 --skip=# {text}'.split()).decode('utf-8').strip()
     except Exception:
         msg = inliner.reporter.error(
             f'GitHub commit id "{text}" not recognized.', line=lineno)
@@ -213,7 +214,8 @@ def commit_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
         return [prb], [msg]
     url = f'https://github.com/kovidgoyal/kitty/commit/{commit_id}'
     set_classes(options)
-    short_id = subprocess.check_output(f'git rev-list --max-count=1 --abbrev-commit --skip=# {commit_id}'.split()).decode('utf-8').strip()
+    short_id = subprocess.check_output(
+        f'git rev-list --max-count=1 --abbrev-commit --skip=# {commit_id}'.split()).decode('utf-8').strip()
     node = nodes.reference(rawtext, f'commit: {short_id}', refuri=url, **options)
     return [node], []
 # }}}
@@ -409,8 +411,8 @@ def expand_opt_references(conf_name, text):
     return re.sub(r':opt:`(.+?)`', expand, text)
 
 
-opt_aliases = {}
-shortcut_slugs = {}
+opt_aliases: Dict[str, str] = {}
+shortcut_slugs: Dict[str, Tuple[str, str]] = {}
 
 
 def parse_opt_node(env, sig, signode):

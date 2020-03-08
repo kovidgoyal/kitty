@@ -741,7 +741,7 @@ def compile_python(base_path):
             kw = {}
         compileall.compile_dir(
             base_path, ddir='', force=True, optimize=optimize, quiet=1,
-            workers=num_workers, **kw  # type: ignore
+            workers=num_workers, **kw
         )
 
 

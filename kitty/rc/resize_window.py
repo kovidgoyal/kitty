@@ -22,7 +22,10 @@ class ResizeWindow(RemoteCommand):
     '''
 
     short_desc = 'Resize the specified window'
-    desc = 'Resize the specified window in the current layout. Note that not all layouts can resize all windows in all directions.'
+    desc = (
+        'Resize the specified window in the current layout.'
+        ' Note that not all layouts can resize all windows in all directions.'
+    )
     options_spec = MATCH_WINDOW_OPTION + '''\n
 --increment -i
 type=int
@@ -34,9 +37,10 @@ The number of cells to change the size by, can be negative to decrease the size.
 type=choices
 choices=horizontal,vertical,reset
 default=horizontal
-The axis along which to resize. If :italic:`horizontal`, it will make the window wider or narrower by the specified increment.
-If :italic:`vertical`, it will make the window taller or shorter by the specified increment. The special value :italic:`reset` will
-reset the layout to its default configuration.
+The axis along which to resize. If :italic:`horizontal`,
+it will make the window wider or narrower by the specified increment.
+If :italic:`vertical`, it will make the window taller or shorter by the specified increment.
+The special value :italic:`reset` will reset the layout to its default configuration.
 
 
 --self
@@ -56,7 +60,7 @@ If specified resize the window this command is run in, rather than the active wi
             if not windows:
                 raise MatchError(match)
         else:
-            windows = [window if window and payload_get('self') else boss.active_window]
+            windows = tuple(window if window and payload_get('self') else boss.active_window)
         resized = False
         if windows and windows[0]:
             resized = boss.resize_layout_window(

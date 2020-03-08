@@ -41,7 +41,7 @@ the command will exit with a success code.
         windows = [window or boss.active_window]
         match = payload_get('match')
         if match:
-            windows = tuple(boss.match_windows(match))
+            windows = [boss.match_windows(match)]
             if not windows:
                 raise MatchError(match)
         for window in windows:

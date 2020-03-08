@@ -7,7 +7,7 @@ import os
 import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
-from typing import DefaultDict, List
+from typing import DefaultDict, List, Optional
 
 import kitty.fast_data_types as fast_data_types
 
@@ -158,7 +158,8 @@ def openpty():
 
 class Child:
 
-    child_fd = pid = None
+    child_fd: Optional[int] = None
+    pid: Optional[int] = None
     forked = False
 
     def __init__(self, argv, cwd, opts, stdin=None, env=None, cwd_from=None, allow_remote_control=False):

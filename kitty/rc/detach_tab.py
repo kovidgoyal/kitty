@@ -43,7 +43,7 @@ If specified detach the tab this command is run in, rather than the active tab.
             if not tabs:
                 raise MatchError(match)
         else:
-            tabs = [window.tabref() if payload_get('self') and window and window.tabref() else boss.active_tab]
+            tabs = tuple(window.tabref() if payload_get('self') and window and window.tabref() else boss.active_tab)
         match = payload_get('target_tab')
         kwargs = {}
         if match:

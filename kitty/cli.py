@@ -7,13 +7,13 @@ import re
 import sys
 from collections import deque
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterator, List, Optional, Tuple, Type,
-    TypeVar, Union, cast
+    Any, Callable, Dict, FrozenSet, Iterator, List, Optional, Sequence, Tuple,
+    Type, TypeVar, Union, cast
 )
 
+from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
 from .constants import appname, defconf, is_macos, is_wayland, str_version
-from .cli_stub import CLIOptions
 from .options_stub import Options as OptionsStub
 
 try:
@@ -135,7 +135,8 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
     disabled: OptionSpecSeq = []
     mpat = re.compile('([a-z]+)=(.+)')
     current_cmd: OptionDict = {
-        'dest': '', 'aliases': frozenset(), 'help': '', 'choices': frozenset(), 'type': '', 'condition': False, 'default': None
+        'dest': '', 'aliases': frozenset(), 'help': '', 'choices': frozenset(),
+        'type': '', 'condition': False, 'default': None
     }
     empty_cmd = current_cmd
 
@@ -150,7 +151,8 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
             if line.startswith('--'):
                 parts = line.split(' ')
                 current_cmd = {
-                    'dest': parts[0][2:].replace('-', '_'), 'aliases': frozenset(parts), 'help': '', 'choices': frozenset(), 'type': '',
+                    'dest': parts[0][2:].replace('-', '_'), 'aliases': frozenset(parts), 'help': '',
+                    'choices': frozenset(), 'type': '',
                     'default': None, 'condition': True
                 }
                 state = METADATA
@@ -335,7 +337,13 @@ class PrintHelpForSeq:
 print_help_for_seq = PrintHelpForSeq()
 
 
-def seq_as_rst(seq: OptionSpecSeq, usage: Optional[str], message: Optional[str], appname: Optional[str], heading_char: str = '-') -> str:
+def seq_as_rst(
+    seq: OptionSpecSeq,
+    usage: Optional[str],
+    message: Optional[str],
+    appname: Optional[str],
+    heading_char: str = '-'
+) -> str:
     import textwrap
     blocks: List[str] = []
     a = blocks.append
@@ -382,7 +390,7 @@ def seq_as_rst(seq: OptionSpecSeq, usage: Optional[str], message: Optional[str],
     return text
 
 
-def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str) -> str:
+def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, extra_fields: Sequence[str] = ()) -> str:
     from itertools import chain
     ans: List[str] = ['class {}:'.format(class_name)]
     for opt in chain(seq, disabled):
@@ -401,6 +409,8 @@ def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str) -
         else:
             raise ValueError('Unknown CLI option type: {}'.format(otype))
         ans.append('    {}: {}'.format(name, t))
+    for x in extra_fields:
+        ans.append('    {}'.format(x))
     return '\n'.join(ans) + '\n\n\n'
 
 

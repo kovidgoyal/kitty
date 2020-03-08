@@ -39,7 +39,7 @@ class LastUsedLayout(RemoteCommand):
             if not tabs:
                 raise MatchError(match, 'tabs')
         else:
-            tabs = [boss.tab_for_window(window) if window else boss.active_tab]
+            tabs = tuple(boss.tab_for_window(window) if window else boss.active_tab)
         for tab in tabs:
             if tab:
                 tab.last_used_layout()

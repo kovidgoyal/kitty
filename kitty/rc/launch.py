@@ -80,7 +80,7 @@ instead of the active tab
             setattr(opts, key, val)
         match = payload_get('match')
         if match:
-            tabs = tuple(boss.match_tabs(match))
+            tabs = list(boss.match_tabs(match))
             if not tabs:
                 raise MatchError(match, 'tabs')
         else:
@@ -88,7 +88,7 @@ instead of the active tab
             if payload_get('self') and window and window.tabref():
                 tabs = [window.tabref()]
         tab = tabs[0]
-        w = do_launch(boss, opts, payload_get('args') or None, target_tab=tab)
+        w = do_launch(boss, opts, payload_get('args') or [], target_tab=tab)
         return None if payload_get('no_response') else str(getattr(w, 'id', 0))
 
 

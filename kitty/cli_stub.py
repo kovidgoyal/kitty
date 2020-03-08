@@ -3,6 +3,9 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+from typing import Sequence
+
+
 class CLIOptions:
     pass
 
@@ -17,9 +20,9 @@ def generate_stub() -> None:
     from .conf.definition import save_type_stub
     text = 'import typing\n\n\n'
 
-    def do(otext=None, cls: str = 'CLIOptions'):
+    def do(otext=None, cls: str = 'CLIOptions', extra_fields: Sequence[str] = ()):
         nonlocal text
-        text += as_type_stub(*parse_option_spec(otext), class_name=cls)
+        text += as_type_stub(*parse_option_spec(otext), class_name=cls, extra_fields=extra_fields)
 
     do()
 
@@ -27,7 +30,7 @@ def generate_stub() -> None:
     do(options_spec(), 'LaunchCLIOptions')
 
     from .remote_control import global_options_spec
-    do(global_options_spec(), 'RCOptions')
+    do(global_options_spec(), 'RCOptions', extra_fields=['no_command_response: typing.Optional[bool]'])
 
     from kittens.ask.main import option_text
     do(option_text(), 'AskCLIOptions')

@@ -10,6 +10,7 @@ from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
 from weakref import WeakValueDictionary
+from typing import Optional
 
 from .child import cached_process_data, cwd_of_process
 from .cli import create_opts, parse_args
@@ -43,8 +44,8 @@ from .window import Window
 
 def notification_activated(identifier: str) -> None:
     if identifier == 'new-version':
-        from .update_check import notification_activated
-        notification_activated()
+        from .update_check import notification_activated as do
+        do()
 
 
 def listen_on(spec: str) -> int:
@@ -57,7 +58,7 @@ def listen_on(spec: str) -> int:
     return s.fileno()
 
 
-def data_for_at(w: Window, arg: str, add_wrap_markers: bool = False) -> str:
+def data_for_at(w: Window, arg: str, add_wrap_markers: bool = False) -> Optional[str]:
     def as_text(**kw) -> str:
         kw['add_wrap_markers'] = add_wrap_markers
         return w.as_text(**kw)
@@ -80,6 +81,7 @@ def data_for_at(w: Window, arg: str, add_wrap_markers: bool = False) -> str:
         return as_text(as_ansi=True, alternate_screen=True)
     if arg == '@ansi_alternate_scrollback':
         return as_text(as_ansi=True, alternate_screen=True, add_history=True)
+    return None
 
 
 class DumpCommands:  # {{{
@@ -935,7 +937,7 @@ class Boss:
                 stdin = stdin.encode('utf-8')
         return env, stdin
 
-    def data_for_at(self, which, window=None, add_wrap_markers=False):
+    def data_for_at(self, which, window=None, add_wrap_markers=False) -> Optional[str]:
         return data_for_at(window or self.active_window, which, add_wrap_markers=add_wrap_markers)
 
     def special_window_for_cmd(self, cmd, window=None, stdin=None, cwd_from=None, as_overlay=False):

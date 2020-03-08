@@ -175,4 +175,4 @@ supports_primary_selection = not is_macos
 def running_in_kitty(set_val: Optional[bool] = None) -> bool:
     if set_val is not None:
         setattr(running_in_kitty, 'ans', set_val)
-    return getattr(running_in_kitty, 'ans', False)
+    return bool(getattr(running_in_kitty, 'ans', False))

@@ -7,15 +7,15 @@ from binascii import hexlify, unhexlify
 from typing import cast, Dict
 
 
-def modify_key_bytes(keybytes, amt):
+def modify_key_bytes(keybytes: bytes, amt: int) -> bytes:
     if amt == 0:
         return keybytes
     ans = bytearray(keybytes)
-    amt = str(amt).encode('ascii')
+    samt = str(amt).encode('ascii')
     if ans[-1] == ord('~'):
-        return bytes(ans[:-1] + bytearray(b';' + amt + b'~'))
+        return bytes(ans[:-1] + bytearray(b';' + samt + b'~'))
     if ans[1] == ord('O'):
-        return bytes(ans[:1] + bytearray(b'[1;' + amt) + ans[-1:])
+        return bytes(ans[:1] + bytearray(b'[1;' + samt) + ans[-1:])
     raise ValueError('Unknown key type in key: {!r}'.format(keybytes))
 
 
@@ -433,7 +433,7 @@ octal_escape = re.compile(r'\\([0-7]{3})')
 escape_escape = re.compile(r'\\[eE]')
 
 
-def key_as_bytes(name):
+def key_as_bytes(name: str) -> bytes:
     ans = string_capabilities[name]
     ans = octal_escape.sub(lambda m: chr(int(m.group(1), 8)), ans)
     ans = escape_escape.sub('\033', ans)

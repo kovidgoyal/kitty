@@ -4,7 +4,7 @@
 
 import os
 import sys
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Generator, Dict
 
 from kitty.config import parse_send_text_bytes
 
@@ -51,8 +51,7 @@ are sent as is, not interpreted for escapes.
         limit = 1024
         ret = {'match': opts.match, 'is_binary': False, 'match_tab': opts.match_tab}
 
-        def pipe():
-            ret['is_binary'] = True
+        def pipe() -> Generator[Dict, None, None]:
             if sys.stdin.isatty():
                 import select
                 fd = sys.stdin.fileno()
@@ -64,28 +63,29 @@ are sent as is, not interpreted for escapes.
                     data = os.read(fd, limit)
                     if not data:
                         break  # eof
-                    data = data.decode('utf-8')
-                    if '\x04' in data:
-                        data = data[:data.index('\x04')]
+                    decoded_data = data.decode('utf-8')
+                    if '\x04' in decoded_data:
+                        decoded_data = decoded_data[:decoded_data.index('\x04')]
                         keep_going = False
-                    ret['text'] = data
+                    ret['text'] = decoded_data
                     yield ret
             else:
+                ret['is_binary'] = True
                 while True:
-                    data = sys.stdin.read(limit)
+                    data = sys.stdin.buffer.read(limit)
                     if not data:
                         break
                     ret['text'] = data[:limit]
                     yield ret
 
-        def chunks(text):
+        def chunks(text: str) -> Generator[Dict, None, None]:
             ret['is_binary'] = False
             while text:
                 ret['text'] = text[:limit]
                 yield ret
                 text = text[limit:]
 
-        def file_pipe(path):
+        def file_pipe(path: str) -> Generator[Dict, None, None]:
             ret['is_binary'] = True
             with open(path, encoding='utf-8') as f:
                 while True:
@@ -105,7 +105,7 @@ are sent as is, not interpreted for escapes.
         text = ' '.join(args)
         sources.append(chunks(text))
 
-        def chain():
+        def chain() -> Generator[Dict, None, None]:
             for src in sources:
                 yield from src
         return chain()
@@ -114,7 +114,7 @@ are sent as is, not interpreted for escapes.
         windows = [boss.active_window]
         match = payload_get('match')
         if match:
-            windows = tuple(boss.match_windows(match))
+            windows = list(boss.match_windows(match))
         mt = payload_get('match_tab')
         if mt:
             windows = []
@@ -123,7 +123,8 @@ are sent as is, not interpreted for escapes.
                 raise MatchError(payload_get('match_tab'), 'tabs')
             for tab in tabs:
                 windows += tuple(tab)
-        data = payload_get('text').encode('utf-8') if payload_get('is_binary') else parse_send_text_bytes(payload_get('text'))
+        data = payload_get('text').encode('utf-8') if payload_get('is_binary') else parse_send_text_bytes(
+                payload_get('text'))
         for window in windows:
             if window is not None:
                 window.write_to_child(data)

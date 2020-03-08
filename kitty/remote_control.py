@@ -9,15 +9,15 @@ import sys
 import types
 from contextlib import suppress
 from functools import partial
-from typing import Any, List, Optional
+from typing import List
 
 from .cli import emph, parse_args
 from .cli_stub import RCOptions
 from .constants import appname, version
 from .fast_data_types import read_command_response
 from .rc.base import (
-    all_command_names, command_for_name, no_response as no_response_sentinel,
-    parse_subcommand_cli
+    PayloadGetter, all_command_names, command_for_name,
+    no_response as no_response_sentinel, parse_subcommand_cli
 )
 from .utils import TTYIO, parse_address_spec
 
@@ -33,11 +33,8 @@ def handle_cmd(boss, window, cmd):
     c = command_for_name(cmd['cmd'])
     payload = cmd.get('payload') or {}
 
-    def payload_get(key: str, opt_name: Optional[str] = None) -> Any:
-        return c.payload_get(payload, key, opt_name)
-
     try:
-        ans = c.response_from_kitty(boss, window, payload_get)
+        ans = c.response_from_kitty(boss, window, PayloadGetter(c, payload))
     except Exception:
         if no_response:  # don't report errors if --no-response was used
             return

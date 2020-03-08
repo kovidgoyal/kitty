@@ -7,7 +7,7 @@ import re
 import shlex
 from collections import namedtuple
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterator, List, Optional, Sequence, Tuple,
+    Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Tuple,
     Type, Union
 )
 
@@ -118,7 +118,7 @@ def parse_line(
 
 
 def _parse(
-    lines: Iterator[str],
+    lines: Iterable[str],
     type_convert: Callable[[str, Any], Any],
     special_handling: Callable,
     ans: Dict[str, Any],
@@ -144,7 +144,7 @@ def _parse(
 
 
 def parse_config_base(
-    lines: Iterator[str],
+    lines: Iterable[str],
     defaults: Any,
     type_convert: Callable[[str, Any], Any],
     special_handling: Callable,
@@ -158,7 +158,7 @@ def parse_config_base(
     )
 
 
-def create_options_class(all_keys: Iterator[str]) -> Type:
+def create_options_class(all_keys: Iterable[str]) -> Type:
     keys = tuple(sorted(all_keys))
     slots = keys + ('_fields', )
 
@@ -223,10 +223,10 @@ def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Seq
 def load_config(
         Options: Type,
         defaults: Any,
-        parse_config: Callable[[Iterator[str]], Dict[str, Any]],
+        parse_config: Callable[[Iterable[str]], Dict[str, Any]],
         merge_configs: Callable[[Dict, Dict], Dict],
         *paths: str,
-        overrides: Optional[Iterator[str]] = None
+        overrides: Optional[Iterable[str]] = None
 ):
     ans: Dict = defaults._asdict()
     for path in paths:
@@ -244,7 +244,7 @@ def load_config(
     return Options(ans)
 
 
-def init_config(default_config_lines: Iterator[str], parse_config: Callable):
+def init_config(default_config_lines: Iterable[str], parse_config: Callable):
     defaults = parse_config(default_config_lines, check_keys=False)
     Options = create_options_class(defaults.keys())
     defaults = Options(defaults)

@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Tuple, Union
 
 from .base import (
     MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
@@ -35,23 +35,22 @@ class ScrollWindow(RemoteCommand):
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         amt = args[0]
-        ans = {'match': opts.match}
-        if amt in ('start', 'end'):
-            ans['amount'] = amt, None
-        else:
+        amount: Tuple[Union[str, int], Optional[str]] = amt, None
+        if amt not in ('start', 'end'):
             pages = 'p' in amt
             amt = amt.replace('p', '')
             mult = -1 if amt.endswith('-') else 1
-            amt = int(amt.replace('-', ''))
-            ans['amount'] = [amt * mult, 'p' if pages else 'l']
-        return ans
+            q = int(amt.replace('-', ''))
+            amount = q * mult, 'p' if pages else 'l'
+
+        return {'match': opts.match, 'amount': amount}
 
     def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
         windows = [window or boss.active_window]
         match = payload_get('match')
         amt = payload_get('amount')
         if match:
-            windows = tuple(boss.match_windows(match))
+            windows = list(boss.match_windows(match))
             if not windows:
                 raise MatchError(match)
         for window in windows:

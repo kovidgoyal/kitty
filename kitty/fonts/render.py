@@ -5,7 +5,8 @@
 import ctypes
 import sys
 from functools import partial
-from math import ceil, pi, cos, floor
+from math import ceil, cos, floor, pi
+from typing import Any, List, Tuple
 
 from kitty.config import defaults
 from kitty.constants import is_macos
@@ -22,7 +23,7 @@ if is_macos:
 else:
     from .fontconfig import get_font_files, font_for_family
 
-current_faces = None
+current_faces: List[Tuple[Any, bool, bool]] = []
 
 
 def coalesce_symbol_maps(maps):

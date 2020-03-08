@@ -45,10 +45,14 @@ def all_fonts_map(monospaced=True):
 def list_fonts() -> Generator[ListedFont, None, None]:
     for fd in fc_list():
         f = fd.get('family')
-        if f:
-            fn = fd.get('full_name') or (f + ' ' + fd.get('style', '')).strip()
+        if f and isinstance(f, str):
+            fn_ = fd.get('full_name')
+            if fn_:
+                fn = str(fn_)
+            else:
+                fn = (f + ' ' + str(fd.get('style', ''))).strip()
             is_mono = fd.get('spacing') in ('MONO', 'DUAL')
-            yield {'family': f, 'full_name': fn, 'postscript_name': fd.get('postscript_name', ''), 'is_monospace': is_mono}
+            yield {'family': f, 'full_name': fn, 'postscript_name': str(fd.get('postscript_name', '')), 'is_monospace': is_mono}
 
 
 def family_name_to_key(family):

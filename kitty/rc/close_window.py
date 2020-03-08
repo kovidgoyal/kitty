@@ -38,7 +38,7 @@ If specified close the window this command is run in, rather than the active win
             if not windows:
                 raise MatchError(match)
         else:
-            windows = [window if window and payload_get('self') else boss.active_window]
+            windows = tuple(window if window and payload_get('self') else boss.active_window)
         for window in windows:
             if window:
                 boss.close_window(window)

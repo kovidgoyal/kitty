@@ -48,7 +48,7 @@ If specified apply marker to the window this command is run in, rather than the 
             if not windows:
                 raise MatchError(match)
         else:
-            windows = [window if window and payload_get('self') else boss.active_window]
+            windows = tuple(window if window and payload_get('self') else boss.active_window)
         args = payload_get('marker_spec')
 
         for window in windows:

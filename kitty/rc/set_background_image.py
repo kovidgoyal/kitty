@@ -5,12 +5,12 @@
 import imghdr
 import tempfile
 from base64 import standard_b64decode, standard_b64encode
-from typing import TYPE_CHECKING, BinaryIO, Optional
+from typing import IO, TYPE_CHECKING, Dict, Generator, Optional
 from uuid import uuid4
 
 from .base import (
     MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
-    RCOptions, RemoteCommand, ResponseType, Window, no_response,
+    RCOptions, RemoteCommand, ResponseType, Window,
     windows_for_payload
 )
 
@@ -59,20 +59,26 @@ How the image should be displayed. The value of configured will use the configur
     args_count = 1
     args_completion = {'files': ('PNG Images', ('*.png',))}
     current_img_id: Optional[str] = None
-    current_file_obj: Optional[BinaryIO] = None
+    current_file_obj: Optional[IO[bytes]] = None
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if not args:
             self.fatal('Must specify path to PNG image')
         path = args[0]
-        ret = {'match': opts.match, 'configured': opts.configured, 'layout': opts.layout, 'all': opts.all, 'img_id': str(uuid4())}
+        ret = {
+            'match': opts.match,
+            'configured': opts.configured,
+            'layout': opts.layout,
+            'all': opts.all,
+            'img_id': str(uuid4())
+        }
         if path.lower() == 'none':
             ret['data'] = '-'
             return ret
         if imghdr.what(path) != 'png':
             self.fatal('{} is not a PNG image'.format(path))
 
-        def file_pipe(path):
+        def file_pipe(path) -> Generator[Dict, None, None]:
             with open(path, 'rb') as f:
                 while True:
                     data = f.read(512)
@@ -92,8 +98,9 @@ How the image should be displayed. The value of configured will use the configur
                 set_background_image.current_img_id = img_id
                 set_background_image.current_file_obj = tempfile.NamedTemporaryFile()
             if data:
+                assert set_background_image.current_file_obj is not None
                 set_background_image.current_file_obj.write(standard_b64decode(data))
-                return no_response
+                return None
 
         windows = windows_for_payload(boss, window, payload_get)
         os_windows = tuple({w.os_window_id for w in windows})
@@ -101,6 +108,7 @@ How the image should be displayed. The value of configured will use the configur
         if data == '-':
             path = None
         else:
+            assert set_background_image.current_file_obj is not None
             f = set_background_image.current_file_obj
             path = f.name
             set_background_image.current_file_obj = None
@@ -109,7 +117,7 @@ How the image should be displayed. The value of configured will use the configur
         try:
             boss.set_background_image(path, os_windows, payload_get('configured'), layout)
         except ValueError as err:
-            err.hide_traceback = True
+            err.hide_traceback = True  # type: ignore
             raise
 
 

@@ -48,7 +48,7 @@ def cmd_names_matching(prefix):
 
 @lru_cache()
 def options_for_cmd(cmd: str) -> Tuple[Tuple[str, ...], Dict[str, OptionDict]]:
-    alias_map = {}
+    alias_map: Dict[str, OptionDict] = {}
     try:
         func = command_for_name(cmd)
     except KeyError:

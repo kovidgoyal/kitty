@@ -55,7 +55,7 @@ If specified get text from the window this command is run in, rather than the ac
             if not windows:
                 raise MatchError(match)
         else:
-            windows = [window if window and payload_get('self') else boss.active_window]
+            windows = tuple(window if window and payload_get('self') else boss.active_window)
         window = windows[0]
         if payload_get('extent') == 'selection':
             ans = window.text_for_selection()

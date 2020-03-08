@@ -6,7 +6,7 @@ import os
 import shlex
 import sys
 from functools import lru_cache
-from typing import Tuple
+from typing import Callable, Dict, Tuple
 
 from kittens.runner import all_kitten_names, get_kitten_cli_docs
 
@@ -33,7 +33,8 @@ taking the results from kitty's completion system and converting
 them into something your shell will understand.
 '''
 
-parsers, serializers = {}, {}
+parsers: Dict[str, Callable] = {}
+serializers: Dict[str, Callable] = {}
 
 
 def debug(*a, **kw):

@@ -32,7 +32,8 @@ class NewWindow(RemoteCommand):
     desc = (
         'Open a new window in the specified tab. If you use the :option:`kitty @ new-window --match` option'
         ' the first matching tab is used. Otherwise the currently active tab is used.'
-        ' Prints out the id of the newly opened window (unless :option:`--no-response` is used). Any command line arguments'
+        ' Prints out the id of the newly opened window'
+        ' (unless :option:`--no-response` is used). Any command line arguments'
         ' are assumed to be the command line used to run in the new window, if none'
         ' are provided, the default shell is run. For example:\n'
         ':italic:`kitty @ new-window --title Email mutt`'
@@ -109,7 +110,7 @@ the id of the new window will not be printed out.
 
         match = payload_get('match')
         if match:
-            tabs = tuple(boss.match_tabs(match))
+            tabs = list(boss.match_tabs(match))
             if not tabs:
                 raise MatchError(match, 'tabs')
         else:

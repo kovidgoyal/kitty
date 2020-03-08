@@ -42,7 +42,7 @@ using this option means that you will not be notified of failures.
         if match:
             tabs = tuple(boss.match_tabs(match))
         else:
-            tabs = [boss.tab_for_window(window) if window else boss.active_tab]
+            tabs = tuple(boss.tab_for_window(window) if window else boss.active_tab)
         if not tabs:
             raise MatchError(match, 'tabs')
         tab = tabs[0]

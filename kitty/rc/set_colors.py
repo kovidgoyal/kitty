@@ -4,7 +4,7 @@
 
 
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Dict, Optional
 
 from kitty.config import parse_config
 from kitty.fast_data_types import patch_color_profiles
@@ -34,7 +34,8 @@ class SetColors(RemoteCommand):
 
     short_desc = 'Set terminal colors'
     desc = (
-        'Set the terminal colors for the specified windows/tabs (defaults to active window). You can either specify the path to a conf file'
+        'Set the terminal colors for the specified windows/tabs (defaults to active window).'
+        ' You can either specify the path to a conf file'
         ' (in the same format as kitty.conf) to read the colors from or you can specify individual colors,'
         ' for example: kitty @ set-colors foreground=red background=white'
     )
@@ -59,21 +60,28 @@ this option, any color arguments are ignored and --configured and --all are impl
     argspec = 'COLOR_OR_FILE ...'
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        colors, cursor_text_color = {}, False
+        final_colors: Dict[str, int] = {}
+        cursor_text_color: Optional[int] = None
         if not opts.reset:
+            colors: Dict[str, Optional[Color]] = {}
             for spec in args:
                 if '=' in spec:
                     colors.update(parse_config((spec.replace('=', ' '),)))
                 else:
                     with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
                         colors.update(parse_config(f))
-            cursor_text_color = colors.pop('cursor_text_color', False)
-            colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}
-        return {
+            ctc = colors.pop('cursor_text_color')
+            if isinstance(ctc, Color):
+                cursor_text_color = color_as_int(ctc)
+            final_colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}
+        ans = {
             'match_window': opts.match, 'match_tab': opts.match_tab,
             'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset,
-            'colors': colors, 'reset': opts.reset, 'cursor_text_color': cursor_text_color
+            'colors': final_colors, 'reset': opts.reset
         }
+        if cursor_text_color is not None:
+            ans['cursor_text_color'] = cursor_text_color
+        return ans
 
     def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
         windows = windows_for_payload(boss, window, payload_get)
