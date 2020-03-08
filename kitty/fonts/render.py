@@ -6,7 +6,7 @@ import ctypes
 import sys
 from functools import partial
 from math import ceil, cos, floor, pi
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 from kitty.config import defaults
 from kitty.constants import is_macos
@@ -15,7 +15,9 @@ from kitty.fast_data_types import (
     set_options, set_send_sprite_to_gpu, sprite_map_set_limits,
     test_render_line, test_shape
 )
-from kitty.fonts.box_drawing import render_box_char, render_missing_glyph
+from kitty.fonts.box_drawing import (
+    BufType, render_box_char, render_missing_glyph
+)
 from kitty.options_stub import Options as OptionsStub
 from kitty.utils import log_error
 
@@ -238,10 +240,11 @@ def prerender_function(
     return tuple(map(ctypes.addressof, cells)) + (cells,)
 
 
-def render_box_drawing(codepoint, cell_width, cell_height, dpi):
+def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float):
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
-    buf = render_box_char(
-        chr(codepoint), CharTexture(), cell_width, cell_height, dpi
+    buf = CharTexture()
+    render_box_char(
+        chr(codepoint), cast(BufType, buf), cell_width, cell_height, dpi
     )
     return ctypes.addressof(buf), buf
 

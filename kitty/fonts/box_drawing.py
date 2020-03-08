@@ -11,12 +11,13 @@ import math
 from functools import partial as p
 from itertools import repeat
 from typing import (
-    Callable, Dict, Generator, Iterable, List, Optional, Sequence, Tuple, cast
+    Callable, Dict, Generator, Iterable, List, MutableSequence, Optional,
+    Sequence, Tuple, cast
 )
 
 scale = (0.001, 1., 1.5, 2.)
 _dpi = 96.0
-BufType = bytearray
+BufType = MutableSequence[int]
 
 
 def set_scale(new_scale: Sequence[float]) -> None:

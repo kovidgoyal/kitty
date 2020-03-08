@@ -5,7 +5,7 @@
 import sys
 from contextlib import contextmanager
 from functools import wraps
-from typing import List
+from typing import List, Optional, Union
 
 from kitty.rgb import Color, color_as_sharp, to_color
 
@@ -234,12 +234,18 @@ def alternate_screen(f=None):
 def set_default_colors(fg=None, bg=None, cursor=None, select_bg=None, select_fg=None) -> str:
     ans = ''
 
-    def item(which, num):
+    def item(which: Optional[Union[Color, str]], num: int) -> None:
         nonlocal ans
         if which is None:
             ans += '\x1b]1{}\x1b\\'.format(num)
         else:
-            ans += '\x1b]{};{}\x1b\\'.format(num, color_as_sharp(which if isinstance(which, Color) else to_color(which)))
+            if isinstance(which, Color):
+                q = color_as_sharp(which)
+            else:
+                x = to_color(which)
+                assert x is not None
+                q = color_as_sharp(x)
+            ans += '\x1b]{};{}\x1b\\'.format(num, q)
 
     item(fg, 10)
     item(bg, 11)
@@ -249,7 +255,7 @@ def set_default_colors(fg=None, bg=None, cursor=None, select_bg=None, select_fg=
     return ans
 
 
-def write_to_clipboard(data, use_primary=False) -> str:
+def write_to_clipboard(data: Union[str, bytes], use_primary=False) -> str:
     if isinstance(data, str):
         data = data.encode('utf-8')
     from base64 import standard_b64encode
@@ -260,8 +266,8 @@ def write_to_clipboard(data, use_primary=False) -> str:
 
     ans = esc('!')  # clear clipboard buffer
     for chunk in (data[i:i+512] for i in range(0, len(data), 512)):
-        chunk = standard_b64encode(chunk).decode('ascii')
-        ans += esc(chunk)
+        s = standard_b64encode(chunk).decode('ascii')
+        ans += esc(s)
     return ans
 
 

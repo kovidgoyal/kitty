@@ -734,15 +734,16 @@ def compile_python(base_path):
         for f in files:
             if f.rpartition('.')[-1] in ('pyc', 'pyo'):
                 os.remove(os.path.join(root, f))
-    for optimize in (0, 1, 2):
+
+    def c(base_path: str, **kw) -> None:
         try:
-            kw = {'invalidation_mode': py_compile.PycInvalidationMode.UNCHECKED_HASH}
+            kw['invalidation_mode'] = py_compile.PycInvalidationMode.UNCHECKED_HASH
         except AttributeError:
-            kw = {}
-        compileall.compile_dir(
-            base_path, ddir='', force=True, optimize=optimize, quiet=1,
-            workers=num_workers, **kw
-        )
+            pass
+        compileall.compile_dir(base_path, **kw)
+
+    for optimize in (0, 1, 2):
+        c(base_path, ddir='', force=True, optimize=optimize, quiet=1, workers=num_workers)
 
 
 def create_linux_bundle_gunk(ddir, libdir_name):

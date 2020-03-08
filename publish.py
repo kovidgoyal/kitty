@@ -16,6 +16,7 @@ import sys
 import tempfile
 import time
 from contextlib import suppress
+from typing import IO, Optional, cast
 
 import requests
 
@@ -33,10 +34,12 @@ appname = re.search(r"^appname\s+=\s+'([^']+)'", raw, flags=re.MULTILINE).group(
 ALL_ACTIONS = 'man html build tag sdist upload website'.split()
 
 
-def call(*cmd, cwd=None):
+def call(*cmd: str, cwd: Optional[str] = None) -> None:
     if len(cmd) == 1:
-        cmd = shlex.split(cmd[0])
-    ret = subprocess.Popen(cmd, cwd=cwd).wait()
+        q = shlex.split(cmd[0])
+    else:
+        q = list(cmd)
+    ret = subprocess.Popen(q, cwd=cwd).wait()
     if ret != 0:
         raise SystemExit(ret)
 
@@ -118,25 +121,25 @@ def run_sdist(args):
         subprocess.check_call(['xz', '-9', dest])
 
 
-class ReadFileWithProgressReporting(io.BufferedReader):  # {{{
-    def __init__(self, path, mode='rb'):
-        io.BufferedReader.__init__(self, open(path, mode))
+class ReadFileWithProgressReporting(io.FileIO):  # {{{
+    def __init__(self, path):
+        io.FileIO.__init__(self, path, 'rb')
         self.seek(0, os.SEEK_END)
         self._total = self.tell()
         self.seek(0)
-        self.start_time = time.time()
+        self.start_time = time.monotonic()
 
-    def __len__(self):
+    def __len__(self) -> int:
         return self._total
 
-    def read(self, size):
-        data = io.BufferedReader.read(self, size)
+    def read(self, size: int = -1) -> Optional[bytes]:
+        data = io.FileIO.read(self, size)
         if data:
             self.report_progress(len(data))
         return data
 
-    def report_progress(self, size):
-        def write(*args):
+    def report_progress(self, size: int) -> None:
+        def write(*args: str) -> None:
             print(*args, end='')
 
         write('\x1b[s\x1b[K')
@@ -144,7 +147,7 @@ class ReadFileWithProgressReporting(io.BufferedReader):  # {{{
         mb_pos = self.tell() / float(1024**2)
         mb_tot = self._total / float(1024**2)
         kb_pos = self.tell() / 1024.0
-        kb_rate = kb_pos / (time.time() - self.start_time)
+        kb_rate = kb_pos / (time.monotonic() - self.start_time)
         bit_rate = kb_rate * 1024
         eta = int((self._total - self.tell()) / bit_rate) + 1
         eta_m, eta_s = eta / 60, eta % 60
@@ -264,7 +267,7 @@ class GitHub(Base):  # {{{
                     'Content-Length': str(f._total)
                 },
                 params={'name': fname},
-                data=f)
+                data=cast(IO[bytes], f))
 
     def fail(self, r, msg):
         print(msg, ' Status Code: %s' % r.status_code, file=sys.stderr)
@@ -281,7 +284,7 @@ class GitHub(Base):  # {{{
             self.username, self.reponame, release_id)
         r = self.requests.get(url)
         if r.status_code != 200:
-            self.fail('Failed to get assets for release')
+            self.fail(r, 'Failed to get assets for release')
         return {asset['name']: asset['id'] for asset in r.json()}
 
     def releases(self):
