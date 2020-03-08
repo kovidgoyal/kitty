@@ -1164,10 +1164,11 @@ class Boss:
         self.show_error(_('Errors in kitty.conf'), msg)
 
     def set_colors(self, *args):
-        from .cmds import parse_subcommand_cli, cmd_set_colors, set_colors
-        opts, items = parse_subcommand_cli(cmd_set_colors, ['set-colors'] + list(args))
-        payload = cmd_set_colors(None, opts, items)
-        set_colors(self, self.active_window, payload)
+        from kitty.rc.base import parse_subcommand_cli, command_for_name
+        c = command_for_name('set_colors')
+        opts, items = parse_subcommand_cli(c, ['set-colors'] + list(args))
+        payload = c.message_to_kitty(None, opts, items)
+        c.response_from_kitty(self, self.active_window, payload)
 
     def _move_window_to(self, window=None, target_tab_id=None, target_os_window_id=None):
         window = window or self.active_window

@@ -16,7 +16,7 @@ from .cli_stub import CLIOptions
 from .config import cached_values_for, initial_window_size_func
 from .constants import (
     appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
-    is_wayland, kitty_exe, logo_data_file
+    is_wayland, kitty_exe, logo_data_file, running_in_kitty
 )
 from .fast_data_types import (
     GLFW_IBEAM_CURSOR, create_os_window, free_font_data, glfw_init,
@@ -254,6 +254,7 @@ def set_locale():
 
 
 def _main():
+    running_in_kitty(True)
     with suppress(AttributeError):  # python compiled without threading
         sys.setswitchinterval(1000.0)  # we have only a single python thread
 

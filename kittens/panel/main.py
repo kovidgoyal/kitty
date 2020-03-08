@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 import sys
+from typing import List, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
@@ -43,19 +44,19 @@ Syntax: :italic:`name=value`. For example: :option:`kitty +kitten panel -o` font
 '''.format
 
 
-args = None
+args = PanelCLIOptions()
 help_text = 'Use a command line program to draw a GPU accelerated panel on your X11 desktop'
 usage = 'program-to-run'
 
 
-def parse_panel_args(args):
+def parse_panel_args(args: List[str]) -> Tuple[PanelCLIOptions, List[str]]:
     return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten panel', result_class=PanelCLIOptions)
 
 
-def call_xprop(*cmd, silent=False):
-    cmd = ['xprop'] + list(cmd)
+def call_xprop(*cmd: str, silent=False):
+    cmd_ = ['xprop'] + list(cmd)
     try:
-        cp = subprocess.run(cmd, stdout=subprocess.DEVNULL if silent else None)
+        cp = subprocess.run(cmd_, stdout=subprocess.DEVNULL if silent else None)
     except FileNotFoundError:
         raise SystemExit('You must have the xprop program installed')
     if cp.returncode != 0:
@@ -94,29 +95,33 @@ def create_right_strut(win_id, width, height):
     create_strut(win_id, right=width, right_end_y=height)
 
 
+window_width = window_height = 0
+
+
 def setup_x11_window(win_id):
     call_xprop(
             '-id', str(win_id), '-format', '_NET_WM_WINDOW_TYPE', '32a',
             '-set', '_NET_WM_WINDOW_TYPE', '_NET_WM_WINDOW_TYPE_DOCK'
     )
     func = globals()['create_{}_strut'.format(args.edge)]
-    func(win_id, initial_window_size_func.width, initial_window_size_func.height)
+    func(win_id, window_width, window_height)
 
 
 def initial_window_size_func(opts, *a):
     from kitty.fast_data_types import glfw_primary_monitor_size, set_smallest_allowed_resize
 
     def initial_window_size(cell_width, cell_height, dpi_x, dpi_y, xscale, yscale):
+        global window_width, window_height
         monitor_width, monitor_height = glfw_primary_monitor_size()
         if args.edge in {'top', 'bottom'}:
-            h = initial_window_size_func.height = cell_height * args.lines + 1
-            initial_window_size_func.width = monitor_width
+            h = window_height = cell_height * args.lines + 1
+            window_width = monitor_width
             set_smallest_allowed_resize(100, h)
         else:
-            w = initial_window_size_func.width = cell_width * args.columns + 1
-            initial_window_size_func.height = monitor_height
+            w = window_width = cell_width * args.columns + 1
+            window_height = monitor_height
             set_smallest_allowed_resize(w, 100)
-        return initial_window_size_func.width, initial_window_size_func.height
+        return window_width, window_height
 
     return initial_window_size
 

@@ -2,14 +2,14 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import errno
 import os
 import pwd
 import sys
-import errno
 from collections import namedtuple
 from contextlib import suppress
 from functools import lru_cache
-from typing import Set
+from typing import Optional, Set
 
 appname = 'kitty'
 version = (0, 16, 0)
@@ -170,3 +170,9 @@ def is_wayland(opts=None):
 
 
 supports_primary_selection = not is_macos
+
+
+def running_in_kitty(set_val: Optional[bool] = None) -> bool:
+    if set_val is not None:
+        setattr(running_in_kitty, 'ans', set_val)
+    return getattr(running_in_kitty, 'ans', False)

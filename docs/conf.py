@@ -258,16 +258,17 @@ if you specify a program-to-run you can use the special placeholder
         f.write(option_spec_as_rst(appname='kitty').replace(
             'kitty --to', 'kitty @ --to'))
     as_rst = partial(option_spec_as_rst, heading_char='_')
-    from kitty.remote_control import global_options_spec, cli_msg, cmap, all_commands
+    from kitty.rc.base import all_command_names, command_for_name
+    from kitty.remote_control import global_options_spec, cli_msg
     with open('generated/cli-kitty-at.rst', 'w') as f:
         p = partial(print, file=f)
         p('kitty @\n' + '-' * 80)
         p('.. program::', 'kitty @')
         p('\n\n' + as_rst(
             global_options_spec, message=cli_msg, usage='command ...', appname='kitty @'))
-        from kitty.cmds import cli_params_for
-        for cmd_name in all_commands:
-            func = cmap[cmd_name]
+        from kitty.rc.base import cli_params_for
+        for cmd_name in all_command_names():
+            func = command_for_name(cmd_name)
             p(f'.. _at_{func.name}:\n')
             p('kitty @', func.name + '\n' + '-' * 120)
             p('.. program::', 'kitty @', func.name)
@@ -286,8 +287,8 @@ if you specify a program-to-run you can use the special placeholder
 # }}}
 
 
-def write_remote_control_protocol_docs():  # {{{
-    from kitty.cmds import cmap
+def write_remote_control_protocol_docs() -> None:  # {{{
+    from kitty.rc.base import all_command_names, command_for_name
     field_pat = re.compile(r'\s*([a-zA-Z0-9_+]+)\s*:\s*(.+)')
 
     def format_cmd(p, name, cmd):
@@ -319,8 +320,8 @@ def write_remote_control_protocol_docs():  # {{{
 
     with open(f'generated/rc.rst', 'w') as f:
         p = partial(print, file=f)
-        for name in sorted(cmap):
-            cmd = cmap[name]
+        for name in sorted(all_command_names()):
+            cmd = command_for_name(name)
             if not cmd.__doc__:
                 continue
             name = name.replace('_', '-')

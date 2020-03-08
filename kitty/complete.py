@@ -5,11 +5,13 @@
 import os
 import shlex
 import sys
+from functools import lru_cache
+from typing import Tuple
 
-from kittens.runner import get_kitten_cli_docs, all_kitten_names
+from kittens.runner import all_kitten_names, get_kitten_cli_docs
 
 from .cli import options_for_completion, parse_option_spec
-from .cmds import cmap
+from .rc.base import all_command_names, command_for_name
 from .shell import options_for_cmd
 
 '''
@@ -45,6 +47,11 @@ class Completions:
         self.match_groups = {}
         self.no_space_groups = set()
         self.files_groups = set()
+
+
+@lru_cache(maxsize=2)
+def remote_control_command_names() -> Tuple[str, ...]:
+    return tuple(sorted(x.replace('_', '-') for x in all_command_names()))
 
 
 # Shell specific code {{{
@@ -164,7 +171,7 @@ def fish_output_serializer(ans):
 
 
 def completions_for_first_word(ans, prefix, entry_points, namespaced_entry_points):
-    cmds = ['@' + c for c in cmap]
+    cmds = ['@' + c for c in remote_control_command_names()]
     ans.match_groups['Entry points'] = {
         k: None for k in
         list(entry_points) + cmds + ['+' + k for k in namespaced_entry_points]
@@ -266,9 +273,9 @@ def complete_remote_command(ans, cmd_name, words, new_word):
     aliases, alias_map = options_for_cmd(cmd_name)
     if not alias_map:
         return
-    args_completion = cmap[cmd_name].args_completion
     args_completer = None
-    if 'files' in args_completion:
+    args_completion = command_for_name(cmd_name).args_completion
+    if args_completion and 'files' in args_completion:
         args_completer = remote_files_completer(args_completion['files'])
     complete_alias_map(ans, words, new_word, alias_map, complete_args=args_completer)
 
@@ -390,14 +397,14 @@ def find_completions(words, new_word, entry_points, namespaced_entry_points):
     if words[0] == '@':
         if len(words) == 1 or (len(words) == 2 and not new_word):
             prefix = words[1] if len(words) > 1 else ''
-            ans.match_groups['Remote control commands'] = {c: None for c in cmap if c.startswith(prefix)}
+            ans.match_groups['Remote control commands'] = {c: None for c in remote_control_command_names() if c.startswith(prefix)}
         else:
             complete_remote_command(ans, words[1], words[2:], new_word)
         return ans
     if words[0].startswith('@'):
         if len(words) == 1 and not new_word:
             prefix = words[0]
-            ans.match_groups['Remote control commands'] = {'@' + c: None for c in cmap if c.startswith(prefix)}
+            ans.match_groups['Remote control commands'] = {'@' + c: None for c in remote_control_command_names() if c.startswith(prefix)}
         else:
             complete_remote_command(ans, words[0][1:], words[1:], new_word)
     if words[0] == '+':

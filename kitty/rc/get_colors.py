@@ -1,0 +1,57 @@
+#!/usr/bin/env python
+# vim:fileencoding=utf-8
+# License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
+
+from typing import TYPE_CHECKING
+
+from kitty.rgb import Color, color_as_sharp, color_from_int
+from kitty.utils import natsort_ints
+
+from .base import (
+    MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
+    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+)
+
+if TYPE_CHECKING:
+    from kitty.cli_stub import GetColorsRCOptions as CLIOptions
+
+
+class GetColors(RemoteCommand):
+
+    '''
+    match: The window to get the colors for
+    configured: Boolean indicating whether to get configured or current colors
+    '''
+
+    short_desc = 'Get terminal colors'
+    desc = (
+        'Get the terminal colors for the specified window (defaults to active window). '
+        'Colors will be output to stdout in the same syntax as used for kitty.conf'
+    )
+    options_spec = '''\
+--configured -c
+type=bool-set
+Instead of outputting the colors for the specified window, output the currently
+configured colors.
+
+''' + '\n\n' + MATCH_WINDOW_OPTION
+
+    def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
+        return {'configured': opts.configured, 'match': opts.match}
+
+    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+        ans = {k: getattr(boss.opts, k) for k in boss.opts if isinstance(getattr(boss.opts, k), Color)}
+        if not payload_get('configured'):
+            windows = (window or boss.active_window,)
+            if payload_get('match'):
+                windows = tuple(boss.match_windows(payload_get('match')))
+                if not windows:
+                    raise MatchError(payload_get('match'))
+            ans.update({k: color_from_int(v) for k, v in windows[0].current_colors.items()})
+        all_keys = natsort_ints(ans)
+        maxlen = max(map(len, all_keys))
+        return '\n'.join(('{:%ds} {}' % maxlen).format(key, color_as_sharp(ans[key])) for key in all_keys)
+# }}}
+
+
+get_colors = GetColors()

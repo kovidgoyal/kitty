@@ -4,10 +4,11 @@
 
 
 import sys
+from typing import Optional
 
 from kitty.cli import parse_args
-from kitty.cli_stub import ResizeCLIOptions
-from kitty.cmds import cmap, parse_subcommand_cli
+from kitty.cli_stub import RCOptions, ResizeCLIOptions
+from kitty.rc.base import parse_subcommand_cli, command_for_name
 from kitty.constants import version
 from kitty.key_encoding import CTRL, RELEASE, key_defs as K
 from kitty.remote_control import encode_send, parse_rc_args
@@ -16,7 +17,7 @@ from ..tui.handler import Handler
 from ..tui.loop import Loop
 from ..tui.operations import styled
 
-global_opts = None
+global_opts = RCOptions()
 ESCAPE = K['ESCAPE']
 N = K['N']
 S = K['S']
@@ -26,7 +27,7 @@ W = K['W']
 
 class Resize(Handler):
 
-    print_on_fail = None
+    print_on_fail: Optional[str] = None
 
     def __init__(self, opts):
         self.opts = opts
@@ -40,7 +41,7 @@ class Resize(Handler):
         self.draw_screen()
 
     def do_window_resize(self, is_decrease=False, is_horizontal=True, reset=False, multiplier=1):
-        resize_window = cmap['resize-window']
+        resize_window = command_for_name('resize_window')
         increment = self.opts.horizontal_increment if is_horizontal else self.opts.vertical_increment
         increment *= multiplier
         if is_decrease:
@@ -48,7 +49,7 @@ class Resize(Handler):
         axis = 'reset' if reset else ('horizontal' if is_horizontal else 'vertical')
         cmdline = [resize_window.name, '--self', '--increment={}'.format(increment), '--axis=' + axis]
         opts, items = parse_subcommand_cli(resize_window, cmdline)
-        payload = resize_window(global_opts, opts, items)
+        payload = resize_window.message_to_kitty(global_opts, opts, items)
         send = {'cmd': resize_window.name, 'version': version, 'payload': payload, 'no_response': False}
         self.write(encode_send(send))
 

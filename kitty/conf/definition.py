@@ -336,7 +336,10 @@ def save_type_stub(text: str, fpath: str) -> None:
     import os
     fpath += 'i'
     preamble = '# Update this file by running: python {}\n\n'.format(os.path.relpath(os.path.abspath(fpath)))
-    existing = open(fpath).read()
+    try:
+        existing = open(fpath).read()
+    except FileNotFoundError:
+        existing = ''
     current = preamble + text
     if existing != current:
         open(fpath, 'w').write(current)

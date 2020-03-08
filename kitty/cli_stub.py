@@ -9,7 +9,7 @@ class CLIOptions:
 
 LaunchCLIOptions = AskCLIOptions = ClipboardCLIOptions = DiffCLIOptions = CLIOptions
 HintsCLIOptions = IcatCLIOptions = PanelCLIOptions = ResizeCLIOptions = CLIOptions
-ErrorCLIOptions = UnicodeCLIOptions = CLIOptions
+ErrorCLIOptions = UnicodeCLIOptions = RCOptions = CLIOptions
 
 
 def generate_stub() -> None:
@@ -26,6 +26,9 @@ def generate_stub() -> None:
     from .launch import options_spec
     do(options_spec(), 'LaunchCLIOptions')
 
+    from .remote_control import global_options_spec
+    do(global_options_spec(), 'RCOptions')
+
     from kittens.ask.main import option_text
     do(option_text(), 'AskCLIOptions')
 
@@ -38,8 +41,8 @@ def generate_stub() -> None:
     from kittens.hints.main import OPTIONS
     do(OPTIONS(), 'HintsCLIOptions')
 
-    from kittens.icat.main import OPTIONS
-    do(OPTIONS, 'IcatCLIOptions')
+    from kittens.icat.main import options_spec
+    do(options_spec(), 'IcatCLIOptions')
 
     from kittens.panel.main import OPTIONS
     do(OPTIONS(), 'PanelCLIOptions')
@@ -52,6 +55,12 @@ def generate_stub() -> None:
 
     from kittens.unicode_input.main import OPTIONS
     do(OPTIONS(), 'UnicodeCLIOptions')
+
+    from kitty.rc.base import all_command_names, command_for_name
+    for cmd_name in all_command_names():
+        cmd = command_for_name(cmd_name)
+        if cmd.options_spec:
+            do(cmd.options_spec, cmd.__class__.__name__ + 'RCOptions')
 
     save_type_stub(text, __file__)
 

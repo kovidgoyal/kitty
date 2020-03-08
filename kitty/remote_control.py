@@ -9,13 +9,16 @@ import sys
 import types
 from contextlib import suppress
 from functools import partial
+from typing import Any, List, Optional
 
 from .cli import emph, parse_args
-from .cmds import (
-    cmap, no_response as no_response_sentinel, parse_subcommand_cli
-)
+from .cli_stub import RCOptions
 from .constants import appname, version
 from .fast_data_types import read_command_response
+from .rc.base import (
+    all_command_names, command_for_name, no_response as no_response_sentinel,
+    parse_subcommand_cli
+)
 from .utils import TTYIO, parse_address_spec
 
 
@@ -27,11 +30,14 @@ def handle_cmd(boss, window, cmd):
         if no_response:
             return
         return {'ok': False, 'error': 'The kitty client you are using to send remote commands is newer than this kitty instance. This is not supported.'}
-    c = cmap[cmd['cmd']]
-    func = partial(c.impl(), boss, window)
-    payload = cmd.get('payload')
+    c = command_for_name(cmd['cmd'])
+    payload = cmd.get('payload') or {}
+
+    def payload_get(key: str, opt_name: Optional[str] = None) -> Any:
+        return c.payload_get(payload, key, opt_name)
+
     try:
-        ans = func() if payload is None else func(payload)
+        ans = c.response_from_kitty(boss, window, payload_get)
     except Exception:
         if no_response:  # don't report errors if --no-response was used
             return
@@ -130,7 +136,6 @@ def do_io(to, send, no_response):
     return response
 
 
-all_commands = tuple(sorted(cmap))
 cli_msg = (
         'Control {appname} by sending it commands. Set the'
         ' :opt:`allow_remote_control` option to yes in :file:`kitty.conf` for this'
@@ -138,12 +143,9 @@ cli_msg = (
 ).format(appname=appname)
 
 
-class RCOptions:
-    pass
-
-
-def parse_rc_args(args):
-    cmds = ('  :green:`{}`\n    {}'.format(cmap[c].name, cmap[c].short_desc) for c in all_commands)
+def parse_rc_args(args: List[str]):
+    cmap = {name: command_for_name(name) for name in sorted(all_command_names())}
+    cmds = ('  :green:`{}`\n    {}'.format(cmd.name, cmd.short_desc) for c, cmd in cmap.items())
     msg = cli_msg + (
             '\n\n:title:`Commands`:\n{cmds}\n\n'
             'You can get help for each individual command by using:\n'
@@ -161,12 +163,12 @@ def main(args):
         return
     cmd = items[0]
     try:
-        func = cmap[cmd]
+        c = command_for_name(cmd)
     except KeyError:
         raise SystemExit('{} is not a known command. Known commands are: {}'.format(
-            emph(cmd), ', '.join(all_commands)))
-    opts, items = parse_subcommand_cli(func, items)
-    payload = func(global_opts, opts, items)
+            emph(cmd), ', '.join(x.replace('_', '-') for x in all_command_names())))
+    opts, items = parse_subcommand_cli(c, items)
+    payload = c.message_to_kitty(global_opts, opts, items)
     send = {
         'cmd': cmd,
         'version': version,
@@ -176,7 +178,7 @@ def main(args):
     if global_opts.no_command_response is not None:
         no_response = global_opts.no_command_response
     else:
-        no_response = func.no_response
+        no_response = c.no_response
     send['no_response'] = no_response
     if not global_opts.to and 'KITTY_LISTEN_ON' in os.environ:
         global_opts.to = os.environ['KITTY_LISTEN_ON']
@@ -189,6 +191,6 @@ def main(args):
         raise SystemExit(response['error'])
     data = response.get('data')
     if data is not None:
-        if func.string_return_is_error and isinstance(data, str):
+        if c.string_return_is_error and isinstance(data, str):
             raise SystemExit(data)
         print(data)

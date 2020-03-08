@@ -1,0 +1,132 @@
+#!/usr/bin/env python
+# vim:fileencoding=utf-8
+# License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
+
+import os
+import sys
+from typing import TYPE_CHECKING
+
+from kitty.config import parse_send_text_bytes
+
+from .base import (
+    MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError,
+    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType,
+    Window
+)
+
+if TYPE_CHECKING:
+    from kitty.cli_stub import SendTextRCOptions as CLIOptions
+
+
+class SendText(RemoteCommand):
+    '''
+    text+: The text being sent
+    is_binary+: If False text is interpreted as a python string literal instead of plain text
+    match: A string indicating the window to send text to
+    match_tab: A string indicating the tab to send text to
+    '''
+    short_desc = 'Send arbitrary text to specified windows'
+    desc = (
+        'Send arbitrary text to specified windows. The text follows Python'
+        ' escaping rules. So you can use escapes like :italic:`\\x1b` to send control codes'
+        ' and :italic:`\\u21fa` to send unicode characters. If you use the :option:`kitty @ send-text --match` option'
+        ' the text will be sent to all matched windows. By default, text is sent to'
+        ' only the currently active window.'
+    )
+    options_spec = MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t') + '''\n
+--stdin
+type=bool-set
+Read the text to be sent from :italic:`stdin`. Note that in this case the text is sent as is,
+not interpreted for escapes. If stdin is a terminal, you can press Ctrl-D to end reading.
+
+
+--from-file
+Path to a file whose contents you wish to send. Note that in this case the file contents
+are sent as is, not interpreted for escapes.
+'''
+    no_response = True
+    argspec = '[TEXT TO SEND]'
+
+    def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
+        limit = 1024
+        ret = {'match': opts.match, 'is_binary': False, 'match_tab': opts.match_tab}
+
+        def pipe():
+            ret['is_binary'] = True
+            if sys.stdin.isatty():
+                import select
+                fd = sys.stdin.fileno()
+                keep_going = True
+                while keep_going:
+                    rd = select.select([fd], [], [])[0]
+                    if not rd:
+                        break
+                    data = os.read(fd, limit)
+                    if not data:
+                        break  # eof
+                    data = data.decode('utf-8')
+                    if '\x04' in data:
+                        data = data[:data.index('\x04')]
+                        keep_going = False
+                    ret['text'] = data
+                    yield ret
+            else:
+                while True:
+                    data = sys.stdin.read(limit)
+                    if not data:
+                        break
+                    ret['text'] = data[:limit]
+                    yield ret
+
+        def chunks(text):
+            ret['is_binary'] = False
+            while text:
+                ret['text'] = text[:limit]
+                yield ret
+                text = text[limit:]
+
+        def file_pipe(path):
+            ret['is_binary'] = True
+            with open(path, encoding='utf-8') as f:
+                while True:
+                    data = f.read(limit)
+                    if not data:
+                        break
+                    ret['text'] = data
+                    yield ret
+
+        sources = []
+        if opts.stdin:
+            sources.append(pipe())
+
+        if opts.from_file:
+            sources.append(file_pipe(opts.from_file))
+
+        text = ' '.join(args)
+        sources.append(chunks(text))
+
+        def chain():
+            for src in sources:
+                yield from src
+        return chain()
+
+    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+        windows = [boss.active_window]
+        match = payload_get('match')
+        if match:
+            windows = tuple(boss.match_windows(match))
+        mt = payload_get('match_tab')
+        if mt:
+            windows = []
+            tabs = tuple(boss.match_tabs(mt))
+            if not tabs:
+                raise MatchError(payload_get('match_tab'), 'tabs')
+            for tab in tabs:
+                windows += tuple(tab)
+        data = payload_get('text').encode('utf-8') if payload_get('is_binary') else parse_send_text_bytes(payload_get('text'))
+        for window in windows:
+            if window is not None:
+                window.write_to_child(data)
+
+
+send_text = SendText()

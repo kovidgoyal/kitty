@@ -7,17 +7,25 @@ import readline
 import shlex
 import sys
 import traceback
-from functools import lru_cache
 from contextlib import suppress
+from functools import lru_cache
+from typing import Dict, Tuple
 
 from .cli import (
-    emph, green, italic, parse_option_spec, print_help_for_seq, title
+    OptionDict, emph, green, italic, parse_option_spec, print_help_for_seq,
+    title
 )
-from .cmds import cmap, display_subcommand_help, parse_subcommand_cli
 from .constants import cache_dir, is_macos, version
+from .rc.base import (
+    all_command_names, command_for_name, display_subcommand_help,
+    parse_subcommand_cli
+)
 
-all_commands = tuple(sorted(cmap))
-match_commands = tuple(sorted(all_commands + ('exit', 'help', 'quit')))
+
+@lru_cache(maxsize=2)
+def match_commands() -> Tuple[str, ...]:
+    all_commands = tuple(sorted(all_command_names()))
+    return tuple(sorted(all_commands + ('exit', 'help', 'quit')))
 
 
 def init_readline(readline):
@@ -33,16 +41,16 @@ def init_readline(readline):
 
 
 def cmd_names_matching(prefix):
-    for cmd in match_commands:
+    for cmd in match_commands():
         if not prefix or cmd.startswith(prefix):
             yield cmd + ' '
 
 
 @lru_cache()
-def options_for_cmd(cmd):
+def options_for_cmd(cmd: str) -> Tuple[Tuple[str, ...], Dict[str, OptionDict]]:
     alias_map = {}
     try:
-        func = cmap[cmd]
+        func = command_for_name(cmd)
     except KeyError:
         return (), alias_map
     if not func.options_spec:
@@ -106,8 +114,8 @@ def print_help(which=None):
         print('Control kitty by sending it commands.')
         print()
         print(title('Commands') + ':')
-        for cmd in all_commands:
-            c = cmap[cmd]
+        for cmd in all_command_names():
+            c = command_for_name(cmd)
             print(' ', green(c.name))
             print('   ', c.short_desc)
         print(' ', green('exit'))
@@ -115,7 +123,7 @@ def print_help(which=None):
         print('\nUse help {} for help on individual commands'.format(italic('command')))
     else:
         try:
-            func = cmap[which]
+            func = command_for_name(which)
         except KeyError:
             if which == 'exit':
                 print('Exit this shell')
@@ -170,7 +178,7 @@ def real_main(global_opts):
         cmd = cmdline[0].lower()
 
         try:
-            func = cmap[cmd]
+            func = command_for_name(cmd)
         except KeyError:
             if cmd in ('exit', 'quit'):
                 break
