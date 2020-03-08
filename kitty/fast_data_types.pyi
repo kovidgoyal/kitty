@@ -1,4 +1,6 @@
-from typing import Any, Callable, Dict, List, NewType, Optional, Tuple, Union
+from typing import (
+    Any, AnyStr, Callable, Dict, List, NewType, Optional, Tuple, Union
+)
 
 from kitty.boss import Boss
 from kitty.options_stub import Options
@@ -577,7 +579,7 @@ def set_in_sequence_mode(yes: bool) -> None:
     pass
 
 
-def set_clipboard_string(data: bytes) -> None:
+def set_clipboard_string(data: AnyStr) -> None:
     pass
 
 
@@ -594,7 +596,7 @@ def set_boss(boss: Boss) -> None:
     pass
 
 
-def get_boss() -> Optional[Boss]:
+def get_boss() -> Boss:  # this can return None but we ignore that for convenience
     pass
 
 
@@ -607,7 +609,23 @@ def patch_global_colors(spec: Dict[str, int], configured: bool) -> None:
 
 
 class ColorProfile:
-    pass
+
+    default_bg: int
+
+    def as_dict(self) -> Dict:
+        pass
+
+    def as_color(self, val: int) -> Tuple[int, int, int]:
+        pass
+
+    def set_color(self, num: int, val: int) -> None:
+        pass
+
+    def reset_color_table(self) -> None:
+        pass
+
+    def reset_color(self, num: int) -> None:
+        pass
 
 
 def patch_color_profiles(
@@ -620,6 +638,18 @@ def patch_color_profiles(
 def os_window_font_size(
     os_window_id: int, new_sz: float = -1., force: bool = False
 ) -> float:
+    pass
+
+
+def cocoa_set_notification_activated_callback(identifier: Callable[[str], None]) -> None:
+    pass
+
+
+def cocoa_set_new_window_trigger(mods: int, key: int) -> bool:
+    pass
+
+
+def cocoa_get_lang() -> Optional[str]:
     pass
 
 
@@ -636,6 +666,14 @@ def get_clipboard_string() -> str:
 
 
 def focus_os_window(os_window_id: int, also_raise: bool = True) -> bool:
+    pass
+
+
+def start_profiler(path: str) -> None:
+    pass
+
+
+def stop_profiler() -> None:
     pass
 
 
@@ -828,8 +866,95 @@ def create_test_font_group(sz: float, dpix: float,
     pass
 
 
+class HistoryBuf:
+
+    def as_text(self, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> None:
+        pass
+
+    def pagerhist_as_text(self, callback: Callable[[str], None]) -> None:
+        pass
+
+
+class LineBuf:
+
+    def is_continued(self, idx: int) -> bool:
+        pass
+
+
+class Cursor:
+    x: int
+    y: int
+
+
 class Screen:
-    pass
+
+    color_profile: ColorProfile
+    columns: int
+    lines: int
+    focus_tracking_enabled: bool
+    historybuf: HistoryBuf
+    linebuf: LineBuf
+    in_bracketed_paste_mode: bool
+    scrolled_by: int
+    cursor: Cursor
+
+    def __init__(
+            self,
+            callbacks: Any = None,
+            lines: int = 80, columns: int = 24, scrollback: int = 0,
+            cell_width: int = 10, cell_height: int = 20,
+            window_id: int = 0,
+            test_child: Any = None
+    ):
+        pass
+
+    def copy_colors_from(self, other: 'Screen') -> None:
+        pass
+
+    def mark_as_dirty(self) -> None:
+        pass
+
+    def resize(self, width: int, height: int) -> None:
+        pass
+
+    def send_escape_code_to_child(self, code: int, text: str) -> None:
+        pass
+
+    def reset_callbacks(self) -> None:
+        pass
+
+    def text_for_selection(self) -> Tuple[str, ...]:
+        pass
+
+    def is_rectangle_select(self) -> bool:
+        pass
+
+    def is_using_alternate_linebuf(self) -> bool:
+        pass
+
+    def is_main_linebuf(self) -> bool:
+        pass
+
+    def scroll(self, amt: int, upwards: bool) -> bool:
+        pass
+
+    def scroll_to_next_mark(self, mark: int = 0, backwards: bool = True) -> bool:
+        pass
+
+    def clear_selection(self) -> None:
+        pass
+
+    def set_marker(self, marker: Optional[Callable] = None) -> None:
+        pass
+
+    def paste_bytes(self, data: bytes) -> None:
+        pass
+    paste = paste_bytes
+
+    def as_text(self, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> None:
+        pass
+    as_text_non_visual = as_text
+    as_text_alternate = as_text
 
 
 def set_tab_bar_render_data(
@@ -865,4 +990,16 @@ class ChildMonitor:
         pass
 
     def wakeup(self) -> None:
+        pass
+
+    def main_loop(self) -> None:
+        pass
+
+    def resize_pty(self, window_id: int, rows: int, cols: int, x_pixels: int, y_pixels: int) -> None:
+        pass
+
+    def needs_write(self, child_id: int, data: bytes) -> bool:
+        pass
+
+    def set_iutf8_winid(self, win_id: int, on: bool) -> bool:
         pass

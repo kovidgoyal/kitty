@@ -9,8 +9,8 @@ import re
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
+from typing import Dict, Optional
 from weakref import WeakValueDictionary
-from typing import Optional
 
 from .child import cached_process_data, cwd_of_process
 from .cli import create_opts, parse_args
@@ -39,7 +39,7 @@ from .utils import (
     log_error, open_url, parse_address_spec, remove_socket_file, safe_print,
     set_primary_selection, single_instance, startup_notification_handler
 )
-from .window import Window
+from .window import MatchPatternType, Window
 
 
 def notification_activated(identifier: str) -> None:
@@ -117,7 +117,7 @@ class Boss:
         set_layout_options(opts)
         self.clipboard_buffers = {}
         self.update_check_process = None
-        self.window_id_map = WeakValueDictionary()
+        self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences = None
@@ -210,7 +210,7 @@ class Boss:
         if field == 'env':
             kp, vp = exp.partition('=')[::2]
             if vp:
-                pat = tuple(map(re.compile, (kp, vp)))
+                pat: MatchPatternType = re.compile(kp), re.compile(vp)
             else:
                 pat = re.compile(kp), None
         else:

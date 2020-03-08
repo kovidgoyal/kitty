@@ -805,7 +805,7 @@ def compare_opts(opts: OptionsStub) -> None:
     compare_keymaps(final, initial)
 
 
-def create_opts(args, debug_config=False, accumulate_bad_lines=None):
+def create_opts(args: CLIOptions, debug_config=False, accumulate_bad_lines=None) -> OptionsStub:
     from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     if debug_config:

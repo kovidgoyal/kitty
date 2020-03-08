@@ -9,7 +9,8 @@ import weakref
 from collections import deque
 from enum import IntEnum
 from itertools import chain
-from typing import List
+from re import Pattern
+from typing import Deque, Dict, List, Optional, Tuple, Union
 
 from .config import build_ansi_color_table
 from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
@@ -31,6 +32,8 @@ from .utils import (
     parse_color_set, read_shell_environment, sanitize_title,
     set_primary_selection
 )
+
+MatchPatternType = Union[Pattern, Tuple[Pattern, Optional[Pattern]]]
 
 
 class DynamicColor(IntEnum):
@@ -123,7 +126,8 @@ def text_sanitizer(as_ansi, add_wrap_markers):
     pat = getattr(text_sanitizer, 'pat', None)
     if pat is None:
         import re
-        pat = text_sanitizer.pat = re.compile(r'\033\[.+?m')
+        pat = re.compile(r'\033\[.+?m')
+        setattr(text_sanitizer, 'pat', pat)
 
     ansi, wrap_markers = not as_ansi, not add_wrap_markers
 
@@ -153,7 +157,7 @@ class Window:
         self.overlay_for = None
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
-        self.title_stack = deque(maxlen=10)
+        self.title_stack: Deque[str] = deque(maxlen=10)
         self.allow_remote_control = child.allow_remote_control
         self.id = add_window(tab.os_window_id, tab.id, self.title)
         if not self.id:
@@ -200,14 +204,23 @@ class Window:
         )
 
     @property
-    def current_colors(self):
+    def current_colors(self) -> Dict:
         return self.screen.color_profile.as_dict()
 
-    def matches(self, field, pat):
+    def matches(self, field: str, pat: MatchPatternType) -> bool:
+        if field == 'env':
+            assert isinstance(pat, tuple)
+            key_pat, val_pat = pat
+            for key, val in self.child.environ.items():
+                if key_pat.search(key) is not None and (
+                        val_pat is None or val_pat.search(val) is not None):
+                    return True
+
+        assert isinstance(pat, Pattern)
         if field == 'id':
-            return pat.pattern == str(self.id)
+            return True if pat.pattern == str(self.id) else False
         if field == 'pid':
-            return pat.pattern == str(self.child.pid)
+            return True if pat.pattern == str(self.child.pid) else False
         if field == 'title':
             return pat.search(self.override_title or self.title) is not None
         if field in 'cwd':
@@ -217,12 +230,6 @@ class Window:
                 if pat.search(x) is not None:
                     return True
             return False
-        if field == 'env':
-            key_pat, val_pat = pat
-            for key, val in self.child.environ.items():
-                if key_pat.search(key) is not None and (
-                        val_pat is None or val_pat.search(val) is not None):
-                    return True
         return False
 
     def set_visible_in_layout(self, window_idx, val):
@@ -488,15 +495,15 @@ class Window:
         lines = self.screen.text_for_selection()
         if self.opts.strip_trailing_spaces == 'always' or (
                 self.opts.strip_trailing_spaces == 'smart' and not self.screen.is_rectangle_select()):
-            lines = ((l.rstrip() or '\n') for l in lines)
+            return ''.join((l.rstrip() or '\n') for l in lines)
         return ''.join(lines)
 
     def destroy(self):
         self.destroyed = True
-        if self.screen is not None:
+        if hasattr(self, 'screen'):
             # Remove cycles so that screen is de-allocated immediately
             self.screen.reset_callbacks()
-        self.screen = None
+            del self.screen
 
     def as_text(self, as_ansi=False, add_history=False, add_wrap_markers=False, alternate_screen=False) -> str:
         lines: List[str] = []

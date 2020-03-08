@@ -5,17 +5,21 @@
 import os
 import re
 import shlex
-from collections import namedtuple
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Tuple,
-    Type, Union
+    Any, Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional,
+    Sequence, Tuple, Type, Union
 )
 
 from ..rgb import Color, to_color as as_color
 from ..utils import log_error
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
-BadLine = namedtuple('BadLine', 'number line exception')
+
+
+class BadLine(NamedTuple):
+    number: int
+    line: str
+    exception: Exception
 
 
 def to_color(x: str) -> Color:

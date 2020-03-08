@@ -7,12 +7,14 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager, suppress
+from typing import Generator, List, Mapping, Optional, Tuple
 
 from .borders import load_borders_program
 from .boss import Boss
 from .child import set_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
+from .conf.utils import BadLine
 from .config import cached_values_for, initial_window_size_func
 from .constants import (
     appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
@@ -25,6 +27,7 @@ from .fast_data_types import (
 )
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
+from .options_stub import Options as OptionsStub
 from .utils import (
     detach, log_error, read_shell_environment, single_instance,
     startup_notification_handler, unix_socket_paths
@@ -66,13 +69,15 @@ def talk_to_instance(args):
         data['notify_on_os_window_death'] = address
         notify_socket.listen()
 
-    data = json.dumps(data, ensure_ascii=False).encode('utf-8')
-    single_instance.socket.sendall(data)
+    sdata = json.dumps(data, ensure_ascii=False).encode('utf-8')
+    assert single_instance.socket is not None
+    single_instance.socket.sendall(sdata)
     with suppress(OSError):
         single_instance.socket.shutdown(socket.SHUT_RDWR)
     single_instance.socket.close()
 
     if args.wait_for_single_instance_window_close:
+        assert notify_socket is not None
         conn = notify_socket.accept()[0]
         conn.recv(1)
         with suppress(OSError):
@@ -96,7 +101,7 @@ def init_glfw(opts, debug_keyboard=False):
     return glfw_module
 
 
-def get_new_os_window_trigger(opts):
+def get_new_os_window_trigger(opts: OptionsStub) -> Optional[Tuple[int, bool, int]]:
     new_os_window_trigger = None
     if is_macos:
         new_os_window_shortcuts = []
@@ -113,7 +118,7 @@ def get_new_os_window_trigger(opts):
     return new_os_window_trigger
 
 
-def _run_app(opts, args, bad_lines=()):
+def _run_app(opts: OptionsStub, args, bad_lines=()):
     new_os_window_trigger = get_new_os_window_trigger(opts)
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
@@ -145,7 +150,7 @@ class AppRunner:
         self.first_window_callback = lambda window_handle: None
         self.initial_window_size_func = initial_window_size_func
 
-    def __call__(self, opts, args, bad_lines=()):
+    def __call__(self, opts: OptionsStub, args: CLIOptions, bad_lines=()) -> None:
         set_scale(opts.box_drawing_scale)
         set_options(opts, is_wayland(), args.debug_gl, args.debug_font_fallback)
         set_font_family(opts, debug_font_matching=args.debug_font_fallback)
@@ -158,7 +163,7 @@ class AppRunner:
 run_app = AppRunner()
 
 
-def ensure_macos_locale():
+def ensure_macos_locale() -> None:
     # Ensure the LANG env var is set. See
     # https://github.com/kovidgoyal/kitty/issues/90
     from .fast_data_types import cocoa_get_lang
@@ -169,15 +174,16 @@ def ensure_macos_locale():
 
 
 @contextmanager
-def setup_profiling(args):
+def setup_profiling(args) -> Generator[None, None, None]:
     try:
         from .fast_data_types import start_profiler, stop_profiler
+        do_profile = True
     except ImportError:
-        start_profiler = stop_profiler = None
-    if start_profiler is not None:
+        do_profile = False
+    if do_profile:
         start_profiler('/tmp/kitty-profile.log')
     yield
-    if stop_profiler is not None:
+    if do_profile:
         import subprocess
         stop_profiler()
         exe = kitty_exe()
@@ -206,7 +212,7 @@ def macos_cmdline(argv_args):
     return ans
 
 
-def get_editor_from_env(shell_env):
+def get_editor_from_env(shell_env: Mapping[str, str]) -> Optional[str]:
     for var in ('VISUAL', 'EDITOR'):
         editor = shell_env.get(var)
         if editor:
@@ -214,8 +220,9 @@ def get_editor_from_env(shell_env):
                 import shlex
                 editor_cmd = shlex.split(editor)
                 if not os.path.isabs(editor_cmd[0]):
-                    editor_cmd[0] = shutil.which(editor_cmd[0], path=shell_env['PATH'])
-                    if editor_cmd[0]:
+                    q = shutil.which(editor_cmd[0], path=shell_env['PATH'])
+                    if q:
+                        editor_cmd[0] = q
                         editor = ' '.join(map(shlex.quote, editor_cmd))
                     else:
                         editor = None
@@ -282,30 +289,30 @@ def _main():
         cwd_ok = False
     if not cwd_ok:
         os.chdir(os.path.expanduser('~'))
-    args, rest = parse_args(result_class=CLIOptions, args=args)
-    args.args = rest
-    if args.debug_config:
-        create_opts(args, debug_config=True)
+    cli_opts, rest = parse_args(args=args, result_class=CLIOptions)
+    cli_opts.args = rest
+    if cli_opts.debug_config:
+        create_opts(cli_opts, debug_config=True)
         return
-    if getattr(args, 'detach', False):
+    if cli_opts.detach:
         detach()
-    if args.replay_commands:
-        from kitty.client import main
-        main(args.replay_commands)
+    if cli_opts.replay_commands:
+        from kitty.client import main as client_main
+        client_main(cli_opts.replay_commands)
         return
-    if args.single_instance:
-        is_first = single_instance(args.instance_group)
+    if cli_opts.single_instance:
+        is_first = single_instance(cli_opts.instance_group)
         if not is_first:
-            talk_to_instance(args)
+            talk_to_instance(cli_opts)
             return
-    bad_lines = []
-    opts = create_opts(args, accumulate_bad_lines=bad_lines)
-    init_glfw(opts, args.debug_keyboard)
-    setup_environment(opts, args)
+    bad_lines: List[BadLine] = []
+    opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
+    init_glfw(opts, cli_opts.debug_keyboard)
+    setup_environment(opts, cli_opts)
     try:
-        with setup_profiling(args):
+        with setup_profiling(cli_opts):
             # Avoid needing to launch threads to reap zombies
-            run_app(opts, args, bad_lines)
+            run_app(opts, cli_opts, bad_lines)
     finally:
         glfw_terminate()
 

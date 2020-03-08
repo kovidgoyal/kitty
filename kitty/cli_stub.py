@@ -24,7 +24,7 @@ def generate_stub() -> None:
         nonlocal text
         text += as_type_stub(*parse_option_spec(otext), class_name=cls, extra_fields=extra_fields)
 
-    do()
+    do(extra_fields=('args: typing.Sequence[str]',))
 
     from .launch import options_spec
     do(options_spec(), 'LaunchCLIOptions')
