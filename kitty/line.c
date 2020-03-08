@@ -5,7 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "data-types.h"
+#include "state.h"
 #include "unicode-data.h"
 #include "lineops.h"
 #include "charsets.h"
@@ -49,9 +49,6 @@ cell_text(CPUCell *cell) {
 
 // URL detection {{{
 
-static const char* url_prefixes[4] = {"https", "http", "file", "ftp"};
-static size_t url_prefix_lengths[arraysz(url_prefixes)] = {0};
-
 static inline index_type
 find_colon_slash(Line *self, index_type x, index_type limit) {
     // Find :// at or before x
@@ -88,29 +85,25 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
 }
 
 static inline bool
-prefix_matches(Line *self, index_type at, const char* prefix, index_type prefix_len) {
+prefix_matches(Line *self, index_type at, const char_type* prefix, index_type prefix_len) {
     if (prefix_len > at) return false;
     index_type p, i;
     for (p = at - prefix_len, i = 0; i < prefix_len && p < self->xnum; i++, p++) {
-        if ((self->cpu_cells[p].ch) != (unsigned char)prefix[i]) return false;
+        if ((self->cpu_cells[p].ch) != prefix[i]) return false;
     }
     return i == prefix_len;
 }
 
 static inline bool
 has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_type *ans) {
-    if (UNLIKELY(!url_prefix_lengths[0])) {
-        for (index_type i = 0; i < arraysz(url_prefixes); i++) url_prefix_lengths[i] = strlen(url_prefixes[i]);
-    }
-    for (index_type i = 0; i < arraysz(url_prefixes); i++) {
-        index_type prefix_len = url_prefix_lengths[i];
+    for (size_t i = 0; i < OPT(url_prefixes.num); i++) {
+        index_type prefix_len = OPT(url_prefixes.values[i].len);
         if (at < prefix_len || prefix_len < min_prefix_len) continue;
-        if (prefix_matches(self, at, url_prefixes[i], prefix_len)) { *ans = at - prefix_len; return true; }
+        if (prefix_matches(self, at, OPT(url_prefixes.values[i].string), prefix_len)) { *ans = at - prefix_len; return true; }
     }
     return false;
 }
 
-#define MAX_URL_SCHEME_LEN 5
 #define MIN_URL_LEN 5
 
 static inline bool
@@ -129,7 +122,7 @@ line_url_start_at(Line *self, index_type x) {
     if (x >= self->xnum || self->xnum <= MIN_URL_LEN + 3) return self->xnum;
     index_type ds_pos = 0, t;
     // First look for :// ahead of x
-    if (self->xnum - x > MAX_URL_SCHEME_LEN + 3) ds_pos = find_colon_slash(self, x + MAX_URL_SCHEME_LEN + 3, x < 2 ? 0 : x - 2);
+    if (self->xnum - x > OPT(url_prefixes).max_prefix_len + 3) ds_pos = find_colon_slash(self, x + OPT(url_prefixes).max_prefix_len + 3, x < 2 ? 0 : x - 2);
     if (ds_pos != 0 && has_url_beyond(self, ds_pos)) {
         if (has_url_prefix_at(self, ds_pos, ds_pos > x ? ds_pos - x: 0, &t)) return t;
     }

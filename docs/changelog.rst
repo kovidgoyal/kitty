@@ -40,6 +40,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a bug that prevented using custom functions with the new marks feature
   (:iss:`2344`)
 
+- Make the set of URL prefixes that are recognized while hovering with the
+  mouse configurable (:iss:`2416`)
+
 - Fix border/margin/padding sizes not being recalculated on DPI change
   (:iss:`2346`)
 

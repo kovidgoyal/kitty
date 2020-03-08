@@ -232,6 +232,8 @@ class TestDataTypes(BaseTest):
         self.assertEqualAttributes(l3.cursor_from(0), q)
 
     def test_url_at(self):
+        self.set_options()
+
         def create(t):
             lb = create.lb = LineBuf(1, len(t))
             lf = lb.line(0)

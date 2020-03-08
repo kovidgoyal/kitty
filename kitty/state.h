@@ -16,6 +16,11 @@ typedef enum { RESIZE_DRAW_STATIC, RESIZE_DRAW_SCALED, RESIZE_DRAW_BLANK, RESIZE
 typedef enum { REPEAT_MIRROR, REPEAT_CLAMP, REPEAT_DEFAULT } RepeatStrategy;
 
 typedef struct {
+    char_type string[16];
+    size_t len;
+} UrlPrefix;
+
+typedef struct {
     monotonic_t visual_bell_duration, cursor_blink_interval, cursor_stop_blinking_after, mouse_hide_wait, click_interval;
     double wheel_scroll_multiplier, touch_scroll_multiplier;
     bool enable_audio_bell;
@@ -61,6 +66,10 @@ typedef struct {
     bool debug_keyboard;
     monotonic_t resize_debounce_time;
     MouseShape pointer_shape_when_grabbed;
+    struct {
+        UrlPrefix *values;
+        size_t num, max_prefix_len;
+    } url_prefixes;
 } Options;
 
 typedef struct {

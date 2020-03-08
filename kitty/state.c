@@ -513,6 +513,34 @@ pointer_shape(PyObject *shape_name) {
     return BEAM;
 }
 
+static inline void
+free_url_prefixes(void) {
+    OPT(url_prefixes).num = 0;
+    OPT(url_prefixes).max_prefix_len = 0;
+    if (OPT(url_prefixes).values) {
+        free(OPT(url_prefixes.values));
+        OPT(url_prefixes).values = NULL;
+    }
+}
+
+static void
+set_url_prefixes(PyObject *up) {
+    free_url_prefixes();
+    OPT(url_prefixes).values = calloc(PyTuple_GET_SIZE(up), sizeof(UrlPrefix));
+    if (!OPT(url_prefixes).values) { PyErr_NoMemory(); return; }
+    OPT(url_prefixes).num = PyTuple_GET_SIZE(up);
+    for (size_t i = 0; i < OPT(url_prefixes).num; i++) {
+        PyObject *t = PyTuple_GET_ITEM(up, i);
+        if (!PyUnicode_Check(t)) { PyErr_SetString(PyExc_TypeError, "url_prefixes must be strings"); return; }
+        OPT(url_prefixes).values[i].len = MIN(arraysz(OPT(url_prefixes).values[i].string) - 1, (size_t)PyUnicode_GET_LENGTH(t));
+        int kind = PyUnicode_KIND(t);
+        OPT(url_prefixes).max_prefix_len = MAX(OPT(url_prefixes).max_prefix_len, OPT(url_prefixes).values[i].len);
+        for (size_t x = 0; x < OPT(url_prefixes).values[i].len; x++) {
+            OPT(url_prefixes).values[i].string[x] = PyUnicode_READ(kind, PyUnicode_DATA(t), x);
+        }
+    }
+}
+
 #define dict_iter(d) { \
     PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
@@ -626,6 +654,13 @@ PYWRAP1(set_options) {
     GA(tab_bar_style);
     global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;
     Py_CLEAR(ret);
+    if (PyErr_Occurred()) return NULL;
+
+    PyObject *up = PyObject_GetAttrString(opts, "url_prefixes");
+    if (up == NULL) return NULL;
+    if (!PyTuple_Check(up)) { PyErr_SetString(PyExc_TypeError, "url_prefixes must be a tuple"); return NULL; }
+    set_url_prefixes(up);
+    Py_DECREF(up);
     if (PyErr_Occurred()) return NULL;
 
     PyObject *chars = PyObject_GetAttrString(opts, "select_by_word_characters");
@@ -1081,6 +1116,7 @@ finalize(void) {
     // destroyed.
     free_bgimage(&global_state.bgimage, false);
     global_state.bgimage = NULL;
+    free_url_prefixes();
 }
 
 bool
