@@ -6,11 +6,13 @@ import os
 import shlex
 import sys
 from functools import lru_cache
-from typing import Callable, Dict, Tuple
+from typing import Callable, Dict, Iterable, Optional, Tuple
 
 from kittens.runner import all_kitten_names, get_kitten_cli_docs
 
-from .cli import options_for_completion, parse_option_spec
+from .cli import (
+    OptionDict, OptionSpecSeq, options_for_completion, parse_option_spec
+)
 from .rc.base import all_command_names, command_for_name
 from .shell import options_for_cmd
 
@@ -228,7 +230,7 @@ def complete_kitty_cli_arg(ans, opt, prefix):
 
 def complete_alias_map(ans, words, new_word, option_map, complete_args=None):
     expecting_arg = False
-    opt = None
+    opt: Optional[OptionDict] = None
     last_word = words[-1] if words else ''
     for w in words:
         if expecting_arg:
@@ -261,7 +263,7 @@ def complete_alias_map(ans, words, new_word, option_map, complete_args=None):
         ans.match_groups['Options'] = {k: opt['help'] for k, opt in option_map.items() if k.startswith(prefix)}
 
 
-def complete_cli(ans, words, new_word, seq, complete_args=lambda *a: None):
+def complete_cli(ans, words, new_word, seq: OptionSpecSeq, complete_args=lambda *a: None):
     option_map = {}
     for opt in seq:
         if not isinstance(opt, str):
@@ -292,7 +294,7 @@ def path_completion(prefix=''):
     src = os.path.expandvars(os.path.expanduser(base))
     src_prefix = os.path.abspath(os.path.expandvars(os.path.expanduser(prefix))) if prefix else ''
     try:
-        items = os.scandir(src)
+        items: Iterable[os.DirEntry] = os.scandir(src)
     except FileNotFoundError:
         items = ()
     for x in items:

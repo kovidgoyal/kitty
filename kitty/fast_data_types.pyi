@@ -1,5 +1,6 @@
 from typing import (
-    Any, AnyStr, Callable, Dict, List, NewType, Optional, Tuple, Union
+    Any, AnyStr, Callable, Dict, List, NewType, Optional, Tuple, TypedDict,
+    Union
 )
 
 from kitty.boss import Boss
@@ -390,7 +391,14 @@ def default_color_table() -> Tuple[int, ...]:
     pass
 
 
-FontConfigPattern = Dict[str, Union[str, int, bool, float]]
+class FontConfigPattern(TypedDict):
+    family: str
+    full_name: str
+    postscript_name: str
+    style: str
+    spacing: str
+    weight: int
+    slant: int
 
 
 def fc_list(
