@@ -3,9 +3,10 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import weakref
-from collections import deque, namedtuple
+from collections import deque
 from contextlib import suppress
 from functools import partial
+from typing import Deque, NamedTuple, Optional, List, Dict, cast
 
 from .borders import Borders
 from .child import Child
@@ -20,14 +21,22 @@ from .tab_bar import TabBar, TabBarData
 from .utils import log_error, resolved_shell
 from .window import Window
 
-SpecialWindowInstance = namedtuple('SpecialWindow', 'cmd stdin override_title cwd_from cwd overlay_for env')
+
+class SpecialWindowInstance(NamedTuple):
+    cmd: Optional[List[str]]
+    stdin: Optional[bytes]
+    override_title: Optional[str]
+    cwd_from: Optional[int]
+    cwd: Optional[str]
+    overlay_for: Optional[int]
+    env: Optional[Dict[str, str]]
 
 
 def SpecialWindow(cmd, stdin=None, override_title=None, cwd_from=None, cwd=None, overlay_for=None, env=None):
     return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for, env)
 
 
-def add_active_id_to_history(items, item_id, maxlen=64):
+def add_active_id_to_history(items: Deque[int], item_id: int, maxlen: int = 64) -> None:
     with suppress(ValueError):
         items.remove(item_id)
     items.append(item_id)
@@ -42,7 +51,7 @@ class Tab:  # {{{
         self.tab_manager_ref = weakref.ref(tab_manager)
         self.os_window_id = tab_manager.os_window_id
         self.id = add_tab(self.os_window_id)
-        self.active_window_history = deque()
+        self.active_window_history: Deque[int] = deque()
         if not self.id:
             raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
         self.opts, self.args = tab_manager.opts, tab_manager.args
@@ -50,7 +59,7 @@ class Tab:  # {{{
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id, self.opts)
-        self.windows = deque()
+        self.windows: Deque[Window] = deque()
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
         self._last_used_layout = self._current_layout_name = None
@@ -121,15 +130,16 @@ class Tab:  # {{{
     @active_window_idx.setter
     def active_window_idx(self, val):
         try:
-            old_active_window = self.windows[self._active_window_idx]
+            old_active_window: Optional[Window] = self.windows[self._active_window_idx]
         except Exception:
             old_active_window = None
         else:
+            assert old_active_window is not None
             wid = old_active_window.id if old_active_window.overlay_for is None else old_active_window.overlay_for
             add_active_id_to_history(self.active_window_history, wid)
         self._active_window_idx = max(0, min(val, len(self.windows) - 1))
         try:
-            new_active_window = self.windows[self._active_window_idx]
+            new_active_window: Optional[Window] = self.windows[self._active_window_idx]
         except Exception:
             new_active_window = None
         if old_active_window is not new_active_window:
@@ -143,12 +153,12 @@ class Tab:  # {{{
                 tm.mark_tab_bar_dirty()
 
     @property
-    def active_window(self):
+    def active_window(self) -> Optional[Window]:
         return self.windows[self.active_window_idx] if self.windows else None
 
     @property
-    def title(self):
-        return getattr(self.active_window, 'title', appname)
+    def title(self) -> str:
+        return cast(str, getattr(self.active_window, 'title', appname))
 
     def set_title(self, title):
         self.name = title or ''
@@ -261,7 +271,7 @@ class Tab:  # {{{
                 cmd = resolved_shell(self.opts)
             else:
                 cmd = self.args.args or resolved_shell(self.opts)
-        fenv = {}
+        fenv: Dict[str, str] = {}
         if env:
             fenv.update(env)
         fenv['KITTY_WINDOW_ID'] = str(next_window_id())
@@ -280,10 +290,20 @@ class Tab:  # {{{
         self.relayout_borders()
 
     def new_window(
-        self, use_shell=True, cmd=None, stdin=None, override_title=None,
-        cwd_from=None, cwd=None, overlay_for=None, env=None, location=None,
-        copy_colors_from=None, allow_remote_control=False, marker=None
-    ):
+        self,
+        use_shell: bool = True,
+        cmd: Optional[List[str]] = None,
+        stdin: Optional[bytes] = None,
+        override_title: Optional[str] = None,
+        cwd_from: Optional[int] = None,
+        cwd: Optional[str] = None,
+        overlay_for: Optional[int] = None,
+        env: Optional[Dict[str, str]] = None,
+        location: Optional[str] = None,
+        copy_colors_from: Optional[Window] = None,
+        allow_remote_control: bool = False,
+        marker: Optional[str] = None
+    ) -> Window:
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env, allow_remote_control=allow_remote_control)
         window = Window(self, child, self.opts, self.args, override_title=override_title, copy_colors_from=copy_colors_from)
@@ -302,8 +322,20 @@ class Tab:  # {{{
                 traceback.print_exc()
         return window
 
-    def new_special_window(self, special_window, location=None, copy_colors_from=None, allow_remote_control=False):
-        return self.new_window(False, *special_window, location=location, copy_colors_from=copy_colors_from, allow_remote_control=allow_remote_control)
+    def new_special_window(
+            self,
+            special_window: SpecialWindowInstance,
+            location: Optional[str] = None,
+            copy_colors_from: Optional[Window] = None,
+            allow_remote_control: bool = False
+    ) -> Window:
+        return self.new_window(
+            use_shell=False, cmd=special_window.cmd, stdin=special_window.stdin,
+            override_title=special_window.override_title,
+            cwd_from=special_window.cwd_from, cwd=special_window.cwd, overlay_for=special_window.overlay_for,
+            env=special_window.env, location=location, copy_colors_from=copy_colors_from,
+            allow_remote_control=allow_remote_control
+        )
 
     def close_window(self):
         if self.windows:
@@ -479,8 +511,8 @@ class TabManager:  # {{{
         self.last_active_tab_id = None
         self.opts, self.args = opts, args
         self.tab_bar_hidden = self.opts.tab_bar_style == 'hidden'
-        self.tabs = []
-        self.active_tab_history = deque()
+        self.tabs: List[Tab] = []
+        self.active_tab_history: Deque[int] = deque()
         self.tab_bar = TabBar(self.os_window_id, opts)
         self._active_tab_idx = 0
 
@@ -496,14 +528,15 @@ class TabManager:  # {{{
     @active_tab_idx.setter
     def active_tab_idx(self, val):
         try:
-            old_active_tab = self.tabs[self._active_tab_idx]
+            old_active_tab: Optional[Tab] = self.tabs[self._active_tab_idx]
         except Exception:
             old_active_tab = None
         else:
+            assert old_active_tab is not None
             add_active_id_to_history(self.active_tab_history, old_active_tab.id)
         self._active_tab_idx = max(0, min(val, len(self.tabs) - 1))
         try:
-            new_active_tab = self.tabs[self._active_tab_idx]
+            new_active_tab: Optional[Tab] = self.tabs[self._active_tab_idx]
         except Exception:
             new_active_tab = None
         if old_active_tab is not new_active_tab:

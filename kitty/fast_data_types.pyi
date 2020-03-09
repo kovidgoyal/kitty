@@ -960,6 +960,9 @@ class Screen:
     def clear_selection(self) -> None:
         pass
 
+    def refresh_sprite_positions(self) -> None:
+        pass
+
     def set_marker(self, marker: Optional[Callable] = None) -> None:
         pass
 
@@ -1019,3 +1022,22 @@ class ChildMonitor:
 
     def set_iutf8_winid(self, win_id: int, on: bool) -> bool:
         pass
+
+
+def set_iutf8_fd(fd: int, on: bool) -> bool:
+    pass
+
+
+def spawn(
+    exe: str,
+    cwd: str,
+    argv: Tuple[str, ...],
+    env: Tuple[str, ...],
+    master: int,
+    slave: int,
+    stdin_read_fd: int,
+    stdin_write_fd: int,
+    ready_read_fd: int,
+    ready_write_fd: int
+) -> int:
+    pass

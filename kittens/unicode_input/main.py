@@ -9,6 +9,7 @@ import sys
 from contextlib import suppress
 from functools import lru_cache
 from gettext import gettext as _
+from typing import List, Optional, Sequence, Tuple, Union
 
 from kitty.cli import parse_args
 from kitty.cli_stub import UnicodeCLIOptions
@@ -121,15 +122,16 @@ def serialize_favorites(favorites):
     return '\n'.join(ans)
 
 
-def load_favorites(refresh=False):
-    ans = getattr(load_favorites, 'ans', None)
+def load_favorites(refresh: bool = False) -> List[int]:
+    ans: Optional[List[int]] = getattr(load_favorites, 'ans', None)
     if ans is None or refresh:
         try:
             with open(favorites_path, 'rb') as f:
                 raw = f.read().decode('utf-8')
-            ans = load_favorites.ans = list(parse_favorites(raw)) or list(DEFAULT_SET)
+            ans = list(parse_favorites(raw)) or list(DEFAULT_SET)
         except FileNotFoundError:
-            ans = load_favorites.ans = list(DEFAULT_SET)
+            ans = list(DEFAULT_SET)
+        setattr(load_favorites, 'ans', ans)
     return ans
 
 
@@ -232,7 +234,7 @@ class Table:
         col_width = min(col_width, 40)
         space_for_desc = col_width - 2 - idx_size - 4
         num_cols = self.num_cols = max(cols // col_width, 1)
-        buf = []
+        buf: List[str] = []
         a = buf.append
         rows_left = rows
 
@@ -241,7 +243,7 @@ class Table:
                 rows_left -= 1
                 if rows_left == 0:
                     break
-                buf.append('\r\n')
+                a('\r\n')
             buf.extend(cell(i, idx, c, desc))
             a('  ')
         self.text = ''.join(buf)
@@ -298,7 +300,7 @@ class UnicodeInput(Handler):
     def update_codepoints(self):
         codepoints = None
         if self.mode is HEX:
-            q = self.mode, None
+            q: Tuple[str, Optional[Union[str, Sequence[int]]]] = self.mode, None
             codepoints = self.recent
         elif self.mode is EMOTICONS:
             q = self.mode, None
@@ -317,9 +319,9 @@ class UnicodeInput(Handler):
                     words = words[:index_words[0]]
                 codepoints = codepoints_matching_search(tuple(words))
                 if index_words:
-                    index_word = int(index_word.lstrip(INDEX_CHAR), 16)
-                    if index_word < len(codepoints):
-                        codepoints = [codepoints[index_word]]
+                    iindex_word = int(index_word.lstrip(INDEX_CHAR), 16)
+                    if codepoints and iindex_word < len(codepoints):
+                        codepoints = [codepoints[iindex_word]]
         if q != self.last_updated_code_point_at:
             self.last_updated_code_point_at = q
             self.table.set_codepoints(codepoints, self.mode)

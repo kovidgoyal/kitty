@@ -6,7 +6,7 @@
 import importlib
 import os
 import sys
-from functools import partial
+from functools import lru_cache, partial
 
 aliases = {'url_hints': 'hints'}
 
@@ -42,7 +42,7 @@ def import_kitten_main_module(config_dir, kitten):
 
     kitten = resolved_kitten(kitten)
     m = importlib.import_module('kittens.{}.main'.format(kitten))
-    return {'start': m.main, 'end': getattr(m, 'handle_result', lambda *a, **k: None)}
+    return {'start': getattr(m, 'main'), 'end': getattr(m, 'handle_result', lambda *a, **k: None)}
 
 
 def create_kitten_handler(kitten, orig_args):
@@ -50,15 +50,15 @@ def create_kitten_handler(kitten, orig_args):
     kitten = resolved_kitten(kitten)
     m = import_kitten_main_module(config_dir, kitten)
     ans = partial(m['end'], [kitten] + orig_args)
-    ans.type_of_input = getattr(m['end'], 'type_of_input', None)
-    ans.no_ui = getattr(m['end'], 'no_ui', False)
+    setattr(ans, 'type_of_input', getattr(m['end'], 'type_of_input', None))
+    setattr(ans, 'no_ui', getattr(m['end'], 'no_ui', False))
     return ans
 
 
 def set_debug(kitten):
     from kittens.tui.loop import debug
     import builtins
-    builtins.debug = debug
+    setattr(builtins, 'debug', debug)
 
 
 def launch(args):
@@ -117,18 +117,16 @@ def run_kitten(kitten, run_name='__main__'):
     m['main'](sys.argv)
 
 
+@lru_cache(maxsize=2)
 def all_kitten_names():
-    ans = getattr(all_kitten_names, 'ans', None)
-    if ans is None:
-        n = []
-        import glob
-        base = os.path.dirname(os.path.abspath(__file__))
-        for x in glob.glob(os.path.join(base, '*', '__init__.py')):
-            q = os.path.basename(os.path.dirname(x))
-            if q != 'tui':
-                n.append(q)
-        all_kitten_names.ans = ans = frozenset(n)
-    return ans
+    n = []
+    import glob
+    base = os.path.dirname(os.path.abspath(__file__))
+    for x in glob.glob(os.path.join(base, '*', '__init__.py')):
+        q = os.path.basename(os.path.dirname(x))
+        if q != 'tui':
+            n.append(q)
+    return frozenset(n)
 
 
 def list_kittens():
@@ -140,19 +138,19 @@ def list_kittens():
 
 
 def get_kitten_cli_docs(kitten):
-    sys.cli_docs = {}
+    setattr(sys, 'cli_docs', {})
     run_kitten(kitten, run_name='__doc__')
-    ans = sys.cli_docs
-    del sys.cli_docs
+    ans = getattr(sys, 'cli_docs')
+    delattr(sys, 'cli_docs')
     if 'help_text' in ans and 'usage' in ans and 'options' in ans:
         return ans
 
 
 def get_kitten_conf_docs(kitten):
-    sys.all_options = None
+    setattr(sys, 'all_options', None)
     run_kitten(kitten, run_name='__conf__')
-    ans = sys.all_options
-    del sys.all_options
+    ans = getattr(sys, 'all_options')
+    delattr(sys, 'all_options')
     return ans
 
 

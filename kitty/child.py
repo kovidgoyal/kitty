@@ -7,11 +7,12 @@ import os
 import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
-from typing import DefaultDict, List, Optional
+from typing import DefaultDict, Dict, Generator, Iterable, List, Optional
 
 import kitty.fast_data_types as fast_data_types
 
 from .constants import is_macos, shell_path, terminfo_dir
+from .options_stub import Options
 
 if is_macos:
     from kitty.fast_data_types import (
@@ -62,40 +63,44 @@ else:
         return ans
 
 
-def checked_terminfo_dir():
-    ans = getattr(checked_terminfo_dir, 'ans', None)
-    if ans is None:
-        ans = checked_terminfo_dir.ans = terminfo_dir if os.path.isdir(terminfo_dir) else None
+def checked_terminfo_dir() -> Optional[str]:
+    q = getattr(checked_terminfo_dir, 'ans', False)
+    if q is False:
+        ans = terminfo_dir if os.path.isdir(terminfo_dir) else None
+        setattr(checked_terminfo_dir, 'ans', ans)
+    else:
+        ans = q
     return ans
 
 
-def processes_in_group(grp):
-    gmap = getattr(process_group_map, 'cached_map', None)
+def processes_in_group(grp: int) -> List[int]:
+    gmap: Optional[DefaultDict[int, List[int]]] = getattr(process_group_map, 'cached_map', None)
     if gmap is None:
         try:
             gmap = process_group_map()
         except Exception:
-            gmap = {}
+            gmap = defaultdict(list)
     return gmap.get(grp, [])
 
 
 @contextmanager
-def cached_process_data():
+def cached_process_data() -> Generator[None, None, None]:
     try:
-        process_group_map.cached_map = process_group_map()
+        cm = process_group_map()
     except Exception:
-        process_group_map.cached_map = {}
+        cm = defaultdict(list)
+    setattr(process_group_map, 'cached_map', cm)
     try:
         yield
     finally:
-        process_group_map.cached_map = None
+        delattr(process_group_map, 'cached_map')
 
 
-def parse_environ_block(data):
+def parse_environ_block(data: str) -> Dict[str, str]:
     """Parse a C environ block of environment variables into a dictionary."""
     # The block is usually raw data from the target process.  It might contain
     # trailing garbage and lines that do not look like assignments.
-    ret = {}
+    ret: Dict[str, str] = {}
     pos = 0
 
     while True:
@@ -114,39 +119,38 @@ def parse_environ_block(data):
     return ret
 
 
-def environ_of_process(pid):
+def environ_of_process(pid: int) -> Dict[str, str]:
     return parse_environ_block(_environ_of_process(pid))
 
 
-def remove_cloexec(fd):
+def remove_cloexec(fd: int) -> None:
     fcntl.fcntl(fd, fcntl.F_SETFD, fcntl.fcntl(fd, fcntl.F_GETFD) & ~fcntl.FD_CLOEXEC)
 
 
-def remove_blocking(fd):
+def remove_blocking(fd: int) -> None:
     os.set_blocking(fd, False)
 
 
-def process_env():
-    ans = os.environ
+def process_env() -> Dict[str, str]:
+    ans = dict(os.environ)
     ssl_env_var = getattr(sys, 'kitty_ssl_env_var', None)
     if ssl_env_var is not None:
-        ans = ans.copy()
         ans.pop(ssl_env_var, None)
     return ans
 
 
-def default_env():
-    try:
-        return default_env.env
-    except AttributeError:
+def default_env() -> Dict[str, str]:
+    ans: Optional[Dict[str, str]] = getattr(default_env, 'env', None)
+    if ans is None:
         return process_env()
+    return ans
 
 
-def set_default_env(val=None):
+def set_default_env(val: Optional[Dict[str, str]] = None) -> None:
     env = process_env().copy()
     if val:
         env.update(val)
-    default_env.env = env
+    setattr(default_env, 'env', env)
 
 
 def openpty():
@@ -162,7 +166,16 @@ class Child:
     pid: Optional[int] = None
     forked = False
 
-    def __init__(self, argv, cwd, opts, stdin=None, env=None, cwd_from=None, allow_remote_control=False):
+    def __init__(
+        self,
+        argv: Iterable[str],
+        cwd: str,
+        opts: Options,
+        stdin: Optional[bytes] = None,
+        env: Optional[Dict[str, str]] = None,
+        cwd_from: Optional[int] = None,
+        allow_remote_control=False
+    ):
         self.allow_remote_control = allow_remote_control
         self.argv = argv
         if cwd_from is not None:
@@ -179,8 +192,8 @@ class Child:
         self.env = env or {}
 
     @property
-    def final_env(self):
-        env = getattr(self, '_final_env', None)
+    def final_env(self) -> Dict[str, str]:
+        env: Optional[Dict[str, str]] = getattr(self, '_final_env', None)
         if env is None:
             env = self._final_env = default_env().copy()
             env.update(self.env)
@@ -191,13 +204,14 @@ class Child:
                 # can use it to display the current directory name rather
                 # than the resolved path
                 env['PWD'] = self.cwd
-            if checked_terminfo_dir():
-                env['TERMINFO'] = checked_terminfo_dir()
+            tdir = checked_terminfo_dir()
+            if tdir:
+                env['TERMINFO'] = tdir
         return env
 
-    def fork(self):
+    def fork(self) -> Optional[int]:
         if self.forked:
-            return
+            return None
         self.forked = True
         master, slave = openpty()
         stdin, self.stdin = self.stdin, None
@@ -208,8 +222,7 @@ class Child:
             remove_cloexec(stdin_read_fd)
         else:
             stdin_read_fd = stdin_write_fd = -1
-        env = self.final_env
-        env = tuple('{}={}'.format(k, v) for k, v in env.items())
+        env = tuple('{}={}'.format(k, v) for k, v in self.final_env.items())
         argv = list(self.argv)
         exe = argv[0]
         if is_macos and exe == shell_path:
@@ -237,7 +250,8 @@ class Child:
             fast_data_types.thread_write(stdin_write_fd, stdin)
         os.close(ready_read_fd)
         self.terminal_ready_fd = ready_write_fd
-        remove_blocking(self.child_fd)
+        if self.child_fd is not None:
+            remove_blocking(self.child_fd)
         return pid
 
     def mark_terminal_ready(self):
@@ -245,7 +259,9 @@ class Child:
         self.terminal_ready_fd = -1
 
     @property
-    def foreground_processes(self):
+    def foreground_processes(self) -> List[int]:
+        if self.child_fd is None:
+            return []
         try:
             pgrp = os.tcgetpgrp(self.child_fd)
             foreground_processes = processes_in_group(pgrp) if pgrp >= 0 else []
@@ -263,34 +279,39 @@ class Child:
             return []
 
     @property
-    def cmdline(self):
+    def cmdline(self) -> List[str]:
         try:
+            assert self.pid is not None
             return cmdline_of_process(self.pid) or list(self.argv)
         except Exception:
             return list(self.argv)
 
     @property
-    def foreground_cmdline(self):
+    def foreground_cmdline(self) -> List[str]:
         try:
+            assert self.pid_for_cwd is not None
             return cmdline_of_process(self.pid_for_cwd) or self.cmdline
         except Exception:
             return self.cmdline
 
     @property
-    def environ(self):
+    def environ(self) -> Dict[str, str]:
         try:
+            assert self.pid is not None
             return environ_of_process(self.pid)
         except Exception:
             return {}
 
     @property
-    def current_cwd(self):
+    def current_cwd(self) -> Optional[str]:
         with suppress(Exception):
+            assert self.pid is not None
             return cwd_of_process(self.pid)
 
     @property
-    def pid_for_cwd(self):
+    def pid_for_cwd(self) -> Optional[int]:
         with suppress(Exception):
+            assert self.child_fd is not None
             pgrp = os.tcgetpgrp(self.child_fd)
             foreground_processes = processes_in_group(pgrp) if pgrp >= 0 else []
             if len(foreground_processes) == 1:
@@ -298,16 +319,19 @@ class Child:
         return self.pid
 
     @property
-    def foreground_cwd(self):
+    def foreground_cwd(self) -> Optional[str]:
         with suppress(Exception):
+            assert self.pid_for_cwd is not None
             return cwd_of_process(self.pid_for_cwd) or None
 
     @property
-    def foreground_environ(self):
+    def foreground_environ(self) -> Dict[str, str]:
         try:
+            assert self.pid_for_cwd is not None
             return environ_of_process(self.pid_for_cwd)
         except Exception:
             try:
+                assert self.pid is not None
                 return environ_of_process(self.pid)
             except Exception:
                 pass
