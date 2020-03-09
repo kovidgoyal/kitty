@@ -10,7 +10,7 @@ from collections import deque
 from enum import IntEnum
 from itertools import chain
 from re import Pattern
-from typing import Deque, Dict, List, Optional, Tuple, Union
+from typing import TYPE_CHECKING, Callable, Deque, Dict, List, Optional, Tuple, Union
 
 from .config import build_ansi_color_table
 from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
@@ -32,6 +32,10 @@ from .utils import (
     parse_color_set, read_shell_environment, sanitize_title,
     set_primary_selection
 )
+
+if TYPE_CHECKING:
+    from .tabs import Tab
+    Tab
 
 MatchPatternType = Union[Pattern, Tuple[Pattern, Optional[Pattern]]]
 
@@ -164,7 +168,7 @@ class Window:
             raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
-        self.tabref = weakref.ref(tab)
+        self.tabref: Callable[[], Optional['Tab']] = weakref.ref(tab)
         self.clipboard_control_buffers = {'p': '', 'c': ''}
         self.destroyed = False
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)

@@ -16,7 +16,8 @@ def generate_stub():
     text = as_type_stub(
         all_options,
         special_types={
-            'symbol_map': 'typing.Dict[typing.Tuple[int, int], str]'
+            'symbol_map': 'typing.Dict[typing.Tuple[int, int], str]',
+            'font_features': 'typing.Dict[str, typing.Tuple[str, ...]]'
         },
         preamble_lines=(
             'from kitty.config import KeyAction',

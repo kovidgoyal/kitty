@@ -31,15 +31,13 @@ if TYPE_CHECKING:
     SequenceMap, KeyMap
 
 
-def parse_shortcut(sc):
+def parse_shortcut(sc: str) -> Tuple[int, bool, Optional[int]]:
     parts = sc.split('+')
     mods = 0
     if len(parts) > 1:
         mods = parse_mods(parts[:-1], sc)
-        if mods is None:
-            return None, None, None
-    key = parts[-1].upper()
-    key = getattr(defines, 'GLFW_KEY_' + key_name_aliases.get(key, key), None)
+    q = parts[-1].upper()
+    key: Optional[int] = getattr(defines, 'GLFW_KEY_' + key_name_aliases.get(q, q), None)
     is_native = False
     if key is None:
         q = parts[-1]
@@ -47,7 +45,7 @@ def parse_shortcut(sc):
             with suppress(Exception):
                 key = int(q, 16)
         else:
-            key = get_key_name_lookup()(q)
+            key = get_key_name_lookup()(q, False)
         is_native = key is not None
     return mods, is_native, key
 
@@ -369,7 +367,7 @@ def parse_key(val, key_definitions):
         return
     is_sequence = sequence_sep in sc
     if is_sequence:
-        trigger = None
+        trigger: Optional[Tuple[int, bool, int]] = None
         restl: List[Tuple[int, bool, int]] = []
         for part in sc.split(sequence_sep):
             mods, is_native, key = parse_shortcut(part)
@@ -484,8 +482,8 @@ def handle_symbol_map(key, val, ans):
 
 class FontFeature(str):
 
-    def __new__(cls, name, parsed):
-        ans = str.__new__(cls, name)
+    def __new__(cls, name: str, parsed: bytes):
+        ans = str.__new__(cls, name)  # type: ignore
         ans.parsed = parsed
         return ans
 
@@ -531,7 +529,7 @@ def handle_clear_all_shortcuts(key, val, ans):
 @deprecated_handler('x11_hide_window_decorations', 'macos_hide_titlebar')
 def handle_deprecated_hide_window_decorations_aliases(key, val, ans):
     if not hasattr(handle_deprecated_hide_window_decorations_aliases, key):
-        handle_deprecated_hide_window_decorations_aliases.key = True
+        setattr(handle_deprecated_hide_window_decorations_aliases, 'key', True)
         log_error('The option {} is deprecated. Use hide_window_decorations instead.'.format(key))
     if to_bool(val):
         if is_macos and key == 'macos_hide_titlebar' or (not is_macos and key == 'x11_hide_window_decorations'):
@@ -541,7 +539,7 @@ def handle_deprecated_hide_window_decorations_aliases(key, val, ans):
 @deprecated_handler('macos_show_window_title_in_menubar')
 def handle_deprecated_macos_show_window_title_in_menubar_alias(key, val, ans):
     if not hasattr(handle_deprecated_macos_show_window_title_in_menubar_alias, key):
-        handle_deprecated_macos_show_window_title_in_menubar_alias.key = True
+        setattr(handle_deprecated_macos_show_window_title_in_menubar_alias, 'key', True)
         log_error('The option {} is deprecated. Use macos_show_window_title_in menubar instead.'.format(key))
     macos_show_window_title_in = ans.get('macos_show_window_title_in', 'all')
     if to_bool(val):

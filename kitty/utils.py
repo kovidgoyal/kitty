@@ -13,7 +13,9 @@ import sys
 from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
-from typing import Any, Dict, List, NamedTuple, Optional, cast
+from typing import (
+    Any, Dict, Generator, List, NamedTuple, Optional, Tuple, cast
+)
 
 from .constants import (
     appname, is_macos, is_wayland, shell_path, supports_primary_selection
@@ -61,21 +63,23 @@ def color_from_int(val):
     return Color((val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF)
 
 
-def parse_color_set(raw):
+def parse_color_set(raw: str) -> Generator[Tuple[int, Optional[int]], None, None]:
     parts = raw.split(';')
     lp = len(parts)
     if lp % 2 != 0:
         return
-    for c, spec in [parts[i:i + 2] for i in range(0, len(parts), 2)]:
+    for c_, spec in [parts[i:i + 2] for i in range(0, len(parts), 2)]:
         try:
-            c = int(c)
+            c = int(c_)
             if c < 0 or c > 255:
                 continue
             if spec == '?':
                 yield c, None
             else:
-                r, g, b = to_color(spec)
-                yield c, r << 16 | g << 8 | b
+                q = to_color(spec)
+                if q is not None:
+                    r, g, b = q
+                    yield c, r << 16 | g << 8 | b
         except Exception:
             continue
 

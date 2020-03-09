@@ -7,13 +7,14 @@ import os
 import sys
 from base64 import standard_b64encode
 from collections import defaultdict, deque
-from itertools import count
 from contextlib import suppress
+from itertools import count
+from typing import Any, DefaultDict, Deque, Dict, Tuple
 
 from kitty.utils import fit_image
 
-from .operations import cursor
 from .handler import ImageManagerBase
+from .operations import cursor
 
 try:
     fsenc = sys.getfilesystemencoding() or 'utf-8'
@@ -64,7 +65,7 @@ def run_imagemagick(path, cmd, keep_stdout=True):
 
 def identify(path):
     p = run_imagemagick(path, ['identify', '-format', '%m %w %h %A', '--', path])
-    parts = tuple(filter(None, p.stdout.decode('utf-8').split()))
+    parts: Tuple[str, ...] = tuple(filter(None, p.stdout.decode('utf-8').split()))
     mode = 'rgb' if parts[3].lower() == 'false' else 'rgba'
     return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
 
@@ -106,7 +107,7 @@ def can_display_images():
     ans = getattr(can_display_images, 'ans', None)
     if ans is None:
         ans = shutil.which('convert') is not None
-        can_display_images.ans = ans
+        setattr(can_display_images, 'ans', ans)
     return ans
 
 
@@ -123,7 +124,7 @@ class ImageManager(ImageManagerBase):
         self.image_id_to_image_data = {}
         self.image_id_to_converted_data = {}
         self.transmission_status = {}
-        self.placements_in_flight = defaultdict(deque)
+        self.placements_in_flight: DefaultDict[int, Deque[Dict[str, Any]]] = defaultdict(deque)
 
     @property
     def next_image_id(self):

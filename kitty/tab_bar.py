@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from collections import namedtuple
-from typing import Set
+from typing import Set, Tuple, Union
 
 from .config import build_ansi_color_table
 from .constants import WindowGeometry
@@ -165,7 +165,7 @@ class TabBar:
             color_as_int(opts.inactive_tab_foreground),
             color_as_int(opts.inactive_tab_background)
         )
-        self.blank_rects = ()
+        self.blank_rects: Union[Tuple, Tuple[Rect, Rect]] = ()
         sep = opts.tab_separator
         self.trailing_spaces = self.leading_spaces = 0
         while sep and sep[0] == ' ':
@@ -218,7 +218,7 @@ class TabBar:
             return
         self.cell_width = cell_width
         s = self.screen
-        viewport_width = tab_bar.width - 2 * self.margin_width
+        viewport_width = int(tab_bar.width - 2 * self.margin_width)
         ncells = viewport_width // cell_width
         s.resize(1, ncells)
         s.reset_mode(DECAWM)

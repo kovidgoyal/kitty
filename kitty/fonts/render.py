@@ -6,7 +6,7 @@ import ctypes
 import sys
 from functools import partial
 from math import ceil, cos, floor, pi
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
 
 from kitty.config import defaults
 from kitty.constants import is_macos
@@ -22,11 +22,30 @@ from kitty.options_stub import Options as OptionsStub
 from kitty.utils import log_error
 
 if is_macos:
-    from .core_text import get_font_files, font_for_family
+    from .core_text import get_font_files as get_font_files_coretext, font_for_family as font_for_family_macos
+    if TYPE_CHECKING:
+        from .core_text import CoreTextFont
+        CoreTextFont
 else:
-    from .fontconfig import get_font_files, font_for_family
+    from .fontconfig import get_font_files as get_font_files_fontconfig, font_for_family as font_for_family_fontconfig
+    if TYPE_CHECKING:
+        from .fontconfig import FontConfigPattern
+        FontConfigPattern
 
-current_faces: List[Tuple[Any, bool, bool]] = []
+FontObject = Union['CoreTextFont', 'FontConfigPattern']
+current_faces: List[Tuple[FontObject, bool, bool]] = []
+
+
+def get_font_files(opts: OptionsStub) -> Dict[str, Any]:
+    if is_macos:
+        return get_font_files_coretext(opts)
+    return get_font_files_fontconfig(opts)
+
+
+def font_for_family(family: str) -> Tuple[FontObject, bool, bool]:
+    if is_macos:
+        return font_for_family_macos(family)
+    return font_for_family_fontconfig(family)
 
 
 def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, int], str]:
@@ -64,11 +83,11 @@ def create_symbol_map(opts: OptionsStub) -> Tuple[Tuple[int, int, int], ...]:
     return sm
 
 
-def descriptor_for_idx(idx):
+def descriptor_for_idx(idx: int) -> Tuple[FontObject, bool, bool]:
     return current_faces[idx]
 
 
-def dump_faces(ftypes, indices):
+def dump_faces(ftypes: List[str], indices: Dict[str, int]) -> None:
     def face_str(f):
         f = f[0]
         if is_macos:
@@ -87,7 +106,7 @@ def dump_faces(ftypes, indices):
             log_error(face_str(face))
 
 
-def set_font_family(opts=None, override_font_size=None, debug_font_matching=False):
+def set_font_family(opts: Optional[OptionsStub] = None, override_font_size=None, debug_font_matching=False):
     global current_faces
     opts = opts or defaults
     sz = override_font_size or opts.font_size

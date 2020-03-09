@@ -3,12 +3,20 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-from typing import Generator
+from typing import (
+    TYPE_CHECKING, Dict, Generator, Iterable, List, Optional, Sequence, Tuple
+)
 
 from kitty.fast_data_types import coretext_all_fonts
+from kitty.options_stub import Options
 from kitty.utils import log_error
 
 from . import ListedFont
+
+if TYPE_CHECKING:
+    from kitty.fast_data_types import CoreTextFont
+    CoreTextFont
+
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -16,8 +24,11 @@ attr_map = {(False, False): 'font_family',
             (True, True): 'bold_italic_font'}
 
 
-def create_font_map(all_fonts):
-    ans = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
+FontMap = Dict[str, Dict[str, List['CoreTextFont']]]
+
+
+def create_font_map(all_fonts: Iterable['CoreTextFont']) -> FontMap:
+    ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
     for x in all_fonts:
         f = (x['family'] or '').lower()
         s = (x['style'] or '').lower()
@@ -28,10 +39,11 @@ def create_font_map(all_fonts):
     return ans
 
 
-def all_fonts_map():
-    ans = getattr(all_fonts_map, 'ans', None)
+def all_fonts_map() -> FontMap:
+    ans: Optional[FontMap] = getattr(all_fonts_map, 'ans', None)
     if ans is None:
-        ans = all_fonts_map.ans = create_font_map(coretext_all_fonts())
+        ans = create_font_map(coretext_all_fonts())
+        setattr(all_fonts_map, 'ans', ans)
     return ans
 
 
@@ -44,7 +56,15 @@ def list_fonts() -> Generator[ListedFont, None, None]:
             yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': is_mono}
 
 
-def find_best_match(family, bold=False, italic=False):
+def bi_match(fonts: Sequence['CoreTextFont'], bold: bool, italic: bool) -> 'CoreTextFont':
+    for b, i in ((bold, italic), (False, False)):
+        for q in fonts:
+            if q['bold'] == b and q['italic'] == i:
+                return q
+    return fonts[0]
+
+
+def find_best_match(family: str, bold: bool = False, italic: bool = False) -> 'CoreTextFont':
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map()
 
@@ -66,16 +86,10 @@ def find_best_match(family, bold=False, italic=False):
     # fallback to Menlo
     if q not in font_map['family_map']:
         log_error('The font {} was not found, falling back to Menlo'.format(family))
-        family = 'Menlo'
-    return {
-        'monospace': True,
-        'bold': bold,
-        'italic': italic,
-        'family': family
-    }
+    return bi_match(font_map['family_map']['menlo'], bold, italic)
 
 
-def resolve_family(f, main_family, bold=False, italic=False):
+def resolve_family(f: str, main_family: str, bold: bool = False, italic: bool = False) -> str:
     if (bold or italic) and f == 'auto':
         f = main_family
     if f.lower() == 'monospace':
@@ -83,8 +97,8 @@ def resolve_family(f, main_family, bold=False, italic=False):
     return f
 
 
-def get_font_files(opts):
-    ans = {}
+def get_font_files(opts: Options) -> Dict[str, 'CoreTextFont']:
+    ans: Dict[str, 'CoreTextFont'] = {}
     for (bold, italic), attr in attr_map.items():
         face = find_best_match(resolve_family(getattr(opts, attr), opts.font_family, bold, italic), bold, italic)
         key = {(False, False): 'medium',
@@ -93,10 +107,10 @@ def get_font_files(opts):
                (True, True): 'bi'}[(bold, italic)]
         ans[key] = face
         if key == 'medium':
-            get_font_files.medium_family = face['family']
+            setattr(get_font_files, 'medium_family', face['family'])
     return ans
 
 
-def font_for_family(family):
-    ans = find_best_match(resolve_family(family, get_font_files.medium_family))
+def font_for_family(family: str) -> Tuple['CoreTextFont', bool, bool]:
+    ans = find_best_match(resolve_family(family, getattr(get_font_files, 'medium_family')))
     return ans, ans['bold'], ans['italic']

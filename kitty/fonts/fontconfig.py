@@ -131,6 +131,6 @@ def get_font_files(opts: Options) -> Dict[str, 'FontConfigPattern']:
     return ans
 
 
-def font_for_family(family) -> Tuple['FontConfigPattern', bool, bool]:
+def font_for_family(family: str) -> Tuple['FontConfigPattern', bool, bool]:
     ans = find_best_match(family, monospaced=False)
     return ans, ans.get('weight', 0) >= FC_WEIGHT_BOLD, ans.get('slant', FC_SLANT_ROMAN) != FC_SLANT_ROMAN

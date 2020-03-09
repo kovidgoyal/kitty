@@ -28,7 +28,7 @@ mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
            '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
 
 
-def parse_mods(parts, sc):
+def parse_mods(parts: Iterable[str], sc: str) -> int:
 
     def map_mod(m):
         return mod_map.get(m, m)

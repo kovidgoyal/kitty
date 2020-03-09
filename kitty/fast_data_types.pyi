@@ -4,6 +4,7 @@ from typing import (
 )
 
 from kitty.boss import Boss
+from kitty.fonts.render import FontObject
 from kitty.options_stub import Options
 
 # Constants {{{
@@ -420,7 +421,20 @@ def fc_match(
     pass
 
 
-def coretext_all_fonts() -> Tuple[Dict[str, Any], ...]:
+class CoreTextFont(TypedDict):
+    path: str
+    postscript_name: str
+    family: str
+    style: str
+    bold: bool
+    italic: bool
+    monospace: bool
+    weight: float
+    width: float
+    traits: int
+
+
+def coretext_all_fonts() -> Tuple[CoreTextFont, ...]:
     pass
 
 
@@ -633,6 +647,14 @@ class ColorProfile:
         pass
 
     def reset_color(self, num: int) -> None:
+        pass
+
+    def update_ansi_color_table(self, val: List[int]) -> None:
+        pass
+
+    def set_configured_colors(
+        self, fg: int, bg: int, cursor: int = 0, cursor_text: int = 0, cursor_text_uses_bg: int = 0, highlight_fg: int = 0, highlight_bg: int = 0
+    ) -> None:
         pass
 
 
@@ -866,11 +888,11 @@ def set_font_data(
                                Tuple[int, Union[bytearray, bytes]]],
     prerender_func: Callable[
         [int, int, int, int, int, float, float, float, float],
-        Tuple[int, ...]], descriptor_for_idx: Callable[[int], Tuple[dict, bool,
-                                                                    bool]],
+        Tuple[int, ...]],
+    descriptor_for_idx: Callable[[int], Tuple[FontObject, bool, bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
     symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,
-    font_feature_settings: Dict[str, Tuple[bytes, ...]]
+    font_feature_settings: Dict[str, Tuple[str, ...]]
 ):
     pass
 
@@ -902,6 +924,10 @@ class LineBuf:
 class Cursor:
     x: int
     y: int
+    bg: int
+    fg: int
+    bold: bool
+    italic: bool
 
 
 class Screen:
@@ -959,6 +985,9 @@ class Screen:
     def is_main_linebuf(self) -> bool:
         pass
 
+    def erase_in_line(self, mode: int = 0, private: bool = False) -> None:
+        pass
+
     def scroll(self, amt: int, upwards: bool) -> bool:
         pass
 
@@ -966,6 +995,9 @@ class Screen:
         pass
 
     def clear_selection(self) -> None:
+        pass
+
+    def reset_mode(self, mode: int, private: bool = False) -> None:
         pass
 
     def refresh_sprite_positions(self) -> None:

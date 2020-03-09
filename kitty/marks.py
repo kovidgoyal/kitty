@@ -5,14 +5,14 @@
 import os
 import re
 from ctypes import POINTER, c_uint, c_void_p, cast
+from typing import Callable, Generator, Iterable, Pattern, Tuple, Union, Sequence
 
 from .constants import config_dir
 
 pointer_to_uint = POINTER(c_uint)
 
 
-def null_marker(*a):
-    return iter(())
+MarkerFunc = Callable[[str, int, int, int], Generator[None, None, None]]
 
 
 def get_output_variables(left_address, right_address, color_address):
@@ -23,14 +23,14 @@ def get_output_variables(left_address, right_address, color_address):
     )
 
 
-def marker_from_regex(expression, color, flags=re.UNICODE):
+def marker_from_regex(expression: Union[str, Pattern], color: int, flags: int = re.UNICODE) -> MarkerFunc:
     color = max(1, min(color, 3))
     if isinstance(expression, str):
         pat = re.compile(expression, flags=flags)
     else:
         pat = expression
 
-    def marker(text, left_address, right_address, color_address):
+    def marker(text: str, left_address: int, right_address: int, color_address: int) -> Generator[None, None, None]:
         left, right, colorv = get_output_variables(left_address, right_address, color_address)
         colorv.value = color
         for match in pat.finditer(text):
@@ -41,7 +41,7 @@ def marker_from_regex(expression, color, flags=re.UNICODE):
     return marker
 
 
-def marker_from_multiple_regex(regexes, flags=re.UNICODE):
+def marker_from_multiple_regex(regexes: Iterable[Tuple[int, str]], flags: int = re.UNICODE) -> MarkerFunc:
     expr = ''
     color_map = {}
     for i, (color, spec) in enumerate(regexes):
@@ -51,24 +51,24 @@ def marker_from_multiple_regex(regexes, flags=re.UNICODE):
     expr = expr[1:]
     pat = re.compile(expr, flags=flags)
 
-    def marker(text, left_address, right_address, color_address):
+    def marker(text: str, left_address: int, right_address: int, color_address: int) -> Generator[None, None, None]:
         left, right, color = get_output_variables(left_address, right_address, color_address)
         for match in pat.finditer(text):
             left.value = match.start()
             right.value = match.end() - 1
-            grp = next(k for k, v in match.groupdict().items() if v is not None)
+            grp = next(k for k, v in match.groupdict().items())
             color.value = color_map[grp]
             yield
 
     return marker
 
 
-def marker_from_text(expression, color):
+def marker_from_text(expression: str, color: int) -> MarkerFunc:
     return marker_from_regex(re.escape(expression), color)
 
 
-def marker_from_function(func):
-    def marker(text, left_address, right_address, color_address):
+def marker_from_function(func: Callable[[str], Iterable[Tuple[int, int, int]]]) -> MarkerFunc:
+    def marker(text: str, left_address: int, right_address: int, color_address: int) -> Generator[None, None, None]:
         left, right, colorv = get_output_variables(left_address, right_address, color_address)
         for (l, r, c) in func(text):
             left.value = l
@@ -79,13 +79,15 @@ def marker_from_function(func):
     return marker
 
 
-def marker_from_spec(ftype, spec, flags):
+def marker_from_spec(ftype: str, spec: Union[str, Sequence[Tuple[int, str]]], flags: int) -> MarkerFunc:
     if ftype == 'regex':
+        assert not isinstance(spec, str)
         if len(spec) == 1:
             return marker_from_regex(spec[0][1], spec[0][0], flags=flags)
         return marker_from_multiple_regex(spec, flags=flags)
     if ftype == 'function':
         import runpy
+        assert isinstance(spec, str)
         path = spec
         if not os.path.isabs(path):
             path = os.path.join(config_dir, path)
