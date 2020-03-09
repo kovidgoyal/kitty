@@ -72,7 +72,7 @@ def type_check() -> NoReturn:
     generate_stub()
     from kitty.options_stub import generate_stub  # type: ignore
     generate_stub()
-    os.execlp('mypy', 'mypy', '--pretty')
+    os.execlp(sys.executable, 'python', '-m', 'mypy', '--pretty')
 
 
 def run_tests():

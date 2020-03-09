@@ -75,13 +75,17 @@ jobs:
               with:
                 python-version: 3.8
 
-            - name: Check python code
-              run: |
-                  pip install flake8 sphinx
-                  python -m flake8 --count .
+            - name: Install build-only deps
+              run: pip install flake8 mypy sphinx
+
+            - name: Run pyflakes
+              run: python -m flake8 --count .
 
             - name: Build kitty package
               run: python .github/workflows/ci.py package
+
+            - name: Run mypy
+              run: python test.py mypy
 
             - name: Build man page
               run: make FAIL_WARN=-W man
