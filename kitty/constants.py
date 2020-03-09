@@ -6,10 +6,9 @@ import errno
 import os
 import pwd
 import sys
-from collections import namedtuple
 from contextlib import suppress
 from functools import lru_cache
-from typing import Optional, Set
+from typing import Optional, Set, NamedTuple
 
 appname = 'kitty'
 version = (0, 16, 0)
@@ -19,8 +18,22 @@ is_macos = 'darwin' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
-ScreenGeometry = namedtuple('ScreenGeometry', 'xstart ystart xnum ynum dx dy')
-WindowGeometry = namedtuple('WindowGeometry', 'left top right bottom xnum ynum')
+class ScreenGeometry(NamedTuple):
+    xstart: float
+    ystart: float
+    xnum: int
+    ynum: int
+    dx: float
+    dy: float
+
+
+class WindowGeometry(NamedTuple):
+    left: int
+    top: int
+    right: int
+    bottom: int
+    xnum: int
+    ynum: int
 
 
 @lru_cache(maxsize=2)

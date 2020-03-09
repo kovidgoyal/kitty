@@ -78,7 +78,7 @@ How the image should be displayed. The value of configured will use the configur
         if imghdr.what(path) != 'png':
             self.fatal('{} is not a PNG image'.format(path))
 
-        def file_pipe(path) -> Generator[Dict, None, None]:
+        def file_pipe(path: str) -> Generator[Dict, None, None]:
             with open(path, 'rb') as f:
                 while True:
                     data = f.read(512)

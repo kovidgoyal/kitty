@@ -28,7 +28,7 @@ class MatchError(ValueError):
 
     hide_traceback = True
 
-    def __init__(self, expression, target='windows'):
+    def __init__(self, expression: str, target: str = 'windows'):
         ValueError.__init__(self, 'No matching {} for expression: {}'.format(target, expression))
 
 
@@ -48,7 +48,7 @@ class PayloadGetter:
         self.payload = payload
         self.cmd = cmd
 
-    def __call__(self, key: str, opt_name: Optional[str] = None, missing: Any = None):
+    def __call__(self, key: str, opt_name: Optional[str] = None, missing: Any = None) -> Any:
         ans = self.payload.get(key, payload_get)
         if ans is not payload_get:
             return ans
@@ -122,7 +122,7 @@ class RemoteCommand:
     defaults: Optional[Dict[str, Any]] = None
     options_class: Type = RCOptions
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.desc = self.desc or self.short_desc
         self.name = self.__class__.__module__.split('.')[-1].replace('_', '-')
         self.args_count = 0 if not self.argspec else self.args_count
@@ -159,7 +159,7 @@ def parse_subcommand_cli(command: RemoteCommand, args: ArgsType) -> Tuple[Any, A
     return opts, items
 
 
-def display_subcommand_help(func):
+def display_subcommand_help(func: RemoteCommand) -> None:
     with suppress(SystemExit):
         parse_args(['--help'], (func.options_spec or '\n').format, func.argspec, func.desc, func.name)
 

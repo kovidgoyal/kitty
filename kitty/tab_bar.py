@@ -218,7 +218,7 @@ class TabBar:
             return
         self.cell_width = cell_width
         s = self.screen
-        viewport_width = int(tab_bar.width - 2 * self.margin_width)
+        viewport_width = tab_bar.width - 2 * self.margin_width
         ncells = viewport_width // cell_width
         s.resize(1, ncells)
         s.reset_mode(DECAWM)

@@ -783,7 +783,7 @@ def remove_tab(os_window_id: int, tab_id: int) -> None:
     pass
 
 
-def pt_to_px(pt: float, os_window_id: int = 0) -> float:
+def pt_to_px(pt: float, os_window_id: int = 0) -> int:
     pass
 
 
