@@ -300,7 +300,7 @@ class UnicodeInput(Handler):
     def update_codepoints(self):
         codepoints = None
         if self.mode is HEX:
-            q: Tuple[str, Optional[Union[str, Sequence[int]]]] = self.mode, None
+            q: Tuple[str, Optional[Union[str, Sequence[int]]]] = (self.mode, None)
             codepoints = self.recent
         elif self.mode is EMOTICONS:
             q = self.mode, None

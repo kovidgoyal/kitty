@@ -35,7 +35,7 @@ class ScrollWindow(RemoteCommand):
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         amt = args[0]
-        amount: Tuple[Union[str, int], Optional[str]] = amt, None
+        amount: Tuple[Union[str, int], Optional[str]] = (amt, None)
         if amt not in ('start', 'end'):
             pages = 'p' in amt
             amt = amt.replace('p', '')

@@ -209,14 +209,14 @@ class Boss:
                 if w is not None:
                     yield w
             return
-        if field == 'env':
+        if field != 'env':
+            pat: MatchPatternType = re.compile(exp)
+        else:
             kp, vp = exp.partition('=')[::2]
             if vp:
-                pat: MatchPatternType = re.compile(kp), re.compile(vp)
+                pat = re.compile(kp), re.compile(vp)
             else:
                 pat = re.compile(kp), None
-        else:
-            pat = re.compile(exp)
         for window in self.all_windows:
             if window.matches(field, pat):
                 yield window
