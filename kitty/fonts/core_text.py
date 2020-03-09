@@ -4,7 +4,7 @@
 
 import re
 from typing import (
-    TYPE_CHECKING, Dict, Generator, Iterable, List, Optional, Sequence, Tuple
+    TYPE_CHECKING, Dict, Generator, Iterable, List, Optional, Tuple
 )
 
 from kitty.fast_data_types import coretext_all_fonts
@@ -56,14 +56,6 @@ def list_fonts() -> Generator[ListedFont, None, None]:
             yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': is_mono}
 
 
-def bi_match(fonts: Sequence['CoreTextFont'], bold: bool, italic: bool) -> 'CoreTextFont':
-    for b, i in ((bold, italic), (False, False)):
-        for q in fonts:
-            if q['bold'] == b and q['italic'] == i:
-                return q
-    return fonts[0]
-
-
 def find_best_match(family: str, bold: bool = False, italic: bool = False) -> 'CoreTextFont':
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map()
@@ -79,15 +71,15 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False) -> 'C
     for selector in ('ps_map', 'full_map'):
         candidates = font_map[selector].get(q)
         if candidates:
-            candidates.sort(key=score)
-            return candidates[-1]
+            return sorted(candidates, key=score)[-1]
 
     # Let CoreText choose the font if the family exists, otherwise
     # fallback to Menlo
     if q not in font_map['family_map']:
         log_error('The font {} was not found, falling back to Menlo'.format(family))
         q = 'menlo'
-    return bi_match(font_map['family_map'][q], bold, italic)
+    candidates = font_map['family_map'][q]
+    return sorted(candidates, key=score)[-1]
 
 
 def resolve_family(f: str, main_family: str, bold: bool = False, italic: bool = False) -> str:
