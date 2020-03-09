@@ -11,7 +11,7 @@ from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
     Any, Callable, Dict, Iterable, List, Optional,
-    Sequence, Set, Tuple, Type, cast
+    Sequence, Set, Tuple, Type
 )
 
 from . import fast_data_types as defines
@@ -796,7 +796,7 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
     parser = parse_config
     if accumulate_bad_lines is not None:
         parser = partial(parse_config, accumulate_bad_lines=accumulate_bad_lines)
-    opts = cast(OptionsStub, _load_config(Options, defaults, parser, merge_configs, *paths, overrides=overrides))
+    opts = _load_config(Options, defaults, parser, merge_configs, *paths, overrides=overrides)
     finalize_keys(opts)
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
         log_error('Cannot use both macos_titlebar_color and background_opacity')

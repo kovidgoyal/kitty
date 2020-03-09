@@ -5,7 +5,8 @@
 import re
 from functools import partial
 from typing import (
-    Any, Dict, Iterable, List, Optional, Set, Tuple, Union, get_type_hints
+    Any, Callable, Dict, Generator, Iterable, List, Match, Optional, Sequence,
+    Set, Tuple, Union, cast, get_type_hints
 )
 
 from .utils import to_bool
@@ -19,7 +20,7 @@ class Group:
 
     __slots__ = 'name', 'short_text', 'start_text', 'end_text'
 
-    def __init__(self, name, short_text, start_text='', end_text=''):
+    def __init__(self, name: str, short_text: str, start_text: str = '', end_text: str = '') -> None:
         self.name, self.short_text = name, short_text.strip()
         self.start_text, self.end_text = start_text.strip(), end_text.strip()
 
@@ -28,7 +29,7 @@ class Option:
 
     __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'add_to_default', 'add_to_docs', 'line'
 
-    def __init__(self, name: str, group: str, defval: str, option_type: Any, long_text: str, add_to_default: bool, add_to_docs: bool):
+    def __init__(self, name: str, group: Group, defval: str, option_type: Any, long_text: str, add_to_default: bool, add_to_docs: bool):
         self.name, self.group = name, group
         self.long_text, self.option_type = long_text.strip(), option_type
         self.defval_as_string = defval
@@ -67,7 +68,7 @@ class Shortcut:
 
     __slots__ = 'name', 'group', 'key', 'action_def', 'short_text', 'long_text', 'add_to_default', 'add_to_docs', 'line'
 
-    def __init__(self, name, group, key, action_def, short_text, long_text, add_to_default, add_to_docs):
+    def __init__(self, name: str, group: Group, key: str, action_def: str, short_text: str, long_text: str, add_to_default: bool, add_to_docs: bool):
         self.name, self.group, self.key, self.action_def = name, group, key, action_def
         self.short_text, self.long_text = short_text, long_text
         self.add_to_default = add_to_default
@@ -76,15 +77,15 @@ class Shortcut:
 
 
 def option(
-    all_options,
-    group,
-    name,
-    defval,
-    long_text='',
-    option_type=to_string,
-    add_to_default=True,
-    add_to_docs=True
-):
+    all_options: Dict[str, Option],
+    group: Sequence[Group],
+    name: str,
+    defval: Any,
+    long_text: str = '',
+    option_type: Callable[[str], Any] = to_string,
+    add_to_default: bool = True,
+    add_to_docs: bool = True
+) -> Option:
     is_multiple = name.startswith('+')
     if is_multiple:
         name = name[1:]
@@ -109,33 +110,33 @@ def option(
 
 
 def shortcut(
-    all_options,
-    group,
-    action_name,
-    key,
-    action_def,
-    short_text='',
-    long_text='',
-    add_to_default=True,
-    add_to_docs=True
-):
+    all_options: Dict[str, List[Shortcut]],
+    group: Sequence[Group],
+    action_name: str,
+    key: str,
+    action_def: str,
+    short_text: str = '',
+    long_text: str = '',
+    add_to_default: bool = True,
+    add_to_docs: bool = True
+) -> Shortcut:
     ans = Shortcut(action_name, group[0], key, action_def, short_text, long_text, add_to_default, add_to_docs)
     key = 'sc-' + action_name
     all_options.setdefault(key, []).append(ans)
     return ans
 
 
-def option_func(all_options, all_groups):
-    all_groups = {k: Group(k, *v) for k, v in all_groups.items()}
-    group = [None]
+def option_func(all_options: Dict[str, Any], all_groups: Dict[str, Sequence[str]]) -> Tuple[Callable, Callable, Callable[[str], None], Dict[str, Group]]:
+    all_groups_ = {k: Group(k, *v) for k, v in all_groups.items()}
+    group: List[Optional[Group]] = [None]
 
-    def change_group(name):
-        group[0] = all_groups[name]
+    def change_group(name: str) -> None:
+        group[0] = all_groups_[name]
 
-    return partial(option, all_options, group), partial(shortcut, all_options, group), change_group, all_groups
+    return partial(option, all_options, group), partial(shortcut, all_options, group), change_group, all_groups_
 
 
-def merged_opts(all_options, opt, i):
+def merged_opts(all_options: Sequence[Union[Option, Sequence[Shortcut]]], opt: Option, i: int) -> Generator[Option, None, None]:
     yield opt
     for k in range(i + 1, len(all_options)):
         q = all_options[k]
@@ -147,20 +148,20 @@ def merged_opts(all_options, opt, i):
             break
 
 
-def remove_markup(text):
+def remove_markup(text: str) -> str:
 
-    def sub(m):
+    def sub(m: Match) -> str:
         if m.group(1) == 'ref':
             return {
                 'layouts': 'https://sw.kovidgoyal.net/kitty/index.html#layouts',
                 'sessions': 'https://sw.kovidgoyal.net/kitty/index.html#sessions',
             }[m.group(2)]
-        return m.group(2)
+        return cast(str, m.group(2))
 
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
 
 
-def iter_blocks(lines: Iterable[str]):
+def iter_blocks(lines: Iterable[str]) -> Generator[Tuple[List[str], int], None, None]:
     current_block: List[str] = []
     prev_indent = 0
     for line in lines:
@@ -178,7 +179,7 @@ def iter_blocks(lines: Iterable[str]):
         yield current_block, indent_size
 
 
-def wrapped_block(lines):
+def wrapped_block(lines: Iterable[str]) -> Generator[str, None, None]:
     wrapper = getattr(wrapped_block, 'wrapper', None)
     if wrapper is None:
         import textwrap
@@ -198,20 +199,20 @@ def wrapped_block(lines):
                 yield line
 
 
-def render_block(text):
+def render_block(text: str) -> str:
     text = remove_markup(text)
     lines = text.splitlines()
     return '\n'.join(wrapped_block(lines))
 
 
-def as_conf_file(all_options: Iterable[Union[Option, Shortcut]]) -> List[str]:
+def as_conf_file(all_options: Iterable[Union[Option, Sequence[Shortcut]]]) -> List[str]:
     ans = ['# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', '']
     a = ans.append
     current_group: Optional[Group] = None
     num_open_folds = 0
-    all_options = list(all_options)
+    all_options_ = list(all_options)
 
-    def render_group(group, is_shortcut):
+    def render_group(group: Group, is_shortcut: bool) -> None:
         nonlocal num_open_folds
         if is_shortcut or '.' not in group.name:
             a('#: ' + group.short_text + ' {{''{')
@@ -221,7 +222,7 @@ def as_conf_file(all_options: Iterable[Union[Option, Shortcut]]) -> List[str]:
             a(render_block(group.start_text))
             a('')
 
-    def handle_group_end(group, new_group_name='', new_group_is_shortcut=False):
+    def handle_group_end(group: Group, new_group_name: str = '', new_group_is_shortcut: bool = False) -> None:
         nonlocal num_open_folds
         if group.end_text:
             a(''), a(render_block(group.end_text))
@@ -230,7 +231,7 @@ def as_conf_file(all_options: Iterable[Union[Option, Shortcut]]) -> List[str]:
             a('#: }}''}'), a('')
             num_open_folds -= 1
 
-    def handle_group(new_group, is_shortcut=False):
+    def handle_group(new_group: Group, is_shortcut: bool = False) -> None:
         nonlocal current_group
         if new_group is not current_group:
             if current_group:
@@ -238,7 +239,7 @@ def as_conf_file(all_options: Iterable[Union[Option, Shortcut]]) -> List[str]:
             current_group = new_group
             render_group(current_group, is_shortcut)
 
-    def handle_shortcut(shortcuts):
+    def handle_shortcut(shortcuts: Sequence[Shortcut]) -> None:
         handle_group(shortcuts[0].group, True)
         for sc in shortcuts:
             if sc.add_to_default:
@@ -246,11 +247,11 @@ def as_conf_file(all_options: Iterable[Union[Option, Shortcut]]) -> List[str]:
             if sc.long_text:
                 a(''), a(render_block(sc.long_text.strip())), a('')
 
-    def handle_option(opt):
+    def handle_option(opt: Option) -> None:
         if not opt.long_text or not opt.add_to_docs:
             return
         handle_group(opt.group)
-        mopts = list(merged_opts(all_options, opt, i))
+        mopts = list(merged_opts(all_options_, opt, i))
         sz = max(len(x.name) for x in mopts)
         for mo in mopts:
             prefix = '' if mo.add_to_default else '# '
@@ -259,7 +260,7 @@ def as_conf_file(all_options: Iterable[Union[Option, Shortcut]]) -> List[str]:
         a(render_block(opt.long_text))
         a('')
 
-    for i, opt in enumerate(all_options):
+    for i, opt in enumerate(all_options_):
         if isinstance(opt, Option):
             handle_option(opt)
         else:
@@ -298,7 +299,9 @@ def as_conf_file(all_options: Iterable[Union[Option, Shortcut]]) -> List[str]:
     return ans
 
 
-def config_lines(all_options):
+def config_lines(
+    all_options: Dict[str, Union[Option, Sequence[Shortcut]]],
+) -> Generator[str, None, None]:
     for opt in all_options.values():
         if isinstance(opt, Option):
             if opt.add_to_default:
@@ -310,7 +313,7 @@ def config_lines(all_options):
 
 
 def as_type_stub(
-    all_options: Dict[str, Union[Option, List[Shortcut]]],
+    all_options: Dict[str, Union[Option, Sequence[Shortcut]]],
     special_types: Optional[Dict[str, str]] = None,
     preamble_lines: Union[Tuple[str, ...], List[str], Iterable[str]] = (),
     extra_fields: Union[Tuple[Tuple[str, str], ...], List[Tuple[str, str]], Iterable[Tuple[str, str]]] = (),

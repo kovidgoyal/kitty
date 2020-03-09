@@ -6,14 +6,15 @@ import os
 import re
 import shlex
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional,
-    Sequence, Tuple, Type, Union
+    Any, Callable, Dict, FrozenSet, Generator, Iterable, Iterator, List,
+    NamedTuple, Optional, Sequence, Tuple, Type, TypeVar, Union
 )
 
 from ..rgb import Color, to_color as as_color
 from ..utils import log_error
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
+T = TypeVar('T')
 
 
 class BadLine(NamedTuple):
@@ -153,9 +154,9 @@ def parse_config_base(
     type_convert: Callable[[str, Any], Any],
     special_handling: Callable,
     ans: Dict[str, Any],
-    check_keys=True,
+    check_keys: bool = True,
     accumulate_bad_lines: Optional[List[BadLine]] = None
-):
+) -> None:
     all_keys: Optional[FrozenSet[str]] = defaults._asdict() if check_keys else None
     _parse(
         lines, type_convert, special_handling, ans, all_keys, accumulate_bad_lines
@@ -166,17 +167,17 @@ def create_options_class(all_keys: Iterable[str]) -> Type:
     keys = tuple(sorted(all_keys))
     slots = keys + ('_fields', )
 
-    def __init__(self, kw):
+    def __init__(self: Any, kw: Dict[str, Any]) -> None:
         for k, v in kw.items():
             setattr(self, k, v)
 
-    def __iter__(self):
+    def __iter__(self: Any) -> Iterator[str]:
         return iter(keys)
 
-    def __len__(self):
+    def __len__(self: Any) -> int:
         return len(keys)
 
-    def __getitem__(self, i):
+    def __getitem__(self: Any, i: Union[int, str]) -> Any:
         if isinstance(i, int):
             i = keys[i]
         try:
@@ -184,10 +185,10 @@ def create_options_class(all_keys: Iterable[str]) -> Type:
         except AttributeError:
             raise KeyError('No option named: {}'.format(i))
 
-    def _asdict(self):
+    def _asdict(self: Any) -> Dict[str, Any]:
         return {k: getattr(self, k) for k in self._fields}
 
-    def _replace(self, **kw):
+    def _replace(self: Any, **kw: Dict) -> Any:
         ans = self._asdict()
         ans.update(kw)
         return self.__class__(ans)
@@ -213,7 +214,7 @@ def merge_dicts(defaults: Dict, newvals: Dict) -> Dict:
     return ans
 
 
-def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Sequence[str]):
+def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Sequence[str]) -> Generator[str, None, None]:
     if config_files_on_cmd_line:
         if 'NONE' not in config_files_on_cmd_line:
             yield SYSTEM_CONF
@@ -225,13 +226,13 @@ def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Seq
 
 
 def load_config(
-        Options: Type,
+        Options: Type[T],
         defaults: Any,
         parse_config: Callable[[Iterable[str]], Dict[str, Any]],
         merge_configs: Callable[[Dict, Dict], Dict],
         *paths: str,
         overrides: Optional[Iterable[str]] = None
-):
+) -> T:
     ans: Dict = defaults._asdict()
     for path in paths:
         if not path:
@@ -245,22 +246,22 @@ def load_config(
     if overrides is not None:
         vals = parse_config(overrides)
         ans = merge_configs(ans, vals)
-    return Options(ans)
+    return Options(ans)  # type: ignore
 
 
-def init_config(default_config_lines: Iterable[str], parse_config: Callable):
+def init_config(default_config_lines: Iterable[str], parse_config: Callable) -> Tuple[Type, Any]:
     defaults = parse_config(default_config_lines, check_keys=False)
     Options = create_options_class(defaults.keys())
     defaults = Options(defaults)
     return Options, defaults
 
 
-def key_func():
+def key_func() -> Tuple[Callable, Dict[str, Callable]]:
     ans: Dict[str, Callable] = {}
 
-    def func_with_args(*names):
+    def func_with_args(*names: str) -> Callable:
 
-        def w(f):
+        def w(f: Callable) -> Callable:
             for name in names:
                 if ans.setdefault(name, f) is not f:
                     raise ValueError(

@@ -6,7 +6,8 @@
 import os
 from gettext import gettext as _
 from typing import (
-    Any, Dict, FrozenSet, Iterable, List, Optional, Set, Tuple, TypeVar, Union
+    Any, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple,
+    TypeVar, Union
 )
 
 from . import fast_data_types as defines
@@ -60,7 +61,7 @@ def uniq(vals: Iterable[T]) -> List[T]:
 # Groups {{{
 
 
-all_options: Dict[str, Union[Option, Shortcut]] = {}
+all_options: Dict[str, Union[Option, Sequence[Shortcut]]] = {}
 
 
 o, k, g, all_groups = option_func(all_options, {

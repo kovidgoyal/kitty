@@ -6,14 +6,14 @@
 # Utils  {{{
 from functools import partial
 from gettext import gettext as _
-from typing import Any, Dict, Union
+from typing import Any, Dict, Sequence, Union
 
 from kitty.conf.definition import Option, Shortcut, option_func
 from kitty.conf.utils import positive_int, python_string, to_color
 
 # }}}
 
-all_options: Dict[str, Union[Option, Shortcut]] = {}
+all_options: Dict[str, Union[Option, Sequence[Shortcut]]] = {}
 o, k, g, all_groups = option_func(all_options, {
     'colors': [_('Colors')],
     'diff': [_('Diffing'), ],
