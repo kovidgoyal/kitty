@@ -86,8 +86,8 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False) -> 'C
     # fallback to Menlo
     if q not in font_map['family_map']:
         log_error('The font {} was not found, falling back to Menlo'.format(family))
-        family = 'menlo'
-    return bi_match(font_map['family_map'][family], bold, italic)
+        q = 'menlo'
+    return bi_match(font_map['family_map'][q], bold, italic)
 
 
 def resolve_family(f: str, main_family: str, bold: bool = False, italic: bool = False) -> str:
