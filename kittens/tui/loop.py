@@ -13,6 +13,7 @@ import sys
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import partial
+from typing import List
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
@@ -36,8 +37,8 @@ def debug(*a, **kw):
     buf = io.StringIO()
     kw['file'] = buf
     print(*a, **kw)
-    text = buf.getvalue()
-    text = b'\x1bP@kitty-print|' + standard_b64encode(text.encode('utf-8')) + b'\x1b\\'
+    stext = buf.getvalue()
+    text = b'\x1bP@kitty-print|' + standard_b64encode(stext.encode('utf-8')) + b'\x1b\\'
     fobj = getattr(debug, 'fobj', sys.stdout.buffer)
     fobj.write(text)
     if hasattr(fobj, 'flush'):
@@ -158,7 +159,7 @@ class Loop:
         if is_macos:
             # On macOS PTY devices are not supported by the KqueueSelector and
             # the PollSelector is broken, causes 100% CPU usage
-            self.asycio_loop = asyncio.SelectorEventLoop(selectors.SelectSelector())
+            self.asycio_loop = asyncio.SelectorEventLoop(selectors.SelectSelector())  # type: ignore
             asyncio.set_event_loop(self.asycio_loop)
         else:
             self.asycio_loop = asyncio.get_event_loop()
@@ -178,12 +179,12 @@ class Loop:
 
     def _read_ready(self, handler, fd):
         try:
-            data = os.read(fd, io.DEFAULT_BUFFER_SIZE)
+            bdata = os.read(fd, io.DEFAULT_BUFFER_SIZE)
         except BlockingIOError:
             return
-        if not data:
+        if not bdata:
             raise EOFError('The input stream is closed')
-        data = self.decoder.decode(data)
+        data = self.decoder.decode(bdata)
         if self.read_buf:
             data = self.read_buf + data
         self.read_buf = data
@@ -295,7 +296,7 @@ class Loop:
         if not written:
             raise EOFError('The output stream is closed')
         if written >= sum(sizes):
-            self.write_buf = []
+            self.write_buf: List[bytes] = []
             self.asycio_loop.remove_writer(fd)
             self.waiting_for_writes = False
         else:

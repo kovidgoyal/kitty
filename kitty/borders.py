@@ -43,7 +43,6 @@ def draw_edges(os_window_id, tab_id, colors, width, geometry, base_width=0):
 def load_borders_program():
     compile_program(BORDERS_PROGRAM, *load_shaders('border'))
     init_borders_program()
-    Borders.program_initialized = True
 
 
 class Borders:
@@ -67,7 +66,8 @@ class Borders:
         has_background_image = os_window_has_background_image(self.os_window_id)
         if not has_background_image:
             for br in chain(current_layout.blank_rects, extra_blank_rects):
-                add_borders_rect(self.os_window_id, self.tab_id, *br, BorderColor.default_bg)
+                left, top, right, bottom = br
+                add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, BorderColor.default_bg)
         bw, pw = border_width, padding_width
         if bw + pw <= 0:
             return

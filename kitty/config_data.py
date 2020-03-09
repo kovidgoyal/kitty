@@ -28,7 +28,7 @@ mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
            '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
 
 
-def parse_mods(parts: Iterable[str], sc: str) -> int:
+def parse_mods(parts: Iterable[str], sc: str) -> Optional[int]:
 
     def map_mod(m):
         return mod_map.get(m, m)
@@ -39,7 +39,7 @@ def parse_mods(parts: Iterable[str], sc: str) -> int:
             mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
         except AttributeError:
             log_error('Shortcut: {} has unknown modifier, ignoring'.format(sc))
-            return
+            return None
 
     return mods
 

@@ -10,7 +10,7 @@ from collections import namedtuple
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional,
+    Any, Callable, Dict, Iterable, List, Optional,
     Sequence, Set, Tuple, Type, cast
 )
 
@@ -26,16 +26,25 @@ from .key_names import get_key_name_lookup, key_name_aliases
 from .options_stub import Options as OptionsStub
 from .utils import log_error
 
-if TYPE_CHECKING:
-    from .options_stub import SequenceMap, KeyMap
-    SequenceMap, KeyMap
+
+KeySpec = Tuple[int, bool, int]
+KeyMap = Dict[KeySpec, 'KeyAction']
+KeySequence = Tuple[KeySpec, ...]
+SubSequenceMap = Dict[KeySequence, 'KeyAction']
+SequenceMap = Dict[KeySpec, SubSequenceMap]
+
+
+class InvalidMods(ValueError):
+    pass
 
 
 def parse_shortcut(sc: str) -> Tuple[int, bool, Optional[int]]:
     parts = sc.split('+')
     mods = 0
     if len(parts) > 1:
-        mods = parse_mods(parts[:-1], sc)
+        mods = parse_mods(parts[:-1], sc) or 0
+        if not mods:
+            raise InvalidMods('Invalid shortcut')
     q = parts[-1].upper()
     key: Optional[int] = getattr(defines, 'GLFW_KEY_' + key_name_aliases.get(q, q), None)
     is_native = False
@@ -370,7 +379,10 @@ def parse_key(val, key_definitions):
         trigger: Optional[Tuple[int, bool, int]] = None
         restl: List[Tuple[int, bool, int]] = []
         for part in sc.split(sequence_sep):
-            mods, is_native, key = parse_shortcut(part)
+            try:
+                mods, is_native, key = parse_shortcut(part)
+            except InvalidMods:
+                return
             if key is None:
                 if mods is not None:
                     log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
@@ -381,7 +393,10 @@ def parse_key(val, key_definitions):
                 restl.append((mods, is_native, key))
         rest = tuple(restl)
     else:
-        mods, is_native, key = parse_shortcut(sc)
+        try:
+            mods, is_native, key = parse_shortcut(sc)
+        except InvalidMods:
+            return
         if key is None:
             if mods is not None:
                 log_error('Shortcut: {} has unknown key, ignoring'.format(sc))

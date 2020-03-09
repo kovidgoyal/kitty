@@ -9,13 +9,15 @@ import re
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
-from typing import Optional
+from typing import Dict, Iterable, List, Optional, Union
 from weakref import WeakValueDictionary
 
 from .child import cached_process_data, cwd_of_process
 from .cli import create_opts, parse_args
 from .conf.utils import to_cmdline
-from .config import initial_window_size_func, prepare_config_file_for_editing
+from .config import (
+    SubSequenceMap, initial_window_size_func, prepare_config_file_for_editing
+)
 from .config_data import MINIMUM_FONT_SIZE
 from .constants import (
     appname, config_dir, is_macos, kitty_exe, supports_primary_selection
@@ -115,12 +117,12 @@ class Boss:
 
     def __init__(self, os_window_id, opts, args, cached_values, new_os_window_trigger):
         set_layout_options(opts)
-        self.clipboard_buffers = {}
+        self.clipboard_buffers: Dict[str, str] = {}
         self.update_check_process = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.startup_cursor_text_color = opts.cursor_text_color
-        self.pending_sequences = None
+        self.pending_sequences: Optional[SubSequenceMap] = None
         self.cached_values = cached_values
         self.os_window_map = {}
         self.os_window_death_actions = {}
@@ -464,7 +466,7 @@ class Boss:
             new_size = calc_new_size(current_global_size)
             if new_size != current_global_size:
                 global_font_size(new_size)
-            os_windows = tuple(self.os_window_map.keys())
+            os_windows = list(self.os_window_map.keys())
         else:
             os_windows = []
             w = self.active_window
@@ -553,6 +555,7 @@ class Boss:
     def process_sequence(self, key, native_key, action, mods):
         if not self.pending_sequences:
             set_in_sequence_mode(False)
+            return
 
         remaining = {}
         matched_action = None
@@ -755,11 +758,11 @@ class Boss:
                 overlay_window.action_on_removal = lambda *a: action_on_removal(wid, self)
             return overlay_window
 
-    def kitten(self, kitten, *args):
+    def kitten(self, kitten: str, *args: str) -> None:
         import shlex
         cmdline = args[0] if args else ''
-        args = shlex.split(cmdline) if cmdline else []
-        self._run_kitten(kitten, args)
+        kargs = shlex.split(cmdline) if cmdline else []
+        self._run_kitten(kitten, kargs)
 
     def on_kitten_finish(self, target_window_id, end_kitten, source_window):
         output = self.get_output(source_window, num_lines=None)
@@ -888,7 +891,7 @@ class Boss:
 
     def paste_from_buffer(self, buffer_name):
         if buffer_name == 'clipboard':
-            text = get_clipboard_string()
+            text: Optional[str] = get_clipboard_string()
         elif buffer_name == 'primary':
             text = get_primary_selection()
         else:
@@ -1000,23 +1003,24 @@ class Boss:
             env, stdin = self.process_stdin_source(stdin=source, window=window)
             self.run_background_process(cmd, cwd_from=cwd_from, stdin=stdin, env=env)
 
-    def args_to_special_window(self, args, cwd_from=None):
+    def args_to_special_window(self, args: Iterable[str], cwd_from=None):
         args = list(args)
         stdin = None
         w = self.active_window
 
         if args[0].startswith('@') and args[0] != '@':
-            stdin = data_for_at(w, args[0]) or None
-            if stdin is not None:
-                stdin = stdin.encode('utf-8')
+            q = data_for_at(w, args[0]) or None
+            if q is not None:
+                stdin = q.encode('utf-8')
             del args[0]
 
         cmd = []
         for arg in args:
             if arg == '@selection':
-                arg = data_for_at(w, arg)
-                if not arg:
+                q = data_for_at(w, arg)
+                if not q:
                     continue
+                arg = q
             cmd.append(arg)
         return SpecialWindow(cmd, stdin, cwd_from=cwd_from)
 
@@ -1078,10 +1082,10 @@ class Boss:
         cwd_from = w.child.pid_for_cwd if w is not None else None
         self._new_window(args, cwd_from=cwd_from)
 
-    def launch(self, *args):
+    def launch(self, *args: str) -> None:
         from kitty.launch import parse_launch_args, launch
-        opts, args = parse_launch_args(args)
-        launch(self, opts, args)
+        opts, args_ = parse_launch_args(args)
+        launch(self, opts, args_)
 
     def move_tab_forward(self):
         tm = self.active_tab_manager
@@ -1093,19 +1097,19 @@ class Boss:
         if tm is not None:
             tm.move_tab(-1)
 
-    def disable_ligatures_in(self, where, strategy):
+    def disable_ligatures_in(self, where: Union[str, Iterable[Window]], strategy: int):
         if isinstance(where, str):
-            windows = ()
+            windows: List[Window] = []
             if where == 'active':
                 if self.active_window is not None:
-                    windows = (self.active_window,)
+                    windows = [self.active_window]
             elif where == 'all':
                 windows = self.all_windows
             elif where == 'tab':
                 if self.active_tab is not None:
-                    windows = tuple(self.active_tab)
+                    windows = list(self.active_tab)
         else:
-            windows = where
+            windows = list(where)
         for window in windows:
             window.screen.disable_ligatures = strategy
             window.refresh()
@@ -1166,11 +1170,12 @@ class Boss:
         self.show_error(_('Errors in kitty.conf'), msg)
 
     def set_colors(self, *args):
-        from kitty.rc.base import parse_subcommand_cli, command_for_name
+        from kitty.rc.base import parse_subcommand_cli, command_for_name, PayloadGetter
+        from kitty.remote_control import parse_rc_args
         c = command_for_name('set_colors')
         opts, items = parse_subcommand_cli(c, ['set-colors'] + list(args))
-        payload = c.message_to_kitty(None, opts, items)
-        c.response_from_kitty(self, self.active_window, payload)
+        payload = c.message_to_kitty(parse_rc_args([])[0], opts, items)
+        c.response_from_kitty(self, self.active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
 
     def _move_window_to(self, window=None, target_tab_id=None, target_os_window_id=None):
         window = window or self.active_window
@@ -1227,8 +1232,10 @@ class Boss:
             ''
         ]
         fmt = ': {1}'
-        tab_id_map = {}
+        tab_id_map: Dict[int, Optional[Union[str, int]]] = {}
         current_tab = self.active_tab
+        done_tab_id: Optional[Union[str, int]] = None
+
         for i, tab in enumerate(self.all_tabs):
             if tab is not current_tab:
                 tab_id_map[len(tab_id_map)] = tab.id
@@ -1241,12 +1248,13 @@ class Boss:
         lines.append(fmt.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
-            done.tab_id = tab_id_map[int(data['groupdicts'][0]['index'])]
+            nonlocal done_tab_id
+            done_tab_id = tab_id_map[int(data['groupdicts'][0]['index'])]
 
         def done2(target_window_id, self):
             if not hasattr(done, 'tab_id'):
                 return
-            tab_id = done.tab_id
+            tab_id = done_tab_id
             target_window = None
             for w in self.all_windows:
                 if w.id == target_window_id:
@@ -1273,8 +1281,11 @@ class Boss:
             ''
         ]
         fmt = ': {1}'
-        os_window_id_map = {}
+        os_window_id_map: Dict[int, Optional[int]] = {}
         current_os_window = getattr(self.active_tab, 'os_window_id', 0)
+        done_osw: Optional[int] = None
+        done_called = False
+
         for i, osw in enumerate(self.os_window_map):
             tm = self.os_window_map[osw]
             if current_os_window != osw and tm.active_tab and tm.active_tab:
@@ -1285,12 +1296,14 @@ class Boss:
         lines.append(fmt.format(new_idx, 'New OS Window'))
 
         def done(data, target_window_id, self):
-            done.os_window_id = os_window_id_map[int(data['groupdicts'][0]['index'])]
+            nonlocal done_called, done_osw
+            done_osw = os_window_id_map[int(data['groupdicts'][0]['index'])]
+            done_called = True
 
         def done2(target_window_id, self):
-            if not hasattr(done, 'os_window_id'):
+            if not done_called:
                 return
-            os_window_id = done.os_window_id
+            os_window_id = done_osw
             target_tab = self.active_tab
             for w in self.all_windows:
                 if w.id == target_window_id:

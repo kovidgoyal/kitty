@@ -445,10 +445,10 @@ def parse_shortcut_node(env, sig, signode):
 
 
 def render_conf(conf_name, all_options):
-    from kitty.conf.definition import merged_opts, Option
+    from kitty.conf.definition import merged_opts, Option, Group
     ans = ['.. default-domain:: conf', '']
     a = ans.append
-    current_group = None
+    current_group: Optional[Group] = None
     all_options = list(all_options)
     kitty_mod = 'kitty_mod'
 
@@ -466,6 +466,7 @@ def render_conf(conf_name, all_options):
 
     def handle_group_end(group):
         if group.end_text:
+            assert current_group is not None
             a(''), a(current_group.end_text)
 
     def handle_group(new_group, new_group_is_shortcut=False):

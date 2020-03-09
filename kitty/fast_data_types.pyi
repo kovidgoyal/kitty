@@ -941,6 +941,7 @@ class Screen:
     in_bracketed_paste_mode: bool
     scrolled_by: int
     cursor: Cursor
+    disable_ligatures: int
 
     def __init__(
             self,
@@ -1063,6 +1064,18 @@ class ChildMonitor:
     def set_iutf8_winid(self, win_id: int, on: bool) -> bool:
         pass
 
+    def add_child(self, id: int, pid: int, fd: int, screen: Screen) -> None:
+        pass
+
+    def mark_for_close(self, window_id: int) -> None:
+        pass
+
+    def start(self) -> None:
+        pass
+
+    def shutdown_monitor(self) -> None:
+        pass
+
 
 def set_iutf8_fd(fd: int, on: bool) -> bool:
     pass
@@ -1080,4 +1093,8 @@ def spawn(
     ready_read_fd: int,
     ready_write_fd: int
 ) -> int:
+    pass
+
+
+def key_to_bytes(glfw_key: int, smkx: bool, extended: bool, mods: int, action: int) -> bytes:
     pass

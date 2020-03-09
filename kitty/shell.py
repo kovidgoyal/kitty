@@ -164,17 +164,17 @@ def real_main(global_opts):
     while True:
         try:
             try:
-                cmdline = input('🐱 ')
+                scmdline = input('🐱 ')
             except UnicodeEncodeError:
-                cmdline = input('kitty> ')
+                scmdline = input('kitty> ')
         except EOFError:
             break
         except KeyboardInterrupt:
             print()
             continue
-        if not cmdline:
+        if not scmdline:
             continue
-        cmdline = shlex.split(cmdline)
+        cmdline = shlex.split(scmdline)
         cmd = cmdline[0].lower()
 
         try:

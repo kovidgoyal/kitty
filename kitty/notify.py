@@ -23,7 +23,7 @@ if is_macos:
 
 else:
 
-    from .fast_data_types import dbus_send_notification, get_boss
+    from .fast_data_types import dbus_send_notification
 
     alloc_map: Dict[int, str] = {}
     identifier_map: Dict[str, int] = {}
@@ -37,7 +37,8 @@ else:
         rmap = {v: k for k, v in identifier_map.items()}
         identifier = rmap.get(notification_id)
         if identifier is not None:
-            get_boss().notification_activated(identifier)
+            from .boss import notification_activated
+            notification_activated(identifier)
 
     def notify(
         title,

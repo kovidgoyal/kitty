@@ -114,11 +114,8 @@ def update_check(timer_id: Optional[int] = None) -> bool:
         log_error('Failed to run kitty for update check, with error: {}'.format(e))
         return False
     monitor_pid(p.pid)
-    boss = get_boss()
-    if boss is not None:
-        boss.set_update_check_process(p)
-        return True
-    return False
+    get_boss().set_update_check_process(p)
+    return True
 
 
 def run_update_check(interval: int = CHECK_INTERVAL) -> None:

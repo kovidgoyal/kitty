@@ -3,9 +3,10 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
-from typing import Dict, Tuple, Union
+from typing import Dict, Optional, Tuple, Union, overload
 
 from . import fast_data_types as defines
+from .config import KeyAction, KeyMap, SequenceMap, SubSequenceMap
 from .key_encoding import KEY_MAP
 from .terminfo import key_as_bytes, modify_key_bytes
 from .utils import base64_encode
@@ -246,7 +247,8 @@ def key_to_bytes(key, smkx, extended, mods, action):
             data.extend(m[key])
     elif mods == ctrl_alt_mod and key in all_control_alt_keys:
         if key in CTRL_ALT_KEYS:
-            data.append(0x1b), data.extend(control_codes[key])
+            data.append(0x1b)
+            data.extend(control_codes[key])
         else:
             data.extend(control_alt_codes[key])
     elif mods == ctrl_alt_shift_mod and key in control_alt_shift_codes:
@@ -257,6 +259,7 @@ def key_to_bytes(key, smkx, extended, mods, action):
         if x is not None:
             if mods == defines.GLFW_MOD_SHIFT:
                 x = SHIFTED_KEYS.get(key, x)
+            assert x is not None
             data.extend(x)
     return bytes(data)
 
@@ -270,6 +273,16 @@ def interpret_key_event(key, native_key, mods, window, action):
     ):
         return defines.key_to_bytes(key, screen.cursor_key_mode, screen.extended_keyboard, mods, action)
     return b''
+
+
+@overload
+def get_shortcut(seqmap: SequenceMap, mods: int, key: int, native_key: int) -> Optional[SubSequenceMap]:
+    ...
+
+
+@overload
+def get_shortcut(keymap: KeyMap, mods: int, key: int, native_key: int) -> Optional[KeyAction]:
+    ...
 
 
 def get_shortcut(keymap, mods, key, native_key):

@@ -9,7 +9,7 @@ import sys
 import types
 from contextlib import suppress
 from functools import partial
-from typing import List
+from typing import Any, Dict, List, Tuple, Union
 
 from .cli import emph, parse_args
 from .cli_stub import RCOptions
@@ -41,7 +41,7 @@ def handle_cmd(boss, window, cmd):
         raise
     if ans is no_response_sentinel:
         return
-    response = {'ok': True}
+    response: Dict[str, Any] = {'ok': True}
     if ans is not None:
         response['data'] = ans
     if not c.no_response and not no_response:
@@ -106,7 +106,7 @@ class SocketIO:
 class RCIO(TTYIO):
 
     def recv(self, timeout):
-        ans = []
+        ans: List[bytes] = []
         read_command_response(self.tty_fd, timeout, ans)
         return b''.join(ans)
 
@@ -122,7 +122,7 @@ def do_io(to, send, no_response):
                 yield encode_send(send)
         send_data = send_generator()
 
-    io = SocketIO(to) if to else RCIO()
+    io: Union[SocketIO, RCIO] = SocketIO(to) if to else RCIO()
     with io:
         io.send(send_data)
         if no_response:
@@ -140,7 +140,7 @@ cli_msg = (
 ).format(appname=appname)
 
 
-def parse_rc_args(args: List[str]):
+def parse_rc_args(args: List[str]) -> Tuple[RCOptions, List[str]]:
     cmap = {name: command_for_name(name) for name in sorted(all_command_names())}
     cmds = ('  :green:`{}`\n    {}'.format(cmd.name, cmd.short_desc) for c, cmd in cmap.items())
     msg = cli_msg + (
@@ -173,7 +173,7 @@ def main(args):
     if payload is not None:
         send['payload'] = payload
     if global_opts.no_command_response is not None:
-        no_response = global_opts.no_command_response
+        no_response = global_opts.no_command_response  # type: ignore
     else:
         no_response = c.no_response
     send['no_response'] = no_response
