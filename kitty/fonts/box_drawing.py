@@ -49,12 +49,12 @@ def draw_vline(buf: BufType, width: int, y1: int, y2: int, x: int, level: int) -
             buf[x + y * width] = 255
 
 
-def half_hline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', extend_by: int = 0):
+def half_hline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', extend_by: int = 0) -> None:
     x1, x2 = (0, extend_by + width // 2) if which == 'left' else (width // 2 - extend_by, width)
     draw_hline(buf, width, x1, x2, height // 2, level)
 
 
-def half_vline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'top', extend_by: int = 0):
+def half_vline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'top', extend_by: int = 0) -> None:
     y1, y2 = (0, height // 2 + extend_by) if which == 'top' else (height // 2 - extend_by, height)
     draw_vline(buf, width, y1, y2, width // 2, level)
 
@@ -105,41 +105,41 @@ def hline(buf: BufType, width: int, height: int, level: int = 1) -> None:
     half_hline(buf, width, height, level=level, which='right')
 
 
-def vline(buf: BufType, width: int, height: int, level=1) -> None:
+def vline(buf: BufType, width: int, height: int, level: int = 1) -> None:
     half_vline(buf, width, height, level=level)
     half_vline(buf, width, height, level=level, which='bottom')
 
 
-def hholes(buf: BufType, width: int, height: int, level=1, num=1) -> None:
+def hholes(buf: BufType, width: int, height: int, level: int = 1, num: int = 1) -> None:
     hline(buf, width, height, level=level)
     add_hholes(buf, width, height, level=level, num=num)
 
 
-def vholes(buf: BufType, width: int, height: int, level=1, num=1) -> None:
+def vholes(buf: BufType, width: int, height: int, level: int = 1, num: int = 1) -> None:
     vline(buf, width, height, level=level)
     add_vholes(buf, width, height, level=level, num=num)
 
 
-def corner(buf: BufType, width: int, height: int, hlevel=1, vlevel=1, which=None) -> None:
-    wh = 'right' if which in '┌└' else 'left'
+def corner(buf: BufType, width: int, height: int, hlevel: int = 1, vlevel: int = 1, which: Optional[str] = None) -> None:
+    wh = 'right' if which is not None and which in '┌└' else 'left'
     half_hline(buf, width, height, level=hlevel, which=wh, extend_by=thickness(vlevel, horizontal=True) // 2)
-    wv = 'top' if which in '└┘' else 'bottom'
+    wv = 'top' if which is not None and which in '└┘' else 'bottom'
     half_vline(buf, width, height, level=vlevel, which=wv)
 
 
-def vert_t(buf: BufType, width: int, height: int, a=1, b=1, c=1, which=None) -> None:
+def vert_t(buf: BufType, width: int, height: int, a: int = 1, b: int = 1, c: int = 1, which: Optional[str] = None) -> None:
     half_vline(buf, width, height, level=a, which='top')
     half_hline(buf, width, height, level=b, which='left' if which == '┤' else 'right')
     half_vline(buf, width, height, level=c, which='bottom')
 
 
-def horz_t(buf: BufType, width: int, height: int, a=1, b=1, c=1, which=None) -> None:
+def horz_t(buf: BufType, width: int, height: int, a: int = 1, b: int = 1, c: int = 1, which: Optional[str] = None) -> None:
     half_hline(buf, width, height, level=a, which='left')
     half_hline(buf, width, height, level=b, which='right')
     half_vline(buf, width, height, level=c, which='top' if which == '┴' else 'bottom')
 
 
-def cross(buf: BufType, width: int, height: int, a=1, b=1, c=1, d=1) -> None:
+def cross(buf: BufType, width: int, height: int, a: int = 1, b: int = 1, c: int = 1, d: int = 1) -> None:
     half_hline(buf, width, height, level=a)
     half_hline(buf, width, height, level=b, which='right')
     half_vline(buf, width, height, level=c)
@@ -400,17 +400,17 @@ def half_dvline(buf: BufType, width: int, height: int, level: int = 1, which: st
     return width // 2 - gap, width // 2 + gap
 
 
-def dvline(buf: BufType, width: int, height: int, only=None, level=1):
+def dvline(buf: BufType, width: int, height: int, only: Optional[str] = None, level: int = 1) -> Tuple[int, int]:
     half_dvline(buf, width, height, only=only, level=level)
     return half_dvline(buf, width, height, only=only, which='bottom', level=level)
 
 
-def dhline(buf: BufType, width: int, height: int, only=None, level=1):
+def dhline(buf: BufType, width: int, height: int, only: Optional[str] = None, level: int = 1) -> Tuple[int, int]:
     half_dhline(buf, width, height, only=only, level=level)
     return half_dhline(buf, width, height, only=only, which='bottom', level=level)
 
 
-def dvcorner(buf: BufType, width: int, height: int, level=1, which='╒'):
+def dvcorner(buf: BufType, width: int, height: int, level: int = 1, which: str = '╒') -> None:
     hw = 'right' if which in '╒╘' else 'left'
     half_dhline(buf, width, height, which=hw)
     vw = 'top' if which in '╘╛' else 'bottom'
@@ -418,7 +418,7 @@ def dvcorner(buf: BufType, width: int, height: int, level=1, which='╒'):
     half_vline(buf, width, height, which=vw, extend_by=gap // 2 + thickness(level, horizontal=False))
 
 
-def dhcorner(buf: BufType, width: int, height: int, level=1, which='╓'):
+def dhcorner(buf: BufType, width: int, height: int, level: int = 1, which: str = '╓') -> None:
     vw = 'top' if which in '╙╜' else 'bottom'
     half_dvline(buf, width, height, which=vw)
     hw = 'right' if which in '╓╙' else 'left'
@@ -537,7 +537,7 @@ def shade(buf: BufType, width: int, height: int, light: bool = False, invert: bo
                 buf[q] = 255 - dest[q]
 
 
-def quad(buf, width, height, x=0, y=0):
+def quad(buf: BufType, width: int, height: int, x: int = 0, y: int = 0) -> None:
     num_cols = width // 2
     left = x * num_cols
     right = width if x else num_cols
@@ -692,7 +692,7 @@ def test_char(ch: str, sz: int = 48) -> None:
         try:
             render_box_char(ch, buf, width, height)
 
-            def join_cells(*cells):
+            def join_cells(*cells: bytes) -> bytes:
                 cells = tuple(bytes(x) for x in cells)
                 return concat_cells(width, height, False, cells)
 
@@ -710,11 +710,11 @@ def test_drawing(sz: int = 48, family: str = 'monospace') -> None:
     with setup_for_testing(family, sz) as (_, width, height):
         space = bytearray(width * height)
 
-        def join_cells(cells):
+        def join_cells(cells: Iterable[bytes]) -> bytes:
             cells = tuple(bytes(x) for x in cells)
             return concat_cells(width, height, False, cells)
 
-        def render_chr(ch):
+        def render_chr(ch: str) -> bytearray:
             if ch in box_chars:
                 cell = bytearray(len(space))
                 render_box_char(ch, cell, width, height)

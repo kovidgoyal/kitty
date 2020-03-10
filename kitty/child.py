@@ -7,12 +7,20 @@ import os
 import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
-from typing import DefaultDict, Dict, Generator, Iterable, List, Optional
+from typing import (
+    DefaultDict, Dict, Generator, Iterable, List, Optional, Sequence, Tuple
+)
 
 import kitty.fast_data_types as fast_data_types
 
 from .constants import is_macos, shell_path, terminfo_dir
 from .options_stub import Options
+
+try:
+    from typing import TypedDict
+except ImportError:
+    TypedDict = dict
+
 
 if is_macos:
     from kitty.fast_data_types import (
@@ -153,11 +161,17 @@ def set_default_env(val: Optional[Dict[str, str]] = None) -> None:
     setattr(default_env, 'env', env)
 
 
-def openpty():
+def openpty() -> Tuple[int, int]:
     master, slave = os.openpty()  # Note that master and slave are in blocking mode
     remove_cloexec(slave)
     fast_data_types.set_iutf8_fd(master, True)
     return master, slave
+
+
+class ProcessDesc(TypedDict):
+    cwd: Optional[str]
+    pid: int
+    cmdline: Optional[Sequence[str]]
 
 
 class Child:
@@ -174,7 +188,7 @@ class Child:
         stdin: Optional[bytes] = None,
         env: Optional[Dict[str, str]] = None,
         cwd_from: Optional[int] = None,
-        allow_remote_control=False
+        allow_remote_control: bool = False
     ):
         self.allow_remote_control = allow_remote_control
         self.argv = argv
@@ -254,27 +268,27 @@ class Child:
             remove_blocking(self.child_fd)
         return pid
 
-    def mark_terminal_ready(self):
+    def mark_terminal_ready(self) -> None:
         os.close(self.terminal_ready_fd)
         self.terminal_ready_fd = -1
 
     @property
-    def foreground_processes(self) -> List[int]:
+    def foreground_processes(self) -> List[ProcessDesc]:
         if self.child_fd is None:
             return []
         try:
             pgrp = os.tcgetpgrp(self.child_fd)
             foreground_processes = processes_in_group(pgrp) if pgrp >= 0 else []
 
-            def process_desc(pid):
-                ans = {'pid': pid}
+            def process_desc(pid: int) -> ProcessDesc:
+                ans: ProcessDesc = {'pid': pid, 'cmdline': None, 'cwd': None}
                 with suppress(Exception):
                     ans['cmdline'] = cmdline_of_process(pid)
                 with suppress(Exception):
                     ans['cwd'] = cwd_of_process(pid) or None
                 return ans
 
-            return list(map(process_desc, foreground_processes))
+            return [process_desc(x) for x in foreground_processes]
         except Exception:
             return []
 

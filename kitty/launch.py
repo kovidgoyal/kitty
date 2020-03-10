@@ -22,7 +22,7 @@ except ImportError:
 
 
 @lru_cache(maxsize=2)
-def options_spec():
+def options_spec() -> str:
     return '''
 --window-title --title
 The title to set for the new window. By default, title is controlled by the

@@ -60,7 +60,7 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False) -> 'C
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map()
 
-    def score(candidate):
+    def score(candidate: 'CoreTextFont') -> Tuple[int, int]:
         style_match = 1 if candidate['bold'] == bold and candidate[
             'italic'
         ] == italic else 0

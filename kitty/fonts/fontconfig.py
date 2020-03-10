@@ -43,7 +43,7 @@ def create_font_map(all_fonts: Tuple['FontConfigPattern', ...]) -> FontMap:
 
 
 @lru_cache()
-def all_fonts_map(monospaced=True) -> FontMap:
+def all_fonts_map(monospaced: bool = True) -> FontMap:
     if monospaced:
         ans = fc_list(FC_DUAL) + fc_list(FC_MONO)
     else:
@@ -69,15 +69,15 @@ def family_name_to_key(family: str) -> str:
 
 
 @lru_cache()
-def fc_match(family, bold, italic, spacing=FC_MONO) -> 'FontConfigPattern':
+def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> 'FontConfigPattern':
     return fc_match_impl(family, bold, italic, spacing)
 
 
-def find_best_match(family: str, bold=False, italic=False, monospaced=True) -> 'FontConfigPattern':
+def find_best_match(family: str, bold: bool = False, italic: bool = False, monospaced: bool = True) -> 'FontConfigPattern':
     q = family_name_to_key(family)
     font_map = all_fonts_map(monospaced)
 
-    def score(candidate):
+    def score(candidate: 'FontConfigPattern') -> Tuple[int, int]:
         bold_score = abs((FC_WEIGHT_BOLD if bold else FC_WEIGHT_REGULAR) - candidate.get('weight', 0))
         italic_score = abs((FC_SLANT_ITALIC if italic else FC_SLANT_ROMAN) - candidate.get('slant', 0))
         monospace_match = 0 if candidate.get('spacing') == 'MONO' else 1

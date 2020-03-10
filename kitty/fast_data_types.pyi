@@ -1,3 +1,4 @@
+from ctypes import Array
 from typing import (
     Any, AnyStr, Callable, Dict, List, NewType, Optional, Tuple, TypedDict,
     Union
@@ -393,6 +394,8 @@ def default_color_table() -> Tuple[int, ...]:
 
 
 class FontConfigPattern(TypedDict):
+    path: str
+    index: int
     family: str
     full_name: str
     postscript_name: str
@@ -400,6 +403,13 @@ class FontConfigPattern(TypedDict):
     spacing: str
     weight: int
     slant: int
+    hint_style: int
+    subpixel: int
+    lcdfilter: int
+    hinting: bool
+    scalable: bool
+    outline: bool
+    color: bool
 
 
 def fc_list(
@@ -885,10 +895,10 @@ def set_send_sprite_to_gpu(
 
 def set_font_data(
     box_drawing_func: Callable[[int, int, int, float],
-                               Tuple[int, Union[bytearray, bytes]]],
+                               Tuple[int, Union[bytearray, bytes, Array]]],
     prerender_func: Callable[
         [int, int, int, int, int, float, float, float, float],
-        Tuple[int, ...]],
+        Tuple[Union[Array, int], ...]],
     descriptor_for_idx: Callable[[int], Tuple[FontObject, bool, bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
     symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,

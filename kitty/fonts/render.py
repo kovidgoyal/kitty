@@ -6,7 +6,9 @@ import ctypes
 import sys
 from functools import partial
 from math import ceil, cos, floor, pi
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Union, cast
+from typing import (
+    TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, cast
+)
 
 from kitty.config import defaults
 from kitty.constants import is_macos
@@ -54,7 +56,7 @@ def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, in
     items = tuple((k, maps[k]) for k in sorted(maps))
     ans = [items[0]]
 
-    def merge(prev_item, item):
+    def merge(prev_item: Tuple[Tuple[int, int], str], item: Tuple[Tuple[int, int], str]) -> None:
         s, e = item[0]
         pe = prev_item[0][1]
         ans[-1] = ((prev_item[0][0], max(pe, e)), prev_item[1])
@@ -88,11 +90,12 @@ def descriptor_for_idx(idx: int) -> Tuple[FontObject, bool, bool]:
 
 
 def dump_faces(ftypes: List[str], indices: Dict[str, int]) -> None:
-    def face_str(f):
-        f = f[0]
-        if is_macos:
-            return f
-        return '{}:{}'.format(f['path'], f['index'])
+    def face_str(f: Tuple[FontObject, bool, bool]) -> str:
+        fo = f[0]
+        if 'index' in fo:
+            return '{}:{}'.format(fo['path'], cast('FontConfigPattern', fo)['index'])
+        fo = cast('CoreTextFont', fo)
+        return fo['path']
 
     log_error('Preloaded font faces:')
     log_error('normal face:', face_str(current_faces[0]))
@@ -106,7 +109,7 @@ def dump_faces(ftypes: List[str], indices: Dict[str, int]) -> None:
             log_error(face_str(face))
 
 
-def set_font_family(opts: Optional[OptionsStub] = None, override_font_size=None, debug_font_matching=False):
+def set_font_family(opts: Optional[OptionsStub] = None, override_font_size: Optional[float] = None, debug_font_matching: bool = False) -> None:
     global current_faces
     opts = opts or defaults
     sz = override_font_size or opts.font_size
@@ -130,7 +133,10 @@ def set_font_family(opts: Optional[OptionsStub] = None, override_font_size=None,
     )
 
 
-def add_line(buf, cell_width, position, thickness, cell_height):
+UnderlineCallback = Callable[[ctypes.Array, int, int, int, int], None]
+
+
+def add_line(buf: ctypes.Array, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     y = position - thickness // 2
     while thickness > 0 and -1 < y < cell_height:
         thickness -= 1
@@ -138,7 +144,7 @@ def add_line(buf, cell_width, position, thickness, cell_height):
         y += 1
 
 
-def add_dline(buf, cell_width, position, thickness, cell_height):
+def add_dline(buf: ctypes.Array, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     a = min(position - thickness, cell_height - 1)
     b = min(position, cell_height - 1)
     top, bottom = min(a, b), max(a, b)
@@ -158,12 +164,12 @@ def add_dline(buf, cell_width, position, thickness, cell_height):
         ctypes.memset(ctypes.addressof(buf) + (cell_width * y), 255, cell_width)
 
 
-def add_curl(buf, cell_width, position, thickness, cell_height):
+def add_curl(buf: ctypes.Array, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     max_x, max_y = cell_width - 1, cell_height - 1
     xfactor = 2.0 * pi / max_x
     half_height = max(thickness // 2, 1)
 
-    def add_intensity(x, y, val):
+    def add_intensity(x: int, y: int, val: int) -> None:
         y += position
         y = min(y, max_y)
         idx = cell_width * y + x
@@ -186,13 +192,25 @@ def add_curl(buf, cell_width, position, thickness, cell_height):
 
 
 def render_special(
-        underline=0, strikethrough=False, missing=False,
-        cell_width=None, cell_height=None, baseline=None, underline_position=None, underline_thickness=None):
+    underline: int = 0,
+    strikethrough: bool = False,
+    missing: bool = False,
+    cell_width: int = 0, cell_height: int = 0,
+    baseline: int = 0,
+    underline_position: int = 0,
+    underline_thickness: int = 0
+) -> ctypes.Array:
     underline_position = min(underline_position, cell_height - underline_thickness)
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
-    ans = CharTexture if missing else CharTexture()
 
-    def dl(f, *a):
+    if missing:
+        buf = bytearray(cell_width * cell_height)
+        render_missing_glyph(buf, cell_width, cell_height)
+        return CharTexture.from_buffer(buf)
+
+    ans = CharTexture()
+
+    def dl(f: UnderlineCallback, *a: Any) -> None:
         try:
             f(ans, cell_width, *a)
         except Exception as e:
@@ -203,23 +221,27 @@ def render_special(
         t = underline_thickness
         if underline > 1:
             t = max(1, min(cell_height - underline_position - 1, t))
-        dl([None, add_line, add_dline, add_curl][underline], underline_position, t, cell_height)
+        dl([add_line, add_line, add_dline, add_curl][underline], underline_position, t, cell_height)
     if strikethrough:
         pos = int(0.65 * baseline)
         dl(add_line, pos, underline_thickness, cell_height)
 
-    if missing:
-        buf = bytearray(cell_width * cell_height)
-        render_missing_glyph(buf, cell_width, cell_height)
-        ans = CharTexture.from_buffer(buf)
     return ans
 
 
-def render_cursor(which, cursor_beam_thickness, cursor_underline_thickness, cell_width=0, cell_height=0, dpi_x=0, dpi_y=0):
+def render_cursor(
+    which: int,
+    cursor_beam_thickness: float,
+    cursor_underline_thickness: float,
+    cell_width: int = 0,
+    cell_height: int = 0,
+    dpi_x: float = 0,
+    dpi_y: float = 0
+) -> ctypes.Array:
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     ans = CharTexture()
 
-    def vert(edge, width_pt=1):
+    def vert(edge: str, width_pt: float = 1) -> None:
         width = max(1, min(int(round(width_pt * dpi_x / 72.0)), cell_width))
         left = 0 if edge == 'left' else max(0, cell_width - width)
         for y in range(cell_height):
@@ -227,7 +249,7 @@ def render_cursor(which, cursor_beam_thickness, cursor_underline_thickness, cell
             for x in range(offset, offset + width):
                 ans[x] = 255
 
-    def horz(edge, height_pt=1):
+    def horz(edge: str, height_pt: float = 1) -> None:
         height = max(1, min(int(round(height_pt * dpi_y / 72.0)), cell_height))
         top = 0 if edge == 'top' else max(0, cell_height - height)
         for y in range(top, top + height):
@@ -240,13 +262,24 @@ def render_cursor(which, cursor_beam_thickness, cursor_underline_thickness, cell
     elif which == 2:  # underline
         horz('bottom', cursor_underline_thickness)
     elif which == 3:  # hollow
-        vert('left'), vert('right'), horz('top'), horz('bottom')
+        vert('left')
+        vert('right')
+        horz('top')
+        horz('bottom')
     return ans
 
 
 def prerender_function(
-        cell_width, cell_height, baseline, underline_position, underline_thickness,
-        cursor_beam_thickness, cursor_underline_thickness, dpi_x, dpi_y):
+    cell_width: int,
+    cell_height: int,
+    baseline: int,
+    underline_position: int,
+    underline_thickness: int,
+    cursor_beam_thickness: float,
+    cursor_underline_thickness: float,
+    dpi_x: float,
+    dpi_y: float
+) -> Tuple[Union[int, ctypes.Array], ...]:
     # Pre-render the special underline, strikethrough and missing and cursor cells
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
@@ -259,7 +292,7 @@ def prerender_function(
     return tuple(map(ctypes.addressof, cells)) + (cells,)
 
 
-def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float):
+def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float) -> Tuple[int, ctypes.Array]:
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     buf = CharTexture()
     render_box_char(
@@ -270,16 +303,15 @@ def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: f
 
 class setup_for_testing:
 
-    def __init__(self, family='monospace', size=11.0, dpi=96.0):
+    def __init__(self, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0):
         self.family, self.size, self.dpi = family, size, dpi
 
-    def __enter__(self):
-        from collections import OrderedDict
+    def __enter__(self) -> Tuple[Dict[Tuple[int, int, int], bytes], int, int]:
         opts = defaults._replace(font_family=self.family, font_size=self.size)
         set_options(opts)
-        sprites = OrderedDict()
+        sprites = {}
 
-        def send_to_gpu(x, y, z, data):
+        def send_to_gpu(x: int, y: int, z: int, data: bytes) -> None:
             sprites[(x, y, z)] = data
 
         sprite_map_set_limits(100000, 100)
@@ -292,11 +324,11 @@ class setup_for_testing:
             set_send_sprite_to_gpu(None)
             raise
 
-    def __exit__(self, *args):
+    def __exit__(self, *args: Any) -> None:
         set_send_sprite_to_gpu(None)
 
 
-def render_string(text, family='monospace', size=11.0, dpi=96.0):
+def render_string(text: str, family: str = 'monospace', size: float = 11.0, dpi: float = 96.0) -> Tuple[int, int, List[bytes]]:
     with setup_for_testing(family, size, dpi) as (sprites, cell_width, cell_height):
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
@@ -307,7 +339,7 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
     for i in reversed(range(s.columns)):
         sp = list(line.sprite_at(i))
         sp[2] &= 0xfff
-        tsp = tuple(sp)
+        tsp = sp[0], sp[1], sp[2]
         if tsp == (0, 0, 0) and not found_content:
             continue
         found_content = True
@@ -315,7 +347,9 @@ def render_string(text, family='monospace', size=11.0, dpi=96.0):
     return cell_width, cell_height, list(reversed(cells))
 
 
-def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0, path=None):
+def shape_string(
+    text: str = "abcd", family: str = 'monospace', size: float = 11.0, dpi: float = 96.0, path: Optional[str] = None
+) -> List[Tuple[int, int, int, Tuple[int, ...]]]:
     with setup_for_testing(family, size, dpi) as (sprites, cell_width, cell_height):
         s = Screen(None, 1, len(text)*2)
         line = s.line(0)
@@ -323,7 +357,7 @@ def shape_string(text="abcd", family='monospace', size=11.0, dpi=96.0, path=None
         return test_shape(line, path)
 
 
-def display_bitmap(rgb_data, width, height):
+def display_bitmap(rgb_data: bytes, width: int, height: int) -> None:
     from tempfile import NamedTemporaryFile
     from kittens.icat.main import detect_support, show
     if not hasattr(display_bitmap, 'detected') and not detect_support():
@@ -335,7 +369,12 @@ def display_bitmap(rgb_data, width, height):
     show(f.name, width, height, 0, 32, align='left')
 
 
-def test_render_string(text='Hello, world!', family='monospace', size=64.0, dpi=96.0):
+def test_render_string(
+        text: str = 'Hello, world!',
+        family: str = 'monospace',
+        size: float = 64.0,
+        dpi: float = 96.0
+) -> None:
     from kitty.fast_data_types import concat_cells, current_fonts
 
     cell_width, cell_height, cells = render_string(text, family, size, dpi)
@@ -352,7 +391,7 @@ def test_render_string(text='Hello, world!', family='monospace', size=64.0, dpi=
     print('\n')
 
 
-def test_fallback_font(qtext: Optional[str] = None, bold=False, italic=False):
+def test_fallback_font(qtext: Optional[str] = None, bold: bool = False, italic: bool = False) -> None:
     with setup_for_testing():
         if qtext:
             trials = [qtext]
@@ -366,7 +405,7 @@ def test_fallback_font(qtext: Optional[str] = None, bold=False, italic=False):
                 sys.stdout.buffer.write((text + ' %s\n' % f).encode('utf-8'))
 
 
-def showcase():
+def showcase() -> None:
     f = 'monospace' if is_macos else 'Liberation Mono'
     test_render_string('He\u0347\u0305llo\u0337, w\u0302or\u0306l\u0354d!', family=f)
     test_render_string('你好,世界', family=f)
