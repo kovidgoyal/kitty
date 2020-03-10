@@ -12,7 +12,7 @@ from base64 import standard_b64encode
 from functools import lru_cache
 from math import ceil
 from tempfile import NamedTemporaryFile
-from typing import Dict, List, NamedTuple, Optional, Union
+from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Union
 
 from kitty.cli import parse_args
 from kitty.cli_stub import IcatCLIOptions
@@ -22,9 +22,12 @@ from kitty.utils import (
 )
 
 from ..tui.images import (
-    ConvertFailed, NoImageMagick, OpenFailed, convert, fsenc, identify
+    ConvertFailed, NoImageMagick, OpenFailed, convert, fsenc, identify, GraphicsCommand
 )
-from ..tui.operations import clear_images_on_screen, serialize_gr_command
+from ..tui.operations import clear_images_on_screen
+
+if TYPE_CHECKING:
+    from ..tui.images import GRT_f, GRT_t  # noqa
 
 OPTIONS = '''\
 --align
@@ -128,8 +131,8 @@ def options_spec() -> str:
     return OPTIONS.format(appname='{}-icat'.format(appname))
 
 
-def write_gr_cmd(cmd, payload=None):
-    sys.stdout.buffer.write(serialize_gr_command(cmd, payload))
+def write_gr_cmd(cmd: GraphicsCommand, payload: Optional[bytes] = None) -> None:
+    sys.stdout.buffer.write(cmd.serialize(payload or b''))
     sys.stdout.flush()
 
 
@@ -144,7 +147,7 @@ def calculate_in_cell_x_offset(width, cell_width, align):
     return (cell_width - extra_pixels) // 2
 
 
-def set_cursor(cmd, width, height, align):
+def set_cursor(cmd: GraphicsCommand, width, height, align):
     ss = get_screen_size()
     cw = int(ss.width / ss.cols)
     num_of_cells_needed = int(ceil(width / cw))
@@ -152,9 +155,9 @@ def set_cursor(cmd, width, height, align):
         w, h = fit_image(width, height, ss.width, height)
         ch = int(ss.height / ss.rows)
         num_of_rows_needed = int(ceil(height / ch))
-        cmd['c'], cmd['r'] = ss.cols, num_of_rows_needed
+        cmd.c, cmd.r = ss.cols, num_of_rows_needed
     else:
-        cmd['X'] = calculate_in_cell_x_offset(width, cw, align)
+        cmd.X = calculate_in_cell_x_offset(width, cw, align)
         extra_cells = 0
         if align == 'center':
             extra_cells = (ss.cols - num_of_cells_needed) // 2
@@ -164,12 +167,12 @@ def set_cursor(cmd, width, height, align):
             sys.stdout.buffer.write(b' ' * extra_cells)
 
 
-def set_cursor_for_place(place, cmd, width, height, align):
+def set_cursor_for_place(place, cmd: GraphicsCommand, width, height, align):
     x = place.left + 1
     ss = get_screen_size()
     cw = int(ss.width / ss.cols)
     num_of_cells_needed = int(ceil(width / cw))
-    cmd['X'] = calculate_in_cell_x_offset(width, cw, align)
+    cmd.X = calculate_in_cell_x_offset(width, cw, align)
     extra_cells = 0
     if align == 'center':
         extra_cells = (place.width - num_of_cells_needed) // 2
@@ -178,27 +181,31 @@ def set_cursor_for_place(place, cmd, width, height, align):
     sys.stdout.buffer.write('\033[{};{}H'.format(place.top + 1, x + extra_cells).encode('ascii'))
 
 
-def write_chunked(cmd, data):
-    if cmd['f'] != 100:
+def write_chunked(cmd: GraphicsCommand, data: bytes) -> None:
+    if cmd.f != 100:
         data = zlib.compress(data)
-        cmd['o'] = 'z'
+        cmd.o = 'z'
     data = standard_b64encode(data)
     while data:
         chunk, data = data[:4096], data[4096:]
-        m = 1 if data else 0
-        cmd['m'] = m
+        cmd.m = 1 if data else 0
         write_gr_cmd(cmd, chunk)
         cmd.clear()
 
 
-def show(outfile, width, height, zindex, fmt, transmit_mode='t', align='center', place=None):
-    cmd = {'a': 'T', 'f': fmt, 's': width, 'v': height, 'z': zindex}
+def show(outfile, width: int, height: int, zindex: int, fmt: 'GRT_f', transmit_mode: 'GRT_t' = 't', align: str = 'center', place=None):
+    cmd = GraphicsCommand()
+    cmd.a = 'T'
+    cmd.f = fmt
+    cmd.s = width
+    cmd.v = height
+    cmd.z = zindex
     if place:
         set_cursor_for_place(place, cmd, width, height, align)
     else:
         set_cursor(cmd, width, height, align)
     if can_transfer_with_files:
-        cmd['t'] = transmit_mode
+        cmd.t = transmit_mode
         write_gr_cmd(cmd, standard_b64encode(os.path.abspath(outfile).encode(fsenc)))
     else:
         with open(outfile, 'rb') as f:
@@ -206,7 +213,7 @@ def show(outfile, width, height, zindex, fmt, transmit_mode='t', align='center',
         if transmit_mode == 't':
             os.unlink(outfile)
         if fmt == 100:
-            cmd['S'] = len(data)
+            cmd.S = len(data)
         write_chunked(cmd, data)
 
 
@@ -228,8 +235,8 @@ def process(path, args, is_tempfile):
     file_removed = False
     if m.fmt == 'png' and not needs_scaling:
         outfile = path
-        transmit_mode = 't' if is_tempfile else 'f'
-        fmt = 100
+        transmit_mode: 'GRT_t' = 't' if is_tempfile else 'f'
+        fmt: 'GRT_f' = 100
         width, height = m.width, m.height
         file_removed = transmit_mode == 't'
     else:
@@ -250,7 +257,7 @@ def scan(d):
                 yield os.path.join(dirpath, f), mt
 
 
-def detect_support(wait_for=10, silent=False):
+def detect_support(wait_for: int = 10, silent: bool = False) -> bool:
     global can_transfer_with_files
     if not silent:
         print('Checking for graphics ({}s max. wait)...'.format(wait_for), end='\r')
@@ -275,8 +282,13 @@ def detect_support(wait_for=10, silent=False):
 
         with NamedTemporaryFile() as f:
             f.write(b'abcd'), f.flush()
-            write_gr_cmd(dict(a='q', s=1, v=1, i=1), standard_b64encode(b'abcd'))
-            write_gr_cmd(dict(a='q', s=1, v=1, i=2, t='f'), standard_b64encode(f.name.encode(fsenc)))
+            gc = GraphicsCommand()
+            gc.a = 'q'
+            gc.s = gc.v = gc.i = 1
+            write_gr_cmd(gc, standard_b64encode(b'abcd'))
+            gc.t = 'f'
+            gc.i = 2
+            write_gr_cmd(gc, standard_b64encode(f.name.encode(fsenc)))
             with TTYIO() as io:
                 io.recv(more_needed, timeout=float(wait_for))
     finally:

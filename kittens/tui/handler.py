@@ -3,16 +3,21 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import Callable, Optional, Type
+from typing import TYPE_CHECKING, Callable, Optional, Type
 
 from .operations import commander
+
+
+if TYPE_CHECKING:
+    from kitty.utils import ScreenSize
+    ScreenSize
 
 
 class Handler:
 
     image_manager_class: Optional[Type['ImageManagerBase']] = None
 
-    def _initialize(self, screen_size, term_manager, schedule_write, tui_loop, debug, image_manager=None):
+    def _initialize(self, screen_size: 'ScreenSize', term_manager, schedule_write, tui_loop, debug, image_manager=None):
         self.screen_size = screen_size
         self._term_manager = term_manager
         self._tui_loop = tui_loop

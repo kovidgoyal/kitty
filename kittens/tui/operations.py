@@ -5,9 +5,14 @@
 import sys
 from contextlib import contextmanager
 from functools import wraps
-from typing import List, Optional, Union
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
 
 from kitty.rgb import Color, color_as_sharp, to_color
+
+if TYPE_CHECKING:
+    from kitty.utils import ScreenSize
+    from .images import GraphicsCommand
+    ScreenSize, GraphicsCommand
 
 S7C1T = '\033 F'
 SAVE_CURSOR = '\0337'
@@ -37,9 +42,9 @@ MODES = dict(
 )
 
 
-def set_mode(which: str, private=True) -> str:
-    num, private = MODES[which]
-    return '\033[{}{}h'.format(private, num)
+def set_mode(which: str, private: bool = True) -> str:
+    num, private_ = MODES[which]
+    return '\033[{}{}h'.format(private_, num)
 
 
 def reset_mode(which: str) -> str:
@@ -75,18 +80,18 @@ def set_cursor_visible(yes_or_no: bool) -> str:
     return set_mode('DECTCEM') if yes_or_no else reset_mode('DECTCEM')
 
 
-def set_cursor_position(x, y) -> str:  # (0, 0) is top left
+def set_cursor_position(x: int, y: int) -> str:  # (0, 0) is top left
     return '\033[{};{}H'.format(y + 1, x + 1)
 
 
-def set_cursor_shape(shape='block', blink=True) -> str:
+def set_cursor_shape(shape: str = 'block', blink: bool = True) -> str:
     val = {'block': 1, 'underline': 3, 'bar': 5}.get(shape, 1)
     if not blink:
         val += 1
     return '\033[{} q'.format(val)
 
 
-def set_scrolling_region(screen_size=None, top=None, bottom=None) -> str:
+def set_scrolling_region(screen_size: Optional['ScreenSize'] = None, top: Optional[int] = None, bottom: Optional[int] = None) -> str:
     if screen_size is None:
         return '\033[r'
     if top is None:
@@ -100,7 +105,7 @@ def set_scrolling_region(screen_size=None, top=None, bottom=None) -> str:
     return '\033[{};{}r'.format(top + 1, bottom + 1)
 
 
-def scroll_screen(amt=1) -> str:
+def scroll_screen(amt: int = 1) -> str:
     return '\033[' + str(abs(amt)) + ('T' if amt < 0 else 'S')
 
 
@@ -111,7 +116,10 @@ UNDERLINE_STYLES = {name: i + 1 for i, name in enumerate(
     'straight double curly'.split())}
 
 
-def color_code(color, intense=False, base=30):
+ColorSpec = Union[int, str, Tuple[int, int, int]]
+
+
+def color_code(color: ColorSpec, intense: bool = False, base: int = 30) -> str:
     if isinstance(color, str):
         e = str((base + 60 if intense else base) + STANDARD_COLORS[color])
     elif isinstance(color, int):
@@ -121,20 +129,37 @@ def color_code(color, intense=False, base=30):
     return e
 
 
-def sgr(*parts) -> str:
+def sgr(*parts: str) -> str:
     return '\033[{}m'.format(';'.join(parts))
 
 
-def colored(text, color, intense=False, reset_to=None, reset_to_intense=False) -> str:
+def colored(
+    text: str,
+    color: ColorSpec,
+    intense: bool = False,
+    reset_to: Optional[ColorSpec] = None,
+    reset_to_intense: bool = False
+) -> str:
     e = color_code(color, intense)
     return '\033[{}m{}\033[{}m'.format(e, text, 39 if reset_to is None else color_code(reset_to, reset_to_intense))
 
 
-def faint(text) -> str:
+def faint(text: str) -> str:
     return colored(text, 'black', True)
 
 
-def styled(text: str, fg=None, bg=None, fg_intense=False, bg_intense=False, italic=None, bold=None, underline=None, underline_color=None, reverse=None) -> str:
+def styled(
+    text: str,
+    fg: Optional[ColorSpec] = None,
+    bg: Optional[ColorSpec] = None,
+    fg_intense: bool = False,
+    bg_intense: bool = False,
+    italic: Optional[bool] = None,
+    bold: Optional[bool] = None,
+    underline: Optional[str] = None,
+    underline_color: Optional[ColorSpec] = None,
+    reverse: Optional[bool] = None
+) -> str:
     start, end = [], []
     if fg is not None:
         start.append(color_code(fg, fg_intense))
@@ -167,24 +192,28 @@ def styled(text: str, fg=None, bg=None, fg_intense=False, bg_intense=False, ital
     return '\033[{}m{}\033[{}m'.format(';'.join(start), text, ';'.join(end))
 
 
-def serialize_gr_command(cmd, payload=None) -> bytes:
-    cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
-    ans: List[bytes] = []
-    w = ans.append
-    w(b'\033_G'), w(cmd.encode('ascii'))
-    if payload:
-        w(b';')
-        w(payload)
-    w(b'\033\\')
-    return b''.join(ans)
+def serialize_gr_command(cmd: Dict[str, Union[int, str]], payload: Optional[bytes] = None) -> bytes:
+    from .images import GraphicsCommand
+    gc = GraphicsCommand()
+    for k, v in cmd.items():
+        setattr(gc, k, v)
+    return gc.serialize(payload or b'')
 
 
-def gr_command(cmd, payload=None) -> str:
-    return serialize_gr_command(cmd, payload).decode('ascii')
+def gr_command(cmd: Union[Dict, 'GraphicsCommand'], payload: Optional[bytes] = None) -> str:
+    if isinstance(cmd, dict):
+        raw = serialize_gr_command(cmd, payload)
+    else:
+        raw = cmd.serialize(payload or b'')
+    return raw.decode('ascii')
 
 
-def clear_images_on_screen(delete_data=False) -> str:
-    return serialize_gr_command({'a': 'd', 'd': 'A' if delete_data else 'a'}).decode('ascii')
+def clear_images_on_screen(delete_data: bool = False) -> str:
+    from .images import GraphicsCommand
+    gc = GraphicsCommand()
+    gc.a = 'd'
+    gc.d = 'A' if delete_data else 'a'
+    return gc.serialize().decode('ascii')
 
 
 def init_state(alternate_screen=True):
