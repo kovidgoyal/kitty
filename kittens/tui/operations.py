@@ -6,10 +6,13 @@ import sys
 from contextlib import contextmanager
 from functools import wraps
 from typing import (
-    IO, TYPE_CHECKING, Any, Callable, Dict, Generator, Optional, Tuple, Union
+    IO, TYPE_CHECKING, Any, Callable, Dict, Generator, Optional, Tuple,
+    TypeVar, Union
 )
 
 from kitty.rgb import Color, color_as_sharp, to_color
+
+from .operations_stub import CMD
 
 if TYPE_CHECKING:
     from kitty.utils import ScreenSize
@@ -44,49 +47,68 @@ MODES = dict(
     EXTENDED_KEYBOARD=(2017, '?'),
 )
 
+F = TypeVar('F')
+all_cmds: Dict[str, Callable] = {}
 
+
+def cmd(f: F) -> F:
+    all_cmds[f.__name__] = f  # type: ignore
+    return f
+
+
+@cmd
 def set_mode(which: str, private: bool = True) -> str:
     num, private_ = MODES[which]
     return '\033[{}{}h'.format(private_, num)
 
 
+@cmd
 def reset_mode(which: str) -> str:
     num, private = MODES[which]
     return '\033[{}{}l'.format(private, num)
 
 
+@cmd
 def clear_screen() -> str:
     return '\033[H\033[2J'
 
 
+@cmd
 def clear_to_eol() -> str:
     return '\033[K'
 
 
+@cmd
 def bell() -> str:
     return '\a'
 
 
+@cmd
 def beep() -> str:
     return '\a'
 
 
+@cmd
 def set_window_title(value: str) -> str:
     return '\033]2;' + value.replace('\033', '').replace('\x9c', '') + '\033\\'
 
 
+@cmd
 def set_line_wrapping(yes_or_no: bool) -> str:
     return set_mode('DECAWM') if yes_or_no else reset_mode('DECAWM')
 
 
+@cmd
 def set_cursor_visible(yes_or_no: bool) -> str:
     return set_mode('DECTCEM') if yes_or_no else reset_mode('DECTCEM')
 
 
+@cmd
 def set_cursor_position(x: int, y: int) -> str:  # (0, 0) is top left
     return '\033[{};{}H'.format(y + 1, x + 1)
 
 
+@cmd
 def set_cursor_shape(shape: str = 'block', blink: bool = True) -> str:
     val = {'block': 1, 'underline': 3, 'bar': 5}.get(shape, 1)
     if not blink:
@@ -94,6 +116,7 @@ def set_cursor_shape(shape: str = 'block', blink: bool = True) -> str:
     return '\033[{} q'.format(val)
 
 
+@cmd
 def set_scrolling_region(screen_size: Optional['ScreenSize'] = None, top: Optional[int] = None, bottom: Optional[int] = None) -> str:
     if screen_size is None:
         return '\033[r'
@@ -108,6 +131,7 @@ def set_scrolling_region(screen_size: Optional['ScreenSize'] = None, top: Option
     return '\033[{};{}r'.format(top + 1, bottom + 1)
 
 
+@cmd
 def scroll_screen(amt: int = 1) -> str:
     return '\033[' + str(abs(amt)) + ('T' if amt < 0 else 'S')
 
@@ -132,10 +156,12 @@ def color_code(color: ColorSpec, intense: bool = False, base: int = 30) -> str:
     return e
 
 
+@cmd
 def sgr(*parts: str) -> str:
     return '\033[{}m'.format(';'.join(parts))
 
 
+@cmd
 def colored(
     text: str,
     color: ColorSpec,
@@ -147,10 +173,12 @@ def colored(
     return '\033[{}m{}\033[{}m'.format(e, text, 39 if reset_to is None else color_code(reset_to, reset_to_intense))
 
 
+@cmd
 def faint(text: str) -> str:
     return colored(text, 'black', True)
 
 
+@cmd
 def styled(
     text: str,
     fg: Optional[ColorSpec] = None,
@@ -203,6 +231,7 @@ def serialize_gr_command(cmd: Dict[str, Union[int, str]], payload: Optional[byte
     return gc.serialize(payload or b'')
 
 
+@cmd
 def gr_command(cmd: Union[Dict, 'GraphicsCommand'], payload: Optional[bytes] = None) -> str:
     if isinstance(cmd, dict):
         raw = serialize_gr_command(cmd, payload)
@@ -211,6 +240,7 @@ def gr_command(cmd: Union[Dict, 'GraphicsCommand'], payload: Optional[bytes] = N
     return raw.decode('ascii')
 
 
+@cmd
 def clear_images_on_screen(delete_data: bool = False) -> str:
     from .images import GraphicsCommand
     gc = GraphicsCommand()
@@ -263,6 +293,7 @@ def alternate_screen(f: Optional[IO[str]] = None) -> Generator[None, None, None]
     print(reset_mode('ALTERNATE_SCREEN'), end='', file=f)
 
 
+@cmd
 def set_default_colors(
     fg: Optional[Union[Color, str]] = None,
     bg: Optional[Union[Color, str]] = None,
@@ -293,6 +324,7 @@ def set_default_colors(
     return ans
 
 
+@cmd
 def write_to_clipboard(data: Union[str, bytes], use_primary: bool = False) -> str:
     if isinstance(data, str):
         data = data.encode('utf-8')
@@ -309,22 +341,45 @@ def write_to_clipboard(data: Union[str, bytes], use_primary: bool = False) -> st
     return ans
 
 
+@cmd
 def request_from_clipboard(use_primary: bool = False) -> str:
     return '\x1b]52;{};?\x07'.format('p' if use_primary else 'c')
 
 
-all_cmds = tuple(
-        (name, obj) for name, obj in globals().items()
-        if hasattr(obj, '__annotations__') and obj.__annotations__.get('return') is str)
-
-
 def writer(handler: 'Handler', func: Callable) -> Callable:
     @wraps(func)
-    def f(self: 'Handler', *a: Any, **kw: Any) -> None:
+    def f(*a: Any, **kw: Any) -> None:
         handler.write(func(*a, **kw))
     return f
 
 
-def commander(handler: 'Handler') -> Any:
-    ans = {name: writer(handler, obj) for name, obj in all_cmds}
-    return type('CMD', (), ans)()
+def commander(handler: 'Handler') -> CMD:
+    ans = CMD()
+    for name, func in all_cmds.items():
+        setattr(ans, name, writer(handler, func))
+    return ans
+
+
+def func_sig(func: Callable) -> Generator[str, None, None]:
+    import inspect
+    import re
+    s = inspect.signature(func)
+    for val in s.parameters.values():
+        yield re.sub(r'ForwardRef\([\'"](\w+?)[\'"]\)', r'\1', str(val).replace('NoneType', 'None'))
+
+
+def as_type_stub() -> str:
+    ans = [
+        'from typing import *  # noqa',
+        'from kitty.utils import ScreenSize',
+        'from kittens.tui.images import GraphicsCommand',
+    ]
+    methods = []
+    for name, func in all_cmds.items():
+        args = ', '.join(func_sig(func))
+        if args:
+            args = ', ' + args
+        methods.append('    def {}(self{}) -> str: pass'.format(name, args))
+    ans += ['', '', 'class CMD:'] + methods
+
+    return '\n'.join(ans) + '\n\n\n'
