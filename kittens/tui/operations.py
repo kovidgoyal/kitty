@@ -5,14 +5,17 @@
 import sys
 from contextlib import contextmanager
 from functools import wraps
-from typing import TYPE_CHECKING, Dict, Optional, Tuple, Union
+from typing import (
+    IO, TYPE_CHECKING, Any, Callable, Dict, Generator, Optional, Tuple, Union
+)
 
 from kitty.rgb import Color, color_as_sharp, to_color
 
 if TYPE_CHECKING:
     from kitty.utils import ScreenSize
     from .images import GraphicsCommand
-    ScreenSize, GraphicsCommand
+    from .handler import Handler
+    ScreenSize, GraphicsCommand, Handler
 
 S7C1T = '\033 F'
 SAVE_CURSOR = '\0337'
@@ -216,7 +219,7 @@ def clear_images_on_screen(delete_data: bool = False) -> str:
     return gc.serialize().decode('ascii')
 
 
-def init_state(alternate_screen=True):
+def init_state(alternate_screen: bool = True) -> str:
     ans = (
         S7C1T + SAVE_CURSOR + SAVE_PRIVATE_MODE_VALUES + reset_mode('LNM') +
         reset_mode('IRM') + reset_mode('DECKM') + reset_mode('DECSCNM') +
@@ -235,7 +238,7 @@ def init_state(alternate_screen=True):
     return ans
 
 
-def reset_state(normal_screen=True):
+def reset_state(normal_screen: bool = True) -> str:
     ans = ''
     if normal_screen:
         ans += reset_mode('ALTERNATE_SCREEN')
@@ -246,21 +249,27 @@ def reset_state(normal_screen=True):
 
 
 @contextmanager
-def cursor(write):
+def cursor(write: Callable[[str], None]) -> Generator[None, None, None]:
     write(SAVE_CURSOR)
     yield
     write(RESTORE_CURSOR)
 
 
 @contextmanager
-def alternate_screen(f=None):
+def alternate_screen(f: Optional[IO[str]] = None) -> Generator[None, None, None]:
     f = f or sys.stdout
     print(set_mode('ALTERNATE_SCREEN'), end='', file=f)
     yield
     print(reset_mode('ALTERNATE_SCREEN'), end='', file=f)
 
 
-def set_default_colors(fg=None, bg=None, cursor=None, select_bg=None, select_fg=None) -> str:
+def set_default_colors(
+    fg: Optional[Union[Color, str]] = None,
+    bg: Optional[Union[Color, str]] = None,
+    cursor: Optional[Union[Color, str]] = None,
+    select_bg: Optional[Union[Color, str]] = None,
+    select_fg: Optional[Union[Color, str]] = None
+) -> str:
     ans = ''
 
     def item(which: Optional[Union[Color, str]], num: int) -> None:
@@ -284,7 +293,7 @@ def set_default_colors(fg=None, bg=None, cursor=None, select_bg=None, select_fg=
     return ans
 
 
-def write_to_clipboard(data: Union[str, bytes], use_primary=False) -> str:
+def write_to_clipboard(data: Union[str, bytes], use_primary: bool = False) -> str:
     if isinstance(data, str):
         data = data.encode('utf-8')
     from base64 import standard_b64encode
@@ -300,7 +309,7 @@ def write_to_clipboard(data: Union[str, bytes], use_primary=False) -> str:
     return ans
 
 
-def request_from_clipboard(use_primary=False) -> str:
+def request_from_clipboard(use_primary: bool = False) -> str:
     return '\x1b]52;{};?\x07'.format('p' if use_primary else 'c')
 
 
@@ -309,13 +318,13 @@ all_cmds = tuple(
         if hasattr(obj, '__annotations__') and obj.__annotations__.get('return') is str)
 
 
-def writer(handler, func):
+def writer(handler: 'Handler', func: Callable) -> Callable:
     @wraps(func)
-    def f(self, *a, **kw):
+    def f(self: 'Handler', *a: Any, **kw: Any) -> None:
         handler.write(func(*a, **kw))
     return f
 
 
-def commander(handler):
+def commander(handler: 'Handler') -> Any:
     ans = {name: writer(handler, obj) for name, obj in all_cmds}
     return type('CMD', (), ans)()

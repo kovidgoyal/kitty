@@ -56,11 +56,11 @@ If specified resize the window this command is run in, rather than the active wi
     def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
         match = payload_get('match')
         if match:
-            windows = tuple(boss.match_windows(match))
+            windows = list(boss.match_windows(match))
             if not windows:
                 raise MatchError(match)
         else:
-            windows = tuple(window if window and payload_get('self') else boss.active_window)
+            windows = [window if window and payload_get('self') else boss.active_window]
         resized = False
         if windows and windows[0]:
             resized = boss.resize_layout_window(

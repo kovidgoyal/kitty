@@ -101,7 +101,7 @@ class Resize(Handler):
         print(styled('Sizes', bold=True, fg='white', fg_intense=True))
         print('Original: {} rows {} cols'.format(self.original_size.rows, self.original_size.cols))
         print('Current:  {} rows {} cols'.format(
-            styled(self.screen_size.rows, fg='magenta'), styled(self.screen_size.cols, fg='magenta')))
+            styled(str(self.screen_size.rows), fg='magenta'), styled(str(self.screen_size.cols), fg='magenta')))
 
 
 OPTIONS = r'''
