@@ -7,8 +7,8 @@ import re
 import sys
 from collections import deque
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterator, List, Optional, Sequence, Tuple,
-    Type, TypeVar, Union, cast
+    TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List,
+    Match, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast
 )
 
 from .cli_stub import CLIOptions
@@ -30,6 +30,8 @@ try:
 except ImportError:
     OptionDict = Dict[str, Any]  # type: ignore
 
+if TYPE_CHECKING:
+    from .config import BadLine, KeyAction, KeySpec, SequenceMap  # noqa
 
 CONFIG_HELP = '''\
 Specify a path to the configuration file(s) to use. All configuration files are
@@ -197,9 +199,9 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
 def prettify(text: str) -> str:
     role_map = globals()
 
-    def sub(m):
+    def sub(m: Match) -> str:
         role, text = m.group(1, 2)
-        return role_map[role](text)
+        return str(role_map[role](text))
 
     text = re.sub(r':([a-z]+):`([^`]+)`', sub, text)
     return text
@@ -280,7 +282,7 @@ class PrintHelpForSeq:
         blocks: List[str] = []
         a = blocks.append
 
-        def wa(text, indent=0, leading_indent=None):
+        def wa(text: str, indent: int = 0, leading_indent: Optional[int] = None) -> None:
             if leading_indent is None:
                 leading_indent = indent
             j = '\n' + (' ' * indent)
@@ -698,7 +700,7 @@ def options_for_completion() -> OptionSpecSeq:
 def option_spec_as_rst(
     ospec: Callable[[], str] = options_spec,
     usage: Optional[str] = None, message: Optional[str] = None, appname: Optional[str] = None,
-    heading_char='-'
+    heading_char: str = '-'
 ) -> str:
     options = parse_option_spec(ospec())
     seq, disabled = options
@@ -728,9 +730,10 @@ def parse_args(
 
 
 SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
+ShortcutMap = Dict[Tuple['KeySpec', ...], 'KeyAction']
 
 
-def print_shortcut(key_sequence, action):
+def print_shortcut(key_sequence: Iterable['KeySpec'], action: 'KeyAction') -> None:
     if not getattr(print_shortcut, 'maps', None):
         from kitty.keys import defines
         v = vars(defines)
@@ -740,9 +743,9 @@ def print_shortcut(key_sequence, action):
         setattr(print_shortcut, 'maps', (mmap, krmap))
     mmap, krmap = getattr(print_shortcut, 'maps')
     keys = []
-    for key in key_sequence:
+    for key_spec in key_sequence:
         names = []
-        mods, is_native, key = key
+        mods, is_native, key = key_spec
         for name, val in mmap.items():
             if mods & val:
                 names.append(name)
@@ -758,7 +761,7 @@ def print_shortcut(key_sequence, action):
     print('\t', ' > '.join(keys), action)
 
 
-def print_shortcut_changes(defns, text, changes):
+def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple['KeySpec', ...]]) -> None:
     if changes:
         print(title(text))
 
@@ -766,7 +769,7 @@ def print_shortcut_changes(defns, text, changes):
             print_shortcut(k, defns[k])
 
 
-def compare_keymaps(final, initial):
+def compare_keymaps(final: ShortcutMap, initial: ShortcutMap) -> None:
     added = set(final) - set(initial)
     removed = set(initial) - set(final)
     changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
@@ -775,11 +778,11 @@ def compare_keymaps(final, initial):
     print_shortcut_changes(final, 'Changed shortcuts:', changed)
 
 
-def flatten_sequence_map(m):
-    ans = {}
-    for k, rest_map in m.items():
+def flatten_sequence_map(m: 'SequenceMap') -> ShortcutMap:
+    ans: Dict[Tuple['KeySpec', ...], 'KeyAction'] = {}
+    for key_spec, rest_map in m.items():
         for r, action in rest_map.items():
-            ans[(k,) + (r)] = action
+            ans[(key_spec,) + (r)] = action
     return ans
 
 
@@ -797,15 +800,15 @@ def compare_opts(opts: OptionsStub) -> None:
         print(title(fmt.format(f)), getattr(opts, f))
 
     final_, initial_ = opts.keymap, default_opts.keymap
-    final = {(k,): v for k, v in final_.items()}
-    initial = {(k,): v for k, v in initial_.items()}
+    final: ShortcutMap = {(k,): v for k, v in final_.items()}
+    initial: ShortcutMap = {(k,): v for k, v in initial_.items()}
     final_s, initial_s = map(flatten_sequence_map, (opts.sequence_map, default_opts.sequence_map))
     final.update(final_s)
     initial.update(initial_s)
     compare_keymaps(final, initial)
 
 
-def create_opts(args: CLIOptions, debug_config=False, accumulate_bad_lines=None) -> OptionsStub:
+def create_opts(args: CLIOptions, debug_config: bool = False, accumulate_bad_lines: Optional[List['BadLine']] = None) -> OptionsStub:
     from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     if debug_config:

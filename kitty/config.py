@@ -6,12 +6,11 @@ import json
 import os
 import re
 import sys
-from collections import namedtuple
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
-    Any, Callable, Dict, Iterable, List, Optional,
-    Sequence, Set, Tuple, Type
+    Any, Callable, Dict, Generator, Iterable, List, Match, NamedTuple,
+    Optional, Sequence, Set, Tuple, Type, Union
 )
 
 from . import fast_data_types as defines
@@ -25,7 +24,6 @@ from .constants import cache_dir, defconf, is_macos
 from .key_names import get_key_name_lookup, key_name_aliases
 from .options_stub import Options as OptionsStub
 from .utils import log_error
-
 
 KeySpec = Tuple[int, bool, int]
 KeyMap = Dict[KeySpec, 'KeyAction']
@@ -59,8 +57,13 @@ def parse_shortcut(sc: str) -> Tuple[int, bool, Optional[int]]:
     return mods, is_native, key
 
 
-KeyAction = namedtuple('KeyAction', 'func args')
+class KeyAction(NamedTuple):
+    func: str
+    args: Sequence[str]
+
+
 func_with_args, args_funcs = key_func()
+FuncArgsType = Tuple[str, Sequence[Any]]
 
 
 @func_with_args(
@@ -68,12 +71,12 @@ func_with_args, args_funcs = key_func()
     'new_window_with_cwd', 'new_tab_with_cwd', 'new_os_window_with_cwd',
     'launch'
     )
-def shlex_parse(func, rest):
+def shlex_parse(func: str, rest: str) -> FuncArgsType:
     return func, to_cmdline(rest)
 
 
 @func_with_args('combine')
-def combine_parse(func, rest):
+def combine_parse(func: str, rest: str) -> FuncArgsType:
     sep, rest = rest.split(maxsplit=1)
     parts = re.split(r'\s*' + re.escape(sep) + r'\s*', rest)
     args = tuple(map(parse_key_action, filter(None, parts)))
@@ -81,19 +84,21 @@ def combine_parse(func, rest):
 
 
 @func_with_args('send_text')
-def send_text_parse(func, rest):
+def send_text_parse(func: str, rest: str) -> FuncArgsType:
     args = rest.split(maxsplit=1)
-    if len(args) > 0:
+    mode = ''
+    data = b''
+    if len(args) > 1:
+        mode = args[0]
         try:
-            args[1] = parse_send_text_bytes(args[1])
+            data = parse_send_text_bytes(args[1])
         except Exception:
             log_error('Ignoring invalid send_text string: ' + args[1])
-            args[1] = ''
-    return func, args
+    return func, [mode, data]
 
 
 @func_with_args('run_kitten', 'run_simple_kitten', 'kitten')
-def kitten_parse(func, rest):
+def kitten_parse(func: str, rest: str) -> FuncArgsType:
     if func == 'kitten':
         args = rest.split(maxsplit=1)
     else:
@@ -103,13 +108,13 @@ def kitten_parse(func, rest):
 
 
 @func_with_args('goto_tab')
-def goto_tab_parse(func, rest):
+def goto_tab_parse(func: str, rest: str) -> FuncArgsType:
     args = (max(0, int(rest)), )
     return func, args
 
 
 @func_with_args('detach_window')
-def detach_window_parse(func, rest):
+def detach_window_parse(func: str, rest: str) -> FuncArgsType:
     if rest not in ('new', 'new-tab', 'ask'):
         log_error('Ignoring invalid detach_window argument: {}'.format(rest))
         rest = 'new'
@@ -117,7 +122,7 @@ def detach_window_parse(func, rest):
 
 
 @func_with_args('detach_tab')
-def detach_tab_parse(func, rest):
+def detach_tab_parse(func: str, rest: str) -> FuncArgsType:
     if rest not in ('new', 'ask'):
         log_error('Ignoring invalid detach_tab argument: {}'.format(rest))
         rest = 'new'
@@ -125,12 +130,12 @@ def detach_tab_parse(func, rest):
 
 
 @func_with_args('set_background_opacity', 'goto_layout', 'kitty_shell')
-def simple_parse(func, rest):
+def simple_parse(func: str, rest: str) -> FuncArgsType:
     return func, [rest]
 
 
 @func_with_args('set_font_size')
-def float_parse(func, rest):
+def float_parse(func: str, rest: str) -> FuncArgsType:
     return func, (float(rest),)
 
 
@@ -150,28 +155,28 @@ def parse_change_font_size(func: str, rest: str) -> Tuple[str, Tuple[bool, Optio
 
 
 @func_with_args('clear_terminal')
-def clear_terminal(func, rest):
+def clear_terminal(func: str, rest: str) -> FuncArgsType:
     vals = rest.strip().split(maxsplit=1)
     if len(vals) != 2:
         log_error('clear_terminal needs two arguments, using defaults')
-        args = ['reset', 'active']
+        args: List[Union[str, bool]] = ['reset', 'active']
     else:
         args = [vals[0].lower(), vals[1].lower() == 'active']
     return func, args
 
 
 @func_with_args('copy_to_buffer')
-def copy_to_buffer(func, rest):
+def copy_to_buffer(func: str, rest: str) -> FuncArgsType:
     return func, [rest]
 
 
 @func_with_args('paste_from_buffer')
-def paste_from_buffer(func, rest):
+def paste_from_buffer(func: str, rest: str) -> FuncArgsType:
     return func, [rest]
 
 
 @func_with_args('neighboring_window')
-def neighboring_window(func, rest):
+def neighboring_window(func: str, rest: str) -> FuncArgsType:
     rest = rest.lower()
     rest = {'up': 'top', 'down': 'bottom'}.get(rest, rest)
     if rest not in ('left', 'right', 'top', 'bottom'):
@@ -181,7 +186,7 @@ def neighboring_window(func, rest):
 
 
 @func_with_args('resize_window')
-def resize_window(func, rest):
+def resize_window(func: str, rest: str) -> FuncArgsType:
     vals = rest.strip().split(maxsplit=1)
     if len(vals) > 2:
         log_error('resize_window needs one or two arguments, using defaults')
@@ -202,39 +207,40 @@ def resize_window(func, rest):
 
 
 @func_with_args('move_window')
-def move_window(func, rest):
+def move_window(func: str, rest: str) -> FuncArgsType:
     rest = rest.lower()
     rest = {'up': 'top', 'down': 'bottom'}.get(rest, rest)
+    prest: Union[int, str] = rest
     try:
-        rest = int(rest)
+        prest = int(prest)
     except Exception:
-        if rest not in ('left', 'right', 'top', 'bottom'):
+        if prest not in ('left', 'right', 'top', 'bottom'):
             log_error('Invalid move_window specification: {}'.format(rest))
-            rest = 0
-    return func, [rest]
+            prest = 0
+    return func, [prest]
 
 
 @func_with_args('pipe')
-def pipe(func, rest):
+def pipe(func: str, rest: str) -> FuncArgsType:
     import shlex
-    rest = shlex.split(rest)
-    if len(rest) < 3:
+    r = shlex.split(rest)
+    if len(r) < 3:
         log_error('Too few arguments to pipe function')
-        rest = ['none', 'none', 'true']
-    return func, rest
+        r = ['none', 'none', 'true']
+    return func, r
 
 
 @func_with_args('set_colors')
-def set_colors(func, rest):
+def set_colors(func: str, rest: str) -> FuncArgsType:
     import shlex
-    rest = shlex.split(rest)
-    if len(rest) < 1:
+    r = shlex.split(rest)
+    if len(r) < 1:
         log_error('Too few arguments to set_colors function')
-    return func, rest
+    return func, r
 
 
 @func_with_args('nth_window')
-def nth_window(func, rest):
+def nth_window(func: str, rest: str) -> FuncArgsType:
     try:
         num = int(rest)
     except Exception:
@@ -244,7 +250,7 @@ def nth_window(func, rest):
 
 
 @func_with_args('disable_ligatures_in')
-def disable_ligatures_in(func, rest):
+def disable_ligatures_in(func: str, rest: str) -> FuncArgsType:
     parts = rest.split(maxsplit=1)
     if len(parts) == 1:
         where, strategy = 'active', parts[0]
@@ -258,14 +264,14 @@ def disable_ligatures_in(func, rest):
 
 
 @func_with_args('layout_action')
-def layout_action(func, rest):
+def layout_action(func: str, rest: str) -> FuncArgsType:
     parts = rest.split(maxsplit=1)
     if not parts:
         raise ValueError('layout_action must have at least one argument')
     return func, [parts[0], tuple(parts[1:])]
 
 
-def parse_marker_spec(ftype, parts):
+def parse_marker_spec(ftype: str, parts: Sequence[str]) -> Tuple[str, Union[str, Tuple[Tuple[int, str], ...]], int]:
     flags = re.UNICODE
     if ftype in ('text', 'itext', 'regex', 'iregex'):
         if ftype.startswith('i'):
@@ -278,12 +284,12 @@ def parse_marker_spec(ftype, parts):
                 color = max(1, min(int(parts[i]), 3))
             except Exception:
                 raise ValueError('color {} in marker specification is not an integer'.format(parts[i]))
-            spec = parts[i + 1]
+            sspec = parts[i + 1]
             if 'regex' not in ftype:
-                spec = re.escape(spec)
-            ans.append((color, spec))
+                sspec = re.escape(sspec)
+            ans.append((color, sspec))
         ftype = 'regex'
-        spec = tuple(ans)
+        spec: Union[str, Tuple[Tuple[int, str], ...]] = tuple(ans)
     elif ftype == 'function':
         spec = ' '.join(parts)
     else:
@@ -292,7 +298,7 @@ def parse_marker_spec(ftype, parts):
 
 
 @func_with_args('toggle_marker')
-def toggle_marker(func, rest):
+def toggle_marker(func: str, rest: str) -> FuncArgsType:
     parts = rest.split(maxsplit=1)
     if len(parts) != 2:
         raise ValueError('{} if not a valid marker specification'.format(rest))
@@ -302,7 +308,7 @@ def toggle_marker(func, rest):
 
 
 @func_with_args('scroll_to_mark')
-def scroll_to_mark(func, rest):
+def scroll_to_mark(func: str, rest: str) -> FuncArgsType:
     parts = rest.split()
     if not parts or not rest:
         return func, [True, 0]
@@ -340,17 +346,17 @@ sequence_sep = '>'
 
 class KeyDefinition:
 
-    def __init__(self, is_sequence, action, mods, is_native, key, rest=()):
+    def __init__(self, is_sequence: bool, action: KeyAction, mods: int, is_native: bool, key: int, rest: Tuple[KeySpec, ...] = ()):
         self.is_sequence = is_sequence
         self.action = action
         self.trigger = mods, is_native, key
         self.rest = rest
 
-    def resolve(self, kitty_mod):
+    def resolve(self, kitty_mod: int) -> None:
         self.trigger = defines.resolve_key_mods(kitty_mod, self.trigger[0]), self.trigger[1], self.trigger[2]
         self.rest = tuple((defines.resolve_key_mods(kitty_mod, mods), is_native, key) for mods, is_native, key in self.rest)
 
-    def resolve_kitten_aliases(self, aliases: Dict[str, Sequence[str]]):
+    def resolve_kitten_aliases(self, aliases: Dict[str, Sequence[str]]) -> None:
         if not self.action.args:
             return
         kitten = self.action.args[0]
@@ -366,7 +372,7 @@ class KeyDefinition:
             self.action = self.action._replace(args=[kitten + (' ' + rest).rstrip()])
 
 
-def parse_key(val, key_definitions):
+def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:
     parts = val.split(maxsplit=1)
     if len(parts) != 2:
         return
@@ -413,14 +419,15 @@ def parse_key(val, key_definitions):
                 if trigger is not None:
                     key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], trigger[2], rest))
             else:
+                assert key is not None
                 key_definitions.append(KeyDefinition(False, paction, mods, is_native, key))
 
 
-def parse_symbol_map(val):
+def parse_symbol_map(val: str) -> Dict[Tuple[int, int], str]:
     parts = val.split()
-    symbol_map = {}
+    symbol_map: Dict[Tuple[int, int], str] = {}
 
-    def abort():
+    def abort() -> Dict[Tuple[int, int], str]:
         log_error('Symbol map: {} is invalid, ignoring'.format(
             val))
         return {}
@@ -429,17 +436,16 @@ def parse_symbol_map(val):
         return abort()
     family = ' '.join(parts[1:])
 
-    def to_chr(x):
+    def to_chr(x: str) -> int:
         if not x.startswith('U+'):
             raise ValueError()
-        x = int(x[2:], 16)
-        return x
+        return int(x[2:], 16)
 
     for x in parts[0].split(','):
-        a, b = x.partition('-')[::2]
-        b = b or a
+        a_, b_ = x.partition('-')[::2]
+        b_ = b_ or a_
         try:
-            a, b = map(to_chr, (a, b))
+            a, b = map(to_chr, (a_, b_))
         except Exception:
             return abort()
         if b < a or max(a, b) > sys.maxunicode or min(a, b) < 1:
@@ -448,24 +454,23 @@ def parse_symbol_map(val):
     return symbol_map
 
 
-def parse_send_text_bytes(text):
+def parse_send_text_bytes(text: str) -> bytes:
     return python_string(text).encode('utf-8')
 
 
-def parse_send_text(val, key_definitions):
+def parse_send_text(val: str, key_definitions: List[KeyDefinition]) -> None:
     parts = val.split(' ')
 
-    def abort(msg):
+    def abort(msg: str) -> None:
         log_error('Send text: {} is invalid ({}), ignoring'.format(
             val, msg))
-        return {}
 
     if len(parts) < 3:
         return abort('Incomplete')
     mode, sc = parts[:2]
     text = ' '.join(parts[2:])
     key_str = '{} send_text {} {}'.format(sc, mode, text)
-    return parse_key(key_str, key_definitions)
+    parse_key(key_str, key_definitions)
 
 
 SpecialHandlerFunc = Callable[[str, str, Dict[str, Any]], None]
@@ -486,25 +491,25 @@ def deprecated_handler(*names: str) -> Callable[[SpecialHandlerFunc], SpecialHan
 
 
 @special_handler
-def handle_map(key, val, ans):
+def handle_map(key: str, val: str, ans: Dict[str, Any]) -> None:
     parse_key(val, ans['key_definitions'])
 
 
 @special_handler
-def handle_symbol_map(key, val, ans):
+def handle_symbol_map(key: str, val: str, ans: Dict[str, Any]) -> None:
     ans['symbol_map'].update(parse_symbol_map(val))
 
 
 class FontFeature(str):
 
-    def __new__(cls, name: str, parsed: bytes):
-        ans = str.__new__(cls, name)  # type: ignore
-        ans.parsed = parsed
+    def __new__(cls, name: str, parsed: bytes) -> 'FontFeature':
+        ans: FontFeature = str.__new__(cls, name)  # type: ignore
+        ans.parsed = parsed  # type: ignore
         return ans
 
 
 @special_handler
-def handle_font_features(key, val, ans):
+def handle_font_features(key: str, val: str, ans: Dict[str, Any]) -> None:
     if val != 'none':
         parts = val.split()
         if len(parts) < 2:
@@ -523,26 +528,26 @@ def handle_font_features(key, val, ans):
 
 
 @special_handler
-def handle_kitten_alias(key, val, ans):
+def handle_kitten_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
     parts = val.split(maxsplit=2)
     if len(parts) >= 2:
         ans['kitten_aliases'][parts[0]] = parts[1:]
 
 
 @special_handler
-def handle_send_text(key, val, ans):
+def handle_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
     # For legacy compatibility
     parse_send_text(val, ans['key_definitions'])
 
 
 @special_handler
-def handle_clear_all_shortcuts(key, val, ans):
+def handle_clear_all_shortcuts(key: str, val: str, ans: Dict[str, Any]) -> None:
     if to_bool(val):
         ans['key_definitions'] = [None]
 
 
 @deprecated_handler('x11_hide_window_decorations', 'macos_hide_titlebar')
-def handle_deprecated_hide_window_decorations_aliases(key, val, ans):
+def handle_deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
     if not hasattr(handle_deprecated_hide_window_decorations_aliases, key):
         setattr(handle_deprecated_hide_window_decorations_aliases, 'key', True)
         log_error('The option {} is deprecated. Use hide_window_decorations instead.'.format(key))
@@ -552,7 +557,7 @@ def handle_deprecated_hide_window_decorations_aliases(key, val, ans):
 
 
 @deprecated_handler('macos_show_window_title_in_menubar')
-def handle_deprecated_macos_show_window_title_in_menubar_alias(key, val, ans):
+def handle_deprecated_macos_show_window_title_in_menubar_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
     if not hasattr(handle_deprecated_macos_show_window_title_in_menubar_alias, key):
         setattr(handle_deprecated_macos_show_window_title_in_menubar_alias, 'key', True)
         log_error('The option {} is deprecated. Use macos_show_window_title_in menubar instead.'.format(key))
@@ -570,9 +575,9 @@ def handle_deprecated_macos_show_window_title_in_menubar_alias(key, val, ans):
     ans['macos_show_window_title_in'] = macos_show_window_title_in
 
 
-def expandvars(val, env):
+def expandvars(val: str, env: Dict[str, str]) -> str:
 
-    def sub(m):
+    def sub(m: Match) -> str:
         key = m.group(1)
         result = env.get(key)
         if result is None:
@@ -585,25 +590,25 @@ def expandvars(val, env):
 
 
 @special_handler
-def handle_env(key, val, ans):
+def handle_env(key: str, val: str, ans: Dict[str, Any]) -> None:
     key, val = val.partition('=')[::2]
     key, val = key.strip(), val.strip()
     ans['env'][key] = expandvars(val, ans['env'])
 
 
-def special_handling(key, val, ans):
+def special_handling(key: str, val: str, ans: Dict[str, Any]) -> bool:
     func = special_handlers.get(key)
     if func is not None:
         func(key, val, ans)
         return True
 
 
-def option_names_for_completion():
+def option_names_for_completion() -> Generator[str, None, None]:
     yield from defaults
     yield from special_handlers
 
 
-def parse_config(lines: Iterable[str], check_keys=True, accumulate_bad_lines: Optional[List[BadLine]] = None):
+def parse_config(lines: Iterable[str], check_keys: bool = True, accumulate_bad_lines: Optional[List[BadLine]] = None) -> Dict[str, Any]:
     ans: Dict[str, Any] = {
         'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [],
         'env': {}, 'kitten_aliases': {}, 'font_features': {}
@@ -624,7 +629,7 @@ def parse_config(lines: Iterable[str], check_keys=True, accumulate_bad_lines: Op
     return ans
 
 
-def parse_defaults(lines, check_keys=False):
+def parse_defaults(lines: Iterable[str], check_keys: bool = False) -> Dict[str, Any]:
     ans = parse_config(lines, check_keys)
     return ans
 
@@ -652,18 +657,18 @@ def merge_configs(defaults: Dict, vals: Dict) -> Dict:
     return ans
 
 
-def build_ansi_color_table(opts=defaults):
+def build_ansi_color_table(opts: OptionsStub = defaults) -> List[int]:
 
-    def as_int(x):
+    def as_int(x: Tuple[int, int, int]) -> int:
         return (x[0] << 16) | (x[1] << 8) | x[2]
 
-    def col(i):
+    def col(i: int) -> int:
         return as_int(getattr(opts, 'color{}'.format(i)))
 
     return list(map(col, range(256)))
 
 
-def atomic_save(data, path):
+def atomic_save(data: bytes, path: str) -> None:
     import tempfile
     fd, p = tempfile.mkstemp(dir=os.path.dirname(path), suffix='.tmp')
     try:
@@ -681,7 +686,7 @@ def atomic_save(data, path):
 
 
 @contextmanager
-def cached_values_for(name):
+def cached_values_for(name: str) -> Generator[Dict, None, None]:
     cached_path = os.path.join(cache_dir(), name + '.json')
     cached_values: Dict = {}
     try:
@@ -703,14 +708,14 @@ def cached_values_for(name):
             err))
 
 
-def initial_window_size_func(opts, cached_values):
+def initial_window_size_func(opts: OptionsStub, cached_values: Dict) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
 
     if 'window-size' in cached_values and opts.remember_window_size:
         ws = cached_values['window-size']
         try:
             w, h = map(int, ws)
 
-            def initial_window_size(*a):
+            def initial_window_size(*a: Any) -> Tuple[int, int]:
                 return w, h
             return initial_window_size
         except Exception:
@@ -719,7 +724,7 @@ def initial_window_size_func(opts, cached_values):
     w, w_unit = opts.initial_window_width
     h, h_unit = opts.initial_window_height
 
-    def get_window_size(cell_width, cell_height, dpi_x, dpi_y, xscale, yscale):
+    def get_window_size(cell_width: int, cell_height: int, dpi_x: float, dpi_y: float, xscale: float, yscale: float) -> Tuple[int, int]:
         if not is_macos:
             # scaling is not needed on Wayland, but is needed on macOS. Not
             # sure about X11.
@@ -732,12 +737,12 @@ def initial_window_size_func(opts, cached_values):
             height = cell_height * h / yscale + (dpi_y / 72) * (opts.window_margin_width + opts.window_padding_width) + 1
         else:
             height = h
-        return width, height
+        return int(width), int(height)
 
     return get_window_size
 
 
-def commented_out_default_config():
+def commented_out_default_config() -> str:
     ans = []
     for line in as_conf_file(all_options.values()):
         if line and line[0] != '#':
@@ -746,7 +751,7 @@ def commented_out_default_config():
     return '\n'.join(ans)
 
 
-def prepare_config_file_for_editing():
+def prepare_config_file_for_editing() -> str:
     if not os.path.exists(defconf):
         d = os.path.dirname(defconf)
         with suppress(FileExistsError):
