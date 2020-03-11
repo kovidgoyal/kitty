@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
-from collections import namedtuple
+from typing import NamedTuple
 
 from . import fast_data_types as defines
 from .key_names import key_name_aliases
@@ -451,9 +451,14 @@ def update_encoding():
     subprocess.check_call(['yapf', '-i', __file__])
 
 
+class KeyEvent(NamedTuple):
+    type: int
+    mods: int
+    key: str
+
+
 PRESS, REPEAT, RELEASE = 1, 2, 4
 SHIFT, ALT, CTRL, SUPER = 1, 2, 4, 8
-KeyEvent = namedtuple('KeyEvent', 'type mods key')
 type_map = {'p': PRESS, 't': REPEAT, 'r': RELEASE}
 rtype_map = {v: k for k, v in type_map.items()}
 mod_map = {c: i for i, c in enumerate('ABCDEFGHIJKLMNOP')}

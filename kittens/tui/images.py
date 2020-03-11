@@ -16,7 +16,6 @@ from typing import (
 
 from kitty.utils import ScreenSize, fit_image
 
-from .handler import ImageManagerBase
 from .operations import cursor
 
 try:
@@ -192,7 +191,7 @@ class Placement(TypedDict):
     y: int
 
 
-class ImageManager(ImageManagerBase):
+class ImageManager:
 
     def __init__(self, handler: 'Handler'):
         self.image_id_counter = count()

@@ -7,7 +7,7 @@ import re
 import shlex
 import subprocess
 import sys
-from typing import List, Tuple
+from typing import List, Set, Tuple
 
 SHELL_SCRIPT = '''\
 #!/bin/sh
@@ -43,10 +43,12 @@ exec -a "-$shell_name" "$0"
 '''
 
 
-def get_ssh_cli():
+def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
     other_ssh_args: List[str] = []
     boolean_ssh_args: List[str] = []
-    raw = subprocess.Popen(['ssh'], stderr=subprocess.PIPE).stderr.read().decode('utf-8')
+    stderr = subprocess.Popen(['ssh'], stderr=subprocess.PIPE).stderr
+    assert stderr is not None
+    raw = stderr.read().decode('utf-8')
     for m in re.finditer(r'\[(.+?)\]', raw):
         q = m.group(1)
         if len(q) < 2 or q[0] != '-':

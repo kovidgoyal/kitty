@@ -14,7 +14,7 @@ from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
 from typing import (
-    Any, Dict, Generator, List, NamedTuple, Optional, Tuple, cast
+    Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Union, cast
 )
 
 from .constants import (
@@ -382,7 +382,7 @@ def parse_address_spec(spec):
     return family, address, socket_path
 
 
-def write_all(fd, data):
+def write_all(fd: int, data: Union[str, bytes]) -> None:
     if isinstance(data, str):
         data = data.encode('utf-8')
     while data:

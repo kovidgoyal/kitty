@@ -346,6 +346,9 @@ def request_from_clipboard(use_primary: bool = False) -> str:
     return '\x1b]52;{};?\x07'.format('p' if use_primary else 'c')
 
 
+# Boilerplate to make operations availble via Handler.cmd  {{{
+
+
 def writer(handler: 'Handler', func: Callable) -> Callable:
     @wraps(func)
     def f(*a: Any, **kw: Any) -> None:
@@ -373,6 +376,8 @@ def as_type_stub() -> str:
         'from typing import *  # noqa',
         'from kitty.utils import ScreenSize',
         'from kittens.tui.images import GraphicsCommand',
+        'from kitty.rgb import Color',
+        'import kitty.rgb',
     ]
     methods = []
     for name, func in all_cmds.items():
@@ -383,3 +388,4 @@ def as_type_stub() -> str:
     ans += ['', '', 'class CMD:'] + methods
 
     return '\n'.join(ans) + '\n\n\n'
+# }}}
