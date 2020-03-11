@@ -13,8 +13,7 @@ import sys
 from contextlib import contextmanager
 from functools import partial
 from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Generator, List, NamedTuple, Optional,
-    Protocol
+    TYPE_CHECKING, Any, Callable, Dict, Generator, List, NamedTuple, Optional
 )
 
 from kitty.constants import is_macos
@@ -34,6 +33,10 @@ if TYPE_CHECKING:
     from kitty.key_encoding import KeyEvent
     from .images import ImageManager
     KeyEvent, ImageManager
+    from typing import Protocol
+else:
+    Protocol = object
+
 
 C, D = K['C'], K['D']
 
@@ -195,7 +198,7 @@ class Loop:
         if is_macos:
             # On macOS PTY devices are not supported by the KqueueSelector and
             # the PollSelector is broken, causes 100% CPU usage
-            self.asycio_loop = asyncio.SelectorEventLoop(selectors.SelectSelector())  # type: ignore
+            self.asycio_loop: asyncio.AbstractEventLoop = asyncio.SelectorEventLoop(selectors.SelectSelector())
             asyncio.set_event_loop(self.asycio_loop)
         else:
             self.asycio_loop = asyncio.get_event_loop()
