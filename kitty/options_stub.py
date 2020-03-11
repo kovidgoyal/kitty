@@ -29,7 +29,16 @@ def generate_stub():
     )
 
     from kittens.diff.config_data import all_options
-    text += as_type_stub(all_options, class_name='DiffOptions')
+    text += as_type_stub(
+        all_options,
+        class_name='DiffOptions',
+        preamble_lines=(
+            'from kitty.conf.utils import KittensKey, KittensKeyAction',
+        ),
+        extra_fields=(
+            ('key_definitions', 'typing.Dict[KittensKey, KittensKeyAction]'),
+        )
+    )
 
     save_type_stub(text, __file__)
 

@@ -306,7 +306,10 @@ def parse_kittens_shortcut(sc: str) -> Tuple[Optional[int], str, bool]:
     return mods, rkey, is_text
 
 
-def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> Tuple[str, Tuple[str, ...]]:
+KittensKeyAction = Tuple[str, Tuple[str, ...]]
+
+
+def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> KittensKeyAction:
     parts = action.strip().split(' ', 1)
     func = parts[0]
     if len(parts) == 1:
@@ -332,12 +335,15 @@ def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> Tup
     return func, tuple(args)
 
 
+KittensKey = Tuple[str, Optional[int], bool]
+
+
 def parse_kittens_key(
     val: str, funcs_with_args: Dict[str, Callable]
-) -> Optional[Tuple[Tuple[str, Tuple[str, ...]], str, Optional[int], bool]]:
+) -> Optional[Tuple[KittensKeyAction, KittensKey]]:
     sc, action = val.partition(' ')[::2]
     if not sc or not action:
         return None
     mods, key, is_text = parse_kittens_shortcut(sc)
     ans = parse_kittens_func_args(action, funcs_with_args)
-    return ans, key, mods, is_text
+    return ans, (key, mods, is_text)

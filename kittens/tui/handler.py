@@ -12,11 +12,11 @@ if TYPE_CHECKING:
     from kitty.utils import ScreenSize
     from .loop import TermManager, Loop, Debug, MouseEvent
     from .images import ImageManager
-    from kitty.config import KeyAction
+    from kitty.conf.utils import KittensKeyAction
     from kitty.boss import Boss
     from kitty.key_encoding import KeyEvent
     from types import TracebackType
-    ScreenSize, TermManager, Loop, Debug, KeyAction, KeyEvent, MouseEvent, TracebackType, Boss, ImageManager
+    ScreenSize, TermManager, Loop, Debug, KeyEvent, MouseEvent, TracebackType, Boss, ImageManager
     import asyncio
 
 
@@ -51,7 +51,7 @@ class Handler:
     def asyncio_loop(self) -> 'asyncio.AbstractEventLoop':
         return self._tui_loop.asycio_loop
 
-    def add_shortcut(self, action: 'KeyAction', key: str, mods: Optional[int] = None, is_text: Optional[bool] = False) -> None:
+    def add_shortcut(self, action: 'KittensKeyAction', key: str, mods: Optional[int] = None, is_text: Optional[bool] = False) -> None:
         if not hasattr(self, '_text_shortcuts'):
             self._text_shortcuts, self._key_shortcuts = {}, {}
         if is_text:
@@ -59,7 +59,7 @@ class Handler:
         else:
             self._key_shortcuts[(key, mods or 0)] = action
 
-    def shortcut_action(self, key_event_or_text: Union[str, 'KeyEvent']) -> Optional['KeyAction']:
+    def shortcut_action(self, key_event_or_text: Union[str, 'KeyEvent']) -> Optional['KittensKeyAction']:
         if isinstance(key_event_or_text, str):
             return self._text_shortcuts.get(key_event_or_text)
         return self._key_shortcuts.get((key_event_or_text.key, key_event_or_text.mods))

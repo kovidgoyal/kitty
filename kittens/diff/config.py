@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-from typing import Any, Dict, Optional, Type
+from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
 from kitty.conf.definition import config_lines
 from kitty.conf.utils import (
@@ -12,6 +12,7 @@ from kitty.conf.utils import (
 )
 from kitty.constants import config_dir
 from kitty.options_stub import DiffOptions
+from kitty.cli_stub import DiffCLIOptions
 from kitty.rgb import color_as_sgr
 
 from .config_data import all_options, type_convert
@@ -25,7 +26,7 @@ formats = {
 }
 
 
-def set_formats(opts):
+def set_formats(opts: DiffOptions) -> None:
     formats['text'] = '48' + color_as_sgr(opts.background)
     formats['title'] = '38' + color_as_sgr(opts.title_fg) + ';48' + color_as_sgr(opts.title_bg) + ';1'
     formats['margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.margin_bg)
@@ -44,7 +45,7 @@ func_with_args, args_funcs = key_func()
 
 
 @func_with_args('scroll_by')
-def parse_scroll_by(func, rest):
+def parse_scroll_by(func: str, rest: str) -> Tuple[str, int]:
     try:
         return func, int(rest)
     except Exception:
@@ -52,7 +53,7 @@ def parse_scroll_by(func, rest):
 
 
 @func_with_args('scroll_to')
-def parse_scroll_to(func, rest):
+def parse_scroll_to(func: str, rest: str) -> Tuple[str, str]:
     rest = rest.lower()
     if rest not in {'start', 'end', 'next-change', 'prev-change', 'next-page', 'prev-page', 'next-match', 'prev-match'}:
         rest = 'start'
@@ -60,7 +61,7 @@ def parse_scroll_to(func, rest):
 
 
 @func_with_args('change_context')
-def parse_change_context(func, rest):
+def parse_change_context(func: str, rest: str) -> Tuple[str, Union[int, str]]:
     rest = rest.lower()
     if rest in {'all', 'default'}:
         return func, rest
@@ -72,23 +73,24 @@ def parse_change_context(func, rest):
 
 
 @func_with_args('start_search')
-def parse_start_search(func, rest):
-    rest = rest.lower().split()
-    is_regex = rest and rest[0] == 'regex'
-    is_backward = len(rest) > 1 and rest[1] == 'backward'
+def parse_start_search(func: str, rest: str) -> Tuple[str, Tuple[bool, bool]]:
+    rest_ = rest.lower().split()
+    is_regex = bool(rest_ and rest_[0] == 'regex')
+    is_backward = bool(len(rest_) > 1 and rest_[1] == 'backward')
     return func, (is_regex, is_backward)
 
 
-def special_handling(key, val, ans):
+def special_handling(key: str, val: str, ans: Dict) -> bool:
     if key == 'map':
         x = parse_kittens_key(val, args_funcs)
         if x is not None:
-            action, *key_def = x
-            ans['key_definitions'][tuple(key_def)] = action
+            action, key_def = x
+            ans['key_definitions'][key_def] = action
             return True
+    return False
 
 
-def parse_config(lines, check_keys=True):
+def parse_config(lines: Iterable[str], check_keys: bool = True) -> Dict[str, Any]:
     ans: Dict[str, Any] = {'key_definitions': {}}
     parse_config_base(
         lines,
@@ -101,7 +103,7 @@ def parse_config(lines, check_keys=True):
     return ans
 
 
-def merge_configs(defaults, vals):
+def merge_configs(defaults: Dict, vals: Dict) -> Dict:
     ans = {}
     for k, v in defaults.items():
         if isinstance(v, dict):
@@ -112,7 +114,7 @@ def merge_configs(defaults, vals):
     return ans
 
 
-def parse_defaults(lines, check_keys=False):
+def parse_defaults(lines: Iterable[str], check_keys: bool = False) -> Dict[str, Any]:
     return parse_config(lines, check_keys)
 
 
@@ -121,7 +123,7 @@ Options: Type[DiffOptions] = x[0]
 defaults = x[1]
 
 
-def load_config(*paths, overrides=None):
+def load_config(*paths: str, overrides: Optional[Iterable[str]] = None) -> DiffOptions:
     return _load_config(Options, defaults, parse_config, merge_configs, *paths, overrides=overrides)
 
 
@@ -129,7 +131,7 @@ SYSTEM_CONF = '/etc/xdg/kitty/diff.conf'
 defconf = os.path.join(config_dir, 'diff.conf')
 
 
-def init_config(args):
+def init_config(args: DiffCLIOptions) -> DiffOptions:
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     overrides = (a.replace('=', ' ', 1) for a in args.override or ())
     opts = load_config(*config, overrides=overrides)

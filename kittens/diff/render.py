@@ -7,17 +7,20 @@ from functools import lru_cache
 from gettext import gettext as _
 from itertools import repeat, zip_longest
 from math import ceil
-from typing import Callable, Iterable, List, Optional
+from typing import Callable, Dict, Generator, Iterable, List, Optional, Tuple
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
+from kitty.cli_stub import DiffCLIOptions
+from kitty.utils import ScreenSize
 
 from .collect import (
-    Segment, data_for_path, highlights_for_path, is_image, lines_for_path,
-    path_name_map, sanitize
+    Collection, Segment, data_for_path, highlights_for_path, is_image,
+    lines_for_path, path_name_map, sanitize
 )
 from .config import formats
 from .diff_speedup import split_with_highlights as _split_with_highlights
-from ..tui.images import can_display_images
+from .patch import Chunk, Hunk, Patch
+from ..tui.images import ImageManager, can_display_images
 
 
 class ImageSupportWarning(Warning):
@@ -25,7 +28,7 @@ class ImageSupportWarning(Warning):
 
 
 @lru_cache(maxsize=2)
-def images_supported():
+def images_supported() -> bool:
     ans = can_display_images()
     if not ans:
         warnings.warn('ImageMagick not found images cannot be displayed', ImageSupportWarning)
@@ -34,10 +37,10 @@ def images_supported():
 
 class Ref:
 
-    def __setattr__(self, name, value):
+    def __setattr__(self, name: str, value: object) -> None:
         raise AttributeError("can't set attribute")
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return '{}({})'.format(self.__class__.__name__, ', '.join(
             '{}={}'.format(n, getattr(self, n)) for n in self.__slots__ if n != '_hash'))
 
@@ -48,7 +51,7 @@ class LineRef(Ref):
     src_line_number: int
     wrapped_line_idx: int
 
-    def __init__(self, sln, wli=0):
+    def __init__(self, sln: int, wli: int = 0) -> None:
         object.__setattr__(self, 'src_line_number', sln)
         object.__setattr__(self, 'wrapped_line_idx', wli)
 
@@ -59,7 +62,7 @@ class Reference(Ref):
     path: str
     extra: Optional[LineRef]
 
-    def __init__(self, path, extra=None):
+    def __init__(self, path: str, extra: Optional[LineRef] = None) -> None:
         object.__setattr__(self, 'path', path)
         object.__setattr__(self, 'extra', extra)
 
@@ -68,35 +71,41 @@ class Line:
 
     __slots__ = ('text', 'ref', 'is_change_start', 'image_data')
 
-    def __init__(self, text, ref, change_start=False, image_data=None):
+    def __init__(
+        self,
+        text: str,
+        ref: Reference,
+        change_start: bool = False,
+        image_data: Optional[Tuple[Optional['ImagePlacement'], Optional['ImagePlacement']]] = None
+    ) -> None:
         self.text = text
         self.ref = ref
         self.is_change_start = change_start
         self.image_data = image_data
 
 
-def yield_lines_from(iterator, reference, is_change_start=True):
+def yield_lines_from(iterator: Iterable[str], reference: Reference, is_change_start: bool = True) -> Generator[Line, None, None]:
     for text in iterator:
         yield Line(text, reference, is_change_start)
         is_change_start = False
 
 
-def human_readable(size, sep=' '):
+def human_readable(size: int, sep: str = ' ') -> str:
     """ Convert a size in bytes into a human readable form """
     divisor, suffix = 1, "B"
     for i, candidate in enumerate(('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB')):
         if size < (1 << ((i + 1) * 10)):
             divisor, suffix = (1 << (i * 10)), candidate
             break
-    size = str(float(size)/divisor)
-    if size.find(".") > -1:
-        size = size[:size.find(".")+2]
-    if size.endswith('.0'):
-        size = size[:-2]
-    return size + sep + suffix
+    s = str(float(size)/divisor)
+    if s.find(".") > -1:
+        s = s[:s.find(".")+2]
+    if s.endswith('.0'):
+        s = s[:-2]
+    return s + sep + suffix
 
 
-def fit_in(text, count):
+def fit_in(text: str, count: int) -> str:
     p = truncate_point_for_length(text, count)
     if p >= len(text):
         return text
@@ -105,14 +114,14 @@ def fit_in(text, count):
     return text[:p] + '…'
 
 
-def fill_in(text, sz):
+def fill_in(text: str, sz: int) -> str:
     w = wcswidth(text)
     if w < sz:
         text += ' ' * (sz - w)
     return text
 
 
-def place_in(text, sz):
+def place_in(text: str, sz: int) -> str:
     return fill_in(fit_in(text, sz), sz)
 
 
@@ -137,39 +146,41 @@ hunk_format = format_func('hunk')
 highlight_map = {'remove': ('removed_highlight', 'removed'), 'add': ('added_highlight', 'added')}
 
 
-def highlight_boundaries(ltype):
+def highlight_boundaries(ltype: str) -> Tuple[str, str]:
     s, e = highlight_map[ltype]
     start = '\x1b[' + formats[s] + 'm'
     stop = '\x1b[' + formats[e] + 'm'
     return start, stop
 
 
-def title_lines(left_path, right_path, args, columns, margin_size):
+def title_lines(left_path: Optional[str], right_path: Optional[str], args: DiffCLIOptions, columns: int, margin_size: int) -> Generator[str, None, None]:
     m = ' ' * margin_size
-    left_name, right_name = map(path_name_map.get, (left_path, right_path))
+    left_name = path_name_map.get(left_path) if left_path else None
+    right_name = path_name_map.get(right_path) if right_path else None
     if right_name and right_name != left_name:
-        n1 = fit_in(m + sanitize(left_name), columns // 2 - margin_size)
+        n1 = fit_in(m + sanitize(left_name or ''), columns // 2 - margin_size)
         n1 = place_in(n1, columns // 2)
         n2 = fit_in(m + sanitize(right_name), columns // 2 - margin_size)
         n2 = place_in(n2, columns // 2)
         name = n1 + n2
     else:
-        name = place_in(m + sanitize(left_name), columns)
+        name = place_in(m + sanitize(left_name or ''), columns)
     yield title_format(place_in(name, columns))
     yield title_format('━' * columns)
 
 
-def binary_lines(path, other_path, columns, margin_size):
+def binary_lines(path: Optional[str], other_path: Optional[str], columns: int, margin_size: int) -> Generator[str, None, None]:
     template = _('Binary file: {}')
     available_cols = columns // 2 - margin_size
 
-    def fl(path, fmt):
+    def fl(path: str, fmt: Callable[[str], str]) -> str:
         text = template.format(human_readable(len(data_for_path(path))))
         text = place_in(text, available_cols)
         return margin_format(' ' * margin_size) + fmt(text)
 
     if path is None:
         filler = render_diff_line('', '', 'filler', margin_size, available_cols)
+        assert other_path is not None
         yield filler + fl(other_path, added_format)
     elif other_path is None:
         filler = render_diff_line('', '', 'filler', margin_size, available_cols)
@@ -178,7 +189,7 @@ def binary_lines(path, other_path, columns, margin_size):
         yield fl(path, removed_format) + fl(other_path, added_format)
 
 
-def split_to_size(line, width):
+def split_to_size(line: str, width: int) -> Generator[str, None, None]:
     if not line:
         yield line
     while line:
@@ -187,7 +198,7 @@ def split_to_size(line, width):
         line = line[p:]
 
 
-def truncate_points(line, width):
+def truncate_points(line: str, width: int) -> Generator[int, None, None]:
     pos = 0
     sz = len(line)
     while True:
@@ -198,7 +209,7 @@ def truncate_points(line, width):
             break
 
 
-def split_with_highlights(line, width, highlights, bg_highlight=None):
+def split_with_highlights(line: str, width: int, highlights: List, bg_highlight: Optional[Segment] = None) -> List:
     truncate_pts = list(truncate_points(line, width))
     return _split_with_highlights(line, truncate_pts, highlights, bg_highlight)
 
@@ -209,7 +220,7 @@ text_bg_map = {'filler': filler_format, 'remove': removed_format, 'add': added_f
 
 class DiffData:
 
-    def __init__(self, left_path, right_path, available_cols, margin_size):
+    def __init__(self, left_path: str, right_path: str, available_cols: int, margin_size: int):
         self.left_path, self.right_path = left_path, right_path
         self.available_cols = available_cols
         self.margin_size = margin_size
@@ -220,24 +231,28 @@ class DiffData:
         self.left_hdata = highlights_for_path(left_path)
         self.right_hdata = highlights_for_path(right_path)
 
-    def left_highlights_for_line(self, line_num):
+    def left_highlights_for_line(self, line_num: int) -> List[Segment]:
         if line_num < len(self.left_hdata):
             return self.left_hdata[line_num]
         return []
 
-    def right_highlights_for_line(self, line_num):
+    def right_highlights_for_line(self, line_num: int) -> List[Segment]:
         if line_num < len(self.right_hdata):
             return self.right_hdata[line_num]
         return []
 
 
-def render_diff_line(number, text, ltype, margin_size, available_cols) -> str:
-    margin = margin_bg_map[ltype](place_in(number, margin_size))
+def render_diff_line(number: Optional[str], text: str, ltype: str, margin_size: int, available_cols: int) -> str:
+    margin = margin_bg_map[ltype](place_in(number or '', margin_size))
     content = text_bg_map[ltype](fill_in(text or '', available_cols))
     return margin + content
 
 
-def render_diff_pair(left_line_number, left, left_is_change, right_line_number, right, right_is_change, is_first, margin_size, available_cols):
+def render_diff_pair(
+    left_line_number: Optional[str], left: str, left_is_change: bool,
+    right_line_number: Optional[str], right: str, right_is_change: bool,
+    is_first: bool, margin_size: int, available_cols: int
+) -> str:
     ltype = 'filler' if left_line_number is None else ('remove' if left_is_change else 'context')
     rtype = 'filler' if right_line_number is None else ('add' if right_is_change else 'context')
     return (
@@ -246,14 +261,22 @@ def render_diff_pair(left_line_number, left, left_is_change, right_line_number, 
     )
 
 
-def hunk_title(hunk_num, hunk, margin_size, available_cols):
+def hunk_title(hunk_num: int, hunk: Hunk, margin_size: int, available_cols: int) -> str:
     m = hunk_margin_format(' ' * margin_size)
     t = '@@ -{},{} +{},{} @@ {}'.format(hunk.left_start + 1, hunk.left_count, hunk.right_start + 1, hunk.right_count, hunk.title)
     return m + hunk_format(place_in(t, available_cols))
 
 
-def render_half_line(line_number, line, highlights, ltype, margin_size, available_cols, changed_center=None):
-    bg_highlight = None
+def render_half_line(
+    line_number: int,
+    line: str,
+    highlights: List,
+    ltype: str,
+    margin_size: int,
+    available_cols: int,
+    changed_center: Optional[Tuple[int, int]] = None
+) -> Generator[str, None, None]:
+    bg_highlight: Optional[Segment] = None
     if changed_center is not None and changed_center[0]:
         prefix_count, suffix_count = changed_center
         line_sz = len(line)
@@ -264,36 +287,36 @@ def render_half_line(line_number, line, highlights, ltype, margin_size, availabl
             seg.end_code = stop
             bg_highlight = seg
     if highlights or bg_highlight:
-        lines = split_with_highlights(line, available_cols, highlights, bg_highlight)
+        lines: Iterable[str] = split_with_highlights(line, available_cols, highlights, bg_highlight)
     else:
         lines = split_to_size(line, available_cols)
-    line_number = str(line_number + 1)
+    lnum = str(line_number + 1)
     for line in lines:
-        yield render_diff_line(line_number, line, ltype, margin_size, available_cols)
-        line_number = ''
+        yield render_diff_line(lnum, line, ltype, margin_size, available_cols)
+        lnum = ''
 
 
-def lines_for_chunk(data, hunk_num, chunk, chunk_num):
+def lines_for_chunk(data: DiffData, hunk_num: int, chunk: Chunk, chunk_num: int) -> Generator[Line, None, None]:
     if chunk.is_context:
         for i in range(chunk.left_count):
             left_line_number = line_ref = chunk.left_start + i
             right_line_number = chunk.right_start + i
             highlights = data.left_highlights_for_line(left_line_number)
             if highlights:
-                lines = split_with_highlights(data.left_lines[left_line_number], data.available_cols, highlights)
+                lines: Iterable[str] = split_with_highlights(data.left_lines[left_line_number], data.available_cols, highlights)
             else:
                 lines = split_to_size(data.left_lines[left_line_number], data.available_cols)
-            left_line_number = str(left_line_number + 1)
-            right_line_number = str(right_line_number + 1)
+            left_line_number_s = str(left_line_number + 1)
+            right_line_number_s = str(right_line_number + 1)
             for wli, text in enumerate(lines):
-                line = render_diff_line(left_line_number, text, 'context', data.margin_size, data.available_cols)
-                if right_line_number == left_line_number:
+                line = render_diff_line(left_line_number_s, text, 'context', data.margin_size, data.available_cols)
+                if right_line_number_s == left_line_number_s:
                     r = line
                 else:
-                    r = render_diff_line(right_line_number, text, 'context', data.margin_size, data.available_cols)
+                    r = render_diff_line(right_line_number_s, text, 'context', data.margin_size, data.available_cols)
                 ref = Reference(data.left_path, LineRef(line_ref, wli))
                 yield Line(line + r, ref)
-                left_line_number = right_line_number = ''
+                left_line_number_s = right_line_number_s = ''
     else:
         common = min(chunk.left_count, chunk.right_count)
         for i in range(max(chunk.left_count, chunk.right_count)):
@@ -333,7 +356,7 @@ def lines_for_chunk(data, hunk_num, chunk, chunk_num):
                 yield Line(left_line + right_line, ref, i == 0 and wli == 0)
 
 
-def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
+def lines_for_diff(left_path: str, right_path: str, hunks: Iterable[Hunk], args: DiffCLIOptions, columns: int, margin_size: int) -> Generator[Line, None, None]:
     available_cols = columns // 2 - margin_size
     data = DiffData(left_path, right_path, available_cols, margin_size)
 
@@ -343,7 +366,7 @@ def lines_for_diff(left_path, right_path, hunks, args, columns, margin_size):
             yield from lines_for_chunk(data, hunk_num, chunk, cnum)
 
 
-def all_lines(path, args, columns, margin_size, is_add=True):
+def all_lines(path: str, args: DiffCLIOptions, columns: int, margin_size: int, is_add: bool = True) -> Generator[Line, None, None]:
     available_cols = columns // 2 - margin_size
     ltype = 'add' if is_add else 'remove'
     lines = lines_for_path(path)
@@ -351,7 +374,7 @@ def all_lines(path, args, columns, margin_size, is_add=True):
     msg_written = False
     hdata = highlights_for_path(path)
 
-    def highlights(num):
+    def highlights(num: int) -> List[Segment]:
         return hdata[num] if num < len(hdata) else []
 
     for line_number, line in enumerate(lines):
@@ -368,7 +391,7 @@ def all_lines(path, args, columns, margin_size, is_add=True):
             yield Line(text, ref, line_number == 0 and i == 0)
 
 
-def rename_lines(path, other_path, args, columns, margin_size):
+def rename_lines(path: str, other_path: str, args: DiffCLIOptions, columns: int, margin_size: int) -> Generator[str, None, None]:
     m = ' ' * margin_size
     for line in split_to_size(_('The file {0} was renamed to {1}').format(
             sanitize(path_name_map[path]), sanitize(path_name_map[other_path])), columns - margin_size):
@@ -377,7 +400,7 @@ def rename_lines(path, other_path, args, columns, margin_size):
 
 class Image:
 
-    def __init__(self, image_id, width, height, margin_size, screen_size):
+    def __init__(self, image_id: int, width: int, height: int, margin_size: int, screen_size: ScreenSize) -> None:
         self.image_id = image_id
         self.width, self.height = width, height
         self.rows = int(ceil(self.height / screen_size.cell_height))
@@ -387,18 +410,23 @@ class Image:
 
 class ImagePlacement:
 
-    def __init__(self, image, row):
+    def __init__(self, image: Image, row: int) -> None:
         self.image = image
         self.row = row
 
 
-def render_image(path, is_left, available_cols, margin_size, image_manager):
+def render_image(
+    path: str,
+    is_left: bool,
+    available_cols: int, margin_size: int,
+    image_manager: ImageManager
+) -> Generator[Tuple[str, Reference, Optional[ImagePlacement]], None, None]:
     lnum = 0
     margin_fmt = removed_margin_format if is_left else added_margin_format
     m = margin_fmt(' ' * margin_size)
     fmt = removed_format if is_left else added_format
 
-    def yield_split(text):
+    def yield_split(text: str) -> Generator[Tuple[str, Reference, Optional[ImagePlacement]], None, None]:
         nonlocal lnum
         for i, line in enumerate(split_to_size(text, available_cols)):
             yield m + fmt(place_in(line, available_cols)), Reference(path, LineRef(lnum, i)), None
@@ -420,10 +448,16 @@ def render_image(path, is_left, available_cols, margin_size, image_manager):
         lnum += 1
 
 
-def image_lines(left_path, right_path, columns, margin_size, image_manager):
+def image_lines(
+    left_path: Optional[str],
+    right_path: Optional[str],
+    columns: int,
+    margin_size: int,
+    image_manager: ImageManager
+) -> Generator[Line, None, None]:
     available_cols = columns // 2 - margin_size
-    left_lines: Iterable[str] = iter(())
-    right_lines: Iterable[str] = iter(())
+    left_lines: Iterable[Tuple[str, Reference, Optional[ImagePlacement]]] = iter(())
+    right_lines: Iterable[Tuple[str, Reference, Optional[ImagePlacement]]] = iter(())
     if left_path is not None:
         left_lines = render_image(left_path, True, available_cols, margin_size, image_manager)
     if right_path is not None:
@@ -450,7 +484,14 @@ class RenderDiff:
 
     margin_size: int = 0
 
-    def __call__(self, collection, diff_map, args, columns, image_manager):
+    def __call__(
+        self,
+        collection: Collection,
+        diff_map: Dict[str, Patch],
+        args: DiffCLIOptions,
+        columns: int,
+        image_manager: ImageManager
+    ) -> Generator[Line, None, None]:
         largest_line_number = 0
         for path, item_type, other_path in collection:
             if item_type == 'diff':
@@ -475,6 +516,7 @@ class RenderDiff:
                     else:
                         ans = yield_lines_from(binary_lines(path, other_path, columns, margin_size), item_ref)
                 else:
+                    assert other_path is not None
                     ans = lines_for_diff(path, other_path, diff_map[path], args, columns, margin_size)
             elif item_type == 'add':
                 if is_binary:
@@ -493,6 +535,7 @@ class RenderDiff:
                 else:
                     ans = all_lines(path, args, columns, margin_size, is_add=False)
             elif item_type == 'rename':
+                assert other_path is not None
                 ans = yield_lines_from(rename_lines(path, other_path, args, columns, margin_size), item_ref)
             else:
                 raise ValueError('Unsupported item type: {}'.format(item_type))

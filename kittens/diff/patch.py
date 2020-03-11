@@ -7,7 +7,7 @@ import os
 import shlex
 import shutil
 import subprocess
-from typing import List, Optional, Tuple
+from typing import Dict, Iterator, List, Optional, Sequence, Tuple, Union
 
 from . import global_data
 from .collect import lines_for_path
@@ -20,14 +20,14 @@ DIFF_DIFF = 'diff -p -U _CONTEXT_ --'
 worker_processes: List[int] = []
 
 
-def find_differ():
+def find_differ() -> Optional[str]:
     if shutil.which('git') and subprocess.Popen(['git', '--help'], stderr=subprocess.DEVNULL, stdout=subprocess.DEVNULL).wait() == 0:
         return GIT_DIFF
     if shutil.which('diff'):
         return DIFF_DIFF
 
 
-def set_diff_command(opt):
+def set_diff_command(opt: str) -> None:
     if opt == 'auto':
         cmd = find_differ()
         if cmd is None:
@@ -37,7 +37,7 @@ def set_diff_command(opt):
     global_data.cmd = cmd
 
 
-def run_diff(file1: str, file2: str, context: int = 3):
+def run_diff(file1: str, file2: str, context: int = 3) -> Tuple[bool, Union[int, bool], str]:
     # returns: ok, is_different, patch
     cmd = shlex.split(global_data.cmd.replace('_CONTEXT_', str(context)))
     # we resolve symlinks because git diff does not follow symlinks, while diff
@@ -61,49 +61,49 @@ class Chunk:
 
     __slots__ = ('is_context', 'left_start', 'right_start', 'left_count', 'right_count', 'centers')
 
-    def __init__(self, left_start, right_start, is_context=False):
+    def __init__(self, left_start: int, right_start: int, is_context: bool = False) -> None:
         self.is_context = is_context
         self.left_start = left_start
         self.right_start = right_start
         self.left_count = self.right_count = 0
-        self.centers = None
+        self.centers: Optional[Tuple[Tuple[int, int], ...]] = None
 
-    def add_line(self):
+    def add_line(self) -> None:
         self.right_count += 1
 
-    def remove_line(self):
+    def remove_line(self) -> None:
         self.left_count += 1
 
-    def context_line(self):
+    def context_line(self) -> None:
         self.left_count += 1
         self.right_count += 1
 
-    def finalize(self):
+    def finalize(self) -> None:
         if not self.is_context and self.left_count == self.right_count:
             self.centers = tuple(
                 changed_center(left_lines[self.left_start + i], right_lines[self.right_start + i])
                 for i in range(self.left_count)
             )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Chunk(is_context={}, left_start={}, left_count={}, right_start={}, right_count={})'.format(
                 self.is_context, self.left_start, self.left_count, self.right_start, self.right_count)
 
 
 class Hunk:
 
-    def __init__(self, title, left, right):
+    def __init__(self, title: str, left: Tuple[int, int], right: Tuple[int, int]) -> None:
         self.left_start, self.left_count = left
         self.right_start, self.right_count = right
         self.left_start -= 1  # 0-index
         self.right_start -= 1  # 0-index
         self.title = title
         self.added_count = self.removed_count = 0
-        self.chunks = []
+        self.chunks: List[Chunk] = []
         self.current_chunk: Optional[Chunk] = None
         self.largest_line_number = max(self.left_start + self.left_count, self.right_start + self.right_count)
 
-    def new_chunk(self, is_context=False):
+    def new_chunk(self, is_context: bool = False) -> Chunk:
         if self.chunks:
             c = self.chunks[-1]
             left_start = c.left_start + c.left_count
@@ -113,38 +113,38 @@ class Hunk:
             right_start = self.right_start
         return Chunk(left_start, right_start, is_context)
 
-    def ensure_diff_chunk(self):
+    def ensure_diff_chunk(self) -> None:
         if self.current_chunk is None:
             self.current_chunk = self.new_chunk(is_context=False)
         elif self.current_chunk.is_context:
             self.chunks.append(self.current_chunk)
             self.current_chunk = self.new_chunk(is_context=False)
 
-    def ensure_context_chunk(self):
+    def ensure_context_chunk(self) -> None:
         if self.current_chunk is None:
             self.current_chunk = self.new_chunk(is_context=True)
         elif not self.current_chunk.is_context:
             self.chunks.append(self.current_chunk)
             self.current_chunk = self.new_chunk(is_context=True)
 
-    def add_line(self):
+    def add_line(self) -> None:
         self.ensure_diff_chunk()
         if self.current_chunk is not None:
             self.current_chunk.add_line()
         self.added_count += 1
 
-    def remove_line(self):
+    def remove_line(self) -> None:
         self.ensure_diff_chunk()
         if self.current_chunk is not None:
             self.current_chunk.remove_line()
         self.removed_count += 1
 
-    def context_line(self):
+    def context_line(self) -> None:
         self.ensure_context_chunk()
         if self.current_chunk is not None:
             self.current_chunk.context_line()
 
-    def finalize(self):
+    def finalize(self) -> None:
         if self.current_chunk is not None:
             self.chunks.append(self.current_chunk)
         del self.current_chunk
@@ -158,14 +158,14 @@ class Hunk:
             c.finalize()
 
 
-def parse_range(x):
+def parse_range(x: str) -> Tuple[int, int]:
     parts = x[1:].split(',', 1)
     start = abs(int(parts[0]))
     count = 1 if len(parts) < 2 else int(parts[1])
     return start, count
 
 
-def parse_hunk_header(line):
+def parse_hunk_header(line: str) -> Hunk:
     parts: Tuple[str, ...] = tuple(filter(None, line.split('@@', 2)))
     linespec = parts[0].strip()
     title = ''
@@ -177,20 +177,20 @@ def parse_hunk_header(line):
 
 class Patch:
 
-    def __init__(self, all_hunks):
+    def __init__(self, all_hunks: Sequence[Hunk]):
         self.all_hunks = all_hunks
         self.largest_line_number = self.all_hunks[-1].largest_line_number if self.all_hunks else 0
         self.added_count = sum(h.added_count for h in all_hunks)
         self.removed_count = sum(h.removed_count for h in all_hunks)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[Hunk]:
         return iter(self.all_hunks)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.all_hunks)
 
 
-def parse_patch(raw):
+def parse_patch(raw: str) -> Patch:
     all_hunks = []
     current_hunk = None
     for line in raw.splitlines():
@@ -218,19 +218,19 @@ class Differ:
 
     diff_executor: Optional[concurrent.futures.ThreadPoolExecutor] = None
 
-    def __init__(self):
-        self.jmap = {}
-        self.jobs = []
+    def __init__(self) -> None:
+        self.jmap: Dict[str, str] = {}
+        self.jobs: List[str] = []
         if Differ.diff_executor is None:
             Differ.diff_executor = self.diff_executor = concurrent.futures.ThreadPoolExecutor(max_workers=os.cpu_count())
 
-    def add_diff(self, file1, file2):
+    def add_diff(self, file1: str, file2: str) -> None:
         self.jmap[file1] = file2
         self.jobs.append(file1)
 
-    def __call__(self, context=3):
+    def __call__(self, context: int = 3) -> Union[str, Dict[str, Patch]]:
         global left_lines, right_lines
-        ans = {}
+        ans: Dict[str, Patch] = {}
         executor = self.diff_executor
         assert executor is not None
         jobs = {executor.submit(run_diff, key, self.jmap[key], context): key for key in self.jobs}
