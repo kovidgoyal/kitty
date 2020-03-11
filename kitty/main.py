@@ -7,7 +7,7 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager, suppress
-from typing import Generator, List, Mapping, Optional, Tuple
+from typing import Generator, List, Mapping, Optional, Tuple, Sequence
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -35,7 +35,7 @@ from .utils import (
 from .window import load_shader_programs
 
 
-def set_custom_ibeam_cursor():
+def set_custom_ibeam_cursor() -> None:
     with open(beam_cursor_data_file, 'rb') as f:
         data = f.read()
     rgba_data, width, height = load_png_data(data)
@@ -50,7 +50,7 @@ def set_custom_ibeam_cursor():
         log_error('Failed to set custom beam cursor with error: {}'.format(e))
 
 
-def talk_to_instance(args):
+def talk_to_instance(args: CLIOptions) -> None:
     import json
     import socket
     data = {'cmd': 'new_instance', 'args': tuple(sys.argv),
@@ -85,17 +85,17 @@ def talk_to_instance(args):
         conn.close()
 
 
-def load_all_shaders(semi_transparent=0):
+def load_all_shaders(semi_transparent: int = 0) -> None:
     load_shader_programs(semi_transparent)
     load_borders_program()
 
 
-def init_glfw_module(glfw_module, debug_keyboard=False):
+def init_glfw_module(glfw_module: str, debug_keyboard: bool = False) -> None:
     if not glfw_init(glfw_path(glfw_module), debug_keyboard):
         raise SystemExit('GLFW initialization failed')
 
 
-def init_glfw(opts, debug_keyboard=False):
+def init_glfw(opts: OptionsStub, debug_keyboard: bool = False) -> str:
     glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland(opts) else 'x11')
     init_glfw_module(glfw_module, debug_keyboard)
     return glfw_module
@@ -118,7 +118,7 @@ def get_new_os_window_trigger(opts: OptionsStub) -> Optional[Tuple[int, bool, in
     return new_os_window_trigger
 
 
-def _run_app(opts: OptionsStub, args, bad_lines=()):
+def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
     new_os_window_trigger = get_new_os_window_trigger(opts)
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
@@ -145,12 +145,12 @@ def _run_app(opts: OptionsStub, args, bad_lines=()):
 
 class AppRunner:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.cached_values_name = 'main'
         self.first_window_callback = lambda window_handle: None
         self.initial_window_size_func = initial_window_size_func
 
-    def __call__(self, opts: OptionsStub, args: CLIOptions, bad_lines=()) -> None:
+    def __call__(self, opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
         set_scale(opts.box_drawing_scale)
         set_options(opts, is_wayland(), args.debug_gl, args.debug_font_fallback)
         set_font_family(opts, debug_font_matching=args.debug_font_fallback)
@@ -174,7 +174,7 @@ def ensure_macos_locale() -> None:
 
 
 @contextmanager
-def setup_profiling(args) -> Generator[None, None, None]:
+def setup_profiling(args: CLIOptions) -> Generator[None, None, None]:
     try:
         from .fast_data_types import start_profiler, stop_profiler
         do_profile = True
@@ -198,7 +198,7 @@ def setup_profiling(args) -> Generator[None, None, None]:
             print('To view the graphical call data, use: kcachegrind', cg)
 
 
-def macos_cmdline(argv_args):
+def macos_cmdline(argv_args: List[str]) -> List[str]:
     try:
         with open(os.path.join(config_dir, 'macos-launch-services-cmdline')) as f:
             raw = f.read()
@@ -230,7 +230,7 @@ def get_editor_from_env(shell_env: Mapping[str, str]) -> Optional[str]:
                 return editor
 
 
-def setup_environment(opts, args):
+def setup_environment(opts: OptionsStub, cli_opts: CLIOptions) -> None:
     extra_env = opts.env.copy()
     if opts.editor == '.':
         editor = get_editor_from_env(os.environ)
@@ -241,12 +241,12 @@ def setup_environment(opts, args):
             os.environ['EDITOR'] = editor
     else:
         os.environ['EDITOR'] = opts.editor
-    if args.listen_on:
-        os.environ['KITTY_LISTEN_ON'] = args.listen_on
+    if cli_opts.listen_on:
+        os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
     set_default_env(extra_env)
 
 
-def set_locale():
+def set_locale() -> None:
     if is_macos:
         ensure_macos_locale()
     try:
@@ -260,7 +260,7 @@ def set_locale():
             log_error('Failed to set locale with no LANG')
 
 
-def _main():
+def _main() -> None:
     running_in_kitty(True)
     with suppress(AttributeError):  # python compiled without threading
         sys.setswitchinterval(1000.0)  # we have only a single python thread
@@ -317,7 +317,7 @@ def _main():
         glfw_terminate()
 
 
-def main():
+def main() -> None:
     try:
         _main()
     except Exception:
