@@ -61,7 +61,8 @@ def remote_control_command_names() -> Tuple[str, ...]:
 
 
 completion_scripts = {
-    'zsh': '''
+    'zsh': '''#compdef kitty
+
 _kitty() {
     local src
     # Send all words up to the word the cursor is currently on
