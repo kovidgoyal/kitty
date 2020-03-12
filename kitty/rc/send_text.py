@@ -2,9 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
+import base64
 import os
 import sys
-from typing import TYPE_CHECKING, Generator, Dict
+from typing import TYPE_CHECKING, Dict, Generator
 
 from kitty.config import parse_send_text_bytes
 
@@ -20,8 +21,7 @@ if TYPE_CHECKING:
 
 class SendText(RemoteCommand):
     '''
-    text+: The text being sent
-    is_binary+: If False text is interpreted as a python string literal instead of plain text
+    data+: The data being sent. Can be either: text: followed by text or base64: followed by standard base64 encoded bytes
     match: A string indicating the window to send text to
     match_tab: A string indicating the tab to send text to
     '''
@@ -49,7 +49,7 @@ are sent as is, not interpreted for escapes.
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         limit = 1024
-        ret = {'match': opts.match, 'is_binary': False, 'match_tab': opts.match_tab}
+        ret = {'match': opts.match, 'data': '', 'match_tab': opts.match_tab}
 
         def pipe() -> Generator[Dict, None, None]:
             if sys.stdin.isatty():
@@ -67,32 +67,30 @@ are sent as is, not interpreted for escapes.
                     if '\x04' in decoded_data:
                         decoded_data = decoded_data[:decoded_data.index('\x04')]
                         keep_going = False
-                    ret['text'] = decoded_data
+                    ret['data'] = 'text:' + decoded_data
                     yield ret
             else:
-                ret['is_binary'] = True
                 while True:
                     data = sys.stdin.buffer.read(limit)
                     if not data:
                         break
-                    ret['text'] = data[:limit]
+                    ret['data'] = 'base64:' + base64.standard_b64encode(data).decode('ascii')
                     yield ret
 
         def chunks(text: str) -> Generator[Dict, None, None]:
-            ret['is_binary'] = False
-            while text:
-                ret['text'] = text[:limit]
+            data = parse_send_text_bytes(text).decode('utf-8')
+            while data:
+                ret['data'] = 'text:' + data[:limit]
                 yield ret
-                text = text[limit:]
+                data = data[limit:]
 
         def file_pipe(path: str) -> Generator[Dict, None, None]:
-            ret['is_binary'] = True
-            with open(path, encoding='utf-8') as f:
+            with open(path, 'rb') as f:
                 while True:
                     data = f.read(limit)
                     if not data:
                         break
-                    ret['text'] = data
+                    ret['data'] = 'base64:' + base64.standard_b64encode(data).decode('ascii')
                     yield ret
 
         sources = []
@@ -123,8 +121,13 @@ are sent as is, not interpreted for escapes.
                 raise MatchError(payload_get('match_tab'), 'tabs')
             for tab in tabs:
                 windows += tuple(tab)
-        data = payload_get('text').encode('utf-8') if payload_get('is_binary') else parse_send_text_bytes(
-                payload_get('text'))
+        encoding, _, q = payload_get('data').partition(':')
+        if encoding == 'text':
+            data = q.encode('utf-8')
+        elif encoding == 'base64':
+            data = base64.standard_b64decode(q)
+        else:
+            raise TypeError(f'Invalid encoding for send-text data: {encoding}')
         for window in windows:
             if window is not None:
                 window.write_to_child(data)
