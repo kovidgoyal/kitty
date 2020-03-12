@@ -6,7 +6,7 @@ import importlib
 import os
 import sys
 import unittest
-from typing import Callable, NoReturn, Set
+from typing import Callable, Generator, NoReturn, Sequence, Set
 
 base = os.path.dirname(os.path.abspath(__file__))
 
@@ -15,7 +15,7 @@ def init_env() -> None:
     sys.path.insert(0, base)
 
 
-def itertests(suite):
+def itertests(suite: unittest.TestSuite) -> Generator[unittest.TestCase, None, None]:
     stack = [suite]
     while stack:
         suite = stack.pop()
@@ -28,7 +28,7 @@ def itertests(suite):
             yield test
 
 
-def find_tests_in_dir(path, excludes=('main.py',)):
+def find_tests_in_dir(path: str, excludes: Sequence[str] = ('main.py',)) -> unittest.TestSuite:
     package = os.path.relpath(path, base).replace(os.sep, '/').replace('/', '.')
     items = os.listdir(path)
     suits = []
@@ -52,7 +52,7 @@ def filter_tests(suite: unittest.TestSuite, test_ok: Callable[[unittest.TestCase
 def filter_tests_by_name(suite: unittest.TestSuite, *names: str) -> unittest.TestSuite:
     names_ = {x if x.startswith('test_') else 'test_' + x for x in names}
 
-    def q(test):
+    def q(test: unittest.TestCase) -> bool:
         return test._testMethodName in names_
     return filter_tests(suite, q)
 
@@ -60,7 +60,7 @@ def filter_tests_by_name(suite: unittest.TestSuite, *names: str) -> unittest.Tes
 def filter_tests_by_module(suite: unittest.TestSuite, *names: str) -> unittest.TestSuite:
     names_ = frozenset(names)
 
-    def q(test):
+    def q(test: unittest.TestCase) -> bool:
         m = test.__class__.__module__.rpartition('.')[-1]
         return m in names_
     return filter_tests(suite, q)
@@ -77,7 +77,7 @@ def type_check() -> NoReturn:
     os.execlp(sys.executable, 'python', '-m', 'mypy', '--pretty')
 
 
-def run_tests():
+def run_tests() -> None:
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument(
@@ -86,7 +86,7 @@ def run_tests():
     parser.add_argument('--verbosity', default=4, type=int, help='Test verbosity')
     args = parser.parse_args()
     if args.name and args.name[0] in ('type-check', 'type_check', 'mypy'):
-        return type_check()
+        type_check()
     tests = find_tests_in_dir(os.path.join(base, 'kitty_tests'))
     if args.name:
         tests = filter_tests_by_name(tests, *args.name)
@@ -106,7 +106,7 @@ def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> None:
         raise SystemExit(1)
 
 
-def main():
+def main() -> None:
     run_tests()
 
 

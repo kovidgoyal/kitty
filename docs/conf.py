@@ -13,7 +13,9 @@ import subprocess
 import sys
 import time
 from functools import partial
-from typing import Optional, Dict, Tuple
+from typing import (
+    Any, Callable, Dict, Iterable, List, Match, Optional, Tuple, Union
+)
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
@@ -28,7 +30,10 @@ from sphinx.util.logging import getLogger  # type: ignore
 kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
+
 from kitty.constants import str_version  # noqa
+from kitty.conf.definition import Option, Sequence, Shortcut  # noqa
+
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -184,7 +189,7 @@ texinfo_documents = [
 
 # GitHub linking inline roles {{{
 
-def num_role(which, name, rawtext, text, lineno, inliner, options={}, content=[]):
+def num_role(which: str, name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []) -> Tuple[List, List]:
     ' Link to a github issue '
     try:
         issue_num = int(text)
@@ -202,7 +207,7 @@ def num_role(which, name, rawtext, text, lineno, inliner, options={}, content=[]
     return [node], []
 
 
-def commit_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+def commit_role(name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []) -> Tuple[List, List]:
     ' Link to a github commit '
     try:
         commit_id = subprocess.check_output(
@@ -222,14 +227,14 @@ def commit_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
 
 
 # Sidebar ToC {{{
-def create_toc(app, pagename):
+def create_toc(app: Any, pagename: str) -> Optional[Any]:
     tt = TocTree(app.env)
     toctree = tt.get_toc_for(pagename, app.builder)
     if toctree is not None:
         subtree = toctree[toctree.first_child_matching_class(nodes.list_item)]
         bl = subtree.first_child_matching_class(nodes.bullet_list)
         if bl is None:
-            return  # Empty ToC
+            return None  # Empty ToC
         subtree = subtree[bl]
         # for li in subtree.traverse(nodes.list_item):
         #     modify_li(li)
@@ -237,14 +242,14 @@ def create_toc(app, pagename):
         return app.builder.render_partial(subtree)['fragment']
 
 
-def add_html_context(app, pagename, templatename, context, *args):
+def add_html_context(app: Any, pagename: str, templatename: str, context: Any, *args: Any) -> None:
     if 'toc' in context:
         context['toc'] = create_toc(app, pagename) or context['toc']
 # }}}
 
 
 # CLI docs {{{
-def write_cli_docs(all_kitten_names):
+def write_cli_docs(all_kitten_names: Iterable[str]) -> None:
     from kitty.launch import options_spec as launch_options_spec
     from kitty.cli import option_spec_as_rst
     with open('generated/launch.rst', 'w') as f:
@@ -290,13 +295,13 @@ if you specify a program-to-run you can use the special placeholder
 
 
 def write_remote_control_protocol_docs() -> None:  # {{{
-    from kitty.rc.base import all_command_names, command_for_name
+    from kitty.rc.base import all_command_names, command_for_name, RemoteCommand
     field_pat = re.compile(r'\s*([a-zA-Z0-9_+]+)\s*:\s*(.+)')
 
-    def format_cmd(p, name, cmd):
+    def format_cmd(p: Callable, name: str, cmd: RemoteCommand) -> None:
         p(name)
         p('-' * 80)
-        lines = cmd.__doc__.strip().splitlines()
+        lines = (cmd.__doc__ or '').strip().splitlines()
         fields = []
         for line in lines:
             m = field_pat.match(line)
@@ -386,7 +391,7 @@ class SessionLexer(RegexLexer):
     }
 
 
-def link_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
+def link_role(name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []) -> Tuple[List, List]:
     m = re.match(r'(.+)\s+<(.+?)>', text)
     if m is None:
         msg = inliner.reporter.error(f'link "{text}" not recognized', line=lineno)
@@ -398,15 +403,15 @@ def link_role(name, rawtext, text, lineno, inliner, options={}, content=[]):
     return [node], []
 
 
-def expand_opt_references(conf_name, text):
+def expand_opt_references(conf_name: str, text: str) -> str:
     conf_name += '.'
 
-    def expand(m):
+    def expand(m: Match) -> str:
         ref = m.group(1)
         if '<' not in ref and '.' not in ref:
             full_ref = conf_name + ref
             return ':opt:`{} <{}>`'.format(ref, full_ref)
-        return m.group()
+        return str(m.group())
 
     return re.sub(r':opt:`(.+?)`', expand, text)
 
@@ -415,7 +420,7 @@ opt_aliases: Dict[str, str] = {}
 shortcut_slugs: Dict[str, Tuple[str, str]] = {}
 
 
-def parse_opt_node(env, sig, signode):
+def parse_opt_node(env: Any, sig: str, signode: Any) -> str:
     """Transform an option description into RST nodes."""
     count = 0
     firstname = ''
@@ -437,22 +442,22 @@ def parse_opt_node(env, sig, signode):
     return firstname
 
 
-def parse_shortcut_node(env, sig, signode):
+def parse_shortcut_node(env: Any, sig: str, signode: Any) -> str:
     """Transform a shortcut description into RST nodes."""
     conf_name, text = sig.split('.', 1)
     signode += addnodes.desc_name(text, text)
     return sig
 
 
-def render_conf(conf_name, all_options):
+def render_conf(conf_name: str, all_options: Iterable[Union['Option', Sequence['Shortcut']]]) -> str:
     from kitty.conf.definition import merged_opts, Option, Group
     ans = ['.. default-domain:: conf', '']
     a = ans.append
     current_group: Optional[Group] = None
-    all_options = list(all_options)
+    all_options_ = list(all_options)
     kitty_mod = 'kitty_mod'
 
-    def render_group(group):
+    def render_group(group: Group) -> None:
         a('')
         a(f'.. _conf-{conf_name}-{group.name}:')
         a('')
@@ -464,12 +469,12 @@ def render_conf(conf_name, all_options):
             a(group.start_text)
             a('')
 
-    def handle_group_end(group):
+    def handle_group_end(group: Group) -> None:
         if group.end_text:
             assert current_group is not None
             a(''), a(current_group.end_text)
 
-    def handle_group(new_group, new_group_is_shortcut=False):
+    def handle_group(new_group: Group, new_group_is_shortcut: bool = False) -> None:
         nonlocal current_group
         if new_group is not current_group:
             if current_group:
@@ -477,14 +482,14 @@ def render_conf(conf_name, all_options):
             current_group = new_group
             render_group(current_group)
 
-    def handle_option(i, opt):
+    def handle_option(i: int, opt: Option) -> None:
         nonlocal kitty_mod
         if not opt.long_text or not opt.add_to_docs:
             return
         handle_group(opt.group)
         if opt.name == 'kitty_mod':
             kitty_mod = opt.defval_as_string
-        mopts = list(merged_opts(all_options, opt, i))
+        mopts = list(merged_opts(all_options_, opt, i))
         a('.. opt:: ' + ', '.join(conf_name + '.' + mo.name for mo in mopts))
         a('.. code-block:: conf')
         a('')
@@ -496,7 +501,7 @@ def render_conf(conf_name, all_options):
             a(expand_opt_references(conf_name, opt.long_text))
             a('')
 
-    def handle_shortcuts(shortcuts):
+    def handle_shortcuts(shortcuts: Sequence[Shortcut]) -> None:
         sc = shortcuts[0]
         handle_group(sc.group, True)
         sc_text = f'{conf_name}.{sc.short_text}'
@@ -514,7 +519,7 @@ def render_conf(conf_name, all_options):
             a(expand_opt_references(conf_name, sc.long_text))
             a('')
 
-    for i, opt in enumerate(all_options):
+    for i, opt in enumerate(all_options_):
         if isinstance(opt, Option):
             handle_option(i, opt)
         else:
@@ -525,7 +530,7 @@ def render_conf(conf_name, all_options):
     return '\n'.join(ans)
 
 
-def process_opt_link(env, refnode, has_explicit_title, title, target):
+def process_opt_link(env: Any, refnode: Any, has_explicit_title: bool, title: str, target: str) -> Tuple[str, str]:
     conf_name, opt = target.partition('.')[::2]
     if not opt:
         conf_name, opt = 'kitty', conf_name
@@ -533,7 +538,7 @@ def process_opt_link(env, refnode, has_explicit_title, title, target):
     return title, opt_aliases.get(full_name, full_name)
 
 
-def process_shortcut_link(env, refnode, has_explicit_title, title, target):
+def process_shortcut_link(env: Any, refnode: Any, has_explicit_title: bool, title: str, target: str) -> Tuple[str, str]:
     conf_name, slug = target.partition('.')[::2]
     if not slug:
         conf_name, slug = 'kitty', conf_name
@@ -548,7 +553,7 @@ def process_shortcut_link(env, refnode, has_explicit_title, title, target):
     return title, target
 
 
-def write_conf_docs(app, all_kitten_names):
+def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
     app.add_lexer('conf', ConfLexer())
     app.add_object_type(
         'opt', 'opt',
@@ -569,7 +574,7 @@ def write_conf_docs(app, all_kitten_names):
     sc_role.warn_dangling = True
     sc_role.process_link = process_shortcut_link
 
-    def generate_default_config(all_options, name):
+    def generate_default_config(all_options: Dict[str, Union[Option, Sequence[Shortcut]]], name: str) -> None:
         from kitty.conf.definition import as_conf_file
         with open(f'generated/conf-{name}.rst', 'w', encoding='utf-8') as f:
             print('.. highlight:: conf\n', file=f)
@@ -591,7 +596,7 @@ def write_conf_docs(app, all_kitten_names):
 # }}}
 
 
-def setup(app):
+def setup(app: Any) -> None:
     os.makedirs('generated/conf', exist_ok=True)
     from kittens.runner import all_kitten_names
     kn = all_kitten_names()
