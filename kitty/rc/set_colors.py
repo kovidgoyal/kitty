@@ -77,10 +77,11 @@ this option, any color arguments are ignored and --configured and --all are impl
         ans = {
             'match_window': opts.match, 'match_tab': opts.match_tab,
             'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset,
-            'colors': final_colors, 'reset': opts.reset
+            'colors': final_colors, 'reset': opts.reset, 'dummy': 0
         }
         if cursor_text_color is not None:
             ans['cursor_text_color'] = cursor_text_color
+        del ans['dummy']
         return ans
 
     def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:

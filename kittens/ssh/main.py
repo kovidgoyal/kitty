@@ -7,7 +7,7 @@ import re
 import shlex
 import subprocess
 import sys
-from typing import List, Set, Tuple
+from typing import List, NoReturn, Set, Tuple
 
 SHELL_SCRIPT = '''\
 #!/bin/sh
@@ -113,7 +113,7 @@ def quote(x: str) -> str:
     return x
 
 
-def main(args):
+def main(args: List[str]) -> NoReturn:
     ssh_args, server_args, passthrough = parse_ssh_args(args[1:])
     if passthrough:
         cmd = ['ssh'] + ssh_args + server_args

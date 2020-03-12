@@ -402,6 +402,8 @@ def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, e
         otype = opt['type'] or 'str'
         if otype in ('str', 'int', 'float'):
             t = otype
+            if t == 'str' and defval_for_opt(opt) is None:
+                t = 'typing.Optional[str]'
         elif otype == 'list':
             t = 'typing.Sequence[str]'
         elif otype in ('choice', 'choices'):

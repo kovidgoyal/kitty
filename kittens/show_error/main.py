@@ -5,6 +5,7 @@
 import os
 import sys
 from contextlib import suppress
+from typing import List
 
 from kitty.cli import parse_args
 from kitty.cli_stub import ErrorCLIOptions
@@ -18,19 +19,19 @@ The title for the error message.
 '''.format
 
 
-def real_main(args):
+def real_main(args: List[str]) -> None:
     msg = 'Show an error message'
-    args, items = parse_args(args[1:], OPTIONS, '', msg, 'hints', result_class=ErrorCLIOptions)
+    cli_opts, items = parse_args(args[1:], OPTIONS, '', msg, 'hints', result_class=ErrorCLIOptions)
     error_message = sys.stdin.buffer.read().decode('utf-8')
     sys.stdin = open(os.ctermid())
-    print(styled(args.title, fg_intense=True, fg='red', bold=True))
+    print(styled(cli_opts.title, fg_intense=True, fg='red', bold=True))
     print()
     print(error_message)
     print()
     input('Press Enter to close.')
 
 
-def main(args):
+def main(args: List[str]) -> None:
     try:
         with suppress(KeyboardInterrupt):
             real_main(args)

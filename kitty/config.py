@@ -25,6 +25,12 @@ from .key_names import get_key_name_lookup, key_name_aliases
 from .options_stub import Options as OptionsStub
 from .utils import log_error
 
+try:
+    from typing import TypedDict
+except ImportError:
+    TypedDict = dict
+
+
 KeySpec = Tuple[int, bool, int]
 KeyMap = Dict[KeySpec, 'KeyAction']
 KeySequence = Tuple[KeySpec, ...]
@@ -807,3 +813,19 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
         log_error('Cannot use both macos_titlebar_color and background_opacity')
         opts.macos_titlebar_color = 0
     return opts
+
+
+class KittyCommonOpts(TypedDict):
+    select_by_word_characters: str
+    open_url_with: List[str]
+    url_prefixes: Tuple[str, ...]
+
+
+def common_opts_as_dict(opts: Optional[OptionsStub] = None) -> KittyCommonOpts:
+    if opts is None:
+        opts = defaults
+    return {
+        'select_by_word_characters': opts.select_by_word_characters,
+        'open_url_with': opts.open_url_with,
+        'url_prefixes': opts.url_prefixes,
+    }

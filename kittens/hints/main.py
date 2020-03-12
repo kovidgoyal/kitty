@@ -9,26 +9,36 @@ import sys
 from functools import lru_cache
 from gettext import gettext as _
 from itertools import repeat
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import (
+    TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List, Optional,
+    Pattern, Sequence, Set, Tuple, Type, cast
+)
 
 from kitty.cli import parse_args
 from kitty.cli_stub import HintsCLIOptions
 from kitty.fast_data_types import set_clipboard_string
-from kitty.key_encoding import backspace_key, enter_key, key_defs as K
-from kitty.utils import screen_size_function
+from kitty.key_encoding import (
+    KeyEvent, backspace_key, enter_key, key_defs as K
+)
+from kitty.utils import ScreenSize, screen_size_function
 
 from ..tui.handler import Handler, result_handler
 from ..tui.loop import Loop
 from ..tui.operations import faint, styled
 
+if TYPE_CHECKING:
+    from kitty.config import KittyCommonOpts
+    from kitty.boss import Boss
+
 
 @lru_cache()
-def kitty_common_opts():
+def kitty_common_opts() -> 'KittyCommonOpts':
     import json
     v = os.environ.get('KITTY_COMMON_OPTS')
     if v:
-        return json.loads(v)
-    return {}
+        return cast(KittyCommonOpts, json.loads(v))
+    from kitty.config import common_opts_as_dict
+    return common_opts_as_dict()
 
 
 DEFAULT_HINT_ALPHABET = string.digits + string.ascii_lowercase
@@ -41,14 +51,14 @@ class Mark:
 
     __slots__ = ('index', 'start', 'end', 'text', 'groupdict')
 
-    def __init__(self, index, start, end, text, groupdict):
+    def __init__(self, index: int, start: int, end: int, text: str, groupdict: Any):
         self.index, self.start, self.end = index, start, end
         self.text = text
         self.groupdict = groupdict
 
 
 @lru_cache(maxsize=2048)
-def encode_hint(num, alphabet):
+def encode_hint(num: int, alphabet: str) -> str:
     res = ''
     d = len(alphabet)
     while not res or num > 0:
@@ -57,7 +67,7 @@ def encode_hint(num, alphabet):
     return res
 
 
-def decode_hint(x, alphabet=DEFAULT_HINT_ALPHABET):
+def decode_hint(x: str, alphabet: str = DEFAULT_HINT_ALPHABET) -> int:
     base = len(alphabet)
     index_map = {c: i for i, c in enumerate(alphabet)}
     i = 0
@@ -66,7 +76,7 @@ def decode_hint(x, alphabet=DEFAULT_HINT_ALPHABET):
     return i
 
 
-def highlight_mark(m, text, current_input, alphabet):
+def highlight_mark(m: Mark, text: str, current_input: str, alphabet: str) -> str:
     hint = encode_hint(m.index, alphabet)
     if current_input and not hint.startswith(current_input):
         return faint(text)
@@ -82,7 +92,7 @@ def highlight_mark(m, text, current_input, alphabet):
     )
 
 
-def render(text, current_input, all_marks, ignore_mark_indices, alphabet):
+def render(text: str, current_input: str, all_marks: Sequence[Mark], ignore_mark_indices: Set[int], alphabet: str) -> str:
     for mark in reversed(all_marks):
         if mark.index in ignore_mark_indices:
             continue
@@ -96,47 +106,47 @@ def render(text, current_input, all_marks, ignore_mark_indices, alphabet):
 
 class Hints(Handler):
 
-    def __init__(self, text, all_marks, index_map, args):
+    def __init__(self, text: str, all_marks: Sequence[Mark], index_map: Dict[int, Mark], args: HintsCLIOptions):
         self.text, self.index_map = text, index_map
         self.alphabet = args.alphabet or DEFAULT_HINT_ALPHABET
         self.all_marks = all_marks
-        self.ignore_mark_indices = set()
+        self.ignore_mark_indices: Set[int] = set()
         self.args = args
         self.window_title = _('Choose URL') if args.type == 'url' else _('Choose text')
         self.multiple = args.multiple
         self.match_suffix = self.get_match_suffix(args)
-        self.chosen = []
+        self.chosen: List[Mark] = []
         self.reset()
 
     @property
-    def text_matches(self):
+    def text_matches(self) -> List[str]:
         return [m.text + self.match_suffix for m in self.chosen]
 
     @property
-    def groupdicts(self):
+    def groupdicts(self) -> List[Any]:
         return [m.groupdict for m in self.chosen]
 
-    def get_match_suffix(self, args):
+    def get_match_suffix(self, args: HintsCLIOptions) -> str:
         if args.add_trailing_space == 'always':
             return ' '
         if args.add_trailing_space == 'never':
             return ''
         return ' ' if args.multiple else ''
 
-    def reset(self):
+    def reset(self) -> None:
         self.current_input = ''
-        self.current_text = None
+        self.current_text: Optional[str] = None
 
-    def init_terminal_state(self):
+    def init_terminal_state(self) -> None:
         self.cmd.set_cursor_visible(False)
         self.cmd.set_window_title(self.window_title)
         self.cmd.set_line_wrapping(False)
 
-    def initialize(self):
+    def initialize(self) -> None:
         self.init_terminal_state()
         self.draw_screen()
 
-    def on_text(self, text, in_bracketed_paste):
+    def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         changed = False
         for c in text:
             if c in self.alphabet:
@@ -158,7 +168,7 @@ class Hints(Handler):
             self.current_text = None
             self.draw_screen()
 
-    def on_key(self, key_event):
+    def on_key(self, key_event: KeyEvent) -> None:
         if key_event is backspace_key:
             self.current_input = self.current_input[:-1]
             self.current_text = None
@@ -181,23 +191,23 @@ class Hints(Handler):
         elif key_event.key is ESCAPE:
             self.quit_loop(0 if self.multiple else 1)
 
-    def on_interrupt(self):
+    def on_interrupt(self) -> None:
         self.quit_loop(1)
 
-    def on_eot(self):
+    def on_eot(self) -> None:
         self.quit_loop(1)
 
-    def on_resize(self, new_size):
+    def on_resize(self, new_size: ScreenSize) -> None:
         self.draw_screen()
 
-    def draw_screen(self):
+    def draw_screen(self) -> None:
         if self.current_text is None:
             self.current_text = render(self.text, self.current_input, self.all_marks, self.ignore_mark_indices, self.alphabet)
         self.cmd.clear_screen()
         self.write(self.current_text)
 
 
-def regex_finditer(pat, minimum_match_length, text):
+def regex_finditer(pat: Pattern, minimum_match_length: int, text: str) -> Generator[Tuple[int, int, Dict], None, None]:
     has_named_groups = bool(pat.groupindex)
     for m in pat.finditer(text):
         s, e = m.span(0 if has_named_groups else pat.groups)
@@ -209,16 +219,17 @@ def regex_finditer(pat, minimum_match_length, text):
 
 closing_bracket_map = {'(': ')', '[': ']', '{': '}', '<': '>', '*': '*', '"': '"', "'": "'"}
 opening_brackets = ''.join(closing_bracket_map)
-postprocessor_map: Dict[str, Callable[[str, int, int], Tuple[int, int]]] = {}
+PostprocessorFunc = Callable[[str, int, int], Tuple[int, int]]
+postprocessor_map: Dict[str, PostprocessorFunc] = {}
 
 
-def postprocessor(func):
+def postprocessor(func: PostprocessorFunc) -> PostprocessorFunc:
     postprocessor_map[func.__name__] = func
     return func
 
 
 @postprocessor
-def url(text, s, e):
+def url(text: str, s: int, e: int) -> Tuple[int, int]:
     if s > 4 and text[s - 5:s] == 'link:':  # asciidoc URLs
         url = text[s:e]
         idx = url.rfind('[')
@@ -240,7 +251,7 @@ def url(text, s, e):
 
 
 @postprocessor
-def brackets(text, s, e):
+def brackets(text: str, s: int, e: int) -> Tuple[int, int]:
     # Remove matching brackets
     if s < e <= len(text):
         before = text[s]
@@ -251,7 +262,7 @@ def brackets(text, s, e):
 
 
 @postprocessor
-def quotes(text, s, e):
+def quotes(text: str, s: int, e: int) -> Tuple[int, int]:
     # Remove matching quotes
     if s < e <= len(text):
         before = text[s]
@@ -261,7 +272,7 @@ def quotes(text, s, e):
     return s, e
 
 
-def mark(pattern, post_processors, text, args):
+def mark(pattern: str, post_processors: Iterable[PostprocessorFunc], text: str, args: HintsCLIOptions) -> Generator[Mark, None, None]:
     pat = re.compile(pattern)
     for idx, (s, e, groupdict) in enumerate(regex_finditer(pat, args.minimum_match_length, text)):
         for func in post_processors:
@@ -270,7 +281,7 @@ def mark(pattern, post_processors, text, args):
         yield Mark(idx, s, e, mark_text, groupdict)
 
 
-def run_loop(args, text, all_marks, index_map, extra_cli_args=()):
+def run_loop(args: HintsCLIOptions, text: str, all_marks: Sequence[Mark], index_map: Dict[int, Mark], extra_cli_args: Sequence[str] = ()) -> Dict[str, Any]:
     loop = Loop()
     handler = Hints(text, all_marks, index_map, args)
     loop.loop(handler)
@@ -283,17 +294,17 @@ def run_loop(args, text, all_marks, index_map, extra_cli_args=()):
     raise SystemExit(loop.return_code)
 
 
-def escape(chars):
+def escape(chars: str) -> str:
     return chars.replace('\\', '\\\\').replace('-', r'\-').replace(']', r'\]')
 
 
-def functions_for(args):
+def functions_for(args: HintsCLIOptions) -> Tuple[str, List[PostprocessorFunc]]:
     post_processors = []
     if args.type == 'url':
         if args.url_prefixes == 'default':
-            url_prefixes = kitty_common_opts().get('url_prefixes', ('https', 'http', 'file', 'ftp'))
+            url_prefixes = kitty_common_opts()['url_prefixes']
         else:
-            url_prefixes = args.url_prefixes.split(',')
+            url_prefixes = tuple(args.url_prefixes.split(','))
         from .url_regex import url_delimiters
         pattern = '(?:{})://[^{}]{{3,}}'.format(
             '|'.join(url_prefixes), url_delimiters
@@ -308,7 +319,7 @@ def functions_for(args):
         pattern = '[0-9a-f]{7,128}'
     elif args.type == 'word':
         chars = args.word_characters
-        if chars is None:
+        if not chars:
             chars = kitty_common_opts()['select_by_word_characters']
         pattern = r'(?u)[{}\w]{{{},}}'.format(escape(chars), args.minimum_match_length)
         post_processors.extend((brackets, quotes))
@@ -331,7 +342,7 @@ def convert_text(text: str, cols: int) -> str:
     return '\n'.join(lines)
 
 
-def parse_input(text):
+def parse_input(text: str) -> str:
     try:
         cols = int(os.environ['OVERLAID_WINDOW_COLS'])
     except KeyError:
@@ -339,14 +350,14 @@ def parse_input(text):
     return convert_text(text, cols)
 
 
-def linenum_marks(text, args, Mark, extra_cli_args, *a):
+def linenum_marks(text: str, args: HintsCLIOptions, Mark: Type[Mark], extra_cli_args: Sequence[str], *a: Any) -> Generator[Mark, None, None]:
     regex = args.regex
     if regex == DEFAULT_REGEX:
         regex = r'(?P<path>(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,7})):(?P<line>\d+)'
     yield from mark(regex, [brackets, quotes], text, args)
 
 
-def load_custom_processor(customize_processing):
+def load_custom_processor(customize_processing: str) -> Any:
     if customize_processing.startswith('::import::'):
         import importlib
         m = importlib.import_module(customize_processing[len('::import::'):])
@@ -363,7 +374,7 @@ def load_custom_processor(customize_processing):
     return runpy.run_path(custom_path, run_name='__main__')
 
 
-def run(args, text, extra_cli_args=()):
+def run(args: HintsCLIOptions, text: str, extra_cli_args: Sequence[str] = ()) -> Optional[Dict[str, Any]]:
     try:
         text = parse_input(text)
         pattern, post_processors = functions_for(args)
@@ -381,7 +392,7 @@ def run(args, text, extra_cli_args=()):
             input(_('No {} found, press Enter to quit.').format(
                 'URLs' if args.type == 'url' else 'matches'
                 ))
-            return
+            return None
 
         largest_index = all_marks[-1].index
         offset = max(0, args.hints_offset)
@@ -526,13 +537,13 @@ def parse_hints_args(args: List[str]) -> Tuple[HintsCLIOptions, List[str]]:
     return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten hints', result_class=HintsCLIOptions)
 
 
-def main(args: List[str]):
+def main(args: List[str]) -> Optional[Dict[str, Any]]:
     text = ''
     if sys.stdin.isatty():
         if '--help' not in args and '-h' not in args:
             print('You must pass the text to be hinted on STDIN', file=sys.stderr)
             input(_('Press Enter to quit'))
-            return
+            return None
     else:
         text = sys.stdin.buffer.read().decode('utf-8')
         sys.stdin = open(os.ctermid())
@@ -542,14 +553,14 @@ def main(args: List[str]):
         if e.code != 0:
             print(e.args[0], file=sys.stderr)
             input(_('Press Enter to quit'))
-        return
+        return None
     if items and not (opts.customize_processing or opts.type == 'linenum'):
         print('Extra command line arguments present: {}'.format(' '.join(items)), file=sys.stderr)
         input(_('Press Enter to quit'))
     return run(opts, text, items)
 
 
-def linenum_handle_result(args, data, target_window_id, boss, extra_cli_args, *a):
+def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: 'Boss', extra_cli_args: Sequence[str], *a: Any) -> None:
     for m, g in zip(data['match'], data['groupdicts']):
         if m:
             path, line = g['path'], g['line']
@@ -578,14 +589,16 @@ def linenum_handle_result(args, data, target_window_id, boss, extra_cli_args, *a
 
 
 @result_handler(type_of_input='screen')
-def handle_result(args, data, target_window_id, boss):
+def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: 'Boss') -> None:
     if data['customize_processing']:
         m = load_custom_processor(data['customize_processing'])
         if 'handle_result' in m:
-            return m['handle_result'](args, data, target_window_id, boss, data['extra_cli_args'])
+            m['handle_result'](args, data, target_window_id, boss, data['extra_cli_args'])
+            return None
 
     programs = data['programs'] or ('default',)
-    matches, groupdicts = [], []
+    matches: List[str] = []
+    groupdicts = []
     for m, g in zip(data['match'], data['groupdicts']):
         if m:
             matches.append(m)
@@ -598,7 +611,7 @@ def handle_result(args, data, target_window_id, boss):
     text_type = data['type']
 
     @lru_cache()
-    def joined_text():
+    def joined_text() -> str:
         if is_int is not None:
             try:
                 return matches[is_int]

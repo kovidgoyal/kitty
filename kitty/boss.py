@@ -16,7 +16,8 @@ from .child import cached_process_data, cwd_of_process
 from .cli import create_opts, parse_args
 from .conf.utils import to_cmdline
 from .config import (
-    SubSequenceMap, initial_window_size_func, prepare_config_file_for_editing
+    SubSequenceMap, common_opts_as_dict, initial_window_size_func,
+    prepare_config_file_for_editing
 )
 from .config_data import MINIMUM_FONT_SIZE
 from .constants import (
@@ -735,7 +736,7 @@ class Boss:
                 data = input_data
             if isinstance(data, str):
                 data = data.encode('utf-8')
-            copts = {k: self.opts[k] for k in ('select_by_word_characters', 'open_url_with', 'url_prefixes')}
+            copts = common_opts_as_dict(self.opts)
             overlay_window = tab.new_special_window(
                 SpecialWindow(
                     [kitty_exe(), '+runpy', 'from kittens.runner import main; main()'] + args,

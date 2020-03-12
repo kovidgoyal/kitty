@@ -141,7 +141,7 @@ class HandleResult:
         self.no_ui = no_ui
         self.type_of_input = type_of_input
 
-    def __call__(self, args: Sequence[str], data: Dict, target_window_id: int, boss: 'Boss') -> Any:
+    def __call__(self, args: Sequence[str], data: Any, target_window_id: int, boss: 'Boss') -> Any:
         return self.impl(args, data, target_window_id, boss)
 
 

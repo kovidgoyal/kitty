@@ -4,7 +4,7 @@
 
 import os
 from contextlib import suppress
-from typing import TYPE_CHECKING, Dict, List, Union
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import AskCLIOptions
@@ -15,22 +15,23 @@ from ..tui.operations import alternate_screen, styled
 
 if TYPE_CHECKING:
     import readline
+    import kitty
 else:
     readline = None
 
 
-def get_history_items():
+def get_history_items() -> List[str]:
     return list(map(readline.get_history_item, range(1, readline.get_current_history_length() + 1)))
 
 
-def sort_key(item):
+def sort_key(item: str) -> Tuple[int, str]:
     return len(item), item.lower()
 
 
 class HistoryCompleter:
 
-    def __init__(self, name=None):
-        self.matches = []
+    def __init__(self, name: Optional[str] = None):
+        self.matches: List[str] = []
         self.history_path = None
         if name:
             ddir = os.path.join(cache_dir(), 'ask')
@@ -38,7 +39,7 @@ class HistoryCompleter:
                 os.makedirs(ddir)
             self.history_path = os.path.join(ddir, name)
 
-    def complete(self, text, state):
+    def complete(self, text: str, state: int) -> Optional[str]:
         response = None
         if state == 0:
             history_values = get_history_items()
@@ -53,19 +54,19 @@ class HistoryCompleter:
             response = None
         return response
 
-    def __enter__(self):
+    def __enter__(self) -> 'HistoryCompleter':
         if self.history_path:
             with suppress(Exception):
                 readline.read_history_file(self.history_path)
             readline.set_completer(self.complete)
         return self
 
-    def __exit__(self, *a):
+    def __exit__(self, *a: object) -> None:
         if self.history_path:
             readline.write_history_file(self.history_path)
 
 
-def option_text():
+def option_text() -> str:
     return '''\
 --type -t
 choices=line
@@ -84,7 +85,18 @@ be used for completions and via the browse history readline bindings.
 '''
 
 
-def main(args):
+try:
+    from typing import TypedDict
+except ImportError:
+    TypedDict = dict
+
+
+class Response(TypedDict):
+    items: List[str]
+    response: Optional[str]
+
+
+def main(args: List[str]) -> Response:
     # For some reason importing readline in a key handler in the main kitty process
     # causes a crash of the python interpreter, probably because of some global
     # lock
@@ -94,7 +106,7 @@ def main(args):
     from kitty.shell import init_readline
     msg = 'Ask the user for input'
     try:
-        args, items = parse_args(args[1:], option_text, '', msg, 'kitty ask', result_class=AskCLIOptions)
+        cli_opts, items = parse_args(args[1:], option_text, '', msg, 'kitty ask', result_class=AskCLIOptions)
     except SystemExit as e:
         if e.code != 0:
             print(e.args[0])
@@ -104,23 +116,19 @@ def main(args):
     init_readline(readline)
     response = None
 
-    with alternate_screen(), HistoryCompleter(args.name):
-        if args.message:
-            print(styled(args.message, bold=True))
+    with alternate_screen(), HistoryCompleter(cli_opts.name):
+        if cli_opts.message:
+            print(styled(cli_opts.message, bold=True))
 
         prompt = '> '
         with suppress(KeyboardInterrupt, EOFError):
             response = input(prompt)
-    if response is None:
-        ans: Dict[str, Union[str, List[str]]] = {'items': items}
-    else:
-        ans = {'items': items, 'response': response}
-    return ans
+    return {'items': items, 'response': response}
 
 
 @result_handler()
-def handle_result(args, data, target_window_id, boss):
-    if 'response' in data:
+def handle_result(args: List[str], data: Response, target_window_id: int, boss: 'kitty.boss.Boss') -> None:
+    if data['response'] is not None:
         func, *args = data['items']
         getattr(boss, func)(data['response'], *args)
 

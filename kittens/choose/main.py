@@ -3,39 +3,40 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
+from typing import Iterable, List, Union
 
+from kitty.key_encoding import KeyEvent
 
+from . import subseq_matcher
 from ..tui.handler import Handler
 from ..tui.loop import Loop
 
-from . import subseq_matcher
-
 
 def match(
-    input_data,
-    query,
-    threads=0,
-    positions=False,
-    level1='/',
-    level2='-_0123456789',
-    level3='.',
-    limit=0,
-    mark_before='',
-    mark_after='',
-    delimiter='\n'
-):
+    input_data: Union[str, bytes, Iterable[Union[str, bytes]]],
+    query: str,
+    threads: int = 0,
+    positions: bool = False,
+    level1: str = '/',
+    level2: str = '-_0123456789',
+    level3: str = '.',
+    limit: int = 0,
+    mark_before: str = '',
+    mark_after: str = '',
+    delimiter: str = '\n'
+) -> List[str]:
     if isinstance(input_data, str):
-        input_data = input_data.encode('utf-8')
+        idata = [x.encode('utf-8') for x in input_data.split(delimiter)]
     if isinstance(input_data, bytes):
-        input_data = input_data.split(delimiter.encode('utf-8'))
+        idata = input_data.split(delimiter.encode('utf-8'))
     else:
-        input_data = [x.encode('utf-8') if isinstance(x, str) else x for x in input_data]
+        idata = [x.encode('utf-8') if isinstance(x, str) else x for x in input_data]
     query = query.lower()
     level1 = level1.lower()
     level2 = level2.lower()
     level3 = level3.lower()
     data = subseq_matcher.match(
-        input_data, (level1, level2, level3), query,
+        idata, (level1, level2, level3), query,
         positions, limit, threads,
         mark_before, mark_after, delimiter)
     if data is None:
@@ -45,23 +46,23 @@ def match(
 
 class ChooseHandler(Handler):
 
-    def initialize(self):
+    def initialize(self) -> None:
         pass
 
-    def on_text(self, text, in_bracketed_paste=False):
+    def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         pass
 
-    def on_key(self, key_event):
+    def on_key(self, key_event: KeyEvent) -> None:
         pass
 
-    def on_interrupt(self):
+    def on_interrupt(self) -> None:
         self.quit_loop(1)
 
-    def on_eot(self):
+    def on_eot(self) -> None:
         self.quit_loop(1)
 
 
-def main(args):
+def main(args: List[str]) -> None:
     loop = Loop()
     handler = ChooseHandler()
     loop.loop(handler)

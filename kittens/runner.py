@@ -7,15 +7,16 @@ import importlib
 import os
 import sys
 from functools import lru_cache, partial
+from typing import Any, Dict, FrozenSet, List
 
 aliases = {'url_hints': 'hints'}
 
 
-def resolved_kitten(k):
+def resolved_kitten(k: str) -> str:
     return aliases.get(k, k).replace('-', '_')
 
 
-def path_to_custom_kitten(config_dir, kitten):
+def path_to_custom_kitten(config_dir: str, kitten: str) -> str:
     path = os.path.expanduser(kitten)
     if not os.path.isabs(path):
         path = os.path.join(config_dir, path)
@@ -23,7 +24,7 @@ def path_to_custom_kitten(config_dir, kitten):
     return path
 
 
-def import_kitten_main_module(config_dir, kitten):
+def import_kitten_main_module(config_dir: str, kitten: str) -> Dict[str, Any]:
     if kitten.endswith('.py'):
         path_modified = False
         path = path_to_custom_kitten(config_dir, kitten)
@@ -45,7 +46,7 @@ def import_kitten_main_module(config_dir, kitten):
     return {'start': getattr(m, 'main'), 'end': getattr(m, 'handle_result', lambda *a, **k: None)}
 
 
-def create_kitten_handler(kitten, orig_args):
+def create_kitten_handler(kitten: str, orig_args: List[str]) -> Any:
     from kitty.constants import config_dir
     kitten = resolved_kitten(kitten)
     m = import_kitten_main_module(config_dir, kitten)
@@ -55,13 +56,13 @@ def create_kitten_handler(kitten, orig_args):
     return ans
 
 
-def set_debug(kitten):
+def set_debug(kitten: str) -> None:
     from kittens.tui.loop import debug
     import builtins
     setattr(builtins, 'debug', debug)
 
 
-def launch(args):
+def launch(args: List[str]) -> None:
     config_dir, kitten = args[:2]
     kitten = resolved_kitten(kitten)
     del args[:2]
@@ -83,7 +84,7 @@ def launch(args):
     sys.stdout.flush()
 
 
-def deserialize(output):
+def deserialize(output: str) -> Any:
     import json
     if output.startswith('OK: '):
         try:
@@ -93,7 +94,7 @@ def deserialize(output):
             raise ValueError('Failed to parse kitten output: {!r}'.format(output))
 
 
-def run_kitten(kitten, run_name='__main__'):
+def run_kitten(kitten: str, run_name: str = '__main__') -> None:
     import runpy
     original_kitten_name = kitten
     kitten = resolved_kitten(kitten)
@@ -118,7 +119,7 @@ def run_kitten(kitten, run_name='__main__'):
 
 
 @lru_cache(maxsize=2)
-def all_kitten_names():
+def all_kitten_names() -> FrozenSet[str]:
     n = []
     import glob
     base = os.path.dirname(os.path.abspath(__file__))
@@ -129,7 +130,7 @@ def all_kitten_names():
     return frozenset(n)
 
 
-def list_kittens():
+def list_kittens() -> None:
     print('You must specify the name of a kitten to run')
     print('Choose from:')
     print()
@@ -137,7 +138,7 @@ def list_kittens():
         print(kitten)
 
 
-def get_kitten_cli_docs(kitten):
+def get_kitten_cli_docs(kitten: str) -> Any:
     setattr(sys, 'cli_docs', {})
     run_kitten(kitten, run_name='__doc__')
     ans = getattr(sys, 'cli_docs')
@@ -146,7 +147,7 @@ def get_kitten_cli_docs(kitten):
         return ans
 
 
-def get_kitten_conf_docs(kitten):
+def get_kitten_conf_docs(kitten: str) -> Any:
     setattr(sys, 'all_options', None)
     run_kitten(kitten, run_name='__conf__')
     ans = getattr(sys, 'all_options')
@@ -154,7 +155,7 @@ def get_kitten_conf_docs(kitten):
     return ans
 
 
-def main():
+def main() -> None:
     try:
         args = sys.argv[1:]
         launch(args)

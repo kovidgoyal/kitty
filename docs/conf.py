@@ -594,10 +594,10 @@ def write_conf_docs(app, all_kitten_names):
 def setup(app):
     os.makedirs('generated/conf', exist_ok=True)
     from kittens.runner import all_kitten_names
-    all_kitten_names = all_kitten_names()
-    write_cli_docs(all_kitten_names)
+    kn = all_kitten_names()
+    write_cli_docs(kn)
     write_remote_control_protocol_docs()
-    write_conf_docs(app, all_kitten_names)
+    write_conf_docs(app, kn)
     app.add_lexer('session', SessionLexer())
     app.add_role('link', link_role)
     app.add_role('iss', partial(num_role, 'issues'))
