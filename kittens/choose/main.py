@@ -27,7 +27,7 @@ def match(
 ) -> List[str]:
     if isinstance(input_data, str):
         idata = [x.encode('utf-8') for x in input_data.split(delimiter)]
-    if isinstance(input_data, bytes):
+    elif isinstance(input_data, bytes):
         idata = input_data.split(delimiter.encode('utf-8'))
     else:
         idata = [x.encode('utf-8') if isinstance(x, str) else x for x in input_data]
