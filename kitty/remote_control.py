@@ -9,7 +9,10 @@ import sys
 import types
 from contextlib import suppress
 from functools import partial
-from typing import Any, Dict, List, Tuple, Union
+from typing import (
+    TYPE_CHECKING, Any, Dict, Generator, Iterable, List, Optional, Tuple,
+    Union, cast
+)
 
 from .cli import emph, parse_args
 from .cli_stub import RCOptions
@@ -21,14 +24,18 @@ from .rc.base import (
 )
 from .utils import TTYIO, parse_address_spec
 
+if TYPE_CHECKING:
+    from .boss import Boss  # noqa
+    from .window import Window  # noqa
 
-def handle_cmd(boss, window, cmd):
-    cmd = json.loads(cmd)
+
+def handle_cmd(boss: 'Boss', window: 'Window', serialized_cmd: str) -> Optional[Dict[str, Any]]:
+    cmd = json.loads(serialized_cmd)
     v = cmd['version']
     no_response = cmd.get('no_response', False)
     if tuple(v)[:2] > version[:2]:
         if no_response:
-            return
+            return None
         return {'ok': False, 'error': 'The kitty client you are using to send remote commands is newer than this kitty instance. This is not supported.'}
     c = command_for_name(cmd['cmd'])
     payload = cmd.get('payload') or {}
@@ -37,15 +44,16 @@ def handle_cmd(boss, window, cmd):
         ans = c.response_from_kitty(boss, window, PayloadGetter(c, payload))
     except Exception:
         if no_response:  # don't report errors if --no-response was used
-            return
+            return None
         raise
     if ans is no_response_sentinel:
-        return
+        return None
     response: Dict[str, Any] = {'ok': True}
     if ans is not None:
         response['data'] = ans
     if not c.no_response and not no_response:
         return response
+    return None
 
 
 global_options_spec = partial('''\
@@ -57,29 +65,29 @@ will only work if this process is run within an existing kitty window.
 '''.format, appname=appname)
 
 
-def encode_send(send):
-    send = ('@kitty-cmd' + json.dumps(send)).encode('ascii')
-    return b'\x1bP' + send + b'\x1b\\'
+def encode_send(send: Any) -> bytes:
+    es = ('@kitty-cmd' + json.dumps(send)).encode('ascii')
+    return b'\x1bP' + es + b'\x1b\\'
 
 
 class SocketIO:
 
-    def __init__(self, to):
+    def __init__(self, to: str):
         self.family, self.address = parse_address_spec(to)[:2]
 
-    def __enter__(self):
+    def __enter__(self) -> None:
         import socket
         self.socket = socket.socket(self.family)
         self.socket.setblocking(True)
         self.socket.connect(self.address)
 
-    def __exit__(self, *a):
+    def __exit__(self, *a: Any) -> None:
         import socket
         with suppress(OSError):  # on some OSes such as macOS the socket is already closed at this point
             self.socket.shutdown(socket.SHUT_RDWR)
         self.socket.close()
 
-    def send(self, data):
+    def send(self, data: Union[bytes, Iterable[Union[str, bytes]]]) -> None:
         import socket
         with self.socket.makefile('wb') as out:
             if isinstance(data, bytes):
@@ -92,7 +100,7 @@ class SocketIO:
                     out.flush()
         self.socket.shutdown(socket.SHUT_WR)
 
-    def recv(self, timeout):
+    def simple_recv(self, timeout: float) -> bytes:
         dcs = re.compile(br'\x1bP@kitty-cmd([^\x1b]+)\x1b\\')
         self.socket.settimeout(timeout)
         with self.socket.makefile('rb') as src:
@@ -100,23 +108,24 @@ class SocketIO:
         m = dcs.search(data)
         if m is None:
             raise TimeoutError('Timed out while waiting to read cmd response')
-        return m.group(1)
+        return bytes(m.group(1))
 
 
 class RCIO(TTYIO):
 
-    def recv(self, timeout):
+    def simple_recv(self, timeout: float) -> bytes:
         ans: List[bytes] = []
         read_command_response(self.tty_fd, timeout, ans)
         return b''.join(ans)
 
 
-def do_io(to, send, no_response):
+def do_io(to: Optional[str], send: Dict, no_response: bool) -> Dict[str, Any]:
     payload = send.get('payload')
     if not isinstance(payload, types.GeneratorType):
-        send_data = encode_send(send)
+        send_data: Union[bytes, Iterable[bytes]] = encode_send(send)
     else:
-        def send_generator():
+        def send_generator() -> Generator[bytes, None, None]:
+            assert payload is not None
             for chunk in payload:
                 send['payload'] = chunk
                 yield encode_send(send)
@@ -127,10 +136,9 @@ def do_io(to, send, no_response):
         io.send(send_data)
         if no_response:
             return {'ok': True}
-        received = io.recv(timeout=10)
+        received = io.simple_recv(timeout=10)
 
-    response = json.loads(received.decode('ascii'))
-    return response
+    return cast(Dict[str, Any], json.loads(received.decode('ascii')))
 
 
 cli_msg = (
@@ -150,13 +158,13 @@ def parse_rc_args(args: List[str]) -> Tuple[RCOptions, List[str]]:
     return parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname), result_class=RCOptions)
 
 
-def main(args):
+def main(args: List[str]) -> None:
     global_opts, items = parse_rc_args(args)
     global_opts.no_command_response = None
 
     if not items:
-        from kitty.shell import main
-        main(global_opts)
+        from kitty.shell import main as smain
+        smain(global_opts)
         return
     cmd = items[0]
     try:

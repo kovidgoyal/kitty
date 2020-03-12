@@ -14,7 +14,8 @@ from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
 from typing import (
-    Any, Dict, Generator, List, NamedTuple, Optional, Tuple, Union, cast
+    Any, Dict, Generator, Iterable, List, NamedTuple, Optional, Tuple, Union,
+    cast
 )
 
 from .constants import (
@@ -403,7 +404,7 @@ class TTYIO:
         from .fast_data_types import close_tty
         close_tty(self.tty_fd, self.original_termios)
 
-    def send(self, data):
+    def send(self, data: Union[str, bytes, Iterable[Union[str, bytes]]]) -> None:
         if isinstance(data, (str, bytes)):
             write_all(self.tty_fd, data)
         else:

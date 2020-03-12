@@ -35,11 +35,11 @@ If specified close the tab this command is run in, rather than the active tab.
     def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
         match = payload_get('match')
         if match:
-            tabs = tuple(boss.match_tabs(match))
+            tabs = list(boss.match_tabs(match))
             if not tabs:
                 raise MatchError(match, 'tabs')
         else:
-            tabs = tuple(boss.tab_for_window(window) if window and payload_get('self') else boss.active_tab)
+            tabs = [boss.tab_for_window(window) if window and payload_get('self') else boss.active_tab]
         for tab in tabs:
             if window:
                 if tab:
