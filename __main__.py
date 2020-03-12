@@ -4,54 +4,56 @@
 
 import sys
 import os
+from typing import List
 
 
-def icat(args):
-    from kittens.runner import run_kitten
+def icat(args: List[str]) -> None:
+    from kittens.runner import run_kitten as rk
     sys.argv = args
-    run_kitten('icat')
+    rk('icat')
 
 
-def list_fonts(args):
+def list_fonts(args: List[str]) -> None:
     from kitty.fonts.list import main as list_main
     list_main(args)
 
 
-def remote_control(args):
+def remote_control(args: List[str]) -> None:
     from kitty.remote_control import main as rc_main
     rc_main(args)
 
 
-def runpy(args):
+def runpy(args: List[str]) -> None:
     sys.argv = ['kitty'] + args[2:]
     exec(args[1])
 
 
-def hold(args):
+def hold(args: List[str]) -> None:
     import subprocess
     ret = subprocess.Popen(args[1:]).wait()
     sys.stdin.read()
     raise SystemExit(ret)
 
 
-def complete(args):
+def complete(args: List[str]) -> None:
     from kitty.complete import main as complete_main
     complete_main(args[1:], entry_points, namespaced_entry_points)
 
 
-def launch(args):
+def launch(args: List[str]) -> None:
     import runpy
     sys.argv = args[1:]
     exe = args[1]
     if exe.startswith(':'):
         import shutil
-        exe = shutil.which(exe[1:])
-        if not exe:
+        q = shutil.which(exe[1:])
+        if not q:
             raise SystemExit('{} not found in PATH'.format(args[1][1:]))
+        exe = q
     runpy.run_path(exe, run_name='__main__')
 
 
-def run_kitten(args):
+def run_kitten(args: List[str]) -> None:
     try:
         kitten = args[1]
     except IndexError:
@@ -59,11 +61,11 @@ def run_kitten(args):
         list_kittens()
         raise SystemExit(1)
     sys.argv = args[1:]
-    from kittens.runner import run_kitten
-    run_kitten(kitten)
+    from kittens.runner import run_kitten as rk
+    rk(kitten)
 
 
-def namespaced(args):
+def namespaced(args: List[str]) -> None:
     func = namespaced_entry_points[args[1]]
     func(args[1:])
 
@@ -84,7 +86,7 @@ namespaced_entry_points['hold'] = hold
 namespaced_entry_points['complete'] = complete
 
 
-def setup_openssl_environment():
+def setup_openssl_environment() -> None:
     # Workaround for Linux distros that have still failed to get their heads
     # out of their asses and implement a common location for SSL certificates.
     # It's not that hard people, there exists a wonderful tool called the symlink
@@ -98,7 +100,7 @@ def setup_openssl_environment():
             setattr(sys, 'kitty_ssl_env_var', 'SSL_CERT_DIR')
 
 
-def main():
+def main() -> None:
     if getattr(sys, 'frozen', False) and 'darwin' not in sys.platform.lower():
         setup_openssl_environment()
     first_arg = '' if len(sys.argv) < 2 else sys.argv[1]
