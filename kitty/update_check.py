@@ -5,13 +5,12 @@
 import os
 import subprocess
 import time
-from collections import namedtuple
 from contextlib import suppress
-from typing import Optional
+from typing import Dict, NamedTuple, Optional
 from urllib.request import urlopen
 
 from .config import atomic_save
-from .constants import cache_dir, kitty_exe, version
+from .constants import Version, cache_dir, kitty_exe, version
 from .fast_data_types import add_timer, get_boss, monitor_pid
 from .notify import notify
 from .utils import log_error, open_url
@@ -19,21 +18,26 @@ from .utils import log_error, open_url
 CHANGELOG_URL = 'https://sw.kovidgoyal.net/kitty/changelog.html'
 RELEASED_VERSION_URL = 'https://sw.kovidgoyal.net/kitty/current-version.txt'
 CHECK_INTERVAL = 24 * 60 * 60
-Notification = namedtuple('Notification', 'version time_of_last_notification count')
 
 
-def notification_activated():
+class Notification(NamedTuple):
+    version: Version
+    time_of_last_notification: float
+    notification_count: int
+
+
+def notification_activated() -> None:
     open_url(CHANGELOG_URL)
 
 
-def version_notification_log():
+def version_notification_log() -> str:
     override = getattr(version_notification_log, 'override', None)
-    if override:
+    if isinstance(override, str):
         return override
     return os.path.join(cache_dir(), 'new-version-notifications-1.txt')
 
 
-def notify_new_version(release_version):
+def notify_new_version(release_version: Version) -> None:
     notify(
             'kitty update available!',
             'kitty version {} released'.format('.'.join(map(str, release_version))),
@@ -41,22 +45,23 @@ def notify_new_version(release_version):
     )
 
 
-def get_released_version():
+def get_released_version() -> str:
     try:
         raw = urlopen(RELEASED_VERSION_URL).read().decode('utf-8').strip()
     except Exception:
         raw = '0.0.0'
-    return raw
+    return str(raw)
 
 
-def parse_line(line):
+def parse_line(line: str) -> Notification:
     parts = line.split(',')
     version, timestamp, count = parts
-    version = tuple(map(int, version.split('.')))
-    return Notification(version, float(timestamp), int(count))
+    parts = version.split('.')
+    v = Version(int(parts[0]), int(parts[1]), int(parts[2]))
+    return Notification(v, float(timestamp), int(count))
 
 
-def read_cache():
+def read_cache() -> Dict[Version, Notification]:
     notified_versions = {}
     with suppress(FileNotFoundError):
         with open(version_notification_log()) as f:
@@ -69,16 +74,16 @@ def read_cache():
     return notified_versions
 
 
-def already_notified(version):
+def already_notified(version: tuple) -> bool:
     notified_versions = read_cache()
     return version in notified_versions
 
 
-def save_notification(version):
+def save_notification(version: Version) -> None:
     notified_versions = read_cache()
     if version in notified_versions:
         v = notified_versions[version]
-        notified_versions[version] = v._replace(time_of_last_notification=time.time(), count=v.count + 1)
+        notified_versions[version] = v._replace(time_of_last_notification=time.time(), notification_count=v.notification_count + 1)
     else:
         notified_versions[version] = Notification(version, time.time(), 1)
     lines = []
@@ -89,8 +94,8 @@ def save_notification(version):
     atomic_save('\n'.join(lines).encode('utf-8'), version_notification_log())
 
 
-def process_current_release(raw):
-    release_version = tuple(map(int, raw.split('.')))
+def process_current_release(raw: str) -> None:
+    release_version = Version(*tuple(map(int, raw.split('.'))))
     if release_version > version and not already_notified(release_version):
         save_notification(release_version)
         notify_new_version(release_version)

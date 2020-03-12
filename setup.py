@@ -40,7 +40,7 @@ version = tuple(
     map(
         int,
         re.search(  # type: ignore
-            r"^version = \((\d+), (\d+), (\d+)\)", constants, re.MULTILINE
+            r"^version = Version\((\d+), (\d+), (\d+)\)", constants, re.MULTILINE
         ).group(1, 2, 3)
     )
 )

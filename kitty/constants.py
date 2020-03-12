@@ -8,10 +8,20 @@ import pwd
 import sys
 from contextlib import suppress
 from functools import lru_cache
-from typing import Optional, Set, NamedTuple
+from typing import TYPE_CHECKING, NamedTuple, Optional, Set
+
+if TYPE_CHECKING:
+    from .options_stub import Options  # noqa
+
+
+class Version(NamedTuple):
+    major: int
+    minor: int
+    patch: int
+
 
 appname = 'kitty'
-version = (0, 16, 0)
+version = Version(0, 16, 0)
 str_version = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
@@ -37,7 +47,7 @@ class WindowGeometry(NamedTuple):
 
 
 @lru_cache(maxsize=2)
-def kitty_exe():
+def kitty_exe() -> str:
     rpath = sys._xoptions.get('bundle_exe_dir')
     if not rpath:
         items = filter(None, os.environ.get('PATH', '').split(os.pathsep))
@@ -53,7 +63,7 @@ def kitty_exe():
     return os.path.join(rpath, 'kitty')
 
 
-def _get_config_dir():
+def _get_config_dir() -> str:
     if 'KITTY_CONFIG_DIRECTORY' in os.environ:
         return os.path.abspath(os.path.expanduser(os.environ['KITTY_CONFIG_DIRECTORY']))
 
@@ -71,12 +81,12 @@ def _get_config_dir():
             if os.access(q, os.W_OK) and os.path.exists(os.path.join(q, 'kitty.conf')):
                 return q
 
-    def make_tmp_conf():
+    def make_tmp_conf() -> None:
         import tempfile
         import atexit
         ans = tempfile.mkdtemp(prefix='kitty-conf-')
 
-        def cleanup():
+        def cleanup() -> None:
             import shutil
             with suppress(Exception):
                 shutil.rmtree(ans)
@@ -103,7 +113,7 @@ defconf = os.path.join(config_dir, 'kitty.conf')
 
 
 @lru_cache(maxsize=2)
-def cache_dir():
+def cache_dir() -> str:
     if 'KITTY_CACHE_DIRECTORY' in os.environ:
         candidate = os.path.abspath(os.environ['KITTY_CACHE_DIRECTORY'])
     elif is_macos:
@@ -115,7 +125,7 @@ def cache_dir():
     return candidate
 
 
-def wakeup():
+def wakeup() -> None:
     from .fast_data_types import get_boss
     b = get_boss()
     if b is not None:
@@ -135,11 +145,11 @@ except KeyError:
     shell_path = '/bin/sh'
 
 
-def glfw_path(module):
+def glfw_path(module: str) -> str:
     return os.path.join(base, 'glfw-{}.so'.format(module))
 
 
-def detect_if_wayland_ok():
+def detect_if_wayland_ok() -> bool:
     if 'WAYLAND_DISPLAY' not in os.environ:
         return False
     if 'KITTY_DISABLE_WAYLAND' in os.environ:
@@ -169,11 +179,11 @@ def detect_if_wayland_ok():
     return ans == b'YES'
 
 
-def is_wayland(opts=None):
+def is_wayland(opts: Optional['Options'] = None) -> bool:
     if is_macos:
         return False
     if opts is None:
-        return getattr(is_wayland, 'ans')
+        return bool(getattr(is_wayland, 'ans'))
     if opts.linux_display_server == 'auto':
         ans = detect_if_wayland_ok()
     else:
