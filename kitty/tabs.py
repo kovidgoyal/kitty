@@ -87,8 +87,8 @@ class Tab:  # {{{
     ):
         self._active_window_idx = 0
         self.tab_manager_ref = weakref.ref(tab_manager)
-        self.os_window_id = tab_manager.os_window_id
-        self.id = add_tab(self.os_window_id)
+        self.os_window_id: int = tab_manager.os_window_id
+        self.id: int = add_tab(self.os_window_id)
         self.active_window_history: Deque[int] = deque()
         if not self.id:
             raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
@@ -301,7 +301,7 @@ class Tab:  # {{{
         if ret is None:
             ring_bell()
             return
-        if isinstance(ret, int) and not isinstance(ret, bool):
+        if not isinstance(ret, bool) and isinstance(ret, int):
             self.active_window_idx = ret
         self.relayout()
 
@@ -415,7 +415,7 @@ class Tab:  # {{{
                     active_window_idx = idx
                     next_window_id = q.id
                     break
-        if next_window_id is None and active_window_idx is not None and len(self.windows) > active_window_idx:
+        if next_window_id is None and len(self.windows) > active_window_idx:
             next_window_id = self.windows[active_window_idx].id
         if next_window_id is not None:
             for idx, window in enumerate(self.windows):

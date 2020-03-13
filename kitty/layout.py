@@ -5,8 +5,8 @@
 from functools import lru_cache, partial
 from itertools import islice, repeat
 from typing import (
-    TYPE_CHECKING, Callable, Collection, Dict, FrozenSet, Generator, Iterable,
-    List, NamedTuple, Optional, Sequence, Tuple, Union, cast
+    TYPE_CHECKING, Callable, Collection, Deque, Dict, FrozenSet, Generator,
+    Iterable, List, NamedTuple, Optional, Sequence, Tuple, Union, cast
 )
 
 from .constants import WindowGeometry
@@ -53,7 +53,7 @@ draw_active_borders = True
 align_top_left = False
 LayoutDimension = Generator[Tuple[int, int], None, None]
 DecorationPairs = Sequence[Tuple[int, int]]
-WindowList = List[Window]
+WindowList = Union[List[Window], Deque[Window]]
 
 
 class InternalNeighborsMap(TypedDict):
@@ -134,7 +134,7 @@ class Rect(NamedTuple):
     bottom: int
 
 
-def process_overlaid_windows(all_windows: WindowList) -> Tuple[FrozenSet[Window], List[Window]]:
+def process_overlaid_windows(all_windows: WindowList) -> Tuple[FrozenSet[Window], WindowList]:
     id_map = {w.id: w for w in all_windows}
     overlaid_windows = frozenset(w for w in all_windows if w.overlay_window_id is not None and w.overlay_window_id in id_map)
     windows = [w for w in all_windows if w not in overlaid_windows]
@@ -567,8 +567,8 @@ class Layout:  # {{{
             else:
                 yield no_borders
 
-    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList, active_window_idx: int) -> bool:
-        return False
+    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList, active_window_idx: int) -> Optional[Union[bool, int]]:
+        pass
 # }}}
 
 
@@ -970,8 +970,8 @@ class Grid(Layout):
         blank_row: List[Optional[int]] = [None for i in range(ncols)]
         matrix = tuple(blank_row[:] for j in range(max(nrows, special_rows)))
         wi = iter(windows)
-        pos_map = {}
-        col_counts = []
+        pos_map: Dict[int, Tuple[int, int]] = {}
+        col_counts: List[int] = []
         for col in range(ncols):
             rows = special_rows if col == special_col else nrows
             for row in range(rows):
@@ -1525,7 +1525,7 @@ class Splits(Layout):
                 else:
                     p2.two = w1
 
-    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList, active_window_idx: int) -> bool:
+    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList, active_window_idx: int) -> Optional[Union[bool, int]]:
         if action_name == 'rotate':
             args = args or ('90',)
             try:
@@ -1545,7 +1545,6 @@ class Splits(Layout):
                 if swap:
                     pair.one, pair.two = pair.two, pair.one
                 return True
-        return False
 
 # }}}
 
