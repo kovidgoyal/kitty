@@ -554,7 +554,7 @@ def resolve_key_mods(kitty_mod: int, mods: int) -> int:
     pass
 
 
-def parse_font_feature(str) -> bytes:
+def parse_font_feature(ff: str) -> bytes:
     pass
 
 
@@ -863,7 +863,7 @@ def parse_input_from_terminal(
     csi_callback: Callable[[str], None], osc_callback: Callable[[str], None],
     pm_callback: Callable[[str], None], apc_callback: Callable[[str], None],
     data: str, in_bracketed_paste: bool
-):
+) -> str:
     pass
 
 
@@ -903,11 +903,11 @@ def set_font_data(
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
     symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,
     font_feature_settings: Dict[str, Tuple[str, ...]]
-):
+) -> None:
     pass
 
 
-def get_fallback_font(text: str, bold: bool, italic: bool):
+def get_fallback_font(text: str, bold: bool, italic: bool) -> Any:
     pass
 
 
@@ -963,10 +963,10 @@ class Screen:
     ):
         pass
 
-    def line(self, int) -> Line:
+    def line(self, num: int) -> Line:
         pass
 
-    def draw(self, text) -> None:
+    def draw(self, text: str) -> None:
         pass
 
     def copy_colors_from(self, other: 'Screen') -> None:
@@ -1038,7 +1038,7 @@ def set_window_render_data(
     os_window_id: int, tab_id: int, window_id: int, window_idx: int,
     xstart: float, ystart: float, dx: float, dy: float, screen: Screen,
     left: int, top: int, right: int, bottom: int
-):
+) -> None:
     pass
 
 
@@ -1068,7 +1068,7 @@ class ChildMonitor:
     def resize_pty(self, window_id: int, rows: int, cols: int, x_pixels: int, y_pixels: int) -> None:
         pass
 
-    def needs_write(self, child_id: int, data: bytes) -> bool:
+    def needs_write(self, child_id: int, data: Union[bytes, str]) -> bool:
         pass
 
     def set_iutf8_winid(self, win_id: int, on: bool) -> bool:

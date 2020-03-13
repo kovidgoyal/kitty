@@ -8,7 +8,7 @@ import sys
 from collections import defaultdict
 from contextlib import contextmanager, suppress
 from typing import (
-    DefaultDict, Dict, Generator, Iterable, List, Optional, Sequence, Tuple
+    DefaultDict, Dict, Generator, List, Optional, Sequence, Tuple
 )
 
 import kitty.fast_data_types as fast_data_types
@@ -182,7 +182,7 @@ class Child:
 
     def __init__(
         self,
-        argv: Iterable[str],
+        argv: Sequence[str],
         cwd: str,
         opts: Options,
         stdin: Optional[bytes] = None,

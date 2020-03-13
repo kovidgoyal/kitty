@@ -116,10 +116,10 @@ the id of the new window will not be printed out.
         else:
             tabs = [boss.active_tab]
         tab = tabs[0]
-        w = tab.new_special_window(w)
+        ans = tab.new_special_window(w)
         if payload_get('keep_focus') and old_window:
             boss.set_active_window(old_window)
-        return None if payload_get('no_response') else str(w.id)
+        return None if payload_get('no_response') else str(ans.id)
 
 
 new_window = NewWindow()

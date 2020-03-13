@@ -85,7 +85,7 @@ def talk_to_instance(args: CLIOptions) -> None:
         conn.close()
 
 
-def load_all_shaders(semi_transparent: int = 0) -> None:
+def load_all_shaders(semi_transparent: bool = False) -> None:
     load_shader_programs(semi_transparent)
     load_borders_program()
 

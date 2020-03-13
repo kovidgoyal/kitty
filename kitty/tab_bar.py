@@ -2,8 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-from collections import namedtuple
-from typing import Set, Tuple, Union
+from typing import Any, Dict, NamedTuple, Optional, Sequence, Set, Tuple
 
 from .config import build_ansi_color_table
 from .constants import WindowGeometry
@@ -12,25 +11,42 @@ from .fast_data_types import (
     viewport_for_window
 )
 from .layout import Rect
+from .options_stub import Options
+from .rgb import Color, alpha_blend, color_from_int
 from .utils import color_as_int, log_error
 from .window import calculate_gl_geometry
-from .rgb import alpha_blend, color_from_int
-
-TabBarData = namedtuple('TabBarData', 'title is_active needs_attention')
-DrawData = namedtuple(
-    'DrawData', 'leading_spaces sep trailing_spaces bell_on_tab'
-    ' bell_fg alpha active_fg active_bg inactive_fg inactive_bg'
-    ' default_bg title_template active_title_template')
 
 
-def as_rgb(x):
+class TabBarData(NamedTuple):
+    title: str
+    is_active: bool
+    needs_attention: bool
+
+
+class DrawData(NamedTuple):
+    leading_spaces: int
+    sep: str
+    trailing_spaces: int
+    bell_on_tab: bool
+    bell_fg: int
+    alpha: Sequence[float]
+    active_fg: Color
+    inactive_fg: Color
+    active_bg: Color
+    inactive_bg: Color
+    default_bg: Color
+    title_template: str
+    active_title_template: Optional[str]
+
+
+def as_rgb(x: int) -> int:
     return (x << 8) | 2
 
 
 template_failures: Set[str] = set()
 
 
-def draw_title(draw_data, screen, tab, index):
+def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
     if tab.needs_attention and draw_data.bell_on_tab:
         fg = screen.cursor.fg
         screen.cursor.fg = draw_data.bell_fg
@@ -49,7 +65,7 @@ def draw_title(draw_data, screen, tab, index):
     screen.draw(title)
 
 
-def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length, index, is_last):
+def draw_tab_with_separator(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
     if draw_data.leading_spaces:
         screen.draw(' ' * draw_data.leading_spaces)
     draw_title(draw_data, screen, tab, index)
@@ -68,7 +84,7 @@ def draw_tab_with_separator(draw_data, screen, tab, before, max_title_length, in
     return end
 
 
-def draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, index, is_last):
+def draw_tab_with_fade(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
     tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
     fade_colors = [as_rgb(color_as_int(alpha_blend(tab_bg, draw_data.default_bg, alpha))) for alpha in draw_data.alpha]
     for bg in fade_colors:
@@ -96,7 +112,7 @@ def draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, index, 
     return end
 
 
-def draw_tab_with_powerline(draw_data, screen, tab, before, max_title_length, index, is_last):
+def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
     tab_bg = as_rgb(color_as_int(draw_data.active_bg if tab.is_active else draw_data.inactive_bg))
     tab_fg = as_rgb(color_as_int(draw_data.active_fg if tab.is_active else draw_data.inactive_fg))
     inactive_bg = as_rgb(color_as_int(draw_data.inactive_bg))
@@ -150,7 +166,7 @@ def draw_tab_with_powerline(draw_data, screen, tab, before, max_title_length, in
 
 class TabBar:
 
-    def __init__(self, os_window_id, opts):
+    def __init__(self, os_window_id: int, opts: Options):
         self.os_window_id = os_window_id
         self.opts = opts
         self.num_tabs = 1
@@ -165,7 +181,7 @@ class TabBar:
             color_as_int(opts.inactive_tab_foreground),
             color_as_int(opts.inactive_tab_background)
         )
-        self.blank_rects: Union[Tuple, Tuple[Rect, Rect]] = ()
+        self.blank_rects: Tuple[Rect, ...] = ()
         sep = opts.tab_separator
         self.trailing_spaces = self.leading_spaces = 0
         while sep and sep[0] == ' ':
@@ -195,7 +211,7 @@ class TabBar:
         else:
             self.draw_func = draw_tab_with_fade
 
-    def patch_colors(self, spec):
+    def patch_colors(self, spec: Dict[str, Any]) -> None:
         if 'active_tab_foreground' in spec:
             self.active_fg = (spec['active_tab_foreground'] << 8) | 2
         if 'active_tab_background' in spec:
@@ -212,7 +228,7 @@ class TabBar:
                 spec.get('inactive_tab_background', color_as_int(self.opts.inactive_tab_background))
         )
 
-    def layout(self):
+    def layout(self) -> None:
         central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
         if tab_bar.width < 2:
             return
@@ -233,7 +249,7 @@ class TabBar:
         self.screen_geometry = sg = calculate_gl_geometry(g, vw, vh, cell_width, cell_height)
         set_tab_bar_render_data(self.os_window_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
 
-    def update(self, data):
+    def update(self, data: Sequence[TabBarData]) -> None:
         if not self.laid_out_once:
             return
         s = self.screen
@@ -260,11 +276,11 @@ class TabBar:
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.cell_ranges = cr
 
-    def destroy(self):
+    def destroy(self) -> None:
         self.screen.reset_callbacks()
         del self.screen
 
-    def tab_at(self, x):
+    def tab_at(self, x: int) -> Optional[int]:
         x = (x - self.window_geometry.left) // self.cell_width
         for i, (a, b) in enumerate(self.cell_ranges):
             if a <= x <= b:

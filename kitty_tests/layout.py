@@ -73,7 +73,7 @@ class TestLayout(BaseTest):
         check_visible()
         # Test nth_window
         for i in range(len(windows)):
-            active_window_idx = q.nth_window(windows, i)
+            active_window_idx = q.activate_nth_window(windows, i)
             self.ae(active_window_idx, i)
             expect_ids(*range(1, len(windows)+1))
             check_visible()
@@ -145,7 +145,7 @@ class TestLayout(BaseTest):
         visible_windows = [w for w in windows if w.overlay_window_id is None]
         # Test nth_window
         for i in range(len(visible_windows)):
-            active_window_idx = q.nth_window(windows, i)
+            active_window_idx = q.activate_nth_window(windows, i)
             self.ae(active_window_idx, aidx(i))
             expect_ids(1, 6, 3, 4, 5, 2, 7)
             check_visible()

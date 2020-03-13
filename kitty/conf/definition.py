@@ -332,9 +332,9 @@ def as_type_stub(
         ans.insert(0, 'import {}'.format(mod))
     for field_name, type_def in extra_fields:
         ans.append('    {}: {}'.format(field_name, type_def))
-    ans.append('    def __iter__(self): pass')
-    ans.append('    def __len__(self): pass')
-    ans.append('    def _replace(self, **kw) -> {}: pass'.format(class_name))
+    ans.append('    def __iter__(self) -> None: pass')
+    ans.append('    def __len__(self) -> int: pass')
+    ans.append('    def _replace(self, **kw: typing.Any) -> {}: pass'.format(class_name))
     return '\n'.join(ans) + '\n\n\n'
 
 
