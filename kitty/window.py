@@ -9,10 +9,9 @@ import weakref
 from collections import deque
 from enum import IntEnum
 from itertools import chain
-from re import Pattern
 from typing import (
-    TYPE_CHECKING, Any, Callable, Deque, Dict, List, Optional, Sequence, Tuple,
-    Union
+    TYPE_CHECKING, Any, Callable, Deque, Dict, List, Optional, Pattern,
+    Sequence, Tuple, Union
 )
 
 from .child import ProcessDesc
@@ -48,7 +47,7 @@ if TYPE_CHECKING:
 else:
     TypedDict = dict
 
-MatchPatternType = Union[Pattern, Tuple[Pattern, Optional[Pattern]]]
+MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
 
 
 class WindowDict(TypedDict):
@@ -253,6 +252,8 @@ class Window:
         return self.screen.color_profile.as_dict()
 
     def matches(self, field: str, pat: MatchPatternType) -> bool:
+        if not pat:
+            return False
         if field == 'env':
             assert isinstance(pat, tuple)
             key_pat, val_pat = pat
@@ -260,8 +261,9 @@ class Window:
                 if key_pat.search(key) is not None and (
                         val_pat is None or val_pat.search(val) is not None):
                     return True
+            return False
+        assert not isinstance(pat, tuple)
 
-        assert isinstance(pat, Pattern)
         if field == 'id':
             return True if pat.pattern == str(self.id) else False
         if field == 'pid':
