@@ -31,8 +31,8 @@ class DrawData(NamedTuple):
     bell_fg: int
     alpha: Sequence[float]
     active_fg: Color
-    inactive_fg: Color
     active_bg: Color
+    inactive_fg: Color
     inactive_bg: Color
     default_bg: Color
     title_template: str
