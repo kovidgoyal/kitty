@@ -334,6 +334,7 @@ def as_type_stub(
         ans.append('    {}: {}'.format(field_name, type_def))
     ans.append('    def __iter__(self) -> typing.Iterator[str]: pass')
     ans.append('    def __len__(self) -> int: pass')
+    ans.append('    def __getitem__(self, k: typing.Union[int, str]) -> typing.Any: pass')
     ans.append('    def _replace(self, **kw: typing.Any) -> {}: pass'.format(class_name))
     return '\n'.join(ans) + '\n\n\n'
 

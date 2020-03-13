@@ -1026,6 +1026,15 @@ class Screen:
     as_text_non_visual = as_text
     as_text_alternate = as_text
 
+    def scroll_until_cursor(self) -> None:
+        pass
+
+    def reset(self) -> None:
+        pass
+
+    def erase_in_display(self, how: int = 0, private: bool = False) -> None:
+        pass
+
 
 def set_tab_bar_render_data(
     os_window_id: int, xstart: float, ystart: float, dx: float, dy: float,

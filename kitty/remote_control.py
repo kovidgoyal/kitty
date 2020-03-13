@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from .window import Window  # noqa
 
 
-def handle_cmd(boss: 'Boss', window: 'Window', serialized_cmd: str) -> Optional[Dict[str, Any]]:
+def handle_cmd(boss: 'Boss', window: Optional['Window'], serialized_cmd: str) -> Optional[Dict[str, Any]]:
     cmd = json.loads(serialized_cmd)
     v = cmd['version']
     no_response = cmd.get('no_response', False)

@@ -17,7 +17,7 @@ from .utils import log_error, open_url
 
 CHANGELOG_URL = 'https://sw.kovidgoyal.net/kitty/changelog.html'
 RELEASED_VERSION_URL = 'https://sw.kovidgoyal.net/kitty/current-version.txt'
-CHECK_INTERVAL = 24 * 60 * 60
+CHECK_INTERVAL = 24 * 60 * 60.
 
 
 class Notification(NamedTuple):
@@ -123,6 +123,6 @@ def update_check(timer_id: Optional[int] = None) -> bool:
     return True
 
 
-def run_update_check(interval: int = CHECK_INTERVAL) -> None:
+def run_update_check(interval: float = CHECK_INTERVAL) -> None:
     if update_check():
         add_timer(update_check, interval)

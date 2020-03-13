@@ -159,12 +159,15 @@ def get_env(opts: LaunchCLIOptions, active_child: Child) -> Dict[str, str]:
     return env
 
 
-def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab] = None) -> Tab:
+def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab] = None) -> Optional[Tab]:
     if opts.type == 'tab':
         tm = boss.active_tab_manager
-        tab: Tab = tm.new_tab(empty_tab=True, location=opts.location)
-        if opts.tab_title:
-            tab.set_title(opts.tab_title)
+        if tm:
+            tab: Optional[Tab] = tm.new_tab(empty_tab=True, location=opts.location)
+            if opts.tab_title and tab:
+                tab.set_title(opts.tab_title)
+        else:
+            tab = None
     elif opts.type == 'os-window':
         oswid = boss.add_os_window()
         tm = boss.os_window_map[oswid]
@@ -252,8 +255,9 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
             func(kw['stdin'])
     else:
         tab = tab_for_window(boss, opts, target_tab)
-        new_window: Window = tab.new_window(env=env or None, **kw)
-        if opts.keep_focus and active:
-            boss.set_active_window(active, switch_os_window_if_needed=True)
-        return new_window
+        if tab:
+            new_window: Window = tab.new_window(env=env or None, **kw)
+            if opts.keep_focus and active:
+                boss.set_active_window(active, switch_os_window_if_needed=True)
+            return new_window
     return None
