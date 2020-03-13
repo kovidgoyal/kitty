@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from itertools import chain
-from typing import TYPE_CHECKING, Optional, Sequence, Tuple
+from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple
 
 from .constants import WindowGeometry
 from .fast_data_types import (
@@ -63,7 +63,7 @@ class Borders:
 
     def __call__(
         self,
-        windows: Sequence['Window'],
+        windows: List['Window'],
         active_window: Optional['Window'],
         current_layout: 'Layout',
         extra_blank_rects: Sequence[Tuple[int, int, int, int]],

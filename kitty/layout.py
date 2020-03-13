@@ -546,21 +546,21 @@ class Layout:  # {{{
     def neighbors_for_window(self, window: Window, windows: WindowList) -> InternalNeighborsMap:
         return {'left': [], 'right': [], 'top': [], 'bottom': []}
 
-    def compute_needs_borders_map(self, windows: WindowList, active_window: Window) -> Dict[int, bool]:
+    def compute_needs_borders_map(self, windows: WindowList, active_window: Optional[Window]) -> Dict[int, bool]:
         return {w.id: ((w is active_window and draw_active_borders) or w.needs_attention) for w in windows}
 
-    def resolve_borders(self, windows: WindowList, active_window: Window) -> Generator[Borders, None, None]:
+    def resolve_borders(self, windows: WindowList, active_window: Optional[Window]) -> Generator[Borders, None, None]:
         if draw_minimal_borders:
             needs_borders_map = self.compute_needs_borders_map(windows, active_window)
             yield from self.minimal_borders(windows, active_window, needs_borders_map)
         else:
             yield from Layout.minimal_borders(self, windows, active_window, {})
 
-    def window_independent_borders(self, windows: WindowList, active_windows: WindowList) -> Generator[Tuple[int, int, int, int], None, None]:
+    def window_independent_borders(self, windows: WindowList, active_window: Optional[Window] = None) -> Generator[Tuple[int, int, int, int], None, None]:
         return
         yield (0, 0, 0, 0)  # type: ignore
 
-    def minimal_borders(self, windows: WindowList, active_window: Window, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+    def minimal_borders(self, windows: WindowList, active_window: Optional[Window], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         for w in windows:
             if (w is active_window and draw_active_borders) or w.needs_attention:
                 yield all_borders
@@ -716,7 +716,7 @@ class Tall(Layout):
     def neighbors_for_window(self, window: Window, windows: WindowList) -> InternalNeighborsMap:
         return neighbors_for_tall_window(self.num_full_size_windows, window, windows)
 
-    def minimal_borders(self, windows: WindowList, active_window: Window, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+    def minimal_borders(self, windows: WindowList, active_window: Optional[Window], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
             if needs_borders_map[w.id]:
@@ -925,7 +925,7 @@ class Grid(Layout):
         for i in range(ncols - 1):
             self.between_blank_rect(win_col_map[i][0], win_col_map[i + 1][0])
 
-    def minimal_borders(self, windows: WindowList, active_window: Window, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+    def minimal_borders(self, windows: WindowList, active_window: Optional[Window], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         n = len(windows)
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
         blank_row: List[Optional[int]] = [None for i in range(ncols)]
@@ -1051,7 +1051,7 @@ class Vertical(Layout):  # {{{
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
 
-    def minimal_borders(self, windows: WindowList, active_window: Window, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+    def minimal_borders(self, windows: WindowList, active_window: Optional[Window], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
             if needs_borders_map[w.id]:
@@ -1490,7 +1490,7 @@ class Splits(Layout):
             pair.bias = 0.5
         return True
 
-    def window_independent_borders(self, windows: WindowList, active_windows: WindowList) -> Generator[Tuple[int, int, int, int], None, None]:
+    def window_independent_borders(self, windows: WindowList, active_window: Optional[Window] = None) -> Generator[Tuple[int, int, int, int], None, None]:
         if not draw_minimal_borders:
             return
         for pair in self.pairs_root.self_and_descendants():
