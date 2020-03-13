@@ -2,14 +2,14 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from kitty.fast_data_types import focus_os_window
 from kitty.tabs import SpecialWindow
 
 from .base import (
-    MATCH_TAB_OPTION, ArgsType, Boss, MatchError, PayloadGetType, PayloadType,
-    RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
+    RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -86,36 +86,29 @@ the id of the new window will not be printed out.
                 'window_type': opts.window_type, 'no_response': opts.no_response,
                 'keep_focus': opts.keep_focus, 'args': args or []}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         w = SpecialWindow(cmd=payload_get('args') or None, override_title=payload_get('title'), cwd=payload_get('cwd'))
         old_window = boss.active_window
         if payload_get('new_tab'):
             boss._new_tab(w)
             tab = boss.active_tab
-            if payload_get('tab_title'):
+            if payload_get('tab_title') and tab:
                 tab.set_title(payload_get('tab_title'))
-            wid = boss.active_window.id
+            aw = boss.active_window
             if payload_get('keep_focus') and old_window:
                 boss.set_active_window(old_window)
-            return None if payload_get('no_response') else str(wid)
+            return None if not aw or payload_get('no_response') else str(aw.id)
 
         if payload_get('window_type') == 'os':
             boss._new_os_window(w)
-            wid = boss.active_window.id
+            aw = boss.active_window
             if payload_get('keep_focus') and old_window:
                 os_window_id = boss.set_active_window(old_window)
                 if os_window_id:
                     focus_os_window(os_window_id)
-            return None if payload_get('no_response') else str(wid)
+            return None if not aw or payload_get('no_response') else str(aw.id)
 
-        match = payload_get('match')
-        if match:
-            tabs = list(boss.match_tabs(match))
-            if not tabs:
-                raise MatchError(match, 'tabs')
-        else:
-            tabs = [boss.active_tab]
-        tab = tabs[0]
+        tab = self.tabs_for_match_payload(boss, window, payload_get)[0]
         ans = tab.new_special_window(w)
         if payload_get('keep_focus') and old_window:
             boss.set_active_window(old_window)

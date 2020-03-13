@@ -12,8 +12,7 @@ from kitty.rgb import Color, color_as_int
 
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window,
-    windows_for_payload
+    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -84,8 +83,8 @@ this option, any color arguments are ignored and --configured and --all are impl
         del ans['dummy']
         return ans
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
-        windows = windows_for_payload(boss, window, payload_get)
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        windows = self.windows_for_payload(boss, window, payload_get)
         colors = payload_get('colors')
         cursor_text_color = payload_get('cursor_text_color') or False
         if payload_get('reset'):

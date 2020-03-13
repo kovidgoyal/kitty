@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from kitty.launch import (
     LaunchCLIOptions, launch as do_launch, options_spec as launch_options_spec,
@@ -11,7 +11,7 @@ from kitty.launch import (
 )
 
 from .base import (
-    MATCH_TAB_OPTION, ArgsType, Boss, MatchError, PayloadGetType, PayloadType,
+    MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
     RCOptions, RemoteCommand, ResponseType, Window
 )
 
@@ -70,7 +70,7 @@ instead of the active tab
             ans[attr] = val
         return ans
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         default_opts = parse_launch_args()[0]
         opts = LaunchCLIOptions()
         for key, default_value in default_opts.__dict__.items():
@@ -78,16 +78,7 @@ instead of the active tab
             if val is None:
                 val = default_value
             setattr(opts, key, val)
-        match = payload_get('match')
-        if match:
-            tabs = list(boss.match_tabs(match))
-            if not tabs:
-                raise MatchError(match, 'tabs')
-        else:
-            tabs = [boss.active_tab]
-            if payload_get('self') and window and window.tabref():
-                tabs = [window.tabref()]
-        tab = tabs[0]
+        tab = self.tabs_for_match_payload(boss, window, payload_get)[0]
         w = do_launch(boss, opts, payload_get('args') or [], target_tab=tab)
         return None if payload_get('no_response') else str(getattr(w, 'id', 0))
 

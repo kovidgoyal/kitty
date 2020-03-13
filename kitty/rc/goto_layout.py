@@ -2,11 +2,11 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .base import (
-    MATCH_TAB_OPTION, ArgsType, Boss, MatchError, PayloadGetType, PayloadType,
-    RCOptions, RemoteCommand, ResponseType, UnknownLayout, Window
+    MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
+    RemoteCommand, ResponseType, UnknownLayout, Window
 )
 
 if TYPE_CHECKING:
@@ -34,17 +34,8 @@ class GotoLayout(RemoteCommand):
         except IndexError:
             raise self.fatal('No layout specified')
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
-        match = payload_get('match')
-        if match:
-            if match == 'all':
-                tabs = tuple(boss.all_tabs)
-            else:
-                tabs = tuple(boss.match_tabs(match))
-            if not tabs:
-                raise MatchError(match, 'tabs')
-        else:
-            tabs = tuple(boss.tab_for_window(window) if window else boss.active_tab)
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        tabs = self.tabs_for_match_payload(boss, window, payload_get)
         for tab in tabs:
             if tab:
                 try:

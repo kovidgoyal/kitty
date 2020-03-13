@@ -2,12 +2,12 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from kitty.config import parse_marker_spec
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
+    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType,
     PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 )
 
@@ -41,17 +41,9 @@ If specified apply marker to the window this command is run in, rather than the 
         parse_marker_spec(args[0], args[1:])
         return {'match': opts.match, 'self': opts.self, 'marker_spec': args}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
-        match = payload_get('match')
-        if match:
-            windows = tuple(boss.match_windows(match))
-            if not windows:
-                raise MatchError(match)
-        else:
-            windows = tuple(window if window and payload_get('self') else boss.active_window)
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         args = payload_get('marker_spec')
-
-        for window in windows:
+        for window in self.windows_for_match_payload(boss, window, payload_get):
             window.set_marker(args)
 
 

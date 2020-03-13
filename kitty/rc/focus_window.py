@@ -3,13 +3,13 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from kitty.fast_data_types import focus_os_window
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
+    RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -37,14 +37,8 @@ the command will exit with a success code.
             global_opts.no_command_response = True
         return {'match': opts.match, 'no_response': opts.no_response}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
-        windows = [window or boss.active_window]
-        match = payload_get('match')
-        if match:
-            windows = [boss.match_windows(match)]
-            if not windows:
-                raise MatchError(match)
-        for window in windows:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
                 os_window_id = boss.set_active_window(window)
                 if os_window_id:

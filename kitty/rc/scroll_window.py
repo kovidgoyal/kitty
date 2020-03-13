@@ -45,7 +45,7 @@ class ScrollWindow(RemoteCommand):
 
         return {'match': opts.match, 'amount': amount}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         windows = [window or boss.active_window]
         match = payload_get('match')
         amt = payload_get('amount')

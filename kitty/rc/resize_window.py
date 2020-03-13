@@ -2,10 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
+    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType,
     PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 )
 
@@ -53,14 +53,8 @@ If specified resize the window this command is run in, rather than the active wi
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'increment': opts.increment, 'axis': opts.axis, 'self': opts.self}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
-        match = payload_get('match')
-        if match:
-            windows = list(boss.match_windows(match))
-            if not windows:
-                raise MatchError(match)
-        else:
-            windows = [window if window and payload_get('self') else boss.active_window]
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        windows = self.windows_for_match_payload(boss, window, payload_get)
         resized = False
         if windows and windows[0]:
             resized = boss.resize_layout_window(

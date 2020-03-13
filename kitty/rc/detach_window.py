@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional, Union
 
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError,
@@ -38,27 +38,20 @@ If specified detach the window this command is run in, rather than the active wi
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'target': opts.target_tab, 'self': opts.self}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
-        match = payload_get('match')
-        if match:
-            windows = tuple(boss.match_windows(match))
-            if not windows:
-                raise MatchError(match)
-        else:
-            windows = tuple(window if window and payload_get('self') else boss.active_window)
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        windows = self.windows_for_match_payload(boss, window, payload_get)
         match = payload_get('target_tab')
-        kwargs = {}
+        target_tab_id: Optional[Union[str, int]] = None
+        newval: Union[str, int] = 'new'
         if match:
             if match == 'new':
-                kwargs['target_tab_id'] = 'new'
+                target_tab_id = newval
             else:
                 tabs = tuple(boss.match_tabs(match))
                 if not tabs:
                     raise MatchError(match, 'tabs')
-                kwargs['target_tab_id'] = tabs[0].id
-        if not kwargs:
-            kwargs['target_os_window_id'] = 'new'
-
+                target_tab_id = tabs[0].id
+        kwargs = {'target_os_window_id': newval} if target_tab_id is None else {'target_tab_id': target_tab_id}
         for window in windows:
             boss._move_window_to(window=window, **kwargs)
 

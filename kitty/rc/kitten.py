@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .base import (
     MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
@@ -36,7 +36,7 @@ class Kitten(RemoteCommand):
             self.fatal('Must specify kitten name')
         return {'match': opts.match, 'args': list(args)[1:], 'kitten': args[0]}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         windows = [window or boss.active_window]
         match = payload_get('match')
         if match:

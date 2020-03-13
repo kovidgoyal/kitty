@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .base import (
     ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand,
@@ -45,7 +45,7 @@ this option will cause it to be changed in all OS windows.
         inc = fs[0] if fs and fs[0] in '+-' else None
         return {'size': abs(float(fs)), 'all': opts.all, 'increment_op': inc}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         boss.change_font_size(
             payload_get('all'),
             payload_get('increment_op'), payload_get('size'))

@@ -2,14 +2,14 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from kitty.rgb import Color, color_as_sharp, color_from_int
 from kitty.utils import natsort_ints
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
+    RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -39,14 +39,10 @@ configured colors.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'configured': opts.configured, 'match': opts.match}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         ans = {k: getattr(boss.opts, k) for k in boss.opts if isinstance(getattr(boss.opts, k), Color)}
         if not payload_get('configured'):
-            windows = [window or boss.active_window]
-            if payload_get('match'):
-                windows = list(boss.match_windows(payload_get('match')))
-                if not windows:
-                    raise MatchError(payload_get('match'))
+            windows = self.windows_for_match_payload(boss, window, payload_get)
             ans.update({k: color_from_int(v) for k, v in windows[0].current_colors.items()})
         all_keys = natsort_ints(ans)
         maxlen = max(map(len, all_keys))

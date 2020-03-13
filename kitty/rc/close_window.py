@@ -3,11 +3,11 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
+    RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -31,15 +31,8 @@ If specified close the window this command is run in, rather than the active win
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'self': opts.self}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
-        match = payload_get('match')
-        if match:
-            windows = list(boss.match_windows(match))
-            if not windows:
-                raise MatchError(match)
-        else:
-            windows = [window if window and payload_get('self') else boss.active_window]
-        for window in windows:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
                 boss.close_window(window)
 

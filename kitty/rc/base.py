@@ -15,9 +15,10 @@ from kitty.constants import appname, running_in_kitty
 if TYPE_CHECKING:
     from kitty.boss import Boss
     from kitty.window import Window
-    Boss, Window
+    from kitty.tabs import Tab
+    Boss, Window, Tab
 else:
-    Boss = Window = None
+    Boss = Window = Tab = None
 
 
 class NoResponse:
@@ -90,24 +91,6 @@ for that window is used.
 '''
 
 
-def windows_for_payload(boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> Tuple['Window', ...]:
-    if payload_get('all'):
-        windows = tuple(boss.all_windows)
-    else:
-        windows = (window or boss.active_window,)
-        if payload_get('match_window'):
-            windows = tuple(boss.match_windows(payload_get('match_window')))
-            if not windows:
-                raise MatchError(payload_get('match_window'))
-        if payload_get('match_tab'):
-            tabs = tuple(boss.match_tabs(payload_get('match_tab')))
-            if not tabs:
-                raise MatchError(payload_get('match_tab'), 'tabs')
-            for tab in tabs:
-                windows += tuple(tab)
-    return windows
-
-
 class RemoteCommand:
 
     name: str = ''
@@ -139,10 +122,61 @@ class RemoteCommand:
             return self.defaults.get(name, missing)
         return missing
 
+    def windows_for_match_payload(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> List['Window']:
+        if payload_get('all'):
+            windows = list(boss.all_windows)
+        else:
+            if payload_get('self') in (None, True):
+                window = window or boss.active_window
+            else:
+                window = boss.active_window or window
+            windows = [window] if window else []
+            if payload_get('match'):
+                windows = list(boss.match_windows(payload_get('match')))
+                if not windows:
+                    raise MatchError(payload_get('match'))
+        return windows
+
+    def tabs_for_match_payload(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> List['Tab']:
+        if payload_get('all'):
+            return list(boss.all_tabs)
+        match = payload_get('match')
+        if match:
+            tabs = list(boss.match_tabs(match))
+            if not tabs:
+                raise MatchError(match, 'tabs')
+            return tabs
+        if window and payload_get('self') in (None, True):
+            q = boss.tab_for_window(window)
+            if q:
+                return [q]
+        t = boss.active_tab
+        if t:
+            return [t]
+        return []
+
+    def windows_for_payload(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> List['Window']:
+        if payload_get('all'):
+            windows = list(boss.all_windows)
+        else:
+            window = window or boss.active_window
+            windows = [window] if window else []
+            if payload_get('match_window'):
+                windows = list(boss.match_windows(payload_get('match_window')))
+                if not windows:
+                    raise MatchError(payload_get('match_window'))
+            if payload_get('match_tab'):
+                tabs = tuple(boss.match_tabs(payload_get('match_tab')))
+                if not tabs:
+                    raise MatchError(payload_get('match_tab'), 'tabs')
+                for tab in tabs:
+                    windows += list(tab)
+        return windows
+
     def message_to_kitty(self, global_opts: RCOptions, opts: Any, args: ArgsType) -> PayloadType:
         raise NotImplementedError()
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> ResponseType:
         raise NotImplementedError()
 
 

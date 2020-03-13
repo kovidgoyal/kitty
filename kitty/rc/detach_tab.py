@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .base import (
     MATCH_TAB_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
@@ -36,15 +36,18 @@ If specified detach the tab this command is run in, rather than the active tab.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'match': opts.match, 'target': opts.target_tab, 'self': opts.self}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         match = payload_get('match')
         if match:
-            tabs = tuple(boss.match_tabs(match))
+            tabs = list(boss.match_tabs(match))
             if not tabs:
                 raise MatchError(match)
         else:
-            tab = window.tabref()
-            tabs = tuple(tab if payload_get('self') and window and tab else boss.active_tab)
+            if payload_get('self') and window:
+                tab = window.tabref() or boss.active_tab
+            else:
+                tab = boss.active_tab
+            tabs = [tab] if tab else []
         match = payload_get('target_tab')
         kwargs = {}
         if match:

@@ -5,7 +5,7 @@
 import base64
 import os
 import sys
-from typing import TYPE_CHECKING, Dict, Generator
+from typing import TYPE_CHECKING, Dict, Generator, Optional
 
 from kitty.config import parse_send_text_bytes
 
@@ -108,7 +108,7 @@ are sent as is, not interpreted for escapes.
                 yield from src
         return chain()
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         windows = [boss.active_window]
         match = payload_get('match')
         if match:

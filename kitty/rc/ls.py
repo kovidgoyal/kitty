@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
-from typing import Any
+from typing import Any, Optional
 
 from kitty.constants import appname
 
@@ -32,7 +32,7 @@ class LS(RemoteCommand):
     def message_to_kitty(self, global_opts: RCOptions, opts: Any, args: ArgsType) -> PayloadType:
         pass
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         data = list(boss.list_os_windows())
         return json.dumps(data, indent=2, sort_keys=True)
 

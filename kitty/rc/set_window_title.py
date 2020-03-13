@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .base import (
     MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError, PayloadGetType,
@@ -40,7 +40,7 @@ want to allow other programs to change it afterwards, use this option.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         return {'title': ' '.join(args), 'match': opts.match, 'temporary': opts.temporary}
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         windows = [window or boss.active_window]
         match = payload_get('match')
         if match:

@@ -3,12 +3,12 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, OpacityError,
     PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType,
-    Window, windows_for_payload
+    Window
 )
 
 if TYPE_CHECKING:
@@ -47,10 +47,10 @@ cause colors to be changed in all windows.
                 'all': opts.all, 'match_tab': opts.match_tab
         }
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         if not boss.opts.dynamic_background_opacity:
             raise OpacityError('You must turn on the dynamic_background_opacity option in kitty.conf to be able to set background opacity')
-        windows = windows_for_payload(boss, window, payload_get)
+        windows = self.windows_for_payload(boss, window, payload_get)
         for os_window_id in {w.os_window_id for w in windows}:
             boss._set_os_window_background_opacity(os_window_id, payload_get('opacity'))
 

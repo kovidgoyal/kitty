@@ -3,12 +3,11 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Optional
 
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window,
-    windows_for_payload
+    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -51,8 +50,8 @@ cause ligatures to be changed in all windows.
             'all': opts.all,
         }
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
-        windows = windows_for_payload(boss, window, payload_get)
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        windows = self.windows_for_payload(boss, window, payload_get)
         boss.disable_ligatures_in(windows, payload_get('strategy'))
 # }}}
 

@@ -10,8 +10,7 @@ from uuid import uuid4
 
 from .base import (
     MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
-    RCOptions, RemoteCommand, ResponseType, Window,
-    windows_for_payload
+    RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -90,7 +89,7 @@ How the image should be displayed. The value of configured will use the configur
             yield ret
         return file_pipe(path)
 
-    def response_from_kitty(self, boss: 'Boss', window: 'Window', payload_get: PayloadGetType) -> ResponseType:
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         data = payload_get('data')
         if data != '-':
             img_id = payload_get('img_id')
@@ -102,7 +101,7 @@ How the image should be displayed. The value of configured will use the configur
                 set_background_image.current_file_obj.write(standard_b64decode(data))
                 return None
 
-        windows = windows_for_payload(boss, window, payload_get)
+        windows = self.windows_for_payload(boss, window, payload_get)
         os_windows = tuple({w.os_window_id for w in windows})
         layout = payload_get('layout')
         if data == '-':
