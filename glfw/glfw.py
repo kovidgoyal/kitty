@@ -6,18 +6,54 @@ import json
 import os
 import re
 import sys
+from typing import Callable, List, Optional, Tuple
 
 _plat = sys.platform.lower()
 is_linux = 'linux' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
-def wayland_protocol_file_name(base, ext='c'):
+class Env:
+
+    cc: str = ''
+    cppflags: List[str] = []
+    cflags: List[str] = []
+    ldflags: List[str] = []
+    ldpaths: List[str] = []
+    ccver: Tuple[int, int]
+
+    # glfw stuff
+    all_headers: List[str] = []
+    sources: List[str] = []
+    wayland_packagedir: str = ''
+    wayland_scanner: str = ''
+    wayland_scanner_code: str = ''
+    wayland_protocols: Tuple[str, ...] = ()
+
+    def __init__(
+        self, cc: str = '', cppflags: List[str] = [], cflags: List[str] = [], ldflags: List[str] = [],
+        ldpaths: Optional[List[str]] = None, ccver: Tuple[int, int] = (0, 0)
+    ):
+        self.cc, self.cppflags, self.cflags, self.ldflags, self.ldpaths = cc, cppflags, cflags, ldflags, [] if ldpaths is None else ldpaths
+        self.ccver = ccver
+
+    def copy(self) -> 'Env':
+        ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), list(self.ldpaths), self.ccver)
+        ans.all_headers = list(self.all_headers)
+        ans.sources = list(self.sources)
+        ans.wayland_packagedir = self.wayland_packagedir
+        ans.wayland_scanner = self.wayland_scanner
+        ans.wayland_scanner_code = self.wayland_scanner_code
+        ans.wayland_protocols = self.wayland_protocols
+        return ans
+
+
+def wayland_protocol_file_name(base: str, ext: str = 'c') -> str:
     base = os.path.basename(base).rpartition('.')[0]
     return 'wayland-{}-client-protocol.{}'.format(base, ext)
 
 
-def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
+def init_env(env: Env, pkg_config: Callable, at_least_version: Callable, test_compile: Callable, module: str = 'x11') -> Env:
     ans = env.copy()
     ans.cflags.append('-fpic')
     ans.cppflags.append('-D_GLFW_' + module.upper())
@@ -74,7 +110,7 @@ def init_env(env, pkg_config, at_least_version, test_compile, module='x11'):
     return ans
 
 
-def build_wayland_protocols(env, Command, parallel_run, emphasis, newer, dest_dir):
+def build_wayland_protocols(env: Env, Command: Callable, parallel_run: Callable, emphasis: Callable, newer: Callable, dest_dir: str) -> None:
     items = []
     for protocol in env.wayland_protocols:
         src = os.path.join(env.wayland_packagedir, protocol)
@@ -95,7 +131,7 @@ def build_wayland_protocols(env, Command, parallel_run, emphasis, newer, dest_di
 
 class Arg:
 
-    def __init__(self, decl):
+    def __init__(self, decl: str):
         self.type, self.name = decl.rsplit(' ', 1)
         self.type = self.type.strip()
         self.name = self.name.strip()
@@ -103,13 +139,13 @@ class Arg:
             self.name = self.name[1:]
             self.type = self.type + '*'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Arg({}, {})'.format(self.type, self.name)
 
 
 class Function:
 
-    def __init__(self, declaration, check_fail=True):
+    def __init__(self, declaration: str, check_fail: bool = True):
         self.check_fail = check_fail
         m = re.match(
             r'(.+?)\s+(glfw[A-Z][a-zA-Z0-9]+)[(](.+)[)]$', declaration
@@ -128,14 +164,14 @@ class Function:
         if not self.args:
             self.args = [Arg('void v')]
 
-    def declaration(self):
+    def declaration(self) -> str:
         return 'typedef {restype} (*{name}_func)({args});\n{name}_func {name}_impl;\n#define {name} {name}_impl'.format(
             restype=self.restype,
             name=self.name,
             args=', '.join(a.type for a in self.args)
         )
 
-    def load(self):
+    def load(self) -> str:
         ans = '*(void **) (&{name}_impl) = dlsym(handle, "{name}");'.format(
             name=self.name
         )
@@ -146,7 +182,7 @@ class Function:
         return ans
 
 
-def generate_wrappers(glfw_header):
+def generate_wrappers(glfw_header: str) -> None:
     with open(glfw_header) as f:
         src = f.read()
     functions = []
@@ -244,7 +280,7 @@ unload_glfw(void) {
         f.write(code)
 
 
-def main():
+def main() -> None:
     os.chdir(os.path.dirname(os.path.abspath(__file__)))
     generate_wrappers('glfw3.h')
 
