@@ -652,8 +652,8 @@ class Window:
             set_clipboard_string(text)
         else:
             mode = keyboard_mode_name(self.screen)
-            text = extended_key_event(defines.GLFW_KEY_C, defines.GLFW_MOD_CONTROL, defines.GLFW_PRESS) if mode == 'kitty' else b'\x03'
-            self.write_to_child(text)
+            data = extended_key_event(defines.GLFW_KEY_C, defines.GLFW_MOD_CONTROL, defines.GLFW_PRESS) if mode == 'kitty' else b'\x03'
+            self.write_to_child(data)
 
     def copy_and_clear_or_interrupt(self) -> None:
         self.copy_or_interrupt()

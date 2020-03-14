@@ -31,7 +31,7 @@ mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
 
 def parse_mods(parts: Iterable[str], sc: str) -> Optional[int]:
 
-    def map_mod(m):
+    def map_mod(m: str) -> str:
         return mod_map.get(m, m)
 
     mods = 0

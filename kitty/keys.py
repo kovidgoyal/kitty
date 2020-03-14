@@ -3,13 +3,19 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
-from typing import Dict, Optional, Tuple, Union, overload
+from typing import (
+    TYPE_CHECKING, Any, Callable, Dict, Iterable, Optional, Tuple, Union
+)
 
 from . import fast_data_types as defines
-from .config import KeyAction, KeyMap, SequenceMap, SubSequenceMap
+from .config import KeyAction, KeyMap, KeySpec, SequenceMap, SubSequenceMap
 from .key_encoding import KEY_MAP
 from .terminfo import key_as_bytes, modify_key_bytes
 from .utils import base64_encode
+
+if TYPE_CHECKING:
+    from .fast_data_types import Screen  # noqa
+    from .window import Window  # noqa
 
 
 def modify_complex_key(name: Union[str, bytes], amt: int) -> bytes:
@@ -62,7 +68,7 @@ ASCII_C0_SHIFTED = {
 control_shift_keys = {getattr(defines, 'GLFW_KEY_' + k): v for k, v in ASCII_C0_SHIFTED.items()}
 
 
-def create_modifier_variants(keycode, terminfo_name_or_bytes, add_shifted_key=True):
+def create_modifier_variants(keycode: int, terminfo_name_or_bytes: Union[str, bytes], add_shifted_key: bool = True) -> None:
     kn = terminfo_name_or_bytes
     smkx_key_map[keycode] = kn if isinstance(kn, bytes) else key_as_bytes(kn)
     if add_shifted_key:
@@ -143,7 +149,7 @@ rmkx_key_map.update({
 cursor_key_mode_map = {True: smkx_key_map, False: rmkx_key_map}
 
 
-def keyboard_mode_name(screen):
+def keyboard_mode_name(screen: 'Screen') -> str:
     if screen.extended_keyboard:
         return 'kitty'
     return 'application' if screen.cursor_key_mode else 'normal'
@@ -156,7 +162,7 @@ action_map = {
 }
 
 
-def extended_key_event(key, mods, action):
+def extended_key_event(key: int, mods: int, action: int) -> bytes:
     if key >= defines.GLFW_KEY_LAST or key == defines.GLFW_KEY_UNKNOWN or (
         # Shifted printable key should be handled by on_text_input()
         mods <= defines.GLFW_MOD_SHIFT and defines.GLFW_KEY_SPACE <= key <= defines.GLFW_KEY_LAST_PRINTABLE
@@ -187,13 +193,13 @@ def extended_key_event(key, mods, action):
     ).encode('ascii')
 
 
-def pmap(names, r):
-    names = names.split()
-    r = [x.encode('ascii') for x in r]
-    if len(names) != len(r):
+def pmap(names: str, r: Iterable[str]) -> Dict[int, bytes]:
+    snames = names.split()
+    b = [x.encode('ascii') for x in r]
+    if len(snames) != len(b):
         raise ValueError('Incorrect mapping for {}'.format(names))
-    names = [getattr(defines, 'GLFW_KEY_' + n) for n in names]
-    return dict(zip(names, r))
+    anames = [getattr(defines, 'GLFW_KEY_' + n) for n in snames]
+    return dict(zip(anames, b))
 
 
 UN_SHIFTED_PRINTABLE = {
@@ -229,7 +235,7 @@ CTRL_ALT_KEYS = {getattr(defines, 'GLFW_KEY_' + k) for k in string.ascii_upperca
 all_control_alt_keys = set(CTRL_ALT_KEYS) | set(control_alt_codes)
 
 
-def key_to_bytes(key, smkx, extended, mods, action):
+def key_to_bytes(key: int, smkx: bool, extended: bool, mods: int, action: int) -> bytes:
     if extended:
         return extended_key_event(key, mods, action)
     data = bytearray()
@@ -264,7 +270,7 @@ def key_to_bytes(key, smkx, extended, mods, action):
     return bytes(data)
 
 
-def interpret_key_event(key, native_key, mods, window, action):
+def interpret_key_event(key: int, native_key: int, mods: int, window: 'Window', action: int) -> bytes:
     screen = window.screen
     if (
             action == defines.GLFW_PRESS or
@@ -275,17 +281,7 @@ def interpret_key_event(key, native_key, mods, window, action):
     return b''
 
 
-@overload
-def get_shortcut(seqmap: SequenceMap, mods: int, key: int, native_key: int) -> Optional[SubSequenceMap]:
-    ...
-
-
-@overload
-def get_shortcut(keymap: KeyMap, mods: int, key: int, native_key: int) -> Optional[KeyAction]:
-    ...
-
-
-def get_shortcut(keymap, mods, key, native_key):
+def get_shortcut(keymap: Union[KeyMap, SequenceMap], mods: int, key: int, native_key: int) -> Optional[Union[KeyAction, SubSequenceMap]]:
     mods &= 0b1111
     ans = keymap.get((mods, False, key))
     if ans is None:
@@ -293,13 +289,13 @@ def get_shortcut(keymap, mods, key, native_key):
     return ans
 
 
-def shortcut_matches(s, mods, key, native_key):
+def shortcut_matches(s: KeySpec, mods: int, key: int, native_key: int) -> bool:
     mods &= 0b1111
     q = native_key if s[1] else key
-    return s[0] & 0b1111 == mods & 0b1111 and s[2] == q
+    return bool(s[0] & 0b1111 == mods & 0b1111 and s[2] == q)
 
 
-def generate_key_table_impl(w):
+def generate_key_table_impl(w: Callable) -> None:
     w('// auto-generated from keys.py, do not edit!')
     w('#pragma once')
     w('#include <stddef.h>')
@@ -311,7 +307,7 @@ def generate_key_table_impl(w):
     w('static const uint8_t key_map[%d] = {' % number_of_keys)
     key_count = 0
 
-    def key_name(k):
+    def key_name(k: str) -> str:
         return k[len('GLFW_KEY_'):]
 
     keys = {v: k for k, v in vars(defines).items() if k.startswith('GLFW_KEY_') and k not in {'GLFW_KEY_LAST', 'GLFW_KEY_LAST_PRINTABLE', 'GLFW_KEY_UNKNOWN'}}
@@ -337,7 +333,7 @@ def generate_key_table_impl(w):
     w('static inline const char*\nkey_lookup(uint8_t key, KeyboardMode mode, uint8_t mods, uint8_t action) {')
     i = 1
 
-    def ind(*a):
+    def ind(*a: Any) -> None:
         w(('  ' * i)[:-1], *a)
     ind('switch(mode) {')
     mmap = [(False, False), (True, False), (False, True)]
@@ -396,7 +392,7 @@ def generate_key_table_impl(w):
     w('}')
 
 
-def generate_key_table():
+def generate_key_table() -> None:
     # To run this, use: ./kitty/launcher/kitty +runpy "from kitty.keys import *; generate_key_table()"
     import os
     from functools import partial

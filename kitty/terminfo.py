@@ -19,7 +19,7 @@ def modify_key_bytes(keybytes: bytes, amt: int) -> bytes:
     raise ValueError('Unknown key type in key: {!r}'.format(keybytes))
 
 
-def encode_keystring(keybytes):
+def encode_keystring(keybytes: bytes) -> str:
     return keybytes.decode('ascii').replace('\033', r'\E')
 
 
@@ -420,7 +420,7 @@ if extra - no_termcap_for:
 del extra
 
 
-def generate_terminfo():
+def generate_terminfo() -> str:
     # Use ./build-terminfo to update definition files
     ans = ['|'.join(names)]
     ans.extend(sorted(bool_capabilities))
@@ -440,7 +440,7 @@ def key_as_bytes(name: str) -> bytes:
     return ans.encode('ascii')
 
 
-def get_capabilities(query_string):
+def get_capabilities(query_string: str) -> str:
     from .fast_data_types import ERROR_PREFIX
     ans = []
     try:

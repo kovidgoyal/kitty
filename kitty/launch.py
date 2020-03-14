@@ -253,9 +253,12 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
             raise ValueError('The cmd to run must be specified when running a background process')
         boss.run_background_process(cmd, cwd=kw['cwd'], cwd_from=kw['cwd_from'], env=env or None, stdin=kw['stdin'])
     elif opts.type in ('clipboard', 'primary'):
-        if kw.get('stdin') is not None:
-            func = set_clipboard_string if opts.type == 'clipboard' else set_primary_selection
-            func(kw['stdin'])
+        stdin = kw.get('stdin')
+        if stdin is not None:
+            if opts.type == 'clipboard':
+                set_clipboard_string(stdin)
+            else:
+                set_primary_selection(stdin)
     else:
         tab = tab_for_window(boss, opts, target_tab)
         if tab:

@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
-from typing import NamedTuple
+from typing import NamedTuple, Optional
 
 from . import fast_data_types as defines
 from .key_names import key_name_aliases
@@ -390,19 +390,19 @@ text_keys = (
 )
 
 
-def text_match(key):
+def text_match(key: str) -> Optional[str]:
     if key.upper() == 'SPACE':
         return ' '
     if key not in text_keys:
-        return
+        return None
     return key
 
 
 def encode(
-    integer,
-    chars=string.ascii_uppercase + string.ascii_lowercase + string.digits +
+    integer: int,
+    chars: str = string.ascii_uppercase + string.ascii_lowercase + string.digits +
     '.-:+=^!/*?&<>()[]{}@%$#'
-):
+) -> str:
     ans = ''
     d = len(chars)
     while True:
@@ -413,11 +413,11 @@ def encode(
     return ans
 
 
-def symbolic_name(glfw_name):
+def symbolic_name(glfw_name: str) -> str:
     return glfw_name[9:].replace('_', ' ')
 
 
-def update_encoding():
+def update_encoding() -> None:
     import re
     import subprocess
     keys = {a for a in dir(defines) if a.startswith('GLFW_KEY_')}
@@ -489,14 +489,14 @@ globals().update(key_defs)
 del key_name, enc
 
 
-def decode_key_event(text):
+def decode_key_event(text: str) -> KeyEvent:
     typ = type_map[text[1]]
     mods = mod_map[text[2]]
     key = key_rmap[text[3:5]]
     return KeyEvent(typ, mods, key)
 
 
-def encode_key_event(key_event):
+def encode_key_event(key_event: KeyEvent) -> str:
     typ = rtype_map[key_event.type]
     mods = rmod_map[key_event.mods]
     key = ENCODING[key_event.key.replace('_', ' ')]

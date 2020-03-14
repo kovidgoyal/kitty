@@ -15,7 +15,7 @@ pointer_to_uint = POINTER(c_uint)
 MarkerFunc = Callable[[str, int, int, int], Generator[None, None, None]]
 
 
-def get_output_variables(left_address, right_address, color_address):
+def get_output_variables(left_address: int, right_address: int, color_address: int) -> Tuple[c_uint, c_uint, c_uint]:
     return (
         cast(c_void_p(left_address), pointer_to_uint).contents,
         cast(c_void_p(right_address), pointer_to_uint).contents,

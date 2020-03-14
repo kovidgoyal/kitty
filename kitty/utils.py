@@ -14,8 +14,8 @@ from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
 from typing import (
-    Any, Dict, Generator, Iterable, List, NamedTuple, Optional, Tuple, Union,
-    cast
+    TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List,
+    NamedTuple, Optional, Tuple, Union, cast
 )
 
 from .constants import (
@@ -24,10 +24,15 @@ from .constants import (
 from .options_stub import Options
 from .rgb import Color, to_color
 
+if TYPE_CHECKING:
+    from subprocess import Popen  # noqa
+    from .fast_data_types import StartupCtx  # noqa
+    from socket import socket as Socket, AddressFamily  # noqa
+
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 
-def load_shaders(name):
+def load_shaders(name: str) -> Tuple[str, str]:
     from .fast_data_types import GLSL_VERSION
     with open(os.path.join(BASE, '{}_vertex.glsl'.format(name))) as f:
         vert = f.read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
@@ -36,31 +41,31 @@ def load_shaders(name):
     return vert, frag
 
 
-def safe_print(*a, **k):
+def safe_print(*a: Any, **k: Any) -> None:
     with suppress(Exception):
         print(*a, **k)
 
 
-def log_error(*a, **k):
+def log_error(*a: Any, **k: str) -> None:
     from .fast_data_types import log_error_string
     with suppress(Exception):
         msg = k.get('sep', ' ').join(map(str, a)) + k.get('end', '')
         log_error_string(msg.replace('\0', ''))
 
 
-def ceil_int(x):
+def ceil_int(x: float) -> int:
     return int(math.ceil(x))
 
 
-def sanitize_title(x):
+def sanitize_title(x: str) -> str:
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19\x80-\x9f]', '', x))
 
 
-def color_as_int(val):
+def color_as_int(val: Tuple[int, int, int]) -> int:
     return val[0] << 16 | val[1] << 8 | val[2]
 
 
-def color_from_int(val):
+def color_from_int(val: int) -> Color:
     return Color((val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF)
 
 
@@ -119,11 +124,11 @@ class ScreenSizeGetter:
 
 
 @lru_cache(maxsize=64)
-def screen_size_function(fd=None):
+def screen_size_function(fd: Optional[int] = None) -> ScreenSizeGetter:
     return ScreenSizeGetter(fd)
 
 
-def fit_image(width, height, pwidth, pheight):
+def fit_image(width: int, height: int, pwidth: int, pheight: int) -> Tuple[int, int]:
     from math import floor
     if height > pheight:
         corrf = pheight / float(height)
@@ -138,27 +143,25 @@ def fit_image(width, height, pwidth, pheight):
     return int(width), int(height)
 
 
-def set_primary_selection(text):
+def set_primary_selection(text: Union[str, bytes]) -> None:
     if not supports_primary_selection:
         return  # There is no primary selection
-    if isinstance(text, bytes):
-        text = text.decode('utf-8')
-    from kitty.fast_data_types import set_primary_selection
-    set_primary_selection(text)
+    from kitty.fast_data_types import set_primary_selection as s
+    s(text)
 
 
-def get_primary_selection():
+def get_primary_selection() -> str:
     if not supports_primary_selection:
         return ''  # There is no primary selection
-    from kitty.fast_data_types import get_primary_selection
-    return (get_primary_selection() or b'').decode('utf-8', 'replace')
+    from kitty.fast_data_types import get_primary_selection as g
+    return (g() or b'').decode('utf-8', 'replace')
 
 
 def base64_encode(
-    integer,
-    chars=string.ascii_uppercase + string.ascii_lowercase + string.digits +
+    integer: int,
+    chars: str = string.ascii_uppercase + string.ascii_lowercase + string.digits +
     '+/'
-):
+) -> str:
     ans = ''
     while True:
         integer, remainder = divmod(integer, 64)
@@ -168,7 +171,7 @@ def base64_encode(
     return ans
 
 
-def command_for_open(program='default'):
+def command_for_open(program: Union[str, List[str]] = 'default') -> List[str]:
     if isinstance(program, str):
         from .conf.utils import to_cmdline
         program = to_cmdline(program)
@@ -179,22 +182,22 @@ def command_for_open(program='default'):
     return cmd
 
 
-def open_cmd(cmd, arg=None, cwd=None):
+def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str], str] = None, cwd: Optional[str] = None) -> 'Popen':
     import subprocess
     if arg is not None:
         cmd = list(cmd)
-        if isinstance(arg, (list, tuple)):
-            cmd.extend(arg)
-        else:
+        if isinstance(arg, str):
             cmd.append(arg)
-    return subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None)
+        else:
+            cmd.extend(arg)
+    return subprocess.Popen(tuple(cmd), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None)
 
 
-def open_url(url, program='default', cwd=None):
+def open_url(url: str, program: Union[str, List[str]] = 'default', cwd: Optional[str] = None) -> 'Popen':
     return open_cmd(command_for_open(program), url, cwd=cwd)
 
 
-def detach(fork=True, setsid=True, redirect=True):
+def detach(fork: bool = True, setsid: bool = True, redirect: bool = True) -> None:
     if fork:
         # Detach from the controlling process.
         if os.fork() != 0:
@@ -206,36 +209,36 @@ def detach(fork=True, setsid=True, redirect=True):
         redirect_std_streams(os.devnull)
 
 
-def adjust_line_height(cell_height, val):
+def adjust_line_height(cell_height: int, val: Union[int, float]) -> int:
     if isinstance(val, int):
         return cell_height + val
     return int(cell_height * val)
 
 
-def init_startup_notification_x11(window_handle, startup_id=None):
+def init_startup_notification_x11(window_handle: int, startup_id: Optional[str] = None) -> Optional['StartupCtx']:
     # https://specifications.freedesktop.org/startup-notification-spec/startup-notification-latest.txt
     from kitty.fast_data_types import init_x11_startup_notification
     sid = startup_id or os.environ.pop('DESKTOP_STARTUP_ID', None)  # ensure child processes don't get this env var
     if not sid:
-        return
+        return None
     from .fast_data_types import x11_display
     display = x11_display()
     if not display:
-        return
+        return None
     return init_x11_startup_notification(display, window_handle, sid)
 
 
-def end_startup_notification_x11(ctx):
+def end_startup_notification_x11(ctx: 'StartupCtx') -> None:
     from kitty.fast_data_types import end_x11_startup_notification
     end_x11_startup_notification(ctx)
 
 
-def init_startup_notification(window_handle, startup_id=None):
+def init_startup_notification(window_handle: Optional[int], startup_id: Optional[str] = None) -> Optional['StartupCtx']:
     if is_macos or is_wayland():
-        return
+        return None
     if window_handle is None:
         log_error('Could not perform startup notification as window handle not present')
-        return
+        return None
     try:
         return init_startup_notification_x11(window_handle, startup_id)
     except Exception:
@@ -243,7 +246,7 @@ def init_startup_notification(window_handle, startup_id=None):
         traceback.print_exc()
 
 
-def end_startup_notification(ctx):
+def end_startup_notification(ctx: Optional['StartupCtx']) -> None:
     if not ctx:
         return
     if is_macos or is_wayland():
@@ -257,15 +260,15 @@ def end_startup_notification(ctx):
 
 class startup_notification_handler:
 
-    def __init__(self, do_notify=True, startup_id=None, extra_callback=None):
+    def __init__(self, do_notify: bool = True, startup_id: Optional[str] = None, extra_callback: Optional[Callable] = None):
         self.do_notify = do_notify
         self.startup_id = startup_id
         self.extra_callback = extra_callback
-        self.ctx = None
+        self.ctx: Optional['StartupCtx'] = None
 
-    def __enter__(self):
+    def __enter__(self) -> Callable[[int], None]:
 
-        def pre_show_callback(window_handle):
+        def pre_show_callback(window_handle: int) -> None:
             if self.extra_callback is not None:
                 self.extra_callback(window_handle)
             if self.do_notify:
@@ -273,12 +276,12 @@ class startup_notification_handler:
 
         return pre_show_callback
 
-    def __exit__(self, *a):
+    def __exit__(self, *a: Any) -> None:
         if self.ctx is not None:
             end_startup_notification(self.ctx)
 
 
-def remove_socket_file(s, path=None):
+def remove_socket_file(s: 'Socket', path: Optional[str] = None) -> None:
     with suppress(OSError):
         s.close()
     if path:
@@ -286,7 +289,7 @@ def remove_socket_file(s, path=None):
             os.unlink(path)
 
 
-def unix_socket_paths(name, ext='.lock'):
+def unix_socket_paths(name: str, ext: str = '.lock') -> Generator[str, None, None]:
     import tempfile
     home = os.path.expanduser('~')
     candidates = [tempfile.gettempdir(), home]
@@ -299,7 +302,7 @@ def unix_socket_paths(name, ext='.lock'):
             yield os.path.join(loc, filename)
 
 
-def single_instance_unix(name):
+def single_instance_unix(name: str) -> bool:
     import socket
     for path in unix_socket_paths(name):
         socket_path = path.rpartition('.')[0] + '.sock'
@@ -328,13 +331,14 @@ def single_instance_unix(name):
         s.listen()
         s.set_inheritable(False)
         return True
+    return False
 
 
 class SingleInstance:
 
-    socket: Optional[Any] = None
+    socket: Optional['Socket'] = None
 
-    def __call__(self, group_id: Optional[str] = None):
+    def __call__(self, group_id: Optional[str] = None) -> bool:
         import socket
         name = '{}-ipc-{}'.format(appname, os.geteuid())
         if group_id:
@@ -350,11 +354,11 @@ class SingleInstance:
                 return single_instance_unix(name)
             if err.errno == errno.EADDRINUSE:
                 s.connect(addr)
-                single_instance.socket = s
+                self.socket = s
                 return False
             raise
         s.listen()
-        single_instance.socket = s  # prevent garbage collection from closing the socket
+        self.socket = s  # prevent garbage collection from closing the socket
         s.set_inheritable(False)
         atexit.register(remove_socket_file, s)
         return True
@@ -363,10 +367,11 @@ class SingleInstance:
 single_instance = SingleInstance()
 
 
-def parse_address_spec(spec):
+def parse_address_spec(spec: str) -> Tuple['AddressFamily', Union[Tuple[str, int], str], Optional[str]]:
     import socket
     protocol, rest = spec.split(':', 1)
     socket_path = None
+    address: Union[str, Tuple[str, int]] = ''
     if protocol == 'unix':
         family = socket.AF_UNIX
         address = rest
@@ -395,12 +400,12 @@ def write_all(fd: int, data: Union[str, bytes]) -> None:
 
 class TTYIO:
 
-    def __enter__(self):
+    def __enter__(self) -> 'TTYIO':
         from .fast_data_types import open_tty
         self.tty_fd, self.original_termios = open_tty(True)
         return self
 
-    def __exit__(self, *a):
+    def __exit__(self, *a: Any) -> None:
         from .fast_data_types import close_tty
         close_tty(self.tty_fd, self.original_termios)
 
@@ -411,7 +416,7 @@ class TTYIO:
             for chunk in data:
                 write_all(self.tty_fd, chunk)
 
-    def recv(self, more_needed, timeout, sz=1):
+    def recv(self, more_needed: Callable[[bytes], bool], timeout: float, sz: int = 1) -> None:
         fd = self.tty_fd
         start_time = monotonic()
         while timeout > monotonic() - start_time:
@@ -422,43 +427,38 @@ class TTYIO:
                 break
 
 
-def natsort_ints(iterable):
+def natsort_ints(iterable: Iterable[str]) -> List[str]:
 
-    def convert(text):
+    def convert(text: str) -> Union[int, str]:
         return int(text) if text.isdigit() else text
 
-    def alphanum_key(key):
+    def alphanum_key(key: str) -> Tuple[Union[int, str], ...]:
         return tuple(map(convert, re.split(r'(\d+)', key)))
 
     return sorted(iterable, key=alphanum_key)
 
 
-def exe_exists(exe):
-    for loc in os.environ.get('PATH', '').split(os.pathsep):
-        if loc and os.access(os.path.join(loc, exe), os.X_OK):
-            return os.path.join(loc, exe)
-    return False
-
-
 @lru_cache(maxsize=2)
 def get_editor() -> List[str]:
     import shlex
+    import shutil
     for ans in (os.environ.get('VISUAL'), os.environ.get('EDITOR'), 'vim',
                 'nvim', 'vi', 'emacs', 'kak', 'micro', 'nano', 'vis'):
-        if ans and exe_exists(shlex.split(ans)[0]):
+        if ans and shutil.which(shlex.split(ans)[0]):
             break
     else:
         ans = 'vim'
     return shlex.split(ans)
 
 
-def is_path_in_temp_dir(path):
+def is_path_in_temp_dir(path: str) -> bool:
     if not path:
         return False
 
-    def abspath(x):
+    def abspath(x: Optional[str]) -> str:
         if x:
-            return os.path.abspath(os.path.realpath(x))
+            x = os.path.abspath(os.path.realpath(x))
+        return x or ''
 
     import tempfile
     path = abspath(path)
@@ -469,11 +469,11 @@ def is_path_in_temp_dir(path):
     return False
 
 
-def func_name(f):
+def func_name(f: Any) -> str:
     if hasattr(f, '__name__'):
-        return f.__name__
+        return str(f.__name__)
     if hasattr(f, 'func') and hasattr(f.func, '__name__'):
-        return f.func.__name__
+        return str(f.func.__name__)
     return str(f)
 
 

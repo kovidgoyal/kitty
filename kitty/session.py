@@ -4,51 +4,64 @@
 
 import shlex
 import sys
-from collections import namedtuple
+from typing import (
+    TYPE_CHECKING, Generator, List, NamedTuple, Optional, Tuple, Union
+)
 
 from .config_data import to_layout_names
 from .constants import kitty_exe
 from .layout import all_layouts
+from .options_stub import Options
 from .utils import log_error, resolved_shell
 
-WindowSizeOpts = namedtuple(
-    'WindowSizeOpts', 'initial_window_width initial_window_height window_margin_width window_padding_width remember_window_size')
+if TYPE_CHECKING:
+    from .tabs import SpecialWindowInstance  # noqa
+    from .cli_stub import CLIOptions  # noqa
+
+
+class WindowSizeOpts(NamedTuple):
+
+    initial_window_width: Tuple[int, str]
+    initial_window_height: Tuple[int, str]
+    window_margin_width: float
+    window_padding_width: float
+    remember_window_size: bool
 
 
 class Tab:
 
-    def __init__(self, opts, name):
-        self.windows = []
+    def __init__(self, opts: Options, name: str):
+        self.windows: List[Union[List[str], 'SpecialWindowInstance']] = []
         self.name = name.strip()
         self.active_window_idx = 0
         self.enabled_layouts = opts.enabled_layouts
         self.layout = (self.enabled_layouts or ['tall'])[0]
-        self.cwd = None
-        self.next_title = None
+        self.cwd: Optional[str] = None
+        self.next_title: Optional[str] = None
 
 
 class Session:
 
-    def __init__(self, default_title=None):
-        self.tabs = []
+    def __init__(self, default_title: Optional[str] = None):
+        self.tabs: List[Tab] = []
         self.active_tab_idx = 0
         self.default_title = default_title
-        self.os_window_size = None
+        self.os_window_size: Optional[WindowSizeOpts] = None
 
-    def add_tab(self, opts, name=''):
+    def add_tab(self, opts: Options, name: str = '') -> None:
         if self.tabs and not self.tabs[-1].windows:
             del self.tabs[-1]
         self.tabs.append(Tab(opts, name))
 
-    def set_next_title(self, title):
+    def set_next_title(self, title: str) -> None:
         self.tabs[-1].next_title = title.strip()
 
-    def set_layout(self, val):
+    def set_layout(self, val: str) -> None:
         if val not in all_layouts:
             raise ValueError('{} is not a valid layout'.format(val))
         self.tabs[-1].layout = val
 
-    def add_window(self, cmd):
+    def add_window(self, cmd: Union[None, str, List[str]]) -> None:
         if cmd:
             cmd = shlex.split(cmd) if isinstance(cmd, str) else cmd
         else:
@@ -58,25 +71,25 @@ class Session:
         t.windows.append(SpecialWindow(cmd, cwd=t.cwd, override_title=t.next_title or self.default_title))
         t.next_title = None
 
-    def add_special_window(self, sw):
+    def add_special_window(self, sw: 'SpecialWindowInstance') -> None:
         self.tabs[-1].windows.append(sw)
 
-    def focus(self):
+    def focus(self) -> None:
         self.active_tab_idx = max(0, len(self.tabs) - 1)
         self.tabs[-1].active_window_idx = max(0, len(self.tabs[-1].windows) - 1)
 
-    def set_enabled_layouts(self, raw):
+    def set_enabled_layouts(self, raw: str) -> None:
         self.tabs[-1].enabled_layouts = to_layout_names(raw)
         if self.tabs[-1].layout not in self.tabs[-1].enabled_layouts:
             self.tabs[-1].layout = self.tabs[-1].enabled_layouts[0]
 
-    def set_cwd(self, val):
+    def set_cwd(self, val: str) -> None:
         self.tabs[-1].cwd = val
 
 
-def parse_session(raw, opts, default_title=None):
+def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) -> Generator[Session, None, None]:
 
-    def finalize_session(ans):
+    def finalize_session(ans: Session) -> Session:
         for t in ans.tabs:
             if not t.windows:
                 t.windows.append(resolved_shell(opts))
@@ -120,7 +133,14 @@ def parse_session(raw, opts, default_title=None):
     yield finalize_session(ans)
 
 
-def create_sessions(opts, args=None, special_window=None, cwd_from=None, respect_cwd=False, default_session=None):
+def create_sessions(
+    opts: Options,
+    args: Optional['CLIOptions'] = None,
+    special_window: Optional['SpecialWindowInstance'] = None,
+    cwd_from: Optional[int] = None,
+    respect_cwd: bool = False,
+    default_session: Optional[str] = None
+) -> Generator[Session, None, None]:
     if args and args.session:
         if args.session == '-':
             f = sys.stdin
@@ -148,11 +168,8 @@ def create_sessions(opts, args=None, special_window=None, cwd_from=None, respect
         if args and args.hold:
             cmd = [kitty_exe(), '+hold'] + cmd
         from kitty.tabs import SpecialWindow
-        k = {'cwd_from': cwd_from}
-        if respect_cwd:
-            k['cwd'] = args.directory
-        if getattr(args, 'title', None):
-            k['override_title'] = args.title
-        special_window = SpecialWindow(cmd, **k)
+        cwd: Optional[str] = args.directory if respect_cwd and args else None
+        title = getattr(args, 'title', None)
+        special_window = SpecialWindow(cmd, override_title=title, cwd_from=cwd_from, cwd=cwd)
     ans.add_special_window(special_window)
     yield ans

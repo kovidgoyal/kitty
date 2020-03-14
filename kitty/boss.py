@@ -587,11 +587,11 @@ class Boss:
         key_action = get_shortcut(self.keymap, mods, key, native_key)
         if key_action is None:
             sequences = get_shortcut(self.opts.sequence_map, mods, key, native_key)
-            if sequences:
+            if sequences and not isinstance(sequences, KeyAction):
                 self.pending_sequences = sequences
                 set_in_sequence_mode(True)
                 return True
-        else:
+        elif isinstance(key_action, KeyAction):
             self.current_key_press_info = key, native_key, action, mods
             return self.dispatch_action(key_action)
 
@@ -1072,8 +1072,10 @@ class Boss:
         elif dest in ('clipboard', 'primary'):
             env, stdin = self.process_stdin_source(stdin=source, window=window)
             if stdin:
-                func = set_clipboard_string if dest == 'clipboard' else set_primary_selection
-                func(stdin)
+                if dest == 'clipboard':
+                    set_clipboard_string(stdin)
+                else:
+                    set_primary_selection(stdin)
         else:
             env, stdin = self.process_stdin_source(stdin=source, window=window)
             self.run_background_process(cmd, cwd_from=cwd_from, stdin=stdin, env=env)

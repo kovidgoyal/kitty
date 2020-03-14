@@ -125,9 +125,9 @@ else:
         f.argtypes = [ctypes.c_char_p, ctypes.c_int]
         f.restype = ctypes.c_int
 
-        def xkb_lookup(name, case_sensitive=False):
-            name = name.encode('utf-8')
-            return f(name, int(case_sensitive)) or None
+        def xkb_lookup(name: str, case_sensitive: bool = False) -> Optional[int]:
+            q = name.encode('utf-8')
+            return f(q, int(case_sensitive)) or None
 
         return xkb_lookup
 

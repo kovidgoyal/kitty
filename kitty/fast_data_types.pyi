@@ -333,7 +333,7 @@ def log_error_string(s: str) -> None:
     pass
 
 
-def set_primary_selection(x: bytes) -> None:
+def set_primary_selection(x: Union[bytes, str]) -> None:
     pass
 
 
@@ -517,7 +517,7 @@ def cocoa_send_notification(
 def create_os_window(
     get_window_size: Callable[[int, int, int, int, float, float], Tuple[int,
                                                                         int]],
-    pre_show_callback: Callable[[object], None],
+    pre_show_callback: Callable[[int], None],
     title: str,
     wm_class_name: str,
     wm_class_class: str,
@@ -955,6 +955,9 @@ class Screen:
     scrolled_by: int
     cursor: Cursor
     disable_ligatures: int
+    extended_keyboard: bool
+    cursor_key_mode: bool
+    auto_repeat_enabled: bool
 
     def __init__(
             self,
