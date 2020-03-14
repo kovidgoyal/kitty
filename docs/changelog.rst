@@ -73,6 +73,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Drop support for python 3.5
 
+- Wayland: Fix a crash when drag and dropping into kitty (:iss:`2432`)
+
 
 0.16.0 [2020-01-28]
 --------------------

@@ -1761,14 +1761,14 @@ static void drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device 
     }
 }
 
-static void drop(void *data, struct wl_data_device *wl_data_device UNUSED) {
+static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
             char *uri_list = read_data_offer(_glfw.wl.dataOffers[i].id, URI_LIST_MIME);
             if (uri_list) {
                 wl_data_offer_finish(_glfw.wl.dataOffers[i].id);
                 int count;
-                char** paths = parseUriList(data, &count);
+                char** paths = parseUriList(uri_list, &count);
 
                 _GLFWwindow* window = _glfw.windowListHead;
                 while (window)
