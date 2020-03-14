@@ -42,8 +42,7 @@ if TYPE_CHECKING:
     from .tabs import Tab
     from .child import Child
     from typing import TypedDict
-    from .rc.base import RemoteCommand
-    Tab, Child, RemoteCommand
+    Tab, Child
 else:
     TypedDict = dict
 
@@ -470,7 +469,7 @@ class Window:
     def request_capabilities(self, q: str) -> None:
         self.screen.send_escape_code_to_child(DCS, get_capabilities(q))
 
-    def handle_remote_cmd(self, cmd: 'RemoteCommand') -> None:
+    def handle_remote_cmd(self, cmd: str) -> None:
         get_boss().handle_remote_cmd(cmd, self)
 
     def handle_remote_print(self, msg: bytes) -> None:
@@ -615,7 +614,10 @@ class Window:
                     exe = shutil.which(cmd[0], path=env['PATH'])
                     if exe:
                         cmd[0] = exe
-        get_boss().display_scrollback(self, data['text'], cmd)
+        bdata: Union[str, bytes, None] = data['text']
+        if isinstance(bdata, str):
+            bdata = bdata.encode('utf-8')
+        get_boss().display_scrollback(self, bdata, cmd)
 
     def paste_bytes(self, text: Union[str, bytes]) -> None:
         # paste raw bytes without any processing

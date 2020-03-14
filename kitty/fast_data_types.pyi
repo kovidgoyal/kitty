@@ -930,6 +930,9 @@ class LineBuf:
     def is_continued(self, idx: int) -> bool:
         pass
 
+    def line(self, num: int) -> Line:
+        pass
+
 
 class Cursor:
     x: int

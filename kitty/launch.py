@@ -248,7 +248,10 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
                 env.update(penv)
 
     if opts.type == 'background':
-        boss.run_background_process(kw['cmd'], cwd=kw['cwd'], cwd_from=kw['cwd_from'], env=env or None, stdin=kw['stdin'])
+        cmd = kw['cmd']
+        if not cmd:
+            raise ValueError('The cmd to run must be specified when running a background process')
+        boss.run_background_process(cmd, cwd=kw['cwd'], cwd_from=kw['cwd_from'], env=env or None, stdin=kw['stdin'])
     elif opts.type in ('clipboard', 'primary'):
         if kw.get('stdin') is not None:
             func = set_clipboard_string if opts.type == 'clipboard' else set_primary_selection
