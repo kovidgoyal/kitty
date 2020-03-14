@@ -1766,7 +1766,9 @@ static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED
         if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
             char *uri_list = read_data_offer(_glfw.wl.dataOffers[i].id, URI_LIST_MIME);
             if (uri_list) {
-                wl_data_offer_finish(_glfw.wl.dataOffers[i].id);
+                // We dont do finish as this requires version 3 for wl_data_device_manager
+                // which then requires more work with calling set_actions for drag and drop to function
+                // wl_data_offer_finish(_glfw.wl.dataOffers[i].id);
                 int count;
                 char** paths = parseUriList(uri_list, &count);
 
