@@ -28,12 +28,12 @@ from sphinx import addnodes  # type: ignore
 from sphinx.environment.adapters.toctree import TocTree  # type: ignore
 from sphinx.util.logging import getLogger  # type: ignore
 
-from kitty.conf.definition import Option, Shortcut  # noqa
-from kitty.constants import str_version  # noqa
-
 kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
+
+from kitty.conf.definition import Option, Shortcut  # noqa
+from kitty.constants import str_version  # noqa
 
 
 # config {{{
