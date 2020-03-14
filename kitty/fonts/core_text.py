@@ -14,8 +14,8 @@ from kitty.utils import log_error
 from . import ListedFont
 
 if TYPE_CHECKING:
-    from kitty.fast_data_types import CoreTextFont
-    CoreTextFont
+    from kitty.fast_data_types import CoreTextFont as C
+    CoreTextFont = C
 
 
 attr_map = {(False, False): 'font_family',

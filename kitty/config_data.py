@@ -13,13 +13,13 @@ from typing import (
 from . import fast_data_types as defines
 from .conf.definition import Option, Shortcut, option_func
 from .conf.utils import (
-    Color, choices, positive_float, positive_int, to_bool, to_cmdline,
-    to_color, to_color_or_none, unit_float
+    choices, positive_float, positive_int, to_bool, to_cmdline, to_color,
+    to_color_or_none, unit_float
 )
 from .constants import config_dir, is_macos
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
-from .rgb import color_as_int, color_as_sharp, color_from_int
+from .rgb import Color, color_as_int, color_as_sharp, color_from_int
 from .utils import log_error
 
 MINIMUM_FONT_SIZE = 4

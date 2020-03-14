@@ -6,17 +6,17 @@
 from typing import TYPE_CHECKING, Optional
 
 from kitty.launch import (
-    LaunchCLIOptions, launch as do_launch, options_spec as launch_options_spec,
+    launch as do_launch, options_spec as launch_options_spec,
     parse_launch_args
 )
 
 from .base import (
-    MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
-    RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
+    RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
-    from kitty.cli_stub import LaunchRCOptions as CLIOptions
+    from kitty.cli_stub import LaunchRCOptions as CLIOptions, LaunchCLIOptions
 
 
 class Launch(RemoteCommand):

@@ -31,7 +31,8 @@ except ImportError:
     OptionDict = Dict[str, Any]  # type: ignore
 
 if TYPE_CHECKING:
-    from .config import BadLine, KeyAction, KeySpec, SequenceMap  # noqa
+    from .config import KeyAction, KeySpec, SequenceMap  # noqa
+    from .conf.utils import BadLine  # noqa
 
 CONFIG_HELP = '''\
 Specify a path to the configuration file(s) to use. All configuration files are

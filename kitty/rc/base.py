@@ -9,16 +9,19 @@ from typing import (
 )
 
 from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec
-from kitty.cli_stub import RCOptions
+from kitty.cli_stub import RCOptions as R
 from kitty.constants import appname, running_in_kitty
 
 if TYPE_CHECKING:
-    from kitty.boss import Boss
-    from kitty.window import Window
+    from kitty.boss import Boss as B
+    from kitty.window import Window as W
     from kitty.tabs import Tab
-    Boss, Window, Tab
+    Window = W
+    Boss = B
+    Tab
 else:
     Boss = Window = Tab = None
+RCOptions = R
 
 
 class NoResponse:

@@ -591,5 +591,5 @@ elif __name__ == '__doc__':
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
 elif __name__ == '__conf__':
-    from .config import all_options
+    from .config_data import all_options
     sys.all_options = all_options  # type: ignore

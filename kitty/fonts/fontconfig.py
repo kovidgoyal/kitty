@@ -15,8 +15,8 @@ from kitty.options_stub import Options
 from . import ListedFont
 
 if TYPE_CHECKING:
-    from kitty.fast_data_types import FontConfigPattern
-    FontConfigPattern
+    from kitty.fast_data_types import FontConfigPattern as F
+    FontConfigPattern = F
 
 
 attr_map = {(False, False): 'font_family',
