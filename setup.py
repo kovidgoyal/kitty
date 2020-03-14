@@ -517,7 +517,7 @@ class CompilationDatabase:
             CompileKey(k['file'], k['output']): k['arguments'] for k in compilation_database
         }
         self.db = compilation_database
-        self.linkdb = {k['output']: k['arguments'] for k in link_database}
+        self.linkdb = {tuple(k['output']): k['arguments'] for k in link_database}
         return self
 
     def __exit__(self, *a: object) -> None:
