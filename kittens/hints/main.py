@@ -36,7 +36,7 @@ def kitty_common_opts() -> 'KittyCommonOpts':
     import json
     v = os.environ.get('KITTY_COMMON_OPTS')
     if v:
-        return cast(KittyCommonOpts, json.loads(v))
+        return cast('KittyCommonOpts', json.loads(v))
     from kitty.config import common_opts_as_dict
     return common_opts_as_dict()
 
