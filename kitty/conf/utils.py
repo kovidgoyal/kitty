@@ -256,7 +256,7 @@ def init_config(default_config_lines: Iterable[str], parse_config: Callable) -> 
     return Options, defaults
 
 
-def key_func() -> Tuple[Callable, Dict[str, Callable]]:
+def key_func() -> Tuple[Callable[..., Callable], Dict[str, Callable]]:
     ans: Dict[str, Callable] = {}
 
     def func_with_args(*names: str) -> Callable:
