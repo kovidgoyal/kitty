@@ -154,7 +154,7 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
         double xval = (double)(mouse_x - g->left) / os_window->fonts_data->cell_width;
         double fxval = floor(xval);
         qx = (unsigned int)fxval;
-        if (xval - fxval <= 0.5) in_left_half = true;
+        in_left_half = (xval - fxval <= 0.5) ? true : false;
     }
     if (mouse_y >= g->bottom) qy = screen->lines - 1;
     else if (mouse_y >= g->top) qy = (unsigned int)((double)(mouse_y - g->top) / os_window->fonts_data->cell_height);
