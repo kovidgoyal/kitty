@@ -35,12 +35,12 @@ build_dir = 'build'
 constants = os.path.join('kitty', 'constants.py')
 with open(constants, 'rb') as f:
     constants = f.read().decode('utf-8')
-appname = re.search(r"^appname = '([^']+)'", constants, re.MULTILINE).group(1)  # type: ignore
+appname = re.search(r"^appname: str = '([^']+)'", constants, re.MULTILINE).group(1)  # type: ignore
 version = tuple(
     map(
         int,
         re.search(  # type: ignore
-            r"^version = Version\((\d+), (\d+), (\d+)\)", constants, re.MULTILINE
+            r"^version: Version = Version\((\d+), (\d+), (\d+)\)", constants, re.MULTILINE
         ).group(1, 2, 3)
     )
 )
