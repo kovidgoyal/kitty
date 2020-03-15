@@ -261,7 +261,7 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
                 set_primary_selection(stdin)
     else:
         tab = tab_for_window(boss, opts, target_tab)
-        if tab:
+        if tab is not None:
             new_window: Window = tab.new_window(env=env or None, **kw)
             if opts.keep_focus and active:
                 boss.set_active_window(active, switch_os_window_if_needed=True)
