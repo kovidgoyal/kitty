@@ -20,7 +20,7 @@ static inline bool
 can_strip_from_end_of_url(uint32_t ch) {
     // remove trailing punctuation
     return (
-        (is_P_category(ch) && ch != '/') ||
+        (is_P_category(ch) && ch != '/' && ch != '&' && ch != '-') ||
         ch == '>'
     ) ? true : false;
 }
