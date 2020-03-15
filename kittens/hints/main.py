@@ -10,8 +10,8 @@ from functools import lru_cache
 from gettext import gettext as _
 from itertools import repeat
 from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List, Optional,
-    Pattern, Sequence, Set, Tuple, Type, cast
+    Any, Callable, Dict, Generator, Iterable, List, Optional, Pattern,
+    Sequence, Set, Tuple, Type, cast
 )
 
 from kitty.cli import parse_args
@@ -20,30 +20,26 @@ from kitty.fast_data_types import set_clipboard_string
 from kitty.key_encoding import (
     KeyEvent, backspace_key, enter_key, key_defs as K
 )
+from kitty.typing import BossType, KittyCommonOpts
 from kitty.utils import ScreenSize, screen_size_function
 
 from ..tui.handler import Handler, result_handler
 from ..tui.loop import Loop
 from ..tui.operations import faint, styled
 
-if TYPE_CHECKING:
-    from kitty.config import KittyCommonOpts
-    from kitty.boss import Boss
-
 
 @lru_cache()
-def kitty_common_opts() -> 'KittyCommonOpts':
+def kitty_common_opts() -> KittyCommonOpts:
     import json
     v = os.environ.get('KITTY_COMMON_OPTS')
     if v:
-        return cast('KittyCommonOpts', json.loads(v))
+        return cast(KittyCommonOpts, json.loads(v))
     from kitty.config import common_opts_as_dict
     return common_opts_as_dict()
 
 
 DEFAULT_HINT_ALPHABET = string.digits + string.ascii_lowercase
 DEFAULT_REGEX = r'(?m)^\s*(.+)\s*$'
-screen_size = screen_size_function()
 ESCAPE = K['ESCAPE']
 
 
@@ -346,7 +342,7 @@ def parse_input(text: str) -> str:
     try:
         cols = int(os.environ['OVERLAID_WINDOW_COLS'])
     except KeyError:
-        cols = screen_size().cols
+        cols = screen_size_function()().cols
     return convert_text(text, cols)
 
 
@@ -560,7 +556,7 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
     return run(opts, text, items)
 
 
-def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: 'Boss', extra_cli_args: Sequence[str], *a: Any) -> None:
+def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType, extra_cli_args: Sequence[str], *a: Any) -> None:
     for m, g in zip(data['match'], data['groupdicts']):
         if m:
             path, line = g['path'], g['line']
@@ -589,7 +585,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
 
 
 @result_handler(type_of_input='screen')
-def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: 'Boss') -> None:
+def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType) -> None:
     if data['customize_processing']:
         m = load_custom_processor(data['customize_processing'])
         if 'handle_result' in m:

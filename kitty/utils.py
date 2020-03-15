@@ -14,8 +14,8 @@ from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
 from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List,
-    NamedTuple, Optional, Tuple, Union, cast
+    Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional,
+    Tuple, Union, cast
 )
 
 from .constants import (
@@ -23,11 +23,7 @@ from .constants import (
 )
 from .options_stub import Options
 from .rgb import Color, to_color
-
-if TYPE_CHECKING:
-    from subprocess import Popen  # noqa
-    from .fast_data_types import StartupCtx  # noqa
-    from socket import socket as Socket, AddressFamily  # noqa
+from .typing import AddressFamily, PopenType, Socket, StartupCtx
 
 BASE = os.path.dirname(os.path.abspath(__file__))
 
@@ -182,7 +178,7 @@ def command_for_open(program: Union[str, List[str]] = 'default') -> List[str]:
     return cmd
 
 
-def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str], str] = None, cwd: Optional[str] = None) -> 'Popen':
+def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str], str] = None, cwd: Optional[str] = None) -> PopenType:
     import subprocess
     if arg is not None:
         cmd = list(cmd)
@@ -193,7 +189,7 @@ def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str
     return subprocess.Popen(tuple(cmd), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None)
 
 
-def open_url(url: str, program: Union[str, List[str]] = 'default', cwd: Optional[str] = None) -> 'Popen':
+def open_url(url: str, program: Union[str, List[str]] = 'default', cwd: Optional[str] = None) -> PopenType:
     return open_cmd(command_for_open(program), url, cwd=cwd)
 
 
@@ -367,7 +363,7 @@ class SingleInstance:
 single_instance = SingleInstance()
 
 
-def parse_address_spec(spec: str) -> Tuple['AddressFamily', Union[Tuple[str, int], str], Optional[str]]:
+def parse_address_spec(spec: str) -> Tuple[AddressFamily, Union[Tuple[str, int], str], Optional[str]]:
     import socket
     protocol, rest = spec.split(':', 1)
     socket_path = None

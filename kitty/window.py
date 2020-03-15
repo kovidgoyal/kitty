@@ -10,8 +10,8 @@ from collections import deque
 from enum import IntEnum
 from itertools import chain
 from typing import (
-    TYPE_CHECKING, Any, Callable, Deque, Dict, List, Optional, Pattern,
-    Sequence, Tuple, Union
+    Any, Callable, Deque, Dict, List, Optional, Pattern, Sequence, Tuple,
+    Union
 )
 
 from .child import ProcessDesc
@@ -32,19 +32,12 @@ from .keys import defines, extended_key_event, keyboard_mode_name
 from .options_stub import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
+from .typing import ChildType, TabType, TypedDict
 from .utils import (
     color_as_int, get_primary_selection, load_shaders, open_cmd, open_url,
     parse_color_set, read_shell_environment, sanitize_title,
     set_primary_selection
 )
-
-if TYPE_CHECKING:
-    from .tabs import Tab
-    from .child import Child
-    from typing import TypedDict
-    Tab, Child
-else:
-    TypedDict = dict
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
 
@@ -183,8 +176,8 @@ class Window:
 
     def __init__(
         self,
-        tab: 'Tab',
-        child: 'Child',
+        tab: TabType,
+        child: ChildType,
         opts: Options,
         args: CLIOptions,
         override_title: Optional[str] = None,
@@ -207,7 +200,7 @@ class Window:
             raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
-        self.tabref: Callable[[], Optional['Tab']] = weakref.ref(tab)
+        self.tabref: Callable[[], Optional[TabType]] = weakref.ref(tab)
         self.clipboard_control_buffers = {'p': '', 'c': ''}
         self.destroyed = False
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
@@ -221,7 +214,7 @@ class Window:
         else:
             setup_colors(self.screen, opts)
 
-    def change_tab(self, tab: 'Tab') -> None:
+    def change_tab(self, tab: TabType) -> None:
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref = weakref.ref(tab)

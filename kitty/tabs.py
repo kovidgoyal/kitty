@@ -7,7 +7,7 @@ from collections import deque
 from contextlib import suppress
 from functools import partial
 from typing import (
-    TYPE_CHECKING, Deque, Dict, Generator, Iterator, List, NamedTuple,
+    Deque, Dict, Generator, Iterator, List, NamedTuple,
     Optional, Pattern, Sequence, Tuple, cast
 )
 
@@ -27,13 +27,7 @@ from .options_stub import Options
 from .tab_bar import TabBar, TabBarData
 from .utils import log_error, resolved_shell
 from .window import Window, WindowDict
-
-if TYPE_CHECKING:
-    from .session import Session, Tab as SessionTab
-    SessionTab, Session
-    from typing import TypedDict
-else:
-    TypedDict = dict
+from .typing import TypedDict, SessionTab, SessionType
 
 
 class TabDict(TypedDict):
@@ -555,7 +549,7 @@ class Tab:  # {{{
 
 class TabManager:  # {{{
 
-    def __init__(self, os_window_id: int, opts: Options, args: CLIOptions, startup_session: Optional['Session'] = None):
+    def __init__(self, os_window_id: int, opts: Options, args: CLIOptions, startup_session: Optional[SessionType] = None):
         self.os_window_id = os_window_id
         self.last_active_tab_id = None
         self.opts, self.args = opts, args

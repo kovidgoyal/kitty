@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
-from typing import NamedTuple, Optional
+from typing import Dict, NamedTuple, Optional
 
 from . import fast_data_types as defines
 from .key_names import key_name_aliases
@@ -457,14 +457,16 @@ class KeyEvent(NamedTuple):
     key: str
 
 
-PRESS, REPEAT, RELEASE = 1, 2, 4
+PRESS: int = 1
+REPEAT: int = 2
+RELEASE: int = 4
 SHIFT, ALT, CTRL, SUPER = 1, 2, 4, 8
 type_map = {'p': PRESS, 't': REPEAT, 'r': RELEASE}
 rtype_map = {v: k for k, v in type_map.items()}
 mod_map = {c: i for i, c in enumerate('ABCDEFGHIJKLMNOP')}
 rmod_map = {v: k for k, v in mod_map.items()}
 key_rmap = {}
-key_defs = {}
+key_defs: Dict[str, str] = {}
 config_key_map = {}
 config_mod_map = {
     'SHIFT': SHIFT,

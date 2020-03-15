@@ -10,7 +10,7 @@ from contextlib import suppress
 from functools import lru_cache
 from gettext import gettext as _
 from typing import (
-    TYPE_CHECKING, Any, Dict, FrozenSet, Generator, Iterable, List, Optional, Sequence, Tuple,
+    Any, Dict, FrozenSet, Generator, Iterable, List, Optional, Sequence, Tuple,
     Union
 )
 
@@ -22,6 +22,7 @@ from kitty.fast_data_types import is_emoji_presentation_base, wcswidth
 from kitty.key_encoding import (
     CTRL, RELEASE, SHIFT, KeyEvent, enter_key, key_defs as K
 )
+from kitty.typing import BossType
 from kitty.utils import ScreenSize, get_editor
 
 from ..tui.handler import Handler, result_handler
@@ -31,11 +32,6 @@ from ..tui.operations import (
     clear_screen, colored, cursor, faint, set_line_wrapping, set_window_title,
     sgr, styled
 )
-
-if TYPE_CHECKING:
-    from kitty.boss import Boss
-    Boss
-
 
 HEX, NAME, EMOTICONS, FAVORITES = 'HEX', 'NAME', 'EMOTICONS', 'FAVORITES'
 UP = K['UP']
@@ -579,7 +575,7 @@ def main(args: List[str]) -> Optional[str]:
 
 
 @result_handler()
-def handle_result(args: List[str], current_char: str, target_window_id: int, boss: 'Boss') -> None:
+def handle_result(args: List[str], current_char: str, target_window_id: int, boss: BossType) -> None:
     w = boss.window_id_map.get(target_window_id)
     if w is not None:
         w.paste(current_char)

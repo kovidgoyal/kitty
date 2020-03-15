@@ -8,10 +8,9 @@ import pwd
 import sys
 from contextlib import suppress
 from functools import lru_cache
-from typing import TYPE_CHECKING, NamedTuple, Optional, Set
+from typing import NamedTuple, Optional, Set
 
-if TYPE_CHECKING:
-    from .options_stub import Options  # noqa
+from .options_stub import Options
 
 
 class Version(NamedTuple):
@@ -20,11 +19,11 @@ class Version(NamedTuple):
     patch: int
 
 
-appname = 'kitty'
-version = Version(0, 16, 0)
-str_version = '.'.join(map(str, version))
+appname: str = 'kitty'
+version: Version = Version(0, 16, 0)
+str_version: str = '.'.join(map(str, version))
 _plat = sys.platform.lower()
-is_macos = 'darwin' in _plat
+is_macos: bool = 'darwin' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -179,7 +178,7 @@ def detect_if_wayland_ok() -> bool:
     return ans == b'YES'
 
 
-def is_wayland(opts: Optional['Options'] = None) -> bool:
+def is_wayland(opts: Optional[Options] = None) -> bool:
     if is_macos:
         return False
     if opts is None:

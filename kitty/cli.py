@@ -7,32 +7,27 @@ import re
 import sys
 from collections import deque
 from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List,
-    Match, Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast
+    Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Match, Optional,
+    Sequence, Set, Tuple, Type, TypeVar, Union, cast
 )
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
+from .config import KeyAction
 from .constants import appname, defconf, is_macos, is_wayland, str_version
 from .options_stub import Options as OptionsStub
+from .typing import BadLineType, KeySpec, SequenceMap, TypedDict
 
-try:
-    from typing import TypedDict
 
-    class OptionDict(TypedDict):
-        dest: str
-        aliases: FrozenSet[str]
-        help: str
-        choices: FrozenSet[str]
-        type: str
-        default: Optional[str]
-        condition: bool
-except ImportError:
-    OptionDict = Dict[str, Any]  # type: ignore
+class OptionDict(TypedDict):
+    dest: str
+    aliases: FrozenSet[str]
+    help: str
+    choices: FrozenSet[str]
+    type: str
+    default: Optional[str]
+    condition: bool
 
-if TYPE_CHECKING:
-    from .config import KeyAction, KeySpec, SequenceMap  # noqa
-    from .conf.utils import BadLine  # noqa
 
 CONFIG_HELP = '''\
 Specify a path to the configuration file(s) to use. All configuration files are
@@ -733,10 +728,10 @@ def parse_args(
 
 
 SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
-ShortcutMap = Dict[Tuple['KeySpec', ...], 'KeyAction']
+ShortcutMap = Dict[Tuple[KeySpec, ...], KeyAction]
 
 
-def print_shortcut(key_sequence: Iterable['KeySpec'], action: 'KeyAction') -> None:
+def print_shortcut(key_sequence: Iterable[KeySpec], action: KeyAction) -> None:
     if not getattr(print_shortcut, 'maps', None):
         from kitty.keys import defines
         v = vars(defines)
@@ -764,7 +759,7 @@ def print_shortcut(key_sequence: Iterable['KeySpec'], action: 'KeyAction') -> No
     print('\t', ' > '.join(keys), action)
 
 
-def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple['KeySpec', ...]]) -> None:
+def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple[KeySpec, ...]]) -> None:
     if changes:
         print(title(text))
 
@@ -781,8 +776,8 @@ def compare_keymaps(final: ShortcutMap, initial: ShortcutMap) -> None:
     print_shortcut_changes(final, 'Changed shortcuts:', changed)
 
 
-def flatten_sequence_map(m: 'SequenceMap') -> ShortcutMap:
-    ans: Dict[Tuple['KeySpec', ...], 'KeyAction'] = {}
+def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
+    ans: Dict[Tuple[KeySpec, ...], KeyAction] = {}
     for key_spec, rest_map in m.items():
         for r, action in rest_map.items():
             ans[(key_spec,) + (r)] = action
@@ -811,7 +806,7 @@ def compare_opts(opts: OptionsStub) -> None:
     compare_keymaps(final, initial)
 
 
-def create_opts(args: CLIOptions, debug_config: bool = False, accumulate_bad_lines: Optional[List['BadLine']] = None) -> OptionsStub:
+def create_opts(args: CLIOptions, debug_config: bool = False, accumulate_bad_lines: Optional[List[BadLineType]] = None) -> OptionsStub:
     from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     if debug_config:

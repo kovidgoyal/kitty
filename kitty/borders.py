@@ -2,8 +2,9 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+from enum import IntFlag
 from itertools import chain
-from typing import TYPE_CHECKING, List, Optional, Sequence, Tuple
+from typing import List, Optional, Sequence, Tuple
 
 from .constants import WindowGeometry
 from .fast_data_types import (
@@ -12,17 +13,7 @@ from .fast_data_types import (
 )
 from .options_stub import Options
 from .utils import load_shaders
-
-try:
-    from enum import IntFlag
-except ImportError:
-    from enum import IntEnum as IntFlag  # type: ignore
-
-
-if TYPE_CHECKING:
-    from .window import Window
-    from .layout import Layout
-    Window, Layout
+from .typing import WindowType, LayoutType
 
 
 class BorderColor(IntFlag):
@@ -63,9 +54,9 @@ class Borders:
 
     def __call__(
         self,
-        windows: List['Window'],
-        active_window: Optional['Window'],
-        current_layout: 'Layout',
+        windows: List[WindowType],
+        active_window: Optional[WindowType],
+        current_layout: LayoutType,
         extra_blank_rects: Sequence[Tuple[int, int, int, int]],
         padding_width: int,
         border_width: int,

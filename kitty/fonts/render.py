@@ -6,9 +6,7 @@ import ctypes
 import sys
 from functools import partial
 from math import ceil, cos, floor, pi
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, List, Optional, Tuple, Union, cast
-)
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
 
 from kitty.config import defaults
 from kitty.constants import is_macos
@@ -21,18 +19,15 @@ from kitty.fonts.box_drawing import (
     BufType, render_box_char, render_missing_glyph
 )
 from kitty.options_stub import Options as OptionsStub
+from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
 if is_macos:
     from .core_text import get_font_files as get_font_files_coretext, font_for_family as font_for_family_macos
-    if TYPE_CHECKING:
-        from .core_text import CoreTextFont  # noqa
 else:
     from .fontconfig import get_font_files as get_font_files_fontconfig, font_for_family as font_for_family_fontconfig
-    if TYPE_CHECKING:
-        from .fontconfig import FontConfigPattern  # noqa
 
-FontObject = Union['CoreTextFont', 'FontConfigPattern']
+FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: List[Tuple[FontObject, bool, bool]] = []
 
 

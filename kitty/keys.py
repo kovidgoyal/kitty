@@ -3,19 +3,14 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Iterable, Optional, Tuple, Union
-)
+from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
 
 from . import fast_data_types as defines
 from .config import KeyAction, KeyMap, KeySpec, SequenceMap, SubSequenceMap
 from .key_encoding import KEY_MAP
 from .terminfo import key_as_bytes, modify_key_bytes
+from .typing import ScreenType, WindowType
 from .utils import base64_encode
-
-if TYPE_CHECKING:
-    from .fast_data_types import Screen  # noqa
-    from .window import Window  # noqa
 
 
 def modify_complex_key(name: Union[str, bytes], amt: int) -> bytes:
@@ -149,7 +144,7 @@ rmkx_key_map.update({
 cursor_key_mode_map = {True: smkx_key_map, False: rmkx_key_map}
 
 
-def keyboard_mode_name(screen: 'Screen') -> str:
+def keyboard_mode_name(screen: ScreenType) -> str:
     if screen.extended_keyboard:
         return 'kitty'
     return 'application' if screen.cursor_key_mode else 'normal'
@@ -270,7 +265,7 @@ def key_to_bytes(key: int, smkx: bool, extended: bool, mods: int, action: int) -
     return bytes(data)
 
 
-def interpret_key_event(key: int, native_key: int, mods: int, window: 'Window', action: int) -> bytes:
+def interpret_key_event(key: int, native_key: int, mods: int, window: WindowType, action: int) -> bytes:
     screen = window.screen
     if (
             action == defines.GLFW_PRESS or

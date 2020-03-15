@@ -13,13 +13,13 @@ from functools import lru_cache
 from math import ceil
 from tempfile import NamedTemporaryFile
 from typing import (
-    TYPE_CHECKING, Dict, Generator, List, NamedTuple, Optional, Pattern, Tuple,
-    Union
+    Dict, Generator, List, NamedTuple, Optional, Pattern, Tuple, Union
 )
 
 from kitty.cli import parse_args
 from kitty.cli_stub import IcatCLIOptions
 from kitty.constants import appname
+from kitty.typing import GRT_f, GRT_t
 from kitty.utils import (
     TTYIO, ScreenSize, ScreenSizeGetter, fit_image, screen_size_function
 )
@@ -29,9 +29,6 @@ from ..tui.images import (
     identify
 )
 from ..tui.operations import clear_images_on_screen
-
-if TYPE_CHECKING:
-    from ..tui.images import GRT_f, GRT_t  # noqa
 
 OPTIONS = '''\
 --align

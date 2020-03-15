@@ -10,8 +10,7 @@ from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
 from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List, Optional,
-    Tuple, Union
+    Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Union
 )
 from weakref import WeakValueDictionary
 
@@ -44,19 +43,13 @@ from .session import Session, create_sessions
 from .tabs import (
     SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 )
+from .typing import PopenType, TypedDict
 from .utils import (
     func_name, get_editor, get_primary_selection, is_path_in_temp_dir,
     log_error, open_url, parse_address_spec, remove_socket_file, safe_print,
     set_primary_selection, single_instance, startup_notification_handler
 )
 from .window import MatchPatternType, Window
-
-if TYPE_CHECKING:
-    from typing import TypedDict
-    from .rc.base import RemoteCommand  # noqa
-    from subprocess import Popen # noqa
-else:
-    TypedDict = dict
 
 
 class OSWindowDict(TypedDict):
@@ -149,7 +142,7 @@ class Boss:
     ):
         set_layout_options(opts)
         self.clipboard_buffers: Dict[str, str] = {}
-        self.update_check_process: Optional['Popen'] = None
+        self.update_check_process: Optional[PopenType] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.startup_cursor_text_color = opts.cursor_text_color
@@ -1209,7 +1202,7 @@ class Boss:
             with suppress(FileNotFoundError):
                 os.remove(path)
 
-    def set_update_check_process(self, process: Optional['Popen'] = None) -> None:
+    def set_update_check_process(self, process: Optional[PopenType] = None) -> None:
         if self.update_check_process is not None:
             with suppress(Exception):
                 if self.update_check_process.poll() is None:

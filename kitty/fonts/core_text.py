@@ -3,20 +3,14 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
-from typing import (
-    TYPE_CHECKING, Dict, Generator, Iterable, List, Optional, Tuple
-)
+from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 from kitty.fast_data_types import coretext_all_fonts
 from kitty.options_stub import Options
+from kitty.typing import CoreTextFont
 from kitty.utils import log_error
 
 from . import ListedFont
-
-if TYPE_CHECKING:
-    from kitty.fast_data_types import CoreTextFont as C
-    CoreTextFont = C
-
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -24,10 +18,10 @@ attr_map = {(False, False): 'font_family',
             (True, True): 'bold_italic_font'}
 
 
-FontMap = Dict[str, Dict[str, List['CoreTextFont']]]
+FontMap = Dict[str, Dict[str, List[CoreTextFont]]]
 
 
-def create_font_map(all_fonts: Iterable['CoreTextFont']) -> FontMap:
+def create_font_map(all_fonts: Iterable[CoreTextFont]) -> FontMap:
     ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
     for x in all_fonts:
         f = (x['family'] or '').lower()
@@ -56,11 +50,11 @@ def list_fonts() -> Generator[ListedFont, None, None]:
             yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': is_mono}
 
 
-def find_best_match(family: str, bold: bool = False, italic: bool = False) -> 'CoreTextFont':
+def find_best_match(family: str, bold: bool = False, italic: bool = False) -> CoreTextFont:
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map()
 
-    def score(candidate: 'CoreTextFont') -> Tuple[int, int]:
+    def score(candidate: CoreTextFont) -> Tuple[int, int]:
         style_match = 1 if candidate['bold'] == bold and candidate[
             'italic'
         ] == italic else 0
@@ -90,8 +84,8 @@ def resolve_family(f: str, main_family: str, bold: bool = False, italic: bool = 
     return f
 
 
-def get_font_files(opts: Options) -> Dict[str, 'CoreTextFont']:
-    ans: Dict[str, 'CoreTextFont'] = {}
+def get_font_files(opts: Options) -> Dict[str, CoreTextFont]:
+    ans: Dict[str, CoreTextFont] = {}
     for (bold, italic), attr in attr_map.items():
         face = find_best_match(resolve_family(getattr(opts, attr), opts.font_family, bold, italic), bold, italic)
         key = {(False, False): 'medium',
@@ -104,6 +98,6 @@ def get_font_files(opts: Options) -> Dict[str, 'CoreTextFont']:
     return ans
 
 
-def font_for_family(family: str) -> Tuple['CoreTextFont', bool, bool]:
+def font_for_family(family: str) -> Tuple[CoreTextFont, bool, bool]:
     ans = find_best_match(resolve_family(family, getattr(get_font_files, 'medium_family')))
     return ans, ans['bold'], ans['italic']

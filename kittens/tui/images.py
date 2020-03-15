@@ -10,10 +10,13 @@ from collections import defaultdict, deque
 from contextlib import suppress
 from itertools import count
 from typing import (
-    TYPE_CHECKING, Any, DefaultDict, Deque, Dict, List, Optional, Sequence,
-    Tuple, Union
+    Any, DefaultDict, Deque, Dict, List, Optional, Sequence, Tuple, Union
 )
 
+from kitty.typing import (
+    CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType,
+    TypedDict
+)
 from kitty.utils import ScreenSize, fit_image
 
 from .operations import cursor
@@ -25,28 +28,11 @@ except Exception:
     fsenc = 'utf-8'
 
 
-try:
-    from typing import TypedDict, Literal
-    GRT_a = Literal['t', 'T', 'q', 'p', 'd']
-    GRT_f = Literal[24, 32, 100]
-    GRT_t = Literal['d', 'f', 't', 's']
-    GRT_o = Literal['z']
-    GRT_m = Literal[0, 1]
-    GRT_d = Literal['a', 'A', 'c', 'C', 'i', 'I', 'p', 'P', 'q', 'Q', 'x', 'X', 'y', 'Y', 'z', 'Z']
-except ImportError:
-    TypedDict = dict
-
-
-if TYPE_CHECKING:
-    import subprocess
-    from .handler import Handler
-
-
 class ImageData:
 
     def __init__(self, fmt: str, width: int, height: int, mode: str):
         self.width, self.height, self.fmt, self.mode = width, height, fmt, mode
-        self.transmit_fmt: 'GRT_f' = (24 if self.mode == 'rgb' else 32)
+        self.transmit_fmt: GRT_f = (24 if self.mode == 'rgb' else 32)
 
 
 class OpenFailed(ValueError):
@@ -71,7 +57,7 @@ class NoImageMagick(Exception):
     pass
 
 
-def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 'subprocess.CompletedProcess[bytes]':
+def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> CompletedProcess:
     import subprocess
     try:
         p = subprocess.run(cmd, stdout=subprocess.PIPE if keep_stdout else subprocess.DEVNULL, stderr=subprocess.PIPE)
@@ -140,16 +126,16 @@ SentImageKey = Tuple[int, int, int]
 
 
 class GraphicsCommand:
-    a: 'GRT_a' = 't'  # action
-    f: 'GRT_f' = 32   # image data format
-    t: 'GRT_t' = 'd'  # transmission medium
+    a: GRT_a = 't'  # action
+    f: GRT_f = 32   # image data format
+    t: GRT_t = 'd'  # transmission medium
     s: int = 0        # sent image width
     v: int = 0        # sent image height
     S: int = 0        # size of data to read from file
     O: int = 0        # offset of data to read from file
     i: int = 0        # image id
-    o: Optional['GRT_o'] = None  # type of compression
-    m: 'GRT_m' = 0    # 0 or 1 whether there is more chunked data
+    o: Optional[GRT_o] = None  # type of compression
+    m: GRT_m = 0    # 0 or 1 whether there is more chunked data
     x: int = 0        # left edge of image area to display
     y: int = 0        # top edge of image area to display
     w: int = 0        # image width to display
@@ -159,7 +145,7 @@ class GraphicsCommand:
     c: int = 0        # number of cols to display image over
     r: int = 0        # number of rows to display image over
     z: int = 0        # z-index
-    d: 'GRT_d' = 'a'  # what to delete
+    d: GRT_d = 'a'  # what to delete
 
     def serialize(self, payload: bytes = b'') -> bytes:
         items = []
@@ -193,7 +179,7 @@ class Placement(TypedDict):
 
 class ImageManager:
 
-    def __init__(self, handler: 'Handler'):
+    def __init__(self, handler: HandlerType):
         self.image_id_counter = count()
         self.handler = handler
         self.filesystem_ok: Optional[bool] = None

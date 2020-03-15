@@ -10,7 +10,7 @@ import types
 from contextlib import suppress
 from functools import partial
 from typing import (
-    TYPE_CHECKING, Any, Dict, Generator, Iterable, List, Optional, Tuple,
+    Any, Dict, Generator, Iterable, List, Optional, Tuple,
     Union, cast
 )
 
@@ -22,14 +22,11 @@ from .rc.base import (
     PayloadGetter, all_command_names, command_for_name,
     no_response as no_response_sentinel, parse_subcommand_cli
 )
+from .typing import BossType, WindowType
 from .utils import TTYIO, parse_address_spec
 
-if TYPE_CHECKING:
-    from .boss import Boss  # noqa
-    from .window import Window  # noqa
 
-
-def handle_cmd(boss: 'Boss', window: Optional['Window'], serialized_cmd: str) -> Optional[Dict[str, Any]]:
+def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str) -> Optional[Dict[str, Any]]:
     cmd = json.loads(serialized_cmd)
     v = cmd['version']
     no_response = cmd.get('no_response', False)

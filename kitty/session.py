@@ -4,19 +4,15 @@
 
 import shlex
 import sys
-from typing import (
-    TYPE_CHECKING, Generator, List, NamedTuple, Optional, Tuple, Union
-)
+from typing import Generator, List, NamedTuple, Optional, Tuple, Union
 
+from .cli_stub import CLIOptions
 from .config_data import to_layout_names
 from .constants import kitty_exe
 from .layout import all_layouts
 from .options_stub import Options
+from .typing import SpecialWindowInstance
 from .utils import log_error, resolved_shell
-
-if TYPE_CHECKING:
-    from .tabs import SpecialWindowInstance  # noqa
-    from .cli_stub import CLIOptions  # noqa
 
 
 class WindowSizeOpts(NamedTuple):
@@ -135,7 +131,7 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
 
 def create_sessions(
     opts: Options,
-    args: Optional['CLIOptions'] = None,
+    args: Optional[CLIOptions] = None,
     special_window: Optional['SpecialWindowInstance'] = None,
     cwd_from: Optional[int] = None,
     respect_cwd: bool = False,

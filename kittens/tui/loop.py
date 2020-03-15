@@ -12,9 +12,7 @@ import signal
 import sys
 from contextlib import contextmanager
 from functools import partial
-from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, Generator, List, NamedTuple, Optional
-)
+from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
@@ -24,19 +22,11 @@ from kitty.key_encoding import (
     ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, backspace_key, decode_key_event,
     enter_key, key_defs as K
 )
-from kitty.utils import screen_size_function, write_all
+from kitty.typing import ImageManagerType, KeyEventType, Protocol
+from kitty.utils import ScreenSizeGetter, screen_size_function, write_all
 
 from .handler import Handler
 from .operations import init_state, reset_state
-
-if TYPE_CHECKING:
-    from kitty.key_encoding import KeyEvent
-    from .images import ImageManager
-    KeyEvent, ImageManager
-    from typing import Protocol
-else:
-    Protocol = object
-
 
 C, D = K['C'], K['D']
 
@@ -156,7 +146,7 @@ class UnhandledException(Handler):
         self.write('\r\n')
         self.write('Press the Enter key to quit')
 
-    def on_key(self, key_event: 'KeyEvent') -> None:
+    def on_key(self, key_event: KeyEventType) -> None:
         if key_event is enter_key:
             self.quit_loop(1)
 
@@ -355,7 +345,7 @@ class Loop:
             self.return_code = return_code
         self.asycio_loop.stop()
 
-    def loop_impl(self, handler: Handler, term_manager: TermManager, image_manager: Optional['ImageManager'] = None) -> Optional[str]:
+    def loop_impl(self, handler: Handler, term_manager: TermManager, image_manager: Optional[ImageManagerType] = None) -> Optional[str]:
         self.write_buf = []
         tty_fd = term_manager.tty_fd
         tb = None
@@ -399,7 +389,7 @@ class Loop:
 
         signal_manager = SignalManager(self.asycio_loop, _on_sigwinch, handler.on_interrupt, handler.on_term)
         with TermManager() as term_manager, signal_manager:
-            self._get_screen_size = screen_size_function(term_manager.tty_fd)
+            self._get_screen_size: ScreenSizeGetter = screen_size_function(term_manager.tty_fd)
             image_manager = None
             if handler.image_manager_class is not None:
                 image_manager = handler.image_manager_class(handler)

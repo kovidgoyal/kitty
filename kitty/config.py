@@ -23,13 +23,8 @@ from .config_data import all_options, parse_mods, type_convert
 from .constants import cache_dir, defconf, is_macos
 from .key_names import get_key_name_lookup, key_name_aliases
 from .options_stub import Options as OptionsStub
+from .typing import TypedDict
 from .utils import log_error
-
-try:
-    from typing import TypedDict
-except ImportError:
-    TypedDict = dict
-
 
 KeySpec = Tuple[int, bool, int]
 KeyMap = Dict[KeySpec, 'KeyAction']

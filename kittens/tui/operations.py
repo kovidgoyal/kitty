@@ -6,20 +6,15 @@ import sys
 from contextlib import contextmanager
 from functools import wraps
 from typing import (
-    IO, TYPE_CHECKING, Any, Callable, Dict, Generator, Optional, Tuple,
-    TypeVar, Union
+    IO, Any, Callable, Dict, Generator, Optional, Tuple, TypeVar, Union
 )
 
 from kitty.rgb import Color, color_as_sharp, to_color
+from kitty.typing import GraphicsCommandType, HandlerType, ScreenSize
 
 from .operations_stub import CMD
 
-if TYPE_CHECKING:
-    from kitty.utils import ScreenSize
-    from .images import GraphicsCommand
-    from .handler import Handler
-    ScreenSize, GraphicsCommand, Handler
-
+GraphicsCommandType, ScreenSize  # needed for stub generation
 S7C1T = '\033 F'
 SAVE_CURSOR = '\0337'
 RESTORE_CURSOR = '\0338'
@@ -232,7 +227,7 @@ def serialize_gr_command(cmd: Dict[str, Union[int, str]], payload: Optional[byte
 
 
 @cmd
-def gr_command(cmd: Union[Dict, 'GraphicsCommand'], payload: Optional[bytes] = None) -> str:
+def gr_command(cmd: Union[Dict, 'GraphicsCommandType'], payload: Optional[bytes] = None) -> str:
     if isinstance(cmd, dict):
         raw = serialize_gr_command(cmd, payload)
     else:
@@ -349,14 +344,14 @@ def request_from_clipboard(use_primary: bool = False) -> str:
 # Boilerplate to make operations availble via Handler.cmd  {{{
 
 
-def writer(handler: 'Handler', func: Callable) -> Callable:
+def writer(handler: HandlerType, func: Callable) -> Callable:
     @wraps(func)
     def f(*a: Any, **kw: Any) -> None:
         handler.write(func(*a, **kw))
     return f
 
 
-def commander(handler: 'Handler') -> CMD:
+def commander(handler: HandlerType) -> CMD:
     ans = CMD()
     for name, func in all_cmds.items():
         setattr(ans, name, writer(handler, func))
@@ -374,8 +369,7 @@ def func_sig(func: Callable) -> Generator[str, None, None]:
 def as_type_stub() -> str:
     ans = [
         'from typing import *  # noqa',
-        'from kitty.utils import ScreenSize',
-        'from kittens.tui.images import GraphicsCommand',
+        'from kitty.typing import GraphicsCommandType, ScreenSize',
         'from kitty.rgb import Color',
         'import kitty.rgb',
     ]

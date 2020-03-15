@@ -9,13 +9,13 @@ from typing import TYPE_CHECKING, List, Optional, Tuple
 from kitty.cli import parse_args
 from kitty.cli_stub import AskCLIOptions
 from kitty.constants import cache_dir
+from kitty.typing import BossType
 
 from ..tui.handler import result_handler
 from ..tui.operations import alternate_screen, styled
 
 if TYPE_CHECKING:
     import readline
-    import kitty
 else:
     readline = None
 
@@ -127,7 +127,7 @@ def main(args: List[str]) -> Response:
 
 
 @result_handler()
-def handle_result(args: List[str], data: Response, target_window_id: int, boss: 'kitty.boss.Boss') -> None:
+def handle_result(args: List[str], data: Response, target_window_id: int, boss: BossType) -> None:
     if data['response'] is not None:
         func, *args = data['items']
         getattr(boss, func)(data['response'], *args)

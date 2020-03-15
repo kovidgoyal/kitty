@@ -5,7 +5,7 @@
 from functools import lru_cache, partial
 from itertools import islice, repeat
 from typing import (
-    TYPE_CHECKING, Callable, Collection, Deque, Dict, FrozenSet, Generator,
+    Callable, Collection, Deque, Dict, FrozenSet, Generator,
     Iterable, List, NamedTuple, Optional, Sequence, Tuple, Union, cast
 )
 
@@ -14,20 +14,7 @@ from .fast_data_types import (
     Region, set_active_window, swap_windows, viewport_for_window
 )
 from .options_stub import Options
-
-try:
-    from typing import TypedDict, Literal
-    EdgeLiteral = Literal['left', 'top', 'right', 'bottom']
-except ImportError:
-    TypedDict = dict
-    EdgeLiteral = str  # type: ignore
-
-
-if TYPE_CHECKING:
-    from .window import Window
-    Window
-else:
-    Window = object
+from .typing import WindowType, EdgeLiteral, TypedDict
 
 
 class Borders(NamedTuple):
@@ -53,7 +40,7 @@ draw_active_borders = True
 align_top_left = False
 LayoutDimension = Generator[Tuple[int, int], None, None]
 DecorationPairs = Sequence[Tuple[int, int]]
-WindowList = Union[List[Window], Deque[Window]]
+WindowList = Union[List[WindowType], Deque[WindowType]]
 
 
 class InternalNeighborsMap(TypedDict):
@@ -70,7 +57,7 @@ class NeighborsMap(TypedDict):
     bottom: Tuple[int, ...]
 
 
-def idx_for_id(win_id: int, windows: Iterable[Window]) -> Optional[int]:
+def idx_for_id(win_id: int, windows: Iterable[WindowType]) -> Optional[int]:
     for i, w in enumerate(windows):
         if w.id == win_id:
             return i
@@ -134,7 +121,7 @@ class Rect(NamedTuple):
     bottom: int
 
 
-def process_overlaid_windows(all_windows: WindowList) -> Tuple[FrozenSet[Window], WindowList]:
+def process_overlaid_windows(all_windows: WindowList) -> Tuple[FrozenSet[WindowType], WindowList]:
     id_map = {w.id: w for w in all_windows}
     overlaid_windows = frozenset(w for w in all_windows if w.overlay_window_id is not None and w.overlay_window_id in id_map)
     windows = [w for w in all_windows if w not in overlaid_windows]
@@ -151,25 +138,25 @@ def layout_single_window(xdecoration_pairs: DecorationPairs, ydecoration_pairs: 
     return window_geometry(xstart, xnum, ystart, ynum)
 
 
-def left_blank_rect(w: Window, rects: List[Rect]) -> None:
+def left_blank_rect(w: WindowType, rects: List[Rect]) -> None:
     lt = w.geometry.left
     if lt > central.left:
         rects.append(Rect(central.left, central.top, lt, central.bottom + 1))
 
 
-def right_blank_rect(w: Window, rects: List[Rect]) -> None:
+def right_blank_rect(w: WindowType, rects: List[Rect]) -> None:
     r = w.geometry.right
     if r < central.right:
         rects.append(Rect(r, central.top, central.right + 1, central.bottom + 1))
 
 
-def top_blank_rect(w: Window, rects: List[Rect]) -> None:
+def top_blank_rect(w: WindowType, rects: List[Rect]) -> None:
     t = w.geometry.top
     if t > central.top:
         rects.append(Rect(central.left, central.top, central.right + 1, t))
 
 
-def bottom_blank_rect(w: Window, rects: List[Rect]) -> None:
+def bottom_blank_rect(w: WindowType, rects: List[Rect]) -> None:
     b = w.geometry.bottom
     # Need to use <= here as otherwise a single pixel row at the bottom of the
     # window is sometimes not covered. See https://github.com/kovidgoyal/kitty/issues/506
@@ -177,7 +164,7 @@ def bottom_blank_rect(w: Window, rects: List[Rect]) -> None:
         rects.append(Rect(central.left, b, central.right + 1, central.bottom + 1))
 
 
-def blank_rects_for_window(w: Window) -> List[Rect]:
+def blank_rects_for_window(w: WindowType) -> List[Rect]:
     ans: List[Rect] = []
     left_blank_rect(w, ans)
     top_blank_rect(w, ans)
@@ -288,7 +275,7 @@ class Layout:  # {{{
                     data[k] = v
         return type(self.layout_opts)(data)
 
-    def nth_window(self, all_windows: WindowList, num: int) -> Window:
+    def nth_window(self, all_windows: WindowList, num: int) -> WindowType:
         windows = process_overlaid_windows(all_windows)[1]
         w = windows[min(num, len(windows) - 1)]
         return w
@@ -370,7 +357,7 @@ class Layout:  # {{{
     def swap_windows_in_layout(self, all_windows: WindowList, a: int, b: int) -> None:
         all_windows[a], all_windows[b] = all_windows[b], all_windows[a]
 
-    def add_window(self, all_windows: WindowList, window: Window, current_active_window_idx: int, location: Optional[str] = None) -> int:
+    def add_window(self, all_windows: WindowList, window: WindowType, current_active_window_idx: int, location: Optional[str] = None) -> int:
         active_window_idx = None
         if window.overlay_for is not None:
             i = idx_for_id(window.overlay_for, all_windows)
@@ -390,7 +377,7 @@ class Layout:  # {{{
         self.set_active_window_in_os_window(active_window_idx)
         return active_window_idx
 
-    def do_add_window(self, all_windows: WindowList, window: Window, current_active_window_idx: Optional[int], location: Optional[str]) -> int:
+    def do_add_window(self, all_windows: WindowList, window: WindowType, current_active_window_idx: Optional[int], location: Optional[str]) -> int:
         active_window_idx = None
         if location is not None:
             if location in ('after', 'vsplit', 'hsplit') and current_active_window_idx is not None and len(all_windows) > 1:
@@ -409,7 +396,7 @@ class Layout:  # {{{
             all_windows.append(window)
         return active_window_idx
 
-    def remove_window(self, all_windows: WindowList, window: Window, current_active_window_idx: int, swapped: bool = False) -> int:
+    def remove_window(self, all_windows: WindowList, window: WindowType, current_active_window_idx: int, swapped: bool = False) -> int:
         try:
             active_window = all_windows[current_active_window_idx]
         except Exception:
@@ -443,7 +430,7 @@ class Layout:  # {{{
             self(all_windows, active_window_idx)
         return self.set_active_window(all_windows, active_window_idx)
 
-    def update_visibility(self, all_windows: WindowList, active_window: Window, overlaid_windows: Optional[FrozenSet[Window]] = None) -> None:
+    def update_visibility(self, all_windows: WindowList, active_window: WindowType, overlaid_windows: Optional[FrozenSet[WindowType]] = None) -> None:
         if overlaid_windows is None:
             overlaid_windows = process_overlaid_windows(all_windows)[0]
         for i, w in enumerate(all_windows):
@@ -492,7 +479,7 @@ class Layout:  # {{{
         return cast(int, idx_for_id(active_window.id, all_windows))
 
     # Utils {{{
-    def layout_single_window(self, w: Window) -> None:
+    def layout_single_window(self, w: WindowType) -> None:
         mw = self.margin_width if self.single_window_margin_width < 0 else self.single_window_margin_width
         decoration_pairs = ((self.padding_width + mw, self.padding_width + mw),)
         wg = layout_single_window(decoration_pairs, decoration_pairs)
@@ -521,19 +508,19 @@ class Layout:  # {{{
             height = central.height
         return layout_dimension(top, height, cell_height, decoration_pairs, bias=bias, left_align=align_top_left)
 
-    def simple_blank_rects(self, first_window: Window, last_window: Window) -> None:
+    def simple_blank_rects(self, first_window: WindowType, last_window: WindowType) -> None:
         br = self.blank_rects
         left_blank_rect(first_window, br)
         top_blank_rect(first_window, br)
         right_blank_rect(last_window, br)
 
-    def between_blank_rect(self, left_window: Window, right_window: Window, vertical: bool = True) -> None:
+    def between_blank_rect(self, left_window: WindowType, right_window: WindowType, vertical: bool = True) -> None:
         if vertical:
             self.blank_rects.append(Rect(left_window.geometry.right, central.top, right_window.geometry.left, central.bottom + 1))
         else:
             self.blank_rects.append(Rect(central.left, left_window.geometry.top, central.right + 1, right_window.geometry.bottom))
 
-    def bottom_blank_rect(self, window: Window) -> None:
+    def bottom_blank_rect(self, window: WindowType) -> None:
         self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, central.bottom + 1))
     # }}}
 
@@ -543,24 +530,24 @@ class Layout:  # {{{
     def do_layout_all_windows(self, windows: WindowList, active_window_idx: int, all_windows: WindowList) -> None:
         raise NotImplementedError()
 
-    def neighbors_for_window(self, window: Window, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
         return {'left': [], 'right': [], 'top': [], 'bottom': []}
 
-    def compute_needs_borders_map(self, windows: WindowList, active_window: Optional[Window]) -> Dict[int, bool]:
+    def compute_needs_borders_map(self, windows: WindowList, active_window: Optional[WindowType]) -> Dict[int, bool]:
         return {w.id: ((w is active_window and draw_active_borders) or w.needs_attention) for w in windows}
 
-    def resolve_borders(self, windows: WindowList, active_window: Optional[Window]) -> Generator[Borders, None, None]:
+    def resolve_borders(self, windows: WindowList, active_window: Optional[WindowType]) -> Generator[Borders, None, None]:
         if draw_minimal_borders:
             needs_borders_map = self.compute_needs_borders_map(windows, active_window)
             yield from self.minimal_borders(windows, active_window, needs_borders_map)
         else:
             yield from Layout.minimal_borders(self, windows, active_window, {})
 
-    def window_independent_borders(self, windows: WindowList, active_window: Optional[Window] = None) -> Generator[Tuple[int, int, int, int], None, None]:
+    def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Tuple[int, int, int, int], None, None]:
         return
         yield (0, 0, 0, 0)  # type: ignore
 
-    def minimal_borders(self, windows: WindowList, active_window: Optional[Window], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+    def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         for w in windows:
             if (w is active_window and draw_active_borders) or w.needs_attention:
                 yield all_borders
@@ -592,7 +579,7 @@ class Stack(Layout):  # {{{
 # Tall {{{
 
 
-def neighbors_for_tall_window(num_full_size_windows: int, window: Window, windows: WindowList) -> InternalNeighborsMap:
+def neighbors_for_tall_window(num_full_size_windows: int, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
     idx = windows.index(window)
     prev = None if idx == 0 else windows[idx-1]
     nxt = None if idx == len(windows) - 1 else windows[idx+1]
@@ -713,10 +700,10 @@ class Tall(Layout):
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
 
-    def neighbors_for_window(self, window: Window, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
         return neighbors_for_tall_window(self.num_full_size_windows, window, windows)
 
-    def minimal_borders(self, windows: WindowList, active_window: Optional[Window], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+    def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
             if needs_borders_map[w.id]:
@@ -778,7 +765,7 @@ class Fat(Tall):  # {{{
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
 
-    def neighbors_for_window(self, window: Window, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
         idx = windows.index(window)
         prev = None if idx == 0 else windows[idx-1]
         nxt = None if idx == len(windows) - 1 else windows[idx+1]
@@ -925,7 +912,7 @@ class Grid(Layout):
         for i in range(ncols - 1):
             self.between_blank_rect(win_col_map[i][0], win_col_map[i + 1][0])
 
-    def minimal_borders(self, windows: WindowList, active_window: Optional[Window], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+    def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         n = len(windows)
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
         blank_row: List[Optional[int]] = [None for i in range(ncols)]
@@ -962,7 +949,7 @@ class Grid(Layout):
                 bottom_neighbor_id is not None and not needs_borders_map[bottom_neighbor_id]
             )
 
-    def neighbors_for_window(self, window: Window, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
         n = len(windows)
         if n < 4:
             return neighbors_for_tall_window(1, window, windows)
@@ -1051,7 +1038,7 @@ class Vertical(Layout):  # {{{
         # left, top and right blank rects
         self.simple_blank_rects(windows[0], windows[-1])
 
-    def minimal_borders(self, windows: WindowList, active_window: Optional[Window], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+    def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         last_i = len(windows) - 1
         for i, w in enumerate(windows):
             if needs_borders_map[w.id]:
@@ -1065,7 +1052,7 @@ class Vertical(Layout):  # {{{
             else:
                 yield self.only_between_border
 
-    def neighbors_for_window(self, window: Window, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
         idx = windows.index(window)
         before = [] if window is windows[0] else [windows[idx-1].id]
         after = [] if window is windows[-1] else [windows[idx+1].id]
@@ -1220,7 +1207,7 @@ class Pair:
             tuple(map(pair.balanced_add, q))
         return pair
 
-    def apply_window_geometry(self, window_id: int, window_geometry: WindowGeometry, id_window_map: Dict[int, Window], id_idx_map: Dict[int, int]) -> None:
+    def apply_window_geometry(self, window_id: int, window_geometry: WindowGeometry, id_window_map: Dict[int, WindowType], id_idx_map: Dict[int, int]) -> None:
         w = id_window_map[window_id]
         w.set_geometry(id_idx_map[window_id], window_geometry)
         if w.overlay_window_id is not None:
@@ -1228,7 +1215,7 @@ class Pair:
             if q is not None:
                 q.set_geometry(id_idx_map[q.id], window_geometry)
 
-    def blank_rects_for_window(self, layout_object: Layout, window: Window, left: int, top: int, width: int, height: int) -> None:
+    def blank_rects_for_window(self, layout_object: Layout, window: WindowType, left: int, top: int, width: int, height: int) -> None:
         right = left + width - 1
         bottom = top + height - 1
         g = window.geometry
@@ -1249,7 +1236,7 @@ class Pair:
     def layout_pair(
         self,
         left: int, top: int, width: int, height: int,
-        id_window_map: Dict[int, Window],
+        id_window_map: Dict[int, WindowType],
         id_idx_map: Dict[int, int],
         layout_object: Layout
     ) -> None:
@@ -1436,7 +1423,7 @@ class Splits(Layout):
     def do_add_window(
         self,
         all_windows: WindowList,
-        window: Window,
+        window: WindowType,
         current_active_window_idx: Optional[int],
         location: Optional[str]
     ) -> int:
@@ -1490,14 +1477,14 @@ class Splits(Layout):
             pair.bias = 0.5
         return True
 
-    def window_independent_borders(self, windows: WindowList, active_window: Optional[Window] = None) -> Generator[Tuple[int, int, int, int], None, None]:
+    def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Tuple[int, int, int, int], None, None]:
         if not draw_minimal_borders:
             return
         for pair in self.pairs_root.self_and_descendants():
             if pair.between_border is not None:
                 yield pair.between_border
 
-    def neighbors_for_window(self, window: Window, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
         window_id = window.overlay_for or window.id
         pair = self.pairs_root.pair_for_window(window_id)
         ans: InternalNeighborsMap = {'left': [], 'right': [], 'top': [], 'bottom': []}

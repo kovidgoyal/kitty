@@ -4,20 +4,16 @@
 
 import re
 from functools import lru_cache
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Tuple, cast
+from typing import Dict, Generator, List, Optional, Tuple, cast
 
 from kitty.fast_data_types import (
     FC_DUAL, FC_MONO, FC_SLANT_ITALIC, FC_SLANT_ROMAN, FC_WEIGHT_BOLD,
     FC_WEIGHT_REGULAR, fc_list, fc_match as fc_match_impl
 )
 from kitty.options_stub import Options
+from kitty.typing import FontConfigPattern
 
 from . import ListedFont
-
-if TYPE_CHECKING:
-    from kitty.fast_data_types import FontConfigPattern as F
-    FontConfigPattern = F
-
 
 attr_map = {(False, False): 'font_family',
             (True, False): 'bold_font',
@@ -25,10 +21,10 @@ attr_map = {(False, False): 'font_family',
             (True, True): 'bold_italic_font'}
 
 
-FontMap = Dict[str, Dict[str, List['FontConfigPattern']]]
+FontMap = Dict[str, Dict[str, List[FontConfigPattern]]]
 
 
-def create_font_map(all_fonts: Tuple['FontConfigPattern', ...]) -> FontMap:
+def create_font_map(all_fonts: Tuple[FontConfigPattern, ...]) -> FontMap:
     ans: FontMap = {'family_map': {}, 'ps_map': {}, 'full_map': {}}
     for x in all_fonts:
         if 'path' not in x:
@@ -69,15 +65,15 @@ def family_name_to_key(family: str) -> str:
 
 
 @lru_cache()
-def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> 'FontConfigPattern':
+def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> FontConfigPattern:
     return fc_match_impl(family, bold, italic, spacing)
 
 
-def find_best_match(family: str, bold: bool = False, italic: bool = False, monospaced: bool = True) -> 'FontConfigPattern':
+def find_best_match(family: str, bold: bool = False, italic: bool = False, monospaced: bool = True) -> FontConfigPattern:
     q = family_name_to_key(family)
     font_map = all_fonts_map(monospaced)
 
-    def score(candidate: 'FontConfigPattern') -> Tuple[int, int]:
+    def score(candidate: FontConfigPattern) -> Tuple[int, int]:
         bold_score = abs((FC_WEIGHT_BOLD if bold else FC_WEIGHT_REGULAR) - candidate.get('weight', 0))
         italic_score = abs((FC_SLANT_ITALIC if italic else FC_SLANT_ROMAN) - candidate.get('slant', 0))
         monospace_match = 0 if candidate.get('spacing') == 'MONO' else 1
@@ -118,8 +114,8 @@ def resolve_family(f: str, main_family: str, bold: bool, italic: bool) -> str:
     return f
 
 
-def get_font_files(opts: Options) -> Dict[str, 'FontConfigPattern']:
-    ans: Dict[str, 'FontConfigPattern'] = {}
+def get_font_files(opts: Options) -> Dict[str, FontConfigPattern]:
+    ans: Dict[str, FontConfigPattern] = {}
     for (bold, italic), attr in attr_map.items():
         rf = resolve_family(getattr(opts, attr), opts.font_family, bold, italic)
         font = find_best_match(rf, bold, italic)
@@ -131,6 +127,6 @@ def get_font_files(opts: Options) -> Dict[str, 'FontConfigPattern']:
     return ans
 
 
-def font_for_family(family: str) -> Tuple['FontConfigPattern', bool, bool]:
+def font_for_family(family: str) -> Tuple[FontConfigPattern, bool, bool]:
     ans = find_best_match(family, monospaced=False)
     return ans, ans.get('weight', 0) >= FC_WEIGHT_BOLD, ans.get('slant', FC_SLANT_ROMAN) != FC_SLANT_ROMAN
