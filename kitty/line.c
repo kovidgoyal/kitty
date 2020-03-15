@@ -133,15 +133,23 @@ line_url_start_at(Line *self, index_type x) {
 }
 
 index_type
-line_url_end_at(Line *self, index_type x, bool check_short, char_type sentinel) {
+line_url_end_at(Line *self, index_type x, bool check_short, char_type sentinel, bool next_line_starts_with_url_chars) {
     index_type ans = x;
     if (x >= self->xnum || (check_short && self->xnum <= MIN_URL_LEN + 3)) return 0;
     if (sentinel) { while (ans < self->xnum && self->cpu_cells[ans].ch != sentinel && is_url_char(self->cpu_cells[ans].ch)) ans++; }
     else { while (ans < self->xnum && is_url_char(self->cpu_cells[ans].ch)) ans++; }
     if (ans) ans--;
-    while (ans > x && can_strip_from_end_of_url(self->cpu_cells[ans].ch)) ans--;
+    if (ans < self->xnum - 1 || !next_line_starts_with_url_chars) {
+        while (ans > x && can_strip_from_end_of_url(self->cpu_cells[ans].ch)) ans--;
+    }
     return ans;
 }
+
+bool
+line_startswith_url_chars(Line *self) {
+    return is_url_char(self->cpu_cells[0].ch);
+}
+
 
 static PyObject*
 url_start_at(Line *self, PyObject *x) {
@@ -153,8 +161,9 @@ static PyObject*
 url_end_at(Line *self, PyObject *args) {
 #define url_end_at_doc "url_end_at(x) -> Return the end cell number for a URL containing x or 0 if not found"
     unsigned int x, sentinel = 0;
-    if (!PyArg_ParseTuple(args, "I|I", &x, &sentinel)) return NULL;
-    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, x, true, sentinel));
+    int next_line_starts_with_url_chars = 0;
+    if (!PyArg_ParseTuple(args, "I|Ip", &x, &sentinel, &next_line_starts_with_url_chars)) return NULL;
+    return PyLong_FromUnsignedLong((unsigned long)line_url_end_at(self, x, true, sentinel, next_line_starts_with_url_chars));
 }
 
 // }}}

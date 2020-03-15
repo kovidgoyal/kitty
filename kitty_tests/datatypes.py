@@ -285,6 +285,10 @@ class TestDataTypes(BaseTest):
             l4 = create('http://a.b?q=1' + trail)
             self.ae(l4.url_end_at(1), len(l4) - 1)
 
+        l4 = create('http://a.b.')
+        self.ae(l4.url_end_at(0), len(l4) - 2)
+        self.ae(l4.url_end_at(0, 0, True), len(l4) - 1)
+
     def rewrap(self, lb, lb2):
         hb = HistoryBuf(lb2.ynum, lb2.xnum)
         cy = lb.rewrap(lb2, hb)
