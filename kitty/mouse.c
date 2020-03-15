@@ -137,7 +137,7 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
     Screen *screen = w->render_data.screen;
     if (!screen) return false;
     unsigned int qx = 0, qy = 0;
-    bool in_left_half = false;
+    bool in_left_half = true;
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;
     double left = window_left(w, os_window), top = window_top(w, os_window), right = window_right(w, os_window), bottom = window_bottom(w, os_window);
@@ -147,8 +147,10 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
     }
     w->mouse_pos.x = mouse_x - left; w->mouse_pos.y = mouse_y - top;
     if (mouse_x < left || mouse_y < top || mouse_x > right || mouse_y > bottom) return false;
-    if (mouse_x >= g->right) qx = screen->columns - 1;
-    else if (mouse_x >= g->left) {
+    if (mouse_x >= g->right) {
+        qx = screen->columns - 1;
+        in_left_half = false;
+    } else if (mouse_x >= g->left) {
         double xval = (double)(mouse_x - g->left) / os_window->fonts_data->cell_width;
         double fxval = floor(xval);
         qx = (unsigned int)fxval;
