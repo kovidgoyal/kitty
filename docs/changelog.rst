@@ -57,6 +57,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix incorrect rendering of selection when using rectangular select and
   scrolling (:iss:`2351`)
 
+- Allow setting WM_CLASS and WM_NAME when creating new OS windows with the
+  launch command (:option:`launch --os-window-class`)
+
 - macOS: When switching input method while a pending multi-key input is in
   progress, clear the pending input (:iss:`2358`)
 

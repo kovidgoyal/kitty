@@ -136,6 +136,18 @@ screen.
 --marker
 Create a marker that highlights text in the newly created window. The syntax is
 the same as for the :code:`toggle_marker` map action (see :doc:`/marks`).
+
+
+--os-window-class
+Set the WM_CLASS property on X11 and the application id property on Wayland for
+the newly created OS Window when using :option:`launch --type`=os-window.
+Defaults to whatever is used by the parent kitty process, which in turn
+defaults to :code:`kitty`.
+
+
+--os-window-name
+Set the WM_NAME property on X11 for the newly created OS Window when using
+:option:`launch --type`=os-window. Defaults to :option:`launch --os-window-class`.
 '''
 
 
@@ -169,7 +181,7 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab]
         else:
             tab = None
     elif opts.type == 'os-window':
-        oswid = boss.add_os_window()
+        oswid = boss.add_os_window(wclass=opts.os_window_class, wname=opts.os_window_name)
         tm = boss.os_window_map[oswid]
         tab = tm.new_tab(empty_tab=True)
         if opts.tab_title:
