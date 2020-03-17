@@ -28,6 +28,10 @@ class NoResponse:
     pass
 
 
+class RemoteControlError(Exception):
+    pass
+
+
 class MatchError(ValueError):
 
     hide_traceback = True
@@ -115,7 +119,7 @@ class RemoteCommand:
 
     def fatal(self, msg: str) -> NoReturn:
         if running_in_kitty():
-            raise Exception(msg)
+            raise RemoteControlError(msg)
         raise SystemExit(msg)
 
     def get_default(self, name: str, missing: Any = None) -> Any:
