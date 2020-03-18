@@ -1707,7 +1707,7 @@ bool
 screen_has_selection(Screen *self) {
     if (is_selection_empty(&self->selection)) return false;
     IterationData idata;
-    iteration_data(self, &self->selection, &idata, 0, true);
+    iteration_data(self, &self->selection, &idata, -self->historybuf->count, true);
     if (iteration_data_is_empty(self, &idata)) return false;
     return true;
 }
