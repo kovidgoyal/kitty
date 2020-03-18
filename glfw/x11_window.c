@@ -1478,6 +1478,10 @@ static void processEvent(XEvent *event)
                     {
                         _glfw.x11.xdnd.format = _glfw.x11.text_uri_list;
                         break;
+                    } else if (formats[i] == _glfw.x11.text_plain_utf8 && (_glfw.x11.xdnd.format == None || _glfw.x11.xdnd.format == _glfw.x11.text_plain)) {
+                        _glfw.x11.xdnd.format = _glfw.x11.text_plain_utf8;
+                    } else if (formats[i] == _glfw.x11.text_plain && _glfw.x11.xdnd.format == None) {
+                        _glfw.x11.xdnd.format = _glfw.x11.text_plain;
                     }
                 }
 
