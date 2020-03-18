@@ -217,10 +217,10 @@ drag_scroll(Window *w, OSWindow *frame) {
 }
 
 static inline void
-extend_selection(Window *w) {
+extend_selection(Window *w, bool ended) {
     Screen *screen = w->render_data.screen;
     if (screen_has_selection(screen)) {
-        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, true, false);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, ended, false);
     }
 }
 
@@ -304,7 +304,7 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
 static inline void
 handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
     Screen *screen = w->render_data.screen;
-    if (screen->selection.in_progress && button == GLFW_MOUSE_BUTTON_LEFT) {
+    if (screen->selection.in_progress && (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT)) {
         monotonic_t now = monotonic();
         if ((now - w->last_drag_scroll_at) >= ms_to_monotonic_t(20ll) || mouse_cell_changed) {
             update_drag(false, w, false, 0);
@@ -427,7 +427,7 @@ handle_button_event_in_kitty(Window *w, int button, int modifiers, bool is_relea
             if (is_release) { call_boss(paste_from_selection, NULL); return; }
             break;
         case GLFW_MOUSE_BUTTON_RIGHT:
-            if (is_release) { extend_selection(w); }
+            extend_selection(w, is_release);
             break;
     }
 }

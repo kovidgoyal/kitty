@@ -71,6 +71,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix selection not updating properly while scrolling (:iss:`2442`)
 
+- Allow extending selections by dragging with right button pressed
+  (:iss:`2445`)
+
 - Workaround for bug in less that causes colors to reset at wrapped lines
   (:iss:`2381`)
 

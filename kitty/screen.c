@@ -2217,7 +2217,7 @@ screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type
 
 void
 screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool ended, bool start_extended_selection) {
-    if (ended) self->selection.in_progress = false;
+    self->selection.in_progress = !ended;
     self->selection.input_current.x = x; self->selection.input_current.y = y;
     self->selection.input_current.in_left_half_of_cell = in_left_half_of_cell;
     self->selection.end_scrolled_by = self->scrolled_by;
