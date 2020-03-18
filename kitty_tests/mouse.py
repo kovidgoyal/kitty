@@ -5,7 +5,8 @@
 from functools import partial
 
 from kitty.fast_data_types import (
-    GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOUSE_BUTTON_LEFT, create_mock_window,
+    GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOUSE_BUTTON_LEFT,
+    GLFW_MOUSE_BUTTON_RIGHT, create_mock_window,
     send_mock_mouse_event_to_window
 )
 
@@ -55,12 +56,12 @@ class TestMouse(BaseTest):
             s.draw('fghij')
             s.draw('klmno')
 
-        def press(x=0, y=0, modifiers=0):
-            ev(GLFW_MOUSE_BUTTON_LEFT, x=x, y=y, modifiers=modifiers)
+        def press(x=0, y=0, modifiers=0, button=GLFW_MOUSE_BUTTON_LEFT):
+            ev(button, x=x, y=y, modifiers=modifiers)
 
-        def release(x=0, y=0):
+        def release(x=0, y=0, button=GLFW_MOUSE_BUTTON_LEFT):
             ev(
-                GLFW_MOUSE_BUTTON_LEFT,
+                button,
                 x=x,
                 y=y,
                 is_release=True,
@@ -200,3 +201,16 @@ class TestMouse(BaseTest):
         scroll(x=2.6, up=False)
         self.ae(sel(), '3')
         release()
+
+        # extending selections
+        init()
+        press()
+        move(x=3.6, q='1234')
+        release(x=3.6)
+        self.ae(sel(), '1234')
+        press(x=1, y=1, button=GLFW_MOUSE_BUTTON_RIGHT)
+        self.ae(sel(), '123456')
+        move(x=2, y=1)
+        self.ae(sel(), '1234567')
+        release(x=3, y=1, button=GLFW_MOUSE_BUTTON_RIGHT)
+        self.ae(sel(), '12345678')
