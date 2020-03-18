@@ -1693,14 +1693,15 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 
 static inline void
 apply_selection(Screen *self, uint8_t *data, const Selection *s, IterationData *last_rendered, uint8_t set_mask) {
-    iteration_data(self, s, last_rendered, 0, true);
+    iteration_data(self, s, last_rendered, -self->historybuf->count, true);
 
-    for (int y = last_rendered->y; y < last_rendered->y_limit && y < (int)self->lines; y++) {
+    for (int y = MAX(0, last_rendered->y); y < last_rendered->y_limit && y < (int)self->lines; y++) {
         Line *line = visual_line_(self, y);
         uint8_t *line_start = data + self->columns * y;
         XRange xr = xrange_for_iteration(last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) line_start[x] |= set_mask;
     }
+    last_rendered->y = MAX(0, last_rendered->y);
 }
 
 bool
