@@ -344,6 +344,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         send_graphics_data_to_gpu(screen->grman->count, gvao_idx, screen->grman->render_data);
         changed = true;
     }
+    screen->last_rendered.scrolled_by = screen->scrolled_by;
     return changed;
 }
 

@@ -2188,6 +2188,7 @@ scroll(Screen *self, PyObject *args) {
 bool
 screen_is_selection_dirty(Screen *self) {
     IterationData q;
+    if (self->scrolled_by != self->last_rendered.scrolled_by) return true;
     iteration_data(self, &self->selection, &q, 0, true);
     if (memcmp(&q, &self->last_rendered.selection, sizeof(IterationData)) != 0) return true;
     iteration_data(self, &self->url_range, &q, 0, true);
