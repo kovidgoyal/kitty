@@ -1159,27 +1159,20 @@ is_ascii_control_char(char x) {
     const NSUInteger count = [objs count];
     if (count)
     {
-        char** paths = calloc(count, sizeof(char*));
-
         for (NSUInteger i = 0;  i < count;  i++)
         {
             id obj = objs[i];
             if ([obj isKindOfClass:[NSURL class]]) {
-                paths[i] = _glfw_strdup([obj fileSystemRepresentation]);
+                const char *path = [obj fileSystemRepresentation];
+                _glfwInputDrop(window, "text/uri-list", path, strlen(path));
             } else if ([obj isKindOfClass:[NSString class]]) {
-                paths[i] = _glfw_strdup([obj UTF8String]);
+                const char *text = [obj UTF8String];
+                _glfwInputDrop(window, "text/plain;charset=utf-8", text, strlen(text));
             } else {
                 _glfwInputError(GLFW_PLATFORM_ERROR,
                                 "Cocoa: Object is neither a URL nor a string");
-                paths[i] = _glfw_strdup("");
             }
         }
-
-        _glfwInputDrop(window, (int) count, (const char**) paths);
-
-        for (NSUInteger i = 0;  i < count;  i++)
-            free(paths[i]);
-        free(paths);
     }
 
     return YES;
