@@ -135,7 +135,6 @@ class Boss:
 
     def __init__(
         self,
-        os_window_id: Optional[int],
         opts: Options,
         args: CLIOptions,
         cached_values: Dict[str, Any],
@@ -165,21 +164,23 @@ class Boss:
         )
         set_boss(self)
         self.opts, self.args = opts, args
-        startup_sessions = create_sessions(opts, args, default_session=opts.startup_session)
         self.keymap = self.opts.keymap.copy()
         if new_os_window_trigger is not None:
             self.keymap.pop(new_os_window_trigger, None)
-        for startup_session in startup_sessions:
-            self.add_os_window(startup_session, os_window_id=os_window_id)
-            os_window_id = None
-            if args.start_as != 'normal':
-                if args.start_as == 'fullscreen':
-                    self.toggle_fullscreen()
-                else:
-                    change_os_window_state(args.start_as)
         if is_macos:
             from .fast_data_types import cocoa_set_notification_activated_callback
             cocoa_set_notification_activated_callback(notification_activated)
+
+    def startup_first_child(self, os_window_id: Optional[int]) -> None:
+        startup_sessions = create_sessions(self.opts, self.args, default_session=self.opts.startup_session)
+        for startup_session in startup_sessions:
+            self.add_os_window(startup_session, os_window_id=os_window_id)
+            os_window_id = None
+            if self.args.start_as != 'normal':
+                if self.args.start_as == 'fullscreen':
+                    self.toggle_fullscreen()
+                else:
+                    change_os_window_state(self.args.start_as)
 
     def add_os_window(
         self,
@@ -427,10 +428,12 @@ class Boss:
     def toggle_maximized(self) -> None:
         toggle_maximized()
 
-    def start(self) -> None:
+    def start(self, first_os_window_id: int) -> None:
         if not getattr(self, 'io_thread_started', False):
             self.child_monitor.start()
             self.io_thread_started = True
+            self.startup_first_child(first_os_window_id)
+
         if self.opts.update_check_interval > 0 and not hasattr(self, 'update_check_started'):
             from .update_check import run_update_check
             run_update_check(self.opts.update_check_interval * 60 * 60)

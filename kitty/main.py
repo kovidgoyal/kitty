@@ -133,8 +133,8 @@ def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] =
                     pre_show_callback,
                     appname, args.name or args.cls or appname,
                     args.cls or appname, load_all_shaders)
-        boss = Boss(window_id, opts, args, cached_values, new_os_window_trigger)
-        boss.start()
+        boss = Boss(opts, args, cached_values, new_os_window_trigger)
+        boss.start(window_id)
         if bad_lines:
             boss.show_bad_config_lines(bad_lines)
         try:
