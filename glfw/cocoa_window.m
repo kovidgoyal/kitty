@@ -1164,7 +1164,7 @@ is_ascii_control_char(char x) {
             id obj = objs[i];
             if ([obj isKindOfClass:[NSURL class]]) {
                 const char *path = [obj fileSystemRepresentation];
-                _glfwInputDrop(window, "text/uri-list", path, strlen(path));
+                _glfwInputDrop(window, "text/plain;charset=utf-8", path, strlen(path));
             } else if ([obj isKindOfClass:[NSString class]]) {
                 const char *text = [obj UTF8String];
                 _glfwInputDrop(window, "text/plain;charset=utf-8", text, strlen(text));
