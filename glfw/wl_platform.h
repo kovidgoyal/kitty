@@ -195,27 +195,18 @@ typedef enum _GLFWWaylandOfferType
 
 typedef struct _GLFWWaylandDataOffer
 {
-    struct wl_data_offer *id;
-    const char *mime;
+    void *id;
     _GLFWWaylandOfferType offer_type;
     size_t idx;
-    int is_self_offer;
-    int has_uri_list;
+    bool is_self_offer;
+    bool is_primary;
+    const char *plain_text_mime, *mime_for_drop;
     uint32_t source_actions;
     uint32_t dnd_action;
     struct wl_surface *surface;
+    const char **mimes;
+    size_t mimes_capacity, mimes_count;
 } _GLFWWaylandDataOffer;
-
-typedef struct _GLFWWaylandPrimaryOffer
-{
-    struct zwp_primary_selection_offer_v1 *id;
-    const char *mime;
-    _GLFWWaylandOfferType offer_type;
-    size_t idx;
-    int is_self_offer;
-    int has_uri_list;
-    struct wl_surface *surface;
-} _GLFWWaylandPrimaryOffer;
 
 // Wayland-specific global data
 //
@@ -287,8 +278,6 @@ typedef struct _GLFWlibraryWayland
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
     char* primarySelectionString;
-    size_t primarySelectionOffersCounter;
-    _GLFWWaylandPrimaryOffer primarySelectionOffers[8];
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data
@@ -322,3 +311,4 @@ void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);
 void animateCursorImage(id_type timer_id, void *data);
 struct wl_cursor* _glfwLoadCursor(GLFWCursorShape);
+void destroy_data_offer(_GLFWWaylandDataOffer*);

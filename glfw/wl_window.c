@@ -42,7 +42,7 @@
 #include <sys/mman.h>
 
 
-#define URI_LIST_MIME "text/uri-list"
+
 
 
 static bool checkScaleChange(_GLFWwindow* window)
@@ -1509,10 +1509,11 @@ static void _glfwSendPrimarySelectionText(void *data UNUSED, struct zwp_primary_
     send_text(_glfw.wl.primarySelectionString, fd);
 }
 
-static char* read_offer_string(int data_pipe) {
+static char* read_offer_string(int data_pipe, size_t *data_sz) {
     wl_display_flush(_glfw.wl.display);
-    size_t sz = 0, capacity = 0;
+    size_t capacity = 0;
     char *buf = NULL;
+    *data_sz = 0;
     struct pollfd fds;
     fds.fd = data_pipe;
     fds.events = POLLIN;
@@ -1533,20 +1534,20 @@ static char* read_offer_string(int data_pipe) {
         if (!ret) {
             bail("Wayland: Failed to read clipboard data from pipe (timed out)");
         }
-        if (capacity <= sz || capacity - sz <= 64) {
+        if (capacity <= *data_sz || capacity - *data_sz <= 64) {
             capacity += 4096;
             buf = realloc(buf, capacity);
             if (!buf) {
                 bail("Wayland: Failed to allocate memory to read clipboard data");
             }
         }
-        ret = read(data_pipe, buf + sz, capacity - sz - 1);
+        ret = read(data_pipe, buf + *data_sz, capacity - *data_sz - 1);
         if (ret == -1) {
             if (errno == EINTR || errno == EAGAIN || errno == EWOULDBLOCK) continue;
             bail("Wayland: Failed to read clipboard data from pipe with error: %s", strerror(errno));
         }
-        if (ret == 0) { close(data_pipe); buf[sz] = 0; return buf; }
-        sz += ret;
+        if (ret == 0) { close(data_pipe); buf[*data_sz] = 0; return buf; }
+        *data_sz += ret;
         start = glfwGetTime();
     }
     bail("Wayland: Failed to read clipboard data from pipe (timed out)");
@@ -1559,15 +1560,16 @@ static char* read_primary_selection_offer(struct zwp_primary_selection_offer_v1 
     if (pipe2(pipefd, O_CLOEXEC) != 0) return NULL;
     zwp_primary_selection_offer_v1_receive(primary_selection_offer, mime, pipefd[1]);
     close(pipefd[1]);
-    return read_offer_string(pipefd[0]);
+    size_t sz = 0;
+    return read_offer_string(pipefd[0], &sz);
 }
 
-static char* read_data_offer(struct wl_data_offer *data_offer, const char *mime) {
+static char* read_data_offer(struct wl_data_offer *data_offer, const char *mime, size_t *sz) {
     int pipefd[2];
     if (pipe2(pipefd, O_CLOEXEC) != 0) return NULL;
     wl_data_offer_receive(data_offer, mime, pipefd[1]);
     close(pipefd[1]);
-    return read_offer_string(pipefd[0]);
+    return read_offer_string(pipefd[0], sz);
 }
 
 static void data_source_canceled(void *data UNUSED, struct wl_data_source *wl_data_source) {
@@ -1596,20 +1598,23 @@ static const struct zwp_primary_selection_source_v1_listener primary_selection_s
     .cancelled = primary_selection_source_canceled,
 };
 
+void
+destroy_data_offer(_GLFWWaylandDataOffer *offer) {
+    if (offer->id) {
+        if (offer->is_primary) zwp_primary_selection_offer_v1_destroy(offer->id);
+        else wl_data_offer_destroy(offer->id);
+    }
+    if (offer->mimes) {
+        for (size_t i = 0; i < offer->mimes_count; i++) free((char*)offer->mimes[i]);
+        free(offer->mimes);
+    }
+    memset(offer, 0, sizeof(_GLFWWaylandDataOffer));
+}
+
 static void prune_unclaimed_data_offers(void) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].id && !_glfw.wl.dataOffers[i].offer_type) {
-            wl_data_offer_destroy(_glfw.wl.dataOffers[i].id);
-            memset(_glfw.wl.dataOffers + i, 0, sizeof(_glfw.wl.dataOffers[0]));
-        }
-    }
-}
-
-static void prune_unclaimed_primary_selection_offers(void) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
-        if (_glfw.wl.primarySelectionOffers[i].id && !_glfw.wl.dataOffers[i].offer_type) {
-            zwp_primary_selection_offer_v1_destroy(_glfw.wl.primarySelectionOffers[i].id);
-            memset(_glfw.wl.primarySelectionOffers + i, 0, sizeof(_glfw.wl.primarySelectionOffers[0]));
+            destroy_data_offer(&_glfw.wl.dataOffers[i]);
         }
     }
 }
@@ -1628,25 +1633,32 @@ static void mark_selection_offer(void *data UNUSED, struct wl_data_device *data_
 
 static void mark_primary_selection_offer(void *data UNUSED, struct zwp_primary_selection_device_v1* primary_selection_device UNUSED,
         struct zwp_primary_selection_offer_v1 *primary_selection_offer) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
-        if (_glfw.wl.primarySelectionOffers[i].id == primary_selection_offer) {
-            _glfw.wl.primarySelectionOffers[i].offer_type = PRIMARY_SELECTION;
-        } else if (_glfw.wl.primarySelectionOffers[i].offer_type == PRIMARY_SELECTION) {
-            _glfw.wl.primarySelectionOffers[i].offer_type = EXPIRED;  // previous selection offer
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].id == primary_selection_offer) {
+            _glfw.wl.dataOffers[i].offer_type = PRIMARY_SELECTION;
+        } else if (_glfw.wl.dataOffers[i].offer_type == PRIMARY_SELECTION) {
+            _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous selection offer
         }
     }
-    prune_unclaimed_primary_selection_offers();
+    prune_unclaimed_data_offers();
 }
 
-static void set_offer_mimetype(struct _GLFWWaylandDataOffer* offer, const char* mime) {
-    if (strcmp(mime, "text/plain;charset=utf-8") == 0)
-        offer->mime = "text/plain;charset=utf-8";
-    else if (!offer->mime && strcmp(mime, "text/plain") == 0)
-        offer->mime = "text/plain";
-    else if (strcmp(mime, clipboard_mime()) == 0)
-        offer->is_self_offer = 1;
-    else if (strcmp(mime, URI_LIST_MIME) == 0)
-        offer->has_uri_list = 1;
+static void
+set_offer_mimetype(_GLFWWaylandDataOffer* offer, const char* mime) {
+    if (strcmp(mime, "text/plain;charset=utf-8") == 0) {
+        offer->plain_text_mime = "text/plain;charset=utf-8";
+    } else if (!offer->plain_text_mime && strcmp(mime, "text/plain")) {
+        offer->plain_text_mime = "text/plain";
+    }
+    if (strcmp(mime, clipboard_mime()) == 0) {
+        offer->is_self_offer = true;
+    }
+    if (!offer->mimes || offer->mimes_count >= offer->mimes_capacity - 1) {
+        offer->mimes = realloc(offer->mimes, sizeof(char*) * (offer->mimes_capacity + 64));
+        if (offer->mimes) offer->mimes_capacity += 64;
+        else return;
+    }
+    offer->mimes[offer->mimes_count++] = _glfw_strdup(mime);
 }
 
 static void handle_offer_mimetype(void *data UNUSED, struct wl_data_offer* id, const char *mime) {
@@ -1659,9 +1671,9 @@ static void handle_offer_mimetype(void *data UNUSED, struct wl_data_offer* id, c
 }
 
 static void handle_primary_selection_offer_mimetype(void *data UNUSED, struct zwp_primary_selection_offer_v1* id, const char *mime) {
-    for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
-        if (_glfw.wl.primarySelectionOffers[i].id == id) {
-            set_offer_mimetype((struct _GLFWWaylandDataOffer*)&_glfw.wl.primarySelectionOffers[i], mime);
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        if (_glfw.wl.dataOffers[i].id == id) {
+            set_offer_mimetype((_GLFWWaylandDataOffer*)&_glfw.wl.dataOffers[i], mime);
             break;
         }
     }
@@ -1696,7 +1708,8 @@ static const struct zwp_primary_selection_offer_v1_listener primary_selection_of
     .offer = handle_primary_selection_offer_mimetype,
 };
 
-static void handle_data_offer(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, struct wl_data_offer *id) {
+static size_t
+handle_data_offer_generic(void *id, bool is_primary) {
     size_t smallest_idx = SIZE_MAX, pos = 0;
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].idx && _glfw.wl.dataOffers[i].idx < smallest_idx) {
@@ -1704,47 +1717,48 @@ static void handle_data_offer(void *data UNUSED, struct wl_data_device *wl_data_
             pos = i;
         }
         if (_glfw.wl.dataOffers[i].id == NULL) {
-            _glfw.wl.dataOffers[i].id = id;
-            _glfw.wl.dataOffers[i].idx = ++_glfw.wl.dataOffersCounter;
+            pos = i;
             goto end;
         }
     }
-    if (_glfw.wl.dataOffers[pos].id) wl_data_offer_destroy(_glfw.wl.dataOffers[pos].id);
-    memset(_glfw.wl.dataOffers + pos, 0, sizeof(_glfw.wl.dataOffers[0]));
-    _glfw.wl.dataOffers[pos].id = id;
-    _glfw.wl.dataOffers[pos].idx = ++_glfw.wl.dataOffersCounter;
+    if (_glfw.wl.dataOffers[pos].id) destroy_data_offer(&_glfw.wl.dataOffers[pos]);
 end:
+    _glfw.wl.dataOffers[pos].id = id;
+    _glfw.wl.dataOffers[pos].is_primary = is_primary;
+    _glfw.wl.dataOffers[pos].idx = ++_glfw.wl.dataOffersCounter;
+    return pos;
+}
+
+static void handle_data_offer(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, struct wl_data_offer *id) {
+    handle_data_offer_generic(id, false);
     wl_data_offer_add_listener(id, &data_offer_listener, NULL);
 }
 
 static void handle_primary_selection_offer(void *data UNUSED, struct zwp_primary_selection_device_v1 *zwp_primary_selection_device_v1 UNUSED, struct zwp_primary_selection_offer_v1 *id) {
-    size_t smallest_idx = SIZE_MAX, pos = 0;
-    for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
-        if (_glfw.wl.primarySelectionOffers[i].idx && _glfw.wl.primarySelectionOffers[i].idx < smallest_idx) {
-            smallest_idx = _glfw.wl.primarySelectionOffers[i].idx;
-            pos = i;
-        }
-        if (_glfw.wl.primarySelectionOffers[i].id == NULL) {
-            _glfw.wl.primarySelectionOffers[i].id = id;
-            _glfw.wl.primarySelectionOffers[i].idx = ++_glfw.wl.primarySelectionOffersCounter;
-            goto end;
-        }
-    }
-    if (_glfw.wl.primarySelectionOffers[pos].id) zwp_primary_selection_offer_v1_destroy(_glfw.wl.primarySelectionOffers[pos].id);
-    memset(_glfw.wl.primarySelectionOffers + pos, 0, sizeof(_glfw.wl.primarySelectionOffers[0]));
-    _glfw.wl.primarySelectionOffers[pos].id = id;
-    _glfw.wl.primarySelectionOffers[pos].idx = ++_glfw.wl.primarySelectionOffersCounter;
-end:
+    handle_data_offer_generic(id, true);
     zwp_primary_selection_offer_v1_add_listener(id, &primary_selection_offer_listener, NULL);
 }
 
 static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED, uint32_t serial, struct wl_surface *surface, wl_fixed_t x UNUSED, wl_fixed_t y UNUSED, struct wl_data_offer *id) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id == id) {
-            _glfw.wl.dataOffers[i].offer_type = DRAG_AND_DROP;
-            _glfw.wl.dataOffers[i].surface = surface;
-            const char *mime = _glfw.wl.dataOffers[i].has_uri_list ? URI_LIST_MIME : NULL;
-            wl_data_offer_accept(id, serial, mime);
+        _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
+        if (d->id == id) {
+            d->offer_type = DRAG_AND_DROP;
+            d->surface = surface;
+            _GLFWwindow* window = _glfw.windowListHead;
+            int format_priority = 0;
+            while (window)
+            {
+                if (window->wl.surface == surface) {
+                    for (size_t x = 0; x < d->mimes_count; x++) {
+                        int prio = _glfwInputDrop(window, d->mimes[x], NULL, 0);
+                        if (prio > format_priority) d->mime_for_drop = d->mimes[x];
+                    }
+                    break;
+                }
+                window = window->next;
+            }
+            wl_data_offer_accept(id, serial, d->mime_for_drop);
         } else if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
             _glfw.wl.dataOffers[i].offer_type = EXPIRED;  // previous drag offer
         }
@@ -1755,41 +1769,34 @@ static void drag_enter(void *data UNUSED, struct wl_data_device *wl_data_device 
 static void drag_leave(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
         if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
-            wl_data_offer_destroy(_glfw.wl.dataOffers[i].id);
-            memset(_glfw.wl.dataOffers + i, 0, sizeof(_glfw.wl.dataOffers[0]));
+            destroy_data_offer(&_glfw.wl.dataOffers[i]);
         }
     }
 }
 
 static void drop(void *data UNUSED, struct wl_data_device *wl_data_device UNUSED) {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP) {
-            char *uri_list = read_data_offer(_glfw.wl.dataOffers[i].id, URI_LIST_MIME);
-            if (uri_list) {
+        if (_glfw.wl.dataOffers[i].offer_type == DRAG_AND_DROP && _glfw.wl.dataOffers[i].mime_for_drop) {
+            size_t sz = 0;
+            char *data = read_data_offer(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime_for_drop, &sz);
+            if (data) {
                 // We dont do finish as this requires version 3 for wl_data_device_manager
                 // which then requires more work with calling set_actions for drag and drop to function
                 // wl_data_offer_finish(_glfw.wl.dataOffers[i].id);
-                int count;
-                char** paths = parseUriList(uri_list, &count);
 
                 _GLFWwindow* window = _glfw.windowListHead;
                 while (window)
                 {
                     if (window->wl.surface == _glfw.wl.dataOffers[i].surface) {
-                        _glfwInputDrop(window, count, (const char**) paths);
+                        _glfwInputDrop(window, _glfw.wl.dataOffers[i].mime_for_drop, data, sz);
                         break;
                     }
                     window = window->next;
                 }
 
-
-                for (int k = 0;  k < count;  k++)
-                    free(paths[k]);
-                free(paths);
-                free(uri_list);
+                free(data);
             }
-            wl_data_offer_destroy(_glfw.wl.dataOffers[i].id);
-            memset(_glfw.wl.dataOffers + i, 0, sizeof(_glfw.wl.dataOffers[0]));
+            destroy_data_offer(&_glfw.wl.dataOffers[i]);
             break;
         }
     }
@@ -1894,10 +1901,12 @@ void _glfwPlatformSetClipboardString(const char* string)
 const char* _glfwPlatformGetClipboardString(void)
 {
     for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
-        if (_glfw.wl.dataOffers[i].id && _glfw.wl.dataOffers[i].mime && _glfw.wl.dataOffers[i].offer_type == CLIPBOARD) {
-            if (_glfw.wl.dataOffers[i].is_self_offer) return _glfw.wl.clipboardString;
+        _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
+        if (d->id && d->offer_type == CLIPBOARD && d->plain_text_mime) {
+            if (d->is_self_offer) return _glfw.wl.clipboardString;
             free(_glfw.wl.pasteString);
-            _glfw.wl.pasteString = read_data_offer(_glfw.wl.dataOffers[i].id, _glfw.wl.dataOffers[i].mime);
+            size_t sz = 0;
+            _glfw.wl.pasteString = read_data_offer(d->id, d->plain_text_mime, &sz);
             return _glfw.wl.pasteString;
         }
     }
@@ -1944,13 +1953,14 @@ const char* _glfwPlatformGetPrimarySelectionString(void)
 {
     if (_glfw.wl.dataSourceForPrimarySelection != NULL) return _glfw.wl.primarySelectionString;
 
-    for (size_t i = 0; i < arraysz(_glfw.wl.primarySelectionOffers); i++) {
-        if (_glfw.wl.primarySelectionOffers[i].id && _glfw.wl.primarySelectionOffers[i].mime && _glfw.wl.primarySelectionOffers[i].offer_type == PRIMARY_SELECTION) {
-            if (_glfw.wl.primarySelectionOffers[i].is_self_offer) {
+    for (size_t i = 0; i < arraysz(_glfw.wl.dataOffers); i++) {
+        _GLFWWaylandDataOffer *d = _glfw.wl.dataOffers + i;
+        if (d->id && d->is_primary && d->offer_type == PRIMARY_SELECTION && d->plain_text_mime) {
+            if (d->is_self_offer) {
                 return _glfw.wl.primarySelectionString;
             }
             free(_glfw.wl.pasteString);
-            _glfw.wl.pasteString = read_primary_selection_offer(_glfw.wl.primarySelectionOffers[i].id, _glfw.wl.primarySelectionOffers[i].mime);
+            _glfw.wl.pasteString = read_primary_selection_offer(d->id, d->plain_text_mime);
             return _glfw.wl.pasteString;
         }
     }

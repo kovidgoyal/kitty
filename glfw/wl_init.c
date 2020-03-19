@@ -852,7 +852,7 @@ void _glfwPlatformTerminate(void)
         wl_data_source_destroy(_glfw.wl.dataSourceForClipboard);
     for (size_t doi=0; doi < arraysz(_glfw.wl.dataOffers); doi++) {
         if (_glfw.wl.dataOffers[doi].id) {
-            wl_data_offer_destroy(_glfw.wl.dataOffers[doi].id);
+            destroy_data_offer(&_glfw.wl.dataOffers[doi]);
         }
     }
     if (_glfw.wl.dataDevice)

@@ -1593,19 +1593,22 @@ typedef void (* GLFWscrollfun)(GLFWwindow*,double,double,int);
  */
 typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
 
-/*! @brief The function pointer type for path drop callbacks.
+/*! @brief The function pointer type for drag and drop callbacks.
  *
- *  This is the function pointer type for path drop callbacks.  A path drop
+ *  This is the function pointer type for drop callbacks. A drop
  *  callback function has the following signature:
  *  @code
- *  void function_name(GLFWwindow* window, int path_count, const char* paths[])
+ *  int function_name(GLFWwindow* window, const char* mime, const char* text)
  *  @endcode
  *
  *  @param[in] window The window that received the event.
- *  @param[in] path_count The number of dropped paths.
- *  @param[in] paths The UTF-8 encoded file and/or directory path names.
+ *  @param[in] mime The UTF-8 encoded drop mime-type
+ *  @param[in] data The dropped data or NULL for drag enter events
+ *  @param[in] sz The size of the dropped data
+ *  @return For drag events should return the priority for the specified mime type. A priority of zero
+ *  or lower means the mime type is not accepted. Highest priority will be the finally accepted mime-type.
  *
- *  @pointer_lifetime The path array and its strings are valid until the
+ *  @pointer_lifetime The text is valid until the
  *  callback function returns.
  *
  *  @sa @ref path_drop
@@ -1615,7 +1618,7 @@ typedef void (* GLFWkeyboardfun)(GLFWwindow*, GLFWkeyevent*);
  *
  *  @ingroup input
  */
-typedef void (* GLFWdropfun)(GLFWwindow*,int,const char*[]);
+typedef int (* GLFWdropfun)(GLFWwindow*, const char *, const char*, size_t);
 
 typedef void (* GLFWliveresizefun)(GLFWwindow*, bool);
 

@@ -77,7 +77,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Workaround for bug in less that causes colors to reset at wrapped lines
   (:iss:`2381`)
 
-- X11: Allow drag and drop of text/plain in addition to text/uri-list
+- X11/Wayland: Allow drag and drop of text/plain in addition to text/uri-list
   (:iss:`2441`)
 
 - Dont strip :code:`&` and :code:`-` from the end of URLs (:iss:`2436`)

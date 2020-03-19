@@ -350,10 +350,11 @@ void _glfwInputCursorEnter(_GLFWwindow* window, bool entered)
 
 // Notifies shared code of files or directories dropped on a window
 //
-void _glfwInputDrop(_GLFWwindow* window, int count, const char** paths)
+int _glfwInputDrop(_GLFWwindow* window, const char *mime, const char *text, size_t sz)
 {
     if (window->callbacks.drop)
-        window->callbacks.drop((GLFWwindow*) window, count, paths);
+        return window->callbacks.drop((GLFWwindow*) window, mime, text, sz);
+    return 0;
 }
 
 // Notifies shared code of a joystick connection or disconnection

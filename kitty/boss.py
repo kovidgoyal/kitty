@@ -46,8 +46,9 @@ from .tabs import (
 from .typing import PopenType, TypedDict
 from .utils import (
     func_name, get_editor, get_primary_selection, is_path_in_temp_dir,
-    log_error, open_url, parse_address_spec, remove_socket_file, safe_print,
-    set_primary_selection, single_instance, startup_notification_handler
+    log_error, open_url, parse_address_spec, parse_uri_list,
+    remove_socket_file, safe_print, set_primary_selection, single_instance,
+    startup_notification_handler
 )
 from .window import MatchPatternType, Window
 
@@ -686,12 +687,15 @@ class Boss:
         if tm is not None:
             tm.update_tab_bar_data()
 
-    def on_drop(self, os_window_id: int, strings: Iterable[str]) -> None:
+    def on_drop(self, os_window_id: int, mime: str, data: bytes) -> None:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
             w = tm.active_window
             if w is not None:
-                w.paste('\n'.join(strings))
+                text = data.decode('utf-8', 'replace')
+                if mime == 'text/uri-list':
+                    text = '\n'.join(parse_uri_list(text))
+                w.paste(text)
 
     def on_os_window_closed(self, os_window_id: int, viewport_width: int, viewport_height: int) -> None:
         self.cached_values['window-size'] = viewport_width, viewport_height

@@ -94,5 +94,4 @@ int pollForEvents(EventLoopData *eld, monotonic_t timeout, watch_callback_func);
 unsigned dispatchTimers(EventLoopData *eld);
 void finalizePollData(EventLoopData *eld);
 bool initPollData(EventLoopData *eld, int display_fd);
-char** parseUriList(char* text, int* count);
 void wakeupEventLoop(EventLoopData *eld);

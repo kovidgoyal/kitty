@@ -1454,7 +1454,8 @@ static void processEvent(XEvent *event)
 
                 _glfw.x11.xdnd.source  = event->xclient.data.l[0];
                 _glfw.x11.xdnd.version = event->xclient.data.l[1] >> 24;
-                _glfw.x11.xdnd.format  = None;
+                memset(_glfw.x11.xdnd.format, 0, sizeof(_glfw.x11.xdnd.format));
+                _glfw.x11.xdnd.format_priority  = 0;
 
                 if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION)
                     return;
@@ -1471,18 +1472,22 @@ static void processEvent(XEvent *event)
                     count = 3;
                     formats = (Atom*) event->xclient.data.l + 2;
                 }
+                char **atom_names = calloc(count, sizeof(char**));
+                if (atom_names) {
+                    XGetAtomNames(_glfw.x11.display, formats, count, atom_names);
 
-                for (i = 0;  i < count;  i++)
-                {
-                    if (formats[i] == _glfw.x11.text_uri_list)
+                    for (i = 0;  i < count;  i++)
                     {
-                        _glfw.x11.xdnd.format = _glfw.x11.text_uri_list;
-                        break;
-                    } else if (formats[i] == _glfw.x11.text_plain_utf8 && (_glfw.x11.xdnd.format == None || _glfw.x11.xdnd.format == _glfw.x11.text_plain)) {
-                        _glfw.x11.xdnd.format = _glfw.x11.text_plain_utf8;
-                    } else if (formats[i] == _glfw.x11.text_plain && _glfw.x11.xdnd.format == None) {
-                        _glfw.x11.xdnd.format = _glfw.x11.text_plain;
+                        if (atom_names[i]) {
+                            int prio = _glfwInputDrop(window, atom_names[i], NULL, 0);
+                            if (prio > _glfw.x11.xdnd.format_priority) {
+                                _glfw.x11.xdnd.format_priority = prio;
+                                strncpy(_glfw.x11.xdnd.format, atom_names[i], arraysz(_glfw.x11.xdnd.format) - 1);
+                            }
+                            XFree(atom_names[i]);
+                        }
                     }
+                    free(atom_names);
                 }
 
                 if (list && formats)
@@ -1496,7 +1501,7 @@ static void processEvent(XEvent *event)
                 if (_glfw.x11.xdnd.version > _GLFW_XDND_VERSION)
                     return;
 
-                if (_glfw.x11.xdnd.format)
+                if (_glfw.x11.xdnd.format_priority > 0)
                 {
                     if (_glfw.x11.xdnd.version >= 1)
                         time = event->xclient.data.l[2];
@@ -1504,7 +1509,7 @@ static void processEvent(XEvent *event)
                     // Request the chosen format from the source window
                     XConvertSelection(_glfw.x11.display,
                                       _glfw.x11.XdndSelection,
-                                      _glfw.x11.xdnd.format,
+                                      XInternAtom(_glfw.x11.display, _glfw.x11.xdnd.format, 0),
                                       _glfw.x11.XdndSelection,
                                       window->x11.handle,
                                       time);
@@ -1552,7 +1557,7 @@ static void processEvent(XEvent *event)
                 reply.xclient.data.l[2] = 0; // Specify an empty rectangle
                 reply.xclient.data.l[3] = 0;
 
-                if (_glfw.x11.xdnd.format)
+                if (_glfw.x11.xdnd.format_priority > 0)
                 {
                     // Reply that we are ready to copy the dragged data
                     reply.xclient.data.l[1] = 1; // Accept with no rectangle
@@ -1582,14 +1587,7 @@ static void processEvent(XEvent *event)
 
                 if (result)
                 {
-                    int i, count;
-                    char** paths = parseUriList(data, &count);
-
-                    _glfwInputDrop(window, count, (const char**) paths);
-
-                    for (i = 0;  i < count;  i++)
-                        free(paths[i]);
-                    free(paths);
+                    _glfwInputDrop(window, _glfw.x11.xdnd.format, data, result);
                 }
 
                 if (data)

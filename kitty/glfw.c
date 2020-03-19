@@ -320,17 +320,26 @@ window_focus_callback(GLFWwindow *w, int focused) {
     global_state.callback_os_window = NULL;
 }
 
-static void
-drop_callback(GLFWwindow *w, int count, const char **strings) {
-    if (!set_callback_window(w)) return;
-    PyObject *s = PyTuple_New(count);
-    if (s) {
-        for (int i = 0; i < count; i++) PyTuple_SET_ITEM(s, i, PyUnicode_FromString(strings[i]));
-        WINDOW_CALLBACK(on_drop, "O", s);
-        Py_CLEAR(s);
-        request_tick_callback();
+static int
+drop_callback(GLFWwindow *w, const char *mime, const char *data, size_t sz) {
+    if (!set_callback_window(w)) return 0;
+    if (!data) {
+        if (strcmp(mime, "text/uri-list") == 0) return 3;
+        if (strcmp(mime, "text/plain;charset=utf-8") == 0) return 2;
+        if (strcmp(mime, "text/plain") == 0) return 1;
+        return 0;
     }
+    WINDOW_CALLBACK(on_drop, "sy#", mime, data, (int)sz);
+    request_tick_callback();
+    /* PyObject *s = PyTuple_New(count); */
+    /* if (s) { */
+    /*     for (int i = 0; i < count; i++) PyTuple_SET_ITEM(s, i, PyUnicode_FromString(strings[i])); */
+    /*     WINDOW_CALLBACK(on_drop, "O", s); */
+    /*     Py_CLEAR(s); */
+    /*     request_tick_callback(); */
+    /* } */
     global_state.callback_os_window = NULL;
+    return 0;
 }
 
 // }}}

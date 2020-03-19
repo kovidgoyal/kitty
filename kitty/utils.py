@@ -532,3 +532,21 @@ def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
             else:
                 log_error('Failed to run shell to read its environment')
     return ans
+
+
+def parse_uri_list(text: str) -> Generator[str, None, None]:
+    ' Get paths from file:// URLs '
+    from urllib.parse import urlparse, unquote
+    for line in text.splitlines():
+        if not line or line.startswith('#'):
+            continue
+        if not line.startswith('file://'):
+            yield line
+            continue
+        try:
+            purl = urlparse(line, allow_fragments=False)
+        except Exception:
+            yield line
+            continue
+        if purl.path:
+            yield unquote(purl.path)

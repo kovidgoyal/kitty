@@ -266,9 +266,6 @@ typedef struct _GLFWlibraryX11
     Atom            XdndFinished;
     Atom            XdndSelection;
     Atom            XdndTypeList;
-    Atom            text_uri_list;
-    Atom            text_plain;
-    Atom            text_plain_utf8;
 
     // Selection (clipboard) atoms
     Atom            TARGETS;
@@ -329,7 +326,8 @@ typedef struct _GLFWlibraryX11
     struct {
         int         version;
         Window      source;
-        Atom        format;
+        char        format[128];
+        int         format_priority;
     } xdnd;
 
     struct {
