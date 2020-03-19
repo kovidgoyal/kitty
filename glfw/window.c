@@ -286,6 +286,10 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
 #ifndef _GLFW_WAYLAND
             if (wndconfig.focused)
                 _glfwPlatformFocusWindow(window);
+#else
+            // HACK: process any immediate resize events to prevent flickering on
+            // startup, before we install any handlers.
+            _glfwPlatformWaitEventsTimeout(ms_double_to_monotonic_t(5));
 #endif
         }
     }
