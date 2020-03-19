@@ -789,6 +789,7 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 #undef D
 #undef I
     }
+    if (!self->image_count && self->count) self->count = 0;
 }
 
 // }}}
