@@ -36,7 +36,7 @@ from .render import (
 )
 from .search import BadRegex, Search
 from ..tui.handler import Handler
-from ..tui.images import ImageManager
+from ..tui.images import ImageManager, Placement
 from ..tui.line_edit import LineEdit
 from ..tui.loop import Loop
 from ..tui.operations import styled
@@ -322,7 +322,43 @@ class DiffHandler(Handler):
         if image_involved:
             self.place_images()
 
+    def update_image_placement_for_resend(self, image_id: int, pl: Placement) -> bool:
+        offset = self.scroll_pos
+        limit = len(self.diff_lines)
+        in_image = False
+
+        def adjust(row: int, candidate: ImagePlacement, is_left: bool) -> bool:
+            if candidate.image.image_id == image_id:
+                q = self.xpos_for_image(row, candidate, is_left)
+                if q is not None:
+                    pl['x'] = q[0]
+                    pl['y'] = row
+                    return True
+            return False
+
+        for row in range(self.num_lines):
+            lpos = offset + row
+            if lpos >= limit:
+                break
+            line = self.diff_lines[lpos]
+            if in_image:
+                if line.image_data is None:
+                    in_image = False
+                continue
+            if line.image_data is not None:
+                left_placement, right_placement = line.image_data
+                if left_placement is not None:
+                    if adjust(row, left_placement, True):
+                        return True
+                    in_image = True
+                if right_placement is not None:
+                    if adjust(row, right_placement, False):
+                        return True
+                    in_image = True
+        return False
+
     def place_images(self) -> None:
+        self.image_manager.update_image_placement_for_resend = self.update_image_placement_for_resend
         self.cmd.clear_images_on_screen()
         offset = self.scroll_pos
         limit = len(self.diff_lines)
@@ -345,13 +381,20 @@ class DiffHandler(Handler):
                     self.place_image(row, right_placement, False)
                     in_image = True
 
-    def place_image(self, row: int, placement: ImagePlacement, is_left: bool) -> None:
+    def xpos_for_image(self, row: int, placement: ImagePlacement, is_left: bool) -> Optional[Tuple[int, float]]:
         xpos = (0 if is_left else (self.screen_size.cols // 2)) + placement.image.margin_size
         image_height_in_rows = placement.image.rows
         topmost_visible_row = placement.row
         num_visible_rows = image_height_in_rows - topmost_visible_row
         visible_frac = min(num_visible_rows / image_height_in_rows, 1)
-        if visible_frac > 0:
+        if visible_frac <= 0:
+            return None
+        return xpos, visible_frac
+
+    def place_image(self, row: int, placement: ImagePlacement, is_left: bool) -> None:
+        q = self.xpos_for_image(row, placement, is_left)
+        if q is not None:
+            xpos, visible_frac = q
             height = int(visible_frac * placement.image.height)
             top = placement.image.height - height
             self.image_manager.show_image(placement.image.image_id, xpos, row, src_rect=(

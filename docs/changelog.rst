@@ -88,6 +88,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Fix a crash when drag and dropping into kitty (:iss:`2432`)
 
+- diff kitten: Fix images lingering as blank rectangles after the kitten quits
+  (:iss:`2449`)
+
+- diff kitten: Fix images losing position when scrolling using mouse
+  wheel/touchpad
+
 
 0.16.0 [2020-01-28]
 --------------------

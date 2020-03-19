@@ -10,7 +10,8 @@ from collections import defaultdict, deque
 from contextlib import suppress
 from itertools import count
 from typing import (
-    Any, DefaultDict, Deque, Dict, List, Optional, Sequence, Tuple, Union
+    Any, Callable, DefaultDict, Deque, Dict, List, Optional, Sequence, Tuple,
+    Union
 )
 
 from kitty.typing import (
@@ -191,6 +192,7 @@ class ImageManager:
         self.image_id_to_converted_data: Dict[int, ImageKey] = {}
         self.transmission_status: Dict[int, Union[str, int]] = {}
         self.placements_in_flight: DefaultDict[int, Deque[Placement]] = defaultdict(deque)
+        self.update_image_placement_for_resend: Optional[Callable[[int, Placement], bool]]
 
     @property
     def next_image_id(self) -> int:
@@ -254,6 +256,8 @@ class ImageManager:
                     self.placements_in_flight.pop(image_id, None)
 
     def resend_image(self, image_id: int, pl: Placement) -> None:
+        if self.update_image_placement_for_resend is not None and not self.update_image_placement_for_resend(image_id, pl):
+            return
         image_data = self.image_id_to_image_data[image_id]
         skey = self.image_id_to_converted_data[image_id]
         self.transmit_image(image_data, image_id, *skey)
