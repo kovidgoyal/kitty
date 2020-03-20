@@ -861,7 +861,7 @@ def create_macos_app_icon(where: str = 'Resources') -> None:
     iconset_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
     subprocess.check_call([
         'iconutil', '-c', 'icns', iconset_dir, '-o',
-        os.path.join(where, os.path.basename(iconset_dir).partition('.')[0] + '.icns')
+        os.path.join(where, appname + '.icns')
     ])
 
 
