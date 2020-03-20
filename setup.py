@@ -858,10 +858,10 @@ def macos_info_plist() -> bytes:
 
 
 def create_macos_app_icon(where: str = 'Resources') -> None:
-    logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
+    iconset_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
     subprocess.check_call([
-        'iconutil', '-c', 'icns', logo_dir, '-o',
-        os.path.join(where, os.path.basename(logo_dir).partition('.')[0] + '.icns')
+        'iconutil', '-c', 'icns', iconset_dir, '-o',
+        os.path.join(where, os.path.basename(iconset_dir).partition('.')[0] + '.icns')
     ])
 
 
