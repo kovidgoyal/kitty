@@ -858,11 +858,24 @@ def macos_info_plist() -> bytes:
 
 
 def create_macos_app_icon(where: str = 'Resources') -> None:
-    logo_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
-    subprocess.check_call([
-        'iconutil', '-c', 'icns', logo_dir, '-o',
-        os.path.join(where, os.path.basename(logo_dir).partition('.')[0] + '.icns')
-    ])
+    iconset_dir = os.path.abspath(os.path.join('logo', appname + '.iconset'))
+    icns_dir = os.path.join(where, appname + '.icns')
+    try:
+        subprocess.check_call([
+            'iconutil', '-c', 'icns', iconset_dir, '-o', icns_dir
+        ])
+    except FileNotFoundError:
+        print(error('iconutil not found') + ', using png2icns (without retina support) to convert the logo', file=sys.stderr)
+        subprocess.check_call([
+            'png2icns', icns_dir
+        ] + [os.path.join(iconset_dir, logo) for logo in [
+            # png2icns does not support retina icons, so only pass the non-retina icons
+            'icon_16x16.png',
+            'icon_32x32.png',
+            'icon_128x128.png',
+            'icon_256x256.png',
+            'icon_512x512.png',
+        ]])
 
 
 def create_minimal_macos_bundle(args: Options, where: str) -> None:
