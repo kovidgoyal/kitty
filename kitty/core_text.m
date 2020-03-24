@@ -92,7 +92,7 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     NSString *style = (NSString *) CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute);
     NSDictionary *traits = (NSDictionary *) CTFontDescriptorCopyAttribute(descriptor, kCTFontTraitsAttribute);
     unsigned int straits = [traits[(id)kCTFontSymbolicTrait] unsignedIntValue];
-    float *weightVal = [traits[(id)kCTFontWeightTrait] floatValue];
+    float weightVal = [traits[(id)kCTFontWeightTrait] floatValue];
     float widthVal = [traits[(id)kCTFontWidthTrait] floatValue];
 
     PyObject *ans = Py_BuildValue("{ssssssss sOsOsOsOsOsO sfsfsI}",
