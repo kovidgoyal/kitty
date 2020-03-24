@@ -96,7 +96,9 @@ def opt(text: str) -> str:
 
 
 def option(x: str) -> str:
-    idx = x.find('-')
+    idx = x.rfind('--')
+    if idx < 0:
+        idx = x.find('-')
     if idx > -1:
         x = x[idx:]
     parts = map(bold, x.split())
