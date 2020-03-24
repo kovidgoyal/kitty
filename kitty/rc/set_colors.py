@@ -4,7 +4,7 @@
 
 
 import os
-from typing import TYPE_CHECKING, Dict, Optional
+from typing import TYPE_CHECKING, Dict, Optional, Union
 
 from kitty.config import parse_config
 from kitty.fast_data_types import patch_color_profiles
@@ -23,7 +23,7 @@ class SetColors(RemoteCommand):
 
     '''
     colors+: An object mapping names to colors as 24-bit RGB integers
-    cursor_text_color: A 24-bit color for text under the cursor
+    cursor_text_color: A 24-bit color for text under the cursor, or null to use background.
     match_window: Window to change colors in
     match_tab: Tab to change colors in
     all: Boolean indicating change colors everywhere or not
@@ -60,7 +60,7 @@ this option, any color arguments are ignored and --configured and --all are impl
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         final_colors: Dict[str, int] = {}
-        cursor_text_color: Optional[int] = None
+        cursor_text_color: Optional[Union[int, bool]] = False
         if not opts.reset:
             colors: Dict[str, Optional[Color]] = {}
             for spec in args:
@@ -69,16 +69,18 @@ this option, any color arguments are ignored and --configured and --all are impl
                 else:
                     with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
                         colors.update(parse_config(f))
-            ctc = colors.pop('cursor_text_color', None)
+            ctc = colors.pop('cursor_text_color', False)
             if isinstance(ctc, Color):
                 cursor_text_color = color_as_int(ctc)
+            elif ctc is None:
+                cursor_text_color = None
             final_colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}
         ans = {
             'match_window': opts.match, 'match_tab': opts.match_tab,
             'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset,
             'colors': final_colors, 'reset': opts.reset, 'dummy': 0
         }
-        if cursor_text_color is not None:
+        if cursor_text_color is not False:
             ans['cursor_text_color'] = cursor_text_color
         del ans['dummy']
         return ans
@@ -86,7 +88,7 @@ this option, any color arguments are ignored and --configured and --all are impl
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         windows = self.windows_for_payload(boss, window, payload_get)
         colors = payload_get('colors')
-        cursor_text_color = payload_get('cursor_text_color') or False
+        cursor_text_color = payload_get('cursor_text_color', missing=False)
         if payload_get('reset'):
             colors = {k: color_as_int(v) for k, v in boss.startup_colors.items()}
             cursor_text_color = boss.startup_cursor_text_color
