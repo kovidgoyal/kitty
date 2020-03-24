@@ -7,7 +7,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.17.0 [2020-03-24]
 --------------------
 
-- A new :ref:`splits_layout` to arrange windows in arbitrary splits
+- :ref:`splits_layout` to arrange windows in arbitrary splits
   (:iss:`2308`)
 
 - Add support for specifying a background image, see :opt:`background_image`
