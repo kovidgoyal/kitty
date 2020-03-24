@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.17.1 [future]
+--------------------
+
+- Fix :opt:`cursor_underline_thickness` not working (:iss:`2465`)
+
+
+- :ref:`splits_layout` to arrange windows in arbitrary splits
 0.17.0 [2020-03-24]
 --------------------
 
