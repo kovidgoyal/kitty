@@ -13,7 +13,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   the last tab as well (:iss:`2464`)
 
 
-- :ref:`splits_layout` to arrange windows in arbitrary splits
 0.17.0 [2020-03-24]
 --------------------
 
