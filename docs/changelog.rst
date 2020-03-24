@@ -12,6 +12,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.17 that caused tab bar background to be rendered after
   the last tab as well (:iss:`2464`)
 
+- macOS: Fix a regression in 0.17 that caused incorrect variants to be
+  automatically selected for some fonts (:iss:`2462`)
+
 
 0.17.0 [2020-03-24]
 --------------------
