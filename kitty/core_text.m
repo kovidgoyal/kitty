@@ -92,10 +92,10 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
     NSString *style = (NSString *) CTFontDescriptorCopyAttribute(descriptor, kCTFontStyleNameAttribute);
     NSDictionary *traits = (NSDictionary *) CTFontDescriptorCopyAttribute(descriptor, kCTFontTraitsAttribute);
     unsigned int straits = [traits[(id)kCTFontSymbolicTrait] unsignedIntValue];
-    NSNumber *weightVal = traits[(id)kCTFontWeightTrait];
-    NSNumber *widthVal = traits[(id)kCTFontWidthTrait];
+    float *weightVal = [traits[(id)kCTFontWeightTrait] floatValue];
+    float widthVal = [traits[(id)kCTFontWidthTrait] floatValue];
 
-    PyObject *ans = Py_BuildValue("{ssssssss sOsOsO sfsfsI}",
+    PyObject *ans = Py_BuildValue("{ssssssss sOsOsOsOsOsO sfsfsI}",
             "path", [[url path] UTF8String],
             "postscript_name", [psName UTF8String],
             "family", [family UTF8String],
@@ -104,9 +104,12 @@ font_descriptor_to_python(CTFontDescriptorRef descriptor) {
             "bold", (straits & kCTFontBoldTrait) != 0 ? Py_True : Py_False,
             "italic", (straits & kCTFontItalicTrait) != 0 ? Py_True : Py_False,
             "monospace", (straits & kCTFontMonoSpaceTrait) != 0 ? Py_True : Py_False,
+            "expanded", (straits & kCTFontExpandedTrait) != 0 ? Py_True : Py_False,
+            "condensed", (straits & kCTFontCondensedTrait) != 0 ? Py_True : Py_False,
+            "color_glyphs", (straits & kCTFontColorGlyphsTrait) != 0 ? Py_True : Py_False,
 
-            "weight", [weightVal floatValue],
-            "width", [widthVal floatValue],
+            "weight", weightVal,
+            "width", widthVal,
             "traits", straits
     );
     [url release];

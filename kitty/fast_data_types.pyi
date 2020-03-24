@@ -438,6 +438,9 @@ class CoreTextFont(TypedDict):
     style: str
     bold: bool
     italic: bool
+    expanded: bool
+    condensed: bool
+    color_glyphs: bool
     monospace: bool
     weight: float
     width: float
