@@ -24,7 +24,7 @@ other in arbitrary arrangements, based on *Layouts*, see below for examples:
 
 There are many different layouts available. They are all enabled by default,
 you can switch layouts using :sc:`next_layout`. To control which layouts
-are available use :opt:`enabled_layouts` the first listed layout becomes
+are available use :opt:`enabled_layouts`, the first listed layout becomes
 the default. Individual layouts and how to use them are described below.
 
 .. contents::
