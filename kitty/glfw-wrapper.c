@@ -1,4 +1,5 @@
 
+#define GFW_EXTERN
 #include "data-types.h"
 #include "glfw-wrapper.h"
 #include <dlfcn.h>

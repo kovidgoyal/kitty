@@ -9,6 +9,9 @@
 #include <stdint.h>
 #include "monotonic.h"
 
+#ifndef GFW_EXTERN
+#define GFW_EXTERN extern
+#endif
 
 
 /*! @name GLFW version macros
@@ -1587,547 +1590,547 @@ typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
 typedef void (*GLFWDBusnotificationactivatedfun)(uint32_t, const char*);
 typedef int (*glfwInit_func)(monotonic_t);
-glfwInit_func glfwInit_impl;
+GFW_EXTERN glfwInit_func glfwInit_impl;
 #define glfwInit glfwInit_impl
 
 typedef void (*glfwRunMainLoop_func)(GLFWtickcallback, void*);
-glfwRunMainLoop_func glfwRunMainLoop_impl;
+GFW_EXTERN glfwRunMainLoop_func glfwRunMainLoop_impl;
 #define glfwRunMainLoop glfwRunMainLoop_impl
 
 typedef void (*glfwStopMainLoop_func)(void);
-glfwStopMainLoop_func glfwStopMainLoop_impl;
+GFW_EXTERN glfwStopMainLoop_func glfwStopMainLoop_impl;
 #define glfwStopMainLoop glfwStopMainLoop_impl
 
 typedef unsigned long long (*glfwAddTimer_func)(monotonic_t, bool, GLFWuserdatafun, void *, GLFWuserdatafun);
-glfwAddTimer_func glfwAddTimer_impl;
+GFW_EXTERN glfwAddTimer_func glfwAddTimer_impl;
 #define glfwAddTimer glfwAddTimer_impl
 
 typedef void (*glfwUpdateTimer_func)(unsigned long long, monotonic_t, bool);
-glfwUpdateTimer_func glfwUpdateTimer_impl;
+GFW_EXTERN glfwUpdateTimer_func glfwUpdateTimer_impl;
 #define glfwUpdateTimer glfwUpdateTimer_impl
 
 typedef void (*glfwRemoveTimer_func)(unsigned long);
-glfwRemoveTimer_func glfwRemoveTimer_impl;
+GFW_EXTERN glfwRemoveTimer_func glfwRemoveTimer_impl;
 #define glfwRemoveTimer glfwRemoveTimer_impl
 
 typedef void (*glfwTerminate_func)(void);
-glfwTerminate_func glfwTerminate_impl;
+GFW_EXTERN glfwTerminate_func glfwTerminate_impl;
 #define glfwTerminate glfwTerminate_impl
 
 typedef void (*glfwInitHint_func)(int, int);
-glfwInitHint_func glfwInitHint_impl;
+GFW_EXTERN glfwInitHint_func glfwInitHint_impl;
 #define glfwInitHint glfwInitHint_impl
 
 typedef void (*glfwGetVersion_func)(int*, int*, int*);
-glfwGetVersion_func glfwGetVersion_impl;
+GFW_EXTERN glfwGetVersion_func glfwGetVersion_impl;
 #define glfwGetVersion glfwGetVersion_impl
 
 typedef const char* (*glfwGetVersionString_func)(void);
-glfwGetVersionString_func glfwGetVersionString_impl;
+GFW_EXTERN glfwGetVersionString_func glfwGetVersionString_impl;
 #define glfwGetVersionString glfwGetVersionString_impl
 
 typedef int (*glfwGetError_func)(const char**);
-glfwGetError_func glfwGetError_impl;
+GFW_EXTERN glfwGetError_func glfwGetError_impl;
 #define glfwGetError glfwGetError_impl
 
 typedef GLFWerrorfun (*glfwSetErrorCallback_func)(GLFWerrorfun);
-glfwSetErrorCallback_func glfwSetErrorCallback_impl;
+GFW_EXTERN glfwSetErrorCallback_func glfwSetErrorCallback_impl;
 #define glfwSetErrorCallback glfwSetErrorCallback_impl
 
 typedef GLFWmonitor** (*glfwGetMonitors_func)(int*);
-glfwGetMonitors_func glfwGetMonitors_impl;
+GFW_EXTERN glfwGetMonitors_func glfwGetMonitors_impl;
 #define glfwGetMonitors glfwGetMonitors_impl
 
 typedef GLFWmonitor* (*glfwGetPrimaryMonitor_func)(void);
-glfwGetPrimaryMonitor_func glfwGetPrimaryMonitor_impl;
+GFW_EXTERN glfwGetPrimaryMonitor_func glfwGetPrimaryMonitor_impl;
 #define glfwGetPrimaryMonitor glfwGetPrimaryMonitor_impl
 
 typedef void (*glfwGetMonitorPos_func)(GLFWmonitor*, int*, int*);
-glfwGetMonitorPos_func glfwGetMonitorPos_impl;
+GFW_EXTERN glfwGetMonitorPos_func glfwGetMonitorPos_impl;
 #define glfwGetMonitorPos glfwGetMonitorPos_impl
 
 typedef void (*glfwGetMonitorWorkarea_func)(GLFWmonitor*, int*, int*, int*, int*);
-glfwGetMonitorWorkarea_func glfwGetMonitorWorkarea_impl;
+GFW_EXTERN glfwGetMonitorWorkarea_func glfwGetMonitorWorkarea_impl;
 #define glfwGetMonitorWorkarea glfwGetMonitorWorkarea_impl
 
 typedef void (*glfwGetMonitorPhysicalSize_func)(GLFWmonitor*, int*, int*);
-glfwGetMonitorPhysicalSize_func glfwGetMonitorPhysicalSize_impl;
+GFW_EXTERN glfwGetMonitorPhysicalSize_func glfwGetMonitorPhysicalSize_impl;
 #define glfwGetMonitorPhysicalSize glfwGetMonitorPhysicalSize_impl
 
 typedef void (*glfwGetMonitorContentScale_func)(GLFWmonitor*, float*, float*);
-glfwGetMonitorContentScale_func glfwGetMonitorContentScale_impl;
+GFW_EXTERN glfwGetMonitorContentScale_func glfwGetMonitorContentScale_impl;
 #define glfwGetMonitorContentScale glfwGetMonitorContentScale_impl
 
 typedef const char* (*glfwGetMonitorName_func)(GLFWmonitor*);
-glfwGetMonitorName_func glfwGetMonitorName_impl;
+GFW_EXTERN glfwGetMonitorName_func glfwGetMonitorName_impl;
 #define glfwGetMonitorName glfwGetMonitorName_impl
 
 typedef void (*glfwSetMonitorUserPointer_func)(GLFWmonitor*, void*);
-glfwSetMonitorUserPointer_func glfwSetMonitorUserPointer_impl;
+GFW_EXTERN glfwSetMonitorUserPointer_func glfwSetMonitorUserPointer_impl;
 #define glfwSetMonitorUserPointer glfwSetMonitorUserPointer_impl
 
 typedef void* (*glfwGetMonitorUserPointer_func)(GLFWmonitor*);
-glfwGetMonitorUserPointer_func glfwGetMonitorUserPointer_impl;
+GFW_EXTERN glfwGetMonitorUserPointer_func glfwGetMonitorUserPointer_impl;
 #define glfwGetMonitorUserPointer glfwGetMonitorUserPointer_impl
 
 typedef GLFWmonitorfun (*glfwSetMonitorCallback_func)(GLFWmonitorfun);
-glfwSetMonitorCallback_func glfwSetMonitorCallback_impl;
+GFW_EXTERN glfwSetMonitorCallback_func glfwSetMonitorCallback_impl;
 #define glfwSetMonitorCallback glfwSetMonitorCallback_impl
 
 typedef const GLFWvidmode* (*glfwGetVideoModes_func)(GLFWmonitor*, int*);
-glfwGetVideoModes_func glfwGetVideoModes_impl;
+GFW_EXTERN glfwGetVideoModes_func glfwGetVideoModes_impl;
 #define glfwGetVideoModes glfwGetVideoModes_impl
 
 typedef const GLFWvidmode* (*glfwGetVideoMode_func)(GLFWmonitor*);
-glfwGetVideoMode_func glfwGetVideoMode_impl;
+GFW_EXTERN glfwGetVideoMode_func glfwGetVideoMode_impl;
 #define glfwGetVideoMode glfwGetVideoMode_impl
 
 typedef void (*glfwSetGamma_func)(GLFWmonitor*, float);
-glfwSetGamma_func glfwSetGamma_impl;
+GFW_EXTERN glfwSetGamma_func glfwSetGamma_impl;
 #define glfwSetGamma glfwSetGamma_impl
 
 typedef const GLFWgammaramp* (*glfwGetGammaRamp_func)(GLFWmonitor*);
-glfwGetGammaRamp_func glfwGetGammaRamp_impl;
+GFW_EXTERN glfwGetGammaRamp_func glfwGetGammaRamp_impl;
 #define glfwGetGammaRamp glfwGetGammaRamp_impl
 
 typedef void (*glfwSetGammaRamp_func)(GLFWmonitor*, const GLFWgammaramp*);
-glfwSetGammaRamp_func glfwSetGammaRamp_impl;
+GFW_EXTERN glfwSetGammaRamp_func glfwSetGammaRamp_impl;
 #define glfwSetGammaRamp glfwSetGammaRamp_impl
 
 typedef void (*glfwDefaultWindowHints_func)(void);
-glfwDefaultWindowHints_func glfwDefaultWindowHints_impl;
+GFW_EXTERN glfwDefaultWindowHints_func glfwDefaultWindowHints_impl;
 #define glfwDefaultWindowHints glfwDefaultWindowHints_impl
 
 typedef void (*glfwWindowHint_func)(int, int);
-glfwWindowHint_func glfwWindowHint_impl;
+GFW_EXTERN glfwWindowHint_func glfwWindowHint_impl;
 #define glfwWindowHint glfwWindowHint_impl
 
 typedef void (*glfwWindowHintString_func)(int, const char*);
-glfwWindowHintString_func glfwWindowHintString_impl;
+GFW_EXTERN glfwWindowHintString_func glfwWindowHintString_impl;
 #define glfwWindowHintString glfwWindowHintString_impl
 
 typedef GLFWwindow* (*glfwCreateWindow_func)(int, int, const char*, GLFWmonitor*, GLFWwindow*);
-glfwCreateWindow_func glfwCreateWindow_impl;
+GFW_EXTERN glfwCreateWindow_func glfwCreateWindow_impl;
 #define glfwCreateWindow glfwCreateWindow_impl
 
 typedef bool (*glfwToggleFullscreen_func)(GLFWwindow*, unsigned int);
-glfwToggleFullscreen_func glfwToggleFullscreen_impl;
+GFW_EXTERN glfwToggleFullscreen_func glfwToggleFullscreen_impl;
 #define glfwToggleFullscreen glfwToggleFullscreen_impl
 
 typedef void (*glfwDestroyWindow_func)(GLFWwindow*);
-glfwDestroyWindow_func glfwDestroyWindow_impl;
+GFW_EXTERN glfwDestroyWindow_func glfwDestroyWindow_impl;
 #define glfwDestroyWindow glfwDestroyWindow_impl
 
 typedef int (*glfwWindowShouldClose_func)(GLFWwindow*);
-glfwWindowShouldClose_func glfwWindowShouldClose_impl;
+GFW_EXTERN glfwWindowShouldClose_func glfwWindowShouldClose_impl;
 #define glfwWindowShouldClose glfwWindowShouldClose_impl
 
 typedef void (*glfwSetWindowShouldClose_func)(GLFWwindow*, int);
-glfwSetWindowShouldClose_func glfwSetWindowShouldClose_impl;
+GFW_EXTERN glfwSetWindowShouldClose_func glfwSetWindowShouldClose_impl;
 #define glfwSetWindowShouldClose glfwSetWindowShouldClose_impl
 
 typedef void (*glfwSetWindowTitle_func)(GLFWwindow*, const char*);
-glfwSetWindowTitle_func glfwSetWindowTitle_impl;
+GFW_EXTERN glfwSetWindowTitle_func glfwSetWindowTitle_impl;
 #define glfwSetWindowTitle glfwSetWindowTitle_impl
 
 typedef void (*glfwSetWindowIcon_func)(GLFWwindow*, int, const GLFWimage*);
-glfwSetWindowIcon_func glfwSetWindowIcon_impl;
+GFW_EXTERN glfwSetWindowIcon_func glfwSetWindowIcon_impl;
 #define glfwSetWindowIcon glfwSetWindowIcon_impl
 
 typedef void (*glfwGetWindowPos_func)(GLFWwindow*, int*, int*);
-glfwGetWindowPos_func glfwGetWindowPos_impl;
+GFW_EXTERN glfwGetWindowPos_func glfwGetWindowPos_impl;
 #define glfwGetWindowPos glfwGetWindowPos_impl
 
 typedef void (*glfwSetWindowPos_func)(GLFWwindow*, int, int);
-glfwSetWindowPos_func glfwSetWindowPos_impl;
+GFW_EXTERN glfwSetWindowPos_func glfwSetWindowPos_impl;
 #define glfwSetWindowPos glfwSetWindowPos_impl
 
 typedef void (*glfwGetWindowSize_func)(GLFWwindow*, int*, int*);
-glfwGetWindowSize_func glfwGetWindowSize_impl;
+GFW_EXTERN glfwGetWindowSize_func glfwGetWindowSize_impl;
 #define glfwGetWindowSize glfwGetWindowSize_impl
 
 typedef void (*glfwSetWindowSizeLimits_func)(GLFWwindow*, int, int, int, int);
-glfwSetWindowSizeLimits_func glfwSetWindowSizeLimits_impl;
+GFW_EXTERN glfwSetWindowSizeLimits_func glfwSetWindowSizeLimits_impl;
 #define glfwSetWindowSizeLimits glfwSetWindowSizeLimits_impl
 
 typedef void (*glfwSetWindowSizeIncrements_func)(GLFWwindow*, int, int);
-glfwSetWindowSizeIncrements_func glfwSetWindowSizeIncrements_impl;
+GFW_EXTERN glfwSetWindowSizeIncrements_func glfwSetWindowSizeIncrements_impl;
 #define glfwSetWindowSizeIncrements glfwSetWindowSizeIncrements_impl
 
 typedef void (*glfwSetWindowAspectRatio_func)(GLFWwindow*, int, int);
-glfwSetWindowAspectRatio_func glfwSetWindowAspectRatio_impl;
+GFW_EXTERN glfwSetWindowAspectRatio_func glfwSetWindowAspectRatio_impl;
 #define glfwSetWindowAspectRatio glfwSetWindowAspectRatio_impl
 
 typedef void (*glfwSetWindowSize_func)(GLFWwindow*, int, int);
-glfwSetWindowSize_func glfwSetWindowSize_impl;
+GFW_EXTERN glfwSetWindowSize_func glfwSetWindowSize_impl;
 #define glfwSetWindowSize glfwSetWindowSize_impl
 
 typedef void (*glfwGetFramebufferSize_func)(GLFWwindow*, int*, int*);
-glfwGetFramebufferSize_func glfwGetFramebufferSize_impl;
+GFW_EXTERN glfwGetFramebufferSize_func glfwGetFramebufferSize_impl;
 #define glfwGetFramebufferSize glfwGetFramebufferSize_impl
 
 typedef void (*glfwGetWindowFrameSize_func)(GLFWwindow*, int*, int*, int*, int*);
-glfwGetWindowFrameSize_func glfwGetWindowFrameSize_impl;
+GFW_EXTERN glfwGetWindowFrameSize_func glfwGetWindowFrameSize_impl;
 #define glfwGetWindowFrameSize glfwGetWindowFrameSize_impl
 
 typedef void (*glfwGetWindowContentScale_func)(GLFWwindow*, float*, float*);
-glfwGetWindowContentScale_func glfwGetWindowContentScale_impl;
+GFW_EXTERN glfwGetWindowContentScale_func glfwGetWindowContentScale_impl;
 #define glfwGetWindowContentScale glfwGetWindowContentScale_impl
 
 typedef monotonic_t (*glfwGetDoubleClickInterval_func)(GLFWwindow*);
-glfwGetDoubleClickInterval_func glfwGetDoubleClickInterval_impl;
+GFW_EXTERN glfwGetDoubleClickInterval_func glfwGetDoubleClickInterval_impl;
 #define glfwGetDoubleClickInterval glfwGetDoubleClickInterval_impl
 
 typedef float (*glfwGetWindowOpacity_func)(GLFWwindow*);
-glfwGetWindowOpacity_func glfwGetWindowOpacity_impl;
+GFW_EXTERN glfwGetWindowOpacity_func glfwGetWindowOpacity_impl;
 #define glfwGetWindowOpacity glfwGetWindowOpacity_impl
 
 typedef void (*glfwSetWindowOpacity_func)(GLFWwindow*, float);
-glfwSetWindowOpacity_func glfwSetWindowOpacity_impl;
+GFW_EXTERN glfwSetWindowOpacity_func glfwSetWindowOpacity_impl;
 #define glfwSetWindowOpacity glfwSetWindowOpacity_impl
 
 typedef void (*glfwIconifyWindow_func)(GLFWwindow*);
-glfwIconifyWindow_func glfwIconifyWindow_impl;
+GFW_EXTERN glfwIconifyWindow_func glfwIconifyWindow_impl;
 #define glfwIconifyWindow glfwIconifyWindow_impl
 
 typedef void (*glfwRestoreWindow_func)(GLFWwindow*);
-glfwRestoreWindow_func glfwRestoreWindow_impl;
+GFW_EXTERN glfwRestoreWindow_func glfwRestoreWindow_impl;
 #define glfwRestoreWindow glfwRestoreWindow_impl
 
 typedef void (*glfwMaximizeWindow_func)(GLFWwindow*);
-glfwMaximizeWindow_func glfwMaximizeWindow_impl;
+GFW_EXTERN glfwMaximizeWindow_func glfwMaximizeWindow_impl;
 #define glfwMaximizeWindow glfwMaximizeWindow_impl
 
 typedef void (*glfwShowWindow_func)(GLFWwindow*);
-glfwShowWindow_func glfwShowWindow_impl;
+GFW_EXTERN glfwShowWindow_func glfwShowWindow_impl;
 #define glfwShowWindow glfwShowWindow_impl
 
 typedef void (*glfwHideWindow_func)(GLFWwindow*);
-glfwHideWindow_func glfwHideWindow_impl;
+GFW_EXTERN glfwHideWindow_func glfwHideWindow_impl;
 #define glfwHideWindow glfwHideWindow_impl
 
 typedef void (*glfwFocusWindow_func)(GLFWwindow*);
-glfwFocusWindow_func glfwFocusWindow_impl;
+GFW_EXTERN glfwFocusWindow_func glfwFocusWindow_impl;
 #define glfwFocusWindow glfwFocusWindow_impl
 
 typedef void (*glfwRequestWindowAttention_func)(GLFWwindow*);
-glfwRequestWindowAttention_func glfwRequestWindowAttention_impl;
+GFW_EXTERN glfwRequestWindowAttention_func glfwRequestWindowAttention_impl;
 #define glfwRequestWindowAttention glfwRequestWindowAttention_impl
 
 typedef int (*glfwWindowBell_func)(GLFWwindow*);
-glfwWindowBell_func glfwWindowBell_impl;
+GFW_EXTERN glfwWindowBell_func glfwWindowBell_impl;
 #define glfwWindowBell glfwWindowBell_impl
 
 typedef GLFWmonitor* (*glfwGetWindowMonitor_func)(GLFWwindow*);
-glfwGetWindowMonitor_func glfwGetWindowMonitor_impl;
+GFW_EXTERN glfwGetWindowMonitor_func glfwGetWindowMonitor_impl;
 #define glfwGetWindowMonitor glfwGetWindowMonitor_impl
 
 typedef void (*glfwSetWindowMonitor_func)(GLFWwindow*, GLFWmonitor*, int, int, int, int, int);
-glfwSetWindowMonitor_func glfwSetWindowMonitor_impl;
+GFW_EXTERN glfwSetWindowMonitor_func glfwSetWindowMonitor_impl;
 #define glfwSetWindowMonitor glfwSetWindowMonitor_impl
 
 typedef int (*glfwGetWindowAttrib_func)(GLFWwindow*, int);
-glfwGetWindowAttrib_func glfwGetWindowAttrib_impl;
+GFW_EXTERN glfwGetWindowAttrib_func glfwGetWindowAttrib_impl;
 #define glfwGetWindowAttrib glfwGetWindowAttrib_impl
 
 typedef void (*glfwSetWindowAttrib_func)(GLFWwindow*, int, int);
-glfwSetWindowAttrib_func glfwSetWindowAttrib_impl;
+GFW_EXTERN glfwSetWindowAttrib_func glfwSetWindowAttrib_impl;
 #define glfwSetWindowAttrib glfwSetWindowAttrib_impl
 
 typedef void (*glfwSetWindowUserPointer_func)(GLFWwindow*, void*);
-glfwSetWindowUserPointer_func glfwSetWindowUserPointer_impl;
+GFW_EXTERN glfwSetWindowUserPointer_func glfwSetWindowUserPointer_impl;
 #define glfwSetWindowUserPointer glfwSetWindowUserPointer_impl
 
 typedef void* (*glfwGetWindowUserPointer_func)(GLFWwindow*);
-glfwGetWindowUserPointer_func glfwGetWindowUserPointer_impl;
+GFW_EXTERN glfwGetWindowUserPointer_func glfwGetWindowUserPointer_impl;
 #define glfwGetWindowUserPointer glfwGetWindowUserPointer_impl
 
 typedef GLFWwindowposfun (*glfwSetWindowPosCallback_func)(GLFWwindow*, GLFWwindowposfun);
-glfwSetWindowPosCallback_func glfwSetWindowPosCallback_impl;
+GFW_EXTERN glfwSetWindowPosCallback_func glfwSetWindowPosCallback_impl;
 #define glfwSetWindowPosCallback glfwSetWindowPosCallback_impl
 
 typedef GLFWwindowsizefun (*glfwSetWindowSizeCallback_func)(GLFWwindow*, GLFWwindowsizefun);
-glfwSetWindowSizeCallback_func glfwSetWindowSizeCallback_impl;
+GFW_EXTERN glfwSetWindowSizeCallback_func glfwSetWindowSizeCallback_impl;
 #define glfwSetWindowSizeCallback glfwSetWindowSizeCallback_impl
 
 typedef GLFWwindowclosefun (*glfwSetWindowCloseCallback_func)(GLFWwindow*, GLFWwindowclosefun);
-glfwSetWindowCloseCallback_func glfwSetWindowCloseCallback_impl;
+GFW_EXTERN glfwSetWindowCloseCallback_func glfwSetWindowCloseCallback_impl;
 #define glfwSetWindowCloseCallback glfwSetWindowCloseCallback_impl
 
 typedef GLFWwindowrefreshfun (*glfwSetWindowRefreshCallback_func)(GLFWwindow*, GLFWwindowrefreshfun);
-glfwSetWindowRefreshCallback_func glfwSetWindowRefreshCallback_impl;
+GFW_EXTERN glfwSetWindowRefreshCallback_func glfwSetWindowRefreshCallback_impl;
 #define glfwSetWindowRefreshCallback glfwSetWindowRefreshCallback_impl
 
 typedef GLFWwindowfocusfun (*glfwSetWindowFocusCallback_func)(GLFWwindow*, GLFWwindowfocusfun);
-glfwSetWindowFocusCallback_func glfwSetWindowFocusCallback_impl;
+GFW_EXTERN glfwSetWindowFocusCallback_func glfwSetWindowFocusCallback_impl;
 #define glfwSetWindowFocusCallback glfwSetWindowFocusCallback_impl
 
 typedef GLFWwindowocclusionfun (*glfwSetWindowOcclusionCallback_func)(GLFWwindow*, GLFWwindowocclusionfun);
-glfwSetWindowOcclusionCallback_func glfwSetWindowOcclusionCallback_impl;
+GFW_EXTERN glfwSetWindowOcclusionCallback_func glfwSetWindowOcclusionCallback_impl;
 #define glfwSetWindowOcclusionCallback glfwSetWindowOcclusionCallback_impl
 
 typedef GLFWwindowiconifyfun (*glfwSetWindowIconifyCallback_func)(GLFWwindow*, GLFWwindowiconifyfun);
-glfwSetWindowIconifyCallback_func glfwSetWindowIconifyCallback_impl;
+GFW_EXTERN glfwSetWindowIconifyCallback_func glfwSetWindowIconifyCallback_impl;
 #define glfwSetWindowIconifyCallback glfwSetWindowIconifyCallback_impl
 
 typedef GLFWwindowmaximizefun (*glfwSetWindowMaximizeCallback_func)(GLFWwindow*, GLFWwindowmaximizefun);
-glfwSetWindowMaximizeCallback_func glfwSetWindowMaximizeCallback_impl;
+GFW_EXTERN glfwSetWindowMaximizeCallback_func glfwSetWindowMaximizeCallback_impl;
 #define glfwSetWindowMaximizeCallback glfwSetWindowMaximizeCallback_impl
 
 typedef GLFWframebuffersizefun (*glfwSetFramebufferSizeCallback_func)(GLFWwindow*, GLFWframebuffersizefun);
-glfwSetFramebufferSizeCallback_func glfwSetFramebufferSizeCallback_impl;
+GFW_EXTERN glfwSetFramebufferSizeCallback_func glfwSetFramebufferSizeCallback_impl;
 #define glfwSetFramebufferSizeCallback glfwSetFramebufferSizeCallback_impl
 
 typedef GLFWwindowcontentscalefun (*glfwSetWindowContentScaleCallback_func)(GLFWwindow*, GLFWwindowcontentscalefun);
-glfwSetWindowContentScaleCallback_func glfwSetWindowContentScaleCallback_impl;
+GFW_EXTERN glfwSetWindowContentScaleCallback_func glfwSetWindowContentScaleCallback_impl;
 #define glfwSetWindowContentScaleCallback glfwSetWindowContentScaleCallback_impl
 
 typedef void (*glfwPostEmptyEvent_func)(void);
-glfwPostEmptyEvent_func glfwPostEmptyEvent_impl;
+GFW_EXTERN glfwPostEmptyEvent_func glfwPostEmptyEvent_impl;
 #define glfwPostEmptyEvent glfwPostEmptyEvent_impl
 
 typedef int (*glfwGetInputMode_func)(GLFWwindow*, int);
-glfwGetInputMode_func glfwGetInputMode_impl;
+GFW_EXTERN glfwGetInputMode_func glfwGetInputMode_impl;
 #define glfwGetInputMode glfwGetInputMode_impl
 
 typedef void (*glfwSetInputMode_func)(GLFWwindow*, int, int);
-glfwSetInputMode_func glfwSetInputMode_impl;
+GFW_EXTERN glfwSetInputMode_func glfwSetInputMode_impl;
 #define glfwSetInputMode glfwSetInputMode_impl
 
 typedef const char* (*glfwGetKeyName_func)(int, int);
-glfwGetKeyName_func glfwGetKeyName_impl;
+GFW_EXTERN glfwGetKeyName_func glfwGetKeyName_impl;
 #define glfwGetKeyName glfwGetKeyName_impl
 
 typedef int (*glfwGetNativeKeyForKey_func)(int);
-glfwGetNativeKeyForKey_func glfwGetNativeKeyForKey_impl;
+GFW_EXTERN glfwGetNativeKeyForKey_func glfwGetNativeKeyForKey_impl;
 #define glfwGetNativeKeyForKey glfwGetNativeKeyForKey_impl
 
 typedef int (*glfwGetKey_func)(GLFWwindow*, int);
-glfwGetKey_func glfwGetKey_impl;
+GFW_EXTERN glfwGetKey_func glfwGetKey_impl;
 #define glfwGetKey glfwGetKey_impl
 
 typedef int (*glfwGetMouseButton_func)(GLFWwindow*, int);
-glfwGetMouseButton_func glfwGetMouseButton_impl;
+GFW_EXTERN glfwGetMouseButton_func glfwGetMouseButton_impl;
 #define glfwGetMouseButton glfwGetMouseButton_impl
 
 typedef void (*glfwGetCursorPos_func)(GLFWwindow*, double*, double*);
-glfwGetCursorPos_func glfwGetCursorPos_impl;
+GFW_EXTERN glfwGetCursorPos_func glfwGetCursorPos_impl;
 #define glfwGetCursorPos glfwGetCursorPos_impl
 
 typedef void (*glfwSetCursorPos_func)(GLFWwindow*, double, double);
-glfwSetCursorPos_func glfwSetCursorPos_impl;
+GFW_EXTERN glfwSetCursorPos_func glfwSetCursorPos_impl;
 #define glfwSetCursorPos glfwSetCursorPos_impl
 
 typedef GLFWcursor* (*glfwCreateCursor_func)(const GLFWimage*, int, int, int);
-glfwCreateCursor_func glfwCreateCursor_impl;
+GFW_EXTERN glfwCreateCursor_func glfwCreateCursor_impl;
 #define glfwCreateCursor glfwCreateCursor_impl
 
 typedef GLFWcursor* (*glfwCreateStandardCursor_func)(GLFWCursorShape);
-glfwCreateStandardCursor_func glfwCreateStandardCursor_impl;
+GFW_EXTERN glfwCreateStandardCursor_func glfwCreateStandardCursor_impl;
 #define glfwCreateStandardCursor glfwCreateStandardCursor_impl
 
 typedef void (*glfwDestroyCursor_func)(GLFWcursor*);
-glfwDestroyCursor_func glfwDestroyCursor_impl;
+GFW_EXTERN glfwDestroyCursor_func glfwDestroyCursor_impl;
 #define glfwDestroyCursor glfwDestroyCursor_impl
 
 typedef void (*glfwSetCursor_func)(GLFWwindow*, GLFWcursor*);
-glfwSetCursor_func glfwSetCursor_impl;
+GFW_EXTERN glfwSetCursor_func glfwSetCursor_impl;
 #define glfwSetCursor glfwSetCursor_impl
 
 typedef GLFWkeyboardfun (*glfwSetKeyboardCallback_func)(GLFWwindow*, GLFWkeyboardfun);
-glfwSetKeyboardCallback_func glfwSetKeyboardCallback_impl;
+GFW_EXTERN glfwSetKeyboardCallback_func glfwSetKeyboardCallback_impl;
 #define glfwSetKeyboardCallback glfwSetKeyboardCallback_impl
 
 typedef void (*glfwUpdateIMEState_func)(GLFWwindow*, int, int, int, int, int);
-glfwUpdateIMEState_func glfwUpdateIMEState_impl;
+GFW_EXTERN glfwUpdateIMEState_func glfwUpdateIMEState_impl;
 #define glfwUpdateIMEState glfwUpdateIMEState_impl
 
 typedef GLFWmousebuttonfun (*glfwSetMouseButtonCallback_func)(GLFWwindow*, GLFWmousebuttonfun);
-glfwSetMouseButtonCallback_func glfwSetMouseButtonCallback_impl;
+GFW_EXTERN glfwSetMouseButtonCallback_func glfwSetMouseButtonCallback_impl;
 #define glfwSetMouseButtonCallback glfwSetMouseButtonCallback_impl
 
 typedef GLFWcursorposfun (*glfwSetCursorPosCallback_func)(GLFWwindow*, GLFWcursorposfun);
-glfwSetCursorPosCallback_func glfwSetCursorPosCallback_impl;
+GFW_EXTERN glfwSetCursorPosCallback_func glfwSetCursorPosCallback_impl;
 #define glfwSetCursorPosCallback glfwSetCursorPosCallback_impl
 
 typedef GLFWcursorenterfun (*glfwSetCursorEnterCallback_func)(GLFWwindow*, GLFWcursorenterfun);
-glfwSetCursorEnterCallback_func glfwSetCursorEnterCallback_impl;
+GFW_EXTERN glfwSetCursorEnterCallback_func glfwSetCursorEnterCallback_impl;
 #define glfwSetCursorEnterCallback glfwSetCursorEnterCallback_impl
 
 typedef GLFWscrollfun (*glfwSetScrollCallback_func)(GLFWwindow*, GLFWscrollfun);
-glfwSetScrollCallback_func glfwSetScrollCallback_impl;
+GFW_EXTERN glfwSetScrollCallback_func glfwSetScrollCallback_impl;
 #define glfwSetScrollCallback glfwSetScrollCallback_impl
 
 typedef GLFWdropfun (*glfwSetDropCallback_func)(GLFWwindow*, GLFWdropfun);
-glfwSetDropCallback_func glfwSetDropCallback_impl;
+GFW_EXTERN glfwSetDropCallback_func glfwSetDropCallback_impl;
 #define glfwSetDropCallback glfwSetDropCallback_impl
 
 typedef GLFWliveresizefun (*glfwSetLiveResizeCallback_func)(GLFWwindow*, GLFWliveresizefun);
-glfwSetLiveResizeCallback_func glfwSetLiveResizeCallback_impl;
+GFW_EXTERN glfwSetLiveResizeCallback_func glfwSetLiveResizeCallback_impl;
 #define glfwSetLiveResizeCallback glfwSetLiveResizeCallback_impl
 
 typedef int (*glfwJoystickPresent_func)(int);
-glfwJoystickPresent_func glfwJoystickPresent_impl;
+GFW_EXTERN glfwJoystickPresent_func glfwJoystickPresent_impl;
 #define glfwJoystickPresent glfwJoystickPresent_impl
 
 typedef const float* (*glfwGetJoystickAxes_func)(int, int*);
-glfwGetJoystickAxes_func glfwGetJoystickAxes_impl;
+GFW_EXTERN glfwGetJoystickAxes_func glfwGetJoystickAxes_impl;
 #define glfwGetJoystickAxes glfwGetJoystickAxes_impl
 
 typedef const unsigned char* (*glfwGetJoystickButtons_func)(int, int*);
-glfwGetJoystickButtons_func glfwGetJoystickButtons_impl;
+GFW_EXTERN glfwGetJoystickButtons_func glfwGetJoystickButtons_impl;
 #define glfwGetJoystickButtons glfwGetJoystickButtons_impl
 
 typedef const unsigned char* (*glfwGetJoystickHats_func)(int, int*);
-glfwGetJoystickHats_func glfwGetJoystickHats_impl;
+GFW_EXTERN glfwGetJoystickHats_func glfwGetJoystickHats_impl;
 #define glfwGetJoystickHats glfwGetJoystickHats_impl
 
 typedef const char* (*glfwGetJoystickName_func)(int);
-glfwGetJoystickName_func glfwGetJoystickName_impl;
+GFW_EXTERN glfwGetJoystickName_func glfwGetJoystickName_impl;
 #define glfwGetJoystickName glfwGetJoystickName_impl
 
 typedef const char* (*glfwGetJoystickGUID_func)(int);
-glfwGetJoystickGUID_func glfwGetJoystickGUID_impl;
+GFW_EXTERN glfwGetJoystickGUID_func glfwGetJoystickGUID_impl;
 #define glfwGetJoystickGUID glfwGetJoystickGUID_impl
 
 typedef void (*glfwSetJoystickUserPointer_func)(int, void*);
-glfwSetJoystickUserPointer_func glfwSetJoystickUserPointer_impl;
+GFW_EXTERN glfwSetJoystickUserPointer_func glfwSetJoystickUserPointer_impl;
 #define glfwSetJoystickUserPointer glfwSetJoystickUserPointer_impl
 
 typedef void* (*glfwGetJoystickUserPointer_func)(int);
-glfwGetJoystickUserPointer_func glfwGetJoystickUserPointer_impl;
+GFW_EXTERN glfwGetJoystickUserPointer_func glfwGetJoystickUserPointer_impl;
 #define glfwGetJoystickUserPointer glfwGetJoystickUserPointer_impl
 
 typedef int (*glfwJoystickIsGamepad_func)(int);
-glfwJoystickIsGamepad_func glfwJoystickIsGamepad_impl;
+GFW_EXTERN glfwJoystickIsGamepad_func glfwJoystickIsGamepad_impl;
 #define glfwJoystickIsGamepad glfwJoystickIsGamepad_impl
 
 typedef GLFWjoystickfun (*glfwSetJoystickCallback_func)(GLFWjoystickfun);
-glfwSetJoystickCallback_func glfwSetJoystickCallback_impl;
+GFW_EXTERN glfwSetJoystickCallback_func glfwSetJoystickCallback_impl;
 #define glfwSetJoystickCallback glfwSetJoystickCallback_impl
 
 typedef int (*glfwUpdateGamepadMappings_func)(const char*);
-glfwUpdateGamepadMappings_func glfwUpdateGamepadMappings_impl;
+GFW_EXTERN glfwUpdateGamepadMappings_func glfwUpdateGamepadMappings_impl;
 #define glfwUpdateGamepadMappings glfwUpdateGamepadMappings_impl
 
 typedef const char* (*glfwGetGamepadName_func)(int);
-glfwGetGamepadName_func glfwGetGamepadName_impl;
+GFW_EXTERN glfwGetGamepadName_func glfwGetGamepadName_impl;
 #define glfwGetGamepadName glfwGetGamepadName_impl
 
 typedef int (*glfwGetGamepadState_func)(int, GLFWgamepadstate*);
-glfwGetGamepadState_func glfwGetGamepadState_impl;
+GFW_EXTERN glfwGetGamepadState_func glfwGetGamepadState_impl;
 #define glfwGetGamepadState glfwGetGamepadState_impl
 
 typedef void (*glfwSetClipboardString_func)(GLFWwindow*, const char*);
-glfwSetClipboardString_func glfwSetClipboardString_impl;
+GFW_EXTERN glfwSetClipboardString_func glfwSetClipboardString_impl;
 #define glfwSetClipboardString glfwSetClipboardString_impl
 
 typedef const char* (*glfwGetClipboardString_func)(GLFWwindow*);
-glfwGetClipboardString_func glfwGetClipboardString_impl;
+GFW_EXTERN glfwGetClipboardString_func glfwGetClipboardString_impl;
 #define glfwGetClipboardString glfwGetClipboardString_impl
 
 typedef monotonic_t (*glfwGetTime_func)(void);
-glfwGetTime_func glfwGetTime_impl;
+GFW_EXTERN glfwGetTime_func glfwGetTime_impl;
 #define glfwGetTime glfwGetTime_impl
 
 typedef void (*glfwMakeContextCurrent_func)(GLFWwindow*);
-glfwMakeContextCurrent_func glfwMakeContextCurrent_impl;
+GFW_EXTERN glfwMakeContextCurrent_func glfwMakeContextCurrent_impl;
 #define glfwMakeContextCurrent glfwMakeContextCurrent_impl
 
 typedef GLFWwindow* (*glfwGetCurrentContext_func)(void);
-glfwGetCurrentContext_func glfwGetCurrentContext_impl;
+GFW_EXTERN glfwGetCurrentContext_func glfwGetCurrentContext_impl;
 #define glfwGetCurrentContext glfwGetCurrentContext_impl
 
 typedef void (*glfwSwapBuffers_func)(GLFWwindow*);
-glfwSwapBuffers_func glfwSwapBuffers_impl;
+GFW_EXTERN glfwSwapBuffers_func glfwSwapBuffers_impl;
 #define glfwSwapBuffers glfwSwapBuffers_impl
 
 typedef void (*glfwSwapInterval_func)(int);
-glfwSwapInterval_func glfwSwapInterval_impl;
+GFW_EXTERN glfwSwapInterval_func glfwSwapInterval_impl;
 #define glfwSwapInterval glfwSwapInterval_impl
 
 typedef int (*glfwExtensionSupported_func)(const char*);
-glfwExtensionSupported_func glfwExtensionSupported_impl;
+GFW_EXTERN glfwExtensionSupported_func glfwExtensionSupported_impl;
 #define glfwExtensionSupported glfwExtensionSupported_impl
 
 typedef GLFWglproc (*glfwGetProcAddress_func)(const char*);
-glfwGetProcAddress_func glfwGetProcAddress_impl;
+GFW_EXTERN glfwGetProcAddress_func glfwGetProcAddress_impl;
 #define glfwGetProcAddress glfwGetProcAddress_impl
 
 typedef int (*glfwVulkanSupported_func)(void);
-glfwVulkanSupported_func glfwVulkanSupported_impl;
+GFW_EXTERN glfwVulkanSupported_func glfwVulkanSupported_impl;
 #define glfwVulkanSupported glfwVulkanSupported_impl
 
 typedef const char** (*glfwGetRequiredInstanceExtensions_func)(uint32_t*);
-glfwGetRequiredInstanceExtensions_func glfwGetRequiredInstanceExtensions_impl;
+GFW_EXTERN glfwGetRequiredInstanceExtensions_func glfwGetRequiredInstanceExtensions_impl;
 #define glfwGetRequiredInstanceExtensions glfwGetRequiredInstanceExtensions_impl
 
 typedef void* (*glfwGetCocoaWindow_func)(GLFWwindow*);
-glfwGetCocoaWindow_func glfwGetCocoaWindow_impl;
+GFW_EXTERN glfwGetCocoaWindow_func glfwGetCocoaWindow_impl;
 #define glfwGetCocoaWindow glfwGetCocoaWindow_impl
 
 typedef void* (*glfwGetNSGLContext_func)(GLFWwindow*);
-glfwGetNSGLContext_func glfwGetNSGLContext_impl;
+GFW_EXTERN glfwGetNSGLContext_func glfwGetNSGLContext_impl;
 #define glfwGetNSGLContext glfwGetNSGLContext_impl
 
 typedef uint32_t (*glfwGetCocoaMonitor_func)(GLFWmonitor*);
-glfwGetCocoaMonitor_func glfwGetCocoaMonitor_impl;
+GFW_EXTERN glfwGetCocoaMonitor_func glfwGetCocoaMonitor_impl;
 #define glfwGetCocoaMonitor glfwGetCocoaMonitor_impl
 
 typedef GLFWcocoatextinputfilterfun (*glfwSetCocoaTextInputFilter_func)(GLFWwindow*, GLFWcocoatextinputfilterfun);
-glfwSetCocoaTextInputFilter_func glfwSetCocoaTextInputFilter_impl;
+GFW_EXTERN glfwSetCocoaTextInputFilter_func glfwSetCocoaTextInputFilter_impl;
 #define glfwSetCocoaTextInputFilter glfwSetCocoaTextInputFilter_impl
 
 typedef GLFWcocoatogglefullscreenfun (*glfwSetCocoaToggleFullscreenIntercept_func)(GLFWwindow*, GLFWcocoatogglefullscreenfun);
-glfwSetCocoaToggleFullscreenIntercept_func glfwSetCocoaToggleFullscreenIntercept_impl;
+GFW_EXTERN glfwSetCocoaToggleFullscreenIntercept_func glfwSetCocoaToggleFullscreenIntercept_impl;
 #define glfwSetCocoaToggleFullscreenIntercept glfwSetCocoaToggleFullscreenIntercept_impl
 
 typedef GLFWapplicationshouldhandlereopenfun (*glfwSetApplicationShouldHandleReopen_func)(GLFWapplicationshouldhandlereopenfun);
-glfwSetApplicationShouldHandleReopen_func glfwSetApplicationShouldHandleReopen_impl;
+GFW_EXTERN glfwSetApplicationShouldHandleReopen_func glfwSetApplicationShouldHandleReopen_impl;
 #define glfwSetApplicationShouldHandleReopen glfwSetApplicationShouldHandleReopen_impl
 
 typedef GLFWapplicationwillfinishlaunchingfun (*glfwSetApplicationWillFinishLaunching_func)(GLFWapplicationwillfinishlaunchingfun);
-glfwSetApplicationWillFinishLaunching_func glfwSetApplicationWillFinishLaunching_impl;
+GFW_EXTERN glfwSetApplicationWillFinishLaunching_func glfwSetApplicationWillFinishLaunching_impl;
 #define glfwSetApplicationWillFinishLaunching glfwSetApplicationWillFinishLaunching_impl
 
 typedef void (*glfwGetCocoaKeyEquivalent_func)(int, int, char*, size_t, int*);
-glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;
+GFW_EXTERN glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;
 #define glfwGetCocoaKeyEquivalent glfwGetCocoaKeyEquivalent_impl
 
 typedef void (*glfwCocoaRequestRenderFrame_func)(GLFWwindow*, GLFWcocoarenderframefun);
-glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
+GFW_EXTERN glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
 #define glfwCocoaRequestRenderFrame glfwCocoaRequestRenderFrame_impl
 
 typedef void* (*glfwGetX11Display_func)(void);
-glfwGetX11Display_func glfwGetX11Display_impl;
+GFW_EXTERN glfwGetX11Display_func glfwGetX11Display_impl;
 #define glfwGetX11Display glfwGetX11Display_impl
 
 typedef int32_t (*glfwGetX11Window_func)(GLFWwindow*);
-glfwGetX11Window_func glfwGetX11Window_impl;
+GFW_EXTERN glfwGetX11Window_func glfwGetX11Window_impl;
 #define glfwGetX11Window glfwGetX11Window_impl
 
 typedef void (*glfwSetPrimarySelectionString_func)(GLFWwindow*, const char*);
-glfwSetPrimarySelectionString_func glfwSetPrimarySelectionString_impl;
+GFW_EXTERN glfwSetPrimarySelectionString_func glfwSetPrimarySelectionString_impl;
 #define glfwSetPrimarySelectionString glfwSetPrimarySelectionString_impl
 
 typedef const char* (*glfwGetPrimarySelectionString_func)(GLFWwindow*);
-glfwGetPrimarySelectionString_func glfwGetPrimarySelectionString_impl;
+GFW_EXTERN glfwGetPrimarySelectionString_func glfwGetPrimarySelectionString_impl;
 #define glfwGetPrimarySelectionString glfwGetPrimarySelectionString_impl
 
 typedef int (*glfwGetNativeKeyForName_func)(const char*, int);
-glfwGetNativeKeyForName_func glfwGetNativeKeyForName_impl;
+GFW_EXTERN glfwGetNativeKeyForName_func glfwGetNativeKeyForName_impl;
 #define glfwGetNativeKeyForName glfwGetNativeKeyForName_impl
 
 typedef void (*glfwRequestWaylandFrameEvent_func)(GLFWwindow*, unsigned long long, GLFWwaylandframecallbackfunc);
-glfwRequestWaylandFrameEvent_func glfwRequestWaylandFrameEvent_impl;
+GFW_EXTERN glfwRequestWaylandFrameEvent_func glfwRequestWaylandFrameEvent_impl;
 #define glfwRequestWaylandFrameEvent glfwRequestWaylandFrameEvent_impl
 
 typedef unsigned long long (*glfwDBusUserNotify_func)(const char*, const char*, const char*, const char*, const char*, int32_t, GLFWDBusnotificationcreatedfun, void*);
-glfwDBusUserNotify_func glfwDBusUserNotify_impl;
+GFW_EXTERN glfwDBusUserNotify_func glfwDBusUserNotify_impl;
 #define glfwDBusUserNotify glfwDBusUserNotify_impl
 
 typedef void (*glfwDBusSetUserNotificationHandler_func)(GLFWDBusnotificationactivatedfun);
-glfwDBusSetUserNotificationHandler_func glfwDBusSetUserNotificationHandler_impl;
+GFW_EXTERN glfwDBusSetUserNotificationHandler_func glfwDBusSetUserNotificationHandler_impl;
 #define glfwDBusSetUserNotificationHandler glfwDBusSetUserNotificationHandler_impl
 
 const char* load_glfw(const char* path);

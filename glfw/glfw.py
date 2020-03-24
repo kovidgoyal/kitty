@@ -165,7 +165,7 @@ class Function:
             self.args = [Arg('void v')]
 
     def declaration(self) -> str:
-        return 'typedef {restype} (*{name}_func)({args});\n{name}_func {name}_impl;\n#define {name} {name}_impl'.format(
+        return 'typedef {restype} (*{name}_func)({args});\nGFW_EXTERN {name}_func {name}_impl;\n#define {name} {name}_impl'.format(
             restype=self.restype,
             name=self.name,
             args=', '.join(a.type for a in self.args)
@@ -233,6 +233,9 @@ const char *action_text, int32_t timeout, GLFWDBusnotificationcreatedfun callbac
 #include <stdint.h>
 #include "monotonic.h"
 
+#ifndef GFW_EXTERN
+#define GFW_EXTERN extern
+#endif
 {}
 
 typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int,unsigned long);
@@ -251,6 +254,7 @@ const char* load_glfw(const char* path);
         f.write(header)
 
     code = '''
+#define GFW_EXTERN
 #include "data-types.h"
 #include "glfw-wrapper.h"
 #include <dlfcn.h>
