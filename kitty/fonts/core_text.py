@@ -54,13 +54,16 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False) -> Co
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map()
 
-    def score(candidate: CoreTextFont) -> Tuple[int, int, int]:
+    def score(candidate: CoreTextFont) -> Tuple[int, int, int, float]:
         style_match = 1 if candidate['bold'] == bold and candidate[
             'italic'
         ] == italic else 0
         monospace_match = 1 if candidate['monospace'] else 0
         is_regular_width = not candidate['expanded'] and not candidate['condensed']
-        return style_match, monospace_match, 1 if is_regular_width else 0
+        # prefer demi-bold to bold to heavy, less bold means less chance of
+        # overflow
+        weight_distance_from_medium = abs(candidate['weight'])
+        return style_match, monospace_match, 1 if is_regular_width else 0, 1 - weight_distance_from_medium
 
     # First look for an exact match
     for selector in ('ps_map', 'full_map'):
