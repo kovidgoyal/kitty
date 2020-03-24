@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.17.0 [future]
+0.17.0 [2020-03-24]
 --------------------
 
 - A new :ref:`splits_layout` to arrange windows in arbitrary splits
