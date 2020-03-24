@@ -6,7 +6,7 @@ import re
 from functools import partial
 from typing import (
     Any, Callable, Dict, Generator, Iterable, List, Match, Optional, Sequence,
-    Set, Tuple, Union, cast, get_type_hints
+    Set, Tuple, Union, get_type_hints
 )
 
 from .utils import to_bool
@@ -156,7 +156,7 @@ def remove_markup(text: str) -> str:
                 'layouts': 'https://sw.kovidgoyal.net/kitty/index.html#layouts',
                 'sessions': 'https://sw.kovidgoyal.net/kitty/index.html#sessions',
             }[m.group(2)]
-        return cast(str, m.group(2))
+        return str(m.group(2))
 
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
 
