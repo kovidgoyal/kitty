@@ -9,6 +9,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix :opt:`cursor_underline_thickness` not working (:iss:`2465`)
 
+- Fix a regression in 0.17 that caused tab bar background to be rendered after
+  the last tab as well (:iss:`2464`)
+
 
 - :ref:`splits_layout` to arrange windows in arbitrary splits
 0.17.0 [2020-03-24]

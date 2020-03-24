@@ -66,6 +66,8 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
 
 
 def draw_tab_with_separator(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
+    tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
+    screen.cursor.bg = as_rgb(color_as_int(tab_bg))
     if draw_data.leading_spaces:
         screen.draw(' ' * draw_data.leading_spaces)
     draw_title(draw_data, screen, tab, index)
@@ -138,6 +140,7 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
         screen.draw(' ')
         start_draw = 1
 
+    screen.cursor.bg = tab_bg
     if min_title_length >= max_title_length:
         screen.draw('…')
     else:
@@ -179,7 +182,7 @@ class TabBar:
         s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         s.color_profile.set_configured_colors(
             color_as_int(opts.inactive_tab_foreground),
-            color_as_int(opts.inactive_tab_background)
+            color_as_int(opts.background)
         )
         self.blank_rects: Tuple[Rect, ...] = ()
         sep = opts.tab_separator
