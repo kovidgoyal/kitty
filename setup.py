@@ -141,9 +141,12 @@ def cc_version() -> Tuple[str, Tuple[int, int]]:
             else:
                 cc = 'cc'
     raw = subprocess.check_output([cc, '-dumpversion']).decode('utf-8')
-    ver_ = raw.split('.')[:2]
+    ver_ = raw.strip().split('.')[:2]
     try:
-        ver = int(ver_[0]), int(ver_[1])
+        if len(ver_) == 1:
+            ver = int(ver_[0]), 0
+        else:
+            ver = int(ver_[0]), int(ver_[1])
     except Exception:
         ver = (0, 0)
     return cc, ver
