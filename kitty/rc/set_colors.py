@@ -69,7 +69,7 @@ this option, any color arguments are ignored and --configured and --all are impl
                 else:
                     with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
                         colors.update(parse_config(f))
-            ctc = colors.pop('cursor_text_color')
+            ctc = colors.pop('cursor_text_color', None)
             if isinstance(ctc, Color):
                 cursor_text_color = color_as_int(ctc)
             final_colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}

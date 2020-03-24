@@ -15,6 +15,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix a regression in 0.17 that caused incorrect variants to be
   automatically selected for some fonts (:iss:`2462`)
 
+- Fix a regression in 0.17 that caused kitty @ set-colors to require setting
+  cursor_text_color (:iss:`2470`)
+
 
 0.17.0 [2020-03-24]
 --------------------
