@@ -81,8 +81,9 @@ def draw_tab_with_separator(draw_data: DrawData, screen: Screen, tab: TabBarData
         screen.draw(' ' * trailing_spaces)
     end = screen.cursor.x
     screen.cursor.bold = screen.cursor.italic = False
-    screen.cursor.fg = screen.cursor.bg = 0
+    screen.cursor.fg = 0
     screen.draw(draw_data.sep)
+    screen.cursor.bg = 0
     return end
 
 
