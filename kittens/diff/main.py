@@ -48,6 +48,9 @@ try:
 except ImportError:
     has_highlighter = False
 
+    def highlight_collection(collection: 'Collection', aliases: Optional[Dict[str, str]] = None) -> Union[str, Dict[str, 'DiffHighlight']]:
+        return ''
+
 
 INITIALIZING, COLLECTED, DIFFED, COMMAND, MESSAGE = range(5)
 ESCAPE = K['ESCAPE']
