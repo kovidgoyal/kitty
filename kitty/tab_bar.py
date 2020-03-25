@@ -179,12 +179,8 @@ class TabBar:
         self.data_buffer_size = 0
         self.laid_out_once = False
         self.dirty = True
-        self.screen = s = Screen(None, 1, 10, 0, self.cell_width, cell_height)
-        s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
-        s.color_profile.set_configured_colors(
-            color_as_int(opts.inactive_tab_foreground),
-            color_as_int(opts.background)
-        )
+        self.screen = Screen(None, 1, 10, 0, self.cell_width, cell_height)
+        self.screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         self.blank_rects: Tuple[Rect, ...] = ()
         sep = opts.tab_separator
         self.trailing_spaces = self.leading_spaces = 0
@@ -208,6 +204,10 @@ class TabBar:
             self.opts.tab_bar_background or self.opts.background, self.opts.tab_title_template,
             self.opts.active_tab_title_template
         )
+        self.screen.color_profile.set_configured_colors(
+            color_as_int(self.draw_data.inactive_fg),
+            color_as_int(self.draw_data.default_bg)
+        )
         if self.opts.tab_bar_style == 'separator':
             self.draw_func = draw_tab_with_separator
         elif self.opts.tab_bar_style == 'powerline':
@@ -228,8 +228,8 @@ class TabBar:
         elif 'background' in spec and not self.opts.tab_bar_background:
             self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['background']))
         self.screen.color_profile.set_configured_colors(
-                spec.get('inactive_tab_foreground', color_as_int(self.opts.inactive_tab_foreground)),
-                spec.get('inactive_tab_background', color_as_int(self.opts.inactive_tab_background))
+            color_as_int(self.draw_data.inactive_fg),
+            color_as_int(self.draw_data.default_bg)
         )
 
     def layout(self) -> None:
