@@ -184,7 +184,7 @@ class TabBar:
         s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         s.color_profile.set_configured_colors(
             color_as_int(opts.inactive_tab_foreground),
-            color_as_int(opts.background)
+            color_as_int(opts.tab_bar_background or opts.background)
         )
         self.blank_rects: Tuple[Rect, ...] = ()
         sep = opts.tab_separator
