@@ -10,6 +10,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.17 that broke drawing of borders with non-minimal
   borders (:iss:`2474`)
 
+- Hints kitten: Adjust the default regex used to detect line numbers to handle
+  line+column numbers (:iss:`2268`)
+
 
 0.17.1 [2020-03-24]
 --------------------

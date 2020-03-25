@@ -349,7 +349,7 @@ def parse_input(text: str) -> str:
 def linenum_marks(text: str, args: HintsCLIOptions, Mark: Type[Mark], extra_cli_args: Sequence[str], *a: Any) -> Generator[Mark, None, None]:
     regex = args.regex
     if regex == DEFAULT_REGEX:
-        regex = r'(?P<path>(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,7})):(?P<line>\d+)'
+        regex = r'(?P<path>(?:\S*/\S+?)|(?:\S+[.][a-zA-Z0-9]{2,7})):(?P<line>\d+)'
     yield from mark(regex, [brackets, quotes], text, args)
 
 
