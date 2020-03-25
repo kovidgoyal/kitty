@@ -137,6 +137,7 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
         screen.draw(' ')
         screen.cursor.fg = tab_fg
     elif screen.cursor.x == 0:
+        screen.cursor.bg = tab_bg
         screen.draw(' ')
         start_draw = 1
 

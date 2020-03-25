@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Hints kitten: Adjust the default regex used to detect line numbers to handle
   line+column numbers (:iss:`2268`)
 
+- Fix blank space at the start of tab bar in powerline style when first tab is
+  inactive (:iss:`2478`)
+
 
 0.17.1 [2020-03-24]
 --------------------
