@@ -1512,6 +1512,13 @@ class Splits(Layout):
                 else:
                     p2.two = w1
 
+    def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+        for w in windows:
+            if (w is active_window and draw_active_borders) or w.needs_attention:
+                yield all_borders
+            else:
+                yield no_borders
+
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList, active_window_idx: int) -> Optional[Union[bool, int]]:
         if action_name == 'rotate':
             args = args or ('90',)

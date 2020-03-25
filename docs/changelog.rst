@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.17.2 [future]
+--------------------
+
+- Fix a regression in 0.17 that broke drawing of borders with non-minimal
+  borders (:iss:`2474`)
+
+
 0.17.1 [2020-03-24]
 --------------------
 
