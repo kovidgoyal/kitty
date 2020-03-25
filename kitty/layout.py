@@ -549,7 +549,7 @@ class Layout:  # {{{
 
     def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         for w in windows:
-            if (w is active_window and draw_active_borders) or w.needs_attention:
+            if w is not active_window or draw_active_borders or w.needs_attention:
                 yield all_borders
             else:
                 yield no_borders
