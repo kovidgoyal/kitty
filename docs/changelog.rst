@@ -10,6 +10,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.17 that broke drawing of borders with non-minimal
   borders (:iss:`2474`)
 
+- Add a new mappable action ``close_other_windows_in_tab`` to close all but the
+  active window (:iss:`2484`)
+
 - Hints kitten: Adjust the default regex used to detect line numbers to handle
   line+column numbers (:iss:`2268`)
 

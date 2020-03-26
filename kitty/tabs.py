@@ -384,6 +384,13 @@ class Tab:  # {{{
         if self.windows:
             self.remove_window(self.windows[self.active_window_idx])
 
+    def close_other_windows_in_tab(self) -> None:
+        if len(self.windows) > 1:
+            active_window = self.windows[self.active_window_idx]
+            for window in tuple(self.windows):
+                if window is not active_window:
+                    self.remove_window(window)
+
     def previous_active_window_idx(self, num: int) -> Optional[int]:
         try:
             old_window_id = self.active_window_history[-num]

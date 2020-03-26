@@ -192,6 +192,12 @@ Similarly, you can detach the current tab, with::
     # asks which OS Window to move the tab into
     map ctrl+f4 detach_tab ask
 
+Finally, you can define a shortcut to close all windows in a tab other than
+the currently active window::
+
+    map f9 close_other_windows_in_tab
+
+
 Other keyboard shortcuts
 ----------------------------------
 
