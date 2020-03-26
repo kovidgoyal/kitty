@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix blank space at the start of tab bar in powerline style when first tab is
   inactive (:iss:`2478`)
 
+- Fix regression causing incorrect rendering of separators in tab bar when
+  defining a tab bar background color (:pull:`2480`)
+
 
 0.17.1 [2020-03-24]
 --------------------
