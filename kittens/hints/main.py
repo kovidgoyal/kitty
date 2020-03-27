@@ -21,7 +21,7 @@ from kitty.key_encoding import (
     KeyEvent, backspace_key, enter_key, key_defs as K
 )
 from kitty.typing import BossType, KittyCommonOpts
-from kitty.utils import ScreenSize, screen_size_function
+from kitty.utils import ScreenSize, screen_size_function, set_primary_selection
 
 from ..tui.handler import Handler, result_handler
 from ..tui.loop import Loop
@@ -413,8 +413,9 @@ OPTIONS = r'''
 type=list
 What program to use to open matched text. Defaults to the default open program
 for the operating system. Use a value of :file:`-` to paste the match into the
-terminal window instead. A value of :file:`@` will copy the match to the clipboard.
-A value of :file:`default` will run the default open program. Can be specified
+terminal window instead. A value of :file:`@` will copy the match to the
+clipboard. A value of :file:`*` will copy the match to the primary selection. A
+value of :file:`default` will run the default open program. Can be specified
 multiple times to run multiple programs.
 
 
@@ -629,6 +630,8 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
                 w.paste(joined_text())
         elif program == '@':
             set_clipboard_string(joined_text())
+        elif program == '*':
+            set_primary_selection(joined_text())
         else:
             cwd = None
             w = boss.window_id_map.get(target_window_id)
