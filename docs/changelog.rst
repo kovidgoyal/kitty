@@ -25,6 +25,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix regression causing incorrect rendering of separators in tab bar when
   defining a tab bar background color (:pull:`2480`)
 
+- Fix a regression in 0.17 that broke the kitty @ launch remote command and
+  also broke the --tab-title option when creating a new tab. (:iss:`2488`)
+
 
 0.17.1 [2020-03-24]
 --------------------

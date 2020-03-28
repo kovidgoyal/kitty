@@ -5,6 +5,7 @@
 
 from typing import TYPE_CHECKING, Optional
 
+from kitty.cli_stub import LaunchCLIOptions
 from kitty.launch import (
     launch as do_launch, options_spec as launch_options_spec,
     parse_launch_args
@@ -16,7 +17,7 @@ from .base import (
 )
 
 if TYPE_CHECKING:
-    from kitty.cli_stub import LaunchRCOptions as CLIOptions, LaunchCLIOptions
+    from kitty.cli_stub import LaunchRCOptions as CLIOptions
 
 
 class Launch(RemoteCommand):
