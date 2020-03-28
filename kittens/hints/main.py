@@ -360,12 +360,8 @@ def load_custom_processor(customize_processing: str) -> Any:
         return {k: getattr(m, k) for k in dir(m)}
     if customize_processing == '::linenum::':
         return {'mark': linenum_marks, 'handle_result': linenum_handle_result}
-    from kitty.constants import config_dir
-    customize_processing = os.path.expandvars(os.path.expanduser(customize_processing))
-    if os.path.isabs(customize_processing):
-        custom_path = customize_processing
-    else:
-        custom_path = os.path.join(config_dir, customize_processing)
+    from kitty.constants import resolve_custom_file
+    custom_path = resolve_custom_file(customize_processing)
     import runpy
     return runpy.run_path(custom_path, run_name='__main__')
 

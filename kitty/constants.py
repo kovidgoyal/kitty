@@ -198,3 +198,10 @@ def running_in_kitty(set_val: Optional[bool] = None) -> bool:
     if set_val is not None:
         setattr(running_in_kitty, 'ans', set_val)
     return bool(getattr(running_in_kitty, 'ans', False))
+
+
+def resolve_custom_file(path: str) -> str:
+    path = os.path.expandvars(os.path.expanduser(path))
+    if not os.path.isabs(path):
+        path = os.path.join(config_dir, path)
+    return path
