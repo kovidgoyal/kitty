@@ -312,7 +312,7 @@ harfbuzz_font_for_face(PyObject* s) {
 }
 
 void
-cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness) {
+cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness) {
     // See https://developer.apple.com/library/content/documentation/StringsTextFonts/Conceptual/TextAndWebiPhoneOS/TypoFeatures/TextSystemFeatures.html
     CTFace *self = (CTFace*)s;
 #define count (128 - 32)
@@ -332,6 +332,8 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     *underline_position = (unsigned int)floor(self->ascent - self->underline_position + 0.5);
     *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
     *baseline = (unsigned int)self->ascent;
+    *strikethrough_position = (unsigned int)floor(*baseline * 0.65);
+    *strikethrough_thickness = *underline_thickness;
     // float line_height = MAX(1, floor(self->ascent + self->descent + MAX(0, self->leading) + 0.5));
     // Let CoreText's layout engine calculate the line height. Slower, but hopefully more accurate.
 #define W "AQWMH_gyl "

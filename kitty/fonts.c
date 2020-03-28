@@ -85,7 +85,7 @@ typedef struct {
 typedef struct {
     FONTS_DATA_HEAD
     id_type id;
-    unsigned int baseline, underline_position, underline_thickness;
+    unsigned int baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     size_t fonts_capacity, fonts_count, fallback_fonts_count;
     ssize_t medium_font_idx, bold_font_idx, italic_font_idx, bi_font_idx, first_symbol_font_idx, first_fallback_font_idx;
     Font *fonts;
@@ -422,8 +422,8 @@ python_send_to_gpu(FONTS_DATA_HANDLE fg, unsigned int x, unsigned int y, unsigne
 
 static inline void
 calc_cell_metrics(FontGroup *fg) {
-    unsigned int cell_height, cell_width, baseline, underline_position, underline_thickness;
-    cell_metrics(fg->fonts[fg->medium_font_idx].face, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness);
+    unsigned int cell_height, cell_width, baseline, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
+    cell_metrics(fg->fonts[fg->medium_font_idx].face, &cell_width, &cell_height, &baseline, &underline_position, &underline_thickness, &strikethrough_position, &strikethrough_thickness);
     if (!cell_width) fatal("Failed to calculate cell width for the specified font");
     unsigned int before_cell_height = cell_height;
     int cw = cell_width, ch = cell_height;
@@ -455,7 +455,7 @@ calc_cell_metrics(FontGroup *fg) {
     }
     sprite_tracker_set_layout(&fg->sprite_tracker, cell_width, cell_height);
     fg->cell_width = cell_width; fg->cell_height = cell_height;
-    fg->baseline = baseline; fg->underline_position = underline_position; fg->underline_thickness = underline_thickness;
+    fg->baseline = baseline; fg->underline_position = underline_position; fg->underline_thickness = underline_thickness, fg->strikethrough_position = strikethrough_position, fg->strikethrough_thickness = strikethrough_thickness;
     free(fg->canvas);
     fg->canvas = calloc(CELLS_IN_CANVAS * fg->cell_width * fg->cell_height, sizeof(pixel));
     if (!fg->canvas) fatal("Out of memory allocating canvas for font group");
@@ -1243,7 +1243,7 @@ send_prerendered_sprites(FontGroup *fg) {
     current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas);
     do_increment(fg, &error);
     if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
-    PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIffdd", fg->cell_width, fg->cell_height, fg->baseline, fg->underline_position, fg->underline_thickness, OPT(cursor_beam_thickness), OPT(cursor_underline_thickness), fg->logical_dpi_x, fg->logical_dpi_y);
+    PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIIIffdd", fg->cell_width, fg->cell_height, fg->baseline, fg->underline_position, fg->underline_thickness, fg->strikethrough_position, fg->strikethrough_thickness, OPT(cursor_beam_thickness), OPT(cursor_underline_thickness), fg->logical_dpi_x, fg->logical_dpi_y);
     if (args == NULL) { PyErr_Print(); fatal("Failed to pre-render cells"); }
     for (ssize_t i = 0; i < PyTuple_GET_SIZE(args) - 1; i++) {
         x = fg->sprite_tracker.x; y = fg->sprite_tracker.y; z = fg->sprite_tracker.z;
