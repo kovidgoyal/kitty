@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.17.2 [future]
 --------------------
 
+- Add an :option:`launch --watcher` option that allows defining callbacks
+  that are called for various events in the window's life-cycle (:iss:`2440`)
+
 - Fix a regression in 0.17 that broke drawing of borders with non-minimal
   borders (:iss:`2474`)
 

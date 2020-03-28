@@ -61,6 +61,35 @@ currently active kitty window. For example::
     map f1 launch my-program @active-kitty-window-id
 
 
+Watching launched windows
+---------------------------
+
+The :option:`launch --watcher` option allows you to specify python functions
+that will be called at specific events, such as when the window is resized or
+closed. Simply specify the path to a python module that specifies callback
+functions for the events you are interested in, for example:
+
+.. code-block:: python
+
+    def on_resize(boss, window, data):
+        # Here data will contain old_geometry and new_geometry
+
+    def on_close(boss, window, data):
+        # called when window is closed, typically when the program running in
+        # it exits.
+
+
+Every callback is passed a reference to the global ``Boss`` object as well as
+the ``Window`` object the action is occurring on. The ``data`` object is
+mapping that contains event dependent data. Some useful methods and attributes
+for the ``Window`` object are: ``as_text(as_ans=False, add_history=False,
+add_wrap_markers=False, alternate_screen=False)`` with which you can get the
+contents of the window and its scrollback buffer. Similarly,
+``window.child.pid`` is the PID of the processes that was launched
+in the window and ``window.id`` is the internal kitty ``id`` of the
+window.
+
+
 Syntax reference
 ------------------
 

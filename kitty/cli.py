@@ -121,6 +121,10 @@ def file(x: str) -> str:
     return italic(x)
 
 
+def doc(x: str) -> str:
+    return f'https://sw.kovidgoyal.net/kitty/{x}.html'
+
+
 OptionSpecSeq = List[Union[str, OptionDict]]
 
 

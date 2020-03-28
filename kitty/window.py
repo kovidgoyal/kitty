@@ -10,8 +10,8 @@ from collections import deque
 from enum import IntEnum
 from itertools import chain
 from typing import (
-    Any, Callable, Deque, Dict, List, Optional, Pattern, Sequence, Tuple,
-    Union
+    Any, Callable, Deque, Dict, Iterable, List, Optional, Pattern, Sequence,
+    Tuple, Union
 )
 
 from .child import ProcessDesc
@@ -32,7 +32,7 @@ from .keys import defines, extended_key_event, keyboard_mode_name
 from .options_stub import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .typing import ChildType, TabType, TypedDict
+from .typing import BossType, ChildType, TabType, TypedDict
 from .utils import (
     color_as_int, get_primary_selection, load_shaders, open_cmd, open_url,
     parse_color_set, read_shell_environment, sanitize_title,
@@ -75,6 +75,19 @@ DYNAMIC_COLOR_CODES = {
     19: DynamicColor.highlight_fg,
 }
 DYNAMIC_COLOR_CODES.update({k+100: v for k, v in DYNAMIC_COLOR_CODES.items()})
+
+
+class Watcher:
+
+    def __call__(self, boss: BossType, window: 'Window', data: Dict[str, Any]) -> None:
+        pass
+
+
+class Watchers:
+
+    def __init__(self) -> None:
+        self.on_resize: List[Watcher] = []
+        self.on_close: List[Watcher] = []
 
 
 def calculate_gl_geometry(window_geometry: WindowGeometry, viewport_width: int, viewport_height: int, cell_width: int, cell_height: int) -> ScreenGeometry:
@@ -181,8 +194,10 @@ class Window:
         opts: Options,
         args: CLIOptions,
         override_title: Optional[str] = None,
-        copy_colors_from: Optional['Window'] = None
+        copy_colors_from: Optional['Window'] = None,
+        watchers: Optional[Watchers] = None
     ):
+        self.watchers = watchers or Watchers()
         self.action_on_close: Optional[Callable] = None
         self.action_on_removal: Optional[Callable] = None
         self.current_marker_spec: Optional[Tuple[str, Union[str, Tuple[Tuple[int, str], ...]]]] = None
@@ -303,6 +318,7 @@ class Window:
             if not self.pty_resized_once:
                 self.pty_resized_once = True
                 self.child.mark_terminal_ready()
+            self.call_watchers(self.watchers.on_resize, {'old_geometry': self.geometry, 'new_geometry': new_geometry})
         else:
             sg = self.update_position(new_geometry)
         self.geometry = g = new_geometry
@@ -536,7 +552,17 @@ class Window:
             return ''.join((l.rstrip() or '\n') for l in lines)
         return ''.join(lines)
 
+    def call_watchers(self, which: Iterable[Watcher], data: Dict[str, Any]) -> None:
+        boss = get_boss()
+        for w in which:
+            try:
+                w(boss, self, data)
+            except Exception:
+                import traceback
+                traceback.print_exc()
+
     def destroy(self) -> None:
+        self.call_watchers(self.watchers.on_close, {})
         self.destroyed = True
         if hasattr(self, 'screen'):
             # Remove cycles so that screen is de-allocated immediately
