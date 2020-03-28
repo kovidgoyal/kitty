@@ -184,7 +184,7 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab]
         oswid = boss.add_os_window(wclass=opts.os_window_class, wname=opts.os_window_name)
         tm = boss.os_window_map[oswid]
         tab = tm.new_tab(empty_tab=True)
-        if opts.tab_title:
+        if opts.tab_title and tab is not None:
             tab.set_title(opts.tab_title)
     else:
         tab = target_tab or boss.active_tab
