@@ -31,6 +31,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.17 that broke the kitty @ launch remote command and
   also broke the --tab-title option when creating a new tab. (:iss:`2488`)
 
+- Linux: Fix selection of fonts with multiple width variants not preferring
+  the normal width faces (:iss:`2491`)
+
 
 0.17.1 [2020-03-24]
 --------------------

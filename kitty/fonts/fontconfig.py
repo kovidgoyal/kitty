@@ -8,7 +8,7 @@ from typing import Dict, Generator, List, Optional, Tuple, cast
 
 from kitty.fast_data_types import (
     FC_DUAL, FC_MONO, FC_SLANT_ITALIC, FC_SLANT_ROMAN, FC_WEIGHT_BOLD,
-    FC_WEIGHT_REGULAR, fc_list, fc_match as fc_match_impl
+    FC_WEIGHT_REGULAR, FC_WIDTH_NORMAL, fc_list, fc_match as fc_match_impl
 )
 from kitty.options_stub import Options
 from kitty.typing import FontConfigPattern
@@ -73,11 +73,13 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False, monos
     q = family_name_to_key(family)
     font_map = all_fonts_map(monospaced)
 
-    def score(candidate: FontConfigPattern) -> Tuple[int, int]:
+    def score(candidate: FontConfigPattern) -> Tuple[int, int, int]:
         bold_score = abs((FC_WEIGHT_BOLD if bold else FC_WEIGHT_REGULAR) - candidate.get('weight', 0))
         italic_score = abs((FC_SLANT_ITALIC if italic else FC_SLANT_ROMAN) - candidate.get('slant', 0))
         monospace_match = 0 if candidate.get('spacing') == 'MONO' else 1
-        return bold_score + italic_score, monospace_match
+        width_score = abs(candidate.get('width', FC_WIDTH_NORMAL) - FC_WIDTH_NORMAL)
+
+        return bold_score + italic_score, monospace_match, width_score
 
     # First look for an exact match
     for selector in ('ps_map', 'full_map', 'family_map'):

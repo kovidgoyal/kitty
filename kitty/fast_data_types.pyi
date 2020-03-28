@@ -323,6 +323,7 @@ FC_MONO: int = 100
 FC_DUAL: int
 FC_WEIGHT_REGULAR: int
 FC_WEIGHT_BOLD: int
+FC_WIDTH_NORMAL: int
 FC_SLANT_ROMAN: int
 FC_SLANT_ITALIC: int
 BORDERS_PROGRAM: int
@@ -402,6 +403,7 @@ class FontConfigPattern(TypedDict):
     style: str
     spacing: str
     weight: int
+    width: int
     slant: int
     hint_style: int
     subpixel: int

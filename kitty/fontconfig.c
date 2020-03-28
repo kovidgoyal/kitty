@@ -47,6 +47,7 @@ pattern_as_dict(FcPattern *pat) {
     S(FC_FULLNAME, full_name);
     S(FC_POSTSCRIPT_NAME, postscript_name);
     I(FC_WEIGHT, weight);
+    I(FC_WIDTH, width)
     I(FC_SLANT, slant);
     I(FC_HINT_STYLE, hint_style);
     I(FC_INDEX, index);
@@ -247,5 +248,7 @@ init_fontconfig_library(PyObject *module) {
     PyModule_AddIntMacro(module, FC_DUAL);
     PyModule_AddIntMacro(module, FC_MONO);
     PyModule_AddIntMacro(module, FC_CHARCELL);
+    PyModule_AddIntMacro(module, FC_WIDTH_NORMAL);
+
     return true;
 }
