@@ -10,6 +10,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.17 that broke drawing of borders with non-minimal
   borders (:iss:`2474`)
 
+- hints kitten: Allow copying to primary selection as well as clipboard
+  (:pull:`2487`)
+
 - Add a new mappable action ``close_other_windows_in_tab`` to close all but the
   active window (:iss:`2484`)
 
