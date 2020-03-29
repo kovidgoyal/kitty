@@ -4,16 +4,16 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.17.2 [future]
+0.17.2 [2020-03-29]
 --------------------
 
-- Add an :option:`launch --watcher` option that allows defining callbacks
+- Add a :option:`launch --watcher` option that allows defining callbacks
   that are called for various events in the window's life-cycle (:iss:`2440`)
 
 - Fix a regression in 0.17 that broke drawing of borders with non-minimal
   borders (:iss:`2474`)
 
-- hints kitten: Allow copying to primary selection as well as clipboard
+- Hints kitten: Allow copying to primary selection as well as clipboard
   (:pull:`2487`)
 
 - Add a new mappable action ``close_other_windows_in_tab`` to close all but the
@@ -22,7 +22,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Hints kitten: Adjust the default regex used to detect line numbers to handle
   line+column numbers (:iss:`2268`)
 
-- Fix blank space at the start of tab bar in powerline style when first tab is
+- Fix blank space at the start of tab bar in the powerline style when first tab is
   inactive (:iss:`2478`)
 
 - Fix regression causing incorrect rendering of separators in tab bar when
