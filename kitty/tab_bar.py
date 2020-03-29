@@ -82,6 +82,8 @@ def draw_tab_with_separator(draw_data: DrawData, screen: Screen, tab: TabBarData
     end = screen.cursor.x
     screen.cursor.bold = screen.cursor.italic = False
     screen.cursor.fg = 0
+    if not is_last:
+        screen.cursor.bg = as_rgb(color_as_int(draw_data.inactive_bg))
     screen.draw(draw_data.sep)
     screen.cursor.bg = 0
     return end
