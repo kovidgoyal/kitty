@@ -159,6 +159,21 @@ def fish_input_parser(data: str) -> ParseResult:
 @output_serializer
 def zsh_output_serializer(ans: Completions) -> str:
     lines = []
+    for description, matches in ans.match_groups.items():
+        cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description)]
+        if description in ans.no_space_groups:
+            cmd += ['-S', '""']
+        if description in ans.files_groups:
+            cmd.append('-f')
+            common_prefix = os.path.commonprefix(tuple(matches))
+            if common_prefix:
+                cmd.extend(('-p', shlex.quote(common_prefix)))
+                matches = {k[len(common_prefix):]: v for k, v in matches.items()}
+        cmd.append('--')
+        for word in matches:
+            cmd.append(shlex.quote(word))
+        lines.append(' '.join(cmd) + ';')
+
     if ans.delegate:
         if ans.delegate.num_of_unknown_args == 1 and not ans.delegate.new_word:
             lines.append('_command_names -e')
@@ -166,22 +181,7 @@ def zsh_output_serializer(ans: Completions) -> str:
             for i in range(ans.delegate.pos + 1):
                 lines.append('shift words')
                 lines.append('(( CURRENT-- ))')
-            lines.append('_normal -p ' + ans.delegate.precommand)
-    else:
-        for description, matches in ans.match_groups.items():
-            cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description)]
-            if description in ans.no_space_groups:
-                cmd += ['-S', '""']
-            if description in ans.files_groups:
-                cmd.append('-f')
-                common_prefix = os.path.commonprefix(tuple(matches))
-                if common_prefix:
-                    cmd.extend(('-p', shlex.quote(common_prefix)))
-                    matches = {k[len(common_prefix):]: v for k, v in matches.items()}
-            cmd.append('--')
-            for word in matches:
-                cmd.append(shlex.quote(word))
-            lines.append(' '.join(cmd) + ';')
+            lines.append(f'_normal -p "{ans.delegate.precommand}"')
     # debug('\n'.join(lines))
     return '\n'.join(lines)
 
