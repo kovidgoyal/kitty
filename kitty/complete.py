@@ -56,7 +56,7 @@ class Delegate:
         self.new_word = new_word
 
     def __bool__(self) -> bool:
-        return self.num_of_unknown_args > 0
+        return self.pos > -1 and self.num_of_unknown_args > 0
 
     @property
     def precommand(self) -> str:
@@ -162,7 +162,7 @@ def zsh_output_serializer(ans: Completions) -> str:
     if ans.delegate:
         if ans.delegate.num_of_unknown_args == 1 and not ans.delegate.new_word:
             lines.append('_command_names -e')
-        elif ans.delegate.precommand not in ('', 'kitty'):
+        elif ans.delegate.precommand:
             for i in range(ans.delegate.pos + 1):
                 lines.append('shift words')
                 lines.append('(( CURRENT-- ))')
