@@ -29,7 +29,7 @@ your shell's rc file.
 
 2) Add an input_parser function, this takes the input from
 the shell for the text being completed and returns a list of words
-alongwith a boolean indicating if we are on a new word or not. This
+and a boolean indicating if we are on a new word or not. This
 is passed to kitty's completion system.
 
 3) An output_serializer function that is responsible for
@@ -47,12 +47,32 @@ def debug(*a: Any, **kw: Any) -> None:
     print(*a, **kw)
 
 
+class Delegate:
+
+    def __init__(self, words: Sequence[str] = (), pos: int = -1, new_word: bool = False):
+        self.words: Sequence[str] = words
+        self.pos = pos
+        self.num_of_unknown_args = len(words) - pos
+        self.new_word = new_word
+
+    def __bool__(self) -> bool:
+        return self.num_of_unknown_args > 0
+
+    @property
+    def precommand(self) -> str:
+        try:
+            return self.words[self.pos]
+        except IndexError:
+            return ''
+
+
 class Completions:
 
     def __init__(self) -> None:
         self.match_groups: Dict[str, MathGroup] = {}
         self.no_space_groups: Set[str] = set()
         self.files_groups: Set[str] = set()
+        self.delegate: Delegate = Delegate()
 
 
 @lru_cache(maxsize=2)
@@ -139,20 +159,29 @@ def fish_input_parser(data: str) -> ParseResult:
 @output_serializer
 def zsh_output_serializer(ans: Completions) -> str:
     lines = []
-    for description, matches in ans.match_groups.items():
-        cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description)]
-        if description in ans.no_space_groups:
-            cmd += ['-S', '""']
-        if description in ans.files_groups:
-            cmd.append('-f')
-            common_prefix = os.path.commonprefix(tuple(matches))
-            if common_prefix:
-                cmd.extend(('-p', shlex.quote(common_prefix)))
-                matches = {k[len(common_prefix):]: v for k, v in matches.items()}
-        cmd.append('--')
-        for word in matches:
-            cmd.append(shlex.quote(word))
-        lines.append(' '.join(cmd) + ';')
+    if ans.delegate:
+        if ans.delegate.num_of_unknown_args == 1 and not ans.delegate.new_word:
+            lines.append('_command_names -e')
+        elif ans.delegate.precommand not in ('', 'kitty'):
+            for i in range(ans.delegate.pos + 1):
+                lines.append('shift words')
+                lines.append('(( CURRENT-- ))')
+            lines.append('_normal -p ' + ans.delegate.precommand)
+    else:
+        for description, matches in ans.match_groups.items():
+            cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description)]
+            if description in ans.no_space_groups:
+                cmd += ['-S', '""']
+            if description in ans.files_groups:
+                cmd.append('-f')
+                common_prefix = os.path.commonprefix(tuple(matches))
+                if common_prefix:
+                    cmd.extend(('-p', shlex.quote(common_prefix)))
+                    matches = {k[len(common_prefix):]: v for k, v in matches.items()}
+            cmd.append('--')
+            for word in matches:
+                cmd.append(shlex.quote(word))
+            lines.append(' '.join(cmd) + ';')
     # debug('\n'.join(lines))
     return '\n'.join(lines)
 
@@ -188,6 +217,8 @@ def completions_for_first_word(ans: Completions, prefix: str, entry_points: Iter
         list(entry_points) + cmds + ['+' + k for k in namespaced_entry_points]
         if not prefix or k.startswith(prefix)
     }
+    if prefix:
+        ans.delegate = Delegate([prefix], 0)
 
 
 def kitty_cli_opts(ans: Completions, prefix: Optional[str] = None) -> None:
@@ -201,9 +232,11 @@ def kitty_cli_opts(ans: Completions, prefix: Optional[str] = None) -> None:
     ans.match_groups['Options'] = matches
 
 
-def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: str) -> None:
+def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
     prefix = prefix or ''
     if not opt:
+        if unknown_args.num_of_unknown_args > 0:
+            ans.delegate = unknown_args
         return
     dest = opt['dest']
     if dest == 'override':
@@ -236,24 +269,24 @@ def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: 
             complete_files_and_dirs(ans, prefix[len('unix:'):], files_group_name='UNIX sockets', add_prefix='unix:')
 
 
-CompleteArgsFunc = Callable[[Completions, Optional[OptionDict], str], None]
+CompleteArgsFunc = Callable[[Completions, Optional[OptionDict], str, Delegate], None]
 
 
 def complete_alias_map(
     ans: Completions,
     words: Sequence[str],
-    new_word: str,
+    new_word: bool,
     option_map: Dict[str, OptionDict],
     complete_args: Optional[CompleteArgsFunc] = None
 ) -> None:
     expecting_arg = False
     opt: Optional[OptionDict] = None
     last_word = words[-1] if words else ''
-    for w in words:
+    for i, w in enumerate(words):
         if expecting_arg:
             if w is last_word and not new_word:
                 if opt is not None and complete_args is not None:
-                    complete_args(ans, opt, w)
+                    complete_args(ans, opt, w, Delegate())
                 return
             expecting_arg = False
             continue
@@ -263,27 +296,27 @@ def complete_alias_map(
                 ans.match_groups['Options'] = {k: opt['help'] for k, opt in option_map.items() if k.startswith(last_word)}
             else:
                 if complete_args is not None:
-                    complete_args(ans, None, last_word)
+                    complete_args(ans, None, last_word, Delegate(words, i))
             return
         if opt is None:
             if complete_args is not None:
-                complete_args(ans, None, '' if new_word else last_word)
+                complete_args(ans, None, '' if new_word else last_word, Delegate(words, i, new_word))
             return  # some non-option word encountered
         expecting_arg = not opt.get('type', '').startswith('bool-')
     if expecting_arg:
         if opt is not None and complete_args is not None:
-            complete_args(ans, opt, '' if new_word else last_word)
+            complete_args(ans, opt, '' if new_word else last_word, Delegate())
     else:
         prefix = '' if new_word else last_word
         if complete_args is not None:
-            complete_args(ans, None, prefix)
+            complete_args(ans, None, prefix, Delegate())
         ans.match_groups['Options'] = {k: opt['help'] for k, opt in option_map.items() if k.startswith(prefix)}
 
 
 def complete_cli(
     ans: Completions,
     words: Sequence[str],
-    new_word: str,
+    new_word: bool,
     seq: OptionSpecSeq,
     complete_args: Optional[CompleteArgsFunc] = None
 ) -> None:
@@ -295,7 +328,7 @@ def complete_cli(
     complete_alias_map(ans, words, new_word, option_map, complete_args)
 
 
-def complete_remote_command(ans: Completions, cmd_name: str, words: Sequence[str], new_word: str) -> None:
+def complete_remote_command(ans: Completions, cmd_name: str, words: Sequence[str], new_word: bool) -> None:
     aliases, alias_map = options_for_cmd(cmd_name)
     if not alias_map:
         return
@@ -358,7 +391,7 @@ def complete_files_and_dirs(
         ans.files_groups.add(files_group_name)
 
 
-def complete_icat_args(ans: Completions, opt: Optional[OptionDict], prefix: str) -> None:
+def complete_icat_args(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
     from mimetypes import guess_type
 
     def icat_file_predicate(filename: str) -> bool:
@@ -374,7 +407,7 @@ def complete_icat_args(ans: Completions, opt: Optional[OptionDict], prefix: str)
 def remote_files_completer(spec: Tuple[str, Tuple[str, ...]]) -> CompleteArgsFunc:
     name, matchers = spec
 
-    def complete_files_map(ans: Completions, opt: Optional[OptionDict], prefix: str) -> None:
+    def complete_files_map(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
 
         def predicate(filename: str) -> bool:
             for m in matchers:
@@ -392,14 +425,14 @@ def config_file_predicate(filename: str) -> bool:
     return filename.endswith('.conf')
 
 
-def complete_diff_args(ans: Completions, opt: Optional[OptionDict], prefix: str) -> None:
+def complete_diff_args(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
     if opt is None:
         complete_files_and_dirs(ans, prefix, 'Files')
     elif opt['dest'] == 'config':
         complete_files_and_dirs(ans, prefix, 'Config Files', config_file_predicate)
 
 
-def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_word: str) -> None:
+def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_word: bool) -> None:
     try:
         cd = get_kitten_cli_docs(kitten)
     except SystemExit:
@@ -419,7 +452,7 @@ def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_wor
     }.get(kitten))
 
 
-def find_completions(words: Sequence[str], new_word: str, entry_points: Iterable[str], namespaced_entry_points: Iterable[str]) -> Completions:
+def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterable[str], namespaced_entry_points: Iterable[str]) -> Completions:
     ans = Completions()
     if not words or words[0] != 'kitty':
         return ans
