@@ -22,12 +22,13 @@
 
 #include FT_FREETYPE_H
 #include FT_BITMAP_H
+#include FT_TRUETYPE_TABLES_H
 typedef struct {
     PyObject_HEAD
 
     FT_Face face;
     unsigned int units_per_EM;
-    int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness;
+    int ascender, descender, height, max_advance_width, max_advance_height, underline_position, underline_thickness, strikethrough_position, strikethrough_thickness;
     int hinting, hintstyle, index;
     bool is_scalable, has_color;
     float size_in_pts;
@@ -207,6 +208,12 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_
     if (self->harfbuzz_font == NULL) { PyErr_NoMemory(); return false; }
     hb_ft_font_set_load_flags(self->harfbuzz_font, get_load_flags(self->hinting, self->hintstyle, FT_LOAD_DEFAULT));
 
+    TT_OS2 *os2 = (TT_OS2*)FT_Get_Sfnt_Table(self->face, FT_SFNT_OS2);
+    if (os2 != NULL) {
+      self->strikethrough_position = os2->yStrikeoutPosition;
+      self->strikethrough_thickness = os2->yStrikeoutSize;
+    }
+
     self->path = path;
     Py_INCREF(self->path);
     self->index = self->face->face_index & 0xFFFF;
@@ -263,11 +270,11 @@ static PyObject *
 repr(Face *self) {
     const char *ps_name = FT_Get_Postscript_Name(self->face);
     return PyUnicode_FromFormat(
-        "Face(family=%s, style=%s, ps_name=%s, path=%S, index=%d, is_scalable=%S, has_color=%S, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i)",
+        "Face(family=%s, style=%s, ps_name=%s, path=%S, index=%d, is_scalable=%S, has_color=%S, ascender=%i, descender=%i, height=%i, underline_position=%i, underline_thickness=%i, strikethrough_position=%i, strikethrough_thickness=%i)",
         self->face->family_name ? self->face->family_name : "", self->face->style_name ? self->face->style_name : "",
         ps_name ? ps_name: "",
         self->path, self->index, self->is_scalable ? Py_True : Py_False, self->has_color ? Py_True : Py_False,
-        self->ascender, self->descender, self->height, self->underline_position, self->underline_thickness
+        self->ascender, self->descender, self->height, self->underline_position, self->underline_thickness, self->strikethrough_position, self->strikethrough_thickness
     );
 }
 
@@ -292,13 +299,24 @@ calc_cell_width(Face *self) {
 }
 
 void
-cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness) {
+cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness) {
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
     *cell_height = calc_cell_height(self, true);
     *baseline = font_units_to_pixels_y(self, self->ascender);
     *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->underline_position)));
     *underline_thickness = MAX(1, font_units_to_pixels_y(self, self->underline_thickness));
+
+    if (self->strikethrough_position != 0) {
+      *strikethrough_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->strikethrough_position)));
+    } else {
+      *strikethrough_position = (unsigned int)floor(*baseline * 0.65);
+    }
+    if (self->strikethrough_thickness > 0) {
+      *strikethrough_thickness = MAX(1, font_units_to_pixels_y(self, self->strikethrough_thickness));
+    } else {
+      *strikethrough_thickness = *underline_thickness;
+    }
 }
 
 unsigned int
@@ -659,6 +677,8 @@ static PyMemberDef members[] = {
     MEM(max_advance_height, T_INT),
     MEM(underline_position, T_INT),
     MEM(underline_thickness, T_INT),
+    MEM(strikethrough_position, T_INT),
+    MEM(strikethrough_thickness, T_INT),
     MEM(is_scalable, T_BOOL),
     MEM(path, T_OBJECT_EX),
     {NULL}  /* Sentinel */

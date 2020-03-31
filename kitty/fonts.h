@@ -25,7 +25,7 @@ int get_glyph_width(PyObject *, glyph_index);
 bool is_glyph_empty(PyObject *, glyph_index);
 hb_font_t* harfbuzz_font_for_face(PyObject*);
 bool set_size_for_face(PyObject*, unsigned int, bool, FONTS_DATA_HANDLE);
-void cell_metrics(PyObject*, unsigned int*, unsigned int*, unsigned int*, unsigned int*, unsigned int*);
+void cell_metrics(PyObject*, unsigned int*, unsigned int*, unsigned int*, unsigned int*, unsigned int*, unsigned int*, unsigned int*);
 bool render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, FONTS_DATA_HANDLE, bool center_glyph);
 PyObject* create_fallback_face(PyObject *base_face, CPUCell* cell, bool bold, bool italic, bool emoji_presentation, FONTS_DATA_HANDLE fg);
 PyObject* specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE);

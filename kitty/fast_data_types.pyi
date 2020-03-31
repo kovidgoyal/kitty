@@ -902,7 +902,7 @@ def set_font_data(
     box_drawing_func: Callable[[int, int, int, float],
                                Tuple[int, Union[bytearray, bytes, Array]]],
     prerender_func: Callable[
-        [int, int, int, int, int, float, float, float, float],
+        [int, int, int, int, int, int, int, float, float, float, float],
         Tuple[Union[Array, int], ...]],
     descriptor_for_idx: Callable[[int], Tuple[FontObject, bool, bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,

@@ -191,7 +191,9 @@ def render_special(
     cell_width: int = 0, cell_height: int = 0,
     baseline: int = 0,
     underline_position: int = 0,
-    underline_thickness: int = 0
+    underline_thickness: int = 0,
+    strikethrough_position: int = 0,
+    strikethrough_thickness: int = 0
 ) -> ctypes.Array:
     underline_position = min(underline_position, cell_height - underline_thickness)
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
@@ -216,8 +218,7 @@ def render_special(
             t = max(1, min(cell_height - underline_position - 1, t))
         dl([add_line, add_line, add_dline, add_curl][underline], underline_position, t, cell_height)
     if strikethrough:
-        pos = int(0.65 * baseline)
-        dl(add_line, pos, underline_thickness, cell_height)
+        dl(add_line, strikethrough_position, strikethrough_thickness, cell_height)
 
     return ans
 
@@ -268,6 +269,8 @@ def prerender_function(
     baseline: int,
     underline_position: int,
     underline_thickness: int,
+    strikethrough_position: int,
+    strikethrough_thickness: int,
     cursor_beam_thickness: float,
     cursor_underline_thickness: float,
     dpi_x: float,
@@ -276,7 +279,8 @@ def prerender_function(
     # Pre-render the special underline, strikethrough and missing and cursor cells
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
-        underline_position=underline_position, underline_thickness=underline_thickness)
+        underline_position=underline_position, underline_thickness=underline_thickness,
+        strikethrough_position=strikethrough_position, strikethrough_thickness=strikethrough_thickness)
     c = partial(
         render_cursor, cursor_beam_thickness=cursor_beam_thickness,
         cursor_underline_thickness=cursor_underline_thickness, cell_width=cell_width,
