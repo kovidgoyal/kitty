@@ -21,7 +21,7 @@ In order for control to work, :opt:`allow_remote_control` must be enabled in
 
 Now, in the new |kitty| window, enter the command::
 
-    kitty @ new-window --title Output --keep-focus cat
+    kitty @ launch --title Output --keep-focus cat
 
 This will open a new window, running the ``cat`` program that will appear next
 to the current window.
@@ -54,7 +54,7 @@ window. Type ``Ctrl+D`` when you are ready to stop.
 
 Now, let's open a new tab::
 
-   kitty @ new-window --new-tab --tab-title "My Tab" --keep-focus bash
+   kitty @ launch --type=tab --tab-title "My Tab" --keep-focus bash
 
 This will open a new tab running the bash shell with the title "My Tab".
 We can change the title of the tab with::
