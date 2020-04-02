@@ -1075,6 +1075,21 @@ static void onConfigChange(void)
     }
 }
 
+static void
+get_atom_names(Atom *atoms, int count, char **atom_names) {
+    _glfwGrabErrorHandlerX11();
+    XGetAtomNames(_glfw.x11.display, atoms, count, atom_names);
+    _glfwReleaseErrorHandlerX11();
+    if (_glfw.x11.errorCode != Success) {
+        for (int i = 0; i < count; i++) {
+            _glfwGrabErrorHandlerX11();
+            atom_names[i] = XGetAtomName(_glfw.x11.display, atoms[i]);
+            _glfwReleaseErrorHandlerX11();
+            if (_glfw.x11.errorCode != Success) atom_names[i] = NULL;
+        }
+    }
+}
+
 // Process the specified X event
 //
 static void processEvent(XEvent *event)
@@ -1474,7 +1489,7 @@ static void processEvent(XEvent *event)
                 }
                 char **atom_names = calloc(count, sizeof(char**));
                 if (atom_names) {
-                    XGetAtomNames(_glfw.x11.display, formats, count, atom_names);
+                    get_atom_names(formats, count, atom_names);
 
                     for (i = 0;  i < count;  i++)
                     {
