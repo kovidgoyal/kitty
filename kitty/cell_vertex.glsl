@@ -208,7 +208,7 @@ void main() {
 
     // Background {{{
 #ifdef NEEDS_BACKROUND
-    float cell_has_non_default_bg = step(1, float(abs(bg_as_uint - default_colors[bg_index])));
+    float cell_has_non_default_bg = step(1, float(abs(bg_as_uint - default_colors[1])));
     draw_bg = 1;
 
 #if defined(BACKGROUND)

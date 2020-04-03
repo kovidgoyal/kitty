@@ -4,6 +4,12 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.17.3 [future]
+
+- Fix reverse video not being rendered correctly when using transparency or a
+  background image (:iss:`2419`)
+
+
 0.17.2 [2020-03-29]
 --------------------
 
