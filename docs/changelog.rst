@@ -9,6 +9,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix reverse video not being rendered correctly when using transparency or a
   background image (:iss:`2419`)
 
+- X11: Fix crash when doing drag and drop from some applications (:iss:`2505`)
+
 
 0.17.2 [2020-03-29]
 --------------------
