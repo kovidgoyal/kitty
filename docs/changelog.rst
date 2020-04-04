@@ -5,6 +5,7 @@ Changelog
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
 0.17.3 [future]
+-----------------
 
 - Fix reverse video not being rendered correctly when using transparency or a
   background image (:iss:`2419`)
