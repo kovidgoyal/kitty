@@ -14,7 +14,6 @@
 #include "fonts.h"
 #include "lineops.h"
 #include "screen.h"
-#include "emoji.h"
 #include <structmember.h>
 #include <limits.h>
 #include <sys/types.h>
@@ -356,6 +355,10 @@ selection_has_screen_line(Selection *s, int y) {
     int top = (int)s->start.y - s->start_scrolled_by;
     int bottom = (int)s->end.y - s->end_scrolled_by;
     return top <= y && y <= bottom;
+}
+
+static inline bool is_flag_pair(char_type a, char_type b) {
+    return is_flag_codepoint(a) && is_flag_codepoint(b);
 }
 
 static inline bool

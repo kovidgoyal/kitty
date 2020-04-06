@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from datetime import date
 from functools import partial
 from html.entities import html5
-from itertools import groupby, repeat
+from itertools import groupby
 from operator import itemgetter
 from typing import (
     Callable, DefaultDict, Dict, FrozenSet, Generator, Iterable, List,
@@ -265,22 +265,6 @@ def gen_emoji() -> None:
         p('\t\tdefault: return false;')
         p('\t}')
         p('\treturn false;\n}')
-
-        p('static inline bool is_flag_pair(char_type a, char_type b) {')
-        p('static const unsigned char flag_combinations[26][26] = {')
-        for i in range(26):
-            q = 0x1F1E6 + i
-            vals = flags.get(q, [])
-            arr = list(repeat(0, 26))
-            for x in vals:
-                idx = x - 0x1F1E6
-                arr[idx] = 1
-            comma = '' if i == 0 else ','
-            p(comma, '{', ', '.join(map(str, arr)), '}')
-        p('};')
-        p('if (a < 0x1F1E6 || b < 0x1F1E6 || a >= 0x1F1E6 + 26 || b >= 0x1F1E6 + 26) return false;')
-        p('return flag_combinations[a - 0x1F1E6][b - 0x1F1E6];')
-        p('};')
 
 
 def category_test(
