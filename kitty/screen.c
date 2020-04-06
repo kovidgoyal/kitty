@@ -1882,6 +1882,8 @@ screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
                 ans -= 1;
                 prev_width = 1;
             } else prev_width = 0;
+        } else if (is_flag_pair(prev_ch, ch)) {
+            prev_width = 2;
         } else {
             int w = wcwidth_std(ch);
             switch(w) {
