@@ -8,6 +8,11 @@ START_ALLOW_CASE_RANGE
 static int
 wcwidth_std(int32_t code) {
 	switch(code) {
+		// Flags (26 codepoints) {{{
+		case 0x1f1e6 ... 0x1f1ff:
+			return 2;
+		// }}}
+
 		// Marks (2302 codepoints) {{{
 		case 0x0:
 			return 0;
@@ -1494,9 +1499,7 @@ wcwidth_std(int32_t code) {
 			return 2;
 		// }}}
 
-		// Emoji Presentation (26 codepoints) {{{
-		case 0x1f1e6 ... 0x1f1ff:
-			return 2;
+		// Emoji Presentation (0 codepoints) {{{
 		// }}}
 
 		// Not assigned in the unicode character database (765365 codepoints) {{{

@@ -51,7 +51,8 @@ all_symbols: Set[int] = set()
 name_map: Dict[int, str] = {}
 word_search_map: DefaultDict[str, Set[int]] = defaultdict(set)
 zwj = 0x200d
-marks = set(emoji_skin_tone_modifiers) | {zwj}
+flag_codepoints = frozenset(range(0x1F1E6, 0x1F1E6 + 26))
+marks = set(emoji_skin_tone_modifiers) | {zwj} | flag_codepoints
 not_assigned = set(range(0, sys.maxunicode))
 
 
@@ -278,7 +279,7 @@ def gen_emoji() -> None:
             p(comma, '{', ', '.join(map(str, arr)), '}')
         p('};')
         p('if (a < 0x1F1E6 || b < 0x1F1E6 || a >= 0x1F1E6 + 26 || b >= 0x1F1E6 + 26) return false;')
-        p('return flag_combinations[a][b];')
+        p('return flag_combinations[a - 0x1F1E6][b - 0x1F1E6];')
         p('};')
 
 
@@ -486,7 +487,7 @@ def gen_names() -> None:
 def gen_wcwidth() -> None:
     seen: Set[int] = set()
 
-    def add(p: Callable, comment: str, chars_: Set[int], ret: int) -> None:
+    def add(p: Callable, comment: str, chars_: Union[Set[int], FrozenSet[int]], ret: int) -> None:
         chars = chars_ - seen
         seen.update(chars)
         p(f'\t\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
@@ -500,6 +501,7 @@ def gen_wcwidth() -> None:
         p('\tswitch(code) {')
 
         non_printing = class_maps['Cc'] | class_maps['Cf'] | class_maps['Cs']
+        add(p, 'Flags', flag_codepoints, 2)
         add(p, 'Marks', marks | {0}, 0)
         add(p, 'Non-printing characters', non_printing, -1)
         add(p, 'Private use', class_maps['Co'], -3)

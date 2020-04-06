@@ -811,7 +811,7 @@ static const unsigned char flag_combinations[26][26] = {
 , { 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0 }
 };
 if (a < 0x1F1E6 || b < 0x1F1E6 || a >= 0x1F1E6 + 26 || b >= 0x1F1E6 + 26) return false;
-return flag_combinations[a][b];
+return flag_combinations[a - 0x1F1E6][b - 0x1F1E6];
 };
 
 END_ALLOW_CASE_RANGE

@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Update to Unicode 13.0 (:iss:`2513`)
 
+- Render known country flags designated by a pair of unicode codepoints
+  in two cells instead of four.
+
 
 0.17.2 [2020-03-29]
 --------------------

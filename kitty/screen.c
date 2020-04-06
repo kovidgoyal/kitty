@@ -14,6 +14,7 @@
 #include "fonts.h"
 #include "lineops.h"
 #include "screen.h"
+#include "emoji.h"
 #include <structmember.h>
 #include <limits.h>
 #include <sys/types.h>
@@ -357,10 +358,42 @@ selection_has_screen_line(Selection *s, int y) {
     return top <= y && y <= bottom;
 }
 
+static inline bool
+draw_second_flag_codepoint(Screen *self, char_type ch) {
+    index_type xpos = 0, ypos = 0;
+    if (self->cursor->x > 1) {
+        ypos = self->cursor->y;
+        xpos = self->cursor->x - 2;
+    } else if (self->cursor->y > 0 && self->columns > 1) {
+        ypos = self->cursor->y - 1;
+        xpos = self->columns - 2;
+    } else return false;
+
+    linebuf_init_line(self->linebuf, ypos);
+    CPUCell *cell = self->linebuf->line->cpu_cells + xpos;
+    if (!is_flag_pair(cell->ch, ch) || cell->cc_idx[0]) return false;
+    line_add_combining_char(self->linebuf->line, ch, xpos);
+    self->is_dirty = true;
+    if (selection_has_screen_line(&self->selection, ypos)) self->selection = EMPTY_SELECTION;
+    linebuf_mark_line_dirty(self->linebuf, ypos);
+    return true;
+}
+
 static inline void
 draw_combining_char(Screen *self, char_type ch) {
     bool has_prev_char = false;
     index_type xpos = 0, ypos = 0;
+    if (self->cursor->x > 0) {
+        ypos = self->cursor->y;
+        linebuf_init_line(self->linebuf, ypos);
+        xpos = self->cursor->x - 1;
+        has_prev_char = true;
+    } else if (self->cursor->y > 0) {
+        ypos = self->cursor->y - 1;
+        linebuf_init_line(self->linebuf, ypos);
+        xpos = self->columns - 1;
+        has_prev_char = true;
+    }
     if (self->cursor->x > 0) {
         ypos = self->cursor->y;
         linebuf_init_line(self->linebuf, ypos);
@@ -411,6 +444,10 @@ screen_draw(Screen *self, uint32_t och) {
     if (UNLIKELY(is_cc)) {
         draw_combining_char(self, ch);
         return;
+    }
+    bool is_flag = is_flag_codepoint(ch);
+    if (UNLIKELY(is_flag)) {
+        if (draw_second_flag_codepoint(self, ch)) return;
     }
     int char_width = wcwidth_std(ch);
     if (UNLIKELY(char_width < 1)) {
