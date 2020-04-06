@@ -29,3 +29,9 @@ static inline bool
 is_private_use(char_type ch) {
     return (0xe000 <= ch && ch <= 0xf8ff) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
 }
+
+
+static inline bool
+is_flag_codepoint(char_type ch) {
+    return 0x1F1E6 <= ch && ch <= 0x1F1FF;
+}

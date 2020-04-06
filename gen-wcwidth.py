@@ -10,7 +10,7 @@ from contextlib import contextmanager
 from datetime import date
 from functools import partial
 from html.entities import html5
-from itertools import groupby
+from itertools import groupby, repeat
 from operator import itemgetter
 from typing import (
     Callable, DefaultDict, Dict, FrozenSet, Generator, Iterable, List,
@@ -123,6 +123,7 @@ all_emoji: Set[int] = set()
 emoji_presentation_bases: Set[int] = set()
 narrow_emoji: Set[int] = set()
 wide_emoji: Set[int] = set()
+flags: Dict[int, List[int]] = {}
 
 
 def parse_basic_emoji(spec: str) -> None:
@@ -149,6 +150,7 @@ def parse_flag_emoji_sequence(spec: str) -> None:
     all_emoji.update(chars)
     wide_emoji.update(chars)
     emoji_presentation_bases.update(chars)
+    flags.setdefault(left, []).append(right)
 
 
 def parse_emoji_tag_sequence(spec: str) -> None:
@@ -262,6 +264,22 @@ def gen_emoji() -> None:
         p('\t\tdefault: return false;')
         p('\t}')
         p('\treturn false;\n}')
+
+        p('static inline bool is_flag_pair(char_type a, char_type b) {')
+        p('static const unsigned char flag_combinations[26][26] = {')
+        for i in range(26):
+            q = 0x1F1E6 + i
+            vals = flags.get(q, [])
+            arr = list(repeat(0, 26))
+            for x in vals:
+                idx = x - 0x1F1E6
+                arr[idx] = 1
+            comma = '' if i == 0 else ','
+            p(comma, '{', ', '.join(map(str, arr)), '}')
+        p('};')
+        p('if (a < 0x1F1E6 || b < 0x1F1E6 || a >= 0x1F1E6 + 26 || b >= 0x1F1E6 + 26) return false;')
+        p('return flag_combinations[a][b];')
+        p('};')
 
 
 def category_test(
