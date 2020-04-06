@@ -14,6 +14,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix :option:`launch --stdin-add-formatting` not working (:iss:`2512`)
 
+- Update to Unicode 13.0 (:iss:`2513`)
+
 
 0.17.2 [2020-03-29]
 --------------------

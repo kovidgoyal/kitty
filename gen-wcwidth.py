@@ -103,36 +103,86 @@ def parse_ucd() -> None:
     word_search_map['lamda'] |= word_search_map['lambda']
 
 
-def split_two(line: str) -> Tuple[Set[int], str]:
-    spec, rest = line.split(';', 1)
-    spec, rest = spec.strip(), rest.strip().split(' ', 1)[0].strip()
+def parse_range_spec(spec: str) -> Set[int]:
+    spec = spec.strip()
     if '..' in spec:
         chars_ = tuple(map(lambda x: int(x, 16), filter(None, spec.split('.'))))
         chars = set(range(chars_[0], chars_[1] + 1))
     else:
         chars = {int(spec, 16)}
-    return chars, rest
+    return chars
+
+
+def split_two(line: str) -> Tuple[Set[int], str]:
+    spec, rest = line.split(';', 1)
+    spec, rest = spec.strip(), rest.strip().split(' ', 1)[0].strip()
+    return parse_range_spec(spec), rest
 
 
 all_emoji: Set[int] = set()
-emoji_categories: Dict[str, Set[int]] = {}
 emoji_presentation_bases: Set[int] = set()
+narrow_emoji: Set[int] = set()
+wide_emoji: Set[int] = set()
+
+
+def parse_basic_emoji(spec: str) -> None:
+    parts = list(filter(None, spec.split()))
+    has_emoji_presentation = len(parts) < 2
+    chars = parse_range_spec(parts[0])
+    all_emoji.update(chars)
+    emoji_presentation_bases.update(chars)
+    (wide_emoji if has_emoji_presentation else narrow_emoji).update(chars)
+
+
+def parse_keycap_sequence(spec: str) -> None:
+    base, fe0f, cc = list(filter(None, spec.split()))
+    chars = parse_range_spec(base)
+    all_emoji.update(chars)
+    emoji_presentation_bases.update(chars)
+    narrow_emoji.update(chars)
+
+
+def parse_flag_emoji_sequence(spec: str) -> None:
+    a, b = list(filter(None, spec.split()))
+    left, right = int(a, 16), int(b, 16)
+    chars = {left, right}
+    all_emoji.update(chars)
+    wide_emoji.update(chars)
+    emoji_presentation_bases.update(chars)
+
+
+def parse_emoji_tag_sequence(spec: str) -> None:
+    a = int(spec.split()[0], 16)
+    all_emoji.add(a)
+    wide_emoji.add(a)
+    emoji_presentation_bases.add(a)
+
+
+def parse_emoji_modifier_sequence(spec: str) -> None:
+    a, b = list(filter(None, spec.split()))
+    char, mod = int(a, 16), int(b, 16)
+    mod
+    all_emoji.add(char)
+    wide_emoji.add(char)
+    emoji_presentation_bases.add(char)
 
 
 def parse_emoji() -> None:
-    for line in get_data('emoji-data.txt', 'emoji'):
-        chars, rest = split_two(line)
-        s = emoji_categories.setdefault(rest, set())
-        s.update(chars)
-        all_emoji.update(chars)
-    for line in get_data('emoji-variation-sequences.txt', 'emoji'):
-        parts = line.split()
-        base, var = parts[0], parts[1]
-        if base.startswith('#'):
+    for line in get_data('emoji-sequences.txt', 'emoji'):
+        parts = [x.strip() for x in line.split(';')]
+        if len(parts) < 2:
             continue
-        if var.upper() == 'FE0F':
-            ibase = int(base, 16)
-            emoji_presentation_bases.add(ibase)
+        data, etype = parts[:2]
+        if etype == 'Basic_Emoji':
+            parse_basic_emoji(data)
+        elif etype == 'Emoji_Keycap_Sequence':
+            parse_keycap_sequence(data)
+        elif etype == 'RGI_Emoji_Flag_Sequence':
+            parse_flag_emoji_sequence(data)
+        elif etype == 'RGI_Emoji_Tag_Sequence':
+            parse_emoji_tag_sequence(data)
+        elif etype == 'RGI_Emoji_Modifier_Sequence':
+            parse_emoji_modifier_sequence(data)
 
 
 doublewidth: Set[int] = set()
@@ -198,15 +248,6 @@ def gen_emoji() -> None:
         p('static inline bool\nis_emoji(char_type code) {')
         p('\tswitch(code) {')
         for spec in get_ranges(list(all_emoji)):
-            write_case(spec, p)
-            p('\t\t\treturn true;')
-        p('\t\tdefault: return false;')
-        p('\t}')
-        p('\treturn false;\n}')
-
-        p('static inline bool\nis_emoji_modifier(char_type code) {')
-        p('\tswitch(code) {')
-        for spec in get_ranges(list(emoji_categories['Emoji_Modifier'])):
             write_case(spec, p)
             p('\t\t\treturn true;')
         p('\t\tdefault: return false;')
@@ -444,10 +485,10 @@ def gen_wcwidth() -> None:
         add(p, 'Marks', marks | {0}, 0)
         add(p, 'Non-printing characters', non_printing, -1)
         add(p, 'Private use', class_maps['Co'], -3)
-        add(p, 'Text Presentation', emoji_categories['Emoji'] - emoji_categories['Emoji_Presentation'], 1)
+        add(p, 'Text Presentation', narrow_emoji, 1)
         add(p, 'East Asian ambiguous width', ambiguous, -2)
         add(p, 'East Asian double width', doublewidth, 2)
-        add(p, 'Emoji Presentation', emoji_categories['Emoji_Presentation'], 2)
+        add(p, 'Emoji Presentation', wide_emoji, 2)
 
         add(p, 'Not assigned in the unicode character database', not_assigned, -4)
 
