@@ -12,6 +12,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - X11: Fix crash when doing drag and drop from some applications (:iss:`2505`)
 
+- Fix :option:`launch --stdin-add-formatting` not working (:iss:`2512`)
+
 
 0.17.2 [2020-03-29]
 --------------------
