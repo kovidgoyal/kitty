@@ -1867,39 +1867,54 @@ screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
     unsigned long ans = 0;
     char_type prev_ch = 0;
     int prev_width = 0;
-    bool in_sgr = false;
+    typedef enum {NORMAL, IN_SGR, FLAG_PAIR_STARTED} WCSState;
+    WCSState state = NORMAL;
     for (i = 0; i < len; i++) {
         char_type ch = PyUnicode_READ(kind, data, i);
-        if (in_sgr) {
-            if (ch == 'm') in_sgr = false;
-            continue;
-        }
-        if (ch == 0x1b && i + 1 < len && PyUnicode_READ(kind, data, i + 1) == '[') { in_sgr = true; continue; }
-        if (ch == 0xfe0f) {
-            if (is_emoji_presentation_base(prev_ch) && prev_width == 1) {
-                ans += 1;
-                prev_width = 2;
-            } else prev_width = 0;
-        } else if (ch == 0xfe0e) {
-            if (is_emoji_presentation_base(prev_ch) && prev_width == 2) {
-                ans -= 1;
-                prev_width = 1;
-            } else prev_width = 0;
-        } else if (is_flag_pair(prev_ch, ch)) {
-            prev_width = 2;
-        } else {
-            int w = wcwidth_std(ch);
-            switch(w) {
-                case -1:
-                case 0:
-                    prev_width = 0; break;
-                case 2:
-                    prev_width = 2; break;
-                default:
-                    prev_width = 1; break;
-            }
-            ans += prev_width;
-        }
+        switch(state) {
+            case IN_SGR: {
+                if (ch == 'm') state = NORMAL;
+            } continue;
+
+            case FLAG_PAIR_STARTED: {
+                state = NORMAL;
+                if (is_flag_pair(prev_ch, ch)) break;
+            } /* fallthrough */
+
+            case NORMAL: {
+                if (ch == 0x1b && i + 1 < len && PyUnicode_READ(kind, data, i + 1) == '[') { state = IN_SGR; continue; }
+                switch(ch) {
+                    case 0xfe0f: {
+                        if (is_emoji_presentation_base(prev_ch) && prev_width == 1) {
+                            ans += 1;
+                            prev_width = 2;
+                        } else prev_width = 0;
+                    } break;
+
+                    case 0xfe0e: {
+                        if (is_emoji_presentation_base(prev_ch) && prev_width == 2) {
+                            ans -= 1;
+                            prev_width = 1;
+                        } else prev_width = 0;
+                    } break;
+
+                    default: {
+                        if (is_flag_codepoint(ch)) state = FLAG_PAIR_STARTED;
+                        int w = wcwidth_std(ch);
+                        switch(w) {
+                            case -1:
+                            case 0:
+                                prev_width = 0; break;
+                            case 2:
+                                prev_width = 2; break;
+                            default:
+                                prev_width = 1; break;
+                        }
+                        ans += prev_width;
+                    } break;
+                } break; // switch(ch)
+            } break;  // case NORMAL
+        } // switch(state)
         prev_ch = ch;
     }
     return PyLong_FromUnsignedLong(ans);
