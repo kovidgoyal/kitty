@@ -9,7 +9,9 @@ from gettext import gettext as _
 from typing import Any, Dict, Sequence, Union
 
 from kitty.conf.definition import Option, Shortcut, option_func
-from kitty.conf.utils import positive_int, python_string, to_color
+from kitty.conf.utils import (
+    positive_int, python_string, to_color, to_color_or_none
+)
 
 # }}}
 
@@ -78,6 +80,8 @@ c('highlight_added_bg', '#acf2bd')
 c('added_margin_bg', '#cdffd8')
 
 c('filler_bg', '#fafbfc', long_text=_('Filler (empty) line background'))
+c('margin_filler_bg', 'none', option_type=to_color_or_none, long_text=_(
+    'Filler (empty) line background in margins, defaults to the filler background'))
 
 c('hunk_margin_bg', '#dbedff', long_text=_('Hunk header colors'))
 c('hunk_bg', '#f1f8ff')

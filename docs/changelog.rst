@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Render known country flags designated by a pair of unicode codepoints
   in two cells instead of four.
 
+- diff kitten: New option to control the background color for filler lines in
+  the margin (:iss:`2518`)
+
 
 0.17.2 [2020-03-29]
 --------------------

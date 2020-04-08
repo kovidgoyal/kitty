@@ -19,7 +19,7 @@ from .config_data import all_options, type_convert
 
 defaults: Optional[DiffOptions] = None
 
-formats = {
+formats: Dict[str, str] = {
     'title': '',
     'margin': '',
     'text': '',
@@ -35,6 +35,7 @@ def set_formats(opts: DiffOptions) -> None:
     formats['added'] = '48' + color_as_sgr(opts.added_bg)
     formats['removed'] = '48' + color_as_sgr(opts.removed_bg)
     formats['filler'] = '48' + color_as_sgr(opts.filler_bg)
+    formats['margin_filler'] = '48' + color_as_sgr(opts.margin_filler_bg or opts.filler_bg)
     formats['hunk_margin'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.hunk_margin_bg)
     formats['hunk'] = '38' + color_as_sgr(opts.margin_fg) + ';48' + color_as_sgr(opts.hunk_bg)
     formats['removed_highlight'] = '48' + color_as_sgr(opts.highlight_removed_bg)

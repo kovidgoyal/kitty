@@ -141,6 +141,7 @@ removed_format = format_func('removed')
 removed_margin_format = format_func('removed_margin')
 added_margin_format = format_func('added_margin')
 filler_format = format_func('filler')
+margin_filler_format = format_func('margin_filler')
 hunk_margin_format = format_func('hunk_margin')
 hunk_format = format_func('hunk')
 highlight_map = {'remove': ('removed_highlight', 'removed'), 'add': ('added_highlight', 'added')}
@@ -214,7 +215,7 @@ def split_with_highlights(line: str, width: int, highlights: List, bg_highlight:
     return _split_with_highlights(line, truncate_pts, highlights, bg_highlight)
 
 
-margin_bg_map = {'filler': filler_format, 'remove': removed_margin_format, 'add': added_margin_format, 'context': margin_format}
+margin_bg_map = {'filler': margin_filler_format, 'remove': removed_margin_format, 'add': added_margin_format, 'context': margin_format}
 text_bg_map = {'filler': filler_format, 'remove': removed_format, 'add': added_format, 'context': text_format}
 
 
