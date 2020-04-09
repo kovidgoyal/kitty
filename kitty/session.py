@@ -53,7 +53,7 @@ class Session:
         self.tabs[-1].next_title = title.strip()
 
     def set_layout(self, val: str) -> None:
-        if val not in all_layouts:
+        if val.partition(':')[0] not in all_layouts:
             raise ValueError('{} is not a valid layout'.format(val))
         self.tabs[-1].layout = val
 

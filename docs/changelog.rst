@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - diff kitten: New option to control the background color for filler lines in
   the margin (:iss:`2518`)
 
+- Fix specifying options for layouts in the startup session file not working
+  (:iss:`2520`)
+
 
 0.17.2 [2020-03-29]
 --------------------
