@@ -25,6 +25,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix specifying options for layouts in the startup session file not working
   (:iss:`2520`)
 
+- macOS: Fix incorrect horizontal positioning of some full-width East Asian characters
+  (:iss:`1457`)
+
+- macOS: Render multi-cell PUA characters centered, matching behavior on other
+  platforms
+
 
 0.17.2 [2020-03-29]
 --------------------
