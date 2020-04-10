@@ -31,6 +31,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Render multi-cell PUA characters centered, matching behavior on other
   platforms
 
+- Linux: Ignore keys is they are designated as layout/group/mode switch keys
+  (:iss:`2519`)
+
 
 0.17.2 [2020-03-29]
 --------------------

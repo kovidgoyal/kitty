@@ -620,6 +620,9 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         }
         if (key_text[0]) { debug("%s: %s ", text_type, key_text); }
     }
+    if (xkb_sym == XKB_KEY_ISO_First_Group || xkb_sym == XKB_KEY_ISO_Last_Group || xkb_sym == XKB_KEY_ISO_Next_Group || xkb_sym == XKB_KEY_ISO_Prev_Group || xkb_sym == XKB_KEY_Mode_switch) {
+      return;
+    }
     int glfw_sym = glfw_key_for_sym(xkb_sym);
     bool is_fallback = false;
     if (glfw_sym == GLFW_KEY_UNKNOWN && !key_text[0]) {
