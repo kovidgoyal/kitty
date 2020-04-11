@@ -208,7 +208,7 @@ class Layout:  # {{{
 
     name: Optional[str] = None
     needs_window_borders = True
-    must_draw_borders = False
+    must_draw_borders = False  # can be overridden to customize behavior from kittens
     needs_all_windows = False
     layout_opts = LayoutOpts({})
     only_active_window_visible = False

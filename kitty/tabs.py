@@ -227,11 +227,12 @@ class Tab:  # {{{
         if tm is not None:
             visible_windows = [w for w in self.windows if w.is_visible_in_layout]
             w = self.active_window
+            ly = self.current_layout
             self.borders(
                 windows=visible_windows, active_window=w,
-                current_layout=self.current_layout, extra_blank_rects=tm.blank_rects,
+                current_layout=ly, extra_blank_rects=tm.blank_rects,
                 padding_width=self.padding_width, border_width=self.border_width,
-                draw_window_borders=self.current_layout.needs_window_borders and len(visible_windows) > 1 or self.current_layout.must_draw_borders
+                draw_window_borders=(ly.needs_window_borders and len(visible_windows) > 1) or ly.must_draw_borders
             )
             if w is not None:
                 w.change_titlebar_color()
