@@ -208,6 +208,7 @@ class Layout:  # {{{
 
     name: Optional[str] = None
     needs_window_borders = True
+    must_draw_borders = False
     needs_all_windows = False
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
