@@ -231,7 +231,7 @@ class Tab:  # {{{
                 windows=visible_windows, active_window=w,
                 current_layout=self.current_layout, extra_blank_rects=tm.blank_rects,
                 padding_width=self.padding_width, border_width=self.border_width,
-                draw_window_borders=self.current_layout.needs_window_borders and len(visible_windows) > 1
+                draw_window_borders=self.current_layout.needs_window_borders and len(visible_windows) > 1 or self.current_layout.must_draw_borders
             )
             if w is not None:
                 w.change_titlebar_color()
