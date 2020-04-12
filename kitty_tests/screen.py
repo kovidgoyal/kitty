@@ -499,6 +499,8 @@ class TestScreen(BaseTest):
         self.ae(s.marked_cells(), cells(0, 1))
         s.set_marker(marker_from_regex('🐈a', 3))
         self.ae(s.marked_cells(), cells(0, 1, 2))
+        s.set_marker(marker_from_regex('a', 3))
+        self.ae(s.marked_cells(), cells(2))
         s = self.create_screen(cols=20)
         s.tab()
         s.draw('ab')
