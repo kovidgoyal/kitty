@@ -65,7 +65,7 @@ You can also use your favorite package manager to install the |kitty| package.
 `openSUSE <https://build.opensuse.org/package/show/X11:terminals/kitty>`_,
 `Arch Linux <https://www.archlinux.org/packages/community/x86_64/kitty/>`_,
 `Gentoo <https://packages.gentoo.org/packages/x11-terms/kitty>`_,
-`Fedora <https://copr.fedorainfracloud.org/coprs/gagbo/kitty-latest/>`_,
+`Fedora <https://src.fedoraproject.org/rpms/kitty>`_,
 `Void Linux <https://github.com/void-linux/void-packages/blob/master/srcpkgs/kitty/template>`_,
 and `Solus <https://dev.getsol.us/source/kitty/>`_.
 
