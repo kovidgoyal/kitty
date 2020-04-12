@@ -456,12 +456,16 @@ class TestScreen(BaseTest):
         self.ae(as_text(True), '\x1b[mababa\x1b[mbabab\n\x1b[mc\n\n')
 
     def test_user_marking(self):
+
+        def cells(*a, y=0, mark=3):
+            return [(x, y, mark) for x in a]
+
         s = self.create_screen()
         s.draw('abaa')
         s.carriage_return(), s.linefeed()
         s.draw('xyxyx')
         s.set_marker(marker_from_regex('a', 3))
-        self.ae(s.marked_cells(), [(0, 0, 3), (2, 0, 3), (3, 0, 3)])
+        self.ae(s.marked_cells(), cells(0, 2, 3))
         s.set_marker()
         self.ae(s.marked_cells(), [])
 
@@ -488,3 +492,17 @@ class TestScreen(BaseTest):
             self.assertTrue(s.scroll_to_next_mark(0, False))
             self.ae(s.scrolled_by, 10 - i - 1)
         self.ae(s.scrolled_by, 0)
+
+        s = self.create_screen()
+        s.draw('🐈ab')
+        s.set_marker(marker_from_regex('🐈', 3))
+        self.ae(s.marked_cells(), cells(0, 1))
+        s.set_marker(marker_from_regex('🐈a', 3))
+        self.ae(s.marked_cells(), cells(0, 1, 2))
+        s = self.create_screen(cols=20)
+        s.tab()
+        s.draw('ab')
+        s.set_marker(marker_from_regex('a', 3))
+        self.ae(s.marked_cells(), cells(8))
+        s.set_marker(marker_from_regex('\t', 3))
+        self.ae(s.marked_cells(), cells(0, 1, 2, 3, 4, 5, 6, 7))

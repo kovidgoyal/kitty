@@ -685,6 +685,33 @@ report_marker_error(PyObject *marker) {
 }
 
 static inline void
+apply_mark(Line *line, const attrs_type mark, index_type *cell_pos, unsigned int *match_pos) {
+#define MARK { line->gpu_cells[x].attrs &= ATTRS_MASK_WITHOUT_MARK; line->gpu_cells[x].attrs |= mark; }
+    index_type x = *cell_pos;
+    MARK;
+    if (line->cpu_cells[x].ch) {
+        (*match_pos)++;
+        if (line->cpu_cells[x].ch == '\t') {
+            unsigned num_cells_to_skip_for_tab = line->cpu_cells[x].cc_idx[0];
+            while (num_cells_to_skip_for_tab && x + 1 < line->xnum && line->cpu_cells[x+1].ch == ' ') {
+                x++;
+                num_cells_to_skip_for_tab--;
+                MARK;
+            }
+        } else if ((line->gpu_cells[x].attrs & WIDTH_MASK) > 1 && x + 1 < line->xnum && !line->cpu_cells[x+1].ch) {
+            x++;
+            MARK;
+        } else {
+            for (index_type i = 0; i < arraysz(line->cpu_cells[x].cc_idx); i++) {
+                if (line->cpu_cells[x].cc_idx[i]) (*match_pos)++;
+            }
+        }
+    }
+    *cell_pos = x + 1;
+#undef MARK
+}
+
+static inline void
 apply_marker(PyObject *marker, Line *line, const PyObject *text) {
     unsigned int l=0, r=0, col=0, match_pos=0;
     PyObject *pl = PyLong_FromVoidPtr(&l), *pr = PyLong_FromVoidPtr(&r), *pcol = PyLong_FromVoidPtr(&col);
@@ -695,33 +722,20 @@ apply_marker(PyObject *marker, Line *line, const PyObject *text) {
     if (iter == NULL) { report_marker_error(marker); return; }
     PyObject *match;
     index_type x = 0;
-#define INCREMENT_MATCH_POS { \
-    if (line->cpu_cells[x].ch) { \
-        match_pos++; \
-        for (index_type i = 0; i < arraysz(line->cpu_cells[x].cc_idx); i++) { \
-            if (line->cpu_cells[x].cc_idx[i]) match_pos++; \
-}}}
-
     while ((match = PyIter_Next(iter)) && x < line->xnum) {
         Py_DECREF(match);
         while (match_pos < l && x < line->xnum) {
-            line->gpu_cells[x].attrs &= ATTRS_MASK_WITHOUT_MARK;
-            INCREMENT_MATCH_POS;
-            x++;
+            apply_mark(line, 0, &x, &match_pos);
         }
         attrs_type am = (col & MARK_MASK) << MARK_SHIFT;
         while(x < line->xnum && match_pos <= r) {
-            line->gpu_cells[x].attrs &= ATTRS_MASK_WITHOUT_MARK;
-            line->gpu_cells[x].attrs |= am;
-            INCREMENT_MATCH_POS;
-            x++;
+            apply_mark(line, am, &x, &match_pos);
         }
 
     }
-    while(x < line->xnum) line->gpu_cells[x++].attrs &= ATTRS_MASK_WITHOUT_MARK;
     Py_DECREF(iter);
+    while(x < line->xnum) line->gpu_cells[x++].attrs &= ATTRS_MASK_WITHOUT_MARK;
     if (PyErr_Occurred()) report_marker_error(marker);
-#undef INCREMENT_MATCH_POS
 }
 
 void

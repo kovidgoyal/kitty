@@ -34,6 +34,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Ignore keys is they are designated as layout/group/mode switch keys
   (:iss:`2519`)
 
+- Marks: Fix marks not handling wide characters and tab characters correctly
+  (:iss:`2534`)
+
 
 0.17.2 [2020-03-29]
 --------------------
