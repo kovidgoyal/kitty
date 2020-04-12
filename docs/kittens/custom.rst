@@ -20,24 +20,24 @@ your machine).
 
 .. code-block:: python
 
-   def main(args: List[str]) -> str:
-      # this is the main entry point of the kitten, it will be executed in
-      # the overlay window when the kitten is launched
-      answer = input('Enter some text: ')
-      # whatever this function returns will be available in the
-      # handle_result() function
-      return answer
+    def main(args: List[str]) -> str:
+        # this is the main entry point of the kitten, it will be executed in
+        # the overlay window when the kitten is launched
+        answer = input('Enter some text: ')
+        # whatever this function returns will be available in the
+        # handle_result() function
+        return answer
 
-   def handle_result(args: List[str], answer: str, target_window_id: int, boss: kitty.boss.Boss) -> None:
-      # get the kitty window into which to paste answer
-      w = boss.window_id_map.get(target_window_id)
-      if w is not None:
-         w.paste(answer)
+    def handle_result(args: List[str], answer: str, target_window_id: int, boss: kitty.boss.Boss) -> None:
+        # get the kitty window into which to paste answer
+        w = boss.window_id_map.get(target_window_id)
+        if w is not None:
+            w.paste(answer)
 
 
 Now in :file:`kitty.conf` add the lines::
 
-   map ctrl+k kitten mykitten.py
+    map ctrl+k kitten mykitten.py
 
 
 Start kitty and press :kbd:`ctrl+k` and you should see the kitten running.
@@ -53,7 +53,7 @@ Passing arguments to kittens
 You can pass arguments to kittens by defining them in the map directive in
 :file:`kitty.conf`. For example::
 
-   map ctrl+k kitten mykitten.py arg1 arg2
+    map ctrl+k kitten mykitten.py arg1 arg2
 
 These will be available as the ``args`` parameter in the ``main()`` and
 ``handle_result()`` functions. Note also that the current working directory
@@ -70,17 +70,17 @@ function, telling kitty what kind of input your kitten would like. For example:
 
 .. code-block:: py
 
-   # in main, STDIN is for the kitten process and will contain
-   # the contents of the screen
-   def main(args):
-      return sys.stdin.read()
+    # in main, STDIN is for the kitten process and will contain
+    # the contents of the screen
+    def main(args):
+        return sys.stdin.read()
 
-   # in handle_result, STDIN is for the kitty process itself, rather
-   # than the kitten process and should not be read from.
-   from kittens.tui.handler import result_handler
-   @result_handler(type_of_input='text')
-   def handle_result(args, stdin_data, target_window_id, boss):
-      pass
+    # in handle_result, STDIN is for the kitty process itself, rather
+    # than the kitten process and should not be read from.
+    from kittens.tui.handler import result_handler
+    @result_handler(type_of_input='text')
+    def handle_result(args, stdin_data, target_window_id, boss):
+        pass
 
 
 This will send the plain text of the active window to the kitten's
@@ -104,23 +104,23 @@ Create a file in the kitty config folder, :file:`~/.config/kitty/zoom_toggle.py`
 
 .. code-block:: py
 
-   def main(args):
-      pass
+    def main(args):
+        pass
 
-   from kittens.tui.handler import result_handler
-   @result_handler(no_ui=True)
-   def handle_result(args, answer, target_window_id, boss):
-      tab = boss.active_tab
-      if tab is not None:
-         if tab.current_layout.name == 'stack':
-            tab.last_used_layout()
-         else:
-            tab.goto_layout('stack')
+    from kittens.tui.handler import result_handler
+    @result_handler(no_ui=True)
+    def handle_result(args, answer, target_window_id, boss):
+        tab = boss.active_tab
+        if tab is not None:
+            if tab.current_layout.name == 'stack':
+                tab.last_used_layout()
+            else:
+                tab.goto_layout('stack')
 
 
 Now in kitty.conf add::
 
-   map f11 kitten zoom_toggle.py
+    map f11 kitten zoom_toggle.py
 
 Pressing :kbd:`F11` will now act as a zoom toggle function. You can get even
 more fancy, switching the kitty OS window to fullscreen as well as changing the
@@ -157,11 +157,11 @@ Kittens created by kitty users
 ---------------------------------------------
 
 `vim-kitty-navigator <https://github.com/knubie/vim-kitty-navigator>`_
-   Allows you to navigate seamlessly between vim and kitty splits using a consistent set of hotkeys.
+    Allows you to navigate seamlessly between vim and kitty splits using a consistent set of hotkeys.
 
 `smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
-   Makes the kitty scroll bindings work in full screen applications
+    Makes the kitty scroll bindings work in full screen applications
 
 `insert password <https://github.com/kovidgoyal/kitty/issues/1222>`_
-   Insert a password from a CLI password manager, taking care to only do it at
-   a password prompt.
+    Insert a password from a CLI password manager, taking care to only do it at
+    a password prompt.
