@@ -507,4 +507,4 @@ class TestScreen(BaseTest):
         s.set_marker(marker_from_regex('a', 3))
         self.ae(s.marked_cells(), cells(8))
         s.set_marker(marker_from_regex('\t', 3))
-        self.ae(s.marked_cells(), cells(0, 1, 2, 3, 4, 5, 6, 7))
+        self.ae(s.marked_cells(), cells(*range(8)))
