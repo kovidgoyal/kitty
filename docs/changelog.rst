@@ -37,6 +37,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Marks: Fix marks not handling wide characters and tab characters correctly
   (:iss:`2534`)
 
+- Allow sending mouse events in kittens (:pull:`2538`)
+
 
 0.17.2 [2020-03-29]
 --------------------
