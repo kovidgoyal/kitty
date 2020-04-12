@@ -15,6 +15,8 @@
 #include "control-codes.h"
 #include "monotonic.h"
 
+extern PyTypeObject Screen_Type;
+
 static MouseShape mouse_cursor_shape = BEAM;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 
@@ -699,6 +701,25 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
 }
 
 static PyObject*
+send_mouse_event(PyObject *self UNUSED, PyObject *args) {
+    Screen *screen;
+    unsigned int x, y;
+    int button, action, mods;
+    if (!PyArg_ParseTuple(args, "O!IIiii", &Screen_Type, &screen, &x, &y, &button, &action, &mods)) return NULL;
+
+    MouseTrackingMode mode = screen->modes.mouse_tracking_mode;
+    if (mode == ANY_MODE || (mode == MOTION_MODE && action != MOVE) || (mode == BUTTON_MODE && (action == PRESS || action == RELEASE))) {
+        int sz = encode_mouse_event_impl(x + 1, y + 1, screen->modes.mouse_tracking_protocol, button, action, mods);
+        if (sz > 0) {
+            mouse_event_buf[sz] = 0;
+            write_escape_code_to_child(screen, CSI, mouse_event_buf);
+            Py_RETURN_TRUE;
+        }
+    }
+    Py_RETURN_FALSE;
+}
+
+static PyObject*
 test_encode_mouse(PyObject *self UNUSED, PyObject *args) {
     unsigned int x, y;
     int mouse_tracking_protocol, button, action, mods;
@@ -732,6 +753,7 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
+    METHODB(send_mouse_event, METH_VARARGS),
     METHODB(test_encode_mouse, METH_VARARGS),
     METHODB(send_mock_mouse_event_to_window, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
@@ -739,6 +761,10 @@ static PyMethodDef module_methods[] = {
 
 bool
 init_mouse(PyObject *module) {
+    PyModule_AddIntMacro(module, PRESS);
+    PyModule_AddIntMacro(module, RELEASE);
+    PyModule_AddIntMacro(module, DRAG);
+    PyModule_AddIntMacro(module, MOVE);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

@@ -132,6 +132,32 @@ layout, by simply adding the line::
 To the ``handle_result()`` function, above.
 
 
+Sending mouse events
+--------------------
+
+If the program running in a window is receiving mouse events you can simulate
+those using::
+
+    from kitty.fast_data_types import send_mouse_event
+    send_mouse_event(screen, x, y, button, action, mods)
+
+``screen`` is the ``screen`` attribute of the window you want to send the event
+to. ``x`` and ``y`` are the 0-indexed coordinates. ``button`` is
+``GLFW_MOUSE_BUTTON_{button}`` where ``{button}`` is one of ``LEFT``,
+``RIGHT``, ``MIDDLE`` or a digit from ``1`` to ``8``. ``action`` is one of
+``PRESS``, ``RELEASE``, ``DRAG`` or ``MOVE``. ``mods`` is a bitmask of
+``GLFW_MOD_{mod}`` where ``{mod}`` is one of ``SHIFT``, ``CONTROL`` or ``ALT``.
+All the mentioned constants are imported from ``kitty.fast_data_types``.
+
+For example, to send a left click at position x: 2, y: 3 to the active window::
+
+    from kitty.fast_data_types import send_mouse_event, GLFW_MOUSE_BUTTON_LEFT, PRESS
+    send_mouse_event(boss.active_window.screen, 2, 3, GLFW_MOUSE_BUTTON_LEFT, PRESS, 0)
+
+The function will only send the event if the program is receiving events of
+that type, and will return ``True`` if it sent the event, and ``False`` if not.
+
+
 Debugging kittens
 --------------------
 

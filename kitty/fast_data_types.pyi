@@ -327,6 +327,10 @@ FC_WIDTH_NORMAL: int
 FC_SLANT_ROMAN: int
 FC_SLANT_ITALIC: int
 BORDERS_PROGRAM: int
+PRESS: int
+RELEASE: int
+DRAG: int
+MOVE: int
 # }}}
 
 
