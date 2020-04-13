@@ -315,7 +315,7 @@ def functions_for(args: HintsCLIOptions) -> Tuple[str, List[PostprocessorFunc]]:
         pattern = '[0-9a-f]{7,128}'
     elif args.type == 'word':
         chars = args.word_characters
-        if not chars:
+        if chars is None:
             chars = kitty_common_opts()['select_by_word_characters']
         pattern = r'(?u)[{}\w]{{{},}}'.format(escape(chars), args.minimum_match_length)
         post_processors.extend((brackets, quotes))
