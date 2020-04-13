@@ -94,6 +94,7 @@ def convert(
     if scaled or width > available_width or height > available_height:
         width, height = fit_image(width, height, available_width, available_height)
         cmd += ['-resize', '{}x{}!'.format(width, height)]
+    cmd += ['-depth', '8']
     with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False, dir=tdir) as outfile:
         run_imagemagick(path, cmd + [outfile.name])
     # ImageMagick sometimes generated rgba images smaller than the specified

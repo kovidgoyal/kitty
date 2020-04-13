@@ -39,6 +39,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow sending mouse events in kittens (:pull:`2538`)
 
+- icat kitten: Fix display of 16-bit depth images (:iss:`2542`)
+
 
 0.17.2 [2020-03-29]
 --------------------
