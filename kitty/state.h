@@ -196,7 +196,7 @@ typedef struct {
     bool terminate;
     bool is_wayland;
     bool has_render_frames;
-    bool debug_gl, debug_font_fallback;
+    bool debug_rendering, debug_font_fallback;
     bool has_pending_resizes, has_pending_closes;
     bool in_sequence_mode;
     bool tab_bar_hidden;

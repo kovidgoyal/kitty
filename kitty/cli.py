@@ -662,9 +662,9 @@ can open a new kitty window to replay the commands with::
 Path to file in which to store the raw bytes received from the child process
 
 
---debug-gl
+--debug-rendering
 type=bool-set
-Debug OpenGL commands. This will cause all OpenGL calls to check for errors
+Debug rendering commands. This will cause all OpenGL calls to check for errors
 instead of ignoring them. Useful when debugging rendering problems
 
 

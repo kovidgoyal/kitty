@@ -46,7 +46,7 @@ gl_init() {
         if (!gl_version) {
             fatal("Loading the OpenGL library failed");
         }
-        if (!global_state.debug_gl) {
+        if (!global_state.debug_rendering) {
             gladUninstallGLDebug();
         }
         gladSetGLPostCallback(check_for_gl_error);
@@ -59,7 +59,7 @@ gl_init() {
         glad_loaded = true;
         int gl_major = GLAD_VERSION_MAJOR(gl_version);
         int gl_minor = GLAD_VERSION_MINOR(gl_version);
-        if (global_state.debug_gl) printf("GL version string: '%s' Detected version: %d.%d\n", glGetString(GL_VERSION), gl_major, gl_minor);
+        if (global_state.debug_rendering) printf("GL version string: '%s' Detected version: %d.%d\n", glGetString(GL_VERSION), gl_major, gl_minor);
         if (gl_major < OPENGL_REQUIRED_VERSION_MAJOR || (gl_major == OPENGL_REQUIRED_VERSION_MAJOR && gl_minor < OPENGL_REQUIRED_VERSION_MINOR)) {
             fatal("OpenGL version is %d.%d, version >= 3.3 required for kitty", gl_major, gl_minor);
         }
