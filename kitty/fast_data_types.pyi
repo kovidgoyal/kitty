@@ -553,7 +553,7 @@ def update_window_visibility(
 def set_options(
     opts: Options,
     is_wayland: bool = False,
-    debug_gl: bool = False,
+    debug_rendering: bool = False,
     debug_font_fallback: bool = False
 ) -> None:
     pass

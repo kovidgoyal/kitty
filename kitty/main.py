@@ -152,7 +152,7 @@ class AppRunner:
 
     def __call__(self, opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
         set_scale(opts.box_drawing_scale)
-        set_options(opts, is_wayland(), args.debug_gl, args.debug_font_fallback)
+        set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
         set_font_family(opts, debug_font_matching=args.debug_font_fallback)
         try:
             _run_app(opts, args, bad_lines)
