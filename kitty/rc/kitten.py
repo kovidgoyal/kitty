@@ -26,7 +26,9 @@ class Kitten(RemoteCommand):
         'Run a kitten over the specified window (active window by default).'
         ' The :italic:`kitten_name` can be either the name of a builtin kitten'
         ' or the path to a python file containing a custom kitten. If a relative path'
-        ' is used it is searched for in the kitty config directory.'
+        ' is used it is searched for in the kitty config directory. If the kitten is a'
+        ' no_ui kitten and its handle response method returns a string or boolean, this'
+        ' is printed out to stdout.'
     )
     options_spec = MATCH_WINDOW_OPTION
     argspec = 'kitten_name'
@@ -43,10 +45,13 @@ class Kitten(RemoteCommand):
             windows = list(boss.match_windows(match))
             if not windows:
                 raise MatchError(match)
+        retval = None
         for window in windows:
             if window:
-                boss._run_kitten(payload_get('kitten'), args=tuple(payload_get('args') or ()), window=window)
+                retval = boss._run_kitten(payload_get('kitten'), args=tuple(payload_get('args') or ()), window=window)
                 break
+        if isinstance(retval, (str, bool)):
+            return retval
 
 
 kitten = Kitten()

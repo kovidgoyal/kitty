@@ -755,7 +755,7 @@ class Boss:
         window: Optional[Window] = None,
         custom_callback: Optional[Callable] = None,
         action_on_removal: Optional[Callable] = None
-    ) -> Optional[Window]:
+    ) -> Any:
         orig_args, args = list(args), list(args)
         from kittens.runner import create_kitten_handler
         end_kitten = create_kitten_handler(kitten, orig_args)
@@ -766,8 +766,7 @@ class Boss:
             w = window
             tab = w.tabref() if w else None
         if end_kitten.no_ui:
-            end_kitten(None, getattr(w, 'id', None), self)
-            return None
+            return end_kitten(None, getattr(w, 'id', None), self)
 
         if w is not None and tab is not None and w.overlay_for is None:
             args[0:0] = [config_dir, kitten]
