@@ -254,6 +254,22 @@ class Window:
             foreground_processes=self.child.foreground_processes
         )
 
+    def serialize_state(self) -> Dict[str, Any]:
+        return {
+            'version': 1,
+            'id': self.id,
+            'child_title': self.child_title,
+            'override_title': self.override_title,
+            'default_title': self.default_title,
+            'title_stack': list(self.title_stack),
+            'allow_remote_control': self.allow_remote_control,
+            'overlay_window_id': self.overlay_window_id,
+            'overlay_for': self.overlay_for,
+            'cwd': self.child.current_cwd or self.child.cwd,
+            'env': self.child.environ,
+            'cmdline': self.child.cmdline,
+        }
+
     @property
     def current_colors(self) -> Dict:
         return self.screen.color_profile.as_dict()

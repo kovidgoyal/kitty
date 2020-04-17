@@ -7,8 +7,8 @@ from collections import deque
 from contextlib import suppress
 from functools import partial
 from typing import (
-    Deque, Dict, Generator, Iterator, List, NamedTuple,
-    Optional, Pattern, Sequence, Tuple, cast
+    Any, Deque, Dict, Generator, Iterator, List, NamedTuple, Optional, Pattern,
+    Sequence, Tuple, cast
 )
 
 from .borders import Borders
@@ -25,9 +25,9 @@ from .layout import (
 )
 from .options_stub import Options
 from .tab_bar import TabBar, TabBarData
+from .typing import SessionTab, SessionType, TypedDict
 from .utils import log_error, resolved_shell
-from .window import Window, WindowDict, Watchers
-from .typing import TypedDict, SessionTab, SessionType
+from .window import Watchers, Window, WindowDict
 
 
 class TabDict(TypedDict):
@@ -156,6 +156,18 @@ class Tab:  # {{{
             else:
                 self.new_window(cmd=cmd)
         self.set_active_window_idx(session_tab.active_window_idx)
+
+    def serialize_state(self) -> Dict[str, Any]:
+        return {
+            'version': 1,
+            'id': self.id,
+            'active_window_idx': self.active_window_idx,
+            'windows': [w.serialize_state() for w in self],
+            'current_layout': self._current_layout_name,
+            'last_used_layout': self._last_used_layout,
+            'active_window_history': list(self.active_window_history),
+            'name': self.name,
+        }
 
     @property
     def active_window_idx(self) -> int:
@@ -703,6 +715,14 @@ class TabManager:  # {{{
                 'windows': list(tab.list_windows(active_window)),
                 'active_window_history': list(tab.active_window_history),
             }
+
+    def serialize_state(self) -> Dict[str, Any]:
+        return {
+            'version': 1,
+            'id': self.os_window_id,
+            'tabs': [tab.serialize_state() for tab in self],
+            'active_tab_idx': self.active_tab_idx,
+        }
 
     @property
     def active_tab(self) -> Optional[Tab]:
