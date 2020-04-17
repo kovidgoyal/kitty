@@ -185,6 +185,25 @@ def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str
     return remove_wrap_markers
 
 
+class EdgeWidths:
+    left: Optional[int]
+    top: Optional[int]
+    right: Optional[int]
+    bottom: Optional[int]
+
+    def __init__(self, serialized: Optional[Dict[str, Optional[int]]] = None):
+        if serialized is not None:
+            self.left = serialized['left']
+            self.right = serialized['right']
+            self.top = serialized['top']
+            self.bottom = serialized['bottom']
+        else:
+            self.left = self.top = self.right = self.bottom = None
+
+    def serialize(self) -> Dict[str, Optional[int]]:
+        return {'left': self.left, 'right': self.right, 'top': self.top, 'bottom': self.bottom}
+
+
 class Window:
 
     def __init__(
@@ -211,6 +230,8 @@ class Window:
         self.title_stack: Deque[str] = deque(maxlen=10)
         self.allow_remote_control = child.allow_remote_control
         self.id = add_window(tab.os_window_id, tab.id, self.title)
+        self.margin = EdgeWidths()
+        self.padding = EdgeWidths()
         if not self.id:
             raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
         self.tab_id = tab.id
@@ -268,6 +289,8 @@ class Window:
             'cwd': self.child.current_cwd or self.child.cwd,
             'env': self.child.environ,
             'cmdline': self.child.cmdline,
+            'margin': self.margin.serialize(),
+            'padding': self.padding.serialize(),
         }
 
     @property
