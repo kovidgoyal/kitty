@@ -27,6 +27,13 @@ is_macos: bool = 'darwin' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
+class Edges(NamedTuple):
+    left: int = 0
+    top: int = 0
+    right: int = 0
+    bottom: int = 0
+
+
 class ScreenGeometry(NamedTuple):
     xstart: float
     ystart: float
@@ -43,6 +50,7 @@ class WindowGeometry(NamedTuple):
     bottom: int
     xnum: int
     ynum: int
+    spaces: Edges = Edges()
 
 
 @lru_cache(maxsize=2)

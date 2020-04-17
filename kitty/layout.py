@@ -5,16 +5,16 @@
 from functools import lru_cache, partial
 from itertools import islice, repeat
 from typing import (
-    Callable, Collection, Deque, Dict, FrozenSet, Generator,
-    Iterable, List, NamedTuple, Optional, Sequence, Tuple, Union, cast
+    Callable, Collection, Deque, Dict, FrozenSet, Generator, Iterable, List,
+    NamedTuple, Optional, Sequence, Tuple, Union, cast
 )
 
-from .constants import WindowGeometry
+from .constants import Edges, WindowGeometry
 from .fast_data_types import (
     Region, set_active_window, swap_windows, viewport_for_window
 )
 from .options_stub import Options
-from .typing import WindowType, EdgeLiteral, TypedDict
+from .typing import EdgeLiteral, TypedDict, WindowType
 
 
 class Borders(NamedTuple):
@@ -30,6 +30,13 @@ class LayoutOpts:
         pass
 
 
+class LayoutData(NamedTuple):
+    content_pos: int
+    cells_per_window: int
+    space_before: int
+    space_after: int
+
+
 # Utils {{{
 central = Region((0, 0, 199, 199, 200, 200))
 cell_width = cell_height = 20
@@ -38,9 +45,9 @@ no_borders = Borders(False, False, False, False)
 draw_minimal_borders = False
 draw_active_borders = True
 align_top_left = False
-LayoutDimension = Generator[Tuple[int, int], None, None]
 DecorationPairs = Sequence[Tuple[int, int]]
 WindowList = Union[List[WindowType], Deque[WindowType]]
+LayoutDimension = Generator[LayoutData, None, None]
 
 
 class InternalNeighborsMap(TypedDict):
@@ -61,6 +68,10 @@ def idx_for_id(win_id: int, windows: Iterable[WindowType]) -> Optional[int]:
     for i, w in enumerate(windows):
         if w.id == win_id:
             return i
+
+
+def effective_width(q: Optional[int], d: int) -> int:
+    return d if q is None else q
 
 
 def set_layout_options(opts: Options) -> None:
@@ -108,9 +119,18 @@ def layout_dimension(
     extra = number_of_cells - sum(cells_map)
     if extra > 0:
         cells_map[-1] += extra
+    last_i = len(cells_map) - 1
     for i, cells_per_window in enumerate(cells_map):
         window_length = calc_window_geom(i, cells_per_window)
-        yield pos, cells_per_window
+        if i == 0:
+            before_space = pos - start_at
+        else:
+            before_space = decoration_pairs[i][0]
+        if i == last_i:
+            after_space = (start_at + length) - pos + window_length
+        else:
+            after_space = decoration_pairs[i][1]
+        yield LayoutData(pos, cells_per_window, before_space, after_space)
         pos += window_length
 
 
@@ -121,6 +141,19 @@ class Rect(NamedTuple):
     bottom: int
 
 
+def blank_rects_for_window(wg: WindowGeometry) -> Generator[Rect, None, None]:
+    left_width, right_width = wg.spaces.left, wg.spaces.right
+    top_height, bottom_height = wg.spaces.top, wg.spaces.bottom
+    if left_width > 0:
+        yield Rect(wg.left - left_width, wg.top - top_height, wg.left, wg.bottom + bottom_height)
+    if top_height > 0:
+        yield Rect(wg.left, wg.top - top_height, wg.right + right_width, wg.top)
+    if right_width > 0:
+        yield Rect(wg.right, wg.top, wg.right + right_width, wg.bottom + bottom_height)
+    if bottom_height > 0:
+        yield Rect(wg.left, wg.bottom, wg.right, wg.bottom + bottom_height)
+
+
 def process_overlaid_windows(all_windows: WindowList) -> Tuple[FrozenSet[WindowType], WindowList]:
     id_map = {w.id: w for w in all_windows}
     overlaid_windows = frozenset(w for w in all_windows if w.overlay_window_id is not None and w.overlay_window_id in id_map)
@@ -128,49 +161,22 @@ def process_overlaid_windows(all_windows: WindowList) -> Tuple[FrozenSet[WindowT
     return overlaid_windows, windows
 
 
-def window_geometry(xstart: int, xnum: int, ystart: int, ynum: int) -> WindowGeometry:
-    return WindowGeometry(left=xstart, top=ystart, xnum=xnum, ynum=ynum, right=xstart + cell_width * xnum, bottom=ystart + cell_height * ynum)
+def window_geometry(xstart: int, xnum: int, ystart: int, ynum: int, left: int, top: int, right: int, bottom: int) -> WindowGeometry:
+    return WindowGeometry(
+        left=xstart, top=ystart, xnum=xnum, ynum=ynum,
+        right=xstart + cell_width * xnum, bottom=ystart + cell_height * ynum,
+        spaces=Edges(left, top, right, bottom)
+    )
+
+
+def window_geometry_from_layouts(x: LayoutData, y: LayoutData) -> WindowGeometry:
+    return window_geometry(x.content_pos, x.cells_per_window, y.content_pos, y.cells_per_window, x.space_before, y.space_before, x.space_after, y.space_after)
 
 
 def layout_single_window(xdecoration_pairs: DecorationPairs, ydecoration_pairs: DecorationPairs, left_align: bool = False) -> WindowGeometry:
-    xstart, xnum = next(layout_dimension(central.left, central.width, cell_width, xdecoration_pairs, left_align=align_top_left))
-    ystart, ynum = next(layout_dimension(central.top, central.height, cell_height, ydecoration_pairs, left_align=align_top_left))
-    return window_geometry(xstart, xnum, ystart, ynum)
-
-
-def left_blank_rect(w: WindowType, rects: List[Rect]) -> None:
-    lt = w.geometry.left
-    if lt > central.left:
-        rects.append(Rect(central.left, central.top, lt, central.bottom + 1))
-
-
-def right_blank_rect(w: WindowType, rects: List[Rect]) -> None:
-    r = w.geometry.right
-    if r < central.right:
-        rects.append(Rect(r, central.top, central.right + 1, central.bottom + 1))
-
-
-def top_blank_rect(w: WindowType, rects: List[Rect]) -> None:
-    t = w.geometry.top
-    if t > central.top:
-        rects.append(Rect(central.left, central.top, central.right + 1, t))
-
-
-def bottom_blank_rect(w: WindowType, rects: List[Rect]) -> None:
-    b = w.geometry.bottom
-    # Need to use <= here as otherwise a single pixel row at the bottom of the
-    # window is sometimes not covered. See https://github.com/kovidgoyal/kitty/issues/506
-    if b <= central.bottom:
-        rects.append(Rect(central.left, b, central.right + 1, central.bottom + 1))
-
-
-def blank_rects_for_window(w: WindowType) -> List[Rect]:
-    ans: List[Rect] = []
-    left_blank_rect(w, ans)
-    top_blank_rect(w, ans)
-    right_blank_rect(w, ans)
-    bottom_blank_rect(w, ans)
-    return ans
+    x = next(layout_dimension(central.left, central.width, cell_width, xdecoration_pairs, left_align=align_top_left))
+    y = next(layout_dimension(central.top, central.height, cell_height, ydecoration_pairs, left_align=align_top_left))
+    return window_geometry_from_layouts(x, y)
 
 
 def safe_increment_bias(old_val: float, increment: float) -> float:
@@ -480,12 +486,23 @@ class Layout:  # {{{
         return cast(int, idx_for_id(active_window.id, all_windows))
 
     # Utils {{{
-    def layout_single_window(self, w: WindowType) -> None:
-        mw = self.margin_width if self.single_window_margin_width < 0 else self.single_window_margin_width
-        decoration_pairs = ((self.padding_width + mw, self.padding_width + mw),)
-        wg = layout_single_window(decoration_pairs, decoration_pairs)
+    def layout_single_window(self, w: WindowType, return_geometry: bool = False, left_align: bool = False) -> Optional[WindowGeometry]:
+        default_margin = self.margin_width if self.single_window_margin_width < 0 else self.single_window_margin_width
+        bw = self.border_width if self.must_draw_borders else 0
+        xdecoration_pairs = ((
+            effective_width(w.padding.left, self.padding_width) + effective_width(w.margin.left, default_margin) + bw,
+            effective_width(w.padding.right, self.padding_width) + effective_width(w.margin.right, default_margin) + bw,
+        ),)
+        ydecoration_pairs = ((
+            effective_width(w.padding.top, self.padding_width) + effective_width(w.margin.top, default_margin) + bw,
+            effective_width(w.padding.bottom, self.padding_width) + effective_width(w.margin.bottom, default_margin) + bw,
+        ),)
+        wg = layout_single_window(xdecoration_pairs, ydecoration_pairs, left_align=left_align)
+        if return_geometry:
+            return wg
         w.set_geometry(0, wg)
-        self.blank_rects = blank_rects_for_window(w)
+        self.blank_rects = list(blank_rects_for_window(wg))
+        return None
 
     def xlayout(
         self, num: int, bias: Optional[Sequence[float]] = None, left: Optional[int] = None, width: Optional[int] = None
@@ -508,21 +525,6 @@ class Layout:  # {{{
         if height is None:
             height = central.height
         return layout_dimension(top, height, cell_height, decoration_pairs, bias=bias, left_align=align_top_left)
-
-    def simple_blank_rects(self, first_window: WindowType, last_window: WindowType) -> None:
-        br = self.blank_rects
-        left_blank_rect(first_window, br)
-        top_blank_rect(first_window, br)
-        right_blank_rect(last_window, br)
-
-    def between_blank_rect(self, left_window: WindowType, right_window: WindowType, vertical: bool = True) -> None:
-        if vertical:
-            self.blank_rects.append(Rect(left_window.geometry.right, central.top, right_window.geometry.left, central.bottom + 1))
-        else:
-            self.blank_rects.append(Rect(central.left, left_window.geometry.top, central.right + 1, right_window.geometry.bottom))
-
-    def bottom_blank_rect(self, window: WindowType) -> None:
-        self.blank_rects.append(Rect(window.geometry.left, window.geometry.bottom, window.geometry.right, central.bottom + 1))
     # }}}
 
     def do_layout(self, windows: WindowList, active_window_idx: int) -> None:
@@ -567,13 +569,12 @@ class Stack(Layout):  # {{{
     only_active_window_visible = True
 
     def do_layout(self, windows: WindowList, active_window_idx: int) -> None:
-        mw = self.margin_width if self.single_window_margin_width < 0 else self.single_window_margin_width
-        decoration_pairs = ((mw + self.padding_width, mw + self.padding_width),)
-        wg = layout_single_window(decoration_pairs, decoration_pairs, left_align=align_top_left)
         for i, w in enumerate(windows):
-            w.set_geometry(i, wg)
-            if w.is_visible_in_layout:
-                self.blank_rects = blank_rects_for_window(w)
+            wg = self.layout_single_window(w, left_align=align_top_left, return_geometry=True)
+            if wg is not None:
+                w.set_geometry(i, wg)
+                if w.is_visible_in_layout:
+                    self.blank_rects = list(blank_rects_for_window(wg))
 # }}}
 
 
@@ -668,38 +669,31 @@ class Tall(Layout):
 
     def do_layout(self, windows: WindowList, active_window_idx: int) -> None:
         if len(windows) == 1:
-            return self.layout_single_window(windows[0])
-        y, ynum = next(self.ylayout(1))
+            self.layout_single_window(windows[0])
+            return
+        yl = next(self.ylayout(1))
         if len(windows) <= self.num_full_size_windows:
             bias = normalize_biases(self.main_bias[:-1])
             xlayout = self.xlayout(self.num_full_size_windows, bias=bias)
-            for i, (w, (x, xnum)) in enumerate(zip(windows, xlayout)):
-                w.set_geometry(i, window_geometry(x, xnum, y, ynum))
-                if i > 0:
-                    self.between_blank_rect(windows[i-1], windows[i])
-                # bottom blank rect
-                self.bottom_blank_rect(windows[i])
-
-            # left, top and right blank rects
-            self.simple_blank_rects(windows[0], windows[-1])
+            for i, (w, xl) in enumerate(zip(windows, xlayout)):
+                wg = window_geometry_from_layouts(xl, yl)
+                w.set_geometry(i, wg)
+                self.blank_rects.extend(blank_rects_for_window(wg))
             return
 
         xlayout = self.xlayout(self.num_full_size_windows + 1, bias=self.main_bias)
         for i in range(self.num_full_size_windows):
             w = windows[i]
-            x, xnum = next(xlayout)
-            w.set_geometry(i, window_geometry(x, xnum, y, ynum))
-            self.between_blank_rect(windows[i], windows[i+1])
-            # bottom blank rect
-            self.bottom_blank_rect(windows[i])
-        x, xnum = next(xlayout)
+            xl = next(xlayout)
+            wg = window_geometry_from_layouts(xl, yl)
+            w.set_geometry(i, wg)
+            self.blank_rects.extend(blank_rects_for_window(wg))
+        xl = next(xlayout)
         ylayout = self.variable_layout(len(windows), self.biased_map)
-        for i, (w, (ystart, ynum)) in enumerate(zip(islice(windows, self.num_full_size_windows, None), ylayout)):
-            w.set_geometry(i + self.num_full_size_windows, window_geometry(x, xnum, ystart, ynum))
-        # right bottom blank rect
-        self.bottom_blank_rect(windows[-1])
-        # left, top and right blank rects
-        self.simple_blank_rects(windows[0], windows[-1])
+        for i, (w, yl) in enumerate(zip(islice(windows, self.num_full_size_windows, None), ylayout)):
+            wg = window_geometry_from_layouts(xl, yl)
+            w.set_geometry(i + self.num_full_size_windows, wg)
+            self.blank_rects.extend(blank_rects_for_window(wg))
 
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
         return neighbors_for_tall_window(self.num_full_size_windows, window, windows)
@@ -735,36 +729,31 @@ class Fat(Tall):  # {{{
 
     def do_layout(self, windows: WindowList, active_window_idx: int) -> None:
         if len(windows) == 1:
-            return self.layout_single_window(windows[0])
-        x, xnum = next(self.xlayout(1))
+            self.layout_single_window(windows[0])
+            return
+        xl = next(self.xlayout(1))
         if len(windows) <= self.num_full_size_windows:
             bias = normalize_biases(self.main_bias[:-1])
             ylayout = self.ylayout(self.num_full_size_windows, bias=bias)
-            for i, (w, (y, ynum)) in enumerate(zip(windows, ylayout)):
-                w.set_geometry(i, window_geometry(x, xnum, y, ynum))
-                if i > 0:
-                    self.between_blank_rect(windows[i-1], windows[i], vertical=False)
-            # bottom blank rect
-            self.bottom_blank_rect(windows[-1])
-            # left, top and right blank rects
-            self.simple_blank_rects(windows[0], windows[-1])
+            for i, (w, yl) in enumerate(zip(windows, ylayout)):
+                wg = window_geometry_from_layouts(xl, yl)
+                w.set_geometry(i, wg)
+                self.blank_rects.extend(blank_rects_for_window(wg))
             return
 
         ylayout = self.ylayout(self.num_full_size_windows + 1, bias=self.main_bias)
         for i in range(self.num_full_size_windows):
             w = windows[i]
-            y, ynum = next(ylayout)
-            w.set_geometry(i, window_geometry(x, xnum, y, ynum))
-            self.between_blank_rect(windows[i], windows[i+1], vertical=False)
-        y, ynum = next(ylayout)
+            yl = next(ylayout)
+            wg = window_geometry_from_layouts(xl, yl)
+            w.set_geometry(i, wg)
+            self.blank_rects.extend(blank_rects_for_window(wg))
+        yl = next(ylayout)
         xlayout = self.variable_layout(len(windows), self.biased_map)
-        for i, (w, (x, xnum)) in enumerate(zip(islice(windows, self.num_full_size_windows, None), xlayout)):
-            w.set_geometry(i + self.num_full_size_windows, window_geometry(x, xnum, y, ynum))
-            # bottom blank rect
-            self.bottom_blank_rect(windows[i])
-
-        # left, top and right blank rects
-        self.simple_blank_rects(windows[0], windows[-1])
+        for i, (w, xl) in enumerate(zip(islice(windows, self.num_full_size_windows, None), xlayout)):
+            wg = window_geometry_from_layouts(xl, yl)
+            w.set_geometry(i + self.num_full_size_windows, wg)
+            self.blank_rects.extend(blank_rects_for_window(wg))
 
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
         idx = windows.index(window)
@@ -826,7 +815,7 @@ class Grid(Layout):
                 row_num = 0
                 col_num += 1
 
-            for window_idx, xstart, xnum, ystart, ynum in self.layout_windows(
+            for window_idx, xl, yl in self.layout_windows(
                     num_windows, nrows, ncols, special_rows, special_col, on_col_done):
                 if idx == window_idx:
                     return row_num, col_num
@@ -869,7 +858,7 @@ class Grid(Layout):
         nrows: int, ncols: int,
         special_rows: int, special_col: int,
         on_col_done: Callable[[List[int]], None] = lambda col_windows: None
-    ) -> Generator[Tuple[int, int, int, int, int], None, None]:
+    ) -> Generator[Tuple[int, LayoutData, LayoutData], None, None]:
         # Distribute windows top-to-bottom, left-to-right (i.e. in columns)
         xlayout = self.variable_layout(self.xlayout, ncols, self.biased_cols)
         yvals_normal = tuple(self.variable_layout(self.ylayout, nrows, self.biased_rows))
@@ -877,12 +866,12 @@ class Grid(Layout):
         pos = 0
         for col in range(ncols):
             rows = special_rows if col == special_col else nrows
-            yl = yvals_special if col == special_col else yvals_normal
-            xstart, xnum = next(xlayout)
+            yls = yvals_special if col == special_col else yvals_normal
+            xl = next(xlayout)
             col_windows = []
-            for i, (ystart, ynum) in enumerate(yl):
+            for i, yl in enumerate(yls):
                 window_idx = pos + i
-                yield window_idx, xstart, xnum, ystart, ynum
+                yield window_idx, xl, yl
                 col_windows.append(window_idx)
             pos += rows
             on_col_done(col_windows)
@@ -890,7 +879,8 @@ class Grid(Layout):
     def do_layout(self, windows: WindowList, active_window_idx: int) -> None:
         n = len(windows)
         if n == 1:
-            return self.layout_single_window(windows[0])
+            self.layout_single_window(windows[0])
+            return
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
 
         win_col_map = []
@@ -898,20 +888,13 @@ class Grid(Layout):
         def on_col_done(col_windows: List[int]) -> None:
             col_windows_w = [windows[i] for i in col_windows]
             win_col_map.append(col_windows_w)
-            # bottom blank rect
-            self.bottom_blank_rect(col_windows_w[-1])
 
-        for window_idx, xstart, xnum, ystart, ynum in self.layout_windows(
+        for window_idx, xl, yl in self.layout_windows(
                 len(windows), nrows, ncols, special_rows, special_col, on_col_done):
             w = windows[window_idx]
-            w.set_geometry(window_idx, window_geometry(xstart, xnum, ystart, ynum))
-
-        # left, top and right blank rects
-        self.simple_blank_rects(windows[0], windows[-1])
-
-        # the in-between columns blank rects
-        for i in range(ncols - 1):
-            self.between_blank_rect(win_col_map[i][0], win_col_map[i + 1][0])
+            wg = window_geometry_from_layouts(xl, yl)
+            w.set_geometry(window_idx, wg)
+            self.blank_rects.extend(blank_rects_for_window(wg))
 
     def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         n = len(windows)
@@ -1026,18 +1009,16 @@ class Vertical(Layout):  # {{{
     def do_layout(self, windows: WindowList, active_window_idx: int) -> None:
         window_count = len(windows)
         if window_count == 1:
-            return self.layout_single_window(windows[0])
+            self.layout_single_window(windows[0])
+            return
 
         xlayout = self.xlayout(1)
-        xstart, xnum = next(xlayout)
+        xl = next(xlayout)
         ylayout = self.variable_layout(window_count, self.biased_map)
-        for i, (w, (ystart, ynum)) in enumerate(zip(windows, ylayout)):
-            w.set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
-            # bottom blank rect
-            self.bottom_blank_rect(windows[i])
-
-        # left, top and right blank rects
-        self.simple_blank_rects(windows[0], windows[-1])
+        for i, (w, yl) in enumerate(zip(windows, ylayout)):
+            wg = window_geometry_from_layouts(xl, yl)
+            w.set_geometry(i, wg)
+            self.blank_rects.extend(blank_rects_for_window(wg))
 
     def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         last_i = len(windows) - 1
@@ -1073,21 +1054,16 @@ class Horizontal(Vertical):  # {{{
     def do_layout(self, windows: WindowList, active_window_idx: int) -> None:
         window_count = len(windows)
         if window_count == 1:
-            return self.layout_single_window(windows[0])
+            self.layout_single_window(windows[0])
+            return
 
         xlayout = self.variable_layout(window_count, self.biased_map)
         ylayout = self.ylayout(1)
-        ystart, ynum = next(ylayout)
-        for i, (w, (xstart, xnum)) in enumerate(zip(windows, xlayout)):
-            w.set_geometry(i, window_geometry(xstart, xnum, ystart, ynum))
-            if i > 0:
-                # between blank rect
-                self.between_blank_rect(windows[i - 1], windows[i])
-
-        # left, top and right blank rects
-        self.simple_blank_rects(windows[0], windows[-1])
-        # bottom blank rect
-        self.blank_rects.append(Rect(windows[0].geometry.left, windows[0].geometry.bottom, windows[-1].geometry.right, central.bottom + 1))
+        yl = next(ylayout)
+        for i, (w, xl) in enumerate(zip(windows, xlayout)):
+            wg = window_geometry_from_layouts(xl, yl)
+            w.set_geometry(i, wg)
+            self.blank_rects.extend(blank_rects_for_window(wg))
 
 # }}}
 
@@ -1208,31 +1184,20 @@ class Pair:
             tuple(map(pair.balanced_add, q))
         return pair
 
-    def apply_window_geometry(self, window_id: int, window_geometry: WindowGeometry, id_window_map: Dict[int, WindowType], id_idx_map: Dict[int, int]) -> None:
+    def apply_window_geometry(
+        self, window_id: int,
+        window_geometry: WindowGeometry,
+        id_window_map: Dict[int, WindowType],
+        id_idx_map: Dict[int, int],
+        layout_object: Layout
+    ) -> None:
         w = id_window_map[window_id]
         w.set_geometry(id_idx_map[window_id], window_geometry)
         if w.overlay_window_id is not None:
             q = id_window_map.get(w.overlay_window_id)
             if q is not None:
                 q.set_geometry(id_idx_map[q.id], window_geometry)
-
-    def blank_rects_for_window(self, layout_object: Layout, window: WindowType, left: int, top: int, width: int, height: int) -> None:
-        right = left + width - 1
-        bottom = top + height - 1
-        g = window.geometry
-        rects = layout_object.blank_rects
-        lt = g.left
-        if lt > left:
-            rects.append(Rect(left, top, lt, bottom + 1))
-        r = g.right
-        if r <= right:
-            rects.append(Rect(r, top, right + 1, bottom + 1))
-        t = g.top
-        if t > top:
-            rects.append(Rect(left, top, right + 1, t))
-        b = g.bottom
-        if b <= bottom:
-            rects.append(Rect(left, b, right + 1, bottom + 1))
+        layout_object.blank_rects.extend(blank_rects_for_window(window_geometry))
 
     def layout_pair(
         self,
@@ -1248,53 +1213,52 @@ class Pair:
                 return q.layout_pair(left, top, width, height, id_window_map, id_idx_map, layout_object)
             if q is None:
                 return
-            xstart, xnum = next(layout_object.xlayout(1, left=left, width=width))
-            ystart, ynum = next(layout_object.ylayout(1, top=top, height=height))
-            geom = window_geometry(xstart, xnum, ystart, ynum)
-            self.apply_window_geometry(q, geom, id_window_map, id_idx_map)
-            self.blank_rects_for_window(layout_object, id_window_map[q], left, top, width, height)
+            xl = next(layout_object.xlayout(1, left=left, width=width))
+            yl = next(layout_object.ylayout(1, top=top, height=height))
+            geom = window_geometry_from_layouts(xl, yl)
+            self.apply_window_geometry(q, geom, id_window_map, id_idx_map, layout_object)
             return
         bw = layout_object.border_width if draw_minimal_borders else 0
         b1 = bw // 2
         b2 = bw - b1
         if self.horizontal:
-            ystart, ynum = next(layout_object.ylayout(1, top=top, height=height))
+            yl = next(layout_object.ylayout(1, top=top, height=height))
             w1 = max(2*cell_width + 1, int(self.bias * width) - b1)
             w2 = max(2*cell_width + 1, width - w1 - b1 - b2)
             if isinstance(self.one, Pair):
                 self.one.layout_pair(left, top, w1, height, id_window_map, id_idx_map, layout_object)
             else:
-                xstart, xnum = next(layout_object.xlayout(1, left=left, width=w1))
-                self.apply_window_geometry(self.one, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
-                self.blank_rects_for_window(layout_object, id_window_map[self.one], left, top, w1, height)
+                xl = next(layout_object.xlayout(1, left=left, width=w1))
+                geom = window_geometry_from_layouts(xl, yl)
+                self.apply_window_geometry(self.one, geom, id_window_map, id_idx_map, layout_object)
             if b1 + b2:
                 self.between_border = (left + w1, top, left + w1 + b1 + b2, top + height)
             left += b1 + b2
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left + w1, top, w2, height, id_window_map, id_idx_map, layout_object)
             else:
-                xstart, xnum = next(layout_object.xlayout(1, left=left + w1, width=w2))
-                self.apply_window_geometry(self.two, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
-                self.blank_rects_for_window(layout_object, id_window_map[self.two], left + w1, top, w2, height)
+                xl = next(layout_object.xlayout(1, left=left + w1, width=w2))
+                geom = window_geometry_from_layouts(xl, yl)
+                self.apply_window_geometry(self.two, geom, id_window_map, id_idx_map, layout_object)
         else:
-            xstart, xnum = next(layout_object.xlayout(1, left=left, width=width))
+            xl = next(layout_object.xlayout(1, left=left, width=width))
             h1 = max(2*cell_height + 1, int(self.bias * height) - b1)
             h2 = max(2*cell_height + 1, height - h1 - b1 - b2)
             if isinstance(self.one, Pair):
                 self.one.layout_pair(left, top, width, h1, id_window_map, id_idx_map, layout_object)
             else:
-                ystart, ynum = next(layout_object.ylayout(1, top=top, height=h1))
-                self.apply_window_geometry(self.one, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
-                self.blank_rects_for_window(layout_object, id_window_map[self.one], left, top, width, h1)
+                yl = next(layout_object.ylayout(1, top=top, height=h1))
+                geom = window_geometry_from_layouts(xl, yl)
+                self.apply_window_geometry(self.one, geom, id_window_map, id_idx_map, layout_object)
             if b1 + b2:
                 self.between_border = (left, top + h1, left + width, top + h1 + b1 + b2)
             top += b1 + b2
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left, top + h1, width, h2, id_window_map, id_idx_map, layout_object)
             else:
-                ystart, ynum = next(layout_object.ylayout(1, top=top + h1, height=h2))
-                self.apply_window_geometry(self.two, window_geometry(xstart, xnum, ystart, ynum), id_window_map, id_idx_map)
-                self.blank_rects_for_window(layout_object, id_window_map[self.two], left, top + h1, width, h2)
+                yl = next(layout_object.ylayout(1, top=top + h1, height=h2))
+                geom = window_geometry_from_layouts(xl, yl)
+                self.apply_window_geometry(self.two, geom, id_window_map, id_idx_map, layout_object)
 
     def modify_size_of_child(self, which: int, increment: float, is_horizontal: bool, layout_object: 'Splits') -> bool:
         if is_horizontal == self.horizontal and not self.is_redundant:
