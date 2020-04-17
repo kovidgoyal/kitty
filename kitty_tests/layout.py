@@ -3,9 +3,10 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from kitty.config import defaults
-from kitty.fast_data_types import pt_to_px
-from kitty.layout import Horizontal, Stack, Tall, Grid, idx_for_id, Splits
 from kitty.constants import WindowGeometry
+from kitty.fast_data_types import pt_to_px
+from kitty.layout import Grid, Horizontal, Splits, Stack, Tall, idx_for_id
+from kitty.window import EdgeWidths
 
 from . import BaseTest
 
@@ -18,6 +19,8 @@ class Window:
         self.overlay_window_id = overlay_window_id
         self.is_visible_in_layout = True
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
+        self.padding = EdgeWidths()
+        self.margin = EdgeWidths()
 
     def set_visible_in_layout(self, idx, val):
         self.is_visible_in_layout = bool(val)
