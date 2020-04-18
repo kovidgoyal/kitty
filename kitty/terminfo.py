@@ -198,6 +198,8 @@ string_capabilities = {
     'rmso': r'\E[27m',
     # Exit underline mode
     'rmul': r'\E[24m',
+    # Exit strikethrough mode
+    'rmxx': r'\E[29m',
     # Reset string1 (empty OSC sequence to exit OSC/OTH modes, and regular reset)
     'rs1': r'\E]\E\\\Ec',
     # Save cursor
@@ -224,6 +226,8 @@ string_capabilities = {
     'smso': r'\E[7m',
     # Enter underline mode
     'smul': r'\E[4m',
+    # Enter strikethrough mode
+    'smxx': r'\E[9m',
     # Clear all tab stops
     'tbc': r'\E[3g',
     # To status line (used to set window titles)
@@ -351,6 +355,7 @@ termcap_aliases.update({
     'ei': 'rmir',
     'se': 'rmso',
     'ue': 'rmul',
+    'Te': 'rmxx',
     'r1': 'rs1',
     'sc': 'sc',
     'AB': 'setab',
@@ -363,6 +368,7 @@ termcap_aliases.update({
     'im': 'smir',
     'so': 'smso',
     'us': 'smul',
+    'Ts': 'smxx',
     'ct': 'tbc',
     'cv': 'vpa',
     'ZH': 'sitm',
