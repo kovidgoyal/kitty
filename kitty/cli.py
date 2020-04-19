@@ -624,12 +624,15 @@ Tell kitty to listen on the specified address for control
 messages. For example, :option:`{appname} --listen-on`=unix:/tmp/mykitty or
 :option:`{appname} --listen-on`=tcp:localhost:12345. On Linux systems, you can
 also use abstract UNIX sockets, not associated with a file, like this:
-:option:`{appname} --listen-on`=unix:@mykitty.  To control kitty, you can send
+:option:`{appname} --listen-on`=unix:@mykitty. Environment variables
+in the setting are expanded and relative paths are resolved with
+respect to the temporary directory. To control kitty, you can send
 it commands with :italic:`kitty @` using the :option:`kitty @ --to` option to
 specify this address. This option will be ignored, unless you set
 :opt:`allow_remote_control` to yes in :file:`kitty.conf`. Note that if you run
 :italic:`kitty @` within a kitty window, there is no need to specify the :italic:`--to`
-option as it is read automatically from the environment.
+option as it is read automatically from the environment. For UNIX sockets, this
+can also be specified in :file:`kitty.conf`.
 
 
 --start-as

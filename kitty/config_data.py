@@ -1012,6 +1012,20 @@ you want to prevent programs running on a remote computer over ssh from
 controlling kitty.
 '''))
 
+
+o('listen_on', 'none', long_text=_('''
+Tell kitty to listen to the specified unix/tcp socket for remote control
+connections. Note that this will apply to all kitty instances. It can be
+overridden by the :option:`kitty --listen-on` command line flag. This
+option accepts only UNIX sockets, such as unix:${TEMP}/mykitty or (on Linux)
+unix:@mykitty. Environment variables are expanded. If {kitty_pid} is present
+then it is replaced by the PID of the kitty process, otherwise the PID of the kitty
+process is appended to the value, with a hyphen. This option is ignored unless
+you also set :opt:`allow_remote_control` to enable remote control. See the
+help for :option:`kitty --listen-on` for more details.
+'''))
+
+
 o(
     '+env', '',
     add_to_default=False,

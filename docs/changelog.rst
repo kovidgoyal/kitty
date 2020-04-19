@@ -37,6 +37,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Marks: Fix marks not handling wide characters and tab characters correctly
   (:iss:`2534`)
 
+- Add a new :opt:`listen_on` option in kitty.conf to set :option:`kitty --listen-on`
+  globally. Also allow using environment variables in this option (:iss:`2569`).
+
 - Allow sending mouse events in kittens (:pull:`2538`)
 
 - icat kitten: Fix display of 16-bit depth images (:iss:`2542`)

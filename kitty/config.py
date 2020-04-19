@@ -576,7 +576,7 @@ def handle_deprecated_macos_show_window_title_in_menubar_alias(key: str, val: st
     ans['macos_show_window_title_in'] = macos_show_window_title_in
 
 
-def expandvars(val: str, env: Dict[str, str]) -> str:
+def expandvars(val: str, env: Dict[str, str] = {}) -> str:
 
     def sub(m: Match) -> str:
         key = m.group(1)
