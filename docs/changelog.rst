@@ -19,7 +19,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Update to Unicode 13.0 (:iss:`2513`)
 
-- Render known country flags designated by a pair of unicode codepoints
+- Render country flags designated by a pair of unicode codepoints
   in two cells instead of four.
 
 - diff kitten: New option to control the background color for filler lines in
