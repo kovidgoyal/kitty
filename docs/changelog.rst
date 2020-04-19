@@ -31,7 +31,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Render multi-cell PUA characters centered, matching behavior on other
   platforms
 
-- Linux: Ignore keys is they are designated as layout/group/mode switch keys
+- Linux: Ignore keys if they are designated as layout/group/mode switch keys
   (:iss:`2519`)
 
 - Marks: Fix marks not handling wide characters and tab characters correctly
