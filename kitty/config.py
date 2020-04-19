@@ -240,6 +240,15 @@ def set_colors(func: str, rest: str) -> FuncArgsType:
     return func, r
 
 
+@func_with_args('remote_control')
+def remote_control(func: str, rest: str) -> FuncArgsType:
+    import shlex
+    r = shlex.split(rest)
+    if len(r) < 1:
+        log_error('Too few arguments to remote_control function')
+    return func, r
+
+
 @func_with_args('nth_window')
 def nth_window(func: str, rest: str) -> FuncArgsType:
     try:

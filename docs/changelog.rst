@@ -14,6 +14,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix reverse video not being rendered correctly when using transparency or a
   background image (:iss:`2419`)
 
+- Allow mapping arbitrary remote control commands to key presses in
+  :file:`kitty.conf`
+
 - X11: Fix crash when doing drag and drop from some applications (:iss:`2505`)
 
 - Fix :option:`launch --stdin-add-formatting` not working (:iss:`2512`)
