@@ -97,37 +97,37 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
 
 // }}}
 
-static inline double
-window_left(Window *w, OSWindow *os_window) {
-    return w->geometry.left - OPT(window_padding_width) * (os_window->logical_dpi_x / 72.0);
+static inline unsigned int
+window_left(Window *w) {
+    return w->geometry.left - w->padding.left;
 }
 
-static inline double
-window_right(Window *w, OSWindow *os_window) {
-    return w->geometry.right + OPT(window_padding_width) * (os_window->logical_dpi_x / 72.0);
+static inline unsigned int
+window_right(Window *w) {
+    return w->geometry.right + w->padding.right;
 }
 
-static inline double
-window_top(Window *w, OSWindow *os_window) {
-    return w->geometry.top - OPT(window_padding_width) * (os_window->logical_dpi_y / 72.0);
+static inline unsigned int
+window_top(Window *w) {
+    return w->geometry.top - w->padding.top;
 }
 
-static inline double
-window_bottom(Window *w, OSWindow *os_window) {
-    return w->geometry.bottom + OPT(window_padding_width) * (os_window->logical_dpi_y / 72.0);
+static inline unsigned int
+window_bottom(Window *w) {
+    return w->geometry.bottom + w->padding.bottom;
 }
 
 static inline bool
-contains_mouse(Window *w, OSWindow *os_window) {
+contains_mouse(Window *w) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
-    return (w->visible && window_left(w, os_window) <= x && x <= window_right(w, os_window) && window_top(w, os_window) <= y && y <= window_bottom(w, os_window));
+    return (w->visible && window_left(w) <= x && x <= window_right(w) && window_top(w) <= y && y <= window_bottom(w));
 }
 
 static inline double
-distance_to_window(Window *w, OSWindow *os_window) {
+distance_to_window(Window *w) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
-    double cx = (window_left(w, os_window) + window_right(w, os_window)) / 2.0;
-    double cy = (window_top(w, os_window) + window_bottom(w, os_window)) / 2.0;
+    double cx = (window_left(w) + window_right(w)) / 2.0;
+    double cy = (window_top(w) + window_bottom(w)) / 2.0;
     return (x - cx) * (x - cx) + (y - cy) * (y - cy);
 }
 
@@ -142,7 +142,7 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
     bool in_left_half = true;
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;
-    double left = window_left(w, os_window), top = window_top(w, os_window), right = window_right(w, os_window), bottom = window_bottom(w, os_window);
+    double left = window_left(w), top = window_top(w), right = window_right(w), bottom = window_bottom(w);
     if (clamp_to_window) {
         mouse_x = MIN(MAX(mouse_x, left), right);
         mouse_y = MIN(MAX(mouse_y, top), bottom);
@@ -513,7 +513,7 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     if (!*in_tab_bar && global_state.callback_os_window->num_tabs > 0) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
-            if (contains_mouse(t->windows + i, global_state.callback_os_window) && t->windows[i].render_data.screen) {
+            if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
                 *window_idx = i; return t->windows + i;
             }
         }
@@ -529,7 +529,7 @@ closest_window_for_event(unsigned int *window_idx) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
             Window *w = t->windows + i;
-            double d = distance_to_window(w, global_state.callback_os_window);
+            double d = distance_to_window(w);
             if (d < closest_distance) { ans = w; closest_distance = d; *window_idx = i; }
         }
     }

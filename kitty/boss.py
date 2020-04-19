@@ -534,7 +534,9 @@ class Boss:
             sz = os_window_font_size(os_window_id)
             if sz:
                 os_window_font_size(os_window_id, sz, True)
-                tm.update_dpi_based_sizes()
+                for tab in tm:
+                    for window in tab:
+                        window.on_dpi_change(sz)
                 tm.resize()
 
     def _set_os_window_background_opacity(self, os_window_id: int, opacity: float) -> None:

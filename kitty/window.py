@@ -25,14 +25,15 @@ from .fast_data_types import (
     MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     STRIKETHROUGH, TINT_PROGRAM, Screen, add_window, cell_size_for_window,
     compile_program, get_boss, get_clipboard_string, init_cell_program,
-    set_clipboard_string, set_titlebar_color, set_window_render_data,
-    update_window_title, update_window_visibility, viewport_for_window
+    pt_to_px, set_clipboard_string, set_titlebar_color, set_window_padding,
+    set_window_render_data, update_window_title, update_window_visibility,
+    viewport_for_window
 )
 from .keys import defines, extended_key_event, keyboard_mode_name
 from .options_stub import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .typing import BossType, ChildType, TabType, TypedDict
+from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int, get_primary_selection, load_shaders, open_cmd, open_url,
     parse_color_set, read_shell_environment, sanitize_title,
@@ -186,12 +187,12 @@ def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str
 
 
 class EdgeWidths:
-    left: Optional[int]
-    top: Optional[int]
-    right: Optional[int]
-    bottom: Optional[int]
+    left: Optional[float]
+    top: Optional[float]
+    right: Optional[float]
+    bottom: Optional[float]
 
-    def __init__(self, serialized: Optional[Dict[str, Optional[int]]] = None):
+    def __init__(self, serialized: Optional[Dict[str, Optional[float]]] = None):
         if serialized is not None:
             self.left = serialized['left']
             self.right = serialized['right']
@@ -200,7 +201,7 @@ class EdgeWidths:
         else:
             self.left = self.top = self.right = self.bottom = None
 
-    def serialize(self) -> Dict[str, Optional[int]]:
+    def serialize(self) -> Dict[str, Optional[float]]:
         return {'left': self.left, 'right': self.right, 'top': self.top, 'bottom': self.bottom}
 
 
@@ -250,10 +251,46 @@ class Window:
         else:
             setup_colors(self.screen, opts)
 
+    def on_dpi_change(self, font_sz: float) -> None:
+        self.update_effective_padding()
+
     def change_tab(self, tab: TabType) -> None:
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref = weakref.ref(tab)
+
+    def effective_margin(self, edge: EdgeLiteral, is_single_window: bool = False) -> int:
+        q = getattr(self.margin, edge)
+        if q is not None:
+            return pt_to_px(q, self.os_window_id)
+        if is_single_window:
+            q = getattr(self.opts.single_window_margin_width, edge)
+            if q > -0.1:
+                return pt_to_px(q, self.os_window_id)
+        q = getattr(self.opts.window_margin_width, edge)
+        return pt_to_px(q, self.os_window_id)
+
+    def effective_padding(self, edge: EdgeLiteral) -> int:
+        q = getattr(self.padding, edge)
+        if q is not None:
+            return pt_to_px(q, self.os_window_id)
+        q = getattr(self.opts.window_padding_width, edge)
+        return pt_to_px(q, self.os_window_id)
+
+    def update_effective_padding(self) -> None:
+        set_window_padding(
+            self.os_window_id, self.tab_id, self.id,
+            self.effective_padding('left'), self.effective_padding('top'),
+            self.effective_padding('right'), self.effective_padding('bottom'))
+
+    def patch_edge_width(self, which: str, edge: EdgeLiteral, val: Optional[float]) -> None:
+        q = self.padding if which == 'padding' else self.margin
+        setattr(q, edge, val)
+        if q is self.padding:
+            self.update_effective_padding()
+
+    def effective_border(self) -> int:
+        return pt_to_px(self.opts.window_border_width, self.os_window_id)
 
     @property
     def title(self) -> str:
@@ -362,6 +399,7 @@ class Window:
             sg = self.update_position(new_geometry)
         self.geometry = g = new_geometry
         set_window_render_data(self.os_window_id, self.tab_id, self.id, window_idx, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
+        self.update_effective_padding()
 
     def contains(self, x: int, y: int) -> bool:
         g = self.geometry

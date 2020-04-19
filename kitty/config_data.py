@@ -6,8 +6,8 @@
 import os
 from gettext import gettext as _
 from typing import (
-    Any, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set, Tuple,
-    TypeVar, Union
+    Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set,
+    Tuple, TypeVar, Union
 )
 
 from . import fast_data_types as defines
@@ -16,7 +16,7 @@ from .conf.utils import (
     choices, positive_float, positive_int, to_bool, to_cmdline, to_color,
     to_color_or_none, unit_float
 )
-from .constants import config_dir, is_macos
+from .constants import FloatEdges, config_dir, is_macos
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from .layout import all_layouts
 from .rgb import Color, color_as_int, color_as_sharp, color_from_int
@@ -675,15 +675,42 @@ that separate the inactive window from a neighbor. Note that setting
 a non-zero window margin overrides this and causes all borders to be drawn.
 '''))
 
-o('window_margin_width', 0.0, option_type=positive_float, long_text=_('''
-The window margin (in pts) (blank area outside the border)'''))
 
-o('single_window_margin_width', -1000.0, option_type=float, long_text=_('''
+def edge_width(x: str, converter: Callable[[str], float] = positive_float) -> FloatEdges:
+    parts = str(x).split()
+    num = len(parts)
+    if num == 1:
+        val = converter(parts[0])
+        return FloatEdges(val, val, val, val)
+    if num == 2:
+        v = converter(parts[0])
+        h = converter(parts[1])
+        return FloatEdges(h, v, h, v)
+    if num == 3:
+        top, h, bottom = map(converter, parts)
+        return FloatEdges(h, top, h, bottom)
+    top, right, bottom, left = map(converter, parts)
+    return FloatEdges(left, top, right, bottom)
+
+
+def optional_edge_width(x: str) -> FloatEdges:
+    return edge_width(x, float)
+
+
+edge_desc = _(
+    'A single value sets all four sides. Two values set the vertical and horizontal sides.'
+    ' Three values set top, horizontal and bottom. Four values set top, right, bottom and left.')
+
+
+o('window_margin_width', '0', option_type=edge_width, long_text=_('''
+The window margin (in pts) (blank area outside the border). ''' + edge_desc))
+
+o('single_window_margin_width', '-1', option_type=optional_edge_width, long_text=_('''
 The window margin (in pts) to use when only a single window is visible.
-Negative values will cause the value of :opt:`window_margin_width` to be used instead.'''))
+Negative values will cause the value of :opt:`window_margin_width` to be used instead. ''' + edge_desc))
 
-o('window_padding_width', 0.0, option_type=positive_float, long_text=_('''
-The window padding (in pts) (blank area between the text and the window border)'''))
+o('window_padding_width', '0', option_type=edge_width, long_text=_('''
+The window padding (in pts) (blank area between the text and the window border). ''' + edge_desc))
 
 o('placement_strategy', 'center', option_type=choices('center', 'top-left'), long_text=_('''
 When the window size is not an exact multiple of the cell size, the cell area of the terminal
@@ -1024,7 +1051,6 @@ process is appended to the value, with a hyphen. This option is ignored unless
 you also set :opt:`allow_remote_control` to enable remote control. See the
 help for :option:`kitty --listen-on` for more details.
 '''))
-
 
 o(
     '+env', '',

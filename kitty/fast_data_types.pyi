@@ -1132,3 +1132,7 @@ def spawn(
 
 def key_to_bytes(glfw_key: int, smkx: bool, extended: bool, mods: int, action: int) -> bytes:
     pass
+
+
+def set_window_padding(os_window_id: int, tab_id: int, window_id: int, left: int, top: int, right: int, bottom: int) -> None:
+    pass

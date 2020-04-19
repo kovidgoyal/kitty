@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.17.3 [future]
 -----------------
 
+- Allow individually setting margins and padding for each edge (left, right,
+  top, bottom)
+
 - Fix reverse video not being rendered correctly when using transparency or a
   background image (:iss:`2419`)
 

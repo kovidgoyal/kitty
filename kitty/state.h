@@ -53,7 +53,6 @@ typedef struct {
 
     bool dynamic_background_opacity;
     float inactive_text_alpha;
-    float window_padding_width;
     Edge tab_bar_edge;
     unsigned long tab_bar_min_tabs;
     DisableLigature disable_ligatures;
@@ -106,6 +105,9 @@ typedef struct {
         double x, y;
         bool in_left_half_of_cell;
     } mouse_pos;
+    struct {
+        unsigned int left, top, right, bottom;
+    } padding;
     WindowGeometry geometry;
     ClickQueue click_queue;
     monotonic_t last_drag_scroll_at;

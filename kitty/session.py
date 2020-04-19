@@ -8,7 +8,7 @@ from typing import Generator, List, NamedTuple, Optional, Tuple, Union
 
 from .cli_stub import CLIOptions
 from .config_data import to_layout_names
-from .constants import kitty_exe
+from .constants import FloatEdges, kitty_exe
 from .layout import all_layouts
 from .options_stub import Options
 from .typing import SpecialWindowInstance
@@ -19,8 +19,8 @@ class WindowSizeOpts(NamedTuple):
 
     initial_window_width: Tuple[int, str]
     initial_window_height: Tuple[int, str]
-    window_margin_width: float
-    window_padding_width: float
+    window_margin_width: FloatEdges
+    window_padding_width: FloatEdges
     remember_window_size: bool
 
 

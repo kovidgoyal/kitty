@@ -17,8 +17,8 @@ from .cli_stub import CLIOptions
 from .constants import appname, is_macos, is_wayland
 from .fast_data_types import (
     add_tab, attach_window, detach_window, get_boss, mark_tab_bar_dirty,
-    next_window_id, pt_to_px, remove_tab, remove_window, ring_bell,
-    set_active_tab, swap_tabs, x11_window_id
+    next_window_id, remove_tab, remove_window, ring_bell, set_active_tab,
+    swap_tabs, x11_window_id
 )
 from .layout import (
     Layout, Rect, create_layout_object_for, evict_cached_layouts
@@ -87,11 +87,10 @@ class Tab:  # {{{
         if not self.id:
             raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
         self.opts, self.args = tab_manager.opts, tab_manager.args
-        self.recalculate_sizes(update_layout=False)
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id, self.opts)
-        self.windows: Deque[Window] = deque()
+        self.windows: List[Window] = []
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
         self._last_used_layout: Optional[str] = None
@@ -113,15 +112,6 @@ class Tab:  # {{{
             self._set_current_layout(l0)
             self.startup(session_tab)
 
-    def recalculate_sizes(self, update_layout: bool = True) -> None:
-        self.margin_width, self.padding_width, self.single_window_margin_width = map(
-            lambda x: pt_to_px(getattr(self.opts, x), self.os_window_id), (
-                'window_margin_width', 'window_padding_width', 'single_window_margin_width'))
-        self.border_width = pt_to_px(self.opts.window_border_width, self.os_window_id)
-        if update_layout and self.current_layout:
-            self.current_layout.update_sizes(
-                self.margin_width, self.single_window_margin_width, self.padding_width, self.border_width)
-
     def take_over_from(self, other_tab: 'Tab') -> None:
         self.name, self.cwd = other_tab.name, other_tab.cwd
         self.enabled_layouts = list(other_tab.enabled_layouts)
@@ -129,12 +119,12 @@ class Tab:  # {{{
             self._set_current_layout(other_tab._current_layout_name)
         self._last_used_layout = other_tab._last_used_layout
 
-        orig_windows = deque(other_tab.windows)
+        orig_windows = list(other_tab.windows)
         orig_history = deque(other_tab.active_window_history)
         orig_active = other_tab._active_window_idx
         for window in other_tab.windows:
             detach_window(other_tab.os_window_id, other_tab.id, window.id)
-        other_tab.windows = deque()
+        other_tab.windows = []
         other_tab._active_window_idx = 0
         self.active_window_history = orig_history
         self.windows = orig_windows
@@ -243,17 +233,13 @@ class Tab:  # {{{
             self.borders(
                 windows=visible_windows, active_window=w,
                 current_layout=ly, extra_blank_rects=tm.blank_rects,
-                padding_width=self.padding_width, border_width=self.border_width,
                 draw_window_borders=(ly.needs_window_borders and len(visible_windows) > 1) or ly.must_draw_borders
             )
             if w is not None:
                 w.change_titlebar_color()
 
     def create_layout_object(self, name: str) -> Layout:
-        return create_layout_object_for(
-            name, self.os_window_id, self.id, self.margin_width,
-            self.single_window_margin_width, self.padding_width,
-            self.border_width)
+        return create_layout_object_for(name, self.os_window_id, self.id)
 
     def next_layout(self) -> None:
         if len(self.enabled_layouts) > 1:
@@ -559,7 +545,7 @@ class Tab:  # {{{
         evict_cached_layouts(self.id)
         for w in self.windows:
             w.destroy()
-        self.windows = deque()
+        self.windows = []
 
     def __repr__(self) -> str:
         return 'Tab(title={}, id={})'.format(self.name or self.title, hex(id(self)))
@@ -652,10 +638,6 @@ class TabManager:  # {{{
 
     def update_tab_bar_data(self) -> None:
         self.tab_bar.update(self.tab_bar_data)
-
-    def update_dpi_based_sizes(self) -> None:
-        for tab in self.tabs:
-            tab.recalculate_sizes()
 
     def resize(self, only_tabs: bool = False) -> None:
         if not only_tabs:
