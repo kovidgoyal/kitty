@@ -8,7 +8,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 -----------------
 
 - Allow individually setting margins and padding for each edge (left, right,
-  top, bottom)
+  top, bottom). Margins can also be controlled per window via remote control
+  (:iss:`2546`)
 
 - Fix reverse video not being rendered correctly when using transparency or a
   background image (:iss:`2419`)
