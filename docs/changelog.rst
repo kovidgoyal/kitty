@@ -46,6 +46,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.17 that broke displaying graphics over SSH
   (:iss:`2568`)
 
+- Fix :option:`--title` not being applied at window creation time (:iss:`2570`)
 
 0.17.2 [2020-03-29]
 --------------------

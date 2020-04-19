@@ -198,7 +198,7 @@ class Boss:
                 os_window_id = create_os_window(
                         initial_window_size_func(opts_for_size, self.cached_values),
                         pre_show_callback,
-                        appname, wname or self.args.name or wclass, wclass)
+                        self.args.title or appname, wname or self.args.name or wclass, wclass)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
         self.os_window_map[os_window_id] = tm
         return os_window_id
