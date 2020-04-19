@@ -508,7 +508,11 @@ class Layout:  # {{{
         return layout_dimension(start, size, cell_width, decoration_pairs, bias=bias, left_align=align_top_left)
 
     def ylayout(
-        self, windows: WindowList, bias: Optional[Sequence[float]] = None, start: Optional[int] = None, size: Optional[int] = None
+        self,
+        windows: WindowList,
+        bias: Optional[Sequence[float]] = None,
+        start: Optional[int] = None,
+        size: Optional[int] = None
     ) -> LayoutDimension:
         decoration_pairs = tuple(
             (
