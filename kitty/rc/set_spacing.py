@@ -52,7 +52,7 @@ class SetSpacing(RemoteCommand):
     desc = (
         'Set the padding and margins for the specified windows (defaults to active window).'
         ' For example: margin=20 or padding-left=10 or margin-h=30. The shorthand form sets'
-        ' all values, the *-h and *-v variants set horizontal and vertical values.'
+        ' all values, the :code:`*-h` and :code:`*-v` variants set horizontal and vertical values.'
         ' The special value "default" resets to using the default value.'
         ' If you specify a tab rather than a window, all windows in that tab are affected.'
     )
