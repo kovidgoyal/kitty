@@ -41,6 +41,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - icat kitten: Fix display of 16-bit depth images (:iss:`2542`)
 
+- Add ncurses specific terminfo definitions for strikethrough (:pull:`2567`)
+
 
 0.17.2 [2020-03-29]
 --------------------
