@@ -552,9 +552,9 @@ class Layout:  # {{{
         else:
             yield from Layout.minimal_borders(self, windows, active_window, {})
 
-    def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Tuple[int, int, int, int], None, None]:
+    def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Edges, None, None]:
         return
-        yield (0, 0, 0, 0)  # type: ignore
+        yield Edges()  # type: ignore
 
     def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         for w in windows:
@@ -901,51 +901,66 @@ class Grid(Layout):
             size = ld.space_before + ld.space_after + ld.content_size
             return start, size
 
-        for window_idx, xl, yl in self.layout_windows(
-                len(windows), nrows, ncols, special_rows, special_col, on_col_done):
+        def layout(ld: LayoutData, cell_length: int, before_dec: int, after_dec: int) -> LayoutData:
+            start, size = extents(ld)
+            space_needed_for_decorations = before_dec + after_dec
+            content_size = size - space_needed_for_decorations
+            number_of_cells = content_size // cell_length
+            cell_area = number_of_cells * cell_length
+            extra = content_size - cell_area
+            if extra > 0 and not align_top_left:
+                before_dec += extra // 2
+            return LayoutData(start + before_dec, number_of_cells, before_dec, size - cell_area - before_dec, cell_area)
+
+        def position_window_in_grid_cell(window_idx: int, xl: LayoutData, yl: LayoutData) -> None:
             w = windows[window_idx]
-            start, size = extents(xl)
-            xl = next(self.xlayout([w], start=start, size=size))
-            start, size = extents(yl)
-            yl = next(self.ylayout([w], start=start, size=size))
+            bw = w.effective_border()
+            edges = Edges(
+                w.effective_margin('left') + w.effective_padding('left') + bw,
+                w.effective_margin('right') + w.effective_padding('right') + bw,
+                w.effective_margin('top') + w.effective_padding('top') + bw,
+                w.effective_margin('bottom') + w.effective_padding('bottom') + bw,
+            )
+            xl = layout(xl, cell_width, edges.left, edges.right)
+            yl = layout(yl, cell_height, edges.top, edges.bottom)
             self.set_window_geometry(w, window_idx, xl, yl)
 
-    def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
-        n = len(windows)
-        ncols, nrows, special_rows, special_col = calc_grid_size(n)
-        blank_row: List[Optional[int]] = [None for i in range(ncols)]
-        matrix = tuple(blank_row[:] for j in range(max(nrows, special_rows)))
-        wi = iter(windows)
-        pos_map = {}
-        col_counts = []
-        for col in range(ncols):
-            rows = special_rows if col == special_col else nrows
-            for row in range(rows):
-                matrix[row][col] = wid = next(wi).id
-                pos_map[wid] = row, col
-            col_counts.append(rows)
+        for window_idx, xl, yl in self.layout_windows(
+                n, nrows, ncols, special_rows, special_col, on_col_done):
+            position_window_in_grid_cell(window_idx, xl, yl)
 
+    def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
         for w in windows:
-            wid = w.id
-            if needs_borders_map[wid]:
+            if needs_borders_map[w.id]:
                 yield all_borders
-                continue
-            row, col = pos_map[wid]
-            if col + 1 < ncols:
-                next_col_has_different_count = col_counts[col + 1] != col_counts[col]
-                right_neighbor_id: Optional[int] = matrix[row][col+1]
             else:
-                right_neighbor_id = None
-                next_col_has_different_count = False
-            try:
-                bottom_neighbor_id: Optional[int] = matrix[row+1][col]
-            except IndexError:
-                bottom_neighbor_id = None
-            yield Borders(
-                False, False,
-                (right_neighbor_id is not None and not needs_borders_map[right_neighbor_id]) or next_col_has_different_count,
-                bottom_neighbor_id is not None and not needs_borders_map[bottom_neighbor_id]
-            )
+                yield no_borders
+
+    def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Edges, None, None]:
+        n = len(windows)
+        if not draw_minimal_borders or n < 2:
+            return
+        ncols, nrows, special_rows, special_col = calc_grid_size(n)
+        row_borders: List[List[Edges]] = [[]]
+        col_borders: List[Edges] = []
+        bw = windows[0].effective_border()
+
+        def on_col_done(col_windows: List[int]) -> None:
+            left = xl.content_pos + xl.content_size + xl.space_after - bw // 2
+            col_borders.append(Edges(left, central.top, left + bw, central.bottom))
+            row_borders.append([])
+
+        for window_idx, xl, yl in self.layout_windows(n, nrows, ncols, special_rows, special_col, on_col_done):
+            top = yl.content_pos + yl.content_size + yl.space_after - bw // 2
+            right = xl.content_pos + xl.content_size + xl.space_after
+            row_borders[-1].append(Edges(xl.content_pos - xl.space_before, top, right, top + bw))
+
+        for border in col_borders[:-1]:
+            yield border
+
+        for rows in row_borders:
+            for border in rows[:-1]:
+                yield border
 
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
         n = len(windows)
@@ -1079,7 +1094,7 @@ class Pair:
         self.one: Optional[Union[Pair, int]] = None
         self.two: Optional[Union[Pair, int]] = None
         self.bias = 0.5
-        self.between_border: Optional[Tuple[int, int, int, int]] = None
+        self.between_border: Optional[Edges] = None
 
     def __repr__(self) -> str:
         return 'Pair(horizontal={}, bias={:.2f}, one={}, two={}, between_border={})'.format(
@@ -1242,7 +1257,7 @@ class Pair:
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.one, geom, id_window_map, id_idx_map, layout_object)
             if b1 + b2:
-                self.between_border = (left + w1, top, left + w1 + b1 + b2, top + height)
+                self.between_border = Edges(left + w1, top, left + w1 + b1 + b2, top + height)
             left += b1 + b2
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left + w1, top, w2, height, id_window_map, id_idx_map, layout_object)
@@ -1264,7 +1279,7 @@ class Pair:
                 geom = window_geometry_from_layouts(xl, yl)
                 self.apply_window_geometry(self.one, geom, id_window_map, id_idx_map, layout_object)
             if b1 + b2:
-                self.between_border = (left, top + h1, left + width, top + h1 + b1 + b2)
+                self.between_border = Edges(left, top + h1, left + width, top + h1 + b1 + b2)
             top += b1 + b2
             if isinstance(self.two, Pair):
                 self.two.layout_pair(left, top + h1, width, h2, id_window_map, id_idx_map, layout_object)
@@ -1457,7 +1472,7 @@ class Splits(Layout):
             pair.bias = 0.5
         return True
 
-    def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Tuple[int, int, int, int], None, None]:
+    def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Edges, None, None]:
         if not draw_minimal_borders:
             return
         for pair in self.pairs_root.self_and_descendants():

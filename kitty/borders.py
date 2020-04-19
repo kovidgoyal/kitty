@@ -97,8 +97,11 @@ class Borders:
                     color = BorderColor.active
                 else:
                     color = BorderColor.bell if w.needs_attention else BorderColor.inactive
-                colors = tuple(color if needed else window_bg for needed in next(border_data))
-                draw_edges(self.os_window_id, self.tab_id, colors, w, borders=True)
+                try:
+                    colors = tuple(color if needed else window_bg for needed in next(border_data))
+                    draw_edges(self.os_window_id, self.tab_id, colors, w, borders=True)
+                except StopIteration:
+                    pass
             if not has_background_image:
                 # Draw the background rectangles over the padding region
                 colors = window_bg, window_bg, window_bg, window_bg
