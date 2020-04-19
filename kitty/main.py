@@ -131,7 +131,7 @@ def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] =
             window_id = create_os_window(
                     run_app.initial_window_size_func(opts, cached_values),
                     pre_show_callback,
-                    appname, args.name or args.cls or appname,
+                    args.title or appname, args.name or args.cls or appname,
                     args.cls or appname, load_all_shaders)
         boss = Boss(opts, args, cached_values, new_os_window_trigger)
         boss.start(window_id)
