@@ -11,7 +11,7 @@ static inline void parse_graphics_code(Screen *screen,
   unsigned int i, code;
   uint64_t lcode;
   bool is_negative;
-  zero_at_ptr(&g);
+  memset(&g, 0, sizeof(g));
   size_t sz;
   static uint8_t payload[4096];
 
@@ -39,6 +39,8 @@ static inline void parse_graphics_code(Screen *screen,
   };
 
   enum KEYS key = 'a';
+  if (screen->parser_buf[pos] == ';')
+    state = AFTER_VALUE;
 
   while (pos < screen->parser_buf_pos) {
     switch (state) {
@@ -129,8 +131,8 @@ static inline void parse_graphics_code(Screen *screen,
 
       case action: {
         g.action = screen->parser_buf[pos++] & 0xff;
-        if (g.action != 'q' && g.action != 'd' && g.action != 't' &&
-            g.action != 'T' && g.action != 'p') {
+        if (g.action != 't' && g.action != 'd' && g.action != 'p' &&
+            g.action != 'q' && g.action != 'T') {
           REPORT_ERROR("Malformed GraphicsCommand control block, unknown flag "
                        "value for action: 0x%x",
                        g.action);
@@ -140,14 +142,14 @@ static inline void parse_graphics_code(Screen *screen,
 
       case delete_action: {
         g.delete_action = screen->parser_buf[pos++] & 0xff;
-        if (g.delete_action != 'q' && g.delete_action != 'c' &&
-            g.delete_action != 'Z' && g.delete_action != 'z' &&
-            g.delete_action != 'x' && g.delete_action != 'X' &&
-            g.delete_action != 'I' && g.delete_action != 'i' &&
-            g.delete_action != 'P' && g.delete_action != 'y' &&
-            g.delete_action != 'a' && g.delete_action != 'A' &&
-            g.delete_action != 'Q' && g.delete_action != 'C' &&
-            g.delete_action != 'p' && g.delete_action != 'Y') {
+        if (g.delete_action != 'X' && g.delete_action != 'y' &&
+            g.delete_action != 'i' && g.delete_action != 'I' &&
+            g.delete_action != 'A' && g.delete_action != 'p' &&
+            g.delete_action != 'Y' && g.delete_action != 'z' &&
+            g.delete_action != 'a' && g.delete_action != 'P' &&
+            g.delete_action != 'x' && g.delete_action != 'q' &&
+            g.delete_action != 'Z' && g.delete_action != 'Q' &&
+            g.delete_action != 'c' && g.delete_action != 'C') {
           REPORT_ERROR("Malformed GraphicsCommand control block, unknown flag "
                        "value for delete_action: 0x%x",
                        g.delete_action);
@@ -157,8 +159,8 @@ static inline void parse_graphics_code(Screen *screen,
 
       case transmission_type: {
         g.transmission_type = screen->parser_buf[pos++] & 0xff;
-        if (g.transmission_type != 's' && g.transmission_type != 'f' &&
-            g.transmission_type != 't' && g.transmission_type != 'd') {
+        if (g.transmission_type != 'f' && g.transmission_type != 'd' &&
+            g.transmission_type != 's' && g.transmission_type != 't') {
           REPORT_ERROR("Malformed GraphicsCommand control block, unknown flag "
                        "value for transmission_type: 0x%x",
                        g.transmission_type);

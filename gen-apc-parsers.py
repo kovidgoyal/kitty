@@ -137,6 +137,7 @@ static inline void
     {parr}
     {keys_enum}
     enum KEYS key = '{initial_key}';
+    if (screen->parser_buf[pos] == ';') state = AFTER_VALUE;
 
     while (pos < screen->parser_buf_pos) {{
         switch(state) {{

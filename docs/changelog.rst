@@ -43,6 +43,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add ncurses specific terminfo definitions for strikethrough (:pull:`2567`)
 
+- Fix a regression in 0.17 that broke displaying graphics over SSH
+  (:iss:`2568`)
+
 
 0.17.2 [2020-03-29]
 --------------------
