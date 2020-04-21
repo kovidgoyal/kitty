@@ -31,6 +31,7 @@
 #define KITTY_LIB_DIR_NAME "lib"
 #endif
 
+#ifndef __FreeBSD__
 static inline bool
 safe_realpath(const char* src, char *buf, size_t buf_sz) {
     char* ans = realpath(src, NULL);
@@ -39,6 +40,7 @@ safe_realpath(const char* src, char *buf, size_t buf_sz) {
     free(ans);
     return true;
 }
+#endif
 
 static inline void
 set_bundle_exe_dir(const wchar_t *exe_dir) {
