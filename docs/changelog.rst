@@ -4,8 +4,8 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.17.3 [future]
------------------
+0.17.3 [2020-04-23]
+--------------------
 
 - Allow individually setting margins and padding for each edge (left, right,
   top, bottom). Margins can also be controlled per window via remote control
