@@ -409,7 +409,10 @@ def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, e
         elif otype == 'list':
             t = 'typing.Sequence[str]'
         elif otype in ('choice', 'choices'):
-            t = 'str'
+            if opt['choices']:
+                t = 'typing.Literal[{}]'.format(','.join(f'{x!r}' for x in opt['choices']))
+            else:
+                t = 'str'
         elif otype.startswith('bool-'):
             t = 'bool'
         else:
