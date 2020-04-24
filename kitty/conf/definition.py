@@ -9,7 +9,7 @@ from typing import (
     Set, Tuple, Union, get_type_hints
 )
 
-from .utils import to_bool
+from .utils import Choice, to_bool
 
 
 def to_string(x: str) -> str:
@@ -56,6 +56,8 @@ class Option:
 
         if type(self.option_type) is type:
             return type_name(self.option_type)
+        if isinstance(self.option_type, Choice):
+            return 'typing.Literal[{}]'.format(','.join(f'{x!r}' for x in self.option_type.all_choices))
         th = get_type_hints(self.option_type)
         try:
             rettype = th['return']

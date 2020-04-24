@@ -68,17 +68,21 @@ def python_string(text: str) -> str:
     return ans
 
 
-def choices(*choices: str) -> Callable[[str], str]:
-    defval = choices[0]
-    uc = frozenset(choices)
+class Choice:
 
-    def choice(x: str) -> str:
+    def __init__(self, choices: Sequence[str]):
+        self.defval = choices[0]
+        self.all_choices = frozenset(choices)
+
+    def __call__(self, x: str) -> str:
         x = x.lower()
-        if x not in uc:
-            x = defval
+        if x not in self.all_choices:
+            x = self.defval
         return x
 
-    return choice
+
+def choices(*choices: str) -> Choice:
+    return Choice(choices)
 
 
 def parse_line(
