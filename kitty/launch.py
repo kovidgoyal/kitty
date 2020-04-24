@@ -275,8 +275,8 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
         kw['cmd'] = final_cmd
     if opts.type == 'overlay' and active and not active.overlay_window_id:
         kw['overlay_for'] = active.id
-    if opts.stdin_source and opts.stdin_source != 'none':
-        q = opts.stdin_source
+    if opts.stdin_source != 'none':
+        q = str(opts.stdin_source)
         if opts.stdin_add_formatting:
             if q in ('@screen', '@screen_scrollback', '@alternate', '@alternate_scrollback'):
                 q = '@ansi_' + q[1:]
