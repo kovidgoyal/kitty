@@ -42,7 +42,7 @@ choices=window,tab,os-window,overlay,background,clipboard,primary
 Where to launch the child process, in a new kitty window in the current tab,
 a new tab, or a new OS window or an overlay over the current window.
 Note that if the current window already has an overlay, then it will
-open a new window. The value of none means the process will be
+open a new window. The value of background means the process will be
 run in the background. The values clipboard and primary are meant
 to work with :option:`launch --stdin-source` to copy data to the system
 clipboard or primary selection.
