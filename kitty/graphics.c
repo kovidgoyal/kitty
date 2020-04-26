@@ -939,7 +939,7 @@ static PyMethodDef methods[] = {
 };
 
 static PyMemberDef members[] = {
-    {"image_count", T_UINT, offsetof(GraphicsManager, image_count), 0, "image_count"},
+    {"image_count", T_PYSSIZET, offsetof(GraphicsManager, image_count), 0, "image_count"},
     {NULL},
 };
 
