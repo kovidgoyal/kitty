@@ -987,6 +987,11 @@ of windows set :opt:`dynamic_background_opacity` to :code:`yes` (this is off by
 default as it has a performance cost)
 '''))
 
+o('foreground_opacity', 1.0, option_type=unit_float, long_text=_('''
+The opacity of the foreground. A number between 0 and 1, where 1 is opaque and
+0 is fully transparent. This has similar constraints to :opt:`background_opacity`
+'''))
+
 
 def config_or_absolute_path(x: str) -> Optional[str]:
     if x.lower() == 'none':
