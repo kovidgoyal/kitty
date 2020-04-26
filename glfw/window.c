@@ -462,6 +462,9 @@ GLFWAPI void glfwWindowHint(int hint, int value)
         case GLFW_REFRESH_RATE:
             _glfw.hints.refreshRate = value;
             return;
+        case GLFW_WAYLAND_BACKGROUND:
+            _glfw.hints.window.wl.background = value;
+            return;
     }
 
     _glfwInputError(GLFW_INVALID_ENUM, "Invalid window hint 0x%08X", hint);
@@ -490,6 +493,10 @@ GLFWAPI void glfwWindowHintString(int hint, const char* value)
         case GLFW_WAYLAND_APP_ID:
             strncpy(_glfw.hints.window.wl.appId, value,
                     sizeof(_glfw.hints.window.wl.appId) - 1);
+            return;
+        case GLFW_WAYLAND_BACKGROUND_MONITOR:
+            strncpy(_glfw.hints.window.wl.backgroundMonitor, value,
+                    sizeof(_glfw.hints.window.wl.backgroundMonitor) - 1);
             return;
     }
 

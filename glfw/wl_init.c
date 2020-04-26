@@ -642,6 +642,13 @@ static void registryHandleGlobal(void* data UNUSED,
             _glfwSetupWaylandPrimarySelectionDevice();
         }
     }
+    else if (strcmp(interface, "zwlr_layer_shell_v1") == 0)
+    {
+        _glfw.wl.layer_shell =
+            wl_registry_bind(registry, name,
+                             &zwlr_layer_shell_v1_interface,
+                             1);
+    }
 
 }
 
