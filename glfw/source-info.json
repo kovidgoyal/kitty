@@ -79,6 +79,9 @@
       "unstable/primary-selection/primary-selection-unstable-v1.xml",
       "unstable/text-input/text-input-unstable-v3.xml"
     ],
+    "custom_protocols": [
+      "wlr-layer-shell-unstable-v1.xml"
+    ],
     "sources": [
       "wl_init.c",
       "wl_monitor.c",

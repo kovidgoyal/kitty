@@ -157,7 +157,8 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
                     run_app.initial_window_size_func(get_os_window_sizing_data(opts), cached_values),
                     pre_show_callback,
                     args.title or appname, args.name or args.cls or appname,
-                    args.cls or appname, load_all_shaders)
+                    args.cls or appname, load_all_shaders, -1, -1,
+                    args.background, args.mouse_passthrough, args.background_monitor)
         boss = Boss(opts, args, cached_values, global_shortcuts)
         boss.start(window_id)
         if bad_lines:

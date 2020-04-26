@@ -568,6 +568,86 @@ static bool createXdgSurface(_GLFWwindow* window)
     return true;
 }
 
+static void layerSurfaceHandleConfigure(void* data,
+                                        struct zwlr_layer_surface_v1* surface,
+                                        uint32_t serial,
+                                        uint32_t width,
+                                        uint32_t height) {
+    _GLFWwindow* window = data;
+    dispatchChangesAfterConfigure(window, width, height);
+    zwlr_layer_surface_v1_ack_configure(surface, serial);
+}
+
+
+static void layerSurfaceHandleClosed(void* data,
+                                    struct zwlr_layer_surface_v1* surface UNUSED) {
+    _GLFWwindow* window = data;
+    _glfwInputWindowCloseRequest(window);
+}
+
+static const struct zwlr_layer_surface_v1_listener layerSurfaceListener = {
+    layerSurfaceHandleConfigure,
+    layerSurfaceHandleClosed,
+};
+
+static struct wl_output* findWlOutput(const char* name)
+{
+    int count;
+    GLFWmonitor** monitors = glfwGetMonitors(&count);
+
+    for (int i = 0; i < count; ++i)
+    {
+        if (strcmp(glfwGetMonitorName(monitors[i]), name) == 0)
+        {
+            return glfwGetWaylandMonitor(monitors[i]);
+        }
+    }
+    return NULL;
+}
+
+static bool createLayerSurface(_GLFWwindow* window,
+                               const _GLFWwndconfig* wndconfig)
+{
+    if (!_glfw.wl.layer_shell)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Wayland: layer-shell protocol unsupported");
+        return false;
+    }
+
+    struct wl_output* output = findWlOutput(wndconfig->wl.backgroundMonitor);
+    window->wl.layer.surface =
+        zwlr_layer_shell_v1_get_layer_surface(_glfw.wl.layer_shell,
+            window->wl.surface, output, ZWLR_LAYER_SHELL_V1_LAYER_BOTTOM,
+            "kitty");
+
+    if (!window->wl.layer.surface)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Wayland: layer-surface creation failed");
+        return false;
+    }
+
+    zwlr_layer_surface_v1_set_size(window->wl.layer.surface, 0, 0);
+    zwlr_layer_surface_v1_set_anchor(window->wl.layer.surface,
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_TOP |
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_BOTTOM |
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_LEFT |
+        ZWLR_LAYER_SURFACE_V1_ANCHOR_RIGHT);
+    zwlr_layer_surface_v1_set_exclusive_zone(window->wl.layer.surface, -1);
+    zwlr_layer_surface_v1_set_margin(window->wl.layer.surface, 0, 0, 0, 0);
+    zwlr_layer_surface_v1_set_keyboard_interactivity(window->wl.layer.surface, 0);
+
+    zwlr_layer_surface_v1_add_listener(window->wl.layer.surface,
+                                       &layerSurfaceListener,
+                                       window);
+
+    wl_surface_commit(window->wl.surface);
+    wl_display_roundtrip(_glfw.wl.display);
+
+    return true;
+}
+
 static void incrementCursorImage(_GLFWwindow* window)
 {
     if (window && window->wl.decorations.focus == CENTRAL_WINDOW && window->cursorMode != GLFW_CURSOR_HIDDEN) {
@@ -746,8 +826,16 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 
     if (wndconfig->visible)
     {
-        if (!createXdgSurface(window))
-            return false;
+        if (wndconfig->wl.background)
+        {
+            if (!createLayerSurface(window, wndconfig))
+                return false;
+        }
+        else
+        {
+            if (!createXdgSurface(window))
+                return false;
+        }
 
         window->wl.visible = true;
     }

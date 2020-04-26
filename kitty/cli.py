@@ -657,6 +657,20 @@ choices=normal,fullscreen,maximized,minimized
 Control how the initial kitty window is created.
 
 
+--background
+type=bool-set
+On Wayland, show the kitty window as the desktop background.
+
+
+--background-monitor
+When using --background, the name of the monitor to create the window on.
+
+
+--mouse-passthrough
+type=bool-set
+Make the window transparent to mouse input. This is useful with --background.
+
+
 # Debugging options
 
 --version -v

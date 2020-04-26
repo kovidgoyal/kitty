@@ -493,7 +493,9 @@ def create_os_window(
     wm_class_class: str,
     load_programs: Optional[Callable[[bool], None]] = None,
     x: int = -1,
-    y: int = -1
+    y: int = -1,
+    background: bool = False,
+    background_monitor: Optional[str] = None
 ) -> int:
     pass
 

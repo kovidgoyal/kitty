@@ -1034,6 +1034,8 @@ typedef enum GLFWMouseButton {
 #define GLFW_X11_INSTANCE_NAME      0x00024002
 
 #define GLFW_WAYLAND_APP_ID         0x00025001
+#define GLFW_WAYLAND_BACKGROUND     0x00025002
+#define GLFW_WAYLAND_BACKGROUND_MONITOR 0x00025003
 /*! @} */
 
 #define GLFW_NO_API                          0
