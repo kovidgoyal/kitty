@@ -1002,6 +1002,14 @@ in the original config.
 '''
     )
 
+opt('foreground_opacity', '1.0',
+    option_type='unit_float', ctype='float',
+    long_text='''
+The opacity of the foreground. A number between 0 and 1, where 1 is opaque and
+0 is fully transparent. This has similar constraints to :opt:`background_opacity`.
+'''
+    )
+
 opt('background_image', 'none',
     option_type='config_or_absolute_path', ctype='!background_image',
     long_text='Path to a background image. Must be in PNG format.'

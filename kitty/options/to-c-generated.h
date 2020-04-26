@@ -604,6 +604,19 @@ convert_from_opts_background_opacity(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_foreground_opacity(PyObject *val, Options *opts) {
+    opts->foreground_opacity = PyFloat_AsFloat(val);
+}
+
+static void
+convert_from_opts_foreground_opacity(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "foreground_opacity");
+    if (ret == NULL) return;
+    convert_from_python_foreground_opacity(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_background_image(PyObject *val, Options *opts) {
     background_image(val, opts);
 }
@@ -969,6 +982,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_background(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_background_opacity(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_foreground_opacity(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_background_image(py_opts, opts);
     if (PyErr_Occurred()) return false;

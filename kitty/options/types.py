@@ -346,6 +346,7 @@ option_names = (  # {{{
  'font_size',
  'force_ltr',
  'foreground',
+ 'foreground_opacity',
  'hide_window_decorations',
  'inactive_border_color',
  'inactive_tab_background',
@@ -478,6 +479,7 @@ class Options:
     font_size: float = 11.0
     force_ltr: bool = False
     foreground: Color = Color(red=221, green=221, blue=221)
+    foreground_opacity: float = 1.0
     hide_window_decorations: int = 0
     inactive_border_color: Color = Color(red=204, green=204, blue=204)
     inactive_tab_background: Color = Color(red=153, green=153, blue=153)
