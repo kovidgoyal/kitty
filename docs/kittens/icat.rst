@@ -21,6 +21,11 @@ Then you can simply use ``icat image.png`` to view images.
     `ImageMagick <https://www.imagemagick.org>`_ must be installed for ``icat`` to
     work.
 
+.. note::
+
+    ``icat`` uses terminal features that are incompatible with screen multiplexers
+    such as `tmux` and `screen`.
+
 
 .. program:: kitty +kitten icat
 
