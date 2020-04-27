@@ -23,8 +23,7 @@ Then you can simply use ``icat image.png`` to view images.
 
 .. note::
 
-    ``icat`` uses terminal features that are incompatible with screen multiplexers
-    such as `tmux` and `screen`.
+    kitty's image display protocol may not work when used within a terminal multiplxer such as ``screen`` or ``tmux``, depending on whether the multiplxer has added support for it or not
 
 
 .. program:: kitty +kitten icat
