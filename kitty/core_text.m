@@ -506,8 +506,10 @@ do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_g
         render_alpha_mask(render_buf, canvas, &src, &dest, canvas_width, canvas_width);
     }
     if (num_cells && (center_glyph || (num_cells == 2 && *was_colored))) {
-        // center glyphs (two cell emoji and PUA glyphs)
-        CGFloat delta = (((CGFloat)canvas_width - br.size.width) / 2.f) - br.origin.x;
+        // center glyphs (two cell emoji, PUA glyphs, ligatures, etc)
+        CGFloat delta = (((CGFloat)canvas_width - br.size.width) / 2.f);
+        // FiraCode ligatures result in negative origins
+        if (br.origin.x > 0) delta -= br.origin.x;
         if (delta >= 1.f) right_shift_canvas(canvas, canvas_width, cell_height, (unsigned)(delta));
     }
     return true;
