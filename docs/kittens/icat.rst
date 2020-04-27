@@ -21,6 +21,12 @@ Then you can simply use ``icat image.png`` to view images.
     `ImageMagick <https://www.imagemagick.org>`_ must be installed for ``icat`` to
     work.
 
+.. note::
+
+    kitty's image display protocol may not work when used within a terminal
+    multiplexer such as ``screen`` or ``tmux``, depending on whether the
+    multiplexer has added support for it or not.
+
 
 .. program:: kitty +kitten icat
 
