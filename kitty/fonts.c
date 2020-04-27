@@ -1004,14 +1004,20 @@ merge_groups_for_pua_space_ligature(void) {
     G(groups)->is_space_ligature = true;
 }
 
+static inline bool
+is_group_calt_ligature(const Group *group) {
+    GPUCell *first_cell = G(first_gpu_cell) + group->first_cell_idx;
+    return group->num_cells > 1 && group->has_special_glyph && (first_cell->attrs & WIDTH_MASK) == 1;
+}
+
+
 static inline void
 split_run_at_offset(index_type cursor_offset, index_type *left, index_type *right) {
     *left = 0; *right = 0;
     for (unsigned idx = 0; idx < G(group_idx) + 1; idx++) {
         Group *group = G(groups) + idx;
         if (group->first_cell_idx <= cursor_offset && cursor_offset < group->first_cell_idx + group->num_cells) {
-            GPUCell *first_cell = G(first_gpu_cell) + group->first_cell_idx;
-            if (group->num_cells > 1 && group->has_special_glyph && (first_cell->attrs & WIDTH_MASK) == 1) {
+            if (is_group_calt_ligature(group)) {
                 // likely a calt ligature
                 *left = group->first_cell_idx; *right = group->first_cell_idx + group->num_cells;
             }
@@ -1039,6 +1045,11 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph) {
         // there exist stupid fonts like Powerline that have no space glyph,
         // so special case it: https://github.com/kovidgoyal/kitty/issues/1225
         unsigned int num_glyphs = group->is_space_ligature ? 1 : group->num_glyphs;
+#ifdef __APPLE__
+        // FiraCode ligatures need to be centered on macOS
+        // see https://github.com/kovidgoyal/kitty/issues/2591
+        if (is_group_calt_ligature(group)) center_glyph = true;
+#endif
         render_group(fg, group->num_cells, num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed, center_glyph);
         idx++;
     }

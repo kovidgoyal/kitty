@@ -4,6 +4,14 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+
+0.17.4 [future]
+--------------------
+
+- macOS: Fix a regression in the previous release that caused ligatures to be
+  not be centered horizontally (:iss:`2591`)
+
+
 0.17.3 [2020-04-23]
 --------------------
 
