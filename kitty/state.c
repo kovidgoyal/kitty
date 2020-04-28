@@ -43,8 +43,9 @@ GlobalState global_state = {{0}};
                 if (osw->tabs[t].id == tab_id) { \
                     Tab *tab = osw->tabs + t; \
                     for (size_t w = 0; w < tab->num_windows; w++) { \
-                        Window *window = tab->windows + w;
-#define END_WITH_WINDOW break; }}}}}
+                        if (tab->windows[w].id == window_id) { \
+                            Window *window = tab->windows + w;
+#define END_WITH_WINDOW break; }}}}}}
 
 
 #define WITH_OS_WINDOW_REFS \
