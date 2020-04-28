@@ -30,18 +30,22 @@ static void* libsn_handle = NULL;
 static PyObject*
 init_x11_startup_notification(PyObject UNUSED *self, PyObject *args) {
     static bool done = false;
-    static const char* libname = "libstartup-notification-1.so";
-    // some installs are missing the .so symlink, so try the full name
-    static const char* libname2 = "libstartup-notification-1.so.0";
-    static const char* libname3 = "libstartup-notification-1.so.0.0.0";
     if (!done) {
         done = true;
 
-        libsn_handle = dlopen(libname, RTLD_LAZY);
-        if (libsn_handle == NULL) libsn_handle = dlopen(libname2, RTLD_LAZY);
-        if (libsn_handle == NULL) libsn_handle = dlopen(libname3, RTLD_LAZY);
+        const char* libnames[] = {
+            "libstartup-notification-1.so",
+            // some installs are missing the .so symlink, so try the full name
+            "libstartup-notification-1.so.0",
+            "libstartup-notification-1.so.0.0.0",
+            NULL
+        };
+        for (int i = 0; libnames[i]; i++) {
+            libsn_handle = dlopen(libnames[i], RTLD_LAZY);
+            if (libsn_handle) break;
+        }
         if (libsn_handle == NULL) {
-            PyErr_Format(PyExc_OSError, "Failed to load %s with error: %s", libname, dlerror());
+            PyErr_Format(PyExc_OSError, "Failed to load %s with error: %s", libnames[0], dlerror());
             return NULL;
         }
         dlerror();    /* Clear any existing error */
@@ -105,18 +109,22 @@ load_libcanberra_functions(void) {
 
 static void
 load_libcanberra(void) {
-    static const char* libname = "libcanberra.so";
-    // some installs are missing the .so symlink, so try the full name
-    static const char* libname2 = "libcanberra.so.0";
-    static const char* libname3 = "libcanberra.so.0.2.5";
     static bool done = false;
     if (done) return;
     done = true;
-    libcanberra_handle = dlopen(libname, RTLD_LAZY);
-    if (libcanberra_handle == NULL) libcanberra_handle = dlopen(libname2, RTLD_LAZY);
-    if (libcanberra_handle == NULL) libcanberra_handle = dlopen(libname3, RTLD_LAZY);
+    const char* libnames[] = {
+        "libcanberra.so",
+        // some installs are missing the .so symlink, so try the full name
+        "libcanberra.so.0",
+        "libcanberra.so.0.2.5",
+        NULL
+    };
+    for (int i = 0; libnames[i]; i++) {
+        libcanberra_handle = dlopen(libnames[i], RTLD_LAZY);
+        if (libcanberra_handle) break;
+    }
     if (libcanberra_handle == NULL) {
-        fprintf(stderr, "Failed to load %s, cannot play beep sound, with error: %s\n", libname, dlerror());
+        fprintf(stderr, "Failed to load %s, cannot play beep sound, with error: %s\n", libnames[0], dlerror());
         return;
     }
     load_libcanberra_functions();
