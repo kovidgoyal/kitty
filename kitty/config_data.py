@@ -548,7 +548,7 @@ rectangular block with the mouse)'''))
 o('terminal_select_modifiers', 'shift', option_type=to_modifiers, long_text=_('''
 The modifiers to override mouse selection even when a terminal application has grabbed the mouse'''))
 
-o('select_by_word_characters', ':@-./_~?&=%+#', long_text=_('''
+o('select_by_word_characters', '@-./_~?&=%+#', long_text=_('''
 Characters considered part of a word when double clicking. In addition to these characters
 any character that is marked as an alphanumeric character in the unicode
 database will be matched.'''))
