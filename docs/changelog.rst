@@ -14,6 +14,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - By default, double clicking no longer considers the : as part of words, see
   :opt:`select_by_word_characters` (:iss:`2602`)
 
+- Fix a regression that caused clicking in the padding/margins of windows in
+  the stack layout to switch the window to the first window (:iss:`2604`)
+
 
 0.17.3 [2020-04-23]
 --------------------

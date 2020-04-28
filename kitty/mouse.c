@@ -514,7 +514,8 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
             if (contains_mouse(t->windows + i) && t->windows[i].render_data.screen) {
-                *window_idx = i; return t->windows + i;
+                *window_idx = i;
+                return t->windows + i;
             }
         }
     }
@@ -529,8 +530,10 @@ closest_window_for_event(unsigned int *window_idx) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         for (unsigned int i = 0; i < t->num_windows; i++) {
             Window *w = t->windows + i;
-            double d = distance_to_window(w);
-            if (d < closest_distance) { ans = w; closest_distance = d; *window_idx = i; }
+            if (w->visible) {
+                double d = distance_to_window(w);
+                if (d < closest_distance) { ans = w; closest_distance = d; *window_idx = i; }
+            }
         }
     }
     return ans;
