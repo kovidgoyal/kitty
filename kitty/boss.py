@@ -354,16 +354,29 @@ class Boss:
         except (Exception, SystemExit) as e:
             self.show_error(_('remote_control mapping failed'), str(e))
 
-    def peer_message_received(self, msg_bytes: bytes) -> Optional[bytes]:
-        msg = msg_bytes.decode('utf-8')
-        cmd_prefix = '\x1bP@kitty-cmd'
-        if msg.startswith(cmd_prefix):
-            cmd = msg[len(cmd_prefix):-2]
+    def handle_peer_cmd(self, msg_bytes: bytes) -> Optional[bytes]:
+        cmd_prefix_b = b'\x1bP@kitty-cmd'
+        pl = len(cmd_prefix_b)
+        terminator = b'\x1b\\'
+        tl = len(terminator)
+        resp = b''
+        pos = 0
+        while msg_bytes[pos:pos+pl] == cmd_prefix_b:
+            idx = msg_bytes.find(terminator, pos + pl)
+            if idx < pos + pl:
+                break
+            cmd = msg_bytes[pos+pl:idx].decode('utf-8')
             response = self._handle_remote_command(cmd, from_peer=True)
-            if response is None:
-                return None
-            return (cmd_prefix + json.dumps(response) + '\x1b\\').encode('utf-8')
-        data = json.loads(msg)
+            if response is not None:
+                resp += cmd_prefix_b + json.dumps(response).encode('utf-8') + b'\x1b\\'
+            pos = idx + tl
+        return resp or None
+
+    def peer_message_received(self, msg_bytes: bytes) -> Optional[bytes]:
+        cmd_prefix_b = b'\x1bP@kitty-cmd'
+        if msg_bytes.startswith(cmd_prefix_b):
+            return self.handle_peer_cmd(msg_bytes)
+        data = json.loads(msg_bytes.decode('utf-8'))
         if isinstance(data, dict) and data.get('cmd') == 'new_instance':
             from .cli_stub import CLIOptions
             startup_id = data.get('startup_id')

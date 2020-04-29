@@ -21,6 +21,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Report modifier key state when sending wheel events to the terminal program
 
+- Fix kitty @ send-text not working with text larger than 1024 bytes when using
+  --listen-on (:iss:`2607`)
+
 
 0.17.3 [2020-04-23]
 --------------------
