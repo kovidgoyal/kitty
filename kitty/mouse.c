@@ -25,24 +25,40 @@ typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 #define ALT_INDICATOR (1 << 3)
 #define CONTROL_INDICATOR (1 << 4)
 #define MOTION_INDICATOR  (1 << 5)
-#define EXTRA_BUTTON_INDICATOR (1 << 6)
+#define SCROLL_BUTTON_INDICATOR (1 << 6)
+#define EXTRA_BUTTON_INDICATOR (1 << 7)
 
 
 static inline unsigned int
 button_map(int button) {
     switch(button) {
         case GLFW_MOUSE_BUTTON_LEFT:
-            return 0;
-        case GLFW_MOUSE_BUTTON_RIGHT:
-            return 2;
-        case GLFW_MOUSE_BUTTON_MIDDLE:
             return 1;
+        case GLFW_MOUSE_BUTTON_RIGHT:
+            return 3;
+        case GLFW_MOUSE_BUTTON_MIDDLE:
+            return 2;
         case GLFW_MOUSE_BUTTON_4:
-            return EXTRA_BUTTON_INDICATOR;
         case GLFW_MOUSE_BUTTON_5:
-            return EXTRA_BUTTON_INDICATOR | 1;
+        case GLFW_MOUSE_BUTTON_6:
+        case GLFW_MOUSE_BUTTON_7:
+        case GLFW_MOUSE_BUTTON_8:
+            return button + 5;
         default:
             return UINT_MAX;
+    }
+}
+
+static inline unsigned int
+encode_button(unsigned int button) {
+    if (button >= 8 && button <= 11) {
+        return (button - 8) | EXTRA_BUTTON_INDICATOR;
+    } else if (button >= 4 && button <= 7) {
+        return (button - 4) | SCROLL_BUTTON_INDICATOR;
+    } else if (button >= 1 && button <= 3) {
+        return button - 1;
+    } else {
+        return UINT_MAX;
     }
 }
 
@@ -54,7 +70,7 @@ encode_mouse_event_impl(unsigned int x, unsigned int y, int mouse_tracking_proto
     if (action == MOVE) {
         cb = 3;
     } else {
-        cb = button_map(button);
+        cb = encode_button(button);
         if (cb == UINT_MAX) return 0;
     }
     if (action == DRAG || action == MOVE) cb |= MOTION_INDICATOR;
@@ -92,7 +108,16 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
     unsigned int x = w->mouse_pos.cell_x + 1, y = w->mouse_pos.cell_y + 1; // 1 based indexing
     Screen *screen = w->render_data.screen;
     return encode_mouse_event_impl(x, y, screen->modes.mouse_tracking_protocol, button, action, mods);
+}
 
+static int
+encode_mouse_button(Window *w, int button, MouseAction action, int mods) {
+    return encode_mouse_event(w, button_map(button), action, mods);
+}
+
+static int
+encode_mouse_scroll(Window *w, bool upwards, int mods) {
+    return encode_mouse_event(w, upwards ? 4 : 5, PRESS, mods);
 }
 
 // }}}
@@ -341,7 +366,7 @@ HANDLER(handle_move_event) {
         handle_mouse_movement_in_kitty(w, button, mouse_cell_changed | cell_half_changed);
     } else {
         if (!mouse_cell_changed) return;
-        int sz = encode_mouse_event(w, MAX(0, button), button >=0 ? DRAG : MOVE, modifiers);
+        int sz = encode_mouse_button(w, MAX(0, button), button >=0 ? DRAG : MOVE, modifiers);
         if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
     }
 }
@@ -450,34 +475,25 @@ HANDLER(handle_button_event) {
         );
     if (handle_in_kitty) handle_button_event_in_kitty(w, button, modifiers, is_release);
     else {
-        int sz = encode_mouse_event(w, button, is_release ? RELEASE : PRESS, modifiers);
+        int sz = encode_mouse_button(w, button, is_release ? RELEASE : PRESS, modifiers);
         if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
     }
 }
 
 static inline int
 currently_pressed_button(void) {
-    for (int i = 0; i < GLFW_MOUSE_BUTTON_5; i++) {
+    for (int i = 0; i <= GLFW_MOUSE_BUTTON_8; i++) {
         if (global_state.callback_os_window->mouse_button_pressed[i]) return i;
     }
     return -1;
 }
 
 HANDLER(handle_event) {
-    switch(button) {
-        case -1:
-            button = currently_pressed_button();
-            handle_move_event(w, button, modifiers, window_idx);
-            break;
-        case GLFW_MOUSE_BUTTON_LEFT:
-        case GLFW_MOUSE_BUTTON_RIGHT:
-        case GLFW_MOUSE_BUTTON_MIDDLE:
-        case GLFW_MOUSE_BUTTON_4:
-        case GLFW_MOUSE_BUTTON_5:
-            handle_button_event(w, button, modifiers, window_idx);
-            break;
-        default:
-            break;
+    if (button == -1) {
+        button = currently_pressed_button();
+        handle_move_event(w, button, modifiers, window_idx);
+    } else {
+        handle_button_event(w, button, modifiers, window_idx);
     }
 }
 
@@ -690,7 +706,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
         screen_history_scroll(screen, abs(s), upwards);
     } else {
         if (screen->modes.mouse_tracking_mode) {
-            int sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, modifiers);
+            int sz = encode_mouse_scroll(w, upwards, modifiers);
             if (sz > 0) {
                 mouse_event_buf[sz] = 0;
                 for (s = abs(s); s > 0; s--) {

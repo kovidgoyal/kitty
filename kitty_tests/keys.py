@@ -81,7 +81,7 @@ class TestParser(BaseTest):
 
     def test_encode_mouse_event(self):
         NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL = range(4)
-        L, M, R = defines.GLFW_MOUSE_BUTTON_LEFT, defines.GLFW_MOUSE_BUTTON_MIDDLE, defines.GLFW_MOUSE_BUTTON_RIGHT
+        L, M, R = 1, 2, 3
         protocol = SGR_PROTOCOL
 
         def enc(button=L, action=defines.PRESS, mods=0, x=1, y=1):
