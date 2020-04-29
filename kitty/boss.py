@@ -336,7 +336,13 @@ class Boss:
                 if not getattr(err, 'hide_traceback', False):
                     response['tb'] = traceback.format_exc()
         else:
-            response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
+            no_response = False
+            try:
+                no_response = json.loads(cmd).get('no_response')
+            except Exception:
+                pass
+            if not no_response:
+                response = {'ok': False, 'error': 'Remote control is disabled. Add allow_remote_control to your kitty.conf'}
         return response
 
     def remote_control(self, *args: str) -> None:
