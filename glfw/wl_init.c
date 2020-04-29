@@ -334,7 +334,7 @@ static void pointerHandleAxis(void* data UNUSED,
     else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL)
         y = wl_fixed_to_double(value) * -1;
 
-    _glfwInputScroll(window, x, y, 1);
+    _glfwInputScroll(window, x, y, 1, _glfw.wl.xkb.states.modifiers);
 }
 
 static const struct wl_pointer_listener pointerListener = {

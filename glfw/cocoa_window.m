@@ -1133,7 +1133,7 @@ is_ascii_control_char(char x) {
             break;
     }
 
-    _glfwInputScroll(window, deltaX, deltaY, flags);
+    _glfwInputScroll(window, deltaX, deltaY, flags, translateFlags([event modifierFlags]));
 }
 
 - (NSDragOperation)draggingEntered:(id <NSDraggingInfo>)sender

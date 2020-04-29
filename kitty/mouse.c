@@ -613,7 +613,7 @@ mouse_event(int button, int modifiers, int action) {
 }
 
 void
-scroll_event(double UNUSED xoffset, double yoffset, int flags) {
+scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
     bool in_tab_bar;
     static id_type window_for_momentum_scroll = 0;
     static bool main_screen_for_momentum_scroll = false;
@@ -690,7 +690,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags) {
         screen_history_scroll(screen, abs(s), upwards);
     } else {
         if (screen->modes.mouse_tracking_mode) {
-            int sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, 0);
+            int sz = encode_mouse_event(w, upwards ? GLFW_MOUSE_BUTTON_4 : GLFW_MOUSE_BUTTON_5, PRESS, modifiers);
             if (sz > 0) {
                 mouse_event_buf[sz] = 0;
                 for (s = abs(s); s > 0; s--) {

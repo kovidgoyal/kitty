@@ -313,7 +313,7 @@ void set_mouse_cursor(MouseShape);
 void enter_event(void);
 void mouse_event(int, int, int);
 void focus_in_event(void);
-void scroll_event(double, double, int);
+void scroll_event(double, double, int, int);
 void fake_scroll(int, bool);
 void set_special_key_combo(int glfw_key, int mods, bool is_native);
 void on_key_input(GLFWkeyevent *ev);

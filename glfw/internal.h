@@ -755,7 +755,7 @@ void _glfwInputWindowMonitor(_GLFWwindow* window, _GLFWmonitor* monitor);
 
 void _glfwInitializeKeyEvent(GLFWkeyevent *ev, int key, int native_key, int action, int mods);
 void _glfwInputKeyboard(_GLFWwindow *window, GLFWkeyevent *ev);
-void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset, int flags);
+void _glfwInputScroll(_GLFWwindow* window, double xoffset, double yoffset, int flags, int mods);
 void _glfwInputMouseClick(_GLFWwindow* window, int button, int action, int mods);
 void _glfwInputCursorPos(_GLFWwindow* window, double xpos, double ypos);
 void _glfwInputCursorEnter(_GLFWwindow* window, bool entered);

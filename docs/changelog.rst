@@ -19,6 +19,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix a regression that broke drag and drop (:iss:`2605`)
 
+- Report modifier key state when sending wheel events to the terminal program
+
 
 0.17.3 [2020-04-23]
 --------------------

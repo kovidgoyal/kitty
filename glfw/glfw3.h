@@ -1550,6 +1550,7 @@ typedef void (* GLFWcursorenterfun)(GLFWwindow*,int);
  *  value 2 for stationary momentum scrolling, value 3 for momentum scrolling
  *  in progress, value 4 for momentum scrolling ended, value 5 for momentum
  *  scrolling cancelled and value 6 if scrolling may begin soon.
+ *  @param[int] mods The keyboard modifiers
  *
  *  @sa @ref scrolling
  *  @sa @ref glfwSetScrollCallback
@@ -1559,7 +1560,7 @@ typedef void (* GLFWcursorenterfun)(GLFWwindow*,int);
  *
  *  @ingroup input
  */
-typedef void (* GLFWscrollfun)(GLFWwindow*,double,double,int);
+typedef void (* GLFWscrollfun)(GLFWwindow*,double,double,int,int);
 
 /*! @brief The function pointer type for key callbacks.
  *
