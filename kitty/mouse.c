@@ -341,7 +341,7 @@ HANDLER(handle_move_event) {
         handle_mouse_movement_in_kitty(w, button, mouse_cell_changed | cell_half_changed);
     } else {
         if (!mouse_cell_changed) return;
-        int sz = encode_mouse_event(w, MAX(0, button), button >=0 ? DRAG : MOVE, 0);
+        int sz = encode_mouse_event(w, MAX(0, button), button >=0 ? DRAG : MOVE, modifiers);
         if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
     }
 }
