@@ -45,7 +45,7 @@ GlobalState global_state = {{0}};
                     for (size_t w = 0; w < tab->num_windows; w++) { \
                         if (tab->windows[w].id == window_id) { \
                             Window *window = tab->windows + w;
-#define END_WITH_WINDOW break; }}}}}}
+#define END_WITH_WINDOW window_found = 1; break; }}}}}}
 
 
 #define WITH_OS_WINDOW_REFS \
