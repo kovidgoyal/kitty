@@ -17,6 +17,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression that caused clicking in the padding/margins of windows in
   the stack layout to switch the window to the first window (:iss:`2604`)
 
+- Fix a regression that broke drag and drop on macOS (:iss:`2605`)
+
 
 0.17.3 [2020-04-23]
 --------------------

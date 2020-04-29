@@ -327,17 +327,11 @@ drop_callback(GLFWwindow *w, const char *mime, const char *data, size_t sz) {
         if (strcmp(mime, "text/uri-list") == 0) return 3;
         if (strcmp(mime, "text/plain;charset=utf-8") == 0) return 2;
         if (strcmp(mime, "text/plain") == 0) return 1;
-        return 0;
+        goto end;
     }
-    WINDOW_CALLBACK(on_drop, "sy#", mime, data, (int)sz);
+    WINDOW_CALLBACK(on_drop, "sy#", mime, data, (Py_ssize_t)sz);
     request_tick_callback();
-    /* PyObject *s = PyTuple_New(count); */
-    /* if (s) { */
-    /*     for (int i = 0; i < count; i++) PyTuple_SET_ITEM(s, i, PyUnicode_FromString(strings[i])); */
-    /*     WINDOW_CALLBACK(on_drop, "O", s); */
-    /*     Py_CLEAR(s); */
-    /*     request_tick_callback(); */
-    /* } */
+end:
     global_state.callback_os_window = NULL;
     return 0;
 }
