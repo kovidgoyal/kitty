@@ -10,7 +10,7 @@ set tabstop=4
 set shiftwidth=4
 set softtabstop=0 
 set smarttab
-python <<endpython
+python3 <<endpython
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 import kitty
