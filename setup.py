@@ -557,7 +557,7 @@ def compile_c_extension(
         if is_special:
             src, defines_ = SPECIAL_SOURCES[src]
             if callable(defines_):
-                defines = defines_()
+                defines = defines_(kenv)
                 cppflags.extend(map(define, defines))
             else:
                 cppflags.extend(map(define, defines_))
