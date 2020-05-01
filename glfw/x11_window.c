@@ -1416,8 +1416,10 @@ static void processEvent(XEvent *event)
                                       &xpos, &ypos,
                                       &dummy);
                 _glfwReleaseErrorHandlerX11();
-                if (_glfw.x11.errorCode != Success)
-                    _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to trnslate configurenotiy co-ords for reparented window");
+                if (_glfw.x11.errorCode != Success) {
+                    _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to translate ConfigureNotiy co-ords for reparented window");
+                    return;
+                }
             }
 
             if (xpos != window->x11.xpos || ypos != window->x11.ypos)
