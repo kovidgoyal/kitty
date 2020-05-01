@@ -349,7 +349,7 @@ def run_tool(cmd: Union[str, List[str]], desc: Optional[str] = None) -> None:
         raise SystemExit(ret)
 
 
-def get_vcs_rev_defines() -> List[str]:
+def get_vcs_rev_defines(env: Env) -> List[str]:
     ans = []
     if os.path.exists('.git'):
         try:
@@ -368,7 +368,7 @@ def get_vcs_rev_defines() -> List[str]:
     return ans
 
 
-SPECIAL_SOURCES: Dict[str, Tuple[str, Union[List[str], Callable[[], Union[List[str], Iterator[str]]]]]] = {
+SPECIAL_SOURCES: Dict[str, Tuple[str, Union[List[str], Callable[[Env], Union[List[str], Iterator[str]]]]]] = {
     'kitty/parser_dump.c': ('kitty/parser.c', ['DUMP_COMMANDS']),
     'kitty/data-types.c': ('kitty/data-types.c', get_vcs_rev_defines),
 }
