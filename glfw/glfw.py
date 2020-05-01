@@ -95,7 +95,7 @@ def init_env(env: Env, pkg_config: Callable, at_least_version: Callable, test_co
         for p in ans.wayland_protocols:
             ans.sources.append(wayland_protocol_file_name(p))
             ans.all_headers.append(wayland_protocol_file_name(p, 'h'))
-        for dep in 'wayland-egl wayland-client wayland-cursor xkbcommon dbus-1'.split():
+        for dep in 'wayland-client wayland-cursor xkbcommon dbus-1'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
         has_memfd_create = test_compile(env.cc, '-Werror', src='''#define _GNU_SOURCE
