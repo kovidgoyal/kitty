@@ -781,7 +781,7 @@ Note that this does not currently work on Wayland.
 # }}}
 
 g('tabbar')   # {{{
-default_tab_separator = ' ┇'
+default_tab_separator = ' ┇ '
 
 
 def tab_separator(x: str) -> str:
