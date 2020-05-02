@@ -423,6 +423,14 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
     }
 }
 
+void
+mark_os_window_for_close(OSWindow* w, CloseRequest cr) {
+    global_state.has_pending_closes = true;
+    w->close_request = cr;
+}
+
+
+
 
 // Python API {{{
 #define PYWRAP0(name) static PyObject* py##name(PYNOARG)
@@ -784,10 +792,10 @@ PYWRAP1(os_window_has_background_image) {
 
 PYWRAP1(mark_os_window_for_close) {
     id_type os_window_id;
-    int yes = 1;
-    PA("K|p", &os_window_id, &yes);
+    CloseRequest cr = IMPERATIVE_CLOSE_REQUESTED;
+    PA("K|i", &os_window_id, &cr);
     WITH_OS_WINDOW(os_window_id)
-        mark_os_window_for_close(os_window, yes ? true : false);
+        mark_os_window_for_close(os_window, cr);
         Py_RETURN_TRUE;
     END_WITH_OS_WINDOW
     Py_RETURN_FALSE;

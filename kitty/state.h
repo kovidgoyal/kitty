@@ -139,6 +139,7 @@ typedef struct {
 } OSWindowGeometry;
 
 enum RENDER_STATE { RENDER_FRAME_NOT_REQUESTED, RENDER_FRAME_REQUESTED, RENDER_FRAME_READY };
+typedef enum { NO_CLOSE_REQUESTED, CONFIRMABLE_CLOSE_REQUESTED, IMPERATIVE_CLOSE_REQUESTED } CloseRequest;
 
 typedef struct {
     monotonic_t last_resize_event_at;
@@ -183,6 +184,7 @@ typedef struct {
     uint64_t render_calls;
     id_type last_focused_counter;
     ssize_t gvao_idx;
+    CloseRequest close_request;
 } OSWindow;
 
 
@@ -220,9 +222,8 @@ void remove_vao(ssize_t vao_idx);
 bool remove_os_window(id_type os_window_id);
 void make_os_window_context_current(OSWindow *w);
 void update_os_window_references(void);
-void mark_os_window_for_close(OSWindow* w, bool yes);
+void mark_os_window_for_close(OSWindow* w, CloseRequest cr);
 void update_os_window_viewport(OSWindow *window, bool);
-bool should_os_window_close(OSWindow* w);
 bool should_os_window_be_rendered(OSWindow* w);
 void wakeup_main_loop(void);
 void swap_window_buffers(OSWindow *w);

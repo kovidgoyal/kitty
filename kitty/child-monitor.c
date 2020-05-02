@@ -865,25 +865,42 @@ process_pending_resizes(monotonic_t now) {
 
 static inline void
 close_all_windows(void) {
-    for (size_t w = 0; w < global_state.num_os_windows; w++) mark_os_window_for_close(&global_state.os_windows[w], true);
+    for (size_t w = 0; w < global_state.num_os_windows; w++) mark_os_window_for_close(&global_state.os_windows[w], IMPERATIVE_CLOSE_REQUESTED);
+}
+
+static inline void
+close_os_window(ChildMonitor *self, OSWindow *os_window) {
+    destroy_os_window(os_window);
+    call_boss(on_os_window_closed, "Kii", os_window->id, os_window->window_width, os_window->window_height);
+    for (size_t t=0; t < os_window->num_tabs; t++) {
+        Tab *tab = os_window->tabs + t;
+        for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
+    }
+    remove_os_window(os_window->id);
 }
 
 static inline bool
 process_pending_closes(ChildMonitor *self) {
-    global_state.has_pending_closes = false;
     bool has_open_windows = false;
     for (size_t w = global_state.num_os_windows; w > 0; w--) {
         OSWindow *os_window = global_state.os_windows + w - 1;
-        if (should_os_window_close(os_window)) {
-            destroy_os_window(os_window);
-            call_boss(on_os_window_closed, "Kii", os_window->id, os_window->window_width, os_window->window_height);
-            for (size_t t=0; t < os_window->num_tabs; t++) {
-                Tab *tab = os_window->tabs + t;
-                for (size_t w = 0; w < tab->num_windows; w++) mark_child_for_close(self, tab->windows[w].id);
-            }
-            remove_os_window(os_window->id);
-        } else has_open_windows = true;
+        switch(os_window->close_request) {
+            case NO_CLOSE_REQUESTED:
+                has_open_windows = true;
+                break;
+            case CONFIRMABLE_CLOSE_REQUESTED:
+                os_window->close_request = NO_CLOSE_REQUESTED;
+                call_boss(confirm_os_window_close, "K", os_window->id);
+                if (os_window->close_request == IMPERATIVE_CLOSE_REQUESTED) {
+                    close_os_window(self, os_window);
+                } else has_open_windows = true;
+                break;
+            case IMPERATIVE_CLOSE_REQUESTED:
+                close_os_window(self, os_window);
+                break;
+        }
     }
+    global_state.has_pending_closes = false;
 #ifdef __APPLE__
     if (!OPT(macos_quit_when_last_window_closed)) {
         if (!has_open_windows && !application_quit_requested()) has_open_windows = true;

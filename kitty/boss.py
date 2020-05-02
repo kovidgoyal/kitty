@@ -724,6 +724,9 @@ class Boss:
                     text = '\n'.join(parse_uri_list(text))
                 w.paste(text)
 
+    def confirm_os_window_close(self, os_window_id: int) -> None:
+        mark_os_window_for_close(os_window_id)
+
     def on_os_window_closed(self, os_window_id: int, viewport_width: int, viewport_height: int) -> None:
         self.cached_values['window-size'] = viewport_width, viewport_height
         tm = self.os_window_map.pop(os_window_id, None)
