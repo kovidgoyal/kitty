@@ -10,7 +10,7 @@ from .fast_data_types import (
     DECAWM, Screen, cell_size_for_window, pt_to_px, set_tab_bar_render_data,
     viewport_for_window
 )
-from .layout import Rect
+from .layout.base import Rect
 from .options_stub import Options
 from .rgb import Color, alpha_blend, color_from_int
 from .utils import color_as_int, log_error

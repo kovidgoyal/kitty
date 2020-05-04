@@ -18,7 +18,7 @@ from .conf.utils import (
 )
 from .constants import FloatEdges, config_dir, is_macos
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
-from .layout import all_layouts
+from .layout.interface import all_layouts
 from .rgb import Color, color_as_int, color_as_sharp, color_from_int
 from .utils import log_error
 

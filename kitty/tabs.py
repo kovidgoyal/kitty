@@ -6,6 +6,7 @@ import weakref
 from collections import deque
 from contextlib import suppress
 from functools import partial
+from operator import attrgetter
 from typing import (
     Any, Deque, Dict, Generator, Iterator, List, NamedTuple, Optional, Pattern,
     Sequence, Tuple, cast
@@ -20,14 +21,16 @@ from .fast_data_types import (
     next_window_id, remove_tab, remove_window, ring_bell, set_active_tab,
     swap_tabs, sync_os_window_title, x11_window_id
 )
-from .layout import (
-    Layout, Rect, create_layout_object_for, evict_cached_layouts
+from .layout.base import Layout, Rect
+from .layout.interface import (
+    create_layout_object_for, evict_cached_layouts
 )
 from .options_stub import Options
 from .tab_bar import TabBar, TabBarData
 from .typing import SessionTab, SessionType, TypedDict
 from .utils import log_error, resolved_shell
 from .window import Watchers, Window, WindowDict
+from .window_list import WindowList
 
 
 class TabDict(TypedDict):
@@ -90,7 +93,7 @@ class Tab:  # {{{
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
         self.borders = Borders(self.os_window_id, self.id, self.opts)
-        self.windows: List[Window] = []
+        self.windows = WindowList()
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
         self._last_used_layout: Optional[str] = None
@@ -118,16 +121,14 @@ class Tab:  # {{{
         if other_tab._current_layout_name:
             self._set_current_layout(other_tab._current_layout_name)
         self._last_used_layout = other_tab._last_used_layout
-
-        orig_windows = list(other_tab.windows)
         orig_history = deque(other_tab.active_window_history)
         orig_active = other_tab._active_window_idx
         for window in other_tab.windows:
             detach_window(other_tab.os_window_id, other_tab.id, window.id)
-        other_tab.windows = []
         other_tab._active_window_idx = 0
         self.active_window_history = orig_history
-        self.windows = orig_windows
+        self.windows = other_tab.windows
+        other_tab.windows = WindowList()
         self._active_window_idx = orig_active
         for window in self.windows:
             window.change_tab(self)
@@ -166,19 +167,11 @@ class Tab:  # {{{
 
     @active_window_idx.setter
     def active_window_idx(self, val: int) -> None:
-        try:
-            old_active_window: Optional[Window] = self.windows[self._active_window_idx]
-        except Exception:
-            old_active_window = None
-        else:
-            assert old_active_window is not None
-            wid = old_active_window.id if old_active_window.overlay_for is None else old_active_window.overlay_for
-            add_active_id_to_history(self.active_window_history, wid)
-        self._active_window_idx = max(0, min(val, len(self.windows) - 1))
-        try:
-            new_active_window: Optional[Window] = self.windows[self._active_window_idx]
-        except Exception:
-            new_active_window = None
+        old_active_window = self.windows.active_window_for_idx(self._active_window_idx)
+        if old_active_window is not None:
+            add_active_id_to_history(self.active_window_history, self.windows.overlaid_window_for(old_active_window))
+        self._active_window_idx = max(0, min(val, self.windows.max_active_idx))
+        new_active_window = self.windows.active_window_for_idx(self._active_window_idx)
         if old_active_window is not new_active_window:
             if old_active_window is not None:
                 old_active_window.focus_changed(False)
@@ -194,7 +187,7 @@ class Tab:  # {{{
 
     @property
     def active_window(self) -> Optional[Window]:
-        return self.windows[self.active_window_idx] if self.windows else None
+        return self.windows.active_window_for_idx(self.active_window_idx)
 
     @property
     def title(self) -> str:
@@ -231,7 +224,7 @@ class Tab:  # {{{
     def relayout_borders(self) -> None:
         tm = self.tab_manager_ref()
         if tm is not None:
-            visible_windows = [w for w in self.windows if w.is_visible_in_layout]
+            visible_windows = list(self.visible_windows())
             w = self.active_window
             ly = self.current_layout
             self.borders(
@@ -284,9 +277,9 @@ class Tab:  # {{{
             raise ValueError(increment)
         is_horizontal = quality in ('wider', 'narrower')
         increment *= 1 if quality in ('wider', 'taller') else -1
-        if self.resize_window_by(
-                self.windows[self.active_window_idx].id,
-                increment, is_horizontal) is not None:
+        w = self.active_window
+        if w is not None and self.resize_window_by(
+                w.id, increment, is_horizontal) is not None:
             ring_bell()
 
     def reset_window_sizes(self) -> None:
@@ -359,9 +352,7 @@ class Tab:  # {{{
             copy_colors_from=copy_colors_from, watchers=watchers
         )
         if overlay_for is not None:
-            overlaid = next(w for w in self.windows if w.id == overlay_for)
             window.overlay_for = overlay_for
-            overlaid.overlay_window_id = window.id
         # Must add child before laying out so that resize_pty succeeds
         get_boss().add_child(window)
         self._add_window(window, location=location)
@@ -389,12 +380,13 @@ class Tab:  # {{{
         )
 
     def close_window(self) -> None:
-        if self.windows:
-            self.remove_window(self.windows[self.active_window_idx])
+        w = self.active_window
+        if w is not None:
+            self.remove_window(w)
 
     def close_other_windows_in_tab(self) -> None:
         if len(self.windows) > 1:
-            active_window = self.windows[self.active_window_idx]
+            active_window = self.active_window
             for window in tuple(self.windows):
                 if window is not active_window:
                     self.remove_window(window)
@@ -404,28 +396,25 @@ class Tab:  # {{{
             old_window_id = self.active_window_history[-num]
         except IndexError:
             return None
-        for idx, w in enumerate(self.windows):
-            if w.id == old_window_id:
-                return idx
+        return self.windows.idx_for_window(old_window_id)
 
     def remove_window(self, window: Window, destroy: bool = True) -> None:
-        idx = self.previous_active_window_idx(1)
-        next_window_id = None
-        if idx is not None:
-            next_window_id = self.windows[idx].id
+        next_window_id = self.windows.next_id_in_stack_on_remove(window)
+        if next_window_id is None:
+            try:
+                next_window_id = self.active_window_history[-1]
+            except IndexError:
+                pass
+
         active_window_idx = self.current_layout.remove_window(self.windows, window, self.active_window_idx)
         if destroy:
             remove_window(self.os_window_id, self.id, window.id)
         else:
             detach_window(self.os_window_id, self.id, window.id)
-        if window.overlay_for is not None:
-            for idx, q in enumerate(self.windows):
-                if q.id == window.overlay_for:
-                    active_window_idx = idx
-                    next_window_id = q.id
-                    break
-        if next_window_id is None and len(self.windows) > active_window_idx:
-            next_window_id = self.windows[active_window_idx].id
+        if next_window_id is None:
+            w = self.windows.active_window_for_idx(active_window_idx)
+            if w is not None:
+                next_window_id = w.id
         if next_window_id is not None:
             for idx, window in enumerate(self.windows):
                 if window.id == next_window_id:
@@ -441,26 +430,12 @@ class Tab:  # {{{
         if active_window:
             self.title_changed(active_window)
 
-    def detach_window(self, window: Window) -> Tuple[Optional[Window], Optional[Window]]:
-        underlaid_window: Optional[Window] = None
-        overlaid_window: Optional[Window] = window
-        if window.overlay_for:
-            for x in self.windows:
-                if x.id == window.overlay_for:
-                    underlaid_window = x
-                    break
-        elif window.overlay_window_id:
-            underlaid_window = window
-            overlaid_window = None
-            for x in self.windows:
-                if x.id == window.overlay_window_id:
-                    overlaid_window = x
-                    break
-        if overlaid_window is not None:
-            self.remove_window(overlaid_window, destroy=False)
-        if underlaid_window is not None:
-            self.remove_window(underlaid_window, destroy=False)
-        return underlaid_window, overlaid_window
+    def detach_window(self, window: Window) -> Tuple[Window, ...]:
+        windows = list(self.windows.iter_stack_for_window(window))
+        windows.sort(key=attrgetter('id'))  # since ids increase in order of creation
+        for w in reversed(windows):
+            self.remove_window(w, destroy=False)
+        return tuple(windows)
 
     def attach_window(self, window: Window) -> None:
         window.change_tab(self)
@@ -473,11 +448,9 @@ class Tab:  # {{{
             self.relayout_borders()
 
     def set_active_window(self, window: Window) -> None:
-        try:
-            idx = self.windows.index(window)
-        except ValueError:
-            return
-        self.set_active_window_idx(idx)
+        idx = self.windows.idx_for_window(window)
+        if idx is not None:
+            self.set_active_window_idx(idx)
 
     def get_nth_window(self, n: int) -> Optional[Window]:
         if self.windows:
@@ -551,7 +524,7 @@ class Tab:  # {{{
         evict_cached_layouts(self.id)
         for w in self.windows:
             w.destroy()
-        self.windows = []
+        self.windows = WindowList()
 
     def __repr__(self) -> str:
         return 'Tab(title={}, id={})'.format(self.name or self.title, hex(id(self)))

@@ -36,7 +36,7 @@ from .fast_data_types import (
     toggle_fullscreen, toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
-from .layout import set_layout_options
+from .layout.base import set_layout_options
 from .options_stub import Options
 from .rgb import Color, color_from_int
 from .session import Session, create_sessions
@@ -1318,11 +1318,8 @@ class Boss:
                 else:
                     return
 
-        underlaid_window, overlaid_window = src_tab.detach_window(window)
-        if underlaid_window:
-            target_tab.attach_window(underlaid_window)
-        if overlaid_window:
-            target_tab.attach_window(overlaid_window)
+        for detached_window in src_tab.detach_window(window):
+            target_tab.attach_window(detached_window)
         self._cleanup_tab_after_window_removal(src_tab)
         target_tab.make_active()
 

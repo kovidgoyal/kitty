@@ -224,13 +224,12 @@ class Window:
         self.pty_resized_once = False
         self.needs_attention = False
         self.override_title = override_title
-        self.overlay_window_id: Optional[int] = None
         self.overlay_for: Optional[int] = None
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
         self.allow_remote_control = child.allow_remote_control
-        self.id = add_window(tab.os_window_id, tab.id, self.title)
+        self.id: int = add_window(tab.os_window_id, tab.id, self.title)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
         if not self.id:
@@ -297,8 +296,8 @@ class Window:
         return self.override_title or self.child_title
 
     def __repr__(self) -> str:
-        return 'Window(title={}, id={}, overlay_for={}, overlay_window_id={})'.format(
-                self.title, self.id, self.overlay_for, self.overlay_window_id)
+        return 'Window(title={}, id={}, overlay_for={})'.format(
+                self.title, self.id, self.overlay_for)
 
     def as_dict(self, is_focused: bool = False) -> WindowDict:
         return dict(
@@ -321,7 +320,6 @@ class Window:
             'default_title': self.default_title,
             'title_stack': list(self.title_stack),
             'allow_remote_control': self.allow_remote_control,
-            'overlay_window_id': self.overlay_window_id,
             'overlay_for': self.overlay_for,
             'cwd': self.child.current_cwd or self.child.cwd,
             'env': self.child.environ,

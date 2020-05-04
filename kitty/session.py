@@ -9,7 +9,7 @@ from typing import Generator, List, NamedTuple, Optional, Tuple, Union
 from .cli_stub import CLIOptions
 from .config_data import to_layout_names
 from .constants import FloatEdges, kitty_exe
-from .layout import all_layouts
+from .layout.interface import all_layouts
 from .options_stub import Options
 from .typing import SpecialWindowInstance
 from .utils import log_error, resolved_shell

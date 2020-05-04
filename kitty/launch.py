@@ -273,7 +273,7 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
                     x = str(active.id)
             final_cmd.append(x)
         kw['cmd'] = final_cmd
-    if opts.type == 'overlay' and active and not active.overlay_window_id:
+    if opts.type == 'overlay' and active:
         kw['overlay_for'] = active.id
     if opts.stdin_source != 'none':
         q = str(opts.stdin_source)
