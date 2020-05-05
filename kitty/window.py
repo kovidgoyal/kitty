@@ -224,7 +224,6 @@ class Window:
         self.pty_resized_once = False
         self.needs_attention = False
         self.override_title = override_title
-        self.overlay_for: Optional[int] = None
         self.default_title = os.path.basename(child.argv[0] or appname)
         self.child_title = self.default_title
         self.title_stack: Deque[str] = deque(maxlen=10)
@@ -296,8 +295,8 @@ class Window:
         return self.override_title or self.child_title
 
     def __repr__(self) -> str:
-        return 'Window(title={}, id={}, overlay_for={})'.format(
-                self.title, self.id, self.overlay_for)
+        return 'Window(title={}, id={})'.format(
+                self.title, self.id)
 
     def as_dict(self, is_focused: bool = False) -> WindowDict:
         return dict(
@@ -320,7 +319,6 @@ class Window:
             'default_title': self.default_title,
             'title_stack': list(self.title_stack),
             'allow_remote_control': self.allow_remote_control,
-            'overlay_for': self.overlay_for,
             'cwd': self.child.current_cwd or self.child.cwd,
             'env': self.child.environ,
             'cmdline': self.child.cmdline,
@@ -360,11 +358,11 @@ class Window:
             return False
         return False
 
-    def set_visible_in_layout(self, window_idx: int, val: bool) -> None:
+    def set_visible_in_layout(self, val: bool) -> None:
         val = bool(val)
         if val is not self.is_visible_in_layout:
             self.is_visible_in_layout = val
-            update_window_visibility(self.os_window_id, self.tab_id, self.id, window_idx, val)
+            update_window_visibility(self.os_window_id, self.tab_id, self.id, val)
             if val:
                 self.refresh()
 
@@ -377,7 +375,7 @@ class Window:
         self.screen_geometry = sg = calculate_gl_geometry(window_geometry, vw, vh, cw, ch)
         return sg
 
-    def set_geometry(self, window_idx: int, new_geometry: WindowGeometry) -> None:
+    def set_geometry(self, new_geometry: WindowGeometry) -> None:
         if self.destroyed:
             return
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
@@ -396,7 +394,7 @@ class Window:
         else:
             sg = self.update_position(new_geometry)
         self.geometry = g = new_geometry
-        set_window_render_data(self.os_window_id, self.tab_id, self.id, window_idx, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
+        set_window_render_data(self.os_window_id, self.tab_id, self.id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
         self.update_effective_padding()
 
     def contains(self, x: int, y: int) -> bool:

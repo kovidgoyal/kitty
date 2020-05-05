@@ -11,7 +11,7 @@ from typing import (
 
 from kitty.constants import Edges, WindowGeometry
 from kitty.fast_data_types import (
-    Region, set_active_window, swap_windows, viewport_for_window
+    Region, set_active_window, viewport_for_window
 )
 from kitty.options_stub import Options
 from kitty.typing import TypedDict, WindowType
@@ -220,7 +220,6 @@ class Layout:
         self.os_window_id = os_window_id
         self.tab_id = tab_id
         self.set_active_window_in_os_window = partial(set_active_window, os_window_id, tab_id)
-        self.swap_windows_in_os_window = partial(swap_windows, os_window_id, tab_id)
         # A set of rectangles corresponding to the blank spaces at the edges of
         # this layout, i.e. spaces that are not covered by any window
         self.blank_rects: List[Rect] = []
@@ -275,7 +274,7 @@ class Layout:
         aidx = (idx + num_slots + delta) % num_slots
         return self.set_active_window(all_windows, aidx)
 
-    def neighbors(self, all_windows: WindowList, active_window_idx: int) -> NeighborsMap:
+    def neighbors(self, all_windows: WindowList) -> NeighborsMap:
         w = all_windows.active_window_for_idx(active_window_idx)
         assert w is not None
         n = self.neighbors_for_window(w, all_windows)
@@ -328,20 +327,18 @@ class Layout:
         nidx = qidx
         idx = active_window_idx
         self.swap_windows_in_layout(all_windows, nidx, idx)
-        self.swap_windows_in_os_window(nidx, idx)
         return self.set_active_window(all_windows, nidx)
 
     def swap_windows_in_layout(self, all_windows: WindowList, a: int, b: int) -> None:
         all_windows[a], all_windows[b] = all_windows[b], all_windows[a]
 
-    def add_window(self, all_windows: WindowList, window: WindowType, current_active_window_idx: int, location: Optional[str] = None) -> int:
+    def add_window(self, all_windows: WindowList, window: WindowType, location: Optional[str] = None, overlay_for: Optional[int] = None) -> int:
         active_window_idx = None
         if window.overlay_for is not None:
             i = idx_for_id(window.overlay_for, all_windows)
             if i is not None:
                 # put the overlay window in the position occupied by the
                 # overlaid window and move the overlaid window to the end
-                self.swap_windows_in_os_window(len(all_windows), i)
                 all_windows.append(all_windows[i])
                 all_windows[i] = window
                 active_window_idx = i
@@ -364,8 +361,6 @@ class Layout:
             elif location == 'first':
                 active_window_idx = 0
             if active_window_idx is not None:
-                for i in range(len(all_windows), active_window_idx, -1):
-                    self.swap_windows_in_os_window(i, i - 1)
                 all_windows.insert(active_window_idx, window)
 
         if active_window_idx is None:
@@ -383,7 +378,6 @@ class Layout:
             if nidx is not None:
                 idx = all_windows.index(window)
                 all_windows[nidx], all_windows[idx] = all_windows[idx], all_windows[nidx]
-                self.swap_windows_in_os_window(nidx, idx)
                 return self.remove_window(all_windows, window, current_active_window_idx, swapped=True)
 
         position = all_windows.index(window)
@@ -429,7 +423,7 @@ class Layout:
     def _set_dimensions(self) -> None:
         lgd.central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
 
-    def __call__(self, all_windows: WindowList, active_window_idx: int) -> int:
+    def __call__(self, all_windows: WindowList) -> int:
         self._set_dimensions()
         active_window = all_windows[active_window_idx]
         overlaid_windows, windows = process_overlaid_windows(all_windows)
@@ -548,5 +542,5 @@ class Layout:
             else:
                 yield no_borders
 
-    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList, active_window_idx: int) -> Optional[Union[bool, int]]:
+    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         pass

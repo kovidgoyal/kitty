@@ -321,7 +321,7 @@ HANDLER(handle_move_event) {
     if (OPT(focus_follows_mouse)) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
         if (window_idx != t->active_window) {
-            call_boss(switch_focus_to, "I", window_idx);
+            call_boss(switch_focus_to, "K", t->windows[window_idx].id);
         }
     }
     bool in_left_half_of_cell = false;

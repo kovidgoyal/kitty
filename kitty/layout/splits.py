@@ -443,7 +443,7 @@ class Splits(Layout):
             else:
                 yield no_borders
 
-    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList, active_window_idx: int) -> Optional[Union[bool, int]]:
+    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList, active_window_idx: int) -> Optional[bool]:
         if action_name == 'rotate':
             args = args or ('90',)
             try:

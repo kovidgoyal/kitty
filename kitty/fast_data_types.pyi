@@ -544,7 +544,7 @@ def update_window_title(
 
 
 def update_window_visibility(
-    os_window_id: int, tab_id: int, window_id: int, window_idx: int,
+    os_window_id: int, tab_id: int, window_id: int,
     visible: bool
 ) -> None:
     pass
@@ -774,15 +774,11 @@ def swap_tabs(os_window_id: int, a: int, b: int) -> None:
     pass
 
 
-def swap_windows(os_window_id: int, tab_id: int, a: int, b: int) -> None:
-    pass
-
-
 def set_active_tab(os_window_id: int, a: int) -> None:
     pass
 
 
-def set_active_window(os_window_id: int, tab_id: int, window_idx: int) -> None:
+def set_active_window(os_window_id: int, tab_id: int, window_id: int) -> None:
     pass
 
 
@@ -1063,7 +1059,7 @@ def set_tab_bar_render_data(
 
 
 def set_window_render_data(
-    os_window_id: int, tab_id: int, window_id: int, window_idx: int,
+    os_window_id: int, tab_id: int, window_id: int,
     xstart: float, ystart: float, dx: float, dy: float, screen: Screen,
     left: int, top: int, right: int, bottom: int
 ) -> None:

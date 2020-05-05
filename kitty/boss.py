@@ -910,10 +910,10 @@ class Boss:
         else:
             self._new_window(cmd)
 
-    def switch_focus_to(self, window_idx: int) -> None:
+    def switch_focus_to(self, window_id: int) -> None:
         tab = self.active_tab
         if tab:
-            tab.set_active_window_idx(window_idx)
+            tab.set_active_window(window_id)
 
     def open_url(self, url: str, program: Optional[Union[str, List[str]]] = None, cwd: Optional[str] = None) -> None:
         if url:
