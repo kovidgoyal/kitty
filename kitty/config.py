@@ -9,8 +9,8 @@ import sys
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Match, NamedTuple,
-    Optional, Sequence, Set, Tuple, Type, Union
+    Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional,
+    Sequence, Set, Tuple, Type, Union
 )
 
 from . import fast_data_types as defines
@@ -24,7 +24,7 @@ from .constants import cache_dir, defconf, is_macos
 from .key_names import get_key_name_lookup, key_name_aliases
 from .options_stub import Options as OptionsStub
 from .typing import EdgeLiteral, TypedDict
-from .utils import log_error
+from .utils import expandvars, log_error
 
 KeySpec = Tuple[int, bool, int]
 KeyMap = Dict[KeySpec, 'KeyAction']
@@ -583,20 +583,6 @@ def handle_deprecated_macos_show_window_title_in_menubar_alias(key: str, val: st
         elif macos_show_window_title_in == 'menubar':
             macos_show_window_title_in = 'none'
     ans['macos_show_window_title_in'] = macos_show_window_title_in
-
-
-def expandvars(val: str, env: Dict[str, str] = {}) -> str:
-
-    def sub(m: Match) -> str:
-        key = m.group(1)
-        result = env.get(key)
-        if result is None:
-            result = os.environ.get(key)
-        if result is None:
-            result = m.group()
-        return result
-
-    return re.sub(r'\$\{(\S+?)\}', sub, val)
 
 
 @special_handler

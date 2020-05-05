@@ -14,8 +14,8 @@ from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional,
-    Tuple, Union, cast
+    Any, Callable, Dict, Generator, Iterable, List, Match, NamedTuple,
+    Optional, Tuple, Union, cast
 )
 
 from .constants import (
@@ -26,6 +26,20 @@ from .rgb import Color, to_color
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
 
 BASE = os.path.dirname(os.path.abspath(__file__))
+
+
+def expandvars(val: str, env: Dict[str, str] = {}) -> str:
+
+    def sub(m: Match) -> str:
+        key = m.group(1)
+        result = env.get(key)
+        if result is None:
+            result = os.environ.get(key)
+        if result is None:
+            result = m.group()
+        return result
+
+    return re.sub(r'\$\{(\S+?)\}', sub, val)
 
 
 def load_shaders(name: str) -> Tuple[str, str]:
