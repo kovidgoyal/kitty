@@ -4,9 +4,10 @@
 
 from functools import partial
 from itertools import repeat
+from operator import attrgetter
 from typing import (
-    Dict, FrozenSet, Generator, Iterable, List, NamedTuple, Optional, Sequence,
-    Tuple, Union, cast
+    Dict, Generator, Iterable, List, NamedTuple, Optional, Sequence, Tuple,
+    Union, cast
 )
 
 from kitty.constants import Edges, WindowGeometry
@@ -212,7 +213,6 @@ class Layout:
     name: Optional[str] = None
     needs_window_borders = True
     must_draw_borders = False  # can be overridden to customize behavior from kittens
-    needs_all_windows = False
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
 
@@ -234,17 +234,14 @@ class Layout:
             return (lgd.cell_width + 1) / lgd.central.width
         return (lgd.cell_height + 1) / lgd.central.height
 
-    def apply_bias(self, idx: int, increment: float, top_level_windows: ListOfWindows, is_horizontal: bool = True) -> bool:
+    def apply_bias(self, window_id: int, increment: float, all_windows: WindowList, is_horizontal: bool = True) -> bool:
         return False
 
     def remove_all_biases(self) -> bool:
         return False
 
     def modify_size_of_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
-        idx = all_windows.idx_for_window(window_id)
-        if idx is None:
-            return False
-        return self.apply_bias(idx, increment, list(all_windows.iter_top_level_windows()), is_horizontal)
+        return self.apply_bias(window_id, increment, all_windows, is_horizontal)
 
     def parse_layout_opts(self, layout_opts: Optional[str] = None) -> LayoutOpts:
         data: Dict[str, str] = {}
@@ -256,199 +253,84 @@ class Layout:
         return type(self.layout_opts)(data)
 
     def nth_window(self, all_windows: WindowList, num: int) -> Optional[WindowType]:
-        return all_windows.active_window_for_idx(num, clamp=True)
+        return all_windows.active_window_in_nth_group(num, clamp=True)
 
-    def activate_nth_window(self, all_windows: WindowList, num: int) -> int:
-        w = self.nth_window(all_windows, num)
-        assert w is not None
-        active_window_idx = all_windows.idx_for_window(w)
-        assert active_window_idx is not None
-        return self.set_active_window(all_windows, active_window_idx)
+    def activate_nth_window(self, all_windows: WindowList, num: int) -> None:
+        all_windows.set_active_group_idx(num)
 
-    def next_window(self, all_windows: WindowList, active_window_idx: int, delta: int = 1) -> int:
-        w = self.nth_window(all_windows, active_window_idx)
-        assert w is not None
-        idx = all_windows.idx_for_window(w)
-        assert idx is not None
-        num_slots = all_windows.max_active_idx + 1
-        aidx = (idx + num_slots + delta) % num_slots
-        return self.set_active_window(all_windows, aidx)
+    def next_window(self, all_windows: WindowList, delta: int = 1) -> None:
+        all_windows.activate_next_window_group(delta)
 
     def neighbors(self, all_windows: WindowList) -> NeighborsMap:
-        w = all_windows.active_window_for_idx(active_window_idx)
+        w = all_windows.active_window
         assert w is not None
         n = self.neighbors_for_window(w, all_windows)
-
-        def as_indices(windows: Iterable[int]) -> Generator[int, None, None]:
-            for w in windows:
-                idx = all_windows.idx_for_window(w)
-                if idx is not None:
-                    yield idx
-
+        id_getter = attrgetter('id')
         ans: NeighborsMap = {
-            'left': tuple(as_indices(n['left'])),
-            'top': tuple(as_indices(n['top'])),
-            'right': tuple(as_indices(n['right'])),
-            'bottom': tuple(as_indices(n['bottom']))
+            'left': tuple(map(id_getter, n['left'])),
+            'top': tuple(map(id_getter, n['top'])),
+            'right': tuple(map(id_getter, n['right'])),
+            'bottom': tuple(map(id_getter, n['bottom']))
         }
         return ans
 
-    def move_window(self, all_windows: WindowList, active_window_idx: int, delta: Union[str, int] = 1) -> int:
+    def move_window(self, all_windows: WindowList, delta: Union[str, int] = 1) -> bool:
         # delta can be either a number or a string such as 'left', 'top', etc
         # for neighborhood moves
-        if len(windows) < 2 or not delta:
-            return active_window_idx
-        wgd = WindowGroupingData(all_windows)
-        w = wgd.base_window_for_idx(active_window_idx)
-        if w is None:
-            return active_window_idx
+        if len(all_windows) < 2 or not delta:
+            return False
 
-        idx = idx_for_id(w.id, windows)
-        if idx is None and w.overlay_window_id is not None:
-            idx = idx_for_id(w.overlay_window_id, windows)
-        assert idx is not None
         if isinstance(delta, int):
-            nidx = (idx + len(windows) + delta) % len(windows)
-        else:
-            delta = delta.lower()
-            delta = {'up': 'top', 'down': 'bottom'}.get(delta, delta)
-            neighbors = self.neighbors_for_window(w, all_windows if self.needs_all_windows else windows)
-            q = cast(WindowList, neighbors.get(cast(str, delta), ()))
-            if not q:
-                return active_window_idx
-            w = q[0]
-            qidx = idx_for_id(getattr(w, 'id', w), windows)
-            assert qidx is not None
-            nidx = qidx
+            return all_windows.move_window_group(by=delta)
+        which = delta.lower()
+        which = {'up': 'top', 'down': 'bottom'}.get(which, which)
+        w = all_windows.active_window
+        if w is None:
+            return False
+        neighbors = self.neighbors_for_window(w, all_windows)
+        q: List[int] = cast(List[int], neighbors.get(which, []))
+        if not q:
+            return False
+        return all_windows.move_window_group(to_group_with_window_id=q[0])
 
-        nw = windows[nidx]
-        qidx = idx_for_id(nw.id, all_windows)
-        assert qidx is not None
-        nidx = qidx
-        idx = active_window_idx
-        self.swap_windows_in_layout(all_windows, nidx, idx)
-        return self.set_active_window(all_windows, nidx)
+    def add_window(self, all_windows: WindowList, window: WindowType, location: Optional[str] = None, overlay_for: Optional[int] = None) -> None:
+        if overlay_for is not None and overlay_for in all_windows:
+            all_windows.add_window(window, group_of=overlay_for)
+            return
+        if location == 'neighbor':
+            location = 'after'
+        self.add_non_overlay_window(all_windows, window, location)
 
-    def swap_windows_in_layout(self, all_windows: WindowList, a: int, b: int) -> None:
-        all_windows[a], all_windows[b] = all_windows[b], all_windows[a]
-
-    def add_window(self, all_windows: WindowList, window: WindowType, location: Optional[str] = None, overlay_for: Optional[int] = None) -> int:
-        active_window_idx = None
-        if window.overlay_for is not None:
-            i = idx_for_id(window.overlay_for, all_windows)
-            if i is not None:
-                # put the overlay window in the position occupied by the
-                # overlaid window and move the overlaid window to the end
-                all_windows.append(all_windows[i])
-                all_windows[i] = window
-                active_window_idx = i
-        if active_window_idx is None:
-            if location == 'neighbor':
-                location = 'after'
-            active_window_idx = self.do_add_window(all_windows, window, current_active_window_idx, location)
-
-        self(all_windows, active_window_idx)
-        self.set_active_window_in_os_window(active_window_idx)
-        return active_window_idx
-
-    def do_add_window(self, all_windows: WindowList, window: WindowType, current_active_window_idx: Optional[int], location: Optional[str]) -> int:
-        active_window_idx = None
+    def add_non_overlay_window(self, all_windows: WindowList, window: WindowType, location: Optional[str]) -> int:
+        next_to: Optional[WindowType] = None
+        before = False
+        next_to = all_windows.active_window
         if location is not None:
-            if location in ('after', 'vsplit', 'hsplit') and current_active_window_idx is not None and len(all_windows) > 1:
-                active_window_idx = min(current_active_window_idx + 1, len(all_windows))
-            elif location == 'before' and current_active_window_idx is not None and len(all_windows) > 1:
-                active_window_idx = current_active_window_idx
+            if location in ('after', 'vsplit', 'hsplit'):
+                pass
+            elif location == 'before':
+                before = True
             elif location == 'first':
-                active_window_idx = 0
-            if active_window_idx is not None:
-                all_windows.insert(active_window_idx, window)
+                before = True
+                next_to = None
+            elif location == 'last':
+                next_to = None
+        all_windows.add_window(window, next_to=next_to, before=before)
 
-        if active_window_idx is None:
-            active_window_idx = len(all_windows)
-            all_windows.append(window)
-        return active_window_idx
-
-    def remove_window(self, all_windows: WindowList, window: WindowType, current_active_window_idx: int, swapped: bool = False) -> int:
-        try:
-            active_window = all_windows[current_active_window_idx]
-        except Exception:
-            active_window = window
-        if not swapped and window.overlay_for is not None:
-            nidx = idx_for_id(window.overlay_for, all_windows)
-            if nidx is not None:
-                idx = all_windows.index(window)
-                all_windows[nidx], all_windows[idx] = all_windows[idx], all_windows[nidx]
-                return self.remove_window(all_windows, window, current_active_window_idx, swapped=True)
-
-        position = all_windows.index(window)
-        del all_windows[position]
-        active_window_idx = None
-        if window.overlay_for is not None:
-            i = idx_for_id(window.overlay_for, all_windows)
-            if i is not None:
-                overlaid_window = all_windows[i]
-                overlaid_window.overlay_window_id = None
-                if active_window is window:
-                    active_window = overlaid_window
-                    active_window_idx = idx_for_id(active_window.id, all_windows)
-        if active_window_idx is None:
-            if active_window is window:
-                active_window_idx = max(0, min(current_active_window_idx, len(all_windows) - 1))
-            else:
-                active_window_idx = idx_for_id(active_window.id, all_windows)
-                assert active_window_idx is not None
-        if all_windows:
-            self(all_windows, active_window_idx)
-        return self.set_active_window(all_windows, active_window_idx)
-
-    def update_visibility(self, all_windows: WindowList, active_window: WindowType, overlaid_windows: Optional[FrozenSet[WindowType]] = None) -> None:
-        if overlaid_windows is None:
-            overlaid_windows = process_overlaid_windows(all_windows)[0]
-        for i, w in enumerate(all_windows):
-            w.set_visible_in_layout(i, w is active_window or (not self.only_active_window_visible and w not in overlaid_windows))
-
-    def set_active_window(self, all_windows: WindowList, active_window_idx: int) -> int:
-        if not all_windows:
-            self.set_active_window_in_os_window(0)
-            return 0
-        w = all_windows[active_window_idx]
-        if w.overlay_window_id is not None:
-            i = idx_for_id(w.overlay_window_id, all_windows)
-            if i is not None:
-                active_window_idx = i
-        self.update_visibility(all_windows, all_windows[active_window_idx])
-        self.set_active_window_in_os_window(active_window_idx)
-        return active_window_idx
+    def update_visibility(self, all_windows: WindowList) -> None:
+        active_window = all_windows.active_window
+        for window, is_group_leader in all_windows.iter_windows_with_visibility():
+            is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
+            window.set_visible_in_layout(is_visible)
 
     def _set_dimensions(self) -> None:
         lgd.central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
 
-    def __call__(self, all_windows: WindowList) -> int:
+    def __call__(self, all_windows: WindowList) -> None:
         self._set_dimensions()
-        active_window = all_windows[active_window_idx]
-        overlaid_windows, windows = process_overlaid_windows(all_windows)
-        if overlaid_windows:
-            windows = [w for w in all_windows if w not in overlaid_windows]
-            q = idx_for_id(active_window.id, windows)
-            if q is None:
-                if active_window.overlay_window_id is not None:
-                    active_window_idx = idx_for_id(active_window.overlay_window_id, windows) or 0
-                else:
-                    active_window_idx = 0
-            else:
-                active_window_idx = q
-            active_window = windows[active_window_idx]
-        else:
-            windows = all_windows
-        self.update_visibility(all_windows, active_window, overlaid_windows)
+        self.update_visibility(all_windows)
         self.blank_rects = []
-        if self.needs_all_windows:
-            self.do_layout_all_windows(windows, active_window_idx, all_windows)
-        else:
-            self.do_layout(windows, active_window_idx)
-        return cast(int, idx_for_id(active_window.id, all_windows))
-
-    # Utils {{{
+        self.do_layout(all_windows)
 
     def layout_single_window(self, w: WindowType, return_geometry: bool = False, left_align: bool = False) -> Optional[WindowGeometry]:
         bw = w.effective_border() if self.must_draw_borders else 0
@@ -463,7 +345,7 @@ class Layout:
         wg = layout_single_window(xdecoration_pairs, ydecoration_pairs, left_align=left_align)
         if return_geometry:
             return wg
-        w.set_geometry(0, wg)
+        w.set_geometry(wg)
         self.blank_rects = list(blank_rects_for_window(wg))
         return None
 
@@ -507,15 +389,10 @@ class Layout:
 
     def set_window_geometry(self, w: WindowType, idx: int, xl: LayoutData, yl: LayoutData) -> None:
         wg = window_geometry_from_layouts(xl, yl)
-        w.set_geometry(idx, wg)
+        w.set_geometry(wg)
         self.blank_rects.extend(blank_rects_for_window(wg))
 
-    # }}}
-
-    def do_layout(self, windows: WindowList, active_window_idx: int) -> None:
-        raise NotImplementedError()
-
-    def do_layout_all_windows(self, windows: WindowList, active_window_idx: int, all_windows: WindowList) -> None:
+    def do_layout(self, windows: WindowList) -> None:
         raise NotImplementedError()
 
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:

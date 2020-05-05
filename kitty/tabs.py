@@ -139,7 +139,7 @@ class Tab:  # {{{
                 self.new_special_window(cmd)
             else:
                 self.new_window(cmd=cmd)
-        self.windows.active_window = self.windows.all_windows[session_tab.active_window_idx]
+        self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])
 
     def serialize_state(self) -> Dict[str, Any]:
         return {
@@ -156,6 +156,7 @@ class Tab:  # {{{
         set_active_window(self.os_window_id, self.id, 0 if w is None else w.id)
         self.mark_tab_bar_dirty()
         self.relayout_borders()
+        self.current_layout.update_visibility(self.windows)
 
     def mark_tab_bar_dirty(self) -> None:
         tm = self.tab_manager_ref()
@@ -296,8 +297,8 @@ class Tab:  # {{{
 
     def _add_window(self, window: Window, location: Optional[str] = None, overlay_for: Optional[int] = None) -> None:
         self.current_layout.add_window(self.windows, window, location, overlay_for)
-        self.relayout_borders()
         self.mark_tab_bar_dirty()
+        self.relayout()
 
     def new_window(
         self,
@@ -365,8 +366,8 @@ class Tab:  # {{{
             remove_window(self.os_window_id, self.id, window.id)
         else:
             detach_window(self.os_window_id, self.id, window.id)
-        self.relayout_borders()
         self.mark_tab_bar_dirty()
+        self.relayout()
         active_window = self.active_window
         if active_window:
             self.title_changed(active_window)
@@ -384,8 +385,7 @@ class Tab:  # {{{
         self._add_window(window)
 
     def set_active_window(self, x: Union[Window, int]) -> None:
-        q = self.windows.id_map[x] if isinstance(x, int) else x
-        self.windows.active_window = q
+        self.windows.set_active_window_group_for(x)
 
     def get_nth_window(self, n: int) -> Optional[Window]:
         if self.windows:
@@ -416,12 +416,11 @@ class Tab:  # {{{
         neighbors = self.current_layout.neighbors(self.windows)
         candidates = cast(Optional[Tuple[int, ...]], neighbors.get(which))
         if candidates:
-            self.current_layout.set_active_window(self.windows, candidates[0])
-            self.relayout_borders()
+            self.windows.set_active_window_group_for(candidates[0])
 
     def move_window(self, delta: int = 1) -> None:
-        self.current_layout.move_window(self.windows, delta)
-        self.relayout()
+        if self.current_layout.move_window(self.windows, delta):
+            self.relayout()
 
     def move_window_to_top(self) -> None:
         n = self.windows.num_groups

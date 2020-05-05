@@ -344,11 +344,10 @@ class Splits(Layout):
         else:
             root.layout_pair(lgd.central.left, lgd.central.top, lgd.central.width, lgd.central.height, id_window_map, id_idx_map, self)
 
-    def do_add_window(
+    def add_non_overlay_window(
         self,
         all_windows: WindowList,
         window: WindowType,
-        current_active_window_idx: Optional[int],
         location: Optional[str]
     ) -> int:
         horizontal = self.default_axis_is_horizontal

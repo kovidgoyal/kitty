@@ -6,12 +6,20 @@ import weakref
 from collections import deque
 from contextlib import suppress
 from itertools import count
-from typing import Any, Deque, Dict, Iterator, List, Optional, Union
+from typing import (
+    Any, Deque, Dict, Generator, Iterator, List, Optional, Tuple, Union
+)
 
 from .typing import TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
 group_id_counter = count()
+
+
+def wrap_increment(val: int, num: int, delta: int) -> int:
+    mult = -1 if delta < 0 else 1
+    delta = mult * (abs(delta) % num)
+    return (val + num + delta) % num
 
 
 class WindowGroup:
@@ -63,7 +71,7 @@ class WindowList:
         self.all_windows: List[WindowType] = []
         self.id_map: Dict[int, WindowType] = {}
         self.groups: List[WindowGroup] = []
-        self.active_group_idx: int = -1
+        self._active_group_idx: int = -1
         self.active_group_history: Deque[int] = deque((), 64)
         self.tabref = weakref.ref(tab)
 
@@ -76,8 +84,9 @@ class WindowList:
     def __iter__(self) -> Iterator[WindowType]:
         return iter(self.all_windows)
 
-    def __contains__(self, window: WindowType) -> bool:
-        return window.id in self.id_map
+    def __contains__(self, window: WindowOrId) -> bool:
+        q = window if isinstance(window, int) else window.id
+        return q in self.id_map
 
     def serialize_state(self) -> Dict[str, Any]:
         return {
@@ -85,6 +94,10 @@ class WindowList:
             'active_group_history': list(self.active_group_history),
             'window_groups': [g.serialize_state() for g in self.groups]
         }
+
+    @property
+    def active_group_idx(self) -> int:
+        return self._active_group_idx
 
     @property
     def active_window_history(self) -> List[int]:
@@ -100,14 +113,14 @@ class WindowList:
         return ans
 
     def set_active_group_idx(self, i: int) -> None:
-        if i != self.active_group_idx and 0 <= i < len(self.groups):
+        if i != self._active_group_idx and 0 <= i < len(self.groups):
             old_active_window = self.active_window
             g = self.active_group
             if g is not None:
                 with suppress(ValueError):
                     self.active_group_history.remove(g.id)
                 self.active_group_history.append(g.id)
-            self.active_group_idx = i
+            self._active_group_idx = i
             new_active_window = self.active_window
             if old_active_window is not new_active_window:
                 if old_active_window is not None:
@@ -121,9 +134,18 @@ class WindowList:
     def change_tab(self, tab: TabType) -> None:
         self.tabref = weakref.ref(tab)
 
+    def iter_windows_with_visibility(self) -> Generator[Tuple[WindowType, bool], None, None]:
+        for g in self.groups:
+            aw = g.active_window_id
+            for window in g:
+                yield window, window.id == aw
+
+    def iter_all_layoutable_windows(self) -> Generator[WindowType, None, None]:
+        for g in self.groups:
+            yield from g
+
     def make_previous_group_active(self, which: int = 1) -> None:
         which = max(1, which)
-        self.active_group_idx = len(self.groups) - 1
         gid_map = {g.id: i for i, g in enumerate(self.groups)}
         num = len(self.active_group_history)
         for i in range(num):
@@ -135,6 +157,7 @@ class WindowList:
                 if which < 1:
                     self.set_active_group_idx(x)
                     return
+        self.set_active_group_idx(len(self.groups) - 1)
 
     @property
     def num_groups(self) -> int:
@@ -154,18 +177,21 @@ class WindowList:
 
     @property
     def active_group(self) -> Optional[WindowGroup]:
-        if self.active_group_idx >= 0:
+        try:
             return self.groups[self.active_group_idx]
+        except IndexError:
+            pass
         return None
 
     @property
     def active_window(self) -> Optional[WindowType]:
-        if self.active_group_idx >= 0:
+        try:
             return self.id_map[self.groups[self.active_group_idx].active_window_id]
+        except IndexError:
+            pass
         return None
 
-    @active_window.setter
-    def active_window(self, x: WindowOrId) -> None:
+    def set_active_window_group_for(self, x: WindowOrId) -> None:
         q = self.id_map[x] if isinstance(x, int) else x
         for i, group in enumerate(self.groups):
             if q in group:
@@ -198,7 +224,10 @@ class WindowList:
                 self.groups.insert(pos + (0 if before else 1), target_group)
         if target_group is None:
             target_group = WindowGroup()
-            self.groups.append(target_group)
+            if before:
+                self.groups.insert(0, target_group)
+            else:
+                self.groups.append(target_group)
 
         target_group.add_window(window)
         if make_active:
@@ -218,5 +247,38 @@ class WindowList:
             g.remove_window(q)
             if not g:
                 del self.groups[i]
-                if self.active_group_idx == i:
-                    self.make_previous_group_active()
+                if self.groups:
+                    if self.active_group_idx == i:
+                        self.make_previous_group_active()
+                else:
+                    self._active_group_idx = -1
+                return
+
+    def active_window_in_nth_group(self, n: int, clamp: bool = False) -> Optional[WindowType]:
+        if clamp:
+            n = max(0, min(n, self.num_groups - 1))
+        if 0 <= n < self.num_groups:
+            return self.id_map.get(self.groups[n].active_window_id)
+
+    def activate_next_window_group(self, delta: int) -> None:
+        self.set_active_group_idx(wrap_increment(self.active_group_idx, self.num_groups, delta))
+
+    def move_window_group(self, by: Optional[int] = None, to_group_with_window_id: Optional[int] = None) -> bool:
+        if self.active_group_idx < 0 or not self.groups:
+            return False
+        target = -1
+        if by is not None:
+            target = wrap_increment(self.active_group_idx, self.num_groups, by)
+        if to_group_with_window_id is not None:
+            q = self.id_map[to_group_with_window_id]
+            for i, group in enumerate(self.groups):
+                if q in group:
+                    target = i
+                    break
+        if target > -1:
+            if target == self.active_group_idx:
+                return False
+            self.groups[self.active_group_idx], self.groups[target] = self.groups[target], self.groups[self.active_group_idx]
+            self.set_active_group_idx(target)
+            return True
+        return False

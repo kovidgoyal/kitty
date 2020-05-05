@@ -13,10 +13,10 @@ class Stack(Layout):
     needs_window_borders = False
     only_active_window_visible = True
 
-    def do_layout(self, windows: WindowList, active_window_idx: int) -> None:
-        for i, w in enumerate(windows):
+    def do_layout(self, windows: WindowList) -> None:
+        for i, w in enumerate(windows.iter_all_layoutable_windows()):
             wg = self.layout_single_window(w, left_align=lgd.align_top_left, return_geometry=True)
             if wg is not None:
-                w.set_geometry(i, wg)
-                if w.is_visible_in_layout:
+                w.set_geometry(wg)
+                if i == 0:
                     self.blank_rects = list(blank_rects_for_window(wg))
