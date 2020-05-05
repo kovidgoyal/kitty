@@ -24,6 +24,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix kitty @ send-text not working with text larger than 1024 bytes when using
   :option:`kitty --listen-on` (:iss:`2607`)
 
+- Wayland: Fix OS window title not updating for hidden windows (:iss:`2629`)
+
 
 0.17.3 [2020-04-23]
 --------------------

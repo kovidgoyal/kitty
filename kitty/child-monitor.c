@@ -524,17 +524,6 @@ change_menubar_title(PyObject *title UNUSED) {
 }
 
 static inline bool
-update_window_title(Window *w, OSWindow *os_window) {
-    if (w->title && w->title != os_window->window_title) {
-        os_window->window_title = w->title;
-        Py_INCREF(os_window->window_title);
-        set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
-        return true;
-    }
-    return false;
-}
-
-static inline bool
 prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg) {
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
@@ -577,7 +566,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 *active_window_id = w->id;
                 collect_cursor_info(&WD.screen->cursor_render_info, w, now, os_window);
                 if (w->cursor_visible_at_last_render != WD.screen->cursor_render_info.is_visible || w->last_cursor_x != WD.screen->cursor_render_info.x || w->last_cursor_y != WD.screen->cursor_render_info.y || w->last_cursor_shape != WD.screen->cursor_render_info.shape) needs_render = true;
-                update_window_title(w, os_window);
+                set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
             } else WD.screen->cursor_render_info.is_visible = false;
             if (send_cell_data_to_gpu(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
@@ -623,15 +612,6 @@ render_os_window(OSWindow *os_window, monotonic_t now, unsigned int active_windo
     if (USE_RENDER_FRAMES) request_frame_render(os_window);
 #undef WD
 #undef TD
-}
-
-static inline void
-update_os_window_title(OSWindow *os_window) {
-    Tab *tab = os_window->tabs + os_window->active_tab;
-    if (tab->num_windows) {
-        Window *w = tab->windows + tab->active_window;
-        update_window_title(w, os_window);
-    }
 }
 
 static void

@@ -277,3 +277,5 @@ void update_main_loop_timer(id_type timer_id, monotonic_t interval, bool enabled
 void run_main_loop(tick_callback_fun, void*);
 void stop_main_loop(void);
 void os_window_update_size_increments(OSWindow *window);
+void set_os_window_title_from_window(Window *w, OSWindow *os_window);
+void update_os_window_title(OSWindow *os_window);

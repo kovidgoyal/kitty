@@ -214,6 +214,27 @@ update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyO
     END_WITH_TAB;
 }
 
+void
+set_os_window_title_from_window(Window *w, OSWindow *os_window) {
+    if (w->title && w->title != os_window->window_title) {
+        Py_XDECREF(os_window->window_title);
+        os_window->window_title = w->title;
+        Py_INCREF(os_window->window_title);
+        set_os_window_title(os_window, PyUnicode_AsUTF8(w->title));
+    }
+}
+
+void
+update_os_window_title(OSWindow *os_window) {
+    if (os_window->num_tabs) {
+        Tab *tab = os_window->tabs + os_window->active_tab;
+        if (tab->num_windows) {
+            Window *w = tab->windows + tab->active_window;
+            set_os_window_title_from_window(w, os_window);
+        }
+    }
+}
+
 static inline void
 destroy_window(Window *w) {
     Py_CLEAR(w->render_data.screen); Py_CLEAR(w->title);
@@ -908,6 +929,17 @@ PYWRAP1(update_window_visibility) {
     Py_RETURN_NONE;
 }
 
+
+PYWRAP1(sync_os_window_title) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    WITH_OS_WINDOW(os_window_id)
+        update_os_window_title(os_window);
+    END_WITH_OS_WINDOW
+    Py_RETURN_NONE;
+}
+
+
 static inline double
 dpi_for_os_window_id(id_type os_window_id) {
     double dpi = 0;
@@ -1121,6 +1153,7 @@ static PyMethodDef module_methods[] = {
     MW(change_background_opacity, METH_VARARGS),
     MW(background_opacity_of, METH_O),
     MW(update_window_visibility, METH_VARARGS),
+    MW(sync_os_window_title, METH_VARARGS),
     MW(global_font_size, METH_VARARGS),
     MW(set_background_image, METH_VARARGS),
     MW(os_window_font_size, METH_VARARGS),

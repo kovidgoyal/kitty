@@ -18,7 +18,7 @@ from .constants import appname, is_macos, is_wayland
 from .fast_data_types import (
     add_tab, attach_window, detach_window, get_boss, mark_tab_bar_dirty,
     next_window_id, remove_tab, remove_window, ring_bell, set_active_tab,
-    swap_tabs, x11_window_id
+    swap_tabs, sync_os_window_title, x11_window_id
 )
 from .layout import (
     Layout, Rect, create_layout_object_for, evict_cached_layouts
@@ -206,7 +206,7 @@ class Tab:  # {{{
         if window is self.active_window:
             tm = self.tab_manager_ref()
             if tm is not None:
-                tm.mark_tab_bar_dirty()
+                tm.title_changed(self)
 
     def on_bell(self, window: Window) -> None:
         tm = self.tab_manager_ref()
@@ -638,6 +638,11 @@ class TabManager:  # {{{
 
     def update_tab_bar_data(self) -> None:
         self.tab_bar.update(self.tab_bar_data)
+
+    def title_changed(self, tab: Tab) -> None:
+        self.mark_tab_bar_dirty()
+        if tab is self.active_tab:
+            sync_os_window_title(self.os_window_id)
 
     def resize(self, only_tabs: bool = False) -> None:
         if not only_tabs:

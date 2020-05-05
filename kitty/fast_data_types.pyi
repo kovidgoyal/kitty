@@ -550,6 +550,10 @@ def update_window_visibility(
     pass
 
 
+def sync_os_window_title(os_window_id: int) -> None:
+    pass
+
+
 def set_options(
     opts: Options,
     is_wayland: bool = False,
