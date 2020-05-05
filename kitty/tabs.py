@@ -168,6 +168,10 @@ class Tab:  # {{{
         return self.windows.active_window
 
     @property
+    def active_window_for_cwd(self) -> Optional[Window]:
+        return self.windows.active_group_base
+
+    @property
     def title(self) -> str:
         return cast(str, getattr(self.active_window, 'title', appname))
 

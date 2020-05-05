@@ -304,10 +304,9 @@ class Boss:
 
     @property
     def active_window_for_cwd(self) -> Optional[Window]:
-        w = self.active_window
-        if w is not None and w.overlay_for is not None and w.overlay_for in self.window_id_map:
-            w = self.window_id_map[w.overlay_for]
-        return w
+        t = self.active_tab
+        if t is not None:
+            return t.active_window_for_cwd
 
     def new_os_window_with_cwd(self, *args: str) -> None:
         w = self.active_window_for_cwd
@@ -752,7 +751,7 @@ class Boss:
 
     def display_scrollback(self, window: Window, data: Optional[bytes], cmd: Optional[List[str]]) -> None:
         tab = self.active_tab
-        if tab is not None and window.overlay_for is None:
+        if tab is not None:
             tab.new_special_window(
                 SpecialWindow(cmd, data, _('History'), overlay_for=window.id),
                 copy_colors_from=self.active_window
@@ -795,7 +794,7 @@ class Boss:
         if end_kitten.no_ui:
             return end_kitten(None, getattr(w, 'id', None), self)
 
-        if w is not None and tab is not None and w.overlay_for is None:
+        if w is not None and tab is not None:
             args[0:0] = [config_dir, kitten]
             if input_data is None:
                 type_of_input = end_kitten.type_of_input
@@ -905,7 +904,7 @@ class Boss:
         elif window_type == 'overlay':
             w = self.active_window
             tab = self.active_tab
-            if w is not None and tab is not None and w.overlay_for is None:
+            if w is not None and tab is not None:
                 tab.new_special_window(SpecialWindow(cmd, overlay_for=w.id))
         else:
             self._new_window(cmd)
@@ -1047,7 +1046,7 @@ class Boss:
                     continue
                 arg = q
             cmdline.append(arg)
-        overlay_for = w.id if w and as_overlay and w.overlay_for is None else None
+        overlay_for = w.id if w and as_overlay else None
         return SpecialWindow(cmd, input_data, cwd_from=cwd_from, overlay_for=overlay_for, env=env)
 
     def run_background_process(

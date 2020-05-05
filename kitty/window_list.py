@@ -191,6 +191,14 @@ class WindowList:
             pass
         return None
 
+    @property
+    def active_group_base(self) -> Optional[WindowType]:
+        try:
+            return self.id_map[self.groups[self.active_group_idx].base_window_id]
+        except IndexError:
+            pass
+        return None
+
     def set_active_window_group_for(self, x: WindowOrId) -> None:
         q = self.id_map[x] if isinstance(x, int) else x
         for i, group in enumerate(self.groups):
