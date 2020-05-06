@@ -436,6 +436,8 @@ class Window:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
 
     def focus_changed(self, focused: bool) -> None:
+        if self.destroyed:
+            return
         if focused:
             self.needs_attention = False
             if self.screen.focus_tracking_enabled:
