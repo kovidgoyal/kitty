@@ -4,7 +4,7 @@
 
 from kitty.window_list import WindowList
 
-from .base import Layout, blank_rects_for_window, lgd
+from .base import Layout
 
 
 class Stack(Layout):
@@ -13,10 +13,7 @@ class Stack(Layout):
     needs_window_borders = False
     only_active_window_visible = True
 
-    def do_layout(self, windows: WindowList) -> None:
-        for i, w in enumerate(windows.iter_all_layoutable_windows()):
-            wg = self.layout_single_window(w, left_align=lgd.align_top_left, return_geometry=True)
-            if wg is not None:
-                w.set_geometry(wg)
-                if i == 0:
-                    self.blank_rects = list(blank_rects_for_window(wg))
+    def do_layout(self, all_windows: WindowList) -> None:
+        active_group = all_windows.active_group
+        for group in all_windows.iter_all_layoutable_groups():
+            self.layout_single_window_group(group, add_blank_rects=group is active_group)

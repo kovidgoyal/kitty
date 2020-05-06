@@ -10,7 +10,8 @@ from typing import (
     Any, Deque, Dict, Generator, Iterator, List, Optional, Tuple, Union
 )
 
-from .typing import TabType, WindowType
+from .constants import WindowGeometry
+from .typing import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
 group_id_counter = count()
@@ -63,6 +64,16 @@ class WindowGroup:
             'id': self.id,
             'windows': [w.serialize_state() for w in self.windows]
         }
+
+    def decoration(self, which: EdgeLiteral, border_mult: int = 1, is_single_window: bool = False) -> int:
+        if not self.windows:
+            return 0
+        w = self.windows[0]
+        return w.effective_margin(which, is_single_window=is_single_window) + w.effective_border() * border_mult + w.effective_padding(which)
+
+    def set_geometry(self, geom: WindowGeometry) -> None:
+        for w in self.windows:
+            w.set_geometry(geom)
 
 
 class WindowList:
@@ -147,9 +158,8 @@ class WindowList:
             for window in g:
                 yield window, window.id == aw
 
-    def iter_all_layoutable_windows(self) -> Generator[WindowType, None, None]:
-        for g in self.groups:
-            yield from g
+    def iter_all_layoutable_groups(self) -> Iterator[WindowGroup]:
+        return iter(self.groups)
 
     def make_previous_group_active(self, which: int = 1, notify: bool = False) -> None:
         which = max(1, which)
@@ -175,7 +185,6 @@ class WindowList:
         for g in self.groups:
             if q in g:
                 return g
-        return None
 
     def windows_in_group_of(self, x: WindowOrId) -> Iterator[WindowType]:
         g = self.group_for_window(x)
@@ -198,7 +207,10 @@ class WindowList:
             return self.id_map[self.groups[self.active_group_idx].base_window_id]
 
     def set_active_window_group_for(self, x: WindowOrId) -> None:
-        q = self.id_map[x] if isinstance(x, int) else x
+        try:
+            q = self.id_map[x] if isinstance(x, int) else x
+        except KeyError:
+            return
         for i, group in enumerate(self.groups):
             if q in group:
                 self.set_active_group_idx(i)

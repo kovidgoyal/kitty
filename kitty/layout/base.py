@@ -16,7 +16,7 @@ from kitty.fast_data_types import (
 )
 from kitty.options_stub import Options
 from kitty.typing import TypedDict, WindowType
-from kitty.window_list import WindowList
+from kitty.window_list import WindowGroup, WindowList
 
 
 class Borders(NamedTuple):
@@ -332,35 +332,32 @@ class Layout:
         self.blank_rects = []
         self.do_layout(all_windows)
 
-    def layout_single_window(self, w: WindowType, return_geometry: bool = False, left_align: bool = False) -> Optional[WindowGeometry]:
-        bw = w.effective_border() if self.must_draw_borders else 0
+    def layout_single_window_group(self, wg: WindowGroup, add_blank_rects: bool = True) -> None:
+        bw = 1 if self.must_draw_borders else 0
         xdecoration_pairs = ((
-            w.effective_padding('left') + w.effective_margin('left', is_single_window=True) + bw,
-            w.effective_padding('right') + w.effective_margin('right', is_single_window=True) + bw,
+            wg.decoration('left', border_mult=bw, is_single_window=True),
+            wg.decoration('right', border_mult=bw, is_single_window=True),
         ),)
         ydecoration_pairs = ((
-            w.effective_padding('top') + w.effective_margin('top', is_single_window=True) + bw,
-            w.effective_padding('bottom') + w.effective_margin('bottom', is_single_window=True) + bw,
+            wg.decoration('top', border_mult=bw, is_single_window=True),
+            wg.decoration('bottom', border_mult=bw, is_single_window=True),
         ),)
-        wg = layout_single_window(xdecoration_pairs, ydecoration_pairs, left_align=left_align)
-        if return_geometry:
-            return wg
-        w.set_geometry(wg)
-        self.blank_rects = list(blank_rects_for_window(wg))
-        return None
+        geom = layout_single_window(xdecoration_pairs, ydecoration_pairs, left_align=lgd.align_top_left)
+        wg.set_geometry(geom)
+        if add_blank_rects and wg:
+            self.blank_rects.extend(blank_rects_for_window(geom))
 
     def xlayout(
         self,
-        windows: WindowList,
+        all_windows: WindowList,
         bias: Optional[Sequence[float]] = None,
         start: Optional[int] = None,
-        size: Optional[int] = None
+        size: Optional[int] = None,
+        offset: int = 0
     ) -> LayoutDimension:
         decoration_pairs = tuple(
-            (
-                w.effective_margin('left') + w.effective_border() + w.effective_padding('left'),
-                w.effective_margin('right') + w.effective_border() + w.effective_padding('right'),
-            ) for w in windows
+            (g.decoration('left'), g.decoration('right')) for i, g in
+            enumerate(all_windows.iter_all_layoutable_groups()) if i >= offset
         )
         if start is None:
             start = lgd.central.left
@@ -370,16 +367,15 @@ class Layout:
 
     def ylayout(
         self,
-        windows: WindowList,
+        all_windows: WindowList,
         bias: Optional[Sequence[float]] = None,
         start: Optional[int] = None,
-        size: Optional[int] = None
+        size: Optional[int] = None,
+        offset: int = 0
     ) -> LayoutDimension:
         decoration_pairs = tuple(
-            (
-                w.effective_margin('top') + w.effective_border() + w.effective_padding('top'),
-                w.effective_margin('bottom') + w.effective_border() + w.effective_padding('bottom'),
-            ) for w in windows
+            (g.decoration('top'), g.decoration('bottom')) for i, g in
+            enumerate(all_windows.iter_all_layoutable_groups()) if i >= offset
         )
         if start is None:
             start = lgd.central.top
