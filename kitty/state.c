@@ -243,7 +243,16 @@ destroy_window(Window *w) {
 
 static inline void
 remove_window_inner(Tab *tab, id_type id) {
+    id_type active_window_id = 0;
+    if (tab->active_window < tab->num_windows) active_window_id = tab->windows[tab->active_window].id;
     REMOVER(tab->windows, id, tab->num_windows, destroy_window, tab->capacity);
+    if (active_window_id) {
+        for (unsigned int w = 0; w < tab->num_windows; w++) {
+            if (tab->windows[w].id == active_window_id) {
+                tab->active_window = w; break;
+            }
+        }
+    }
 }
 
 static inline void
@@ -329,8 +338,17 @@ destroy_tab(Tab *tab) {
 
 static inline void
 remove_tab_inner(OSWindow *os_window, id_type id) {
+    id_type active_tab_id = 0;
+    if (os_window->active_tab < os_window->num_tabs) active_tab_id = os_window->tabs[os_window->active_tab].id;
     make_os_window_context_current(os_window);
     REMOVER(os_window->tabs, id, os_window->num_tabs, destroy_tab, os_window->capacity);
+    if (active_tab_id) {
+        for (unsigned int i = 0; i < os_window->num_tabs; i++) {
+            if (os_window->tabs[i].id == active_tab_id) {
+                os_window->active_tab = i; break;
+            }
+        }
+    }
 }
 
 static inline void
