@@ -241,7 +241,7 @@ This will have ``2`` instead of a single tall window, that occupy ``70%``
 instead of ``50%`` of available width. ``bias`` can be any number between 10
 and 90.
 
-Writing a new layout only requires about a hundred lines of code, so if there
-is some layout you want, take a look at `layout.py
-<https://github.com/kovidgoyal/kitty/blob/master/kitty/layout.py>`_  and submit
-a pull request!
+Writing a new layout only requires about two hundred lines of code, so if there
+is some layout you want, take a look at one of the existing layouts in the
+`layout <https://github.com/kovidgoyal/kitty/tree/master/kitty/layout>`_
+package and submit a pull request!
