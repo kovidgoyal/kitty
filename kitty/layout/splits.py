@@ -8,11 +8,11 @@ from typing import (
 
 from kitty.constants import Edges, WindowGeometry
 from kitty.typing import EdgeLiteral, WindowType
-from kitty.window_list import WindowList
+from kitty.window_list import WindowGroup, WindowList
 
 from .base import (
-    Borders, NeighborsMap, Layout, LayoutOpts, all_borders,
-    blank_rects_for_window, lgd, no_borders, window_geometry_from_layouts
+    Layout, LayoutOpts, NeighborsMap, blank_rects_for_window, lgd,
+    window_geometry_from_layouts
 )
 
 
@@ -57,6 +57,22 @@ class Pair:
         if ans is None and isinstance(self.two, Pair):
             ans = self.two.pair_for_window(window_id)
         return ans
+
+    def swap_windows(self, a: int, b: int) -> None:
+        pa = self.pair_for_window(a)
+        pb = self.pair_for_window(b)
+        if pa is None or pb is None:
+            return
+        if pa.one == a:
+            if pb.one == b:
+                pa.one, pb.one = pb.one, pa.one
+            else:
+                pa.one, pb.two = pb.two, pa.one
+        else:
+            if pb.one == b:
+                pa.two, pb.one = pb.one, pa.two
+            else:
+                pa.two, pb.two = pb.two, pa.two
 
     def parent(self, root: 'Pair') -> Optional['Pair']:
         for q in root.self_and_descendants():
@@ -134,19 +150,14 @@ class Pair:
     def apply_window_geometry(
         self, window_id: int,
         window_geometry: WindowGeometry,
-        id_window_map: Dict[int, WindowType],
-        id_idx_map: Dict[int, int],
+        id_window_map: Dict[int, WindowGroup],
         layout_object: Layout
     ) -> None:
-        w = id_window_map[window_id]
-        w.set_geometry(id_idx_map[window_id], window_geometry)
-        if w.overlay_window_id is not None:
-            q = id_window_map.get(w.overlay_window_id)
-            if q is not None:
-                q.set_geometry(id_idx_map[q.id], window_geometry)
+        wg = id_window_map[window_id]
+        wg.set_geometry(window_geometry)
         layout_object.blank_rects.extend(blank_rects_for_window(window_geometry))
 
-    def effective_border(self, id_window_map: Dict[int, WindowType]) -> int:
+    def effective_border(self, id_window_map: Dict[int, WindowGroup]) -> int:
         for wid in self.all_window_ids():
             return id_window_map[wid].effective_border()
         return 0
@@ -154,22 +165,21 @@ class Pair:
     def layout_pair(
         self,
         left: int, top: int, width: int, height: int,
-        id_window_map: Dict[int, WindowType],
-        id_idx_map: Dict[int, int],
+        id_window_map: Dict[int, WindowGroup],
         layout_object: Layout
     ) -> None:
         self.between_border = None
         if self.one is None or self.two is None:
             q = self.one or self.two
             if isinstance(q, Pair):
-                return q.layout_pair(left, top, width, height, id_window_map, id_idx_map, layout_object)
+                return q.layout_pair(left, top, width, height, id_window_map, layout_object)
             if q is None:
                 return
-            w = id_window_map[q]
-            xl = next(layout_object.xlayout([w], start=left, size=width))
-            yl = next(layout_object.ylayout([w], start=top, size=height))
+            wg = id_window_map[q]
+            xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width))
+            yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height))
             geom = window_geometry_from_layouts(xl, yl)
-            self.apply_window_geometry(q, geom, id_window_map, id_idx_map, layout_object)
+            self.apply_window_geometry(q, geom, id_window_map, layout_object)
             return
         bw = self.effective_border(id_window_map) if lgd.draw_minimal_borders else 0
         b1 = bw // 2
@@ -178,46 +188,46 @@ class Pair:
             w1 = max(2*lgd.cell_width + 1, int(self.bias * width) - b1)
             w2 = max(2*lgd.cell_width + 1, width - w1 - b1 - b2)
             if isinstance(self.one, Pair):
-                self.one.layout_pair(left, top, w1, height, id_window_map, id_idx_map, layout_object)
+                self.one.layout_pair(left, top, w1, height, id_window_map, layout_object)
             else:
-                w = id_window_map[self.one]
-                yl = next(layout_object.ylayout([w], start=top, size=height))
-                xl = next(layout_object.xlayout([w], start=left, size=w1))
+                wg = id_window_map[self.one]
+                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height))
+                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=w1))
                 geom = window_geometry_from_layouts(xl, yl)
-                self.apply_window_geometry(self.one, geom, id_window_map, id_idx_map, layout_object)
+                self.apply_window_geometry(self.one, geom, id_window_map, layout_object)
             if b1 + b2:
                 self.between_border = Edges(left + w1, top, left + w1 + b1 + b2, top + height)
             left += b1 + b2
             if isinstance(self.two, Pair):
-                self.two.layout_pair(left + w1, top, w2, height, id_window_map, id_idx_map, layout_object)
+                self.two.layout_pair(left + w1, top, w2, height, id_window_map, layout_object)
             else:
-                w = id_window_map[self.two]
-                xl = next(layout_object.xlayout([w], start=left + w1, size=w2))
-                yl = next(layout_object.ylayout([w], start=top, size=height))
+                wg = id_window_map[self.two]
+                xl = next(layout_object.xlayout(iter((wg,)), start=left + w1, size=w2))
+                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=height))
                 geom = window_geometry_from_layouts(xl, yl)
-                self.apply_window_geometry(self.two, geom, id_window_map, id_idx_map, layout_object)
+                self.apply_window_geometry(self.two, geom, id_window_map, layout_object)
         else:
             h1 = max(2*lgd.cell_height + 1, int(self.bias * height) - b1)
             h2 = max(2*lgd.cell_height + 1, height - h1 - b1 - b2)
             if isinstance(self.one, Pair):
-                self.one.layout_pair(left, top, width, h1, id_window_map, id_idx_map, layout_object)
+                self.one.layout_pair(left, top, width, h1, id_window_map, layout_object)
             else:
-                w = id_window_map[self.one]
-                xl = next(layout_object.xlayout([w], start=left, size=width))
-                yl = next(layout_object.ylayout([w], start=top, size=h1))
+                wg = id_window_map[self.one]
+                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width))
+                yl = next(layout_object.ylayout(iter((wg,)), start=top, size=h1))
                 geom = window_geometry_from_layouts(xl, yl)
-                self.apply_window_geometry(self.one, geom, id_window_map, id_idx_map, layout_object)
+                self.apply_window_geometry(self.one, geom, id_window_map, layout_object)
             if b1 + b2:
                 self.between_border = Edges(left, top + h1, left + width, top + h1 + b1 + b2)
             top += b1 + b2
             if isinstance(self.two, Pair):
-                self.two.layout_pair(left, top + h1, width, h2, id_window_map, id_idx_map, layout_object)
+                self.two.layout_pair(left, top + h1, width, h2, id_window_map, layout_object)
             else:
-                w = id_window_map[self.two]
-                xl = next(layout_object.xlayout([w], start=left, size=width))
-                yl = next(layout_object.ylayout([w], start=top + h1, size=h2))
+                wg = id_window_map[self.two]
+                xl = next(layout_object.xlayout(iter((wg,)), start=left, size=width))
+                yl = next(layout_object.ylayout(iter((wg,)), start=top + h1, size=h2))
                 geom = window_geometry_from_layouts(xl, yl)
-                self.apply_window_geometry(self.two, geom, id_window_map, id_idx_map, layout_object)
+                self.apply_window_geometry(self.two, geom, id_window_map, layout_object)
 
     def modify_size_of_child(self, which: int, increment: float, is_horizontal: bool, layout_object: 'Splits') -> bool:
         if is_horizontal == self.horizontal and not self.is_redundant:
@@ -317,10 +327,11 @@ class Splits(Layout):
     def pairs_root(self, root: Pair) -> None:
         self._pairs_root = root
 
-    def do_layout_all_windows(self, windows: WindowList, active_window_idx: int, all_windows: WindowList) -> None:
-        window_count = len(windows)
+    def do_layout(self, all_windows: WindowList) -> None:
+        groups = tuple(all_windows.iter_all_layoutable_groups())
+        window_count = len(groups)
         root = self.pairs_root
-        all_present_window_ids = frozenset(w.overlay_for or w.id for w in windows)
+        all_present_window_ids = frozenset(w.id for w in groups)
         already_placed_window_ids = frozenset(root.all_window_ids())
         windows_to_remove = already_placed_window_ids - all_present_window_ids
 
@@ -332,24 +343,24 @@ class Splits(Layout):
                 q = root.one or root.two
                 if isinstance(q, Pair):
                     root = self.pairs_root = q
-        id_window_map = {w.id: w for w in all_windows}
-        id_idx_map = {w.id: i for i, w in enumerate(all_windows)}
+        id_window_map = {w.id: w for w in groups}
+        id_idx_map = {w.id: i for i, w in enumerate(groups)}
         windows_to_add = all_present_window_ids - already_placed_window_ids
         if windows_to_add:
             for wid in sorted(windows_to_add, key=id_idx_map.__getitem__):
                 root.balanced_add(wid)
 
         if window_count == 1:
-            self.layout_single_window(windows[0])
+            self.layout_single_window_group(groups[0])
         else:
-            root.layout_pair(lgd.central.left, lgd.central.top, lgd.central.width, lgd.central.height, id_window_map, id_idx_map, self)
+            root.layout_pair(lgd.central.left, lgd.central.top, lgd.central.width, lgd.central.height, id_window_map, self)
 
     def add_non_overlay_window(
         self,
         all_windows: WindowList,
         window: WindowType,
         location: Optional[str]
-    ) -> int:
+    ) -> None:
         horizontal = self.default_axis_is_horizontal
         after = True
         if location is not None:
@@ -359,23 +370,17 @@ class Splits(Layout):
                 horizontal = False
             if location in ('before', 'first'):
                 after = False
-        active_window_idx = None
-        if current_active_window_idx is not None and 0 <= current_active_window_idx < len(all_windows):
-            cw = all_windows[current_active_window_idx]
-            window_id = cw.overlay_for or cw.id
-            pair = self.pairs_root.pair_for_window(window_id)
+        aw = all_windows.active_window
+        if aw is not None:
+            ag = all_windows.active_group
+            assert ag is not None
+            group_id = ag.id
+            pair = self.pairs_root.pair_for_window(group_id)
             if pair is not None:
-                pair.split_and_add(window_id, window.id, horizontal, after)
-                active_window_idx = current_active_window_idx
-                if after:
-                    active_window_idx += 1
-                for i in range(len(all_windows), active_window_idx, -1):
-                    self.swap_windows_in_os_window(i, i - 1)
-                all_windows.insert(active_window_idx, window)
-        if active_window_idx is None:
-            active_window_idx = len(all_windows)
-            all_windows.append(window)
-        return active_window_idx
+                target_group = all_windows.add_window(window, next_to=aw, before=not after)
+                pair.split_and_add(group_id, target_group.id, horizontal, after)
+                return
+        all_windows.add_window(window)
 
     def modify_size_of_window(
         self,
@@ -384,15 +389,13 @@ class Splits(Layout):
         increment: float,
         is_horizontal: bool = True
     ) -> bool:
-        idx = idx_for_id(window_id, all_windows)
-        if idx is None:
+        grp = all_windows.group_for_window(window_id)
+        if grp is None:
             return False
-        w = all_windows[idx]
-        window_id = w.overlay_for or w.id
-        pair = self.pairs_root.pair_for_window(window_id)
+        pair = self.pairs_root.pair_for_window(grp.id)
         if pair is None:
             return False
-        which = 1 if pair.one == window_id else 2
+        which = 1 if pair.one == grp.id else 2
         return pair.modify_size_of_child(which, increment, is_horizontal, self)
 
     def remove_all_biases(self) -> bool:
@@ -400,49 +403,34 @@ class Splits(Layout):
             pair.bias = 0.5
         return True
 
-    def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Edges, None, None]:
+    def window_independent_borders(self, all_windows: WindowList) -> Generator[Edges, None, None]:
         if not lgd.draw_minimal_borders:
             return
         for pair in self.pairs_root.self_and_descendants():
             if pair.between_border is not None:
                 yield pair.between_border
 
-    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
-        window_id = window.overlay_for or window.id
-        pair = self.pairs_root.pair_for_window(window_id)
+    def neighbors_for_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
+        wg = all_windows.group_for_window(window)
+        assert wg is not None
+        pair = self.pairs_root.pair_for_window(wg.id)
         ans: NeighborsMap = {'left': [], 'right': [], 'top': [], 'bottom': []}
         if pair is not None:
-            pair.neighbors_for_window(window_id, ans, self)
+            pair.neighbors_for_window(wg.id, ans, self)
         return ans
 
-    def swap_windows_in_layout(self, all_windows: WindowList, a: int, b: int) -> None:
-        w1_, w2_ = all_windows[a], all_windows[b]
-        super().swap_windows_in_layout(all_windows, a, b)
-        w1 = w1_.overlay_for or w1_.id
-        w2 = w2_.overlay_for or w2_.id
-        p1 = self.pairs_root.pair_for_window(w1)
-        p2 = self.pairs_root.pair_for_window(w2)
-        if p1 and p2:
-            if p1 is p2:
-                p1.one, p1.two = p1.two, p1.one
-            else:
-                if p1.one == w1:
-                    p1.one = w2
-                else:
-                    p1.two = w2
-                if p2.one == w2:
-                    p2.one = w1
-                else:
-                    p2.two = w1
+    def move_window(self, all_windows: WindowList, delta: Union[str, int] = 1) -> bool:
+        before = all_windows.active_group
+        if before is None:
+            return False
+        before_idx = all_windows.active_group_idx
+        moved = super().move_window(all_windows, delta)
+        after = all_windows.groups[before_idx]
+        if moved and before.id != after.id:
+            self.pairs_root.swap_windows(before.id, after.id)
+        return moved
 
-    def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
-        for w in windows:
-            if (w is active_window and lgd.draw_active_borders) or w.needs_attention:
-                yield all_borders
-            else:
-                yield no_borders
-
-    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList, active_window_idx: int) -> Optional[bool]:
+    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         if action_name == 'rotate':
             args = args or ('90',)
             try:
@@ -453,12 +441,12 @@ class Splits(Layout):
                 amt = 90
             rotate = amt in (90, 270)
             swap = amt in (180, 270)
-            w = all_windows[active_window_idx]
-            wid = w.overlay_for or w.id
-            pair = self.pairs_root.pair_for_window(wid)
-            if pair is not None and not pair.is_redundant:
-                if rotate:
-                    pair.horizontal = not pair.horizontal
-                if swap:
-                    pair.one, pair.two = pair.two, pair.one
-                return True
+            wg = all_windows.active_group
+            if wg is not None:
+                pair = self.pairs_root.pair_for_window(wg.id)
+                if pair is not None and not pair.is_redundant:
+                    if rotate:
+                        pair.horizontal = not pair.horizontal
+                    if swap:
+                        pair.one, pair.two = pair.two, pair.one
+                    return True

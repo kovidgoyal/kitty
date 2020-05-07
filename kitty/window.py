@@ -238,12 +238,12 @@ class Window:
         self.tabref: Callable[[], Optional[TabType]] = weakref.ref(tab)
         self.clipboard_control_buffers = {'p': '', 'c': ''}
         self.destroyed = False
-        self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
+        self.geometry: WindowGeometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
-        self.is_visible_in_layout = True
+        self.is_visible_in_layout: bool = True
         self.child, self.opts = child, opts
         cell_width, cell_height = cell_size_for_window(self.os_window_id)
-        self.screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
+        self.screen: Screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
         if copy_colors_from is not None:
             self.screen.copy_colors_from(copy_colors_from.screen)
         else:

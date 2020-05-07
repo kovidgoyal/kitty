@@ -23,7 +23,7 @@ from .fast_data_types import (  # noqa
     Screen as ScreenType, StartupCtx as StartupCtx
 )
 from .key_encoding import KeyEvent as KeyEventType  # noqa
-from .layout import Layout as LayoutType  # noqa
+from .layout.base import Layout as LayoutType  # noqa
 from .rc.base import RemoteCommand as RemoteCommandType  # noqa
 from .session import Session as SessionType, Tab as SessionTab  # noqa
 from .tabs import (  # noqa

@@ -175,7 +175,7 @@ class Grid(Layout):
                 n, nrows, ncols, special_rows, special_col, on_col_done):
             position_window_in_grid_cell(window_idx, xl, yl)
 
-    def window_independent_borders(self, all_windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Edges, None, None]:
+    def window_independent_borders(self, all_windows: WindowList) -> Generator[Edges, None, None]:
         n = all_windows.num_groups
         if not lgd.draw_minimal_borders or n < 2:
             return
@@ -184,6 +184,8 @@ class Grid(Layout):
         col_borders: List[Edges] = []
         groups = tuple(all_windows.iter_all_layoutable_groups())
         bw = groups[0].effective_border()
+        xl: LayoutData = LayoutData()
+        yl: LayoutData = LayoutData()
 
         def on_col_done(col_windows: List[int]) -> None:
             left = xl.content_pos + xl.content_size + xl.space_after - bw // 2

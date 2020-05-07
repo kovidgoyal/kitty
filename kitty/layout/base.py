@@ -32,11 +32,11 @@ class LayoutOpts:
 
 
 class LayoutData(NamedTuple):
-    content_pos: int
-    cells_per_window: int
-    space_before: int
-    space_after: int
-    content_size: int
+    content_pos: int = 0
+    cells_per_window: int = 0
+    space_before: int = 0
+    space_after: int = 0
+    content_size: int = 0
 
 
 all_borders = Borders(True, True, True, True)
@@ -288,7 +288,7 @@ class Layout:
             location = 'after'
         self.add_non_overlay_window(all_windows, window, location)
 
-    def add_non_overlay_window(self, all_windows: WindowList, window: WindowType, location: Optional[str]) -> int:
+    def add_non_overlay_window(self, all_windows: WindowList, window: WindowType, location: Optional[str]) -> None:
         next_to: Optional[WindowType] = None
         before = False
         next_to = all_windows.active_window
@@ -392,7 +392,7 @@ class Layout:
         else:
             yield from Layout.minimal_borders(self, windows, {})
 
-    def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Edges, None, None]:
+    def window_independent_borders(self, windows: WindowList) -> Generator[Edges, None, None]:
         return
         yield Edges()  # type: ignore
 

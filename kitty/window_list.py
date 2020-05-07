@@ -14,7 +14,7 @@ from .constants import WindowGeometry
 from .typing import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]
-group_id_counter = count()
+group_id_counter = count(start=1)
 
 
 def wrap_increment(val: int, num: int, delta: int) -> int:
@@ -97,19 +97,22 @@ class WindowGroup:
     @property
     def default_bg(self) -> int:
         if self.windows:
-            return self.windows[-1].screen.color_profile.default_bg
+            w: WindowType = self.windows[-1]
+            return w.screen.color_profile.default_bg
         return 0
 
     @property
     def geometry(self) -> Optional[WindowGeometry]:
         if self.windows:
-            return self.windows[-1].geometry
+            w: WindowType = self.windows[-1]
+            return w.geometry
 
     @property
     def is_visible_in_layout(self) -> bool:
-        if not self.windows:
-            return False
-        return self.windows[-1].is_visible_in_layout
+        if self.windows:
+            w: WindowType = self.windows[-1]
+            return w.is_visible_in_layout
+        return False
 
 
 class WindowList:
@@ -270,7 +273,7 @@ class WindowList:
         next_to: Optional[WindowOrId] = None,
         before: bool = False,
         make_active: bool = True
-    ) -> None:
+    ) -> WindowGroup:
         self.all_windows.append(window)
         self.id_map[window.id] = window
         target_group: Optional[WindowGroup] = None
@@ -304,6 +307,7 @@ class WindowList:
         new_active_window = self.active_window
         if new_active_window is not old_active_window:
             self.notify_on_active_window_change(old_active_window, new_active_window)
+        return target_group
 
     def remove_window(self, x: WindowOrId) -> None:
         old_active_window = self.active_window
