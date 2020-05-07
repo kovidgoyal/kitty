@@ -188,11 +188,6 @@ class Tab:  # {{{
     def on_bell(self, window: Window) -> None:
         self.mark_tab_bar_dirty()
 
-    def visible_windows(self) -> Generator[Window, None, None]:
-        for w in self.windows:
-            if w.is_visible_in_layout:
-                yield w
-
     def relayout(self) -> None:
         if self.windows:
             self.current_layout(self.windows)
@@ -201,13 +196,12 @@ class Tab:  # {{{
     def relayout_borders(self) -> None:
         tm = self.tab_manager_ref()
         if tm is not None:
-            visible_windows = list(self.visible_windows())
             w = self.active_window
             ly = self.current_layout
             self.borders(
-                windows=visible_windows, active_window=w,
+                all_windows=self.windows,
                 current_layout=ly, extra_blank_rects=tm.blank_rects,
-                draw_window_borders=(ly.needs_window_borders and len(visible_windows) > 1) or ly.must_draw_borders
+                draw_window_borders=(ly.needs_window_borders and self.windows.num_visble_groups > 1) or ly.must_draw_borders
             )
             if w is not None:
                 w.change_titlebar_color()
@@ -420,9 +414,9 @@ class Tab:  # {{{
         neighbors = self.current_layout.neighbors(self.windows)
         candidates = cast(Optional[Tuple[int, ...]], neighbors.get(which))
         if candidates:
-            self.windows.set_active_window_group_for(candidates[0])
+            self.windows.set_active_group(candidates[0])
 
-    def move_window(self, delta: int = 1) -> None:
+    def move_window(self, delta: Union[str, int] = 1) -> None:
         if self.current_layout.move_window(self.windows, delta):
             self.relayout()
 

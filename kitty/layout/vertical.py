@@ -8,7 +8,7 @@ from kitty.typing import WindowType
 from kitty.window_list import WindowList
 
 from .base import (
-    Borders, InternalNeighborsMap, Layout, LayoutDimension, ListOfWindows,
+    Borders, NeighborsMap, Layout, LayoutDimension, ListOfWindows,
     all_borders, no_borders, variable_bias
 )
 
@@ -72,7 +72,7 @@ class Vertical(Layout):
             else:
                 yield self.only_between_border
 
-    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
         idx = windows.index(window)
         before = [] if window is windows[0] else [windows[idx-1].id]
         after = [] if window is windows[-1] else [windows[idx+1].id]

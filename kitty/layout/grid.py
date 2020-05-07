@@ -11,7 +11,7 @@ from kitty.typing import WindowType
 from kitty.window_list import WindowList
 
 from .base import (
-    Borders, InternalNeighborsMap, Layout, LayoutData, LayoutDimension,
+    Borders, NeighborsMap, Layout, LayoutData, LayoutDimension,
     ListOfWindows, all_borders, layout_dimension, lgd, no_borders,
     variable_bias
 )
@@ -213,7 +213,7 @@ class Grid(Layout):
             for border in rows[:-1]:
                 yield border
 
-    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
         n = len(windows)
         if n < 4:
             return neighbors_for_tall_window(1, window, windows)

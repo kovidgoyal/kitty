@@ -11,7 +11,7 @@ from kitty.typing import EdgeLiteral, WindowType
 from kitty.window_list import WindowList
 
 from .base import (
-    Borders, InternalNeighborsMap, Layout, LayoutOpts, all_borders,
+    Borders, NeighborsMap, Layout, LayoutOpts, all_borders,
     blank_rects_for_window, lgd, no_borders, window_geometry_from_layouts
 )
 
@@ -234,7 +234,7 @@ class Pair:
             return parent.modify_size_of_child(which, increment, is_horizontal, layout_object)
         return False
 
-    def neighbors_for_window(self, window_id: int, ans: InternalNeighborsMap, layout_object: 'Splits') -> None:
+    def neighbors_for_window(self, window_id: int, ans: NeighborsMap, layout_object: 'Splits') -> None:
 
         def quadrant(is_horizontal: bool, is_first: bool) -> Tuple[EdgeLiteral, EdgeLiteral]:
             if is_horizontal:
@@ -407,10 +407,10 @@ class Splits(Layout):
             if pair.between_border is not None:
                 yield pair.between_border
 
-    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
         window_id = window.overlay_for or window.id
         pair = self.pairs_root.pair_for_window(window_id)
-        ans: InternalNeighborsMap = {'left': [], 'right': [], 'top': [], 'bottom': []}
+        ans: NeighborsMap = {'left': [], 'right': [], 'top': [], 'bottom': []}
         if pair is not None:
             pair.neighbors_for_window(window_id, ans, self)
         return ans

@@ -45,6 +45,13 @@ class WindowGroup:
         return False
 
     @property
+    def needs_attention(self) -> bool:
+        for w in self.windows:
+            if w.needs_attention:
+                return True
+        return False
+
+    @property
     def base_window_id(self) -> int:
         return self.windows[0].id if self.windows else 0
 
@@ -71,9 +78,38 @@ class WindowGroup:
         w = self.windows[0]
         return w.effective_margin(which, is_single_window=is_single_window) + w.effective_border() * border_mult + w.effective_padding(which)
 
+    def effective_padding(self, which: EdgeLiteral) -> int:
+        if not self.windows:
+            return 0
+        w = self.windows[0]
+        return w.effective_padding(which)
+
+    def effective_border(self) -> int:
+        if not self.windows:
+            return 0
+        w = self.windows[0]
+        return w.effective_border()
+
     def set_geometry(self, geom: WindowGeometry) -> None:
         for w in self.windows:
             w.set_geometry(geom)
+
+    @property
+    def default_bg(self) -> int:
+        if self.windows:
+            return self.windows[-1].screen.color_profile.default_bg
+        return 0
+
+    @property
+    def geometry(self) -> Optional[WindowGeometry]:
+        if self.windows:
+            return self.windows[-1].geometry
+
+    @property
+    def is_visible_in_layout(self) -> bool:
+        if not self.windows:
+            return False
+        return self.windows[-1].is_visible_in_layout
 
 
 class WindowList:
@@ -149,6 +185,11 @@ class WindowList:
                 changed = True
         return changed
 
+    def set_active_group(self, group_id: int) -> bool:
+        for i, gr in enumerate(self.groups):
+            if gr.id == group_id:
+                return self.set_active_group_idx(i)
+
     def change_tab(self, tab: TabType) -> None:
         self.tabref = weakref.ref(tab)
 
@@ -158,8 +199,8 @@ class WindowList:
             for window in g:
                 yield window, window.id == aw
 
-    def iter_all_layoutable_groups(self) -> Iterator[WindowGroup]:
-        return iter(self.groups)
+    def iter_all_layoutable_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
+        return iter(g for g in self.groups if g.is_visible_in_layout) if only_visible else iter(self.groups)
 
     def make_previous_group_active(self, which: int = 1, notify: bool = False) -> None:
         which = max(1, which)
@@ -185,6 +226,12 @@ class WindowList:
         for g in self.groups:
             if q in g:
                 return g
+
+    def group_idx_for_window(self, x: WindowOrId) -> Optional[int]:
+        q = self.id_map[x] if isinstance(x, int) else x
+        for i, g in enumerate(self.groups):
+            if q in g:
+                return i
 
     def windows_in_group_of(self, x: WindowOrId) -> Iterator[WindowType]:
         g = self.group_for_window(x)
@@ -289,16 +336,15 @@ class WindowList:
     def activate_next_window_group(self, delta: int) -> None:
         self.set_active_group_idx(wrap_increment(self.active_group_idx, self.num_groups, delta))
 
-    def move_window_group(self, by: Optional[int] = None, to_group_with_window_id: Optional[int] = None) -> bool:
+    def move_window_group(self, by: Optional[int] = None, to_group: Optional[int] = None) -> bool:
         if self.active_group_idx < 0 or not self.groups:
             return False
         target = -1
         if by is not None:
             target = wrap_increment(self.active_group_idx, self.num_groups, by)
-        if to_group_with_window_id is not None:
-            q = self.id_map[to_group_with_window_id]
+        if to_group is not None:
             for i, group in enumerate(self.groups):
-                if q in group:
+                if group.id == to_group:
                     target = i
                     break
         if target > -1:
@@ -308,3 +354,15 @@ class WindowList:
             self.set_active_group_idx(target)
             return True
         return False
+
+    def compute_needs_borders_map(self, draw_active_borders: bool) -> Dict[int, bool]:
+        ag = self.active_group
+        return {gr.id: ((gr is ag and draw_active_borders) or gr.needs_attention) for gr in self.groups}
+
+    @property
+    def num_visble_groups(self) -> int:
+        ans = 0
+        for gr in self.groups:
+            if gr.is_visible_in_layout:
+                ans += 1
+        return ans

@@ -4,10 +4,9 @@
 
 from functools import partial
 from itertools import repeat
-from operator import attrgetter
 from typing import (
-    Dict, Generator, Iterable, List, NamedTuple, Optional, Sequence, Tuple,
-    Union, cast
+    Dict, Generator, Iterable, Iterator, List, NamedTuple, Optional, Sequence,
+    Tuple, Union, cast
 )
 
 from kitty.constants import Edges, WindowGeometry
@@ -47,18 +46,11 @@ LayoutDimension = Generator[LayoutData, None, None]
 ListOfWindows = List[WindowType]
 
 
-class InternalNeighborsMap(TypedDict):
+class NeighborsMap(TypedDict):
     left: List[int]
     top: List[int]
     right: List[int]
     bottom: List[int]
-
-
-class NeighborsMap(TypedDict):
-    left: Tuple[int, ...]
-    top: Tuple[int, ...]
-    right: Tuple[int, ...]
-    bottom: Tuple[int, ...]
 
 
 class LayoutGlobalData:
@@ -241,7 +233,10 @@ class Layout:
         return False
 
     def modify_size_of_window(self, all_windows: WindowList, window_id: int, increment: float, is_horizontal: bool = True) -> bool:
-        return self.apply_bias(window_id, increment, all_windows, is_horizontal)
+        idx = all_windows.group_idx_for_window(window_id)
+        if idx is None:
+            return False
+        return self.apply_bias(idx, increment, all_windows, is_horizontal)
 
     def parse_layout_opts(self, layout_opts: Optional[str] = None) -> LayoutOpts:
         data: Dict[str, str] = {}
@@ -264,20 +259,12 @@ class Layout:
     def neighbors(self, all_windows: WindowList) -> NeighborsMap:
         w = all_windows.active_window
         assert w is not None
-        n = self.neighbors_for_window(w, all_windows)
-        id_getter = attrgetter('id')
-        ans: NeighborsMap = {
-            'left': tuple(map(id_getter, n['left'])),
-            'top': tuple(map(id_getter, n['top'])),
-            'right': tuple(map(id_getter, n['right'])),
-            'bottom': tuple(map(id_getter, n['bottom']))
-        }
-        return ans
+        return self.neighbors_for_window(w, all_windows)
 
     def move_window(self, all_windows: WindowList, delta: Union[str, int] = 1) -> bool:
         # delta can be either a number or a string such as 'left', 'top', etc
         # for neighborhood moves
-        if len(all_windows) < 2 or not delta:
+        if all_windows.num_groups < 2 or not delta:
             return False
 
         if isinstance(delta, int):
@@ -291,7 +278,7 @@ class Layout:
         q: List[int] = cast(List[int], neighbors.get(which, []))
         if not q:
             return False
-        return all_windows.move_window_group(to_group_with_window_id=q[0])
+        return all_windows.move_window_group(to_group=q[0])
 
     def add_window(self, all_windows: WindowList, window: WindowType, location: Optional[str] = None, overlay_for: Optional[int] = None) -> None:
         if overlay_for is not None and overlay_for in all_windows:
@@ -349,7 +336,7 @@ class Layout:
 
     def xlayout(
         self,
-        all_windows: WindowList,
+        groups: Iterator[WindowGroup],
         bias: Optional[Sequence[float]] = None,
         start: Optional[int] = None,
         size: Optional[int] = None,
@@ -357,7 +344,7 @@ class Layout:
     ) -> LayoutDimension:
         decoration_pairs = tuple(
             (g.decoration('left'), g.decoration('right')) for i, g in
-            enumerate(all_windows.iter_all_layoutable_groups()) if i >= offset
+            enumerate(groups) if i >= offset
         )
         if start is None:
             start = lgd.central.left
@@ -367,7 +354,7 @@ class Layout:
 
     def ylayout(
         self,
-        all_windows: WindowList,
+        groups: Iterator[WindowGroup],
         bias: Optional[Sequence[float]] = None,
         start: Optional[int] = None,
         size: Optional[int] = None,
@@ -375,7 +362,7 @@ class Layout:
     ) -> LayoutDimension:
         decoration_pairs = tuple(
             (g.decoration('top'), g.decoration('bottom')) for i, g in
-            enumerate(all_windows.iter_all_layoutable_groups()) if i >= offset
+            enumerate(groups) if i >= offset
         )
         if start is None:
             start = lgd.central.top
@@ -383,37 +370,35 @@ class Layout:
             size = lgd.central.height
         return layout_dimension(start, size, lgd.cell_height, decoration_pairs, bias=bias, left_align=lgd.align_top_left)
 
-    def set_window_geometry(self, w: WindowType, idx: int, xl: LayoutData, yl: LayoutData) -> None:
-        wg = window_geometry_from_layouts(xl, yl)
-        w.set_geometry(wg)
-        self.blank_rects.extend(blank_rects_for_window(wg))
+    def set_window_group_geometry(self, wg: WindowGroup, xl: LayoutData, yl: LayoutData) -> WindowGeometry:
+        geom = window_geometry_from_layouts(xl, yl)
+        wg.set_geometry(geom)
+        self.blank_rects.extend(blank_rects_for_window(geom))
+        return geom
 
     def do_layout(self, windows: WindowList) -> None:
         raise NotImplementedError()
 
-    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> InternalNeighborsMap:
+    def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
         return {'left': [], 'right': [], 'top': [], 'bottom': []}
 
-    def compute_needs_borders_map(self, windows: WindowList, active_window: Optional[WindowType]) -> Dict[int, bool]:
-        return {w.id: ((w is active_window and lgd.draw_active_borders) or w.needs_attention) for w in windows}
+    def compute_needs_borders_map(self, all_windows: WindowList) -> Dict[int, bool]:
+        return all_windows.compute_needs_borders_map(lgd.draw_active_borders)
 
-    def resolve_borders(self, windows: WindowList, active_window: Optional[WindowType]) -> Generator[Borders, None, None]:
+    def resolve_borders(self, windows: WindowList) -> Generator[Borders, None, None]:
         if lgd.draw_minimal_borders:
-            needs_borders_map = self.compute_needs_borders_map(windows, active_window)
-            yield from self.minimal_borders(windows, active_window, needs_borders_map)
+            needs_borders_map = self.compute_needs_borders_map(windows)
+            yield from self.minimal_borders(windows, needs_borders_map)
         else:
-            yield from Layout.minimal_borders(self, windows, active_window, {})
+            yield from Layout.minimal_borders(self, windows, {})
 
     def window_independent_borders(self, windows: WindowList, active_window: Optional[WindowType] = None) -> Generator[Edges, None, None]:
         return
         yield Edges()  # type: ignore
 
-    def minimal_borders(self, windows: WindowList, active_window: Optional[WindowType], needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
-        for w in windows:
-            if w is not active_window or lgd.draw_active_borders or w.needs_attention:
-                yield all_borders
-            else:
-                yield no_borders
+    def minimal_borders(self, windows: WindowList, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
+        for needs_border in needs_borders_map.values():
+            yield all_borders if needs_border else no_borders
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         pass

@@ -4,15 +4,16 @@
 
 from enum import IntFlag
 from itertools import chain
-from typing import List, Optional, Sequence, Tuple
+from typing import Sequence, Tuple
 
 from .fast_data_types import (
     BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program,
     os_window_has_background_image
 )
 from .options_stub import Options
+from .typing import LayoutType
 from .utils import load_shaders
-from .typing import WindowType, LayoutType
+from .window_list import WindowGroup, WindowList
 
 
 class BorderColor(IntFlag):
@@ -30,10 +31,12 @@ def horizontal_edge(os_window_id: int, tab_id: int, color: int, height: int, lef
         add_borders_rect(os_window_id, tab_id, left, top, right, top + height, color)
 
 
-def draw_edges(os_window_id: int, tab_id: int, colors: Sequence[int], window: WindowType, borders: bool = False) -> None:
-    geometry = window.geometry
-    pl, pt = window.effective_padding('left'), window.effective_padding('top')
-    pr, pb = window.effective_padding('right'), window.effective_padding('bottom')
+def draw_edges(os_window_id: int, tab_id: int, colors: Sequence[int], wg: WindowGroup, borders: bool = False) -> None:
+    geometry = wg.geometry
+    if geometry is None:
+        return
+    pl, pt = wg.effective_padding('left'), wg.effective_padding('top')
+    pr, pb = wg.effective_padding('right'), wg.effective_padding('bottom')
     left = geometry.left - pl
     top = geometry.top - pt
     lr = geometry.right
@@ -41,7 +44,7 @@ def draw_edges(os_window_id: int, tab_id: int, colors: Sequence[int], window: Wi
     bt = geometry.bottom
     bottom = bt + pb
     if borders:
-        width = window.effective_border()
+        width = wg.effective_border()
         bt = bottom
         lr = right
         left -= width
@@ -69,8 +72,7 @@ class Borders:
 
     def __call__(
         self,
-        windows: List[WindowType],
-        active_window: Optional[WindowType],
+        all_windows: WindowList,
         current_layout: LayoutType,
         extra_blank_rects: Sequence[Tuple[int, int, int, int]],
         draw_window_borders: bool = True,
@@ -82,31 +84,33 @@ class Borders:
                 left, top, right, bottom = br
                 add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, BorderColor.default_bg)
         bw = 0
-        if windows:
-            bw = windows[0].effective_border()
+        groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
+        if groups:
+            bw = groups[0].effective_border()
         draw_borders = bw > 0 and draw_window_borders
         if draw_borders:
-            border_data = current_layout.resolve_borders(windows, active_window)
+            border_data = current_layout.resolve_borders(all_windows)
+        active_group = all_windows.active_group
 
-        for i, w in enumerate(windows):
-            window_bg = w.screen.color_profile.default_bg
+        for i, wg in enumerate(groups):
+            window_bg = wg.default_bg
             window_bg = (window_bg << 8) | BorderColor.window_bg
             if draw_borders:
                 # Draw the border rectangles
-                if w is active_window and self.draw_active_borders:
+                if wg is active_group and self.draw_active_borders:
                     color = BorderColor.active
                 else:
-                    color = BorderColor.bell if w.needs_attention else BorderColor.inactive
+                    color = BorderColor.bell if wg.needs_attention else BorderColor.inactive
                 try:
                     colors = tuple(color if needed else window_bg for needed in next(border_data))
-                    draw_edges(self.os_window_id, self.tab_id, colors, w, borders=True)
+                    draw_edges(self.os_window_id, self.tab_id, colors, wg, borders=True)
                 except StopIteration:
                     pass
             if not has_background_image:
                 # Draw the background rectangles over the padding region
                 colors = window_bg, window_bg, window_bg, window_bg
-                draw_edges(self.os_window_id, self.tab_id, colors, w)
+                draw_edges(self.os_window_id, self.tab_id, colors, wg)
 
         color = BorderColor.inactive
-        for (left, top, right, bottom) in current_layout.window_independent_borders(windows, active_window):
+        for (left, top, right, bottom) in current_layout.window_independent_borders(all_windows):
             add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, color)
