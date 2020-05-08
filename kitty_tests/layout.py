@@ -4,8 +4,9 @@
 
 from kitty.config import defaults
 from kitty.constants import WindowGeometry
-from kitty.layout import Grid, Horizontal, Splits, Stack, Tall, idx_for_id
+from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
 from kitty.window import EdgeWidths
+from kitty.window_list import WindowList, reset_group_id_counter
 
 from . import BaseTest
 
@@ -20,6 +21,10 @@ class Window:
         self.geometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.padding = EdgeWidths()
         self.margin = EdgeWidths()
+        self.focused = False
+
+    def focus_changed(self, focused):
+        self.focused = focused
 
     def effective_border(self):
         return 1
@@ -30,10 +35,10 @@ class Window:
     def effective_margin(self, edge, is_single_window=False):
         return 0 if is_single_window else 1
 
-    def set_visible_in_layout(self, idx, val):
+    def set_visible_in_layout(self, val):
         self.is_visible_in_layout = bool(val)
 
-    def set_geometry(self, idx, geometry):
+    def set_geometry(self, geometry):
         self.geometry = geometry
 
 
@@ -46,142 +51,180 @@ def create_layout(cls, opts=None, border_width=2):
     return ans
 
 
-def create_windows(num=5):
-    return [Window(i + 1) for i in range(num)]
+class Tab:
+
+    def active_window_changed(self):
+        self.current_layout.update_visibility(self.windows)
+
+
+def create_windows(layout, num=5):
+    t = Tab()
+    t.current_layout = layout
+    t.windows = ans = WindowList(t)
+    ans.tab_mem = t
+    reset_group_id_counter()
+    for i in range(num):
+        ans.add_window(Window(i + 1))
+    ans.set_active_group_idx(0)
+    return ans
 
 
 def utils(self, q, windows):
     def ids():
-        return [w.id for w in windows]
+        return [w.id for w in windows.groups]
 
     def visible_ids():
-        return {w.id for w in windows if w.is_visible_in_layout}
+        return {gr.id for gr in windows.groups if gr.is_visible_in_layout}
 
     def expect_ids(*a):
         self.assertEqual(tuple(ids()), a)
 
-    def check_visible(active_window_idx):
+    def check_visible():
         if q.only_active_window_visible:
-            self.ae(visible_ids(), {windows[active_window_idx].id})
+            self.ae(visible_ids(), {windows.active_group.id})
         else:
-            self.ae(visible_ids(), {w.id for w in windows if w.overlay_window_id is None})
+            self.ae(visible_ids(), {gr.id for gr in windows.groups})
     return ids, visible_ids, expect_ids, check_visible
 
 
 class TestLayout(BaseTest):
 
     def do_ops_test(self, q):
-        windows = create_windows()
-        ids, visible_ids, expect_ids, cv = utils(self, q, windows)
-
-        def check_visible():
-            return cv(active_window_idx)
-        active_window_idx = 0
+        windows = create_windows(q)
+        ids, visible_ids, expect_ids, check_visible = utils(self, q, windows)
         # Test layout
-        self.ae(q(windows, active_window_idx), active_window_idx)
+        q(windows)
+        self.ae(windows.active_group_idx, 0)
         expect_ids(*range(1, len(windows)+1))
         check_visible()
+
         # Test nth_window
-        for i in range(len(windows)):
-            active_window_idx = q.activate_nth_window(windows, i)
-            self.ae(active_window_idx, i)
+        for i in range(windows.num_groups):
+            q.activate_nth_window(windows, i)
+            self.ae(windows.active_group_idx, i)
             expect_ids(*range(1, len(windows)+1))
             check_visible()
+
         # Test next_window
-        for i in range(2 * len(windows)):
-            expected = (active_window_idx + 1) % len(windows)
-            active_window_idx = q.next_window(windows, active_window_idx)
-            self.ae(active_window_idx, expected)
+        for i in range(2 * windows.num_groups):
+            expected = (windows.active_group_idx + 1) % windows.num_groups
+            q.next_window(windows)
+            self.ae(windows.active_group_idx, expected)
             expect_ids(*range(1, len(windows)+1))
             check_visible()
+
         # Test move_window
-        active_window_idx = 0
-        active_window_idx = q.move_window(windows, active_window_idx, 3)
-        self.ae(active_window_idx, 3)
+        windows.set_active_group_idx(0)
+        expect_ids(1, 2, 3, 4, 5)
+        q.move_window(windows, 3)
+        self.ae(windows.active_group_idx, 3)
         expect_ids(4, 2, 3, 1, 5)
         check_visible()
-        q.move_window(windows, 0, 3)
+        windows.set_active_group_idx(0)
+        q.move_window(windows, 3)
         expect_ids(*range(1, len(windows)+1))
         check_visible()
+
         # Test add_window
-        active_window_idx = q.add_window(windows, Window(6), active_window_idx)
-        self.ae(active_window_idx, 5)
-        expect_ids(*range(1, len(windows)+1))
+        windows.set_active_group_idx(4)
+        q.add_window(windows, Window(6))
+        self.ae(windows.num_groups, 6)
+        self.ae(windows.active_group_idx, 5)
+        expect_ids(*range(1, windows.num_groups+1))
         check_visible()
+
         # Test remove_window
-        active_window_idx = 3
-        expected = active_window_idx
-        active_window_idx = q.remove_window(windows, windows[active_window_idx], active_window_idx)
-        self.ae(active_window_idx, expected)
+        prev_window = windows.active_window
+        windows.set_active_group_idx(3)
+        self.ae(windows.active_group_idx, 3)
+        windows.remove_window(windows.active_window)
+        self.ae(windows.active_window, prev_window)
         check_visible()
         expect_ids(1, 2, 3, 5, 6)
-        w = windows[active_window_idx]
-        active_window_idx = q.remove_window(windows, windows[0], active_window_idx)
-        self.ae(active_window_idx, windows.index(w))
+
+        windows.set_active_group_idx(0)
+        to_remove = windows.active_window
+        windows.set_active_group_idx(3)
+        windows.remove_window(to_remove)
+        self.ae(windows.active_group_idx, 3)
         check_visible()
         expect_ids(2, 3, 5, 6)
+
         # Test set_active_window
-        for i in range(len(windows)):
-            active_window_idx = q.set_active_window(windows, i)
-            self.ae(i, active_window_idx)
+        for i in range(windows.num_groups):
+            windows.set_active_group_idx(i)
+            self.ae(i, windows.active_group_idx)
             check_visible()
 
     def do_overlay_test(self, q):
-        windows = create_windows()
-        ids, visible_ids, expect_ids, cv = utils(self, q, windows)
-
-        def check_visible():
-            return cv(active_window_idx)
-
-        def aidx(i):
-            return idx_for_id(visible_windows[i].id, windows)
+        windows = create_windows(q)
+        ids, visible_ids, expect_ids, check_visible = utils(self, q, windows)
 
         # Test add_window
         w = Window(len(windows) + 1)
-        active_window_idx = 1
-        w.overlay_for = windows[active_window_idx].id
-        windows[active_window_idx].overlay_window_id = w.id
-        active_window_idx = q.add_window(windows, w, active_window_idx)
-        self.ae(active_window_idx, 1)
-        expect_ids(1, 6, 3, 4, 5, 2)
+        before = windows.active_group_idx
+        overlaid_group = before
+        overlay_window_id = w.id
+        windows.add_window(w, group_of=windows.active_window)
+        self.ae(before, windows.active_group_idx)
+        self.ae(w, windows.active_window)
+        expect_ids(1, 2, 3, 4, 5)
         check_visible()
+
         # Test layout
-        self.ae(q(windows, active_window_idx), active_window_idx)
-        expect_ids(1, 6, 3, 4, 5, 2)
+        q(windows)
+        expect_ids(1, 2, 3, 4, 5)
         check_visible()
         w = Window(len(windows) + 1)
-        active_window_idx = q.add_window(windows, w, active_window_idx)
-        self.ae(active_window_idx, 6)
-        visible_windows = [w for w in windows if w.overlay_window_id is None]
+        windows.add_window(w)
+        expect_ids(1, 2, 3, 4, 5, 6)
+        self.ae(windows.active_group_idx, windows.num_groups - 1)
+
         # Test nth_window
-        for i in range(len(visible_windows)):
-            active_window_idx = q.activate_nth_window(windows, i)
-            self.ae(active_window_idx, aidx(i))
-            expect_ids(1, 6, 3, 4, 5, 2, 7)
+        for i in range(windows.num_groups):
+            q.activate_nth_window(windows, i)
+            self.ae(windows.active_group_idx, i)
+            if i == overlaid_group:
+                self.ae(windows.active_window.id, overlay_window_id)
+            expect_ids(1, 2, 3, 4, 5, 6)
             check_visible()
+
         # Test next_window
-        for i in range(len(visible_windows)):
-            active_window_idx = q.next_window(windows, aidx(i))
-            expected = (i + 1) % len(visible_windows)
-            self.ae(active_window_idx, aidx(expected))
-            expect_ids(1, 6, 3, 4, 5, 2, 7)
+        for i in range(windows.num_groups):
+            expected = (windows.active_group_idx + 1) % windows.num_groups
+            q.next_window(windows)
+            self.ae(windows.active_group_idx, expected)
+            expect_ids(1, 2, 3, 4, 5, 6)
             check_visible()
+
         # Test move_window
-        active_window_idx = q.move_window(windows, 4)
-        self.ae(active_window_idx, 6)
-        expect_ids(1, 6, 3, 4, 7, 2, 5)
+        windows.set_active_group_idx(overlaid_group)
+        expect_ids(1, 2, 3, 4, 5, 6)
+        q.move_window(windows, 3)
+        self.ae(windows.active_group_idx, 3)
+        self.ae(windows.active_window.id, overlay_window_id)
+        expect_ids(4, 2, 3, 1, 5, 6)
         check_visible()
+        windows.set_active_group_idx(0)
+        q.move_window(windows, 3)
+        expect_ids(1, 2, 3, 4, 5, 6)
+        check_visible()
+
         # Test set_active_window
-        active_window_idx = q.set_active_window(windows, 0)
-        self.ae(active_window_idx, 0)
-        check_visible()
-        active_window_idx = q.set_active_window(windows, 5)
-        self.ae(active_window_idx, 1)
-        check_visible()
+        for i in range(windows.num_groups):
+            windows.set_active_group_idx(i)
+            self.ae(i, windows.active_group_idx)
+            if i == overlaid_group:
+                self.ae(windows.active_window.id, overlay_window_id)
+            check_visible()
+
         # Test remove_window
-        active_window_idx = q.remove_window(windows, windows[1], 1)
-        expect_ids(1, 2, 3, 4, 7, 5)
-        self.ae(active_window_idx, 1)
+        expect_ids(1, 2, 3, 4, 5, 6)
+        windows.set_active_group_idx(overlaid_group)
+        windows.remove_window(overlay_window_id)
+        self.ae(windows.active_group_idx, overlaid_group)
+        self.ae(windows.active_window.id, 1)
+        expect_ids(1, 2, 3, 4, 5, 6)
         check_visible()
 
     def test_layout_operations(self):
@@ -196,14 +239,18 @@ class TestLayout(BaseTest):
 
     def test_splits(self):
         q = create_layout(Splits)
-        all_windows = []
-        self.ae(0, q.add_window(all_windows, Window(1), -1))
-        self.ae(1, q.add_window(all_windows, Window(2), 0, location='vsplit'))
+        all_windows = create_windows(q, num=0)
+        q.add_window(all_windows, Window(1))
+        self.ae(all_windows.active_group_idx, 0)
+        q.add_window(all_windows, Window(2), location='vsplit')
+        self.ae(all_windows.active_group_idx, 1)
+        q(all_windows)
         self.ae(q.pairs_root.pair_for_window(2).horizontal, True)
-        self.ae(2, q.add_window(all_windows, Window(3), 1, location='hsplit'))
+        q.add_window(all_windows, Window(3), location='hsplit')
         self.ae(q.pairs_root.pair_for_window(2).horizontal, False)
-        self.ae(3, q.add_window(all_windows, Window(4), 2, location='vsplit'))
-        self.ae(q.neighbors_for_window(all_windows[0], all_windows), {'left': [], 'right': [2, 3], 'top': [], 'bottom': []})
-        self.ae(q.neighbors_for_window(all_windows[1], all_windows), {'left': [1], 'right': [], 'top': [], 'bottom': [3, 4]})
-        self.ae(q.neighbors_for_window(all_windows[2], all_windows), {'left': [1], 'right': [4], 'top': [2], 'bottom': []})
-        self.ae(q.neighbors_for_window(all_windows[3], all_windows), {'left': [3], 'right': [], 'top': [2], 'bottom': []})
+        q.add_window(all_windows, Window(4), location='vsplit')
+        windows = list(all_windows)
+        self.ae(q.neighbors_for_window(windows[0], all_windows), {'left': [], 'right': [2, 3], 'top': [], 'bottom': []})
+        self.ae(q.neighbors_for_window(windows[1], all_windows), {'left': [1], 'right': [], 'top': [], 'bottom': [3, 4]})
+        self.ae(q.neighbors_for_window(windows[2], all_windows), {'left': [1], 'right': [4], 'top': [2], 'bottom': []})
+        self.ae(q.neighbors_for_window(windows[3], all_windows), {'left': [3], 'right': [], 'top': [2], 'bottom': []})

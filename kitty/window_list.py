@@ -17,6 +17,11 @@ WindowOrId = Union[WindowType, int]
 group_id_counter = count(start=1)
 
 
+def reset_group_id_counter() -> None:
+    global group_id_counter
+    group_id_counter = count(start=1)
+
+
 def wrap_increment(val: int, num: int, delta: int) -> int:
     mult = -1 if delta < 0 else 1
     delta = mult * (abs(delta) % num)
