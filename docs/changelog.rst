@@ -5,7 +5,7 @@ Changelog
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
 
-0.17.4 [future]
+0.17.4 [2020-05-09]
 --------------------
 
 - Allow showing the name of the current layout and the number of windows
