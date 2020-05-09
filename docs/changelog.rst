@@ -29,6 +29,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Fix OS window title not updating for hidden windows (:iss:`2629`)
 
+- Fix :opt:`background_tint` making the window semi-transparent (:iss:`2618`)
+
 
 0.17.3 [2020-04-23]
 --------------------

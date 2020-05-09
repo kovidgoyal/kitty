@@ -465,7 +465,11 @@ draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWind
         bind_program(CELL_BG_PROGRAM);
         glUniform1ui(cell_program_layouts[CELL_BG_PROGRAM].draw_bg_bitfield_location, 3);
         glDrawArraysInstanced(GL_TRIANGLE_FAN, 0, 4, screen->lines * screen->columns);
-    } else if (OPT(background_tint) > 0) draw_tint(false, screen, xstart, ystart, width, height);
+    } else if (OPT(background_tint) > 0) {
+        glBlendFuncSeparate(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+        draw_tint(false, screen, xstart, ystart, width, height);
+        BLEND_ONTO_OPAQUE;
+    }
 
     if (screen->grman->num_of_below_refs || has_bgimage(w)) {
         if (screen->grman->num_of_below_refs) draw_graphics(
