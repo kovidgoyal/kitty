@@ -1406,6 +1406,8 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         KNOWN_MODE(EXTENDED_KEYBOARD);
         KNOWN_MODE(FOCUS_TRACKING);
 #undef KNOWN_MODE
+        case ALTERNATE_SCREEN:
+            ans = self->linebuf == self->alt_linebuf ? 1 : 2; break;
     }
     int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%u$y", (private ? "?" : ""), which, ans);
     if (sz > 0) write_escape_code_to_child(self, CSI, buf);
