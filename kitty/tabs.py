@@ -138,6 +138,7 @@ class Tab:  # {{{
         self._last_used_layout = self._current_layout_name
         self.current_layout = self.create_layout_object(layout_name)
         self._current_layout_name = layout_name
+        self.mark_tab_bar_dirty()
 
     def startup(self, session_tab: 'SessionTab') -> None:
         for cmd in session_tab.windows:
@@ -183,10 +184,13 @@ class Tab:  # {{{
                 old_active_window.focus_changed(False)
             if new_active_window is not None:
                 new_active_window.focus_changed(True)
-            tm = self.tab_manager_ref()
-            if tm is not None:
-                self.relayout_borders()
-                tm.mark_tab_bar_dirty()
+            self.relayout_borders()
+            self.mark_tab_bar_dirty()
+
+    def mark_tab_bar_dirty(self) -> None:
+        tm = self.tab_manager_ref()
+        if tm is not None:
+            tm.mark_tab_bar_dirty()
 
     @property
     def active_window(self) -> Optional[Window]:
@@ -330,6 +334,7 @@ class Tab:  # {{{
     def _add_window(self, window: Window, location: Optional[str] = None) -> None:
         self.active_window_idx = self.current_layout.add_window(self.windows, window, self.active_window_idx, location)
         self.relayout_borders()
+        self.mark_tab_bar_dirty()
 
     def new_window(
         self,
@@ -431,6 +436,7 @@ class Tab:  # {{{
         else:
             self.active_window_idx = active_window_idx
         self.relayout_borders()
+        self.mark_tab_bar_dirty()
         active_window = self.active_window
         if active_window:
             self.title_changed(active_window)
@@ -804,7 +810,10 @@ class TabManager:  # {{{
                 if w.needs_attention:
                     needs_attention = True
                     break
-            ans.append(TabBarData(title, t is at, needs_attention))
+            ans.append(TabBarData(
+                title, t is at, needs_attention,
+                len(t), t.current_layout.name or ''
+            ))
         return ans
 
     def activate_tab_at(self, x: int) -> None:

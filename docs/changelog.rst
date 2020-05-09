@@ -8,6 +8,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.17.4 [future]
 --------------------
 
+- Allow showing the name of the current layout and the number of windows
+  in tab titles (:iss:`2634`)
+
 - macOS: Fix a regression in the previous release that caused ligatures to be
   not be centered horizontally (:iss:`2591`)
 

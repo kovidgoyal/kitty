@@ -21,6 +21,8 @@ class TabBarData(NamedTuple):
     title: str
     is_active: bool
     needs_attention: bool
+    num_windows: int
+    layout_name: str
 
 
 class DrawData(NamedTuple):
@@ -56,7 +58,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
     if tab.is_active and draw_data.active_title_template is not None:
         template = draw_data.active_title_template
     try:
-        title = template.format(title=tab.title, index=index)
+        title = template.format(title=tab.title, index=index, layout_name=tab.layout_name, num_windows=tab.num_windows)
     except Exception as e:
         if template not in template_failures:
             template_failures.add(template)
