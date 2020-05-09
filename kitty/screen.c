@@ -1408,6 +1408,14 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
 #undef KNOWN_MODE
         case ALTERNATE_SCREEN:
             ans = self->linebuf == self->alt_linebuf ? 1 : 2; break;
+        case MOUSE_BUTTON_TRACKING:
+            ans = self->modes.mouse_tracking_mode == BUTTON_MODE ? 1 : 2; break;
+        case MOUSE_MOTION_TRACKING:
+            ans = self->modes.mouse_tracking_mode == MOTION_MODE ? 1 : 2; break;
+        case MOUSE_MOVE_TRACKING:
+            ans = self->modes.mouse_tracking_mode == ANY_MODE ? 1 : 2; break;
+        case MOUSE_SGR_MODE:
+            ans = self->modes.mouse_tracking_protocol == SGR_PROTOCOL ? 1 : 2; break;
     }
     int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%u$y", (private ? "?" : ""), which, ans);
     if (sz > 0) write_escape_code_to_child(self, CSI, buf);
