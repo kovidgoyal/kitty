@@ -1368,8 +1368,6 @@ class Boss:
             done_tab_id = tab_id_map[int(data['groupdicts'][0]['index'])]
 
         def done2(target_window_id: int, self: Boss) -> None:
-            if not hasattr(done, 'tab_id'):
-                return
             tab_id = done_tab_id
             target_window = None
             for w in self.all_windows:
