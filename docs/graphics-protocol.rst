@@ -298,22 +298,22 @@ terminfo name containing at least `kitty`. Therefore, the recommended procedure
 for querying support is:
 
  * Send e.g.::
- 
+
       <ESC>_Gi=31,s=1,v=1,a=q,t=d,f=24;<NUL><NUL><NUL><ESC>\
  * Immediately after, send anything else that will block the terminal, such as,
    perhaps, XTGETTCAP TN (``544e``)::
-   
+
       <ESC>P+q544e<ESC>\
  * See what you get back first. If you get back the XTGETTCAP reply, Kitty
    graphics are not supported. If you get the APC reply from Kitty
    (``<ESC>_Gi=31;OK<ESC>\``), they are. You can therefore query both support
    and transmission medium at the same time, as even errors indicate support.
-   
+
 In order for this detection method to work, Kitty graphics standard-compliant
 emulators may handle all escape codes in a first-in-first-out (FIFO) fashion,
-but **must** at least always immedidately block upon receiving an APC ``G``
+but **must** at least always immediately block upon receiving an APC ``G``
 request with ``a=q``.
-   
+
 
 Display images on screen
 -----------------------------
