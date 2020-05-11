@@ -2,9 +2,11 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import contextlib
 import mimetypes
 import os
 import re
+import socket
 import signal
 import sys
 import zlib
@@ -339,6 +341,16 @@ help_text = (
 usage = 'image-file-or-url-or-directory ...'
 
 
+@contextlib.contextmanager
+def socket_timeout(seconds: int) -> Generator[None, None, None]:
+    old = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(seconds)
+    try:
+        yield
+    finally:
+        socket.setdefaulttimeout(old)
+
+
 def process_single_item(
     item: Union[bytes, str],
     args: IcatCLIOptions,
@@ -358,7 +370,8 @@ def process_single_item(
             from urllib.request import urlretrieve
             with NamedTemporaryFile(prefix='url-image-data-', delete=False) as tf:
                 try:
-                    urlretrieve(item, filename=tf.name)
+                    with socket_timeout(30):
+                        urlretrieve(item, filename=tf.name)
                 except Exception as e:
                     raise SystemExit('Failed to download image at URL: {} with error: {}'.format(item, e))
                 item = tf.name
