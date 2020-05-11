@@ -262,8 +262,8 @@ received. Finally, terminals must not display anything, until the entire sequenc
 received and validated.
 
 
-Detecting available transmission mediums
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+Querying support and available transmission mediums
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Since a client has no a-priori knowledge of whether it shares a filesystem/shared memory
 with the terminal emulator, it can send an id with the control data, using the ``i`` key
@@ -288,6 +288,27 @@ image and do not want it stored by the terminal emulator. In that case, you can
 use the *query action*, set ``a=q``. Then the terminal emulator will try to load
 the image and respond with either OK or an error, as above, but it will not
 replace an existing image with the same id, nor will it store the image.
+
+While as of May 2020, kitty is the only terminal emulator to support this
+graphics protocol, we intend that any terminal emulator that wishes to support
+it can. To check if a terminal emulator supports the graphics protocol the best way
+is to send the above *query action* followed by a request for the
+`primary device attributes <https://vt100.net/docs/vt510-rm/DA1.html>`. If you
+get back an answer for the device attributes without getting back an answer for
+the *query action* the terminal emulator does not support the graphics
+protocol.
+
+This means that terminal emulators that support the graphics protocol, **must**
+reply to *query actions* immediately without processing other input. Most
+terminal emulators handle input in a FIFO manner, anyway.
+
+So for example, you could send::
+
+      <ESC>_Gi=31,s=1,v=1,a=q,t=d,f=24;<NUL><NUL><NUL><ESC>\<ESC>[c
+
+If you get back a response to the graphics query, the terminal emulator supports
+the protocol, if you get back a response to the device attributes query without
+a response to the graphics query, it does not.
 
 
 Display images on screen
