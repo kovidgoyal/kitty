@@ -333,10 +333,10 @@ class TestScreen(BaseTest):
                     s.cursor_position(region + 1, 1), nl()
                     s.cursor_position(region, 1), s.draw(ch)
                     s.cursor_position(region, s.columns), s.draw(ch.lower())
-            for l in range(2, region + 2):
-                c = chr(ord('I') + l - 2)
-                before = '\t' if l % 4 == 0 else ' '
-                self.ae(c + ' ' * (s.columns - 3) + before + c.lower(), str(s.line(l)))
+            for ln in range(2, region + 2):
+                c = chr(ord('I') + ln - 2)
+                before = '\t' if ln % 4 == 0 else ' '
+                self.ae(c + ' ' * (s.columns - 3) + before + c.lower(), str(s.line(ln)))
             s.reset_mode(DECOM)
         # Test that moving cursor outside the margins works as expected
         s = self.create_screen(10, 10)

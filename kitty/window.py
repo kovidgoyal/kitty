@@ -624,7 +624,7 @@ class Window:
         lines = self.screen.text_for_selection()
         if self.opts.strip_trailing_spaces == 'always' or (
                 self.opts.strip_trailing_spaces == 'smart' and not self.screen.is_rectangle_select()):
-            return ''.join((l.rstrip() or '\n') for l in lines)
+            return ''.join((ln.rstrip() or '\n') for ln in lines)
         return ''.join(lines)
 
     def call_watchers(self, which: Iterable[Watcher], data: Dict[str, Any]) -> None:

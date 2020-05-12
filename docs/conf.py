@@ -326,7 +326,7 @@ def write_remote_control_protocol_docs() -> None:  # {{{
                 p(' ', desc), p()
         p(), p()
 
-    with open(f'generated/rc.rst', 'w') as f:
+    with open('generated/rc.rst', 'w') as f:
         p = partial(print, file=f)
         for name in sorted(all_command_names()):
             cmd = command_for_name(name)

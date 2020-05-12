@@ -60,8 +60,8 @@ def screen_cursor_to_column(c: int) -> None:
     write(CSI + '%dG' % c)
 
 
-def screen_cursor_to_line(l: int) -> None:
-    write(CSI + '%dd' % l)
+def screen_cursor_to_line(ln: int) -> None:
+    write(CSI + '%dd' % ln)
 
 
 def screen_set_mode(x: int, private: bool) -> None:

@@ -287,7 +287,7 @@ def category_test(
     p('\tswitch(code) {')
     for spec in get_ranges(list(chars)):
         write_case(spec, p)
-        p(f'\t\t\treturn true;')
+        p('\t\t\treturn true;')
     p('\t} // }}}\n')
     p('\treturn false;\n}\n')
 
@@ -421,8 +421,8 @@ def gen_names() -> None:
         p('}; // }}}\n')
 
         # The trie
-        p(f'typedef struct {{ uint32_t children_offset; uint32_t match_offset; }} word_trie;\n')
-        all_trie_nodes: List['TrieNode'] = []
+        p('typedef struct {{ uint32_t children_offset; uint32_t match_offset; }} word_trie;\n')
+        all_trie_nodes: List['TrieNode'] = []  # noqa
 
         class TrieNode:
 
