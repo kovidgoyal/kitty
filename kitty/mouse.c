@@ -438,7 +438,7 @@ HANDLER(handle_button_event) {
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
     bool is_release = !global_state.callback_os_window->mouse_button_pressed[button];
     if (window_idx != t->active_window && !is_release) {
-        call_boss(switch_focus_to, "I", window_idx);
+        call_boss(switch_focus_to, "K", t->windows[window_idx].id);
     }
     Screen *screen = w->render_data.screen;
     if (!screen) return;
