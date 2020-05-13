@@ -4,6 +4,11 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.18.0 [future]
+--------------------
+
+- Allow multiple overlay windows per normal window
+
 
 0.17.4 [2020-05-09]
 --------------------
