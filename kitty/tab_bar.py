@@ -54,11 +54,14 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         screen.cursor.fg = draw_data.bell_fg
         screen.draw('🔔 ')
         screen.cursor.fg = fg
+    layout_name = tab.layout_name
+    num_windows = tab.num_windows
     template = draw_data.title_template
+    title = tab.title
     if tab.is_active and draw_data.active_title_template is not None:
         template = draw_data.active_title_template
     try:
-        title = template.format(title=tab.title, index=index, layout_name=tab.layout_name, num_windows=tab.num_windows)
+        title = eval(f"f'{template}'")
     except Exception as e:
         if template not in template_failures:
             template_failures.add(template)
