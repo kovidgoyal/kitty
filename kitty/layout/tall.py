@@ -133,6 +133,8 @@ class Tall(Layout):
         if num <= self.num_full_size_windows + 1:
             if mirrored:
                 groups = tuple(reversed(groups))
+            if num < self.num_full_size_windows + 1:
+                main_bias = normalize_biases(main_bias[:num])
             xlayout = self.main_axis_layout(iter(groups), bias=main_bias)
             for wg, xl in zip(groups, xlayout):
                 yl = next(self.perp_axis_layout(iter((wg,))))
