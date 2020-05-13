@@ -9,6 +9,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow multiple overlay windows per normal window
 
+- Tall and Fat layouts: Add a ``mirrored`` option to put the full size window
+  on the opposite edge of the screen (:iss:`2654`)
+
 
 0.17.4 [2020-05-09]
 --------------------

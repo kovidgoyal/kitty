@@ -46,10 +46,12 @@ Displays one (or optionally more) full height windows on the left half of the
 screen. Remaining windows are tiled vertically on the right half of the screen.
 There are options to control how the screen is split horizontally ``bias``
 (an integer between ``10`` and ``90``) and options to control how many
-full-height windows there are ``full_size`` (a positive integer).  The syntax
+full-height windows there are ``full_size`` (a positive integer). The
+``mirrored`` option when set to ``true`` will cause the short windows to be
+on the left side of the screen instead of the right. The syntax
 for the options is shown below::
 
-    enabled_layouts tall:bias=50;full_size=1
+    enabled_layouts tall:bias=50;full_size=1;mirrored=false
 
     ┌──────────────┬───────────────┐
     │              │               │
@@ -72,10 +74,12 @@ Displays one (or optionally more) full width windows on the top half of the
 screen. Remaining windows are tiled horizontally on the bottom half of the screen.
 There are options to control how the screen is split vertically ``bias``
 (an integer between ``10`` and ``90``) and options to control how many
-full-height windows there are ``full_size`` (a positive integer).  The syntax
-for the options is shown below::
+full-height windows there are ``full_size`` (a positive integer). The
+``mirrored`` option when set to ``true`` will cause the narrow windows to be
+on the top of the screen instead of the bottom. The syntax for the options is
+shown below::
 
-    enabled_layouts fat:bias=50;full_size=1
+    enabled_layouts fat:bias=50;full_size=1;mirrored=false
 
     ┌──────────────────────────────┐
     │                              │
