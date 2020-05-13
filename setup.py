@@ -556,11 +556,8 @@ def compile_c_extension(
         is_special = src in SPECIAL_SOURCES
         if is_special:
             src, defines_ = SPECIAL_SOURCES[src]
-            if callable(defines_):
-                defines = defines_(kenv)
-                cppflags.extend(map(define, defines))
-            else:
-                cppflags.extend(map(define, defines_))
+            defines = defines_(kenv) if callable(defines_) else defines_
+            cppflags.extend(map(define, defines))
 
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         cmd += ['-c', src] + ['-o', dest]
