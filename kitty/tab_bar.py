@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from functools import lru_cache
-from typing import Any, Dict, NamedTuple, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple
 
 from .config import build_ansi_color_table
 from .constants import WindowGeometry
@@ -46,7 +46,9 @@ def as_rgb(x: int) -> int:
     return (x << 8) | 2
 
 
-template_failures: Set[str] = set()
+@lru_cache()
+def report_template_failure(template: str, e: str) -> None:
+    log_error('Invalid tab title template: "{}" with error: {}'.format(template, e))
 
 
 @lru_cache()
@@ -54,9 +56,7 @@ def compile_template(template: str) -> Any:
     try:
         return compile('f"""' + template + '"""', '<template>', 'eval')
     except Exception as e:
-        if template not in template_failures:
-            template_failures.add(template)
-            log_error('Invalid tab title template: "{}" with error: {}'.format(template, e))
+        report_template_failure(template, str(e))
 
 
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
@@ -77,9 +77,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         }
         title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
     except Exception as e:
-        if template not in template_failures:
-            template_failures.add(template)
-            log_error('Invalid tab title template: "{}" with error: {}'.format(template, e))
+        report_template_failure(template, str(e))
         title = tab.title
     screen.draw(title)
 
