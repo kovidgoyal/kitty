@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
+from functools import lru_cache
 from typing import Any, Dict, NamedTuple, Optional, Sequence, Set, Tuple
 
 from .config import build_ansi_color_table
@@ -48,6 +49,16 @@ def as_rgb(x: int) -> int:
 template_failures: Set[str] = set()
 
 
+@lru_cache()
+def compile_template(template: str) -> Any:
+    try:
+        return compile('f"""' + template + '"""', '<template>', 'eval')
+    except Exception as e:
+        if template not in template_failures:
+            template_failures.add(template)
+            log_error('Invalid tab title template: "{}" with error: {}'.format(template, e))
+
+
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
     if tab.needs_attention and draw_data.bell_on_tab:
         fg = screen.cursor.fg
@@ -64,8 +75,7 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
             'num_windows': tab.num_windows,
             'title': tab.title
         }
-        compiled_template = compile('f"""' + template + '"""', '<tab_template>', 'eval')
-        title = eval(compiled_template, {'__builtins__': {}}, eval_locals)
+        title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
     except Exception as e:
         if template not in template_failures:
             template_failures.add(template)
