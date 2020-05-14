@@ -58,7 +58,14 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
     if tab.is_active and draw_data.active_title_template is not None:
         template = draw_data.active_title_template
     try:
-        title = template.format(title=tab.title, index=index, layout_name=tab.layout_name, num_windows=tab.num_windows)
+        eval_locals = {
+            'index': index,
+            'layout_name': tab.layout_name,
+            'num_windows': tab.num_windows,
+            'title': tab.title
+        }
+        compiled_template = compile('f"""' + template + '"""', '<tab_template>', 'eval')
+        title = eval(compiled_template, {'__builtins__': {}}, eval_locals)
     except Exception as e:
         if template not in template_failures:
             template_failures.add(template)
