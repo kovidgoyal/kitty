@@ -12,7 +12,7 @@ from kitty.constants import cache_dir
 from kitty.typing import BossType
 
 from ..tui.handler import result_handler
-from ..tui.operations import alternate_screen, styled
+from ..tui.operations import alternate_screen, set_cursor_visible, styled
 
 if TYPE_CHECKING:
     import readline
@@ -69,7 +69,7 @@ class HistoryCompleter:
 def option_text() -> str:
     return '''\
 --type -t
-choices=line
+choices=line,yesno
 default=line
 Type of input. Defaults to asking for a line of text.
 
@@ -96,14 +96,30 @@ class Response(TypedDict):
     response: Optional[str]
 
 
+def yesno(cli_opts: AskCLIOptions, items: List[str]) -> Response:
+    import tty
+    with alternate_screen():
+        if cli_opts.message:
+            print(styled(cli_opts.message, bold=True))
+        print()
+        print(' ', styled('Y', fg='green') + 'es', ' ', styled('N', fg='red') + 'o', set_cursor_visible(False))
+        sys.stdout.flush()
+        tty.setraw(sys.stdin.fileno())
+        try:
+            response = sys.stdin.buffer.read(1)
+            yes = response in (b'y', b'Y', b'\r', b'\n' b' ')
+            return {'items': items, 'response': 'y' if yes else 'n'}
+        finally:
+            sys.stdout.write(set_cursor_visible(True))
+            tty.setcbreak(sys.stdin.fileno())
+            sys.stdout.flush()
+
+
 def main(args: List[str]) -> Response:
     # For some reason importing readline in a key handler in the main kitty process
     # causes a crash of the python interpreter, probably because of some global
     # lock
     global readline
-    import readline as rl
-    readline = rl
-    from kitty.shell import init_readline
     msg = 'Ask the user for input'
     try:
         cli_opts, items = parse_args(args[1:], option_text, '', msg, 'kitty ask', result_class=AskCLIOptions)
@@ -113,6 +129,12 @@ def main(args: List[str]) -> Response:
             input('Press enter to quit...')
         raise SystemExit(e.code)
 
+    if cli_opts.type == 'yesno':
+        return yesno(cli_opts, items)
+
+    import readline as rl
+    readline = rl
+    from kitty.shell import init_readline
     init_readline(readline)
     response = None
 
