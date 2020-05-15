@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import sys
 from contextlib import suppress
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
@@ -156,7 +157,6 @@ def handle_result(args: List[str], data: Response, target_window_id: int, boss: 
 
 
 if __name__ == '__main__':
-    import sys
     ans = main(sys.argv)
     if ans:
         print(ans)
