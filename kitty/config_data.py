@@ -778,6 +778,10 @@ this option can be used to keep the margins as small as possible when resizing t
 Note that this does not currently work on Wayland.
 '''))
 
+o('confirm_os_window_close', 0, option_type=positive_int, long_text=_('''
+Ask for confirmation when closing an OS window that has at least this
+number of kitty windows in it. A value of zero disables confirmation.
+'''))
 # }}}
 
 g('tabbar')   # {{{
@@ -1374,8 +1378,7 @@ if is_macos:
 k('close_tab', 'kitty_mod+q', 'close_tab', _('Close tab'))
 if is_macos:
     k('close_tab', 'cmd+w', 'close_tab', _('Close tab'), add_to_docs=False)
-    #  Not yet implemented
-    #  k('close_os_window', 'shift+cmd+w', 'close_os_window', _('Close os window'), add_to_docs=False)
+    k('close_os_window', 'shift+cmd+w', 'close_os_window', _('Close OS window'), add_to_docs=False)
 k('move_tab_forward', 'kitty_mod+.', 'move_tab_forward', _('Move tab forward'))
 k('move_tab_backward', 'kitty_mod+,', 'move_tab_backward', _('Move tab backward'))
 k('set_tab_title', 'kitty_mod+alt+t', 'set_tab_title', _('Set tab title'))

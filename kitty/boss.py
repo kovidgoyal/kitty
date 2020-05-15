@@ -723,8 +723,28 @@ class Boss:
                     text = '\n'.join(parse_uri_list(text))
                 w.paste(text)
 
+    def close_os_window(self) -> None:
+        tm = self.active_tab_manager
+        if tm is not None:
+            self.confirm_os_window_close(tm.os_window_id)
+
     def confirm_os_window_close(self, os_window_id: int) -> None:
-        mark_os_window_for_close(os_window_id)
+        if not self.opts.confirm_os_window_close:
+            mark_os_window_for_close(os_window_id)
+            return
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None:
+            w = tm.active_window
+            self._run_kitten('ask', ['--type=yesno', '--message', _(
+                'Are you sure you want to close this OS window, it has {}'
+                ' windows running?').format(tm.number_of_windows)],
+                window=w,
+                custom_callback=partial(self.handle_close_os_window_confirmation, os_window_id)
+            )
+
+    def handle_close_os_window_confirmation(self, os_window_id: int, data: Dict[str, Any], *a: Any) -> None:
+        if data['response'] == 'y':
+            mark_os_window_for_close(os_window_id)
 
     def on_os_window_closed(self, os_window_id: int, viewport_width: int, viewport_height: int) -> None:
         self.cached_values['window-size'] = viewport_width, viewport_height
