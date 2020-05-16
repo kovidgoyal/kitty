@@ -2181,6 +2181,15 @@ is_opt_word_char(char_type ch) {
     return false;
 }
 
+static bool
+is_char_ok_for_word_extension(Line* line, index_type x) {
+    char_type ch = line->cpu_cells[x].ch;
+    if (is_word_char(ch) || is_opt_word_char(ch)) return true;
+    // pass : from :// so that common URLs are matched
+    if (ch == ':' && x + 2 < line->xnum && line->cpu_cells[x+1].ch == '/' && line->cpu_cells[x+2].ch == '/') return true;
+    return false;
+}
+
 bool
 screen_selection_range_for_word(Screen *self, const index_type x, const index_type y, index_type *y1, index_type *y2, index_type *s, index_type *e, bool initial_selection) {
     if (y >= self->lines || x >= self->columns) return false;
@@ -2188,7 +2197,7 @@ screen_selection_range_for_word(Screen *self, const index_type x, const index_ty
     Line *line = visual_line_(self, y);
     *y1 = y;
     *y2 = y;
-#define is_ok(x) (is_word_char((line->cpu_cells[x].ch)) || is_opt_word_char(line->cpu_cells[x].ch))
+#define is_ok(x) is_char_ok_for_word_extension(line, x)
     if (!is_ok(x)) {
         if (initial_selection) return false;
         *s = x; *e = x;
