@@ -6,7 +6,9 @@ import ctypes
 import sys
 from functools import partial
 from math import ceil, cos, floor, pi
-from typing import Any, Callable, Dict, List, Optional, Tuple, Union, cast
+from typing import (
+    Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
+)
 
 from kitty.config import defaults
 from kitty.constants import is_macos
@@ -43,24 +45,66 @@ def font_for_family(family: str) -> Tuple[FontObject, bool, bool]:
     return font_for_family_fontconfig(family)
 
 
+Range = Tuple[Tuple[int, int], str]
+
+
+def merge_ranges(a: Range, b: Range, priority_map: Dict[Tuple[int, int], int]) -> Generator[Range, None, None]:
+    a_start, a_end = a[0]
+    b_start, b_end = b[0]
+    a_val, b_val = a[1], b[1]
+    if b_start > a_end:
+        if b_start == a_end + 1 and a_val == b_val:
+            # ranges can be coalesced
+            yield ((a_start, b_end), a_val)
+            return
+        # disjoint ranges
+        yield a
+        yield b
+        return
+    if a_val == b_val:
+        # mergeable ranges
+        yield ((a_start, max(a_end, b_end)), a_val)
+        return
+    before_range = mid_range = after_range = None
+    if b_start > a_start:
+        before_range = ((a_start, b_start - 1), a_val)
+    mid_end = min(a_end, b_end)
+    if mid_end >= b_start:
+        # overlap range
+        mid_range = ((b_start, mid_end), a_val if priority_map[a[0]] >= priority_map[b[0]] else b_val)
+    # after range
+    if mid_end is a_end:
+        if b_end > a_end:
+            after_range = ((a_end + 1, b_end), b_val)
+    else:
+        if a_end > b_end:
+            after_range = ((b_end + 1, a_end), a_val)
+    # check if the before, mid and after ranges can be coalesced
+    ranges: List[Range] = []
+    for r in (before_range, mid_range, after_range):
+        if r is None:
+            continue
+        if ranges:
+            x = ranges[-1]
+            if x[0][1] + 1 == r[0][0] and x[1] == r[1]:
+                ranges[-1] = ((x[0][0], r[0][1]), x[1])
+            else:
+                ranges.append(r)
+        else:
+            ranges.append(r)
+    yield from ranges
+
+
 def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, int], str]:
     if not maps:
         return maps
-    items = tuple((k, maps[k]) for k in sorted(maps))
-    ans = [items[0]]
+    priority_map = {r: i for i, r in enumerate(maps.keys())}
+    ranges = tuple((r, maps[r]) for r in sorted(maps))
+    ans = [ranges[0]]
 
-    def merge(prev_item: Tuple[Tuple[int, int], str], item: Tuple[Tuple[int, int], str]) -> None:
-        s, e = item[0]
-        pe = prev_item[0][1]
-        ans[-1] = ((prev_item[0][0], max(pe, e)), prev_item[1])
-
-    for item in items[1:]:
-        current_item = ans[-1]
-        if current_item[1] != item[1] or item[0][0] > current_item[0][1] + 1:
-            ans.append(item)
-        else:
-            merge(current_item, item)
-
+    for i in range(1, len(ranges)):
+        r = ranges[i]
+        ans[-1:] = list(merge_ranges(ans[-1], r, priority_map))
     return dict(ans)
 
 
