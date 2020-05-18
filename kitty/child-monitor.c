@@ -349,6 +349,7 @@ parse_input(ChildMonitor *self) {
         global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
         global_state.has_pending_closes = true;
         request_tick_callback();
+        kill_signal_received = false;
     } else {
         count = self->count;
         for (size_t i = 0; i < count; i++) {
@@ -846,11 +847,6 @@ process_pending_resizes(monotonic_t now) {
 }
 
 static inline void
-close_all_windows(void) {
-    for (size_t w = 0; w < global_state.num_os_windows; w++) mark_os_window_for_close(&global_state.os_windows[w], IMPERATIVE_CLOSE_REQUESTED);
-}
-
-static inline void
 close_os_window(ChildMonitor *self, OSWindow *os_window) {
     destroy_os_window(os_window);
     call_boss(on_os_window_closed, "Kii", os_window->id, os_window->window_width, os_window->window_height);
@@ -867,7 +863,7 @@ process_pending_closes(ChildMonitor *self) {
         call_boss(quit, "");
     }
     if (global_state.quit_request == IMPERATIVE_CLOSE_REQUESTED) {
-        close_all_windows();
+        for (size_t w = 0; w < global_state.num_os_windows; w++) global_state.os_windows[w].close_request = IMPERATIVE_CLOSE_REQUESTED;
     }
     bool has_open_windows = false;
     for (size_t w = global_state.num_os_windows; w > 0; w--) {
