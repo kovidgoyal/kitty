@@ -56,8 +56,8 @@ def marker_from_multiple_regex(regexes: Iterable[Tuple[int, str]], flags: int = 
         for match in pat.finditer(text):
             left.value = match.start()
             right.value = match.end() - 1
-            grp = next(k for k, v in match.groupdict().items())
-            color.value = color_map[grp]
+            grp = match.lastgroup
+            color.value = color_map[grp] if grp is not None else 0
             yield
 
     return marker

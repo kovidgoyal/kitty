@@ -15,6 +15,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add an option :opt:`confirm_on_os_window_close` to ask for confirmation
   when closing an OS window with multiple kitty windows.
 
+- Fix marks using different colors with regexes using only a single color
+  (:pull:`2663`)
+
 
 0.17.4 [2020-05-09]
 --------------------

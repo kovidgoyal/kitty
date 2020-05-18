@@ -311,7 +311,7 @@ def parse_marker_spec(ftype: str, parts: Sequence[str]) -> Tuple[str, Union[str,
 def toggle_marker(func: str, rest: str) -> FuncArgsType:
     parts = rest.split(maxsplit=1)
     if len(parts) != 2:
-        raise ValueError('{} if not a valid marker specification'.format(rest))
+        raise ValueError('{} is not a valid marker specification'.format(rest))
     ftype, spec = parts
     parts = spec.split()
     return func, list(parse_marker_spec(ftype, parts))
