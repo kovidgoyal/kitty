@@ -18,6 +18,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix marks using different colors with regexes using only a single color
   (:pull:`2663`)
 
+- Linux: Workaround for broken Nvidia drivers for old cards (:iss:`456`)
+
 
 0.17.4 [2020-05-09]
 --------------------

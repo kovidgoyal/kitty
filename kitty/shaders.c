@@ -656,19 +656,13 @@ static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
 init_borders_program(void) {
-    Program *p = program_ptr(BORDERS_PROGRAM);
-    int left = NUM_BORDER_UNIFORMS;
-    for (int i = 0; i < p->num_of_uniforms; i++, left--) {
-#define SET_LOC(which) (strcmp(p->uniforms[i].name, #which) == 0) border_uniform_locations[BORDER_##which] = p->uniforms[i].location
-        if SET_LOC(viewport);
-        else if SET_LOC(background_opacity);
-        else if SET_LOC(default_bg);
-        else if SET_LOC(active_border_color);
-        else if SET_LOC(inactive_border_color);
-        else if SET_LOC(bell_border_color);
-        else { fatal("Unknown uniform in borders program: %s", p->uniforms[i].name); return; }
-    }
-    if (left) { fatal("Left over uniforms in borders program"); return; }
+#define SET_LOC(which) border_uniform_locations[BORDER_##which] = get_uniform_location(BORDERS_PROGRAM, #which);
+        SET_LOC(viewport)
+        SET_LOC(background_opacity)
+        SET_LOC(default_bg)
+        SET_LOC(active_border_color)
+        SET_LOC(inactive_border_color)
+        SET_LOC(bell_border_color)
 #undef SET_LOC
 }
 
