@@ -161,14 +161,6 @@ window_close_callback(GLFWwindow* window) {
     global_state.callback_os_window = NULL;
 }
 
-#ifdef __APPLE__
-static void
-application_quit_canary_close_requested(GLFWwindow *window UNUSED) {
-    global_state.has_pending_closes = true;
-    request_tick_callback();
-}
-#endif
-
 static void
 window_occlusion_callback(GLFWwindow *window, bool occluded UNUSED) {
     if (!set_callback_window(window)) return;
@@ -340,6 +332,16 @@ drop_callback(GLFWwindow *w, const char *mime, const char *data, size_t sz) {
 #undef RETURN
 }
 
+#ifdef __APPLE__
+static void
+application_quit_requested_callback(void) {
+    if (global_state.quit_request == NO_CLOSE_REQUESTED) {
+        global_state.has_pending_closes = true;
+        global_state.quit_request = CONFIRMABLE_CLOSE_REQUESTED;
+        request_tick_callback();
+    }
+}
+#endif
 // }}}
 
 void
@@ -457,6 +459,8 @@ toggle_maximized_for_os_window(OSWindow *w) {
 
 
 #ifdef __APPLE__
+static GLFWwindow *apple_preserve_common_context = NULL;
+
 static int
 filter_option(int key UNUSED, int mods, unsigned int native_key UNUSED, unsigned long flags) {
     if ((mods == GLFW_MOD_ALT) || (mods == (GLFW_MOD_ALT | GLFW_MOD_SHIFT))) {
@@ -465,8 +469,6 @@ filter_option(int key UNUSED, int mods, unsigned int native_key UNUSED, unsigned
     }
     return 0;
 }
-
-static GLFWwindow *application_quit_canary = NULL;
 
 static bool
 on_application_reopen(int has_visible_windows) {
@@ -526,8 +528,8 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         glfwWindowHint(GLFW_COCOA_GRAPHICS_SWITCHING, true);
         glfwSetApplicationShouldHandleReopen(on_application_reopen);
         glfwSetApplicationWillFinishLaunching(cocoa_create_global_menu);
+        glfwSetApplicationQuitRequestedCallback(application_quit_requested_callback);
 #endif
-
     }
 
 #ifndef __APPLE__
@@ -547,15 +549,13 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     // The temp window is used to get the DPI.
     glfwWindowHint(GLFW_VISIBLE, false);
     GLFWwindow *common_context = global_state.num_os_windows ? global_state.os_windows[0].handle : NULL;
-#ifdef __APPLE__
-    if (is_first_window && !application_quit_canary) {
-        application_quit_canary = glfwCreateWindow(100, 200, "quit_canary", NULL, NULL);
-        glfwSetWindowCloseCallback(application_quit_canary, application_quit_canary_close_requested);
-    }
-    if (!common_context) common_context = application_quit_canary;
-#endif
-
     GLFWwindow *temp_window = NULL;
+#ifdef __APPLE__
+    if (!apple_preserve_common_context) {
+        apple_preserve_common_context = glfwCreateWindow(100, 200, "kitty", NULL, common_context);
+    }
+    if (!common_context) common_context = apple_preserve_common_context;
+#endif
     if (!global_state.is_wayland) {
         // On Wayland windows dont get a content scale until they receive an enterEvent anyway
         // which wont happen until the event loop ticks, so using a temp window is useless.
@@ -757,21 +757,6 @@ focus_os_window(OSWindow *w, bool also_raise) {
 #endif
     }
 }
-
-#ifdef __APPLE__
-bool
-application_quit_requested() {
-    return !application_quit_canary || glfwWindowShouldClose(application_quit_canary);
-}
-
-void
-request_application_quit() {
-    if (application_quit_canary) {
-        global_state.has_pending_closes = true;
-        glfwSetWindowShouldClose(application_quit_canary, true);
-    }
-}
-#endif
 
 // Global functions {{{
 static void
@@ -1170,6 +1155,10 @@ run_main_loop(tick_callback_fun cb, void* cb_data) {
 
 void
 stop_main_loop(void) {
+#ifdef __APPLE__
+    if (apple_preserve_common_context) glfwDestroyWindow(apple_preserve_common_context);
+    apple_preserve_common_context = NULL;
+#endif
     glfwStopMainLoop();
 }
 

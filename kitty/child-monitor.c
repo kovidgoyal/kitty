@@ -346,7 +346,9 @@ parse_input(ChildMonitor *self) {
     }
 
     if (UNLIKELY(kill_signal_received)) {
-        global_state.terminate = true;
+        global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
+        global_state.has_pending_closes = true;
+        request_tick_callback();
     } else {
         count = self->count;
         for (size_t i = 0; i < count; i++) {
@@ -861,6 +863,12 @@ close_os_window(ChildMonitor *self, OSWindow *os_window) {
 
 static inline bool
 process_pending_closes(ChildMonitor *self) {
+    if (global_state.quit_request == CONFIRMABLE_CLOSE_REQUESTED) {
+        call_boss(quit, "");
+    }
+    if (global_state.quit_request == IMPERATIVE_CLOSE_REQUESTED) {
+        close_all_windows();
+    }
     bool has_open_windows = false;
     for (size_t w = global_state.num_os_windows; w > 0; w--) {
         OSWindow *os_window = global_state.os_windows + w - 1;
@@ -886,10 +894,10 @@ process_pending_closes(ChildMonitor *self) {
     global_state.has_pending_closes = false;
 #ifdef __APPLE__
     if (!OPT(macos_quit_when_last_window_closed)) {
-        if (!has_open_windows && !application_quit_requested()) has_open_windows = true;
+        if (!has_open_windows && global_state.quit_request != IMPERATIVE_CLOSE_REQUESTED) has_open_windows = true;
     }
 #endif
-    return has_open_windows;
+    return !has_open_windows;
 }
 
 #ifdef __APPLE__
@@ -950,23 +958,16 @@ process_global_state(void *data) {
             cocoa_pending_actions = 0;
         }
 #endif
-    if (global_state.terminate) {
-        global_state.terminate = false;
-        close_all_windows();
-#ifdef __APPLE__
-        request_application_quit();
-#endif
-    }
     report_reaped_pids();
-    bool has_open_windows = true;
-    if (global_state.has_pending_closes) has_open_windows = process_pending_closes(self);
-    if (has_open_windows) {
+    bool should_quit = false;
+    if (global_state.has_pending_closes) should_quit = process_pending_closes(self);
+    if (should_quit) {
+        stop_main_loop();
+    } else {
         if (maximum_wait >= 0) {
             if (maximum_wait == 0) request_tick_callback();
             else state_check_timer_enabled = true;
         }
-    } else {
-        stop_main_loop();
     }
     update_main_loop_timer(state_check_timer, MAX(0, maximum_wait), state_check_timer_enabled);
 }

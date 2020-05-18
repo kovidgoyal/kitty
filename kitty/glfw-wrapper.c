@@ -386,6 +386,8 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwSetApplicationWillFinishLaunching_impl) = dlsym(handle, "glfwSetApplicationWillFinishLaunching");
 
+    *(void **) (&glfwSetApplicationQuitRequestedCallback_impl) = dlsym(handle, "glfwSetApplicationQuitRequestedCallback");
+
     *(void **) (&glfwGetCocoaKeyEquivalent_impl) = dlsym(handle, "glfwGetCocoaKeyEquivalent");
 
     *(void **) (&glfwCocoaRequestRenderFrame_impl) = dlsym(handle, "glfwCocoaRequestRenderFrame");

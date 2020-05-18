@@ -197,7 +197,6 @@ typedef struct {
     OSWindow *os_windows;
     size_t num_os_windows, capacity;
     OSWindow *callback_os_window;
-    bool terminate;
     bool is_wayland;
     bool has_render_frames;
     bool debug_rendering, debug_font_fallback;
@@ -207,6 +206,7 @@ typedef struct {
     double font_sz_in_pts;
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window;
+    CloseRequest quit_request;
 } GlobalState;
 
 extern GlobalState global_state;
@@ -264,8 +264,6 @@ typedef enum {
     NEW_TAB_WITH_WD = 8
 } CocoaPendingAction;
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);
-bool application_quit_requested(void);
-void request_application_quit(void);
 #endif
 void request_frame_render(OSWindow *w);
 void request_tick_callback(void);

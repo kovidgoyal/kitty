@@ -462,7 +462,6 @@ mark_os_window_for_close(OSWindow* w, CloseRequest cr) {
 
 
 
-
 // Python API {{{
 #define PYWRAP0(name) static PyObject* py##name(PYNOARG)
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
@@ -834,6 +833,19 @@ PYWRAP1(mark_os_window_for_close) {
     Py_RETURN_FALSE;
 }
 
+PYWRAP1(set_application_quit_request) {
+    CloseRequest cr = IMPERATIVE_CLOSE_REQUESTED;
+    PA("|i", &cr);
+    global_state.quit_request = cr;
+    global_state.has_pending_closes = true;
+    request_tick_callback();
+    Py_RETURN_NONE;
+}
+
+PYWRAP0(current_application_quit_request) {
+    return Py_BuildValue("i", global_state.quit_request);
+}
+
 PYWRAP1(focus_os_window) {
     id_type os_window_id;
     int also_raise = 1;
@@ -1141,6 +1153,8 @@ static PyMethodDef module_methods[] = {
     MW(cell_size_for_window, METH_VARARGS),
     MW(os_window_has_background_image, METH_VARARGS),
     MW(mark_os_window_for_close, METH_VARARGS),
+    MW(set_application_quit_request, METH_VARARGS),
+    MW(current_application_quit_request, METH_NOARGS),
     MW(set_titlebar_color, METH_VARARGS),
     MW(focus_os_window, METH_VARARGS),
     MW(mark_tab_bar_dirty, METH_O),
@@ -1192,6 +1206,7 @@ init_state(PyObject *module) {
     PyModule_AddObject(module, "Region", (PyObject *) &RegionType);
     PyModule_AddIntConstant(module, "IMPERATIVE_CLOSE_REQUESTED", IMPERATIVE_CLOSE_REQUESTED);
     PyModule_AddIntConstant(module, "NO_CLOSE_REQUESTED", NO_CLOSE_REQUESTED);
+    PyModule_AddIntConstant(module, "CLOSE_BEING_CONFIRMED", CLOSE_BEING_CONFIRMED);
     if (Py_AtExit(finalize) != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to register the state at exit handler");
         return false;

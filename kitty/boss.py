@@ -27,12 +27,14 @@ from .constants import (
     appname, config_dir, is_macos, kitty_exe, supports_primary_selection
 )
 from .fast_data_types import (
-    NO_CLOSE_REQUESTED, ChildMonitor, background_opacity_of,
-    change_background_opacity, change_os_window_state, cocoa_set_menubar_title,
-    create_os_window, current_os_window, destroy_global_data, focus_os_window,
-    get_clipboard_string, global_font_size, mark_os_window_for_close,
-    os_window_font_size, patch_global_colors, safe_pipe, set_background_image,
-    set_boss, set_clipboard_string, set_in_sequence_mode, thread_write,
+    CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
+    ChildMonitor, background_opacity_of, change_background_opacity,
+    change_os_window_state, cocoa_set_menubar_title, create_os_window,
+    current_application_quit_request, current_os_window, destroy_global_data,
+    focus_os_window, get_clipboard_string, global_font_size,
+    mark_os_window_for_close, os_window_font_size, patch_global_colors,
+    safe_pipe, set_application_quit_request, set_background_image, set_boss,
+    set_clipboard_string, set_in_sequence_mode, thread_write,
     toggle_fullscreen, toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
@@ -760,6 +762,26 @@ class Boss:
         action = self.os_window_death_actions.pop(os_window_id, None)
         if action is not None:
             action()
+
+    def quit(self, *args: Any) -> None:
+        tm = self.active_tab
+        if not self.opts.confirm_os_window_close or tm is None:
+            set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
+            return
+        if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
+            return
+        num = 0
+        for q in self.os_window_map.values():
+            num += q.number_of_windows
+        self._run_kitten('ask', ['--type=yesno', '--message', _(
+            'Are you sure you want to quit kitty, it has {} windows running?').format(num)],
+            window=tm.active_window,
+            custom_callback=self.handle_quit_confirmation
+        )
+        set_application_quit_request(CLOSE_BEING_CONFIRMED)
+
+    def handle_quit_confirmation(self, data: Dict[str, Any], *a: Any) -> None:
+        set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED if data['response'] == 'y' else NO_CLOSE_REQUESTED)
 
     def notify_on_os_window_death(self, address: str) -> None:
         import socket

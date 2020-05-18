@@ -1586,6 +1586,7 @@ typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int,unsigned long);
 typedef bool (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef void (* GLFWapplicationwillfinishlaunchingfun)(void);
 typedef bool (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
+typedef void (* GLFWcocoaaplicationquitrequestedfun)(void);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
@@ -2093,6 +2094,10 @@ GFW_EXTERN glfwSetApplicationShouldHandleReopen_func glfwSetApplicationShouldHan
 typedef GLFWapplicationwillfinishlaunchingfun (*glfwSetApplicationWillFinishLaunching_func)(GLFWapplicationwillfinishlaunchingfun);
 GFW_EXTERN glfwSetApplicationWillFinishLaunching_func glfwSetApplicationWillFinishLaunching_impl;
 #define glfwSetApplicationWillFinishLaunching glfwSetApplicationWillFinishLaunching_impl
+
+typedef GLFWcocoaaplicationquitrequestedfun (*glfwSetApplicationQuitRequestedCallback_func)(GLFWcocoaaplicationquitrequestedfun);
+GFW_EXTERN glfwSetApplicationQuitRequestedCallback_func glfwSetApplicationQuitRequestedCallback_impl;
+#define glfwSetApplicationQuitRequestedCallback glfwSetApplicationQuitRequestedCallback_impl
 
 typedef void (*glfwGetCocoaKeyEquivalent_func)(int, int, char*, size_t, int*);
 GFW_EXTERN glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;
