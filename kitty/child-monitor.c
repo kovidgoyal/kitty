@@ -869,11 +869,14 @@ process_pending_closes(ChildMonitor *self) {
                 has_open_windows = true;
                 break;
             case CONFIRMABLE_CLOSE_REQUESTED:
-                os_window->close_request = NO_CLOSE_REQUESTED;
+                os_window->close_request = CLOSE_BEING_CONFIRMED;
                 call_boss(confirm_os_window_close, "K", os_window->id);
                 if (os_window->close_request == IMPERATIVE_CLOSE_REQUESTED) {
                     close_os_window(self, os_window);
                 } else has_open_windows = true;
+                break;
+            case CLOSE_BEING_CONFIRMED:
+                has_open_windows = true;
                 break;
             case IMPERATIVE_CLOSE_REQUESTED:
                 close_os_window(self, os_window);

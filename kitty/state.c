@@ -1190,6 +1190,8 @@ init_state(PyObject *module) {
     if (PyStructSequence_InitType2(&RegionType, &region_desc) != 0) return false;
     Py_INCREF((PyObject *) &RegionType);
     PyModule_AddObject(module, "Region", (PyObject *) &RegionType);
+    PyModule_AddIntConstant(module, "IMPERATIVE_CLOSE_REQUESTED", IMPERATIVE_CLOSE_REQUESTED);
+    PyModule_AddIntConstant(module, "NO_CLOSE_REQUESTED", NO_CLOSE_REQUESTED);
     if (Py_AtExit(finalize) != 0) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to register the state at exit handler");
         return false;

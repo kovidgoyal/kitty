@@ -10,6 +10,8 @@ from kitty.options_stub import Options
 
 # Constants {{{
 KITTY_VCS_REV: str
+NO_CLOSE_REQUESTED: int
+IMPERATIVE_CLOSE_REQUESTED: int
 ERROR_PREFIX: str
 GLSL_VERSION: int
 GLFW_IBEAM_CURSOR: int
@@ -706,7 +708,7 @@ def cocoa_get_lang() -> Optional[str]:
     pass
 
 
-def mark_os_window_for_close(os_window_id: int, yes: bool = True) -> bool:
+def mark_os_window_for_close(os_window_id: int, cr_type: int = 2) -> bool:
     pass
 
 

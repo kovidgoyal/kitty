@@ -27,9 +27,9 @@ from .constants import (
     appname, config_dir, is_macos, kitty_exe, supports_primary_selection
 )
 from .fast_data_types import (
-    ChildMonitor, background_opacity_of, change_background_opacity,
-    change_os_window_state, cocoa_set_menubar_title, create_os_window,
-    current_os_window, destroy_global_data, focus_os_window,
+    NO_CLOSE_REQUESTED, ChildMonitor, background_opacity_of,
+    change_background_opacity, change_os_window_state, cocoa_set_menubar_title,
+    create_os_window, current_os_window, destroy_global_data, focus_os_window,
     get_clipboard_string, global_font_size, mark_os_window_for_close,
     os_window_font_size, patch_global_colors, safe_pipe, set_background_image,
     set_boss, set_clipboard_string, set_in_sequence_mode, thread_write,
@@ -745,6 +745,8 @@ class Boss:
     def handle_close_os_window_confirmation(self, os_window_id: int, data: Dict[str, Any], *a: Any) -> None:
         if data['response'] == 'y':
             mark_os_window_for_close(os_window_id)
+        else:
+            mark_os_window_for_close(os_window_id, NO_CLOSE_REQUESTED)
 
     def on_os_window_closed(self, os_window_id: int, viewport_width: int, viewport_height: int) -> None:
         self.cached_values['window-size'] = viewport_width, viewport_height

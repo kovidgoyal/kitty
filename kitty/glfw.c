@@ -152,12 +152,12 @@ blank_os_window(OSWindow *w) {
 static void
 window_close_callback(GLFWwindow* window) {
     if (!set_callback_window(window)) return;
-    global_state.has_pending_closes = true;
-    if (global_state.callback_os_window->close_request < CONFIRMABLE_CLOSE_REQUESTED) {
+    if (global_state.callback_os_window->close_request == NO_CLOSE_REQUESTED) {
         global_state.callback_os_window->close_request = CONFIRMABLE_CLOSE_REQUESTED;
+        global_state.has_pending_closes = true;
+        request_tick_callback();
     }
     glfwSetWindowShouldClose(window, false);
-    request_tick_callback();
     global_state.callback_os_window = NULL;
 }
 
