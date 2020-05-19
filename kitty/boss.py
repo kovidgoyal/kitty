@@ -731,10 +731,10 @@ class Boss:
             self.confirm_os_window_close(tm.os_window_id)
 
     def confirm_os_window_close(self, os_window_id: int) -> None:
-        if not self.opts.confirm_os_window_close:
+        tm = self.os_window_map.get(os_window_id)
+        if tm is None or self.opts.confirm_os_window_close <= tm.number_of_windows:
             mark_os_window_for_close(os_window_id)
             return
-        tm = self.os_window_map.get(os_window_id)
         if tm is not None:
             w = tm.active_window
             self._run_kitten('ask', ['--type=yesno', '--message', _(
@@ -765,14 +765,14 @@ class Boss:
 
     def quit(self, *args: Any) -> None:
         tm = self.active_tab
-        if not self.opts.confirm_os_window_close or tm is None:
+        num = 0
+        for q in self.os_window_map.values():
+            num += q.number_of_windows
+        if self.opts.confirm_os_window_close <= num or tm is None:
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
             return
-        num = 0
-        for q in self.os_window_map.values():
-            num += q.number_of_windows
         self._run_kitten('ask', ['--type=yesno', '--message', _(
             'Are you sure you want to quit kitty, it has {} windows running?').format(num)],
             window=tm.active_window,
