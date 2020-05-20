@@ -12,7 +12,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Tall and Fat layouts: Add a ``mirrored`` option to put the full size window
   on the opposite edge of the screen (:iss:`2654`)
 
-- Add an option :opt:`confirm_on_os_window_close` to ask for confirmation
+- Add an option :opt:`confirm_os_window_close` to ask for confirmation
   when closing an OS window with multiple kitty windows.
 
 - Add a new mappable ``quit`` action to quit kitty completely.

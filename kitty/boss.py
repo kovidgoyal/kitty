@@ -732,7 +732,7 @@ class Boss:
 
     def confirm_os_window_close(self, os_window_id: int) -> None:
         tm = self.os_window_map.get(os_window_id)
-        if tm is None or self.opts.confirm_os_window_close <= tm.number_of_windows:
+        if tm is None or self.opts.confirm_os_window_close > tm.number_of_windows:
             mark_os_window_for_close(os_window_id)
             return
         if tm is not None:
@@ -768,7 +768,7 @@ class Boss:
         num = 0
         for q in self.os_window_map.values():
             num += q.number_of_windows
-        if self.opts.confirm_os_window_close <= num or tm is None:
+        if self.opts.confirm_os_window_close > num or tm is None:
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return
         if current_application_quit_request() == CLOSE_BEING_CONFIRMED:
