@@ -6,7 +6,7 @@ import json
 import os
 import re
 import sys
-from typing import Callable, List, Optional, Tuple
+from typing import Callable, Dict, List, Optional, Tuple
 
 _plat = sys.platform.lower()
 is_linux = 'linux' in _plat
@@ -19,6 +19,7 @@ class Env:
     cppflags: List[str] = []
     cflags: List[str] = []
     ldflags: List[str] = []
+    library_paths: Dict[str, List[str]] = {}
     ldpaths: List[str] = []
     ccver: Tuple[int, int]
 
@@ -32,13 +33,13 @@ class Env:
 
     def __init__(
         self, cc: str = '', cppflags: List[str] = [], cflags: List[str] = [], ldflags: List[str] = [],
-        ldpaths: Optional[List[str]] = None, ccver: Tuple[int, int] = (0, 0)
+        library_paths: Dict[str, List[str]] = {}, ldpaths: Optional[List[str]] = None, ccver: Tuple[int, int] = (0, 0)
     ):
-        self.cc, self.cppflags, self.cflags, self.ldflags, self.ldpaths = cc, cppflags, cflags, ldflags, [] if ldpaths is None else ldpaths
-        self.ccver = ccver
+        self.cc, self.cppflags, self.cflags, self.ldflags, self.library_paths = cc, cppflags, cflags, ldflags, library_paths
+        self.ldpaths, self.ccver = [] if ldpaths is None else ldpaths, ccver
 
     def copy(self) -> 'Env':
-        ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), list(self.ldpaths), self.ccver)
+        ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), dict(self.library_paths), list(self.ldpaths), self.ccver)
         ans.all_headers = list(self.all_headers)
         ans.sources = list(self.sources)
         ans.wayland_packagedir = self.wayland_packagedir
