@@ -1109,8 +1109,12 @@ wayland_frame_request_callback(id_type os_window_id) {
 
 void
 request_frame_render(OSWindow *w) {
-    glfwRequestWaylandFrameEvent(w->handle, w->id, wayland_frame_request_callback);
-    w->render_state = RENDER_FRAME_REQUESTED;
+    // Some Wayland compositors are too fragile to handle multiple
+    // render frame requests, see https://github.com/kovidgoyal/kitty/issues/2329
+    if (w->render_state != RENDER_FRAME_REQUESTED) {
+        glfwRequestWaylandFrameEvent(w->handle, w->id, wayland_frame_request_callback);
+        w->render_state = RENDER_FRAME_REQUESTED;
+    }
 }
 
 void
