@@ -52,12 +52,12 @@ extern monotonic_t monotonic_(void);
 
 static inline monotonic_t
 monotonic(void) {
-	return monotonic_() - monotonic_start_time;
+    return monotonic_() - monotonic_start_time;
 }
 
 static inline void
 init_monotonic(void) {
-	monotonic_start_time = monotonic_();
+    monotonic_start_time = monotonic_();
 }
 
 #ifdef MONOTONIC_IMPLEMENTATION
