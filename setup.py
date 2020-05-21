@@ -46,6 +46,7 @@ version = tuple(
 )
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
+is_openbsd = 'openbsd' in _plat
 Env = glfw.Env
 env = Env()
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
@@ -344,7 +345,7 @@ def kitty_env() -> Env:
     ans.ldpaths += pylib + font_libs + gl_libs + libpng
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
-    else:
+    elif not is_openbsd:
         ans.ldpaths += ['-lrt']
         if '-ldl' not in ans.ldpaths:
             ans.ldpaths.append('-ldl')
