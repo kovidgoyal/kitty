@@ -216,59 +216,57 @@ PyInit_fast_data_types(void) {
     if (m == NULL) return NULL;
     init_monotonic();
 
-    if (m != NULL) {
-        if (!init_logging(m)) return NULL;
-        if (!init_LineBuf(m)) return NULL;
-        if (!init_HistoryBuf(m)) return NULL;
-        if (!init_Line(m)) return NULL;
-        if (!init_Cursor(m)) return NULL;
-        if (!init_child_monitor(m)) return NULL;
-        if (!init_ColorProfile(m)) return NULL;
-        if (!init_Screen(m)) return NULL;
-        if (!init_glfw(m)) return NULL;
-        if (!init_child(m)) return NULL;
-        if (!init_state(m)) return NULL;
-        if (!init_keys(m)) return NULL;
-        if (!init_graphics(m)) return NULL;
-        if (!init_shaders(m)) return NULL;
-        if (!init_mouse(m)) return NULL;
-        if (!init_kittens(m)) return NULL;
-        if (!init_png_reader(m)) return NULL;
+    if (!init_logging(m)) return NULL;
+    if (!init_LineBuf(m)) return NULL;
+    if (!init_HistoryBuf(m)) return NULL;
+    if (!init_Line(m)) return NULL;
+    if (!init_Cursor(m)) return NULL;
+    if (!init_child_monitor(m)) return NULL;
+    if (!init_ColorProfile(m)) return NULL;
+    if (!init_Screen(m)) return NULL;
+    if (!init_glfw(m)) return NULL;
+    if (!init_child(m)) return NULL;
+    if (!init_state(m)) return NULL;
+    if (!init_keys(m)) return NULL;
+    if (!init_graphics(m)) return NULL;
+    if (!init_shaders(m)) return NULL;
+    if (!init_mouse(m)) return NULL;
+    if (!init_kittens(m)) return NULL;
+    if (!init_png_reader(m)) return NULL;
 #ifdef __APPLE__
-        if (!init_macos_process_info(m)) return NULL;
-        if (!init_CoreText(m)) return NULL;
-        if (!init_cocoa(m)) return NULL;
+    if (!init_macos_process_info(m)) return NULL;
+    if (!init_CoreText(m)) return NULL;
+    if (!init_cocoa(m)) return NULL;
 #else
-        if (!init_freetype_library(m)) return NULL;
-        if (!init_fontconfig_library(m)) return NULL;
-        if (!init_desktop(m)) return NULL;
+    if (!init_freetype_library(m)) return NULL;
+    if (!init_fontconfig_library(m)) return NULL;
+    if (!init_desktop(m)) return NULL;
 #endif
-        if (!init_fonts(m)) return NULL;
+    if (!init_fonts(m)) return NULL;
 
-        PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
-        PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
-        PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
-        PyModule_AddIntConstant(m, "STRIKETHROUGH", STRIKE_SHIFT);
-        PyModule_AddIntConstant(m, "DIM", DIM_SHIFT);
-        PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
-        PyModule_AddIntConstant(m, "MARK", MARK_SHIFT);
-        PyModule_AddIntConstant(m, "MARK_MASK", MARK_MASK);
-        PyModule_AddStringMacro(m, ERROR_PREFIX);
+    PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
+    PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
+    PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
+    PyModule_AddIntConstant(m, "STRIKETHROUGH", STRIKE_SHIFT);
+    PyModule_AddIntConstant(m, "DIM", DIM_SHIFT);
+    PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
+    PyModule_AddIntConstant(m, "MARK", MARK_SHIFT);
+    PyModule_AddIntConstant(m, "MARK_MASK", MARK_MASK);
+    PyModule_AddStringMacro(m, ERROR_PREFIX);
 #ifdef KITTY_VCS_REV
-        PyModule_AddStringMacro(m, KITTY_VCS_REV);
+    PyModule_AddStringMacro(m, KITTY_VCS_REV);
 #endif
-        PyModule_AddIntMacro(m, CURSOR_BLOCK);
-        PyModule_AddIntMacro(m, CURSOR_BEAM);
-        PyModule_AddIntMacro(m, CURSOR_UNDERLINE);
-        PyModule_AddIntMacro(m, DECAWM);
-        PyModule_AddIntMacro(m, DECCOLM);
-        PyModule_AddIntMacro(m, DECOM);
-        PyModule_AddIntMacro(m, IRM);
-        PyModule_AddIntMacro(m, CSI);
-        PyModule_AddIntMacro(m, DCS);
-        PyModule_AddIntMacro(m, APC);
-        PyModule_AddIntMacro(m, OSC);
-    }
+    PyModule_AddIntMacro(m, CURSOR_BLOCK);
+    PyModule_AddIntMacro(m, CURSOR_BEAM);
+    PyModule_AddIntMacro(m, CURSOR_UNDERLINE);
+    PyModule_AddIntMacro(m, DECAWM);
+    PyModule_AddIntMacro(m, DECCOLM);
+    PyModule_AddIntMacro(m, DECOM);
+    PyModule_AddIntMacro(m, IRM);
+    PyModule_AddIntMacro(m, CSI);
+    PyModule_AddIntMacro(m, DCS);
+    PyModule_AddIntMacro(m, APC);
+    PyModule_AddIntMacro(m, OSC);
 
     return m;
 }
