@@ -27,7 +27,7 @@ If applicable, add screenshots to help explain your problem.
 OS: Name and version of operating system(s)
 
 ```
-Output of kitty --debug-confg
+Output of kitty --debug-config
 ```
 
 **Additional context**
