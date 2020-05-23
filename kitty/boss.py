@@ -800,7 +800,7 @@ class Boss:
         tab = self.active_tab
         if tab is not None:
             tab.new_special_window(
-                SpecialWindow(cmd, data, _('History'), overlay_for=window.id),
+                SpecialWindow(cmd, data, _('History'), overlay_for=window.id, cwd=window.cwd_of_child),
                 copy_colors_from=self.active_window
                 )
 
