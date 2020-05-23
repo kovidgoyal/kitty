@@ -113,13 +113,13 @@ class DiffHandler(Handler):
                 return self.scroll_lines(amt)
             if func == 'change_context':
                 new_ctx = self.current_context_count
-                to = int(args[0])
+                to = args[0]
                 if to == 'all':
                     new_ctx = 100000
                 elif to == 'default':
                     new_ctx = self.original_context_count
                 else:
-                    new_ctx += to
+                    new_ctx += int(to)
                 return self.change_context_count(new_ctx)
             if func == 'start_search':
                 self.start_search(bool(args[0]), bool(args[1]))
