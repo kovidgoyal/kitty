@@ -957,12 +957,10 @@ void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
 {
     if (window->wl.title)
         free(window->wl.title);
-    window->wl.title = _glfw_strdup(title);
     // Wayland cannot handle requests larger than ~8200 bytes. Sending
     // one causes an abort(). Since titles this large are meaningless anyway
-    // ensure they do not happen. One should really truncate ensuring valid UTF-8
-    // but I cant be bothered.
-    if (title && strnlen(title, 2048) >= 2048) window->wl.title[2048] = 0;
+    // ensure they do not happen.
+    window->wl.title = utf_8_strndup(title, 2048);
     if (window->wl.xdg.toplevel)
         xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
 }
