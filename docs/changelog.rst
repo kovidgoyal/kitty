@@ -25,6 +25,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Wayland: Fix kitty being killed on some Wayland compositors if a hidden window
   has a lot of output (:iss:`2329`)
 
+- BSD: Fix controlling terminal not being established (:pull:`2686`)
+
 
 0.17.4 [2020-05-09]
 --------------------

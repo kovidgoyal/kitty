@@ -12,6 +12,8 @@
 #include <errno.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/ioctl.h>
+#include <termios.h>
 
 static inline char**
 serialize_string_tuple(PyObject *src) {
@@ -93,7 +95,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             // Establish the controlling terminal (see man 7 credentials)
             int tfd = open(name, O_RDWR);
             if (tfd == -1) exit_on_err("Failed to open controlling terminal");
-#ifdef TIOCSTTY
+#ifdef TIOCSCTTY
             // On BSD open() does not establish the controlling terminal
             if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
 #endif
