@@ -25,7 +25,7 @@ from .rc.base import (
 
 @lru_cache(maxsize=2)
 def match_commands() -> Tuple[str, ...]:
-    all_commands = tuple(sorted(all_command_names()))
+    all_commands = tuple(sorted(x.replace('_', '-') for x in all_command_names()))
     return tuple(sorted(all_commands + ('exit', 'help', 'quit')))
 
 
