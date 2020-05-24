@@ -1863,12 +1863,11 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
     [window->ns.object setAlphaValue:opacity];
 }
 
-void _glfwPlatformSetRawInput(_GLFWwindow *window, bool enabled)
+void _glfwPlatformSetRawMouseMotion(_GLFWwindow *window UNUSED, bool enabled UNUSED)
 {
-    window->useRawInput = enabled;
 }
 
-bool _glfwPlatformRawInputSupported(void)
+bool _glfwPlatformRawMouseMotionSupported(void)
 {
     return false;
 }
