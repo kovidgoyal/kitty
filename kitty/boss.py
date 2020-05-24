@@ -942,19 +942,25 @@ class Boss:
                 custom_callback=done, action_on_removal=done2)
 
     def kitty_shell(self, window_type: str) -> None:
-        cmd = ['@', kitty_exe(), '@']
+        kw: Dict[str, Any] = {}
+        cmd = [kitty_exe(), '@']
+        aw = self.active_window
+        if aw is not None:
+            kw['env'] = {'KITTY_SHELL_ACTIVE_WINDOW_ID': str(aw.id)}
         if window_type == 'tab':
-            self._new_tab(cmd)
+            self._new_tab(SpecialWindow(cmd, **kw))
         elif window_type == 'os_window':
-            os_window_id = self._new_os_window(cmd)
+            os_window_id = self._new_os_window(SpecialWindow(cmd, **kw))
             self.os_window_map[os_window_id]
         elif window_type == 'overlay':
-            w = self.active_window
             tab = self.active_tab
-            if w is not None and tab is not None:
-                tab.new_special_window(SpecialWindow(cmd, overlay_for=w.id))
+            if aw is not None and tab is not None:
+                kw['overlay_for'] = aw.id
+                tab.new_special_window(SpecialWindow(cmd, **kw))
         else:
-            self._new_window(cmd)
+            tab = self.active_tab
+            if tab is not None:
+                tab.new_special_window(SpecialWindow(cmd, **kw))
 
     def switch_focus_to(self, window_id: int) -> None:
         tab = self.active_tab

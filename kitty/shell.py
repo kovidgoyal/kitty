@@ -162,6 +162,9 @@ def real_main(global_opts: RCOptions) -> None:
     print_help_for_seq.allow_pager = False
     print('Welcome to the kitty shell!')
     print('Use {} for assistance or {} to quit'.format(green('help'), green('exit')))
+    awid = os.environ.pop('KITTY_SHELL_ACTIVE_WINDOW_ID', None)
+    if awid is not None:
+        print('The ID of the previously active window is: {}'.format(awid))
 
     while True:
         try:
