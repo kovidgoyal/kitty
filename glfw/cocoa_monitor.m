@@ -236,26 +236,65 @@ static bool refreshMonitorScreen(_GLFWmonitor* monitor)
     return false;
 }
 
-// Returns a fallback refresh rate for when Core Graphics says it is zero
+// Returns the display refresh rate queried from the I/O registry
 //
-static double getFallbackRefreshRate(_GLFWmonitor* monitor)
+static double getFallbackRefreshRate(CGDirectDisplayID displayID)
 {
-    CGDisplayModeRef mode = CGDisplayCopyDisplayMode(monitor->ns.displayID);
-    double refreshRate = CGDisplayModeGetRefreshRate(mode);
-    CGDisplayModeRelease(mode);
+    double refreshRate = 60.0;
 
-    if (refreshRate == 0.0)
+    io_iterator_t it;
+    io_service_t service;
+
+    if (IOServiceGetMatchingServices(kIOMasterPortDefault,
+                                     IOServiceMatching("IOFramebuffer"),
+                                     &it) != 0)
     {
-        CVDisplayLinkRef link = NULL;
-        CVDisplayLinkCreateWithCGDisplay(monitor->ns.displayID, &link);
-
-        const CVTime time = CVDisplayLinkGetNominalOutputVideoRefreshPeriod(link);
-        if (!(time.flags & kCVTimeIsIndefinite))
-            refreshRate = (int) (time.timeScale / (double) time.timeValue);
-
-        CVDisplayLinkRelease(link);
+        return refreshRate;
     }
 
+    while ((service = IOIteratorNext(it)) != 0)
+    {
+        const CFNumberRef indexRef =
+            IORegistryEntryCreateCFProperty(service,
+                                            CFSTR("IOFramebufferOpenGLIndex"),
+                                            kCFAllocatorDefault,
+                                            kNilOptions);
+        if (!indexRef)
+            continue;
+
+        uint32_t index = 0;
+        CFNumberGetValue(indexRef, kCFNumberIntType, &index);
+        CFRelease(indexRef);
+
+        if (CGOpenGLDisplayMaskToDisplayID(1 << index) != displayID)
+            continue;
+
+        const CFNumberRef clockRef =
+            IORegistryEntryCreateCFProperty(service,
+                                            CFSTR("IOFBCurrentPixelClock"),
+                                            kCFAllocatorDefault,
+                                            kNilOptions);
+        const CFNumberRef countRef =
+            IORegistryEntryCreateCFProperty(service,
+                                            CFSTR("IOFBCurrentPixelCount"),
+                                            kCFAllocatorDefault,
+                                            kNilOptions);
+        if (!clockRef || !countRef)
+            break;
+
+        uint32_t clock = 0, count = 0;
+        CFNumberGetValue(clockRef, kCFNumberIntType, &clock);
+        CFNumberGetValue(countRef, kCFNumberIntType, &count);
+        CFRelease(clockRef);
+        CFRelease(countRef);
+
+        if (clock > 0 && count > 0)
+            refreshRate = clock / (double) count;
+
+        break;
+    }
+
+    IOObjectRelease(it);
     return refreshRate;
 }
 
@@ -351,10 +390,14 @@ void _glfwPollMonitorsNS(void)
         _GLFWmonitor* monitor = _glfwAllocMonitor(name, (int)size.width, (int)size.height);
         monitor->ns.displayID  = displays[i];
         monitor->ns.unitNumber = unitNumber;
-        monitor->ns.fallbackRefreshRate = getFallbackRefreshRate(monitor);
         createDisplayLink(monitor->ns.displayID);
 
         free(name);
+
+        CGDisplayModeRef mode = CGDisplayCopyDisplayMode(displays[i]);
+        if (CGDisplayModeGetRefreshRate(mode) == 0.0)
+            monitor->ns.fallbackRefreshRate = getFallbackRefreshRate(displays[i]);
+        CGDisplayModeRelease(mode);
 
         _glfwInputMonitor(monitor, GLFW_CONNECTED, _GLFW_INSERT_LAST);
     }
