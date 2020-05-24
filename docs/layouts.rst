@@ -67,6 +67,13 @@ for the options is shown below::
     │              │               │
     └──────────────┴───────────────┘
 
+In addition, you can map keys to increase or decrease the number of full size
+windows, for example::
+
+   map ctrl+[ layout_action decrease_num_full_size_windows
+   map ctrl+] layout_action increase_num_full_size_windows
+
+
 The Fat Layout
 ----------------
 

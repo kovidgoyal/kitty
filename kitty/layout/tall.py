@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from itertools import islice, repeat
-from typing import Dict, Generator, List, Tuple
+from typing import Dict, Generator, List, Optional, Sequence, Tuple
 
 from kitty.conf.utils import to_bool
 from kitty.typing import EdgeLiteral, WindowType
@@ -208,6 +208,15 @@ class Tall(Layout):
                 yield no_borders
             else:
                 yield self.only_between_border
+
+    def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
+        if action_name == 'increase_num_full_size_windows':
+            self.layout_opts.full_size += 1
+            return True
+        if action_name == 'decrease_num_full_size_windows':
+            if self.layout_opts.full_size > 1:
+                self.layout_opts.full_size -= 1
+                return True
 
 
 class Fat(Tall):
