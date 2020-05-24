@@ -1237,6 +1237,16 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window UNUSED, float opacity UNU
 {
 }
 
+void _glfwPlatformSetRawInput(_GLFWwindow *window, bool enabled)
+{
+    window->useRawInput = enabled;
+}
+
+bool _glfwPlatformRawInputSupported(void)
+{
+    return false;
+}
+
 void _glfwPlatformPollEvents(void)
 {
     wl_display_dispatch_pending(_glfw.wl.display);

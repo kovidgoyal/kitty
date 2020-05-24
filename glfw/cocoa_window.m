@@ -1863,6 +1863,16 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
     [window->ns.object setAlphaValue:opacity];
 }
 
+void _glfwPlatformSetRawInput(_GLFWwindow *window, bool enabled)
+{
+    window->useRawInput = enabled;
+}
+
+bool _glfwPlatformRawInputSupported(void)
+{
+    return false;
+}
+
 void
 _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
     _GLFWwindow *w = _glfw.windowListHead;

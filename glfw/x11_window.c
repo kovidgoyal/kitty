@@ -459,7 +459,7 @@ static void updateCursorImage(_GLFWwindow* window)
 //
 static void disableCursor(_GLFWwindow* window)
 {
-    if (_glfw.x11.xi.available)
+    if (_glfw.x11.xi.available && window->useRawInput)
     {
         XIEventMask em;
         unsigned char mask[XIMaskLen(XI_RawMotion)] = { 0 };
@@ -490,7 +490,7 @@ static void disableCursor(_GLFWwindow* window)
 //
 static void enableCursor(_GLFWwindow* window)
 {
-    if (_glfw.x11.xi.available)
+    if (_glfw.x11.xi.available && window->useRawInput)
     {
         XIEventMask em;
         unsigned char mask[] = { 0 };
@@ -1122,6 +1122,7 @@ static void processEvent(XEvent *event)
             _GLFWwindow* window = _glfw.x11.disabledCursorWindow;
 
             if (window &&
+                window->useRawInput &&
                 event->xcookie.extension == _glfw.x11.xi.majorOpcode &&
                 XGetEventData(_glfw.x11.display, &event->xcookie) &&
                 event->xcookie.evtype == XI_RawMotion)
@@ -1363,7 +1364,7 @@ static void processEvent(XEvent *event)
                 {
                     if (_glfw.x11.disabledCursorWindow != window)
                         return;
-                    if (_glfw.x11.xi.available)
+                    if (_glfw.x11.xi.available && window->useRawInput)
                         return;
 
                     const int dx = x - window->x11.lastCursorPosX;
@@ -2627,6 +2628,24 @@ _glfwDispatchX11Events(void) {
     // a flush.
     dispatched += dispatch_x11_queued_events(XEventsQueued(_glfw.x11.display, QueuedAlready));
     return dispatched;
+}
+
+void _glfwPlatformSetRawInput(_GLFWwindow *window, bool enabled)
+{
+    if (window->useRawInput != enabled)
+    {
+        int update = (_glfw.x11.disabledCursorWindow == window && _glfw.x11.xi.available);
+        if (update)
+            enableCursor(window);
+        window->useRawInput = enabled;
+        if (update)
+            disableCursor(window);
+    }
+}
+
+bool _glfwPlatformRawInputSupported(void)
+{
+    return _glfw.x11.xi.available;
 }
 
 void _glfwPlatformPollEvents(void)
