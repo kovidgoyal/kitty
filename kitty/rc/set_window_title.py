@@ -16,7 +16,7 @@ if TYPE_CHECKING:
 class SetWindowTitle(RemoteCommand):
 
     '''
-    title+: The new title
+    title: The new title
     match: Which windows to change the title in
     temporary: Boolean indicating if the change is temporary or permanent
     '''
@@ -35,10 +35,14 @@ By default, if you use :italic:`set-window-title` the title will be permanently 
 and programs running in the window will not be able to change it again. If you
 want to allow other programs to change it afterwards, use this option.
     ''' + '\n\n' + MATCH_WINDOW_OPTION
-    argspec = 'TITLE ...'
+    argspec = '[TITLE ...]'
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'title': ' '.join(args), 'match': opts.match, 'temporary': opts.temporary}
+        ans = {'match': opts.match, 'temporary': opts.temporary}
+        title = ' '.join(args)
+        if title:
+            ans['title'] = title
+        return ans
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         windows = [window or boss.active_window]
