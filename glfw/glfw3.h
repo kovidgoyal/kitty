@@ -1076,6 +1076,7 @@ extern "C" {
 #define GLFW_STICKY_KEYS            0x00033002
 #define GLFW_STICKY_MOUSE_BUTTONS   0x00033003
 #define GLFW_LOCK_KEY_MODS          0x00033004
+#define GLFW_RAW_MOUSE_MOTION       0x00033005
 
 #define GLFW_CURSOR_NORMAL          0x00034001
 #define GLFW_CURSOR_HIDDEN          0x00034002
@@ -4076,11 +4077,13 @@ GLFWAPI void glfwPostEmptyEvent(void);
  *
  *  This function returns the value of an input option for the specified window.
  *  The mode must be one of @ref GLFW_CURSOR, @ref GLFW_STICKY_KEYS,
- *  @ref GLFW_STICKY_MOUSE_BUTTONS or @ref GLFW_LOCK_KEY_MODS.
+ *  @ref GLFW_STICKY_MOUSE_BUTTONS, @ref GLFW_LOCK_KEY_MODS or
+ *  @ref GLFW_RAW_MOUSE_MOTION.
  *
  *  @param[in] window The window to query.
  *  @param[in] mode One of `GLFW_CURSOR`, `GLFW_STICKY_KEYS`,
- *  `GLFW_STICKY_MOUSE_BUTTONS` or `GLFW_LOCK_KEY_MODS`.
+ *  `GLFW_STICKY_MOUSE_BUTTONS`, `GLFW_LOCK_KEY_MODS` or
+ *  `GLFW_RAW_MOUSE_MOTION`.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED and @ref
  *  GLFW_INVALID_ENUM.
@@ -4099,7 +4102,8 @@ GLFWAPI int glfwGetInputMode(GLFWwindow* window, int mode);
  *
  *  This function sets an input mode option for the specified window.  The mode
  *  must be one of @ref GLFW_CURSOR, @ref GLFW_STICKY_KEYS,
- *  @ref GLFW_STICKY_MOUSE_BUTTONS or @ref GLFW_LOCK_KEY_MODS.
+ *  @ref GLFW_STICKY_MOUSE_BUTTONS, @ref GLFW_LOCK_KEY_MODS or
+ *  @ref GLFW_RAW_MOUSE_MOTION.
  *
  *  If the mode is `GLFW_CURSOR`, the value must be one of the following cursor
  *  modes:
@@ -4131,9 +4135,16 @@ GLFWAPI int glfwGetInputMode(GLFWwindow* window, int mode);
  *  GLFW_MOD_CAPS_LOCK bit set when the event was generated with Caps Lock on,
  *  and the @ref GLFW_MOD_NUM_LOCK bit when Num Lock was on.
  *
+ *  If the mode is `GLFW_RAW_MOUSE_MOTION`, the value must be either `GLFW_TRUE`
+ *  to enable raw (unscaled and unaccelerated) mouse motion when the cursor is
+ *  disabled, or `false` to disable it.  If raw motion is not supported,
+ *  attempting to set this will emit @ref GLFW_PLATFORM_ERROR.  Call @ref
+ *  glfwRawMouseMotionSupported to check for support.
+ *
  *  @param[in] window The window whose input mode to set.
  *  @param[in] mode One of `GLFW_CURSOR`, `GLFW_STICKY_KEYS`,
- *  `GLFW_STICKY_MOUSE_BUTTONS` or `GLFW_LOCK_KEY_MODS`.
+ *  `GLFW_STICKY_MOUSE_BUTTONS`, `GLFW_LOCK_KEY_MODS` or
+ *  `GLFW_RAW_MOUSE_MOTION`.
  *  @param[in] value The new value of the specified input mode.
  *
  *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED, @ref
@@ -4148,6 +4159,35 @@ GLFWAPI int glfwGetInputMode(GLFWwindow* window, int mode);
  *  @ingroup input
  */
 GLFWAPI void glfwSetInputMode(GLFWwindow* window, int mode, int value);
+
+/*! @brief Returns whether raw mouse motion is supported.
+ *
+ *  This function returns whether raw mouse motion is supported on the current
+ *  system.  This status does not change after GLFW has been initialized so you
+ *  only need to check this once.  If you attempt to enable raw motion on
+ *  a system that does not support it, @ref GLFW_PLATFORM_ERROR will be emitted.
+ *
+ *  Raw mouse motion is closer to the actual motion of the mouse across
+ *  a surface.  It is not affected by the scaling and acceleration applied to
+ *  the motion of the desktop cursor.  That processing is suitable for a cursor
+ *  while raw motion is better for controlling for example a 3D camera.  Because
+ *  of this, raw mouse motion is only provided when the cursor is disabled.
+ *
+ *  @return `true` if raw mouse motion is supported on the current machine,
+ *  or `false` otherwise.
+ *
+ *  @errors Possible errors include @ref GLFW_NOT_INITIALIZED.
+ *
+ *  @thread_safety This function must only be called from the main thread.
+ *
+ *  @sa @ref raw_mouse_motion
+ *  @sa @ref glfwSetInputMode
+ *
+ *  @since Added in version 3.3.
+ *
+ *  @ingroup input
+ */
+GLFWAPI int glfwRawMouseMotionSupported(void);
 
 /*! @brief Returns the layout-specific name of the specified printable key.
  *

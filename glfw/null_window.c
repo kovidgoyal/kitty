@@ -208,6 +208,15 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window UNUSED, float opacity UNU
 {
 }
 
+void _glfwPlatformSetRawMouseMotion(_GLFWwindow *window UNUSED, bool enabled UNUSED)
+{
+}
+
+bool _glfwPlatformRawMouseMotionSupported(void)
+{
+    return false;
+}
+
 void _glfwPlatformShowWindow(_GLFWwindow* window UNUSED)
 {
 }

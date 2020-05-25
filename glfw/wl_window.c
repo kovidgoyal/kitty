@@ -1237,6 +1237,15 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window UNUSED, float opacity UNU
 {
 }
 
+void _glfwPlatformSetRawMouseMotion(_GLFWwindow *window UNUSED, bool enabled UNUSED)
+{
+}
+
+bool _glfwPlatformRawMouseMotionSupported(void)
+{
+    return false;
+}
+
 void _glfwPlatformPollEvents(void)
 {
     wl_display_dispatch_pending(_glfw.wl.display);

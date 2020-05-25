@@ -1863,6 +1863,15 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
     [window->ns.object setAlphaValue:opacity];
 }
 
+void _glfwPlatformSetRawMouseMotion(_GLFWwindow *window UNUSED, bool enabled UNUSED)
+{
+}
+
+bool _glfwPlatformRawMouseMotionSupported(void)
+{
+    return false;
+}
+
 void
 _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
     _GLFWwindow *w = _glfw.windowListHead;
