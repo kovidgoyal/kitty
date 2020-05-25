@@ -64,9 +64,8 @@ static Atom getAtomIfSupported(Atom* supportedAtoms,
 static void detectEWMH(void)
 {
     // First we read the _NET_SUPPORTING_WM_CHECK property on the root window
-    Window* windowFromRoot = NULL;
 
-    // Then we look for the _NET_SUPPORTING_WM_CHECK property of the root window
+    Window* windowFromRoot = NULL;
     if (!_glfwGetWindowPropertyX11(_glfw.x11.root,
                                    _glfw.x11.NET_SUPPORTING_WM_CHECK,
                                    XA_WINDOW,
@@ -93,6 +92,7 @@ static void detectEWMH(void)
     _glfwReleaseErrorHandlerX11();
 
     // If the property exists, it should contain the XID of the window
+
     if (*windowFromRoot != *windowFromChild)
     {
         XFree(windowFromRoot);
@@ -103,16 +103,17 @@ static void detectEWMH(void)
     XFree(windowFromRoot);
     XFree(windowFromChild);
 
-    // We are now fairly sure that an EWMH-compliant window manager is running
+    // We are now fairly sure that an EWMH-compliant WM is currently running
     // We can now start querying the WM about what features it supports by
     // looking in the _NET_SUPPORTED property on the root window
     // It should contain a list of supported EWMH protocol and state atoms
 
     Atom* supportedAtoms = NULL;
-    const unsigned long atomCount = _glfwGetWindowPropertyX11(_glfw.x11.root,
-                                          _glfw.x11.NET_SUPPORTED,
-                                          XA_ATOM,
-                                          (unsigned char**) &supportedAtoms);
+    const unsigned long atomCount =
+        _glfwGetWindowPropertyX11(_glfw.x11.root,
+                                  _glfw.x11.NET_SUPPORTED,
+                                  XA_ATOM,
+                                  (unsigned char**) &supportedAtoms);
     if (!supportedAtoms)
         return;
 
@@ -506,6 +507,7 @@ static int errorHandler(Display *display, XErrorEvent* event)
 {
     if (_glfw.x11.display != display)
         return 0;
+
     _glfw.x11.errorCode = event->error_code;
     return 0;
 }
