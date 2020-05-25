@@ -388,9 +388,9 @@ static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener =
     xdgDecorationHandleConfigure,
 };
 
-static void handleEnter(void *data,
-                        struct wl_surface *surface UNUSED,
-                        struct wl_output *output)
+static void surfaceHandleEnter(void *data,
+                               struct wl_surface *surface UNUSED,
+                               struct wl_output *output)
 {
     _GLFWwindow* window = data;
     _GLFWmonitor* monitor = wl_output_get_user_data(output);
@@ -411,9 +411,9 @@ static void handleEnter(void *data,
     }
 }
 
-static void handleLeave(void *data,
-                        struct wl_surface *surface UNUSED,
-                        struct wl_output *output)
+static void surfaceHandleLeave(void *data,
+                               struct wl_surface *surface UNUSED,
+                               struct wl_output *output)
 {
     _GLFWwindow* window = data;
     _GLFWmonitor* monitor = wl_output_get_user_data(output);
@@ -436,8 +436,8 @@ static void handleLeave(void *data,
 }
 
 static const struct wl_surface_listener surfaceListener = {
-    handleEnter,
-    handleLeave
+    surfaceHandleEnter,
+    surfaceHandleLeave
 };
 
 static void setIdleInhibitor(_GLFWwindow* window, bool enable)
@@ -1340,14 +1340,14 @@ void _glfwPlatformDestroyCursor(_GLFWcursor* cursor)
         wl_buffer_destroy(cursor->wl.buffer);
 }
 
-static void handleRelativeMotion(void* data,
-                                 struct zwp_relative_pointer_v1* pointer UNUSED,
-                                 uint32_t timeHi UNUSED,
-                                 uint32_t timeLo UNUSED,
-                                 wl_fixed_t dx UNUSED,
-                                 wl_fixed_t dy UNUSED,
-                                 wl_fixed_t dxUnaccel,
-                                 wl_fixed_t dyUnaccel)
+static void relativePointerHandleRelativeMotion(void* data,
+                                                struct zwp_relative_pointer_v1* pointer UNUSED,
+                                                uint32_t timeHi UNUSED,
+                                                uint32_t timeLo UNUSED,
+                                                wl_fixed_t dx UNUSED,
+                                                wl_fixed_t dy UNUSED,
+                                                wl_fixed_t dxUnaccel,
+                                                wl_fixed_t dyUnaccel)
 {
     _GLFWwindow* window = data;
 
@@ -1360,11 +1360,11 @@ static void handleRelativeMotion(void* data,
 }
 
 static const struct zwp_relative_pointer_v1_listener relativePointerListener = {
-    handleRelativeMotion
+    relativePointerHandleRelativeMotion
 };
 
-static void handleLocked(void* data UNUSED,
-                         struct zwp_locked_pointer_v1* lockedPointer UNUSED)
+static void lockedPointerHandleLocked(void* data UNUSED,
+                                      struct zwp_locked_pointer_v1* lockedPointer UNUSED)
 {
 }
 
@@ -1384,14 +1384,14 @@ static void unlockPointer(_GLFWwindow* window)
 
 static void lockPointer(_GLFWwindow* window UNUSED);
 
-static void handleUnlocked(void* data UNUSED,
-                           struct zwp_locked_pointer_v1* lockedPointer UNUSED)
+static void lockedPointerHandleUnlocked(void* data UNUSED,
+                                        struct zwp_locked_pointer_v1* lockedPointer UNUSED)
 {
 }
 
 static const struct zwp_locked_pointer_v1_listener lockedPointerListener = {
-    handleLocked,
-    handleUnlocked
+    lockedPointerHandleLocked,
+    lockedPointerHandleUnlocked
 };
 
 static void lockPointer(_GLFWwindow* window)
