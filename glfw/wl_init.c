@@ -113,7 +113,7 @@ static void pointerHandleEnter(void* data UNUSED,
     }
 
     window->wl.decorations.focus = focus;
-    _glfw.wl.pointerSerial = serial;
+    _glfw.wl.serial = serial;
     _glfw.wl.pointerFocus = window;
 
     window->wl.hovered = true;
@@ -134,7 +134,7 @@ static void pointerHandleLeave(void* data UNUSED,
 
     window->wl.hovered = false;
 
-    _glfw.wl.pointerSerial = serial;
+    _glfw.wl.serial = serial;
     _glfw.wl.pointerFocus = NULL;
     _glfwInputCursorEnter(window, false);
     _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
@@ -164,7 +164,7 @@ static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
     buffer = wl_cursor_image_get_buffer(image);
     if (!buffer)
         return;
-    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.pointerSerial,
+    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.serial,
                           surface,
                           image->hotspot_x / scale,
                           image->hotspot_y / scale);
@@ -308,7 +308,7 @@ static void pointerHandleButton(void* data UNUSED,
     if (window->wl.decorations.focus != mainWindow)
         return;
 
-    _glfw.wl.pointerSerial = serial;
+    _glfw.wl.serial = serial;
 
     /* Makes left, right and middle 0, 1 and 2. Overall order follows evdev
      * codes. */
@@ -379,7 +379,7 @@ static void keyboardHandleKeymap(void* data UNUSED,
 
 static void keyboardHandleEnter(void* data UNUSED,
                                 struct wl_keyboard* keyboard UNUSED,
-                                uint32_t serial UNUSED,
+                                uint32_t serial,
                                 struct wl_surface* surface,
                                 struct wl_array* keys)
 {
@@ -395,6 +395,7 @@ static void keyboardHandleEnter(void* data UNUSED,
             return;
     }
 
+    _glfw.wl.serial = serial;
     _glfw.wl.keyboardFocus = window;
     _glfwInputWindowFocus(window, true);
     uint32_t* key;
@@ -410,7 +411,7 @@ static void keyboardHandleEnter(void* data UNUSED,
 
 static void keyboardHandleLeave(void* data UNUSED,
                                 struct wl_keyboard* keyboard UNUSED,
-                                uint32_t serial UNUSED,
+                                uint32_t serial,
                                 struct wl_surface* surface UNUSED)
 {
     _GLFWwindow* window = _glfw.wl.keyboardFocus;
@@ -418,6 +419,7 @@ static void keyboardHandleLeave(void* data UNUSED,
     if (!window)
         return;
 
+    _glfw.wl.serial = serial;
     _glfw.wl.keyboardFocus = NULL;
     _glfwInputWindowFocus(window, false);
     toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 0);
@@ -434,7 +436,7 @@ dispatchPendingKeyRepeats(id_type timer_id UNUSED, void *data UNUSED) {
 
 static void keyboardHandleKey(void* data UNUSED,
                               struct wl_keyboard* keyboard UNUSED,
-                              uint32_t serial UNUSED,
+                              uint32_t serial,
                               uint32_t time UNUSED,
                               uint32_t key,
                               uint32_t state)
@@ -443,6 +445,8 @@ static void keyboardHandleKey(void* data UNUSED,
     if (!window)
         return;
     int action = state == WL_KEYBOARD_KEY_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE;
+
+    _glfw.wl.serial = serial;
     glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, key, action);
     bool repeatable = false;
     _glfw.wl.keyRepeatInfo.key = 0;
@@ -461,12 +465,13 @@ static void keyboardHandleKey(void* data UNUSED,
 
 static void keyboardHandleModifiers(void* data UNUSED,
                                     struct wl_keyboard* keyboard UNUSED,
-                                    uint32_t serial UNUSED,
+                                    uint32_t serial,
                                     uint32_t modsDepressed,
                                     uint32_t modsLatched,
                                     uint32_t modsLocked,
                                     uint32_t group)
 {
+    _glfw.wl.serial = serial;
     glfw_xkb_update_modifiers(&_glfw.wl.xkb, modsDepressed, modsLatched, modsLocked, 0, 0, group);
 }
 
