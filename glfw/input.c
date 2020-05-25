@@ -1438,14 +1438,14 @@ GLFWAPI int glfwGetGamepadState(int jid, GLFWgamepadstate* state)
             const float value = js->axes[e->index] * e->axisScale + e->axisOffset;
             // HACK: This should be baked into the value transform
             // TODO: Bake into transform when implementing output modifiers
-            if (e->axisScale < 0 || e->axisOffset < 0)
+            if (e->axisOffset < 0 || (e->axisOffset == 0 && e->axisScale > 0))
             {
-                if (value > 0.f)
+                if (value >= 0.f)
                     state->buttons[i] = GLFW_PRESS;
             }
             else
             {
-                if (value < 0.f)
+                if (value <= 0.f)
                     state->buttons[i] = GLFW_PRESS;
             }
         }
