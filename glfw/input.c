@@ -1436,8 +1436,18 @@ GLFWAPI int glfwGetGamepadState(int jid, GLFWgamepadstate* state)
         if (e->type == _GLFW_JOYSTICK_AXIS)
         {
             const float value = js->axes[e->index] * e->axisScale + e->axisOffset;
-            if (value > 0.f)
-                state->buttons[i] = GLFW_PRESS;
+            // HACK: This should be baked into the value transform
+            // TODO: Bake into transform when implementing output modifiers
+            if (e->axisOffset < 0 || (e->axisOffset == 0 && e->axisScale > 0))
+            {
+                if (value >= 0.f)
+                    state->buttons[i] = GLFW_PRESS;
+            }
+            else
+            {
+                if (value <= 0.f)
+                    state->buttons[i] = GLFW_PRESS;
+            }
         }
         else if (e->type == _GLFW_JOYSTICK_HATBIT)
         {
