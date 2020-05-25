@@ -1239,11 +1239,12 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window UNUSED, float opacity UNU
 
 void _glfwPlatformSetRawMouseMotion(_GLFWwindow *window UNUSED, bool enabled UNUSED)
 {
+    // This is handled in relativePointerHandleRelativeMotion
 }
 
 bool _glfwPlatformRawMouseMotionSupported(void)
 {
-    return false;
+    return true;
 }
 
 void _glfwPlatformPollEvents(void)
@@ -1344,19 +1345,30 @@ static void relativePointerHandleRelativeMotion(void* data,
                                                 struct zwp_relative_pointer_v1* pointer UNUSED,
                                                 uint32_t timeHi UNUSED,
                                                 uint32_t timeLo UNUSED,
-                                                wl_fixed_t dx UNUSED,
-                                                wl_fixed_t dy UNUSED,
+                                                wl_fixed_t dx,
+                                                wl_fixed_t dy,
                                                 wl_fixed_t dxUnaccel,
                                                 wl_fixed_t dyUnaccel)
 {
     _GLFWwindow* window = data;
+    double xpos = window->virtualCursorPosX;
+    double ypos = window->virtualCursorPosY;
 
     if (window->cursorMode != GLFW_CURSOR_DISABLED)
         return;
 
-    _glfwInputCursorPos(window,
-                        window->virtualCursorPosX + wl_fixed_to_double(dxUnaccel),
-                        window->virtualCursorPosY + wl_fixed_to_double(dyUnaccel));
+    if (window->rawMouseMotion)
+    {
+        xpos += wl_fixed_to_double(dxUnaccel);
+        ypos += wl_fixed_to_double(dyUnaccel);
+    }
+    else
+    {
+        xpos += wl_fixed_to_double(dx);
+        ypos += wl_fixed_to_double(dy);
+    }
+
+    _glfwInputCursorPos(window, xpos, ypos);
 }
 
 static const struct zwp_relative_pointer_v1_listener relativePointerListener = {
