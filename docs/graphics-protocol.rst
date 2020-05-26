@@ -389,10 +389,10 @@ Value of ``d``       Meaning
 
 Some examples::
 
-    <ESC>_Ga=d<ESC>\         # delete all visible images
-    <ESC>_Ga=d,i=10<ESC>\    # delete the image with id=10
-    <ESC>_Ga=Z,z=-1<ESC>\    # delete the images with z-index -1, also freeing up image data
-    <ESC>_Ga=P,x=3,y=4<ESC>\ # delete all images that intersect the cell at (3, 4)
+    <ESC>_Ga=d<ESC>\             # delete all visible images
+    <ESC>_Ga=d,d=i,i=10<ESC>\    # delete the image with id=10, without freeing data
+    <ESC>_Ga=d,d=Z,z=-1<ESC>\    # delete the images with z-index -1, also freeing up image data
+    <ESC>_Ga=d,d=p,x=3,y=4<ESC>\ # delete all images that intersect the cell at (3, 4), without freeing data
 
 Image persistence and storage quotas
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
