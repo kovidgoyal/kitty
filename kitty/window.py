@@ -698,7 +698,14 @@ class Window:
     def show_scrollback(self) -> None:
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
-        cmd = [x.replace('INPUT_LINE_NUMBER', str(data['input_line_number'])) for x in self.opts.scrollback_pager]
+
+        def prepare_arg(x: str) -> str:
+            x = x.replace('INPUT_LINE_NUMBER', str(data['input_line_number']))
+            x = x.replace('CURSOR_LINE', str(data['cursor_y']))
+            x = x.replace('CURSOR_COLUMN', str(data['cursor_x']))
+            return x
+
+        cmd = list(map(prepare_arg, self.opts.scrollback_pager))
         if not os.path.isabs(cmd[0]):
             import shutil
             exe = shutil.which(cmd[0])

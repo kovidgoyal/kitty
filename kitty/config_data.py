@@ -445,7 +445,8 @@ Program with which to view scrollback in a new window. The scrollback buffer is
 passed as STDIN to this program. If you change it, make sure the program you
 use can handle ANSI escape sequences for colors and text formatting.
 INPUT_LINE_NUMBER in the command line above will be replaced by an integer
-representing which line should be at the top of the screen.'''))
+representing which line should be at the top of the screen. Similarly CURSOR_LINE and CURSOR_COLUMN
+will be replaced by the current cursor position.'''))
 
 o('scrollback_pager_history_size', 0, option_type=scrollback_pager_history_size, long_text=_('''
 Separate scrollback history size, used only for browsing the scrollback buffer (in MB).
