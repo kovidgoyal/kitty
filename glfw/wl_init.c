@@ -140,14 +140,20 @@ static void pointerHandleLeave(void* data UNUSED,
     _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
 }
 
-static void setCursor(GLFWCursorShape shape)
+static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
 {
     struct wl_buffer* buffer;
     struct wl_cursor* cursor;
     struct wl_cursor_image* image;
     struct wl_surface* surface = _glfw.wl.cursorSurface;
+    const int scale = window->wl.scale;
 
-    cursor = _glfwLoadCursor(shape);
+    window->wl.cursorTheme = _wlCursorThemeManage(
+        _glfw.wl.cursorThemeManager,
+        window->wl.cursorTheme,
+        _wlCursorPxFromScale(scale)
+    ); 
+    cursor = _glfwLoadCursor(shape, window->wl.cursorTheme);
     if (!cursor) return;
     // TODO: handle animated cursors too.
     image = cursor->images[0];
@@ -160,8 +166,9 @@ static void setCursor(GLFWCursorShape shape)
         return;
     wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.pointerSerial,
                           surface,
-                          image->hotspot_x,
-                          image->hotspot_y);
+                          image->hotspot_x / scale,
+                          image->hotspot_y / scale);
+    wl_surface_set_buffer_scale(surface, scale);
     wl_surface_attach(surface, buffer, 0, 0);
     wl_surface_damage(surface, 0, 0,
                       image->width, image->height);
@@ -225,7 +232,7 @@ static void pointerHandleMotion(void* data UNUSED,
             assert(0);
     }
     if (_glfw.wl.cursorPreviousShape != cursorShape)
-        setCursor(cursorShape);
+        setCursor(cursorShape, window);
 }
 
 static void pointerHandleButton(void* data UNUSED,
@@ -775,25 +782,13 @@ int _glfwPlatformInit(void)
 
     if (_glfw.wl.shm)
     {
-        const char *cursorTheme = getenv("XCURSOR_THEME"), *cursorSizeStr = getenv("XCURSOR_SIZE");
-        char *cursorSizeEnd;
-        int cursorSize = 32;
-        if (cursorSizeStr)
-        {
-            errno = 0;
-            long cursorSizeLong = strtol(cursorSizeStr, &cursorSizeEnd, 10);
-            if (!*cursorSizeEnd && !errno && cursorSizeLong > 0 && cursorSizeLong <= INT_MAX)
-                cursorSize = (int)cursorSizeLong;
-        }
-        _glfw.wl.cursorTheme = wl_cursor_theme_load(cursorTheme, cursorSize, _glfw.wl.shm);
-        if (!_glfw.wl.cursorTheme)
-        {
-            _glfwInputError(GLFW_PLATFORM_ERROR,
-                            "Wayland: Unable to load default cursor theme");
-            return false;
-        }
-        _glfw.wl.cursorSurface =
+        _glfw.wl.cursorThemeManager = _wlCursorThemeManagerDefault();
+        _glfw.wl.cursorSurface = 
             wl_compositor_create_surface(_glfw.wl.compositor);
+    }
+    else
+    {
+        _glfw.wl.cursorThemeManager = NULL;
     }
 
     return true;
@@ -814,8 +809,6 @@ void _glfwPlatformTerminate(void)
     glfw_xkb_release(&_glfw.wl.xkb);
     glfw_dbus_terminate(&_glfw.wl.dbus);
 
-    if (_glfw.wl.cursorTheme)
-        wl_cursor_theme_destroy(_glfw.wl.cursorTheme);
     if (_glfw.wl.cursor.handle)
     {
         _glfw_dlclose(_glfw.wl.cursor.handle);
@@ -824,6 +817,9 @@ void _glfwPlatformTerminate(void)
 
     if (_glfw.wl.cursorSurface)
         wl_surface_destroy(_glfw.wl.cursorSurface);
+    if (_glfw.wl.cursorThemeManager) {
+        _wlCursorThemeManagerDestroy(_glfw.wl.cursorThemeManager);
+    }
     if (_glfw.wl.subcompositor)
         wl_subcompositor_destroy(_glfw.wl.subcompositor);
     if (_glfw.wl.compositor)

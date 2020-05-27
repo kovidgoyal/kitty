@@ -78,6 +78,7 @@
       "wl_init.c",
       "wl_monitor.c",
       "wl_window.c",
+      "wl_cursors.c",
       "posix_thread.c",
       "xkb_glfw.c",
       "dbus_glfw.c",
