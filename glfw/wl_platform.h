@@ -76,7 +76,10 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #define _GLFW_PLATFORM_CONTEXT_STATE
 #define _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE
 
-struct wl_cursor_image {
+#include "wl_cursors.h"
+//^ Includes <wayland-cursor.h>
+
+/**struct wl_cursor_image {
     uint32_t width;
     uint32_t height;
     uint32_t hotspot_x;
@@ -87,7 +90,7 @@ struct wl_cursor {
     unsigned int image_count;
     struct wl_cursor_image** images;
     char* name;
-};
+};*/
 typedef struct wl_cursor_theme* (* PFN_wl_cursor_theme_load)(const char*, int, struct wl_shm*);
 typedef void (* PFN_wl_cursor_theme_destroy)(struct wl_cursor_theme*);
 typedef struct wl_cursor* (* PFN_wl_cursor_theme_get_cursor)(struct wl_cursor_theme*, const char*);
@@ -148,6 +151,7 @@ typedef struct _GLFWwindowWayland
 
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY;
+    struct wl_cursor_theme*     cursorTheme;
 
     char*                       title;
     char                        appId[256];
@@ -236,7 +240,6 @@ typedef struct _GLFWlibraryWayland
     int                         compositorVersion;
     int                         seatVersion;
 
-    struct wl_cursor_theme*     cursorTheme;
     struct wl_surface*          cursorSurface;
     GLFWCursorShape             cursorPreviousShape;
     uint32_t                    pointerSerial;
@@ -278,6 +281,8 @@ typedef struct _GLFWlibraryWayland
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
     char* primarySelectionString;
+
+    _wlCursorThemeManager*      cursorThemeManager;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data
@@ -291,8 +296,7 @@ typedef struct _GLFWmonitorWayland
     int                         x;
     int                         y;
     int                         scale;
-
-} _GLFWmonitorWayland;
+ } _GLFWmonitorWayland;
 
 // Wayland-specific per-cursor data
 //
@@ -303,6 +307,10 @@ typedef struct _GLFWcursorWayland
     int                         width, height;
     int                         xhot, yhot;
     int                         currentImage;
+    /** The scale of the cursor, or 0 if the cursor should be loaded late, or -1 if the cursor variable itself is unused. */
+    int                         scale;
+    /** Cursor shape stored to allow late cursor loading in setCursorImage. */
+    GLFWCursorShape             shape;
 } _GLFWcursorWayland;
 
 
@@ -310,5 +318,5 @@ void _glfwAddOutputWayland(uint32_t name, uint32_t version);
 void _glfwSetupWaylandDataDevice(void);
 void _glfwSetupWaylandPrimarySelectionDevice(void);
 void animateCursorImage(id_type timer_id, void *data);
-struct wl_cursor* _glfwLoadCursor(GLFWCursorShape);
+struct wl_cursor* _glfwLoadCursor(GLFWCursorShape, struct wl_cursor_theme*);
 void destroy_data_offer(_GLFWWaylandDataOffer*);
