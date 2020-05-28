@@ -1252,6 +1252,25 @@ screen_insert_characters(Screen *self, unsigned int count) {
 }
 
 void
+screen_repeat_character(Screen *self, unsigned int count) {
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    unsigned int x = self->cursor->x;
+    if (count == 0) count = 1;
+    if (top <= self->cursor->y && self->cursor->y <= bottom && x > 0) {
+        unsigned int num = MIN(count, self->columns - x);
+        linebuf_init_line(self->linebuf, self->cursor->y);
+        uint32_t ch = line_get_char(self->linebuf->line, x - 1);
+        if (is_ignored_char(ch) || is_combining_char(ch)) {
+            return;
+        }
+        while (num > 0) {
+            screen_draw(self, ch);
+            num--;
+        }
+    }
+}
+
+void
 screen_delete_characters(Screen *self, unsigned int count) {
     // Delete characters, later characters are moved left
     unsigned int top = self->margin_top, bottom = self->margin_bottom;

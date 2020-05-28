@@ -652,6 +652,8 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case ICH:
             NO_MODIFIERS(end_modifier, ' ', "Shift left escape code not implemented");
             CALL_CSI_HANDLER1(screen_insert_characters, 1);
+        case REP:
+            CALL_CSI_HANDLER1(screen_repeat_character, 1);
         case CUU:
             NO_MODIFIERS(end_modifier, ' ', "Shift right escape code not implemented");
             CALL_CSI_HANDLER1(screen_cursor_up2, 1);

@@ -550,6 +550,11 @@ left_shift(Line *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+uint32_t
+line_get_char(Line *self, unsigned int at) {
+    return self->cpu_cells[at].ch;
+}
+
 void
 line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool UNUSED is_second) {
     if (cursor == NULL) {

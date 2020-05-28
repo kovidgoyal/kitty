@@ -177,6 +177,25 @@ class TestParser(BaseTest):
         pb('\033[3 A', ('Shift right escape code not implemented',))
         pb('\033[3;4 S', ('Select presentation directions escape code not implemented',))
 
+    def test_csi_code_rep(self):
+        s = self.create_screen(8)
+        pb = partial(self.parse_bytes_dump, s)
+        pb('\033[1b', ('screen_repeat_character', 1))
+        self.ae(str(s.line(0)), '')
+        pb('x\033[7b', 'x', ('screen_repeat_character', 7))
+        self.ae(str(s.line(0)), 'xxxxxxxx')
+        pb('\033[1;3H', ('screen_cursor_position', 1, 3))
+        pb('\033[byz\033[b', ('screen_repeat_character', 1), 'yz', ('screen_repeat_character', 1))
+        # repeat 'x' at 3, then 'yz' at 4-5, then repeat 'z' at 6
+        self.ae(str(s.line(0)), 'xxxyzzxx')
+        s.reset()
+        pb(' \033[3b', ' ', ('screen_repeat_character', 3))
+        self.ae(str(s.line(0)), '    ')
+        s.reset()
+        pb('\t\033[b', ('screen_tab',), ('screen_repeat_character', 1))
+        self.ae(str(s.line(0)), '\t')
+        s.reset()
+
     def test_osc_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)

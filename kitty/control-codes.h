@@ -188,6 +188,9 @@
 // *Horizontal position relative*: Same as :data:`CUF`.
 #define HPR 'a'
 
+// Repeat the preceding graphic character Ps times.
+#define REP 'b'
+
 // *Device Attributes*.
 #define DA 'c'
 

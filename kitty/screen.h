@@ -165,6 +165,7 @@ void screen_cursor_up1(Screen *self, unsigned int count/*=1*/);
 void screen_cursor_to_line(Screen *screen, unsigned int line);
 void screen_insert_lines(Screen *self, unsigned int count/*=1*/);
 void screen_delete_lines(Screen *self, unsigned int count/*=1*/);
+void screen_repeat_character(Screen *self, unsigned int count);
 void screen_delete_characters(Screen *self, unsigned int count);
 void screen_erase_characters(Screen *self, unsigned int count);
 void screen_set_margins(Screen *self, unsigned int top, unsigned int bottom);

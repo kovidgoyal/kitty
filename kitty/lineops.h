@@ -57,6 +57,7 @@ line_reset_cells(Line *line, index_type start, index_type num, GPUCell *gpu_cell
 typedef Line*(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
+uint32_t line_get_char(Line *self, unsigned int at);
 void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, bool);
 void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
