@@ -28,6 +28,8 @@
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 static Selection EMPTY_SELECTION = {{0}};
 
+#define CSI_REP_MAX_REPETITIONS 65535u
+
 // Constructor/destructor {{{
 
 static inline void
@@ -1257,7 +1259,7 @@ screen_repeat_character(Screen *self, unsigned int count) {
     unsigned int x = self->cursor->x;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom && x > 0) {
-        unsigned int num = MIN(count, self->columns - x);
+        unsigned int num = MIN(count, CSI_REP_MAX_REPETITIONS);
         linebuf_init_line(self->linebuf, self->cursor->y);
         uint32_t ch = line_get_char(self->linebuf->line, x - 1);
         if (is_ignored_char(ch) || is_combining_char(ch)) {
