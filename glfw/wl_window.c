@@ -1474,8 +1474,6 @@ static bool isPointerLocked(_GLFWwindow* window)
 
 void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
 {
-    struct wl_cursor* defaultCursor;
-
     if (!_glfw.wl.pointer)
         return;
 
@@ -1496,15 +1494,8 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
             setCursorImage(window, &cursor->wl);
         else
         {
-            defaultCursor = _glfwLoadCursor(GLFW_ARROW_CURSOR, window->wl.cursorTheme);
-            if (!defaultCursor) return;
-            _GLFWcursorWayland cursorWayland = {
-                defaultCursor,
-                NULL,
-                0, 0,
-                0, 0,
-                0
-            };
+            _GLFWcursorWayland cursorWayland = {0};
+            cursorWayland.shape = GLFW_ARROW_CURSOR;
             setCursorImage(window, &cursorWayland);
         }
     }
