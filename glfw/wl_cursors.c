@@ -37,7 +37,7 @@ _themeInit(_themeData *dest, const char *name, int px) {
         dest->theme = wl_cursor_theme_load(name, px, _glfw.wl.shm);
         if(!dest->theme) {
             _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Wayland: Unable to load cursor theme");
+                            "Wayland: Unable to load cursor theme");
         }
     } else {
         dest->theme = NULL;
