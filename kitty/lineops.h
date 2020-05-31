@@ -54,6 +54,18 @@ line_reset_cells(Line *line, index_type start, index_type num, GPUCell *gpu_cell
     memcpy(line->cpu_cells + start, cpu_cells + start, sizeof(CPUCell) * num);
 }
 
+static inline void
+left_shift_line(Line *line, index_type at, index_type num) {
+    for (index_type i = at; i < line->xnum - num; i++) {
+        COPY_CELL(line, i + num, line, i);
+    }
+    if (at < line->xnum && ((line->gpu_cells[at].attrs) & WIDTH_MASK) != 1) {
+        line->cpu_cells[at].ch = BLANK_CHAR;
+        line->gpu_cells[at].attrs = BLANK_CHAR ? 1 : 0;
+        clear_sprite_position(line->gpu_cells[at]);
+    }
+}
+
 typedef Line*(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);

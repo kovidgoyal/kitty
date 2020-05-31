@@ -253,17 +253,6 @@ typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
 
 #define clear_sprite_position(cell) (cell).sprite_x = 0; (cell).sprite_y = 0; (cell).sprite_z = 0;
 
-#define left_shift_line(line, at, num) { \
-    for(index_type __i__ = (at); __i__ < (line)->xnum - (num); __i__++) { \
-        COPY_CELL(line, __i__ + (num), line, __i__) \
-    } \
-    if ((((line)->gpu_cells[(at)].attrs) & WIDTH_MASK) != 1) { \
-        (line)->cpu_cells[(at)].ch = BLANK_CHAR; \
-        (line)->gpu_cells[(at)].attrs = BLANK_CHAR ? 1 : 0; \
-        clear_sprite_position((line)->gpu_cells[(at)]); \
-    }\
-}
-
 #define ensure_space_for(base, array, type, num, capacity, initial_cap, zero_mem) \
     if ((base)->capacity < num) { \
         size_t _newcap = MAX((size_t)initial_cap, MAX(2 * (base)->capacity, (size_t)num)); \
