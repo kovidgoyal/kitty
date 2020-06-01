@@ -96,6 +96,14 @@ def merge_ranges(a: Range, b: Range, priority_map: Dict[Tuple[int, int], int]) -
 
 
 def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, int], str]:
+    ### NOTE https://docs.python.org/3/library/stdtypes.html?highlight=dict#mapping-types-dict:
+    # Changed in version 3.7: Dictionary order is guaranteed to be insertion order. This behavior was an
+    # implementation detail of CPython from 3.6.
+    print( '^22333198^', f"maps             {maps           }" )
+    print( '^22333198^', f"type( maps )     {type( maps )   }" )
+    import sys
+    print( '^22333198^', f"sys.version   {sys.version }" )
+    # print( '^22333198^', f"sorted( maps )   {sorted( maps ) }" )
     if not maps:
         return maps
     priority_map = {r: i for i, r in enumerate(maps.keys())}
@@ -105,6 +113,9 @@ def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, in
     for i in range(1, len(ranges)):
         r = ranges[i]
         ans[-1:] = list(merge_ranges(ans[-1], r, priority_map))
+    print( '^22333198^', f"ans              {ans            }" )
+    print( '^22333198^', f"priority_map     {priority_map   }" )
+    print( '^22333198^', f"ranges           {ranges         }" )
     return dict(ans)
 
 
