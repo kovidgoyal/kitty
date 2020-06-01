@@ -685,8 +685,8 @@ static bool createXdgSurface(_GLFWwindow* window)
 static void
 setCursorImage(_GLFWwindow* window, _GLFWcursorWayland* cursorWayland)
 {
-    struct wl_cursor_image* image;
-    struct wl_buffer* buffer;
+    struct wl_cursor_image* image = NULL;
+    struct wl_buffer* buffer = NULL;
     struct wl_surface* surface = _glfw.wl.cursorSurface;
     const int scale = window->wl.scale;
 
