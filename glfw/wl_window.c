@@ -844,7 +844,7 @@ struct wl_cursor* _glfwLoadCursor(GLFWCursorShape shape, struct wl_cursor_theme*
     struct wl_cursor* ans = NULL;
     switch (shape)
     {
-        C(GLFW_ARROW_CURSOR, "arrow", "left_ptr", "default")
+        C(GLFW_ARROW_CURSOR, "left_ptr", "arrow", "default")
         C(GLFW_IBEAM_CURSOR, "xterm", "ibeam", "text")
         C(GLFW_CROSSHAIR_CURSOR, "crosshair", "cross")
         C(GLFW_HAND_CURSOR, "hand2", "grab", "grabbing", "closedhand")
@@ -925,7 +925,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 
 void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 {
-    if(window->wl.cursorTheme) {
+    if (window->wl.cursorTheme) {
         _wlCursorThemeManage(_glfw.wl.cursorThemeManager,
                              window->wl.cursorTheme,
                              0);
