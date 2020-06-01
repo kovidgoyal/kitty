@@ -24,7 +24,7 @@ struct _wlCursorThemeManager {
      * in most cases, users are likely to have 1-2 different cursor sizes loaded.
      * For those cases, we get no benefit from sorting and added constant overheads.
      *
-     * Don't change this to a flexible array member becuase that complicates growing/shrinking.
+     * Don't change this to a flexible array member because that complicates growing/shrinking.
      */
     _themeData *themes;
 };
@@ -33,7 +33,7 @@ static void
 _themeInit(_themeData *dest, const char *name, int px) {
     dest->px = px;
     dest->refcount = 1;
-    if(_glfw.wl.shm) {
+    if (_glfw.wl.shm) {
         dest->theme = wl_cursor_theme_load(name, px, _glfw.wl.shm);
         if(!dest->theme) {
             _glfwInputError(GLFW_PLATFORM_ERROR,
@@ -48,7 +48,7 @@ static struct wl_cursor_theme*
 _themeAdd(int px, _wlCursorThemeManager *manager) {
    ++manager->count;
    _themeData *temp = realloc(manager->themes, sizeof(_themeData)*manager->count);
-   if(!temp) {
+   if (!temp) {
        _glfwInputError(GLFW_OUT_OF_MEMORY,
                        "OOM during cursor theme management.");
        return NULL;
@@ -67,21 +67,18 @@ static inline void _themeInc(_themeData
     ++(theme->refcount);
 }
 
-//WARNING: No input safety checks.
+// WARNING: No input safety checks.
 // In particular, doesn't check if theme is actually managed by the manager.
 static void
 _themeDec(_themeData *theme, _wlCursorThemeManager *manager) {
-    if(--(theme->refcount) == 0) {
+    if (--(theme->refcount) == 0) {
         wl_cursor_theme_destroy(theme->theme);
-        if(--(manager->count) > 0) {
+        if (--(manager->count) > 0) {
             const _themeData *last_theme = (manager->themes)+(manager->count);
             *theme = *last_theme;
             _themeData *temp = realloc(manager->themes, (manager->count)*sizeof(_themeData));
-            //^ The chances of this failing are very slim, but one never knows.
-            if(temp) {
-                manager->themes = temp;
-            }
             // We're shrinking here, so it's not catastrophic if realloc fails.
+            if (temp) manager->themes = temp;
         } else {
             free(manager->themes);
             manager->themes = NULL;
@@ -89,7 +86,7 @@ _themeDec(_themeData *theme, _wlCursorThemeManager *manager) {
     }
 }
 
-static _wlCursorThemeManager _default = {0, NULL};
+static _wlCursorThemeManager _default = {0};
 
 _wlCursorThemeManager*
 _wlCursorThemeManagerDefault() {
@@ -98,8 +95,8 @@ _wlCursorThemeManagerDefault() {
 
 void
 _wlCursorThemeManagerDestroy(_wlCursorThemeManager *manager) {
-    if(manager) {
-        for(size_t i = 0; i < manager->count; ++i) {
+    if (manager) {
+        for (size_t i = 0; i < manager->count; ++i) {
             wl_cursor_theme_destroy(manager->themes[i].theme);
         }
         free(manager->themes);
@@ -109,45 +106,40 @@ _wlCursorThemeManagerDestroy(_wlCursorThemeManager *manager) {
 static struct wl_cursor_theme*
 _wlCursorThemeManagerGet(_wlCursorThemeManager *manager, int px) {
     _themeData *themedata = NULL;
-    for(size_t i = 0; i < manager->count; ++i) {
-        _themeData
-    *temp = manager->themes+i;
-        if(temp->px == px) {
+    for (size_t i = 0; i < manager->count; ++i) {
+        _themeData *temp = manager->themes+i;
+        if (temp->px == px) {
             themedata = temp;
             break;
         }
     }
-    if(themedata != NULL) {
+    if (themedata != NULL) {
         _themeInc(themedata);
         return themedata->theme;
-    } else {
-        return _themeAdd(px, manager);
     }
+    return _themeAdd(px, manager);
 }
 
 struct wl_cursor_theme*
 _wlCursorThemeManage(_wlCursorThemeManager *manager, struct wl_cursor_theme *theme, int px) {
     //WARNING: Multiple returns.
-    if(manager == NULL) {
+    if (manager == NULL) {
         return NULL;
     }
-    if(theme != NULL) {
+    if (theme != NULL) {
         // Search for the provided theme in the manager.
         _themeData *themedata = NULL;
-        for(size_t i = 0; i < manager->count; ++i) {
+        for (size_t i = 0; i < manager->count; ++i) {
             _themeData *temp = manager->themes+i;
-            if(temp->theme == theme) {
+            if (temp->theme == theme) {
                 themedata = temp;
                 break;
             }
         }
-        if(themedata != NULL) {
+        if (themedata != NULL) {
             // Search succeeded. Check if we can avoid unnecessary operations.
-            if(themedata->px == px) {
-                return theme;
-            } else {
-                _themeDec(themedata, manager);
-            }
+            if (themedata->px == px) return theme;
+            _themeDec(themedata, manager);
         } else {
             _glfwInputError(GLFW_PLATFORM_ERROR,
                             "Wayland internal: managed theme isn't in the provided manager");
@@ -155,11 +147,7 @@ _wlCursorThemeManage(_wlCursorThemeManager *manager, struct wl_cursor_theme *the
             //^ This is probably the sanest behavior for this situation: do nothing.
         }
     }
-    if(px > 0) {
-        return _wlCursorThemeManagerGet(manager, px);
-    } else {
-        return NULL;
-    }
+    return px > 0 ? _wlCursorThemeManagerGet(manager, px) : NULL;
 }
 
 int

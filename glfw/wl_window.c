@@ -703,6 +703,8 @@ setCursorImage(_GLFWwindow* window, _GLFWcursorWayland* cursorWayland)
                 _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: late cursor load failed; proceeding with existing cursor");
             }
         }
+        if (!cursorWayland->cursor)
+            return;
         image = cursorWayland->cursor->images[cursorWayland->currentImage];
         buffer = wl_cursor_image_get_buffer(image);
         if (image->delay) {

@@ -52,6 +52,7 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "xkb_glfw.h"
 #include "egl_context.h"
 #include "osmesa_context.h"
+#include "wl_cursors.h"
 
 #include "wayland-xdg-shell-client-protocol.h"
 #include "wayland-viewporter-client-protocol.h"
@@ -76,21 +77,6 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #define _GLFW_PLATFORM_CONTEXT_STATE
 #define _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE
 
-#include "wl_cursors.h"
-//^ Includes <wayland-cursor.h>
-
-/**struct wl_cursor_image {
-    uint32_t width;
-    uint32_t height;
-    uint32_t hotspot_x;
-    uint32_t hotspot_y;
-    uint32_t delay;
-};
-struct wl_cursor {
-    unsigned int image_count;
-    struct wl_cursor_image** images;
-    char* name;
-};*/
 typedef struct wl_cursor_theme* (* PFN_wl_cursor_theme_load)(const char*, int, struct wl_shm*);
 typedef void (* PFN_wl_cursor_theme_destroy)(struct wl_cursor_theme*);
 typedef struct wl_cursor* (* PFN_wl_cursor_theme_get_cursor)(struct wl_cursor_theme*, const char*);

@@ -54,6 +54,7 @@
     "headers": [
       "wl_platform.h",
       "posix_thread.h",
+      "wl_cursors.h",
       "xkb_glfw.h",
       "dbus_glfw.h",
       "ibus_glfw.h",
