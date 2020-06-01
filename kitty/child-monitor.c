@@ -464,10 +464,10 @@ set_iutf8(int UNUSED fd, bool UNUSED on) {
 
 static PyObject*
 pyset_iutf8(ChildMonitor *self, PyObject *args) {
-    unsigned long window_id;
+    id_type window_id;
     int on;
     PyObject *found = Py_False;
-    if (!PyArg_ParseTuple(args, "kp", &window_id, &on)) return NULL;
+    if (!PyArg_ParseTuple(args, "Kp", &window_id, &on)) return NULL;
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == window_id) {
@@ -1581,6 +1581,7 @@ static PyMethodDef methods[] = {
     METHOD(main_loop, METH_NOARGS)
     METHOD(mark_for_close, METH_VARARGS)
     METHOD(resize_pty, METH_VARARGS)
+    {"set_iutf8_winid", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
 };
 
@@ -1622,7 +1623,6 @@ static PyMethodDef module_methods[] = {
     {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
     {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
     METHODB(monitor_pid, METH_VARARGS),
-    {"set_iutf8_winid", (PyCFunction)pyset_iutf8, METH_VARARGS, ""},
     METHODB(cocoa_set_menubar_title, METH_VARARGS),
     {NULL}  /* Sentinel */
 };
