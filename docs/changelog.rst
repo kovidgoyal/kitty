@@ -32,6 +32,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add support for the CSI REP escape code (:pull:`2702`)
 
+- Wayland: Fix mouse cursor rendering on HiDPI screens (:pull:`2709`)
+
 
 0.17.4 [2020-05-09]
 --------------------
