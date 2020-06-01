@@ -28,6 +28,8 @@
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 static Selection EMPTY_SELECTION = {{0}};
 
+#define CSI_REP_MAX_REPETITIONS 65535u
+
 // Constructor/destructor {{{
 
 static inline void
@@ -1248,6 +1250,27 @@ screen_insert_characters(Screen *self, unsigned int count) {
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         self->is_dirty = true;
         if (selection_has_screen_line(&self->selection, self->cursor->y)) self->selection = EMPTY_SELECTION;
+    }
+}
+
+void
+screen_repeat_character(Screen *self, unsigned int count) {
+    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    unsigned int x = self->cursor->x;
+    if (count == 0) count = 1;
+    if (x > self->columns) return;
+    if (x > 0) {
+        linebuf_init_line(self->linebuf, self->cursor->y);
+    } else {
+        if (self->cursor->y > 0) {
+            linebuf_init_line(self->linebuf, self->cursor->y - 1);
+            x = self->columns;
+        } else return;
+    }
+    char_type ch = line_get_char(self->linebuf->line, x-1);
+    if (top <= self->cursor->y && self->cursor->y <= bottom && !is_ignored_char(ch)) {
+        unsigned int num = MIN(count, CSI_REP_MAX_REPETITIONS);
+        while (num-- > 0) screen_draw(self, ch);
     }
 }
 

@@ -550,6 +550,13 @@ left_shift(Line *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+char_type
+line_get_char(Line *self, index_type at) {
+    char_type ch = self->cpu_cells[at].ch;
+    if (!ch && at > 0 && (self->gpu_cells[at-1].attrs & WIDTH_MASK) > 1) ch = self->cpu_cells[at-1].ch;
+    return ch;
+}
+
 void
 line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool UNUSED is_second) {
     if (cursor == NULL) {

@@ -30,6 +30,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - BSD: Fix controlling terminal not being established (:pull:`2686`)
 
+- Add support for the CSI REP escape code (:pull:`2702`)
+
 
 0.17.4 [2020-05-09]
 --------------------

@@ -181,6 +181,8 @@ string_capabilities = {
     'kind': r'\E[1;2B',
     # Restore cursor
     'rc': r'\E8',
+    # Repeat preceding character
+    'rep': r'%p1%c\E[%p2%{1}%-%db',
     # Reverse video
     'rev': r'\E[7m',
     # Scroll backwards the specified number of lines (reverse index)
@@ -347,6 +349,7 @@ termcap_aliases.update({
     'kR': 'kri',
     'kF': 'kind',
     'rc': 'rc',
+    'rp': 'rep',
     'mr': 'rev',
     'sr': 'ri',
     'SR': 'rin',
