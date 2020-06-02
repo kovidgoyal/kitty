@@ -699,6 +699,7 @@ setCursorImage(_GLFWwindow* window, _GLFWcursorWayland* cursorWayland)
             struct wl_cursor *newCursor = _glfwLoadCursor(cursorWayland->shape, window->wl.cursorTheme);
             if(newCursor != NULL) {
                 cursorWayland->cursor = newCursor;
+                cursorWayland->scale = scale;
             } else {
                 _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: late cursor load failed; proceeding with existing cursor");
             }
