@@ -2414,6 +2414,7 @@ int _glfwPlatformWindowMaximized(_GLFWwindow* window)
     {
         return maximized;
     }
+
     const unsigned long count =
         _glfwGetWindowPropertyX11(window->x11.handle,
                                   _glfw.x11.NET_WM_STATE,
