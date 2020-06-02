@@ -683,8 +683,14 @@ static bool createXdgSurface(_GLFWwindow* window)
 }
 
 static void
-setCursorImage(_GLFWwindow* window, _GLFWcursorWayland* cursorWayland, bool is_stack_cursor)
+setCursorImage(_GLFWwindow* window, _GLFWcursorWayland* cursorWayland)
 {
+    _GLFWcursorWayland defaultCursor = {.shape = GLFW_ARROW_CURSOR};
+    bool isDefaultCursor = false;
+    if (!cursorWayland) {
+        cursorWayland = &defaultCursor;
+        isDefaultCursor = true;
+    }
     struct wl_cursor_image* image = NULL;
     struct wl_buffer* buffer = NULL;
     struct wl_surface* surface = _glfw.wl.cursorSurface;
@@ -708,7 +714,7 @@ setCursorImage(_GLFWwindow* window, _GLFWcursorWayland* cursorWayland, bool is_s
             return;
         image = cursorWayland->cursor->images[cursorWayland->currentImage];
         buffer = wl_cursor_image_get_buffer(image);
-        if (image->delay && !is_stack_cursor) {
+        if (image->delay && !isDefaultCursor) {
             changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, ms_to_monotonic_t(image->delay));
             toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 1);
         } else {
@@ -744,7 +750,7 @@ incrementCursorImage(_GLFWwindow* window)
         {
             cursor->wl.currentImage += 1;
             cursor->wl.currentImage %= cursor->wl.cursor->image_count;
-            setCursorImage(window, &cursor->wl, false);
+            setCursorImage(window, &cursor->wl);
             toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, cursor->wl.cursor->image_count > 1);
             return;
         }
@@ -1494,11 +1500,10 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
     if (window->cursorMode == GLFW_CURSOR_NORMAL)
     {
         if (cursor)
-            setCursorImage(window, &cursor->wl, false);
+            setCursorImage(window, &cursor->wl);
         else
         {
-            _GLFWcursorWayland cursorWayland = {.shape = GLFW_ARROW_CURSOR};
-            setCursorImage(window, &cursorWayland, true);
+            setCursorImage(window, NULL);
         }
     }
     else if (window->cursorMode == GLFW_CURSOR_DISABLED)
