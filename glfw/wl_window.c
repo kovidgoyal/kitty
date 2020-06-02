@@ -738,7 +738,7 @@ static bool createXdgSurface(_GLFWwindow* window)
 static void
 incrementCursorImage(_GLFWwindow* window)
 {
-    if (window && window->wl.decorations.focus == mainWindow) {
+    if (window && window->wl.decorations.focus == mainWindow && window->cursorMode != GLFW_CURSOR_HIDDEN) {
         _GLFWcursor* cursor = window->wl.currentCursor;
         if (cursor && cursor->wl.cursor)
         {
