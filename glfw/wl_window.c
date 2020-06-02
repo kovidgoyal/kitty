@@ -41,8 +41,60 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
+static void
+setCursorImage(_GLFWwindow* window)
+{
+    _GLFWcursorWayland defaultCursor = {.shape = GLFW_ARROW_CURSOR};
+    _GLFWcursorWayland* cursorWayland = window->cursor ? &window->cursor->wl : &defaultCursor;
+    struct wl_cursor_image* image = NULL;
+    struct wl_buffer* buffer = NULL;
+    struct wl_surface* surface = _glfw.wl.cursorSurface;
+    const int scale = window->wl.scale;
 
+    if (cursorWayland->scale < 0) {
+        buffer = cursorWayland->buffer;
+        toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
+    } else
+    {
+        if (cursorWayland->scale != scale) {
+            struct wl_cursor *newCursor = _glfwLoadCursor(cursorWayland->shape, window->wl.cursorTheme);
+            if (newCursor != NULL) {
+                cursorWayland->cursor = newCursor;
+                cursorWayland->scale = scale;
+            } else {
+                _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: late cursor load failed; proceeding with existing cursor");
+            }
+        }
+        if (!cursorWayland->cursor)
+            return;
+        image = cursorWayland->cursor->images[cursorWayland->currentImage];
+        buffer = wl_cursor_image_get_buffer(image);
+        if (image->delay && window->cursor) {
+            changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, ms_to_monotonic_t(image->delay));
+            toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 1);
+        } else {
+            toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
+        }
 
+        if (!buffer)
+            return;
+
+        cursorWayland->width = image->width;
+        cursorWayland->height = image->height;
+        cursorWayland->xhot = image->hotspot_x;
+        cursorWayland->yhot = image->hotspot_y;
+    }
+
+    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.pointerSerial,
+                          surface,
+                          cursorWayland->xhot / scale,
+                          cursorWayland->yhot / scale);
+    wl_surface_set_buffer_scale(surface, scale);
+    wl_surface_attach(surface, buffer, 0, 0);
+    wl_surface_damage(surface, 0, 0,
+                      cursorWayland->width, cursorWayland->height);
+    wl_surface_commit(surface);
+}
 
 
 static bool checkScaleChange(_GLFWwindow* window)
@@ -76,6 +128,7 @@ static bool checkScaleChange(_GLFWwindow* window)
         window->wl.cursorTheme = _wlCursorThemeManage(_glfw.wl.cursorThemeManager,
                                                       window->wl.cursorTheme,
                                                       _wlCursorPxFromScale(scale));
+        setCursorImage(window);
         return true;
     }
     if (window->wl.monitorsCount > 0 && !window->wl.initial_scale_notified) {
@@ -683,65 +736,6 @@ static bool createXdgSurface(_GLFWwindow* window)
 }
 
 static void
-setCursorImage(_GLFWwindow* window, _GLFWcursorWayland* cursorWayland)
-{
-    _GLFWcursorWayland defaultCursor = {.shape = GLFW_ARROW_CURSOR};
-    bool isDefaultCursor = false;
-    if (!cursorWayland) {
-        cursorWayland = &defaultCursor;
-        isDefaultCursor = true;
-    }
-    struct wl_cursor_image* image = NULL;
-    struct wl_buffer* buffer = NULL;
-    struct wl_surface* surface = _glfw.wl.cursorSurface;
-    const int scale = window->wl.scale;
-
-    if (cursorWayland->scale < 0) {
-        buffer = cursorWayland->buffer;
-        toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
-    } else
-    {
-        if (cursorWayland->scale != scale) {
-            struct wl_cursor *newCursor = _glfwLoadCursor(cursorWayland->shape, window->wl.cursorTheme);
-            if (newCursor != NULL) {
-                cursorWayland->cursor = newCursor;
-                cursorWayland->scale = scale;
-            } else {
-                _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: late cursor load failed; proceeding with existing cursor");
-            }
-        }
-        if (!cursorWayland->cursor)
-            return;
-        image = cursorWayland->cursor->images[cursorWayland->currentImage];
-        buffer = wl_cursor_image_get_buffer(image);
-        if (image->delay && !isDefaultCursor) {
-            changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, ms_to_monotonic_t(image->delay));
-            toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 1);
-        } else {
-            toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
-        }
-
-        if (!buffer)
-            return;
-
-        cursorWayland->width = image->width;
-        cursorWayland->height = image->height;
-        cursorWayland->xhot = image->hotspot_x;
-        cursorWayland->yhot = image->hotspot_y;
-    }
-
-    wl_pointer_set_cursor(_glfw.wl.pointer, _glfw.wl.pointerSerial,
-                          surface,
-                          cursorWayland->xhot / scale,
-                          cursorWayland->yhot / scale);
-    wl_surface_set_buffer_scale(surface, scale);
-    wl_surface_attach(surface, buffer, 0, 0);
-    wl_surface_damage(surface, 0, 0,
-                      cursorWayland->width, cursorWayland->height);
-    wl_surface_commit(surface);
-}
-
-static void
 incrementCursorImage(_GLFWwindow* window)
 {
     if (window && window->wl.decorations.focus == mainWindow) {
@@ -750,7 +744,7 @@ incrementCursorImage(_GLFWwindow* window)
         {
             cursor->wl.currentImage += 1;
             cursor->wl.currentImage %= cursor->wl.cursor->image_count;
-            setCursorImage(window, &cursor->wl);
+            setCursorImage(window);
             toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, cursor->wl.cursor->image_count > 1);
             return;
         }
@@ -1499,12 +1493,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
 
     if (window->cursorMode == GLFW_CURSOR_NORMAL)
     {
-        if (cursor)
-            setCursorImage(window, &cursor->wl);
-        else
-        {
-            setCursorImage(window, NULL);
-        }
+        setCursorImage(window);
     }
     else if (window->cursorMode == GLFW_CURSOR_DISABLED)
     {
