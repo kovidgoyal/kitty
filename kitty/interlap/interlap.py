@@ -59,11 +59,12 @@ class Segment( Immutable ):
   #---------------------------------------------------------------------------------------------------------
   def __iter__( me ) -> Iterable: yield me
   def __repr__( me ) -> str: return f"{me.__class__.__name__}( {me.lo}, {me.hi} )"
+  def __hash__( me ) -> int: return hash( ( me.lo, me.hi, ) )
 
   #---------------------------------------------------------------------------------------------------------
   def __lt__( me, other: Any ) -> bool:
     if not isinstance( other, Segment ):
-      raise InterlapValueError( f"^E3786^ unable to compare a Segment with a {type( other )}" )
+      raise InterlapValueError( f"^E336^ unable to compare a Segment with a {type( other )}" )
     return ( me.lo < other.lo ) or ( me.hi < other.hi ) # type: ignore
 
   #---------------------------------------------------------------------------------------------------------
