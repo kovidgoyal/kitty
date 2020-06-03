@@ -45,79 +45,21 @@ def font_for_family(family: str) -> Tuple[FontObject, bool, bool]:
     return font_for_family_fontconfig(family)
 
 
-Range = Tuple[Tuple[int, int], str]
-
-
-def merge_ranges(a: Range, b: Range, priority_map: Dict[Tuple[int, int], int]) -> Generator[Range, None, None]:
-    a_start, a_end = a[0]
-    b_start, b_end = b[0]
-    a_val, b_val = a[1], b[1]
-    if b_start > a_end:
-        if b_start == a_end + 1 and a_val == b_val:
-            # ranges can be coalesced
-            yield ((a_start, b_end), a_val)
-            return
-        # disjoint ranges
-        yield a
-        yield b
-        return
-    if a_val == b_val:
-        # mergeable ranges
-        yield ((a_start, max(a_end, b_end)), a_val)
-        return
-    before_range = mid_range = after_range = None
-    if b_start > a_start:
-        before_range = ((a_start, b_start - 1), a_val)
-    mid_end = min(a_end, b_end)
-    if mid_end >= b_start:
-        # overlap range
-        mid_range = ((b_start, mid_end), a_val if priority_map[a[0]] >= priority_map[b[0]] else b_val)
-    # after range
-    if mid_end is a_end:
-        if b_end > a_end:
-            after_range = ((a_end + 1, b_end), b_val)
-    else:
-        if a_end > b_end:
-            after_range = ((b_end + 1, a_end), a_val)
-    # check if the before, mid and after ranges can be coalesced
-    ranges: List[Range] = []
-    for r in (before_range, mid_range, after_range):
-        if r is None:
-            continue
-        if ranges:
-            x = ranges[-1]
-            if x[0][1] + 1 == r[0][0] and x[1] == r[1]:
-                ranges[-1] = ((x[0][0], r[0][1]), x[1])
-            else:
-                ranges.append(r)
-        else:
-            ranges.append(r)
-    yield from ranges
-
-
-def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, int], str]:
-    ### NOTE https://docs.python.org/3/library/stdtypes.html?highlight=dict#mapping-types-dict:
-    # Changed in version 3.7: Dictionary order is guaranteed to be insertion order. This behavior was an
-    # implementation detail of CPython from 3.6.
-    print( '^22333198^', f"maps             {maps           }" )
-    print( '^22333198^', f"type( maps )     {type( maps )   }" )
-    import sys
-    print( '^22333198^', f"sys.version   {sys.version }" )
-    # print( '^22333198^', f"sorted( maps )   {sorted( maps ) }" )
-    if not maps:
-        return maps
-    priority_map = {r: i for i, r in enumerate(maps.keys())}
-    ranges = tuple((r, maps[r]) for r in sorted(maps))
-    ans = [ranges[0]]
-
-    for i in range(1, len(ranges)):
-        r = ranges[i]
-        ans[-1:] = list(merge_ranges(ans[-1], r, priority_map))
-    print( '^22333198^', f"ans              {ans            }" )
-    print( '^22333198^', f"priority_map     {priority_map   }" )
-    print( '^22333198^', f"ranges           {ranges         }" )
-    return dict(ans)
-
+def coalesce_symbol_maps( maps: Dict[ Tuple[ int, int, ], str, ] ) -> Dict[ Tuple[ int, int, ], str, ]:
+    from ..interlap.interlap import new_lap, new_segment, subtract_segments, merge_segments
+    if not maps: return maps
+    R:            Dict[ Tuple[ int, int, ], str, ]
+    R           = {}
+    ranges_tpl  = reversed( list( range_tpl for range_tpl in maps ) )
+    exclusion   = new_lap( new_segment( lo = 0x0, hi = 0x0, ), )
+    for range_tpl in ranges_tpl:
+        psname    = maps[ range_tpl ]
+        segment   = new_segment( range_tpl )
+        disjunct  = subtract_segments(  segment, *exclusion )
+        exclusion = merge_segments(     segment, *exclusion )
+        for disjunct_segment in disjunct:
+            R[ ( disjunct_segment.lo, disjunct_segment.hi, ) ] = psname
+    return R
 
 def create_symbol_map(opts: OptionsStub) -> Tuple[Tuple[int, int, int], ...]:
     val = coalesce_symbol_maps(opts.symbol_map)

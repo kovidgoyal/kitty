@@ -42,7 +42,7 @@ gen_segment     = Union[ 'Segment', bi_int, ]
 #-----------------------------------------------------------------------------------------------------------
 class Immutable:
   def __setattr__( me, *P: Any ) -> None:
-    raise InterlapKeyError( "^E7653^ forbidden to set attribute on immutable" )
+    raise InterlapKeyError( "^E333^ forbidden to set attribute on immutable" )
 
 #-----------------------------------------------------------------------------------------------------------
 @total_ordering
@@ -95,7 +95,7 @@ class Lap( Immutable ):
   #---------------------------------------------------------------------------------------------------------
   def __lt__( me, other: Any ) -> bool:
     if not isinstance( other, Lap ):
-      raise InterlapValueError( f"^E1732^ unable to compare a Lap with a {type( other )}" )
+      raise InterlapValueError( f"^E339^ unable to compare a Lap with a {type( other )}" )
     if me.segments == other.segments: return False
     length = min( len( me ), len( other ) )
     if length == 0:
