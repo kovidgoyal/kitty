@@ -114,15 +114,21 @@ class Lap( Immutable ):
   def size( me ) -> int: return sum( ( s.size for s in me.segments ), 0 )
 
 #-----------------------------------------------------------------------------------------------------------
-def new_segment( lohi: gen_segment ) -> Segment:
+def new_segment( lohi: gen_segment = None, *, lo: int = None, hi: int = None ) -> Segment:
   if isinstance( lohi, Segment ): return lohi
-  if len( lohi ) != 2:
-    raise InterlapValueError( f"^E7986^ expected a tuple of length 2, got one with length {len( lohi )}")
-  lo, hi = lohi
+  if lohi is None:
+    if not isinstance( lo, int ): raise InterlapValueError( f"^E342^ illegal arguments: lohi: {lohi}, lo: {lo}, hi: {hi}" )
+    if not isinstance( hi, int ): raise InterlapValueError( f"^E345^ illegal arguments: lohi: {lohi}, lo: {lo}, hi: {hi}" )
+  else:
+    if lo != None: raise InterlapValueError( f"^E342^ illegal arguments: lohi: {lohi}, lo: {lo}, hi: {hi}" )
+    if hi != None: raise InterlapValueError( f"^E345^ illegal arguments: lohi: {lohi}, lo: {lo}, hi: {hi}" )
+    if len( lohi ) != 2:
+      raise InterlapValueError( f"^E348^ expected a tuple of length 2, got one with length {len( lohi )}: lohi: {lohi}")
+    lo, hi = lohi
   #.........................................................................................................
-  # if not isinstance( lo, int ): throw( f"expected an integer, got a {type( lo )}" ) # unreachable?
-  # if not isinstance( hi, int ): throw( f"expected an integer, got a {type( hi )}" ) # unreachable?
-  if not lo <= hi: raise InterlapValueError( f"^E8319^ expected lo <= hi, got {lo} and {hi}" )
+  # if not isinstance( lo, int ): raise InterlapValueError( f"^E300^ expected an integer, got a {type( lo )}" ) # unreachable?
+  # if not isinstance( hi, int ): raise InterlapValueError( f"^E300^ expected an integer, got a {type( hi )}" ) # unreachable?
+  if not lo <= hi: raise InterlapValueError( f"^E351^ expected lo <= hi, got {lo} and {hi}" )
   #.........................................................................................................
   return Segment( lo, hi, )
 
