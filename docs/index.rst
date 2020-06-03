@@ -360,11 +360,12 @@ Mouse features
 * You can triple click to select a line and then drag to select more lines.
 * You can right click to extend a previous selection.
 * You can hold down :kbd:`ctrl+alt` and drag with the mouse to select in
-  columns.
+  columns (see also :opt:`rectangle_select_modifiers`).
 * Selecting text automatically copies it to the primary clipboard (on
   platforms with a primary clipboard).
 * You can select text with kitty even when a terminal program has grabbed
-  the mouse by holding down the :kbd:`shift` key.
+  the mouse by holding down the :kbd:`shift` key (see also
+  :opt:`terminal_select_modifiers`).
 
 
 Font control
