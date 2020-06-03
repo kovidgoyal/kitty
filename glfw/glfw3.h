@@ -195,7 +195,22 @@ extern "C" {
 
  #endif /*__APPLE__*/
 
-#elif !defined(GLFW_INCLUDE_NONE)
+#elif !defined(GLFW_INCLUDE_NONE) && \
+      !defined(__gl_h_) && \
+      !defined(__gles1_gl_h_) && \
+      !defined(__gles2_gl2_h_) && \
+      !defined(__gles2_gl3_h_) && \
+      !defined(__gles2_gl31_h_) && \
+      !defined(__gles2_gl32_h_) && \
+      !defined(__gl_glcorearb_h_) && \
+      !defined(__gl2_h_) /*legacy*/ && \
+      !defined(__gl3_h_) /*legacy*/ && \
+      !defined(__gl31_h_) /*legacy*/ && \
+      !defined(__gl32_h_) /*legacy*/ && \
+      !defined(__glcorearb_h_) /*legacy*/ && \
+      !defined(__GL_H__) /*non-standard*/ && \
+      !defined(__gltypes_h_) /*non-standard*/ && \
+      !defined(__glee_h_) /*non-standard*/
 
  #if defined(__APPLE__)
 
