@@ -202,7 +202,7 @@ void _glfwPlatformGetVideoMode(_GLFWmonitor* monitor, GLFWvidmode* mode)
 
 bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor UNUSED, GLFWgammaramp* ramp UNUSED)
 {
-    _glfwInputError(GLFW_PLATFORM_ERROR,
+    _glfwInputError(GLFW_FEATURE_UNAVAILABLE,
                     "Wayland: Gamma ramp access is not available");
     return false;
 }
@@ -210,7 +210,7 @@ bool _glfwPlatformGetGammaRamp(_GLFWmonitor* monitor UNUSED, GLFWgammaramp* ramp
 void _glfwPlatformSetGammaRamp(_GLFWmonitor* monitor UNUSED,
                                const GLFWgammaramp* ramp UNUSED)
 {
-    _glfwInputError(GLFW_PLATFORM_ERROR,
+    _glfwInputError(GLFW_FEATURE_UNAVAILABLE,
                     "Wayland: Gamma ramp access is not available");
 }
 
