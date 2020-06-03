@@ -1320,6 +1320,22 @@ typedef void (* GLFWwindowsizefun)(GLFWwindow*,int,int);
  */
 typedef void (* GLFWwindowclosefun)(GLFWwindow*);
 
+/*! @brief The function pointer type for application close callbacks.
+ *
+ *  This is the function pointer type for application close callbacks.  A application
+ *  close callback function has the following signature:
+ *  @code
+ *  void function_name(int flags)
+ *  @endcode
+ *
+ *  @param[in] flags 0 for a user requested application quit, 1 if a fatal error occurred and application should quit ASAP
+ *
+ *  @sa @ref glfwSetApplicationCloseCallback
+ *
+ *  @ingroup window
+ */
+typedef void (* GLFWapplicationclosefun)(int);
+
 /*! @brief The function pointer type for window content refresh callbacks.
  *
  *  This is the function pointer type for window content refresh callbacks.
@@ -3828,6 +3844,7 @@ GLFWAPI GLFWwindowsizefun glfwSetWindowSizeCallback(GLFWwindow* window, GLFWwind
  *  @ingroup window
  */
 GLFWAPI GLFWwindowclosefun glfwSetWindowCloseCallback(GLFWwindow* window, GLFWwindowclosefun callback);
+GLFWAPI GLFWapplicationclosefun glfwSetApplicationCloseCallback(GLFWapplicationclosefun callback);
 
 /*! @brief Sets the refresh callback for the specified window.
  *

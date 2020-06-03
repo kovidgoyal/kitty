@@ -602,7 +602,9 @@ struct _GLFWlibrary
     struct {
         GLFWmonitorfun  monitor;
         GLFWjoystickfun joystick;
+        GLFWapplicationclosefun application_close;
     } callbacks;
+
 
     // This is defined in the window API's platform.h
     _GLFW_PLATFORM_LIBRARY_WINDOW_STATE;

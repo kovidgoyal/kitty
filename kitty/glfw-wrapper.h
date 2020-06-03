@@ -1083,6 +1083,22 @@ typedef void (* GLFWwindowsizefun)(GLFWwindow*,int,int);
  */
 typedef void (* GLFWwindowclosefun)(GLFWwindow*);
 
+/*! @brief The function pointer type for application close callbacks.
+ *
+ *  This is the function pointer type for application close callbacks.  A application
+ *  close callback function has the following signature:
+ *  @code
+ *  void function_name(int flags)
+ *  @endcode
+ *
+ *  @param[in] flags 0 for a user requested application quit, 1 if a fatal error occurred and application should quit ASAP
+ *
+ *  @sa @ref glfwSetApplicationCloseCallback
+ *
+ *  @ingroup window
+ */
+typedef void (* GLFWapplicationclosefun)(int);
+
 /*! @brief The function pointer type for window content refresh callbacks.
  *
  *  This is the function pointer type for window content refresh callbacks.
@@ -1587,7 +1603,6 @@ typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int,unsigned long);
 typedef bool (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef void (* GLFWapplicationwillfinishlaunchingfun)(void);
 typedef bool (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
-typedef void (* GLFWcocoaaplicationquitrequestedfun)(void);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);
@@ -1860,6 +1875,10 @@ typedef GLFWwindowclosefun (*glfwSetWindowCloseCallback_func)(GLFWwindow*, GLFWw
 GFW_EXTERN glfwSetWindowCloseCallback_func glfwSetWindowCloseCallback_impl;
 #define glfwSetWindowCloseCallback glfwSetWindowCloseCallback_impl
 
+typedef GLFWapplicationclosefun (*glfwSetApplicationCloseCallback_func)(GLFWapplicationclosefun);
+GFW_EXTERN glfwSetApplicationCloseCallback_func glfwSetApplicationCloseCallback_impl;
+#define glfwSetApplicationCloseCallback glfwSetApplicationCloseCallback_impl
+
 typedef GLFWwindowrefreshfun (*glfwSetWindowRefreshCallback_func)(GLFWwindow*, GLFWwindowrefreshfun);
 GFW_EXTERN glfwSetWindowRefreshCallback_func glfwSetWindowRefreshCallback_impl;
 #define glfwSetWindowRefreshCallback glfwSetWindowRefreshCallback_impl
@@ -1899,6 +1918,10 @@ GFW_EXTERN glfwGetInputMode_func glfwGetInputMode_impl;
 typedef void (*glfwSetInputMode_func)(GLFWwindow*, int, int);
 GFW_EXTERN glfwSetInputMode_func glfwSetInputMode_impl;
 #define glfwSetInputMode glfwSetInputMode_impl
+
+typedef int (*glfwRawMouseMotionSupported_func)(void);
+GFW_EXTERN glfwRawMouseMotionSupported_func glfwRawMouseMotionSupported_impl;
+#define glfwRawMouseMotionSupported glfwRawMouseMotionSupported_impl
 
 typedef const char* (*glfwGetKeyName_func)(int, int);
 GFW_EXTERN glfwGetKeyName_func glfwGetKeyName_impl;
@@ -2095,10 +2118,6 @@ GFW_EXTERN glfwSetApplicationShouldHandleReopen_func glfwSetApplicationShouldHan
 typedef GLFWapplicationwillfinishlaunchingfun (*glfwSetApplicationWillFinishLaunching_func)(GLFWapplicationwillfinishlaunchingfun);
 GFW_EXTERN glfwSetApplicationWillFinishLaunching_func glfwSetApplicationWillFinishLaunching_impl;
 #define glfwSetApplicationWillFinishLaunching glfwSetApplicationWillFinishLaunching_impl
-
-typedef GLFWcocoaaplicationquitrequestedfun (*glfwSetApplicationQuitRequestedCallback_func)(GLFWcocoaaplicationquitrequestedfun);
-GFW_EXTERN glfwSetApplicationQuitRequestedCallback_func glfwSetApplicationQuitRequestedCallback_impl;
-#define glfwSetApplicationQuitRequestedCallback glfwSetApplicationQuitRequestedCallback_impl
 
 typedef void (*glfwGetCocoaKeyEquivalent_func)(int, int, char*, size_t, int*);
 GFW_EXTERN glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;

@@ -203,7 +203,6 @@ def generate_wrappers(glfw_header: str) -> None:
     GLFWcocoatogglefullscreenfun glfwSetCocoaToggleFullscreenIntercept(GLFWwindow *window, GLFWcocoatogglefullscreenfun callback)
     GLFWapplicationshouldhandlereopenfun glfwSetApplicationShouldHandleReopen(GLFWapplicationshouldhandlereopenfun callback)
     GLFWapplicationwillfinishlaunchingfun glfwSetApplicationWillFinishLaunching(GLFWapplicationwillfinishlaunchingfun callback)
-    GLFWcocoaaplicationquitrequestedfun glfwSetApplicationQuitRequestedCallback(GLFWcocoaaplicationquitrequestedfun callback)
     void glfwGetCocoaKeyEquivalent(int glfw_key, int glfw_mods, char* cocoa_key, size_t key_sz, int* cocoa_mods)
     void glfwCocoaRequestRenderFrame(GLFWwindow *w, GLFWcocoarenderframefun callback)
     void* glfwGetX11Display(void)
@@ -244,7 +243,6 @@ typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int,unsigned long);
 typedef bool (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef void (* GLFWapplicationwillfinishlaunchingfun)(void);
 typedef bool (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
-typedef void (* GLFWcocoaaplicationquitrequestedfun)(void);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 typedef void (*GLFWwaylandframecallbackfunc)(unsigned long long id);
 typedef void (*GLFWDBusnotificationcreatedfun)(unsigned long long, uint32_t, void*);

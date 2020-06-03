@@ -69,7 +69,6 @@ typedef int (* GLFWcocoatextinputfilterfun)(int,int,unsigned int, unsigned long)
 typedef bool (* GLFWapplicationshouldhandlereopenfun)(int);
 typedef void (* GLFWapplicationwillfinishlaunchingfun)(void);
 typedef bool (* GLFWcocoatogglefullscreenfun)(GLFWwindow*);
-typedef void (* GLFWcocoaaplicationquitrequestedfun)(void);
 typedef void (* GLFWcocoarenderframefun)(GLFWwindow*);
 
 typedef VkFlags VkMacOSSurfaceCreateFlagsMVK;
@@ -189,8 +188,6 @@ typedef struct _GLFWlibraryNS
     double              restoreCursorPosX, restoreCursorPosY;
     // The window whose disabled cursor mode is active
     _GLFWwindow*        disabledCursorWindow;
-    // The application quit requested callback
-    GLFWcocoaaplicationquitrequestedfun quitRequestedCallback;
 
     struct {
         CFBundleRef     bundle;

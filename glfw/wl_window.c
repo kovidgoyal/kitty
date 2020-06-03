@@ -760,11 +760,14 @@ animateCursorImage(id_type timer_id UNUSED, void *data UNUSED) {
 static void
 abortOnFatalError(int last_error) {
     _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: fatal display error: %s", strerror(last_error));
-    _GLFWwindow* window = _glfw.windowListHead;
-    while (window)
-    {
-        _glfwInputWindowCloseRequest(window);
-        window = window->next;
+    if (_glfw.callbacks.application_close) _glfw.callbacks.application_close(1);
+    else {
+        _GLFWwindow* window = _glfw.windowListHead;
+        while (window)
+        {
+            _glfwInputWindowCloseRequest(window);
+            window = window->next;
+        }
     }
     // ensure the tick callback is called
     _glfw.wl.eventLoopData.wakeup_data_read = true;

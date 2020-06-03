@@ -424,7 +424,7 @@ display_reconfigured(CGDirectDisplayID display UNUSED, CGDisplayChangeSummaryFla
 - (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender
 {
     (void)sender;
-    if (_glfw.ns.quitRequestedCallback) _glfw.ns.quitRequestedCallback();
+    if (_glfw.callbacks.application_close) _glfw.callbacks.application_close(0);
     return NSTerminateCancel;
 }
 
@@ -583,12 +583,6 @@ GLFWAPI GLFWapplicationwillfinishlaunchingfun glfwSetApplicationWillFinishLaunch
     GLFWapplicationwillfinishlaunchingfun previous = finish_launching_callback;
     finish_launching_callback = callback;
     return previous;
-}
-
-GLFWAPI GLFWcocoaaplicationquitrequestedfun glfwSetApplicationQuitRequestedCallback(GLFWcocoaaplicationquitrequestedfun callback) {
-    GLFWcocoaaplicationquitrequestedfun ret = _glfw.ns.quitRequestedCallback;
-    _glfw.ns.quitRequestedCallback = callback;
-    return ret;
 }
 
 int _glfwPlatformInit(void)

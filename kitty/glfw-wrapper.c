@@ -216,6 +216,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetWindowCloseCallback_impl) = dlsym(handle, "glfwSetWindowCloseCallback");
     if (glfwSetWindowCloseCallback_impl == NULL) fail("Failed to load glfw function glfwSetWindowCloseCallback with error: %s", dlerror());
 
+    *(void **) (&glfwSetApplicationCloseCallback_impl) = dlsym(handle, "glfwSetApplicationCloseCallback");
+    if (glfwSetApplicationCloseCallback_impl == NULL) fail("Failed to load glfw function glfwSetApplicationCloseCallback with error: %s", dlerror());
+
     *(void **) (&glfwSetWindowRefreshCallback_impl) = dlsym(handle, "glfwSetWindowRefreshCallback");
     if (glfwSetWindowRefreshCallback_impl == NULL) fail("Failed to load glfw function glfwSetWindowRefreshCallback with error: %s", dlerror());
 
@@ -245,6 +248,9 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwSetInputMode_impl) = dlsym(handle, "glfwSetInputMode");
     if (glfwSetInputMode_impl == NULL) fail("Failed to load glfw function glfwSetInputMode with error: %s", dlerror());
+
+    *(void **) (&glfwRawMouseMotionSupported_impl) = dlsym(handle, "glfwRawMouseMotionSupported");
+    if (glfwRawMouseMotionSupported_impl == NULL) fail("Failed to load glfw function glfwRawMouseMotionSupported with error: %s", dlerror());
 
     *(void **) (&glfwGetKeyName_impl) = dlsym(handle, "glfwGetKeyName");
     if (glfwGetKeyName_impl == NULL) fail("Failed to load glfw function glfwGetKeyName with error: %s", dlerror());
@@ -385,8 +391,6 @@ load_glfw(const char* path) {
     *(void **) (&glfwSetApplicationShouldHandleReopen_impl) = dlsym(handle, "glfwSetApplicationShouldHandleReopen");
 
     *(void **) (&glfwSetApplicationWillFinishLaunching_impl) = dlsym(handle, "glfwSetApplicationWillFinishLaunching");
-
-    *(void **) (&glfwSetApplicationQuitRequestedCallback_impl) = dlsym(handle, "glfwSetApplicationQuitRequestedCallback");
 
     *(void **) (&glfwGetCocoaKeyEquivalent_impl) = dlsym(handle, "glfwGetCocoaKeyEquivalent");
 
