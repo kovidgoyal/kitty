@@ -572,17 +572,15 @@ bool _glfwCreateContextEGL(_GLFWwindow* window,
     }
 
     // Set up attributes for surface creation
+    index = 0;
+
+    if (fbconfig->sRGB)
     {
-        int index = 0;
-
-        if (fbconfig->sRGB)
-        {
-            if (_glfw.egl.KHR_gl_colorspace)
-                setAttrib(EGL_GL_COLORSPACE_KHR, EGL_GL_COLORSPACE_SRGB_KHR);
-        }
-
-        setAttrib(EGL_NONE, EGL_NONE);
+        if (_glfw.egl.KHR_gl_colorspace)
+            setAttrib(EGL_GL_COLORSPACE_KHR, EGL_GL_COLORSPACE_SRGB_KHR);
     }
+
+    setAttrib(EGL_NONE, EGL_NONE);
 
     window->context.egl.surface =
         eglCreateWindowSurface(_glfw.egl.display,
