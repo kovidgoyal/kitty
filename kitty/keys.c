@@ -203,8 +203,7 @@ on_key_input(GLFWkeyevent *ev) {
 }
 
 void
-fake_scroll(int amount, bool upwards) {
-    Window *w = active_window();
+fake_scroll(Window *w, int amount, bool upwards) {
     if (!w) return;
     int key = upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN;
     while (amount-- > 0) {
