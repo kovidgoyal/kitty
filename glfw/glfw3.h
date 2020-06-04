@@ -1868,6 +1868,8 @@ GLFWAPI void glfwRemoveTimer(unsigned long long);
  *  call this function, as it is called by @ref glfwInit before it returns
  *  failure.
  *
+ *  This function has no effect if GLFW is not initialized.
+ *
  *  @errors Possible errors include @ref GLFW_PLATFORM_ERROR.
  *
  *  @remark This function may be called before @ref glfwInit.
