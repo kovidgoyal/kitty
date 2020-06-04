@@ -1527,7 +1527,8 @@ void _glfwPlatformSetWindowTitle(_GLFWwindow* window UNUSED, const char* title)
 void _glfwPlatformSetWindowIcon(_GLFWwindow* window UNUSED,
                                 int count UNUSED, const GLFWimage* images UNUSED)
 {
-    // Regular windows do not have icons
+    _glfwInputError(GLFW_FEATURE_UNAVAILABLE,
+                    "Cocoa: Regular windows do not have icons on macOS");
 }
 
 void _glfwPlatformGetWindowPos(_GLFWwindow* window, int* xpos, int* ypos)
@@ -1865,6 +1866,8 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
 
 void _glfwPlatformSetRawMouseMotion(_GLFWwindow *window UNUSED, bool enabled UNUSED)
 {
+    _glfwInputError(GLFW_FEATURE_UNIMPLEMENTED,
+                    "Cocoa: Raw mouse motion not yet implemented");
 }
 
 bool _glfwPlatformRawMouseMotionSupported(void)

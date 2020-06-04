@@ -569,6 +569,33 @@
  *  @analysis Application programmer error.  Fix the offending call.
  */
 #define GLFW_NO_WINDOW_CONTEXT      0x0001000A
+/*! @brief The reuqested feature is not provided by the platform.
+ *
+ *  The requested feature is not provided by the platform, so GLFW is unable to
+ *  implement it.  The documentation for each function notes if it could emit
+ *  this error.
+ *
+ *  @analysis Platform or platform version limitation.  The error can be ignored
+ *  unless the feature is critical to the application.
+ *
+ *  @par
+ *  A function call that emits this error has no effect other than the error and
+ *  updating any existing out parameters.
+ */
+#define GLFW_FEATURE_UNAVAILABLE    0x0001000C
+/*! @brief The requested feature is not implemented for the platform.
+ *
+ *  The requested feature has not yet been implemented in GLFW for this platform.
+ *
+ *  @analysis An incomplete implementation of GLFW for this platform, hopefully
+ *  fixed in a future release.  The error can be ignored unless the feature is
+ *  critical to the application.
+ *
+ *  @par
+ *  A function call that emits this error has no effect other than the error and
+ *  updating any existing out parameters.
+ */
+#define GLFW_FEATURE_UNIMPLEMENTED  0x0001000D
 /*! @} */
 
 /*! @addtogroup window
