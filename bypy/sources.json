@@ -22,8 +22,8 @@
         "name": "pkg-config",
         "os": "macos",
         "unix": {
-            "filename": "pkg-config-0.29.tar.gz",
-            "hash": "sha1:f4b19d203b3896a4293af4b62c7f908063c88a5a",
+            "filename": "pkg-config-0.29.2.tar.gz",
+            "hash": "sha256:6fc69c01688c9458a57eb9a1664c9aba372ccda420a02bf4429fe610e7e7d591",
             "urls": ["https://pkg-config.freedesktop.org/releases/{filename}"]
         }
     },
