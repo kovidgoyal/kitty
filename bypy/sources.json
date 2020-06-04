@@ -1,0 +1,256 @@
+[
+    {
+        "name": "zlib",
+        "unix": {
+            "filename": "zlib-1.2.11.tar.xz",
+            "hash": "sha256:4ff941449631ace0d4d203e3483be9dbc9da454084111f97ea0a2114e19bf066",
+            "urls": ["https://zlib.net/{filename}"]
+        }
+    },
+
+    {
+        "name": "bzip2",
+        "os": "linux",
+        "unix": {
+            "filename": "bzip2-1.0.8.tar.gz",
+            "hash": "sha256:ab5a03176ee106d3f0fa90e381da478ddae405918153cca248e682cd0c4a2269",
+            "urls": ["https://www.sourceware.org/pub/bzip2/bzip2-latest.tar.gz"]
+        }
+    },
+
+    {
+        "name": "pkg-config",
+        "os": "macos",
+        "unix": {
+            "filename": "pkg-config-0.29.tar.gz",
+            "hash": "sha1:f4b19d203b3896a4293af4b62c7f908063c88a5a",
+            "urls": ["https://pkg-config.freedesktop.org/releases/{filename}"]
+        }
+    },
+
+
+    {
+        "name": "expat",
+        "unix": {
+            "filename": "expat-2.2.6.tar.bz2",
+            "hash": "sha256:17b43c2716d521369f82fc2dc70f359860e90fa440bea65b3b85f0b246ea81f2",
+            "urls": ["https://github.com/libexpat/libexpat/releases/download/R_2_2_6/{filename}"]
+        }
+    },
+
+
+    {
+        "name": "xkbcommon",
+        "os": "linux",
+        "unix": {
+            "filename": "libxkbcommon-0.10.0.tar.xz",
+            "hash": "sha256:57c3630cdc38fb4734cd57fa349e92244f5ae3862813e533cedbd86721a0b6f2",
+            "urls": ["http://xkbcommon.org/download/{filename}"]
+        }
+    },
+
+    {
+        "name": "sqlite",
+        "unix": {
+            "filename": "sqlite-autoconf-3310100.tar.gz",
+            "hash": "sha1:0c30f5b22152a8166aa3bebb0f4bc1f3e9cc508b",
+            "urls": ["https://www.sqlite.org/2020/{filename}"]
+        }
+    },
+
+
+    {
+        "name": "libffi",
+        "unix": {
+            "filename": "libffi-3.2.1.tar.gz",
+            "hash": "sha1:280c265b789e041c02e5c97815793dfc283fb1e6",
+            "urls": ["ftp://sourceware.org/pub/libffi/{filename}"]
+        }
+    },
+
+    {
+        "name": "openssl",
+        "unix": {
+            "filename": "openssl-1.0.2u.tar.gz",
+            "hash": "sha256:ecd0c6ffb493dd06707d38b14bb4d8c2288bb7033735606569d8f90f89669d16",
+            "urls": ["https://www.openssl.org/source/{filename}"]
+        }
+    },
+
+    {
+        "name": "ncurses",
+        "os": "linux",
+        "unix": {
+            "filename": "ncurses-6.2.tar.gz",
+            "hash": "sha256:30306e0c76e0f9f1f0de987cf1c82a5c21e1ce6568b9227f7da5b71cbea86c9d",
+            "urls": ["https://invisible-mirror.net/archives/ncurses/{filename}"]
+        }
+    },
+
+    {
+        "name": "readline",
+        "os": "linux",
+        "unix": {
+            "filename": "readline-8.0.tar.gz",
+            "hash": "sha256:e339f51971478d369f8a053a330a190781acb9864cf4c541060f12078948e461",
+            "urls": ["http://ftp.gnu.org/gnu/readline/{filename}"]
+        }
+    },
+
+    {
+        "name": "xz",
+        "os": "macos,linux",
+        "unix": {
+            "filename": "xz-5.2.5.tar.gz",
+            "hash": "sha256:f6f4910fd033078738bd82bfba4f49219d03b17eb0794eb91efbae419f4aba10",
+            "urls": ["https://tukaani.org/xz/{filename}"]
+        }
+    },
+
+    {
+        "name": "python",
+        "unix": {
+            "filename": "Python-3.8.3.tar.xz",
+            "hash": "sha256:dfab5ec723c218082fe3d5d7ae17ecbdebffa9a1aea4d64aa3a2ecdd2e795864",
+            "urls": ["https://www.python.org/ftp/python/3.8.3/{filename}"]
+        }
+    },
+
+    {
+        "name": "setuptools",
+        "unix": {
+            "filename": "setuptools-41.0.1.zip",
+            "hash": "sha256:a222d126f5471598053c9a77f4b5d4f26eaa1f150ad6e01dcf1a42e185d05613",
+            "urls": ["pypi"]
+        }
+    },
+
+    {
+        "name": "pygments",
+        "unix": {
+            "filename": "Pygments-2.6.1.tar.gz",
+            "hash": "sha256:647344a061c249a3b74e230c739f434d7ea4d8b1d5f3721bc0f3558049b38f44",
+            "urls": ["pypi"]
+        }
+    },
+
+    {
+        "name": "cmake",
+        "os": "macos",
+        "unix": {
+            "filename": "cmake-3.6.0.tar.gz",
+            "hash": "sha1:6b0d2d7d93c2e74f8890c4b8b824deb3b36d24b6",
+            "urls": ["https://cmake.org/files/v3.6/{filename}"]
+        }
+    },
+
+    {
+        "name": "libpng",
+        "unix": {
+            "filename": "libpng-1.6.37.tar.xz",
+            "hash": "sha256:505e70834d35383537b6491e7ae8641f1a4bed1876dbfe361201fc80868d88ca",
+            "urls": ["http://downloads.sourceforge.net/sourceforge/libpng/{filename}"]
+        }
+    },
+
+    {
+        "name": "graphite",
+        "os": "linux",
+        "unix": {
+            "filename": "graphite2-1.3.5.tgz",
+            "hash": "md5:5b8d22a8bbf031838e31432868c0109c",
+            "urls": ["http://downloads.sourceforge.net/silgraphite/{filename}"]
+        }
+    },
+
+    {
+        "name": "pcre",
+        "os": "linux",
+        "unix": {
+            "filename": "pcre-8.42.tar.bz2",
+            "hash": "md5:085b6aa253e0f91cae70b3cdbe8c1ac2",
+            "urls": ["https://ftp.pcre.org/pub/pcre/{filename}"]
+        }
+    },
+
+    {
+        "name": "iconv",
+        "os": "linux",
+        "unix": {
+            "filename": "libiconv-1.16.tar.gz",
+            "hash": "sha256:e6a1b1b589654277ee790cce3734f07876ac4ccfaecbee8afa0b649cf529cc04",
+            "urls": ["http://ftp.gnu.org/pub/gnu/libiconv/{filename}"]
+        }
+    },
+
+    {
+        "name": "glib",
+        "os": "linux",
+        "unix": {
+            "filename": "glib-2.57.1.tar.xz",
+            "hash": "sha256:d029e7c4536835f1f103472f7510332c28d58b9b7d6cd0e9f45c2653e670d9b4",
+            "urls": ["http://ftp.gnome.org/pub/GNOME/sources/glib/2.57/{filename}"]
+        }
+    },
+
+
+    {
+        "name": "freetype",
+        "os": "linux",
+        "unix": {
+            "filename": "freetype-2.9.1.tar.bz2",
+            "hash": "md5:60ef7d8160cd4bf8cb118ee9d65367ca",
+            "urls": ["https://download.savannah.gnu.org/releases/freetype/{filename}"]
+        }
+    },
+
+    {
+        "name": "fontconfig",
+        "os": "linux",
+        "unix": {
+            "filename": "fontconfig-2.12.0.tar.bz2",
+            "hash": "sha256:b433e4efff1f68fdd8aac221ed1df3ff1e580ffedbada020a703fe64017d8224",
+            "urls": ["http://www.fontconfig.org/release/{filename}"]
+        }
+    },
+
+    {
+        "name": "harfbuzz",
+        "unix": {
+            "filename": "harfbuzz-1.7.2.tar.bz2",
+            "hash": "sha256:a790585e35c1a87f0dcc23580c84b7cc2324e6f67a2946178d278c2a36c790cb",
+            "urls": ["https://www.freedesktop.org/software/harfbuzz/release/{filename}"]
+        }
+    },
+
+    {
+        "name": "libxml2",
+        "os": "linux",
+        "unix": {
+            "filename": "libxml2-2.9.4.tar.gz",
+            "hash": "sha1:958ae70baf186263a4bd801a81dd5d682aedd1db",
+            "urls": ["ftp://xmlsoft.org/libxml2/{filename}"]
+        }
+    },
+
+    {
+        "name": "wayland",
+        "os": "linux",
+        "unix": {
+            "filename": "wayland-1.18.0.tar.xz",
+            "hash": "sha256:4675a79f091020817a98fd0484e7208c8762242266967f55a67776936c2e294d",
+            "urls": ["https://wayland.freedesktop.org/releases/{filename}"]
+        }
+    }, 
+
+    {
+        "name": "wayland-protocols",
+        "os": "linux",
+        "unix": {
+            "filename": "wayland-protocols-1.20.tar.xz",
+            "hash": "sha256:9782b7a1a863d82d7c92478497d13c758f52e7da4f197aa16443f73de77e4de7",
+            "urls": ["https://wayland.freedesktop.org/releases/{filename}"]
+        }
+    }
+
+]
