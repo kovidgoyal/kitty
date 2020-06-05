@@ -13,6 +13,10 @@ import tempfile
 import zipfile
 
 from bypy.constants import PREFIX, PYTHON, SW, python_major_minor_version
+from bypy.macos_sign import (
+    codesign, create_entitlements_file, make_certificate_useable, notarize_app,
+    verify_signature
+)
 from bypy.utils import current_dir, py_compile, run_shell, timeit, walk
 
 iv = globals()['init_env']
@@ -76,8 +80,54 @@ def strip_files(files, argv_max=(256 * 1024)):
             flipwritable(*args)
 
 
+def files_in(folder):
+    for record in os.walk(folder):
+        for f in record[-1]:
+            yield os.path.join(record[0], f)
+
+
+def expand_dirs(items, exclude=lambda x: x.endswith('.so')):
+    items = set(items)
+    dirs = set(x for x in items if os.path.isdir(x))
+    items.difference_update(dirs)
+    for x in dirs:
+        items.update({y for y in files_in(x) if not exclude(y)})
+    return items
+
+
+def do_sign(app_dir):
+    with current_dir(os.path.join(app_dir, 'Contents')):
+        # Sign all .so files
+        so_files = {x for x in files_in('.') if x.endswith('.so')}
+        codesign(so_files)
+        # Sign everything else in Frameworks
+        with current_dir('Frameworks'):
+            fw = set(glob.glob('*.framework'))
+            codesign(fw)
+            items = set(os.listdir('.')) - fw
+            codesign(expand_dirs(items))
+
+    # Now sign the main app
+    codesign(app_dir)
+    verify_signature(app_dir)
+
+
 def sign_app(app_dir, notarize):
-    pass
+    # Copied from iTerm2: https://github.com/gnachman/iTerm2/blob/master/iTerm2.entitlements
+    create_entitlements_file({
+        'com.apple.security.automation.apple-events': True,
+        'com.apple.security.cs.allow-jit': True,
+        'com.apple.security.device.audio-input': True,
+        'com.apple.security.device.camera': True,
+        'com.apple.security.personal-information.addressbook': True,
+        'com.apple.security.personal-information.calendars': True,
+        'com.apple.security.personal-information.location': True,
+        'com.apple.security.personal-information.photos-library': True,
+    })
+    with make_certificate_useable():
+        do_sign(app_dir)
+        if notarize:
+            notarize_app(app_dir)
 
 
 class Freeze(object):
@@ -111,6 +161,7 @@ class Freeze(object):
         self.add_stdlib()
         self.add_misc_libraries()
         self.compile_py_modules()
+        self.fix_dependencies_in_kitty()
         if not self.dont_strip:
             self.strip_files()
         # self.run_shell()
@@ -249,6 +300,12 @@ class Freeze(object):
                 self.fix_dependencies_in_lib(f)
 
     @flush
+    def fix_dependencies_in_kitty(self):
+        for f in walk(join(self.resources_dir, 'kitty')):
+            if f.endswith('.so'):
+                self.fix_dependencies_in_lib(f)
+
+    @flush
     def postprocess_package(self, src_path, dest_path):
         pass
 
@@ -334,8 +391,8 @@ class Freeze(object):
         print('\nCompiling Python modules')
         self.remove_bytecode(join(self.resources_dir, 'Python'))
         py_compile(join(self.resources_dir, 'Python'))
-        self.remove_bytecode(join(self.frameworks_dir, 'kitty'))
-        py_compile(join(self.frameworks_dir, 'kitty'))
+        self.remove_bytecode(join(self.resources_dir, 'kitty'))
+        py_compile(join(self.resources_dir, 'kitty'))
 
     @flush
     def makedmg(self, d, volname, internet_enable=True, format='ULFO'):

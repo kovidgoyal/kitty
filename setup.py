@@ -737,7 +737,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     elif bundle_type == 'source':
         cppflags.append('-DFROM_SOURCE')
     if bundle_type.startswith('macos-'):
-        klp = '../Frameworks/kitty'
+        klp = '../Resources/kitty'
     elif bundle_type.startswith('linux-'):
         klp = '../{}/kitty'.format(args.libdir_name.strip('/'))
     elif bundle_type == 'source':
@@ -942,9 +942,9 @@ def create_macos_bundle_gunk(dest: str) -> None:
     os.rename(ddir / 'share', ddir / 'Contents/Resources')
     os.rename(ddir / 'bin', ddir / 'Contents/MacOS')
     os.rename(ddir / 'lib', ddir / 'Contents/Frameworks')
-    os.symlink('kitty', ddir / 'Contents/MacOS/kitty-deref-symlink')
+    os.rename(ddir / 'Contents/Frameworks/kitty', ddir / 'Contents/Resources/kitty')
     launcher = ddir / 'Contents/MacOS/kitty'
-    in_src_launcher = ddir / 'Contents/Frameworks/kitty/kitty/launcher/kitty'
+    in_src_launcher = ddir / 'Contents/Resources/kitty/kitty/launcher/kitty'
     if os.path.exists(in_src_launcher):
         os.remove(in_src_launcher)
     os.makedirs(os.path.dirname(in_src_launcher), exist_ok=True)

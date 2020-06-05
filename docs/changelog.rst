@@ -36,6 +36,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - X11: Recompile keymaps on XkbNewKeyboardNotify events (:iss:`2726`)
 
+- macOS: Notarize the kitty application (:iss:`2040`)
+
 
 0.17.4 [2020-05-09]
 --------------------
