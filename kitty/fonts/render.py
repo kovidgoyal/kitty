@@ -52,10 +52,13 @@ def merge_ranges(a: Range, b: Range, priority_map: Dict[Tuple[int, int], int]) -
     a_start, a_end = a[0]
     b_start, b_end = b[0]
     a_val, b_val = a[1], b[1]
+    a_prio, b_prio = priority_map[a[0]], priority_map[b[0]]
     if b_start > a_end:
         if b_start == a_end + 1 and a_val == b_val:
             # ranges can be coalesced
-            yield ((a_start, b_end), a_val)
+            r = ((a_start, b_end), a_val)
+            priority_map[r[0]] = max(a_prio, b_prio)
+            yield r
             return
         # disjoint ranges
         yield a
@@ -63,35 +66,49 @@ def merge_ranges(a: Range, b: Range, priority_map: Dict[Tuple[int, int], int]) -
         return
     if a_val == b_val:
         # mergeable ranges
-        yield ((a_start, max(a_end, b_end)), a_val)
+        r = ((a_start, max(a_end, b_end)), a_val)
+        priority_map[r[0]] = max(a_prio, b_prio)
+        yield r
         return
     before_range = mid_range = after_range = None
+    before_range_prio = mid_range_prio = after_range_prio = 0
     if b_start > a_start:
         before_range = ((a_start, b_start - 1), a_val)
+        before_range_prio = a_prio
     mid_end = min(a_end, b_end)
     if mid_end >= b_start:
         # overlap range
         mid_range = ((b_start, mid_end), a_val if priority_map[a[0]] >= priority_map[b[0]] else b_val)
+        mid_range_prio = max(a_prio, b_prio)
     # after range
     if mid_end is a_end:
         if b_end > a_end:
             after_range = ((a_end + 1, b_end), b_val)
+            after_range_prio = b_prio
     else:
         if a_end > b_end:
             after_range = ((b_end + 1, a_end), a_val)
+            after_range_prio = a_prio
     # check if the before, mid and after ranges can be coalesced
     ranges: List[Range] = []
-    for r in (before_range, mid_range, after_range):
-        if r is None:
+    priorities: List[int] = []
+    for rq, prio in ((before_range, before_range_prio), (mid_range, mid_range_prio), (after_range, after_range_prio)):
+        if rq is None:
             continue
+        r = rq
         if ranges:
             x = ranges[-1]
             if x[0][1] + 1 == r[0][0] and x[1] == r[1]:
                 ranges[-1] = ((x[0][0], r[0][1]), x[1])
+                priorities[-1] = max(priorities[-1], prio)
             else:
                 ranges.append(r)
+                priorities.append(prio)
         else:
             ranges.append(r)
+            priorities.append(prio)
+    for r, p in zip(ranges, priorities):
+        priority_map[r[0]] = p
     yield from ranges
 
 
@@ -104,7 +121,18 @@ def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, in
 
     for i in range(1, len(ranges)):
         r = ranges[i]
-        ans[-1:] = list(merge_ranges(ans[-1], r, priority_map))
+        new_ranges = merge_ranges(ans[-1], r, priority_map)
+        if ans:
+            del ans[-1]
+        if not ans:
+            ans = list(new_ranges)
+        else:
+            for r in new_ranges:
+                prev = ans[-1]
+                if prev[0][1] + 1 == r[0][0] and prev[1] == r[1]:
+                    ans[-1] = (prev[0][0], r[0][1]), prev[1]
+                else:
+                    ans.append(r)
     return dict(ans)
 
 
