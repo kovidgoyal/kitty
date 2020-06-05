@@ -698,7 +698,7 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
                 }
             }
         } else {
-            fake_scroll(abs(s), upwards);
+            fake_scroll(w, abs(s), upwards);
         }
     }
 }
