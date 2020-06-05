@@ -27,12 +27,12 @@
 
 #include <dlfcn.h>
 
-#define _GLFW_PLATFORM_WINDOW_STATE _GLFWwindowNull null
+#define _GLFW_PLATFORM_WINDOW_STATE         _GLFWwindowNull null
+#define _GLFW_PLATFORM_LIBRARY_WINDOW_STATE _GLFWlibraryNull null
+#define _GLFW_PLATFORM_MONITOR_STATE        _GLFWmonitorNull null
 
 #define _GLFW_PLATFORM_CONTEXT_STATE
-#define _GLFW_PLATFORM_MONITOR_STATE
 #define _GLFW_PLATFORM_CURSOR_STATE
-#define _GLFW_PLATFORM_LIBRARY_WINDOW_STATE
 #define _GLFW_PLATFORM_LIBRARY_CONTEXT_STATE
 #define _GLFW_EGL_CONTEXT_STATE
 #define _GLFW_EGL_LIBRARY_CONTEXT_STATE
@@ -56,7 +56,36 @@
 //
 typedef struct _GLFWwindowNull
 {
-    int width;
-    int height;
+    int             xpos;
+    int             ypos;
+    int             width;
+    int             height;
+    char*           title;
+    bool            visible;
+    bool            iconified;
+    bool            maximized;
+    bool            resizable;
+    bool            decorated;
+    bool            floating;
+    bool            transparent;
+    float           opacity;
 } _GLFWwindowNull;
 
+// Null-specific per-monitor data
+//
+typedef struct _GLFWmonitorNull
+{
+    GLFWgammaramp   ramp;
+} _GLFWmonitorNull;
+
+// Null-specific global data
+//
+typedef struct _GLFWlibraryNull
+{
+    int             xcursor;
+    int             ycursor;
+    char*           clipboardString;
+    _GLFWwindow*    focusedWindow;
+} _GLFWlibraryNull;
+
+void _glfwPollMonitorsNull(void);
