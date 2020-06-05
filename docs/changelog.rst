@@ -34,6 +34,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Fix mouse cursor rendering on HiDPI screens (:pull:`2709`)
 
+- X11: Recompile keymaps on XkbNewKeyboardNotify events (:iss:`2726`)
+
 
 0.17.4 [2020-05-09]
 --------------------

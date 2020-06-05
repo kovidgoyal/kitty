@@ -1177,8 +1177,11 @@ static void processEvent(XEvent *event)
     {
         XkbEvent *kb_event = (XkbEvent*)event;
         switch(kb_event->any.xkb_type) {
-            case XkbNewKeyboardNotify:
-                if(!glfw_xkb_update_x11_keyboard_id(&_glfw.x11.xkb)) return;
+            case XkbNewKeyboardNotify: {
+                int32_t old_id = _glfw.x11.xkb.keyboard_device_id;
+                if (!glfw_xkb_update_x11_keyboard_id(&_glfw.x11.xkb)) return;
+                if (old_id != _glfw.x11.xkb.keyboard_device_id) keymap_dirty = true;
+            }
                 /* fallthrough */
             case XkbMapNotify:
             {
