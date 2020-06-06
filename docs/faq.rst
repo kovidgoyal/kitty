@@ -169,7 +169,7 @@ only monospace fonts, since every cell in the grid has to be the same size. If
 your font is not listed in ``kitty list-fonts`` it means that it is not
 monospace. On Linux you can list all monospace fonts with::
 
-    fc-list : family spacing | grep -e spacing=100 -e spacing=90
+    fc-list : family spacing outline scalable | grep -e spacing=100 -e spacing=90 | grep -e outline=True | grep -e scalable=True
 
 Note that the spacing property is calculated by fontconfig based on actual
 glyph widths in the font. If for some reason fontconfig concludes your favorite
