@@ -15,6 +15,13 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Tall and Fat layouts: Add mappable actions to increase or decrease the number
   of full size windows (:iss:`2688`)
 
+- Allow sending the back and forward mouse buttons to terminal applications
+  (:pull:`2742`)
+
+- **Backwards incompatibility**: The numbers used to encode mouse buttons
+  for the ``send_mouse_event`` function that can be used in kittens have
+  been changed (see :ref:`send_mouse_event`).
+
 - Add an option :opt:`confirm_os_window_close` to ask for confirmation
   when closing an OS window with multiple kitty windows.
 

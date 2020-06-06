@@ -132,6 +132,8 @@ layout, by simply adding the line::
 To the ``handle_result()`` function, above.
 
 
+.. _send_mouse_event:
+
 Sending mouse events
 --------------------
 
