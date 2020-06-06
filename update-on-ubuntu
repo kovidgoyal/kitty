@@ -47,10 +47,9 @@ def run(what):
 with open(__file__, 'rb') as f:
     script = f.read().decode('utf-8')
 script = script[:script.find('# EOF_REMOTE')].replace('if False:', 'if True:', 1)
-os.chdir(os.path.expanduser('~/work/build-kitty'))
 with tempfile.NamedTemporaryFile(prefix='install-tarball-', suffix='.py') as f:
-    run('./linux 64 kitty --debug-build --compression-level=1')
+    run('python ../bypy linux program --dont-strip --compression-level=1')
     f.write(script.encode('utf-8'))
     f.flush()
-    run(f'scp build/linux/64/sw/dist/{tarball} {f.name} {HOST}:/tmp')
+    run(f'scp bypy/b/linux/64/sw/dist/{tarball} {f.name} {HOST}:/tmp')
     run(f'ssh {HOST} python /tmp/{os.path.basename(f.name)} /tmp/{tarball}')
