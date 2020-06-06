@@ -49,10 +49,9 @@ def run(what):
 with open(__file__, 'rb') as f:
     script = f.read().decode('utf-8')
 script = script[:script.find('# EOF_REMOTE')].replace('if False:', 'if True:', 1)
-os.chdir(os.path.expanduser('~/work/build-kitty'))
 with tempfile.NamedTemporaryFile(prefix='install-dmg-', suffix='.py') as f:
-    run('./osx kitty --debug-build')
+    run('python ../bypy macos program --dont-strip')
     f.write(script.encode('utf-8'))
     f.flush()
-    run(f'scp build/osx/dist/{dmg} {f.name} {HOST}:/tmp')
+    run(f'scp bypy/b/macos/dist/{dmg} {f.name} {HOST}:/tmp')
     run(f'ssh {HOST} python /tmp/{os.path.basename(f.name)} /tmp/{dmg}')
