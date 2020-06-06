@@ -21,7 +21,6 @@ from typing import IO, Any, Dict, Iterable, List, Optional, cast
 import requests
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
-build_path = os.path.abspath('../build-kitty')
 docs_dir = os.path.abspath('docs')
 publish_dir = os.path.abspath(os.path.join('..', 'kovidgoyal.github.io', 'kitty'))
 with open('kitty/constants.py') as f:
@@ -47,11 +46,10 @@ def call(*cmd: str, cwd: Optional[str] = None) -> None:
 
 
 def run_build(args: Any) -> None:
-    os.chdir(build_path)
-    call('./linux 64 kitty')
-    call('./osx kitty --sign-installers')
-    call('./osx shutdown')
-    call('./linux 32 kitty')
+    call('python ../bypy linux program')
+    call('python ../bypy linux 32 program')
+    call('python ../bypy macos program --sign-installers --notarize')
+    call('python ../bypy macos shutdown')
 
 
 def run_tag(args: Any) -> None:
@@ -329,9 +327,9 @@ def get_github_data() -> Dict[str, str]:
 
 def run_upload(args: Any) -> None:
     files = {
-        os.path.join(build_path, 'build', f.format(version)): desc
+        os.path.join('bypy', 'b', f.format(version)): desc
         for f, desc in {
-            'osx/dist/kitty-{}.dmg': 'macOS dmg',
+            'macos/dist/kitty-{}.dmg': 'macOS dmg',
             'linux/64/sw/dist/kitty-{}-x86_64.txz': 'Linux amd64 binary bundle',
             'linux/32/sw/dist/kitty-{}-i686.txz': 'Linux x86 binary bundle',
         }.items()
