@@ -142,12 +142,13 @@ those using::
     send_mouse_event(screen, x, y, button, action, mods)
 
 ``screen`` is the ``screen`` attribute of the window you want to send the event
-to. ``x`` and ``y`` are the 0-indexed coordinates. ``button`` is
-``GLFW_MOUSE_BUTTON_{button}`` where ``{button}`` is one of ``LEFT``,
-``RIGHT``, ``MIDDLE`` or a digit from ``1`` to ``8``. ``action`` is one of
-``PRESS``, ``RELEASE``, ``DRAG`` or ``MOVE``. ``mods`` is a bitmask of
-``GLFW_MOD_{mod}`` where ``{mod}`` is one of ``SHIFT``, ``CONTROL`` or ``ALT``.
-All the mentioned constants are imported from ``kitty.fast_data_types``.
+to. ``x`` and ``y`` are the 0-indexed coordinates. ``button`` is a number using
+the same numbering as X11 (left: ``1``, middle: ``2``, right: ``3``, scroll up:
+``4``, scroll down: ``5``, scroll left: ``6``, scroll right: ``7``, back:
+``8``, forward: ``9``). ``action`` is one of ``PRESS``, ``RELEASE``, ``DRAG``
+or ``MOVE``. ``mods`` is a bitmask of ``GLFW_MOD_{mod}`` where ``{mod}`` is one
+of ``SHIFT``, ``CONTROL`` or ``ALT``. All the mentioned constants are imported
+from ``kitty.fast_data_types``.
 
 For example, to send a left click at position x: 2, y: 3 to the active window::
 
