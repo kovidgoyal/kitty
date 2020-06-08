@@ -27,9 +27,19 @@ class LastUsedLayout(RemoteCommand):
     options_spec = '''\
 --all -a
 type=bool-set
-Change the layout in all tabs.''' + '\n\n\n' + MATCH_TAB_OPTION
+Change the layout in all tabs.
+
+
+--no-response
+type=bool-set
+default=false
+Don't wait for a response from kitty. This means that even if no matching tab is found,
+the command will exit with a success code.
+''' + '\n\n\n' + MATCH_TAB_OPTION
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
+        if opts.no_response:
+            global_opts.no_command_response = True
         return {'match': opts.match, 'all': opts.all}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
