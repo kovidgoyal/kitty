@@ -160,11 +160,12 @@ class WindowList:
         seen = set()
         gid_map = {g.id: g for g in self.groups}
         for gid in self.active_group_history:
-            g = gid_map[gid]
-            w = g.active_window_id
-            if w > 0 and w not in seen:
-                seen.add(w)
-                ans.append(w)
+            g = gid_map.get(gid)
+            if g is not None:
+                w = g.active_window_id
+                if w > 0 and w not in seen:
+                    seen.add(w)
+                    ans.append(w)
         return ans
 
     def notify_on_active_window_change(self, old_active_window: Optional[WindowType], new_active_window: Optional[WindowType]) -> None:
