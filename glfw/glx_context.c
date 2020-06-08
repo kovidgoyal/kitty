@@ -58,6 +58,13 @@ static bool chooseGLXFBConfig(const _GLFWfbconfig* desired,
     int i, nativeCount, usableCount;
     const char* vendor;
     bool trustWindowBit = true;
+    static _GLFWfbconfig prev_desired  = {0};
+    static uintptr_t prev_result = 0;
+    if (prev_result != 0 && memcmp(&prev_desired, desired, sizeof(_GLFWfbconfig)) == 0) {
+        *result = (GLXFBConfig)prev_result;
+        return true;
+    }
+    prev_desired = *desired;
 
     // HACK: This is a (hopefully temporary) workaround for Chromium
     //       (VirtualBox GL) not setting the window bit on any GLXFBConfigs
@@ -133,8 +140,10 @@ static bool chooseGLXFBConfig(const _GLFWfbconfig* desired,
     }
 
     closest = _glfwChooseFBConfig(desired, usableConfigs, usableCount);
-    if (closest)
+    if (closest) {
         *result = (GLXFBConfig) closest->handle;
+        prev_result = (uintptr_t) closest->handle;
+    }
 
     XFree(nativeConfigs);
     free(usableConfigs);

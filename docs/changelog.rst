@@ -43,6 +43,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - X11: Recompile keymaps on XkbNewKeyboardNotify events (:iss:`2726`)
 
+- X11: Reduce startup time by ~25% by only querying GLX for framebuffer
+  configurations once (:iss:`2754`)
+
 - macOS: Notarize the kitty application (:iss:`2040`)
 
 
