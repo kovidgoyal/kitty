@@ -30,7 +30,7 @@ alpha-blending and text over graphics.
 
 Some programs that use the kitty graphics protocol:
 
- * `termpdf <https://github.com/dsanson/termpdf>`_ - a terminal PDF/DJVU/CBR viewer
+ * `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
  * `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with
    image previews, see this `PR <https://github.com/ranger/ranger/pull/1077>`_
  * :doc:`kitty-diff <kittens/diff>` - a side-by-side terminal diff program with support for images
