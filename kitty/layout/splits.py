@@ -404,7 +404,9 @@ class Splits(Layout):
         return True
 
     def window_independent_borders(self, all_windows: WindowList) -> Generator[Edges, None, None]:
-        if not lgd.draw_minimal_borders:
+        groups = tuple(all_windows.iter_all_layoutable_groups())
+        window_count = len(groups)
+        if not lgd.draw_minimal_borders or window_count < 2:
             return
         for pair in self.pairs_root.self_and_descendants():
             if pair.between_border is not None:
