@@ -76,6 +76,7 @@ static const char* getEGLErrorString(EGLint error)
     }
 }
 
+#ifdef _GLFW_X11
 // Returns the specified attribute of the specified EGLConfig
 //
 static int getEGLConfigAttrib(EGLConfig config, int attrib)
@@ -84,6 +85,7 @@ static int getEGLConfigAttrib(EGLConfig config, int attrib)
     eglGetConfigAttrib(_glfw.egl.display, config, attrib, &value);
     return value;
 }
+#endif
 
 // Return the EGLConfig most closely matching the specified hints
 //
@@ -91,39 +93,44 @@ static bool chooseEGLConfig(const _GLFWctxconfig* ctxconfig,
                                 const _GLFWfbconfig* desired,
                                 EGLConfig* result)
 {
-    EGLConfig* nativeConfigs;
-    _GLFWfbconfig* usableConfigs;
-    const _GLFWfbconfig* closest;
-    int i, nativeCount, usableCount;
+    EGLConfig configs[512];
+    int i = 0, nativeCount = 0, ans_idx = 0;
+    EGLint attributes[64];
+#define ATTR(k, v) { attributes[i++] = k; attributes[i++] = v; }
+    ATTR(EGL_COLOR_BUFFER_TYPE, EGL_RGB_BUFFER);
+    ATTR(EGL_SURFACE_TYPE, EGL_WINDOW_BIT);
+    if (ctxconfig->client == GLFW_OPENGL_ES_API) {
+        if (ctxconfig->major == 1) ATTR(EGL_RENDERABLE_TYPE, EGL_OPENGL_ES_BIT)
+        else ATTR(EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT);
+    }
+    else if (ctxconfig->client == GLFW_OPENGL_API) ATTR(EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT);
+    if (desired->samples > 0) ATTR(EGL_SAMPLES, desired->samples);
+    if (desired->depthBits > 0) ATTR(EGL_DEPTH_SIZE, desired->depthBits);
+    if (desired->stencilBits > 0) ATTR(EGL_STENCIL_SIZE, desired->stencilBits);
+    if (desired->redBits > 0) ATTR(EGL_RED_SIZE, desired->redBits);
+    if (desired->greenBits > 0) ATTR(EGL_GREEN_SIZE, desired->greenBits);
+    if (desired->blueBits > 0) ATTR(EGL_BLUE_SIZE, desired->blueBits);
+    if (desired->alphaBits > 0) ATTR(EGL_ALPHA_SIZE, desired->alphaBits);
+    ATTR(EGL_NONE, EGL_NONE);
+#undef ATTR
+    if (!eglChooseConfig(_glfw.egl.display, attributes, configs, sizeof(configs)/sizeof(configs[0]), &nativeCount)) {
+        _glfwInputError(GLFW_API_UNAVAILABLE, "EGL: eglChooseConfig failed");
+        return false;
+    }
 
-    eglGetConfigs(_glfw.egl.display, NULL, 0, &nativeCount);
     if (!nativeCount)
     {
         _glfwInputError(GLFW_API_UNAVAILABLE, "EGL: No EGLConfigs returned");
         return false;
     }
 
-    nativeConfigs = calloc(nativeCount, sizeof(EGLConfig));
-    eglGetConfigs(_glfw.egl.display, nativeConfigs, nativeCount, &nativeCount);
-
-    usableConfigs = calloc(nativeCount, sizeof(_GLFWfbconfig));
-    usableCount = 0;
 
     for (i = 0;  i < nativeCount;  i++)
     {
-        const EGLConfig n = nativeConfigs[i];
-        _GLFWfbconfig* u = usableConfigs + usableCount;
-
-        // Only consider RGB(A) EGLConfigs
-        if (getEGLConfigAttrib(n, EGL_COLOR_BUFFER_TYPE) != EGL_RGB_BUFFER)
-            continue;
-
-        // Only consider window EGLConfigs
-        if (!(getEGLConfigAttrib(n, EGL_SURFACE_TYPE) & EGL_WINDOW_BIT))
-            continue;
 
 #if defined(_GLFW_X11)
         {
+            const EGLConfig n = configs[i];
             XVisualInfo vi = {0};
 
             // Only consider EGLConfigs with associated Visuals
@@ -138,55 +145,18 @@ static bool chooseEGLConfig(const _GLFWctxconfig* ctxconfig,
                     XGetVisualInfo(_glfw.x11.display, VisualIDMask, &vi, &count);
                 if (vis)
                 {
-                    u->transparent = _glfwIsVisualTransparentX11(vis[0].visual);
+                    bool transparent = _glfwIsVisualTransparentX11(vis[0].visual);
                     XFree(vis);
+                    if (!transparent) continue;
                 }
             }
         }
 #endif // _GLFW_X11
-
-        if (ctxconfig->client == GLFW_OPENGL_ES_API)
-        {
-            if (ctxconfig->major == 1)
-            {
-                if (!(getEGLConfigAttrib(n, EGL_RENDERABLE_TYPE) & EGL_OPENGL_ES_BIT))
-                    continue;
-            }
-            else
-            {
-                if (!(getEGLConfigAttrib(n, EGL_RENDERABLE_TYPE) & EGL_OPENGL_ES2_BIT))
-                    continue;
-            }
-        }
-        else if (ctxconfig->client == GLFW_OPENGL_API)
-        {
-            if (!(getEGLConfigAttrib(n, EGL_RENDERABLE_TYPE) & EGL_OPENGL_BIT))
-                continue;
-        }
-
-        u->redBits = getEGLConfigAttrib(n, EGL_RED_SIZE);
-        u->greenBits = getEGLConfigAttrib(n, EGL_GREEN_SIZE);
-        u->blueBits = getEGLConfigAttrib(n, EGL_BLUE_SIZE);
-
-        u->alphaBits = getEGLConfigAttrib(n, EGL_ALPHA_SIZE);
-        u->depthBits = getEGLConfigAttrib(n, EGL_DEPTH_SIZE);
-        u->stencilBits = getEGLConfigAttrib(n, EGL_STENCIL_SIZE);
-
-        u->samples = getEGLConfigAttrib(n, EGL_SAMPLES);
-        u->doublebuffer = true;
-
-        u->handle = (uintptr_t) n;
-        usableCount++;
+        ans_idx = i;
+        break;
     }
-
-    closest = _glfwChooseFBConfig(desired, usableConfigs, usableCount);
-    if (closest)
-        *result = (EGLConfig) closest->handle;
-
-    free(nativeConfigs);
-    free(usableConfigs);
-
-    return closest != NULL;
+    *result = configs[ans_idx];
+    return true;
 }
 
 static void makeContextCurrentEGL(_GLFWwindow* window)
@@ -340,6 +310,7 @@ bool _glfwInitEGL(void)
 
     glfw_dlsym(_glfw.egl.GetConfigAttrib, _glfw.egl.handle, "eglGetConfigAttrib");
     glfw_dlsym(_glfw.egl.GetConfigs, _glfw.egl.handle, "eglGetConfigs");
+    glfw_dlsym(_glfw.egl.ChooseConfig, _glfw.egl.handle, "eglChooseConfig");
     glfw_dlsym(_glfw.egl.GetDisplay, _glfw.egl.handle, "eglGetDisplay");
     glfw_dlsym(_glfw.egl.GetError, _glfw.egl.handle, "eglGetError");
     glfw_dlsym(_glfw.egl.Initialize, _glfw.egl.handle, "eglInitialize");
@@ -357,6 +328,7 @@ bool _glfwInitEGL(void)
 
     if (!_glfw.egl.GetConfigAttrib ||
         !_glfw.egl.GetConfigs ||
+        !_glfw.egl.ChooseConfig ||
         !_glfw.egl.GetDisplay ||
         !_glfw.egl.GetError ||
         !_glfw.egl.Initialize ||

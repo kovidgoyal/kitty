@@ -120,6 +120,7 @@ typedef void* EGLSurface;
 // EGL function pointer typedefs
 typedef EGLBoolean (EGLAPIENTRY * PFN_eglGetConfigAttrib)(EGLDisplay,EGLConfig,EGLint,EGLint*);
 typedef EGLBoolean (EGLAPIENTRY * PFN_eglGetConfigs)(EGLDisplay,EGLConfig*,EGLint,EGLint*);
+typedef EGLBoolean (EGLAPIENTRY * PFN_eglChooseConfig)(EGLDisplay,EGLint const*,EGLConfig*,EGLint,EGLint*);
 typedef EGLDisplay (EGLAPIENTRY * PFN_eglGetDisplay)(EGLNativeDisplayType);
 typedef EGLint (EGLAPIENTRY * PFN_eglGetError)(void);
 typedef EGLBoolean (EGLAPIENTRY * PFN_eglInitialize)(EGLDisplay,EGLint*,EGLint*);
@@ -136,6 +137,7 @@ typedef const char* (EGLAPIENTRY * PFN_eglQueryString)(EGLDisplay,EGLint);
 typedef GLFWglproc (EGLAPIENTRY * PFN_eglGetProcAddress)(const char*);
 #define eglGetConfigAttrib _glfw.egl.GetConfigAttrib
 #define eglGetConfigs _glfw.egl.GetConfigs
+#define eglChooseConfig _glfw.egl.ChooseConfig
 #define eglGetDisplay _glfw.egl.GetDisplay
 #define eglGetError _glfw.egl.GetError
 #define eglInitialize _glfw.egl.Initialize
@@ -185,6 +187,7 @@ typedef struct _GLFWlibraryEGL
 
     PFN_eglGetConfigAttrib      GetConfigAttrib;
     PFN_eglGetConfigs           GetConfigs;
+    PFN_eglChooseConfig         ChooseConfig;
     PFN_eglGetDisplay           GetDisplay;
     PFN_eglGetError             GetError;
     PFN_eglInitialize           Initialize;
