@@ -73,6 +73,7 @@ typedef struct __GLXcontext* GLXContext;
 typedef void (*__GLXextproc)(void);
 
 typedef int (*PFNGLXGETFBCONFIGATTRIBPROC)(Display*,GLXFBConfig,int,int*);
+typedef GLXFBConfig* (*PFNGLXCHOOSEFBCONFIGPROC)(Display*,int,const int*,int*);
 typedef const char* (*PFNGLXGETCLIENTSTRINGPROC)(Display*,int);
 typedef Bool (*PFNGLXQUERYEXTENSIONPROC)(Display*,int*,int*);
 typedef Bool (*PFNGLXQUERYVERSIONPROC)(Display*,int*,int*);
@@ -95,6 +96,7 @@ typedef GLXContext (*PFNGLXCREATECONTEXTATTRIBSARBPROC)(Display*,GLXFBConfig,GLX
 // libGL.so function pointer typedefs
 #define glXGetFBConfigs _glfw.glx.GetFBConfigs
 #define glXGetFBConfigAttrib _glfw.glx.GetFBConfigAttrib
+#define glXChooseFBConfig _glfw.glx.ChooseFBConfig
 #define glXGetClientString _glfw.glx.GetClientString
 #define glXQueryExtension _glfw.glx.QueryExtension
 #define glXQueryVersion _glfw.glx.QueryVersion
@@ -134,6 +136,7 @@ typedef struct _GLFWlibraryGLX
     // GLX 1.3 functions
     PFNGLXGETFBCONFIGSPROC              GetFBConfigs;
     PFNGLXGETFBCONFIGATTRIBPROC         GetFBConfigAttrib;
+    PFNGLXCHOOSEFBCONFIGPROC            ChooseFBConfig;
     PFNGLXGETCLIENTSTRINGPROC           GetClientString;
     PFNGLXQUERYEXTENSIONPROC            QueryExtension;
     PFNGLXQUERYVERSIONPROC              QueryVersion;
