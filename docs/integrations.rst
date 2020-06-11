@@ -65,6 +65,9 @@ such a split windows, previews, REPLs etc.
 `vim-kitty-navigator <https://github.com/knubie/vim-kitty-navigator>`_
     allows you to navigate seamlessly between vim and kitty splits using a consistent set of hotkeys.
 
+`vim-test <https://github.com/vim-test/vim-test>`_
+    allows easily running tests in a terminal window
+
 
 Scrollback manipulation
 -------------------------
