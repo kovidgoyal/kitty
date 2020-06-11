@@ -42,6 +42,12 @@
 #include <sys/mman.h>
 
 static void
+load_cursor_theme(_GLFWwindow* window) {
+    window->wl.cursorTheme = _wlCursorThemeManage(
+        _glfw.wl.cursorThemeManager, window->wl.cursorTheme, _wlCursorPxFromScale(window->wl.scale));
+}
+
+static void
 setCursorImage(_GLFWwindow* window)
 {
     _GLFWcursorWayland defaultCursor = {.shape = GLFW_ARROW_CURSOR};
@@ -57,6 +63,7 @@ setCursorImage(_GLFWwindow* window)
     } else
     {
         if (cursorWayland->scale != scale) {
+            if (!window->wl.cursorTheme) load_cursor_theme(window);
             struct wl_cursor *newCursor = _glfwLoadCursor(cursorWayland->shape, window->wl.cursorTheme);
             if (newCursor != NULL) {
                 cursorWayland->cursor = newCursor;
@@ -125,9 +132,7 @@ static bool checkScaleChange(_GLFWwindow* window)
     {
         window->wl.scale = scale;
         wl_surface_set_buffer_scale(window->wl.surface, scale);
-        window->wl.cursorTheme = _wlCursorThemeManage(_glfw.wl.cursorThemeManager,
-                                                      window->wl.cursorTheme,
-                                                      _wlCursorPxFromScale(scale));
+        load_cursor_theme(window);
         setCursorImage(window);
         return true;
     }
@@ -838,6 +843,7 @@ try_cursor_names(struct wl_cursor_theme* theme, int arg_count, ...) {
 struct wl_cursor* _glfwLoadCursor(GLFWCursorShape shape, struct wl_cursor_theme* theme)
 {
     static bool warnings[GLFW_INVALID_CURSOR] = {0};
+    if (!theme) return NULL;
 #define NUMARGS(...)  (sizeof((const char*[]){__VA_ARGS__})/sizeof(const char*))
 #define C(name, ...) case name: { \
     ans = try_cursor_names(theme, NUMARGS(__VA_ARGS__), __VA_ARGS__); \
