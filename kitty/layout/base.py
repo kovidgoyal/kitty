@@ -385,12 +385,13 @@ class Layout:
     def compute_needs_borders_map(self, all_windows: WindowList) -> Dict[int, bool]:
         return all_windows.compute_needs_borders_map(lgd.draw_active_borders)
 
-    def resolve_borders(self, windows: WindowList) -> Generator[Borders, None, None]:
+    def resolve_borders(self, all_windows: WindowList) -> Generator[Borders, None, None]:
         if lgd.draw_minimal_borders:
-            needs_borders_map = self.compute_needs_borders_map(windows)
-            yield from self.minimal_borders(windows, needs_borders_map)
+            needs_borders_map = self.compute_needs_borders_map(all_windows)
+            yield from self.minimal_borders(all_windows, needs_borders_map)
         else:
-            yield from Layout.minimal_borders(self, windows, {})
+            for i in range(all_windows.num_groups):
+                yield all_borders
 
     def window_independent_borders(self, windows: WindowList) -> Generator[Edges, None, None]:
         return
