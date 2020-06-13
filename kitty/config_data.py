@@ -798,6 +798,8 @@ def tab_separator(x: str) -> str:
     for q in '\'"':
         if x.startswith(q) and x.endswith(q):
             x = x[1:-1]
+            if not x:
+                return ''
             break
     if not x.strip():
         x = ('\xa0' * len(x)) if x else default_tab_separator
