@@ -318,8 +318,9 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     bool cursor_pos_changed = screen->cursor->x != screen->last_rendered.cursor_x
                            || screen->cursor->y != screen->last_rendered.cursor_y;
     bool disable_ligatures = screen->disable_ligatures == DISABLE_LIGATURES_CURSOR;
+    bool screen_resized = screen->last_rendered.columns != screen->columns || screen->last_rendered.lines != screen->lines;
 
-    if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || (disable_ligatures && cursor_pos_changed)) {
+    if (screen->reload_all_gpu_data || screen->scroll_changed || screen->is_dirty || screen_resized || (disable_ligatures && cursor_pos_changed)) {
         sz = sizeof(GPUCell) * screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, cell_data_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_update_cell_data(screen, address, fonts_data, disable_ligatures && cursor_pos_changed);
@@ -332,7 +333,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         screen->last_rendered.cursor_y = screen->cursor->y;
     }
 
-    if (screen->reload_all_gpu_data || screen_is_selection_dirty(screen)) {
+    if (screen->reload_all_gpu_data || screen_resized || screen_is_selection_dirty(screen)) {
         sz = screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_apply_selection(screen, address, sz);
@@ -345,6 +346,8 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
         changed = true;
     }
     screen->last_rendered.scrolled_by = screen->scrolled_by;
+    screen->last_rendered.columns = screen->columns;
+    screen->last_rendered.lines = screen->lines;
     return changed;
 }
 

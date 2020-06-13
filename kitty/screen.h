@@ -86,6 +86,7 @@ typedef struct {
     struct {
         IterationData selection, url;
         unsigned int cursor_x, cursor_y, scrolled_by;
+        index_type lines, columns;
     } last_rendered;
     bool use_latin1, is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
