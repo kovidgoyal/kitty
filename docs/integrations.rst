@@ -15,6 +15,9 @@ images and other types of documents directly in your terminal, even over SSH.
 `termpdf.py <https://github.com/dsanson/termpdf.py>`_
     a terminal PDF/DJVU/CBR viewer
 
+`mdcat <https://github.com/lunaryorn/mdcat>`_
+    Display markdown files nicely formatted with images in the terminal
+
 `ranger <https://github.com/ranger/ranger>`_
     a terminal file manager, with previews of file contents powered by kitty's graphics protocol.
 
