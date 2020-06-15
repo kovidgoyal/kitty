@@ -826,7 +826,8 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                     screen->pending_mode.activated_at = monotonic();
                     REPORT_COMMAND(screen_start_pending_mode);
                 } else {
-                    // ignore stop without matching start
+                    // ignore stop without matching start, see _queue_pending_bytes()
+                    // for how stop is detected while in pending mode.
                     REPORT_ERROR("Pending mode stop command issued while not in pending mode");
                     REPORT_COMMAND(screen_stop_pending_mode);
                 }
