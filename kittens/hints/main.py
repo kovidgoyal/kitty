@@ -444,7 +444,7 @@ type=choice
 choices=self,window,tab,os_window,background
 The action to perform on the matched errors. The actual action is whatever
 arguments are provided to the kitten, for example:
-:code:`kitty + kitten hints --type=linenum vim +{line} {path}`
+:code:`kitty + kitten hints --type=linenum -- vim +{line} {path}`
 will open the matched path at the matched line number in vim. This option
 controls where the action is executed: :code:`self` means the current window,
 :code:`window` a new kitty window, :code:`tab` a new tab, :code:`os_window`
