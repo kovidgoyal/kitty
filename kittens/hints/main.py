@@ -419,10 +419,11 @@ programs.
 --type
 default=url
 choices=url,regex,path,line,hash,word,linenum
-The type of text to search for. A value of :code:`linenum` looks for error messages
-using the pattern specified with :option:`--regex`, which must have the named groups,
-path and line. If not specified, will look for :code:`path:line`.
-The :option:`--linenum-action` option controls what to do with the selected error message.
+The type of text to search for. A value of :code:`linenum` is special, it looks
+for error messages using the pattern specified with :option:`--regex`, which
+must have the named groups, :code:`path` and :code:`line`. If not specified,
+will look for :code:`path:line`. The :option:`--linenum-action` option
+controls what to do with the selected error message, other options are ignored.
 
 
 --regex
