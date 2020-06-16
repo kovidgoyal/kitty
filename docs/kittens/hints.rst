@@ -23,7 +23,7 @@ like a path or filename followed by a colon and a line number and open
 the file in vim at the specified line number. The patterns and editor
 to be used can be modified using options passed to the kitten. For example::
 
-    map ctrl+g kitten hints --type=linenum --linenum-action=tab -- nvim +{line} {path}
+    map ctrl+g kitten hints --type=linenum --linenum-action=tab nvim +{line} {path}
 
 will open the selected file in a new tab inside neovim when you press
 :kbd:`ctrl+g`.
