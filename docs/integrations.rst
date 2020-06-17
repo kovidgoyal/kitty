@@ -37,6 +37,9 @@ System and data visualisation tools
 `matplotlib <https://github.com/jktr/matplotlib-backend-kitty>`_
     show matplotlib plots directly in kitty
 
+`KittyTerminalImages.jl <https://github.com/simonschoelly/KittyTerminalImages.jl>`_
+    show images from Julia directly in kitty
+
 `gnuplot <http://www.gnuplot.info/>`_
     a graphing and data visualization tool that can be made to display its
     output in kitty with the following bash snippet::
