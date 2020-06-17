@@ -24,12 +24,18 @@ images and other types of documents directly in your terminal, even over SSH.
 `nnn <https://github.com/jarun/nnn/>`_
     another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
 
+`koneko <https://github.com/twenty5151/koneko>`_
+    browse images from the pixiv artist community directly in kitty
+
 
 System and data visualisation tools
 ---------------------------------------
 
 `neofetch <https://github.com/dylanaraps/neofetch>`_
     A command line system information tool that shows images using kitty's graphics protocol
+
+`matplotlib <https://github.com/jktr/matplotlib-backend-kitty>`_
+    show matplotlib plots directly in kitty
 
 `gnuplot <http://www.gnuplot.info/>`_
     a graphing and data visualization tool that can be made to display its
