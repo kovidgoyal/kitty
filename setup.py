@@ -857,7 +857,10 @@ def macos_info_plist() -> bytes:
     import plistlib
     VERSION = '.'.join(map(str, version))
     pl = dict(
+        # see https://github.com/kovidgoyal/kitty/issues/1233
         CFBundleDevelopmentRegion='English',
+        CFBundleAllowMixedLocalizations=True,
+
         CFBundleDisplayName=appname,
         CFBundleName=appname,
         CFBundleIdentifier='net.kovidgoyal.' + appname,
