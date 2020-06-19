@@ -22,7 +22,6 @@
 #include <Python.h>
 #include <wchar.h>
 
-#define MIN(x, y) ((x) < (y)) ? (x) : (y)
 #define MAX_ARGC 1024
 #ifndef KITTY_LIB_PATH
 #define KITTY_LIB_PATH "../.."
