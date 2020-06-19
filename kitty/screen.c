@@ -113,7 +113,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->alt_grman = grman_alloc();
 
         self->grman = self->main_grman;
-        self->pending_mode.wait_time = 2.0;
+        self->pending_mode.wait_time = s_double_to_monotonic_t(2.0);
         self->disable_ligatures = OPT(disable_ligatures);
         self->main_tabstops = PyMem_Calloc(2 * self->columns, sizeof(bool));
         if (
