@@ -51,6 +51,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Notarize the kitty application (:iss:`2040`)
 
+- Fix the kitty shell launched via a mapping needlessly requiring
+  :opt:`allow_remote_control` to be turned on.
+
 
 0.17.4 [2020-05-09]
 --------------------

@@ -948,19 +948,24 @@ class Boss:
         if aw is not None:
             kw['env'] = {'KITTY_SHELL_ACTIVE_WINDOW_ID': str(aw.id)}
         if window_type == 'tab':
-            self._new_tab(SpecialWindow(cmd, **kw))
+            tab = self._new_tab(SpecialWindow(cmd, **kw))
+            if tab is not None:
+                for w in tab:
+                    w.allow_remote_control = True
         elif window_type == 'os_window':
             os_window_id = self._new_os_window(SpecialWindow(cmd, **kw))
-            self.os_window_map[os_window_id]
+            for tab in self.os_window_map[os_window_id]:
+                for w in tab:
+                    w.allow_remote_control = True
         elif window_type == 'overlay':
             tab = self.active_tab
             if aw is not None and tab is not None:
                 kw['overlay_for'] = aw.id
-                tab.new_special_window(SpecialWindow(cmd, **kw))
+                tab.new_special_window(SpecialWindow(cmd, **kw), allow_remote_control=True)
         else:
             tab = self.active_tab
             if tab is not None:
-                tab.new_special_window(SpecialWindow(cmd, **kw))
+                tab.new_special_window(SpecialWindow(cmd, **kw), allow_remote_control=True)
 
     def switch_focus_to(self, window_id: int) -> None:
         tab = self.active_tab
