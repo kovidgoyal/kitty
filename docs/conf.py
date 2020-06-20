@@ -275,7 +275,7 @@ if you specify a program-to-run you can use the special placeholder
         p('\n\n' + as_rst(
             global_options_spec, message=cli_msg, usage='command ...', appname='kitty @'))
         from kitty.rc.base import cli_params_for
-        for cmd_name in all_command_names():
+        for cmd_name in sorted(all_command_names()):
             func = command_for_name(cmd_name)
             p(f'.. _at_{func.name}:\n')
             p('kitty @', func.name + '\n' + '-' * 120)
