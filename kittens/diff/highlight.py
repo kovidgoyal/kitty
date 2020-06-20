@@ -5,6 +5,8 @@
 import concurrent
 import os
 import re
+import sys
+from multiprocessing import get_context
 from typing import IO, Dict, Iterable, List, Optional, Tuple, Union, cast
 
 from pygments import highlight  # type: ignore
@@ -139,7 +141,14 @@ def highlight_for_diff(path: str, aliases: Dict[str, str]) -> DiffHighlight:
 def highlight_collection(collection: Collection, aliases: Optional[Dict[str, str]] = None) -> Union[str, Dict[str, DiffHighlight]]:
     jobs = {}
     ans: Dict[str, DiffHighlight] = {}
-    with concurrent.futures.ProcessPoolExecutor(max_workers=os.cpu_count()) as executor:
+    if sys.version_info[:2] >= (3, 7):
+        # On macOS as of python 3.8 the default executor is changed to spawn
+        # which causes failures, so use fork, which is also faster
+        ppe = concurrent.futures.ProcessPoolExecutor(mp_context=get_context('fork'))
+    else:
+        ppe = concurrent.futures.ProcessPoolExecutor()
+
+    with ppe as executor:
         for path, item_type, other_path in collection:
             if item_type != 'rename':
                 for p in (path, other_path):
