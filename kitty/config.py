@@ -140,6 +140,20 @@ def float_parse(func: str, rest: str) -> FuncArgsType:
     return func, (float(rest),)
 
 
+@func_with_args('signal_child')
+def signal_child_parse(func: str, rest: str) -> FuncArgsType:
+    import signal
+    signals = []
+    for q in rest.split():
+        try:
+            signum = getattr(signal, q.upper())
+        except AttributeError:
+            log_error(f'Unknown signal: {rest} ignoring')
+        else:
+            signals.append(signum)
+    return func, tuple(signals)
+
+
 @func_with_args('change_font_size')
 def parse_change_font_size(func: str, rest: str) -> Tuple[str, Tuple[bool, Optional[str], float]]:
     vals = rest.strip().split(maxsplit=1)

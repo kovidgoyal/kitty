@@ -15,6 +15,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Tall and Fat layouts: Add mappable actions to increase or decrease the number
   of full size windows (:iss:`2688`)
 
+- Allow sending arbitrary signals to the current foreground process in a window
+  using either a mapping in kitty.conf or via remote control (:iss:`2778`)
+
 - Allow sending the back and forward mouse buttons to terminal applications
   (:pull:`2742`)
 

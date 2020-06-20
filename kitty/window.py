@@ -820,4 +820,10 @@ class Window:
 
     def scroll_to_mark(self, prev: bool = True, mark: int = 0) -> None:
         self.screen.scroll_to_next_mark(mark, prev)
+
+    def signal_child(self, *signals: int) -> None:
+        pid = self.child.pid_for_cwd
+        if pid is not None:
+            for sig in signals:
+                os.kill(pid, sig)
     # }}}
