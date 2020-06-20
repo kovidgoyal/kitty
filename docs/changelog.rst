@@ -4,10 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.18.0 [future]
+0.18.0 [2020-06-20]
 --------------------
 
 - Allow multiple overlay windows per normal window
+
+- Add an option :opt:`confirm_os_window_close` to ask for confirmation
+  when closing an OS window with multiple kitty windows.
 
 - Tall and Fat layouts: Add a ``mirrored`` option to put the full size window
   on the opposite edge of the screen (:iss:`2654`)
@@ -24,9 +27,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - **Backwards incompatibility**: The numbers used to encode mouse buttons
   for the ``send_mouse_event`` function that can be used in kittens have
   been changed (see :ref:`send_mouse_event`).
-
-- Add an option :opt:`confirm_os_window_close` to ask for confirmation
-  when closing an OS window with multiple kitty windows.
 
 - Add a new mappable ``quit`` action to quit kitty completely.
 
@@ -49,7 +49,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - X11: Reduce startup time by ~25% by only querying GLX for framebuffer
   configurations once (:iss:`2754`)
 
-- macOS: Notarize the kitty application (:iss:`2040`)
+- macOS: Notarize the kitty application bundle (:iss:`2040`)
 
 - Fix the kitty shell launched via a mapping needlessly requiring
   :opt:`allow_remote_control` to be turned on.
