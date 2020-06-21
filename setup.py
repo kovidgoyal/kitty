@@ -1146,12 +1146,12 @@ def main() -> None:
     if args.action == 'clean':
         clean()
         return
+    launcher_dir = 'kitty/launcher'
 
     with CompilationDatabase(args.incremental) as cdb:
         args.compilation_database = cdb
         if args.action == 'build':
             build(args)
-            launcher_dir = 'kitty/launcher'
             if is_macos:
                 create_minimal_macos_bundle(args, launcher_dir)
             else:
@@ -1164,6 +1164,7 @@ def main() -> None:
             package(args, bundle_type='linux-freeze')
         elif args.action == 'macos-freeze':
             build(args, native_optimizations=False)
+            build_launcher(args, launcher_dir=launcher_dir)
             package(args, bundle_type='macos-freeze')
         elif args.action == 'kitty.app':
             args.prefix = 'kitty.app'
