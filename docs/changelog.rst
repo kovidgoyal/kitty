@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.18.1 [future]
+0.18.1 [2020-06-23]
 --------------------
 
 - macOS: Fix for diff kitten not working with python 3.8 (:iss:`2780`)
