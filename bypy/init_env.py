@@ -62,7 +62,12 @@ def build_c_extensions(ext_dir, args):
 
 
 def run_tests(path_to_kitty, cwd_on_failure):
-    ret = run(PYTHON, 'test.py', cwd=cwd_on_failure)
+    kw = {'cwd': cwd_on_failure}
+    if not ismacos:
+        # this is needed for the spawn test which starts an interpreter
+        # using the kitty launcher.
+        kw['PYTHONHOME'] = PREFIX
+    ret = run(PYTHON, 'test.py', **kw)
     if ret != 0:
         os.chdir(cwd_on_failure)
         print(

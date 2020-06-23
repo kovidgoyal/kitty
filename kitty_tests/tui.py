@@ -44,6 +44,5 @@ class TestTUI(BaseTest):
         self.assertTrue(le.pending_bell)
 
     def test_multiprocessing_spawn(self):
-        return  # temporarily disable this test till I can figure out why its failing in the build env
         from kitty.multiprocessing import test_spawn
         test_spawn()
