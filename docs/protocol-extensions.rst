@@ -222,7 +222,7 @@ Here ``!`` is not valid base64 encoded text, so it clears the clipboard.
 Further, since it is invalid, it should be ignored by terminal emulators
 that do not support this extension, thereby making it safe to use, simply
 always send it before starting a new OSC 52 paste, even if you aren't chunking
-up large pastes, that way kitty wont concatenate your paste, and it will have
+up large pastes, that way kitty won't concatenate your paste, and it will have
 no ill-effects in other terminal emulators.
 
 In case you're using software that can't be easily adapted to this

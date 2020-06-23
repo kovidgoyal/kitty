@@ -589,7 +589,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #endif
     if (!global_state.is_wayland) {
         // On Wayland windows dont get a content scale until they receive an enterEvent anyway
-        // which wont happen until the event loop ticks, so using a temp window is useless.
+        // which won't happen until the event loop ticks, so using a temp window is useless.
         temp_window = glfwCreateWindow(640, 480, "temp", NULL, common_context);
         if (temp_window == NULL) { fatal("Failed to create GLFW temp window! This usually happens because of old/broken OpenGL drivers. kitty requires working OpenGL 3.3 drivers."); }
     }

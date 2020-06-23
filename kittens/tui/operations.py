@@ -341,7 +341,7 @@ def request_from_clipboard(use_primary: bool = False) -> str:
     return '\x1b]52;{};?\x07'.format('p' if use_primary else 'c')
 
 
-# Boilerplate to make operations availble via Handler.cmd  {{{
+# Boilerplate to make operations available via Handler.cmd  {{{
 
 
 def writer(handler: HandlerType, func: Callable) -> Callable:

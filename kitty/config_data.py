@@ -786,7 +786,7 @@ o('confirm_os_window_close', 0, option_type=positive_int, long_text=_('''
 Ask for confirmation when closing an OS window that has at least this
 number of kitty windows in it. A value of zero disables confirmation.
 This confirmation also applies to requests to quit the entire application (all
-OS windows, via the quite action).
+OS windows, via the quit action).
 '''))
 # }}}
 
