@@ -569,7 +569,7 @@
  *  @analysis Application programmer error.  Fix the offending call.
  */
 #define GLFW_NO_WINDOW_CONTEXT      0x0001000A
-/*! @brief The reuqested feature is not provided by the platform.
+/*! @brief The requested feature is not provided by the platform.
  *
  *  The requested feature is not provided by the platform, so GLFW is unable to
  *  implement it.  The documentation for each function notes if it could emit
