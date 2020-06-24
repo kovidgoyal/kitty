@@ -210,6 +210,8 @@ class Child:
         env: Optional[Dict[str, str]] = getattr(self, '_final_env', None)
         if env is None:
             env = self._final_env = default_env().copy()
+            if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not sys._xoptions.get('lc_ctype_before_python'):
+                del env['LC_CTYPE']
             env.update(self.env)
             env['TERM'] = self.opts.term
             env['COLORTERM'] = 'truecolor'

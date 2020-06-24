@@ -12,6 +12,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   keymaps on new keyboard events that only change geometry (:iss:`2787`).
   Better handling of multiple keyboards with incompatible layouts (:iss:`2726`)
 
+- macOS: Fix the LC_TYPE env var being set to UTF-8 on systems in which the
+  language and country code do not form a valid locale (:iss:`1233`)
+
 
 0.18.1 [2020-06-23]
 --------------------
