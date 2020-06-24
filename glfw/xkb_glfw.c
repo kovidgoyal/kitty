@@ -371,9 +371,31 @@ load_compose_tables(_GLFWXKBData *xkb) {
     xkb_compose_table_unref(compose_table);
 }
 
+static inline xkb_mod_mask_t
+active_unknown_modifiers(_GLFWXKBData *xkb, struct xkb_state *state) {
+    size_t i = 0;
+    xkb_mod_mask_t ans = 0;
+    while (xkb->unknownModifiers[i] != XKB_MOD_INVALID) {
+        if (xkb_state_mod_index_is_active(state, xkb->unknownModifiers[i], XKB_STATE_MODS_EFFECTIVE)) ans |= (1 << xkb->unknownModifiers[i]);
+        i++;
+    }
+    return ans;
+}
+
+static void
+update_modifiers(_GLFWXKBData *xkb) {
+    XKBStateGroup *group = &xkb->states;
+#define S(attr, name) if (xkb_state_mod_index_is_active(group->state, xkb->attr##Idx, XKB_STATE_MODS_EFFECTIVE)) group->modifiers |= GLFW_MOD_##name
+    S(control, CONTROL); S(alt, ALT); S(shift, SHIFT); S(super, SUPER); S(capsLock, CAPS_LOCK); S(numLock, NUM_LOCK);
+#undef S
+    xkb->states.activeUnknownModifiers = active_unknown_modifiers(xkb, xkb->states.state);
+
+}
+
 bool
 glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
     const char *err;
+    debug("Loading new XKB keymaps\n");
     release_keyboard_data(xkb);
     err = load_keymaps(xkb, map_str);
     if (err) {
@@ -396,34 +418,15 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
     S(capsLock, XKB_MOD_NAME_CAPS);
     S(numLock, XKB_MOD_NAME_NUM);
 #undef S
-    size_t capacity = sizeof(xkb->unknownModifiers)/sizeof(xkb->unknownModifiers[0]), j = 0;
+    size_t capacity = arraysz(xkb->unknownModifiers), j = 0;
     for (xkb_mod_index_t i = 0; i < capacity; i++) xkb->unknownModifiers[i] = XKB_MOD_INVALID;
     for (xkb_mod_index_t i = 0; i < xkb_keymap_num_mods(xkb->keymap) && j < capacity - 1; i++) {
         if (i != xkb->controlIdx && i != xkb->altIdx && i != xkb->shiftIdx && i != xkb->superIdx && i != xkb->capsLockIdx && i != xkb->numLockIdx) xkb->unknownModifiers[j++] = i;
     }
     xkb->states.modifiers = 0;
     xkb->states.activeUnknownModifiers = 0;
+    update_modifiers(xkb);
     return true;
-}
-
-static inline xkb_mod_mask_t
-active_unknown_modifiers(_GLFWXKBData *xkb, struct xkb_state *state) {
-    size_t i = 0;
-    xkb_mod_mask_t ans = 0;
-    while (xkb->unknownModifiers[i] != XKB_MOD_INVALID) {
-        if (xkb_state_mod_index_is_active(state, xkb->unknownModifiers[i], XKB_STATE_MODS_EFFECTIVE)) ans |= (1 << xkb->unknownModifiers[i]);
-        i++;
-    }
-    return ans;
-}
-
-static void
-update_modifiers(_GLFWXKBData *xkb, XKBStateGroup *group) {
-#define S(attr, name) if (xkb_state_mod_index_is_active(group->state, xkb->attr##Idx, XKB_STATE_MODS_EFFECTIVE)) group->modifiers |= GLFW_MOD_##name
-    S(control, CONTROL); S(alt, ALT); S(shift, SHIFT); S(super, SUPER); S(capsLock, CAPS_LOCK); S(numLock, NUM_LOCK);
-#undef S
-    xkb->states.activeUnknownModifiers = active_unknown_modifiers(xkb, xkb->states.state);
-
 }
 
 void
@@ -434,7 +437,7 @@ glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_m
     // We have to update the groups in clean_state, as they change for
     // different keyboard layouts, see https://github.com/kovidgoyal/kitty/issues/488
     xkb_state_update_mask(xkb->states.clean_state, 0, 0, 0, base_group, latched_group, locked_group);
-    update_modifiers(xkb, &xkb->states);
+    update_modifiers(xkb);
 }
 
 bool

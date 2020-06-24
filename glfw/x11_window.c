@@ -1176,15 +1176,26 @@ static void processEvent(XEvent *event)
     else if (event->type == _glfw.x11.xkb.eventBase)
     {
         XkbEvent *kb_event = (XkbEvent*)event;
+        if (kb_event->any.device != (unsigned int)_glfw.x11.xkb.keyboard_device_id) return;
         switch(kb_event->any.xkb_type) {
             case XkbNewKeyboardNotify: {
-                int32_t old_id = _glfw.x11.xkb.keyboard_device_id;
-                if (!glfw_xkb_update_x11_keyboard_id(&_glfw.x11.xkb)) return;
-                if (old_id != _glfw.x11.xkb.keyboard_device_id) keymap_dirty = true;
+                XkbNewKeyboardNotifyEvent *newkb_event = (XkbNewKeyboardNotifyEvent*)kb_event;
+                if (_glfw.hints.init.debugKeyboard) printf(
+                        "Got XkbNewKeyboardNotify event with changes: key codes: %d geometry: %d device id: %d\n",
+                        !!(newkb_event->changed & XkbNKN_KeycodesMask), !!(newkb_event->changed & XkbNKN_GeometryMask),
+                        !!(newkb_event->changed & XkbNKN_DeviceIDMask));
+                if (newkb_event->changed & XkbNKN_DeviceIDMask) {
+                    keymap_dirty = true;
+                    if (!glfw_xkb_update_x11_keyboard_id(&_glfw.x11.xkb)) return;
+                }
+                if (newkb_event->changed & XkbNKN_KeycodesMask) {
+                    keymap_dirty = true;
+                }
+                return;
             }
-                /* fallthrough */
             case XkbMapNotify:
             {
+                if (_glfw.hints.init.debugKeyboard) printf("Got XkbMapNotify event, keymaps will be reloaded\n");
                 keymap_dirty = true;
                 return;
             }
