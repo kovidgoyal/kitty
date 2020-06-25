@@ -783,6 +783,12 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 REPORT_ERROR("Unknown DECSTR CSI sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             }
             break;
+        case 'm':
+            if (start_modifier == '>' && !end_modifier) {
+                REPORT_ERROR("Ignoring xterm specific key modifier resource options (CSI > m)");
+                break;
+            }
+            /* fallthrough */
         default:
             REPORT_ERROR("Unknown CSI code: '%s' with start_modifier: '%c' and end_modifier: '%c' and parameters: '%s'", utf8(code), start_modifier, end_modifier, repr_csi_params(params, num_params));
     }
