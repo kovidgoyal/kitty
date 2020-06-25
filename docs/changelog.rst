@@ -15,6 +15,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix the LC_TYPE env var being set to UTF-8 on systems in which the
   language and country code do not form a valid locale (:iss:`1233`)
 
+- Allow passing the current selection to kittens (:iss:`2796`)
+
 
 0.18.1 [2020-06-23]
 --------------------

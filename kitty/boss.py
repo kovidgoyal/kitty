@@ -851,6 +851,9 @@ class Boss:
                             add_history='history' in type_of_input,
                             add_wrap_markers='screen' in type_of_input
                     ).encode('utf-8')
+                elif type_of_input == 'selection':
+                    sel = self.data_for_at(which='@selection', window=w)
+                    data = sel.encode('utf-8') if sel else None
                 elif type_of_input is None:
                     data = None
                 else:
@@ -858,9 +861,16 @@ class Boss:
             else:
                 data = input_data if isinstance(input_data, bytes) else input_data.encode('utf-8')
             copts = common_opts_as_dict(self.opts)
+            final_args: List[str] = []
+            for x in args:
+                if x == '@selection':
+                    sel = self.data_for_at(which='@selection', window=w)
+                    if sel:
+                        x = sel
+                final_args.append(x)
             overlay_window = tab.new_special_window(
                 SpecialWindow(
-                    [kitty_exe(), '+runpy', 'from kittens.runner import main; main()'] + args,
+                    [kitty_exe(), '+runpy', 'from kittens.runner import main; main()'] + final_args,
                     stdin=data,
                     env={
                         'KITTY_COMMON_OPTS': json.dumps(copts),
