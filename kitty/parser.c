@@ -387,10 +387,10 @@ static inline const char*
 repr_csi_params(unsigned int *params, unsigned int num_params) {
     if (!num_params) return "";
     static char buf[256];
-    unsigned int pos = 0;
-    while (pos < 200 && num_params && sizeof(buf) > pos + 1) {
-        const char *fmt = num_params > 1 ? "%u " : "%u";
-        int ret = snprintf(buf + pos, sizeof(buf) - pos - 1, fmt, params[num_params--]);
+    unsigned int pos = 0, i = 0;
+    while (pos < 200 && i++ < num_params && sizeof(buf) > pos + 1) {
+        const char *fmt = i < num_params ? "%u, " : "%u";
+        int ret = snprintf(buf + pos, sizeof(buf) - pos - 1, fmt, params[i-1]);
         if (ret < 0) return "An error occurred formatting the params array";
         pos += ret;
     }
