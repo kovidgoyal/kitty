@@ -364,6 +364,7 @@ static void
 application_close_requested_callback(int flags) {
     if (flags) {
         global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
+        global_state.has_pending_closes = true;
         request_tick_callback();
     } else {
         if (global_state.quit_request == NO_CLOSE_REQUESTED) {
