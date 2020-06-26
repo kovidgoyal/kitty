@@ -66,9 +66,6 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #define _glfw_dlclose(handle) dlclose(handle)
 #define _glfw_dlsym(handle, name) dlsym(handle, name)
 
-#define _GLFW_EGL_NATIVE_WINDOW         ((EGLNativeWindowType) window->wl.native)
-#define _GLFW_EGL_NATIVE_DISPLAY        ((EGLNativeDisplayType) _glfw.wl.display)
-
 #define _GLFW_PLATFORM_WINDOW_STATE         _GLFWwindowWayland  wl
 #define _GLFW_PLATFORM_LIBRARY_WINDOW_STATE _GLFWlibraryWayland wl
 #define _GLFW_PLATFORM_MONITOR_STATE        _GLFWmonitorWayland wl

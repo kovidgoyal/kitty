@@ -2008,6 +2008,16 @@ const char* _glfwPlatformGetPrimarySelectionString(void)
     return NULL;
 }
 
+EGLNativeDisplayType _glfwPlatformGetEGLNativeDisplay(void)
+{
+    return _glfw.wl.display;
+}
+
+EGLNativeWindowType _glfwPlatformGetEGLNativeWindow(_GLFWwindow* window)
+{
+    return window->wl.native;
+}
+
 void _glfwPlatformGetRequiredInstanceExtensions(char** extensions)
 {
     if (!_glfw.vk.KHR_surface || !_glfw.vk.KHR_wayland_surface)

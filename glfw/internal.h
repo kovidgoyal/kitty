@@ -721,6 +721,9 @@ void _glfwPlatformWaitEvents(void);
 void _glfwPlatformWaitEventsTimeout(monotonic_t timeout);
 void _glfwPlatformPostEmptyEvent(void);
 
+EGLNativeDisplayType _glfwPlatformGetEGLNativeDisplay(void);
+EGLNativeWindowType _glfwPlatformGetEGLNativeWindow(_GLFWwindow* window);
+
 void _glfwPlatformGetRequiredInstanceExtensions(char** extensions);
 int _glfwPlatformGetPhysicalDevicePresentationSupport(VkInstance instance,
                                                       VkPhysicalDevice device,
