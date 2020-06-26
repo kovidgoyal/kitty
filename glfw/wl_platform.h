@@ -50,8 +50,6 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #endif
 #include "backend_utils.h"
 #include "xkb_glfw.h"
-#include "egl_context.h"
-#include "osmesa_context.h"
 #include "wl_cursors.h"
 
 #include "wayland-xdg-shell-client-protocol.h"

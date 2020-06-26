@@ -153,8 +153,6 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceXcbPresentationSupportKHR)(Vk
 
 #include "posix_thread.h"
 #include "glx_context.h"
-#include "egl_context.h"
-#include "osmesa_context.h"
 #if defined(__linux__)
 #include "linux_joystick.h"
 #else
