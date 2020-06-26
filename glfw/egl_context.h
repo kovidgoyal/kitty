@@ -25,26 +25,10 @@
 //
 //========================================================================
 
-#if defined(_GLFW_USE_EGLPLATFORM_H)
- #include <EGL/eglplatform.h>
-#elif defined(_GLFW_WIN32)
+#if defined(_GLFW_WIN32)
  #define EGLAPIENTRY __stdcall
-typedef HDC EGLNativeDisplayType;
-typedef HWND EGLNativeWindowType;
-#elif defined(_GLFW_COCOA)
- #define EGLAPIENTRY
-typedef void* EGLNativeDisplayType;
-typedef id EGLNativeWindowType;
-#elif defined(_GLFW_X11)
- #define EGLAPIENTRY
-typedef Display* EGLNativeDisplayType;
-typedef Window EGLNativeWindowType;
-#elif defined(_GLFW_WAYLAND)
- #define EGLAPIENTRY
-typedef struct wl_display* EGLNativeDisplayType;
-typedef struct wl_egl_window* EGLNativeWindowType;
 #else
- #error "No supported EGL platform selected"
+ #define EGLAPIENTRY
 #endif
 
 #define EGL_SUCCESS 0x3000
@@ -116,6 +100,9 @@ typedef void* EGLConfig;
 typedef void* EGLContext;
 typedef void* EGLDisplay;
 typedef void* EGLSurface;
+
+typedef void* EGLNativeDisplayType;
+typedef void* EGLNativeWindowType;
 
 // EGL function pointer typedefs
 typedef EGLBoolean (EGLAPIENTRY * PFN_eglGetConfigAttrib)(EGLDisplay,EGLConfig,EGLint,EGLint*);
