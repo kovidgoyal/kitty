@@ -20,7 +20,7 @@ from kitty.config import cached_values_for
 from kitty.constants import config_dir
 from kitty.fast_data_types import is_emoji_presentation_base, wcswidth
 from kitty.key_encoding import (
-    CTRL, RELEASE, SHIFT, KeyEvent, enter_key, key_defs as K
+    CTRL, PRESS, RELEASE, SHIFT, KeyEvent, enter_key, key_defs as K
 )
 from kitty.typing import BossType
 from kitty.utils import ScreenSize, get_editor
@@ -38,6 +38,8 @@ UP = K['UP']
 DOWN = K['DOWN']
 LEFT = K['LEFT']
 RIGHT = K['RIGHT']
+RIGHT_BRACKET = K['RIGHT_BRACKET']
+LEFT_BRACKET = K['LEFT_BRACKET']
 TAB = K['TAB']
 ESCAPE = K['ESCAPE']
 F1 = K['F1']
@@ -478,7 +480,7 @@ class UnicodeInput(Handler):
             return
         if key_event is enter_key:
             self.quit_loop(0)
-        elif key_event.type is RELEASE:
+        elif key_event.type is PRESS:
             if not key_event.mods:
                 if key_event.key is ESCAPE:
                     self.quit_loop(1)
@@ -492,8 +494,8 @@ class UnicodeInput(Handler):
                     self.switch_mode(FAVORITES)
                 elif key_event.key is F12 and self.mode is FAVORITES:
                     self.edit_favorites()
-            elif key_event.mods == CTRL and key_event.key is TAB:
-                self.next_mode()
+            elif key_event.mods == CTRL and key_event.key in (TAB, RIGHT_BRACKET, LEFT_BRACKET):
+                self.next_mode(-1 if key_event.key is LEFT_BRACKET else 1)
             elif key_event.mods == CTRL | SHIFT and key_event.key is TAB:
                 self.next_mode(-1)
 
