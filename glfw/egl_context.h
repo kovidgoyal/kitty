@@ -92,6 +92,8 @@
 #define EGL_CONTEXT_RELEASE_BEHAVIOR_KHR 0x2097
 #define EGL_CONTEXT_RELEASE_BEHAVIOR_NONE_KHR 0
 #define EGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_KHR 0x2098
+#define EGL_PLATFORM_X11_EXT 0x31d5
+#define EGL_PLATFORM_WAYLAND_EXT 0x31d8
 
 typedef int EGLint;
 typedef unsigned int EGLBoolean;
@@ -140,6 +142,11 @@ typedef GLFWglproc (EGLAPIENTRY * PFN_eglGetProcAddress)(const char*);
 #define eglQueryString _glfw.egl.QueryString
 #define eglGetProcAddress _glfw.egl.GetProcAddress
 
+typedef EGLDisplay (EGLAPIENTRY * PFNEGLGETPLATFORMDISPLAYEXTPROC)(EGLenum,void*,const EGLint*);
+typedef EGLSurface (EGLAPIENTRY * PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)(EGLDisplay,EGLConfig,void*,const EGLint*);
+#define eglGetPlatformDisplayEXT _glfw.egl.GetPlatformDisplayEXT
+#define eglCreatePlatformWindowSurfaceEXT _glfw.egl.CreatePlatformWindowSurfaceEXT
+
 #define _GLFW_EGL_CONTEXT_STATE            _GLFWcontextEGL egl
 #define _GLFW_EGL_LIBRARY_CONTEXT_STATE    _GLFWlibraryEGL egl
 
@@ -160,6 +167,7 @@ typedef struct _GLFWcontextEGL
 //
 typedef struct _GLFWlibraryEGL
 {
+    EGLenum         platform;
     EGLDisplay      display;
     EGLint          major, minor;
     bool            prefix;
@@ -169,6 +177,10 @@ typedef struct _GLFWlibraryEGL
     bool            KHR_gl_colorspace;
     bool            KHR_get_all_proc_addresses;
     bool            KHR_context_flush_control;
+    bool            EXT_client_extensions;
+    bool            EXT_platform_base;
+    bool            EXT_platform_x11;
+    bool            EXT_platform_wayland;
 
     void*           handle;
 
@@ -189,6 +201,9 @@ typedef struct _GLFWlibraryEGL
     PFN_eglSwapInterval         SwapInterval;
     PFN_eglQueryString          QueryString;
     PFN_eglGetProcAddress       GetProcAddress;
+
+    PFNEGLGETPLATFORMDISPLAYEXTPROC GetPlatformDisplayEXT;
+    PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC CreatePlatformWindowSurfaceEXT;
 
 } _GLFWlibraryEGL;
 

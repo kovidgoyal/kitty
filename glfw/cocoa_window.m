@@ -2105,6 +2105,11 @@ const char* _glfwPlatformGetClipboardString(void)
     return _glfw.ns.clipboardString;
 }
 
+EGLenum _glfwPlatformGetEGLPlatform(void)
+{
+    return 0;
+}
+
 EGLNativeDisplayType _glfwPlatformGetEGLNativeDisplay(void)
 {
     return EGL_DEFAULT_DISPLAY;
