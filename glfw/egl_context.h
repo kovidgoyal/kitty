@@ -147,10 +147,6 @@ typedef EGLSurface (EGLAPIENTRY * PFNEGLCREATEPLATFORMWINDOWSURFACEEXTPROC)(EGLD
 #define eglGetPlatformDisplayEXT _glfw.egl.GetPlatformDisplayEXT
 #define eglCreatePlatformWindowSurfaceEXT _glfw.egl.CreatePlatformWindowSurfaceEXT
 
-#define _GLFW_EGL_CONTEXT_STATE            _GLFWcontextEGL egl
-#define _GLFW_EGL_LIBRARY_CONTEXT_STATE    _GLFWlibraryEGL egl
-
-
 // EGL-specific per-context data
 //
 typedef struct _GLFWcontextEGL
