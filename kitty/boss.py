@@ -382,7 +382,7 @@ class Boss:
                 args.directory = os.path.join(data['cwd'], args.directory)
             for session in create_sessions(opts, args, respect_cwd=True):
                 os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id)
-                if opts.background_opacity < 1:
+                if opts.background_opacity != self.opts.background_opacity:
                     self._set_os_window_background_opacity(os_window_id, opts.background_opacity)
                 if data.get('notify_on_os_window_death'):
                     self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, data['notify_on_os_window_death'])
