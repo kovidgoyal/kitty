@@ -17,6 +17,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow passing the current selection to kittens (:iss:`2796`)
 
+- Allow setting the :opt:`background_opacity` of new OS windows created via
+  :option:`kitty --single-instance` using the :option:`kitty --override` command line
+  argument (:iss:`2806`)
+
 
 0.18.1 [2020-06-23]
 --------------------
