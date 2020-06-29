@@ -440,7 +440,7 @@ GLFWAPI void glfwWindowHint(int hint, int value)
         case GLFW_OPENGL_FORWARD_COMPAT:
             _glfw.hints.context.forward = value ? true : false;
             return;
-        case GLFW_OPENGL_DEBUG_CONTEXT:
+        case GLFW_CONTEXT_DEBUG:
             _glfw.hints.context.debug = value ? true : false;
             return;
         case GLFW_CONTEXT_NO_ERROR:
@@ -931,7 +931,7 @@ GLFWAPI int glfwGetWindowAttrib(GLFWwindow* handle, int attrib)
             return window->context.robustness;
         case GLFW_OPENGL_FORWARD_COMPAT:
             return window->context.forward;
-        case GLFW_OPENGL_DEBUG_CONTEXT:
+        case GLFW_CONTEXT_DEBUG:
             return window->context.debug;
         case GLFW_OPENGL_PROFILE:
             return window->context.profile;
