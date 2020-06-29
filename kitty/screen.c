@@ -1195,6 +1195,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
     }
     if (how != 2) {
         screen_erase_in_line(self, how, private);
+        if (how == 1) linebuf_mark_line_as_not_continued(self->linebuf, self->cursor->y);
     }
     if (how == 3 && self->linebuf == self->main_linebuf) {
         historybuf_clear(self->historybuf);
