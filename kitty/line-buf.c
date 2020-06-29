@@ -51,6 +51,12 @@ linebuf_mark_line_clean(LineBuf *self, index_type y) {
     self->line_attrs[y] &= ~TEXT_DIRTY_MASK;
 }
 
+void
+linebuf_mark_line_as_not_continued(LineBuf *self, index_type y) {
+    self->line_attrs[y] &= ~CONTINUED_MASK;
+}
+
+
 static PyObject*
 clear(LineBuf *self, PyObject *a UNUSED) {
 #define clear_doc "Clear all lines in this LineBuf"

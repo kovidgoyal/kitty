@@ -23,6 +23,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Fix a crash when using animated mouse cursors (:iss:`2810`)
 
+- Fix the CSI J (Erase in display ED) escape code not removing line continued
+  markers (:iss:`2809`)
+
 
 0.18.1 [2020-06-23]
 --------------------

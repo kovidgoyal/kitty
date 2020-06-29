@@ -1188,6 +1188,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
                 line_apply_cursor(self->linebuf->line, self->cursor, 0, self->columns, true);
             }
             linebuf_mark_line_dirty(self->linebuf, i);
+            linebuf_mark_line_as_not_continued(self->linebuf, i);
         }
         self->is_dirty = true;
         self->selection = EMPTY_SELECTION;
