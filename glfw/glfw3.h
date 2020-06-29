@@ -1056,10 +1056,15 @@ extern "C" {
 #define GLFW_OPENGL_FORWARD_COMPAT  0x00022006
 /*! @brief Debug mode context hint and attribute.
  *
- *  Debug mode context [hint](@ref GLFW_OPENGL_DEBUG_CONTEXT_hint) and
- *  [attribute](@ref GLFW_OPENGL_DEBUG_CONTEXT_attrib).
+ *  Debug mode context [hint](@ref GLFW_CONTEXT_DEBUG_hint) and
+ *  [attribute](@ref GLFW_CONTEXT_DEBUG_attrib).
  */
-#define GLFW_OPENGL_DEBUG_CONTEXT   0x00022007
+#define GLFW_CONTEXT_DEBUG          0x00022007
+/*! @brief Legacy name for compatibility.
+ *
+ *  This is an alias for compatibility with earlier versions.
+ */
+#define GLFW_OPENGL_DEBUG_CONTEXT   GLFW_CONTEXT_DEBUG
 /*! @brief OpenGL profile hint and attribute.
  *
  *  OpenGL profile [hint](@ref GLFW_OPENGL_PROFILE_hint) and
