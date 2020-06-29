@@ -68,12 +68,14 @@ setCursorImage(_GLFWwindow* window)
             if (newCursor != NULL) {
                 cursorWayland->cursor = newCursor;
                 cursorWayland->scale = scale;
+                cursorWayland->currentImage = 0;
             } else {
                 _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: late cursor load failed; proceeding with existing cursor");
             }
         }
-        if (!cursorWayland->cursor)
+        if (!cursorWayland->cursor || !cursorWayland->cursor->image_count)
             return;
+        if (cursorWayland->currentImage >= cursorWayland->cursor->image_count) cursorWayland->currentImage = 0;
         image = cursorWayland->cursor->images[cursorWayland->currentImage];
         buffer = wl_cursor_image_get_buffer(image);
         if (image->delay && window->cursor) {

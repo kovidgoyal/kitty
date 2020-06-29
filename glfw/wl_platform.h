@@ -287,7 +287,7 @@ typedef struct _GLFWcursorWayland
     struct wl_buffer*           buffer;
     int                         width, height;
     int                         xhot, yhot;
-    int                         currentImage;
+    unsigned int                currentImage;
     /** The scale of the cursor, or 0 if the cursor should be loaded late, or -1 if the cursor variable itself is unused. */
     int                         scale;
     /** Cursor shape stored to allow late cursor loading in setCursorImage. */

@@ -21,6 +21,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   :option:`kitty --single-instance` using the :option:`kitty --override` command line
   argument (:iss:`2806`)
 
+- Wayland: Fix a crash when using animated mouse cursors (:iss:`2810`)
+
 
 0.18.1 [2020-06-23]
 --------------------
