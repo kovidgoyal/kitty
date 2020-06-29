@@ -225,9 +225,9 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
                     CALL_ED(screen_save_cursor); break;
                 case ESC_DECRC:
                     CALL_ED(screen_restore_cursor); break;
-                case ESC_DECPNM:
+                case ESC_DECKPNM:
                     CALL_ED(screen_normal_keypad_mode); break;
-                case ESC_DECPAM:
+                case ESC_DECKPAM:
                     CALL_ED(screen_alternate_keypad_mode); break;
                 case '%':
                 case '(':

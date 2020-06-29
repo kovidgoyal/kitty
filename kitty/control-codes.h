@@ -110,10 +110,10 @@
 #define ESC_DECRC '8'
 
 // Set normal keypad mode
-#define ESC_DECPNM '>'
+#define ESC_DECKPNM '>'
 
 // Set alternate keypad mode
-#define ESC_DECPAM  '='
+#define ESC_DECKPAM  '='
 
 // ECMA-48 CSI sequences.
 // ---------------------

@@ -34,6 +34,14 @@ def screen_bell() -> None:
     pass
 
 
+def screen_normal_keypad_mode() -> None:
+    write('\x1b>')
+
+
+def screen_alternate_keypad_mode() -> None:
+    write('\x1b=')
+
+
 def screen_cursor_position(y: int, x: int) -> None:
     write(CSI + '%s;%sH' % (y, x))
 
