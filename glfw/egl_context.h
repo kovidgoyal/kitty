@@ -94,6 +94,15 @@
 #define EGL_CONTEXT_RELEASE_BEHAVIOR_FLUSH_KHR 0x2098
 #define EGL_PLATFORM_X11_EXT 0x31d5
 #define EGL_PLATFORM_WAYLAND_EXT 0x31d8
+#define EGL_PLATFORM_ANGLE_ANGLE 0x3202
+#define EGL_PLATFORM_ANGLE_TYPE_ANGLE 0x3203
+#define EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE 0x320d
+#define EGL_PLATFORM_ANGLE_TYPE_OPENGLES_ANGLE 0x320e
+#define EGL_PLATFORM_ANGLE_TYPE_D3D9_ANGLE 0x3207
+#define EGL_PLATFORM_ANGLE_TYPE_D3D11_ANGLE 0x3208
+#define EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE 0x3450
+#define EGL_PLATFORM_ANGLE_TYPE_METAL_ANGLE 0x3489
+#define EGL_PLATFORM_ANGLE_NATIVE_PLATFORM_TYPE_ANGLE 0x348f
 
 typedef int EGLint;
 typedef unsigned int EGLBoolean;
@@ -177,6 +186,11 @@ typedef struct _GLFWlibraryEGL
     bool            EXT_platform_base;
     bool            EXT_platform_x11;
     bool            EXT_platform_wayland;
+    bool            ANGLE_platform_angle;
+    bool            ANGLE_platform_angle_opengl;
+    bool            ANGLE_platform_angle_d3d;
+    bool            ANGLE_platform_angle_vulkan;
+    bool            ANGLE_platform_angle_metal;
 
     void*           handle;
 

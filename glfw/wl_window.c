@@ -2014,7 +2014,7 @@ const char* _glfwPlatformGetPrimarySelectionString(void)
     return NULL;
 }
 
-EGLenum _glfwPlatformGetEGLPlatform(void)
+EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs UNUSED)
 {
     if (_glfw.egl.EXT_platform_base && _glfw.egl.EXT_platform_wayland)
         return EGL_PLATFORM_WAYLAND_EXT;

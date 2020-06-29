@@ -274,6 +274,7 @@ struct _GLFWerror
 struct _GLFWinitconfig
 {
     bool          hatButtons;
+    int           angleType;
     bool          debugKeyboard;
     bool          enableJoysticks;
     struct {
@@ -724,7 +725,7 @@ void _glfwPlatformWaitEvents(void);
 void _glfwPlatformWaitEventsTimeout(monotonic_t timeout);
 void _glfwPlatformPostEmptyEvent(void);
 
-EGLenum _glfwPlatformGetEGLPlatform(void);
+EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs);
 EGLNativeDisplayType _glfwPlatformGetEGLNativeDisplay(void);
 EGLNativeWindowType _glfwPlatformGetEGLNativeWindow(_GLFWwindow* window);
 

@@ -273,6 +273,7 @@ static void destroyContextEGL(_GLFWwindow* window)
 bool _glfwInitEGL(void)
 {
     int i;
+    EGLint* attribs = NULL;
     const char* extensions;
     const char* sonames[] =
     {
@@ -364,6 +365,16 @@ bool _glfwInitEGL(void)
             _glfwStringInExtensionString("EGL_EXT_platform_x11", extensions);
         _glfw.egl.EXT_platform_wayland =
             _glfwStringInExtensionString("EGL_EXT_platform_wayland", extensions);
+        _glfw.egl.ANGLE_platform_angle =
+            _glfwStringInExtensionString("EGL_ANGLE_platform_angle", extensions);
+        _glfw.egl.ANGLE_platform_angle_opengl =
+            _glfwStringInExtensionString("EGL_ANGLE_platform_angle_opengl", extensions);
+        _glfw.egl.ANGLE_platform_angle_d3d =
+            _glfwStringInExtensionString("EGL_ANGLE_platform_angle_d3d", extensions);
+        _glfw.egl.ANGLE_platform_angle_vulkan =
+            _glfwStringInExtensionString("EGL_ANGLE_platform_angle_vulkan", extensions);
+        _glfw.egl.ANGLE_platform_angle_metal =
+            _glfwStringInExtensionString("EGL_ANGLE_platform_angle_metal", extensions);
     }
 
     if (_glfw.egl.EXT_platform_base)
@@ -374,16 +385,18 @@ bool _glfwInitEGL(void)
             eglGetProcAddress("eglCreatePlatformWindowSurfaceEXT");
     }
 
-    _glfw.egl.platform = _glfwPlatformGetEGLPlatform();
+    _glfw.egl.platform = _glfwPlatformGetEGLPlatform(&attribs);
     if (_glfw.egl.platform)
     {
         _glfw.egl.display =
             eglGetPlatformDisplayEXT(_glfw.egl.platform,
                                      _glfwPlatformGetEGLNativeDisplay(),
-                                     NULL);
+                                     attribs);
     }
     else
         _glfw.egl.display = eglGetDisplay(_glfwPlatformGetEGLNativeDisplay());
+
+    free(attribs);
 
     if (_glfw.egl.display == EGL_NO_DISPLAY)
     {
@@ -589,7 +602,9 @@ bool _glfwCreateContextEGL(_GLFWwindow* window,
     setAttrib(EGL_NONE, EGL_NONE);
 
     native = _glfwPlatformGetEGLNativeWindow(window);
-    if (_glfw.egl.platform)
+    // HACK: ANGLE does not implement eglCreatePlatformWindowSurfaceEXT
+    //       despite reporting EGL_EXT_platform_base
+    if (_glfw.egl.platform && _glfw.egl.platform != EGL_PLATFORM_ANGLE_ANGLE)
     {
         window->context.egl.surface =
             eglCreatePlatformWindowSurfaceEXT(_glfw.egl.display, config, native, attribs);

@@ -1147,6 +1147,14 @@ extern "C" {
 #define GLFW_EGL_CONTEXT_API        0x00036002
 #define GLFW_OSMESA_CONTEXT_API     0x00036003
 
+#define GLFW_ANGLE_PLATFORM_TYPE_NONE    0x00037001
+#define GLFW_ANGLE_PLATFORM_TYPE_OPENGL  0x00037002
+#define GLFW_ANGLE_PLATFORM_TYPE_OPENGLES 0x00037003
+#define GLFW_ANGLE_PLATFORM_TYPE_D3D9    0x00037004
+#define GLFW_ANGLE_PLATFORM_TYPE_D3D11   0x00037005
+#define GLFW_ANGLE_PLATFORM_TYPE_VULKAN  0x00037007
+#define GLFW_ANGLE_PLATFORM_TYPE_METAL   0x00037008
+
 /*! @defgroup shapes Standard cursor shapes
  *  @brief Standard system cursor shapes.
  *
@@ -1180,8 +1188,13 @@ typedef enum {
  *  Joystick hat buttons [init hint](@ref GLFW_JOYSTICK_HAT_BUTTONS).
  */
 #define GLFW_JOYSTICK_HAT_BUTTONS   0x00050001
-#define GLFW_DEBUG_KEYBOARD         0x00050002
-#define GLFW_ENABLE_JOYSTICKS       0x00050003
+/*! @brief ANGLE rendering backend init hint.
+ *
+ *  ANGLE rendering backend [init hint](@ref GLFW_ANGLE_PLATFORM_TYPE_hint).
+ */
+#define GLFW_ANGLE_PLATFORM_TYPE    0x00050002
+#define GLFW_DEBUG_KEYBOARD         0x00050003
+#define GLFW_ENABLE_JOYSTICKS       0x00050004
 /*! @brief macOS specific init hint.
  *
  *  macOS specific [init hint](@ref GLFW_COCOA_CHDIR_RESOURCES_hint).
