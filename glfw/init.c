@@ -53,6 +53,7 @@ static GLFWerrorfun _glfwErrorCallback;
 static _GLFWinitconfig _glfwInitHints =
 {
     true,      // hat buttons
+    GLFW_ANGLE_PLATFORM_TYPE_NONE, // ANGLE backend
     false,     // debug keyboard
     true,      // enable joystick
     {
@@ -280,6 +281,9 @@ GLFWAPI void glfwInitHint(int hint, int value)
             return;
         case GLFW_JOYSTICK_HAT_BUTTONS:
             _glfwInitHints.hatButtons = value;
+            return;
+        case GLFW_ANGLE_PLATFORM_TYPE:
+            _glfwInitHints.angleType = value;
             return;
         case GLFW_DEBUG_KEYBOARD:
             _glfwInitHints.debugKeyboard = value;

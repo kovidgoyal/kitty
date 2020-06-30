@@ -2855,12 +2855,40 @@ const char* _glfwPlatformGetPrimarySelectionString(void)
     return getSelectionString(_glfw.x11.PRIMARY);
 }
 
-EGLenum _glfwPlatformGetEGLPlatform(void)
+EGLenum _glfwPlatformGetEGLPlatform(EGLint** attribs)
 {
+    if (_glfw.egl.ANGLE_platform_angle)
+    {
+        int type = 0;
+
+        if (_glfw.egl.ANGLE_platform_angle_opengl)
+        {
+            if (_glfw.hints.init.angleType == GLFW_ANGLE_PLATFORM_TYPE_OPENGL)
+                type = EGL_PLATFORM_ANGLE_TYPE_OPENGL_ANGLE;
+        }
+
+        if (_glfw.egl.ANGLE_platform_angle_vulkan)
+        {
+            if (_glfw.hints.init.angleType == GLFW_ANGLE_PLATFORM_TYPE_VULKAN)
+                type = EGL_PLATFORM_ANGLE_TYPE_VULKAN_ANGLE;
+        }
+
+        if (type)
+        {
+            *attribs = calloc(5, sizeof(EGLint));
+            (*attribs)[0] = EGL_PLATFORM_ANGLE_TYPE_ANGLE;
+            (*attribs)[1] = type;
+            (*attribs)[2] = EGL_PLATFORM_ANGLE_NATIVE_PLATFORM_TYPE_ANGLE;
+            (*attribs)[3] = EGL_PLATFORM_X11_EXT;
+            (*attribs)[4] = EGL_NONE;
+            return EGL_PLATFORM_ANGLE_ANGLE;
+        }
+    }
+
     if (_glfw.egl.EXT_platform_base && _glfw.egl.EXT_platform_x11)
         return EGL_PLATFORM_X11_EXT;
-    else
-        return 0;
+
+    return 0;
 }
 
 EGLNativeDisplayType _glfwPlatformGetEGLNativeDisplay(void)
