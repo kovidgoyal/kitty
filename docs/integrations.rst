@@ -106,3 +106,6 @@ Miscellaneous
 `reload keybindings <https://github.com/kovidgoyal/kitty/issues/1292#issuecomment-582388769>`_
     reload key bindings from :file:`kitty.conf` without needing to restart
     kitty
+
+`kitti3 <https://github.com/LandingEllipse/kitti3>`_
+    allow using kitty as a drop-down terminal under the i3 window manager
