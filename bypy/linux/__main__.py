@@ -165,7 +165,7 @@ def create_tarfile(env, compression_level='9'):
     base = OUTPUT_DIR
     try:
         shutil.rmtree(base)
-    except EnvironmentError as err:
+    except OSError as err:
         if err.errno != errno.ENOENT:
             raise
     os.mkdir(base)
