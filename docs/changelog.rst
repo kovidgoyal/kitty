@@ -26,6 +26,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix the CSI J (Erase in display ED) escape code not removing line continued
   markers (:iss:`2809`)
 
+- hints kitten: In linenumber mode expand paths that starts with ~
+  (:iss:`2822`)
+
 
 0.18.1 [2020-06-23]
 --------------------
