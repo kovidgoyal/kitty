@@ -152,7 +152,7 @@ static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
         _glfw.wl.cursorThemeManager,
         window->wl.cursorTheme,
         _wlCursorPxFromScale(scale)
-    ); 
+    );
     cursor = _glfwLoadCursor(shape, window->wl.cursorTheme);
     if (!cursor) return;
     // TODO: handle animated cursors too.
@@ -788,7 +788,7 @@ int _glfwPlatformInit(void)
     if (_glfw.wl.shm)
     {
         _glfw.wl.cursorThemeManager = _wlCursorThemeManagerDefault();
-        _glfw.wl.cursorSurface = 
+        _glfw.wl.cursorSurface =
             wl_compositor_create_surface(_glfw.wl.compositor);
     }
     else

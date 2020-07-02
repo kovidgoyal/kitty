@@ -1,7 +1,7 @@
 ### Reporting bugs
 
 Please first search existing bug reports (especially closed ones) for a report
-that matches your issue. 
+that matches your issue.
 
 When reporting a bug, provide full details of your environment, that means, at
 a minimum, kitty version, OS and OS version, kitty config (ideally a minimal
