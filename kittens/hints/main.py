@@ -559,7 +559,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
     for m, g in zip(data['match'], data['groupdicts']):
         if m:
             path, line = g['path'], g['line']
-            path = path.split(':')[-1]
+            path = os.path.expanduser(path.split(':')[-1])
             line = int(line)
             break
     else:
