@@ -211,7 +211,7 @@ class WindowList:
     def iter_all_layoutable_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
         return iter(g for g in self.groups if g.is_visible_in_layout) if only_visible else iter(self.groups)
 
-    def make_previous_group_active(self, which: int = 1, notify: bool = False) -> None:
+    def make_previous_group_active(self, which: int = 1, notify: bool = True) -> None:
         which = max(1, which)
         gid_map = {g.id: i for i, g in enumerate(self.groups)}
         num = len(self.active_group_history)
