@@ -508,7 +508,8 @@ format_xkb_mods(_GLFWXKBData *xkb, const char* name, xkb_mod_mask_t mods) {
     char *p = buf, *s;
 #define pr(x) { \
     int num_needed = -1; \
-    if (sizeof(buf) > (unsigned long)((p - buf) + 1)) num_needed = snprintf(p, sizeof(buf) - (p - buf) - 1, "%s", x);  \
+    ssize_t space_left = sizeof(buf) - (p - buf) - 1; \
+    if (space_left > 0) num_needed = snprintf(p, space_left, "%s", x);  \
     if (num_needed > 0) p += num_needed; \
 }
     pr(name); pr(": ");
