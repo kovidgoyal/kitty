@@ -506,14 +506,18 @@ static inline const char*
 format_xkb_mods(_GLFWXKBData *xkb, const char* name, xkb_mod_mask_t mods) {
     static char buf[512];
     char *p = buf, *s;
-#define pr(x) p += snprintf(p, sizeof(buf) - (p - buf) - 1, "%s", x)
+#define pr(x) { \
+    int num_needed = -1; \
+    if (sizeof(buf) > (unsigned long)((p - buf) + 1)) num_needed = snprintf(p, sizeof(buf) - (p - buf) - 1, "%s", x);  \
+    if (num_needed > 0) p += num_needed; \
+}
     pr(name); pr(": ");
     s = p;
     for (xkb_mod_index_t i = 0; i < xkb_keymap_num_mods(xkb->keymap); i++) {
         xkb_mod_mask_t m = 1 << i;
         if (m & mods) { pr(xkb_keymap_mod_get_name(xkb->keymap, i)); pr("+"); }
     }
-    if (p == s) pr("none");
+    if (p == s) { pr("none"); }
     else p--;
     pr(" ");
 #undef pr
