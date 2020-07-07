@@ -106,7 +106,7 @@ def main():
     if is_bundle:
         setup_bundle_env()
     else:
-        if not is_macos:
+        if not is_macos and 'pythonLocation' in os.environ:
             os.environ['LD_LIBRARY_PATH'] = '{}/lib'.format(os.environ['pythonLocation'])
     action = sys.argv[-1]
     if action in ('build', 'package'):
