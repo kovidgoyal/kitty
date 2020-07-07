@@ -348,7 +348,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
                 break;
             case RGB:
             case RGBA:
-                img->load_data.data_sz = g->data_width * g->data_height * (fmt / 8);
+                img->load_data.data_sz = (size_t)g->data_width * g->data_height * (fmt / 8);
                 if (!img->load_data.data_sz) ABRT(EINVAL, "Zero width/height not allowed");
                 img->load_data.is_4byte_aligned = fmt == RGBA || (img->width % 4 == 0);
                 img->load_data.is_opaque = fmt == RGB;

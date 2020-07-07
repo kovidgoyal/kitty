@@ -497,7 +497,8 @@ static inline bool
 render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline) {
     (void)baseline;
     unsigned short best = 0, diff = USHRT_MAX;
-    for (short i = 0; i < (short)self->face->num_fixed_sizes; i++) {
+    const short limit = self->face->num_fixed_sizes;
+    for (short i = 0; i < limit; i++) {
         unsigned short w = self->face->available_sizes[i].width;
         unsigned short d = w > (unsigned short)cell_width ? w - (unsigned short)cell_width : (unsigned short)cell_width - w;
         if (d < diff) {
