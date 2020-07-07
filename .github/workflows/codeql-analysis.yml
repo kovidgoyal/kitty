@@ -34,7 +34,8 @@ jobs:
       # with:
       #   languages: go, javascript, csharp, python, cpp, java
 
-    - run: make
+    - name: Build kitty
+      run: python .github/workflows/ci.py build
 
     - name: Perform CodeQL Analysis
       uses: github/codeql-action/analyze@v1
