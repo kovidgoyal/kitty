@@ -47,7 +47,7 @@ set_xoptions(const wchar_t *exe_dir, const char *lc_ctype) {
     swprintf(buf, PATH_MAX, L"bundle_exe_dir=%ls", exe_dir);
     PySys_AddXOption(buf);
     if (lc_ctype) {
-        swprintf(buf, PATH_MAX, L"lc_ctype_before_python=%ls", lc_ctype);
+        swprintf(buf, PATH_MAX, L"lc_ctype_before_python=%s", lc_ctype);
         PySys_AddXOption(buf);
     }
 }
