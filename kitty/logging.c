@@ -31,7 +31,8 @@ log_error(const char *fmt, ...) {
 #define bufprint(func, ...) { if ((size_t)(p - logbuf) < sizeof(logbuf) - 2) { p += func(p, sizeof(logbuf) - (p - logbuf), __VA_ARGS__); } }
     if (!use_os_log) {  // Apple's os_log already records timestamps
         gettimeofday(&tv, NULL);
-        struct tm *tmp = localtime(&tv.tv_sec);
+        struct tm stack_tmp;
+        struct tm *tmp = localtime_r(&tv.tv_sec, &stack_tmp);
         if (tmp) {
             char tbuf[256] = {0}, buf[256] = {0};
             if (strftime(buf, sizeof(buf), "%j %H:%M:%S.%%06u", tmp) != 0) {
