@@ -1576,7 +1576,7 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
 // Rendering {{{
 static inline void
 update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
-    size_t base = dest_y * line->xnum * sizeof(GPUCell);
+    size_t base = sizeof(GPUCell) * dest_y * line->xnum;
     memcpy(data + base, line->gpu_cells, line->xnum * sizeof(GPUCell));
 }
 

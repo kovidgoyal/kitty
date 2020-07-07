@@ -77,7 +77,7 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz) {
     png_read_update_info(png, info);
 
     int rowbytes = png_get_rowbytes(png, info);
-    d->sz = rowbytes * d->height * sizeof(png_byte);
+    d->sz = sizeof(png_byte) * rowbytes * d->height;
     d->decompressed = malloc(d->sz + 16);
     if (d->decompressed == NULL) ABRT(ENOMEM, "Out of memory allocating decompression buffer for PNG");
     d->row_pointers = malloc(d->height * sizeof(png_bytep));

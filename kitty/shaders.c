@@ -65,7 +65,7 @@ copy_image_sub_data(GLuint src_texture_id, GLuint dest_texture_id, unsigned int 
             copy_image_warned = true;
             log_error("WARNING: Your system's OpenGL implementation does not have glCopyImageSubData, falling back to a slower implementation");
         }
-        size_t sz = width * height * num_levels;
+        size_t sz = (size_t)width * height * num_levels;
         pixel *src = malloc(sz * sizeof(pixel));
         if (src == NULL) { fatal("Out of memory."); }
         glBindTexture(GL_TEXTURE_2D_ARRAY, src_texture_id);
@@ -334,7 +334,7 @@ cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloa
     }
 
     if (screen->reload_all_gpu_data || screen_resized || screen_is_selection_dirty(screen)) {
-        sz = screen->lines * screen->columns;
+        sz = (size_t)screen->lines * screen->columns;
         address = alloc_and_map_vao_buffer(vao_idx, sz, selection_buffer, GL_STREAM_DRAW, GL_WRITE_ONLY);
         screen_apply_selection(screen, address, sz);
         unmap_vao_buffer(vao_idx, selection_buffer); address = NULL;

@@ -536,8 +536,8 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
         memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
         memcpy(other->line_attrs, self->line_attrs, sizeof(bool) * self->ynum);
-        memcpy(other->cpu_cell_buf, self->cpu_cell_buf, self->xnum * self->ynum * sizeof(CPUCell));
-        memcpy(other->gpu_cell_buf, self->gpu_cell_buf, self->xnum * self->ynum * sizeof(GPUCell));
+        memcpy(other->cpu_cell_buf, self->cpu_cell_buf, (size_t)self->xnum * self->ynum * sizeof(CPUCell));
+        memcpy(other->gpu_cell_buf, self->gpu_cell_buf, (size_t)self->xnum * self->ynum * sizeof(GPUCell));
         *num_content_lines_before = self->ynum; *num_content_lines_after = self->ynum;
         return;
     }

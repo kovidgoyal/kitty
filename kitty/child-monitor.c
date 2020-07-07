@@ -503,7 +503,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
         int d = monotonic_t_to_ms(OPT(cursor_blink_interval));
         int n = t / d;
         do_draw_cursor = n % 2 == 0 ? true : false;
-        monotonic_t bucket = ms_to_monotonic_t((n + 1) * d);
+        monotonic_t bucket = ms_to_monotonic_t((monotonic_t)(n + 1) * d);
         monotonic_t delay = bucket - time_since_start_blink;
         set_maximum_wait(delay);
     }

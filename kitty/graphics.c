@@ -461,7 +461,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             } else img->load_data.data = img->load_data.mapped_file;
         }
     }
-    size_t required_sz = (img->load_data.is_opaque ? 3 : 4) * img->width * img->height;
+    size_t required_sz = (size_t)(img->load_data.is_opaque ? 3 : 4) * img->width * img->height;
     if (img->load_data.data_sz != required_sz) ABRT(EINVAL, "Image dimensions: %ux%u do not match data size: %zu, expected size: %zu", img->width, img->height, img->load_data.data_sz, required_sz);
     if (LIKELY(img->data_loaded && send_to_gpu)) {
         send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->load_data.is_opaque, img->load_data.is_4byte_aligned, false, REPEAT_CLAMP);
