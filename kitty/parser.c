@@ -853,7 +853,8 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #undef CMD_PREFIX
 #define PRINT_PREFIX "kitty-print|"
             } else if (startswith(screen->parser_buf + 1, screen->parser_buf_pos - 1, PRINT_PREFIX)) {
-                PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + sizeof(PRINT_PREFIX), screen->parser_buf_pos - sizeof(PRINT_PREFIX));
+                const size_t pp_size = sizeof(PRINT_PREFIX);
+                PyObject *msg = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + pp_size, screen->parser_buf_pos - pp_size);
                 if (msg != NULL) {
                     REPORT_OSC2(screen_handle_print, (char)screen->parser_buf[0], msg);
                     screen_handle_print(screen, msg);
