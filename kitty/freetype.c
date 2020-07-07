@@ -457,7 +457,7 @@ downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_hei
     // it matters
     float ratio = MAX((float)bm->width / width, (float)bm->rows / cell_height);
     int factor = (int)ceilf(ratio);
-    uint8_t *dest = calloc(4, width * cell_height);
+    uint8_t *dest = calloc(4, (size_t)width * cell_height);
     if (dest == NULL) fatal("Out of memory");
     uint8_t *d = dest;
 

@@ -1079,7 +1079,7 @@ set_custom_cursor(PyObject *self UNUSED, PyObject *args) {
     size_t count = MIN((size_t)PyTuple_GET_SIZE(images), arraysz(gimages));
     for (size_t i = 0; i < count; i++) {
         if (!PyArg_ParseTuple(PyTuple_GET_ITEM(images, i), "s#ii", &gimages[i].pixels, &sz, &gimages[i].width, &gimages[i].height)) return NULL;
-        if (gimages[i].width * gimages[i].height * 4 != sz) {
+        if ((Py_ssize_t)gimages[i].width * gimages[i].height * 4 != sz) {
             PyErr_SetString(PyExc_ValueError, "The image data size does not match its width and height");
             return NULL;
         }
