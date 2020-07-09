@@ -15,6 +15,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix the LC_TYPE env var being set to UTF-8 on systems in which the
   language and country code do not form a valid locale (:iss:`1233`)
 
+- macOS: Fix :kbd:`cmd+plus` not changing font size (:iss:`2839`)
+
 - Allow passing the current selection to kittens (:iss:`2796`)
 
 - Allow setting the :opt:`background_opacity` of new OS windows created via
@@ -28,6 +30,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - hints kitten: In linenumber mode expand paths that starts with ~
   (:iss:`2822`)
+
+- Fix ``launch --location=last`` not working (:iss:`2841`)
 
 
 0.18.1 [2020-06-23]
