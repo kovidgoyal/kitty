@@ -6,7 +6,7 @@ from functools import partial
 from itertools import repeat
 from typing import (
     Dict, Generator, Iterable, Iterator, List, NamedTuple, Optional, Sequence,
-    Tuple, Union, cast
+    Tuple
 )
 
 from kitty.constants import Edges, WindowGeometry
@@ -261,24 +261,14 @@ class Layout:
         assert w is not None
         return self.neighbors_for_window(w, all_windows)
 
-    def move_window(self, all_windows: WindowList, delta: Union[str, int] = 1) -> bool:
-        # delta can be either a number or a string such as 'left', 'top', etc
-        # for neighborhood moves
+    def move_window(self, all_windows: WindowList, delta: int = 1) -> bool:
         if all_windows.num_groups < 2 or not delta:
             return False
 
-        if isinstance(delta, int):
-            return all_windows.move_window_group(by=delta)
-        which = delta.lower()
-        which = {'up': 'top', 'down': 'bottom'}.get(which, which)
-        w = all_windows.active_window
-        if w is None:
-            return False
-        neighbors = self.neighbors_for_window(w, all_windows)
-        q: List[int] = cast(List[int], neighbors.get(which, []))
-        if not q:
-            return False
-        return all_windows.move_window_group(to_group=q[0])
+        return all_windows.move_window_group(by=delta)
+
+    def move_window_to_group(self, all_windows: WindowList, group: int) -> bool:
+        return all_windows.move_window_group(to_group=group)
 
     def add_window(self, all_windows: WindowList, window: WindowType, location: Optional[str] = None, overlay_for: Optional[int] = None) -> None:
         if overlay_for is not None and overlay_for in all_windows:
