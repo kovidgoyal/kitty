@@ -241,7 +241,7 @@
             "hash": "sha256:4675a79f091020817a98fd0484e7208c8762242266967f55a67776936c2e294d",
             "urls": ["https://wayland.freedesktop.org/releases/{filename}"]
         }
-    }, 
+    },
 
     {
         "name": "wayland-protocols",
