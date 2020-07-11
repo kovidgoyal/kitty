@@ -2470,11 +2470,9 @@ int _glfwPlatformWindowHovered(_GLFWwindow* window)
 
         if (_glfw.x11.errorCode == BadWindow)
             w = _glfw.x11.root;
-
-        if (!result)
+        else if (!result)
             return false;
-
-        if (w == window->x11.handle)
+        else if (w == window->x11.handle)
             return true;
     }
 
