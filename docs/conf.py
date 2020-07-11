@@ -109,6 +109,9 @@ rst_prolog = '''
 
 '''.replace('VERSION', str_version)
 
+# Do not convert quotes and dashes to typographical symbols
+smartquotes = False
+
 
 # -- Options for HTML output -------------------------------------------------
 
