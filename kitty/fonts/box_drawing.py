@@ -389,6 +389,7 @@ def get_bezier_limits(bezier_x: BezierFunc, bezier_y: BezierFunc) -> Generator[T
         yield upper, lower
 
 
+@supersampled()
 def D(buf: BufType, width: int, height: int, left: bool = True) -> None:
     c1x = find_bezier_for_D(width, height)
     start = (0, 0)
