@@ -8,10 +8,10 @@
 #
 
 import math
-from functools import partial as p
+from functools import partial as p, wraps
 from itertools import repeat
 from typing import (
-    Callable, Dict, Generator, Iterable, List, MutableSequence, Optional,
+    Any, Callable, Dict, Generator, Iterable, List, MutableSequence, Optional,
     Sequence, Tuple, cast
 )
 
@@ -146,18 +146,45 @@ def cross(buf: BufType, width: int, height: int, a: int = 1, b: int = 1, c: int 
     half_vline(buf, width, height, level=d, which='bottom')
 
 
+def downsample(src: BufType, dest: BufType, dest_width: int, dest_height: int, factor: int = 4) -> None:
+    src_width = 4 * dest_width
+
+    def average_intensity_in_src(dest_x: int, dest_y: int) -> int:
+        src_y = dest_y * factor
+        src_x = dest_x * factor
+        total = 0
+        for y in range(src_y, src_y + factor):
+            offset = src_width * y
+            for x in range(src_x, src_x + factor):
+                total += src[offset + x]
+        return total // (factor * factor)
+
+    for y in range(dest_height):
+        offset = dest_width * y
+        for x in range(dest_width):
+            dest[offset + x] = average_intensity_in_src(x, y)
+
+
+def supersampled(supersample_factor: int = 4) -> Callable:
+    # Anti-alias the drawing performed by the wrapped function by
+    # using supersampling
+
+    def create_wrapper(f: Callable) -> Callable:
+        @wraps(f)
+        def supersampled_wrapper(buf: BufType, width: int, height: int, *args: Any, **kw: Any) -> None:
+            w, h = supersample_factor * width, supersample_factor * height
+            ssbuf = bytearray(w * h)
+            f(ssbuf, w, h, *args, **kw)
+            downsample(ssbuf, buf, width, height, factor=supersample_factor)
+        return supersampled_wrapper
+    return create_wrapper
+
+
 def fill_region(buf: BufType, width: int, height: int, xlimits: Iterable[Iterable[float]]) -> None:
     for y in range(height):
         offset = y * width
         for x, (upper, lower) in enumerate(xlimits):
             buf[x + offset] = 255 if upper <= y <= lower else 0
-    # Anti-alias the boundary, simple y-axis anti-aliasing
-    for x, limits in enumerate(xlimits):
-        for yf in limits:
-            for ypx in range(int(math.floor(yf)), int(math.ceil(yf)) + 1):
-                if 0 <= ypx < height:
-                    off = ypx * width + x
-                    buf[off] = min(255, buf[off] + int((1 - abs(yf - ypx)) * 255))
 
 
 def line_equation(x1: int, y1: int, x2: int, y2: int) -> Callable[[int], float]:
@@ -170,6 +197,7 @@ def line_equation(x1: int, y1: int, x2: int, y2: int) -> Callable[[int], float]:
     return y
 
 
+@supersampled()
 def triangle(buf: BufType, width: int, height: int, left: bool = True) -> None:
     ay1, by1, y2 = 0, height - 1, height // 2
     if left:
@@ -182,6 +210,7 @@ def triangle(buf: BufType, width: int, height: int, left: bool = True) -> None:
     fill_region(buf, width, height, xlimits)
 
 
+@supersampled()
 def corner_triangle(buf: BufType, width: int, height: int, corner: str) -> None:
     if corner == 'top-right' or corner == 'bottom-left':
         diagonal_y = line_equation(0, 0, width - 1, height - 1)
