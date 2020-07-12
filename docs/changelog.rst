@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix :kbd:`cmd+plus` not changing font size (:iss:`2839`)
 
+- Make neighboring window selection in grid and splits layouts more intelligent
+  (:pull:`2840`)
+
 - Allow passing the current selection to kittens (:iss:`2796`)
 
 - Allow setting the :opt:`background_opacity` of new OS windows created via
