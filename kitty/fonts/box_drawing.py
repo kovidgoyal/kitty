@@ -162,18 +162,22 @@ def downsample(src: BufType, dest: BufType, dest_width: int, dest_height: int, f
     for y in range(dest_height):
         offset = dest_width * y
         for x in range(dest_width):
-            dest[offset + x] = average_intensity_in_src(x, y)
+            dest[offset + x] = min(255, dest[offset + x] + average_intensity_in_src(x, y))
 
 
 def supersampled(supersample_factor: int = 4) -> Callable:
     # Anti-alias the drawing performed by the wrapped function by
     # using supersampling
 
+    class SSByteArray(bytearray):
+        supersample_factor = 1
+
     def create_wrapper(f: Callable) -> Callable:
         @wraps(f)
         def supersampled_wrapper(buf: BufType, width: int, height: int, *args: Any, **kw: Any) -> None:
             w, h = supersample_factor * width, supersample_factor * height
-            ssbuf = bytearray(w * h)
+            ssbuf = SSByteArray(w * h)
+            ssbuf.supersample_factor = supersample_factor
             f(ssbuf, w, h, *args, **kw)
             downsample(ssbuf, buf, width, height, factor=supersample_factor)
         return supersampled_wrapper
@@ -227,85 +231,37 @@ def corner_triangle(buf: BufType, width: int, height: int, corner: str) -> None:
     fill_region(buf, width, height, xlimits)
 
 
-def antialiased_1px_line(buf: BufType, width: int, height: int, p1: Tuple[int, int], p2: Tuple[int, int]) -> None:
-    # Draw an antialiased line using the Wu algorithm
-    x1, y1 = p1
-    x2, y2 = p2
-    dx, dy = x2 - x1, y2 - y1
-    off_limit = height * width
-    steep = abs(dx) < abs(dy)
-
-    if steep:
-        x1, y1, x2, y2, dx, dy = y1, x1, y2, x2, dy, dx
-
-        def p(x: int, y: int) -> Tuple[int, int]:
-            return y, x
-    else:
-        def p(x: int, y: int) -> Tuple[int, int]:
-            return x, y
-
-    if x2 < x1:
-        x1, x2, y1, y2 = x2, x1, y2, y1
-
-    def fpart(x: float) -> float:
-        return x - int(x)
-
-    def rfpart(x: float) -> float:
-        return 1 - fpart(x)
-
-    def putpixel(p: Tuple[int, int], alpha: float) -> None:
-        x, y = p
-        off = int(x + y * width)
-        if 0 <= off < off_limit:
-            buf[off] = int(min(buf[off] + (alpha * 255), 255))
-
-    def draw_endpoint(pt: Tuple[int, int]) -> int:
-        x, y = pt
-        xend = round(x)
-        yend = y + grad * (xend - x)
-        xgap = rfpart(x + 0.5)
-        px, py = int(xend), int(yend)
-        putpixel(p(px, py), rfpart(yend) * xgap)
-        putpixel(p(px, py+1), fpart(yend) * xgap)
-        return px
-
-    grad = dy/dx
-    intery = y1 + rfpart(x1) * grad
-
-    xstart = draw_endpoint(p(*p1))
-    xend = draw_endpoint(p(*p2))
-
-    if xstart > xend:
-        xstart, xend = xend, xstart
-    xstart += 1
-
-    for x in range(xstart, xend):
-        y = int(intery)
-        putpixel(p(x, y), rfpart(intery))
-        putpixel(p(x, y+1), fpart(intery))
-        intery += grad
+def thick_line(buf: BufType, width: int, height: int, thickness_in_pixels: int, p1: Tuple[int, int], p2: Tuple[int, int]) -> None:
+    if p1[0] > p2[0]:
+        p1, p2 = p2, p1
+    leq = line_equation(*p1, *p2)
+    for x in range(p1[0], p2[0] + 1):
+        if 0 <= x < width:
+            y_p = leq(x)
+            if thickness_in_pixels <= 1:
+                r = range(int(y_p), int(y_p) + 1)
+            else:
+                delta = thickness_in_pixels // 2
+                r = range(int(y_p) - delta, int(y_p) + delta + (thickness_in_pixels % 2))
+            for y in r:
+                if 0 <= y < height:
+                    buf[x + y * width] = 255
 
 
-def antialiased_line(buf: BufType, width: int, height: int, p1: Tuple[int, int], p2: Tuple[int, int], level: int = 1) -> None:
-    th = thickness(level)
-    if th < 2:
-        return antialiased_1px_line(buf, width, height, p1, p2)
-    (x1, y1), (x2, y2) = p1, p2
-    dh = th // 2
-    items = range(-dh, dh + (th % 2))
-    for delta in items:
-        antialiased_1px_line(buf, width, height, (x1, y1 + delta), (x2, y2 + delta))
-
-
+@supersampled()
 def cross_line(buf: BufType, width: int, height: int, left: bool = True, level: int = 1) -> None:
     if left:
         p1, p2 = (0, 0), (width - 1, height - 1)
     else:
         p1, p2 = (width - 1, 0), (0, height - 1)
-    antialiased_line(buf, width, height, p1, p2, level=level)
+    supersample_factor = getattr(buf, 'supersample_factor')
+    thick_line(buf, width, height, supersample_factor * thickness(level), p1, p2)
 
 
+@supersampled()
 def half_cross_line(buf: BufType, width: int, height: int, which: str = 'tl', level: int = 1) -> None:
+    supersample_factor = getattr(buf, 'supersample_factor')
+    thickness_in_pixels = thickness(level) * supersample_factor
     my = (height - 1) // 2
     if which == 'tl':
         p1 = 0, 0
@@ -319,7 +275,7 @@ def half_cross_line(buf: BufType, width: int, height: int, which: str = 'tl', le
     else:
         p2 = width - 1, height - 1
         p1 = 0, my
-    antialiased_line(buf, width, height, p1, p2, level=level)
+    thick_line(buf, width, height, thickness_in_pixels, p1, p2)
 
 
 BezierFunc = Callable[[float], float]
