@@ -410,15 +410,36 @@ class Tab:  # {{{
 
     prev_window = previous_window
 
-    def neighboring_window(self, which: str) -> None:
+    def most_recent_group(self, groups: List[int]) -> int:
+        groups_set = set(groups)
+
+        for window_id in reversed(self.windows.active_window_history):
+            group = self.windows.group_for_window(window_id)
+            if group and group.id in groups_set:
+                return group.id
+
+        return groups[0]
+
+    def neighboring_group_id(self, which: str) -> Optional[int]:
         neighbors = self.current_layout.neighbors(self.windows)
-        candidates = cast(Optional[Tuple[int, ...]], neighbors.get(which))
+        candidates = cast(Optional[List[int]], neighbors.get(which))
         if candidates:
-            self.windows.set_active_group(candidates[0])
+            return self.most_recent_group(candidates)
+
+    def neighboring_window(self, which: str) -> None:
+        neighbor = self.neighboring_group_id(which)
+        if neighbor:
+            self.windows.set_active_group(neighbor)
 
     def move_window(self, delta: Union[str, int] = 1) -> None:
-        if self.current_layout.move_window(self.windows, delta):
-            self.relayout()
+        if isinstance(delta, int):
+            if self.current_layout.move_window(self.windows, delta):
+                self.relayout()
+        elif isinstance(delta, str):
+            neighbor = self.neighboring_group_id(delta)
+            if neighbor:
+                if self.current_layout.move_window_to_group(self.windows, neighbor):
+                    self.relayout()
 
     def move_window_to_top(self) -> None:
         n = self.windows.num_groups

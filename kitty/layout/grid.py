@@ -4,6 +4,7 @@
 
 from functools import lru_cache
 from itertools import repeat
+from math import ceil, floor
 from typing import Callable, Dict, Generator, List, Optional, Sequence, Tuple
 
 from kitty.constants import Edges
@@ -235,9 +236,17 @@ class Grid(Layout):
 
         def side(row: int, col: int, delta: int) -> List[int]:
             neighbor_col = col + delta
-            if col_counts[neighbor_col] == col_counts[col]:
+            neighbor_nrows = col_counts[neighbor_col]
+            nrows = col_counts[col]
+            if neighbor_nrows == nrows:
                 return neighbors(row, neighbor_col)
-            return neighbors(min(row, col_counts[neighbor_col] - 1), neighbor_col)
+
+            start_row = floor(neighbor_nrows * row / nrows)
+            end_row = ceil(neighbor_nrows * (row + 1) / nrows)
+            xs = []
+            for neighbor_row in range(start_row, end_row):
+                xs.extend(neighbors(neighbor_row, neighbor_col))
+            return xs
 
         return {
             'top': neighbors(row-1, col) if row else [],

@@ -244,7 +244,7 @@ class Pair:
             return parent.modify_size_of_child(which, increment, is_horizontal, layout_object)
         return False
 
-    def neighbors_for_window(self, window_id: int, ans: NeighborsMap, layout_object: 'Splits') -> None:
+    def neighbors_for_window(self, window_id: int, ans: NeighborsMap, layout_object: 'Splits', all_windows: WindowList) -> None:
 
         def quadrant(is_horizontal: bool, is_first: bool) -> Tuple[EdgeLiteral, EdgeLiteral]:
             if is_horizontal:
@@ -255,12 +255,26 @@ class Pair:
                 return 'top', 'bottom'
             return 'bottom', 'top'
 
+        geometries = dict((group.id, group.geometry) for group in all_windows.groups if group.geometry)
+
         def extend(other: Union[int, 'Pair', None], edge: EdgeLiteral, which: EdgeLiteral) -> None:
             if not ans[which] and other:
                 if isinstance(other, Pair):
-                    ans[which].extend(other.edge_windows(edge))
+                    neighbors = (
+                        w for w in other.edge_windows(edge)
+                        if is_neighbouring_geometry(geometries[w], geometries[window_id], which))
+                    ans[which].extend(neighbors)
                 else:
                     ans[which].append(other)
+
+        def is_neighbouring_geometry(a: WindowGeometry, b: WindowGeometry, direction: str) -> bool:
+            def edges(g: WindowGeometry) -> Tuple[int, int]:
+                return (g.top, g.bottom) if direction in ['left', 'right'] else (g.left, g.right)
+
+            a1, a2 = edges(a)
+            b1, b2 = edges(b)
+
+            return a1 < b2 and a2 > b1
 
         other = self.two if self.one == window_id else self.one
         extend(other, *quadrant(self.horizontal, self.one == window_id))
@@ -418,15 +432,15 @@ class Splits(Layout):
         pair = self.pairs_root.pair_for_window(wg.id)
         ans: NeighborsMap = {'left': [], 'right': [], 'top': [], 'bottom': []}
         if pair is not None:
-            pair.neighbors_for_window(wg.id, ans, self)
+            pair.neighbors_for_window(wg.id, ans, self, all_windows)
         return ans
 
-    def move_window(self, all_windows: WindowList, delta: Union[str, int] = 1) -> bool:
+    def move_window_to_group(self, all_windows: WindowList, group: int) -> bool:
         before = all_windows.active_group
         if before is None:
             return False
         before_idx = all_windows.active_group_idx
-        moved = super().move_window(all_windows, delta)
+        moved = super().move_window_to_group(all_windows, group)
         after = all_windows.groups[before_idx]
         if moved and before.id != after.id:
             self.pairs_root.swap_windows(before.id, after.id)
