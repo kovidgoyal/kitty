@@ -41,6 +41,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix ``launch --location=last`` not working (:iss:`2841`)
 
+- Fix incorrect centering when a PUA or symbol glyph is followed by more than one space
+
 
 0.18.1 [2020-06-23]
 --------------------
