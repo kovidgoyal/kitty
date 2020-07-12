@@ -235,14 +235,12 @@ def thick_line(buf: BufType, width: int, height: int, thickness_in_pixels: int, 
     if p1[0] > p2[0]:
         p1, p2 = p2, p1
     leq = line_equation(*p1, *p2)
+    delta, extra = divmod(thickness_in_pixels, 2)
+
     for x in range(p1[0], p2[0] + 1):
         if 0 <= x < width:
             y_p = leq(x)
-            if thickness_in_pixels <= 1:
-                r = range(int(y_p), int(y_p) + 1)
-            else:
-                delta = thickness_in_pixels // 2
-                r = range(int(y_p) - delta, int(y_p) + delta + (thickness_in_pixels % 2))
+            r = range(int(y_p) - delta, int(y_p) + delta + extra)
             for y in r:
                 if 0 <= y < height:
                     buf[x + y * width] = 255
@@ -364,6 +362,53 @@ def D(buf: BufType, width: int, height: int, left: bool = True) -> None:
             for src_x in range(width):
                 dest_x = width - 1 - src_x
                 buf[offset + dest_x] = mbuf[offset + src_x]
+
+
+def draw_parametrized_curve(buf: BufType, width: int, height: int, thickness_in_pixels: int, xfunc: BezierFunc, yfunc: BezierFunc) -> None:
+    num_samples = height*4
+    seen = set()
+    delta, extra = divmod(thickness_in_pixels, 2)
+    for i in range(num_samples + 1):
+        t = (i / num_samples)
+        p = x_p, y_p = int(xfunc(t)), int(yfunc(t))
+        if p in seen:
+            continue
+        seen.add(p)
+        for y in range(int(y_p) - delta, int(y_p) + delta + extra):
+            if 0 <= y < height:
+                offset = y * width
+                for x in range(int(x_p) - delta, int(x_p) + delta + extra):
+                    if 0 <= x < width:
+                        pos = offset + x
+                        buf[pos] = min(255, buf[pos] + 255)
+
+
+@supersampled()
+def rounded_corner(buf: BufType, width: int, height: int, level: int = 1, which: str = '╭') -> None:
+    supersample_factor = getattr(buf, 'supersample_factor')
+    thickness_in_pixels = thickness(level) * supersample_factor
+    if which == '╭':
+        start = width // 2, height - 1
+        end = width - 1, height // 2
+        c1 = width // 2, int(0.75 * height)
+        c2 = width // 2, height // 2 + 1
+    elif which == '╮':
+        start = 0, height // 2
+        end = width // 2, height - 1
+        c1 = width // 2, height // 2 + 1
+        c2 = width // 2, int(0.75 * height)
+    elif which == '╰':
+        start = width // 2, 0
+        end = width - 1, height // 2
+        c1 = width // 2, int(0.25 * height)
+        c2 = width // 2 - 1, height // 2 - 1
+    elif which == '╯':
+        start = 0, height // 2
+        end = width // 2, 0
+        c1 = width // 2 - 1, height // 2 - 1
+        c2 = width // 2, int(0.25 * height)
+    xfunc, yfunc = cubic_bezier(start, end, c1, c2)
+    draw_parametrized_curve(buf, width, height, thickness_in_pixels, xfunc, yfunc)
 
 
 def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> Tuple[int, int]:
@@ -577,17 +622,29 @@ box_chars: Dict[str, List[Callable]] = {
     '': [p(corner_triangle, corner='top-right')],
     '═': [dhline],
     '║': [dvline],
+
     '╞': [vline, p(half_dhline, which='right')],
+
     '╡': [vline, half_dhline],
+
     '╥': [hline, p(half_dvline, which='bottom')],
+
     '╨': [hline, half_dvline],
+
     '╪': [vline, half_dhline, p(half_dhline, which='right')],
+
     '╫': [hline, half_dvline, p(half_dvline, which='bottom')],
+
     '╬': [p(inner_corner, which=x) for x in 'tl tr bl br'.split()],
+
     '╠': [p(inner_corner, which='tr'), p(inner_corner, which='br'), p(dvline, only='left')],
+
     '╣': [p(inner_corner, which='tl'), p(inner_corner, which='bl'), p(dvline, only='right')],
+
     '╦': [p(inner_corner, which='bl'), p(inner_corner, which='br'), p(dhline, only='top')],
+
     '╩': [p(inner_corner, which='tl'), p(inner_corner, which='tr'), p(dhline, only='bottom')],
+
     '╱': [p(cross_line, left=False)],
     '╲': [cross_line],
     '╳': [cross_line, p(cross_line, left=False)],
@@ -629,8 +686,8 @@ t, f = 1, 3
 for start in '┌┐└┘':
     for i, (hlevel, vlevel) in enumerate(((t, t), (f, t), (t, f), (f, f))):
         box_chars[chr(ord(start) + i)] = [p(corner, which=start, hlevel=hlevel, vlevel=vlevel)]
-for ch, c in zip('╭╮╯╰', '┌┐┘└'):
-    box_chars[ch] = [p(corner, which=c)]  # TODO: Make these rounded
+for ch in '╭╮╯╰':
+    box_chars[ch] = [p(rounded_corner, which=ch)]
 
 for i, (a_, b_, c_, d_) in enumerate((
         (t, t, t, t), (f, t, t, t), (t, f, t, t), (f, f, t, t), (t, t, f, t), (t, t, t, f), (t, t, f, f),

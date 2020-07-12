@@ -15,6 +15,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Improve anti-aliasing of triangular box drawing characters, noticeable on
   low-resolution screens (:iss:`2844`)
 
+- Implement support for box drawing rounded-corners characters (:iss:`2240`)
+
 - macOS: Fix the LC_TYPE env var being set to UTF-8 on systems in which the
   language and country code do not form a valid locale (:iss:`1233`)
 
