@@ -312,5 +312,10 @@ void play_canberra_sound(const char *which_sound, const char *event_id);
 SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);
 SPRITE_MAP_HANDLE free_sprite_map(SPRITE_MAP_HANDLE);
 
-static inline void safe_close(int fd) { while(close(fd) != 0 && errno == EINTR); }
+static inline void safe_close(int fd, const char* file UNUSED, const int line UNUSED) {
+#if 0
+    printf("Closing fd: %d from file: %s line: %d\n", fd, file, line);
+#endif
+    while(close(fd) != 0 && errno == EINTR);
+}
 void log_event(const char *format, ...) __attribute__((format(printf, 1, 2)));

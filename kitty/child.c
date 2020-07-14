@@ -99,28 +99,28 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             // On BSD open() does not establish the controlling terminal
             if (ioctl(tfd, TIOCSCTTY, 0) == -1) exit_on_err("Failed to set controlling terminal with TIOCSCTTY");
 #endif
-            safe_close(tfd);
+            safe_close(tfd, __FILE__, __LINE__);
 
             // Redirect stdin/stdout/stderr to the pty
             if (dup2(slave, 1) == -1) exit_on_err("dup2() failed for fd number 1");
             if (dup2(slave, 2) == -1) exit_on_err("dup2() failed for fd number 2");
             if (stdin_read_fd > -1) {
                 if (dup2(stdin_read_fd, 0) == -1) exit_on_err("dup2() failed for fd number 0");
-                safe_close(stdin_read_fd);
-                safe_close(stdin_write_fd);
+                safe_close(stdin_read_fd, __FILE__, __LINE__);
+                safe_close(stdin_write_fd, __FILE__, __LINE__);
             } else {
                 if (dup2(slave, 0) == -1) exit_on_err("dup2() failed for fd number 0");
             }
-            safe_close(slave);
-            safe_close(master);
+            safe_close(slave, __FILE__, __LINE__);
+            safe_close(master, __FILE__, __LINE__);
 
             // Wait for READY_SIGNAL which indicates kitty has setup the screen object
-            safe_close(ready_write_fd);
+            safe_close(ready_write_fd, __FILE__, __LINE__);
             wait_for_terminal_ready(ready_read_fd);
-            safe_close(ready_read_fd);
+            safe_close(ready_read_fd, __FILE__, __LINE__);
 
             // Close any extra fds inherited from parent
-            for (int c = 3; c < 201; c++) safe_close(c);
+            for (int c = 3; c < 201; c++) safe_close(c, __FILE__, __LINE__);
 
             environ = env;
             // for some reason SIGPIPE is set to SIG_IGN, so reset it, needed by bash,

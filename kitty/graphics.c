@@ -404,7 +404,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             else fd = open(fname, O_CLOEXEC | O_RDONLY);
             if (fd == -1) ABRT(EBADF, "Failed to open file %s for graphics transmission with error: [%d] %s", fname, errno, strerror(errno));
             img->data_loaded = mmap_img_file(self, img, fd, g->data_sz, g->data_offset);
-            safe_close(fd);
+            safe_close(fd, __FILE__, __LINE__);
             if (tt == 't') {
                 if (global_state.boss) { call_boss(safe_delete_temp_file, "s", fname); }
                 else unlink(fname);
@@ -891,12 +891,12 @@ W(shm_write) {
     int fd = shm_open(name, O_CREAT | O_RDWR, S_IRUSR | S_IWUSR);
     if (fd == -1) { PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
     int ret = ftruncate(fd, sz);
-    if (ret != 0) { safe_close(fd); PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    if (ret != 0) { safe_close(fd, __FILE__, __LINE__); PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
     void *addr = mmap(0, sz, PROT_WRITE, MAP_SHARED, fd, 0);
-    if (addr == MAP_FAILED) { safe_close(fd); PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    if (addr == MAP_FAILED) { safe_close(fd, __FILE__, __LINE__); PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
     memcpy(addr, data, sz);
-    if (munmap(addr, sz) != 0) { safe_close(fd); PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
-    safe_close(fd);
+    if (munmap(addr, sz) != 0) { safe_close(fd, __FILE__, __LINE__); PyErr_SetFromErrnoWithFilename(PyExc_OSError, name); return NULL; }
+    safe_close(fd, __FILE__, __LINE__);
     Py_RETURN_NONE;
 }
 
