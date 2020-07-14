@@ -1478,6 +1478,7 @@ prune_finished_writes(void) {
 
 static inline void
 prune_invalid_fd(int fd) {
+    log_error("Pruning invalid peer fd: %d", fd);
     for (ssize_t i = talk_data.num_reads - 1; i >= 0; i--) {
         PeerReadData *rd = talk_data.reads + i;
         if (rd->fd == fd) {
