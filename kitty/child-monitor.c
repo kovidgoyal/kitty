@@ -1390,7 +1390,7 @@ read_from_peer(ChildMonitor *self, int s) {
             } else if (n < 0) {
                 if (errno != EINTR) {
                     perror("Error reading from talk peer");
-                    failed("");
+                    failed("Closing connection to peer");
                 }
             } else {
                 if (!rd->used && memcmp(rd->data, KITTY_CMD_PREFIX, sizeof(KITTY_CMD_PREFIX)-1) == 0) rd->is_peer_command = true;
@@ -1476,6 +1476,25 @@ prune_finished_writes(void) {
     }
 }
 
+static inline void
+prune_invalid_fd(int fd) {
+    for (ssize_t i = talk_data.num_reads - 1; i >= 0; i--) {
+        PeerReadData *rd = talk_data.reads + i;
+        if (rd->fd == fd) {
+            rd->finished = true;
+            rd->close_socket = true;
+            return;
+        }
+    }
+    for (ssize_t i = talk_data.num_writes - 1; i >= 0; i--) {
+        PeerWriteData *wd = talk_data.writes + i;
+        if (wd->fd == fd) {
+            wd->finished = true;
+            return;
+        }
+    }
+}
+
 static void
 wakeup_talk_loop(bool in_signal_handler) {
     if (talk_thread_started) wakeup_loop(&talk_data.loop_data, in_signal_handler, "talk_loop");
@@ -1522,6 +1541,7 @@ talk_loop(void *data) {
         int ret = poll(talk_data.fds, talk_data.num_listen_fds + talk_data.num_talk_fds, -1);
         if (ret > 0) {
             bool has_finished_reads = false, has_finished_writes = false;
+            int invalid_fd = -1;
             for (size_t i = 0; i < talk_data.num_listen_fds - 1; i++) {
                 if (talk_data.fds[i].revents & POLLIN) {if (!accept_peer(talk_data.fds[i].fd, self->shutting_down)) goto end; }
             }
@@ -1529,7 +1549,9 @@ talk_loop(void *data) {
             for (size_t i = talk_data.num_listen_fds; i < talk_data.num_talk_fds + talk_data.num_listen_fds; i++) {
                 if (talk_data.fds[i].revents & (POLLIN | POLLHUP)) { if (read_from_peer(self, talk_data.fds[i].fd)) has_finished_reads = true; }
                 if (talk_data.fds[i].revents & POLLOUT) { if (write_to_peer(talk_data.fds[i].fd)) has_finished_writes = true; }
+                if (talk_data.fds[i].revents & POLLNVAL) invalid_fd = talk_data.fds[i].fd;
             }
+            if (invalid_fd > -1) { prune_invalid_fd(invalid_fd); has_finished_reads = true; has_finished_writes = true; }
             if (has_finished_reads) prune_finished_reads();
             if (has_finished_writes) prune_finished_writes();
             peer_mutex(lock);
