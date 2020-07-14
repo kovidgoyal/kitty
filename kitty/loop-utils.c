@@ -56,7 +56,7 @@ free_loop_data(LoopData *ld) {
     CLOSE(signal_fds, 0); CLOSE(signal_fds, 1);
 #endif
 #undef CLOSE
-    if (ld->signal_read_fd) {
+    if (ld->signal_read_fd > -1) {
 #ifdef HAS_SIGNAL_FD
         safe_close(ld->signal_read_fd, __FILE__, __LINE__);
         SIGNAL_SET
