@@ -15,7 +15,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Improve anti-aliasing of triangular box drawing characters, noticeable on
   low-resolution screens (:iss:`2844`)
 
-- Fix ``kitty @ send-text`` not working reliably when using a docket for remote
+- Fix ``kitty @ send-text`` not working reliably when using a socket for remote
   control (:iss:`2852`)
 
 - Implement support for box drawing rounded-corners characters (:iss:`2240`)
