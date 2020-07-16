@@ -274,6 +274,9 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
         }
     }
 
+    if (wndconfig.mousePassthrough)
+        _glfwPlatformSetWindowMousePassthrough(window, true);
+
     if (window->monitor)
     {
         if (wndconfig.centerCursor)
@@ -290,9 +293,6 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
 #endif
         }
     }
-
-    if (wndconfig.mousePassthrough)
-        _glfwPlatformSetWindowMousePassthrough(window, true);
 
     return (GLFWwindow*) window;
 }
