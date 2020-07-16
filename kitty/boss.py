@@ -450,8 +450,7 @@ class Boss:
         windows = tuple(tab)
         needs_confirmation = self.opts.confirm_os_window_close > 0 and len(windows) >= self.opts.confirm_os_window_close
         if not needs_confirmation:
-            for window in windows:
-                self.close_window(window)
+            self.close_tab_no_confirm(tab)
             return
         self._run_kitten('ask', ['--type=yesno', '--message', _(
             'Are you sure you want to close this tab, it has {}'
@@ -468,6 +467,9 @@ class Boss:
                 break
         else:
             return
+        self.close_tab_no_confirm(tab)
+
+    def close_tab_no_confirm(self, tab: Tab) -> None:
         for window in tab:
             self.close_window(window)
 
