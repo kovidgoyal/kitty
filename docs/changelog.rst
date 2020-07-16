@@ -49,6 +49,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix incorrect centering when a PUA or symbol glyph is followed by more than one space
 
+- Have the :opt:`confirm_os_window_close` option also apply when closing tabs
+  with multiple windows (:iss:`2857`)
+
 
 0.18.1 [2020-06-23]
 --------------------

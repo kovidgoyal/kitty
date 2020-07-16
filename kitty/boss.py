@@ -444,8 +444,32 @@ class Boss:
     def close_tab(self, tab: Optional[Tab] = None) -> None:
         tab = tab or self.active_tab
         if tab:
-            for window in tab:
+            self.confirm_tab_close(tab)
+
+    def confirm_tab_close(self, tab: Tab) -> None:
+        windows = tuple(tab)
+        needs_confirmation = self.opts.confirm_os_window_close > 0 and len(windows) >= self.opts.confirm_os_window_close
+        if not needs_confirmation:
+            for window in windows:
                 self.close_window(window)
+            return
+        self._run_kitten('ask', ['--type=yesno', '--message', _(
+            'Are you sure you want to close this tab, it has {}'
+            ' windows running?').format(len(windows))],
+            window=tab.active_window,
+            custom_callback=partial(self.handle_close_tab_confirmation, tab.id)
+        )
+
+    def handle_close_tab_confirmation(self, tab_id: int, data: Dict[str, Any], *a: Any) -> None:
+        if data['response'] != 'y':
+            return
+        for tab in self.all_tabs:
+            if tab.id == tab_id:
+                break
+        else:
+            return
+        for window in tab:
+            self.close_window(window)
 
     def toggle_fullscreen(self) -> None:
         toggle_fullscreen()
