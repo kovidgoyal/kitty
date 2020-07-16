@@ -51,6 +51,9 @@
 // The XInput extension provides raw mouse motion input
 #include <X11/extensions/XInput2.h>
 
+// The Shape extension provides custom window shapes
+#include <X11/extensions/shape.h>
+
 // The libxkb library is used for improved keyboard support
 #include "xkb_glfw.h"
 #include "backend_utils.h"
