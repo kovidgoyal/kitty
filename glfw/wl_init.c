@@ -337,9 +337,9 @@ static void pointerHandleAxis(void* data UNUSED,
            axis == WL_POINTER_AXIS_VERTICAL_SCROLL);
 
     if (axis == WL_POINTER_AXIS_HORIZONTAL_SCROLL)
-        x = wl_fixed_to_double(value) * -1;
+        x = -wl_fixed_to_double(value);
     else if (axis == WL_POINTER_AXIS_VERTICAL_SCROLL)
-        y = wl_fixed_to_double(value) * -1;
+        y = -wl_fixed_to_double(value);
 
     _glfwInputScroll(window, x, y, 1, _glfw.wl.xkb.states.modifiers);
 }
