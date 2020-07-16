@@ -90,9 +90,9 @@ void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor UNUSED,
     const GLFWvidmode mode = getVideoMode();
 
     if (xpos)
-        *xpos = 10;
+        *xpos = 0;
     if (ypos)
-        ypos = 0;
+        *ypos = 10;
     if (width)
         *width = mode.width;
     if (height)
