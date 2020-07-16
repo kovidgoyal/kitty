@@ -5,7 +5,7 @@ Launching programs in new windows/tabs
 
 
 |kitty| has a :code:`launch` action that can be used to run arbitrary programs
-in news windows/tabs. It can be mapped to user defined shortcuts in kitty.conf.
+in new windows/tabs. It can be mapped to user defined shortcuts in kitty.conf.
 It is very powerful and allows sending the contents of
 the current window to the launched program, as well as many other options.
 
