@@ -2594,21 +2594,19 @@ void _glfwPlatformSetWindowMousePassthrough(_GLFWwindow* window, bool enabled)
     if (enabled == window->mousePassthrough)
         return;
 
-    int width = 0;
-    int height = 0;
-    if (!enabled)
-        _glfwPlatformGetWindowSize(window, &width, &height);
+    if (enabled)
+    {
+        Region region = XCreateRegion();
+        XShapeCombineRegion(_glfw.x11.display, window->x11.handle,
+                            2/*ShapeInput*/, 0, 0, region, 0/*ShapeSet*/);
+        XDestroyRegion(region);
+    }
+    else
+    {
+        XShapeCombineMask(_glfw.x11.display, window->x11.handle,
+                          2/*ShapeInput*/, 0, 0, None, 0/*ShapeSet*/);
+    }
 
-    XRectangle rect;
-    rect.x = 0;
-    rect.y = 0;
-    rect.width = (unsigned short)width;
-    rect.height = (unsigned short)height;
-
-    Region region = XCreateRegion();
-    XUnionRectWithRegion(&rect, region, region);
-    XShapeCombineRegion(_glfw.x11.display, window->x11.handle, 2/*ShapeInput*/, 0, 0, region, 0/*ShapeSet*/);
-    XDestroyRegion(region);
     window->mousePassthrough = enabled;
 }
 

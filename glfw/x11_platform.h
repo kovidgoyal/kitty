@@ -128,9 +128,12 @@ typedef XRenderPictFormat* (* PFN_XRenderFindVisualFormat)(Display*,Visual const
 typedef Bool (* PFN_XShapeQueryExtension)(Display*,int*,int*);
 typedef Status (* PFN_XShapeQueryVersion)(Display*dpy,int*,int*);
 typedef void (* PFN_XShapeCombineRegion)(Display*,Window,int,int,int,Region,int);
+typedef void (* PFN_XShapeCombineMask)(Display*,Window,int,int,int,Pixmap,int);
+
 #define XShapeQueryExtension _glfw.x11.xshape.QueryExtension
 #define XShapeQueryVersion _glfw.x11.xshape.QueryVersion
 #define XShapeCombineRegion _glfw.x11.xshape.ShapeCombineRegion
+#define XShapeCombineMask _glfw.x11.xshape.ShapeCombineMask
 
 typedef VkFlags VkXlibSurfaceCreateFlagsKHR;
 typedef VkFlags VkXcbSurfaceCreateFlagsKHR;
@@ -394,6 +397,7 @@ typedef struct _GLFWlibraryX11
         PFN_XShapeQueryExtension QueryExtension;
         PFN_XShapeCombineRegion ShapeCombineRegion;
         PFN_XShapeQueryVersion QueryVersion;
+        PFN_XShapeCombineMask ShapeCombineMask;
     } xshape;
 
     EventLoopData eventLoopData;
