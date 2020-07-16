@@ -1271,9 +1271,6 @@ void _glfwPlatformSetWindowFloating(_GLFWwindow* window UNUSED, bool enabled UNU
 
 void _glfwPlatformSetWindowMousePassthrough(_GLFWwindow* window, bool enabled)
 {
-    if (enabled == window->mousePassthrough)
-        return;
-
     if (enabled)
     {
         struct wl_region* region = wl_compositor_create_region(_glfw.wl.compositor);
@@ -1283,7 +1280,6 @@ void _glfwPlatformSetWindowMousePassthrough(_GLFWwindow* window, bool enabled)
     else
         wl_surface_set_input_region(window->wl.surface, 0);
     wl_surface_commit(window->wl.surface);
-    window->mousePassthrough = enabled;
 }
 
 float _glfwPlatformGetWindowOpacity(_GLFWwindow* window UNUSED)

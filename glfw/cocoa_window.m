@@ -1856,7 +1856,6 @@ void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled)
 
 void _glfwPlatformSetWindowMousePassthrough(_GLFWwindow* window, bool enabled)
 {
-    window->mousePassthrough = enabled;
     [window->ns.object setIgnoresMouseEvents:enabled];
 }
 
