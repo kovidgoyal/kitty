@@ -51,6 +51,9 @@
 // The XInput extension provides raw mouse motion input
 #include <X11/extensions/XInput2.h>
 
+// The Shape extension provides custom window shapes
+#include <X11/extensions/shape.h>
+
 // The libxkb library is used for improved keyboard support
 #include "xkb_glfw.h"
 #include "backend_utils.h"
@@ -124,6 +127,16 @@ typedef XRenderPictFormat* (* PFN_XRenderFindVisualFormat)(Display*,Visual const
 #define XRenderQueryExtension _glfw.x11.xrender.QueryExtension
 #define XRenderQueryVersion _glfw.x11.xrender.QueryVersion
 #define XRenderFindVisualFormat _glfw.x11.xrender.FindVisualFormat
+
+typedef Bool (* PFN_XShapeQueryExtension)(Display*,int*,int*);
+typedef Status (* PFN_XShapeQueryVersion)(Display*dpy,int*,int*);
+typedef void (* PFN_XShapeCombineRegion)(Display*,Window,int,int,int,Region,int);
+typedef void (* PFN_XShapeCombineMask)(Display*,Window,int,int,int,Pixmap,int);
+
+#define XShapeQueryExtension _glfw.x11.xshape.QueryExtension
+#define XShapeQueryVersion _glfw.x11.xshape.QueryVersion
+#define XShapeCombineRegion _glfw.x11.xshape.ShapeCombineRegion
+#define XShapeCombineMask _glfw.x11.xshape.ShapeCombineMask
 
 typedef VkFlags VkXlibSurfaceCreateFlagsKHR;
 typedef VkFlags VkXcbSurfaceCreateFlagsKHR;
@@ -376,6 +389,19 @@ typedef struct _GLFWlibraryX11
         PFN_XRenderQueryVersion QueryVersion;
         PFN_XRenderFindVisualFormat FindVisualFormat;
     } xrender;
+
+    struct {
+        bool        available;
+        void*       handle;
+        int         major;
+        int         minor;
+        int         eventBase;
+        int         errorBase;
+        PFN_XShapeQueryExtension QueryExtension;
+        PFN_XShapeCombineRegion ShapeCombineRegion;
+        PFN_XShapeQueryVersion QueryVersion;
+        PFN_XShapeCombineMask ShapeCombineMask;
+    } xshape;
 
     EventLoopData eventLoopData;
 

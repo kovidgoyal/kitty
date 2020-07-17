@@ -240,13 +240,14 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
     window->videoMode.blueBits    = fbconfig.blueBits;
     window->videoMode.refreshRate = _glfw.hints.refreshRate;
 
-    window->monitor     = (_GLFWmonitor*) monitor;
-    window->resizable   = wndconfig.resizable;
-    window->decorated   = wndconfig.decorated;
-    window->autoIconify = wndconfig.autoIconify;
-    window->floating    = wndconfig.floating;
-    window->focusOnShow = wndconfig.focusOnShow;
-    window->cursorMode  = GLFW_CURSOR_NORMAL;
+    window->monitor          = (_GLFWmonitor*) monitor;
+    window->resizable        = wndconfig.resizable;
+    window->decorated        = wndconfig.decorated;
+    window->autoIconify      = wndconfig.autoIconify;
+    window->floating         = wndconfig.floating;
+    window->focusOnShow      = wndconfig.focusOnShow;
+    window->mousePassthrough = wndconfig.mousePassthrough;
+    window->cursorMode       = GLFW_CURSOR_NORMAL;
 
     window->minwidth    = GLFW_DONT_CARE;
     window->minheight   = GLFW_DONT_CARE;
@@ -272,6 +273,9 @@ GLFWAPI GLFWwindow* glfwCreateWindow(int width, int height,
             return NULL;
         }
     }
+
+    if (wndconfig.mousePassthrough)
+        _glfwPlatformSetWindowMousePassthrough(window, true);
 
     if (window->monitor)
     {
@@ -421,6 +425,9 @@ GLFWAPI void glfwWindowHint(int hint, int value)
             return;
         case GLFW_FOCUS_ON_SHOW:
             _glfw.hints.window.focusOnShow = value ? true : false;
+            return;
+        case GLFW_MOUSE_PASSTHROUGH:
+            _glfw.hints.window.mousePassthrough = value ? true : false;
             return;
         case GLFW_CLIENT_API:
             _glfw.hints.context.client = value;
@@ -905,6 +912,8 @@ GLFWAPI int glfwGetWindowAttrib(GLFWwindow* handle, int attrib)
             return _glfwPlatformWindowHovered(window);
         case GLFW_FOCUS_ON_SHOW:
             return window->focusOnShow;
+        case GLFW_MOUSE_PASSTHROUGH:
+            return window->mousePassthrough;
         case GLFW_TRANSPARENT_FRAMEBUFFER:
             return _glfwPlatformFramebufferTransparent(window);
         case GLFW_OCCLUDED:
@@ -985,6 +994,14 @@ GLFWAPI void glfwSetWindowAttrib(GLFWwindow* handle, int attrib, int value)
     }
     else if (attrib == GLFW_FOCUS_ON_SHOW)
         window->focusOnShow = value;
+    else if (attrib == GLFW_MOUSE_PASSTHROUGH)
+    {
+        if (window->mousePassthrough == value)
+            return;
+
+        window->mousePassthrough = value;
+        _glfwPlatformSetWindowMousePassthrough(window, value);
+    }
     else
         _glfwInputError(GLFW_INVALID_ENUM, "Invalid window attribute 0x%08X", attrib);
 }

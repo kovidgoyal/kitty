@@ -1854,6 +1854,11 @@ void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled)
         [window->ns.object setLevel:NSNormalWindowLevel];
 }
 
+void _glfwPlatformSetWindowMousePassthrough(_GLFWwindow* window, bool enabled)
+{
+    [window->ns.object setIgnoresMouseEvents:enabled];
+}
+
 float _glfwPlatformGetWindowOpacity(_GLFWwindow* window)
 {
     return (float) [window->ns.object alphaValue];

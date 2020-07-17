@@ -327,6 +327,30 @@ static bool initExtensions(void)
         }
     }
 
+#if defined(__CYGWIN__)
+    _glfw.x11.xshape.handle = _glfw_dlopen("libXext-6.so");
+#else
+    _glfw.x11.xshape.handle = _glfw_dlopen("libXext.so.6");
+#endif
+    if (_glfw.x11.xshape.handle)
+    {
+        glfw_dlsym(_glfw.x11.xshape.QueryExtension, _glfw.x11.xshape.handle, "XShapeQueryExtension");
+        glfw_dlsym(_glfw.x11.xshape.ShapeCombineRegion, _glfw.x11.xshape.handle, "XShapeCombineRegion");
+        glfw_dlsym(_glfw.x11.xshape.QueryVersion, _glfw.x11.xshape.handle, "XShapeQueryVersion");
+
+        if (XShapeQueryExtension(_glfw.x11.display,
+            &_glfw.x11.xshape.errorBase,
+            &_glfw.x11.xshape.eventBase))
+        {
+            if (XShapeQueryVersion(_glfw.x11.display,
+                &_glfw.x11.xshape.major,
+                &_glfw.x11.xshape.minor))
+            {
+                _glfw.x11.xshape.available = true;
+            }
+        }
+    }
+
     _glfw.x11.xkb.major = 1;
     _glfw.x11.xkb.minor = 0;
     _glfw.x11.xkb.available = XkbQueryExtension(_glfw.x11.display,
