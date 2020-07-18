@@ -146,6 +146,7 @@ on_key_input(GLFWkeyevent *ev) {
                 schedule_write_to_child(w->id, 1, text, strlen(text));
                 debug("committed pre-edit text: %s\n", text);
             } else debug("committed pre-edit text: (null)\n");
+            screen_draw_overlay_text(screen, NULL);
             return;
         case 0:
             // for macOS, update ime position on every key input
