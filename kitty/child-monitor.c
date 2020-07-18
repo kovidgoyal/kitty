@@ -1525,6 +1525,7 @@ end:
 
 static void
 send_response(id_type peer_id, const char *msg, size_t msg_sz) {
+    bool wakeup = false;
     talk_mutex(lock);
     for (size_t i = 0; i < talk_data.num_peers; i++) {
         Peer *peer = talk_data.peers + i;
@@ -1541,11 +1542,12 @@ send_response(id_type peer_id, const char *msg, size_t msg_sz) {
                 memcpy(peer->write.data + peer->write.used, msg, msg_sz);
                 peer->write.used += msg_sz;
             }
-            wakeup_talk_loop(false);
+            wakeup = true;
             break;
         }
     }
     talk_mutex(unlock);
+    if (wakeup) wakeup_talk_loop(false);
 }
 
 // }}}
