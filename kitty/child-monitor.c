@@ -1479,7 +1479,7 @@ talk_loop(void *data) {
     while (LIKELY(!self->shutting_down)) {
         num_peer_fds = 0;
         if (talk_data.num_peers > 0) {
-            talk_mutex(unlock);
+            talk_mutex(lock);
             prune_peers();
             for (size_t i = 0; i < talk_data.num_peers; i++) {
                 Peer *p = talk_data.peers + i;
