@@ -43,6 +43,7 @@ class Session:
         self.active_tab_idx = 0
         self.default_title = default_title
         self.os_window_size: Optional[WindowSizeOpts] = None
+        self.os_window_class: Optional[str] = None
 
     def add_tab(self, opts: Options, name: str = '') -> None:
         if self.tabs and not self.tabs[-1].windows:
@@ -124,6 +125,8 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
                 from kitty.config_data import window_size
                 w, h = map(window_size, rest.split(maxsplit=1))
                 ans.os_window_size = WindowSizeOpts(w, h, opts.window_margin_width, opts.window_padding_width, False)
+            elif cmd == 'os_window_class':
+                ans.os_window_class = rest
             else:
                 raise ValueError('Unknown command in session file: {}'.format(cmd))
     yield finalize_session(ans)

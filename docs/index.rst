@@ -346,6 +346,8 @@ For example:
     new_os_window
     # set new window size to 80x25 cells
     os_window_size 80c 25c
+    # set the --class for the new OS window
+    os_window_class mywindow
     launch sh
     # Make the current window the active (focused) window
     focus

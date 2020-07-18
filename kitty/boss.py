@@ -195,7 +195,7 @@ class Boss:
     ) -> int:
         if os_window_id is None:
             opts_for_size = opts_for_size or getattr(startup_session, 'os_window_size', None) or self.opts
-            wclass = wclass or self.args.cls or appname
+            wclass = wclass or getattr(startup_session, 'os_window_class', None) or self.args.cls or appname
             with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
                 os_window_id = create_os_window(
                         initial_window_size_func(opts_for_size, self.cached_values),

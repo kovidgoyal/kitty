@@ -20,6 +20,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Implement support for box drawing rounded-corners characters (:iss:`2240`)
 
+- Allow setting the class for new OS windows in a session file
+
 - When a character from the Unicode Dingbat block is followed by a space, use
   the extra space to render a larger version of the character (:iss:`2850`)
 
