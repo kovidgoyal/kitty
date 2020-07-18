@@ -155,6 +155,11 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 
 static void
 dealloc(ChildMonitor* self) {
+    if (self->messages) {
+        for (size_t i = 0; i < self->messages_count; i++) free(self->messages[i].data);
+        free(self->messages); self->messages = NULL;
+        self->messages_count = 0; self->messages_capacity = 0;
+    }
     pthread_mutex_destroy(&children_lock);
     pthread_mutex_destroy(&talk_lock);
     Py_CLEAR(self->dump_callback);
@@ -359,6 +364,7 @@ parse_input(ChildMonitor *self) {
             memcpy(msgs, self->messages, sizeof(Message) * self->messages_count);
             msgs_count = self->messages_count;
         }
+        memset(self->messages, 0, sizeof(Message) * self->messages_capacity);
         self->messages_count = 0;
     }
     talk_mutex(unlock);
