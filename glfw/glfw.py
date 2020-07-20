@@ -79,7 +79,7 @@ def init_env(env: Env, pkg_config: Callable, at_least_version: Callable, test_co
         at_least_version('xkbcommon', 0, 5)
 
     if module == 'x11':
-        for dep in 'x11 xrandr xinerama xcursor xkbcommon xkbcommon-x11 x11-xcb dbus-1'.split():
+        for dep in 'xrandr xinerama xcursor xkbcommon xkbcommon-x11 x11-xcb dbus-1'.split():
             ans.cflags.extend(pkg_config(dep, '--cflags-only-I'))
             ans.ldpaths.extend(pkg_config(dep, '--libs'))
 

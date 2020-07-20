@@ -31,8 +31,6 @@
 #include "internal.h"
 #include "backend_utils.h"
 
-#include <X11/Xresource.h>
-
 #include <stdlib.h>
 #include <string.h>
 #include <limits.h>
@@ -612,6 +610,114 @@ Cursor _glfwCreateCursorX11(const GLFWimage* image, int xhot, int yhot)
 
 int _glfwPlatformInit(void)
 {
+#if defined(__CYGWIN__)
+    _glfw.x11.xlib.handle = _glfw_dlopen("libX11-6.so");
+#else
+    _glfw.x11.xlib.handle = _glfw_dlopen("libX11.so.6");
+#endif
+    if (!_glfw.x11.xlib.handle)
+    {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "X11: Failed to load Xlib");
+        return false;
+    }
+
+    glfw_dlsym(_glfw.x11.xlib.AllocClassHint, _glfw.x11.xlib.handle, "XAllocClassHint");
+    glfw_dlsym(_glfw.x11.xlib.AllocSizeHints, _glfw.x11.xlib.handle, "XAllocSizeHints");
+    glfw_dlsym(_glfw.x11.xlib.AllocWMHints, _glfw.x11.xlib.handle, "XAllocWMHints");
+    glfw_dlsym(_glfw.x11.xlib.ChangeProperty, _glfw.x11.xlib.handle, "XChangeProperty");
+    glfw_dlsym(_glfw.x11.xlib.ChangeWindowAttributes, _glfw.x11.xlib.handle, "XChangeWindowAttributes");
+    glfw_dlsym(_glfw.x11.xlib.CheckIfEvent, _glfw.x11.xlib.handle, "XCheckIfEvent");
+    glfw_dlsym(_glfw.x11.xlib.CheckTypedWindowEvent, _glfw.x11.xlib.handle, "XCheckTypedWindowEvent");
+    glfw_dlsym(_glfw.x11.xlib.CloseDisplay, _glfw.x11.xlib.handle, "XCloseDisplay");
+    glfw_dlsym(_glfw.x11.xlib.CloseIM, _glfw.x11.xlib.handle, "XCloseIM");
+    glfw_dlsym(_glfw.x11.xlib.ConvertSelection, _glfw.x11.xlib.handle, "XConvertSelection");
+    glfw_dlsym(_glfw.x11.xlib.CreateColormap, _glfw.x11.xlib.handle, "XCreateColormap");
+    glfw_dlsym(_glfw.x11.xlib.CreateFontCursor, _glfw.x11.xlib.handle, "XCreateFontCursor");
+    glfw_dlsym(_glfw.x11.xlib.CreateIC, _glfw.x11.xlib.handle, "XCreateIC");
+    glfw_dlsym(_glfw.x11.xlib.CreateWindow, _glfw.x11.xlib.handle, "XCreateWindow");
+    glfw_dlsym(_glfw.x11.xlib.DefineCursor, _glfw.x11.xlib.handle, "XDefineCursor");
+    glfw_dlsym(_glfw.x11.xlib.DeleteContext, _glfw.x11.xlib.handle, "XDeleteContext");
+    glfw_dlsym(_glfw.x11.xlib.DeleteProperty, _glfw.x11.xlib.handle, "XDeleteProperty");
+    glfw_dlsym(_glfw.x11.xlib.DestroyIC, _glfw.x11.xlib.handle, "XDestroyIC");
+    glfw_dlsym(_glfw.x11.xlib.DestroyWindow, _glfw.x11.xlib.handle, "XDestroyWindow");
+    glfw_dlsym(_glfw.x11.xlib.EventsQueued, _glfw.x11.xlib.handle, "XEventsQueued");
+    glfw_dlsym(_glfw.x11.xlib.FilterEvent, _glfw.x11.xlib.handle, "XFilterEvent");
+    glfw_dlsym(_glfw.x11.xlib.FindContext, _glfw.x11.xlib.handle, "XFindContext");
+    glfw_dlsym(_glfw.x11.xlib.Flush, _glfw.x11.xlib.handle, "XFlush");
+    glfw_dlsym(_glfw.x11.xlib.Free, _glfw.x11.xlib.handle, "XFree");
+    glfw_dlsym(_glfw.x11.xlib.FreeColormap, _glfw.x11.xlib.handle, "XFreeColormap");
+    glfw_dlsym(_glfw.x11.xlib.FreeCursor, _glfw.x11.xlib.handle, "XFreeCursor");
+    glfw_dlsym(_glfw.x11.xlib.FreeEventData, _glfw.x11.xlib.handle, "XFreeEventData");
+    glfw_dlsym(_glfw.x11.xlib.GetErrorText, _glfw.x11.xlib.handle, "XGetErrorText");
+    glfw_dlsym(_glfw.x11.xlib.GetEventData, _glfw.x11.xlib.handle, "XGetEventData");
+    glfw_dlsym(_glfw.x11.xlib.GetICValues, _glfw.x11.xlib.handle, "XGetICValues");
+    glfw_dlsym(_glfw.x11.xlib.GetIMValues, _glfw.x11.xlib.handle, "XGetIMValues");
+    glfw_dlsym(_glfw.x11.xlib.GetInputFocus, _glfw.x11.xlib.handle, "XGetInputFocus");
+    glfw_dlsym(_glfw.x11.xlib.GetKeyboardMapping, _glfw.x11.xlib.handle, "XGetKeyboardMapping");
+    glfw_dlsym(_glfw.x11.xlib.GetScreenSaver, _glfw.x11.xlib.handle, "XGetScreenSaver");
+    glfw_dlsym(_glfw.x11.xlib.GetSelectionOwner, _glfw.x11.xlib.handle, "XGetSelectionOwner");
+    glfw_dlsym(_glfw.x11.xlib.GetVisualInfo, _glfw.x11.xlib.handle, "XGetVisualInfo");
+    glfw_dlsym(_glfw.x11.xlib.GetWMNormalHints, _glfw.x11.xlib.handle, "XGetWMNormalHints");
+    glfw_dlsym(_glfw.x11.xlib.GetWindowAttributes, _glfw.x11.xlib.handle, "XGetWindowAttributes");
+    glfw_dlsym(_glfw.x11.xlib.GetWindowProperty, _glfw.x11.xlib.handle, "XGetWindowProperty");
+    glfw_dlsym(_glfw.x11.xlib.GrabPointer, _glfw.x11.xlib.handle, "XGrabPointer");
+    glfw_dlsym(_glfw.x11.xlib.IconifyWindow, _glfw.x11.xlib.handle, "XIconifyWindow");
+    glfw_dlsym(_glfw.x11.xlib.InitThreads, _glfw.x11.xlib.handle, "XInitThreads");
+    glfw_dlsym(_glfw.x11.xlib.InternAtom, _glfw.x11.xlib.handle, "XInternAtom");
+    glfw_dlsym(_glfw.x11.xlib.LookupString, _glfw.x11.xlib.handle, "XLookupString");
+    glfw_dlsym(_glfw.x11.xlib.MapRaised, _glfw.x11.xlib.handle, "XMapRaised");
+    glfw_dlsym(_glfw.x11.xlib.MapWindow, _glfw.x11.xlib.handle, "XMapWindow");
+    glfw_dlsym(_glfw.x11.xlib.MoveResizeWindow, _glfw.x11.xlib.handle, "XMoveResizeWindow");
+    glfw_dlsym(_glfw.x11.xlib.MoveWindow, _glfw.x11.xlib.handle, "XMoveWindow");
+    glfw_dlsym(_glfw.x11.xlib.NextEvent, _glfw.x11.xlib.handle, "XNextEvent");
+    glfw_dlsym(_glfw.x11.xlib.OpenDisplay, _glfw.x11.xlib.handle, "XOpenDisplay");
+    glfw_dlsym(_glfw.x11.xlib.OpenIM, _glfw.x11.xlib.handle, "XOpenIM");
+    glfw_dlsym(_glfw.x11.xlib.PeekEvent, _glfw.x11.xlib.handle, "XPeekEvent");
+    glfw_dlsym(_glfw.x11.xlib.Pending, _glfw.x11.xlib.handle, "XPending");
+    glfw_dlsym(_glfw.x11.xlib.QueryExtension, _glfw.x11.xlib.handle, "XQueryExtension");
+    glfw_dlsym(_glfw.x11.xlib.QueryPointer, _glfw.x11.xlib.handle, "XQueryPointer");
+    glfw_dlsym(_glfw.x11.xlib.RaiseWindow, _glfw.x11.xlib.handle, "XRaiseWindow");
+    glfw_dlsym(_glfw.x11.xlib.ResizeWindow, _glfw.x11.xlib.handle, "XResizeWindow");
+    glfw_dlsym(_glfw.x11.xlib.ResourceManagerString, _glfw.x11.xlib.handle, "XResourceManagerString");
+    glfw_dlsym(_glfw.x11.xlib.SaveContext, _glfw.x11.xlib.handle, "XSaveContext");
+    glfw_dlsym(_glfw.x11.xlib.SelectInput, _glfw.x11.xlib.handle, "XSelectInput");
+    glfw_dlsym(_glfw.x11.xlib.SendEvent, _glfw.x11.xlib.handle, "XSendEvent");
+    glfw_dlsym(_glfw.x11.xlib.SetClassHint, _glfw.x11.xlib.handle, "XSetClassHint");
+    glfw_dlsym(_glfw.x11.xlib.SetErrorHandler, _glfw.x11.xlib.handle, "XSetErrorHandler");
+    glfw_dlsym(_glfw.x11.xlib.SetICFocus, _glfw.x11.xlib.handle, "XSetICFocus");
+    glfw_dlsym(_glfw.x11.xlib.SetInputFocus, _glfw.x11.xlib.handle, "XSetInputFocus");
+    glfw_dlsym(_glfw.x11.xlib.SetLocaleModifiers, _glfw.x11.xlib.handle, "XSetLocaleModifiers");
+    glfw_dlsym(_glfw.x11.xlib.SetScreenSaver, _glfw.x11.xlib.handle, "XSetScreenSaver");
+    glfw_dlsym(_glfw.x11.xlib.SetSelectionOwner, _glfw.x11.xlib.handle, "XSetSelectionOwner");
+    glfw_dlsym(_glfw.x11.xlib.SetWMHints, _glfw.x11.xlib.handle, "XSetWMHints");
+    glfw_dlsym(_glfw.x11.xlib.SetWMNormalHints, _glfw.x11.xlib.handle, "XSetWMNormalHints");
+    glfw_dlsym(_glfw.x11.xlib.SetWMProtocols, _glfw.x11.xlib.handle, "XSetWMProtocols");
+    glfw_dlsym(_glfw.x11.xlib.SupportsLocale, _glfw.x11.xlib.handle, "XSupportsLocale");
+    glfw_dlsym(_glfw.x11.xlib.Sync, _glfw.x11.xlib.handle, "XSync");
+    glfw_dlsym(_glfw.x11.xlib.TranslateCoordinates, _glfw.x11.xlib.handle, "XTranslateCoordinates");
+    glfw_dlsym(_glfw.x11.xlib.UndefineCursor, _glfw.x11.xlib.handle, "XUndefineCursor");
+    glfw_dlsym(_glfw.x11.xlib.UngrabPointer, _glfw.x11.xlib.handle, "XUngrabPointer");
+    glfw_dlsym(_glfw.x11.xlib.UnmapWindow, _glfw.x11.xlib.handle, "XUnmapWindow");
+    glfw_dlsym(_glfw.x11.xlib.UnsetICFocus, _glfw.x11.xlib.handle, "XUnsetICFocus");
+    glfw_dlsym(_glfw.x11.xlib.VisualIDFromVisual, _glfw.x11.xlib.handle, "XVisualIDFromVisual");
+    glfw_dlsym(_glfw.x11.xlib.WarpPointer, _glfw.x11.xlib.handle, "XWarpPointer");
+    glfw_dlsym(_glfw.x11.xkb.FreeKeyboard, _glfw.x11.xlib.handle, "XkbFreeKeyboard");
+    glfw_dlsym(_glfw.x11.xkb.FreeNames, _glfw.x11.xlib.handle, "XkbFreeNames");
+    glfw_dlsym(_glfw.x11.xkb.GetMap, _glfw.x11.xlib.handle, "XkbGetMap");
+    glfw_dlsym(_glfw.x11.xkb.GetNames, _glfw.x11.xlib.handle, "XkbGetNames");
+    glfw_dlsym(_glfw.x11.xkb.GetState, _glfw.x11.xlib.handle, "XkbGetState");
+    glfw_dlsym(_glfw.x11.xkb.KeycodeToKeysym, _glfw.x11.xlib.handle, "XkbKeycodeToKeysym");
+    glfw_dlsym(_glfw.x11.xkb.QueryExtension, _glfw.x11.xlib.handle, "XkbQueryExtension");
+    glfw_dlsym(_glfw.x11.xkb.SelectEventDetails, _glfw.x11.xlib.handle, "XkbSelectEventDetails");
+    glfw_dlsym(_glfw.x11.xkb.SetDetectableAutoRepeat, _glfw.x11.xlib.handle, "XkbSetDetectableAutoRepeat");
+    glfw_dlsym(_glfw.x11.xrm.DestroyDatabase, _glfw.x11.xlib.handle, "XrmDestroyDatabase");
+    glfw_dlsym(_glfw.x11.xrm.GetResource, _glfw.x11.xlib.handle, "XrmGetResource");
+    glfw_dlsym(_glfw.x11.xrm.GetStringDatabase, _glfw.x11.xlib.handle, "XrmGetStringDatabase");
+    glfw_dlsym(_glfw.x11.xrm.Initialize, _glfw.x11.xlib.handle, "XrmInitialize");
+    glfw_dlsym(_glfw.x11.xrm.UniqueQuark, _glfw.x11.xlib.handle, "XrmUniqueQuark");
+    glfw_dlsym(_glfw.x11.xlib.utf8LookupString, _glfw.x11.xlib.handle, "Xutf8LookupString");
+    glfw_dlsym(_glfw.x11.xlib.utf8SetWMProperties, _glfw.x11.xlib.handle, "Xutf8SetWMProperties");
+
     XInitThreads();
     XrmInitialize();
 
@@ -730,6 +836,12 @@ void _glfwPlatformTerminate(void)
     //       cleanup callbacks that get called by that function
     _glfwTerminateEGL();
     _glfwTerminateGLX();
+
+    if (_glfw.x11.xlib.handle)
+    {
+        _glfw_dlclose(_glfw.x11.xlib.handle);
+        _glfw.x11.xlib.handle = NULL;
+    }
 
     finalizePollData(&_glfw.x11.eventLoopData);
 }

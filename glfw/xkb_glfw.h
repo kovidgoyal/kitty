@@ -34,6 +34,18 @@
 
 #include "ibus_glfw.h"
 
+#ifdef _GLFW_X11
+typedef void (* PFN_XkbFreeKeyboard)(XkbDescPtr,unsigned int,Bool);
+typedef void (* PFN_XkbFreeNames)(XkbDescPtr,unsigned int,Bool);
+typedef XkbDescPtr (* PFN_XkbGetMap)(Display*,unsigned int,unsigned int);
+typedef Status (* PFN_XkbGetNames)(Display*,unsigned int,XkbDescPtr);
+typedef Status (* PFN_XkbGetState)(Display*,unsigned int,XkbStatePtr);
+typedef KeySym (* PFN_XkbKeycodeToKeysym)(Display*,KeyCode,int,int);
+typedef Bool (* PFN_XkbQueryExtension)(Display*,int*,int*,int*,int*,int*);
+typedef Bool (* PFN_XkbSelectEventDetails)(Display*,unsigned int,unsigned int,unsigned long,unsigned long);
+typedef Bool (* PFN_XkbSetDetectableAutoRepeat)(Display*,Bool,Bool*);
+#endif
+
 typedef struct {
     struct xkb_state*       state;
     struct xkb_state*       clean_state;
@@ -74,6 +86,15 @@ typedef struct {
     int                     errorBase;
     int                     major;
     int                     minor;
+    PFN_XkbFreeKeyboard FreeKeyboard;
+    PFN_XkbFreeNames FreeNames;
+    PFN_XkbGetMap GetMap;
+    PFN_XkbGetNames GetNames;
+    PFN_XkbGetState GetState;
+    PFN_XkbKeycodeToKeysym KeycodeToKeysym;
+    PFN_XkbQueryExtension QueryExtension;
+    PFN_XkbSelectEventDetails SelectEventDetails;
+    PFN_XkbSetDetectableAutoRepeat SetDetectableAutoRepeat;
 #endif
 
 } _GLFWXKBData;

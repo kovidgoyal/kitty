@@ -34,6 +34,7 @@
 #include <X11/Xlib.h>
 #include <X11/keysym.h>
 #include <X11/Xatom.h>
+#include <X11/Xresource.h>
 #include <X11/Xcursor/Xcursor.h>
 
 // The xcb library is needed to work with libxkb
@@ -57,6 +58,190 @@
 // The libxkb library is used for improved keyboard support
 #include "xkb_glfw.h"
 #include "backend_utils.h"
+
+typedef XClassHint* (* PFN_XAllocClassHint)(void);
+typedef XSizeHints* (* PFN_XAllocSizeHints)(void);
+typedef XWMHints* (* PFN_XAllocWMHints)(void);
+typedef int (* PFN_XChangeProperty)(Display*,Window,Atom,Atom,int,int,const unsigned char*,int);
+typedef int (* PFN_XChangeWindowAttributes)(Display*,Window,unsigned long,XSetWindowAttributes*);
+typedef Bool (* PFN_XCheckIfEvent)(Display*,XEvent*,Bool(*)(Display*,XEvent*,XPointer),XPointer);
+typedef Bool (* PFN_XCheckTypedWindowEvent)(Display*,Window,int,XEvent*);
+typedef int (* PFN_XCloseDisplay)(Display*);
+typedef Status (* PFN_XCloseIM)(XIM);
+typedef int (* PFN_XConvertSelection)(Display*,Atom,Atom,Atom,Window,Time);
+typedef Colormap (* PFN_XCreateColormap)(Display*,Window,Visual*,int);
+typedef Cursor (* PFN_XCreateFontCursor)(Display*,unsigned int);
+typedef XIC (* PFN_XCreateIC)(XIM,...);
+typedef Window (* PFN_XCreateWindow)(Display*,Window,int,int,unsigned int,unsigned int,unsigned int,int,unsigned int,Visual*,unsigned long,XSetWindowAttributes*);
+typedef int (* PFN_XDefineCursor)(Display*,Window,Cursor);
+typedef int (* PFN_XDeleteContext)(Display*,XID,XContext);
+typedef int (* PFN_XDeleteProperty)(Display*,Window,Atom);
+typedef void (* PFN_XDestroyIC)(XIC);
+typedef int (* PFN_XDestroyWindow)(Display*,Window);
+typedef int (* PFN_XEventsQueued)(Display*,int);
+typedef Bool (* PFN_XFilterEvent)(XEvent*,Window);
+typedef int (* PFN_XFindContext)(Display*,XID,XContext,XPointer*);
+typedef int (* PFN_XFlush)(Display*);
+typedef int (* PFN_XFree)(void*);
+typedef int (* PFN_XFreeColormap)(Display*,Colormap);
+typedef int (* PFN_XFreeCursor)(Display*,Cursor);
+typedef void (* PFN_XFreeEventData)(Display*,XGenericEventCookie*);
+typedef int (* PFN_XGetErrorText)(Display*,int,char*,int);
+typedef Bool (* PFN_XGetEventData)(Display*,XGenericEventCookie*);
+typedef char* (* PFN_XGetICValues)(XIC,...);
+typedef char* (* PFN_XGetIMValues)(XIM,...);
+typedef int (* PFN_XGetInputFocus)(Display*,Window*,int*);
+typedef KeySym* (* PFN_XGetKeyboardMapping)(Display*,KeyCode,int,int*);
+typedef int (* PFN_XGetScreenSaver)(Display*,int*,int*,int*,int*);
+typedef Window (* PFN_XGetSelectionOwner)(Display*,Atom);
+typedef XVisualInfo* (* PFN_XGetVisualInfo)(Display*,long,XVisualInfo*,int*);
+typedef Status (* PFN_XGetWMNormalHints)(Display*,Window,XSizeHints*,long*);
+typedef Status (* PFN_XGetWindowAttributes)(Display*,Window,XWindowAttributes*);
+typedef int (* PFN_XGetWindowProperty)(Display*,Window,Atom,long,long,Bool,Atom,Atom*,int*,unsigned long*,unsigned long*,unsigned char**);
+typedef int (* PFN_XGrabPointer)(Display*,Window,Bool,unsigned int,int,int,Window,Cursor,Time);
+typedef Status (* PFN_XIconifyWindow)(Display*,Window,int);
+typedef Status (* PFN_XInitThreads)(void);
+typedef Atom (* PFN_XInternAtom)(Display*,const char*,Bool);
+typedef int (* PFN_XLookupString)(XKeyEvent*,char*,int,KeySym*,XComposeStatus*);
+typedef int (* PFN_XMapRaised)(Display*,Window);
+typedef int (* PFN_XMapWindow)(Display*,Window);
+typedef int (* PFN_XMoveResizeWindow)(Display*,Window,int,int,unsigned int,unsigned int);
+typedef int (* PFN_XMoveWindow)(Display*,Window,int,int);
+typedef int (* PFN_XNextEvent)(Display*,XEvent*);
+typedef Display* (* PFN_XOpenDisplay)(const char*);
+typedef XIM (* PFN_XOpenIM)(Display*,XrmDatabase*,char*,char*);
+typedef int (* PFN_XPeekEvent)(Display*,XEvent*);
+typedef int (* PFN_XPending)(Display*);
+typedef Bool (* PFN_XQueryExtension)(Display*,const char*,int*,int*,int*);
+typedef Bool (* PFN_XQueryPointer)(Display*,Window,Window*,Window*,int*,int*,int*,int*,unsigned int*);
+typedef int (* PFN_XRaiseWindow)(Display*,Window);
+typedef int (* PFN_XResizeWindow)(Display*,Window,unsigned int,unsigned int);
+typedef char* (* PFN_XResourceManagerString)(Display*);
+typedef int (* PFN_XSaveContext)(Display*,XID,XContext,const char*);
+typedef int (* PFN_XSelectInput)(Display*,Window,long);
+typedef Status (* PFN_XSendEvent)(Display*,Window,Bool,long,XEvent*);
+typedef int (* PFN_XSetClassHint)(Display*,Window,XClassHint*);
+typedef XErrorHandler (* PFN_XSetErrorHandler)(XErrorHandler);
+typedef void (* PFN_XSetICFocus)(XIC);
+typedef int (* PFN_XSetInputFocus)(Display*,Window,int,Time);
+typedef char* (* PFN_XSetLocaleModifiers)(const char*);
+typedef int (* PFN_XSetScreenSaver)(Display*,int,int,int,int);
+typedef int (* PFN_XSetSelectionOwner)(Display*,Atom,Window,Time);
+typedef int (* PFN_XSetWMHints)(Display*,Window,XWMHints*);
+typedef void (* PFN_XSetWMNormalHints)(Display*,Window,XSizeHints*);
+typedef Status (* PFN_XSetWMProtocols)(Display*,Window,Atom*,int);
+typedef Bool (* PFN_XSupportsLocale)(void);
+typedef int (* PFN_XSync)(Display*,Bool);
+typedef Bool (* PFN_XTranslateCoordinates)(Display*,Window,Window,int,int,int*,int*,Window*);
+typedef int (* PFN_XUndefineCursor)(Display*,Window);
+typedef int (* PFN_XUngrabPointer)(Display*,Time);
+typedef int (* PFN_XUnmapWindow)(Display*,Window);
+typedef void (* PFN_XUnsetICFocus)(XIC);
+typedef VisualID (* PFN_XVisualIDFromVisual)(Visual*);
+typedef int (* PFN_XWarpPointer)(Display*,Window,Window,int,int,unsigned int,unsigned int,int,int);
+typedef void (* PFN_XrmDestroyDatabase)(XrmDatabase);
+typedef Bool (* PFN_XrmGetResource)(XrmDatabase,const char*,const char*,char**,XrmValue*);
+typedef XrmDatabase (* PFN_XrmGetStringDatabase)(const char*);
+typedef void (* PFN_XrmInitialize)(void);
+typedef XrmQuark (* PFN_XrmUniqueQuark)(void);
+typedef int (* PFN_Xutf8LookupString)(XIC,XKeyPressedEvent*,char*,int,KeySym*,Status*);
+typedef void (* PFN_Xutf8SetWMProperties)(Display*,Window,const char*,const char*,char**,int,XSizeHints*,XWMHints*,XClassHint*);
+#define XAllocClassHint _glfw.x11.xlib.AllocClassHint
+#define XAllocSizeHints _glfw.x11.xlib.AllocSizeHints
+#define XAllocWMHints _glfw.x11.xlib.AllocWMHints
+#define XChangeProperty _glfw.x11.xlib.ChangeProperty
+#define XChangeWindowAttributes _glfw.x11.xlib.ChangeWindowAttributes
+#define XCheckIfEvent _glfw.x11.xlib.CheckIfEvent
+#define XCheckTypedWindowEvent _glfw.x11.xlib.CheckTypedWindowEvent
+#define XCloseDisplay _glfw.x11.xlib.CloseDisplay
+#define XCloseIM _glfw.x11.xlib.CloseIM
+#define XConvertSelection _glfw.x11.xlib.ConvertSelection
+#define XCreateColormap _glfw.x11.xlib.CreateColormap
+#define XCreateFontCursor _glfw.x11.xlib.CreateFontCursor
+#define XCreateIC _glfw.x11.xlib.CreateIC
+#define XCreateWindow _glfw.x11.xlib.CreateWindow
+#define XDefineCursor _glfw.x11.xlib.DefineCursor
+#define XDeleteContext _glfw.x11.xlib.DeleteContext
+#define XDeleteProperty _glfw.x11.xlib.DeleteProperty
+#define XDestroyIC _glfw.x11.xlib.DestroyIC
+#define XDestroyWindow _glfw.x11.xlib.DestroyWindow
+#define XEventsQueued _glfw.x11.xlib.EventsQueued
+#define XFilterEvent _glfw.x11.xlib.FilterEvent
+#define XFindContext _glfw.x11.xlib.FindContext
+#define XFlush _glfw.x11.xlib.Flush
+#define XFree _glfw.x11.xlib.Free
+#define XFreeColormap _glfw.x11.xlib.FreeColormap
+#define XFreeCursor _glfw.x11.xlib.FreeCursor
+#define XFreeEventData _glfw.x11.xlib.FreeEventData
+#define XGetErrorText _glfw.x11.xlib.GetErrorText
+#define XGetEventData _glfw.x11.xlib.GetEventData
+#define XGetICValues _glfw.x11.xlib.GetICValues
+#define XGetIMValues _glfw.x11.xlib.GetIMValues
+#define XGetInputFocus _glfw.x11.xlib.GetInputFocus
+#define XGetKeyboardMapping _glfw.x11.xlib.GetKeyboardMapping
+#define XGetScreenSaver _glfw.x11.xlib.GetScreenSaver
+#define XGetSelectionOwner _glfw.x11.xlib.GetSelectionOwner
+#define XGetVisualInfo _glfw.x11.xlib.GetVisualInfo
+#define XGetWMNormalHints _glfw.x11.xlib.GetWMNormalHints
+#define XGetWindowAttributes _glfw.x11.xlib.GetWindowAttributes
+#define XGetWindowProperty _glfw.x11.xlib.GetWindowProperty
+#define XGrabPointer _glfw.x11.xlib.GrabPointer
+#define XIconifyWindow _glfw.x11.xlib.IconifyWindow
+#define XInitThreads _glfw.x11.xlib.InitThreads
+#define XInternAtom _glfw.x11.xlib.InternAtom
+#define XLookupString _glfw.x11.xlib.LookupString
+#define XMapRaised _glfw.x11.xlib.MapRaised
+#define XMapWindow _glfw.x11.xlib.MapWindow
+#define XMoveResizeWindow _glfw.x11.xlib.MoveResizeWindow
+#define XMoveWindow _glfw.x11.xlib.MoveWindow
+#define XNextEvent _glfw.x11.xlib.NextEvent
+#define XOpenDisplay _glfw.x11.xlib.OpenDisplay
+#define XOpenIM _glfw.x11.xlib.OpenIM
+#define XPeekEvent _glfw.x11.xlib.PeekEvent
+#define XPending _glfw.x11.xlib.Pending
+#define XQueryExtension _glfw.x11.xlib.QueryExtension
+#define XQueryPointer _glfw.x11.xlib.QueryPointer
+#define XRaiseWindow _glfw.x11.xlib.RaiseWindow
+#define XResizeWindow _glfw.x11.xlib.ResizeWindow
+#define XResourceManagerString _glfw.x11.xlib.ResourceManagerString
+#define XSaveContext _glfw.x11.xlib.SaveContext
+#define XSelectInput _glfw.x11.xlib.SelectInput
+#define XSendEvent _glfw.x11.xlib.SendEvent
+#define XSetClassHint _glfw.x11.xlib.SetClassHint
+#define XSetErrorHandler _glfw.x11.xlib.SetErrorHandler
+#define XSetICFocus _glfw.x11.xlib.SetICFocus
+#define XSetInputFocus _glfw.x11.xlib.SetInputFocus
+#define XSetLocaleModifiers _glfw.x11.xlib.SetLocaleModifiers
+#define XSetScreenSaver _glfw.x11.xlib.SetScreenSaver
+#define XSetSelectionOwner _glfw.x11.xlib.SetSelectionOwner
+#define XSetWMHints _glfw.x11.xlib.SetWMHints
+#define XSetWMNormalHints _glfw.x11.xlib.SetWMNormalHints
+#define XSetWMProtocols _glfw.x11.xlib.SetWMProtocols
+#define XSupportsLocale _glfw.x11.xlib.SupportsLocale
+#define XSync _glfw.x11.xlib.Sync
+#define XTranslateCoordinates _glfw.x11.xlib.TranslateCoordinates
+#define XUndefineCursor _glfw.x11.xlib.UndefineCursor
+#define XUngrabPointer _glfw.x11.xlib.UngrabPointer
+#define XUnmapWindow _glfw.x11.xlib.UnmapWindow
+#define XUnsetICFocus _glfw.x11.xlib.UnsetICFocus
+#define XVisualIDFromVisual _glfw.x11.xlib.VisualIDFromVisual
+#define XWarpPointer _glfw.x11.xlib.WarpPointer
+#define XkbFreeKeyboard _glfw.x11.xkb.FreeKeyboard
+#define XkbFreeNames _glfw.x11.xkb.FreeNames
+#define XkbGetMap _glfw.x11.xkb.GetMap
+#define XkbGetNames _glfw.x11.xkb.GetNames
+#define XkbGetState _glfw.x11.xkb.GetState
+#define XkbKeycodeToKeysym _glfw.x11.xkb.KeycodeToKeysym
+#define XkbQueryExtension _glfw.x11.xkb.QueryExtension
+#define XkbSelectEventDetails _glfw.x11.xkb.SelectEventDetails
+#define XkbSetDetectableAutoRepeat _glfw.x11.xkb.SetDetectableAutoRepeat
+#define XrmDestroyDatabase _glfw.x11.xrm.DestroyDatabase
+#define XrmGetResource _glfw.x11.xrm.GetResource
+#define XrmGetStringDatabase _glfw.x11.xrm.GetStringDatabase
+#define XrmInitialize _glfw.x11.xrm.Initialize
+#define XrmUniqueQuark _glfw.x11.xrm.UniqueQuark
+#define Xutf8LookupString _glfw.x11.xlib.utf8LookupString
+#define Xutf8SetWMProperties _glfw.x11.xlib.utf8SetWMProperties
 
 typedef XRRCrtcGamma* (* PFN_XRRAllocGamma)(int);
 typedef void (* PFN_XRRFreeCrtcInfo)(XRRCrtcInfo*);
@@ -291,6 +476,100 @@ typedef struct _GLFWlibraryX11
 
     // XRM database atom
     Atom            RESOURCE_MANAGER;
+
+    struct {
+        void*       handle;
+        PFN_XAllocClassHint AllocClassHint;
+        PFN_XAllocSizeHints AllocSizeHints;
+        PFN_XAllocWMHints AllocWMHints;
+        PFN_XChangeProperty ChangeProperty;
+        PFN_XChangeWindowAttributes ChangeWindowAttributes;
+        PFN_XCheckIfEvent CheckIfEvent;
+        PFN_XCheckTypedWindowEvent CheckTypedWindowEvent;
+        PFN_XCloseDisplay CloseDisplay;
+        PFN_XCloseIM CloseIM;
+        PFN_XConvertSelection ConvertSelection;
+        PFN_XCreateColormap CreateColormap;
+        PFN_XCreateFontCursor CreateFontCursor;
+        PFN_XCreateIC CreateIC;
+        PFN_XCreateWindow CreateWindow;
+        PFN_XDefineCursor DefineCursor;
+        PFN_XDeleteContext DeleteContext;
+        PFN_XDeleteProperty DeleteProperty;
+        PFN_XDestroyIC DestroyIC;
+        PFN_XDestroyWindow DestroyWindow;
+        PFN_XEventsQueued EventsQueued;
+        PFN_XFilterEvent FilterEvent;
+        PFN_XFindContext FindContext;
+        PFN_XFlush Flush;
+        PFN_XFree Free;
+        PFN_XFreeColormap FreeColormap;
+        PFN_XFreeCursor FreeCursor;
+        PFN_XFreeEventData FreeEventData;
+        PFN_XGetErrorText GetErrorText;
+        PFN_XGetEventData GetEventData;
+        PFN_XGetICValues GetICValues;
+        PFN_XGetIMValues GetIMValues;
+        PFN_XGetInputFocus GetInputFocus;
+        PFN_XGetKeyboardMapping GetKeyboardMapping;
+        PFN_XGetScreenSaver GetScreenSaver;
+        PFN_XGetSelectionOwner GetSelectionOwner;
+        PFN_XGetVisualInfo GetVisualInfo;
+        PFN_XGetWMNormalHints GetWMNormalHints;
+        PFN_XGetWindowAttributes GetWindowAttributes;
+        PFN_XGetWindowProperty GetWindowProperty;
+        PFN_XGrabPointer GrabPointer;
+        PFN_XIconifyWindow IconifyWindow;
+        PFN_XInitThreads InitThreads;
+        PFN_XInternAtom InternAtom;
+        PFN_XLookupString LookupString;
+        PFN_XMapRaised MapRaised;
+        PFN_XMapWindow MapWindow;
+        PFN_XMoveResizeWindow MoveResizeWindow;
+        PFN_XMoveWindow MoveWindow;
+        PFN_XNextEvent NextEvent;
+        PFN_XOpenDisplay OpenDisplay;
+        PFN_XOpenIM OpenIM;
+        PFN_XPeekEvent PeekEvent;
+        PFN_XPending Pending;
+        PFN_XQueryExtension QueryExtension;
+        PFN_XQueryPointer QueryPointer;
+        PFN_XRaiseWindow RaiseWindow;
+        PFN_XResizeWindow ResizeWindow;
+        PFN_XResourceManagerString ResourceManagerString;
+        PFN_XSaveContext SaveContext;
+        PFN_XSelectInput SelectInput;
+        PFN_XSendEvent SendEvent;
+        PFN_XSetClassHint SetClassHint;
+        PFN_XSetErrorHandler SetErrorHandler;
+        PFN_XSetICFocus SetICFocus;
+        PFN_XSetInputFocus SetInputFocus;
+        PFN_XSetLocaleModifiers SetLocaleModifiers;
+        PFN_XSetScreenSaver SetScreenSaver;
+        PFN_XSetSelectionOwner SetSelectionOwner;
+        PFN_XSetWMHints SetWMHints;
+        PFN_XSetWMNormalHints SetWMNormalHints;
+        PFN_XSetWMProtocols SetWMProtocols;
+        PFN_XSupportsLocale SupportsLocale;
+        PFN_XSync Sync;
+        PFN_XTranslateCoordinates TranslateCoordinates;
+        PFN_XUndefineCursor UndefineCursor;
+        PFN_XUngrabPointer UngrabPointer;
+        PFN_XUnmapWindow UnmapWindow;
+        PFN_XUnsetICFocus UnsetICFocus;
+        PFN_XVisualIDFromVisual VisualIDFromVisual;
+        PFN_XWarpPointer WarpPointer;
+        PFN_Xutf8LookupString utf8LookupString;
+        PFN_Xutf8SetWMProperties utf8SetWMProperties;
+    } xlib;
+
+    struct {
+        PFN_XrmDestroyDatabase DestroyDatabase;
+        PFN_XrmGetResource GetResource;
+        PFN_XrmGetStringDatabase GetStringDatabase;
+        PFN_XrmInitialize Initialize;
+        PFN_XrmUniqueQuark UniqueQuark;
+    } xrm;
 
     struct {
         bool        available;
