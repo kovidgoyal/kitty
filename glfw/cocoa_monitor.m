@@ -529,7 +529,6 @@ void _glfwPlatformGetMonitorWorkarea(_GLFWmonitor* monitor,
         *width = (int)frameRect.size.width;
     if (height)
         *height = (int)frameRect.size.height;
-
 }
 
 GLFWvidmode* _glfwPlatformGetVideoModes(_GLFWmonitor* monitor, int* count)
