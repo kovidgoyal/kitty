@@ -69,6 +69,7 @@
 
 // Alternate screen buffer
 #define ALTERNATE_SCREEN  (1049 << 5)
+#define OLD_ALTERNATE_SCREEN  (47 << 5)
 
 // Bracketed paste mode
 // https://cirw.in/blog/bracketed-paste

@@ -728,6 +728,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             self->cursor->blink = val;
             break;
         case ALTERNATE_SCREEN:
+        case OLD_ALTERNATE_SCREEN:
             if (val && self->linebuf == self->main_linebuf) screen_toggle_screen_buffer(self);
             else if (!val && self->linebuf != self->main_linebuf) screen_toggle_screen_buffer(self);
             break;
