@@ -77,6 +77,8 @@ setCursorImage(_GLFWwindow* window)
             return;
         if (cursorWayland->currentImage >= cursorWayland->cursor->image_count) cursorWayland->currentImage = 0;
         image = cursorWayland->cursor->images[cursorWayland->currentImage];
+        if (!image) image = cursorWayland->cursor->images[0];
+        if (!image) return;
         buffer = wl_cursor_image_get_buffer(image);
         if (image->delay && window->cursor) {
             changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, ms_to_monotonic_t(image->delay));
