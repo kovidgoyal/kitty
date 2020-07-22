@@ -56,6 +56,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Have the :opt:`confirm_os_window_close` option also apply when closing tabs
   with multiple windows (:iss:`2857`)
 
+- Add support for legacy DECSET codes 47, 1047 and 1048 (:pull:`2871`)
+
 
 0.18.1 [2020-06-23]
 --------------------

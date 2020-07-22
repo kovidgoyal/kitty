@@ -137,7 +137,7 @@ static inline Line* range_line_(Screen *self, int y);
 
 void
 screen_reset(Screen *self) {
-    if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self);
+    if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
     linebuf_clear(self->linebuf, BLANK_CHAR);
     historybuf_clear(self->historybuf);
@@ -641,12 +641,12 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
 
 
 void
-screen_toggle_screen_buffer(Screen *self) {
+screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_screen) {
     bool to_alt = self->linebuf == self->main_linebuf;
     grman_clear(self->alt_grman, true, self->cell_size);  // always clear the alt buffer graphics to free up resources, since it has to be cleared when switching back to it anyway
     if (to_alt) {
-        linebuf_clear(self->alt_linebuf, BLANK_CHAR);
-        screen_save_cursor(self);
+        if (clear_alt_screen) linebuf_clear(self->alt_linebuf, BLANK_CHAR);
+        if (save_cursor) screen_save_cursor(self);
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
         self->grman = self->alt_grman;
@@ -655,7 +655,7 @@ screen_toggle_screen_buffer(Screen *self) {
     } else {
         self->linebuf = self->main_linebuf;
         self->tabstops = self->main_tabstops;
-        screen_restore_cursor(self);
+        if (save_cursor) screen_restore_cursor(self);
         self->grman = self->main_grman;
     }
     screen_history_scroll(self, SCROLL_FULL, false);
@@ -727,9 +727,14 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         case CONTROL_CURSOR_BLINK:
             self->cursor->blink = val;
             break;
+        case SAVE_CURSOR:
+            screen_save_cursor(self);
+            break;
+        case TOGGLE_ALT_SCREEN_1:
+        case TOGGLE_ALT_SCREEN_2:
         case ALTERNATE_SCREEN:
-            if (val && self->linebuf == self->main_linebuf) screen_toggle_screen_buffer(self);
-            else if (!val && self->linebuf != self->main_linebuf) screen_toggle_screen_buffer(self);
+            if (val && self->linebuf == self->main_linebuf) screen_toggle_screen_buffer(self, mode == ALTERNATE_SCREEN, mode == ALTERNATE_SCREEN);
+            else if (!val && self->linebuf != self->main_linebuf) screen_toggle_screen_buffer(self, mode == ALTERNATE_SCREEN, mode == ALTERNATE_SCREEN);
             break;
         default:
             private = mode >= 1 << 5;
@@ -2394,7 +2399,7 @@ is_main_linebuf(Screen *self, PyObject *a UNUSED) {
 
 static PyObject*
 toggle_alt_screen(Screen *self, PyObject *a UNUSED) {
-    screen_toggle_screen_buffer(self);
+    screen_toggle_screen_buffer(self, true, true);
     Py_RETURN_NONE;
 }
 

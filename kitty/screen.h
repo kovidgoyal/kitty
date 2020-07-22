@@ -138,7 +138,7 @@ void screen_erase_in_line(Screen *, unsigned int, bool);
 void screen_erase_in_display(Screen *, unsigned int, bool);
 void screen_draw(Screen *screen, uint32_t codepoint);
 void screen_ensure_bounds(Screen *self, bool use_margins, bool cursor_was_within_margins);
-void screen_toggle_screen_buffer(Screen *self);
+void screen_toggle_screen_buffer(Screen *self, bool, bool);
 void screen_normal_keypad_mode(Screen *self);
 void screen_alternate_keypad_mode(Screen *self);
 void screen_change_default_color(Screen *self, unsigned int which, uint32_t col);
