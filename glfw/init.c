@@ -92,6 +92,7 @@ static void terminate(void)
     _glfw.mappingCount = 0;
 
     _glfwTerminateVulkan();
+    _glfwPlatformTerminateJoysticks();
     _glfwPlatformTerminate();
 
     _glfw.initialized = false;

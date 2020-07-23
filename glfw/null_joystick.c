@@ -33,6 +33,15 @@
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
+int _glfwPlatformInitJoysticks(void)
+{
+    return true;
+}
+
+void _glfwPlatformTerminateJoysticks(void)
+{
+}
+
 int _glfwPlatformPollJoystick(_GLFWjoystick* js UNUSED, int mode UNUSED)
 {
     return false;

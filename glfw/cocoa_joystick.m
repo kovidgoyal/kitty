@@ -296,7 +296,7 @@ static void removeCallback(void* context UNUSED,
 
 // Initialize joystick interface
 //
-void _glfwInitJoysticksNS(void)
+bool _glfwPlatformInitJoysticks(void)
 {
     CFMutableArrayRef matching;
     const long usages[] =
@@ -315,7 +315,7 @@ void _glfwInitJoysticksNS(void)
     if (!matching)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Cocoa: Failed to create array");
-        return;
+        return false;
     }
 
     for (size_t i = 0;  i < sizeof(usages) / sizeof(long);  i++)
@@ -370,19 +370,23 @@ void _glfwInitJoysticksNS(void)
     // Execute the run loop once in order to register any initially-attached
     // joysticks
     CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0, false);
+    return true;
 }
 
 // Close all opened joystick handles
 //
-void _glfwTerminateJoysticksNS(void)
+void _glfwPlatformTerminateJoysticks(void)
 {
     int jid;
 
     for (jid = 0;  jid <= GLFW_JOYSTICK_LAST;  jid++)
         closeJoystick(_glfw.joysticks + jid);
 
-    CFRelease(_glfw.ns.hidManager);
-    _glfw.ns.hidManager = NULL;
+    if (_glfw.ns.hidManager)
+    {
+        CFRelease(_glfw.ns.hidManager);
+        _glfw.ns.hidManager = NULL;
+    }
 }
 
 

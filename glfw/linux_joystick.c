@@ -266,7 +266,7 @@ static int compareJoysticks(const void* fp, const void* sp)
 
 // Initialize joystick interface
 //
-bool _glfwInitJoysticksLinux(void)
+bool _glfwPlatformInitJoysticks(void)
 {
     const char* dirname = "/dev/input";
 
@@ -322,7 +322,7 @@ bool _glfwInitJoysticksLinux(void)
 
 // Close all opened joystick handles
 //
-void _glfwTerminateJoysticksLinux(void)
+void _glfwPlatformTerminateJoysticks(void)
 {
     int jid;
 
@@ -333,14 +333,13 @@ void _glfwTerminateJoysticksLinux(void)
             closeJoystick(js);
     }
 
-    regfree(&_glfw.linjs.regex);
-
     if (_glfw.linjs.inotify > 0)
     {
         if (_glfw.linjs.watch > 0)
             inotify_rm_watch(_glfw.linjs.inotify, _glfw.linjs.watch);
 
         close(_glfw.linjs.inotify);
+        regfree(&_glfw.linjs.regex);
     }
 }
 

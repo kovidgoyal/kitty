@@ -669,8 +669,6 @@ int _glfwPlatformInit(void)
     if (!initializeTIS())
         return false;
 
-    _glfwInitJoysticksNS();
-
     _glfwPollMonitorsNS();
     return true;
 
@@ -723,7 +721,6 @@ void _glfwPlatformTerminate(void)
     free(_glfw.ns.clipboardString);
 
     _glfwTerminateNSGL();
-    _glfwTerminateJoysticksNS();
 
     } // autoreleasepool
 }
