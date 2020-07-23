@@ -654,12 +654,10 @@ int _glfwPlatformInit(void)
     _glfw.x11.hiddenCursorHandle = createHiddenCursor();
 
 #if defined(__linux__)
-    if (_glfw.hints.init.enableJoysticks) {
-        if (!_glfwInitJoysticksLinux())
-            return false;
-        if (_glfw.linjs.inotify > 0)
-            addWatch(&_glfw.x11.eventLoopData, "joystick", _glfw.linjs.inotify, POLLIN, 1, NULL, NULL);
-    }
+    if (!_glfwInitJoysticksLinux())
+        return false;
+    if (_glfw.linjs.inotify > 0)
+        addWatch(&_glfw.x11.eventLoopData, "joystick", _glfw.linjs.inotify, POLLIN, 1, NULL, NULL);
 #endif
 
     _glfwPollMonitorsX11();

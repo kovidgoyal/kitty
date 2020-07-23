@@ -772,10 +772,8 @@ int _glfwPlatformInit(void)
     wl_display_roundtrip(_glfw.wl.display);
 
 #ifdef __linux__
-    if (_glfw.hints.init.enableJoysticks) {
-        if (!_glfwInitJoysticksLinux())
-            return false;
-    }
+    if (!_glfwInitJoysticksLinux())
+        return false;
 #endif
 
     if (!_glfw.wl.wmBase)

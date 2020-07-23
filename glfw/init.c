@@ -55,7 +55,6 @@ static _GLFWinitconfig _glfwInitHints =
     true,      // hat buttons
     GLFW_ANGLE_PLATFORM_TYPE_NONE, // ANGLE backend
     false,     // debug keyboard
-    true,      // enable joystick
     {
         true,  // macOS menu bar
         true   // macOS bundle chdir
@@ -276,9 +275,6 @@ GLFWAPI void glfwInitHint(int hint, int value)
 {
     switch (hint)
     {
-        case GLFW_ENABLE_JOYSTICKS:
-            _glfwInitHints.enableJoysticks = value;
-            return;
         case GLFW_JOYSTICK_HAT_BUTTONS:
             _glfwInitHints.hatButtons = value;
             return;
