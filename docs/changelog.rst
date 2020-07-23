@@ -58,6 +58,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add support for legacy DECSET codes 47, 1047 and 1048 (:pull:`2871`)
 
+- macOS: no longer render emoji 20% below the baseline. This causes some emoji
+  to be cut-off and also look misaligned with very high cells (:iss:`2873`)
+
 
 0.18.1 [2020-06-23]
 --------------------

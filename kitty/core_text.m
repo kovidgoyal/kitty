@@ -409,7 +409,7 @@ render_color_glyph(CTFontRef font, uint8_t *buf, int glyph_id, unsigned int widt
     CGContextSetTextDrawingMode(ctx, kCGTextFill);
     CGGlyph glyph = glyph_id;
     CGContextSetTextMatrix(ctx, transform);
-    CGContextSetTextPosition(ctx, -boxes[0].origin.x, MAX(2, height - 1.2f * baseline));  // lower the emoji a bit so its bottom is not on the baseline
+    CGContextSetTextPosition(ctx, -boxes[0].origin.x, MAX(2, height - baseline));
     CGPoint p = CGPointMake(0, 0);
     CTFontDrawGlyphs(font, &glyph, &p, 1, ctx);
     CGContextRelease(ctx);
