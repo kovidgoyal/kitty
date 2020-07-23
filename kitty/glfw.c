@@ -11,6 +11,7 @@
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
+extern long cocoa_window_number(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_hide_window_title(void *w);
 extern void cocoa_hide_titlebar(void *w);
@@ -1040,6 +1041,24 @@ x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
     return NULL;
 }
 
+#ifdef __APPLE__
+static PyObject*
+cocoa_window_id(PyObject UNUSED *self, PyObject *os_wid) {
+    if (glfwGetCocoaWindow) {
+        id_type os_window_id = PyLong_AsUnsignedLongLong(os_wid);
+        for (size_t i = 0; i < global_state.num_os_windows; i++) {
+            OSWindow *w = global_state.os_windows + i;
+            if (w->id == os_window_id) {
+                return Py_BuildValue("l", (long)cocoa_window_number(glfwGetCocoaWindow(w->handle)));
+            }
+        }
+    }
+    else { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetCocoaWindow"); return NULL; }
+    PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found");
+    return NULL;
+}
+#endif
+
 static PyObject*
 get_primary_selection(PYNOARG) {
     if (glfwGetPrimarySelectionString) {
@@ -1220,6 +1239,9 @@ static PyMethodDef module_methods[] = {
     METHODB(set_primary_selection, METH_VARARGS),
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),
+#endif
+#ifdef __APPLE__
+    METHODB(cocoa_window_id, METH_O),
 #endif
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},

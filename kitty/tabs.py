@@ -17,7 +17,7 @@ from .child import Child
 from .cli_stub import CLIOptions
 from .constants import appname, is_macos, is_wayland
 from .fast_data_types import (
-    add_tab, attach_window, detach_window, get_boss, mark_tab_bar_dirty,
+    add_tab, attach_window, cocoa_window_id, detach_window, get_boss, mark_tab_bar_dirty,
     next_window_id, remove_tab, remove_window, ring_bell, set_active_tab,
     set_active_window, swap_tabs, sync_os_window_title, x11_window_id
 )
@@ -283,7 +283,13 @@ class Tab:  # {{{
         if env:
             fenv.update(env)
         fenv['KITTY_WINDOW_ID'] = str(next_window_id())
-        if not is_macos and not is_wayland():
+        if is_macos:
+            try:
+                fenv['WINDOWID'] = str(cocoa_window_id(self.os_window_id))
+            except Exception:
+                import traceback
+                traceback.print_exc()
+        elif not is_wayland():
             try:
                 fenv['WINDOWID'] = str(x11_window_id(self.os_window_id))
             except Exception:
