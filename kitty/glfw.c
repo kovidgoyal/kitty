@@ -1027,35 +1027,31 @@ x11_display(PYNOARG) {
     Py_RETURN_NONE;
 }
 
+static OSWindow*
+find_os_window(PyObject *os_wid) {
+    id_type os_window_id = PyLong_AsUnsignedLongLong(os_wid);
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->id == os_window_id) return w;
+    }
+    return NULL;
+}
+
 static PyObject*
 x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
-    if (glfwGetX11Window) {
-        id_type os_window_id = PyLong_AsUnsignedLongLong(os_wid);
-        for (size_t i = 0; i < global_state.num_os_windows; i++) {
-            OSWindow *w = global_state.os_windows + i;
-            if (w->id == os_window_id) return Py_BuildValue("l", (long)glfwGetX11Window(w->handle));
-        }
-    }
-    else { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
-    PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found");
-    return NULL;
+    if (!glfwGetX11Window) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
+    OSWindow *w = find_os_window(os_wid);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found"); return NULL; }
+    return Py_BuildValue("l", (long)glfwGetX11Window(w->handle));
 }
 
 #ifdef __APPLE__
 static PyObject*
 cocoa_window_id(PyObject UNUSED *self, PyObject *os_wid) {
-    if (glfwGetCocoaWindow) {
-        id_type os_window_id = PyLong_AsUnsignedLongLong(os_wid);
-        for (size_t i = 0; i < global_state.num_os_windows; i++) {
-            OSWindow *w = global_state.os_windows + i;
-            if (w->id == os_window_id) {
-                return Py_BuildValue("l", (long)cocoa_window_number(glfwGetCocoaWindow(w->handle)));
-            }
-        }
-    }
-    else { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetCocoaWindow"); return NULL; }
-    PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found");
-    return NULL;
+    if (!glfwGetCocoaWindow) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetCocoaWindow"); return NULL; }
+    OSWindow *w = find_os_window(os_wid);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found"); return NULL; }
+    return Py_BuildValue("l", (long)cocoa_window_number(glfwGetCocoaWindow(w->handle)));
 }
 #endif
 
