@@ -233,6 +233,19 @@ static void matchCallback(void* context UNUSED,
                     break;
             }
         }
+        else if (page == kHIDPage_Simulation)
+        {
+            switch (usage)
+            {
+                case kHIDUsage_Sim_Accelerator:
+                case kHIDUsage_Sim_Brake:
+                case kHIDUsage_Sim_Throttle:
+                case kHIDUsage_Sim_Rudder:
+                case kHIDUsage_Sim_Steering:
+                    target = axes;
+                    break;
+            }
+        }
         else if (page == kHIDPage_Button || page == kHIDPage_Consumer)
             target = buttons;
 
