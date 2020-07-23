@@ -11,6 +11,7 @@
 #include <Cocoa/Cocoa.h>
 
 #include <AvailabilityMacros.h>
+#include <UserNotifications/UserNotifications.h>
 // Needed for _NSGetProgname
 #include <crt_externs.h>
 #include <objc/runtime.h>
@@ -22,6 +23,12 @@
 #define NSEventModifierFlagCommand NSCommandKeyMask
 #define NSEventModifierFlagControl NSControlKeyMask
 #endif
+
+/*#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101600)
+#define UNNotification NSUserNotification
+#define UNUserNotificationCenter NSUserNotificationCenter
+#define UNUserNotificationCenterDelegate NSUserNotificationCenterDelegate
+#endif*/
 
 typedef int CGSConnectionID;
 typedef int CGSWindowID;
@@ -141,25 +148,16 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_RETURN_NONE;
 }
 
-@interface NotificationDelegate : NSObject <NSUserNotificationCenterDelegate>
+@interface NotificationDelegate : NSObject <UNUserNotificationCenterDelegate>
 @end
 
 @implementation NotificationDelegate
-    - (void)userNotificationCenter:(NSUserNotificationCenter *)center
-            didDeliverNotification:(NSUserNotification *)notification {
-        (void)(center); (void)(notification);
-    }
-
-    - (BOOL) userNotificationCenter:(NSUserNotificationCenter *)center
-            shouldPresentNotification:(NSUserNotification *)notification {
-        (void)(center); (void)(notification);
-        return YES;
-    }
-
-    - (void) userNotificationCenter:(NSUserNotificationCenter *)center
-            didActivateNotification:(NSUserNotification *)notification {
-        (void)(center); (void)(notification);
+    - (void)userNotificationCenter:(UNUserNotificationCenter *)center
+            didReceiveNotificationResponse:(UNNotificationResponse *)response
+            withCompletionHandler:(void (^)(void))completionHandler {
+        (void)(center); (void)(completionHandler);
         if (notification_activated_callback) {
+            UNNotificationContent *notification = [[[response notification] request] content];
             PyObject *ret = PyObject_CallFunction(notification_activated_callback, "z",
                     notification.userInfo[@"user_id"] ? [notification.userInfo[@"user_id"] UTF8String] : NULL);
             if (ret == NULL) PyErr_Print();
@@ -172,10 +170,10 @@ static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     char *identifier = NULL, *title = NULL, *subtitle = NULL, *informativeText = NULL, *path_to_image = NULL;
     if (!PyArg_ParseTuple(args, "zssz|z", &identifier, &title, &informativeText, &path_to_image, &subtitle)) return NULL;
-    NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
     if (!center) {PyErr_SetString(PyExc_RuntimeError, "Failed to get the user notification center"); return NULL; }
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
-    NSUserNotification *n = [NSUserNotification new];
+    UNNotificationContent *n = [UNNotificationContent new];
     NSImage *img = nil;
     if (path_to_image) {
         NSString *p = @(path_to_image);
@@ -188,18 +186,18 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
         }
         [img release];
     }
-#define SET(x) { \
-    if (x) { \
-        NSString *t = @(x); \
-        n.x = t; \
-        [t release]; \
-    }}
-    SET(title); SET(subtitle); SET(informativeText);
-#undef SET
-    if (identifier) {
-        n.userInfo = @{@"user_id": @(identifier)};
-    }
-    [center deliverNotification:n];
+    // Configure the notification's payload.
+    UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
+    content.title = @(title);
+    content.sound = [UNNotificationSound defaultSound];
+
+    // Deliver the notification in five seconds.
+    UNTimeIntervalNotificationTrigger* trigger = [UNTimeIntervalNotificationTrigger
+                triggerWithTimeInterval:5 repeats:NO];
+    UNNotificationRequest* request = [UNNotificationRequest requestWithIdentifier:@"FiveSecond"
+                content:content trigger:trigger];
+
+    [center addNotificationRequest:request withCompletionHandler:NULL];
     Py_RETURN_NONE;
 }
 

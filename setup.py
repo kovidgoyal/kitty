@@ -330,7 +330,7 @@ def kitty_env() -> Env:
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     if is_macos:
-        font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
+        font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics', '-framework', 'UserNotifications']
         # Apple deprecated OpenGL in Mojave (10.14) silence the endless
         # warnings about it
         cppflags.append('-DGL_SILENCE_DEPRECATION')
