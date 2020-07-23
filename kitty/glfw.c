@@ -1045,15 +1045,18 @@ x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
     return Py_BuildValue("l", (long)glfwGetX11Window(w->handle));
 }
 
-#ifdef __APPLE__
 static PyObject*
 cocoa_window_id(PyObject UNUSED *self, PyObject *os_wid) {
     OSWindow *w = find_os_window(os_wid);
     if (!w) { PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found"); return NULL; }
     if (!glfwGetCocoaWindow) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetCocoaWindow"); return NULL; }
+#ifdef __APPLE__
     return Py_BuildValue("l", (long)cocoa_window_number(glfwGetCocoaWindow(w->handle)));
-}
+#else
+    PyErr_SetString(PyExc_RuntimeError, "cocoa_window_id() is only supported on Mac");
+    return NULL;
 #endif
+}
 
 static PyObject*
 get_primary_selection(PYNOARG) {
@@ -1236,9 +1239,7 @@ static PyMethodDef module_methods[] = {
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),
 #endif
-#ifdef __APPLE__
     METHODB(cocoa_window_id, METH_O),
-#endif
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},
