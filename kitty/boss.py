@@ -49,14 +49,15 @@ from .typing import PopenType, TypedDict
 from .utils import (
     func_name, get_editor, get_primary_selection, is_path_in_temp_dir,
     log_error, open_url, parse_address_spec, parse_uri_list,
-    remove_socket_file, safe_print, set_primary_selection, single_instance,
-    startup_notification_handler
+    platform_window_id, remove_socket_file, safe_print, set_primary_selection,
+    single_instance, startup_notification_handler
 )
 from .window import MatchPatternType, Window
 
 
 class OSWindowDict(TypedDict):
     id: int
+    platform_window_id: Optional[int]
     is_focused: bool
     tabs: List[TabDict]
 
@@ -212,6 +213,7 @@ class Boss:
             for os_window_id, tm in self.os_window_map.items():
                 yield {
                     'id': os_window_id,
+                    'platform_window_id': platform_window_id(os_window_id),
                     'is_focused': tm is active_tab_manager,
                     'tabs': list(tm.list_tabs(active_tab, active_window)),
                 }
