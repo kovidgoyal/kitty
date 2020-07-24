@@ -11,6 +11,7 @@
 #include "glfw-wrapper.h"
 extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
+extern long cocoa_window_number(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_hide_window_title(void *w);
 extern void cocoa_hide_titlebar(void *w);
@@ -1023,18 +1024,35 @@ x11_display(PYNOARG) {
     Py_RETURN_NONE;
 }
 
+static OSWindow*
+find_os_window(PyObject *os_wid) {
+    id_type os_window_id = PyLong_AsUnsignedLongLong(os_wid);
+    for (size_t i = 0; i < global_state.num_os_windows; i++) {
+        OSWindow *w = global_state.os_windows + i;
+        if (w->id == os_window_id) return w;
+    }
+    return NULL;
+}
+
 static PyObject*
 x11_window_id(PyObject UNUSED *self, PyObject *os_wid) {
-    if (glfwGetX11Window) {
-        id_type os_window_id = PyLong_AsUnsignedLongLong(os_wid);
-        for (size_t i = 0; i < global_state.num_os_windows; i++) {
-            OSWindow *w = global_state.os_windows + i;
-            if (w->id == os_window_id) return Py_BuildValue("l", (long)glfwGetX11Window(w->handle));
-        }
-    }
-    else { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
-    PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found");
+    OSWindow *w = find_os_window(os_wid);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found"); return NULL; }
+    if (!glfwGetX11Window) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetX11Window"); return NULL; }
+    return Py_BuildValue("l", (long)glfwGetX11Window(w->handle));
+}
+
+static PyObject*
+cocoa_window_id(PyObject UNUSED *self, PyObject *os_wid) {
+    OSWindow *w = find_os_window(os_wid);
+    if (!w) { PyErr_SetString(PyExc_ValueError, "No OSWindow with the specified id found"); return NULL; }
+    if (!glfwGetCocoaWindow) { PyErr_SetString(PyExc_RuntimeError, "Failed to load glfwGetCocoaWindow"); return NULL; }
+#ifdef __APPLE__
+    return Py_BuildValue("l", (long)cocoa_window_number(glfwGetCocoaWindow(w->handle)));
+#else
+    PyErr_SetString(PyExc_RuntimeError, "cocoa_window_id() is only supported on Mac");
     return NULL;
+#endif
 }
 
 static PyObject*
@@ -1218,6 +1236,7 @@ static PyMethodDef module_methods[] = {
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),
 #endif
+    METHODB(cocoa_window_id, METH_O),
     {"glfw_init", (PyCFunction)glfw_init, METH_VARARGS, ""},
     {"glfw_terminate", (PyCFunction)glfw_terminate, METH_NOARGS, ""},
     {"glfw_get_physical_dpi", (PyCFunction)glfw_get_physical_dpi, METH_NOARGS, ""},

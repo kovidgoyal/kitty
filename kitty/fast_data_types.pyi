@@ -781,6 +781,10 @@ def x11_window_id(os_window_id: int) -> int:
     pass
 
 
+def cocoa_window_id(os_window_id: int) -> int:
+    pass
+
+
 def swap_tabs(os_window_id: int, a: int, b: int) -> None:
     pass
 

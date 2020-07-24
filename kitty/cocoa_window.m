@@ -390,6 +390,12 @@ cocoa_focus_window(void *w) {
     [window makeKeyWindow];
 }
 
+long
+cocoa_window_number(void *w) {
+    NSWindow *window = (NSWindow*)w;
+    return [window windowNumber];
+}
+
 size_t
 cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t array_sz) {
     NSWindow *window = (NSWindow*)w;
