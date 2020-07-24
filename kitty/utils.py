@@ -42,6 +42,17 @@ def expandvars(val: str, env: Dict[str, str] = {}) -> str:
     return re.sub(r'\$\{(\S+?)\}', sub, val)
 
 
+def platform_window_id(os_window_id: int) -> Optional[int]:
+    if is_macos:
+        from .fast_data_types import cocoa_window_id
+        with suppress(Exception):
+            return cocoa_window_id(os_window_id)
+    if not is_wayland():
+        from .fast_data_types import x11_window_id
+        with suppress(Exception):
+            return x11_window_id(os_window_id)
+
+
 def load_shaders(name: str) -> Tuple[str, str]:
     from .fast_data_types import GLSL_VERSION
     with open(os.path.join(BASE, '{}_vertex.glsl'.format(name))) as f:

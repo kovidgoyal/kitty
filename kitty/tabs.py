@@ -15,18 +15,18 @@ from typing import (
 from .borders import Borders
 from .child import Child
 from .cli_stub import CLIOptions
-from .constants import appname, is_macos, is_wayland
+from .constants import appname
 from .fast_data_types import (
-    add_tab, attach_window, cocoa_window_id, detach_window, get_boss, mark_tab_bar_dirty,
+    add_tab, attach_window, detach_window, get_boss, mark_tab_bar_dirty,
     next_window_id, remove_tab, remove_window, ring_bell, set_active_tab,
-    set_active_window, swap_tabs, sync_os_window_title, x11_window_id
+    set_active_window, swap_tabs, sync_os_window_title
 )
 from .layout.base import Layout, Rect
 from .layout.interface import create_layout_object_for, evict_cached_layouts
 from .options_stub import Options
 from .tab_bar import TabBar, TabBarData
 from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
-from .utils import log_error, resolved_shell
+from .utils import log_error, platform_window_id, resolved_shell
 from .window import Watchers, Window, WindowDict
 from .window_list import WindowList
 
@@ -283,18 +283,9 @@ class Tab:  # {{{
         if env:
             fenv.update(env)
         fenv['KITTY_WINDOW_ID'] = str(next_window_id())
-        if is_macos:
-            try:
-                fenv['WINDOWID'] = str(cocoa_window_id(self.os_window_id))
-            except Exception:
-                import traceback
-                traceback.print_exc()
-        elif not is_wayland():
-            try:
-                fenv['WINDOWID'] = str(x11_window_id(self.os_window_id))
-            except Exception:
-                import traceback
-                traceback.print_exc()
+        pwid = platform_window_id(self.os_window_id)
+        if pwid is not None:
+            fenv['WINDOWID'] = str(pwid)
         ans = Child(cmd, cwd or self.cwd, self.opts, stdin, fenv, cwd_from, allow_remote_control=allow_remote_control)
         ans.fork()
         return ans
