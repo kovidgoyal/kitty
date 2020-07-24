@@ -653,15 +653,6 @@ int _glfwPlatformInit(void)
     _glfw.x11.helperWindowHandle = createHelperWindow();
     _glfw.x11.hiddenCursorHandle = createHiddenCursor();
 
-#if defined(__linux__)
-    if (_glfw.hints.init.enableJoysticks) {
-        if (!_glfwInitJoysticksLinux())
-            return false;
-        if (_glfw.linjs.inotify > 0)
-            addWatch(&_glfw.x11.eventLoopData, "joystick", _glfw.linjs.inotify, POLLIN, 1, NULL, NULL);
-    }
-#endif
-
     _glfwPollMonitorsX11();
     return true;
 }
@@ -740,9 +731,6 @@ void _glfwPlatformTerminate(void)
     _glfwTerminateEGL();
     _glfwTerminateGLX();
 
-#if defined(__linux__)
-    _glfwTerminateJoysticksLinux();
-#endif
     finalizePollData(&_glfw.x11.eventLoopData);
 }
 

@@ -2653,7 +2653,8 @@ _glfwDispatchX11Events(void) {
     unsigned dispatched = 0;
 
 #if defined(__linux__)
-    if (_glfw.hints.init.enableJoysticks) _glfwDetectJoystickConnectionLinux();
+    if (_glfw.joysticksInitialized)
+        _glfwDetectJoystickConnectionLinux();
 #endif
     dispatched += dispatch_x11_queued_events(XEventsQueued(_glfw.x11.display, QueuedAfterFlush));
 

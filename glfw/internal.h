@@ -276,7 +276,6 @@ struct _GLFWinitconfig
     bool          hatButtons;
     int           angleType;
     bool          debugKeyboard;
-    bool          enableJoysticks;
     struct {
         bool      menubar;
         bool      chdir;
@@ -575,6 +574,7 @@ struct _GLFWlibrary
     _GLFWmonitor**      monitors;
     int                 monitorCount;
 
+    bool                joysticksInitialized;
     _GLFWjoystick       joysticks[GLFW_JOYSTICK_LAST + 1];
     _GLFWmapping*       mappings;
     int                 mappingCount;
@@ -668,6 +668,8 @@ void _glfwPlatformSetPrimarySelectionString(const char* string);
 const char* _glfwPlatformGetPrimarySelectionString(void);
 #endif
 
+bool _glfwPlatformInitJoysticks(void);
+void _glfwPlatformTerminateJoysticks(void);
 int _glfwPlatformPollJoystick(_GLFWjoystick* js, int mode);
 void _glfwPlatformUpdateGamepadGUID(char* guid);
 

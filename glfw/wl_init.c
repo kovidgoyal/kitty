@@ -771,13 +771,6 @@ int _glfwPlatformInit(void)
     // Sync so we got all initial output events
     wl_display_roundtrip(_glfw.wl.display);
 
-#ifdef __linux__
-    if (_glfw.hints.init.enableJoysticks) {
-        if (!_glfwInitJoysticksLinux())
-            return false;
-    }
-#endif
-
     if (!_glfw.wl.wmBase)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
@@ -801,9 +794,6 @@ int _glfwPlatformInit(void)
 
 void _glfwPlatformTerminate(void)
 {
-#ifdef __linux__
-    _glfwTerminateJoysticksLinux();
-#endif
     _glfwTerminateEGL();
     if (_glfw.wl.egl.handle)
     {
