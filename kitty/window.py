@@ -222,6 +222,7 @@ class Window:
         self.action_on_removal: Optional[Callable] = None
         self.current_marker_spec: Optional[Tuple[str, Union[str, Tuple[Tuple[int, str], ...]]]] = None
         self.pty_resized_once = False
+        self.last_reported_pty_size = (-1, -1, -1, -1)
         self.needs_attention = False
         self.override_title = override_title
         self.default_title = os.path.basename(child.argv[0] or appname)
@@ -381,18 +382,21 @@ class Window:
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
             boss = get_boss()
             self.screen.resize(new_geometry.ynum, new_geometry.xnum)
-            current_pty_size = (
-                self.screen.lines, self.screen.columns,
-                max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
             sg = self.update_position(new_geometry)
             self.needs_layout = False
+            self.call_watchers(self.watchers.on_resize, {'old_geometry': self.geometry, 'new_geometry': new_geometry})
+        else:
+            sg = self.update_position(new_geometry)
+        current_pty_size = (
+            self.screen.lines, self.screen.columns,
+            max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
+        if current_pty_size != self.last_reported_pty_size:
             boss.child_monitor.resize_pty(self.id, *current_pty_size)
             if not self.pty_resized_once:
                 self.pty_resized_once = True
                 self.child.mark_terminal_ready()
-            self.call_watchers(self.watchers.on_resize, {'old_geometry': self.geometry, 'new_geometry': new_geometry})
-        else:
-            sg = self.update_position(new_geometry)
+            self.last_reported_pty_size = current_pty_size
+
         self.geometry = g = new_geometry
         set_window_render_data(self.os_window_id, self.tab_id, self.id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
         self.update_effective_padding()

@@ -67,6 +67,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Wayland: Fix a regression in 0.18.0 that could cause crashes related to mouse
   cursors in some rare circumstances (:iss:`2810`)
 
+- Fix change in window size that does not change number of cells not being
+  reported to the kernel (:iss:`2880`)
+
 
 0.18.1 [2020-06-23]
 --------------------
