@@ -64,6 +64,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Make the window id of OS windows available in the ``WINDOWID``
   environment variable (:pull:`2877`)
 
+- Wayland: Fix a regression in 0.18.0 that could cause crashes related to mouse
+  cursors in some rare circumstances (:iss:`2810`)
+
 
 0.18.1 [2020-06-23]
 --------------------

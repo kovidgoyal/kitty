@@ -41,11 +41,6 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-static void
-load_cursor_theme(_GLFWwindow* window) {
-    window->wl.cursorTheme = _wlCursorThemeManage(
-        _glfw.wl.cursorThemeManager, window->wl.cursorTheme, _wlCursorPxFromScale(window->wl.scale));
-}
 
 static void
 setCursorImage(_GLFWwindow* window)
@@ -63,8 +58,9 @@ setCursorImage(_GLFWwindow* window)
     } else
     {
         if (cursorWayland->scale != scale) {
-            if (!window->wl.cursorTheme) load_cursor_theme(window);
-            struct wl_cursor *newCursor = _glfwLoadCursor(cursorWayland->shape, window->wl.cursorTheme);
+            struct wl_cursor *newCursor = NULL;
+            struct wl_cursor_theme *theme = glfw_wlc_theme_for_scale(scale);
+            if (theme) newCursor = _glfwLoadCursor(cursorWayland->shape, theme);
             if (newCursor != NULL) {
                 cursorWayland->cursor = newCursor;
                 cursorWayland->scale = scale;
@@ -136,7 +132,6 @@ static bool checkScaleChange(_GLFWwindow* window)
     {
         window->wl.scale = scale;
         wl_surface_set_buffer_scale(window->wl.surface, scale);
-        load_cursor_theme(window);
         setCursorImage(window);
         return true;
     }
@@ -945,12 +940,6 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 
 void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 {
-    if (window->wl.cursorTheme) {
-        _wlCursorThemeManage(_glfw.wl.cursorThemeManager,
-                             window->wl.cursorTheme,
-                             0);
-        window->wl.cursorTheme = NULL;
-    }
     if (window == _glfw.wl.pointerFocus)
     {
         _glfw.wl.pointerFocus = NULL;

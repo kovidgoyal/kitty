@@ -132,7 +132,6 @@ typedef struct _GLFWwindowWayland
 
     _GLFWcursor*                currentCursor;
     double                      cursorPosX, cursorPosY;
-    struct wl_cursor_theme*     cursorTheme;
 
     char*                       title;
     char                        appId[256];
@@ -262,8 +261,7 @@ typedef struct _GLFWlibraryWayland
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
     char* primarySelectionString;
-
-    _wlCursorThemeManager*      cursorThemeManager;
+    GLFWWLCursorThemes cursor_themes;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data

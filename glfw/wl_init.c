@@ -148,12 +148,9 @@ static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
     struct wl_surface* surface = _glfw.wl.cursorSurface;
     const int scale = window->wl.scale;
 
-    window->wl.cursorTheme = _wlCursorThemeManage(
-        _glfw.wl.cursorThemeManager,
-        window->wl.cursorTheme,
-        _wlCursorPxFromScale(scale)
-    );
-    cursor = _glfwLoadCursor(shape, window->wl.cursorTheme);
+    struct wl_cursor_theme *theme = glfw_wlc_theme_for_scale(scale);
+    if (!theme) return;
+    cursor = _glfwLoadCursor(shape, theme);
     if (!cursor) return;
     // TODO: handle animated cursors too.
     image = cursor->images[0];
@@ -780,13 +777,14 @@ int _glfwPlatformInit(void)
 
     if (_glfw.wl.shm)
     {
-        _glfw.wl.cursorThemeManager = _wlCursorThemeManagerDefault();
         _glfw.wl.cursorSurface =
             wl_compositor_create_surface(_glfw.wl.compositor);
     }
     else
     {
-        _glfw.wl.cursorThemeManager = NULL;
+        _glfwInputError(GLFW_PLATFORM_ERROR,
+                        "Wayland: Failed to find Wayland SHM");
+        return false;
     }
 
     return true;
@@ -812,9 +810,7 @@ void _glfwPlatformTerminate(void)
 
     if (_glfw.wl.cursorSurface)
         wl_surface_destroy(_glfw.wl.cursorSurface);
-    if (_glfw.wl.cursorThemeManager) {
-        _wlCursorThemeManagerDestroy(_glfw.wl.cursorThemeManager);
-    }
+    glfw_wlc_destroy();
     if (_glfw.wl.subcompositor)
         wl_subcompositor_destroy(_glfw.wl.subcompositor);
     if (_glfw.wl.compositor)
