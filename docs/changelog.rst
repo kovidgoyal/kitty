@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.18.2 [future]
+0.18.2 [2020-07-28]
 --------------------
 
 - X11: Improve handling of multiple keyboards. Now pressing a modifier key in
@@ -40,8 +40,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow setting the :opt:`background_opacity` of new OS windows created via
   :option:`kitty --single-instance` using the :option:`kitty --override` command line
   argument (:iss:`2806`)
-
-- Wayland: Fix a crash when using animated mouse cursors (:iss:`2810`)
 
 - Fix the CSI J (Erase in display ED) escape code not removing line continued
   markers (:iss:`2809`)
