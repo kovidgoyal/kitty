@@ -25,7 +25,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When a character from the Unicode Dingbat block is followed by a space, use
   the extra space to render a larger version of the character (:iss:`2850`)
 
-- macOS: Fix the LC_TYPE env var being set to UTF-8 on systems in which the
+- macOS: Fix the LC_CTYPE env var being set to UTF-8 on systems in which the
   language and country code do not form a valid locale (:iss:`1233`)
 
 - macOS: Fix :kbd:`cmd+plus` not changing font size (:iss:`2839`)
