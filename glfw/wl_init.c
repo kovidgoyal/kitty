@@ -792,7 +792,6 @@ int _glfwPlatformInit(void)
 
 void _glfwPlatformTerminate(void)
 {
-    glfw_wlc_destroy();
     _glfwTerminateEGL();
     if (_glfw.wl.egl.handle)
     {
@@ -803,6 +802,7 @@ void _glfwPlatformTerminate(void)
     glfw_xkb_release(&_glfw.wl.xkb);
     glfw_dbus_terminate(&_glfw.wl.dbus);
 
+    glfw_wlc_destroy();
     if (_glfw.wl.cursor.handle)
     {
         _glfw_dlclose(_glfw.wl.cursor.handle);
