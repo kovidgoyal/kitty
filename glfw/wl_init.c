@@ -792,6 +792,7 @@ int _glfwPlatformInit(void)
 
 void _glfwPlatformTerminate(void)
 {
+    glfw_wlc_destroy();
     _glfwTerminateEGL();
     if (_glfw.wl.egl.handle)
     {
@@ -810,7 +811,6 @@ void _glfwPlatformTerminate(void)
 
     if (_glfw.wl.cursorSurface)
         wl_surface_destroy(_glfw.wl.cursorSurface);
-    glfw_wlc_destroy();
     if (_glfw.wl.subcompositor)
         wl_subcompositor_destroy(_glfw.wl.subcompositor);
     if (_glfw.wl.compositor)
