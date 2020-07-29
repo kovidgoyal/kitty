@@ -696,13 +696,17 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
             kenv, dest, compilation_database, sources, all_headers + ['kitty/data-types.h'])
 
 
-def build(args: Options, native_optimizations: bool = True) -> None:
+def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
     global env
     env = init_env(
         args.debug, args.sanitize, native_optimizations, args.profile,
         args.egl_library, args.startup_notification_library, args.canberra_library,
         args.extra_logging
     )
+
+
+def build(args: Options, native_optimizations: bool = True) -> None:
+    init_env_from_args(args, native_optimizations)
     sources, headers = find_c_files()
     compile_c_extension(
         kitty_env(), 'kitty/fast_data_types', args.compilation_database, sources, headers
@@ -1041,7 +1045,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         'action',
         nargs='?',
         default=Options.action,
-        choices='build test linux-package kitty.app linux-freeze macos-freeze clean'.split(),
+        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher clean'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -1156,6 +1160,9 @@ def main() -> None:
                 create_minimal_macos_bundle(args, launcher_dir)
             else:
                 build_launcher(args, launcher_dir=launcher_dir)
+        elif args.action == 'build-launcher':
+            init_env_from_args(args, False)
+            build_launcher(args, launcher_dir=launcher_dir)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-package')

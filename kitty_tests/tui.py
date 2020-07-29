@@ -3,12 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-import sys
-import unittest
-
 from . import BaseTest
-
-is32bit = sys.maxsize <= (1 << 32)
 
 
 class TestTUI(BaseTest):
@@ -48,7 +43,6 @@ class TestTUI(BaseTest):
         le.backspace()
         self.assertTrue(le.pending_bell)
 
-    @unittest.skipIf(is32bit, 'Fails for some unknown reason on 32bit builds')
     def test_multiprocessing_spawn(self):
         from kitty.multiprocessing import test_spawn
         test_spawn()
