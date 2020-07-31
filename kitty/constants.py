@@ -64,16 +64,16 @@ class WindowGeometry(NamedTuple):
 def kitty_exe() -> str:
     rpath = sys._xoptions.get('bundle_exe_dir')
     if not rpath:
-        items = filter(None, os.environ.get('PATH', '').split(os.pathsep))
+        items = os.environ.get('PATH', '').split(os.pathsep) + [os.path.join(base, 'launcher')]
         seen: Set[str] = set()
-        for candidate in items:
+        for candidate in filter(None, items):
             if candidate not in seen:
                 seen.add(candidate)
                 if os.access(os.path.join(candidate, 'kitty'), os.X_OK):
                     rpath = candidate
                     break
         else:
-            rpath = os.path.join(base, 'launcher')
+            raise SystemExit('kitty binary not found')
     return os.path.join(rpath, 'kitty')
 
 
