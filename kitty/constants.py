@@ -73,7 +73,7 @@ def kitty_exe() -> str:
                     rpath = candidate
                     break
         else:
-            raise SystemExit('kitty binary not found')
+            raise RuntimeError('kitty binary not found')
     return os.path.join(rpath, 'kitty')
 
 
