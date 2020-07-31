@@ -73,7 +73,7 @@ def kitty_exe() -> str:
                     rpath = candidate
                     break
         else:
-            rpath = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'launcher')
+            rpath = os.path.join(base, 'launcher')
     return os.path.join(rpath, 'kitty')
 
 
@@ -146,7 +146,7 @@ def wakeup() -> None:
         b.child_monitor.wakeup()
 
 
-base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+base_dir = os.path.dirname(base)
 terminfo_dir = os.path.join(base_dir, 'terminfo')
 logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
 logo_png_file = os.path.join(base_dir, 'logo', 'kitty.png')
