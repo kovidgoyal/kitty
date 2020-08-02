@@ -72,7 +72,7 @@ def decode_hint(x: str, alphabet: str = DEFAULT_HINT_ALPHABET) -> int:
     return i
 
 
-def highlight_mark(m: Mark, text: str, current_input: str, alphabet: str) -> str:
+def highlight_mark(m: Mark, text: str, current_input: str, alphabet: str, colors: Dict[str, str]) -> str:
     hint = encode_hint(m.index, alphabet)
     if current_input and not hint.startswith(current_input):
         return faint(text)
@@ -80,19 +80,19 @@ def highlight_mark(m: Mark, text: str, current_input: str, alphabet: str) -> str
     text = text[len(hint):]
     return styled(
         hint,
-        fg='black',
-        bg='green',
+        fg=colors['foreground'],
+        bg=colors['background'],
         bold=True
     ) + styled(
-        text, fg='gray', fg_intense=True, bold=True
+        text, fg=colors['text'], fg_intense=True, bold=True
     )
 
 
-def render(text: str, current_input: str, all_marks: Sequence[Mark], ignore_mark_indices: Set[int], alphabet: str) -> str:
+def render(text: str, current_input: str, all_marks: Sequence[Mark], ignore_mark_indices: Set[int], alphabet: str, colors: Dict[str, str]) -> str:
     for mark in reversed(all_marks):
         if mark.index in ignore_mark_indices:
             continue
-        mtext = highlight_mark(mark, text[mark.start:mark.end], current_input, alphabet)
+        mtext = highlight_mark(mark, text[mark.start:mark.end], current_input, alphabet, colors)
         text = text[:mark.start] + mtext + text[mark.end:]
 
     text = text.replace('\0', '')
@@ -105,6 +105,9 @@ class Hints(Handler):
     def __init__(self, text: str, all_marks: Sequence[Mark], index_map: Dict[int, Mark], args: HintsCLIOptions):
         self.text, self.index_map = text, index_map
         self.alphabet = args.alphabet or DEFAULT_HINT_ALPHABET
+        self.colors = {'foreground': args.hints_foreground_color,
+                       'background': args.hints_background_color,
+                       'text': args.hints_text_color}
         self.all_marks = all_marks
         self.ignore_mark_indices: Set[int] = set()
         self.args = args
@@ -198,7 +201,7 @@ class Hints(Handler):
 
     def draw_screen(self) -> None:
         if self.current_text is None:
-            self.current_text = render(self.text, self.current_input, self.all_marks, self.ignore_mark_indices, self.alphabet)
+            self.current_text = render(self.text, self.current_input, self.all_marks, self.ignore_mark_indices, self.alphabet, self.colors)
         self.cmd.clear_screen()
         self.write(self.current_text)
 
@@ -511,6 +514,24 @@ the second character you specify.
 --ascending
 type=bool-set
 Have the hints increase from top to bottom instead of decreasing from top to bottom.
+
+
+--hints-foreground-color
+default=black
+type=str
+The foreground color for hints
+
+
+--hints-background-color
+default=green
+type=str
+The background color for hints
+
+
+--hints-text-color
+default=gray
+type=str
+The foreground color for text pointed by the hints
 
 
 --customize-processing
