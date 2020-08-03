@@ -531,7 +531,7 @@ The background color for hints
 --hints-text-color
 default=gray
 type=str
-The foreground color for text pointed by the hints
+The foreground color for text pointed to by the hints
 
 
 --customize-processing
