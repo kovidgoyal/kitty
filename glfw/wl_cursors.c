@@ -16,7 +16,7 @@ pixels_from_scale(int scale) {
         const char *env = getenv("XCURSOR_SIZE");
         if (env) {
             const int retval = atoi(env);
-            if (retval > 0 && retval < 2048) factor = 32;
+            if (retval > 0 && retval < 2048) factor = retval;
         }
         queried_env = true;
     }

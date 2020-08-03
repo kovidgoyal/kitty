@@ -9,6 +9,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - hints kitten: Allow customizing hint colors (:pull:`2894`)
 
+- Wayland: Fix a typo in the previous release that broke reading mouse cursor size (:iss:`2895`)
+
 
 0.18.2 [2020-07-28]
 --------------------
