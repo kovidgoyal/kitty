@@ -11,6 +11,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Fix a typo in the previous release that broke reading mouse cursor size (:iss:`2895`)
 
+- Fix a regression in the previous release that could cause an exception during
+  startup in rare circumstances (:iss:`2896`)
+
 
 0.18.2 [2020-07-28]
 --------------------

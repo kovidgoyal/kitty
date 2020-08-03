@@ -380,7 +380,6 @@ class Window:
         if self.destroyed:
             return
         if self.needs_layout or new_geometry.xnum != self.screen.columns or new_geometry.ynum != self.screen.lines:
-            boss = get_boss()
             self.screen.resize(new_geometry.ynum, new_geometry.xnum)
             sg = self.update_position(new_geometry)
             self.needs_layout = False
@@ -391,7 +390,7 @@ class Window:
             self.screen.lines, self.screen.columns,
             max(0, new_geometry.right - new_geometry.left), max(0, new_geometry.bottom - new_geometry.top))
         if current_pty_size != self.last_reported_pty_size:
-            boss.child_monitor.resize_pty(self.id, *current_pty_size)
+            get_boss().child_monitor.resize_pty(self.id, *current_pty_size)
             if not self.pty_resized_once:
                 self.pty_resized_once = True
                 self.child.mark_terminal_ready()
