@@ -24,6 +24,9 @@ images and other types of documents directly in your terminal, even over SSH.
 `nnn <https://github.com/jarun/nnn/>`_
     another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
 
+`hunter <https://github.com/rabite0/hunter>`_
+    another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+
 `koneko <https://github.com/twenty5151/koneko>`_
     browse images from the pixiv artist community directly in kitty
 
