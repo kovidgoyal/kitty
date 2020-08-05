@@ -15,7 +15,7 @@ extern long cocoa_window_number(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_hide_window_title(void *w);
 extern void cocoa_hide_titlebar(void *w);
-extern void cocoa_system_beep(void *w);
+extern void cocoa_system_beep(void);
 extern void cocoa_set_activation_policy(bool);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
