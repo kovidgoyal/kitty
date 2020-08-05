@@ -893,7 +893,7 @@ static void
 ring_audio_bell(void) {
     static monotonic_t last_bell_at = -1;
     monotonic_t now = monotonic();
-    if (now - last_bell_at <= ms_to_monotonic_t(100ll)) return;
+    if (last_bell_at >= 0 && now - last_bell_at <= ms_to_monotonic_t(100ll)) return;
     last_bell_at = now;
 #ifdef __APPLE__
     cocoa_system_beep();
