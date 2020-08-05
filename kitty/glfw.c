@@ -15,6 +15,7 @@ extern long cocoa_window_number(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_hide_window_title(void *w);
 extern void cocoa_hide_titlebar(void *w);
+extern void cocoa_system_beep(void *w);
 extern void cocoa_set_activation_policy(bool);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
@@ -888,16 +889,14 @@ get_clipboard_string(PYNOARG) {
     return Py_BuildValue("s", "");
 }
 
-void
-ring_audio_bell(OSWindow *w UNUSED) {
+static void
+ring_audio_bell(void) {
     static monotonic_t last_bell_at = -1;
     monotonic_t now = monotonic();
     if (now - last_bell_at <= ms_to_monotonic_t(100ll)) return;
     last_bell_at = now;
 #ifdef __APPLE__
-    if (w->handle) {
-        glfwWindowBell(w->handle);
-    }
+    cocoa_system_beep();
 #else
     play_canberra_sound("bell", "kitty bell");
 #endif
@@ -905,8 +904,7 @@ ring_audio_bell(OSWindow *w UNUSED) {
 
 static PyObject*
 ring_bell(PYNOARG) {
-    OSWindow *w = current_os_window();
-    ring_audio_bell(w);
+    ring_audio_bell();
     Py_RETURN_NONE;
 }
 
@@ -960,7 +958,7 @@ void
 request_window_attention(id_type kitty_window_id, bool audio_bell) {
     OSWindow *w = os_window_for_kitty_window(kitty_window_id);
     if (w) {
-        if (audio_bell) ring_audio_bell(w);
+        if (audio_bell) ring_audio_bell();
         if (OPT(window_alert_on_bell)) glfwRequestWindowAttention(w->handle);
         glfwPostEmptyEvent();
     }

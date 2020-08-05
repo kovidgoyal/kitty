@@ -537,6 +537,11 @@ cocoa_hide_titlebar(void *w)
     } // autoreleasepool
 }
 
+void
+cocoa_system_beep(void) {
+    NSBeep();
+}
+
 static PyMethodDef module_methods[] = {
     {"cocoa_get_lang", (PyCFunction)cocoa_get_lang, METH_NOARGS, ""},
     {"cocoa_set_new_window_trigger", (PyCFunction)cocoa_set_new_window_trigger, METH_VARARGS, ""},
