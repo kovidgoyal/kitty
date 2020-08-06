@@ -559,13 +559,14 @@ line_get_char(Line *self, index_type at) {
 
 void
 line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool UNUSED is_second) {
+    GPUCell *g = self->gpu_cells + at;
     if (cursor == NULL) {
-        self->gpu_cells[at].attrs = (self->gpu_cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
+        g->attrs = (self->gpu_cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
     } else {
-        self->gpu_cells[at].attrs = CURSOR_TO_ATTRS(cursor, width & WIDTH_MASK);
-        self->gpu_cells[at].fg = (cursor->fg & COL_MASK);
-        self->gpu_cells[at].bg = (cursor->bg & COL_MASK);
-        self->gpu_cells[at].decoration_fg = cursor->decoration_fg & COL_MASK;
+        g->attrs = CURSOR_TO_ATTRS(cursor, width & WIDTH_MASK);
+        g->fg = cursor->fg & COL_MASK;
+        g->bg = cursor->bg & COL_MASK;
+        g->decoration_fg = cursor->decoration_fg & COL_MASK;
     }
     self->cpu_cells[at].ch = ch;
     memset(self->cpu_cells[at].cc_idx, 0, sizeof(self->cpu_cells[at].cc_idx));
