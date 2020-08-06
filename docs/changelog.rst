@@ -14,6 +14,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in the previous release that could cause an exception during
   startup in rare circumstances (:iss:`2896`)
 
+- Adjust cell height automatically for buggy fonts that draw brackets outside the bounding box
+
 
 0.18.2 [2020-07-28]
 --------------------
