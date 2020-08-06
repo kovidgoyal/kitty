@@ -131,7 +131,7 @@ calc_cell_height(Face *self, bool for_metrics) {
             if (char_height > ans) {
                 if (global_state.debug_font_fallback) printf(
                     "Increasing cell height by %u pixels to work around buggy font that renders '%c' outside the bounding box\n", char_height - ans, chars[i]);
-            ans = char_height;
+                ans = char_height;
             }
         }
     }
