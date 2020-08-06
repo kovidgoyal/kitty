@@ -275,7 +275,8 @@ def category_test(
     use_static: bool = False,
     extra_chars: Union[FrozenSet[int], Set[int]] = frozenset(),
     exclude: Union[Set[int], FrozenSet[int]] = frozenset(),
-    least_check_return: Optional[str] = None
+    least_check_return: Optional[str] = None,
+    ascii_range: Optional[str] = None
 ) -> None:
     static = 'static inline ' if use_static else ''
     chars: Set[int] = set()
@@ -288,6 +289,8 @@ def category_test(
     if least_check_return is not None:
         least = min(chars)
         p(f'\tif (LIKELY(code < {least})) return {least_check_return};')
+    if ascii_range is not None:
+        p(f'\tif (LIKELY(0x20 <= code && code <= 0x7e)) return {ascii_range};')
     p('\tswitch(code) {')
     for spec in get_ranges(list(chars)):
         write_case(spec, p)
@@ -346,7 +349,10 @@ def gen_ucd() -> None:
         )
         category_test(
             'is_ignored_char', p, 'Cc Cf Cs'.split(),
-            'Control characters and non-characters', extra_chars=non_characters, exclude={zwj})
+            'Control characters and non-characters',
+            extra_chars=non_characters, exclude={zwj},
+            ascii_range='false'
+        )
         category_test('is_word_char', p, {c for c in class_maps if c[0] in 'LN'}, 'L and N categories')
         category_test('is_CZ_category', p, cz, 'C and Z categories')
         category_test('is_P_category', p, {c for c in class_maps if c[0] == 'P'}, 'P category (punctuation)')

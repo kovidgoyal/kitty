@@ -602,6 +602,7 @@ is_combining_char(char_type code) {
 bool
 is_ignored_char(char_type code) {
 	// Control characters and non-characters (2339 codepoints) {{{
+	if (LIKELY(0x20 <= code && code <= 0x7e)) return false;
 	switch(code) {
 		case 0x0 ... 0x1f:
 			return true;
