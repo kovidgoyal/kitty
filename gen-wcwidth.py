@@ -487,6 +487,7 @@ def gen_wcwidth() -> None:
 
     with create_header('kitty/wcwidth-std.h') as p:
         p('static int\nwcwidth_std(int32_t code) {')
+        p('\tif (LIKELY(0x20 <= code && code <= 0x7e)) return 1;')
         p('\tswitch(code) {')
 
         non_printing = class_maps['Cc'] | class_maps['Cf'] | class_maps['Cs']
