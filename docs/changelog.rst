@@ -14,8 +14,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in the previous release that could cause an exception during
   startup in rare circumstances (:iss:`2896`)
 
-- Adjust cell height automatically for buggy fonts that draw brackets outside the bounding box
-
 - Fix image leaving behind a black rectangle when switch away and back to
   alternate screen (:iss:`2901`)
 

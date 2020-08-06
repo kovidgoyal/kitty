@@ -125,14 +125,11 @@ static inline unsigned int
 calc_cell_height(Face *self, bool for_metrics) {
     unsigned int ans = font_units_to_pixels_y(self, self->height);
     if (for_metrics) {
-        static const char chars[] = "_{[(";
-        for (unsigned i = 0; i < arraysz(chars) - 1; i++) {
-            unsigned int char_height = get_height_for_char(self, chars[i]);
-            if (char_height > ans) {
-                if (global_state.debug_font_fallback) printf(
-                    "Increasing cell height by %u pixels to work around buggy font that renders '%c' outside the bounding box\n", char_height - ans, chars[i]);
-                ans = char_height;
-            }
+        unsigned int underscore_height = get_height_for_char(self, '_');
+        if (underscore_height > ans) {
+            if (global_state.debug_font_fallback) printf(
+                "Increasing cell height by %u pixels to work around buggy font that renders underscore outside the bounding box\n", underscore_height - ans);
+            return underscore_height;
         }
     }
     return ans;
