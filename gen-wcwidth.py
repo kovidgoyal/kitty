@@ -274,7 +274,8 @@ def category_test(
     comment: str,
     use_static: bool = False,
     extra_chars: Union[FrozenSet[int], Set[int]] = frozenset(),
-    exclude: Union[Set[int], FrozenSet[int]] = frozenset()
+    exclude: Union[Set[int], FrozenSet[int]] = frozenset(),
+    least_check_return: Optional[str] = None
 ) -> None:
     static = 'static inline ' if use_static else ''
     chars: Set[int] = set()
@@ -284,6 +285,9 @@ def category_test(
     chars -= exclude
     p(f'{static}bool\n{name}(char_type code) {{')
     p(f'\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')
+    if least_check_return is not None:
+        least = min(chars)
+        p(f'\tif (LIKELY(code < {least})) return {least_check_return};')
     p('\tswitch(code) {')
     for spec in get_ranges(list(chars)):
         write_case(spec, p)
@@ -337,7 +341,8 @@ def gen_ucd() -> None:
                 {c for c in class_maps if c.startswith('M')},
                 'M category (marks)',
                 # See https://github.com/harfbuzz/harfbuzz/issues/169
-                extra_chars=emoji_skin_tone_modifiers | {zwj}
+                extra_chars=emoji_skin_tone_modifiers | {zwj},
+                least_check_return='false'
         )
         category_test(
             'is_ignored_char', p, 'Cc Cf Cs'.split(),
@@ -421,7 +426,7 @@ def gen_names() -> None:
         p('}; // }}}\n')
 
         # The trie
-        p('typedef struct {{ uint32_t children_offset; uint32_t match_offset; }} word_trie;\n')
+        p('typedef struct { uint32_t children_offset; uint32_t match_offset; } word_trie;\n')
         all_trie_nodes: List['TrieNode'] = []  # noqa
 
         class TrieNode:
