@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Adjust cell height automatically for buggy fonts that draw brackets outside the bounding box
 
+- Fix image leaving behind a black rectangle when switch away and back to
+  alternate screen (:iss:`2901`)
+
 
 0.18.2 [2020-07-28]
 --------------------

@@ -646,7 +646,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 
 static inline void
 filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
-    self->layers_dirty = self->image_count > 0;
+    if (self->image_count) self->layers_dirty = true;
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
         for (size_t j = img->refcnt; j-- > 0;) {
