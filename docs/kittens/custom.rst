@@ -196,3 +196,7 @@ Kittens created by kitty users
 `insert password <https://github.com/kovidgoyal/kitty/issues/1222>`_
     Insert a password from a CLI password manager, taking care to only do it at
     a password prompt.
+
+`weechat-hints <https://github.com/GermainZ/kitty-weechat-hints>`_
+    URL hints kitten for WeeChat that works without having to use WeeChat's
+    raw-mode.
