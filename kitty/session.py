@@ -21,6 +21,7 @@ class WindowSizeOpts(NamedTuple):
     initial_window_height: Tuple[int, str]
     window_margin_width: FloatEdges
     window_padding_width: FloatEdges
+    single_window_margin_width: FloatEdges
     remember_window_size: bool
 
 
@@ -124,7 +125,7 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
             elif cmd == 'os_window_size':
                 from kitty.config_data import window_size
                 w, h = map(window_size, rest.split(maxsplit=1))
-                ans.os_window_size = WindowSizeOpts(w, h, opts.window_margin_width, opts.window_padding_width, False)
+                ans.os_window_size = WindowSizeOpts(w, h, opts.window_margin_width, opts.window_padding_width, opts.single_window_margin_width, False)
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
             else:

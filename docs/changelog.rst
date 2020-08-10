@@ -21,6 +21,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   dimensions or the thickness of the line is an odd number of pixels
   (:iss:`2907`)
 
+- Fix a regression that broke specifying OS window size in the session file
+  (:iss:`2908`)
+
+
 0.18.2 [2020-07-28]
 --------------------
 
