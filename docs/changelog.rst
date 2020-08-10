@@ -17,6 +17,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix image leaving behind a black rectangle when switch away and back to
   alternate screen (:iss:`2901`)
 
+- Fix one pixel mis-alignment of rounded corners when either the cell
+  dimensions or the thickness of the line is an odd number of pixels
+  (:iss:`2907`)
 
 0.18.2 [2020-07-28]
 --------------------

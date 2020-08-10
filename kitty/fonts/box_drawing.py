@@ -364,20 +364,19 @@ def D(buf: BufType, width: int, height: int, left: bool = True) -> None:
                 buf[offset + dest_x] = mbuf[offset + src_x]
 
 
-def draw_parametrized_curve(buf: BufType, width: int, height: int, thickness_in_pixels: int, xfunc: BezierFunc, yfunc: BezierFunc) -> None:
+def draw_parametrized_curve(buf: BufType, width: int, height: int, delta: int, extra: int, xfunc: BezierFunc, yfunc: BezierFunc) -> None:
     num_samples = height*4
     seen = set()
-    delta, extra = divmod(thickness_in_pixels, 2)
     for i in range(num_samples + 1):
         t = (i / num_samples)
         p = x_p, y_p = int(xfunc(t)), int(yfunc(t))
         if p in seen:
             continue
         seen.add(p)
-        for y in range(int(y_p) - delta, int(y_p) + delta + extra):
+        for y in range(y_p - delta, y_p + delta + extra):
             if 0 <= y < height:
                 offset = y * width
-                for x in range(int(x_p) - delta, int(x_p) + delta + extra):
+                for x in range(x_p - delta, x_p + delta + extra):
                     if 0 <= x < width:
                         pos = offset + x
                         buf[pos] = min(255, buf[pos] + 255)
@@ -386,29 +385,31 @@ def draw_parametrized_curve(buf: BufType, width: int, height: int, thickness_in_
 @supersampled()
 def rounded_corner(buf: BufType, width: int, height: int, level: int = 1, which: str = '╭') -> None:
     supersample_factor = getattr(buf, 'supersample_factor')
-    thickness_in_pixels = thickness(level) * supersample_factor
+    delta, extra = divmod(thickness(level), 2)
+    hw = ((width / supersample_factor) // 2) * supersample_factor
+    hh = ((height / supersample_factor) // 2) * supersample_factor
     if which == '╭':
-        start = width // 2, height - 1
-        end = width - 1, height // 2
-        c1 = width // 2, int(0.75 * height)
-        c2 = width // 2, height // 2 + 1
+        start = hw, height - 1
+        end = width - 1, hh
+        c1 = hw, int(0.75 * height)
+        c2 = hw, hh + 1
     elif which == '╮':
-        start = 0, height // 2
-        end = width // 2, height - 1
-        c1 = width // 2, height // 2 + 1
-        c2 = width // 2, int(0.75 * height)
+        start = 0, hh
+        end = hw, height - 1
+        c1 = hw, hh + 1
+        c2 = hw, int(0.75 * height)
     elif which == '╰':
         start = width // 2, 0
-        end = width - 1, height // 2
-        c1 = width // 2, int(0.25 * height)
-        c2 = width // 2 - 1, height // 2 - 1
+        end = width - 1, hh
+        c1 = hw, int(0.25 * height)
+        c2 = hw, hh - 1
     elif which == '╯':
-        start = 0, height // 2
-        end = width // 2, 0
-        c1 = width // 2 - 1, height // 2 - 1
-        c2 = width // 2, int(0.25 * height)
+        start = 0, hh
+        end = hw, 0
+        c1 = hw, hh - 1
+        c2 = hw, int(0.25 * height)
     xfunc, yfunc = cubic_bezier(start, end, c1, c2)
-    draw_parametrized_curve(buf, width, height, thickness_in_pixels, xfunc, yfunc)
+    draw_parametrized_curve(buf, width, height, delta * supersample_factor, extra * supersample_factor, xfunc, yfunc)
 
 
 def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> Tuple[int, int]:
@@ -686,7 +687,7 @@ t, f = 1, 3
 for start in '┌┐└┘':
     for i, (hlevel, vlevel) in enumerate(((t, t), (f, t), (t, f), (f, f))):
         box_chars[chr(ord(start) + i)] = [p(corner, which=start, hlevel=hlevel, vlevel=vlevel)]
-for ch in '╭╮╯╰':
+for ch in '╭╮╰╯':
     box_chars[ch] = [p(rounded_corner, which=ch)]
 
 for i, (a_, b_, c_, d_) in enumerate((
