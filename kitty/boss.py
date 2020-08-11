@@ -19,7 +19,7 @@ from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
 from .conf.utils import BadLine, to_cmdline
 from .config import (
-    KeyAction, SubSequenceMap, common_opts_as_dict, initial_window_size_func,
+    KeyAction, SubSequenceMap, common_opts_as_dict,
     prepare_config_file_for_editing
 )
 from .config_data import MINIMUM_FONT_SIZE
@@ -40,8 +40,9 @@ from .fast_data_types import (
 from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
 from .options_stub import Options
+from .os_window_size import initial_window_size_func
 from .rgb import Color, color_from_int
-from .session import Session, create_sessions
+from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import (
     SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 )
@@ -195,11 +196,11 @@ class Boss:
         startup_id: Optional[str] = None
     ) -> int:
         if os_window_id is None:
-            opts_for_size = opts_for_size or getattr(startup_session, 'os_window_size', None) or self.opts
+            size_data = get_os_window_sizing_data(opts_for_size or self.opts, startup_session)
             wclass = wclass or getattr(startup_session, 'os_window_class', None) or self.args.cls or appname
             with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
                 os_window_id = create_os_window(
-                        initial_window_size_func(opts_for_size, self.cached_values),
+                        initial_window_size_func(size_data, self.cached_values),
                         pre_show_callback,
                         self.args.title or appname, wname or self.args.name or wclass, wclass)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)

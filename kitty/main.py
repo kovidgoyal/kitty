@@ -15,7 +15,7 @@ from .child import set_default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
 from .conf.utils import BadLine
-from .config import cached_values_for, initial_window_size_func
+from .config import cached_values_for
 from .constants import (
     appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
     is_wayland, kitty_exe, logo_data_file, running_in_kitty
@@ -28,6 +28,8 @@ from .fast_data_types import (
 from .fonts.box_drawing import set_scale
 from .fonts.render import set_font_family
 from .options_stub import Options as OptionsStub
+from .os_window_size import initial_window_size_func
+from .session import get_os_window_sizing_data
 from .utils import (
     detach, expandvars, log_error, read_shell_environment, single_instance,
     startup_notification_handler, unix_socket_paths
@@ -129,7 +131,7 @@ def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] =
     with cached_values_for(run_app.cached_values_name) as cached_values:
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
-                    run_app.initial_window_size_func(opts, cached_values),
+                    run_app.initial_window_size_func(get_os_window_sizing_data(opts), cached_values),
                     pre_show_callback,
                     args.title or appname, args.name or args.cls or appname,
                     args.cls or appname, load_all_shaders)

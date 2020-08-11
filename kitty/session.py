@@ -4,25 +4,24 @@
 
 import shlex
 import sys
-from typing import Generator, List, NamedTuple, Optional, Tuple, Union
+from typing import Generator, List, Optional, Union
 
 from .cli_stub import CLIOptions
 from .config_data import to_layout_names
-from .constants import FloatEdges, kitty_exe
+from .constants import kitty_exe
 from .layout.interface import all_layouts
 from .options_stub import Options
+from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing import SpecialWindowInstance
 from .utils import log_error, resolved_shell
 
 
-class WindowSizeOpts(NamedTuple):
-
-    initial_window_width: Tuple[int, str]
-    initial_window_height: Tuple[int, str]
-    window_margin_width: FloatEdges
-    window_padding_width: FloatEdges
-    single_window_margin_width: FloatEdges
-    remember_window_size: bool
+def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None) -> WindowSizeData:
+    if session is None or session.os_window_size is None:
+        sizes = WindowSizes(WindowSize(*opts.initial_window_width), WindowSize(*opts.initial_window_width))
+    else:
+        sizes = session.os_window_size
+    return WindowSizeData(sizes, opts.remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.window_padding_width)
 
 
 class Tab:
@@ -43,7 +42,7 @@ class Session:
         self.tabs: List[Tab] = []
         self.active_tab_idx = 0
         self.default_title = default_title
-        self.os_window_size: Optional[WindowSizeOpts] = None
+        self.os_window_size: Optional[WindowSizes] = None
         self.os_window_class: Optional[str] = None
 
     def add_tab(self, opts: Options, name: str = '') -> None:
@@ -125,7 +124,7 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
             elif cmd == 'os_window_size':
                 from kitty.config_data import window_size
                 w, h = map(window_size, rest.split(maxsplit=1))
-                ans.os_window_size = WindowSizeOpts(w, h, opts.window_margin_width, opts.window_padding_width, opts.single_window_margin_width, False)
+                ans.os_window_size = WindowSizes(WindowSize(*w), WindowSize(*h))
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
             else:
