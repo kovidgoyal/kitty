@@ -11,12 +11,12 @@ Where ``<ESC>`` is the byte ``0x1b``. The JSON object has the form::
 
     {
         'cmd': "command name",
-        'version': "kitty version",
+        'version': <kitty version>,
         'no_response': Optional Boolean,
         'payload': <Optional JSON object>,
     }
 
-The ``version`` above is a string of the form :code:`0.14.2`. If you are developing a
+The ``version`` above is an array of the form :code:`[0, 14, 2]`. If you are developing a
 standalone client, use the kitty version that you are developing against. Using
 a version greater than the version of the kitty instance you are talking to,
 will cause a failure.
