@@ -78,9 +78,10 @@ terminals should be modified to return the correct values.  Examples of
 terminals that return correct values: ``kitty, xterm``
 
 You can also use the *CSI t* escape code to get the screen size. Send
-``<ESC>[14t`` to *stdout* and kitty will reply on *stdin* with
-``<ESC>[4;<height>;<width>t`` where *height* and *width* are the window size in
-pixels. This escape code is supported in many terminals, not just kitty.
+``<ESC>[14t`` to ``STDOUT`` and kitty will reply on ``STDIN`` with
+``<ESC>[4;<height>;<width>t`` where ``height`` and ``width`` are the window
+size in pixels. This escape code is supported in many terminals, not just
+kitty.
 
 A minimal example
 ------------------
