@@ -18,7 +18,7 @@ from .utils import log_error, resolved_shell
 
 def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None) -> WindowSizeData:
     if session is None or session.os_window_size is None:
-        sizes = WindowSizes(WindowSize(*opts.initial_window_width), WindowSize(*opts.initial_window_width))
+        sizes = WindowSizes(WindowSize(*opts.initial_window_width), WindowSize(*opts.initial_window_height))
     else:
         sizes = session.os_window_size
     return WindowSizeData(sizes, opts.remember_window_size, opts.single_window_margin_width, opts.window_margin_width, opts.window_padding_width)
