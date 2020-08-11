@@ -54,18 +54,24 @@ In C:
 
 .. code-block:: c
 
-    struct ttysize ts;
-    ioctl(0, TIOCGWINSZ, &ts);
-    printf("number of columns: %i, number of rows: %i, screen width: %i, screen height: %i\n", sz.ws_col, sz.ws_row, sz.ws_xpixel, sz.ws_ypixel);
+    #include <stdio.h>
+    #include <sys/ioctl.h>
+
+    int main(int argc, char **argv) {
+        struct winsize sz;
+        ioctl(0, TIOCGWINSZ, &sz);
+        printf("number of rows: %i, number of columns: %i, screen width: %i, screen height: %i\n", sz.ws_row, sz.ws_col, sz.ws_xpixel, sz.ws_ypixel);
+        return 0;
+    }
 
 In Python:
 
 .. code-block:: python
 
-    import array, fcntl, termios
+    import array, fcntl, sys, termios
     buf = array.array('H', [0, 0, 0, 0])
     fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
-    print('number of columns: {}, number of rows: {}, screen width: {}, screen height: {}'.format(*buf))
+    print('number of rows: {}, number of columns: {}, screen width: {}, screen height: {}'.format(*buf))
 
 Note that some terminals return ``0`` for the width and height values. Such
 terminals should be modified to return the correct values.  Examples of
