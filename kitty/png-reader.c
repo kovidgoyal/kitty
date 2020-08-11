@@ -61,6 +61,16 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz) {
     d->height     = png_get_image_height(png, info);
     color_type = png_get_color_type(png, info);
     bit_depth  = png_get_bit_depth(png, info);
+    double image_gamma;
+    int intent;
+    if (png_get_sRGB(png, info, &intent)) {
+        // do nothing since we output sRGB
+    } else if (png_get_gAMA(png, info, &image_gamma)) {
+        if (image_gamma != 0 && fabs(image_gamma - 1.0/2.2) > 0.0001) png_set_gamma(png, 2.2, image_gamma);
+    } else {
+        // do nothing since we don't know what gamma the source image is in
+        // TODO: handle images with color profiles
+    }
 
     // Ensure we get RGBA data out of libpng
     if (bit_depth == 16) png_set_strip_16(png);
