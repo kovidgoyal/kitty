@@ -10,10 +10,10 @@ form::
 Where ``<ESC>`` is the byte ``0x1b``. The JSON object has the form::
 
     {
-        'cmd': "command name",
-        'version': <kitty version>,
-        'no_response': Optional Boolean,
-        'payload': <Optional JSON object>,
+        "cmd": "command name",
+        "version": <kitty version>,
+        "no_response": Optional Boolean,
+        "payload": <Optional JSON object>,
     }
 
 The ``version`` above is an array of the form :code:`[0, 14, 2]`. If you are developing a
