@@ -36,7 +36,7 @@ def install_deps():
         run('sudo apt-get update')
         run('sudo apt-get install -y libgl1-mesa-dev libxi-dev libxrandr-dev libxinerama-dev'
             ' libxcursor-dev libxcb-xkb-dev libdbus-1-dev libxkbcommon-dev libharfbuzz-dev'
-            ' libpng-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev')
+            ' libpng-dev liblcms2-dev libfontconfig-dev libxkbcommon-x11-dev libcanberra-dev')
     if is_bundle:
         install_bundle()
     else:

@@ -154,6 +154,15 @@
     },
 
     {
+        "name": "lcms2",
+        "unix": {
+            "filename": "lcms2-2.11.tar.gz",
+            "hash": "sha256:478c9c3938d7a91b1171de4616f8b04308a8676d73eadc19505b7ace41327f28",
+            "urls": ["https://github.com/mm2/Little-CMS/archive/2.11/{filename}"]
+        }
+    },
+
+    {
         "name": "graphite",
         "os": "linux",
         "unix": {

@@ -329,6 +329,7 @@ def kitty_env() -> Env:
     cppflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
+    cflags.extend(pkg_config('lcms2', '--cflags-only-I'))
     if is_macos:
         font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
         # Apple deprecated OpenGL in Mojave (10.14) silence the endless
@@ -342,7 +343,8 @@ def kitty_env() -> Env:
     pylib = get_python_flags(cflags)
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
-    ans.ldpaths += pylib + font_libs + gl_libs + libpng
+    lcms2 = pkg_config('lcms2', '--libs')
+    ans.ldpaths += pylib + font_libs + gl_libs + libpng + lcms2
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
     elif not is_openbsd:

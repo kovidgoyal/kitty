@@ -161,9 +161,10 @@ of transmitting paletted images.
 RGB and RGBA data
 ~~~~~~~~~~~~~~~~~~~
 
-In these formats the pixel data is stored directly as 3 or 4 bytes per pixel, respectively.
-When specifying images in this format, the image dimensions **must** be sent in the control data.
-For example::
+In these formats the pixel data is stored directly as 3 or 4 bytes per pixel,
+respectively. The colors in the data **must** be in the *sRGB color space*.  When
+specifying images in this format, the image dimensions **must** be sent in the
+control data. For example::
 
     <ESC>_Gf=24,s=10,v=20;<payload><ESC>\
 

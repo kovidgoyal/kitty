@@ -262,6 +262,7 @@ class Freeze(object):
                 'z.1',
                 'harfbuzz.0',
                 'png16.16',
+                'lcms2.2',
                 'crypto.1.0.0',
                 'ssl.1.0.0',
         ):

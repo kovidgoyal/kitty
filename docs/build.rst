@@ -18,6 +18,7 @@ Run-time dependencies:
     * harfbuzz >= 1.5.0
     * zlib
     * libpng
+    * liblcms2
     * freetype (not needed on macOS)
     * fontconfig (not needed on macOS)
     * libcanberra (not needed on macOS)

@@ -7,8 +7,10 @@
 
 #include "png-reader.h"
 #include "state.h"
+#include <lcms2.h>
 
 
+static cmsHPROFILE srgb_profile = NULL;
 struct fake_file { const uint8_t *buf; size_t sz, cur; };
 
 static void
@@ -64,13 +66,30 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz) {
     bit_depth  = png_get_bit_depth(png, info);
     double image_gamma;
     int intent;
+    cmsHPROFILE input_profile = NULL;
+    cmsHTRANSFORM colorspace_transform = NULL;
     if (png_get_sRGB(png, info, &intent)) {
         // do nothing since we output sRGB
     } else if (png_get_gAMA(png, info, &image_gamma)) {
         if (image_gamma != 0 && fabs(image_gamma - 1.0/2.2) > 0.0001) png_set_gamma(png, 2.2, image_gamma);
     } else {
-        // do nothing since we don't know what gamma the source image is in
-        // TODO: handle images with color profiles
+        // Look for an embedded color profile
+        png_charp name;
+        int compression_type;
+        png_bytep profdata;
+        png_uint_32 proflen;
+        if (png_get_iCCP(png, info, &name, &compression_type, &profdata, &proflen) & PNG_INFO_iCCP) {
+            input_profile = cmsOpenProfileFromMem(profdata, proflen);
+            if (input_profile) {
+                if (!srgb_profile) {
+                    srgb_profile = cmsCreate_sRGBProfile();
+                    if (!srgb_profile) ABRT(ENOMEM, "Out of memory allocating sRGB colorspace profile");
+                }
+                colorspace_transform = cmsCreateTransform(
+                    input_profile, TYPE_RGBA_8, srgb_profile, TYPE_RGBA_8, INTENT_PERCEPTUAL, 0);
+
+            }
+        }
     }
 
     // Ensure we get RGBA data out of libpng
@@ -93,8 +112,16 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz) {
     if (d->decompressed == NULL) ABRT(ENOMEM, "Out of memory allocating decompression buffer for PNG");
     d->row_pointers = malloc(d->height * sizeof(png_bytep));
     if (d->row_pointers == NULL) ABRT(ENOMEM, "Out of memory allocating row_pointers buffer for PNG");
-    for (int i = 0; i < d->height; i++) d->row_pointers[i] = d->decompressed + i * rowbytes;
+    for (int i = 0; i < d->height; i++) d->row_pointers[i] = d->decompressed + i * rowbytes * sizeof(png_byte);
     png_read_image(png, d->row_pointers);
+
+    if (colorspace_transform) {
+        for (int i = 0; i < d->height; i++) {
+            cmsDoTransform(colorspace_transform, d->row_pointers[i], d->row_pointers[i], d->width);
+        }
+        cmsDeleteTransform(colorspace_transform);
+    }
+    if (input_profile) cmsCloseProfile(input_profile);
 
     d->ok = true;
 err:
@@ -130,8 +157,20 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
+
+static void
+unload(void) {
+    if (srgb_profile) cmsCloseProfile(srgb_profile);
+    srgb_profile = NULL;
+}
+
 bool
 init_png_reader(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    if (Py_AtExit(unload) != 0) {
+        PyErr_SetString(PyExc_RuntimeError, "Failed to register the PNG library at exit handler");
+        return false;
+    }
+
     return true;
 }
