@@ -6,6 +6,7 @@
  */
 
 #include "png-reader.h"
+#include "state.h"
 
 
 struct fake_file { const uint8_t *buf; size_t sz, cur; };
@@ -35,8 +36,8 @@ read_png_error_handler(png_structp png_ptr, png_const_charp msg) {
 }
 
 static void
-read_png_warn_handler(png_structp UNUSED png_ptr, png_const_charp UNUSED msg) {
-    // ignore warnings
+read_png_warn_handler(png_structp UNUSED png_ptr, png_const_charp msg) {
+    if (global_state.debug_rendering) log_error("libpng WARNING: %s", msg);
 }
 
 #define ABRT(code, msg) { if(d->err_handler) d->err_handler(#code, msg); goto err; }
