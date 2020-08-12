@@ -1045,7 +1045,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         'action',
         nargs='?',
         default=Options.action,
-        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher clean'.split(),
+        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher clean export-ci-bundles'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -1180,6 +1180,12 @@ def main() -> None:
             build(args)
             package(args, bundle_type='macos-package')
             print('kitty.app successfully built!')
+        elif args.action == 'export-ci-bundles':
+            cmd = [sys.executable, '../bypy', 'export']
+            dest = ['download.calibre-ebook.com:/srv/download/ci/kitty']
+            subprocess.check_call(cmd + ['linux'] + dest)
+            subprocess.check_call(cmd + ['macos'] + dest)
+            subprocess.check_call(cmd + ['linux', '32'] + dest)
 
 
 if __name__ == '__main__':

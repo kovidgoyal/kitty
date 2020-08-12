@@ -5,6 +5,7 @@
 import io
 import os
 import shlex
+import shutil
 import subprocess
 import sys
 import tarfile
@@ -43,7 +44,7 @@ def install_deps():
 
 
 def build_kitty():
-    python = 'python3' if is_bundle else sys.executable
+    python = shutil.which('python3') if is_bundle else sys.executable
     cmd = '{} setup.py build --verbose'.format(python)
     if os.environ.get('KITTY_SANITIZE') == '1':
         cmd += ' --debug --sanitize'
@@ -71,7 +72,7 @@ def replace_in_file(path, src, dest):
 
 def setup_bundle_env():
     global SW
-    os.environ['SW'] = SW = '/Users/Shared/buildbot/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
+    os.environ['SW'] = SW = '/Users/Shared/kitty-build/sw/sw' if is_macos else os.path.join(os.environ['GITHUB_WORKSPACE'], 'sw')
     os.environ['PKG_CONFIG_PATH'] = SW + '/lib/pkgconfig'
     if is_macos:
         os.environ['PATH'] = '{}:{}'.format('/usr/local/opt/sphinx-doc/bin', os.environ['PATH'])
@@ -85,8 +86,8 @@ def install_bundle():
     cwd = os.getcwd()
     os.makedirs(SW)
     os.chdir(SW)
-    with urlopen('https://download.calibre-ebook.com/travis/kitty/{}.tar.xz'.format(
-            'osx' if is_macos else 'linux-64')) as f:
+    with urlopen('https://download.calibre-ebook.com/ci/kitty/{}-64.tar.xz'.format(
+            'macos' if is_macos else 'linux')) as f:
         data = f.read()
     with tarfile.open(fileobj=io.BytesIO(data), mode='r:xz') as tf:
         tf.extractall()
