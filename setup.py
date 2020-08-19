@@ -409,6 +409,10 @@ SPECIAL_SOURCES: Dict[str, Tuple[str, Union[List[str], Callable[[Env, str], Unio
     'kitty/parser_dump.c': ('kitty/parser.c', ['DUMP_COMMANDS']),
     'kitty/data-types.c': ('kitty/data-types.c', get_vcs_rev_defines),
 }
+NO_WERROR_SOURCES = {
+    # because of deprecation of Notifications API, see https://github.com/kovidgoyal/kitty/pull/2876
+    'kitty/cocoa_window.m',
+}
 
 
 def newer(dest: str, *sources: str) -> bool:
@@ -599,6 +603,9 @@ def compile_c_extension(
 
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         cmd += ['-c', src] + ['-o', dest]
+        if src in NO_WERROR_SOURCES:
+            if '-Werror' in cmd:
+                cmd.remove('-Werror')
         key = CompileKey(original_src, os.path.basename(dest))
         desc = 'Compiling {} ...'.format(emphasis(desc_prefix + src))
         compilation_database.add_command(desc, cmd, partial(newer, dest, *dependecies_for(src, dest, headers)), key=key, keyfile=src)
