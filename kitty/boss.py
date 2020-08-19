@@ -1536,3 +1536,7 @@ class Boss:
             set_background_image(path, os_windows, configured)
         for os_window_id in os_windows:
             self.default_bg_changed_for(os_window_id)
+
+    def send_test_notification(self) -> None:
+        from .notify import notify
+        notify('Test notification', 'Hello world')
