@@ -35,7 +35,7 @@ def binary_includes():
             'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
             'ncursesw', 'readline',
         ))) + (
-                get_dll_path('bz2', 2), get_dll_path('ssl', 3), get_dll_path('crypto', 3),
+                get_dll_path('bz2', 2), get_dll_path('ssl', 2), get_dll_path('crypto', 2),
                 get_dll_path('python' + py_ver, 2),
         )
 
