@@ -10,6 +10,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add support for displaying correct colors with non-sRGB PNG files (Adds a
   dependency on liblcms2)
 
+- macOS: Switch to using the User Notifications framework for notifications.
+  The current notifications framework has been deprecated in Big Sur. The new
+  framework only allows notifications from signed and notarized applications,
+  so people using kitty from homebrew/source are out of luck. Complain to
+  Apple.
+
 
 0.18.3 [2020-08-11]
 -------------------

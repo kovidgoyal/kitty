@@ -67,6 +67,8 @@ def notification_activated(identifier: str) -> None:
     if identifier == 'new-version':
         from .update_check import notification_activated as do
         do()
+    elif identifier.startswith('test-notify-'):
+        log_error(f'Test notification {identifier} activated')
 
 
 def listen_on(spec: str) -> int:
@@ -1539,4 +1541,7 @@ class Boss:
 
     def send_test_notification(self) -> None:
         from .notify import notify
-        notify('Test notification', 'Hello world')
+        from time import monotonic
+        now = monotonic()
+        ident = f'test-notify-{now}'
+        notify(f'Test {now}', f'At: {now}', identifier=ident)

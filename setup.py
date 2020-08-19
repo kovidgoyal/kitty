@@ -331,20 +331,23 @@ def kitty_env() -> Env:
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     cflags.extend(pkg_config('lcms2', '--cflags-only-I'))
     if is_macos:
-        font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
+        platform_libs = [
+            '-framework', 'CoreText', '-framework', 'CoreGraphics',
+            '-framework', 'UserNotifications'
+        ]
         # Apple deprecated OpenGL in Mojave (10.14) silence the endless
         # warnings about it
         cppflags.append('-DGL_SILENCE_DEPRECATION')
     else:
         cflags.extend(pkg_config('fontconfig', '--cflags-only-I'))
-        font_libs = pkg_config('fontconfig', '--libs')
+        platform_libs = pkg_config('fontconfig', '--libs')
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
-    font_libs.extend(pkg_config('harfbuzz', '--libs'))
+    platform_libs.extend(pkg_config('harfbuzz', '--libs'))
     pylib = get_python_flags(cflags)
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
     lcms2 = pkg_config('lcms2', '--libs')
-    ans.ldpaths += pylib + font_libs + gl_libs + libpng + lcms2
+    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
     elif not is_openbsd:
@@ -408,10 +411,6 @@ SPECIAL_SOURCES: Dict[str, Tuple[str, Union[List[str], Callable[[Env, str], Unio
     'kitty/desktop.c': ('kitty/desktop.c', get_library_defines),
     'kitty/parser_dump.c': ('kitty/parser.c', ['DUMP_COMMANDS']),
     'kitty/data-types.c': ('kitty/data-types.c', get_vcs_rev_defines),
-}
-NO_WERROR_SOURCES = {
-    # because of deprecation of Notifications API, see https://github.com/kovidgoyal/kitty/pull/2876
-    'kitty/cocoa_window.m',
 }
 
 
@@ -603,9 +602,6 @@ def compile_c_extension(
 
         cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
         cmd += ['-c', src] + ['-o', dest]
-        if src in NO_WERROR_SOURCES:
-            if '-Werror' in cmd:
-                cmd.remove('-Werror')
         key = CompileKey(original_src, os.path.basename(dest))
         desc = 'Compiling {} ...'.format(emphasis(desc_prefix + src))
         compilation_database.add_command(desc, cmd, partial(newer, dest, *dependecies_for(src, dest, headers)), key=key, keyfile=src)

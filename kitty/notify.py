@@ -17,7 +17,7 @@ if is_macos:
         icon: bool = True,
         identifier: Optional[str] = None
     ) -> None:
-        cocoa_send_notification(identifier, title, body, None)
+        cocoa_send_notification(identifier, title, body)
 
 else:
 

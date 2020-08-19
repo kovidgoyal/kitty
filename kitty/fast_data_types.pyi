@@ -519,9 +519,7 @@ def dbus_send_notification(
 def cocoa_send_notification(
     identifier: Optional[str],
     title: str,
-    informative_text: str,
-    path_to_img: Optional[str],
-    subtitle: Optional[str] = None
+    body: Optional[str],
 ) -> None:
     pass
 
