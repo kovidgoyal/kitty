@@ -261,20 +261,40 @@ def init_env(
     cppflags = shlex.split(cppflags_)
     for el in extra_logging:
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
-    cflags_ = os.environ.get(
-        'OVERRIDE_CFLAGS', (
-            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
-            ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
-        ).format(
-            float_conversion,
-            optimize,
-            ' '.join(sanitize_args),
-            stack_protector,
-            missing_braces,
-            '-march=native' if native_optimizations else '',
-            fortify_source
+
+    if is_openbsd:
+        cflags_ = os.environ.get(
+            'OVERRIDE_CFLAGS', (
+                '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes'
+                ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
+            ).format(
+                float_conversion,
+                optimize,
+                ' '.join(sanitize_args),
+                stack_protector,
+                missing_braces,
+                '-march=native' if native_optimizations else '',
+                fortify_source
+            )
         )
-    )
+    elif not is_openbsd:
+        cflags_ = os.environ.get(
+            'OVERRIDE_CFLAGS', (
+                '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
+                ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
+            ).format(
+                float_conversion,
+                optimize,
+                ' '.join(sanitize_args),
+                stack_protector,
+                missing_braces,
+                '-march=native' if native_optimizations else '',
+                fortify_source
+            )
+        )
+
+
+
     cflags = shlex.split(cflags_) + shlex.split(
         sysconfig.get_config_var('CCSHARED') or ''
     )
@@ -289,8 +309,9 @@ def init_env(
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
     if not debug and not sanitize:
         # See https://github.com/google/sanitizers/issues/647
-        cflags.append('-flto')
-        ldflags.append('-flto')
+        if not is_openbsd:
+            cflags.append('-flto')
+            ldflags.append('-flto')
 
     if profile:
         cppflags.append('-DWITH_PROFILER')
