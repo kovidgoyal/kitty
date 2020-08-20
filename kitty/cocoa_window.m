@@ -198,9 +198,14 @@ queue_notification(const char *identifier, const char *title, const char* body) 
 
 static void
 drain_pending_notifications(BOOL granted) {
+    if (granted) {
+        for (size_t i = 0; i < notification_queue.count; i++) {
+            QueuedNotification *n = notification_queue.notifications + i;
+            schedule_notification(n->identifier, n->title, n->body);
+        }
+    }
     while(notification_queue.count) {
         QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
-        if (granted) schedule_notification(n->identifier, n->title, n->body);
         free(n->identifier); free(n->title); free(n->body);
         n->identifier = NULL; n->title = NULL; n->body = NULL;
     }
