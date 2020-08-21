@@ -301,10 +301,11 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
 } // }}}
 
 // OSC mode {{{
+
 static inline void
 dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
+#define DISPATCH_OSC_WITH_CODE(name) REPORT_OSC2(name, code, string); name(screen, code, string);
 #define DISPATCH_OSC(name) REPORT_OSC(name, string); name(screen, string);
-#define SET_COLOR(name) REPORT_OSC2(name, code, string); name(screen, code, string);
     const unsigned int limit = screen->parser_buf_pos;
     unsigned int code=0, i;
     for (i = 0; i < MIN(limit, 5u); i++) {
@@ -329,7 +330,11 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 break;
             case 4:
             case 104:
-                SET_COLOR(set_color_table_color);
+                DISPATCH_OSC_WITH_CODE(set_color_table_color);
+                break;
+            case 9:
+            case 99:
+                DISPATCH_OSC_WITH_CODE(desktop_notify)
                 break;
             case 10:
             case 11:
@@ -341,7 +346,7 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             case 112:
             case 117:
             case 119:
-                SET_COLOR(set_dynamic_color);
+                DISPATCH_OSC_WITH_CODE(set_dynamic_color);
                 break;
             case 52:
                 DISPATCH_OSC(clipboard_control);
@@ -361,7 +366,7 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         Py_CLEAR(string);
     }
 #undef DISPATCH_OSC
-#undef SET_COLOR
+#undef DISPATCH_OSC_WITH_CODE
 }
 // }}}
 

@@ -30,6 +30,7 @@ from .fast_data_types import (
     viewport_for_window
 )
 from .keys import defines, extended_key_event, keyboard_mode_name
+from .notify import NotificationCommand, handle_notification_cmd
 from .options_stub import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
@@ -218,6 +219,7 @@ class Window:
         watchers: Optional[Watchers] = None
     ):
         self.watchers = watchers or Watchers()
+        self.prev_osc99_cmd = NotificationCommand()
         self.action_on_close: Optional[Callable] = None
         self.action_on_removal: Optional[Callable] = None
         self.current_marker_spec: Optional[Tuple[str, Union[str, Tuple[Tuple[int, str], ...]]]] = None
@@ -434,6 +436,11 @@ class Window:
         self.override_title = title or None
         self.title_updated()
 
+    def desktop_notify(self, osc_code: int, raw_data: str) -> None:
+        cmd = handle_notification_cmd(osc_code, raw_data, self.id, self.prev_osc99_cmd)
+        if cmd is not None and osc_code == 99:
+            self.prev_osc99_cmd = cmd
+
     # screen callbacks {{{
     def use_utf8(self, on: bool) -> None:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
@@ -510,6 +517,9 @@ class Window:
         g |= g << 8
         b |= b << 8
         self.screen.send_escape_code_to_child(OSC, '{};rgb:{:04x}/{:04x}/{:04x}'.format(code, r, g, b))
+
+    def report_notification_activated(self, identifier: str) -> None:
+        self.screen.send_escape_code_to_child(OSC, f'99;i={identifier};')
 
     def set_dynamic_color(self, code: int, value: Union[str, bytes]) -> None:
         if isinstance(value, bytes):

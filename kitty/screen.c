@@ -1496,6 +1496,11 @@ set_title(Screen *self, PyObject *title) {
 }
 
 void
+desktop_notify(Screen *self, unsigned int osc_code, PyObject *data) {
+    CALLBACK("desktop_notify", "IO", osc_code, data);
+}
+
+void
 set_icon(Screen *self, PyObject *icon) {
     CALLBACK("icon_changed", "O", icon);
 }

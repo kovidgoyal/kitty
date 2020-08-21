@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   so people using kitty from homebrew/source are out of luck. Complain to
   Apple.
 
+- Add a new extensible escape code to allow terminal programs to trigger
+  desktop notifications. See :ref:`desktop_notifications` (:iss:`1474`)
+
 
 0.18.3 [2020-08-11]
 -------------------

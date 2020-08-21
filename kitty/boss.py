@@ -39,6 +39,7 @@ from .fast_data_types import (
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
+from .notify import notification_activated
 from .options_stub import Options
 from .os_window_size import initial_window_size_func
 from .rgb import Color, color_from_int
@@ -61,14 +62,6 @@ class OSWindowDict(TypedDict):
     platform_window_id: Optional[int]
     is_focused: bool
     tabs: List[TabDict]
-
-
-def notification_activated(identifier: str) -> None:
-    if identifier == 'new-version':
-        from .update_check import notification_activated as do
-        do()
-    elif identifier.startswith('test-notify-'):
-        log_error(f'Test notification {identifier} activated')
 
 
 def listen_on(spec: str) -> int:
@@ -1545,3 +1538,12 @@ class Boss:
         now = monotonic()
         ident = f'test-notify-{now}'
         notify(f'Test {now}', f'At: {now}', identifier=ident)
+
+    def notification_activated(self, identifier: str, window_id: int, focus: bool, report: bool) -> None:
+        w = self.window_id_map.get(window_id)
+        if w is None:
+            return
+        if focus:
+            self.set_active_window(w, switch_os_window_if_needed=True)
+        if report:
+            w.report_notification_activated(identifier)
