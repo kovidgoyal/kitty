@@ -148,6 +148,23 @@ read_exe_path(char *exe, size_t buf_sz) {
     return true;
 }
 
+#elif defined(__OpenBSD__)
+static inline bool
+read_exe_path(char *exe, size_t buf_sz) {
+    const char *path = getenv("PATH");
+    if (!path) { fprintf(stderr, "No PATH environment variable set, aborting\n"); return false; }
+    char buf[PATH_MAX + 1] = {0};
+    strncpy(buf, path, PATH_MAX);
+    char *token = strtok(buf, ":");
+    while (token != NULL) {
+        char q[PATH_MAX + 1] = {0};
+        snprintf(q, PATH_MAX, "%s/kitty", token);
+        if (safe_realpath(q, exe, buf_sz)) return true;
+    }
+    fprintf(stderr, "kitty not found in PATH aborting\n");
+    return false;
+}
+
 #else
 
 static inline bool
