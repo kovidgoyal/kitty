@@ -8,7 +8,7 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .boss import Boss
 from .child import Child
-from .cli import parse_args
+from .cli import parse_args, WATCHER_DEFINITION
 from .cli_stub import LaunchCLIOptions
 from .constants import resolve_custom_file
 from .fast_data_types import set_clipboard_string
@@ -152,13 +152,7 @@ Set the WM_NAME property on X11 for the newly created OS Window when using
 :option:`launch --type`=os-window. Defaults to :option:`launch --os-window-class`.
 
 
---watcher -w
-type=list
-Path to a python file. Appropriately named functions in this file will be called
-for various events, such as when the window is resized or closed. See the section
-on watchers in the launch command documentation :doc:`launch`. Relative paths are
-resolved relative to the kitty config directory.
-'''
+''' + WATCHER_DEFINITION
 
 
 def parse_launch_args(args: Optional[Sequence[str]] = None) -> Tuple[LaunchCLIOptions, List[str]]:
@@ -202,12 +196,12 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab]
     return tab
 
 
-def load_watch_modules(opts: LaunchCLIOptions) -> Optional[Watchers]:
-    if not opts.watcher:
+def load_watch_modules(watchers: Sequence[str]) -> Optional[Watchers]:
+    if not watchers:
         return None
     import runpy
     ans = Watchers()
-    for path in opts.watcher:
+    for path in watchers:
         path = resolve_custom_file(path)
         m = runpy.run_path(path, run_name='__kitty_watcher__')
         w = m.get('on_close')
@@ -307,7 +301,7 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
     else:
         tab = tab_for_window(boss, opts, target_tab)
         if tab is not None:
-            watchers = load_watch_modules(opts)
+            watchers = load_watch_modules(opts.watcher)
             new_window: Window = tab.new_window(env=env or None, watchers=watchers or None, **kw)
             if opts.keep_focus and active:
                 boss.set_active_window(active, switch_os_window_if_needed=True)

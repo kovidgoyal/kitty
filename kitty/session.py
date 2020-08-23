@@ -14,6 +14,7 @@ from .options_stub import Options
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing import SpecialWindowInstance
 from .utils import log_error, resolved_shell
+from .window import Watchers
 
 
 def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None) -> WindowSizeData:
@@ -26,14 +27,15 @@ def get_os_window_sizing_data(opts: Options, session: Optional['Session'] = None
 
 class Tab:
 
-    def __init__(self, opts: Options, name: str):
-        self.windows: List[Union[List[str], 'SpecialWindowInstance']] = []
+    def __init__(self, opts: Options, name: str, watchers: Watchers):
+        self.windows: List['SpecialWindowInstance'] = []
         self.name = name.strip()
         self.active_window_idx = 0
         self.enabled_layouts = opts.enabled_layouts
         self.layout = (self.enabled_layouts or ['tall'])[0]
         self.cwd: Optional[str] = None
         self.next_title: Optional[str] = None
+        self.watchers: Watchers = watchers.copy()
 
 
 class Session:
@@ -44,11 +46,25 @@ class Session:
         self.default_title = default_title
         self.os_window_size: Optional[WindowSizes] = None
         self.os_window_class: Optional[str] = None
+        self.watchers = Watchers()
+
+    def add_watchers_to_all_windows(self, watchers: Watchers) -> None:
+        def add(w: 'SpecialWindowInstance') -> 'SpecialWindowInstance':
+            if w.watchers is None:
+                return w._replace(watchers=watchers)
+            wt = w.watchers.copy()
+            wt.add(watchers)
+            return w._replace(watchers=wt)
+
+        for tab in self.tabs:
+            tab.windows = [add(w) for w in tab.windows]
 
     def add_tab(self, opts: Options, name: str = '') -> None:
         if self.tabs and not self.tabs[-1].windows:
             del self.tabs[-1]
-        self.tabs.append(Tab(opts, name))
+        if self.tabs:
+            self.tabs[-1].watchers = self.watchers.copy()
+        self.tabs.append(Tab(opts, name, self.watchers))
 
     def set_next_title(self, title: str) -> None:
         self.tabs[-1].next_title = title.strip()
@@ -65,10 +81,16 @@ class Session:
             cmd = None
         from .tabs import SpecialWindow
         t = self.tabs[-1]
-        t.windows.append(SpecialWindow(cmd, cwd=t.cwd, override_title=t.next_title or self.default_title))
+        watchers: Optional[Watchers] = None
+        if self.watchers.has_watchers:
+            watchers = self.watchers.copy()
+        sw = SpecialWindow(cmd, cwd=t.cwd, override_title=t.next_title or self.default_title, watchers=watchers)
+        t.windows.append(sw)
         t.next_title = None
 
     def add_special_window(self, sw: 'SpecialWindowInstance') -> None:
+        if self.watchers.has_watchers:
+            sw = sw._replace(watchers=self.watchers.copy())
         self.tabs[-1].windows.append(sw)
 
     def focus(self) -> None:
@@ -87,9 +109,13 @@ class Session:
 def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) -> Generator[Session, None, None]:
 
     def finalize_session(ans: Session) -> Session:
+        from .tabs import SpecialWindow
         for t in ans.tabs:
             if not t.windows:
-                t.windows.append(resolved_shell(opts))
+                w: Optional[Watchers] = None
+                if t.watchers.has_watchers:
+                    w = t.watchers.copy()
+                t.windows.append(SpecialWindow(cmd=resolved_shell(opts), watchers=w))
         return ans
 
     ans = Session(default_title)
@@ -107,7 +133,9 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
                 ans.add_tab(opts, rest)
             elif cmd == 'new_os_window':
                 yield finalize_session(ans)
+                wt = ans.watchers
                 ans = Session(default_title)
+                ans.watchers = wt.copy()
                 ans.add_tab(opts, rest)
             elif cmd == 'layout':
                 ans.set_layout(rest)
@@ -127,6 +155,14 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
                 ans.os_window_size = WindowSizes(WindowSize(*w), WindowSize(*h))
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
+            elif cmd == 'watcher':
+                from .launch import load_watch_modules
+                if rest == 'clear':
+                    ans.watchers = Watchers()
+                else:
+                    watchers = load_watch_modules((rest,))
+                    if watchers is not None:
+                        ans.watchers.add(watchers)
             else:
                 raise ValueError('Unknown command in session file: {}'.format(cmd))
     yield finalize_session(ans)

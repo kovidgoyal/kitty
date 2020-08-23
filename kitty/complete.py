@@ -254,6 +254,8 @@ def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: 
         complete_files_and_dirs(ans, prefix, files_group_name='Config files', predicate=is_conf_file)
     elif dest == 'session':
         complete_files_and_dirs(ans, prefix, files_group_name='Session files')
+    elif dest == 'watcher':
+        complete_files_and_dirs(ans, prefix, files_group_name='Watcher files')
     elif dest == 'directory':
         complete_files_and_dirs(ans, prefix, files_group_name='Directories', predicate=os.path.isdir)
     elif dest == 'start_as':

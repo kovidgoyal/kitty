@@ -353,6 +353,15 @@ For example:
     focus
     launch emacs
 
+    # Add a watcher that will be called with various events that occur
+    # on all subsequent windows. See the documentation of the launch command
+    # for details on watchers.
+    watcher /some/python/file.py
+    launch mpd
+    launch irssi
+    # Remove the watcher for further windows
+    watcher clear
+
 
 Mouse features
 -------------------

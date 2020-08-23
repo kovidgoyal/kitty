@@ -87,10 +87,37 @@ class Watcher:
 
 class Watchers:
 
+    on_resize: List[Watcher]
+    on_close: List[Watcher]
+    on_focus_change: List[Watcher]
+
     def __init__(self) -> None:
-        self.on_resize: List[Watcher] = []
-        self.on_close: List[Watcher] = []
-        self.on_focus_change: List[Watcher] = []
+        self.on_resize = []
+        self.on_close = []
+        self.on_focus_change = []
+
+    def add(self, others: 'Watchers') -> None:
+        def merge(base: List[Watcher], other: List[Watcher]) -> None:
+            for x in other:
+                if x not in base:
+                    base.append(x)
+        merge(self.on_resize, others.on_resize)
+        merge(self.on_close, others.on_close)
+        merge(self.on_focus_change, others.on_focus_change)
+
+    def clear(self) -> None:
+        del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
+
+    def copy(self) -> 'Watchers':
+        ans = Watchers()
+        ans.on_close = self.on_close[:]
+        ans.on_resize = self.on_resize[:]
+        ans.on_focus_change = self.on_focus_change
+        return ans
+
+    @property
+    def has_watchers(self) -> bool:
+        return bool(self.on_close or self.on_resize or self.on_focus_change)
 
 
 def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: Dict[str, Any]) -> None:

@@ -21,6 +21,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow tracking focus change events in watchers (:iss:`2918`)
 
+- Allow specifying watchers in session files and via a command line argument
+  (:iss:`2933`)
+
 
 0.18.3 [2020-08-11]
 -------------------
