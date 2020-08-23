@@ -216,6 +216,9 @@ def load_watch_modules(opts: LaunchCLIOptions) -> Optional[Watchers]:
         w = m.get('on_resize')
         if callable(w):
             ans.on_resize.append(w)
+        w = m.get('on_focus_change')
+        if callable(w):
+            ans.on_focus_change.append(w)
     return ans
 
 

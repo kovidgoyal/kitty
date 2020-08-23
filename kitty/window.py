@@ -90,6 +90,7 @@ class Watchers:
     def __init__(self) -> None:
         self.on_resize: List[Watcher] = []
         self.on_close: List[Watcher] = []
+        self.on_focus_change: List[Watcher] = []
 
 
 def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: Dict[str, Any]) -> None:
@@ -459,6 +460,7 @@ class Window:
     def focus_changed(self, focused: bool) -> None:
         if self.destroyed:
             return
+        call_watchers(weakref.ref(self), 'on_focus_change', {'focused': focused})
         if focused:
             self.needs_attention = False
             if self.screen.focus_tracking_enabled:

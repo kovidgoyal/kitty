@@ -19,6 +19,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a new extensible escape code to allow terminal programs to trigger
   desktop notifications. See :ref:`desktop_notifications` (:iss:`1474`)
 
+- Allow tracking focus change events in watchers (:iss:`2918`)
+
 
 0.18.3 [2020-08-11]
 -------------------
