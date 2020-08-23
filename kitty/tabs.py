@@ -137,10 +137,7 @@ class Tab:  # {{{
 
     def startup(self, session_tab: 'SessionTab') -> None:
         for cmd in session_tab.windows:
-            if isinstance(cmd, (SpecialWindowInstance,)):
-                self.new_special_window(cmd)
-            else:
-                self.new_window(cmd=cmd)
+            self.new_special_window(cmd)
         self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])
 
     def serialize_state(self) -> Dict[str, Any]:
