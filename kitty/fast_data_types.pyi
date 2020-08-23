@@ -461,7 +461,7 @@ def coretext_all_fonts() -> Tuple[CoreTextFont, ...]:
 
 
 def add_timer(
-    callback: Callable[[Optional[int]], bool],
+    callback: Callable[[Optional[int]], None],
     interval: float,
     repeats: bool = True
 ) -> int:

@@ -23,11 +23,11 @@ from .fast_data_types import (
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    STRIKETHROUGH, TINT_PROGRAM, Screen, add_window, cell_size_for_window,
-    compile_program, get_boss, get_clipboard_string, init_cell_program,
-    pt_to_px, set_clipboard_string, set_titlebar_color, set_window_padding,
-    set_window_render_data, update_window_title, update_window_visibility,
-    viewport_for_window
+    STRIKETHROUGH, TINT_PROGRAM, Screen, add_timer, add_window,
+    cell_size_for_window, compile_program, get_boss, get_clipboard_string,
+    init_cell_program, pt_to_px, set_clipboard_string, set_titlebar_color,
+    set_window_padding, set_window_render_data, update_window_title,
+    update_window_visibility, viewport_for_window
 )
 from .keys import defines, extended_key_event, keyboard_mode_name
 from .notify import NotificationCommand, handle_notification_cmd
@@ -90,6 +90,17 @@ class Watchers:
     def __init__(self) -> None:
         self.on_resize: List[Watcher] = []
         self.on_close: List[Watcher] = []
+
+
+def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: Dict[str, Any]) -> None:
+
+    def callback(timer_id: Optional[int]) -> None:
+        w = windowref()
+        if w is not None:
+            watchers: List[Watcher] = getattr(w.watchers, which)
+            w.call_watchers(watchers, data)
+
+    add_timer(callback, 0, False)
 
 
 def calculate_gl_geometry(window_geometry: WindowGeometry, viewport_width: int, viewport_height: int, cell_width: int, cell_height: int) -> ScreenGeometry:
@@ -385,7 +396,7 @@ class Window:
             self.screen.resize(new_geometry.ynum, new_geometry.xnum)
             sg = self.update_position(new_geometry)
             self.needs_layout = False
-            self.call_watchers(self.watchers.on_resize, {'old_geometry': self.geometry, 'new_geometry': new_geometry})
+            call_watchers(weakref.ref(self), 'on_resize', {'old_geometry': self.geometry, 'new_geometry': new_geometry})
         else:
             sg = self.update_position(new_geometry)
         current_pty_size = (

@@ -109,7 +109,7 @@ def run_worker() -> None:
         print(get_released_version())
 
 
-def update_check(timer_id: Optional[int] = None) -> bool:
+def update_check() -> bool:
     try:
         p = subprocess.Popen([
             kitty_exe(), '+runpy',
@@ -123,6 +123,10 @@ def update_check(timer_id: Optional[int] = None) -> bool:
     return True
 
 
+def update_check_callback(timer_id: Optional[int]) -> None:
+    update_check()
+
+
 def run_update_check(interval: float = CHECK_INTERVAL) -> None:
     if update_check():
-        add_timer(update_check, interval)
+        add_timer(update_check_callback, interval)
