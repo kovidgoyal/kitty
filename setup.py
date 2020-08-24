@@ -262,25 +262,9 @@ def init_env(
     for el in extra_logging:
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
 
-    if is_openbsd:
         cflags_ = os.environ.get(
             'OVERRIDE_CFLAGS', (
-                '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes'
-                ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
-            ).format(
-                float_conversion,
-                optimize,
-                ' '.join(sanitize_args),
-                stack_protector,
-                missing_braces,
-                '-march=native' if native_optimizations else '',
-                fortify_source
-            )
-        )
-    elif not is_openbsd:
-        cflags_ = os.environ.get(
-            'OVERRIDE_CFLAGS', (
-                '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
+                '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes' + '' if is_openbsd else ' -std=c11'
                 ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
             ).format(
                 float_conversion,
