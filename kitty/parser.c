@@ -306,6 +306,11 @@ static inline void
 dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define DISPATCH_OSC_WITH_CODE(name) REPORT_OSC2(name, code, string); name(screen, code, string);
 #define DISPATCH_OSC(name) REPORT_OSC(name, string); name(screen, string);
+#define START_DISPATCH {\
+    PyObject *string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + i, limit - i); \
+    if (string) {
+#define END_DISPATCH Py_CLEAR(string); } PyErr_Clear(); break; }
+
     const unsigned int limit = screen->parser_buf_pos;
     unsigned int code=0, i;
     for (i = 0; i < MIN(limit, 5u); i++) {
@@ -315,58 +320,63 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         code = utoi(screen->parser_buf, i);
         if (i < limit && screen->parser_buf[i] == ';') i++;
     }
-    PyObject *string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + i, limit - i);
-    if (string != NULL) {
-        switch(code) {
-            case 0:
-                DISPATCH_OSC(set_title);
-                DISPATCH_OSC(set_icon);
-                break;
-            case 1:
-                DISPATCH_OSC(set_icon);
-                break;
-            case 2:
-                DISPATCH_OSC(set_title);
-                break;
-            case 4:
-            case 104:
-                DISPATCH_OSC_WITH_CODE(set_color_table_color);
-                break;
-            case 9:
-            case 99:
-                DISPATCH_OSC_WITH_CODE(desktop_notify)
-                break;
-            case 10:
-            case 11:
-            case 12:
-            case 17:
-            case 19:
-            case 110:
-            case 111:
-            case 112:
-            case 117:
-            case 119:
-                DISPATCH_OSC_WITH_CODE(set_dynamic_color);
-                break;
-            case 52:
-                DISPATCH_OSC(clipboard_control);
-                break;
-            case 30001:
-                REPORT_COMMAND(screen_push_dynamic_colors);
-                screen_push_dynamic_colors(screen);
-                break;
-            case 30101:
-                REPORT_COMMAND(screen_pop_dynamic_colors);
-                screen_pop_dynamic_colors(screen);
-                break;
-            default:
-                REPORT_ERROR("Unknown OSC code: %u", code);
-                break;
-        }
-        Py_CLEAR(string);
+    switch(code) {
+        case 0:
+            START_DISPATCH
+            DISPATCH_OSC(set_title);
+            DISPATCH_OSC(set_icon);
+            END_DISPATCH
+        case 1:
+            START_DISPATCH
+            DISPATCH_OSC(set_icon);
+            END_DISPATCH
+        case 2:
+            START_DISPATCH
+            DISPATCH_OSC(set_title);
+            END_DISPATCH
+        case 4:
+        case 104:
+            START_DISPATCH
+            DISPATCH_OSC_WITH_CODE(set_color_table_color);
+            END_DISPATCH
+        case 9:
+        case 99:
+            START_DISPATCH
+            DISPATCH_OSC_WITH_CODE(desktop_notify)
+            END_DISPATCH
+        case 10:
+        case 11:
+        case 12:
+        case 17:
+        case 19:
+        case 110:
+        case 111:
+        case 112:
+        case 117:
+        case 119:
+            START_DISPATCH
+            DISPATCH_OSC_WITH_CODE(set_dynamic_color);
+            END_DISPATCH
+        case 52:
+            START_DISPATCH
+            DISPATCH_OSC(clipboard_control);
+            END_DISPATCH
+        case 30001:
+            REPORT_COMMAND(screen_push_dynamic_colors);
+            screen_push_dynamic_colors(screen);
+            break;
+        case 30101:
+            REPORT_COMMAND(screen_pop_dynamic_colors);
+            screen_pop_dynamic_colors(screen);
+            break;
+        default:
+            REPORT_ERROR("Unknown OSC code: %u", code);
+            break;
     }
 #undef DISPATCH_OSC
 #undef DISPATCH_OSC_WITH_CODE
+#undef START_DISPATCH
+#undef END_DISPATCH
 }
 // }}}
 
