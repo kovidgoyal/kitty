@@ -76,7 +76,8 @@ def init_env(env: Env, pkg_config: Callable, at_least_version: Callable, test_co
         ans.ldpaths.append('-pthread')
         if not is_openbsd:
             ans.ldpaths.extend('-lrt -lm -ldl'.split())
-        ans.ldpaths.extend('-lm'.split())
+        elif is_openbsd: 
+            ans.ldpaths.extend('-lm'.split())
         at_least_version('xkbcommon', 0, 5)
 
     if module == 'x11':
@@ -295,3 +296,4 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
+
