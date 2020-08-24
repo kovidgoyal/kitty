@@ -263,10 +263,11 @@ def init_env(
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
-            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
+            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {}'
             ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
         ).format(
             float_conversion,
+            '' if is_openbsd else '-std=c11',
             optimize,
             ' '.join(sanitize_args),
             stack_protector,
@@ -287,7 +288,7 @@ def init_env(
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
-    if not debug and not sanitize:
+    if not debug and not sanitize and not is_openbsd:
         # See https://github.com/google/sanitizers/issues/647
         cflags.append('-flto')
         ldflags.append('-flto')
