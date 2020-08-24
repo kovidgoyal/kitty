@@ -73,8 +73,7 @@ def init_env(env: Env, pkg_config: Callable, at_least_version: Callable, test_co
 
     if module in ('x11', 'wayland'):
         ans.cflags.append('-pthread')
-        ans.ldpaths.append('-pthread')
-        ans.ldpaths.append('-lm')
+        ans.ldpaths.extend('-pthread -lm'.split())
         if not is_openbsd:
             ans.ldpaths.extend('-lrt -ldl'.split())
         at_least_version('xkbcommon', 0, 5)
