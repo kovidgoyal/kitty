@@ -12,7 +12,7 @@
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, cursor_text_uses_bg;
+    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, cursor_text_uses_bg, visual_bell_intensity;
 
     uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, cursor_text_color, url_color, url_style, inverted;
 
@@ -236,6 +236,7 @@ void main() {
 
 #if defined(SPECIAL) || defined(SIMPLE)
     // Selection and cursor
+    bg = max(bg, choose_color(visual_bell_intensity, color_to_vec(highlight_bg), bg));
     bg = choose_color(float(is_selected & ONE), color_to_vec(highlight_bg), bg);
     background = choose_color(cell_has_block_cursor, color_to_vec(cursor_color), bg);
 #if !defined(TRANSPARENT) && defined(SPECIAL)
