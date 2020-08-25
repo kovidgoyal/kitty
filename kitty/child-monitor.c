@@ -615,7 +615,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 }
 
 static void
-render_os_window(OSWindow *os_window, monotonic_t now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
+render_os_window(OSWindow *os_window, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
     // ensure all pixels are cleared to background color at least once in every buffer
     if (os_window->clear_count++ < 3) blank_os_window(os_window);
     Tab *tab = os_window->tabs + os_window->active_tab;
@@ -637,8 +637,7 @@ render_os_window(OSWindow *os_window, monotonic_t now, unsigned int active_windo
             bool is_active_window = i == tab->active_window;
             draw_cells(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx * x_ratio, WD.dy * y_ratio, WD.screen, os_window, is_active_window, true);
             if (WD.screen->start_visual_bell_at != 0) {
-                monotonic_t bell_left = OPT(visual_bell_duration) - (now - WD.screen->start_visual_bell_at);
-                set_maximum_wait(bell_left);
+                set_maximum_wait(OPT(repaint_delay));
             }
             w->cursor_visible_at_last_render = WD.screen->cursor_render_info.is_visible; w->last_cursor_x = WD.screen->cursor_render_info.x; w->last_cursor_y = WD.screen->cursor_render_info.y; w->last_cursor_shape = WD.screen->cursor_render_info.shape;
         }
@@ -726,7 +725,7 @@ render(monotonic_t now, bool input_read) {
         if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows, &all_windows_have_same_bg, scan_for_animated_images)) needs_render = true;
         if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
         if (w->render_calls < 3 && w->bgimage && w->bgimage->texture_id) needs_render = true;
-        if (needs_render) render_os_window(w, now, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg);
+        if (needs_render) render_os_window(w, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg);
         if (w->is_focused) change_menubar_title(w->window_title);
     }
     last_render_at = now;
