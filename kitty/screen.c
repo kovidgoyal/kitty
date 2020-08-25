@@ -111,6 +111,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->historybuf = alloc_historybuf(MAX(scrollback, lines), columns, OPT(scrollback_pager_history_size));
         self->main_grman = grman_alloc();
         self->alt_grman = grman_alloc();
+        self->active_hyperlink_id = 0;
 
         self->grman = self->main_grman;
         self->pending_mode.wait_time = s_double_to_monotonic_t(2.0);
@@ -143,6 +144,7 @@ screen_reset(Screen *self) {
     historybuf_clear(self->historybuf);
     grman_clear(self->grman, false, self->cell_size);
     self->modes = empty_modes;
+    self->active_hyperlink_id = 0;
 #define R(name) self->color_profile->overridden.name = 0
     R(default_fg); R(default_bg); R(cursor_color); R(highlight_fg); R(highlight_bg);
 #undef R
@@ -359,6 +361,15 @@ selection_has_screen_line(Selection *s, int y) {
     return top <= y && y <= bottom;
 }
 
+void
+set_active_hyperlink(Screen *self, char *id, char *url) {
+    (void)id;
+    if (!url || !url[0]) {
+        self->active_hyperlink_id = 0;
+        return;
+    }
+}
+
 static inline bool is_flag_pair(char_type a, char_type b) {
     return is_flag_codepoint(a) && is_flag_codepoint(b);
 }
@@ -419,7 +430,7 @@ draw_combining_char(Screen *self, char_type ch) {
             CPUCell *cpu_cell = self->linebuf->line->cpu_cells + xpos;
             GPUCell *gpu_cell = self->linebuf->line->gpu_cells + xpos;
             if ((gpu_cell->attrs & WIDTH_MASK) != 2 && cpu_cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cpu_cell->ch)) {
-                if (self->cursor->x <= self->columns - 1) line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, true);
+                if (self->cursor->x <= self->columns - 1) line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, self->active_hyperlink_id);
                 gpu_cell->attrs = (gpu_cell->attrs & !WIDTH_MASK) | 2;
                 if (xpos == self->columns - 1) move_widened_char(self, cpu_cell, gpu_cell, xpos, ypos);
                 else self->cursor->x++;
@@ -476,10 +487,10 @@ screen_draw(Screen *self, uint32_t och) {
     if (self->modes.mIRM) {
         line_right_shift(self->linebuf->line, self->cursor->x, char_width);
     }
-    line_set_char(self->linebuf->line, self->cursor->x, ch, char_width, self->cursor, false);
+    line_set_char(self->linebuf->line, self->cursor->x, ch, char_width, self->cursor, self->active_hyperlink_id);
     self->cursor->x++;
     if (char_width == 2) {
-        line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, true);
+        line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, self->active_hyperlink_id);
         self->cursor->x++;
     }
     self->is_dirty = true;
@@ -646,6 +657,7 @@ screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const u
 void
 screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_screen) {
     bool to_alt = self->linebuf == self->main_linebuf;
+    self->active_hyperlink_id = 0;
     grman_clear(self->alt_grman, true, self->cell_size);  // always clear the alt buffer graphics to free up resources, since it has to be cleared when switching back to it anyway
     if (to_alt) {
         if (clear_alt_screen) linebuf_clear(self->alt_linebuf, BLANK_CHAR);

@@ -121,6 +121,9 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 #define REPORT_OSC2(name, code, string) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sIO", #name, code, string)); PyErr_Clear();
 
+#define REPORT_HYPERLINK(id, url) \
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "szz", "set_active_hyperlink", id, url)); PyErr_Clear();
+
 #else
 
 #define DUMP_UNUSED UNUSED
@@ -134,6 +137,7 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 #define FLUSH_DRAW
 #define REPORT_OSC(name, string)
 #define REPORT_OSC2(name, code, string)
+#define REPORT_HYPERLINK(id, url)
 
 #endif
 
@@ -303,6 +307,30 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
 // OSC mode {{{
 
 static inline void
+dispatch_hyperlink(Screen *screen, size_t pos, size_t size, PyObject DUMP_UNUSED *dump_callback) {
+    // since the spec says only ASCII printable chars are allowed in OSC 8, we
+    // can just convert to char* directly
+    if (!size) return;  // ignore empty OSC 8 since it must have two semi-colons to be valid, which means one semi-colon here
+    char *id = NULL, *url = NULL;
+    char *data = malloc(size + 1);
+    if (!data) fatal("Out of memory");
+    for (size_t i = 0; i < size; i++) {
+        data[i] = screen->parser_buf[i + pos] & 0x7f;
+        if (data[i] < 32 || data[i] > 126) data[i] = '_';
+    }
+    data[size] = 0;
+
+    if (parse_osc_8(data, &id, &url)) {
+        REPORT_HYPERLINK(id, url);
+        set_active_hyperlink(screen, id, url);
+    } else {
+        REPORT_ERROR("Ignoring malformed OSC 8 code");
+    }
+
+    free(data);
+}
+
+static inline void
 dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define DISPATCH_OSC_WITH_CODE(name) REPORT_OSC2(name, code, string); name(screen, code, string);
 #define DISPATCH_OSC(name) REPORT_OSC(name, string); name(screen, string);
@@ -339,6 +367,9 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             START_DISPATCH
             DISPATCH_OSC_WITH_CODE(set_color_table_color);
             END_DISPATCH
+        case 8:
+            dispatch_hyperlink(screen, i, limit-i, dump_callback);
+            break;
         case 9:
         case 99:
             START_DISPATCH

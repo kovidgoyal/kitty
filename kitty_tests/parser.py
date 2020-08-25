@@ -227,6 +227,12 @@ class TestParser(BaseTest):
         pb('\033]9;test it\x07', ('desktop_notify', 9, 'test it'))
         pb('\033]99;moo=foo;test it\x07', ('desktop_notify', 99, 'moo=foo;test it'))
         self.ae(c.notifications, [(9, ''), (9, 'test it'), (99, 'moo=foo;test it')])
+        c.clear()
+        pb('\033]8;;\x07', ('set_active_hyperlink', None, None))
+        pb('\033]8moo\x07', ('Ignoring malformed OSC 8 code',))
+        pb('\033]8;moo\x07', ('Ignoring malformed OSC 8 code',))
+        pb('\033]8;id=xyz;\x07', ('set_active_hyperlink', 'xyz', None))
+        pb('\033]8;moo:x=z:id=xyz:id=abc;http://yay;.com\x07', ('set_active_hyperlink', 'xyz', 'http://yay;.com'))
 
     def test_desktop_notify(self):
         reset_registry()

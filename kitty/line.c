@@ -558,7 +558,7 @@ line_get_char(Line *self, index_type at) {
 }
 
 void
-line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, bool UNUSED is_second) {
+line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, hyperlink_id_type hyperlink_id) {
     GPUCell *g = self->gpu_cells + at;
     if (cursor == NULL) {
         g->attrs = (self->gpu_cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
@@ -569,22 +569,24 @@ line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Curs
         g->decoration_fg = cursor->decoration_fg & COL_MASK;
     }
     self->cpu_cells[at].ch = ch;
+    self->cpu_cells[at].hyperlink_id = hyperlink_id;
     memset(self->cpu_cells[at].cc_idx, 0, sizeof(self->cpu_cells[at].cc_idx));
 }
 
 static PyObject*
 set_char(Line *self, PyObject *args) {
-#define set_char_doc "set_char(at, ch, width=1, cursor=None) -> Set the character at the specified cell. If cursor is not None, also set attributes from that cursor."
+#define set_char_doc "set_char(at, ch, width=1, cursor=None, hyperlink_id=0) -> Set the character at the specified cell. If cursor is not None, also set attributes from that cursor."
     unsigned int at, width=1;
     int ch;
     Cursor *cursor = NULL;
+    unsigned int hyperlink_id = 0;
 
-    if (!PyArg_ParseTuple(args, "IC|IO!", &at, &ch, &width, &Cursor_Type, &cursor)) return NULL;
+    if (!PyArg_ParseTuple(args, "IC|IO!I", &at, &ch, &width, &Cursor_Type, &cursor, &hyperlink_id)) return NULL;
     if (at >= self->xnum) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds");
         return NULL;
     }
-    line_set_char(self, at, ch, width, cursor, false);
+    line_set_char(self, at, ch, width, cursor, hyperlink_id);
     Py_RETURN_NONE;
 }
 

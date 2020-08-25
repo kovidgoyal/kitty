@@ -41,6 +41,7 @@ void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 typedef unsigned long long id_type;
 typedef uint32_t char_type;
 typedef uint32_t color_type;
+typedef uint32_t hyperlink_id_type;
 typedef uint16_t combining_type;
 typedef uint32_t pixel;
 typedef unsigned int index_type;
@@ -160,6 +161,7 @@ typedef struct {
 typedef struct {
     char_type ch;
     combining_type cc_idx[2];
+    hyperlink_id_type hyperlink_id;
 } CPUCell;
 
 
