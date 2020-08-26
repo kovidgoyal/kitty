@@ -41,7 +41,8 @@ void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 typedef unsigned long long id_type;
 typedef uint32_t char_type;
 typedef uint32_t color_type;
-typedef uint32_t hyperlink_id_type;
+typedef uint16_t hyperlink_id_type;
+#define HYPERLINK_MAX_NUMBER UINT16_MAX
 typedef uint16_t combining_type;
 typedef uint32_t pixel;
 typedef unsigned int index_type;
@@ -249,6 +250,7 @@ typedef struct {
 typedef struct {int x;} *SPRITE_MAP_HANDLE;
 #define FONTS_DATA_HEAD SPRITE_MAP_HANDLE sprite_map; double logical_dpi_x, logical_dpi_y, font_sz_in_pts; unsigned int cell_width, cell_height;
 typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
+typedef struct {int x;} *HYPERLINK_POOL_HANDLE;
 
 #define PARSER_BUF_SZ (8 * 1024)
 #define READ_BUF_SZ (1024*1024)

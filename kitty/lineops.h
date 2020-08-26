@@ -28,7 +28,7 @@ static inline void
 clear_chars_in_line(CPUCell *cpu_cells, GPUCell *gpu_cells, index_type xnum, char_type ch) {
     // Clear only the char part of each cell, the rest must have been cleared by a memset or similar
     if (ch) {
-        for (index_type i = 0; i < xnum; i++) { cpu_cells[i].ch = ch; gpu_cells[i].attrs = 1; }
+        for (index_type i = 0; i < xnum; i++) { cpu_cells[i].ch = ch; cpu_cells[i].hyperlink_id = 0; gpu_cells[i].attrs = 1; }
     }
 }
 
@@ -61,6 +61,7 @@ left_shift_line(Line *line, index_type at, index_type num) {
     }
     if (at < line->xnum && ((line->gpu_cells[at].attrs) & WIDTH_MASK) != 1) {
         line->cpu_cells[at].ch = BLANK_CHAR;
+        line->cpu_cells[at].hyperlink_id = 0;
         line->gpu_cells[at].attrs = BLANK_CHAR ? 1 : 0;
         clear_sprite_position(line->gpu_cells[at]);
     }
@@ -102,6 +103,7 @@ void linebuf_refresh_sprite_positions(LineBuf *self);
 void historybuf_add_line(HistoryBuf *self, const Line *line);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
+CPUCell* historybuf_cpu_cells(HistoryBuf *self, index_type num);
 void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
 void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);

@@ -124,6 +124,7 @@ typedef struct {
     bool has_focus;
     bool has_activity_since_last_focus;
     hyperlink_id_type active_hyperlink_id;
+    HYPERLINK_POOL_HANDLE hyperlink_pool;
 } Screen;
 
 
@@ -207,7 +208,6 @@ bool screen_history_scroll(Screen *self, int amt, bool upwards);
 Line* screen_visual_line(Screen *self, index_type y);
 unsigned long screen_current_char_width(Screen *self);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);
-bool parse_osc_8(char *buf, char **id, char **url);
 void set_active_hyperlink(Screen*, char*, char*);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 bool screen_open_url(Screen*);

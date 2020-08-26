@@ -155,6 +155,11 @@ historybuf_init_line(HistoryBuf *self, index_type lnum, Line *l) {
     init_line(self, index_of(self, lnum), l);
 }
 
+CPUCell*
+historybuf_cpu_cells(HistoryBuf *self, index_type lnum) {
+    return cpu_lineptr(self, index_of(self, lnum));
+}
+
 void
 historybuf_mark_line_clean(HistoryBuf *self, index_type y) {
     line_attrs_type *p = attrptr(self, index_of(self, y));

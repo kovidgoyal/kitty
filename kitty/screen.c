@@ -13,7 +13,7 @@
 #include "state.h"
 #include "fonts.h"
 #include "lineops.h"
-#include "screen.h"
+#include "hyperlink.h"
 #include <structmember.h>
 #include <limits.h>
 #include <sys/types.h>
@@ -129,6 +129,8 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         init_tabstops(self->main_tabstops, self->columns);
         init_tabstops(self->alt_tabstops, self->columns);
         if (!init_overlay_line(self, self->columns)) { Py_CLEAR(self); return NULL; }
+        self->hyperlink_pool = alloc_hyperlink_pool();
+        if (!self->hyperlink_pool) { Py_CLEAR(self); return PyErr_NoMemory(); }
     }
     return (PyObject*) self;
 }
@@ -142,6 +144,7 @@ screen_reset(Screen *self) {
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
     linebuf_clear(self->linebuf, BLANK_CHAR);
     historybuf_clear(self->historybuf);
+    clear_hyperlink_pool(self->hyperlink_pool);
     grman_clear(self->grman, false, self->cell_size);
     self->modes = empty_modes;
     self->active_hyperlink_id = 0;
@@ -289,6 +292,7 @@ dealloc(Screen* self) {
     PyMem_Free(self->overlay_line.gpu_cells);
     PyMem_Free(self->main_tabstops);
     free(self->pending_mode.buf);
+    free_hyperlink_pool(self->hyperlink_pool);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
 
@@ -368,7 +372,32 @@ set_active_hyperlink(Screen *self, char *id, char *url) {
         self->active_hyperlink_id = 0;
         return;
     }
+    self->active_hyperlink_id = get_id_for_hyperlink(self, id, url);
 }
+
+hyperlink_id_type
+remap_hyperlink_ids(Screen *self, hyperlink_id_type *map) {
+#define PROCESS_CELL(cell) { hid = (cell).hyperlink_id; if (hid) { if (!map[hid]) map[hid] = ++num; (cell).hyperlink_id = map[hid]; }}
+    hyperlink_id_type num = 0, hid;
+    if (self->historybuf->count) {
+        for (index_type y = self->historybuf->count; y-- > 0;) {
+            CPUCell *cells = historybuf_cpu_cells(self->historybuf, y);
+            for (index_type x = 0; x < self->historybuf->xnum; x++) {
+                PROCESS_CELL(cells[x]);
+            }
+        }
+    }
+    LineBuf *second = self->linebuf, *first = second == self->main_linebuf ? self->alt_linebuf : self->main_linebuf;
+    for (index_type i = 0; i < self->lines * self->columns; i++) {
+        PROCESS_CELL(first->cpu_cell_buf[i]);
+    }
+    for (index_type i = 0; i < self->lines * self->columns; i++) {
+        PROCESS_CELL(second->cpu_cell_buf[i]);
+    }
+    return num;
+#undef PROCESS_CELL
+}
+
 
 static inline bool is_flag_pair(char_type a, char_type b) {
     return is_flag_codepoint(a) && is_flag_codepoint(b);

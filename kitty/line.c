@@ -420,6 +420,7 @@ set_text(Line* self, PyObject *args) {
 
     for (index_type i = cursor->x; offset < limit && i < self->xnum; i++, offset++) {
         self->cpu_cells[i].ch = (PyUnicode_READ(kind, buf, offset));
+        self->cpu_cells[i].hyperlink_id = 0;
         self->gpu_cells[i].attrs = attrs;
         self->gpu_cells[i].fg = fg;
         self->gpu_cells[i].bg = bg;
@@ -454,15 +455,10 @@ cursor_from(Line* self, PyObject *args) {
 void
 line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
     attrs_type width = ch ? 1 : 0;
-#define PREFIX \
-    for (index_type i = at; i < MIN(self->xnum, at + num); i++) { \
-        self->cpu_cells[i].ch = ch; memset(self->cpu_cells[i].cc_idx, 0, sizeof(self->cpu_cells[i].cc_idx)); \
-        self->gpu_cells[i].attrs = (self->gpu_cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width; \
-    }
-    if (CHAR_IS_BLANK(ch)) {
-        PREFIX
-    } else {
-        PREFIX
+    for (index_type i = at; i < MIN(self->xnum, at + num); i++) {
+        self->cpu_cells[i].ch = ch; memset(self->cpu_cells[i].cc_idx, 0, sizeof(self->cpu_cells[i].cc_idx));
+        self->cpu_cells[i].hyperlink_id = 0;
+        self->gpu_cells[i].attrs = (self->gpu_cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
     }
 }
 
@@ -486,6 +482,7 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
             self->cpu_cells[i].ch = BLANK_CHAR;
+            self->cpu_cells[i].hyperlink_id = 0;
             memset(self->cpu_cells[i].cc_idx, 0, sizeof(self->cpu_cells[i].cc_idx));
             self->gpu_cells[i].attrs = attrs;
             clear_sprite_position(self->gpu_cells[i]);
@@ -517,6 +514,7 @@ void line_right_shift(Line *self, unsigned int at, unsigned int num) {
     char_type w = (self->gpu_cells[self->xnum - 1].attrs) & WIDTH_MASK;
     if (w != 1) {
         self->cpu_cells[self->xnum - 1].ch = BLANK_CHAR;
+        self->cpu_cells[self->xnum - 1].hyperlink_id = 0;
         self->gpu_cells[self->xnum - 1].attrs = BLANK_CHAR ? 1 : 0;
         clear_sprite_position(self->gpu_cells[self->xnum - 1]);
     }

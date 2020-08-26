@@ -4,6 +4,9 @@
  * Distributed under terms of the GPL3 license.
  */
 
+// Need _POSIX_C_SOURCE for strtok_r
+#define _POSIX_C_SOURCE 200809L
+
 #include "data-types.h"
 #include "control-codes.h"
 #include "screen.h"
@@ -305,6 +308,24 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
 } // }}}
 
 // OSC mode {{{
+
+static inline bool
+parse_osc_8(char *buf, char **id, char **url) {
+    char *boundary = strstr(buf, ";");
+    if (boundary == NULL) return false;
+    *boundary = 0;
+    if (*(boundary + 1)) *url = boundary + 1;
+    char *save, *token = strtok_r(buf, ":", &save);
+    while (token != NULL) {
+        size_t len = strlen(token);
+        if (len > 3 && token[0] == 'i' && token[1] == 'd' && token[2] == '=' && token[3]) {
+            *id = token + 3;
+            break;
+        }
+        token = strtok_r(NULL, ":", &save);
+    }
+    return true;
+}
 
 static inline void
 dispatch_hyperlink(Screen *screen, size_t pos, size_t size, PyObject DUMP_UNUSED *dump_callback) {
