@@ -585,3 +585,9 @@ class TestScreen(BaseTest):
         self.ae([(':1', 1), (':3', 2)], s.hyperlinks_as_list())
         set_link('4'), s.draw('4')
         self.ae([(':1', 1), (':3', 2), (':4', 3)], s.hyperlinks_as_list())
+
+        s = self.create_screen()
+        set_link('1'), s.draw('1')
+        set_link('2'), s.draw('2')
+        set_link('1'), s.draw('1')
+        self.ae([(':2', 2), (':1', 1)], s.hyperlinks_as_list())

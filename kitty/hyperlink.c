@@ -105,7 +105,13 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     HyperLinkEntry *s = NULL;
     if (pool->hyperlinks) {
         HASH_FIND_STR(pool->hyperlinks, key, s);
-        if (s) return s->id;
+        if (s) {
+            // Remove and re-add s so that it is the last entry in the hash table and
+            // The first entry is discarded when hash table is full.
+            HASH_DEL(pool->hyperlinks, s);
+            HASH_ADD_KEYPTR(hh, pool->hyperlinks, s->key, strlen(s->key), s);
+            return s->id;
+        }
     }
     hyperlink_id_type new_id = 0;
     if (pool->num_of_adds_since_garbage_collection >= MAX_ADDS_BEFORE_GC) screen_garbage_collect_hyperlink_pool(screen);
