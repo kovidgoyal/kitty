@@ -26,11 +26,17 @@
 #include "charsets.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
-static Selection EMPTY_SELECTION = {{0}};
 
 #define CSI_REP_MAX_REPETITIONS 65535u
 
 // Constructor/destructor {{{
+
+static inline void
+clear_selection(Selections *selections) {
+    selections->in_progress = false;
+    selections->extend_mode = EXTEND_CELL;
+    selections->count = 0;
+}
 
 static inline void
 init_tabstops(bool *tabstops, index_type count) {
@@ -158,7 +164,8 @@ screen_reset(Screen *self) {
     init_tabstops(self->alt_tabstops, self->columns);
     cursor_reset(self->cursor);
     self->is_dirty = true;
-    self->selection = EMPTY_SELECTION;
+    clear_selection(&self->selections);
+    clear_selection(&self->url_ranges);
     screen_cursor_position(self, 1, 1);
     set_dynamic_color(self, 110, NULL);
     set_dynamic_color(self, 111, NULL);
@@ -246,8 +253,8 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     init_tabstops(self->main_tabstops, self->columns);
     init_tabstops(self->alt_tabstops, self->columns);
     self->is_dirty = true;
-    self->selection = EMPTY_SELECTION;
-    self->url_range = EMPTY_SELECTION;
+    clear_selection(&self->selections);
+    clear_selection(&self->url_ranges);
     /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor_x, cursor_y, cursor_is_beyond_content); */
     self->cursor->x = MIN(cursor_x, self->columns - 1);
     self->cursor->y = MIN(cursor_y, self->lines - 1);
@@ -292,6 +299,8 @@ dealloc(Screen* self) {
     PyMem_Free(self->overlay_line.gpu_cells);
     PyMem_Free(self->main_tabstops);
     free(self->pending_mode.buf);
+    free(self->selections.items);
+    free(self->url_ranges.items);
     free_hyperlink_pool(self->hyperlink_pool);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
@@ -352,17 +361,22 @@ move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type
 }
 
 static inline bool
-is_selection_empty(Selection *s) {
+is_selection_empty(const Selection *s) {
     int start_y = (int)s->start.y - (int)s->start_scrolled_by, end_y = (int)s->end.y - (int)s->end_scrolled_by;
     return s->start.x == s->end.x && s->start.in_left_half_of_cell == s->end.in_left_half_of_cell && start_y == end_y;
 }
 
 static inline bool
-selection_has_screen_line(Selection *s, int y) {
-    if (is_selection_empty(s)) return false;
-    int top = (int)s->start.y - s->start_scrolled_by;
-    int bottom = (int)s->end.y - s->end_scrolled_by;
-    return top <= y && y <= bottom;
+selection_has_screen_line(const Selections *selections, const int y) {
+    for (size_t i = 0; i < selections->count; i++) {
+        const Selection *s = selections->items + i;
+        if (!is_selection_empty(s)) {
+            int top = (int)s->start.y - s->start_scrolled_by;
+            int bottom = (int)s->end.y - s->end_scrolled_by;
+            if (top <= y && y <= bottom) return true;
+        }
+    }
+    return false;
 }
 
 void
@@ -419,7 +433,7 @@ draw_second_flag_codepoint(Screen *self, char_type ch) {
     if (!is_flag_pair(cell->ch, ch) || cell->cc_idx[0]) return false;
     line_add_combining_char(self->linebuf->line, ch, xpos);
     self->is_dirty = true;
-    if (selection_has_screen_line(&self->selection, ypos)) self->selection = EMPTY_SELECTION;
+    if (selection_has_screen_line(&self->selections, ypos)) clear_selection(&self->selections);
     linebuf_mark_line_dirty(self->linebuf, ypos);
     return true;
 }
@@ -453,7 +467,7 @@ draw_combining_char(Screen *self, char_type ch) {
     if (has_prev_char) {
         line_add_combining_char(self->linebuf->line, ch, xpos);
         self->is_dirty = true;
-        if (selection_has_screen_line(&self->selection, ypos)) self->selection = EMPTY_SELECTION;
+        if (selection_has_screen_line(&self->selections, ypos)) clear_selection(&self->selections);
         linebuf_mark_line_dirty(self->linebuf, ypos);
         if (ch == 0xfe0f) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
             CPUCell *cpu_cell = self->linebuf->line->cpu_cells + xpos;
@@ -523,7 +537,7 @@ screen_draw(Screen *self, uint32_t och) {
         self->cursor->x++;
     }
     self->is_dirty = true;
-    if (selection_has_screen_line(&self->selection, self->cursor->y)) self->selection = EMPTY_SELECTION;
+    if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections);
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
 }
 
@@ -704,7 +718,7 @@ screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_scree
     }
     screen_history_scroll(self, SCROLL_FULL, false);
     self->is_dirty = true;
-    self->selection = EMPTY_SELECTION;
+    clear_selection(&self->selections);
 }
 
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
@@ -948,18 +962,22 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
 }
 
 static inline void
-index_selection(Screen *self, Selection *s, bool up) {
-    if (is_selection_empty(s)) return;
-    if (up) {
-        if (s->start.y == 0) s->start_scrolled_by += 1;
-        else s->start.y--;
-        if (s->end.y == 0) s->end_scrolled_by += 1;
-        else s->end.y--;
-    } else {
-        if (s->start.y >= self->lines - 1) s->start_scrolled_by -= 1;
-        else s->start.y++;
-        if (s->end.y >= self->lines - 1) s->end_scrolled_by -= 1;
-        else s->end.y++;
+index_selection(const Screen *self, Selections *selections, bool up) {
+    for (size_t i = 0; i < selections->count; i++) {
+        Selection *s = selections->items + i;
+        if (!is_selection_empty(s)) {
+            if (up) {
+                if (s->start.y == 0) s->start_scrolled_by += 1;
+                else s->start.y--;
+                if (s->end.y == 0) s->end_scrolled_by += 1;
+                else s->end.y--;
+            } else {
+                if (s->start.y >= self->lines - 1) s->start_scrolled_by -= 1;
+                else s->start.y++;
+                if (s->end.y >= self->lines - 1) s->end_scrolled_by -= 1;
+                else s->end.y++;
+            }
+        }
     }
 }
 
@@ -984,7 +1002,7 @@ index_selection(Screen *self, Selection *s, bool up) {
     } \
     linebuf_clear_line(self->linebuf, bottom); \
     self->is_dirty = true; \
-    index_selection(self, &self->selection, true);
+    index_selection(self, &self->selections, true);
 
 void
 screen_index(Screen *self) {
@@ -1011,7 +1029,7 @@ screen_scroll(Screen *self, unsigned int count) {
     linebuf_clear_line(self->linebuf, top); \
     INDEX_GRAPHICS(1) \
     self->is_dirty = true; \
-    index_selection(self, &self->selection, false);
+    index_selection(self, &self->selections, false);
 
 void
 screen_reverse_index(Screen *self) {
@@ -1195,7 +1213,7 @@ screen_erase_in_line(Screen *self, unsigned int how, bool private) {
             line_apply_cursor(self->linebuf->line, self->cursor, s, n, true);
         }
         self->is_dirty = true;
-        if (selection_has_screen_line(&self->selection, self->cursor->y)) self->selection = EMPTY_SELECTION;
+        if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections);
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     }
 }
@@ -1240,7 +1258,7 @@ screen_erase_in_display(Screen *self, unsigned int how, bool private) {
             linebuf_mark_line_as_not_continued(self->linebuf, i);
         }
         self->is_dirty = true;
-        self->selection = EMPTY_SELECTION;
+        clear_selection(&self->selections);
     }
     if (how != 2) {
         screen_erase_in_line(self, how, private);
@@ -1262,7 +1280,7 @@ screen_insert_lines(Screen *self, unsigned int count) {
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_insert_lines(self->linebuf, count, self->cursor->y, bottom);
         self->is_dirty = true;
-        self->selection = EMPTY_SELECTION;
+        clear_selection(&self->selections);
         screen_carriage_return(self);
     }
 }
@@ -1283,7 +1301,7 @@ screen_delete_lines(Screen *self, unsigned int count) {
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         linebuf_delete_lines(self->linebuf, count, self->cursor->y, bottom);
         self->is_dirty = true;
-        self->selection = EMPTY_SELECTION;
+        clear_selection(&self->selections);
         screen_carriage_return(self);
     }
 }
@@ -1300,7 +1318,7 @@ screen_insert_characters(Screen *self, unsigned int count) {
         line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         self->is_dirty = true;
-        if (selection_has_screen_line(&self->selection, self->cursor->y)) self->selection = EMPTY_SELECTION;
+        if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections);
     }
 }
 
@@ -1338,7 +1356,7 @@ screen_delete_characters(Screen *self, unsigned int count) {
         line_apply_cursor(self->linebuf->line, self->cursor, self->columns - num, num, true);
         linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
         self->is_dirty = true;
-        if (selection_has_screen_line(&self->selection, self->cursor->y)) self->selection = EMPTY_SELECTION;
+        if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections);
     }
 }
 
@@ -1352,7 +1370,7 @@ screen_erase_characters(Screen *self, unsigned int count) {
     line_apply_cursor(self->linebuf->line, self->cursor, x, num, true);
     linebuf_mark_line_dirty(self->linebuf, self->cursor->y);
     self->is_dirty = true;
-    if (selection_has_screen_line(&self->selection, self->cursor->y)) self->selection = EMPTY_SELECTION;
+    if (selection_has_screen_line(&self->selections, self->cursor->y)) clear_selection(&self->selections);
 }
 
 // }}}
@@ -1677,9 +1695,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
         }
         update_line_data(self->linebuf->line, y, address);
     }
-    if (was_dirty) {
-        self->url_range = EMPTY_SELECTION;
-    }
+    if (was_dirty) clear_selection(&self->url_ranges);
 }
 
 
@@ -1821,32 +1837,42 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
 }
 
 static inline void
-apply_selection(Screen *self, uint8_t *data, const Selection *s, IterationData *last_rendered, uint8_t set_mask) {
-    iteration_data(self, s, last_rendered, -self->historybuf->count, true);
+apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask) {
+    iteration_data(self, s, &s->last_rendered, -self->historybuf->count, true);
 
-    for (int y = MAX(0, last_rendered->y); y < last_rendered->y_limit && y < (int)self->lines; y++) {
+    for (int y = MAX(0, s->last_rendered.y); y < s->last_rendered.y_limit && y < (int)self->lines; y++) {
         Line *line = visual_line_(self, y);
         uint8_t *line_start = data + self->columns * y;
-        XRange xr = xrange_for_iteration(last_rendered, y, line);
+        XRange xr = xrange_for_iteration(&s->last_rendered, y, line);
         for (index_type x = xr.x; x < xr.x_limit; x++) line_start[x] |= set_mask;
     }
-    last_rendered->y = MAX(0, last_rendered->y);
+    s->last_rendered.y = MAX(0, s->last_rendered.y);
 }
 
 bool
 screen_has_selection(Screen *self) {
-    if (is_selection_empty(&self->selection)) return false;
     IterationData idata;
-    iteration_data(self, &self->selection, &idata, -self->historybuf->count, true);
-    if (iteration_data_is_empty(self, &idata)) return false;
-    return true;
+    for (size_t i = 0; i < self->selections.count; i++) {
+        Selection *s = self->selections.items + i;
+        if (!is_selection_empty(s)) {
+            iteration_data(self, s, &idata, -self->historybuf->count, true);
+            if (!iteration_data_is_empty(self, &idata)) return true;
+        }
+    }
+    return false;
 }
 
 void
 screen_apply_selection(Screen *self, void *address, size_t size) {
     memset(address, 0, size);
-    apply_selection(self, address, &self->selection, &self->last_rendered.selection, 1);
-    apply_selection(self, address, &self->url_range, &self->last_rendered.url, 2);
+    for (size_t i = 0; i < self->selections.count; i++) {
+        apply_selection(self, address, self->selections.items + i, 1);
+    }
+    self->selections.last_rendered_count = self->selections.count;
+    for (size_t i = 0; i < self->url_ranges.count; i++) {
+        apply_selection(self, address, self->url_ranges.items + i, 2);
+    }
+    self->url_ranges.last_rendered_count = self->url_ranges.count;
 }
 
 static inline PyObject*
@@ -1866,20 +1892,46 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
     return ans;
 }
 
+
+static inline PyObject*
+extend_tuple(PyObject *a, PyObject *b) {
+    Py_ssize_t bs = PyBytes_GET_SIZE(b);
+    if (bs < 1) return a;
+    Py_ssize_t off = PyTuple_GET_SIZE(a);
+    if (_PyTuple_Resize(&a, off + bs) != 0) return NULL;
+    for (Py_ssize_t y = 0; y < bs; y++) {
+        PyObject *t = PyTuple_GET_ITEM(b, y);
+        Py_INCREF(t);
+        PyTuple_SET_ITEM(a, off + y, t);
+    }
+    return a;
+}
+
+
 bool
 screen_open_url(Screen *self) {
-    if (is_selection_empty(&self->url_range)) return false;
-    PyObject *lines = text_for_range(self, &self->url_range, false);
+    if (!self->url_ranges.count) return false;
     bool ret = false;
-    if (lines) {
-        PyObject *joiner = PyUnicode_FromString("");
-        if (joiner) {
-            PyObject *url = PyUnicode_Join(joiner, lines);
-            if (url) { call_boss(open_url_lines, "(O)", url); Py_CLEAR(url); ret = true; }
-            Py_CLEAR(joiner);
+    PyObject *lines = NULL;
+    for (size_t i = 0; i < self->url_ranges.count; i++) {
+        // we dont care about the order of the ranges because the text only matters
+        // for text based urls not hyperlinks and for the former there is only ever a single range
+        Selection *s = self->url_ranges.items + i;
+        if (!is_selection_empty(s)) {
+            PyObject *temp = text_for_range(self, s, false);
+            if (temp) {
+                if (lines) {
+                    lines = extend_tuple(lines, temp);
+                    Py_DECREF(temp);
+                } else lines = temp;
+            } else break;
         }
-        Py_CLEAR(lines);
     }
+    if (lines && PyTuple_GET_SIZE(lines) > 0) {
+        call_boss(open_url_lines, "(O)", lines);
+        ret = true;
+    }
+    Py_CLEAR(lines);
     if (PyErr_Occurred()) PyErr_Print();
     return ret;
 }
@@ -2210,8 +2262,8 @@ update_selection(Screen *self, PyObject *args) {
 }
 
 static PyObject*
-clear_selection(Screen *self, PyObject *args UNUSED) {
-    self->selection = EMPTY_SELECTION;
+clear_selection_(Screen *s, PyObject *args UNUSED) {
+    clear_selection(&s->selections);
     Py_RETURN_NONE;
 }
 
@@ -2239,9 +2291,8 @@ start_selection(Screen *self, PyObject *args) {
 
 static PyObject*
 is_rectangle_select(Screen *self, PyObject *a UNUSED) {
-    PyObject *ans = self->selection.rectangle_select ? Py_True : Py_False;
-    Py_INCREF(ans);
-    return ans;
+    if (self->selections.count && self->selections.items[0].rectangle_select) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 
 static PyObject*
@@ -2252,7 +2303,19 @@ copy_colors_from(Screen *self, Screen *other) {
 
 static PyObject*
 text_for_selection(Screen *self, PyObject *a UNUSED) {
-    return text_for_range(self, &self->selection, true);
+    PyObject *lines = NULL;
+    for (size_t i = 0; i < self->selections.count; i++) {
+        PyObject *temp = text_for_range(self, self->selections.items + i, true);
+        if (temp) {
+            if (lines) {
+                lines = extend_tuple(lines, temp);
+                Py_DECREF(temp);
+            } else lines = temp;
+        } else break;
+    }
+    if (PyErr_Occurred()) { Py_CLEAR(lines); return NULL; }
+    if (!lines) lines = PyTuple_New(0);
+    return lines;
 }
 
 bool
@@ -2359,18 +2422,28 @@ bool
 screen_is_selection_dirty(Screen *self) {
     IterationData q;
     if (self->scrolled_by != self->last_rendered.scrolled_by) return true;
-    iteration_data(self, &self->selection, &q, 0, true);
-    if (memcmp(&q, &self->last_rendered.selection, sizeof(IterationData)) != 0) return true;
-    iteration_data(self, &self->url_range, &q, 0, true);
-    if (memcmp(&q, &self->last_rendered.url, sizeof(IterationData)) != 0) return true;
+    if (self->selections.last_rendered_count != self->selections.count || self->url_ranges.last_rendered_count != self->url_ranges.count) return true;
+    for (size_t i = 0; i < self->selections.count; i++) {
+        iteration_data(self, self->selections.items + i, &q, 0, true);
+        if (memcmp(&q, &self->selections.items[i].last_rendered, sizeof(IterationData)) != 0) return true;
+    }
+    for (size_t i = 0; i < self->url_ranges.count; i++) {
+        iteration_data(self, self->url_ranges.items + i, &q, 0, true);
+        if (memcmp(&q, &self->url_ranges.items[i].last_rendered, sizeof(IterationData)) != 0) return true;
+    }
     return false;
 }
 
 void
 screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool rectangle_select, SelectionExtendMode extend_mode) {
-#define A(attr, val) self->selection.attr = val;
+#define A(attr, val) self->selections.items->attr = val;
+    ensure_space_for(&self->selections, items, Selection, 1, capacity, 1, false);
+    memset(self->selections.items, 0, sizeof(Selection));
+    self->selections.count = 1;
+    self->selections.in_progress = true;
+    self->selections.extend_mode = extend_mode;
     A(start.x, x); A(end.x, x); A(start.y, y); A(end.y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
-    A(in_progress, true); A(rectangle_select, rectangle_select); A(extend_mode, extend_mode); A(start.in_left_half_of_cell, in_left_half_of_cell); A(end.in_left_half_of_cell, in_left_half_of_cell);
+    A(rectangle_select, rectangle_select); A(start.in_left_half_of_cell, in_left_half_of_cell); A(end.in_left_half_of_cell, in_left_half_of_cell);
     A(input_start.x, x); A(input_start.y, y); A(input_start.in_left_half_of_cell, in_left_half_of_cell);
     A(input_current.x, x); A(input_current.y, y); A(input_current.in_left_half_of_cell, in_left_half_of_cell);
 #undef A
@@ -2378,25 +2451,33 @@ screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_ha
 
 void
 screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
-#define A(attr, val) self->url_range.attr = val;
-    A(start.x, start_x); A(end.x, end_x); A(start.y, start_y); A(end.y, end_y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
-    A(start.in_left_half_of_cell, true); A(end.in_left_half_of_cell, start_x == end_x && start_y == end_y);
+#define A(attr, val) self->url_ranges.items->attr = val;
+    ensure_space_for(&self->url_ranges, items, Selection, 1, capacity, 8, false);
+    memset(self->url_ranges.items, 0, sizeof(Selection));
+    if (!start_x && !start_y && !end_x && !end_y) self->url_ranges.count = 0;
+    else {
+        self->url_ranges.count = 1;
+        A(start.x, start_x); A(end.x, end_x); A(start.y, start_y); A(end.y, end_y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
+        A(start.in_left_half_of_cell, true); A(end.in_left_half_of_cell, start_x == end_x && start_y == end_y);
+    }
 #undef A
 }
 
 void
 screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool ended, bool start_extended_selection) {
-    self->selection.in_progress = !ended;
-    self->selection.input_current.x = x; self->selection.input_current.y = y;
-    self->selection.input_current.in_left_half_of_cell = in_left_half_of_cell;
-    self->selection.end_scrolled_by = self->scrolled_by;
+    if (!self->selections.count) return;
+    self->selections.in_progress = !ended;
+    Selection *s = self->selections.items;
+    s->input_current.x = x; s->input_current.y = y;
+    s->input_current.in_left_half_of_cell = in_left_half_of_cell;
+    s->end_scrolled_by = self->scrolled_by;
     SelectionBoundary start, end, *a, *b;
-    a = &self->selection.start, b = &self->selection.end;
+    a = &s->start, b = &s->end;
 
-    switch(self->selection.extend_mode) {
+    switch(self->selections.extend_mode) {
         case EXTEND_WORD: {
-            SelectionBoundary *before = &self->selection.input_start, *after = &self->selection.input_current;
-            if (selection_boundary_less_than(after, before)) { before = after; after = &self->selection.input_start; }
+            SelectionBoundary *before = &s->input_start, *after = &s->input_current;
+            if (selection_boundary_less_than(after, before)) { before = after; after = &s->input_start; }
             bool found_at_start = screen_selection_range_for_word(self, before->x, before->y, &start.y, &end.y, &start.x, &end.x, true);
             if (found_at_start) {
                 a->x = start.x; a->y = start.y; a->in_left_half_of_cell = true;
@@ -2411,13 +2492,13 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
         }
         case EXTEND_LINE: {
             index_type top_line, bottom_line;
-            if (start_extended_selection || y == self->selection.start.y) {
+            if (start_extended_selection || y == s->start.y) {
                 top_line = y; bottom_line = y;
-            } else if (y < self->selection.start.y) {
-                top_line = y; bottom_line = self->selection.start.y;
-                a = &self->selection.end; b = &self->selection.start;
-            } else if (y > self->selection.start.y) {
-                bottom_line = y; top_line = self->selection.start.y;
+            } else if (y < s->start.y) {
+                top_line = y; bottom_line = s->start.y;
+                a = &s->end; b = &s->start;
+            } else if (y > s->start.y) {
+                bottom_line = y; top_line = s->start.y;
             } else break;
             while (top_line > 0 && visual_line_(self, top_line)->continued) {
                 if (!screen_selection_range_for_line(self, top_line - 1, &start.x, &end.x)) break;
@@ -2435,10 +2516,10 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
             break;
         }
         case EXTEND_CELL:
-            self->selection.end.x = x; self->selection.end.y = y; self->selection.end.in_left_half_of_cell = in_left_half_of_cell;
+            s->end.x = x; s->end.y = y; s->end.in_left_half_of_cell = in_left_half_of_cell;
             break;
     }
-    if (!self->selection.in_progress) call_boss(set_primary_selection, NULL);
+    if (!self->selections.in_progress) call_boss(set_primary_selection, NULL);
 }
 
 static PyObject*
@@ -2679,7 +2760,7 @@ static PyMethodDef methods[] = {
     MND(clear_tab_stop, METH_VARARGS)
     MND(start_selection, METH_VARARGS)
     MND(update_selection, METH_VARARGS)
-    MND(clear_selection, METH_NOARGS)
+    {"clear_selection", (PyCFunction)clear_selection_, METH_NOARGS, ""},
     MND(reverse_index, METH_NOARGS)
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)

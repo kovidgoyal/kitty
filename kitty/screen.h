@@ -27,11 +27,27 @@ typedef struct {
 typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE } SelectionExtendMode;
 
 typedef struct {
+    index_type x, x_limit;
+} XRange;
+
+typedef struct {
+    int y, y_limit;
+    XRange first, body, last;
+} IterationData;
+
+typedef struct {
     SelectionBoundary start, end, input_start, input_current;
     unsigned int start_scrolled_by, end_scrolled_by;
-    bool in_progress, rectangle_select;
-    SelectionExtendMode extend_mode;
+    bool rectangle_select;
+    IterationData last_rendered;
 } Selection;
+
+typedef struct {
+    Selection *items;
+    size_t count, capacity, last_rendered_count;
+    bool in_progress;
+    SelectionExtendMode extend_mode;
+} Selections;
 
 #define SAVEPOINTS_SZ 256
 
@@ -64,15 +80,6 @@ typedef struct {
 } OverlayLine;
 
 typedef struct {
-    index_type x, x_limit;
-} XRange;
-
-typedef struct {
-    int y, y_limit;
-    XRange first, body, last;
-} IterationData;
-
-typedef struct {
     PyObject_HEAD
 
     unsigned int columns, lines, margin_top, margin_bottom, charset, scrolled_by;
@@ -82,9 +89,8 @@ typedef struct {
     id_type window_id;
     uint32_t utf8_state, utf8_codepoint, *g0_charset, *g1_charset, *g_charset;
     unsigned int current_charset;
-    Selection selection, url_range;
+    Selections selections, url_ranges;
     struct {
-        IterationData selection, url;
         unsigned int cursor_x, cursor_y, scrolled_by;
         index_type lines, columns;
     } last_rendered;
