@@ -220,7 +220,10 @@ void main() {
     draw_bg = 1;
 
 #if defined(BACKGROUND)
-    background = bg;
+    background = choose_color(visual_bell_intensity,
+        blend_softlight(color_to_vec(highlight_bg), bg),
+        bg
+    );
     // draw_bg_bitfield has bit 0 set to draw default bg cells and bit 1 set to draw non-default bg cells
     uint draw_bg_mask = uint(2 * cell_has_non_default_bg + (1 - cell_has_non_default_bg));
     draw_bg = step(1, float(draw_bg_bitfield & draw_bg_mask));
