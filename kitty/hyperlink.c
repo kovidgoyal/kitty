@@ -10,6 +10,8 @@
 #include <string.h>
 
 #define MAX_KEY_LEN 2048
+#define MAX_ID_LEN 256
+#define MAX_ADDS_BEFORE_GC 256
 #undef uthash_fatal
 #define uthash_fatal(msg) fatal(msg)
 
@@ -69,8 +71,8 @@ free_hyperlink_pool(HYPERLINK_POOL_HANDLE h) {
 }
 
 
-static void
-garbage_collect_pool(Screen *screen) {
+void
+screen_garbage_collect_hyperlink_pool(Screen *screen) {
     HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
     pool->num_of_adds_since_garbage_collection = 0;
     if (!pool->max_link_id) return;
@@ -99,14 +101,14 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     if (!url) return 0;
     HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
     static char key[MAX_KEY_LEN] = {0};
-    size_t keylen = snprintf(key, MAX_KEY_LEN-1, "%s:%s", id ? id : "", url);
+    size_t keylen = snprintf(key, MAX_KEY_LEN-1, "%.*s:%s", MAX_ID_LEN, id ? id : "", url);
     HyperLinkEntry *s = NULL;
     if (pool->hyperlinks) {
         HASH_FIND_STR(pool->hyperlinks, key, s);
         if (s) return s->id;
     }
     hyperlink_id_type new_id = 0;
-    if (pool->num_of_adds_since_garbage_collection >= 256) garbage_collect_pool(screen);
+    if (pool->num_of_adds_since_garbage_collection >= MAX_ADDS_BEFORE_GC) screen_garbage_collect_hyperlink_pool(screen);
     if (pool->max_link_id >= HYPERLINK_MAX_NUMBER) {
         log_error("Too many hyperlinks, discarding oldest, this means some hyperlinks might be incorrect");
         new_id = pool->hyperlinks->id;
@@ -123,4 +125,28 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     HASH_ADD_KEYPTR(hh, pool->hyperlinks, s->key, keylen, s);
     pool->num_of_adds_since_garbage_collection++;
     return s->id;
+}
+
+const char*
+get_hyperlink_for_id(Screen *screen, hyperlink_id_type id) {
+    HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
+    HyperLinkEntry *s, *tmp;
+    HASH_ITER(hh, pool->hyperlinks, s, tmp) {
+        if (s->id == id) return strstr(s->key, ":") + 1;
+    }
+    return NULL;
+}
+
+
+PyObject*
+screen_hyperlinks_as_list(Screen *screen) {
+    HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
+    PyObject *ans = PyList_New(0);
+    HyperLinkEntry *s, *tmp;
+    HASH_ITER(hh, pool->hyperlinks, s, tmp) {
+        PyObject *e = Py_BuildValue("sH", s->key, s->id);
+        PyList_Append(ans, e);
+        Py_DECREF(e);
+    }
+    return ans;
 }

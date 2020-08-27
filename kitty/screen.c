@@ -1911,6 +1911,20 @@ deactivate_overlay_line(Screen *self) {
 #define WRAP2(name, defval1, defval2) static PyObject* name(Screen *self, PyObject *args) { unsigned int a=defval1, b=defval2; if(!PyArg_ParseTuple(args, "|II", &a, &b)) return NULL; screen_##name(self, a, b); Py_RETURN_NONE; }
 #define WRAP2B(name) static PyObject* name(Screen *self, PyObject *args) { unsigned int a, b; int p; if(!PyArg_ParseTuple(args, "IIp", &a, &b, &p)) return NULL; screen_##name(self, a, b, (bool)p); Py_RETURN_NONE; }
 
+WRAP0(garbage_collect_hyperlink_pool)
+
+static PyObject*
+hyperlinks_as_list(Screen *self, PyObject *args UNUSED) {
+    return screen_hyperlinks_as_list(self);
+}
+
+static PyObject*
+hyperlink_for_id(Screen *self, PyObject *val) {
+    unsigned long id = PyLong_AsUnsignedLong(val);
+    if (id > HYPERLINK_MAX_NUMBER) { PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL; }
+    return Py_BuildValue("s", get_hyperlink_for_id(self, id));
+}
+
 static PyObject*
 set_pending_timeout(Screen *self, PyObject *val) {
     if (!PyFloat_Check(val)) { PyErr_SetString(PyExc_TypeError, "timeout must be a float"); return NULL; }
@@ -2638,6 +2652,9 @@ static PyMethodDef methods[] = {
     MND(erase_in_line, METH_VARARGS)
     MND(erase_in_display, METH_VARARGS)
     MND(scroll_until_cursor, METH_NOARGS)
+    MND(hyperlinks_as_list, METH_NOARGS)
+    MND(garbage_collect_hyperlink_pool, METH_NOARGS)
+    MND(hyperlink_for_id, METH_O)
     METHOD(current_char_width, METH_NOARGS)
     MND(insert_lines, METH_VARARGS)
     MND(delete_lines, METH_VARARGS)

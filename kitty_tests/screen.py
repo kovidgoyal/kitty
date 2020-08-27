@@ -2,9 +2,12 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+from kitty.fast_data_types import (
+    DECAWM, DECCOLM, DECOM, IRM, Cursor, parse_bytes
+)
+from kitty.marks import marker_from_function, marker_from_regex
+
 from . import BaseTest
-from kitty.fast_data_types import DECAWM, IRM, Cursor, DECCOLM, DECOM
-from kitty.marks import marker_from_regex, marker_from_function
 
 
 class TestScreen(BaseTest):
@@ -516,3 +519,69 @@ class TestScreen(BaseTest):
         self.ae(s.marked_cells(), cells(8))
         s.set_marker(marker_from_regex('\t', 3))
         self.ae(s.marked_cells(), cells(*range(8)))
+
+    def test_hyperlinks(self):
+        s = self.create_screen()
+        self.ae(s.line(0).hyperlink_ids(), tuple(0 for x in range(s.columns)))
+
+        def set_link(url=None, id=None):
+            parse_bytes(s, '\x1b]8;id={};{}\x1b\\'.format(id or '', url or '').encode('utf-8'))
+
+        set_link('url-a', 'a')
+        self.ae(s.line(0).hyperlink_ids(), tuple(0 for x in range(s.columns)))
+        s.draw('a')
+        self.ae(s.line(0).hyperlink_ids(), (1,) + tuple(0 for x in range(s.columns - 1)))
+        s.draw('bc')
+        self.ae(s.line(0).hyperlink_ids(), (1, 1, 1, 0, 0))
+        set_link()
+        s.draw('d')
+        self.ae(s.line(0).hyperlink_ids(), (1, 1, 1, 0, 0))
+        set_link('url-a', 'a')
+        s.draw('efg')
+        self.ae(s.line(0).hyperlink_ids(), (1, 1, 1, 0, 1))
+        self.ae(s.line(1).hyperlink_ids(), (1, 1, 0, 0, 0))
+        set_link('url-b')
+        s.draw('hij')
+        self.ae(s.line(1).hyperlink_ids(), (1, 1, 2, 2, 2))
+        set_link()
+        self.ae([('a:url-a', 1), (':url-b', 2)], s.hyperlinks_as_list())
+        s.garbage_collect_hyperlink_pool()
+        self.ae([('a:url-a', 1), (':url-b', 2)], s.hyperlinks_as_list())
+        for i in range(s.lines + 2):
+            s.linefeed()
+        s.garbage_collect_hyperlink_pool()
+        self.ae([('a:url-a', 1), (':url-b', 2)], s.hyperlinks_as_list())
+        for i in range(s.lines * 2):
+            s.linefeed()
+        s.garbage_collect_hyperlink_pool()
+        self.assertFalse(s.hyperlinks_as_list())
+        set_link('url-a', 'x')
+        s.draw('a')
+        set_link('url-a', 'y')
+        s.draw('a')
+        set_link()
+        self.ae([('x:url-a', 1), ('y:url-a', 2)], s.hyperlinks_as_list())
+
+        s = self.create_screen()
+        set_link('u' * 2048)
+        s.draw('a')
+        self.ae([(':' + 'u' * 2045, 1)], s.hyperlinks_as_list())
+        s = self.create_screen()
+        set_link('u' * 2048, 'i' * 300)
+        s.draw('a')
+        self.ae([('i'*256 + ':' + 'u' * (2045 - 256), 1)], s.hyperlinks_as_list())
+
+        s = self.create_screen()
+        set_link('1'), s.draw('1')
+        set_link('2'), s.draw('2')
+        set_link('3'), s.draw('3')
+        s.cursor.x = 1
+        set_link(), s.draw('X')
+        self.ae(s.line(0).hyperlink_ids(), (1, 0, 3, 0, 0))
+        self.ae([(':1', 1), (':2', 2), (':3', 3)], s.hyperlinks_as_list())
+        s.garbage_collect_hyperlink_pool()
+        self.ae([(':1', 1), (':3', 2)], s.hyperlinks_as_list())
+        set_link('3'), s.draw('3')
+        self.ae([(':1', 1), (':3', 2)], s.hyperlinks_as_list())
+        set_link('4'), s.draw('4')
+        self.ae([(':1', 1), (':3', 2), (':4', 3)], s.hyperlinks_as_list())

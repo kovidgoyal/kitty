@@ -817,11 +817,21 @@ end:
     Py_RETURN_NONE;
 }
 
-
 // Boilerplate {{{
 static PyObject*
 copy_char(Line* self, PyObject *args);
 #define copy_char_doc "copy_char(src, to, dest) -> Copy the character at src to to the character dest in the line `to`"
+
+#define hyperlink_ids_doc "hyperlink_ids() -> Tuple of hyper link ids at every cell"
+static PyObject*
+hyperlink_ids(Line *self, PyObject *args UNUSED) {
+    PyObject *ans = PyTuple_New(self->xnum);
+    for (index_type x = 0; x < self->xnum; x++) {
+        PyTuple_SET_ITEM(ans, x, PyLong_FromUnsignedLong(self->cpu_cells[x].hyperlink_id));
+    }
+    return ans;
+}
+
 
 static PyObject *
 richcmp(PyObject *obj1, PyObject *obj2, int op);
@@ -845,6 +855,7 @@ static PyMethodDef methods[] = {
     METHOD(set_attribute, METH_VARARGS)
     METHOD(as_ansi, METH_NOARGS)
     METHOD(is_continued, METH_NOARGS)
+    METHOD(hyperlink_ids, METH_NOARGS)
     METHOD(width, METH_O)
     METHOD(url_start_at, METH_O)
     METHOD(url_end_at, METH_VARARGS)

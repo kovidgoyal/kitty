@@ -13,3 +13,6 @@ void free_hyperlink_pool(HYPERLINK_POOL_HANDLE);
 void clear_hyperlink_pool(HYPERLINK_POOL_HANDLE);
 hyperlink_id_type get_id_for_hyperlink(Screen*, const char*, const char*);
 hyperlink_id_type remap_hyperlink_ids(Screen *self, hyperlink_id_type *map);
+PyObject* screen_hyperlinks_as_list(Screen *screen);
+void screen_garbage_collect_hyperlink_pool(Screen *screen);
+const char* get_hyperlink_for_id(Screen *screen, hyperlink_id_type id);
