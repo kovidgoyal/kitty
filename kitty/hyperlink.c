@@ -101,7 +101,10 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     if (!url) return 0;
     HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
     static char key[MAX_KEY_LEN] = {0};
-    size_t keylen = snprintf(key, MAX_KEY_LEN-1, "%.*s:%s", MAX_ID_LEN, id ? id : "", url);
+    int keylen = snprintf(key, MAX_KEY_LEN-1, "%.*s:%s", MAX_ID_LEN, id ? id : "", url);
+    if (keylen < 0) keylen = strlen(key);
+    else keylen = MIN(keylen, MAX_KEY_LEN - 2);  // snprintf returns how many chars it would have written in case of truncation
+    key[keylen] = 0;
     HyperLinkEntry *s = NULL;
     if (pool->hyperlinks) {
         HASH_FIND_STR(pool->hyperlinks, key, s);
