@@ -1328,19 +1328,19 @@ screen_invert_colors(Screen *self) {
     return inverted;
 }
 
-float
+static inline float
 ease_out_cubic(float phase) {
     return 1.0f - powf(1.0f - phase, 3.0f);
 }
 
-float
+static inline float
 ease_in_out_cubic(float phase) {
     return phase < 0.5f ?
         4.0f * powf(phase, 3.0f) :
         1.0f - powf(-2.0f * phase + 2.0f, 3.0f) / 2.0f;
 }
 
-float
+static inline float
 visual_bell_intensity(float phase) {
     float peak = 0.2f;
     float fade = 1.0f - peak;
