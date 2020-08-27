@@ -702,20 +702,17 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
     }
     if (s == 0) return;
     bool upwards = s > 0;
-    if (screen->linebuf == screen->main_linebuf) {
-        screen_history_scroll(screen, abs(s), upwards);
-    } else {
-        if (screen->modes.mouse_tracking_mode) {
-            int sz = encode_mouse_scroll(w, upwards, modifiers);
-            if (sz > 0) {
-                mouse_event_buf[sz] = 0;
-                for (s = abs(s); s > 0; s--) {
-                    write_escape_code_to_child(screen, CSI, mouse_event_buf);
-                }
+    if (screen->modes.mouse_tracking_mode) {
+        int sz = encode_mouse_scroll(w, upwards, modifiers);
+        if (sz > 0) {
+            mouse_event_buf[sz] = 0;
+            for (s = abs(s); s > 0; s--) {
+                write_escape_code_to_child(screen, CSI, mouse_event_buf);
             }
-        } else {
-            fake_scroll(w, abs(s), upwards);
         }
+    } else {
+        if (screen->linebuf == screen->main_linebuf) screen_history_scroll(screen, abs(s), upwards);
+        else fake_scroll(w, abs(s), upwards);
     }
 }
 

@@ -24,6 +24,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow specifying watchers in session files and via a command line argument
   (:iss:`2933`)
 
+- When in the main screen and a program grabs the mouse, do not use the scroll
+  wheel events to scroll the scrollback buffer, instead send them to the
+  program (:iss:`2939`)
+
 
 0.18.3 [2020-08-11]
 -------------------
