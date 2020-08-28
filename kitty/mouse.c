@@ -685,9 +685,8 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
         s = (int)round(pixels) / (int)global_state.callback_os_window->fonts_data->cell_height;
         screen->pending_scroll_pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
     } else {
-        if (screen->linebuf == screen->main_linebuf || !screen->modes.mouse_tracking_mode) {
-            // Only use wheel_scroll_multiplier if we are scrolling kitty scrollback or in mouse
-            // tracking mode, where the application is responsible for interpreting scroll events
+        if (!screen->modes.mouse_tracking_mode) {
+            // Dont use multiplier if we are sending events to the application
             yoffset *= OPT(wheel_scroll_multiplier);
         } else if (OPT(wheel_scroll_multiplier) < 0) {
             // ensure that changing scroll direction still works, even though
