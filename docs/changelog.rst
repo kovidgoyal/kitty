@@ -7,6 +7,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.18.4 [2020-08-11]
 -------------------
 
+- Grid layout: Improve rendering of borders when using minimal borders
+
 - Add support for displaying correct colors with non-sRGB PNG files (Adds a
   dependency on liblcms2)
 

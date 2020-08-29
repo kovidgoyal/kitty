@@ -111,6 +111,6 @@ class Borders:
                 colors = window_bg, window_bg, window_bg, window_bg
                 draw_edges(self.os_window_id, self.tab_id, colors, wg)
 
-        color = BorderColor.inactive
-        for (left, top, right, bottom) in current_layout.window_independent_borders(all_windows):
-            add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, color)
+        for border_line in current_layout.window_independent_borders(all_windows):
+            left, top, right, bottom = border_line.edges
+            add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, border_line.color)

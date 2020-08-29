@@ -16,6 +16,7 @@ from kitty.fast_data_types import (
 from kitty.options_stub import Options
 from kitty.typing import TypedDict, WindowType
 from kitty.window_list import WindowGroup, WindowList
+from kitty.borders import BorderColor
 
 
 class Borders(NamedTuple):
@@ -23,6 +24,11 @@ class Borders(NamedTuple):
     top: bool
     right: bool
     bottom: bool
+
+
+class BorderLine(NamedTuple):
+    edges: Edges = Edges()
+    color: BorderColor = BorderColor.inactive
 
 
 class LayoutOpts:
@@ -205,6 +211,7 @@ class Layout:
     name: Optional[str] = None
     needs_window_borders = True
     must_draw_borders = False  # can be overridden to customize behavior from kittens
+    no_minimal_window_borders = False
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
 
@@ -383,13 +390,14 @@ class Layout:
             for i in range(all_windows.num_groups):
                 yield all_borders
 
-    def window_independent_borders(self, windows: WindowList) -> Generator[Edges, None, None]:
+    def window_independent_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
         return
-        yield Edges()  # type: ignore
+        yield BorderLine()  # type: ignore
 
     def minimal_borders(self, windows: WindowList, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
-        for needs_border in needs_borders_map.values():
-            yield all_borders if needs_border else no_borders
+        if not self.no_minimal_window_borders:
+            for needs_border in needs_borders_map.values():
+                yield all_borders if needs_border else no_borders
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         pass
