@@ -206,7 +206,7 @@ class Grid(Layout):
                 is_first_column = {groups[x].id for x in col_windows}
             prev_col_windows = col_windows
 
-        all_groups_in_order = []
+        all_groups_in_order: List[WindowGroup] = []
         for window_idx, xl, yl in self.layout_windows(n, nrows, ncols, special_rows, special_col, on_col_done):
             wg = groups[window_idx]
             all_groups_in_order.append(wg)
