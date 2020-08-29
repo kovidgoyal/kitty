@@ -1018,9 +1018,6 @@ class Boss:
                 program = to_cmdline(program)
             open_url(url, program or self.opts.open_url_with, cwd=cwd)
 
-    def open_url_lines(self, lines: Iterable[str], program: Optional[Union[str, List[str]]] = None) -> None:
-        self.open_url(''.join(lines), program)
-
     def destroy(self) -> None:
         self.shutting_down = True
         self.child_monitor.shutdown_monitor()

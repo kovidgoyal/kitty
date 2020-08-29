@@ -1892,6 +1892,19 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
     return ans;
 }
 
+static inline hyperlink_id_type
+hyperlink_id_for_range(Screen *self, const Selection *sel) {
+    IterationData idata;
+    iteration_data(self, sel, &idata, -self->historybuf->count, false);
+    for (int i = 0, y = idata.y; y < idata.y_limit && y < (int)self->lines; y++, i++) {
+        Line *line = range_line_(self, y);
+        XRange xr = xrange_for_iteration(&idata, y, line);
+        for (index_type x = xr.x; x < xr.x_limit; x++) {
+            if (line->cpu_cells[x].hyperlink_id) return line->cpu_cells[x].hyperlink_id;
+        }
+    }
+    return 0;
+}
 
 static inline PyObject*
 extend_tuple(PyObject *a, PyObject *b) {
@@ -1907,33 +1920,58 @@ extend_tuple(PyObject *a, PyObject *b) {
     return a;
 }
 
+static PyObject*
+current_url_text(Screen *self, PyObject *args UNUSED) {
+    PyObject *empty_string = PyUnicode_FromString(""), *ans = NULL;
+    if (!empty_string) return NULL;
+    for (size_t i = 0; i < self->url_ranges.count; i++) {
+        Selection *s = self->url_ranges.items + i;
+        if (!is_selection_empty(s)) {
+            PyObject *temp = text_for_range(self, s, false);
+            if (!temp) goto error;
+            PyObject *text = PyUnicode_Join(empty_string, temp);
+            Py_CLEAR(temp);
+            if (!text) goto error;
+            if (ans) {
+                PyObject *t = ans;
+                ans = PyUnicode_Concat(ans, text);
+                Py_CLEAR(text); Py_CLEAR(t);
+                if (!ans) goto error;
+            } else ans = text;
+        }
+    }
+    Py_CLEAR(empty_string);
+    if (!ans) Py_RETURN_NONE;
+    return ans;
+error:
+    Py_CLEAR(empty_string); Py_CLEAR(ans);
+    return NULL;
+}
+
 
 bool
 screen_open_url(Screen *self) {
     if (!self->url_ranges.count) return false;
-    bool ret = false;
-    PyObject *lines = NULL;
-    for (size_t i = 0; i < self->url_ranges.count; i++) {
-        // we dont care about the order of the ranges because the text only matters
-        // for text based urls not hyperlinks and for the former there is only ever a single range
-        Selection *s = self->url_ranges.items + i;
-        if (!is_selection_empty(s)) {
-            PyObject *temp = text_for_range(self, s, false);
-            if (temp) {
-                if (lines) {
-                    lines = extend_tuple(lines, temp);
-                    Py_DECREF(temp);
-                } else lines = temp;
-            } else break;
+    hyperlink_id_type hid = hyperlink_id_for_range(self, self->url_ranges.items);
+    if (hid) {
+        const char *url = get_hyperlink_for_id(self, hid);
+        if (url) {
+            call_boss(open_url, "s", url);
+            return true;
         }
     }
-    if (lines && PyTuple_GET_SIZE(lines) > 0) {
-        call_boss(open_url_lines, "(O)", lines);
-        ret = true;
+    PyObject *text = current_url_text(self, NULL);
+    if (!text) {
+        if (PyErr_Occurred()) PyErr_Print();
+        return false;
     }
-    Py_CLEAR(lines);
-    if (PyErr_Occurred()) PyErr_Print();
-    return ret;
+    bool found = false;
+    if (PyUnicode_Check(text)) {
+        call_boss(open_url, "O", text);
+        found = true;
+    }
+    Py_CLEAR(text);
+    return found;
 }
 
 static void
@@ -2449,19 +2487,88 @@ screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_ha
 #undef A
 }
 
-void
-screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
-#define A(attr, val) self->url_ranges.items->attr = val;
+static inline void
+add_url_range(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
+#define A(attr, val) r->attr = val;
     ensure_space_for(&self->url_ranges, items, Selection, 1, capacity, 8, false);
-    memset(self->url_ranges.items, 0, sizeof(Selection));
-    if (!start_x && !start_y && !end_x && !end_y) self->url_ranges.count = 0;
-    else {
-        self->url_ranges.count = 1;
-        A(start.x, start_x); A(end.x, end_x); A(start.y, start_y); A(end.y, end_y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
-        A(start.in_left_half_of_cell, true); A(end.in_left_half_of_cell, start_x == end_x && start_y == end_y);
-    }
+    Selection *r = self->url_ranges.items + self->url_ranges.count++;
+    memset(r, 0, sizeof(Selection));
+    A(start.x, start_x); A(end.x, end_x); A(start.y, start_y); A(end.y, end_y);
+    A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
+    A(start.in_left_half_of_cell, true); A(end.in_left_half_of_cell, start_x == end_x && start_y == end_y);
 #undef A
 }
+
+void
+screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
+    self->url_ranges.count = 0;
+    if (start_x || start_y || end_x || end_y) add_url_range(self, start_x, start_y, end_x, end_y);
+}
+
+static bool
+mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id) {
+    index_type start = 0;
+    bool found = false;
+    bool in_range = false;
+    for (index_type x = 0; x < line->xnum; x++) {
+        bool has_hyperlink = line->cpu_cells[x].hyperlink_id == id;
+        if (in_range) {
+            if (!has_hyperlink) {
+                add_url_range(self, start, line->ynum, x - 1, line->ynum);
+                in_range = false;
+                start = 0;
+            }
+        } else {
+            if (has_hyperlink) {
+                start = x; in_range = true;
+                found = true;
+            }
+        }
+    }
+    if (in_range) add_url_range(self, start, line->ynum, self->columns - 1, line->ynum);
+    return found;
+}
+
+static int
+compare_ranges(const void *a_, const void* b_) {
+    const Selection *a = a_, *b = b_;
+    return (a->sort_y - b->sort_y) || (a->sort_x - b->sort_x);
+}
+
+static void
+sort_ranges(const Screen *self, Selections *s) {
+    IterationData a;
+    for (size_t i = 0; i < s->count; i++) {
+        iteration_data(self, s->items + i, &a, 0, false);
+        s->items[i].sort_x = a.first.x;
+        s->items[i].sort_y = a.y;
+    }
+    qsort(s->items, s->count, sizeof(Selection), compare_ranges);
+}
+
+hyperlink_id_type
+screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
+    self->url_ranges.count = 0;
+    Line *line = screen_visual_line(self, y);
+    hyperlink_id_type id = line->cpu_cells[x].hyperlink_id;
+    if (!id) return 0;
+    index_type ypos = y, last_marked_line = y;
+    do {
+        if (mark_hyperlinks_in_line(self, line, id)) last_marked_line = ypos;
+        if (ypos == 0) break;
+        ypos--;
+        line = screen_visual_line(self, ypos);
+    } while ( last_marked_line - ypos < 5);
+    ypos = y; last_marked_line = y;
+    while (ypos < self->lines - 1 && ypos - last_marked_line < 5) {
+        line = screen_visual_line(self, ypos);
+        if (mark_hyperlinks_in_line(self, line, id)) last_marked_line = ypos;
+        ypos++;
+    }
+    if (self->url_ranges.count > 1) sort_ranges(self, &self->url_ranges);
+    return id;
+}
+
 
 void
 screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool ended, bool start_extended_selection) {
@@ -2714,6 +2821,17 @@ screen_is_emoji_presentation_base(PyObject UNUSED *self, PyObject *code_) {
     Py_RETURN_FALSE;
 }
 
+static PyObject*
+hyperlink_at(Screen *self, PyObject *args) {
+    unsigned int x, y;
+    if (!PyArg_ParseTuple(args, "II", &x, &y)) return NULL;
+    screen_mark_hyperlink(self, x, y);
+    if (!self->url_ranges.count) Py_RETURN_NONE;
+    hyperlink_id_type hid = hyperlink_id_for_range(self, self->url_ranges.items);
+    if (!hid) Py_RETURN_NONE;
+    const char *url = get_hyperlink_for_id(self, hid);
+    return Py_BuildValue("s", url);
+}
 
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
@@ -2721,6 +2839,7 @@ screen_is_emoji_presentation_base(PyObject UNUSED *self, PyObject *code_) {
 static PyMethodDef methods[] = {
     MND(line, METH_O)
     MND(visual_line, METH_VARARGS)
+    MND(current_url_text, METH_NOARGS)
     MND(draw, METH_O)
     MND(cursor_position, METH_VARARGS)
     MND(set_mode, METH_VARARGS)
@@ -2770,6 +2889,7 @@ static PyMethodDef methods[] = {
     MND(is_rectangle_select, METH_NOARGS)
     MND(scroll, METH_VARARGS)
     MND(send_escape_code_to_child, METH_VARARGS)
+    MND(hyperlink_at, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)
     MND(reset_callbacks, METH_NOARGS)
     MND(paste, METH_O)

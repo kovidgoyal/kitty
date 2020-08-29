@@ -40,6 +40,7 @@ typedef struct {
     unsigned int start_scrolled_by, end_scrolled_by;
     bool rectangle_select;
     IterationData last_rendered;
+    int sort_y, sort_x;
 } Selection;
 
 typedef struct {
@@ -215,6 +216,7 @@ Line* screen_visual_line(Screen *self, index_type y);
 unsigned long screen_current_char_width(Screen *self);
 void screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y);
 void set_active_hyperlink(Screen*, char*, char*);
+hyperlink_id_type screen_mark_hyperlink(Screen*, index_type, index_type);
 void screen_handle_graphics_command(Screen *self, const GraphicsCommand *cmd, const uint8_t *payload);
 bool screen_open_url(Screen*);
 void screen_dirty_sprite_positions(Screen *self);

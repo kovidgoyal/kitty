@@ -303,6 +303,11 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
     bool has_url = false;
     index_type url_start, url_end = 0;
     Line *line = screen_visual_line(screen, y);
+    if (line->cpu_cells[x].hyperlink_id) {
+        mouse_cursor_shape = HAND;
+        screen_mark_hyperlink(screen, x, y);
+        return;
+    }
     char_type sentinel;
     if (line) {
         url_start = line_url_start_at(line, x);
