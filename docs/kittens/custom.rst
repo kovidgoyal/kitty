@@ -156,8 +156,8 @@ from ``kitty.fast_data_types``.
 
 For example, to send a left click at position x: 2, y: 3 to the active window::
 
-    from kitty.fast_data_types import send_mouse_event, GLFW_MOUSE_BUTTON_LEFT, PRESS
-    send_mouse_event(boss.active_window.screen, 2, 3, GLFW_MOUSE_BUTTON_LEFT, PRESS, 0)
+    from kitty.fast_data_types import send_mouse_event, PRESS
+    send_mouse_event(boss.active_window.screen, 2, 3, 1, PRESS, 0)
 
 The function will only send the event if the program is receiving events of
 that type, and will return ``True`` if it sent the event, and ``False`` if not.
