@@ -489,9 +489,14 @@ class Window:
             return
         call_watchers(weakref.ref(self), 'on_focus_change', {'focused': focused})
         if focused:
+            changed = self.needs_attention
             self.needs_attention = False
             if self.screen.focus_tracking_enabled:
                 self.screen.send_escape_code_to_child(CSI, 'I')
+            if changed:
+                tab = self.tabref()
+                if tab is not None:
+                    tab.relayout_borders()
         else:
             if self.screen.focus_tracking_enabled:
                 self.screen.send_escape_code_to_child(CSI, 'O')
@@ -516,9 +521,12 @@ class Window:
             env['KITTY_CHILD_CMDLINE'] = ' '.join(map(shlex.quote, self.child.cmdline))
             subprocess.Popen(self.opts.command_on_bell, env=env, cwd=self.child.foreground_cwd)
         if not self.is_active:
+            changed = not self.needs_attention
             self.needs_attention = True
             tab = self.tabref()
             if tab is not None:
+                if changed:
+                    tab.relayout_borders()
                 tab.on_bell(self)
 
     def change_titlebar_color(self) -> None:

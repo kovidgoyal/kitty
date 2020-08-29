@@ -30,6 +30,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   wheel events to scroll the scrollback buffer, instead send them to the
   program (:iss:`2939`)
 
+- Fix unfocused windows in which a bell occurs not changing their border color
+  to red until a relayout
+
 
 0.18.3 [2020-08-11]
 -------------------
