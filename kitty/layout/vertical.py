@@ -24,7 +24,10 @@ def borders(
     borders: List[BorderLine] = []
     active_group = all_windows.active_group
     needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
-    bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
+    try:
+        bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
+    except StopIteration:
+        bw = 0
     if not bw:
         return
 
@@ -112,7 +115,7 @@ class Vertical(Layout):
 
     def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
         window_count = all_windows.num_groups
-        if window_count == 1 or not lgd.draw_minimal_borders:
+        if window_count < 2 or not lgd.draw_minimal_borders:
             return
         yield from borders(self.generate_layout_data(all_windows), self.main_is_horizontal, all_windows)
 

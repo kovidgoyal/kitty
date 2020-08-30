@@ -204,9 +204,12 @@ class Tall(Layout):
 
     def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
         num = all_windows.num_groups
-        if num == 1 or not lgd.draw_minimal_borders:
+        if num < 2 or not lgd.draw_minimal_borders:
             return
-        bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
+        try:
+            bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
+        except StopIteration:
+            bw = 0
         if not bw:
             return
         if num <= self.num_full_size_windows + 1:
