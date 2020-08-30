@@ -7,7 +7,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.18.4 [2020-08-11]
 -------------------
 
-- Grid/Splits layouts: Improve rendering of borders when using minimal borders
+- Improve rendering of borders when using minimal borders. Use less space and
+  does not display a box around active windows.
 
 - Add support for displaying correct colors with non-sRGB PNG files (Adds a
   dependency on liblcms2)

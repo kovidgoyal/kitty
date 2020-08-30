@@ -18,13 +18,13 @@ from .base import (
 def borders(
     data: Iterable[Tuple[WindowGroup, LayoutData, LayoutData]],
     is_horizontal: bool,
-    all_windows: WindowList
+    all_windows: WindowList,
+    start_offset: int = 1, end_offset: int = 1
 ) -> Generator[BorderLine, None, None]:
     borders: List[BorderLine] = []
     active_group = all_windows.active_group
-    groups = tuple(all_windows.iter_all_layoutable_groups())
     needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
-    bw = groups[0].effective_border()
+    bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
     if not bw:
         return
 
@@ -52,8 +52,11 @@ def borders(
             color = BorderColor.active if wg is active_group else BorderColor.bell
         borders.append(BorderLine(e1, color))
         borders.append(BorderLine(e2, color))
-    for x in borders[1:-1]:
-        yield x
+
+    last_idx = len(borders) - 1 - end_offset
+    for i, x in enumerate(borders):
+        if start_offset <= i <= last_idx:
+            yield x
 
 
 class Vertical(Layout):
