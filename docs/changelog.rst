@@ -11,7 +11,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   does not display a box around active windows.
 
 - Allow specifying border sizes in either pts or pixels. Change the default to
-  1px borders as this works best with the new minimal border style.
+  0.5pt borders as this works best with the new minimal border style.
 
 - Add support for displaying correct colors with non-sRGB PNG files (Adds a
   dependency on liblcms2)

@@ -332,7 +332,7 @@ class Window:
     def effective_border(self) -> int:
         val, unit = self.opts.window_border_width
         if unit == 'pt':
-            val = pt_to_px(val, self.os_window_id)
+            val = max(1 if val > 0 else 0, pt_to_px(val, self.os_window_id))
         else:
             val = round(val)
         return int(val)

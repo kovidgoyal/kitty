@@ -683,7 +683,7 @@ def window_border_width(x: Union[str, int, float]) -> Tuple[float, str]:
     return max(0, val), unit
 
 
-o('window_border_width', '1px', option_type=window_border_width, long_text=_('''
+o('window_border_width', '0.5pt', option_type=window_border_width, long_text=_('''
 The width of window borders. Can be either in pixels (px) or pts (pt). Values
 in pts will be rounded to the nearest number of pixels based on screen
 resolution. If not specified the unit is assumed to be pts.
