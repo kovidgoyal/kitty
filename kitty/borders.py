@@ -69,6 +69,7 @@ class Borders:
         self.os_window_id = os_window_id
         self.tab_id = tab_id
         self.draw_active_borders = opts.active_border_color is not None
+        self.draw_minimal_borders = opts.draw_minimal_borders
 
     def __call__(
         self,
@@ -88,29 +89,24 @@ class Borders:
         if groups:
             bw = groups[0].effective_border()
         draw_borders = bw > 0 and draw_window_borders
-        if draw_borders:
-            border_data = current_layout.resolve_borders(all_windows)
         active_group = all_windows.active_group
 
         for i, wg in enumerate(groups):
             window_bg = wg.default_bg
             window_bg = (window_bg << 8) | BorderColor.window_bg
-            if draw_borders:
+            if draw_borders and not self.draw_minimal_borders:
                 # Draw the border rectangles
                 if wg is active_group and self.draw_active_borders:
                     color = BorderColor.active
                 else:
                     color = BorderColor.bell if wg.needs_attention else BorderColor.inactive
-                try:
-                    colors = tuple(color if needed else window_bg for needed in next(border_data))
-                    draw_edges(self.os_window_id, self.tab_id, colors, wg, borders=True)
-                except StopIteration:
-                    pass
+                draw_edges(self.os_window_id, self.tab_id, (color, color, color, color), wg, borders=True)
             if not has_background_image:
                 # Draw the background rectangles over the padding region
                 colors = window_bg, window_bg, window_bg, window_bg
                 draw_edges(self.os_window_id, self.tab_id, colors, wg)
 
-        for border_line in current_layout.window_independent_borders(all_windows):
-            left, top, right, bottom = border_line.edges
-            add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, border_line.color)
+        if self.draw_minimal_borders:
+            for border_line in current_layout.minimal_borders(all_windows):
+                left, top, right, bottom = border_line.edges
+                add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, border_line.color)

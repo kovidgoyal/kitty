@@ -178,7 +178,7 @@ class Grid(Layout):
                 n, nrows, ncols, special_rows, special_col, on_col_done):
             position_window_in_grid_cell(window_idx, xl, yl)
 
-    def window_independent_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
         n = all_windows.num_groups
         if not lgd.draw_minimal_borders or n < 2:
             return

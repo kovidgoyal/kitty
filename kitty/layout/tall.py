@@ -202,7 +202,7 @@ class Tall(Layout):
                 self.layout_opts.full_size -= 1
                 return True
 
-    def window_independent_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
         num = all_windows.num_groups
         if num == 1 or not lgd.draw_minimal_borders:
             return

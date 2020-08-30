@@ -487,7 +487,7 @@ class Splits(Layout):
             pair.bias = 0.5
         return True
 
-    def window_independent_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
         groups = tuple(all_windows.iter_all_layoutable_groups())
         window_count = len(groups)
         if not lgd.draw_minimal_borders or window_count < 2:

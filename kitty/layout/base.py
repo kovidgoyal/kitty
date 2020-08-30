@@ -19,13 +19,6 @@ from kitty.window_list import WindowGroup, WindowList
 from kitty.borders import BorderColor
 
 
-class Borders(NamedTuple):
-    left: bool
-    top: bool
-    right: bool
-    bottom: bool
-
-
 class BorderLine(NamedTuple):
     edges: Edges = Edges()
     color: BorderColor = BorderColor.inactive
@@ -45,8 +38,6 @@ class LayoutData(NamedTuple):
     content_size: int = 0
 
 
-all_borders = Borders(True, True, True, True)
-no_borders = Borders(False, False, False, False)
 DecorationPairs = Sequence[Tuple[int, int]]
 LayoutDimension = Generator[LayoutData, None, None]
 ListOfWindows = List[WindowType]
@@ -211,7 +202,6 @@ class Layout:
     name: Optional[str] = None
     needs_window_borders = True
     must_draw_borders = False  # can be overridden to customize behavior from kittens
-    no_minimal_window_borders = False  # if True means minimal borders are drawn in window_independent_borders
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
 
@@ -384,22 +374,9 @@ class Layout:
     def compute_needs_borders_map(self, all_windows: WindowList) -> Dict[int, bool]:
         return all_windows.compute_needs_borders_map(lgd.draw_active_borders)
 
-    def resolve_borders(self, all_windows: WindowList) -> Generator[Borders, None, None]:
-        if lgd.draw_minimal_borders:
-            needs_borders_map = self.compute_needs_borders_map(all_windows)
-            yield from self.minimal_borders(all_windows, needs_borders_map)
-        else:
-            for i in range(all_windows.num_groups):
-                yield all_borders
-
-    def window_independent_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
         return
         yield BorderLine()  # type: ignore
-
-    def minimal_borders(self, windows: WindowList, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
-        if not self.no_minimal_window_borders:
-            for needs_border in needs_borders_map.values():
-                yield all_borders if needs_border else no_borders
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         pass

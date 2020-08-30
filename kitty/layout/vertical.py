@@ -10,7 +10,7 @@ from kitty.typing import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import (
-    BorderLine, Borders, Layout, LayoutData, LayoutDimension, NeighborsMap,
+    BorderLine, Layout, LayoutData, LayoutDimension, NeighborsMap,
     lgd, variable_bias
 )
 
@@ -63,7 +63,6 @@ class Vertical(Layout):
 
     name = 'vertical'
     main_is_horizontal = False
-    only_between_border = Borders(False, False, False, True)
     no_minimal_window_borders = True
     main_axis_layout = Layout.ylayout
     perp_axis_layout = Layout.xlayout
@@ -111,7 +110,7 @@ class Vertical(Layout):
         for wg, xl, yl in self.generate_layout_data(all_windows):
             self.set_window_group_geometry(wg, xl, yl)
 
-    def window_independent_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
         window_count = all_windows.num_groups
         if window_count == 1 or not lgd.draw_minimal_borders:
             return
@@ -133,6 +132,5 @@ class Horizontal(Vertical):
 
     name = 'horizontal'
     main_is_horizontal = True
-    only_between_border = Borders(False, False, True, False)
     main_axis_layout = Layout.xlayout
     perp_axis_layout = Layout.ylayout
