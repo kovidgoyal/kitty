@@ -670,9 +670,25 @@ for vertical resizing.
 '''))
 o('window_resize_step_lines', 2, option_type=positive_int)
 
-o('window_border_width', 1.0, option_type=positive_float, long_text=_('''
-The width (in pts) of window borders. Will be rounded to the nearest number of pixels based on screen resolution.
-Note that borders are displayed only when more than one window is visible. They are meant to separate multiple windows.'''))
+
+def window_border_width(x: Union[str, int, float]) -> Tuple[float, str]:
+    unit = 'pt'
+    if isinstance(x, str):
+        trailer = x[-2:]
+        if trailer in ('px', 'pt'):
+            unit = trailer
+            val = float(x[:-2])
+    else:
+        val = float(x)
+    return max(0, val), unit
+
+
+o('window_border_width', '1px', option_type=window_border_width, long_text=_('''
+The width of window borders. Can be either in pixels (px) or pts (pt). Values
+in pts will be rounded to the nearest number of pixels based on screen
+resolution. If not specified the unit is assumed to be pts.
+Note that borders are displayed only when more than one window
+is visible. They are meant to separate multiple windows.'''))
 
 o('draw_minimal_borders', True, long_text=_('''
 Draw only the minimum borders needed. This means that only the minimum

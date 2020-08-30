@@ -330,7 +330,12 @@ class Window:
             self.update_effective_padding()
 
     def effective_border(self) -> int:
-        return pt_to_px(self.opts.window_border_width, self.os_window_id)
+        val, unit = self.opts.window_border_width
+        if unit == 'pt':
+            val = pt_to_px(val, self.os_window_id)
+        else:
+            val = round(val)
+        return int(val)
 
     @property
     def title(self) -> str:
