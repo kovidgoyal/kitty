@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Dict, Generator, List, Tuple
+from typing import Dict, Generator, Iterable, List, Tuple
 
 from kitty.borders import BorderColor
 from kitty.constants import Edges
@@ -13,6 +13,47 @@ from .base import (
     BorderLine, Borders, Layout, LayoutData, LayoutDimension, NeighborsMap,
     lgd, variable_bias
 )
+
+
+def borders(
+    data: Iterable[Tuple[WindowGroup, LayoutData, LayoutData]],
+    is_horizontal: bool,
+    all_windows: WindowList
+) -> Generator[BorderLine, None, None]:
+    borders: List[BorderLine] = []
+    active_group = all_windows.active_group
+    groups = tuple(all_windows.iter_all_layoutable_groups())
+    needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
+    bw = groups[0].effective_border()
+    if not bw:
+        return
+
+    for wg, xl, yl in data:
+        if is_horizontal:
+            e1 = Edges(
+                xl.content_pos - xl.space_before, yl.content_pos - yl.space_before,
+                xl.content_pos - xl.space_before + bw, yl.content_pos + yl.content_size + yl.space_after
+            )
+            e2 = Edges(
+                xl.content_pos + xl.content_size + xl.space_after - bw, yl.content_pos - yl.space_before,
+                xl.content_pos + xl.content_size + xl.space_after, yl.content_pos + yl.content_size + yl.space_after
+            )
+        else:
+            e1 = Edges(
+                xl.content_pos - xl.space_before, yl.content_pos - yl.space_before,
+                xl.content_pos + xl.content_size + xl.space_after, yl.content_pos - yl.space_before + bw
+            )
+            e2 = Edges(
+                xl.content_pos - xl.space_before, yl.content_pos + yl.content_size + yl.space_after - bw,
+                xl.content_pos + xl.content_size + xl.space_after, yl.content_pos + yl.content_size + yl.space_after
+            )
+        color = BorderColor.inactive
+        if needs_borders_map.get(wg.id):
+            color = BorderColor.active if wg is active_group else BorderColor.bell
+        borders.append(BorderLine(e1, color))
+        borders.append(BorderLine(e2, color))
+    for x in borders[1:-1]:
+        yield x
 
 
 class Vertical(Layout):
@@ -71,40 +112,7 @@ class Vertical(Layout):
         window_count = all_windows.num_groups
         if window_count == 1 or not lgd.draw_minimal_borders:
             return
-        groups = tuple(all_windows.iter_all_layoutable_groups())
-        needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
-        bw = groups[0].effective_border()
-        if not bw:
-            return
-        borders: List[BorderLine] = []
-        active_group = all_windows.active_group
-
-        for wg, xl, yl in self.generate_layout_data(all_windows):
-            if self.main_is_horizontal:
-                e1 = Edges(
-                    xl.content_pos - xl.space_before, yl.content_pos - yl.space_before,
-                    xl.content_pos - xl.space_before + bw, yl.content_pos + yl.content_size + yl.space_after
-                )
-                e2 = Edges(
-                    xl.content_pos + xl.content_size + xl.space_after - bw, yl.content_pos - yl.space_before,
-                    xl.content_pos + xl.content_size + xl.space_after, yl.content_pos + yl.content_size + yl.space_after
-                )
-            else:
-                e1 = Edges(
-                    xl.content_pos - xl.space_before, yl.content_pos - yl.space_before,
-                    xl.content_pos + xl.content_size + xl.space_after, yl.content_pos - yl.space_before + bw
-                )
-                e2 = Edges(
-                    xl.content_pos - xl.space_before, yl.content_pos + yl.content_size + yl.space_after - bw,
-                    xl.content_pos + xl.content_size + xl.space_after, yl.content_pos + yl.content_size + yl.space_after
-                )
-            color = BorderColor.inactive
-            if needs_borders_map.get(wg.id):
-                color = BorderColor.active if wg is active_group else BorderColor.bell
-            borders.append(BorderLine(e1, color))
-            borders.append(BorderLine(e2, color))
-        for x in borders[1:-1]:
-            yield x
+        yield from borders(self.generate_layout_data(all_windows), self.main_is_horizontal, all_windows)
 
     def neighbors_for_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
         wg = all_windows.group_for_window(window)
