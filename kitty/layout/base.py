@@ -211,7 +211,7 @@ class Layout:
     name: Optional[str] = None
     needs_window_borders = True
     must_draw_borders = False  # can be overridden to customize behavior from kittens
-    no_minimal_window_borders = False
+    no_minimal_window_borders = False  # if True means minimal borders are drawn in window_independent_borders
     layout_opts = LayoutOpts({})
     only_active_window_visible = False
 
@@ -337,10 +337,11 @@ class Layout:
         bias: Optional[Sequence[float]] = None,
         start: Optional[int] = None,
         size: Optional[int] = None,
-        offset: int = 0
+        offset: int = 0,
+        border_mult: int = 1
     ) -> LayoutDimension:
         decoration_pairs = tuple(
-            (g.decoration('left'), g.decoration('right')) for i, g in
+            (g.decoration('left', border_mult=border_mult), g.decoration('right', border_mult=border_mult)) for i, g in
             enumerate(groups) if i >= offset
         )
         if start is None:
@@ -355,10 +356,11 @@ class Layout:
         bias: Optional[Sequence[float]] = None,
         start: Optional[int] = None,
         size: Optional[int] = None,
-        offset: int = 0
+        offset: int = 0,
+        border_mult: int = 1
     ) -> LayoutDimension:
         decoration_pairs = tuple(
-            (g.decoration('top'), g.decoration('bottom')) for i, g in
+            (g.decoration('top', border_mult=border_mult), g.decoration('bottom', border_mult=border_mult)) for i, g in
             enumerate(groups) if i >= offset
         )
         if start is None:
