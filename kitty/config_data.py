@@ -678,6 +678,8 @@ def window_border_width(x: Union[str, int, float]) -> Tuple[float, str]:
         if trailer in ('px', 'pt'):
             unit = trailer
             val = float(x[:-2])
+        else:
+            val = float(x)
     else:
         val = float(x)
     return max(0, val), unit
