@@ -134,10 +134,6 @@ float is_cursor(uint xi, uint y) {
     float x_equal = step(0.5, x1_equal + x2_equal);
     return step(2.0, x_equal + y_equal);
 }
-
-vec3 blend_softlight(vec3 base, vec3 blend) {
-    return (1.0 - 2.0 * blend) * base * base + 2.0 * blend * base;
-}
 // }}}
 
 
@@ -195,10 +191,6 @@ void main() {
     // Selection
     vec3 selection_color = color_to_vec(highlight_fg);
     foreground = choose_color(float(is_selected & ONE), selection_color, foreground);
-    foreground = choose_color(visual_bell_intensity * 0.5,
-        blend_softlight(color_to_vec(highlight_bg), foreground),
-        foreground
-    );
     decoration_fg = choose_color(float(is_selected & ONE), selection_color, decoration_fg);
 #endif
     // Underline and strike through (rendered via sprites)
@@ -247,12 +239,9 @@ void main() {
 
 #if defined(SPECIAL) || defined(SIMPLE)
     // Selection and cursor
+    bg = max(bg, choose_color(visual_bell_intensity, color_to_vec(highlight_bg), bg));
     bg = choose_color(float(is_selected & ONE), color_to_vec(highlight_bg), bg);
-    bg = choose_color(cell_has_block_cursor, color_to_vec(cursor_color), bg);
-    background = choose_color(visual_bell_intensity,
-        blend_softlight(color_to_vec(highlight_bg), bg),
-        bg
-    );
+    background = choose_color(cell_has_block_cursor, color_to_vec(cursor_color), bg);
 #if !defined(TRANSPARENT) && defined(SPECIAL)
     float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);
     bg_alpha = step(0.5, is_special_cell);
