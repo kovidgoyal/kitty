@@ -464,9 +464,11 @@ draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloa
     // BLEND_PREMULT
     glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
     bind_program(TINT_PROGRAM);
+    // TODO config option worth?
+    GLfloat attenuation = 0.4f;
     color_type flash = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg);
-#define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) * intensity * 0.5f)
-    glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), intensity * 0.5f);
+#define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) * intensity * attenuation)
+    glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), intensity * attenuation);
 #undef C
     glUniform4f(tint_program_layout.edges_location, xstart, ystart - h, xstart + w, ystart);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
