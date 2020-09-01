@@ -37,6 +37,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix unfocused windows in which a bell occurs not changing their border color
   to red until a relayout
 
+- Implement special rendering for various characters from the set of "Symbols
+  for Legacy Computing" from the Unicode 13 standard
+
 
 0.18.3 [2020-08-11]
 -------------------

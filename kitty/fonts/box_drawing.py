@@ -582,6 +582,35 @@ def quad(buf: BufType, width: int, height: int, x: int = 0, y: int = 0) -> None:
             buf[off + c] = 255
 
 
+def sextant(buf: BufType, width: int, height: int, level: int = 1, which: int = 0) -> None:
+
+    def draw_sextant(row: int = 0, col: int = 0) -> None:
+        if row == 0:
+            y_start, y_end = 0, height // 3
+        elif row == 1:
+            y_start, y_end = height // 3, 2 * height // 3
+        else:
+            y_start, y_end = 2 * height // 3, height
+        if col == 0:
+            x_start, x_end = 0, width // 2
+        else:
+            x_start, x_end = width // 2, width
+        for r in range(y_start, y_end):
+            off = r * width
+            for c in range(x_start, x_end):
+                buf[c + off] = 255
+
+    def add_row(q: int, r: int) -> None:
+        if q & 1:
+            draw_sextant(r)
+        if q & 2:
+            draw_sextant(r, col=1)
+
+    add_row(which % 4, 0)
+    add_row(which // 4, 1)
+    add_row(which // 16, 2)
+
+
 box_chars: Dict[str, List[Callable]] = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -708,6 +737,14 @@ for starts, func, pattern in (
 for chars, func_ in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('╔╗╚╝', dcorner), ('╟╢╤╧', dpip)):
     for ch in chars:
         box_chars[ch] = [p(cast(Callable, func_), which=ch)]
+
+
+c = 0x1fb00
+for i in range(1, 63):
+    if i in (20, 40):
+        continue
+    box_chars[chr(c)] = [p(sextant, which=i)]
+    c += 1
 
 
 def render_box_char(ch: str, buf: BufType, width: int, height: int, dpi: float = 96.0) -> BufType:
