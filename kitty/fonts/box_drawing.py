@@ -611,6 +611,29 @@ def sextant(buf: BufType, width: int, height: int, level: int = 1, which: int = 
     add_row(which // 16, 2)
 
 
+@supersampled()
+def smooth_mosaic(
+    buf: BufType, width: int, height: int, level: int = 1,
+    lower: bool = True, a: Tuple[float, float] = (0, 0), b: Tuple[float, float] = (0, 0)
+) -> None:
+    ax, ay = int(a[0] * (width - 1)), int(a[1] * (height - 1))
+    bx, by = int(b[0] * (width - 1)), int(b[1] * (height - 1))
+    line = line_equation(ax, ay, bx, by)
+
+    def lower_condition(x: int, y: int) -> bool:
+        return y >= line(x)
+
+    def upper_condition(x: int, y: int) -> bool:
+        return y <= line(x)
+
+    condition = lower_condition if lower else upper_condition
+    for y in range(height):
+        offset = width * y
+        for x in range(width):
+            if condition(x, y):
+                buf[offset + x] = 255
+
+
 box_chars: Dict[str, List[Callable]] = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -710,6 +733,58 @@ box_chars: Dict[str, List[Callable]] = {
     '▝': [p(quad, x=1)],
     '▞': [p(quad, x=1), p(quad, y=1)],
     '▟': [p(quad, x=1), p(quad, y=1), p(quad, x=1, y=1)],
+
+    '🬼': [p(smooth_mosaic, a=(0, 0.75), b=(0.5, 1))],
+    '🬽': [p(smooth_mosaic, a=(0, 0.75), b=(1, 1))],
+    '🬾': [p(smooth_mosaic, a=(0, 0.5), b=(0.5, 1))],
+    '🬿': [p(smooth_mosaic, a=(0, 0.5), b=(1, 1))],
+    '🭀': [p(smooth_mosaic, a=(0, 0), b=(0.5, 1))],
+
+    '🭁': [p(smooth_mosaic, a=(0, 0.25), b=(0.5, 0))],
+    '🭂': [p(smooth_mosaic, a=(0, 0.25), b=(1, 0))],
+    '🭃': [p(smooth_mosaic, a=(0, 0.75), b=(0.5, 0))],
+    '🭄': [p(smooth_mosaic, a=(0, 0.75), b=(1, 0))],
+    '🭅': [p(smooth_mosaic, a=(0, 1), b=(0.5, 0))],
+    '🭆': [p(smooth_mosaic, a=(0, 0.75), b=(1, 0.25))],
+
+    '🭇': [p(smooth_mosaic, a=(0.5, 1), b=(1, 0.75))],
+    '🭈': [p(smooth_mosaic, a=(0, 1), b=(1, 0.75))],
+    '🭉': [p(smooth_mosaic, a=(0.5, 1), b=(1, 0.25))],
+    '🭊': [p(smooth_mosaic, a=(0, 1), b=(1, 0.25))],
+    '🭋': [p(smooth_mosaic, a=(0.5, 1), b=(1, 0))],
+
+    '🭌': [p(smooth_mosaic, a=(0.5, 0), b=(1, 0.25))],
+    '🭍': [p(smooth_mosaic, a=(0, 0), b=(1, 0.25))],
+    '🭎': [p(smooth_mosaic, a=(0.5, 0), b=(1, 0.75))],
+    '🭏': [p(smooth_mosaic, a=(0, 0), b=(1, 0.75))],
+    '🭐': [p(smooth_mosaic, a=(0.5, 0), b=(1, 1))],
+    '🭑': [p(smooth_mosaic, a=(0, 0.25), b=(1, 0.75))],
+
+    '🭒': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(0.5, 1))],
+    '🭓': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(1, 1))],
+    '🭔': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(0.5, 1))],
+    '🭕': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(1, 1))],
+    '🭖': [p(smooth_mosaic, lower=False, a=(0, 0), b=(0.5, 1))],
+
+    '🭗': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(0.5, 0))],
+    '🭘': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(1, 0))],
+    '🭙': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(0.5, 0))],
+    '🭚': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(1, 0))],
+    '🭛': [p(smooth_mosaic, lower=False, a=(0, 1), b=(0.5, 0))],
+
+    '🭜': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(1, 0.25))],
+    '🭝': [p(smooth_mosaic, lower=False, a=(0.5, 1), b=(1, 0.75))],
+    '🭞': [p(smooth_mosaic, lower=False, a=(0, 1), b=(1, 0.75))],
+    '🭟': [p(smooth_mosaic, lower=False, a=(0.5, 1), b=(1, 0.25))],
+    '🭠': [p(smooth_mosaic, lower=False, a=(0, 1), b=(1, 0.25))],
+    '🭡': [p(smooth_mosaic, lower=False, a=(0.5, 1), b=(1, 0))],
+
+    '🭢': [p(smooth_mosaic, lower=False, a=(0.5, 0), b=(1, 0.25))],
+    '🭣': [p(smooth_mosaic, lower=False, a=(0, 0), b=(1, 0.25))],
+    '🭤': [p(smooth_mosaic, lower=False, a=(0.5, 0), b=(1, 0.75))],
+    '🭥': [p(smooth_mosaic, lower=False, a=(0, 0), b=(1, 0.75))],
+    '🭦': [p(smooth_mosaic, lower=False, a=(0.5, 0), b=(1, 1))],
+    '🭧': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(1, 0.75))],
 }
 
 t, f = 1, 3
