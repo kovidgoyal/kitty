@@ -601,6 +601,7 @@ START_ALLOW_CASE_RANGE
         case 0xe0bc: // 
         case 0xe0be: //   
         case 0x1fb00 ... 0x1fb8b:  // symbols for legacy computing
+        case 0x1fba0 ... 0x1fbae:
             return BOX_FONT;
         default:
             ans = in_symbol_maps(fg, cpu_cell->ch);
@@ -639,7 +640,9 @@ START_ALLOW_CASE_RANGE
         case 0xe0b0 ... 0xe0d4:
             return 0xa0 + ch - 0xe0b0; // IDs from 0xa0 to 0xc4
         case 0x1fb00 ... 0x1fb8b:
-            return 0xc5 + ch - 0x1fb00;
+            return 0xc5 + ch - 0x1fb00; // IDs from 0xc5 to 0x150
+        case 0x1fba0 ... 0x1fbae:
+            return 0x151 + ch - 0x1fba0;
         default:
             return 0xffff;
     }

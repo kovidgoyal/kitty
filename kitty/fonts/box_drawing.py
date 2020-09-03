@@ -303,6 +303,26 @@ def half_cross_line(buf: BufType, width: int, height: int, which: str = 'tl', le
     thick_line(buf, width, height, thickness_in_pixels, p1, p2)
 
 
+@supersampled()
+def mid_lines(buf: BufType, width: int, height: int, level: int = 1, pts: Iterable[str] = ('lt',)) -> None:
+    mid_x, mid_y = width // 2, height // 2
+    supersample_factor = getattr(buf, 'supersample_factor')
+
+    def pt_to_coords(p: str) -> Tuple[int, int]:
+        if p == 'l':
+            return 0, mid_y
+        if p == 't':
+            return mid_x, 0
+        if p == 'r':
+            return width - 1, mid_y
+        if p == 'b':
+            return mid_x, height - 1
+
+    for x in pts:
+        p1, p2 = map(pt_to_coords, x)
+        thick_line(buf, width, height, supersample_factor * thickness(level), p1, p2)
+
+
 BezierFunc = Callable[[float], float]
 
 
@@ -844,6 +864,22 @@ box_chars: Dict[str, List[Callable]] = {
     '🮉': [p(eight_block, which=(3, 4, 5, 6, 7))],
     '🮊': [p(eight_block, which=(2, 3, 4, 5, 6, 7))],
     '🮋': [p(eight_block, which=(1, 2, 3, 4, 5, 6, 7))],
+
+    '🮠': [mid_lines],
+    '🮡': [p(mid_lines, pts=('tr',))],
+    '🮢': [p(mid_lines, pts=('lb',))],
+    '🮣': [p(mid_lines, pts=('br',))],
+    '🮤': [p(mid_lines, pts=('lt', 'lb'))],
+    '🮥': [p(mid_lines, pts=('rt', 'rb'))],
+    '🮦': [p(mid_lines, pts=('rb', 'lb'))],
+    '🮧': [p(mid_lines, pts=('rt', 'lt'))],
+    '🮨': [p(mid_lines, pts=('rb', 'lt'))],
+    '🮩': [p(mid_lines, pts=('lb', 'rt'))],
+    '🮪': [p(mid_lines, pts=('lb', 'rt', 'rb'))],
+    '🮫': [p(mid_lines, pts=('lb', 'lt', 'rb'))],
+    '🮬': [p(mid_lines, pts=('rt', 'lt', 'rb'))],
+    '🮭': [p(mid_lines, pts=('rt', 'lt', 'lb'))],
+    '🮮': [p(mid_lines, pts=('rt', 'rb', 'lt', 'lb'))],
 }
 
 t, f = 1, 3
