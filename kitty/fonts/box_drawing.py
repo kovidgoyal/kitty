@@ -513,24 +513,6 @@ def inner_corner(buf: BufType, width: int, height: int, which: str = 'tl', level
     draw_vline(buf, width, y1, y2, width // 2 + (xd * hgap), level)
 
 
-def vblock(buf: BufType, width: int, height: int, frac: float = 1., gravity: str = 'top') -> None:
-    num_rows = min(height, round(frac * height))
-    start = 0 if gravity == 'top' else height - num_rows
-    for r in range(start, start + num_rows):
-        off = r * width
-        for c in range(off, off + width):
-            buf[c] = 255
-
-
-def hblock(buf: BufType, width: int, height: int, frac: float = 1., gravity: str = 'left') -> None:
-    num_cols = min(width, round(frac * width))
-    start = 0 if gravity == 'left' else width - num_cols
-    for r in range(height):
-        off = r * width + start
-        for c in range(off, off + num_cols):
-            buf[c] = 255
-
-
 def shade(buf: BufType, width: int, height: int, light: bool = False, invert: bool = False) -> None:
     square_sz = max(1, width // 12)
     number_of_rows = height // square_sz
@@ -634,6 +616,28 @@ def smooth_mosaic(
                 buf[offset + x] = 255
 
 
+def eight_bar(buf: BufType, width: int, height: int, level: int = 1, which: int = 0, horizontal: bool = False) -> None:
+    if horizontal:
+        x_range = range(0, width)
+        thickness = height // 8
+        y_start = min(which * thickness, height - 2)
+        y_range = range(y_start, height if which == 7 else min(y_start + thickness, height))
+    else:
+        y_range = range(0, height)
+        thickness = width // 8
+        x_start = min(which * thickness, width - 2)
+        x_range = range(x_start, width if which == 7 else min(x_start + thickness, width))
+    for y in y_range:
+        offset = y * width
+        for x in x_range:
+            buf[offset + x] = 255
+
+
+def eight_block(buf: BufType, width: int, height: int, level: int = 1, which: Tuple[int, ...] = (0,), horizontal: bool = False) -> None:
+    for x in which:
+        eight_bar(buf, width, height, level, x, horizontal)
+
+
 box_chars: Dict[str, List[Callable]] = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -701,28 +705,28 @@ box_chars: Dict[str, List[Callable]] = {
     '╱': [p(cross_line, left=False)],
     '╲': [cross_line],
     '╳': [cross_line, p(cross_line, left=False)],
-    '▀': [p(vblock, frac=1/2)],
-    '▁': [p(vblock, frac=1/8, gravity='bottom')],
-    '▂': [p(vblock, frac=1/4, gravity='bottom')],
-    '▃': [p(vblock, frac=3/8, gravity='bottom')],
-    '▄': [p(vblock, frac=1/2, gravity='bottom')],
-    '▅': [p(vblock, frac=5/8, gravity='bottom')],
-    '▆': [p(vblock, frac=3/4, gravity='bottom')],
-    '▇': [p(vblock, frac=7/8, gravity='bottom')],
-    '█': [p(vblock, frac=1, gravity='bottom')],
-    '▉': [p(hblock, frac=7/8)],
-    '▊': [p(hblock, frac=3/4)],
-    '▋': [p(hblock, frac=5/8)],
-    '▌': [p(hblock, frac=1/2)],
-    '▍': [p(hblock, frac=3/8)],
-    '▎': [p(hblock, frac=1/4)],
-    '▏': [p(hblock, frac=1/8)],
-    '▐': [p(hblock, frac=1/2, gravity='right')],
+    '▀': [p(eight_block, horizontal=True, which=(0, 1, 2, 3))],
+    '▁': [p(eight_bar, which=7, horizontal=True)],
+    '▂': [p(eight_block, horizontal=True, which=(6, 7))],
+    '▃': [p(eight_block, horizontal=True, which=(5, 6, 7))],
+    '▄': [p(eight_block, horizontal=True, which=(4, 5, 6, 7))],
+    '▅': [p(eight_block, horizontal=True, which=(3, 4, 5, 6, 7))],
+    '▆': [p(eight_block, horizontal=True, which=(2, 3, 4, 5, 6, 7))],
+    '▇': [p(eight_block, horizontal=True, which=(1, 2, 3, 4, 5, 6, 7))],
+    '█': [p(eight_block, horizontal=True, which=(0, 1, 2, 3, 4, 5, 6, 7))],
+    '▉': [p(eight_block, which=(0, 1, 2, 3, 4, 5, 6))],
+    '▊': [p(eight_block, which=(0, 1, 2, 3, 4, 5))],
+    '▋': [p(eight_block, which=(0, 1, 2, 3, 4))],
+    '▌': [p(eight_block, which=(0, 1, 2, 3))],
+    '▍': [p(eight_block, which=(0, 1, 2))],
+    '▎': [p(eight_block, which=(0, 1))],
+    '▏': [p(eight_bar)],
+    '▐': [p(eight_block, which=(4, 5, 6, 7))],
     '░': [p(shade, light=True)],
     '▒': [shade],
     '▓': [p(shade, invert=True)],
-    '▔': [p(vblock, frac=1/8)],
-    '▕': [p(hblock, frac=1/8, gravity='right')],
+    '▔': [p(eight_bar, horizontal=True)],
+    '▕': [p(eight_bar, which=7)],
     '▖': [p(quad, y=1)],
     '▗': [p(quad, x=1, y=1)],
     '▘': [quad],
@@ -785,6 +789,25 @@ box_chars: Dict[str, List[Callable]] = {
     '🭥': [p(smooth_mosaic, lower=False, a=(0, 0), b=(1, 0.75))],
     '🭦': [p(smooth_mosaic, lower=False, a=(0.5, 0), b=(1, 1))],
     '🭧': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(1, 0.75))],
+
+    '🭼': [eight_bar, p(eight_bar, which=7, horizontal=True)],
+    '🭽': [eight_bar, p(eight_bar, horizontal=True)],
+    '🭾': [p(eight_bar, which=7), p(eight_bar, horizontal=True)],
+    '🭿': [p(eight_bar, which=7), p(eight_bar, which=7, horizontal=True)],
+    '🮀': [p(eight_bar, horizontal=True), p(eight_bar, which=7, horizontal=True)],
+    '🮁': [
+        p(eight_bar, horizontal=True), p(eight_bar, which=2, horizontal=True),
+        p(eight_bar, which=4, horizontal=True), p(eight_bar, which=7, horizontal=True)],
+    '🮂': [p(eight_block, horizontal=True, which=(0, 1))],
+    '🮃': [p(eight_block, horizontal=True, which=(0, 1, 2))],
+    '🮄': [p(eight_block, horizontal=True, which=(0, 1, 2, 3, 4))],
+    '🮅': [p(eight_block, horizontal=True, which=(0, 1, 2, 3, 4, 5))],
+    '🮆': [p(eight_block, horizontal=True, which=(0, 1, 2, 3, 4, 5, 6))],
+    '🮇': [p(eight_block, which=(6, 7))],
+    '🮈': [p(eight_block, which=(5, 6, 7))],
+    '🮉': [p(eight_block, which=(3, 4, 5, 6, 7))],
+    '🮊': [p(eight_block, which=(2, 3, 4, 5, 6, 7))],
+    '🮋': [p(eight_block, which=(1, 2, 3, 4, 5, 6, 7))],
 }
 
 t, f = 1, 3
@@ -820,6 +843,10 @@ for i in range(1, 63):
         continue
     box_chars[chr(c)] = [p(sextant, which=i)]
     c += 1
+
+for i in range(1, 7):
+    box_chars[chr(0x1fb6f + i)] = [p(eight_bar, which=i)]
+    box_chars[chr(0x1fb75 + i)] = [p(eight_bar, which=i, horizontal=True)]
 
 
 def render_box_char(ch: str, buf: BufType, width: int, height: int, dpi: float = 96.0) -> BufType:
