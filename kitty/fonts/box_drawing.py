@@ -184,11 +184,12 @@ def supersampled(supersample_factor: int = 4) -> Callable:
     return create_wrapper
 
 
-def fill_region(buf: BufType, width: int, height: int, xlimits: Iterable[Iterable[float]]) -> None:
+def fill_region(buf: BufType, width: int, height: int, xlimits: Iterable[Iterable[float]], inverted: bool = False) -> None:
+    full, empty = (0, 255) if inverted else (255, 0)
     for y in range(height):
         offset = y * width
         for x, (upper, lower) in enumerate(xlimits):
-            buf[x + offset] = 255 if upper <= y <= lower else 0
+            buf[x + offset] = full if upper <= y <= lower else empty
 
 
 def line_equation(x1: int, y1: int, x2: int, y2: int) -> Callable[[int], float]:
@@ -229,6 +230,32 @@ def corner_triangle(buf: BufType, width: int, height: int, corner: str) -> None:
         elif corner == 'bottom-right':
             xlimits = [(diagonal_y(x), height - 1.) for x in range(width)]
     fill_region(buf, width, height, xlimits)
+
+
+@supersampled()
+def half_triangle(buf: BufType, width: int, height: int, which: str = 'left', inverted: bool = False) -> None:
+    mid_x, mid_y = width // 2, height // 2
+    if which == 'left':
+        upper_y = line_equation(0, 0, mid_x, mid_y)
+        lower_y = line_equation(0, height - 1, mid_x, mid_y)
+        limits = tuple((upper_y(x), lower_y(x)) for x in range(width))
+    elif which == 'top':
+        first_y = line_equation(0, 0, mid_x, mid_y)
+        first = tuple((0, first_y(x)) for x in range(mid_x))
+        second_y = line_equation(mid_x, mid_y, width - 1, 0)
+        second = tuple((0, second_y(x)) for x in range(mid_x, width))
+        limits = first + second
+    elif which == 'right':
+        upper_y = line_equation(mid_x, mid_y, width - 1, 0)
+        lower_y = line_equation(mid_x, mid_y, width - 1, height - 1)
+        limits = tuple((upper_y(x), lower_y(x)) for x in range(width))
+    elif which == 'bottom':
+        first_y = line_equation(0, height - 1, mid_x, mid_y)
+        first_ = tuple((first_y(x), height - 1) for x in range(mid_x))
+        second_y = line_equation(mid_x, mid_y, width - 1, height - 1)
+        second_ = tuple((second_y(x), height - 1) for x in range(mid_x, width))
+        limits = first_ + second_
+    fill_region(buf, width, height, limits, inverted)
 
 
 def thick_line(buf: BufType, width: int, height: int, thickness_in_pixels: int, p1: Tuple[int, int], p2: Tuple[int, int]) -> None:
@@ -789,6 +816,15 @@ box_chars: Dict[str, List[Callable]] = {
     '🭥': [p(smooth_mosaic, lower=False, a=(0, 0), b=(1, 0.75))],
     '🭦': [p(smooth_mosaic, lower=False, a=(0.5, 0), b=(1, 1))],
     '🭧': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(1, 0.75))],
+
+    '🭨': [p(half_triangle, inverted=True)],
+    '🭩': [p(half_triangle, which='top', inverted=True)],
+    '🭪': [p(half_triangle, which='right', inverted=True)],
+    '🭫': [p(half_triangle, which='bottom', inverted=True)],
+    '🭬': [half_triangle],
+    '🭭': [p(half_triangle, which='top')],
+    '🭮': [p(half_triangle, which='right')],
+    '🭯': [p(half_triangle, which='bottom')],
 
     '🭼': [eight_bar, p(eight_bar, which=7, horizontal=True)],
     '🭽': [eight_bar, p(eight_bar, horizontal=True)],
