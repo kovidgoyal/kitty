@@ -84,9 +84,14 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False, monos
     # First look for an exact match
     for selector in ('ps_map', 'full_map', 'family_map'):
         candidates = font_map[selector].get(q)
-        if candidates:
-            candidates.sort(key=score)
-            return candidates[0]
+        if not candidates:
+            continue
+        if len(candidates) == 1 and (bold or italic) and candidates[0].get('family') == candidates[0].get('full_name'):
+            # IBM Plex Mono does this, where the full name of the regular font
+            # face is the same as its family name
+            continue
+        candidates.sort(key=score)
+        return candidates[0]
 
     # Use fc-match to see if we can find a monospaced font that matches family
     for spacing in (FC_MONO, FC_DUAL):

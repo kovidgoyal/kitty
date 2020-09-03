@@ -40,6 +40,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Implement special rendering for various characters from the set of "Symbols
   for Legacy Computing" from the Unicode 13 standard
 
+- Linux: Fix automatic detection of bold/italic faces for fonts such as IBM
+  Plex Mono and have the regular face with a full name that is the same as the
+  family name (:iss:`2951`)
+
 
 0.18.3 [2020-08-11]
 -------------------
