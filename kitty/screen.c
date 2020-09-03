@@ -2495,7 +2495,7 @@ add_url_range(Screen *self, index_type start_x, index_type start_y, index_type e
     memset(r, 0, sizeof(Selection));
     A(start.x, start_x); A(end.x, end_x); A(start.y, start_y); A(end.y, end_y);
     A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
-    A(start.in_left_half_of_cell, true); A(end.in_left_half_of_cell, start_x == end_x && start_y == end_y);
+    A(start.in_left_half_of_cell, true);
 #undef A
 }
 
@@ -2532,7 +2532,9 @@ mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id) {
 static int
 compare_ranges(const void *a_, const void* b_) {
     const Selection *a = a_, *b = b_;
-    return (a->sort_y - b->sort_y) || (a->sort_x - b->sort_x);
+    int ans = a->sort_y - b->sort_y;
+    if (!ans) ans = a->sort_x - b->sort_x;
+    return ans;
 }
 
 static void
@@ -2558,8 +2560,8 @@ screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
         if (ypos == 0) break;
         ypos--;
         line = screen_visual_line(self, ypos);
-    } while ( last_marked_line - ypos < 5);
-    ypos = y; last_marked_line = y;
+    } while (last_marked_line - ypos < 5);
+    ypos = y + 1; last_marked_line = y;
     while (ypos < self->lines - 1 && ypos - last_marked_line < 5) {
         line = screen_visual_line(self, ypos);
         if (mark_hyperlinks_in_line(self, line, id)) last_marked_line = ypos;
