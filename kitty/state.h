@@ -63,6 +63,7 @@ typedef struct {
     bool close_on_child_death;
     bool window_alert_on_bell;
     bool debug_keyboard;
+    bool allow_hyperlinks;
     monotonic_t resize_debounce_time;
     MouseShape pointer_shape_when_grabbed;
     struct {

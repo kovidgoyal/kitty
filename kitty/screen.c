@@ -381,12 +381,13 @@ selection_has_screen_line(const Selections *selections, const int y) {
 
 void
 set_active_hyperlink(Screen *self, char *id, char *url) {
-    (void)id;
-    if (!url || !url[0]) {
-        self->active_hyperlink_id = 0;
-        return;
+    if (OPT(allow_hyperlinks)) {
+        if (!url || !url[0]) {
+            self->active_hyperlink_id = 0;
+            return;
+        }
+        self->active_hyperlink_id = get_id_for_hyperlink(self, id, url);
     }
-    self->active_hyperlink_id = get_id_for_hyperlink(self, id, url);
 }
 
 hyperlink_id_type
@@ -1956,7 +1957,7 @@ screen_open_url(Screen *self) {
     if (hid) {
         const char *url = get_hyperlink_for_id(self, hid);
         if (url) {
-            call_boss(open_url, "s", url);
+            CALLBACK("open_url", "sH", url, hid);
             return true;
         }
     }
@@ -1967,7 +1968,7 @@ screen_open_url(Screen *self) {
     }
     bool found = false;
     if (PyUnicode_Check(text)) {
-        call_boss(open_url, "O", text);
+        CALLBACK("open_url", "sH", text, 0);
         found = true;
     }
     Py_CLEAR(text);

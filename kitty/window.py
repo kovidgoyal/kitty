@@ -489,6 +489,9 @@ class Window:
     def use_utf8(self, on: bool) -> None:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
 
+    def open_url(self, url: str, hyperlink_id: int) -> None:
+        get_boss().open_url(url)
+
     def focus_changed(self, focused: bool) -> None:
         if self.destroyed:
             return

@@ -40,11 +40,15 @@ class Callbacks:
     def desktop_notify(self, osc_code: int, raw_data: str) -> None:
         self.notifications.append((osc_code, raw_data))
 
+    def open_url(self, url: str, hyperlink_id: int) -> None:
+        self.open_urls.append((url, hyperlink_id))
+
     def clear(self):
         self.wtcbuf = b''
         self.iconbuf = self.titlebuf = self.colorbuf = self.ctbuf = ''
         self.iutf8 = True
         self.notifications = []
+        self.open_urls = []
 
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):

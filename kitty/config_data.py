@@ -1144,6 +1144,13 @@ that enabling the read functionality is a security risk as it means that any
 program, even one running on a remote server via SSH can read your clipboard.
 '''))
 
+
+o('allow_hyperlinks', True, long_text=_('''
+Process hyperlink (OSC 8) escape sequences. If disabled OSC 8 escape
+sequences are ignored. Otherwise they become clickable links, that you
+can click by holding down ctrl+shift and clicking with the mouse'''))
+
+
 o('term', 'xterm-kitty', long_text=_('''
 The value of the TERM environment variable to set. Changing this can break many
 terminal programs, only change it if you know what you are doing, not because

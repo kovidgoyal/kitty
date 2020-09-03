@@ -701,6 +701,7 @@ PYWRAP1(set_options) {
     S(force_ltr, PyObject_IsTrue);
     S(resize_draw_strategy, PyLong_AsLong);
     S(resize_in_steps, PyObject_IsTrue);
+    S(allow_hyperlinks, PyObject_IsTrue);
     S(pointer_shape_when_grabbed, pointer_shape);
 
     GA(tab_bar_style);
