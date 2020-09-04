@@ -28,8 +28,9 @@
 #define ENSURE_SPACE(TYPE, vec, amt) \
     if (vec.size + amt >= vec.capacity) { \
         vec.capacity = MAX(vec.capacity * 2, vec.size + amt); \
-        vec.data = (TYPE*)realloc(vec.data, sizeof(TYPE) * vec.capacity); \
-        if (vec.data == NULL) { REPORT_OOM; ret = 1; break; }  \
+        void *temp = realloc(vec.data, sizeof(TYPE) * vec.capacity); \
+        if (temp == NULL) { REPORT_OOM; ret = 1; free(vec.data); vec.data = NULL; vec.size = 0; vec.capacity = 0; break; }  \
+        else vec.data = temp; \
     }
 
 #define NEXT(vec) (vec.data[vec.size])

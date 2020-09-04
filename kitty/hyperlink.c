@@ -40,7 +40,7 @@ clear_pool(HyperLinkPool *pool) {
         HyperLinkEntry *tmp, *s;
         HASH_ITER(hh, pool->hyperlinks, s, tmp) {
             HASH_DEL(pool->hyperlinks, s);
-            free_hyperlink_entry(s);
+            free_hyperlink_entry(s); s = NULL;
         }
         pool->max_link_id = 0;
     }
@@ -88,7 +88,7 @@ screen_garbage_collect_hyperlink_pool(Screen *screen) {
                 pool->max_link_id = MAX(pool->max_link_id, s->id);
             } else {
                 HASH_DEL(pool->hyperlinks, s);
-                free_hyperlink_entry(s);
+                free_hyperlink_entry(s); s = NULL;
             }
         }
     } else clear_pool(pool);
@@ -118,12 +118,12 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
     }
     hyperlink_id_type new_id = 0;
     if (pool->num_of_adds_since_garbage_collection >= MAX_ADDS_BEFORE_GC) screen_garbage_collect_hyperlink_pool(screen);
-    if (pool->max_link_id >= HYPERLINK_MAX_NUMBER) {
+    if (pool->max_link_id >= HYPERLINK_MAX_NUMBER && pool->hyperlinks) {
         log_error("Too many hyperlinks, discarding oldest, this means some hyperlinks might be incorrect");
         new_id = pool->hyperlinks->id;
         HyperLinkEntry *s = pool->hyperlinks;
         HASH_DEL(pool->hyperlinks, s);
-        free_hyperlink_entry(s);
+        free_hyperlink_entry(s); s = NULL;
     }
     s = malloc(sizeof(HyperLinkEntry));
     if (!s) fatal("Out of memory");

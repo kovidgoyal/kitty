@@ -111,7 +111,7 @@ end:
             if (job_data[i] && job_data[i]->started) wait_for_thread(threads, i);
         }
     }
-    for (i = 0; i < num_threads; i++) job_data[i] = free_job(job_data[i]);
+    if (job_data) { for (i = 0; i < num_threads; i++) job_data[i] = free_job(job_data[i]); }
     free(job_data);
     free_threads(threads);
     return ret;
@@ -130,7 +130,7 @@ run_search(Options *opts, GlobalData *global, const char * const *lines, const s
     ALLOC_VEC(text_t, chars, 8192 * 20);
     if (chars.data == NULL) return 1;
     ALLOC_VEC(Candidate, candidates, 8192);
-    if (candidates.data == NULL) { FREE_VEC(chars) return 1; }
+    if (candidates.data == NULL) { FREE_VEC(chars); return 1; }
 
     for (size_t i = 0; i < num_lines; i++) {
         sz = sizes[i];
