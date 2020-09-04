@@ -490,7 +490,28 @@ class Window:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
 
     def open_url(self, url: str, hyperlink_id: int) -> None:
+        if hyperlink_id:
+            from urllib.parse import urlparse
+            try:
+                purl = urlparse(url)
+            except Exception:
+                return
+            if (not purl.scheme or purl.scheme == 'file'):
+                if purl.netloc:
+                    from socket import gethostname
+                    try:
+                        hostname = gethostname()
+                    except Exception:
+                        hostname = ''
+                    remote_hostname = purl.netloc.partition(':')[0]
+                    if remote_hostname and remote_hostname != hostname:
+                        self.handle_remote_file(purl.netloc, purl.path)
+                        return
+
         get_boss().open_url(url)
+
+    def handle_remote_file(self, netloc: str, remote_path: str) -> None:
+        pass
 
     def focus_changed(self, focused: bool) -> None:
         if self.destroyed:
