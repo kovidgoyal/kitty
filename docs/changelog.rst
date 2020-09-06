@@ -8,7 +8,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 -------------------
 
 - Improve rendering of borders when using minimal borders. Use less space and
-  does not display a box around active windows.
+  do not display a box around active windows.
 
 - Allow specifying border sizes in either pts or pixels. Change the default to
   0.5pt borders as this works best with the new minimal border style.
