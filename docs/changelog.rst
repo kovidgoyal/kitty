@@ -10,11 +10,22 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Improve rendering of borders when using minimal borders. Use less space and
   do not display a box around active windows.
 
+- Add a new extensible escape code to allow terminal programs to trigger
+  desktop notifications. See :ref:`desktop_notifications` (:iss:`1474`)
+
+- Implement special rendering for various characters from the set of "Symbols
+  for Legacy Computing" from the Unicode 13 standard
+
 - Allow specifying border sizes in either pts or pixels. Change the default to
   0.5pt borders as this works best with the new minimal border style.
 
 - Add support for displaying correct colors with non-sRGB PNG files (Adds a
   dependency on liblcms2)
+
+- Allow tracking focus change events in watchers (:iss:`2918`)
+
+- Allow specifying watchers in session files and via a command line argument
+  (:iss:`2933`)
 
 - macOS: Switch to using the User Notifications framework for notifications.
   The current notifications framework has been deprecated in Big Sur. The new
@@ -22,23 +33,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   so people using kitty from homebrew/source are out of luck. Complain to
   Apple.
 
-- Add a new extensible escape code to allow terminal programs to trigger
-  desktop notifications. See :ref:`desktop_notifications` (:iss:`1474`)
-
-- Allow tracking focus change events in watchers (:iss:`2918`)
-
-- Allow specifying watchers in session files and via a command line argument
-  (:iss:`2933`)
-
 - When in the main screen and a program grabs the mouse, do not use the scroll
   wheel events to scroll the scrollback buffer, instead send them to the
   program (:iss:`2939`)
 
 - Fix unfocused windows in which a bell occurs not changing their border color
   to red until a relayout
-
-- Implement special rendering for various characters from the set of "Symbols
-  for Legacy Computing" from the Unicode 13 standard
 
 - Linux: Fix automatic detection of bold/italic faces for fonts such as IBM
   Plex Mono and have the regular face with a full name that is the same as the
