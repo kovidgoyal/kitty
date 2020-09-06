@@ -393,7 +393,7 @@ class KeyDefinition:
                 if len(expanded) > 1:
                     rest = expanded[1] + ' ' + rest
         if changed:
-            self.action = self.action._replace(args=[kitten + (' ' + rest).rstrip()])
+            self.action = self.action._replace(args=[kitten, rest.rstrip()])
 
 
 def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:

@@ -44,6 +44,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   Plex Mono and have the regular face with a full name that is the same as the
   family name (:iss:`2951`)
 
+- Fix a regression that broke :opt:`kitten_alias` (:iss:`2952`)
+
 
 0.18.3 [2020-08-11]
 -------------------
