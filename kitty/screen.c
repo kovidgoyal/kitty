@@ -2525,6 +2525,24 @@ paste_bytes(Screen *self, PyObject *bytes) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+focus_changed(Screen *self, PyObject *has_focus_) {
+    bool previous = self->has_focus;
+    bool has_focus = PyObject_IsTrue(has_focus_) ? true : false;
+    if (has_focus != previous) {
+        self->has_focus = has_focus;
+        if (self->modes.mFOCUS_TRACKING) write_escape_code_to_child(self, CSI, has_focus ? "I" : "O");
+        Py_RETURN_TRUE;
+    }
+    Py_RETURN_FALSE;
+}
+
+static PyObject*
+has_focus(Screen *self, PyObject *args UNUSED) {
+    if (self->has_focus) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
 
 WRAP2(cursor_position, 1, 1)
 
@@ -2608,6 +2626,8 @@ static PyMethodDef methods[] = {
     MND(reset_callbacks, METH_NOARGS)
     MND(paste, METH_O)
     MND(paste_bytes, METH_O)
+    MND(focus_changed, METH_O)
+    MND(has_focus, METH_NOARGS)
     MND(copy_colors_from, METH_O)
     MND(set_marker, METH_VARARGS)
     MND(marked_cells, METH_NOARGS)

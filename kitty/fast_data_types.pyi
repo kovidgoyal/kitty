@@ -1063,6 +1063,12 @@ class Screen:
     def erase_in_display(self, how: int = 0, private: bool = False) -> None:
         pass
 
+    def focus_changed(self, focused: bool) -> bool:
+        pass
+
+    def has_focus(self) -> bool:
+        pass
+
 
 def set_tab_bar_render_data(
     os_window_id: int, xstart: float, ystart: float, dx: float, dy: float,

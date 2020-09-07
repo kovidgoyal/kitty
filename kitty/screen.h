@@ -121,6 +121,7 @@ typedef struct {
     } pending_mode;
     DisableLigature disable_ligatures;
     PyObject *marker;
+    bool has_focus;
 } Screen;
 
 

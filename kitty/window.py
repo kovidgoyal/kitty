@@ -20,7 +20,7 @@ from .config import build_ansi_color_table
 from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
-    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
+    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     STRIKETHROUGH, TINT_PROGRAM, Screen, add_timer, add_window,
@@ -493,18 +493,14 @@ class Window:
         if self.destroyed:
             return
         call_watchers(weakref.ref(self), 'on_focus_change', {'focused': focused})
+        self.screen.focus_changed(focused)
         if focused:
             changed = self.needs_attention
             self.needs_attention = False
-            if self.screen.focus_tracking_enabled:
-                self.screen.send_escape_code_to_child(CSI, 'I')
             if changed:
                 tab = self.tabref()
                 if tab is not None:
                     tab.relayout_borders()
-        else:
-            if self.screen.focus_tracking_enabled:
-                self.screen.send_escape_code_to_child(CSI, 'O')
 
     def title_changed(self, new_title: Optional[str]) -> None:
         self.child_title = sanitize_title(new_title or self.default_title)
