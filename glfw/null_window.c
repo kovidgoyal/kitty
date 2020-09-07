@@ -274,10 +274,25 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
 {
     if (window->null.decorated && !window->monitor)
     {
-        *left = 1;
-        *top = 10;
-        *right = 1;
-        *bottom = 1;
+        if (left)
+            *left = 1;
+        if (top)
+            *top = 10;
+        if (right)
+            *right = 1;
+        if (bottom)
+            *bottom = 1;
+    }
+    else
+    {
+        if (left)
+            *left = 0;
+        if (top)
+            *top = 0;
+        if (right)
+            *right = 0;
+        if (bottom)
+            *bottom = 0;
     }
 }
 

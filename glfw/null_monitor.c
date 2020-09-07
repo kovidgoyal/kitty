@@ -70,8 +70,12 @@ void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor)
     _glfwFreeGammaArrays(&monitor->null.ramp);
 }
 
-void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor UNUSED, int* xpos UNUSED, int* ypos UNUSED)
+void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor UNUSED, int* xpos, int* ypos)
 {
+    if (xpos)
+        *xpos = 0;
+    if (ypos)
+        *ypos = 0;
 }
 
 void _glfwPlatformGetMonitorContentScale(_GLFWmonitor* monitor UNUSED,
