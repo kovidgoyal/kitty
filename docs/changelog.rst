@@ -46,6 +46,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix a regression that broke :opt:`kitten_alias` (:iss:`2952`)
 
+- Fix a regression that broke the ``move_window_to_top`` action (:pull:`2953`)
+
 
 0.18.3 [2020-08-11]
 -------------------

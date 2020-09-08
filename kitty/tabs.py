@@ -439,9 +439,9 @@ class Tab:  # {{{
                     self.relayout()
 
     def move_window_to_top(self) -> None:
-        n = self.windows.num_groups
-        if n > 1:
-            self.move_window(1 - n)
+        n = self.windows.active_group_idx
+        if n > 0:
+            self.move_window(-n)
 
     def move_window_forward(self) -> None:
         self.move_window()
