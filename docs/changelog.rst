@@ -27,6 +27,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow specifying watchers in session files and via a command line argument
   (:iss:`2933`)
 
+- Add a setting :opt:`tab_activity_symbol` to show a symbol in the tab title
+  if one of the windows has some activity after it was last focused
+  (:iss:`2515`)
+
 - macOS: Switch to using the User Notifications framework for notifications.
   The current notifications framework has been deprecated in Big Sur. The new
   framework only allows notifications from signed and notarized applications,

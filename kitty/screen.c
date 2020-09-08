@@ -444,6 +444,9 @@ draw_combining_char(Screen *self, char_type ch) {
 void
 screen_draw(Screen *self, uint32_t och) {
     if (is_ignored_char(och)) return;
+    if (!self->has_activity_since_last_focus && !self->has_focus) {
+        self->has_activity_since_last_focus = true;
+    }
     uint32_t ch = och < 256 ? self->g_charset[och] : och;
     bool is_cc = is_combining_char(ch);
     if (UNLIKELY(is_cc)) {
@@ -2531,6 +2534,7 @@ focus_changed(Screen *self, PyObject *has_focus_) {
     bool has_focus = PyObject_IsTrue(has_focus_) ? true : false;
     if (has_focus != previous) {
         self->has_focus = has_focus;
+        if (has_focus) self->has_activity_since_last_focus = false;
         if (self->modes.mFOCUS_TRACKING) write_escape_code_to_child(self, CSI, has_focus ? "I" : "O");
         Py_RETURN_TRUE;
     }
@@ -2543,6 +2547,11 @@ has_focus(Screen *self, PyObject *args UNUSED) {
     Py_RETURN_FALSE;
 }
 
+static PyObject*
+has_activity_since_last_focus(Screen *self, PyObject *args UNUSED) {
+    if (self->has_activity_since_last_focus) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
 
 WRAP2(cursor_position, 1, 1)
 
@@ -2628,6 +2637,7 @@ static PyMethodDef methods[] = {
     MND(paste_bytes, METH_O)
     MND(focus_changed, METH_O)
     MND(has_focus, METH_NOARGS)
+    MND(has_activity_since_last_focus, METH_NOARGS)
     MND(copy_colors_from, METH_O)
     MND(set_marker, METH_VARARGS)
     MND(marked_cells, METH_NOARGS)

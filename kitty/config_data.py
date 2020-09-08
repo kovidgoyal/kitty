@@ -883,6 +883,17 @@ o('tab_separator', '"{}"'.format(default_tab_separator), option_type=tab_separat
 The separator between tabs in the tab bar when using :code:`separator` as the :opt:`tab_bar_style`.'''))
 
 
+def tab_activity_symbol(x: str) -> Optional[str]:
+    if x == 'none':
+        return None
+    return x or None
+
+
+o('tab_activity_symbol', 'none', option_type=tab_activity_symbol, long_text=_('''
+Some text or a unicode symbol to show on the tab if a window in the tab that does
+not have focus has some activity.'''))
+
+
 def tab_title_template(x: str) -> str:
     if x:
         for q in '\'"':

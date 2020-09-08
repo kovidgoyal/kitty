@@ -514,6 +514,10 @@ class Window:
     def is_active(self) -> bool:
         return get_boss().active_window is self
 
+    @property
+    def has_activity_since_last_focus(self) -> bool:
+        return self.screen.has_activity_since_last_focus()
+
     def on_bell(self) -> None:
         if self.opts.command_on_bell and self.opts.command_on_bell != ['none']:
             import subprocess

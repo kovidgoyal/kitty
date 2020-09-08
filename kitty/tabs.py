@@ -736,13 +736,16 @@ class TabManager:  # {{{
         for t in self.tabs:
             title = (t.name or t.title or appname).strip()
             needs_attention = False
+            has_activity_since_last_focus = False
             for w in t:
                 if w.needs_attention:
                     needs_attention = True
-                    break
+                if w.has_activity_since_last_focus:
+                    has_activity_since_last_focus = True
             ans.append(TabBarData(
                 title, t is at, needs_attention,
-                len(t), t.current_layout.name or ''
+                len(t), t.current_layout.name or '',
+                has_activity_since_last_focus
             ))
         return ans
 

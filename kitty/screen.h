@@ -122,6 +122,7 @@ typedef struct {
     DisableLigature disable_ligatures;
     PyObject *marker;
     bool has_focus;
+    bool has_activity_since_last_focus;
 } Screen;
 
 
