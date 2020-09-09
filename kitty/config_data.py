@@ -442,7 +442,7 @@ def scrollback_pager_history_size(x: str) -> int:
 o('scrollback_lines', 2000, option_type=scrollback_lines, long_text=_('''
 Number of lines of history to keep in memory for scrolling back. Memory is allocated
 on demand. Negative numbers are (effectively) infinite scrollback. Note that using
-very large scrollback is not recommended as it can slow down resizing of the terminal
+very large scrollback is not recommended as it can slow down performance of the terminal
 and also use large amounts of RAM.'''))
 
 o('scrollback_pager', 'less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER', option_type=to_cmdline, long_text=_('''
