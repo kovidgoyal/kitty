@@ -108,7 +108,7 @@ def yesno(cli_opts: AskCLIOptions, items: List[str]) -> Response:
         tty.setraw(sys.stdin.fileno())
         try:
             response = sys.stdin.buffer.read(1)
-            yes = response in (b'y', b'Y', b'\r', b'\n' b' ')
+            yes = response in (b'y', b'Y', b'\r', b'\n', b' ')
             return {'items': items, 'response': 'y' if yes else 'n'}
         finally:
             sys.stdout.write(set_cursor_visible(True))
