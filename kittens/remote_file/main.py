@@ -5,20 +5,25 @@
 
 import json
 import os
+import shlex
+import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from contextlib import suppress
-from typing import List, Optional
+from typing import Any, List, Optional
 
 from kitty.cli import parse_args
 from kitty.cli_stub import RemoteFileCLIOptions
 from kitty.typing import BossType
-from kitty.utils import command_for_open, open_cmd
+from kitty.utils import command_for_open, get_editor, open_cmd
 
 from ..ssh.main import SSHConnectionData
 from ..tui.handler import result_handler
-from ..tui.operations import clear_screen, faint, set_cursor_visible, styled
+from ..tui.operations import (
+    faint, raw_mode, reset_terminal, set_cursor_visible, styled
+)
 
 
 def option_text() -> str:
@@ -46,10 +51,8 @@ def show_error(msg: str) -> None:
     print(styled(msg, fg='red'))
     print()
     print('Press any key to exit...')
-    import tty
     sys.stdout.flush()
-    tty.setraw(sys.stdin.fileno())
-    try:
+    with raw_mode():
         while True:
             try:
                 q = sys.stdin.buffer.read(1)
@@ -57,9 +60,6 @@ def show_error(msg: str) -> None:
                     break
             except (KeyboardInterrupt, EOFError):
                 break
-    finally:
-        tty.setcbreak(sys.stdin.fileno())
-        sys.stdout.flush()
 
 
 def ask_action(opts: RemoteFileCLIOptions) -> str:
@@ -85,25 +85,21 @@ def ask_action(opts: RemoteFileCLIOptions) -> str:
     print('{}ancel'.format(key('C')))
     print()
 
-    import tty
     sys.stdout.flush()
-    tty.setraw(sys.stdin.fileno())
     response = 'c'
-    try:
-        while True:
-            q = sys.stdin.buffer.read(1)
-            if q:
-                if q in b'\x1b\x03':
-                    break
-                with suppress(Exception):
-                    response = q.decode('utf-8').lower()
-                    if response in 'ceo':
+    with raw_mode():
+        try:
+            while True:
+                q = sys.stdin.buffer.read(1)
+                if q:
+                    if q in b'\x1b\x03':
                         break
-    except (KeyboardInterrupt, EOFError):
-        pass
-    finally:
-        tty.setcbreak(sys.stdin.fileno())
-        sys.stdout.flush()
+                    with suppress(Exception):
+                        response = q.decode('utf-8').lower()
+                        if response in 'ceo':
+                            break
+        except (KeyboardInterrupt, EOFError):
+            pass
 
     return {'e': 'edit', 'o': 'open'}.get(response, 'cancel')
 
@@ -114,6 +110,60 @@ def simple_copy_command(conn_data: SSHConnectionData, path: str) -> List[str]:
         cmd += ['-p', str(conn_data.port)]
     cmd += [conn_data.hostname, 'cat', path]
     return cmd
+
+
+class ControlMaster:
+
+    def __init__(self, conn_data: SSHConnectionData, remote_path: str):
+        self.conn_data = conn_data
+        self.remote_path = remote_path
+        self.cmd_prefix = cmd = [
+            conn_data.binary, '-o', f'ControlPath=~/.ssh/kitty-master-{os.getpid()}-%r@%h:%p',
+            '-o', 'TCPKeepAlive=yes', '-o', 'ControlPersist=yes'
+        ]
+        if conn_data.port:
+            cmd += ['-p', str(conn_data.port)]
+        self.batch_cmd_prefix = cmd + ['-o', 'BatchMode=yes']
+
+    def __enter__(self) -> 'ControlMaster':
+        subprocess.check_call(
+            self.cmd_prefix + ['-o', 'ControlMaster=auto', '-fN', self.conn_data.hostname])
+        subprocess.check_call(
+            self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname])
+        self.tdir = tempfile.mkdtemp()
+        self.dest = os.path.join(self.tdir, os.path.basename(self.remote_path))
+        return self
+
+    def __exit__(self, *a: Any) -> bool:
+        subprocess.Popen(
+            self.batch_cmd_prefix + ['-O', 'exit', self.conn_data.hostname],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
+        ).wait()
+        shutil.rmtree(self.tdir)
+        return True
+
+    @property
+    def is_alive(self) -> bool:
+        return subprocess.Popen(
+            self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
+        ).wait() == 0
+
+    def download(self) -> bool:
+        with open(self.dest, 'wb') as f:
+            return subprocess.run(
+                self.batch_cmd_prefix + [self.conn_data.hostname, 'cat', self.remote_path],
+                stdout=f, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
+            ).returncode == 0
+
+    def upload(self, suppress_output: bool = True) -> bool:
+        cmd_prefix = self.cmd_prefix if suppress_output else self.batch_cmd_prefix
+        cmd = cmd_prefix + [self.conn_data.hostname, 'cat', '>', self.remote_path]
+        if not suppress_output:
+            print(' '.join(map(shlex.quote, cmd)))
+        redirect = subprocess.DEVNULL if suppress_output else None
+        with open(self.dest, 'rb') as f:
+            return subprocess.run(cmd, stdout=redirect, stderr=redirect, stdin=f).returncode == 0
 
 
 def save_output(cmd: List[str], dest_path: str) -> bool:
@@ -135,14 +185,15 @@ def main(args: List[str]) -> Result:
             input('Press enter to quit...')
         raise SystemExit(e.code)
 
-    print(set_cursor_visible(False), end='')
+    print(set_cursor_visible(False), end='', flush=True)
     try:
         action = ask_action(cli_opts)
     finally:
-        print(set_cursor_visible(True), clear_screen(), end='')
+        print(reset_terminal(), end='', flush=True)
     try:
         return handle_action(action, cli_opts)
     except Exception:
+        print(reset_terminal(), end='', flush=True)
         import traceback
         traceback.print_exc()
         show_error('Failed with unhandled exception')
@@ -160,6 +211,27 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
         show_error('Failed to copy file from remote machine')
     elif action == 'edit':
         print('Editing', cli_opts.path, 'from', cli_opts.hostname)
+        with ControlMaster(conn_data, remote_path) as master:
+            if not master.download():
+                show_error(f'Failed to download {remote_path}')
+                return None
+            mtime = os.path.getmtime(master.dest)
+            print(reset_terminal(), end='', flush=True)
+            editor = get_editor()
+            editor_process = subprocess.Popen(editor + [master.dest])
+            while editor_process.poll() is None:
+                time.sleep(0.1)
+                newmtime = os.path.getmtime(master.dest)
+                if newmtime > mtime:
+                    mtime = newmtime
+                    if master.is_alive:
+                        master.upload()
+            print(reset_terminal(), end='', flush=True)
+            if master.is_alive:
+                if not master.upload(suppress_output=False):
+                    show_error(f'Failed to upload {remote_path}')
+            else:
+                show_error(f'Failed to upload {remote_path}, SSH master process died')
 
 
 @result_handler()

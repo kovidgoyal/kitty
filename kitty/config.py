@@ -789,7 +789,6 @@ class KittyCommonOpts(TypedDict):
     select_by_word_characters: str
     open_url_with: List[str]
     url_prefixes: Tuple[str, ...]
-    editor: str
 
 
 def common_opts_as_dict(opts: Optional[OptionsStub] = None) -> KittyCommonOpts:
@@ -799,5 +798,4 @@ def common_opts_as_dict(opts: Optional[OptionsStub] = None) -> KittyCommonOpts:
         'select_by_word_characters': opts.select_by_word_characters,
         'open_url_with': opts.open_url_with,
         'url_prefixes': opts.url_prefixes,
-        'editor': opts.editor,
     }
