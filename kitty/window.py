@@ -491,7 +491,7 @@ class Window:
 
     def open_url(self, url: str, hyperlink_id: int) -> None:
         if hyperlink_id:
-            from urllib.parse import urlparse
+            from urllib.parse import unquote, urlparse
             try:
                 purl = urlparse(url)
             except Exception:
@@ -505,13 +505,22 @@ class Window:
                         hostname = ''
                     remote_hostname = purl.netloc.partition(':')[0]
                     if remote_hostname and remote_hostname != hostname:
-                        self.handle_remote_file(purl.netloc, purl.path)
+                        self.handle_remote_file(purl.netloc, unquote(purl.path))
                         return
 
         get_boss().open_url(url)
 
     def handle_remote_file(self, netloc: str, remote_path: str) -> None:
-        pass
+        from kittens.ssh.main import get_connection_data
+        args = self.child.foreground_cmdline
+        conn_data = get_connection_data(args)
+        if conn_data is None:
+            get_boss().show_error('Could not handle remote file', 'No SSH connection data found in: {args}')
+            return
+        get_boss().run_kitten(
+            'remote_file', '--hostname', netloc.partition(':')[0], '--path', remote_path,
+            '--ssh-connection-data', json.dumps(conn_data)
+        )
 
     def focus_changed(self, focused: bool) -> None:
         if self.destroyed:
@@ -544,8 +553,8 @@ class Window:
 
     def on_bell(self) -> None:
         if self.opts.command_on_bell and self.opts.command_on_bell != ['none']:
-            import subprocess
             import shlex
+            import subprocess
             env = self.child.final_env
             env['KITTY_CHILD_CMDLINE'] = ' '.join(map(shlex.quote, self.child.cmdline))
             subprocess.Popen(self.opts.command_on_bell, env=env, cwd=self.child.foreground_cwd)
@@ -893,7 +902,7 @@ class Window:
         self.current_marker_spec = key
 
     def set_marker(self, spec: Union[str, Sequence[str]]) -> None:
-        from .config import toggle_marker, parse_marker_spec
+        from .config import parse_marker_spec, toggle_marker
         from .marks import marker_from_spec
         if isinstance(spec, str):
             func, (ftype, spec_, flags) = toggle_marker('toggle_marker', spec)

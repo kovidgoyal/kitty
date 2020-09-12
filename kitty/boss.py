@@ -930,6 +930,9 @@ class Boss:
         kargs = shlex.split(cmdline) if cmdline else []
         self._run_kitten(kitten, kargs)
 
+    def run_kitten(self, kitten: str, *args: str) -> None:
+        self._run_kitten(kitten, args)
+
     def on_kitten_finish(self, target_window_id: str, end_kitten: Callable, source_window: Window) -> None:
         output = self.get_output(source_window, num_lines=None)
         from kittens.runner import deserialize
