@@ -69,6 +69,7 @@ class PathCompleter:
 
     def __init__(self, prompt: str = '> '):
         self.prompt = prompt
+        self.prompt_len = wcswidth(self.prompt)
 
     def __enter__(self) -> 'PathCompleter':
         import readline
@@ -105,7 +106,14 @@ class PathCompleter:
             print(styled('Files', bold=True, fg_intense=True))
             print_table(files, ss)
 
-        print(self.prompt, readline.get_line_buffer(), sep='', end='', flush=True)
+        buf = readline.get_line_buffer()
+        x = readline.get_endidx()
+        buflen = wcswidth(buf)
+        print(self.prompt, buf, sep='', end='')
+        if x < buflen:
+            pos = x + self.prompt_len
+            print(f"\r\033[{pos}C", end='')
+        print(sep='', end='', flush=True)
 
     def __call__(self, text: str, state: int) -> Optional[str]:
         options = self.cache.get(text)
