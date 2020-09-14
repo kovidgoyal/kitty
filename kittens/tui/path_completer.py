@@ -4,7 +4,7 @@
 
 
 import os
-from typing import Any, Dict, Generator, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, Generator, Optional, Sequence, Tuple
 
 from kitty.fast_data_types import wcswidth
 from kitty.utils import ScreenSize, screen_size_function
@@ -42,7 +42,7 @@ def find_completions(path: str) -> Generator[str, None, None]:
         yield from directory_completions(os.path.dirname(path), os.path.dirname(qpath), os.path.basename(qpath))
 
 
-def print_table(items: Sequence[str], screen_size: ScreenSize) -> None:
+def print_table(items: Sequence[str], screen_size: ScreenSize, dir_colors: Callable[[str, str], str]) -> None:
     max_width = 0
     item_widths = {}
     for item in items:
@@ -55,7 +55,7 @@ def print_table(items: Sequence[str], screen_size: ScreenSize) -> None:
     for item in items:
         w = item_widths[item]
         left = col_width - w
-        print(item, ' ' * left, sep='', end='')
+        print(dir_colors(expand_path(item), item), ' ' * left, sep='', end='')
         at_start = False
         cr = (cr + 1) % num_of_cols
         if not cr:
@@ -73,6 +73,8 @@ class PathCompleter:
 
     def __enter__(self) -> 'PathCompleter':
         import readline
+
+        from .dircolors import Dircolors
         if 'libedit' in readline.__doc__:
             readline.parse_and_bind("bind -e")
             readline.parse_and_bind("bind '\t' rl_complete")
@@ -84,6 +86,7 @@ class PathCompleter:
         self.original_completer = readline.get_completer()
         readline.set_completer(self)
         self.cache: Dict[str, Tuple[str, ...]] = {}
+        self.dircolors = Dircolors()
         return self
 
     def format_completions(self, substitution: str, matches: Sequence[str], longest_match_length: int) -> None:
@@ -101,10 +104,10 @@ class PathCompleter:
         ss = screen_size_function()()
         if dirs:
             print(styled('Directories', bold=True, fg_intense=True))
-            print_table(dirs, ss)
+            print_table(dirs, ss, self.dircolors)
         if files:
             print(styled('Files', bold=True, fg_intense=True))
-            print_table(files, ss)
+            print_table(files, ss, self.dircolors)
 
         buf = readline.get_line_buffer()
         x = readline.get_endidx()
