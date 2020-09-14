@@ -78,8 +78,7 @@ class Completer:
     def __init__(self) -> None:
         self.matches: List[str] = []
         ddir = cache_dir()
-        with suppress(FileExistsError):
-            os.makedirs(ddir)
+        os.makedirs(ddir, exist_ok=True)
         self.history_path = os.path.join(ddir, 'shell.history')
 
     def complete(self, text: str, state: int) -> Optional[str]:
