@@ -204,6 +204,17 @@ EXEC 01;32
 .xspf 00;36
 """  # }}}
 
+# special file?
+special_types = (
+    (stat.S_IFLNK,  'ln'),  # symlink
+    (stat.S_IFIFO,  'pi'),  # pipe (FIFO)
+    (stat.S_IFSOCK, 'so'),  # socket
+    (stat.S_IFBLK,  'bd'),  # block device
+    (stat.S_IFCHR,  'cd'),  # character device
+    (stat.S_ISUID,  'su'),  # setuid
+    (stat.S_ISGID,  'sg'),  # setgid
+)
+
 CODE_MAP = {
     'RESET': 'rs',
     'DIR': 'di',
@@ -331,10 +342,8 @@ class Dircolors:
         val = self.extensions.get(ext, '0')
         return '\033[%sm%s\033[%sm' % (val, text, self.codes.get('rs', '0')) if val else text
 
-    def format_mode(self, text: str, mode: Union[int, os.stat_result]) -> str:
-        if isinstance(mode, os.stat_result):
-            mode = mode.st_mode
-
+    def format_mode(self, text: str, sr: os.stat_result) -> str:
+        mode = sr.st_mode
         if stat.S_ISDIR(mode):
             if (mode & (stat.S_ISVTX | stat.S_IWOTH)) == (stat.S_ISVTX | stat.S_IWOTH):
                 # sticky and world-writable
@@ -348,17 +357,6 @@ class Dircolors:
             # normal directory
             return self._format_code(text, 'di')
 
-        # special file?
-        # pylint: disable=bad-whitespace
-        special_types = (
-            (stat.S_IFLNK,  'ln'),  # symlink
-            (stat.S_IFIFO,  'pi'),  # pipe (FIFO)
-            (stat.S_IFSOCK, 'so'),  # socket
-            (stat.S_IFBLK,  'bd'),  # block device
-            (stat.S_IFCHR,  'cd'),  # character device
-            (stat.S_ISUID,  'su'),  # setuid
-            (stat.S_ISGID,  'sg'),  # setgid
-        )
         for mask, code in special_types:
             if (mode & mask) == mask:
                 return self._format_code(text, code)
@@ -373,12 +371,13 @@ class Dircolors:
             return self._format_ext(text, ext)
         return text
 
-    def __call__(self, path: str, text: str, cwd: Optional[Union[int, str]] = None, follow_symlinks: bool = False) -> str:
+    def __call__(self, path: str, text: str, cwd: Optional[Union[int, str]] = None) -> str:
+        follow_symlinks = self.codes.get('ln') == 'target'
         try:
-            statbuf = stat_at(path, cwd, follow_symlinks)
+            sr = stat_at(path, cwd, follow_symlinks)
         except OSError:
             return text
-        return self.format_mode(text, statbuf.st_mode)
+        return self.format_mode(text, sr)
 
 
 def develop() -> None:
