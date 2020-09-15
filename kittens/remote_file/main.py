@@ -11,41 +11,25 @@ import subprocess
 import sys
 import tempfile
 import time
-from contextlib import suppress
 from typing import Any, List, Optional
 
 from kitty.cli import parse_args
 from kitty.cli_stub import RemoteFileCLIOptions
 from kitty.constants import cache_dir
 from kitty.typing import BossType
-from kitty.utils import command_for_open, get_editor, open_cmd, SSHConnectionData
+from kitty.utils import (
+    SSHConnectionData, command_for_open, get_editor, open_cmd
+)
 
 from ..tui.handler import result_handler
 from ..tui.operations import (
-    faint, raw_mode, reset_terminal, set_cursor_visible, styled
+    faint, raw_mode, reset_terminal, styled
 )
+from ..tui.utils import get_key_press
 
 
 def key(x: str) -> str:
     return styled(x, bold=True, fg='green')
-
-
-def get_key_press(allowed: str, default: str) -> str:
-    response = default
-    with raw_mode():
-        try:
-            while True:
-                q = sys.stdin.buffer.read(1)
-                if q:
-                    if q in b'\x1b\x03':
-                        break
-                    with suppress(Exception):
-                        response = q.decode('utf-8').lower()
-                        if response in allowed:
-                            break
-        except (KeyboardInterrupt, EOFError):
-            pass
-    return response
 
 
 def option_text() -> str:
@@ -194,7 +178,6 @@ def main(args: List[str]) -> Result:
             input('Press enter to quit...')
         raise SystemExit(e.code)
 
-    print(set_cursor_visible(False), end='', flush=True)
     try:
         action = ask_action(cli_opts)
     finally:
