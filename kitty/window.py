@@ -513,9 +513,11 @@ class Window:
                         return
             if self.opts.allow_hyperlinks & 0b10:
                 from kittens.tui.operations import styled
-                get_boss()._run_kitten('ask', ['--type=yesno', '--message', _(
-                    'Do you want to open the following URL:\n') +
-                    styled(unquote(url), fg='yellow')],
+                get_boss()._run_kitten('ask', ['--type=choices', '--message', _(
+                    'What would you like to do with this URL:\n') +
+                    styled(unquote(url), fg='yellow'),
+                    '--choice=o:Open', '--choice=c:Copy to clipboard', '--choice=n;red:Nothing'
+                    ],
                     window=self,
                     custom_callback=partial(self.hyperlink_open_confirmed, url)
                 )
@@ -523,8 +525,11 @@ class Window:
         get_boss().open_url(url)
 
     def hyperlink_open_confirmed(self, url: str, data: Dict[str, Any], *a: Any) -> None:
-        if data['response'] == 'y':
+        q = data['response']
+        if q == 'o':
             get_boss().open_url(url)
+        elif q == 'c':
+            set_clipboard_string(url)
 
     def handle_remote_file(self, netloc: str, remote_path: str) -> None:
         from kittens.ssh.main import get_connection_data

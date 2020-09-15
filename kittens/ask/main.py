@@ -122,7 +122,7 @@ def choice(cli_opts: AskCLIOptions, items: List[str]) -> Response:
             letter = letter.lower()
             idx = text.lower().index(letter)
             allowed += letter
-            print(text[:idx], styled(text[idx], fg=color), text[idx:], sep='', end='  ')
+            print(text[:idx], styled(text[idx], fg=color), text[idx + 1:], sep='', end='  ')
         print()
         response = get_key_press(allowed, '')
         return {'items': items, 'response': response}
