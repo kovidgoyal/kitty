@@ -8,7 +8,9 @@ import shlex
 import subprocess
 import sys
 from contextlib import suppress
-from typing import List, NamedTuple, NoReturn, Optional, Set, Tuple
+from typing import List, NoReturn, Optional, Set, Tuple
+
+from kitty.utils import SSHConnectionData
 
 SHELL_SCRIPT = '''\
 #!/bin/sh
@@ -59,12 +61,6 @@ def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
         else:
             boolean_ssh_args.extend(q[1:])
     return set('-' + x for x in boolean_ssh_args), set('-' + x for x in other_ssh_args)
-
-
-class SSHConnectionData(NamedTuple):
-    binary: str
-    hostname: str
-    port: Optional[int] = None
 
 
 def get_connection_data(args: List[str]) -> Optional[SSHConnectionData]:

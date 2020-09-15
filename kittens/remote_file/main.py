@@ -18,9 +18,8 @@ from kitty.cli import parse_args
 from kitty.cli_stub import RemoteFileCLIOptions
 from kitty.constants import cache_dir
 from kitty.typing import BossType
-from kitty.utils import command_for_open, get_editor, open_cmd
+from kitty.utils import command_for_open, get_editor, open_cmd, SSHConnectionData
 
-from ..ssh.main import SSHConnectionData
 from ..tui.handler import result_handler
 from ..tui.operations import (
     faint, raw_mode, reset_terminal, set_cursor_visible, styled

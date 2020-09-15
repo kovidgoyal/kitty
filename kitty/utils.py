@@ -575,3 +575,9 @@ def parse_uri_list(text: str) -> Generator[str, None, None]:
             continue
         if purl.path:
             yield unquote(purl.path)
+
+
+class SSHConnectionData(NamedTuple):
+    binary: str
+    hostname: str
+    port: Optional[int] = None
