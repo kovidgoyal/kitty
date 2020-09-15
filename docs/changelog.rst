@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.18.4 [2020-08-11]
+0.19.0 [future]
 -------------------
 
 - Add support for `hyperlinks from terminal programs
