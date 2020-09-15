@@ -508,7 +508,7 @@ class Window:
                     except Exception:
                         hostname = ''
                     remote_hostname = purl.netloc.partition(':')[0]
-                    if remote_hostname and remote_hostname != hostname:
+                    if remote_hostname and remote_hostname != hostname and remote_hostname != 'localhost':
                         self.handle_remote_file(purl.netloc, unquote(purl.path))
                         return
             if self.opts.allow_hyperlinks & 0b10:
