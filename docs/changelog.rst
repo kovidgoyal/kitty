@@ -7,8 +7,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.18.4 [2020-08-11]
 -------------------
 
+- Add support for `hyperlinks from terminal programs
+  <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`_.
+  Controlled via :opt:`allow_hyperlinks` (:iss:`68`)
+
 - Improve rendering of borders when using minimal borders. Use less space and
-  do not display a box around active windows.
+  do not display a box around active windows
 
 - Add a new extensible escape code to allow terminal programs to trigger
   desktop notifications. See :ref:`desktop_notifications` (:iss:`1474`)
@@ -17,7 +21,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   for Legacy Computing" from the Unicode 13 standard
 
 - Allow specifying border sizes in either pts or pixels. Change the default to
-  0.5pt borders as this works best with the new minimal border style.
+  0.5pt borders as this works best with the new minimal border style
 
 - Add support for displaying correct colors with non-sRGB PNG files (Adds a
   dependency on liblcms2)
