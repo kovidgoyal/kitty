@@ -16,6 +16,7 @@ from typing import Any, List, Optional
 
 from kitty.cli import parse_args
 from kitty.cli_stub import RemoteFileCLIOptions
+from kitty.constants import cache_dir
 from kitty.typing import BossType
 from kitty.utils import command_for_open, get_editor, open_cmd
 
@@ -24,6 +25,28 @@ from ..tui.handler import result_handler
 from ..tui.operations import (
     faint, raw_mode, reset_terminal, set_cursor_visible, styled
 )
+
+
+def key(x: str) -> str:
+    return styled(x, bold=True, fg='green')
+
+
+def get_key_press(allowed: str, default: str) -> str:
+    response = default
+    with raw_mode():
+        try:
+            while True:
+                q = sys.stdin.buffer.read(1)
+                if q:
+                    if q in b'\x1b\x03':
+                        break
+                    with suppress(Exception):
+                        response = q.decode('utf-8').lower()
+                        if response in allowed:
+                            break
+        except (KeyboardInterrupt, EOFError):
+            pass
+    return response
 
 
 def option_text() -> str:
@@ -67,9 +90,6 @@ def ask_action(opts: RemoteFileCLIOptions) -> str:
     print(styled(opts.path or '', fg='yellow', fg_intense=True))
     print()
 
-    def key(x: str) -> str:
-        return styled(x, bold=True, fg='green')
-
     def help_text(x: str) -> str:
         return faint(x)
 
@@ -82,26 +102,16 @@ def ask_action(opts: RemoteFileCLIOptions) -> str:
     print(help_text('The file will be downloaded and opened by the default open program'))
     print()
 
+    print('{}ave the file'.format(key('S')))
+    print(help_text('The file will be downloaded to a destination you select'))
+    print()
+
     print('{}ancel'.format(key('C')))
     print()
 
     sys.stdout.flush()
-    response = 'c'
-    with raw_mode():
-        try:
-            while True:
-                q = sys.stdin.buffer.read(1)
-                if q:
-                    if q in b'\x1b\x03':
-                        break
-                    with suppress(Exception):
-                        response = q.decode('utf-8').lower()
-                        if response in 'ceo':
-                            break
-        except (KeyboardInterrupt, EOFError):
-            pass
-
-    return {'e': 'edit', 'o': 'open'}.get(response, 'cancel')
+    response = get_key_press('ceos', 'c')
+    return {'e': 'edit', 'o': 'open', 's': 'save'}.get(response, 'cancel')
 
 
 def simple_copy_command(conn_data: SSHConnectionData, path: str) -> List[str]:
@@ -199,6 +209,61 @@ def main(args: List[str]) -> Result:
         show_error('Failed with unhandled exception')
 
 
+def save_as(conn_data: SSHConnectionData, remote_path: str) -> None:
+    ddir = cache_dir()
+    os.makedirs(ddir, exist_ok=True)
+    last_used_store_path = os.path.join(ddir, 'remote-file-last-used.txt')
+    try:
+        with open(last_used_store_path) as f:
+            last_used_path = f.read()
+    except FileNotFoundError:
+        last_used_path = tempfile.gettempdir()
+    last_used_file = os.path.join(last_used_path, os.path.basename(remote_path))
+    print(
+        'Where do you wish to save the file? Leaving it blank will save it as:',
+        styled(last_used_file, fg='yellow')
+    )
+    print('Relative paths will be resolved from:', styled(os.getcwd(), fg_intense=True, bold=True))
+    print()
+    from ..tui.path_completer import PathCompleter
+    try:
+        dest = PathCompleter().input()
+    except (KeyboardInterrupt, EOFError):
+        return
+    if dest:
+        dest = os.path.expandvars(os.path.expanduser(dest))
+        if os.path.isdir(dest):
+            dest = os.path.join(dest, os.path.basename(remote_path))
+        with open(last_used_store_path, 'w') as f:
+            f.write(os.path.dirname(os.path.abspath(dest)))
+    else:
+        dest = last_used_file
+    if os.path.exists(dest):
+        print(reset_terminal(), end='')
+        print(f'The file {styled(dest, fg="yellow")} already exists. What would you like to do?')
+        print(f'{key("O")}verwrite  {key("A")}bort  Auto {key("R")}ename {key("N")}ew name')
+        response = get_key_press('anor', 'a')
+        if response == 'a':
+            return
+        if response == 'n':
+            print(reset_terminal(), end='')
+            return save_as(conn_data, remote_path)
+
+        if response == 'r':
+            q = dest
+            c = 0
+            while os.path.exists(q):
+                c += 1
+                b, ext = os.path.splitext(dest)
+                q = f'{b}-{c}{ext}'
+            dest = q
+    if os.path.dirname(dest):
+        os.makedirs(os.path.dirname(dest), exist_ok=True)
+    cmd = simple_copy_command(conn_data, remote_path)
+    if not save_output(cmd, dest):
+        show_error('Failed to copy file from remote machine')
+
+
 def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
     conn_data = SSHConnectionData(*json.loads(cli_opts.ssh_connection_data or ''))
     remote_path = cli_opts.path or ''
@@ -232,6 +297,9 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
                     show_error(f'Failed to upload {remote_path}')
             else:
                 show_error(f'Failed to upload {remote_path}, SSH master process died')
+    elif action == 'save':
+        print('Saving', cli_opts.path, 'from', cli_opts.hostname)
+        save_as(conn_data, remote_path)
 
 
 @result_handler()
