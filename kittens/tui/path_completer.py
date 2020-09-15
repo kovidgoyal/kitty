@@ -35,6 +35,15 @@ def expand_path(path: str) -> str:
 
 
 def find_completions(path: str) -> Generator[str, None, None]:
+    if path and path[0] == '~':
+        if path == '~':
+            yield '~' + os.sep
+            return
+        if os.sep not in path:
+            qpath = os.path.expanduser(path)
+            if qpath != path:
+                yield path + os.sep
+                return
     qpath = expand_path(path)
     if not path or path.endswith(os.sep):
         yield from directory_completions(path, qpath)
