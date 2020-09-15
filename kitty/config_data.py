@@ -1145,10 +1145,17 @@ program, even one running on a remote server via SSH can read your clipboard.
 '''))
 
 
-o('allow_hyperlinks', True, long_text=_('''
+def allow_hyperlinks(x: str) -> int:
+    if x == 'ask':
+        return 0b11
+    return 1 if to_bool(x) else 0
+
+
+o('allow_hyperlinks', 'yes', option_type=allow_hyperlinks, long_text=_('''
 Process hyperlink (OSC 8) escape sequences. If disabled OSC 8 escape
 sequences are ignored. Otherwise they become clickable links, that you
-can click by holding down ctrl+shift and clicking with the mouse'''))
+can click by holding down ctrl+shift and clicking with the mouse. The special
+value of ``ask`` means that kitty will ask before opening the link.'''))
 
 
 o('term', 'xterm-kitty', long_text=_('''

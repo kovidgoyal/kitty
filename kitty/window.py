@@ -8,6 +8,8 @@ import sys
 import weakref
 from collections import deque
 from enum import IntEnum
+from functools import partial
+from gettext import gettext as _
 from itertools import chain
 from typing import (
     Any, Callable, Deque, Dict, Iterable, List, Optional, Pattern, Sequence,
@@ -491,6 +493,8 @@ class Window:
 
     def open_url(self, url: str, hyperlink_id: int) -> None:
         if hyperlink_id:
+            if not self.opts.allow_hyperlinks:
+                return
             from urllib.parse import unquote, urlparse
             try:
                 purl = urlparse(url)
@@ -507,8 +511,20 @@ class Window:
                     if remote_hostname and remote_hostname != hostname:
                         self.handle_remote_file(purl.netloc, unquote(purl.path))
                         return
-
+            if self.opts.allow_hyperlinks & 0b10:
+                from kittens.tui.operations import styled
+                get_boss()._run_kitten('ask', ['--type=yesno', '--message', _(
+                    'Do you want to open the following URL:\n') +
+                    styled(unquote(url), fg='yellow')],
+                    window=self,
+                    custom_callback=partial(self.hyperlink_open_confirmed, url)
+                )
+                return
         get_boss().open_url(url)
+
+    def hyperlink_open_confirmed(self, url: str, data: Dict[str, Any], *a: Any) -> None:
+        if data['response'] == 'y':
+            get_boss().open_url(url)
 
     def handle_remote_file(self, netloc: str, remote_path: str) -> None:
         from kittens.ssh.main import get_connection_data
