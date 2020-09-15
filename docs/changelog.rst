@@ -11,6 +11,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`_.
   Controlled via :opt:`allow_hyperlinks` (:iss:`68`)
 
+- Add support for easily editing or downloading files over SSH sessions
+  without the need for any special software, see :doc:`kittens/remote_file`
+
 - Improve rendering of borders when using minimal borders. Use less space and
   do not display a box around active windows
 
