@@ -1968,7 +1968,7 @@ screen_open_url(Screen *self) {
     }
     bool found = false;
     if (PyUnicode_Check(text)) {
-        CALLBACK("open_url", "sH", text, 0);
+        CALLBACK("open_url", "OH", text, 0);
         found = true;
     }
     Py_CLEAR(text);
