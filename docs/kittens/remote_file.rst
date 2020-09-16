@@ -22,6 +22,11 @@ to the remote computer. Note that this happens without needing to install *any*
 special software on the server, beyond ``ls`` that supports hyperlinks.
 
 .. note::
+   Nested SSH sessions are not supported. The kitten will always try to copy
+   remote files from the first SSH host. This is because there is no way for
+   |kitty| to detect and follow a nested SSH session robustly.
+
+.. note::
    If you have not setup automatic password-less SSH access, then, when
    editing starts you will be asked to enter your password just once,
    thereafter the SSH connection will be re-used.
