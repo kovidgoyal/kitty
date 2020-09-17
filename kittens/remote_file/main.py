@@ -97,10 +97,19 @@ def ask_action(opts: RemoteFileCLIOptions) -> str:
     return {'e': 'edit', 'o': 'open', 's': 'save'}.get(response, 'cancel')
 
 
+def hostname_matches(from_hyperlink: str, actual: str) -> bool:
+    if from_hyperlink == actual:
+        return True
+    if from_hyperlink.partition('.')[0] == actual.partition('.')[0]:
+        return True
+    return False
+
+
 class ControlMaster:
 
-    def __init__(self, conn_data: SSHConnectionData, remote_path: str, dest: str = ''):
+    def __init__(self, conn_data: SSHConnectionData, remote_path: str, cli_opts: RemoteFileCLIOptions, dest: str = ''):
         self.conn_data = conn_data
+        self.cli_opts = cli_opts
         self.remote_path = remote_path
         self.dest = dest
         self.tdir = ''
@@ -137,6 +146,33 @@ class ControlMaster:
             self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
         ).wait() == 0
+
+    def check_hostname_matches(self) -> None:
+        cp = subprocess.run(self.batch_cmd_prefix + [self.conn_data.hostname, 'hostname', '-f'], stdout=subprocess.PIPE,
+                            stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
+        if cp.returncode == 0:
+            q = cp.stdout.decode('utf-8').strip()
+            if not hostname_matches(self.cli_opts.hostname or '', q):
+                print(reset_terminal(), end='')
+                print(f'The remote hostname {styled(q, fg="green")} does not match the')
+                print(f'hostname in the hyperlink {styled(self.cli_opts.hostname or "", fg="red")}')
+                print('This indicates that kitty has not connected to the correct remote machine.')
+                print('This can happen, for example, when using nested SSH sessions.')
+                print(f'The hostname kitty used to connect was: {styled(self.conn_data.hostname, fg="yellow")}', end='')
+                if self.conn_data.port is not None:
+                    print(f' with port: {self.conn_data.port}')
+                print()
+                print()
+                print('Do you want to continue anyway?')
+                print(
+                    f'{styled("Y", fg="green")}es',
+                    f'{styled("N", fg="red")}o', sep='\t'
+                )
+                sys.stdout.flush()
+                response = get_key_press('yn', 'n')
+                if response != 'y':
+                    raise SystemExit(1)
+                print(reset_terminal(), end='')
 
     def download(self) -> bool:
         with open(self.dest, 'wb') as f:
@@ -181,7 +217,7 @@ def main(args: List[str]) -> Result:
         show_error('Failed with unhandled exception')
 
 
-def save_as(conn_data: SSHConnectionData, remote_path: str) -> None:
+def save_as(conn_data: SSHConnectionData, remote_path: str, cli_opts: RemoteFileCLIOptions) -> None:
     ddir = cache_dir()
     os.makedirs(ddir, exist_ok=True)
     last_used_store_path = os.path.join(ddir, 'remote-file-last-used.txt')
@@ -219,7 +255,7 @@ def save_as(conn_data: SSHConnectionData, remote_path: str) -> None:
             return
         if response == 'n':
             print(reset_terminal(), end='')
-            return save_as(conn_data, remote_path)
+            return save_as(conn_data, remote_path, cli_opts)
 
         if response == 'r':
             q = dest
@@ -231,7 +267,8 @@ def save_as(conn_data: SSHConnectionData, remote_path: str) -> None:
             dest = q
     if os.path.dirname(dest):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
-    with ControlMaster(conn_data, remote_path, dest=dest) as master:
+    with ControlMaster(conn_data, remote_path, cli_opts, dest=dest) as master:
+        master.check_hostname_matches()
         if not master.download():
             show_error('Failed to copy file from remote machine')
 
@@ -242,13 +279,15 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
     if action == 'open':
         print('Opening', cli_opts.path, 'from', cli_opts.hostname)
         dest = os.path.join(tempfile.mkdtemp(), os.path.basename(remote_path))
-        with ControlMaster(conn_data, remote_path, dest=dest) as master:
+        with ControlMaster(conn_data, remote_path, cli_opts, dest=dest) as master:
+            master.check_hostname_matches()
             if master.download():
                 return dest
         show_error('Failed to copy file from remote machine')
     elif action == 'edit':
         print('Editing', cli_opts.path, 'from', cli_opts.hostname)
-        with ControlMaster(conn_data, remote_path) as master:
+        with ControlMaster(conn_data, remote_path, cli_opts) as master:
+            master.check_hostname_matches()
             if not master.download():
                 show_error(f'Failed to download {remote_path}')
                 return None
@@ -271,7 +310,7 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
                 show_error(f'Failed to upload {remote_path}, SSH master process died')
     elif action == 'save':
         print('Saving', cli_opts.path, 'from', cli_opts.hostname)
-        save_as(conn_data, remote_path)
+        save_as(conn_data, remote_path, cli_opts)
 
 
 @result_handler()
