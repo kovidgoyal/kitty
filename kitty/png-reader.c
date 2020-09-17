@@ -106,13 +106,13 @@ inflate_png_inner(png_read_data *d, const uint8_t *buf, size_t bufsz) {
     if (color_type == PNG_COLOR_TYPE_GRAY || color_type == PNG_COLOR_TYPE_GRAY_ALPHA) png_set_gray_to_rgb(png);
     png_read_update_info(png, info);
 
-    int rowbytes = png_get_rowbytes(png, info);
+    png_uint_32 rowbytes = png_get_rowbytes(png, info);
     d->sz = sizeof(png_byte) * rowbytes * d->height;
     d->decompressed = malloc(d->sz + 16);
     if (d->decompressed == NULL) ABRT(ENOMEM, "Out of memory allocating decompression buffer for PNG");
     d->row_pointers = malloc(d->height * sizeof(png_bytep));
     if (d->row_pointers == NULL) ABRT(ENOMEM, "Out of memory allocating row_pointers buffer for PNG");
-    for (int i = 0; i < d->height; i++) d->row_pointers[i] = d->decompressed + i * rowbytes * sizeof(png_byte);
+    for (size_t i = 0; i < (size_t)d->height; i++) d->row_pointers[i] = d->decompressed + i * rowbytes * sizeof(png_byte);
     png_read_image(png, d->row_pointers);
 
     if (colorspace_transform) {
