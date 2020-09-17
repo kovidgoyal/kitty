@@ -2509,7 +2509,7 @@ screen_mark_url(Screen *self, index_type start_x, index_type start_y, index_type
 }
 
 static bool
-mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id) {
+mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id, index_type y) {
     index_type start = 0;
     bool found = false;
     bool in_range = false;
@@ -2517,7 +2517,7 @@ mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id) {
         bool has_hyperlink = line->cpu_cells[x].hyperlink_id == id;
         if (in_range) {
             if (!has_hyperlink) {
-                add_url_range(self, start, line->ynum, x - 1, line->ynum);
+                add_url_range(self, start, y, x - 1, y);
                 in_range = false;
                 start = 0;
             }
@@ -2528,7 +2528,7 @@ mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id) {
             }
         }
     }
-    if (in_range) add_url_range(self, start, line->ynum, self->columns - 1, line->ynum);
+    if (in_range) add_url_range(self, start, y, self->columns - 1, y);
     return found;
 }
 
@@ -2559,7 +2559,7 @@ screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
     if (!id) return 0;
     index_type ypos = y, last_marked_line = y;
     do {
-        if (mark_hyperlinks_in_line(self, line, id)) last_marked_line = ypos;
+        if (mark_hyperlinks_in_line(self, line, id, ypos)) last_marked_line = ypos;
         if (ypos == 0) break;
         ypos--;
         line = screen_visual_line(self, ypos);
@@ -2567,7 +2567,7 @@ screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
     ypos = y + 1; last_marked_line = y;
     while (ypos < self->lines - 1 && ypos - last_marked_line < 5) {
         line = screen_visual_line(self, ypos);
-        if (mark_hyperlinks_in_line(self, line, id)) last_marked_line = ypos;
+        if (mark_hyperlinks_in_line(self, line, id, ypos)) last_marked_line = ypos;
         ypos++;
     }
     if (self->url_ranges.count > 1) sort_ranges(self, &self->url_ranges);
