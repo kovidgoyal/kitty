@@ -147,7 +147,7 @@ class ControlMaster:
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
         ).wait() == 0
 
-    def check_hostname_matches(self) -> None:
+    def check_hostname_matches(self) -> bool:
         cp = subprocess.run(self.batch_cmd_prefix + [self.conn_data.hostname, 'hostname', '-f'], stdout=subprocess.PIPE,
                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
         if cp.returncode == 0:
@@ -170,9 +170,9 @@ class ControlMaster:
                 )
                 sys.stdout.flush()
                 response = get_key_press('yn', 'n')
-                if response != 'y':
-                    raise SystemExit(1)
                 print(reset_terminal(), end='')
+                return response == 'y'
+        return True
 
     def download(self) -> bool:
         with open(self.dest, 'wb') as f:
@@ -268,9 +268,9 @@ def save_as(conn_data: SSHConnectionData, remote_path: str, cli_opts: RemoteFile
     if os.path.dirname(dest):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
     with ControlMaster(conn_data, remote_path, cli_opts, dest=dest) as master:
-        master.check_hostname_matches()
-        if not master.download():
-            show_error('Failed to copy file from remote machine')
+        if master.check_hostname_matches():
+            if not master.download():
+                show_error('Failed to copy file from remote machine')
 
 
 def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
@@ -280,14 +280,15 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
         print('Opening', cli_opts.path, 'from', cli_opts.hostname)
         dest = os.path.join(tempfile.mkdtemp(), os.path.basename(remote_path))
         with ControlMaster(conn_data, remote_path, cli_opts, dest=dest) as master:
-            master.check_hostname_matches()
-            if master.download():
-                return dest
-        show_error('Failed to copy file from remote machine')
+            if master.check_hostname_matches():
+                if master.download():
+                    return dest
+                show_error('Failed to copy file from remote machine')
     elif action == 'edit':
         print('Editing', cli_opts.path, 'from', cli_opts.hostname)
         with ControlMaster(conn_data, remote_path, cli_opts) as master:
-            master.check_hostname_matches()
+            if not master.check_hostname_matches():
+                return None
             if not master.download():
                 show_error(f'Failed to download {remote_path}')
                 return None
