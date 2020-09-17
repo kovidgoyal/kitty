@@ -11,7 +11,7 @@ kitty - the fast, featureful, GPU based terminal emulator
 
     * Supports all modern terminal features: :doc:`graphics (images)
       <graphics-protocol>`, unicode, `true-color
-      <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`_,
+      <https://gist.github.com/XVilka/8346728>`_,
       OpenType ligatures, mouse protocol, `hyperlinks
       <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`_,
       focus tracking, `bracketed paste <https://cirw.in/blog/bracketed-paste>`_
