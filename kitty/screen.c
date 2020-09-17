@@ -2476,7 +2476,7 @@ screen_is_selection_dirty(Screen *self) {
 void
 screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool rectangle_select, SelectionExtendMode extend_mode) {
 #define A(attr, val) self->selections.items->attr = val;
-    ensure_space_for(&self->selections, items, Selection, 1, capacity, 1, false);
+    ensure_space_for(&self->selections, items, Selection, self->selections.count + 1, capacity, 1, false);
     memset(self->selections.items, 0, sizeof(Selection));
     self->selections.count = 1;
     self->selections.in_progress = true;
