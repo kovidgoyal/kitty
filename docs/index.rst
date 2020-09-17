@@ -10,10 +10,13 @@ kitty - the fast, featureful, GPU based terminal emulator
       buttery smooth scrolling.  Uses threaded rendering to minimize input latency.
 
     * Supports all modern terminal features: :doc:`graphics (images)
-      <graphics-protocol>`, unicode, true-color, OpenType ligatures, mouse
-      protocol, focus tracking, `bracketed paste
-      <https://cirw.in/blog/bracketed-paste>`_ and several :doc:`new terminal
-      protocol extensions <protocol-extensions>`.
+      <graphics-protocol>`, unicode, `true-color
+      <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`_,
+      OpenType ligatures, mouse protocol, `hyperlinks
+      <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`_,
+      focus tracking, `bracketed paste <https://cirw.in/blog/bracketed-paste>`_
+      and several :doc:`new terminal protocol extensions
+      <protocol-extensions>`.
 
     * Supports tiling multiple terminal windows side by side in different
       :ref:`layouts <layouts>` without needing to use an extra program like tmux
