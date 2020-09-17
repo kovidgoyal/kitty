@@ -2061,13 +2061,17 @@ screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
     unsigned long ans = 0;
     char_type prev_ch = 0;
     int prev_width = 0;
-    typedef enum {NORMAL, IN_SGR, FLAG_PAIR_STARTED} WCSState;
+    typedef enum {NORMAL, IN_CSI, FLAG_PAIR_STARTED, IN_ST_TERMINATED} WCSState;
     WCSState state = NORMAL;
     for (i = 0; i < len; i++) {
         char_type ch = PyUnicode_READ(kind, data, i);
         switch(state) {
-            case IN_SGR: {
-                if (ch == 'm') state = NORMAL;
+            case IN_CSI: {
+                if (0x40 <= ch && ch <= 0x7e) state = NORMAL;
+            } continue;
+            case IN_ST_TERMINATED: {
+                if (ch == 0x9c) state = NORMAL;
+                else if (ch == 0x1b && i + 1 < len && PyUnicode_READ(kind, data, i + 1) == '\\') { i++; state = NORMAL; }
             } continue;
 
             case FLAG_PAIR_STARTED: {
@@ -2076,8 +2080,46 @@ screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
             } /* fallthrough */
 
             case NORMAL: {
-                if (ch == 0x1b && i + 1 < len && PyUnicode_READ(kind, data, i + 1) == '[') { state = IN_SGR; continue; }
                 switch(ch) {
+                    case 0x1b: {
+                        prev_width = 0;
+                        if (i + 1 < len) {
+                            switch (PyUnicode_READ(kind, data, i + 1)) {
+                                case '[':
+                                    state = IN_CSI; i++; continue;
+                                case 'P':
+                                case ']':
+                                case 'X':
+                                case '^':
+                                case '_':
+                                    state = IN_ST_TERMINATED; i++; continue;
+                                case 'D':
+                                case 'E':
+                                case 'H':
+                                case 'M':
+                                case 'N':
+                                case 'O':
+                                case 'Z':
+                                case '6':
+                                case '7':
+                                case '8':
+                                case '9':
+                                case '=':
+                                case '>':
+                                case 'F':
+                                case 'c':
+                                case 'l':
+                                case 'm':
+                                case 'n':
+                                case 'o':
+                                case '|':
+                                case '}':
+                                case '~':
+                                    i++; continue;
+                            }
+                        }
+                    } break;
+
                     case 0xfe0f: {
                         if (is_emoji_presentation_base(prev_ch) && prev_width == 1) {
                             ans += 1;
