@@ -2492,7 +2492,7 @@ screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_ha
 static inline void
 add_url_range(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
 #define A(attr, val) r->attr = val;
-    ensure_space_for(&self->url_ranges, items, Selection, 1, capacity, 8, false);
+    ensure_space_for(&self->url_ranges, items, Selection, self->url_ranges.count + 8, capacity, 8, false);
     Selection *r = self->url_ranges.items + self->url_ranges.count++;
     memset(r, 0, sizeof(Selection));
     r->last_rendered.y = self->lines + 10;
