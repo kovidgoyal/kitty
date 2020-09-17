@@ -2481,6 +2481,7 @@ screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_ha
     self->selections.count = 1;
     self->selections.in_progress = true;
     self->selections.extend_mode = extend_mode;
+    self->selections.items[0].last_rendered.y = self->lines + 10;
     A(start.x, x); A(end.x, x); A(start.y, y); A(end.y, y); A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
     A(rectangle_select, rectangle_select); A(start.in_left_half_of_cell, in_left_half_of_cell); A(end.in_left_half_of_cell, in_left_half_of_cell);
     A(input_start.x, x); A(input_start.y, y); A(input_start.in_left_half_of_cell, in_left_half_of_cell);
@@ -2494,6 +2495,7 @@ add_url_range(Screen *self, index_type start_x, index_type start_y, index_type e
     ensure_space_for(&self->url_ranges, items, Selection, 1, capacity, 8, false);
     Selection *r = self->url_ranges.items + self->url_ranges.count++;
     memset(r, 0, sizeof(Selection));
+    r->last_rendered.y = self->lines + 10;
     A(start.x, start_x); A(end.x, end_x); A(start.y, start_y); A(end.y, end_y);
     A(start_scrolled_by, self->scrolled_by); A(end_scrolled_by, self->scrolled_by);
     A(start.in_left_half_of_cell, true);
