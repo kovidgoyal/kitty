@@ -495,7 +495,7 @@ class Window:
         if hyperlink_id:
             if not self.opts.allow_hyperlinks:
                 return
-            from urllib.parse import unquote, urlparse
+            from urllib.parse import unquote, urlparse, urlunparse
             try:
                 purl = urlparse(url)
             except Exception:
@@ -511,6 +511,7 @@ class Window:
                     if remote_hostname and remote_hostname != hostname and remote_hostname != 'localhost':
                         self.handle_remote_file(purl.netloc, unquote(purl.path))
                         return
+                    url = urlunparse(purl._replace(netloc=''))
             if self.opts.allow_hyperlinks & 0b10:
                 from kittens.tui.operations import styled
                 get_boss()._run_kitten('ask', ['--type=choices', '--message', _(
