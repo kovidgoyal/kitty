@@ -97,19 +97,13 @@ def ask_action(opts: RemoteFileCLIOptions) -> str:
     return {'e': 'edit', 'o': 'open', 's': 'save'}.get(response, 'cancel')
 
 
-def simple_copy_command(conn_data: SSHConnectionData, path: str) -> List[str]:
-    cmd = [conn_data.binary]
-    if conn_data.port:
-        cmd += ['-p', str(conn_data.port)]
-    cmd += [conn_data.hostname, 'cat', path]
-    return cmd
-
-
 class ControlMaster:
 
-    def __init__(self, conn_data: SSHConnectionData, remote_path: str):
+    def __init__(self, conn_data: SSHConnectionData, remote_path: str, dest: str = ''):
         self.conn_data = conn_data
         self.remote_path = remote_path
+        self.dest = dest
+        self.tdir = ''
         self.cmd_prefix = cmd = [
             conn_data.binary, '-o', f'ControlPath=~/.ssh/kitty-master-{os.getpid()}-%r@%h:%p',
             '-o', 'TCPKeepAlive=yes', '-o', 'ControlPersist=yes'
@@ -123,8 +117,9 @@ class ControlMaster:
             self.cmd_prefix + ['-o', 'ControlMaster=auto', '-fN', self.conn_data.hostname])
         subprocess.check_call(
             self.batch_cmd_prefix + ['-O', 'check', self.conn_data.hostname])
-        self.tdir = tempfile.mkdtemp()
-        self.dest = os.path.join(self.tdir, os.path.basename(self.remote_path))
+        if not self.dest:
+            self.tdir = tempfile.mkdtemp()
+            self.dest = os.path.join(self.tdir, os.path.basename(self.remote_path))
         return self
 
     def __exit__(self, *a: Any) -> bool:
@@ -132,7 +127,8 @@ class ControlMaster:
             self.batch_cmd_prefix + ['-O', 'exit', self.conn_data.hostname],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
         ).wait()
-        shutil.rmtree(self.tdir)
+        if self.tdir:
+            shutil.rmtree(self.tdir)
         return True
 
     @property
@@ -157,12 +153,6 @@ class ControlMaster:
         redirect = subprocess.DEVNULL if suppress_output else None
         with open(self.dest, 'rb') as f:
             return subprocess.run(cmd, stdout=redirect, stderr=redirect, stdin=f).returncode == 0
-
-
-def save_output(cmd: List[str], dest_path: str) -> bool:
-    with open(dest_path, 'wb') as f:
-        cp = subprocess.run(cmd, stdout=f)
-        return cp.returncode == 0
 
 
 Result = Optional[str]
@@ -241,9 +231,9 @@ def save_as(conn_data: SSHConnectionData, remote_path: str) -> None:
             dest = q
     if os.path.dirname(dest):
         os.makedirs(os.path.dirname(dest), exist_ok=True)
-    cmd = simple_copy_command(conn_data, remote_path)
-    if not save_output(cmd, dest):
-        show_error('Failed to copy file from remote machine')
+    with ControlMaster(conn_data, remote_path, dest=dest) as master:
+        if not master.download():
+            show_error('Failed to copy file from remote machine')
 
 
 def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
@@ -251,10 +241,10 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
     remote_path = cli_opts.path or ''
     if action == 'open':
         print('Opening', cli_opts.path, 'from', cli_opts.hostname)
-        cmd = simple_copy_command(conn_data, remote_path)
         dest = os.path.join(tempfile.mkdtemp(), os.path.basename(remote_path))
-        if save_output(cmd, dest):
-            return dest
+        with ControlMaster(conn_data, remote_path, dest=dest) as master:
+            if master.download():
+                return dest
         show_error('Failed to copy file from remote machine')
     elif action == 'edit':
         print('Editing', cli_opts.path, 'from', cli_opts.hostname)
