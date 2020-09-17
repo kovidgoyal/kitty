@@ -2052,110 +2052,6 @@ as_text_alternate(Screen *self, PyObject *args) {
 }
 
 
-static PyObject*
-screen_wcswidth(PyObject UNUSED *self, PyObject *str) {
-    if (PyUnicode_READY(str) != 0) return NULL;
-    int kind = PyUnicode_KIND(str);
-    void *data = PyUnicode_DATA(str);
-    Py_ssize_t len = PyUnicode_GET_LENGTH(str), i;
-    unsigned long ans = 0;
-    char_type prev_ch = 0;
-    int prev_width = 0;
-    typedef enum {NORMAL, IN_CSI, FLAG_PAIR_STARTED, IN_ST_TERMINATED} WCSState;
-    WCSState state = NORMAL;
-    for (i = 0; i < len; i++) {
-        char_type ch = PyUnicode_READ(kind, data, i);
-        switch(state) {
-            case IN_CSI: {
-                if (0x40 <= ch && ch <= 0x7e) state = NORMAL;
-            } continue;
-            case IN_ST_TERMINATED: {
-                if (ch == 0x9c) state = NORMAL;
-                else if (ch == 0x1b && i + 1 < len && PyUnicode_READ(kind, data, i + 1) == '\\') { i++; state = NORMAL; }
-            } continue;
-
-            case FLAG_PAIR_STARTED: {
-                state = NORMAL;
-                if (is_flag_pair(prev_ch, ch)) break;
-            } /* fallthrough */
-
-            case NORMAL: {
-                switch(ch) {
-                    case 0x1b: {
-                        prev_width = 0;
-                        if (i + 1 < len) {
-                            switch (PyUnicode_READ(kind, data, i + 1)) {
-                                case '[':
-                                    state = IN_CSI; i++; continue;
-                                case 'P':
-                                case ']':
-                                case 'X':
-                                case '^':
-                                case '_':
-                                    state = IN_ST_TERMINATED; i++; continue;
-                                case 'D':
-                                case 'E':
-                                case 'H':
-                                case 'M':
-                                case 'N':
-                                case 'O':
-                                case 'Z':
-                                case '6':
-                                case '7':
-                                case '8':
-                                case '9':
-                                case '=':
-                                case '>':
-                                case 'F':
-                                case 'c':
-                                case 'l':
-                                case 'm':
-                                case 'n':
-                                case 'o':
-                                case '|':
-                                case '}':
-                                case '~':
-                                    i++; continue;
-                            }
-                        }
-                    } break;
-
-                    case 0xfe0f: {
-                        if (is_emoji_presentation_base(prev_ch) && prev_width == 1) {
-                            ans += 1;
-                            prev_width = 2;
-                        } else prev_width = 0;
-                    } break;
-
-                    case 0xfe0e: {
-                        if (is_emoji_presentation_base(prev_ch) && prev_width == 2) {
-                            ans -= 1;
-                            prev_width = 1;
-                        } else prev_width = 0;
-                    } break;
-
-                    default: {
-                        if (is_flag_codepoint(ch)) state = FLAG_PAIR_STARTED;
-                        int w = wcwidth_std(ch);
-                        switch(w) {
-                            case -1:
-                            case 0:
-                                prev_width = 0; break;
-                            case 2:
-                                prev_width = 2; break;
-                            default:
-                                prev_width = 1; break;
-                        }
-                        ans += prev_width;
-                    } break;
-                } break; // switch(ch)
-            } break;  // case NORMAL
-        } // switch(state)
-        prev_ch = ch;
-    }
-    return PyLong_FromUnsignedLong(ans);
-}
-
 
 static PyObject*
 screen_truncate_point_for_length(PyObject UNUSED *self, PyObject *args) {
@@ -2857,11 +2753,6 @@ COUNT_WRAP(cursor_down1)
 COUNT_WRAP(cursor_forward)
 
 static PyObject*
-wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
-    return PyLong_FromLong(wcwidth_std(PyLong_AsLong(chr)));
-}
-
-static PyObject*
 screen_is_emoji_presentation_base(PyObject UNUSED *self, PyObject *code_) {
     unsigned long code = PyLong_AsUnsignedLong(code_);
     if (is_emoji_presentation_base(code)) Py_RETURN_TRUE;
@@ -3003,8 +2894,6 @@ PyTypeObject Screen_Type = {
 };
 
 static PyMethodDef module_methods[] = {
-    {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
-    {"wcswidth", (PyCFunction)screen_wcswidth, METH_O, ""},
     {"is_emoji_presentation_base", (PyCFunction)screen_is_emoji_presentation_base, METH_O, ""},
     {"truncate_point_for_length", (PyCFunction)screen_truncate_point_for_length, METH_VARARGS, ""},
     {NULL}  /* Sentinel */
