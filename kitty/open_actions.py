@@ -64,20 +64,20 @@ def parse(lines: Iterable[str]) -> Generator[OpenAction, None, None]:
         yield OpenAction(tuple(match_criteria), tuple(actions))
 
 
-def url_matches_criterion(purl: 'ParseResult', url: str, mc: MatchCriteria) -> bool:
+def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc: MatchCriteria) -> bool:
     if mc.type == 'url':
         import re
         try:
             pat = re.compile(mc.value)
         except re.error:
             return False
-        return pat.search(url) is not None
+        return pat.search(unquote(url)) is not None
 
     if mc.type == 'mime':
         import fnmatch
         from mimetypes import guess_type
         try:
-            mt = guess_type(purl.path)[0]
+            mt = guess_type(unquoted_path)[0]
         except Exception:
             return False
         if mt is None:
@@ -93,7 +93,7 @@ def url_matches_criterion(purl: 'ParseResult', url: str, mc: MatchCriteria) -> b
     if mc.type == 'ext':
         if not purl.path:
             return False
-        path = purl.path.lower()
+        path = unquoted_path.lower()
         for ext in mc.value.split(','):
             ext = ext.strip()
             if path.endswith('.' + ext):
@@ -113,7 +113,7 @@ def url_matches_criterion(purl: 'ParseResult', url: str, mc: MatchCriteria) -> b
     if mc.type == 'path':
         import fnmatch
         try:
-            return fnmatch.fnmatchcase(purl.path.lower(), mc.value)
+            return fnmatch.fnmatchcase(unquoted_path.lower(), mc.value)
         except Exception:
             return False
 
@@ -121,7 +121,7 @@ def url_matches_criterion(purl: 'ParseResult', url: str, mc: MatchCriteria) -> b
         import fnmatch
         import posixpath
         try:
-            fname = posixpath.basename(purl.path)
+            fname = posixpath.basename(unquoted_path)
         except Exception:
             return False
         try:
@@ -130,10 +130,10 @@ def url_matches_criterion(purl: 'ParseResult', url: str, mc: MatchCriteria) -> b
             return False
 
 
-def url_matches_criteria(purl: 'ParseResult', url: str, criteria: Iterable[MatchCriteria]) -> bool:
+def url_matches_criteria(purl: 'ParseResult', url: str, unquoted_path: str, criteria: Iterable[MatchCriteria]) -> bool:
     for x in criteria:
         try:
-            if not url_matches_criterion(purl, url, x):
+            if not url_matches_criterion(purl, url, unquoted_path, x):
                 return False
         except Exception:
             return False
@@ -151,7 +151,7 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Genera
         'URL': url,
         'FILE_PATH': path,
         'FILE': posixpath.basename(path),
-        'FRAGMENT': purl.fragment
+        'FRAGMENT': unquote(purl.fragment)
     }
 
     def expand(x: Any) -> Any:
@@ -160,7 +160,7 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Genera
         return x
 
     for action in actions:
-        if url_matches_criteria(purl, url, action.match_criteria):
+        if url_matches_criteria(purl, url, path, action.match_criteria):
             for ac in action.actions:
                 yield ac._replace(args=tuple(map(expand, ac.args)))
             return
