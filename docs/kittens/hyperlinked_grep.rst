@@ -35,9 +35,14 @@ you use some editor other than vim, you should adjust the
 
 Finally, add an alias to your shell's rc files to invoke the kitten as ``hg``::
 
-    alias kitty +kitten hyperlink_grep
+    alias hg='kitty +kitten hyperlink_grep'
 
 
 You can now run searches with::
 
     hg some-search-term
+
+
+Hopefully, someday this functionality will make it into some `upstream grep
+<https://github.com/BurntSushi/ripgrep/issues/665>`_
+program directly removing the need for this kitten.
