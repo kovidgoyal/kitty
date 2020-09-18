@@ -30,7 +30,7 @@ from ..tui.images import (
     ConvertFailed, GraphicsCommand, NoImageMagick, OpenFailed, convert, fsenc,
     identify
 )
-from ..tui.operations import clear_images_on_screen
+from ..tui.operations import clear_images_on_screen, raw_mode
 
 OPTIONS = '''\
 --align
@@ -110,6 +110,11 @@ default=0
 Z-index of the image. When negative, text will be displayed on top of the image. Use
 a double minus for values under the threshold for drawing images under cell background
 colors. For example, --1 evaluates as -1,073,741,825.
+
+
+--hold
+type=bool-set
+Wait for keypress before exiting after displaying the images.
 '''
 
 
@@ -473,11 +478,14 @@ def main(args: List[str] = sys.argv) -> None:
             errors.append(e)
     if parsed_opts.place:
         sys.stdout.buffer.write(b'\0338')  # restore cursor
-    if not errors:
-        return
-    for err in errors:
-        print(err, file=sys.stderr)
-    raise SystemExit(1)
+    if errors:
+        for err in errors:
+            print(err, file=sys.stderr)
+    if cli_opts.hold:
+        with open(os.ctermid()) as tty:
+            with raw_mode(tty.fileno()):
+                tty.buffer.read(1)
+    raise SystemExit(1 if errors else 0)
 
 
 if __name__ == '__main__':
