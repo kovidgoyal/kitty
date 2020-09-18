@@ -13,7 +13,7 @@ from typing import (
 from . import fast_data_types as defines
 from .conf.definition import Option, Shortcut, option_func
 from .conf.utils import (
-    choices, positive_float, positive_int, to_bool, to_cmdline, to_color,
+    choices, positive_float, positive_int, to_bool, to_cmdline as tc, to_color,
     to_color_or_none, unit_float
 )
 from .constants import FloatEdges, config_dir, is_macos
@@ -27,6 +27,10 @@ MINIMUM_FONT_SIZE = 4
 
 mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
            '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
+
+
+def to_cmdline(x: str) -> List[str]:
+    return tc(x)
 
 
 def parse_mods(parts: Iterable[str], sc: str) -> Optional[int]:

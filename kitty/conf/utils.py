@@ -11,7 +11,7 @@ from typing import (
 )
 
 from ..rgb import Color, to_color as as_color
-from ..utils import log_error
+from ..utils import log_error, expandvars
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 T = TypeVar('T')
@@ -53,13 +53,36 @@ def to_bool(x: str) -> bool:
     return x.lower() in ('y', 'yes', 'true')
 
 
-def to_cmdline(x: str) -> List[str]:
-    return list(
-        map(
-            lambda y: os.path.expandvars(os.path.expanduser(y)),
-            shlex.split(x)
+class ToCmdline:
+
+    def __init__(self) -> None:
+        self.override_env: Optional[Dict[str, str]] = None
+
+    def __enter__(self) -> 'ToCmdline':
+        return self
+
+    def __exit__(self, *a: Any) -> None:
+        self.override_env = None
+
+    def filter_env_vars(self, *a: str) -> 'ToCmdline':
+        remove = frozenset(a)
+        self.override_env = {k: v for k, v in os.environ.items() if k not in remove}
+        return self
+
+    def __call__(self, x: str) -> List[str]:
+        return list(
+            map(
+                lambda y: expandvars(
+                    os.path.expanduser(y),
+                    os.environ if self.override_env is None else self.override_env,
+                    fallback_to_os_env=False
+                ),
+                shlex.split(x)
+            )
         )
-    )
+
+
+to_cmdline = ToCmdline()
 
 
 def python_string(text: str) -> str:
