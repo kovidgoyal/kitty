@@ -14,6 +14,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add support for easily editing or downloading files over SSH sessions
   without the need for any special software, see :doc:`kittens/remote_file`
 
+- A new :doc:`kittens/hyperlinked_grep` kitten to easily search files and open
+  the results at the matched line by clicking on them.
+
 - Improve rendering of borders when using minimal borders. Use less space and
   do not display a box around active windows
 

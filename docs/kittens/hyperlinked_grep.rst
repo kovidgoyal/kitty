@@ -1,0 +1,43 @@
+Hyperlinked grep
+=================
+
+This kitten allows you to search your files using `ripgrep
+<https://www.google.com/search?q=ripgrep>`_ and open the results
+directly in your favorite editor in the terminal, at the line containing
+the search result, simply by clicking on the result you want.
+
+To set it up, first create :file:`~/.config/kitty/open-actions.conf` with the
+following contents:
+
+.. code:: conf
+
+    # Open any file with a fragment in the editor, fragments are generated
+    # by the hyperlink_grep kitten and nothing else so far.
+    protocol file
+    has_fragment yes
+    action launch --type=overlay vim +$FRAGMENT $FILE_PATH
+
+    # Open text files without fragments in the editor
+    protocol file
+    mime text/*
+    has_fragment no
+    action launch --type=overlay $EDITOR $FILE_PATH
+
+
+Now, run a search with::
+
+    kitty +kitten hyperlinked_grep something
+
+Hold down the :kbd:`ctrl+shift` keys and click on any of the
+result lines, to open the file in vim at the matching line. If
+you use some editor other than vim, you should adjust the
+:file:`open-actions.conf` file accordingly.
+
+Finally, add an alias to your shell's rc files to invoke the kitten as ``hg``::
+
+    alias kitty +kitten hyperlink_grep
+
+
+You can now run searches with::
+
+    hg some-search-term
