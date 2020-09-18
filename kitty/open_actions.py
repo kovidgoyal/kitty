@@ -7,7 +7,9 @@ import os
 import posixpath
 from contextlib import suppress
 from functools import lru_cache
-from typing import Generator, Iterable, List, NamedTuple, Optional, Tuple, cast
+from typing import (
+    Any, Generator, Iterable, List, NamedTuple, Optional, Tuple, cast
+)
 from urllib.parse import ParseResult, unquote, urlparse
 
 from .conf.utils import to_bool, to_cmdline
@@ -152,8 +154,10 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Genera
         'FRAGMENT': purl.fragment
     }
 
-    def expand(x: str) -> str:
-        return expandvars(x, env, fallback_to_os_env=False)
+    def expand(x: Any) -> Any:
+        if isinstance(x, str):
+            return expandvars(x, env, fallback_to_os_env=False)
+        return x
 
     for action in actions:
         if url_matches_criteria(purl, url, action.match_criteria):
