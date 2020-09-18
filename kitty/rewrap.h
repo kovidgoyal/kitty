@@ -29,6 +29,7 @@
         linebuf_index(dest, 0, dest->ynum - 1); \
         if (historybuf != NULL) { \
             init_dest_line(dest->ynum - 1); \
+            dest->line->has_dirty_text = true; \
             historybuf_add_line(historybuf, dest->line); \
         }\
         linebuf_clear_line(dest, dest->ynum - 1); \

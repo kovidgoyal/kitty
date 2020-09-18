@@ -61,6 +61,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix a memory leak when changing font sizes
 
+- Fix some lines in the scrollback buffer not being properly rendered after a
+  window resize/font size change (:iss:`2619`)
+
 
 0.18.3 [2020-08-11]
 -------------------
