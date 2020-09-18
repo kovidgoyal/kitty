@@ -603,7 +603,7 @@ Use - to read from STDIN. See the README file for details and an example.
 
 
 {watcher}
-Note that this watcher will be added only to all initially crated windows, not new windows
+Note that this watcher will be added only to all initially created windows, not new windows
 created after startup.
 
 
