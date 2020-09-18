@@ -28,7 +28,7 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
-    ChildMonitor, background_opacity_of, change_background_opacity,
+    ChildMonitor, add_timer, background_opacity_of, change_background_opacity,
     change_os_window_state, cocoa_set_menubar_title, create_os_window,
     current_application_quit_request, current_os_window, destroy_global_data,
     focus_os_window, get_clipboard_string, global_font_size,
@@ -167,7 +167,9 @@ class Boss:
         if new_os_window_trigger is not None:
             self.keymap.pop(new_os_window_trigger, None)
         if is_macos:
-            from .fast_data_types import cocoa_set_notification_activated_callback
+            from .fast_data_types import (
+                cocoa_set_notification_activated_callback
+            )
             cocoa_set_notification_activated_callback(notification_activated)
 
     def startup_first_child(self, os_window_id: Optional[int]) -> None:
@@ -349,8 +351,10 @@ class Boss:
         return response
 
     def remote_control(self, *args: str) -> None:
+        from .rc.base import (
+            PayloadGetter, command_for_name, parse_subcommand_cli
+        )
         from .remote_control import parse_rc_args
-        from .rc.base import command_for_name, parse_subcommand_cli, PayloadGetter
         try:
             global_opts, items = parse_rc_args(['@'] + list(args))
             if not items:
@@ -1023,11 +1027,22 @@ class Boss:
         found_action = False
         if program is None:
             from .open_actions import actions_for_url
-            for action in actions_for_url(url):
+            actions = list(actions_for_url(url))
+            if actions:
                 found_action = True
-                self.dispatch_action(action)
+                self.dispatch_action(actions.pop(0))
+                if actions:
+                    self.drain_actions(actions)
         if not found_action:
             open_url(url, program or self.opts.open_url_with, cwd=cwd)
+
+    def drain_actions(self, actions: List) -> None:
+
+        def callback(timer_id: Optional[int]) -> None:
+            self.dispatch_action(actions.pop(0))
+            if actions:
+                self.drain_actions(actions)
+        add_timer(callback, 0, False)
 
     def destroy(self) -> None:
         self.shutting_down = True
@@ -1291,7 +1306,7 @@ class Boss:
         self._new_window(list(args), cwd_from=cwd_from)
 
     def launch(self, *args: str) -> None:
-        from kitty.launch import parse_launch_args, launch
+        from kitty.launch import launch, parse_launch_args
         opts, args_ = parse_launch_args(args)
         launch(self, opts, args_)
 
@@ -1364,7 +1379,9 @@ class Boss:
                     log_error('Failed to process update check data {!r}, with error: {}'.format(raw, e))
 
     def dbus_notification_callback(self, activated: bool, a: int, b: Union[int, str]) -> None:
-        from .notify import dbus_notification_created, dbus_notification_activated
+        from .notify import (
+            dbus_notification_activated, dbus_notification_created
+        )
         if activated:
             assert isinstance(b, str)
             dbus_notification_activated(a, b)
@@ -1381,7 +1398,9 @@ class Boss:
         self.show_error(_('Errors in kitty.conf'), msg)
 
     def set_colors(self, *args: str) -> None:
-        from kitty.rc.base import parse_subcommand_cli, command_for_name, PayloadGetter
+        from kitty.rc.base import (
+            PayloadGetter, command_for_name, parse_subcommand_cli
+        )
         from kitty.remote_control import parse_rc_args
         c = command_for_name('set_colors')
         opts, items = parse_subcommand_cli(c, ['set-colors'] + list(args))
@@ -1545,8 +1564,9 @@ class Boss:
             self.default_bg_changed_for(os_window_id)
 
     def send_test_notification(self) -> None:
-        from .notify import notify
         from time import monotonic
+
+        from .notify import notify
         now = monotonic()
         ident = f'test-notify-{now}'
         notify(f'Test {now}', f'At: {now}', identifier=ident)
