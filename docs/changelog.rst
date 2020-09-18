@@ -59,6 +59,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix a regression that broke the ``move_window_to_top`` action (:pull:`2953`)
 
+- Fix a memory leak when changing font sizes
+
 
 0.18.3 [2020-08-11]
 -------------------
