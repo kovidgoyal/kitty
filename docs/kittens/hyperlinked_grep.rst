@@ -11,17 +11,17 @@ following contents:
 
 .. code:: conf
 
-    # Open any file with a fragment in the editor, fragments are generated
+    # Open any file with a fragment in vim, fragments are generated
     # by the hyperlink_grep kitten and nothing else so far.
     protocol file
     has_fragment yes
-    action launch --type=overlay vim +$FRAGMENT $FILE_PATH
+    action launch --type=overlay vim +${FRAGMENT} ${FILE_PATH}
 
     # Open text files without fragments in the editor
     protocol file
     mime text/*
     has_fragment no
-    action launch --type=overlay $EDITOR $FILE_PATH
+    action launch --type=overlay ${EDITOR} ${FILE_PATH}
 
 
 Now, run a search with::
