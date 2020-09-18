@@ -43,6 +43,9 @@ You can now run searches with::
     hg some-search-term
 
 
+To learn more about kitty's powerful framework for customizing URL click
+actions, :doc:`see here <../open_actions>`.
+
 Hopefully, someday this functionality will make it into some `upstream grep
 <https://github.com/BurntSushi/ripgrep/issues/665>`_
 program directly removing the need for this kitten.

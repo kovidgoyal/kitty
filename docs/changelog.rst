@@ -17,6 +17,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new :doc:`kittens/hyperlinked_grep` kitten to easily search files and open
   the results at the matched line by clicking on them.
 
+- Allow customizing the :doc:`actions kitty takes <open_actions>` when clicking on URLs
+
 - Improve rendering of borders when using minimal borders. Use less space and
   do not display a box around active windows
 
