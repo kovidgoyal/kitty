@@ -1016,9 +1016,17 @@ class Boss:
             tab.set_active_window(window_id)
 
     def open_url(self, url: str, program: Optional[Union[str, List[str]]] = None, cwd: Optional[str] = None) -> None:
-        if url:
-            if isinstance(program, str):
-                program = to_cmdline(program)
+        if not url:
+            return
+        if isinstance(program, str):
+            program = to_cmdline(program)
+        found_action = False
+        if program is None:
+            from .open_actions import actions_for_url
+            for action in actions_for_url(url):
+                found_action = True
+                self.dispatch_action(action)
+        if not found_action:
             open_url(url, program or self.opts.open_url_with, cwd=cwd)
 
     def destroy(self) -> None:

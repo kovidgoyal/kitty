@@ -18,4 +18,5 @@ TermManagerType = LoopType = Debug = GraphicsCommandType = None
 CompletedProcess = Tuple
 TypedDict = dict
 EdgeLiteral = str
+MatchType = str
 Protocol = object
