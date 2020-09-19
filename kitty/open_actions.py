@@ -12,7 +12,7 @@ from typing import (
 )
 from urllib.parse import ParseResult, unquote, urlparse
 
-from .conf.utils import to_bool, to_cmdline
+from .conf.utils import to_cmdline
 from .config import KeyAction, parse_key_action
 from .constants import config_dir
 from .typing import MatchType
@@ -53,7 +53,7 @@ def parse(lines: Iterable[str]) -> Generator[OpenAction, None, None]:
                 x = parse_key_action(rest)
             if x is not None:
                 actions.append(x)
-        elif key in ('mime', 'ext', 'protocol', 'file', 'path', 'url', 'has_fragment'):
+        elif key in ('mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches'):
             if key != 'url':
                 rest = rest.lower()
             match_criteria.append(MatchCriteria(cast(MatchType, key), rest))
@@ -107,8 +107,14 @@ def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc:
                 return True
         return False
 
-    if mc.type == 'has_fragment':
-        return to_bool(mc.value) == bool(purl.fragment)
+    if mc.type == 'fragment_matches':
+        import re
+        try:
+            pat = re.compile(mc.value)
+        except re.error:
+            return False
+
+        return pat.search(unquote(purl.fragment)) is not None
 
     if mc.type == 'path':
         import fnmatch

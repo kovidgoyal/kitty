@@ -75,8 +75,9 @@ lines. The various available criteria are:
 ``url``
     A regular expression that must match against the entire (unquoted) URL
 
-``has_fragment``
-    A boolean (``yes/no``) on whether the URL has a fragment or not.
+``fragment_matches``
+    A regular expression that must match against the fragment (part after #) in
+    the URL
 
 ``mime``
     A comma separated list of MIME types, for example: ``text/*, image/*,

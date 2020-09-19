@@ -29,7 +29,7 @@ class TestOpenActions(BaseTest):
         spec = '''
 protocol file
 mime text/*
-has_fragment yes
+fragment_matches .
 AcTion launch $EDITOR $FILE_PATH $FRAGMENT
 action
 
