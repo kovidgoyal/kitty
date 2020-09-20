@@ -201,6 +201,11 @@ typedef struct {
 } PagerHistoryBuf;
 
 typedef struct {
+    Py_UCS4 *buf;
+    size_t len, capacity;
+} ANSIBuf;
+
+typedef struct {
     PyObject_HEAD
 
     index_type xnum, ynum, num_segments;

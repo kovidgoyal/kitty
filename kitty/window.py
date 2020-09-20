@@ -142,6 +142,36 @@ def calculate_gl_geometry(window_geometry: WindowGeometry, viewport_width: int, 
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
 
 
+def as_text(
+    screen: Screen,
+    as_ansi: bool = False,
+    add_history: bool = False,
+    add_wrap_markers: bool = False,
+    alternate_screen: bool = False
+) -> str:
+    lines: List[str] = []
+    add_history = add_history and not (screen.is_using_alternate_linebuf() ^ alternate_screen)
+    if alternate_screen:
+        f = screen.as_text_alternate
+    else:
+        f = screen.as_text_non_visual if add_history else screen.as_text
+    f(lines.append, as_ansi, add_wrap_markers)
+    if add_history:
+        h: List[str] = []
+        screen.historybuf.pagerhist_as_text(h.append)
+        if h and (not as_ansi or not add_wrap_markers):
+            sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
+            h = list(map(sanitizer, h))
+        screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
+        if h:
+            if not screen.linebuf.is_continued(0):
+                h[-1] += '\n'
+            if as_ansi:
+                h[-1] += '\x1b[m'
+        return ''.join(chain(h, lines))
+    return ''.join(lines)
+
+
 class LoadShaderPrograms:
 
     use_selection_fg = True
@@ -772,27 +802,7 @@ class Window:
         add_wrap_markers: bool = False,
         alternate_screen: bool = False
     ) -> str:
-        lines: List[str] = []
-        add_history = add_history and not (self.screen.is_using_alternate_linebuf() ^ alternate_screen)
-        if alternate_screen:
-            f = self.screen.as_text_alternate
-        else:
-            f = self.screen.as_text_non_visual if add_history else self.screen.as_text
-        f(lines.append, as_ansi, add_wrap_markers)
-        if add_history:
-            h: List[str] = []
-            self.screen.historybuf.pagerhist_as_text(h.append)
-            if h and (not as_ansi or not add_wrap_markers):
-                sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
-                h = list(map(sanitizer, h))
-            self.screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
-            if h:
-                if not self.screen.linebuf.is_continued(0):
-                    h[-1] += '\n'
-                if as_ansi:
-                    h[-1] += '\x1b[m'
-            return ''.join(chain(h, lines))
-        return ''.join(lines)
+        return as_text(self.screen, as_ansi, add_history, add_wrap_markers, alternate_screen)
 
     @property
     def cwd_of_child(self) -> Optional[str]:

@@ -132,6 +132,7 @@ typedef struct {
     bool has_activity_since_last_focus;
     hyperlink_id_type active_hyperlink_id;
     HYPERLINK_POOL_HANDLE hyperlink_pool;
+    ANSIBuf as_ansi_buf;
 } Screen;
 
 

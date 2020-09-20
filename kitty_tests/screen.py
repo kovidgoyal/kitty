@@ -252,8 +252,7 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(2)), '4'*5)
         s.resize(5, 1)
         self.ae(str(s.line(0)), '4')
-        hb = s.historybuf
-        self.ae(str(hb), '3\n3\n3\n3\n3\n2')
+        self.ae(str(s.historybuf), '3\n3\n3\n3\n3\n2')
         s = self.create_screen(scrollback=20)
         s.draw(''.join(str(i) * s.columns for i in range(s.lines*2)))
         self.ae(str(s.linebuf), '55555\n66666\n77777\n88888\n99999')
@@ -453,18 +452,20 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.x, 2)
 
     def test_serialize(self):
+        from kitty.window import as_text
         s = self.create_screen()
         s.draw('ab' * s.columns)
         s.carriage_return(), s.linefeed()
         s.draw('c')
 
-        def as_text(as_ansi=False):
-            d = []
-            s.as_text(d.append, as_ansi)
-            return ''.join(d)
+        self.ae(as_text(s), 'ababababab\nc\n\n')
+        self.ae(as_text(s, True), '\x1b[mababa\x1b[mbabab\n\x1b[mc\n\n')
 
-        self.ae(as_text(), 'ababababab\nc\n\n')
-        self.ae(as_text(True), '\x1b[mababa\x1b[mbabab\n\x1b[mc\n\n')
+        s = self.create_screen(cols=2, lines=2, scrollback=2)
+        for i in range(1, 7):
+            s.select_graphic_rendition(30 + i)
+            s.draw(f'{i}' * s.columns)
+        self.ae(as_text(s, True, True), '\x1b[m\x1b[31m11\x1b[m\x1b[32m22\x1b[m\x1b[33m33\x1b[m\x1b[34m44\x1b[m\x1b[m\x1b[35m55\x1b[m\x1b[36m66')
 
     def test_user_marking(self):
 

@@ -268,23 +268,23 @@ sprite_at(Line* self, PyObject *x) {
     return Py_BuildValue("HHH", c->sprite_x, c->sprite_y, c->sprite_z);
 }
 
-static inline bool
-write_sgr(const char *val, Py_UCS4 *buf, index_type buflen, index_type *i) {
-    static char s[128];
-    unsigned int num = snprintf(s, sizeof(s), "\x1b[%sm", val);
-    if (buflen - (*i) < num + 3) return false;
-    for(unsigned int si=0; si < num; si++) buf[(*i)++] = s[si];
-    return true;
+static inline void
+write_sgr(const char *val, ANSIBuf *output) {
+#define W(c) output->buf[output->len++] = c
+    W(0x1b); W('[');
+    for (size_t i = 0; val[i] != 0 && i < 122; i++) W(val[i]);
+    W('m');
+#undef W
 }
 
-index_type
-line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated, const GPUCell** prev_cell) {
-#define WRITE_SGR(val) { if (!write_sgr(val, buf, buflen, &i)) { *truncated = true; return i; } }
-#define WRITE_CH(val) if (i > buflen - 1) { *truncated = true; return i; } buf[i++] = val;
-
-    index_type limit = xlimit_for_line(self), i=0;
-    *truncated = false;
-    if (limit == 0) return 0;
+void
+line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell) {
+#define ENSURE_SPACE(extra) ensure_space_for(output, buf, Py_UCS4, output->len + extra, capacity, 2048, false);
+#define WRITE_SGR(val) { ENSURE_SPACE(128); write_sgr(val, output); }
+#define WRITE_CH(val) { ENSURE_SPACE(1); output->buf[output->len++] = val; }
+    output->len = 0;
+    index_type limit = xlimit_for_line(self);
+    if (limit == 0) return;
     char_type previous_width = 0;
 
     static const GPUCell blank_cell = { 0 };
@@ -320,21 +320,21 @@ line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool *truncated, const
         }
         previous_width = cell->attrs & WIDTH_MASK;
     }
-    return i;
 #undef CMP_ATTRS
 #undef CMP
 #undef WRITE_SGR
 #undef WRITE_CH
+#undef ENSURE_SPACE
 }
 
 static PyObject*
 as_ansi(Line* self, PyObject *a UNUSED) {
 #define as_ansi_doc "Return the line's contents with ANSI (SGR) escape codes for formatting"
-    static Py_UCS4 t[5120] = {0};
-    bool truncated;
     const GPUCell *prev_cell = NULL;
-    index_type num = line_as_ansi(self, t, 5120, &truncated, &prev_cell);
-    PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, t, num);
+    ANSIBuf output = {0};
+    line_as_ansi(self, &output, &prev_cell);
+    PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, output.buf, output.len);
+    free(output.buf);
     return ans;
 }
 
@@ -762,7 +762,7 @@ mark_text_in_line(PyObject *marker, Line *line) {
 }
 
 PyObject*
-as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, index_type columns) {
+as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, index_type columns, ANSIBuf *ansibuf) {
     PyObject *callback;
     int as_ansi = 0, insert_wrap_markers = 0;
     if (!PyArg_ParseTuple(args, "O|pp", &callback, &as_ansi, &insert_wrap_markers)) return NULL;
@@ -785,16 +785,15 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
             Py_CLEAR(ret);
         }
         if (as_ansi) {
-            bool truncated;
             // less has a bug where it resets colors when it sees a \r, so work
             // around it by resetting SGR at the start of every line. This is
             // pretty sad performance wise, but I guess it will remain till I
             // get around to writing a nice pager kitten.
             // see https://github.com/kovidgoyal/kitty/issues/2381
             prev_cell = NULL;
-            index_type num = line_as_ansi(line, buf, columns * 100 - 2, &truncated, &prev_cell);
-            t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, num);
-            if (t && num > 0) {
+            line_as_ansi(line, ansibuf, &prev_cell);
+            t = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, ansibuf->buf, ansibuf->len);
+            if (t && ansibuf->len > 0) {
                 ret = PyObject_CallFunctionObjArgs(callback, sgr_reset, NULL);
                 if (ret == NULL) goto end;
                 Py_CLEAR(ret);

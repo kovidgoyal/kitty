@@ -187,19 +187,19 @@ screen_dirty_sprite_positions(Screen *self) {
 }
 
 static inline HistoryBuf*
-realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns) {
+realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns, ANSIBuf *as_ansi_buf) {
     HistoryBuf *ans = alloc_historybuf(lines, columns, 0);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     ans->pagerhist = old->pagerhist; old->pagerhist = NULL;
-    historybuf_rewrap(old, ans);
+    historybuf_rewrap(old, ans, as_ansi_buf);
     return ans;
 }
 
 static inline LineBuf*
-realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb, index_type *x, index_type *y) {
+realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb, index_type *x, index_type *y, ANSIBuf *as_ansi_buf) {
     LineBuf *ans = alloc_linebuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
-    linebuf_rewrap(old, ans, nclb, ncla, hb, x, y);
+    linebuf_rewrap(old, ans, nclb, ncla, hb, x, y, as_ansi_buf);
     return ans;
 }
 
@@ -221,11 +221,11 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (!init_overlay_line(self, columns)) return false;
 
     // Resize main linebuf
-    HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns);
+    HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns, &self->as_ansi_buf);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
     index_type x = self->cursor->x, y = self->cursor->y;
-    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &x, &y);
+    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &x, &y, &self->as_ansi_buf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
     if (is_main) setup_cursor();
@@ -233,7 +233,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 
     // Resize alt linebuf
     x = self->cursor->x, y = self->cursor->y;
-    n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL, &x, &y);
+    n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL, &x, &y, &self->as_ansi_buf);
     if (n == NULL) return false;
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
     if (!is_main) setup_cursor();
@@ -302,6 +302,7 @@ dealloc(Screen* self) {
     free(self->selections.items);
     free(self->url_ranges.items);
     free_hyperlink_pool(self->hyperlink_pool);
+    free(self->as_ansi_buf.buf);
     Py_TYPE(self)->tp_free((PyObject*)self);
 } // }}}
 
@@ -998,7 +999,7 @@ index_selection(const Screen *self, Selections *selections, bool up) {
     if (self->linebuf == self->main_linebuf && bottom == self->lines - 1) { \
         /* Only add to history when no page margins have been set */ \
         linebuf_init_line(self->linebuf, bottom); \
-        historybuf_add_line(self->historybuf, self->linebuf->line); \
+        historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf); \
         self->history_line_added_count++; \
     } \
     linebuf_clear_line(self->linebuf, bottom); \
@@ -2029,17 +2030,17 @@ static Line* get_range_line(void *x, int y) { return range_line_(x, y); }
 
 static PyObject*
 as_text(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_visual_line, self->lines, self->columns);
+    return as_text_generic(args, self, get_visual_line, self->lines, self->columns, &self->as_ansi_buf);
 }
 
 static PyObject*
 as_text_non_visual(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_range_line, self->lines, self->columns);
+    return as_text_generic(args, self, get_range_line, self->lines, self->columns, &self->as_ansi_buf);
 }
 
 static inline PyObject*
 as_text_generic_wrapper(Screen *self, PyObject *args, get_line_func get_line) {
-    return as_text_generic(args, self, get_line, self->lines, self->columns);
+    return as_text_generic(args, self, get_line, self->lines, self->columns, &self->as_ansi_buf);
 }
 
 static PyObject*
