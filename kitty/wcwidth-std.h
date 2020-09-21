@@ -2848,7 +2848,7 @@ wcwidth_std(int32_t code) {
 	}
 	return 1;
 }
-static bool
+static inline bool
 is_emoji_presentation_base(uint32_t code) {
 	switch(code) {
 		case 0x23:

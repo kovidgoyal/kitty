@@ -512,7 +512,7 @@ def gen_wcwidth() -> None:
         p('\t}')
         p('\treturn 1;\n}')
 
-        p('static bool\nis_emoji_presentation_base(uint32_t code) {')
+        p('static inline bool\nis_emoji_presentation_base(uint32_t code) {')
         p('\tswitch(code) {')
         for spec in get_ranges(list(emoji_presentation_bases)):
             write_case(spec, p)
