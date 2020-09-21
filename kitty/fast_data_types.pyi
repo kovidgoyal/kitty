@@ -943,7 +943,7 @@ class HistoryBuf:
     def as_text(self, callback: Callable[[str], None], as_ansi: bool, insert_wrap_markers: bool) -> None:
         pass
 
-    def pagerhist_as_text(self, callback: Callable[[str], None]) -> None:
+    def pagerhist_as_text(self) -> str:
         pass
 
 

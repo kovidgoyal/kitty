@@ -467,6 +467,34 @@ class TestScreen(BaseTest):
             s.draw(f'{i}' * s.columns)
         self.ae(as_text(s, True, True), '\x1b[m\x1b[31m11\x1b[m\x1b[32m22\x1b[m\x1b[33m33\x1b[m\x1b[34m44\x1b[m\x1b[m\x1b[35m55\x1b[m\x1b[36m66')
 
+    def test_pagerhist(self):
+        hsz = 32
+        s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': hsz})
+
+        def contents():
+            return s.historybuf.pagerhist_as_text()
+
+        def line(i):
+            q.append('\x1b[m' + f'{i}' * s.columns + '\r')
+
+        def test():
+            expected = ''.join(q)
+            maxlen = hsz // 4
+            extra = len(expected) - maxlen
+            if extra > 0:
+                expected = expected[extra:]
+            got = contents()
+            self.ae(got, expected)
+
+        q = []
+        for i in range(4):
+            s.draw(f'{i}' * s.columns)
+        self.ae(contents(), '\n')
+        s.draw('4' * s.columns), line(0), test()
+        s.draw('5' * s.columns), line(1), test()
+        s.draw('6' * s.columns), line(2), test()
+        s.draw('7' * s.columns), line(3), test()
+
     def test_user_marking(self):
 
         def cells(*a, y=0, mark=3):

@@ -158,7 +158,9 @@ def as_text(
     f(lines.append, as_ansi, add_wrap_markers)
     if add_history:
         h: List[str] = []
-        screen.historybuf.pagerhist_as_text(h.append)
+        pht = screen.historybuf.pagerhist_as_text()
+        if pht:
+            h.append(pht)
         if h and (not as_ansi or not add_wrap_markers):
             sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
             h = list(map(sanitizer, h))
