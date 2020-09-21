@@ -5,7 +5,7 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#include "data-types.h"
+#include "wcswidth.h"
 #include "lineops.h"
 #include "charsets.h"
 #include <structmember.h>
@@ -187,7 +187,7 @@ historybuf_clear(HistoryBuf *self) {
 }
 
 static inline bool
-pagerhist_write(PagerHistoryBuf *ph, const uint8_t *buf, size_t sz) {
+pagerhist_write_bytes(PagerHistoryBuf *ph, const uint8_t *buf, size_t sz) {
     if (sz > ph->max_sz) return false;
     if (!sz) return true;
     if (sz > ph->buffer_size - ph->length) pagerhist_extend(ph, sz);
@@ -220,7 +220,7 @@ pagerhist_write_ucs4(PagerHistoryBuf *ph, const Py_UCS4 *buf, size_t sz) {
     uint8_t scratch[4];
     for (size_t i = 0; i < sz; i++) {
         unsigned int num = encode_utf8(buf[i], (char*)scratch);
-        if (!pagerhist_write(ph, scratch, num)) return false;
+        if (!pagerhist_write_bytes(ph, scratch, num)) return false;
     }
     return true;
 }
@@ -233,9 +233,9 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
     line_as_ansi(&l, as_ansi_buf, &prev_cell);
-    if (ph->length != 0 && !l.continued) pagerhist_write(ph, (const uint8_t*)"\n", 1);
-    pagerhist_write(ph, (const uint8_t*)"\x1b[m", 3);
-    if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write(ph, (const uint8_t*)"\r", 1);
+    if (ph->length != 0 && !l.continued) pagerhist_write_bytes(ph, (const uint8_t*)"\n", 1);
+    pagerhist_write_bytes(ph, (const uint8_t*)"\x1b[m", 3);
+    if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write_bytes(ph, (const uint8_t*)"\r", 1);
 }
 
 static inline index_type
@@ -326,55 +326,85 @@ end:
 static inline Line*
 get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, index_of(self, self->count - y - 1), l); return l; }
 
+static inline char_type
+pagerhist_read_char(PagerHistoryBuf *ph, size_t pos, unsigned *count, uint8_t record[8]) {
+    uint32_t codep, state = UTF8_ACCEPT;
+    *count = 0;
+    while (true) {
+        decode_utf8(&state, &codep, ph->buffer[pos]);
+        record[(*count)++] = ph->buffer[pos];
+        if (state == UTF8_REJECT) { codep = 0; break; }
+        if (state == UTF8_ACCEPT) break;
+        pos = pos == ph->buffer_size - 1 ? 0 : (pos + 1);
+    }
+    return codep;
+}
+
 static void
-pagerhist_rewrap(PagerHistoryBuf *ph, index_type xnum) {
-    (void)ph; (void)xnum;
-    return; // TODO: Implement this
-/*     Py_UCS4 *buf = PyMem_RawMalloc(ph->bufsize * sizeof(Py_UCS4)); */
-/*     if (!buf) return; */
-/*     index_type s = ph->start, i = s, dest = 0, dest_bufend = 0, x = 0; */
-/*     index_type end = ph->bufend ? ph->bufend : ph->end; */
-/*     index_type lastmod_s = 0, lastmod_len = 0; */
-/* #define CPY(_s, _l) { if (dest + (_l) >= ph->bufsize - 1) { dest_bufend = dest; dest = 0; } \ */
-/*               memcpy(buf + dest, ph->buffer + (_s), (_l) * sizeof(Py_UCS4)); dest += (_l); } */
-/*     while (i < end) { */
-/*         switch (ph->buffer[i]) { */
-/*         case '\n': */
-/*             CPY(s, i - s + 1); */
-/*             x = 0; s = i + 1; lastmod_len = 0; */
-/*             break; */
-/*         case '\r': */
-/*             CPY(s, i - s); */
-/*             if (!memcmp(ph->buffer + lastmod_s, ph->buffer + i + 1, lastmod_len * sizeof(Py_UCS4))) */
-/*                 i += lastmod_len; */
-/*             s = i + 1; */
-/*             break; */
-/*         case '\x1b': */
-/*             if (ph->buffer[i+1] != '[') break; */
-/*             lastmod_s = i; */
-/*             while (ph->buffer[++i] != 'm'); */
-/*             lastmod_len = i - lastmod_s + 1; */
-/*             break; */
-/*         default: */
-/*             x++; break; */
-/*         } */
-/*         i++; */
-/*         if (ph->bufend && i == ph->bufend) { */
-/*             if (s != i) CPY(s, i - s); */
-/*             end = ph->end; i = s = 0; */
-/*         } */
-/*         if (x == xnum) { */
-/*             CPY(s, i - s); buf[dest++] = '\r'; s = i; x = 0; */
-/*             if (!(ph->buffer[i] == '\x1b' && ph->buffer[i+1] == '[') && lastmod_len) */
-/*                 CPY(lastmod_s, lastmod_len); */
-/*         } */
-/*     } */
-/* #undef CPY */
-/*     PyMem_Free(ph->buffer); */
-/*     ph->buffer = buf; */
-/*     ph->end = dest; ph->bufend = dest_bufend; */
-/*     ph->start = dest_bufend ? dest + 1 : 0; */
-/*     ph->rewrap_needed = false; */
+pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
+    PagerHistoryBuf *ph = self->pagerhist;
+    if (!ph->length) return;
+    PagerHistoryBuf *nph = PyMem_Calloc(sizeof(PagerHistoryBuf), 1);
+    if (!nph) return;
+    nph->buffer_size = ph->buffer_size;
+    nph->max_sz = ph->max_sz;
+    nph->buffer = PyMem_Malloc(nph->buffer_size);
+    if (!nph->buffer) { PyMem_Free(nph); return ; }
+    size_t i = 0, pos;
+    ssize_t ch_width = 0;
+    unsigned count;
+    uint8_t record[8];
+    index_type num_in_current_line = 0;
+    char_type ch;
+    WCSState wcs_state;
+    initialize_wcs_state(&wcs_state);
+
+#define READ_CHAR(ch) { \
+    ch = pagerhist_read_char(ph, pos, &count, record); \
+    i += count; pos += count; \
+    if (pos >= ph->buffer_size) pos = pos - ph->buffer_size; \
+}
+#define WRITE_CHAR() { \
+    if (num_in_current_line + ch_width > cells_in_line) { \
+        pagerhist_write_bytes(nph, (const uint8_t*)"\r", 1); \
+        num_in_current_line = 0; \
+    }\
+    if (ch_width >= 0 || num_in_current_line >= -ch_width) num_in_current_line += ch_width; \
+    pagerhist_write_bytes(nph, record, count); \
+}
+
+    for (i = 0; i < ph->length;) {
+        pos = ph->start + i;
+        if (pos >= ph->buffer_size) pos = pos - ph->buffer_size;
+        READ_CHAR(ch);
+        if (ch == '\n') {
+            initialize_wcs_state(&wcs_state);
+            ch_width = 1;
+            WRITE_CHAR();
+            num_in_current_line = 0;
+        } else if (ch != '\r') {
+            ch_width = wcswidth_step(&wcs_state, ch);
+            WRITE_CHAR();
+        }
+    }
+    free_pagerhist(self);
+    self->pagerhist = nph;
+#undef READ_CHAR
+}
+
+static PyObject*
+pagerhist_write(HistoryBuf *self, PyObject *what) {
+    if (self->pagerhist && self->pagerhist->max_sz) {
+        if (PyBytes_Check(what)) pagerhist_write_bytes(self->pagerhist, (const uint8_t*)PyBytes_AS_STRING(what), PyBytes_GET_SIZE(what));
+        else if (PyUnicode_Check(what) && PyUnicode_READY(what) == 0) {
+            Py_UCS4 *buf = PyUnicode_AsUCS4Copy(what);
+            if (buf) {
+                pagerhist_write_ucs4(self->pagerhist, buf, PyUnicode_GET_LENGTH(what));
+                PyMem_Free(buf);
+            }
+        }
+    }
+    Py_RETURN_NONE;
 }
 
 static PyObject *
@@ -383,7 +413,7 @@ pagerhist_as_text(HistoryBuf *self, PyObject *args UNUSED) {
     if (!ph || !ph->length) return PyUnicode_FromString("");
     pagerhist_ensure_start_is_valid_utf8(ph);
 
-    if (ph->rewrap_needed) pagerhist_rewrap(ph, self->xnum);
+    if (ph->rewrap_needed) pagerhist_rewrap_to(self, self->xnum);
 
     Line l = {.xnum=self->xnum}; get_line(self, 0, &l);
     size_t sz = ph->length;
@@ -434,6 +464,14 @@ dirty_lines(HistoryBuf *self, PyObject *a UNUSED) {
     return ans;
 }
 
+static PyObject*
+pagerhist_rewrap(HistoryBuf *self, PyObject *xnum) {
+    if (self->pagerhist) {
+        pagerhist_rewrap_to(self, PyLong_AsUnsignedLong(xnum));
+    }
+    Py_RETURN_NONE;
+}
+
 
 // Boilerplate {{{
 static PyObject* rewrap(HistoryBuf *self, PyObject *args);
@@ -442,6 +480,8 @@ static PyObject* rewrap(HistoryBuf *self, PyObject *args);
 static PyMethodDef methods[] = {
     METHOD(line, METH_O)
     METHOD(as_ansi, METH_O)
+    METHODB(pagerhist_write, METH_O),
+    METHODB(pagerhist_rewrap, METH_O),
     METHODB(pagerhist_as_text, METH_NOARGS),
     METHODB(as_text, METH_VARARGS),
     METHOD(dirty_lines, METH_NOARGS)
