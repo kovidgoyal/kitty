@@ -193,7 +193,7 @@ typedef struct {
 } HistoryBufSegment;
 
 typedef struct {
-    Py_UCS4 *buffer;
+    uint8_t *buffer;
     size_t buffer_size, max_sz;
     size_t start, length;
     bool rewrap_needed;

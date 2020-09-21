@@ -461,9 +461,9 @@ o('scrollback_pager_history_size', 0, option_type=scrollback_pager_history_size,
 Separate scrollback history size, used only for browsing the scrollback buffer (in MB).
 This separate buffer is not available for interactive scrolling but will be
 piped to the pager program when viewing scrollback buffer in a separate window.
-The current implementation stores one character in 4 bytes, so approximatively
-2500 lines per megabyte at 100 chars per line. A value of zero or less disables
-this feature. The maximum allowed size is 4GB.'''))
+The current implementation stores the data in UTF-8, so approximatively
+10000 lines per megabyte at 100 chars per line, for pure ASCII text, unformatted text.
+A value of zero or less disables this feature. The maximum allowed size is 4GB.'''))
 
 o('wheel_scroll_multiplier', 5.0, long_text=_('''
 Modify the amount scrolled by the mouse wheel. Note this is only used for low

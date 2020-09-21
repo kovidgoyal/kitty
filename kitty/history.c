@@ -7,6 +7,7 @@
 
 #include "data-types.h"
 #include "lineops.h"
+#include "charsets.h"
 #include <structmember.h>
 
 extern PyTypeObject Line_Type;
@@ -60,9 +61,9 @@ alloc_pagerhist(size_t pagerhist_sz) {
     if (!pagerhist_sz) return NULL;
     ph = PyMem_Calloc(1, sizeof(PagerHistoryBuf));
     if (!ph) return NULL;
-    ph->max_sz = pagerhist_sz / sizeof(Py_UCS4);
-    ph->buffer_size = MIN(1024*1024 / sizeof(Py_UCS4), ph->max_sz);
-    ph->buffer = PyMem_RawMalloc(ph->buffer_size * sizeof(Py_UCS4));
+    ph->max_sz = pagerhist_sz;
+    ph->buffer_size = MIN(1024u*1024u, ph->max_sz);
+    ph->buffer = PyMem_RawMalloc(ph->buffer_size);
     if (!ph->buffer) { PyMem_Free(ph); return NULL; }
     return ph;
 }
@@ -78,11 +79,11 @@ static inline bool
 pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
     if (ph->buffer_size >= ph->max_sz) return false;
     size_t newsz = ph->buffer_size + MAX(1024u * 1024u, minsz);
-    Py_UCS4 *newbuf = PyMem_Malloc(MIN(ph->buffer_size + minsz, ph->max_sz) * sizeof(Py_UCS4));
+    uint8_t *newbuf = PyMem_Malloc(MIN(ph->buffer_size + minsz, ph->max_sz));
     if (!newbuf) return false;
     size_t copied = MIN(ph->length, ph->buffer_size - ph->start);
-    if (copied) memcpy(newbuf, ph->buffer + ph->start, copied * sizeof(Py_UCS4));
-    if (copied < ph->length) memcpy(newbuf + copied, ph->buffer, (ph->length - copied) * sizeof(Py_UCS4));
+    if (copied) memcpy(newbuf, ph->buffer + ph->start, copied);
+    if (copied < ph->length) memcpy(newbuf + copied, ph->buffer, (ph->length - copied));
     PyMem_Free(ph->buffer);
     ph->start = 0;
     ph->buffer = newbuf;
@@ -93,7 +94,7 @@ pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
 static inline void
 pagerhist_clear(HistoryBuf *self) {
     if (!self->pagerhist || !self->pagerhist->max_sz) return;
-    index_type pagerhist_sz = self->pagerhist->max_sz  * sizeof(Py_UCS4);
+    index_type pagerhist_sz = self->pagerhist->max_sz;
     free_pagerhist(self);
     self->pagerhist = alloc_pagerhist(pagerhist_sz);
 }
@@ -186,7 +187,7 @@ historybuf_clear(HistoryBuf *self) {
 }
 
 static inline bool
-pagerhist_write(PagerHistoryBuf *ph, const Py_UCS4 *buf, size_t sz) {
+pagerhist_write(PagerHistoryBuf *ph, const uint8_t *buf, size_t sz) {
     if (sz > ph->max_sz) return false;
     if (!sz) return true;
     if (sz > ph->buffer_size - ph->length) pagerhist_extend(ph, sz);
@@ -195,10 +196,32 @@ pagerhist_write(PagerHistoryBuf *ph, const Py_UCS4 *buf, size_t sz) {
     size_t available_space = ph->buffer_size - ph->length;
     size_t overlap = available_space < sz ? sz - available_space : 0;
     size_t copied = MIN(sz, ph->buffer_size - start_writing_at);
-    if (copied) memcpy(ph->buffer + start_writing_at, buf, copied * sizeof(Py_UCS4));
-    if (copied < sz) memcpy(ph->buffer, buf + copied, (sz - copied) * sizeof(Py_UCS4));
-    ph->start = (ph->start + overlap) % ph->buffer_size;
     ph->length += sz - overlap;
+    ph->start = (ph->start + overlap) % ph->buffer_size;
+    if (copied) memcpy(ph->buffer + start_writing_at, buf, copied);
+    if (copied < sz) memcpy(ph->buffer, buf + copied, (sz - copied));
+    return true;
+}
+
+static inline void
+pagerhist_ensure_start_is_valid_utf8(PagerHistoryBuf *ph) {
+    uint32_t state = UTF8_ACCEPT, codep;
+    while (ph->length) {
+        decode_utf8(&state, &codep, ph->buffer[ph->start]);
+        if (state == UTF8_ACCEPT) break;
+        if (state == UTF8_REJECT) state = UTF8_ACCEPT;
+        ph->start = ph->start == ph->buffer_size - 1 ? 0 : ph->start + 1;
+        ph->length--;
+    }
+}
+
+static inline bool
+pagerhist_write_ucs4(PagerHistoryBuf *ph, const Py_UCS4 *buf, size_t sz) {
+    uint8_t scratch[4];
+    for (size_t i = 0; i < sz; i++) {
+        unsigned int num = encode_utf8(buf[i], (char*)scratch);
+        if (!pagerhist_write(ph, scratch, num)) return false;
+    }
     return true;
 }
 
@@ -210,10 +233,9 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
     line_as_ansi(&l, as_ansi_buf, &prev_cell);
-    static const Py_UCS4 nl[1] = {'\n'}, cr[1] = {'\r'}, sgr_rest[3] = {0x1b, '[', 'm'};
-    if (ph->length != 0 && !l.continued) pagerhist_write(ph, nl, arraysz(nl));
-    pagerhist_write(ph, sgr_rest, arraysz(sgr_rest));
-    if (pagerhist_write(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write(ph, cr, arraysz(cr));
+    if (ph->length != 0 && !l.continued) pagerhist_write(ph, (const uint8_t*)"\n", 1);
+    pagerhist_write(ph, (const uint8_t*)"\x1b[m", 3);
+    if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write(ph, (const uint8_t*)"\r", 1);
 }
 
 static inline index_type
@@ -358,20 +380,21 @@ pagerhist_rewrap(PagerHistoryBuf *ph, index_type xnum) {
 static PyObject *
 pagerhist_as_text(HistoryBuf *self, PyObject *args UNUSED) {
     PagerHistoryBuf *ph = self->pagerhist;
-    if (!ph) Py_RETURN_NONE;
+    if (!ph || !ph->length) return PyUnicode_FromString("");
+    pagerhist_ensure_start_is_valid_utf8(ph);
 
     if (ph->rewrap_needed) pagerhist_rewrap(ph, self->xnum);
 
     Line l = {.xnum=self->xnum}; get_line(self, 0, &l);
     size_t sz = ph->length;
     if (!l.continued) sz += 1;
-    Py_UCS4 *buf = PyMem_Malloc(sz * sizeof(Py_UCS4));
+    uint8_t *buf = PyMem_Malloc(sz);
     if (!buf) return PyErr_NoMemory();
     size_t copied = MIN(ph->length, ph->buffer_size - ph->start);
-    if (copied) memcpy(buf, ph->buffer + ph->start, copied * sizeof(Py_UCS4));
-    if (copied < ph->length) memcpy(buf + copied, ph->buffer, (ph->length - copied) * sizeof(Py_UCS4));
+    if (copied) memcpy(buf, ph->buffer + ph->start, copied);
+    if (copied < ph->length) memcpy(buf + copied, ph->buffer, (ph->length - copied));
     if (!l.continued) buf[sz-1] = '\n';
-    PyObject *ans = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, sz);
+    PyObject *ans = PyUnicode_FromStringAndSize((const char*)buf, sz);
     PyMem_Free(buf);
     return ans;
 }
