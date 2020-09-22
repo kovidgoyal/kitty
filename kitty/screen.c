@@ -1956,7 +1956,7 @@ screen_open_url(Screen *self) {
     if (!self->url_ranges.count) return false;
     hyperlink_id_type hid = hyperlink_id_for_range(self, self->url_ranges.items);
     if (hid) {
-        const char *url = get_hyperlink_for_id(self, hid);
+        const char *url = get_hyperlink_for_id(self->hyperlink_pool, hid, true);
         if (url) {
             CALLBACK("open_url", "sH", url, hid);
             return true;
@@ -2014,7 +2014,7 @@ static PyObject*
 hyperlink_for_id(Screen *self, PyObject *val) {
     unsigned long id = PyLong_AsUnsignedLong(val);
     if (id > HYPERLINK_MAX_NUMBER) { PyErr_SetString(PyExc_IndexError, "Out of bounds"); return NULL; }
-    return Py_BuildValue("s", get_hyperlink_for_id(self, id));
+    return Py_BuildValue("s", get_hyperlink_for_id(self->hyperlink_pool, id, true));
 }
 
 static PyObject*
@@ -2768,7 +2768,7 @@ hyperlink_at(Screen *self, PyObject *args) {
     if (!self->url_ranges.count) Py_RETURN_NONE;
     hyperlink_id_type hid = hyperlink_id_for_range(self, self->url_ranges.items);
     if (!hid) Py_RETURN_NONE;
-    const char *url = get_hyperlink_for_id(self, hid);
+    const char *url = get_hyperlink_for_id(self->hyperlink_pool, hid, true);
     return Py_BuildValue("s", url);
 }
 

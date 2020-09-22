@@ -137,11 +137,11 @@ get_id_for_hyperlink(Screen *screen, const char *id, const char *url) {
 }
 
 const char*
-get_hyperlink_for_id(Screen *screen, hyperlink_id_type id) {
-    HyperLinkPool *pool = (HyperLinkPool*)screen->hyperlink_pool;
+get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE handle, hyperlink_id_type id, bool only_url) {
+    const HyperLinkPool *pool = (HyperLinkPool*)handle;
     HyperLinkEntry *s, *tmp;
     HASH_ITER(hh, pool->hyperlinks, s, tmp) {
-        if (s->id == id) return strstr(s->key, ":") + 1;
+        if (s->id == id) return only_url ? strstr(s->key, ":") + 1 : s->key;
     }
     return NULL;
 }

@@ -319,6 +319,7 @@ void play_canberra_sound(const char *which_sound, const char *event_id);
 #endif
 SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);
 SPRITE_MAP_HANDLE free_sprite_map(SPRITE_MAP_HANDLE);
+const char* get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE, hyperlink_id_type id, bool only_url);
 
 static inline void safe_close(int fd, const char* file UNUSED, const int line UNUSED) {
 #if 0
