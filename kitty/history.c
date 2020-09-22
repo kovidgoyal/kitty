@@ -415,25 +415,34 @@ pagerhist_write(HistoryBuf *self, PyObject *what) {
     Py_RETURN_NONE;
 }
 
-static PyObject *
-pagerhist_as_text(HistoryBuf *self, PyObject *args UNUSED) {
+static PyObject*
+pagerhist_as_bytes(HistoryBuf *self, PyObject *args UNUSED) {
     PagerHistoryBuf *ph = self->pagerhist;
-    if (!ph || !ph->length) return PyUnicode_FromString("");
+    if (!ph || !ph->length) return PyBytes_FromStringAndSize("", 0);
     pagerhist_ensure_start_is_valid_utf8(ph);
-
     if (ph->rewrap_needed) pagerhist_rewrap_to(self, self->xnum);
 
     Line l = {.xnum=self->xnum}; get_line(self, 0, &l);
     size_t sz = ph->length;
     if (!l.continued) sz += 1;
-    uint8_t *buf = PyMem_Malloc(sz);
-    if (!buf) return PyErr_NoMemory();
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
+    if (!ans) return NULL;
+    uint8_t *buf = (uint8_t*)PyBytes_AS_STRING(ans);
     size_t copied = MIN(ph->length, ph->buffer_size - ph->start);
     if (copied) memcpy(buf, ph->buffer + ph->start, copied);
     if (copied < ph->length) memcpy(buf + copied, ph->buffer, (ph->length - copied));
     if (!l.continued) buf[sz-1] = '\n';
-    PyObject *ans = PyUnicode_FromStringAndSize((const char*)buf, sz);
-    PyMem_Free(buf);
+    return ans;
+}
+
+static PyObject *
+pagerhist_as_text(HistoryBuf *self, PyObject *args) {
+    PyObject *ans = NULL;
+    PyObject *bytes = pagerhist_as_bytes(self, args);
+    if (bytes) {
+        ans = PyUnicode_DecodeUTF8(PyBytes_AS_STRING(bytes), PyBytes_GET_SIZE(bytes), "ignore");
+        Py_DECREF(bytes);
+    }
     return ans;
 }
 
@@ -491,6 +500,7 @@ static PyMethodDef methods[] = {
     METHODB(pagerhist_write, METH_O),
     METHODB(pagerhist_rewrap, METH_O),
     METHODB(pagerhist_as_text, METH_NOARGS),
+    METHODB(pagerhist_as_bytes, METH_NOARGS),
     METHODB(as_text, METH_VARARGS),
     METHOD(dirty_lines, METH_NOARGS)
     METHOD(push, METH_VARARGS)

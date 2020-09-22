@@ -946,6 +946,9 @@ class HistoryBuf:
     def pagerhist_as_text(self) -> str:
         pass
 
+    def pagerhist_as_bytes(self) -> bytes:
+        pass
+
 
 class LineBuf:
 
