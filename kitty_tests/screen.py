@@ -478,6 +478,11 @@ class TestScreen(BaseTest):
         set_link()
         s.draw('gh')
         self.ae(as_text(s, True), '\x1b[ma\x1b]8;id=foo;moo\x1b\\bcde\x1b[mf\x1b]8;;\x1b\\gh\n\n\n')
+        s = self.create_screen()
+        s.draw('a')
+        set_link('moo')
+        s.draw('bcdef')
+        self.ae(as_text(s, True), '\x1b[ma\x1b]8;;moo\x1b\\bcde\x1b[mf\n\n\n\x1b]8;;\x1b\\')
 
     def test_pagerhist(self):
         hsz = 8
