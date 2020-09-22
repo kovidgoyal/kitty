@@ -866,6 +866,10 @@ Categories=System;TerminalEmulator;
 def macos_info_plist() -> bytes:
     import plistlib
     VERSION = '.'.join(map(str, version))
+
+    def access(what: str, verb: str = 'would like to access') -> str:
+        return f'A program running inside kitty {verb} {what}'
+
     pl = dict(
         # see https://github.com/kovidgoyal/kitty/issues/1233
         CFBundleDevelopmentRegion='English',
@@ -906,6 +910,16 @@ def macos_info_plist() -> bytes:
                 'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
             },
         ],
+        NSAppleEventsUsageDescription=access('AppleScript.'),
+        NSCalendarsUsageDescription=access('your calendar data.'),
+        NSCameraUsageDescription=access('the camera.'),
+        NSContactsUsageDescription=access('your contacts.'),
+        NSLocationAlwaysUsageDescription=access('your location information, even in the background.'),
+        NSLocationUsageDescription=access('your location information.'),
+        NSLocationWhenInUseUsageDescription=access('your location while active.'),
+        NSMicrophoneUsageDescription=access('your microphone.'),
+        NSRemindersUsageDescription=access('your reminders.'),
+        NSSystemAdministrationUsageDescription=access('elevated privileges.', 'requires'),
     )
     return plistlib.dumps(pl)
 
