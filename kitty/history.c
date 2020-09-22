@@ -203,16 +203,24 @@ pagerhist_write_bytes(PagerHistoryBuf *ph, const uint8_t *buf, size_t sz) {
     return true;
 }
 
-static inline void
+static inline bool
 pagerhist_ensure_start_is_valid_utf8(PagerHistoryBuf *ph) {
     uint32_t state = UTF8_ACCEPT, codep;
-    while (ph->length) {
-        decode_utf8(&state, &codep, ph->buffer[ph->start]);
+    size_t pos = ph->start, count = 0;
+    size_t last_reject_at = 0;
+    while (count < ph->length) {
+        decode_utf8(&state, &codep, ph->buffer[pos]);
+        count++;
         if (state == UTF8_ACCEPT) break;
-        if (state == UTF8_REJECT) state = UTF8_ACCEPT;
-        ph->start = ph->start == ph->buffer_size - 1 ? 0 : ph->start + 1;
-        ph->length--;
+        if (state == UTF8_REJECT) { state = UTF8_ACCEPT; last_reject_at = count; }
+        pos = pos == ph->buffer_size - 1 ? 0: pos + 1;
     }
+    if (last_reject_at) {
+        ph->start = (ph->start + last_reject_at) % ph->buffer_size;
+        ph->length -= last_reject_at;
+        return true;
+    }
+    return false;
 }
 
 static inline bool

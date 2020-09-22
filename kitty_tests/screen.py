@@ -477,6 +477,9 @@ class TestScreen(BaseTest):
         def line(i):
             q.append('\x1b[m' + f'{i}' * s.columns + '\r')
 
+        def w(x):
+            s.historybuf.pagerhist_write(x)
+
         def test():
             expected = ''.join(q)
             maxlen = hsz
@@ -496,6 +499,21 @@ class TestScreen(BaseTest):
         s.draw('7' * s.columns), line(3), test()
         s.draw('8' * s.columns), line(4), test()
         s.draw('9' * s.columns), line(5), test()
+
+        s = self.create_screen(options={'scrollback_pager_history_size': 2048})
+        text = '\x1b[msoft\r\x1b[mbreak\nnext😼cat'
+        w(text)
+        self.ae(contents(), text + '\n')
+        s.historybuf.pagerhist_rewrap(2)
+        self.ae(contents(), '\x1b[mso\rft\x1b[m\rbr\rea\rk\nne\rxt\r😼\rca\rt\n')
+
+        s = self.create_screen(options={'scrollback_pager_history_size': 8})
+        w('😼')
+        self.ae(contents(), '😼\n')
+        w('abcd')
+        self.ae(contents(), '😼abcd\n')
+        w('e')
+        self.ae(contents(), 'abcde\n')
 
     def test_user_marking(self):
 
