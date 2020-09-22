@@ -277,11 +277,36 @@ write_sgr(const char *val, ANSIBuf *output) {
 #undef W
 }
 
+static inline void
+write_hyperlink(hyperlink_id_type hid, ANSIBuf *output) {
+#define W(c) output->buf[output->len++] = c
+    const char *key = hid ? get_hyperlink_for_id(output->hyperlink_pool, hid, false) : NULL;
+    if (!key) hid = 0;
+    output->active_hyperlink_id = hid;
+    W(0x1b); W(']'); W('8');
+    if (!hid) {
+        W(';'); W(';');
+    } else {
+        const char* partition = strstr(key, ":");
+        W(';');
+        if (partition != key) {
+            W('i'); W('d'); W('=');
+            while (key != partition) W(*(key++));
+        }
+        W(';');
+        while(*(++partition))  W(*partition);
+    }
+    W(0x1b); W('\\');
+#undef W
+}
+
+
 void
 line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell) {
 #define ENSURE_SPACE(extra) ensure_space_for(output, buf, Py_UCS4, output->len + extra, capacity, 2048, false);
 #define WRITE_SGR(val) { ENSURE_SPACE(128); write_sgr(val, output); }
 #define WRITE_CH(val) { ENSURE_SPACE(1); output->buf[output->len++] = val; }
+#define WRITE_HYPERLINK(val) { ENSURE_SPACE(2256); write_hyperlink(val, output); }
     output->len = 0;
     index_type limit = xlimit_for_line(self);
     if (limit == 0) return;
@@ -296,6 +321,12 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell) {
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; }
             ch = ' ';
+        }
+        if (output->hyperlink_pool) {
+            hyperlink_id_type hid = self->cpu_cells[pos].hyperlink_id;
+            if (hid != output->active_hyperlink_id) {
+                WRITE_HYPERLINK(hid);
+            }
         }
 
         cell = &self->gpu_cells[pos];
@@ -325,6 +356,7 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell) {
 #undef WRITE_SGR
 #undef WRITE_CH
 #undef ENSURE_SPACE
+#undef WRITE_HYPERLINK
 }
 
 static PyObject*
@@ -770,8 +802,9 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
     PyObject *nl = PyUnicode_FromString("\n");
     PyObject *cr = PyUnicode_FromString("\r");
     PyObject *sgr_reset = PyUnicode_FromString("\x1b[m");
+    if (nl == NULL || cr == NULL || sgr_reset == NULL) goto end;
     const GPUCell *prev_cell = NULL;
-    if (nl == NULL || cr == NULL) goto end;
+    ansibuf->active_hyperlink_id = 0;
     for (index_type y = 0; y < lines; y++) {
         Line *line = get_line(container, y);
         if (!line->continued && y > 0) {
@@ -802,6 +835,15 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         if (insert_wrap_markers) {
             ret = PyObject_CallFunctionObjArgs(callback, cr, NULL);
             if (ret == NULL) goto end;
+            Py_CLEAR(ret);
+        }
+    }
+    if (ansibuf->active_hyperlink_id) {
+        ansibuf->active_hyperlink_id = 0;
+        t = PyUnicode_FromString("\x1b]8;;\x1b\\");
+        if (t) {
+            ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
+            Py_CLEAR(t);
             Py_CLEAR(ret);
         }
     }

@@ -199,9 +199,12 @@ typedef struct {
     bool rewrap_needed;
 } PagerHistoryBuf;
 
+typedef struct {int x;} *HYPERLINK_POOL_HANDLE;
 typedef struct {
     Py_UCS4 *buf;
     size_t len, capacity;
+    HYPERLINK_POOL_HANDLE hyperlink_pool;
+    hyperlink_id_type active_hyperlink_id;
 } ANSIBuf;
 
 typedef struct {
@@ -254,7 +257,6 @@ typedef struct {
 typedef struct {int x;} *SPRITE_MAP_HANDLE;
 #define FONTS_DATA_HEAD SPRITE_MAP_HANDLE sprite_map; double logical_dpi_x, logical_dpi_y, font_sz_in_pts; unsigned int cell_width, cell_height;
 typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
-typedef struct {int x;} *HYPERLINK_POOL_HANDLE;
 
 #define PARSER_BUF_SZ (8 * 1024)
 #define READ_BUF_SZ (1024*1024)

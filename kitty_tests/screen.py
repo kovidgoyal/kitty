@@ -467,6 +467,18 @@ class TestScreen(BaseTest):
             s.draw(f'{i}' * s.columns)
         self.ae(as_text(s, True, True), '\x1b[m\x1b[31m11\x1b[m\x1b[32m22\x1b[m\x1b[33m33\x1b[m\x1b[34m44\x1b[m\x1b[m\x1b[35m55\x1b[m\x1b[36m66')
 
+        def set_link(url=None, id=None):
+            parse_bytes(s, '\x1b]8;id={};{}\x1b\\'.format(id or '', url or '').encode('utf-8'))
+
+        s = self.create_screen()
+        s.draw('a')
+        set_link('moo', 'foo')
+        s.draw('bcdef')
+        self.ae(as_text(s, True), '\x1b[ma\x1b]8;id=foo;moo\x1b\\bcde\x1b[mf\n\n\n\x1b]8;;\x1b\\')
+        set_link()
+        s.draw('gh')
+        self.ae(as_text(s, True), '\x1b[ma\x1b]8;id=foo;moo\x1b\\bcde\x1b[mf\x1b]8;;\x1b\\gh\n\n\n')
+
     def test_pagerhist(self):
         hsz = 8
         s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': hsz})

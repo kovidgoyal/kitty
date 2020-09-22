@@ -137,6 +137,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         if (!init_overlay_line(self, self->columns)) { Py_CLEAR(self); return NULL; }
         self->hyperlink_pool = alloc_hyperlink_pool();
         if (!self->hyperlink_pool) { Py_CLEAR(self); return PyErr_NoMemory(); }
+        self->as_ansi_buf.hyperlink_pool = self->hyperlink_pool;
     }
     return (PyObject*) self;
 }
