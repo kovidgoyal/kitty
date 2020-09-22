@@ -2030,17 +2030,17 @@ static Line* get_range_line(void *x, int y) { return range_line_(x, y); }
 
 static PyObject*
 as_text(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_visual_line, self->lines, self->columns, &self->as_ansi_buf);
+    return as_text_generic(args, self, get_visual_line, self->lines, &self->as_ansi_buf);
 }
 
 static PyObject*
 as_text_non_visual(Screen *self, PyObject *args) {
-    return as_text_generic(args, self, get_range_line, self->lines, self->columns, &self->as_ansi_buf);
+    return as_text_generic(args, self, get_range_line, self->lines, &self->as_ansi_buf);
 }
 
 static inline PyObject*
 as_text_generic_wrapper(Screen *self, PyObject *args, get_line_func get_line) {
-    return as_text_generic(args, self, get_line, self->lines, self->columns, &self->as_ansi_buf);
+    return as_text_generic(args, self, get_line, self->lines, &self->as_ansi_buf);
 }
 
 static PyObject*

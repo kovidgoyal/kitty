@@ -463,7 +463,7 @@ as_text(HistoryBuf *self, PyObject *args) {
     GetLineWrapper glw = {.self=self};
     glw.line.xnum = self->xnum;
     ANSIBuf output = {0};
-    PyObject *ans = as_text_generic(args, &glw, get_line_wrapper, self->count, self->xnum, &output);
+    PyObject *ans = as_text_generic(args, &glw, get_line_wrapper, self->count, &output);
     free(output.buf);
     return ans;
 }

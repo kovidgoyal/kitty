@@ -762,21 +762,16 @@ mark_text_in_line(PyObject *marker, Line *line) {
 }
 
 PyObject*
-as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, index_type columns, ANSIBuf *ansibuf) {
+as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf) {
     PyObject *callback;
     int as_ansi = 0, insert_wrap_markers = 0;
     if (!PyArg_ParseTuple(args, "O|pp", &callback, &as_ansi, &insert_wrap_markers)) return NULL;
     PyObject *ret = NULL, *t = NULL;
-    Py_UCS4 *buf = NULL;
     PyObject *nl = PyUnicode_FromString("\n");
     PyObject *cr = PyUnicode_FromString("\r");
     PyObject *sgr_reset = PyUnicode_FromString("\x1b[m");
     const GPUCell *prev_cell = NULL;
     if (nl == NULL || cr == NULL) goto end;
-    if (as_ansi) {
-        buf = malloc(sizeof(Py_UCS4) * columns * 100);
-        if (buf == NULL) { PyErr_NoMemory(); goto end; }
-    }
     for (index_type y = 0; y < lines; y++) {
         Line *line = get_line(container, y);
         if (!line->continued && y > 0) {
@@ -811,7 +806,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
         }
     }
 end:
-    Py_CLEAR(nl); Py_CLEAR(cr); Py_CLEAR(sgr_reset); free(buf);
+    Py_CLEAR(nl); Py_CLEAR(cr); Py_CLEAR(sgr_reset);
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;
 }

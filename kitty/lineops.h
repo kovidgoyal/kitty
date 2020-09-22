@@ -110,4 +110,4 @@ void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
 void mark_text_in_line(PyObject *marker, Line *line);
 bool line_has_mark(Line *, attrs_type mark);
-PyObject* as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, index_type columns, ANSIBuf *ansibuf);
+PyObject* as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf);

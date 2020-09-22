@@ -442,7 +442,7 @@ get_line(void *x, int y) {
 static PyObject*
 as_text(LineBuf *self, PyObject *args) {
     ANSIBuf output = {0};
-    PyObject* ans = as_text_generic(args, self, get_line, self->ynum, self->xnum, &output);
+    PyObject* ans = as_text_generic(args, self, get_line, self->ynum, &output);
     free(output.buf);
     return ans;
 }
