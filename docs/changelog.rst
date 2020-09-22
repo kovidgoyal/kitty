@@ -28,6 +28,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Implement special rendering for various characters from the set of "Symbols
   for Legacy Computing" from the Unicode 13 standard
 
+- Unicode input kitten: Allow choosing symbols from the NERD font as well.
+  These are mostly Private Use symbols not in any standard, however are common. (:iss:`2972`)
+
 - Allow specifying border sizes in either pts or pixels. Change the default to
   0.5pt borders as this works best with the new minimal border style
 

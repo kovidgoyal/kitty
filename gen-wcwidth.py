@@ -98,6 +98,18 @@ def parse_ucd() -> None:
             elif category.startswith('S'):
                 all_symbols.add(codepoint)
 
+    with open('nerd-fonts-glyphs.txt') as f:
+        for line in f:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
+            code, category, name = line.split(' ', 2)
+            codepoint = int(code, 16)
+            if name and codepoint not in name_map:
+                name_map[codepoint] = name.upper()
+                for word in name.lower().split():
+                    add_word(word, codepoint)
+
     # Some common synonyms
     word_search_map['bee'] |= word_search_map['honeybee']
     word_search_map['lambda'] |= word_search_map['lamda']
