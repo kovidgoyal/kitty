@@ -54,6 +54,7 @@ def main() -> None:
                 write_hyperlink(write, in_result, line)
             else:
                 write(line)
+    raise SystemExit(p.wait())
 
 
 if __name__ == '__main__':
