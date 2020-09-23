@@ -53,3 +53,9 @@ actions, :doc:`see here <../open_actions>`.
 Hopefully, someday this functionality will make it into some `upstream grep
 <https://github.com/BurntSushi/ripgrep/issues/665>`_
 program directly removing the need for this kitten.
+
+
+.. note::
+   While you can pass any of ripgrep's comand line options to the kitten and
+   they will be forwarded to rg, do not use options that change the output
+   formatting as the kitten works by parsing the output from ripgrep.
