@@ -1487,6 +1487,9 @@ k('goto_file_line', 'kitty_mod+p>n', 'kitten hints --type linenum', _('Open the 
 Select something that looks like :code:`filename:linenum` and open it in vim at
 the specified line number.'''))
 
+k('open_selected_hyperlink', 'kitty_mod+p>y', 'kitten hints --type hyperlink', _('Open the selected hyperlink'), long_text=_('''
+Select a hyperlink (i.e. a URL that has been marked as such by the terminal program, for example, by ls --hyperlink=auto).
+'''))
 
 # }}}
 

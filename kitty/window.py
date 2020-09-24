@@ -523,7 +523,7 @@ class Window:
     def use_utf8(self, on: bool) -> None:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
 
-    def open_url(self, url: str, hyperlink_id: int) -> None:
+    def open_url(self, url: str, hyperlink_id: int, cwd: Optional[str] = None) -> None:
         if hyperlink_id:
             if not self.opts.allow_hyperlinks:
                 return
@@ -552,15 +552,15 @@ class Window:
                     '--choice=o:Open', '--choice=c:Copy to clipboard', '--choice=n;red:Nothing'
                     ],
                     window=self,
-                    custom_callback=partial(self.hyperlink_open_confirmed, url)
+                    custom_callback=partial(self.hyperlink_open_confirmed, url, cwd)
                 )
                 return
-        get_boss().open_url(url)
+        get_boss().open_url(url, cwd=cwd)
 
-    def hyperlink_open_confirmed(self, url: str, data: Dict[str, Any], *a: Any) -> None:
+    def hyperlink_open_confirmed(self, url: str, cwd: Optional[str], data: Dict[str, Any], *a: Any) -> None:
         q = data['response']
         if q == 'o':
-            get_boss().open_url(url)
+            get_boss().open_url(url, cwd=cwd)
         elif q == 'c':
             set_clipboard_string(url)
 

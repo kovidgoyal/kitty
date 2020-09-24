@@ -45,12 +45,21 @@ ESCAPE = K['ESCAPE']
 
 class Mark:
 
-    __slots__ = ('index', 'start', 'end', 'text', 'groupdict')
+    __slots__ = ('index', 'start', 'end', 'text', 'is_hyperlink', 'group_id', 'groupdict')
 
-    def __init__(self, index: int, start: int, end: int, text: str, groupdict: Any):
+    def __init__(
+            self,
+            index: int, start: int, end: int,
+            text: str,
+            groupdict: Any,
+            is_hyperlink: bool = False,
+            group_id: Optional[str] = None
+    ):
         self.index, self.start, self.end = index, start, end
         self.text = text
         self.groupdict = groupdict
+        self.is_hyperlink = is_hyperlink
+        self.group_id = group_id
 
 
 @lru_cache(maxsize=2048)
@@ -369,13 +378,66 @@ def load_custom_processor(customize_processing: str) -> Any:
     return runpy.run_path(custom_path, run_name='__main__')
 
 
+def remove_sgr(text: str) -> str:
+    return re.sub(r'\x1b\[.*?m', '', text)
+
+
+def process_hyperlinks(text: str) -> Tuple[str, Tuple[Mark, ...]]:
+    hyperlinks: List[Mark] = []
+    removed_size = idx = 0
+    active_hyperlink_url: Optional[str] = None
+    active_hyperlink_id: Optional[str] = None
+    active_hyperlink_start_offset = 0
+
+    def add_hyperlink(end: int) -> None:
+        nonlocal idx, active_hyperlink_url, active_hyperlink_id, active_hyperlink_start_offset
+        assert active_hyperlink_url is not None
+        hyperlinks.append(Mark(
+            idx, active_hyperlink_start_offset, end,
+            active_hyperlink_url,
+            groupdict={},
+            is_hyperlink=True, group_id=active_hyperlink_id
+        ))
+        active_hyperlink_url = active_hyperlink_id = None
+        active_hyperlink_start_offset = 0
+        idx += 1
+
+    def process_hyperlink(m: re.Match) -> str:
+        nonlocal removed_size, active_hyperlink_url, active_hyperlink_id, active_hyperlink_start_offset
+        raw = m.group()
+        start = m.start() - removed_size
+        removed_size += len(raw)
+        if active_hyperlink_url is not None:
+            add_hyperlink(start)
+        raw = raw[4:-2]
+        parts = raw.split(';', 1)
+        if len(parts) == 2 and parts[1]:
+            active_hyperlink_url = parts[1]
+            active_hyperlink_start_offset = start
+            if parts[0]:
+                for entry in parts[0].split(':'):
+                    if entry.startswith('id=') and len(entry) > 3:
+                        active_hyperlink_id = entry[3:]
+                        break
+
+        return ''
+
+    text = re.sub(r'\x1b\]8.+?\x1b\\', process_hyperlink, text)
+    if active_hyperlink_url is not None:
+        add_hyperlink(len(text))
+    return text, tuple(hyperlinks)
+
+
 def run(args: HintsCLIOptions, text: str, extra_cli_args: Sequence[str] = ()) -> Optional[Dict[str, Any]]:
     try:
-        text = parse_input(text)
+        text = parse_input(remove_sgr(text))
+        text, hyperlinks = process_hyperlinks(text)
         pattern, post_processors = functions_for(args)
         if args.type == 'linenum':
             args.customize_processing = '::linenum::'
-        if args.customize_processing:
+        if args.type == 'hyperlink':
+            all_marks = hyperlinks
+        elif args.customize_processing:
             m = load_custom_processor(args.customize_processing)
             if 'mark' in m:
                 all_marks = tuple(m['mark'](text, args, Mark, extra_cli_args))
@@ -384,9 +446,8 @@ def run(args: HintsCLIOptions, text: str, extra_cli_args: Sequence[str] = ()) ->
         else:
             all_marks = tuple(mark(pattern, post_processors, text, args))
         if not all_marks:
-            input(_('No {} found, press Enter to quit.').format(
-                'URLs' if args.type == 'url' else 'matches'
-                ))
+            none_of = {'url': 'URLs', 'hyperlink': 'hyperlinks'}.get(args.type, 'matches')
+            input(_('No {} found, press Enter to quit.').format(none_of))
             return None
 
         largest_index = all_marks[-1].index
@@ -421,7 +482,7 @@ programs.
 
 --type
 default=url
-choices=url,regex,path,line,hash,word,linenum
+choices=url,regex,path,line,hash,word,linenum,hyperlink
 The type of text to search for. A value of :code:`linenum` is special, it looks
 for error messages using the pattern specified with :option:`--regex`, which
 must have the named groups, :code:`path` and :code:`line`. If not specified,
@@ -573,7 +634,12 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
     if items and not (opts.customize_processing or opts.type == 'linenum'):
         print('Extra command line arguments present: {}'.format(' '.join(items)), file=sys.stderr)
         input(_('Press Enter to quit'))
-    return run(opts, text, items)
+    try:
+        return run(opts, text, items)
+    except Exception:
+        import traceback
+        traceback.print_exc()
+        input(_('Press Enter to quit'))
 
 
 def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType, extra_cli_args: Sequence[str], *a: Any) -> None:
@@ -604,7 +670,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
             }[action])(*cmd)
 
 
-@result_handler(type_of_input='screen')
+@result_handler(type_of_input='screen-ansi')
 def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType) -> None:
     if data['customize_processing']:
         m = load_custom_processor(data['customize_processing'])
@@ -656,13 +722,20 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
             w = boss.window_id_map.get(target_window_id)
             if w is not None:
                 cwd = w.cwd_of_child
+            if w is None:
+                w = boss.active_window
             program = None if program == 'default' else program
-            for m, groupdict in zip(matches, groupdicts):
-                if groupdict:
-                    m = []
-                    for k, v in groupdict.items():
-                        m.append('{}={}'.format(k, v or ''))
-                boss.open_url(m, program, cwd=cwd)
+            if text_type == 'hyperlink':
+                for m in matches:
+                    if w is not None:
+                        w.open_url(m, hyperlink_id=1, cwd=cwd)
+            else:
+                for m, groupdict in zip(matches, groupdicts):
+                    if groupdict:
+                        m = []
+                        for k, v in groupdict.items():
+                            m.append('{}={}'.format(k, v or ''))
+                    boss.open_url(m, program, cwd=cwd)
 
 
 if __name__ == '__main__':
