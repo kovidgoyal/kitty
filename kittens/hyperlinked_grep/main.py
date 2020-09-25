@@ -4,6 +4,7 @@
 
 import os
 import re
+import signal
 import socket
 import subprocess
 import sys
@@ -12,14 +13,11 @@ from urllib.parse import quote_from_bytes
 
 
 def write_hyperlink(write: Callable[[bytes], None], url: bytes, line: bytes, frag: bytes = b'') -> None:
-    write(b'\033]8;;')
-    write(url)
+    text = b'\033]8;;' + url
     if frag:
-        write(b'#')
-        write(frag)
-    write(b'\033\\')
-    write(line)
-    write(b'\033]8;;\033\\')
+        text += b'#' + frag
+    text += b'\033\\' + line + b'\033]8;;\033\\'
+    write(text)
 
 
 def main() -> None:
@@ -36,24 +34,28 @@ def main() -> None:
     in_result: bytes = b''
     hostname = socket.gethostname().encode('utf-8')
 
-    for line in p.stdout:
-        line = osc_pat.sub(b'', line)  # remove any existing hyperlinks
-        clean_line = sgr_pat.sub(b'', line).rstrip()  # remove SGR formatting
-        if not clean_line:
-            in_result = b''
-            write(b'\n')
-            continue
-        if in_result:
-            m = num_pat.match(clean_line)
-            if m is not None:
-                write_hyperlink(write, in_result, line, frag=m.group(1))
-        else:
-            if line.strip():
-                path = quote_from_bytes(os.path.abspath(clean_line)).encode('utf-8')
-                in_result = b'file://' + hostname + path
-                write_hyperlink(write, in_result, line)
+    try:
+        for line in p.stdout:
+            line = osc_pat.sub(b'', line)  # remove any existing hyperlinks
+            clean_line = sgr_pat.sub(b'', line).rstrip()  # remove SGR formatting
+            if not clean_line:
+                in_result = b''
+                write(b'\n')
+                continue
+            if in_result:
+                m = num_pat.match(clean_line)
+                if m is not None:
+                    write_hyperlink(write, in_result, line, frag=m.group(1))
             else:
-                write(line)
+                if line.strip():
+                    path = quote_from_bytes(os.path.abspath(clean_line)).encode('utf-8')
+                    in_result = b'file://' + hostname + path
+                    write_hyperlink(write, in_result, line)
+                else:
+                    write(line)
+    except KeyboardInterrupt:
+        p.send_signal(signal.SIGINT)
+        p.stdout.close()
     raise SystemExit(p.wait())
 
 
