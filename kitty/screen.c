@@ -1882,9 +1882,10 @@ static inline PyObject*
 text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
     IterationData idata;
     iteration_data(self, sel, &idata, -self->historybuf->count, false);
-    PyObject *ans = PyTuple_New(idata.y_limit - idata.y);
+    int limit = MIN((int)self->lines, idata.y_limit);
+    PyObject *ans = PyTuple_New(limit - idata.y);
     if (!ans) return NULL;
-    for (int i = 0, y = idata.y; y < idata.y_limit && y < (int)self->lines; y++, i++) {
+    for (int i = 0, y = idata.y; y < limit; y++, i++) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
         char leading_char = (i > 0 && insert_newlines && !line->continued) ? '\n' : 0;
