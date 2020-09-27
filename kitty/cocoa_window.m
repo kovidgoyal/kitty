@@ -9,7 +9,9 @@
 #include "state.h"
 #include "monotonic.h"
 #include <Cocoa/Cocoa.h>
+#if !defined(KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API)
 #include <UserNotifications/UserNotifications.h>
+#endif
 
 #include <AvailabilityMacros.h>
 // Needed for _NSGetProgname
@@ -135,6 +137,68 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
 
 static PyObject *notification_activated_callback = NULL;
 
+static PyObject*
+set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
+    if (notification_activated_callback) Py_DECREF(notification_activated_callback);
+    notification_activated_callback = callback;
+    Py_INCREF(callback);
+    Py_RETURN_NONE;
+}
+
+#if defined(KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API)
+
+@interface NotificationDelegate : NSObject <NSUserNotificationCenterDelegate>
+@end
+
+@implementation NotificationDelegate
+    - (void)userNotificationCenter:(NSUserNotificationCenter *)center
+            didDeliverNotification:(NSUserNotification *)notification {
+        (void)(center); (void)(notification);
+    }
+
+    - (BOOL) userNotificationCenter:(NSUserNotificationCenter *)center
+            shouldPresentNotification:(NSUserNotification *)notification {
+        (void)(center); (void)(notification);
+        return YES;
+    }
+
+    - (void) userNotificationCenter:(NSUserNotificationCenter *)center
+            didActivateNotification:(NSUserNotification *)notification {
+        (void)(center); (void)(notification);
+        if (notification_activated_callback) {
+            PyObject *ret = PyObject_CallFunction(notification_activated_callback, "z",
+                    notification.userInfo[@"user_id"] ? [notification.userInfo[@"user_id"] UTF8String] : NULL);
+            if (ret == NULL) PyErr_Print();
+            else Py_DECREF(ret);
+        }
+    }
+@end
+
+static PyObject*
+cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
+    char *identifier = NULL, *title = NULL, *informativeText = NULL, *subtitle = NULL;
+    if (!PyArg_ParseTuple(args, "zsz|z", &identifier, &title, &informativeText, &subtitle)) return NULL;
+    NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
+    if (!center) {PyErr_SetString(PyExc_RuntimeError, "Failed to get the user notification center"); return NULL; }
+    if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
+    NSUserNotification *n = [NSUserNotification new];
+#define SET(x) { \
+    if (x) { \
+        NSString *t = @(x); \
+        n.x = t; \
+        [t release]; \
+    }}
+    SET(title); SET(subtitle); SET(informativeText);
+#undef SET
+    if (identifier) {
+        n.userInfo = @{@"user_id": @(identifier)};
+    }
+    [center deliverNotification:n];
+    Py_RETURN_NONE;
+}
+
+#else
+
 @interface NotificationDelegate : NSObject <UNUserNotificationCenterDelegate>
 @end
 
@@ -213,14 +277,6 @@ drain_pending_notifications(BOOL granted) {
     }
 }
 
-PyObject*
-set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
-    if (notification_activated_callback) Py_DECREF(notification_activated_callback);
-    notification_activated_callback = callback;
-    Py_INCREF(callback);
-    Py_RETURN_NONE;
-}
-
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     char *identifier = NULL, *title = NULL, *body = NULL, *subtitle = NULL;
@@ -243,6 +299,8 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     ];
     Py_RETURN_NONE;
 }
+
+#endif
 
 @interface ServiceProvider : NSObject
 @end
@@ -539,10 +597,14 @@ cleanup() {
     if (dockMenu) [dockMenu release];
     dockMenu = nil;
     Py_CLEAR(notification_activated_callback);
+
+    #if !defined(KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API)
     drain_pending_notifications(NO);
     free(notification_queue.notifications);
     notification_queue.notifications = NULL;
     notification_queue.capacity = 0;
+    #endif
+
     } // autoreleasepool
 }
 
