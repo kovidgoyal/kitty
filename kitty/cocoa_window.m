@@ -536,7 +536,7 @@ cleanup() {
 
     if (dockMenu) [dockMenu release];
     dockMenu = nil;
-    if (notification_activated_callback) Py_CLEAR(notification_activated_callback);
+    Py_CLEAR(notification_activated_callback);
     drain_pending_notifications(NO);
     free(notification_queue.notifications);
     notification_queue.notifications = NULL;
