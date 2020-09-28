@@ -1569,7 +1569,7 @@ class Boss:
         from .notify import notify
         now = monotonic()
         ident = f'test-notify-{now}'
-        notify(f'Test {now}', f'At: {now}', identifier=ident)
+        notify(f'Test {now}', f'At: {now}', identifier=ident, subtitle=f'Test subtitle {now}')
 
     def notification_activated(self, identifier: str, window_id: int, focus: bool, report: bool) -> None:
         w = self.window_id_map.get(window_id)
