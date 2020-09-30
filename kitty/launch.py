@@ -112,11 +112,11 @@ computers (for example, over ssh) or as other users.
 type=choices
 default=none
 choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollback
-Pass the screen contents as :code:`STDIN` to the child process. @selection is
-the currently selected text. @screen is the contents of the currently active
-window. @screen_scrollback is the same as @screen, but includes the scrollback
-buffer as well. @alternate is the secondary screen of the current active
-window. For example if you run a full screen terminal application, the
+Pass the screen contents as :code:`STDIN` to the child process. :code:`@selection` is
+the currently selected text. :code:`@screen` is the contents of the currently active
+window. :code:`@screen_scrollback` is the same as :code:`@screen`, but includes the
+scrollback buffer as well. :code:`@alternate` is the secondary screen of the current
+active window. For example if you run a full screen terminal application, the
 secondary screen will be the screen you return to when quitting the
 application.
 
