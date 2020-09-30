@@ -81,7 +81,10 @@ currently active window.
 --copy-env
 type=bool-set
 Copy the environment variables from the currently active window into the
-newly launched child process.
+newly launched child process. It will not copy environment variables that have
+been :code:`export`ed since the :code:`export` command does not change the environment
+of the shell, only of child processes launched in the shell. You can use remote control
+instead to have the current environment copied.
 
 
 --location
