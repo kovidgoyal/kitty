@@ -1,5 +1,11 @@
 = kitty - the fast, featureful, GPU based, terminal emulator
 
+* Offloads rendering to the GPU for lower system load and buttery smooth scrolling. Uses threaded rendering to minimize input latency.
+
+* Supports all modern terminal features: graphics (images), unicode, true-color, OpenType ligatures, mouse protocol, focus tracking, bracketed paste and several new terminal protocol extensions.
+
+
+
 See https://sw.kovidgoyal.net/kitty/
 
 image:https://github.com/kovidgoyal/kitty/workflows/CI/badge.svg["Build status", link="https://github.com/kovidgoyal/kitty/actions?query=workflow%3ACI"]
