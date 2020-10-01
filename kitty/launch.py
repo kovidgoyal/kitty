@@ -84,7 +84,7 @@ Copy the environment variables from the currently active window into the
 newly launched child process. It will not copy environment variables that have
 been :code:`export`ed since the :code:`export` command does not change the environment
 of the shell, only of child processes launched in the shell. You can use remote control
-instead to have the current environment copied (:code:`allow_remote_control` must be on): 
+instead to have the current environment copied (:code:`allow_remote_control` must be on):
 :code:`map kitty_mod+x remote_control launch --copy-env vim`.
 
 
