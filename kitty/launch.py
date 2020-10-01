@@ -81,11 +81,11 @@ currently active window.
 --copy-env
 type=bool-set
 Copy the environment variables from the currently active window into the
-newly launched child process. It will not copy environment variables that have
-been :code:`export`ed since the :code:`export` command does not change the environment
-of the shell, only of child processes launched in the shell. You can use remote control
-instead to have the current environment copied (:code:`allow_remote_control` must be on):
-:code:`map kitty_mod+x remote_control launch --copy-env vim`.
+newly launched child process. Note that most shells only set environment
+variables for child processes, so this will only copy the environment
+variables that the shell process itself has not the environment variables
+child processes inside the shell see. To copy that enviroment, use the
+kitty remote control feature with :code:`kitty @launch --copy-env`.
 
 
 --location
