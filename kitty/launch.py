@@ -81,7 +81,11 @@ currently active window.
 --copy-env
 type=bool-set
 Copy the environment variables from the currently active window into the
-newly launched child process.
+newly launched child process. It will not copy environment variables that have
+been :code:`export`ed since the :code:`export` command does not change the environment
+of the shell, only of child processes launched in the shell. You can use remote control
+instead to have the current environment copied (:code:`allow_remote_control` must be on): 
+:code:`map kitty_mod+x remote_control launch --copy-env vim`.
 
 
 --location
@@ -112,11 +116,11 @@ computers (for example, over ssh) or as other users.
 type=choices
 default=none
 choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollback
-Pass the screen contents as :code:`STDIN` to the child process. @selection is
-the currently selected text. @screen is the contents of the currently active
-window. @screen_scrollback is the same as @screen, but includes the scrollback
-buffer as well. @alternate is the secondary screen of the current active
-window. For example if you run a full screen terminal application, the
+Pass the screen contents as :code:`STDIN` to the child process. :code:`@selection` is
+the currently selected text. :code:`@screen` is the contents of the currently active
+window. :code:`@screen_scrollback` is the same as :code:`@screen`, but includes the
+scrollback buffer as well. :code:`@alternate` is the secondary screen of the current
+active window. For example if you run a full screen terminal application, the
 secondary screen will be the screen you return to when quitting the
 application.
 
