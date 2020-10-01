@@ -63,7 +63,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   to red until a relayout
 
 - Linux: Fix automatic detection of bold/italic faces for fonts such as IBM
-  Plex Mono and have the regular face with a full name that is the same as the
+  Plex Mono that have the regular face with a full name that is the same as the
   family name (:iss:`2951`)
 
 - Fix a regression that broke :opt:`kitten_alias` (:iss:`2952`)
