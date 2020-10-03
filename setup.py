@@ -485,8 +485,10 @@ def parallel_run(items: List[Command]) -> None:
             num += 1
             if verbose:
                 print(' '.join(compile_cmd.cmd))
-            else:
+            elif sys.stdout.isatty():
                 print('\r\x1b[K[{}/{}] {}'.format(num, total, compile_cmd.desc), end='')
+            else:
+                print('[{}/{}] {}'.format(num, total, compile_cmd.desc), flush=True)
             printed = True
             w = subprocess.Popen(compile_cmd.cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             workers[w.pid] = compile_cmd, w
