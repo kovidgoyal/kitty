@@ -520,6 +520,7 @@ def cocoa_send_notification(
     identifier: Optional[str],
     title: str,
     body: Optional[str],
+    subtitle: Optional[str],
 ) -> None:
     pass
 

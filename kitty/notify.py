@@ -20,9 +20,10 @@ if is_macos:
         timeout: int = 5000,
         application: str = 'kitty',
         icon: bool = True,
-        identifier: Optional[str] = None
+        identifier: Optional[str] = None,
+        subtitle: Optional[str] = None,
     ) -> None:
-        cocoa_send_notification(identifier, title, body)
+        cocoa_send_notification(identifier, title, body, subtitle)
 
 else:
 
@@ -48,7 +49,8 @@ else:
         timeout: int = -1,
         application: str = 'kitty',
         icon: bool = True,
-        identifier: Optional[str] = None
+        identifier: Optional[str] = None,
+        subtitle: Optional[str] = None,
     ) -> None:
         icf = ''
         if icon is True:

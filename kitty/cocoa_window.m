@@ -156,13 +156,14 @@ static PyObject *notification_activated_callback = NULL;
 
 
 static void
-schedule_notification(const char *identifier, const char *title, const char *body) {
+schedule_notification(const char *identifier, const char *title, const char *body, const char *subtitle) {
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
     if (!center) return;
     // Configure the notification's payload.
     UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
     if (title) content.title = @(title);
     if (body) content.body = @(body);
+    if (subtitle) content.subtitle = @(subtitle);
     // Deliver the notification
     static unsigned long counter = 1;
     UNNotificationRequest* request = [
@@ -178,7 +179,7 @@ schedule_notification(const char *identifier, const char *title, const char *bod
 
 
 typedef struct {
-    char *identifier, *title, *body;
+    char *identifier, *title, *body, *subtitle;
 } QueuedNotification;
 
 typedef struct {
@@ -188,12 +189,13 @@ typedef struct {
 static NotificationQueue notification_queue = {0};
 
 static void
-queue_notification(const char *identifier, const char *title, const char* body) {
+queue_notification(const char *identifier, const char *title, const char* body, const char* subtitle) {
     ensure_space_for((&notification_queue), notifications, QueuedNotification, notification_queue.count + 16, capacity, 16, true);
     QueuedNotification *n = notification_queue.notifications + notification_queue.count++;
     n->identifier = identifier ? strdup(identifier) : NULL;
     n->title = title ? strdup(title) : NULL;
     n->body = body ? strdup(body) : NULL;
+    n->subtitle = subtitle ? strdup(subtitle) : NULL;
 }
 
 static void
@@ -201,13 +203,13 @@ drain_pending_notifications(BOOL granted) {
     if (granted) {
         for (size_t i = 0; i < notification_queue.count; i++) {
             QueuedNotification *n = notification_queue.notifications + i;
-            schedule_notification(n->identifier, n->title, n->body);
+            schedule_notification(n->identifier, n->title, n->body, n->subtitle);
         }
     }
     while(notification_queue.count) {
         QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
-        free(n->identifier); free(n->title); free(n->body);
-        n->identifier = NULL; n->title = NULL; n->body = NULL;
+        free(n->identifier); free(n->title); free(n->body); free(n->subtitle);
+        n->identifier = NULL; n->title = NULL; n->body = NULL; n->subtitle = NULL;
     }
 }
 
@@ -221,13 +223,13 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *identifier = NULL, *title = NULL, *body = NULL;
-    if (!PyArg_ParseTuple(args, "zsz", &identifier, &title, &body)) return NULL;
+    char *identifier = NULL, *title = NULL, *body = NULL, *subtitle = NULL;
+    if (!PyArg_ParseTuple(args, "zsz|z", &identifier, &title, &body, &subtitle)) return NULL;
 
     UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
     if (!center) Py_RETURN_NONE;
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
-    queue_notification(identifier, title, body);
+    queue_notification(identifier, title, body, subtitle);
 
     [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert)
         completionHandler:^(BOOL granted, NSError * _Nullable error) {
