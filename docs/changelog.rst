@@ -37,7 +37,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add support for displaying correct colors with non-sRGB PNG files (Adds a
   dependency on liblcms2)
 
-- hints kitten: Add a new :opt:`kitty +kitten hints --type` of ``hyperlink`` useful
+- hints kitten: Add a new :option:`kitty +kitten hints --type` of ``hyperlink`` useful
   for activating hyperlinks using just the keyboard
 
 - Allow tracking focus change events in watchers (:iss:`2918`)
