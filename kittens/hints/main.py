@@ -325,6 +325,14 @@ def functions_for(args: HintsCLIOptions) -> Tuple[str, List[PostprocessorFunc]]:
         pattern = '(?m)^\\s*(.+)[\\s\0]*$'
     elif args.type == 'hash':
         pattern = '[0-9a-f]{7,128}'
+    elif args.type == 'ip':
+        pattern = (
+            # # IPv4 with no validation
+            r"((?:\d{1,3}\.){3}\d{1,3}"
+            r"|"
+            # # IPv6 with no validation
+            r"(?:[a-fA-F0-9]{0,4}:){2,7}[a-fA-F0-9]{1,4})"
+        )
     elif args.type == 'word':
         chars = args.word_characters
         if chars is None:
@@ -482,7 +490,7 @@ programs.
 
 --type
 default=url
-choices=url,regex,path,line,hash,word,linenum,hyperlink
+choices=url,regex,path,line,hash,word,linenum,hyperlink,ip
 The type of text to search for. A value of :code:`linenum` is special, it looks
 for error messages using the pattern specified with :option:`--regex`, which
 must have the named groups, :code:`path` and :code:`line`. If not specified,
