@@ -1563,6 +1563,7 @@ class Boss:
         for os_window_id in os_windows:
             self.default_bg_changed_for(os_window_id)
 
+    # Can be called with kitty -o "map f1 send_test_notification"
     def send_test_notification(self) -> None:
         from time import monotonic
 
