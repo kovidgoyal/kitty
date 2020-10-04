@@ -40,7 +40,7 @@ def install_deps():
     if is_bundle:
         install_bundle()
     else:
-        run('pip install Pillow pygments')
+        run('pip3 install Pillow pygments')
 
 
 def build_kitty():
