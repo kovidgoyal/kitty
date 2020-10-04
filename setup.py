@@ -63,6 +63,7 @@ class Options(argparse.Namespace):
     for_freeze: bool = False
     libdir_name: str = 'lib'
     extra_logging: List[str] = []
+    link_time_optimization: bool = True
     update_check_interval: float = 24
     egl_library: Optional[str] = None
     startup_notification_library: Optional[str] = None
@@ -234,6 +235,7 @@ def init_env(
     debug: bool = False,
     sanitize: bool = False,
     native_optimizations: bool = True,
+    link_time_optimization: bool = True,
     profile: bool = False,
     egl_library: Optional[str] = None,
     startup_notification_library: Optional[str] = None,
@@ -288,7 +290,7 @@ def init_env(
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
-    if not debug and not sanitize and not is_openbsd:
+    if not debug and not sanitize and not is_openbsd and link_time_optimization:
         # See https://github.com/google/sanitizers/issues/647
         cflags.append('-flto')
         ldflags.append('-flto')
@@ -705,7 +707,7 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
 def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
     global env
     env = init_env(
-        args.debug, args.sanitize, native_optimizations, args.profile,
+        args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
         args.egl_library, args.startup_notification_library, args.canberra_library,
         args.extra_logging
     )
@@ -1150,6 +1152,13 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         default=Options.canberra_library,
         help='The filename argument passed to dlopen for libcanberra.'
         ' This can be used to change the name of the loaded library or specify an absolute path.'
+    )
+    p.add_argument(
+        '--disable-link-time-optimization',
+        dest='link_time_optimization',
+        default=Options.link_time_optimization,
+        action='store_false',
+        help='Turn off Link Time Optimization (LTO).'
     )
     return p
 # }}}
