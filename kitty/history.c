@@ -377,7 +377,7 @@ pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
         pagerhist_write_bytes(nph, (const uint8_t*)"\r", 1); \
         num_in_current_line = 0; \
     }\
-    if (ch_width >= 0 || num_in_current_line >= -ch_width) num_in_current_line += ch_width; \
+    if (ch_width >= 0 || (int)num_in_current_line >= -ch_width) num_in_current_line += ch_width; \
     pagerhist_write_bytes(nph, record, count); \
 }
 
