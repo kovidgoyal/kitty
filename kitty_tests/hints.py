@@ -48,8 +48,9 @@ class TestHints(BaseTest):
             ('2001:DB8::FF00:42:8329', ['2001:DB8::FF00:42:8329']),
             ('0000:0000:0000:0000:0000:0000:0000:0001', ['0000:0000:0000:0000:0000:0000:0000:0001']),
             ('::1', ['::1']),
-            # The regex doesn't check for validity
-            ('255.255.255.256', ['255.255.255.256']),
+            # Invalid IPs won't match
+            ('255.255.255.256', []),
+            (':1', []),
         )
 
         for testcase, expected in testcases:
