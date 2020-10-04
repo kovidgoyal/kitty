@@ -213,7 +213,10 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
 
 def test_compile(cc: str, *cflags: str, src: Optional[str] = None) -> bool:
     src = src or 'int main(void) { return 0; }'
-    p = subprocess.Popen([cc] + list(cflags) + ['-x', 'c', '-o', os.devnull, '-'], stdin=subprocess.PIPE)
+    p = subprocess.Popen(
+        [cc] + list(cflags) + ['-x', 'c', '-o', os.devnull, '-'],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE
+    )
     stdin = p.stdin
     assert stdin is not None
     try:
@@ -336,8 +339,12 @@ def kitty_env() -> Env:
     if is_macos:
         platform_libs = [
             '-framework', 'CoreText', '-framework', 'CoreGraphics',
-            '-framework', 'UserNotifications'
         ]
+        user_notifications_framework = first_successful_compile(ans.cc, '-framework UserNotifications')
+        if user_notifications_framework:
+            platform_libs.extend(shlex.split(user_notifications_framework))
+        else:
+            cppflags.append('-DKITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API')
         # Apple deprecated OpenGL in Mojave (10.14) silence the endless
         # warnings about it
         cppflags.append('-DGL_SILENCE_DEPRECATION')
