@@ -479,14 +479,17 @@ def parallel_run(items: List[Command]) -> None:
             compile_cmd.on_success()
 
     printed = False
+    isatty = sys.stdout.isatty()
     while items and failed is None:
         while len(workers) < num_workers and items:
             compile_cmd = items.pop()
             num += 1
             if verbose:
                 print(' '.join(compile_cmd.cmd))
-            else:
+            elif isatty:
                 print('\r\x1b[K[{}/{}] {}'.format(num, total, compile_cmd.desc), end='')
+            else:
+                print('[{}/{}] {}'.format(num, total, compile_cmd.desc), flush=True)
             printed = True
             w = subprocess.Popen(compile_cmd.cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             workers[w.pid] = compile_cmd, w
