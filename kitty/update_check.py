@@ -90,7 +90,9 @@ def save_notification(version: Version) -> None:
     for version in sorted(notified_versions):
         n = notified_versions[version]
         lines.append('{},{},{}'.format(
-            '.'.join(map(str, n.version)), n.time_of_last_notification, n.count))
+            '.'.join(map(str, n.version)),
+            n.time_of_last_notification,
+            n.notification_count))
     atomic_save('\n'.join(lines).encode('utf-8'), version_notification_log())
 
 
