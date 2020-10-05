@@ -253,7 +253,7 @@ The escape code has the form::
 Here ``<OSC>`` is :code:`<ESC>]` and ``<terminator>`` is
 :code:`<ESC><backslash>`.  The metadata is a section of colon separated
 :code:`key=value` pairs. Every key must be a single character from the set
-:code:`[a-zA-Z]` and every value must be a word consisting of characters from
+:code:`a-zA-Z` and every value must be a word consisting of characters from
 the set :code:`a-zA-Z0-9-_/\+.,(){}[]*&^%$#@!`~`. The payload must be
 interpreted based on the metadata section. The two semi-colons *must* always be
 present even when no metadata is present.
