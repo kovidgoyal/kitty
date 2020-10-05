@@ -68,14 +68,15 @@ def run_html(args: Any) -> None:
 
 def add_analytics() -> None:
     analytics = '''
-<!-- Google Analytics -->
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-20736318-2"></script>
 <script>
-window.ga=window.ga||function(){(ga.q=ga.q||[]).push(arguments)};ga.l=+new Date;
-ga('create', 'UA-20736318-2', 'auto');
-ga('send', 'pageview');
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-20736318-2');
 </script>
-<script async="async" src='https://www.google-analytics.com/analytics.js'></script>
-<!-- End Google Analytics -->\
 '''
     for dirpath, firnames, filenames in os.walk(publish_dir):
         for fname in filenames:
@@ -85,6 +86,10 @@ ga('send', 'pageview');
                     html = html.replace('<!-- kitty analytics placeholder -->', analytics, 1)
                     f.seek(0), f.truncate()
                     f.write(html.encode('utf-8'))
+
+
+def run_docs(args: Any) -> None:
+    subprocess.check_call(['make', 'docs'])
 
 
 def run_website(args: Any) -> None:
@@ -384,6 +389,8 @@ def main() -> None:
             ans = 'n'
         if ans.lower() != 'y':
             return
+    if actions == ['website']:
+        actions.insert(0, 'docs')
     for action in actions:
         print('Running', action)
         cwd = os.getcwd()
