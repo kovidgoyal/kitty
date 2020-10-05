@@ -250,12 +250,13 @@ The escape code has the form::
 
     <OSC> 99 ; metadata ; payload <terminator>
 
-Here ``<OSC>`` is :code:`<ESC>]` and ``<terminator>`` is :code:`<ESC><backslash>`.  The
-metadata is a section of colon separated :code:`key=value` pairs. Every key
-must be a single character from the set :code:`[a-zA-Z]` and every value must
-be a character from the set :code:`a-zA-Z0-9-_/\+.,(){}[]*&^%$#@!`~`. The
-payload must be interpreted based on the metadata section. The two semi-colons
-*must* always be present even when no metadata is present.
+Here ``<OSC>`` is :code:`<ESC>]` and ``<terminator>`` is
+:code:`<ESC><backslash>`.  The metadata is a section of colon separated
+:code:`key=value` pairs. Every key must be a single character from the set
+:code:`[a-zA-Z]` and every value must be a word consisting of characters from
+the set :code:`a-zA-Z0-9-_/\+.,(){}[]*&^%$#@!`~`. The payload must be
+interpreted based on the metadata section. The two semi-colons *must* always be
+present even when no metadata is present.
 
 Before going into details, lets see how one can display a simple, single line
 notification from a shell script::
@@ -297,7 +298,7 @@ was activated. This is controlled by the ``a`` key which takes a comma
 separated set of values, ``report`` and ``focus``. The value ``focus`` means
 focus the window from which the notification was issued and is the default.
 ``report`` means send an escape code back to the application. The format of the
-escape code is::
+returned escape code is::
 
     <OSC> 99 ; i=identifier ; <terminator>
 
@@ -322,7 +323,7 @@ to display it based on what it does understand.
    allow displaying custom icons on a notification, at all, it was decided to
    leave it out of the spec for the time being.
 
-   Similarly, features such a scheduled notifications could be added in future
+   Similarly, features such as scheduled notifications could be added in future
    revisions.
 
 
