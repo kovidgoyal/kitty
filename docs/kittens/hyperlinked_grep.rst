@@ -34,7 +34,7 @@ you use some editor other than vim, you should adjust the
 
 Finally, add an alias to your shell's rc files to invoke the kitten as ``hg``::
 
-    alias hg='kitty +kitten hyperlink_grep'
+    alias hg='kitty +kitten hyperlinked_grep'
 
 
 You can now run searches with::
