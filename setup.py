@@ -1176,8 +1176,6 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
 
 def main() -> None:
     global verbose
-    if sys.version_info < (3, 5):
-        raise SystemExit('python >= 3.5 required')
     args = option_parser().parse_args(namespace=Options())
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
