@@ -4,6 +4,7 @@ from typing import (
     Union
 )
 
+import termios
 from kitty.boss import Boss
 from kitty.fonts.render import FontObject
 from kitty.options_stub import Options
@@ -865,15 +866,15 @@ def viewport_for_window(
 TermiosPtr = NewType('TermiosPtr', int)
 
 
-def raw_tty(fd: int, termios_ptr: TermiosPtr) -> None:
+def raw_tty(fd: int, termios_ptr: TermiosPtr, optional_actions: int = termios.TCSAFLUSH) -> None:
     pass
 
 
-def close_tty(fd: int, termios_ptr: TermiosPtr) -> None:
+def close_tty(fd: int, termios_ptr: TermiosPtr, optional_actions: int = termios.TCSAFLUSH) -> None:
     pass
 
 
-def normal_tty(fd: int, termios_ptr: TermiosPtr) -> None:
+def normal_tty(fd: int, termios_ptr: TermiosPtr, optional_actions: int = termios.TCSAFLUSH) -> None:
     pass
 
 
