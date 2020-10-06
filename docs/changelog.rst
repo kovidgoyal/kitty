@@ -4,6 +4,15 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.19.1 [future]
+-------------------
+
+- hints kitten: Add an ``ip`` type for easy selection of IP addresses
+  (:pull:`3009`)
+
+- Fix update available notifications repeating (:pull:`3006`)
+
+
 0.19.0 [2020-10-04]
 -------------------
 
