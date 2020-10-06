@@ -105,8 +105,8 @@ put_tty_in_raw_mode(int fd, const struct termios* termios_p, bool read_with_time
 
 static PyObject*
 open_tty(PyObject *self UNUSED, PyObject *args) {
-    int read_with_timeout = 0;
-    if (!PyArg_ParseTuple(args, "|p", &read_with_timeout)) return NULL;
+    int read_with_timeout = 0, optional_actions = TCSAFLUSH;
+    if (!PyArg_ParseTuple(args, "|pi", &read_with_timeout, &optional_actions)) return NULL;
     int flags = O_RDWR | O_CLOEXEC | O_NOCTTY;
     if (!read_with_timeout) flags |= O_NONBLOCK;
     static char ctty[L_ctermid+1];
@@ -115,13 +115,13 @@ open_tty(PyObject *self UNUSED, PyObject *args) {
     struct termios *termios_p = calloc(1, sizeof(struct termios));
     if (!termios_p) return PyErr_NoMemory();
     if (tcgetattr(fd, termios_p) != 0) { free(termios_p); PyErr_SetFromErrno(PyExc_OSError); return NULL; }
-    if (!put_tty_in_raw_mode(fd, termios_p, read_with_timeout != 0, TCSAFLUSH)) { free(termios_p); return NULL; }
+    if (!put_tty_in_raw_mode(fd, termios_p, read_with_timeout != 0, optional_actions)) { free(termios_p); return NULL; }
     return Py_BuildValue("iN", fd, PyLong_FromVoidPtr(termios_p));
 }
 
 #define TTY_ARGS \
     PyObject *tp; int fd; int optional_actions = TCSAFLUSH; \
-    if (!PyArg_ParseTuple(args, "iO!|", &fd, &PyLong_Type, &tp, &optional_actions)) return NULL; \
+    if (!PyArg_ParseTuple(args, "iO!|i", &fd, &PyLong_Type, &tp, &optional_actions)) return NULL; \
     struct termios *termios_p = PyLong_AsVoidPtr(tp);
 
 static PyObject*

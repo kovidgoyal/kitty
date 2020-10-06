@@ -878,7 +878,7 @@ def normal_tty(fd: int, termios_ptr: TermiosPtr, optional_actions: int = termios
     pass
 
 
-def open_tty(read_with_timeout: bool = False) -> Tuple[int, TermiosPtr]:
+def open_tty(read_with_timeout: bool = False, optional_actions: int = termios.TCSAFLUSH) -> Tuple[int, TermiosPtr]:
     pass
 
 
