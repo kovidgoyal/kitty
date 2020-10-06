@@ -78,8 +78,8 @@ free_pagerhist(HistoryBuf *self) {
 static inline bool
 pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
     if (ph->buffer_size >= ph->max_sz) return false;
-    size_t newsz = ph->buffer_size + MAX(1024u * 1024u, minsz);
-    uint8_t *newbuf = PyMem_Malloc(MIN(ph->buffer_size + minsz, ph->max_sz));
+    size_t newsz = MIN(ph->max_sz, ph->buffer_size + MAX(1024u * 1024u, minsz));
+    uint8_t *newbuf = PyMem_Malloc(newsz);
     if (!newbuf) return false;
     size_t copied = MIN(ph->length, ph->buffer_size - ph->start);
     if (copied) memcpy(newbuf, ph->buffer + ph->start, copied);
