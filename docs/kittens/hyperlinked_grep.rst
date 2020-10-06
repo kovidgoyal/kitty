@@ -42,10 +42,17 @@ You can now run searches with::
     hg some-search-term
 
 If you want to enable completion, for the kitten, you can delegate completion
-to rg. For ZSH, you do that with::
+to rg. For that, instead of using an alias create a simple wrapper script named
+:file:`hg` somewhere in your ``PATH``:
 
-    compdef _rg kitty +kitten hyperlinked_grep
+.. code-block:: sh
 
+    #!/bin/sh
+    exec kitty +kitten hyperlinked_grep "$@"
+
+Then, for example, for ZSH, add the following to :file:`.zshrc`::
+
+    compdef _rg hg
 
 To learn more about kitty's powerful framework for customizing URL click
 actions, :doc:`see here <../open_actions>`.
