@@ -434,7 +434,7 @@ def process_hyperlinks(text: str) -> Tuple[str, Tuple[Mark, ...]]:
         active_hyperlink_start_offset = 0
         idx += 1
 
-    def process_hyperlink(m: re.Match) -> str:
+    def process_hyperlink(m: 're.Match') -> str:
         nonlocal removed_size, active_hyperlink_url, active_hyperlink_id, active_hyperlink_start_offset
         raw = m.group()
         start = m.start() - removed_size
