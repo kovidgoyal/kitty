@@ -2,7 +2,6 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-import ipaddress
 import os
 import re
 import string
@@ -288,12 +287,13 @@ def quotes(text: str, s: int, e: int) -> Tuple[int, int]:
 
 @postprocessor
 def ip(text: str, s: int, e: int) -> Tuple[int, int]:
+    from ipaddress import ip_address
     # Check validity of IPs (or raise InvalidMatch)
     ip = text[s:e]
 
     try:
-        ipaddress.ip_address(ip)
-    except ValueError:
+        ip_address(ip)
+    except Exception:
         raise InvalidMatch("Invalid IP")
 
     return s, e
