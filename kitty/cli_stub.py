@@ -13,6 +13,7 @@ class CLIOptions:
 LaunchCLIOptions = AskCLIOptions = ClipboardCLIOptions = DiffCLIOptions = CLIOptions
 HintsCLIOptions = IcatCLIOptions = PanelCLIOptions = ResizeCLIOptions = CLIOptions
 ErrorCLIOptions = UnicodeCLIOptions = RCOptions = RemoteFileCLIOptions = CLIOptions
+QueryTerminalCLIOptions = CLIOptions
 
 
 def generate_stub() -> None:
@@ -49,6 +50,9 @@ def generate_stub() -> None:
 
     from kittens.icat.main import options_spec
     do(options_spec(), 'IcatCLIOptions')
+
+    from kittens.query_terminal.main import options_spec
+    do(options_spec(), 'QueryTerminalCLIOptions')
 
     from kittens.panel.main import OPTIONS
     do(OPTIONS(), 'PanelCLIOptions')

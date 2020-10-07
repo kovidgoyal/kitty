@@ -4,6 +4,14 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.19.2 [future]
+-------------------
+
+- A new :doc:`kittens/query_terminal` kitten to easily query the running kitty
+  via escape codes to detect its version, and the values of
+  configuration options that enable or disable terminal features.
+
+
 0.19.1 [2020-10-06]
 -------------------
 

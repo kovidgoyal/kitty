@@ -704,7 +704,8 @@ class Window:
             self.refresh()
 
     def request_capabilities(self, q: str) -> None:
-        self.screen.send_escape_code_to_child(DCS, get_capabilities(q))
+        for result in get_capabilities(q, self.opts):
+            self.screen.send_escape_code_to_child(DCS, result)
 
     def handle_remote_cmd(self, cmd: str) -> None:
         get_boss().handle_remote_cmd(cmd, self)

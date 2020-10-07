@@ -31,8 +31,8 @@ class Callbacks:
 
     def request_capabilities(self, q):
         from kitty.terminfo import get_capabilities
-        c = get_capabilities(q)
-        self.write(c.encode('ascii'))
+        for c in get_capabilities(q, None):
+            self.write(c.encode('ascii'))
 
     def use_utf8(self, on):
         self.iutf8 = on
