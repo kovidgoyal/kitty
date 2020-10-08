@@ -69,7 +69,7 @@ class Borders:
         self.os_window_id = os_window_id
         self.tab_id = tab_id
         self.draw_active_borders = opts.active_border_color is not None
-        self.draw_minimal_borders = opts.draw_minimal_borders
+        self.draw_minimal_borders = opts.draw_minimal_borders and max(opts.window_margin_width) < 1
 
     def __call__(
         self,

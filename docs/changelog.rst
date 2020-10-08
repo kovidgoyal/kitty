@@ -11,6 +11,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   via escape codes to detect its version, and the values of
   configuration options that enable or disable terminal features.
 
+- Fix a regression in 0.19.0 that caused borders not to be drawn when setting
+  :opt:`window_margin_width` and keeping :opt:`draw_minimal_borders` on
+  (:iss:`3017`)
+
 
 0.19.1 [2020-10-06]
 -------------------
