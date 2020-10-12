@@ -458,7 +458,7 @@ def get_capabilities(query_string: str, opts: 'Options') -> Generator[str, None,
     def result(encoded_query_name: str, x: Optional[str] = None) -> str:
         if x is None:
             return '0+r' + encoded_query_name
-        return '1+r' + encoded_query_name + '=' + hexlify(x.encode('utf-8')).decode('ascii')
+        return '1+r' + encoded_query_name + '=' + hexlify(str(x).encode('utf-8')).decode('ascii')
 
     for encoded_query_name in query_string.split(';'):
         name = qname = unhexlify(encoded_query_name).decode('utf-8')
