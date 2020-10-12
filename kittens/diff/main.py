@@ -13,7 +13,9 @@ from collections import defaultdict
 from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
-from typing import DefaultDict, Dict, Iterable, List, Optional, Tuple, Union
+from typing import (
+    Any, DefaultDict, Dict, Iterable, List, Optional, Tuple, Union
+)
 
 from kitty.cli import CONFIG_HELP, parse_args
 from kitty.cli_stub import DiffCLIOptions
@@ -24,6 +26,11 @@ from kitty.key_encoding import RELEASE, KeyEvent, enter_key, key_defs as K
 from kitty.options_stub import DiffOptions
 from kitty.utils import ScreenSize
 
+from ..tui.handler import Handler
+from ..tui.images import ImageManager, Placement
+from ..tui.line_edit import LineEdit
+from ..tui.loop import Loop
+from ..tui.operations import styled
 from . import global_data
 from .collect import (
     Collection, create_collection, data_for_path, lines_for_path, sanitize,
@@ -35,14 +42,11 @@ from .render import (
     ImagePlacement, ImageSupportWarning, Line, LineRef, Reference, render_diff
 )
 from .search import BadRegex, Search
-from ..tui.handler import Handler
-from ..tui.images import ImageManager, Placement
-from ..tui.line_edit import LineEdit
-from ..tui.loop import Loop
-from ..tui.operations import styled
 
 try:
-    from .highlight import initialize_highlighter, highlight_collection, DiffHighlight
+    from .highlight import (
+        DiffHighlight, highlight_collection, initialize_highlighter
+    )
     has_highlighter = True
     DiffHighlight
 except ImportError:
@@ -566,8 +570,8 @@ class ShowWarning:
     def __init__(self) -> None:
         self.warnings: List[str] = []
 
-    def __call__(self, message: str, category: object, filename: str, lineno: int, file: object = None, line: object = None) -> None:
-        if category is ImageSupportWarning:
+    def __call__(self, message: Any, category: Any, filename: str, lineno: int, file: object = None, line: object = None) -> None:
+        if category is ImageSupportWarning and isinstance(message, str):
             showwarning.warnings.append(message)
 
 

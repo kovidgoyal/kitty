@@ -68,7 +68,10 @@ class Collection:
             self.removed_count += len(lines_for_path(left_path))
 
     def finalize(self) -> None:
-        self.all_paths.sort(key=path_name_map.get)
+        def key(x: str) -> str:
+            return path_name_map.get(x, '')
+
+        self.all_paths.sort(key=key)
 
     def __iter__(self) -> Iterator[Tuple[str, str, Optional[str]]]:
         for path in self.all_paths:

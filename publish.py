@@ -137,7 +137,7 @@ class ReadFileWithProgressReporting(io.FileIO):  # {{{
     def __len__(self) -> int:
         return self._total
 
-    def read(self, size: int = -1) -> Optional[bytes]:
+    def read(self, size: int = -1) -> bytes:
         data = io.FileIO.read(self, size)
         if data:
             self.report_progress(len(data))
