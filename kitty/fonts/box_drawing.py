@@ -666,12 +666,12 @@ def smooth_mosaic(
 def eight_bar(buf: BufType, width: int, height: int, level: int = 1, which: int = 0, horizontal: bool = False) -> None:
     if horizontal:
         x_range = range(0, width)
-        thickness = height // 8
+        thickness = max(1, height // 8)
         y_start = min(which * thickness, height - 2)
         y_range = range(y_start, height if which == 7 else min(y_start + thickness, height))
     else:
         y_range = range(0, height)
-        thickness = width // 8
+        thickness = max(1, width // 8)
         x_start = min(which * thickness, width - 2)
         x_range = range(x_start, width if which == 7 else min(x_start + thickness, width))
     for y in y_range:
