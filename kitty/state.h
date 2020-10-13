@@ -65,6 +65,7 @@ typedef struct {
     bool debug_keyboard;
     monotonic_t resize_debounce_time;
     MouseShape pointer_shape_when_grabbed;
+    MouseShape default_pointer_shape;
     struct {
         UrlPrefix *values;
         size_t num, max_prefix_len;
