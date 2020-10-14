@@ -717,6 +717,9 @@ glfwWaylandCheckForServerSideDecorations(void) {
 
 int _glfwPlatformInit(void)
 {
+    int i;
+    _GLFWmonitor* monitor;
+
     _glfw.wl.cursor.handle = _glfw_dlopen("libwayland-cursor.so.0");
     if (!_glfw.wl.cursor.handle)
     {
@@ -767,6 +770,17 @@ int _glfwPlatformInit(void)
 
     // Sync so we got all initial output events
     wl_display_roundtrip(_glfw.wl.display);
+
+    for (i = 0; i < _glfw.monitorCount; ++i)
+    {
+        monitor = _glfw.monitors[i];
+        if (monitor->widthMM <= 0 || monitor->heightMM <= 0)
+        {
+            // If Wayland does not provide a physical size, assume the default 96 DPI
+            monitor->widthMM  = (int) (monitor->modes[monitor->wl.currentMode].width * 25.4f / 96.f);
+            monitor->heightMM = (int) (monitor->modes[monitor->wl.currentMode].height * 25.4f / 96.f);
+        }
+    }
 
     if (!_glfw.wl.wmBase)
     {
