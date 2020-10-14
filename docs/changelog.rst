@@ -15,6 +15,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   :opt:`window_margin_width` and keeping :opt:`draw_minimal_borders` on
   (:iss:`3017`)
 
+- Fix selections created by dragging upwards not being auto-cleared when
+  screen contents change (:pull:`3028`)
+
 
 0.19.1 [2020-10-06]
 -------------------

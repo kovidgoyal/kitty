@@ -373,8 +373,10 @@ selection_has_screen_line(const Selections *selections, const int y) {
     for (size_t i = 0; i < selections->count; i++) {
         const Selection *s = selections->items + i;
         if (!is_selection_empty(s)) {
-            int top = (int)s->start.y - s->start_scrolled_by;
-            int bottom = (int)s->end.y - s->end_scrolled_by;
+            int start = (int)s->start.y - s->start_scrolled_by;
+            int end = (int)s->end.y - s->end_scrolled_by;
+            int top = MIN(start, end);
+            int bottom = MAX(start, end);
             if (top <= y && y <= bottom) return true;
         }
     }
