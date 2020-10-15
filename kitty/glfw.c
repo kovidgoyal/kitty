@@ -421,6 +421,7 @@ make_os_window_context_current(OSWindow *w) {
 
 static inline void
 get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
+    *xscale = 1; *yscale = 1;
     if (w) glfwGetWindowContentScale(w, xscale, yscale);
     else {
         GLFWmonitor *monitor = glfwGetPrimaryMonitor();
@@ -440,7 +441,7 @@ get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xd
 
 static inline void
 get_window_dpi(GLFWwindow *w, double *x, double *y) {
-    float xscale = 1, yscale = 1;
+    float xscale, yscale;
     get_window_content_scale(w, &xscale, &yscale, x, y);
 }
 
