@@ -248,7 +248,7 @@ error:
     if (procargs != NULL)
         free(procargs);
     if (procenv != NULL)
-        free(procargs);
+        free(procenv);
     return NULL;
 }
 
