@@ -575,6 +575,11 @@ The default shape of the mouse pointer.
 Valid values are: :code:`arrow`, :code:`beam` and :code:`hand`
 '''))
 
+o('pointer_shape_when_dragging', 'beam', option_type=choices('arrow', 'beam', 'hand'), long_text=('''
+The default shape of the mouse pointer when dragging across text.
+Valid values are: :code:`arrow`, :code:`beam` and :code:`hand`
+'''))
+
 # }}}
 
 g('performance')  # {{{
