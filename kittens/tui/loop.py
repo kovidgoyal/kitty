@@ -10,6 +10,7 @@ import re
 import selectors
 import signal
 import sys
+import termios
 from contextlib import contextmanager
 from functools import partial
 from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional
@@ -61,8 +62,9 @@ debug = Debug()
 
 class TermManager:
 
-    def __init__(self) -> None:
+    def __init__(self, optional_actions: int = termios.TCSANOW) -> None:
         self.extra_finalize: Optional[str] = None
+        self.optional_actions = optional_actions
 
     def set_state_for_loop(self, set_raw: bool = True) -> None:
         if set_raw:
@@ -82,7 +84,7 @@ class TermManager:
         self.set_state_for_loop()
 
     def __enter__(self) -> 'TermManager':
-        self.tty_fd, self.original_termios = open_tty()
+        self.tty_fd, self.original_termios = open_tty(False, self.optional_actions)
         self.set_state_for_loop(set_raw=False)
         return self
 
@@ -183,7 +185,8 @@ class Loop:
 
     def __init__(
         self,
-        sanitize_bracketed_paste: str = '[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'
+        sanitize_bracketed_paste: str = '[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]',
+        optional_actions: int = termios.TCSADRAIN
     ):
         if is_macos:
             # On macOS PTY devices are not supported by the KqueueSelector and
@@ -193,6 +196,7 @@ class Loop:
         else:
             self.asycio_loop = asyncio.get_event_loop()
         self.return_code = 0
+        self.optional_actions = optional_actions
         self.read_buf = ''
         self.decoder = codecs.getincrementaldecoder('utf-8')('ignore')
         try:
@@ -388,7 +392,7 @@ class Loop:
             handler.on_resize(handler.screen_size)
 
         signal_manager = SignalManager(self.asycio_loop, _on_sigwinch, handler.on_interrupt, handler.on_term)
-        with TermManager() as term_manager, signal_manager:
+        with TermManager(self.optional_actions) as term_manager, signal_manager:
             self._get_screen_size: ScreenSizeGetter = screen_size_function(term_manager.tty_fd)
             image_manager = None
             if handler.image_manager_class is not None:

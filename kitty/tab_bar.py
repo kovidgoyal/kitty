@@ -24,6 +24,7 @@ class TabBarData(NamedTuple):
     needs_attention: bool
     num_windows: int
     layout_name: str
+    has_activity_since_last_focus: bool
 
 
 class DrawData(NamedTuple):
@@ -40,6 +41,7 @@ class DrawData(NamedTuple):
     default_bg: Color
     title_template: str
     active_title_template: Optional[str]
+    tab_activity_symbol: Optional[str]
 
 
 def as_rgb(x: int) -> int:
@@ -65,6 +67,12 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         screen.cursor.fg = draw_data.bell_fg
         screen.draw('🔔 ')
         screen.cursor.fg = fg
+    if tab.has_activity_since_last_focus and draw_data.tab_activity_symbol:
+        fg = screen.cursor.fg
+        screen.cursor.fg = draw_data.bell_fg
+        screen.draw(draw_data.tab_activity_symbol)
+        screen.cursor.fg = fg
+
     template = draw_data.title_template
     if tab.is_active and draw_data.active_title_template is not None:
         template = draw_data.active_title_template
@@ -226,7 +234,8 @@ class TabBar:
             self.opts.tab_fade, self.opts.active_tab_foreground, self.opts.active_tab_background,
             self.opts.inactive_tab_foreground, self.opts.inactive_tab_background,
             self.opts.tab_bar_background or self.opts.background, self.opts.tab_title_template,
-            self.opts.active_tab_title_template
+            self.opts.active_tab_title_template,
+            self.opts.tab_activity_symbol
         )
         if self.opts.tab_bar_style == 'separator':
             self.draw_func = draw_tab_with_separator

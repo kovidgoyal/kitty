@@ -29,7 +29,8 @@
         linebuf_index(dest, 0, dest->ynum - 1); \
         if (historybuf != NULL) { \
             init_dest_line(dest->ynum - 1); \
-            historybuf_add_line(historybuf, dest->line); \
+            dest->line->has_dirty_text = true; \
+            historybuf_add_line(historybuf, dest->line, as_ansi_buf); \
         }\
         linebuf_clear_line(dest, dest->ynum - 1); \
     } else dest_y++; \
@@ -49,7 +50,7 @@ copy_range(Line *src, index_type src_at, Line* dest, index_type dest_at, index_t
 
 
 static void
-rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf, index_type *track_x, index_type *track_y) {
+rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf, index_type *track_x, index_type *track_y, ANSIBuf *as_ansi_buf) {
     bool src_line_is_continued = false;
     index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
 

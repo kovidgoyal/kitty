@@ -210,14 +210,15 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
         if (is_release) {
             global_state.active_drag_in_window = 0;
             w->last_drag_scroll_at = 0;
-            if (screen->selection.in_progress)
+            if (screen->selections.in_progress) {
                 screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, true, false);
+            }
         }
         else {
             global_state.active_drag_in_window = w->id;
             screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, modifiers == (int)OPT(rectangle_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers)), EXTEND_CELL);
         }
-    } else if (screen->selection.in_progress) {
+    } else if (screen->selections.in_progress) {
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, false);
     }
     set_mouse_cursor_when_dragging();
@@ -312,6 +313,11 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
     bool has_url = false;
     index_type url_start, url_end = 0;
     Line *line = screen_visual_line(screen, y);
+    if (line->cpu_cells[x].hyperlink_id) {
+        mouse_cursor_shape = HAND;
+        screen_mark_hyperlink(screen, x, y);
+        return;
+    }
     char_type sentinel;
     if (line) {
         url_start = line_url_start_at(line, x);
@@ -341,7 +347,7 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
 static inline void
 handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
     Screen *screen = w->render_data.screen;
-    if (screen->selection.in_progress && (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT)) {
+    if (screen->selections.in_progress && (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT)) {
         monotonic_t now = monotonic();
         if ((now - w->last_drag_scroll_at) >= ms_to_monotonic_t(20ll) || mouse_cell_changed) {
             update_drag(false, w, false, 0);
@@ -696,9 +702,8 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
         s = (int)round(pixels) / (int)global_state.callback_os_window->fonts_data->cell_height;
         screen->pending_scroll_pixels = pixels - s * (int) global_state.callback_os_window->fonts_data->cell_height;
     } else {
-        if (screen->linebuf == screen->main_linebuf || !screen->modes.mouse_tracking_mode) {
-            // Only use wheel_scroll_multiplier if we are scrolling kitty scrollback or in mouse
-            // tracking mode, where the application is responsible for interpreting scroll events
+        if (!screen->modes.mouse_tracking_mode) {
+            // Dont use multiplier if we are sending events to the application
             yoffset *= OPT(wheel_scroll_multiplier);
         } else if (OPT(wheel_scroll_multiplier) < 0) {
             // ensure that changing scroll direction still works, even though
@@ -713,20 +718,17 @@ scroll_event(double UNUSED xoffset, double yoffset, int flags, int modifiers) {
     }
     if (s == 0) return;
     bool upwards = s > 0;
-    if (screen->linebuf == screen->main_linebuf) {
-        screen_history_scroll(screen, abs(s), upwards);
-    } else {
-        if (screen->modes.mouse_tracking_mode) {
-            int sz = encode_mouse_scroll(w, upwards, modifiers);
-            if (sz > 0) {
-                mouse_event_buf[sz] = 0;
-                for (s = abs(s); s > 0; s--) {
-                    write_escape_code_to_child(screen, CSI, mouse_event_buf);
-                }
+    if (screen->modes.mouse_tracking_mode) {
+        int sz = encode_mouse_scroll(w, upwards, modifiers);
+        if (sz > 0) {
+            mouse_event_buf[sz] = 0;
+            for (s = abs(s); s > 0; s--) {
+                write_escape_code_to_child(screen, CSI, mouse_event_buf);
             }
-        } else {
-            fake_scroll(w, abs(s), upwards);
         }
+    } else {
+        if (screen->linebuf == screen->main_linebuf) screen_history_scroll(screen, abs(s), upwards);
+        else fake_scroll(w, abs(s), upwards);
     }
 }
 

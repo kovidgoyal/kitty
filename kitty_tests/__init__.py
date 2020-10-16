@@ -31,16 +31,24 @@ class Callbacks:
 
     def request_capabilities(self, q):
         from kitty.terminfo import get_capabilities
-        c = get_capabilities(q)
-        self.write(c.encode('ascii'))
+        for c in get_capabilities(q, None):
+            self.write(c.encode('ascii'))
 
     def use_utf8(self, on):
         self.iutf8 = on
+
+    def desktop_notify(self, osc_code: int, raw_data: str) -> None:
+        self.notifications.append((osc_code, raw_data))
+
+    def open_url(self, url: str, hyperlink_id: int) -> None:
+        self.open_urls.append((url, hyperlink_id))
 
     def clear(self):
         self.wtcbuf = b''
         self.iconbuf = self.titlebuf = self.colorbuf = self.ctbuf = ''
         self.iutf8 = True
+        self.notifications = []
+        self.open_urls = []
 
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):

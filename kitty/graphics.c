@@ -645,19 +645,31 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 // Image lifetime/scrolling {{{
 
 static inline void
-filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
-    if (self->image_count) self->layers_dirty = true;
+filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(const ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
         for (size_t j = img->refcnt; j-- > 0;) {
             ImageRef *ref = img->refs + j;
             if (filter_func(ref, img, data, cell)) {
                 remove_i_from_array(img->refs, j, img->refcnt);
+                self->layers_dirty = true;
             }
         }
         if (img->refcnt == 0 && (free_images || img->client_id == 0)) remove_image(self, i);
     }
 }
+
+static inline void
+modify_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
+    for (size_t i = self->image_count; i-- > 0;) {
+        Image *img = self->images + i;
+        for (size_t j = img->refcnt; j-- > 0;) {
+            if (filter_func(img->refs + j, img, data, cell)) remove_i_from_array(img->refs, j, img->refcnt);
+        }
+        if (img->refcnt == 0 && (free_images || img->client_id == 0)) remove_image(self, i);
+    }
+}
+
 
 static inline bool
 scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
@@ -667,12 +679,12 @@ scroll_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixel
 }
 
 static inline bool
-ref_within_region(ImageRef *ref, index_type margin_top, index_type margin_bottom) {
+ref_within_region(const ImageRef *ref, index_type margin_top, index_type margin_bottom) {
     return ref->start_row >= (int32_t)margin_top && ref->start_row + ref->effective_num_rows <= margin_bottom;
 }
 
 static inline bool
-ref_outside_region(ImageRef *ref, index_type margin_top, index_type margin_bottom) {
+ref_outside_region(const ImageRef *ref, index_type margin_top, index_type margin_bottom) {
     return ref->start_row + ref->effective_num_rows <= margin_top || ref->start_row > (int32_t)margin_bottom;
 }
 
@@ -709,16 +721,19 @@ scroll_filter_margins_func(ImageRef* ref, Image* img, const void* data, CellPixe
 
 void
 grman_scroll_images(GraphicsManager *self, const ScrollData *data, CellPixelSize cell) {
-    filter_refs(self, data, true, data->has_margins ? scroll_filter_margins_func : scroll_filter_func, cell);
+    if (self->image_count) {
+        self->layers_dirty = true;
+        modify_refs(self, data, true, data->has_margins ? scroll_filter_margins_func : scroll_filter_func, cell);
+    }
 }
 
 static inline bool
-clear_filter_func(ImageRef *ref, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
+clear_filter_func(const ImageRef *ref, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
     return ref->start_row + (int32_t)ref->effective_num_rows > 0;
 }
 
 static inline bool
-clear_all_filter_func(ImageRef *ref UNUSED, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
+clear_all_filter_func(const ImageRef *ref UNUSED, Image UNUSED *img, const void UNUSED *data, CellPixelSize cell UNUSED) {
     return true;
 }
 
@@ -728,37 +743,37 @@ grman_clear(GraphicsManager *self, bool all, CellPixelSize cell) {
 }
 
 static inline bool
-id_filter_func(ImageRef UNUSED *ref, Image *img, const void *data, CellPixelSize cell UNUSED) {
+id_filter_func(const ImageRef UNUSED *ref, Image *img, const void *data, CellPixelSize cell UNUSED) {
     uint32_t iid = *(uint32_t*)data;
     return img->client_id == iid;
 }
 
 static inline bool
-x_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+x_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     const GraphicsCommand *g = data;
     return ref->start_column <= (int32_t)g->x_offset - 1 && ((int32_t)g->x_offset - 1) < ((int32_t)(ref->start_column + ref->effective_num_cols));
 }
 
 static inline bool
-y_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+y_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     const GraphicsCommand *g = data;
     return ref->start_row <= (int32_t)g->y_offset - 1 && ((int32_t)(g->y_offset - 1 < ref->start_row + ref->effective_num_rows));
 }
 
 static inline bool
-z_filter_func(ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
+z_filter_func(const ImageRef *ref, Image UNUSED *img, const void *data, CellPixelSize cell UNUSED) {
     const GraphicsCommand *g = data;
     return ref->z_index == g->z_index;
 }
 
 
 static inline bool
-point_filter_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
+point_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
     return x_filter_func(ref, img, data, cell) && y_filter_func(ref, img, data, cell);
 }
 
 static inline bool
-point3d_filter_func(ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
+point3d_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell) {
     return z_filter_func(ref, img, data, cell) && point_filter_func(ref, img, data, cell);
 }
 

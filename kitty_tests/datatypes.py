@@ -354,9 +354,12 @@ class TestDataTypes(BaseTest):
     def test_utils(self):
         def w(x):
             return wcwidth(ord(x))
+        self.ae(wcswidth('a\033[2mb'), 2)
+        self.ae(wcswidth('\033a\033[2mb'), 2)
+        self.ae(wcswidth('a\033]8;id=moo;https://foo\033\\a'), 2)
+        self.ae(wcswidth('a\033x'), 2)
         self.ae(tuple(map(w, 'a1\0コニチ ✔')), (1, 1, 0, 2, 2, 2, 1, 1))
         self.ae(wcswidth('\u2716\u2716\ufe0f\U0001f337'), 5)
-        self.ae(wcswidth('\033a\033[2mb'), 2)
         self.ae(wcswidth('\u25b6\ufe0f'), 2)
         self.ae(wcswidth('\U0001f610\ufe0e'), 1)
         self.ae(wcswidth('\U0001f1e6a'), 3)

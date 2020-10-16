@@ -544,6 +544,15 @@ def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: Optional
     return leftover_args
 
 
+WATCHER_DEFINITION = '''
+--watcher -w
+type=list
+Path to a python file. Appropriately named functions in this file will be called
+for various events, such as when the window is resized, focused or closed. See the section
+on watchers in the launch command documentation :doc:`launch`. Relative paths are
+resolved relative to the kitty config directory.'''
+
+
 def options_spec() -> str:
     if not hasattr(options_spec, 'ans'):
         OPTIONS = '''
@@ -591,6 +600,11 @@ Detach from the controlling terminal, if any
 --session
 Path to a file containing the startup :italic:`session` (tabs, windows, layout, programs).
 Use - to read from STDIN. See the README file for details and an example.
+
+
+{watcher}
+Note that this watcher will be added only to all initially created windows, not new windows
+created after startup.
 
 
 --hold
@@ -695,8 +709,8 @@ type=bool-set
 !
 '''
         setattr(options_spec, 'ans', OPTIONS.format(
-            appname=appname, config_help=CONFIG_HELP.format(appname=appname, conf_name=appname)
-
+            appname=appname, config_help=CONFIG_HELP.format(appname=appname, conf_name=appname),
+            watcher=WATCHER_DEFINITION
         ))
     ans: str = getattr(options_spec, 'ans')
     return ans

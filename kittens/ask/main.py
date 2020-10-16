@@ -13,7 +13,8 @@ from kitty.constants import cache_dir
 from kitty.typing import BossType
 
 from ..tui.handler import result_handler
-from ..tui.operations import alternate_screen, set_cursor_visible, styled
+from ..tui.operations import alternate_screen, styled
+from ..tui.utils import get_key_press
 
 if TYPE_CHECKING:
     import readline
@@ -70,7 +71,7 @@ class HistoryCompleter:
 def option_text() -> str:
     return '''\
 --type -t
-choices=line,yesno
+choices=line,yesno,choices
 default=line
 Type of input. Defaults to asking for a line of text.
 
@@ -83,6 +84,16 @@ message is shown.
 --name -n
 The name for this question. Used to store history of previous answers which can
 be used for completions and via the browse history readline bindings.
+
+
+--choice -c
+type=list
+dest=choices
+A choice for the choices type. Every choice has the syntax: letter:text Where
+letter is the accelerator key and text is the corresponding text.  There can be
+an optional color specification after the letter to indicate what color it should
+be.
+For example: y:Yes and n;red:No
 '''
 
 
@@ -97,23 +108,34 @@ class Response(TypedDict):
     response: Optional[str]
 
 
-def yesno(cli_opts: AskCLIOptions, items: List[str]) -> Response:
-    import tty
+def choice(cli_opts: AskCLIOptions, items: List[str]) -> Response:
     with alternate_screen():
         if cli_opts.message:
             print(styled(cli_opts.message, bold=True))
         print()
-        print(' ', styled('Y', fg='green') + 'es', ' ', styled('N', fg='red') + 'o', set_cursor_visible(False))
-        sys.stdout.flush()
-        tty.setraw(sys.stdin.fileno())
-        try:
-            response = sys.stdin.buffer.read(1)
-            yes = response in (b'y', b'Y', b'\r', b'\n' b' ')
-            return {'items': items, 'response': 'y' if yes else 'n'}
-        finally:
-            sys.stdout.write(set_cursor_visible(True))
-            tty.setcbreak(sys.stdin.fileno())
-            sys.stdout.flush()
+        allowed = ''
+        for choice in cli_opts.choices:
+            color = 'green'
+            letter, text = choice.split(':', maxsplit=1)
+            if ';' in letter:
+                letter, color = letter.split(';', maxsplit=1)
+            letter = letter.lower()
+            idx = text.lower().index(letter)
+            allowed += letter
+            print(text[:idx], styled(text[idx], fg=color), text[idx + 1:], sep='', end='  ')
+        print()
+        response = get_key_press(allowed, '')
+        return {'items': items, 'response': response}
+
+
+def yesno(cli_opts: AskCLIOptions, items: List[str]) -> Response:
+    with alternate_screen():
+        if cli_opts.message:
+            print(styled(cli_opts.message, bold=True))
+        print()
+        print(' ', styled('Y', fg='green') + 'es', ' ', styled('N', fg='red') + 'o')
+        response = get_key_press('yn', 'n')
+        return {'items': items, 'response': response}
 
 
 def main(args: List[str]) -> Response:
@@ -132,6 +154,8 @@ def main(args: List[str]) -> Response:
 
     if cli_opts.type == 'yesno':
         return yesno(cli_opts, items)
+    if cli_opts.type == 'choices':
+        return choice(cli_opts, items)
 
     import readline as rl
     readline = rl

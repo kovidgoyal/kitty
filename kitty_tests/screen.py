@@ -2,9 +2,12 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+from kitty.fast_data_types import (
+    DECAWM, DECCOLM, DECOM, IRM, Cursor, parse_bytes
+)
+from kitty.marks import marker_from_function, marker_from_regex
+
 from . import BaseTest
-from kitty.fast_data_types import DECAWM, IRM, Cursor, DECCOLM, DECOM
-from kitty.marks import marker_from_regex, marker_from_function
 
 
 class TestScreen(BaseTest):
@@ -249,8 +252,7 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(2)), '4'*5)
         s.resize(5, 1)
         self.ae(str(s.line(0)), '4')
-        hb = s.historybuf
-        self.ae(str(hb), '3\n3\n3\n3\n3\n2')
+        self.ae(str(s.historybuf), '3\n3\n3\n3\n3\n2')
         s = self.create_screen(scrollback=20)
         s.draw(''.join(str(i) * s.columns for i in range(s.lines*2)))
         self.ae(str(s.linebuf), '55555\n66666\n77777\n88888\n99999')
@@ -450,18 +452,85 @@ class TestScreen(BaseTest):
         self.ae(s.cursor.x, 2)
 
     def test_serialize(self):
+        from kitty.window import as_text
         s = self.create_screen()
         s.draw('ab' * s.columns)
         s.carriage_return(), s.linefeed()
         s.draw('c')
 
-        def as_text(as_ansi=False):
-            d = []
-            s.as_text(d.append, as_ansi)
-            return ''.join(d)
+        self.ae(as_text(s), 'ababababab\nc\n\n')
+        self.ae(as_text(s, True), '\x1b[mababa\x1b[mbabab\n\x1b[mc\n\n')
 
-        self.ae(as_text(), 'ababababab\nc\n\n')
-        self.ae(as_text(True), '\x1b[mababa\x1b[mbabab\n\x1b[mc\n\n')
+        s = self.create_screen(cols=2, lines=2, scrollback=2)
+        for i in range(1, 7):
+            s.select_graphic_rendition(30 + i)
+            s.draw(f'{i}' * s.columns)
+        self.ae(as_text(s, True, True), '\x1b[m\x1b[31m11\x1b[m\x1b[32m22\x1b[m\x1b[33m33\x1b[m\x1b[34m44\x1b[m\x1b[m\x1b[35m55\x1b[m\x1b[36m66')
+
+        def set_link(url=None, id=None):
+            parse_bytes(s, '\x1b]8;id={};{}\x1b\\'.format(id or '', url or '').encode('utf-8'))
+
+        s = self.create_screen()
+        s.draw('a')
+        set_link('moo', 'foo')
+        s.draw('bcdef')
+        self.ae(as_text(s, True), '\x1b[ma\x1b]8;id=foo;moo\x1b\\bcde\x1b[mf\n\n\n\x1b]8;;\x1b\\')
+        set_link()
+        s.draw('gh')
+        self.ae(as_text(s, True), '\x1b[ma\x1b]8;id=foo;moo\x1b\\bcde\x1b[mf\x1b]8;;\x1b\\gh\n\n\n')
+        s = self.create_screen()
+        s.draw('a')
+        set_link('moo')
+        s.draw('bcdef')
+        self.ae(as_text(s, True), '\x1b[ma\x1b]8;;moo\x1b\\bcde\x1b[mf\n\n\n\x1b]8;;\x1b\\')
+
+    def test_pagerhist(self):
+        hsz = 8
+        s = self.create_screen(cols=2, lines=2, scrollback=2, options={'scrollback_pager_history_size': hsz})
+
+        def contents():
+            return s.historybuf.pagerhist_as_text()
+
+        def line(i):
+            q.append('\x1b[m' + f'{i}' * s.columns + '\r')
+
+        def w(x):
+            s.historybuf.pagerhist_write(x)
+
+        def test():
+            expected = ''.join(q)
+            maxlen = hsz
+            extra = len(expected) - maxlen
+            if extra > 0:
+                expected = expected[extra:]
+            got = contents()
+            self.ae(got, expected)
+
+        q = []
+        for i in range(4):
+            s.draw(f'{i}' * s.columns)
+        self.ae(contents(), '')
+        s.draw('4' * s.columns), line(0), test()
+        s.draw('5' * s.columns), line(1), test()
+        s.draw('6' * s.columns), line(2), test()
+        s.draw('7' * s.columns), line(3), test()
+        s.draw('8' * s.columns), line(4), test()
+        s.draw('9' * s.columns), line(5), test()
+
+        s = self.create_screen(options={'scrollback_pager_history_size': 2048})
+        text = '\x1b[msoft\r\x1b[mbreak\nnext😼cat'
+        w(text)
+        self.ae(contents(), text + '\n')
+        s.historybuf.pagerhist_rewrap(2)
+        self.ae(contents(), '\x1b[mso\rft\x1b[m\rbr\rea\rk\nne\rxt\r😼\rca\rt\n')
+
+        s = self.create_screen(options={'scrollback_pager_history_size': 8})
+        w('😼')
+        self.ae(contents(), '😼\n')
+        w('abcd')
+        self.ae(contents(), '😼abcd\n')
+        w('e')
+        self.ae(contents(), 'abcde\n')
 
     def test_user_marking(self):
 
@@ -516,3 +585,94 @@ class TestScreen(BaseTest):
         self.ae(s.marked_cells(), cells(8))
         s.set_marker(marker_from_regex('\t', 3))
         self.ae(s.marked_cells(), cells(*range(8)))
+
+    def test_hyperlinks(self):
+        s = self.create_screen()
+        self.ae(s.line(0).hyperlink_ids(), tuple(0 for x in range(s.columns)))
+
+        def set_link(url=None, id=None):
+            parse_bytes(s, '\x1b]8;id={};{}\x1b\\'.format(id or '', url or '').encode('utf-8'))
+
+        set_link('url-a', 'a')
+        self.ae(s.line(0).hyperlink_ids(), tuple(0 for x in range(s.columns)))
+        s.draw('a')
+        self.ae(s.line(0).hyperlink_ids(), (1,) + tuple(0 for x in range(s.columns - 1)))
+        s.draw('bc')
+        self.ae(s.line(0).hyperlink_ids(), (1, 1, 1, 0, 0))
+        set_link()
+        s.draw('d')
+        self.ae(s.line(0).hyperlink_ids(), (1, 1, 1, 0, 0))
+        set_link('url-a', 'a')
+        s.draw('efg')
+        self.ae(s.line(0).hyperlink_ids(), (1, 1, 1, 0, 1))
+        self.ae(s.line(1).hyperlink_ids(), (1, 1, 0, 0, 0))
+        set_link('url-b')
+        s.draw('hij')
+        self.ae(s.line(1).hyperlink_ids(), (1, 1, 2, 2, 2))
+        set_link()
+        self.ae([('a:url-a', 1), (':url-b', 2)], s.hyperlinks_as_list())
+        s.garbage_collect_hyperlink_pool()
+        self.ae([('a:url-a', 1), (':url-b', 2)], s.hyperlinks_as_list())
+        for i in range(s.lines + 2):
+            s.linefeed()
+        s.garbage_collect_hyperlink_pool()
+        self.ae([('a:url-a', 1), (':url-b', 2)], s.hyperlinks_as_list())
+        for i in range(s.lines * 2):
+            s.linefeed()
+        s.garbage_collect_hyperlink_pool()
+        self.assertFalse(s.hyperlinks_as_list())
+        set_link('url-a', 'x')
+        s.draw('a')
+        set_link('url-a', 'y')
+        s.draw('a')
+        set_link()
+        self.ae([('x:url-a', 1), ('y:url-a', 2)], s.hyperlinks_as_list())
+
+        s = self.create_screen()
+        set_link('u' * 2048)
+        s.draw('a')
+        self.ae([(':' + 'u' * 2045, 1)], s.hyperlinks_as_list())
+        s = self.create_screen()
+        set_link('u' * 2048, 'i' * 300)
+        s.draw('a')
+        self.ae([('i'*256 + ':' + 'u' * (2045 - 256), 1)], s.hyperlinks_as_list())
+
+        s = self.create_screen()
+        set_link('1'), s.draw('1')
+        set_link('2'), s.draw('2')
+        set_link('3'), s.draw('3')
+        s.cursor.x = 1
+        set_link(), s.draw('X')
+        self.ae(s.line(0).hyperlink_ids(), (1, 0, 3, 0, 0))
+        self.ae([(':1', 1), (':2', 2), (':3', 3)], s.hyperlinks_as_list())
+        s.garbage_collect_hyperlink_pool()
+        self.ae([(':1', 1), (':3', 2)], s.hyperlinks_as_list())
+        set_link('3'), s.draw('3')
+        self.ae([(':1', 1), (':3', 2)], s.hyperlinks_as_list())
+        set_link('4'), s.draw('4')
+        self.ae([(':1', 1), (':3', 2), (':4', 3)], s.hyperlinks_as_list())
+
+        s = self.create_screen()
+        set_link('1'), s.draw('1')
+        set_link('2'), s.draw('2')
+        set_link('1'), s.draw('1')
+        self.ae([(':2', 2), (':1', 1)], s.hyperlinks_as_list())
+
+        s = self.create_screen()
+        set_link('1'), s.draw('12'), set_link(), s.draw('X'), set_link('1'), s.draw('3')
+        s.linefeed(), s.carriage_return()
+        s.draw('abc')
+        s.linefeed(), s.carriage_return()
+        set_link(), s.draw('Z ')
+        set_link('1'), s.draw('xyz')
+        s.linefeed(), s.carriage_return()
+        set_link('2'), s.draw('Z Z')
+        self.assertIsNone(s.current_url_text())
+        self.assertIsNone(s.hyperlink_at(0, 4))
+        self.assertIsNone(s.current_url_text())
+        self.ae(s.hyperlink_at(0, 0), '1')
+        self.ae(s.current_url_text(), '123abcxyz')
+        self.ae('1', s.hyperlink_at(3, 2))
+        self.ae(s.current_url_text(), '123abcxyz')
+        self.ae('2', s.hyperlink_at(1, 3))
+        self.ae(s.current_url_text(), 'Z Z')

@@ -97,7 +97,7 @@ def run_tests() -> None:
 
 def run_cli(suite: unittest.TestSuite, verbosity: int = 4) -> None:
     r = unittest.TextTestRunner
-    r.resultclass = unittest.TextTestResult  # type: ignore
+    r.resultclass = unittest.TextTestResult
     init_env()
     runner = r(verbosity=verbosity)
     runner.tb_locals = True  # type: ignore

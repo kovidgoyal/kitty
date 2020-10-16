@@ -422,14 +422,16 @@ static char* convertLatin1toUTF8(const char* source)
     size_t size = 1;
     const char* sp;
 
-    for (sp = source;  *sp;  sp++)
-        size += (*sp & 0x80) ? 2 : 1;
+    if (source) {
+        for (sp = source;  *sp;  sp++) size += (*sp & 0x80) ? 2 : 1;
+    }
 
     char* target = calloc(size, 1);
     char* tp = target;
 
-    for (sp = source;  *sp;  sp++)
-        tp += encodeUTF8(tp, *sp);
+    if (source) {
+        for (sp = source;  *sp;  sp++) tp += encodeUTF8(tp, *sp);
+    }
 
     return target;
 }
@@ -771,7 +773,7 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
 
             if (j < formatCount)
             {
-                XChangeProperty(_glfw.x11.display,
+                if (selectionString) XChangeProperty(_glfw.x11.display,
                                 request->requestor,
                                 targets[i + 1],
                                 targets[i],
@@ -823,7 +825,7 @@ static Atom writeTargetToProperty(const XSelectionRequestEvent* request)
         {
             // The requested target is one we support
 
-            XChangeProperty(_glfw.x11.display,
+            if (selectionString) XChangeProperty(_glfw.x11.display,
                             request->requestor,
                             request->property,
                             request->target,
@@ -954,8 +956,10 @@ static const char* getSelectionString(Atom selection)
                                       (XPointer) &notification))
                 {
                     monotonic_t time = glfwGetTime();
-                    if (time - start > s_to_monotonic_t(2ll))
+                    if (time - start > s_to_monotonic_t(2ll)) {
+                        free(string);
                         return "";
+                    }
                     waitForX11Event(s_to_monotonic_t(2ll) - (time - start));
                 }
 
@@ -1518,7 +1522,7 @@ static void processEvent(XEvent *event)
                     count = 3;
                     formats = (Atom*) event->xclient.data.l + 2;
                 }
-                char **atom_names = calloc(count, sizeof(char**));
+                char **atom_names = calloc(count, sizeof(char*));
                 if (atom_names) {
                     get_atom_names(formats, count, atom_names);
 

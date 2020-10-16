@@ -184,11 +184,12 @@ def supersampled(supersample_factor: int = 4) -> Callable:
     return create_wrapper
 
 
-def fill_region(buf: BufType, width: int, height: int, xlimits: Iterable[Iterable[float]]) -> None:
+def fill_region(buf: BufType, width: int, height: int, xlimits: Iterable[Iterable[float]], inverted: bool = False) -> None:
+    full, empty = (0, 255) if inverted else (255, 0)
     for y in range(height):
         offset = y * width
         for x, (upper, lower) in enumerate(xlimits):
-            buf[x + offset] = 255 if upper <= y <= lower else 0
+            buf[x + offset] = full if upper <= y <= lower else empty
 
 
 def line_equation(x1: int, y1: int, x2: int, y2: int) -> Callable[[int], float]:
@@ -229,6 +230,32 @@ def corner_triangle(buf: BufType, width: int, height: int, corner: str) -> None:
         elif corner == 'bottom-right':
             xlimits = [(diagonal_y(x), height - 1.) for x in range(width)]
     fill_region(buf, width, height, xlimits)
+
+
+@supersampled()
+def half_triangle(buf: BufType, width: int, height: int, which: str = 'left', inverted: bool = False) -> None:
+    mid_x, mid_y = width // 2, height // 2
+    if which == 'left':
+        upper_y = line_equation(0, 0, mid_x, mid_y)
+        lower_y = line_equation(0, height - 1, mid_x, mid_y)
+        limits = tuple((upper_y(x), lower_y(x)) for x in range(width))
+    elif which == 'top':
+        first_y = line_equation(0, 0, mid_x, mid_y)
+        first = tuple((0, first_y(x)) for x in range(mid_x))
+        second_y = line_equation(mid_x, mid_y, width - 1, 0)
+        second = tuple((0, second_y(x)) for x in range(mid_x, width))
+        limits = first + second
+    elif which == 'right':
+        upper_y = line_equation(mid_x, mid_y, width - 1, 0)
+        lower_y = line_equation(mid_x, mid_y, width - 1, height - 1)
+        limits = tuple((upper_y(x), lower_y(x)) for x in range(width))
+    elif which == 'bottom':
+        first_y = line_equation(0, height - 1, mid_x, mid_y)
+        first_ = tuple((first_y(x), height - 1) for x in range(mid_x))
+        second_y = line_equation(mid_x, mid_y, width - 1, height - 1)
+        second_ = tuple((second_y(x), height - 1) for x in range(mid_x, width))
+        limits = first_ + second_
+    fill_region(buf, width, height, limits, inverted)
 
 
 def thick_line(buf: BufType, width: int, height: int, thickness_in_pixels: int, p1: Tuple[int, int], p2: Tuple[int, int]) -> None:
@@ -274,6 +301,26 @@ def half_cross_line(buf: BufType, width: int, height: int, which: str = 'tl', le
         p2 = width - 1, height - 1
         p1 = 0, my
     thick_line(buf, width, height, thickness_in_pixels, p1, p2)
+
+
+@supersampled()
+def mid_lines(buf: BufType, width: int, height: int, level: int = 1, pts: Iterable[str] = ('lt',)) -> None:
+    mid_x, mid_y = width // 2, height // 2
+    supersample_factor = getattr(buf, 'supersample_factor')
+
+    def pt_to_coords(p: str) -> Tuple[int, int]:
+        if p == 'l':
+            return 0, mid_y
+        if p == 't':
+            return mid_x, 0
+        if p == 'r':
+            return width - 1, mid_y
+        if p == 'b':
+            return mid_x, height - 1
+
+    for x in pts:
+        p1, p2 = map(pt_to_coords, x)
+        thick_line(buf, width, height, supersample_factor * thickness(level), p1, p2)
 
 
 BezierFunc = Callable[[float], float]
@@ -364,20 +411,19 @@ def D(buf: BufType, width: int, height: int, left: bool = True) -> None:
                 buf[offset + dest_x] = mbuf[offset + src_x]
 
 
-def draw_parametrized_curve(buf: BufType, width: int, height: int, thickness_in_pixels: int, xfunc: BezierFunc, yfunc: BezierFunc) -> None:
+def draw_parametrized_curve(buf: BufType, width: int, height: int, delta: int, extra: int, xfunc: BezierFunc, yfunc: BezierFunc) -> None:
     num_samples = height*4
     seen = set()
-    delta, extra = divmod(thickness_in_pixels, 2)
     for i in range(num_samples + 1):
         t = (i / num_samples)
         p = x_p, y_p = int(xfunc(t)), int(yfunc(t))
         if p in seen:
             continue
         seen.add(p)
-        for y in range(int(y_p) - delta, int(y_p) + delta + extra):
+        for y in range(y_p - delta, y_p + delta + extra):
             if 0 <= y < height:
                 offset = y * width
-                for x in range(int(x_p) - delta, int(x_p) + delta + extra):
+                for x in range(x_p - delta, x_p + delta + extra):
                     if 0 <= x < width:
                         pos = offset + x
                         buf[pos] = min(255, buf[pos] + 255)
@@ -386,29 +432,31 @@ def draw_parametrized_curve(buf: BufType, width: int, height: int, thickness_in_
 @supersampled()
 def rounded_corner(buf: BufType, width: int, height: int, level: int = 1, which: str = '╭') -> None:
     supersample_factor = getattr(buf, 'supersample_factor')
-    thickness_in_pixels = thickness(level) * supersample_factor
+    delta, extra = divmod(thickness(level), 2)
+    hw = ((width / supersample_factor) // 2) * supersample_factor
+    hh = ((height / supersample_factor) // 2) * supersample_factor
     if which == '╭':
-        start = width // 2, height - 1
-        end = width - 1, height // 2
-        c1 = width // 2, int(0.75 * height)
-        c2 = width // 2, height // 2 + 1
+        start = hw, height - 1
+        end = width - 1, hh
+        c1 = hw, int(0.75 * height)
+        c2 = hw, hh + 1
     elif which == '╮':
-        start = 0, height // 2
-        end = width // 2, height - 1
-        c1 = width // 2, height // 2 + 1
-        c2 = width // 2, int(0.75 * height)
+        start = 0, hh
+        end = hw, height - 1
+        c1 = hw, hh + 1
+        c2 = hw, int(0.75 * height)
     elif which == '╰':
         start = width // 2, 0
-        end = width - 1, height // 2
-        c1 = width // 2, int(0.25 * height)
-        c2 = width // 2 - 1, height // 2 - 1
+        end = width - 1, hh
+        c1 = hw, int(0.25 * height)
+        c2 = hw, hh - 1
     elif which == '╯':
-        start = 0, height // 2
-        end = width // 2, 0
-        c1 = width // 2 - 1, height // 2 - 1
-        c2 = width // 2, int(0.25 * height)
+        start = 0, hh
+        end = hw, 0
+        c1 = hw, hh - 1
+        c2 = hw, int(0.25 * height)
     xfunc, yfunc = cubic_bezier(start, end, c1, c2)
-    draw_parametrized_curve(buf, width, height, thickness_in_pixels, xfunc, yfunc)
+    draw_parametrized_curve(buf, width, height, delta * supersample_factor, extra * supersample_factor, xfunc, yfunc)
 
 
 def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> Tuple[int, int]:
@@ -512,24 +560,6 @@ def inner_corner(buf: BufType, width: int, height: int, which: str = 'tl', level
     draw_vline(buf, width, y1, y2, width // 2 + (xd * hgap), level)
 
 
-def vblock(buf: BufType, width: int, height: int, frac: float = 1., gravity: str = 'top') -> None:
-    num_rows = min(height, round(frac * height))
-    start = 0 if gravity == 'top' else height - num_rows
-    for r in range(start, start + num_rows):
-        off = r * width
-        for c in range(off, off + width):
-            buf[c] = 255
-
-
-def hblock(buf: BufType, width: int, height: int, frac: float = 1., gravity: str = 'left') -> None:
-    num_cols = min(width, round(frac * width))
-    start = 0 if gravity == 'left' else width - num_cols
-    for r in range(height):
-        off = r * width + start
-        for c in range(off, off + num_cols):
-            buf[c] = 255
-
-
 def shade(buf: BufType, width: int, height: int, light: bool = False, invert: bool = False) -> None:
     square_sz = max(1, width // 12)
     number_of_rows = height // square_sz
@@ -579,6 +609,80 @@ def quad(buf: BufType, width: int, height: int, x: int = 0, y: int = 0) -> None:
         off = r * width
         for c in range(left, right):
             buf[off + c] = 255
+
+
+def sextant(buf: BufType, width: int, height: int, level: int = 1, which: int = 0) -> None:
+
+    def draw_sextant(row: int = 0, col: int = 0) -> None:
+        if row == 0:
+            y_start, y_end = 0, height // 3
+        elif row == 1:
+            y_start, y_end = height // 3, 2 * height // 3
+        else:
+            y_start, y_end = 2 * height // 3, height
+        if col == 0:
+            x_start, x_end = 0, width // 2
+        else:
+            x_start, x_end = width // 2, width
+        for r in range(y_start, y_end):
+            off = r * width
+            for c in range(x_start, x_end):
+                buf[c + off] = 255
+
+    def add_row(q: int, r: int) -> None:
+        if q & 1:
+            draw_sextant(r)
+        if q & 2:
+            draw_sextant(r, col=1)
+
+    add_row(which % 4, 0)
+    add_row(which // 4, 1)
+    add_row(which // 16, 2)
+
+
+@supersampled()
+def smooth_mosaic(
+    buf: BufType, width: int, height: int, level: int = 1,
+    lower: bool = True, a: Tuple[float, float] = (0, 0), b: Tuple[float, float] = (0, 0)
+) -> None:
+    ax, ay = int(a[0] * (width - 1)), int(a[1] * (height - 1))
+    bx, by = int(b[0] * (width - 1)), int(b[1] * (height - 1))
+    line = line_equation(ax, ay, bx, by)
+
+    def lower_condition(x: int, y: int) -> bool:
+        return y >= line(x)
+
+    def upper_condition(x: int, y: int) -> bool:
+        return y <= line(x)
+
+    condition = lower_condition if lower else upper_condition
+    for y in range(height):
+        offset = width * y
+        for x in range(width):
+            if condition(x, y):
+                buf[offset + x] = 255
+
+
+def eight_bar(buf: BufType, width: int, height: int, level: int = 1, which: int = 0, horizontal: bool = False) -> None:
+    if horizontal:
+        x_range = range(0, width)
+        thickness = max(1, height // 8)
+        y_start = min(which * thickness, height - 2)
+        y_range = range(y_start, height if which == 7 else min(y_start + thickness, height))
+    else:
+        y_range = range(0, height)
+        thickness = max(1, width // 8)
+        x_start = min(which * thickness, width - 2)
+        x_range = range(x_start, width if which == 7 else min(x_start + thickness, width))
+    for y in y_range:
+        offset = y * width
+        for x in x_range:
+            buf[offset + x] = 255
+
+
+def eight_block(buf: BufType, width: int, height: int, level: int = 1, which: Tuple[int, ...] = (0,), horizontal: bool = False) -> None:
+    for x in which:
+        eight_bar(buf, width, height, level, x, horizontal)
 
 
 box_chars: Dict[str, List[Callable]] = {
@@ -648,28 +752,28 @@ box_chars: Dict[str, List[Callable]] = {
     '╱': [p(cross_line, left=False)],
     '╲': [cross_line],
     '╳': [cross_line, p(cross_line, left=False)],
-    '▀': [p(vblock, frac=1/2)],
-    '▁': [p(vblock, frac=1/8, gravity='bottom')],
-    '▂': [p(vblock, frac=1/4, gravity='bottom')],
-    '▃': [p(vblock, frac=3/8, gravity='bottom')],
-    '▄': [p(vblock, frac=1/2, gravity='bottom')],
-    '▅': [p(vblock, frac=5/8, gravity='bottom')],
-    '▆': [p(vblock, frac=3/4, gravity='bottom')],
-    '▇': [p(vblock, frac=7/8, gravity='bottom')],
-    '█': [p(vblock, frac=1, gravity='bottom')],
-    '▉': [p(hblock, frac=7/8)],
-    '▊': [p(hblock, frac=3/4)],
-    '▋': [p(hblock, frac=5/8)],
-    '▌': [p(hblock, frac=1/2)],
-    '▍': [p(hblock, frac=3/8)],
-    '▎': [p(hblock, frac=1/4)],
-    '▏': [p(hblock, frac=1/8)],
-    '▐': [p(hblock, frac=1/2, gravity='right')],
+    '▀': [p(eight_block, horizontal=True, which=(0, 1, 2, 3))],
+    '▁': [p(eight_bar, which=7, horizontal=True)],
+    '▂': [p(eight_block, horizontal=True, which=(6, 7))],
+    '▃': [p(eight_block, horizontal=True, which=(5, 6, 7))],
+    '▄': [p(eight_block, horizontal=True, which=(4, 5, 6, 7))],
+    '▅': [p(eight_block, horizontal=True, which=(3, 4, 5, 6, 7))],
+    '▆': [p(eight_block, horizontal=True, which=(2, 3, 4, 5, 6, 7))],
+    '▇': [p(eight_block, horizontal=True, which=(1, 2, 3, 4, 5, 6, 7))],
+    '█': [p(eight_block, horizontal=True, which=(0, 1, 2, 3, 4, 5, 6, 7))],
+    '▉': [p(eight_block, which=(0, 1, 2, 3, 4, 5, 6))],
+    '▊': [p(eight_block, which=(0, 1, 2, 3, 4, 5))],
+    '▋': [p(eight_block, which=(0, 1, 2, 3, 4))],
+    '▌': [p(eight_block, which=(0, 1, 2, 3))],
+    '▍': [p(eight_block, which=(0, 1, 2))],
+    '▎': [p(eight_block, which=(0, 1))],
+    '▏': [p(eight_bar)],
+    '▐': [p(eight_block, which=(4, 5, 6, 7))],
     '░': [p(shade, light=True)],
     '▒': [shade],
     '▓': [p(shade, invert=True)],
-    '▔': [p(vblock, frac=1/8)],
-    '▕': [p(hblock, frac=1/8, gravity='right')],
+    '▔': [p(eight_bar, horizontal=True)],
+    '▕': [p(eight_bar, which=7)],
     '▖': [p(quad, y=1)],
     '▗': [p(quad, x=1, y=1)],
     '▘': [quad],
@@ -680,13 +784,109 @@ box_chars: Dict[str, List[Callable]] = {
     '▝': [p(quad, x=1)],
     '▞': [p(quad, x=1), p(quad, y=1)],
     '▟': [p(quad, x=1), p(quad, y=1), p(quad, x=1, y=1)],
+
+    '🬼': [p(smooth_mosaic, a=(0, 0.75), b=(0.5, 1))],
+    '🬽': [p(smooth_mosaic, a=(0, 0.75), b=(1, 1))],
+    '🬾': [p(smooth_mosaic, a=(0, 0.5), b=(0.5, 1))],
+    '🬿': [p(smooth_mosaic, a=(0, 0.5), b=(1, 1))],
+    '🭀': [p(smooth_mosaic, a=(0, 0), b=(0.5, 1))],
+
+    '🭁': [p(smooth_mosaic, a=(0, 0.25), b=(0.5, 0))],
+    '🭂': [p(smooth_mosaic, a=(0, 0.25), b=(1, 0))],
+    '🭃': [p(smooth_mosaic, a=(0, 0.75), b=(0.5, 0))],
+    '🭄': [p(smooth_mosaic, a=(0, 0.75), b=(1, 0))],
+    '🭅': [p(smooth_mosaic, a=(0, 1), b=(0.5, 0))],
+    '🭆': [p(smooth_mosaic, a=(0, 0.75), b=(1, 0.25))],
+
+    '🭇': [p(smooth_mosaic, a=(0.5, 1), b=(1, 0.75))],
+    '🭈': [p(smooth_mosaic, a=(0, 1), b=(1, 0.75))],
+    '🭉': [p(smooth_mosaic, a=(0.5, 1), b=(1, 0.25))],
+    '🭊': [p(smooth_mosaic, a=(0, 1), b=(1, 0.25))],
+    '🭋': [p(smooth_mosaic, a=(0.5, 1), b=(1, 0))],
+
+    '🭌': [p(smooth_mosaic, a=(0.5, 0), b=(1, 0.25))],
+    '🭍': [p(smooth_mosaic, a=(0, 0), b=(1, 0.25))],
+    '🭎': [p(smooth_mosaic, a=(0.5, 0), b=(1, 0.75))],
+    '🭏': [p(smooth_mosaic, a=(0, 0), b=(1, 0.75))],
+    '🭐': [p(smooth_mosaic, a=(0.5, 0), b=(1, 1))],
+    '🭑': [p(smooth_mosaic, a=(0, 0.25), b=(1, 0.75))],
+
+    '🭒': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(0.5, 1))],
+    '🭓': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(1, 1))],
+    '🭔': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(0.5, 1))],
+    '🭕': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(1, 1))],
+    '🭖': [p(smooth_mosaic, lower=False, a=(0, 0), b=(0.5, 1))],
+
+    '🭗': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(0.5, 0))],
+    '🭘': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(1, 0))],
+    '🭙': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(0.5, 0))],
+    '🭚': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(1, 0))],
+    '🭛': [p(smooth_mosaic, lower=False, a=(0, 1), b=(0.5, 0))],
+
+    '🭜': [p(smooth_mosaic, lower=False, a=(0, 0.75), b=(1, 0.25))],
+    '🭝': [p(smooth_mosaic, lower=False, a=(0.5, 1), b=(1, 0.75))],
+    '🭞': [p(smooth_mosaic, lower=False, a=(0, 1), b=(1, 0.75))],
+    '🭟': [p(smooth_mosaic, lower=False, a=(0.5, 1), b=(1, 0.25))],
+    '🭠': [p(smooth_mosaic, lower=False, a=(0, 1), b=(1, 0.25))],
+    '🭡': [p(smooth_mosaic, lower=False, a=(0.5, 1), b=(1, 0))],
+
+    '🭢': [p(smooth_mosaic, lower=False, a=(0.5, 0), b=(1, 0.25))],
+    '🭣': [p(smooth_mosaic, lower=False, a=(0, 0), b=(1, 0.25))],
+    '🭤': [p(smooth_mosaic, lower=False, a=(0.5, 0), b=(1, 0.75))],
+    '🭥': [p(smooth_mosaic, lower=False, a=(0, 0), b=(1, 0.75))],
+    '🭦': [p(smooth_mosaic, lower=False, a=(0.5, 0), b=(1, 1))],
+    '🭧': [p(smooth_mosaic, lower=False, a=(0, 0.25), b=(1, 0.75))],
+
+    '🭨': [p(half_triangle, inverted=True)],
+    '🭩': [p(half_triangle, which='top', inverted=True)],
+    '🭪': [p(half_triangle, which='right', inverted=True)],
+    '🭫': [p(half_triangle, which='bottom', inverted=True)],
+    '🭬': [half_triangle],
+    '🭭': [p(half_triangle, which='top')],
+    '🭮': [p(half_triangle, which='right')],
+    '🭯': [p(half_triangle, which='bottom')],
+
+    '🭼': [eight_bar, p(eight_bar, which=7, horizontal=True)],
+    '🭽': [eight_bar, p(eight_bar, horizontal=True)],
+    '🭾': [p(eight_bar, which=7), p(eight_bar, horizontal=True)],
+    '🭿': [p(eight_bar, which=7), p(eight_bar, which=7, horizontal=True)],
+    '🮀': [p(eight_bar, horizontal=True), p(eight_bar, which=7, horizontal=True)],
+    '🮁': [
+        p(eight_bar, horizontal=True), p(eight_bar, which=2, horizontal=True),
+        p(eight_bar, which=4, horizontal=True), p(eight_bar, which=7, horizontal=True)],
+    '🮂': [p(eight_block, horizontal=True, which=(0, 1))],
+    '🮃': [p(eight_block, horizontal=True, which=(0, 1, 2))],
+    '🮄': [p(eight_block, horizontal=True, which=(0, 1, 2, 3, 4))],
+    '🮅': [p(eight_block, horizontal=True, which=(0, 1, 2, 3, 4, 5))],
+    '🮆': [p(eight_block, horizontal=True, which=(0, 1, 2, 3, 4, 5, 6))],
+    '🮇': [p(eight_block, which=(6, 7))],
+    '🮈': [p(eight_block, which=(5, 6, 7))],
+    '🮉': [p(eight_block, which=(3, 4, 5, 6, 7))],
+    '🮊': [p(eight_block, which=(2, 3, 4, 5, 6, 7))],
+    '🮋': [p(eight_block, which=(1, 2, 3, 4, 5, 6, 7))],
+
+    '🮠': [mid_lines],
+    '🮡': [p(mid_lines, pts=('tr',))],
+    '🮢': [p(mid_lines, pts=('lb',))],
+    '🮣': [p(mid_lines, pts=('br',))],
+    '🮤': [p(mid_lines, pts=('lt', 'lb'))],
+    '🮥': [p(mid_lines, pts=('rt', 'rb'))],
+    '🮦': [p(mid_lines, pts=('rb', 'lb'))],
+    '🮧': [p(mid_lines, pts=('rt', 'lt'))],
+    '🮨': [p(mid_lines, pts=('rb', 'lt'))],
+    '🮩': [p(mid_lines, pts=('lb', 'rt'))],
+    '🮪': [p(mid_lines, pts=('lb', 'rt', 'rb'))],
+    '🮫': [p(mid_lines, pts=('lb', 'lt', 'rb'))],
+    '🮬': [p(mid_lines, pts=('rt', 'lt', 'rb'))],
+    '🮭': [p(mid_lines, pts=('rt', 'lt', 'lb'))],
+    '🮮': [p(mid_lines, pts=('rt', 'rb', 'lt', 'lb'))],
 }
 
 t, f = 1, 3
 for start in '┌┐└┘':
     for i, (hlevel, vlevel) in enumerate(((t, t), (f, t), (t, f), (f, f))):
         box_chars[chr(ord(start) + i)] = [p(corner, which=start, hlevel=hlevel, vlevel=vlevel)]
-for ch in '╭╮╯╰':
+for ch in '╭╮╰╯':
     box_chars[ch] = [p(rounded_corner, which=ch)]
 
 for i, (a_, b_, c_, d_) in enumerate((
@@ -707,6 +907,18 @@ for starts, func, pattern in (
 for chars, func_ in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('╔╗╚╝', dcorner), ('╟╢╤╧', dpip)):
     for ch in chars:
         box_chars[ch] = [p(cast(Callable, func_), which=ch)]
+
+
+c = 0x1fb00
+for i in range(1, 63):
+    if i in (20, 40):
+        continue
+    box_chars[chr(c)] = [p(sextant, which=i)]
+    c += 1
+
+for i in range(1, 7):
+    box_chars[chr(0x1fb6f + i)] = [p(eight_bar, which=i)]
+    box_chars[chr(0x1fb75 + i)] = [p(eight_bar, which=i, horizontal=True)]
 
 
 def render_box_char(ch: str, buf: BufType, width: int, height: int, dpi: float = 96.0) -> BufType:

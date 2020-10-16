@@ -236,7 +236,7 @@ schedule_write_to_child(unsigned long id, unsigned int num, ...) {
     va_list ap;
     va_start(ap, num);
     for (unsigned int i = 0; i < num; i++) {
-        data = va_arg(ap, const char*);
+        va_arg(ap, const char*);
         sz += va_arg(ap, size_t);
     }
     va_end(ap);
@@ -1539,7 +1539,7 @@ send_response(id_type peer_id, const char *msg, size_t msg_sz) {
                         peer->write.capacity += msg_sz;
                     } else fatal("Out of memory");
                 }
-                memcpy(peer->write.data + peer->write.used, msg, msg_sz);
+                if (msg) memcpy(peer->write.data + peer->write.used, msg, msg_sz);
                 peer->write.used += msg_sz;
             }
             wakeup = true;

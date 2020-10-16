@@ -424,7 +424,7 @@ def update_encoding() -> None:
     ans = ENCODING
     key_map = {}
     i = len(ans)
-    for k in sorted(keys, key=lambda k: getattr(defines, k)):
+    for k in sorted(keys, key=lambda k: int(getattr(defines, k))):
         if k in ('GLFW_KEY_LAST', 'GLFW_KEY_LAST_PRINTABLE'):
             continue
         val = getattr(defines, k)

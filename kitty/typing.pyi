@@ -43,6 +43,7 @@ from .config import (  # noqa; noqa
 )
 
 EdgeLiteral = Literal['left', 'top', 'right', 'bottom']
+MatchType = Literal['mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches']
 GRT_a = Literal['t', 'T', 'q', 'p', 'd']
 GRT_f = Literal[24, 32, 100]
 GRT_t = Literal['d', 'f', 't', 's']

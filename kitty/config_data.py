@@ -13,7 +13,7 @@ from typing import (
 from . import fast_data_types as defines
 from .conf.definition import Option, Shortcut, option_func
 from .conf.utils import (
-    choices, positive_float, positive_int, to_bool, to_cmdline, to_color,
+    choices, positive_float, positive_int, to_bool, to_cmdline as tc, to_color,
     to_color_or_none, unit_float
 )
 from .constants import FloatEdges, config_dir, is_macos
@@ -27,6 +27,10 @@ MINIMUM_FONT_SIZE = 4
 
 mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
            '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
+
+
+def to_cmdline(x: str) -> List[str]:
+    return tc(x)
 
 
 def parse_mods(parts: Iterable[str], sc: str) -> Optional[int]:
@@ -321,7 +325,9 @@ Note that this code is indexed by PostScript name, and not the font
 family. This allows you to define very precise feature settings; e.g. you can
 disable a feature in the italic font but not in the regular font.
 
-To get the PostScript name for a font, use :code:`kitty + list-fonts --psnames`::
+To get the PostScript name for a font, use :code:`kitty + list-fonts --psnames`:
+
+.. code-block:: sh
 
     $ kitty + list-fonts --psnames | grep Fira
     Fira Code
@@ -440,8 +446,8 @@ def scrollback_pager_history_size(x: str) -> int:
 o('scrollback_lines', 2000, option_type=scrollback_lines, long_text=_('''
 Number of lines of history to keep in memory for scrolling back. Memory is allocated
 on demand. Negative numbers are (effectively) infinite scrollback. Note that using
-very large scrollback is not recommended as it can slow down resizing of the terminal
-and also use large amounts of RAM.'''))
+very large scrollback is not recommended as it can slow down performance of the terminal
+and also use large amounts of RAM. Instead, consider using :opt:`scrollback_pager_history_size`.'''))
 
 o('scrollback_pager', 'less --chop-long-lines --RAW-CONTROL-CHARS +INPUT_LINE_NUMBER', option_type=to_cmdline, long_text=_('''
 Program with which to view scrollback in a new window. The scrollback buffer is
@@ -455,9 +461,9 @@ o('scrollback_pager_history_size', 0, option_type=scrollback_pager_history_size,
 Separate scrollback history size, used only for browsing the scrollback buffer (in MB).
 This separate buffer is not available for interactive scrolling but will be
 piped to the pager program when viewing scrollback buffer in a separate window.
-The current implementation stores one character in 4 bytes, so approximatively
-2500 lines per megabyte at 100 chars per line. A value of zero or less disables
-this feature. The maximum allowed size is 4GB.'''))
+The current implementation stores the data in UTF-8, so approximatively
+10000 lines per megabyte at 100 chars per line, for pure ASCII text, unformatted text.
+A value of zero or less disables this feature. The maximum allowed size is 4GB.'''))
 
 o('wheel_scroll_multiplier', 5.0, long_text=_('''
 Modify the amount scrolled by the mouse wheel. Note this is only used for low
@@ -678,9 +684,27 @@ for vertical resizing.
 '''))
 o('window_resize_step_lines', 2, option_type=positive_int)
 
-o('window_border_width', 1.0, option_type=positive_float, long_text=_('''
-The width (in pts) of window borders. Will be rounded to the nearest number of pixels based on screen resolution.
-Note that borders are displayed only when more than one window is visible. They are meant to separate multiple windows.'''))
+
+def window_border_width(x: Union[str, int, float]) -> Tuple[float, str]:
+    unit = 'pt'
+    if isinstance(x, str):
+        trailer = x[-2:]
+        if trailer in ('px', 'pt'):
+            unit = trailer
+            val = float(x[:-2])
+        else:
+            val = float(x)
+    else:
+        val = float(x)
+    return max(0, val), unit
+
+
+o('window_border_width', '0.5pt', option_type=window_border_width, long_text=_('''
+The width of window borders. Can be either in pixels (px) or pts (pt). Values
+in pts will be rounded to the nearest number of pixels based on screen
+resolution. If not specified the unit is assumed to be pts.
+Note that borders are displayed only when more than one window
+is visible. They are meant to separate multiple windows.'''))
 
 o('draw_minimal_borders', True, long_text=_('''
 Draw only the minimum borders needed. This means that only the minimum
@@ -871,6 +895,17 @@ entries to this list.
 
 o('tab_separator', '"{}"'.format(default_tab_separator), option_type=tab_separator, long_text=_('''
 The separator between tabs in the tab bar when using :code:`separator` as the :opt:`tab_bar_style`.'''))
+
+
+def tab_activity_symbol(x: str) -> Optional[str]:
+    if x == 'none':
+        return None
+    return x or None
+
+
+o('tab_activity_symbol', 'none', option_type=tab_activity_symbol, long_text=_('''
+Some text or a unicode symbol to show on the tab if a window in the tab that does
+not have focus has some activity.'''))
 
 
 def tab_title_template(x: str) -> str:
@@ -1122,6 +1157,20 @@ clipboard and primary selection with concatenation enabled. Note
 that enabling the read functionality is a security risk as it means that any
 program, even one running on a remote server via SSH can read your clipboard.
 '''))
+
+
+def allow_hyperlinks(x: str) -> int:
+    if x == 'ask':
+        return 0b11
+    return 1 if to_bool(x) else 0
+
+
+o('allow_hyperlinks', 'yes', option_type=allow_hyperlinks, long_text=_('''
+Process hyperlink (OSC 8) escape sequences. If disabled OSC 8 escape
+sequences are ignored. Otherwise they become clickable links, that you
+can click by holding down ctrl+shift and clicking with the mouse. The special
+value of ``ask`` means that kitty will ask before opening the link.'''))
+
 
 o('term', 'xterm-kitty', long_text=_('''
 The value of the TERM environment variable to set. Changing this can break many
@@ -1448,6 +1497,9 @@ k('goto_file_line', 'kitty_mod+p>n', 'kitten hints --type linenum', _('Open the 
 Select something that looks like :code:`filename:linenum` and open it in vim at
 the specified line number.'''))
 
+k('open_selected_hyperlink', 'kitty_mod+p>y', 'kitten hints --type hyperlink', _('Open the selected hyperlink'), long_text=_('''
+Select a hyperlink (i.e. a URL that has been marked as such by the terminal program, for example, by ls --hyperlink=auto).
+'''))
 
 # }}}
 

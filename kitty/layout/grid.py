@@ -5,15 +5,18 @@
 from functools import lru_cache
 from itertools import repeat
 from math import ceil, floor
-from typing import Callable, Dict, Generator, List, Optional, Sequence, Tuple
+from typing import (
+    Callable, Dict, Generator, List, Optional, Sequence, Set, Tuple
+)
 
+from kitty.borders import BorderColor
 from kitty.constants import Edges
 from kitty.typing import WindowType
 from kitty.window_list import WindowGroup, WindowList
 
 from .base import (
-    Layout, LayoutData, LayoutDimension, ListOfWindows, NeighborsMap,
-    layout_dimension, lgd, variable_bias
+    BorderLine, Layout, LayoutData, LayoutDimension, ListOfWindows,
+    NeighborsMap, layout_dimension, lgd, variable_bias
 )
 from .tall import neighbors_for_tall_window
 
@@ -35,6 +38,7 @@ def calc_grid_size(n: int) -> Tuple[int, int, int, int]:
 class Grid(Layout):
 
     name = 'grid'
+    no_minimal_window_borders = True
 
     def remove_all_biases(self) -> bool:
         self.biased_rows: Dict[int, float] = {}
@@ -165,9 +169,7 @@ class Grid(Layout):
 
         def position_window_in_grid_cell(window_idx: int, xl: LayoutData, yl: LayoutData) -> None:
             wg = groups[window_idx]
-            edges = Edges(
-                wg.decoration('left'), wg.decoration('top'), wg.decoration('right'), wg.decoration('bottom')
-            )
+            edges = Edges(wg.decoration('left'), wg.decoration('top'), wg.decoration('right'), wg.decoration('bottom'))
             xl = layout(xl, lgd.cell_width, edges.left, edges.right)
             yl = layout(yl, lgd.cell_height, edges.top, edges.bottom)
             self.set_window_group_geometry(wg, xl, yl)
@@ -176,34 +178,72 @@ class Grid(Layout):
                 n, nrows, ncols, special_rows, special_col, on_col_done):
             position_window_in_grid_cell(window_idx, xl, yl)
 
-    def window_independent_borders(self, all_windows: WindowList) -> Generator[Edges, None, None]:
+    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
         n = all_windows.num_groups
         if not lgd.draw_minimal_borders or n < 2:
             return
+        needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
         ncols, nrows, special_rows, special_col = calc_grid_size(n)
-        row_borders: List[List[Edges]] = [[]]
-        col_borders: List[Edges] = []
+        is_first_row: Set[int] = set()
+        is_last_row: Set[int] = set()
+        is_first_column: Set[int] = set()
+        is_last_column: Set[int] = set()
         groups = tuple(all_windows.iter_all_layoutable_groups())
         bw = groups[0].effective_border()
+        if not bw:
+            return
         xl: LayoutData = LayoutData()
         yl: LayoutData = LayoutData()
+        prev_col_windows: List[int] = []
+        layout_data_map: Dict[int, Tuple[LayoutData, LayoutData]] = {}
 
         def on_col_done(col_windows: List[int]) -> None:
-            left = xl.content_pos + xl.content_size + xl.space_after - bw // 2
-            col_borders.append(Edges(left, lgd.central.top, left + bw, lgd.central.bottom))
-            row_borders.append([])
+            nonlocal prev_col_windows, is_first_column
+            if col_windows:
+                is_first_row.add(groups[col_windows[0]].id)
+                is_last_row.add(groups[col_windows[-1]].id)
+            if not prev_col_windows:
+                is_first_column = {groups[x].id for x in col_windows}
+            prev_col_windows = col_windows
 
+        all_groups_in_order: List[WindowGroup] = []
         for window_idx, xl, yl in self.layout_windows(n, nrows, ncols, special_rows, special_col, on_col_done):
-            top = yl.content_pos + yl.content_size + yl.space_after - bw // 2
-            right = xl.content_pos + xl.content_size + xl.space_after
-            row_borders[-1].append(Edges(xl.content_pos - xl.space_before, top, right, top + bw))
+            wg = groups[window_idx]
+            all_groups_in_order.append(wg)
+            layout_data_map[wg.id] = xl, yl
+        is_last_column = {groups[x].id for x in prev_col_windows}
+        active_group = all_windows.active_group
 
-        for border in col_borders[:-1]:
-            yield border
+        def ends(yl: LayoutData) -> Tuple[int, int]:
+            return yl.content_pos - yl.space_before, yl.content_pos + yl.content_size + yl.space_after
 
-        for rows in row_borders:
-            for border in rows[:-1]:
-                yield border
+        def borders_for_window(gid: int) -> Generator[Edges, None, None]:
+            xl, yl = layout_data_map[gid]
+            left, right = ends(xl)
+            top, bottom = ends(yl)
+            first_row, last_row = gid in is_first_row, gid in is_last_row
+            first_column, last_column = gid in is_first_column, gid in is_last_column
+
+            # Horizontal
+            if not first_row:
+                yield Edges(left, top, right, top + bw)
+            if not last_row:
+                yield Edges(left, bottom - bw, right, bottom)
+
+            # Vertical
+            if not first_column:
+                yield Edges(left, top, left + bw, bottom)
+            if not last_column:
+                yield Edges(right - bw, top, right, bottom)
+
+        for wg in all_groups_in_order:
+            for edges in borders_for_window(wg.id):
+                yield BorderLine(edges)
+        for wg in all_groups_in_order:
+            if needs_borders_map.get(wg.id):
+                color = BorderColor.active if wg is active_group else BorderColor.bell
+                for edges in borders_for_window(wg.id):
+                    yield BorderLine(edges, color)
 
     def neighbors_for_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
         n = all_windows.num_groups

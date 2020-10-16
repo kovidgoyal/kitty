@@ -2,22 +2,71 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Dict, Generator
+from typing import Dict, Generator, Iterable, List, Tuple
 
+from kitty.borders import BorderColor
+from kitty.constants import Edges
 from kitty.typing import WindowType
-from kitty.window_list import WindowList
+from kitty.window_list import WindowGroup, WindowList
 
 from .base import (
-    Borders, Layout, LayoutDimension, NeighborsMap, all_borders, no_borders,
-    variable_bias
+    BorderLine, Layout, LayoutData, LayoutDimension, NeighborsMap,
+    lgd, variable_bias
 )
+
+
+def borders(
+    data: Iterable[Tuple[WindowGroup, LayoutData, LayoutData]],
+    is_horizontal: bool,
+    all_windows: WindowList,
+    start_offset: int = 1, end_offset: int = 1
+) -> Generator[BorderLine, None, None]:
+    borders: List[BorderLine] = []
+    active_group = all_windows.active_group
+    needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
+    try:
+        bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
+    except StopIteration:
+        bw = 0
+    if not bw:
+        return
+
+    for wg, xl, yl in data:
+        if is_horizontal:
+            e1 = Edges(
+                xl.content_pos - xl.space_before, yl.content_pos - yl.space_before,
+                xl.content_pos - xl.space_before + bw, yl.content_pos + yl.content_size + yl.space_after
+            )
+            e2 = Edges(
+                xl.content_pos + xl.content_size + xl.space_after - bw, yl.content_pos - yl.space_before,
+                xl.content_pos + xl.content_size + xl.space_after, yl.content_pos + yl.content_size + yl.space_after
+            )
+        else:
+            e1 = Edges(
+                xl.content_pos - xl.space_before, yl.content_pos - yl.space_before,
+                xl.content_pos + xl.content_size + xl.space_after, yl.content_pos - yl.space_before + bw
+            )
+            e2 = Edges(
+                xl.content_pos - xl.space_before, yl.content_pos + yl.content_size + yl.space_after - bw,
+                xl.content_pos + xl.content_size + xl.space_after, yl.content_pos + yl.content_size + yl.space_after
+            )
+        color = BorderColor.inactive
+        if needs_borders_map.get(wg.id):
+            color = BorderColor.active if wg is active_group else BorderColor.bell
+        borders.append(BorderLine(e1, color))
+        borders.append(BorderLine(e2, color))
+
+    last_idx = len(borders) - 1 - end_offset
+    for i, x in enumerate(borders):
+        if start_offset <= i <= last_idx:
+            yield x
 
 
 class Vertical(Layout):
 
     name = 'vertical'
     main_is_horizontal = False
-    only_between_border = Borders(False, False, False, True)
+    no_minimal_window_borders = True
     main_axis_layout = Layout.ylayout
     perp_axis_layout = Layout.xlayout
 
@@ -25,6 +74,9 @@ class Vertical(Layout):
         num_windows = all_windows.num_groups
         bias = variable_bias(num_windows, biased_map) if num_windows else None
         return self.main_axis_layout(all_windows.iter_all_layoutable_groups(), bias=bias)
+
+    def fixed_layout(self, wg: WindowGroup) -> LayoutDimension:
+        return self.perp_axis_layout(iter((wg,)), border_mult=0 if lgd.draw_minimal_borders else 1)
 
     def remove_all_biases(self) -> bool:
         self.biased_map: Dict[int, float] = {}
@@ -45,33 +97,27 @@ class Vertical(Layout):
         self.biased_map = candidate
         return True
 
+    def generate_layout_data(self, all_windows: WindowList) -> Generator[Tuple[WindowGroup, LayoutData, LayoutData], None, None]:
+        ylayout = self.variable_layout(all_windows, self.biased_map)
+        for wg, yl in zip(all_windows.iter_all_layoutable_groups(), ylayout):
+            xl = next(self.fixed_layout(wg))
+            if self.main_is_horizontal:
+                xl, yl = yl, xl
+            yield wg, xl, yl
+
     def do_layout(self, all_windows: WindowList) -> None:
         window_count = all_windows.num_groups
         if window_count == 1:
             self.layout_single_window_group(next(all_windows.iter_all_layoutable_groups()))
             return
-
-        ylayout = self.variable_layout(all_windows, self.biased_map)
-        for i, (wg, yl) in enumerate(zip(all_windows.iter_all_layoutable_groups(), ylayout)):
-            xl = next(self.perp_axis_layout(iter((wg,))))
-            if self.main_is_horizontal:
-                xl, yl = yl, xl
+        for wg, xl, yl in self.generate_layout_data(all_windows):
             self.set_window_group_geometry(wg, xl, yl)
 
-    def minimal_borders(self, all_windows: WindowList, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
-        last_i = all_windows.num_groups - 1
-        groups = tuple(all_windows.iter_all_layoutable_groups())
-        for i, wg in enumerate(groups):
-            if needs_borders_map[wg.id]:
-                yield all_borders
-                continue
-            if i == last_i:
-                yield no_borders
-                break
-            if needs_borders_map[groups[i+1].id]:
-                yield no_borders
-            else:
-                yield self.only_between_border
+    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+        window_count = all_windows.num_groups
+        if window_count < 2 or not lgd.draw_minimal_borders:
+            return
+        yield from borders(self.generate_layout_data(all_windows), self.main_is_horizontal, all_windows)
 
     def neighbors_for_window(self, window: WindowType, all_windows: WindowList) -> NeighborsMap:
         wg = all_windows.group_for_window(window)
@@ -89,6 +135,5 @@ class Horizontal(Vertical):
 
     name = 'horizontal'
     main_is_horizontal = True
-    only_between_border = Borders(False, False, True, False)
     main_axis_layout = Layout.xlayout
     perp_axis_layout = Layout.ylayout

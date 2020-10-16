@@ -74,6 +74,9 @@ functions for the events you are interested in, for example:
     def on_resize(boss, window, data):
         # Here data will contain old_geometry and new_geometry
 
+    def on_focus_change(boss, window, data):
+        # Here data kill contain focused
+
     def on_close(boss, window, data):
         # called when window is closed, typically when the program running in
         # it exits.

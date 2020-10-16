@@ -41,6 +41,8 @@ void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 typedef unsigned long long id_type;
 typedef uint32_t char_type;
 typedef uint32_t color_type;
+typedef uint16_t hyperlink_id_type;
+#define HYPERLINK_MAX_NUMBER UINT16_MAX
 typedef uint16_t combining_type;
 typedef uint32_t pixel;
 typedef unsigned int index_type;
@@ -160,6 +162,7 @@ typedef struct {
 typedef struct {
     char_type ch;
     combining_type cc_idx[2];
+    hyperlink_id_type hyperlink_id;
 } CPUCell;
 
 
@@ -190,12 +193,19 @@ typedef struct {
 } HistoryBufSegment;
 
 typedef struct {
-    index_type bufsize, maxsz;
-    Py_UCS4 *buffer;
-    index_type start, end;
-    index_type bufend;
+    uint8_t *buffer;
+    size_t buffer_size, max_sz;
+    size_t start, length;
     bool rewrap_needed;
 } PagerHistoryBuf;
+
+typedef struct {int x;} *HYPERLINK_POOL_HANDLE;
+typedef struct {
+    Py_UCS4 *buf;
+    size_t len, capacity;
+    HYPERLINK_POOL_HANDLE hyperlink_pool;
+    hyperlink_id_type active_hyperlink_id;
+} ANSIBuf;
 
 typedef struct {
     PyObject_HEAD
@@ -311,6 +321,7 @@ void play_canberra_sound(const char *which_sound, const char *event_id);
 #endif
 SPRITE_MAP_HANDLE alloc_sprite_map(unsigned int, unsigned int);
 SPRITE_MAP_HANDLE free_sprite_map(SPRITE_MAP_HANDLE);
+const char* get_hyperlink_for_id(const HYPERLINK_POOL_HANDLE, hyperlink_id_type id, bool only_url);
 
 static inline void safe_close(int fd, const char* file UNUSED, const int line UNUSED) {
 #if 0

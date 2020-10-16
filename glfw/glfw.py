@@ -10,6 +10,7 @@ from typing import Callable, Dict, List, Optional, Tuple
 
 _plat = sys.platform.lower()
 is_linux = 'linux' in _plat
+is_openbsd = 'openbsd' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
@@ -72,8 +73,9 @@ def init_env(env: Env, pkg_config: Callable, at_least_version: Callable, test_co
 
     if module in ('x11', 'wayland'):
         ans.cflags.append('-pthread')
-        ans.ldpaths.append('-pthread')
-        ans.ldpaths.extend('-lrt -lm -ldl'.split())
+        ans.ldpaths.extend('-pthread -lm'.split())
+        if not is_openbsd:
+            ans.ldpaths.extend('-lrt -ldl'.split())
         at_least_version('xkbcommon', 0, 5)
 
     if module == 'x11':

@@ -16,13 +16,12 @@ from kitty.fast_data_types import (
 from kitty.options_stub import Options
 from kitty.typing import TypedDict, WindowType
 from kitty.window_list import WindowGroup, WindowList
+from kitty.borders import BorderColor
 
 
-class Borders(NamedTuple):
-    left: bool
-    top: bool
-    right: bool
-    bottom: bool
+class BorderLine(NamedTuple):
+    edges: Edges = Edges()
+    color: BorderColor = BorderColor.inactive
 
 
 class LayoutOpts:
@@ -39,8 +38,6 @@ class LayoutData(NamedTuple):
     content_size: int = 0
 
 
-all_borders = Borders(True, True, True, True)
-no_borders = Borders(False, False, False, False)
 DecorationPairs = Sequence[Tuple[int, int]]
 LayoutDimension = Generator[LayoutData, None, None]
 ListOfWindows = List[WindowType]
@@ -330,10 +327,11 @@ class Layout:
         bias: Optional[Sequence[float]] = None,
         start: Optional[int] = None,
         size: Optional[int] = None,
-        offset: int = 0
+        offset: int = 0,
+        border_mult: int = 1
     ) -> LayoutDimension:
         decoration_pairs = tuple(
-            (g.decoration('left'), g.decoration('right')) for i, g in
+            (g.decoration('left', border_mult=border_mult), g.decoration('right', border_mult=border_mult)) for i, g in
             enumerate(groups) if i >= offset
         )
         if start is None:
@@ -348,10 +346,11 @@ class Layout:
         bias: Optional[Sequence[float]] = None,
         start: Optional[int] = None,
         size: Optional[int] = None,
-        offset: int = 0
+        offset: int = 0,
+        border_mult: int = 1
     ) -> LayoutDimension:
         decoration_pairs = tuple(
-            (g.decoration('top'), g.decoration('bottom')) for i, g in
+            (g.decoration('top', border_mult=border_mult), g.decoration('bottom', border_mult=border_mult)) for i, g in
             enumerate(groups) if i >= offset
         )
         if start is None:
@@ -375,21 +374,9 @@ class Layout:
     def compute_needs_borders_map(self, all_windows: WindowList) -> Dict[int, bool]:
         return all_windows.compute_needs_borders_map(lgd.draw_active_borders)
 
-    def resolve_borders(self, all_windows: WindowList) -> Generator[Borders, None, None]:
-        if lgd.draw_minimal_borders:
-            needs_borders_map = self.compute_needs_borders_map(all_windows)
-            yield from self.minimal_borders(all_windows, needs_borders_map)
-        else:
-            for i in range(all_windows.num_groups):
-                yield all_borders
-
-    def window_independent_borders(self, windows: WindowList) -> Generator[Edges, None, None]:
+    def minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
         return
-        yield Edges()  # type: ignore
-
-    def minimal_borders(self, windows: WindowList, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
-        for needs_border in needs_borders_map.values():
-            yield all_borders if needs_border else no_borders
+        yield BorderLine()  # type: ignore
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         pass

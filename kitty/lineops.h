@@ -28,7 +28,7 @@ static inline void
 clear_chars_in_line(CPUCell *cpu_cells, GPUCell *gpu_cells, index_type xnum, char_type ch) {
     // Clear only the char part of each cell, the rest must have been cleared by a memset or similar
     if (ch) {
-        for (index_type i = 0; i < xnum; i++) { cpu_cells[i].ch = ch; gpu_cells[i].attrs = 1; }
+        for (index_type i = 0; i < xnum; i++) { cpu_cells[i].ch = ch; cpu_cells[i].hyperlink_id = 0; gpu_cells[i].attrs = 1; }
     }
 }
 
@@ -61,6 +61,7 @@ left_shift_line(Line *line, index_type at, index_type num) {
     }
     if (at < line->xnum && ((line->gpu_cells[at].attrs) & WIDTH_MASK) != 1) {
         line->cpu_cells[at].ch = BLANK_CHAR;
+        line->cpu_cells[at].hyperlink_id = 0;
         line->gpu_cells[at].attrs = BLANK_CHAR ? 1 : 0;
         clear_sprite_position(line->gpu_cells[at]);
     }
@@ -70,13 +71,13 @@ typedef Line*(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);
 void line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char);
 char_type line_get_char(Line *self, index_type at);
-void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, bool);
+void line_set_char(Line *, unsigned int , uint32_t , unsigned int , Cursor *, hyperlink_id_type);
 void line_right_shift(Line *, unsigned int , unsigned int );
 void line_add_combining_char(Line *, uint32_t , unsigned int );
 index_type line_url_start_at(Line *self, index_type x);
 index_type line_url_end_at(Line *self, index_type x, bool, char_type, bool);
 bool line_startswith_url_chars(Line*);
-index_type line_as_ansi(Line *self, Py_UCS4 *buf, index_type buflen, bool*, const GPUCell**) __attribute__((nonnull));
+void line_as_ansi(Line *self, ANSIBuf *output, const GPUCell**) __attribute__((nonnull));
 unsigned int line_length(Line *self);
 size_t cell_as_unicode(CPUCell *cell, bool include_cc, Py_UCS4 *buf, char_type);
 size_t cell_as_unicode_for_fallback(CPUCell *cell, Py_UCS4 *buf);
@@ -93,19 +94,20 @@ void linebuf_clear_line(LineBuf *self, index_type y);
 void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom);
 void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
 void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
-void linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *, index_type *, HistoryBuf *, index_type *, index_type *);
+void linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *, index_type *, HistoryBuf *, index_type *, index_type *, ANSIBuf*);
 void linebuf_mark_line_dirty(LineBuf *self, index_type y);
 void linebuf_mark_line_clean(LineBuf *self, index_type y);
 void linebuf_mark_line_as_not_continued(LineBuf *self, index_type y);
 unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 void linebuf_refresh_sprite_positions(LineBuf *self);
-void historybuf_add_line(HistoryBuf *self, const Line *line);
-void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other);
+void historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf*);
+void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf*);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
+CPUCell* historybuf_cpu_cells(HistoryBuf *self, index_type num);
 void historybuf_mark_line_clean(HistoryBuf *self, index_type y);
 void historybuf_mark_line_dirty(HistoryBuf *self, index_type y);
 void historybuf_refresh_sprite_positions(HistoryBuf *self);
 void historybuf_clear(HistoryBuf *self);
 void mark_text_in_line(PyObject *marker, Line *line);
 bool line_has_mark(Line *, attrs_type mark);
-PyObject* as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, index_type columns);
+PyObject* as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf);

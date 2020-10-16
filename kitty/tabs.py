@@ -48,6 +48,7 @@ class SpecialWindowInstance(NamedTuple):
     cwd: Optional[str]
     overlay_for: Optional[int]
     env: Optional[Dict[str, str]]
+    watchers: Optional[Watchers]
 
 
 def SpecialWindow(
@@ -57,9 +58,10 @@ def SpecialWindow(
     cwd_from: Optional[int] = None,
     cwd: Optional[str] = None,
     overlay_for: Optional[int] = None,
-    env: Optional[Dict[str, str]] = None
+    env: Optional[Dict[str, str]] = None,
+    watchers: Optional[Watchers] = None
 ) -> SpecialWindowInstance:
-    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for, env)
+    return SpecialWindowInstance(cmd, stdin, override_title, cwd_from, cwd, overlay_for, env, watchers)
 
 
 def add_active_id_to_history(items: Deque[int], item_id: int, maxlen: int = 64) -> None:
@@ -135,10 +137,7 @@ class Tab:  # {{{
 
     def startup(self, session_tab: 'SessionTab') -> None:
         for cmd in session_tab.windows:
-            if isinstance(cmd, (SpecialWindowInstance,)):
-                self.new_special_window(cmd)
-            else:
-                self.new_window(cmd=cmd)
+            self.new_special_window(cmd)
         self.windows.set_active_window_group_for(self.windows.all_windows[session_tab.active_window_idx])
 
     def serialize_state(self) -> Dict[str, Any]:
@@ -333,14 +332,14 @@ class Tab:  # {{{
             special_window: SpecialWindowInstance,
             location: Optional[str] = None,
             copy_colors_from: Optional[Window] = None,
-            allow_remote_control: bool = False
+            allow_remote_control: bool = False,
     ) -> Window:
         return self.new_window(
             use_shell=False, cmd=special_window.cmd, stdin=special_window.stdin,
             override_title=special_window.override_title,
             cwd_from=special_window.cwd_from, cwd=special_window.cwd, overlay_for=special_window.overlay_for,
             env=special_window.env, location=location, copy_colors_from=copy_colors_from,
-            allow_remote_control=allow_remote_control
+            allow_remote_control=allow_remote_control, watchers=special_window.watchers
         )
 
     def close_window(self) -> None:
@@ -440,9 +439,9 @@ class Tab:  # {{{
                     self.relayout()
 
     def move_window_to_top(self) -> None:
-        n = self.windows.num_groups
-        if n > 1:
-            self.move_window(1 - n)
+        n = self.windows.active_group_idx
+        if n > 0:
+            self.move_window(-n)
 
     def move_window_forward(self) -> None:
         self.move_window()
@@ -737,13 +736,16 @@ class TabManager:  # {{{
         for t in self.tabs:
             title = (t.name or t.title or appname).strip()
             needs_attention = False
+            has_activity_since_last_focus = False
             for w in t:
                 if w.needs_attention:
                     needs_attention = True
-                    break
+                if w.has_activity_since_last_focus:
+                    has_activity_since_last_focus = True
             ans.append(TabBarData(
                 title, t is at, needs_attention,
-                len(t), t.current_layout.name or ''
+                len(t), t.current_layout.name or '',
+                has_activity_since_last_focus
             ))
         return ans
 

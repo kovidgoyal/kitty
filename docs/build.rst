@@ -18,6 +18,7 @@ Run-time dependencies:
     * harfbuzz >= 1.5.0
     * zlib
     * libpng
+    * liblcms2
     * freetype (not needed on macOS)
     * fontconfig (not needed on macOS)
     * libcanberra (not needed on macOS)
@@ -63,10 +64,19 @@ This :file:`kitty.app` unlike the released one does not include its own copy of
 python and the other dependencies. So if you ever un-install/upgrade those dependencies
 you might have to rebuild the app.
 
-Note that the released :file:`kitty.dmg` includes all dependencies, unlike the
-:file:`kitty.app` built above and is built automatically by using the :file:`kitty` branch of
-`build-calibre <https://github.com/kovidgoyal/build-calibre>`_ however, that
-is designed to run on Linux and is not for the faint of heart.
+.. note::
+   The released :file:`kitty.dmg` includes all dependencies, unlike the
+   :file:`kitty.app` built above and is built automatically by using the
+   :file:`kitty` branch of `build-calibre
+   <https://github.com/kovidgoyal/build-calibre>`_ however, that is designed to
+   run on Linux and is not for the faint of heart.
+
+
+.. note::
+   Apple disallows certain functionality, such as notifications for unsigned applications.
+   If you need this functionality, you can try signing the built kitty.app with
+   a self signed certificate, see for example, `here
+   <https://stackoverflow.com/questions/27474751/how-can-i-codesign-an-app-without-being-in-the-mac-developer-program/27474942>`_.
 
 
 Note for Linux/macOS packagers

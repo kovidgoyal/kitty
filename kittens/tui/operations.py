@@ -74,6 +74,11 @@ def clear_to_eol() -> str:
 
 
 @cmd
+def reset_terminal() -> str:
+    return '\033]\033\\\033c'
+
+
+@cmd
 def bell() -> str:
     return '\a'
 
@@ -286,6 +291,20 @@ def alternate_screen(f: Optional[IO[str]] = None) -> Generator[None, None, None]
     print(set_mode('ALTERNATE_SCREEN'), end='', file=f)
     yield
     print(reset_mode('ALTERNATE_SCREEN'), end='', file=f)
+
+
+@contextmanager
+def raw_mode(fd: Optional[int] = None) -> Generator[None, None, None]:
+    import tty
+    import termios
+    if fd is None:
+        fd = sys.stdin.fileno()
+    old = termios.tcgetattr(fd)
+    try:
+        tty.setraw(fd)
+        yield
+    finally:
+        termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
 
 @cmd

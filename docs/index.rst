@@ -10,10 +10,12 @@ kitty - the fast, featureful, GPU based terminal emulator
       buttery smooth scrolling.  Uses threaded rendering to minimize input latency.
 
     * Supports all modern terminal features: :doc:`graphics (images)
-      <graphics-protocol>`, unicode, true-color, OpenType ligatures, mouse
-      protocol, focus tracking, `bracketed paste
-      <https://cirw.in/blog/bracketed-paste>`_ and several :doc:`new terminal
-      protocol extensions <protocol-extensions>`.
+      <graphics-protocol>`, unicode, `true-color
+      <https://gist.github.com/XVilka/8346728>`_,
+      OpenType ligatures, mouse protocol, :doc:`hyperlinks <open_actions>`,
+      focus tracking, `bracketed paste <https://cirw.in/blog/bracketed-paste>`_
+      and several :doc:`new terminal protocol extensions
+      <protocol-extensions>`.
 
     * Supports tiling multiple terminal windows side by side in different
       :ref:`layouts <layouts>` without needing to use an extra program like tmux
@@ -352,6 +354,15 @@ For example:
     # Make the current window the active (focused) window
     focus
     launch emacs
+
+    # Add a watcher that will be called with various events that occur
+    # on all subsequent windows. See the documentation of the launch command
+    # for details on watchers.
+    watcher /some/python/file.py
+    launch mpd
+    launch irssi
+    # Remove the watcher for further windows
+    watcher clear
 
 
 Mouse features

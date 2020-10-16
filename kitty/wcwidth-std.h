@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2020-08-06
+// unicode data, built from the unicode standard on: 2020-09-22
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -2848,7 +2848,7 @@ wcwidth_std(int32_t code) {
 	}
 	return 1;
 }
-static bool
+static inline bool
 is_emoji_presentation_base(uint32_t code) {
 	switch(code) {
 		case 0x23:

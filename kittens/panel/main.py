@@ -10,8 +10,8 @@ from typing import Callable, Dict, List, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
-from kitty.options_stub import Options
 from kitty.constants import is_macos
+from kitty.os_window_size import WindowSizeData
 
 OPTIONS = r'''
 --lines
@@ -108,7 +108,7 @@ def setup_x11_window(win_id: int) -> None:
     func(win_id, window_width, window_height)
 
 
-def initial_window_size_func(opts: Options, cached_values: Dict) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
+def initial_window_size_func(opts: WindowSizeData, cached_values: Dict) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
     from kitty.fast_data_types import glfw_primary_monitor_size, set_smallest_allowed_resize
 
     def initial_window_size(cell_width: int, cell_height: int, dpi_x: float, dpi_y: float, xscale: float, yscale: float) -> Tuple[int, int]:

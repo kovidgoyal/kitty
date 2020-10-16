@@ -5,14 +5,17 @@
 from itertools import islice, repeat
 from typing import Dict, Generator, List, Optional, Sequence, Tuple
 
+from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
+from kitty.constants import Edges
 from kitty.typing import EdgeLiteral, WindowType
-from kitty.window_list import WindowList
+from kitty.window_list import WindowGroup, WindowList
 
 from .base import (
-    Borders, Layout, LayoutDimension, LayoutOpts, NeighborsMap, all_borders,
-    lgd, no_borders, normalize_biases, safe_increment_bias, variable_bias
+    BorderLine, Layout, LayoutData, LayoutDimension, LayoutOpts, NeighborsMap,
+    lgd, normalize_biases, safe_increment_bias, variable_bias
 )
+from .vertical import borders
 
 
 def neighbors_for_tall_window(
@@ -75,9 +78,7 @@ class Tall(Layout):
 
     name = 'tall'
     main_is_horizontal = True
-    only_between_border = Borders(False, False, False, True)
-    only_main_border = Borders(False, False, True, False)
-    only_main_border_mirrored = Borders(True, False, False, False)
+    no_minimal_window_borders = True
     layout_opts = TallLayoutOpts({})
     main_axis_layout = Layout.xlayout
     perp_axis_layout = Layout.ylayout
@@ -121,27 +122,27 @@ class Tall(Layout):
         self.biased_map = candidate
         return before != after
 
-    def do_layout(self, all_windows: WindowList) -> None:
+    def simple_layout(self, all_windows: WindowList) -> Generator[Tuple[WindowGroup, LayoutData, LayoutData, bool], None, None]:
         num = all_windows.num_groups
-        if num == 1:
-            self.layout_single_window_group(next(all_windows.iter_all_layoutable_groups()))
-            return
         is_fat = not self.main_is_horizontal
         mirrored = self.layout_opts.mirrored
         groups = tuple(all_windows.iter_all_layoutable_groups())
         main_bias = self.main_bias[::-1] if mirrored else self.main_bias
-        if num <= self.num_full_size_windows + 1:
-            if mirrored:
-                groups = tuple(reversed(groups))
-            if num < self.num_full_size_windows + 1:
-                main_bias = normalize_biases(main_bias[:num])
-            xlayout = self.main_axis_layout(iter(groups), bias=main_bias)
-            for wg, xl in zip(groups, xlayout):
-                yl = next(self.perp_axis_layout(iter((wg,))))
-                if is_fat:
-                    xl, yl = yl, xl
-                self.set_window_group_geometry(wg, xl, yl)
-            return
+        if mirrored:
+            groups = tuple(reversed(groups))
+        main_bias = normalize_biases(main_bias[:num])
+        xlayout = self.main_axis_layout(iter(groups), bias=main_bias)
+        for wg, xl in zip(groups, xlayout):
+            yl = next(self.perp_axis_layout(iter((wg,))))
+            if is_fat:
+                xl, yl = yl, xl
+            yield wg, xl, yl, True
+
+    def full_layout(self, all_windows: WindowList) -> Generator[Tuple[WindowGroup, LayoutData, LayoutData, bool], None, None]:
+        is_fat = not self.main_is_horizontal
+        mirrored = self.layout_opts.mirrored
+        groups = tuple(all_windows.iter_all_layoutable_groups())
+        main_bias = self.main_bias[::-1] if mirrored else self.main_bias
 
         start = lgd.central.top if is_fat else lgd.central.left
         size = 0
@@ -156,19 +157,18 @@ class Tall(Layout):
                 yl = next(self.perp_axis_layout(iter((wg,))))
                 if is_fat:
                     xl, yl = yl, xl
-                self.set_window_group_geometry(wg, xl, yl)
+                yield wg, xl, yl, True
         else:
             xlayout = self.main_axis_layout(islice(groups, self.num_full_size_windows + 1), bias=main_bias)
-            attr: EdgeLiteral = 'bottom' if is_fat else 'right'
             for i, wg in enumerate(groups):
                 if i >= self.num_full_size_windows:
                     break
                 xl = next(xlayout)
                 yl = next(self.perp_axis_layout(iter((wg,))))
+                start = xl.content_pos + xl.content_size + xl.space_after
                 if is_fat:
                     xl, yl = yl, xl
-                geom = self.set_window_group_geometry(wg, xl, yl)
-                start = getattr(geom, attr) + wg.decoration(attr)
+                yield wg, xl, yl, True
             size = (lgd.central.height if is_fat else lgd.central.width) - start
 
         ylayout = self.variable_layout(all_windows, self.biased_map)
@@ -179,35 +179,19 @@ class Tall(Layout):
             xl = next(self.main_axis_layout(iter((wg,)), start=start, size=size))
             if is_fat:
                 xl, yl = yl, xl
+            yield wg, xl, yl, False
+
+    def do_layout(self, all_windows: WindowList) -> None:
+        num = all_windows.num_groups
+        if num == 1:
+            self.layout_single_window_group(next(all_windows.iter_all_layoutable_groups()))
+            return
+        layouts = (self.simple_layout if num <= self.num_full_size_windows + 1 else self.full_layout)(all_windows)
+        for wg, xl, yl, is_full_size in layouts:
             self.set_window_group_geometry(wg, xl, yl)
 
     def neighbors_for_window(self, window: WindowType, windows: WindowList) -> NeighborsMap:
         return neighbors_for_tall_window(self.num_full_size_windows, window, windows, self.layout_opts.mirrored, self.main_is_horizontal)
-
-    def minimal_borders(self, all_windows: WindowList, needs_borders_map: Dict[int, bool]) -> Generator[Borders, None, None]:
-        mirrored = self.layout_opts.mirrored
-        only_main_border = self.only_main_border_mirrored if mirrored else self.only_main_border
-        num = all_windows.num_groups
-        last_i = num - 1
-        groups = tuple(all_windows.iter_all_layoutable_groups())
-        for i, wg in enumerate(groups):
-            if needs_borders_map[wg.id]:
-                yield all_borders
-                continue
-            if i < self.num_full_size_windows:
-                next_window_is_full_sized = last_i == i+1 or i+1 < self.num_full_size_windows
-                if next_window_is_full_sized and needs_borders_map[groups[i+1].id]:
-                    yield no_borders
-                else:
-                    yield no_borders if i == last_i else only_main_border
-                continue
-            if i == last_i:
-                yield no_borders
-                break
-            if needs_borders_map[groups[i+1].id]:
-                yield no_borders
-            else:
-                yield self.only_between_border
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         if action_name == 'increase_num_full_size_windows':
@@ -218,13 +202,86 @@ class Tall(Layout):
                 self.layout_opts.full_size -= 1
                 return True
 
+    def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
+        num = all_windows.num_groups
+        if num < 2 or not lgd.draw_minimal_borders:
+            return
+        try:
+            bw = next(all_windows.iter_all_layoutable_groups()).effective_border()
+        except StopIteration:
+            bw = 0
+        if not bw:
+            return
+        if num <= self.num_full_size_windows + 1:
+            layout = (x[:3] for x in self.simple_layout(all_windows))
+            yield from borders(layout, self.main_is_horizontal, all_windows)
+            return
+        main_layouts: List[Tuple[WindowGroup, LayoutData, LayoutData]] = []
+        perp_borders: List[BorderLine] = []
+        layouts = (self.simple_layout if num <= self.num_full_size_windows else self.full_layout)(all_windows)
+        needs_borders_map = all_windows.compute_needs_borders_map(lgd.draw_active_borders)
+        active_group = all_windows.active_group
+        mirrored = self.layout_opts.mirrored
+        for wg, xl, yl, is_full_size in layouts:
+            if is_full_size:
+                main_layouts.append((wg, xl, yl))
+            else:
+                color = BorderColor.inactive
+                if needs_borders_map.get(wg.id):
+                    color = BorderColor.active if wg is active_group else BorderColor.bell
+                if self.main_is_horizontal:
+                    e1 = Edges(
+                        xl.content_pos - xl.space_before,
+                        yl.content_pos - yl.space_before,
+                        xl.content_pos + xl.content_size + xl.space_after,
+                        yl.content_pos - yl.space_before + bw
+                    )
+                    e3 = Edges(
+                        xl.content_pos - xl.space_before,
+                        yl.content_pos + yl.content_size + yl.space_after - bw,
+                        xl.content_pos + xl.content_size + xl.space_after,
+                        yl.content_pos + yl.content_size + yl.space_after,
+                    )
+                    e2 = Edges(
+                        xl.content_pos + ((xl.content_size + xl.space_after - bw) if mirrored else -xl.space_before),
+                        yl.content_pos - yl.space_before,
+                        xl.content_pos + ((xl.content_size + xl.space_after) if mirrored else (bw - xl.space_before)),
+                        yl.content_pos + yl.content_size + yl.space_after,
+                    )
+                else:
+                    e1 = Edges(
+                        xl.content_pos - xl.space_before,
+                        yl.content_pos - yl.space_before,
+                        xl.content_pos - xl.space_before + bw,
+                        yl.content_pos + yl.content_size + yl.space_after,
+                    )
+                    e3 = Edges(
+                        xl.content_pos + xl.content_size + xl.space_after - bw,
+                        yl.content_pos - yl.space_before,
+                        xl.content_pos + xl.content_size + xl.space_after,
+                        yl.content_pos + yl.content_size + yl.space_after,
+                    )
+                    e2 = Edges(
+                        xl.content_pos - xl.space_before,
+                        yl.content_pos + ((yl.content_size + yl.space_after - bw) if mirrored else -yl.space_before),
+                        xl.content_pos + xl.content_size + xl.space_after,
+                        yl.content_pos + ((yl.content_size + yl.space_after) if mirrored else (bw - yl.space_before)),
+                    )
+                perp_borders.append(BorderLine(e1, color))
+                perp_borders.append(BorderLine(e2, color))
+                perp_borders.append(BorderLine(e3, color))
+
+        mirrored = self.layout_opts.mirrored
+        yield from borders(
+            main_layouts, self.main_is_horizontal, all_windows,
+            start_offset=int(not mirrored), end_offset=int(mirrored)
+        )
+        yield from perp_borders[1:-1]
+
 
 class Fat(Tall):
 
     name = 'fat'
     main_is_horizontal = False
-    only_between_border = Borders(False, False, True, False)
-    only_main_border = Borders(False, False, False, True)
-    only_main_border_mirrored = Borders(False, True, False, False)
     main_axis_layout = Layout.ylayout
     perp_axis_layout = Layout.xlayout

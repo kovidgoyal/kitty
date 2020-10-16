@@ -12,7 +12,8 @@ class CLIOptions:
 
 LaunchCLIOptions = AskCLIOptions = ClipboardCLIOptions = DiffCLIOptions = CLIOptions
 HintsCLIOptions = IcatCLIOptions = PanelCLIOptions = ResizeCLIOptions = CLIOptions
-ErrorCLIOptions = UnicodeCLIOptions = RCOptions = CLIOptions
+ErrorCLIOptions = UnicodeCLIOptions = RCOptions = RemoteFileCLIOptions = CLIOptions
+QueryTerminalCLIOptions = CLIOptions
 
 
 def generate_stub() -> None:
@@ -35,6 +36,9 @@ def generate_stub() -> None:
     from kittens.ask.main import option_text
     do(option_text(), 'AskCLIOptions')
 
+    from kittens.remote_file.main import option_text
+    do(option_text(), 'RemoteFileCLIOptions')
+
     from kittens.clipboard.main import OPTIONS
     do(OPTIONS(), 'ClipboardCLIOptions')
 
@@ -46,6 +50,9 @@ def generate_stub() -> None:
 
     from kittens.icat.main import options_spec
     do(options_spec(), 'IcatCLIOptions')
+
+    from kittens.query_terminal.main import options_spec
+    do(options_spec(), 'QueryTerminalCLIOptions')
 
     from kittens.panel.main import OPTIONS
     do(OPTIONS(), 'PanelCLIOptions')

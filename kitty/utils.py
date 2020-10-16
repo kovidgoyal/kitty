@@ -14,7 +14,7 @@ from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Match, NamedTuple,
+    Any, Callable, Dict, Generator, Iterable, List, Mapping, Match, NamedTuple,
     Optional, Tuple, Union, cast
 )
 
@@ -28,18 +28,21 @@ from .typing import AddressFamily, PopenType, Socket, StartupCtx
 BASE = os.path.dirname(os.path.abspath(__file__))
 
 
-def expandvars(val: str, env: Dict[str, str] = {}) -> str:
+def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool = True) -> str:
 
     def sub(m: Match) -> str:
-        key = m.group(1)
+        key = m.group(1) or m.group(2)
         result = env.get(key)
-        if result is None:
+        if result is None and fallback_to_os_env:
             result = os.environ.get(key)
         if result is None:
             result = m.group()
         return result
 
-    return re.sub(r'\$\{(\S+?)\}', sub, val)
+    if '$' not in val:
+        return val
+
+    return re.sub(r'\$(?:(\w+)|\{([^}]+)\})', sub, val)
 
 
 def platform_window_id(os_window_id: int) -> Optional[int]:
@@ -561,7 +564,7 @@ def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
 
 def parse_uri_list(text: str) -> Generator[str, None, None]:
     ' Get paths from file:// URLs '
-    from urllib.parse import urlparse, unquote
+    from urllib.parse import unquote, urlparse
     for line in text.splitlines():
         if not line or line.startswith('#'):
             continue
@@ -575,3 +578,9 @@ def parse_uri_list(text: str) -> Generator[str, None, None]:
             continue
         if purl.path:
             yield unquote(purl.path)
+
+
+class SSHConnectionData(NamedTuple):
+    binary: str
+    hostname: str
+    port: Optional[int] = None

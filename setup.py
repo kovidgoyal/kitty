@@ -63,6 +63,7 @@ class Options(argparse.Namespace):
     for_freeze: bool = False
     libdir_name: str = 'lib'
     extra_logging: List[str] = []
+    link_time_optimization: bool = True
     update_check_interval: float = 24
     egl_library: Optional[str] = None
     startup_notification_library: Optional[str] = None
@@ -212,7 +213,10 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
 
 def test_compile(cc: str, *cflags: str, src: Optional[str] = None) -> bool:
     src = src or 'int main(void) { return 0; }'
-    p = subprocess.Popen([cc] + list(cflags) + ['-x', 'c', '-o', os.devnull, '-'], stdin=subprocess.PIPE)
+    p = subprocess.Popen(
+        [cc] + list(cflags) + ['-x', 'c', '-o', os.devnull, '-'],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE
+    )
     stdin = p.stdin
     assert stdin is not None
     try:
@@ -234,6 +238,7 @@ def init_env(
     debug: bool = False,
     sanitize: bool = False,
     native_optimizations: bool = True,
+    link_time_optimization: bool = True,
     profile: bool = False,
     egl_library: Optional[str] = None,
     startup_notification_library: Optional[str] = None,
@@ -263,10 +268,11 @@ def init_env(
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
-            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes -std=c11'
+            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {}'
             ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
         ).format(
             float_conversion,
+            '' if is_openbsd else '-std=c11',
             optimize,
             ' '.join(sanitize_args),
             stack_protector,
@@ -287,7 +293,7 @@ def init_env(
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
-    if not debug and not sanitize:
+    if not debug and not sanitize and not is_openbsd and link_time_optimization:
         # See https://github.com/google/sanitizers/issues/647
         cflags.append('-flto')
         ldflags.append('-flto')
@@ -329,20 +335,29 @@ def kitty_env() -> Env:
     cppflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
+    cflags.extend(pkg_config('lcms2', '--cflags-only-I'))
     if is_macos:
-        font_libs = ['-framework', 'CoreText', '-framework', 'CoreGraphics']
+        platform_libs = [
+            '-framework', 'CoreText', '-framework', 'CoreGraphics',
+        ]
+        user_notifications_framework = first_successful_compile(ans.cc, '-framework UserNotifications')
+        if user_notifications_framework:
+            platform_libs.extend(shlex.split(user_notifications_framework))
+        else:
+            cppflags.append('-DKITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API')
         # Apple deprecated OpenGL in Mojave (10.14) silence the endless
         # warnings about it
         cppflags.append('-DGL_SILENCE_DEPRECATION')
     else:
         cflags.extend(pkg_config('fontconfig', '--cflags-only-I'))
-        font_libs = pkg_config('fontconfig', '--libs')
+        platform_libs = pkg_config('fontconfig', '--libs')
     cflags.extend(pkg_config('harfbuzz', '--cflags-only-I'))
-    font_libs.extend(pkg_config('harfbuzz', '--libs'))
+    platform_libs.extend(pkg_config('harfbuzz', '--libs'))
     pylib = get_python_flags(cflags)
     gl_libs = ['-framework', 'OpenGL'] if is_macos else pkg_config('gl', '--libs')
     libpng = pkg_config('libpng', '--libs')
-    ans.ldpaths += pylib + font_libs + gl_libs + libpng
+    lcms2 = pkg_config('lcms2', '--libs')
+    ans.ldpaths += pylib + platform_libs + gl_libs + libpng + lcms2
     if is_macos:
         ans.ldpaths.extend('-framework Cocoa'.split())
     elif not is_openbsd:
@@ -471,14 +486,17 @@ def parallel_run(items: List[Command]) -> None:
             compile_cmd.on_success()
 
     printed = False
+    isatty = sys.stdout.isatty()
     while items and failed is None:
         while len(workers) < num_workers and items:
             compile_cmd = items.pop()
             num += 1
             if verbose:
                 print(' '.join(compile_cmd.cmd))
-            else:
+            elif isatty:
                 print('\r\x1b[K[{}/{}] {}'.format(num, total, compile_cmd.desc), end='')
+            else:
+                print('[{}/{}] {}'.format(num, total, compile_cmd.desc), flush=True)
             printed = True
             w = subprocess.Popen(compile_cmd.cmd, stdout=subprocess.DEVNULL, stderr=subprocess.STDOUT)
             workers[w.pid] = compile_cmd, w
@@ -699,7 +717,7 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
 def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
     global env
     env = init_env(
-        args.debug, args.sanitize, native_optimizations, args.profile,
+        args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
         args.egl_library, args.startup_notification_library, args.canberra_library,
         args.extra_logging
     )
@@ -860,6 +878,10 @@ Categories=System;TerminalEmulator;
 def macos_info_plist() -> bytes:
     import plistlib
     VERSION = '.'.join(map(str, version))
+
+    def access(what: str, verb: str = 'would like to access') -> str:
+        return f'A program running inside kitty {verb} {what}'
+
     pl = dict(
         # see https://github.com/kovidgoyal/kitty/issues/1233
         CFBundleDevelopmentRegion='English',
@@ -900,6 +922,16 @@ def macos_info_plist() -> bytes:
                 'NSSendTypes': ['NSFilenamesPboardType', 'public.plain-text'],
             },
         ],
+        NSAppleEventsUsageDescription=access('AppleScript.'),
+        NSCalendarsUsageDescription=access('your calendar data.'),
+        NSCameraUsageDescription=access('the camera.'),
+        NSContactsUsageDescription=access('your contacts.'),
+        NSLocationAlwaysUsageDescription=access('your location information, even in the background.'),
+        NSLocationUsageDescription=access('your location information.'),
+        NSLocationWhenInUseUsageDescription=access('your location while active.'),
+        NSMicrophoneUsageDescription=access('your microphone.'),
+        NSRemindersUsageDescription=access('your reminders.'),
+        NSSystemAdministrationUsageDescription=access('elevated privileges.', 'requires'),
     )
     return plistlib.dumps(pl)
 
@@ -1045,7 +1077,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         'action',
         nargs='?',
         default=Options.action,
-        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher clean'.split(),
+        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher clean export-ci-bundles'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -1131,14 +1163,19 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         help='The filename argument passed to dlopen for libcanberra.'
         ' This can be used to change the name of the loaded library or specify an absolute path.'
     )
+    p.add_argument(
+        '--disable-link-time-optimization',
+        dest='link_time_optimization',
+        default=Options.link_time_optimization,
+        action='store_false',
+        help='Turn off Link Time Optimization (LTO).'
+    )
     return p
 # }}}
 
 
 def main() -> None:
     global verbose
-    if sys.version_info < (3, 5):
-        raise SystemExit('python >= 3.5 required')
     args = option_parser().parse_args(namespace=Options())
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
@@ -1180,6 +1217,12 @@ def main() -> None:
             build(args)
             package(args, bundle_type='macos-package')
             print('kitty.app successfully built!')
+        elif args.action == 'export-ci-bundles':
+            cmd = [sys.executable, '../bypy', 'export']
+            dest = ['download.calibre-ebook.com:/srv/download/ci/kitty']
+            subprocess.check_call(cmd + ['linux'] + dest)
+            subprocess.check_call(cmd + ['macos'] + dest)
+            subprocess.check_call(cmd + ['linux', '32'] + dest)
 
 
 if __name__ == '__main__':

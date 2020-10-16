@@ -90,7 +90,9 @@ def save_notification(version: Version) -> None:
     for version in sorted(notified_versions):
         n = notified_versions[version]
         lines.append('{},{},{}'.format(
-            '.'.join(map(str, n.version)), n.time_of_last_notification, n.count))
+            '.'.join(map(str, n.version)),
+            n.time_of_last_notification,
+            n.notification_count))
     atomic_save('\n'.join(lines).encode('utf-8'), version_notification_log())
 
 
@@ -109,7 +111,7 @@ def run_worker() -> None:
         print(get_released_version())
 
 
-def update_check(timer_id: Optional[int] = None) -> bool:
+def update_check() -> bool:
     try:
         p = subprocess.Popen([
             kitty_exe(), '+runpy',
@@ -123,6 +125,10 @@ def update_check(timer_id: Optional[int] = None) -> bool:
     return True
 
 
+def update_check_callback(timer_id: Optional[int]) -> None:
+    update_check()
+
+
 def run_update_check(interval: float = CHECK_INTERVAL) -> None:
     if update_check():
-        add_timer(update_check, interval)
+        add_timer(update_check_callback, interval)

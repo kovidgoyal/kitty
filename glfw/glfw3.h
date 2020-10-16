@@ -1502,7 +1502,7 @@ typedef void (* GLFWwindowiconifyfun)(GLFWwindow*,int);
  *  @endcode
  *
  *  @param[in] window The window that was maximized or restored.
- *  @param[in] iconified `true` if the window was maximized, or
+ *  @param[in] maximized `true` if the window was maximized, or
  *  `false` if it was restored.
  *
  *  @sa @ref window_maximize

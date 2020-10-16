@@ -4,7 +4,10 @@
 
 import re
 from binascii import hexlify, unhexlify
-from typing import cast, Dict
+from typing import TYPE_CHECKING, Dict, Generator, Optional, cast
+
+if TYPE_CHECKING:
+    from .options_stub import Options
 
 
 def modify_key_bytes(keybytes: bytes, amt: int) -> bytes:
@@ -449,28 +452,42 @@ def key_as_bytes(name: str) -> bytes:
     return ans.encode('ascii')
 
 
-def get_capabilities(query_string: str) -> str:
+def get_capabilities(query_string: str, opts: 'Options') -> Generator[str, None, None]:
     from .fast_data_types import ERROR_PREFIX
-    ans = []
-    try:
-        for q in query_string.split(';'):
-            name = qname = unhexlify(q).decode('utf-8')
-            if name in ('TN', 'name'):
-                val = names[0]
+
+    def result(encoded_query_name: str, x: Optional[str] = None) -> str:
+        if x is None:
+            return '0+r' + encoded_query_name
+        return '1+r' + encoded_query_name + '=' + hexlify(str(x).encode('utf-8')).decode('ascii')
+
+    for encoded_query_name in query_string.split(';'):
+        name = qname = unhexlify(encoded_query_name).decode('utf-8')
+        if name in ('TN', 'name'):
+            yield result(encoded_query_name, names[0])
+        elif name.startswith('kitty-query-'):
+            name = name[len('kitty-query-'):]
+            if name == 'version':
+                from .constants import str_version
+                yield result(encoded_query_name, str_version)
+            elif name == 'allow_hyperlinks':
+                yield result(encoded_query_name,
+                             'ask' if opts.allow_hyperlinks == 0b11 else ('yes' if opts.allow_hyperlinks else 'no'))
             else:
+                from .utils import log_error
+                log_error('Unknown kitty terminfo query:', name)
+                yield result(encoded_query_name)
+        else:
+            try:
+                val = queryable_capabilities[name]
+            except KeyError:
                 try:
-                    val = queryable_capabilities[name]
-                except KeyError:
-                    try:
-                        qname = termcap_aliases[name]
-                        val = queryable_capabilities[qname]
-                    except Exception:
-                        from .utils import log_error
-                        log_error(ERROR_PREFIX, 'Unknown terminfo property:', name)
-                        raise
-                if qname in string_capabilities and '%' not in val:
-                    val = key_as_bytes(qname).decode('ascii')
-            ans.append(q + '=' + hexlify(str(val).encode('utf-8')).decode('ascii'))
-        return '1+r' + ';'.join(ans)
-    except Exception:
-        return '0+r' + query_string
+                    qname = termcap_aliases[name]
+                    val = queryable_capabilities[qname]
+                except Exception:
+                    from .utils import log_error
+                    log_error(ERROR_PREFIX, 'Unknown terminfo property:', name)
+                    yield result(encoded_query_name)
+                    continue
+            if qname in string_capabilities and '%' not in val:
+                val = key_as_bytes(qname).decode('ascii')
+            yield result(encoded_query_name, val)

@@ -9,6 +9,9 @@
 #include "state.h"
 #include "monotonic.h"
 #include <Cocoa/Cocoa.h>
+#ifndef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
+#include <UserNotifications/UserNotifications.h>
+#endif
 
 #include <AvailabilityMacros.h>
 // Needed for _NSGetProgname
@@ -133,6 +136,7 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
 }
 
 static PyObject *notification_activated_callback = NULL;
+
 static PyObject*
 set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     if (notification_activated_callback) Py_DECREF(notification_activated_callback);
@@ -140,6 +144,8 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_INCREF(callback);
     Py_RETURN_NONE;
 }
+
+#ifdef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
 
 @interface NotificationDelegate : NSObject <NSUserNotificationCenterDelegate>
 @end
@@ -170,24 +176,12 @@ set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
 
 static PyObject*
 cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
-    char *identifier = NULL, *title = NULL, *subtitle = NULL, *informativeText = NULL, *path_to_image = NULL;
-    if (!PyArg_ParseTuple(args, "zssz|z", &identifier, &title, &informativeText, &path_to_image, &subtitle)) return NULL;
+    char *identifier = NULL, *title = NULL, *informativeText = NULL, *subtitle = NULL;
+    if (!PyArg_ParseTuple(args, "zsz|z", &identifier, &title, &informativeText, &subtitle)) return NULL;
     NSUserNotificationCenter *center = [NSUserNotificationCenter defaultUserNotificationCenter];
     if (!center) {PyErr_SetString(PyExc_RuntimeError, "Failed to get the user notification center"); return NULL; }
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
     NSUserNotification *n = [NSUserNotification new];
-    NSImage *img = nil;
-    if (path_to_image) {
-        NSString *p = @(path_to_image);
-        NSURL *url = [NSURL fileURLWithPath:p];
-        img = [[NSImage alloc] initWithContentsOfURL:url];
-        [url release]; [p release];
-        if (img) {
-            [n setValue:img forKey:@"_identityImage"];
-            [n setValue:@(false) forKey:@"_identityImageHasBorder"];
-        }
-        [img release];
-    }
 #define SET(x) { \
     if (x) { \
         NSString *t = @(x); \
@@ -202,6 +196,111 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     [center deliverNotification:n];
     Py_RETURN_NONE;
 }
+
+#else
+
+@interface NotificationDelegate : NSObject <UNUserNotificationCenterDelegate>
+@end
+
+@implementation NotificationDelegate
+    - (void)userNotificationCenter:(UNUserNotificationCenter *)center
+            didReceiveNotificationResponse:(UNNotificationResponse *)response
+            withCompletionHandler:(void (^)(void))completionHandler {
+        (void)(center);
+        if (notification_activated_callback) {
+            NSString *identifier = [[[response notification] request] identifier];
+            PyObject *ret = PyObject_CallFunction(notification_activated_callback, "z",
+                    identifier ? [identifier UTF8String] : NULL);
+            if (ret == NULL) PyErr_Print();
+            else Py_DECREF(ret);
+        }
+        completionHandler();
+    }
+@end
+
+
+static void
+schedule_notification(const char *identifier, const char *title, const char *body, const char *subtitle) {
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    if (!center) return;
+    // Configure the notification's payload.
+    UNMutableNotificationContent* content = [[UNMutableNotificationContent alloc] init];
+    if (title) content.title = @(title);
+    if (body) content.body = @(body);
+    if (subtitle) content.subtitle = @(subtitle);
+    // Deliver the notification
+    static unsigned long counter = 1;
+    UNNotificationRequest* request = [
+        UNNotificationRequest requestWithIdentifier:(identifier ? @(identifier) : [NSString stringWithFormat:@"Id_%lu", counter++])
+        content:content trigger:nil];
+    [center addNotificationRequest:request withCompletionHandler:^(NSError * _Nullable error) {
+        if (error != nil) {
+            log_error("Failed to show notification: %s", [[error localizedDescription] UTF8String]);
+        }
+    }];
+    [content release];
+}
+
+
+typedef struct {
+    char *identifier, *title, *body, *subtitle;
+} QueuedNotification;
+
+typedef struct {
+    QueuedNotification *notifications;
+    size_t count, capacity;
+} NotificationQueue;
+static NotificationQueue notification_queue = {0};
+
+static void
+queue_notification(const char *identifier, const char *title, const char* body, const char* subtitle) {
+    ensure_space_for((&notification_queue), notifications, QueuedNotification, notification_queue.count + 16, capacity, 16, true);
+    QueuedNotification *n = notification_queue.notifications + notification_queue.count++;
+    n->identifier = identifier ? strdup(identifier) : NULL;
+    n->title = title ? strdup(title) : NULL;
+    n->body = body ? strdup(body) : NULL;
+    n->subtitle = subtitle ? strdup(subtitle) : NULL;
+}
+
+static void
+drain_pending_notifications(BOOL granted) {
+    if (granted) {
+        for (size_t i = 0; i < notification_queue.count; i++) {
+            QueuedNotification *n = notification_queue.notifications + i;
+            schedule_notification(n->identifier, n->title, n->body, n->subtitle);
+        }
+    }
+    while(notification_queue.count) {
+        QueuedNotification *n = notification_queue.notifications + --notification_queue.count;
+        free(n->identifier); free(n->title); free(n->body); free(n->subtitle);
+        n->identifier = NULL; n->title = NULL; n->body = NULL; n->subtitle = NULL;
+    }
+}
+
+static PyObject*
+cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
+    char *identifier = NULL, *title = NULL, *body = NULL, *subtitle = NULL;
+    if (!PyArg_ParseTuple(args, "zsz|z", &identifier, &title, &body, &subtitle)) return NULL;
+
+    UNUserNotificationCenter *center = [UNUserNotificationCenter currentNotificationCenter];
+    if (!center) Py_RETURN_NONE;
+    if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
+    queue_notification(identifier, title, body, subtitle);
+
+    [center requestAuthorizationWithOptions:(UNAuthorizationOptionAlert)
+        completionHandler:^(BOOL granted, NSError * _Nullable error) {
+            if (error != nil) {
+                log_error("Failed to request permission for showing notification: %s", [[error localizedDescription] UTF8String]);
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                drain_pending_notifications(granted);
+            });
+        }
+    ];
+    Py_RETURN_NONE;
+}
+
+#endif
 
 @interface ServiceProvider : NSObject
 @end
@@ -497,8 +596,15 @@ cleanup() {
 
     if (dockMenu) [dockMenu release];
     dockMenu = nil;
-    if (notification_activated_callback) Py_DECREF(notification_activated_callback);
-    notification_activated_callback = NULL;
+    Py_CLEAR(notification_activated_callback);
+
+#ifndef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
+    drain_pending_notifications(NO);
+    free(notification_queue.notifications);
+    notification_queue.notifications = NULL;
+    notification_queue.capacity = 0;
+#endif
+
     } // autoreleasepool
 }
 

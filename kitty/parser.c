@@ -4,6 +4,9 @@
  * Distributed under terms of the GPL3 license.
  */
 
+// Need _POSIX_C_SOURCE for strtok_r
+#define _POSIX_C_SOURCE 200809L
+
 #include "data-types.h"
 #include "control-codes.h"
 #include "screen.h"
@@ -121,6 +124,9 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 #define REPORT_OSC2(name, code, string) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sIO", #name, code, string)); PyErr_Clear();
 
+#define REPORT_HYPERLINK(id, url) \
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "szz", "set_active_hyperlink", id, url)); PyErr_Clear();
+
 #else
 
 #define DUMP_UNUSED UNUSED
@@ -134,6 +140,7 @@ _report_params(PyObject *dump_callback, const char *name, unsigned int *params, 
 #define FLUSH_DRAW
 #define REPORT_OSC(name, string)
 #define REPORT_OSC2(name, code, string)
+#define REPORT_HYPERLINK(id, url)
 
 #endif
 
@@ -301,10 +308,58 @@ handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_cal
 } // }}}
 
 // OSC mode {{{
+
+static inline bool
+parse_osc_8(char *buf, char **id, char **url) {
+    char *boundary = strstr(buf, ";");
+    if (boundary == NULL) return false;
+    *boundary = 0;
+    if (*(boundary + 1)) *url = boundary + 1;
+    char *save, *token = strtok_r(buf, ":", &save);
+    while (token != NULL) {
+        size_t len = strlen(token);
+        if (len > 3 && token[0] == 'i' && token[1] == 'd' && token[2] == '=' && token[3]) {
+            *id = token + 3;
+            break;
+        }
+        token = strtok_r(NULL, ":", &save);
+    }
+    return true;
+}
+
+static inline void
+dispatch_hyperlink(Screen *screen, size_t pos, size_t size, PyObject DUMP_UNUSED *dump_callback) {
+    // since the spec says only ASCII printable chars are allowed in OSC 8, we
+    // can just convert to char* directly
+    if (!size) return;  // ignore empty OSC 8 since it must have two semi-colons to be valid, which means one semi-colon here
+    char *id = NULL, *url = NULL;
+    char *data = malloc(size + 1);
+    if (!data) fatal("Out of memory");
+    for (size_t i = 0; i < size; i++) {
+        data[i] = screen->parser_buf[i + pos] & 0x7f;
+        if (data[i] < 32 || data[i] > 126) data[i] = '_';
+    }
+    data[size] = 0;
+
+    if (parse_osc_8(data, &id, &url)) {
+        REPORT_HYPERLINK(id, url);
+        set_active_hyperlink(screen, id, url);
+    } else {
+        REPORT_ERROR("Ignoring malformed OSC 8 code");
+    }
+
+    free(data);
+}
+
 static inline void
 dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
+#define DISPATCH_OSC_WITH_CODE(name) REPORT_OSC2(name, code, string); name(screen, code, string);
 #define DISPATCH_OSC(name) REPORT_OSC(name, string); name(screen, string);
-#define SET_COLOR(name) REPORT_OSC2(name, code, string); name(screen, code, string);
+#define START_DISPATCH {\
+    PyObject *string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + i, limit - i); \
+    if (string) {
+#define END_DISPATCH Py_CLEAR(string); } PyErr_Clear(); break; }
+
     const unsigned int limit = screen->parser_buf_pos;
     unsigned int code=0, i;
     for (i = 0; i < MIN(limit, 5u); i++) {
@@ -314,54 +369,66 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         code = utoi(screen->parser_buf, i);
         if (i < limit && screen->parser_buf[i] == ';') i++;
     }
-    PyObject *string = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, screen->parser_buf + i, limit - i);
-    if (string != NULL) {
-        switch(code) {
-            case 0:
-                DISPATCH_OSC(set_title);
-                DISPATCH_OSC(set_icon);
-                break;
-            case 1:
-                DISPATCH_OSC(set_icon);
-                break;
-            case 2:
-                DISPATCH_OSC(set_title);
-                break;
-            case 4:
-            case 104:
-                SET_COLOR(set_color_table_color);
-                break;
-            case 10:
-            case 11:
-            case 12:
-            case 17:
-            case 19:
-            case 110:
-            case 111:
-            case 112:
-            case 117:
-            case 119:
-                SET_COLOR(set_dynamic_color);
-                break;
-            case 52:
-                DISPATCH_OSC(clipboard_control);
-                break;
-            case 30001:
-                REPORT_COMMAND(screen_push_dynamic_colors);
-                screen_push_dynamic_colors(screen);
-                break;
-            case 30101:
-                REPORT_COMMAND(screen_pop_dynamic_colors);
-                screen_pop_dynamic_colors(screen);
-                break;
-            default:
-                REPORT_ERROR("Unknown OSC code: %u", code);
-                break;
-        }
-        Py_CLEAR(string);
+    switch(code) {
+        case 0:
+            START_DISPATCH
+            DISPATCH_OSC(set_title);
+            DISPATCH_OSC(set_icon);
+            END_DISPATCH
+        case 1:
+            START_DISPATCH
+            DISPATCH_OSC(set_icon);
+            END_DISPATCH
+        case 2:
+            START_DISPATCH
+            DISPATCH_OSC(set_title);
+            END_DISPATCH
+        case 4:
+        case 104:
+            START_DISPATCH
+            DISPATCH_OSC_WITH_CODE(set_color_table_color);
+            END_DISPATCH
+        case 8:
+            dispatch_hyperlink(screen, i, limit-i, dump_callback);
+            break;
+        case 9:
+        case 99:
+            START_DISPATCH
+            DISPATCH_OSC_WITH_CODE(desktop_notify)
+            END_DISPATCH
+        case 10:
+        case 11:
+        case 12:
+        case 17:
+        case 19:
+        case 110:
+        case 111:
+        case 112:
+        case 117:
+        case 119:
+            START_DISPATCH
+            DISPATCH_OSC_WITH_CODE(set_dynamic_color);
+            END_DISPATCH
+        case 52:
+            START_DISPATCH
+            DISPATCH_OSC(clipboard_control);
+            END_DISPATCH
+        case 30001:
+            REPORT_COMMAND(screen_push_dynamic_colors);
+            screen_push_dynamic_colors(screen);
+            break;
+        case 30101:
+            REPORT_COMMAND(screen_pop_dynamic_colors);
+            screen_pop_dynamic_colors(screen);
+            break;
+        default:
+            REPORT_ERROR("Unknown OSC code: %u", code);
+            break;
     }
 #undef DISPATCH_OSC
-#undef SET_COLOR
+#undef DISPATCH_OSC_WITH_CODE
+#undef START_DISPATCH
+#undef END_DISPATCH
 }
 // }}}
 

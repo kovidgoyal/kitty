@@ -130,12 +130,48 @@ font_group_is_unused(FontGroup *fg) {
     return true;
 }
 
+void
+free_maps(Font *font) {
+#define free_a_map(type, attr) {\
+    type *s, *t; \
+    for (size_t i = 0; i < sizeof(font->attr)/sizeof(font->attr[0]); i++) { \
+        s = font->attr[i].next; \
+        while (s) { \
+            t = s; \
+            s = s->next; \
+            free(t); \
+        } \
+    }\
+    memset(font->attr, 0, sizeof(font->attr)); \
+}
+    free_a_map(SpritePosition, sprite_map);
+    free_a_map(SpecialGlyphCache, special_glyph_cache);
+#undef free_a_map
+}
+
+static inline void
+del_font(Font *f) {
+    Py_CLEAR(f->face);
+    free(f->ffs_hb_features); f->ffs_hb_features = NULL;
+    free_maps(f);
+    f->bold = false; f->italic = false;
+}
+
+static inline void
+del_font_group(FontGroup *fg) {
+    free(fg->canvas); fg->canvas = NULL;
+    fg->sprite_map = free_sprite_map(fg->sprite_map);
+    for (size_t i = 0; i < fg->fonts_count; i++) del_font(fg->fonts + i);
+    free(fg->fonts); fg->fonts = NULL;
+}
+
 static inline void
 trim_unused_font_groups(void) {
     save_window_font_groups();
     size_t i = 0;
     while (i < num_font_groups) {
         if (font_group_is_unused(font_groups + i)) {
+            del_font_group(font_groups + i);
             size_t num_to_right = (--num_font_groups) - i;
             if (!num_to_right) break;
             memmove(font_groups + i, font_groups + 1 + i, num_to_right * sizeof(FontGroup));
@@ -283,25 +319,6 @@ sprite_tracker_current_layout(FONTS_DATA_HANDLE data, unsigned int *x, unsigned 
 }
 
 void
-free_maps(Font *font) {
-#define free_a_map(type, attr) {\
-    type *s, *t; \
-    for (size_t i = 0; i < sizeof(font->attr)/sizeof(font->attr[0]); i++) { \
-        s = font->attr[i].next; \
-        while (s) { \
-            t = s; \
-            s = s->next; \
-            free(t); \
-        } \
-    }\
-    memset(font->attr, 0, sizeof(font->attr)); \
-}
-    free_a_map(SpritePosition, sprite_map);
-    free_a_map(SpecialGlyphCache, special_glyph_cache);
-#undef free_a_map
-}
-
-void
 clear_sprite_map(Font *font) {
 #define CLEAR(s) s->filled = false; s->rendered = false; s->colored = false; s->glyph = 0; zero_at_ptr(&s->extra_glyphs); s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
     SpritePosition *s;
@@ -382,22 +399,6 @@ init_font(Font *f, PyObject *face, bool bold, bool italic, bool emoji_presentati
         memcpy(f->ffs_hb_features + f->num_ffs_hb_features++, &hb_features[CALT_FEATURE], sizeof(hb_feature_t));
     }
     return true;
-}
-
-static inline void
-del_font(Font *f) {
-    Py_CLEAR(f->face);
-    free(f->ffs_hb_features); f->ffs_hb_features = NULL;
-    free_maps(f);
-    f->bold = false; f->italic = false;
-}
-
-static inline void
-del_font_group(FontGroup *fg) {
-    free(fg->canvas); fg->canvas = NULL;
-    fg->sprite_map = free_sprite_map(fg->sprite_map);
-    for (size_t i = 0; i < fg->fonts_count; i++) del_font(fg->fonts + i);
-    free(fg->fonts); fg->fonts = NULL;
 }
 
 static inline void
@@ -600,6 +601,8 @@ START_ALLOW_CASE_RANGE
         case 0xe0ba: //   
         case 0xe0bc: // 
         case 0xe0be: //   
+        case 0x1fb00 ... 0x1fb8b:  // symbols for legacy computing
+        case 0x1fba0 ... 0x1fbae:
             return BOX_FONT;
         default:
             ans = in_symbol_maps(fg, cpu_cell->ch);
@@ -637,8 +640,12 @@ START_ALLOW_CASE_RANGE
             return ch - 0x2500; // IDs from 0x00 to 0x9f
         case 0xe0b0 ... 0xe0d4:
             return 0xa0 + ch - 0xe0b0; // IDs from 0xa0 to 0xc4
+        case 0x1fb00 ... 0x1fb8b:
+            return 0xc5 + ch - 0x1fb00; // IDs from 0xc5 to 0x150
+        case 0x1fba0 ... 0x1fbae:
+            return 0x151 + ch - 0x1fba0;
         default:
-            return 0xff;
+            return 0xffff;
     }
 END_ALLOW_CASE_RANGE
 }

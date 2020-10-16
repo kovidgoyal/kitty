@@ -8,6 +8,8 @@ import sys
 import weakref
 from collections import deque
 from enum import IntEnum
+from functools import partial
+from gettext import gettext as _
 from itertools import chain
 from typing import (
     Any, Callable, Deque, Dict, Iterable, List, Optional, Pattern, Sequence,
@@ -20,16 +22,17 @@ from .config import build_ansi_color_table
 from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
-    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CSI, DCS, DECORATION, DIM,
+    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    STRIKETHROUGH, TINT_PROGRAM, Screen, add_window, cell_size_for_window,
-    compile_program, get_boss, get_clipboard_string, init_cell_program,
-    pt_to_px, set_clipboard_string, set_titlebar_color, set_window_padding,
-    set_window_render_data, update_window_title, update_window_visibility,
-    viewport_for_window
+    STRIKETHROUGH, TINT_PROGRAM, Screen, add_timer, add_window,
+    cell_size_for_window, compile_program, get_boss, get_clipboard_string,
+    init_cell_program, pt_to_px, set_clipboard_string, set_titlebar_color,
+    set_window_padding, set_window_render_data, update_window_title,
+    update_window_visibility, viewport_for_window
 )
 from .keys import defines, extended_key_event, keyboard_mode_name
+from .notify import NotificationCommand, handle_notification_cmd
 from .options_stub import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
@@ -86,9 +89,48 @@ class Watcher:
 
 class Watchers:
 
+    on_resize: List[Watcher]
+    on_close: List[Watcher]
+    on_focus_change: List[Watcher]
+
     def __init__(self) -> None:
-        self.on_resize: List[Watcher] = []
-        self.on_close: List[Watcher] = []
+        self.on_resize = []
+        self.on_close = []
+        self.on_focus_change = []
+
+    def add(self, others: 'Watchers') -> None:
+        def merge(base: List[Watcher], other: List[Watcher]) -> None:
+            for x in other:
+                if x not in base:
+                    base.append(x)
+        merge(self.on_resize, others.on_resize)
+        merge(self.on_close, others.on_close)
+        merge(self.on_focus_change, others.on_focus_change)
+
+    def clear(self) -> None:
+        del self.on_close[:], self.on_resize[:], self.on_focus_change[:]
+
+    def copy(self) -> 'Watchers':
+        ans = Watchers()
+        ans.on_close = self.on_close[:]
+        ans.on_resize = self.on_resize[:]
+        ans.on_focus_change = self.on_focus_change
+        return ans
+
+    @property
+    def has_watchers(self) -> bool:
+        return bool(self.on_close or self.on_resize or self.on_focus_change)
+
+
+def call_watchers(windowref: Callable[[], Optional['Window']], which: str, data: Dict[str, Any]) -> None:
+
+    def callback(timer_id: Optional[int]) -> None:
+        w = windowref()
+        if w is not None:
+            watchers: List[Watcher] = getattr(w.watchers, which)
+            w.call_watchers(watchers, data)
+
+    add_timer(callback, 0, False)
 
 
 def calculate_gl_geometry(window_geometry: WindowGeometry, viewport_width: int, viewport_height: int, cell_width: int, cell_height: int) -> ScreenGeometry:
@@ -98,6 +140,38 @@ def calculate_gl_geometry(window_geometry: WindowGeometry, viewport_width: int, 
     xstart = -1 + 2 * xmargin
     ystart = 1 - 2 * ymargin
     return ScreenGeometry(xstart, ystart, window_geometry.xnum, window_geometry.ynum, dx, dy)
+
+
+def as_text(
+    screen: Screen,
+    as_ansi: bool = False,
+    add_history: bool = False,
+    add_wrap_markers: bool = False,
+    alternate_screen: bool = False
+) -> str:
+    lines: List[str] = []
+    add_history = add_history and not (screen.is_using_alternate_linebuf() ^ alternate_screen)
+    if alternate_screen:
+        f = screen.as_text_alternate
+    else:
+        f = screen.as_text_non_visual if add_history else screen.as_text
+    f(lines.append, as_ansi, add_wrap_markers)
+    if add_history:
+        h: List[str] = []
+        pht = screen.historybuf.pagerhist_as_text()
+        if pht:
+            h.append(pht)
+        if h and (not as_ansi or not add_wrap_markers):
+            sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
+            h = list(map(sanitizer, h))
+        screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
+        if h:
+            if not screen.linebuf.is_continued(0):
+                h[-1] += '\n'
+            if as_ansi:
+                h[-1] += '\x1b[m'
+        return ''.join(chain(h, lines))
+    return ''.join(lines)
 
 
 class LoadShaderPrograms:
@@ -218,6 +292,7 @@ class Window:
         watchers: Optional[Watchers] = None
     ):
         self.watchers = watchers or Watchers()
+        self.prev_osc99_cmd = NotificationCommand()
         self.action_on_close: Optional[Callable] = None
         self.action_on_removal: Optional[Callable] = None
         self.current_marker_spec: Optional[Tuple[str, Union[str, Tuple[Tuple[int, str], ...]]]] = None
@@ -289,7 +364,12 @@ class Window:
             self.update_effective_padding()
 
     def effective_border(self) -> int:
-        return pt_to_px(self.opts.window_border_width, self.os_window_id)
+        val, unit = self.opts.window_border_width
+        if unit == 'pt':
+            val = max(1 if val > 0 else 0, pt_to_px(val, self.os_window_id))
+        else:
+            val = round(val)
+        return int(val)
 
     @property
     def title(self) -> str:
@@ -383,7 +463,7 @@ class Window:
             self.screen.resize(new_geometry.ynum, new_geometry.xnum)
             sg = self.update_position(new_geometry)
             self.needs_layout = False
-            self.call_watchers(self.watchers.on_resize, {'old_geometry': self.geometry, 'new_geometry': new_geometry})
+            call_watchers(weakref.ref(self), 'on_resize', {'old_geometry': self.geometry, 'new_geometry': new_geometry})
         else:
             sg = self.update_position(new_geometry)
         current_pty_size = (
@@ -434,20 +514,80 @@ class Window:
         self.override_title = title or None
         self.title_updated()
 
+    def desktop_notify(self, osc_code: int, raw_data: str) -> None:
+        cmd = handle_notification_cmd(osc_code, raw_data, self.id, self.prev_osc99_cmd)
+        if cmd is not None and osc_code == 99:
+            self.prev_osc99_cmd = cmd
+
     # screen callbacks {{{
     def use_utf8(self, on: bool) -> None:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
 
+    def open_url(self, url: str, hyperlink_id: int, cwd: Optional[str] = None) -> None:
+        if hyperlink_id:
+            if not self.opts.allow_hyperlinks:
+                return
+            from urllib.parse import unquote, urlparse, urlunparse
+            try:
+                purl = urlparse(url)
+            except Exception:
+                return
+            if (not purl.scheme or purl.scheme == 'file'):
+                if purl.netloc:
+                    from socket import gethostname
+                    try:
+                        hostname = gethostname()
+                    except Exception:
+                        hostname = ''
+                    remote_hostname = purl.netloc.partition(':')[0]
+                    if remote_hostname and remote_hostname != hostname and remote_hostname != 'localhost':
+                        self.handle_remote_file(purl.netloc, unquote(purl.path))
+                        return
+                    url = urlunparse(purl._replace(netloc=''))
+            if self.opts.allow_hyperlinks & 0b10:
+                from kittens.tui.operations import styled
+                get_boss()._run_kitten('ask', ['--type=choices', '--message', _(
+                    'What would you like to do with this URL:\n') +
+                    styled(unquote(url), fg='yellow'),
+                    '--choice=o:Open', '--choice=c:Copy to clipboard', '--choice=n;red:Nothing'
+                    ],
+                    window=self,
+                    custom_callback=partial(self.hyperlink_open_confirmed, url, cwd)
+                )
+                return
+        get_boss().open_url(url, cwd=cwd)
+
+    def hyperlink_open_confirmed(self, url: str, cwd: Optional[str], data: Dict[str, Any], *a: Any) -> None:
+        q = data['response']
+        if q == 'o':
+            get_boss().open_url(url, cwd=cwd)
+        elif q == 'c':
+            set_clipboard_string(url)
+
+    def handle_remote_file(self, netloc: str, remote_path: str) -> None:
+        from kittens.ssh.main import get_connection_data
+        args = self.child.foreground_cmdline
+        conn_data = get_connection_data(args)
+        if conn_data is None:
+            get_boss().show_error('Could not handle remote file', 'No SSH connection data found in: {args}')
+            return
+        get_boss().run_kitten(
+            'remote_file', '--hostname', netloc.partition(':')[0], '--path', remote_path,
+            '--ssh-connection-data', json.dumps(conn_data)
+        )
+
     def focus_changed(self, focused: bool) -> None:
         if self.destroyed:
             return
+        call_watchers(weakref.ref(self), 'on_focus_change', {'focused': focused})
+        self.screen.focus_changed(focused)
         if focused:
+            changed = self.needs_attention
             self.needs_attention = False
-            if self.screen.focus_tracking_enabled:
-                self.screen.send_escape_code_to_child(CSI, 'I')
-        else:
-            if self.screen.focus_tracking_enabled:
-                self.screen.send_escape_code_to_child(CSI, 'O')
+            if changed:
+                tab = self.tabref()
+                if tab is not None:
+                    tab.relayout_borders()
 
     def title_changed(self, new_title: Optional[str]) -> None:
         self.child_title = sanitize_title(new_title or self.default_title)
@@ -461,17 +601,24 @@ class Window:
     def is_active(self) -> bool:
         return get_boss().active_window is self
 
+    @property
+    def has_activity_since_last_focus(self) -> bool:
+        return self.screen.has_activity_since_last_focus()
+
     def on_bell(self) -> None:
         if self.opts.command_on_bell and self.opts.command_on_bell != ['none']:
-            import subprocess
             import shlex
+            import subprocess
             env = self.child.final_env
             env['KITTY_CHILD_CMDLINE'] = ' '.join(map(shlex.quote, self.child.cmdline))
             subprocess.Popen(self.opts.command_on_bell, env=env, cwd=self.child.foreground_cwd)
         if not self.is_active:
+            changed = not self.needs_attention
             self.needs_attention = True
             tab = self.tabref()
             if tab is not None:
+                if changed:
+                    tab.relayout_borders()
                 tab.on_bell(self)
 
     def change_titlebar_color(self) -> None:
@@ -510,6 +657,9 @@ class Window:
         g |= g << 8
         b |= b << 8
         self.screen.send_escape_code_to_child(OSC, '{};rgb:{:04x}/{:04x}/{:04x}'.format(code, r, g, b))
+
+    def report_notification_activated(self, identifier: str) -> None:
+        self.screen.send_escape_code_to_child(OSC, f'99;i={identifier};')
 
     def set_dynamic_color(self, code: int, value: Union[str, bytes]) -> None:
         if isinstance(value, bytes):
@@ -554,7 +704,8 @@ class Window:
             self.refresh()
 
     def request_capabilities(self, q: str) -> None:
-        self.screen.send_escape_code_to_child(DCS, get_capabilities(q))
+        for result in get_capabilities(q, self.opts):
+            self.screen.send_escape_code_to_child(DCS, result)
 
     def handle_remote_cmd(self, cmd: str) -> None:
         get_boss().handle_remote_cmd(cmd, self)
@@ -654,27 +805,7 @@ class Window:
         add_wrap_markers: bool = False,
         alternate_screen: bool = False
     ) -> str:
-        lines: List[str] = []
-        add_history = add_history and not (self.screen.is_using_alternate_linebuf() ^ alternate_screen)
-        if alternate_screen:
-            f = self.screen.as_text_alternate
-        else:
-            f = self.screen.as_text_non_visual if add_history else self.screen.as_text
-        f(lines.append, as_ansi, add_wrap_markers)
-        if add_history:
-            h: List[str] = []
-            self.screen.historybuf.pagerhist_as_text(h.append)
-            if h and (not as_ansi or not add_wrap_markers):
-                sanitizer = text_sanitizer(as_ansi, add_wrap_markers)
-                h = list(map(sanitizer, h))
-            self.screen.historybuf.as_text(h.append, as_ansi, add_wrap_markers)
-            if h:
-                if not self.screen.linebuf.is_continued(0):
-                    h[-1] += '\n'
-                if as_ansi:
-                    h[-1] += '\x1b[m'
-            return ''.join(chain(h, lines))
-        return ''.join(lines)
+        return as_text(self.screen, as_ansi, add_history, add_wrap_markers, alternate_screen)
 
     @property
     def cwd_of_child(self) -> Optional[str]:
@@ -806,7 +937,7 @@ class Window:
         self.current_marker_spec = key
 
     def set_marker(self, spec: Union[str, Sequence[str]]) -> None:
-        from .config import toggle_marker, parse_marker_spec
+        from .config import parse_marker_spec, toggle_marker
         from .marks import marker_from_spec
         if isinstance(spec, str):
             func, (ftype, spec_, flags) = toggle_marker('toggle_marker', spec)

@@ -245,10 +245,8 @@ empty:
 
 error:
     Py_XDECREF(py_ret);
-    if (procargs != NULL)
-        free(procargs);
-    if (procenv != NULL)
-        free(procargs);
+    free(procargs);
+    free(procenv);
     return NULL;
 }
 

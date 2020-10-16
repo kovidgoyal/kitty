@@ -4,7 +4,109 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.18.3 [future]
+0.19.2 [future]
+-------------------
+
+- A new :doc:`kittens/query_terminal` kitten to easily query the running kitty
+  via escape codes to detect its version, and the values of
+  configuration options that enable or disable terminal features.
+
+- Fix a regression in 0.19.0 that caused borders not to be drawn when setting
+  :opt:`window_margin_width` and keeping :opt:`draw_minimal_borders` on
+  (:iss:`3017`)
+
+- Fix a regression in 0.19.0 that broke rendering of one-eight bar unicode
+  characters at very small font sizes (:iss:`3025`)
+
+- Fix selections created by dragging upwards not being auto-cleared when
+  screen contents change (:pull:`3028`)
+
+
+0.19.1 [2020-10-06]
+-------------------
+
+- hints kitten: Add an ``ip`` type for easy selection of IP addresses
+  (:pull:`3009`)
+
+- Fix a regression that caused a segfault when using
+  :opt:`scrollback_pager_history_size` and it needs to be expanded (:iss:`3011`)
+
+- Fix update available notifications repeating (:pull:`3006`)
+
+
+0.19.0 [2020-10-04]
+-------------------
+
+- Add support for `hyperlinks from terminal programs
+  <https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda>`_.
+  Controlled via :opt:`allow_hyperlinks` (:iss:`68`)
+
+- Add support for easily editing or downloading files over SSH sessions
+  without the need for any special software, see :doc:`kittens/remote_file`
+
+- A new :doc:`kittens/hyperlinked_grep` kitten to easily search files and open
+  the results at the matched line by clicking on them.
+
+- Allow customizing the :doc:`actions kitty takes <open_actions>` when clicking on URLs
+
+- Improve rendering of borders when using minimal borders. Use less space and
+  do not display a box around active windows
+
+- Add a new extensible escape code to allow terminal programs to trigger
+  desktop notifications. See :ref:`desktop_notifications` (:iss:`1474`)
+
+- Implement special rendering for various characters from the set of "Symbols
+  for Legacy Computing" from the Unicode 13 standard
+
+- Unicode input kitten: Allow choosing symbols from the NERD font as well.
+  These are mostly Private Use symbols not in any standard, however are common. (:iss:`2972`)
+
+- Allow specifying border sizes in either pts or pixels. Change the default to
+  0.5pt borders as this works best with the new minimal border style
+
+- Add support for displaying correct colors with non-sRGB PNG files (Adds a
+  dependency on liblcms2)
+
+- hints kitten: Add a new :option:`kitty +kitten hints --type` of ``hyperlink`` useful
+  for activating hyperlinks using just the keyboard
+
+- Allow tracking focus change events in watchers (:iss:`2918`)
+
+- Allow specifying watchers in session files and via a command line argument
+  (:iss:`2933`)
+
+- Add a setting :opt:`tab_activity_symbol` to show a symbol in the tab title
+  if one of the windows has some activity after it was last focused
+  (:iss:`2515`)
+
+- macOS: Switch to using the User Notifications framework for notifications.
+  The current notifications framework has been deprecated in Big Sur. The new
+  framework only allows notifications from signed and notarized applications,
+  so people using kitty from homebrew/source are out of luck. Complain to
+  Apple.
+
+- When in the main screen and a program grabs the mouse, do not use the scroll
+  wheel events to scroll the scrollback buffer, instead send them to the
+  program (:iss:`2939`)
+
+- Fix unfocused windows in which a bell occurs not changing their border color
+  to red until a relayout
+
+- Linux: Fix automatic detection of bold/italic faces for fonts such as IBM
+  Plex Mono that have the regular face with a full name that is the same as the
+  family name (:iss:`2951`)
+
+- Fix a regression that broke :opt:`kitten_alias` (:iss:`2952`)
+
+- Fix a regression that broke the ``move_window_to_top`` action (:pull:`2953`)
+
+- Fix a memory leak when changing font sizes
+
+- Fix some lines in the scrollback buffer not being properly rendered after a
+  window resize/font size change (:iss:`2619`)
+
+
+0.18.3 [2020-08-11]
 -------------------
 
 - hints kitten: Allow customizing hint colors (:pull:`2894`)
@@ -16,6 +118,13 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix image leaving behind a black rectangle when switch away and back to
   alternate screen (:iss:`2901`)
+
+- Fix one pixel mis-alignment of rounded corners when either the cell
+  dimensions or the thickness of the line is an odd number of pixels
+  (:iss:`2907`)
+
+- Fix a regression that broke specifying OS window size in the session file
+  (:iss:`2908`)
 
 
 0.18.2 [2020-07-28]

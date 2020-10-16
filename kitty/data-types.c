@@ -13,6 +13,8 @@
 #endif
 #include "data-types.h"
 #include "control-codes.h"
+#include "wcwidth-std.h"
+#include "wcswidth.h"
 #include "modes.h"
 #include <stddef.h>
 #include <termios.h>
@@ -89,7 +91,7 @@ stop_profiler(PyObject UNUSED *self, PyObject *args UNUSED) {
 #endif
 
 static inline bool
-put_tty_in_raw_mode(int fd, const struct termios* termios_p, bool read_with_timeout) {
+put_tty_in_raw_mode(int fd, const struct termios* termios_p, bool read_with_timeout, int optional_actions) {
     struct termios raw_termios = *termios_p;
     cfmakeraw(&raw_termios);
     if (read_with_timeout) {
@@ -97,14 +99,14 @@ put_tty_in_raw_mode(int fd, const struct termios* termios_p, bool read_with_time
     } else {
         raw_termios.c_cc[VMIN] = 1; raw_termios.c_cc[VTIME] = 0;
     }
-    if (tcsetattr(fd, TCSAFLUSH, &raw_termios) != 0) { PyErr_SetFromErrno(PyExc_OSError); return false; }
+    if (tcsetattr(fd, optional_actions, &raw_termios) != 0) { PyErr_SetFromErrno(PyExc_OSError); return false; }
     return true;
 }
 
 static PyObject*
 open_tty(PyObject *self UNUSED, PyObject *args) {
-    int read_with_timeout = 0;
-    if (!PyArg_ParseTuple(args, "|p", &read_with_timeout)) return NULL;
+    int read_with_timeout = 0, optional_actions = TCSAFLUSH;
+    if (!PyArg_ParseTuple(args, "|pi", &read_with_timeout, &optional_actions)) return NULL;
     int flags = O_RDWR | O_CLOEXEC | O_NOCTTY;
     if (!read_with_timeout) flags |= O_NONBLOCK;
     static char ctty[L_ctermid+1];
@@ -113,26 +115,26 @@ open_tty(PyObject *self UNUSED, PyObject *args) {
     struct termios *termios_p = calloc(1, sizeof(struct termios));
     if (!termios_p) return PyErr_NoMemory();
     if (tcgetattr(fd, termios_p) != 0) { free(termios_p); PyErr_SetFromErrno(PyExc_OSError); return NULL; }
-    if (!put_tty_in_raw_mode(fd, termios_p, read_with_timeout != 0)) { free(termios_p); return NULL; }
+    if (!put_tty_in_raw_mode(fd, termios_p, read_with_timeout != 0, optional_actions)) { free(termios_p); return NULL; }
     return Py_BuildValue("iN", fd, PyLong_FromVoidPtr(termios_p));
 }
 
 #define TTY_ARGS \
-    PyObject *tp; int fd; \
-    if (!PyArg_ParseTuple(args, "iO!", &fd, &PyLong_Type, &tp)) return NULL; \
+    PyObject *tp; int fd; int optional_actions = TCSAFLUSH; \
+    if (!PyArg_ParseTuple(args, "iO!|i", &fd, &PyLong_Type, &tp, &optional_actions)) return NULL; \
     struct termios *termios_p = PyLong_AsVoidPtr(tp);
 
 static PyObject*
 normal_tty(PyObject *self UNUSED, PyObject *args) {
     TTY_ARGS
-    if (tcsetattr(fd, TCSAFLUSH, termios_p) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    if (tcsetattr(fd, optional_actions, termios_p) != 0) { PyErr_SetFromErrno(PyExc_OSError); return NULL; }
     Py_RETURN_NONE;
 }
 
 static PyObject*
 raw_tty(PyObject *self UNUSED, PyObject *args) {
     TTY_ARGS
-    if (!put_tty_in_raw_mode(fd, termios_p, false)) return NULL;
+    if (!put_tty_in_raw_mode(fd, termios_p, false, optional_actions)) return NULL;
     Py_RETURN_NONE;
 }
 
@@ -140,7 +142,7 @@ raw_tty(PyObject *self UNUSED, PyObject *args) {
 static PyObject*
 close_tty(PyObject *self UNUSED, PyObject *args) {
     TTY_ARGS
-    tcsetattr(fd, TCSAFLUSH, termios_p);  // deliberately ignore failure
+    tcsetattr(fd, optional_actions, termios_p);  // deliberately ignore failure
     free(termios_p);
     safe_close(fd, __FILE__, __LINE__);
     Py_RETURN_NONE;
@@ -148,7 +150,15 @@ close_tty(PyObject *self UNUSED, PyObject *args) {
 
 #undef TTY_ARGS
 
+static PyObject*
+wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
+    return PyLong_FromLong(wcwidth_std(PyLong_AsLong(chr)));
+}
+
+
 static PyMethodDef module_methods[] = {
+    {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
+    {"wcswidth", (PyCFunction)wcswidth_std, METH_O, ""},
     {"open_tty", open_tty, METH_VARARGS, ""},
     {"normal_tty", normal_tty, METH_VARARGS, ""},
     {"raw_tty", raw_tty, METH_VARARGS, ""},

@@ -19,7 +19,7 @@ from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
 from .conf.utils import BadLine, to_cmdline
 from .config import (
-    KeyAction, SubSequenceMap, common_opts_as_dict, initial_window_size_func,
+    KeyAction, SubSequenceMap, common_opts_as_dict,
     prepare_config_file_for_editing
 )
 from .config_data import MINIMUM_FONT_SIZE
@@ -28,7 +28,7 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
-    ChildMonitor, background_opacity_of, change_background_opacity,
+    ChildMonitor, add_timer, background_opacity_of, change_background_opacity,
     change_os_window_state, cocoa_set_menubar_title, create_os_window,
     current_application_quit_request, current_os_window, destroy_global_data,
     focus_os_window, get_clipboard_string, global_font_size,
@@ -39,9 +39,11 @@ from .fast_data_types import (
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
+from .notify import notification_activated
 from .options_stub import Options
+from .os_window_size import initial_window_size_func
 from .rgb import Color, color_from_int
-from .session import Session, create_sessions
+from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import (
     SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 )
@@ -60,12 +62,6 @@ class OSWindowDict(TypedDict):
     platform_window_id: Optional[int]
     is_focused: bool
     tabs: List[TabDict]
-
-
-def notification_activated(identifier: str) -> None:
-    if identifier == 'new-version':
-        from .update_check import notification_activated as do
-        do()
 
 
 def listen_on(spec: str) -> int:
@@ -171,12 +167,18 @@ class Boss:
         if new_os_window_trigger is not None:
             self.keymap.pop(new_os_window_trigger, None)
         if is_macos:
-            from .fast_data_types import cocoa_set_notification_activated_callback
+            from .fast_data_types import (
+                cocoa_set_notification_activated_callback
+            )
             cocoa_set_notification_activated_callback(notification_activated)
 
     def startup_first_child(self, os_window_id: Optional[int]) -> None:
+        from kitty.launch import load_watch_modules
         startup_sessions = create_sessions(self.opts, self.args, default_session=self.opts.startup_session)
+        watchers = load_watch_modules(self.args.watcher)
         for startup_session in startup_sessions:
+            if watchers is not None and watchers.has_watchers:
+                startup_session.add_watchers_to_all_windows(watchers)
             self.add_os_window(startup_session, os_window_id=os_window_id)
             os_window_id = None
             if self.args.start_as != 'normal':
@@ -195,11 +197,11 @@ class Boss:
         startup_id: Optional[str] = None
     ) -> int:
         if os_window_id is None:
-            opts_for_size = opts_for_size or getattr(startup_session, 'os_window_size', None) or self.opts
+            size_data = get_os_window_sizing_data(opts_for_size or self.opts, startup_session)
             wclass = wclass or getattr(startup_session, 'os_window_class', None) or self.args.cls or appname
             with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
                 os_window_id = create_os_window(
-                        initial_window_size_func(opts_for_size, self.cached_values),
+                        initial_window_size_func(size_data, self.cached_values),
                         pre_show_callback,
                         self.args.title or appname, wname or self.args.name or wclass, wclass)
         tm = TabManager(os_window_id, self.opts, self.args, startup_session)
@@ -349,8 +351,10 @@ class Boss:
         return response
 
     def remote_control(self, *args: str) -> None:
+        from .rc.base import (
+            PayloadGetter, command_for_name, parse_subcommand_cli
+        )
         from .remote_control import parse_rc_args
-        from .rc.base import command_for_name, parse_subcommand_cli, PayloadGetter
         try:
             global_opts, items = parse_rc_args(['@'] + list(args))
             if not items:
@@ -930,6 +934,9 @@ class Boss:
         kargs = shlex.split(cmdline) if cmdline else []
         self._run_kitten(kitten, kargs)
 
+    def run_kitten(self, kitten: str, *args: str) -> None:
+        self._run_kitten(kitten, args)
+
     def on_kitten_finish(self, target_window_id: str, end_kitten: Callable, source_window: Window) -> None:
         output = self.get_output(source_window, num_lines=None)
         from kittens.runner import deserialize
@@ -1013,13 +1020,29 @@ class Boss:
             tab.set_active_window(window_id)
 
     def open_url(self, url: str, program: Optional[Union[str, List[str]]] = None, cwd: Optional[str] = None) -> None:
-        if url:
-            if isinstance(program, str):
-                program = to_cmdline(program)
+        if not url:
+            return
+        if isinstance(program, str):
+            program = to_cmdline(program)
+        found_action = False
+        if program is None:
+            from .open_actions import actions_for_url
+            actions = list(actions_for_url(url))
+            if actions:
+                found_action = True
+                self.dispatch_action(actions.pop(0))
+                if actions:
+                    self.drain_actions(actions)
+        if not found_action:
             open_url(url, program or self.opts.open_url_with, cwd=cwd)
 
-    def open_url_lines(self, lines: Iterable[str], program: Optional[Union[str, List[str]]] = None) -> None:
-        self.open_url(''.join(lines), program)
+    def drain_actions(self, actions: List) -> None:
+
+        def callback(timer_id: Optional[int]) -> None:
+            self.dispatch_action(actions.pop(0))
+            if actions:
+                self.drain_actions(actions)
+        add_timer(callback, 0, False)
 
     def destroy(self) -> None:
         self.shutting_down = True
@@ -1283,7 +1306,7 @@ class Boss:
         self._new_window(list(args), cwd_from=cwd_from)
 
     def launch(self, *args: str) -> None:
-        from kitty.launch import parse_launch_args, launch
+        from kitty.launch import launch, parse_launch_args
         opts, args_ = parse_launch_args(args)
         launch(self, opts, args_)
 
@@ -1356,7 +1379,9 @@ class Boss:
                     log_error('Failed to process update check data {!r}, with error: {}'.format(raw, e))
 
     def dbus_notification_callback(self, activated: bool, a: int, b: Union[int, str]) -> None:
-        from .notify import dbus_notification_created, dbus_notification_activated
+        from .notify import (
+            dbus_notification_activated, dbus_notification_created
+        )
         if activated:
             assert isinstance(b, str)
             dbus_notification_activated(a, b)
@@ -1373,7 +1398,9 @@ class Boss:
         self.show_error(_('Errors in kitty.conf'), msg)
 
     def set_colors(self, *args: str) -> None:
-        from kitty.rc.base import parse_subcommand_cli, command_for_name, PayloadGetter
+        from kitty.rc.base import (
+            PayloadGetter, command_for_name, parse_subcommand_cli
+        )
         from kitty.remote_control import parse_rc_args
         c = command_for_name('set_colors')
         opts, items = parse_subcommand_cli(c, ['set-colors'] + list(args))
@@ -1535,3 +1562,21 @@ class Boss:
             set_background_image(path, os_windows, configured)
         for os_window_id in os_windows:
             self.default_bg_changed_for(os_window_id)
+
+    # Can be called with kitty -o "map f1 send_test_notification"
+    def send_test_notification(self) -> None:
+        from time import monotonic
+
+        from .notify import notify
+        now = monotonic()
+        ident = f'test-notify-{now}'
+        notify(f'Test {now}', f'At: {now}', identifier=ident, subtitle=f'Test subtitle {now}')
+
+    def notification_activated(self, identifier: str, window_id: int, focus: bool, report: bool) -> None:
+        w = self.window_id_map.get(window_id)
+        if w is None:
+            return
+        if focus:
+            self.set_active_window(w, switch_os_window_if_needed=True)
+        if report:
+            w.report_notification_activated(identifier)

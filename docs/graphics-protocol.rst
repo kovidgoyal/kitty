@@ -54,27 +54,34 @@ In C:
 
 .. code-block:: c
 
-    struct ttysize ts;
-    ioctl(0, TIOCGWINSZ, &ts);
-    printf("number of columns: %i, number of rows: %i, screen width: %i, screen height: %i\n", sz.ws_col, sz.ws_row, sz.ws_xpixel, sz.ws_ypixel);
+    #include <stdio.h>
+    #include <sys/ioctl.h>
+
+    int main(int argc, char **argv) {
+        struct winsize sz;
+        ioctl(0, TIOCGWINSZ, &sz);
+        printf("number of rows: %i, number of columns: %i, screen width: %i, screen height: %i\n", sz.ws_row, sz.ws_col, sz.ws_xpixel, sz.ws_ypixel);
+        return 0;
+    }
 
 In Python:
 
 .. code-block:: python
 
-    import array, fcntl, termios
+    import array, fcntl, sys, termios
     buf = array.array('H', [0, 0, 0, 0])
     fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
-    print('number of columns: {}, number of rows: {}, screen width: {}, screen height: {}'.format(*buf))
+    print('number of rows: {}, number of columns: {}, screen width: {}, screen height: {}'.format(*buf))
 
 Note that some terminals return ``0`` for the width and height values. Such
 terminals should be modified to return the correct values.  Examples of
 terminals that return correct values: ``kitty, xterm``
 
 You can also use the *CSI t* escape code to get the screen size. Send
-``<ESC>[14t`` to *stdout* and kitty will reply on *stdin* with
-``<ESC>[4;<height>;<width>t`` where *height* and *width* are the window size in
-pixels. This escape code is supported in many terminals, not just kitty.
+``<ESC>[14t`` to ``STDOUT`` and kitty will reply on ``STDIN`` with
+``<ESC>[4;<height>;<width>t`` where ``height`` and ``width`` are the window
+size in pixels. This escape code is supported in many terminals, not just
+kitty.
 
 A minimal example
 ------------------
@@ -154,9 +161,10 @@ of transmitting paletted images.
 RGB and RGBA data
 ~~~~~~~~~~~~~~~~~~~
 
-In these formats the pixel data is stored directly as 3 or 4 bytes per pixel, respectively.
-When specifying images in this format, the image dimensions **must** be sent in the control data.
-For example::
+In these formats the pixel data is stored directly as 3 or 4 bytes per pixel,
+respectively. The colors in the data **must** be in the *sRGB color space*.  When
+specifying images in this format, the image dimensions **must** be sent in the
+control data. For example::
 
     <ESC>_Gf=24,s=10,v=20;<payload><ESC>\
 

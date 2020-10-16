@@ -232,3 +232,30 @@ available. The manual way to figure it out is:
        This shows the hex value, ``13`` in this case.
 
     3. Use ``\x(hexval)`` in your ``send_text`` command in kitty. So in this example, ``\x13``
+
+
+I am using tmux and have a problem
+--------------------------------------
+
+First, terminal multiplexers are `a bad idea
+<https://github.com/kovidgoyal/kitty/issues/391#issuecomment-638320745>`_, do
+not use them, if at all possible. kitty contains features that do all of what
+tmux does, but better, with the exception of remote persistence (:iss:`391`).
+If you still want to use tmux, read on.
+
+Image display will not work, see `tmux issue
+<https://github.com/tmux/tmux/issues/1391>`_.
+
+If you are using tmux with multiple terminals or you start it under one
+terminal and then switch to another and these terminals have different TERM
+variables, tmux will break. You will need to restart it as tmux does not
+support multiple terminfo definitions.
+
+Copying to clipboard via OSC 52 will not work, because tmux does not support
+the extended version of that protocol, you will need to add ``no-append`` to
+:opt:`clipboard_control` in kitty.conf.
+
+If you use any of the advanced features that kitty has innovated, such as
+styled underlines, desktop notifications, extended keyboard support, etc.
+they may or may not work, depending on the whims of tmux's maintainer, your
+version of tmux, etc.

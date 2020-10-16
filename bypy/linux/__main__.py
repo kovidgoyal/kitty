@@ -26,7 +26,7 @@ kitty_constants = iv['kitty_constants']
 
 def binary_includes():
     return tuple(map(get_dll_path, (
-            'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16',
+            'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2',
 
             # dont include freetype because fontconfig is closely coupled to it
             # and also distros often patch freetype
@@ -35,7 +35,7 @@ def binary_includes():
             'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
             'ncursesw', 'readline',
         ))) + (
-                get_dll_path('bz2', 2), get_dll_path('ssl', 3), get_dll_path('crypto', 3),
+                get_dll_path('bz2', 2), get_dll_path('ssl', 2), get_dll_path('crypto', 2),
                 get_dll_path('python' + py_ver, 2),
         )
 
