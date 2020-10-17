@@ -295,7 +295,7 @@ get_url_sentinel(Line *line, index_type url_start) {
 
 static inline void
 set_mouse_cursor_for_screen(Screen *screen) {
-    mouse_cursor_shape = screen->modes.mouse_tracking_mode == NO_TRACKING ? BEAM : OPT(pointer_shape_when_grabbed);
+    mouse_cursor_shape = screen->modes.mouse_tracking_mode == NO_TRACKING ? OPT(default_pointer_shape): OPT(pointer_shape_when_grabbed);
 }
 
 static inline void
