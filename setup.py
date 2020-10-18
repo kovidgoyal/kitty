@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import tempfile
 import time
 from contextlib import suppress
 from functools import partial
@@ -211,25 +212,27 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
     return sanitize_args
 
 
-def test_compile(cc: str, *cflags: str, src: Optional[str] = None) -> bool:
+def test_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: Optional[str] = None) -> bool:
+    lang = lang or 'c'
     src = src or 'int main(void) { return 0; }'
-    p = subprocess.Popen(
-        [cc] + list(cflags) + ['-x', 'c', '-o', os.devnull, '-'],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE
-    )
-    stdin = p.stdin
-    assert stdin is not None
-    try:
-        stdin.write(src.encode('utf-8'))
-        stdin.close()
-    except BrokenPipeError:
-        return False
-    return p.wait() == 0
+    with tempfile.TemporaryDirectory() as tdir:
+        p = subprocess.Popen(
+            [cc] + list(cflags) + ['-x', lang, '-o', tdir + '/result', '-'],
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE
+        )
+        stdin = p.stdin
+        assert stdin is not None
+        try:
+            stdin.write(src.encode('utf-8'))
+            stdin.close()
+        except BrokenPipeError:
+            return False
+        return p.wait() == 0
 
 
-def first_successful_compile(cc: str, *cflags: str, src: Optional[str] = None) -> str:
+def first_successful_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: Optional[str] = None) -> str:
     for x in cflags:
-        if test_compile(cc, *shlex.split(x), src=src):
+        if test_compile(cc, *shlex.split(x), src=src, lang=lang):
             return x
     return ''
 
