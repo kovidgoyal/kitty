@@ -196,6 +196,14 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
 #define HANDLER(name) static inline void name(Window UNUSED *w, int UNUSED button, int UNUSED modifiers, unsigned int UNUSED window_idx)
 
 static inline void
+set_mouse_cursor_when_dragging(void) {
+    if (mouse_cursor_shape != OPT(pointer_shape_when_dragging)) {
+        mouse_cursor_shape = OPT(pointer_shape_when_dragging);
+        set_mouse_cursor(mouse_cursor_shape);
+    }
+}
+
+static inline void
 update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
     Screen *screen = w->render_data.screen;
     if (from_button) {
@@ -213,6 +221,7 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
     } else if (screen->selections.in_progress) {
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, false);
     }
+    set_mouse_cursor_when_dragging();
 }
 
 static inline bool
@@ -250,6 +259,7 @@ extend_selection(Window *w, bool ended) {
     if (screen_has_selection(screen)) {
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, ended, false);
     }
+    set_mouse_cursor_when_dragging();
 }
 
 static inline void
@@ -295,7 +305,7 @@ get_url_sentinel(Line *line, index_type url_start) {
 
 static inline void
 set_mouse_cursor_for_screen(Screen *screen) {
-    mouse_cursor_shape = screen->modes.mouse_tracking_mode == NO_TRACKING ? BEAM : OPT(pointer_shape_when_grabbed);
+    mouse_cursor_shape = screen->modes.mouse_tracking_mode == NO_TRACKING ? OPT(default_pointer_shape): OPT(pointer_shape_when_grabbed);
 }
 
 static inline void
@@ -397,6 +407,7 @@ multi_click(Window *w, unsigned int count) {
         screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, mode);
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, true);
     }
+    set_mouse_cursor_when_dragging();
 }
 
 static inline double

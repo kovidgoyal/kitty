@@ -703,6 +703,8 @@ PYWRAP1(set_options) {
     S(resize_in_steps, PyObject_IsTrue);
     S(allow_hyperlinks, PyObject_IsTrue);
     S(pointer_shape_when_grabbed, pointer_shape);
+    S(default_pointer_shape, pointer_shape);
+    S(pointer_shape_when_dragging, pointer_shape);
 
     GA(tab_bar_style);
     global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;

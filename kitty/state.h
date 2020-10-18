@@ -66,6 +66,8 @@ typedef struct {
     bool allow_hyperlinks;
     monotonic_t resize_debounce_time;
     MouseShape pointer_shape_when_grabbed;
+    MouseShape default_pointer_shape;
+    MouseShape pointer_shape_when_dragging;
     struct {
         UrlPrefix *values;
         size_t num, max_prefix_len;
