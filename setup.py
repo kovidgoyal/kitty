@@ -13,7 +13,6 @@ import shutil
 import subprocess
 import sys
 import sysconfig
-import tempfile
 import time
 from contextlib import suppress
 from functools import partial
@@ -214,19 +213,18 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
 
 def test_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c') -> bool:
     src = src or 'int main(void) { return 0; }'
-    with tempfile.TemporaryDirectory() as tdir:
-        p = subprocess.Popen(
-            [cc] + list(cflags) + ['-x', lang, '-o', os.devnull, '-'], cwd=tdir,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE,
-        )
-        stdin = p.stdin
-        assert stdin is not None
-        try:
-            stdin.write(src.encode('utf-8'))
-            stdin.close()
-        except BrokenPipeError:
-            return False
-        return p.wait() == 0
+    p = subprocess.Popen(
+        [cc] + list(cflags) + ['-x', lang, '-o', os.devnull, '-'],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE,
+    )
+    stdin = p.stdin
+    assert stdin is not None
+    try:
+        stdin.write(src.encode('utf-8'))
+        stdin.close()
+    except BrokenPipeError:
+        return False
+    return p.wait() == 0
 
 
 def first_successful_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c') -> str:
