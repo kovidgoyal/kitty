@@ -37,6 +37,7 @@ Some programs that use the kitty graphics protocol:
  * `pixcat <https://github.com/mirukana/pixcat>`_ - a third party CLI and python library that wraps the graphics protocol
  * `neofetch <https://github.com/dylanaraps/neofetch>`_ - A command line system
    information tool
+ * `viu <https://github.com/atanunq/viu>`_ - a terminal image viewer
 
 
 .. contents::

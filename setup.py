@@ -211,11 +211,11 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
     return sanitize_args
 
 
-def test_compile(cc: str, *cflags: str, src: Optional[str] = None) -> bool:
+def test_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c') -> bool:
     src = src or 'int main(void) { return 0; }'
     p = subprocess.Popen(
-        [cc] + list(cflags) + ['-x', 'c', '-o', os.devnull, '-'],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE
+        [cc] + list(cflags) + ['-x', lang, '-o', os.devnull, '-'],
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE,
     )
     stdin = p.stdin
     assert stdin is not None
@@ -227,9 +227,9 @@ def test_compile(cc: str, *cflags: str, src: Optional[str] = None) -> bool:
     return p.wait() == 0
 
 
-def first_successful_compile(cc: str, *cflags: str, src: Optional[str] = None) -> str:
+def first_successful_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c') -> str:
     for x in cflags:
-        if test_compile(cc, *shlex.split(x), src=src):
+        if test_compile(cc, *shlex.split(x), src=src, lang=lang):
             return x
     return ''
 
@@ -340,7 +340,10 @@ def kitty_env() -> Env:
         platform_libs = [
             '-framework', 'CoreText', '-framework', 'CoreGraphics',
         ]
-        user_notifications_framework = first_successful_compile(ans.cc, '-framework UserNotifications')
+        test_program_src = '''#include <UserNotifications/UserNotifications.h>
+        int main(void) { return 0; }\n'''
+        user_notifications_framework = first_successful_compile(
+            ans.cc, '-framework UserNotifications', src=test_program_src, lang='objective-c')
         if user_notifications_framework:
             platform_libs.extend(shlex.split(user_notifications_framework))
         else:

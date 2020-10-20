@@ -11,3 +11,6 @@ kitty/parse-graphics-command.h linguist-generated=true
 glfw/*.c linguist-vendored=true
 glfw/*.h linguist-vendored=true
 kittens/unicode_input/names.h linguist-generated=true
+
+*.py  text diff=python
+*.m  text diff=objc
