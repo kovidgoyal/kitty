@@ -162,12 +162,15 @@ cleverly adds itself to the ``PATH``.
 kitty is not able to use my favorite font?
 ---------------------------------------------
 
+First, please note that bitmap fonts are not supported as a matter of policy.
+
 |kitty| achieves its stellar performance by caching alpha masks of each rendered
 character on the GPU, so that every character needs to be rendered only once.
 This means it is a strictly character cell based display.  As such it can use
 only monospace fonts, since every cell in the grid has to be the same size. If
 your font is not listed in ``kitty list-fonts`` it means that it is not
-monospace. On Linux you can list all monospace fonts with::
+monospace (or is a bitmap font). On Linux you can list all scalable monospace
+fonts with::
 
     fc-list : family spacing outline scalable | grep -e spacing=100 -e spacing=90 | grep -e outline=True | grep -e scalable=True
 
