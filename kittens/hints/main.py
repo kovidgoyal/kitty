@@ -93,7 +93,7 @@ def highlight_mark(m: Mark, text: str, current_input: str, alphabet: str, colors
         bg=colors['background'],
         bold=True
     ) + styled(
-        text, fg=colors['text'], fg_intense=True, bold=True
+        text, fg=colors['text'], fg_intense=False, bold=True
     )
 
 
