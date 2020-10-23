@@ -118,15 +118,14 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
                 if arg in boolean_ssh_args:
                     ssh_args.append(arg)
                     continue
-                if arg.startswith('-p') and arg[2:].isdigit():
-                    ssh_args.append(arg)
-                    continue
                 if arg in other_ssh_args:
-                    if i != len(all_args) - 1:
-                        raise SystemExit('Option {} cannot occur in the middle'.format(arg))
                     ssh_args.append(arg)
-                    expecting_option_val = True
-                    continue
+                    rest = all_args[i+1:]
+                    if rest:
+                        ssh_args.append(rest)
+                    else:
+                        expecting_option_val = True
+                    break
                 raise SystemExit('Unknown option: {}'.format(arg))
             continue
         if expecting_option_val:
