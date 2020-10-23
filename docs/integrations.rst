@@ -67,6 +67,9 @@ System and data visualisation tools
 
         iplot 'sin(x*3)*exp(x*.2)'
 
+`onefetch <https://github.com/o2sh/onefetch>`_
+    a tool to fetch information about your git repositories
+
 
 Editor integration
 -----------------------
