@@ -204,14 +204,14 @@ typedef struct _GLFWlibraryWayland
     struct wl_seat*             seat;
     struct wl_pointer*          pointer;
     struct wl_keyboard*         keyboard;
+    struct wl_data_device_manager*          dataDeviceManager;
+    struct wl_data_device*      dataDevice;
     struct xdg_wm_base*         wmBase;
     struct zxdg_decoration_manager_v1*      decorationManager;
     struct wp_viewporter*       viewporter;
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;
     struct zwp_idle_inhibit_manager_v1*     idleInhibitManager;
-    struct wl_data_device_manager*          dataDeviceManager;
-    struct wl_data_device*                  dataDevice;
     struct wl_data_source*                  dataSourceForClipboard;
     struct zwp_primary_selection_device_manager_v1* primarySelectionDeviceManager;
     struct zwp_primary_selection_device_v1*    primarySelectionDevice;
@@ -226,6 +226,7 @@ typedef struct _GLFWlibraryWayland
 
     int32_t                     keyboardRepeatRate;
     monotonic_t                 keyboardRepeatDelay;
+
     struct {
         uint32_t                key;
         id_type                 keyRepeatTimer;
@@ -275,7 +276,8 @@ typedef struct _GLFWmonitorWayland
     int                         x;
     int                         y;
     int                         scale;
- } _GLFWmonitorWayland;
+
+} _GLFWmonitorWayland;
 
 // Wayland-specific per-cursor data
 //
