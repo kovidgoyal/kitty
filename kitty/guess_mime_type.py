@@ -19,6 +19,9 @@ known_extensions = {
 }
 
 
+text_mimes = ('application/javascript', 'application/x-sh', 'application/json')
+
+
 def is_rc_file(path: str) -> bool:
     name = os.path.basename(path)
     return '.' not in name and name.endswith('rc')
@@ -45,6 +48,8 @@ def guess_type(path: str) -> Optional[str]:
     if not mt:
         ext = path.rpartition('.')[-1].lower()
         mt = known_extensions.get(ext)
+    if mt in text_mimes:
+        mt = 'text/' + mt.split('/', 1)[-1]
     if not mt and is_rc_file(path):
         mt = 'text/plain'
     return mt
