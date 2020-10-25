@@ -161,7 +161,7 @@ coretext_all_fonts(PyObject UNUSED *_self) {
     CFArrayRef matches = CTFontCollectionCreateMatchingFontDescriptors(all_fonts_collection());
     const CFIndex count = CFArrayGetCount(matches);
     PyObject *ans = PyTuple_New(count), *temp;
-    if (ans == NULL) return PyErr_NoMemory();
+    if (ans == NULL) { CFRelease(matches); return PyErr_NoMemory(); }
     for (CFIndex i = 0; i < count; i++) {
         temp = font_descriptor_to_python((CTFontDescriptorRef) CFArrayGetValueAtIndex(matches, i));
         if (temp == NULL) { Py_DECREF(ans); return NULL; }
