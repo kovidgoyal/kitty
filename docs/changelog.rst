@@ -27,6 +27,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow adding MIME definitions to kitty by placing a ``mime.types`` file in
   the kitty config directory (:iss:`3056`)
 
+- Dont ignore :option:`--title` when using a session file that defines no
+  windows (:iss:`3055`)
+
 
 0.19.1 [2020-10-06]
 -------------------

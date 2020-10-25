@@ -115,7 +115,7 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
                 w: Optional[Watchers] = None
                 if t.watchers.has_watchers:
                     w = t.watchers.copy()
-                t.windows.append(SpecialWindow(cmd=resolved_shell(opts), watchers=w))
+                t.windows.append(SpecialWindow(cmd=resolved_shell(opts), watchers=w, override_title=default_title))
         return ans
 
     ans = Session(default_title)
