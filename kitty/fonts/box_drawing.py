@@ -685,6 +685,32 @@ def eight_block(buf: BufType, width: int, height: int, level: int = 1, which: Tu
         eight_bar(buf, width, height, level, x, horizontal)
 
 
+def braille_dot(buf: BufType, width: int, height: int, col: int, row: int) -> None:
+    dot_height = max(1, height // 8)
+    dot_width = max(1, width // 4)
+    top_margin = (height - 7 * dot_height) // 2
+    left_margin = (width - 3 * dot_width) // 2
+    x_start = left_margin + (col * 2 * dot_width)
+    y_start = top_margin + (row * 2 * dot_height)
+    if y_start < height:
+        for y in range(y_start, min(height, y_start + dot_height)):
+            if x_start < width:
+                offset = y * width
+                for x in range(x_start, min(width, x_start + dot_width)):
+                    buf[offset + x] = 255
+
+
+def braille(buf: BufType, width: int, height: int, which: int = 0) -> None:
+    if not which:
+        return
+    for i, x in enumerate(reversed(bin(which)[2:])):
+        if x == '1':
+            q = i + 1
+            col = 0 if q in (1, 2, 3, 7) else 1
+            row = 0 if q in (1, 4) else 1 if q in (2, 5) else 2 if q in (3, 6) else 3
+            braille_dot(buf, width, height, col, row)
+
+
 box_chars: Dict[str, List[Callable]] = {
     '─': [hline],
     '━': [p(hline, level=3)],
@@ -907,6 +933,9 @@ for starts, func, pattern in (
 for chars, func_ in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('╔╗╚╝', dcorner), ('╟╢╤╧', dpip)):
     for ch in chars:
         box_chars[ch] = [p(cast(Callable, func_), which=ch)]
+
+for i in range(256):
+    box_chars[chr(0x2800 + i)] = [p(braille, which=i)]
 
 
 c = 0x1fb00

@@ -14,6 +14,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Options to control mouse pointer shape, :opt:`default_pointer_shape`, and
   :opt:`pointer_shape_when_dragging` (:pull:`3041`)
 
+- Font independent rendering for braille characters, which ensures they are properly
+  aligned at all font sizes.
+
 - Fix a regression in 0.19.0 that caused borders not to be drawn when setting
   :opt:`window_margin_width` and keeping :opt:`draw_minimal_borders` on
   (:iss:`3017`)

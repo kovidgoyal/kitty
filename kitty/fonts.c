@@ -596,6 +596,7 @@ START_ALLOW_CASE_RANGE
         case 0x2500 ... 0x2573:
         case 0x2574 ... 0x259f:
         case 0xe0b0 ... 0xe0b4:
+        case 0x2800 ... 0x28ff:
         case 0xe0b6:
         case 0xe0b8: // 
         case 0xe0ba: //   
@@ -642,8 +643,10 @@ START_ALLOW_CASE_RANGE
             return 0xa0 + ch - 0xe0b0; // IDs from 0xa0 to 0xc4
         case 0x1fb00 ... 0x1fb8b:
             return 0xc5 + ch - 0x1fb00; // IDs from 0xc5 to 0x150
-        case 0x1fba0 ... 0x1fbae:
+        case 0x1fba0 ... 0x1fbae:  // IDs from 0x151 to 0x15f
             return 0x151 + ch - 0x1fba0;
+        case 0x2800 ... 0x28ff:
+            return 0x160 + ch - 0x2800;
         default:
             return 0xffff;
     }
