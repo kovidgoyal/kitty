@@ -16,6 +16,8 @@ known_extensions = {
     'toml': 'text/toml',
     'vim': 'text/vim',
     'yaml': 'text/yaml',
+    'js': 'text/javascript',
+    'json': 'text/json',
 }
 
 
