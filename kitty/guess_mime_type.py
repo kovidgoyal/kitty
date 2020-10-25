@@ -24,16 +24,21 @@ def is_rc_file(path: str) -> bool:
     return '.' not in name and name.endswith('rc')
 
 
+def initialize_mime_database() -> None:
+    if hasattr(initialize_mime_database, 'inited'):
+        return
+    setattr(initialize_mime_database, 'inited', True)
+    from mimetypes import init
+    init(None)
+    from kitty.constants import config_dir
+    local_defs = os.path.join(config_dir, 'mime.types')
+    if os.path.exists(local_defs):
+        init((local_defs,))
+
+
 def guess_type(path: str) -> Optional[str]:
-    if not hasattr(guess_type, 'inited'):
-        setattr(guess_type, 'inited', True)
-        from mimetypes import init
-        init(None)
-        from kitty.constants import config_dir
-        local_defs = os.path.join(config_dir, 'mime.types')
-        if os.path.exists(local_defs):
-            init((local_defs,))
     from mimetypes import guess_type as stdlib_guess_type
+    initialize_mime_database()
     mt = None
     with suppress(Exception):
         mt = stdlib_guess_type(path)[0]
