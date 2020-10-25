@@ -81,7 +81,11 @@ lines. The various available criteria are:
 
 ``mime``
     A comma separated list of MIME types, for example: ``text/*, image/*,
-    application/pdf``
+    application/pdf``. You can add MIME types to kitty by creating the
+    :file:`mime.types` in the kitty configuration directory. Useful if your
+    system MIME database does not have definitions you need. This file is
+    in the standard format of one definition per line, like: ``text/plain rst
+    md``.
 
 ``ext``
     A comma separated list of file extensions, for example: ``jpeg, tar.gz``

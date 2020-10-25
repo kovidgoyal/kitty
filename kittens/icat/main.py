@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import contextlib
-import mimetypes
 import os
 import re
 import socket
@@ -18,6 +17,7 @@ from typing import (
     Dict, Generator, List, NamedTuple, Optional, Pattern, Tuple, Union
 )
 
+from kitty.guess_mime_type import guess_type
 from kitty.cli import parse_args
 from kitty.cli_stub import IcatCLIOptions
 from kitty.constants import appname
@@ -273,7 +273,7 @@ def process(path: str, args: IcatCLIOptions, parsed_opts: ParsedOpts, is_tempfil
 def scan(d: str) -> Generator[Tuple[str, str], None, None]:
     for dirpath, dirnames, filenames in os.walk(d):
         for f in filenames:
-            mt = mimetypes.guess_type(f)[0]
+            mt = guess_type(f)
             if mt and mt.startswith('image/'):
                 yield os.path.join(dirpath, f), mt
 
