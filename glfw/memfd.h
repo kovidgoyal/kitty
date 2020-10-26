@@ -39,8 +39,7 @@ static inline int memfd_create(const char *name, unsigned int flags) {
 #include <unistd.h>
 #include <fcntl.h>
 
-static inline int
-createTmpfileCloexec(char* tmpname)
+static inline int createTmpfileCloexec(char* tmpname)
 {
     int fd;
 

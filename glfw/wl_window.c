@@ -42,8 +42,7 @@
 #include <sys/mman.h>
 
 
-static void
-setCursorImage(_GLFWwindow* window)
+static void setCursorImage(_GLFWwindow* window)
 {
     _GLFWcursorWayland defaultCursor = {.shape = GLFW_ARROW_CURSOR};
     _GLFWcursorWayland* cursorWayland = window->cursor ? &window->cursor->wl : &defaultCursor;
@@ -247,8 +246,7 @@ static void dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, in
  * is set to ENOSPC. If posix_fallocate() is not supported, program may
  * receive SIGBUS on accessing mmap()'ed file contents instead.
  */
-static int
-createAnonymousFile(off_t size)
+static int createAnonymousFile(off_t size)
 {
     int ret, fd = -1, shm_anon = 0;
 #ifdef HAS_MEMFD_CREATE
@@ -439,7 +437,9 @@ static void xdgDecorationHandleConfigure(void* data,
                                          uint32_t mode)
 {
     _GLFWwindow* window = data;
+
     window->wl.decorations.serverSide = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+
     if (!window->wl.decorations.serverSide)
         createDecorations(window);
 }
@@ -547,8 +547,7 @@ static bool createSurface(_GLFWwindow* window,
     return true;
 }
 
-static void
-setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
+static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
 {
     if (window->wl.xdg.toplevel)
     {
@@ -739,8 +738,7 @@ static bool createXdgSurface(_GLFWwindow* window)
     return true;
 }
 
-static void
-incrementCursorImage(_GLFWwindow* window)
+static void incrementCursorImage(_GLFWwindow* window)
 {
     if (window && window->wl.decorations.focus == mainWindow && window->cursorMode != GLFW_CURSOR_HIDDEN) {
         _GLFWcursor* cursor = window->wl.currentCursor;
@@ -788,8 +786,7 @@ wayland_read_events(int poll_result, int events, void *data UNUSED) {
     else wl_display_cancel_read(_glfw.wl.display);
 }
 
-static void
-handleEvents(monotonic_t timeout)
+static void handleEvents(monotonic_t timeout)
 {
     struct wl_display* display = _glfw.wl.display;
     errno = 0;
@@ -958,7 +955,6 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
         window->context.destroy(window);
 
     destroyDecorations(window);
-
     if (window->wl.xdg.decoration)
         zxdg_toplevel_decoration_v1_destroy(window->wl.xdg.decoration);
 
@@ -1362,6 +1358,7 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
     cursor->wl.buffer = createShmBuffer(image);
     if (!cursor->wl.buffer)
         return false;
+
     cursor->wl.width = image->width;
     cursor->wl.height = image->height;
     cursor->wl.xhot = xhot;

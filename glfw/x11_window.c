@@ -423,14 +423,16 @@ static char* convertLatin1toUTF8(const char* source)
     const char* sp;
 
     if (source) {
-        for (sp = source;  *sp;  sp++) size += (*sp & 0x80) ? 2 : 1;
+        for (sp = source;  *sp;  sp++)
+            size += (*sp & 0x80) ? 2 : 1;
     }
 
     char* target = calloc(size, 1);
     char* tp = target;
 
     if (source) {
-        for (sp = source;  *sp;  sp++) tp += encodeUTF8(tp, *sp);
+        for (sp = source;  *sp;  sp++)
+            tp += encodeUTF8(tp, *sp);
     }
 
     return target;
