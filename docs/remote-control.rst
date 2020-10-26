@@ -144,7 +144,8 @@ you can map it in :file:`kitty.conf`. For example::
 
 Then pressing the :kbd:`F1` key will set the active window margins to 30.
 The syntax for what follows :code:`remote_control` is exactly the same
-as the syntax for what follows :code:`kitty @` above.
+as the syntax for what follows :code:`kitty @` above. You do not need
+to enable remote control to use these mappings.
 
 
 Documentation for the remote control protocol
