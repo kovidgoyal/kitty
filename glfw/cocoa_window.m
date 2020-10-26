@@ -2446,7 +2446,7 @@ START_ALLOW_CASE_RANGE
 END_ALLOW_CASE_RANGE
     }
     if (utf_16_key != 0) {
-         strncpy(cocoa_key, [[NSString stringWithCharacters:&utf_16_key length:1] UTF8String], key_sz - 1);
+        strncpy(cocoa_key, [[NSString stringWithCharacters:&utf_16_key length:1] UTF8String], key_sz - 1);
     } else {
         unsigned str_pos = 0;
         for (unsigned i = 0; i < 4 && str_pos < key_sz - 1; i++) {
