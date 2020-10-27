@@ -27,6 +27,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix selections created by dragging upwards not being auto-cleared when
   screen contents change (:pull:`3028`)
 
+- macOS: Fix kitty not being added to PATH automatically when using pre-built
+  binaries (:iss:`3063`)
+
 - Allow adding MIME definitions to kitty by placing a ``mime.types`` file in
   the kitty config directory (:iss:`3056`)
 
