@@ -24,6 +24,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.19.0 that broke rendering of one-eight bar unicode
   characters at very small font sizes (:iss:`3025`)
 
+- Wayland: Fix a crash under GNOME when using multiple OS windows
+  (:pull:`3066`)
+
 - Fix selections created by dragging upwards not being auto-cleared when
   screen contents change (:pull:`3028`)
 
