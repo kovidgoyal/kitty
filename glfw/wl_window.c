@@ -413,10 +413,10 @@ static void createDecorations(_GLFWwindow* window)
 
 static void destroyDecoration(_GLFWdecorationWayland* decoration)
 {
-    if (decoration->surface)
-        wl_surface_destroy(decoration->surface);
     if (decoration->subsurface)
         wl_subsurface_destroy(decoration->subsurface);
+    if (decoration->surface)
+        wl_surface_destroy(decoration->surface);
     if (decoration->viewport)
         wp_viewport_destroy(decoration->viewport);
     decoration->surface = NULL;
