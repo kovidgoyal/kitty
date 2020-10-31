@@ -78,6 +78,17 @@ you might have to rebuild the app.
    a self signed certificate, see for example, `here
    <https://stackoverflow.com/questions/27474751/how-can-i-codesign-an-app-without-being-in-the-mac-developer-program/27474942>`_.
 
+Build and run from source with Nix
+-------------------------------------------
+
+On NixOS or any other Linux or macOS system with the Nix package manager installed,
+execute ``./nix-shell`` to create the correct environment to build kitty or use
+``./nix-shell --pure`` instead to eliminate most of the influence of the outside system,
+e.g. globally installed packages. ``nix-shell`` will automatically fetch all required
+dependencies and make them available in the newly spawned shell.
+
+Then proceed with ``make`` or ``make app`` according to the platform specific instructions above.
+
 
 Note for Linux/macOS packagers
 ----------------------------------

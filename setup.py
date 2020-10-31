@@ -63,11 +63,11 @@ class Options(argparse.Namespace):
     for_freeze: bool = False
     libdir_name: str = 'lib'
     extra_logging: List[str] = []
-    link_time_optimization: bool = True
+    link_time_optimization: bool = 'KITTY_NO_LTO' not in os.environ
     update_check_interval: float = 24
-    egl_library: Optional[str] = None
-    startup_notification_library: Optional[str] = None
-    canberra_library: Optional[str] = None
+    egl_library: Optional[str] = os.getenv('KITTY_EGL_LIBRARY')
+    startup_notification_library: Optional[str] = os.getenv('KITTY_STARTUP_NOTIFICATION_LIBRARY')
+    canberra_library: Optional[str] = os.getenv('KITTY_CANBERRA_LIBRARY')
 
 
 class CompileKey(NamedTuple):
