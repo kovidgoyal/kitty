@@ -1994,8 +1994,10 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                         bitmapFormat:NSBitmapFormatAlphaNonpremultiplied
                         bytesPerRow:src->width * 4
                         bitsPerPixel:32];
-        if (rep == nil)
+        if (rep == nil) {
+            [native release];
             return false;
+        }
 
         memcpy([rep bitmapData], src->pixels, src->width * src->height * 4);
         [native addRepresentation:rep];
