@@ -182,14 +182,9 @@ cocoa_send_notification(PyObject *self UNUSED, PyObject *args) {
     if (!center) {PyErr_SetString(PyExc_RuntimeError, "Failed to get the user notification center"); return NULL; }
     if (!center.delegate) center.delegate = [[NotificationDelegate alloc] init];
     NSUserNotification *n = [NSUserNotification new];
-#define SET(x) { \
-    if (x) { \
-        NSString *t = @(x); \
-        n.x = t; \
-        [t release]; \
-    }}
-    SET(title); SET(subtitle); SET(informativeText);
-#undef SET
+    if (title) n.title = @(title);
+    if (subtitle) n.subtitle = @(subtitle);
+    if (informativeText) n.informativeText = @(informativeText);
     if (identifier) {
         n.userInfo = @{@"user_id": @(identifier)};
     }
