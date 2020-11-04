@@ -65,6 +65,11 @@ def run_kitten(args: List[str]) -> None:
     rk(kitten)
 
 
+def edit_config_file(args: List[str]) -> None:
+    from kitty.utils import edit_config_file as f
+    f()
+
+
 def namespaced(args: List[str]) -> None:
     func = namespaced_entry_points[args[1]]
     func(args[1:])
@@ -77,6 +82,7 @@ entry_points = {
     'runpy': runpy,
     'launch': launch,
     'kitten': run_kitten,
+    'edit-config': edit_config_file,
 
     '@': remote_control,
     '+': namespaced,

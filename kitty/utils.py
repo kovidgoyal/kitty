@@ -580,6 +580,13 @@ def parse_uri_list(text: str) -> Generator[str, None, None]:
             yield unquote(purl.path)
 
 
+def edit_config_file() -> None:
+    from kitty.config import prepare_config_file_for_editing
+    p = prepare_config_file_for_editing()
+    editor = get_editor()
+    os.execvp(editor[0], editor + [p])
+
+
 class SSHConnectionData(NamedTuple):
     binary: str
     hostname: str
