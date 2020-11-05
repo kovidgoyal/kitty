@@ -213,6 +213,7 @@ manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
             CFRelease(new_font);
         }
     }
+    CFRelease(fonts);
     return ans;
 }
 
