@@ -39,6 +39,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Dont ignore :option:`--title` when using a session file that defines no
   windows (:iss:`3055`)
 
+- Fix the send_text action not working in URL handlers (:iss:`3081`)
+
 
 0.19.1 [2020-10-06]
 -------------------

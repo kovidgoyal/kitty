@@ -158,8 +158,14 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Genera
     }
 
     def expand(x: Any) -> Any:
+        as_bytes = isinstance(x, bytes)
+        if as_bytes:
+            x = x.decode('utf-8')
         if isinstance(x, str):
-            return expandvars(x, env, fallback_to_os_env=False)
+            ans = expandvars(x, env, fallback_to_os_env=False)
+            if as_bytes:
+                return ans.encode('utf-8')
+            return ans
         return x
 
     for action in actions:
