@@ -41,6 +41,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix the send_text action not working in URL handlers (:iss:`3081`)
 
+- Fix last character of URL not being detected if it is the only character on a
+  new line (:iss:`3088`)
+
 
 0.19.1 [2020-10-06]
 -------------------

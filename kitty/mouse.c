@@ -275,7 +275,7 @@ extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type s
         // we deliberately allow non-continued lines as some programs, like
         // mutt split URLs with newlines at line boundaries
         index_type new_x = line_url_end_at(line, 0, false, sentinel, next_line_starts_with_url_chars);
-        if (!new_x) break;
+        if (!new_x && !line_startswith_url_chars(line)) break;
         *y += 1; *x = new_x;
     }
 }
