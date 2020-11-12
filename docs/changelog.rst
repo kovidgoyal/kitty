@@ -44,6 +44,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix last character of URL not being detected if it is the only character on a
   new line (:iss:`3088`)
 
+- Don't restrict the DCH control code to only the current scroll region  (:iss:`3090`)
+
 
 0.19.1 [2020-10-06]
 -------------------

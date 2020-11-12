@@ -142,6 +142,13 @@ class TestScreen(BaseTest):
         self.ae(str(s.line(0)), 'ade')
         self.assertTrue(s.line(0).cursor_from(4).bold)
         self.assertFalse(s.line(0).cursor_from(2).bold)
+        s = self.create_screen()
+        s.set_margins(1, 2)
+        s.cursor.y = 3
+        s.draw('abcde')
+        s.cursor.x = 0
+        s.delete_characters(2)
+        self.ae('cde', str(s.line(s.cursor.y)))
 
         init()
         s.erase_characters(2)

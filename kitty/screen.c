@@ -1351,7 +1351,7 @@ screen_repeat_character(Screen *self, unsigned int count) {
 void
 screen_delete_characters(Screen *self, unsigned int count) {
     // Delete characters, later characters are moved left
-    unsigned int top = self->margin_top, bottom = self->margin_bottom;
+    const unsigned int top = 0, bottom = self->lines - 1;
     if (count == 0) count = 1;
     if (top <= self->cursor->y && self->cursor->y <= bottom) {
         unsigned int x = self->cursor->x;
