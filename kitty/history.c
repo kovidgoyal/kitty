@@ -63,7 +63,7 @@ alloc_pagerhist(size_t pagerhist_sz) {
     if (!ph) return NULL;
     ph->max_sz = pagerhist_sz;
     ph->buffer_size = MIN(1024u*1024u, ph->max_sz);
-    ph->buffer = PyMem_RawMalloc(ph->buffer_size);
+    ph->buffer = PyMem_Malloc(ph->buffer_size);
     if (!ph->buffer) { PyMem_Free(ph); return NULL; }
     return ph;
 }
