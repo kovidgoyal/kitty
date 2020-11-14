@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.19.3 [future]
+-------------------
+
+- Distribute extra pixels among all eight-blocks rather than adding them
+  all to the last block (:iss:`3097`)
+
+
 0.19.2 [2020-11-13]
 -------------------
 
