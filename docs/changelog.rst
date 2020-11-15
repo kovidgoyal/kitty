@@ -10,6 +10,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Distribute extra pixels among all eight-blocks rather than adding them
   all to the last block (:iss:`3097`)
 
+- Fix drawing of a few sextant characters incorrect (:pull:`3105`)
+
 
 0.19.2 [2020-11-13]
 -------------------
