@@ -955,7 +955,7 @@ for i in range(256):
 
 c = 0x1fb00
 for i in range(1, 63):
-    if i in (20, 40):
+    if i in (21, 42):
         continue
     box_chars[chr(c)] = [p(sextant, which=i)]
     c += 1
