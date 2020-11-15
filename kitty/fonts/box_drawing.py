@@ -673,7 +673,7 @@ def eight_range(size: int, which: int) -> range:
         return range(start, start + thickness)
     extra = size - block
     thicknesses = list(repeat(thickness, 8))
-    for i in (3, 4, 2, 5, 6, 1, 7, 0):
+    for i in (3, 4, 2, 5, 6, 1, 7, 0):  # ensures the thickness of first and last are least likely to be changed
         if not extra:
             break
         extra -= 1
