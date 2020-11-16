@@ -2062,18 +2062,38 @@ bool _glfwPlatformToggleFullscreen(_GLFWwindow* w, unsigned int flags) {
     bool made_fullscreen = true;
     bool traditional = !(flags & 1);
     NSWindowStyleMask sm = [window styleMask];
-    bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
     if (traditional) {
-        if (!(in_fullscreen)) {
-            sm |= NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen;
-            [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
+        if (@available(macOS 10.16, *)) {
+            // As of Big Turd NSWindowStyleMaskFullScreen is no longer useable
+            if (!w->ns.in_traditional_fullscreen) {
+                w->ns.pre_full_screen_style_mask = sm;
+                [window setStyleMask: NSWindowStyleMaskBorderless];
+                [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
+                [window setFrame:[window.screen frame] display:YES];
+                w->ns.in_traditional_fullscreen = true;
+            } else {
+                made_fullscreen = false;
+                [window setStyleMask: w->ns.pre_full_screen_style_mask];
+                [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
+                w->ns.in_traditional_fullscreen = false;
+            }
+            // for some reason despite calling this selector, the window doesnt actually get keyboard focus till you click on it.
+            // presumably a bug with NSWindowStyleMaskBorderless windows
+            [window performSelector:@selector(makeKeyAndOrderFront:) withObject:nil afterDelay:0];
         } else {
-            made_fullscreen = false;
-            sm &= ~(NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen);
-            [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
+            bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
+            if (!(in_fullscreen)) {
+                sm |= NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen;
+                [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationAutoHideMenuBar | NSApplicationPresentationAutoHideDock];
+            } else {
+                made_fullscreen = false;
+                sm &= ~(NSWindowStyleMaskBorderless | NSWindowStyleMaskFullScreen);
+                [[NSApplication sharedApplication] setPresentationOptions: NSApplicationPresentationDefault];
+            }
+            [window setStyleMask: sm];
         }
-        [window setStyleMask: sm];
     } else {
+        bool in_fullscreen = sm & NSWindowStyleMaskFullScreen;
         if (in_fullscreen) made_fullscreen = false;
         [window toggleFullScreen: nil];
     }
