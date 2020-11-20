@@ -683,3 +683,37 @@ class TestScreen(BaseTest):
         self.ae(s.current_url_text(), '123abcxyz')
         self.ae('2', s.hyperlink_at(1, 3))
         self.ae(s.current_url_text(), 'Z Z')
+
+    def test_bottom_margin(self):
+        return
+        s = self.create_screen(cols=80, lines=6, scrollback=4)
+        s.set_margins(0, 5)
+        for i in range(8):
+            s.draw(str(i))
+            s.linefeed()
+            s.carriage_return()
+
+        self.ae(str(s.linebuf), '4\n5\n6\n7\n\n')
+        self.ae(str(s.historybuf), '3\n2\n1\n0')
+
+    def test_top_margin(self):
+        s = self.create_screen(cols=80, lines=6, scrollback=4)
+        s.set_margins(2, 6)
+        for i in range(8):
+            s.draw(str(i))
+            s.linefeed()
+            s.carriage_return()
+
+        self.ae(str(s.linebuf), '0\n4\n5\n6\n7\n')
+        self.ae(str(s.historybuf), '')
+
+    def test_top_and_bottom_margin(self):
+        s = self.create_screen(cols=80, lines=6, scrollback=4)
+        s.set_margins(2, 5)
+        for i in range(8):
+            s.draw(str(i))
+            s.linefeed()
+            s.carriage_return()
+
+        self.ae(str(s.linebuf), '0\n5\n6\n7\n\n')
+        self.ae(str(s.historybuf), '')
