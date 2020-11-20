@@ -999,8 +999,8 @@ index_selection(const Screen *self, Selections *selections, bool up) {
     if (self->overlay_line.is_active) deactivate_overlay_line(self); \
     linebuf_index(self->linebuf, top, bottom); \
     INDEX_GRAPHICS(-1) \
-    if (self->linebuf == self->main_linebuf && bottom == self->lines - 1) { \
-        /* Only add to history when no page margins have been set */ \
+    if (self->linebuf == self->main_linebuf && self->margin_top == 0) { \
+        /* Only add to history when no top margin has been set */ \
         linebuf_init_line(self->linebuf, bottom); \
         historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf); \
         self->history_line_added_count++; \
