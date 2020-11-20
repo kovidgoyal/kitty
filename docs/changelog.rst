@@ -12,6 +12,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix drawing of a few sextant characters incorrect (:pull:`3105`)
 
+- macOS: Fix minimize not working for chromeless windows (:iss:`3112`)
+
 
 0.19.2 [2020-11-13]
 -------------------

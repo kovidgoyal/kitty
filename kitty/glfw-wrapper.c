@@ -380,6 +380,8 @@ load_glfw(const char* path) {
 
     *(void **) (&glfwGetCocoaWindow_impl) = dlsym(handle, "glfwGetCocoaWindow");
 
+    *(void **) (&glfwHideCocoaTitlebar_impl) = dlsym(handle, "glfwHideCocoaTitlebar");
+
     *(void **) (&glfwGetNSGLContext_impl) = dlsym(handle, "glfwGetNSGLContext");
 
     *(void **) (&glfwGetCocoaMonitor_impl) = dlsym(handle, "glfwGetCocoaMonitor");

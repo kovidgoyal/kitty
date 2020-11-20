@@ -2147,6 +2147,10 @@ typedef void* (*glfwGetCocoaWindow_func)(GLFWwindow*);
 GFW_EXTERN glfwGetCocoaWindow_func glfwGetCocoaWindow_impl;
 #define glfwGetCocoaWindow glfwGetCocoaWindow_impl
 
+typedef void (*glfwHideCocoaTitlebar_func)(GLFWwindow*, bool);
+GFW_EXTERN glfwHideCocoaTitlebar_func glfwHideCocoaTitlebar_impl;
+#define glfwHideCocoaTitlebar glfwHideCocoaTitlebar_impl
+
 typedef void* (*glfwGetNSGLContext_func)(GLFWwindow*);
 GFW_EXTERN glfwGetNSGLContext_func glfwGetNSGLContext_impl;
 #define glfwGetNSGLContext glfwGetNSGLContext_impl

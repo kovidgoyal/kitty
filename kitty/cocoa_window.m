@@ -616,30 +616,6 @@ cocoa_hide_window_title(void *w)
 }
 
 void
-cocoa_hide_titlebar(void *w)
-{
-    @autoreleasepool {
-
-    cocoa_hide_window_title(w);
-
-    NSWindow *window = (NSWindow*)w;
-    NSButton *button;
-
-    button = [window standardWindowButton: NSWindowCloseButton];
-    if (button) button.hidden = true;
-    button = [window standardWindowButton: NSWindowMiniaturizeButton];
-    if (button) button.hidden = true;
-    button = [window standardWindowButton: NSWindowZoomButton];
-    if (button) button.hidden = true;
-
-    [window setTitlebarAppearsTransparent:YES];
-    [window setStyleMask:
-        [window styleMask] | NSWindowStyleMaskFullSizeContentView];
-
-    } // autoreleasepool
-}
-
-void
 cocoa_system_beep(void) {
     NSBeep();
 }

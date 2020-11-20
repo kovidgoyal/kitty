@@ -1314,6 +1314,16 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c,
     glfw_window = NULL;
 }
 
+- (BOOL)validateMenuItem:(NSMenuItem *)item {
+    if (item.action == @selector(performMiniaturize:)) return YES;
+    return [super validateMenuItem:item];
+}
+
+- (void)performMiniaturize:(id)sender
+{
+    if (glfw_window && (!glfw_window->decorated || glfw_window->ns.titlebar_hidden)) [self miniaturize:self];
+    else [super performMiniaturize:sender];
+}
 
 - (BOOL)canBecomeKeyWindow
 {
@@ -2291,6 +2301,29 @@ GLFWAPI id glfwGetCocoaWindow(GLFWwindow* handle)
     _GLFWwindow* window = (_GLFWwindow*) handle;
     _GLFW_REQUIRE_INIT_OR_RETURN(nil);
     return window->ns.object;
+}
+
+GLFWAPI void glfwHideCocoaTitlebar(GLFWwindow* handle, bool yes) {
+    @autoreleasepool {
+    _GLFWwindow* w = (_GLFWwindow*) handle;
+    NSWindow *window = w->ns.object;
+    w->ns.titlebar_hidden = yes;
+    NSButton *button;
+    button = [window standardWindowButton: NSWindowCloseButton];
+    if (button) button.hidden = yes;
+    button = [window standardWindowButton: NSWindowMiniaturizeButton];
+    if (button) button.hidden = yes;
+    button = [window standardWindowButton: NSWindowZoomButton];
+    [window setTitlebarAppearsTransparent:yes];
+    if (button) button.hidden = yes;
+    if (yes) {
+        [window setTitleVisibility:NSWindowTitleHidden];
+        [window setStyleMask: [window styleMask] | NSWindowStyleMaskFullSizeContentView];
+    } else {
+        [window setTitleVisibility:NSWindowTitleVisible];
+        [window setStyleMask: [window styleMask] & ~NSWindowStyleMaskFullSizeContentView];
+    }
+    } // autoreleasepool
 }
 
 GLFWAPI GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow *handle, GLFWcocoatextinputfilterfun callback) {

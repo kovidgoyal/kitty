@@ -14,7 +14,6 @@ extern void cocoa_focus_window(void *w);
 extern long cocoa_window_number(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_hide_window_title(void *w);
-extern void cocoa_hide_titlebar(void *w);
 extern void cocoa_system_beep(void);
 extern void cocoa_set_activation_policy(bool);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
@@ -695,7 +694,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 #ifdef __APPLE__
     if (glfwGetCocoaWindow) {
         if (OPT(hide_window_decorations) & 2) {
-            cocoa_hide_titlebar(glfwGetCocoaWindow(glfw_window));
+            glfwHideCocoaTitlebar(glfw_window, true);
         } else if (!(OPT(macos_show_window_title_in) & WINDOW)) {
             cocoa_hide_window_title(glfwGetCocoaWindow(glfw_window));
         }
