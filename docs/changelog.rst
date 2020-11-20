@@ -14,6 +14,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix minimize not working for chromeless windows (:iss:`3112`)
 
+- Preserve lines in the scrollback if a scrolling region is defined that
+  is contiguous with the top of the screen (:iss:`3113`)
+
 
 0.19.2 [2020-11-13]
 -------------------

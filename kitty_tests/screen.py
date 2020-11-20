@@ -685,7 +685,6 @@ class TestScreen(BaseTest):
         self.ae(s.current_url_text(), 'Z Z')
 
     def test_bottom_margin(self):
-        return
         s = self.create_screen(cols=80, lines=6, scrollback=4)
         s.set_margins(0, 5)
         for i in range(8):
