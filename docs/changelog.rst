@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.19.3 [future]
 -------------------
 
+- Add a new mappable `select_tab` action to choose a tab to switch to even
+  when the tab bar is hidden (:iss:`3115`)
+
 - Distribute extra pixels among all eight-blocks rather than adding them
   all to the last block (:iss:`3097`)
 

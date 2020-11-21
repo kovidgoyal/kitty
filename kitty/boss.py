@@ -1459,6 +1459,37 @@ class Boss:
         self._cleanup_tab_after_window_removal(tab)
         target_tab.make_active()
 
+    def select_tab(self) -> None:
+        lines = ['Choose a tab to switch to', '']
+        fmt = ': {1}'
+        tab_id_map: Dict[int, Optional[Union[str, int]]] = {}
+        current_tab = self.active_tab
+        done_tab_id: Optional[Union[str, int]] = None
+
+        for i, tab in enumerate(self.all_tabs):
+            if tab is not current_tab:
+                tab_id_map[len(tab_id_map)] = tab.id
+                lines.append(fmt.format(i + 1, tab.title))
+
+        def done(data: Dict[str, Any], target_window_id: int, self: Boss) -> None:
+            nonlocal done_tab_id
+            done_tab_id = tab_id_map[int(data['groupdicts'][0]['index'])]
+
+        def done2(target_window_id: int, self: Boss) -> None:
+            tab_id = done_tab_id
+            if tab_id is not None:
+                for i, tab in enumerate(self.all_tabs):
+                    if tab.id == tab_id:
+                        self.set_active_tab(tab)
+                        break
+
+        self._run_kitten(
+            'hints', args=(
+                '--ascending', '--customize-processing=::import::kitty.choose_entry',
+                r'--regex=(?m)^:\s+.+$',
+            ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
+        )
+
     def detach_window(self, *args: str) -> None:
         if not args or args[0] == 'new':
             return self._move_window_to(target_os_window_id='new')
