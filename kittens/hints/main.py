@@ -120,7 +120,7 @@ class Hints(Handler):
         self.all_marks = all_marks
         self.ignore_mark_indices: Set[int] = set()
         self.args = args
-        self.window_title = _('Choose URL') if args.type == 'url' else _('Choose text')
+        self.window_title = args.window_title or (_('Choose URL') if args.type == 'url' else _('Choose text'))
         self.multiple = args.multiple
         self.match_suffix = self.get_match_suffix(args)
         self.chosen: List[Mark] = []
@@ -634,6 +634,9 @@ on selected matches. See https://sw.kovidgoyal.net/kitty/kittens/hints.html
 for details. You can also specify absolute paths to load the script from elsewhere.
 
 
+--window-title
+The window title for the hints window, default title is selected based on
+the type of text being hinted.
 '''.format(
     default_regex=DEFAULT_REGEX,
     line='{{line}}', path='{{path}}'

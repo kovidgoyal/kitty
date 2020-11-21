@@ -1460,7 +1460,8 @@ class Boss:
         target_tab.make_active()
 
     def select_tab(self) -> None:
-        lines = ['Choose a tab to switch to', '']
+        title = 'Choose a tab to switch to'
+        lines = [title, '']
         fmt = ': {1}'
         tab_id_map: Dict[int, Optional[Union[str, int]]] = {}
         current_tab = self.active_tab
@@ -1486,7 +1487,7 @@ class Boss:
         self._run_kitten(
             'hints', args=(
                 '--ascending', '--customize-processing=::import::kitty.choose_entry',
-                r'--regex=(?m)^:\s+.+$',
+                r'--regex=(?m)^:\s+.+$', '--window-title', title,
             ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
         )
 
@@ -1495,10 +1496,8 @@ class Boss:
             return self._move_window_to(target_os_window_id='new')
         if args[0] == 'new-tab':
             return self._move_window_to(target_tab_id='new')
-        lines = [
-            'Choose a tab to move the window to',
-            ''
-        ]
+        title = 'Choose a tab to move the window to'
+        lines = [title, '']
         fmt = ': {1}'
         tab_id_map: Dict[int, Optional[Union[str, int]]] = {}
         current_tab = self.active_tab
@@ -1534,7 +1533,7 @@ class Boss:
         self._run_kitten(
             'hints', args=(
                 '--ascending', '--customize-processing=::import::kitty.choose_entry',
-                r'--regex=(?m)^:\s+.+$',
+                r'--regex=(?m)^:\s+.+$', '--window-title', title,
             ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
         )
 
@@ -1542,10 +1541,8 @@ class Boss:
         if not args or args[0] == 'new':
             return self._move_tab_to()
 
-        lines = [
-            'Choose an OS window to move the tab to',
-            ''
-        ]
+        title = 'Choose an OS window to move the tab to'
+        lines = [title, '']
         fmt = ': {1}'
         os_window_id_map: Dict[int, Optional[int]] = {}
         current_os_window = getattr(self.active_tab, 'os_window_id', 0)
@@ -1582,7 +1579,7 @@ class Boss:
         self._run_kitten(
             'hints', args=(
                 '--ascending', '--customize-processing=::import::kitty.choose_entry',
-                r'--regex=(?m)^:\s+.+$',
+                r'--regex=(?m)^:\s+.+$', '--window-title', title,
             ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
         )
 
