@@ -368,7 +368,7 @@ HANDLER(handle_move_event) {
     bool in_left_half_of_cell = false;
     if (!cell_for_pos(w, &x, &y, &in_left_half_of_cell, global_state.callback_os_window)) return;
     Screen *screen = w->render_data.screen;
-    detect_url(screen, x, y);
+    if(OPT(detect_urls)) detect_url(screen, x, y);
     bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y;
     bool cell_half_changed = in_left_half_of_cell != w->mouse_pos.in_left_half_of_cell;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;

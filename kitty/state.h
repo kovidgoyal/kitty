@@ -72,6 +72,7 @@ typedef struct {
         UrlPrefix *values;
         size_t num, max_prefix_len;
     } url_prefixes;
+    bool detect_urls;
 } Options;
 
 typedef struct {

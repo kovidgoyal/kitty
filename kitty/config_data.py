@@ -520,6 +520,11 @@ def url_prefixes(x: str) -> Tuple[str, ...]:
 o('url_prefixes', 'http https file ftp', option_type=url_prefixes, long_text=_('''
 The set of URL prefixes to look for when detecting a URL under the mouse cursor.'''))
 
+o('detect_urls', True, long_text=_('''
+Detect URLs under the mouse. Detected URLs are highlighted
+with an underline and the mouse cursor becomes a hand over them.
+Even if this option is disabled, URLs are still clickable.'''))
+
 
 def copy_on_select(raw: str) -> str:
     q = raw.lower()
