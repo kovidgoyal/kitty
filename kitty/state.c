@@ -705,6 +705,7 @@ PYWRAP1(set_options) {
     S(pointer_shape_when_grabbed, pointer_shape);
     S(default_pointer_shape, pointer_shape);
     S(pointer_shape_when_dragging, pointer_shape);
+    S(detect_urls, PyObject_IsTrue);
 
     GA(tab_bar_style);
     global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;
