@@ -23,8 +23,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Wayland: Fix key repeat being stopped by the release of an unrelated key
   (:iss:`2191`)
 
-- Add an :opt:`detect_urls` to control whether kitty will detect URLs when the
-  mouse moves over them (:pull:`3118`)
+- Add an option, :opt:`detect_urls` to control whether kitty will detect URLs
+  when the mouse moves over them (:pull:`3118`)
 
 
 0.19.2 [2020-11-13]
