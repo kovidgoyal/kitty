@@ -20,6 +20,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Preserve lines in the scrollback if a scrolling region is defined that
   is contiguous with the top of the screen (:iss:`3113`)
 
+- Wayland: Fix key repeat being stopped by the release of an unrelated key
+  (:iss:`2191`)
+
 
 0.19.2 [2020-11-13]
 -------------------
