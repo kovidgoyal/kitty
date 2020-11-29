@@ -402,7 +402,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             snprintf(fname, sizeof(fname)/sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
             if (tt == 's') fd = shm_open(fname, O_RDONLY, 0);
             else fd = open(fname, O_CLOEXEC | O_RDONLY);
-            if (fd == -1) ABRT(EBADF, "Failed to open file %s for graphics transmission with error: [%d] %s", fname, errno, strerror(errno));
+            if (fd == -1) ABRT(EBADF, "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
             img->data_loaded = mmap_img_file(self, img, fd, g->data_sz, g->data_offset);
             safe_close(fd, __FILE__, __LINE__);
             if (tt == 't') {

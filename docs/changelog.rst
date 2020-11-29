@@ -26,6 +26,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add an option, :opt:`detect_urls` to control whether kitty will detect URLs
   when the mouse moves over them (:pull:`3118`)
 
+- Graphics protocol: Dont return filename in the error message when opening file
+  fails, since filenames can contain control characters (:iss:`3128`)
+
 
 0.19.2 [2020-11-13]
 -------------------
