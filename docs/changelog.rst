@@ -29,6 +29,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Graphics protocol: Dont return filename in the error message when opening file
   fails, since filenames can contain control characters (:iss:`3128`)
 
+- macOS: Partial fix for traditional fullscreen not working on Big Sur
+  (:iss:`3100`)
+
 
 0.19.2 [2020-11-13]
 -------------------
