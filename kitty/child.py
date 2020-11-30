@@ -156,9 +156,12 @@ def default_env() -> Dict[str, str]:
 
 def set_default_env(val: Optional[Dict[str, str]] = None) -> None:
     env = process_env().copy()
+    has_lctype = False
     if val:
+        has_lctype = 'LC_CTYPE' in val
         env.update(val)
     setattr(default_env, 'env', env)
+    setattr(default_env, 'lc_ctype_set_by_user', has_lctype)
 
 
 def openpty() -> Tuple[int, int]:
@@ -210,7 +213,8 @@ class Child:
         env: Optional[Dict[str, str]] = getattr(self, '_final_env', None)
         if env is None:
             env = self._final_env = default_env().copy()
-            if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not sys._xoptions.get('lc_ctype_before_python'):
+            if is_macos and env.get('LC_CTYPE') == 'UTF-8' and not sys._xoptions.get(
+                    'lc_ctype_before_python') and not getattr(default_env, 'lc_ctype_set_by_user', False):
                 del env['LC_CTYPE']
             env.update(self.env)
             env['TERM'] = self.opts.term

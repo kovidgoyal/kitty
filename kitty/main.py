@@ -249,7 +249,6 @@ def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
 
 
 def setup_environment(opts: OptionsStub, cli_opts: CLIOptions) -> None:
-    extra_env = opts.env.copy()
     if opts.editor == '.':
         editor = get_editor_from_env(os.environ)
         if not editor:
@@ -266,7 +265,7 @@ def setup_environment(opts: OptionsStub, cli_opts: CLIOptions) -> None:
     if cli_opts.listen_on and opts.allow_remote_control != 'n':
         cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
         os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
-    set_default_env(extra_env)
+    set_default_env(opts.env.copy())
 
 
 def set_locale() -> None:
