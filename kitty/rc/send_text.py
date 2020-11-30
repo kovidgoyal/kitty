@@ -5,7 +5,7 @@
 import base64
 import os
 import sys
-from typing import TYPE_CHECKING, Dict, Generator, Optional
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional
 
 from kitty.config import parse_send_text_bytes
 
@@ -24,6 +24,8 @@ class SendText(RemoteCommand):
     data+: The data being sent. Can be either: text: followed by text or base64: followed by standard base64 encoded bytes
     match: A string indicating the window to send text to
     match_tab: A string indicating the tab to send text to
+    all: A boolean indicating all windows should be matched.
+    exclude_active: A boolean that prevents sending text to the active window
     '''
     short_desc = 'Send arbitrary text to specified windows'
     desc = (
@@ -34,6 +36,11 @@ class SendText(RemoteCommand):
         ' only the currently active window.'
     )
     options_spec = MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t') + '''\n
+--all
+type=bool-set
+Match all windows.
+
+
 --stdin
 type=bool-set
 Read the text to be sent from :italic:`stdin`. Note that in this case the text is sent as is,
@@ -43,13 +50,18 @@ not interpreted for escapes. If stdin is a terminal, you can press Ctrl-D to end
 --from-file
 Path to a file whose contents you wish to send. Note that in this case the file contents
 are sent as is, not interpreted for escapes.
+
+
+--exclude-active
+type=bool-set
+Do not send text to the active window, even if it is one of the matched windows.
 '''
     no_response = True
     argspec = '[TEXT TO SEND]'
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         limit = 1024
-        ret = {'match': opts.match, 'data': '', 'match_tab': opts.match_tab}
+        ret = {'match': opts.match, 'data': '', 'match_tab': opts.match_tab, 'all': opts.all, 'exclude_active': opts.exclude_active}
 
         def pipe() -> Generator[Dict, None, None]:
             if sys.stdin.isatty():
@@ -109,18 +121,21 @@ are sent as is, not interpreted for escapes.
         return chain()
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        windows = [boss.active_window]
-        match = payload_get('match')
-        if match:
-            windows = list(boss.match_windows(match))
-        mt = payload_get('match_tab')
-        if mt:
-            windows = []
-            tabs = tuple(boss.match_tabs(mt))
-            if not tabs:
-                raise MatchError(payload_get('match_tab'), 'tabs')
-            for tab in tabs:
-                windows += tuple(tab)
+        if payload_get('all'):
+            windows: List[Optional[Window]] = list(boss.all_windows)
+        else:
+            windows = [boss.active_window]
+            match = payload_get('match')
+            if match:
+                windows = list(boss.match_windows(match))
+            mt = payload_get('match_tab')
+            if mt:
+                windows = []
+                tabs = tuple(boss.match_tabs(mt))
+                if not tabs:
+                    raise MatchError(payload_get('match_tab'), 'tabs')
+                for tab in tabs:
+                    windows += tuple(tab)
         encoding, _, q = payload_get('data').partition(':')
         if encoding == 'text':
             data = q.encode('utf-8')
@@ -128,9 +143,11 @@ are sent as is, not interpreted for escapes.
             data = base64.standard_b64decode(q)
         else:
             raise TypeError(f'Invalid encoding for send-text data: {encoding}')
+        exclude_active = payload_get('exclude_active')
         for window in windows:
             if window is not None:
-                window.write_to_child(data)
+                if not exclude_active or window is not boss.active_window:
+                    window.write_to_child(data)
 
 
 send_text = SendText()
