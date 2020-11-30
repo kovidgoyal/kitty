@@ -155,6 +155,13 @@ def parse_rc_args(args: List[str]) -> Tuple[RCOptions, List[str]]:
     return parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname), result_class=RCOptions)
 
 
+def create_basic_command(name: str, payload: Any = None, no_response: bool = False) -> Dict[str, Any]:
+    ans = {'cmd': name, 'version': version, 'no_response': no_response}
+    if payload is not None:
+        ans['payload'] = payload
+    return ans
+
+
 def main(args: List[str]) -> None:
     global_opts, items = parse_rc_args(args)
     global_opts.no_command_response = None
@@ -171,17 +178,11 @@ def main(args: List[str]) -> None:
             emph(cmd), ', '.join(x.replace('_', '-') for x in all_command_names())))
     opts, items = parse_subcommand_cli(c, items)
     payload = c.message_to_kitty(global_opts, opts, items)
-    send = {
-        'cmd': cmd,
-        'version': version,
-    }
-    if payload is not None:
-        send['payload'] = payload
     if global_opts.no_command_response is not None:
         no_response = global_opts.no_command_response  # type: ignore
     else:
         no_response = c.no_response
-    send['no_response'] = no_response
+    send = create_basic_command(cmd, payload=payload, no_response=no_response)
     if not global_opts.to and 'KITTY_LISTEN_ON' in os.environ:
         global_opts.to = os.environ['KITTY_LISTEN_ON']
     response = do_io(global_opts.to, send, no_response)
