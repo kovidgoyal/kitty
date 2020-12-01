@@ -65,6 +65,7 @@ Do not send text to the active window, even if it is one of the matched windows.
 
         def pipe() -> Generator[Dict, None, None]:
             if sys.stdin.isatty():
+                ret['exclude_active'] = True
                 import select
                 fd = sys.stdin.fileno()
                 keep_going = True
