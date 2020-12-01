@@ -324,13 +324,17 @@ class Loop:
             self.write_buf[self.iov_limit - 1] = b''.join(self.write_buf[self.iov_limit - 1:])
             del self.write_buf[self.iov_limit:]
         sizes = tuple(map(len, self.write_buf))
-        try:
-            written = os.writev(fd, self.write_buf)
-        except BlockingIOError:
-            return
-        if not written:
-            raise EOFError('The output stream is closed')
-        if written >= sum(sizes):
+        total_size = sum(sizes)
+        if total_size:
+            try:
+                written = os.writev(fd, self.write_buf)
+            except BlockingIOError:
+                return
+            if not written:
+                raise EOFError('The output stream is closed')
+        else:
+            written = 0
+        if written >= total_size:
             self.write_buf: List[bytes] = []
             self.asycio_loop.remove_writer(fd)
             self.waiting_for_writes = False
