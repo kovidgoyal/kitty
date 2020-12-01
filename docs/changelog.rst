@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.19.3 [future]
 -------------------
 
+- A new :doc:`broadcast <kittens/broadcast>` kitten to type in all kitty windows
+  simultaneously (:iss:`1569`)
+
 - Add a new mappable `select_tab` action to choose a tab to switch to even
   when the tab bar is hidden (:iss:`3115`)
 

@@ -148,6 +148,19 @@ as the syntax for what follows :code:`kitty @` above. You do not need
 to enable remote control to use these mappings.
 
 
+Broadcasting what you type to all kitty windows
+--------------------------------------------------
+
+As a simple illustration of the power of remote control, lets
+have what we type sent to all open kitty windows. To do that define the
+following mapping in :file:`kitty.conf`::
+
+    map F1 launch --allow-remote-control kitty +kitten broadcast
+
+Now press, F1 and start typing, what you type will be sent to all windows,
+live, as you type it.
+
+
 Documentation for the remote control protocol
 -----------------------------------------------
 
