@@ -149,6 +149,8 @@ void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
+    self->main_savepoint.is_valid = false;
+    self->alt_savepoint.is_valid = false;
     linebuf_clear(self->linebuf, BLANK_CHAR);
     historybuf_clear(self->historybuf);
     clear_hyperlink_pool(self->hyperlink_pool);
@@ -1096,14 +1098,13 @@ screen_linefeed(Screen *self) {
 
 void
 screen_save_cursor(Screen *self) {
-    SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
-    Savepoint *sp;
-    buffer_push(pts, sp);
+    Savepoint *sp = self->linebuf == self->main_linebuf ? &self->main_savepoint : &self->alt_savepoint;
     cursor_copy_to(self->cursor, &(sp->cursor));
     sp->mDECOM = self->modes.mDECOM;
     sp->mDECAWM = self->modes.mDECAWM;
     sp->mDECSCNM = self->modes.mDECSCNM;
     COPY_CHARSETS(self, sp);
+    sp->is_valid = true;
 }
 
 void
@@ -1115,10 +1116,8 @@ screen_save_modes(Screen *self) {
 
 void
 screen_restore_cursor(Screen *self) {
-    SavepointBuffer *pts = self->linebuf == self->main_linebuf ? &self->main_savepoints : &self->alt_savepoints;
-    Savepoint *sp;
-    buffer_pop(pts, sp);
-    if (sp == NULL) {
+    Savepoint *sp = self->linebuf == self->main_linebuf ? &self->main_savepoint : &self->alt_savepoint;
+    if (!sp->is_valid) {
         screen_cursor_position(self, 1, 1);
         screen_reset_mode(self, DECOM);
         RESET_CHARSETS;

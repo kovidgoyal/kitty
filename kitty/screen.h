@@ -58,14 +58,8 @@ typedef struct {
     bool use_latin1;
     Cursor cursor;
     bool mDECOM, mDECAWM, mDECSCNM;
-
+    bool is_valid;
 } Savepoint;
-
-
-typedef struct {
-    Savepoint buf[SAVEPOINTS_SZ];
-    index_type start_of_data, count;
-} SavepointBuffer;
 
 
 typedef struct {
@@ -97,7 +91,7 @@ typedef struct {
     } last_rendered;
     bool use_latin1, is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
-    SavepointBuffer main_savepoints, alt_savepoints;
+    Savepoint main_savepoint, alt_savepoint;
     SavemodesBuffer modes_savepoints;
     PyObject *callbacks, *test_child;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;

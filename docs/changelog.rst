@@ -38,6 +38,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix one ANSI formatting escape code not being removed from the pager history
   buffer when piping it as plain text (:iss:`3132`)
 
+- Match the save/restore cursor behavior of other terminals, for the sake of
+  interoperability. This means that doing a DECRC without a prior DECSC is now
+  undefined (:iss:`1264`)
+
 
 0.19.2 [2020-11-13]
 -------------------
