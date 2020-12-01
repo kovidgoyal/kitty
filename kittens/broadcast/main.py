@@ -12,11 +12,12 @@ from kitty.cli_stub import BroadcastCLIOptions
 from kitty.key_encoding import RELEASE, encode_key_event, key_defs as K
 from kitty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
 from kitty.remote_control import create_basic_command, encode_send
-from kitty.typing import KeyEventType
+from kitty.typing import KeyEventType, ScreenSize
 
 from ..tui.handler import Handler
+from ..tui.line_edit import LineEdit
 from ..tui.loop import Loop
-from ..tui.operations import styled
+from ..tui.operations import RESTORE_CURSOR, SAVE_CURSOR, styled
 
 
 class Broadcast(Handler):
@@ -25,6 +26,7 @@ class Broadcast(Handler):
         self.opts = opts
         self.initial_strings = initial_strings
         self.payload = {'exclude_active': True, 'data': '', 'match': opts.match_tab, 'match_tab': opts.match_tab}
+        self.line_edit = LineEdit()
         if not opts.match and not opts.match_tab:
             self.payload['all'] = True
 
@@ -32,10 +34,21 @@ class Broadcast(Handler):
         self.print('Type the text to broadcast below, press', styled('Ctrl+c', fg='yellow'), 'to quit:')
         for x in self.initial_strings:
             self.write_broadcast_text(x)
+        self.write(SAVE_CURSOR)
+
+    def commit_line(self) -> None:
+        self.write(RESTORE_CURSOR + SAVE_CURSOR)
+        self.cmd.clear_to_end_of_screen()
+        self.line_edit.write(self.write, screen_cols=self.screen_size.cols)
+
+    def on_resize(self, screen_size: ScreenSize) -> None:
+        super().on_resize(screen_size)
+        self.commit_line()
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
         self.write_broadcast_text(text)
-        self.write(text)
+        self.line_edit.on_text(text, in_bracketed_paste)
+        self.commit_line()
 
     def on_interrupt(self) -> None:
         self.quit_loop(0)
@@ -44,19 +57,16 @@ class Broadcast(Handler):
         self.write_broadcast_text('\x04')
 
     def on_key(self, key_event: KeyEventType) -> None:
+        if self.line_edit.on_key(key_event):
+            self.commit_line()
         if key_event.type is not RELEASE and not key_event.mods:
-            if key_event.key is K['TAB']:
-                self.write_broadcast_text('\t')
-                self.write('\t')
-                return
-            elif key_event.key is K['BACKSPACE']:
-                self.write_broadcast_text('\177')
-                self.write('\x08\x1b[X')
-                return
-            elif key_event.key is K['ENTER']:
+            if key_event.key is K['ENTER']:
                 self.write_broadcast_text('\r')
                 self.print('')
+                self.line_edit.clear()
+                self.write(SAVE_CURSOR)
                 return
+
         ek = encode_key_event(key_event)
         self.write_broadcast_data('kitty-key:' + ek)
 

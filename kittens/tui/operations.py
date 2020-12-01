@@ -69,6 +69,11 @@ def clear_screen() -> str:
 
 
 @cmd
+def clear_to_end_of_screen() -> str:
+    return '\033[J'
+
+
+@cmd
 def clear_to_eol() -> str:
     return '\033[K'
 
@@ -106,6 +111,12 @@ def set_cursor_visible(yes_or_no: bool) -> str:
 @cmd
 def set_cursor_position(x: int, y: int) -> str:  # (0, 0) is top left
     return '\033[{};{}H'.format(y + 1, x + 1)
+
+
+@cmd
+def move_cursor_by(amt: int, direction: str) -> str:
+    suffix = {'up': 'A', 'down': 'B', 'right': 'C', 'left': 'D'}[direction]
+    return f'\033[{amt}{suffix}'
 
 
 @cmd

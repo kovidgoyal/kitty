@@ -7,6 +7,8 @@ from typing import Callable, Tuple
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 from kitty.key_encoding import RELEASE, KeyEvent, key_defs as K
 
+from .operations import RESTORE_CURSOR, SAVE_CURSOR, move_cursor_by
+
 HOME = K['HOME']
 END = K['END']
 BACKSPACE = K['BACKSPACE']
@@ -31,13 +33,28 @@ class LineEdit:
         before, after = self.current_input[:x], self.current_input[x:]
         return before, after
 
-    def write(self, write: Callable[[str], None], prompt: str = '') -> None:
+    def write(self, write: Callable[[str], None], prompt: str = '', screen_cols: int = 0) -> None:
         if self.pending_bell:
             write('\a')
             self.pending_bell = False
-        write(prompt)
-        write(self.current_input)
-        write('\r\x1b[{}C'.format(self.cursor_pos + wcswidth(prompt)))
+        text = prompt + self.current_input
+        cursor_pos = self.cursor_pos + wcswidth(prompt)
+        if screen_cols:
+            write(SAVE_CURSOR + text + RESTORE_CURSOR)
+            used_lines, last_line_cursor_pos = divmod(cursor_pos, screen_cols)
+            if used_lines == 0:
+                if last_line_cursor_pos:
+                    write(move_cursor_by(last_line_cursor_pos, 'right'))
+            else:
+                if used_lines:
+                    write(move_cursor_by(used_lines, 'down'))
+                if last_line_cursor_pos:
+                    write(move_cursor_by(last_line_cursor_pos, 'right'))
+        else:
+            write(text)
+            write('\r')
+            if cursor_pos:
+                write(move_cursor_by(cursor_pos, 'right'))
 
     def add_text(self, text: str) -> None:
         if self.current_input:
