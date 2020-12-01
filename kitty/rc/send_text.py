@@ -8,6 +8,10 @@ import sys
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional
 
 from kitty.config import parse_send_text_bytes
+from kitty.key_encoding import (
+    WindowSystemKeyEvent, decode_key_event_as_window_system_key
+)
+from kitty.keys import interpret_key_event
 
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError,
@@ -142,13 +146,20 @@ Do not send text to the active window, even if it is one of the matched windows.
             data = q.encode('utf-8')
         elif encoding == 'base64':
             data = base64.standard_b64decode(q)
+        elif encoding == 'kitty-key':
+            data = decode_key_event_as_window_system_key(q)
         else:
             raise TypeError(f'Invalid encoding for send-text data: {encoding}')
         exclude_active = payload_get('exclude_active')
         for window in windows:
             if window is not None:
                 if not exclude_active or window is not boss.active_window:
-                    window.write_to_child(data)
+                    if isinstance(data, WindowSystemKeyEvent):
+                        kdata = interpret_key_event(data.code, 0, data.mods, window, data.action)
+                        if kdata:
+                            window.write_to_child(kdata)
+                    else:
+                        window.write_to_child(data)
 
 
 send_text = SendText()

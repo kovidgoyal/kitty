@@ -417,6 +417,10 @@ def symbolic_name(glfw_name: str) -> str:
     return glfw_name[9:].replace('_', ' ')
 
 
+def glfw_key_name(symbolic_name: str) -> str:
+    return 'GLFW_KEY_' + symbolic_name.replace(' ', '_')
+
+
 def update_encoding() -> None:
     import re
     import subprocess
@@ -492,9 +496,9 @@ del key_name, enc
 
 
 def decode_key_event(text: str) -> KeyEvent:
-    typ = type_map[text[1]]
-    mods = mod_map[text[2]]
-    key = key_rmap[text[3:5]]
+    typ = type_map[text[0]]
+    mods = mod_map[text[1]]
+    key = key_rmap[text[2:4]]
     return KeyEvent(typ, mods, key)
 
 
@@ -503,3 +507,32 @@ def encode_key_event(key_event: KeyEvent) -> str:
     mods = rmod_map[key_event.mods]
     key = ENCODING[key_event.key.replace('_', ' ')]
     return typ + mods + key
+
+
+class WindowSystemKeyEvent(NamedTuple):
+    code: int
+    mods: int
+    action: int
+
+
+def decode_key_event_as_window_system_key(text: str) -> Optional[WindowSystemKeyEvent]:
+    k = decode_key_event(text)
+    glfw_name = glfw_key_name(k.key)
+    glfw_code = getattr(defines, glfw_name, None)
+    if glfw_code is None:
+        return None
+    action = defines.GLFW_PRESS
+    if k.type is RELEASE:
+        action = defines.GLFW_RELEASE
+    elif k.type is REPEAT:
+        action = defines.GLFW_REPEAT
+    mods = 0
+    if k.mods & CTRL:
+        mods |= defines.GLFW_MOD_CONTROL
+    if k.mods & ALT:
+        mods |= defines.GLFW_MOD_ALT
+    if k.mods & SUPER:
+        mods |= defines.GLFW_MOD_SUPER
+    if k.mods & SHIFT:
+        mods |= defines.GLFW_MOD_SHIFT
+    return WindowSystemKeyEvent(glfw_code, mods, action)

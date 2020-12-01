@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import BroadcastCLIOptions
-from kitty.key_encoding import RELEASE, key_defs as K
+from kitty.key_encoding import RELEASE, encode_key_event, key_defs as K
 from kitty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
 from kitty.remote_control import create_basic_command, encode_send
 from kitty.typing import KeyEventType
@@ -48,12 +48,17 @@ class Broadcast(Handler):
             if key_event.key is K['TAB']:
                 self.write_broadcast_text('\t')
                 self.write('\t')
+                return
             elif key_event.key is K['BACKSPACE']:
                 self.write_broadcast_text('\177')
                 self.write('\x08\x1b[X')
+                return
             elif key_event.key is K['ENTER']:
                 self.write_broadcast_text('\r')
                 self.print('')
+                return
+        ek = encode_key_event(key_event)
+        self.write_broadcast_data('kitty-key:' + ek)
 
     def write_broadcast_text(self, text: str) -> None:
         self.write_broadcast_data('base64:' + standard_b64encode(text.encode('utf-8')).decode('ascii'))

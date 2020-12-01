@@ -302,7 +302,7 @@ class Loop:
     def _on_apc(self, apc: str) -> None:
         if apc.startswith('K'):
             try:
-                k = decode_key_event(apc)
+                k = decode_key_event(apc[1:])
             except Exception:
                 pass
             else:
