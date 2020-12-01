@@ -35,6 +35,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Partial fix for traditional fullscreen not working on Big Sur
   (:iss:`3100`)
 
+- Fix one ANSI formatting escape code not being removed from the pager history
+  buffer when piping it as plain text (:iss:`3132`)
+
 
 0.19.2 [2020-11-13]
 -------------------

@@ -241,7 +241,7 @@ def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str
     pat = getattr(text_sanitizer, 'pat', None)
     if pat is None:
         import re
-        pat = re.compile(r'\033\[.+?m')
+        pat = re.compile('\033\\[.*?m')
         setattr(text_sanitizer, 'pat', pat)
 
     ansi, wrap_markers = not as_ansi, not add_wrap_markers
