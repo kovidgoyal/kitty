@@ -379,7 +379,7 @@ class TestParser(BaseTest):
             for f in 'action delete_action transmission_type compressed'.split():
                 k.setdefault(f, b'\0')
             for f in ('format more id data_sz data_offset width height x_offset y_offset data_height data_width'
-                      ' num_cells num_lines cell_x_offset cell_y_offset z_index').split():
+                      ' num_cells num_lines cell_x_offset cell_y_offset z_index placement_id').split():
                 k.setdefault(f, 0)
             p = k.pop('payload', '').encode('utf-8')
             k['payload_sz'] = len(p)
@@ -395,6 +395,7 @@ class TestParser(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         uint32_max = 2**32 - 1
         t('i=%d' % uint32_max, id=uint32_max)
+        t('i=3,p=4', id=3, placement_id=4)
         e('i=%d' % (uint32_max + 1), 'Malformed GraphicsCommand control block, number is too large')
         pb('\033_Gi=12\033\\', c(id=12))
         t('a=t,t=d,s=100,z=-9', payload='X', action='t', transmission_type='d', data_width=100, z_index=-9, payload_sz=1)

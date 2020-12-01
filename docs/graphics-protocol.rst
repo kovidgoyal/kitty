@@ -344,6 +344,25 @@ scheme described above for querying available transmission media, except that
 here we are querying if the image with the specified id is available or needs to
 be re-transmitted.
 
+Since there can be many placements per image, you can also give placements an
+id. To do so add the ``p`` key with a number between ``1`` and ``4294967295``.
+When you specify a placement id, it will be added to the acknowledgement code
+above. Every placement is uniquely identified by the pair of the ``image id``
+and the ``placement id``. If you specify a placement id for an image that does
+not have an id, it will be ignored. An example response::
+
+    <ESC>_Gi=<image id>,p=<placement id>;OK<ESC>\
+
+If you send two placements with the same ``image id`` and ``placement id`` the
+second one will replace the first. This can be used to resize or move
+placements around the screen, without flicker.
+
+
+.. note:: Support for specifying placement ids was added to kitty in
+   versions after 0.19.2. You can use the protocol documented in the
+   :doc:`kittens/query_terminal` to query kitty version.
+
+
 Controlling displayed image layout
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -386,24 +405,30 @@ scrollback buffer. The values of the ``x`` and ``y`` keys are the same as cursor
 =================    ============
 Value of ``d``       Meaning
 =================    ============
-``a`` or ``A``       Delete all images visible on screen
-``i`` or ``I``       Delete all images with the specified id, specified using the ``i`` key.
-``c`` or ``C``       Delete all images that intersect with the current cursor position.
-``p`` or ``P``       Delete all images that intersect a specific cell, the cell is specified using the ``x`` and ``y`` keys
-``q`` or ``Q``       Delete all images that intersect a specific cell having a specific z-index. The cell and z-index is specified using the ``x``, ``y`` and ``z`` keys.
-``x`` or ``X``       Delete all images that intersect the specified column, specified using the ``x`` key.
-``y`` or ``Y``       Delete all images that intersect the specified row, specified using the ``y`` key.
-``z`` or ``Z``       Delete all images that have the specified z-index, specified using the ``z`` key.
+``a`` or ``A``       Delete all placements visible on screen
+``i`` or ``I``       Delete all images with the specified id, specified using the ``i`` key. If you specify a ``p`` key for the placement                      id as well, then only the placement with the specified image id and placement id will be deleted.
+                     placement id
+``c`` or ``C``       Delete all placements that intersect with the current cursor position.
+``p`` or ``P``       Delete all placements that intersect a specific cell, the cell is specified using the ``x`` and ``y`` keys
+``q`` or ``Q``       Delete all placements that intersect a specific cell having a specific z-index. The cell and z-index is specified using the ``x``, ``y`` and ``z`` keys.
+``x`` or ``X``       Delete all placements that intersect the specified column, specified using the ``x`` key.
+``y`` or ``Y``       Delete all placements that intersect the specified row, specified using the ``y`` key.
+``z`` or ``Z``       Delete all placements that have the specified z-index, specified using the ``z`` key.
 =================    ============
 
 
+Note when all placements for an image have been deleted, the image is also
+deleted, if the capital letter form above is specified. Also, when the terminal
+is running out of quota space for image, images without placements will be
+preferentially deleted.
 
 Some examples::
 
-    <ESC>_Ga=d<ESC>\             # delete all visible images
-    <ESC>_Ga=d,d=i,i=10<ESC>\    # delete the image with id=10, without freeing data
-    <ESC>_Ga=d,d=Z,z=-1<ESC>\    # delete the images with z-index -1, also freeing up image data
-    <ESC>_Ga=d,d=p,x=3,y=4<ESC>\ # delete all images that intersect the cell at (3, 4), without freeing data
+    <ESC>_Ga=d<ESC>\              # delete all visible placements
+    <ESC>_Ga=d,d=i,i=10<ESC>\     # delete the image with id=10, without freeing data
+    <ESC>_Ga=d,d=i,i=10,p=7<ESC>\ # delete the image with id=10 and placement id=7, without freeing data
+    <ESC>_Ga=d,d=Z,z=-1<ESC>\     # delete the placements with z-index -1, also freeing up image data
+    <ESC>_Ga=d,d=p,x=3,y=4<ESC>\  # delete all placements that intersect the cell at (3, 4), without freeing data
 
 Image persistence and storage quotas
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -438,6 +463,8 @@ Key      Value                 Default    Description
 ``O``    Positive integer.     ``0``      The offset from which to read data from a file.
 ``i``    Positive integer.
          ``(0 - 4294967295)``  ``0``      The image id
+``p``    Positive integer.
+         ``(0 - 4294967295)``  ``0``      The placement id
 ``o``    Single character.     ``null``   The type of data compression.
          ``only z``
 ``m``    zero or one           ``0``      Whether there is more chunked data available.

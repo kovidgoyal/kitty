@@ -48,6 +48,15 @@ def parse_response(res):
     return res.decode('ascii').partition(';')[2].partition('\033')[0]
 
 
+def parse_response_with_ids(res):
+    if not res:
+        return
+    a, b = res.decode('ascii').split(';', 1)
+    code = b.partition('\033')[0].split(':', 1)[0]
+    a = a.split('G', 1)[1]
+    return code, a
+
+
 all_bytes = bytes(bytearray(range(256)))
 
 
@@ -90,8 +99,9 @@ def put_helpers(self, cw, ch):
         s = self.create_screen(10, 5, cell_width=cw, cell_height=ch)
         return s, 2 / s.columns, 2 / s.lines
 
-    def put_cmd(z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0, height=0, cell_x_off=0, cell_y_off=0):
-        return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d' % (z, num_cols, num_lines, x_off, y_off, width, height, cell_x_off, cell_y_off)
+    def put_cmd(z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0, height=0, cell_x_off=0, cell_y_off=0, placement_id=0):
+        return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d,p=%d' % (
+            z, num_cols, num_lines, x_off, y_off, width, height, cell_x_off, cell_y_off, placement_id)
 
     def put_image(screen, w, h, **kw):
         nonlocal iid
@@ -103,7 +113,7 @@ def put_helpers(self, cw, ch):
 
     def put_ref(screen, **kw):
         cmd = 'a=p,i=%d,%s' % (iid, put_cmd(**kw))
-        send_command(screen, cmd)
+        return iid, parse_response_with_ids(send_command(screen, cmd))
 
     def layers(screen, scrolled_by=0, xstart=-1, ystart=1):
         return screen.grman.update_layers(scrolled_by, xstart, ystart, dx, dy, screen.columns, screen.lines, cw, ch)
@@ -226,7 +236,8 @@ class TestGraphics(BaseTest):
         rect_eq(l0[0]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
         self.ae(l0[0]['group_count'], 1)
         self.ae(s.cursor.x, 1), self.ae(s.cursor.y, 0)
-        put_ref(s, num_cols=s.columns, x_off=2, y_off=1, width=3, height=5, cell_x_off=3, cell_y_off=1, z=-1)
+        iid, (code, idstr) = put_ref(s, num_cols=s.columns, x_off=2, y_off=1, width=3, height=5, cell_x_off=3, cell_y_off=1, z=-1, placement_id=17)
+        self.ae(idstr, f'i={iid},p=17')
         l2 = layers(s)
         self.ae(len(l2), 2)
         rect_eq(l2[0]['src_rect'], 2 / 10, 1 / 20, (2 + 3) / 10, (1 + 5)/20)
@@ -320,7 +331,12 @@ class TestGraphics(BaseTest):
         delete('A')
         self.ae(s.grman.image_count, 0)
         iid = put_image(s, cw, ch)[0]
+        delete('I', i=iid, p=7)
+        self.ae(s.grman.image_count, 1)
         delete('I', i=iid)
+        self.ae(s.grman.image_count, 0)
+        iid = put_image(s, cw, ch, placement_id=9)[0]
+        delete('I', i=iid, p=9)
         self.ae(s.grman.image_count, 0)
         s.reset()
         put_image(s, cw, ch)

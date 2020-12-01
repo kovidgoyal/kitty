@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a new mappable `select_tab` action to choose a tab to switch to even
   when the tab bar is hidden (:iss:`3115`)
 
+- Graphics protocol: Add support for giving individual image placements their
+  own ids. This is a backwards compatible protocol extension. (:iss:`3133`)
+
 - Distribute extra pixels among all eight-blocks rather than adding them
   all to the last block (:iss:`3097`)
 

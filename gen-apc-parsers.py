@@ -257,6 +257,7 @@ def graphics_parser() -> None:
         'f': ('format', 'uint'),
         'm': ('more', 'uint'),
         'i': ('id', 'uint'),
+        'p': ('placement_id', 'uint'),
         'w': ('width', 'uint'),
         'h': ('height', 'uint'),
         'x': ('x_offset', 'uint'),

@@ -475,14 +475,15 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
 }
 
 static inline const char*
-create_add_response(GraphicsManager UNUSED *self, bool data_loaded, uint32_t iid) {
-    static char rbuf[sizeof(add_response)/sizeof(add_response[0]) + 64];
+create_add_response(GraphicsManager UNUSED *self, bool data_loaded, uint32_t iid, uint32_t placement_id) {
+    static char rbuf[sizeof(add_response)/sizeof(add_response[0]) + 128];
     if (iid) {
         if (!has_add_respose) {
             if (!data_loaded) return NULL;
             snprintf(add_response, 10, "OK");
         }
-        snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "Gi=%u;%s", iid, add_response);
+        if (placement_id) snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "Gi=%u,p=%u;%s", iid, placement_id, add_response);
+        else snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "Gi=%u;%s", iid, add_response);
         return rbuf;
     }
     return NULL;
@@ -529,10 +530,12 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     *is_dirty = true;
     self->layers_dirty = true;
     ImageRef *ref = NULL;
-    for (size_t i=0; i < img->refcnt; i++) {
-        if ((unsigned)img->refs[i].start_row == c->x && (unsigned)img->refs[i].start_column == c->y) {
-            ref = img->refs + i;
-            break;
+    if (g->placement_id && img->client_id) {
+        for (size_t i=0; i < img->refcnt; i++) {
+            if (img->refs[i].client_id == g->placement_id) {
+                ref = img->refs + i;
+                break;
+            }
         }
     }
     if (ref == NULL) {
@@ -548,6 +551,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     ref->cell_x_offset = MIN(g->cell_x_offset, cell.width - 1);
     ref->cell_y_offset = MIN(g->cell_y_offset, cell.height - 1);
     ref->num_cols = g->num_cells; ref->num_rows = g->num_lines;
+    if (img->client_id) ref->client_id = g->placement_id;
     update_src_rect(ref, img);
     update_dest_rect(ref, g->num_cells, g->num_lines, cell);
     // Move the cursor, the screen will take care of ensuring it is in bounds
@@ -743,9 +747,10 @@ grman_clear(GraphicsManager *self, bool all, CellPixelSize cell) {
 }
 
 static inline bool
-id_filter_func(const ImageRef UNUSED *ref, Image *img, const void *data, CellPixelSize cell UNUSED) {
-    uint32_t iid = *(uint32_t*)data;
-    return img->client_id == iid;
+id_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell UNUSED) {
+    const GraphicsCommand *g = data;
+    if (img->client_id == g->id) return !g->placement_id || ref->client_id == g->placement_id;
+    return false;
 }
 
 static inline bool
@@ -787,7 +792,7 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
 #define G(l, u, func) D(l, u, g, func)
         case 0:
         D('a', 'A', NULL, clear_filter_func);
-        D('i', 'I', &g->id, id_filter_func);
+        G('i', 'I', id_filter_func);
         G('p', 'P', point_filter_func);
         G('q', 'Q', point3d_filter_func);
         G('x', 'X', x_filter_func);
@@ -839,9 +844,11 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
         case 'T':
         case 'q': {
             uint32_t iid = g->id, q_iid = iid;
-            if (g->action == 'q') { iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
+            bool is_query = g->action == 'q';
+            if (is_query) { iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
             Image *image = handle_add_command(self, g, payload, is_dirty, iid);
-            ret = create_add_response(self, image != NULL, g->action == 'q' ? q_iid: self->last_init_graphics_command.id);
+            if (is_query) ret = create_add_response(self, image != NULL,  q_iid, 0);
+            else ret = create_add_response(self, image != NULL, self->last_init_graphics_command.id, self->last_init_graphics_command.placement_id);
             if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image, cell);
             id_type added_image_id = image ? image->internal_id : 0;
             if (g->action == 'q') remove_images(self, add_trim_predicate, 0);
@@ -854,7 +861,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 break;
             }
             handle_put_command(self, g, c, is_dirty, NULL, cell);
-            ret = create_add_response(self, true, g->id);
+            ret = create_add_response(self, true, g->id, g->placement_id);
             break;
         case 'd':
             handle_delete_command(self, g, c, is_dirty, cell);

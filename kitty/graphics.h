@@ -10,7 +10,7 @@
 
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
-    uint32_t format, more, id, data_sz, data_offset;
+    uint32_t format, more, id, data_sz, data_offset, placement_id;
     uint32_t width, height, x_offset, y_offset, data_height, data_width, num_cells, num_lines, cell_x_offset, cell_y_offset;
     int32_t z_index;
     size_t payload_sz;
@@ -38,6 +38,7 @@ typedef struct {
     uint32_t cell_x_offset, cell_y_offset, num_cols, num_rows, effective_num_rows, effective_num_cols;
     int32_t z_index;
     int32_t start_row, start_column;
+    uint32_t client_id;
     ImageRect src_rect;
 } ImageRef;
 
