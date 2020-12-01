@@ -326,11 +326,12 @@ Display images on screen
 
 Every transmitted image can be displayed an arbitrary number of times on the
 screen, in different locations, using different parts of the source image, as
-needed. You can either simultaneously transmit and display an image using the
-action ``a=T``, or first transmit the image with a id, such as ``i=10`` and then display
-it with ``a=p,i=10`` which will display the previously transmitted image at the current
-cursor position. When specifying an image id, the terminal emulator will reply with an
-acknowledgement code, which will be either::
+needed. Each such display of an image is called a *placement*.  You can either
+simultaneously transmit and display an image using the action ``a=T``, or first
+transmit the image with a id, such as ``i=10`` and then display it with
+``a=p,i=10`` which will display the previously transmitted image at the current
+cursor position. When specifying an image id, the terminal emulator will reply
+to the placement request with an acknowledgement code, which will be either::
 
     <ESC>_Gi=<id>;OK<ESC>\
 
