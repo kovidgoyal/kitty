@@ -181,11 +181,14 @@ class SignalManager:
             signal.SIGWINCH, signal.SIGINT, signal.SIGTERM)))
 
 
+sanitize_bracketed_paste: str = '[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]'
+
+
 class Loop:
 
     def __init__(
         self,
-        sanitize_bracketed_paste: str = '[\x03\x04\x0e\x0f\r\x07\x7f\x8d\x8e\x8f\x90\x9b\x9d\x9e\x9f]',
+        sanitize_bracketed_paste: str = sanitize_bracketed_paste,
         optional_actions: int = termios.TCSADRAIN
     ):
         if is_macos:
