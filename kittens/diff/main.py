@@ -338,8 +338,8 @@ class DiffHandler(Handler):
             if candidate.image.image_id == image_id:
                 q = self.xpos_for_image(row, candidate, is_left)
                 if q is not None:
-                    pl['x'] = q[0]
-                    pl['y'] = row
+                    pl.x = q[0]
+                    pl.y = row
                     return True
             return False
 

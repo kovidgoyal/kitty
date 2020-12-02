@@ -15,8 +15,7 @@ from typing import (
 )
 
 from kitty.typing import (
-    CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType,
-    TypedDict
+    CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
 )
 from kitty.utils import ScreenSize, fit_image
 
@@ -136,6 +135,7 @@ class GraphicsCommand:
     S: int = 0        # size of data to read from file
     O: int = 0        # offset of data to read from file
     i: int = 0        # image id
+    p: int = 0        # placement id
     o: Optional[GRT_o] = None  # type of compression
     m: GRT_m = 0    # 0 or 1 whether there is more chunked data
     x: int = 0        # left edge of image area to display
@@ -173,10 +173,15 @@ class GraphicsCommand:
             setattr(self, k, defval)
 
 
-class Placement(TypedDict):
+class Placement:
     cmd: GraphicsCommand
-    x: int
-    y: int
+    x: int = 0
+    y: int = 0
+
+    def __init__(self, cmd: GraphicsCommand, x: int = 0, y: int = 0):
+        self.cmd = cmd
+        self.x = x
+        self.y = y
 
 
 class ImageManager:
@@ -263,8 +268,8 @@ class ImageManager:
         skey = self.image_id_to_converted_data[image_id]
         self.transmit_image(image_data, image_id, *skey)
         with cursor(self.handler.write):
-            self.handler.cmd.set_cursor_position(pl['x'], pl['y'])
-            self.handler.cmd.gr_command(pl['cmd'])
+            self.handler.cmd.set_cursor_position(pl.x, pl.y)
+            self.handler.cmd.gr_command(pl.cmd)
 
     def send_image(self, path: str, max_cols: Optional[int] = None, max_rows: Optional[int] = None, scale_up: bool = False) -> SentImageKey:
         path = os.path.abspath(path)
@@ -316,7 +321,7 @@ class ImageManager:
         gc.i = image_id
         if src_rect is not None:
             gc.x, gc.y, gc.w, gc.h = map(int, src_rect)
-        self.placements_in_flight[image_id].append({'cmd': gc, 'x': x, 'y': y})
+        self.placements_in_flight[image_id].append(Placement(gc, x, y))
         with cursor(self.handler.write):
             self.handler.cmd.set_cursor_position(x, y)
             self.handler.cmd.gr_command(gc)
