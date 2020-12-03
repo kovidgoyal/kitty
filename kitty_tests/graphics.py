@@ -366,3 +366,4 @@ class TestGraphics(BaseTest):
         self.ae(put_ref(s, id=iid), (iid, ('OK', f'i={iid}')))
         delete('I', i=iid)
         self.ae(put_ref(s, id=iid), (iid, ('ENOENT', f'i={iid}')))
+        self.ae(s.grman.image_count, 0)
