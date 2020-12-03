@@ -475,7 +475,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
 }
 
 static inline const char*
-create_add_response(GraphicsManager UNUSED *self, bool data_loaded, uint32_t iid, uint32_t placement_id) {
+create_add_response(bool data_loaded, uint32_t iid, uint32_t placement_id) {
     static char rbuf[sizeof(add_response)/sizeof(add_response[0]) + 128];
     if (iid) {
         if (!has_add_respose) {
@@ -847,8 +847,8 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             bool is_query = g->action == 'q';
             if (is_query) { iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
             Image *image = handle_add_command(self, g, payload, is_dirty, iid);
-            if (is_query) ret = create_add_response(self, image != NULL,  q_iid, 0);
-            else ret = create_add_response(self, image != NULL, self->last_init_graphics_command.id, self->last_init_graphics_command.placement_id);
+            if (is_query) ret = create_add_response(image != NULL,  q_iid, 0);
+            else ret = create_add_response(image != NULL, self->last_init_graphics_command.id, self->last_init_graphics_command.placement_id);
             if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image, cell);
             id_type added_image_id = image ? image->internal_id : 0;
             if (g->action == 'q') remove_images(self, add_trim_predicate, 0);
@@ -861,7 +861,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 break;
             }
             handle_put_command(self, g, c, is_dirty, NULL, cell);
-            ret = create_add_response(self, true, g->id, g->placement_id);
+            ret = create_add_response(true, g->id, g->placement_id);
             break;
         case 'd':
             handle_delete_command(self, g, c, is_dirty, cell);
