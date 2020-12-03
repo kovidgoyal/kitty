@@ -379,7 +379,7 @@ class TestParser(BaseTest):
             for f in 'action delete_action transmission_type compressed'.split():
                 k.setdefault(f, b'\0')
             for f in ('format more id data_sz data_offset width height x_offset y_offset data_height data_width'
-                      ' num_cells num_lines cell_x_offset cell_y_offset z_index placement_id').split():
+                      ' num_cells num_lines cell_x_offset cell_y_offset z_index placement_id quiet').split():
                 k.setdefault(f, 0)
             p = k.pop('payload', '').encode('utf-8')
             k['payload_sz'] = len(p)
@@ -400,7 +400,7 @@ class TestParser(BaseTest):
         pb('\033_Gi=12\033\\', c(id=12))
         t('a=t,t=d,s=100,z=-9', payload='X', action='t', transmission_type='d', data_width=100, z_index=-9, payload_sz=1)
         t('a=t,t=d,s=100,z=9', payload='payload', action='t', transmission_type='d', data_width=100, z_index=9, payload_sz=7)
-        t('a=t,t=d,s=100,z=9', action='t', transmission_type='d', data_width=100, z_index=9)
+        t('a=t,t=d,s=100,z=9,q=2', action='t', transmission_type='d', data_width=100, z_index=9, quiet=2)
         e(',s=1', 'Malformed GraphicsCommand control block, invalid key character: 0x2c')
         e('W=1', 'Malformed GraphicsCommand control block, invalid key character: 0x57')
         e('1=1', 'Malformed GraphicsCommand control block, invalid key character: 0x31')

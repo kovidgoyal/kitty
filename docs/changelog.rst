@@ -14,7 +14,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   when the tab bar is hidden (:iss:`3115`)
 
 - Graphics protocol: Add support for giving individual image placements their
-  own ids. This is a backwards compatible protocol extension. (:iss:`3133`)
+  own ids. This is a backwards compatible protocol extension, and also allow
+  suppressing responses from the terminal to commands (:iss:`3133`)
 
 - Distribute extra pixels among all eight-blocks rather than adding them
   all to the last block (:iss:`3097`)

@@ -430,6 +430,18 @@ Some examples::
     <ESC>_Ga=d,d=Z,z=-1<ESC>\     # delete the placements with z-index -1, also freeing up image data
     <ESC>_Ga=d,d=p,x=3,y=4<ESC>\  # delete all placements that intersect the cell at (3, 4), without freeing data
 
+
+Suppressing responses from the terminal
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are using the graphics protocol from a limited client, such as a shell
+script, it might be useful to avoid having to process responses from the
+terminal. For this, you can use the ``q`` key. Set it to ``1`` to suppress
+``OK`` responses and to ``2`` to suppress failure responses.
+
+.. note:: This feature was implemented in kitty in versions after 0.19.2
+
+
 Image persistence and storage quotas
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -451,6 +463,9 @@ Key      Value                 Default    Description
 =======  ====================  =========  =================
 ``a``    Single character.     ``t``      The overall action this graphics command is performing.
          ``(t, T, q, p, d)``
+
+``q``    ``0, 1, 2``           ``0``      Suppress responses from the terminal to this graphics command.
+
 **Keys for image transmission**
 -----------------------------------------------------------
 ``f``    Positive integer.     ``32``     The format in which the image data is sent.

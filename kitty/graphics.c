@@ -137,22 +137,20 @@ apply_storage_quota(GraphicsManager *self, size_t storage_limit, id_type current
     if (!self->image_count) self->used_storage = 0;  // sanity check
 }
 
-static char add_response[512] = {0};
-static bool has_add_respose = false;
+static char command_response[512] = {0};
 
 static inline void
-set_add_response(const char *code, const char *fmt, ...) {
+set_command_failed_response(const char *code, const char *fmt, ...) {
     va_list args;
     va_start(args, fmt);
-    size_t sz = sizeof(add_response)/sizeof(add_response[0]);
-    int num = snprintf(add_response, sz, "%s:", code);
-    vsnprintf(add_response + num, sz - num, fmt, args);
+    const size_t sz = sizeof(command_response)/sizeof(command_response[0]);
+    const int num = snprintf(command_response, sz, "%s:", code);
+    vsnprintf(command_response + num, sz - num, fmt, args);
     va_end(args);
-    has_add_respose = true;
 }
 
 // Decode formats {{{
-#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); goto err; }
+#define ABRT(code, ...) { set_command_failed_response(#code, __VA_ARGS__); goto err; }
 
 static inline bool
 mmap_img_file(GraphicsManager UNUSED *self, Image *img, int fd, size_t sz, off_t offset) {
@@ -220,7 +218,7 @@ err:
 
 static void
 png_error_handler(const char *code, const char *msg) {
-    set_add_response(code, "%s", msg);
+    set_command_failed_response(code, "%s", msg);
 }
 
 static inline bool
@@ -311,9 +309,8 @@ find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
 
 static Image*
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty, uint32_t iid) {
-#define ABRT(code, ...) { set_add_response(#code, __VA_ARGS__); self->loading_image = 0; if (img) img->data_loaded = false; return NULL; }
+#define ABRT(code, ...) { set_command_failed_response(#code, __VA_ARGS__); self->loading_image = 0; if (img) img->data_loaded = false; return NULL; }
 #define MAX_DATA_SZ (4u * 100000000u)
-    has_add_respose = false;
     bool existing, init_img = true;
     Image *img = NULL;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
@@ -475,15 +472,19 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
 }
 
 static inline const char*
-create_add_response(bool data_loaded, uint32_t iid, uint32_t placement_id) {
-    static char rbuf[sizeof(add_response)/sizeof(add_response[0]) + 128];
+finish_command_response(const GraphicsCommand *g, bool data_loaded, uint32_t iid, uint32_t placement_id) {
+    static char rbuf[sizeof(command_response)/sizeof(command_response[0]) + 128];
+    bool is_ok_response = !command_response[0];
+    if (g->quiet) {
+        if (is_ok_response || g->quiet > 1) return NULL;
+    }
     if (iid) {
-        if (!has_add_respose) {
+        if (is_ok_response) {
             if (!data_loaded) return NULL;
-            snprintf(add_response, 10, "OK");
+            snprintf(command_response, 10, "OK");
         }
-        if (placement_id) snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "Gi=%u,p=%u;%s", iid, placement_id, add_response);
-        else snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "Gi=%u;%s", iid, add_response);
+        if (placement_id) snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "Gi=%u,p=%u;%s", iid, placement_id, command_response);
+        else snprintf(rbuf, sizeof(rbuf)/sizeof(rbuf[0]) - 1, "Gi=%u;%s", iid, command_response);
         return rbuf;
     }
     return NULL;
@@ -522,10 +523,9 @@ update_dest_rect(ImageRef *ref, uint32_t num_cols, uint32_t num_rows, CellPixelS
 
 static void
 handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, Image *img, CellPixelSize cell) {
-    has_add_respose = false;
     if (img == NULL) img = img_by_client_id(self, g->id);
-    if (img == NULL) { set_add_response("ENOENT", "Put command refers to non-existent image with id: %u", g->id); return; }
-    if (!img->data_loaded) { set_add_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return; }
+    if (img == NULL) { set_command_failed_response("ENOENT", "Put command refers to non-existent image with id: %u", g->id); return; }
+    if (!img->data_loaded) { set_command_failed_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return; }
     ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 16, true);
     *is_dirty = true;
     self->layers_dirty = true;
@@ -837,6 +837,7 @@ grman_rescale(GraphicsManager *self, CellPixelSize cell) {
 const char*
 grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize cell) {
     const char *ret = NULL;
+    command_response[0] = 0;
 
     switch(g->action) {
         case 0:
@@ -847,8 +848,8 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             bool is_query = g->action == 'q';
             if (is_query) { iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
             Image *image = handle_add_command(self, g, payload, is_dirty, iid);
-            if (is_query) ret = create_add_response(image != NULL,  q_iid, 0);
-            else ret = create_add_response(image != NULL, self->last_init_graphics_command.id, self->last_init_graphics_command.placement_id);
+            if (is_query) ret = finish_command_response(g, image != NULL,  q_iid, 0);
+            else ret = finish_command_response(g, image != NULL, self->last_init_graphics_command.id, self->last_init_graphics_command.placement_id);
             if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image, cell);
             id_type added_image_id = image ? image->internal_id : 0;
             if (g->action == 'q') remove_images(self, add_trim_predicate, 0);
@@ -861,7 +862,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 break;
             }
             handle_put_command(self, g, c, is_dirty, NULL, cell);
-            ret = create_add_response(true, g->id, g->placement_id);
+            ret = finish_command_response(g, true, g->id, g->placement_id);
             break;
         case 'd':
             handle_delete_command(self, g, c, is_dirty, cell);

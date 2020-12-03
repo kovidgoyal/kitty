@@ -135,6 +135,7 @@ class TestGraphics(BaseTest):
 
         # Test load query
         self.ae(l('abcd', s=1, v=1, a='q'), 'OK')
+        self.assertIsNone(l('abcd', s=1, v=1, a='q', q=1))
         self.ae(g.image_count, 0)
 
         # Test simple load
@@ -150,6 +151,8 @@ class TestGraphics(BaseTest):
         self.ae(l('mnop', m=0), 'OK')
         img = g.image_for_client_id(1)
         self.ae(img['data'], b'abcdefghijklmnop')
+        self.ae(l('abcd', s=10, v=10, q=1), 'ENODATA:Insufficient image data: 4 < 400')
+        self.ae(l('abcd', s=10, v=10, q=2), None)
 
         # Test compression
         random_data = byte_block(3 * 1024)
