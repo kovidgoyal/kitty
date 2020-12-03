@@ -106,14 +106,16 @@ def put_helpers(self, cw, ch):
     def put_image(screen, w, h, **kw):
         nonlocal iid
         iid += 1
-        cmd = 'a=T,f=24,i=%d,s=%d,v=%d,%s' % (iid, w, h, put_cmd(**kw))
+        imgid = kw.pop('id', None) or iid
+        cmd = 'a=T,f=24,i=%d,s=%d,v=%d,%s' % (imgid, w, h, put_cmd(**kw))
         data = b'x' * w * h * 3
         res = send_command(screen, cmd, data)
-        return iid, parse_response(res)
+        return imgid, parse_response(res)
 
     def put_ref(screen, **kw):
-        cmd = 'a=p,i=%d,%s' % (iid, put_cmd(**kw))
-        return iid, parse_response_with_ids(send_command(screen, cmd))
+        imgid = kw.pop('id', None) or iid
+        cmd = 'a=p,i=%d,%s' % (imgid, put_cmd(**kw))
+        return imgid, parse_response_with_ids(send_command(screen, cmd))
 
     def layers(screen, scrolled_by=0, xstart=-1, ystart=1):
         return screen.grman.update_layers(scrolled_by, xstart, ystart, dx, dy, screen.columns, screen.lines, cw, ch)
@@ -354,3 +356,13 @@ class TestGraphics(BaseTest):
         put_image(s, cw, ch, z=9)
         delete('Z', z=9)
         self.ae(s.grman.image_count, 0)
+
+        # test put + delete + put
+        iid = 999999
+        self.ae(put_image(s, cw, ch, id=iid), (iid, 'OK'))
+        self.ae(put_ref(s, id=iid), (iid, ('OK', f'i={iid}')))
+        delete('i', i=iid)
+        self.ae(s.grman.image_count, 1)
+        self.ae(put_ref(s, id=iid), (iid, ('OK', f'i={iid}')))
+        delete('I', i=iid)
+        self.ae(put_ref(s, id=iid), (iid, ('ENOENT', f'i={iid}')))
