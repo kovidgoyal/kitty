@@ -48,7 +48,7 @@ version = tuple(
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
 is_openbsd = 'openbsd' in _plat
-is_not_arm = platform.processor() != 'arm'
+is_arm = platform.processor() == 'arm'
 Env = glfw.Env
 env = Env()
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
@@ -248,6 +248,10 @@ def init_env(
     extra_logging: Iterable[str] = ()
 ) -> Env:
     native_optimizations = native_optimizations and not sanitize and not debug
+    if native_optimizations and is_macos and is_arm:
+        # see https://github.com/kovidgoyal/kitty/issues/3126
+        # -march=native is not supported when targeting Apple Silicon
+        native_optimizations = False
     cc, ccver = cc_version()
     print('CC:', cc, ccver)
     stack_protector = first_successful_compile(cc, '-fstack-protector-strong', '-fstack-protector')
@@ -1197,11 +1201,10 @@ def main() -> None:
     with CompilationDatabase(args.incremental) as cdb:
         args.compilation_database = cdb
         if args.action == 'build':
+            build(args)
             if is_macos:
-                build(args, native_optimizations=is_not_arm)
                 create_minimal_macos_bundle(args, launcher_dir)
             else:
-                build(args)
                 build_launcher(args, launcher_dir=launcher_dir)
         elif args.action == 'build-launcher':
             init_env_from_args(args, False)
@@ -1220,7 +1223,7 @@ def main() -> None:
             args.prefix = 'kitty.app'
             if os.path.exists(args.prefix):
                 shutil.rmtree(args.prefix)
-            build(args, native_optimizations=is_not_arm)
+            build(args)
             package(args, bundle_type='macos-package')
             print('kitty.app successfully built!')
         elif args.action == 'export-ci-bundles':
