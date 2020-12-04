@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import sysconfig
+import platform
 import time
 from contextlib import suppress
 from functools import partial
@@ -47,6 +48,7 @@ version = tuple(
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
 is_openbsd = 'openbsd' in _plat
+is_not_arm = platform.processor() != 'arm'
 Env = glfw.Env
 env = Env()
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
@@ -1195,10 +1197,11 @@ def main() -> None:
     with CompilationDatabase(args.incremental) as cdb:
         args.compilation_database = cdb
         if args.action == 'build':
-            build(args)
             if is_macos:
+                build(args, native_optimizations=is_not_arm)
                 create_minimal_macos_bundle(args, launcher_dir)
             else:
+                build(args)
                 build_launcher(args, launcher_dir=launcher_dir)
         elif args.action == 'build-launcher':
             init_env_from_args(args, False)
@@ -1217,7 +1220,7 @@ def main() -> None:
             args.prefix = 'kitty.app'
             if os.path.exists(args.prefix):
                 shutil.rmtree(args.prefix)
-            build(args)
+            build(args, native_optimizations=is_not_arm)
             package(args, bundle_type='macos-package')
             print('kitty.app successfully built!')
         elif args.action == 'export-ci-bundles':
