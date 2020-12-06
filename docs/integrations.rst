@@ -123,3 +123,6 @@ Miscellaneous
 `weechat-hints <https://github.com/GermainZ/kitty-weechat-hints>`_
     URL hints kitten for WeeChat that works without having to use WeeChat's
     raw-mode.
+
+`glkitty <https://github.com/michaeljclark/glkitty>`_
+    C library to draw OpenGL shaders in the terminal with a glgears demo
