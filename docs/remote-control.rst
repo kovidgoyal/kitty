@@ -115,8 +115,10 @@ shell. Run ``kitty @`` with no arguments and you will be dropped into the |kitty
 shell with completion for |kitty| command names and options.
 
 You can even open the |kitty| shell inside a running |kitty| using a simple
-keyboard shortcut (:sc:`kitty_shell` by default). This has the added
-advantage that you don't need to use ``allow_remote_control`` to make it work.
+keyboard shortcut (:sc:`kitty_shell` by default).
+
+.. note:: This has the added advantage that you don't need to use
+   ``allow_remote_control`` to make it work.
 
 
 Allowing only some windows to control kitty
@@ -134,6 +136,12 @@ still write to the pipes of any other program on the same computer and
 therefore can control |kitty|. It can, however, be useful to block programs
 running on other computers (for example, over ssh) or as other users.
 
+.. note:: You dont need ``allow_remote_control`` to make this work as it is
+   limited to only programs running in that specific window. Be careful with
+   what programs you run in such windows, since they can effectively control
+   kitty, as if you were running with ``allow_remote_control`` turned on.
+
+
 Mapping key presses to remote control commands
 --------------------------------------------------
 
@@ -144,8 +152,11 @@ you can map it in :file:`kitty.conf`. For example::
 
 Then pressing the :kbd:`F1` key will set the active window margins to 30.
 The syntax for what follows :code:`remote_control` is exactly the same
-as the syntax for what follows :code:`kitty @` above. You do not need
-to enable remote control to use these mappings.
+as the syntax for what follows :code:`kitty @` above.
+
+.. note:: You do not need ``allow_remote_control`` to use these mappings,
+   as they are not actual remote programs, but are simply a way to resuse
+   the remote control infrastructure via keybings.
 
 
 Broadcasting what you type to all kitty windows
