@@ -10,7 +10,8 @@ from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Union
+    Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Union,
+    cast
 )
 from weakref import WeakValueDictionary
 
@@ -363,9 +364,17 @@ class Boss:
             c = command_for_name(cmd)
             opts, items = parse_subcommand_cli(c, items)
             payload = c.message_to_kitty(global_opts, opts, items)
-            c.response_from_kitty(self, self.active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
-        except (Exception, SystemExit) as e:
-            self.show_error(_('remote_control mapping failed'), str(e))
+            import types
+            if isinstance(cast(types.GeneratorType, payload), types.GeneratorType):
+                payloads = cast(types.GeneratorType, payload)
+                for x in payloads:
+                    c.response_from_kitty(self, self.active_window, PayloadGetter(c, x if isinstance(x, dict) else {}))
+            else:
+                c.response_from_kitty(self, self.active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
+        except (Exception, SystemExit):
+            import traceback
+            tb = traceback.format_exc()
+            self.show_error(_('remote_control mapping failed'), tb)
 
     def peer_message_received(self, msg_bytes: bytes) -> Optional[bytes]:
         cmd_prefix = b'\x1bP@kitty-cmd'

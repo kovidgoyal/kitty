@@ -46,6 +46,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   interoperability. This means that doing a DECRC without a prior DECSC is now
   undefined (:iss:`1264`)
 
+- Fix mapping ``remote_control send-text`` not working (:iss:`3147`)
+
 
 0.19.2 [2020-11-13]
 -------------------
