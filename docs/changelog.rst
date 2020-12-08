@@ -13,6 +13,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a new mappable `select_tab` action to choose a tab to switch to even
   when the tab bar is hidden (:iss:`3115`)
 
+- Allow specifying text formatting in :opt:`tab_title_template` (:iss:`3146`)
+
 - Graphics protocol: Add support for giving individual image placements their
   own ids. This is a backwards compatible protocol extension, and also allow
   suppressing responses from the terminal to commands (:iss:`3133`)

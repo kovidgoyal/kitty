@@ -52,7 +52,6 @@ utf8(char_type codepoint) {
 // }}}
 
 // Macros {{{
-#define MAX_PARAMS 256
 #define IS_DIGIT \
     case '0': \
     case '1': \
@@ -465,7 +464,10 @@ repr_csi_params(unsigned int *params, unsigned int num_params) {
     return buf;
 }
 
-static inline void
+#ifdef DUMP_COMMANDS
+static
+#endif
+void
 parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params, PyObject DUMP_UNUSED *dump_callback, const char *report_name DUMP_UNUSED, Region *region) {
     enum State { START, NORMAL, MULTIPLE, COLOR, COLOR1, COLOR3 };
     enum State state = START;

@@ -1002,6 +1002,9 @@ class Screen:
     def draw(self, text: str) -> None:
         pass
 
+    def apply_sgr(self, text: str) -> None:
+        pass
+
     def copy_colors_from(self, other: 'Screen') -> None:
         pass
 

@@ -939,6 +939,10 @@ layout name and :code:`{num_windows}` for the number of windows
 in the tab. Note that formatting is done by Python's string formatting
 machinery, so you can use, for instance, :code:`{layout_name[:2].upper()}` to
 show only the first two letters of the layout name, upper-cased.
+If you want to style the text, you can use styling directives, for example:
+:code:`{fmt.fg.red}red{fmt.fg.default}normal{fmt.bg._00FF00}green bg{fmt.bg.normal}`.
+Similarly, for bold and italic:
+:code:`{fmt.bold}bold{fmt.nobold}normal{fmt.italic}italic{fmt.noitalic}`.
 '''))
 o('active_tab_title_template', 'none', option_type=active_tab_title_template, long_text=_('''
 Template to use for active tabs, if not specified falls back

@@ -2137,6 +2137,20 @@ draw(Screen *self, PyObject *src) {
     Py_RETURN_NONE;
 }
 
+extern void
+parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, unsigned int *params, PyObject *dump_callback, const char *report_name, Region *region);
+
+static PyObject*
+apply_sgr(Screen *self, PyObject *src) {
+    if (!PyUnicode_Check(src)) { PyErr_SetString(PyExc_TypeError, "A unicode string is required"); return NULL; }
+    if (PyUnicode_READY(src) != 0) { return PyErr_NoMemory(); }
+    Py_UCS4 *buf = PyUnicode_AsUCS4Copy(src);
+    if (!buf) return NULL;
+    unsigned int params[MAX_PARAMS] = {0};
+    parse_sgr(self, buf, PyUnicode_GET_LENGTH(src), params, NULL, "parse_sgr", NULL);
+    Py_RETURN_NONE;
+}
+
 static PyObject*
 reset_mode(Screen *self, PyObject *args) {
     int private = false;
@@ -2783,6 +2797,7 @@ static PyMethodDef methods[] = {
     MND(visual_line, METH_VARARGS)
     MND(current_url_text, METH_NOARGS)
     MND(draw, METH_O)
+    MND(apply_sgr, METH_O)
     MND(cursor_position, METH_VARARGS)
     MND(set_mode, METH_VARARGS)
     MND(reset_mode, METH_VARARGS)

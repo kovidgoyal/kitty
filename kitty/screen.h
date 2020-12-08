@@ -8,6 +8,7 @@
 
 #include "graphics.h"
 #include "monotonic.h"
+#define MAX_PARAMS 256
 
 typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } ScrollType;
 

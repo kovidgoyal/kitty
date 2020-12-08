@@ -13,7 +13,7 @@ from .fast_data_types import (
 )
 from .layout.base import Rect
 from .options_stub import Options
-from .rgb import Color, alpha_blend, color_from_int
+from .rgb import Color, alpha_blend, color_as_sgr, color_from_int, to_color
 from .utils import color_as_int, log_error
 from .window import calculate_gl_geometry
 
@@ -61,6 +61,35 @@ def compile_template(template: str) -> Any:
         report_template_failure(template, str(e))
 
 
+class ColorFormatter:
+
+    def __init__(self, which: str):
+        self.which = which
+
+    def __getattr__(self, name: str) -> str:
+        q = name
+        if q == 'default':
+            ans = '9'
+        else:
+            if name.startswith('_'):
+                q = '#' + name[1:]
+            c = to_color(q)
+            if c is None:
+                raise AttributeError(f'{name} is not a valid color')
+            ans = '8' + color_as_sgr(c)
+        return f'\x1b[{self.which}{ans}m'
+
+
+class Formatter:
+    reset = '\x1b[0m'
+    fg = ColorFormatter('3')
+    bg = ColorFormatter('4')
+    bold = '\x1b[1m'
+    nobold = '\x1b[22m'
+    italic = '\x1b[3m'
+    noitalic = '\x1b[23m'
+
+
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
     if tab.needs_attention and draw_data.bell_on_tab:
         fg = screen.cursor.fg
@@ -81,13 +110,22 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
             'index': index,
             'layout_name': tab.layout_name,
             'num_windows': tab.num_windows,
-            'title': tab.title
+            'title': tab.title,
+            'fmt': Formatter,
         }
         title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
     except Exception as e:
         report_template_failure(template, str(e))
         title = tab.title
-    screen.draw(title)
+    if '\x1b' in title:
+        import re
+        for x in re.split('(\x1b\\[[^m]*m)', title):
+            if x.startswith('\x1b') and x.endswith('m'):
+                screen.apply_sgr(x[2:-1])
+            else:
+                screen.draw(x)
+    else:
+        screen.draw(title)
 
 
 def draw_tab_with_separator(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
