@@ -544,8 +544,9 @@ static PyObject*
 create_os_window(PyObject UNUSED *self, PyObject *args) {
     int x = -1, y = -1;
     char *title, *wm_class_class, *wm_class_name;
+    bool headless = false;
     PyObject *load_programs = NULL, *get_window_size, *pre_show_callback;
-    if (!PyArg_ParseTuple(args, "OOsss|Oii", &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
+    if (!PyArg_ParseTuple(args, "OOsss|pOii", &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &headless, &load_programs, &x, &y)) return NULL;
 
     static bool is_first_window = true;
     if (is_first_window) {
@@ -630,7 +631,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         if (pret == NULL) return NULL;
         Py_DECREF(pret);
         if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
-        glfwShowWindow(glfw_window);
+        if (!headless) glfwShowWindow(glfw_window);
     }
     if (is_first_window) {
         PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
@@ -950,6 +951,7 @@ change_os_window_state(PyObject *self UNUSED, PyObject *args) {
     if (!w || !w->handle) Py_RETURN_NONE;
     if (strcmp(state, "maximized") == 0) glfwMaximizeWindow(w->handle);
     else if (strcmp(state, "minimized") == 0) glfwIconifyWindow(w->handle);
+    else if (strcmp(state, "headless") == 0) glfwHideWindow(w->handle);
     else { PyErr_SetString(PyExc_ValueError, "Unknown window state"); return NULL; }
     Py_RETURN_NONE;
 }

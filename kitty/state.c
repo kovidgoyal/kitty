@@ -855,6 +855,8 @@ PYWRAP1(focus_os_window) {
     int also_raise = 1;
     PA("K|p", &os_window_id, &also_raise);
     WITH_OS_WINDOW(os_window_id)
+        if (os_window->handle && !glfwGetWindowAttrib(os_window->handle, GLFW_VISIBLE)) glfwShowWindow(os_window->handle);
+
         if (!os_window->is_focused) focus_os_window(os_window, also_raise);
         Py_RETURN_TRUE;
     END_WITH_OS_WINDOW

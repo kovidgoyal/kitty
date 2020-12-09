@@ -655,7 +655,7 @@ can also be specified in :file:`kitty.conf`.
 --start-as
 type=choices
 default=normal
-choices=normal,fullscreen,maximized,minimized
+choices=normal,fullscreen,maximized,minimized,headless
 Control how the initial kitty window is created.
 
 

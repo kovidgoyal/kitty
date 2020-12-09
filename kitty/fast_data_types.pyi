@@ -533,6 +533,7 @@ def create_os_window(
     title: str,
     wm_class_name: str,
     wm_class_class: str,
+    headless: bool = False,
     load_programs: Optional[Callable[[bool], None]] = None,
     x: int = -1,
     y: int = -1

@@ -260,7 +260,7 @@ def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: 
         complete_files_and_dirs(ans, prefix, files_group_name='Directories', predicate=os.path.isdir)
     elif dest == 'start_as':
         k = 'Start as'
-        ans.match_groups[k] = {x: x for x in 'normal,fullscreen,maximized,minimized'.split(',') if x.startswith(prefix)}
+        ans.match_groups[k] = {x: x for x in 'normal,fullscreen,maximized,minimized,headless'.split(',') if x.startswith(prefix)}
         ans.no_space_groups.add(k)
     elif dest == 'listen_on':
         if ':' not in prefix:
