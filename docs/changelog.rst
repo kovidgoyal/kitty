@@ -50,6 +50,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix mapping ``remote_control send-text`` not working (:iss:`3147`)
 
+- Add a ``right`` option for :opt:`tab_switch_strategy` (:pull:`3155`)
+
 
 0.19.2 [2020-11-13]
 -------------------

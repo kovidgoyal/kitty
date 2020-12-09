@@ -721,6 +721,8 @@ class TabManager:  # {{{
                         break
         elif self.opts.tab_switch_strategy == 'left':
             next_active_tab = max(0, self.active_tab_idx - 1)
+        elif self.opts.tab_switch_strategy == 'right':
+            next_active_tab = min(self.active_tab_idx, len(self.tabs) - 1)
 
         if next_active_tab < 0:
             next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))

@@ -880,11 +880,12 @@ o('tab_bar_min_tabs', 2, option_type=tab_bar_min_tabs, long_text=_('''
 The minimum number of tabs that must exist before the tab bar is shown
 '''))
 
-o('tab_switch_strategy', 'previous', option_type=choices('previous', 'left', 'last'), long_text=_('''
+o('tab_switch_strategy', 'previous', option_type=choices('previous', 'left', 'right', 'last'), long_text=_('''
 The algorithm to use when switching to a tab when the current tab is closed.
 The default of :code:`previous` will switch to the last used tab. A value of
 :code:`left` will switch to the tab to the left of the closed tab. A value
-of :code:`last` will switch to the right-most tab.
+of :code:`right` will switch to the tab to the right of the closed tab.
+A value of :code:`last` will switch to the right-most tab.
 '''))
 
 
