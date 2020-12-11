@@ -9,6 +9,7 @@
 #include "lineops.h"
 #include "charsets.h"
 #include <structmember.h>
+#include "ringbuf.h"
 
 extern PyTypeObject Line_Type;
 #define SEGMENT_SIZE 2048
@@ -61,42 +62,37 @@ alloc_pagerhist(size_t pagerhist_sz) {
     if (!pagerhist_sz) return NULL;
     ph = PyMem_Calloc(1, sizeof(PagerHistoryBuf));
     if (!ph) return NULL;
-    ph->max_sz = pagerhist_sz;
-    ph->buffer_size = MIN(1024u*1024u, ph->max_sz);
-    ph->buffer = PyMem_Malloc(ph->buffer_size);
-    if (!ph->buffer) { PyMem_Free(ph); return NULL; }
+    size_t sz = MIN(1024u * 1024u, pagerhist_sz);
+    ph->ringbuf = ringbuf_new(sz);
+    if (!ph->ringbuf) { PyMem_Free(ph); return NULL; }
+    ph->maximum_size = pagerhist_sz;
     return ph;
 }
 
 static inline void
 free_pagerhist(HistoryBuf *self) {
-    if (self->pagerhist) PyMem_Free(self->pagerhist->buffer);
+    if (self->pagerhist && self->pagerhist->ringbuf) ringbuf_free((ringbuf_t*)&self->pagerhist->ringbuf);
     PyMem_Free(self->pagerhist);
     self->pagerhist = NULL;
 }
 
 static inline bool
 pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
-    if (ph->buffer_size >= ph->max_sz) return false;
-    size_t newsz = MIN(ph->max_sz, ph->buffer_size + MAX(1024u * 1024u, minsz));
-    uint8_t *newbuf = PyMem_Malloc(newsz);
+    size_t buffer_size = ringbuf_capacity(ph->ringbuf);
+    if (buffer_size >= ph->maximum_size) return false;
+    size_t newsz = MIN(ph->maximum_size, buffer_size + MAX(1024u * 1024u, minsz));
+    ringbuf_t newbuf = ringbuf_new(newsz);
     if (!newbuf) return false;
-    size_t copied = MIN(ph->length, ph->buffer_size - ph->start);
-    if (copied) memcpy(newbuf, ph->buffer + ph->start, copied);
-    if (copied < ph->length) memcpy(newbuf + copied, ph->buffer, (ph->length - copied));
-    PyMem_Free(ph->buffer);
-    ph->start = 0;
-    ph->buffer = newbuf;
-    ph->buffer_size = newsz;
+    size_t count = ringbuf_bytes_used(ph->ringbuf);
+    if (count) ringbuf_copy(newbuf, ph->ringbuf, count);
+    ringbuf_free((ringbuf_t*)&ph->ringbuf);
+    ph->ringbuf = newbuf;
     return true;
 }
 
 static inline void
 pagerhist_clear(HistoryBuf *self) {
-    if (!self->pagerhist || !self->pagerhist->max_sz) return;
-    index_type pagerhist_sz = self->pagerhist->max_sz;
-    free_pagerhist(self);
-    self->pagerhist = alloc_pagerhist(pagerhist_sz);
+    if (self->pagerhist && self->pagerhist->ringbuf) ringbuf_reset(self->pagerhist->ringbuf);
 }
 
 static HistoryBuf*
@@ -188,36 +184,28 @@ historybuf_clear(HistoryBuf *self) {
 
 static inline bool
 pagerhist_write_bytes(PagerHistoryBuf *ph, const uint8_t *buf, size_t sz) {
-    if (sz > ph->max_sz) return false;
+    if (sz > ph->maximum_size) return false;
     if (!sz) return true;
-    if (sz > ph->buffer_size - ph->length) pagerhist_extend(ph, sz);
-    if (sz > ph->buffer_size) return false;
-    size_t start_writing_at = (ph->start + ph->length) % ph->buffer_size;
-    size_t available_space = ph->buffer_size - ph->length;
-    size_t overlap = available_space < sz ? sz - available_space : 0;
-    size_t copied = MIN(sz, ph->buffer_size - start_writing_at);
-    ph->length += sz - overlap;
-    ph->start = (ph->start + overlap) % ph->buffer_size;
-    if (copied) memcpy(ph->buffer + start_writing_at, buf, copied);
-    if (copied < sz) memcpy(ph->buffer, buf + copied, (sz - copied));
+    size_t space_in_ringbuf = ringbuf_bytes_free(ph->ringbuf);
+    if (sz > space_in_ringbuf) pagerhist_extend(ph, sz);
+    ringbuf_memcpy_into(ph->ringbuf, buf, sz);
     return true;
 }
 
 static inline bool
 pagerhist_ensure_start_is_valid_utf8(PagerHistoryBuf *ph) {
+    uint8_t scratch[8];
+    size_t num = ringbuf_memcpy_from(scratch, ph->ringbuf, arraysz(scratch));
     uint32_t state = UTF8_ACCEPT, codep;
-    size_t pos = ph->start, count = 0;
+    size_t count = 0;
     size_t last_reject_at = 0;
-    while (count < ph->length) {
-        decode_utf8(&state, &codep, ph->buffer[pos]);
-        count++;
+    while (count < num) {
+        decode_utf8(&state, &codep, scratch[count++]);
         if (state == UTF8_ACCEPT) break;
         if (state == UTF8_REJECT) { state = UTF8_ACCEPT; last_reject_at = count; }
-        pos = pos == ph->buffer_size - 1 ? 0: pos + 1;
     }
     if (last_reject_at) {
-        ph->start = (ph->start + last_reject_at) % ph->buffer_size;
-        ph->length -= last_reject_at;
+        ringbuf_memmove_from(scratch, ph->ringbuf, last_reject_at);
         return true;
     }
     return false;
@@ -241,7 +229,7 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
     line_as_ansi(&l, as_ansi_buf, &prev_cell);
-    if (ph->length != 0 && !l.continued) pagerhist_write_bytes(ph, (const uint8_t*)"\n", 1);
+    if (ringbuf_bytes_used(ph->ringbuf) && !l.continued) pagerhist_write_bytes(ph, (const uint8_t*)"\n", 1);
     pagerhist_write_bytes(ph, (const uint8_t*)"\x1b[m", 3);
     if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write_bytes(ph, (const uint8_t*)"\r", 1);
 }
@@ -335,15 +323,15 @@ static inline Line*
 get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, index_of(self, self->count - y - 1), l); return l; }
 
 static inline char_type
-pagerhist_read_char(PagerHistoryBuf *ph, size_t pos, unsigned *count, uint8_t record[8]) {
+pagerhist_remove_char(PagerHistoryBuf *ph, unsigned *count, uint8_t record[8]) {
     uint32_t codep, state = UTF8_ACCEPT;
     *count = 0;
-    while (true) {
-        decode_utf8(&state, &codep, ph->buffer[pos]);
-        record[(*count)++] = ph->buffer[pos];
+    while (ringbuf_bytes_used(ph->ringbuf)) {
+        ringbuf_memmove_from(&record[*count], ph->ringbuf, 1);
+        decode_utf8(&state, &codep, record[*count]);
+        *count += 1;
         if (state == UTF8_REJECT) { codep = 0; break; }
         if (state == UTF8_ACCEPT) break;
-        pos = pos == ph->buffer_size - 1 ? 0 : (pos + 1);
     }
     return codep;
 }
@@ -351,14 +339,12 @@ pagerhist_read_char(PagerHistoryBuf *ph, size_t pos, unsigned *count, uint8_t re
 static void
 pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
     PagerHistoryBuf *ph = self->pagerhist;
-    if (!ph->length) return;
+    if (!ph->ringbuf || !ringbuf_bytes_used(ph->ringbuf)) return;
     PagerHistoryBuf *nph = PyMem_Calloc(sizeof(PagerHistoryBuf), 1);
     if (!nph) return;
-    nph->buffer_size = ph->buffer_size;
-    nph->max_sz = ph->max_sz;
-    nph->buffer = PyMem_Malloc(nph->buffer_size);
-    if (!nph->buffer) { PyMem_Free(nph); return ; }
-    size_t i = 0, pos;
+    nph->maximum_size = ph->maximum_size;
+    nph->ringbuf = ringbuf_new(MIN(ph->maximum_size, ringbuf_capacity(ph->ringbuf) + 4096));
+    if (!nph->ringbuf) { PyMem_Free(nph); return ; }
     ssize_t ch_width = 0;
     unsigned count;
     uint8_t record[8];
@@ -367,11 +353,6 @@ pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
     WCSState wcs_state;
     initialize_wcs_state(&wcs_state);
 
-#define READ_CHAR(ch) { \
-    ch = pagerhist_read_char(ph, pos, &count, record); \
-    i += count; pos += count; \
-    if (pos >= ph->buffer_size) pos = pos - ph->buffer_size; \
-}
 #define WRITE_CHAR() { \
     if (num_in_current_line + ch_width > cells_in_line) { \
         pagerhist_write_bytes(nph, (const uint8_t*)"\r", 1); \
@@ -381,10 +362,8 @@ pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
     pagerhist_write_bytes(nph, record, count); \
 }
 
-    for (i = 0; i < ph->length;) {
-        pos = ph->start + i;
-        if (pos >= ph->buffer_size) pos = pos - ph->buffer_size;
-        READ_CHAR(ch);
+    while (ringbuf_bytes_used(ph->ringbuf)) {
+        ch = pagerhist_remove_char(ph, &count, record);
         if (ch == '\n') {
             initialize_wcs_state(&wcs_state);
             ch_width = 1;
@@ -397,12 +376,12 @@ pagerhist_rewrap_to(HistoryBuf *self, index_type cells_in_line) {
     }
     free_pagerhist(self);
     self->pagerhist = nph;
-#undef READ_CHAR
+#undef WRITE_CHAR
 }
 
 static PyObject*
 pagerhist_write(HistoryBuf *self, PyObject *what) {
-    if (self->pagerhist && self->pagerhist->max_sz) {
+    if (self->pagerhist && self->pagerhist->maximum_size) {
         if (PyBytes_Check(what)) pagerhist_write_bytes(self->pagerhist, (const uint8_t*)PyBytes_AS_STRING(what), PyBytes_GET_SIZE(what));
         else if (PyUnicode_Check(what) && PyUnicode_READY(what) == 0) {
             Py_UCS4 *buf = PyUnicode_AsUCS4Copy(what);
@@ -418,19 +397,17 @@ pagerhist_write(HistoryBuf *self, PyObject *what) {
 static PyObject*
 pagerhist_as_bytes(HistoryBuf *self, PyObject *args UNUSED) {
     PagerHistoryBuf *ph = self->pagerhist;
-    if (!ph || !ph->length) return PyBytes_FromStringAndSize("", 0);
+    if (!ph || !ringbuf_bytes_used(ph->ringbuf)) return PyBytes_FromStringAndSize("", 0);
     pagerhist_ensure_start_is_valid_utf8(ph);
     if (ph->rewrap_needed) pagerhist_rewrap_to(self, self->xnum);
 
     Line l = {.xnum=self->xnum}; get_line(self, 0, &l);
-    size_t sz = ph->length;
+    size_t sz = ringbuf_bytes_used(ph->ringbuf);
     if (!l.continued) sz += 1;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
     uint8_t *buf = (uint8_t*)PyBytes_AS_STRING(ans);
-    size_t copied = MIN(ph->length, ph->buffer_size - ph->start);
-    if (copied) memcpy(buf, ph->buffer + ph->start, copied);
-    if (copied < ph->length) memcpy(buf + copied, ph->buffer, (ph->length - copied));
+    ringbuf_memcpy_from(buf, ph->ringbuf, sz);
     if (!l.continued) buf[sz-1] = '\n';
     return ans;
 }
@@ -561,7 +538,7 @@ void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf *as_ansi_buf
         other->count = self->count; other->start_of_data = self->start_of_data;
         return;
     }
-    if (other->pagerhist && other->xnum != self->xnum && other->pagerhist->length)
+    if (other->pagerhist && other->xnum != self->xnum && ringbuf_bytes_used(other->pagerhist->ringbuf))
         other->pagerhist->rewrap_needed = true;
     other->count = 0; other->start_of_data = 0;
     index_type x = 0, y = 0;

@@ -193,9 +193,8 @@ typedef struct {
 } HistoryBufSegment;
 
 typedef struct {
-    uint8_t *buffer;
-    size_t buffer_size, max_sz;
-    size_t start, length;
+    void *ringbuf;
+    size_t maximum_size;
     bool rewrap_needed;
 } PagerHistoryBuf;
 

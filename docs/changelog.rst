@@ -52,6 +52,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add a ``right`` option for :opt:`tab_switch_strategy` (:pull:`3155`)
 
+- Fix a regression in 0.19.0 that caused a rare crash when using the optional
+  :opt:`scrollback_pager_history_size` (:iss:`3049`)
+
 
 0.19.2 [2020-11-13]
 -------------------
