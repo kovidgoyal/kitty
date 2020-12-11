@@ -304,6 +304,9 @@ def init_env(
         cflags.append('-flto')
         ldflags.append('-flto')
 
+    if debug:
+        cflags.append('-DKITTY_DEBUG_BUILD')
+
     if profile:
         cppflags.append('-DWITH_PROFILER')
         cflags.append('-g3')

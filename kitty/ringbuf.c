@@ -13,7 +13,9 @@
  * <http://creativecommons.org/publicdomain/zero/1.0/>.
  */
 
+#ifndef KITTY_DEBUG_BUILD
 #define NDEBUG 1
+#endif
 #include "ringbuf.h"
 
 #include <stdint.h>
