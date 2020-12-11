@@ -24,7 +24,7 @@ from pygments.lexer import RegexLexer, bygroups  # type: ignore
 from pygments.token import (  # type: ignore
     Comment, Keyword, Literal, Name, Number, String, Whitespace
 )
-from sphinx import addnodes  # type: ignore
+from sphinx import addnodes, version_info  # type: ignore
 from sphinx.environment.adapters.toctree import TocTree  # type: ignore
 from sphinx.util.logging import getLogger  # type: ignore
 
@@ -555,7 +555,7 @@ def process_shortcut_link(env: Any, refnode: Any, has_explicit_title: bool, titl
 
 
 def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
-    app.add_lexer('conf', ConfLexer)
+    app.add_lexer('conf', ConfLexer() if version_info[0] < 3 else ConfLexer)
     app.add_object_type(
         'opt', 'opt',
         indextemplate="pair: %s; Config Setting",
@@ -604,7 +604,7 @@ def setup(app: Any) -> None:
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
     write_conf_docs(app, kn)
-    app.add_lexer('session', SessionLexer)
+    app.add_lexer('session', SessionLexer() if version_info[0] < 3 else SessionLexer)
     app.add_role('link', link_role)
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))
