@@ -313,7 +313,7 @@ ringbuf_memcpy_from(void *dst, const ringbuf_t src, size_t count)
             tail = src->buf;
     }
 
-    assert(count + ringbuf_bytes_used(src) == bytes_used);
+    assert(ringbuf_bytes_used(src) == bytes_used);
     return count;
 }
 
