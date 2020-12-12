@@ -326,8 +326,9 @@ static inline char_type
 pagerhist_remove_char(PagerHistoryBuf *ph, unsigned *count, uint8_t record[8]) {
     uint32_t codep, state = UTF8_ACCEPT;
     *count = 0;
-    while (ringbuf_bytes_used(ph->ringbuf)) {
-        ringbuf_memmove_from(&record[*count], ph->ringbuf, 1);
+    size_t num = ringbuf_bytes_used(ph->ringbuf);
+    while (num--) {
+        record[*count] = ringbuf_move_char(ph->ringbuf);
         decode_utf8(&state, &codep, record[*count]);
         *count += 1;
         if (state == UTF8_REJECT) { codep = 0; break; }

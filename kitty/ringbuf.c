@@ -291,6 +291,18 @@ ringbuf_memmove_from(void *dst, ringbuf_t src, size_t count)
     return src->tail;
 }
 
+unsigned char
+ringbuf_move_char(ringbuf_t src) {
+    assert(!ringbuf_is_empty(src));
+    const uint8_t *bufend = ringbuf_end(src);
+    assert(bufend > src->tail);
+    uint8_t ans = *src->tail;
+    src->tail += 1;
+    if (src->tail == bufend)
+        src->tail = src->buf;
+    return ans;
+}
+
 size_t
 ringbuf_memcpy_from(void *dst, const ringbuf_t src, size_t count)
 {

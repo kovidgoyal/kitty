@@ -189,6 +189,11 @@ ringbuf_read(int fd, ringbuf_t rb, size_t count);
 void *
 ringbuf_memmove_from(void *dst, ringbuf_t src, size_t count);
 
+/* ringbuf_memmove_from() optimized for a single character.
+ * Must only be called if the ringbuf is not empty */
+unsigned char
+ringbuf_move_char(ringbuf_t src);
+
 /*
  * Same as ringbuf_memmove_from() except that it does not change the ringbuffer
  * and returns the actual number of bytes copied, which is the minimum of ringbuf_bytes_used
