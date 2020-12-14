@@ -20,6 +20,8 @@ your machine).
 
 .. code-block:: python
 
+    from typing import List
+
     def main(args: List[str]) -> str:
         # this is the main entry point of the kitten, it will be executed in
         # the overlay window when the kitten is launched
