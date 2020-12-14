@@ -182,7 +182,7 @@ following :file:`~/.config/fontconfig/fonts.conf`::
     <?xml version="1.0"?>
     <!DOCTYPE fontconfig SYSTEM "fonts.dtd">
     <fontconfig>
-    <match target="font">
+    <match target="scan">
         <test name="family">
             <string>Your Font Family Name</string>
         </test>
