@@ -390,6 +390,13 @@ allows rendering of text on top of images. Negative z-index values below
 INT32_MIN/2 (-1,073,741,824) will be drawn under cells with non-default background
 colors.
 
+.. note:: After placing an image on the screen the cursor must be moved to the
+   right by the number of cols in the image placement rectangle and down by the
+   number of rows in the image placement rectangle. If either of these cause
+   the cursor to leave either the screen or the scroll area, the exact
+   positioning of the cursor is undefined, and up to implementations.
+
+
 Deleting images
 ---------------------
 
