@@ -359,9 +359,8 @@ second one will replace the first. This can be used to resize or move
 placements around the screen, without flicker.
 
 
-.. note:: Support for specifying placement ids was added to kitty in
-   versions after 0.19.2. You can use the protocol documented in the
-   :doc:`kittens/query_terminal` to query kitty version.
+.. versionadded:: 0.19.3
+   Support for specifying placement ids (see :doc:`kittens/query_terminal` to query kitty version)
 
 
 Controlling displayed image layout
@@ -415,7 +414,9 @@ Value of ``d``       Meaning
 =================    ============
 ``a`` or ``A``       Delete all placements visible on screen
 ``i`` or ``I``       Delete all images with the specified id, specified using the ``i`` key. If you specify a ``p`` key for the placement                      id as well, then only the placement with the specified image id and placement id will be deleted.
-                     placement id
+``n`` or ``N``       Delete newest image with the specified number, specified using the ``I`` key. If you specify a ``p`` key for the
+                     placement id as well, then only the placement with the specified number and placement id will be deleted.
+``c`` or ``C``       Delete all placements that intersect with the current cursor position.
 ``c`` or ``C``       Delete all placements that intersect with the current cursor position.
 ``p`` or ``P``       Delete all placements that intersect a specific cell, the cell is specified using the ``x`` and ``y`` keys
 ``q`` or ``Q``       Delete all placements that intersect a specific cell having a specific z-index. The cell and z-index is specified using the ``x``, ``y`` and ``z`` keys.
@@ -447,7 +448,40 @@ script, it might be useful to avoid having to process responses from the
 terminal. For this, you can use the ``q`` key. Set it to ``1`` to suppress
 ``OK`` responses and to ``2`` to suppress failure responses.
 
-.. note:: This feature was implemented in kitty in versions after 0.19.2
+.. versionadded:: 0.19.3
+   The ability to suppress responses (see :doc:`kittens/query_terminal` to query kitty version)
+
+
+Requesting image ids from the terminal
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+If you are writing a program that is going to share the screen with other
+programs and you still want to use image ids, it is not possible to know
+what image ids are free to use. In this case, instead of using the ``i``
+key to specify and image id use the ``I`` key to specify and image number
+instead. These numbers are not unique.
+When creating a new image, even if an existing image has the same number a new
+one is created. And the terminal will reply with the id of the newly created
+image. For example, when creating an image with ``I=13``, the terminal will
+send the response::
+
+    <ESC>_Gi=99,I=13;OK<ESC>\
+
+Here, the value of ``i`` is the id for the newly created image and the value of
+``I`` is the same as was sent in the creation command.
+
+All future commands that refer to images using the image number, such as
+creating placements or deleting images, will act on only the newest image with
+that number. This allows the client program to send a bunch of commands dealing
+with an image by image number without waiting for a response from the terminal
+with the image id. Once such a response is received, the client program should
+use the ``i`` key with the image id for all future communication.
+
+.. note:: Specifying both ``i`` and ``I`` keys in any command is an error. The
+   terminal must reply with an EINVAL error message, unless silenced.
+
+.. versionadded:: 0.19.3
+   The ability to use image numbers (see :doc:`kittens/query_terminal` to query kitty version)
 
 
 Image persistence and storage quotas

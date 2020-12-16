@@ -231,6 +231,54 @@ class TestGraphics(BaseTest):
         # test error handling for loading bad png data
         self.assertRaisesRegex(ValueError, '[EBADPNG]', load_png_data, b'dsfsdfsfsfd')
 
+    def test_load_with_numbers(self):
+        s = self.create_screen()
+        g = s.grman
+
+        def li(payload, **kw):
+            cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
+            res = send_command(s, cmd, payload)
+            return parse_response_with_ids(res)
+
+        code, ids = li('abc', s=1, v=1, f=24, I=1, i=3)
+        self.ae(code, 'EINVAL')
+
+        code, ids = li('abc', s=1, v=1, f=24, I=1)
+        self.ae((code, ids), ('OK', 'i=1,I=1'))
+        img = g.image_for_client_number(1)
+        self.ae(img['client_number'], 1)
+        self.ae(img['client_id'], 1)
+        code, ids = li('abc', s=1, v=1, f=24, I=1)
+        self.ae((code, ids), ('OK', 'i=2,I=1'))
+        img = g.image_for_client_number(1)
+        self.ae(img['client_number'], 1)
+        self.ae(img['client_id'], 2)
+        code, ids = li('abc', s=1, v=1, f=24, I=1)
+        self.ae((code, ids), ('OK', 'i=3,I=1'))
+        code, ids = li('abc', s=1, v=1, f=24, i=5)
+        self.ae((code, ids), ('OK', 'i=5'))
+        code, ids = li('abc', s=1, v=1, f=24, I=3)
+        self.ae((code, ids), ('OK', 'i=4,I=3'))
+
+        # Test chunked load with number
+        self.assertIsNone(li('abcd', s=2, v=2, m=1, I=93))
+        self.assertIsNone(li('efgh', m=1))
+        self.assertIsNone(li('ijkx', m=1))
+        self.ae(li('mnop', m=0), ('OK', 'i=6,I=93'))
+        img = g.image_for_client_number(93)
+        self.ae(img['data'], b'abcdefghijkxmnop')
+        self.ae(img['client_id'], 6)
+
+        # test put with number
+        def put(**kw):
+            cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
+            cmd = 'a=p,' + cmd
+            return parse_response_with_ids(send_command(s, cmd))
+
+        code, idstr = put(c=2, r=2, I=93)
+        self.ae((code, idstr), ('OK', 'i=6,I=93'))
+        self.assertIsNone(put(c=2, r=2, I=94))
+
     def test_image_put(self):
         cw, ch = 10, 20
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)

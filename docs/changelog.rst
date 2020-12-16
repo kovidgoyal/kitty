@@ -16,8 +16,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow specifying text formatting in :opt:`tab_title_template` (:iss:`3146`)
 
 - Graphics protocol: Add support for giving individual image placements their
-  own ids. This is a backwards compatible protocol extension, and also allow
-  suppressing responses from the terminal to commands (:iss:`3133`)
+  own ids and for asking the terminal emulator to assign ids for images. Also
+  allow suppressing responses from the terminal to commands.
+  These are backwards compatible protocol extensions. (:iss:`3133`,
+  :iss:`3163`)
 
 - Distribute extra pixels among all eight-blocks rather than adding them
   all to the last block (:iss:`3097`)
