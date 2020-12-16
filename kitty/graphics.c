@@ -805,14 +805,14 @@ grman_clear(GraphicsManager *self, bool all, CellPixelSize cell) {
 static inline bool
 id_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell UNUSED) {
     const GraphicsCommand *g = data;
-    if (img->client_id == g->id) return !g->placement_id || ref->client_id == g->placement_id;
+    if (g->id && img->client_id == g->id) return !g->placement_id || ref->client_id == g->placement_id;
     return false;
 }
 
 static inline bool
 number_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixelSize cell UNUSED) {
     const GraphicsCommand *g = data;
-    if (img->client_number == g->image_number) return !g->placement_id || ref->client_id == g->placement_id;
+    if (g->image_number && img->client_number == g->image_number) return !g->placement_id || ref->client_id == g->placement_id;
     return false;
 }
 
@@ -849,7 +849,7 @@ point3d_filter_func(const ImageRef *ref, Image *img, const void *data, CellPixel
 
 static void
 handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, bool *is_dirty, CellPixelSize cell) {
-    static GraphicsCommand d;
+    GraphicsCommand d;
     bool only_first_image = false;
     switch (g->delete_action) {
 #define I(u, data, func) filter_refs(self, data, g->delete_action == u, func, cell, only_first_image); *is_dirty = true; break
@@ -870,7 +870,7 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
         case 'n':
         case 'N':
             only_first_image = true;
-            I('N', &g, number_filter_func);
+            I('N', g, number_filter_func);
         default:
             REPORT_ERROR("Unknown graphics command delete action: %c", g->delete_action);
             break;

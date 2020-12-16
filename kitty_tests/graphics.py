@@ -231,7 +231,7 @@ class TestGraphics(BaseTest):
         # test error handling for loading bad png data
         self.assertRaisesRegex(ValueError, '[EBADPNG]', load_png_data, b'dsfsdfsfsfd')
 
-    def test_load_with_numbers(self):
+    def test_gr_operations_with_numbers(self):
         s = self.create_screen()
         g = s.grman
 
@@ -279,6 +279,24 @@ class TestGraphics(BaseTest):
         self.ae((code, idstr), ('OK', 'i=6,I=93'))
         code, idstr = put(c=2, r=2, I=94)
         self.ae(code, 'ENOENT')
+
+        # test delete with number
+        def delete(ac='N', **kw):
+            cmd = 'a=d'
+            if ac:
+                cmd += ',d={}'.format(ac)
+            if kw:
+                cmd += ',' + ','.join('{}={}'.format(k, v) for k, v in kw.items())
+            send_command(s, cmd)
+
+        count = s.grman.image_count
+        put(i=1), put(i=2), put(i=3), put(i=4), put(i=5)
+        delete(I=94)
+        self.ae(s.grman.image_count, count)
+        delete(I=93)
+        self.ae(s.grman.image_count, count - 1)
+        delete(I=1)
+        self.ae(s.grman.image_count, count - 2)
 
     def test_image_put(self):
         cw, ch = 10, 20
