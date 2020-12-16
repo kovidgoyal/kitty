@@ -574,9 +574,9 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     if (img == NULL) {
         if (g->id) img = img_by_client_id(self, g->id);
         else if (g->image_number) img = img_by_client_number(self, g->image_number);
-        if (img == NULL) { set_command_failed_response("ENOENT", "Put command refers to non-existent image with id: %u and number: %u", g->id, g->image_number); return 0; }
+        if (img == NULL) { set_command_failed_response("ENOENT", "Put command refers to non-existent image with id: %u and number: %u", g->id, g->image_number); return g->id; }
     }
-    if (!img->data_loaded) { set_command_failed_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return 0; }
+    if (!img->data_loaded) { set_command_failed_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return img->client_id; }
     ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 16, true);
     *is_dirty = true;
     self->layers_dirty = true;
