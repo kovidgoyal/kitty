@@ -25,9 +25,9 @@ from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
 if is_macos:
-    from .core_text import get_font_files as get_font_files_coretext, font_for_family as font_for_family_macos
+    from .core_text import get_font_files as get_font_files_coretext, font_for_family as font_for_family_macos, find_font_features
 else:
-    from .fontconfig import get_font_files as get_font_files_fontconfig, font_for_family as font_for_family_fontconfig
+    from .fontconfig import get_font_files as get_font_files_fontconfig, font_for_family as font_for_family_fontconfig, find_font_features
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: List[Tuple[FontObject, bool, bool]] = []
@@ -189,12 +189,16 @@ def set_font_family(opts: Optional[OptionsStub] = None, override_font_size: Opti
     before = len(current_faces)
     sm = create_symbol_map(opts)
     num_symbol_fonts = len(current_faces) - before
+    font_features = {}
+    for face, _, _ in current_faces:
+        font_features[face['postscript_name']] = find_font_features(face['postscript_name'])
+    font_features.update(opts.font_features)
     if debug_font_matching:
         dump_faces(ftypes, indices)
     set_font_data(
         render_box_drawing, prerender_function, descriptor_for_idx,
         indices['bold'], indices['italic'], indices['bi'], num_symbol_fonts,
-        sm, sz, opts.font_features
+        sm, sz, font_features
     )
 
 

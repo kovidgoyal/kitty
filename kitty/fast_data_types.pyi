@@ -410,6 +410,7 @@ class FontConfigPattern(TypedDict):
     postscript_name: str
     style: str
     spacing: str
+    fontfeatures: str
     weight: int
     width: int
     slant: int
@@ -437,6 +438,12 @@ def fc_match(
     allow_bitmapped_fonts: bool = False,
     size_in_pts: float = 0.,
     dpi: float = 0.
+) -> FontConfigPattern:
+    pass
+
+
+def fc_match_postscript_name(
+    postscript_name: str
 ) -> FontConfigPattern:
     pass
 
