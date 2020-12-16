@@ -410,7 +410,7 @@ class FontConfigPattern(TypedDict):
     postscript_name: str
     style: str
     spacing: str
-    fontfeatures: str
+    fontfeatures: List[str]
     weight: int
     width: int
     slant: int

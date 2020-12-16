@@ -78,7 +78,7 @@ def find_font_features(postscript_name: str) -> Tuple[str, ...]:
         return tuple()
 
     features = []
-    for feat in pat['fontfeatures'].split():
+    for feat in pat['fontfeatures']:
         try:
             parsed = parse_font_feature(feat)
         except ValueError:
