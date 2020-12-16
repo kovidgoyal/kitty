@@ -315,7 +315,7 @@ terminal emulators handle input in a FIFO manner, anyway.
 
 So for example, you could send::
 
-      <ESC>_Gi=31,s=1,v=1,a=q,t=d,f=24;<NUL><NUL><NUL><ESC>\<ESC>[c
+      <ESC>_Gi=31,s=1,v=1,a=q,t=d,f=24;AAAA<ESC>\<ESC>[c
 
 If you get back a response to the graphics query, the terminal emulator supports
 the protocol, if you get back a response to the device attributes query without
