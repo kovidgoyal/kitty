@@ -520,14 +520,15 @@ finish_command_response(const GraphicsCommand *g, bool data_loaded, uint32_t iid
     if (g->quiet) {
         if (is_ok_response || g->quiet > 1) return NULL;
     }
-    if (iid) {
+    if (iid || image_number) {
         if (is_ok_response) {
             if (!data_loaded) return NULL;
             snprintf(command_response, 10, "OK");
         }
         size_t pos = 0;
+        rbuf[pos++] = 'G';
 #define print(fmt, ...) pos += snprintf(rbuf + pos, arraysz(rbuf) - 1 - pos, fmt, __VA_ARGS__)
-        print("Gi=%u", iid);
+        if (iid) print("i=%u", iid);
         if (image_number) print(",I=%u", image_number);
         if (placement_id) print(",p=%u", placement_id);
         print(";%s", command_response);

@@ -277,7 +277,8 @@ class TestGraphics(BaseTest):
 
         code, idstr = put(c=2, r=2, I=93)
         self.ae((code, idstr), ('OK', 'i=6,I=93'))
-        self.assertIsNone(put(c=2, r=2, I=94))
+        code, idstr = put(c=2, r=2, I=94)
+        self.ae(code, 'ENOENT')
 
     def test_image_put(self):
         cw, ch = 10, 20
