@@ -44,11 +44,10 @@ pattern_as_dict(FcPattern *pat) {
     type out; int n = 0; \
     list = PyList_New(0); \
     if (!list) goto exit; \
-    while (get(pat, which, n, &out) == FcResultMatch) { \
+    while (get(pat, which, n++, &out) == FcResultMatch) { \
         p = conv(out); if (p == NULL) goto exit; \
         if (PyList_Append(list, p) != 0) goto exit; \
         Py_CLEAR(p); \
-        n++; \
     } \
     if (PyDict_SetItemString(ans, #name, list) != 0) goto exit; \
     Py_CLEAR(list); \
