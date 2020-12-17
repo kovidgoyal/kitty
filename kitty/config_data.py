@@ -325,6 +325,8 @@ Note that this code is indexed by PostScript name, and not the font
 family. This allows you to define very precise feature settings; e.g. you can
 disable a feature in the italic font but not in the regular font.
 
+By default they are derived automatically, by the OSes font system (linux only).
+
 To get the PostScript name for a font, use :code:`kitty + list-fonts --psnames`:
 
 .. code-block:: sh

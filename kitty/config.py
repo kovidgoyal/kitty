@@ -21,6 +21,7 @@ from .conf.utils import (
 )
 from .config_data import all_options, parse_mods, type_convert
 from .constants import cache_dir, defconf, is_macos
+from .fonts import FontFeature
 from .key_names import get_key_name_lookup, key_name_aliases
 from .options_stub import Options as OptionsStub
 from .typing import TypedDict
@@ -522,14 +523,6 @@ def handle_map(key: str, val: str, ans: Dict[str, Any]) -> None:
 @special_handler
 def handle_symbol_map(key: str, val: str, ans: Dict[str, Any]) -> None:
     ans['symbol_map'].update(parse_symbol_map(val))
-
-
-class FontFeature(str):
-
-    def __new__(cls, name: str, parsed: bytes) -> 'FontFeature':
-        ans: FontFeature = str.__new__(cls, name)  # type: ignore
-        ans.parsed = parsed  # type: ignore
-        return ans
 
 
 @special_handler

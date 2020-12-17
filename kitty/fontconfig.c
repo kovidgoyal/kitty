@@ -37,7 +37,21 @@ pattern_as_dict(FcPattern *pat) {
         if (PyDict_SetItemString(ans, #name, p) != 0) { Py_CLEAR(p); Py_CLEAR(ans); return NULL; } \
         Py_CLEAR(p); \
     }}
+
+#define L(type, get, which, conv, name) { \
+    type out; PyObject *p; int n = 0; \
+    PyObject *l = PyList_New(0); \
+    while (get(pat, which, n, &out) == FcResultMatch) { \
+        p = conv(out); if (p == NULL) { Py_CLEAR(l); Py_CLEAR(ans); return NULL; } \
+        if (PyList_Append(l, p) != 0) { Py_CLEAR(p); Py_CLEAR(l); Py_CLEAR(ans); return NULL; } \
+        Py_CLEAR(p); \
+        n++; \
+    } \
+    if (PyDict_SetItemString(ans, #name, l) != 0) { Py_CLEAR(l); Py_CLEAR(ans); return NULL; } \
+    Py_CLEAR(l); \
+}
 #define S(which, key) G(FcChar8*, FcPatternGetString, which, PS, key)
+#define LS(which, key) L(FcChar8*, FcPatternGetString, which, PS, key)
 #define I(which, key) G(int, FcPatternGetInteger, which, PyLong_FromLong, key)
 #define B(which, key) G(int, FcPatternGetBool, which, pybool, key)
 #define E(which, key, conv) G(int, FcPatternGetInteger, which, conv, key)
@@ -46,6 +60,7 @@ pattern_as_dict(FcPattern *pat) {
     S(FC_STYLE, style);
     S(FC_FULLNAME, full_name);
     S(FC_POSTSCRIPT_NAME, postscript_name);
+    LS(FC_FONT_FEATURES, fontfeatures);
     I(FC_WEIGHT, weight);
     I(FC_WIDTH, width)
     I(FC_SLANT, slant);
@@ -179,6 +194,26 @@ end:
     return ans;
 }
 
+static PyObject*
+fc_match_postscript_name(PyObject UNUSED *self, PyObject *args) {
+    char *postscript_name = NULL;
+    FcPattern *pat = NULL;
+    PyObject *ans = NULL;
+
+    if (!PyArg_ParseTuple(args, "|z", &postscript_name)) return NULL;
+    pat = FcPatternCreate();
+    if (pat == NULL) return PyErr_NoMemory();
+    if (!postscript_name || strlen(postscript_name) == 0) return NULL;
+
+    AP(FcPatternAddString, FC_POSTSCRIPT_NAME, (const FcChar8*)postscript_name, "postscript_name");
+
+    ans = _fc_match(pat);
+
+end:
+    if (pat != NULL) FcPatternDestroy(pat);
+    return ans;
+}
+
 PyObject*
 specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg) {
     PyObject *p = PyDict_GetItemString(base_descriptor, "path"), *ans = NULL;
@@ -224,6 +259,7 @@ end:
 static PyMethodDef module_methods[] = {
     METHODB(fc_list, METH_VARARGS),
     METHODB(fc_match, METH_VARARGS),
+    METHODB(fc_match_postscript_name, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
