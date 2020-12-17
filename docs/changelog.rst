@@ -57,6 +57,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.19.0 that caused a rare crash when using the optional
   :opt:`scrollback_pager_history_size` (:iss:`3049`)
 
+- Full screen kittens: Fix incorrect cursor position after kitten quits
+  (:iss:`3176`)
+
 
 0.19.2 [2020-11-13]
 -------------------
