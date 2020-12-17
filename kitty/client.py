@@ -182,6 +182,10 @@ def screen_decsace(mode: int) -> None:
     write(CSI + str(mode) + '*x')
 
 
+def screen_set_8bit_controls(mode: int) -> None:
+    write('\x1b ' + ('G' if mode else 'F'))
+
+
 def write_osc(code: int, string: str = '') -> None:
     if string:
         string = ';' + string
