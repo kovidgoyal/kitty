@@ -205,14 +205,15 @@ end:
 
 static PyObject*
 fc_match_postscript_name(PyObject UNUSED *self, PyObject *args) {
-    char *postscript_name = NULL;
+    const char *postscript_name = NULL;
     FcPattern *pat = NULL;
     PyObject *ans = NULL;
 
-    if (!PyArg_ParseTuple(args, "|z", &postscript_name)) return NULL;
+    if (!PyArg_ParseTuple(args, "s", &postscript_name)) return NULL;
+    if (!postscript_name || !postscript_name[0]) { PyErr_SetString(PyExc_KeyError, "postscript_name must not be empty"); return NULL; }
+
     pat = FcPatternCreate();
     if (pat == NULL) return PyErr_NoMemory();
-    if (!postscript_name || strlen(postscript_name) == 0) return NULL;
 
     AP(FcPatternAddString, FC_POSTSCRIPT_NAME, (const FcChar8*)postscript_name, "postscript_name");
 
