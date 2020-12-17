@@ -11,6 +11,7 @@
 import sys
 from contextlib import suppress
 from typing import Any
+from functools import partial
 
 
 CSI = '\033['
@@ -50,8 +51,24 @@ def screen_cursor_forward(amt: int) -> None:
     write(CSI + '%sC' % amt)
 
 
+def screen_save_cursor() -> None:
+    write('\x1b7')
+
+
+def screen_restore_cursor() -> None:
+    write('\x1b8')
+
+
 def screen_cursor_back1(amt: int) -> None:
     write(CSI + '%sD' % amt)
+
+
+def screen_save_modes() -> None:
+    write(CSI + '?s')
+
+
+def screen_restore_modes() -> None:
+    write(CSI + '?r')
 
 
 def screen_designate_charset(which: int, to: int) -> None:
@@ -161,6 +178,10 @@ def report_device_attributes(mode: int, char: int) -> None:
     write(CSI + x + 'c')
 
 
+def screen_decsace(mode: int) -> None:
+    write(CSI + str(mode) + '*x')
+
+
 def write_osc(code: int, string: str = '') -> None:
     if string:
         string = ';' + string
@@ -168,6 +189,8 @@ def write_osc(code: int, string: str = '') -> None:
 
 
 set_dynamic_color = set_color_table_color = write_osc
+screen_push_dynamic_colors = partial(write_osc, 30001)
+screen_pop_dynamic_colors = partial(write_osc, 30101)
 
 
 def replay(raw: str) -> None:
