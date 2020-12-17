@@ -27,28 +27,31 @@ pyspacing(int val) {
 
 static inline PyObject*
 pattern_as_dict(FcPattern *pat) {
-    PyObject *ans = PyDict_New();
+    PyObject *ans = PyDict_New(), *p = NULL, *list = NULL;
     if (ans == NULL) return NULL;
+
 #define PS(x) PyUnicode_Decode((const char*)x, strlen((const char*)x), "UTF-8", "replace")
+
 #define G(type, get, which, conv, name) { \
-    type out; PyObject *p; \
+    type out; \
     if (get(pat, which, 0, &out) == FcResultMatch) { \
-        p = conv(out); if (p == NULL) { Py_CLEAR(ans); return NULL; } \
-        if (PyDict_SetItemString(ans, #name, p) != 0) { Py_CLEAR(p); Py_CLEAR(ans); return NULL; } \
+        p = conv(out); if (p == NULL) goto exit; \
+        if (PyDict_SetItemString(ans, #name, p) != 0) goto exit; \
         Py_CLEAR(p); \
     }}
 
 #define L(type, get, which, conv, name) { \
-    type out; PyObject *p; int n = 0; \
-    PyObject *l = PyList_New(0); \
+    type out; int n = 0; \
+    list = PyList_New(0); \
+    if (!list) goto exit; \
     while (get(pat, which, n, &out) == FcResultMatch) { \
-        p = conv(out); if (p == NULL) { Py_CLEAR(l); Py_CLEAR(ans); return NULL; } \
-        if (PyList_Append(l, p) != 0) { Py_CLEAR(p); Py_CLEAR(l); Py_CLEAR(ans); return NULL; } \
+        p = conv(out); if (p == NULL) goto exit; \
+        if (PyList_Append(list, p) != 0) goto exit; \
         Py_CLEAR(p); \
         n++; \
     } \
-    if (PyDict_SetItemString(ans, #name, l) != 0) { Py_CLEAR(l); Py_CLEAR(ans); return NULL; } \
-    Py_CLEAR(l); \
+    if (PyDict_SetItemString(ans, #name, list) != 0) goto exit; \
+    Py_CLEAR(list); \
 }
 #define S(which, key) G(FcChar8*, FcPatternGetString, which, PS, key)
 #define LS(which, key) L(FcChar8*, FcPatternGetString, which, PS, key)
@@ -73,6 +76,10 @@ pattern_as_dict(FcPattern *pat) {
     B(FC_OUTLINE, outline);
     B(FC_COLOR, color);
     E(FC_SPACING, spacing, pyspacing);
+exit:
+    if (PyErr_Occurred()) Py_CLEAR(ans);
+    Py_CLEAR(p);
+    Py_CLEAR(list);
 
     return ans;
 #undef PS
@@ -81,6 +88,8 @@ pattern_as_dict(FcPattern *pat) {
 #undef B
 #undef E
 #undef G
+#undef L
+#undef LS
 }
 
 static inline PyObject*
