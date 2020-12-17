@@ -52,7 +52,7 @@ def list_fonts() -> Generator[ListedFont, None, None]:
 
 def find_font_features(postscript_name: str) -> Tuple[str, ...]:
     """Not Implemented"""
-    return tuple()
+    return ()
 
 
 def find_best_match(family: str, bold: bool = False, italic: bool = False) -> CoreTextFont:

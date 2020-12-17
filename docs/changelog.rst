@@ -15,6 +15,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow specifying text formatting in :opt:`tab_title_template` (:iss:`3146`)
 
+- Linux: Read :opt:`font_features` from the FontConfig database as well, so
+  that they can be configured in a single, central location (:pull:`3174`)
+
 - Graphics protocol: Add support for giving individual image placements their
   own ids and for asking the terminal emulator to assign ids for images. Also
   allow suppressing responses from the terminal to commands.
