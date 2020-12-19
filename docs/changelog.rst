@@ -4,8 +4,10 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.19.3 [future]
+0.19.3 [2020-12-19]
 -------------------
+
+- Happy holidays to all kitty users!
 
 - A new :doc:`broadcast <kittens/broadcast>` kitten to type in all kitty windows
   simultaneously (:iss:`1569`)
