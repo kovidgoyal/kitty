@@ -280,6 +280,13 @@ class Boss:
                 if tab.matches(field, pat):
                     yield tab
                     found = True
+        elif field in ('window_id', 'window_title'):
+            wf = field.split('_')[1]
+            tabs = {self.tab_for_window(w) for w in self.match_windows(f'{wf}:{exp}')}
+            for q in tabs:
+                if q:
+                    found = True
+                    yield q
         if not found:
             tabs = {self.tab_for_window(w) for w in self.match_windows(match)}
             for q in tabs:
