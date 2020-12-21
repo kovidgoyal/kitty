@@ -1594,13 +1594,13 @@ screen_handle_cmd(Screen *self, PyObject *cmd) {
 }
 
 void
-screen_push_dynamic_colors(Screen *self) {
-    colorprofile_push_dynamic_colors(self->color_profile);
+screen_push_colors(Screen *self, unsigned int idx) {
+    colorprofile_push_colors(self->color_profile, idx);
 }
 
 void
-screen_pop_dynamic_colors(Screen *self) {
-    colorprofile_pop_dynamic_colors(self->color_profile);
+screen_pop_colors(Screen *self, unsigned int idx) {
+    colorprofile_pop_colors(self->color_profile, idx);
 }
 
 void

@@ -318,19 +318,56 @@ copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size
     self->dirty = false;
 }
 
-void
-colorprofile_push_dynamic_colors(ColorProfile *self) {
-    if (self->dynamic_color_stack_idx >= arraysz(self->dynamic_color_stack)) {
-        memmove(self->dynamic_color_stack, self->dynamic_color_stack + 1, sizeof(self->dynamic_color_stack) - sizeof(self->dynamic_color_stack[0]));
-        self->dynamic_color_stack_idx = arraysz(self->dynamic_color_stack) - 1;
-    }
-    self->dynamic_color_stack[self->dynamic_color_stack_idx++] = self->overridden;
+static void
+push_onto_color_stack_at(ColorProfile *self, unsigned int i) {
+    self->color_stack[i].dynamic_colors = self->overridden;
+    self->color_stack[i].valid = true;
+    memcpy(self->color_stack[i].color_table, self->color_table, sizeof(self->color_stack->color_table));
 }
 
-void
-colorprofile_pop_dynamic_colors(ColorProfile *self) {
-    if (!self->dynamic_color_stack_idx) return;
-    self->overridden = self->dynamic_color_stack[--(self->dynamic_color_stack_idx)];
+static void
+copy_from_color_stack_at(ColorProfile *self, unsigned int i) {
+    self->overridden = self->color_stack[i].dynamic_colors;
+    memcpy(self->color_table, self->color_stack[i].color_table, sizeof(self->color_table));
+}
+
+bool
+colorprofile_push_colors(ColorProfile *self, unsigned int idx) {
+    if (idx == 0) {
+        for (unsigned i = 0; i < arraysz(self->color_stack); i++) {
+            if (!self->color_stack[i].valid) {
+                push_onto_color_stack_at(self, i);
+                return true;
+            }
+        }
+        memmove(self->color_stack, self->color_stack + 1, sizeof(self->color_stack) - sizeof(self->color_stack[0]));
+        push_onto_color_stack_at(self, arraysz(self->color_stack) - 1);
+        return true;
+    }
+    if (idx < arraysz(self->color_stack)) {
+        push_onto_color_stack_at(self, idx);
+        return true;
+    }
+    return false;
+}
+
+bool
+colorprofile_pop_colors(ColorProfile *self, unsigned int idx) {
+    if (idx == 0) {
+        for (unsigned i = arraysz(self->color_stack) - 1; i-- > 0; ) {
+            if (self->color_stack[i].valid) {
+                copy_from_color_stack_at(self, i);
+                self->color_stack[i].valid = false;
+                return true;
+            }
+        }
+        return false;
+    }
+    if (idx < arraysz(self->color_stack)) {
+        copy_from_color_stack_at(self, idx);
+        return true;
+    }
+    return false;
 }
 
 static PyObject*

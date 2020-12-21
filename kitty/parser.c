@@ -414,11 +414,11 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             END_DISPATCH
         case 30001:
             REPORT_COMMAND(screen_push_dynamic_colors);
-            screen_push_dynamic_colors(screen);
+            screen_push_colors(screen, 0);
             break;
         case 30101:
             REPORT_COMMAND(screen_pop_dynamic_colors);
-            screen_pop_dynamic_colors(screen);
+            screen_pop_colors(screen, 0);
             break;
         default:
             REPORT_ERROR("Unknown OSC code: %u", code);
