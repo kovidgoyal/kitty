@@ -199,6 +199,14 @@ These escape codes save/restore the colors, default
 background, default foreground, selection background, selection foreground and
 cursor color and the 256 colors of the ANSI color table.
 
+.. note:: In July 2020, after several years, XTerm copied this protocol
+   extension, without acknowledgement, and using incompatible escape codes
+   (XTPUSHCOLORS, XTPOPCOLORS, XTREPORTCOLORS). And they decided to save not
+   just the dynamic colors but the entire ANSI color table. In the interests of
+   promoting interoperability, kitty added support for XTerm's escape codes as
+   well, and changed this extension to also save/restore the entire ANSI color
+   table.
+
 
 Pasting to clipboard
 ----------------------

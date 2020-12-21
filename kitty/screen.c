@@ -1604,6 +1604,15 @@ screen_pop_colors(Screen *self, unsigned int idx) {
 }
 
 void
+screen_report_color_stack(Screen *self) {
+    unsigned int idx, count;
+    colorprofile_report_stack(self->color_profile, &idx, &count);
+    char buf[128] = {0};
+    snprintf(buf, arraysz(buf), "%u;%u#Q", idx, count);
+    write_escape_code_to_child(self, CSI, buf);
+}
+
+void
 screen_handle_print(Screen *self, PyObject *msg) {
     CALLBACK("handle_remote_print", "O", msg);
 }

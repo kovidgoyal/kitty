@@ -439,7 +439,8 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case '*': \
         case '\'': \
         case ' ': \
-        case '$':
+        case '$': \
+        case '#':
 
 
 static inline void
@@ -759,7 +760,23 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case DL:
             CALL_CSI_HANDLER1(screen_delete_lines, 1);
         case DCH:
-            CALL_CSI_HANDLER1(screen_delete_characters, 1);
+            if (end_modifier == '#' && !start_modifier) {
+                CALL_CSI_HANDLER1(screen_push_colors, 0);
+            } else {
+                CALL_CSI_HANDLER1(screen_delete_characters, 1);
+            }
+        case 'Q':
+            if (end_modifier == '#' && !start_modifier) { CALL_CSI_HANDLER1(screen_pop_colors, 0); }
+            REPORT_ERROR("Unknown CSI Q sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
+            break;
+        case 'R':
+            if (end_modifier == '#' && !start_modifier) {
+                REPORT_COMMAND(screen_report_color_stack);
+                screen_report_color_stack(screen);
+                break;
+            }
+            REPORT_ERROR("Unknown CSI R sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
+            break;
         case ECH:
             CALL_CSI_HANDLER1(screen_erase_characters, 1);
         case DA:

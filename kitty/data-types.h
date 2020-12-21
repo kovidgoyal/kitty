@@ -241,7 +241,6 @@ typedef struct {
 typedef struct {
     DynamicColor dynamic_colors;
     uint32_t color_table[256];
-    bool valid;
 } ColorStackEntry;
 
 typedef struct {
@@ -250,7 +249,8 @@ typedef struct {
     bool dirty;
     uint32_t color_table[256];
     uint32_t orig_color_table[256];
-    ColorStackEntry color_stack[16];
+    ColorStackEntry *color_stack;
+    unsigned int color_stack_idx, color_stack_sz;
     DynamicColor configured, overridden;
     color_type mark_foregrounds[MARK_MASK+1], mark_backgrounds[MARK_MASK+1];
 } ColorProfile;
@@ -312,6 +312,7 @@ float cursor_text_as_bg(ColorProfile *self);
 void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int offset, size_t stride);
 bool colorprofile_push_colors(ColorProfile*, unsigned int);
 bool colorprofile_pop_colors(ColorProfile*, unsigned int);
+void colorprofile_report_stack(ColorProfile*, unsigned int*, unsigned int*);
 
 void set_mouse_cursor(MouseShape);
 void enter_event(void);

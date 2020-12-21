@@ -11,7 +11,6 @@
 import sys
 from contextlib import suppress
 from typing import Any
-from functools import partial
 
 
 CSI = '\033['
@@ -109,6 +108,18 @@ def screen_delete_characters(count: int) -> None:
     write(CSI + '%dP' % count)
 
 
+def screen_push_colors(which: int) -> None:
+    write(CSI + '%d#P' % which)
+
+
+def screen_pop_colors(which: int) -> None:
+    write(CSI + '%d#Q' % which)
+
+
+def screen_report_colors() -> None:
+    write(CSI + '#R')
+
+
 def screen_insert_characters(count: int) -> None:
     write(CSI + '%d@' % count)
 
@@ -193,8 +204,6 @@ def write_osc(code: int, string: str = '') -> None:
 
 
 set_dynamic_color = set_color_table_color = write_osc
-screen_push_dynamic_colors = partial(write_osc, 30001)
-screen_pop_dynamic_colors = partial(write_osc, 30101)
 
 
 def replay(raw: str) -> None:

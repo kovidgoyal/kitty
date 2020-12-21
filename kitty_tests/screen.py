@@ -716,3 +716,31 @@ class TestScreen(BaseTest):
 
         self.ae(str(s.linebuf), '0\n5\n6\n7\n\n')
         self.ae(str(s.historybuf), '')
+
+    def test_color_stack(self):
+        s = self.create_screen()
+        c = s.callbacks
+
+        def w(code):
+            return parse_bytes(s, ('\033[' + code).encode('ascii'))
+
+        def ac(idx, count):
+            self.ae(c.wtcbuf, f'\033[{idx};{count}#Q'.encode('ascii'))
+            c.clear()
+
+        w('#R')
+        ac(0, 0)
+
+        w('#P')
+        w('#R')
+        ac(0, 1)
+        w('#10P')
+        w('#R')
+        ac(0, 1)
+        w('#Q')
+        w('#R')
+        ac(0, 0)
+        for i in range(20):
+            w('#P')
+        w('#R')
+        ac(9, 10)

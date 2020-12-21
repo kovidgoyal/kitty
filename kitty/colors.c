@@ -79,6 +79,7 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 
 static void
 dealloc(ColorProfile* self) {
+    if (self->color_stack) free(self->color_stack);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
@@ -321,7 +322,6 @@ copy_color_table_to_buffer(ColorProfile *self, color_type *buf, int offset, size
 static void
 push_onto_color_stack_at(ColorProfile *self, unsigned int i) {
     self->color_stack[i].dynamic_colors = self->overridden;
-    self->color_stack[i].valid = true;
     memcpy(self->color_stack[i].color_table, self->color_table, sizeof(self->color_stack->color_table));
 }
 
@@ -333,18 +333,25 @@ copy_from_color_stack_at(ColorProfile *self, unsigned int i) {
 
 bool
 colorprofile_push_colors(ColorProfile *self, unsigned int idx) {
+    if (idx > 10) return false;
+    size_t sz = idx ? idx : self->color_stack_idx + 1;
+    sz = MIN(10u, sz);
+    if (self->color_stack_sz < sz) {
+        self->color_stack = realloc(self->color_stack, sz * sizeof(self->color_stack[0]));
+        if (self->color_stack == NULL) fatal("Out of memory while ensuring space for %zu elements in color stack", sz);
+        memset(self->color_stack + self->color_stack_sz, 0, (sz - self->color_stack_sz) * sizeof(self->color_stack[0]));
+        self->color_stack_sz = sz;
+    }
     if (idx == 0) {
-        for (unsigned i = 0; i < arraysz(self->color_stack); i++) {
-            if (!self->color_stack[i].valid) {
-                push_onto_color_stack_at(self, i);
-                return true;
-            }
-        }
-        memmove(self->color_stack, self->color_stack + 1, sizeof(self->color_stack) - sizeof(self->color_stack[0]));
-        push_onto_color_stack_at(self, arraysz(self->color_stack) - 1);
+        if (self->color_stack_idx >= self->color_stack_sz) {
+            memmove(self->color_stack, self->color_stack + 1, (self->color_stack_sz - 1) * sizeof(self->color_stack[0]));
+            idx = self->color_stack_sz - 1;
+        } else idx = self->color_stack_idx++;
+        push_onto_color_stack_at(self, idx);
         return true;
     }
-    if (idx < arraysz(self->color_stack)) {
+    idx -= 1;
+    if (idx < self->color_stack_sz) {
         push_onto_color_stack_at(self, idx);
         return true;
     }
@@ -354,20 +361,23 @@ colorprofile_push_colors(ColorProfile *self, unsigned int idx) {
 bool
 colorprofile_pop_colors(ColorProfile *self, unsigned int idx) {
     if (idx == 0) {
-        for (unsigned i = arraysz(self->color_stack) - 1; i-- > 0; ) {
-            if (self->color_stack[i].valid) {
-                copy_from_color_stack_at(self, i);
-                self->color_stack[i].valid = false;
-                return true;
-            }
-        }
-        return false;
+        if (!self->color_stack_idx) return false;
+        copy_from_color_stack_at(self, --self->color_stack_idx);
+        memset(self->color_stack + self->color_stack_idx, 0, sizeof(self->color_stack[0]));
+        return true;
     }
-    if (idx < arraysz(self->color_stack)) {
+    idx -= 1;
+    if (idx < self->color_stack_sz) {
         copy_from_color_stack_at(self, idx);
         return true;
     }
     return false;
+}
+
+void
+colorprofile_report_stack(ColorProfile *self, unsigned int *idx, unsigned int *count) {
+    *count = self->color_stack_idx;
+    *idx = self->color_stack_idx ? self->color_stack_idx - 1 : 0;
 }
 
 static PyObject*

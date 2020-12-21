@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.20.0 [future]
+----------------------
+
+- Add support for the color settings stack that XTerm copied from us without
+  acknowledgement and decided to use incompatible escape codes for.
+
+
 0.19.3 [2020-12-19]
 -------------------
 
