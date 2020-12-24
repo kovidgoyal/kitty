@@ -49,7 +49,9 @@ terminfo files to the server::
 
 This ssh kitten takes all the same command line arguments
 as ssh, you can alias it to ssh in your shell's rc files to avoid having to
-type it each time.
+type it each time::
+
+    alias ssh="kitty +kitten ssh"
 
 If for some reason that does not work (typically because the server is using a
 non POSIX compliant shell), you can use the following one-liner instead (it
