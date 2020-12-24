@@ -86,8 +86,8 @@ o, k, g, all_groups = option_func(all_options, {
     'colors.table': [
         _('The color table'),
         _('''\
-The 16 terminal colors. There are 8 basic colors, each color has a dull and
-bright version. You can also set the remaining colors from the 256 color table
+The 256 terminal colors. There are 8 basic colors, each color has a dull and
+bright version, for the first 16 colors. You can set the remaining 240 colors
 as color16 to color255.''')
     ],
     'advanced': [_('Advanced')],
