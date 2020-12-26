@@ -63,6 +63,8 @@ class OSWindowDict(TypedDict):
     platform_window_id: Optional[int]
     is_focused: bool
     tabs: List[TabDict]
+    wm_class: str
+    wm_name: str
 
 
 def listen_on(spec: str) -> int:
@@ -200,12 +202,16 @@ class Boss:
         if os_window_id is None:
             size_data = get_os_window_sizing_data(opts_for_size or self.opts, startup_session)
             wclass = wclass or getattr(startup_session, 'os_window_class', None) or self.args.cls or appname
+            wname = wname or self.args.name or wclass
             with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
                 os_window_id = create_os_window(
                         initial_window_size_func(size_data, self.cached_values),
                         pre_show_callback,
-                        self.args.title or appname, wname or self.args.name or wclass, wclass)
-        tm = TabManager(os_window_id, self.opts, self.args, startup_session)
+                        self.args.title or appname, wname, wclass)
+        else:
+            wname = self.args.name or self.args.cls or appname
+            wclass = self.args.cls or appname
+        tm = TabManager(os_window_id, self.opts, self.args, wclass, wname, startup_session)
         self.os_window_map[os_window_id] = tm
         return os_window_id
 
@@ -219,6 +225,8 @@ class Boss:
                     'platform_window_id': platform_window_id(os_window_id),
                     'is_focused': tm is active_tab_manager,
                     'tabs': list(tm.list_tabs(active_tab, active_window)),
+                    'wm_class': tm.wm_class,
+                    'wm_name': tm.wm_name
                 }
 
     @property

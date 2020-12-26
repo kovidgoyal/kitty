@@ -487,8 +487,10 @@ class Tab:  # {{{
 
 class TabManager:  # {{{
 
-    def __init__(self, os_window_id: int, opts: Options, args: CLIOptions, startup_session: Optional[SessionType] = None):
+    def __init__(self, os_window_id: int, opts: Options, args: CLIOptions, wm_class: str, wm_name: str, startup_session: Optional[SessionType] = None):
         self.os_window_id = os_window_id
+        self.wm_class = wm_class
+        self.wm_name = wm_name
         self.last_active_tab_id = None
         self.opts, self.args = opts, args
         self.tab_bar_hidden = self.opts.tab_bar_style == 'hidden'
