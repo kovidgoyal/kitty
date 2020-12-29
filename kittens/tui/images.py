@@ -85,7 +85,7 @@ def find_exe(name: str) -> Optional[str]:
             from kitty.utils import system_paths_on_macos
             paths = system_paths_on_macos()
         else:
-            paths = ['/usr/local/bin', '/opt/bin', '/usr/bin', '/bin']
+            paths = ['/usr/local/bin', '/opt/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
         path = os.pathsep.join(paths) + os.pathsep + os.defpath
         ans = shutil.which(name, path=path)
     return ans
