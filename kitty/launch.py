@@ -8,12 +8,12 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 from .boss import Boss
 from .child import Child
-from .cli import parse_args, WATCHER_DEFINITION
+from .cli import WATCHER_DEFINITION, parse_args
 from .cli_stub import LaunchCLIOptions
 from .constants import resolve_custom_file
 from .fast_data_types import set_clipboard_string
 from .tabs import Tab
-from .utils import set_primary_selection
+from .utils import find_exe, set_primary_selection, read_shell_environment
 from .window import Watchers, Window
 
 try:
@@ -274,6 +274,14 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
                 elif x == '@active-kitty-window-id':
                     x = str(active.id)
             final_cmd.append(x)
+        exe = find_exe(final_cmd[0])
+        if not exe:
+            env = read_shell_environment(boss.opts)
+            if 'PATH' in env:
+                import shutil
+                exe = shutil.which(final_cmd[0], path=env['PATH'])
+        if exe:
+            final_cmd[0] = exe
         kw['cmd'] = final_cmd
     if opts.type == 'overlay' and active:
         kw['overlay_for'] = active.id

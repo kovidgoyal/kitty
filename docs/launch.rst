@@ -93,6 +93,16 @@ in the window and ``window.id`` is the internal kitty ``id`` of the
 window.
 
 
+Finding executables
+-----------------------
+
+When you specify a command to run as just a name rather than an absolute path,
+it is searched for in the system-wide ``PATH`` environment variable. Note that
+this **may not** be the value of ``PATH`` inside a shell, as shell startup scripts
+often change the value of this variable. If it is not found there, then a
+system specific list of default paths is searched. If it is still not found,
+then your shell is run and the value of ``PATH`` inside the shell is used.
+
 Syntax reference
 ------------------
 

@@ -13,6 +13,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add entries to the terminfo file for some user capabilities that are shared
   with XTerm (:pull:`3193`)
 
+- The launch command now does more sophisticated resolving of executables to
+  run. The system-wide PATH is used first, then system specific default paths,
+  and finally the PATH inside the shell.
+
 
 0.19.3 [2020-12-19]
 -------------------
