@@ -191,12 +191,15 @@ static PyObject *
 start(PyObject *s, PyObject *a UNUSED) {
 #define start_doc "start() -> Start the I/O thread"
     ChildMonitor *self = (ChildMonitor*)s;
+    int ret;
     if (self->talk_fd > -1 || self->listen_fd > -1) {
-        if (pthread_create(&self->talk_thread, NULL, talk_loop, self) != 0) return PyErr_SetFromErrno(PyExc_OSError);
+        if ((ret = pthread_create(&self->talk_thread, NULL, talk_loop, self)) != 0) {
+            return PyErr_Format(PyExc_OSError, "Failed to start talk thread with error: %s", strerror(ret));
+        }
         talk_thread_started = true;
     }
-    int ret = pthread_create(&self->io_thread, NULL, io_loop, self);
-    if (ret != 0) return PyErr_SetFromErrno(PyExc_OSError);
+    ret = pthread_create(&self->io_thread, NULL, io_loop, self);
+    if (ret != 0) return PyErr_Format(PyExc_OSError, "Failed to start I/O thread with error: %s", strerror(ret));
 
     Py_RETURN_NONE;
 }
@@ -799,7 +802,7 @@ cm_thread_write(PyObject UNUSED *self, PyObject *args) {
     data->fd = fd;
     memcpy(data->buf, buf, data->sz);
     int ret = pthread_create(&thread, NULL, thread_write, data);
-    if (ret != 0) { safe_close(fd, __FILE__, __LINE__); free_twd(data); return PyErr_SetFromErrno(PyExc_OSError); }
+    if (ret != 0) { safe_close(fd, __FILE__, __LINE__); free_twd(data); return PyErr_Format(PyExc_OSError, "Failed to start write thread with error: %s", strerror(ret)); }
     pthread_detach(thread);
     Py_RETURN_NONE;
 }
