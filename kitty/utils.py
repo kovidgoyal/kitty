@@ -546,6 +546,7 @@ def find_exe(name: str) -> Optional[str]:
             paths = system_paths_on_macos()
         else:
             paths = ['/usr/local/bin', '/opt/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
+        paths.insert(0, os.path.expanduser('~/.local/bin'))
         path = os.pathsep.join(paths) + os.pathsep + os.defpath
         ans = shutil.which(name, path=path)
     return ans
