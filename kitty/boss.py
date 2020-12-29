@@ -25,8 +25,7 @@ from .config import (
 )
 from .config_data import MINIMUM_FONT_SIZE
 from .constants import (
-    appname, cache_dir, config_dir, is_macos, kitty_exe,
-    supports_primary_selection
+    appname, config_dir, is_macos, kitty_exe, supports_primary_selection
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
@@ -1379,10 +1378,6 @@ class Boss:
         if is_path_in_temp_dir(path):
             with suppress(FileNotFoundError):
                 os.remove(path)
-
-    def create_temp_dir_in_cache(self, prefix: Optional[str] = None, suffix: Optional[str] = None) -> str:
-        from tempfile import mkdtemp
-        return mkdtemp(prefix=prefix, suffix=suffix, dir=cache_dir())
 
     def set_update_check_process(self, process: Optional[PopenType] = None) -> None:
         if self.update_check_process is not None:

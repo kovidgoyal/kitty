@@ -84,6 +84,7 @@ typedef struct {
     size_t num_of_below_refs, num_of_negative_refs, num_of_positive_refs;
     unsigned int last_scrolled_by;
     size_t used_storage;
+    PyObject *disk_cache;
 } GraphicsManager;
 
 

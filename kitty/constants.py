@@ -128,6 +128,9 @@ defconf = os.path.join(config_dir, 'kitty.conf')
 
 @lru_cache(maxsize=2)
 def cache_dir() -> str:
+    override: Optional[str] = getattr(cache_dir, 'override_dir', None)
+    if override:
+        return override
     if 'KITTY_CACHE_DIRECTORY' in os.environ:
         candidate = os.path.abspath(os.environ['KITTY_CACHE_DIRECTORY'])
     elif is_macos:
@@ -137,6 +140,13 @@ def cache_dir() -> str:
         candidate = os.path.join(os.path.expanduser(candidate), appname)
     os.makedirs(candidate, exist_ok=True)
     return candidate
+
+
+def dir_for_disk_cache() -> str:
+    from tempfile import mkdtemp
+    ans = os.path.join(cache_dir(), 'disk-cache')
+    os.makedirs(ans, exist_ok=True)
+    return mkdtemp(dir=ans)
 
 
 def wakeup() -> None:

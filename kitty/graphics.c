@@ -7,6 +7,7 @@
 
 #include "graphics.h"
 #include "state.h"
+#include "disk-cache.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -36,6 +37,8 @@ grman_alloc() {
         PyErr_NoMemory();
         Py_CLEAR(self); return NULL;
     }
+    self->disk_cache = create_disk_cache();
+    if (!self->disk_cache) { Py_CLEAR(self); return NULL; }
     return self;
 }
 
@@ -71,6 +74,7 @@ dealloc(GraphicsManager* self) {
         free(self->images);
     }
     free(self->render_data);
+    Py_CLEAR(self->disk_cache);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 

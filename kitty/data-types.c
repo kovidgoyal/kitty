@@ -192,6 +192,7 @@ static struct PyModuleDef module = {
 extern int init_LineBuf(PyObject *);
 extern int init_HistoryBuf(PyObject *);
 extern int init_Cursor(PyObject *);
+extern int init_DiskCache(PyObject *);
 extern bool init_child_monitor(PyObject *);
 extern int init_Line(PyObject *);
 extern int init_ColorProfile(PyObject *);
@@ -231,6 +232,7 @@ PyInit_fast_data_types(void) {
     if (!init_HistoryBuf(m)) return NULL;
     if (!init_Line(m)) return NULL;
     if (!init_Cursor(m)) return NULL;
+    if (!init_DiskCache(m)) return NULL;
     if (!init_child_monitor(m)) return NULL;
     if (!init_ColorProfile(m)) return NULL;
     if (!init_Screen(m)) return NULL;
