@@ -511,6 +511,32 @@ def resolved_shell(opts: Optional[Options] = None) -> List[str]:
     return ans
 
 
+@lru_cache(maxsize=2)
+def system_paths_on_macos() -> List[str]:
+    entries, seen = [], set()
+
+    def add_from_file(x: str) -> None:
+        try:
+            f = open(x)
+        except FileNotFoundError:
+            return
+        with f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and line not in seen:
+                    if os.path.isdir(line):
+                        seen.add(line)
+                        entries.append(line)
+    try:
+        files = os.listdir('/etc/paths.d')
+    except FileNotFoundError:
+        files = []
+    for name in sorted(files):
+        add_from_file(os.path.join('/etc/paths.d', name))
+    add_from_file('/etc/paths')
+    return entries
+
+
 def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
     ans: Optional[Dict[str, str]] = getattr(read_shell_environment, 'ans', None)
     if ans is None:

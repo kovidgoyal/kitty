@@ -14,6 +14,7 @@ from typing import (
     Union
 )
 
+from kitty.constants import is_macos
 from kitty.typing import (
     CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
 )
@@ -75,6 +76,21 @@ def identify(path: str) -> ImageData:
     return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
 
 
+def find_exe(name: str) -> Optional[str]:
+    import shutil
+    ans = shutil.which(name)
+    if ans is None:
+        # In case PATH is messed up
+        if is_macos:
+            from kitty.utils import system_paths_on_macos
+            paths = system_paths_on_macos()
+        else:
+            paths = ['/usr/local/bin', '/opt/bin', '/usr/bin', '/bin']
+        path = os.pathsep.join(paths) + os.pathsep + os.defpath
+        ans = shutil.which(name, path=path)
+    return ans
+
+
 def convert(
     path: str, m: ImageData,
     available_width: int, available_height: int,
@@ -83,7 +99,10 @@ def convert(
 ) -> Tuple[str, int, int]:
     from tempfile import NamedTemporaryFile
     width, height = m.width, m.height
-    cmd = ['convert', '-background', 'none', '--', path]
+    exe = find_exe('convert')
+    if exe is None:
+        raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
+    cmd = [exe, '-background', 'none', '--', path]
     scaled = False
     if scale_up:
         if width < available_width:
