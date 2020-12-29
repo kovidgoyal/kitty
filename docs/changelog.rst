@@ -10,6 +10,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add support for the color settings stack that XTerm copied from us without
   acknowledgement and decided to use incompatible escape codes for.
 
+- Add entries to the terminfo file for some user capabilities that are shared
+  with XTerm (:pull:`3193`)
+
 
 0.19.3 [2020-12-19]
 -------------------
