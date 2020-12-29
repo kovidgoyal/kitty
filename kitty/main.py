@@ -31,8 +31,8 @@ from .options_stub import Options as OptionsStub
 from .os_window_size import initial_window_size_func
 from .session import get_os_window_sizing_data
 from .utils import (
-    detach, expandvars, log_error, read_shell_environment, single_instance,
-    startup_notification_handler, unix_socket_paths
+    detach, expandvars, find_exe, log_error, read_shell_environment,
+    single_instance, startup_notification_handler, unix_socket_paths
 )
 from .window import load_shader_programs
 
@@ -112,6 +112,7 @@ def get_new_os_window_trigger(opts: OptionsStub) -> Optional[Tuple[int, bool, in
                 new_os_window_shortcuts.append(k)
         if new_os_window_shortcuts:
             from .fast_data_types import cocoa_set_new_window_trigger
+
             # Reverse list so that later defined keyboard shortcuts take priority over earlier defined ones
             for candidate in reversed(new_os_window_shortcuts):
                 if cocoa_set_new_window_trigger(candidate[0], candidate[2]):
@@ -214,20 +215,35 @@ def macos_cmdline(argv_args: List[str]) -> List[str]:
     return ans
 
 
+def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> Optional[str]:
+    import shlex
+    editor_cmd = shlex.split(editor)
+    editor_exe = (editor_cmd or ('',))[0]
+    if editor_exe and os.path.isabs(editor_exe):
+        return editor
+    if not editor_exe:
+        return None
+    if shell_env is os.environ:
+        q = find_exe(editor_exe)
+        if q:
+            editor_cmd[0] = q
+            editor = ' '.join(map(shlex.quote, editor_cmd))
+            return editor
+        return None
+    if 'PATH' in shell_env:
+        import shlex
+        q = shutil.which(editor_exe, path=shell_env['PATH'])
+        if q:
+            editor_cmd[0] = q
+            editor = ' '.join(map(shlex.quote, editor_cmd))
+            return editor
+
+
 def get_editor_from_env(shell_env: Mapping[str, str]) -> Optional[str]:
     for var in ('VISUAL', 'EDITOR'):
         editor = shell_env.get(var)
         if editor:
-            if 'PATH' in shell_env:
-                import shlex
-                editor_cmd = shlex.split(editor)
-                if not os.path.isabs(editor_cmd[0]):
-                    q = shutil.which(editor_cmd[0], path=shell_env['PATH'])
-                    if q:
-                        editor_cmd[0] = q
-                        editor = ' '.join(map(shlex.quote, editor_cmd))
-                    else:
-                        editor = None
+            editor = resolve_editor_cmd(editor, shell_env)
             if editor:
                 return editor
 

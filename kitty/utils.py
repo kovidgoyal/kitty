@@ -537,6 +537,20 @@ def system_paths_on_macos() -> List[str]:
     return entries
 
 
+def find_exe(name: str) -> Optional[str]:
+    import shutil
+    ans = shutil.which(name)
+    if ans is None:
+        # In case PATH is messed up
+        if is_macos:
+            paths = system_paths_on_macos()
+        else:
+            paths = ['/usr/local/bin', '/opt/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
+        path = os.pathsep.join(paths) + os.pathsep + os.defpath
+        ans = shutil.which(name, path=path)
+    return ans
+
+
 def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
     ans: Optional[Dict[str, str]] = getattr(read_shell_environment, 'ans', None)
     if ans is None:

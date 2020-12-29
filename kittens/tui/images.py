@@ -14,11 +14,10 @@ from typing import (
     Union
 )
 
-from kitty.constants import is_macos
 from kitty.typing import (
     CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
 )
-from kitty.utils import ScreenSize, fit_image
+from kitty.utils import ScreenSize, find_exe, fit_image
 
 from .operations import cursor
 
@@ -74,21 +73,6 @@ def identify(path: str) -> ImageData:
     parts: Tuple[str, ...] = tuple(filter(None, p.stdout.decode('utf-8').split()))
     mode = 'rgb' if parts[3].lower() == 'false' else 'rgba'
     return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
-
-
-def find_exe(name: str) -> Optional[str]:
-    import shutil
-    ans = shutil.which(name)
-    if ans is None:
-        # In case PATH is messed up
-        if is_macos:
-            from kitty.utils import system_paths_on_macos
-            paths = system_paths_on_macos()
-        else:
-            paths = ['/usr/local/bin', '/opt/bin', '/usr/bin', '/bin', '/usr/sbin', '/sbin']
-        path = os.pathsep.join(paths) + os.pathsep + os.defpath
-        ans = shutil.which(name, path=path)
-    return ans
 
 
 def convert(
