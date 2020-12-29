@@ -223,20 +223,20 @@ def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> Optional[st
         return editor
     if not editor_exe:
         return None
+
+    def patched(exe: str) -> str:
+        editor_cmd[0] = exe
+        return ' '.join(map(shlex.quote, editor_cmd))
+
     if shell_env is os.environ:
         q = find_exe(editor_exe)
         if q:
-            editor_cmd[0] = q
-            editor = ' '.join(map(shlex.quote, editor_cmd))
-            return editor
-        return None
-    if 'PATH' in shell_env:
+            return patched(q)
+    elif 'PATH' in shell_env:
         import shlex
         q = shutil.which(editor_exe, path=shell_env['PATH'])
         if q:
-            editor_cmd[0] = q
-            editor = ' '.join(map(shlex.quote, editor_cmd))
-            return editor
+            return patched(q)
 
 
 def get_editor_from_env(shell_env: Mapping[str, str]) -> Optional[str]:
