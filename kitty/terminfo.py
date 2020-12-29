@@ -262,6 +262,15 @@ string_capabilities = {
     # Set RGB background color (non-standard used by neovim)
     'setrgbb': r'\E[48:2:%p1%d:%p2%d:%p3%dm',
 
+    # The following entries are for compatibility with xterm,
+    # and shell scripts using e.g. `tput u7` to emit a CPR escape
+    # See https://invisible-island.net/ncurses/terminfo.src.html
+    # and INTERPRETATION OF USER CAPABILITIES
+    'u6': r'\E[%i%d;%dR',
+    'u7': r'\E[6n',
+    'u8': r'\E[?%[;0123456789]c',
+    'u9': r'\E[c',
+
     # The following are entries that we don't use
     # # turn on blank mode, (characters invisible)
     # 'invis': r'\E[8m',
@@ -401,6 +410,10 @@ termcap_aliases.update({
     'fs': 'fsl',
     'ds': 'dsl',
 
+    'u6': 'u6',
+    'u7': 'u7',
+    'u8': 'u8',
+    'u9': 'u9',
 
     # 'ut': 'bce',
     # 'ds': 'dsl',
