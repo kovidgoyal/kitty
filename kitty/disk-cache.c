@@ -5,20 +5,50 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#define EXTRA_INIT if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+
 #include "disk-cache.h"
-#include "state.h"
+#include "uthash.h"
 #include "loop-utils.h"
 #include <stdlib.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+
+
+typedef struct {
+    void *hash_key;
+    uint8_t *data;
+    size_t hash_keylen, data_sz;
+    bool written_to_disk;
+    uint8_t encryption_key[64];
+    char filename[8];
+    UT_hash_handle hh;
+} CacheEntry;
+
 
 typedef struct {
     PyObject_HEAD
     char *path;
+    int path_fd;
     pthread_mutex_t lock;
     pthread_t write_thread;
     bool thread_started, lock_inited, loop_data_inited, shutting_down, fully_initialized;
     LoopData loop_data;
     PyObject *rmtree;
+    CacheEntry *entries, currently_writing;
 } DiskCache;
+
+
+void
+free_cache_entry(const DiskCache *self, CacheEntry *e) {
+    if (e->hash_key) { free(e->hash_key); e->hash_key = NULL; }
+    if (e->data) { free(e->data); e->data = NULL; }
+    if (self->path_fd > -1 && e->filename[0]) {
+        unlinkat(self->path_fd, e->filename, 0);
+        e->filename[0] = 0;
+    }
+    free(e);
+}
 
 #define mutex(op) pthread_mutex_##op(&self->lock)
 
@@ -27,6 +57,7 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     DiskCache *self;
     self = (DiskCache*)type->tp_alloc(type, 0);
     if (self) {
+        self->path_fd = -1;
         PyObject *shutil = PyImport_ImportModule("shutil");
         if (!shutil) { Py_CLEAR(self); return NULL; }
         self->rmtree = PyObject_GetAttrString(shutil, "rmtree");
@@ -83,6 +114,17 @@ ensure_state(DiskCache *self) {
         if (PyErr_Occurred()) return false;
     }
 
+    if (self->path_fd < 0) {
+        while (self->path_fd < 0) {
+            self->path_fd = open(self->path, O_DIRECTORY | O_RDWR | O_CLOEXEC);
+            if (self->path_fd > -1 || errno != EINTR) break;
+        }
+        if (self->path_fd < 0) {
+            PyErr_SetFromErrnoWithFilename(PyExc_OSError, self->path);
+            return false;
+        }
+    }
+
     self->fully_initialized = true;
     return true;
 }
@@ -108,19 +150,152 @@ dealloc(DiskCache* self) {
         free_loop_data(&self->loop_data);
         self->loop_data_inited = false;
     }
-
+    if (self->entries) {
+        CacheEntry *tmp, *s;
+        HASH_ITER(hh, self->entries, s, tmp) {
+            HASH_DEL(self->entries, s);
+            free_cache_entry(self, s); s = NULL;
+        }
+        self->entries = NULL;
+    }
+    if (self->path_fd > -1) {
+        safe_close(self->path_fd, __FILE__, __LINE__);
+        self->path_fd = -1;
+    }
     if (self->path) {
         PyObject_CallFunction(self->rmtree, "sO", self->path, Py_True);
         free(self->path); self->path = NULL;
     }
+    if (self->currently_writing.hash_key) free(self->currently_writing.hash_key);
+    if (self->currently_writing.data) free(self->currently_writing.data);
     Py_CLEAR(self->rmtree);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-#define PYWRAP0(name) static PyObject* py##name(DiskCache *self, PyObject *args UNUSED)
-PYWRAP0(ensure_state) {
+bool
+add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const uint8_t *data, size_t data_sz) {
+    DiskCache *self = (DiskCache*)self_;
+    if (!ensure_state(self)) return false;
+    CacheEntry *s = NULL;
+    uint8_t *copied_data = malloc(data_sz);
+    if (!copied_data) { PyErr_NoMemory(); return false; }
+    memcpy(copied_data, data, data_sz);
+
+    mutex(lock);
+    HASH_FIND(hh, self->entries, key, key_sz, s);
+    if (s == NULL) {
+        s = calloc(1, sizeof(CacheEntry));
+        if (!s) { PyErr_NoMemory(); goto end; }
+        s->hash_key = malloc(key_sz);
+        if (!s->hash_key) { free(s); PyErr_NoMemory(); goto end; }
+        s->hash_keylen = key_sz;
+        memcpy(s->hash_key, key, key_sz);
+        HASH_ADD_KEYPTR(hh, self->entries, s->hash_key, s->hash_keylen, s);
+    } else {
+        s->written_to_disk = false;
+        if (s->data) free(s->data);
+    }
+    s->data = copied_data; s->data_sz = data_sz; copied_data = NULL;
+end:
+    mutex(unlock);
+
+    if (copied_data) free(copied_data);
+    if (PyErr_Occurred()) return false;
+    wakeup_write_loop(self);
+    return true;
+}
+
+static void
+xor_data(const uint8_t* restrict key, const size_t key_sz, uint8_t* restrict data, const size_t data_sz) {
+    size_t unaligned_sz = data_sz % key_sz;
+    size_t aligned_sz = data_sz - unaligned_sz;
+    for (size_t offset = 0; offset < aligned_sz; offset += key_sz) {
+        for (size_t i = 0; i < key_sz; i++) data[offset + i] ^= key[i];
+    }
+    for (size_t i = 0; i < unaligned_sz; i++) data[aligned_sz + i] ^= key[i];
+}
+
+static void
+read_from_cache_entry(const DiskCache *self, const CacheEntry *s, uint8_t *dest) {
+    int fd = -1;
+    while (fd < 0) {
+        fd = openat(self->path_fd, s->filename, O_CLOEXEC | O_RDONLY);
+        if (fd > 0 || errno != EINTR) break;
+    }
+    if (fd < 0) {
+        PyErr_SetFromErrnoWithFilename(PyExc_OSError, s->filename);
+        return;
+    }
+    uint8_t *p = dest;
+    size_t sz = s->data_sz;
+    while (sz) {
+        ssize_t n = read(fd, p, sz);
+        if (n > 0) {
+            sz -= n;
+            p += n;
+            continue;
+        }
+        if (n < 0) {
+            if (errno == EINTR || errno == EAGAIN) continue;
+            PyErr_SetFromErrnoWithFilename(PyExc_OSError, s->filename);
+            goto end;
+        }
+        if (n == 0) {
+            PyErr_SetString(PyExc_OSError, "Disk cache file truncated");
+            goto end;
+        }
+    }
+end:
+    safe_close(fd, __FILE__, __LINE__);
+}
+
+bool
+read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, uint8_t **data, size_t *data_sz) {
+    DiskCache *self = (DiskCache*)self_;
+    if (!ensure_state(self)) return false;
+    mutex(lock);
+    CacheEntry *s = NULL;
+    HASH_FIND(hh, self->entries, key, key_sz, s);
+    if (!s) { PyErr_SetString(PyExc_KeyError, "No cached entry with specified key found"); goto end; }
+
+    *data = (uint8_t*)malloc(s->data_sz);
+    if (!*data) { PyErr_NoMemory(); goto end; }
+    *data_sz = s->data_sz;
+
+    if (s->data) { memcpy(*data, s->data, *data_sz); }
+    else if (self->currently_writing.hash_key && self->currently_writing.hash_keylen == key_sz && memcmp(self->currently_writing.hash_key, key, key_sz) == 0) {
+        memcpy(*data, self->currently_writing.data, *data_sz);
+        xor_data(self->currently_writing.encryption_key, sizeof(self->currently_writing.encryption_key), *data, *data_sz);
+    }
+    else {
+        read_from_cache_entry(self, s, *data);
+        xor_data(s->encryption_key, sizeof(s->encryption_key), *data, *data_sz);
+    }
+end:
+    mutex(unlock);
+    if (PyErr_Occurred()) return false;
+    return true;
+}
+
+#define PYWRAP(name) static PyObject* py##name(DiskCache *self, PyObject *args)
+#define PA(fmt, ...) if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
+PYWRAP(ensure_state) {
+    (void)args;
     ensure_state(self);
     Py_RETURN_NONE;
+}
+
+PYWRAP(xor_data) {
+    (void) self;
+    const char *key, *data;
+    Py_ssize_t keylen, data_sz;
+    PA("y#y#", &key, &keylen, &data, &data_sz);
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, data_sz);
+    if (ans == NULL) return NULL;
+    void *dest = PyBytes_AS_STRING(ans);
+    memcpy(dest, data, data_sz);
+    xor_data((const uint8_t*)key, keylen, dest, data_sz);
+    return ans;
 }
 
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
@@ -141,6 +316,10 @@ PyTypeObject DiskCache_Type = {
     .tp_new = new,
 };
 
+static PyMethodDef module_methods[] = {
+    MW(xor_data, METH_VARARGS),
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
 
 INIT_TYPE(DiskCache)
 PyObject* create_disk_cache(void) { return new(&DiskCache_Type, NULL, NULL); }

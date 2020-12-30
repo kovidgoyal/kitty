@@ -3,14 +3,18 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import shutil
 import tempfile
 import unittest
 import zlib
+from itertools import cycle
 from base64 import standard_b64decode, standard_b64encode
 from io import BytesIO
 
+from kitty.constants import cache_dir
 from kitty.fast_data_types import (
-    load_png_data, parse_bytes, set_send_to_gpu, shm_unlink, shm_write
+    load_png_data, parse_bytes, set_send_to_gpu, shm_unlink, shm_write,
+    xor_data
 )
 
 from . import BaseTest
@@ -131,6 +135,27 @@ def put_helpers(self, cw, ch):
 
 
 class TestGraphics(BaseTest):
+
+    def setUp(self):
+        self.cache_dir = cache_dir.override_dir = tempfile.mkdtemp()
+        self.disk_cache_dir = os.path.join(self.cache_dir, 'disk-cache')
+
+    def tearDown(self):
+        shutil.rmtree(self.cache_dir)
+        cache_dir.override_dir = None
+
+    def test_xor_data(self):
+
+        def xor(skey, data):
+            ckey = cycle(bytearray(skey))
+            return bytes(bytearray(k ^ d for k, d in zip(ckey, bytearray(data))))
+
+        base_data = os.urandom(64)
+        key = os.urandom(len(base_data))
+        for base in (b'', base_data):
+            for extra in range(len(base_data)):
+                data = base + base_data[:extra]
+                self.assertEqual(xor_data(key, data), xor(key, data))
 
     def test_load_images(self):
         s, g, l, sl = load_helpers(self)
