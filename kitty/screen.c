@@ -504,6 +504,7 @@ draw_combining_char(Screen *self, char_type ch) {
 
 void
 screen_draw(Screen *self, uint32_t och) {
+    if (self->overlay_line.is_active) deactivate_overlay_line(self);
     if (is_ignored_char(och)) return;
     if (!self->has_activity_since_last_focus && !self->has_focus) {
         self->has_activity_since_last_focus = true;
@@ -555,7 +556,6 @@ screen_draw_overlay_text(Screen *self, const char *utf8_text) {
     Line *line = range_line_(self, self->cursor->y);
     if (!line) return;
     line_save_cells(line, 0, self->columns, self->overlay_line.gpu_cells, self->overlay_line.cpu_cells);
-    self->overlay_line.is_active = true;
     self->overlay_line.ynum = self->cursor->y;
     self->overlay_line.xstart = self->cursor->x;
     self->overlay_line.xnum = 0;
@@ -575,6 +575,7 @@ screen_draw_overlay_text(Screen *self, const char *utf8_text) {
                 break;
         }
     }
+    self->overlay_line.is_active = true;
     self->cursor->reverse ^= true;
     self->modes.mDECAWM = orig_line_wrap_mode;
 }
