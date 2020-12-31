@@ -10,6 +10,7 @@
 #include "disk-cache.h"
 #include "uthash.h"
 #include "loop-utils.h"
+#include "cross-platform-random.h"
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -186,6 +187,7 @@ add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const uint8_t
     if (s == NULL) {
         s = calloc(1, sizeof(CacheEntry));
         if (!s) { PyErr_NoMemory(); goto end; }
+        if (!secure_random_bytes(s->encryption_key, sizeof(s->encryption_key))) { free(s); PyErr_SetFromErrno(PyExc_OSError); goto end; }
         s->hash_key = malloc(key_sz);
         if (!s->hash_key) { free(s); PyErr_NoMemory(); goto end; }
         s->hash_keylen = key_sz;
