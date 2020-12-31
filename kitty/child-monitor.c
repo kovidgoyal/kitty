@@ -84,8 +84,6 @@ static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock, talk_lock;
 static bool kill_signal_received = false;
 static ChildMonitor *the_monitor = NULL;
-static uint8_t drain_buf[1024];
-
 
 typedef struct {
     pid_t pid;
@@ -1098,19 +1096,6 @@ read_bytes(int fd, Screen *screen) {
     return true;
 }
 
-
-static inline void
-drain_fd(int fd) {
-    while(true) {
-        ssize_t len = read(fd, drain_buf, sizeof(drain_buf));
-        if (len < 0) {
-            if (errno == EINTR) continue;
-            break;
-        }
-        if (len > 0) continue;
-        break;
-    }
-}
 
 typedef struct { bool kill_signal, child_died; } SignalSet;
 

@@ -10,6 +10,7 @@
 #include "disk-cache.h"
 #include "uthash.h"
 #include "loop-utils.h"
+#include "threading.h"
 #include "cross-platform-random.h"
 #include <stdlib.h>
 #include <sys/stat.h>
@@ -37,6 +38,16 @@ typedef struct {
     LoopData loop_data;
     CacheEntry *entries, currently_writing;
 } DiskCache;
+
+static void
+xor_data(const uint8_t* restrict key, const size_t key_sz, uint8_t* restrict data, const size_t data_sz) {
+    size_t unaligned_sz = data_sz % key_sz;
+    size_t aligned_sz = data_sz - unaligned_sz;
+    for (size_t offset = 0; offset < aligned_sz; offset += key_sz) {
+        for (size_t i = 0; i < key_sz; i++) data[offset + i] ^= key[i];
+    }
+    for (size_t i = 0; i < unaligned_sz; i++) data[aligned_sz + i] ^= key[i];
+}
 
 
 void
@@ -74,10 +85,92 @@ open_cache_file(const char *cache_path) {
     return fd;
 }
 
+static inline bool
+find_cache_entry_to_write(DiskCache *self) {
+    CacheEntry *tmp, *s;
+    static uint8_t* current_key[1024];
+    HASH_ITER(hh, self->entries, s, tmp) {
+        if (!s->written_to_disk) {
+            if (s->data) {
+                self->currently_writing.data = s->data;
+                s->data = NULL;
+                self->currently_writing.data_sz = s->data_sz;
+                xor_data(s->encryption_key, sizeof(s->encryption_key), self->currently_writing.data, s->data_sz);
+                self->currently_writing.hash_key = current_key;
+                self->currently_writing.hash_keylen = MIN(s->hash_keylen, sizeof(current_key));
+                memcpy(current_key, s->hash_key, self->currently_writing.hash_keylen);
+            }
+            return true;
+        }
+    }
+    return false;
+}
+
+static inline bool
+write_dirty_entry(DiskCache *self) {
+    size_t left = self->currently_writing.data_sz;
+    uint8_t *p = self->currently_writing.data;
+    self->currently_writing.pos_in_cache_file = lseek(self->cache_file_fd, 0, SEEK_CUR);
+    if (self->currently_writing.pos_in_cache_file < 0) {
+        perror("Failed to seek in disk cache file");
+        return false;
+    }
+    while (left > 0) {
+        ssize_t n = write(self->cache_file_fd, p, left);
+        if (n < 0) {
+            if (errno == EINTR || errno == EAGAIN) continue;
+            perror("Failed to write to disk-cache file");
+            self->currently_writing.pos_in_cache_file = -1;
+            return false;
+        }
+        if (n == 0) {
+            fprintf(stderr, "Failed to write to disk-cache file with zero return\n");
+            self->currently_writing.pos_in_cache_file = -1;
+            return false;
+        }
+        left -= n;
+        p += n;
+    }
+    return true;
+}
+
+static inline void
+retire_currently_writing(DiskCache *self) {
+    CacheEntry *s = NULL;
+    HASH_FIND(hh, self->entries, self->currently_writing.hash_key, self->currently_writing.hash_keylen, s);
+    if (s) {
+        s->written_to_disk = true;
+        s->pos_in_cache_file = self->currently_writing.pos_in_cache_file;
+    }
+    free(self->currently_writing.data);
+    self->currently_writing.data = NULL;
+    self->currently_writing.data_sz = 0;
+}
+
 static void*
 write_loop(void *data) {
     DiskCache *self = (DiskCache*)data;
+    set_thread_name("DiskCacheWrite");
+    struct pollfd fds[1] = {0};
+    fds[0].fd = self->loop_data.wakeup_read_fd;
+    fds[0].events = POLLIN;
+    bool found_dirty_entry = false;
+
     while (!self->shutting_down) {
+        mutex(lock);
+        found_dirty_entry = find_cache_entry_to_write(self);
+        mutex(unlock);
+        if (found_dirty_entry) {
+            write_dirty_entry(self);
+            mutex(lock);
+            retire_currently_writing(self);
+            mutex(unlock);
+            continue;
+        }
+
+        if (poll(fds, 1, -1) > 0 && fds[0].revents & POLLIN) {
+            drain_fd(fds[0].fd);  // wakeup
+        }
     }
     return 0;
 }
@@ -166,9 +259,21 @@ dealloc(DiskCache* self) {
         safe_close(self->cache_file_fd, __FILE__, __LINE__);
         self->cache_file_fd = -1;
     }
-    if (self->currently_writing.hash_key) free(self->currently_writing.hash_key);
     if (self->currently_writing.data) free(self->currently_writing.data);
     Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static inline CacheEntry*
+create_cache_entry(const void *key, const size_t key_sz) {
+    CacheEntry *s = calloc(1, sizeof(CacheEntry));
+    if (!s) return (CacheEntry*)PyErr_NoMemory();
+    if (!secure_random_bytes(s->encryption_key, sizeof(s->encryption_key))) { free(s); PyErr_SetFromErrno(PyExc_OSError); return NULL; }
+    s->hash_key = malloc(key_sz);
+    if (!s->hash_key) { free(s); PyErr_NoMemory(); return NULL; }
+    s->hash_keylen = key_sz;
+    memcpy(s->hash_key, key, key_sz);
+    s->pos_in_cache_file = -2;
+    return s;
 }
 
 bool
@@ -183,13 +288,7 @@ add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const uint8_t
     mutex(lock);
     HASH_FIND(hh, self->entries, key, key_sz, s);
     if (s == NULL) {
-        s = calloc(1, sizeof(CacheEntry));
-        if (!s) { PyErr_NoMemory(); goto end; }
-        if (!secure_random_bytes(s->encryption_key, sizeof(s->encryption_key))) { free(s); PyErr_SetFromErrno(PyExc_OSError); goto end; }
-        s->hash_key = malloc(key_sz);
-        if (!s->hash_key) { free(s); PyErr_NoMemory(); goto end; }
-        s->hash_keylen = key_sz;
-        memcpy(s->hash_key, key, key_sz);
+        if (!(s = create_cache_entry(key, key_sz))) goto end;
         HASH_ADD_KEYPTR(hh, self->entries, s->hash_key, s->hash_keylen, s);
     } else {
         s->written_to_disk = false;
@@ -206,20 +305,14 @@ end:
 }
 
 static void
-xor_data(const uint8_t* restrict key, const size_t key_sz, uint8_t* restrict data, const size_t data_sz) {
-    size_t unaligned_sz = data_sz % key_sz;
-    size_t aligned_sz = data_sz - unaligned_sz;
-    for (size_t offset = 0; offset < aligned_sz; offset += key_sz) {
-        for (size_t i = 0; i < key_sz; i++) data[offset + i] ^= key[i];
-    }
-    for (size_t i = 0; i < unaligned_sz; i++) data[aligned_sz + i] ^= key[i];
-}
-
-static void
 read_from_cache_entry(const DiskCache *self, const CacheEntry *s, uint8_t *dest) {
     uint8_t *p = dest;
     size_t sz = s->data_sz;
     off_t pos = s->pos_in_cache_file;
+    if (pos < 0) {
+        PyErr_SetString(PyExc_OSError, "Cache entry was not written, could not read from it");
+        return;
+    }
     while (sz) {
         ssize_t n = pread(self->cache_file_fd, p, sz, pos);
         if (n > 0) {
@@ -240,6 +333,7 @@ read_from_cache_entry(const DiskCache *self, const CacheEntry *s, uint8_t *dest)
     }
 }
 
+
 bool
 read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, uint8_t **data, size_t *data_sz) {
     DiskCache *self = (DiskCache*)self_;
@@ -256,7 +350,7 @@ read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, uint8_t **
     if (s->data) { memcpy(*data, s->data, *data_sz); }
     else if (self->currently_writing.hash_key && self->currently_writing.hash_keylen == key_sz && memcmp(self->currently_writing.hash_key, key, key_sz) == 0) {
         memcpy(*data, self->currently_writing.data, *data_sz);
-        xor_data(self->currently_writing.encryption_key, sizeof(self->currently_writing.encryption_key), *data, *data_sz);
+        xor_data(s->encryption_key, sizeof(s->encryption_key), *data, *data_sz);
     }
     else {
         read_from_cache_entry(self, s, *data);

@@ -68,3 +68,17 @@ self_pipe(int fds[2], bool nonblock) {
     return pipe2(fds, flags) == 0;
 #endif
 }
+
+static inline void
+drain_fd(int fd) {
+    static uint8_t drain_buf[1024];
+    while(true) {
+        ssize_t len = read(fd, drain_buf, sizeof(drain_buf));
+        if (len < 0) {
+            if (errno == EINTR) continue;
+            break;
+        }
+        if (len > 0) continue;
+        break;
+    }
+}
