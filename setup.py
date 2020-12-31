@@ -48,6 +48,10 @@ version = tuple(
 _plat = sys.platform.lower()
 is_macos = 'darwin' in _plat
 is_openbsd = 'openbsd' in _plat
+is_freebsd = 'freebsd' in _plat
+is_netbsd = 'netbsd' in _plat
+is_dragonflybsd = 'dragonfly' in _plat
+is_bsd = is_freebsd or is_netbsd or is_dragonflybsd or is_openbsd
 is_arm = platform.processor() == 'arm'
 Env = glfw.Env
 env = Env()
