@@ -6,6 +6,7 @@
  */
 
 #define EXTRA_INIT if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+#define MAX_KEY_SIZE 256
 
 #include "disk-cache.h"
 #include "uthash.h"
@@ -38,7 +39,7 @@ typedef struct {
     LoopData loop_data;
     CacheEntry *entries, currently_writing;
     size_t total_size;
-    uint8_t* current_key[1024];
+    uint8_t* current_key;
 } DiskCache;
 
 static void
@@ -98,7 +99,7 @@ find_cache_entry_to_write(DiskCache *self) {
                 self->currently_writing.data_sz = s->data_sz;
                 xor_data(s->encryption_key, sizeof(s->encryption_key), self->currently_writing.data, s->data_sz);
                 self->currently_writing.hash_key = self->current_key;
-                self->currently_writing.hash_keylen = MIN(s->hash_keylen, sizeof(self->current_key));
+                self->currently_writing.hash_keylen = MIN(s->hash_keylen, MAX_KEY_SIZE);
                 memcpy(self->current_key, s->hash_key, self->currently_writing.hash_keylen);
             }
             return true;
@@ -184,6 +185,10 @@ ensure_state(DiskCache *self) {
         if (!init_loop_data(&self->loop_data)) { PyErr_SetFromErrno(PyExc_OSError); return false; }
         self->loop_data_inited = true;
     }
+    if (!self->current_key) {
+        self->current_key = malloc(MAX_KEY_SIZE);
+        if (!self->current_key) { PyErr_NoMemory(); return false; }
+    }
 
     if (!self->lock_inited) {
         if ((ret = pthread_mutex_init(&self->lock, NULL)) != 0) {
@@ -240,6 +245,9 @@ dealloc(DiskCache* self) {
         pthread_join(self->write_thread, NULL);
         self->thread_started = false;
     }
+    if (self->current_key) {
+        free(self->current_key); self->current_key = NULL;
+    }
     if (self->lock_inited) {
         pthread_mutex_destroy(&self->lock);
         self->lock_inited = false;
@@ -281,6 +289,7 @@ bool
 add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const uint8_t *data, size_t data_sz) {
     DiskCache *self = (DiskCache*)self_;
     if (!ensure_state(self)) return false;
+    if (key_sz > MAX_KEY_SIZE) { PyErr_SetString(PyExc_KeyError, "cache key is too long"); return false; }
     CacheEntry *s = NULL;
     uint8_t *copied_data = malloc(data_sz);
     if (!copied_data) { PyErr_NoMemory(); return false; }
