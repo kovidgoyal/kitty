@@ -37,6 +37,8 @@ typedef struct {
     bool thread_started, lock_inited, loop_data_inited, shutting_down, fully_initialized;
     LoopData loop_data;
     CacheEntry *entries, currently_writing;
+    size_t total_size;
+    uint8_t* current_key[1024];
 } DiskCache;
 
 static void
@@ -88,7 +90,6 @@ open_cache_file(const char *cache_path) {
 static inline bool
 find_cache_entry_to_write(DiskCache *self) {
     CacheEntry *tmp, *s;
-    static uint8_t* current_key[1024];
     HASH_ITER(hh, self->entries, s, tmp) {
         if (!s->written_to_disk) {
             if (s->data) {
@@ -96,9 +97,9 @@ find_cache_entry_to_write(DiskCache *self) {
                 s->data = NULL;
                 self->currently_writing.data_sz = s->data_sz;
                 xor_data(s->encryption_key, sizeof(s->encryption_key), self->currently_writing.data, s->data_sz);
-                self->currently_writing.hash_key = current_key;
-                self->currently_writing.hash_keylen = MIN(s->hash_keylen, sizeof(current_key));
-                memcpy(current_key, s->hash_key, self->currently_writing.hash_keylen);
+                self->currently_writing.hash_key = self->current_key;
+                self->currently_writing.hash_keylen = MIN(s->hash_keylen, sizeof(self->current_key));
+                memcpy(self->current_key, s->hash_key, self->currently_writing.hash_keylen);
             }
             return true;
         }
@@ -293,8 +294,11 @@ add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const uint8_t
     } else {
         s->written_to_disk = false;
         if (s->data) free(s->data);
+        if (data_sz <= self->total_size) self->total_size -= data_sz;
+        else self->total_size = 0;
     }
     s->data = copied_data; s->data_sz = data_sz; copied_data = NULL;
+    self->total_size += s->data_sz;
 end:
     mutex(unlock);
 
