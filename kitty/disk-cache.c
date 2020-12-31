@@ -39,7 +39,6 @@ typedef struct {
     LoopData loop_data;
     CacheEntry *entries, currently_writing;
     size_t total_size;
-    uint8_t* current_key;
 } DiskCache;
 
 static void
@@ -98,9 +97,8 @@ find_cache_entry_to_write(DiskCache *self) {
                 s->data = NULL;
                 self->currently_writing.data_sz = s->data_sz;
                 xor_data(s->encryption_key, sizeof(s->encryption_key), self->currently_writing.data, s->data_sz);
-                self->currently_writing.hash_key = self->current_key;
                 self->currently_writing.hash_keylen = MIN(s->hash_keylen, MAX_KEY_SIZE);
-                memcpy(self->current_key, s->hash_key, self->currently_writing.hash_keylen);
+                memcpy(self->currently_writing.hash_key, s->hash_key, self->currently_writing.hash_keylen);
             }
             return true;
         }
@@ -185,9 +183,9 @@ ensure_state(DiskCache *self) {
         if (!init_loop_data(&self->loop_data)) { PyErr_SetFromErrno(PyExc_OSError); return false; }
         self->loop_data_inited = true;
     }
-    if (!self->current_key) {
-        self->current_key = malloc(MAX_KEY_SIZE);
-        if (!self->current_key) { PyErr_NoMemory(); return false; }
+    if (!self->currently_writing.hash_key) {
+        self->currently_writing.hash_key = malloc(MAX_KEY_SIZE);
+        if (!self->currently_writing.hash_key) { PyErr_NoMemory(); return false; }
     }
 
     if (!self->lock_inited) {
@@ -245,8 +243,8 @@ dealloc(DiskCache* self) {
         pthread_join(self->write_thread, NULL);
         self->thread_started = false;
     }
-    if (self->current_key) {
-        free(self->current_key); self->current_key = NULL;
+    if (self->currently_writing.hash_key) {
+        free(self->currently_writing.hash_key); self->currently_writing.hash_key = NULL;
     }
     if (self->lock_inited) {
         pthread_mutex_destroy(&self->lock);
