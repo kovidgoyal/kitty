@@ -142,13 +142,6 @@ def cache_dir() -> str:
     return candidate
 
 
-def dir_for_disk_cache() -> str:
-    from tempfile import mkdtemp
-    ans = os.path.join(cache_dir(), 'disk-cache')
-    os.makedirs(ans, exist_ok=True)
-    return mkdtemp(dir=ans)
-
-
 def wakeup() -> None:
     from .fast_data_types import get_boss
     b = get_boss()
