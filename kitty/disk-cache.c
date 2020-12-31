@@ -6,7 +6,7 @@
  */
 
 #define EXTRA_INIT if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-#define MAX_KEY_SIZE 256
+#define MAX_KEY_SIZE 256u
 
 #include "disk-cache.h"
 #include "uthash.h"
