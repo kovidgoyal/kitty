@@ -78,10 +78,16 @@ spawn(PyObject *self UNUSED, PyObject *args) {
     char **argv = serialize_string_tuple(argv_p);
     char **env = serialize_string_tuple(env_p);
 
+#if PY_VERSION_HEX >= 0x03070000
+    PyOS_BeforeFork();
+#endif
     pid_t pid = fork();
     switch(pid) {
         case 0: {
             // child
+#if PY_VERSION_HEX >= 0x03070000
+            PyOS_AfterFork_Child();
+#endif
             sigset_t signals = {0};
             struct sigaction act = {.sa_handler=SIG_DFL};
 #define SA(which) { if (sigaction(which, &act, NULL) != 0) exit_on_err("sigaction() in child process failed"); }
@@ -138,10 +144,19 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             exit(EXIT_FAILURE);
             break;
         }
-        case -1:
+        case -1: {
+#if PY_VERSION_HEX >= 0x03070000
+            int saved_errno = errno;
+            PyOS_AfterFork_Parent();
+            errno = saved_errno;
+#endif
             PyErr_SetFromErrno(PyExc_OSError);
             break;
+        }
         default:
+#if PY_VERSION_HEX >= 0x03070000
+            PyOS_AfterFork_Parent();
+#endif
             break;
     }
 #undef exit_on_err
