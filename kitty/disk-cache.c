@@ -425,7 +425,7 @@ create_cache_entry(const void *key, const size_t key_sz) {
 }
 
 bool
-add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const uint8_t *data, size_t data_sz) {
+add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *data, size_t data_sz) {
     DiskCache *self = (DiskCache*)self_;
     if (!ensure_state(self)) return false;
     if (key_sz > MAX_KEY_SIZE) { PyErr_SetString(PyExc_KeyError, "cache key is too long"); return false; }
@@ -505,34 +505,32 @@ read_from_cache_entry(const DiskCache *self, const CacheEntry *s, uint8_t *dest)
     }
 }
 
-
-bool
-read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, uint8_t **data, size_t *data_sz) {
+void*
+read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allocator)(void*, size_t), void* allocator_data) {
     DiskCache *self = (DiskCache*)self_;
-    if (!ensure_state(self)) return false;
-    if (key_sz > MAX_KEY_SIZE) { PyErr_SetString(PyExc_KeyError, "cache key is too long"); return false; }
+    void *data = NULL;
+    if (!ensure_state(self)) return data;
+    if (key_sz > MAX_KEY_SIZE) { PyErr_SetString(PyExc_KeyError, "cache key is too long"); return data; }
+
     mutex(lock);
     CacheEntry *s = NULL;
     HASH_FIND(hh, self->entries, key, key_sz, s);
     if (!s) { PyErr_SetString(PyExc_KeyError, "No cached entry with specified key found"); goto end; }
+    data = allocator(allocator_data, s->data_sz);
+    if (!data) { PyErr_NoMemory(); goto end; }
 
-    *data = (uint8_t*)malloc(s->data_sz);
-    if (!*data) { PyErr_NoMemory(); goto end; }
-    *data_sz = s->data_sz;
-
-    if (s->data) { memcpy(*data, s->data, *data_sz); }
+    if (s->data) { memcpy(data, s->data, s->data_sz); }
     else if (self->currently_writing.hash_key && self->currently_writing.hash_keylen == key_sz && memcmp(self->currently_writing.hash_key, key, key_sz) == 0) {
-        memcpy(*data, self->currently_writing.data, *data_sz);
-        xor_data(s->encryption_key, sizeof(s->encryption_key), *data, *data_sz);
+        memcpy(data, self->currently_writing.data, s->data_sz);
+        xor_data(s->encryption_key, sizeof(s->encryption_key), data, s->data_sz);
     }
     else {
-        read_from_cache_entry(self, s, *data);
-        xor_data(s->encryption_key, sizeof(s->encryption_key), *data, *data_sz);
+        read_from_cache_entry(self, s, data);
+        xor_data(s->encryption_key, sizeof(s->encryption_key), data, s->data_sz);
     }
 end:
     mutex(unlock);
-    if (PyErr_Occurred()) return false;
-    return true;
+    return data;
 }
 
 #define PYWRAP(name) static PyObject* py##name(DiskCache *self, PyObject *args)
@@ -556,9 +554,57 @@ PYWRAP(xor_data) {
     return ans;
 }
 
+static PyObject*
+add(PyObject *self, PyObject *args) {
+    const char *key, *data;
+    Py_ssize_t keylen, datalen;
+    PA("y#y#", &key, &keylen, &data, &datalen);
+    if (!add_to_disk_cache(self, key, keylen, data, datalen)) return NULL;
+    Py_RETURN_NONE;
+}
+
+static PyObject*
+pyremove(PyObject *self, PyObject *args) {
+    const char *key;
+    Py_ssize_t keylen;
+    PA("y#", &key, &keylen);
+    bool removed = remove_from_disk_cache(self, key, keylen);
+    if (PyErr_Occurred()) return NULL;
+    if (removed) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+typedef struct {
+    PyObject *bytes;
+} BytesWrapper;
+
+static void*
+bytes_alloc(void *x, size_t sz) {
+    BytesWrapper *w = x;
+    w->bytes = PyBytes_FromStringAndSize(NULL, sz);
+    if (!w->bytes) return NULL;
+    return PyBytes_AS_STRING(w->bytes);
+}
+
+static PyObject*
+get(PyObject *self, PyObject *args) {
+    const char *key;
+    Py_ssize_t keylen;
+    PA("y#", &key, &keylen);
+    BytesWrapper w = {0};
+    read_from_disk_cache(self, key, keylen, bytes_alloc, &w);
+    if (PyErr_Occurred()) { Py_CLEAR(w.bytes); return NULL; }
+    return w.bytes;
+}
+
+
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef methods[] = {
     MW(ensure_state, METH_NOARGS),
+    {"add", add, METH_VARARGS, NULL},
+    {"remove", pyremove, METH_VARARGS, NULL},
+    {"get", get, METH_VARARGS, NULL},
+
     {NULL}  /* Sentinel */
 };
 
