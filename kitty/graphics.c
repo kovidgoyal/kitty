@@ -1049,6 +1049,7 @@ static PyMethodDef methods[] = {
 
 static PyMemberDef members[] = {
     {"image_count", T_PYSSIZET, offsetof(GraphicsManager, image_count), 0, "image_count"},
+    {"disk_cache", T_OBJECT_EX, offsetof(GraphicsManager, disk_cache), READONLY, "disk_cache"},
     {NULL},
 };
 
