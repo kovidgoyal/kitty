@@ -94,6 +94,7 @@ open_cache_file(const char *cache_path) {
     return fd;
 }
 
+// Write loop {{{
 static bool
 copy_between_files(int infd, int outfd, off_t in_pos, size_t len, uint8_t *buf, size_t bufsz) {
 #ifdef HAS_SENDFILE
@@ -293,6 +294,7 @@ write_loop(void *data) {
     while (!self->shutting_down) {
         mutex(lock);
         found_dirty_entry = find_cache_entry_to_write(self);
+        size_t count = HASH_COUNT(self->entries);
         mutex(unlock);
         if (found_dirty_entry) {
             write_dirty_entry(self);
@@ -300,6 +302,10 @@ write_loop(void *data) {
             retire_currently_writing(self);
             mutex(unlock);
             continue;
+        } else if (!count) {
+            mutex(lock);
+            if (ftruncate(self->cache_file_fd, 0) == 0) lseek(self->cache_file_fd, 0, SEEK_END);
+            mutex(unlock);
         }
 
         if (poll(fds, 1, -1) > 0 && fds[0].revents & POLLIN) {
@@ -308,6 +314,7 @@ write_loop(void *data) {
     }
     return 0;
 }
+// }}}
 
 static bool
 ensure_state(DiskCache *self) {
@@ -449,6 +456,26 @@ end:
     return true;
 }
 
+bool
+remove_from_disk_cache(PyObject *self_, const void *key, size_t key_sz) {
+    DiskCache *self = (DiskCache*)self_;
+    if (!ensure_state(self)) return false;
+    if (key_sz > MAX_KEY_SIZE) { PyErr_SetString(PyExc_KeyError, "cache key is too long"); return false; }
+    CacheEntry *s = NULL;
+    bool removed = false;
+
+    mutex(lock);
+    HASH_FIND(hh, self->entries, key, key_sz, s);
+    if (s) {
+        removed = true;
+        HASH_DEL(self->entries, s);
+        free_cache_entry(s);
+    }
+    mutex(unlock);
+    wakeup_write_loop(self);
+    return removed;
+}
+
 static void
 read_from_cache_entry(const DiskCache *self, const CacheEntry *s, uint8_t *dest) {
     uint8_t *p = dest;
@@ -483,6 +510,7 @@ bool
 read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, uint8_t **data, size_t *data_sz) {
     DiskCache *self = (DiskCache*)self_;
     if (!ensure_state(self)) return false;
+    if (key_sz > MAX_KEY_SIZE) { PyErr_SetString(PyExc_KeyError, "cache key is too long"); return false; }
     mutex(lock);
     CacheEntry *s = NULL;
     HASH_FIND(hh, self->entries, key, key_sz, s);
