@@ -16,6 +16,7 @@
 #include "loop-utils.h"
 #include "threading.h"
 #include "cross-platform-random.h"
+#include <structmember.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -45,7 +46,7 @@ typedef struct {
     bool thread_started, lock_inited, loop_data_inited, shutting_down, fully_initialized;
     LoopData loop_data;
     CacheEntry *entries, currently_writing;
-    size_t total_size;
+    unsigned long long total_size;
 } DiskCache;
 
 static void
@@ -469,6 +470,7 @@ remove_from_disk_cache(PyObject *self_, const void *key, size_t key_sz) {
     if (s) {
         removed = true;
         HASH_DEL(self->entries, s);
+        self->total_size = (self->total_size > s->data_sz) ? self->total_size - s->data_sz : 0;
         free_cache_entry(s);
     }
     mutex(unlock);
@@ -608,6 +610,11 @@ static PyMethodDef methods[] = {
     {NULL}  /* Sentinel */
 };
 
+static PyMemberDef members[] = {
+    {"total_size", T_ULONGLONG, offsetof(DiskCache, total_size), READONLY, "total_size"},
+    {NULL},
+};
+
 
 PyTypeObject DiskCache_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
@@ -617,6 +624,7 @@ PyTypeObject DiskCache_Type = {
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "A disk based secure cache",
     .tp_methods = methods,
+    .tp_members = members,
     .tp_new = new,
 };
 
