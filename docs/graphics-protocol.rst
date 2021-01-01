@@ -39,6 +39,7 @@ Some programs that use the kitty graphics protocol:
    information tool
  * `viu <https://github.com/atanunq/viu>`_ - a terminal image viewer
  * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
+ * `ctx.graphics <https://ctx.graphics/>`_ - Library for drawing graphics
 
 
 .. contents::
