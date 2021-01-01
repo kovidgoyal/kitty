@@ -7,6 +7,9 @@
 
 #define EXTRA_INIT if (PyModule_AddFunctions(module, module_methods) != 0) return false;
 #define MAX_KEY_SIZE 256u
+#if __linux__
+#define HAS_SENDFILE
+#endif
 
 #include "disk-cache.h"
 #include "uthash.h"
@@ -16,15 +19,19 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#ifdef HAS_SENDFILE
+#include <sys/sendfile.h>
+#endif
 
 
 typedef struct {
     void *hash_key;
     uint8_t *data;
-    size_t hash_keylen, data_sz;
+    size_t data_sz;
+    unsigned short hash_keylen;
     bool written_to_disk;
-    uint8_t encryption_key[64];
     off_t pos_in_cache_file;
+    uint8_t encryption_key[64];
     UT_hash_handle hh;
 } CacheEntry;
 
@@ -87,9 +94,137 @@ open_cache_file(const char *cache_path) {
     return fd;
 }
 
+static bool
+copy_between_files(int infd, int outfd, off_t in_pos, size_t len, uint8_t *buf, size_t bufsz) {
+#ifdef HAS_SENDFILE
+    (void)buf; (void)bufsz;
+    while (len) {
+        off_t r = in_pos;
+        ssize_t n = sendfile(outfd, infd, &r, len);
+        if (n < 0) {
+            if (errno != EAGAIN) return false;
+            continue;
+        }
+        in_pos += n; len -= n;
+    }
+#else
+    const size_t bufsz = 1024 * 1024;
+    if (!buf) { errno = ENOMEM; return false; }
+    while (len) {
+        ssize_t amt_read = pread(infd, buf, MIN(len, bufsz), in_pos);
+        if (amt_read < 0) {
+            if (errno == EINTR || errno == EAGAIN) continue;
+            return false;
+        }
+        if (amt_read == 0) {
+            errno = EIO;
+            return false;
+        }
+        len -= amt_read;
+        in_pos += amt_read;
+        uint8_t *p = buf;
+        while(amt_read) {
+            ssize_t amt_written = write(outfd, p, amt_read);
+            if (amt_written < 0) {
+                if (errno == EINTR || errno == EAGAIN) continue;
+                return false;
+            }
+            if (amt_written == 0) {
+                errno = EIO;
+                return false;
+            }
+            amt_read -= amt_written;
+            p += amt_written;
+        }
+    }
+#endif
+    return true;
+}
+
+typedef struct {
+    uint8_t hash_key[MAX_KEY_SIZE];
+    unsigned short hash_keylen;
+    off_t old_offset, new_offset;
+    size_t data_sz;
+} DefragEntry;
+
+static void
+defrag(DiskCache *self) {
+    int new_cache_file = -1;
+    DefragEntry *defrag_entries = NULL;
+    uint8_t *buf = NULL;
+    const size_t bufsz = 1024 * 1024;
+    bool lock_released = false, ok = false;
+
+    off_t size_on_disk = lseek(self->cache_file_fd, 0, SEEK_CUR);
+    if (size_on_disk <= 0) goto cleanup;
+    size_t num_entries = HASH_COUNT(self->entries);
+    if (!num_entries) goto cleanup;
+    new_cache_file = open_cache_file(self->cache_dir);
+    if (new_cache_file < 0) {
+        perror("Failed to open second file for defrag of disk cache");
+        goto cleanup;
+    }
+    defrag_entries = calloc(num_entries, sizeof(DefragEntry));
+    if (!defrag_entries) goto cleanup;
+    size_t total_data_size = 0, num_entries_to_defrag = 0;
+    CacheEntry *tmp, *s;
+    HASH_ITER(hh, self->entries, s, tmp) {
+        if (s->pos_in_cache_file > -1 && s->data_sz) {
+            total_data_size += s->data_sz;
+            DefragEntry *e = defrag_entries + num_entries_to_defrag++;
+            e->hash_keylen = s->hash_keylen;
+            e->old_offset = s->pos_in_cache_file;
+            e->data_sz = s->data_sz;
+            if (s->hash_key) memcpy(e->hash_key, s->hash_key, s->hash_keylen);
+            num_entries_to_defrag++;
+        }
+    }
+    if (ftruncate(new_cache_file, total_data_size) != 0) {
+        perror("Failed to allocate space for new disk cache file during defrag");
+        goto cleanup;
+    }
+#ifndef HAS_SENDFILE
+    buf = malloc(bufsz);
+    if (!buf) goto cleanup;
+#endif
+
+    mutex(unlock); lock_released = true;
+
+    off_t current_pos = 0;
+    for (size_t i = 0; i < num_entries_to_defrag; i++) {
+        DefragEntry *e = defrag_entries + i;
+        if (!copy_between_files(self->cache_file_fd, new_cache_file, e->old_offset, e->data_sz, buf, bufsz)) {
+            perror("Failed to copy data to new disk cache file during defrag");
+            goto cleanup;
+        }
+        e->new_offset = current_pos;
+        current_pos += e->data_sz;
+    }
+    ok = true;
+
+cleanup:
+    if (lock_released) mutex(lock);
+    if (ok) {
+        safe_close(self->cache_file_fd, __FILE__, __LINE__);
+        self->cache_file_fd = new_cache_file; new_cache_file = -1;
+        for (size_t i = 0; i < num_entries_to_defrag; i++) {
+            DefragEntry *e = defrag_entries + i;
+            s = NULL;
+            HASH_FIND(hh, self->entries, e->hash_key, e->hash_keylen, s);
+            if (s) s->pos_in_cache_file = e->new_offset;
+        }
+    }
+    if (defrag_entries) free(defrag_entries);
+    if (buf) free(buf);
+    if (new_cache_file > -1) safe_close(new_cache_file, __FILE__, __LINE__);
+}
+
 static inline bool
 find_cache_entry_to_write(DiskCache *self) {
     CacheEntry *tmp, *s;
+    off_t size_on_disk = lseek(self->cache_file_fd, 0, SEEK_END);
+    if (self->total_size && size_on_disk > 0 && (size_t)size_on_disk > self->total_size * 2) defrag(self);
     HASH_ITER(hh, self->entries, s, tmp) {
         if (!s->written_to_disk) {
             if (s->data) {
