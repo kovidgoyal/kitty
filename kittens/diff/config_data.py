@@ -89,7 +89,7 @@ c('hunk_bg', '#f1f8ff')
 c('search_bg', '#444', long_text=_('Highlighting'))
 c('search_fg', 'white')
 c('select_bg', '#b4d5fe')
-c('select_fg', 'black')
+o('select_fg', 'black', option_type=to_color_or_none)
 
 g('shortcuts')
 k('quit', 'q', 'quit', _('Quit'))
