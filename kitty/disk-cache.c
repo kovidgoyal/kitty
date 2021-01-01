@@ -108,8 +108,6 @@ copy_between_files(int infd, int outfd, off_t in_pos, size_t len, uint8_t *buf, 
         in_pos += n; len -= n;
     }
 #else
-    const size_t bufsz = 1024 * 1024;
-    if (!buf) { errno = ENOMEM; return false; }
     while (len) {
         ssize_t amt_read = pread(infd, buf, MIN(len, bufsz), in_pos);
         if (amt_read < 0) {
@@ -184,6 +182,7 @@ defrag(DiskCache *self) {
         perror("Failed to allocate space for new disk cache file during defrag");
         goto cleanup;
     }
+    lseek(new_cache_file, 0, SEEK_SET);
 #ifndef HAS_SENDFILE
     buf = malloc(bufsz);
     if (!buf) goto cleanup;
