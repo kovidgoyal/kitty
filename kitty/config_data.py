@@ -1025,14 +1025,7 @@ o('dim_opacity', 0.75, option_type=unit_float, long_text=_('''
 How much to dim text that has the DIM/FAINT attribute set. One means no dimming and
 zero means fully dimmed (i.e. invisible).'''))
 
-
-def selection_foreground(x: str) -> Optional[Color]:
-    if x.lower() != 'none':
-        return to_color(x)
-    return None
-
-
-o('selection_foreground', '#000000', option_type=selection_foreground, long_text=_('''
+o('selection_foreground', '#000000', option_type=to_color_or_none, long_text=_('''
 The foreground for text selected with the mouse. A value of none means to leave the color unchanged.'''))
 o('selection_background', '#fffacd', option_type=to_color, long_text=_('''
 The background for text selected with the mouse.'''))
