@@ -120,6 +120,10 @@ def screen_report_colors() -> None:
     write(CSI + '#R')
 
 
+def screen_repeat_character(num: int) -> None:
+    write(CSI + '%db' % num)
+
+
 def screen_insert_characters(count: int) -> None:
     write(CSI + '%d@' % count)
 
