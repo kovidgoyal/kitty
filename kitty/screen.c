@@ -149,6 +149,7 @@ void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
+    self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
     self->alt_savepoint.is_valid = false;
     linebuf_clear(self->linebuf, BLANK_CHAR);
@@ -503,7 +504,7 @@ draw_combining_char(Screen *self, char_type ch) {
 }
 
 void
-screen_draw(Screen *self, uint32_t och) {
+screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
     if (is_ignored_char(och)) return;
     if (!self->has_activity_since_last_focus && !self->has_focus) {
         self->has_activity_since_last_focus = true;
@@ -523,6 +524,7 @@ screen_draw(Screen *self, uint32_t och) {
         if (char_width == 0) return;
         char_width = 1;
     }
+    if (from_input_stream) self->last_graphic_char = ch;
     if (UNLIKELY(self->columns - self->cursor->x < (unsigned int)char_width)) {
         if (self->modes.mDECAWM) {
             screen_carriage_return(self);
@@ -568,7 +570,7 @@ screen_draw_overlay_text(Screen *self, const char *utf8_text) {
         switch(decode_utf8(&state, &codepoint, *(utf8_text++))) {
             case UTF8_ACCEPT:
                 before = self->cursor->x;
-                screen_draw(self, codepoint);
+                screen_draw(self, codepoint, false);
                 self->overlay_line.xnum += self->cursor->x - before;
                 break;
             case UTF8_REJECT:
@@ -1328,22 +1330,10 @@ screen_insert_characters(Screen *self, unsigned int count) {
 
 void
 screen_repeat_character(Screen *self, unsigned int count) {
-    const unsigned int top = 0, bottom = self->lines ? self->lines - 1 : 0;
-    unsigned int x = self->cursor->x;
-    if (count == 0) count = 1;
-    if (x > self->columns) return;
-    if (x > 0) {
-        linebuf_init_line(self->linebuf, self->cursor->y);
-    } else {
-        if (self->cursor->y > 0) {
-            linebuf_init_line(self->linebuf, self->cursor->y - 1);
-            x = self->columns;
-        } else return;
-    }
-    char_type ch = line_get_char(self->linebuf->line, x-1);
-    if (top <= self->cursor->y && self->cursor->y <= bottom && !is_ignored_char(ch)) {
+    if (self->last_graphic_char) {
+        if (count == 0) count = 1;
         unsigned int num = MIN(count, CSI_REP_MAX_REPETITIONS);
-        while (num-- > 0) screen_draw(self, ch);
+        while (num-- > 0) screen_draw(self, self->last_graphic_char, false);
     }
 }
 
@@ -2142,7 +2132,7 @@ draw(Screen *self, PyObject *src) {
     int kind = PyUnicode_KIND(src);
     void *buf = PyUnicode_DATA(src);
     Py_ssize_t sz = PyUnicode_GET_LENGTH(src);
-    for (Py_ssize_t i = 0; i < sz; i++) screen_draw(self, PyUnicode_READ(kind, buf, i));
+    for (Py_ssize_t i = 0; i < sz; i++) screen_draw(self, PyUnicode_READ(kind, buf, i), true);
     Py_RETURN_NONE;
 }
 

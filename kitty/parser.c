@@ -192,7 +192,7 @@ handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_
             break;  // no-op
         default:
             REPORT_DRAW(ch);
-            screen_draw(screen, ch);
+            screen_draw(screen, ch, true);
             break;
     }
 #undef CALL_SCREEN_HANDLER
