@@ -4,11 +4,12 @@
 
 import os
 import tempfile
+import time
 import unittest
 import zlib
-from itertools import cycle
 from base64 import standard_b64decode, standard_b64encode
 from io import BytesIO
+from itertools import cycle
 
 from kitty.constants import cache_dir
 from kitty.fast_data_types import (
@@ -194,6 +195,17 @@ class TestGraphics(BaseTest):
             check_data()
             self.assertRaises(KeyError, dc.get, key_as_bytes(x))
             self.assertEqual(sz, dc.size_on_disk())
+        for x in ('xy', 'C'*4, 'B'*6, 'A'*8):
+            add(x, x)
+            self.assertTrue(dc.wait_for_write())
+            self.assertEqual(sz, dc.size_on_disk())
+            check_data()
+        check_data()
+        dc.clear()
+        st = time.monotonic()
+        while dc.size_on_disk() and time.monotonic() - st < 2:
+            time.sleep(0.001)
+        self.assertEqual(dc.size_on_disk(), 0)
 
     def test_load_images(self):
         s, g, l, sl = load_helpers(self)

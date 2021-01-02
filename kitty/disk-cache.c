@@ -241,12 +241,12 @@ cmp_pos_in_cache_file(void *a_, void *b_) {
 
 static inline void
 find_hole(DiskCache *self) {
-    off_t required_size = self->currently_writing.data_sz, prev = -1;
+    off_t required_size = self->currently_writing.data_sz, prev = -100;
     HASH_SORT(self->entries, cmp_pos_in_cache_file);
     CacheEntry *s, *tmp;
     HASH_ITER(hh, self->entries, s, tmp) {
-        if (s->pos_in_cache_file >= 0) {
-            if (prev >= 0 && s->pos_in_cache_file - prev > required_size) {
+        if (s->pos_in_cache_file >= 0 && s->data_sz > 0) {
+            if (prev >= 0 && s->pos_in_cache_file - prev >= required_size) {
                 self->currently_writing.pos_in_cache_file = prev;
                 return;
             }
@@ -522,15 +522,22 @@ remove_from_disk_cache(PyObject *self_, const void *key, size_t key_sz) {
     return removed;
 }
 
-static void
-read_from_cache_entry(const DiskCache *self, const CacheEntry *s, uint8_t *dest) {
-    uint8_t *p = dest;
-    size_t sz = s->data_sz;
-    off_t pos = s->pos_in_cache_file;
-    if (pos < 0) {
-        PyErr_SetString(PyExc_OSError, "Cache entry was not written, could not read from it");
-        return;
+void
+clear_disk_cache(PyObject *self_) {
+    DiskCache *self = (DiskCache*)self_;
+    CacheEntry *s, *tmp;
+    mutex(lock);
+    HASH_ITER(hh, self->entries, s, tmp) {
+        HASH_DEL(self->entries, s);
+        free_cache_entry(s);
     }
+    mutex(unlock);
+    wakeup_write_loop(self);
+}
+
+static void
+read_from_cache_file(const DiskCache *self, off_t pos, size_t sz, void *dest) {
+    uint8_t *p = dest;
     while (sz) {
         ssize_t n = pread(self->cache_file_fd, p, sz, pos);
         if (n > 0) {
@@ -549,6 +556,17 @@ read_from_cache_entry(const DiskCache *self, const CacheEntry *s, uint8_t *dest)
             break;
         }
     }
+}
+
+static void
+read_from_cache_entry(const DiskCache *self, const CacheEntry *s, void *dest) {
+    size_t sz = s->data_sz;
+    off_t pos = s->pos_in_cache_file;
+    if (pos < 0) {
+        PyErr_SetString(PyExc_OSError, "Cache entry was not written, could not read from it");
+        return;
+    }
+    read_from_cache_file(self, pos, sz, dest);
 }
 
 void*
@@ -596,7 +614,7 @@ disk_cache_wait_for_write(PyObject *self_, monotonic_t timeout) {
         mutex(unlock);
         if (!pending) return true;
         wakeup_write_loop(self);
-        usleep(100 * 1000);
+        usleep(10 * 1000);
     }
     return false;
 }
@@ -622,6 +640,17 @@ PYWRAP(xor_data) {
     return ans;
 }
 
+PYWRAP(read_from_cache_file) {
+    Py_ssize_t pos = 0, sz = -1;
+    PA("|nn", &pos, &sz);
+    if (sz < 0) sz = size_of_cache_file(self);
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
+    if (ans) {
+        read_from_cache_file(self, pos, sz, PyBytes_AS_STRING(ans));
+    }
+    return ans;
+}
+
 static PyObject*
 wait_for_write(PyObject *self, PyObject *args) {
     double timeout = 0;
@@ -635,6 +664,13 @@ size_on_disk(PyObject *self, PyObject *args UNUSED) {
     unsigned long long ans = disk_cache_size_on_disk(self);
     return PyLong_FromUnsignedLongLong(ans);
 }
+
+static PyObject*
+clear(PyObject *self, PyObject *args UNUSED) {
+    clear_disk_cache(self);
+    Py_RETURN_NONE;
+}
+
 
 static PyObject*
 add(PyObject *self, PyObject *args) {
@@ -683,11 +719,13 @@ get(PyObject *self, PyObject *args) {
 #define MW(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
 static PyMethodDef methods[] = {
     MW(ensure_state, METH_NOARGS),
+    MW(read_from_cache_file, METH_VARARGS),
     {"add", add, METH_VARARGS, NULL},
     {"remove", pyremove, METH_VARARGS, NULL},
     {"get", get, METH_VARARGS, NULL},
     {"wait_for_write", wait_for_write, METH_VARARGS, NULL},
     {"size_on_disk", size_on_disk, METH_NOARGS, NULL},
+    {"clear", clear, METH_NOARGS, NULL},
 
     {NULL}  /* Sentinel */
 };
