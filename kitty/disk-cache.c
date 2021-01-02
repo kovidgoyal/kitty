@@ -141,6 +141,12 @@ copy_between_files(int infd, int outfd, off_t in_pos, size_t len, uint8_t *buf, 
     return true;
 }
 
+static inline off_t
+size_of_cache_file(DiskCache *self) {
+    return lseek(self->cache_file_fd, 0, SEEK_END);
+}
+
+
 typedef struct {
     uint8_t hash_key[MAX_KEY_SIZE];
     unsigned short hash_keylen;
@@ -156,7 +162,7 @@ defrag(DiskCache *self) {
     const size_t bufsz = 1024 * 1024;
     bool lock_released = false, ok = false;
 
-    off_t size_on_disk = lseek(self->cache_file_fd, 0, SEEK_CUR);
+    off_t size_on_disk = size_of_cache_file(self);
     if (size_on_disk <= 0) goto cleanup;
     size_t num_entries = HASH_COUNT(self->entries);
     if (!num_entries) goto cleanup;
@@ -221,22 +227,50 @@ cleanup:
     if (new_cache_file > -1) safe_close(new_cache_file, __FILE__, __LINE__);
 }
 
+static int
+cmp_pos_in_cache_file(void *a_, void *b_) {
+    CacheEntry *a = a_, *b = b_;
+    return a->pos_in_cache_file - b->pos_in_cache_file;
+}
+
+static inline void
+find_hole(DiskCache *self) {
+    off_t required_size = self->currently_writing.data_sz, prev = -1;
+    HASH_SORT(self->entries, cmp_pos_in_cache_file);
+    CacheEntry *s, *tmp;
+    HASH_ITER(hh, self->entries, s, tmp) {
+        if (s->pos_in_cache_file >= 0) {
+            if (prev >= 0 && s->pos_in_cache_file - prev > required_size) {
+                self->currently_writing.pos_in_cache_file = prev;
+                return;
+            }
+            prev = s->pos_in_cache_file + s->data_sz;
+        }
+    }
+}
+
 static inline bool
 find_cache_entry_to_write(DiskCache *self) {
     CacheEntry *tmp, *s;
-    off_t size_on_disk = lseek(self->cache_file_fd, 0, SEEK_END);
+    off_t size_on_disk = size_of_cache_file(self);
     if (self->total_size && size_on_disk > 0 && (size_t)size_on_disk > self->total_size * 2) defrag(self);
     HASH_ITER(hh, self->entries, s, tmp) {
         if (!s->written_to_disk) {
             if (s->data) {
+                if (self->currently_writing.data) free(self->currently_writing.data);
                 self->currently_writing.data = s->data;
                 s->data = NULL;
                 self->currently_writing.data_sz = s->data_sz;
+                self->currently_writing.pos_in_cache_file = -1;
                 xor_data(s->encryption_key, sizeof(s->encryption_key), self->currently_writing.data, s->data_sz);
                 self->currently_writing.hash_keylen = MIN(s->hash_keylen, MAX_KEY_SIZE);
                 memcpy(self->currently_writing.hash_key, s->hash_key, self->currently_writing.hash_keylen);
+                find_hole(self);
+                return true;
             }
-            return true;
+            s->written_to_disk = true;
+            s->pos_in_cache_file = 0;
+            s->data_sz = 0;
         }
     }
     return false;
@@ -246,13 +280,16 @@ static inline bool
 write_dirty_entry(DiskCache *self) {
     size_t left = self->currently_writing.data_sz;
     uint8_t *p = self->currently_writing.data;
-    self->currently_writing.pos_in_cache_file = lseek(self->cache_file_fd, 0, SEEK_CUR);
     if (self->currently_writing.pos_in_cache_file < 0) {
-        perror("Failed to seek in disk cache file");
-        return false;
+        self->currently_writing.pos_in_cache_file = size_of_cache_file(self);
+        if (self->currently_writing.pos_in_cache_file < 0) {
+            perror("Failed to seek in disk cache file");
+            return false;
+        }
     }
+    off_t offset = self->currently_writing.pos_in_cache_file;
     while (left > 0) {
-        ssize_t n = write(self->cache_file_fd, p, left);
+        ssize_t n = pwrite(self->cache_file_fd, p, left, offset);
         if (n < 0) {
             if (errno == EINTR || errno == EAGAIN) continue;
             perror("Failed to write to disk-cache file");
@@ -266,6 +303,7 @@ write_dirty_entry(DiskCache *self) {
         }
         left -= n;
         p += n;
+        offset += n;
     }
     return true;
 }
