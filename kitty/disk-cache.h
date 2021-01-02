@@ -12,6 +12,7 @@ PyObject* create_disk_cache(void);
 bool add_to_disk_cache(PyObject *self, const void *key, size_t key_sz, const void *data, size_t data_sz);
 bool remove_from_disk_cache(PyObject *self_, const void *key, size_t key_sz);
 void* read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allocator)(void*, size_t), void*);
+bool disk_cache_wait_for_write(PyObject *self, monotonic_t timeout);
 
 static inline void* disk_cache_malloc_allocator(void *x, size_t sz) {
     *((size_t*)x) = sz;

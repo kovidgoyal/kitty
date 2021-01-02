@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import shutil
 import tempfile
 import unittest
 import zlib
@@ -138,10 +137,9 @@ class TestGraphics(BaseTest):
 
     def setUp(self):
         self.cache_dir = cache_dir.override_dir = tempfile.mkdtemp()
-        self.disk_cache_dir = os.path.join(self.cache_dir, 'disk-cache')
 
     def tearDown(self):
-        shutil.rmtree(self.cache_dir)
+        os.rmdir(self.cache_dir)
         cache_dir.override_dir = None
 
     def test_xor_data(self):
@@ -156,6 +154,29 @@ class TestGraphics(BaseTest):
             for extra in range(len(base_data)):
                 data = base + base_data[:extra]
                 self.assertEqual(xor_data(key, data), xor(key, data))
+
+    def test_disk_cache(self):
+        s = self.create_screen()
+        dc = s.grman.disk_cache
+        data = {}
+
+        def key_as_bytes(key):
+            if isinstance(key, int):
+                key = str(key)
+            if isinstance(key, str):
+                key = key.encode('utf-8')
+            return bytes(key)
+
+        def add(key, val):
+            bkey = key_as_bytes(key)
+            data[key] = key_as_bytes(val)
+            dc.add(bkey, data[key])
+
+        for i in range(25):
+            self.assertIsNone(add(i, f'{i}' * i))
+
+        self.assertEqual(dc.total_size, sum(map(len, data.values())))
+        self.assertTrue(dc.wait_for_write())
 
     def test_load_images(self):
         s, g, l, sl = load_helpers(self)

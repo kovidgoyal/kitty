@@ -20,6 +20,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <fcntl.h>
+#include <time.h>
 #ifdef HAS_SENDFILE
 #include <sys/sendfile.h>
 #endif
@@ -388,7 +389,7 @@ ensure_state(DiskCache *self) {
         PyObject *kc = NULL, *cache_dir = NULL;
         kc = PyImport_ImportModule("kitty.constants");
         if (kc) {
-            cache_dir = PyObject_CallMethod(kc, "dir_for_disk_cache", NULL);
+            cache_dir = PyObject_CallMethod(kc, "cache_dir", NULL);
             if (cache_dir) {
                 self->cache_dir = strdup(PyUnicode_AsUTF8(cache_dir));
                 if (!self->cache_dir) PyErr_NoMemory();
@@ -573,6 +574,29 @@ end:
     return data;
 }
 
+bool
+disk_cache_wait_for_write(PyObject *self_, monotonic_t timeout) {
+    DiskCache *self = (DiskCache*)self_;
+    monotonic_t end_at = monotonic() + timeout;
+    while (!timeout || monotonic() <= end_at) {
+        bool pending = false;
+        mutex(lock);
+        CacheEntry *s, *tmp;
+        HASH_ITER(hh, self->entries, s, tmp) {
+            if (!s->written_to_disk) {
+                pending = true;
+                break;
+            }
+        }
+        mutex(unlock);
+        if (!pending) return true;
+        wakeup_write_loop(self);
+        struct timespec a = { .tv_nsec = 50000000L}, b;
+        nanosleep(&a, &b);
+    }
+    return false;
+}
+
 #define PYWRAP(name) static PyObject* py##name(DiskCache *self, PyObject *args)
 #define PA(fmt, ...) if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 PYWRAP(ensure_state) {
@@ -592,6 +616,14 @@ PYWRAP(xor_data) {
     memcpy(dest, data, data_sz);
     xor_data((const uint8_t*)key, keylen, dest, data_sz);
     return ans;
+}
+
+static PyObject*
+wait_for_write(PyObject *self, PyObject *args) {
+    double timeout = 0;
+    PA("|d", &timeout);
+    if (disk_cache_wait_for_write(self, s_double_to_monotonic_t(timeout))) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 
 static PyObject*
@@ -644,6 +676,7 @@ static PyMethodDef methods[] = {
     {"add", add, METH_VARARGS, NULL},
     {"remove", pyremove, METH_VARARGS, NULL},
     {"get", get, METH_VARARGS, NULL},
+    {"wait_for_write", wait_for_write, METH_VARARGS, NULL},
 
     {NULL}  /* Sentinel */
 };
