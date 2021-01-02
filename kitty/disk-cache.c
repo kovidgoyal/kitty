@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <time.h>
+#include <unistd.h>
 #ifdef HAS_SENDFILE
 #include <sys/sendfile.h>
 #endif
@@ -147,6 +147,11 @@ size_of_cache_file(DiskCache *self) {
     return lseek(self->cache_file_fd, 0, SEEK_END);
 }
 
+size_t
+disk_cache_size_on_disk(PyObject *self) {
+    off_t ans = size_of_cache_file((DiskCache*)self);
+    return MAX(0, ans);
+}
 
 typedef struct {
     uint8_t hash_key[MAX_KEY_SIZE];
@@ -561,7 +566,7 @@ read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allo
     if (!data) { PyErr_NoMemory(); goto end; }
 
     if (s->data) { memcpy(data, s->data, s->data_sz); }
-    else if (self->currently_writing.hash_key && self->currently_writing.hash_keylen == key_sz && memcmp(self->currently_writing.hash_key, key, key_sz) == 0) {
+    else if (self->currently_writing.data && self->currently_writing.hash_key && self->currently_writing.hash_keylen == key_sz && memcmp(self->currently_writing.hash_key, key, key_sz) == 0) {
         memcpy(data, self->currently_writing.data, s->data_sz);
         xor_data(s->encryption_key, sizeof(s->encryption_key), data, s->data_sz);
     }
@@ -591,8 +596,7 @@ disk_cache_wait_for_write(PyObject *self_, monotonic_t timeout) {
         mutex(unlock);
         if (!pending) return true;
         wakeup_write_loop(self);
-        struct timespec a = { .tv_nsec = 50000000L}, b;
-        nanosleep(&a, &b);
+        usleep(100 * 1000);
     }
     return false;
 }
@@ -624,6 +628,12 @@ wait_for_write(PyObject *self, PyObject *args) {
     PA("|d", &timeout);
     if (disk_cache_wait_for_write(self, s_double_to_monotonic_t(timeout))) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
+}
+
+static PyObject*
+size_on_disk(PyObject *self, PyObject *args UNUSED) {
+    unsigned long long ans = disk_cache_size_on_disk(self);
+    return PyLong_FromUnsignedLongLong(ans);
 }
 
 static PyObject*
@@ -677,6 +687,7 @@ static PyMethodDef methods[] = {
     {"remove", pyremove, METH_VARARGS, NULL},
     {"get", get, METH_VARARGS, NULL},
     {"wait_for_write", wait_for_write, METH_VARARGS, NULL},
+    {"size_on_disk", size_on_disk, METH_NOARGS, NULL},
 
     {NULL}  /* Sentinel */
 };

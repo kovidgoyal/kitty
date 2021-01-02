@@ -172,11 +172,28 @@ class TestGraphics(BaseTest):
             data[key] = key_as_bytes(val)
             dc.add(bkey, data[key])
 
+        def remove(key):
+            bkey = key_as_bytes(key)
+            data.pop(key, None)
+            dc.remove(bkey)
+
+        def check_data():
+            for key, val in data.items():
+                self.ae(dc.get(key_as_bytes(key)), val)
+
         for i in range(25):
             self.assertIsNone(add(i, f'{i}' * i))
 
         self.assertEqual(dc.total_size, sum(map(len, data.values())))
         self.assertTrue(dc.wait_for_write())
+        check_data()
+        sz = dc.size_on_disk()
+        self.assertEqual(sz, sum(map(len, data.values())))
+        for x in (2, 4, 6, 8):
+            remove(x)
+            check_data()
+            self.assertRaises(KeyError, dc.get, key_as_bytes(x))
+            self.assertEqual(sz, dc.size_on_disk())
 
     def test_load_images(self):
         s, g, l, sl = load_helpers(self)
