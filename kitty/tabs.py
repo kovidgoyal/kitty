@@ -753,9 +753,12 @@ class TabManager:  # {{{
             ))
         return ans
 
-    def activate_tab_at(self, x: int) -> None:
+    def activate_tab_at(self, x: int, is_double: bool = False) -> None:
         i = self.tab_bar.tab_at(x)
-        if i is not None:
+        if i is None:
+            if is_double:
+                self.new_tab()
+        else:
             self.set_active_tab_idx(i)
 
     @property

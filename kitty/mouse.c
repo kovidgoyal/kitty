@@ -516,8 +516,12 @@ HANDLER(handle_event) {
 
 static inline void
 handle_tab_bar_mouse(int button, int UNUSED modifiers) {
+    static monotonic_t last_click_at = 0;
     if (button != GLFW_MOUSE_BUTTON_LEFT || !global_state.callback_os_window->mouse_button_pressed[button]) return;
-    call_boss(activate_tab_at, "Kd", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x);
+    monotonic_t now = monotonic();
+    bool is_double = now - last_click_at <= OPT(click_interval);
+    last_click_at = is_double ? 0 : now;
+    call_boss(activate_tab_at, "KdO", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x, is_double ? Py_True : Py_False);
 }
 
 static inline bool

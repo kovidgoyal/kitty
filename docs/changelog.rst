@@ -17,6 +17,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   run. The system-wide PATH is used first, then system specific default paths,
   and finally the PATH inside the shell.
 
+- Double clicking on empty tab bar area now opens a new tab (:iss:`3201`)
+
 
 0.19.3 [2020-12-19]
 -------------------

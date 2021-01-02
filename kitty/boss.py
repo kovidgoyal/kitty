@@ -520,10 +520,10 @@ class Boss:
             run_update_check(self.opts.update_check_interval * 60 * 60)
             self.update_check_started = True
 
-    def activate_tab_at(self, os_window_id: int, x: int) -> int:
+    def activate_tab_at(self, os_window_id: int, x: int, is_double: bool = False) -> int:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
-            tm.activate_tab_at(x)
+            tm.activate_tab_at(x, is_double)
 
     def on_window_resize(self, os_window_id: int, w: int, h: int, dpi_changed: bool) -> None:
         if dpi_changed:
