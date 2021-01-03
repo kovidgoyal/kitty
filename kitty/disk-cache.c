@@ -532,6 +532,7 @@ remove_from_disk_cache(PyObject *self_, const void *key, size_t key_sz) {
 void
 clear_disk_cache(PyObject *self_) {
     DiskCache *self = (DiskCache*)self_;
+    if (!ensure_state(self)) return;
     CacheEntry *s, *tmp;
     mutex(lock);
     HASH_ITER(hh, self->entries, s, tmp) {
@@ -607,6 +608,7 @@ end:
 bool
 disk_cache_wait_for_write(PyObject *self_, monotonic_t timeout) {
     DiskCache *self = (DiskCache*)self_;
+    if (!ensure_state(self)) return false;
     monotonic_t end_at = monotonic() + timeout;
     while (!timeout || monotonic() <= end_at) {
         bool pending = false;
