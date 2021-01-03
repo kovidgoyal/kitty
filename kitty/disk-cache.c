@@ -92,7 +92,7 @@ open_cache_file(const char *cache_path) {
     size_t sz = strlen(cache_path) + 16;
     char *buf = calloc(1, sz);
     if (!buf) { errno = ENOMEM; return -1; }
-    snprintf(buf, sz - 1, "%s/XXXXXXXXXXXX", cache_path);
+    snprintf(buf, sz - 1, "%s/disk-cache-XXXXXXXXXXXX", cache_path);
     while (fd < 0) {
         fd = mkostemp(buf, O_CLOEXEC);
         if (fd > -1 || errno != EINTR) break;
@@ -539,6 +539,7 @@ clear_disk_cache(PyObject *self_) {
         HASH_DEL(self->entries, s);
         free_cache_entry(s);
     }
+    self->total_size = 0;
     mutex(unlock);
     wakeup_write_loop(self);
 }

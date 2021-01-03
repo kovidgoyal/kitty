@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import random
 import tempfile
 import time
 import unittest
@@ -176,7 +177,7 @@ class TestGraphics(BaseTest):
         def remove(key):
             bkey = key_as_bytes(key)
             data.pop(key, None)
-            dc.remove(bkey)
+            return dc.remove(bkey)
 
         def check_data():
             for key, val in data.items():
@@ -206,6 +207,20 @@ class TestGraphics(BaseTest):
         while dc.size_on_disk() and time.monotonic() - st < 2:
             time.sleep(0.001)
         self.assertEqual(dc.size_on_disk(), 0)
+
+        data.clear()
+        for i in range(25):
+            self.assertIsNone(add(i, f'{i}' * i))
+
+        before = dc.size_on_disk()
+        while dc.total_size > before // 3:
+            key = random.choice(tuple(data))
+            self.assertTrue(remove(key))
+        add('trigger defrag', 'XXX')
+        dc.wait_for_write()
+        self.assertLess(dc.size_on_disk(), before)
+        self.assertEqual(dc.size_on_disk(), sum(map(len, data.values())))
+        check_data()
 
     def test_load_images(self):
         s, g, l, sl = load_helpers(self)
