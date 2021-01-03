@@ -216,10 +216,10 @@ class TestGraphics(BaseTest):
         while dc.total_size > before // 3:
             key = random.choice(tuple(data))
             self.assertTrue(remove(key))
+        check_data()
         add('trigger defrag', 'XXX')
         dc.wait_for_write()
         self.assertLess(dc.size_on_disk(), before)
-        self.assertEqual(dc.size_on_disk(), sum(map(len, data.values())))
         check_data()
 
     def test_load_images(self):
