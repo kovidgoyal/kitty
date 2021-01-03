@@ -196,7 +196,6 @@ defrag(DiskCache *self) {
             e->old_offset = s->pos_in_cache_file;
             e->data_sz = s->data_sz;
             if (s->hash_key) memcpy(e->hash_key, s->hash_key, s->hash_keylen);
-            num_entries_to_defrag++;
         }
     }
     if (ftruncate(new_cache_file, total_data_size) != 0) {
