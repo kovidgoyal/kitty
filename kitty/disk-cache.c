@@ -82,17 +82,24 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 
 static int
 open_cache_file(const char *cache_path) {
+    int fd = -1;
+#ifdef O_TMPFILE
+    while (fd < 0) {
+        fd = open(cache_path, O_TMPFILE | O_CLOEXEC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+        if (fd > -1 || errno != EINTR) break;
+    }
+#else
     size_t sz = strlen(cache_path) + 16;
     char *buf = calloc(1, sz);
     if (!buf) { errno = ENOMEM; return -1; }
     snprintf(buf, sz - 1, "%s/XXXXXXXXXXXX", cache_path);
-    int fd = -1;
     while (fd < 0) {
         fd = mkostemp(buf, O_CLOEXEC);
         if (fd > -1 || errno != EINTR) break;
     }
     if (fd > -1) unlink(buf);
     free(buf);
+#endif
     return fd;
 }
 
