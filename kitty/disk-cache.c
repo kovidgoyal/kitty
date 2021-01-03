@@ -20,7 +20,7 @@
 #include <stdlib.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-#include <unistd.h>
+#include <time.h>
 #ifdef HAS_SENDFILE
 #include <sys/sendfile.h>
 #endif
@@ -614,7 +614,8 @@ disk_cache_wait_for_write(PyObject *self_, monotonic_t timeout) {
         mutex(unlock);
         if (!pending) return true;
         wakeup_write_loop(self);
-        usleep(10 * 1000);
+        struct timespec a = { .tv_nsec = 10L * MONOTONIC_T_1e6 }, b;  // 10ms sleep
+        nanosleep(&a, &b);
     }
     return false;
 }
