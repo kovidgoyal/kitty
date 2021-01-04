@@ -12,7 +12,7 @@ Where ``<ESC>`` is the byte ``0x1b``. The JSON object has the form::
     {
         "cmd": "command name",
         "version": <kitty version>,
-        "no_response": Optional Boolean,
+        "no_response": <Optional Boolean>,
         "payload": <Optional JSON object>,
     }
 
