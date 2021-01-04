@@ -211,6 +211,8 @@ class TestGraphics(BaseTest):
         data.clear()
         for i in range(25):
             self.assertIsNone(add(i, f'{i}' * i))
+        dc.wait_for_write()
+        check_data()
 
         before = dc.size_on_disk()
         while dc.total_size > before // 3:
