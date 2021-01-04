@@ -11,6 +11,7 @@
 }
 
 #include "state.h"
+#include "iqsort.h"
 #include "fonts.h"
 #include "lineops.h"
 #include "hyperlink.h"
@@ -2487,14 +2488,6 @@ mark_hyperlinks_in_line(Screen *self, Line *line, hyperlink_id_type id, index_ty
     return found;
 }
 
-static int
-compare_ranges(const void *a_, const void* b_) {
-    const Selection *a = a_, *b = b_;
-    int ans = a->sort_y - b->sort_y;
-    if (!ans) ans = a->sort_x - b->sort_x;
-    return ans;
-}
-
 static void
 sort_ranges(const Screen *self, Selections *s) {
     IterationData a;
@@ -2503,7 +2496,9 @@ sort_ranges(const Screen *self, Selections *s) {
         s->items[i].sort_x = a.first.x;
         s->items[i].sort_y = a.y;
     }
-    qsort(s->items, s->count, sizeof(Selection), compare_ranges);
+#define range_lt(a, b) ((a)->sort_y < (b)->sort_y || ((a)->sort_y == (b)->sort_y && (a)->sort_x < (b)->sort_x))
+    QSORT(Selection, s->items, s->count, range_lt);
+#undef range_lt
 }
 
 hyperlink_id_type

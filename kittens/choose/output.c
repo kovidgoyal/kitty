@@ -6,6 +6,7 @@
  */
 
 #include "choose-data-types.h"
+#include "../../kitty/iqsort.h"
 #include <string.h>
 #include <ctype.h>
 #include <stdlib.h>
@@ -43,13 +44,6 @@ output_text(GlobalData *global, const text_t *data, size_t sz) {
         memcpy(global->output + global->output_pos, data, sizeof(text_t) * sz);
         global->output_pos += sz;
     }
-}
-
-static int
-cmpscore(const void *a, const void *b) {
-    double sa = FIELD(a, score), sb = FIELD(b, score);
-    // Sort descending
-    return (sa > sb) ? -1 : ((sa == sb) ? ((int)FIELD(a, idx) - (int)FIELD(b, idx)) : 1);
 }
 
 static void
@@ -96,7 +90,9 @@ output_result(GlobalData *global, Candidate *c, Options *opts, len_t needle_len)
 void
 output_results(GlobalData *global, Candidate *haystack, size_t count, Options *opts, len_t needle_len) {
     Candidate *c;
-    qsort(haystack, count, sizeof(*haystack), cmpscore);
+#define lt(b, a) ( (a)->score < (b)->score || ((a)->score == (b)->score && (a->idx < b->idx)) )
+    QSORT(Candidate, haystack, count, lt);
+#undef lt
     size_t left = opts->limit > 0 ? opts->limit : count;
     for (size_t i = 0; i < left; i++) {
         c = haystack + i;

@@ -8,6 +8,7 @@
 #include "graphics.h"
 #include "state.h"
 #include "disk-cache.h"
+#include "iqsort.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -132,19 +133,15 @@ trim_predicate(Image *img) {
 }
 
 
-static int
-oldest_last(const void* a, const void *b) {
-    monotonic_t ans = ((Image*)(b))->atime - ((Image*)(a))->atime;
-    return ans < 0 ? -1 : (ans == 0 ? 0 : 1);
-}
-
 static inline void
 apply_storage_quota(GraphicsManager *self, size_t storage_limit, id_type currently_added_image_internal_id) {
     // First remove unreferenced images, even if they have an id
     remove_images(self, trim_predicate, currently_added_image_internal_id);
     if (self->used_storage < storage_limit) return;
 
-    qsort(self->images, self->image_count, sizeof(self->images[0]), oldest_last);
+#define oldest_last(a, b) ((b)->atime < (a)->atime)
+    QSORT(Image, self->images, self->image_count, oldest_last)
+#undef oldest_last
     while (self->used_storage > storage_limit && self->image_count > 0) {
         remove_image(self, self->image_count - 1);
     }
@@ -320,12 +317,6 @@ find_or_create_image(GraphicsManager *self, uint32_t id, bool *existing) {
     return ans;
 }
 
-static int
-cmp_client_ids(const void* a, const void* b) {
-    const uint32_t *x = a, *y = b;
-    return *x - *y;
-}
-
 static inline uint32_t
 get_free_client_id(const GraphicsManager *self) {
     if (!self->image_count) return 1;
@@ -336,7 +327,9 @@ get_free_client_id(const GraphicsManager *self) {
         if (q->client_id) client_ids[count++] = q->client_id;
     }
     if (!count) { free(client_ids); return 1; }
-    qsort(client_ids, count, sizeof(uint32_t), cmp_client_ids);
+#define int_lt(a, b) ((*a)<(*b))
+    QSORT(u_int32_t, client_ids, count, int_lt)
+#undef int_lt
     uint32_t prev_id = 0, ans = 1;
     for (size_t i = 0; i < count; i++) {
         if (client_ids[i] == prev_id) continue;
@@ -614,14 +607,6 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     return img->client_id;
 }
 
-static int
-cmp_by_zindex_and_image(const void *a_, const void *b_) {
-    const ImageRenderData *a = (const ImageRenderData*)a_, *b = (const ImageRenderData*)b_;
-    int ans = a->z_index - b->z_index;
-    if (ans == 0) ans = a->image_id - b->image_id;
-    return ans;
-}
-
 static inline void
 set_vertex_data(ImageRenderData *rd, const ImageRef *ref, const ImageRect *dest_rect) {
 #define R(n, a, b) rd->vertices[n*4] = ref->src_rect.a; rd->vertices[n*4 + 1] = ref->src_rect.b; rd->vertices[n*4 + 2] = dest_rect->a; rd->vertices[n*4 + 3] = dest_rect->b;
@@ -686,7 +671,9 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
     }}
     if (!self->count) return false;
     // Sort visible refs in draw order (z-index, img)
-    qsort(self->render_data, self->count, sizeof(self->render_data[0]), cmp_by_zindex_and_image);
+#define lt(a, b) ( (a)->z_index < (b)->z_index || ((a)->z_index == (b)->z_index && (a)->image_id < (b)->image_id) )
+    QSORT(ImageRenderData, self->render_data, self->count, lt);
+#undef lt
     // Calculate the group counts
     i = 0;
     while (i < self->count) {
