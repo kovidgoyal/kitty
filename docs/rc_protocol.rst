@@ -35,7 +35,7 @@ as::
 Now, in a different terminal, you can get the pretty printed ``@ ls`` output
 with the following command line::
 
-    echo -n '\x1bP@kitty-cmd{"cmd":"ls","version":[0,14,2]}\x1b\' | socat - unix:/tmp/test | awk '{ print substr($0, 13, length($0) - 14) }' | jq -c '.data | fromjson' | jq .
+    echo -en '\eP@kitty-cmd{"cmd":"ls","version":[0,14,2]}\e\' | socat - unix:/tmp/test | awk '{ print substr($0, 13, length($0) - 14) }' | jq -c '.data | fromjson' | jq .
 
 
 .. include:: generated/rc.rst
