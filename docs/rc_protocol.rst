@@ -26,4 +26,16 @@ Set ``no_response`` to ``true`` if you don't want a response from kitty.
 The optional payload is a JSON object that is specific to the actual command being sent.
 The fields in the object for every command are documented below.
 
+As a quick example showing how easy to use this protocol is, we will implement
+the ``@ ls`` command from the shell using only shell tools. First, run kitty
+as::
+
+    kitty -o allow_remote_control=socket-only --listen-on unix:/tmp/test
+
+Now, in a different terminal, you can get the pretty printed ``@ ls`` output
+with the following command line::
+
+    echo -n '\x1bP@kitty-cmd{"cmd":"ls","version":[0,14,2]}\x1b\' | socat - unix:/tmp/test | tail -c +13 | jq -c '.data | fromjson' 2>/dev/null | jq .
+
+
 .. include:: generated/rc.rst
