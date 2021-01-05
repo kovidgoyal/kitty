@@ -592,11 +592,11 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         if (*was_colored) {
             if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, baseline)) {
                 if (PyErr_Occurred()) PyErr_Print();
-                *was_colored = false;
                 if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) {
                     free_processed_bitmap(&bm);
                     return false;
                 }
+                *was_colored = false;
             }
         } else {
             if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) {

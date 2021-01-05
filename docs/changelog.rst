@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Double clicking on empty tab bar area now opens a new tab (:iss:`3201`)
 
+- Linux: Fix rendering of emoji followed by the graphics variation selector not
+  being colored with some fonts (:iss:`3211`)
+
 
 0.19.3 [2020-12-19]
 -------------------
