@@ -102,7 +102,11 @@ static inline bool
 load_glyph(Face *self, int glyph_index, int load_type) {
     int flags = get_load_flags(self->hinting, self->hintstyle, load_type);
     int error = FT_Load_Glyph(self->face, glyph_index, flags);
-    if (error) { set_freetype_error("Failed to load glyph, with error:", error); return false; }
+    if (error) {
+        char buf[256];
+        snprintf(buf, sizeof(buf) - 1, "Failed to load glyph_index=%d load_type=%d, with error:", glyph_index, load_type);
+        set_freetype_error(buf, error); return false;
+    }
     return true;
 }
 
