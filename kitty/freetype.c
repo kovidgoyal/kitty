@@ -36,6 +36,7 @@ typedef struct {
     FT_UInt xdpi, ydpi;
     PyObject *path;
     hb_font_t *harfbuzz_font;
+    hb_codepoint_t space_glyph_id;
     void *extra_data;
     free_extra_data_func free_extra_data;
     float apple_leading;
@@ -221,6 +222,7 @@ init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_
     self->path = path;
     Py_INCREF(self->path);
     self->index = self->face->face_index & 0xFFFF;
+    self->space_glyph_id = glyph_id_for_codepoint((PyObject*)self, ' ');
     return true;
 }
 
@@ -589,19 +591,22 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
     unsigned int canvas_width = cell_width * num_cells;
     for (unsigned int i = 0; i < num_glyphs; i++) {
         bm = EMPTY_PBM;
-        if (*was_colored) {
-            if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, baseline)) {
-                if (PyErr_Occurred()) PyErr_Print();
+        // dont load the space glyph since loading it fails for some fonts/sizes and it is anyway to be rendered as a blank
+        if (info[i].codepoint != self->space_glyph_id) {
+            if (*was_colored) {
+                if (!render_color_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, baseline)) {
+                    if (PyErr_Occurred()) PyErr_Print();
+                    if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) {
+                        free_processed_bitmap(&bm);
+                        return false;
+                    }
+                    *was_colored = false;
+                }
+            } else {
                 if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) {
                     free_processed_bitmap(&bm);
                     return false;
                 }
-                *was_colored = false;
-            }
-        } else {
-            if (!render_bitmap(self, info[i].codepoint, &bm, cell_width, cell_height, num_cells, bold, italic, true, fg)) {
-                free_processed_bitmap(&bm);
-                return false;
             }
         }
         x_offset = x + (float)positions[i].x_offset / 64.0f;
