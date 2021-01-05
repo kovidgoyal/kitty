@@ -342,7 +342,7 @@ is_glyph_empty(PyObject *s, glyph_index g) {
 int
 get_glyph_width(PyObject *s, glyph_index g) {
     Face *self = (Face*)s;
-    if (!load_glyph(self, g, FT_LOAD_DEFAULT)) { PyErr_Print(); return false; }
+    if (!load_glyph(self, g, FT_LOAD_DEFAULT)) { PyErr_Print(); return 0; }
 #define M self->face->glyph->metrics
 #define B self->face->glyph->bitmap
     /* printf("glyph: %u bitmap.width: %d bitmap.rows: %d horiAdvance: %ld horiBearingX: %ld horiBearingY: %ld vertBearingX: %ld vertBearingY: %ld vertAdvance: %ld width: %ld height: %ld\n", */
