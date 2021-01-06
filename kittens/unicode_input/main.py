@@ -175,7 +175,7 @@ class Table:
         self.codepoints = codepoints
         self.mode = mode
         self.layout_dirty = True
-        self.current_idx = current_idx
+        self.current_idx = current_idx if current_idx < len(codepoints) else 0
 
     def codepoint_at_hint(self, hint: str) -> int:
         return self.codepoints[decode_hint(hint)]
@@ -330,7 +330,7 @@ class UnicodeInput(Handler):
                 codepoints = codepoints_matching_search(tuple(words))
         if q != self.last_updated_code_point_at:
             self.last_updated_code_point_at = q
-            self.table.set_codepoints(codepoints or [], self.mode, iindex_word if iindex_word < len(codepoints) else 0)
+            self.table.set_codepoints(codepoints or [], self.mode, iindex_word)
 
     def update_current_char(self) -> None:
         self.update_codepoints()
