@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
-
 import os
 import string
 import subprocess
@@ -172,11 +171,11 @@ class Table:
         if self.codepoints:
             return self.codepoints[self.current_idx]
 
-    def set_codepoints(self, codepoints: List[int], mode: str = HEX) -> None:
+    def set_codepoints(self, codepoints: List[int], mode: str = HEX, current_idx: int = 0) -> None:
         self.codepoints = codepoints
         self.mode = mode
         self.layout_dirty = True
-        self.current_idx = 0
+        self.current_idx = current_idx
 
     def codepoint_at_hint(self, hint: str) -> int:
         return self.codepoints[decode_hint(hint)]
@@ -270,8 +269,10 @@ class Table:
 
 
 def is_index(w: str) -> bool:
+    if w[0] != INDEX_CHAR:
+        return False
     try:
-        int(w.lstrip(INDEX_CHAR), 16)
+        int(w.lstrip(INDEX_CHAR), 36)
         return True
     except Exception:
         return False
@@ -306,6 +307,7 @@ class UnicodeInput(Handler):
 
     def update_codepoints(self) -> None:
         codepoints = None
+        iindex_word = 0
         if self.mode is HEX:
             q: Tuple[str, Optional[Union[str, Sequence[int]]]] = (self.mode, None)
             codepoints = self.recent
@@ -324,14 +326,11 @@ class UnicodeInput(Handler):
                 if index_words:
                     index_word = words[index_words[0]]
                     words = words[:index_words[0]]
+                    iindex_word = int(index_word.lstrip(INDEX_CHAR), 36)
                 codepoints = codepoints_matching_search(tuple(words))
-                if index_words:
-                    iindex_word = int(index_word.lstrip(INDEX_CHAR), 16)
-                    if codepoints and iindex_word < len(codepoints):
-                        codepoints = [codepoints[iindex_word]]
         if q != self.last_updated_code_point_at:
             self.last_updated_code_point_at = q
-            self.table.set_codepoints(codepoints or [], self.mode)
+            self.table.set_codepoints(codepoints or [], self.mode, iindex_word if iindex_word < len(codepoints) else 0)
 
     def update_current_char(self) -> None:
         self.update_codepoints()
