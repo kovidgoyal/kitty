@@ -18,10 +18,10 @@ typing a leading period and then the two character index and pressing Enter.
 The up and down arrow keys can be used to choose the previous and next unicode
 symbol respectively.
 
-In :guilabel:`Name` mode you instead type words from the character name and use the arrow
-keys/tab to select the character from the displayed matches. You can also type
-a leading period and the index for the match if you don't like to use arrow
-keys.
+In :guilabel:`Name` mode you instead type words from the character name and use
+the arrow keys/tab to select the character from the displayed matches. You can
+also type a space followed by a period and the index for the match if you don't
+like to use arrow keys.
 
 You can switch between modes using either the function keys or by pressing
 :kbd:`Ctrl+[` and :kbd:`Ctrl+]`.
