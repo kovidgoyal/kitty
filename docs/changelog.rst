@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Fix rendering of emoji followed by the graphics variation selector not
   being colored with some fonts (:iss:`3211`)
 
+- Unicode input: Fix using index in select by name mode not working for indices
+  larger than 16. Also using an index does not filter the list of matches. (:pull:`3219`)
+
 
 0.19.3 [2020-12-19]
 -------------------
