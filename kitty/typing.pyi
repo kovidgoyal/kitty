@@ -1,5 +1,8 @@
 from asyncio import AbstractEventLoop as AbstractEventLoop  # noqa
 from socket import AddressFamily as AddressFamily, socket as Socket  # noqa
+from subprocess import (  # noqa; noqa
+    CompletedProcess as CompletedProcess, Popen as PopenType
+)
 from typing import (  # noqa
     Literal, Protocol as Protocol, TypedDict as TypedDict
 )
@@ -18,6 +21,10 @@ from kitty.conf.utils import KittensKeyAction as KittensKeyActionType  # noqa
 from .boss import Boss as BossType  # noqa
 from .child import Child as ChildType  # noqa
 from .conf.utils import BadLine as BadLineType  # noqa
+from .config import (  # noqa; noqa
+    KeyAction as KeyActionType, KeyMap as KeyMap,
+    KittyCommonOpts as KittyCommonOpts, SequenceMap as SequenceMap
+)
 from .fast_data_types import (  # noqa
     CoreTextFont as CoreTextFont, FontConfigPattern as FontConfigPattern,
     Screen as ScreenType, StartupCtx as StartupCtx
@@ -31,16 +38,6 @@ from .tabs import (  # noqa
 )
 from .utils import ScreenSize as ScreenSize  # noqa
 from .window import Window as WindowType  # noqa
-
-from subprocess import (  # noqa; noqa
-    CompletedProcess as CompletedProcess, Popen as PopenType
-)
-
-
-from .config import (  # noqa; noqa
-    KeyAction as KeyActionType, KeyMap as KeyMap, KeySpec as KeySpec,
-    KittyCommonOpts as KittyCommonOpts, SequenceMap as SequenceMap
-)
 
 EdgeLiteral = Literal['left', 'top', 'right', 'bottom']
 MatchType = Literal['mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches']

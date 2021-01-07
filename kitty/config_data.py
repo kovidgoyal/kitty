@@ -4,6 +4,7 @@
 
 # Utils  {{{
 import os
+from contextlib import suppress
 from gettext import gettext as _
 from typing import (
     Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set,
@@ -16,15 +17,21 @@ from .conf.utils import (
     choices, positive_float, positive_int, to_bool, to_cmdline as tc, to_color,
     to_color_or_none, unit_float
 )
-from .constants import FloatEdges, config_dir, is_macos
+from .constants import (
+    FloatEdges, SingleKey, config_dir, is_macos
+)
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
+from .key_names import get_key_name_lookup, key_name_aliases
 from .layout.interface import all_layouts
 from .rgb import Color, color_as_int, color_as_sharp, color_from_int
 from .utils import log_error
 
+
+class InvalidMods(ValueError):
+    pass
+
+
 MINIMUM_FONT_SIZE = 4
-
-
 mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
            '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
 
@@ -51,6 +58,27 @@ def parse_mods(parts: Iterable[str], sc: str) -> Optional[int]:
 
 def to_modifiers(val: str) -> int:
     return parse_mods(val.split('+'), val) or 0
+
+
+def parse_shortcut(sc: str) -> SingleKey:
+    parts = sc.split('+')
+    mods = 0
+    if len(parts) > 1:
+        mods = parse_mods(parts[:-1], sc) or 0
+        if not mods:
+            raise InvalidMods('Invalid shortcut')
+    q = parts[-1].upper()
+    key: Optional[int] = getattr(defines, 'GLFW_KEY_' + key_name_aliases.get(q, q), None)
+    is_native = False
+    if key is None:
+        q = parts[-1]
+        if q.startswith('0x'):
+            with suppress(Exception):
+                key = int(q, 16)
+        else:
+            key = get_key_name_lookup()(q, False)
+        is_native = key is not None
+    return SingleKey(mods, is_native, key or defines.GLFW_KEY_UNKNOWN)
 
 
 T = TypeVar('T')

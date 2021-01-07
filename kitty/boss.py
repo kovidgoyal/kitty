@@ -25,7 +25,8 @@ from .config import (
 )
 from .config_data import MINIMUM_FONT_SIZE
 from .constants import (
-    appname, config_dir, is_macos, kitty_exe, supports_primary_selection
+    SingleKey, appname, config_dir, is_macos, kitty_exe,
+    supports_primary_selection
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
@@ -140,7 +141,7 @@ class Boss:
         opts: Options,
         args: CLIOptions,
         cached_values: Dict[str, Any],
-        new_os_window_trigger: Optional[Tuple[int, bool, int]]
+        new_os_window_trigger: Optional[SingleKey]
     ):
         set_layout_options(opts)
         self.clipboard_buffers: Dict[str, str] = {}

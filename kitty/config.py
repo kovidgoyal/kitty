@@ -19,44 +19,17 @@ from .conf.utils import (
     BadLine, init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, python_string, to_bool, to_cmdline
 )
-from .config_data import all_options, parse_mods, type_convert
-from .constants import cache_dir, defconf, is_macos
+from .config_data import InvalidMods, all_options, parse_shortcut, type_convert
+from .constants import SingleKey, cache_dir, defconf, is_macos
 from .fonts import FontFeature
-from .key_names import get_key_name_lookup, key_name_aliases
 from .options_stub import Options as OptionsStub
 from .typing import TypedDict
 from .utils import expandvars, log_error
 
-KeySpec = Tuple[int, bool, int]
-KeyMap = Dict[KeySpec, 'KeyAction']
-KeySequence = Tuple[KeySpec, ...]
+KeyMap = Dict[SingleKey, 'KeyAction']
+KeySequence = Tuple[SingleKey, ...]
 SubSequenceMap = Dict[KeySequence, 'KeyAction']
-SequenceMap = Dict[KeySpec, SubSequenceMap]
-
-
-class InvalidMods(ValueError):
-    pass
-
-
-def parse_shortcut(sc: str) -> Tuple[int, bool, Optional[int]]:
-    parts = sc.split('+')
-    mods = 0
-    if len(parts) > 1:
-        mods = parse_mods(parts[:-1], sc) or 0
-        if not mods:
-            raise InvalidMods('Invalid shortcut')
-    q = parts[-1].upper()
-    key: Optional[int] = getattr(defines, 'GLFW_KEY_' + key_name_aliases.get(q, q), None)
-    is_native = False
-    if key is None:
-        q = parts[-1]
-        if q.startswith('0x'):
-            with suppress(Exception):
-                key = int(q, 16)
-        else:
-            key = get_key_name_lookup()(q, False)
-        is_native = key is not None
-    return mods, is_native, key
+SequenceMap = Dict[SingleKey, SubSequenceMap]
 
 
 class KeyAction(NamedTuple):
@@ -371,15 +344,22 @@ sequence_sep = '>'
 
 class KeyDefinition:
 
-    def __init__(self, is_sequence: bool, action: KeyAction, mods: int, is_native: bool, key: int, rest: Tuple[KeySpec, ...] = ()):
+    def __init__(self, is_sequence: bool, action: KeyAction, mods: int, is_native: bool, key: int, rest: Tuple[SingleKey, ...] = ()):
         self.is_sequence = is_sequence
         self.action = action
-        self.trigger = mods, is_native, key
+        self.trigger = SingleKey(mods, is_native, key)
         self.rest = rest
 
     def resolve(self, kitty_mod: int) -> None:
-        self.trigger = defines.resolve_key_mods(kitty_mod, self.trigger[0]), self.trigger[1], self.trigger[2]
-        self.rest = tuple((defines.resolve_key_mods(kitty_mod, mods), is_native, key) for mods, is_native, key in self.rest)
+
+        def r(k: SingleKey) -> SingleKey:
+            mods = defines.resolve_key_mods(kitty_mod, k.mods)
+            key = k.key
+            is_native = k.is_native
+            return SingleKey(mods, is_native, key)
+
+        self.trigger = r(self.trigger)
+        self.rest = tuple(map(r, self.rest))
 
     def resolve_kitten_aliases(self, aliases: Dict[str, Sequence[str]]) -> None:
         if not self.action.args:
@@ -407,28 +387,28 @@ def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:
         return
     is_sequence = sequence_sep in sc
     if is_sequence:
-        trigger: Optional[Tuple[int, bool, int]] = None
-        restl: List[Tuple[int, bool, int]] = []
+        trigger: Optional[SingleKey] = None
+        restl: List[SingleKey] = []
         for part in sc.split(sequence_sep):
             try:
                 mods, is_native, key = parse_shortcut(part)
             except InvalidMods:
                 return
-            if key is None:
+            if key is defines.GLFW_KEY_UNKNOWN:
                 if mods is not None:
                     log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
                 return
             if trigger is None:
-                trigger = mods, is_native, key
+                trigger = SingleKey(mods, is_native, key)
             else:
-                restl.append((mods, is_native, key))
+                restl.append(SingleKey(mods, is_native, key))
         rest = tuple(restl)
     else:
         try:
             mods, is_native, key = parse_shortcut(sc)
         except InvalidMods:
             return
-        if key is None:
+        if key is defines.GLFW_KEY_UNKNOWN:
             if mods is not None:
                 log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
             return

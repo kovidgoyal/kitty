@@ -7,7 +7,7 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager, suppress
-from typing import Generator, List, Mapping, Optional, Sequence, Tuple
+from typing import Generator, List, Mapping, Optional, Sequence
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -17,7 +17,7 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
-    appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
+    SingleKey, appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
     is_wayland, kitty_exe, logo_data_file, running_in_kitty
 )
 from .fast_data_types import (
@@ -103,7 +103,7 @@ def init_glfw(opts: OptionsStub, debug_keyboard: bool = False) -> str:
     return glfw_module
 
 
-def get_new_os_window_trigger(opts: OptionsStub) -> Optional[Tuple[int, bool, int]]:
+def get_new_os_window_trigger(opts: OptionsStub) -> Optional[SingleKey]:
     new_os_window_trigger = None
     if is_macos:
         new_os_window_shortcuts = []

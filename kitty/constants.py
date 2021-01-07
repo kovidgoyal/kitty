@@ -60,6 +60,12 @@ class WindowGeometry(NamedTuple):
     spaces: Edges = Edges()
 
 
+class SingleKey(NamedTuple):
+    mods: int = 0
+    is_native: bool = False
+    key: int = -1
+
+
 @lru_cache(maxsize=2)
 def kitty_exe() -> str:
     rpath = sys._xoptions.get('bundle_exe_dir')

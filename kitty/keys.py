@@ -6,7 +6,8 @@ import string
 from typing import Any, Callable, Dict, Iterable, Optional, Tuple, Union
 
 from . import fast_data_types as defines
-from .config import KeyAction, KeyMap, KeySpec, SequenceMap, SubSequenceMap
+from .constants import SingleKey
+from .config import KeyAction, KeyMap, SequenceMap, SubSequenceMap
 from .key_encoding import KEY_MAP
 from .terminfo import key_as_bytes, modify_key_bytes
 from .typing import ScreenType, WindowType
@@ -278,13 +279,13 @@ def interpret_key_event(key: int, native_key: int, mods: int, window: WindowType
 
 def get_shortcut(keymap: Union[KeyMap, SequenceMap], mods: int, key: int, native_key: int) -> Optional[Union[KeyAction, SubSequenceMap]]:
     mods &= 0b1111
-    ans = keymap.get((mods, False, key))
+    ans = keymap.get(SingleKey(mods, False, key))
     if ans is None:
-        ans = keymap.get((mods, True, native_key))
+        ans = keymap.get(SingleKey(mods, True, native_key))
     return ans
 
 
-def shortcut_matches(s: KeySpec, mods: int, key: int, native_key: int) -> bool:
+def shortcut_matches(s: SingleKey, mods: int, key: int, native_key: int) -> bool:
     mods &= 0b1111
     q = native_key if s[1] else key
     return bool(s[0] & 0b1111 == mods & 0b1111 and s[2] == q)

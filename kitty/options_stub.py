@@ -20,7 +20,8 @@ def generate_stub():
             'font_features': 'typing.Dict[str, typing.Tuple[str, ...]]'
         },
         preamble_lines=(
-            'from kitty.config import KeyAction, KeyMap, SequenceMap, KeySpec',
+            'from kitty.constants import SingleKey',
+            'from kitty.config import KeyAction, KeyMap, SequenceMap',
         ),
         extra_fields=(
             ('keymap', 'KeyMap'),

@@ -14,9 +14,9 @@ from typing import (
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
 from .config import KeyAction
-from .constants import appname, defconf, is_macos, is_wayland, str_version
+from .constants import appname, defconf, is_macos, is_wayland, str_version, SingleKey
 from .options_stub import Options as OptionsStub
-from .typing import BadLineType, KeySpec, SequenceMap, TypedDict
+from .typing import BadLineType, SequenceMap, TypedDict
 
 
 class OptionDict(TypedDict):
@@ -755,10 +755,10 @@ def parse_args(
 
 
 SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
-ShortcutMap = Dict[Tuple[KeySpec, ...], KeyAction]
+ShortcutMap = Dict[Tuple[SingleKey, ...], KeyAction]
 
 
-def print_shortcut(key_sequence: Iterable[KeySpec], action: KeyAction) -> None:
+def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction) -> None:
     if not getattr(print_shortcut, 'maps', None):
         from kitty.keys import defines
         v = vars(defines)
@@ -786,7 +786,7 @@ def print_shortcut(key_sequence: Iterable[KeySpec], action: KeyAction) -> None:
     print('\t', ' > '.join(keys), action)
 
 
-def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple[KeySpec, ...]]) -> None:
+def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple[SingleKey, ...]]) -> None:
     if changes:
         print(title(text))
 
@@ -804,7 +804,7 @@ def compare_keymaps(final: ShortcutMap, initial: ShortcutMap) -> None:
 
 
 def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
-    ans: Dict[Tuple[KeySpec, ...], KeyAction] = {}
+    ans: Dict[Tuple[SingleKey, ...], KeyAction] = {}
     for key_spec, rest_map in m.items():
         for r, action in rest_map.items():
             ans[(key_spec,) + (r)] = action
