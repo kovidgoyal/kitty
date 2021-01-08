@@ -42,6 +42,7 @@ typedef unsigned long long id_type;
 typedef uint32_t char_type;
 typedef uint32_t color_type;
 typedef uint16_t hyperlink_id_type;
+typedef int key_type;
 #define HYPERLINK_MAX_NUMBER UINT16_MAX
 typedef uint16_t combining_type;
 typedef uint32_t pixel;

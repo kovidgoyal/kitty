@@ -22,10 +22,6 @@ extern size_t cocoa_get_workspace_ids(void *w, size_t *workspace_ids, size_t arr
 extern monotonic_t cocoa_cursor_blink_interval(void);
 
 
-#if GLFW_KEY_LAST >= MAX_KEY_COUNT
-#error "glfw has too many keys, you should increase MAX_KEY_COUNT"
-#endif
-
 static GLFWcursor *standard_cursor = NULL, *click_cursor = NULL, *arrow_cursor = NULL;
 
 static void set_os_window_dpi(OSWindow *w);
@@ -261,9 +257,6 @@ key_callback(GLFWwindow *w, GLFWkeyevent *ev) {
         }
     }
     global_state.callback_os_window->cursor_blink_zero_time = monotonic();
-    if (ev->key >= 0 && ev->key <= GLFW_KEY_LAST) {
-        global_state.callback_os_window->is_key_pressed[ev->key] = ev->action == GLFW_RELEASE ? false : true;
-    }
     if (is_window_ready_for_callbacks()) on_key_input(ev);
     global_state.callback_os_window = NULL;
     request_tick_callback();

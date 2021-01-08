@@ -135,8 +135,6 @@ typedef struct {
     BorderRects border_rects;
 } Tab;
 
-#define MAX_KEY_COUNT 512
-
 typedef struct {
     int x, y, w, h;
     bool is_set;
@@ -173,7 +171,6 @@ typedef struct {
     double logical_dpi_x, logical_dpi_y, font_sz_in_pts;
     bool mouse_button_pressed[32];
     PyObject *window_title;
-    bool is_key_pressed[MAX_KEY_COUNT];
     bool viewport_size_dirty, viewport_updated_at_least_once;
     LiveResizeInfo live_resize;
     bool has_pending_resizes, is_semi_transparent, shown_once, is_damaged;
