@@ -283,24 +283,61 @@ void _glfwInitializeKeyEvent(GLFWkeyevent *ev, int key, int native_key, int acti
     ev->ime_state = 0;
 }
 
+static void
+set_key_action(_GLFWwindow *window, uint32_t key, int val, int idx) {
+    const unsigned sz = arraysz(window->activated_keys);
+    if (idx < 0) {
+        for (unsigned i = 0; i < sz; i++) {
+            if (window->activated_keys[i].key == 0) {
+                idx = i;
+                break;
+            }
+        }
+        if (idx < 0) {
+            idx = sz - 1;
+            memmove(window->activated_keys, window->activated_keys + 1, sizeof(window->activated_keys[0]) * (sz - 1));
+            window->activated_keys[sz - 1].key = key;
+        }
+    }
+    if (val == GLFW_RELEASE) {
+        memset(window->activated_keys + idx, 0, sizeof(window->activated_keys[0]));
+        if (idx < (int)sz - 1) {
+            memmove(window->activated_keys + idx, window->activated_keys + idx + 1, sizeof(window->activated_keys[0]) * (sz - 1 - idx));
+            memset(window->activated_keys + sz - 1, 0, sizeof(window->activated_keys[0]));
+        }
+    } else {
+        window->activated_keys[idx].action = val;
+    }
+}
+
 // Notifies shared code of a physical key event
 //
 void _glfwInputKeyboard(_GLFWwindow* window, GLFWkeyevent* ev)
 {
-    if (ev->key >= 0 && ev->key <= GLFW_KEY_LAST)
+    if (ev->key > 0)
     {
         bool repeated = false;
+        int idx = -1;
+        int current_action = GLFW_RELEASE;
+        const unsigned sz = arraysz(window->activated_keys);
+        for (unsigned i = 0; i < sz; i++) {
+            if (window->activated_keys[i].key == ev->key) {
+                idx = i;
+                current_action = window->activated_keys[i].action;
+                break;
+            }
+        }
 
-        if (ev->action == GLFW_RELEASE && window->keys[ev->key] == GLFW_RELEASE)
+        if (ev->action == GLFW_RELEASE && current_action == GLFW_RELEASE)
             return;
 
-        if (ev->action == GLFW_PRESS && window->keys[ev->key] == GLFW_PRESS)
+        if (ev->action == GLFW_PRESS && current_action == GLFW_PRESS)
             repeated = true;
 
         if (ev->action == GLFW_RELEASE && window->stickyKeys)
-            window->keys[ev->key] = _GLFW_STICK;
+            set_key_action(window, ev->key, _GLFW_STICK, idx);
         else
-            window->keys[ev->key] = (char) ev->action;
+            set_key_action(window, ev->key, ev->action, idx);
 
         if (repeated)
             ev->action = GLFW_REPEAT;
@@ -736,13 +773,15 @@ GLFWAPI void glfwSetInputMode(GLFWwindow* handle, int mode, int value)
 
         if (!value)
         {
-            int i;
-
             // Release all sticky keys
-            for (i = 0;  i <= GLFW_KEY_LAST;  i++)
+            for (unsigned i = arraysz(window->activated_keys) - 1;  i-- > 0;)
             {
-                if (window->keys[i] == _GLFW_STICK)
-                    window->keys[i] = GLFW_RELEASE;
+                if (window->activated_keys[i].action == _GLFW_STICK) {
+                    if (i < arraysz(window->activated_keys) - 1) {
+                        memmove(window->activated_keys + i, window->activated_keys + i + 1, sizeof(window->activated_keys[0]) * (arraysz(window->activated_keys) - 1 - i));
+                    }
+                    memset(window->activated_keys + arraysz(window->activated_keys) - 1, 0, sizeof(window->activated_keys[0]));
+                }
             }
         }
 
@@ -830,27 +869,34 @@ GLFWAPI int glfwGetNativeKeyForKey(int key)
     return _glfwPlatformGetNativeKeyForKey(key);
 }
 
-GLFWAPI int glfwGetKey(GLFWwindow* handle, int key)
+GLFWAPI GLFWKeyAction glfwGetKey(GLFWwindow* handle, uint32_t key)
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);
 
     _GLFW_REQUIRE_INIT_OR_RETURN(GLFW_RELEASE);
+    if (!key) return GLFW_RELEASE;
 
-    if (key < GLFW_KEY_SPACE || key > GLFW_KEY_LAST)
-    {
-        _glfwInputError(GLFW_INVALID_ENUM, "Invalid key %i", key);
-        return GLFW_RELEASE;
+    int current_action = GLFW_RELEASE;
+    const unsigned sz = arraysz(window->activated_keys);
+    int idx = -1;
+    for (unsigned i = 0; i < sz; i++) {
+        if (window->activated_keys[i].key == key) {
+            idx = i;
+            current_action = window->activated_keys[i].action;
+            break;
+        }
     }
 
-    if (window->keys[key] == _GLFW_STICK)
+
+    if (current_action == _GLFW_STICK)
     {
         // Sticky mode: release key now
-        window->keys[key] = GLFW_RELEASE;
-        return GLFW_PRESS;
+        set_key_action(window, key, GLFW_RELEASE, idx);
+        current_action = GLFW_PRESS;
     }
 
-    return (int) window->keys[key];
+    return current_action;
 }
 
 GLFWAPI int glfwGetMouseButton(GLFWwindow* handle, int button)

@@ -300,31 +300,6 @@ extern "C" {
 #define GLFW_VERSION_REVISION       0
 /*! @} */
 
-/*! @name Key and button actions
- *  @{ */
-/*! @brief The key or mouse button was released.
- *
- *  The key or mouse button was released.
- *
- *  @ingroup input
- */
-#define GLFW_RELEASE                0
-/*! @brief The key or mouse button was pressed.
- *
- *  The key or mouse button was pressed.
- *
- *  @ingroup input
- */
-#define GLFW_PRESS                  1
-/*! @brief The key was held down until it repeated.
- *
- *  The key was held down until it repeated.
- *
- *  @ingroup input
- */
-#define GLFW_REPEAT                 2
-/*! @} */
-
 /*! @defgroup hat_state Joystick hat states
  *  @brief Joystick hat states.
  *
@@ -366,6 +341,103 @@ extern "C" {
  *  @ingroup input
  *  @{
  */
+
+/* start functional key names */
+typedef enum {
+  GLFW_FKEY_FIRST = 0xe000,
+  GLFW_FKEY_ESCAPE = 0xe000,
+  GLFW_FKEY_ENTER = 0xe001,
+  GLFW_FKEY_TAB = 0xe002,
+  GLFW_FKEY_BACKSPACE = 0xe003,
+  GLFW_FKEY_INSERT = 0xe004,
+  GLFW_FKEY_DELETE = 0xe005,
+  GLFW_FKEY_RIGHT = 0xe006,
+  GLFW_FKEY_LEFT = 0xe007,
+  GLFW_FKEY_DOWN = 0xe008,
+  GLFW_FKEY_UP = 0xe009,
+  GLFW_FKEY_PAGE_UP = 0xe00a,
+  GLFW_FKEY_PAGE_DOWN = 0xe00b,
+  GLFW_FKEY_HOME = 0xe00c,
+  GLFW_FKEY_END = 0xe00d,
+  GLFW_FKEY_CAPS_LOCK = 0xe00e,
+  GLFW_FKEY_SCROLL_LOCK = 0xe00f,
+  GLFW_FKEY_NUM_LOCK = 0xe010,
+  GLFW_FKEY_PRINT_SCREEN = 0xe011,
+  GLFW_FKEY_PAUSE = 0xe012,
+  GLFW_FKEY_F1 = 0xe013,
+  GLFW_FKEY_F2 = 0xe014,
+  GLFW_FKEY_F3 = 0xe015,
+  GLFW_FKEY_F4 = 0xe016,
+  GLFW_FKEY_F5 = 0xe017,
+  GLFW_FKEY_F6 = 0xe018,
+  GLFW_FKEY_F7 = 0xe019,
+  GLFW_FKEY_F8 = 0xe01a,
+  GLFW_FKEY_F9 = 0xe01b,
+  GLFW_FKEY_F10 = 0xe01c,
+  GLFW_FKEY_F11 = 0xe01d,
+  GLFW_FKEY_F12 = 0xe01e,
+  GLFW_FKEY_F13 = 0xe01f,
+  GLFW_FKEY_F14 = 0xe020,
+  GLFW_FKEY_F15 = 0xe021,
+  GLFW_FKEY_F16 = 0xe022,
+  GLFW_FKEY_F17 = 0xe023,
+  GLFW_FKEY_F18 = 0xe024,
+  GLFW_FKEY_F19 = 0xe025,
+  GLFW_FKEY_F20 = 0xe026,
+  GLFW_FKEY_F21 = 0xe027,
+  GLFW_FKEY_F22 = 0xe028,
+  GLFW_FKEY_F23 = 0xe029,
+  GLFW_FKEY_F24 = 0xe02a,
+  GLFW_FKEY_F25 = 0xe02b,
+  GLFW_FKEY_F26 = 0xe02c,
+  GLFW_FKEY_F27 = 0xe02d,
+  GLFW_FKEY_F28 = 0xe02e,
+  GLFW_FKEY_F29 = 0xe02f,
+  GLFW_FKEY_F30 = 0xe030,
+  GLFW_FKEY_F31 = 0xe031,
+  GLFW_FKEY_F32 = 0xe032,
+  GLFW_FKEY_F33 = 0xe033,
+  GLFW_FKEY_F34 = 0xe034,
+  GLFW_FKEY_F35 = 0xe035,
+  GLFW_FKEY_KP_0 = 0xe036,
+  GLFW_FKEY_KP_1 = 0xe037,
+  GLFW_FKEY_KP_2 = 0xe038,
+  GLFW_FKEY_KP_3 = 0xe039,
+  GLFW_FKEY_KP_4 = 0xe03a,
+  GLFW_FKEY_KP_5 = 0xe03b,
+  GLFW_FKEY_KP_6 = 0xe03c,
+  GLFW_FKEY_KP_7 = 0xe03d,
+  GLFW_FKEY_KP_8 = 0xe03e,
+  GLFW_FKEY_KP_9 = 0xe03f,
+  GLFW_FKEY_KP_DECIMAL = 0xe040,
+  GLFW_FKEY_KP_DIVIDE = 0xe041,
+  GLFW_FKEY_KP_MULTIPLY = 0xe042,
+  GLFW_FKEY_KP_SUBTRACT = 0xe043,
+  GLFW_FKEY_KP_ADD = 0xe044,
+  GLFW_FKEY_KP_ENTER = 0xe045,
+  GLFW_FKEY_KP_EQUAL = 0xe046,
+  GLFW_FKEY_LEFT_SHIFT = 0xe047,
+  GLFW_FKEY_LEFT_CONTROL = 0xe048,
+  GLFW_FKEY_LEFT_ALT = 0xe049,
+  GLFW_FKEY_LEFT_SUPER = 0xe04a,
+  GLFW_FKEY_RIGHT_SHIFT = 0xe04b,
+  GLFW_FKEY_RIGHT_CONTROL = 0xe04c,
+  GLFW_FKEY_RIGHT_ALT = 0xe04d,
+  GLFW_FKEY_RIGHT_SUPER = 0xe04e,
+  GLFW_FKEY_MEDIA_PLAY = 0xe04f,
+  GLFW_FKEY_MEDIA_PAUSE = 0xe050,
+  GLFW_FKEY_MEDIA_PLAY_PAUSE = 0xe051,
+  GLFW_FKEY_MEDIA_REVERSE = 0xe052,
+  GLFW_FKEY_MEDIA_STOP = 0xe053,
+  GLFW_FKEY_MEDIA_FAST_FORWARD = 0xe054,
+  GLFW_FKEY_MEDIA_REWIND = 0xe055,
+  GLFW_FKEY_MEDIA_TRACK_NEXT = 0xe056,
+  GLFW_FKEY_MEDIA_TRACK_PREVIOUS = 0xe057,
+  GLFW_FKEY_MEDIA_RECORD = 0xe058,
+  GLFW_FKEY_MENU = 0xe059,
+  GLFW_FKEY_LAST = 0xe059
+} GLFWFunctionKey;
+/* end functional key names */
 
 /* The unknown key */
 #define GLFW_KEY_UNKNOWN            -1
@@ -1284,17 +1356,22 @@ typedef struct GLFWwindow GLFWwindow;
  *  @ingroup input
  */
 typedef struct GLFWcursor GLFWcursor;
+typedef enum {
+    GLFW_RELEASE = 0,
+    GLFW_PRESS = 1,
+    GLFW_REPEAT = 2
+} GLFWKeyAction;
 
 typedef struct GLFWkeyevent
 {
     // The [keyboard key](@ref keys) that was pressed or released.
-    int key;
+    uint32_t key;
 
     // The platform-specific identifier of the key.
     int native_key;
 
     // The event action. Either `GLFW_PRESS`, `GLFW_RELEASE` or `GLFW_REPEAT`.
-    int action;
+    GLFWKeyAction action;
 
     // Bit field describing which [modifier keys](@ref mods) were held down.
     int mods;
@@ -4486,7 +4563,7 @@ GLFWAPI int glfwGetNativeKeyForKey(int key);
  *
  *  @ingroup input
  */
-GLFWAPI int glfwGetKey(GLFWwindow* window, int key);
+GLFWAPI GLFWKeyAction glfwGetKey(GLFWwindow* window, uint32_t key);
 
 /*! @brief Returns the last reported state of a mouse button for the specified
  *  window.

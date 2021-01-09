@@ -50,21 +50,20 @@ void _glfwInputWindowFocus(_GLFWwindow* window, bool focused)
 
     if (!focused)
     {
-        int key, button;
         _glfw.focusedWindowId = 0;
 
-        for (key = 0;  key <= GLFW_KEY_LAST;  key++)
+        for (unsigned i = 0; i < arraysz(window->activated_keys); i++)
         {
-            if (window->keys[key] == GLFW_PRESS)
+            if (window->activated_keys[i].key > 0 && window->activated_keys[i].action == GLFW_PRESS)
             {
-                const int native_key = _glfwPlatformGetNativeKeyForKey(key);
+                const int native_key = _glfwPlatformGetNativeKeyForKey(window->activated_keys[i].key);
                 GLFWkeyevent ev;
-                _glfwInitializeKeyEvent(&ev, key, native_key, GLFW_RELEASE, 0);
+                _glfwInitializeKeyEvent(&ev, window->activated_keys[i].key, native_key, GLFW_RELEASE, 0);
                 _glfwInputKeyboard(window, &ev);
             }
         }
 
-        for (button = 0;  button <= GLFW_MOUSE_BUTTON_LAST;  button++)
+        for (int button = 0;  button <= GLFW_MOUSE_BUTTON_LAST;  button++)
         {
             if (window->mouseButtons[button] == GLFW_PRESS)
                 _glfwInputMouseClick(window, button, GLFW_RELEASE, 0);

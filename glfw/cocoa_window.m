@@ -1070,7 +1070,7 @@ is_ascii_control_char(char x) {
 
 - (void)flagsChanged:(NSEvent *)event
 {
-    int action;
+    int action = GLFW_RELEASE;
     const unsigned int modifierFlags =
         [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
     const int key = translateKey([event keyCode], false);
@@ -1079,13 +1079,18 @@ is_ascii_control_char(char x) {
 
     if (keyFlag & modifierFlags)
     {
-        if (window->keys[key] == GLFW_PRESS)
+        int current_action == GLFW_RELEASE;
+        for (unsigned i = 0; i < arraysz(window->activated_keys); i++) {
+            if (window->activated_keys[i] == key) {
+                current_action = window->activated_keys[i].action;
+                break;
+            }
+        }
+        if (current_action == GLFW_PRESS)
             action = GLFW_RELEASE;
         else
             action = GLFW_PRESS;
     }
-    else
-        action = GLFW_RELEASE;
 
     GLFWkeyevent glfw_keyevent;
     _glfwInitializeKeyEvent(&glfw_keyevent, key, [event keyCode], action, mods);

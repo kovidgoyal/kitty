@@ -401,6 +401,11 @@ struct _GLFWcontext
     _GLFWcontextOSMesa osmesa;
 };
 
+typedef struct GLFWKeyState {
+    uint32_t key;
+    char action;
+} GLFWKeyState;
+
 // Window and context structure
 //
 struct _GLFWwindow
@@ -431,7 +436,7 @@ struct _GLFWwindow
     bool                lockKeyMods;
     int                 cursorMode;
     char                mouseButtons[GLFW_MOUSE_BUTTON_LAST + 1];
-    char                keys[GLFW_KEY_LAST + 1];
+    GLFWKeyState        activated_keys[16];
     // Virtual cursor position when cursor is disabled
     double              virtualCursorPosX, virtualCursorPosY;
     bool                rawMouseMotion;
