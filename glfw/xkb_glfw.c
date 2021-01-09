@@ -29,221 +29,211 @@
 #include <stdlib.h>
 #include "internal.h"
 #include "xkb_glfw.h"
-START_ALLOW_CASE_RANGE
 
 #define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
 
 
-#define map_key(key) \
-    switch(key) { \
-        S(space, SPACE); \
-        S(exclam, EXCLAM); \
-        S(quotedbl, DOUBLE_QUOTE); \
-        S(numbersign, NUMBER_SIGN); \
-        S(dollar, DOLLAR); \
-        S(ampersand, AMPERSAND); \
-        S(apostrophe, APOSTROPHE); \
-        S(parenleft, PARENTHESIS_LEFT); \
-        S(parenright, PARENTHESIS_RIGHT); \
-        S(plus, PLUS); \
-        S(comma, COMMA); \
-        S(minus, MINUS); \
-        S(period, PERIOD); \
-        S(slash, SLASH); \
-        R(0, 9, 0, 9); \
-        S(colon, COLON); \
-        S(semicolon, SEMICOLON); \
-        S(less, LESS); \
-        S(equal, EQUAL); \
-        S(greater, GREATER); \
-        S(at, AT); \
-        D(A, Z, A, Z); \
-        S(bracketleft, LEFT_BRACKET); \
-        S(backslash, BACKSLASH); \
-        S(bracketright, RIGHT_BRACKET); \
-        S(asciicircum, CIRCUMFLEX); \
-        S(underscore, UNDERSCORE); \
-        S(grave, GRAVE_ACCENT); \
-        R(a, z, A, Z); \
-        S(paragraph, PARAGRAPH); \
-        S(masculine, MASCULINE); \
-        S(agrave, A_GRAVE); \
-        F(Agrave, A_GRAVE); \
-        S(adiaeresis, A_DIAERESIS); \
-        F(Adiaeresis, A_DIAERESIS); \
-        S(aring, A_RING); \
-        F(Aring, A_RING); \
-        S(ae, AE); \
-        F(AE, AE); \
-        S(ccedilla, C_CEDILLA); \
-        F(Ccedilla, C_CEDILLA); \
-        S(egrave, E_GRAVE); \
-        F(Egrave, E_GRAVE); \
-        S(aacute, E_ACUTE); \
-        F(Eacute, E_ACUTE); \
-        S(igrave, I_GRAVE); \
-        F(Igrave, I_GRAVE); \
-        S(ntilde, N_TILDE); \
-        F(Ntilde, N_TILDE); \
-        S(ograve, O_GRAVE); \
-        F(Ograve, O_GRAVE); \
-        S(odiaeresis, O_DIAERESIS); \
-        F(Odiaeresis, O_DIAERESIS); \
-        S(oslash, O_SLASH); \
-        F(Oslash, O_SLASH); \
-        S(ugrave, U_GRAVE); \
-        F(Ugrave, U_GRAVE); \
-        S(udiaeresis, U_DIAERESIS); \
-        F(Udiaeresis, U_DIAERESIS); \
-        S(ssharp, S_SHARP); \
-        S(Cyrillic_a, CYRILLIC_A); \
-        F(Cyrillic_A, CYRILLIC_A); \
-        S(Cyrillic_be, CYRILLIC_BE); \
-        F(Cyrillic_BE, CYRILLIC_BE); \
-        S(Cyrillic_ve, CYRILLIC_VE); \
-        F(Cyrillic_VE, CYRILLIC_VE); \
-        S(Cyrillic_ghe, CYRILLIC_GHE); \
-        F(Cyrillic_GHE, CYRILLIC_GHE); \
-        S(Cyrillic_de, CYRILLIC_DE); \
-        F(Cyrillic_DE, CYRILLIC_DE); \
-        S(Cyrillic_ie, CYRILLIC_IE); \
-        F(Cyrillic_IE, CYRILLIC_IE); \
-        S(Cyrillic_zhe, CYRILLIC_ZHE); \
-        F(Cyrillic_ZHE, CYRILLIC_ZHE); \
-        S(Cyrillic_ze, CYRILLIC_ZE); \
-        F(Cyrillic_ZE, CYRILLIC_ZE); \
-        S(Cyrillic_i, CYRILLIC_I); \
-        F(Cyrillic_I, CYRILLIC_I); \
-        S(Cyrillic_shorti, CYRILLIC_SHORT_I); \
-        F(Cyrillic_SHORTI, CYRILLIC_SHORT_I); \
-        S(Cyrillic_ka, CYRILLIC_KA); \
-        F(Cyrillic_KA, CYRILLIC_KA); \
-        S(Cyrillic_el, CYRILLIC_EL); \
-        F(Cyrillic_EL, CYRILLIC_EL); \
-        S(Cyrillic_em, CYRILLIC_EM); \
-        F(Cyrillic_EM, CYRILLIC_EM); \
-        S(Cyrillic_en, CYRILLIC_EN); \
-        F(Cyrillic_EN, CYRILLIC_EN); \
-        S(Cyrillic_o, CYRILLIC_O); \
-        F(Cyrillic_O, CYRILLIC_O); \
-        S(Cyrillic_pe, CYRILLIC_PE); \
-        F(Cyrillic_PE, CYRILLIC_PE); \
-        S(Cyrillic_er, CYRILLIC_ER); \
-        F(Cyrillic_ER, CYRILLIC_ER); \
-        S(Cyrillic_es, CYRILLIC_ES); \
-        F(Cyrillic_ES, CYRILLIC_ES); \
-        S(Cyrillic_te, CYRILLIC_TE); \
-        F(Cyrillic_TE, CYRILLIC_TE); \
-        S(Cyrillic_u, CYRILLIC_U); \
-        F(Cyrillic_U, CYRILLIC_U); \
-        S(Cyrillic_ef, CYRILLIC_EF); \
-        F(Cyrillic_EF, CYRILLIC_EF); \
-        S(Cyrillic_ha, CYRILLIC_HA); \
-        F(Cyrillic_HA, CYRILLIC_HA); \
-        S(Cyrillic_tse, CYRILLIC_TSE); \
-        F(Cyrillic_TSE, CYRILLIC_TSE); \
-        S(Cyrillic_che, CYRILLIC_CHE); \
-        F(Cyrillic_CHE, CYRILLIC_CHE); \
-        S(Cyrillic_sha, CYRILLIC_SHA); \
-        F(Cyrillic_SHA, CYRILLIC_SHA); \
-        S(Cyrillic_shcha, CYRILLIC_SHCHA); \
-        F(Cyrillic_SHCHA, CYRILLIC_SHCHA); \
-        S(Cyrillic_hardsign, CYRILLIC_HARD_SIGN); \
-        F(Cyrillic_HARDSIGN, CYRILLIC_HARD_SIGN); \
-        S(Cyrillic_yeru, CYRILLIC_YERU); \
-        F(Cyrillic_YERU, CYRILLIC_YERU); \
-        S(Cyrillic_softsign, CYRILLIC_SOFT_SIGN); \
-        F(Cyrillic_SOFTSIGN, CYRILLIC_SOFT_SIGN); \
-        S(Cyrillic_e, CYRILLIC_E); \
-        F(Cyrillic_E, CYRILLIC_E); \
-        S(Cyrillic_yu, CYRILLIC_YU); \
-        F(Cyrillic_YU, CYRILLIC_YU); \
-        S(Cyrillic_ya, CYRILLIC_YA); \
-        F(Cyrillic_YA, CYRILLIC_YA); \
-        S(Cyrillic_io, CYRILLIC_IO); \
-        F(Cyrillic_IO, CYRILLIC_IO); \
-        S(Escape, ESCAPE); \
-        S(Return, ENTER); \
-        S(Tab, TAB); \
-        S(BackSpace, BACKSPACE); \
-        S(Insert, INSERT); \
-        S(Delete, DELETE); \
-        S(Right, RIGHT); \
-        S(Left, LEFT); \
-        S(Up, UP); \
-        S(Down, DOWN); \
-        S(Page_Up, PAGE_UP); \
-        S(Page_Down, PAGE_DOWN); \
-        S(Home, HOME); \
-        S(End, END); \
-        S(Caps_Lock, CAPS_LOCK); \
-        S(Scroll_Lock, SCROLL_LOCK); \
-        S(Num_Lock, NUM_LOCK); \
-        S(Print, PRINT_SCREEN); \
-        S(Pause, PAUSE); \
-        S(KP_Decimal, KP_DECIMAL); \
-        S(KP_Divide, KP_DIVIDE); \
-        S(KP_Multiply, KP_MULTIPLY); \
-        S(KP_Subtract, KP_SUBTRACT); \
-        S(KP_Add, KP_ADD); \
-        S(KP_Enter, KP_ENTER); \
-        S(KP_Equal, KP_EQUAL); \
-        F(KP_Home, HOME); \
-        F(KP_End, END); \
-        F(KP_Page_Up, PAGE_UP); \
-        F(KP_Page_Down, PAGE_DOWN); \
-        F(KP_Insert, INSERT); \
-        F(KP_Delete, DELETE); \
-        S(Shift_L, LEFT_SHIFT); \
-        S(Control_L, LEFT_CONTROL); \
-        S(Alt_L, LEFT_ALT); \
-        S(Super_L, LEFT_SUPER); \
-        S(Shift_R, RIGHT_SHIFT); \
-        S(Control_R, RIGHT_CONTROL); \
-        S(Alt_R, RIGHT_ALT); \
-        S(Super_R, RIGHT_SUPER); \
-        S(Menu, MENU); \
-        R(F1, F25, F1, F25); \
-        R(KP_0, KP_9, KP_0, KP_9); \
-
 static int
 glfw_key_for_sym(xkb_keysym_t key) {
-#define S(f, t) case XKB_KEY_##f: return GLFW_KEY_##t
-#define F(f, t) S(f, t)
-#define R(s, e, gs, ...) case XKB_KEY_##s ... XKB_KEY_##e: return GLFW_KEY_##gs + key - XKB_KEY_##s
-#define D(s, e, gs, ...) R(s, e, gs, __VA_ARGS__)
-    map_key(key)
-        S(KP_Up, UP);
-        S(KP_Down, DOWN);
-        S(KP_Left, LEFT);
-        S(KP_Right, RIGHT);
+    switch(key) {
+/* start xkb to glfw (auto generated by gen-key-constants.py do not edit) */
+        case XKB_KEY_Escape: return GLFW_FKEY_ESCAPE;
+        case XKB_KEY_Return: return GLFW_FKEY_ENTER;
+        case XKB_KEY_Tab: return GLFW_FKEY_TAB;
+        case XKB_KEY_BackSpace: return GLFW_FKEY_BACKSPACE;
+        case XKB_KEY_Insert: return GLFW_FKEY_INSERT;
+        case XKB_KEY_Delete: return GLFW_FKEY_DELETE;
+        case XKB_KEY_Left: return GLFW_FKEY_LEFT;
+        case XKB_KEY_Right: return GLFW_FKEY_RIGHT;
+        case XKB_KEY_Up: return GLFW_FKEY_UP;
+        case XKB_KEY_Down: return GLFW_FKEY_DOWN;
+        case XKB_KEY_Page_Up: return GLFW_FKEY_PAGE_UP;
+        case XKB_KEY_Page_Down: return GLFW_FKEY_PAGE_DOWN;
+        case XKB_KEY_Home: return GLFW_FKEY_HOME;
+        case XKB_KEY_End: return GLFW_FKEY_END;
+        case XKB_KEY_Caps_Lock: return GLFW_FKEY_CAPS_LOCK;
+        case XKB_KEY_Scroll_Lock: return GLFW_FKEY_SCROLL_LOCK;
+        case XKB_KEY_Num_Lock: return GLFW_FKEY_NUM_LOCK;
+        case XKB_KEY_Print: return GLFW_FKEY_PRINT_SCREEN;
+        case XKB_KEY_Pause: return GLFW_FKEY_PAUSE;
+        case XKB_KEY_Menu: return GLFW_FKEY_MENU;
+        case XKB_KEY_F1: return GLFW_FKEY_F1;
+        case XKB_KEY_F2: return GLFW_FKEY_F2;
+        case XKB_KEY_F3: return GLFW_FKEY_F3;
+        case XKB_KEY_F4: return GLFW_FKEY_F4;
+        case XKB_KEY_F5: return GLFW_FKEY_F5;
+        case XKB_KEY_F6: return GLFW_FKEY_F6;
+        case XKB_KEY_F7: return GLFW_FKEY_F7;
+        case XKB_KEY_F8: return GLFW_FKEY_F8;
+        case XKB_KEY_F9: return GLFW_FKEY_F9;
+        case XKB_KEY_F10: return GLFW_FKEY_F10;
+        case XKB_KEY_F11: return GLFW_FKEY_F11;
+        case XKB_KEY_F12: return GLFW_FKEY_F12;
+        case XKB_KEY_F13: return GLFW_FKEY_F13;
+        case XKB_KEY_F14: return GLFW_FKEY_F14;
+        case XKB_KEY_F15: return GLFW_FKEY_F15;
+        case XKB_KEY_F16: return GLFW_FKEY_F16;
+        case XKB_KEY_F17: return GLFW_FKEY_F17;
+        case XKB_KEY_F18: return GLFW_FKEY_F18;
+        case XKB_KEY_F19: return GLFW_FKEY_F19;
+        case XKB_KEY_F20: return GLFW_FKEY_F20;
+        case XKB_KEY_F21: return GLFW_FKEY_F21;
+        case XKB_KEY_F22: return GLFW_FKEY_F22;
+        case XKB_KEY_F23: return GLFW_FKEY_F23;
+        case XKB_KEY_F24: return GLFW_FKEY_F24;
+        case XKB_KEY_F25: return GLFW_FKEY_F25;
+        case XKB_KEY_F26: return GLFW_FKEY_F26;
+        case XKB_KEY_F27: return GLFW_FKEY_F27;
+        case XKB_KEY_F28: return GLFW_FKEY_F28;
+        case XKB_KEY_F29: return GLFW_FKEY_F29;
+        case XKB_KEY_F30: return GLFW_FKEY_F30;
+        case XKB_KEY_F31: return GLFW_FKEY_F31;
+        case XKB_KEY_F32: return GLFW_FKEY_F32;
+        case XKB_KEY_F33: return GLFW_FKEY_F33;
+        case XKB_KEY_F34: return GLFW_FKEY_F34;
+        case XKB_KEY_F35: return GLFW_FKEY_F35;
+        case XKB_KEY_KP_0: return GLFW_FKEY_KP_0;
+        case XKB_KEY_KP_1: return GLFW_FKEY_KP_1;
+        case XKB_KEY_KP_2: return GLFW_FKEY_KP_2;
+        case XKB_KEY_KP_3: return GLFW_FKEY_KP_3;
+        case XKB_KEY_KP_4: return GLFW_FKEY_KP_4;
+        case XKB_KEY_KP_5: return GLFW_FKEY_KP_5;
+        case XKB_KEY_KP_6: return GLFW_FKEY_KP_6;
+        case XKB_KEY_KP_7: return GLFW_FKEY_KP_7;
+        case XKB_KEY_KP_8: return GLFW_FKEY_KP_8;
+        case XKB_KEY_KP_9: return GLFW_FKEY_KP_9;
+        case XKB_KEY_KP_Decimal: return GLFW_FKEY_KP_DECIMAL;
+        case XKB_KEY_KP_Divide: return GLFW_FKEY_KP_DIVIDE;
+        case XKB_KEY_KP_Multiply: return GLFW_FKEY_KP_MULTIPLY;
+        case XKB_KEY_KP_Subtract: return GLFW_FKEY_KP_SUBTRACT;
+        case XKB_KEY_KP_Add: return GLFW_FKEY_KP_ADD;
+        case XKB_KEY_KP_Enter: return GLFW_FKEY_KP_ENTER;
+        case XKB_KEY_KP_Equal: return GLFW_FKEY_KP_EQUAL;
+        case XKB_KEY_Shift_L: return GLFW_FKEY_LEFT_SHIFT;
+        case XKB_KEY_Control_L: return GLFW_FKEY_LEFT_CONTROL;
+        case XKB_KEY_Alt_L: return GLFW_FKEY_LEFT_ALT;
+        case XKB_KEY_Super_L: return GLFW_FKEY_LEFT_SUPER;
+        case XKB_KEY_Shift_R: return GLFW_FKEY_RIGHT_SHIFT;
+        case XKB_KEY_Control_R: return GLFW_FKEY_RIGHT_CONTROL;
+        case XKB_KEY_Alt_R: return GLFW_FKEY_RIGHT_ALT;
+        case XKB_KEY_Super_R: return GLFW_FKEY_RIGHT_SUPER;
+        case XKB_KEY_XF86AudioPlay: return GLFW_FKEY_MEDIA_PLAY;
+        case XKB_KEY_XF86AudioPause: return GLFW_FKEY_MEDIA_PAUSE;
+        case XKB_KEY_XF86AudioStop: return GLFW_FKEY_MEDIA_STOP;
+        case XKB_KEY_XF86AudioForward: return GLFW_FKEY_MEDIA_FAST_FORWARD;
+        case XKB_KEY_XF86AudioRewind: return GLFW_FKEY_MEDIA_REWIND;
+        case XKB_KEY_XF86AudioNext: return GLFW_FKEY_MEDIA_TRACK_NEXT;
+        case XKB_KEY_XF86AudioPrev: return GLFW_FKEY_MEDIA_TRACK_PREVIOUS;
+        case XKB_KEY_XF86AudioRecord: return GLFW_FKEY_MEDIA_RECORD;
+        case XKB_KEY_XF86AudioLowerVolume: return GLFW_FKEY_LOWER_VOLUME;
+        case XKB_KEY_XF86AudioRaiseVolume: return GLFW_FKEY_RAISE_VOLUME;
+        case XKB_KEY_XF86AudioMute: return GLFW_FKEY_MUTE_VOLUME;
+/* end xkb to glfw */
         default:
-            break;
+            return xkb_keysym_to_utf32(key);
     }
-    return GLFW_KEY_UNKNOWN;
-#undef F
-#undef D
-#undef R
-#undef S
 }
 
 xkb_keysym_t
 glfw_xkb_sym_for_key(uint32_t key) {
-#define S(f, t) case GLFW_KEY_##t: return XKB_KEY_##f
-#define F(...)
-#define R(s, e, gs, ge) case GLFW_KEY_##gs ... GLFW_KEY_##ge: return XKB_KEY_##s + key - GLFW_KEY_##gs
-#define D(...)
-    map_key(key)
-    default:
-        break;
+    switch(key) {
+/* start glfw to xkb (auto generated by gen-key-constants.py do not edit) */
+        case GLFW_FKEY_ESCAPE: return XKB_KEY_Escape;
+        case GLFW_FKEY_ENTER: return XKB_KEY_Return;
+        case GLFW_FKEY_TAB: return XKB_KEY_Tab;
+        case GLFW_FKEY_BACKSPACE: return XKB_KEY_BackSpace;
+        case GLFW_FKEY_INSERT: return XKB_KEY_Insert;
+        case GLFW_FKEY_DELETE: return XKB_KEY_Delete;
+        case GLFW_FKEY_LEFT: return XKB_KEY_Left;
+        case GLFW_FKEY_RIGHT: return XKB_KEY_Right;
+        case GLFW_FKEY_UP: return XKB_KEY_Up;
+        case GLFW_FKEY_DOWN: return XKB_KEY_Down;
+        case GLFW_FKEY_PAGE_UP: return XKB_KEY_Page_Up;
+        case GLFW_FKEY_PAGE_DOWN: return XKB_KEY_Page_Down;
+        case GLFW_FKEY_HOME: return XKB_KEY_Home;
+        case GLFW_FKEY_END: return XKB_KEY_End;
+        case GLFW_FKEY_CAPS_LOCK: return XKB_KEY_Caps_Lock;
+        case GLFW_FKEY_SCROLL_LOCK: return XKB_KEY_Scroll_Lock;
+        case GLFW_FKEY_NUM_LOCK: return XKB_KEY_Num_Lock;
+        case GLFW_FKEY_PRINT_SCREEN: return XKB_KEY_Print;
+        case GLFW_FKEY_PAUSE: return XKB_KEY_Pause;
+        case GLFW_FKEY_MENU: return XKB_KEY_Menu;
+        case GLFW_FKEY_F1: return XKB_KEY_F1;
+        case GLFW_FKEY_F2: return XKB_KEY_F2;
+        case GLFW_FKEY_F3: return XKB_KEY_F3;
+        case GLFW_FKEY_F4: return XKB_KEY_F4;
+        case GLFW_FKEY_F5: return XKB_KEY_F5;
+        case GLFW_FKEY_F6: return XKB_KEY_F6;
+        case GLFW_FKEY_F7: return XKB_KEY_F7;
+        case GLFW_FKEY_F8: return XKB_KEY_F8;
+        case GLFW_FKEY_F9: return XKB_KEY_F9;
+        case GLFW_FKEY_F10: return XKB_KEY_F10;
+        case GLFW_FKEY_F11: return XKB_KEY_F11;
+        case GLFW_FKEY_F12: return XKB_KEY_F12;
+        case GLFW_FKEY_F13: return XKB_KEY_F13;
+        case GLFW_FKEY_F14: return XKB_KEY_F14;
+        case GLFW_FKEY_F15: return XKB_KEY_F15;
+        case GLFW_FKEY_F16: return XKB_KEY_F16;
+        case GLFW_FKEY_F17: return XKB_KEY_F17;
+        case GLFW_FKEY_F18: return XKB_KEY_F18;
+        case GLFW_FKEY_F19: return XKB_KEY_F19;
+        case GLFW_FKEY_F20: return XKB_KEY_F20;
+        case GLFW_FKEY_F21: return XKB_KEY_F21;
+        case GLFW_FKEY_F22: return XKB_KEY_F22;
+        case GLFW_FKEY_F23: return XKB_KEY_F23;
+        case GLFW_FKEY_F24: return XKB_KEY_F24;
+        case GLFW_FKEY_F25: return XKB_KEY_F25;
+        case GLFW_FKEY_F26: return XKB_KEY_F26;
+        case GLFW_FKEY_F27: return XKB_KEY_F27;
+        case GLFW_FKEY_F28: return XKB_KEY_F28;
+        case GLFW_FKEY_F29: return XKB_KEY_F29;
+        case GLFW_FKEY_F30: return XKB_KEY_F30;
+        case GLFW_FKEY_F31: return XKB_KEY_F31;
+        case GLFW_FKEY_F32: return XKB_KEY_F32;
+        case GLFW_FKEY_F33: return XKB_KEY_F33;
+        case GLFW_FKEY_F34: return XKB_KEY_F34;
+        case GLFW_FKEY_F35: return XKB_KEY_F35;
+        case GLFW_FKEY_KP_0: return XKB_KEY_KP_0;
+        case GLFW_FKEY_KP_1: return XKB_KEY_KP_1;
+        case GLFW_FKEY_KP_2: return XKB_KEY_KP_2;
+        case GLFW_FKEY_KP_3: return XKB_KEY_KP_3;
+        case GLFW_FKEY_KP_4: return XKB_KEY_KP_4;
+        case GLFW_FKEY_KP_5: return XKB_KEY_KP_5;
+        case GLFW_FKEY_KP_6: return XKB_KEY_KP_6;
+        case GLFW_FKEY_KP_7: return XKB_KEY_KP_7;
+        case GLFW_FKEY_KP_8: return XKB_KEY_KP_8;
+        case GLFW_FKEY_KP_9: return XKB_KEY_KP_9;
+        case GLFW_FKEY_KP_DECIMAL: return XKB_KEY_KP_Decimal;
+        case GLFW_FKEY_KP_DIVIDE: return XKB_KEY_KP_Divide;
+        case GLFW_FKEY_KP_MULTIPLY: return XKB_KEY_KP_Multiply;
+        case GLFW_FKEY_KP_SUBTRACT: return XKB_KEY_KP_Subtract;
+        case GLFW_FKEY_KP_ADD: return XKB_KEY_KP_Add;
+        case GLFW_FKEY_KP_ENTER: return XKB_KEY_KP_Enter;
+        case GLFW_FKEY_KP_EQUAL: return XKB_KEY_KP_Equal;
+        case GLFW_FKEY_LEFT_SHIFT: return XKB_KEY_Shift_L;
+        case GLFW_FKEY_LEFT_CONTROL: return XKB_KEY_Control_L;
+        case GLFW_FKEY_LEFT_ALT: return XKB_KEY_Alt_L;
+        case GLFW_FKEY_LEFT_SUPER: return XKB_KEY_Super_L;
+        case GLFW_FKEY_RIGHT_SHIFT: return XKB_KEY_Shift_R;
+        case GLFW_FKEY_RIGHT_CONTROL: return XKB_KEY_Control_R;
+        case GLFW_FKEY_RIGHT_ALT: return XKB_KEY_Alt_R;
+        case GLFW_FKEY_RIGHT_SUPER: return XKB_KEY_Super_R;
+        case GLFW_FKEY_MEDIA_PLAY: return XKB_KEY_XF86AudioPlay;
+        case GLFW_FKEY_MEDIA_PAUSE: return XKB_KEY_XF86AudioPause;
+        case GLFW_FKEY_MEDIA_STOP: return XKB_KEY_XF86AudioStop;
+        case GLFW_FKEY_MEDIA_FAST_FORWARD: return XKB_KEY_XF86AudioForward;
+        case GLFW_FKEY_MEDIA_REWIND: return XKB_KEY_XF86AudioRewind;
+        case GLFW_FKEY_MEDIA_TRACK_NEXT: return XKB_KEY_XF86AudioNext;
+        case GLFW_FKEY_MEDIA_TRACK_PREVIOUS: return XKB_KEY_XF86AudioPrev;
+        case GLFW_FKEY_MEDIA_RECORD: return XKB_KEY_XF86AudioRecord;
+        case GLFW_FKEY_LOWER_VOLUME: return XKB_KEY_XF86AudioLowerVolume;
+        case GLFW_FKEY_RAISE_VOLUME: return XKB_KEY_XF86AudioRaiseVolume;
+        case GLFW_FKEY_MUTE_VOLUME: return XKB_KEY_XF86AudioMute;
+/* end glfw to xkb */
+        default:
+            return xkb_utf32_to_keysym(key);
     }
-    return GLFW_KEY_UNKNOWN;
-#undef F
-#undef D
-#undef R
-#undef S
 }
-END_ALLOW_CASE_RANGE
 
 #ifdef _GLFW_X11
 

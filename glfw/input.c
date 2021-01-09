@@ -837,26 +837,15 @@ GLFWAPI int glfwRawMouseMotionSupported(void)
     return _glfwPlatformRawMouseMotionSupported();
 }
 
-GLFWAPI const char* glfwGetKeyName(int key, int native_key)
+GLFWAPI const char* glfwGetKeyName(uint32_t key, int native_key)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
 
-    if (key != GLFW_KEY_UNKNOWN)
-    {
-        if (key != GLFW_KEY_KP_EQUAL &&
-            (key < GLFW_KEY_KP_0 || key > GLFW_KEY_KP_ADD) &&
-            (key < GLFW_KEY_APOSTROPHE || key > GLFW_KEY_LAST_PRINTABLE))
-        {
-            return NULL;
-        }
-
-        native_key = _glfwPlatformGetNativeKeyForKey(key);
-    }
-
+    native_key = _glfwPlatformGetNativeKeyForKey(key);
     return _glfwPlatformGetNativeKeyName(native_key);
 }
 
-GLFWAPI int glfwGetNativeKeyForKey(int key)
+GLFWAPI int glfwGetNativeKeyForKey(uint32_t key)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(-1);
 

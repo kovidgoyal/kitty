@@ -10,7 +10,7 @@ functional_key_defs = '''\
 escape                      Escape                      -
 enter                       Return                      -
 tab                         Tab                         -
-backspace                   Backspace                   -
+backspace                   BackSpace                   -
 insert                      Insert                      -
 delete                      Delete                      -
 left                        Left                        -
@@ -90,7 +90,7 @@ right_super                 Super_R                     -
 media_play                  XF86AudioPlay               -
 media_pause                 XF86AudioPause              -
 media_play_pause            -                           -
-media_reverse               XF86AudioRewind             -
+media_reverse               -                           -
 media_stop                  XF86AudioStop               -
 media_fast_forward          XF86AudioForward            -
 media_rewind                XF86AudioRewind             -
@@ -103,6 +103,7 @@ mute_volume                 XF86AudioMute               -
 '''
 functional_key_names: List[str] = []
 name_to_code: Dict[str, int] = {}
+name_to_xkb: Dict[str, str] = {}
 start_code = 0xe000
 for line in functional_key_defs.splitlines():
     line = line.strip()
@@ -112,6 +113,8 @@ for line in functional_key_defs.splitlines():
     name = parts[0]
     functional_key_names.append(name)
     name_to_code[name] = len(name_to_code) + start_code
+    if parts[1] != '-':
+        name_to_xkb[name] = parts[1]
 last_code = start_code + len(functional_key_names) - 1
 
 
@@ -141,8 +144,18 @@ def generate_glfw_header() -> None:
     patch_file('glfw/glfw3.h', 'functional key names', '\n'.join(lines))
 
 
+def generate_xkb_mapping() -> None:
+    lines, rlines = [], []
+    for name, xkb in name_to_xkb.items():
+        lines.append(f'        case XKB_KEY_{xkb}: return GLFW_FKEY_{name.upper()};')
+        rlines.append(f'        case GLFW_FKEY_{name.upper()}: return XKB_KEY_{xkb};')
+    patch_file('glfw/xkb_glfw.c', 'xkb to glfw', '\n'.join(lines))
+    patch_file('glfw/xkb_glfw.c', 'glfw to xkb', '\n'.join(rlines))
+
+
 def main() -> None:
     generate_glfw_header()
+    generate_xkb_mapping()
 
 
 if __name__ == '__main__':
