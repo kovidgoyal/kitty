@@ -654,7 +654,7 @@ void _glfwPlatformDestroyCursor(_GLFWcursor* cursor);
 void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor);
 
 const char* _glfwPlatformGetNativeKeyName(int native_key);
-int _glfwPlatformGetNativeKeyForKey(int key);
+int _glfwPlatformGetNativeKeyForKey(uint32_t key);
 
 void _glfwPlatformFreeMonitor(_GLFWmonitor* monitor);
 void _glfwPlatformGetMonitorPos(_GLFWmonitor* monitor, int* xpos, int* ypos);

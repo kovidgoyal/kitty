@@ -228,7 +228,7 @@ glfw_key_for_sym(xkb_keysym_t key) {
 }
 
 xkb_keysym_t
-glfw_xkb_sym_for_key(int key) {
+glfw_xkb_sym_for_key(uint32_t key) {
 #define S(f, t) case GLFW_KEY_##t: return XKB_KEY_##f
 #define F(...)
 #define R(s, e, gs, ge) case GLFW_KEY_##gs ... GLFW_KEY_##ge: return XKB_KEY_##s + key - GLFW_KEY_##gs

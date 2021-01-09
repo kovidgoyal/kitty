@@ -1346,7 +1346,7 @@ const char* _glfwPlatformGetNativeKeyName(int native_key)
     return glfw_xkb_keysym_name(native_key);
 }
 
-int _glfwPlatformGetNativeKeyForKey(int key)
+int _glfwPlatformGetNativeKeyForKey(uint32_t key)
 {
     return glfw_xkb_sym_for_key(key);
 }

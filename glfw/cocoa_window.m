@@ -1979,7 +1979,7 @@ const char* _glfwPlatformGetNativeKeyName(int keycode)
     return _glfw.ns.keyName;
 }
 
-int _glfwPlatformGetNativeKeyForKey(int key)
+int _glfwPlatformGetNativeKeyForKey(uint32_t key)
 {
     return _glfw.ns.key_to_keycode[key];
 }

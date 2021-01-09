@@ -89,7 +89,7 @@ bool glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str);
 void glfw_xkb_update_modifiers(_GLFWXKBData *xkb, xkb_mod_mask_t depressed, xkb_mod_mask_t latched, xkb_mod_mask_t locked, xkb_layout_index_t base_group, xkb_layout_index_t latched_group, xkb_layout_index_t locked_group);
 bool glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t keycode);
 const char* glfw_xkb_keysym_name(xkb_keysym_t sym);
-xkb_keysym_t glfw_xkb_sym_for_key(int key);
+xkb_keysym_t glfw_xkb_sym_for_key(uint32_t key);
 void glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t keycode, int action);
 int glfw_xkb_keysym_from_name(const char *name, bool case_sensitive);
 void glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, int which, int a, int b, int c, int d);
