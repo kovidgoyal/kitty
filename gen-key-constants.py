@@ -79,6 +79,17 @@ kp_subtract                 KP_Subtract                 -
 kp_add                      KP_Add                      -
 kp_enter                    KP_Enter                    -
 kp_equal                    KP_Equal                    -
+kp_separator                KP_Separator                -
+kp_left                     KP_Left                     -
+kp_right                    KP_Right                    -
+kp_up                       KP_Up                       -
+kp_down                     KP_Down                     -
+kp_page_up                  KP_Page_Up                  -
+kp_page_down                KP_Page_Down                -
+kp_home                     KP_Home                     -
+kp_end                      KP_End                      -
+kp_insert                   KP_Insert                   -
+kp_delete                   KP_Delete                   -
 left_shift                  Shift_L                     -
 left_control                Control_L                   -
 left_alt                    Alt_L                       -
