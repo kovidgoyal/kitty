@@ -320,7 +320,6 @@ void enter_event(void);
 void mouse_event(int, int, int);
 void focus_in_event(void);
 void scroll_event(double, double, int, int);
-void set_special_key_combo(int glfw_key, int mods, bool is_native);
 void on_key_input(GLFWkeyevent *ev);
 void request_window_attention(id_type, bool);
 #ifndef __APPLE__

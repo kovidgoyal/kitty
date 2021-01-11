@@ -598,17 +598,6 @@ set_url_prefixes(PyObject *up) {
     PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
 
-static inline void
-set_special_keys(PyObject *dict) {
-    dict_iter(dict) {
-        if (!PyTuple_Check(key)) { PyErr_SetString(PyExc_TypeError, "dict keys for special keys must be tuples"); return; }
-        int mods = PyLong_AsLong(PyTuple_GET_ITEM(key, 0));
-        bool is_native = PyTuple_GET_ITEM(key, 1) == Py_True;
-        int glfw_key = PyLong_AsLong(PyTuple_GET_ITEM(key, 2));
-        set_special_key_combo(glfw_key, mods, is_native);
-    }}
-}
-
 static inline float
 PyFloat_AsFloat(PyObject *o) {
     return (float)PyFloat_AsDouble(o);
@@ -727,9 +716,9 @@ PYWRAP1(set_options) {
     OPT(select_by_word_characters_count) = PyUnicode_GET_LENGTH(chars);
     Py_DECREF(chars);
 
-    GA(keymap); set_special_keys(ret);
+    GA(keymap);
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
-    GA(sequence_map); set_special_keys(ret);
+    GA(sequence_map);
     Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
 
     GA(background_image); background_image(ret); Py_CLEAR(ret);
