@@ -19,26 +19,8 @@ To solve these issues and others, kitty has created a new keyboard protocol,
 that is backward compatible but allows applications to opt-in to support more
 advanced usages. The protocol is based on initial work in `fixterms
 <http://www.leonerd.org.uk/hacks/fixterms/>`_, however, it corrects various
-issues in that proposal, namely:
-
-  * No way to disambiguate :kbd:`Esc` keypresses, other than using 8-bit controls
-    which are undesirable for other reasons
-  * Incorrectly claims special keys are sometimes encoded using ``CSI letter`` encodings when it
-    is actually ``ESC O letter``.
-  * Makes no mention of cursor key mode and how it changes encodings
-  * Incorrectly encoding shifted keys when shift modifier is used
-  * No way to have non-conflicting escape codes for :kbd:`alt+letter,
-    ctrl+letter, ctrl+alt+letter` key presses
-  * No way to specify both shifted and unshifted keys for robust shortcut
-    matching (think matching :kbd:`ctrl+shift+equal` and :kbd:`ctrl+plus`)
-  * No way to specify alternate layout key. This is useful for keyboard layouts
-    such as Cyrillic where you want the shortcut :kbd:`ctrl+c` to work when
-    pressing the :kbd:`ctrl+ц` on the keyboard.
-  * No way to report repeat and release key events, only key press events
-  * No way to report key events without text, useful for gaming. Think of using
-    the :kbd:`WASD` keys to control movement.
-  * A very small subset of all possible functional keys are specified.
-
+issues in that proposal, listed at the :ref:`bottom of this document
+<fixterms_bugs>`.
 
 A basic overview
 ------------------
@@ -321,7 +303,7 @@ Functional key definitions
 ----------------------------
 
 All numbers are in the Unicode Private Use Area (``57344 - 63743``) except
-for a handful of keys that use numbers under 32 (C0 control codes) for legacy
+for a handful of keys that use numbers under 32 and 127 (C0 control codes) for legacy
 compatibility reasons.
 
 .. {{{
@@ -331,9 +313,9 @@ compatibility reasons.
    :header: "Name", "CSI sequence"
 
    "ESCAPE",                 "CSI 57344 ... u"
-   "ENTER",                  "CSI 57345 ... u"
-   "TAB",                    "CSI 57346 ... u"
-   "BACKSPACE",              "CSI 57347 ... u"
+   "ENTER",                  "CSI 13 ... u"
+   "TAB",                    "CSI 9 ... u"
+   "BACKSPACE",              "CSI 127 ... u"
    "INSERT",                 "CSI 2 ... ~"
    "DELETE",                 "CSI 3 ... ~"
    "LEFT",                   "CSI 1 ... D"
@@ -352,7 +334,7 @@ compatibility reasons.
    "MENU",                   "CSI 57363 ... u"
    "F1",                     "CSI 1 ... P or CSI 11 ... ~"
    "F2",                     "CSI 1 ... Q or CSI 12 ... ~"
-   "F3",                     "CSI 1 ... R or CSI 13 ... ~"
+   "F3",                     "CSI 1 ... R or CSI 57366 ... ~"
    "F4",                     "CSI 1 ... S or CSI 14 ... ~"
    "F5",                     "CSI 15 ... ~"
    "F6",                     "CSI 17 ... ~"
@@ -437,3 +419,28 @@ compatibility reasons.
 
 .. end functional key table
 .. }}}
+
+.. _fixterms_bugs:
+
+Bugs in fixterms
+-------------------
+
+  * No way to disambiguate :kbd:`Esc` keypresses, other than using 8-bit controls
+    which are undesirable for other reasons
+  * Incorrectly claims special keys are sometimes encoded using ``CSI letter`` encodings when it
+    is actually ``ESC O letter``.
+  * ``Enter`` and ``F3`` are both assigned the number 13.
+  * Makes no mention of cursor key mode and how it changes encodings
+  * Incorrectly encoding shifted keys when shift modifier is used, for
+    instance, for :kbd:`ctrl+shift+I`.
+  * No way to have non-conflicting escape codes for :kbd:`alt+letter,
+    ctrl+letter, ctrl+alt+letter` key presses
+  * No way to specify both shifted and unshifted keys for robust shortcut
+    matching (think matching :kbd:`ctrl+shift+equal` and :kbd:`ctrl+plus`)
+  * No way to specify alternate layout key. This is useful for keyboard layouts
+    such as Cyrillic where you want the shortcut :kbd:`ctrl+c` to work when
+    pressing the :kbd:`ctrl+ц` on the keyboard.
+  * No way to report repeat and release key events, only key press events
+  * No way to report key events for presses that generate text, useful for
+    gaming. Think of using the :kbd:`WASD` keys to control movement.
+  * Only a small subset of all possible functional keys are assigned numbers.

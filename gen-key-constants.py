@@ -115,13 +115,14 @@ mute_volume                 XF86AudioMute               -
 
 functional_encoding_overrides = {
     'insert': 2, 'delete': 3, 'page_up': 5, 'page_down': 6,
-    'home': 7, 'end': 8, 'f1': 11, 'f2': 12, 'f3': 13, 'f4': 14,
+    'home': 7, 'end': 8, 'tab': 9, 'f1': 11, 'f2': 12, 'enter': 13, 'f4': 14,
     'f5': 15, 'f6': 17, 'f7': 18, 'f8': 19, 'f9': 20, 'f10': 21,
-    'f11': 23, 'f12': 24
+    'f11': 23, 'f12': 24, 'backspace': 127
 }
 different_trailer_functionals = {
     'up': 'A', 'down': 'B', 'right': 'C', 'left': 'D', 'end': 'F', 'home': 'H',
-    'f1': 'P', 'f2': 'Q', 'f3': 'R', 'f4': 'S'
+    'f1': 'P', 'f2': 'Q', 'f3': 'R', 'f4': 'S', 'enter': 'u', 'tab': 'u',
+    'backspace': 'u'
 }
 functional_key_names: List[str] = []
 name_to_code: Dict[str, int] = {}
@@ -188,11 +189,13 @@ def generate_functional_table() -> None:
         '   :header: "Name", "CSI sequence"',
         ''
     ]
+    enc_lines = []
     for name, code in name_to_code.items():
         if name in functional_encoding_overrides or name in different_trailer_functionals:
             code = oc = functional_encoding_overrides.get(name, code)
             trailer = different_trailer_functionals.get(name, '~')
-            code = code if trailer == '~' else 1
+            code = code if trailer in '~u' else 1
+            enc_lines.append((' ' * 8) + f"case GLFW_FKEY_{name.upper()}: S({code}, '{trailer}');")
             if code == 1 and name not in ('up', 'down', 'left', 'right'):
                 trailer += f' or CSI {oc} ... ~'
         else:
@@ -201,6 +204,7 @@ def generate_functional_table() -> None:
         lines.append(f'   {name} "CSI {code} ... {trailer}"')
     lines.append('')
     patch_file('docs/keyboard-protocol.rst', 'functional key table', '\n'.join(lines), start_marker='.. ', end_marker='')
+    patch_file('kitty/key_encoding.c', 'special numbers', '\n'.join(enc_lines))
 
 
 def main() -> None:

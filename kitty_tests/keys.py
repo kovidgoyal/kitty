@@ -8,6 +8,9 @@ from . import BaseTest
 
 class TestKeys(BaseTest):
 
+    def test_encode_key_event(self):
+        pass
+
     def test_encode_mouse_event(self):
         NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL = range(4)
         L, M, R = 1, 2, 3
