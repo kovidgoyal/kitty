@@ -10,7 +10,7 @@ from typing import Callable, Dict, List, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
-from kitty.constants import is_macos
+from kitty.constants import is_macos, appname
 from kitty.os_window_size import WindowSizeData
 
 OPTIONS = r'''
@@ -42,7 +42,19 @@ Path to config file to use for kitty when drawing the panel.
 type=list
 Override individual kitty configuration options, can be specified multiple times.
 Syntax: :italic:`name=value`. For example: :option:`kitty +kitten panel -o` font_size=20
-'''.format
+
+
+--class
+dest=cls
+default={appname}-panel
+condition=not is_macos
+Set the class part of the :italic:`WM_CLASS` window property. On Wayland, it sets the app id.
+
+
+--name
+condition=not is_macos
+Set the name part of the :italic:`WM_CLASS` property (defaults to using the value from :option:`{appname} --class`)
+'''.format(appname=appname).format
 
 
 args = PanelCLIOptions()
@@ -138,9 +150,12 @@ def main(sys_args: List[str]) -> None:
         raise SystemExit('You must specify the program to run')
     sys.argv = ['kitty']
     for config in args.config:
-        sys.argv.append('--config={}'.format(config))
+        sys.argv.extend(('--config', config))
+    sys.argv.extend(('--class', args.cls))
+    if args.name:
+        sys.argv.extend(('--name', args.name))
     for override in args.override:
-        sys.argv.append('--override={}'.format(override))
+        sys.argv.extend(('--override', override))
     sys.argv.extend(items)
     from kitty.main import run_app, main as real_main
     run_app.cached_values_name = 'panel'

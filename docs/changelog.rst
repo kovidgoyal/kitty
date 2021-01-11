@@ -25,6 +25,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Unicode input: Fix using index in select by name mode not working for indices
   larger than 16. Also using an index does not filter the list of matches. (:pull:`3219`)
 
+- Panel kitten: Allow setting WM_CLASS (:iss:`3233`)
+
 
 0.19.3 [2020-12-19]
 -------------------
