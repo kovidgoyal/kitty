@@ -5,7 +5,7 @@
 from typing import Dict, List
 
 
-functional_key_defs = '''\
+functional_key_defs = '''# {{{
 # kitty                     XKB                         macOS
 escape                      Escape                      -
 enter                       Return                      -
@@ -111,7 +111,8 @@ media_record                XF86AudioRecord             -
 lower_volume                XF86AudioLowerVolume        -
 raise_volume                XF86AudioRaiseVolume        -
 mute_volume                 XF86AudioMute               -
-'''
+'''  # }}}
+
 functional_key_names: List[str] = []
 name_to_code: Dict[str, int] = {}
 name_to_xkb: Dict[str, str] = {}
@@ -135,8 +136,14 @@ def patch_file(path: str, what: str, text: str, start_marker: str = '/* ', end_m
 
     with open(path, 'r+') as f:
         raw = f.read()
-        start = raw.index(start_q)
-        end = raw.index(end_q)
+        try:
+            start = raw.index(start_q)
+        except ValueError:
+            raise SystemExit(f'Failed to find "{start_q}" in {path}')
+        try:
+            end = raw.index(end_q)
+        except ValueError:
+            raise SystemExit(f'Failed to find "{end_q}" in {path}')
         raw = raw[:start] + start_q + '\n' + text + '\n' + raw[end:]
         f.seek(0)
         f.truncate(0)
@@ -164,9 +171,23 @@ def generate_xkb_mapping() -> None:
     patch_file('glfw/xkb_glfw.c', 'glfw to xkb', '\n'.join(rlines))
 
 
+def generate_functional_table() -> None:
+    lines = [
+        '',
+        '.. csv-table:: Functional key codes',
+        '   :header: "Name", "Codepoint (base-16)"',
+        ''
+    ]
+    for name, code in name_to_code.items():
+        lines.append(f'   "{name.upper()}", "{code:X}"')
+    lines.append('')
+    patch_file('docs/keyboard-protocol.rst', 'functional key table', '\n'.join(lines), start_marker='.. ', end_marker='')
+
+
 def main() -> None:
     generate_glfw_header()
     generate_xkb_mapping()
+    generate_functional_table()
 
 
 if __name__ == '__main__':
