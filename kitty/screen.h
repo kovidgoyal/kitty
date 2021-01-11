@@ -14,7 +14,7 @@ typedef enum ScrollTypes { SCROLL_LINE = -999999, SCROLL_PAGE, SCROLL_FULL } Scr
 
 typedef struct {
     bool mLNM, mIRM, mDECTCEM, mDECSCNM, mDECOM, mDECAWM, mDECCOLM, mDECARM, mDECCKM,
-         mBRACKETED_PASTE, mFOCUS_TRACKING, mEXTENDED_KEYBOARD, mDECSACE;
+         mBRACKETED_PASTE, mFOCUS_TRACKING, mDECSACE;
     MouseTrackingMode mouse_tracking_mode;
     MouseTrackingProtocol mouse_tracking_protocol;
     bool eight_bit_controls;  // S8C1T
@@ -129,6 +129,7 @@ typedef struct {
     HYPERLINK_POOL_HANDLE hyperlink_pool;
     ANSIBuf as_ansi_buf;
     char_type last_graphic_char;
+    unsigned key_encoding_flags;
 } Screen;
 
 

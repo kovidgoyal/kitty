@@ -150,6 +150,7 @@ void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
+    self->key_encoding_flags = 0;
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
     self->alt_savepoint.is_valid = false;
@@ -750,7 +751,6 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         SIMPLE_MODE(IRM)
         SIMPLE_MODE(DECARM)
         SIMPLE_MODE(BRACKETED_PASTE)
-        SIMPLE_MODE(EXTENDED_KEYBOARD)
         SIMPLE_MODE(FOCUS_TRACKING)
         MOUSE_MODE(MOUSE_BUTTON_TRACKING, mouse_tracking_mode, BUTTON_MODE)
         MOUSE_MODE(MOUSE_MOTION_TRACKING, mouse_tracking_mode, MOTION_MODE)
@@ -1143,7 +1143,7 @@ screen_restore_modes(Screen *self) {
     if (m == NULL) m = &empty_modes;
 #define S(name) set_mode_from_const(self, name, m->m##name)
     S(DECTCEM); S(DECSCNM); S(DECSCNM); S(DECOM); S(DECAWM); S(DECARM); S(DECCKM);
-    S(BRACKETED_PASTE); S(FOCUS_TRACKING); S(EXTENDED_KEYBOARD);
+    S(BRACKETED_PASTE); S(FOCUS_TRACKING);
     self->modes.mouse_tracking_mode = m->mouse_tracking_mode;
     self->modes.mouse_tracking_protocol = m->mouse_tracking_protocol;
 #undef S
@@ -1490,7 +1490,6 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
         KNOWN_MODE(DECARM);
         KNOWN_MODE(DECCKM);
         KNOWN_MODE(BRACKETED_PASTE);
-        KNOWN_MODE(EXTENDED_KEYBOARD);
         KNOWN_MODE(FOCUS_TRACKING);
 #undef KNOWN_MODE
         case ALTERNATE_SCREEN:
@@ -2201,7 +2200,6 @@ WRAP0(scroll_until_cursor)
     static int name##_set(Screen *self, PyObject *val, void UNUSED *closure) { if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } set_mode_from_const(self, uname, PyObject_IsTrue(val) ? true : false); return 0; }
 
 MODE_GETSET(in_bracketed_paste_mode, BRACKETED_PASTE)
-MODE_GETSET(extended_keyboard, EXTENDED_KEYBOARD)
 MODE_GETSET(focus_tracking_enabled, FOCUS_TRACKING)
 MODE_GETSET(auto_repeat_enabled, DECARM)
 MODE_GETSET(cursor_visible, DECTCEM)
@@ -2859,7 +2857,6 @@ static PyMethodDef methods[] = {
 
 static PyGetSetDef getsetters[] = {
     GETSET(in_bracketed_paste_mode)
-    GETSET(extended_keyboard)
     GETSET(auto_repeat_enabled)
     GETSET(focus_tracking_enabled)
     GETSET(cursor_visible)

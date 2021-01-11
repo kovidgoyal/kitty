@@ -5,7 +5,6 @@ import subprocess
 files_to_exclude = '''\
 kitty/wcwidth-std.h
 kitty/glfw.c
-kitty/keys.h
 kitty/charsets.c
 kitty/unicode-data.c
 kitty/key_encoding.py

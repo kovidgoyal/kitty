@@ -80,6 +80,3 @@
 #define BRACKETED_PASTE (2004 << 5)
 #define BRACKETED_PASTE_START "200~"
 #define BRACKETED_PASTE_END  "201~"
-
-// Extended keyboard protocol
-#define EXTENDED_KEYBOARD (2017 << 5)

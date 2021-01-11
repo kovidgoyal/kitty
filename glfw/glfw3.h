@@ -1379,7 +1379,7 @@ typedef enum {
 typedef struct GLFWkeyevent
 {
     // The [keyboard key](@ref keys) that was pressed or released.
-    uint32_t key;
+    uint32_t key, shifted_key, alternate_key;
 
     // The platform-specific identifier of the key.
     int native_key;
