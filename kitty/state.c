@@ -676,6 +676,7 @@ PYWRAP1(set_options) {
     S(mark2_background, color_as_int);
     S(mark3_foreground, color_as_int);
     S(mark3_background, color_as_int);
+    S(bold_is_bright, PyObject_IsTrue);
     S(url_color, color_as_int);
     S(background, color_as_int);
     S(foreground, color_as_int);

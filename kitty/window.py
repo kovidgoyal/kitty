@@ -22,7 +22,7 @@ from .config import build_ansi_color_table
 from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
-    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM,
+    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, BOLD, DCS, DECORATION, DIM,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     STRIKETHROUGH, TINT_PROGRAM, Screen, add_timer, add_window,
@@ -194,6 +194,7 @@ class LoadShaderPrograms:
                     'STRIKE_SHIFT': STRIKETHROUGH,
                     'DIM_SHIFT': DIM,
                     'DECORATION_SHIFT': DECORATION,
+                    'BOLD_SHIFT': BOLD,
                     'MARK_SHIFT': MARK,
                     'MARK_MASK': MARK_MASK,
             }.items():

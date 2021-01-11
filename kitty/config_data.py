@@ -1089,6 +1089,7 @@ o('mark2_foreground', 'black', long_text=_('Color for marks of type 2'), option_
 o('mark2_background', '#f2dcd3', long_text=_('Color for marks of type 1 (beige)'), option_type=to_color)
 o('mark3_foreground', 'black', long_text=_('Color for marks of type 3'), option_type=to_color)
 o('mark3_background', '#f274bc', long_text=_('Color for marks of type 1 (violet)'), option_type=to_color)
+o('bold_is_bright', False, long_text=_('Display bold text with bright colors'))
 dfctl = defines.default_color_table()
 for i in range(16, 256):
     o('color{}'.format(i), color_as_sharp(color_from_int(dfctl[i])), option_type=to_color, add_to_docs=False)
