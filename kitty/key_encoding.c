@@ -61,8 +61,9 @@ static inline int
 serialize(const EncodingData *data, char *output, const char csi_trailer) {
     int pos = 0;
 #define P(fmt, ...) pos += snprintf(output + pos, KEY_BUFFER_SIZE - 2 - pos, fmt, __VA_ARGS__)
-    P("\x1b[%u", data->key);
-    if (data->add_alternates && (data->shifted_key || data->alternate_key)) {
+    P("\x1b%s", "[");
+    if (data->key != 1 || data->add_alternates || data->has_mods || data->add_actions) P("%u", data->key);
+    if (data->add_alternates) {
         P("%s", ":");
         if (data->shifted_key) P("%u", data->shifted_key);
         if (data->alternate_key) P(":%u", data->alternate_key);
@@ -92,10 +93,14 @@ encode_function_key(const KeyEvent *ev, char *output) {
         switch(key_number) {
             case GLFW_FKEY_UP: SIMPLE("\x1bOA");
             case GLFW_FKEY_DOWN: SIMPLE("\x1bOB");
-            case GLFW_FKEY_LEFT: SIMPLE("\x1bOD");
             case GLFW_FKEY_RIGHT: SIMPLE("\x1bOC");
-            case GLFW_FKEY_HOME: SIMPLE("\x1bOH");
+            case GLFW_FKEY_LEFT: SIMPLE("\x1bOD");
             case GLFW_FKEY_END: SIMPLE("\x1bOF");
+            case GLFW_FKEY_HOME: SIMPLE("\x1bOH");
+            case GLFW_FKEY_F1: SIMPLE("\x1bOP");
+            case GLFW_FKEY_F2: SIMPLE("\x1bOQ");
+            case GLFW_FKEY_F3: SIMPLE("\x1bOR");
+            case GLFW_FKEY_F4: SIMPLE("\x1bOS");
             default: break;
         }
     }
@@ -103,7 +108,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
         switch(key_number) {
             case GLFW_FKEY_ENTER: SIMPLE("\r");
             case GLFW_FKEY_ESCAPE: {
-                if (ev->disambiguate) { return encode_csi_string('u', "27u", output); }
+                if (ev->disambiguate) { return encode_csi_string('u', "27", output); }
                 SIMPLE("\x1b");
             }
             case GLFW_FKEY_BACKSPACE: SIMPLE("\x7f");
@@ -154,6 +159,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
 #undef S
     EncodingData ed = {0};
     init_encoding_data(&ed, ev);
+    ed.key = key_number;
     ed.add_alternates = false;
     return serialize(&ed, output, csi_trailer);
 }

@@ -113,6 +113,16 @@ raise_volume                XF86AudioRaiseVolume        -
 mute_volume                 XF86AudioMute               -
 '''  # }}}
 
+functional_encoding_overrides = {
+    'insert': 2, 'delete': 3, 'page_up': 5, 'page_down': 6,
+    'home': 7, 'end': 8, 'f1': 11, 'f2': 12, 'f3': 13, 'f4': 14,
+    'f5': 15, 'f6': 17, 'f7': 18, 'f8': 19, 'f9': 20, 'f10': 21,
+    'f11': 23, 'f12': 24
+}
+different_trailer_functionals = {
+    'up': 'A', 'down': 'B', 'right': 'C', 'left': 'D', 'end': 'F', 'home': 'H',
+    'f1': 'P', 'f2': 'Q', 'f3': 'R', 'f4': 'S'
+}
 functional_key_names: List[str] = []
 name_to_code: Dict[str, int] = {}
 name_to_xkb: Dict[str, str] = {}
@@ -175,11 +185,20 @@ def generate_functional_table() -> None:
     lines = [
         '',
         '.. csv-table:: Functional key codes',
-        '   :header: "Name", "Codepoint (base-16)"',
+        '   :header: "Name", "CSI sequence"',
         ''
     ]
     for name, code in name_to_code.items():
-        lines.append(f'   "{name.upper()}", "{code:X}"')
+        if name in functional_encoding_overrides or name in different_trailer_functionals:
+            code = oc = functional_encoding_overrides.get(name, code)
+            trailer = different_trailer_functionals.get(name, '~')
+            code = code if trailer == '~' else 1
+            if code == 1 and name not in ('up', 'down', 'left', 'right'):
+                trailer += f' or CSI {oc} ... ~'
+        else:
+            trailer = 'u'
+        name = f'"{name.upper()}",'.ljust(25)
+        lines.append(f'   {name} "CSI {code} ... {trailer}"')
     lines.append('')
     patch_file('docs/keyboard-protocol.rst', 'functional key table', '\n'.join(lines), start_marker='.. ', end_marker='')
 
