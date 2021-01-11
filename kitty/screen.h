@@ -129,7 +129,7 @@ typedef struct {
     HYPERLINK_POOL_HANDLE hyperlink_pool;
     ANSIBuf as_ansi_buf;
     char_type last_graphic_char;
-    unsigned key_encoding_flags;
+    uint8_t main_key_encoding_flags[8], alt_key_encoding_flags[8], *key_encoding_flags;
 } Screen;
 
 
@@ -223,9 +223,15 @@ void screen_rescale_images(Screen *self);
 void screen_report_size(Screen *, unsigned int which);
 void screen_manipulate_title_stack(Screen *, unsigned int op, unsigned int which);
 void screen_draw_overlay_text(Screen *self, const char *utf8_text);
+void screen_set_key_encoding_flags(Screen *self, uint32_t val, uint32_t how);
+void screen_push_key_encoding_flags(Screen *self, uint32_t val);
+void screen_pop_key_encoding_flags(Screen *self, uint32_t num);
+uint8_t screen_current_key_encoding_flags(Screen *self);
+void screen_report_key_encoding_flags(Screen *self);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)
 DECLARE_CH_SCREEN_HANDLER(tab)
 DECLARE_CH_SCREEN_HANDLER(linefeed)
 DECLARE_CH_SCREEN_HANDLER(carriage_return)
+#undef DECLARE_CH_SCREEN_HANDLER

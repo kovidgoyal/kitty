@@ -160,8 +160,10 @@ encode_function_key(const KeyEvent *ev, char *output) {
 
 static int
 encode_printable_ascii_key_legacy(const KeyEvent *ev, char *output) {
-    char shifted_key = 0;
+    if (!ev->mods.value) return snprintf(output, KEY_BUFFER_SIZE, "%c", (char)ev->key);
+    if (ev->disambiguate) return 0;
 
+    char shifted_key = 0;
     if ('a' <= ev->key && ev->key <= 'z') shifted_key = ev->key + ('A' - 'a');
     switch(ev->key) {
 #define S(which, val) case which: shifted_key = val; break;
@@ -169,14 +171,13 @@ encode_printable_ascii_key_legacy(const KeyEvent *ev, char *output) {
         S('`', '~') S('-', '_') S('=', '+') S('[', '{') S(']', '}') S('\\', '|') S(';', ':') S('\'', '"') S(',', '<') S('.', '>') S('/', '?')
 #undef S
     }
-
-    if (!ev->mods.value) return snprintf(output, KEY_BUFFER_SIZE, "%c", (char)ev->key);
-    if (!ev->disambiguate) {
-        if ((ev->mods.value == ALT || ev->mods.value == (SHIFT | ALT)))
-            return snprintf(output, KEY_BUFFER_SIZE, "\x1b%c", (shifted_key && ev->mods.shift) ? shifted_key : (char)ev->key);
-    }
-    if (ev->mods.value == CTRL && (ev->key != 'i' && ev->key != 'm' && ev->key != '[' && ev->key != '@'))
-        return snprintf(output, KEY_BUFFER_SIZE, "%c", ev->key & 0x7f);
+    shifted_key = (shifted_key && ev->mods.shift) ? shifted_key : (char)ev->key;
+    if ((ev->mods.value == ALT || ev->mods.value == (SHIFT | ALT)))
+        return snprintf(output, KEY_BUFFER_SIZE, "\x1b%c", shifted_key);
+    if (ev->mods.value == CTRL)
+        return snprintf(output, KEY_BUFFER_SIZE, "%c", ev->key & 0x1f);
+    if (ev->mods.value == (CTRL | ALT))
+        return snprintf(output, KEY_BUFFER_SIZE, "\x1b%c", ev->key & 0x1f);
     return 0;
 }
 

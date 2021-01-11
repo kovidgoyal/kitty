@@ -135,6 +135,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->tabstops = self->main_tabstops;
         init_tabstops(self->main_tabstops, self->columns);
         init_tabstops(self->alt_tabstops, self->columns);
+        self->key_encoding_flags = self->main_key_encoding_flags;
         if (!init_overlay_line(self, self->columns)) { Py_CLEAR(self); return NULL; }
         self->hyperlink_pool = alloc_hyperlink_pool();
         if (!self->hyperlink_pool) { Py_CLEAR(self); return PyErr_NoMemory(); }
@@ -150,7 +151,8 @@ void
 screen_reset(Screen *self) {
     if (self->linebuf == self->alt_linebuf) screen_toggle_screen_buffer(self, true, true);
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
-    self->key_encoding_flags = 0;
+    memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
+    memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
     self->alt_savepoint.is_valid = false;
@@ -718,12 +720,14 @@ screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_scree
         if (save_cursor) screen_save_cursor(self);
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
+        self->key_encoding_flags = self->alt_key_encoding_flags;
         self->grman = self->alt_grman;
         screen_cursor_position(self, 1, 1);
         cursor_reset(self->cursor);
     } else {
         self->linebuf = self->main_linebuf;
         self->tabstops = self->main_tabstops;
+        self->key_encoding_flags = self->main_key_encoding_flags;
         if (save_cursor) screen_restore_cursor(self);
         self->grman = self->main_grman;
     }
@@ -831,6 +835,54 @@ screen_reset_mode(Screen *self, unsigned int mode) {
 void
 screen_set_8bit_controls(Screen *self, bool yes) {
     self->modes.eight_bit_controls = yes;
+}
+
+uint8_t
+screen_current_key_encoding_flags(Screen *self) {
+    for (unsigned i = arraysz(self->main_key_encoding_flags); i-- > 0; ) {
+        if (self->key_encoding_flags[i] & 0x80) return self->key_encoding_flags[i] & 0xf;
+    }
+    return 0;
+}
+
+void
+screen_report_key_encoding_flags(Screen *self) {
+    char buf[16] = {0};
+    snprintf(buf, sizeof(buf), "?%uu", screen_current_key_encoding_flags(self));
+    write_escape_code_to_child(self, CSI, buf);
+}
+
+void
+screen_set_key_encoding_flags(Screen *self, uint32_t val, uint32_t how) {
+    unsigned idx = 0;
+    for (unsigned i = arraysz(self->main_key_encoding_flags); i-- > 0; ) {
+        if (self->key_encoding_flags[i] & 0x80) { idx = i; break; }
+    }
+    uint8_t q = val & 0xf;
+    if (how == 1) self->key_encoding_flags[idx] = q;
+    else if (how == 2) self->key_encoding_flags[idx] |= q;
+    else if (how == 3) self->key_encoding_flags[idx] &= ~q;
+    self->key_encoding_flags[idx] |= 0x80;
+}
+
+void
+screen_push_key_encoding_flags(Screen *self, uint32_t val) {
+    uint8_t q = val & 0xf;
+    const unsigned sz = arraysz(self->main_key_encoding_flags);
+    unsigned current_idx = 0;
+    for (unsigned i = arraysz(self->main_key_encoding_flags); i-- > 0; ) {
+        if (self->key_encoding_flags[i] & 0x80) { current_idx = i; break; }
+    }
+    if (current_idx == sz - 1) memmove(self->key_encoding_flags, self->key_encoding_flags + 1, (sz - 1) * sizeof(self->main_key_encoding_flags[0]));
+    else self->key_encoding_flags[current_idx++] |= 0x80;
+    self->key_encoding_flags[current_idx] = 0x80 | q;
+}
+
+void
+screen_pop_key_encoding_flags(Screen *self, uint32_t num) {
+    for (unsigned i = arraysz(self->main_key_encoding_flags); num && i-- > 0; ) {
+        if (self->key_encoding_flags[i] & 0x80) { num--; self->key_encoding_flags[i] = 0; }
+    }
 }
 
 // }}}

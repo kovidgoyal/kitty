@@ -683,7 +683,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     unsigned int num = screen->parser_buf_pos, start, i, num_params=0, p1, p2;
     static unsigned int params[MAX_PARAMS] = {0};
     bool private;
-    if (buf[0] == '>' || buf[0] == '?' || buf[0] == '!' || buf[0] == '=' || buf[0] == '-') {
+    if (buf[0] == '>' || buf[0] == '<' || buf[0] == '?' || buf[0] == '!' || buf[0] == '=' || buf[0] == '-') {
         start_modifier = (char)screen->parser_buf[0];
         buf++; num--;
     }
@@ -833,6 +833,23 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             if (!start_modifier && !end_modifier && !num_params) {
                 REPORT_COMMAND(screen_restore_cursor);
                 screen_restore_cursor(screen);
+                break;
+            }
+            if (!end_modifier && start_modifier == '?') {
+                REPORT_COMMAND(screen_report_key_encoding_flags);
+                screen_report_key_encoding_flags(screen);
+                break;
+            }
+            if (!end_modifier && start_modifier == '=') {
+                CALL_CSI_HANDLER2(screen_set_key_encoding_flags, 0, 1);
+                break;
+            }
+            if (!end_modifier && start_modifier == '>') {
+                CALL_CSI_HANDLER1(screen_push_key_encoding_flags, 0);
+                break;
+            }
+            if (!end_modifier && start_modifier == '<') {
+                CALL_CSI_HANDLER1(screen_pop_key_encoding_flags, 1);
                 break;
             }
             REPORT_ERROR("Unknown CSI u sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
@@ -1090,6 +1107,7 @@ accumulate_csi(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
             break;
         case '?':
         case '>':
+        case '<':
         case '!':
         case '=':
         case '-':

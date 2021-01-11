@@ -111,7 +111,7 @@ on_key_input(GLFWkeyevent *ev) {
         screen_history_scroll(screen, SCROLL_FULL, false);  // scroll back to bottom
     }
     char encoded_key[KEY_BUFFER_SIZE] = {0};
-    int size = encode_glfw_key_event(ev, screen->modes.mDECCKM, screen->key_encoding_flags, encoded_key);
+    int size = encode_glfw_key_event(ev, screen->modes.mDECCKM, screen_current_key_encoding_flags(screen), encoded_key);
     if (size == SEND_TEXT_TO_CHILD) {
         schedule_write_to_child(w->id, 1, text, strlen(text));
         debug("sent text to child\n");
@@ -130,19 +130,20 @@ fake_scroll(Window *w, int amount, bool upwards) {
     GLFWkeyevent ev = {.key = key };
     char encoded_key[KEY_BUFFER_SIZE] = {0};
     Screen *screen = w->render_data.screen;
+    uint8_t flags = screen_current_key_encoding_flags(screen);
     while (amount-- > 0) {
         ev.action = GLFW_PRESS;
-        int size = encode_glfw_key_event(&ev, screen->modes.mDECCKM, screen->key_encoding_flags, encoded_key);
+        int size = encode_glfw_key_event(&ev, screen->modes.mDECCKM, flags, encoded_key);
         if (size > 0) schedule_write_to_child(w->id, 1, encoded_key, size);
         ev.action = GLFW_RELEASE;
-        size = encode_glfw_key_event(&ev, screen->modes.mDECCKM, screen->key_encoding_flags, encoded_key);
+        size = encode_glfw_key_event(&ev, screen->modes.mDECCKM, flags, encoded_key);
         if (size > 0) schedule_write_to_child(w->id, 1, encoded_key, size);
     }
 }
 
 #define PYWRAP1(name) static PyObject* py##name(PyObject UNUSED *self, PyObject *args)
 #define PA(fmt, ...) if(!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
-#define M(name, arg_type) {#name, (PyCFunction)py##name, arg_type, NULL}
+#define M(name, arg_type) {#name, (PyCFunction)(void (*) (void))(py##name), arg_type, NULL}
 
 PYWRAP1(key_for_native_key_name) {
     const char *name;

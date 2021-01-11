@@ -21,11 +21,11 @@ advanced usages. The protocol is based on initial work in `fixterms
 <http://www.leonerd.org.uk/hacks/fixterms/>`_, however, it corrects various
 issues in that proposal, namely:
 
-  * No way to disambiguate Esc keypresses, other than using 8-bit controls
+  * No way to disambiguate :kbd:`Esc` keypresses, other than using 8-bit controls
     which are undesirable for other reasons
   * Incorrectly encoding shifted keys when shift modifier is used
-  * No way to not have :kbd:`Alt+letter` key presses generate escape codes that
-    conflict with other escape codes
+  * No way to have non-conflicting escape codes for :kbd:`alt+letter,
+    ctrl+letter, ctrl+alt+letter` key presses
   * No way to specify both shifted and unshifted keys for robust shortcut
     matching (think matching :kbd:`ctrl+shift+equal` and :kbd:`ctrl+plus`)
   * No way to specify alternate layout key. This is useful for keyboard layouts
@@ -61,6 +61,8 @@ are separated by the semi-colon and sub-fields by the colon. Only the
 ``unicode-key-code`` field is mandatory, everything else is optional. The
 escape code is terminated by the ``u`` character (the byte ``0x75``).
 
+
+.. _key_codes:
 
 Key codes
 ~~~~~~~~~~~~~~
@@ -113,6 +115,8 @@ and so on. If the modifier field is not present in the escape code, its default
 value is ``1`` which means no modifiers.
 
 
+.. _event_types:
+
 Event types
 ~~~~~~~~~~~~~~~~
 
@@ -130,8 +134,8 @@ has value ``1`` and is the default if no event type sub field is present. The
 
 
 .. note:: Key events that result in text are reported as plain UTF-8 text, so
-   events are not supported for them, unless the application requests key
-   report mode, see below.
+   events are not supported for them, unless the application requests *key
+   report mode*, see below.
 
 
 Non-Unicode keys
@@ -145,11 +149,90 @@ names to code points for these keys is in the
 :ref:`Functional key definition table below <functional>`.
 
 
+Progressive enhancement
+--------------------------
+
+While, in theory, every key event could be completely represented by this
+protocol and all would be hunk-dory, in reality there is a vast universe of
+existing terminal programs that expect legacy control codes for key events and
+that are not likely to ever be updated. To support these, in default mode,
+the terminal will emit legacy escape codes for compatibility. If a terminal
+program wants more robust key handling, it can request it from the terminal,
+via the mechanism described here. Each enhancement is described in detail
+below. The escape code for requesting enhancements is::
+
+    CSI = flags ; mode u
+
+Here ``flags`` is a decimal encoded integer to specify a set of bit-flags. The
+meanings of the flags are given below. The second, ``mode`` parameter is
+optional (defaulting to ``1``) and specifies how the flags are applied.
+The value ``1`` means all set bits are set and all unset bits are reset.
+The value ``2`` means all set bits are set, unset bits are left unchanged.
+The value ``3`` means all set bits are reset, unset bits are left unchanged.
+
+.. csv-table:: The progressive enhancement flags
+   :header: "Bit", "Meaning"
+
+   "0b1 (1)", "Disambiguate escape codes"
+   "0b10 (2)", "Report key event types"
+   "0b100 (4)", "Report alternate keys"
+   "0b1000 (8)", "Report all keys as CSIu escape codes"
+
+The program running in the terminal can query the terminal for the
+current values of the flags by sending::
+
+    CSI ? u
+
+The terminal will reply with::
+
+    CSI ? flags u
+
+The program can also push/pop the current flags onto a stack in the
+terminal with::
+
+    CSI > flags u  # for push, if flags ommitted default to zero
+    CSI < number u # to pop number entries, defaulting to 1 if unspecified
+
+Terminals should limit the size of the stack as appropriate, to prevent
+Denial-of-Service attacks. Terminals must maintain separate stacks for the main
+and alternate screens. If a pop request is received that empties the stack,
+all flags are reset. If a push request is received and the stack is full, the
+oldest entry from the stack must be evicted.
+
+Disambiguate escape codes
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This type of progressive enhancement fixes the problem of some legacy key
+press encodings overlapping with other control codes. For instance, pressing
+the :kbd:`Esc` key generates the byte ``0x1b`` which also is used to indicate
+the start of an escape code. Similarly pressing the key :kbd:`alt+[` will
+generate the bytes used for CSI control codes. Turning on this flag will cause
+the terminal to report the :kbd:`Esc, alt+letter, ctrl+letter, ctrl+alt+letter`
+keys using CSIu sequences instead of legacy ones. Here letter is any printable
+ASCII letter (from 32 (i.e. space) to 126 (i.e. ~)).
+
+Report event types
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This type of progressive enhancement causes the terminal to report key repeat
+and key release events. Normally only key press events are reported and key
+repeat events are treated as key press events. See :ref:`event_types` for
+details on how these are reported.
+
+
+Report alternate keys
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+This type of progressive enhancement causes the terminal to report alternate
+key values in addition to the main value, to aid in shortcut matching. See
+:ref:`key_codes` for details on how these are reported.
+
 .. _functional:
 
 Functional key definitions
 ----------------------------
 
+.. {{{
 .. start functional key table (auto generated by gen-key-constants.py do not edit)
 
 .. csv-table:: Functional key codes
@@ -261,3 +344,4 @@ Functional key definitions
    "MUTE_VOLUME", "E067"
 
 .. end functional key table
+.. }}}
