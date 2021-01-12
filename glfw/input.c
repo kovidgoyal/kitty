@@ -527,7 +527,8 @@ encode_utf8(uint32_t ch, char* dest) {
     return 0;
 }
 
-const char* _glfwGetKeyName(int key)
+const char*
+_glfwGetKeyName(int key)
 {
     switch (key)
     {
@@ -788,6 +789,7 @@ GLFWAPI int glfwRawMouseMotionSupported(void)
 GLFWAPI const char* glfwGetKeyName(uint32_t key, int native_key)
 {
     _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    if (key) return _glfwGetKeyName(key);
 
     native_key = _glfwPlatformGetNativeKeyForKey(key);
     return _glfwPlatformGetNativeKeyName(native_key);

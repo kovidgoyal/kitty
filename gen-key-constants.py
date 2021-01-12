@@ -170,18 +170,20 @@ def generate_glfw_header() -> None:
         'typedef enum {',
         f'  GLFW_FKEY_FIRST = 0x{start_code:x}u,',
     ]
-    klines, pyi, names = [], [], []
+    klines, pyi, names, knames = [], [], [], []
     for name, code in name_to_code.items():
         lines.append(f'  GLFW_FKEY_{name.upper()} = 0x{code:x}u,')
         klines.append(f'    ADDC(GLFW_FKEY_{name.upper()});')
         pyi.append(f'GLFW_FKEY_{name.upper()}: int')
         names.append(f'    case GLFW_FKEY_{name.upper()}: return "{name.upper()}";')
+        knames.append(f'            case GLFW_FKEY_{name.upper()}: return PyUnicode_FromString("{name}");')
     lines.append(f'  GLFW_FKEY_LAST = 0x{last_code:x}u')
     lines.append('} GLFWFunctionKey;')
     patch_file('glfw/glfw3.h', 'functional key names', '\n'.join(lines))
     patch_file('kitty/glfw.c', 'glfw functional keys', '\n'.join(klines))
     patch_file('kitty/fast_data_types.pyi', 'glfw functional keys', '\n'.join(pyi), start_marker='# ', end_marker='')
     patch_file('glfw/input.c', 'functional key names', '\n'.join(names))
+    patch_file('kitty/glfw.c', 'glfw functional key names', '\n'.join(knames))
 
 
 def generate_xkb_mapping() -> None:

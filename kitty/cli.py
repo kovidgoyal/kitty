@@ -759,14 +759,8 @@ ShortcutMap = Dict[Tuple[SingleKey, ...], KeyAction]
 
 
 def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction) -> None:
-    if not getattr(print_shortcut, 'maps', None):
-        from kitty.keys import defines
-        v = vars(defines)
-        mmap = {m[len('GLFW_MOD_'):].lower(): x for m, x in v.items() if m.startswith('GLFW_MOD_')}
-        kmap = {k[len('GLFW_KEY_'):].lower(): x for k, x in v.items() if k.startswith('GLFW_KEY_')}
-        krmap = {v: k for k, v in kmap.items()}
-        setattr(print_shortcut, 'maps', (mmap, krmap))
-    mmap, krmap = getattr(print_shortcut, 'maps')
+    from .fast_data_types import glfw_get_key_name, GLFW_MOD_ALT, GLFW_MOD_SHIFT, GLFW_MOD_CONTROL, GLFW_MOD_SUPER
+    mmap = {'shift': GLFW_MOD_SHIFT, 'alt': GLFW_MOD_ALT, 'ctrl': GLFW_MOD_CONTROL, ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER}
     keys = []
     for key_spec in key_sequence:
         names = []
@@ -775,12 +769,8 @@ def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction) -> None
             if mods & val:
                 names.append(name)
         if key:
-            if is_native:
-                from .fast_data_types import GLFW_KEY_UNKNOWN, glfw_get_key_name
-                kn = glfw_get_key_name(GLFW_KEY_UNKNOWN, key) or 'Unknown key'
-                names.append(kn)
-            else:
-                names.append(krmap[key])
+            kname = glfw_get_key_name(0, key) if is_native else glfw_get_key_name(key, 0)
+            names.append(kname or f'{key}')
         keys.append('+'.join(names))
 
     print('\t', ' > '.join(keys), action)
