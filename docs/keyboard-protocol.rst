@@ -235,13 +235,13 @@ These keys are encoded using three schemes::
 
     CSI number ; modifier ~
     CSI 1 ; modifier {ABCDFHPQRS}
-    ESC O {ABCDFHPQRS}
+    SS3 {ABCDFHPQRS}
 
 In the above, if there are no modifiers, the modifier parameter is omitted.
 The modifier value is encoded as described in the :ref:`modifiers` section,
 above. When the second form is used, the number is always ``1`` and must be
 omitted if the modifiers field is also absent. The third form becomes the
-second form when modifiers are present.
+second form when modifiers are present (``SS3 is the bytes 0x1b 0x4f``).
 
 These sequences must match entries in the terminfo database for maximum
 compatibility. The table below lists the key, its terminfo entry name and
@@ -428,7 +428,7 @@ Bugs in fixterms
   * No way to disambiguate :kbd:`Esc` keypresses, other than using 8-bit controls
     which are undesirable for other reasons
   * Incorrectly claims special keys are sometimes encoded using ``CSI letter`` encodings when it
-    is actually ``ESC O letter``.
+    is actually ``SS3 letter``.
   * ``Enter`` and ``F3`` are both assigned the number 13.
   * :kbd:`ctrl+shift+tab`` should be ``CSI 9 ; 6 u`` not ``CSI 1 ; 5 Z``
     (shift+tab is not a separate key from tab)
