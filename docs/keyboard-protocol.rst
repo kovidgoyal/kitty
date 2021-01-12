@@ -312,7 +312,7 @@ compatibility reasons.
 .. csv-table:: Functional key codes
    :header: "Name", "CSI sequence"
 
-   "ESCAPE",                 "CSI 57344 ... u"
+   "ESCAPE",                 "CSI 27 ... u"
    "ENTER",                  "CSI 13 ... u"
    "TAB",                    "CSI 9 ... u"
    "BACKSPACE",              "CSI 127 ... u"
