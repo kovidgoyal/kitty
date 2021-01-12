@@ -182,7 +182,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'kitty', 'kitty Documentation',
-     author, 'kitty', 'A cross-platform, fast, feature full, GPU based terminal emulator',
+     author, 'kitty', 'Cross-platform, fast, feature-rich, GPU based terminal',
      'Miscellaneous'),
 ]
 # }}}

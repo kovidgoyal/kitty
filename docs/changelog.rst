@@ -1,7 +1,7 @@
 Changelog
 ==============
 
-|kitty| is a feature full, cross-platform, *fast*, GPU based terminal emulator.
+|kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
 0.20.0 [future]
