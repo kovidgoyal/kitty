@@ -20,17 +20,17 @@ active_window(void) {
 }
 
 static inline bool
-is_modifier_key(int key) {
+is_modifier_key(uint32_t key) {
     switch(key) {
-        case GLFW_KEY_LEFT_SHIFT:
-        case GLFW_KEY_RIGHT_SHIFT:
-        case GLFW_KEY_LEFT_ALT:
-        case GLFW_KEY_RIGHT_ALT:
-        case GLFW_KEY_LEFT_CONTROL:
-        case GLFW_KEY_RIGHT_CONTROL:
-        case GLFW_KEY_LEFT_SUPER:
-        case GLFW_KEY_RIGHT_SUPER:
-        case GLFW_KEY_CAPS_LOCK:
+        case GLFW_FKEY_LEFT_SHIFT:
+        case GLFW_FKEY_RIGHT_SHIFT:
+        case GLFW_FKEY_LEFT_ALT:
+        case GLFW_FKEY_RIGHT_ALT:
+        case GLFW_FKEY_LEFT_CONTROL:
+        case GLFW_FKEY_RIGHT_CONTROL:
+        case GLFW_FKEY_LEFT_SUPER:
+        case GLFW_FKEY_RIGHT_SUPER:
+        case GLFW_FKEY_CAPS_LOCK:
             return true;
         default:
             return false;
@@ -87,7 +87,7 @@ on_key_input(GLFWkeyevent *ev) {
         debug("in sequence mode, handling as shortcut\n");
         if (
             action != GLFW_RELEASE &&
-            key != GLFW_KEY_LEFT_SHIFT && key != GLFW_KEY_RIGHT_SHIFT && key != GLFW_KEY_LEFT_ALT && key != GLFW_KEY_RIGHT_ALT && key != GLFW_KEY_LEFT_CONTROL && key != GLFW_KEY_RIGHT_CONTROL
+            key != GLFW_FKEY_LEFT_SHIFT && key != GLFW_FKEY_RIGHT_SHIFT && key != GLFW_FKEY_LEFT_ALT && key != GLFW_FKEY_RIGHT_ALT && key != GLFW_FKEY_LEFT_CONTROL && key != GLFW_FKEY_RIGHT_CONTROL
         ) call_boss(process_sequence, "iiii", key, native_key, action, mods);
         return;
     }
@@ -126,7 +126,7 @@ on_key_input(GLFWkeyevent *ev) {
 void
 fake_scroll(Window *w, int amount, bool upwards) {
     if (!w) return;
-    int key = upwards ? GLFW_KEY_UP : GLFW_KEY_DOWN;
+    int key = upwards ? GLFW_FKEY_UP : GLFW_FKEY_DOWN;
     GLFWkeyevent ev = {.key = key };
     char encoded_key[KEY_BUFFER_SIZE] = {0};
     Screen *screen = w->render_data.screen;
@@ -160,11 +160,11 @@ PYWRAP1(key_for_native_key_name) {
 
 static PyObject*
 pyencode_key_for_tty(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
-    char *kwds[] = {"key", "shifted_key", "alternate_key", "mods", "action", "text", "cursor_key_mode", "key_encoding_flags"};
-    unsigned int key = 0, shifted_key = 0, alternate_key = 0, mods = 0, action = 0, key_encoding_flags = 0;
+    static char *kwds[] = {"key", "shifted_key", "alternate_key", "mods", "action", "key_encoding_flags", "text", "cursor_key_mode", NULL};
+    unsigned int key = 0, shifted_key = 0, alternate_key = 0, mods = 0, action = GLFW_PRESS, key_encoding_flags = 0;
     const char *text = NULL;
     int cursor_key_mode = 0;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "IIIIIspI", kwds, &key, &shifted_key, &alternate_key, &mods, &action, &text, &cursor_key_mode, &key_encoding_flags)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "I|IIIIIsp", kwds, &key, &shifted_key, &alternate_key, &mods, &action, &key_encoding_flags, &text, &cursor_key_mode)) return NULL;
     GLFWkeyevent ev = { .key = key, .shifted_key = shifted_key, .alternate_key = alternate_key, .text = text, .action = action, .mods = mods };
     char output[KEY_BUFFER_SIZE+1] = {0};
     int num = encode_glfw_key_event(&ev, cursor_key_mode, key_encoding_flags, output);

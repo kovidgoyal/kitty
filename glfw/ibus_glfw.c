@@ -111,7 +111,7 @@ send_text(const char *text, int ime_state) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {
         GLFWkeyevent fake_ev;
-        _glfwInitializeKeyEvent(&fake_ev, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0);
+        _glfwInitializeKeyEvent(&fake_ev, 0, 0, GLFW_PRESS, 0);
         fake_ev.text = text;
         fake_ev.ime_state = ime_state;
         w->callbacks.keyboard((GLFWwindow*) w, &fake_ev);

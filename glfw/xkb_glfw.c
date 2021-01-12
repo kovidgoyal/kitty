@@ -558,7 +558,7 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
     if (failed && window && window->callbacks.keyboard) {
         // notify application to remove any existing pre-edit text
         GLFWkeyevent fake_ev;
-        _glfwInitializeKeyEvent(&fake_ev, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0);
+        _glfwInitializeKeyEvent(&fake_ev, 0, 0, GLFW_PRESS, 0);
         fake_ev.ime_state = 1;
         window->callbacks.keyboard((GLFWwindow*) window, &fake_ev);
     }
@@ -592,7 +592,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     xkb_keysym_t xkb_sym;
     xkb_keycode_t code_for_sym = xkb_keycode, ibus_keycode = xkb_keycode;
     GLFWkeyevent glfw_ev;
-    _glfwInitializeKeyEvent(&glfw_ev, GLFW_KEY_UNKNOWN, 0, GLFW_PRESS, 0); // init with default values
+    _glfwInitializeKeyEvent(&glfw_ev, 0, 0, GLFW_PRESS, 0); // init with default values
 #ifdef _GLFW_WAYLAND
     code_for_sym += 8;
 #else
@@ -645,7 +645,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     }
     int glfw_sym = glfw_key_for_sym(xkb_sym);
     bool is_fallback = false;
-    if (glfw_sym == GLFW_KEY_UNKNOWN && !key_text[0]) {
+    if (glfw_sym == 0 && !key_text[0]) {
         int num_default_syms = xkb_state_key_get_syms(sg->default_state, code_for_sym, &default_syms);
         if (num_default_syms > 0) {
             xkb_sym = default_syms[0];
