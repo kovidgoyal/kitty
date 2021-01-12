@@ -78,7 +78,7 @@ def parse_shortcut(sc: str) -> SingleKey:
         else:
             key = get_key_name_lookup()(q, False)
         is_native = key is not None
-    return SingleKey(mods, is_native, key or defines.GLFW_KEY_UNKNOWN)
+    return SingleKey(mods, is_native, key or 0)
 
 
 T = TypeVar('T')

@@ -116,11 +116,6 @@ encode_function_key(const KeyEvent *ev, char *output) {
             default: break;
         }
     }
-    if (key_number == GLFW_FKEY_TAB) {
-        if (ev->mods.value == SHIFT) return encode_csi_string('Z', "", output);
-        if (ev->mods.value == (CTRL | SHIFT)) return encode_csi_string('Z', "1;5", output);
-        if (ev->mods.value == ALT) SIMPLE("\x1b\t");
-    }
     if (ev->mods.value == ALT) {
         switch(key_number) {
             case GLFW_FKEY_TAB: SIMPLE("\x1b\t");
@@ -128,6 +123,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
             case GLFW_FKEY_BACKSPACE: SIMPLE("\x1b\x7f");
         }
     }
+    if (ev->mods.value == SHIFT && key_number == GLFW_FKEY_TAB) { SIMPLE("\x1b[Z"); }
 #undef SIMPLE
 
 #define S(number, trailer) key_number = number; csi_trailer = trailer; break
@@ -185,7 +181,7 @@ encode_printable_ascii_key_legacy(const KeyEvent *ev, char *output) {
     shifted_key = (shifted_key && ev->mods.shift) ? shifted_key : (char)ev->key;
     if ((ev->mods.value == ALT || ev->mods.value == (SHIFT | ALT)))
         return snprintf(output, KEY_BUFFER_SIZE, "\x1b%c", shifted_key);
-    if (ev->mods.value == CTRL)
+    if (ev->mods.value == CTRL && ev->key && 0x1f != ev->key)
         return snprintf(output, KEY_BUFFER_SIZE, "%c", ev->key & 0x1f);
     if (ev->mods.value == (CTRL | ALT))
         return snprintf(output, KEY_BUFFER_SIZE, "\x1b%c", ev->key & 0x1f);

@@ -394,7 +394,7 @@ def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:
                 mods, is_native, key = parse_shortcut(part)
             except InvalidMods:
                 return
-            if key is defines.GLFW_KEY_UNKNOWN:
+            if key == 0:
                 if mods is not None:
                     log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
                 return
@@ -408,7 +408,7 @@ def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:
             mods, is_native, key = parse_shortcut(sc)
         except InvalidMods:
             return
-        if key is defines.GLFW_KEY_UNKNOWN:
+        if key == 0:
             if mods is not None:
                 log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
             return

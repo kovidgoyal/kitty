@@ -180,7 +180,7 @@ def generate_glfw_header() -> None:
     lines.append('} GLFWFunctionKey;')
     patch_file('glfw/glfw3.h', 'functional key names', '\n'.join(lines))
     patch_file('kitty/glfw.c', 'glfw functional keys', '\n'.join(klines))
-    patch_file('kitty/fast_data_types.pyi', 'glfw functional keys', '\n'.join(klines), start_marker='# ', end_marker='')
+    patch_file('kitty/fast_data_types.pyi', 'glfw functional keys', '\n'.join(pyi), start_marker='# ', end_marker='')
     patch_file('glfw/input.c', 'functional key names', '\n'.join(names))
 
 

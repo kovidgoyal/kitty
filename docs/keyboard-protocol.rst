@@ -430,6 +430,9 @@ Bugs in fixterms
   * Incorrectly claims special keys are sometimes encoded using ``CSI letter`` encodings when it
     is actually ``ESC O letter``.
   * ``Enter`` and ``F3`` are both assigned the number 13.
+  * :kbd:`ctrl+shift+tab`` should be ``CSI 9 ; 6 u`` not ``CSI 1 ; 5 Z``
+    (shift+tab is not a separate key from tab)
+  * No support for the :kbd:`super` modifier.
   * Makes no mention of cursor key mode and how it changes encodings
   * Incorrectly encoding shifted keys when shift modifier is used, for
     instance, for :kbd:`ctrl+shift+I`.

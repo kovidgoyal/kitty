@@ -22,16 +22,16 @@ from .config import build_ansi_color_table
 from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
-    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM,
+    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     STRIKETHROUGH, TINT_PROGRAM, Screen, add_timer, add_window,
-    cell_size_for_window, compile_program, get_boss, get_clipboard_string,
-    init_cell_program, pt_to_px, set_clipboard_string, set_titlebar_color,
-    set_window_padding, set_window_render_data, update_window_title,
-    update_window_visibility, viewport_for_window
+    cell_size_for_window, compile_program, encode_key_for_tty, get_boss,
+    get_clipboard_string, init_cell_program, pt_to_px, set_clipboard_string,
+    set_titlebar_color, set_window_padding, set_window_render_data,
+    update_window_title, update_window_visibility, viewport_for_window
 )
-from .keys import defines, extended_key_event, keyboard_mode_name
+from .keys import keyboard_mode_name
 from .notify import NotificationCommand, handle_notification_cmd
 from .options_stub import Options
 from .rgb import to_color
@@ -886,9 +886,11 @@ class Window:
         if text:
             set_clipboard_string(text)
         else:
-            mode = keyboard_mode_name(self.screen)
-            data = extended_key_event(defines.GLFW_KEY_C, defines.GLFW_MOD_CONTROL, defines.GLFW_PRESS) if mode == 'kitty' else b'\x03'
-            self.write_to_child(data)
+            data = encode_key_for_tty(
+                key=ord('c'), mods=GLFW_MOD_CONTROL, key_encoding_flags=self.screen.current_key_encoding_flags(),
+                cursor_key_mode=self.screen.cursor_key_mode
+            )
+            self.write_to_child(data.encode('ascii'))
 
     def copy_and_clear_or_interrupt(self) -> None:
         self.copy_or_interrupt()

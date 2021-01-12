@@ -2324,6 +2324,7 @@ WRAP0(carriage_return)
 WRAP2(resize, 1, 1)
 WRAP2(set_margins, 1, 1)
 WRAP0(rescale_images)
+WRAP0(current_key_encoding_flags)
 
 static PyObject*
 start_selection(Screen *self, PyObject *args) {
@@ -2886,6 +2887,7 @@ static PyMethodDef methods[] = {
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
     MND(rescale_images, METH_NOARGS)
+    MND(current_key_encoding_flags, METH_NOARGS)
     MND(text_for_selection, METH_NOARGS)
     MND(is_rectangle_select, METH_NOARGS)
     MND(scroll, METH_VARARGS)
