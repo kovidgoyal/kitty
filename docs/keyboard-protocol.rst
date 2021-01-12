@@ -188,6 +188,8 @@ and alternate screens. If a pop request is received that empties the stack,
 all flags are reset. If a push request is received and the stack is full, the
 oldest entry from the stack must be evicted.
 
+.. _disambiguate:
+
 Disambiguate escape codes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -198,7 +200,9 @@ the start of an escape code. Similarly pressing the key :kbd:`alt+[` will
 generate the bytes used for CSI control codes. Turning on this flag will cause
 the terminal to report the :kbd:`Esc, alt+letter, ctrl+letter, ctrl+alt+letter`
 keys using ``CSI u`` sequences instead of legacy ones. Here letter is any printable
-ASCII letter (from 32 (i.e. space) to 126 (i.e. ~)).
+ASCII letter (from 32 (i.e. space) to 126 (i.e. ~)). Additionally, all keypad
+keys will be reported as separate keys with ``CSI u`` encoding, using dedicated codes
+from the :ref:`table below <functional>`.
 
 Report event types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -277,7 +281,7 @@ mode* (the ``smkx/rmkx`` terminfo capabilities). This form is used only in
     "F11",       "kf11",       "CSI 23 ~"
     "F12",       "kf12",       "CSI 24 ~"
 
-Finally, there are a few more functional keys that have special cased legacy
+There are a few more functional keys that have special cased legacy
 encodings:
 
 .. csv-table:: C0 controls
@@ -291,6 +295,9 @@ encodings:
 
 Note that :kbd:`Backspace` and :kbd:`ctrl+backspace` are swapped in some
 terminals.
+
+All keypad keys are reported as there equivalent non-keypad keys. To
+distinguish these, use the :ref:`disambiguate <disambiguate>` flag.
 
 Legacy text keys
 ~~~~~~~~~~~~~~~~~~~

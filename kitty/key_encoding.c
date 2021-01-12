@@ -78,16 +78,30 @@ serialize(const EncodingData *data, char *output, const char csi_trailer) {
     return pos;
 }
 
+static inline uint32_t
+convert_kp_key_to_normal_key(uint32_t key_number) {
+    switch(key_number) {
+#define S(x) case GLFW_FKEY_KP_##x: key_number = GLFW_FKEY_##x; break;
+        S(ENTER) S(HOME) S(END) S(INSERT) S(DELETE) S(PAGE_UP) S(PAGE_DOWN)
+        S(UP) S(DOWN) S(LEFT) S(RIGHT)
+#undef S
+        case GLFW_FKEY_KP_0:
+        case GLFW_FKEY_KP_9: key_number = '0' + (key_number - GLFW_FKEY_KP_0); break;
+        case GLFW_FKEY_KP_DECIMAL: key_number = '.'; break;
+        case GLFW_FKEY_KP_DIVIDE: key_number = '/'; break;
+        case GLFW_FKEY_KP_MULTIPLY: key_number = '*'; break;
+        case GLFW_FKEY_KP_SUBTRACT: key_number = '-'; break;
+        case GLFW_FKEY_KP_ADD: key_number = '+'; break;
+        case GLFW_FKEY_KP_EQUAL: key_number = '='; break;
+    }
+    return key_number;
+}
+
 static int
 encode_function_key(const KeyEvent *ev, char *output) {
 #define SIMPLE(val) return snprintf(output, KEY_BUFFER_SIZE, "%s", val);
     char csi_trailer = 'u';
     uint32_t key_number = ev->key;
-    switch(key_number) {
-#define S(x) case GLFW_FKEY_KP_##x: key_number = GLFW_FKEY_##x; break;
-        S(ENTER) S(HOME) S(END) S(INSERT) S(DELETE) S(PAGE_UP) S(PAGE_DOWN)
-#undef S
-    }
 
     if (ev->cursor_key_mode && !ev->disambiguate && !ev->report_all_event_types) {
         switch(key_number) {
@@ -222,6 +236,9 @@ encode_glfw_key_event(const GLFWkeyevent *e, const bool cursor_key_mode, const u
         .report_alternate_key = key_encoding_flags & 4
     };
     ev.has_text = e->text && !is_ascii_control_char(e->text[0]);
+    if (!ev.disambiguate && GLFW_FKEY_KP_0 <= ev.key && ev.key <= GLFW_FKEY_KP_DELETE) {
+        ev.key = convert_kp_key_to_normal_key(ev.key);
+    }
     switch (e->action) {
         case GLFW_PRESS: ev.action = PRESS; break;
         case GLFW_REPEAT: ev.action = REPEAT; break;
