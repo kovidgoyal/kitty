@@ -4,7 +4,6 @@
 
 # Utils  {{{
 import os
-from contextlib import suppress
 from gettext import gettext as _
 from typing import (
     Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set,
@@ -67,17 +66,29 @@ def parse_shortcut(sc: str) -> SingleKey:
         mods = parse_mods(parts[:-1], sc) or 0
         if not mods:
             raise InvalidMods('Invalid shortcut')
-    q = parts[-1].upper()
-    key: Optional[int] = getattr(defines, 'GLFW_KEY_' + key_name_aliases.get(q, q), None)
+    q = parts[-1]
     is_native = False
-    if key is None:
-        q = parts[-1]
-        if q.startswith('0x'):
-            with suppress(Exception):
-                key = int(q, 16)
+    if q.startswith('0x'):
+        try:
+            key = int(q, 16)
+        except Exception:
+            key = 0
         else:
-            key = get_key_name_lookup()(q, False)
-        is_native = key is not None
+            is_native = True
+    else:
+        try:
+            key = ord(q)
+        except Exception:
+            uq = q.upper()
+            uq = key_name_aliases.get(uq, uq)
+            x: Optional[int] = getattr(defines, f'GLFW_FKEY_{uq}', None)
+            if x is None:
+                lf = get_key_name_lookup()
+                key = lf(q, False) or 0
+                is_native = key > 0
+            else:
+                key = x
+
     return SingleKey(mods, is_native, key or 0)
 
 
@@ -123,9 +134,8 @@ as color16 to color255.''')
     'shortcuts': [
         _('Keyboard shortcuts'),
         _('''\
-For a list of key names, see: :link:`the GLFW key macros
-<https://github.com/kovidgoyal/kitty/blob/master/glfw/glfw3.h#L349>`.
-The name to use is the part after the :code:`GLFW_KEY_` prefix.
+Keys are identified simply by their lowercase unicode characters. For example:
+``a`` for the A key, ``[`` for the left square bracket key, etc.
 For a list of modifier names, see:
 :link:`GLFW mods <https://www.glfw.org/docs/latest/group__mods.html>`
 
