@@ -16,7 +16,9 @@ class TestKeys(BaseTest):
         press, repeat, release = defines.GLFW_PRESS, defines.GLFW_REPEAT, defines.GLFW_RELEASE  # noqa
 
         def csi(mods=0, num=1, trailer='u'):
-            ans = f'\033[{num}'
+            ans = '\033['
+            if num != 1 or mods:
+                ans += f'{num}'
             if mods:
                 m = 0
                 if mods & shift:
@@ -30,20 +32,45 @@ class TestKeys(BaseTest):
                 ans += f';{m+1}'
             return ans + trailer
 
-        def mods_test(key, plain, shift=None, ctrl=None, alt=None, calt=None, cshift=None, ashift=None, csi_num=None, trailer='u'):
+        def mods_test(key, plain=None, shift=None, ctrl=None, alt=None, calt=None, cshift=None, ashift=None, csi_num=None, trailer='u'):
             c = partial(csi, num=csi_num or key, trailer=trailer)
             e = partial(enc, key=key)
-            ae(e(), plain)
-            ae(e(mods=defines.GLFW_MOD_SHIFT), shift or c(defines.GLFW_MOD_SHIFT))
-            ae(e(mods=defines.GLFW_MOD_CONTROL), ctrl or c(defines.GLFW_MOD_CONTROL))
-            ae(e(mods=defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL), calt or c(defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL))
-            ae(e(mods=defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_CONTROL), cshift or c(defines.GLFW_MOD_CONTROL | defines.GLFW_MOD_SHIFT))
-            ae(e(mods=defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT), ashift or c(defines.GLFW_MOD_ALT | defines.GLFW_MOD_SHIFT))
+
+            def a(a, b):
+                ae(a, b, f"{a.encode('ascii')} != {b.encode('ascii')}")
+            a(e(), plain or c())
+            a(e(mods=defines.GLFW_MOD_SHIFT), shift or c(defines.GLFW_MOD_SHIFT))
+            a(e(mods=defines.GLFW_MOD_CONTROL), ctrl or c(defines.GLFW_MOD_CONTROL))
+            a(e(mods=defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL), calt or c(defines.GLFW_MOD_ALT | defines.GLFW_MOD_CONTROL))
+            a(e(mods=defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_CONTROL), cshift or c(defines.GLFW_MOD_CONTROL | defines.GLFW_MOD_SHIFT))
+            a(e(mods=defines.GLFW_MOD_SHIFT | defines.GLFW_MOD_ALT), ashift or c(defines.GLFW_MOD_ALT | defines.GLFW_MOD_SHIFT))
 
         mods_test(defines.GLFW_FKEY_ENTER, '\x0d', alt='\033\x0d', csi_num=ord('\r'))
         mods_test(defines.GLFW_FKEY_ESCAPE, '\x1b', alt='\033\033', csi_num=27)
         mods_test(defines.GLFW_FKEY_BACKSPACE, '\x7f', alt='\033\x7f', csi_num=127)
         mods_test(defines.GLFW_FKEY_TAB, '\t', alt='\033\t', shift='\x1b[Z', csi_num=ord('\t'))
+        mods_test(defines.GLFW_FKEY_INSERT, csi_num=2, trailer='~')
+        mods_test(defines.GLFW_FKEY_DELETE, csi_num=3, trailer='~')
+        mods_test(defines.GLFW_FKEY_PAGE_UP, csi_num=5, trailer='~')
+        mods_test(defines.GLFW_FKEY_PAGE_DOWN, csi_num=6, trailer='~')
+        mods_test(defines.GLFW_FKEY_HOME, csi_num=1, trailer='H')
+        mods_test(defines.GLFW_FKEY_END, csi_num=1, trailer='F')
+        mods_test(defines.GLFW_FKEY_F1, csi_num=1, trailer='P')
+        mods_test(defines.GLFW_FKEY_F2, csi_num=1, trailer='Q')
+        mods_test(defines.GLFW_FKEY_F3, csi_num=1, trailer='R')
+        mods_test(defines.GLFW_FKEY_F4, csi_num=1, trailer='S')
+        mods_test(defines.GLFW_FKEY_F5, csi_num=15, trailer='~')
+        mods_test(defines.GLFW_FKEY_F6, csi_num=17, trailer='~')
+        mods_test(defines.GLFW_FKEY_F7, csi_num=18, trailer='~')
+        mods_test(defines.GLFW_FKEY_F8, csi_num=19, trailer='~')
+        mods_test(defines.GLFW_FKEY_F9, csi_num=20, trailer='~')
+        mods_test(defines.GLFW_FKEY_F10, csi_num=21, trailer='~')
+        mods_test(defines.GLFW_FKEY_F11, csi_num=23, trailer='~')
+        mods_test(defines.GLFW_FKEY_F12, csi_num=24, trailer='~')
+        mods_test(defines.GLFW_FKEY_UP, csi_num=1, trailer='A')
+        mods_test(defines.GLFW_FKEY_DOWN, csi_num=1, trailer='B')
+        mods_test(defines.GLFW_FKEY_RIGHT, csi_num=1, trailer='C')
+        mods_test(defines.GLFW_FKEY_LEFT, csi_num=1, trailer='D')
 
         q = partial(enc, key=ord('a'))
         ae(q(), 'a')
