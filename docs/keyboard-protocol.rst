@@ -28,6 +28,45 @@ issues in that proposal, listed at the :ref:`bottom of this document
 
 .. versionadded:: 0.20.0
 
+Quickstart
+---------------
+
+If you are an application or library developer just interested in using this
+protocol to make keyboard handling simpler and more robust in your application,
+without too many changes, do the following:
+
+#. Emit the escape code ``CSI > 1 u`` at application startup
+#. All key events will now be sent in only a few forms to your application,
+   that are easy to parse unambiguously.
+#. Emit the escape sequence ``CSI < u`` at application exit to restore the
+   previously used keyboard mode.
+
+Key events will all be delivered to your application either as plain UTF-8
+text, or using these escape codes, for keys that do not produce text (``CSI``
+is the bytes ``0x1b 0x5b``::
+
+    CSI number ; modifiers [u~]
+    CSI 1; modifiers [ABCDFHPQRSZ]
+    0x0d - for the Enter key
+    0x7f or 0x08 - for Backspace
+    0x09 - for Tab
+
+The ``number`` in the first form above will be either the Unicode codepoint for a
+key, such as ``97`` for the :kbd:`a` key, or one of the numbers from the
+:ref:`functional` table below. The ``modifiers`` optional parameter encodes any
+modifiers pressed for the key event. The encoding is described in the
+:ref:`modifiers` section.
+
+The second form is used for a few functional keys, such as the :kbd:`Home, End,
+Tab, Arrow keys and F1-F4`, they are enumerated in the :ref:`functional` table below.
+Note that if no modifiers are present the parameters are omitted entirely
+giving an escape code of the form ``CSI [ABCDFHPQRSZ]``.
+
+If you want support for more advanced features such as repeat and release
+events, alternate keys for shortcut matching et cetera, these can be turned on
+using :ref:`progressive_enhancement` as documented in the rest of this
+specification.
+
 A basic overview
 ------------------
 
