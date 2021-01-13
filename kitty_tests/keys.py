@@ -389,6 +389,7 @@ class TestKeys(BaseTest):
         ae(enc(key=ord(' ')), ' ')
         ae(enc(key=ord(' '), mods=ctrl), '\0')
         ae(enc(key=ord('i'), mods=ctrl | shift), csi(ctrl | shift, ord('i')))
+        ae(enc(key=defines.GLFW_FKEY_LEFT_SHIFT), '')
 
         q = partial(enc, key=ord('a'))
         ae(q(), 'a')
@@ -434,6 +435,7 @@ class TestKeys(BaseTest):
         ae(kq(ord('a'), action=defines.GLFW_REPEAT), csi(num='a'))
         ae(kq(ord('a'), mods=ctrl), csi(ctrl, num='a'))
         ae(kq(defines.GLFW_FKEY_UP), '\x1b[A')
+        ae(kq(defines.GLFW_FKEY_LEFT_SHIFT), csi(num=defines.GLFW_FKEY_LEFT_SHIFT))
 
         # test embed text
         eq = partial(enc, key_encoding_flags=0b11000)

@@ -315,9 +315,11 @@ be notified of key repeat/release events. These types of events are needed for
 some applications, such as games (think of movement using the ``WASD`` keys).
 
 This progressive enhancement (``0b1000``) turns on key reporting even for key
-events that generate next. When it is enabled, text will not be sent, instead
+events that generate text. When it is enabled, text will not be sent, instead
 only key events are sent. If the text is needed as well, combine with the
 Report associated text enhancement below.
+
+Additionally, with this mode, events for pressing modifier keys are reported.
 
 .. _report_text:
 
