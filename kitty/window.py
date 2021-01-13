@@ -23,9 +23,9 @@ from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
-    GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
-    MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    STRIKETHROUGH, TINT_PROGRAM, Screen, add_timer, add_window,
+    GLFW_PRESS, GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM,
+    GRAPHICS_PROGRAM, MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
+    SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, Screen, add_timer, add_window,
     cell_size_for_window, compile_program, encode_key_for_tty, get_boss,
     get_clipboard_string, init_cell_program, pt_to_px, set_clipboard_string,
     set_titlebar_color, set_window_padding, set_window_render_data,
@@ -881,16 +881,18 @@ class Window:
         if text:
             set_clipboard_string(text)
 
+    def encoded_key(self, key: int, mods: int = 0, action: int = GLFW_PRESS) -> bytes:
+        return encode_key_for_tty(
+                key=key, mods=mods, key_encoding_flags=self.screen.current_key_encoding_flags(),
+                cursor_key_mode=self.screen.cursor_key_mode, action=action
+            ).encode('ascii')
+
     def copy_or_interrupt(self) -> None:
         text = self.text_for_selection()
         if text:
             set_clipboard_string(text)
         else:
-            data = encode_key_for_tty(
-                key=ord('c'), mods=GLFW_MOD_CONTROL, key_encoding_flags=self.screen.current_key_encoding_flags(),
-                cursor_key_mode=self.screen.cursor_key_mode
-            )
-            self.write_to_child(data.encode('ascii'))
+            self.write_to_child(self.encoded_key(ord('c'), mods=GLFW_MOD_CONTROL))
 
     def copy_and_clear_or_interrupt(self) -> None:
         self.copy_or_interrupt()

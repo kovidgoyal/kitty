@@ -11,8 +11,6 @@ from kitty.config import parse_send_text_bytes
 from kitty.key_encoding import (
     WindowSystemKeyEvent, decode_key_event_as_window_system_key
 )
-from kitty.keys import interpret_key_event
-
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError,
     PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType,
@@ -155,7 +153,7 @@ Do not send text to the active window, even if it is one of the matched windows.
             if window is not None:
                 if not exclude_active or window is not boss.active_window:
                     if isinstance(data, WindowSystemKeyEvent):
-                        kdata = interpret_key_event(data.code, 0, data.mods, window, data.action)
+                        kdata = window.encoded_key(data.code, mods=data.mods, action=data.action)
                         if kdata:
                             window.write_to_child(kdata)
                     else:
