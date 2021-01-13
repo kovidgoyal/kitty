@@ -389,6 +389,8 @@ class TestKeys(BaseTest):
         for k in (defines.GLFW_FKEY_KP_PAGE_UP, defines.GLFW_FKEY_KP_0):
             ae(dq(k), csi(num=k))
             ae(dq(k, mods=ctrl), csi(ctrl, num=k))
+        ae(dq(defines.GLFW_FKEY_UP), '\x1b[A')
+        ae(dq(defines.GLFW_FKEY_UP, mods=ctrl), csi(ctrl, 1, 'A'))
 
     def test_encode_mouse_event(self):
         NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL = range(4)
