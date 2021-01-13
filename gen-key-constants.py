@@ -117,7 +117,7 @@ shift_map = {x[0]: x[1] for x in '`~ 1! 2@ 3# 4$ 5% 6^ 7& 8* 9( 0) -_ =+ [{ ]} \
 shift_map.update({x: x.upper() for x in string.ascii_lowercase})
 functional_encoding_overrides = {
     'insert': 2, 'delete': 3, 'page_up': 5, 'page_down': 6,
-    'home': 7, 'end': 8, 'tab': 9, 'f1': 11, 'f2': 12, 'enter': 13, 'f4': 14,
+    'home': 7, 'end': 8, 'tab': 9, 'f1': 11, 'f2': 12, 'f3': 13, 'enter': 13, 'f4': 14,
     'f5': 15, 'f6': 17, 'f7': 18, 'f8': 19, 'f9': 20, 'f10': 21,
     'f11': 23, 'f12': 24, 'escape': 27, 'backspace': 127
 }

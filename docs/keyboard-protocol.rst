@@ -327,16 +327,16 @@ mode* (the ``smkx/rmkx`` terminfo capabilities). This form is used only in
     "DELETE",    "kdch1",      "CSI 3 ~"
     "PAGE_UP",   "kpp",        "CSI 5 ~"
     "PAGE_DOWN", "knp",        "CSI 6 ~"
-    "UP",        "cuu1,kcuu1", "CSI A, ESC O A"
-    "DOWN",      "cud1,kcud1", "CSI B, ESC O B"
-    "RIGHT",     "cuf1,kcuf1", "CSI C, ESC O C"
-    "LEFT",      "cub1,kcub1", "CSI D, ESC O D"
-    "HOME",      "home,khome", "CSI H, ESC O H"
-    "END",       "-,kend",     "CSI F, ESC O F"
-    "F1",        "kf1",        "ESC O P"
-    "F2",        "kf2",        "ESC O Q"
-    "F3",        "kf3",        "ESC O R"
-    "F4",        "kf4",        "ESC O S"
+    "UP",        "cuu1,kcuu1", "CSI A, SS3 A"
+    "DOWN",      "cud1,kcud1", "CSI B, SS3 B"
+    "RIGHT",     "cuf1,kcuf1", "CSI C, SS3 C"
+    "LEFT",      "cub1,kcub1", "CSI D, SS3 D"
+    "HOME",      "home,khome", "CSI H, SS3 H"
+    "END",       "-,kend",     "CSI F, SS3 F"
+    "F1",        "kf1",        "SS3 P"
+    "F2",        "kf2",        "SS3 Q"
+    "F3",        "kf3",        "SS3 R"
+    "F4",        "kf4",        "SS3 S"
     "F5",        "kf5",        "CSI 15 ~"
     "F6",        "kf6",        "CSI 17 ~"
     "F7",        "kf7",        "CSI 18 ~"
@@ -355,8 +355,8 @@ encodings:
     "Enter",     "Plain - 0xd,  alt+Enter - 0x1b 0x1d"
     "Escape",    "Plain - 0x1b, alt+Esc - 0x1b 0x1b"
     "Backspace", "Plain - 0x7f, alt+Backspace - 0x1b 0x7f, ctrl+Backspace - 0x08"
-    "Space",     "Plain - 0x20, ctrl+space - 0x0, alt+space - 0x1b 0x20"
-    "Tab",       "Plain - 0x09, shift+tab - CSI Z"
+    "Space",     "Plain - 0x20, ctrl+Space - 0x0, alt+space - 0x1b 0x20"
+    "Tab",       "Plain - 0x09, shift+Tab - CSI Z"
 
 Note that :kbd:`Backspace` and :kbd:`ctrl+backspace` are swapped in some
 terminals.
@@ -438,7 +438,7 @@ compatibility reasons.
    "MENU",                   "CSI 57363 u"
    "F1",                     "CSI 1 P or CSI 11 ~"
    "F2",                     "CSI 1 Q or CSI 12 ~"
-   "F3",                     "CSI 1 R or CSI 57366 ~"
+   "F3",                     "CSI 1 R or CSI 13 ~"
    "F4",                     "CSI 1 S or CSI 14 ~"
    "F5",                     "CSI 15 ~"
    "F6",                     "CSI 17 ~"
@@ -536,7 +536,6 @@ Bugs in fixterms
     which are undesirable for other reasons
   * Incorrectly claims special keys are sometimes encoded using ``CSI letter`` encodings when it
     is actually ``SS3 letter``.
-  * ``Enter`` and ``F3`` are both assigned the number 13.
   * :kbd:`ctrl+shift+tab`` should be ``CSI 9 ; 6 u`` not ``CSI 1 ; 5 Z``
     (shift+tab is not a separate key from tab)
   * No support for the :kbd:`super` modifier.
