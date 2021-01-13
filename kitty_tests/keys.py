@@ -15,11 +15,13 @@ class TestKeys(BaseTest):
         shift, alt, ctrl, super = defines.GLFW_MOD_SHIFT, defines.GLFW_MOD_ALT, defines.GLFW_MOD_CONTROL, defines.GLFW_MOD_SUPER  # noqa
         press, repeat, release = defines.GLFW_PRESS, defines.GLFW_REPEAT, defines.GLFW_RELEASE  # noqa
 
-        def csi(mods=0, num=1, trailer='u'):
+        def csi(mods=0, num=1, action=1, trailer='u'):
             ans = '\033['
+            if isinstance(num, str):
+                num = ord(num)
             if num != 1 or mods:
                 ans += f'{num}'
-            if mods:
+            if mods or action > 1:
                 m = 0
                 if mods & shift:
                     m |= 1
@@ -30,6 +32,8 @@ class TestKeys(BaseTest):
                 if mods & super:
                     m |= 8
                 ans += f';{m+1}'
+                if action > 1:
+                    ans += f':{action}'
             return ans + trailer
 
         def mods_test(key, plain=None, shift=None, ctrl=None, alt=None, calt=None, cshift=None, ashift=None, csi_num=None, trailer='u'):
@@ -390,7 +394,14 @@ class TestKeys(BaseTest):
             ae(dq(k), csi(num=k))
             ae(dq(k, mods=ctrl), csi(ctrl, num=k))
         ae(dq(defines.GLFW_FKEY_UP), '\x1b[A')
-        ae(dq(defines.GLFW_FKEY_UP, mods=ctrl), csi(ctrl, 1, 'A'))
+        ae(dq(defines.GLFW_FKEY_UP, mods=ctrl), csi(ctrl, 1, trailer='A'))
+
+        # test event type reporting
+        tq = partial(enc, key_encoding_flags=0b10)
+        ae(tq(ord('a')), 'a')
+        ae(tq(ord('a'), action=defines.GLFW_REPEAT), csi(num='a', action=2))
+        ae(tq(ord('a'), action=defines.GLFW_RELEASE), csi(num='a', action=3))
+        ae(tq(ord('a'), action=defines.GLFW_RELEASE, mods=shift), csi(shift, num='a', action=3))
 
     def test_encode_mouse_event(self):
         NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL = range(4)

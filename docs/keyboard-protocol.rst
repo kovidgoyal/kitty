@@ -114,16 +114,18 @@ Event types
 ~~~~~~~~~~~~~~~~
 
 There are three key event types: ``press, repeat and release``. They are
-reported (if requested) as a sub-field of the modifiers field (separated by a
-colon). If no modifiers are present, the modifiers field must have the value
-``1`` and the event type sub-field the type of event. The ``press`` event type
-has value ``1`` and is the default if no event type sub field is present. The
-``repeat`` type is ``2`` and the ``release`` type is ``3``. So for example::
+reported (if requested ``0b10``) as a sub-field of the modifiers field
+(separated by a colon). If no modifiers are present, the modifiers field must
+have the value ``1`` and the event type sub-field the type of event. The
+``press`` event type has value ``1`` and is the default if no event type sub
+field is present. The ``repeat`` type is ``2`` and the ``release`` type is
+``3``. So for example::
 
-    CSI key-code;1    # this is a press event
-    CSI key-code;1:1  # this is a press event
-    CSI key-code;1:2  # this is a repeat event
-    CSI key-code:1:3  # this is a release event
+    CSI key-code             # this is a press event
+    CSI key-code;modifier    # this is a press event
+    CSI key-code;modifier:1  # this is a press event
+    CSI key-code;modifier:2  # this is a repeat event
+    CSI key-code:modifier:3  # this is a release event
 
 
 .. note:: Key events that result in text are reported as plain UTF-8 text, so
