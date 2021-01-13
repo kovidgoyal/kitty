@@ -77,7 +77,7 @@ key must be present only if shift is also present in the modifiers.
 
 The *base layout key* is the key corresponding to the physical key in the
 standard PC-101 key layout. So for example, if the user is using a Cyrillic
-keyboard with a Cyrillic keyboard layout pressing the :kbd:`ctrl+ц` key will
+keyboard with a Cyrillic keyboard layout pressing the :kbd:`ctrl+С` key will
 be :kbd:`ctrl+c` in the standard layout. So the terminal should send the *base
 layout key* as ``99`` corresponding to the ``c`` key.
 
@@ -540,7 +540,7 @@ Bugs in fixterms
     matching (think matching :kbd:`ctrl+shift+equal` and :kbd:`ctrl+plus`)
   * No way to specify alternate layout key. This is useful for keyboard layouts
     such as Cyrillic where you want the shortcut :kbd:`ctrl+c` to work when
-    pressing the :kbd:`ctrl+ц` on the keyboard.
+    pressing the :kbd:`ctrl+С` on the keyboard.
   * No way to report repeat and release key events, only key press events
   * No way to report key events for presses that generate text, useful for
     gaming. Think of using the :kbd:`WASD` keys to control movement.
