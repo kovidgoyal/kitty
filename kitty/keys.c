@@ -10,6 +10,62 @@
 #include "screen.h"
 #include "glfw-wrapper.h"
 #include "control-codes.h"
+#include <structmember.h>
+
+// python KeyEvent object {{{
+typedef struct {
+    PyObject_HEAD
+    PyObject *key, *shifted_key, *alternate_key;
+    PyObject *mods, *action, *native_key, *ime_state;
+    PyObject *text;
+} PyKeyEvent;
+
+static PyObject*
+new(PyTypeObject *type UNUSED, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+    PyErr_SetString(PyExc_TypeError, "Direct creation of KeyEvent objects is not supported");
+    return NULL;
+}
+
+static void
+dealloc(PyKeyEvent* self) {
+    Py_CLEAR(self->key); Py_CLEAR(self->shifted_key); Py_CLEAR(self->alternate_key);
+    Py_CLEAR(self->mods); Py_CLEAR(self->action); Py_CLEAR(self->native_key); Py_CLEAR(self->ime_state);
+    Py_CLEAR(self->text);
+    Py_TYPE(self)->tp_free((PyObject*)self);
+}
+
+static PyMemberDef members[] = {
+#define M(x) {#x, T_OBJECT, offsetof(PyKeyEvent, x), READONLY, #x}
+    M(key), M(shifted_key), M(alternate_key),
+    M(mods), M(action), M(native_key), M(ime_state),
+    M(text),
+    {NULL},
+#undef M
+};
+
+PyTypeObject PyKeyEvent_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "fast_data_types.KeyEvent",
+    .tp_basicsize = sizeof(PyKeyEvent),
+    .tp_dealloc = (destructor)dealloc,
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = "A key event",
+    .tp_members = members,
+    .tp_new = new,
+};
+
+static inline PyObject*
+convert_glfw_key_event_to_python(const GLFWkeyevent *ev) {
+    PyKeyEvent *self = (PyKeyEvent*)PyKeyEvent_Type.tp_alloc(&PyKeyEvent_Type, 0);
+    if (!self) return NULL;
+#define C(x) { unsigned long t = ev->x; self->x = PyLong_FromUnsignedLong(t); if (self->x == NULL) { Py_CLEAR(self); return NULL; } }
+    C(key); C(shifted_key); C(alternate_key); C(mods); C(action); C(native_key); C(ime_state);
+#undef C
+    self->text = PyUnicode_FromString(ev->text ? ev->text : "");
+    if (!self->text) { Py_CLEAR(self); return NULL; }
+    return (PyObject*)self;
+}
+// }}}
 
 static inline Window*
 active_window(void) {
@@ -83,16 +139,24 @@ on_key_input(GLFWkeyevent *ev) {
             debug("invalid state, ignoring\n");
             return;
     }
+    PyObject *ke = NULL;
+#define create_key_event() { ke = convert_glfw_key_event_to_python(ev); if (!ke) { PyErr_Print(); return; } }
     if (global_state.in_sequence_mode) {
         debug("in sequence mode, handling as shortcut\n");
         if (
             action != GLFW_RELEASE &&
             key != GLFW_FKEY_LEFT_SHIFT && key != GLFW_FKEY_RIGHT_SHIFT && key != GLFW_FKEY_LEFT_ALT && key != GLFW_FKEY_RIGHT_ALT && key != GLFW_FKEY_LEFT_CONTROL && key != GLFW_FKEY_RIGHT_CONTROL
-        ) call_boss(process_sequence, "iiii", key, native_key, action, mods);
+        ) {
+            create_key_event();
+            call_boss(process_sequence, "O", ke);
+            Py_CLEAR(ke);
+        }
         return;
     }
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-        PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_possible_special_key", "iiii", key, native_key, action, mods);
+        create_key_event();
+        PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_possible_special_key", "O", ke);
+        Py_CLEAR(ke);
         if (ret == NULL) { PyErr_Print(); }
         else {
             bool consumed = ret == Py_True;
@@ -103,6 +167,7 @@ on_key_input(GLFWkeyevent *ev) {
             }
         }
     }
+#undef create_key_event
     if (action == GLFW_REPEAT && !screen->modes.mDECARM) {
         debug("discarding repeat key event as DECARM is off\n");
         return;
@@ -181,5 +246,8 @@ static PyMethodDef module_methods[] = {
 bool
 init_keys(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    if (PyType_Ready(&PyKeyEvent_Type) < 0) return false;
+    if (PyModule_AddObject(module, "KeyEvent", (PyObject *)&PyKeyEvent_Type) != 0) return 0;
+    Py_INCREF(&PyKeyEvent_Type);
     return true;
 }

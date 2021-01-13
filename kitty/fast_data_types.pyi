@@ -1082,6 +1082,40 @@ class ChildMonitor:
         pass
 
 
+class KeyEvent:
+    @property
+    def key(self) -> int:
+        pass
+
+    @property
+    def shifted_key(self) -> int:
+        pass
+
+    @property
+    def alternate_key(self) -> int:
+        pass
+
+    @property
+    def mods(self) -> int:
+        pass
+
+    @property
+    def action(self) -> int:
+        pass
+
+    @property
+    def native_key(self) -> int:
+        pass
+
+    @property
+    def ime_state(self) -> int:
+        pass
+
+    @property
+    def text(self) -> str:
+        pass
+
+
 def set_iutf8_fd(fd: int, on: bool) -> bool:
     pass
 
