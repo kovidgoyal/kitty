@@ -379,6 +379,17 @@ class TestKeys(BaseTest):
         ae(q(action=repeat), 'a')
         ae(q(action=release), '')
 
+        # test disambiguate
+        dq = partial(enc, key_encoding_flags=0b1)
+        ae(dq(ord('a')), 'a')
+        ae(dq(defines.GLFW_FKEY_ESCAPE), csi(num=27))  # esc
+        for mods in (ctrl, alt, ctrl | shift, alt | shift):
+            ae(dq(ord('a'), mods=mods), csi(mods, ord('a')))
+        ae(dq(ord(' '), mods=ctrl), csi(ctrl, ord(' ')))
+        for k in (defines.GLFW_FKEY_KP_PAGE_UP, defines.GLFW_FKEY_KP_0):
+            ae(dq(k), csi(num=k))
+            ae(dq(k, mods=ctrl), csi(ctrl, num=k))
+
     def test_encode_mouse_event(self):
         NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL = range(4)
         L, M, R = 1, 2, 3

@@ -199,16 +199,29 @@ oldest entry from the stack must be evicted.
 Disambiguate escape codes
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This type of progressive enhancement fixes the problem of some legacy key
-press encodings overlapping with other control codes. For instance, pressing
-the :kbd:`Esc` key generates the byte ``0x1b`` which also is used to indicate
-the start of an escape code. Similarly pressing the key :kbd:`alt+[` will
-generate the bytes used for CSI control codes. Turning on this flag will cause
-the terminal to report the :kbd:`Esc, alt+letter, ctrl+letter, ctrl+alt+letter`
-keys using ``CSI u`` sequences instead of legacy ones. Here letter is any printable
-ASCII letter (from 32 (i.e. space) to 126 (i.e. ~)). Additionally, all keypad
-keys will be reported as separate keys with ``CSI u`` encoding, using dedicated codes
-from the :ref:`table below <functional>`.
+This type of progressive enhancement (``0b1``) fixes the problem of some legacy key press
+encodings overlapping with other control codes. For instance, pressing the
+:kbd:`Esc` key generates the byte ``0x1b`` which also is used to indicate the
+start of an escape code. Similarly pressing the key :kbd:`alt+[` will generate
+the bytes used for CSI control codes.
+
+Turning on this flag will cause the terminal to report the :kbd:`Esc, alt+key,
+ctrl+key, ctrl+alt+key, shift+alt+key` keys using ``CSI u`` sequences instead
+of legacy ones. Here key is any ASCII key as described in :ref:`legacy_text`.
+Additionally, all keypad keys will be reported as separate keys with ``CSI u``
+encoding, using dedicated numbers from the :ref:`table below <functional>`.
+
+With this flag turned on, all key events that do not generate text are
+represented in one of the following two forms::
+
+    CSI number; modifier u
+    CSI 1; modifier [~ABCDFHPQRSZ]
+
+This makes it very easy to parse key events in an application. In particular,
+:kbd:`ctrl+c` will no longer generate the ``SIGINT`` signal, but instead be
+delivers as a ``CSI u`` escape code. This has the nice side effect of making it
+much easier to integrate into the application event loop.
+
 
 Report event types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -234,8 +247,8 @@ this encoding, only key press and repeat events are sent and there is no
 way to distinguish between them. Text is sent directly as UTF-8 bytes.
 
 Any key events not described in this section are sent using the standard
-``CSI u`` encoding. This includes keys that are not encodeable in the legacy
-encoding, thereby increasing the space of useable key combinations even without
+``CSI u`` encoding. This includes keys that are not encodable in the legacy
+encoding, thereby increasing the space of usable key combinations even without
 progressive enhancement.
 
 Legacy functional keys
@@ -304,6 +317,8 @@ terminals.
 
 All keypad keys are reported as there equivalent non-keypad keys. To
 distinguish these, use the :ref:`disambiguate <disambiguate>` flag.
+
+.. _legacy_text:
 
 Legacy text keys
 ~~~~~~~~~~~~~~~~~~~

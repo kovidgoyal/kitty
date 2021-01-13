@@ -289,16 +289,18 @@ encode_key(const KeyEvent *ev, char *output) {
     bool simple_encoding_ok = !ed.add_actions && !ed.add_alternates;
 
     if (simple_encoding_ok) {
-        if (is_legacy_ascii_key(ev->key)) {
-            int ret = encode_printable_ascii_key_legacy(ev, output);
-            if (ret > 0) return ret;
-        } else if (ev->key == ' ' && ev->mods.value == CTRL) {
-            output[0] = 0;
-            return 1;
+        if (!ed.has_mods) return encode_utf8(ev->key, output);
+        if (!ev->disambiguate) {
+            if (is_legacy_ascii_key(ev->key)) {
+                int ret = encode_printable_ascii_key_legacy(ev, output);
+                if (ret > 0) return ret;
+            } else if (ev->key == ' ' && ev->mods.value == CTRL) {
+                output[0] = 0;
+                return 1;
+            }
         }
     }
 
-    if (simple_encoding_ok && !ed.has_mods) return encode_utf8(ev->key, output);
     return serialize(&ed, output, 'u');
 }
 
