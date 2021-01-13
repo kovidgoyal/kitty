@@ -150,15 +150,15 @@ encode_function_key(const KeyEvent *ev, char *output) {
             default: break;
         }
     }
-    if (ev->mods.value == ALT) {
+    if (ev->mods.value == ALT && !ev->disambiguate) {
         switch(key_number) {
             case GLFW_FKEY_TAB: SIMPLE("\x1b\t");
             case GLFW_FKEY_ENTER: SIMPLE("\x1b\r");
             case GLFW_FKEY_BACKSPACE: SIMPLE("\x1b\x7f");
         }
     }
-    if (ev->mods.value == SHIFT && key_number == GLFW_FKEY_TAB) { SIMPLE("\x1b[Z"); }
-    if (ev->mods.value == CTRL && key_number == GLFW_FKEY_BACKSPACE) { SIMPLE("\x08"); }
+    if (ev->mods.value == SHIFT && key_number == GLFW_FKEY_TAB && !ev->disambiguate) { SIMPLE("\x1b[Z"); }
+    if (ev->mods.value == CTRL && key_number == GLFW_FKEY_BACKSPACE && !ev->disambiguate) { SIMPLE("\x08"); }
 #undef SIMPLE
 
 #define S(number, trailer) key_number = number; csi_trailer = trailer; break

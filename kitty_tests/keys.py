@@ -399,7 +399,11 @@ class TestKeys(BaseTest):
         # test disambiguate
         dq = partial(enc, key_encoding_flags=0b1)
         ae(dq(ord('a')), 'a')
-        ae(dq(defines.GLFW_FKEY_ESCAPE), csi(num=27))  # esc
+        ae(dq(defines.GLFW_FKEY_ESCAPE), csi(num=27))
+        ae(dq(defines.GLFW_FKEY_ENTER), '\r')
+        ae(dq(defines.GLFW_FKEY_ENTER, mods=shift), csi(shift, 13))
+        ae(dq(defines.GLFW_FKEY_TAB), '\t')
+        ae(dq(defines.GLFW_FKEY_BACKSPACE), '\x7f')
         for mods in (ctrl, alt, ctrl | shift, alt | shift):
             ae(dq(ord('a'), mods=mods), csi(mods, ord('a')))
         ae(dq(ord(' '), mods=ctrl), csi(ctrl, ord(' ')))

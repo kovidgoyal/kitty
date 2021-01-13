@@ -240,7 +240,11 @@ represented in one of the following two forms::
 This makes it very easy to parse key events in an application. In particular,
 :kbd:`ctrl+c` will no longer generate the ``SIGINT`` signal, but instead be
 delivers as a ``CSI u`` escape code. This has the nice side effect of making it
-much easier to integrate into the application event loop.
+much easier to integrate into the application event loop. The only exceptions
+are the :kbd:`Enter, Tab and Backspace` keys which still generate the same
+bytes as in legacy mode this is to allow the user to type and execute commands
+in the shell such as ``reset`` after a program that sets this mode crashes
+without clearing it.
 
 .. _report_events:
 
