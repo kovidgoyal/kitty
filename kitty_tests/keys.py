@@ -15,11 +15,11 @@ class TestKeys(BaseTest):
         shift, alt, ctrl, super = defines.GLFW_MOD_SHIFT, defines.GLFW_MOD_ALT, defines.GLFW_MOD_CONTROL, defines.GLFW_MOD_SUPER  # noqa
         press, repeat, release = defines.GLFW_PRESS, defines.GLFW_REPEAT, defines.GLFW_RELEASE  # noqa
 
-        def csi(mods=0, num=1, action=1, shifted_key=0, alternate_key=0, trailer='u'):
+        def csi(mods=0, num=1, action=1, shifted_key=0, alternate_key=0, text=None, trailer='u'):
             ans = '\033['
             if isinstance(num, str):
                 num = ord(num)
-            if num != 1 or mods or shifted_key or alternate_key:
+            if num != 1 or mods or shifted_key or alternate_key or text:
                 ans += f'{num}'
             if shifted_key or alternate_key:
                 if isinstance(shifted_key, str):
@@ -29,7 +29,7 @@ class TestKeys(BaseTest):
                     if isinstance(alternate_key, str):
                         alternate_key = ord(alternate_key)
                     ans += f':{alternate_key}'
-            if mods or action > 1:
+            if mods or action > 1 or text:
                 m = 0
                 if mods & shift:
                     m |= 1
@@ -39,9 +39,14 @@ class TestKeys(BaseTest):
                     m |= 4
                 if mods & super:
                     m |= 8
-                ans += f';{m+1}'
-                if action > 1:
-                    ans += f':{action}'
+                if action > 1 or m:
+                    ans += f';{m+1}'
+                    if action > 1:
+                        ans += f':{action}'
+                elif text:
+                    ans += ';'
+            if text:
+                ans += ';' + ':'.join(map(str, map(ord, text)))
             return ans + trailer
 
         def mods_test(key, plain=None, shift=None, ctrl=None, alt=None, calt=None, cshift=None, ashift=None, csi_num=None, trailer='u'):
@@ -418,6 +423,19 @@ class TestKeys(BaseTest):
         ae(aq(ord('a'), mods=shift, shifted_key=ord('A')), csi(shift, 'a', shifted_key='A'))
         ae(aq(ord('a'), alternate_key=ord('A')), csi(num='a', alternate_key='A'))
         ae(aq(ord('a'), mods=shift, shifted_key=ord('A'), alternate_key=ord('b')), csi(shift, 'a', shifted_key='A', alternate_key='b'))
+
+        # test report all keys
+        kq = partial(enc, key_encoding_flags=0b1000)
+        ae(kq(ord('a')), csi(num='a'))
+        ae(kq(ord('a'), action=defines.GLFW_REPEAT), csi(num='a'))
+        ae(kq(ord('a'), mods=ctrl), csi(ctrl, num='a'))
+        ae(kq(defines.GLFW_FKEY_UP), '\x1b[A')
+
+        # test embed text
+        eq = partial(enc, key_encoding_flags=0b11000)
+        ae(eq(ord('a'), text='a'), csi(num='a', text='a'))
+        ae(eq(ord('a'), mods=shift, text='A'), csi(shift, num='a', text='A'))
+        ae(eq(ord('a'), mods=shift, text='AB'), csi(shift, num='a', text='AB'))
 
     def test_encode_mouse_event(self):
         NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL = range(4)

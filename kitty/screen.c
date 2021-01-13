@@ -840,7 +840,7 @@ screen_set_8bit_controls(Screen *self, bool yes) {
 uint8_t
 screen_current_key_encoding_flags(Screen *self) {
     for (unsigned i = arraysz(self->main_key_encoding_flags); i-- > 0; ) {
-        if (self->key_encoding_flags[i] & 0x80) return self->key_encoding_flags[i] & 0xf;
+        if (self->key_encoding_flags[i] & 0x80) return self->key_encoding_flags[i] & 0x7f;
     }
     return 0;
 }
@@ -858,7 +858,7 @@ screen_set_key_encoding_flags(Screen *self, uint32_t val, uint32_t how) {
     for (unsigned i = arraysz(self->main_key_encoding_flags); i-- > 0; ) {
         if (self->key_encoding_flags[i] & 0x80) { idx = i; break; }
     }
-    uint8_t q = val & 0xf;
+    uint8_t q = val & 0x7f;
     if (how == 1) self->key_encoding_flags[idx] = q;
     else if (how == 2) self->key_encoding_flags[idx] |= q;
     else if (how == 3) self->key_encoding_flags[idx] &= ~q;
@@ -867,7 +867,7 @@ screen_set_key_encoding_flags(Screen *self, uint32_t val, uint32_t how) {
 
 void
 screen_push_key_encoding_flags(Screen *self, uint32_t val) {
-    uint8_t q = val & 0xf;
+    uint8_t q = val & 0x7f;
     const unsigned sz = arraysz(self->main_key_encoding_flags);
     unsigned current_idx = 0;
     for (unsigned i = arraysz(self->main_key_encoding_flags); i-- > 0; ) {

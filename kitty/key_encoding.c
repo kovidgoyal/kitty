@@ -18,15 +18,16 @@ typedef struct {
         char encoded[4];
     } mods;
     KeyAction action;
-    bool cursor_key_mode, disambiguate, report_all_event_types, report_alternate_key;
+    bool cursor_key_mode, disambiguate, report_all_event_types, report_alternate_key, report_text, embed_text;
     const char *text;
     bool has_text;
 } KeyEvent;
 
 typedef struct {
     uint32_t key, shifted_key, alternate_key;
-    bool add_alternates, has_mods, add_actions;
+    bool add_alternates, has_mods, add_actions, add_text;
     char encoded_mods[4];
+    const char *text;
     KeyAction action;
 } EncodingData;
 
@@ -55,23 +56,41 @@ init_encoding_data(EncodingData *ans, const KeyEvent *ev) {
     if (ans->add_alternates) { if (ev->mods.shift) ans->shifted_key = ev->shifted_key; ans->alternate_key = ev->alternate_key; }
     ans->action = ev->action;
     ans->key = ev->key;
+    ans->add_text = ev->embed_text && ev->text && ev->text[0];
+    ans->text = ev->text;
     memcpy(ans->encoded_mods, ev->mods.encoded, sizeof(ans->encoded_mods));
 }
 
 static inline int
 serialize(const EncodingData *data, char *output, const char csi_trailer) {
     int pos = 0;
+    bool second_field_not_empty = data->has_mods || data->add_actions;
+    bool third_field_not_empty = data->add_text;
 #define P(fmt, ...) pos += snprintf(output + pos, KEY_BUFFER_SIZE - 2 - pos, fmt, __VA_ARGS__)
     P("\x1b%s", "[");
-    if (data->key != 1 || data->add_alternates || data->has_mods || data->add_actions) P("%u", data->key);
+    if (data->key != 1 || data->add_alternates || second_field_not_empty || third_field_not_empty) P("%u", data->key);
     if (data->add_alternates) {
         P("%s", ":");
         if (data->shifted_key) P("%u", data->shifted_key);
         if (data->alternate_key) P(":%u", data->alternate_key);
     }
-    if (data->has_mods || data->add_actions) {
-        P(";%s", data->encoded_mods);
+    if (second_field_not_empty || third_field_not_empty) {
+        P("%s", ";");
+        if (second_field_not_empty) P("%s", data->encoded_mods);
         if (data->add_actions) P(":%u", data->action + 1);
+    }
+    if (third_field_not_empty) {
+        const char *p = data->text;
+        uint32_t codep, state = UTF8_ACCEPT;
+        bool first = true;
+        while(*p) {
+            if (decode_utf8(&state, &codep, *p) == UTF8_ACCEPT) {
+                if (first) { P(";%u", codep); first = false; }
+                else P(":%u", codep);
+            }
+            state = UTF8_ACCEPT;
+            p++;
+        }
     }
 #undef P
     output[pos++] = csi_trailer;
@@ -287,11 +306,14 @@ encode_key(const KeyEvent *ev, char *output) {
     if (GLFW_FKEY_FIRST <= ev->key && ev->key <= GLFW_FKEY_LAST) return encode_function_key(ev, output);
     EncodingData ed = {0};
     init_encoding_data(&ed, ev);
-    bool simple_encoding_ok = !ed.add_actions && !ed.add_alternates;
+    bool simple_encoding_ok = !ed.add_actions && !ed.add_alternates && !ed.add_text;
 
     if (simple_encoding_ok) {
-        if (!ed.has_mods) return encode_utf8(ev->key, output);
-        if (!ev->disambiguate) {
+        if (!ed.has_mods) {
+            if (ev->report_text) return serialize(&ed, output, 'u');
+            return encode_utf8(ev->key, output);
+        }
+        if (!ev->disambiguate && !ev->report_text) {
             if (is_legacy_ascii_key(ev->key)) {
                 int ret = encode_printable_ascii_key_legacy(ev, output);
                 if (ret > 0) return ret;
@@ -318,9 +340,12 @@ encode_glfw_key_event(const GLFWkeyevent *e, const bool cursor_key_mode, const u
         .cursor_key_mode = cursor_key_mode,
         .disambiguate = key_encoding_flags & 1,
         .report_all_event_types = key_encoding_flags & 2,
-        .report_alternate_key = key_encoding_flags & 4
+        .report_alternate_key = key_encoding_flags & 4,
+        .report_text = key_encoding_flags & 8,
+        .embed_text = key_encoding_flags & 16
     };
     ev.has_text = e->text && !is_ascii_control_char(e->text[0]);
+    bool send_text_standalone = !ev.report_text;
     if (!ev.disambiguate && GLFW_FKEY_KP_0 <= ev.key && ev.key <= GLFW_FKEY_KP_DELETE) {
         ev.key = convert_kp_key_to_normal_key(ev.key);
     }
@@ -329,7 +354,7 @@ encode_glfw_key_event(const GLFWkeyevent *e, const bool cursor_key_mode, const u
         case GLFW_REPEAT: ev.action = REPEAT; break;
         case GLFW_RELEASE: ev.action = RELEASE; break;
     }
-    if (ev.has_text && (ev.action == PRESS || ev.action == REPEAT)) return SEND_TEXT_TO_CHILD;
+    if (send_text_standalone && ev.has_text && (ev.action == PRESS || ev.action == REPEAT)) return SEND_TEXT_TO_CHILD;
     convert_glfw_mods(e->mods, &ev);
     return encode_key(&ev, output);
 }

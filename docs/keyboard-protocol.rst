@@ -44,7 +44,7 @@ sending an escape code to toggle the mode.
 
 The central escape code used to encode key events is::
 
-    CSI unicode-key-code:alternate-key-codes ; modifiers:event-type u
+    CSI unicode-key-code:alternate-key-codes ; modifiers:event-type ; text-as-codepoints u
 
 Spaces in the above definition are present for clarity and should be ignored.
 ``CSI`` is the bytes ``0x1b 0x5b``. All parameters are decimal numbers. Fields
@@ -133,6 +133,21 @@ field is present. The ``repeat`` type is ``2`` and the ``release`` type is
    events are not supported for them, unless the application requests *key
    report mode*, see below.
 
+.. _text_as_codepoints:
+
+Text as code points
+~~~~~~~~~~~~~~~~~~~~~
+
+The terminal can optionally send the text associated with key events as a
+sequence of Unicode code points. This behavior is opt-in by the progressive
+enhancement mechanism described below. Some examples::
+
+    shift+a -> CSI 97 ; 2 ; 65 u  # The text 'A' is reported as 65
+    option+a -> CSI 97 ; ; 229 u  # The text 'å' is reported as 229
+
+If multiple code points are present, they must be separated by colons.
+If no known key is associated with the text the key number ``0`` must be used.
+
 
 Non-Unicode keys
 ~~~~~~~~~~~~~~~~~~~~~~~
@@ -174,7 +189,8 @@ The value ``3`` means all set bits are reset, unset bits are left unchanged.
    "0b1 (1)", "Disambiguate escape codes"
    "0b10 (2)", "Report key event types"
    "0b100 (4)", "Report alternate keys"
-   "0b1000 (8)", "Report all keys as ``CSI u`` escape codes"
+   "0b1000 (8)", "Report all keys as escape codes"
+   "0b10000 (16)", "Report associated text"
 
 The program running in the terminal can query the terminal for the
 current values of the flags by sending::
@@ -229,7 +245,7 @@ much easier to integrate into the application event loop.
 Report event types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This type of progressive enhancement causes the terminal to report key repeat
+This progressive enhancement (``0b10``) causes the terminal to report key repeat
 and key release events. Normally only key press events are reported and key
 repeat events are treated as key press events. See :ref:`event_types` for
 details on how these are reported.
@@ -238,9 +254,30 @@ details on how these are reported.
 Report alternate keys
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-This type of progressive enhancement causes the terminal to report alternate
-key values in addition to the main value, to aid in shortcut matching. See
-:ref:`key_codes` for details on how these are reported.
+This progressive enhancement (``0b100``) causes the terminal to report
+alternate key values in addition to the main value, to aid in shortcut
+matching. See :ref:`key_codes` for details on how these are reported.
+
+Report all keys as escape codes
+----------------------------------
+
+Key events that generate text, such as plain key presses without modifiers,
+result in just the text being sent, in the legacy protocol. There is no way to
+be notified of key repeat/release events. These types of events are needed for
+some applications, such as games (think of movement using the ``WASD`` keys).
+
+This progressive enhancement (``0b1000``) turns on key reporting even for key
+events that generate next. When it is enabled, text will not be sent, instead
+only key events are sent. If the text is needed as well, combine with the
+Report associated text enhancement below.
+
+
+Report associated text
+------------------------
+
+This progressive enhancement (``0b10000``) causes key events that generate text
+to be reported as ``CSI u`` escape codes with the text embedded in the escape
+code. See :ref:`text_as_codepoints` above for details on the mechanism.
 
 Legacy key event encoding
 --------------------------------
@@ -332,8 +369,10 @@ For legacy compatibility, the keys
 following algorithm:
 
 #. If the :kbd:`alt` key is pressed output the byte for ``ESC (0x1b)``
-#. If the :kbd:`ctrl` modifier is pressed mask the seventh bit ``(& 0b111111)`` in the key's ASCII code number and output that
-#. Otherwise, if the :kbd:`shift` modifier is pressed, output the shifted key, for example, ``A`` for ``a`` and ``$`` for ``4``.
+#. If the :kbd:`ctrl` modifier is pressed mask the seventh bit ``(0b1000000)``
+   in the key's ASCII code number and output that
+#. Otherwise, if the :kbd:`shift` modifier is pressed, output the shifted key,
+   for example, ``A`` for ``a`` and ``$`` for ``4``.
 #. Otherwise, output the key unmodified
 
 Additionally, :kbd:`ctrl+space` is output as the NULL byte ``(0x0)``.

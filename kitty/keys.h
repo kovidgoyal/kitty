@@ -11,7 +11,7 @@
 #include "glfw-wrapper.h"
 #include <limits.h>
 
-#define KEY_BUFFER_SIZE 32
+#define KEY_BUFFER_SIZE 128
 #define SEND_TEXT_TO_CHILD INT_MIN
 #define debug(...) if (OPT(debug_keyboard)) printf(__VA_ARGS__);
 
