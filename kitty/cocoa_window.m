@@ -395,6 +395,10 @@ cocoa_create_global_menu(void) {
     NSMenu* windowMenu = [[NSMenu alloc] initWithTitle:@"Window"];
     [windowMenuItem setSubmenu:windowMenu];
 
+    [windowMenu addItemWithTitle:@"Close"
+                          action:@selector(performClose:)
+                   keyEquivalent:@"w"];
+
     [windowMenu addItemWithTitle:@"Minimize"
                           action:@selector(performMiniaturize:)
                    keyEquivalent:@"m"];
