@@ -51,8 +51,8 @@ static inline void
 init_encoding_data(EncodingData *ans, const KeyEvent *ev) {
     ans->add_actions = ev->report_all_event_types && ev->action != PRESS;
     ans->has_mods = ev->mods.encoded[0] && ev->mods.encoded[0] != '1';
-    ans->add_alternates = ev->report_alternate_key && (ev->shifted_key > 0 || ev->alternate_key > 0);
-    if (ans->add_alternates) { ans->shifted_key = ev->shifted_key; ans->alternate_key = ev->alternate_key; }
+    ans->add_alternates = ev->report_alternate_key && ((ev->shifted_key > 0 && ev->mods.shift) || ev->alternate_key > 0);
+    if (ans->add_alternates) { if (ev->mods.shift) ans->shifted_key = ev->shifted_key; ans->alternate_key = ev->alternate_key; }
     ans->action = ev->action;
     ans->key = ev->key;
     memcpy(ans->encoded_mods, ev->mods.encoded, sizeof(ans->encoded_mods));

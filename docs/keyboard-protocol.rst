@@ -72,7 +72,8 @@ The shifted key is simply the upper-case version of ``unicode-codepoint``, or
 more technically, the shifted version. So `a` becomes `A` and so on, based on
 the current keyboard layout. This is needed to be able to match against a
 shortcut such as :kbd:`ctrl+plus` which depending on the type of keyboard could
-be either :kbd:`ctrl+shift+equal` or :kbd:`ctrl+plus`.
+be either :kbd:`ctrl+shift+equal` or :kbd:`ctrl+plus`. Note that the shifted
+key must be present only if shift is also present in the modifiers.
 
 The *base layout key* is the key corresponding to the physical key in the
 standard PC-101 key layout. So for example, if the user is using a Cyrillic

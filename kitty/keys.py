@@ -10,7 +10,8 @@ from .typing import ScreenType
 
 
 def keyboard_mode_name(screen: ScreenType) -> str:
-    if screen.current_key_encoding_flags() & 0b1000:
+    flags = screen.current_key_encoding_flags()
+    if flags:
         return 'kitty'
     return 'application' if screen.cursor_key_mode else 'normal'
 

@@ -15,12 +15,20 @@ class TestKeys(BaseTest):
         shift, alt, ctrl, super = defines.GLFW_MOD_SHIFT, defines.GLFW_MOD_ALT, defines.GLFW_MOD_CONTROL, defines.GLFW_MOD_SUPER  # noqa
         press, repeat, release = defines.GLFW_PRESS, defines.GLFW_REPEAT, defines.GLFW_RELEASE  # noqa
 
-        def csi(mods=0, num=1, action=1, trailer='u'):
+        def csi(mods=0, num=1, action=1, shifted_key=0, alternate_key=0, trailer='u'):
             ans = '\033['
             if isinstance(num, str):
                 num = ord(num)
-            if num != 1 or mods:
+            if num != 1 or mods or shifted_key or alternate_key:
                 ans += f'{num}'
+            if shifted_key or alternate_key:
+                if isinstance(shifted_key, str):
+                    shifted_key = ord(shifted_key)
+                ans += ':' + (f'{shifted_key}' if shifted_key else '')
+                if alternate_key:
+                    if isinstance(alternate_key, str):
+                        alternate_key = ord(alternate_key)
+                    ans += f':{alternate_key}'
             if mods or action > 1:
                 m = 0
                 if mods & shift:
@@ -402,6 +410,14 @@ class TestKeys(BaseTest):
         ae(tq(ord('a'), action=defines.GLFW_REPEAT), csi(num='a', action=2))
         ae(tq(ord('a'), action=defines.GLFW_RELEASE), csi(num='a', action=3))
         ae(tq(ord('a'), action=defines.GLFW_RELEASE, mods=shift), csi(shift, num='a', action=3))
+
+        # test alternate key reporting
+        aq = partial(enc, key_encoding_flags=0b100)
+        ae(aq(ord('a')), 'a')
+        ae(aq(ord('a'), shifted_key=ord('A')), 'a')
+        ae(aq(ord('a'), mods=shift, shifted_key=ord('A')), csi(shift, 'a', shifted_key='A'))
+        ae(aq(ord('a'), alternate_key=ord('A')), csi(num='a', alternate_key='A'))
+        ae(aq(ord('a'), mods=shift, shifted_key=ord('A'), alternate_key=ord('b')), csi(shift, 'a', shifted_key='A', alternate_key='b'))
 
     def test_encode_mouse_event(self):
         NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL = range(4)
