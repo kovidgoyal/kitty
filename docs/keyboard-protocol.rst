@@ -40,7 +40,8 @@ applications continue to work. Key events that could not be represented in
 legacy mode are encoded using a ``CSI u`` escape code, that most terminal
 programs should just ignore. For more advanced features, such as release/repeat
 reporting etc., applications can tell the terminal they want this information by
-sending an escape code to toggle the mode.
+sending an escape code to :ref:`progressively enhance <progressive_enhancement>` the data reported for
+key events.
 
 The central escape code used to encode key events is::
 
@@ -139,8 +140,8 @@ Text as code points
 ~~~~~~~~~~~~~~~~~~~~~
 
 The terminal can optionally send the text associated with key events as a
-sequence of Unicode code points. This behavior is opt-in by the progressive
-enhancement mechanism described below. Some examples::
+sequence of Unicode code points. This behavior is opt-in by the :ref:`progressive
+enhancement <progressive_enhancement>` mechanism described below. Some examples::
 
     shift+a -> CSI 97 ; 2 ; 65 u  # The text 'A' is reported as 65
     option+a -> CSI 97 ; ; 229 u  # The text 'å' is reported as 229
@@ -186,11 +187,11 @@ The value ``3`` means all set bits are reset, unset bits are left unchanged.
 .. csv-table:: The progressive enhancement flags
    :header: "Bit", "Meaning"
 
-   "0b1 (1)", "Disambiguate escape codes"
-   "0b10 (2)", "Report key event types"
-   "0b100 (4)", "Report alternate keys"
-   "0b1000 (8)", "Report all keys as escape codes"
-   "0b10000 (16)", "Report associated text"
+   "0b1 (1)", ":ref:`disambiguate`"
+   "0b10 (2)", ":ref:`report_events`"
+   "0b100 (4)", ":ref:`report_alternates`"
+   "0b1000 (8)", ":ref:`report_all_keys`"
+   "0b10000 (16)", ":ref:`report_text`"
 
 The program running in the terminal can query the terminal for the
 current values of the flags by sending::
@@ -241,6 +242,7 @@ This makes it very easy to parse key events in an application. In particular,
 delivers as a ``CSI u`` escape code. This has the nice side effect of making it
 much easier to integrate into the application event loop.
 
+.. _report_events:
 
 Report event types
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -250,6 +252,7 @@ and key release events. Normally only key press events are reported and key
 repeat events are treated as key press events. See :ref:`event_types` for
 details on how these are reported.
 
+.. _report_alternates:
 
 Report alternate keys
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -257,6 +260,8 @@ Report alternate keys
 This progressive enhancement (``0b100``) causes the terminal to report
 alternate key values in addition to the main value, to aid in shortcut
 matching. See :ref:`key_codes` for details on how these are reported.
+
+.. _report_all_keys:
 
 Report all keys as escape codes
 ----------------------------------
@@ -271,6 +276,7 @@ events that generate next. When it is enabled, text will not be sent, instead
 only key events are sent. If the text is needed as well, combine with the
 Report associated text enhancement below.
 
+.. _report_text:
 
 Report associated text
 ------------------------
@@ -390,8 +396,8 @@ Any other combination of modifiers with these keys is output as the appropriate
 .. note::
    Many of the legacy escape codes are ambiguous with multiple different key
    presses yielding the same escape code(s), for example, :kbd:`ctrl+i` is the
-   same as :kbd:`tab`, :kbd:`ctrl+m` is the same as :kbd:`Enter`, :kbd:`alt+[ 2
-   shift+\`` is the same :kbd:`Insert`, etc. To resolve these use the
+   same as :kbd:`tab`, :kbd:`ctrl+m` is the same as :kbd:`Enter`, :kbd:`ctrl+r`
+   is the same :kbd:`ctrl+shift+r`, etc. To resolve these use the
    :ref:`disambiguate progressive enhancement <disambiguate>`.
 
 
@@ -410,113 +416,116 @@ compatibility reasons.
 .. csv-table:: Functional key codes
    :header: "Name", "CSI sequence"
 
-   "ESCAPE",                 "CSI 27 ... u"
-   "ENTER",                  "CSI 13 ... u"
-   "TAB",                    "CSI 9 ... u"
-   "BACKSPACE",              "CSI 127 ... u"
-   "INSERT",                 "CSI 2 ... ~"
-   "DELETE",                 "CSI 3 ... ~"
-   "LEFT",                   "CSI 1 ... D"
-   "RIGHT",                  "CSI 1 ... C"
-   "UP",                     "CSI 1 ... A"
-   "DOWN",                   "CSI 1 ... B"
-   "PAGE_UP",                "CSI 5 ... ~"
-   "PAGE_DOWN",              "CSI 6 ... ~"
-   "HOME",                   "CSI 1 ... H or CSI 7 ... ~"
-   "END",                    "CSI 1 ... F or CSI 8 ... ~"
-   "CAPS_LOCK",              "CSI 57358 ... u"
-   "SCROLL_LOCK",            "CSI 57359 ... u"
-   "NUM_LOCK",               "CSI 57360 ... u"
-   "PRINT_SCREEN",           "CSI 57361 ... u"
-   "PAUSE",                  "CSI 57362 ... u"
-   "MENU",                   "CSI 57363 ... u"
-   "F1",                     "CSI 1 ... P or CSI 11 ... ~"
-   "F2",                     "CSI 1 ... Q or CSI 12 ... ~"
-   "F3",                     "CSI 1 ... R or CSI 57366 ... ~"
-   "F4",                     "CSI 1 ... S or CSI 14 ... ~"
-   "F5",                     "CSI 15 ... ~"
-   "F6",                     "CSI 17 ... ~"
-   "F7",                     "CSI 18 ... ~"
-   "F8",                     "CSI 19 ... ~"
-   "F9",                     "CSI 20 ... ~"
-   "F10",                    "CSI 21 ... ~"
-   "F11",                    "CSI 23 ... ~"
-   "F12",                    "CSI 24 ... ~"
-   "F13",                    "CSI 57376 ... u"
-   "F14",                    "CSI 57377 ... u"
-   "F15",                    "CSI 57378 ... u"
-   "F16",                    "CSI 57379 ... u"
-   "F17",                    "CSI 57380 ... u"
-   "F18",                    "CSI 57381 ... u"
-   "F19",                    "CSI 57382 ... u"
-   "F20",                    "CSI 57383 ... u"
-   "F21",                    "CSI 57384 ... u"
-   "F22",                    "CSI 57385 ... u"
-   "F23",                    "CSI 57386 ... u"
-   "F24",                    "CSI 57387 ... u"
-   "F25",                    "CSI 57388 ... u"
-   "F26",                    "CSI 57389 ... u"
-   "F27",                    "CSI 57390 ... u"
-   "F28",                    "CSI 57391 ... u"
-   "F29",                    "CSI 57392 ... u"
-   "F30",                    "CSI 57393 ... u"
-   "F31",                    "CSI 57394 ... u"
-   "F32",                    "CSI 57395 ... u"
-   "F33",                    "CSI 57396 ... u"
-   "F34",                    "CSI 57397 ... u"
-   "F35",                    "CSI 57398 ... u"
-   "KP_0",                   "CSI 57399 ... u"
-   "KP_1",                   "CSI 57400 ... u"
-   "KP_2",                   "CSI 57401 ... u"
-   "KP_3",                   "CSI 57402 ... u"
-   "KP_4",                   "CSI 57403 ... u"
-   "KP_5",                   "CSI 57404 ... u"
-   "KP_6",                   "CSI 57405 ... u"
-   "KP_7",                   "CSI 57406 ... u"
-   "KP_8",                   "CSI 57407 ... u"
-   "KP_9",                   "CSI 57408 ... u"
-   "KP_DECIMAL",             "CSI 57409 ... u"
-   "KP_DIVIDE",              "CSI 57410 ... u"
-   "KP_MULTIPLY",            "CSI 57411 ... u"
-   "KP_SUBTRACT",            "CSI 57412 ... u"
-   "KP_ADD",                 "CSI 57413 ... u"
-   "KP_ENTER",               "CSI 57414 ... u"
-   "KP_EQUAL",               "CSI 57415 ... u"
-   "KP_SEPARATOR",           "CSI 57416 ... u"
-   "KP_LEFT",                "CSI 57417 ... u"
-   "KP_RIGHT",               "CSI 57418 ... u"
-   "KP_UP",                  "CSI 57419 ... u"
-   "KP_DOWN",                "CSI 57420 ... u"
-   "KP_PAGE_UP",             "CSI 57421 ... u"
-   "KP_PAGE_DOWN",           "CSI 57422 ... u"
-   "KP_HOME",                "CSI 57423 ... u"
-   "KP_END",                 "CSI 57424 ... u"
-   "KP_INSERT",              "CSI 57425 ... u"
-   "KP_DELETE",              "CSI 57426 ... u"
-   "LEFT_SHIFT",             "CSI 57427 ... u"
-   "LEFT_CONTROL",           "CSI 57428 ... u"
-   "LEFT_ALT",               "CSI 57429 ... u"
-   "LEFT_SUPER",             "CSI 57430 ... u"
-   "RIGHT_SHIFT",            "CSI 57431 ... u"
-   "RIGHT_CONTROL",          "CSI 57432 ... u"
-   "RIGHT_ALT",              "CSI 57433 ... u"
-   "RIGHT_SUPER",            "CSI 57434 ... u"
-   "MEDIA_PLAY",             "CSI 57435 ... u"
-   "MEDIA_PAUSE",            "CSI 57436 ... u"
-   "MEDIA_PLAY_PAUSE",       "CSI 57437 ... u"
-   "MEDIA_REVERSE",          "CSI 57438 ... u"
-   "MEDIA_STOP",             "CSI 57439 ... u"
-   "MEDIA_FAST_FORWARD",     "CSI 57440 ... u"
-   "MEDIA_REWIND",           "CSI 57441 ... u"
-   "MEDIA_TRACK_NEXT",       "CSI 57442 ... u"
-   "MEDIA_TRACK_PREVIOUS",   "CSI 57443 ... u"
-   "MEDIA_RECORD",           "CSI 57444 ... u"
-   "LOWER_VOLUME",           "CSI 57445 ... u"
-   "RAISE_VOLUME",           "CSI 57446 ... u"
-   "MUTE_VOLUME",            "CSI 57447 ... u"
+   "ESCAPE",                 "CSI 27 u"
+   "ENTER",                  "CSI 13 u"
+   "TAB",                    "CSI 9 u"
+   "BACKSPACE",              "CSI 127 u"
+   "INSERT",                 "CSI 2 ~"
+   "DELETE",                 "CSI 3 ~"
+   "LEFT",                   "CSI 1 D"
+   "RIGHT",                  "CSI 1 C"
+   "UP",                     "CSI 1 A"
+   "DOWN",                   "CSI 1 B"
+   "PAGE_UP",                "CSI 5 ~"
+   "PAGE_DOWN",              "CSI 6 ~"
+   "HOME",                   "CSI 1 H or CSI 7 ~"
+   "END",                    "CSI 1 F or CSI 8 ~"
+   "CAPS_LOCK",              "CSI 57358 u"
+   "SCROLL_LOCK",            "CSI 57359 u"
+   "NUM_LOCK",               "CSI 57360 u"
+   "PRINT_SCREEN",           "CSI 57361 u"
+   "PAUSE",                  "CSI 57362 u"
+   "MENU",                   "CSI 57363 u"
+   "F1",                     "CSI 1 P or CSI 11 ~"
+   "F2",                     "CSI 1 Q or CSI 12 ~"
+   "F3",                     "CSI 1 R or CSI 57366 ~"
+   "F4",                     "CSI 1 S or CSI 14 ~"
+   "F5",                     "CSI 15 ~"
+   "F6",                     "CSI 17 ~"
+   "F7",                     "CSI 18 ~"
+   "F8",                     "CSI 19 ~"
+   "F9",                     "CSI 20 ~"
+   "F10",                    "CSI 21 ~"
+   "F11",                    "CSI 23 ~"
+   "F12",                    "CSI 24 ~"
+   "F13",                    "CSI 57376 u"
+   "F14",                    "CSI 57377 u"
+   "F15",                    "CSI 57378 u"
+   "F16",                    "CSI 57379 u"
+   "F17",                    "CSI 57380 u"
+   "F18",                    "CSI 57381 u"
+   "F19",                    "CSI 57382 u"
+   "F20",                    "CSI 57383 u"
+   "F21",                    "CSI 57384 u"
+   "F22",                    "CSI 57385 u"
+   "F23",                    "CSI 57386 u"
+   "F24",                    "CSI 57387 u"
+   "F25",                    "CSI 57388 u"
+   "F26",                    "CSI 57389 u"
+   "F27",                    "CSI 57390 u"
+   "F28",                    "CSI 57391 u"
+   "F29",                    "CSI 57392 u"
+   "F30",                    "CSI 57393 u"
+   "F31",                    "CSI 57394 u"
+   "F32",                    "CSI 57395 u"
+   "F33",                    "CSI 57396 u"
+   "F34",                    "CSI 57397 u"
+   "F35",                    "CSI 57398 u"
+   "KP_0",                   "CSI 57399 u"
+   "KP_1",                   "CSI 57400 u"
+   "KP_2",                   "CSI 57401 u"
+   "KP_3",                   "CSI 57402 u"
+   "KP_4",                   "CSI 57403 u"
+   "KP_5",                   "CSI 57404 u"
+   "KP_6",                   "CSI 57405 u"
+   "KP_7",                   "CSI 57406 u"
+   "KP_8",                   "CSI 57407 u"
+   "KP_9",                   "CSI 57408 u"
+   "KP_DECIMAL",             "CSI 57409 u"
+   "KP_DIVIDE",              "CSI 57410 u"
+   "KP_MULTIPLY",            "CSI 57411 u"
+   "KP_SUBTRACT",            "CSI 57412 u"
+   "KP_ADD",                 "CSI 57413 u"
+   "KP_ENTER",               "CSI 57414 u"
+   "KP_EQUAL",               "CSI 57415 u"
+   "KP_SEPARATOR",           "CSI 57416 u"
+   "KP_LEFT",                "CSI 57417 u"
+   "KP_RIGHT",               "CSI 57418 u"
+   "KP_UP",                  "CSI 57419 u"
+   "KP_DOWN",                "CSI 57420 u"
+   "KP_PAGE_UP",             "CSI 57421 u"
+   "KP_PAGE_DOWN",           "CSI 57422 u"
+   "KP_HOME",                "CSI 57423 u"
+   "KP_END",                 "CSI 57424 u"
+   "KP_INSERT",              "CSI 57425 u"
+   "KP_DELETE",              "CSI 57426 u"
+   "LEFT_SHIFT",             "CSI 57427 u"
+   "LEFT_CONTROL",           "CSI 57428 u"
+   "LEFT_ALT",               "CSI 57429 u"
+   "LEFT_SUPER",             "CSI 57430 u"
+   "RIGHT_SHIFT",            "CSI 57431 u"
+   "RIGHT_CONTROL",          "CSI 57432 u"
+   "RIGHT_ALT",              "CSI 57433 u"
+   "RIGHT_SUPER",            "CSI 57434 u"
+   "MEDIA_PLAY",             "CSI 57435 u"
+   "MEDIA_PAUSE",            "CSI 57436 u"
+   "MEDIA_PLAY_PAUSE",       "CSI 57437 u"
+   "MEDIA_REVERSE",          "CSI 57438 u"
+   "MEDIA_STOP",             "CSI 57439 u"
+   "MEDIA_FAST_FORWARD",     "CSI 57440 u"
+   "MEDIA_REWIND",           "CSI 57441 u"
+   "MEDIA_TRACK_NEXT",       "CSI 57442 u"
+   "MEDIA_TRACK_PREVIOUS",   "CSI 57443 u"
+   "MEDIA_RECORD",           "CSI 57444 u"
+   "LOWER_VOLUME",           "CSI 57445 u"
+   "RAISE_VOLUME",           "CSI 57446 u"
+   "MUTE_VOLUME",            "CSI 57447 u"
 
 .. end functional key table
 .. }}}
+
+Note that the escape codes above of the form ``CSI 1 letter`` will omit the
+``1`` if there are no modifiers, since ``1`` is the default value.
 
 .. _fixterms_bugs:
 

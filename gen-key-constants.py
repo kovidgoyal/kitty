@@ -212,11 +212,11 @@ def generate_functional_table() -> None:
             code = code if trailer in '~u' else 1
             enc_lines.append((' ' * 8) + f"case GLFW_FKEY_{name.upper()}: S({code}, '{trailer}');")
             if code == 1 and name not in ('up', 'down', 'left', 'right'):
-                trailer += f' or CSI {oc} ... ~'
+                trailer += f' or CSI {oc} ~'
         else:
             trailer = 'u'
         name = f'"{name.upper()}",'.ljust(25)
-        lines.append(f'   {name} "CSI {code} ... {trailer}"')
+        lines.append(f'   {name} "CSI {code} {trailer}"')
     lines.append('')
     patch_file('docs/keyboard-protocol.rst', 'functional key table', '\n'.join(lines), start_marker='.. ', end_marker='')
     patch_file('kitty/key_encoding.c', 'special numbers', '\n'.join(enc_lines))
