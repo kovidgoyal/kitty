@@ -2,8 +2,8 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
+import string
 from typing import Dict, List
-
 
 functional_key_defs = '''# {{{
 # kitty                     XKB                         macOS
@@ -113,6 +113,8 @@ raise_volume                XF86AudioRaiseVolume        -
 mute_volume                 XF86AudioMute               -
 '''  # }}}
 
+shift_map = {x[0]: x[1] for x in '`~ 1! 2@ 3# 4$ 5% 6^ 7& 8* 9( 0) -_ =+ [{ ]} \\| ;: \'" ,< .> /?'.split()}
+shift_map.update({x: x.upper() for x in string.ascii_lowercase})
 functional_encoding_overrides = {
     'insert': 2, 'delete': 3, 'page_up': 5, 'page_down': 6,
     'home': 7, 'end': 8, 'tab': 9, 'f1': 11, 'f2': 12, 'enter': 13, 'f4': 14,
@@ -220,10 +222,46 @@ def generate_functional_table() -> None:
     patch_file('kitty/key_encoding.c', 'special numbers', '\n'.join(enc_lines))
 
 
+def generate_legacy_text_key_maps() -> None:
+    tests = []
+    tp = ' ' * 8
+    shift, alt, ctrl = 1, 2, 4
+
+    lines = []
+    for c, s in shift_map.items():
+        if c in '\\\'':
+            c = '\\' + c
+        lines.append(f"         case '{c}': return '{s}';")
+    patch_file('kitty/key_encoding.c', 'shifted key map', '\n'.join(lines))
+
+    def simple(c: str) -> None:
+        shifted = shift_map.get(c, c)
+        ctrled = chr(ord(c) & 0b111111)
+        for m in range(16):
+            if m == 0:
+                tests.append(f'{tp}ae(enc(ord({c!r})), {c!r})')
+            elif m == shift:
+                tests.append(f'{tp}ae(enc(ord({c!r}), mods=shift), {shifted!r})')
+            elif m == alt:
+                tests.append(f'{tp}ae(enc(ord({c!r}), mods=alt), "\\x1b" + {c!r})')
+            elif m == ctrl:
+                tests.append(f'{tp}ae(enc(ord({c!r}), mods=ctrl), {ctrled!r})')
+            elif m == shift | alt:
+                tests.append(f'{tp}ae(enc(ord({c!r}), mods=shift | alt), "\\x1b" + {shifted!r})')
+            elif m == ctrl | alt:
+                tests.append(f'{tp}ae(enc(ord({c!r}), mods=ctrl | alt), "\\x1b" + {ctrled!r})')
+
+    for k in shift_map:
+        simple(k)
+
+    patch_file('kitty_tests/keys.py', 'legacy letter tests', '\n'.join(tests), start_marker='# ', end_marker='')
+
+
 def main() -> None:
     generate_glfw_header()
     generate_xkb_mapping()
     generate_functional_table()
+    generate_legacy_text_key_maps()
 
 
 if __name__ == '__main__':

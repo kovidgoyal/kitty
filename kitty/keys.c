@@ -169,7 +169,7 @@ pyencode_key_for_tty(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     char output[KEY_BUFFER_SIZE+1] = {0};
     int num = encode_glfw_key_event(&ev, cursor_key_mode, key_encoding_flags, output);
     if (num == SEND_TEXT_TO_CHILD) return PyUnicode_FromString(text);
-    return PyUnicode_FromString(output);
+    return PyUnicode_FromStringAndSize(output, MAX(0, num));
 }
 
 static PyMethodDef module_methods[] = {

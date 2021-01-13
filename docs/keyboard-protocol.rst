@@ -1,12 +1,16 @@
 A protocol for comprehensive keyboard handling in terminals
 =================================================================
 
-There are various problems with the current state of keyboard handling. They
-include:
+There are various problems with the current state of keyboard handling in
+terminals. They include:
 
-* No way to use modifiers other than ``Ctrl`` and ``Alt``
+* No way to use modifiers other than ``ctrl`` and ``alt``
 
-* No way to reliably use multiple modifier keys, other than, ``Shift+Alt``.
+* No way to reliably use multiple modifier keys, other than, ``shift+alt`` and
+  ``ctrl+alt``.
+
+* Many of the existing escape codes used to encode these events are ambiguous
+  with different key presses mapping to the same escape code.
 
 * No way to handle different types of keyboard events, such as press, release or repeat
 
@@ -21,6 +25,8 @@ advanced usages. The protocol is based on initial work in `fixterms
 <http://www.leonerd.org.uk/hacks/fixterms/>`_, however, it corrects various
 issues in that proposal, listed at the :ref:`bottom of this document
 <fixterms_bugs>`.
+
+.. versionadded:: 0.20.0
 
 A basic overview
 ------------------
@@ -302,6 +308,34 @@ distinguish these, use the :ref:`disambiguate <disambiguate>` flag.
 Legacy text keys
 ~~~~~~~~~~~~~~~~~~~
 
+For legacy compatibility, the keys
+:kbd:`a-z 0-9 \` - = [ ] \ ; ' , . /` with the modifiers
+:kbd:`shift, alt, ctrl, shift+alt, ctrl+alt` are output using the
+following algorithm:
+
+#. If the :kbd:`alt` key is pressed output the byte for ``ESC (0x1b)``
+#. If the :kbd:`ctrl` modifier is pressed mask the seventh bit ``(& 0b111111)`` in the key's ASCII code number and output that
+#. Otherwise, if the :kbd:`shift` modifier is pressed, output the shifted key, for example, ``A`` for ``a`` and ``$`` for ``4``.
+#. Otherwise, output the key unmodified
+
+Additionally, :kbd:`ctrl+space` is output as the NULL byte ``(0x0)``.
+
+Any other combination of modifiers with these keys is output as the appropriate
+``CSI u`` escape code.
+
+.. csv-table:: Example encodings
+   :header: "Key", "Plain", "shift", "alt", "ctrl", "shift+alt", "alt+ctrl", "ctrl+shift"
+
+    "i", "i (105)", "I (73)", "ESC i", ") (41)", "ESC I", "ESC )", "CSI 105; 6 u"
+    "3", "3 (51)", "# (35)", "ESC 3", "3 (51)", "ESC #", "ESC 3", "CSI 51; 6 u"
+    ";", "; (59)", ": (58)", "ESC ;", "; (59)", "ESC :", "ESC ;", "CSI 59; 6 u"
+
+.. note::
+   Many of the legacy escape codes are ambiguous with multiple different key
+   presses yielding the same escape code(s), for example, :kbd:`ctrl+i` is the
+   same as :kbd:`tab`, :kbd:`ctrl+m` is the same as :kbd:`Enter`, :kbd:`alt+[ 2
+   shift+\`` is the same :kbd:`Insert`, etc. To resolve these use the
+   :ref:`disambiguate progressive enhancement <disambiguate>`.
 
 
 .. _functional:
