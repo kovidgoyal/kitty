@@ -157,6 +157,7 @@ def remove_markup(text: str) -> str:
             return {
                 'layouts': 'https://sw.kovidgoyal.net/kitty/index.html#layouts',
                 'sessions': 'https://sw.kovidgoyal.net/kitty/index.html#sessions',
+                'functional': 'https://sw.kovidgoyal.net/kitty/keyboard-protocol.html#functional-key-definitions',
             }[m.group(2)]
         return str(m.group(2))
 

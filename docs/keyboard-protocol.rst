@@ -575,6 +575,10 @@ Note that the escape codes above of the form ``CSI 1 letter`` will omit the
 Bugs in fixterms
 -------------------
 
+The following is a list of errata in the `original fixterms proposal
+<http://www.leonerd.org.uk/hacks/fixterms/>`_ , corrected in this
+specification.
+
   * No way to disambiguate :kbd:`Esc` keypresses, other than using 8-bit controls
     which are undesirable for other reasons
   * Incorrectly claims special keys are sometimes encoded using ``CSI letter`` encodings when it

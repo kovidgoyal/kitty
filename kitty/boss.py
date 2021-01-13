@@ -30,14 +30,14 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
-    ChildMonitor, add_timer, background_opacity_of, change_background_opacity,
-    change_os_window_state, cocoa_set_menubar_title, create_os_window,
-    current_application_quit_request, current_os_window, destroy_global_data,
-    focus_os_window, get_clipboard_string, global_font_size,
-    mark_os_window_for_close, os_window_font_size, patch_global_colors,
-    safe_pipe, set_application_quit_request, set_background_image, set_boss,
-    set_clipboard_string, set_in_sequence_mode, thread_write,
-    toggle_fullscreen, toggle_maximized
+    ChildMonitor, KeyEvent, add_timer, background_opacity_of,
+    change_background_opacity, change_os_window_state, cocoa_set_menubar_title,
+    create_os_window, current_application_quit_request, current_os_window,
+    destroy_global_data, focus_os_window, get_clipboard_string,
+    global_font_size, mark_os_window_for_close, os_window_font_size,
+    patch_global_colors, safe_pipe, set_application_quit_request,
+    set_background_image, set_boss, set_clipboard_string, set_in_sequence_mode,
+    thread_write, toggle_fullscreen, toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
@@ -663,20 +663,19 @@ class Boss:
         if t is not None:
             return t.active_window
 
-    def dispatch_special_key(self, key: int, native_key: int, action: int, mods: int) -> bool:
+    def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
         # Handles shortcuts, return True if the key was consumed
-        key_action = get_shortcut(self.keymap, mods, key, native_key)
+        key_action = get_shortcut(self.keymap, ev)
         if key_action is None:
-            sequences = get_shortcut(self.opts.sequence_map, mods, key, native_key)
+            sequences = get_shortcut(self.opts.sequence_map, ev)
             if sequences and not isinstance(sequences, KeyAction):
                 self.pending_sequences = sequences
                 set_in_sequence_mode(True)
                 return True
         elif isinstance(key_action, KeyAction):
-            self.current_key_press_info = key, native_key, action, mods
             return self.dispatch_action(key_action)
 
-    def process_sequence(self, key: int, native_key: int, action: Any, mods: int) -> None:
+    def process_sequence(self, ev: KeyEvent) -> None:
         if not self.pending_sequences:
             set_in_sequence_mode(False)
             return
@@ -684,7 +683,7 @@ class Boss:
         remaining = {}
         matched_action = None
         for seq, key_action in self.pending_sequences.items():
-            if shortcut_matches(seq[0], mods, key, native_key):
+            if shortcut_matches(seq[0], ev):
                 seq = seq[1:]
                 if seq:
                     remaining[seq] = key_action

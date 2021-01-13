@@ -4,8 +4,9 @@
 
 from typing import Optional, Union
 
-from .constants import SingleKey
 from .config import KeyAction, KeyMap, SequenceMap, SubSequenceMap
+from .constants import SingleKey
+from .fast_data_types import KeyEvent
 from .typing import ScreenType
 
 
@@ -16,15 +17,15 @@ def keyboard_mode_name(screen: ScreenType) -> str:
     return 'application' if screen.cursor_key_mode else 'normal'
 
 
-def get_shortcut(keymap: Union[KeyMap, SequenceMap], mods: int, key: int, native_key: int) -> Optional[Union[KeyAction, SubSequenceMap]]:
-    mods &= 0b1111
-    ans = keymap.get(SingleKey(mods, False, key))
+def get_shortcut(keymap: Union[KeyMap, SequenceMap], ev: KeyEvent) -> Optional[Union[KeyAction, SubSequenceMap]]:
+    mods = ev.mods & 0b1111
+    ans = keymap.get(SingleKey(mods, False, ev.key))
     if ans is None:
-        ans = keymap.get(SingleKey(mods, True, native_key))
+        ans = keymap.get(SingleKey(mods, True, ev.native_key))
     return ans
 
 
-def shortcut_matches(s: SingleKey, mods: int, key: int, native_key: int) -> bool:
-    mods &= 0b1111
-    q = native_key if s[1] else key
-    return bool(s[0] & 0b1111 == mods & 0b1111 and s[2] == q)
+def shortcut_matches(s: SingleKey, ev: KeyEvent) -> bool:
+    mods = ev.mods & 0b1111
+    q = ev.native_key if s.is_native else ev.key
+    return bool(s.mods & 0b1111 == mods & 0b1111 and s.key == q)

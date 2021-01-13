@@ -135,7 +135,8 @@ as color16 to color255.''')
         _('Keyboard shortcuts'),
         _('''\
 Keys are identified simply by their lowercase unicode characters. For example:
-``a`` for the A key, ``[`` for the left square bracket key, etc.
+``a`` for the A key, ``[`` for the left square bracket key, etc. For functional
+keys, such as ``Enter or Escape`` the names are present at :ref:`functional`.
 For a list of modifier names, see:
 :link:`GLFW mods <https://www.glfw.org/docs/latest/group__mods.html>`
 
