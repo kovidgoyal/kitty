@@ -3,7 +3,8 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import string
-from typing import Dict, List
+from typing import Dict, List, Any
+from pprint import pformat
 
 functional_key_defs = '''# {{{
 # kitty                     XKB                         macOS
@@ -141,6 +142,14 @@ for line in functional_key_defs.splitlines():
     if parts[1] != '-':
         name_to_xkb[name] = parts[1]
 last_code = start_code + len(functional_key_names) - 1
+ctrl_mapping = {
+    ' ': 0, '@': 0, 'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7,
+    'h': 8, 'i': 9, 'j': 10, 'k': 11, 'l': 12, 'm': 13, 'n': 14, 'o': 15, 'p': 16,
+    'q': 17, 'r': 18, 's': 19, 't': 20, 'u': 21, 'v': 22, 'w': 23, 'x': 24,
+    'y': 25, 'z': 26, '[': 27, '\\': 28, ']': 29, '^': 30, '~': 30, '/': 31,
+    '_': 31, '?': 127, '0': 48, '1': 49, '2': 0, '3': 27, '4': 28,
+    '5': 29, '6': 30, '7': 31, '8': 127, '9': 57
+}
 
 
 def patch_file(path: str, what: str, text: str, start_marker: str = '/* ', end_marker: str = ' */') -> None:
@@ -165,6 +174,10 @@ def patch_file(path: str, what: str, text: str, start_marker: str = '/* ', end_m
         f.seek(0)
         f.truncate(0)
         f.write(raw)
+
+
+def serialize_dict(x: dict) -> str:
+    return pformat(x, indent=4).replace('{', '{\n ', 1)
 
 
 def generate_glfw_header() -> None:
@@ -205,10 +218,13 @@ def generate_functional_table() -> None:
         ''
     ]
     enc_lines = []
+    tilde_trailers = set()
     for name, code in name_to_code.items():
         if name in functional_encoding_overrides or name in different_trailer_functionals:
-            code = oc = functional_encoding_overrides.get(name, code)
             trailer = different_trailer_functionals.get(name, '~')
+            if trailer == '~':
+                tilde_trailers.add(code)
+            code = oc = functional_encoding_overrides.get(name, code)
             code = code if trailer in '~u' else 1
             enc_lines.append((' ' * 8) + f"case GLFW_FKEY_{name.upper()}: S({code}, '{trailer}');")
             if code == 1 and name not in ('up', 'down', 'left', 'right'):
@@ -220,6 +236,16 @@ def generate_functional_table() -> None:
     lines.append('')
     patch_file('docs/keyboard-protocol.rst', 'functional key table', '\n'.join(lines), start_marker='.. ', end_marker='')
     patch_file('kitty/key_encoding.c', 'special numbers', '\n'.join(enc_lines))
+    code_to_name = {v: k.upper() for k, v in name_to_code.items()}
+    csi_map = {v: name_to_code[k] for k, v in functional_encoding_overrides.items()}
+    letter_trailer_codes = {
+        v: functional_encoding_overrides.get(k, name_to_code.get(k))
+        for k, v in different_trailer_functionals.items() if v in 'ABCDHFPQRSZ'}
+    text = f'functional_key_number_to_name_map = {serialize_dict(code_to_name)}'
+    text += f'\ncsi_number_to_functional_number_map = {serialize_dict(csi_map)}'
+    text += f'\nletter_trailer_to_csi_number_map = {letter_trailer_codes!r}'
+    text += f'\ntilde_trailers = {tilde_trailers!r}'
+    patch_file('kitty/key_encoding.py', 'csi mapping', text, start_marker='# ', end_marker='')
 
 
 def generate_legacy_text_key_maps() -> None:
@@ -236,7 +262,7 @@ def generate_legacy_text_key_maps() -> None:
 
     def simple(c: str) -> None:
         shifted = shift_map.get(c, c)
-        ctrled = chr(ord(c) & 0b111111)
+        ctrled = chr(ctrl_mapping.get(c, ord(c)))
         for m in range(16):
             if m == 0:
                 tests.append(f'{tp}ae(enc(ord({c!r})), {c!r})')
@@ -257,11 +283,41 @@ def generate_legacy_text_key_maps() -> None:
     patch_file('kitty_tests/keys.py', 'legacy letter tests', '\n'.join(tests), start_marker='# ', end_marker='')
 
 
+def chunks(lst: List, n: int) -> Any:
+    """Yield successive n-sized chunks from lst."""
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+
+def generate_ctrl_mapping() -> None:
+    lines = [
+        '.. csv-table:: Emitted bytes when :kbd:`ctrl` is held down and a key is pressed',
+        '   :header: "Key", "Byte", "Key", "Byte", "Key", "Byte"',
+        ''
+    ]
+    items = []
+    mi = []
+    for k in sorted(ctrl_mapping):
+        items.append(k)
+        val = str(ctrl_mapping[k])
+        items.append(val)
+        if k in "\\'":
+            k = '\\' + k
+        mi.append(f"        case '{k}': return {val};")
+
+    for line_items in chunks(items, 6):
+        lines.append('   ' + ', '.join(f'"{x}"' for x in line_items))
+    lines.append('')
+    patch_file('docs/keyboard-protocol.rst', 'ctrl mapping', '\n'.join(lines), start_marker='.. ', end_marker='')
+    patch_file('kitty/key_encoding.c', 'ctrl mapping', '\n'.join(mi))
+
+
 def main() -> None:
     generate_glfw_header()
     generate_xkb_mapping()
     generate_functional_table()
     generate_legacy_text_key_maps()
+    generate_ctrl_mapping()
 
 
 if __name__ == '__main__':

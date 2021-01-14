@@ -20,10 +20,14 @@ typedef struct {
     PyObject *text;
 } PyKeyEvent;
 
+static inline PyObject* convert_glfw_key_event_to_python(const GLFWkeyevent *ev);
+
 static PyObject*
-new(PyTypeObject *type UNUSED, PyObject UNUSED *args, PyObject UNUSED *kwds) {
-    PyErr_SetString(PyExc_TypeError, "Direct creation of KeyEvent objects is not supported");
-    return NULL;
+new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
+    static char *kwds[] = {"key", "shifted_key", "alternate_key", "mods", "action", "native_key", "ime_state", "text", NULL};
+    GLFWkeyevent ev = {.action=GLFW_PRESS};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "I|IIiiiiz", kwds, &ev.key, &ev.shifted_key, &ev.alternate_key, &ev.mods, &ev.action, &ev.native_key, &ev.ime_state, &ev.text)) return NULL;
+    return convert_glfw_key_event_to_python(&ev);
 }
 
 static void
@@ -229,7 +233,7 @@ pyencode_key_for_tty(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     unsigned int key = 0, shifted_key = 0, alternate_key = 0, mods = 0, action = GLFW_PRESS, key_encoding_flags = 0;
     const char *text = NULL;
     int cursor_key_mode = 0;
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "I|IIIIIsp", kwds, &key, &shifted_key, &alternate_key, &mods, &action, &key_encoding_flags, &text, &cursor_key_mode)) return NULL;
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "I|IIIIIzp", kwds, &key, &shifted_key, &alternate_key, &mods, &action, &key_encoding_flags, &text, &cursor_key_mode)) return NULL;
     GLFWkeyevent ev = { .key = key, .shifted_key = shifted_key, .alternate_key = alternate_key, .text = text, .action = action, .mods = mods };
     char output[KEY_BUFFER_SIZE+1] = {0};
     int num = encode_glfw_key_event(&ev, cursor_key_mode, key_encoding_flags, output);

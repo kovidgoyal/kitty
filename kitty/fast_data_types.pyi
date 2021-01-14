@@ -1083,6 +1083,12 @@ class ChildMonitor:
 
 
 class KeyEvent:
+
+    def __init__(
+        self, key: int, shifted_key: int = 0, alternate_key: int = 0, mods: int = 0, action: int = 1, native_key: int = 1, ime_state: int = 0, text: str = ''
+    ):
+        pass
+
     @property
     def key(self) -> int:
         pass
