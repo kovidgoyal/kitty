@@ -5,8 +5,8 @@
 from typing import Optional, Union
 
 from .config import KeyAction, KeyMap, SequenceMap, SubSequenceMap
-from .constants import SingleKey
 from .fast_data_types import KeyEvent
+from .types import SingleKey
 from .typing import ScreenType
 
 

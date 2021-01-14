@@ -11,7 +11,8 @@ from typing import (
 )
 
 from ..rgb import Color, to_color as as_color
-from ..utils import log_error, expandvars
+from ..types import ParsedShortcut
+from ..utils import expandvars, log_error
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
 T = TypeVar('T')
@@ -301,38 +302,6 @@ def key_func() -> Tuple[Callable[..., Callable], Dict[str, Callable]]:
     return func_with_args, ans
 
 
-def parse_kittens_shortcut(sc: str) -> Tuple[Optional[int], str, bool]:
-    from ..key_encoding import config_key_map, config_mod_map, text_match
-    if sc.endswith('+'):
-        parts = list(filter(None, sc.rstrip('+').split('+') + ['+']))
-    else:
-        parts = sc.split('+')
-    qmods = parts[:-1]
-    if qmods:
-        resolved_mods = 0
-        for mod in qmods:
-            m = config_mod_map.get(mod.upper())
-            if m is None:
-                raise ValueError('Unknown shortcut modifiers: {}'.format(sc))
-            resolved_mods |= m
-        mods: Optional[int] = resolved_mods
-    else:
-        mods = None
-    is_text = False
-    rkey = parts[-1]
-    tkey = text_match(rkey)
-    if tkey is None:
-        rkey = rkey.upper()
-        q = config_key_map.get(rkey)
-        if q is None:
-            raise ValueError('Unknown shortcut key: {}'.format(sc))
-        rkey = q
-    else:
-        is_text = True
-        rkey = tkey
-    return mods, rkey, is_text
-
-
 KittensKeyAction = Tuple[str, Tuple[str, ...]]
 
 
@@ -362,15 +331,12 @@ def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> Kit
     return func, tuple(args)
 
 
-KittensKey = Tuple[str, Optional[int], bool]
-
-
 def parse_kittens_key(
     val: str, funcs_with_args: Dict[str, Callable]
-) -> Optional[Tuple[KittensKeyAction, KittensKey]]:
+) -> Optional[Tuple[KittensKeyAction, ParsedShortcut]]:
+    from ..key_encoding import parse_shortcut
     sc, action = val.partition(' ')[::2]
     if not sc or not action:
         return None
-    mods, key, is_text = parse_kittens_shortcut(sc)
     ans = parse_kittens_func_args(action, funcs_with_args)
-    return ans, (key, mods, is_text)
+    return ans, parse_shortcut(sc)

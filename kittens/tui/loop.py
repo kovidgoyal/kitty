@@ -21,15 +21,13 @@ from kitty.fast_data_types import (
 )
 from kitty.key_encoding import (
     ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, backspace_key, decode_key_event,
-    enter_key, key_defs as K
+    enter_key
 )
 from kitty.typing import ImageManagerType, KeyEventType, Protocol
 from kitty.utils import ScreenSizeGetter, screen_size_function, write_all
 
 from .handler import Handler
 from .operations import init_state, reset_state
-
-C, D = K['C'], K['D']
 
 
 class BinaryWrite(Protocol):
@@ -149,7 +147,7 @@ class UnhandledException(Handler):
         self.write('Press the Enter key to quit')
 
     def on_key(self, key_event: KeyEventType) -> None:
-        if key_event is enter_key:
+        if key_event.key == 'ENTER':
             self.quit_loop(1)
 
     def on_interrupt(self) -> None:
@@ -282,8 +280,23 @@ class Loop:
         elif q == '~':
             if csi == '200~':
                 self.in_bracketed_paste = True
+                return
             elif csi == '201~':
                 self.in_bracketed_paste = False
+                return
+        elif q in 'u~ABCDHFPQRS':
+            try:
+                k = decode_key_event(csi[:-1], q)
+            except Exception:
+                pass
+            else:
+                if k.matches('ctrl+c'):
+                    self.handler.on_interrupt()
+                    return
+                if k.matches('ctrl+d'):
+                    self.handler.on_eot()
+                    return
+                self.handler.on_key_event(k)
 
     def _on_pm(self, pm: str) -> None:
         pass
@@ -300,21 +313,7 @@ class Loop:
                 self.handler.on_clipboard_response(standard_b64decode(rest).decode('utf-8'), from_primary)
 
     def _on_apc(self, apc: str) -> None:
-        if apc.startswith('K'):
-            try:
-                k = decode_key_event(apc[1:])
-            except Exception:
-                pass
-            else:
-                if k.mods is CTRL and k.type is not RELEASE:
-                    if k.key is C:
-                        self.handler.on_interrupt()
-                        return
-                    if k.key is D:
-                        self.handler.on_eot()
-                        return
-                self.handler.on_key(k)
-        elif apc.startswith('G'):
+        if apc.startswith('G'):
             if self.handler.image_manager is not None:
                 self.handler.image_manager.handle_response(apc)
     # }}}

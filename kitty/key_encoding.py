@@ -2,476 +2,254 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
-import string
-from typing import Dict, NamedTuple, Optional
+from enum import IntEnum
+from functools import lru_cache
+from typing import Dict, NamedTuple, Optional, Tuple, Union
 
 from . import fast_data_types as defines
-from .key_names import key_name_aliases
+from .fast_data_types import KeyEvent as WindowSystemKeyEvent
+from .key_names import character_key_name_aliases, functional_key_name_aliases
+from .types import ParsedShortcut
 
-# ENCODING {{{
-ENCODING = {
-    '0': 'G',
-    '1': 'H',
-    '2': 'I',
-    '3': 'J',
-    '4': 'K',
-    '5': 'L',
-    '6': 'M',
-    '7': 'N',
-    '8': 'O',
-    '9': 'P',
-    'A': 'S',
-    'APOSTROPHE': 'B',
-    'B': 'T',
-    'BACKSLASH': 't',
-    'BACKSPACE': '1',
-    'C': 'U',
-    'CAPS LOCK': ':',
-    'COMMA': 'C',
-    'D': 'V',
-    'DELETE': '3',
-    'DOWN': '6',
-    'E': 'W',
-    'END': '-',
-    'ENTER': 'z',
-    'EQUAL': 'R',
-    'ESCAPE': 'y',
-    'F': 'X',
-    'F1': '/',
-    'F10': ']',
-    'F11': '{',
-    'F12': '}',
-    'F13': '@',
-    'F14': '%',
-    'F15': '$',
-    'F16': '#',
-    'F17': 'BA',
-    'F18': 'BB',
-    'F19': 'BC',
-    'F2': '*',
-    'F20': 'BD',
-    'F21': 'BE',
-    'F22': 'BF',
-    'F23': 'BG',
-    'F24': 'BH',
-    'F25': 'BI',
-    'F3': '?',
-    'F4': '&',
-    'F5': '<',
-    'F6': '>',
-    'F7': '(',
-    'F8': ')',
-    'F9': '[',
-    'G': 'Y',
-    'GRAVE ACCENT': 'v',
-    'H': 'Z',
-    'HOME': '.',
-    'I': 'a',
-    'INSERT': '2',
-    'J': 'b',
-    'K': 'c',
-    'KP 0': 'BJ',
-    'KP 1': 'BK',
-    'KP 2': 'BL',
-    'KP 3': 'BM',
-    'KP 4': 'BN',
-    'KP 5': 'BO',
-    'KP 6': 'BP',
-    'KP 7': 'BQ',
-    'KP 8': 'BR',
-    'KP 9': 'BS',
-    'KP ADD': 'BX',
-    'KP DECIMAL': 'BT',
-    'KP DIVIDE': 'BU',
-    'KP ENTER': 'BY',
-    'KP EQUAL': 'BZ',
-    'KP MULTIPLY': 'BV',
-    'KP SUBTRACT': 'BW',
-    'L': 'd',
-    'LEFT': '5',
-    'LEFT ALT': 'Bc',
-    'LEFT BRACKET': 's',
-    'LEFT CONTROL': 'Bb',
-    'LEFT SHIFT': 'Ba',
-    'LEFT SUPER': 'Bd',
-    'M': 'e',
-    'MINUS': 'D',
-    'N': 'f',
-    'NUM LOCK': '=',
-    'O': 'g',
-    'P': 'h',
-    'PAGE DOWN': '9',
-    'PAGE UP': '8',
-    'PAUSE': '!',
-    'PERIOD': 'E',
-    'PRINT SCREEN': '^',
-    'Q': 'i',
-    'R': 'j',
-    'RIGHT': '4',
-    'RIGHT ALT': 'Bg',
-    'RIGHT BRACKET': 'u',
-    'RIGHT CONTROL': 'Bf',
-    'RIGHT SHIFT': 'Be',
-    'RIGHT SUPER': 'Bh',
-    'S': 'k',
-    'SCROLL LOCK': '+',
-    'SEMICOLON': 'Q',
-    'SLASH': 'F',
-    'SPACE': 'A',
-    'T': 'l',
-    'TAB': '0',
-    'U': 'm',
-    'UP': '7',
-    'V': 'n',
-    'W': 'o',
-    'WORLD 1': 'w',
-    'WORLD 2': 'x',
-    'X': 'p',
-    'Y': 'q',
-    'Z': 'r',
-    'PLUS': 'Bi',
-    'UNDERSCORE': 'Bj',
-    'MENU': 'Bk',
-    'EXCLAM': 'Bl',
-    'DOUBLE QUOTE': 'Bm',
-    'NUMBER SIGN': 'Bn',
-    'DOLLAR': 'Bo',
-    'AMPERSAND': 'Bp',
-    'PARENTHESIS LEFT': 'Bq',
-    'PARENTHESIS RIGHT': 'Br',
-    'COLON': 'Bs',
-    'LESS': 'Bt',
-    'GREATER': 'Bu',
-    'AT': 'Bv',
-    'PARAGRAPH': 'Bw',
-    'MASCULINE': 'Bx',
-    'A GRAVE': 'By',
-    'A DIAERESIS': 'Bz',
-    'A RING': 'B0',
-    'AE': 'B1',
-    'C CEDILLA': 'B2',
-    'E GRAVE': 'B3',
-    'E ACUTE': 'B4',
-    'I GRAVE': 'B5',
-    'N TILDE': 'B6',
-    'O GRAVE': 'B7',
-    'O DIAERESIS': 'B8',
-    'O SLASH': 'B9',
-    'U GRAVE': 'B.',
-    'U DIAERESIS': 'B-',
-    'S SHARP': 'B:',
-    'CYRILLIC A': 'B+',
-    'CYRILLIC BE': 'B=',
-    'CYRILLIC VE': 'B^',
-    'CYRILLIC GHE': 'B!',
-    'CYRILLIC DE': 'B/',
-    'CYRILLIC IE': 'B*',
-    'CYRILLIC ZHE': 'B?',
-    'CYRILLIC ZE': 'B&',
-    'CYRILLIC I': 'B<',
-    'CYRILLIC SHORT I': 'B>',
-    'CYRILLIC KA': 'B(',
-    'CYRILLIC EL': 'B)',
-    'CYRILLIC EM': 'B[',
-    'CYRILLIC EN': 'B]',
-    'CYRILLIC O': 'B{',
-    'CYRILLIC PE': 'B}',
-    'CYRILLIC ER': 'B@',
-    'CYRILLIC ES': 'B%',
-    'CYRILLIC TE': 'B$',
-    'CYRILLIC U': 'B#',
-    'CYRILLIC EF': 'CA',
-    'CYRILLIC HA': 'CB',
-    'CYRILLIC TSE': 'CC',
-    'CYRILLIC CHE': 'CD',
-    'CYRILLIC SHA': 'CE',
-    'CYRILLIC SHCHA': 'CF',
-    'CYRILLIC HARD SIGN': 'CG',
-    'CYRILLIC YERU': 'CH',
-    'CYRILLIC SOFT SIGN': 'CI',
-    'CYRILLIC E': 'CJ',
-    'CYRILLIC YU': 'CK',
-    'CYRILLIC YA': 'CL',
-    'CYRILLIC IO': 'CM',
-    'CIRCUMFLEX': 'CN'
-}
-KEY_MAP = {
-    32: 'A',
-    33: 'Bl',
-    34: 'Bm',
-    35: 'Bn',
-    36: 'Bo',
-    38: 'Bp',
-    39: 'B',
-    40: 'Bq',
-    41: 'Br',
-    43: 'Bi',
-    44: 'C',
-    45: 'D',
-    46: 'E',
-    47: 'F',
-    48: 'G',
-    49: 'H',
-    50: 'I',
-    51: 'J',
-    52: 'K',
-    53: 'L',
-    54: 'M',
-    55: 'N',
-    56: 'O',
-    57: 'P',
-    58: 'Bs',
-    59: 'Q',
-    60: 'Bt',
-    61: 'R',
-    62: 'Bu',
-    64: 'Bv',
-    65: 'S',
-    66: 'T',
-    67: 'U',
-    68: 'V',
-    69: 'W',
-    70: 'X',
-    71: 'Y',
-    72: 'Z',
-    73: 'a',
-    74: 'b',
-    75: 'c',
-    76: 'd',
-    77: 'e',
-    78: 'f',
-    79: 'g',
-    80: 'h',
-    81: 'i',
-    82: 'j',
-    83: 'k',
-    84: 'l',
-    85: 'm',
-    86: 'n',
-    87: 'o',
-    88: 'p',
-    89: 'q',
-    90: 'r',
-    91: 's',
-    92: 't',
-    93: 'u',
-    94: 'CN',
-    95: 'Bj',
-    96: 'v',
-    161: 'w',
-    162: 'x',
-    167: 'Bw',
-    186: 'Bx',
-    192: 'By',
-    196: 'Bz',
-    197: 'B0',
-    198: 'B1',
-    199: 'B2',
-    200: 'B3',
-    201: 'B4',
-    204: 'B5',
-    209: 'B6',
-    210: 'B7',
-    214: 'B8',
-    216: 'B9',
-    217: 'B.',
-    220: 'B-',
-    222: 'B:',
-    223: 'B+',
-    224: 'B=',
-    225: 'B^',
-    226: 'B!',
-    227: 'B/',
-    228: 'B*',
-    229: 'B?',
-    230: 'B&',
-    231: 'B<',
-    232: 'B>',
-    233: 'B(',
-    234: 'B)',
-    235: 'B[',
-    236: 'B]',
-    237: 'B{',
-    238: 'B}',
-    239: 'B@',
-    240: 'B%',
-    241: 'B$',
-    242: 'B#',
-    243: 'CA',
-    244: 'CB',
-    245: 'CC',
-    246: 'CD',
-    247: 'CE',
-    248: 'CF',
-    249: 'CG',
-    250: 'CH',
-    251: 'CI',
-    252: 'CJ',
-    253: 'CK',
-    254: 'CL',
-    255: 'CM',
-    256: 'y',
-    257: 'z',
-    258: '0',
-    259: '1',
-    260: '2',
-    261: '3',
-    262: '4',
-    263: '5',
-    264: '6',
-    265: '7',
-    266: '8',
-    267: '9',
-    268: '.',
-    269: '-',
-    280: ':',
-    281: '+',
-    282: '=',
-    283: '^',
-    284: '!',
-    290: '/',
-    291: '*',
-    292: '?',
-    293: '&',
-    294: '<',
-    295: '>',
-    296: '(',
-    297: ')',
-    298: '[',
-    299: ']',
-    300: '{',
-    301: '}',
-    302: '@',
-    303: '%',
-    304: '$',
-    305: '#',
-    306: 'BA',
-    307: 'BB',
-    308: 'BC',
-    309: 'BD',
-    310: 'BE',
-    311: 'BF',
-    312: 'BG',
-    313: 'BH',
-    314: 'BI',
-    320: 'BJ',
-    321: 'BK',
-    322: 'BL',
-    323: 'BM',
-    324: 'BN',
-    325: 'BO',
-    326: 'BP',
-    327: 'BQ',
-    328: 'BR',
-    329: 'BS',
-    330: 'BT',
-    331: 'BU',
-    332: 'BV',
-    333: 'BW',
-    334: 'BX',
-    335: 'BY',
-    336: 'BZ',
-    340: 'Ba',
-    341: 'Bb',
-    342: 'Bc',
-    343: 'Bd',
-    344: 'Be',
-    345: 'Bf',
-    346: 'Bg',
-    347: 'Bh',
-    348: 'Bk'
-}
-# END_ENCODING }}}
-
-text_keys = (
-    string.ascii_uppercase + string.ascii_lowercase + string.digits +
-    '`~!@#$%^&*()_-+=[{]}\\|<,>./?;:\'" '
-    'ÄäÖöÜüß§ºàåæçèéìñòøùабвгдежзийклмнопрстуфхцчшщъыьэюяё'
-)
+# number name mappings {{{
+# start csi mapping (auto generated by gen-key-constants.py do not edit)
+functional_key_number_to_name_map = {
+    57344: 'ESCAPE',
+    57345: 'ENTER',
+    57346: 'TAB',
+    57347: 'BACKSPACE',
+    57348: 'INSERT',
+    57349: 'DELETE',
+    57350: 'LEFT',
+    57351: 'RIGHT',
+    57352: 'UP',
+    57353: 'DOWN',
+    57354: 'PAGE_UP',
+    57355: 'PAGE_DOWN',
+    57356: 'HOME',
+    57357: 'END',
+    57358: 'CAPS_LOCK',
+    57359: 'SCROLL_LOCK',
+    57360: 'NUM_LOCK',
+    57361: 'PRINT_SCREEN',
+    57362: 'PAUSE',
+    57363: 'MENU',
+    57364: 'F1',
+    57365: 'F2',
+    57366: 'F3',
+    57367: 'F4',
+    57368: 'F5',
+    57369: 'F6',
+    57370: 'F7',
+    57371: 'F8',
+    57372: 'F9',
+    57373: 'F10',
+    57374: 'F11',
+    57375: 'F12',
+    57376: 'F13',
+    57377: 'F14',
+    57378: 'F15',
+    57379: 'F16',
+    57380: 'F17',
+    57381: 'F18',
+    57382: 'F19',
+    57383: 'F20',
+    57384: 'F21',
+    57385: 'F22',
+    57386: 'F23',
+    57387: 'F24',
+    57388: 'F25',
+    57389: 'F26',
+    57390: 'F27',
+    57391: 'F28',
+    57392: 'F29',
+    57393: 'F30',
+    57394: 'F31',
+    57395: 'F32',
+    57396: 'F33',
+    57397: 'F34',
+    57398: 'F35',
+    57399: 'KP_0',
+    57400: 'KP_1',
+    57401: 'KP_2',
+    57402: 'KP_3',
+    57403: 'KP_4',
+    57404: 'KP_5',
+    57405: 'KP_6',
+    57406: 'KP_7',
+    57407: 'KP_8',
+    57408: 'KP_9',
+    57409: 'KP_DECIMAL',
+    57410: 'KP_DIVIDE',
+    57411: 'KP_MULTIPLY',
+    57412: 'KP_SUBTRACT',
+    57413: 'KP_ADD',
+    57414: 'KP_ENTER',
+    57415: 'KP_EQUAL',
+    57416: 'KP_SEPARATOR',
+    57417: 'KP_LEFT',
+    57418: 'KP_RIGHT',
+    57419: 'KP_UP',
+    57420: 'KP_DOWN',
+    57421: 'KP_PAGE_UP',
+    57422: 'KP_PAGE_DOWN',
+    57423: 'KP_HOME',
+    57424: 'KP_END',
+    57425: 'KP_INSERT',
+    57426: 'KP_DELETE',
+    57427: 'LEFT_SHIFT',
+    57428: 'LEFT_CONTROL',
+    57429: 'LEFT_ALT',
+    57430: 'LEFT_SUPER',
+    57431: 'RIGHT_SHIFT',
+    57432: 'RIGHT_CONTROL',
+    57433: 'RIGHT_ALT',
+    57434: 'RIGHT_SUPER',
+    57435: 'MEDIA_PLAY',
+    57436: 'MEDIA_PAUSE',
+    57437: 'MEDIA_PLAY_PAUSE',
+    57438: 'MEDIA_REVERSE',
+    57439: 'MEDIA_STOP',
+    57440: 'MEDIA_FAST_FORWARD',
+    57441: 'MEDIA_REWIND',
+    57442: 'MEDIA_TRACK_NEXT',
+    57443: 'MEDIA_TRACK_PREVIOUS',
+    57444: 'MEDIA_RECORD',
+    57445: 'LOWER_VOLUME',
+    57446: 'RAISE_VOLUME',
+    57447: 'MUTE_VOLUME'}
+csi_number_to_functional_number_map = {
+    2: 57348,
+    3: 57349,
+    5: 57354,
+    6: 57355,
+    7: 57356,
+    8: 57357,
+    9: 57346,
+    11: 57364,
+    12: 57365,
+    13: 57345,
+    14: 57367,
+    15: 57368,
+    17: 57369,
+    18: 57370,
+    19: 57371,
+    20: 57372,
+    21: 57373,
+    23: 57374,
+    24: 57375,
+    27: 57344,
+    127: 57347}
+letter_trailer_to_csi_number_map = {'A': 57352, 'B': 57353, 'C': 57351, 'D': 57350, 'F': 8, 'H': 7, 'P': 11, 'Q': 12, 'R': 13, 'S': 14}
+tilde_trailers = {57348, 57349, 57354, 57355, 57368, 57369, 57370, 57371, 57372, 57373, 57374, 57375}
+# end csi mapping
+# }}}
 
 
-def text_match(key: str) -> Optional[str]:
-    if key.upper() == 'SPACE':
-        return ' '
-    if key not in text_keys:
-        return None
-    return key
+@lru_cache(2)
+def get_name_to_functional_number_map() -> Dict[str, int]:
+    return {v: k for k, v in functional_key_number_to_name_map.items()}
 
 
-def encode(
-    integer: int,
-    chars: str = string.ascii_uppercase + string.ascii_lowercase + string.digits +
-    '.-:+=^!/*?&<>()[]{}@%$#'
-) -> str:
-    ans = ''
-    d = len(chars)
-    while True:
-        integer, remainder = divmod(integer, d)
-        ans = chars[remainder] + ans
-        if integer == 0:
-            break
-    return ans
+@lru_cache(2)
+def get_functional_to_csi_number_map() -> Dict[int, int]:
+    return {v: k for k, v in csi_number_to_functional_number_map.items()}
 
 
-def symbolic_name(glfw_name: str) -> str:
-    return glfw_name[9:].replace('_', ' ')
-
-
-def glfw_key_name(symbolic_name: str) -> str:
-    return 'GLFW_KEY_' + symbolic_name.replace(' ', '_')
-
-
-def update_encoding() -> None:
-    import re
-    import subprocess
-    keys = {a for a in dir(defines) if a.startswith('GLFW_KEY_')}
-    ans = ENCODING
-    key_map = {}
-    i = len(ans)
-    for k in sorted(keys, key=lambda k: int(getattr(defines, k))):
-        if k in ('GLFW_KEY_LAST', 'GLFW_KEY_LAST_PRINTABLE'):
-            continue
-        val = getattr(defines, k)
-        name = symbolic_name(k)
-        if val <= defines.GLFW_KEY_LAST and val != defines.GLFW_KEY_UNKNOWN:
-            if name not in ans:
-                ans[name] = encode(i)
-                i += 1
-            key_map[val] = ans[name]
-    with open(__file__, 'r+') as f:
-        raw = f.read()
-        nraw = re.sub(
-            r'^ENCODING = {.+^# END_ENCODING',
-            'ENCODING = {!r}\nKEY_MAP={!r}\n# END_ENCODING'.format(
-                ans, key_map
-            ),
-            raw,
-            flags=re.MULTILINE | re.DOTALL
-        )
-        if raw == nraw:
-            raise SystemExit('Failed to replace ENCODING dict')
-        f.seek(0), f.truncate()
-        f.write(nraw)
-    subprocess.check_call(['yapf', '-i', __file__])
-
-
-class KeyEvent(NamedTuple):
-    type: int
-    mods: int
-    key: str
+@lru_cache(2)
+def get_csi_number_to_letter_trailer_map() -> Dict[int, str]:
+    return {v: k for k, v in letter_trailer_to_csi_number_map.items()}
 
 
 PRESS: int = 1
 REPEAT: int = 2
 RELEASE: int = 4
+
+
+class EventType(IntEnum):
+    PRESS = PRESS
+    REPEAT = REPEAT
+    RELEASE = RELEASE
+
+
+@lru_cache(maxsize=128)
+def parse_shortcut(spec: str) -> ParsedShortcut:
+    if spec.endswith('+') and len(spec) > 1:
+        spec = spec[:-1] + 'plus'
+    parts = spec.split('+')
+    key_name = parts[-1]
+    key_name = functional_key_name_aliases.get(key_name.upper(), key_name)
+    is_functional_key = key_name.upper() in get_name_to_functional_number_map()
+    if is_functional_key:
+        key_name = key_name.upper()
+    else:
+        key_name = character_key_name_aliases.get(key_name.upper(), key_name)
+    mods = tuple(config_mod_map.get(x.upper(), SUPER << 8) for x in parts[:-1])
+    mod_val = 0
+    for x in mods:
+        mod_val |= x
+    return ParsedShortcut(mod_val, key_name)
+
+
+class KeyEvent(NamedTuple):
+    type: EventType = EventType.PRESS
+    mods: int = 0
+    key: str = ''
+    text: str = ''
+    shifted_key: str = ''
+    alternate_key: str = ''
+    shift: bool = False
+    alt: bool = False
+    ctrl: bool = False
+    super: bool = False
+
+    def matches(self, spec: Union[str, ParsedShortcut], types: int = EventType.PRESS | EventType.REPEAT) -> bool:
+        if not self.type & types:
+            return False
+        q = self.mods
+        is_shifted = bool(self.shifted_key and self.shift)
+        if is_shifted:
+            q = self.mods & ~SHIFT
+            kq = self.shifted_key
+        else:
+            kq = self.key
+        if isinstance(spec, str):
+            spec = parse_shortcut(spec)
+        if q != spec.mods:
+            return False
+        return kq == spec.key_name
+
+    def as_window_system_event(self) -> WindowSystemKeyEvent:
+        action = defines.GLFW_PRESS
+        if self.type is EventType.REPEAT:
+            action = defines.GLFW_REPEAT
+        elif self.type is EventType.RELEASE:
+            action = defines.GLFW_RELEASE
+        mods = 0
+        if self.mods:
+            if self.shift:
+                mods |= defines.GLFW_MOD_SHIFT
+            if self.alt:
+                mods |= defines.GLFW_MOD_ALT
+            if self.ctrl:
+                mods |= defines.GLFW_MOD_CONTROL
+            if self.super:
+                mods |= defines.GLFW_MOD_SUPER
+
+        fnm = get_name_to_functional_number_map()
+
+        def as_num(key: str) -> int:
+            return (fnm.get(key) or ord(key)) if key else 0
+
+        return WindowSystemKeyEvent(
+            key=as_num(self.key), shifted_key=as_num(self.shifted_key),
+            alternate_key=as_num(self.alternate_key), mods=mods,
+            action=action, text=self.text)
+
+
 SHIFT, ALT, CTRL, SUPER = 1, 2, 4, 8
-type_map = {'p': PRESS, 't': REPEAT, 'r': RELEASE}
-rtype_map = {v: k for k, v in type_map.items()}
-mod_map = {c: i for i, c in enumerate('ABCDEFGHIJKLMNOP')}
-rmod_map = {v: k for k, v in mod_map.items()}
-key_rmap = {}
-key_defs: Dict[str, str] = {}
-config_key_map = {}
+enter_key = KeyEvent(key='ENTER')
+backspace_key = KeyEvent(key='BACKSPACE')
 config_mod_map = {
     'SHIFT': SHIFT,
     'ALT': ALT,
@@ -483,56 +261,102 @@ config_mod_map = {
     'CTRL': CTRL,
     'CONTROL': CTRL
 }
-for key_name, enc in ENCODING.items():
-    key_name = key_name.replace(' ', '_')
-    key_defs[key_name] = config_key_map[key_name] = key_name
-    key_rmap[enc] = key_name
-config_key_map.update({k: key_defs[v] for k, v in key_name_aliases.items() if v in key_defs})
-
-enter_key = KeyEvent(PRESS, 0, key_defs['ENTER'])
-backspace_key = KeyEvent(PRESS, 0, key_defs['BACKSPACE'])
-globals().update(key_defs)
-del key_name, enc
 
 
-def decode_key_event(text: str) -> KeyEvent:
-    typ = type_map[text[0]]
-    mods = mod_map[text[1]]
-    key = key_rmap[text[2:4]]
-    return KeyEvent(typ, mods, key)
+def decode_key_event(csi: str, csi_type: str) -> KeyEvent:
+    parts = csi.split(';')
+
+    def get_sub_sections(x: str, missing: int = 0) -> Tuple[int, ...]:
+        return tuple(int(y) if y else missing for y in x.split(':'))
+
+    first_section = get_sub_sections(parts[0])
+    second_section = get_sub_sections(parts[1], 1) if len(parts) > 1 else ()
+    third_section = get_sub_sections(parts[2]) if len(parts) > 2 else ()
+    mods = (second_section[0] - 1) if second_section else 0
+    action = second_section[1] if len(second_section) > 1 else 1
+    keynum = first_section[0]
+    if csi_type in 'ABCDHFPQRS':
+        keynum = letter_trailer_to_csi_number_map[csi_type]
+
+    def key_name(num: int) -> str:
+        if not num:
+            return ''
+        num = csi_number_to_functional_number_map.get(num, num)
+        ans = functional_key_number_to_name_map.get(num)
+        if ans is None:
+            ans = chr(num)
+        return ans
+
+    return KeyEvent(
+        mods=mods, shift=bool(mods & SHIFT), alt=bool(mods & ALT),
+        ctrl=bool(mods & CTRL), super=bool(mods & SUPER),
+        key=key_name(keynum),
+        shifted_key=key_name(first_section[1] if len(first_section) > 1 else 0),
+        alternate_key=key_name(first_section[2] if len(first_section) > 2 else 0),
+        type={1: EventType.PRESS, 2: EventType.REPEAT, 3: EventType.RELEASE}[action],
+        text=''.join(map(chr, third_section))
+    )
+
+
+def csi_number_for_name(key_name: str) -> int:
+    if not key_name:
+        return 0
+    fn = get_name_to_functional_number_map().get(key_name)
+    if fn is None:
+        return ord(key_name)
+    return get_functional_to_csi_number_map().get(fn, fn)
 
 
 def encode_key_event(key_event: KeyEvent) -> str:
-    typ = rtype_map[key_event.type]
-    mods = rmod_map[key_event.mods]
-    key = ENCODING[key_event.key.replace('_', ' ')]
-    return typ + mods + key
-
-
-class WindowSystemKeyEvent(NamedTuple):
-    code: int
-    mods: int
-    action: int
+    key = csi_number_for_name(key_event.key)
+    shifted_key = csi_number_for_name(key_event.shifted_key)
+    alternate_key = csi_number_for_name(key_event.alternate_key)
+    lt = get_csi_number_to_letter_trailer_map()
+    trailer = lt.get(key, 'u')
+    if trailer != 'u':
+        key = 1
+    mods = key_event.mods
+    text = key_event.text
+    ans = '\033['
+    if key != 1 or mods or shifted_key or alternate_key or text:
+        ans += f'{key}'
+    if shifted_key or alternate_key:
+        ans += ':' + (f'{shifted_key}' if shifted_key else '')
+        if alternate_key:
+            ans += f':{alternate_key}'
+    action = 1
+    if key_event.type is EventType.REPEAT:
+        action = 2
+    elif key_event.type is EventType.RELEASE:
+        action = 3
+    if mods or action > 1 or text:
+        m = 0
+        if key_event.shift:
+            m |= 1
+        if key_event.alt:
+            m |= 2
+        if key_event.ctrl:
+            m |= 4
+        if key_event.super:
+            m |= 8
+        if action > 1 or m:
+            ans += f';{m+1}'
+            if action > 1:
+                ans += f':{action}'
+        elif text:
+            ans += ';'
+    if text:
+        ans += ';' + ':'.join(map(str, map(ord, text)))
+    fn = get_name_to_functional_number_map().get(key_event.key)
+    if fn is not None and fn in tilde_trailers:
+        trailer = '~'
+    return ans + trailer
 
 
 def decode_key_event_as_window_system_key(text: str) -> Optional[WindowSystemKeyEvent]:
-    k = decode_key_event(text)
-    glfw_name = glfw_key_name(k.key)
-    glfw_code = getattr(defines, glfw_name, None)
-    if glfw_code is None:
+    csi, trailer = text[2:-1], text[-1]
+    try:
+        k = decode_key_event(csi, trailer)
+    except Exception:
         return None
-    action = defines.GLFW_PRESS
-    if k.type is RELEASE:
-        action = defines.GLFW_RELEASE
-    elif k.type is REPEAT:
-        action = defines.GLFW_REPEAT
-    mods = 0
-    if k.mods & CTRL:
-        mods |= defines.GLFW_MOD_CONTROL
-    if k.mods & ALT:
-        mods |= defines.GLFW_MOD_ALT
-    if k.mods & SUPER:
-        mods |= defines.GLFW_MOD_SUPER
-    if k.mods & SHIFT:
-        mods |= defines.GLFW_MOD_SHIFT
-    return WindowSystemKeyEvent(glfw_code, mods, action)
+    return k.as_window_system_event()

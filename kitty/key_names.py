@@ -9,9 +9,7 @@ from typing import Callable, Optional
 from .constants import is_macos
 
 
-key_name_aliases = {
-    'SPACE': ' ',
-    'SPC': ' ',
+functional_key_name_aliases = {
     'ESC': 'ESCAPE',
     'PGUP': 'PAGE_UP',
     'PAGEUP': 'PAGE_UP',
@@ -21,7 +19,17 @@ key_name_aliases = {
     'ARROWUP': 'UP',
     'ARROWDOWN': 'DOWN',
     'ARROWRIGHT': 'RIGHT',
-    'ARROWLEFT': 'LEFT'
+    'ARROWLEFT': 'LEFT',
+    'DEL': 'DELETE',
+}
+
+
+character_key_name_aliases = {
+    'SPC': ' ',
+    'SPACE': ' ',
+    'PLUS': '+',
+    'MINUS': '-',
+    'HYPHEN': '-',
 }
 
 LookupFunc = Callable[[str, bool], Optional[int]]

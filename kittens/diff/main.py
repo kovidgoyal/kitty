@@ -22,7 +22,7 @@ from kitty.cli_stub import DiffCLIOptions
 from kitty.conf.utils import KittensKeyAction
 from kitty.constants import appname
 from kitty.fast_data_types import wcswidth
-from kitty.key_encoding import RELEASE, KeyEvent, enter_key, key_defs as K
+from kitty.key_encoding import KeyEvent, EventType
 from kitty.options_stub import DiffOptions
 from kitty.utils import ScreenSize
 
@@ -57,7 +57,6 @@ except ImportError:
 
 
 INITIALIZING, COLLECTED, DIFFED, COMMAND, MESSAGE = range(5)
-ESCAPE = K['ESCAPE']
 
 
 def generate_diff(collection: Collection, context: int) -> Union[str, Dict[str, Patch]]:
@@ -483,48 +482,30 @@ class DiffHandler(Handler):
                 self.message = sanitize(_('No matches found'))
                 self.cmd.bell()
 
-    def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
-        if self.state is COMMAND:
-            self.line_edit.on_text(text, in_bracketed_paste)
-            self.draw_status_line()
-            return
-        if self.state is MESSAGE:
-            self.state = DIFFED
-            self.draw_status_line()
-            return
-        action = self.shortcut_action(text)
-        if action is not None:
-            return self.perform_action(action)
-
-    def on_key(self, key_event: KeyEvent) -> None:
-        if self.state is MESSAGE:
-            if key_event.type is not RELEASE:
+    def on_key_event(self, key_event: KeyEvent, in_bracketed_paste: bool = False) -> None:
+        if key_event.text:
+            if self.state is COMMAND:
+                self.line_edit.on_text(key_event.text, in_bracketed_paste)
+                self.draw_status_line()
+                return
+            if self.state is MESSAGE:
                 self.state = DIFFED
                 self.draw_status_line()
-            return
-        if self.state is COMMAND:
-            if self.line_edit.on_key(key_event):
-                if not self.line_edit.current_input:
+                return
+        else:
+            if self.state is MESSAGE:
+                if key_event.type is not EventType.RELEASE:
                     self.state = DIFFED
-                self.draw_status_line()
+                    self.draw_status_line()
                 return
-        if key_event.type is RELEASE:
-            return
-        if self.state is COMMAND:
-            if key_event.key is ESCAPE:
-                self.state = DIFFED
-                self.draw_status_line()
+            if self.state is COMMAND:
+                if self.line_edit.on_key(key_event):
+                    if not self.line_edit.current_input:
+                        self.state = DIFFED
+                    self.draw_status_line()
+                    return
+            if key_event.type is EventType.RELEASE:
                 return
-            if key_event is enter_key:
-                self.state = DIFFED
-                self.do_search()
-                self.line_edit.clear()
-                self.draw_screen()
-                return
-        if self.state >= DIFFED and self.current_search is not None and key_event.key is ESCAPE:
-            self.current_search = None
-            self.draw_screen()
-            return
         action = self.shortcut_action(key_event)
         if action is not None:
             return self.perform_action(action)

@@ -16,13 +16,15 @@ from .conf.utils import (
     choices, positive_float, positive_int, to_bool, to_cmdline as tc, to_color,
     to_color_or_none, unit_float
 )
-from .constants import (
-    FloatEdges, SingleKey, config_dir, is_macos
-)
+from .constants import config_dir, is_macos
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
-from .key_names import get_key_name_lookup, key_name_aliases
+from .key_names import (
+    character_key_name_aliases, functional_key_name_aliases,
+    get_key_name_lookup
+)
 from .layout.interface import all_layouts
 from .rgb import Color, color_as_int, color_as_sharp, color_from_int
+from .types import FloatEdges, SingleKey
 from .utils import log_error
 
 
@@ -60,6 +62,8 @@ def to_modifiers(val: str) -> int:
 
 
 def parse_shortcut(sc: str) -> SingleKey:
+    if sc.endswith('+') and len(sc) > 1:
+        sc = sc[:-1] + 'plus'
     parts = sc.split('+')
     mods = 0
     if len(parts) > 1:
@@ -67,6 +71,7 @@ def parse_shortcut(sc: str) -> SingleKey:
         if not mods:
             raise InvalidMods('Invalid shortcut')
     q = parts[-1]
+    q = character_key_name_aliases.get(q.upper(), q)
     is_native = False
     if q.startswith('0x'):
         try:
@@ -80,7 +85,7 @@ def parse_shortcut(sc: str) -> SingleKey:
             key = ord(q)
         except Exception:
             uq = q.upper()
-            uq = key_name_aliases.get(uq, uq)
+            uq = functional_key_name_aliases.get(uq, uq)
             x: Optional[int] = getattr(defines, f'GLFW_FKEY_{uq}', None)
             if x is None:
                 lf = get_key_name_lookup()

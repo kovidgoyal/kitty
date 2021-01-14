@@ -6,7 +6,7 @@ from functools import lru_cache
 from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple
 
 from .config import build_ansi_color_table
-from .constants import WindowGeometry
+from .types import WindowGeometry
 from .fast_data_types import (
     DECAWM, Screen, cell_size_for_window, pt_to_px, set_tab_bar_render_data,
     viewport_for_window

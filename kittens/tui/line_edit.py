@@ -5,16 +5,9 @@
 from typing import Callable, Tuple
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
-from kitty.key_encoding import RELEASE, KeyEvent, key_defs as K
+from kitty.key_encoding import EventType, KeyEvent
 
 from .operations import RESTORE_CURSOR, SAVE_CURSOR, move_cursor_by
-
-HOME = K['HOME']
-END = K['END']
-BACKSPACE = K['BACKSPACE']
-DELETE = K['DELETE']
-LEFT = K['LEFT']
-RIGHT = K['RIGHT']
 
 
 class LineEdit:
@@ -137,22 +130,22 @@ class LineEdit:
         return self.cursor_pos != orig
 
     def on_key(self, key_event: KeyEvent) -> bool:
-        if key_event.type is RELEASE:
+        if key_event.type is EventType.RELEASE:
             return False
-        elif key_event.key is HOME:
+        if key_event.matches('home'):
             return self.home()
-        elif key_event.key is END:
+        if key_event.matches('end'):
             return self.end()
-        elif key_event.key is BACKSPACE:
+        if key_event.matches('backspace'):
             self.backspace()
             return True
-        elif key_event.key is DELETE:
+        if key_event.matches('delete'):
             self.delete()
             return True
-        elif key_event.key is LEFT:
+        if key_event.matches('left'):
             self.left()
             return True
-        elif key_event.key is RIGHT:
+        if key_event.matches('right'):
             self.right()
             return True
         return False

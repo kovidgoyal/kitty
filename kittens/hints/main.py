@@ -17,9 +17,7 @@ from typing import (
 from kitty.cli import parse_args
 from kitty.cli_stub import HintsCLIOptions
 from kitty.fast_data_types import set_clipboard_string
-from kitty.key_encoding import (
-    KeyEvent, backspace_key, enter_key, key_defs as K
-)
+from kitty.key_encoding import KeyEvent
 from kitty.typing import BossType, KittyCommonOpts
 from kitty.utils import ScreenSize, screen_size_function, set_primary_selection
 
@@ -40,7 +38,6 @@ def kitty_common_opts() -> KittyCommonOpts:
 
 DEFAULT_HINT_ALPHABET = string.digits + string.ascii_lowercase
 DEFAULT_REGEX = r'(?m)^\s*(.+)\s*$'
-ESCAPE = K['ESCAPE']
 
 
 class Mark:
@@ -177,11 +174,11 @@ class Hints(Handler):
             self.draw_screen()
 
     def on_key(self, key_event: KeyEvent) -> None:
-        if key_event is backspace_key:
+        if key_event.matches('backspace'):
             self.current_input = self.current_input[:-1]
             self.current_text = None
             self.draw_screen()
-        elif key_event is enter_key and self.current_input:
+        elif key_event.matches('enter') and self.current_input:
             try:
                 idx = decode_hint(self.current_input, self.alphabet)
                 self.chosen.append(self.index_map[idx])
@@ -196,7 +193,7 @@ class Hints(Handler):
                     self.draw_screen()
                 else:
                     self.quit_loop(0)
-        elif key_event.key is ESCAPE:
+        elif key_event.matches('esc'):
             self.quit_loop(0 if self.multiple else 1)
 
     def on_interrupt(self) -> None:
@@ -288,6 +285,7 @@ def quotes(text: str, s: int, e: int) -> Tuple[int, int]:
 @postprocessor
 def ip(text: str, s: int, e: int) -> Tuple[int, int]:
     from ipaddress import ip_address
+
     # Check validity of IPs (or raise InvalidMatch)
     ip = text[s:e]
 

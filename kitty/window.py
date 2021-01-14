@@ -19,13 +19,13 @@ from typing import (
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .config import build_ansi_color_table
-from .constants import ScreenGeometry, WindowGeometry, appname, wakeup
+from .constants import appname, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
-    GLFW_PRESS, GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM,
-    GRAPHICS_PROGRAM, MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
-    SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, Screen, add_timer, add_window,
+    GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
+    MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
+    STRIKETHROUGH, TINT_PROGRAM, KeyEvent, Screen, add_timer, add_window,
     cell_size_for_window, compile_program, encode_key_for_tty, get_boss,
     get_clipboard_string, init_cell_program, pt_to_px, set_clipboard_string,
     set_titlebar_color, set_window_padding, set_window_render_data,
@@ -36,6 +36,7 @@ from .notify import NotificationCommand, handle_notification_cmd
 from .options_stub import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
+from .types import ScreenGeometry, WindowGeometry
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int, get_primary_selection, load_shaders, open_cmd, open_url,
@@ -881,18 +882,20 @@ class Window:
         if text:
             set_clipboard_string(text)
 
-    def encoded_key(self, key: int, mods: int = 0, action: int = GLFW_PRESS) -> bytes:
+    def encoded_key(self, key_event: KeyEvent) -> bytes:
         return encode_key_for_tty(
-                key=key, mods=mods, key_encoding_flags=self.screen.current_key_encoding_flags(),
-                cursor_key_mode=self.screen.cursor_key_mode, action=action
-            ).encode('ascii')
+            key=key_event.key, shifted_key=key_event.shifted_key, alternate_key=key_event.alternate_key,
+            mods=key_event.mods, action=key_event.action, text=key_event.text,
+            key_encoding_flags=self.screen.current_key_encoding_flags(),
+            cursor_key_mode=self.screen.cursor_key_mode,
+        ).encode('ascii')
 
     def copy_or_interrupt(self) -> None:
         text = self.text_for_selection()
         if text:
             set_clipboard_string(text)
         else:
-            self.write_to_child(self.encoded_key(ord('c'), mods=GLFW_MOD_CONTROL))
+            self.write_to_child(self.encoded_key(KeyEvent(key=ord('c'), mods=GLFW_MOD_CONTROL)))
 
     def copy_and_clear_or_interrupt(self) -> None:
         self.copy_or_interrupt()

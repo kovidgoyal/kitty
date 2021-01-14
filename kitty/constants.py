@@ -27,45 +27,6 @@ is_macos: bool = 'darwin' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
-class Edges(NamedTuple):
-    left: int = 0
-    top: int = 0
-    right: int = 0
-    bottom: int = 0
-
-
-class FloatEdges(NamedTuple):
-    left: float = 0
-    top: float = 0
-    right: float = 0
-    bottom: float = 0
-
-
-class ScreenGeometry(NamedTuple):
-    xstart: float
-    ystart: float
-    xnum: int
-    ynum: int
-    dx: float
-    dy: float
-
-
-class WindowGeometry(NamedTuple):
-    left: int
-    top: int
-    right: int
-    bottom: int
-    xnum: int
-    ynum: int
-    spaces: Edges = Edges()
-
-
-class SingleKey(NamedTuple):
-    mods: int = 0
-    is_native: bool = False
-    key: int = -1
-
-
 @lru_cache(maxsize=2)
 def kitty_exe() -> str:
     rpath = sys._xoptions.get('bundle_exe_dir')

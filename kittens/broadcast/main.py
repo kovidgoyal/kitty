@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import BroadcastCLIOptions
-from kitty.key_encoding import RELEASE, encode_key_event, key_defs as K
+from kitty.key_encoding import encode_key_event
 from kitty.rc.base import MATCH_TAB_OPTION, MATCH_WINDOW_OPTION
 from kitty.remote_control import create_basic_command, encode_send
 from kitty.typing import KeyEventType, ScreenSize
@@ -59,15 +59,15 @@ class Broadcast(Handler):
     def on_key(self, key_event: KeyEventType) -> None:
         if self.line_edit.on_key(key_event):
             self.commit_line()
-        if key_event.type is not RELEASE and not key_event.mods:
-            if key_event.key is K['ENTER']:
-                self.write_broadcast_text('\r')
-                self.print('')
-                self.line_edit.clear()
-                self.write(SAVE_CURSOR)
-                return
+        if key_event.matches('enter'):
+            self.write_broadcast_text('\r')
+            self.print('')
+            self.line_edit.clear()
+            self.write(SAVE_CURSOR)
+            return
 
         ek = encode_key_event(key_event)
+        ek = standard_b64encode(ek.encode('utf-8')).decode('ascii')
         self.write_broadcast_data('kitty-key:' + ek)
 
     def write_broadcast_text(self, text: str) -> None:

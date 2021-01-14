@@ -25,8 +25,7 @@ from .config import (
 )
 from .config_data import MINIMUM_FONT_SIZE
 from .constants import (
-    SingleKey, appname, config_dir, is_macos, kitty_exe,
-    supports_primary_selection
+    appname, config_dir, is_macos, kitty_exe, supports_primary_selection
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
@@ -49,6 +48,7 @@ from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import (
     SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 )
+from .types import SingleKey
 from .typing import PopenType, TypedDict
 from .utils import (
     func_name, get_editor, get_primary_selection, is_path_in_temp_dir,

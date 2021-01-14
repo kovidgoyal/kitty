@@ -4,7 +4,8 @@
 
 from typing import Any, Callable, Dict, NamedTuple, Tuple
 
-from .constants import FloatEdges, is_macos
+from .constants import is_macos
+from .types import FloatEdges
 from .typing import EdgeLiteral
 from .utils import log_error
 

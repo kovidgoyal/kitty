@@ -5,7 +5,7 @@
 from typing import Dict, Generator, Iterable, List, Tuple
 
 from kitty.borders import BorderColor
-from kitty.constants import Edges
+from kitty.types import Edges
 from kitty.typing import WindowType
 from kitty.window_list import WindowGroup, WindowList
 

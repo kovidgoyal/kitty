@@ -10,7 +10,7 @@ from typing import (
     Any, Deque, Dict, Generator, Iterator, List, Optional, Tuple, Union
 )
 
-from .constants import WindowGeometry
+from .types import WindowGeometry
 from .typing import EdgeLiteral, TabType, WindowType
 
 WindowOrId = Union[WindowType, int]

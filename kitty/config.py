@@ -20,9 +20,10 @@ from .conf.utils import (
     parse_config_base, python_string, to_bool, to_cmdline
 )
 from .config_data import InvalidMods, all_options, parse_shortcut, type_convert
-from .constants import SingleKey, cache_dir, defconf, is_macos
+from .constants import cache_dir, defconf, is_macos
 from .fonts import FontFeature
 from .options_stub import Options as OptionsStub
+from .types import SingleKey
 from .typing import TypedDict
 from .utils import expandvars, log_error
 

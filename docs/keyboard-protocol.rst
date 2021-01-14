@@ -629,7 +629,8 @@ specification.
   * No way to disambiguate :kbd:`Esc` keypresses, other than using 8-bit controls
     which are undesirable for other reasons
   * Incorrectly claims special keys are sometimes encoded using ``CSI letter`` encodings when it
-    is actually ``SS3 letter``.
+    is actually ``SS3 letter`` in all terminals newer than a VT-52, which is
+    pretty much everything.
   * :kbd:`ctrl+shift+tab`` should be ``CSI 9 ; 6 u`` not ``CSI 1 ; 5 Z``
     (shift+tab is not a separate key from tab)
   * No support for the :kbd:`super` modifier.

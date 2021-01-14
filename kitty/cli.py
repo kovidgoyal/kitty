@@ -14,8 +14,9 @@ from typing import (
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
 from .config import KeyAction
-from .constants import appname, defconf, is_macos, is_wayland, str_version, SingleKey
+from .constants import appname, defconf, is_macos, is_wayland, str_version
 from .options_stub import Options as OptionsStub
+from .types import SingleKey
 from .typing import BadLineType, SequenceMap, TypedDict
 
 
@@ -759,7 +760,10 @@ ShortcutMap = Dict[Tuple[SingleKey, ...], KeyAction]
 
 
 def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction) -> None:
-    from .fast_data_types import glfw_get_key_name, GLFW_MOD_ALT, GLFW_MOD_SHIFT, GLFW_MOD_CONTROL, GLFW_MOD_SUPER
+    from .fast_data_types import (
+        GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT, GLFW_MOD_SUPER,
+        glfw_get_key_name
+    )
     mmap = {'shift': GLFW_MOD_SHIFT, 'alt': GLFW_MOD_ALT, 'ctrl': GLFW_MOD_CONTROL, ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER}
     keys = []
     for key_spec in key_sequence:
