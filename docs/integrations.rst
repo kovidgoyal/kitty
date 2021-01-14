@@ -73,6 +73,12 @@ System and data visualisation tools
 `wttr <https://github.com/chubin/wttr.in>`_
     a tool to display weather information in your terminal with curl
 
+`wl-clipboard-manager <https://github.com/maximbaz/wl-clipboard-manager>`_
+    view and manage the system clipboard under Wayland in your kitty terminal
+
+`dmenu-term <https://github.com/maximbaz/dmenu-term>`_
+    run applications on your system with fuzzy find inside a kitty window
+
 
 Editor integration
 -----------------------
