@@ -57,8 +57,7 @@ void _glfwInputWindowFocus(_GLFWwindow* window, bool focused)
             if (window->activated_keys[i].key > 0 && window->activated_keys[i].action == GLFW_PRESS)
             {
                 const int native_key = _glfwPlatformGetNativeKeyForKey(window->activated_keys[i].key);
-                GLFWkeyevent ev;
-                _glfwInitializeKeyEvent(&ev, window->activated_keys[i].key, native_key, GLFW_RELEASE, 0);
+                GLFWkeyevent ev = {.key = window->activated_keys[i].key, .native_key = native_key, .action = GLFW_RELEASE};
                 _glfwInputKeyboard(window, &ev);
             }
         }

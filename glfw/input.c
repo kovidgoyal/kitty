@@ -273,16 +273,6 @@ static bool parseMapping(_GLFWmapping* mapping, const char* string)
 //////                         GLFW event API                       //////
 //////////////////////////////////////////////////////////////////////////
 
-void _glfwInitializeKeyEvent(GLFWkeyevent *ev, int key, int native_key, int action, int mods)
-{
-    ev->key = key;
-    ev->native_key = native_key;
-    ev->action = action;
-    ev->mods = mods;
-    ev->text = NULL;
-    ev->ime_state = 0;
-}
-
 static void
 set_key_action(_GLFWwindow *window, uint32_t key, int val, int idx) {
     const unsigned sz = arraysz(window->activated_keys);

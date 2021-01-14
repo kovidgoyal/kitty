@@ -983,8 +983,7 @@ is_ascii_control_char(char x) {
     const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, flags) != 1;
     [self unmarkText];
     _glfw.ns.text[0] = 0;
-    GLFWkeyevent glfw_keyevent;
-    _glfwInitializeKeyEvent(&glfw_keyevent, key, keycode, GLFW_PRESS, mods);
+    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .action = GLFW_PRESS, .mods = mods};
     if (!_glfw.ns.unicodeData) {
         // Using the cocoa API for key handling is disabled, as there is no
         // reliable way to handle dead keys using it. Only use it if the
@@ -1092,8 +1091,7 @@ is_ascii_control_char(char x) {
             action = GLFW_PRESS;
     }
 
-    GLFWkeyevent glfw_keyevent;
-    _glfwInitializeKeyEvent(&glfw_keyevent, key, [event keyCode], action, mods);
+    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = [event keyCode], .action = action, .mods = mods};
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
@@ -1102,8 +1100,7 @@ is_ascii_control_char(char x) {
     const int key = translateKey([event keyCode], true);
     const int mods = translateFlags([event modifierFlags]);
 
-    GLFWkeyevent glfw_keyevent;
-    _glfwInitializeKeyEvent(&glfw_keyevent, key, [event keyCode], GLFW_RELEASE, mods);
+    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = [event keyCode], .action = GLFW_RELEASE, .mods = mods};
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
