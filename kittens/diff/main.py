@@ -93,7 +93,7 @@ class DiffHandler(Handler):
         self.highlighting_done = False
         self.restore_position: Optional[Reference] = None
         for key_def, action in self.opts.key_definitions.items():
-            self.add_shortcut(action, *key_def)
+            self.add_shortcut(action, key_def)
 
     def perform_action(self, action: KittensKeyAction) -> None:
         func, args = action

@@ -277,14 +277,13 @@ class Loop:
                     pass
                 else:
                     self.handler.on_mouse(ev)
-        elif q == '~':
+        elif q in 'u~ABCDHFPQRS':
             if csi == '200~':
                 self.in_bracketed_paste = True
                 return
             elif csi == '201~':
                 self.in_bracketed_paste = False
                 return
-        elif q in 'u~ABCDHFPQRS':
             try:
                 k = decode_key_event(csi[:-1], q)
             except Exception:

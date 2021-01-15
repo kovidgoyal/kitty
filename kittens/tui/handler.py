@@ -36,7 +36,6 @@ class Handler:
         self.debug = debug
         self.cmd = commander(self)
         self._image_manager = image_manager
-        self._key_shortcuts: Dict[ParsedShortcut, KittensKeyActionType] = {}
 
     @property
     def image_manager(self) -> ImageManagerType:
@@ -48,6 +47,8 @@ class Handler:
         return self._tui_loop.asycio_loop
 
     def add_shortcut(self, action: KittensKeyActionType, spec: Union[str, ParsedShortcut]) -> None:
+        if not hasattr(self, '_key_shortcuts'):
+            self._key_shortcuts: Dict[ParsedShortcut, KittensKeyActionType] = {}
         if isinstance(spec, str):
             from kitty.key_encoding import parse_shortcut
             spec = parse_shortcut(spec)
