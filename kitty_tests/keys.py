@@ -3,7 +3,12 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from functools import partial
+
 import kitty.fast_data_types as defines
+from kitty.key_encoding import (
+    EventType, KeyEvent, decode_key_event, encode_key_event
+)
+
 from . import BaseTest
 
 
@@ -446,6 +451,21 @@ class TestKeys(BaseTest):
         ae(eq(ord('a'), text='a'), csi(num='a', text='a'))
         ae(eq(ord('a'), mods=shift, text='A'), csi(shift, num='a', text='A'))
         ae(eq(ord('a'), mods=shift, text='AB'), csi(shift, num='a', text='AB'))
+
+        # test roundtripping via KeyEvent
+        for mods in range(16):
+            for action in EventType:
+                for key in ('ENTER', 'a', 'TAB', 'F3'):
+                    for shifted_key in ('', 'X'):
+                        for alternate_key in ('', 'Y'):
+                            for text in ('', 'moose'):
+                                ev = KeyEvent(
+                                    type=action, mods=mods, key=key, text=text, shifted_key=shifted_key, alternate_key=alternate_key,
+                                    shift=bool(mods & 1), alt=bool(mods & 2), ctrl=bool(mods & 4), super=bool(mods & 8)
+                                )
+                                ec = encode_key_event(ev)
+                                q = decode_key_event(ec[2:-1], ec[-1])
+                                self.ae(ev, q)
 
     def test_encode_mouse_event(self):
         NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL = range(4)

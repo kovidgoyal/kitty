@@ -315,7 +315,10 @@ def encode_key_event(key_event: KeyEvent) -> str:
     shifted_key = csi_number_for_name(key_event.shifted_key)
     alternate_key = csi_number_for_name(key_event.alternate_key)
     lt = get_csi_number_to_letter_trailer_map()
-    trailer = lt.get(key, 'u')
+    if key_event.key == 'ENTER':
+        trailer = 'u'
+    else:
+        trailer = lt.get(key, 'u')
     if trailer != 'u':
         key = 1
     mods = key_event.mods
