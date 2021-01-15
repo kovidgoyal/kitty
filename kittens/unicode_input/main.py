@@ -18,9 +18,7 @@ from kitty.cli_stub import UnicodeCLIOptions
 from kitty.config import cached_values_for
 from kitty.constants import config_dir
 from kitty.fast_data_types import is_emoji_presentation_base, wcswidth
-from kitty.key_encoding import (
-    CTRL, PRESS, RELEASE, SHIFT, KeyEvent, enter_key, key_defs as K
-)
+from kitty.key_encoding import EventType, KeyEvent
 from kitty.typing import BossType
 from kitty.utils import ScreenSize, get_editor
 
@@ -33,19 +31,6 @@ from ..tui.operations import (
 )
 
 HEX, NAME, EMOTICONS, FAVORITES = 'HEX', 'NAME', 'EMOTICONS', 'FAVORITES'
-UP = K['UP']
-DOWN = K['DOWN']
-LEFT = K['LEFT']
-RIGHT = K['RIGHT']
-RIGHT_BRACKET = K['RIGHT_BRACKET']
-LEFT_BRACKET = K['LEFT_BRACKET']
-TAB = K['TAB']
-ESCAPE = K['ESCAPE']
-F1 = K['F1']
-F2 = K['F2']
-F3 = K['F3']
-F4 = K['F4']
-F12 = K['F12']
 favorites_path = os.path.join(config_dir, 'unicode-input-favorites.conf')
 INDEX_CHAR = '.'
 INDEX_BASE = 36
@@ -431,46 +416,46 @@ class UnicodeInput(Handler):
         self.refresh()
 
     def on_key(self, key_event: KeyEvent) -> None:
-        if self.mode is HEX and key_event.type is not RELEASE and not key_event.mods:
+        if self.mode is HEX and key_event.type is not EventType.RELEASE and not key_event.mods:
             try:
                 val = int(self.line_edit.current_input, 16)
             except Exception:
                 pass
             else:
-                if key_event.key is TAB:
+                if key_event.matches('tab'):
                     self.line_edit.current_input = hex(val + 0x10)[2:]
                     self.refresh()
                     return
-                if key_event.key is UP:
+                if key_event.matches('up'):
                     self.line_edit.current_input = hex(val + 1)[2:]
                     self.refresh()
                     return
-                if key_event.key is DOWN:
+                if key_event.matches('down'):
                     self.line_edit.current_input = hex(val - 1)[2:]
                     self.refresh()
                     return
-        if self.mode is NAME and key_event.type is not RELEASE and not key_event.mods:
-            if key_event.key is TAB:
-                if key_event.mods == SHIFT:
-                    self.table.move_current(cols=-1)
-                    self.refresh()
-                elif not key_event.mods:
-                    self.table.move_current(cols=1)
-                    self.refresh()
-                return
-            elif key_event.key is LEFT and not key_event.mods:
+        if self.mode is NAME and key_event.type is not EventType.RELEASE and not key_event.mods:
+            if key_event.matches('shift+tab'):
                 self.table.move_current(cols=-1)
                 self.refresh()
                 return
-            elif key_event.key is RIGHT and not key_event.mods:
+            if key_event.matches('tab'):
                 self.table.move_current(cols=1)
                 self.refresh()
                 return
-            elif key_event.key is UP and not key_event.mods:
+            if key_event.matches('left'):
+                self.table.move_current(cols=-1)
+                self.refresh()
+                return
+            if key_event.matches('right'):
+                self.table.move_current(cols=1)
+                self.refresh()
+                return
+            if key_event.matches('up'):
                 self.table.move_current(rows=-1)
                 self.refresh()
                 return
-            elif key_event.key is DOWN and not key_event.mods:
+            if key_event.matches('down'):
                 self.table.move_current(rows=1)
                 self.refresh()
                 return
@@ -478,26 +463,34 @@ class UnicodeInput(Handler):
         if self.line_edit.on_key(key_event):
             self.refresh()
             return
-        if key_event is enter_key:
+        if key_event.matches('enter'):
             self.quit_loop(0)
-        elif key_event.type is PRESS:
-            if not key_event.mods:
-                if key_event.key is ESCAPE:
-                    self.quit_loop(1)
-                elif key_event.key is F1:
-                    self.switch_mode(HEX)
-                elif key_event.key is F2:
-                    self.switch_mode(NAME)
-                elif key_event.key is F3:
-                    self.switch_mode(EMOTICONS)
-                elif key_event.key is F4:
-                    self.switch_mode(FAVORITES)
-                elif key_event.key is F12 and self.mode is FAVORITES:
-                    self.edit_favorites()
-            elif key_event.mods == CTRL and key_event.key in (TAB, RIGHT_BRACKET, LEFT_BRACKET):
-                self.next_mode(-1 if key_event.key is LEFT_BRACKET else 1)
-            elif key_event.mods == CTRL | SHIFT and key_event.key is TAB:
-                self.next_mode(-1)
+            return
+        if key_event.matches('esc'):
+            self.quit_loop(1)
+            return
+        if key_event.matches('f1'):
+            self.switch_mode(HEX)
+            return
+        if key_event.matches('f2'):
+            self.switch_mode(NAME)
+            return
+        if key_event.matches('f3'):
+            self.switch_mode(EMOTICONS)
+            return
+        if key_event.matches('f4'):
+            self.switch_mode(FAVORITES)
+            return
+        if key_event.matches('f12') and self.mode is FAVORITES:
+            self.edit_favorites()
+            return
+        if key_event.matches('ctrl+shift+tab'):
+            self.next_mode(-1)
+            return
+        for key in ('tab', '[', ']'):
+            if key_event.matches(f'ctrl+{key}'):
+                self.next_mode(-1 if key == '[' else 1)
+                return
 
     def edit_favorites(self) -> None:
         if not os.path.exists(favorites_path):

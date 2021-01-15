@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional
 from kitty.cli import parse_args
 from kitty.cli_stub import RCOptions, ResizeCLIOptions
 from kitty.constants import version
-from kitty.key_encoding import CTRL, RELEASE, KeyEvent, key_defs as K
+from kitty.key_encoding import CTRL, EventType, KeyEvent
 from kitty.rc.base import command_for_name, parse_subcommand_cli
 from kitty.remote_control import encode_send, parse_rc_args
 from kitty.utils import ScreenSize
@@ -19,11 +19,6 @@ from ..tui.loop import Loop
 from ..tui.operations import styled
 
 global_opts = RCOptions()
-ESCAPE = K['ESCAPE']
-N = K['N']
-S = K['S']
-T = K['T']
-W = K['W']
 
 
 class Resize(Handler):
@@ -74,12 +69,13 @@ class Resize(Handler):
             self.quit_loop(0)
 
     def on_key(self, key_event: KeyEvent) -> None:
-        if key_event.type is RELEASE:
+        if key_event.type is EventType.RELEASE:
             return
-        if key_event.key is ESCAPE:
+        if key_event.matches('esc'):
             self.quit_loop(0)
-        elif key_event.key in (W, N, T, S) and key_event.mods & CTRL:
-            self.do_window_resize(is_decrease=key_event.key in (N, S), is_horizontal=key_event.key in (W, N), multiplier=2)
+            return
+        if key_event.key in ('w', 'n', 't', 's') and key_event.mods == CTRL:
+            self.do_window_resize(is_decrease=key_event.key in 'ns', is_horizontal=key_event.key in 'wn', multiplier=2)
 
     def on_resize(self, new_size: ScreenSize) -> None:
         self.draw_screen()

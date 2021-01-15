@@ -281,8 +281,11 @@ def decode_key_event(csi: str, csi_type: str) -> KeyEvent:
     def key_name(num: int) -> str:
         if not num:
             return ''
-        num = csi_number_to_functional_number_map.get(num, num)
-        ans = functional_key_number_to_name_map.get(num)
+        if num != 13:
+            num = csi_number_to_functional_number_map.get(num, num)
+            ans = functional_key_number_to_name_map.get(num)
+        else:
+            ans = 'ENTER' if csi_type == 'u' else 'F3'
         if ans is None:
             ans = chr(num)
         return ans
