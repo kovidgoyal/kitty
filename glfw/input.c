@@ -296,6 +296,7 @@ set_key_action(_GLFWwindow *window, uint32_t key, int val, int idx) {
             memset(window->activated_keys + sz - 1, 0, sizeof(window->activated_keys[0]));
         }
     } else {
+        window->activated_keys[idx].key = key;
         window->activated_keys[idx].action = val;
     }
 }
