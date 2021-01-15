@@ -48,8 +48,8 @@ without too many changes, do the following:
    previously used keyboard mode.
 
 Key events will all be delivered to your application either as plain UTF-8
-text, or using these escape codes, for keys that do not produce text (``CSI``
-is the bytes ``0x1b 0x5b``::
+text, or using the following escape codes, for those keys that do not produce
+text (``CSI`` is the bytes ``0x1b 0x5b``)::
 
     CSI number ; modifiers [u~]
     CSI 1; modifiers [ABCDFHPQRS]
