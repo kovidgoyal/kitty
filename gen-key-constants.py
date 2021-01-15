@@ -214,9 +214,10 @@ def generate_functional_table() -> None:
     lines = [
         '',
         '.. csv-table:: Functional key codes',
-        '   :header: "Name", "CSI sequence"',
+        '   :header: "Name", "CSI", "Name", "CSI"',
         ''
     ]
+    line_items = []
     enc_lines = []
     tilde_trailers = set()
     for name, code in name_to_code.items():
@@ -228,11 +229,13 @@ def generate_functional_table() -> None:
             code = code if trailer in '~u' else 1
             enc_lines.append((' ' * 8) + f"case GLFW_FKEY_{name.upper()}: S({code}, '{trailer}');")
             if code == 1 and name not in ('up', 'down', 'left', 'right'):
-                trailer += f' or CSI {oc} ~'
+                trailer += f' or {oc} ~'
         else:
             trailer = 'u'
-        name = f'"{name.upper()}",'.ljust(25)
-        lines.append(f'   {name} "CSI {code} {trailer}"')
+        line_items.append(name.upper())
+        line_items.append(f'``{code}\xa0{trailer}``')
+    for li in chunks(line_items, 4):
+        lines.append('   ' + ', '.join(f'"{x}"' for x in li))
     lines.append('')
     patch_file('docs/keyboard-protocol.rst', 'functional key table', '\n'.join(lines), start_marker='.. ', end_marker='')
     patch_file('kitty/key_encoding.c', 'special numbers', '\n'.join(enc_lines))
@@ -298,7 +301,8 @@ def generate_ctrl_mapping() -> None:
     items = []
     mi = []
     for k in sorted(ctrl_mapping):
-        items.append(k)
+        prefix = '\\' if k == '\\' else ('SPC' if k == ' ' else '')
+        items.append(prefix + k)
         val = str(ctrl_mapping[k])
         items.append(val)
         if k in "\\'":
