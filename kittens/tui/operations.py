@@ -270,23 +270,23 @@ def init_state(alternate_screen: bool = True) -> str:
         reset_mode('FOCUS_TRACKING') + reset_mode('MOUSE_UTF8_MODE') +
         reset_mode('MOUSE_SGR_MODE') + reset_mode('MOUSE_UTF8_MODE') +
         set_mode('BRACKETED_PASTE') + SAVE_COLORS +
-        '\033[>31u' +  # extended keyboard mode
         '\033[*x'  # reset DECSACE to default region select
     )
     if alternate_screen:
         ans += set_mode('ALTERNATE_SCREEN') + reset_mode('DECOM')
         ans += clear_screen()
+    ans += '\033[>31u'  # extended keyboard mode
     return ans
 
 
 def reset_state(normal_screen: bool = True) -> str:
     ans = ''
+    ans += '\033[<u'  # restore keyboard mode
     if normal_screen:
         ans += reset_mode('ALTERNATE_SCREEN')
     ans += RESTORE_PRIVATE_MODE_VALUES
     ans += RESTORE_CURSOR
     ans += RESTORE_COLORS
-    ans += '\033[<u'  # restore keyboard mode
     return ans
 
 
