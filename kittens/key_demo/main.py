@@ -46,6 +46,14 @@ class KeysHandler(Handler):
         rep = 'CSI ' + encode_key_event(key_event)[2:]
         rep = rep.replace(';', ' ; ').replace(':', ' : ')[:-1] + ' ' + rep[-1]
         self.cmd.styled(rep, fg='magenta')
+        if (key_event.shifted_key or key_event.alternate_key):
+            self.print()
+            if key_event.shifted_key:
+                self.cmd.colored('Shifted key: ', 'gray')
+                self.print(key_event.shifted_key + ' ', end='')
+            if key_event.alternate_key:
+                self.cmd.colored('Alternate key: ', 'gray')
+                self.print(key_event.alternate_key + ' ', end='')
         self.print()
         self.print()
 

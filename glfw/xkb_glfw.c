@@ -588,7 +588,7 @@ void
 glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t xkb_keycode, int action) {
     static char key_text[64] = {0};
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
-    xkb_keysym_t xkb_sym;
+    xkb_keysym_t xkb_sym, shifted_xkb_sym = XKB_KEY_NoSymbol, alternate_xkb_sym = XKB_KEY_NoSymbol;
     xkb_keycode_t code_for_sym = xkb_keycode, ibus_keycode = xkb_keycode;
     GLFWkeyevent glfw_ev = {.action = GLFW_PRESS};
 #ifdef _GLFW_WAYLAND
@@ -608,6 +608,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
         return;
     }
     xkb_sym = clean_syms[0];
+    shifted_xkb_sym = syms[0];
     debug("clean_sym: %s ", glfw_xkb_keysym_name(clean_syms[0]));
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         const char *text_type = "composed_text";
@@ -641,22 +642,27 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     if (xkb_sym == XKB_KEY_ISO_First_Group || xkb_sym == XKB_KEY_ISO_Last_Group || xkb_sym == XKB_KEY_ISO_Next_Group || xkb_sym == XKB_KEY_ISO_Prev_Group || xkb_sym == XKB_KEY_Mode_switch) {
       return;
     }
+    int num_default_syms = xkb_state_key_get_syms(sg->default_state, code_for_sym, &default_syms);
+    if (num_default_syms > 0) alternate_xkb_sym = default_syms[0];
     int glfw_sym = glfw_key_for_sym(xkb_sym);
-    bool is_fallback = false;
-    if (glfw_sym == 0 && !key_text[0]) {
-        int num_default_syms = xkb_state_key_get_syms(sg->default_state, code_for_sym, &default_syms);
-        if (num_default_syms > 0) {
-            xkb_sym = default_syms[0];
-            glfw_sym = glfw_key_for_sym(xkb_sym);
-            is_fallback = true;
-        }
-    }
+
     debug(
-        "%s%s: %d (%s) xkb_key: %d (%s)\n",
+        "%s%s: %d (%s) xkb_key: %d (%s)",
         format_mods(sg->modifiers),
-        is_fallback ? "glfw_fallback_key" : "glfw_key", glfw_sym, _glfwGetKeyName(glfw_sym),
+        "glfw_key", glfw_sym, _glfwGetKeyName(glfw_sym),
         xkb_sym, glfw_xkb_keysym_name(xkb_sym)
     );
+    bool has_shifted_key = shifted_xkb_sym != xkb_sym && shifted_xkb_sym != XKB_KEY_NoSymbol;
+    bool has_alternate_key = alternate_xkb_sym != xkb_sym && alternate_xkb_sym != XKB_KEY_NoSymbol;
+    if (has_shifted_key) {
+        glfw_ev.shifted_key = glfw_key_for_sym(shifted_xkb_sym);
+        if (glfw_ev.shifted_key) debug(" shifted_key: %d (%s)", glfw_ev.shifted_key, _glfwGetKeyName(glfw_ev.shifted_key))
+    }
+    if (has_alternate_key) {
+        glfw_ev.alternate_key = glfw_key_for_sym(alternate_xkb_sym);
+        if (glfw_ev.alternate_key) debug(" alternate_key: %d (%s)", glfw_ev.alternate_key, _glfwGetKeyName(glfw_ev.alternate_key))
+    }
+    debug("%s", "\n");
 
     // NOTE: On linux, the reported native key identifier is the XKB keysym value.
     // Do not confuse `native_key` with `xkb_keycode` (the native keycode reported for the
@@ -672,7 +678,6 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     glfw_ev.key = glfw_sym;
     glfw_ev.mods = sg->modifiers;
     glfw_ev.text = key_text;
-
     _GLFWIBUSKeyEvent ibus_ev;
     ibus_ev.glfw_ev = glfw_ev;
     ibus_ev.ibus_keycode = ibus_keycode;
