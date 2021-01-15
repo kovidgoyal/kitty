@@ -21,6 +21,8 @@ functional_key_name_aliases = {
     'ARROWRIGHT': 'RIGHT',
     'ARROWLEFT': 'LEFT',
     'DEL': 'DELETE',
+    'KP_PLUS': 'KP_ADD',
+    'KP_MINUS': 'KP_SUBTRACT',
 }
 
 

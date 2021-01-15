@@ -20,6 +20,8 @@ def keyboard_mode_name(screen: ScreenType) -> str:
 def get_shortcut(keymap: Union[KeyMap, SequenceMap], ev: KeyEvent) -> Optional[Union[KeyAction, SubSequenceMap]]:
     mods = ev.mods & 0b1111
     ans = keymap.get(SingleKey(mods, False, ev.key))
+    if ans is None and ev.shifted_key and mods & 0b1:
+        ans = keymap.get(SingleKey(mods & 0b1110, False, ev.shifted_key))
     if ans is None:
         ans = keymap.get(SingleKey(mods, True, ev.native_key))
     return ans
@@ -27,5 +29,11 @@ def get_shortcut(keymap: Union[KeyMap, SequenceMap], ev: KeyEvent) -> Optional[U
 
 def shortcut_matches(s: SingleKey, ev: KeyEvent) -> bool:
     mods = ev.mods & 0b1111
-    q = ev.native_key if s.is_native else ev.key
-    return bool(s.mods & 0b1111 == mods & 0b1111 and s.key == q)
+    smods = s.mods & 0b1111
+    if s.is_native:
+        return s.key == ev.native_key and smods == mods
+    if s.key == ev.key and mods == smods:
+        return True
+    if ev.shifted_key and mods & 0b1 and (mods & 0b1110) == smods and ev.shifted_key == s.key:
+        return True
+    return False
