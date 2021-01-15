@@ -143,15 +143,14 @@ encode_function_key(const KeyEvent *ev, char *output) {
         }
     }
     if (!ev->mods.value) {
-        switch(key_number) {
-            case GLFW_FKEY_ENTER: SIMPLE("\r");
-            case GLFW_FKEY_ESCAPE: {
-                if (ev->disambiguate) { return encode_csi_string('u', "27", output); }
-                SIMPLE("\x1b");
+        if (!ev->disambiguate && !ev->report_text && key_number == GLFW_FKEY_ESCAPE) SIMPLE("\x1b");
+        if (!ev->report_text) {
+            switch(key_number) {
+                case GLFW_FKEY_ENTER: SIMPLE("\r");
+                case GLFW_FKEY_BACKSPACE: SIMPLE("\x7f");
+                case GLFW_FKEY_TAB: SIMPLE("\t");
+                default: break;
             }
-            case GLFW_FKEY_BACKSPACE: SIMPLE("\x7f");
-            case GLFW_FKEY_TAB: SIMPLE("\t");
-            default: break;
         }
     }
     if (ev->mods.value == ALT && !ev->disambiguate) {

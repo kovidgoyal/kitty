@@ -326,6 +326,8 @@ only key events are sent. If the text is needed as well, combine with the
 Report associated text enhancement below.
 
 Additionally, with this mode, events for pressing modifier keys are reported.
+Note that *all* keys are reported as escape codes, including :kbd:`Enter, Tab,
+Backspace` etc.
 
 .. _report_text:
 

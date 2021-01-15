@@ -437,6 +437,9 @@ class TestKeys(BaseTest):
         ae(kq(ord('a'), mods=ctrl), csi(ctrl, num='a'))
         ae(kq(defines.GLFW_FKEY_UP), '\x1b[A')
         ae(kq(defines.GLFW_FKEY_LEFT_SHIFT), csi(num=defines.GLFW_FKEY_LEFT_SHIFT))
+        ae(kq(defines.GLFW_FKEY_ENTER), '\x1b[13u')
+        ae(kq(defines.GLFW_FKEY_TAB), '\x1b[9u')
+        ae(kq(defines.GLFW_FKEY_BACKSPACE), '\x1b[127u')
 
         # test embed text
         eq = partial(enc, key_encoding_flags=0b11000)

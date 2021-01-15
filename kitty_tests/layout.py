@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 from kitty.config import defaults
-from kitty.constants import WindowGeometry
+from kitty.types import WindowGeometry
 from kitty.layout.interface import Grid, Horizontal, Splits, Stack, Tall
 from kitty.window import EdgeWidths
 from kitty.window_list import WindowList, reset_group_id_counter
