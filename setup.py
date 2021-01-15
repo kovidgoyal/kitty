@@ -52,7 +52,7 @@ is_freebsd = 'freebsd' in _plat
 is_netbsd = 'netbsd' in _plat
 is_dragonflybsd = 'dragonfly' in _plat
 is_bsd = is_freebsd or is_netbsd or is_dragonflybsd or is_openbsd
-is_arm = platform.processor() == 'arm'
+is_arm = platform.processor() == 'arm' or platform.machine() == 'arm64'
 Env = glfw.Env
 env = Env()
 PKGCONFIG = os.environ.get('PKGCONFIG_EXE', 'pkg-config')
