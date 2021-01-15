@@ -115,6 +115,7 @@ typedef struct {
     WindowGeometry geometry;
     ClickQueue click_queue;
     monotonic_t last_drag_scroll_at;
+    uint32_t last_special_key_pressed;
 } Window;
 
 typedef struct {

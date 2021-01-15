@@ -109,7 +109,8 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
 void
 on_key_input(GLFWkeyevent *ev) {
     Window *w = active_window();
-    const int action = ev->action, native_key = ev->native_key, key = ev->key, mods = ev->mods;
+    const int action = ev->action, mods = ev->mods;
+    const uint32_t key = ev->key, native_key = ev->native_key;
     const char *text = ev->text ? ev->text : "";
 
     debug("on_key_input: glfw key: %d native_code: 0x%x action: %s mods: 0x%x text: '%s' state: %d ",
@@ -149,7 +150,10 @@ on_key_input(GLFWkeyevent *ev) {
         debug("in sequence mode, handling as shortcut\n");
         if (
             action != GLFW_RELEASE &&
-            key != GLFW_FKEY_LEFT_SHIFT && key != GLFW_FKEY_RIGHT_SHIFT && key != GLFW_FKEY_LEFT_ALT && key != GLFW_FKEY_RIGHT_ALT && key != GLFW_FKEY_LEFT_CONTROL && key != GLFW_FKEY_RIGHT_CONTROL
+            key != GLFW_FKEY_LEFT_SHIFT && key != GLFW_FKEY_RIGHT_SHIFT &&
+            key != GLFW_FKEY_LEFT_ALT && key != GLFW_FKEY_RIGHT_ALT &&
+            key != GLFW_FKEY_LEFT_CONTROL && key != GLFW_FKEY_RIGHT_CONTROL &&
+            key != GLFW_FKEY_LEFT_SUPER && key != GLFW_FKEY_RIGHT_SUPER
         ) {
             create_key_event();
             call_boss(process_sequence, "O", ke);
@@ -161,15 +165,22 @@ on_key_input(GLFWkeyevent *ev) {
         create_key_event();
         PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_possible_special_key", "O", ke);
         Py_CLEAR(ke);
+        bool consumed = false;
+        w->last_special_key_pressed = 0;
         if (ret == NULL) { PyErr_Print(); }
         else {
-            bool consumed = ret == Py_True;
+            consumed = ret == Py_True;
             Py_DECREF(ret);
             if (consumed) {
                 debug("handled as shortcut\n");
+                w->last_special_key_pressed = key;
                 return;
             }
         }
+    } else if (w->last_special_key_pressed == key) {
+        w->last_special_key_pressed = 0;
+        debug("ignoring release event for previous press that was handled as shortcut");
+        return;
     }
 #undef create_key_event
     if (action == GLFW_REPEAT && !screen->modes.mDECARM) {
