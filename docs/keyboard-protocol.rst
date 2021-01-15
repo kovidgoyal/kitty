@@ -313,7 +313,7 @@ matching. See :ref:`key_codes` for details on how these are reported.
 .. _report_all_keys:
 
 Report all keys as escape codes
-----------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Key events that generate text, such as plain key presses without modifiers,
 result in just the text being sent, in the legacy protocol. There is no way to
@@ -330,11 +330,26 @@ Additionally, with this mode, events for pressing modifier keys are reported.
 .. _report_text:
 
 Report associated text
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 This progressive enhancement (``0b10000``) causes key events that generate text
 to be reported as ``CSI u`` escape codes with the text embedded in the escape
 code. See :ref:`text_as_codepoints` above for details on the mechanism.
+
+
+.. _detection:
+
+Detection of support for this protocol
+------------------------------------------
+
+An application can query the terminal for support of this protocol by sending
+the escape code querying for the :ref:`current progressive enhancement
+<progressive_enhancement>` status
+followed by request for the `primary device attributes
+<https://vt100.net/docs/vt510-rm/DA1.html>`. If an answer for the device
+attributes is received without getting back an answer for the progressive
+enhancement the terminal does not support this protocol.
+
 
 Legacy key event encoding
 --------------------------------
@@ -650,7 +665,7 @@ specification.
   * Only a small subset of all possible functional keys are assigned numbers.
   * Claims the ``CSI u`` escape code has no fixed meaning, but has been used
     for decades as ``SCORC`` for instance by xterm and ansi.sys and
-    `DECSMBV <https://vt100.net/docs/vt510-rm/DECSMBV.html`_
+    `DECSMBV <https://vt100.net/docs/vt510-rm/DECSMBV.html>`_
     by the VT-510 hardware terminal. This doesn't really matter since these uses
     are for communication to the terminal not from the terminal.
   * Handwaves that :kbd:`ctrl` *tends to* mask with ``0x1f``. In actual fact it
