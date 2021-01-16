@@ -1223,8 +1223,10 @@ set_custom_cursor(PyObject *self UNUSED, PyObject *args) {
 
 #ifdef __APPLE__
 void
-get_cocoa_key_equivalent(int key, int mods, char *cocoa_key, size_t key_sz, int *cocoa_mods) {
-    glfwGetCocoaKeyEquivalent(key, mods, cocoa_key, key_sz, cocoa_mods);
+get_cocoa_key_equivalent(uint32_t key, int mods, char *cocoa_key, size_t key_sz, int *cocoa_mods) {
+    memset(cocoa_key, 0, key_sz);
+    uint32_t ans = glfwGetCocoaKeyEquivalent(key, mods, cocoa_mods);
+    if (ans) encode_utf8(ans, cocoa_key);
 }
 
 static void

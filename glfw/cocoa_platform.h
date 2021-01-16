@@ -178,8 +178,6 @@ typedef struct _GLFWlibraryNS
 
     char                keyName[64];
     char                text[256];
-    short int           keycodes[256];
-    short int           key_to_keycode[GLFW_KEY_LAST + 1];
     char*               clipboardString;
     CGPoint             cascadePoint;
     // Where to place the cursor when re-enabled

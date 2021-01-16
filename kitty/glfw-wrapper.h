@@ -2071,7 +2071,7 @@ typedef GLFWapplicationwillfinishlaunchingfun (*glfwSetApplicationWillFinishLaun
 GFW_EXTERN glfwSetApplicationWillFinishLaunching_func glfwSetApplicationWillFinishLaunching_impl;
 #define glfwSetApplicationWillFinishLaunching glfwSetApplicationWillFinishLaunching_impl
 
-typedef void (*glfwGetCocoaKeyEquivalent_func)(int, int, char*, size_t, int*);
+typedef uint32_t (*glfwGetCocoaKeyEquivalent_func)(uint32_t, int, int*);
 GFW_EXTERN glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;
 #define glfwGetCocoaKeyEquivalent glfwGetCocoaKeyEquivalent_impl
 

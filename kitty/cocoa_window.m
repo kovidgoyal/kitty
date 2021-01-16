@@ -111,8 +111,9 @@ static NSEventModifierFlags new_window_mods = 0;
 
 static PyObject*
 cocoa_set_new_window_trigger(PyObject *self UNUSED, PyObject *args) {
-    int mods, key;
-    if (!PyArg_ParseTuple(args, "ii", &mods, &key)) return NULL;
+    int mods;
+    unsigned int key;
+    if (!PyArg_ParseTuple(args, "iI", &mods, &key)) return NULL;
     int nwm;
     get_cocoa_key_equivalent(key, mods, new_window_key, sizeof(new_window_key), &nwm);
     new_window_mods = nwm;

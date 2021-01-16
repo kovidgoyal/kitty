@@ -7,111 +7,111 @@ from typing import Dict, List, Any
 from pprint import pformat
 
 functional_key_defs = '''# {{{
-# kitty                     XKB                         macOS
-escape                      Escape                      -
-enter                       Return                      -
-tab                         Tab                         -
-backspace                   BackSpace                   -
-insert                      Insert                      -
-delete                      Delete                      -
-left                        Left                        -
-right                       Right                       -
-up                          Up                          -
-down                        Down                        -
-page_up                     Page_Up                     -
-page_down                   Page_Down                   -
-home                        Home                        -
-end                         End                         -
-caps_lock                   Caps_Lock                   -
-scroll_lock                 Scroll_Lock                 -
-num_lock                    Num_Lock                    -
-print_screen                Print                       -
-pause                       Pause                       -
-menu                        Menu                        -
-f1                          F1                          -
-f2                          F2                          -
-f3                          F3                          -
-f4                          F4                          -
-f5                          F5                          -
-f6                          F6                          -
-f7                          F7                          -
-f8                          F8                          -
-f9                          F9                          -
-f10                         F10                         -
-f11                         F11                         -
-f12                         F12                         -
-f13                         F13                         -
-f14                         F14                         -
-f15                         F15                         -
-f16                         F16                         -
-f17                         F17                         -
-f18                         F18                         -
-f19                         F19                         -
-f20                         F20                         -
-f21                         F21                         -
-f22                         F22                         -
-f23                         F23                         -
-f24                         F24                         -
-f25                         F25                         -
-f26                         F26                         -
-f27                         F27                         -
-f28                         F28                         -
-f29                         F29                         -
-f30                         F30                         -
-f31                         F31                         -
-f32                         F32                         -
-f33                         F33                         -
-f34                         F34                         -
-f35                         F35                         -
-kp_0                        KP_0                        -
-kp_1                        KP_1                        -
-kp_2                        KP_2                        -
-kp_3                        KP_3                        -
-kp_4                        KP_4                        -
-kp_5                        KP_5                        -
-kp_6                        KP_6                        -
-kp_7                        KP_7                        -
-kp_8                        KP_8                        -
-kp_9                        KP_9                        -
-kp_decimal                  KP_Decimal                  -
-kp_divide                   KP_Divide                   -
-kp_multiply                 KP_Multiply                 -
-kp_subtract                 KP_Subtract                 -
-kp_add                      KP_Add                      -
-kp_enter                    KP_Enter                    -
-kp_equal                    KP_Equal                    -
-kp_separator                KP_Separator                -
-kp_left                     KP_Left                     -
-kp_right                    KP_Right                    -
-kp_up                       KP_Up                       -
-kp_down                     KP_Down                     -
-kp_page_up                  KP_Page_Up                  -
-kp_page_down                KP_Page_Down                -
-kp_home                     KP_Home                     -
-kp_end                      KP_End                      -
-kp_insert                   KP_Insert                   -
-kp_delete                   KP_Delete                   -
-left_shift                  Shift_L                     -
-left_control                Control_L                   -
-left_alt                    Alt_L                       -
-left_super                  Super_L                     -
-right_shift                 Shift_R                     -
-right_control               Control_R                   -
-right_alt                   Alt_R                       -
-right_super                 Super_R                     -
-media_play                  XF86AudioPlay               -
-media_pause                 XF86AudioPause              -
-media_play_pause            -                           -
-media_reverse               -                           -
-media_stop                  XF86AudioStop               -
-media_fast_forward          XF86AudioForward            -
-media_rewind                XF86AudioRewind             -
-media_track_next            XF86AudioNext               -
-media_track_previous        XF86AudioPrev               -
-media_record                XF86AudioRecord             -
-lower_volume                XF86AudioLowerVolume        -
-raise_volume                XF86AudioRaiseVolume        -
-mute_volume                 XF86AudioMute               -
+# kitty                     XKB                         macVK  macU
+escape                      Escape                      0x35   -
+enter                       Return                      0x24   NSCarriageReturnCharacter
+tab                         Tab                         0x30   NSTabCharacter
+backspace                   BackSpace                   0x33   NSBackspaceCharacter
+insert                      Insert                      0x72   Insert
+delete                      Delete                      0x75   Delete
+left                        Left                        0x7B   LeftArrow
+right                       Right                       0x7C   RightArrow
+up                          Up                          0x7E   UpArrow
+down                        Down                        0x7D   DownArrow
+page_up                     Page_Up                     0x74   PageUp
+page_down                   Page_Down                   0x79   PageDown
+home                        Home                        0x73   Home
+end                         End                         0x77   End
+caps_lock                   Caps_Lock                   0x39   -
+scroll_lock                 Scroll_Lock                 -      ScrollLock
+num_lock                    Num_Lock                    0x47   ClearLine
+print_screen                Print                       -      PrintScreen
+pause                       Pause                       -      Pause
+menu                        Menu                        0x6E   Menu
+f1                          F1                          0x7A   F1
+f2                          F2                          0x78   F2
+f3                          F3                          0x63   F3
+f4                          F4                          0x76   F4
+f5                          F5                          0x60   F5
+f6                          F6                          0x61   F6
+f7                          F7                          0x62   F7
+f8                          F8                          0x64   F8
+f9                          F9                          0x65   F9
+f10                         F10                         0x6D   F10
+f11                         F11                         0x67   F11
+f12                         F12                         0x6F   F12
+f13                         F13                         0x69   F13
+f14                         F14                         0x6B   F14
+f15                         F15                         0x71   F15
+f16                         F16                         0x6A   F16
+f17                         F17                         0x40   F17
+f18                         F18                         0x4F   F18
+f19                         F19                         0x50   F19
+f20                         F20                         0x5A   F20
+f21                         F21                         -      F21
+f22                         F22                         -      F22
+f23                         F23                         -      F23
+f24                         F24                         -      F24
+f25                         F25                         -      F25
+f26                         F26                         -      F26
+f27                         F27                         -      F27
+f28                         F28                         -      F28
+f29                         F29                         -      F29
+f30                         F30                         -      F30
+f31                         F31                         -      F31
+f32                         F32                         -      F32
+f33                         F33                         -      F33
+f34                         F34                         -      F34
+f35                         F35                         -      F35
+kp_0                        KP_0                        0x52   -
+kp_1                        KP_1                        0x53   -
+kp_2                        KP_2                        0x54   -
+kp_3                        KP_3                        0x55   -
+kp_4                        KP_4                        0x56   -
+kp_5                        KP_5                        0x57   -
+kp_6                        KP_6                        0x58   -
+kp_7                        KP_7                        0x59   -
+kp_8                        KP_8                        0x5B   -
+kp_9                        KP_9                        0x5C   -
+kp_decimal                  KP_Decimal                  0x41   -
+kp_divide                   KP_Divide                   0x4B   -
+kp_multiply                 KP_Multiply                 0x43   -
+kp_subtract                 KP_Subtract                 0x4E   -
+kp_add                      KP_Add                      0x45   -
+kp_enter                    KP_Enter                    0x4C   NSEnterCharacter
+kp_equal                    KP_Equal                    0x51   -
+kp_separator                KP_Separator                -      -
+kp_left                     KP_Left                     -      -
+kp_right                    KP_Right                    -      -
+kp_up                       KP_Up                       -      -
+kp_down                     KP_Down                     -      -
+kp_page_up                  KP_Page_Up                  -      -
+kp_page_down                KP_Page_Down                -      -
+kp_home                     KP_Home                     -      -
+kp_end                      KP_End                      -      -
+kp_insert                   KP_Insert                   -      -
+kp_delete                   KP_Delete                   -      -
+left_shift                  Shift_L                     0x38   -
+left_control                Control_L                   0x3B   -
+left_alt                    Alt_L                       0x3A   -
+left_super                  Super_L                     0x37   -
+right_shift                 Shift_R                     0x3C   -
+right_control               Control_R                   0x3E   -
+right_alt                   Alt_R                       0x3D   -
+right_super                 Super_R                     0x36   -
+media_play                  XF86AudioPlay               -      -
+media_pause                 XF86AudioPause              -      -
+media_play_pause            -                           -      -
+media_reverse               -                           -      -
+media_stop                  XF86AudioStop               -      -
+media_fast_forward          XF86AudioForward            -      -
+media_rewind                XF86AudioRewind             -      -
+media_track_next            XF86AudioNext               -      -
+media_track_previous        XF86AudioPrev               -      -
+media_record                XF86AudioRecord             -      -
+lower_volume                XF86AudioLowerVolume        -      -
+raise_volume                XF86AudioRaiseVolume        -      -
+mute_volume                 XF86AudioMute               -      -
 '''  # }}}
 
 shift_map = {x[0]: x[1] for x in '`~ 1! 2@ 3# 4$ 5% 6^ 7& 8* 9( 0) -_ =+ [{ ]} \\| ;: \'" ,< .> /?'.split()}
@@ -127,9 +127,64 @@ different_trailer_functionals = {
     'f1': 'P', 'f2': 'Q', 'f3': 'R', 'f4': 'S', 'enter': 'u', 'tab': 'u',
     'backspace': 'u', 'escape': 'u'
 }
+
+macos_ansi_key_codes = {  # {{{
+    0x1D: ord('0'),
+    0x12: ord('1'),
+    0x13: ord('2'),
+    0x14: ord('3'),
+    0x15: ord('4'),
+    0x17: ord('5'),
+    0x16: ord('6'),
+    0x1A: ord('7'),
+    0x1C: ord('8'),
+    0x19: ord('9'),
+    0x00: ord('a'),
+    0x0B: ord('b'),
+    0x08: ord('c'),
+    0x02: ord('d'),
+    0x0E: ord('e'),
+    0x03: ord('f'),
+    0x05: ord('g'),
+    0x04: ord('h'),
+    0x22: ord('i'),
+    0x26: ord('j'),
+    0x28: ord('k'),
+    0x25: ord('l'),
+    0x2E: ord('m'),
+    0x2D: ord('n'),
+    0x1F: ord('o'),
+    0x23: ord('p'),
+    0x0C: ord('q'),
+    0x0F: ord('r'),
+    0x01: ord('s'),
+    0x11: ord('t'),
+    0x20: ord('u'),
+    0x09: ord('v'),
+    0x0D: ord('w'),
+    0x07: ord('x'),
+    0x10: ord('y'),
+    0x06: ord('z'),
+
+    0x27: ord('\''),
+    0x2A: ord('\\'),
+    0x2B: ord(','),
+    0x18: ord('='),
+    0x32: ord('`'),
+    0x21: ord('['),
+    0x1B: ord('-'),
+    0x2F: ord('.'),
+    0x1E: ord(']'),
+    0x29: ord(';'),
+    0x2C: ord('/'),
+    0x31: ord(' '),
+}  # }}}
+
 functional_key_names: List[str] = []
 name_to_code: Dict[str, int] = {}
 name_to_xkb: Dict[str, str] = {}
+name_to_vk: Dict[str, int] = {}
+name_to_macu: Dict[str, str] = {}
 start_code = 0xe000
 for line in functional_key_defs.splitlines():
     line = line.strip()
@@ -141,6 +196,13 @@ for line in functional_key_defs.splitlines():
     name_to_code[name] = len(name_to_code) + start_code
     if parts[1] != '-':
         name_to_xkb[name] = parts[1]
+    if parts[2] != '-':
+        name_to_vk[name] = int(parts[2], 16)
+    if parts[3] != '-':
+        val = parts[3]
+        if not val.startswith('NS'):
+            val = f'NS{val}FunctionKey'
+        name_to_macu[name] = val
 last_code = start_code + len(functional_key_names) - 1
 ctrl_mapping = {
     ' ': 0, '@': 0, 'a': 1, 'b': 2, 'c': 3, 'd': 4, 'e': 5, 'f': 6, 'g': 7,
@@ -316,12 +378,33 @@ def generate_ctrl_mapping() -> None:
     patch_file('kitty/key_encoding.c', 'ctrl mapping', '\n'.join(mi))
 
 
+def generate_macos_mapping() -> None:
+    lines = []
+    for k in sorted(macos_ansi_key_codes):
+        v = macos_ansi_key_codes[k]
+        lines.append(f'        case 0x{k:x}: return 0x{v:x};')
+    patch_file('glfw/cocoa_window.m', 'vk to unicode', '\n'.join(lines))
+    lines = []
+    for name, vk in name_to_vk.items():
+        lines.append(f'        case 0x{vk:x}: return GLFW_FKEY_{name.upper()};')
+    patch_file('glfw/cocoa_window.m', 'vk to functional', '\n'.join(lines))
+    lines = []
+    for name, mac in name_to_macu.items():
+        lines.append(f'        case {mac}: return GLFW_FKEY_{name.upper()};')
+    patch_file('glfw/cocoa_window.m', 'macu to functional', '\n'.join(lines))
+    lines = []
+    for name, mac in name_to_macu.items():
+        lines.append(f'        case GLFW_FKEY_{name.upper()}: return {mac};')
+    patch_file('glfw/cocoa_window.m', 'functional to macu', '\n'.join(lines))
+
+
 def main() -> None:
     generate_glfw_header()
     generate_xkb_mapping()
     generate_functional_table()
     generate_legacy_text_key_maps()
     generate_ctrl_mapping()
+    generate_macos_mapping()
 
 
 if __name__ == '__main__':

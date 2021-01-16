@@ -258,7 +258,7 @@ void set_titlebar_color(OSWindow *w, color_type color);
 FONTS_DATA_HANDLE load_fonts_data(double, double, double);
 void send_prerendered_sprites_for_window(OSWindow *w);
 #ifdef __APPLE__
-void get_cocoa_key_equivalent(int, int, char *key, size_t key_sz, int*);
+void get_cocoa_key_equivalent(uint32_t, int, char *key, size_t key_sz, int*);
 typedef enum {
     PREFERENCES_WINDOW = 1,
     NEW_OS_WINDOW = 2,

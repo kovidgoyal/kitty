@@ -47,11 +47,6 @@ convert_glfw_mods(int mods, KeyEvent *ev) {
 }
 
 
-static inline int
-encode_csi_string(const char csi_trailer, const char *payload, char *output) {
-    return snprintf(output, KEY_BUFFER_SIZE, "\x1b[%s%c", payload, csi_trailer);
-}
-
 static inline void
 init_encoding_data(EncodingData *ans, const KeyEvent *ev) {
     ans->add_actions = ev->report_all_event_types && ev->action != PRESS;
