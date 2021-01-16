@@ -12,7 +12,7 @@
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, cursor_text_uses_bg;
+    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, foreground_opacity, cursor_text_uses_bg;
 
     uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, cursor_text_color, url_color, url_style, inverted;
 
@@ -184,7 +184,7 @@ void main() {
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + 1 + mark] + (ONE - has_mark) * fg_as_uint;
     foreground = color_to_vec(fg_as_uint);
     float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
-    effective_text_alpha = inactive_text_alpha * mix(1.0, dim_opacity, has_dim);
+    effective_text_alpha = foreground_opacity * inactive_text_alpha * mix(1.0, dim_opacity, has_dim);
     float in_url = float((is_selected & TWO) >> 1);
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], fg_as_uint));
 #ifdef USE_SELECTION_FG

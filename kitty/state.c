@@ -653,6 +653,7 @@ PYWRAP1(set_options) {
     S(background_image_layout, bglayout);
     S(background_tint, PyFloat_AsFloat);
     S(background_image_linear, PyObject_IsTrue);
+    S(foreground_opacity, PyFloat_AsFloat);
     S(dim_opacity, PyFloat_AsFloat);
     S(dynamic_background_opacity, PyObject_IsTrue);
     S(inactive_text_alpha, PyFloat_AsFloat);
