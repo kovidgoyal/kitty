@@ -240,7 +240,7 @@ get_first_codepoint(UniChar *utf16, UniCharCount num) {
 
 static inline bool
 is_pua_char(uint32_t ch) {
-    return (0xE000 <= ch && ch <= 0xF8FF) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch || ch <= 0x10FFFF);
+    return (0xE000 <= ch && ch <= 0xF8FF) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
 }
 
 static uint32_t
@@ -1015,6 +1015,30 @@ convert_utf16_to_utf8(UniChar *src, UniCharCount src_length, char *dest, size_t 
 }
 
 static inline bool
+alternate_key_is_ok(uint32_t key, uint32_t akey) {
+    return akey > 31 && akey != key && !is_pua_char(akey);
+}
+
+static inline void
+add_alternate_keys(GLFWkeyevent *ev, NSEvent *event) {
+    ev->alternate_key = translateKey(ev->native_key, false);
+    if (!alternate_key_is_ok(ev->key, ev->alternate_key)) ev->alternate_key = 0;
+    if (ev->mods & GLFW_MOD_SHIFT) {
+        NSString *ci = [event charactersIgnoringModifiers];
+        if (ci) {
+            unsigned sz = [ci length];
+            if (sz > 0) {
+                UniChar buf[2] = {0};
+                buf[0] = [ci characterAtIndex:0];
+                if (sz > 1) buf[1] = [ci characterAtIndex:1];
+                ev->shifted_key = get_first_codepoint(buf, sz);
+            }
+        }
+        if (!alternate_key_is_ok(ev->key, ev->shifted_key)) ev->shifted_key = 0;
+    }
+}
+
+static inline bool
 is_ascii_control_char(char x) {
     return x == 0 || (1 <= x && x <= 31) || x == 127;
 }
@@ -1032,7 +1056,7 @@ is_ascii_control_char(char x) {
     const unsigned int keycode = [event keyCode];
     const NSUInteger flags = [event modifierFlags];
     const int mods = translateFlags(flags);
-    const int key = translateKey(keycode, true);
+    const uint32_t key = translateKey(keycode, true);
     const bool process_text = !window->ns.textInputFilterCallback || window->ns.textInputFilterCallback(key, mods, keycode, flags) != 1;
     [self unmarkText];
     _glfw.ns.text[0] = 0;
@@ -1117,6 +1141,7 @@ is_ascii_control_char(char x) {
     }
     glfw_keyevent.text = _glfw.ns.text;
     glfw_keyevent.ime_state = 0;
+    add_alternate_keys(&glfw_keyevent, event);
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
@@ -1150,10 +1175,12 @@ is_ascii_control_char(char x) {
 
 - (void)keyUp:(NSEvent *)event
 {
-    const int key = translateKey([event keyCode], true);
+    const uint32_t keycode = [event keyCode];
+    const uint32_t key = translateKey(keycode, true);
     const int mods = translateFlags([event modifierFlags]);
 
-    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = [event keyCode], .action = GLFW_RELEASE, .mods = mods};
+    GLFWkeyevent glfw_keyevent = {.key = key, .native_key = keycode, .action = GLFW_RELEASE, .mods = mods};
+    add_alternate_keys(&glfw_keyevent, event);
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
 
