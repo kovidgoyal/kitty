@@ -29,9 +29,20 @@ functional_key_name_aliases = {
 character_key_name_aliases = {
     'SPC': ' ',
     'SPACE': ' ',
+    'STAR': '*',
+    'MULTIPLY': '*',
     'PLUS': '+',
     'MINUS': '-',
     'HYPHEN': '-',
+    'EQUAL': '=',
+    'UNDERSCORE': '_',
+    'COMMA': ',',
+    'PERIOD': '.',
+    'DOT': '.',
+    'SLASH': '/',
+    'BACKSLASH': '\\',
+    'TILDE': '~',
+    'GRAVE': '`',
 }
 
 LookupFunc = Callable[[str, bool], Optional[int]]
