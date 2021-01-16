@@ -43,8 +43,15 @@ character_key_name_aliases = {
     'BACKSLASH': '\\',
     'TILDE': '~',
     'GRAVE': '`',
+    'GRAVE_ACCENT': '`',
+    'APOSTROPHE': "'",
+    'SEMICOLON': ';',
+    'COLON': ':',
+    'LEFT_BRACKET': '[',
+    'RIGHT_BRACKET': ']',
 }
-
+for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+    character_key_name_aliases[x] = x.lower()
 LookupFunc = Callable[[str, bool], Optional[int]]
 
 
