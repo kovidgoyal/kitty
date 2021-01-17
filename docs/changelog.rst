@@ -7,9 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.20.0 [future]
 ----------------------
 
-- When using a non-US keyboard layout and pressing :kbd:`ctrl+key` when
-  the key matches an English key, send that to the program running in the
-  terminal automatically (:iss:`2000`)
+- A new keyboard reporting protocol with various advanced features that can be
+  used by full screen terminal programs and even games, see
+  :doc:`keyboard-protocol` (:iss:`3248`)
 
 - Add support for the color settings stack that XTerm copied from us without
   acknowledgement and decided to use incompatible escape codes for.
@@ -32,6 +32,14 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Panel kitten: Allow setting WM_CLASS (:iss:`3233`)
 
 - macOS: Add menu items to close the OS window and the current tab (:pull:`3240`, :iss:`3246`)
+
+- When using a non-US keyboard layout and pressing :kbd:`ctrl+key` when
+  the key matches an English key, send that to the program running in the
+  terminal automatically (:iss:`2000`)
+
+- When matching shortcuts, also match on shifted keys, so a shortcut defined as
+  :kbd:`ctrl+plus` will match a keyboard where you have to press
+  :kbd:`shift+equal` to get the plus key (:iss:`2000`)
 
 
 0.19.3 [2020-12-19]
