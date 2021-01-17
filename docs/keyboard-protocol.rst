@@ -173,7 +173,7 @@ field is present. The ``repeat`` type is ``2`` and the ``release`` type is
     CSI key-code;modifier    # this is a press event
     CSI key-code;modifier:1  # this is a press event
     CSI key-code;modifier:2  # this is a repeat event
-    CSI key-code:modifier:3  # this is a release event
+    CSI key-code;modifier:3  # this is a release event
 
 
 .. note:: Key events that result in text are reported as plain UTF-8 text, so
