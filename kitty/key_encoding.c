@@ -374,6 +374,13 @@ encode_key(const KeyEvent *ev, char *output) {
                 output[0] = 0;
                 return 1;
             }
+            if ((ev->mods.value == CTRL || ev->mods.value == ALT || ev->mods.value == (CTRL | ALT)) && ev->alternate_key && !is_legacy_ascii_key(ev->key) && is_legacy_ascii_key(ev->alternate_key)) {
+                KeyEvent alternate = *ev;
+                alternate.key = ev->alternate_key;
+                alternate.alternate_key = 0;
+                int ret = encode_printable_ascii_key_legacy(&alternate, output);
+                if (ret > 0) return ret;
+            }
         }
     }
 

@@ -7,6 +7,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.20.0 [future]
 ----------------------
 
+- When using a non-US keyboard layout and pressing :kbd:`ctrl+key` when
+  the key matches an English key, send that to the program running in the
+  terminal automatically (:iss:`2000`)
+
 - Add support for the color settings stack that XTerm copied from us without
   acknowledgement and decided to use incompatible escape codes for.
 
