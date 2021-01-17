@@ -141,7 +141,7 @@ class Boss:
         opts: Options,
         args: CLIOptions,
         cached_values: Dict[str, Any],
-        new_os_window_trigger: Optional[SingleKey]
+        global_shortcuts: Dict[str, SingleKey]
     ):
         set_layout_options(opts)
         self.clipboard_buffers: Dict[str, str] = {}
@@ -168,8 +168,8 @@ class Boss:
         set_boss(self)
         self.opts, self.args = opts, args
         self.keymap = self.opts.keymap.copy()
-        if new_os_window_trigger is not None:
-            self.keymap.pop(new_os_window_trigger, None)
+        for sc in global_shortcuts.values():
+            self.keymap.pop(sc, None)
         if is_macos:
             from .fast_data_types import (
                 cocoa_set_notification_activated_callback

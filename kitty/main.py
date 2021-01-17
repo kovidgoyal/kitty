@@ -7,7 +7,7 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager, suppress
-from typing import Generator, List, Mapping, Optional, Sequence
+from typing import Dict, Generator, List, Mapping, Optional, Sequence
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -104,26 +104,30 @@ def init_glfw(opts: OptionsStub, debug_keyboard: bool = False) -> str:
     return glfw_module
 
 
-def get_new_os_window_trigger(opts: OptionsStub) -> Optional[SingleKey]:
-    new_os_window_trigger = None
-    if is_macos:
-        new_os_window_shortcuts = []
-        for k, v in opts.keymap.items():
-            if v.func == 'new_os_window':
-                new_os_window_shortcuts.append(k)
-        if new_os_window_shortcuts:
-            from .fast_data_types import cocoa_set_new_window_trigger
+def get_macos_shortcut_for(opts: OptionsStub, function: str = 'new_os_window') -> Optional[SingleKey]:
+    ans = None
+    candidates = []
+    for k, v in opts.keymap.items():
+        if v.func == function:
+            candidates.append(k)
+    if candidates:
+        from .fast_data_types import cocoa_set_global_shortcut
 
-            # Reverse list so that later defined keyboard shortcuts take priority over earlier defined ones
-            for candidate in reversed(new_os_window_shortcuts):
-                if cocoa_set_new_window_trigger(candidate[0], candidate[2]):
-                    new_os_window_trigger = candidate
-                    break
-    return new_os_window_trigger
+        # Reverse list so that later defined keyboard shortcuts take priority over earlier defined ones
+        for candidate in reversed(candidates):
+            if cocoa_set_global_shortcut(function, candidate[0], candidate[2]):
+                ans = candidate
+                break
+    return ans
 
 
 def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
-    new_os_window_trigger = get_new_os_window_trigger(opts)
+    global_shortcuts: Dict[str, SingleKey] = {}
+    if is_macos:
+        for ac in ('new_os_window', 'close_os_window', 'close_tab'):
+            val = get_macos_shortcut_for(opts, ac)
+            if val is not None:
+                global_shortcuts[ac] = val
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
     if not is_wayland() and not is_macos:  # no window icons on wayland
@@ -137,7 +141,7 @@ def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] =
                     pre_show_callback,
                     args.title or appname, args.name or args.cls or appname,
                     args.cls or appname, load_all_shaders)
-        boss = Boss(opts, args, cached_values, new_os_window_trigger)
+        boss = Boss(opts, args, cached_values, global_shortcuts)
         boss.start(window_id)
         if bad_lines:
             boss.show_bad_config_lines(bad_lines)

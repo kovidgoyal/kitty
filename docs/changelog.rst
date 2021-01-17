@@ -27,7 +27,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Panel kitten: Allow setting WM_CLASS (:iss:`3233`)
 
-- macOS: Add a menu item to close the OS window (:pull:`3240`)
+- macOS: Add menu items to close the OS window and the current tab (:pull:`3240`, :iss:`3246`)
 
 
 0.19.3 [2020-12-19]

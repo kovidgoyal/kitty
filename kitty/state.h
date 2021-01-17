@@ -263,7 +263,9 @@ typedef enum {
     PREFERENCES_WINDOW = 1,
     NEW_OS_WINDOW = 2,
     NEW_OS_WINDOW_WITH_WD = 4,
-    NEW_TAB_WITH_WD = 8
+    NEW_TAB_WITH_WD = 8,
+    CLOSE_OS_WINDOW = 16,
+    CLOSE_TAB = 32
 } CocoaPendingAction;
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);
 #endif

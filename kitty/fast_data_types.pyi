@@ -640,7 +640,7 @@ def cocoa_set_notification_activated_callback(identifier: Callable[[str], None])
     pass
 
 
-def cocoa_set_new_window_trigger(mods: int, key: int) -> bool:
+def cocoa_set_global_shortcut(name: str, mods: int, key: int) -> bool:
     pass
 
 

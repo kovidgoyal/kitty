@@ -968,6 +968,8 @@ process_global_state(void *data) {
         if (cocoa_pending_actions) {
             if (cocoa_pending_actions & PREFERENCES_WINDOW) { call_boss(edit_config_file, NULL); }
             if (cocoa_pending_actions & NEW_OS_WINDOW) { call_boss(new_os_window, NULL); }
+            if (cocoa_pending_actions & CLOSE_OS_WINDOW) { call_boss(close_os_window, NULL); }
+            if (cocoa_pending_actions & CLOSE_TAB) { call_boss(close_tab, NULL); }
             if (cocoa_pending_actions_wd) {
                 if (cocoa_pending_actions & NEW_OS_WINDOW_WITH_WD) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_wd); }
                 if (cocoa_pending_actions & NEW_TAB_WITH_WD) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_wd); }
