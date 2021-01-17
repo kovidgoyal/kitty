@@ -318,29 +318,23 @@ def generate_legacy_text_key_maps() -> None:
     tp = ' ' * 8
     shift, alt, ctrl = 1, 2, 4
 
-    lines = []
-    for c, s in shift_map.items():
-        if c in '\\\'':
-            c = '\\' + c
-        lines.append(f"         case '{c}': return '{s}';")
-    patch_file('kitty/key_encoding.c', 'shifted key map', '\n'.join(lines))
-
     def simple(c: str) -> None:
         shifted = shift_map.get(c, c)
         ctrled = chr(ctrl_mapping.get(c, ord(c)))
+        call = f'enc(ord({c!r}), shifted_key=ord({shifted!r})'
         for m in range(16):
             if m == 0:
-                tests.append(f'{tp}ae(enc(ord({c!r})), {c!r})')
+                tests.append(f'{tp}ae({call}), {c!r})')
             elif m == shift:
-                tests.append(f'{tp}ae(enc(ord({c!r}), mods=shift), {shifted!r})')
+                tests.append(f'{tp}ae({call}, mods=shift), {shifted!r})')
             elif m == alt:
-                tests.append(f'{tp}ae(enc(ord({c!r}), mods=alt), "\\x1b" + {c!r})')
+                tests.append(f'{tp}ae({call}, mods=alt), "\\x1b" + {c!r})')
             elif m == ctrl:
-                tests.append(f'{tp}ae(enc(ord({c!r}), mods=ctrl), {ctrled!r})')
+                tests.append(f'{tp}ae({call}, mods=ctrl), {ctrled!r})')
             elif m == shift | alt:
-                tests.append(f'{tp}ae(enc(ord({c!r}), mods=shift | alt), "\\x1b" + {shifted!r})')
+                tests.append(f'{tp}ae({call}, mods=shift | alt), "\\x1b" + {shifted!r})')
             elif m == ctrl | alt:
-                tests.append(f'{tp}ae(enc(ord({c!r}), mods=ctrl | alt), "\\x1b" + {ctrled!r})')
+                tests.append(f'{tp}ae({call}, mods=ctrl | alt), "\\x1b" + {ctrled!r})')
 
     for k in shift_map:
         simple(k)
