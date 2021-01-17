@@ -174,7 +174,7 @@ class EventType(IntEnum):
 
 @lru_cache(maxsize=128)
 def parse_shortcut(spec: str) -> ParsedShortcut:
-    if spec.endswith('+') and len(spec) > 1:
+    if spec.endswith('+'):
         spec = spec[:-1] + 'plus'
     parts = spec.split('+')
     key_name = parts[-1]
@@ -184,10 +184,11 @@ def parse_shortcut(spec: str) -> ParsedShortcut:
         key_name = key_name.upper()
     else:
         key_name = character_key_name_aliases.get(key_name.upper(), key_name)
-    mods = tuple(config_mod_map.get(x.upper(), SUPER << 8) for x in parts[:-1])
     mod_val = 0
-    for x in mods:
-        mod_val |= x
+    if len(parts) > 1:
+        mods = tuple(config_mod_map.get(x.upper(), SUPER << 8) for x in parts[:-1])
+        for x in mods:
+            mod_val |= x
     return ParsedShortcut(mod_val, key_name)
 
 
