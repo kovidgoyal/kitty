@@ -55,7 +55,7 @@ def wayland_protocol_file_name(base: str, ext: str = 'c') -> str:
     return 'wayland-{}-client-protocol.{}'.format(base, ext)
 
 
-def init_env(env: Env, pkg_config: Callable, at_least_version: Callable, test_compile: Callable, module: str = 'x11') -> Env:
+def init_env(env: Env, pkg_config: Callable, pkg_version: Callable, at_least_version: Callable, test_compile: Callable, module: str = 'x11') -> Env:
     ans = env.copy()
     ans.cflags.append('-fPIC')
     ans.cppflags.append('-D_GLFW_' + module.upper())
@@ -76,7 +76,11 @@ def init_env(env: Env, pkg_config: Callable, at_least_version: Callable, test_co
         ans.ldpaths.extend('-pthread -lm'.split())
         if not is_openbsd:
             ans.ldpaths.extend('-lrt -ldl'.split())
-        at_least_version('xkbcommon', 0, 5)
+        major, minor = pkg_version('xkbcommon')
+        if (major, minor) < (0, 5):
+            raise SystemExit('libxkbcommon >= 0.5 required')
+        if major < 1:
+            ans.cflags.append('-DXKB_HAS_NO_UTF32')
 
     if module == 'x11':
         for dep in 'x11 xrandr xinerama xcursor xkbcommon xkbcommon-x11 x11-xcb dbus-1'.split():

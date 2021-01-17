@@ -117,6 +117,16 @@ def pkg_config(pkg: str, *args: str) -> List[str]:
         raise SystemExit('The package {} was not found on your system'.format(error(pkg)))
 
 
+def pkg_version(package: str) -> Optional[Tuple[int, int]]:
+    ver = subprocess.check_output([
+        PKGCONFIG, package, '--modversion']).decode('utf-8').strip()
+    m = re.match(r'(\d+).(\d+)', ver)
+    if m is not None:
+        qmajor, qminor = map(int, m.groups())
+        return qmajor, qminor
+    return None
+
+
 def at_least_version(package: str, major: int, minor: int = 0) -> None:
     q = '{}.{}'.format(major, minor)
     if subprocess.run([PKGCONFIG, package, '--atleast-version=' + q]
@@ -669,7 +679,7 @@ def compile_glfw(compilation_database: CompilationDatabase) -> None:
     modules = 'cocoa' if is_macos else 'x11 wayland'
     for module in modules.split():
         try:
-            genv = glfw.init_env(env, pkg_config, at_least_version, test_compile, module)
+            genv = glfw.init_env(env, pkg_config, pkg_version, at_least_version, test_compile, module)
         except SystemExit as err:
             if module != 'wayland':
                 raise

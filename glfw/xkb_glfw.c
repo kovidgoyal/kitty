@@ -32,6 +32,11 @@
 
 #define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
 
+#ifdef XKB_HAS_NO_UTF32
+#include "xkb-compat-shim.h"
+#else
+#define utf32_to_keysym xkb_utf32_to_keysym
+#endif
 
 static int
 glfw_key_for_sym(xkb_keysym_t key) {
@@ -253,7 +258,7 @@ glfw_xkb_sym_for_key(uint32_t key) {
         case GLFW_FKEY_MUTE_VOLUME: return XKB_KEY_XF86AudioMute;
 /* end glfw to xkb */
         default:
-            return xkb_utf32_to_keysym(key);
+            return utf32_to_keysym(key);
     }
 }
 
