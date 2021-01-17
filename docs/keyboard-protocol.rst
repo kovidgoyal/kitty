@@ -73,7 +73,7 @@ events, alternate keys for shortcut matching et cetera, these can be turned on
 using :ref:`progressive_enhancement` as documented in the rest of this
 specification.
 
-A basic overview
+An overview
 ------------------
 
 Key events are divided into two types, those that produce text and those that
@@ -591,34 +591,46 @@ The following is a list of errata in the `original fixterms proposal
 <http://www.leonerd.org.uk/hacks/fixterms/>`_ , corrected in this
 specification.
 
-  * No way to disambiguate :kbd:`Esc` keypresses, other than using 8-bit controls
-    which are undesirable for other reasons
-  * Incorrectly claims special keys are sometimes encoded using ``CSI letter`` encodings when it
-    is actually ``SS3 letter`` in all terminals newer than a VT-52, which is
-    pretty much everything.
-  * :kbd:`ctrl+shift+tab`` should be ``CSI 9 ; 6 u`` not ``CSI 1 ; 5 Z``
-    (shift+tab is not a separate key from tab)
-  * No support for the :kbd:`super` modifier.
-  * Makes no mention of cursor key mode and how it changes encodings
-  * Incorrectly encoding shifted keys when shift modifier is used, for
-    instance, for :kbd:`ctrl+shift+i` is encoded as :kbd:`ctrl+I`.
-  * No way to have non-conflicting escape codes for :kbd:`alt+letter,
-    ctrl+letter, ctrl+alt+letter` key presses
-  * No way to specify both shifted and unshifted keys for robust shortcut
-    matching (think matching :kbd:`ctrl+shift+equal` and :kbd:`ctrl+plus`)
-  * No way to specify alternate layout key. This is useful for keyboard layouts
-    such as Cyrillic where you want the shortcut :kbd:`ctrl+c` to work when
-    pressing the :kbd:`ctrl+С` on the keyboard.
-  * No way to report repeat and release key events, only key press events
-  * No way to report key events for presses that generate text, useful for
-    gaming. Think of using the :kbd:`WASD` keys to control movement.
-  * Only a small subset of all possible functional keys are assigned numbers.
-  * Claims the ``CSI u`` escape code has no fixed meaning, but has been used
-    for decades as ``SCORC`` for instance by xterm and ansi.sys and
-    `DECSMBV <https://vt100.net/docs/vt510-rm/DECSMBV.html>`_
-    by the VT-510 hardware terminal. This doesn't really matter since these uses
-    are for communication to the terminal not from the terminal.
-  * Handwaves that :kbd:`ctrl` *tends to* mask with ``0x1f``. In actual fact it
-    does this only for some keys. The action of :kbd:`ctrl` is not specified
-    and varies between terminals, historically because of different keyboard
-    layouts.
+* No way to disambiguate :kbd:`Esc` keypresses, other than using 8-bit controls
+  which are undesirable for other reasons
+
+* Incorrectly claims special keys are sometimes encoded using ``CSI letter`` encodings when it
+  is actually ``SS3 letter`` in all terminals newer than a VT-52, which is
+  pretty much everything.
+
+* :kbd:`ctrl+shift+tab`` should be ``CSI 9 ; 6 u`` not ``CSI 1 ; 5 Z``
+  (shift+tab is not a separate key from tab)
+
+* No support for the :kbd:`super` modifier.
+
+* Makes no mention of cursor key mode and how it changes encodings
+
+* Incorrectly encoding shifted keys when shift modifier is used, for instance,
+  for :kbd:`ctrl+shift+i` is encoded as :kbd:`ctrl+I`.
+
+* No way to have non-conflicting escape codes for :kbd:`alt+letter,
+  ctrl+letter, ctrl+alt+letter` key presses
+
+* No way to specify both shifted and unshifted keys for robust shortcut
+  matching (think matching :kbd:`ctrl+shift+equal` and :kbd:`ctrl+plus`)
+
+* No way to specify alternate layout key. This is useful for keyboard layouts
+  such as Cyrillic where you want the shortcut :kbd:`ctrl+c` to work when
+  pressing the :kbd:`ctrl+С` on the keyboard.
+
+* No way to report repeat and release key events, only key press events
+
+* No way to report key events for presses that generate text, useful for
+  gaming. Think of using the :kbd:`WASD` keys to control movement.
+
+* Only a small subset of all possible functional keys are assigned numbers.
+
+* Claims the ``CSI u`` escape code has no fixed meaning, but has been used for
+  decades as ``SCORC`` for instance by xterm and ansi.sys and `DECSMBV
+  <https://vt100.net/docs/vt510-rm/DECSMBV.html>`_ by the VT-510 hardware
+  terminal. This doesn't really matter since these uses are for communication
+  to the terminal not from the terminal.
+
+* Handwaves that :kbd:`ctrl` *tends to* mask with ``0x1f``. In actual fact it
+  does this only for some keys. The action of :kbd:`ctrl` is not specified and
+  varies between terminals, historically because of different keyboard layouts.
