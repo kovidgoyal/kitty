@@ -598,7 +598,7 @@ specification.
   is actually ``SS3 letter`` in all terminals newer than a VT-52, which is
   pretty much everything.
 
-* :kbd:`ctrl+shift+tab`` should be ``CSI 9 ; 6 u`` not ``CSI 1 ; 5 Z``
+* :kbd:`ctrl+shift+tab` should be ``CSI 9 ; 6 u`` not ``CSI 1 ; 5 Z``
   (shift+tab is not a separate key from tab)
 
 * No support for the :kbd:`super` modifier.
