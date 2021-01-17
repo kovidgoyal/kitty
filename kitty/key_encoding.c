@@ -382,7 +382,7 @@ encode_key(const KeyEvent *ev, char *output) {
 
 static inline bool
 is_ascii_control_char(char c) {
-    return (0 <= c && c <= 31) || c == 127;
+    return c <= 31 || c == 127;
 }
 
 int
