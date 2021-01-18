@@ -553,7 +553,7 @@ When the :kbd:`ctrl` key and another key are pressed on the keyboard, terminals
 map the result *for some keys* to a *C0 control code* i.e. an value from ``0 -
 31``. This mapping was historically dependent on the layout of hardware
 terminal keyboards and is not specified anywhere, completely. The best known
-reference is `Tabe 3-5 here <https://vt100.net/docs/vt100-ug/chapter3.html>`_.
+reference is `Table 3-5 in the VT-100 docs <https://vt100.net/docs/vt100-ug/chapter3.html>`_.
 
 The table below provides a mapping that is a commonly used superset of the table above.
 Any ASCII keys not in the table must be left untouched by :kbd:`ctrl`.
