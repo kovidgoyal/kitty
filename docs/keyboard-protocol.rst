@@ -151,7 +151,7 @@ Modifiers are encoded as a bit field with::
 
 In the escape code, the modifier value is encoded as a decimal number which is
 ``1 + actual modifiers``. So to represent :kbd:`shift` only, the value would be ``1 +
-1 = 2``, to represent :kbd:`ctrl+shift` the value would be ``1 + 0b101 = 5``
+1 = 2``, to represent :kbd:`ctrl+shift` the value would be ``1 + 0b101 = 6``
 and so on. If the modifier field is not present in the escape code, its default
 value is ``1`` which means no modifiers.
 
