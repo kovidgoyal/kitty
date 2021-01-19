@@ -368,6 +368,7 @@ encode_glfw_key_event(const GLFWkeyevent *e, const bool cursor_key_mode, const u
     };
     if (!ev.report_text && is_modifier_key(e->key)) return 0;
     ev.has_text = e->text && !is_ascii_control_char(e->text[0]);
+    if (!ev.key && !ev.has_text) return 0;
     bool send_text_standalone = !ev.report_text;
     if (!ev.disambiguate && GLFW_FKEY_KP_0 <= ev.key && ev.key <= GLFW_FKEY_KP_DELETE) {
         ev.key = convert_kp_key_to_normal_key(ev.key);
