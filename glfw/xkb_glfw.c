@@ -125,14 +125,6 @@ glfw_key_for_sym(xkb_keysym_t key) {
         case XKB_KEY_KP_End: return GLFW_FKEY_KP_END;
         case XKB_KEY_KP_Insert: return GLFW_FKEY_KP_INSERT;
         case XKB_KEY_KP_Delete: return GLFW_FKEY_KP_DELETE;
-        case XKB_KEY_Shift_L: return GLFW_FKEY_LEFT_SHIFT;
-        case XKB_KEY_Control_L: return GLFW_FKEY_LEFT_CONTROL;
-        case XKB_KEY_Alt_L: return GLFW_FKEY_LEFT_ALT;
-        case XKB_KEY_Super_L: return GLFW_FKEY_LEFT_SUPER;
-        case XKB_KEY_Shift_R: return GLFW_FKEY_RIGHT_SHIFT;
-        case XKB_KEY_Control_R: return GLFW_FKEY_RIGHT_CONTROL;
-        case XKB_KEY_Alt_R: return GLFW_FKEY_RIGHT_ALT;
-        case XKB_KEY_Super_R: return GLFW_FKEY_RIGHT_SUPER;
         case XKB_KEY_XF86AudioPlay: return GLFW_FKEY_MEDIA_PLAY;
         case XKB_KEY_XF86AudioPause: return GLFW_FKEY_MEDIA_PAUSE;
         case XKB_KEY_XF86AudioStop: return GLFW_FKEY_MEDIA_STOP;
@@ -144,6 +136,16 @@ glfw_key_for_sym(xkb_keysym_t key) {
         case XKB_KEY_XF86AudioLowerVolume: return GLFW_FKEY_LOWER_VOLUME;
         case XKB_KEY_XF86AudioRaiseVolume: return GLFW_FKEY_RAISE_VOLUME;
         case XKB_KEY_XF86AudioMute: return GLFW_FKEY_MUTE_VOLUME;
+        case XKB_KEY_Shift_L: return GLFW_FKEY_LEFT_SHIFT;
+        case XKB_KEY_Control_L: return GLFW_FKEY_LEFT_CONTROL;
+        case XKB_KEY_Alt_L: return GLFW_FKEY_LEFT_ALT;
+        case XKB_KEY_Super_L: return GLFW_FKEY_LEFT_SUPER;
+        case XKB_KEY_Shift_R: return GLFW_FKEY_RIGHT_SHIFT;
+        case XKB_KEY_Control_R: return GLFW_FKEY_RIGHT_CONTROL;
+        case XKB_KEY_Alt_R: return GLFW_FKEY_RIGHT_ALT;
+        case XKB_KEY_Super_R: return GLFW_FKEY_RIGHT_SUPER;
+        case XKB_KEY_ISO_Level3_Shift: return GLFW_FKEY_ISO_LEVEL3_SHIFT;
+        case XKB_KEY_ISO_Level5_Shift: return GLFW_FKEY_ISO_LEVEL5_SHIFT;
 /* end xkb to glfw */
         default:
             return xkb_keysym_to_utf32(key);
@@ -237,14 +239,6 @@ glfw_xkb_sym_for_key(uint32_t key) {
         case GLFW_FKEY_KP_END: return XKB_KEY_KP_End;
         case GLFW_FKEY_KP_INSERT: return XKB_KEY_KP_Insert;
         case GLFW_FKEY_KP_DELETE: return XKB_KEY_KP_Delete;
-        case GLFW_FKEY_LEFT_SHIFT: return XKB_KEY_Shift_L;
-        case GLFW_FKEY_LEFT_CONTROL: return XKB_KEY_Control_L;
-        case GLFW_FKEY_LEFT_ALT: return XKB_KEY_Alt_L;
-        case GLFW_FKEY_LEFT_SUPER: return XKB_KEY_Super_L;
-        case GLFW_FKEY_RIGHT_SHIFT: return XKB_KEY_Shift_R;
-        case GLFW_FKEY_RIGHT_CONTROL: return XKB_KEY_Control_R;
-        case GLFW_FKEY_RIGHT_ALT: return XKB_KEY_Alt_R;
-        case GLFW_FKEY_RIGHT_SUPER: return XKB_KEY_Super_R;
         case GLFW_FKEY_MEDIA_PLAY: return XKB_KEY_XF86AudioPlay;
         case GLFW_FKEY_MEDIA_PAUSE: return XKB_KEY_XF86AudioPause;
         case GLFW_FKEY_MEDIA_STOP: return XKB_KEY_XF86AudioStop;
@@ -256,6 +250,16 @@ glfw_xkb_sym_for_key(uint32_t key) {
         case GLFW_FKEY_LOWER_VOLUME: return XKB_KEY_XF86AudioLowerVolume;
         case GLFW_FKEY_RAISE_VOLUME: return XKB_KEY_XF86AudioRaiseVolume;
         case GLFW_FKEY_MUTE_VOLUME: return XKB_KEY_XF86AudioMute;
+        case GLFW_FKEY_LEFT_SHIFT: return XKB_KEY_Shift_L;
+        case GLFW_FKEY_LEFT_CONTROL: return XKB_KEY_Control_L;
+        case GLFW_FKEY_LEFT_ALT: return XKB_KEY_Alt_L;
+        case GLFW_FKEY_LEFT_SUPER: return XKB_KEY_Super_L;
+        case GLFW_FKEY_RIGHT_SHIFT: return XKB_KEY_Shift_R;
+        case GLFW_FKEY_RIGHT_CONTROL: return XKB_KEY_Control_R;
+        case GLFW_FKEY_RIGHT_ALT: return XKB_KEY_Alt_R;
+        case GLFW_FKEY_RIGHT_SUPER: return XKB_KEY_Super_R;
+        case GLFW_FKEY_ISO_LEVEL3_SHIFT: return XKB_KEY_ISO_Level3_Shift;
+        case GLFW_FKEY_ISO_LEVEL5_SHIFT: return XKB_KEY_ISO_Level5_Shift;
 /* end glfw to xkb */
         default:
             return utf32_to_keysym(key);

@@ -91,14 +91,6 @@ kp_home                     KP_Home                     -      -
 kp_end                      KP_End                      -      -
 kp_insert                   KP_Insert                   -      -
 kp_delete                   KP_Delete                   -      -
-left_shift                  Shift_L                     0x38   -
-left_control                Control_L                   0x3B   -
-left_alt                    Alt_L                       0x3A   -
-left_super                  Super_L                     0x37   -
-right_shift                 Shift_R                     0x3C   -
-right_control               Control_R                   0x3E   -
-right_alt                   Alt_R                       0x3D   -
-right_super                 Super_R                     0x36   -
 media_play                  XF86AudioPlay               -      -
 media_pause                 XF86AudioPause              -      -
 media_play_pause            -                           -      -
@@ -112,6 +104,16 @@ media_record                XF86AudioRecord             -      -
 lower_volume                XF86AudioLowerVolume        -      -
 raise_volume                XF86AudioRaiseVolume        -      -
 mute_volume                 XF86AudioMute               -      -
+left_shift                  Shift_L                     0x38   -
+left_control                Control_L                   0x3B   -
+left_alt                    Alt_L                       0x3A   -
+left_super                  Super_L                     0x37   -
+right_shift                 Shift_R                     0x3C   -
+right_control               Control_R                   0x3E   -
+right_alt                   Alt_R                       0x3D   -
+right_super                 Super_R                     0x36   -
+iso_level3_shift            ISO_Level3_Shift            -      -
+iso_level5_shift            ISO_Level5_Shift            -      -
 '''  # }}}
 
 shift_map = {x[0]: x[1] for x in '`~ 1! 2@ 3# 4$ 5% 6^ 7& 8* 9( 0) -_ =+ [{ ]} \\| ;: \'" ,< .> /?'.split()}

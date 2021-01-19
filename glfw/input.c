@@ -607,14 +607,6 @@ _glfwGetKeyName(int key)
     case GLFW_FKEY_KP_END: return "KP_END";
     case GLFW_FKEY_KP_INSERT: return "KP_INSERT";
     case GLFW_FKEY_KP_DELETE: return "KP_DELETE";
-    case GLFW_FKEY_LEFT_SHIFT: return "LEFT_SHIFT";
-    case GLFW_FKEY_LEFT_CONTROL: return "LEFT_CONTROL";
-    case GLFW_FKEY_LEFT_ALT: return "LEFT_ALT";
-    case GLFW_FKEY_LEFT_SUPER: return "LEFT_SUPER";
-    case GLFW_FKEY_RIGHT_SHIFT: return "RIGHT_SHIFT";
-    case GLFW_FKEY_RIGHT_CONTROL: return "RIGHT_CONTROL";
-    case GLFW_FKEY_RIGHT_ALT: return "RIGHT_ALT";
-    case GLFW_FKEY_RIGHT_SUPER: return "RIGHT_SUPER";
     case GLFW_FKEY_MEDIA_PLAY: return "MEDIA_PLAY";
     case GLFW_FKEY_MEDIA_PAUSE: return "MEDIA_PAUSE";
     case GLFW_FKEY_MEDIA_PLAY_PAUSE: return "MEDIA_PLAY_PAUSE";
@@ -628,6 +620,16 @@ _glfwGetKeyName(int key)
     case GLFW_FKEY_LOWER_VOLUME: return "LOWER_VOLUME";
     case GLFW_FKEY_RAISE_VOLUME: return "RAISE_VOLUME";
     case GLFW_FKEY_MUTE_VOLUME: return "MUTE_VOLUME";
+    case GLFW_FKEY_LEFT_SHIFT: return "LEFT_SHIFT";
+    case GLFW_FKEY_LEFT_CONTROL: return "LEFT_CONTROL";
+    case GLFW_FKEY_LEFT_ALT: return "LEFT_ALT";
+    case GLFW_FKEY_LEFT_SUPER: return "LEFT_SUPER";
+    case GLFW_FKEY_RIGHT_SHIFT: return "RIGHT_SHIFT";
+    case GLFW_FKEY_RIGHT_CONTROL: return "RIGHT_CONTROL";
+    case GLFW_FKEY_RIGHT_ALT: return "RIGHT_ALT";
+    case GLFW_FKEY_RIGHT_SUPER: return "RIGHT_SUPER";
+    case GLFW_FKEY_ISO_LEVEL3_SHIFT: return "ISO_LEVEL3_SHIFT";
+    case GLFW_FKEY_ISO_LEVEL5_SHIFT: return "ISO_LEVEL5_SHIFT";
 /* end functional key names */
         case 0:                          return "UNKNOWN";
     }

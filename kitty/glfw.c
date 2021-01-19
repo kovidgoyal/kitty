@@ -945,14 +945,6 @@ glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
             case GLFW_FKEY_KP_END: return PyUnicode_FromString("kp_end");
             case GLFW_FKEY_KP_INSERT: return PyUnicode_FromString("kp_insert");
             case GLFW_FKEY_KP_DELETE: return PyUnicode_FromString("kp_delete");
-            case GLFW_FKEY_LEFT_SHIFT: return PyUnicode_FromString("left_shift");
-            case GLFW_FKEY_LEFT_CONTROL: return PyUnicode_FromString("left_control");
-            case GLFW_FKEY_LEFT_ALT: return PyUnicode_FromString("left_alt");
-            case GLFW_FKEY_LEFT_SUPER: return PyUnicode_FromString("left_super");
-            case GLFW_FKEY_RIGHT_SHIFT: return PyUnicode_FromString("right_shift");
-            case GLFW_FKEY_RIGHT_CONTROL: return PyUnicode_FromString("right_control");
-            case GLFW_FKEY_RIGHT_ALT: return PyUnicode_FromString("right_alt");
-            case GLFW_FKEY_RIGHT_SUPER: return PyUnicode_FromString("right_super");
             case GLFW_FKEY_MEDIA_PLAY: return PyUnicode_FromString("media_play");
             case GLFW_FKEY_MEDIA_PAUSE: return PyUnicode_FromString("media_pause");
             case GLFW_FKEY_MEDIA_PLAY_PAUSE: return PyUnicode_FromString("media_play_pause");
@@ -966,6 +958,16 @@ glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
             case GLFW_FKEY_LOWER_VOLUME: return PyUnicode_FromString("lower_volume");
             case GLFW_FKEY_RAISE_VOLUME: return PyUnicode_FromString("raise_volume");
             case GLFW_FKEY_MUTE_VOLUME: return PyUnicode_FromString("mute_volume");
+            case GLFW_FKEY_LEFT_SHIFT: return PyUnicode_FromString("left_shift");
+            case GLFW_FKEY_LEFT_CONTROL: return PyUnicode_FromString("left_control");
+            case GLFW_FKEY_LEFT_ALT: return PyUnicode_FromString("left_alt");
+            case GLFW_FKEY_LEFT_SUPER: return PyUnicode_FromString("left_super");
+            case GLFW_FKEY_RIGHT_SHIFT: return PyUnicode_FromString("right_shift");
+            case GLFW_FKEY_RIGHT_CONTROL: return PyUnicode_FromString("right_control");
+            case GLFW_FKEY_RIGHT_ALT: return PyUnicode_FromString("right_alt");
+            case GLFW_FKEY_RIGHT_SUPER: return PyUnicode_FromString("right_super");
+            case GLFW_FKEY_ISO_LEVEL3_SHIFT: return PyUnicode_FromString("iso_level3_shift");
+            case GLFW_FKEY_ISO_LEVEL5_SHIFT: return PyUnicode_FromString("iso_level5_shift");
 /* end glfw functional key names */
         }
         char buf[8] = {0};
@@ -1457,14 +1459,6 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_FKEY_KP_END);
     ADDC(GLFW_FKEY_KP_INSERT);
     ADDC(GLFW_FKEY_KP_DELETE);
-    ADDC(GLFW_FKEY_LEFT_SHIFT);
-    ADDC(GLFW_FKEY_LEFT_CONTROL);
-    ADDC(GLFW_FKEY_LEFT_ALT);
-    ADDC(GLFW_FKEY_LEFT_SUPER);
-    ADDC(GLFW_FKEY_RIGHT_SHIFT);
-    ADDC(GLFW_FKEY_RIGHT_CONTROL);
-    ADDC(GLFW_FKEY_RIGHT_ALT);
-    ADDC(GLFW_FKEY_RIGHT_SUPER);
     ADDC(GLFW_FKEY_MEDIA_PLAY);
     ADDC(GLFW_FKEY_MEDIA_PAUSE);
     ADDC(GLFW_FKEY_MEDIA_PLAY_PAUSE);
@@ -1478,6 +1472,16 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_FKEY_LOWER_VOLUME);
     ADDC(GLFW_FKEY_RAISE_VOLUME);
     ADDC(GLFW_FKEY_MUTE_VOLUME);
+    ADDC(GLFW_FKEY_LEFT_SHIFT);
+    ADDC(GLFW_FKEY_LEFT_CONTROL);
+    ADDC(GLFW_FKEY_LEFT_ALT);
+    ADDC(GLFW_FKEY_LEFT_SUPER);
+    ADDC(GLFW_FKEY_RIGHT_SHIFT);
+    ADDC(GLFW_FKEY_RIGHT_CONTROL);
+    ADDC(GLFW_FKEY_RIGHT_ALT);
+    ADDC(GLFW_FKEY_RIGHT_SUPER);
+    ADDC(GLFW_FKEY_ISO_LEVEL3_SHIFT);
+    ADDC(GLFW_FKEY_ISO_LEVEL5_SHIFT);
 /* end glfw functional keys */
 // --- Modifiers ---------------------------------------------------------------
     ADDC(GLFW_MOD_SHIFT);

@@ -35,7 +35,7 @@ static inline bool
 is_modifier_key(uint32_t key) {
     START_ALLOW_CASE_RANGE
     switch (key) {
-        case GLFW_FKEY_LEFT_SHIFT ...  GLFW_FKEY_RIGHT_SUPER:
+        case GLFW_FKEY_LEFT_SHIFT ...  GLFW_FKEY_ISO_LEVEL5_SHIFT:
         case GLFW_FKEY_CAPS_LOCK:
         case GLFW_FKEY_SCROLL_LOCK:
         case GLFW_FKEY_NUM_LOCK:
