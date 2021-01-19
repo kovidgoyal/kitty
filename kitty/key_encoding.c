@@ -43,6 +43,7 @@ is_modifier_key(uint32_t key) {
         default:
             return false;
     }
+    END_ALLOW_CASE_RANGE
 }
 
 static inline void
