@@ -349,7 +349,7 @@ encode_key(const KeyEvent *ev, char *output) {
 
 static inline bool
 startswith_ascii_control_char(const char *p) {
-    if (!p || !*p) return false;
+    if (!p || !*p) return true;
     uint32_t codep, state = UTF8_ACCEPT;
     while(*p) {
         if (decode_utf8(&state, &codep, *p) == UTF8_ACCEPT) {
