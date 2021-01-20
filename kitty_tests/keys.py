@@ -394,6 +394,7 @@ class TestKeys(BaseTest):
         ae(enc(key=ord(':'), shifted_key=ord('/'), mods=shift | alt), '\x1b/')
         ae(enc(key=ord(' ')), ' ')
         ae(enc(key=ord(' '), mods=ctrl), '\0')
+        ae(enc(key=ord(' '), mods=alt), '\x1b ')
         ae(enc(key=ord('i'), mods=ctrl | shift), csi(ctrl | shift, ord('i')))
         ae(enc(key=defines.GLFW_FKEY_LEFT_SHIFT), '')
         ae(enc(key=defines.GLFW_FKEY_CAPS_LOCK), '')

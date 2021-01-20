@@ -307,6 +307,7 @@ is_legacy_ascii_key(uint32_t key) {
         case ',':
         case '.':
         case '/':
+        case ' ':
             return true;
         default:
             return false;
