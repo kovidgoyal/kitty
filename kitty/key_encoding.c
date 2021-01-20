@@ -348,8 +348,17 @@ encode_key(const KeyEvent *ev, char *output) {
 }
 
 static inline bool
-is_ascii_control_char(char c) {
-    return c <= 31 || c == 127;
+startswith_ascii_control_char(const char *p) {
+    if (!p || !*p) return false;
+    uint32_t codep, state = UTF8_ACCEPT;
+    while(*p) {
+        if (decode_utf8(&state, &codep, *p) == UTF8_ACCEPT) {
+            return codep < 32 || codep == 127;
+        }
+        state = UTF8_ACCEPT;
+        p++;
+    }
+    return false;
 }
 
 int
@@ -365,7 +374,7 @@ encode_glfw_key_event(const GLFWkeyevent *e, const bool cursor_key_mode, const u
         .embed_text = key_encoding_flags & 16
     };
     if (!ev.report_text && is_modifier_key(e->key)) return 0;
-    ev.has_text = e->text && !is_ascii_control_char(e->text[0]);
+    ev.has_text = e->text && !startswith_ascii_control_char(e->text);
     if (!ev.key && !ev.has_text) return 0;
     bool send_text_standalone = !ev.report_text;
     if (!ev.disambiguate && GLFW_FKEY_KP_0 <= ev.key && ev.key <= GLFW_FKEY_KP_DELETE) {
