@@ -708,6 +708,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define SET_MODE(func) \
     p1 = start_modifier == '?' ? 5 : 0; \
     for (i = 0; i < num_params; i++) { \
+        NON_NEGATIVE_PARAM(params[i]); \
         REPORT_COMMAND(func, params[i], start_modifier == '?'); \
         func(screen, params[i] << p1); \
     } \
@@ -857,7 +858,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 break;
             }
             if (start_modifier || end_modifier) {
-                REPORT_ERROR("Unknown CSI t sequence with start and end modifiers: '%c' '%c', %u parameters and first parameter: %u", start_modifier, end_modifier, num_params, params[0]);
+                REPORT_ERROR("Unknown CSI t sequence with start and end modifiers: '%c' '%c', %u parameters and first parameter: %d", start_modifier, end_modifier, num_params, params[0]);
                 break;
             }
             switch(params[0]) {
@@ -875,7 +876,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                     CALL_CSI_HANDLER2(screen_manipulate_title_stack, 22, 0);
                     break;
                 default:
-                    REPORT_ERROR("Unknown CSI t window manipulation sequence with %u parameters and first parameter: %u", num_params, params[0]);
+                    REPORT_ERROR("Unknown CSI t window manipulation sequence with %u parameters and first parameter: %d", num_params, params[0]);
                     break;
             }
             break;
