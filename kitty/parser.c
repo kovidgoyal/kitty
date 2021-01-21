@@ -432,15 +432,24 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 // }}}
 
 // CSI mode {{{
+// As per ECMA 48 section 5.4 secondary byte is column 02 of the 7-bit ascii table
 #define CSI_SECONDARY \
-        case ';': \
-        case ':': \
-        case '"': \
-        case '*': \
-        case '\'': \
         case ' ': \
+        case '!': \
+        case '"': \
+        case '#': \
         case '$': \
-        case '#':
+        case '%': \
+        case '&': \
+        case '\'': \
+        case '(': \
+        case ')': \
+        case '*': \
+        case '+': \
+        case ',': \
+        case '-': \
+        case '.': \
+        case '/':
 
 
 static inline void
@@ -631,13 +640,22 @@ parse_region(Region *r, uint32_t *buf, unsigned int num) {
 
 static inline void
 dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
+#define AT_MOST_ONE_PARAMETER { \
+    if (num_params > 1) { \
+        REPORT_ERROR("CSI code 0x%x has %u > 1 parameters", code, num_params); \
+        break; \
+    } \
+}
+
 #define CALL_CSI_HANDLER1(name, defval) \
+    AT_MOST_ONE_PARAMETER; \
     p1 = num_params > 0 ? params[0] : defval; \
     REPORT_COMMAND(name, p1); \
     name(screen, p1); \
     break;
 
 #define CALL_CSI_HANDLER1P(name, defval, qch) \
+    AT_MOST_ONE_PARAMETER; \
     p1 = num_params > 0 ? params[0] : defval; \
     private = start_modifier == qch; \
     REPORT_COMMAND(name, p1, private); \
@@ -645,12 +663,14 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     break;
 
 #define CALL_CSI_HANDLER1S(name, defval) \
+    AT_MOST_ONE_PARAMETER; \
     p1 = num_params > 0 ? params[0] : defval; \
     REPORT_COMMAND(name, p1, start_modifier); \
     name(screen, p1, start_modifier); \
     break;
 
 #define CALL_CSI_HANDLER1M(name, defval) \
+    AT_MOST_ONE_PARAMETER; \
     p1 = num_params > 0 ? params[0] : defval; \
     REPORT_COMMAND(name, p1, end_modifier); \
     name(screen, p1, end_modifier); \
@@ -676,7 +696,8 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         if (special && modifier == special) { REPORT_ERROR(special_msg); } \
         else { REPORT_ERROR("CSI code 0x%x has unsupported start modifier: 0x%x or end modifier: 0x%x", code, start_modifier, end_modifier);} \
         break; \
-    }}
+    } \
+}
 
     char start_modifier = 0, end_modifier = 0;
     uint32_t *buf = screen->parser_buf, code = screen->parser_buf[screen->parser_buf_pos];
@@ -687,25 +708,26 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         start_modifier = (char)screen->parser_buf[0];
         buf++; num--;
     }
-    if (code == SGR && !start_modifier) {
+    if (num > 0) {
+        switch(buf[num-1]) {
+            CSI_SECONDARY
+                end_modifier = (char)buf[--num];
+                break;
+        }
+    }
+    if (code == SGR && !start_modifier && !end_modifier) {
         parse_sgr(screen, buf, num, params, dump_callback, "select_graphic_rendition", NULL);
         return;
     }
-    if (code == 'r' && !start_modifier && num > 0 && buf[num - 1] == '$') {
+    if (code == 'r' && !start_modifier && end_modifier == '$') {
         // DECCARA
         Region r = {0};
-        unsigned int consumed = parse_region(&r, buf, --num);
+        unsigned int consumed = parse_region(&r, buf, num);
         num -= consumed; buf += consumed;
         parse_sgr(screen, buf, num, params, dump_callback, "deccara", &r);
         return;
     }
 
-    if (num > 0) {
-        switch(buf[num-1]) {
-            CSI_SECONDARY
-                end_modifier = (char)buf[--num];
-        }
-    }
     for (i=0, start=0; i < num; i++) {
         switch(buf[i]) {
             IS_DIGIT
@@ -887,7 +909,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             }
             break;
         case 'm':
-            if (start_modifier == '>' && (!end_modifier || end_modifier == ';')) {
+            if (start_modifier == '>' && !end_modifier) {
                 REPORT_ERROR("Ignoring xterm specific key modifier resource options (CSI > m)");
                 break;
             }
@@ -1102,15 +1124,15 @@ accumulate_csi(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
     switch(ch) {
         IS_DIGIT
         CSI_SECONDARY
+        case ':':
+        case ';':
             ENSURE_SPACE;
             screen->parser_buf[screen->parser_buf_pos++] = ch;
             break;
         case '?':
         case '>':
         case '<':
-        case '!':
         case '=':
-        case '-':
             if (screen->parser_buf_pos != 0) {
                 REPORT_ERROR("Invalid character in CSI: 0x%x, ignoring the sequence", ch);
                 SET_STATE(0);
