@@ -31,8 +31,8 @@ typedef struct {
     KeyAction action;
 } EncodingData;
 
-static inline bool
-is_modifier_key(uint32_t key) {
+bool
+is_modifier_key(const uint32_t key) {
     START_ALLOW_CASE_RANGE
     switch (key) {
         case GLFW_FKEY_LEFT_SHIFT ...  GLFW_FKEY_ISO_LEVEL5_SHIFT:

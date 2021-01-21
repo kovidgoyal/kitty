@@ -962,10 +962,12 @@ glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
             case GLFW_FKEY_LEFT_CONTROL: return PyUnicode_FromString("left_control");
             case GLFW_FKEY_LEFT_ALT: return PyUnicode_FromString("left_alt");
             case GLFW_FKEY_LEFT_SUPER: return PyUnicode_FromString("left_super");
+            case GLFW_FKEY_LEFT_HYPER: return PyUnicode_FromString("left_hyper");
             case GLFW_FKEY_RIGHT_SHIFT: return PyUnicode_FromString("right_shift");
             case GLFW_FKEY_RIGHT_CONTROL: return PyUnicode_FromString("right_control");
             case GLFW_FKEY_RIGHT_ALT: return PyUnicode_FromString("right_alt");
             case GLFW_FKEY_RIGHT_SUPER: return PyUnicode_FromString("right_super");
+            case GLFW_FKEY_RIGHT_HYPER: return PyUnicode_FromString("right_hyper");
             case GLFW_FKEY_ISO_LEVEL3_SHIFT: return PyUnicode_FromString("iso_level3_shift");
             case GLFW_FKEY_ISO_LEVEL5_SHIFT: return PyUnicode_FromString("iso_level5_shift");
 /* end glfw functional key names */
@@ -1476,10 +1478,12 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_FKEY_LEFT_CONTROL);
     ADDC(GLFW_FKEY_LEFT_ALT);
     ADDC(GLFW_FKEY_LEFT_SUPER);
+    ADDC(GLFW_FKEY_LEFT_HYPER);
     ADDC(GLFW_FKEY_RIGHT_SHIFT);
     ADDC(GLFW_FKEY_RIGHT_CONTROL);
     ADDC(GLFW_FKEY_RIGHT_ALT);
     ADDC(GLFW_FKEY_RIGHT_SUPER);
+    ADDC(GLFW_FKEY_RIGHT_HYPER);
     ADDC(GLFW_FKEY_ISO_LEVEL3_SHIFT);
     ADDC(GLFW_FKEY_ISO_LEVEL5_SHIFT);
 /* end glfw functional keys */

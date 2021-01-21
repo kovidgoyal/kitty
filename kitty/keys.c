@@ -79,24 +79,6 @@ active_window(void) {
     return NULL;
 }
 
-static inline bool
-is_modifier_key(uint32_t key) {
-    switch(key) {
-        case GLFW_FKEY_LEFT_SHIFT:
-        case GLFW_FKEY_RIGHT_SHIFT:
-        case GLFW_FKEY_LEFT_ALT:
-        case GLFW_FKEY_RIGHT_ALT:
-        case GLFW_FKEY_LEFT_CONTROL:
-        case GLFW_FKEY_RIGHT_CONTROL:
-        case GLFW_FKEY_LEFT_SUPER:
-        case GLFW_FKEY_RIGHT_SUPER:
-        case GLFW_FKEY_CAPS_LOCK:
-            return true;
-        default:
-            return false;
-    }
-}
-
 static inline void
 update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
     unsigned int cell_width = os_window->fonts_data->cell_width, cell_height = os_window->fonts_data->cell_height;
@@ -149,11 +131,7 @@ on_key_input(GLFWkeyevent *ev) {
     if (global_state.in_sequence_mode) {
         debug("in sequence mode, handling as shortcut\n");
         if (
-            action != GLFW_RELEASE &&
-            key != GLFW_FKEY_LEFT_SHIFT && key != GLFW_FKEY_RIGHT_SHIFT &&
-            key != GLFW_FKEY_LEFT_ALT && key != GLFW_FKEY_RIGHT_ALT &&
-            key != GLFW_FKEY_LEFT_CONTROL && key != GLFW_FKEY_RIGHT_CONTROL &&
-            key != GLFW_FKEY_LEFT_SUPER && key != GLFW_FKEY_RIGHT_SUPER
+            action != GLFW_RELEASE && !is_modifier_key(key)
         ) {
             create_key_event();
             call_boss(process_sequence, "O", ke);

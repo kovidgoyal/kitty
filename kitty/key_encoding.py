@@ -114,12 +114,14 @@ functional_key_number_to_name_map = {
     57441: 'LEFT_CONTROL',
     57442: 'LEFT_ALT',
     57443: 'LEFT_SUPER',
-    57444: 'RIGHT_SHIFT',
-    57445: 'RIGHT_CONTROL',
-    57446: 'RIGHT_ALT',
-    57447: 'RIGHT_SUPER',
-    57448: 'ISO_LEVEL3_SHIFT',
-    57449: 'ISO_LEVEL5_SHIFT'}
+    57444: 'LEFT_HYPER',
+    57445: 'RIGHT_SHIFT',
+    57446: 'RIGHT_CONTROL',
+    57447: 'RIGHT_ALT',
+    57448: 'RIGHT_SUPER',
+    57449: 'RIGHT_HYPER',
+    57450: 'ISO_LEVEL3_SHIFT',
+    57451: 'ISO_LEVEL5_SHIFT'}
 csi_number_to_functional_number_map = {
     2: 57348,
     3: 57349,
