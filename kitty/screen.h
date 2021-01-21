@@ -197,7 +197,7 @@ uint32_t* translation_table(uint32_t which);
 void screen_request_capabilities(Screen *, char, PyObject *);
 void screen_set_8bit_controls(Screen *, bool);
 void report_device_attributes(Screen *self, unsigned int UNUSED mode, char start_modifier);
-void select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count, Region*);
+void select_graphic_rendition(Screen *self, int *params, unsigned int count, Region*);
 void report_device_status(Screen *self, unsigned int which, bool UNUSED);
 void report_mode_status(Screen *self, unsigned int which, bool);
 void screen_apply_selection(Screen *self, void *address, size_t size);

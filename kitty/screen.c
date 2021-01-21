@@ -609,7 +609,7 @@ screen_alignment_display(Screen *self) {
 }
 
 void
-select_graphic_rendition(Screen *self, unsigned int *params, unsigned int count, Region *region_) {
+select_graphic_rendition(Screen *self, int *params, unsigned int count, Region *region_) {
     if (region_) {
         Region region = *region_;
         if (!region.top) region.top = 1;
@@ -2214,8 +2214,8 @@ reset_mode(Screen *self, PyObject *args) {
 
 static PyObject*
 _select_graphic_rendition(Screen *self, PyObject *args) {
-    unsigned int params[256] = {0};
-    for (int i = 0; i < PyTuple_GET_SIZE(args); i++) { params[i] = PyLong_AsUnsignedLong(PyTuple_GET_ITEM(args, i)); }
+    int params[256] = {0};
+    for (int i = 0; i < PyTuple_GET_SIZE(args); i++) { params[i] = PyLong_AsLong(PyTuple_GET_ITEM(args, i)); }
     select_graphic_rendition(self, params, PyTuple_GET_SIZE(args), NULL);
     Py_RETURN_NONE;
 }
