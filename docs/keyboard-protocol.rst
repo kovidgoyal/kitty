@@ -429,7 +429,7 @@ encodings:
 
 Note that :kbd:`Backspace` and :kbd:`ctrl+Backspace` are swapped in some
 terminals, this can be detected using the ``kbs`` terminfo property that
-must correspond to the backspace key.
+must correspond to the :kbd:`Backspace` key.
 
 All keypad keys are reported as their equivalent non-keypad keys. To
 distinguish these, use the :ref:`disambiguate <disambiguate>` flag.
