@@ -427,10 +427,11 @@ encodings:
     "Space",     "Plain - 0x20, ctrl+Space - 0x0, alt+space - 0x1b 0x20"
     "Tab",       "Plain - 0x09, shift+Tab - CSI Z"
 
-Note that :kbd:`Backspace` and :kbd:`ctrl+backspace` are swapped in some
-terminals.
+Note that :kbd:`Backspace` and :kbd:`ctrl+Backspace` are swapped in some
+terminals, this can be detected using the ``kbs`` terminfo property that
+must correspond to the backspace key.
 
-All keypad keys are reported as there equivalent non-keypad keys. To
+All keypad keys are reported as their equivalent non-keypad keys. To
 distinguish these, use the :ref:`disambiguate <disambiguate>` flag.
 
 .. _legacy_text:
