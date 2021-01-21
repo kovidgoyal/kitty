@@ -1,4 +1,4 @@
-= kitty - the fast, featureful, GPU based, terminal emulator
+= kitty - the fast, feature-rich, cross-platform, GPU based terminal
 
 See https://sw.kovidgoyal.net/kitty/
 
