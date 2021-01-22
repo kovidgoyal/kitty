@@ -625,6 +625,16 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         Py_DECREF(pret);
         if (x != -1 && y != -1) glfwSetWindowPos(glfw_window, x, y);
         glfwShowWindow(glfw_window);
+#ifdef __APPLE__
+        float n_xscale, n_yscale;
+        double n_xdpi, n_ydpi;
+        get_window_content_scale(glfw_window, &n_xscale, &n_yscale, &n_xdpi, &n_ydpi);
+        if (n_xdpi != xdpi || n_ydpi != ydpi) {
+            // this can happen if the window is moved by the OS to a different monitor when shown
+            xdpi = n_xdpi; y_dpi = n_ydpi;
+            fonts_data = load_fonts_data(global_state.font_sz_in_pts, xdpi, ydpi);
+        }
+#endif
     }
     if (is_first_window) {
         PyObject *ret = PyObject_CallFunction(load_programs, "O", is_semi_transparent ? Py_True : Py_False);
