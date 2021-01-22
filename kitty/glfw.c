@@ -631,7 +631,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         get_window_content_scale(glfw_window, &n_xscale, &n_yscale, &n_xdpi, &n_ydpi);
         if (n_xdpi != xdpi || n_ydpi != ydpi) {
             // this can happen if the window is moved by the OS to a different monitor when shown
-            xdpi = n_xdpi; y_dpi = n_ydpi;
+            xdpi = n_xdpi; ydpi = n_ydpi;
             fonts_data = load_fonts_data(global_state.font_sz_in_pts, xdpi, ydpi);
         }
 #endif
