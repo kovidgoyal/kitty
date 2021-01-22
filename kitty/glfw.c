@@ -580,7 +580,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     GLFWwindow *temp_window = NULL;
 #ifdef __APPLE__
     if (!apple_preserve_common_context) {
-        apple_preserve_common_context = glfwCreateWindow(100, 200, "kitty", NULL, common_context);
+        apple_preserve_common_context = glfwCreateWindow(640, 480, "kitty", NULL, common_context);
     }
     if (!common_context) common_context = apple_preserve_common_context;
 #endif
