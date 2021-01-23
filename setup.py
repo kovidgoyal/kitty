@@ -1028,7 +1028,7 @@ def package(args: Options, bundle_type: str) -> None:
     safe_makedirs(launcher_dir)
     build_launcher(args, launcher_dir, bundle_type)
     os.makedirs(os.path.join(libdir, 'logo'))
-    build_terminfo = runpy.run_path('build-terminfo', run_name='import_build')
+    build_terminfo = runpy.run_path('build-terminfo', run_name='import_build')  # type: ignore
     for x in (libdir, os.path.join(ddir, 'share')):
         odir = os.path.join(x, 'terminfo')
         safe_makedirs(odir)

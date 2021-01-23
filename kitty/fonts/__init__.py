@@ -14,6 +14,6 @@ class ListedFont(TypedDict):
 class FontFeature(str):
 
     def __new__(cls, name: str, parsed: bytes) -> 'FontFeature':
-        ans: FontFeature = str.__new__(cls, name)  # type: ignore
+        ans: FontFeature = str.__new__(cls, name)
         ans.parsed = parsed  # type: ignore
         return ans
