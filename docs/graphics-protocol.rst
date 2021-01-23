@@ -521,6 +521,8 @@ Key      Value                 Default    Description
 ``O``    Positive integer.     ``0``      The offset from which to read data from a file.
 ``i``    Positive integer.
          ``(0 - 4294967295)``  ``0``      The image id
+``I``    Positive integer.
+         ``(0 - 4294967295)``  ``0``      The image number
 ``p``    Positive integer.
          ``(0 - 4294967295)``  ``0``      The placement id
 ``o``    Single character.     ``null``   The type of data compression.
