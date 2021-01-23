@@ -505,7 +505,9 @@ take, and the default value they take when missing. All integers are 32-bit.
 Key      Value                 Default    Description
 =======  ====================  =========  =================
 ``a``    Single character.     ``t``      The overall action this graphics command is performing.
-         ``(t, T, q, p, d)``
+         ``(t, T, q, p, d)``              ``t`` - transmit data, ``T`` - transmit data and display image,
+                                          ``q`` - query terminal, ``p`` - put (display) previous transmitted image,
+                                          ``d`` - delete image
 
 ``q``    ``0, 1, 2``           ``0``      Suppress responses from the terminal to this graphics command.
 
@@ -528,6 +530,7 @@ Key      Value                 Default    Description
 ``o``    Single character.     ``null``   The type of data compression.
          ``only z``
 ``m``    zero or one           ``0``      Whether there is more chunked data available.
+
 **Keys for image display**
 -----------------------------------------------------------
 ``x``    Positive integer      ``0``      The left edge (in pixels) of the image area to display
@@ -539,6 +542,7 @@ Key      Value                 Default    Description
 ``c``    Positive integer      ``0``      The number of columns to display the image over
 ``r``    Positive integer      ``0``      The number of rows to display the image over
 ``z``    32-bit integer        ``0``      The *z-index* vertical stacking order of the image
+
 **Keys for deleting images**
 -----------------------------------------------------------
 ``d``    Single character.     ``a``      What to delete.
