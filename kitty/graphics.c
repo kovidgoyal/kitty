@@ -341,9 +341,13 @@ get_free_client_id(const GraphicsManager *self) {
     return ans;
 }
 
-#define ABRT(code, ...) { set_command_failed_response(#code, __VA_ARGS__); self->loading_image = 0; if (img) img->data_loaded = false; return NULL; }
+#define ABRT(code, ...) { set_command_failed_response(#code, __VA_ARGS__); clear_currently_loading(self); if (img) img->data_loaded = false; return NULL; }
 #define MAX_DATA_SZ (4u * 100000000u)
 enum FORMATS { RGB=24, RGBA=32, PNG=100 };
+static inline void
+clear_currently_loading(GraphicsManager *self) {
+    self->currently_loading_data_for = (const ImageAndFrame){0};
+}
 
 static Image*
 load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, const unsigned char transmission_type, const uint32_t data_fmt, const uint8_t *payload) {
@@ -363,7 +367,7 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
             }
             memcpy(img->load_data.buf + img->load_data.buf_used, payload, g->payload_sz);
             img->load_data.buf_used += g->payload_sz;
-            if (!g->more) { img->data_loaded = true; self->loading_image = 0; }
+            if (!g->more) { img->data_loaded = true; clear_currently_loading(self); }
             break;
         case 'f': // file
         case 't': // temporary file
@@ -444,11 +448,11 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     Image *img = NULL;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
     uint32_t fmt = g->format ? g->format : RGBA;
-    if (tt == 'd' && self->loading_image) init_img = false;
+    if (tt == 'd' && self->currently_loading_data_for.image_id) init_img = false;
     if (init_img) {
-        self->last_init_graphics_command = *g;
-        self->last_init_graphics_command.id = iid;
-        self->loading_image = 0;
+        self->last_transmit_graphics_command = *g;
+        self->last_transmit_graphics_command.id = iid;
+        clear_currently_loading(self);
         if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
         remove_images(self, add_trim_predicate, 0);
         img = find_or_create_image(self, iid, &existing);
@@ -464,7 +468,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->client_number = g->image_number;
             if (!img->client_id && img->client_number) {
                 img->client_id = get_free_client_id(self);
-                self->last_init_graphics_command.id = img->client_id;
+                self->last_transmit_graphics_command.id = img->client_id;
             }
         }
         img->atime = monotonic(); img->used_storage = 0;
@@ -487,7 +491,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
                 ABRT(EINVAL, "Unknown image format: %u", fmt);
         }
         if (tt == 'd') {
-            if (g->more) self->loading_image = img->internal_id;
+            if (g->more) self->currently_loading_data_for = (ImageAndFrame){.image_id = img->internal_id, .frame_number = 0};
             img->load_data.buf_capacity = img->load_data.data_sz + (g->compressed ? 1024 : 10);  // compression header
             img->load_data.buf = malloc(img->load_data.buf_capacity);
             img->load_data.buf_used = 0;
@@ -497,20 +501,20 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             }
         }
     } else {
-        self->last_init_graphics_command.more = g->more;
-        self->last_init_graphics_command.payload_sz = g->payload_sz;
-        g = &self->last_init_graphics_command;
+        self->last_transmit_graphics_command.more = g->more;
+        self->last_transmit_graphics_command.payload_sz = g->payload_sz;
+        g = &self->last_transmit_graphics_command;
         tt = g->transmission_type ? g->transmission_type : 'd';
         fmt = g->format ? g->format : RGBA;
-        img = img_by_internal_id(self, self->loading_image);
+        img = img_by_internal_id(self, self->currently_loading_data_for.image_id);
         if (img == NULL) {
-            self->loading_image = 0;
+            clear_currently_loading(self);
             ABRT(EILSEQ, "More payload loading refers to non-existent image");
         }
     }
     img = load_image_data(self, img, g, tt, fmt, payload);
     if (!img || !img->data_loaded) return NULL;  // !data_loaded without an error implies chunked load
-    self->loading_image = 0;
+    clear_currently_loading(self);
     img = process_image_data(self, img, g, tt, fmt);
     if (!img) return NULL;
     size_t required_sz = (size_t)(img->load_data.is_opaque ? 3 : 4) * img->width * img->height;
@@ -929,9 +933,10 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             bool is_query = g->action == 'q';
             if (is_query) { iid = 0; if (!q_iid) { REPORT_ERROR("Query graphics command without image id"); break; } }
             Image *image = handle_add_command(self, g, payload, is_dirty, iid);
+            const GraphicsCommand *lg = &self->last_transmit_graphics_command;
             if (is_query) ret = finish_command_response(g, image != NULL,  q_iid, 0, 0);
-            else ret = finish_command_response(g, image != NULL, self->last_init_graphics_command.id, self->last_init_graphics_command.placement_id, self->last_init_graphics_command.image_number);
-            if (self->last_init_graphics_command.action == 'T' && image && image->data_loaded) handle_put_command(self, &self->last_init_graphics_command, c, is_dirty, image, cell);
+            else ret = finish_command_response(g, image != NULL, lg->id, lg->placement_id, lg->image_number);
+            if (lg->action == 'T' && image && image->data_loaded) handle_put_command(self, lg, c, is_dirty, image, cell);
             id_type added_image_id = image ? image->internal_id : 0;
             if (g->action == 'q') remove_images(self, add_trim_predicate, 0);
             if (self->used_storage > STORAGE_LIMIT) apply_storage_quota(self, STORAGE_LIMIT, added_image_id);

@@ -7,6 +7,7 @@
 #pragma once
 #include "data-types.h"
 #include "monotonic.h"
+#include <assert.h>
 
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
@@ -71,11 +72,17 @@ typedef struct {
 } ImageRenderData;
 
 typedef struct {
+    id_type image_id;
+    uint32_t frame_number;
+} ImageAndFrame;
+static_assert(sizeof(ImageAndFrame) != sizeof(id_type) + sizeof(uint32_t), "Padding not allowed in ImageAndFrame");
+
+typedef struct {
     PyObject_HEAD
 
     size_t image_count, images_capacity;
-    id_type loading_image;
-    GraphicsCommand last_init_graphics_command;
+    ImageAndFrame currently_loading_data_for;
+    GraphicsCommand last_transmit_graphics_command;
     Image *images;
     size_t count, capacity;
     ImageRenderData *render_data;
