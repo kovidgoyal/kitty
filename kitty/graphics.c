@@ -200,7 +200,7 @@ zlib_strerror(int ret) {
 }
 
 static inline bool
-inflate_zlib(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
+inflate_zlib(Image *img, uint8_t *buf, size_t bufsz) {
     bool ok = false;
     z_stream z;
     uint8_t *decompressed = malloc(img->load_data.data_sz);
@@ -233,7 +233,7 @@ png_error_handler(const char *code, const char *msg) {
 }
 
 static inline bool
-inflate_png(GraphicsManager UNUSED *self, Image *img, uint8_t *buf, size_t bufsz) {
+inflate_png(Image *img, uint8_t *buf, size_t bufsz) {
     png_read_data d = {.err_handler=png_error_handler};
     inflate_png_inner(&d, buf, bufsz);
     if (d.ok) {
@@ -341,14 +341,108 @@ get_free_client_id(const GraphicsManager *self) {
     return ans;
 }
 
-static Image*
-handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty, uint32_t iid) {
 #define ABRT(code, ...) { set_command_failed_response(#code, __VA_ARGS__); self->loading_image = 0; if (img) img->data_loaded = false; return NULL; }
 #define MAX_DATA_SZ (4u * 100000000u)
+enum FORMATS { RGB=24, RGBA=32, PNG=100 };
+
+static Image*
+load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, const unsigned char transmission_type, const uint32_t data_fmt, const uint8_t *payload) {
+    int fd;
+    static char fname[2056] = {0};
+
+    switch(transmission_type) {
+        case 'd':  // direct
+            if (img->load_data.buf_capacity - img->load_data.buf_used < g->payload_sz) {
+                if (img->load_data.buf_used + g->payload_sz > MAX_DATA_SZ || data_fmt != PNG) ABRT(EFBIG, "Too much data");
+                img->load_data.buf_capacity = MIN(2 * img->load_data.buf_capacity, MAX_DATA_SZ);
+                img->load_data.buf = realloc(img->load_data.buf, img->load_data.buf_capacity);
+                if (img->load_data.buf == NULL) {
+                    ABRT(ENOMEM, "Out of memory");
+                    img->load_data.buf_capacity = 0; img->load_data.buf_used = 0;
+                }
+            }
+            memcpy(img->load_data.buf + img->load_data.buf_used, payload, g->payload_sz);
+            img->load_data.buf_used += g->payload_sz;
+            if (!g->more) { img->data_loaded = true; self->loading_image = 0; }
+            break;
+        case 'f': // file
+        case 't': // temporary file
+        case 's': // POSIX shared memory
+            if (g->payload_sz > 2048) ABRT(EINVAL, "Filename too long");
+            snprintf(fname, sizeof(fname)/sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
+            if (transmission_type == 's') fd = shm_open(fname, O_RDONLY, 0);
+            else fd = open(fname, O_CLOEXEC | O_RDONLY);
+            if (fd == -1) ABRT(EBADF, "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
+            img->data_loaded = mmap_img_file(self, img, fd, g->data_sz, g->data_offset);
+            safe_close(fd, __FILE__, __LINE__);
+            if (transmission_type == 't') {
+                if (global_state.boss) { call_boss(safe_delete_temp_file, "s", fname); }
+                else unlink(fname);
+            }
+            else if (transmission_type == 's') shm_unlink(fname);
+            if (!img->data_loaded) return NULL;
+            break;
+        default:
+            ABRT(EINVAL, "Unknown transmission type: %c", g->transmission_type);
+    }
+    return img;
+}
+
+static Image*
+process_image_data(GraphicsManager *self, Image* img, const GraphicsCommand *g, unsigned char transmission_type, uint32_t data_fmt) {
+    bool needs_processing = g->compressed || data_fmt == PNG;
+    if (needs_processing) {
+        uint8_t *buf; size_t bufsz;
+#define IB { if (img->load_data.buf) { buf = img->load_data.buf; bufsz = img->load_data.buf_used; } else { buf = img->load_data.mapped_file; bufsz = img->load_data.mapped_file_sz; } }
+        switch(g->compressed) {
+            case 'z':
+                IB;
+                if (!inflate_zlib(img, buf, bufsz)) {
+                    img->data_loaded = false; return NULL;
+                }
+                break;
+            case 0:
+                break;
+            default:
+                ABRT(EINVAL, "Unknown image compression: %c", g->compressed);
+        }
+        switch(data_fmt) {
+            case PNG:
+                IB;
+                if (!inflate_png(img, buf, bufsz)) {
+                    img->data_loaded = false; return NULL;
+                }
+                break;
+            default: break;
+        }
+#undef IB
+        img->load_data.data = img->load_data.buf;
+        if (img->load_data.buf_used < img->load_data.data_sz) {
+            ABRT(ENODATA, "Insufficient image data: %zu < %zu", img->load_data.buf_used, img->load_data.data_sz);
+        }
+        if (img->load_data.mapped_file) {
+            munmap(img->load_data.mapped_file, img->load_data.mapped_file_sz);
+            img->load_data.mapped_file = NULL; img->load_data.mapped_file_sz = 0;
+        }
+    } else {
+        if (transmission_type == 'd') {
+            if (img->load_data.buf_used < img->load_data.data_sz) {
+                ABRT(ENODATA, "Insufficient image data: %zu < %zu",  img->load_data.buf_used, img->load_data.data_sz);
+            } else img->load_data.data = img->load_data.buf;
+        } else {
+            if (img->load_data.mapped_file_sz < img->load_data.data_sz) {
+                ABRT(ENODATA, "Insufficient image data: %zu < %zu",  img->load_data.mapped_file_sz, img->load_data.data_sz);
+            } else img->load_data.data = img->load_data.mapped_file;
+        }
+    }
+    return img;
+}
+
+static Image*
+handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty, uint32_t iid) {
     bool existing, init_img = true;
     Image *img = NULL;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
-    enum FORMATS { RGB=24, RGBA=32, PNG=100 };
     uint32_t fmt = g->format ? g->format : RGBA;
     if (tt == 'd' && self->loading_image) init_img = false;
     if (init_img) {
@@ -414,89 +508,11 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             ABRT(EILSEQ, "More payload loading refers to non-existent image");
         }
     }
-    int fd;
-    static char fname[2056] = {0};
-    switch(tt) {
-        case 'd':  // direct
-            if (img->load_data.buf_capacity - img->load_data.buf_used < g->payload_sz) {
-                if (img->load_data.buf_used + g->payload_sz > MAX_DATA_SZ || fmt != PNG) ABRT(EFBIG, "Too much data");
-                img->load_data.buf_capacity = MIN(2 * img->load_data.buf_capacity, MAX_DATA_SZ);
-                img->load_data.buf = realloc(img->load_data.buf, img->load_data.buf_capacity);
-                if (img->load_data.buf == NULL) {
-                    ABRT(ENOMEM, "Out of memory");
-                    img->load_data.buf_capacity = 0; img->load_data.buf_used = 0;
-                }
-            }
-            memcpy(img->load_data.buf + img->load_data.buf_used, payload, g->payload_sz);
-            img->load_data.buf_used += g->payload_sz;
-            if (!g->more) { img->data_loaded = true; self->loading_image = 0; }
-            break;
-        case 'f': // file
-        case 't': // temporary file
-        case 's': // POSIX shared memory
-            if (g->payload_sz > 2048) ABRT(EINVAL, "Filename too long");
-            snprintf(fname, sizeof(fname)/sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
-            if (tt == 's') fd = shm_open(fname, O_RDONLY, 0);
-            else fd = open(fname, O_CLOEXEC | O_RDONLY);
-            if (fd == -1) ABRT(EBADF, "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
-            img->data_loaded = mmap_img_file(self, img, fd, g->data_sz, g->data_offset);
-            safe_close(fd, __FILE__, __LINE__);
-            if (tt == 't') {
-                if (global_state.boss) { call_boss(safe_delete_temp_file, "s", fname); }
-                else unlink(fname);
-            }
-            else if (tt == 's') shm_unlink(fname);
-            break;
-        default:
-            ABRT(EINVAL, "Unknown transmission type: %c", g->transmission_type);
-    }
-    if (!img->data_loaded) return NULL;
+    img = load_image_data(self, img, g, tt, fmt, payload);
+    if (!img || !img->data_loaded) return NULL;  // !data_loaded without an error implies chunked load
     self->loading_image = 0;
-    bool needs_processing = g->compressed || fmt == PNG;
-    if (needs_processing) {
-        uint8_t *buf; size_t bufsz;
-#define IB { if (img->load_data.buf) { buf = img->load_data.buf; bufsz = img->load_data.buf_used; } else { buf = img->load_data.mapped_file; bufsz = img->load_data.mapped_file_sz; } }
-        switch(g->compressed) {
-            case 'z':
-                IB;
-                if (!inflate_zlib(self, img, buf, bufsz)) {
-                    img->data_loaded = false; return NULL;
-                }
-                break;
-            case 0:
-                break;
-            default:
-                ABRT(EINVAL, "Unknown image compression: %c", g->compressed);
-        }
-        switch(fmt) {
-            case PNG:
-                IB;
-                if (!inflate_png(self, img, buf, bufsz)) {
-                    img->data_loaded = false; return NULL;
-                }
-                break;
-            default: break;
-        }
-#undef IB
-        img->load_data.data = img->load_data.buf;
-        if (img->load_data.buf_used < img->load_data.data_sz) {
-            ABRT(ENODATA, "Insufficient image data: %zu < %zu", img->load_data.buf_used, img->load_data.data_sz);
-        }
-        if (img->load_data.mapped_file) {
-            munmap(img->load_data.mapped_file, img->load_data.mapped_file_sz);
-            img->load_data.mapped_file = NULL; img->load_data.mapped_file_sz = 0;
-        }
-    } else {
-        if (tt == 'd') {
-            if (img->load_data.buf_used < img->load_data.data_sz) {
-                ABRT(ENODATA, "Insufficient image data: %zu < %zu",  img->load_data.buf_used, img->load_data.data_sz);
-            } else img->load_data.data = img->load_data.buf;
-        } else {
-            if (img->load_data.mapped_file_sz < img->load_data.data_sz) {
-                ABRT(ENODATA, "Insufficient image data: %zu < %zu",  img->load_data.mapped_file_sz, img->load_data.data_sz);
-            } else img->load_data.data = img->load_data.mapped_file;
-        }
-    }
+    img = process_image_data(self, img, g, tt, fmt);
+    if (!img) return NULL;
     size_t required_sz = (size_t)(img->load_data.is_opaque ? 3 : 4) * img->width * img->height;
     if (img->load_data.data_sz != required_sz) ABRT(EINVAL, "Image dimensions: %ux%u do not match data size: %zu, expected size: %zu", img->width, img->height, img->load_data.data_sz, required_sz);
     if (LIKELY(img->data_loaded && send_to_gpu)) {
