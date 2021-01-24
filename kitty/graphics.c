@@ -341,13 +341,10 @@ get_free_client_id(const GraphicsManager *self) {
     return ans;
 }
 
-#define ABRT(code, ...) { set_command_failed_response(#code, __VA_ARGS__); clear_currently_loading(self); if (img) img->data_loaded = false; return NULL; }
+#define ABRT(code, ...) { set_command_failed_response(#code, __VA_ARGS__); self->currently_loading_data_for = (const ImageAndFrame){0}; if (img) img->data_loaded = false; return NULL; }
+
 #define MAX_DATA_SZ (4u * 100000000u)
 enum FORMATS { RGB=24, RGBA=32, PNG=100 };
-static inline void
-clear_currently_loading(GraphicsManager *self) {
-    self->currently_loading_data_for = (const ImageAndFrame){0};
-}
 
 static Image*
 load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, const unsigned char transmission_type, const uint32_t data_fmt, const uint8_t *payload) {
@@ -367,7 +364,7 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
             }
             memcpy(img->load_data.buf + img->load_data.buf_used, payload, g->payload_sz);
             img->load_data.buf_used += g->payload_sz;
-            if (!g->more) { img->data_loaded = true; clear_currently_loading(self); }
+            if (!g->more) { img->data_loaded = true; self->currently_loading_data_for = (const ImageAndFrame){0}; }
             break;
         case 'f': // file
         case 't': // temporary file
@@ -452,7 +449,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (init_img) {
         self->last_transmit_graphics_command = *g;
         self->last_transmit_graphics_command.id = iid;
-        clear_currently_loading(self);
+        self->currently_loading_data_for = (const ImageAndFrame){0};
         if (g->data_width > 10000 || g->data_height > 10000) ABRT(EINVAL, "Image too large");
         remove_images(self, add_trim_predicate, 0);
         img = find_or_create_image(self, iid, &existing);
@@ -508,13 +505,13 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         fmt = g->format ? g->format : RGBA;
         img = img_by_internal_id(self, self->currently_loading_data_for.image_id);
         if (img == NULL) {
-            clear_currently_loading(self);
+            self->currently_loading_data_for = (const ImageAndFrame){0};
             ABRT(EILSEQ, "More payload loading refers to non-existent image");
         }
     }
     img = load_image_data(self, img, g, tt, fmt, payload);
     if (!img || !img->data_loaded) return NULL;  // !data_loaded without an error implies chunked load
-    clear_currently_loading(self);
+    self->currently_loading_data_for = (const ImageAndFrame){0};
     img = process_image_data(self, img, g, tt, fmt);
     if (!img) return NULL;
     size_t required_sz = (size_t)(img->load_data.is_opaque ? 3 : 4) * img->width * img->height;
