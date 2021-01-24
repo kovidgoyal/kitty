@@ -62,6 +62,16 @@ free_load_data(LoadData *ld) {
 static inline void
 free_image(GraphicsManager *self, Image *img) {
     if (img->texture_id) free_texture(&img->texture_id);
+    ImageAndFrame key = { .image_id=img->internal_id };
+    for (key.frame_number = 0; key.frame_number <= img->extra_framecnt; key.frame_number++) {
+        if (!remove_from_disk_cache(self->disk_cache, &key, sizeof(key))) {
+            if (PyErr_Occurred()) PyErr_Print();
+        }
+    }
+    if (img->extra_frames) {
+        free(img->extra_frames);
+        img->extra_frames = NULL;
+    }
     free_refs_data(img);
     free_load_data(&(img->load_data));
     self->used_storage -= img->used_storage;
@@ -359,8 +369,8 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
                 img->load_data.buf_capacity = MIN(2 * img->load_data.buf_capacity, MAX_DATA_SZ);
                 img->load_data.buf = realloc(img->load_data.buf, img->load_data.buf_capacity);
                 if (img->load_data.buf == NULL) {
-                    ABRT(ENOMEM, "Out of memory");
                     img->load_data.buf_capacity = 0; img->load_data.buf_used = 0;
+                    ABRT(ENOMEM, "Out of memory");
                 }
             }
             memcpy(img->load_data.buf + img->load_data.buf_used, payload, g->payload_sz);
@@ -494,8 +504,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
             img->load_data.buf = malloc(img->load_data.buf_capacity);
             img->load_data.buf_used = 0;
             if (img->load_data.buf == NULL) {
-                ABRT(ENOMEM, "Out of memory");
                 img->load_data.buf_capacity = 0; img->load_data.buf_used = 0;
+                ABRT(ENOMEM, "Out of memory");
             }
         }
     } else {
@@ -517,8 +527,15 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (!img) return NULL;
     size_t required_sz = (size_t)(img->load_data.is_opaque ? 3 : 4) * img->width * img->height;
     if (img->load_data.data_sz != required_sz) ABRT(EINVAL, "Image dimensions: %ux%u do not match data size: %zu, expected size: %zu", img->width, img->height, img->load_data.data_sz, required_sz);
-    if (LIKELY(img->data_loaded && send_to_gpu)) {
-        send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->load_data.is_opaque, img->load_data.is_4byte_aligned, false, REPEAT_CLAMP);
+    if (img->data_loaded) {
+        if (send_to_gpu) {
+            send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->load_data.is_opaque, img->load_data.is_4byte_aligned, false, REPEAT_CLAMP);
+        }
+        ImageAndFrame key = {.image_id = img->internal_id};
+        if (!add_to_disk_cache(self->disk_cache, &key, sizeof(key), img->load_data.data, img->load_data.data_sz)) {
+            if (PyErr_Occurred()) PyErr_Print();
+            ABRT(ENOSPC, "Failed to store image data in disk cache");
+        }
         free_load_data(&img->load_data);
         self->used_storage += required_sz;
         img->used_storage = required_sz;
@@ -940,6 +957,12 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             if (self->used_storage > STORAGE_LIMIT) apply_storage_quota(self, STORAGE_LIMIT, added_image_id);
             break;
         }
+        case 'f':
+            if (!g->id && !g->image_number) {
+                REPORT_ERROR("Add frame data command without image id or number");
+                break;
+            }
+            break;
         case 'p':
             if (!g->id && !g->image_number) {
                 REPORT_ERROR("Put graphics command without image id or number");
@@ -968,13 +991,14 @@ new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 }
 
 static inline PyObject*
-image_as_dict(Image *img) {
+image_as_dict(GraphicsManager *self, Image *img) {
 #define U(x) #x, img->x
+    ImageAndFrame key = {.image_id = img->internal_id};
     return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
         "data_loaded", img->data_loaded ? Py_True : Py_False,
         "is_4byte_aligned", img->load_data.is_4byte_aligned ? Py_True : Py_False,
-        "data", Py_BuildValue("y#", img->load_data.data, img->load_data.data_sz)
+        "data", read_from_disk_cache_python(self->disk_cache, &key, sizeof(key))
     );
 #undef U
 
@@ -988,14 +1012,14 @@ W(image_for_client_id) {
     bool existing = false;
     Image *img = find_or_create_image(self, id, &existing);
     if (!existing) { Py_RETURN_NONE; }
-    return image_as_dict(img);
+    return image_as_dict(self, img);
 }
 
 W(image_for_client_number) {
     unsigned long num = PyLong_AsUnsignedLong(args);
     Image *img = img_by_client_number(self, num);
     if (!img) Py_RETURN_NONE;
-    return image_as_dict(img);
+    return image_as_dict(self, img);
 }
 
 W(shm_write) {

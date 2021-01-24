@@ -226,6 +226,7 @@ class TestGraphics(BaseTest):
 
     def test_load_images(self):
         s, g, l, sl = load_helpers(self)
+        self.assertEqual(g.disk_cache.total_size, 0)
 
         # Test load query
         self.ae(l('abcd', s=1, v=1, a='q'), 'OK')
@@ -284,6 +285,8 @@ class TestGraphics(BaseTest):
         self.assertRaises(
             FileNotFoundError, shm_unlink, name
         )  # check that file was deleted
+        s.reset()
+        self.assertEqual(g.disk_cache.total_size, 0)
 
     @unittest.skipIf(Image is None, 'PIL not available, skipping PNG tests')
     def test_load_png(self):
@@ -292,6 +295,7 @@ class TestGraphics(BaseTest):
         rgba_data = byte_block(w * h * 4)
         img = Image.frombytes('RGBA', (w, h), rgba_data)
         rgb_data = img.convert('RGB').convert('RGBA').tobytes()
+        self.assertEqual(g.disk_cache.total_size, 0)
 
         def png(mode='RGBA'):
             buf = BytesIO()
@@ -312,6 +316,8 @@ class TestGraphics(BaseTest):
         sl(data, f=100, expecting_data=rgba_data)
 
         self.ae(l(b'a' * 20, f=100, S=20).partition(':')[0], 'EBADPNG')
+        s.reset()
+        self.assertEqual(g.disk_cache.total_size, 0)
 
     def test_load_png_simple(self):
         # 1x1 transparent PNG
@@ -326,6 +332,7 @@ class TestGraphics(BaseTest):
     def test_gr_operations_with_numbers(self):
         s = self.create_screen()
         g = s.grman
+        self.assertEqual(g.disk_cache.total_size, 0)
 
         def li(payload, **kw):
             cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
@@ -389,6 +396,8 @@ class TestGraphics(BaseTest):
         self.ae(s.grman.image_count, count - 1)
         delete(I=1)
         self.ae(s.grman.image_count, count - 2)
+        s.reset()
+        self.assertEqual(g.disk_cache.total_size, 0)
 
     def test_image_put(self):
         cw, ch = 10, 20
@@ -411,6 +420,8 @@ class TestGraphics(BaseTest):
         rect_eq(l2[1]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
         self.ae(l2[0]['group_count'], 1), self.ae(l2[1]['group_count'], 1)
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
+        s.reset()
+        self.assertEqual(s.grman.disk_cache.total_size, 0)
 
     def test_gr_scroll(self):
         cw, ch = 10, 20
@@ -462,6 +473,8 @@ class TestGraphics(BaseTest):
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 0.5})
         s.reverse_index()
         self.ae(s.grman.image_count, 2)
+        s.reset()
+        self.assertEqual(s.grman.disk_cache.total_size, 0)
 
     def test_gr_reset(self):
         cw, ch = 10, 20
@@ -494,14 +507,17 @@ class TestGraphics(BaseTest):
         self.ae(len(layers(s)), 0), self.ae(s.grman.image_count, 1)
         delete('A')
         self.ae(s.grman.image_count, 0)
+        self.assertEqual(s.grman.disk_cache.total_size, 0)
         iid = put_image(s, cw, ch)[0]
         delete('I', i=iid, p=7)
         self.ae(s.grman.image_count, 1)
         delete('I', i=iid)
         self.ae(s.grman.image_count, 0)
+        self.assertEqual(s.grman.disk_cache.total_size, 0)
         iid = put_image(s, cw, ch, placement_id=9)[0]
         delete('I', i=iid, p=9)
         self.ae(s.grman.image_count, 0)
+        self.assertEqual(s.grman.disk_cache.total_size, 0)
         s.reset()
         put_image(s, cw, ch)
         put_image(s, cw, ch)
@@ -512,9 +528,11 @@ class TestGraphics(BaseTest):
         self.ae(s.grman.image_count, 1)
         delete('P', x=2, y=1)
         self.ae(s.grman.image_count, 0)
+        self.assertEqual(s.grman.disk_cache.total_size, 0)
         put_image(s, cw, ch, z=9)
         delete('Z', z=9)
         self.ae(s.grman.image_count, 0)
+        self.assertEqual(s.grman.disk_cache.total_size, 0)
 
         # test put + delete + put
         iid = 999999
@@ -526,3 +544,4 @@ class TestGraphics(BaseTest):
         delete('I', i=iid)
         self.ae(put_ref(s, id=iid), (iid, ('ENOENT', f'i={iid}')))
         self.ae(s.grman.image_count, 0)
+        self.assertEqual(s.grman.disk_cache.total_size, 0)

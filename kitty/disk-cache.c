@@ -715,15 +715,20 @@ bytes_alloc(void *x, size_t sz) {
     return PyBytes_AS_STRING(w->bytes);
 }
 
+PyObject*
+read_from_disk_cache_python(PyObject *self, const void *key, size_t keysz) {
+    BytesWrapper w = {0};
+    read_from_disk_cache(self, key, keysz, bytes_alloc, &w);
+    if (PyErr_Occurred()) { Py_CLEAR(w.bytes); return NULL; }
+    return w.bytes;
+}
+
 static PyObject*
 get(PyObject *self, PyObject *args) {
     const char *key;
     Py_ssize_t keylen;
     PA("y#", &key, &keylen);
-    BytesWrapper w = {0};
-    read_from_disk_cache(self, key, keylen, bytes_alloc, &w);
-    if (PyErr_Occurred()) { Py_CLEAR(w.bytes); return NULL; }
-    return w.bytes;
+    return read_from_disk_cache_python(self, key, keylen);
 }
 
 

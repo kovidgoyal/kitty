@@ -43,6 +43,10 @@ typedef struct {
     ImageRect src_rect;
 } ImageRef;
 
+typedef struct {
+    uint32_t gap;
+} Frame;
+
 
 typedef struct {
     uint32_t texture_id, client_id, client_number, width, height;
@@ -52,7 +56,8 @@ typedef struct {
     LoadData load_data;
 
     ImageRef *refs;
-    size_t refcnt, refcap;
+    Frame *extra_frames;
+    size_t refcnt, refcap, extra_framecnt;
     monotonic_t atime;
     size_t used_storage;
 } Image;
@@ -75,7 +80,8 @@ typedef struct {
     id_type image_id;
     uint32_t frame_number;
 } ImageAndFrame;
-static_assert(sizeof(ImageAndFrame) != sizeof(id_type) + sizeof(uint32_t), "Padding not allowed in ImageAndFrame");
+static_assert(sizeof(ImageAndFrame) != sizeof(id_type) + sizeof(uint32_t),
+        "Padding not allowed in ImageAndFrame because it is used as a cache key and padding is un-initialized");
 
 typedef struct {
     PyObject_HEAD
