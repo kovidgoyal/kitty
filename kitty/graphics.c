@@ -957,12 +957,30 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             if (self->used_storage > STORAGE_LIMIT) apply_storage_quota(self, STORAGE_LIMIT, added_image_id);
             break;
         }
-        case 'f':
+        case 'f': {
             if (!g->id && !g->image_number) {
                 REPORT_ERROR("Add frame data command without image id or number");
                 break;
             }
+            Image *img = g->id ? img_by_client_id(self, g->id) : img_by_client_number(self, g->image_number);
+            if (!img) {
+                set_command_failed_response("ENOENT", "Animation command refers to non-existent image with id: %u and number: %u", g->id, g->image_number);
+                ret = finish_command_response(g, false, g->id, 0, g->image_number);
+                break;
+            }
+            if (g->payload_sz) {
+            } else {
+                const uint32_t frame_number = g->num_lines;
+                if (frame_number) {
+                    const uint32_t gap = 40 + MAX(-40, g->z_index);
+                    if (frame_number == 1) { img->loop_delay = gap; }
+                    else if (frame_number - 2 < img->extra_framecnt) img->extra_frames[frame_number - 2].gap = gap;
+                    else set_command_failed_response("ENOENT", "Animation command refers to non-existent frame number: %u in image id: %u", frame_number, img->client_id);
+                } else set_command_failed_response("EINVAL", "Animation command on img: %u has no actions", img->client_id);
+                ret = finish_command_response(g, true, g->id, 0, g->image_number);
+            }
             break;
+        }
         case 'p':
             if (!g->id && !g->image_number) {
                 REPORT_ERROR("Put graphics command without image id or number");

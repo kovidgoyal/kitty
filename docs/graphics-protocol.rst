@@ -507,7 +507,8 @@ Key      Value                 Default    Description
 ``a``    Single character.     ``t``      The overall action this graphics command is performing.
          ``(t, T, q, p, d)``              ``t`` - transmit data, ``T`` - transmit data and display image,
                                           ``q`` - query terminal, ``p`` - put (display) previous transmitted image,
-                                          ``d`` - delete image
+                                          ``d`` - delete image, ``f`` - transmit data for animation frames,
+                                          ``a`` - start/stop an animation
 
 ``q``    ``0, 1, 2``           ``0``      Suppress responses from the terminal to this graphics command.
 
@@ -535,13 +536,25 @@ Key      Value                 Default    Description
 -----------------------------------------------------------
 ``x``    Positive integer      ``0``      The left edge (in pixels) of the image area to display
 ``y``    Positive integer      ``0``      The top edge (in pixels) of the image area to display
-``w``    Positive integer      ``0``      The width (in pixels) of the image area to display. By default, the entire width is used.
+``w``    Positive integer      ``0``      The width (in pixels) of the image area to display. By default, the entire width is used
 ``h``    Positive integer      ``0``      The height (in pixels) of the image area to display. By default, the entire height is used
 ``X``    Positive integer      ``0``      The x-offset within the first cell at which to start displaying the image
 ``Y``    Positive integer      ``0``      The y-offset within the first cell at which to start displaying the image
 ``c``    Positive integer      ``0``      The number of columns to display the image over
 ``r``    Positive integer      ``0``      The number of rows to display the image over
 ``z``    32-bit integer        ``0``      The *z-index* vertical stacking order of the image
+
+**Keys for animation**
+-----------------------------------------------------------
+``x``    Positive integer      ``0``      The left edge (in pixels) of where the frame data should be updated
+``y``    Positive integer      ``0``      The top edge (in pixels) of where the frame data should be updated
+``w``    Positive integer      ``0``      The width (in pixels) of the frame area to update. By default, the entire width is used
+``h``    Positive integer      ``0``      The height (in pixels) of the frame area to update. By default, the entire height is used
+``c``    Positive integer      ``0``      The frame number of the frame whose image data serves as the base data
+                                          when creating a new frame, by default the base data is black transparent pixels
+``r``    Positive integer      ``0``      The frame number of the frame that is being edited. By default, a new frame is created
+``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the previous one. This value is added to
+                                          a default of ``40ms``. Negative values are subtracted, with a minimum gap of ``0``.
 
 **Keys for deleting images**
 -----------------------------------------------------------
