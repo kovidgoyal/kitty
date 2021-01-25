@@ -41,6 +41,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   :kbd:`ctrl+plus` will match a keyboard where you have to press
   :kbd:`shift+equal` to get the plus key (:iss:`2000`)
 
+- Fix extra space at bottom of OS window when using the fat layout with the tab bar at the
+  top (:iss:`3258`)
+
 
 0.19.3 [2020-12-19]
 -------------------
