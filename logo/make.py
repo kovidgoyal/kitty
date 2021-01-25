@@ -29,7 +29,6 @@ def render(output, sz=256):
 
 def main():
     render(abspath('kitty.png'))
-    run('convert', abspath('kitty.png'), '-depth', '8', abspath('kitty.rgba'))
     iconset = abspath('kitty.iconset')
     if os.path.exists(iconset):
         shutil.rmtree(iconset)
@@ -39,6 +38,8 @@ def main():
         iname = os.path.join(iconset, 'icon_{0}x{0}.png'.format(sz))
         iname2x = 'icon_{0}x{0}@2x.png'.format(sz // 2)
         render(iname, sz)
+        if sz == 128:
+            shutil.copyfile(iname, abspath('kitty-128.png'))
         if sz > 16 and sz != 128:
             shutil.copy2(iname, iname2x)
         if sz in (64, 1024):

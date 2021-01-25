@@ -1034,7 +1034,7 @@ def package(args: Options, bundle_type: str) -> None:
         safe_makedirs(odir)
         build_terminfo['compile_terminfo'](odir)
     shutil.copy2('__main__.py', libdir)
-    shutil.copy2('logo/kitty.rgba', os.path.join(libdir, 'logo'))
+    shutil.copy2('logo/kitty-128.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/kitty.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/beam-cursor.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/beam-cursor@2x.png', os.path.join(libdir, 'logo'))

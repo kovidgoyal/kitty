@@ -393,12 +393,15 @@ static GLFWimage logo = {0};
 
 static PyObject*
 set_default_window_icon(PyObject UNUSED *self, PyObject *args) {
-    Py_ssize_t sz;
-    const char *logo_data;
-    if(!PyArg_ParseTuple(args, "s#ii", &(logo_data), &sz, &(logo.width), &(logo.height))) return NULL;
-    sz = (MAX(logo.width * logo.height, sz));
-    logo.pixels = malloc(sz);
-    if (logo.pixels) memcpy(logo.pixels, logo_data, sz);
+    size_t sz;
+    unsigned int width, height;
+    const char *path;
+    uint8_t *data;
+    if(!PyArg_ParseTuple(args, "s", &path)) return NULL;
+    if (png_path_to_bitmap(path, &data, &width, &height, &sz)) {
+        logo.width = width; logo.height = height;
+        logo.pixels = data;
+    }
     Py_RETURN_NONE;
 }
 

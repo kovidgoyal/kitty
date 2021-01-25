@@ -1990,8 +1990,8 @@ void _glfwPlatformSetWindowIcon(_GLFWwindow* window,
         for (i = 0;  i < count;  i++)
             longCount += 2 + images[i].width * images[i].height;
 
-        long* icon = calloc(longCount, sizeof(long));
-        long* target = icon;
+        unsigned long* icon = calloc(longCount, sizeof(unsigned long));
+        unsigned long* target = icon;
 
         for (i = 0;  i < count;  i++)
         {
@@ -2000,10 +2000,9 @@ void _glfwPlatformSetWindowIcon(_GLFWwindow* window,
 
             for (j = 0;  j < images[i].width * images[i].height;  j++)
             {
-                *target++ = (images[i].pixels[j * 4 + 0] << 16) |
-                            (images[i].pixels[j * 4 + 1] <<  8) |
-                            (images[i].pixels[j * 4 + 2] <<  0) |
-                            (images[i].pixels[j * 4 + 3] << 24);
+                unsigned char *p = images->pixels + j * 4;
+                const unsigned char r = *p++, g = *p++, b = *p++, a = *p++;
+                *target++ = a << 24 | (r << 16) | (g << 8) | b;
             }
         }
 

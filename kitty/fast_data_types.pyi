@@ -525,7 +525,7 @@ def set_smallest_allowed_resize(width: int, height: int) -> None:
     pass
 
 
-def set_default_window_icon(data: bytes, width: int, height: int) -> None:
+def set_default_window_icon(path: str) -> None:
     pass
 
 

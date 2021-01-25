@@ -18,7 +18,7 @@ from .conf.utils import BadLine
 from .config import cached_values_for
 from .constants import (
     appname, beam_cursor_data_file, config_dir, glfw_path, is_macos,
-    is_wayland, kitty_exe, logo_data_file, running_in_kitty
+    is_wayland, kitty_exe, logo_png_file, running_in_kitty
 )
 from .fast_data_types import (
     GLFW_IBEAM_CURSOR, create_os_window, free_font_data, glfw_init,
@@ -121,6 +121,12 @@ def get_macos_shortcut_for(opts: OptionsStub, function: str = 'new_os_window') -
     return ans
 
 
+def set_x11_window_icon() -> None:
+    # max icon size on X11 64bits is 128x128
+    path = logo_png_file.replace('.', '-128.')
+    set_default_window_icon(path)
+
+
 def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
     global_shortcuts: Dict[str, SingleKey] = {}
     if is_macos:
@@ -131,8 +137,7 @@ def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] =
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
     if not is_wayland() and not is_macos:  # no window icons on wayland
-        with open(logo_data_file, 'rb') as f:
-            set_default_window_icon(f.read(), 256, 256)
+        set_x11_window_icon()
     load_shader_programs.use_selection_fg = opts.selection_foreground is not None
     with cached_values_for(run_app.cached_values_name) as cached_values:
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:

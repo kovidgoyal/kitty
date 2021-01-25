@@ -118,7 +118,6 @@ def wakeup() -> None:
 
 base_dir = os.path.dirname(base)
 terminfo_dir = os.path.join(base_dir, 'terminfo')
-logo_data_file = os.path.join(base_dir, 'logo', 'kitty.rgba')
 logo_png_file = os.path.join(base_dir, 'logo', 'kitty.png')
 beam_cursor_data_file = os.path.join(base_dir, 'logo', 'beam-cursor.png')
 try:

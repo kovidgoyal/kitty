@@ -44,6 +44,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix extra space at bottom of OS window when using the fat layout with the tab bar at the
   top (:iss:`3258`)
 
+- Fix window icon not working on X11 with 64bits (:iss:`3260`)
+
 
 0.19.3 [2020-12-19]
 -------------------
