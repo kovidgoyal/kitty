@@ -14,6 +14,7 @@ bool remove_from_disk_cache(PyObject *self_, const void *key, size_t key_sz);
 void* read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allocator)(void*, size_t), void*);
 PyObject* read_from_disk_cache_python(PyObject *self_, const void *key, size_t key_sz);
 bool disk_cache_wait_for_write(PyObject *self, monotonic_t timeout);
+size_t disk_cache_total_size(PyObject *self);
 size_t disk_cache_size_on_disk(PyObject *self);
 void clear_disk_cache(PyObject *self);
 

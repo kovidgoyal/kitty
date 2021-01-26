@@ -508,7 +508,7 @@ Key      Value                 Default    Description
          ``(t, T, q, p, d)``              ``t`` - transmit data, ``T`` - transmit data and display image,
                                           ``q`` - query terminal, ``p`` - put (display) previous transmitted image,
                                           ``d`` - delete image, ``f`` - transmit data for animation frames,
-                                          ``a`` - start/stop an animation
+                                          ``a`` - control animation
 
 ``q``    ``0, 1, 2``           ``0``      Suppress responses from the terminal to this graphics command.
 
@@ -544,17 +544,17 @@ Key      Value                 Default    Description
 ``r``    Positive integer      ``0``      The number of rows to display the image over
 ``z``    32-bit integer        ``0``      The *z-index* vertical stacking order of the image
 
-**Keys for animation**
+**Keys for animation frame loading**
 -----------------------------------------------------------
 ``x``    Positive integer      ``0``      The left edge (in pixels) of where the frame data should be updated
 ``y``    Positive integer      ``0``      The top edge (in pixels) of where the frame data should be updated
 ``w``    Positive integer      ``0``      The width (in pixels) of the frame area to update. By default, the entire width is used
 ``h``    Positive integer      ``0``      The height (in pixels) of the frame area to update. By default, the entire height is used
-``c``    Positive integer      ``0``      The frame number of the frame whose image data serves as the base data
-                                          when creating a new frame, by default the base data is black transparent pixels
-``r``    Positive integer      ``0``      The frame number of the frame that is being edited. By default, a new frame is created
-``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the previous one. This value is added to
-                                          a default of ``40ms``. Negative values are subtracted, with a minimum gap of ``0``.
+``c``    Positive integer      ``0``      The 1-based frame number of the frame whose image data serves as the base data
+                                          when creating a new frame, by default the base data is black, fully transparent pixels
+``r``    Positive integer      ``0``      The 1-based frame number of the frame that is being edited. By default, a new frame is created
+``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the previous one. Values less than
+                                          one are ignored, new frames are given a default gap of ``40ms`` if not specified.
 
 **Keys for deleting images**
 -----------------------------------------------------------

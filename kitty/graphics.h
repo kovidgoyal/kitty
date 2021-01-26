@@ -61,6 +61,7 @@ typedef struct {
     size_t refcnt, refcap, extra_framecnt;
     monotonic_t atime;
     size_t used_storage;
+    bool is_opaque, is_4byte_aligned;
 } Image;
 
 typedef struct {
@@ -79,7 +80,7 @@ typedef struct {
 
 typedef struct {
     id_type image_id;
-    uint32_t frame_number;
+    uint32_t frame_idx;
 } ImageAndFrame;
 static_assert(sizeof(ImageAndFrame) != sizeof(id_type) + sizeof(uint32_t),
         "Padding not allowed in ImageAndFrame because it is used as a cache key and padding is un-initialized");
@@ -87,7 +88,7 @@ static_assert(sizeof(ImageAndFrame) != sizeof(id_type) + sizeof(uint32_t),
 typedef struct {
     PyObject_HEAD
 
-    size_t image_count, images_capacity;
+    size_t image_count, images_capacity, storage_limit;
     ImageAndFrame currently_loading_data_for;
     GraphicsCommand last_transmit_graphics_command;
     Image *images;

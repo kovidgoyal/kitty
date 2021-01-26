@@ -630,6 +630,9 @@ disk_cache_wait_for_write(PyObject *self_, monotonic_t timeout) {
     return false;
 }
 
+size_t
+disk_cache_total_size(PyObject *self) { return ((DiskCache*)self)->total_size; }
+
 #define PYWRAP(name) static PyObject* py##name(DiskCache *self, PyObject *args)
 #define PA(fmt, ...) if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 PYWRAP(ensure_state) {
