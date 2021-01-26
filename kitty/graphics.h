@@ -57,11 +57,11 @@ typedef struct {
 
     ImageRef *refs;
     Frame *extra_frames;
-    uint32_t loop_delay;
+    uint32_t loop_delay, current_frame_index;
     size_t refcnt, refcap, extra_framecnt;
     monotonic_t atime;
     size_t used_storage;
-    bool is_opaque, is_4byte_aligned;
+    bool is_opaque, is_4byte_aligned, animation_enabled;
 } Image;
 
 typedef struct {

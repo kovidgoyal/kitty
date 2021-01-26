@@ -1123,14 +1123,23 @@ static inline PyObject*
 image_as_dict(GraphicsManager *self, Image *img) {
 #define U(x) #x, img->x
     ImageAndFrame key = {.image_id = img->internal_id};
-    return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sN}",
+    PyObject *frames = PyTuple_New(img->extra_framecnt);
+    for (unsigned i = 0; i < img->extra_framecnt; i++) {
+        key.frame_idx = i + 1;
+        PyTuple_SET_ITEM(frames, i, Py_BuildValue(
+            "{sI sN}", "gap", img->extra_frames[i].gap, "data", read_from_disk_cache_python(self->disk_cache, &key, sizeof(key))));
+    }
+    key.frame_idx = 0;
+    return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sI sI sO sN sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
         "data_loaded", img->data_loaded ? Py_True : Py_False,
-        "is_4byte_aligned", img->load_data.is_4byte_aligned ? Py_True : Py_False,
-        "data", read_from_disk_cache_python(self->disk_cache, &key, sizeof(key))
+        "is_4byte_aligned", img->is_4byte_aligned ? Py_True : Py_False,
+        U(current_frame_index), U(loop_delay),
+        "animation_enabled", img->animation_enabled ? Py_True : Py_False,
+        "data", read_from_disk_cache_python(self->disk_cache, &key, sizeof(key)),
+        "extra_frames", frames
     );
 #undef U
-
 }
 
 #define W(x) static PyObject* py##x(GraphicsManager UNUSED *self, PyObject *args)
