@@ -11,6 +11,7 @@ import zlib
 from base64 import standard_b64decode, standard_b64encode
 from io import BytesIO
 from itertools import cycle
+from typing import NamedTuple
 
 from kitty.constants import cache_dir
 from kitty.fast_data_types import (
@@ -60,6 +61,32 @@ def parse_response_with_ids(res):
     code = b.partition('\033')[0].split(':', 1)[0]
     a = a.split('G', 1)[1]
     return code, a
+
+
+class Response(NamedTuple):
+    code: str = 'OK'
+    msg: str = ''
+    image_id: int = 0
+    image_number: int = 0
+    frame_number: int = 0
+
+
+def parse_full_response(res):
+    if not res:
+        return
+    a, b = res.decode('ascii').split(';', 1)
+    code = b.partition('\033')[0].split(':', 1)
+    if len(code) == 1:
+        code = code[0]
+        msg = ''
+    else:
+        code, msg = code
+    a = a.split('G', 1)[1]
+    ans = {'code': code, 'msg': msg}
+    for x in a.split(','):
+        k, _, v = x.partition('=')
+        ans[{'i': 'image_id', 'I': 'image_number', 'r': 'frame_number'}[k]] = int(v)
+    return Response(**ans)
 
 
 all_bytes = bytes(bytearray(range(256)))
@@ -545,3 +572,46 @@ class TestGraphics(BaseTest):
         self.ae(put_ref(s, id=iid), (iid, ('ENOENT', f'i={iid}')))
         self.ae(s.grman.image_count, 0)
         self.assertEqual(s.grman.disk_cache.total_size, 0)
+
+    def test_animation_frame_loading(self):
+        s = screen = self.create_screen()
+        g = s.grman
+
+        def li(payload='abcdefghijkl'*3, s=4, v=3, f=24, a='f', i=1, **kw):
+            if s:
+                kw['s'] = s
+            if v:
+                kw['v'] = v
+            if f:
+                kw['f'] = f
+            if i:
+                kw['i'] = i
+            kw['a'] = a
+            cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
+            res = send_command(screen, cmd, payload)
+            return parse_full_response(res)
+
+        def t(code='OK', image_id=1, frame_number=2, **kw):
+            res = li(**kw)
+            if code is not None:
+                self.assertEqual(code, res.code)
+            if image_id is not None:
+                self.assertEqual(image_id, res.image_id)
+            if frame_number is not None:
+                self.assertEqual(frame_number, res.frame_number)
+
+        # test error on send frame for non-existent image
+        self.assertEqual(li().code, 'ENOENT')
+
+        # test error sending incompatible data formats
+        self.assertEqual(li(a='t').code, 'OK')
+        self.assertEqual(g.disk_cache.total_size, 36)
+        res = li(s=3, v=3, f=32)
+        self.assertEqual(res.code, 'EINVAL')
+        self.assertIn('ransparen', res.msg)
+
+        # simple new frame
+        t(payload='2' * 36)
+
+        # self.ae(g.image_count, 0)
+        # self.assertEqual(g.disk_cache.total_size, 0)
