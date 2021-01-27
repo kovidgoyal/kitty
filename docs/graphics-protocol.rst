@@ -548,8 +548,6 @@ Key      Value                 Default    Description
 -----------------------------------------------------------
 ``x``    Positive integer      ``0``      The left edge (in pixels) of where the frame data should be updated
 ``y``    Positive integer      ``0``      The top edge (in pixels) of where the frame data should be updated
-``w``    Positive integer      ``0``      The width (in pixels) of the frame area to update. By default, the entire width is used
-``h``    Positive integer      ``0``      The height (in pixels) of the frame area to update. By default, the entire height is used
 ``c``    Positive integer      ``0``      The 1-based frame number of the frame whose image data serves as the base data
                                           when creating a new frame, by default the base data is black, fully transparent pixels
 ``r``    Positive integer      ``0``      The 1-based frame number of the frame that is being edited. By default, a new frame is created

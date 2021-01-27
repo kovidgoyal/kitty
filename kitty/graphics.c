@@ -980,20 +980,19 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
     self->currently_loading_data_for = (const ImageAndFrame){0};
     img = process_image_data(self, img, g, tt, fmt);
     if (!img) return NULL;
-    size_t data_width = g->data_width ? g->data_width : img->width, data_height = g->data_height ? g->data_height : img->height;
     img->width = w; img->height = h;
 #define FAIL(errno, ...) { free_load_data(&img->load_data); ABRT(errno, __VA_ARGS__); }
     if (img->data_loaded) {
         const unsigned bytes_per_pixel = img->is_opaque ? 3 : 4;
         const size_t expected_data_sz = img->width * img->height * bytes_per_pixel;
-        ImageAndFrame key = { .image_id = img->internal_id, .frame_idx = frame_number - 1 };
+        const ImageAndFrame key = { .image_id = img->internal_id, .frame_idx = frame_number - 1 };
 
         if (img->load_data.is_opaque != img->is_opaque)
             FAIL("EINVAL", "Transparency for frames must match that of the base image");
         if (img->load_data.is_4byte_aligned != img->is_4byte_aligned)
             FAIL("EINVAL", "Data type for frames must match that of the base image");
-        if (img->load_data.data_sz < bytes_per_pixel * data_width * data_height)
-            FAIL("ENODATA", "Insufficient image data %zu < %zu", img->load_data.data_sz, bytes_per_pixel * data_width, data_height);
+        if (img->load_data.data_sz < bytes_per_pixel * g->data_width * g->data_height)
+            FAIL("ENODATA", "Insufficient image data %zu < %zu", img->load_data.data_sz, bytes_per_pixel * g->data_width, g->data_height);
         if (is_new_frame && cache_size(self) + expected_data_sz > self->storage_limit * 5) {
             remove_images(self, trim_predicate, img->internal_id);
             if (is_new_frame && cache_size(self) + expected_data_sz > self->storage_limit * 5)
@@ -1004,7 +1003,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         size_t data_sz = 0;
         if (is_new_frame) {
             if (g->num_cells) {
-                ImageAndFrame other = { .image_id = img->internal_id, .frame_idx = g->num_cells - 1 };
+                const ImageAndFrame other = { .image_id = img->internal_id, .frame_idx = g->num_cells - 1 };
                 if (!read_from_cache(self, other, &base_data, &data_sz)) {
                     FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->num_cells, img->client_id);
                 }
@@ -1026,11 +1025,11 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             memcpy(base_data, img->load_data.data, data_sz);
         } else {
             const size_t dest_width = img->width > g->x_offset ? img->width - g->x_offset : 0;
-            const size_t stride = MIN(data_width, dest_width) * bytes_per_pixel;
-            for (size_t src_y = 0, dest_y = g->y_offset; src_y < data_height && dest_y < img->height; src_y++, dest_y++) {
+            const size_t stride = MIN(g->data_width, dest_width) * bytes_per_pixel;
+            for (size_t src_y = 0, dest_y = g->y_offset; src_y < g->data_height && dest_y < img->height; src_y++, dest_y++) {
                 memcpy(
                     (uint8_t*)base_data + dest_y * bytes_per_pixel * dest_width,
-                    img->load_data.data + src_y * bytes_per_pixel * data_width,
+                    img->load_data.data + src_y * bytes_per_pixel * g->data_width,
                     stride
                 );
             }

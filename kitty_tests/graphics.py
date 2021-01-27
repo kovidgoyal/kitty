@@ -594,7 +594,7 @@ class TestGraphics(BaseTest):
         def t(code='OK', image_id=1, frame_number=2, **kw):
             res = li(**kw)
             if code is not None:
-                self.assertEqual(code, res.code)
+                self.assertEqual(code, res.code, f'{code} != {res.code}: {res.msg}')
             if image_id is not None:
                 self.assertEqual(image_id, res.image_id)
             if frame_number is not None:
@@ -614,6 +614,28 @@ class TestGraphics(BaseTest):
         t(payload='2' * 36)
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'2' * 36},))
+        # test editing a frame
+        t(payload='3' * 36, r=2)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'3' * 36},))
+        # test editing part of a frame
+        t(payload='4' * 12, r=2, s=2, v=2)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'444444333333444444333333333333333333'},))
+        t(payload='5' * 12, r=2, s=2, v=2, x=1, y=1)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'444444333555555444555555333333333333'},))
+        t(payload='3' * 36, r=2)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'3' * 36},))
+        # test loading from previous frame
+        t(payload='4' * 12, c=2, s=2, v=2, z=101, frame_number=3)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], (
+            {'gap': 40, 'data': b'3' * 36},
+            {'gap': 101, 'data': b'444444333333444444333333333333333333'},
+        ))
 
-        # self.ae(g.image_count, 0)
-        # self.assertEqual(g.disk_cache.total_size, 0)
+        li(a='d', d='A')
+        self.ae(g.image_count, 0)
+        self.assertEqual(g.disk_cache.total_size, 0)
