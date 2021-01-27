@@ -123,8 +123,8 @@ def get_macos_shortcut_for(opts: OptionsStub, function: str = 'new_os_window') -
 
 def set_x11_window_icon() -> None:
     # max icon size on X11 64bits is 128x128
-    path = logo_png_file.replace('.', '-128.')
-    set_default_window_icon(path)
+    path, ext = os.path.splitext(logo_png_file)
+    set_default_window_icon(path + '-128' + ext)
 
 
 def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
