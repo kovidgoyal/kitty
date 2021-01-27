@@ -770,6 +770,128 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 
 // }}}
 
+// Animation {{{
+#define DEFAULT_GAP 40
+
+static Image*
+handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, Image *img, const uint8_t *payload) {
+    uint32_t frame_number = g->num_lines, fmt = g->format ? g->format : RGBA;
+    if (!frame_number || frame_number > img->extra_framecnt + 2) frame_number = img->extra_framecnt + 2;
+    bool is_new_frame = frame_number == img->extra_framecnt + 2;
+    g->num_lines = frame_number;
+    unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
+    size_t w = img->width, h = img->height;
+    if (tt == 'd' && self->currently_loading_data_for.image_id == img->internal_id && self->currently_loading_data_for.frame_idx == frame_number - 1) {
+        INIT_CHUNKED_LOAD;
+    } else {
+        self->last_transmit_graphics_command = *g;
+        self->currently_loading_data_for = (const ImageAndFrame){0};
+        if (g->data_width > MAX_IMAGE_DIMENSION || g->data_height > MAX_IMAGE_DIMENSION) ABRT("EINVAL", "Image too large");
+        free_load_data(&img->load_data);
+        if (!initialize_load_data(self, g, img, tt, fmt, frame_number - 1)) return NULL;
+    }
+    img = load_image_data(self, img, g, tt, fmt, payload);
+    if (!img || !img->data_loaded) return NULL;  // !data_loaded without an error implies chunked load
+    self->currently_loading_data_for = (const ImageAndFrame){0};
+    img = process_image_data(self, img, g, tt, fmt);
+    if (!img) return NULL;
+    img->width = w; img->height = h;
+#define FAIL(errno, ...) { free_load_data(&img->load_data); ABRT(errno, __VA_ARGS__); }
+    if (img->data_loaded) {
+        const unsigned bytes_per_pixel = img->is_opaque ? 3 : 4;
+        const size_t expected_data_sz = img->width * img->height * bytes_per_pixel;
+        const ImageAndFrame key = { .image_id = img->internal_id, .frame_idx = frame_number - 1 };
+
+        if (img->load_data.is_opaque != img->is_opaque)
+            FAIL("EINVAL", "Transparency for frames must match that of the base image");
+        if (img->load_data.is_4byte_aligned != img->is_4byte_aligned)
+            FAIL("EINVAL", "Data type for frames must match that of the base image");
+        if (img->load_data.data_sz < bytes_per_pixel * g->data_width * g->data_height)
+            FAIL("ENODATA", "Insufficient image data %zu < %zu", img->load_data.data_sz, bytes_per_pixel * g->data_width, g->data_height);
+        if (is_new_frame && cache_size(self) + expected_data_sz > self->storage_limit * 5) {
+            remove_images(self, trim_predicate, img->internal_id);
+            if (is_new_frame && cache_size(self) + expected_data_sz > self->storage_limit * 5)
+                FAIL("ENOSPC", "Cache size exceeded cannot add new frames");
+        }
+
+        void *base_data = NULL;
+        size_t data_sz = 0;
+        if (is_new_frame) {
+            if (g->num_cells) {
+                const ImageAndFrame other = { .image_id = img->internal_id, .frame_idx = g->num_cells - 1 };
+                if (!read_from_cache(self, other, &base_data, &data_sz)) {
+                    FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->num_cells, img->client_id);
+                }
+            } else {
+                base_data = calloc(1, expected_data_sz);
+                if (!base_data) { FAIL("ENOMEM", "Out of memory"); }
+                data_sz = expected_data_sz;
+            }
+        } else {
+            if (!read_from_cache(self, key, &base_data, &data_sz)) {
+                FAIL("ENODATA", "No data for frame with number: %u found in image: %u", frame_number, img->client_id);
+            }
+        }
+        if (data_sz != expected_data_sz) {
+            free(base_data);
+            FAIL("EINVAL", "Cached data sz: %zu != expected data sz: %zu", data_sz, expected_data_sz);
+        }
+        if (data_sz == img->load_data.data_sz && !g->x_offset && !g->y_offset && !g->width && !g->height) {
+            memcpy(base_data, img->load_data.data, data_sz);
+        } else {
+            const size_t dest_width = img->width > g->x_offset ? img->width - g->x_offset : 0;
+            const size_t stride = MIN(g->data_width, dest_width) * bytes_per_pixel;
+            for (size_t src_y = 0, dest_y = g->y_offset; src_y < g->data_height && dest_y < img->height; src_y++, dest_y++) {
+                memcpy(
+                    (uint8_t*)base_data + dest_y * bytes_per_pixel * dest_width,
+                    img->load_data.data + src_y * bytes_per_pixel * g->data_width,
+                    stride
+                );
+            }
+        }
+#undef FAIL
+
+        free_load_data(&img->load_data);
+        bool added = add_to_cache(self, key, base_data, data_sz);
+        free(base_data);
+        if (!added) {
+            PyErr_Print();
+            ABRT("ENOSPC", "Failed to cache data for image frame");
+        }
+        if (is_new_frame) {
+            if (!img->extra_framecnt) img->loop_delay = DEFAULT_GAP;
+            Frame *frames = realloc(img->extra_frames, sizeof(img->extra_frames[0]) * img->extra_framecnt + 1);
+            if (!frames) ABRT("ENOMEM", "Out of memory");
+            img->extra_frames = frames;
+            img->extra_framecnt++;
+            img->extra_frames[frame_number - 2].gap = DEFAULT_GAP;
+        }
+        if (g->z_index > 0) img->extra_frames[frame_number - 2].gap = g->z_index;
+    }
+    return img;
+}
+
+#undef ABRT
+
+static Image*
+handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, bool *is_dirty UNUSED) {
+    if (!g->id && !g->image_number) {
+        REPORT_ERROR("Delete frame data command without image id or number");
+        return NULL;
+    }
+    Image *img = g->id ? img_by_client_id(self, g->id) : img_by_client_number(self, g->image_number);
+    if (!img) {
+        REPORT_ERROR("Animation command refers to non-existent image with id: %u and number: %u", g->id, g->image_number);
+        return NULL;
+    }
+    uint32_t frame_number = MIN(img->extra_framecnt + 1, g->num_lines);
+    if (!frame_number) frame_number = 1;
+    if (!img->extra_framecnt) return g->action == 'F' ? img : NULL;
+
+    return NULL;
+}
+// }}}
+
 // Image lifetime/scrolling {{{
 
 static inline void
@@ -943,6 +1065,13 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
         case 'N':
             only_first_image = true;
             I('N', g, number_filter_func);
+        case 'f':
+        case 'F':
+            if (handle_delete_frame_command(self, g, is_dirty) != NULL) {
+                filter_refs(self, g, true, id_filter_func, cell, true);
+                *is_dirty = true;
+            }
+            break;
         default:
             REPORT_ERROR("Unknown graphics command delete action: %c", g->delete_action);
             break;
@@ -953,110 +1082,6 @@ handle_delete_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c
     if (!self->image_count && self->count) self->count = 0;
 }
 
-// }}}
-
-// Animation {{{
-#define DEFAULT_GAP 40
-
-static Image*
-handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, Image *img, const uint8_t *payload) {
-    uint32_t frame_number = g->num_lines, fmt = g->format ? g->format : RGBA;
-    if (!frame_number || frame_number > img->extra_framecnt + 2) frame_number = img->extra_framecnt + 2;
-    bool is_new_frame = frame_number == img->extra_framecnt + 2;
-    g->num_lines = frame_number;
-    unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
-    size_t w = img->width, h = img->height;
-    if (tt == 'd' && self->currently_loading_data_for.image_id == img->internal_id && self->currently_loading_data_for.frame_idx == frame_number - 1) {
-        INIT_CHUNKED_LOAD;
-    } else {
-        self->last_transmit_graphics_command = *g;
-        self->currently_loading_data_for = (const ImageAndFrame){0};
-        if (g->data_width > MAX_IMAGE_DIMENSION || g->data_height > MAX_IMAGE_DIMENSION) ABRT("EINVAL", "Image too large");
-        free_load_data(&img->load_data);
-        if (!initialize_load_data(self, g, img, tt, fmt, frame_number - 1)) return NULL;
-    }
-    img = load_image_data(self, img, g, tt, fmt, payload);
-    if (!img || !img->data_loaded) return NULL;  // !data_loaded without an error implies chunked load
-    self->currently_loading_data_for = (const ImageAndFrame){0};
-    img = process_image_data(self, img, g, tt, fmt);
-    if (!img) return NULL;
-    img->width = w; img->height = h;
-#define FAIL(errno, ...) { free_load_data(&img->load_data); ABRT(errno, __VA_ARGS__); }
-    if (img->data_loaded) {
-        const unsigned bytes_per_pixel = img->is_opaque ? 3 : 4;
-        const size_t expected_data_sz = img->width * img->height * bytes_per_pixel;
-        const ImageAndFrame key = { .image_id = img->internal_id, .frame_idx = frame_number - 1 };
-
-        if (img->load_data.is_opaque != img->is_opaque)
-            FAIL("EINVAL", "Transparency for frames must match that of the base image");
-        if (img->load_data.is_4byte_aligned != img->is_4byte_aligned)
-            FAIL("EINVAL", "Data type for frames must match that of the base image");
-        if (img->load_data.data_sz < bytes_per_pixel * g->data_width * g->data_height)
-            FAIL("ENODATA", "Insufficient image data %zu < %zu", img->load_data.data_sz, bytes_per_pixel * g->data_width, g->data_height);
-        if (is_new_frame && cache_size(self) + expected_data_sz > self->storage_limit * 5) {
-            remove_images(self, trim_predicate, img->internal_id);
-            if (is_new_frame && cache_size(self) + expected_data_sz > self->storage_limit * 5)
-                FAIL("ENOSPC", "Cache size exceeded cannot add new frames");
-        }
-
-        void *base_data = NULL;
-        size_t data_sz = 0;
-        if (is_new_frame) {
-            if (g->num_cells) {
-                const ImageAndFrame other = { .image_id = img->internal_id, .frame_idx = g->num_cells - 1 };
-                if (!read_from_cache(self, other, &base_data, &data_sz)) {
-                    FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->num_cells, img->client_id);
-                }
-            } else {
-                base_data = calloc(1, expected_data_sz);
-                if (!base_data) { FAIL("ENOMEM", "Out of memory"); }
-                data_sz = expected_data_sz;
-            }
-        } else {
-            if (!read_from_cache(self, key, &base_data, &data_sz)) {
-                FAIL("ENODATA", "No data for frame with number: %u found in image: %u", frame_number, img->client_id);
-            }
-        }
-        if (data_sz != expected_data_sz) {
-            free(base_data);
-            FAIL("EINVAL", "Cached data sz: %zu != expected data sz: %zu", data_sz, expected_data_sz);
-        }
-        if (data_sz == img->load_data.data_sz && !g->x_offset && !g->y_offset && !g->width && !g->height) {
-            memcpy(base_data, img->load_data.data, data_sz);
-        } else {
-            const size_t dest_width = img->width > g->x_offset ? img->width - g->x_offset : 0;
-            const size_t stride = MIN(g->data_width, dest_width) * bytes_per_pixel;
-            for (size_t src_y = 0, dest_y = g->y_offset; src_y < g->data_height && dest_y < img->height; src_y++, dest_y++) {
-                memcpy(
-                    (uint8_t*)base_data + dest_y * bytes_per_pixel * dest_width,
-                    img->load_data.data + src_y * bytes_per_pixel * g->data_width,
-                    stride
-                );
-            }
-        }
-#undef FAIL
-
-        free_load_data(&img->load_data);
-        bool added = add_to_cache(self, key, base_data, data_sz);
-        free(base_data);
-        if (!added) {
-            PyErr_Print();
-            ABRT("ENOSPC", "Failed to cache data for image frame");
-        }
-        if (is_new_frame) {
-            if (!img->extra_framecnt) img->loop_delay = DEFAULT_GAP;
-            Frame *frames = realloc(img->extra_frames, sizeof(img->extra_frames[0]) * img->extra_framecnt + 1);
-            if (!frames) ABRT("ENOMEM", "Out of memory");
-            img->extra_frames = frames;
-            img->extra_framecnt++;
-            img->extra_frames[frame_number - 2].gap = DEFAULT_GAP;
-        }
-        if (g->z_index > 0) img->extra_frames[frame_number - 2].gap = g->z_index;
-    }
-    return img;
-}
-
-#undef ABRT
 // }}}
 
 void

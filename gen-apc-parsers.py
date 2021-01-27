@@ -251,7 +251,7 @@ def graphics_parser() -> None:
     flag = frozenset
     keymap: KeymapType = {
         'a': ('action', flag('tTqpdf')),
-        'd': ('delete_action', flag('aAiIcCnNpPqQxXyYzZ')),
+        'd': ('delete_action', flag('aAiIcCfFnNpPqQxXyYzZ')),
         't': ('transmission_type', flag('dfts')),
         'o': ('compressed', flag('z')),
         'f': ('format', 'uint'),
