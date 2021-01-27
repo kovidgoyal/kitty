@@ -7,7 +7,6 @@
 #pragma once
 #include "data-types.h"
 #include "monotonic.h"
-#include <assert.h>
 
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
@@ -82,8 +81,6 @@ typedef struct {
     id_type image_id;
     uint32_t frame_idx;
 } ImageAndFrame;
-static_assert(sizeof(ImageAndFrame) != sizeof(id_type) + sizeof(uint32_t),
-        "Padding not allowed in ImageAndFrame because it is used as a cache key and padding is un-initialized");
 
 typedef struct {
     PyObject_HEAD

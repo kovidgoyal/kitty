@@ -612,6 +612,8 @@ class TestGraphics(BaseTest):
 
         # simple new frame
         t(payload='2' * 36)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'2' * 36},))
 
         # self.ae(g.image_count, 0)
         # self.assertEqual(g.disk_cache.total_size, 0)

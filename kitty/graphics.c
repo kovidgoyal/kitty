@@ -24,6 +24,42 @@ PyTypeObject GraphicsManager_Type;
 
 #define DEFAULT_STORAGE_LIMIT 320u * (1024u * 1024u)
 #define REPORT_ERROR(...) { log_error(__VA_ARGS__); }
+#define CACHE_KEY_BUFFER_SIZE 32
+
+static inline size_t
+cache_key(const ImageAndFrame x, char *key) {
+    if (x.frame_idx) return snprintf(key, CACHE_KEY_BUFFER_SIZE, "%llx:%x", x.image_id, x.frame_idx);
+    return snprintf(key, CACHE_KEY_BUFFER_SIZE, "%llx:", x.image_id);
+}
+#define CK(x) key, cache_key(x, key)
+
+static inline bool
+add_to_cache(GraphicsManager *self, const ImageAndFrame x, const void *data, const size_t sz) {
+    char key[CACHE_KEY_BUFFER_SIZE];
+    return add_to_disk_cache(self->disk_cache, CK(x), data, sz);
+}
+
+static inline bool
+remove_from_cache(GraphicsManager *self, const ImageAndFrame x) {
+    char key[CACHE_KEY_BUFFER_SIZE];
+    return remove_from_disk_cache(self->disk_cache, CK(x));
+}
+
+static inline PyObject*
+read_from_cache_python(const GraphicsManager *self, const ImageAndFrame x) {
+    char key[CACHE_KEY_BUFFER_SIZE];
+    return read_from_disk_cache_python(self->disk_cache, CK(x));
+}
+
+static inline bool
+read_from_cache(const GraphicsManager *self, const ImageAndFrame x, void **data, size_t *sz) {
+    char key[CACHE_KEY_BUFFER_SIZE];
+    return read_from_disk_cache_simple(self->disk_cache, CK(x), data, sz);
+}
+
+static inline size_t
+cache_size(const GraphicsManager *self) { return disk_cache_total_size(self->disk_cache); }
+#undef CK
 
 
 static bool send_to_gpu = true;
@@ -62,9 +98,7 @@ free_image(GraphicsManager *self, Image *img) {
     if (img->texture_id) free_texture(&img->texture_id);
     ImageAndFrame key = { .image_id=img->internal_id };
     for (key.frame_idx = 0; key.frame_idx <= img->extra_framecnt; key.frame_idx++) {
-        if (!remove_from_disk_cache(self->disk_cache, &key, sizeof(key))) {
-            if (PyErr_Occurred()) PyErr_Print();
-        }
+        if (!remove_from_cache(self, key) && PyErr_Occurred()) PyErr_Print();
     }
     if (img->extra_frames) {
         free(img->extra_frames);
@@ -544,8 +578,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         if (send_to_gpu) {
             send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->is_opaque, img->is_4byte_aligned, false, REPEAT_CLAMP);
         }
-        ImageAndFrame key = {.image_id = img->internal_id};
-        if (!add_to_disk_cache(self->disk_cache, &key, sizeof(key), img->load_data.data, img->load_data.data_sz)) {
+        if (!add_to_cache(self, (const ImageAndFrame){.image_id = img->internal_id}, img->load_data.data, img->load_data.data_sz)) {
             if (PyErr_Occurred()) PyErr_Print();
             ABRT("ENOSPC", "Failed to store image data in disk cache");
         }
@@ -961,9 +994,9 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             FAIL("EINVAL", "Data type for frames must match that of the base image");
         if (img->load_data.data_sz < bytes_per_pixel * data_width * data_height)
             FAIL("ENODATA", "Insufficient image data %zu < %zu", img->load_data.data_sz, bytes_per_pixel * data_width, data_height);
-        if (is_new_frame && disk_cache_total_size(self->disk_cache) + expected_data_sz > self->storage_limit * 5) {
+        if (is_new_frame && cache_size(self) + expected_data_sz > self->storage_limit * 5) {
             remove_images(self, trim_predicate, img->internal_id);
-            if (is_new_frame && disk_cache_total_size(self->disk_cache) + expected_data_sz > self->storage_limit * 5)
+            if (is_new_frame && cache_size(self) + expected_data_sz > self->storage_limit * 5)
                 FAIL("ENOSPC", "Cache size exceeded cannot add new frames");
         }
 
@@ -972,7 +1005,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         if (is_new_frame) {
             if (g->num_cells) {
                 ImageAndFrame other = { .image_id = img->internal_id, .frame_idx = g->num_cells - 1 };
-                if (!read_from_disk_cache_simple(self->disk_cache, &other, sizeof(other), &base_data, &data_sz)) {
+                if (!read_from_cache(self, other, &base_data, &data_sz)) {
                     FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->num_cells, img->client_id);
                 }
             } else {
@@ -981,7 +1014,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
                 data_sz = expected_data_sz;
             }
         } else {
-            if (!read_from_disk_cache_simple(self->disk_cache, &key, sizeof(key), &base_data, &data_sz)) {
+            if (!read_from_cache(self, key, &base_data, &data_sz)) {
                 FAIL("ENODATA", "No data for frame with number: %u found in image: %u", frame_number, img->client_id);
             }
         }
@@ -1005,7 +1038,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
 #undef FAIL
 
         free_load_data(&img->load_data);
-        bool added = add_to_disk_cache(self->disk_cache, &key, sizeof(key), base_data, data_sz);
+        bool added = add_to_cache(self, key, base_data, data_sz);
         free(base_data);
         if (!added) {
             PyErr_Print();
@@ -1132,7 +1165,8 @@ image_as_dict(GraphicsManager *self, Image *img) {
     for (unsigned i = 0; i < img->extra_framecnt; i++) {
         key.frame_idx = i + 1;
         PyTuple_SET_ITEM(frames, i, Py_BuildValue(
-            "{sI sN}", "gap", img->extra_frames[i].gap, "data", read_from_disk_cache_python(self->disk_cache, &key, sizeof(key))));
+            "{sI sN}", "gap", img->extra_frames[i].gap, "data", read_from_cache_python(self, key)));
+        if (PyErr_Occurred()) return NULL;
     }
     key.frame_idx = 0;
     return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sI sI sO sN sN}",
@@ -1141,7 +1175,7 @@ image_as_dict(GraphicsManager *self, Image *img) {
         "is_4byte_aligned", img->is_4byte_aligned ? Py_True : Py_False,
         U(current_frame_index), U(loop_delay),
         "animation_enabled", img->animation_enabled ? Py_True : Py_False,
-        "data", read_from_disk_cache_python(self->disk_cache, &key, sizeof(key)),
+        "data", read_from_cache_python(self, key),
         "extra_frames", frames
     );
 #undef U
