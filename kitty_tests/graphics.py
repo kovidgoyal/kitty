@@ -663,21 +663,28 @@ class TestGraphics(BaseTest):
             {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
             {'gap': 40, 'id': 4, 'data': b'5' * 36},
         ))
+        self.assertEqual(img['current_frame_index'], 1)
         self.assertIsNone(li(a='d', d='f', i=1, r=1))
         img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 0)
         self.assertEqual(img['data'], b'3' * 36)
         self.assertEqual(img['extra_frames'], (
             {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
             {'gap': 40, 'id': 4, 'data': b'5' * 36},
         ))
+        self.assertIsNone(li(a='a', i=1, c=3))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 2)
         self.assertIsNone(li(a='d', d='f', i=1, r=2))
         img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 1)
         self.assertEqual(img['data'], b'3' * 36)
         self.assertEqual(img['extra_frames'], (
             {'gap': 40, 'id': 4, 'data': b'5' * 36},
         ))
         self.assertIsNone(li(a='d', d='f', i=1))
         img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 0)
         self.assertEqual(img['data'], b'5' * 36)
         self.assertFalse(img['extra_frames'])
         self.assertIsNone(li(a='d', d='f', i=1))

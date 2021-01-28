@@ -780,8 +780,32 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 #define _gap z_index
 #define _animation_enabled data_width
 
+static inline Frame*
+current_frame(Image *img) {
+    if (img->current_frame_index > img->extra_framecnt) return NULL;
+    return img->current_frame_index ? img->extra_frames + img->current_frame_index - 1 : &img->root_frame;
+}
+
+static void
+update_current_frame(GraphicsManager *self, Image *img, void *data) {
+    bool needs_load = data == NULL;
+    Frame *f = current_frame(img);
+    if (f == NULL) return;
+    if (needs_load) {
+        size_t data_sz;
+        if (!read_from_cache(self, (const ImageAndFrame){.image_id=img->internal_id, .frame_id=f->id}, &data, &data_sz)) {
+            if (PyErr_Occurred()) PyErr_Print();
+            return;
+        }
+    }
+    if (send_to_gpu) {
+        send_image_to_gpu(&img->texture_id, data, img->width, img->height, img->is_opaque, img->is_4byte_aligned, false, REPEAT_CLAMP);
+    }
+    if (needs_load) free(data);
+}
+
 static Image*
-handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, Image *img, const uint8_t *payload) {
+handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, Image *img, const uint8_t *payload, bool *is_dirty) {
     uint32_t frame_number = g->_frame_number, fmt = g->format ? g->format : RGBA;
     if (!frame_number || frame_number > img->extra_framecnt + 2) frame_number = img->extra_framecnt + 2;
     bool is_new_frame = frame_number == img->extra_framecnt + 2;
@@ -822,6 +846,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
 
         void *base_data = NULL;
         size_t data_sz = 0;
+        bool needs_send_to_gpu = false;
         ImageAndFrame key = { .image_id = img->internal_id };
         if (is_new_frame) {
             key.frame_id = ++img->frame_id_counter;
@@ -849,6 +874,8 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             if (!read_from_cache(self, key, &base_data, &data_sz)) {
                 FAIL("ENODATA", "No data for frame with number: %u found in image: %u", frame_number, img->client_id);
             }
+            Frame *f = current_frame(img);
+            if (f && f->id == key.frame_id) needs_send_to_gpu = true;
         }
         if (data_sz != expected_data_sz) {
             free(base_data);
@@ -871,6 +898,10 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
 
         free_load_data(&img->load_data);
         bool added = add_to_cache(self, key, base_data, data_sz);
+        if (needs_send_to_gpu) {
+            update_current_frame(self, img, base_data);
+            *is_dirty = true;
+        }
         free(base_data);
         if (!added) {
             PyErr_Print();
@@ -893,7 +924,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
 #undef ABRT
 
 static Image*
-handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, bool *is_dirty UNUSED) {
+handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, bool *is_dirty) {
     if (!g->id && !g->image_number) {
         REPORT_ERROR("Delete frame data command without image id or number");
         return NULL;
@@ -906,6 +937,7 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
     uint32_t frame_number = MIN(img->extra_framecnt + 1, g->_frame_number);
     if (!frame_number) frame_number = 1;
     if (!img->extra_framecnt) return g->delete_action == 'F' ? img : NULL;
+    *is_dirty = true;
     ImageAndFrame key = {.image_id=img->internal_id};
     bool remove_root = frame_number == 1;
     if (remove_root) {
@@ -914,19 +946,26 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
         if (PyErr_Occurred()) PyErr_Print();
         img->root_frame = img->extra_frames[0];
     }
-    unsigned idx = remove_root ? 0 : frame_number - 2;
+    unsigned removed_idx = remove_root ? 0 : frame_number - 2;
     if (!remove_root) {
-        key.frame_id = img->extra_frames[idx].id;
+        key.frame_id = img->extra_frames[removed_idx].id;
         remove_from_cache(self, key);
     }
     if (PyErr_Occurred()) PyErr_Print();
-    if (idx < img->extra_framecnt - 1) memmove(img->extra_frames + idx, img->extra_frames + idx + 1, sizeof(img->extra_frames[0]) * img->extra_framecnt - 1 - idx);
+    if (removed_idx < img->extra_framecnt - 1) memmove(img->extra_frames + removed_idx, img->extra_frames + removed_idx + 1, sizeof(img->extra_frames[0]) * img->extra_framecnt - 1 - removed_idx);
     img->extra_framecnt--;
+    if (img->current_frame_index > img->extra_framecnt) {
+        img->current_frame_index = img->extra_framecnt;
+        update_current_frame(self, img, NULL);
+        return NULL;
+    }
+    if (removed_idx == img->current_frame_index) update_current_frame(self, img, NULL);
+    else if (removed_idx < img->current_frame_index) img->current_frame_index--;
     return NULL;
 }
 
 static void
-handle_animation_control_command(bool *is_dirty, const GraphicsCommand *g, Image *img) {
+handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const GraphicsCommand *g, Image *img) {
     if (g->_frame_number) {
         uint32_t frame_idx = g->_frame_number - 1;
         if (frame_idx <= img->extra_framecnt) {
@@ -939,6 +978,7 @@ handle_animation_control_command(bool *is_dirty, const GraphicsCommand *g, Image
         if (frame_idx != img->current_frame_index && frame_idx <= img->extra_framecnt) {
             img->current_frame_index = frame_idx;
             *is_dirty = true;
+            update_current_frame(self, img, NULL);
         }
     }
     if (g->_animation_enabled) {
@@ -1201,10 +1241,10 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             } else {
                 GraphicsCommand ag = *g;
                 if (ag.action == 'f') {
-                    img = handle_animation_frame_load_command(self, &ag, img, payload);
+                    img = handle_animation_frame_load_command(self, &ag, img, payload, is_dirty);
                     ret = finish_command_response(&ag, img != NULL);
                 } else if (ag.action == 'a') {
-                    handle_animation_control_command(is_dirty, &ag, img);
+                    handle_animation_control_command(self, is_dirty, &ag, img);
                 }
             }
             break;
