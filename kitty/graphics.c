@@ -579,6 +579,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         if (send_to_gpu) {
             send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->is_opaque, img->is_4byte_aligned, false, REPEAT_CLAMP);
         }
+        if (img->root_frame.id) remove_from_cache(self, (const ImageAndFrame){.image_id=img->internal_id, .frame_id=img->root_frame.id});
         img->root_frame.id = ++img->frame_id_counter;
         if (!add_to_cache(self, (const ImageAndFrame){.image_id = img->internal_id, .frame_id=img->root_frame.id}, img->load_data.data, img->load_data.data_sz)) {
             if (PyErr_Occurred()) PyErr_Print();
