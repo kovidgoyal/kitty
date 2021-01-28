@@ -28,7 +28,7 @@ PyTypeObject GraphicsManager_Type;
 
 static inline size_t
 cache_key(const ImageAndFrame x, char *key) {
-    if (x.frame_idx) return snprintf(key, CACHE_KEY_BUFFER_SIZE, "%llx:%x", x.image_id, x.frame_idx);
+    if (x.frame_id) return snprintf(key, CACHE_KEY_BUFFER_SIZE, "%llx:%x", x.image_id, x.frame_id);
     return snprintf(key, CACHE_KEY_BUFFER_SIZE, "%llx:", x.image_id);
 }
 #define CK(x) key, cache_key(x, key)
@@ -97,7 +97,9 @@ static inline void
 free_image(GraphicsManager *self, Image *img) {
     if (img->texture_id) free_texture(&img->texture_id);
     ImageAndFrame key = { .image_id=img->internal_id };
-    for (key.frame_idx = 0; key.frame_idx <= img->extra_framecnt; key.frame_idx++) {
+    if (!remove_from_cache(self, key) && PyErr_Occurred()) PyErr_Print();
+    for (unsigned i = 0; i < img->extra_framecnt; i++) {
+        key.frame_id = img->extra_frames[i].id;
         if (!remove_from_cache(self, key) && PyErr_Occurred()) PyErr_Print();
     }
     if (img->extra_frames) {
@@ -483,7 +485,7 @@ process_image_data(GraphicsManager *self, Image* img, const GraphicsCommand *g, 
 }
 
 static Image*
-initialize_load_data(GraphicsManager *self, const GraphicsCommand *g, Image *img, const unsigned char transmission_type, const uint32_t data_fmt, const uint32_t frame_idx) {
+initialize_load_data(GraphicsManager *self, const GraphicsCommand *g, Image *img, const unsigned char transmission_type, const uint32_t data_fmt, const uint32_t frame_id) {
     img->load_data = (const LoadData){0};
     switch(data_fmt) {
         case PNG:
@@ -503,7 +505,7 @@ initialize_load_data(GraphicsManager *self, const GraphicsCommand *g, Image *img
             ABRT("EINVAL", "Unknown image format: %u", data_fmt);
     }
     if (transmission_type == 'd') {
-        if (g->more) self->currently_loading_data_for = (ImageAndFrame){.image_id = img->internal_id, .frame_idx = frame_idx};
+        if (g->more) self->currently_loading_data_for = (ImageAndFrame){.image_id = img->internal_id, .frame_id = frame_id};
         img->load_data.buf_capacity = img->load_data.data_sz + (g->compressed ? 1024 : 10);  // compression header
         img->load_data.buf = malloc(img->load_data.buf_capacity);
         img->load_data.buf_used = 0;
@@ -781,7 +783,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
     g->num_lines = frame_number;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
     size_t w = img->width, h = img->height;
-    if (tt == 'd' && self->currently_loading_data_for.image_id == img->internal_id && self->currently_loading_data_for.frame_idx == frame_number - 1) {
+    if (tt == 'd' && self->currently_loading_data_for.image_id == img->internal_id) {
         INIT_CHUNKED_LOAD;
     } else {
         self->last_transmit_graphics_command = *g;
@@ -800,7 +802,6 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
     if (img->data_loaded) {
         const unsigned bytes_per_pixel = img->is_opaque ? 3 : 4;
         const size_t expected_data_sz = img->width * img->height * bytes_per_pixel;
-        const ImageAndFrame key = { .image_id = img->internal_id, .frame_idx = frame_number - 1 };
 
         if (img->load_data.is_opaque != img->is_opaque)
             FAIL("EINVAL", "Transparency for frames must match that of the base image");
@@ -816,9 +817,19 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
 
         void *base_data = NULL;
         size_t data_sz = 0;
+        ImageAndFrame key = { .image_id = img->internal_id };
         if (is_new_frame) {
+            key.frame_id = ++img->frame_id_counter;
+            if (!key.frame_id) key.frame_id = ++img->frame_id_counter;
             if (g->num_cells) {
-                const ImageAndFrame other = { .image_id = img->internal_id, .frame_idx = g->num_cells - 1 };
+                ImageAndFrame other = { .image_id = img->internal_id };
+                if (g->num_cells > 1) {
+                    other.frame_id = g->num_cells - 2;
+                    if (other.frame_id >= img->extra_framecnt) {
+                        FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->num_cells, img->client_id);
+                    }
+                    other.frame_id = img->extra_frames[other.frame_id].id;
+                }
                 if (!read_from_cache(self, other, &base_data, &data_sz)) {
                     FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->num_cells, img->client_id);
                 }
@@ -828,6 +839,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
                 data_sz = expected_data_sz;
             }
         } else {
+            if (frame_number > 1) key.frame_id = img->extra_frames[frame_number - 2].id;
             if (!read_from_cache(self, key, &base_data, &data_sz)) {
                 FAIL("ENODATA", "No data for frame with number: %u found in image: %u", frame_number, img->client_id);
             }
@@ -865,6 +877,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             img->extra_frames = frames;
             img->extra_framecnt++;
             img->extra_frames[frame_number - 2].gap = DEFAULT_GAP;
+            img->extra_frames[frame_number - 2].id = key.frame_id;
         }
         if (g->z_index > 0) img->extra_frames[frame_number - 2].gap = g->z_index;
     }
@@ -886,8 +899,24 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
     }
     uint32_t frame_number = MIN(img->extra_framecnt + 1, g->num_lines);
     if (!frame_number) frame_number = 1;
-    if (!img->extra_framecnt) return g->action == 'F' ? img : NULL;
-
+    if (!img->extra_framecnt) return g->delete_action == 'F' ? img : NULL;
+    ImageAndFrame key = {.image_id=img->internal_id};
+    if (frame_number == 1) {
+        key.frame_id = img->extra_frames[0].id;
+        img->loop_delay = img->extra_frames[0].gap;
+        void *data; size_t sz;
+        if (read_from_cache(self, key, &data, &sz)) {
+            key.frame_id = 0;
+            add_to_cache(self, key, data, sz);
+        }
+        if (PyErr_Occurred()) PyErr_Print();
+        frame_number = 2;
+    }
+    unsigned idx = frame_number - 2;
+    key.frame_id = img->extra_frames[idx].id;
+    remove_from_cache(self, key);
+    if (idx < img->extra_framecnt - 1) memmove(img->extra_frames + idx, img->extra_frames + idx + 1, sizeof(img->extra_frames[0]) * img->extra_framecnt - 1 - idx);
+    img->extra_framecnt--;
     return NULL;
 }
 // }}}
@@ -1187,12 +1216,12 @@ image_as_dict(GraphicsManager *self, Image *img) {
     ImageAndFrame key = {.image_id = img->internal_id};
     PyObject *frames = PyTuple_New(img->extra_framecnt);
     for (unsigned i = 0; i < img->extra_framecnt; i++) {
-        key.frame_idx = i + 1;
+        key.frame_id = img->extra_frames[i].id;
         PyTuple_SET_ITEM(frames, i, Py_BuildValue(
-            "{sI sN}", "gap", img->extra_frames[i].gap, "data", read_from_cache_python(self, key)));
+            "{sI sI sN}", "gap", img->extra_frames[i].gap, "id", key.frame_id, "data", read_from_cache_python(self, key)));
         if (PyErr_Occurred()) return NULL;
     }
-    key.frame_idx = 0;
+    key.frame_id = 0;
     return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sI sI sO sN sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
         "data_loaded", img->data_loaded ? Py_True : Py_False,

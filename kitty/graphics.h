@@ -44,6 +44,7 @@ typedef struct {
 
 typedef struct {
     uint32_t gap;
+    uint32_t id;
 } Frame;
 
 
@@ -56,7 +57,7 @@ typedef struct {
 
     ImageRef *refs;
     Frame *extra_frames;
-    uint32_t loop_delay, current_frame_index;
+    uint32_t loop_delay, current_frame_index, frame_id_counter;
     size_t refcnt, refcap, extra_framecnt;
     monotonic_t atime;
     size_t used_storage;
@@ -79,7 +80,7 @@ typedef struct {
 
 typedef struct {
     id_type image_id;
-    uint32_t frame_idx;
+    uint32_t frame_id;
 } ImageAndFrame;
 
 typedef struct {

@@ -613,29 +613,56 @@ class TestGraphics(BaseTest):
         # simple new frame
         t(payload='2' * 36)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'2' * 36},))
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 1, 'data': b'2' * 36},))
         # test editing a frame
         t(payload='3' * 36, r=2)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'3' * 36},))
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 1, 'data': b'3' * 36},))
         # test editing part of a frame
         t(payload='4' * 12, r=2, s=2, v=2)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'444444333333444444333333333333333333'},))
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 1, 'data': b'444444333333444444333333333333333333'},))
         t(payload='5' * 12, r=2, s=2, v=2, x=1, y=1)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'444444333555555444555555333333333333'},))
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 1, 'data': b'444444333555555444555555333333333333'},))
         t(payload='3' * 36, r=2)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'data': b'3' * 36},))
+        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 1, 'data': b'3' * 36},))
         # test loading from previous frame
         t(payload='4' * 12, c=2, s=2, v=2, z=101, frame_number=3)
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], (
-            {'gap': 40, 'data': b'3' * 36},
-            {'gap': 101, 'data': b'444444333333444444333333333333333333'},
+            {'gap': 40, 'id': 1, 'data': b'3' * 36},
+            {'gap': 101, 'id': 2, 'data': b'444444333333444444333333333333333333'},
         ))
-
-        li(a='d', d='A')
+        # test delete of frames
+        t(payload='5' * 36, frame_number=4)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], (
+            {'gap': 40, 'id': 1, 'data': b'3' * 36},
+            {'gap': 101, 'id': 2, 'data': b'444444333333444444333333333333333333'},
+            {'gap': 40, 'id': 3, 'data': b'5' * 36},
+        ))
+        self.assertIsNone(li(a='d', d='f', i=1, r=1))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['data'], b'3' * 36)
+        self.assertEqual(img['extra_frames'], (
+            {'gap': 101, 'id': 2, 'data': b'444444333333444444333333333333333333'},
+            {'gap': 40, 'id': 3, 'data': b'5' * 36},
+        ))
+        self.assertIsNone(li(a='d', d='f', i=1, r=2))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['data'], b'3' * 36)
+        self.assertEqual(img['extra_frames'], (
+            {'gap': 40, 'id': 3, 'data': b'5' * 36},
+        ))
+        self.assertIsNone(li(a='d', d='f', i=1))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['data'], b'5' * 36)
+        self.assertFalse(img['extra_frames'])
+        self.assertIsNone(li(a='d', d='f', i=1))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['data'], b'5' * 36)
+        self.assertIsNone(li(a='d', d='F', i=1))
         self.ae(g.image_count, 0)
         self.assertEqual(g.disk_cache.total_size, 0)
