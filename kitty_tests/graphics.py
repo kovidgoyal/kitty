@@ -635,11 +635,27 @@ class TestGraphics(BaseTest):
             {'gap': 40, 'id': 2, 'data': b'3' * 36},
             {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
         ))
+        # test changing gaps
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['root_frame_gap'], 40)
+        self.assertIsNone(li(a='a', i=1, r=1, z=13))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['root_frame_gap'], 13)
+        self.assertIsNone(li(a='a', i=1, r=2, z=43))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'][0]['gap'], 43)
+        # test changing current frame
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 0)
+        self.assertIsNone(li(a='a', i=1, c=2))
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['current_frame_index'], 1)
+
         # test delete of frames
         t(payload='5' * 36, frame_number=4)
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], (
-            {'gap': 40, 'id': 2, 'data': b'3' * 36},
+            {'gap': 43, 'id': 2, 'data': b'3' * 36},
             {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
             {'gap': 40, 'id': 4, 'data': b'5' * 36},
         ))

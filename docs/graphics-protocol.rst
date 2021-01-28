@@ -554,6 +554,15 @@ Key      Value                 Default    Description
 ``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the previous one. Values less than
                                           one are ignored, new frames are given a default gap of ``40ms`` if not specified.
 
+**Keys for animation control**
+-----------------------------------------------------------
+``s``    Positive integer      ``0``      ``1`` - start animation, ``>1`` - stop animation
+``r``    Positive integer      ``0``      The 1-based frame number of the frame that is being affected
+``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the previous one. Values less than
+                                          one are ignored
+``c``    Positive integer      ``0``      The 1-based frame number of the frame that should be made the current frame
+
+
 **Keys for deleting images**
 -----------------------------------------------------------
 ``d``    Single character.     ``a``      What to delete.

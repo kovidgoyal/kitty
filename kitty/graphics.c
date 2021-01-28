@@ -778,6 +778,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 #define _frame_number num_lines
 #define _other_frame_number num_cells
 #define _gap z_index
+#define _animation_enabled data_width
 
 static Image*
 handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, Image *img, const uint8_t *payload) {
@@ -922,6 +923,27 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
     if (idx < img->extra_framecnt - 1) memmove(img->extra_frames + idx, img->extra_frames + idx + 1, sizeof(img->extra_frames[0]) * img->extra_framecnt - 1 - idx);
     img->extra_framecnt--;
     return NULL;
+}
+
+static void
+handle_animation_control_command(bool *is_dirty, const GraphicsCommand *g, Image *img) {
+    if (g->_frame_number) {
+        uint32_t frame_idx = g->_frame_number - 1;
+        if (frame_idx <= img->extra_framecnt) {
+            Frame *f = frame_idx ? img->extra_frames + frame_idx - 1 : &img->root_frame;
+            if (g->_gap > 0) f->gap = g->_gap;
+        }
+    }
+    if (g->_other_frame_number) {
+        uint32_t frame_idx = g->_other_frame_number - 1;
+        if (frame_idx != img->current_frame_index && frame_idx <= img->extra_framecnt) {
+            img->current_frame_index = frame_idx;
+            *is_dirty = true;
+        }
+    }
+    if (g->_animation_enabled) {
+        img->animation_enabled = g->_animation_enabled == 1;
+    }
 }
 // }}}
 
@@ -1181,6 +1203,8 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 if (ag.action == 'f') {
                     img = handle_animation_frame_load_command(self, &ag, img, payload);
                     ret = finish_command_response(&ag, img != NULL);
+                } else if (ag.action == 'a') {
+                    handle_animation_control_command(is_dirty, &ag, img);
                 }
             }
             break;
@@ -1217,24 +1241,23 @@ new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 static inline PyObject*
 image_as_dict(GraphicsManager *self, Image *img) {
 #define U(x) #x, img->x
+#define B(x) #x, img->x ? Py_True : Py_False
     ImageAndFrame key = {.image_id = img->internal_id};
     PyObject *frames = PyTuple_New(img->extra_framecnt);
     for (unsigned i = 0; i < img->extra_framecnt; i++) {
         key.frame_id = img->extra_frames[i].id;
         PyTuple_SET_ITEM(frames, i, Py_BuildValue(
             "{sI sI sN}", "gap", img->extra_frames[i].gap, "id", key.frame_id, "data", read_from_cache_python(self, key)));
-        if (PyErr_Occurred()) return NULL;
+        if (PyErr_Occurred()) { Py_CLEAR(frames); return NULL; }
     }
     key.frame_id = img->root_frame.id;
-    return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sI sI sO sN sN}",
+    return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sO sI sI sI sN sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
-        "data_loaded", img->data_loaded ? Py_True : Py_False,
-        "is_4byte_aligned", img->is_4byte_aligned ? Py_True : Py_False,
-        U(current_frame_index), "root_frame_gap", img->root_frame.gap,
-        "animation_enabled", img->animation_enabled ? Py_True : Py_False,
-        "data", read_from_cache_python(self, key),
-        "extra_frames", frames
+        B(data_loaded), B(is_4byte_aligned), B(animation_enabled),
+        U(current_frame_index), "root_frame_gap", img->root_frame.gap, U(current_frame_index),
+        "data", read_from_cache_python(self, key), "extra_frames", frames
     );
+#undef B
 #undef U
 }
 
