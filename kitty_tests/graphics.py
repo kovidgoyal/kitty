@@ -162,6 +162,23 @@ def put_helpers(self, cw, ch):
     return s, dx, dy, put_image, put_ref, layers, rect_eq
 
 
+def make_send_command(screen):
+    def li(payload='abcdefghijkl'*3, s=4, v=3, f=24, a='f', i=1, **kw):
+        if s:
+            kw['s'] = s
+        if v:
+            kw['v'] = v
+        if f:
+            kw['f'] = f
+        if i:
+            kw['i'] = i
+        kw['a'] = a
+        cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
+        res = send_command(screen, cmd, payload)
+        return parse_full_response(res)
+    return li
+
+
 class TestGraphics(BaseTest):
 
     def setUp(self):
@@ -574,22 +591,9 @@ class TestGraphics(BaseTest):
         self.assertEqual(s.grman.disk_cache.total_size, 0)
 
     def test_animation_frame_loading(self):
-        s = screen = self.create_screen()
+        s = self.create_screen()
         g = s.grman
-
-        def li(payload='abcdefghijkl'*3, s=4, v=3, f=24, a='f', i=1, **kw):
-            if s:
-                kw['s'] = s
-            if v:
-                kw['v'] = v
-            if f:
-                kw['f'] = f
-            if i:
-                kw['i'] = i
-            kw['a'] = a
-            cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
-            res = send_command(screen, cmd, payload)
-            return parse_full_response(res)
+        li = make_send_command(s)
 
         def t(code='OK', image_id=1, frame_number=2, **kw):
             res = li(**kw)
@@ -680,5 +684,29 @@ class TestGraphics(BaseTest):
         img = g.image_for_client_id(1)
         self.assertEqual(img['data'], b'5' * 36)
         self.assertIsNone(li(a='d', d='F', i=1))
+        self.ae(g.image_count, 0)
+        self.assertEqual(g.disk_cache.total_size, 0)
+
+    def test_graphics_quota_enforcement(self):
+        s = self.create_screen()
+        g = s.grman
+        g.storage_limit = 36*2
+        li = make_send_command(s)
+        # test quota for simple images
+        self.assertEqual(li(a='T').code, 'OK')
+        self.assertEqual(li(a='T', i=2).code, 'OK')
+        self.assertEqual(g.disk_cache.total_size, g.storage_limit)
+        self.assertEqual(g.image_count, 2)
+        self.assertEqual(li(a='T', i=3).code, 'OK')
+        self.assertEqual(g.disk_cache.total_size, g.storage_limit)
+        self.assertEqual(g.image_count, 2)
+        # test quota for frames
+        for i in range(8):
+            self.assertEqual(li(payload=f'{i}' * 36, i=2).code, 'OK')
+        self.assertEqual(li(payload='x' * 36, i=2).code, 'ENOSPC')
+        # test editing should not trigger quota
+        self.assertEqual(li(payload='4' * 12, r=2, s=2, v=2, i=2).code, 'OK')
+
+        s.reset()
         self.ae(g.image_count, 0)
         self.assertEqual(g.disk_cache.total_size, 0)
