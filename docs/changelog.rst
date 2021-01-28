@@ -11,6 +11,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   used by full screen terminal programs and even games, see
   :doc:`keyboard-protocol` (:iss:`3248`)
 
+- diff kitten: Implement recursive diff over SSH (:iss:`3268`)
+
 - Add support for the color settings stack that XTerm copied from us without
   acknowledgement and decided to use incompatible escape codes for.
 

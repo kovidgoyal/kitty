@@ -15,6 +15,11 @@ if TYPE_CHECKING:
 
 
 path_name_map: Dict[str, str] = {}
+remote_dirs: Dict[str, str] = {}
+
+
+def add_remote_dir(val: str) -> None:
+    remote_dirs[val] = os.path.basename(val).rpartition('-')[-1]
 
 
 class Segment:
@@ -86,6 +91,20 @@ class Collection:
 
     def __len__(self) -> int:
         return len(self.all_paths)
+
+
+def remote_hostname(path: str) -> Tuple[Optional[str], Optional[str]]:
+    for q in remote_dirs:
+        if path.startswith(q):
+            return q, remote_dirs[q]
+    return None, None
+
+
+def resolve_remote_name(path: str, default: str) -> str:
+    remote_dir, rh = remote_hostname(path)
+    if remote_dir and rh:
+        return rh + ':' + os.path.relpath(path, remote_dir)
+    return default
 
 
 def collect_files(collection: Collection, left: str, right: str) -> None:
@@ -184,8 +203,8 @@ def create_collection(left: str, right: str) -> Collection:
         collect_files(collection, left, right)
     else:
         pl, pr = os.path.abspath(left), os.path.abspath(right)
-        path_name_map[pl] = left
-        path_name_map[pr] = right
+        path_name_map[pl] = resolve_remote_name(pl, left)
+        path_name_map[pr] = resolve_remote_name(pr, right)
         collection.add_change(pl, pr)
     collection.finalize()
     return collection

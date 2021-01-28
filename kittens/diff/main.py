@@ -22,7 +22,7 @@ from kitty.cli_stub import DiffCLIOptions
 from kitty.conf.utils import KittensKeyAction
 from kitty.constants import appname
 from kitty.fast_data_types import wcswidth
-from kitty.key_encoding import KeyEvent, EventType
+from kitty.key_encoding import EventType, KeyEvent
 from kitty.options_stub import DiffOptions
 from kitty.utils import ScreenSize
 
@@ -34,7 +34,7 @@ from ..tui.operations import styled
 from . import global_data
 from .collect import (
     Collection, create_collection, data_for_path, lines_for_path, sanitize,
-    set_highlight_data
+    set_highlight_data, add_remote_dir
 )
 from .config import init_config
 from .patch import Differ, Patch, set_diff_command, worker_processes
@@ -567,17 +567,39 @@ def terminate_processes(processes: Iterable[int]) -> None:
             os.kill(pid, signal.SIGKILL)
 
 
+def get_ssh_file(hostname: str, rpath: str) -> str:
+    import io
+    import shutil
+    import tarfile
+    tdir = tempfile.mkdtemp(suffix=f'-{hostname}')
+    add_remote_dir(tdir)
+    atexit.register(shutil.rmtree, tdir)
+    is_abs = rpath.startswith('/')
+    rpath = rpath.lstrip('/')
+    cmd = ['ssh', hostname, 'tar', '-c', '-f', '-']
+    if is_abs:
+        cmd.extend(('-C', '/'))
+    cmd.append(rpath)
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    assert p.stdout is not None
+    raw = p.stdout.read()
+    if p.wait() != 0:
+        raise SystemExit(p.returncode)
+    with tarfile.open(fileobj=io.BytesIO(raw), mode='r:') as tf:
+        members = tf.getmembers()
+        tf.extractall(tdir)
+        if len(members) == 1:
+            for root, dirs, files in os.walk(tdir):
+                if files:
+                    return os.path.join(root, files[0])
+        return os.path.abspath(os.path.join(tdir, rpath))
+
+
 def get_remote_file(path: str) -> str:
     if path.startswith('ssh:'):
         parts = path.split(':', 2)
         if len(parts) == 3:
-            hostname, rpath = parts[1:]
-            with tempfile.NamedTemporaryFile(suffix='-' + os.path.basename(rpath), prefix='remote:', delete=False) as tf:
-                atexit.register(os.remove, tf.name)
-                p = subprocess.Popen(['ssh', hostname, 'cat', rpath], stdout=tf)
-                if p.wait() != 0:
-                    raise SystemExit(p.returncode)
-                return tf.name
+            return get_ssh_file(parts[1], parts[2])
     return path
 
 
@@ -588,12 +610,12 @@ def main(args: List[str]) -> None:
         raise SystemExit('You must specify exactly two files/directories to compare')
     left, right = items
     global_data.title = _('{} vs. {}').format(left, right)
-    if os.path.isdir(left) != os.path.isdir(right):
-        raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
     opts = init_config(cli_opts)
     set_diff_command(opts.diff_cmd)
     lines_for_path.replace_tab_by = opts.replace_tab_by
     left, right = map(get_remote_file, (left, right))
+    if os.path.isdir(left) != os.path.isdir(right):
+        raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
     for f in left, right:
         if not os.path.exists(f):
             raise SystemExit('{} does not exist'.format(f))
