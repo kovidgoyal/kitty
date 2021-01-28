@@ -56,8 +56,8 @@ typedef struct {
     LoadData load_data;
 
     ImageRef *refs;
-    Frame *extra_frames;
-    uint32_t loop_delay, current_frame_index, frame_id_counter;
+    Frame *extra_frames, root_frame;
+    uint32_t current_frame_index, frame_id_counter;
     size_t refcnt, refcap, extra_framecnt;
     monotonic_t atime;
     size_t used_storage;

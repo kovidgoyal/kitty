@@ -28,8 +28,7 @@ PyTypeObject GraphicsManager_Type;
 
 static inline size_t
 cache_key(const ImageAndFrame x, char *key) {
-    if (x.frame_id) return snprintf(key, CACHE_KEY_BUFFER_SIZE, "%llx:%x", x.image_id, x.frame_id);
-    return snprintf(key, CACHE_KEY_BUFFER_SIZE, "%llx:", x.image_id);
+    return snprintf(key, CACHE_KEY_BUFFER_SIZE, "%llx:%x", x.image_id, x.frame_id);
 }
 #define CK(x) key, cache_key(x, key)
 
@@ -96,7 +95,7 @@ free_load_data(LoadData *ld) {
 static inline void
 free_image(GraphicsManager *self, Image *img) {
     if (img->texture_id) free_texture(&img->texture_id);
-    ImageAndFrame key = { .image_id=img->internal_id };
+    ImageAndFrame key = { .image_id=img->internal_id, .frame_id = img->root_frame.id };
     if (!remove_from_cache(self, key) && PyErr_Occurred()) PyErr_Print();
     for (unsigned i = 0; i < img->extra_framecnt; i++) {
         key.frame_id = img->extra_frames[i].id;
@@ -580,7 +579,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         if (send_to_gpu) {
             send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->is_opaque, img->is_4byte_aligned, false, REPEAT_CLAMP);
         }
-        if (!add_to_cache(self, (const ImageAndFrame){.image_id = img->internal_id}, img->load_data.data, img->load_data.data_sz)) {
+        img->root_frame.id = ++img->frame_id_counter;
+        if (!add_to_cache(self, (const ImageAndFrame){.image_id = img->internal_id, .frame_id=img->root_frame.id}, img->load_data.data, img->load_data.data_sz)) {
             if (PyErr_Occurred()) PyErr_Print();
             ABRT("ENOSPC", "Failed to store image data in disk cache");
         }
@@ -825,7 +825,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             key.frame_id = ++img->frame_id_counter;
             if (!key.frame_id) key.frame_id = ++img->frame_id_counter;
             if (g->_other_frame_number) {
-                ImageAndFrame other = { .image_id = img->internal_id };
+                ImageAndFrame other = { .image_id = img->internal_id, .frame_id = img->root_frame.id };
                 if (g->_other_frame_number > 1) {
                     other.frame_id = g->_other_frame_number - 2;
                     if (other.frame_id >= img->extra_framecnt) {
@@ -843,6 +843,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             }
         } else {
             if (frame_number > 1) key.frame_id = img->extra_frames[frame_number - 2].id;
+            else key.frame_id = img->root_frame.id;
             if (!read_from_cache(self, key, &base_data, &data_sz)) {
                 FAIL("ENODATA", "No data for frame with number: %u found in image: %u", frame_number, img->client_id);
             }
@@ -874,7 +875,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             ABRT("ENOSPC", "Failed to cache data for image frame");
         }
         if (is_new_frame) {
-            if (!img->extra_framecnt) img->loop_delay = DEFAULT_GAP;
+            if (!img->extra_framecnt) img->root_frame.gap = DEFAULT_GAP;
             Frame *frames = realloc(img->extra_frames, sizeof(img->extra_frames[0]) * img->extra_framecnt + 1);
             if (!frames) ABRT("ENOMEM", "Out of memory");
             img->extra_frames = frames;
@@ -904,20 +905,19 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
     if (!frame_number) frame_number = 1;
     if (!img->extra_framecnt) return g->delete_action == 'F' ? img : NULL;
     ImageAndFrame key = {.image_id=img->internal_id};
-    if (frame_number == 1) {
-        key.frame_id = img->extra_frames[0].id;
-        img->loop_delay = img->extra_frames[0].gap;
-        void *data; size_t sz;
-        if (read_from_cache(self, key, &data, &sz)) {
-            key.frame_id = 0;
-            add_to_cache(self, key, data, sz);
-        }
+    bool remove_root = frame_number == 1;
+    if (remove_root) {
+        key.frame_id = img->root_frame.id;
+        remove_from_cache(self, key);
         if (PyErr_Occurred()) PyErr_Print();
-        frame_number = 2;
+        img->root_frame = img->extra_frames[0];
     }
-    unsigned idx = frame_number - 2;
-    key.frame_id = img->extra_frames[idx].id;
-    remove_from_cache(self, key);
+    unsigned idx = remove_root ? 0 : frame_number - 2;
+    if (!remove_root) {
+        key.frame_id = img->extra_frames[idx].id;
+        remove_from_cache(self, key);
+    }
+    if (PyErr_Occurred()) PyErr_Print();
     if (idx < img->extra_framecnt - 1) memmove(img->extra_frames + idx, img->extra_frames + idx + 1, sizeof(img->extra_frames[0]) * img->extra_framecnt - 1 - idx);
     img->extra_framecnt--;
     return NULL;
@@ -1224,12 +1224,12 @@ image_as_dict(GraphicsManager *self, Image *img) {
             "{sI sI sN}", "gap", img->extra_frames[i].gap, "id", key.frame_id, "data", read_from_cache_python(self, key)));
         if (PyErr_Occurred()) return NULL;
     }
-    key.frame_id = 0;
+    key.frame_id = img->root_frame.id;
     return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sI sI sO sN sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
         "data_loaded", img->data_loaded ? Py_True : Py_False,
         "is_4byte_aligned", img->is_4byte_aligned ? Py_True : Py_False,
-        U(current_frame_index), U(loop_delay),
+        U(current_frame_index), "root_frame_gap", img->root_frame.gap,
         "animation_enabled", img->animation_enabled ? Py_True : Py_False,
         "data", read_from_cache_python(self, key),
         "extra_frames", frames
