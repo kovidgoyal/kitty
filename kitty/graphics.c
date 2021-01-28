@@ -774,13 +774,16 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 
 // Animation {{{
 #define DEFAULT_GAP 40
+#define _frame_number num_lines
+#define _other_frame_number num_cells
+#define _gap z_index
 
 static Image*
 handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, Image *img, const uint8_t *payload) {
-    uint32_t frame_number = g->num_lines, fmt = g->format ? g->format : RGBA;
+    uint32_t frame_number = g->_frame_number, fmt = g->format ? g->format : RGBA;
     if (!frame_number || frame_number > img->extra_framecnt + 2) frame_number = img->extra_framecnt + 2;
     bool is_new_frame = frame_number == img->extra_framecnt + 2;
-    g->num_lines = frame_number;
+    g->_frame_number = frame_number;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
     size_t w = img->width, h = img->height;
     if (tt == 'd' && self->currently_loading_data_for.image_id == img->internal_id) {
@@ -821,17 +824,17 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         if (is_new_frame) {
             key.frame_id = ++img->frame_id_counter;
             if (!key.frame_id) key.frame_id = ++img->frame_id_counter;
-            if (g->num_cells) {
+            if (g->_other_frame_number) {
                 ImageAndFrame other = { .image_id = img->internal_id };
-                if (g->num_cells > 1) {
-                    other.frame_id = g->num_cells - 2;
+                if (g->_other_frame_number > 1) {
+                    other.frame_id = g->_other_frame_number - 2;
                     if (other.frame_id >= img->extra_framecnt) {
-                        FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->num_cells, img->client_id);
+                        FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->_other_frame_number, img->client_id);
                     }
                     other.frame_id = img->extra_frames[other.frame_id].id;
                 }
                 if (!read_from_cache(self, other, &base_data, &data_sz)) {
-                    FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->num_cells, img->client_id);
+                    FAIL("ENODATA", "No data for frame with number: %u found in image: %u", g->_other_frame_number, img->client_id);
                 }
             } else {
                 base_data = calloc(1, expected_data_sz);
@@ -879,7 +882,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             img->extra_frames[frame_number - 2].gap = DEFAULT_GAP;
             img->extra_frames[frame_number - 2].id = key.frame_id;
         }
-        if (g->z_index > 0) img->extra_frames[frame_number - 2].gap = g->z_index;
+        if (g->_gap > 0) img->extra_frames[frame_number - 2].gap = g->_gap;
     }
     return img;
 }
@@ -897,7 +900,7 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
         REPORT_ERROR("Animation command refers to non-existent image with id: %u and number: %u", g->id, g->image_number);
         return NULL;
     }
-    uint32_t frame_number = MIN(img->extra_framecnt + 1, g->num_lines);
+    uint32_t frame_number = MIN(img->extra_framecnt + 1, g->_frame_number);
     if (!frame_number) frame_number = 1;
     if (!img->extra_framecnt) return g->delete_action == 'F' ? img : NULL;
     ImageAndFrame key = {.image_id=img->internal_id};
