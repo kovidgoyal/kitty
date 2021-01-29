@@ -1631,6 +1631,13 @@ set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
 }
 
 void
+process_cwd_notification(Screen *self, unsigned int code, PyObject *cwd) {
+    (void)self; (void)code; (void)cwd;
+    // we ignore this as we dont need the stupid OSC 7 cwd reporting protocol,
+    // since, being moderately intelligent, we can get CWD directly.
+}
+
+void
 screen_handle_cmd(Screen *self, PyObject *cmd) {
     CALLBACK("handle_remote_cmd", "O", cmd);
 }

@@ -392,6 +392,10 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             START_DISPATCH
             DISPATCH_OSC_WITH_CODE(set_color_table_color);
             END_DISPATCH
+        case 7:
+            START_DISPATCH
+            DISPATCH_OSC_WITH_CODE(process_cwd_notification);
+            END_DISPATCH
         case 8:
             dispatch_hyperlink(screen, i, limit-i, dump_callback);
             break;

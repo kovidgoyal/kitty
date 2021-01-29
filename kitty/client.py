@@ -207,14 +207,15 @@ def write_osc(code: int, string: str = '') -> None:
     write(OSC + str(code) + string + '\x07')
 
 
-set_dynamic_color = set_color_table_color = write_osc
+set_dynamic_color = set_color_table_color = process_cwd_notification = write_osc
 
 
 def replay(raw: str) -> None:
+    specials = {'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color', 'process_cwd_notification'}
     for line in raw.splitlines():
         if line.strip() and not line.startswith('#'):
             cmd, rest = line.partition(' ')[::2]
-            if cmd in {'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color'}:
+            if cmd in specials:
                 globals()[cmd](rest)
             else:
                 r = map(int, rest.split()) if rest else ()

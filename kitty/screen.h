@@ -193,6 +193,7 @@ void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
 void clipboard_control(Screen *self, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
+void process_cwd_notification(Screen *self, unsigned int code, PyObject*);
 uint32_t* translation_table(uint32_t which);
 void screen_request_capabilities(Screen *, char, PyObject *);
 void screen_set_8bit_controls(Screen *, bool);
