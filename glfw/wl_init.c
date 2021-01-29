@@ -424,8 +424,8 @@ static void keyboardHandleLeave(void* data UNUSED,
 
 static void
 dispatchPendingKeyRepeats(id_type timer_id UNUSED, void *data UNUSED) {
-    if (_glfw.wl.keyRepeatInfo.keyboardFocus != _glfw.wl.keyboardFocus || _glfw.wl.keyboardRepeatRate == 0) return;
-    glfw_xkb_handle_key_event(_glfw.wl.keyRepeatInfo.keyboardFocus, &_glfw.wl.xkb, _glfw.wl.keyRepeatInfo.key, GLFW_REPEAT);
+    if ((!_glfw.wl.keyboardFocus || _glfw.wl.keyRepeatInfo.keyboardFocusId != _glfw.wl.keyboardFocus->id) || _glfw.wl.keyboardRepeatRate == 0) return;
+    glfw_xkb_handle_key_event(_glfw.wl.keyboardFocus, &_glfw.wl.xkb, _glfw.wl.keyRepeatInfo.key, GLFW_REPEAT);
     changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, (s_to_monotonic_t(1ll) / (monotonic_t)_glfw.wl.keyboardRepeatRate));
     toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
 }
@@ -449,7 +449,7 @@ static void keyboardHandleKey(void* data UNUSED,
     if (action == GLFW_PRESS && _glfw.wl.keyboardRepeatRate > 0 && glfw_xkb_should_repeat(&_glfw.wl.xkb, key))
     {
         _glfw.wl.keyRepeatInfo.key = key;
-        _glfw.wl.keyRepeatInfo.keyboardFocus = window;
+        _glfw.wl.keyRepeatInfo.keyboardFocusId = window->id;
         changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, _glfw.wl.keyboardRepeatDelay);
         toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
     } else if (action == GLFW_RELEASE && key == _glfw.wl.keyRepeatInfo.key) {
