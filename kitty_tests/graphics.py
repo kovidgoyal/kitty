@@ -615,33 +615,33 @@ class TestGraphics(BaseTest):
         self.assertIn('ransparen', res.msg)
 
         # simple new frame
-        t(payload='2' * 36)
+        t(payload='2' * 36, z=77)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 2, 'data': b'2' * 36},))
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'2' * 36},))
         # test editing a frame
         t(payload='3' * 36, r=2)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 2, 'data': b'3' * 36},))
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))
         # test editing part of a frame
         t(payload='4' * 12, r=2, s=2, v=2)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 2, 'data': b'444444333333444444333333333333333333'},))
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'444444333333444444333333333333333333'},))
         t(payload='5' * 12, r=2, s=2, v=2, x=1, y=1)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 2, 'data': b'444444333555555444555555333333333333'},))
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'444444333555555444555555333333333333'},))
         t(payload='3' * 36, r=2)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 40, 'id': 2, 'data': b'3' * 36},))
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))
         # test loading from previous frame
         t(payload='4' * 12, c=2, s=2, v=2, z=101, frame_number=3)
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], (
-            {'gap': 40, 'id': 2, 'data': b'3' * 36},
+            {'gap': 77, 'id': 2, 'data': b'3' * 36},
             {'gap': 101, 'id': 3, 'data': b'444444333333444444333333333333333333'},
         ))
         # test changing gaps
         img = g.image_for_client_id(1)
-        self.assertEqual(img['root_frame_gap'], 40)
+        self.assertEqual(img['root_frame_gap'], 77)
         self.assertIsNone(li(a='a', i=1, r=1, z=13))
         img = g.image_for_client_id(1)
         self.assertEqual(img['root_frame_gap'], 13)

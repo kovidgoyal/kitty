@@ -908,7 +908,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             ABRT("ENOSPC", "Failed to cache data for image frame");
         }
         if (is_new_frame) {
-            if (!img->extra_framecnt) img->root_frame.gap = DEFAULT_GAP;
+            if (!img->extra_framecnt) img->root_frame.gap = g->_gap > 0 ? g->_gap : DEFAULT_GAP;
             Frame *frames = realloc(img->extra_frames, sizeof(img->extra_frames[0]) * img->extra_framecnt + 1);
             if (!frames) ABRT("ENOMEM", "Out of memory");
             img->extra_frames = frames;
