@@ -393,7 +393,7 @@ static void keyboardHandleEnter(void* data UNUSED,
     }
 
     _glfw.wl.serial = serial;
-    _glfw.wl.keyboardFocus = window;
+    _glfw.wl.keyboardFocusId = window->id;
     _glfwInputWindowFocus(window, true);
     uint32_t* key;
     if (keys && _glfw.wl.keyRepeatInfo.key) {
@@ -411,21 +411,23 @@ static void keyboardHandleLeave(void* data UNUSED,
                                 uint32_t serial,
                                 struct wl_surface* surface UNUSED)
 {
-    _GLFWwindow* window = _glfw.wl.keyboardFocus;
+    _GLFWwindow* window = _glfwWindowForId(_glfw.wl.keyboardFocusId);
 
     if (!window)
         return;
 
     _glfw.wl.serial = serial;
-    _glfw.wl.keyboardFocus = NULL;
+    _glfw.wl.keyboardFocusId = 0;
     _glfwInputWindowFocus(window, false);
     toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 0);
 }
 
 static void
 dispatchPendingKeyRepeats(id_type timer_id UNUSED, void *data UNUSED) {
-    if ((!_glfw.wl.keyboardFocus || _glfw.wl.keyRepeatInfo.keyboardFocusId != _glfw.wl.keyboardFocus->id) || _glfw.wl.keyboardRepeatRate == 0) return;
-    glfw_xkb_handle_key_event(_glfw.wl.keyboardFocus, &_glfw.wl.xkb, _glfw.wl.keyRepeatInfo.key, GLFW_REPEAT);
+    if (_glfw.wl.keyRepeatInfo.keyboardFocusId != _glfw.wl.keyboardFocusId || _glfw.wl.keyboardRepeatRate == 0) return;
+    _GLFWwindow* window = _glfwWindowForId(_glfw.wl.keyboardFocusId);
+    if (!window) return;
+    glfw_xkb_handle_key_event(window, &_glfw.wl.xkb, _glfw.wl.keyRepeatInfo.key, GLFW_REPEAT);
     changeTimerInterval(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, (s_to_monotonic_t(1ll) / (monotonic_t)_glfw.wl.keyboardRepeatRate));
     toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.keyRepeatInfo.keyRepeatTimer, 1);
 }
@@ -438,7 +440,7 @@ static void keyboardHandleKey(void* data UNUSED,
                               uint32_t key,
                               uint32_t state)
 {
-    _GLFWwindow* window = _glfw.wl.keyboardFocus;
+    _GLFWwindow* window = _glfwWindowForId(_glfw.wl.keyboardFocusId);
     if (!window)
         return;
     int action = state == WL_KEYBOARD_KEY_STATE_PRESSED ? GLFW_PRESS : GLFW_RELEASE;

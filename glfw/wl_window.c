@@ -942,10 +942,13 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
         _glfw.wl.pointerFocus = NULL;
         _glfwInputCursorEnter(window, false);
     }
-    if (window == _glfw.wl.keyboardFocus)
+    if (window->id == _glfw.wl.keyboardFocusId)
     {
-        _glfw.wl.keyboardFocus = NULL;
+        _glfw.wl.keyboardFocusId = 0;
         _glfwInputWindowFocus(window, false);
+    }
+    if (window->id == _glfw.wl.keyRepeatInfo.keyboardFocusId) {
+        _glfw.wl.keyRepeatInfo.keyboardFocusId = 0;
     }
 
     if (window->wl.idleInhibitor)
@@ -1198,7 +1201,7 @@ void _glfwPlatformSetWindowMonitor(_GLFWwindow* window,
 
 int _glfwPlatformWindowFocused(_GLFWwindow* window)
 {
-    return _glfw.wl.keyboardFocus == window;
+    return _glfw.wl.keyboardFocusId = window ? window->id : 0;
 }
 
 int _glfwPlatformWindowOccluded(_GLFWwindow* window UNUSED)

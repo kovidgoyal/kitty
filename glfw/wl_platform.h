@@ -237,7 +237,7 @@ typedef struct _GLFWlibraryWayland
     _GLFWDBUSData               dbus;
 
     _GLFWwindow*                pointerFocus;
-    _GLFWwindow*                keyboardFocus;
+    GLFWid                      keyboardFocusId;
 
     struct {
         void*                   handle;
