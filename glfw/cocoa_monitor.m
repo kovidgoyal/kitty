@@ -89,7 +89,7 @@ static char* getDisplayName(CGDirectDisplayID displayID)
     if (!service)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
-                        "Cocoa: Failed to find service port for display");
+                        "Cocoa: Failed to find service port for display, cannot get its name, using Unknown");
         return NULL;
     }
 
