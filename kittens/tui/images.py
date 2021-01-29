@@ -131,6 +131,7 @@ SentImageKey = Tuple[int, int, int]
 
 class GraphicsCommand:
     a: GRT_a = 't'  # action
+    q: int = 0      # suppress responses
     f: GRT_f = 32   # image data format
     t: GRT_t = 'd'  # transmission medium
     s: int = 0        # sent image width
@@ -138,6 +139,7 @@ class GraphicsCommand:
     S: int = 0        # size of data to read from file
     O: int = 0        # offset of data to read from file
     i: int = 0        # image id
+    I: int = 0        # image number
     p: int = 0        # placement id
     o: Optional[GRT_o] = None  # type of compression
     m: GRT_m = 0    # 0 or 1 whether there is more chunked data
@@ -152,7 +154,7 @@ class GraphicsCommand:
     z: int = 0        # z-index
     d: GRT_d = 'a'  # what to delete
 
-    def serialize(self, payload: bytes = b'') -> bytes:
+    def serialize(self, payload: Union[bytes, str] = b'') -> bytes:
         items = []
         for k in GraphicsCommand.__annotations__:
             val: Union[str, None, int] = getattr(self, k)
@@ -166,6 +168,8 @@ class GraphicsCommand:
         w(','.join(items).encode('ascii'))
         if payload:
             w(b';')
+            if isinstance(payload, str):
+                payload = standard_b64encode(payload.encode('utf-8'))
             w(payload)
         w(b'\033\\')
         return b''.join(ans)

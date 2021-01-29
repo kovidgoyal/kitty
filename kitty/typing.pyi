@@ -41,12 +41,12 @@ from .window import Window as WindowType
 
 EdgeLiteral = Literal['left', 'top', 'right', 'bottom']
 MatchType = Literal['mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches']
-GRT_a = Literal['t', 'T', 'q', 'p', 'd']
+GRT_a = Literal['t', 'T', 'q', 'p', 'd', 'f', 'a']
 GRT_f = Literal[24, 32, 100]
 GRT_t = Literal['d', 'f', 't', 's']
 GRT_o = Literal['z']
 GRT_m = Literal[0, 1]
-GRT_d = Literal['a', 'A', 'c', 'C', 'i', 'I', 'p', 'P', 'q', 'Q', 'x', 'X', 'y', 'Y', 'z', 'Z']
+GRT_d = Literal['a', 'A', 'c', 'C', 'i', 'I', 'p', 'P', 'q', 'Q', 'x', 'X', 'y', 'Y', 'z', 'Z', 'f', 'F']
 __all__ = (
     'EdgeLiteral', 'MatchType', 'GRT_a', 'GRT_f', 'GRT_t', 'GRT_o', 'GRT_m', 'GRT_d',
     'GraphicsCommandType', 'HandlerType', 'AbstractEventLoop', 'AddressFamily', 'Socket', 'CompletedProcess',
