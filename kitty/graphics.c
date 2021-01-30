@@ -525,11 +525,12 @@ initialize_load_data(GraphicsManager *self, const GraphicsCommand *g, Image *img
 
 static void
 upload_to_gpu(GraphicsManager *self, Image *img, void *data) {
-    if (self->window_id && !self->context_made_current_for_this_command) {
-        if (make_window_context_current(self->window_id)) {
-            self->context_made_current_for_this_command = true;
-            send_image_to_gpu(&img->texture_id, data, img->width, img->height, img->is_opaque, img->is_4byte_aligned, false, REPEAT_CLAMP);
-    }}
+    if (!self->context_made_current_for_this_command) {
+        if (!self->window_id) return;
+        if (!make_window_context_current(self->window_id)) return;
+        self->context_made_current_for_this_command = true;
+    }
+    send_image_to_gpu(&img->texture_id, data, img->width, img->height, img->is_opaque, img->is_4byte_aligned, false, REPEAT_CLAMP);
 }
 
 static Image*
