@@ -545,7 +545,7 @@ change_menubar_title(PyObject *title UNUSED) {
 }
 
 static inline bool
-prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg) {
+prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg, bool scan_for_animated_images) {
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
     os_window->needs_render = false;
@@ -590,6 +590,14 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 set_os_window_title_from_window(w, os_window);
                 *active_window_bg = window_bg;
             } else WD.screen->cursor_render_info.is_visible = false;
+            if (scan_for_animated_images) {
+                monotonic_t min_gap;
+                if (scan_active_animations(WD.screen->grman, now, &min_gap, true)) needs_render = true;
+                if (min_gap < MONOTONIC_T_MAX) {
+                    global_state.has_active_animated_images = true;
+                    set_maximum_wait(min_gap);
+                }
+            }
             if (send_cell_data_to_gpu(WD.vao_idx, WD.gvao_idx, WD.xstart, WD.ystart, WD.dx, WD.dy, WD.screen, os_window)) needs_render = true;
             if (WD.screen->start_visual_bell_at != 0) needs_render = true;
         }
@@ -662,13 +670,16 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
 
 static inline void
 render(monotonic_t now, bool input_read) {
-    EVDBG("input_read: %d", input_read);
+    EVDBG("input_read: %d, has_active_animated_images: %d", input_read, global_state.has_active_animated_images);
     static monotonic_t last_render_at = MONOTONIC_T_MIN;
     monotonic_t time_since_last_render = last_render_at == MONOTONIC_T_MIN ? OPT(repaint_delay) : now - last_render_at;
     if (!input_read && time_since_last_render < OPT(repaint_delay)) {
         set_maximum_wait(OPT(repaint_delay) - time_since_last_render);
         return;
     }
+
+    const bool scan_for_animated_images = global_state.has_active_animated_images;
+    global_state.has_active_animated_images = false;
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;
@@ -703,7 +714,7 @@ render(monotonic_t now, bool input_read) {
         bool all_windows_have_same_bg;
         color_type active_window_bg = 0;
         if (!w->fonts_data) { log_error("No fonts data found for window id: %llu", w->id); continue; }
-        if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows, &all_windows_have_same_bg)) needs_render = true;
+        if (prepare_to_render_os_window(w, now, &active_window_id, &active_window_bg, &num_visible_windows, &all_windows_have_same_bg, scan_for_animated_images)) needs_render = true;
         if (w->last_active_window_id != active_window_id || w->last_active_tab != w->active_tab || w->focused_at_last_render != w->is_focused) needs_render = true;
         if (w->render_calls < 3 && w->bgimage && w->bgimage->texture_id) needs_render = true;
         if (needs_render) render_os_window(w, now, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg);

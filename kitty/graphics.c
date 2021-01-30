@@ -768,7 +768,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         }
         if (img->is_drawn && !was_drawn && img->animation_enabled && img->extra_framecnt) {
             self->has_images_needing_animation = true;
-            // TODO: rescan animation timeouts
+            global_state.has_active_animated_images = true;
         }
     }
     if (!self->count) return false;
@@ -1004,17 +1004,18 @@ handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const Gr
         if (img->animation_enabled) {
             self->has_images_needing_animation = true;
             if (!was_enabled) img->current_frame_shown_at = monotonic();
-            // TODO: schedule animation rescan
+            global_state.has_active_animated_images = true;
         }
     }
 }
 
 bool
-scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap) {
+scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap, bool os_window_context_set) {
     bool dirtied = false;
     *minimum_gap = MONOTONIC_T_MAX;
     if (!self->has_images_needing_animation) return dirtied;
-    self->has_images_needing_animation = false;
+    self->has_images_needing_animation = os_window_context_set;
+    self->context_made_current_for_this_command = true;
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
         if (img->animation_enabled && img->extra_framecnt && img->is_drawn) {

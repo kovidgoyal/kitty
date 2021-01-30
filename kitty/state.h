@@ -205,6 +205,7 @@ typedef struct {
     bool has_pending_resizes, has_pending_closes;
     bool in_sequence_mode;
     bool tab_bar_hidden;
+    bool has_active_animated_images;
     double font_sz_in_pts;
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window;
