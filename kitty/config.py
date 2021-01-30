@@ -298,11 +298,12 @@ def parse_marker_spec(ftype: str, parts: Sequence[str]) -> Tuple[str, Union[str,
 
 @func_with_args('toggle_marker')
 def toggle_marker(func: str, rest: str) -> FuncArgsType:
+    import shlex
     parts = rest.split(maxsplit=1)
     if len(parts) != 2:
         raise ValueError('{} is not a valid marker specification'.format(rest))
     ftype, spec = parts
-    parts = spec.split()
+    parts = shlex.split(spec)
     return func, list(parse_marker_spec(ftype, parts))
 
 
