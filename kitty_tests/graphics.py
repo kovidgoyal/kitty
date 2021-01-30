@@ -15,8 +15,7 @@ from typing import NamedTuple
 
 from kitty.constants import cache_dir
 from kitty.fast_data_types import (
-    load_png_data, parse_bytes, set_send_to_gpu, shm_unlink, shm_write,
-    xor_data
+    load_png_data, parse_bytes, shm_unlink, shm_write, xor_data
 )
 
 from . import BaseTest
@@ -25,8 +24,6 @@ try:
     from PIL import Image
 except ImportError:
     Image = None
-
-set_send_to_gpu(False)
 
 
 def relpath(name):

@@ -131,6 +131,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         ) {
             Py_CLEAR(self); return NULL;
         }
+        self->main_grman->window_id = self->window_id; self->alt_grman->window_id = self->window_id;
         self->alt_tabstops = self->main_tabstops + self->columns;
         self->tabstops = self->main_tabstops;
         init_tabstops(self->main_tabstops, self->columns);

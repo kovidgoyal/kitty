@@ -460,6 +460,34 @@ mark_os_window_for_close(OSWindow* w, CloseRequest cr) {
     w->close_request = cr;
 }
 
+static bool
+owners_for_window_id(id_type window_id, OSWindow **os_window, Tab **tab) {
+    if (os_window) *os_window = NULL;
+    if (tab) *tab = NULL;
+    for (size_t o = 0; o < global_state.num_os_windows; o++) {
+        OSWindow *osw = global_state.os_windows + o;
+        for (size_t t = 0; t < osw->num_tabs; t++) {
+            Tab *qtab = osw->tabs + t;
+            for (size_t w = 0; w < qtab->num_windows; w++) {
+                Window *window = qtab->windows + w;
+                if (window->id == window_id) {
+                    if (os_window) *os_window = osw;
+                    if (tab) *tab = qtab;
+                    return true;
+    }}}}
+    return false;
+}
+
+
+bool
+make_window_context_current(id_type window_id) {
+    OSWindow *os_window;
+    if (owners_for_window_id(window_id, &os_window, NULL)) {
+        make_os_window_context_current(os_window);
+        return true;
+    }
+    return false;
+}
 
 
 // Python API {{{

@@ -43,8 +43,7 @@ typedef struct {
 } ImageRef;
 
 typedef struct {
-    uint32_t gap;
-    uint32_t id;
+    uint32_t gap, id;
 } Frame;
 
 
@@ -61,7 +60,8 @@ typedef struct {
     size_t refcnt, refcap, extra_framecnt;
     monotonic_t atime;
     size_t used_storage;
-    bool is_opaque, is_4byte_aligned, animation_enabled;
+    bool is_opaque, is_4byte_aligned, animation_enabled, is_drawn;
+    monotonic_t current_frame_shown_at;
 } Image;
 
 typedef struct {
@@ -98,6 +98,8 @@ typedef struct {
     unsigned int last_scrolled_by;
     size_t used_storage;
     PyObject *disk_cache;
+    bool has_images_needing_animation, context_made_current_for_this_command;
+    id_type window_id;
 } GraphicsManager;
 
 
@@ -116,3 +118,4 @@ void grman_resize(GraphicsManager*, index_type, index_type, index_type, index_ty
 void grman_rescale(GraphicsManager *self, CellPixelSize fg);
 void gpu_data_for_centered_image(ImageRenderData *ans, unsigned int screen_width_px, unsigned int screen_height_px, unsigned int width, unsigned int height);
 bool png_path_to_bitmap(const char *path, uint8_t** data, unsigned int* width, unsigned int* height, size_t* sz);
+bool scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap);

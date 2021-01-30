@@ -229,7 +229,7 @@ void update_os_window_viewport(OSWindow *window, bool);
 bool should_os_window_be_rendered(OSWindow* w);
 void wakeup_main_loop(void);
 void swap_window_buffers(OSWindow *w);
-void make_window_context_current(OSWindow *w);
+bool make_window_context_current(id_type);
 void hide_mouse(OSWindow *w);
 bool is_mouse_hidden(OSWindow *w);
 void destroy_os_window(OSWindow *w);

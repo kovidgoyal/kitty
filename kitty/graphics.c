@@ -61,8 +61,6 @@ cache_size(const GraphicsManager *self) { return disk_cache_total_size(self->dis
 #undef CK
 
 
-static bool send_to_gpu = true;
-
 GraphicsManager*
 grman_alloc() {
     GraphicsManager *self = (GraphicsManager *)GraphicsManager_Type.tp_alloc(&GraphicsManager_Type, 0);
@@ -525,6 +523,14 @@ initialize_load_data(GraphicsManager *self, const GraphicsCommand *g, Image *img
 }
 #define MAX_IMAGE_DIMENSION 10000u
 
+static void
+upload_to_gpu(GraphicsManager *self, Image *img, void *data) {
+    if (self->window_id && !self->context_made_current_for_this_command) {
+        if (make_window_context_current(self->window_id)) {
+            self->context_made_current_for_this_command = true;
+            send_image_to_gpu(&img->texture_id, data, img->width, img->height, img->is_opaque, img->is_4byte_aligned, false, REPEAT_CLAMP);
+    }}
+}
 
 static Image*
 handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, bool *is_dirty, uint32_t iid) {
@@ -543,6 +549,8 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         if (existing) {
             free_load_data(&img->load_data);
             img->data_loaded = false;
+            img->is_drawn = false;
+            img->current_frame_shown_at = 0;
             free_refs_data(img);
             *is_dirty = true;
             self->layers_dirty = true;
@@ -576,9 +584,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
     if (img->data_loaded) {
         img->is_opaque = img->load_data.is_opaque;
         img->is_4byte_aligned = img->load_data.is_4byte_aligned;
-        if (send_to_gpu) {
-            send_image_to_gpu(&img->texture_id, img->load_data.data, img->width, img->height, img->is_opaque, img->is_4byte_aligned, false, REPEAT_CLAMP);
-        }
+        upload_to_gpu(self, img, img->load_data.data);
         if (img->root_frame.id) remove_from_cache(self, (const ImageAndFrame){.image_id=img->internal_id, .frame_id=img->root_frame.id});
         img->root_frame.id = ++img->frame_id_counter;
         if (!add_to_cache(self, (const ImageAndFrame){.image_id = img->internal_id, .frame_id=img->root_frame.id}, img->load_data.data, img->load_data.data_sz)) {
@@ -729,30 +735,41 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 
     // Iterate over all visible refs and create render data
     self->count = 0;
-    for (i = 0; i < self->image_count; i++) { img = self->images + i; for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
-        r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
-        if (ref->num_rows > 0) r.bottom = y0 - (ref->start_row + (int32_t)ref->num_rows) * dy;
-        else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
-        if (r.top <= screen_bottom || r.bottom >= screen_top) continue;  // not visible
+    for (i = 0; i < self->image_count; i++) {
+        img = self->images + i;
+        bool was_drawn = img->is_drawn;
+        img->is_drawn = false;
 
-        r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) cell.width;
-        if (ref->num_cols > 0) r.right = screen_left + (ref->start_column + (int32_t)ref->num_cols) * dx;
-        else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
+        for (j = 0; j < img->refcnt; j++) { ref = img->refs + j;
+            r.top = y0 - ref->start_row * dy - dy * (float)ref->cell_y_offset / (float)cell.height;
+            if (ref->num_rows > 0) r.bottom = y0 - (ref->start_row + (int32_t)ref->num_rows) * dy;
+            else r.bottom = r.top - screen_height * (float)ref->src_height / screen_height_px;
+            if (r.top <= screen_bottom || r.bottom >= screen_top) continue;  // not visible
 
-        if (ref->z_index < ((int32_t)INT32_MIN/2))
-            self->num_of_below_refs++;
-        else if (ref->z_index < 0)
-            self->num_of_negative_refs++;
-        else
-            self->num_of_positive_refs++;
-        ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 64, true);
-        ImageRenderData *rd = self->render_data + self->count;
-        zero_at_ptr(rd);
-        set_vertex_data(rd, ref, &r);
-        self->count++;
-        rd->z_index = ref->z_index; rd->image_id = img->internal_id;
-        rd->texture_id = img->texture_id;
-    }}
+            r.left = screen_left + ref->start_column * dx + dx * (float)ref->cell_x_offset / (float) cell.width;
+            if (ref->num_cols > 0) r.right = screen_left + (ref->start_column + (int32_t)ref->num_cols) * dx;
+            else r.right = r.left + screen_width * (float)ref->src_width / screen_width_px;
+
+            if (ref->z_index < ((int32_t)INT32_MIN/2))
+                self->num_of_below_refs++;
+            else if (ref->z_index < 0)
+                self->num_of_negative_refs++;
+            else
+                self->num_of_positive_refs++;
+            ensure_space_for(self, render_data, ImageRenderData, self->count + 1, capacity, 64, true);
+            ImageRenderData *rd = self->render_data + self->count;
+            zero_at_ptr(rd);
+            set_vertex_data(rd, ref, &r);
+            self->count++;
+            rd->z_index = ref->z_index; rd->image_id = img->internal_id;
+            rd->texture_id = img->texture_id;
+            img->is_drawn = true;
+        }
+        if (img->is_drawn && !was_drawn && img->animation_enabled && img->extra_framecnt) {
+            self->has_images_needing_animation = true;
+            // TODO: rescan animation timeouts
+        }
+    }
     if (!self->count) return false;
     // Sort visible refs in draw order (z-index, img)
 #define lt(a, b) ( (a)->z_index < (b)->z_index || ((a)->z_index == (b)->z_index && (a)->image_id < (b)->image_id) )
@@ -798,10 +815,9 @@ update_current_frame(GraphicsManager *self, Image *img, void *data) {
             return;
         }
     }
-    if (send_to_gpu) {
-        send_image_to_gpu(&img->texture_id, data, img->width, img->height, img->is_opaque, img->is_4byte_aligned, false, REPEAT_CLAMP);
-    }
+    upload_to_gpu(self, img, data);
     if (needs_load) free(data);
+    img->current_frame_shown_at = monotonic();
 }
 
 static Image*
@@ -982,8 +998,39 @@ handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const Gr
         }
     }
     if (g->_animation_enabled) {
+        bool was_enabled = img->animation_enabled;
         img->animation_enabled = g->_animation_enabled == 1;
+        if (img->animation_enabled) {
+            self->has_images_needing_animation = true;
+            if (!was_enabled) img->current_frame_shown_at = monotonic();
+            // TODO: schedule animation rescan
+        }
     }
+}
+
+bool
+scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t *minimum_gap) {
+    bool dirtied = false;
+    *minimum_gap = MONOTONIC_T_MAX;
+    if (!self->has_images_needing_animation) return dirtied;
+    self->has_images_needing_animation = false;
+    for (size_t i = self->image_count; i-- > 0;) {
+        Image *img = self->images + i;
+        if (img->animation_enabled && img->extra_framecnt && img->is_drawn) {
+            self->has_images_needing_animation = true;
+            Frame *next_frame = img->current_frame_index + 1 < img->extra_framecnt ? img->extra_frames + img->current_frame_index + 1 : &img->root_frame;
+            monotonic_t next_frame_at = img->current_frame_shown_at + next_frame->gap;
+            if (now >= next_frame_at) {
+                dirtied = true;
+                img->current_frame_index = (img->current_frame_index + 1) % (img->extra_framecnt + 1);
+                update_current_frame(self, img, NULL);
+                next_frame = img->current_frame_index + 1 < img->extra_framecnt ? img->extra_frames + img->current_frame_index + 1 : &img->root_frame;
+            }
+            next_frame_at = img->current_frame_shown_at + next_frame->gap;
+            if (next_frame_at - now < *minimum_gap) *minimum_gap = next_frame_at - now;
+        }
+    }
+    return dirtied;
 }
 // }}}
 
@@ -1203,6 +1250,7 @@ const char*
 grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_t *payload, Cursor *c, bool *is_dirty, CellPixelSize cell) {
     const char *ret = NULL;
     command_response[0] = 0;
+    self->context_made_current_for_this_command = false;
 
     if (g->id && g->image_number) {
         set_command_failed_response("EINVAL", "Must not specify both image id and image number");
@@ -1343,11 +1391,6 @@ W(shm_unlink) {
     Py_RETURN_NONE;
 }
 
-W(set_send_to_gpu) {
-    send_to_gpu = PyObject_IsTrue(args) ? true : false;
-    Py_RETURN_NONE;
-}
-
 W(update_layers) {
     unsigned int scrolled_by, sx, sy; float xstart, ystart, dx, dy;
     CellPixelSize cell;
@@ -1396,7 +1439,6 @@ PyTypeObject GraphicsManager_Type = {
 static PyMethodDef module_methods[] = {
     M(shm_write, METH_VARARGS),
     M(shm_unlink, METH_VARARGS),
-    M(set_send_to_gpu, METH_O),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
