@@ -10,8 +10,8 @@ from collections import defaultdict, deque
 from contextlib import suppress
 from itertools import count
 from typing import (
-    Any, Callable, DefaultDict, Deque, Dict, List, Optional, Sequence, Tuple,
-    Union
+    Any, Callable, DefaultDict, Deque, Dict, Iterator, List, Optional,
+    Sequence, Tuple, Union
 )
 
 from kitty.typing import (
@@ -28,11 +28,37 @@ except Exception:
     fsenc = 'utf-8'
 
 
+class Frame:
+    gap: int  # milliseconds
+    width: int
+    height: int
+    index: int
+    x: int = 0
+    y: int = 0
+    path: str = ''
+
+    def __init__(self, identify_data: Dict[str, str]):
+        self.gap = int(identify_data['gap']) * 10
+        sz, pos = identify_data['geometry'].split('+', 1)
+        self.width, self.height = map(int, sz.split('x', 1))
+        self.x, self.y = map(int, pos.split('+', 1))
+        self.index = int(identify_data['index'])
+
+
 class ImageData:
 
-    def __init__(self, fmt: str, width: int, height: int, mode: str):
+    def __init__(self, fmt: str, width: int, height: int, mode: str, frames: Sequence[Frame]):
         self.width, self.height, self.fmt, self.mode = width, height, fmt, mode
         self.transmit_fmt: GRT_f = (24 if self.mode == 'rgb' else 32)
+        self.frames = frames
+        self.is_animated = len(frames) > 1
+        self.temporary_directory_object = None
+
+    def __len__(self) -> int:
+        return len(self.frames)
+
+    def __iter__(self) -> Iterator[Frame]:
+        yield from self.frames
 
 
 class OpenFailed(ValueError):
@@ -69,10 +95,48 @@ def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 
 
 
 def identify(path: str) -> ImageData:
-    p = run_imagemagick(path, ['identify', '-format', '%m %w %h %A', '--', path])
-    parts: Tuple[str, ...] = tuple(filter(None, p.stdout.decode('utf-8').split()))
-    mode = 'rgb' if parts[3].lower() == 'false' else 'rgba'
-    return ImageData(parts[0].lower(), int(parts[1]), int(parts[2]), mode)
+    import json
+    q = '{"fmt":"%m","geometry":"%g","transparency":"%A","gap":"%T","index":"%p"},'
+    p = run_imagemagick(path, ['identify', '-format', q, '--', path])
+    data = json.loads(b'[' + p.stdout.rstrip(b',') + b']')
+    frame = data[0]
+    mode = 'rgba' if frame['transparency'].lower() in ('blend', 'true') else 'rgb'
+    fmt = frame['fmt'].lower()
+    if fmt == 'jpeg':
+        mode = 'rgb'
+    frames = tuple(map(Frame, data))
+    return ImageData(fmt, frames[0].width, frames[0].height, mode, frames)
+
+
+class RenderedImage:
+    pass
+
+
+def render_image(
+    path: str, m: ImageData,
+    available_width: int, available_height: int,
+    scale_up: bool,
+    tdir: Optional[str] = None
+) -> RenderedImage:
+    from tempfile import mkdtemp
+    base = mkdtemp(prefix='kitty-tui-image-', dir=tdir)
+    exe = find_exe('convert')
+    if exe is None:
+        raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
+    outfile = os.path.join(base, f'output%07d.{m.mode}')
+    cmd = [exe, '-background', 'none', '--', path]
+    scaled = False
+    width, height = m.width, m.height
+    if scale_up:
+        if width < available_width:
+            r = available_width / width
+            width, height = available_width, int(height * r)
+            scaled = True
+    if scaled or width > available_width or height > available_height:
+        width, height = fit_image(width, height, available_width, available_height)
+        cmd += ['-resize', '{}x{}!'.format(width, height)]
+    cmd += ['-depth', '8']
+    run_imagemagick(path, cmd + [outfile])
 
 
 def convert(
