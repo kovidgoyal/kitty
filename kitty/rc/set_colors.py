@@ -4,7 +4,7 @@
 
 
 import os
-from typing import TYPE_CHECKING, Dict, Optional, Union
+from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple, Union
 
 from kitty.config import parse_config
 from kitty.fast_data_types import patch_color_profiles
@@ -17,6 +17,19 @@ from .base import (
 
 if TYPE_CHECKING:
     from kitty.cli_stub import SetColorsRCOptions as CLIOptions
+
+
+def parse_colors(args: Iterable[str]) -> Tuple[Dict[str, int], Optional[Union[int, bool]]]:
+    colors: Dict[str, Optional[Color]] = {}
+    for spec in args:
+        if '=' in spec:
+            colors.update(parse_config((spec.replace('=', ' '),)))
+        else:
+            with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
+                colors.update(parse_config(f))
+    q = colors.pop('cursor_text_color', False)
+    ctc = color_as_int(q) if isinstance(q, Color) else (False if q is False else None)
+    return {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}, ctc
 
 
 class SetColors(RemoteCommand):
@@ -63,19 +76,7 @@ this option, any color arguments are ignored and --configured and --all are impl
         final_colors: Dict[str, int] = {}
         cursor_text_color: Optional[Union[int, bool]] = False
         if not opts.reset:
-            colors: Dict[str, Optional[Color]] = {}
-            for spec in args:
-                if '=' in spec:
-                    colors.update(parse_config((spec.replace('=', ' '),)))
-                else:
-                    with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
-                        colors.update(parse_config(f))
-            ctc = colors.pop('cursor_text_color', False)
-            if isinstance(ctc, Color):
-                cursor_text_color = color_as_int(ctc)
-            elif ctc is None:
-                cursor_text_color = None
-            final_colors = {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}
+            final_colors, cursor_text_color = parse_colors(args)
         ans = {
             'match_window': opts.match, 'match_tab': opts.match_tab,
             'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset,
