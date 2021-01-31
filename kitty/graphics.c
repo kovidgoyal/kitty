@@ -9,6 +9,7 @@
 #include "state.h"
 #include "disk-cache.h"
 #include "iqsort.h"
+#include "safe-wrappers.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -371,8 +372,8 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
         case 's': // POSIX shared memory
             if (g->payload_sz > 2048) ABRT(EINVAL, "Filename too long");
             snprintf(fname, sizeof(fname)/sizeof(fname[0]), "%.*s", (int)g->payload_sz, payload);
-            if (transmission_type == 's') fd = shm_open(fname, O_RDONLY, 0);
-            else fd = open(fname, O_CLOEXEC | O_RDONLY);
+            if (transmission_type == 's') fd = safe_shm_open(fname, O_RDONLY, 0);
+            else fd = safe_open(fname, O_CLOEXEC | O_RDONLY, 0);
             if (fd == -1) ABRT(EBADF, "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
             img->data_loaded = mmap_img_file(self, img, fd, g->data_sz, g->data_offset);
             safe_close(fd, __FILE__, __LINE__);

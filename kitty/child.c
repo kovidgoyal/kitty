@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "safe-wrappers.h"
 #include <unistd.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -99,7 +100,7 @@ spawn(PyObject *self UNUSED, PyObject *args) {
             if (setsid() == -1) exit_on_err("setsid() in child process failed");
 
             // Establish the controlling terminal (see man 7 credentials)
-            int tfd = open(name, O_RDWR);
+            int tfd = safe_open(name, O_RDWR, 0);
             if (tfd == -1) exit_on_err("Failed to open controlling terminal");
 #ifdef TIOCSCTTY
             // On BSD open() does not establish the controlling terminal

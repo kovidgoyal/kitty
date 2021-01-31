@@ -12,6 +12,7 @@
 #undef _DARWIN_C_SOURCE
 #endif
 #include "data-types.h"
+#include "safe-wrappers.h"
 #include "control-codes.h"
 #include "wcwidth-std.h"
 #include "wcswidth.h"
@@ -110,7 +111,7 @@ open_tty(PyObject *self UNUSED, PyObject *args) {
     int flags = O_RDWR | O_CLOEXEC | O_NOCTTY;
     if (!read_with_timeout) flags |= O_NONBLOCK;
     static char ctty[L_ctermid+1];
-    int fd = open(ctermid(ctty), flags);
+    int fd = safe_open(ctermid(ctty), flags, 0);
     if (fd == -1) { PyErr_Format(PyExc_OSError, "Failed to open controlling terminal: %s (identified with ctermid()) with error: %s", ctty, strerror(errno)); return NULL; }
     struct termios *termios_p = calloc(1, sizeof(struct termios));
     if (!termios_p) return PyErr_NoMemory();

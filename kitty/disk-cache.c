@@ -12,6 +12,7 @@
 #endif
 
 #include "disk-cache.h"
+#include "safe-wrappers.h"
 #include "uthash.h"
 #include "loop-utils.h"
 #include "threading.h"
@@ -85,7 +86,7 @@ open_cache_file(const char *cache_path) {
     int fd = -1;
 #ifdef O_TMPFILE
     while (fd < 0) {
-        fd = open(cache_path, O_TMPFILE | O_CLOEXEC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
+        fd = safe_open(cache_path, O_TMPFILE | O_CLOEXEC | O_EXCL | O_RDWR, S_IRUSR | S_IWUSR);
         if (fd > -1 || errno != EINTR) break;
     }
 #else

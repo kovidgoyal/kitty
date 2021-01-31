@@ -6,6 +6,7 @@
  */
 
 #include "loop-utils.h"
+#include "safe-wrappers.h"
 #include <signal.h>
 
 bool
