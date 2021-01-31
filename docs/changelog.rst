@@ -11,6 +11,11 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   used by full screen terminal programs and even games, see
   :doc:`keyboard-protocol` (:iss:`3248`)
 
+- **Backward incompatibility**: Session files now use the full :doc:`launch <launch>`
+  command with all its capabilities. However, the syntax of the command is
+  slightly different from before. In particular watchers are now specified
+  directly on launch and env vars are set using ``--env``.
+
 - diff kitten: Implement recursive diff over SSH (:iss:`3268`)
 
 - ssh kitten: Allow using python instead of the shell on the server, useful if

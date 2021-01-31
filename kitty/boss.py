@@ -177,12 +177,8 @@ class Boss:
             cocoa_set_notification_activated_callback(notification_activated)
 
     def startup_first_child(self, os_window_id: Optional[int]) -> None:
-        from kitty.launch import load_watch_modules
         startup_sessions = create_sessions(self.opts, self.args, default_session=self.opts.startup_session)
-        watchers = load_watch_modules(self.args.watcher)
         for startup_session in startup_sessions:
-            if watchers is not None and watchers.has_watchers:
-                startup_session.add_watchers_to_all_windows(watchers)
             self.add_os_window(startup_session, os_window_id=os_window_id)
             os_window_id = None
             if self.args.start_as != 'normal':

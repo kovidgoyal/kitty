@@ -4,7 +4,7 @@
 
 
 from functools import lru_cache
-from typing import Any, Dict, List, Optional, Sequence, Tuple
+from typing import Any, Dict, List, NamedTuple, Optional, Sequence
 
 from .boss import Boss
 from .child import Child
@@ -13,13 +13,18 @@ from .cli_stub import LaunchCLIOptions
 from .constants import resolve_custom_file
 from .fast_data_types import set_clipboard_string
 from .tabs import Tab
-from .utils import find_exe, set_primary_selection, read_shell_environment
+from .utils import find_exe, read_shell_environment, set_primary_selection
 from .window import Watchers, Window
 
 try:
     from typing import TypedDict
 except ImportError:
     TypedDict = Dict[str, Any]
+
+
+class LaunchSpec(NamedTuple):
+    opts: LaunchCLIOptions
+    args: List[str]
 
 
 @lru_cache(maxsize=2)
@@ -159,13 +164,13 @@ Set the WM_NAME property on X11 for the newly created OS Window when using
 ''' + WATCHER_DEFINITION
 
 
-def parse_launch_args(args: Optional[Sequence[str]] = None) -> Tuple[LaunchCLIOptions, List[str]]:
+def parse_launch_args(args: Optional[Sequence[str]] = None) -> LaunchSpec:
     args = list(args or ())
     try:
         opts, args = parse_args(result_class=LaunchCLIOptions, args=args, ospec=options_spec)
     except SystemExit as e:
         raise ValueError from e
-    return opts, args
+    return LaunchSpec(opts, args)
 
 
 def get_env(opts: LaunchCLIOptions, active_child: Child) -> Dict[str, str]:
@@ -234,7 +239,13 @@ class LaunchKwds(TypedDict):
     stdin: Optional[bytes]
 
 
-def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Optional[Tab] = None) -> Optional[Window]:
+def launch(
+    boss: Boss,
+    opts: LaunchCLIOptions,
+    args: List[str],
+    target_tab: Optional[Tab] = None,
+    force_target_tab: bool = False
+) -> Optional[Window]:
     active = boss.active_window_for_cwd
     active_child = getattr(active, 'child', None)
     env = get_env(opts, active_child)
@@ -311,7 +322,10 @@ def launch(boss: Boss, opts: LaunchCLIOptions, args: List[str], target_tab: Opti
             else:
                 set_primary_selection(stdin)
     else:
-        tab = tab_for_window(boss, opts, target_tab)
+        if force_target_tab:
+            tab = target_tab
+        else:
+            tab = tab_for_window(boss, opts, target_tab)
         if tab is not None:
             watchers = load_watch_modules(opts.watcher)
             new_window: Window = tab.new_window(env=env or None, watchers=watchers or None, **kw)

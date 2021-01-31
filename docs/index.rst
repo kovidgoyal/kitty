@@ -340,7 +340,7 @@ For example:
     launch zsh
     # Create a window with some environment variables set and run
     # vim in it
-    launch env FOO=BAR vim
+    launch --env FOO=BAR vim
     # Set the title for the next window
     title Chat with x
     launch irssi --profile x
@@ -367,14 +367,9 @@ For example:
     focus
     launch emacs
 
-    # Add a watcher that will be called with various events that occur
-    # on all subsequent windows. See the documentation of the launch command
-    # for details on watchers.
-    watcher /some/python/file.py
-    launch mpd
-    launch irssi
-    # Remove the watcher for further windows
-    watcher clear
+.. note::
+    The :doc:`launch <launch>` command when used in a session file
+    cannot create new OS windows, or tabs.
 
 
 Mouse features
