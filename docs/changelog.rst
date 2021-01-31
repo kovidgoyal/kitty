@@ -14,7 +14,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - **Backward incompatibility**: Session files now use the full :doc:`launch <launch>`
   command with all its capabilities. However, the syntax of the command is
   slightly different from before. In particular watchers are now specified
-  directly on launch and env vars are set using ``--env``.
+  directly on launch and environment variables are set using ``--env``.
 
 - Allow setting colors when creating windows using the :doc:`launch <launch>` command.
 
