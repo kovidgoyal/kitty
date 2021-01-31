@@ -278,12 +278,24 @@ Some prominent kittens:
 
 :doc:`Hints <kittens/hints>`
     Select and open/paste/insert arbitrary text snippets such as URLs,
-    filenames, words, lines, etc from the terminal screen.
+    filenames, words, lines, etc. from the terminal screen.
+
+
+:doc:`Remote file <kittens/remote_file>`
+    Edit, open, or download remote files over SSH easily, by simply clicking on
+    the filename.
+
+
+:doc:`Hyperlinked grep <kittens/hyperlinked_grep>`
+    Search your files using `ripgrep <https://github.com/BurntSushi/ripgrep>`_
+    and open the results directly in your favorite editor in the terminal,
+    at the line containing the search result, simply by clicking on the result you want.
 
 
 :doc:`Panel <kittens/panel>`
     Draw a GPU accelerated dock panel on your desktop showing the output
     from an arbitrary terminal program.
+
 
 :doc:`Clipboard <kittens/clipboard>`
     Copy/paste to the clipboard from shell scripts, even over SSH.
