@@ -3,3 +3,6 @@
 See https://sw.kovidgoyal.net/kitty/
 
 image:https://github.com/kovidgoyal/kitty/workflows/CI/badge.svg["Build status", link="https://github.com/kovidgoyal/kitty/actions?query=workflow%3ACI"]
+
+To ask questions about kitty usage, use either the https://github.com/kovidgoyal/kitty/discussions/[discussions on GitHub] or the
+https://www.reddit.com/r/KittyTerminal[Reddit community]
