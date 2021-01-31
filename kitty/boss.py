@@ -1526,6 +1526,7 @@ class Boss:
         tab_id_map: Dict[int, Optional[Union[str, int]]] = {}
         current_tab = self.active_tab
         done_tab_id: Optional[Union[str, int]] = None
+        done_called = False
 
         for i, tab in enumerate(self.all_tabs):
             if tab is not current_tab:
@@ -1539,10 +1540,13 @@ class Boss:
         lines.append(fmt.format(new_idx, 'New OS Window'))
 
         def done(data: Dict[str, Any], target_window_id: int, self: Boss) -> None:
-            nonlocal done_tab_id
+            nonlocal done_tab_id, done_called
             done_tab_id = tab_id_map[int(data['groupdicts'][0]['index'])]
+            done_called = True
 
         def done2(target_window_id: int, self: Boss) -> None:
+            if not done_called:
+                return
             tab_id = done_tab_id
             target_window = None
             for w in self.all_windows:
