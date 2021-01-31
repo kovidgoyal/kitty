@@ -10,7 +10,8 @@
 #include <sys/mman.h>
 
 
-static inline int safe_open(const char *path, int flags, mode_t mode) {
+static inline int
+safe_open(const char *path, int flags, mode_t mode) {
     while (true) {
         int fd = open(path, flags, mode);
         if (fd == -1 && errno == EINTR) continue;
@@ -19,7 +20,8 @@ static inline int safe_open(const char *path, int flags, mode_t mode) {
 }
 
 
-static inline int safe_shm_open(const char *path, int flags, mode_t mode) {
+static inline int
+safe_shm_open(const char *path, int flags, mode_t mode) {
     while (true) {
         int fd = shm_open(path, flags, mode);
         if (fd == -1 && errno == EINTR) continue;
@@ -28,7 +30,8 @@ static inline int safe_shm_open(const char *path, int flags, mode_t mode) {
 }
 
 
-static inline void safe_close(int fd, const char* file UNUSED, const int line UNUSED) {
+static inline void
+safe_close(int fd, const char* file UNUSED, const int line UNUSED) {
 #if 0
     printf("Closing fd: %d from file: %s line: %d\n", fd, file, line);
 #endif
