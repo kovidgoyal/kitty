@@ -1021,14 +1021,14 @@ scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t
         if (img->animation_enabled && img->extra_framecnt && img->is_drawn) {
             self->has_images_needing_animation = true;
             Frame *next_frame = img->current_frame_index + 1 < img->extra_framecnt ? img->extra_frames + img->current_frame_index + 1 : &img->root_frame;
-            monotonic_t next_frame_at = img->current_frame_shown_at + next_frame->gap;
+            monotonic_t next_frame_at = img->current_frame_shown_at + ms_to_monotonic_t(next_frame->gap);
             if (now >= next_frame_at) {
                 dirtied = true;
                 img->current_frame_index = (img->current_frame_index + 1) % (img->extra_framecnt + 1);
                 update_current_frame(self, img, NULL);
                 next_frame = img->current_frame_index + 1 < img->extra_framecnt ? img->extra_frames + img->current_frame_index + 1 : &img->root_frame;
             }
-            next_frame_at = img->current_frame_shown_at + next_frame->gap;
+            next_frame_at = img->current_frame_shown_at + ms_to_monotonic_t(next_frame->gap);
             if (next_frame_at - now < *minimum_gap) *minimum_gap = next_frame_at - now;
         }
     }
