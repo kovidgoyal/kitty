@@ -16,6 +16,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   slightly different from before. In particular watchers are now specified
   directly on launch and env vars are set using ``--env``.
 
+- Allow setting colors when creating windows using the :doc:`launch <launch>` command.
+
 - diff kitten: Implement recursive diff over SSH (:iss:`3268`)
 
 - ssh kitten: Allow using python instead of the shell on the server, useful if

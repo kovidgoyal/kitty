@@ -11,7 +11,7 @@ from .child import Child
 from .cli import WATCHER_DEFINITION, parse_args
 from .cli_stub import LaunchCLIOptions
 from .constants import resolve_custom_file
-from .fast_data_types import set_clipboard_string
+from .fast_data_types import patch_color_profiles, set_clipboard_string
 from .tabs import Tab
 from .utils import find_exe, read_shell_environment, set_primary_selection
 from .window import Watchers, Window
@@ -161,6 +161,13 @@ Set the WM_NAME property on X11 for the newly created OS Window when using
 :option:`launch --type`=os-window. Defaults to :option:`launch --os-window-class`.
 
 
+--color
+type=list
+Change colors in the newly launched window. You can either specify a path to a .conf
+file with the same syntax as kitty.conf to read the colors from, or specify them
+individually, for example: ``--color background=white`` ``--color foreground=red``
+
+
 ''' + WATCHER_DEFINITION
 
 
@@ -237,6 +244,13 @@ class LaunchKwds(TypedDict):
     cmd: Optional[List[str]]
     overlay_for: Optional[int]
     stdin: Optional[bytes]
+
+
+def apply_colors(window: Window, spec: Sequence[str]) -> None:
+    from kitty.rc.set_colors import parse_colors
+    colors, cursor_text_color = parse_colors(spec)
+    profiles = window.screen.color_profile,
+    patch_color_profiles(colors, cursor_text_color, profiles, True)
 
 
 def launch(
@@ -329,6 +343,8 @@ def launch(
         if tab is not None:
             watchers = load_watch_modules(opts.watcher)
             new_window: Window = tab.new_window(env=env or None, watchers=watchers or None, **kw)
+            if opts.color:
+                apply_colors(new_window, opts.color)
             if opts.keep_focus and active:
                 boss.set_active_window(active, switch_os_window_if_needed=True)
             return new_window
