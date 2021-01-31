@@ -46,6 +46,33 @@ exec -a "-$shell_name" "$0"
 '''
 
 
+PYTHON_SCRIPT = '''\
+#!/usr/bin/env python
+from __future__ import print_function
+from tempfile import NamedTemporaryFile
+import subprocess, os, sys, pwd, binascii, json
+
+# macOS ships with an ancient version of tic that cannot read from stdin, so we
+# create a temp file for it
+with NamedTemporaryFile() as tmp:
+    tmp.write(binascii.unhexlify('{terminfo}'))
+    p = subprocess.Popen(['tic', '-x', '-o', os.path.expanduser('~/.terminfo'), tmp.name], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = p.communicate()
+    if p.wait() != 0:
+        getattr(sys.stderr, 'buffer', sys.stderr).write(stdout + stderr)
+        raise SystemExit('Failed to compile terminfo using tic')
+command_to_execute = json.loads(binascii.unhexlify('{command_to_execute}'))
+if command_to_execute:
+    os.execlp(command_to_execute[0], *command_to_execute)
+try:
+    shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
+except KeyError:
+    shell_path = '/bin/sh'
+shell_name = '-' + os.path.basename(shell_path)
+os.execlp(shell_path, shell_name)
+'''
+
+
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
     other_ssh_args: List[str] = []
     boolean_ssh_args: List[str] = []
@@ -150,20 +177,44 @@ def quote(x: str) -> str:
     return x
 
 
+def get_posix_cmd(terminfo: str, server_args: List[str]) -> List[str]:
+    sh_script = SHELL_SCRIPT.replace('TERMINFO', terminfo, 1)
+    if len(server_args) > 1:
+        command_to_executeg = (quote(c) for c in server_args[1:])
+        command_to_execute = 'exec ' + ' '.join(command_to_executeg)
+    else:
+        command_to_execute = ''
+    sh_script = sh_script.replace('EXEC_CMD', command_to_execute)
+    return ['-t', server_args[0], sh_script] + server_args[1:]
+
+
+def get_python_cmd(terminfo: str, server_args: List[str]) -> List[str]:
+    import json
+    hostname = server_args[0]
+    command_to_execute = server_args[1:]
+    script = PYTHON_SCRIPT.format(
+        terminfo=terminfo.encode('utf-8').hex(),
+        command_to_execute=json.dumps(command_to_execute).encode('utf-8').hex()
+    )
+    return ['-t', hostname, f'python -c "{script}"']
+
+
 def main(args: List[str]) -> NoReturn:
-    ssh_args, server_args, passthrough = parse_ssh_args(args[1:])
+    args = args[1:]
+    use_posix = True
+    if args and args[0] == 'use-python':
+        args = args[1:]
+        use_posix = False
+    ssh_args, server_args, passthrough = parse_ssh_args(args)
     if passthrough:
         cmd = ['ssh'] + ssh_args + server_args
     else:
         terminfo = subprocess.check_output(['infocmp']).decode('utf-8')
-        sh_script = SHELL_SCRIPT.replace('TERMINFO', terminfo, 1)
-        if len(server_args) > 1:
-            command_to_executeg = (quote(c) for c in server_args[1:])
-            command_to_execute = 'exec ' + ' '.join(command_to_executeg)
+        cmd = ['ssh'] + ssh_args
+        if use_posix:
+            cmd += get_posix_cmd(terminfo, server_args)
         else:
-            command_to_execute = ''
-        sh_script = sh_script.replace('EXEC_CMD', command_to_execute)
-        cmd = ['ssh'] + ssh_args + ['-t', server_args[0], sh_script] + server_args[1:]
+            cmd += get_python_cmd(terminfo, server_args)
     os.execvp('ssh', cmd)
 
 

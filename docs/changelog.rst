@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - diff kitten: Implement recursive diff over SSH (:iss:`3268`)
 
+- ssh kitten: Allow using python instead of the shell on the server, useful if
+  the shell used is a non-POSIX compliant one, such as fish (:iss:`3277`)
+
 - Add support for the color settings stack that XTerm copied from us without
   acknowledgement and decided to use incompatible escape codes for.
 
