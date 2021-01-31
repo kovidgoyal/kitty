@@ -21,6 +21,8 @@ to *Edit* it in which case kitty will download it and open it locally in your
 to the remote computer. Note that this happens without needing to install *any*
 special software on the server, beyond ``ls`` that supports hyperlinks.
 
+.. versionadded:: 0.19.0
+
 .. note::
    Nested SSH sessions are not supported. The kitten will always try to copy
    remote files from the first SSH host. This is because there is no way for

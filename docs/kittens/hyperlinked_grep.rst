@@ -1,10 +1,13 @@
 Hyperlinked grep
 =================
 
+
 This kitten allows you to search your files using `ripgrep
 <https://www.google.com/search?q=ripgrep>`_ and open the results
 directly in your favorite editor in the terminal, at the line containing
 the search result, simply by clicking on the result you want.
+
+.. versionadded:: 0.19.0
 
 To set it up, first create :file:`~/.config/kitty/open-actions.conf` with the
 following contents:
