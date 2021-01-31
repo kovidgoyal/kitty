@@ -177,26 +177,24 @@ def quote(x: str) -> str:
     return x
 
 
-def get_posix_cmd(terminfo: str, server_args: List[str]) -> List[str]:
+def get_posix_cmd(terminfo: str, remote_args: List[str]) -> List[str]:
     sh_script = SHELL_SCRIPT.replace('TERMINFO', terminfo, 1)
-    if len(server_args) > 1:
-        command_to_executeg = (quote(c) for c in server_args[1:])
+    if remote_args:
+        command_to_executeg = (quote(c) for c in remote_args)
         command_to_execute = 'exec ' + ' '.join(command_to_executeg)
     else:
         command_to_execute = ''
     sh_script = sh_script.replace('EXEC_CMD', command_to_execute)
-    return ['-t', server_args[0], sh_script] + server_args[1:]
+    return [sh_script] + remote_args
 
 
-def get_python_cmd(terminfo: str, server_args: List[str]) -> List[str]:
+def get_python_cmd(terminfo: str, command_to_execute: List[str]) -> List[str]:
     import json
-    hostname = server_args[0]
-    command_to_execute = server_args[1:]
     script = PYTHON_SCRIPT.format(
         terminfo=terminfo.encode('utf-8').hex(),
         command_to_execute=json.dumps(command_to_execute).encode('utf-8').hex()
     )
-    return ['-t', hostname, f'python -c "{script}"']
+    return [f'python -c "{script}"']
 
 
 def main(args: List[str]) -> NoReturn:
@@ -206,15 +204,15 @@ def main(args: List[str]) -> NoReturn:
         args = args[1:]
         use_posix = False
     ssh_args, server_args, passthrough = parse_ssh_args(args)
+    cmd = ['ssh'] + ssh_args
     if passthrough:
-        cmd = ['ssh'] + ssh_args + server_args
+        cmd += server_args
     else:
+        hostname, remote_args = server_args[0], server_args[1:]
+        cmd += ['-t', hostname]
         terminfo = subprocess.check_output(['infocmp']).decode('utf-8')
-        cmd = ['ssh'] + ssh_args
-        if use_posix:
-            cmd += get_posix_cmd(terminfo, server_args)
-        else:
-            cmd += get_python_cmd(terminfo, server_args)
+        f = get_posix_cmd if use_posix else get_python_cmd
+        cmd += f(terminfo, remote_args)
     os.execvp('ssh', cmd)
 
 
