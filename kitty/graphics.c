@@ -766,7 +766,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
             rd->texture_id = img->texture_id;
             img->is_drawn = true;
         }
-        if (img->is_drawn && !was_drawn && img->animation_enabled && img->extra_framecnt) {
+        if (img->is_drawn && !was_drawn && img->animation_enabled && img->extra_framecnt && img->animation_duration) {
             self->has_images_needing_animation = true;
             global_state.has_active_animated_images = true;
         }
@@ -819,6 +819,14 @@ update_current_frame(GraphicsManager *self, Image *img, void *data) {
     upload_to_gpu(self, img, data);
     if (needs_load) free(data);
     img->current_frame_shown_at = monotonic();
+}
+
+static inline void
+change_gap(Image *img, Frame *f, int32_t gap) {
+    uint32_t prev_gap = f->gap;
+    f->gap = MAX(0, gap);
+    img->animation_duration = prev_gap < img->animation_duration ? img->animation_duration - prev_gap : 0;
+    img->animation_duration += f->gap;
 }
 
 static Image*
@@ -925,15 +933,15 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             ABRT("ENOSPC", "Failed to cache data for image frame");
         }
         if (is_new_frame) {
-            if (!img->extra_framecnt) img->root_frame.gap = g->_gap > 0 ? g->_gap : DEFAULT_GAP;
             Frame *frames = realloc(img->extra_frames, sizeof(img->extra_frames[0]) * img->extra_framecnt + 1);
             if (!frames) ABRT("ENOMEM", "Out of memory");
             img->extra_frames = frames;
             img->extra_framecnt++;
             img->extra_frames[frame_number - 2].gap = DEFAULT_GAP;
             img->extra_frames[frame_number - 2].id = key.frame_id;
+            img->animation_duration += DEFAULT_GAP;
         }
-        if (g->_gap > 0) img->extra_frames[frame_number - 2].gap = g->_gap;
+        if (g->_gap > 0) change_gap(img, img->extra_frames + frame_number - 2, g->_gap);
     }
     return img;
 }
@@ -957,17 +965,21 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
     *is_dirty = true;
     ImageAndFrame key = {.image_id=img->internal_id};
     bool remove_root = frame_number == 1;
+    uint32_t removed_gap = 0;
     if (remove_root) {
         key.frame_id = img->root_frame.id;
         remove_from_cache(self, key);
         if (PyErr_Occurred()) PyErr_Print();
+        removed_gap = img->root_frame.gap;
         img->root_frame = img->extra_frames[0];
     }
     unsigned removed_idx = remove_root ? 0 : frame_number - 2;
     if (!remove_root) {
         key.frame_id = img->extra_frames[removed_idx].id;
+        removed_gap = img->extra_frames[removed_idx].gap;
         remove_from_cache(self, key);
     }
+    img->animation_duration = removed_gap < img->animation_duration ? img->animation_duration - removed_gap : 0;
     if (PyErr_Occurred()) PyErr_Print();
     if (removed_idx < img->extra_framecnt - 1) memmove(img->extra_frames + removed_idx, img->extra_frames + removed_idx + 1, sizeof(img->extra_frames[0]) * img->extra_framecnt - 1 - removed_idx);
     img->extra_framecnt--;
@@ -987,7 +999,7 @@ handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const Gr
         uint32_t frame_idx = g->_frame_number - 1;
         if (frame_idx <= img->extra_framecnt) {
             Frame *f = frame_idx ? img->extra_frames + frame_idx - 1 : &img->root_frame;
-            if (g->_gap > 0) f->gap = g->_gap;
+            if (g->_gap) change_gap(img, f, g->_gap);
         }
     }
     if (g->_other_frame_number) {
@@ -1018,13 +1030,15 @@ scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t
     self->context_made_current_for_this_command = true;
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
-        if (img->animation_enabled && img->extra_framecnt && img->is_drawn) {
+        if (img->animation_enabled && img->extra_framecnt && img->is_drawn && img->animation_duration) {
             self->has_images_needing_animation = true;
             Frame *next_frame = img->current_frame_index + 1 < img->extra_framecnt ? img->extra_frames + img->current_frame_index + 1 : &img->root_frame;
             monotonic_t next_frame_at = img->current_frame_shown_at + ms_to_monotonic_t(next_frame->gap);
             if (now >= next_frame_at) {
                 dirtied = true;
-                img->current_frame_index = (img->current_frame_index + 1) % (img->extra_framecnt + 1);
+                do {
+                    img->current_frame_index = (img->current_frame_index + 1) % (img->extra_framecnt + 1);
+                } while(!current_frame(img)->gap);
                 update_current_frame(self, img, NULL);
                 next_frame = img->current_frame_index + 1 < img->extra_framecnt ? img->extra_frames + img->current_frame_index + 1 : &img->root_frame;
             }
@@ -1341,10 +1355,11 @@ image_as_dict(GraphicsManager *self, Image *img) {
         if (PyErr_Occurred()) { Py_CLEAR(frames); return NULL; }
     }
     key.frame_id = img->root_frame.id;
-    return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sO sI sI sI sN sN}",
+    return Py_BuildValue("{sI sI sI sI sK sI sI sO sO sO sI sI sI sI sN sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
         B(data_loaded), B(is_4byte_aligned), B(animation_enabled),
         U(current_frame_index), "root_frame_gap", img->root_frame.gap, U(current_frame_index),
+        U(animation_duration),
         "data", read_from_cache_python(self, key), "extra_frames", frames
     );
 #undef B

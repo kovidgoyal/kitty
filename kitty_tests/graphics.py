@@ -638,7 +638,7 @@ class TestGraphics(BaseTest):
         ))
         # test changing gaps
         img = g.image_for_client_id(1)
-        self.assertEqual(img['root_frame_gap'], 77)
+        self.assertEqual(img['root_frame_gap'], 0)
         self.assertIsNone(li(a='a', i=1, r=1, z=13))
         img = g.image_for_client_id(1)
         self.assertEqual(img['root_frame_gap'], 13)
