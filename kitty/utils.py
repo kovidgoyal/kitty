@@ -23,6 +23,7 @@ from .constants import (
 )
 from .options_stub import Options
 from .rgb import Color, to_color
+from .types import ConvertibleToNumbers
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -632,3 +633,11 @@ class SSHConnectionData(NamedTuple):
     binary: str
     hostname: str
     port: Optional[int] = None
+
+
+def positive_int(x: ConvertibleToNumbers) -> int:
+    return max(0, int(x))
+
+
+def positive_float(x: ConvertibleToNumbers) -> float:
+    return max(0, float(x))

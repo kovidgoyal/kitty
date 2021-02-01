@@ -13,8 +13,7 @@ from typing import (
 from . import fast_data_types as defines
 from .conf.definition import Option, Shortcut, option_func
 from .conf.utils import (
-    choices, positive_float, positive_int, to_bool, to_cmdline as tc, to_color,
-    to_color_or_none, unit_float
+    choices, to_bool, to_cmdline as tc, to_color, to_color_or_none, unit_float
 )
 from .constants import config_dir, is_macos
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -25,7 +24,7 @@ from .key_names import (
 from .layout.interface import all_layouts
 from .rgb import Color, color_as_int, color_as_sharp, color_from_int
 from .types import FloatEdges, SingleKey
-from .utils import log_error
+from .utils import log_error, positive_float, positive_int
 
 
 class InvalidMods(ValueError):

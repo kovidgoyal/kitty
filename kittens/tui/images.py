@@ -17,7 +17,9 @@ from typing import (
 from kitty.typing import (
     CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
 )
-from kitty.utils import ScreenSize, find_exe, fit_image
+from kitty.utils import (
+    ScreenSize, find_exe, fit_image, positive_float, positive_int
+)
 
 from .operations import cursor
 
@@ -30,35 +32,52 @@ except Exception:
 
 class Frame:
     gap: int  # milliseconds
+    canvas_width: int
+    canvas_height: int
     width: int
     height: int
     index: int
-    x: int = 0
-    y: int = 0
+    xdpi: float
+    ydpi: float
+    canvas_x: int
+    canvas_y: int
     path: str = ''
 
-    def __init__(self, identify_data: Dict[str, str]):
-        self.gap = int(identify_data['gap']) * 10
-        sz, pos = identify_data['geometry'].split('+', 1)
-        self.width, self.height = map(int, sz.split('x', 1))
-        self.x, self.y = map(int, pos.split('+', 1))
-        self.index = int(identify_data['index'])
+    def __init__(self, identify_data: Union['Frame', Dict[str, str]]):
+        if isinstance(identify_data, Frame):
+            for k in Frame.__annotations__:
+                setattr(self, k, getattr(identify_data, k))
+        else:
+            self.gap = max(0, int(identify_data['gap']) * 10)
+            sz, pos = identify_data['canvas'].split('+', 1)
+            self.canvas_width, self.canvas_height = map(positive_int, sz.split('x', 1))
+            self.canvas_x, self.canvas_y = map(int, pos.split('+', 1))
+            self.width, self.height = map(positive_int, identify_data['size'].split('x', 1))
+            self.xdpi, self.ydpi = map(positive_float, identify_data['dpi'].split('x', 1))
+            self.index = positive_int(identify_data['index'])
+
+    def __repr__(self) -> str:
+        canvas = f'{self.canvas_width}x{self.canvas_height}:{self.canvas_x}+{self.canvas_y}'
+        geom = f'{self.width}x{self.height}'
+        return f'Frame(index={self.index}, gap={self.gap}, {geom=}, {canvas=})'
 
 
 class ImageData:
 
-    def __init__(self, fmt: str, width: int, height: int, mode: str, frames: Sequence[Frame]):
+    def __init__(self, fmt: str, width: int, height: int, mode: str, frames: List[Frame]):
         self.width, self.height, self.fmt, self.mode = width, height, fmt, mode
         self.transmit_fmt: GRT_f = (24 if self.mode == 'rgb' else 32)
         self.frames = frames
-        self.is_animated = len(frames) > 1
-        self.temporary_directory_object = None
 
     def __len__(self) -> int:
         return len(self.frames)
 
     def __iter__(self) -> Iterator[Frame]:
         yield from self.frames
+
+    def __repr__(self) -> str:
+        frames = '\n  '.join(map(repr, self.frames))
+        return f'Image(fmt={self.fmt}, mode={self.mode},\n  {frames}\n)'
 
 
 class OpenFailed(ValueError):
@@ -96,35 +115,39 @@ def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 
 
 def identify(path: str) -> ImageData:
     import json
-    q = '{"fmt":"%m","geometry":"%g","transparency":"%A","gap":"%T","index":"%p"},'
+    q = '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h","dpi":"%xx%y"},'
     p = run_imagemagick(path, ['identify', '-format', q, '--', path])
     data = json.loads(b'[' + p.stdout.rstrip(b',') + b']')
     frame = data[0]
-    mode = 'rgba' if frame['transparency'].lower() in ('blend', 'true') else 'rgb'
+    all_transparencies = {f['transparency'].lower() for f in data}
+    mode = 'rgba' if all_transparencies & {'blend', 'true'} else 'rgb'
     fmt = frame['fmt'].lower()
     if fmt == 'jpeg':
         mode = 'rgb'
-    frames = tuple(map(Frame, data))
+    frames = list(map(Frame, data))
     return ImageData(fmt, frames[0].width, frames[0].height, mode, frames)
 
 
-class RenderedImage:
-    pass
+class RenderedImage(ImageData):
+
+    def __init__(self, fmt: str, width: int, height: int, mode: str):
+        super().__init__(fmt, width, height, mode, [])
 
 
 def render_image(
-    path: str, m: ImageData,
+    path: str, output_template: str,
+    m: ImageData,
     available_width: int, available_height: int,
     scale_up: bool,
-    tdir: Optional[str] = None
+    only_first_frame: bool = False
 ) -> RenderedImage:
-    from tempfile import mkdtemp
-    base = mkdtemp(prefix='kitty-tui-image-', dir=tdir)
     exe = find_exe('convert')
     if exe is None:
         raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
-    outfile = os.path.join(base, f'output%07d.{m.mode}')
     cmd = [exe, '-background', 'none', '--', path]
+    index_of_path_in_cmd = len(cmd) - 1
+    if only_first_frame and len(m) > 1:
+        cmd[index_of_path_in_cmd] += '[0]'
     scaled = False
     width, height = m.width, m.height
     if scale_up:
@@ -134,50 +157,49 @@ def render_image(
             scaled = True
     if scaled or width > available_width or height > available_height:
         width, height = fit_image(width, height, available_width, available_height)
-        cmd += ['-resize', '{}x{}!'.format(width, height)]
+        resize_cmd = ['-resize', '{}x{}!'.format(width, height)]
+        if not only_first_frame and len(m.frames) > 1:
+            # we have to coalesce, resize and de-coalesce all frames
+            resize_cmd = ['-coalesce'] + resize_cmd + ['-deconstruct']
+        cmd += resize_cmd
     cmd += ['-depth', '8']
-    run_imagemagick(path, cmd + [outfile])
+    run_imagemagick(path, cmd + [output_template])
+    bytes_per_pixel = 3 if m.mode == 'rgb' else 4
+    ans = RenderedImage(m.fmt, width, height, m.mode)
+    for i, src in enumerate(m):
+        frame = Frame(src)
+        frame.path = output_template if only_first_frame else (output_template % frame.index)
+        # ImageMagick sometimes generates RGBA images smaller than the specified
+        # size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
+        sz = os.path.getsize(frame.path)
+        expected_size = bytes_per_pixel * frame.width * frame.height
+        if sz < expected_size:
+            missing = expected_size - sz
+            if missing % (bytes_per_pixel * width) != 0:
+                raise ConvertFailed(
+                    path, 'ImageMagick failed to convert {} correctly,'
+                    ' it generated {} < {} of data (w={}, h={}, bpp={})'.format(
+                        path, sz, expected_size, frame.width, frame.height, bytes_per_pixel))
+            frame.height -= missing // (bytes_per_pixel * frame.width)
+            if i == 0:
+                ans.height = frame.height
+        ans.frames.append(frame)
+        if only_first_frame:
+            break
+    return ans
 
 
-def convert(
+def render_as_single_image(
     path: str, m: ImageData,
     available_width: int, available_height: int,
     scale_up: bool,
     tdir: Optional[str] = None
 ) -> Tuple[str, int, int]:
-    from tempfile import NamedTemporaryFile
-    width, height = m.width, m.height
-    exe = find_exe('convert')
-    if exe is None:
-        raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
-    cmd = [exe, '-background', 'none', '--', path]
-    scaled = False
-    if scale_up:
-        if width < available_width:
-            r = available_width / width
-            width, height = available_width, int(height * r)
-            scaled = True
-    if scaled or width > available_width or height > available_height:
-        width, height = fit_image(width, height, available_width, available_height)
-        cmd += ['-resize', '{}x{}!'.format(width, height)]
-    cmd += ['-depth', '8']
-    with NamedTemporaryFile(prefix='icat-', suffix='.' + m.mode, delete=False, dir=tdir) as outfile:
-        run_imagemagick(path, cmd + [outfile.name])
-    # ImageMagick sometimes generated rgba images smaller than the specified
-    # size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
-    sz = os.path.getsize(outfile.name)
-    bytes_per_pixel = 3 if m.mode == 'rgb' else 4
-    expected_size = bytes_per_pixel * width * height
-    if sz < expected_size:
-        missing = expected_size - sz
-        if missing % (bytes_per_pixel * width) != 0:
-            raise ConvertFailed(
-                path, 'ImageMagick failed to convert {} correctly,'
-                ' it generated {} < {} of data (w={}, h={}, bpp={})'.format(
-                    path, sz, expected_size, width, height, bytes_per_pixel))
-        height -= missing // (bytes_per_pixel * width)
-
-    return outfile.name, width, height
+    import tempfile
+    fd, output = tempfile.mkstemp(prefix='icat-', suffix=f'.{m.mode}', dir=tdir)
+    os.close(fd)
+    result = render_image(path, output, m, available_width, available_height, scale_up, only_first_frame=True)
+    return output, result.width, result.height
 
 
 def can_display_images() -> bool:
@@ -398,7 +420,7 @@ class ImageManager:
             self.handler.cmd.gr_command(gc)
 
     def convert_image(self, path: str, available_width: int, available_height: int, image_data: ImageData, scale_up: bool = False) -> ImageKey:
-        rgba_path, width, height = convert(path, image_data, available_width, available_height, scale_up, tdir=self.tdir)
+        rgba_path, width, height = render_as_single_image(path, image_data, available_width, available_height, scale_up, tdir=self.tdir)
         return rgba_path, width, height
 
     def transmit_image(self, image_data: ImageData, image_id: int, rgba_path: str, width: int, height: int) -> int:

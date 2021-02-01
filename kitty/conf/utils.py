@@ -11,7 +11,7 @@ from typing import (
 )
 
 from ..rgb import Color, to_color as as_color
-from ..types import ParsedShortcut
+from ..types import ParsedShortcut, ConvertibleToNumbers
 from ..utils import expandvars, log_error
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
@@ -33,17 +33,6 @@ def to_color(x: str) -> Color:
 
 def to_color_or_none(x: str) -> Optional[Color]:
     return None if x.lower() == 'none' else to_color(x)
-
-
-ConvertibleToNumbers = Union[str, bytes, int, float]
-
-
-def positive_int(x: ConvertibleToNumbers) -> int:
-    return max(0, int(x))
-
-
-def positive_float(x: ConvertibleToNumbers) -> float:
-    return max(0, float(x))
 
 
 def unit_float(x: ConvertibleToNumbers) -> float:

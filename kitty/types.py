@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import NamedTuple
+from typing import NamedTuple, Union
 
 
 class ParsedShortcut(NamedTuple):
@@ -47,3 +47,6 @@ class SingleKey(NamedTuple):
     mods: int = 0
     is_native: bool = False
     key: int = -1
+
+
+ConvertibleToNumbers = Union[str, bytes, int, float]

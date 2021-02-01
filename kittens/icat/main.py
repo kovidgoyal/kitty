@@ -27,7 +27,7 @@ from kitty.utils import (
 )
 
 from ..tui.images import (
-    ConvertFailed, GraphicsCommand, NoImageMagick, OpenFailed, convert, fsenc,
+    ConvertFailed, GraphicsCommand, NoImageMagick, OpenFailed, render_as_single_image, fsenc,
     identify
 )
 from ..tui.operations import clear_images_on_screen, raw_mode
@@ -263,7 +263,7 @@ def process(path: str, args: IcatCLIOptions, parsed_opts: ParsedOpts, is_tempfil
     else:
         fmt = 24 if m.mode == 'rgb' else 32
         transmit_mode = 't'
-        outfile, width, height = convert(path, m, available_width, available_height, args.scale_up)
+        outfile, width, height = render_as_single_image(path, m, available_width, available_height, args.scale_up)
     show(outfile, width, height, parsed_opts.z_index, fmt, transmit_mode, align=args.align, place=parsed_opts.place)
     if not args.place:
         print()  # ensure cursor is on a new line
