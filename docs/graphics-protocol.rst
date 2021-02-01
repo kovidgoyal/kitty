@@ -551,7 +551,7 @@ Key      Value                 Default    Description
 ``c``    Positive integer      ``0``      The 1-based frame number of the frame whose image data serves as the base data
                                           when creating a new frame, by default the base data is black, fully transparent pixels
 ``r``    Positive integer      ``0``      The 1-based frame number of the frame that is being edited. By default, a new frame is created
-``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the previous one. A value of
+``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the next one. A value of
                                           zero is ignored. Negative values create a *gapless* frame. If not specified,
                                           frames have a default gap of ``40ms``. The root frame defaults to zero gap.
 
@@ -559,7 +559,7 @@ Key      Value                 Default    Description
 -----------------------------------------------------------
 ``s``    Positive integer      ``0``      ``1`` - start animation, ``>1`` - stop animation
 ``r``    Positive integer      ``0``      The 1-based frame number of the frame that is being affected
-``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the previous one. A value of
+``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the next one. A value of
                                           zero is ignored. Negative values create a *gapless* frame.
 ``c``    Positive integer      ``0``      The 1-based frame number of the frame that should be made the current frame
 

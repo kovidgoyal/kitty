@@ -1031,19 +1031,21 @@ scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
         if (img->animation_enabled && img->extra_framecnt && img->is_drawn && img->animation_duration) {
-            self->has_images_needing_animation = true;
-            Frame *next_frame = img->current_frame_index + 1 < img->extra_framecnt ? img->extra_frames + img->current_frame_index + 1 : &img->root_frame;
-            monotonic_t next_frame_at = img->current_frame_shown_at + ms_to_monotonic_t(next_frame->gap);
-            if (now >= next_frame_at) {
-                dirtied = true;
-                do {
-                    img->current_frame_index = (img->current_frame_index + 1) % (img->extra_framecnt + 1);
-                } while(!current_frame(img)->gap);
-                update_current_frame(self, img, NULL);
-                next_frame = img->current_frame_index + 1 < img->extra_framecnt ? img->extra_frames + img->current_frame_index + 1 : &img->root_frame;
+            Frame *f = current_frame(img);
+            if (f) {
+                self->has_images_needing_animation = true;
+                monotonic_t next_frame_at = img->current_frame_shown_at + ms_to_monotonic_t(f->gap);
+                if (now >= next_frame_at) {
+                    dirtied = true;
+                    do {
+                        img->current_frame_index = (img->current_frame_index + 1) % (img->extra_framecnt + 1);
+                    } while(!current_frame(img)->gap);
+                    update_current_frame(self, img, NULL);
+                    f = current_frame(img);
+                    next_frame_at = img->current_frame_shown_at + ms_to_monotonic_t(f->gap);
+                }
+                if (next_frame_at > now && next_frame_at - now < *minimum_gap) *minimum_gap = next_frame_at - now;
             }
-            next_frame_at = img->current_frame_shown_at + ms_to_monotonic_t(next_frame->gap);
-            if (next_frame_at - now < *minimum_gap) *minimum_gap = next_frame_at - now;
         }
     }
     return dirtied;
