@@ -594,7 +594,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
                 monotonic_t min_gap;
                 if (scan_active_animations(WD.screen->grman, now, &min_gap, true)) needs_render = true;
                 if (min_gap < MONOTONIC_T_MAX) {
-                    global_state.has_active_animated_images = true;
+                    global_state.check_for_active_animated_images = true;
                     set_maximum_wait(min_gap);
                 }
             }
@@ -670,7 +670,7 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
 
 static inline void
 render(monotonic_t now, bool input_read) {
-    EVDBG("input_read: %d, has_active_animated_images: %d", input_read, global_state.has_active_animated_images);
+    EVDBG("input_read: %d, check_for_active_animated_images: %d", input_read, global_state.check_for_active_animated_images);
     static monotonic_t last_render_at = MONOTONIC_T_MIN;
     monotonic_t time_since_last_render = last_render_at == MONOTONIC_T_MIN ? OPT(repaint_delay) : now - last_render_at;
     if (!input_read && time_since_last_render < OPT(repaint_delay)) {
@@ -678,8 +678,8 @@ render(monotonic_t now, bool input_read) {
         return;
     }
 
-    const bool scan_for_animated_images = global_state.has_active_animated_images;
-    global_state.has_active_animated_images = false;
+    const bool scan_for_animated_images = global_state.check_for_active_animated_images;
+    global_state.check_for_active_animated_images = false;
 
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
         OSWindow *w = global_state.os_windows + i;

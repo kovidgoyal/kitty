@@ -162,7 +162,7 @@ window_close_callback(GLFWwindow* window) {
 static void
 window_occlusion_callback(GLFWwindow *window, bool occluded) {
     if (!set_callback_window(window)) return;
-    if (!occluded) global_state.has_active_animated_images = true;
+    if (!occluded) global_state.check_for_active_animated_images = true;
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }
@@ -170,7 +170,7 @@ window_occlusion_callback(GLFWwindow *window, bool occluded) {
 static void
 window_iconify_callback(GLFWwindow *window, int iconified) {
     if (!set_callback_window(window)) return;
-    if (!iconified) global_state.has_active_animated_images = true;
+    if (!iconified) global_state.check_for_active_animated_images = true;
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }

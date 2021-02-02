@@ -955,7 +955,7 @@ PYWRAP1(update_window_visibility) {
     WITH_WINDOW(os_window_id, tab_id, window_id);
         bool was_visible = window->visible & 1;
         window->visible = visible & 1;
-        if (!was_visible && window->visible) global_state.has_active_animated_images = true;
+        if (!was_visible && window->visible) global_state.check_for_active_animated_images = true;
     END_WITH_WINDOW;
     Py_RETURN_NONE;
 }

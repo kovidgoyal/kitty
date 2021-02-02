@@ -768,7 +768,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
         }
         if (img->is_drawn && !was_drawn && img->animation_enabled && img->extra_framecnt && img->animation_duration) {
             self->has_images_needing_animation = true;
-            global_state.has_active_animated_images = true;
+            global_state.check_for_active_animated_images = true;
         }
     }
     if (!self->count) return false;
@@ -1016,7 +1016,7 @@ handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const Gr
         if (img->animation_enabled) {
             self->has_images_needing_animation = true;
             if (!was_enabled) img->current_frame_shown_at = monotonic();
-            global_state.has_active_animated_images = true;
+            global_state.check_for_active_animated_images = true;
         }
     }
 }
