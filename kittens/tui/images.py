@@ -41,6 +41,7 @@ class Frame:
     ydpi: float
     canvas_x: int
     canvas_y: int
+    mode: str
     path: str = ''
 
     def __init__(self, identify_data: Union['Frame', Dict[str, str]]):
@@ -55,6 +56,7 @@ class Frame:
             self.width, self.height = map(positive_int, identify_data['size'].split('x', 1))
             self.xdpi, self.ydpi = map(positive_float, identify_data['dpi'].split('x', 1))
             self.index = positive_int(identify_data['index'])
+            self.mode = 'rgba' if identify_data['transparency'].lower() in ('blend', 'true') else 'rgb'
 
     def __repr__(self) -> str:
         canvas = f'{self.canvas_width}x{self.canvas_height}:{self.canvas_x}+{self.canvas_y}'
@@ -118,14 +120,9 @@ def identify(path: str) -> ImageData:
     q = '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h","dpi":"%xx%y"},'
     p = run_imagemagick(path, ['identify', '-format', q, '--', path])
     data = json.loads(b'[' + p.stdout.rstrip(b',') + b']')
-    frame = data[0]
-    all_transparencies = {f['transparency'].lower() for f in data}
-    mode = 'rgba' if all_transparencies & {'blend', 'true'} else 'rgb'
-    fmt = frame['fmt'].lower()
-    if fmt == 'jpeg':
-        mode = 'rgb'
+    first = data[0]
     frames = list(map(Frame, data))
-    return ImageData(fmt, frames[0].width, frames[0].height, mode, frames)
+    return ImageData(first['fmt'].lower(), frames[0].width, frames[0].height, frames[0].mode, frames)
 
 
 class RenderedImage(ImageData):
