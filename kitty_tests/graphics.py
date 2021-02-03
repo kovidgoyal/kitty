@@ -604,14 +604,11 @@ class TestGraphics(BaseTest):
         # test error on send frame for non-existent image
         self.assertEqual(li().code, 'ENOENT')
 
-        # test error sending incompatible data formats
+        # create image
         self.assertEqual(li(a='t').code, 'OK')
         self.assertEqual(g.disk_cache.total_size, 36)
-        res = li(s=3, v=3, f=32)
-        self.assertEqual(res.code, 'EINVAL')
-        self.assertIn('ransparen', res.msg)
 
-        # simple new frame
+        # simple new frame (width=4, height=3)
         t(payload='2' * 36, z=77)
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'2' * 36},))
@@ -622,10 +619,17 @@ class TestGraphics(BaseTest):
         # test editing part of a frame
         t(payload='4' * 12, r=2, s=2, v=2)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'444444333333444444333333333333333333'},))
+
+        def expand(*rows):
+            ans = []
+            for r in rows:
+                ans.append(''.join(x * 3 for x in str(r)))
+            return ''.join(ans).encode('ascii')
+
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': expand(4433, 4433, 3333)},))
         t(payload='5' * 12, r=2, s=2, v=2, x=1, y=1)
         img = g.image_for_client_id(1)
-        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'444444333555555444555555333333333333'},))
+        self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': expand(4433, 4553, 3553)},))
         t(payload='3' * 36, r=2)
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'3' * 36},))

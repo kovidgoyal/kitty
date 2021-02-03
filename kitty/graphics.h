@@ -17,19 +17,6 @@ typedef struct {
 } GraphicsCommand;
 
 typedef struct {
-    uint8_t *buf;
-    size_t buf_capacity, buf_used;
-
-    uint8_t *mapped_file;
-    size_t mapped_file_sz;
-
-    size_t data_sz;
-    uint8_t *data;
-    bool is_4byte_aligned;
-    bool is_opaque;
-} LoadData;
-
-typedef struct {
     float left, top, right, bottom;
 } ImageRect;
 
@@ -43,7 +30,8 @@ typedef struct {
 } ImageRef;
 
 typedef struct {
-    uint32_t gap, id;
+    uint32_t gap, id, width, height, x, y, base_frame_id, bgcolor;
+    bool is_opaque, is_4byte_aligned, alpha_blend;
 } Frame;
 
 
@@ -52,8 +40,6 @@ typedef struct {
     id_type internal_id;
 
     bool data_loaded;
-    LoadData load_data;
-
     ImageRef *refs;
     Frame *extra_frames, root_frame;
     uint32_t current_frame_index, frame_id_counter;
@@ -61,7 +47,7 @@ typedef struct {
     size_t refcnt, refcap, extra_framecnt;
     monotonic_t atime;
     size_t used_storage;
-    bool is_opaque, is_4byte_aligned, animation_enabled, is_drawn;
+    bool animation_enabled, is_drawn;
     monotonic_t current_frame_shown_at;
 } Image;
 
@@ -85,11 +71,26 @@ typedef struct {
 } ImageAndFrame;
 
 typedef struct {
+    uint8_t *buf;
+    size_t buf_capacity, buf_used;
+
+    uint8_t *mapped_file;
+    size_t mapped_file_sz;
+
+    size_t data_sz;
+    uint8_t *data;
+    bool is_4byte_aligned;
+    bool is_opaque;
+    uint32_t width, height;
+    GraphicsCommand start_command;
+    ImageAndFrame loading_for;
+} LoadData;
+
+typedef struct {
     PyObject_HEAD
 
     size_t image_count, images_capacity, storage_limit;
-    ImageAndFrame currently_loading_data_for;
-    GraphicsCommand last_transmit_graphics_command;
+    LoadData currently_loading;
     Image *images;
     size_t count, capacity;
     ImageRenderData *render_data;

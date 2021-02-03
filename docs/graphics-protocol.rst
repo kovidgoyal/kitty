@@ -554,6 +554,12 @@ Key      Value                 Default    Description
 ``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the next one. A value of
                                           zero is ignored. Negative values create a *gapless* frame. If not specified,
                                           frames have a default gap of ``40ms``. The root frame defaults to zero gap.
+``X``    Positive integer      ``0``      The composition mode for blending pixels when creating a new frame or
+                                          editing a frame's data. The default is full alpha blending. ``1`` means a
+                                          simple overwrite.
+``Y``    Positive integer      ``0``      The background color for pixels not
+                                          specified in the frame data. Must be in 32-bit RGBA format
+
 
 **Keys for animation control**
 -----------------------------------------------------------
