@@ -42,6 +42,7 @@ class Frame:
     canvas_x: int
     canvas_y: int
     mode: str
+    needs_blend: bool
     path: str = ''
 
     def __init__(self, identify_data: Union['Frame', Dict[str, str]]):
@@ -56,7 +57,9 @@ class Frame:
             self.width, self.height = map(positive_int, identify_data['size'].split('x', 1))
             self.xdpi, self.ydpi = map(positive_float, identify_data['dpi'].split('x', 1))
             self.index = positive_int(identify_data['index'])
-            self.mode = 'rgba' if identify_data['transparency'].lower() in ('blend', 'true') else 'rgb'
+            q = identify_data['transparency'].lower()
+            self.mode = 'rgba' if q in ('blend', 'true') else 'rgb'
+            self.needs_blend = q == 'blend'
 
     def __repr__(self) -> str:
         canvas = f'{self.canvas_width}x{self.canvas_height}:{self.canvas_x}+{self.canvas_y}'
