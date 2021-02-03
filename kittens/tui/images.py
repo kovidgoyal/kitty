@@ -135,12 +135,13 @@ class RenderedImage(ImageData):
 
 
 def render_image(
-    path: str, output_template: str,
+    path: str, output_prefix: str,
     m: ImageData,
     available_width: int, available_height: int,
     scale_up: bool,
     only_first_frame: bool = False
 ) -> RenderedImage:
+    import tempfile
     exe = find_exe('convert')
     if exe is None:
         raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
@@ -162,13 +163,15 @@ def render_image(
             # we have to coalesce, resize and de-coalesce all frames
             resize_cmd = ['-coalesce'] + resize_cmd + ['-deconstruct']
         cmd += resize_cmd
-    cmd += ['-depth', '8']
-    run_imagemagick(path, cmd + [output_template])
-    bytes_per_pixel = 3 if m.mode == 'rgb' else 4
+    cmd += ['-depth', '8', '-set', 'filename:f', '%w-%h-%g']
     ans = RenderedImage(m.fmt, width, height, m.mode)
-    for i, src in enumerate(m):
-        frame = Frame(src)
-        frame.path = output_template if only_first_frame else (output_template % frame.index)
+    if only_first_frame:
+        ans.frames = [Frame(m.frames[0])]
+    else:
+        ans.frames = list(map(Frame, m.frames))
+    bytes_per_pixel = 3 if m.mode == 'rgb' else 4
+
+    def check_resize(frame: Frame) -> None:
         # ImageMagick sometimes generates RGBA images smaller than the specified
         # size. See https://github.com/kovidgoyal/kitty/issues/276 for examples
         sz = os.path.getsize(frame.path)
@@ -181,11 +184,25 @@ def render_image(
                     ' it generated {} < {} of data (w={}, h={}, bpp={})'.format(
                         path, sz, expected_size, frame.width, frame.height, bytes_per_pixel))
             frame.height -= missing // (bytes_per_pixel * frame.width)
-            if i == 0:
+            if frame.index == 0:
                 ans.height = frame.height
-        ans.frames.append(frame)
-        if only_first_frame:
-            break
+                ans.width = frame.width
+
+    with tempfile.TemporaryDirectory(dir=os.path.dirname(output_prefix)) as tdir:
+        output_template = os.path.join(tdir, f'im-%[filename:f]-%d.{m.mode}')
+        run_imagemagick(path, cmd + [output_template])
+        for x in os.listdir(tdir):
+            parts = x.split('.', 1)[0].split('-')
+            index = int(parts[-1])
+            f = ans.frames[index]
+            f.width, f.height = map(positive_int, parts[1:3])
+            sz, pos = parts[3].split('+', 1)
+            f.canvas_width, f.canvas_height = map(positive_int, sz.split('x', 1))
+            f.canvas_x, f.canvas_y = map(int, pos.split('+', 1))
+            f.path = output_prefix + f'-{index}.{m.mode}'
+            os.rename(os.path.join(tdir, x), f.path)
+            check_resize(f)
+
     return ans
 
 
@@ -199,6 +216,7 @@ def render_as_single_image(
     fd, output = tempfile.mkstemp(prefix='icat-', suffix=f'.{m.mode}', dir=tdir)
     os.close(fd)
     result = render_image(path, output, m, available_width, available_height, scale_up, only_first_frame=True)
+    os.rename(result.frames[0].path, output)
     return output, result.width, result.height
 
 
