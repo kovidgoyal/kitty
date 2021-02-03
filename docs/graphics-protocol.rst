@@ -568,6 +568,9 @@ Key      Value                 Default    Description
 ``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the next one. A value of
                                           zero is ignored. Negative values create a *gapless* frame.
 ``c``    Positive integer      ``0``      The 1-based frame number of the frame that should be made the current frame
+``v``    Positive integer      ``0``      The number of loops to play. ``0`` is
+                                          ignored, ``1`` is play infinite and is the default and larger number
+                                          means play that number ``-1`` loops
 
 
 **Keys for deleting images**

@@ -809,6 +809,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 #define _animation_enabled data_width
 #define _blend_mode cell_x_offset
 #define _bgcolor cell_y_offset
+#define _loop_count data_height
 
 static inline Frame*
 current_frame(Image *img) {
@@ -1167,11 +1168,22 @@ handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const Gr
         bool was_enabled = img->animation_enabled;
         img->animation_enabled = g->_animation_enabled == 1;
         if (img->animation_enabled) {
-            self->has_images_needing_animation = true;
             if (!was_enabled) img->current_frame_shown_at = monotonic();
+            self->has_images_needing_animation = true;
             global_state.check_for_active_animated_images = true;
         }
+        img->current_loop = 0;
     }
+    if (g->_loop_count) {
+        img->max_loops = g->_loop_count - 1;
+        global_state.check_for_active_animated_images = true;
+    }
+}
+
+static inline bool
+image_is_animatable(const Image *img) {
+    return img->animation_enabled && img->extra_framecnt && img->is_drawn && img->animation_duration && (
+            !img->max_loops || img->current_loop < img->max_loops);
 }
 
 bool
@@ -1179,20 +1191,24 @@ scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t
     bool dirtied = false;
     *minimum_gap = MONOTONIC_T_MAX;
     if (!self->has_images_needing_animation) return dirtied;
-    self->has_images_needing_animation = os_window_context_set;
-    self->context_made_current_for_this_command = true;
+    self->has_images_needing_animation = false;
+    self->context_made_current_for_this_command = os_window_context_set;
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
-        if (img->animation_enabled && img->extra_framecnt && img->is_drawn && img->animation_duration) {
+        if (image_is_animatable(img)) {
             Frame *f = current_frame(img);
             if (f) {
                 self->has_images_needing_animation = true;
                 monotonic_t next_frame_at = img->current_frame_shown_at + ms_to_monotonic_t(f->gap);
                 if (now >= next_frame_at) {
-                    dirtied = true;
                     do {
-                        img->current_frame_index = (img->current_frame_index + 1) % (img->extra_framecnt + 1);
-                    } while(!current_frame(img)->gap);
+                        uint32_t next = (img->current_frame_index + 1) % (img->extra_framecnt + 1);
+                        if (!next) {
+                            if (++img->current_loop >= img->max_loops && img->max_loops) goto skip_image;
+                        }
+                        img->current_frame_index = next;
+                    } while (!current_frame(img)->gap);
+                    dirtied = true;
                     update_current_frame(self, img, NULL);
                     f = current_frame(img);
                     next_frame_at = img->current_frame_shown_at + ms_to_monotonic_t(f->gap);
@@ -1200,6 +1216,7 @@ scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t
                 if (next_frame_at > now && next_frame_at - now < *minimum_gap) *minimum_gap = next_frame_at - now;
             }
         }
+        skip_image:;
     }
     return dirtied;
 }

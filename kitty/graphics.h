@@ -48,6 +48,7 @@ typedef struct {
     monotonic_t atime;
     size_t used_storage;
     bool animation_enabled, is_drawn;
+    uint32_t max_loops, current_loop;
     monotonic_t current_frame_shown_at;
 } Image;
 
