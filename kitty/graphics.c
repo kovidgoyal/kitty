@@ -533,7 +533,7 @@ initialize_load_data(GraphicsManager *self, const GraphicsCommand *g, Image *img
 #define MAX_IMAGE_DIMENSION 10000u
 
 static void
-upload_to_gpu(GraphicsManager *self, Image *img, const bool is_opaque, const bool is_4byte_aligned, const void *data) {
+upload_to_gpu(GraphicsManager *self, Image *img, const bool is_opaque, const bool is_4byte_aligned, const uint8_t *data) {
     if (!self->context_made_current_for_this_command) {
         if (!self->window_id) return;
         if (!make_window_context_current(self->window_id)) return;
@@ -993,7 +993,7 @@ update_current_frame(GraphicsManager *self, Image *img, const CoalescedFrameData
         }
         data = &cfd;
     }
-    upload_to_gpu(self, img, data->is_opaque, data->is_4byte_aligned, data);
+    upload_to_gpu(self, img, data->is_opaque, data->is_4byte_aligned, data->buf);
     if (needs_load) free(data->buf);
     img->current_frame_shown_at = monotonic();
 }
