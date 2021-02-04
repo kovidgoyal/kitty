@@ -140,7 +140,12 @@ def identify(path: str) -> ImageData:
     data = json.loads(b'[' + p.stdout.rstrip(b',') + b']')
     first = data[0]
     frames = list(map(Frame, data))
-    return ImageData(first['fmt'].lower(), frames[0].width, frames[0].height, frames[0].mode, frames)
+    mode = 'rgb'
+    for f in frames:
+        if f.mode == 'rgba':
+            mode = 'rgba'
+            break
+    return ImageData(first['fmt'].lower(), frames[0].width, frames[0].height, mode, frames)
 
 
 class RenderedImage(ImageData):
