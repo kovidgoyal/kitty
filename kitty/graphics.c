@@ -1060,7 +1060,28 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
                 img->extra_framecnt--;
                 ABRT("EINVAL", "No frame with number: %u found", g->_other_frame_number);
             }
-            transmitted_frame.base_frame_id = other_frame->id;
+            if (other_frame->base_frame_id) {
+                // since the frame this frame refers to refers to yet another frame, make
+                // this a fully coalesced key frame, for performance
+                CoalescedFrameData cfd = get_coalesced_frame_data(self, img, other_frame);
+                if (!cfd.buf) ABRT("EINVAL", "Failed to get data from frame referenced by frame: %u", frame_number);
+                ComposeData d = {
+                    .over_px_sz = transmitted_frame.is_opaque ? 3 : 4, .under_px_sz = cfd.is_opaque ? 3: 4,
+                    .over_width = transmitted_frame.width, .over_height = transmitted_frame.height,
+                    .over_offset_x = transmitted_frame.x, .over_offset_y = transmitted_frame.y,
+                    .under_width = img->width, .under_height = img->height,
+                    .needs_blending = transmitted_frame.alpha_blend && !transmitted_frame.is_opaque
+                };
+                compose(d, cfd.buf, load_data->data);
+                free_load_data(load_data);
+                load_data->data = cfd.buf; load_data->data_sz = img->width * img->height * d.under_px_sz;
+                transmitted_frame.width = img->width; transmitted_frame.height = img->height;
+                transmitted_frame.x = 0; transmitted_frame.y = 0;
+                transmitted_frame.is_4byte_aligned = cfd.is_4byte_aligned;
+                transmitted_frame.is_opaque = cfd.is_opaque;
+            } else {
+                transmitted_frame.base_frame_id = other_frame->id;
+            }
         }
         *frame = transmitted_frame;
         if (!add_to_cache(self, key, load_data->data, load_data->data_sz)) {
