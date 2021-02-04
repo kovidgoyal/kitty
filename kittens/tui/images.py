@@ -241,8 +241,11 @@ def render_image(
             ff.truncate()
             cd = create_canvas(data, f.width, f.canvas_x, f.canvas_y, ans.width, ans.height, 3 if ans.mode == 'rgb' else 4)
             ff.write(cd)
-    if unseen:
-        raise ConvertFailed(path, f'Failed to render {len(unseen)} out of {len(m)} frames of animation')
+    if get_multiple_frames:
+        if unseen:
+            raise ConvertFailed(path, f'Failed to render {len(unseen)} out of {len(m)} frames of animation')
+    elif not ans.frames[0].path:
+        raise ConvertFailed(path, 'Failed to render image')
 
     return ans
 
