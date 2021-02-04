@@ -861,11 +861,13 @@ blend_on_opaque(uint8_t *under_px, const uint8_t *over_px) {
 
 static inline void
 alpha_blend(uint8_t *dest_px, const uint8_t *src_px) {
-    const float dest_a = (float)dest_px[3] / 255.f, src_a = (float)src_px[3] / 255.f;
-    const float alpha = src_a + dest_a * (1.f - src_a);
-    dest_px[3] = (uint8_t)(255 * alpha);
-    if (!dest_px[3]) { dest_px[0] = 0; dest_px[1] = 0; dest_px[2] = 0; return; }
-    for (unsigned i = 0; i < 3; i++) dest_px[i] = (uint8_t)((src_px[i] * src_a + dest_px[i] * dest_a * (1.f - src_a))/alpha);
+    if (src_px[3]) {
+        const float dest_a = (float)dest_px[3] / 255.f, src_a = (float)src_px[3] / 255.f;
+        const float alpha = src_a + dest_a * (1.f - src_a);
+        dest_px[3] = (uint8_t)(255 * alpha);
+        if (!dest_px[3]) { dest_px[0] = 0; dest_px[1] = 0; dest_px[2] = 0; return; }
+        for (unsigned i = 0; i < 3; i++) dest_px[i] = (uint8_t)((src_px[i] * src_a + dest_px[i] * dest_a * (1.f - src_a))/alpha);
+    }
 }
 
 typedef struct {
