@@ -1001,6 +1001,18 @@ update_current_frame(GraphicsManager *self, Image *img, const CoalescedFrameData
     img->current_frame_shown_at = monotonic();
 }
 
+static bool
+reference_chain_too_large(Image *img, const Frame *frame) {
+    size_t limit = 2 * img->width * img->height;
+    size_t drawn_area = frame->width * frame->height;
+    unsigned num = 1;
+    while (drawn_area < limit && num < 5) {
+        if (!frame->base_frame_id || !(frame = frame_for_id(img, frame->base_frame_id))) break;
+        drawn_area += frame->width * frame->height;
+        num++;
+    }
+    return num >= 5 || drawn_area >= limit;
+}
 
 static Image*
 handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, Image *img, const uint8_t *payload, bool *is_dirty) {
@@ -1060,7 +1072,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
                 img->extra_framecnt--;
                 ABRT("EINVAL", "No frame with number: %u found", g->_other_frame_number);
             }
-            if (other_frame->base_frame_id) {
+            if (other_frame->base_frame_id && reference_chain_too_large(img, other_frame)) {
                 // since the frame this frame refers to refers to yet another frame, make
                 // this a fully coalesced key frame, for performance
                 CoalescedFrameData cfd = get_coalesced_frame_data(self, img, other_frame);
