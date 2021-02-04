@@ -102,7 +102,7 @@ but you can turn it off or on explicitly, if needed.
 
 --silent
 type=bool-set
-Do not print out anything to stdout during operation.
+Do not print out anything to STDOUT during operation.
 
 
 --z-index -z
@@ -112,9 +112,17 @@ a double minus for values under the threshold for drawing images under cell back
 colors. For example, --1 evaluates as -1,073,741,825.
 
 
+--loop -l
+default=-1
+type=int
+Number of times to loop animations. Negative values loop forever. Zero means
+only the first frame of the animation is displayed. Otherwise, the animation
+is looped the specified number of times.
+
+
 --hold
 type=bool-set
-Wait for keypress before exiting after displaying the images.
+Wait for a key press before exiting after displaying the images.
 '''
 
 
@@ -236,7 +244,7 @@ def show(
         write_chunked(cmd, data)
 
 
-def show_frames(frame_data: RenderedImage, use_number: int) -> None:
+def show_frames(frame_data: RenderedImage, use_number: int, loops: int) -> None:
     transmit_cmd = GraphicsCommand()
     transmit_cmd.a = 'f'
     transmit_cmd.I = use_number  # noqa
@@ -245,7 +253,7 @@ def show_frames(frame_data: RenderedImage, use_number: int) -> None:
         transmit_cmd.t = 't'
     transmit_cmd.f = 24 if frame_data.mode == 'rgb' else 32
 
-    def control(frame_number: int = 0, loops: Optional[int] = None, gap: Optional[int] = 0, start_animation: bool = False) -> None:
+    def control(frame_number: int = 0, loops: Optional[int] = None, gap: Optional[int] = 0, animation_control: int = 0) -> None:
         cmd = GraphicsCommand()
         cmd.a = 'a'
         cmd.I = use_number  # noqa
@@ -254,8 +262,8 @@ def show_frames(frame_data: RenderedImage, use_number: int) -> None:
             cmd.v = loops + 1
         if gap is not None:
             cmd.z = gap if gap > 0 else -1
-        if start_animation:
-            cmd.s = 1
+        if animation_control:
+            cmd.s = animation_control
         write_gr_cmd(cmd)
 
     anchor_frame = 0
@@ -265,7 +273,7 @@ def show_frames(frame_data: RenderedImage, use_number: int) -> None:
         if frame.dispose < Dispose.previous:
             anchor_frame = frame_number
         if frame_number == 1:
-            control(frame_number, gap=frame.gap, loops=1)
+            control(frame_number, gap=frame.gap, loops=None if loops < 1 else loops)
             continue
         if frame.dispose is Dispose.previous:
             if anchor_frame != frame_number:
@@ -283,7 +291,9 @@ def show_frames(frame_data: RenderedImage, use_number: int) -> None:
             with open(frame.path, 'rb') as f:
                 data = f.read()
             write_chunked(transmit_cmd, data)
-        control(loops=0, start_animation=True)
+        if frame_number == 2:
+            control(animation_control=2)
+    control(animation_control=3)
 
 
 def parse_z_index(val: str) -> int:
@@ -318,7 +328,7 @@ def process(path: str, args: IcatCLIOptions, parsed_opts: ParsedOpts, is_tempfil
     else:
         fmt = 24 if m.mode == 'rgb' else 32
         transmit_mode = 't'
-        if len(m) == 1:
+        if len(m) == 1 or args.loop == 0:
             outfile, width, height = render_as_single_image(path, m, available_width, available_height, args.scale_up)
         else:
             import struct
@@ -332,7 +342,7 @@ def process(path: str, args: IcatCLIOptions, parsed_opts: ParsedOpts, is_tempfil
         align=args.align, place=parsed_opts.place, use_number=use_number
     )
     if use_number:
-        show_frames(frame_data, use_number)
+        show_frames(frame_data, use_number, args.loop)
         if not can_transfer_with_files:
             for fr in frame_data.frames:
                 with contextlib.suppress(FileNotFoundError):

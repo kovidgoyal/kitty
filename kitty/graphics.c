@@ -776,7 +776,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
             rd->texture_id = img->texture_id;
             img->is_drawn = true;
         }
-        if (img->is_drawn && !was_drawn && img->animation_enabled && img->extra_framecnt && img->animation_duration) {
+        if (img->is_drawn && !was_drawn && img->animation_state != ANIMATION_STOPPED && img->extra_framecnt && img->animation_duration) {
             self->has_images_needing_animation = true;
             global_state.check_for_active_animated_images = true;
         }
@@ -806,7 +806,7 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 #define _frame_number num_lines
 #define _other_frame_number num_cells
 #define _gap z_index
-#define _animation_enabled data_width
+#define _animation_state data_width
 #define _blend_mode cell_x_offset
 #define _bgcolor cell_y_offset
 #define _loop_count data_height
@@ -1102,6 +1102,10 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
             ABRT("ENOSPC", "Failed to cache data for image frame");
         }
         img->animation_duration += frame->gap;
+        if (img->animation_state == ANIMATION_LOADING) {
+            self->has_images_needing_animation = true;
+            global_state.check_for_active_animated_images = true;
+        }
     } else {
         frame = frame_for_number(img, frame_number);
         if (!frame) ABRT("EINVAL", "No frame with number: %u found", frame_number);
@@ -1199,11 +1203,22 @@ handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const Gr
             update_current_frame(self, img, NULL);
         }
     }
-    if (g->_animation_enabled) {
-        bool was_enabled = img->animation_enabled;
-        img->animation_enabled = g->_animation_enabled == 1;
-        if (img->animation_enabled) {
-            if (!was_enabled) img->current_frame_shown_at = monotonic();
+    if (g->_animation_state) {
+        AnimationState old_state = img->animation_state;
+        switch(g->_animation_state) {
+            case 1:
+                img->animation_state = ANIMATION_STOPPED; break;
+            case 2:
+                img->animation_state = ANIMATION_LOADING; break;
+            case 3:
+                img->animation_state = ANIMATION_RUNNING; break;
+            default:
+                break;
+        }
+        if (img->animation_state == ANIMATION_STOPPED) {
+            img->current_loop = 0;
+        } else {
+            if (old_state == ANIMATION_STOPPED) img->current_frame_shown_at = monotonic();
             self->has_images_needing_animation = true;
             global_state.check_for_active_animated_images = true;
         }
@@ -1217,7 +1232,7 @@ handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const Gr
 
 static inline bool
 image_is_animatable(const Image *img) {
-    return img->animation_enabled && img->extra_framecnt && img->is_drawn && img->animation_duration && (
+    return img->animation_state != ANIMATION_STOPPED && img->extra_framecnt && img->is_drawn && img->animation_duration && (
             !img->max_loops || img->current_loop < img->max_loops);
 }
 
@@ -1239,6 +1254,7 @@ scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t
                     do {
                         uint32_t next = (img->current_frame_index + 1) % (img->extra_framecnt + 1);
                         if (!next) {
+                            if (img->animation_state == ANIMATION_LOADING) goto skip_image;
                             if (++img->current_loop >= img->max_loops && img->max_loops) goto skip_image;
                         }
                         img->current_frame_index = next;
@@ -1571,10 +1587,10 @@ image_as_dict(GraphicsManager *self, Image *img) {
     }
     CoalescedFrameData cfd = get_coalesced_frame_data(self, img, &img->root_frame);
     if (!cfd.buf) { PyErr_SetString(PyExc_RuntimeError, "Failed to get data for root frame"); return NULL; }
-    PyObject *ans = Py_BuildValue("{sI sI sI sI sK sI sI " "sO sO sO " "sI sI sI " "sI sy# sN}",
+    PyObject *ans = Py_BuildValue("{sI sI sI sI sK sI sI " "sO sI sO " "sI sI sI " "sI sy# sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
 
-        B(data_loaded), B(animation_enabled), "is_4byte_aligned", img->root_frame.is_4byte_aligned ? Py_True : Py_False,
+        B(data_loaded), U(animation_state), "is_4byte_aligned", img->root_frame.is_4byte_aligned ? Py_True : Py_False,
 
         U(current_frame_index), "root_frame_gap", img->root_frame.gap, U(current_frame_index),
 

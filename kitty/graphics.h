@@ -34,6 +34,7 @@ typedef struct {
     bool is_opaque, is_4byte_aligned, alpha_blend;
 } Frame;
 
+typedef enum { ANIMATION_STOPPED = 0, ANIMATION_LOADING = 1, ANIMATION_RUNNING = 2} AnimationState;
 
 typedef struct {
     uint32_t texture_id, client_id, client_number, width, height;
@@ -47,7 +48,8 @@ typedef struct {
     size_t refcnt, refcap, extra_framecnt;
     monotonic_t atime;
     size_t used_storage;
-    bool animation_enabled, is_drawn;
+    bool is_drawn;
+    AnimationState animation_state;
     uint32_t max_loops, current_loop;
     monotonic_t current_frame_shown_at;
 } Image;

@@ -563,7 +563,7 @@ Key      Value                 Default    Description
 
 **Keys for animation control**
 -----------------------------------------------------------
-``s``    Positive integer      ``0``      ``1`` - start animation, ``>1`` - stop animation
+``s``    Positive integer      ``0``      ``1`` - stop animation, ``2`` - run animation, but wait for new frames, ``3`` - run animation
 ``r``    Positive integer      ``0``      The 1-based frame number of the frame that is being affected
 ``z``    32-bit integer        ``0``      The gap (in milliseconds) of this frame from the next one. A value of
                                           zero is ignored. Negative values create a *gapless* frame.
