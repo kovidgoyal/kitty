@@ -1640,9 +1640,35 @@ PyTypeObject GraphicsManager_Type = {
     .tp_members = members,
 };
 
+static PyObject*
+pycreate_canvas(PyObject *self UNUSED, PyObject *args) {
+    unsigned int bytes_per_pixel;
+    unsigned int over_width, width, height, x, y;
+    Py_ssize_t over_sz;
+    const uint8_t *over_data;
+    if (!PyArg_ParseTuple(args, "y#IIIIII", &over_data, &over_sz, &over_width, &x, &y, &width, &height, &bytes_per_pixel)) return NULL;
+    size_t canvas_sz = width * height * bytes_per_pixel;
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, canvas_sz);
+    if (!ans) return NULL;
+
+    uint8_t* canvas = (uint8_t*)PyBytes_AS_STRING(ans);
+    memset(canvas, 0, canvas_sz);
+    ComposeData cd = {
+        .needs_blending = bytes_per_pixel == 4,
+        .over_width = over_width, .over_height = over_sz / (bytes_per_pixel * over_width),
+        .under_width = width, .under_height = height,
+        .over_px_sz = bytes_per_pixel, .under_px_sz = bytes_per_pixel,
+        .over_offset_x = x, .over_offset_y = y
+    };
+    compose(cd, canvas, over_data);
+
+    return ans;
+}
+
 static PyMethodDef module_methods[] = {
     M(shm_write, METH_VARARGS),
     M(shm_unlink, METH_VARARGS),
+    M(create_canvas, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

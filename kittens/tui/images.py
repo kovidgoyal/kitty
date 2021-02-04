@@ -15,6 +15,7 @@ from typing import (
     Sequence, Tuple, Union
 )
 
+from kitty.fast_data_types import create_canvas
 from kitty.typing import (
     CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
 )
@@ -145,7 +146,7 @@ def identify(path: str) -> ImageData:
         if f.mode == 'rgba':
             mode = 'rgba'
             break
-    return ImageData(first['fmt'].lower(), frames[0].width, frames[0].height, mode, frames)
+    return ImageData(first['fmt'].lower(), frames[0].canvas_width, frames[0].canvas_height, mode, frames)
 
 
 class RenderedImage(ImageData):
@@ -232,6 +233,14 @@ def render_image(
             f.path = output_prefix + f'-{index}.{m.mode}'
             os.rename(os.path.join(tdir, x), f.path)
             check_resize(f)
+    f = ans.frames[0]
+    if f.width != ans.width or f.height != ans.height:
+        with open(f.path, 'r+b') as ff:
+            data = ff.read()
+            ff.seek(0)
+            ff.truncate()
+            cd = create_canvas(data, f.width, f.canvas_x, f.canvas_y, ans.width, ans.height, 3 if ans.mode == 'rgb' else 4)
+            ff.write(cd)
     if unseen:
         raise ConvertFailed(path, f'Failed to render {len(unseen)} out of {len(m)} frames of animation')
 
