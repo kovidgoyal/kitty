@@ -1073,8 +1073,8 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
                 ABRT("EINVAL", "No frame with number: %u found", g->_other_frame_number);
             }
             if (other_frame->base_frame_id && reference_chain_too_large(img, other_frame)) {
-                // since the frame this frame refers to refers to yet another frame, make
-                // this a fully coalesced key frame, for performance
+                // since there is a long reference chain to render this frame, make
+                // it a fully coalesced key frame, for performance
                 CoalescedFrameData cfd = get_coalesced_frame_data(self, img, other_frame);
                 if (!cfd.buf) ABRT("EINVAL", "Failed to get data from frame referenced by frame: %u", frame_number);
                 ComposeData d = {
