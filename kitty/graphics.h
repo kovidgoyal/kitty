@@ -40,7 +40,7 @@ typedef struct {
     uint32_t texture_id, client_id, client_number, width, height;
     id_type internal_id;
 
-    bool data_loaded;
+    bool root_frame_data_loaded;
     ImageRef *refs;
     Frame *extra_frames, root_frame;
     uint32_t current_frame_index, frame_id_counter;
@@ -83,7 +83,7 @@ typedef struct {
     size_t data_sz;
     uint8_t *data;
     bool is_4byte_aligned;
-    bool is_opaque;
+    bool is_opaque, loading_completed_successfully;
     uint32_t width, height;
     GraphicsCommand start_command;
     ImageAndFrame loading_for;

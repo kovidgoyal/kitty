@@ -609,7 +609,9 @@ class TestGraphics(BaseTest):
         self.assertEqual(g.disk_cache.total_size, 36)
 
         # simple new frame (width=4, height=3)
-        t(payload='2' * 36, z=77)
+        self.assertIsNone(li(payload='2' * 12, z=77, m=1))
+        self.assertIsNone(li(payload='2' * 12, z=77, m=1))
+        t(payload='2' * 12, z=77)
         img = g.image_for_client_id(1)
         self.assertEqual(img['extra_frames'], ({'gap': 77, 'id': 2, 'data': b'2' * 36},))
         # test editing a frame

@@ -305,6 +305,12 @@ class GraphicsCommand:
     def __repr__(self) -> str:
         return self.serialize().decode('ascii').replace('\033', '^]')
 
+    def clone(self) -> 'GraphicsCommand':
+        ans = GraphicsCommand()
+        for k in GraphicsCommand.__annotations__:
+            setattr(ans, k, getattr(self, k))
+        return ans
+
     def serialize(self, payload: Union[bytes, str] = b'') -> bytes:
         items = []
         for k in GraphicsCommand.__annotations__:

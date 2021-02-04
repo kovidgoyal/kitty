@@ -174,7 +174,7 @@ remove_images(GraphicsManager *self, bool(*predicate)(Image*), id_type skip_imag
 
 static bool
 trim_predicate(Image *img) {
-    return !img->data_loaded || !img->refcnt;
+    return !img->root_frame_data_loaded || !img->refcnt;
 }
 
 
@@ -298,7 +298,7 @@ inflate_png(LoadData *load_data, uint8_t *buf, size_t bufsz) {
 
 static bool
 add_trim_predicate(Image *img) {
-    return !img->data_loaded || (!img->client_id && !img->refcnt);
+    return !img->root_frame_data_loaded || (!img->client_id && !img->refcnt);
 }
 
 bool
@@ -386,7 +386,7 @@ get_free_client_id(const GraphicsManager *self) {
     return ans;
 }
 
-#define ABRT(code, ...) { set_command_failed_response(code, __VA_ARGS__); if (img) img->data_loaded = false; free_load_data(&self->currently_loading); return NULL; }
+#define ABRT(code, ...) { set_command_failed_response(code, __VA_ARGS__); self->currently_loading.loading_completed_successfully = false; free_load_data(&self->currently_loading); return NULL; }
 
 #define MAX_DATA_SZ (4u * 100000000u)
 enum FORMATS { RGB=24, RGBA=32, PNG=100 };
@@ -410,7 +410,7 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
             }
             memcpy(load_data->buf + load_data->buf_used, payload, g->payload_sz);
             load_data->buf_used += g->payload_sz;
-            if (!g->more) { img->data_loaded = true; load_data->loading_for = (const ImageAndFrame){0}; }
+            if (!g->more) { load_data->loading_completed_successfully = true; load_data->loading_for = (const ImageAndFrame){0}; }
             break;
         case 'f': // file
         case 't': // temporary file
@@ -420,14 +420,14 @@ load_image_data(GraphicsManager *self, Image *img, const GraphicsCommand *g, con
             if (transmission_type == 's') fd = safe_shm_open(fname, O_RDONLY, 0);
             else fd = safe_open(fname, O_CLOEXEC | O_RDONLY, 0);
             if (fd == -1) ABRT("EBADF", "Failed to open file for graphics transmission with error: [%d] %s", errno, strerror(errno));
-            img->data_loaded = mmap_img_file(self, fd, g->data_sz, g->data_offset);
+            load_data->loading_completed_successfully = mmap_img_file(self, fd, g->data_sz, g->data_offset);
             safe_close(fd, __FILE__, __LINE__);
             if (transmission_type == 't') {
                 if (global_state.boss) { call_boss(safe_delete_temp_file, "s", fname); }
                 else unlink(fname);
             }
             else if (transmission_type == 's') shm_unlink(fname);
-            if (!img->data_loaded) return NULL;
+            if (!load_data->loading_completed_successfully) return NULL;
             break;
         default:
             ABRT("EINVAL", "Unknown transmission type: %c", g->transmission_type);
@@ -445,7 +445,7 @@ process_image_data(GraphicsManager *self, Image* img, const GraphicsCommand *g, 
             case 'z':
                 IB;
                 if (!inflate_zlib(&self->currently_loading, buf, bufsz)) {
-                    img->data_loaded = false; return NULL;
+                    self->currently_loading.loading_completed_successfully = false; return NULL;
                 }
                 break;
             case 0:
@@ -457,7 +457,7 @@ process_image_data(GraphicsManager *self, Image* img, const GraphicsCommand *g, 
             case PNG:
                 IB;
                 if (!inflate_png(&self->currently_loading, buf, bufsz)) {
-                    img->data_loaded = false; return NULL;
+                    self->currently_loading.loading_completed_successfully = false; return NULL;
                 }
                 break;
             default: break;
@@ -481,7 +481,7 @@ process_image_data(GraphicsManager *self, Image* img, const GraphicsCommand *g, 
                 ABRT("ENODATA", "Insufficient image data: %zu < %zu",  self->currently_loading.mapped_file_sz, self->currently_loading.data_sz);
             } else self->currently_loading.data = self->currently_loading.mapped_file;
         }
-        img->data_loaded = true;
+        self->currently_loading.loading_completed_successfully = true;
     }
     return img;
 }
@@ -555,7 +555,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         remove_images(self, add_trim_predicate, 0);
         img = find_or_create_image(self, iid, &existing);
         if (existing) {
-            img->data_loaded = false;
+            img->root_frame_data_loaded = false;
             img->is_drawn = false;
             img->current_frame_shown_at = 0;
             free_refs_data(img);
@@ -582,13 +582,13 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         }
     }
     img = load_image_data(self, img, g, tt, fmt, payload);
-    if (!img || !img->data_loaded) return NULL;
-    self->currently_loading.loading_for = (const ImageAndFrame){0};
+    if (!img || !self->currently_loading.loading_completed_successfully) return NULL;
+        self->currently_loading.loading_for = (const ImageAndFrame){0};
     img = process_image_data(self, img, g, tt, fmt);
     if (!img) return NULL;
     size_t required_sz = (size_t)(self->currently_loading.is_opaque ? 3 : 4) * self->currently_loading.width * self->currently_loading.height;
     if (self->currently_loading.data_sz != required_sz) ABRT("EINVAL", "Image dimensions: %ux%u do not match data size: %zu, expected size: %zu", self->currently_loading.width, self->currently_loading.height, self->currently_loading.data_sz, required_sz);
-    if (img->data_loaded) {
+    if (self->currently_loading.loading_completed_successfully) {
         img->width = self->currently_loading.width;
         img->height = self->currently_loading.height;
         if (img->root_frame.id) remove_from_cache(self, (const ImageAndFrame){.image_id=img->internal_id, .frame_id=img->root_frame.id});
@@ -605,6 +605,7 @@ handle_add_command(GraphicsManager *self, const GraphicsCommand *g, const uint8_
         upload_to_gpu(self, img, img->root_frame.is_opaque, img->root_frame.is_4byte_aligned, self->currently_loading.data);
         self->used_storage += required_sz;
         img->used_storage = required_sz;
+        img->root_frame_data_loaded = true;
     }
     return img;
 #undef MAX_DATA_SZ
@@ -674,7 +675,7 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
         else if (g->image_number) img = img_by_client_number(self, g->image_number);
         if (img == NULL) { set_command_failed_response("ENOENT", "Put command refers to non-existent image with id: %u and number: %u", g->id, g->image_number); return g->id; }
     }
-    if (!img->data_loaded) { set_command_failed_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return img->client_id; }
+    if (!img->root_frame_data_loaded) { set_command_failed_response("ENOENT", "Put command refers to image with id: %u that could not load its data", g->id); return img->client_id; }
     ensure_space_for(img, refs, ImageRef, img->refcnt + 1, refcap, 16, true);
     *is_dirty = true;
     self->layers_dirty = true;
@@ -1028,13 +1029,13 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         if (g->data_width > MAX_IMAGE_DIMENSION || g->data_height > MAX_IMAGE_DIMENSION) ABRT("EINVAL", "Image too large");
         if (!initialize_load_data(self, g, img, tt, fmt, frame_number - 1)) return NULL;
     }
+    LoadData *load_data = &self->currently_loading;
     img = load_image_data(self, img, g, tt, fmt, payload);
-    if (!img || !img->data_loaded) return NULL;
+    if (!img || !load_data->loading_completed_successfully) return NULL;
     self->currently_loading.loading_for = (const ImageAndFrame){0};
     img = process_image_data(self, img, g, tt, fmt);
-    if (!img || !img->data_loaded) return img;
+    if (!img || !load_data->loading_completed_successfully) return img;
 
-    LoadData *load_data = &self->currently_loading;
     const unsigned bytes_per_pixel = load_data->is_opaque ? 3 : 4;
     if (load_data->data_sz < bytes_per_pixel * load_data->width * load_data->height)
         ABRT("ENODATA", "Insufficient image data %zu < %zu", load_data->data_sz, bytes_per_pixel * g->data_width, g->data_height);
@@ -1510,7 +1511,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             lg->quiet = g->quiet;
             if (is_query) ret = finish_command_response(&(const GraphicsCommand){.id=q_iid, .quiet=g->quiet}, image != NULL);
             else ret = finish_command_response(lg, image != NULL);
-            if (lg->action == 'T' && image && image->data_loaded) handle_put_command(self, lg, c, is_dirty, image, cell);
+            if (lg->action == 'T' && image && image->root_frame_data_loaded) handle_put_command(self, lg, c, is_dirty, image, cell);
             id_type added_image_id = image ? image->internal_id : 0;
             if (g->action == 'q') remove_images(self, add_trim_predicate, 0);
             if (self->used_storage > self->storage_limit) apply_storage_quota(self, self->storage_limit, added_image_id);
@@ -1518,11 +1519,13 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
         }
         case 'a':
         case 'f': {
-            if (!g->id && !g->image_number) {
+            if (!g->id && !g->image_number && !self->currently_loading.loading_for.image_id) {
                 REPORT_ERROR("Add frame data command without image id or number");
                 break;
             }
-            Image *img = g->id ? img_by_client_id(self, g->id) : img_by_client_number(self, g->image_number);
+            Image *img;
+            if (self->currently_loading.loading_for.image_id) img = img_by_internal_id(self, self->currently_loading.loading_for.image_id);
+            else img = g->id ? img_by_client_id(self, g->id) : img_by_client_number(self, g->image_number);
             if (!img) {
                 set_command_failed_response("ENOENT", "Animation command refers to non-existent image with id: %u and number: %u", g->id, g->image_number);
                 ret = finish_command_response(g, false);
@@ -1531,6 +1534,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 if (ag.action == 'f') {
                     img = handle_animation_frame_load_command(self, &ag, img, payload, is_dirty);
                     if (!self->currently_loading.loading_for.image_id) free_load_data(&self->currently_loading);
+                    ag.quiet = g->quiet;
                     ret = finish_command_response(&ag, img != NULL);
                 } else if (ag.action == 'a') {
                     handle_animation_control_command(self, is_dirty, &ag, img);
@@ -1590,7 +1594,7 @@ image_as_dict(GraphicsManager *self, Image *img) {
     PyObject *ans = Py_BuildValue("{sI sI sI sI sK sI sI " "sO sI sO " "sI sI sI " "sI sy# sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
 
-        B(data_loaded), U(animation_state), "is_4byte_aligned", img->root_frame.is_4byte_aligned ? Py_True : Py_False,
+        B(root_frame_data_loaded), U(animation_state), "is_4byte_aligned", img->root_frame.is_4byte_aligned ? Py_True : Py_False,
 
         U(current_frame_index), "root_frame_gap", img->root_frame.gap, U(current_frame_index),
 

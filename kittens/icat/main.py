@@ -198,15 +198,20 @@ def set_cursor_for_place(place: 'Place', cmd: GraphicsCommand, width: int, heigh
 
 
 def write_chunked(cmd: GraphicsCommand, data: bytes) -> None:
+    cmd = cmd.clone()
     if cmd.f != 100:
         data = zlib.compress(data)
         cmd.o = 'z'
     data = standard_b64encode(data)
+    ac = cmd.a
+    quiet = cmd.q
     while data:
         chunk, data = data[:4096], data[4096:]
         cmd.m = 1 if data else 0
         write_gr_cmd(cmd, chunk)
         cmd.clear()
+        cmd.a = ac
+        cmd.q = quiet
 
 
 def show(
