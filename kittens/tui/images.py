@@ -142,13 +142,14 @@ def render_image(
     only_first_frame: bool = False
 ) -> RenderedImage:
     import tempfile
+    has_multiple_frames = len(m) > 1
+    get_multiple_frames = has_multiple_frames and not only_first_frame
     exe = find_exe('convert')
     if exe is None:
         raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
     cmd = [exe, '-background', 'none', '--', path]
-    index_of_path_in_cmd = len(cmd) - 1
-    if only_first_frame and len(m) > 1:
-        cmd[index_of_path_in_cmd] += '[0]'
+    if only_first_frame and has_multiple_frames:
+        cmd[-1] += '[0]'
     scaled = False
     width, height = m.width, m.height
     if scale_up:
@@ -159,7 +160,7 @@ def render_image(
     if scaled or width > available_width or height > available_height:
         width, height = fit_image(width, height, available_width, available_height)
         resize_cmd = ['-resize', '{}x{}!'.format(width, height)]
-        if not only_first_frame and len(m.frames) > 1:
+        if get_multiple_frames:
             # we have to coalesce, resize and de-coalesce all frames
             resize_cmd = ['-coalesce'] + resize_cmd + ['-deconstruct']
         cmd += resize_cmd
@@ -190,10 +191,14 @@ def render_image(
 
     with tempfile.TemporaryDirectory(dir=os.path.dirname(output_prefix)) as tdir:
         output_template = os.path.join(tdir, f'im-%[filename:f]-%d.{m.mode}')
+        if get_multiple_frames:
+            cmd.append('+adjoin')
         run_imagemagick(path, cmd + [output_template])
+        unseen = {x.index for x in m}
         for x in os.listdir(tdir):
             parts = x.split('.', 1)[0].split('-')
             index = int(parts[-1])
+            unseen.discard(index)
             f = ans.frames[index]
             f.width, f.height = map(positive_int, parts[1:3])
             sz, pos = parts[3].split('+', 1)
@@ -202,6 +207,8 @@ def render_image(
             f.path = output_prefix + f'-{index}.{m.mode}'
             os.rename(os.path.join(tdir, x), f.path)
             check_resize(f)
+    if unseen:
+        raise ConvertFailed(path, f'Failed to render {len(unseen)} out of {len(m)} frames of animation')
 
     return ans
 
