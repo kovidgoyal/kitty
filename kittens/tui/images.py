@@ -8,6 +8,7 @@ import sys
 from base64 import standard_b64encode
 from collections import defaultdict, deque
 from contextlib import suppress
+from enum import IntEnum
 from itertools import count
 from typing import (
     Any, Callable, DefaultDict, Deque, Dict, Iterator, List, Optional,
@@ -30,6 +31,13 @@ except Exception:
     fsenc = 'utf-8'
 
 
+class Dispose(IntEnum):
+    undefined = 0
+    none = 1
+    background = 2
+    previous = 3
+
+
 class Frame:
     gap: int  # milliseconds
     canvas_width: int
@@ -43,6 +51,7 @@ class Frame:
     canvas_y: int
     mode: str
     needs_blend: bool
+    dispose: Dispose
     path: str = ''
 
     def __init__(self, identify_data: Union['Frame', Dict[str, str]]):
@@ -60,6 +69,7 @@ class Frame:
             q = identify_data['transparency'].lower()
             self.mode = 'rgba' if q in ('blend', 'true') else 'rgb'
             self.needs_blend = q == 'blend'
+            self.dispose = getattr(Dispose, identify_data['dispose'].lower())
 
     def __repr__(self) -> str:
         canvas = f'{self.canvas_width}x{self.canvas_height}:{self.canvas_x}+{self.canvas_y}'
@@ -120,7 +130,7 @@ def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 
 
 def identify(path: str) -> ImageData:
     import json
-    q = '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h","dpi":"%xx%y"},'
+    q = '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h","dpi":"%xx%y","dispose":"%D"},'
     exe = find_exe('magick')
     if exe:
         cmd = [exe, 'identify']
@@ -274,6 +284,9 @@ class GraphicsCommand:
     r: int = 0        # number of rows to display image over
     z: int = 0        # z-index
     d: GRT_d = 'a'  # what to delete
+
+    def __repr__(self) -> str:
+        return self.serialize().decode('ascii').replace('\033', '^]')
 
     def serialize(self, payload: Union[bytes, str] = b'') -> bytes:
         items = []
