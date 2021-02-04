@@ -974,7 +974,7 @@ get_coalesced_frame_data(GraphicsManager *self, Image *img, const Frame *f) {
         .over_px_sz = f->is_opaque ? 3 : 4,
         .under_px_sz = base_data.is_opaque ? 3 : 4,
         .over_width = f->width, .over_height = f->height, .over_offset_x = f->x, .over_offset_y = f->y,
-        .under_width = base->width, .under_height = base->height,
+        .under_width = img->width, .under_height = img->height,
         .needs_blending = f->alpha_blend && !f->is_opaque
     };
     compose(d, base_data.buf, frame_data);
