@@ -121,7 +121,12 @@ def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 
 def identify(path: str) -> ImageData:
     import json
     q = '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h","dpi":"%xx%y"},'
-    p = run_imagemagick(path, ['identify', '-format', q, '--', path])
+    exe = find_exe('magick')
+    if exe:
+        cmd = [exe, 'identify']
+    else:
+        cmd = ['identify']
+    p = run_imagemagick(path, cmd + ['-format', q, '--', path])
     data = json.loads(b'[' + p.stdout.rstrip(b',') + b']')
     first = data[0]
     frames = list(map(Frame, data))
@@ -144,10 +149,15 @@ def render_image(
     import tempfile
     has_multiple_frames = len(m) > 1
     get_multiple_frames = has_multiple_frames and not only_first_frame
-    exe = find_exe('convert')
-    if exe is None:
-        raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
-    cmd = [exe, '-background', 'none', '--', path]
+    exe = find_exe('magick')
+    if exe:
+        cmd = [exe, 'convert']
+    else:
+        exe = find_exe('convert')
+        if exe is None:
+            raise OSError('Failed to find the ImageMagick convert executable, make sure it is present in PATH')
+        cmd = [exe]
+    cmd += ['-background', 'none', '--', path]
     if only_first_frame and has_multiple_frames:
         cmd[-1] += '[0]'
     scaled = False
