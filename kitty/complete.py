@@ -5,7 +5,6 @@
 import os
 import shlex
 import sys
-from functools import lru_cache
 from typing import (
     Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 )
@@ -17,6 +16,7 @@ from .cli import (
 )
 from .rc.base import all_command_names, command_for_name
 from .shell import options_for_cmd
+from .types import run_once
 
 '''
 To add completion for a new shell, you need to:
@@ -75,7 +75,7 @@ class Completions:
         self.delegate: Delegate = Delegate()
 
 
-@lru_cache(maxsize=2)
+@run_once
 def remote_control_command_names() -> Tuple[str, ...]:
     return tuple(sorted(x.replace('_', '-') for x in all_command_names()))
 

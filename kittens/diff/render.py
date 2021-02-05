@@ -3,16 +3,17 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import warnings
-from functools import lru_cache
 from gettext import gettext as _
 from itertools import repeat, zip_longest
 from math import ceil
 from typing import Callable, Dict, Generator, Iterable, List, Optional, Tuple
 
-from kitty.fast_data_types import truncate_point_for_length, wcswidth
 from kitty.cli_stub import DiffCLIOptions
+from kitty.fast_data_types import truncate_point_for_length, wcswidth
+from kitty.types import run_once
 from kitty.utils import ScreenSize
 
+from ..tui.images import ImageManager, can_display_images
 from .collect import (
     Collection, Segment, data_for_path, highlights_for_path, is_image,
     lines_for_path, path_name_map, sanitize
@@ -20,14 +21,13 @@ from .collect import (
 from .config import formats
 from .diff_speedup import split_with_highlights as _split_with_highlights
 from .patch import Chunk, Hunk, Patch
-from ..tui.images import ImageManager, can_display_images
 
 
 class ImageSupportWarning(Warning):
     pass
 
 
-@lru_cache(maxsize=2)
+@run_once
 def images_supported() -> bool:
     ans = can_display_images()
     if not ans:

@@ -10,7 +10,6 @@ import socket
 import sys
 import zlib
 from base64 import standard_b64encode
-from functools import lru_cache
 from math import ceil
 from tempfile import NamedTemporaryFile
 from typing import (
@@ -21,6 +20,7 @@ from kitty.cli import parse_args
 from kitty.cli_stub import IcatCLIOptions
 from kitty.constants import appname
 from kitty.guess_mime_type import guess_type
+from kitty.types import run_once
 from kitty.typing import GRT_f, GRT_t
 from kitty.utils import (
     TTYIO, ScreenSize, ScreenSizeGetter, fit_image, screen_size_function
@@ -142,7 +142,7 @@ def get_screen_size() -> ScreenSize:
     return screen_size()
 
 
-@lru_cache(maxsize=2)
+@run_once
 def options_spec() -> str:
     return OPTIONS.format(appname='{}-icat'.format(appname))
 

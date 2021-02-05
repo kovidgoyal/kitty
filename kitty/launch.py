@@ -3,7 +3,6 @@
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from functools import lru_cache
 from typing import Any, Dict, List, NamedTuple, Optional, Sequence
 
 from .boss import Boss
@@ -13,6 +12,7 @@ from .cli_stub import LaunchCLIOptions
 from .constants import resolve_custom_file
 from .fast_data_types import patch_color_profiles, set_clipboard_string
 from .tabs import Tab
+from .types import run_once
 from .utils import find_exe, read_shell_environment, set_primary_selection
 from .window import Watchers, Window
 
@@ -27,7 +27,7 @@ class LaunchSpec(NamedTuple):
     args: List[str]
 
 
-@lru_cache(maxsize=2)
+@run_once
 def options_spec() -> str:
     return '''
 --window-title --title

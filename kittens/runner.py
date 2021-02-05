@@ -6,8 +6,10 @@
 import importlib
 import os
 import sys
-from functools import lru_cache, partial
+from functools import partial
 from typing import Any, Dict, FrozenSet, List
+
+from kitty.types import run_once
 
 aliases = {'url_hints': 'hints'}
 
@@ -57,8 +59,9 @@ def create_kitten_handler(kitten: str, orig_args: List[str]) -> Any:
 
 
 def set_debug(kitten: str) -> None:
-    from kittens.tui.loop import debug
     import builtins
+
+    from kittens.tui.loop import debug
     setattr(builtins, 'debug', debug)
 
 
@@ -118,7 +121,7 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
     m['main'](sys.argv)
 
 
-@lru_cache(maxsize=2)
+@run_once
 def all_kitten_names() -> FrozenSet[str]:
     n = []
     import glob

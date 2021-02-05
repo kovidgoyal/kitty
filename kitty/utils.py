@@ -23,7 +23,7 @@ from .constants import (
 )
 from .options_stub import Options
 from .rgb import Color, to_color
-from .types import ConvertibleToNumbers
+from .types import ConvertibleToNumbers, run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
 
 BASE = os.path.dirname(os.path.abspath(__file__))
@@ -463,7 +463,7 @@ def natsort_ints(iterable: Iterable[str]) -> List[str]:
     return sorted(iterable, key=alphanum_key)
 
 
-@lru_cache(maxsize=2)
+@run_once
 def get_editor() -> List[str]:
     import shlex
     import shutil
@@ -512,7 +512,7 @@ def resolved_shell(opts: Optional[Options] = None) -> List[str]:
     return ans
 
 
-@lru_cache(maxsize=2)
+@run_once
 def system_paths_on_macos() -> List[str]:
     entries, seen = [], set()
 

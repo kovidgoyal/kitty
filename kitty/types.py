@@ -2,7 +2,10 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import NamedTuple, Union
+from functools import update_wrapper
+from typing import TYPE_CHECKING, Callable, Generic, NamedTuple, TypeVar, Union
+
+_T = TypeVar('_T')
 
 
 class ParsedShortcut(NamedTuple):
@@ -50,3 +53,36 @@ class SingleKey(NamedTuple):
 
 
 ConvertibleToNumbers = Union[str, bytes, int, float]
+
+
+if TYPE_CHECKING:
+    class RunOnce(Generic[_T]):
+
+        def __init__(self, func: Callable[[], _T]): ...
+        def __call__(self) -> _T: ...
+        def set_override(self, val: _T) -> None: ...
+        def clear_override(self) -> None: ...
+else:
+    class RunOnce:
+
+        def __init__(self, f):
+            self._override = RunOnce
+            self._cached_result = RunOnce
+            update_wrapper(self, f)
+
+        def __call__(self):
+            if self._override is not RunOnce:
+                return self._override
+            if self._cached_result is RunOnce:
+                self._cached_result = self.__wrapped__()
+            return self._cached_result
+
+        def set_override(self, val):
+            self._override = val
+
+        def clear_override(self):
+            self._override = RunOnce
+
+
+def run_once(f: Callable[[], _T]) -> RunOnce:
+    return RunOnce(f)

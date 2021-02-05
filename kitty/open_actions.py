@@ -6,7 +6,6 @@
 import os
 import posixpath
 from contextlib import suppress
-from functools import lru_cache
 from typing import (
     Any, Generator, Iterable, List, NamedTuple, Optional, Tuple, cast
 )
@@ -15,9 +14,10 @@ from urllib.parse import ParseResult, unquote, urlparse
 from .conf.utils import to_cmdline
 from .config import KeyAction, parse_key_action
 from .constants import config_dir
+from .guess_mime_type import guess_type
+from .types import run_once
 from .typing import MatchType
 from .utils import expandvars, log_error
-from .guess_mime_type import guess_type
 
 
 class MatchCriteria(NamedTuple):
@@ -175,7 +175,7 @@ def actions_for_url_from_list(url: str, actions: Iterable[OpenAction]) -> Genera
             return
 
 
-@lru_cache(maxsize=2)
+@run_once
 def load_open_actions() -> Tuple[OpenAction, ...]:
     try:
         f = open(os.path.join(config_dir, 'open-actions.conf'))

@@ -7,10 +7,10 @@ import os
 import pwd
 import sys
 from contextlib import suppress
-from functools import lru_cache
 from typing import NamedTuple, Optional, Set
 
 from .options_stub import Options
+from .types import run_once
 
 
 class Version(NamedTuple):
@@ -27,7 +27,7 @@ is_macos: bool = 'darwin' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
 
 
-@lru_cache(maxsize=2)
+@run_once
 def kitty_exe() -> str:
     rpath = sys._xoptions.get('bundle_exe_dir')
     if not rpath:
@@ -93,11 +93,8 @@ del _get_config_dir
 defconf = os.path.join(config_dir, 'kitty.conf')
 
 
-@lru_cache(maxsize=2)
+@run_once
 def cache_dir() -> str:
-    override: Optional[str] = getattr(cache_dir, 'override_dir', None)
-    if override:
-        return override
     if 'KITTY_CACHE_DIRECTORY' in os.environ:
         candidate = os.path.abspath(os.environ['KITTY_CACHE_DIRECTORY'])
     elif is_macos:
