@@ -581,9 +581,9 @@ frame.  To change the current frame, use the ``c`` key::
 This will make the seventh frame in the image with id ``3`` the current frame.
 
 However, client driven animations can be sub-optimal, since the latency between
-the two is unknown and variable especially over the network. Also they require
-the client to remain running for the lifetime of the animation, which is not
-desirable for cat like utilities.
+the client and terminal is unknown and variable especially over the network.
+Also they require the client to remain running for the lifetime of the
+animation, which is not desirable for cat like utilities.
 
 Terminal driven animations are achieved by the client specifying *gaps* (time
 in milliseconds) between frames and instructing the terminal to stop or start
