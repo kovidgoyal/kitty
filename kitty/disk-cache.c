@@ -403,8 +403,10 @@ ensure_state(DiskCache *self) {
         if (kc) {
             cache_dir = PyObject_CallMethod(kc, "cache_dir", NULL);
             if (cache_dir) {
-                self->cache_dir = strdup(PyUnicode_AsUTF8(cache_dir));
-                if (!self->cache_dir) PyErr_NoMemory();
+                if (PyUnicode_Check(cache_dir)) {
+                    self->cache_dir = strdup(PyUnicode_AsUTF8(cache_dir));
+                    if (!self->cache_dir) PyErr_NoMemory();
+                } else PyErr_SetString(PyExc_TypeError, "cache_dir() did not return a string");
             }
         }
         Py_CLEAR(kc); Py_CLEAR(cache_dir);
