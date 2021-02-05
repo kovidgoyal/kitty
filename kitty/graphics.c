@@ -46,12 +46,6 @@ remove_from_cache(GraphicsManager *self, const ImageAndFrame x) {
     return remove_from_disk_cache(self->disk_cache, CK(x));
 }
 
-static inline PyObject*
-read_from_cache_python(const GraphicsManager *self, const ImageAndFrame x) {
-    char key[CACHE_KEY_BUFFER_SIZE];
-    return read_from_disk_cache_python(self->disk_cache, CK(x));
-}
-
 static inline bool
 read_from_cache(const GraphicsManager *self, const ImageAndFrame x, void **data, size_t *sz) {
     char key[CACHE_KEY_BUFFER_SIZE];
