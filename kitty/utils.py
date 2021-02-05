@@ -538,7 +538,7 @@ def system_paths_on_macos() -> List[str]:
     return entries
 
 
-@lru_cache
+@lru_cache(maxsize=32)
 def find_exe(name: str) -> Optional[str]:
     import shutil
     ans = shutil.which(name)
