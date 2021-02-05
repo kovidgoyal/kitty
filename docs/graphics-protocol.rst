@@ -487,6 +487,8 @@ use the ``i`` key with the image id for all future communication.
    The ability to use image numbers (see :doc:`kittens/query_terminal` to query kitty version)
 
 
+.. _animation_protocol:
+
 Animation
 -------------------------------------------
 

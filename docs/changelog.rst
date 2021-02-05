@@ -7,6 +7,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.20.0 [future]
 ----------------------
 
+- Support display of animated images ``kitty +kitten icat animation.gif``. See
+  :ref:`animation_protocol` for details on animation support in the kitty
+  graphics protocol.
+
 - A new keyboard reporting protocol with various advanced features that can be
   used by full screen terminal programs and even games, see
   :doc:`keyboard-protocol` (:iss:`3248`)
