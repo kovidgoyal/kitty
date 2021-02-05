@@ -14,7 +14,7 @@ terminals. They include:
 
 * No way to handle different types of keyboard events, such as press, release or repeat
 
-* No reliable way to distinguish single ``Esc`` keypresses from the start of a
+* No reliable way to distinguish single ``Esc`` key presses from the start of a
   escape sequence. Currently, client programs use fragile timing related hacks
   for this, leading to bugs, for example:
   `neovim #2035 <https://github.com/neovim/neovim/issues/2035>`_.
@@ -24,7 +24,7 @@ that is backward compatible but allows applications to opt-in to support more
 advanced usages. The protocol is based on initial work in `fixterms
 <http://www.leonerd.org.uk/hacks/fixterms/>`_, however, it corrects various
 issues in that proposal, listed at the :ref:`bottom of this document
-<fixterms_bugs>`.
+<fixterms_bugs>`. For public discussion of this spec, see :iss:`3248`.
 
 You can see this protocol with all enhancements in action by running::
 
