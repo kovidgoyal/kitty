@@ -145,6 +145,8 @@ The meaning of the payload is interpreted based on the control data.
 
 The first step is to transmit the actual image data.
 
+.. _transferring_pixel_data:
+
 Transferring pixel data
 --------------------------
 
@@ -442,7 +444,7 @@ Some examples::
 
 
 Suppressing responses from the terminal
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------------
 
 If you are using the graphics protocol from a limited client, such as a shell
 script, it might be useful to avoid having to process responses from the
@@ -454,7 +456,7 @@ terminal. For this, you can use the ``q`` key. Set it to ``1`` to suppress
 
 
 Requesting image ids from the terminal
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-------------------------------------------
 
 If you are writing a program that is going to share the screen with other
 programs and you still want to use image ids, it is not possible to know
@@ -485,14 +487,144 @@ use the ``i`` key with the image id for all future communication.
    The ability to use image numbers (see :doc:`kittens/query_terminal` to query kitty version)
 
 
+Animation
+-------------------------------------------
+
+.. versionadded:: 0.20.0
+   Animation support (see :doc:`kittens/query_terminal` to query kitty version)
+
+When designing support for animation, the two main considerations were:
+
+#. There should be a way for both client and terminal driven animations.
+   Since there is unknown and variable latency between client and terminal,
+   especially over SSH, client driven animations are not sufficient.
+
+#. Animations often consist of small changes from one frame to the next, the
+   protocol should thus allow transmitting these deltas for efficiency and
+   performance reasons.
+
+Animation support is added to the protocol by adding two new modes for the
+``a`` (action) key. A ``f`` mode for transmitting frame data and an ``a`` mode
+for controlling the animation of an image. Animation proceeds in two steps,
+first a normal image is created as described earlier. Then animation frames are
+added to the image to make it into an animation. Since every animation is
+associated with a single image, all animation escape codes must specify either
+the ``i`` or ``I`` keys to identify the image being operated on.
+
+
+Transferring animation frame data
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Transferring animation frame data is very similar to
+:ref:`transferring_pixel_data` above. The main difference is that the image
+the frame belongs to must be specified and it is possible to transmit data for
+only part of a frame, declaring the rest of the frame to be filled in by data
+from a previous frame, or left blank. To transfer frame data the ``a=f``
+key must be used in all escape codes.
+
+First, to transfer a simple frame that has data for the full image area, the
+escape codes used are exactly the same as for transferring image data, with the
+addition of: ``a=f,i=<image id>`` or ``a=f,I=<image number>``.
+
+If the frame has data for only a part of the image, you can specify the
+rectangle for it using the ``x, y, s, v`` keys, for example::
+
+    x=10,y=5,s=100,v=200  # A 100x200 rectangle with its top left corner at (10, 5)
+
+Frames are created by composing the transmitted data onto a background canvas.
+This canvas can be either a single color, or the pixels from a previous frame.
+The composition can be of two types, either a simple replacement (``X=1``) key
+or a full alpha blend (the default).
+
+To use a background color for the canvas, specify the ``Y`` key as a 32-bit
+RGBA color. For example::
+
+    Y=4278190335 # 0xff0000ff opaque red
+    Y=16711816   # 0x00ff0088 translucent green (alpha=0.53)
+
+The default background color when none is specified is ``0`` i.e. a black,
+transparent pixel.
+
+To use the data from a previous frame, specify the ``c`` key which is a 1-based
+frame number. Thus ``c=1`` refers to the root frame (the base image data),
+``c=2`` refers to the second frame and so on.
+
+If the frame is composed of multiple rectangular blocks, these can be expressed
+by using the ``r`` key. When specifying the ``r`` key the data for an existing
+frame is edited. The same composition operation as above happens, but now the
+background canvas is the existing frame itself. ``r`` is a 1-based index, so
+``r=1`` is the root frame (base image data), ``r=2`` is the second frame and so
+on.
+
+Finally, while transferring frame data, the frame *gap* can also be specified
+using the ``z`` key. The gap is the number of milliseconds to wait before
+displaying the next frame when the animation is running. A value of ``z=0`` is
+ignored, ``z=positive number`` sets the gap to the specified number of
+milliseconds and ``z=negative number`` creates a *gapless* frame. Gapless
+frames are not displayed to the user since they are instantly skipped over,
+however they can be useful as the base data for subsequent frames. For example,
+for an animation where the background remains the same and a small object or two
+move.
+
+Controlling animations
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Clients can control animations by using the ``a=a`` key in the escape code sent
+to the terminal.
+
+The simplest is client driven animations, where the client transmits the frame
+data and the also instructs the terminal to make a particular frame the current
+frame.  To change the current frame, use the ``c`` key::
+
+    <ESC>_Ga=a,i=3,c=7<ESC>\
+
+This will make the seventh frame in the image with id ``3`` the current frame.
+
+However, client driven animations can be sub-optimal, since the latency between
+the two is unknown and variable especially over the network. Also they require
+the client to remain running for the lifetime of the animation, which is not
+desirable for cat like utilities.
+
+Terminal driven animations are achieved by the client specifying *gaps* (time
+in milliseconds) between frames and instructing the terminal to stop or start
+the animation.
+
+The animation state is controlled by the ``s`` key. ``s=1`` stops the
+animation. ``s=2`` runs the animation, but in *loading* mode, in this mode when
+reaching the last frame, instead of looping, the terminal will wait for the
+arrival of more frames. ``s=3`` runs the animation normally, after the last
+frame, the terminal loops back to the first frame. The number of loops can be
+controlled by the ``v`` key. ``v=0`` is ignored, ``v=1`` is loop infinitely,
+and any other positive number is loop ``number - 1`` times. Note that stopping
+the animation resets the loop counter.
+
+Finally, the *gap* for frames can be set using the ``z`` key. This can be
+specified either when the frame is created as part of the transmit escape code
+or separately using the animation control escape code. The *gap* is the time in
+milliseconds to wait before displaying the next frame in the animation.
+For example::
+
+    <ESC>_Ga=a,i=7,r=3,z=48<ESC>\
+
+This sets the gap for the third frame of the image with id ``7`` to ``48``
+milliseconds. Note that *gapless* frames are not displayed to the user since
+the next frame comes immediately, however they can be useful to store base data
+for subsequent frames, such as in an animation with an object moving against a
+static background.
+
+In particular, the first frame or *root frame* is created with the base image
+data and has no gap, so its gap must be set using this control code.
+
 Image persistence and storage quotas
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+-----------------------------------------
 
 In order to avoid *Denial-of-Service* attacks, terminal emulators should have a
 maximum storage quota for image data. It should allow at least a few full
 screen images.  For example the quota in kitty is 320MB per buffer. When adding
 a new image, if the total size exceeds the quota, the terminal emulator should
-delete older images to make space for the new one.
+delete older images to make space for the new one. In kitty, for animations,
+the additional frame data is stored on disk and has a separate, larger quota of
+five times the base quota.
 
 
 Control data reference
