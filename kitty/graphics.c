@@ -961,15 +961,16 @@ get_coalesced_frame_data_standalone(const Image *img, const Frame *f, uint8_t *f
 
 
 static CoalescedFrameData
-get_coalesced_frame_data(GraphicsManager *self, Image *img, const Frame *f) {
+get_coalesced_frame_data_impl(GraphicsManager *self, Image *img, const Frame *f, unsigned count) {
     CoalescedFrameData ans = {0};
+    if (count > 32) return ans;  // prevent stack overflows, infinite recursion
     size_t frame_data_sz; void *frame_data;
     ImageAndFrame key = {.image_id = img->internal_id, .frame_id = f->id};
     if (!read_from_cache(self, key, &frame_data, &frame_data_sz)) return ans;
     if (!f->base_frame_id) return get_coalesced_frame_data_standalone(img, f, frame_data);
     Frame *base = frame_for_id(img, f->base_frame_id);
     if (!base) { free(frame_data); return ans; }
-    CoalescedFrameData base_data = get_coalesced_frame_data(self, img, base);
+    CoalescedFrameData base_data = get_coalesced_frame_data_impl(self, img, base, count + 1);
     if (!base_data.buf) { free(frame_data); return ans; }
     ComposeData d = {
         .over_px_sz = f->is_opaque ? 3 : 4,
@@ -981,6 +982,11 @@ get_coalesced_frame_data(GraphicsManager *self, Image *img, const Frame *f) {
     compose(d, base_data.buf, frame_data);
     free(frame_data);
     return base_data;
+}
+
+static inline CoalescedFrameData
+get_coalesced_frame_data(GraphicsManager *self, Image *img, const Frame *f) {
+    return get_coalesced_frame_data_impl(self, img, f, 0);
 }
 
 static void
