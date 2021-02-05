@@ -75,7 +75,7 @@ class Frame:
     def __repr__(self) -> str:
         canvas = f'{self.canvas_width}x{self.canvas_height}:{self.canvas_x}+{self.canvas_y}'
         geom = f'{self.width}x{self.height}'
-        return f'Frame(index={self.index}, gap={self.gap}, {geom=}, {canvas=})'
+        return f'Frame(index={self.index}, gap={self.gap}, geom={geom}, canvas={canvas})'
 
 
 class ImageData:
