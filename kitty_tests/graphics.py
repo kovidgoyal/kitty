@@ -180,7 +180,8 @@ def make_send_command(screen):
 class TestGraphics(BaseTest):
 
     def setUp(self):
-        cache_dir.override_dir = tempfile.mkdtemp(dir=os.getcwd() if self.is_ci else None)
+        cache_dir.override_dir = tempfile.mkdtemp()
+        cache_dir.cache_clear()
 
     def tearDown(self):
         os.rmdir(cache_dir.override_dir)
