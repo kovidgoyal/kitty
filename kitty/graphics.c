@@ -867,8 +867,8 @@ alpha_blend(uint8_t *dest_px, const uint8_t *src_px) {
 
 typedef struct {
     bool needs_blending;
-    unsigned over_px_sz, under_px_sz;
-    size_t over_width, over_height, under_width, under_height, over_offset_x, over_offset_y;
+    uint32_t over_px_sz, under_px_sz;
+    uint32_t over_width, over_height, under_width, under_height, over_offset_x, over_offset_y;
 } ComposeData;
 
 static inline void
@@ -922,22 +922,22 @@ get_coalesced_frame_data_standalone(const Image *img, const Frame *f, uint8_t *f
     const unsigned bytes_per_pixel = f->is_opaque ? 3 : 4;
     uint8_t *base;
     if (f->bgcolor) {
-        base = malloc(img->width * img->height * bytes_per_pixel);
+        base = malloc((size_t)img->width * img->height * bytes_per_pixel);
         if (base) {
             uint8_t *p = base;
             const uint8_t r = (f->bgcolor >> 24) & 0xff,
                   g = (f->bgcolor >> 16) & 0xff, b = (f->bgcolor >> 8) & 0xff, a = f->bgcolor & 0xff;
             if (bytes_per_pixel == 4) {
-                for (size_t i = 0; i < img->width * img->height; i++) {
+                for (uint32_t i = 0; i < img->width * img->height; i++) {
                     *(p++) = r; *(p++) = g; *(p++) = b; *(p++) = a;
                 }
             } else {
-                for (size_t i = 0; i < img->width * img->height; i++) {
+                for (uint32_t i = 0; i < img->width * img->height; i++) {
                     *(p++) = r; *(p++) = g; *(p++) = b;
                 }
             }
         }
-    } else base = calloc(img->width * img->height, bytes_per_pixel);
+    } else base = calloc((size_t)img->width * img->height, bytes_per_pixel);
     if (!base) { free(frame_data); return ans; }
     ComposeData d = {
         .over_px_sz = bytes_per_pixel, .under_px_sz = bytes_per_pixel,
@@ -1004,8 +1004,8 @@ update_current_frame(GraphicsManager *self, Image *img, const CoalescedFrameData
 
 static bool
 reference_chain_too_large(Image *img, const Frame *frame) {
-    size_t limit = 2 * img->width * img->height;
-    size_t drawn_area = frame->width * frame->height;
+    uint32_t limit = img->width * img->height * 2;
+    uint32_t drawn_area = frame->width * frame->height;
     unsigned num = 1;
     while (drawn_area < limit && num < 5) {
         if (!frame->base_frame_id || !(frame = frame_for_id(img, frame->base_frame_id))) break;
@@ -1036,7 +1036,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
     img = process_image_data(self, img, g, tt, fmt);
     if (!img || !load_data->loading_completed_successfully) return img;
 
-    const unsigned bytes_per_pixel = load_data->is_opaque ? 3 : 4;
+    const unsigned long bytes_per_pixel = load_data->is_opaque ? 3 : 4;
     if (load_data->data_sz < bytes_per_pixel * load_data->width * load_data->height)
         ABRT("ENODATA", "Insufficient image data %zu < %zu", load_data->data_sz, bytes_per_pixel * g->data_width, g->data_height);
     if (load_data->width > img->width)
@@ -1087,7 +1087,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
                 };
                 compose(d, cfd.buf, load_data->data);
                 free_load_data(load_data);
-                load_data->data = cfd.buf; load_data->data_sz = img->width * img->height * d.under_px_sz;
+                load_data->data = cfd.buf; load_data->data_sz = (size_t)img->width * img->height * d.under_px_sz;
                 transmitted_frame.width = img->width; transmitted_frame.height = img->height;
                 transmitted_frame.x = 0; transmitted_frame.y = 0;
                 transmitted_frame.is_4byte_aligned = cfd.is_4byte_aligned;
@@ -1126,7 +1126,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         };
         compose(d, cfd.buf, load_data->data);
         const ImageAndFrame key = { .image_id = img->internal_id, .frame_id = frame->id };
-        bool added = add_to_cache(self, key, cfd.buf, bytes_per_pixel * frame->width * frame->height);
+        bool added = add_to_cache(self, key, cfd.buf, (size_t)bytes_per_pixel * frame->width * frame->height);
         if (added && frame == current_frame(img)) {
             update_current_frame(self, img, &cfd);
             *is_dirty = true;
@@ -1700,7 +1700,7 @@ pycreate_canvas(PyObject *self UNUSED, PyObject *args) {
     Py_ssize_t over_sz;
     const uint8_t *over_data;
     if (!PyArg_ParseTuple(args, "y#IIIIII", &over_data, &over_sz, &over_width, &x, &y, &width, &height, &bytes_per_pixel)) return NULL;
-    size_t canvas_sz = width * height * bytes_per_pixel;
+    size_t canvas_sz = (size_t)width * height * bytes_per_pixel;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, canvas_sz);
     if (!ans) return NULL;
 
