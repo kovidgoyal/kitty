@@ -292,6 +292,11 @@ Some prominent kittens:
     at the line containing the search result, simply by clicking on the result you want.
 
 
+:doc:`Broadcast <kittens/broadcast>`
+    Type in one kitty window and have it broadcast to all (or a subset) of
+    other kitty windows.
+
+
 :doc:`Panel <kittens/panel>`
     Draw a GPU accelerated dock panel on your desktop showing the output
     from an arbitrary terminal program.
