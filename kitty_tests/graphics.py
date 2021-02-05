@@ -180,10 +180,10 @@ def make_send_command(screen):
 class TestGraphics(BaseTest):
 
     def setUp(self):
-        self.cache_dir = cache_dir.override_dir = tempfile.mkdtemp()
+        cache_dir.override_dir = tempfile.mkdtemp(dir=os.getcwd() if self.is_ci else None)
 
     def tearDown(self):
-        os.rmdir(self.cache_dir)
+        os.rmdir(cache_dir.override_dir)
         cache_dir.override_dir = None
 
     def test_xor_data(self):

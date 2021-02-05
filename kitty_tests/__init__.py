@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
 from unittest import TestCase
 
 from kitty.config import Options, defaults, merge_configs
@@ -81,6 +82,7 @@ class BaseTest(TestCase):
 
     ae = TestCase.assertEqual
     maxDiff = 2000
+    is_ci = os.environ.get('CI') == 'true'
 
     def set_options(self, options=None):
         final_options = {'scrollback_pager_history_size': 1024, 'click_interval': 0.5}
