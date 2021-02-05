@@ -111,6 +111,7 @@ def load_helpers(self):
         cid = kw.setdefault('i', 1)
         self.ae('OK', pl(payload, **kw))
         img = g.image_for_client_id(cid)
+        self.assertIsNotNone(img, f'No image with id {cid} found')
         self.ae(img['client_id'], cid)
         self.ae(img['data'], data)
         if 's' in kw:
