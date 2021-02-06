@@ -6,3 +6,7 @@ image:https://github.com/kovidgoyal/kitty/workflows/CI/badge.svg["Build status",
 
 To ask questions about kitty usage, use either the https://github.com/kovidgoyal/kitty/discussions/[discussions on GitHub] or the
 https://www.reddit.com/r/KittyTerminal[Reddit community]
+
+Packaging status in various repositories:
+
+image:https://repology.org/badge/vertical-allrepos/kitty.svg[https://repology.org/project/kitty/versions]
