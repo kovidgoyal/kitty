@@ -132,7 +132,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
     char csi_trailer = 'u';
     uint32_t key_number = ev->key;
 
-    if (ev->cursor_key_mode && !ev->disambiguate && !ev->report_all_event_types) {
+    if (ev->cursor_key_mode && !ev->disambiguate && !ev->report_all_event_types && !ev->mods.value) {
         switch(key_number) {
             case GLFW_FKEY_UP: SIMPLE("\x1bOA");
             case GLFW_FKEY_DOWN: SIMPLE("\x1bOB");
