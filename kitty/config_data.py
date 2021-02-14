@@ -34,6 +34,9 @@ class InvalidMods(ValueError):
 MINIMUM_FONT_SIZE = 4
 mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
            '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
+character_key_name_aliases_with_ascii_lowercase = character_key_name_aliases.copy()
+for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
+    character_key_name_aliases_with_ascii_lowercase[x] = x.lower()
 
 
 def to_cmdline(x: str) -> List[str]:
@@ -70,7 +73,7 @@ def parse_shortcut(sc: str) -> SingleKey:
         if not mods:
             raise InvalidMods('Invalid shortcut')
     q = parts[-1]
-    q = character_key_name_aliases.get(q.upper(), q)
+    q = character_key_name_aliases_with_ascii_lowercase.get(q.upper(), q)
     is_native = False
     if q.startswith('0x'):
         try:
