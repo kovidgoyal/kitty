@@ -521,10 +521,6 @@ def glfw_primary_monitor_size() -> Tuple[int, int]:
     pass
 
 
-def set_smallest_allowed_resize(width: int, height: int) -> None:
-    pass
-
-
 def set_default_window_icon(path: str) -> None:
     pass
 

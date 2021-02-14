@@ -33,7 +33,12 @@ request_tick_callback(void) {
     glfwPostEmptyEvent();
 }
 
-static int min_width = 100, min_height = 100;
+static inline void
+min_size_for_os_window(OSWindow *window, int *min_width, int *min_height) {
+    *min_width = MAX(8u, window->fonts_data->cell_width + 1);
+    *min_height = MAX(8u, window->fonts_data->cell_height + 1);
+}
+
 
 void
 update_os_window_viewport(OSWindow *window, bool notify_boss) {
@@ -46,7 +51,8 @@ update_os_window_viewport(OSWindow *window, bool notify_boss) {
     if (fw == window->viewport_width && fh == window->viewport_height && w == window->window_width && h == window->window_height && xdpi == window->logical_dpi_x && ydpi == window->logical_dpi_y) {
         return; // no change, ignore
     }
-    if (w <= 0 || h <= 0 || fw / w > 5 || fh / h > 5 || fw < min_width || fh < min_height || fw < w || fh < h) {
+    int min_width, min_height; min_size_for_os_window(window, &min_width, &min_height);
+    if (w <= 0 || h <= 0 || fw < min_width || fh < min_height || fw < w || fh < h) {
         log_error("Invalid geometry ignored: framebuffer: %dx%d window: %dx%d\n", fw, fh, w, h);
         if (!window->viewport_updated_at_least_once) {
             window->viewport_width = min_width; window->viewport_height = min_height;
@@ -191,6 +197,7 @@ live_resize_callback(GLFWwindow *w, bool started) {
 static void
 framebuffer_size_callback(GLFWwindow *w, int width, int height) {
     if (!set_callback_window(w)) return;
+    int min_width, min_height; min_size_for_os_window(global_state.callback_os_window, &min_width, &min_height);
     if (width >= min_width && height >= min_height) {
         OSWindow *window = global_state.callback_os_window;
         global_state.has_pending_resizes = true;
@@ -1203,12 +1210,6 @@ set_primary_selection(PyObject UNUSED *self, PyObject *args) {
 }
 
 static PyObject*
-set_smallest_allowed_resize(PyObject *self UNUSED, PyObject *args) {
-    if (!PyArg_ParseTuple(args, "ii", &min_width, &min_height)) return NULL;
-    Py_RETURN_NONE;
-}
-
-static PyObject*
 set_custom_cursor(PyObject *self UNUSED, PyObject *args) {
     int shape;
     int x=0, y=0;
@@ -1345,7 +1346,6 @@ stop_main_loop(void) {
 
 static PyMethodDef module_methods[] = {
     METHODB(set_custom_cursor, METH_VARARGS),
-    METHODB(set_smallest_allowed_resize, METH_VARARGS),
     METHODB(create_os_window, METH_VARARGS),
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(get_clipboard_string, METH_NOARGS),

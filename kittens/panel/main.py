@@ -121,19 +121,17 @@ def setup_x11_window(win_id: int) -> None:
 
 
 def initial_window_size_func(opts: WindowSizeData, cached_values: Dict) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
-    from kitty.fast_data_types import glfw_primary_monitor_size, set_smallest_allowed_resize
+    from kitty.fast_data_types import glfw_primary_monitor_size
 
     def initial_window_size(cell_width: int, cell_height: int, dpi_x: float, dpi_y: float, xscale: float, yscale: float) -> Tuple[int, int]:
         global window_width, window_height
         monitor_width, monitor_height = glfw_primary_monitor_size()
         if args.edge in {'top', 'bottom'}:
-            h = window_height = cell_height * args.lines + 1
+            window_height = cell_height * args.lines + 1
             window_width = monitor_width
-            set_smallest_allowed_resize(100, h)
         else:
-            w = window_width = cell_width * args.columns + 1
+            window_width = cell_width * args.columns + 1
             window_height = monitor_height
-            set_smallest_allowed_resize(w, 100)
         return window_width, window_height
 
     return initial_window_size

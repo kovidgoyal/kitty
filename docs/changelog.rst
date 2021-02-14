@@ -62,6 +62,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix window icon not working on X11 with 64bits (:iss:`3260`)
 
+- Fix OS window sizes under 100px resulting in scaled display (:iss:`3307`)
+
 
 0.19.3 [2020-12-19]
 -------------------
