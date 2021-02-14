@@ -211,18 +211,14 @@ class KeyEvent(NamedTuple):
     def matches(self, spec: Union[str, ParsedShortcut], types: int = EventType.PRESS | EventType.REPEAT) -> bool:
         if not self.type & types:
             return False
-        q = self.mods
-        is_shifted = bool(self.shifted_key and self.shift)
-        if is_shifted:
-            q = self.mods & ~SHIFT
-            kq = self.shifted_key
-        else:
-            kq = self.key
         if isinstance(spec, str):
             spec = parse_shortcut(spec)
-        if q != spec.mods:
-            return False
-        return kq == spec.key_name
+        if (self.mods, self.key) == spec:
+            return True
+        is_shifted = bool(self.shifted_key and self.shift)
+        if is_shifted and (self.mods & ~SHIFT, self.shifted_key) == spec:
+            return True
+        return False
 
     def as_window_system_event(self) -> WindowSystemKeyEvent:
         action = defines.GLFW_PRESS
