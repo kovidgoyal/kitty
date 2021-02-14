@@ -140,9 +140,6 @@ html_theme_options = {
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static', '../logo/kitty.png']
-html_context = {
-    'css_files': ['_static/custom.css']
-}
 html_favicon = '../logo/kitty.png'
 
 # Custom sidebar templates, must be a dictionary that maps document names
@@ -604,6 +601,7 @@ def setup(app: Any) -> None:
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
     write_conf_docs(app, kn)
+    app.add_css_file('custom.css')
     app.add_lexer('session', SessionLexer() if version_info[0] < 3 else SessionLexer)
     app.add_role('link', link_role)
     app.add_role('iss', partial(num_role, 'issues'))
