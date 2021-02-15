@@ -64,6 +64,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix OS window sizes under 100px resulting in scaled display (:iss:`3307`)
 
+- Fix rendering of ligatures in the latest release of Cascadia code, which for
+  some reason puts empty glyphs after the ligature glyph rather than before it
+  (:iss:`3313`)
+
 
 0.19.3 [2020-12-19]
 -------------------

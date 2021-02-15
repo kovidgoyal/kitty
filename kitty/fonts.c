@@ -767,7 +767,7 @@ typedef struct {
 
 typedef struct {
     unsigned int first_glyph_idx, first_cell_idx, num_glyphs, num_cells;
-    bool has_special_glyph, is_space_ligature;
+    bool has_special_glyph, is_space_ligature, started_with_empty_glyph;
 } Group;
 
 typedef struct {
@@ -905,6 +905,7 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
      * Ligature fonts, take two common approaches:
      * 1. ABC becomes EMPTY, EMPTY, WIDE GLYPH this means we have to render N glyphs in N cells (example Fira Code)
      * 2. ABC becomes WIDE GLYPH this means we have to render one glyph in N cells (example Operator Mono Lig)
+     * 3. ABC becomes WIDE GLYPH, EMPTY, EMPTY this means we have to render N glyphs in N cells (example Cascadia Code)
      *
      * We rely on the cluster numbers from harfbuzz to tell us how many unicode codepoints a glyph corresponds to.
      * Then we check if the glyph is a ligature glyph (is_special_glyph) and if it is an empty glyph. These three
@@ -933,7 +934,8 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
             add_to_current_group = true;
         } else {
             if (is_special) {
-                add_to_current_group = G(prev_was_empty);
+                if (current_group->started_with_empty_glyph) add_to_current_group = G(prev_was_empty);
+                else add_to_current_group = is_empty;
             } else {
                 add_to_current_group = !G(prev_was_special);
             }
@@ -941,6 +943,7 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
         if (current_group->num_glyphs >= MAX_GLYPHS_IN_GROUP || current_group->num_cells >= MAX_GLYPHS_IN_GROUP) add_to_current_group = false;
 
         if (!add_to_current_group) { G(group_idx)++; current_group = G(groups) + G(group_idx); }
+        if (is_empty && !current_group->num_glyphs) current_group->started_with_empty_glyph = true;
         if (!current_group->num_glyphs++) {
             current_group->first_glyph_idx = G(glyph_idx);
             current_group->first_cell_idx = G(cell_idx);
