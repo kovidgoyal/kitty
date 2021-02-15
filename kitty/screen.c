@@ -2332,7 +2332,12 @@ WRAP0(carriage_return)
 WRAP2(resize, 1, 1)
 WRAP2(set_margins, 1, 1)
 WRAP0(rescale_images)
-WRAP0(current_key_encoding_flags)
+
+static PyObject*
+current_key_encoding_flags(Screen *self, PyObject *args UNUSED) {
+    unsigned long ans = screen_current_key_encoding_flags(self);
+    return PyLong_FromUnsignedLong(ans);
+}
 
 static PyObject*
 start_selection(Screen *self, PyObject *args) {
