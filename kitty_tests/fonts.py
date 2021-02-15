@@ -79,18 +79,19 @@ class Rendering(BaseTest):
         def groups(text, font=None):
             return [x[:2] for x in ss(text, font)]
 
-        self.ae(groups('abcd'), [(1, 1) for i in range(4)])
-        self.ae(groups('A=>>B!=C', font='FiraCode-Medium.otf'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
-        self.ae(groups('==!=<>==<><><>', font='FiraCode-Medium.otf'), [(2, 2), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)])
-
         for font in ('FiraCode-Medium.otf', 'CascadiaCode-Regular.otf'):
             g = partial(groups, font=font)
+            self.ae(g('abcd'), [(1, 1) for i in range(4)])
+            self.ae(g('----'), [(4, 4)])
             self.ae(g('A===B!=C'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
             self.ae(g('F--a--'), [(1, 1), (2, 2), (1, 1), (2, 2)])
             self.ae(g('===--<>=='), [(3, 3), (2, 2), (2, 2), (2, 2)])
+            self.ae(g('==!=<>==<><><>'), [(4, 4), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)])
+            self.ae(g('A=>>B!=C'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
+            self.ae(g('-' * 18), [(9, 9), (9, 9)])
         colon_glyph = ss('9:30', font='FiraCode-Medium.otf')[1][2]
         self.assertNotEqual(colon_glyph, ss(':', font='FiraCode-Medium.otf')[0][2])
-        self.ae(colon_glyph, 998)
+        self.ae(colon_glyph, 1031)
         self.ae(groups('9:30', font='FiraCode-Medium.otf'), [(1, 1), (1, 1), (1, 1), (1, 1)])
 
         self.ae(groups('|\U0001F601|\U0001F64f|\U0001F63a|'), [(1, 1), (2, 1), (1, 1), (2, 1), (1, 1), (2, 1), (1, 1)])
