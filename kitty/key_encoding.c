@@ -296,18 +296,38 @@ is_legacy_ascii_key(uint32_t key) {
     switch (key) {
         case 'a' ... 'z':
         case '0' ... '9':
+        case '!':
+        case '@':
+        case '#':
+        case '$':
+        case '%':
+        case '^':
+        case '&':
+        case '*':
+        case '(':
+        case ')':
         case '`':
+        case '~':
         case '-':
+        case '_':
         case '=':
+        case '+':
         case '[':
+        case '{':
         case ']':
+        case '}':
         case '\\':
+        case '|':
         case ';':
         case ':':
         case '\'':
+        case '"':
         case ',':
+        case '<':
         case '.':
+        case '>':
         case '/':
+        case '?':
         case ' ':
             return true;
         default:

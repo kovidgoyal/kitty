@@ -392,7 +392,8 @@ class TestKeys(BaseTest):
         # }}}
 
         ae(enc(key=ord(':'), shifted_key=ord('/'), mods=shift | alt), '\x1b/')
-        ae(enc(key=ord(':'), mods=alt), '\x1b:')
+        for key in '~!@#$%^&*()_+{}|:"<>?':
+            ae(enc(key=ord(key), mods=alt), '\x1b' + key)
         ae(enc(key=ord(' ')), ' ')
         ae(enc(key=ord(' '), mods=ctrl), '\0')
         ae(enc(key=ord(' '), mods=alt), '\x1b ')
