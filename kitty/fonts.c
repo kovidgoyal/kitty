@@ -667,9 +667,10 @@ render_alpha_mask(uint8_t *alpha_mask, pixel* dest, Region *src_rect, Region *de
         pixel *d = dest + dest_stride * dr;
         uint8_t *s = alpha_mask + src_stride * sr;
         for(size_t sc = src_rect->left, dc = dest_rect->left; sc < src_rect->right && dc < dest_rect->right; sc++, dc++) {
-            pixel val = d[dc];
+            uint8_t src_alpha = d[dc] & 0xff;
             uint8_t alpha = s[sc];
-            d[dc] = 0xffffff00 | MIN(0xffu, alpha + (val & 0xff));
+            uint8_t combined_alpha = MAX(alpha, src_alpha);
+            d[dc] = 0xffffff00 | MIN(0xffu, combined_alpha);
         }
     }
 }

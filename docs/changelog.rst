@@ -70,7 +70,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Improve handling of infinite length ligatures in newer versions of FiraCode
   and CascadiaCode. Now such ligatures are detected based on glyph naming
-  convention, this removes the gap in the ligatures at cell boundaries (:iss:`2695`)
+  convention. This removes the gap in the ligatures at cell boundaries (:iss:`2695`)
 
 
 0.19.3 [2020-12-19]
