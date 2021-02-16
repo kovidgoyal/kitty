@@ -54,7 +54,8 @@ set_xoptions(const wchar_t *exe_dir, const char *lc_ctype, bool from_source) {
 }
 
 #ifdef FOR_BUNDLE
-static int run_embedded(const char* exe_dir_, const char *libpath, int argc, wchar_t **argv, const char *lc_ctype) {
+static int
+run_embedded(const char* exe_dir_, const char *libpath, int argc, wchar_t **argv, const char *lc_ctype) {
     int num;
     Py_NoSiteFlag = 1;
     Py_FrozenFlag = 1;
@@ -100,7 +101,8 @@ end:
     return ret;
 }
 #else
-static int run_embedded(const char* exe_dir_, const char *libpath, int argc, wchar_t **argv, const char *lc_ctype) {
+static int
+run_embedded(const char* exe_dir_, const char *libpath, int argc, wchar_t **argv, const char *lc_ctype) {
     (void)libpath;
     wchar_t *exe_dir = Py_DecodeLocale(exe_dir_, NULL);
     if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir: %s\n", exe_dir_); return 1; }
