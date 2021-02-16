@@ -24,14 +24,17 @@ version: Version = Version(0, 19, 3)
 str_version: str = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat
-kitty_lib_dir = os.path.dirname(os.path.abspath(__file__))
+if hasattr(sys, 'kitty_base_dir'):
+    kitty_base_dir: str = getattr(sys, 'kitty_base_dir')
+else:
+    kitty_base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
 @run_once
 def kitty_exe() -> str:
     rpath = sys._xoptions.get('bundle_exe_dir')
     if not rpath:
-        items = os.environ.get('PATH', '').split(os.pathsep) + [os.path.join(kitty_lib_dir, 'launcher')]
+        items = os.environ.get('PATH', '').split(os.pathsep) + [os.path.join(kitty_base_dir, 'kitty', 'launcher')]
         seen: Set[str] = set()
         for candidate in filter(None, items):
             if candidate not in seen:
@@ -113,10 +116,9 @@ def wakeup() -> None:
         b.child_monitor.wakeup()
 
 
-base_dir = os.path.dirname(kitty_lib_dir)
-terminfo_dir = os.path.join(base_dir, 'terminfo')
-logo_png_file = os.path.join(base_dir, 'logo', 'kitty.png')
-beam_cursor_data_file = os.path.join(base_dir, 'logo', 'beam-cursor.png')
+terminfo_dir = os.path.join(kitty_base_dir, 'terminfo')
+logo_png_file = os.path.join(kitty_base_dir, 'logo', 'kitty.png')
+beam_cursor_data_file = os.path.join(kitty_base_dir, 'logo', 'beam-cursor.png')
 try:
     shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
 except KeyError:
@@ -126,7 +128,7 @@ except KeyError:
 
 
 def glfw_path(module: str) -> str:
-    return os.path.join(kitty_lib_dir, 'glfw-{}.so'.format(module))
+    return os.path.join(kitty_base_dir, 'kitty', 'glfw-{}.so'.format(module))
 
 
 def detect_if_wayland_ok() -> bool:
