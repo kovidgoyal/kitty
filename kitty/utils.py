@@ -19,14 +19,13 @@ from typing import (
 )
 
 from .constants import (
-    appname, is_macos, is_wayland, shell_path, supports_primary_selection
+    appname, is_macos, is_wayland, read_kitty_resource, shell_path,
+    supports_primary_selection
 )
 from .options_stub import Options
 from .rgb import Color, to_color
 from .types import ConvertibleToNumbers, run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
-
-BASE = os.path.dirname(os.path.abspath(__file__))
 
 
 def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool = True) -> str:
@@ -59,11 +58,11 @@ def platform_window_id(os_window_id: int) -> Optional[int]:
 
 def load_shaders(name: str) -> Tuple[str, str]:
     from .fast_data_types import GLSL_VERSION
-    with open(os.path.join(BASE, '{}_vertex.glsl'.format(name))) as f:
-        vert = f.read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
-    with open(os.path.join(BASE, '{}_fragment.glsl'.format(name))) as f:
-        frag = f.read().replace('GLSL_VERSION', str(GLSL_VERSION), 1)
-    return vert, frag
+
+    def load(which: str) -> str:
+        return read_kitty_resource(f'{name}_{which}.glsl').decode('utf-8').replace('GLSL_VERSION', str(GLSL_VERSION), 1)
+
+    return load('vertex'), load('fragment')
 
 
 def safe_print(*a: Any, **k: Any) -> None:

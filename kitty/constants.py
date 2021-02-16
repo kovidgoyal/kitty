@@ -24,14 +24,14 @@ version: Version = Version(0, 19, 3)
 str_version: str = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat
-base = os.path.dirname(os.path.abspath(__file__))
+kitty_lib_dir = os.path.dirname(os.path.abspath(__file__))
 
 
 @run_once
 def kitty_exe() -> str:
     rpath = sys._xoptions.get('bundle_exe_dir')
     if not rpath:
-        items = os.environ.get('PATH', '').split(os.pathsep) + [os.path.join(base, 'launcher')]
+        items = os.environ.get('PATH', '').split(os.pathsep) + [os.path.join(kitty_lib_dir, 'launcher')]
         seen: Set[str] = set()
         for candidate in filter(None, items):
             if candidate not in seen:
@@ -113,7 +113,7 @@ def wakeup() -> None:
         b.child_monitor.wakeup()
 
 
-base_dir = os.path.dirname(base)
+base_dir = os.path.dirname(kitty_lib_dir)
 terminfo_dir = os.path.join(base_dir, 'terminfo')
 logo_png_file = os.path.join(base_dir, 'logo', 'kitty.png')
 beam_cursor_data_file = os.path.join(base_dir, 'logo', 'beam-cursor.png')
@@ -126,7 +126,7 @@ except KeyError:
 
 
 def glfw_path(module: str) -> str:
-    return os.path.join(base, 'glfw-{}.so'.format(module))
+    return os.path.join(kitty_lib_dir, 'glfw-{}.so'.format(module))
 
 
 def detect_if_wayland_ok() -> bool:
@@ -186,3 +186,8 @@ def resolve_custom_file(path: str) -> str:
     if not os.path.isabs(path):
         path = os.path.join(config_dir, path)
     return path
+
+
+def read_kitty_resource(name: str) -> bytes:
+    from importlib.resources import read_binary
+    return read_binary('kitty', name)
