@@ -123,14 +123,12 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
 
 @run_once
 def all_kitten_names() -> FrozenSet[str]:
-    n = []
-    import glob
-    base = os.path.dirname(os.path.abspath(__file__))
-    for x in glob.glob(os.path.join(base, '*', '__init__.py')):
-        q = os.path.basename(os.path.dirname(x))
-        if q != 'tui':
-            n.append(q)
-    return frozenset(n)
+    from importlib.resources import contents
+    ans = []
+    for name in contents('kittens'):
+        if '__' not in name and name != 'tui':
+            ans.append(name)
+    return frozenset(ans)
 
 
 def list_kittens() -> None:
