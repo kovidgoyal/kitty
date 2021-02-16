@@ -8,6 +8,7 @@ import shutil
 import stat
 import subprocess
 import tarfile
+import tempfile
 import time
 
 from bypy.constants import (
@@ -194,7 +195,12 @@ def main():
     ext_dir = globals()['ext_dir']
     if not args.skip_tests:
         run_tests = iv['run_tests']
-        run_tests(None, os.path.join(ext_dir, 'src'))
+        with tempfile.TemporaryDirectory() as tdir:
+            os.environ['KITTY_CACHE_DIRECTORY'] = tdir
+            try:
+                run_tests(None, os.path.join(ext_dir, 'src'))
+            finally:
+                del os.environ['KITTY_CACHE_DIRECTORY']
     env = Env(os.path.join(ext_dir, kitty_constants['appname']))
     copy_libs(env)
     copy_python(env)
