@@ -110,7 +110,8 @@ def copy_python(env):
     pdir = os.path.join(env.lib_dir, 'kitty-extensions')
     os.makedirs(pdir, exist_ok=True)
     kitty_dir = os.path.join(env.base, 'lib', 'kitty')
-    for x in ('kitty', 'kittens'):
+    bases = ('kitty', 'kittens')
+    for x in bases:
         dest = os.path.join(env.py_dir, x)
         os.rename(os.path.join(kitty_dir, x), dest)
         if x == 'kitty':
@@ -120,9 +121,10 @@ def copy_python(env):
     print('Extracting extension modules from', env.py_dir, 'to', pdir)
     ext_map = extract_extension_modules(env.py_dir, pdir)
     shutil.copy(os.path.join(os.path.dirname(self_dir), 'site.py'), os.path.join(env.py_dir, 'site.py'))
-    for q in walk(os.path.join(env.py_dir, 'kitty')):
-        if os.path.splitext(q)[1] not in ('.py', '.glsl'):
-            os.unlink(q)
+    for x in bases:
+        for q in walk(os.path.join(env.py_dir, x)):
+            if os.path.splitext(q)[1] not in ('.py', '.glsl'):
+                os.unlink(q)
     py_compile(env.py_dir)
     freeze_python(env.py_dir, pdir, env.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM')
 

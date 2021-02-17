@@ -13,16 +13,23 @@ import tempfile
 import zipfile
 
 from bypy.constants import PREFIX, PYTHON, SW, python_major_minor_version
+from bypy.freeze import (
+    extract_extension_modules, freeze_python, path_to_freeze_dir
+)
 from bypy.macos_sign import (
     codesign, create_entitlements_file, make_certificate_useable, notarize_app,
     verify_signature
 )
-from bypy.utils import current_dir, py_compile, run_shell, timeit, walk
+from bypy.utils import (
+    current_dir, mkdtemp, py_compile, run_shell, timeit, walk
+)
 
 iv = globals()['init_env']
 kitty_constants = iv['kitty_constants']
+self_dir = os.path.dirname(os.path.abspath(__file__))
 join = os.path.join
 basename = os.path.basename
+dirname = os.path.dirname
 abspath = os.path.abspath
 APPNAME = kitty_constants['appname']
 VERSION = kitty_constants['version']
@@ -147,6 +154,7 @@ class Freeze(object):
         self.py_ver = py_ver
         self.python_stdlib = join(self.resources_dir, 'Python', 'lib', 'python' + self.py_ver)
         self.site_packages = self.python_stdlib  # hack to avoid needing to add site-packages to path
+        self.obj_dir = mkdtemp('launchers-')
 
         self.run()
 
@@ -160,10 +168,10 @@ class Freeze(object):
         self.add_site_packages()
         self.add_stdlib()
         self.add_misc_libraries()
-        self.compile_py_modules()
-        self.fix_dependencies_in_kitty()
+        self.freeze_python()
         if not self.dont_strip:
             self.strip_files()
+        self.check_build()
         # self.run_shell()
 
         ret = self.makedmg(self.build_dir, APPNAME + '-' + VERSION)
@@ -174,6 +182,10 @@ class Freeze(object):
     def strip_files(self):
         print('\nStripping files...')
         strip_files(self.to_strip)
+
+    @flush
+    def check_build(self):
+        iv['check_build'](os.path.join(self.contents_dir, 'MacOS', 'kitty'))
 
     @flush
     def set_id(self, path_to_lib, new_id):
@@ -239,7 +251,6 @@ class Freeze(object):
         self.set_id(
             join(currd, 'Python'),
             self.FID + '/Python.framework/Versions/%s/Python' % basename(curr))
-        self.fix_dependencies_in_lib(join(self.contents_dir, 'MacOS', 'kitty'))
         # The following is needed for codesign
         with current_dir(x):
             os.symlink(basename(curr), 'Versions/Current')
@@ -265,6 +276,7 @@ class Freeze(object):
                 'lcms2.2',
                 'crypto.1.1',
                 'ssl.1.1',
+                'ffi.7',
         ):
             print('\nAdding', x)
             x = 'lib%s.dylib' % x
@@ -273,11 +285,6 @@ class Freeze(object):
             dest = join(self.frameworks_dir, x)
             self.set_id(dest, self.FID + '/' + x)
             self.fix_dependencies_in_lib(dest)
-        base = join(self.frameworks_dir, 'kitty')
-        for lib in walk(base):
-            if lib.endswith('.so'):
-                self.set_id(lib, self.FID + '/' + os.path.relpath(lib, self.frameworks_dir))
-                self.fix_dependencies_in_lib(lib)
 
     @flush
     def add_package_dir(self, x, dest=None):
@@ -295,20 +302,9 @@ class Freeze(object):
             dest = self.site_packages
         dest = join(dest, basename(x))
         shutil.copytree(x, dest, symlinks=True, ignore=ignore)
-        self.postprocess_package(x, dest)
         for f in walk(dest):
             if f.endswith('.so'):
                 self.fix_dependencies_in_lib(f)
-
-    @flush
-    def fix_dependencies_in_kitty(self):
-        for f in walk(join(self.resources_dir, 'kitty')):
-            if f.endswith('.so'):
-                self.fix_dependencies_in_lib(f)
-
-    @flush
-    def postprocess_package(self, src_path, dest_path):
-        pass
 
     @flush
     def add_stdlib(self):
@@ -330,6 +326,37 @@ class Freeze(object):
                 dest2 = join(dest, basename(x))
                 if dest2.endswith('.so'):
                     self.fix_dependencies_in_lib(dest2)
+
+    @flush
+    def freeze_python(self):
+        print('\nFreezing python')
+        kitty_dir = join(self.resources_dir, 'kitty')
+        bases = ('kitty', 'kittens')
+        for x in bases:
+            dest = os.path.join(self.python_stdlib, x)
+            os.rename(os.path.join(kitty_dir, x), dest)
+            if x == 'kitty':
+                shutil.rmtree(os.path.join(dest, 'launcher'))
+        os.rename(os.path.join(kitty_dir, '__main__.py'), os.path.join(self.python_stdlib, 'kitty_main.py'))
+        shutil.rmtree(os.path.join(kitty_dir, '__pycache__'))
+        pdir = os.path.join(dirname(self.python_stdlib), 'kitty-extensions')
+        os.mkdir(pdir)
+        print('Extracting extension modules from', self.python_stdlib, 'to', pdir)
+        ext_map = extract_extension_modules(self.python_stdlib, pdir)
+        shutil.copy(os.path.join(os.path.dirname(self_dir), 'site.py'), os.path.join(self.python_stdlib, 'site.py'))
+        for x in bases:
+            for q in walk(os.path.join(self.python_stdlib, x)):
+                if os.path.splitext(q)[1] not in ('.py', '.glsl'):
+                    os.unlink(q)
+        self.compile_py_modules()
+        freeze_python(self.python_stdlib, pdir, self.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM')
+        iv['build_frozen_launcher']([path_to_freeze_dir(), self.obj_dir])
+        os.rename(join(dirname(self.contents_dir), 'bin', 'kitty'), join(self.contents_dir, 'MacOS', 'kitty'))
+        shutil.rmtree(join(dirname(self.contents_dir), 'bin'))
+        self.fix_dependencies_in_lib(join(self.contents_dir, 'MacOS', 'kitty'))
+        for f in walk(pdir):
+            if f.endswith('.so') or f.endswith('.dylib'):
+                self.fix_dependencies_in_lib(f)
 
     @flush
     def add_site_packages(self):
@@ -389,11 +416,8 @@ class Freeze(object):
 
     @flush
     def compile_py_modules(self):
-        print('\nCompiling Python modules')
         self.remove_bytecode(join(self.resources_dir, 'Python'))
         py_compile(join(self.resources_dir, 'Python'))
-        self.remove_bytecode(join(self.resources_dir, 'kitty'))
-        py_compile(join(self.resources_dir, 'kitty'))
 
     @flush
     def makedmg(self, d, volname, internet_enable=True, format='ULFO'):

@@ -119,6 +119,7 @@
 
     {
         "name": "xcrypt",
+        "os": "linux",
         "unix": {
             "filename": "xcrypt-4.4.17.tar.gz",
             "hash": "sha256:7665168d0409574a03f7b484682e68334764c29c21ca5df438955a381384ca07",
