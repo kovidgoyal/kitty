@@ -14,12 +14,14 @@ import time
 from bypy.constants import (
     OUTPUT_DIR, PREFIX, is64bit, python_major_minor_version
 )
-from bypy.utils import get_dll_path, py_compile, walk
+from bypy.freeze import (
+    extract_extension_modules, freeze_python, path_to_freeze_dir
+)
+from bypy.utils import get_dll_path, mkdtemp, py_compile, walk
 
 j = os.path.join
-self_dir = os.path.dirname(os.path.abspath(__file__))
 arch = 'x86_64' if is64bit else 'i686'
-
+self_dir = os.path.dirname(os.path.abspath(__file__))
 py_ver = '.'.join(map(str, python_major_minor_version()))
 iv = globals()['init_env']
 kitty_constants = iv['kitty_constants']
@@ -27,12 +29,8 @@ kitty_constants = iv['kitty_constants']
 
 def binary_includes():
     return tuple(map(get_dll_path, (
-            'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2',
-
-            # dont include freetype because fontconfig is closely coupled to it
-            # and also distros often patch freetype
-            # 'iconv.so.2', 'pcre.so.1', 'graphite2.so.3', 'glib-2.0.so.0', 'freetype.so.6',
-
+            'expat', 'sqlite3', 'ffi', 'z', 'lzma', 'png16', 'lcms2', 'crypt',
+            'iconv', 'pcre', 'graphite2', 'glib-2.0', 'freetype',
             'harfbuzz', 'xkbcommon', 'xkbcommon-x11',
             'ncursesw', 'readline',
         ))) + (
@@ -49,6 +47,7 @@ class Env:
         self.py_dir = j(self.lib_dir, 'python' + py_ver)
         os.makedirs(self.py_dir)
         self.bin_dir = j(self.base, 'bin')
+        self.obj_dir = mkdtemp('launchers-')
 
 
 def ignore_in_lib(base, items, ignored_dirs=None):
@@ -106,10 +105,30 @@ def copy_python(env):
             shutil.copy2(y, env.py_dir)
 
     srcdir = j(srcdir, 'site-packages')
-    dest = j(env.py_dir, 'site-packages')
-    import_site_packages(srcdir, dest)
+    site_packages_dir = j(env.py_dir, 'site-packages')
+    import_site_packages(srcdir, site_packages_dir)
+    pdir = os.path.join(env.lib_dir, 'kitty-extensions')
+    os.makedirs(pdir, exist_ok=True)
+    kitty_dir = os.path.join(env.base, 'lib', 'kitty')
+    for x in ('kitty', 'kittens'):
+        dest = os.path.join(env.py_dir, x)
+        os.rename(os.path.join(kitty_dir, x), dest)
+        if x == 'kitty':
+            shutil.rmtree(os.path.join(dest, 'launcher'))
+    os.rename(os.path.join(kitty_dir, '__main__.py'), os.path.join(env.py_dir, 'kitty_main.py'))
+    shutil.rmtree(os.path.join(kitty_dir, '__pycache__'))
+    print('Extracting extension modules from', env.py_dir, 'to', pdir)
+    ext_map = extract_extension_modules(env.py_dir, pdir)
+    shutil.copy(os.path.join(os.path.dirname(self_dir), 'site.py'), os.path.join(env.py_dir, 'site.py'))
+    for q in walk(os.path.join(env.py_dir, 'kitty')):
+        if os.path.splitext(q)[1] not in ('.py', '.glsl'):
+            os.unlink(q)
     py_compile(env.py_dir)
-    py_compile(os.path.join(env.base, 'lib', 'kitty'))
+    freeze_python(env.py_dir, pdir, env.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM')
+
+
+def build_launcher(env):
+    iv['build_frozen_launcher']([path_to_freeze_dir(), env.obj_dir])
 
 
 def is_elf(path):
@@ -204,10 +223,12 @@ def main():
     env = Env(os.path.join(ext_dir, kitty_constants['appname']))
     copy_libs(env)
     copy_python(env)
+    build_launcher(env)
     files = find_binaries(env)
     fix_permissions(files)
     if not args.dont_strip:
         strip_binaries(files)
+    iv['check_build'](os.path.join(env.base, 'bin', 'kitty'))
     create_tarfile(env, args.compression_level)
 
 

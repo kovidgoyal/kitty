@@ -24,10 +24,12 @@ version: Version = Version(0, 19, 3)
 str_version: str = '.'.join(map(str, version))
 _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat
-if hasattr(sys, 'kitty_base_dir'):
-    kitty_base_dir: str = getattr(sys, 'kitty_base_dir')
+if getattr(sys, 'frozen', False):
+    extensions_dir: str = getattr(sys, 'kitty_extensions_dir')
+    kitty_base_dir = os.path.join(os.path.dirname(extensions_dir), 'kitty')
 else:
     kitty_base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    extensions_dir = os.path.join(kitty_base_dir, 'kitty')
 
 
 @run_once
@@ -128,7 +130,8 @@ except KeyError:
 
 
 def glfw_path(module: str) -> str:
-    return os.path.join(kitty_base_dir, 'kitty', 'glfw-{}.so'.format(module))
+    prefix = 'kitty.' if getattr(sys, 'frozen', False) else ''
+    return os.path.join(extensions_dir, f'{prefix}glfw-{module}.so')
 
 
 def detect_if_wayland_ok() -> bool:

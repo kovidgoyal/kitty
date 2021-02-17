@@ -110,11 +110,19 @@
 
     {
         "name": "xz",
-        "os": "macos,linux",
         "unix": {
             "filename": "xz-5.2.5.tar.gz",
             "hash": "sha256:f6f4910fd033078738bd82bfba4f49219d03b17eb0794eb91efbae419f4aba10",
             "urls": ["https://tukaani.org/xz/{filename}"]
+        }
+    },
+
+    {
+        "name": "xcrypt",
+        "unix": {
+            "filename": "xcrypt-4.4.17.tar.gz",
+            "hash": "sha256:7665168d0409574a03f7b484682e68334764c29c21ca5df438955a381384ca07",
+            "urls": ["https://github.com/besser82/libxcrypt/archive/v4.4.17.tar.gz"]
         }
     },
 

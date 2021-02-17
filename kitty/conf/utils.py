@@ -257,7 +257,7 @@ def load_config(
         try:
             with open(path, encoding='utf-8', errors='replace') as f:
                 vals = parse_config(f)
-        except FileNotFoundError:
+        except (FileNotFoundError, PermissionError):
             continue
         ans = merge_configs(ans, vals)
     if overrides is not None:

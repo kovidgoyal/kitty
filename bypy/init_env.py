@@ -7,12 +7,13 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from contextlib import suppress
 
 from bypy.constants import (
     LIBDIR, PREFIX, PYTHON, SRC as KITTY_DIR, ismacos, worker_env
 )
-from bypy.utils import run_shell
+from bypy.utils import run_shell, walk
 
 
 def read_src_file(name):
@@ -43,8 +44,34 @@ def run(*args, **extra_env):
     return subprocess.call(list(args), env=env, cwd=cwd)
 
 
+def build_frozen_launcher(extra_include_dirs):
+    inc_dirs = [f'--extra-include-dirs={x}' for x in extra_include_dirs]
+    cmd = [PYTHON, 'setup.py', '--prefix', build_frozen_launcher.prefix] + inc_dirs + ['build-frozen-launcher']
+    if run(*cmd, cwd=build_frozen_launcher.writeable_src_dir) != 0:
+        print('Building of frozen kitty launcher failed', file=sys.stderr)
+        os.chdir(KITTY_DIR)
+        run_shell()
+        raise SystemExit('Building of kitty launcher failed')
+    return build_frozen_launcher.writeable_src_dir
+
+
+def check_build(kitty_exe):
+    with tempfile.TemporaryDirectory() as tdir:
+        env = {
+            'KITTY_CONFIG_DIRECTORY': os.path.join(tdir, 'conf'),
+            'KITTY_CACHE_DIRECTORY': os.path.join(tdir, 'cache')
+        }
+        [os.mkdir(x) for x in env.values()]
+        if subprocess.call([kitty_exe, '+runpy', 'from kitty.check_build import main; main()'], env=env) != 0:
+            print('Checking of kitty build failed', file=sys.stderr)
+            os.chdir(os.path.dirname(kitty_exe))
+            run_shell()
+            raise SystemExit('Checking of kitty build failed')
+
+
 def build_c_extensions(ext_dir, args):
     writeable_src_dir = os.path.join(ext_dir, 'src')
+    build_frozen_launcher.writeable_src_dir = writeable_src_dir
     shutil.copytree(
         KITTY_DIR, writeable_src_dir, symlinks=True,
         ignore=shutil.ignore_patterns('b', 'build', 'dist', '*_commands.json', '*.o'))
@@ -58,11 +85,19 @@ def build_c_extensions(ext_dir, args):
         run_shell()
         raise SystemExit('Building of kitty launcher failed')
 
+    for x in walk(writeable_src_dir):
+        if x.rpartition('.') in ('o', 'so', 'dylib', 'pyd'):
+            os.unlink(x)
     cmd = [PYTHON, 'setup.py']
+    if run(*cmd, cwd=writeable_src_dir) != 0:
+        print('Building of kitty failed', file=sys.stderr)
+        os.chdir(KITTY_DIR)
+        run_shell()
+        raise SystemExit('Building of kitty package failed')
     bundle = 'macos-freeze' if ismacos else 'linux-freeze'
     cmd.append(bundle)
     dest = kitty_constants['appname'] + ('.app' if ismacos else '')
-    dest = os.path.join(ext_dir, dest)
+    dest = build_frozen_launcher.prefix = os.path.join(ext_dir, dest)
     cmd += ['--prefix', dest]
     if run(*cmd, cwd=writeable_src_dir) != 0:
         print('Building of kitty package failed', file=sys.stderr)

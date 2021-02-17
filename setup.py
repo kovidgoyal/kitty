@@ -69,6 +69,7 @@ class Options(argparse.Namespace):
     for_freeze: bool = False
     libdir_name: str = 'lib'
     extra_logging: List[str] = []
+    extra_include_dirs: List[str] = []
     link_time_optimization: bool = 'KITTY_NO_LTO' not in os.environ
     update_check_interval: float = 24
     egl_library: Optional[str] = os.getenv('KITTY_EGL_LIBRARY')
@@ -259,7 +260,8 @@ def init_env(
     egl_library: Optional[str] = None,
     startup_notification_library: Optional[str] = None,
     canberra_library: Optional[str] = None,
-    extra_logging: Iterable[str] = ()
+    extra_logging: Iterable[str] = (),
+    extra_include_dirs: Iterable[str] = (),
 ) -> Env:
     native_optimizations = native_optimizations and not sanitize and not debug
     if native_optimizations and is_macos and is_arm:
@@ -343,6 +345,9 @@ def init_env(
 
     if desktop_libs != []:
         library_paths['kitty/desktop.c'] = desktop_libs
+
+    for path in extra_include_dirs:
+        cflags.append(f'-I{path}')
 
     return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver)
 
@@ -745,7 +750,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
     env = init_env(
         args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
         args.egl_library, args.startup_notification_library, args.canberra_library,
-        args.extra_logging
+        args.extra_logging, args.extra_include_dirs
     )
 
 
@@ -797,6 +802,8 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags = shlex.split(os.environ.get('LDFLAGS', ''))
+    for path in args.extra_include_dirs:
+        cflags.append(f'-I{path}')
     if bundle_type == 'linux-freeze':
         ldflags += ['-Wl,-rpath,$ORIGIN/../lib']
     os.makedirs(launcher_dir, exist_ok=True)
@@ -1026,7 +1033,8 @@ def package(args: Options, bundle_type: str) -> None:
         shutil.rmtree(libdir)
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
-    build_launcher(args, launcher_dir, bundle_type)
+    if not bundle_type.endswith('-freeze'):  # freeze launcher is built separately
+        build_launcher(args, launcher_dir, bundle_type)
     os.makedirs(os.path.join(libdir, 'logo'))
     build_terminfo = runpy.run_path('build-terminfo', run_name='import_build')  # type: ignore
     for x in (libdir, os.path.join(ddir, 'share')):
@@ -1103,7 +1111,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         'action',
         nargs='?',
         default=Options.action,
-        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher clean export-ci-bundles'.split(),
+        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher build-frozen-launcher clean export-ci-bundles'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -1160,6 +1168,12 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         choices=('event-loop',),
         help='Turn on extra logging for debugging in this build. Can be specified multiple times, to turn'
         ' on different types of logging.'
+    )
+    p.add_argument(
+        '--extra-include-dirs',
+        action='append',
+        default=Options.extra_include_dirs,
+        help='Extra include directories to use while compiling'
     )
     p.add_argument(
         '--update-check-interval',
@@ -1226,6 +1240,10 @@ def main() -> None:
         elif args.action == 'build-launcher':
             init_env_from_args(args, False)
             build_launcher(args, launcher_dir=launcher_dir)
+        elif args.action == 'build-frozen-launcher':
+            init_env_from_args(args, False)
+            bundle_type = ('macos' if is_macos else 'linux') + '-freeze'
+            build_launcher(args, launcher_dir=os.path.join(args.prefix, 'bin'), bundle_type=bundle_type)
         elif args.action == 'linux-package':
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-package')
