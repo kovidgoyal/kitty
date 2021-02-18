@@ -49,7 +49,7 @@ remove_from_cache(GraphicsManager *self, const ImageAndFrame x) {
 static inline bool
 read_from_cache(const GraphicsManager *self, const ImageAndFrame x, void **data, size_t *sz) {
     char key[CACHE_KEY_BUFFER_SIZE];
-    return read_from_disk_cache_simple(self->disk_cache, CK(x), data, sz);
+    return read_from_disk_cache_simple(self->disk_cache, CK(x), data, sz, false);
 }
 
 static inline size_t

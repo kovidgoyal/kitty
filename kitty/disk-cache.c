@@ -581,7 +581,7 @@ read_from_cache_entry(const DiskCache *self, const CacheEntry *s, void *dest) {
 }
 
 void*
-read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allocator)(void*, size_t), void* allocator_data) {
+read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allocator)(void*, size_t), void* allocator_data, bool store_in_ram) {
     DiskCache *self = (DiskCache*)self_;
     void *data = NULL;
     if (!ensure_state(self)) return data;
@@ -603,9 +603,32 @@ read_from_disk_cache(PyObject *self_, const void *key, size_t key_sz, void*(allo
         read_from_cache_entry(self, s, data);
         xor_data(s->encryption_key, sizeof(s->encryption_key), data, s->data_sz);
     }
+    if (store_in_ram && !s->data && s->data_sz) {
+        void *copy = malloc(s->data_sz);
+        if (copy) {
+            memcpy(copy, data, s->data_sz); s->data = copy;
+        }
+    }
 end:
     mutex(unlock);
     return data;
+}
+
+size_t
+disk_cache_clear_from_ram(PyObject *self_, bool(matches)(void*, void *key, unsigned keysz), void *data) {
+    DiskCache *self = (DiskCache*)self_;
+    size_t ans = 0;
+    if (!ensure_state(self)) return ans;
+    mutex(lock);
+    CacheEntry *s, *tmp;
+    HASH_ITER(hh, self->entries, s, tmp) {
+        if (s->written_to_disk && s->data && matches(data, s->hash_key, s->hash_keylen)) {
+            free(s->data); s->data = NULL;
+            ans++;
+        }
+    }
+    mutex(unlock);
+    return ans;
 }
 
 bool
@@ -721,9 +744,9 @@ bytes_alloc(void *x, size_t sz) {
 }
 
 PyObject*
-read_from_disk_cache_python(PyObject *self, const void *key, size_t keysz) {
+read_from_disk_cache_python(PyObject *self, const void *key, size_t keysz, bool store_in_ram) {
     BytesWrapper w = {0};
-    read_from_disk_cache(self, key, keysz, bytes_alloc, &w);
+    read_from_disk_cache(self, key, keysz, bytes_alloc, &w, store_in_ram);
     if (PyErr_Occurred()) { Py_CLEAR(w.bytes); return NULL; }
     return w.bytes;
 }
@@ -732,8 +755,36 @@ static PyObject*
 get(PyObject *self, PyObject *args) {
     const char *key;
     Py_ssize_t keylen;
-    PA("y#", &key, &keylen);
-    return read_from_disk_cache_python(self, key, keylen);
+    int store_in_ram = 0;
+    PA("y#|p", &key, &keylen, &store_in_ram);
+    return read_from_disk_cache_python(self, key, keylen, store_in_ram);
+}
+
+static bool
+python_clear_predicate(void *data, void *key, unsigned keysz) {
+    PyObject *ret = PyObject_CallFunction(data, "y#", key, keysz);
+    if (ret == NULL) { PyErr_Print(); return false; }
+    bool ans = PyObject_IsTrue(ret);
+    Py_DECREF(ret);
+    return ans;
+}
+
+static PyObject*
+remove_from_ram(PyObject *self, PyObject *callable) {
+    if (!PyCallable_Check(callable)) { PyErr_SetString(PyExc_TypeError, "not a callable"); return NULL; }
+    return PyLong_FromUnsignedLong(disk_cache_clear_from_ram(self, python_clear_predicate, callable));
+}
+
+static PyObject*
+num_cached_in_ram(DiskCache *self, PyObject *args UNUSED) {
+    unsigned long ans = 0;
+    mutex(lock);
+    CacheEntry *tmp, *s;
+    HASH_ITER(hh, self->entries, s, tmp) {
+        if (s->written_to_disk && s->data) ans++;
+    }
+    mutex(unlock);
+    return PyLong_FromUnsignedLong(ans);
 }
 
 
@@ -743,6 +794,8 @@ static PyMethodDef methods[] = {
     MW(read_from_cache_file, METH_VARARGS),
     {"add", add, METH_VARARGS, NULL},
     {"remove", pyremove, METH_VARARGS, NULL},
+    {"remove_from_ram", remove_from_ram, METH_O, NULL},
+    {"num_cached_in_ram", (PyCFunction)num_cached_in_ram, METH_NOARGS, NULL},
     {"get", get, METH_VARARGS, NULL},
     {"wait_for_write", wait_for_write, METH_VARARGS, NULL},
     {"size_on_disk", size_on_disk, METH_NOARGS, NULL},

@@ -265,6 +265,27 @@ class TestGraphics(BaseTest):
         dc.wait_for_write()
         self.assertLess(dc.size_on_disk(), before)
         check_data()
+        dc.clear()
+
+        for frame in range(32):
+            add(f'1:{frame}', f'{frame:02d}' * 8)
+        dc.wait_for_write()
+        self.assertEqual(dc.size_on_disk(), 32 * 16)
+        self.assertEqual(dc.num_cached_in_ram(), 0)
+        num_in_ram = 0
+        for frame in range(32):
+            dc.get(key_as_bytes(f'1:{frame}'))
+        self.assertEqual(dc.num_cached_in_ram(), num_in_ram)
+        for frame in range(32):
+            dc.get(key_as_bytes(f'1:{frame}'), True)
+            num_in_ram += 1
+        self.assertEqual(dc.num_cached_in_ram(), num_in_ram)
+
+        def clear_predicate(key):
+            return key.startswith(b'1:')
+
+        dc.remove_from_ram(clear_predicate)
+        self.assertEqual(dc.num_cached_in_ram(), 0)
 
     def test_load_images(self):
         s, g, l, sl = load_helpers(self)
