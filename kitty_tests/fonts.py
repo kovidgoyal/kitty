@@ -2,9 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
+import shutil
 import sys
+import tempfile
 import unittest
 from functools import partial
+from importlib.resources import read_binary
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
@@ -31,10 +35,12 @@ class Rendering(BaseTest):
             self.test_ctx.__exit__()
             del self.test_ctx
             raise
+        self.tdir = tempfile.mkdtemp()
 
     def tearDown(self):
         self.test_ctx.__exit__()
         del self.sprites, self.cell_width, self.cell_height, self.test_ctx
+        shutil.rmtree(self.tdir)
 
     def test_sprite_map(self):
         sprite_map_set_limits(10, 2)
@@ -71,6 +77,16 @@ class Rendering(BaseTest):
         self.ae(len(cells), sz)
 
     def test_shaping(self):
+
+        font_path_cache = {}
+
+        def path_for_font(name):
+            if name not in font_path_cache:
+                with open(os.path.join(self.tdir, name), 'wb') as f:
+                    font_path_cache[name] = f.name
+                    data = read_binary(__name__.rpartition('.')[0], name)
+                    f.write(data)
+            return font_path_cache[name]
 
         def ss(text, font=None):
             path = f'kitty_tests/{font}' if font else None

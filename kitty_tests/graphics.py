@@ -26,11 +26,6 @@ except ImportError:
     Image = None
 
 
-def relpath(name):
-    base = os.path.dirname(os.path.abspath(__file__))
-    return os.path.join(base, name)
-
-
 def send_command(screen, cmd, payload=b''):
     cmd = '\033_G' + cmd
     if payload:

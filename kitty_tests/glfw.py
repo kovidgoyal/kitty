@@ -14,13 +14,10 @@ class TestGLFW(BaseTest):
 
     @unittest.skipIf(is_macos, 'Skipping test on macOS because glfw-cocoa.so is not built with backend_utils')
     def test_utf_8_strndup(self):
-        import os
         import ctypes
+        from kitty.constants import glfw_path
 
-        base = os.path.dirname(os.path.abspath(__file__))
-        backend_utils = os.path.join(base, '..', 'kitty', 'glfw-x11.so')
-        if not os.path.exists(backend_utils):
-            raise Exception('Module x11 not found')
+        backend_utils = glfw_path('x11')
         lib = ctypes.CDLL(backend_utils)
         utf_8_strndup = lib.utf_8_strndup
         utf_8_strndup.restype = ctypes.c_char_p
