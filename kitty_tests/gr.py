@@ -50,13 +50,13 @@ def display_png_file(path):
 
 
 def main():
+    from kitty.constants import logo_png_file
     photo = sys.argv[-1]
-    base = os.path.dirname(os.path.abspath(__file__))
     if not photo.lower().endswith('.png'):
         raise SystemExit('Must specify a PNG file to display')
     clear_screen()
     display(b'\xdd\xdd\xdd\xff', 1, 1, 0, 0, -10, 40, 20)
-    with open(os.path.join(base, '../logo/kitty.rgba'), 'rb') as f:
+    with open(logo_png_file.replace('.png', '.rgba'), 'rb') as f:
         display(f.read(), 256, 256, 0, 5, -9)
     display(b'\0\0\0\xaa', 1, 1, 0, 7, -8, 40, 3)
     move_cursor(5, 8)
