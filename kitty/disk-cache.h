@@ -18,6 +18,7 @@ size_t disk_cache_total_size(PyObject *self);
 size_t disk_cache_size_on_disk(PyObject *self);
 void clear_disk_cache(PyObject *self);
 size_t disk_cache_clear_from_ram(PyObject *self_, bool(matches)(void* data, void *key, unsigned keysz), void*);
+size_t disk_cache_num_cached_in_ram(PyObject *self_);
 
 static inline void* disk_cache_malloc_allocator(void *x, size_t sz) {
     *((size_t*)x) = sz;

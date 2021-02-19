@@ -658,6 +658,22 @@ disk_cache_wait_for_write(PyObject *self_, monotonic_t timeout) {
 size_t
 disk_cache_total_size(PyObject *self) { return ((DiskCache*)self)->total_size; }
 
+size_t
+disk_cache_num_cached_in_ram(PyObject *self_) {
+    DiskCache *self = (DiskCache*)self_;
+    unsigned long ans = 0;
+    if (ensure_state(self)) {
+        mutex(lock);
+        CacheEntry *tmp, *s;
+        HASH_ITER(hh, self->entries, s, tmp) {
+            if (s->written_to_disk && s->data) ans++;
+        }
+        mutex(unlock);
+    }
+    return ans;
+}
+
+
 #define PYWRAP(name) static PyObject* py##name(DiskCache *self, PyObject *args)
 #define PA(fmt, ...) if (!PyArg_ParseTuple(args, fmt, __VA_ARGS__)) return NULL;
 PYWRAP(ensure_state) {
@@ -776,15 +792,8 @@ remove_from_ram(PyObject *self, PyObject *callable) {
 }
 
 static PyObject*
-num_cached_in_ram(DiskCache *self, PyObject *args UNUSED) {
-    unsigned long ans = 0;
-    mutex(lock);
-    CacheEntry *tmp, *s;
-    HASH_ITER(hh, self->entries, s, tmp) {
-        if (s->written_to_disk && s->data) ans++;
-    }
-    mutex(unlock);
-    return PyLong_FromUnsignedLong(ans);
+num_cached_in_ram(PyObject *self, PyObject *args UNUSED) {
+    return PyLong_FromUnsignedLong(disk_cache_num_cached_in_ram(self));
 }
 
 
@@ -795,7 +804,7 @@ static PyMethodDef methods[] = {
     {"add", add, METH_VARARGS, NULL},
     {"remove", pyremove, METH_VARARGS, NULL},
     {"remove_from_ram", remove_from_ram, METH_O, NULL},
-    {"num_cached_in_ram", (PyCFunction)num_cached_in_ram, METH_NOARGS, NULL},
+    {"num_cached_in_ram", num_cached_in_ram, METH_NOARGS, NULL},
     {"get", get, METH_VARARGS, NULL},
     {"wait_for_write", wait_for_write, METH_VARARGS, NULL},
     {"size_on_disk", size_on_disk, METH_NOARGS, NULL},
