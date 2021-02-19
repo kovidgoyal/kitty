@@ -6,8 +6,10 @@
 import os
 import unittest
 
+from . import BaseTest
 
-class TestBuild(unittest.TestCase):
+
+class TestBuild(BaseTest):
 
     def test_exe(self) -> None:
         from kitty.constants import kitty_exe
@@ -30,7 +32,10 @@ class TestBuild(unittest.TestCase):
 
     def test_glfw_modules(self) -> None:
         from kitty.constants import is_macos, glfw_path
-        modules = ('cocoa',) if is_macos else ('x11', 'wayland')
+        linux_backends = ['x11']
+        if not self.is_ci:
+            linux_backends.append('wayland')
+        modules = ['cocoa'] if is_macos else linux_backends
         for name in modules:
             path = glfw_path(name)
             self.assertTrue(os.path.isfile(path))
