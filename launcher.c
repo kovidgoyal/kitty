@@ -66,19 +66,85 @@ typedef struct {
 #ifdef FOR_BUNDLE
 #include <bypy-freeze.h>
 
+static bool
+canonicalize_path(const char *srcpath, char *dstpath, size_t sz) {
+    // remove . and .. path segments
+    size_t plen = strlen(srcpath) + 1, chk;
+    char wtmp[plen], *tokv[plen], *s, *tok, *sav;
+    int i, ti, relpath;
+
+    relpath = (*srcpath == '/') ? 0 : 1;
+    ti = 0;
+    // use a buffer as strtok modifies its input
+    (void) strcpy(wtmp, srcpath);
+
+    tok = strtok_r(wtmp, "/", &sav);
+    while (tok != NULL) {
+        if (strcmp(tok, "..") == 0) {
+            if (ti > 0) ti--;
+        } else if (strcmp(tok, ".") != 0) {
+            tokv[ti++] = tok;
+        }
+        tok = strtok_r(NULL, "/", &sav);
+    }
+
+    chk = 0;
+    s = dstpath;
+    for (i = 0; i < ti; i++) {
+        size_t l = strlen(tokv[i]);
+
+        if (i > 0 || !relpath) {
+            if (++chk >= sz) return false;
+            *s++ = '/';
+        }
+
+        chk += l;
+        if (chk >= sz) return -1;
+
+        strcpy(s, tokv[i]);
+        s += l;
+    }
+
+    if (s == dstpath) {
+        if (++chk >= sz) return -1;
+        *s++ = relpath ? '.' : '/';
+    }
+    *s = '\0';
+
+    return true;
+}
+
+static bool
+canonicalize_path_wide(const char *srcpath, wchar_t *dest, size_t sz) {
+    char buf[sz + 1];
+    bool ret = canonicalize_path(srcpath, buf, sz);
+    buf[sz] = 0;
+    mbstowcs(dest, buf, sz - 1);
+    dest[sz-1] = 0;
+    return ret;
+}
+
 static int
 run_embedded(const RunData run_data) {
     bypy_pre_initialize_interpreter(false);
-    wchar_t extensions_dir[PATH_MAX+1] = {0}, python_home[PATH_MAX+1] = {0};
+    char extensions_dir_full[PATH_MAX+1] = {0}, python_home_full[PATH_MAX+1] = {0};
 #ifdef __APPLE__
     const char *python_relpath = "../Resources/Python/lib";
 #else
     const char *python_relpath = "../" KITTY_LIB_DIR_NAME;
 #endif
-    int num = swprintf(extensions_dir, PATH_MAX, L"%s/%s/kitty-extensions", run_data.exe_dir, python_relpath);
+    int num = snprintf(extensions_dir_full, PATH_MAX, "%s/%s/kitty-extensions", run_data.exe_dir, python_relpath);
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to extensions_dir: %s/%s\n", run_data.exe_dir, python_relpath); return 1; }
-    num = swprintf(python_home, PATH_MAX, L"%s/%s/python%s", run_data.exe_dir, python_relpath, PYVER);
+    wchar_t extensions_dir[num+2];
+    if (!canonicalize_path_wide(extensions_dir_full, extensions_dir, num+1)) {
+        fprintf(stderr, "Failed to canonicalize the path: %s\n", extensions_dir_full); return 1; }
+
+    num = snprintf(python_home_full, PATH_MAX, "%s/%s/python%s", run_data.exe_dir, python_relpath, PYVER);
     if (num < 0 || num >= PATH_MAX) { fprintf(stderr, "Failed to create path to python home: %s/%s\n", run_data.exe_dir, python_relpath); return 1; }
+    wchar_t python_home[num+2];
+    if (!canonicalize_path_wide(python_home_full, python_home, num+1)) {
+        fprintf(stderr, "Failed to canonicalize the path: %s\n", python_home_full); return 1; }
+
     bypy_initialize_interpreter(L"kitty", python_home, L"kitty_main", extensions_dir, run_data.argc, run_data.argv);
     if (!set_xoptions(run_data.exe_dir, run_data.lc_ctype, false)) return 1;
     set_sys_bool("frozen", true);
@@ -92,7 +158,6 @@ static int
 free_argv(wchar_t **argv) {
     wchar_t **p = argv;
     while (*p) { PyMem_RawFree(*p); p++; }
-    free(argv);
     return 1;
 }
 
@@ -104,8 +169,8 @@ run_embedded(const RunData run_data) {
 #endif
     if (!set_xoptions(run_data.exe_dir, run_data.lc_ctype, from_source)) return 1;
     int argc = run_data.argc + 1;
-    wchar_t **argv = calloc(argc, sizeof(wchar_t*));
-    if (!argv) { fprintf(stderr, "Out of memory creating argv\n"); return 1; }
+    wchar_t *argv[argc];
+    memset(argv, 0, sizeof(wchar_t*) * argc);
     argv[0] = Py_DecodeLocale(run_data.exe, NULL);
     if (!argv[0]) { fprintf(stderr, "Failed to decode path to exe\n"); return free_argv(argv); }
     argv[1] = Py_DecodeLocale(run_data.lib_dir, NULL);
@@ -115,8 +180,7 @@ run_embedded(const RunData run_data) {
         if (!argv[i+1]) { fprintf(stderr, "Failed to decode the command line argument: %s\n", run_data.argv[i]); return free_argv(argv); }
     }
     int ret = Py_Main(argc, argv);
-    // we cannot free argv properly as Py_Main odifies it
-    free(argv);
+    // we cannot free argv properly as Py_Main modifies it
     return ret;
 }
 
