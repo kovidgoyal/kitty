@@ -69,16 +69,19 @@ typedef struct {
 static bool
 canonicalize_path(const char *srcpath, char *dstpath, size_t sz) {
     // remove . and .. path segments
+    bool ok = false;
     size_t plen = strlen(srcpath) + 1, chk;
-    char wtmp[plen], *tokv[plen], *s, *tok, *sav;
-    int i, ti, relpath;
+    char *wtmp = malloc(plen);
+    char **tokv = malloc(sizeof(char*) * plen);
+    if (!wtmp || !tokv) goto end;
+    char *s, *tok, *sav;
+    bool relpath = *srcpath != '/';
 
-    relpath = (*srcpath == '/') ? 0 : 1;
-    ti = 0;
     // use a buffer as strtok modifies its input
-    (void) strcpy(wtmp, srcpath);
+    memcpy(wtmp, srcpath, plen);
 
     tok = strtok_r(wtmp, "/", &sav);
+    int ti = 0;
     while (tok != NULL) {
         if (strcmp(tok, "..") == 0) {
             if (ti > 0) ti--;
@@ -90,28 +93,31 @@ canonicalize_path(const char *srcpath, char *dstpath, size_t sz) {
 
     chk = 0;
     s = dstpath;
-    for (i = 0; i < ti; i++) {
-        size_t l = strlen(tokv[i]);
+    for (int i = 0; i < ti; i++) {
+        size_t token_sz = strlen(tokv[i]);
 
         if (i > 0 || !relpath) {
-            if (++chk >= sz) return false;
+            if (++chk >= sz) goto end;
             *s++ = '/';
         }
 
-        chk += l;
-        if (chk >= sz) return -1;
+        chk += token_sz;
+        if (chk >= sz) goto end;
 
-        strcpy(s, tokv[i]);
-        s += l;
+        memcpy(s, tokv[i], token_sz);
+        s += token_sz;
     }
 
     if (s == dstpath) {
-        if (++chk >= sz) return -1;
+        if (++chk >= sz) goto end;
         *s++ = relpath ? '.' : '/';
     }
     *s = '\0';
+    ok = true;
 
-    return true;
+end:
+    free(wtmp); free(tokv);
+    return ok;
 }
 
 static bool
@@ -158,6 +164,7 @@ static int
 free_argv(wchar_t **argv) {
     wchar_t **p = argv;
     while (*p) { PyMem_RawFree(*p); p++; }
+    free(argv);
     return 1;
 }
 
@@ -169,7 +176,8 @@ run_embedded(const RunData run_data) {
 #endif
     if (!set_xoptions(run_data.exe_dir, run_data.lc_ctype, from_source)) return 1;
     int argc = run_data.argc + 1;
-    wchar_t *argv[argc];
+    wchar_t **argv = calloc(argc, sizeof(wchar_t*));
+    if (!argv) { fprintf(stderr, "Out of memory creating argv\n"); return 1; }
     memset(argv, 0, sizeof(wchar_t*) * argc);
     argv[0] = Py_DecodeLocale(run_data.exe, NULL);
     if (!argv[0]) { fprintf(stderr, "Failed to decode path to exe\n"); return free_argv(argv); }
@@ -181,6 +189,7 @@ run_embedded(const RunData run_data) {
     }
     int ret = Py_Main(argc, argv);
     // we cannot free argv properly as Py_Main modifies it
+    free(argv);
     return ret;
 }
 
