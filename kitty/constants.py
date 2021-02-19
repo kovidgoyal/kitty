@@ -26,7 +26,10 @@ _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat
 if getattr(sys, 'frozen', False):
     extensions_dir: str = getattr(sys, 'kitty_extensions_dir')
-    kitty_base_dir = os.path.join(os.path.dirname(extensions_dir), 'kitty')
+    kitty_base_dir = os.path.dirname(extensions_dir)
+    if is_macos:
+        kitty_base_dir = os.path.dirname(os.path.dirname(kitty_base_dir))
+    kitty_base_dir = os.path.join(kitty_base_dir, 'kitty')
 else:
     kitty_base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     extensions_dir = os.path.join(kitty_base_dir, 'kitty')
