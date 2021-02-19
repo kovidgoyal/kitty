@@ -6,7 +6,10 @@ import importlib
 import os
 import sys
 import unittest
-from importlib.resources import contents
+try:
+    from importlib.resources import contents
+except Exception:
+    from importlib_resources import contents
 from typing import Callable, Generator, NoReturn, Sequence, Set
 
 

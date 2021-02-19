@@ -123,7 +123,10 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
 
 @run_once
 def all_kitten_names() -> FrozenSet[str]:
-    from importlib.resources import contents
+    try:
+        from importlib.resources import contents
+    except ImportError:
+        from importlib_resources import contents  # type: ignore
     ans = []
     for name in contents('kittens'):
         if '__' not in name and '.' not in name and name != 'tui':

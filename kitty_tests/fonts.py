@@ -8,7 +8,10 @@ import sys
 import tempfile
 import unittest
 from functools import partial
-from importlib.resources import read_binary
+try:
+    from importlib.resources import read_binary
+except ImportError:
+    from importlib_resources import read_binary
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (

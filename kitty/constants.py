@@ -197,5 +197,8 @@ def resolve_custom_file(path: str) -> str:
 
 
 def read_kitty_resource(name: str) -> bytes:
-    from importlib.resources import read_binary
+    try:
+        from importlib.resources import read_binary
+    except ImportError:
+        from importlib_resources import read_binary  # type: ignore
     return read_binary('kitty', name)
