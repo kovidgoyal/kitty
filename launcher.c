@@ -30,13 +30,16 @@
 #define KITTY_LIB_DIR_NAME "lib"
 #endif
 
+static inline void cleanup_free(void *p) { free(*(void**) p); }
+#define FREE_AFTER_FUNCTION __attribute__((cleanup(cleanup_free)))
+
+
 #ifndef __FreeBSD__
 static inline bool
 safe_realpath(const char* src, char *buf, size_t buf_sz) {
-    char* ans = realpath(src, NULL);
+    FREE_AFTER_FUNCTION char* ans = realpath(src, NULL);
     if (ans == NULL) return false;
     snprintf(buf, buf_sz, "%s", ans);
-    free(ans);
     return true;
 }
 #endif
@@ -71,8 +74,8 @@ canonicalize_path(const char *srcpath, char *dstpath, size_t sz) {
     // remove . and .. path segments
     bool ok = false;
     size_t plen = strlen(srcpath) + 1, chk;
-    char *wtmp = malloc(plen);
-    char **tokv = malloc(sizeof(char*) * plen);
+    FREE_AFTER_FUNCTION char *wtmp = malloc(plen);
+    FREE_AFTER_FUNCTION char **tokv = malloc(sizeof(char*) * plen);
     if (!wtmp || !tokv) goto end;
     char *s, *tok, *sav;
     bool relpath = *srcpath != '/';
@@ -116,7 +119,6 @@ canonicalize_path(const char *srcpath, char *dstpath, size_t sz) {
     ok = true;
 
 end:
-    free(wtmp); free(tokv);
     return ok;
 }
 
@@ -259,7 +261,7 @@ read_exe_path(char *exe, size_t buf_sz) {
 int main(int argc, char *argv[]) {
     char exe[PATH_MAX+1] = {0};
     char exe_dir_buf[PATH_MAX+1] = {0};
-    const char *lc_ctype = NULL;
+    FREE_AFTER_FUNCTION const char *lc_ctype = NULL;
 #ifdef __APPLE__
     lc_ctype = getenv("LC_CTYPE");
 #endif
@@ -278,6 +280,5 @@ int main(int argc, char *argv[]) {
     if (lc_ctype) lc_ctype = strdup(lc_ctype);
     RunData run_data = {.exe = exe, .exe_dir = exe_dir, .lib_dir = lib, .argc = argc, .argv = argv, .lc_ctype = lc_ctype};
     ret = run_embedded(run_data);
-    if (lc_ctype) free((void*)lc_ctype);
     return ret;
 }
