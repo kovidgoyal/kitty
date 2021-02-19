@@ -44,7 +44,7 @@ def install_deps():
             # needed for zlib for pillow, should not be needed after pillow 8.0
             os.environ['PKG_CONFIG_PATH'] = '/usr/local/opt/zlib/lib/pkgconfig'
         cmd = 'pip3 install Pillow pygments'
-        if sys.version[:2] < (3, 7):
+        if sys.version_info[:2] < (3, 7):
             cmd += ' importlib-resources'
         run(cmd)
 

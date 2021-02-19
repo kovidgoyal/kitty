@@ -12,30 +12,30 @@ from kitty.fast_data_types import LineBuf, Cursor, Screen, HistoryBuf
 
 class Callbacks:
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.clear()
 
-    def write(self, data):
+    def write(self, data) -> None:
         self.wtcbuf += data
 
-    def title_changed(self, data):
+    def title_changed(self, data) -> None:
         self.titlebuf += data
 
-    def icon_changed(self, data):
+    def icon_changed(self, data) -> None:
         self.iconbuf += data
 
-    def set_dynamic_color(self, code, data):
+    def set_dynamic_color(self, code, data) -> None:
         self.colorbuf += data or ''
 
-    def set_color_table_color(self, code, data):
+    def set_color_table_color(self, code, data) -> None:
         self.ctbuf += ''
 
-    def request_capabilities(self, q):
+    def request_capabilities(self, q) -> None:
         from kitty.terminfo import get_capabilities
         for c in get_capabilities(q, None):
             self.write(c.encode('ascii'))
 
-    def use_utf8(self, on):
+    def use_utf8(self, on) -> None:
         self.iutf8 = on
 
     def desktop_notify(self, osc_code: int, raw_data: str) -> None:
@@ -44,7 +44,7 @@ class Callbacks:
     def open_url(self, url: str, hyperlink_id: int) -> None:
         self.open_urls.append((url, hyperlink_id))
 
-    def clear(self):
+    def clear(self) -> None:
         self.wtcbuf = b''
         self.iconbuf = self.titlebuf = self.colorbuf = self.ctbuf = ''
         self.iutf8 = True

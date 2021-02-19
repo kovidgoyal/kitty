@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import importlib
 import os
 import sys
 
@@ -14,8 +15,8 @@ def init_env() -> None:
 
 def main() -> None:
     init_env()
-    from kitty_tests.main import run_tests  # type: ignore
-    run_tests()
+    m = importlib.import_module('kitty_tests.main')
+    m.run_tests()  # type: ignore
 
 
 if __name__ == '__main__':
