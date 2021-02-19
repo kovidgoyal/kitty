@@ -43,6 +43,11 @@ class TestBuild(unittest.TestCase):
         self.assertIn('hints', names)
         self.assertGreater(len(names), 8)
 
+    def test_filesystem_locations(self) -> None:
+        from kitty.constants import terminfo_dir, logo_png_file
+        self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
+        self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
+
 
 def main() -> None:
     tests = unittest.defaultTestLoader.loadTestsFromTestCase(TestBuild)
