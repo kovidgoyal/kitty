@@ -91,7 +91,7 @@ open_cache_file(const char *cache_path) {
     }
 #else
     size_t sz = strlen(cache_path) + 16;
-    char *buf = calloc(1, sz);
+    FREE_AFTER_FUNCTION char *buf = calloc(1, sz);
     if (!buf) { errno = ENOMEM; return -1; }
     snprintf(buf, sz - 1, "%s/disk-cache-XXXXXXXXXXXX", cache_path);
     while (fd < 0) {
@@ -99,7 +99,6 @@ open_cache_file(const char *cache_path) {
         if (fd > -1 || errno != EINTR) break;
     }
     if (fd > -1) unlink(buf);
-    free(buf);
 #endif
     return fd;
 }
@@ -171,8 +170,8 @@ typedef struct {
 static void
 defrag(DiskCache *self) {
     int new_cache_file = -1;
-    DefragEntry *defrag_entries = NULL;
-    uint8_t *buf = NULL;
+    FREE_AFTER_FUNCTION DefragEntry *defrag_entries = NULL;
+    FREE_AFTER_FUNCTION uint8_t *buf = NULL;
     const size_t bufsz = 1024 * 1024;
     bool lock_released = false, ok = false;
 
@@ -235,8 +234,6 @@ cleanup:
             if (s) s->pos_in_cache_file = e->new_offset;
         }
     }
-    if (defrag_entries) free(defrag_entries);
-    if (buf) free(buf);
     if (new_cache_file > -1) safe_close(new_cache_file, __FILE__, __LINE__);
 }
 
@@ -484,7 +481,7 @@ add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *d
     if (!ensure_state(self)) return false;
     if (key_sz > MAX_KEY_SIZE) { PyErr_SetString(PyExc_KeyError, "cache key is too long"); return false; }
     CacheEntry *s = NULL;
-    uint8_t *copied_data = malloc(data_sz);
+    FREE_AFTER_FUNCTION uint8_t *copied_data = malloc(data_sz);
     if (!copied_data) { PyErr_NoMemory(); return false; }
     memcpy(copied_data, data, data_sz);
 
@@ -503,8 +500,6 @@ add_to_disk_cache(PyObject *self_, const void *key, size_t key_sz, const void *d
     self->total_size += s->data_sz;
 end:
     mutex(unlock);
-
-    if (copied_data) free(copied_data);
     if (PyErr_Occurred()) return false;
     wakeup_write_loop(self);
     return true;

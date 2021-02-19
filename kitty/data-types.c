@@ -41,18 +41,17 @@ static PyObject*
 process_group_map() {
     int num_of_processes = proc_listallpids(NULL, 0);
     size_t bufsize = sizeof(pid_t) * (num_of_processes + 1024);
-    pid_t *buf = malloc(bufsize);
+    FREE_AFTER_FUNCTION pid_t *buf = malloc(bufsize);
     if (!buf) return PyErr_NoMemory();
     num_of_processes = proc_listallpids(buf, (int)bufsize);
     PyObject *ans = PyTuple_New(num_of_processes);
-    if (ans == NULL) { free(buf); return PyErr_NoMemory(); }
+    if (ans == NULL) { return PyErr_NoMemory(); }
     for (int i = 0; i < num_of_processes; i++) {
         long pid = buf[i], pgid = getpgid(buf[i]);
         PyObject *t = Py_BuildValue("ll", pid, pgid);
-        if (t == NULL) { free(buf); Py_DECREF(ans); return NULL; }
+        if (t == NULL) { Py_DECREF(ans); return NULL; }
         PyTuple_SET_ITEM(ans, i, t);
     }
-    free(buf);
     return ans;
 }
 #endif

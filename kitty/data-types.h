@@ -37,6 +37,8 @@
 #define zero_at_ptr_count(p, count) memset((p), 0, (count) * sizeof((p)[0]))
 void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 #define fatal(...) { log_error(__VA_ARGS__); exit(EXIT_FAILURE); }
+static inline void cleanup_free(void *p) { free(*(void**)p); }
+#define FREE_AFTER_FUNCTION __attribute__((cleanup(cleanup_free)))
 
 typedef unsigned long long id_type;
 typedef uint32_t char_type;
