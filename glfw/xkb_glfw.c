@@ -384,6 +384,10 @@ load_compose_tables(_GLFWXKBData *xkb) {
     if (!locale) locale = getenv("LC_CTYPE");
     if (!locale) locale = getenv("LANG");
     if (!locale) locale = "C";
+
+    // See https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=903373
+    if (strcmp(locale, "en_IN") == 0) locale = "en_IN.UTF-8";
+
     compose_table = xkb_compose_table_new_from_locale(xkb->context, locale, XKB_COMPOSE_COMPILE_NO_FLAGS);
     if (!compose_table) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "Failed to create XKB compose table for locale %s", locale);
