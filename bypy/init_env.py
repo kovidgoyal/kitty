@@ -4,6 +4,7 @@
 
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -41,6 +42,7 @@ def run(*args, **extra_env):
     if ismacos:
         env['PKGCONFIG_EXE'] = os.path.join(PREFIX, 'bin', 'pkg-config')
     cwd = env.pop('cwd', KITTY_DIR)
+    print(' '.join(map(shlex.quote, args)), flush=True)
     return subprocess.call(list(args), env=env, cwd=cwd)
 
 
@@ -55,18 +57,24 @@ def build_frozen_launcher(extra_include_dirs):
     return build_frozen_launcher.writeable_src_dir
 
 
-def check_build(kitty_exe):
+def run_tests(kitty_exe):
     with tempfile.TemporaryDirectory() as tdir:
         env = {
             'KITTY_CONFIG_DIRECTORY': os.path.join(tdir, 'conf'),
             'KITTY_CACHE_DIRECTORY': os.path.join(tdir, 'cache')
         }
         [os.mkdir(x) for x in env.values()]
-        if subprocess.call([kitty_exe, '+runpy', 'from kitty.check_build import main; main()'], env=env) != 0:
+        if subprocess.call([kitty_exe, '+runpy', 'from kitty_tests.main import run_tests; run_tests()'], env=env) != 0:
             print('Checking of kitty build failed', file=sys.stderr)
             os.chdir(os.path.dirname(kitty_exe))
             run_shell()
             raise SystemExit('Checking of kitty build failed')
+
+
+def sanitize_source_folder(path: str) -> None:
+    for q in walk(path):
+        if os.path.splitext(q)[1] not in ('.py', '.glsl', '.ttf', '.otf'):
+            os.unlink(q)
 
 
 def build_c_extensions(ext_dir, args):
@@ -74,52 +82,21 @@ def build_c_extensions(ext_dir, args):
     build_frozen_launcher.writeable_src_dir = writeable_src_dir
     shutil.copytree(
         KITTY_DIR, writeable_src_dir, symlinks=True,
-        ignore=shutil.ignore_patterns('b', 'build', 'dist', '*_commands.json', '*.o'))
+        ignore=shutil.ignore_patterns('b', 'build', 'dist', '*_commands.json', '*.o', '*.so', '*.dylib', '*.pyd'))
 
-    # Build the launcher as it is needed for the spawn test
     with suppress(FileNotFoundError):
-        os.remove(os.path.join(writeable_src_dir, 'kitty', 'launcher', 'kitty'))
-    if run(PYTHON, 'setup.py', 'build-launcher', cwd=writeable_src_dir) != 0:
-        print('Building of kitty launcher failed', file=sys.stderr)
-        os.chdir(KITTY_DIR)
-        run_shell()
-        raise SystemExit('Building of kitty launcher failed')
+        os.unlink(os.path.join(writeable_src_dir, 'kitty', 'launcher', 'kitty'))
 
-    for x in walk(writeable_src_dir):
-        if x.rpartition('.') in ('o', 'so', 'dylib', 'pyd'):
-            os.unlink(x)
-    cmd = [PYTHON, 'setup.py']
-    if run(*cmd, cwd=writeable_src_dir) != 0:
-        print('Building of kitty failed', file=sys.stderr)
-        os.chdir(KITTY_DIR)
-        run_shell()
-        raise SystemExit('Building of kitty package failed')
-    bundle = 'macos-freeze' if ismacos else 'linux-freeze'
-    cmd.append(bundle)
+    cmd = [PYTHON, 'setup.py', 'macos-freeze' if ismacos else 'linux-freeze']
     dest = kitty_constants['appname'] + ('.app' if ismacos else '')
     dest = build_frozen_launcher.prefix = os.path.join(ext_dir, dest)
-    cmd += ['--prefix', dest]
+    cmd += ['--prefix', dest, '--full']
     if run(*cmd, cwd=writeable_src_dir) != 0:
         print('Building of kitty package failed', file=sys.stderr)
-        os.chdir(KITTY_DIR)
+        os.chdir(writeable_src_dir)
         run_shell()
         raise SystemExit('Building of kitty package failed')
     return ext_dir
-
-
-def run_tests(path_to_kitty, cwd_on_failure):
-    kw = {'cwd': cwd_on_failure}
-    if not ismacos:
-        # this is needed for the spawn test which starts an interpreter
-        # using the kitty launcher.
-        kw['PYTHONHOME'] = PREFIX
-    ret = run(PYTHON, 'test.py', **kw)
-    if ret != 0:
-        os.chdir(cwd_on_failure)
-        print(
-            'running kitty tests failed with return code:', ret, file=sys.stderr)
-        run_shell()
-        raise SystemExit('running kitty tests failed')
 
 
 if __name__ == 'program':

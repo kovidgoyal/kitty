@@ -23,12 +23,13 @@ def itertests(suite: unittest.TestSuite) -> Generator[unittest.TestCase, None, N
             yield test
 
 
-def find_all_tests(package: str = '', excludes: Sequence[str] = ('main.py', 'gr.py')) -> unittest.TestSuite:
+def find_all_tests(package: str = '', excludes: Sequence[str] = ('main', 'gr')) -> unittest.TestSuite:
     suits = []
     if not package:
         package = __name__.rpartition('.')[0] if '.' in __name__ else 'kitty_tests'
     for x in contents(package):
-        if x.endswith('.py') and x not in excludes:
+        name, ext = os.path.splitext(x)
+        if ext in ('.py', '.pyc') and name not in excludes:
             m = importlib.import_module(package + '.' + x.partition('.')[0])
             suits.append(unittest.defaultTestLoader.loadTestsFromModule(m))
     return unittest.TestSuite(suits)

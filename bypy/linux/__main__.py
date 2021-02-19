@@ -8,7 +8,6 @@ import shutil
 import stat
 import subprocess
 import tarfile
-import tempfile
 import time
 
 from bypy.constants import (
@@ -107,10 +106,11 @@ def copy_python(env):
     srcdir = j(srcdir, 'site-packages')
     site_packages_dir = j(env.py_dir, 'site-packages')
     import_site_packages(srcdir, site_packages_dir)
+
     pdir = os.path.join(env.lib_dir, 'kitty-extensions')
     os.makedirs(pdir, exist_ok=True)
-    kitty_dir = os.path.join(env.base, 'lib', 'kitty')
-    bases = ('kitty', 'kittens')
+    kitty_dir = os.path.join(env.lib_dir, 'kitty')
+    bases = ('kitty', 'kittens', 'kitty_tests')
     for x in bases:
         dest = os.path.join(env.py_dir, x)
         os.rename(os.path.join(kitty_dir, x), dest)
@@ -122,9 +122,7 @@ def copy_python(env):
     ext_map = extract_extension_modules(env.py_dir, pdir)
     shutil.copy(os.path.join(os.path.dirname(self_dir), 'site.py'), os.path.join(env.py_dir, 'site.py'))
     for x in bases:
-        for q in walk(os.path.join(env.py_dir, x)):
-            if os.path.splitext(q)[1] not in ('.py', '.glsl'):
-                os.unlink(q)
+        iv['sanitize_source_folder'](os.path.join(env.py_dir, x))
     py_compile(env.py_dir)
     freeze_python(env.py_dir, pdir, env.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM')
 
@@ -214,14 +212,6 @@ def create_tarfile(env, compression_level='9'):
 def main():
     args = globals()['args']
     ext_dir = globals()['ext_dir']
-    if not args.skip_tests:
-        run_tests = iv['run_tests']
-        with tempfile.TemporaryDirectory() as tdir:
-            os.environ['KITTY_CACHE_DIRECTORY'] = tdir
-            try:
-                run_tests(None, os.path.join(ext_dir, 'src'))
-            finally:
-                del os.environ['KITTY_CACHE_DIRECTORY']
     env = Env(os.path.join(ext_dir, kitty_constants['appname']))
     copy_libs(env)
     copy_python(env)
@@ -230,7 +220,8 @@ def main():
     fix_permissions(files)
     if not args.dont_strip:
         strip_binaries(files)
-    iv['check_build'](os.path.join(env.base, 'bin', 'kitty'))
+    if not args.skip_tests:
+        iv['run_tests'](os.path.join(env.base, 'bin', 'kitty'))
     create_tarfile(env, args.compression_level)
 
 

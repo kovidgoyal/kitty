@@ -66,7 +66,6 @@ class Options(argparse.Namespace):
     prefix: str = './linux-package'
     incremental: bool = True
     profile: bool = False
-    for_freeze: bool = False
     libdir_name: str = 'lib'
     extra_logging: List[str] = []
     extra_include_dirs: List[str] = []
@@ -1026,6 +1025,7 @@ def create_macos_bundle_gunk(dest: str) -> None:
 
 def package(args: Options, bundle_type: str) -> None:
     ddir = args.prefix
+    for_freeze = bundle_type.endswith('-freeze')
     if bundle_type == 'linux-freeze':
         args.libdir_name = 'lib'
     libdir = os.path.join(ddir, args.libdir_name.strip('/'), 'kitty')
@@ -1033,7 +1033,9 @@ def package(args: Options, bundle_type: str) -> None:
         shutil.rmtree(libdir)
     launcher_dir = os.path.join(ddir, 'bin')
     safe_makedirs(launcher_dir)
-    if not bundle_type.endswith('-freeze'):  # freeze launcher is built separately
+    if for_freeze:  # freeze launcher is built separately
+        args.compilation_database.build_all()
+    else:
         build_launcher(args, launcher_dir, bundle_type)
     os.makedirs(os.path.join(libdir, 'logo'))
     build_terminfo = runpy.run_path('build-terminfo', run_name='import_build')  # type: ignore
@@ -1046,16 +1048,19 @@ def package(args: Options, bundle_type: str) -> None:
     shutil.copy2('logo/kitty.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/beam-cursor.png', os.path.join(libdir, 'logo'))
     shutil.copy2('logo/beam-cursor@2x.png', os.path.join(libdir, 'logo'))
+    allowed_extensions = frozenset('py glsl so'.split())
 
     def src_ignore(parent: str, entries: Iterable[str]) -> List[str]:
         return [
             x for x in entries
             if '.' in x and x.rpartition('.')[2] not in
-            ('py', 'so', 'glsl')
+            allowed_extensions
         ]
 
     shutil.copytree('kitty', os.path.join(libdir, 'kitty'), ignore=src_ignore)
     shutil.copytree('kittens', os.path.join(libdir, 'kittens'), ignore=src_ignore)
+    if for_freeze:
+        shutil.copytree('kitty_tests', os.path.join(libdir, 'kitty_tests'))
     if args.update_check_interval != 24.0:
         with open(os.path.join(libdir, 'kitty/config_data.py'), 'r+', encoding='utf-8') as f:
             raw = f.read()
@@ -1149,12 +1154,6 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         default=Options.profile,
         action='store_true',
         help='Use the -pg compile flag to add profiling information'
-    )
-    p.add_argument(
-        '--for-freeze',
-        default=Options.for_freeze,
-        action='store_true',
-        help='Internal use'
     )
     p.add_argument(
         '--libdir-name',

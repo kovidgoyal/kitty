@@ -141,8 +141,9 @@ class Freeze(object):
 
     FID = '@executable_path/../Frameworks'
 
-    def __init__(self, build_dir, dont_strip=False, sign_installers=False, notarize=False):
+    def __init__(self, build_dir, dont_strip=False, sign_installers=False, notarize=False, skip_tests=False):
         self.build_dir = build_dir
+        self.skip_tests = skip_tests
         self.sign_installers = sign_installers
         self.notarize = notarize
         self.dont_strip = dont_strip
@@ -171,7 +172,8 @@ class Freeze(object):
         self.freeze_python()
         if not self.dont_strip:
             self.strip_files()
-        self.check_build()
+        if not self.skip_tests:
+            self.run_tests()
         # self.run_shell()
 
         ret = self.makedmg(self.build_dir, APPNAME + '-' + VERSION)
@@ -184,8 +186,8 @@ class Freeze(object):
         strip_files(self.to_strip)
 
     @flush
-    def check_build(self):
-        iv['check_build'](os.path.join(self.contents_dir, 'MacOS', 'kitty'))
+    def run_tests(self):
+        iv['run_tests'](os.path.join(self.contents_dir, 'MacOS', 'kitty'))
 
     @flush
     def set_id(self, path_to_lib, new_id):
@@ -331,7 +333,7 @@ class Freeze(object):
     def freeze_python(self):
         print('\nFreezing python')
         kitty_dir = join(self.resources_dir, 'kitty')
-        bases = ('kitty', 'kittens')
+        bases = ('kitty', 'kittens', 'kitty_tests')
         for x in bases:
             dest = os.path.join(self.python_stdlib, x)
             os.rename(os.path.join(kitty_dir, x), dest)
@@ -345,9 +347,7 @@ class Freeze(object):
         ext_map = extract_extension_modules(self.python_stdlib, pdir)
         shutil.copy(os.path.join(os.path.dirname(self_dir), 'site.py'), os.path.join(self.python_stdlib, 'site.py'))
         for x in bases:
-            for q in walk(os.path.join(self.python_stdlib, x)):
-                if os.path.splitext(q)[1] not in ('.py', '.glsl'):
-                    os.unlink(q)
+            iv['sanitize_source_folder'](os.path.join(self.python_stdlib, x))
         self.compile_py_modules()
         freeze_python(self.python_stdlib, pdir, self.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM')
         iv['build_frozen_launcher']([path_to_freeze_dir(), self.obj_dir])
@@ -469,14 +469,12 @@ class Freeze(object):
 def main():
     args = globals()['args']
     ext_dir = globals()['ext_dir']
-    if not args.skip_tests:
-        run_tests = iv['run_tests']
-        run_tests(None, os.path.join(ext_dir, 'src'))
     Freeze(
         os.path.join(ext_dir, kitty_constants['appname'] + '.app'),
         dont_strip=args.dont_strip,
         sign_installers=args.sign_installers,
-        notarize=args.notarize
+        notarize=args.notarize,
+        skip_tests=args.skip_tests
     )
 
 

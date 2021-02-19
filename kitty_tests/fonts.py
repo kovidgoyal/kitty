@@ -89,7 +89,7 @@ class Rendering(BaseTest):
             return font_path_cache[name]
 
         def ss(text, font=None):
-            path = f'kitty_tests/{font}' if font else None
+            path = path_for_font(font) if font else None
             return shape_string(text, path=path)
 
         def groups(text, font=None):
