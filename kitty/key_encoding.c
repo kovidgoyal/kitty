@@ -35,7 +35,7 @@ bool
 is_modifier_key(const uint32_t key) {
     START_ALLOW_CASE_RANGE
     switch (key) {
-        case GLFW_FKEY_LEFT_SHIFT ...  GLFW_FKEY_ISO_LEVEL5_SHIFT:
+        case GLFW_FKEY_LEFT_SHIFT ... GLFW_FKEY_ISO_LEVEL5_SHIFT:
         case GLFW_FKEY_CAPS_LOCK:
         case GLFW_FKEY_SCROLL_LOCK:
         case GLFW_FKEY_NUM_LOCK:
@@ -131,8 +131,9 @@ encode_function_key(const KeyEvent *ev, char *output) {
 #define SIMPLE(val) return snprintf(output, KEY_BUFFER_SIZE, "%s", val);
     char csi_trailer = 'u';
     uint32_t key_number = ev->key;
+    bool legacy_mode = !ev->report_all_event_types && !ev->disambiguate;
 
-    if (ev->cursor_key_mode && !ev->disambiguate && !ev->report_all_event_types && !ev->mods.value) {
+    if (ev->cursor_key_mode && legacy_mode && !ev->mods.value) {
         switch(key_number) {
             case GLFW_FKEY_UP: SIMPLE("\x1bOA");
             case GLFW_FKEY_DOWN: SIMPLE("\x1bOB");
