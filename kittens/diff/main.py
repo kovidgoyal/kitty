@@ -504,6 +504,20 @@ class DiffHandler(Handler):
                         self.state = DIFFED
                     self.draw_status_line()
                     return
+                if key_event.matches('enter'):
+                    self.state = DIFFED
+                    self.do_search()
+                    self.line_edit.clear()
+                    self.draw_screen()
+                    return
+                if key_event.matches('esc'):
+                    self.state = DIFFED
+                    self.draw_status_line()
+                    return
+            if self.state >= DIFFED and self.current_search is not None and key_event.matches('esc'):
+                self.current_search = None
+                self.draw_screen()
+                return
             if key_event.type is EventType.RELEASE:
                 return
         action = self.shortcut_action(key_event)
