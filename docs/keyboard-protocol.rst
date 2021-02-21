@@ -415,17 +415,18 @@ mode* (the ``smkx/rmkx`` terminfo capabilities). This form is used only in
     "F11",       "kf11",       "CSI 23 ~"
     "F12",       "kf12",       "CSI 24 ~"
 
-There are a few more functional keys that have special cased legacy
-encodings:
+There are a few more functional keys that have special cased legacy encodings.
+These are present because they are commonly used and for the sake of legacy
+terminal applications that get confused when seeing CSI u escape codes:
 
 .. csv-table:: C0 controls
-    :header: "Key", "Encodings"
+    :header: "Key", "No mods", "Ctrl", "Alt", "Shift", "Ctrl + Shift", "Alt + Shift", "Ctrl + Alt"
 
-    "Enter",     "Plain - 0xd,  alt+Enter - 0x1b 0x1d"
-    "Escape",    "Plain - 0x1b, alt+Esc - 0x1b 0x1b"
-    "Backspace", "Plain - 0x7f, alt+Backspace - 0x1b 0x7f, ctrl+Backspace - 0x08"
-    "Space",     "Plain - 0x20, ctrl+Space - 0x0, alt+space - 0x1b 0x20"
-    "Tab",       "Plain - 0x09, shift+Tab - CSI Z"
+    "Enter",     "0xd",  "0xd",  "0x1b 0xd",  "0xd",   "0xd",   "0x1b 0xd",   "0x1b 0xd"
+    "Escape",    "0x1b", "0x1b", "0x1b 0x1b", "0x1b",  "0x1b",  "0x1b 0x1b",  "0x1b 0x1b"
+    "Backspace", "0x7f", "0x8",  "0x1b 0x7f", "0x7f",  "0x8",   "0x1b 0x7f",  "0x1b 0x8"
+    "Tab",       "0x9",  "0x9",  "0x1b 0x9",  "CSI Z", "CSI Z", "0x1b CSI Z", "0x1b 0x9"
+    "Space",     "0x20", "0x0",  "0x1b 0x20", "0x20",  "0x0",   "0x1b 0x20",  "0x1b 0x0"
 
 Note that :kbd:`Backspace` and :kbd:`ctrl+Backspace` are swapped in some
 terminals, this can be detected using the ``kbs`` terminfo property that
