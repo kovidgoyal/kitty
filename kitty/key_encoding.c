@@ -129,29 +129,29 @@ convert_kp_key_to_normal_key(uint32_t key_number) {
 static int
 legacy_functional_key_encoding_with_modifiers(uint32_t key_number, const KeyEvent *ev, char *output) {
     const char *prefix = ev->mods.value & ALT ? "\x1b" : "";
-    const char *main = "";
+    const char *main_bytes = "";
     switch (key_number) {
         case GLFW_FKEY_ENTER:
-            main = "\x0d";
+            main_bytes = "\x0d";
             break;
         case GLFW_FKEY_ESCAPE:
-            main = "\x1b";
+            main_bytes = "\x1b";
             break;
         case GLFW_FKEY_BACKSPACE:
-            main = ev->mods.value & CTRL ? "\x08" : "\x7f";
+            main_bytes = ev->mods.value & CTRL ? "\x08" : "\x7f";
             break;
         case GLFW_FKEY_TAB:
             if (ev->mods.value & SHIFT) {
                 prefix = ev->mods.value & ALT ? "\x1b\x1b" : "\x1b";
-                main = "[Z";
+                main_bytes = "[Z";
             } else {
-                main = "\t";
+                main_bytes = "\t";
             }
             break;
         default:
             return -1;
     }
-    return snprintf(output, KEY_BUFFER_SIZE, "%s%s", prefix, main);
+    return snprintf(output, KEY_BUFFER_SIZE, "%s%s", prefix, main_bytes);
 }
 
 static int
