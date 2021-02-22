@@ -39,8 +39,8 @@ from .terminfo import get_capabilities
 from .types import ScreenGeometry, WindowGeometry
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
-    color_as_int, get_primary_selection, load_shaders, open_cmd, open_url,
-    parse_color_set, read_shell_environment, sanitize_title,
+    color_as_int, get_primary_selection, load_shaders, log_error, open_cmd,
+    open_url, parse_color_set, read_shell_environment, sanitize_title,
     set_primary_selection
 )
 
@@ -501,7 +501,7 @@ class Window:
     def write_to_child(self, data: Union[str, bytes]) -> None:
         if data:
             if get_boss().child_monitor.needs_write(self.id, data) is not True:
-                print('Failed to write to child %d as it does not exist' % self.id, file=sys.stderr)
+                log_error(f'Failed to write to child {self.id} as it does not exist')
 
     def title_updated(self) -> None:
         update_window_title(self.os_window_id, self.tab_id, self.id, self.title)
