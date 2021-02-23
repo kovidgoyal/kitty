@@ -278,7 +278,7 @@ def init_env(
     if ccver >= (5, 0):
         df += ' -Og'
         float_conversion = '-Wfloat-conversion'
-    fortify_source = '-D_FORTIFY_SOURCE=2'
+    fortify_source = '' if sanitize and is_macos else '-D_FORTIFY_SOURCE=2'
     optimize = df if debug or sanitize else '-O3'
     sanitize_args = get_sanitize_args(cc, ccver) if sanitize else set()
     cppflags_ = os.environ.get(
