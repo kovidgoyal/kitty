@@ -42,6 +42,7 @@ class DrawData(NamedTuple):
     title_template: str
     active_title_template: Optional[str]
     tab_activity_symbol: Optional[str]
+    powerline_style: str
 
 
 def as_rgb(x: int) -> int:
@@ -186,13 +187,22 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
     inactive_bg = as_rgb(color_as_int(draw_data.inactive_bg))
     default_bg = as_rgb(color_as_int(draw_data.default_bg))
 
+    separator_symbol = ''
+    separator_alt_symbol = ''
+    if draw_data.powerline_style == 'slanted':
+        separator_symbol = ''
+        separator_alt_symbol = '╱'
+    elif draw_data.powerline_style == 'round':
+        separator_symbol = ''
+        separator_alt_symbol = ''
+
     min_title_length = 1 + 2
 
     if screen.cursor.x + min_title_length >= screen.columns:
         screen.cursor.x -= 2
         screen.cursor.bg = default_bg
         screen.cursor.fg = inactive_bg
-        screen.draw('   ')
+        screen.draw('{}   '.format(separator_symbol))
         return screen.cursor.x
 
     start_draw = 2
@@ -200,7 +210,7 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
         screen.cursor.x -= 2
         screen.cursor.fg = inactive_bg
         screen.cursor.bg = tab_bg
-        screen.draw(' ')
+        screen.draw('{} '.format(separator_symbol))
         screen.cursor.fg = tab_fg
     elif screen.cursor.x == 0:
         screen.cursor.bg = tab_bg
@@ -224,9 +234,9 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
             screen.cursor.bg = default_bg
         else:
             screen.cursor.bg = inactive_bg
-        screen.draw('')
+        screen.draw(separator_symbol)
     else:
-        screen.draw(' ')
+        screen.draw(' {}'.format(separator_alt_symbol))
 
     end = screen.cursor.x
     if end < screen.columns:
@@ -273,7 +283,8 @@ class TabBar:
             self.opts.inactive_tab_foreground, self.opts.inactive_tab_background,
             self.opts.tab_bar_background or self.opts.background, self.opts.tab_title_template,
             self.opts.active_tab_title_template,
-            self.opts.tab_activity_symbol
+            self.opts.tab_activity_symbol,
+            self.opts.tab_powerline_style
         )
         if self.opts.tab_bar_style == 'separator':
             self.draw_func = draw_tab_with_separator
