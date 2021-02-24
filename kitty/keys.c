@@ -155,13 +155,13 @@ on_key_input(GLFWkeyevent *ev) {
 
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         create_key_event();
+        w->last_special_key_pressed = 0;
         PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_possible_special_key", "O", ke);
         Py_CLEAR(ke);
         bool consumed = false;
-        // the shortcut could have created a new window or closed the window, rendering the pointer
-        // no longer valid
+        // the shortcut could have created a new window or closed the
+        // window, rendering the pointer no longer valid
         w = window_for_id(active_window_id);
-        if (w) w->last_special_key_pressed = 0;
         if (ret == NULL) { PyErr_Print(); }
         else {
             consumed = ret == Py_True;
