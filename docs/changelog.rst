@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow setting colors when creating windows using the :doc:`launch <launch>` command.
 
+- A new option :opt:`tab_powerline_style` to control the appearance of the tab
+  bar when using the powerline tab bar style.
+
 - diff kitten: Implement recursive diff over SSH (:iss:`3268`)
 
 - ssh kitten: Allow using python instead of the shell on the server, useful if

@@ -56,3 +56,4 @@ __all__ = (
     'FontConfigPattern', 'ScreenType', 'StartupCtx', 'KeyEventType', 'LayoutType',
     'RemoteCommandType', 'SessionType', 'SessionTab', 'SpecialWindowInstance', 'TabType', 'ScreenSize', 'WindowType'
 )
+PowerlineStyle = Literal['angled', 'slanted', 'round']

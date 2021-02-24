@@ -6,7 +6,6 @@ from functools import lru_cache
 from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple
 
 from .config import build_ansi_color_table
-from .types import WindowGeometry
 from .fast_data_types import (
     DECAWM, Screen, cell_size_for_window, pt_to_px, set_tab_bar_render_data,
     viewport_for_window
@@ -14,6 +13,8 @@ from .fast_data_types import (
 from .layout.base import Rect
 from .options_stub import Options
 from .rgb import Color, alpha_blend, color_as_sgr, color_from_int, to_color
+from .types import WindowGeometry
+from .typing import PowerlineStyle
 from .utils import color_as_int, log_error
 from .window import calculate_gl_geometry
 
@@ -42,7 +43,7 @@ class DrawData(NamedTuple):
     title_template: str
     active_title_template: Optional[str]
     tab_activity_symbol: Optional[str]
-    powerline_style: str
+    powerline_style: PowerlineStyle
 
 
 def as_rgb(x: int) -> int:
@@ -181,28 +182,26 @@ def draw_tab_with_fade(draw_data: DrawData, screen: Screen, tab: TabBarData, bef
     return end
 
 
+powerline_symbols: Dict[PowerlineStyle, Tuple[str, str]] = {
+    'slanted': ('', '╱'),
+    'round': ('', '')
+}
+
+
 def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
     tab_bg = as_rgb(color_as_int(draw_data.active_bg if tab.is_active else draw_data.inactive_bg))
     tab_fg = as_rgb(color_as_int(draw_data.active_fg if tab.is_active else draw_data.inactive_fg))
     inactive_bg = as_rgb(color_as_int(draw_data.inactive_bg))
     default_bg = as_rgb(color_as_int(draw_data.default_bg))
 
-    separator_symbol = ''
-    separator_alt_symbol = ''
-    if draw_data.powerline_style == 'slanted':
-        separator_symbol = ''
-        separator_alt_symbol = '╱'
-    elif draw_data.powerline_style == 'round':
-        separator_symbol = ''
-        separator_alt_symbol = ''
-
+    separator_symbol, separator_alt_symbol = powerline_symbols.get(draw_data.powerline_style, ('', ''))
     min_title_length = 1 + 2
 
     if screen.cursor.x + min_title_length >= screen.columns:
         screen.cursor.x -= 2
         screen.cursor.bg = default_bg
         screen.cursor.fg = inactive_bg
-        screen.draw('{}   '.format(separator_symbol))
+        screen.draw(f'{separator_symbol}   ')
         return screen.cursor.x
 
     start_draw = 2
@@ -210,7 +209,7 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
         screen.cursor.x -= 2
         screen.cursor.fg = inactive_bg
         screen.cursor.bg = tab_bg
-        screen.draw('{} '.format(separator_symbol))
+        screen.draw(f'{separator_symbol} ')
         screen.cursor.fg = tab_fg
     elif screen.cursor.x == 0:
         screen.cursor.bg = tab_bg
@@ -236,7 +235,7 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
             screen.cursor.bg = inactive_bg
         screen.draw(separator_symbol)
     else:
-        screen.draw(' {}'.format(separator_alt_symbol))
+        screen.draw(f' {separator_alt_symbol}')
 
     end = screen.cursor.x
     if end < screen.columns:
