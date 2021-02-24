@@ -953,6 +953,11 @@ entries to this list.
 o('tab_separator', '"{}"'.format(default_tab_separator), option_type=tab_separator, long_text=_('''
 The separator between tabs in the tab bar when using :code:`separator` as the :opt:`tab_bar_style`.'''))
 
+o('tab_powerline_style', 'angled', option_type=choices('angled', 'slanted', 'round'), long_text=_('''
+The powerline separator style between tabs in the tab bar when using :code:`powerline`
+as the :opt:`tab_bar_style`, can be one of: :code:`angled`, :code:`slanted`, or :code:`round`.
+'''))
+
 
 def tab_activity_symbol(x: str) -> Optional[str]:
     if x == 'none':
