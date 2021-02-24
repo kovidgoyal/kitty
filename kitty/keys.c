@@ -88,6 +88,16 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
     glfwUpdateIMEState(global_state.callback_os_window->handle, 2, left, top, cell_width, cell_height);
 }
 
+static inline Window*
+window_for_id(id_type window_id) {
+    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+    for (unsigned int i = 0; i < t->num_windows; i++) {
+        Window *w = t->windows + i;
+        if (w->id == window_id) return w;
+    }
+    return NULL;
+}
+
 void
 on_key_input(GLFWkeyevent *ev) {
     Window *w = active_window();
@@ -102,6 +112,8 @@ on_key_input(GLFWkeyevent *ev) {
     if (!w) { debug("no active window, ignoring\n"); return; }
     if (OPT(mouse_hide_wait) < 0 && !is_modifier_key(key)) hide_mouse(global_state.callback_os_window);
     Screen *screen = w->render_data.screen;
+    id_type active_window_id = w->id;
+
     switch(ev->ime_state) {
         case 1:  // update pre-edit text
             update_ime_position(global_state.callback_os_window, w, screen);
@@ -133,28 +145,34 @@ on_key_input(GLFWkeyevent *ev) {
         if (
             action != GLFW_RELEASE && !is_modifier_key(key)
         ) {
+            w->last_special_key_pressed = key;
             create_key_event();
             call_boss(process_sequence, "O", ke);
             Py_CLEAR(ke);
         }
         return;
     }
+
     if (action == GLFW_PRESS || action == GLFW_REPEAT) {
         create_key_event();
         PyObject *ret = PyObject_CallMethod(global_state.boss, "dispatch_possible_special_key", "O", ke);
         Py_CLEAR(ke);
         bool consumed = false;
-        w->last_special_key_pressed = 0;
+        // the shortcut could have created a new window or closed the window, rendering the pointer
+        // no longer valid
+        w = window_for_id(active_window_id);
+        if (w) w->last_special_key_pressed = 0;
         if (ret == NULL) { PyErr_Print(); }
         else {
             consumed = ret == Py_True;
             Py_DECREF(ret);
             if (consumed) {
                 debug("handled as shortcut\n");
-                w->last_special_key_pressed = key;
+                if (w) w->last_special_key_pressed = key;
                 return;
             }
         }
+        if (!w) return;
     } else if (w->last_special_key_pressed == key) {
         w->last_special_key_pressed = 0;
         debug("ignoring release event for previous press that was handled as shortcut");
