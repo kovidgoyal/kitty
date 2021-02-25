@@ -373,10 +373,11 @@ cocoa_create_global_menu(void) {
                        action:@selector(orderFrontStandardAboutPanel:)
                 keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
-    [[appMenu addItemWithTitle:@"Preferences..."
+    NSMenuItem *preferences_menu_item = [appMenu addItemWithTitle:@"Preferences..."
                        action:@selector(show_preferences:)
-                keyEquivalent:@(global_shortcuts.edit_config_file.key)]
-                    setTarget:global_menu_target];
+                keyEquivalent:@(global_shortcuts.edit_config_file.key)];
+    [preferences_menu_item setKeyEquivalentModifierMask:global_shortcuts.edit_config_file.mods];
+    [preferences_menu_item setTarget:global_menu_target];
 
     NSMenuItem* new_os_window_menu_item =
         [appMenu addItemWithTitle:@"New OS window"
