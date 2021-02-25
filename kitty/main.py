@@ -130,7 +130,7 @@ def set_x11_window_icon() -> None:
 def _run_app(opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
     global_shortcuts: Dict[str, SingleKey] = {}
     if is_macos:
-        for ac in ('new_os_window', 'close_os_window', 'close_tab'):
+        for ac in ('new_os_window', 'close_os_window', 'close_tab', 'edit_config_file'):
             val = get_macos_shortcut_for(opts, ac)
             if val is not None:
                 global_shortcuts[ac] = val

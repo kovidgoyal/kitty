@@ -1572,6 +1572,8 @@ k('toggle_fullscreen', 'kitty_mod+f11', 'toggle_fullscreen', _('Toggle fullscree
 k('toggle_maximized', 'kitty_mod+f10', 'toggle_maximized', _('Toggle maximized'))
 k('input_unicode_character', 'kitty_mod+u', 'kitten unicode_input', _('Unicode input'))
 k('edit_config_file', 'kitty_mod+f2', 'edit_config_file', _('Edit config file'))
+if is_macos:
+    k('edit_config_file', 'cmd+,', 'edit_config_file', _('Edit config file'), add_to_docs=False)
 k('kitty_shell', 'kitty_mod+escape', 'kitty_shell window', _('Open the kitty command shell'), long_text=_('''
 Open the kitty shell in a new window/tab/overlay/os_window to control kitty using commands.'''))
 k('increase_background_opacity', 'kitty_mod+a>m', 'set_background_opacity +0.1', _('Increase background opacity'))

@@ -121,7 +121,7 @@ typedef struct {
     NSEventModifierFlags mods;
 } GlobalShortcut;
 typedef struct {
-    GlobalShortcut new_os_window, close_os_window, close_tab;
+    GlobalShortcut new_os_window, close_os_window, close_tab, edit_config_file;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -135,6 +135,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     if (strcmp(name, "new_os_window") == 0) gs = &global_shortcuts.new_os_window;
     else if (strcmp(name, "close_os_window") == 0) gs = &global_shortcuts.close_os_window;
     else if (strcmp(name, "close_tab") == 0) gs = &global_shortcuts.close_tab;
+    else if (strcmp(name, "edit_config_file") == 0) gs = &global_shortcuts.edit_config_file;
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
     get_cocoa_key_equivalent(key, mods, gs->key, 32, &cocoa_mods);
@@ -374,7 +375,7 @@ cocoa_create_global_menu(void) {
     [appMenu addItem:[NSMenuItem separatorItem]];
     [[appMenu addItemWithTitle:@"Preferences..."
                        action:@selector(show_preferences:)
-                keyEquivalent:@","]
+                keyEquivalent:@(global_shortcuts.edit_config_file.key)]
                     setTarget:global_menu_target];
 
     NSMenuItem* new_os_window_menu_item =
