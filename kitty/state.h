@@ -269,7 +269,8 @@ typedef enum {
     CLOSE_TAB = 32,
     NEW_TAB = 64,
     NEXT_TAB = 128,
-    PREVIOUS_TAB = 256
+    PREVIOUS_TAB = 256,
+    DETACH_TAB = 512,
 } CocoaPendingAction;
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);
 #endif

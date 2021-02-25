@@ -75,48 +75,25 @@ find_app_name(void) {
 + (GlobalMenuTarget *) shared_instance;
 @end
 
+#define PENDING(selector, which) - (void)selector:(id)sender { (void)sender; set_cocoa_pending_action(which, NULL); }
+
 @implementation GlobalMenuTarget
 
-- (void)edit_config_file:(id)sender {
-    (void)sender;
-    set_cocoa_pending_action(PREFERENCES_WINDOW, NULL);
-}
-
-- (void)new_os_window:(id)sender {
-    (void)sender;
-    set_cocoa_pending_action(NEW_OS_WINDOW, NULL);
-}
-
-- (void) close_os_window:(id)sender {
-    (void)sender;
-    set_cocoa_pending_action(CLOSE_OS_WINDOW, NULL);
-}
-
-- (void)close_tab:(id)sender {
-    (void)sender;
-    set_cocoa_pending_action(CLOSE_TAB, NULL);
-}
-
-- (void)new_tab:(id)sender {
-    (void)sender;
-    set_cocoa_pending_action(NEW_TAB, NULL);
-}
-
-- (void)next_tab:(id)sender {
-    (void)sender;
-    set_cocoa_pending_action(NEXT_TAB, NULL);
-}
-
-- (void)previous_tab:(id)sender {
-    (void)sender;
-    set_cocoa_pending_action(PREVIOUS_TAB, NULL);
-}
+PENDING(edit_config_file, PREFERENCES_WINDOW)
+PENDING(new_os_window, NEW_OS_WINDOW)
+PENDING(detach_tab, DETACH_TAB)
+PENDING(close_os_window, CLOSE_OS_WINDOW)
+PENDING(close_tab, CLOSE_TAB)
+PENDING(new_tab, NEW_TAB)
+PENDING(next_tab, NEXT_TAB)
+PENDING(previous_tab, PREVIOUS_TAB)
 
 - (void)open_kitty_website_url:(id)sender {
     (void)sender;
     [[NSWorkspace sharedWorkspace] openURL:[NSURL URLWithString:@"https://sw.kovidgoyal.net/kitty/"]];
 }
 
+#undef PENDING
 
 + (GlobalMenuTarget *) shared_instance
 {
@@ -448,6 +425,9 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(windowMenu, @"Show Next Tab", next_tab);
     MENU_ITEM(windowMenu, @"Close Tab", close_tab);
     MENU_ITEM(windowMenu, @"Close OS Window", close_os_window);
+    [[windowMenu addItemWithTitle:@"Move Tab to New Window"
+                           action:@selector(detach_tab:)
+                    keyEquivalent:@""] setTarget:global_menu_target];
 
     [windowMenu addItem:[NSMenuItem separatorItem]];
     [[windowMenu addItemWithTitle:@"Enter Full Screen"
