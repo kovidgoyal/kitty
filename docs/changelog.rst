@@ -75,6 +75,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   and CascadiaCode. Now such ligatures are detected based on glyph naming
   convention. This removes the gap in the ligatures at cell boundaries (:iss:`2695`)
 
+- macOS: Disable the native operating system tabs as they are non-functional
+  and can be confusing (:iss:`3325`)
+
 
 0.19.3 [2020-12-19]
 -------------------
