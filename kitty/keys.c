@@ -88,16 +88,6 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
     glfwUpdateIMEState(global_state.callback_os_window->handle, 2, left, top, cell_width, cell_height);
 }
 
-static inline Window*
-window_for_id(id_type window_id) {
-    Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-    for (unsigned int i = 0; i < t->num_windows; i++) {
-        Window *w = t->windows + i;
-        if (w->id == window_id) return w;
-    }
-    return NULL;
-}
-
 void
 on_key_input(GLFWkeyevent *ev) {
     Window *w = active_window();
@@ -161,7 +151,7 @@ on_key_input(GLFWkeyevent *ev) {
         bool consumed = false;
         // the shortcut could have created a new window or closed the
         // window, rendering the pointer no longer valid
-        w = window_for_id(active_window_id);
+        w = window_for_window_id(active_window_id);
         if (ret == NULL) { PyErr_Print(); }
         else {
             consumed = ret == Py_True;

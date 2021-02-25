@@ -283,3 +283,4 @@ void os_window_update_size_increments(OSWindow *window);
 void set_os_window_title_from_window(Window *w, OSWindow *os_window);
 void update_os_window_title(OSWindow *os_window);
 void fake_scroll(Window *w, int amount, bool upwards);
+Window* window_for_window_id(id_type kitty_window_id);
