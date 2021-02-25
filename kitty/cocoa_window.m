@@ -77,7 +77,7 @@ find_app_name(void) {
 
 @implementation GlobalMenuTarget
 
-- (void)show_preferences:(id)sender {
+- (void)edit_config_file:(id)sender {
     (void)sender;
     set_cocoa_pending_action(PREFERENCES_WINDOW, NULL);
 }
@@ -95,6 +95,21 @@ find_app_name(void) {
 - (void)close_tab:(id)sender {
     (void)sender;
     set_cocoa_pending_action(CLOSE_TAB, NULL);
+}
+
+- (void)new_tab:(id)sender {
+    (void)sender;
+    set_cocoa_pending_action(NEW_TAB, NULL);
+}
+
+- (void)next_tab:(id)sender {
+    (void)sender;
+    set_cocoa_pending_action(NEXT_TAB, NULL);
+}
+
+- (void)previous_tab:(id)sender {
+    (void)sender;
+    set_cocoa_pending_action(PREVIOUS_TAB, NULL);
 }
 
 - (void)open_kitty_website_url:(id)sender {
@@ -122,6 +137,7 @@ typedef struct {
 } GlobalShortcut;
 typedef struct {
     GlobalShortcut new_os_window, close_os_window, close_tab, edit_config_file;
+    GlobalShortcut previous_tab, next_tab, new_tab;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -132,10 +148,10 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
     const char *name;
     if (!PyArg_ParseTuple(args, "siI", &name, &mods, &key)) return NULL;
     GlobalShortcut *gs = NULL;
-    if (strcmp(name, "new_os_window") == 0) gs = &global_shortcuts.new_os_window;
-    else if (strcmp(name, "close_os_window") == 0) gs = &global_shortcuts.close_os_window;
-    else if (strcmp(name, "close_tab") == 0) gs = &global_shortcuts.close_tab;
-    else if (strcmp(name, "edit_config_file") == 0) gs = &global_shortcuts.edit_config_file;
+#define Q(x) if (strcmp(name, #x) == 0) gs = &global_shortcuts.x
+    Q(new_os_window); else Q(close_os_window); else Q(close_tab); else Q(edit_config_file);
+    else Q(new_tab); else Q(next_tab); else Q(previous_tab);
+#undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
     get_cocoa_key_equivalent(key, mods, gs->key, 32, &cocoa_mods);
@@ -362,6 +378,12 @@ cocoa_create_global_menu(void) {
     GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
     [NSApp setMainMenu:bar];
 
+#define MENU_ITEM(menu, title, name) { \
+    NSMenuItem *__mi = [menu addItemWithTitle:title action:@selector(name:) keyEquivalent:@(global_shortcuts.name.key)]; \
+    [__mi setKeyEquivalentModifierMask:global_shortcuts.name.mods]; \
+    [__mi setTarget:global_menu_target]; \
+}
+
     NSMenuItem* appMenuItem =
         [bar addItemWithTitle:@""
                        action:NULL
@@ -373,19 +395,8 @@ cocoa_create_global_menu(void) {
                        action:@selector(orderFrontStandardAboutPanel:)
                 keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
-    NSMenuItem *preferences_menu_item = [appMenu addItemWithTitle:@"Preferences..."
-                       action:@selector(show_preferences:)
-                keyEquivalent:@(global_shortcuts.edit_config_file.key)];
-    [preferences_menu_item setKeyEquivalentModifierMask:global_shortcuts.edit_config_file.mods];
-    [preferences_menu_item setTarget:global_menu_target];
-
-    NSMenuItem* new_os_window_menu_item =
-        [appMenu addItemWithTitle:@"New OS window"
-                           action:@selector(new_os_window:)
-                    keyEquivalent:@(global_shortcuts.new_os_window.key)];
-    [new_os_window_menu_item setKeyEquivalentModifierMask:global_shortcuts.new_os_window.mods];
-    [new_os_window_menu_item setTarget:global_menu_target];
-
+    MENU_ITEM(appMenu, @"Preferences…", edit_config_file);
+    MENU_ITEM(appMenu, @"New OS window", new_os_window);
 
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", app_name]
                        action:@selector(hide:)
@@ -432,18 +443,11 @@ cocoa_create_global_menu(void) {
                    keyEquivalent:@""];
 
     [windowMenu addItem:[NSMenuItem separatorItem]];
-    NSMenuItem* close_tab_item =
-        [windowMenu addItemWithTitle:@"Close Tab"
-                           action:@selector(close_tab:)
-                    keyEquivalent:@(global_shortcuts.close_tab.key)];
-    [close_tab_item setKeyEquivalentModifierMask:global_shortcuts.close_tab.mods];
-    [close_tab_item setTarget:global_menu_target];
-    NSMenuItem* close_os_window_menu_item =
-        [windowMenu addItemWithTitle:@"Close OS Window"
-                           action:@selector(close_os_window:)
-                    keyEquivalent:@(global_shortcuts.close_os_window.key)];
-    [close_os_window_menu_item setKeyEquivalentModifierMask:global_shortcuts.close_os_window.mods];
-    [close_os_window_menu_item setTarget:global_menu_target];
+    MENU_ITEM(windowMenu, @"New Tab", new_tab);
+    MENU_ITEM(windowMenu, @"Show Previous Tab", previous_tab);
+    MENU_ITEM(windowMenu, @"Show Next Tab", next_tab);
+    MENU_ITEM(windowMenu, @"Close Tab", close_tab);
+    MENU_ITEM(windowMenu, @"Close OS Window", close_os_window);
 
     [windowMenu addItem:[NSMenuItem separatorItem]];
     [[windowMenu addItemWithTitle:@"Enter Full Screen"
@@ -475,6 +479,7 @@ cocoa_create_global_menu(void) {
 
 
     [NSApp setServicesProvider:[[[ServiceProvider alloc] init] autorelease]];
+#undef MENU_ITEM
 }
 
 void
