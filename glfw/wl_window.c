@@ -1005,9 +1005,12 @@ void _glfwPlatformGetWindowPos(_GLFWwindow* window UNUSED, int* xpos UNUSED, int
 {
     // A Wayland client is not aware of its position, so just warn and leave it
     // as (0, 0)
-
-    _glfwInputError(GLFW_FEATURE_UNAVAILABLE,
-                    "Wayland: The platform does not provide the window position");
+    static bool warned_once = false;
+    if (!warned_once) {
+        _glfwInputError(GLFW_FEATURE_UNAVAILABLE,
+                        "Wayland: The platform does not provide the window position");
+        warned_once = true;
+    }
 }
 
 void _glfwPlatformSetWindowPos(_GLFWwindow* window UNUSED, int xpos UNUSED, int ypos UNUSED)
