@@ -318,7 +318,9 @@ def run_loop(args: HintsCLIOptions, text: str, all_marks: Sequence[Mark], index_
         return {
             'match': handler.text_matches, 'programs': args.program,
             'multiple_joiner': args.multiple_joiner, 'customize_processing': args.customize_processing,
-            'type': args.type, 'groupdicts': handler.groupdicts, 'extra_cli_args': extra_cli_args, 'linenum_action': args.linenum_action
+            'type': args.type, 'groupdicts': handler.groupdicts, 'extra_cli_args': extra_cli_args,
+            'linenum_action': args.linenum_action,
+            'cwd': os.getcwd(),
         }
     raise SystemExit(loop.return_code)
 
@@ -751,12 +753,7 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
         elif program == '*':
             set_primary_selection(joined_text())
         else:
-            cwd = None
-            w = boss.window_id_map.get(target_window_id)
-            if w is not None:
-                cwd = w.cwd_of_child
-            if w is None:
-                w = boss.active_window
+            cwd = data['cwd']
             program = None if program == 'default' else program
             if text_type == 'hyperlink':
                 for m in matches:
