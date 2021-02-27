@@ -78,6 +78,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Disable the native operating system tabs as they are non-functional
   and can be confusing (:iss:`3325`)
 
+- hints kitten: When using the linenumber action with a background action,
+  preserve the working directory (:iss:`3352`)
+
 
 0.19.3 [2020-12-19]
 -------------------

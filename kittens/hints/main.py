@@ -698,7 +698,7 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
             w.paste_bytes(text + '\r')
     elif action == 'background':
         import subprocess
-        subprocess.Popen(cmd)
+        subprocess.Popen(cmd, cwd=data['cwd'])
     else:
         getattr(boss, {
             'window': 'new_window_with_cwd', 'tab': 'new_tab_with_cwd', 'os_window': 'new_os_window_with_cwd'
