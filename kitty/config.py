@@ -35,7 +35,7 @@ SequenceMap = Dict[SingleKey, SubSequenceMap]
 
 class KeyAction(NamedTuple):
     func: str
-    args: Sequence[str]
+    args: Sequence[str] = ()
 
 
 func_with_args, args_funcs = key_func()

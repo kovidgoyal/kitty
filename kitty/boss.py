@@ -168,6 +168,7 @@ class Boss:
         set_boss(self)
         self.opts, self.args = opts, args
         self.keymap = self.opts.keymap.copy()
+        self.global_shortcuts_map = {v: KeyAction(k) for k, v in global_shortcuts.items()}
         for sc in global_shortcuts.values():
             self.keymap.pop(sc, None)
         if is_macos:
@@ -667,6 +668,8 @@ class Boss:
             if sequences and not isinstance(sequences, KeyAction):
                 self.pending_sequences = sequences
                 set_in_sequence_mode(True)
+                return True
+            if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
         elif isinstance(key_action, KeyAction):
             return self.dispatch_action(key_action)
