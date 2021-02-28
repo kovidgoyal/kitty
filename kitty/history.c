@@ -397,7 +397,7 @@ pagerhist_write(HistoryBuf *self, PyObject *what) {
 
 static PyObject*
 pagerhist_as_bytes(HistoryBuf *self, PyObject *args UNUSED) {
-    PagerHistoryBuf *ph = self->pagerhist;
+#define ph self->pagerhist
     if (!ph || !ringbuf_bytes_used(ph->ringbuf)) return PyBytes_FromStringAndSize("", 0);
     pagerhist_ensure_start_is_valid_utf8(ph);
     if (ph->rewrap_needed) pagerhist_rewrap_to(self, self->xnum);
@@ -411,6 +411,7 @@ pagerhist_as_bytes(HistoryBuf *self, PyObject *args UNUSED) {
     ringbuf_memcpy_from(buf, ph->ringbuf, sz);
     if (!l.continued) buf[sz-1] = '\n';
     return ans;
+#undef ph
 }
 
 static PyObject *
