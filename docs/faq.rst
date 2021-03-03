@@ -260,6 +260,26 @@ as the current window. The :doc:`launch command <launch>` is very powerful,
 explore :doc:`its documentation <launch>`.
 
 
+Things behave differently when running kitty from system launcher vs. another terminal?
+----------------------------------------------------------------------------------------
+
+This will be because of environment variables. When you run kitty from the
+system launcher, it gets a default set of system environment variables. When
+you run kitty from another terminal, you are actually running it from a shell,
+and the shell's rc files will have setup a whole different set of environment
+variables which kitty will now inherit.
+
+You need to make sure that the environment variables you define in your shell's
+rc files are either also defined system wide or via the ``env`` directive in
+kitty.conf. Common environment variables that cause issues are those related to
+localization, such as ``LANG, LC_*`` and loading of configuration files such as
+``XDG_*, KITTY_CONFIG_DIRECTORY``.
+
+This problem is most common on macOS, as Apple makes it exceedingly difficult to
+setup environment variables system-wide, so people end up putting them in all
+sorts of places where they may or may not work.
+
+
 I am using tmux and have a problem
 --------------------------------------
 
