@@ -260,8 +260,8 @@ as the current window. The :doc:`launch command <launch>` is very powerful,
 explore :doc:`its documentation <launch>`.
 
 
-Things behave differently when running kitty from system launcher vs. another terminal?
-----------------------------------------------------------------------------------------
+Things behave differently when running kitty from system launcher vs. from another terminal?
+-----------------------------------------------------------------------------------------------
 
 This will be because of environment variables. When you run kitty from the
 system launcher, it gets a default set of system environment variables. When
