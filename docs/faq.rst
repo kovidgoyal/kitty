@@ -270,10 +270,17 @@ and the shell's rc files will have setup a whole different set of environment
 variables which kitty will now inherit.
 
 You need to make sure that the environment variables you define in your shell's
-rc files are either also defined system wide or via the ``env`` directive in
-kitty.conf. Common environment variables that cause issues are those related to
-localization, such as ``LANG, LC_*`` and loading of configuration files such as
-``XDG_*, KITTY_CONFIG_DIRECTORY``.
+rc files are either also defined system wide or via the :opt:`env` directive in
+:file:`kitty.conf`. Common environment variables that cause issues are those
+related to localization, such as ``LANG, LC_*`` and loading of configuration
+files such as ``XDG_*, KITTY_CONFIG_DIRECTORY``.
+
+To see the environment variables that kitty sees, you can add the following
+mapping to :file:`kitty.conf`::
+
+    map f1 show_kitty_env_vars
+
+then pressing :kbd:`F1` will show you the environment variables kitty sees.
 
 This problem is most common on macOS, as Apple makes it exceedingly difficult to
 setup environment variables system-wide, so people end up putting them in all

@@ -853,7 +853,7 @@ class Boss:
                 s.shutdown(socket.SHUT_RDWR)
             s.close()
 
-    def display_scrollback(self, window: Window, data: Optional[bytes], cmd: Optional[List[str]]) -> None:
+    def display_scrollback(self, window: Window, data: Optional[bytes], cmd: List[str]) -> None:
         tab = self.active_tab
         if tab is not None:
             tab.new_special_window(
@@ -1635,3 +1635,9 @@ class Boss:
             self.set_active_window(w, switch_os_window_if_needed=True)
         if report:
             w.report_notification_activated(identifier)
+
+    def show_kitty_env_vars(self) -> None:
+        w = self.active_window
+        if w:
+            output = '\n'.join(f'{k}={v}' for k, v in os.environ.items()).encode('utf-8')
+            self.display_scrollback(w, output, ['less'])
