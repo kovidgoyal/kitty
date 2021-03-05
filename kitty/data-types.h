@@ -14,6 +14,7 @@
 #include <poll.h>
 #include <pthread.h>
 #include "glfw-wrapper.h"
+#include "banned.h"
 // Required minimum OpenGL version
 #define OPENGL_REQUIRED_VERSION_MAJOR 3
 #define OPENGL_REQUIRED_VERSION_MINOR 3
