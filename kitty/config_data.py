@@ -566,7 +566,7 @@ def url_prefixes(x: str) -> Tuple[str, ...]:
     return tuple(a.lower() for a in x.replace(',', ' ').split())
 
 
-o('url_prefixes', 'http https file ftp', option_type=url_prefixes, long_text=_('''
+o('url_prefixes', 'http https file ftp gemini', option_type=url_prefixes, long_text=_('''
 The set of URL prefixes to look for when detecting a URL under the mouse cursor.'''))
 
 o('detect_urls', True, long_text=_('''
