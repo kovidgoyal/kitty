@@ -34,6 +34,12 @@ images and other types of documents directly in your terminal, even over SSH.
     view images in the terminal, similar to kitty's icat, however also supports
     displaying animated GIFs
 
+`timg <https://github.com/hzeller/timg>`_
+    A terminal image and video viewer, that displays static and animated
+    images or plays videos. Fast multi-threaded loading, JPEG exif rotation,
+    grid view and connecting to the webcam make it a versatile terminal utility.
+
+.
 
 System and data visualisation tools
 ---------------------------------------
