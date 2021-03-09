@@ -303,6 +303,48 @@ class TestScreen(BaseTest):
         s.resize(s.lines - 1, s.columns)
         self.ae(x_before, s.cursor.x)
 
+    def test_scrollback_fill_after_resize(self):
+        def prepare_screen(content=tuple()):
+            return self.create_screen(
+                lines=5,
+                cols=5,
+                options={'scrollback_fill_enlarged_window': True},
+                content=content,
+            )
+
+        def assert_lines(lines, s):
+            return self.ae(lines, str(s.linebuf).split("\n"))
+
+        # Height increased, width unchanged → pull down lines to fill new space at the top
+        s = prepare_screen([str(i) for i in range(0, 6)])
+        assert_lines(['2', '3', '4', '5', ''], s)
+        s.resize(7, s.columns)
+        assert_lines(['0', '1', '2', '3', '4', '5', ''], s)
+
+        # Height increased, width increased → rewrap, pull down
+        s = prepare_screen(['0', '1', '2', '3' * 15])
+        assert_lines(['2', '33333', '33333', '33333', ''], s)
+        s.resize(7, 12)
+        assert_lines(['0', '1', '2', '333333333333', '333', '', ''], s)
+
+        # Height increased, width decreased → rewrap, pull down if possible
+        s = prepare_screen(['0', '1', '2', '3' * 5])
+        assert_lines(['0', '1', '2', '33333', ''], s)
+        s.resize(6, 4)
+        assert_lines(['0', '1', '2', '3333', '3', ''], s)
+
+        # Height unchanged, width increased → rewrap, pull down if possible
+        s = prepare_screen(['0', '1', '2', '3' * 15])
+        assert_lines(['2', '33333', '33333', '33333', ''], s)
+        s.resize(s.lines, 12)
+        assert_lines(['1', '2', '333333333333', '333', ''], s)
+
+        # Height decreased, width increased → rewrap, pull down if possible
+        s = prepare_screen(['0', '1', '2', '3' * 15])
+        assert_lines(['2', '33333', '33333', '33333', ''], s)
+        s.resize(4, 12)
+        assert_lines(['2', '333333333333', '333', ''], s)
+
     def test_tab_stops(self):
         # Taken from vttest/main.c
         s = self.create_screen(cols=80, lines=2)
