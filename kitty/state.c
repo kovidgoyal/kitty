@@ -688,6 +688,7 @@ PYWRAP1(set_options) {
     S(dynamic_background_opacity, PyObject_IsTrue);
     S(inactive_text_alpha, PyFloat_AsFloat);
     S(scrollback_pager_history_size, PyLong_AsUnsignedLong);
+    S(scrollback_fill_enlarged_window, PyObject_IsTrue);
     S(cursor_shape, PyLong_AsLong);
     S(cursor_beam_thickness, PyFloat_AsFloat);
     S(cursor_underline_thickness, PyFloat_AsFloat);
