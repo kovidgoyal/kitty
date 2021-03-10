@@ -611,7 +611,7 @@ created after startup.
 --hold
 type=bool-set
 Remain open after child process exits. Note that this only affects the first
-window. You can quit by either using the close window shortcut or :kbd:`Ctrl+d`.
+window. You can quit by either using the close window shortcut or pressing any key.
 
 
 --single-instance -1

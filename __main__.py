@@ -30,8 +30,14 @@ def runpy(args: List[str]) -> None:
 
 def hold(args: List[str]) -> None:
     import subprocess
+    from contextlib import suppress
+    import tty
     ret = subprocess.Popen(args[1:]).wait()
-    sys.stdin.read()
+    with suppress(BaseException):
+        print('\n\x1b[1;32mPress any key to exit', end='', flush=True)
+    with suppress(BaseException):
+        tty.setraw(sys.stdin.fileno())
+        sys.stdin.buffer.read(1)
     raise SystemExit(ret)
 
 
