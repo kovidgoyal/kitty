@@ -360,6 +360,21 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
     return _glfw.ns.file_open_callback(path);
 }
 
+- (void)application:(NSApplication *)sender openFiles:(NSArray *)filenames {
+    (void)sender;
+    if (!_glfw.ns.file_open_callback || !filenames) return;
+    for (id x in filenames) {
+        NSString *filename = x;
+        const char *path = NULL;
+        @try {
+            path = [[NSFileManager defaultManager] fileSystemRepresentationWithPath: filename];
+        } @catch(NSException *exc) {
+            NSLog(@"Converting openFiles filename: %@ failed with error: %@", filename, exc.reason);
+        }
+        if (path) _glfw.ns.file_open_callback(path);
+    }
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
     (void)notification;
