@@ -194,8 +194,8 @@ Compression
 ~~~~~~~~~~~~~
 
 The client can send compressed image data to the terminal emulator, by specifying the
-``o`` key. Currently, only RFC1950-style zlib based deflate compression is
-supported, which is specified using ``o=z``. For example::
+``o`` key. Currently, only `RFC1950 <https://tools.ietf.org/html/rfc1950>`_ zlib based
+deflate compression is supported, which is specified using ``o=z``. For example::
 
     <ESC>_Gf=24,s=10,v=20,o=z;<payload><ESC>\
 
