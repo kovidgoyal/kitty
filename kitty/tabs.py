@@ -2,6 +2,8 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
+import stat
 import weakref
 from collections import deque
 from contextlib import suppress
@@ -15,7 +17,7 @@ from typing import (
 from .borders import Borders
 from .child import Child
 from .cli_stub import CLIOptions
-from .constants import appname
+from .constants import appname, kitty_exe
 from .fast_data_types import (
     add_tab, attach_window, detach_window, get_boss, mark_tab_bar_dirty,
     next_window_id, remove_tab, remove_window, ring_bell, set_active_tab,
@@ -277,11 +279,43 @@ class Tab:  # {{{
         env: Optional[Dict[str, str]] = None,
         allow_remote_control: bool = False
     ) -> Child:
+        check_for_suitability = True
         if cmd is None:
             if use_shell:
                 cmd = resolved_shell(self.opts)
+                check_for_suitability = False
             else:
+                if self.args.args:
+                    cmd = list(self.args.args)
+                else:
+                    cmd = resolved_shell(self.opts)
+                    check_for_suitability = False
                 cmd = self.args.args or resolved_shell(self.opts)
+        if check_for_suitability:
+            old_exe = cmd[0]
+            try:
+                is_executable = os.access(old_exe, os.X_OK)
+            except OSError:
+                pass
+            else:
+                try:
+                    st = os.stat(old_exe)
+                except OSError:
+                    pass
+                else:
+                    if stat.S_ISDIR(st.st_mode):
+                        cwd = old_exe
+                        cmd = resolved_shell(self.opts)
+                    elif not is_executable:
+                        import shlex
+                        with suppress(OSError):
+                            with open(old_exe) as f:
+                                cmd = [kitty_exe(), '+hold']
+                                if f.read(2) == '#!':
+                                    line = f.read(4096).splitlines()[0]
+                                    cmd += shlex.split(line) + [old_exe]
+                                else:
+                                    cmd += [resolved_shell(self.opts)[0], cmd[0]]
         fenv: Dict[str, str] = {}
         if env:
             fenv.update(env)
