@@ -194,15 +194,16 @@ Compression
 ~~~~~~~~~~~~~
 
 The client can send compressed image data to the terminal emulator, by specifying the
-``o`` key. Currently, only zlib based deflate compression is supported, which is specified using
-``o=z``. For example::
+``o`` key. Currently, only RFC1950-style zlib based deflate compression is
+supported, which is specified using ``o=z``. For example::
 
     <ESC>_Gf=24,s=10,v=20,o=z;<payload><ESC>\
 
 This is the same as the example from the RGB data section, except that the
-payload is now compressed using deflate. The terminal emulator will decompress
-it before rendering. You can specify compression for any format. The terminal
-emulator will decompress before interpreting the pixel data.
+payload is now compressed using deflate (this occurs prior to base64-encoding).
+The terminal emulator will decompress it before rendering. You can specify
+compression for any format. The terminal emulator will decompress before
+interpreting the pixel data.
 
 
 The transmission medium
