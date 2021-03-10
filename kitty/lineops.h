@@ -101,6 +101,7 @@ void linebuf_mark_line_as_not_continued(LineBuf *self, index_type y);
 unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 void linebuf_refresh_sprite_positions(LineBuf *self);
 void historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf*);
+bool historybuf_pop_line(HistoryBuf *, Line *);
 void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf*);
 void historybuf_init_line(HistoryBuf *self, index_type num, Line *l);
 CPUCell* historybuf_cpu_cells(HistoryBuf *self, index_type num);
