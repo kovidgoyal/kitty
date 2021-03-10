@@ -83,6 +83,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - hints kitten: When using the linenumber action with a background action,
   preserve the working directory (:iss:`3352`)
 
+- Graphics protocol: Fix suppression of responses not working for chunked
+  transmission (:iss:`3375`)
+
 
 0.19.3 [2020-12-19]
 -------------------

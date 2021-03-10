@@ -1508,7 +1508,7 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
             Image *image = handle_add_command(self, g, payload, is_dirty, iid);
             if (!self->currently_loading.loading_for.image_id) free_load_data(&self->currently_loading);
             GraphicsCommand *lg = &self->currently_loading.start_command;
-            lg->quiet = g->quiet;
+            if (g->quiet) lg->quiet = g->quiet;
             if (is_query) ret = finish_command_response(&(const GraphicsCommand){.id=q_iid, .quiet=g->quiet}, image != NULL);
             else ret = finish_command_response(lg, image != NULL);
             if (lg->action == 'T' && image && image->root_frame_data_loaded) handle_put_command(self, lg, c, is_dirty, image, cell);
@@ -1534,7 +1534,8 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
                 if (ag.action == 'f') {
                     img = handle_animation_frame_load_command(self, &ag, img, payload, is_dirty);
                     if (!self->currently_loading.loading_for.image_id) free_load_data(&self->currently_loading);
-                    ag.quiet = g->quiet;
+                    if (g->quiet) ag.quiet = g->quiet;
+                    else ag.quiet = self->currently_loading.start_command.quiet;
                     ret = finish_command_response(&ag, img != NULL);
                 } else if (ag.action == 'a') {
                     handle_animation_control_command(self, is_dirty, &ag, img);

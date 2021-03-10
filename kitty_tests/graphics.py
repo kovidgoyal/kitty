@@ -286,13 +286,43 @@ class TestGraphics(BaseTest):
         dc.remove_from_ram(clear_predicate)
         self.assertEqual(dc.num_cached_in_ram(), 0)
 
+    def test_suppressing_gr_command_responses(self):
+        s, g, l, sl = load_helpers(self)
+        self.ae(l('abcd', s=10, v=10, q=1), 'ENODATA:Insufficient image data: 4 < 400')
+        self.ae(l('abcd', s=10, v=10, q=2), None)
+        self.assertIsNone(l('abcd', s=1, v=1, a='q', q=1))
+        # Test chunked load
+        self.assertIsNone(l('abcd', s=2, v=2, m=1, q=1))
+        self.assertIsNone(l('efgh', m=1))
+        self.assertIsNone(l('ijkl', m=1))
+        self.assertIsNone(l('mnop', m=0))
+
+        # errors
+        self.assertIsNone(l('abcd', s=2, v=2, m=1, q=1))
+        self.ae(l('mnop', m=0), 'ENODATA:Insufficient image data: 8 < 16')
+        self.assertIsNone(l('abcd', s=2, v=2, m=1, q=2))
+        self.assertIsNone(l('mnop', m=0))
+
+        # frames
+        s = self.create_screen()
+        li = make_send_command(s)
+        self.assertEqual(li().code, 'ENOENT')
+        self.assertIsNone(li(q=2))
+        self.assertIsNone(li(a='t', q=1))
+        self.assertIsNone(li(payload='2' * 12, z=77, m=1, q=1))
+        self.assertIsNone(li(payload='2' * 12, m=1))
+        self.assertIsNone(li(payload='2' * 12))
+        self.assertIsNone(li(payload='2' * 12, z=77, m=1, q=1))
+        self.ae(li(payload='2' * 12).code, 'ENODATA')
+        self.assertIsNone(li(payload='2' * 12, z=77, m=1, q=2))
+        self.assertIsNone(li(payload='2' * 12))
+
     def test_load_images(self):
         s, g, l, sl = load_helpers(self)
         self.assertEqual(g.disk_cache.total_size, 0)
 
         # Test load query
         self.ae(l('abcd', s=1, v=1, a='q'), 'OK')
-        self.assertIsNone(l('abcd', s=1, v=1, a='q', q=1))
         self.ae(g.image_count, 0)
 
         # Test simple load
@@ -308,8 +338,6 @@ class TestGraphics(BaseTest):
         self.ae(l('mnop', m=0), 'OK')
         img = g.image_for_client_id(1)
         self.ae(img['data'], b'abcdefghijklmnop')
-        self.ae(l('abcd', s=10, v=10, q=1), 'ENODATA:Insufficient image data: 4 < 400')
-        self.ae(l('abcd', s=10, v=10, q=2), None)
 
         # Test compression
         random_data = byte_block(3 * 1024)
