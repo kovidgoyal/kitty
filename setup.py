@@ -914,6 +914,24 @@ def macos_info_plist() -> bytes:
     def access(what: str, verb: str = 'would like to access') -> str:
         return f'A program running inside kitty {verb} {what}'
 
+    docs = [
+        {
+            'CFBundleTypeName': 'Terminal scripts',
+            'CFBundleTypeExtensions': ['command', 'sh', 'zsh', 'bash', 'fish', 'tool'],
+            'CFBundleTypeIconFile': appname + '.icns',
+            'CFBundleTypeRole': 'Editor',
+        },
+        {
+            'CFBundleTypeName': 'Folders',
+            'CFBundleTypeOSTypes': ['fold'],
+            'CFBundleTypeRole': 'Editor',
+        },
+        {
+            'LSItemContentTypes': ['public.unix-executable'],
+            'CFBundleTypeRole': 'Shell',
+        },
+    ]
+
     pl = dict(
         # see https://github.com/kovidgoyal/kitty/issues/1233
         CFBundleDevelopmentRegion='English',
@@ -927,6 +945,7 @@ def macos_info_plist() -> bytes:
         CFBundlePackageType='APPL',
         CFBundleSignature='????',
         CFBundleExecutable=appname,
+        CFBundleDocumentTypes=docs,
         LSMinimumSystemVersion='10.12.0',
         LSRequiresNativeExecution=True,
         NSAppleScriptEnabled=False,

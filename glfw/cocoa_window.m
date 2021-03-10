@@ -2482,6 +2482,13 @@ GLFWAPI GLFWcocoatextinputfilterfun glfwSetCocoaTextInputFilter(GLFWwindow *hand
     return previous;
 }
 
+GLFWAPI GLFWhandlefileopen glfwSetCocoaFileOpenCallback(GLFWhandlefileopen callback) {
+    _GLFW_REQUIRE_INIT_OR_RETURN(nil);
+    GLFWhandlefileopen prev = _glfw.ns.file_open_callback;
+    _glfw.ns.file_open_callback = callback;
+    return prev;
+}
+
 GLFWAPI GLFWcocoatogglefullscreenfun glfwSetCocoaToggleFullscreenIntercept(GLFWwindow *handle, GLFWcocoatogglefullscreenfun callback) {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     _GLFW_REQUIRE_INIT_OR_RETURN(nil);

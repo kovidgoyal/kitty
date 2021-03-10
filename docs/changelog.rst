@@ -55,6 +55,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Add menu items to close the OS window and the current tab (:pull:`3240`, :iss:`3246`)
 
+- macOS: Allow opening script and command files with kitty (:iss:`3366`)
+
 - Also detect ``gemini://`` URLs when hovering with the mouse (:iss:`3370`)
 
 - When using a non-US keyboard layout and pressing :kbd:`ctrl+key` when

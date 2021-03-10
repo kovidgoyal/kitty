@@ -261,6 +261,7 @@ void send_prerendered_sprites_for_window(OSWindow *w);
 #ifdef __APPLE__
 void get_cocoa_key_equivalent(uint32_t, int, char *key, size_t key_sz, int*);
 typedef enum {
+    NO_COCOA_PENDING_ACTION = 0,
     PREFERENCES_WINDOW = 1,
     NEW_OS_WINDOW = 2,
     NEW_OS_WINDOW_WITH_WD = 4,
@@ -271,6 +272,7 @@ typedef enum {
     NEXT_TAB = 128,
     PREVIOUS_TAB = 256,
     DETACH_TAB = 512,
+    OPEN_FILE = 1024
 } CocoaPendingAction;
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);
 #endif

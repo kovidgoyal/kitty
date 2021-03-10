@@ -935,14 +935,25 @@ process_pending_closes(ChildMonitor *self) {
 // If we create new OS windows during wait_events(), using global menu actions
 // via the mouse causes a crash because of the way autorelease pools work in
 // glfw/cocoa. So we use a flag instead.
-static unsigned int cocoa_pending_actions = 0;
-static char *cocoa_pending_actions_wd = NULL;
+static CocoaPendingAction cocoa_pending_actions = NO_COCOA_PENDING_ACTION;
+typedef struct {
+    char* wd;
+    char **open_files;
+    size_t open_files_count;
+    size_t open_files_capacity;
+} CocoaPendingActionsData;
+static CocoaPendingActionsData cocoa_pending_actions_data = {0};
 
 void
 set_cocoa_pending_action(CocoaPendingAction action, const char *wd) {
     if (wd) {
-        if (cocoa_pending_actions_wd) free(cocoa_pending_actions_wd);
-        cocoa_pending_actions_wd = strdup(wd);
+        if (action == OPEN_FILE) {
+            ensure_space_for(&cocoa_pending_actions_data, open_files, char*, cocoa_pending_actions_data.open_files_count + 8, open_files_capacity, 8, true);
+            cocoa_pending_actions_data.open_files[cocoa_pending_actions_data.open_files_count++] = strdup(wd);
+        } else {
+            if (cocoa_pending_actions_data.wd) free(cocoa_pending_actions_data.wd);
+            cocoa_pending_actions_data.wd = strdup(wd);
+        }
     }
     cocoa_pending_actions |= action;
     // The main loop may be blocking on the event queue, if e.g. unfocused.
@@ -986,11 +997,21 @@ process_global_state(void *data) {
             if (cocoa_pending_actions & NEXT_TAB) { call_boss(next_tab, NULL); }
             if (cocoa_pending_actions & PREVIOUS_TAB) { call_boss(previous_tab, NULL); }
             if (cocoa_pending_actions & DETACH_TAB) { call_boss(detach_tab, NULL); }
-            if (cocoa_pending_actions_wd) {
-                if (cocoa_pending_actions & NEW_OS_WINDOW_WITH_WD) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_wd); }
-                if (cocoa_pending_actions & NEW_TAB_WITH_WD) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_wd); }
-                free(cocoa_pending_actions_wd);
-                cocoa_pending_actions_wd = NULL;
+            if (cocoa_pending_actions_data.wd) {
+                if (cocoa_pending_actions & NEW_OS_WINDOW_WITH_WD) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_data.wd); }
+                if (cocoa_pending_actions & NEW_TAB_WITH_WD) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_data.wd); }
+                free(cocoa_pending_actions_data.wd);
+                cocoa_pending_actions_data.wd = NULL;
+            }
+            if (cocoa_pending_actions_data.open_files_count) {
+                for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_files_count; cpa++) {
+                    if (cocoa_pending_actions_data.open_files[cpa]) {
+                        call_boss(open_file, "s", cocoa_pending_actions_data.open_files[cpa]);
+                        free(cocoa_pending_actions_data.open_files[cpa]);
+                        cocoa_pending_actions_data.open_files[cpa] = NULL;
+                    }
+                }
+                cocoa_pending_actions_data.open_files_count = 0;
             }
             cocoa_pending_actions = 0;
         }
@@ -1015,7 +1036,13 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
     state_check_timer = add_main_loop_timer(1000, true, do_state_check, self, NULL);
     run_main_loop(process_global_state, self);
 #ifdef __APPLE__
-    if (cocoa_pending_actions_wd) { free(cocoa_pending_actions_wd); cocoa_pending_actions_wd = NULL; }
+    if (cocoa_pending_actions_data.wd) { free(cocoa_pending_actions_data.wd); cocoa_pending_actions_data.wd = NULL; }
+    if (cocoa_pending_actions_data.open_files) {
+        for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_files_count; cpa++) {
+            if (cocoa_pending_actions_data.open_files[cpa]) free(cocoa_pending_actions_data.open_files[cpa]);
+        }
+        free(cocoa_pending_actions_data.open_files); cocoa_pending_actions_data.open_files = NULL;
+    }
 #endif
     if (PyErr_Occurred()) return NULL;
     Py_RETURN_NONE;

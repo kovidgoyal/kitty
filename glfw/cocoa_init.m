@@ -346,10 +346,25 @@ static GLFWapplicationwillfinishlaunchingfun finish_launching_callback = NULL;
         finish_launching_callback();
 }
 
+- (BOOL)application:(NSApplication *)theApplication openFile:(NSString *)filename {
+    (void)theApplication;
+    if (!filename || !_glfw.ns.file_open_callback) return NO;
+    const char *path = NULL;
+    @try {
+        path = [[NSFileManager defaultManager] fileSystemRepresentationWithPath: filename];
+    } @catch(NSException *exc) {
+        NSLog(@"Converting openFile filename: %@ failed with error: %@", filename, exc.reason);
+        return NO;
+    }
+    if (!path) return NO;
+    return _glfw.ns.file_open_callback(path);
+}
+
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
     (void)notification;
     [NSApp stop:nil];
+    if (_glfw.ns.file_open_callback) _glfw.ns.file_open_callback(":cocoa::application launched::");
 
     CGDisplayRegisterReconfigurationCallback(display_reconfigured, NULL);
     _glfwCocoaPostEmptyEvent();

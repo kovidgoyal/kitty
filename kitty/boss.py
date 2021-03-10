@@ -144,6 +144,7 @@ class Boss:
         global_shortcuts: Dict[str, SingleKey]
     ):
         set_layout_options(opts)
+        self.cocoa_application_launched = False
         self.clipboard_buffers: Dict[str, str] = {}
         self.update_check_process: Optional[PopenType] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
@@ -1641,3 +1642,21 @@ class Boss:
         if w:
             output = '\n'.join(f'{k}={v}' for k, v in os.environ.items()).encode('utf-8')
             self.display_scrollback(w, output, ['less'])
+
+    def open_file(self, path: str) -> None:
+        if path == ":cocoa::application launched::":
+            self.cocoa_application_launched = True
+            return
+
+        def new_os_window() -> None:
+            self.new_os_window(path)
+
+        if self.cocoa_application_launched or not self.os_window_map:
+            return new_os_window()
+        tab = self.active_tab
+        if tab is None:
+            return new_os_window()
+        w = tab.active_window
+        self.new_window(path)
+        if w is not None:
+            tab.remove_window(w)

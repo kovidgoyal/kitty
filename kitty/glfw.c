@@ -379,6 +379,14 @@ application_close_requested_callback(int flags) {
         }
     }
 }
+
+#ifdef __APPLE__
+static bool
+apple_file_open_callback(const char* filepath) {
+    set_cocoa_pending_action(OPEN_FILE, filepath);
+    return true;
+}
+#endif
 // }}}
 
 void
@@ -844,6 +852,9 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
 #endif
     PyObject *ans = glfwInit(monotonic_start_time) ? Py_True: Py_False;
     if (ans == Py_True) {
+#ifdef __APPLE__
+        glfwSetCocoaFileOpenCallback(apple_file_open_callback);
+#endif
         OSWindow w = {0};
         set_os_window_dpi(&w);
         global_state.default_dpi.x = w.logical_dpi_x;
