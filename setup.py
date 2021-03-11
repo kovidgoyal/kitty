@@ -563,6 +563,7 @@ class CompilationDatabase:
         queue.append(Command(desc, cmd, is_newer_func, on_success or no_op, key, keyfile))
 
     def build_all(self) -> None:
+
         def sort_key(compile_cmd: Command) -> int:
             if compile_cmd.keyfile:
                 return os.path.getsize(compile_cmd.keyfile)
@@ -753,8 +754,9 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
     )
 
 
-def build(args: Options, native_optimizations: bool = True) -> None:
-    init_env_from_args(args, native_optimizations)
+def build(args: Options, native_optimizations: bool = True, call_init: bool = True) -> None:
+    if call_init:
+        init_env_from_args(args, native_optimizations)
     sources, headers = find_c_files()
     compile_c_extension(
         kitty_env(), 'kitty/fast_data_types', args.compilation_database, sources, headers
@@ -1269,8 +1271,9 @@ def main() -> None:
             build(args, native_optimizations=False)
             package(args, bundle_type='linux-freeze')
         elif args.action == 'macos-freeze':
-            build(args, native_optimizations=False)
+            init_env_from_args(args, native_optimizations=False)
             build_launcher(args, launcher_dir=launcher_dir)
+            build(args, native_optimizations=False, call_init=False)
             package(args, bundle_type='macos-freeze')
         elif args.action == 'kitty.app':
             args.prefix = 'kitty.app'
