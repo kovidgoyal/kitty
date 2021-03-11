@@ -396,6 +396,13 @@ delete_lines(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+void
+linebuf_add_line_to_top(LineBuf *self, Line *line) {
+    init_line(self, self->line, self->line_map[0]);
+    copy_line(line, self->line);
+    self->line_attrs[0] = TEXT_DIRTY_MASK | (line->continued ? CONTINUED_MASK : 0);
+}
+
 static PyObject*
 as_ansi(LineBuf *self, PyObject *callback) {
 #define as_ansi_doc "as_ansi(callback) -> The contents of this buffer as ANSI escaped text. callback is called with each successive line."
