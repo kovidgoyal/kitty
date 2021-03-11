@@ -1102,11 +1102,6 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph) {
         // there exist stupid fonts like Powerline that have no space glyph,
         // so special case it: https://github.com/kovidgoyal/kitty/issues/1225
         unsigned int num_glyphs = group->is_space_ligature ? 1 : group->num_glyphs;
-#ifdef __APPLE__
-        // FiraCode ligatures need to be centered on macOS
-        // see https://github.com/kovidgoyal/kitty/issues/2591
-        if (is_group_calt_ligature(group)) center_glyph = true;
-#endif
         render_group(fg, group->num_cells, num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed, center_glyph);
         idx++;
     }

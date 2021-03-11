@@ -390,6 +390,7 @@ static size_t render_buf_sz = 0;
 static CGGlyph glyphs[128];
 static CGRect boxes[128];
 static CGPoint positions[128];
+static CGSize advances[128];
 
 static void
 finalize(void) {
@@ -459,15 +460,15 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     CTFontRef font = self->ct_font;
     size_t num_chars = strnlen(text, 32);
     unichar chars[num_chars];
-    CGSize advances[num_chars];
+    CGSize local_advances[num_chars];
     for (size_t i = 0; i < num_chars; i++) chars[i] = text[i];
     CTFontGetGlyphsForCharacters(font, chars, glyphs, num_chars);
-    CTFontGetAdvancesForGlyphs(font, kCTFontOrientationDefault, glyphs, advances, num_chars);
+    CTFontGetAdvancesForGlyphs(font, kCTFontOrientationDefault, glyphs, local_advances, num_chars);
     CGRect bounding_box = CTFontGetBoundingRectsForGlyphs(font, kCTFontOrientationDefault, glyphs, boxes, num_chars);
     CGFloat x = 0, y = 0;
     for (size_t i = 0; i < num_chars; i++) {
         positions[i] = CGPointMake(x, y);
-        x += advances[i].width; y += advances[i].height;
+        x += local_advances[i].width; y += local_advances[i].height;
     }
     StringCanvas ans = { .width = (size_t)ceil(x), .height = (size_t)(2 * bounding_box.size.height) };
     ensure_render_space(ans.width, ans.height);
@@ -482,11 +483,13 @@ static inline bool
 do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONTS_DATA_HANDLE fg, bool center_glyph) {
     unsigned int canvas_width = cell_width * num_cells;
     CGRect br = CTFontGetBoundingRectsForGlyphs(ct_font, kCTFontOrientationHorizontal, glyphs, boxes, num_glyphs);
+    const bool debug_rendering = false;
     if (allow_resize) {
         // Resize glyphs that would bleed into neighboring cells, by scaling the font size
         float right = 0;
         for (unsigned i=0; i < num_glyphs; i++) right = MAX(right, boxes[i].origin.x + boxes[i].size.width);
         if (!bold && !italic && right > canvas_width + 1) {
+            if (debug_rendering) printf("resizing glyphs, right: %f canvas_width: %u\n", right, canvas_width);
             CGFloat sz = CTFontGetSize(ct_font);
             sz *= canvas_width / right;
             CTFontRef new_font = CTFontCreateCopyWithAttributes(ct_font, sz, NULL, NULL);
@@ -495,9 +498,12 @@ do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_g
             return ret;
         }
     }
+    CGFloat x = 0, y = 0;
+    CTFontGetAdvancesForGlyphs(ct_font, kCTFontOrientationDefault, glyphs, advances, num_glyphs);
     for (unsigned i=0; i < num_glyphs; i++) {
-        positions[i].x = MAX(0, -boxes[i].origin.x) + hb_positions[i].x_offset / 64.f;
-        positions[i].y = hb_positions[i].y_offset / 64.f;
+        positions[i].x = x; positions[i].y = y;
+        if (debug_rendering) printf("x=%f origin=%f width=%f advance=%f\n", x, boxes[i].origin.x, boxes[i].size.width, advances[i].width);
+        x += advances[i].width; y += advances[i].height;
     }
     if (*was_colored) {
         render_color_glyph(ct_font, (uint8_t*)canvas, info[0].codepoint, cell_width * num_cells, cell_height, baseline);
@@ -508,6 +514,7 @@ do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_g
         render_alpha_mask(render_buf, canvas, &src, &dest, canvas_width, canvas_width);
     }
     if (num_cells && (center_glyph || (num_cells == 2 && *was_colored))) {
+        if (debug_rendering) printf("centering glyphs: center_glyph: %d\n", center_glyph);
         // center glyphs (two cell emoji, PUA glyphs, ligatures, etc)
         CGFloat delta = (((CGFloat)canvas_width - br.size.width) / 2.f);
         // FiraCode ligatures result in negative origins
