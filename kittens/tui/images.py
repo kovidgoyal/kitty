@@ -118,8 +118,13 @@ class NoImageMagick(Exception):
     pass
 
 
+last_imagemagick_cmd: Sequence[str] = ()
+
+
 def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> CompletedProcess:
+    global last_imagemagick_cmd
     import subprocess
+    last_imagemagick_cmd = cmd
     try:
         p = subprocess.run(cmd, stdout=subprocess.PIPE if keep_stdout else subprocess.DEVNULL, stderr=subprocess.PIPE)
     except FileNotFoundError:
@@ -222,14 +227,17 @@ def render_image(
         run_imagemagick(path, cmd + [output_template])
         unseen = {x.index for x in m}
         for x in os.listdir(tdir):
-            parts = x.split('.', 1)[0].split('-')
-            index = int(parts[-1])
-            unseen.discard(index)
-            f = ans.frames[index]
-            f.width, f.height = map(positive_int, parts[1:3])
-            sz, pos = parts[3].split('+', 1)
-            f.canvas_width, f.canvas_height = map(positive_int, sz.split('x', 1))
-            f.canvas_x, f.canvas_y = map(int, pos.split('+', 1))
+            try:
+                parts = x.split('.', 1)[0].split('-')
+                index = int(parts[-1])
+                unseen.discard(index)
+                f = ans.frames[index]
+                f.width, f.height = map(positive_int, parts[1:3])
+                sz, pos = parts[3].split('+', 1)
+                f.canvas_width, f.canvas_height = map(positive_int, sz.split('x', 1))
+                f.canvas_x, f.canvas_y = map(int, pos.split('+', 1))
+            except Exception:
+                raise ValueError(f'Unexpected output filename: {x!r} produced by ImageMagick command: {last_imagemagick_cmd}')
             f.path = output_prefix + f'-{index}.{m.mode}'
             os.rename(os.path.join(tdir, x), f.path)
             check_resize(f)
