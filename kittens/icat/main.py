@@ -28,7 +28,8 @@ from kitty.utils import (
 
 from ..tui.images import (
     ConvertFailed, Dispose, GraphicsCommand, NoImageMagick, OpenFailed,
-    RenderedImage, fsenc, identify, render_as_single_image, render_image
+    OutdatedImageMagick, RenderedImage, fsenc, identify,
+    render_as_single_image, render_image
 )
 from ..tui.operations import clear_images_on_screen, raw_mode
 
@@ -558,6 +559,9 @@ def main(args: List[str] = sys.argv) -> None:
         try:
             process_single_item(item, cli_opts, parsed_opts, url_pat)
         except NoImageMagick as e:
+            raise SystemExit(str(e))
+        except OutdatedImageMagick as e:
+            print(e.detailed_error, file=sys.stderr)
             raise SystemExit(str(e))
         except ConvertFailed as e:
             raise SystemExit(str(e))

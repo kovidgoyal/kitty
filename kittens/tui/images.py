@@ -118,6 +118,13 @@ class NoImageMagick(Exception):
     pass
 
 
+class OutdatedImageMagick(ValueError):
+
+    def __init__(self, detailed_error: str):
+        super().__init__('ImageMagick on this system is too old ImageMagick 7+ required which was first released in 2016')
+        self.detailed_error = detailed_error
+
+
 last_imagemagick_cmd: Sequence[str] = ()
 
 
@@ -237,7 +244,7 @@ def render_image(
                 f.canvas_width, f.canvas_height = map(positive_int, sz.split('x', 1))
                 f.canvas_x, f.canvas_y = map(int, pos.split('+', 1))
             except Exception:
-                raise ValueError(f'Unexpected output filename: {x!r} produced by ImageMagick command: {last_imagemagick_cmd}')
+                raise OutdatedImageMagick(f'Unexpected output filename: {x!r} produced by ImageMagick command: {last_imagemagick_cmd}')
             f.path = output_prefix + f'-{index}.{m.mode}'
             os.rename(os.path.join(tdir, x), f.path)
             check_resize(f)
