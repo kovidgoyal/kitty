@@ -432,8 +432,8 @@ Value of ``d``       Meaning
 
 Note when all placements for an image have been deleted, the image is also
 deleted, if the capital letter form above is specified. Also, when the terminal
-is running out of quota space for image, images without placements will be
-preferentially deleted.
+is running out of quota space for new images, existing images without
+placements will be preferentially deleted.
 
 Some examples::
 
