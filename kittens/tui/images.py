@@ -202,7 +202,7 @@ def render_image(
             # we have to coalesce, resize and de-coalesce all frames
             resize_cmd = ['-coalesce'] + resize_cmd + ['-deconstruct']
         cmd += resize_cmd
-    cmd += ['-depth', '8', '-set', 'filename:f', '%w-%h-%g']
+    cmd += ['-depth', '8', '-set', 'filename:f', '%w-%h-%g-%p']
     ans = RenderedImage(m.fmt, width, height, m.mode)
     if only_first_frame:
         ans.frames = [Frame(m.frames[0])]
@@ -228,7 +228,7 @@ def render_image(
                 ans.width = frame.width
 
     with tempfile.TemporaryDirectory(dir=os.path.dirname(output_prefix)) as tdir:
-        output_template = os.path.join(tdir, f'im-%[filename:f]-%d.{m.mode}')
+        output_template = os.path.join(tdir, f'im-%[filename:f].{m.mode}')
         if get_multiple_frames:
             cmd.append('+adjoin')
         run_imagemagick(path, cmd + [output_template])
