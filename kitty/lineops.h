@@ -91,6 +91,7 @@ void linebuf_clear(LineBuf *, char_type ch);
 void linebuf_index(LineBuf* self, index_type top, index_type bottom);
 void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom);
 void linebuf_clear_line(LineBuf *self, index_type y);
+unsigned int linebuf_continued_lines_count(LineBuf *, index_type);
 void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom);
 void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
 void linebuf_add_line_to_top(LineBuf *, Line *);
