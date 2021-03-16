@@ -91,6 +91,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Graphics protocol: Fix suppression of responses not working for chunked
   transmission (:iss:`3375`)
 
+- Fix inactive tab closing causing active tab to change (:iss:`3398`)
+
 
 0.19.3 [2020-12-19]
 -------------------

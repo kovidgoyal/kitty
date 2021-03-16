@@ -745,29 +745,31 @@ class TabManager:  # {{{
 
     def remove(self, tab: Tab) -> None:
         self._remove_tab(tab)
-        next_active_tab = -1
+        active_tab_needs_to_change = self.active_tab is None or self.active_tab is tab
         while True:
             try:
                 self.active_tab_history.remove(tab.id)
             except ValueError:
                 break
 
-        if self.opts.tab_switch_strategy == 'previous':
-            while self.active_tab_history and next_active_tab < 0:
-                tab_id = self.active_tab_history.pop()
-                for idx, qtab in enumerate(self.tabs):
-                    if qtab.id == tab_id:
-                        next_active_tab = idx
-                        break
-        elif self.opts.tab_switch_strategy == 'left':
-            next_active_tab = max(0, self.active_tab_idx - 1)
-        elif self.opts.tab_switch_strategy == 'right':
-            next_active_tab = min(self.active_tab_idx, len(self.tabs) - 1)
+        if active_tab_needs_to_change:
+            next_active_tab = -1
+            if self.opts.tab_switch_strategy == 'previous':
+                while self.active_tab_history and next_active_tab < 0:
+                    tab_id = self.active_tab_history.pop()
+                    for idx, qtab in enumerate(self.tabs):
+                        if qtab.id == tab_id:
+                            next_active_tab = idx
+                            break
+            elif self.opts.tab_switch_strategy == 'left':
+                next_active_tab = max(0, self.active_tab_idx - 1)
+            elif self.opts.tab_switch_strategy == 'right':
+                next_active_tab = min(self.active_tab_idx, len(self.tabs) - 1)
 
-        if next_active_tab < 0:
-            next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
+            if next_active_tab < 0:
+                next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
 
-        self._set_active_tab(next_active_tab)
+            self._set_active_tab(next_active_tab)
         self.mark_tab_bar_dirty()
         tab.destroy()
 
