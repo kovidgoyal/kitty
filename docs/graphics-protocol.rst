@@ -450,7 +450,8 @@ Suppressing responses from the terminal
 If you are using the graphics protocol from a limited client, such as a shell
 script, it might be useful to avoid having to process responses from the
 terminal. For this, you can use the ``q`` key. Set it to ``1`` to suppress
-``OK`` responses and to ``2`` to suppress failure responses.
+``OK`` responses and to ``2`` to suppress failure responses. In a multichunk
+message, it must appear with the final chunk (i.e. ``q=1,m=0``).
 
 .. versionadded:: 0.19.3
    The ability to suppress responses (see :doc:`kittens/query_terminal` to query kitty version)
