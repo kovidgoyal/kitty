@@ -943,7 +943,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             break;
         case 'm':
             if (start_modifier == '>' && !end_modifier) {
-                REPORT_ERROR("Ignoring xterm specific key modifier resource options (CSI > m)");
+                CALL_CSI_HANDLER2(screen_xtmodkeys, 0, 0);
                 break;
             }
             /* fallthrough */

@@ -260,6 +260,11 @@ and alternate screens. If a pop request is received that empties the stack,
 all flags are reset. If a push request is received and the stack is full, the
 oldest entry from the stack must be evicted.
 
+.. note:: In the interests of interoperation, the XTerm specific sequences
+   `CSI > 4; 1 m` and `CSI > 4; 0 m` are treated as `CSI > 1 u` and `CSI < 1 u`.
+   These codes cause XTerm to use the CSI u encoding for more keys and are therefore
+   treated as similar to the disambiguate progressive enhancement.
+
 .. _disambiguate:
 
 Disambiguate escape codes
