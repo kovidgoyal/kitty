@@ -97,6 +97,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix inactive tab closing causing active tab to change (:iss:`3398`)
 
+- Fix a crash on systems using musl as libc (:iss:`3395`)
+
 
 0.19.3 [2020-12-19]
 -------------------

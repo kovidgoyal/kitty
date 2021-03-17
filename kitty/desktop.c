@@ -11,9 +11,11 @@
 #define FUNC(name, restype, ...) typedef restype (*name##_func)(__VA_ARGS__); static name##_func name = NULL
 #define LOAD_FUNC(handle, name) {\
     *(void **) (&name) = dlsym(handle, #name); \
-    const char* error = dlerror(); \
-    if (error != NULL) { \
-        PyErr_Format(PyExc_OSError, "Failed to load the function %s with error: %s", #name, error); dlclose(handle); handle = NULL; return NULL; \
+    if (!name) { \
+        const char* error = dlerror(); \
+        if (error != NULL) { \
+            PyErr_Format(PyExc_OSError, "Failed to load the function %s with error: %s", #name, error); dlclose(handle); handle = NULL; return NULL; \
+        } \
     } \
 }
 
@@ -139,6 +141,7 @@ load_libcanberra(void) {
     if (PyErr_Occurred()) {
         PyErr_Print();
         dlclose(libcanberra_handle); libcanberra_handle = NULL;
+        return;
     }
     if (ca_context_create(&canberra_ctx) != 0) {
         fprintf(stderr, "Failed to create libcanberra context, cannot play beep sound\n");

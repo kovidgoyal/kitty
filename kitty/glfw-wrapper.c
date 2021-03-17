@@ -379,42 +379,61 @@ load_glfw(const char* path) {
     if (glfwGetRequiredInstanceExtensions_impl == NULL) fail("Failed to load glfw function glfwGetRequiredInstanceExtensions with error: %s", dlerror());
 
     *(void **) (&glfwGetCocoaWindow_impl) = dlsym(handle, "glfwGetCocoaWindow");
+    if (glfwGetCocoaWindow_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwHideCocoaTitlebar_impl) = dlsym(handle, "glfwHideCocoaTitlebar");
+    if (glfwHideCocoaTitlebar_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetNSGLContext_impl) = dlsym(handle, "glfwGetNSGLContext");
+    if (glfwGetNSGLContext_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetCocoaMonitor_impl) = dlsym(handle, "glfwGetCocoaMonitor");
+    if (glfwGetCocoaMonitor_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwSetCocoaTextInputFilter_impl) = dlsym(handle, "glfwSetCocoaTextInputFilter");
+    if (glfwSetCocoaTextInputFilter_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwSetCocoaFileOpenCallback_impl) = dlsym(handle, "glfwSetCocoaFileOpenCallback");
+    if (glfwSetCocoaFileOpenCallback_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwSetCocoaToggleFullscreenIntercept_impl) = dlsym(handle, "glfwSetCocoaToggleFullscreenIntercept");
+    if (glfwSetCocoaToggleFullscreenIntercept_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwSetApplicationShouldHandleReopen_impl) = dlsym(handle, "glfwSetApplicationShouldHandleReopen");
+    if (glfwSetApplicationShouldHandleReopen_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwSetApplicationWillFinishLaunching_impl) = dlsym(handle, "glfwSetApplicationWillFinishLaunching");
+    if (glfwSetApplicationWillFinishLaunching_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetCocoaKeyEquivalent_impl) = dlsym(handle, "glfwGetCocoaKeyEquivalent");
+    if (glfwGetCocoaKeyEquivalent_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwCocoaRequestRenderFrame_impl) = dlsym(handle, "glfwCocoaRequestRenderFrame");
+    if (glfwCocoaRequestRenderFrame_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetX11Display_impl) = dlsym(handle, "glfwGetX11Display");
+    if (glfwGetX11Display_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetX11Window_impl) = dlsym(handle, "glfwGetX11Window");
+    if (glfwGetX11Window_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwSetPrimarySelectionString_impl) = dlsym(handle, "glfwSetPrimarySelectionString");
+    if (glfwSetPrimarySelectionString_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetPrimarySelectionString_impl) = dlsym(handle, "glfwGetPrimarySelectionString");
+    if (glfwGetPrimarySelectionString_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwGetNativeKeyForName_impl) = dlsym(handle, "glfwGetNativeKeyForName");
+    if (glfwGetNativeKeyForName_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwRequestWaylandFrameEvent_impl) = dlsym(handle, "glfwRequestWaylandFrameEvent");
+    if (glfwRequestWaylandFrameEvent_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwDBusUserNotify_impl) = dlsym(handle, "glfwDBusUserNotify");
+    if (glfwDBusUserNotify_impl == NULL) dlerror(); // clear error indicator
 
     *(void **) (&glfwDBusSetUserNotificationHandler_impl) = dlsym(handle, "glfwDBusSetUserNotificationHandler");
+    if (glfwDBusSetUserNotificationHandler_impl == NULL) dlerror(); // clear error indicator
 
     return NULL;
 }
