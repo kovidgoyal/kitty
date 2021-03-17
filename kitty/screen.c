@@ -248,26 +248,16 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 
 
     if (OPT(scrollback_fill_enlarged_window)) {
-      int lines_to_fill = (lines - self->main_linebuf->ynum) \
-                          + (linebuf_continued_lines_count(self->main_linebuf, y) - linebuf_continued_lines_count(n, y));
-
-      while (lines_to_fill > 0) {
-        if (self->historybuf->count <= 0) break;
-
-        unsigned int top = 0, bottom = lines-1;
-
-        linebuf_reverse_index(n, top, bottom);
-        y++;
-        INDEX_GRAPHICS(1);
-
+        int lines_to_fill = (lines - self->main_linebuf->ynum) + (
+              linebuf_continued_lines_count(self->main_linebuf, self->cursor->y) - linebuf_continued_lines_count(n, y));
+        const unsigned int top = 0, bottom = lines-1;
         Line last_history_line = {.xnum=self->historybuf->xnum};
-        bool line_popped = historybuf_pop_line(self->historybuf, &last_history_line);
-        if (!line_popped)
-          break;
-        linebuf_add_line_to_top(n, &last_history_line);
-
-        lines_to_fill--;
-      }
+        while (lines_to_fill-- > 0) {
+            if (!historybuf_pop_line(self->historybuf, &last_history_line)) break;
+            linebuf_reverse_index(n, top, bottom);
+            INDEX_GRAPHICS(1);
+            linebuf_add_line_to_top(n, &last_history_line);
+        }
     }
 
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;

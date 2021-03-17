@@ -304,7 +304,7 @@ class TestScreen(BaseTest):
         self.ae(x_before, s.cursor.x)
 
     def test_scrollback_fill_after_resize(self):
-        def prepare_screen(content=tuple()):
+        def prepare_screen(content=()):
             return self.create_screen(
                 lines=5,
                 cols=5,

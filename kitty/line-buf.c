@@ -327,11 +327,11 @@ is_continued(LineBuf *self, PyObject *val) {
 }
 
 unsigned int
-linebuf_continued_lines_count(LineBuf *self, index_type stop_at_line) {
-    unsigned int count = 0;
-    for (unsigned int i = 0; i < self->ynum && i < stop_at_line; i++)
+linebuf_continued_lines_count(const LineBuf *self, const index_type stop_before_line) {
+    index_type count = 0;
+    for (index_type i = 0; i < self->ynum && i < stop_before_line; i++) {
       if (self->line_attrs[i] & CONTINUED_MASK) count++;
-
+    }
     return count;
 }
 

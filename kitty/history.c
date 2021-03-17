@@ -254,14 +254,10 @@ historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
 
 bool
 historybuf_pop_line(HistoryBuf *self, Line *line) {
-    if (self->count <= 0)
-      return false;
-
-    index_type idx = (self->start_of_data + self->count-1) % self->ynum;
+    if (self->count <= 0) return false;
+    index_type idx = (self->start_of_data + self->count - 1) % self->ynum;
     init_line(self, idx, line);
-
     self->count--;
-
     return true;
 }
 

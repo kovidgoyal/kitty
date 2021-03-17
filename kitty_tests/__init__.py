@@ -91,7 +91,7 @@ class BaseTest(TestCase):
         options = Options(merge_configs(defaults._asdict(), final_options))
         set_options(options)
 
-    def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20, options=None, content=tuple()):
+    def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20, options=None, content=()):
         self.set_options(options)
         c = Callbacks()
         s = Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
