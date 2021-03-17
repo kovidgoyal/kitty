@@ -247,7 +247,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (n == NULL) return false;
 
 
-    if (OPT(scrollback_fill_enlarged_window)) {
+    if (is_main && OPT(scrollback_fill_enlarged_window)) {
         int lines_to_fill = (lines - self->main_linebuf->ynum) + (
               linebuf_continued_lines_count(self->main_linebuf, self->cursor->y) - linebuf_continued_lines_count(n, y));
         const unsigned int top = 0, bottom = lines-1;
