@@ -286,8 +286,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 
     int lines_to_fill = -1;
     if (is_main && OPT(scrollback_fill_enlarged_window)) {
-        lines_to_fill = (lines - self->main_linebuf->ynum) + (
-              linebuf_continued_lines_count(self->main_linebuf, self->cursor->y) - linebuf_continued_lines_count(n, y));
+        lines_to_fill = (lines - self->main_linebuf->ynum) + linebuf_continued_lines_count(self->main_linebuf, self->cursor->y + 1);
     }
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
     if (is_main) setup_cursor();
@@ -325,6 +324,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
         if (self->cursor->y >= self->lines) { self->cursor->y = self->lines - 1; screen_index(self); }
     }
     if (lines_to_fill > 0) {
+        lines_to_fill -= linebuf_continued_lines_count(self->main_linebuf, self->cursor->y + 1);
         const unsigned int top = 0, bottom = self->lines-1;
         while (lines_to_fill-- > 0) {
             if (!historybuf_pop_line(self->historybuf, self->alt_linebuf->line)) break;
