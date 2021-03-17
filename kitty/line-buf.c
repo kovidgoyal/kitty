@@ -326,6 +326,15 @@ is_continued(LineBuf *self, PyObject *val) {
     Py_RETURN_FALSE;
 }
 
+unsigned int
+linebuf_continued_lines_count(LineBuf *self, index_type stop_at_line) {
+    unsigned int count = 0;
+    for (unsigned int i = 0; i < self->ynum && i < stop_at_line; i++)
+      if (self->line_attrs[i] & CONTINUED_MASK) count++;
+
+    return count;
+}
+
 void
 linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom) {
     index_type i;
@@ -394,6 +403,13 @@ delete_lines(LineBuf *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "III", &num, &y, &bottom)) return NULL;
     linebuf_delete_lines(self, num, y, bottom);
     Py_RETURN_NONE;
+}
+
+void
+linebuf_add_line_to_top(LineBuf *self, Line *line) {
+    init_line(self, self->line, self->line_map[0]);
+    copy_line(line, self->line);
+    self->line_attrs[0] = TEXT_DIRTY_MASK | (line->continued ? CONTINUED_MASK : 0);
 }
 
 static PyObject*

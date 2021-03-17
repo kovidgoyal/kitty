@@ -252,6 +252,19 @@ historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
     *attrptr(self, idx) = (line->continued & CONTINUED_MASK) | (line->has_dirty_text ? TEXT_DIRTY_MASK : 0);
 }
 
+bool
+historybuf_pop_line(HistoryBuf *self, Line *line) {
+    if (self->count <= 0)
+      return false;
+
+    index_type idx = (self->start_of_data + self->count-1) % self->ynum;
+    init_line(self, idx, line);
+
+    self->count--;
+
+    return true;
+}
+
 static PyObject*
 line(HistoryBuf *self, PyObject *val) {
 #define line_doc "Return the line with line number val. This buffer grows upwards, i.e. 0 is the most recently added line"

@@ -212,6 +212,15 @@ realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *n
     return ans;
 }
 
+#define INDEX_GRAPHICS(amtv) { \
+    bool is_main = self->linebuf == self->main_linebuf; \
+    static ScrollData s; \
+    s.amt = amtv; s.limit = is_main ? -self->historybuf->ynum : 0; \
+    s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1; \
+    s.margin_top = top; s.margin_bottom = bottom; \
+    grman_scroll_images(self->grman, &s, self->cell_size); \
+}
+
 static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
@@ -236,6 +245,31 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     index_type x = self->cursor->x, y = self->cursor->y;
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &x, &y, &self->as_ansi_buf);
     if (n == NULL) return false;
+
+
+    if (OPT(scrollback_fill_enlarged_window)) {
+      int lines_to_fill = (lines - self->main_linebuf->ynum) \
+                          + (linebuf_continued_lines_count(self->main_linebuf, y) - linebuf_continued_lines_count(n, y));
+
+      while (lines_to_fill > 0) {
+        if (self->historybuf->count <= 0) break;
+
+        unsigned int top = 0, bottom = lines-1;
+
+        linebuf_reverse_index(n, top, bottom);
+        y++;
+        INDEX_GRAPHICS(1);
+
+        Line last_history_line = {.xnum=self->historybuf->xnum};
+        bool line_popped = historybuf_pop_line(self->historybuf, &last_history_line);
+        if (!line_popped)
+          break;
+        linebuf_add_line_to_top(n, &last_history_line);
+
+        lines_to_fill--;
+      }
+    }
+
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
     if (is_main) setup_cursor();
     grman_resize(self->main_grman, self->lines, lines, self->columns, columns);
@@ -1052,15 +1086,6 @@ index_selection(const Screen *self, Selections *selections, bool up) {
             }
         }
     }
-}
-
-#define INDEX_GRAPHICS(amtv) { \
-    bool is_main = self->linebuf == self->main_linebuf; \
-    static ScrollData s; \
-    s.amt = amtv; s.limit = is_main ? -self->historybuf->ynum : 0; \
-    s.has_margins = self->margin_top != 0 || self->margin_bottom != self->lines - 1; \
-    s.margin_top = top; s.margin_bottom = bottom; \
-    grman_scroll_images(self->grman, &s, self->cell_size); \
 }
 
 #define INDEX_UP \
