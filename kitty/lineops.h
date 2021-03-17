@@ -94,7 +94,7 @@ void linebuf_clear_line(LineBuf *self, index_type y);
 unsigned int linebuf_continued_lines_count(const LineBuf *, const index_type);
 void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom);
 void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
-void linebuf_add_line_to_top(LineBuf *, Line *);
+void linebuf_copy_line_to(LineBuf *, Line *, index_type);
 void linebuf_set_attribute(LineBuf *, unsigned int , unsigned int );
 void linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *, index_type *, HistoryBuf *, index_type *, index_type *, ANSIBuf*);
 void linebuf_mark_line_dirty(LineBuf *self, index_type y);

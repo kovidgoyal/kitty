@@ -406,10 +406,10 @@ delete_lines(LineBuf *self, PyObject *args) {
 }
 
 void
-linebuf_add_line_to_top(LineBuf *self, Line *line) {
-    init_line(self, self->line, self->line_map[0]);
+linebuf_copy_line_to(LineBuf *self, Line *line, index_type where) {
+    init_line(self, self->line, self->line_map[where]);
     copy_line(line, self->line);
-    self->line_attrs[0] = TEXT_DIRTY_MASK | (line->continued ? CONTINUED_MASK : 0);
+    self->line_attrs[where] = TEXT_DIRTY_MASK | (line->continued ? CONTINUED_MASK : 0);
 }
 
 static PyObject*

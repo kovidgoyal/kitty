@@ -329,7 +329,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
         while (lines_to_fill-- > 0) {
             if (!historybuf_pop_line(self->historybuf, self->alt_linebuf->line)) break;
             INDEX_DOWN;
-            linebuf_add_line_to_top(self->main_linebuf, self->alt_linebuf->line);
+            linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, 0);
         }
     }
     return true;
