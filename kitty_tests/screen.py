@@ -318,8 +318,10 @@ class TestScreen(BaseTest):
         # Height increased, width unchanged → pull down lines to fill new space at the top
         s = prepare_screen(map(str, range(6)))
         assert_lines('2', '3', '4', '5', '')
+        dist_from_bottom = s.lines - s.cursor.y
         s.resize(7, s.columns)
         assert_lines('0', '1', '2', '3', '4', '5', '')
+        self.ae(dist_from_bottom, s.lines - s.cursor.y)
 
         # Height increased, width increased → rewrap, pull down
         s = prepare_screen(['0', '1', '2', '3' * 15])
