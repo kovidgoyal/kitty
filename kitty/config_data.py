@@ -1575,6 +1575,8 @@ g('shortcuts.misc')  # {{{
 k('toggle_fullscreen', 'kitty_mod+f11', 'toggle_fullscreen', _('Toggle fullscreen'))
 k('toggle_maximized', 'kitty_mod+f10', 'toggle_maximized', _('Toggle maximized'))
 k('input_unicode_character', 'kitty_mod+u', 'kitten unicode_input', _('Unicode input'))
+if is_macos:
+    k('input_unicode_character', 'cmd+ctrl+space', 'kitten unicode_input', _('Unicode input'), add_to_docs=False)
 k('edit_config_file', 'kitty_mod+f2', 'edit_config_file', _('Edit config file'))
 if is_macos:
     k('edit_config_file', 'cmd+,', 'edit_config_file', _('Edit config file'), add_to_docs=False)
