@@ -437,21 +437,21 @@ def draw_parametrized_curve(
                         buf[pos] = min(255, buf[pos] + 255)
 
 
-def rectcircle_equations(
+def rectircle_equations(
     cell_width: int, cell_height: int, supersample_factor: int,
     which: str = '╭'
 ) -> Tuple[ParameterizedFunc, ParameterizedFunc]:
     '''
     Return two functions, x(t) and y(t) that map the parameter t which must be
-    in the range [0, 1] to x and y co-ordinates in the cell. The rectcircle equation
+    in the range [0, 1] to x and y co-ordinates in the cell. The rectircle equation
     we use is:
 
     (|x| / a) ^ (2a / r) + (|y| / a) ^ (2b / r) = 1
 
     where 2a = width, 2b = height and r is radius
 
-    The entire rectcircle fits in four cells, each cell being one quadrant
-    of the full rectcircle and the origin being the center of the rectcircle.
+    The entire rectircle fits in four cells, each cell being one quadrant
+    of the full rectircle and the origin being the center of the rectircle.
     The functions we return do the mapping for the specified cell.
     ╭╮
     ╰╯
@@ -490,7 +490,7 @@ def rectcircle_equations(
 @supersampled()
 def rounded_corner(buf: BufType, width: int, height: int, level: int = 1, which: str = '╭') -> None:
     supersample_factor = getattr(buf, 'supersample_factor')
-    xfunc, yfunc = rectcircle_equations(width, height, supersample_factor, which)
+    xfunc, yfunc = rectircle_equations(width, height, supersample_factor, which)
     draw_parametrized_curve(buf, width, height, level, xfunc, yfunc, supersample_factor)
 
 

@@ -99,7 +99,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix a crash on systems using musl as libc (:iss:`3395`)
 
-- Improve rendering of rounded corners by using a rectcircle equation rather
+- Improve rendering of rounded corners by using a rectircle equation rather
   than a cubic bezier (:iss:`3409`)
 
 
