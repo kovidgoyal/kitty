@@ -416,16 +416,17 @@ def draw_parametrized_curve(
     xfunc: ParameterizedFunc, yfunc: ParameterizedFunc,
     supersample_factor: int
 ) -> None:
-    num_samples = height * supersample_factor * 10
+    num_samples = height * 8
     delta, extra = divmod(thickness(level), 2)
     delta *= supersample_factor
     extra *= supersample_factor
     seen = set()
     for i in range(num_samples + 1):
         t = i / num_samples
-        p = x_p, y_p = int(xfunc(t)), int(yfunc(t))
+        p = int(xfunc(t)), int(yfunc(t))
         if p in seen:
             continue
+        x_p, y_p = p
         seen.add(p)
         for y in range(y_p - delta, y_p + delta + extra):
             if 0 <= y < height:
