@@ -31,6 +31,7 @@ class Env:
     wayland_scanner: str = ''
     wayland_scanner_code: str = ''
     wayland_protocols: Tuple[str, ...] = ()
+    custom_wayland_protocols: Tuple[str, ...] = ()
 
     def __init__(
         self, cc: str = '', cppflags: List[str] = [], cflags: List[str] = [], ldflags: List[str] = [],
@@ -99,7 +100,8 @@ def init_env(env: Env, pkg_config: Callable, pkg_version: Callable, at_least_ver
         scanner_version = tuple(map(int, pkg_config('wayland-scanner', '--modversion')[0].strip().split('.')))
         ans.wayland_scanner_code = 'private-code' if scanner_version >= (1, 14, 91) else 'code'
         ans.wayland_protocols = tuple(sinfo[module]['protocols'])
-        for p in ans.wayland_protocols:
+        ans.custom_wayland_protocols = tuple(sinfo[module]['custom_protocols'])
+        for p in ans.wayland_protocols + ans.custom_wayland_protocols:
             ans.sources.append(wayland_protocol_file_name(p))
             ans.all_headers.append(wayland_protocol_file_name(p, 'h'))
         for dep in 'wayland-client wayland-cursor xkbcommon dbus-1'.split():
@@ -119,8 +121,11 @@ def init_env(env: Env, pkg_config: Callable, pkg_version: Callable, at_least_ver
 
 def build_wayland_protocols(env: Env, Command: Callable, parallel_run: Callable, emphasis: Callable, newer: Callable, dest_dir: str) -> None:
     items = []
-    for protocol in env.wayland_protocols:
-        src = os.path.join(env.wayland_packagedir, protocol)
+    protocols = [(protocol, os.path.join(env.wayland_packagedir, protocol))
+                 for protocol in env.wayland_protocols]
+    protocols += [(protocol, os.path.join(base, protocol))
+                  for protocol in env.custom_wayland_protocols]
+    for protocol, src in protocols:
         if not os.path.exists(src):
             raise SystemExit('The wayland-protocols package on your system is missing the {} protocol definition file'.format(protocol))
         for ext in 'hc':
