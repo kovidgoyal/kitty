@@ -323,12 +323,12 @@ def mid_lines(buf: BufType, width: int, height: int, level: int = 1, pts: Iterab
         thick_line(buf, width, height, supersample_factor * thickness(level), p1, p2)
 
 
-BezierFunc = Callable[[float], float]
+ParameterizedFunc = Callable[[float], float]
 
 
-def cubic_bezier(start: Tuple[int, int], end: Tuple[int, int], c1: Tuple[int, int], c2: Tuple[int, int]) -> Tuple[BezierFunc, BezierFunc]:
+def cubic_bezier(start: Tuple[int, int], end: Tuple[int, int], c1: Tuple[int, int], c2: Tuple[int, int]) -> Tuple[ParameterizedFunc, ParameterizedFunc]:
 
-    def bezier_eq(p0: int, p1: int, p2: int, p3: int) -> BezierFunc:
+    def bezier_eq(p0: int, p1: int, p2: int, p3: int) -> ParameterizedFunc:
 
         def f(t: float) -> float:
             tm1 = 1 - t
@@ -356,7 +356,7 @@ def find_bezier_for_D(width: int, height: int) -> int:
         cx += 1
 
 
-def get_bezier_limits(bezier_x: BezierFunc, bezier_y: BezierFunc) -> Generator[Tuple[float, float], None, int]:
+def get_bezier_limits(bezier_x: ParameterizedFunc, bezier_y: ParameterizedFunc) -> Generator[Tuple[float, float], None, int]:
     start_x = int(bezier_x(0))
     max_x = int(bezier_x(0.5))
     last_t, t_limit = 0., 0.5
@@ -411,11 +411,18 @@ def D(buf: BufType, width: int, height: int, left: bool = True) -> None:
                 buf[offset + dest_x] = mbuf[offset + src_x]
 
 
-def draw_parametrized_curve(buf: BufType, width: int, height: int, delta: int, extra: int, xfunc: BezierFunc, yfunc: BezierFunc) -> None:
-    num_samples = height*4
+def draw_parametrized_curve(
+    buf: BufType, width: int, height: int, level: int,
+    xfunc: ParameterizedFunc, yfunc: ParameterizedFunc,
+    supersample_factor: int
+) -> None:
+    num_samples = height * supersample_factor * 10
+    delta, extra = divmod(thickness(level), 2)
+    delta *= supersample_factor
+    extra *= supersample_factor
     seen = set()
     for i in range(num_samples + 1):
-        t = (i / num_samples)
+        t = i / num_samples
         p = x_p, y_p = int(xfunc(t)), int(yfunc(t))
         if p in seen:
             continue
@@ -429,34 +436,61 @@ def draw_parametrized_curve(buf: BufType, width: int, height: int, delta: int, e
                         buf[pos] = min(255, buf[pos] + 255)
 
 
+def rectcircle_equations(
+    cell_width: int, cell_height: int, supersample_factor: int,
+    which: str = '╭'
+) -> Tuple[ParameterizedFunc, ParameterizedFunc]:
+    '''
+    Return two functions, x(t) and y(t) that map the parameter t which must be
+    in the range [0, 1] to x and y co-ordinates in the cell. The rectcircle equation
+    we use is:
+
+    (|x| / a) ^ (2a / r) + (|y| / a) ^ (2b / r) = 1
+
+    where 2a = width, 2b = height and r is radius
+
+    The entire rectcircle fits in four cells, each cell being one quadrant
+    of the full rectcircle and the origin being the center of the rectcircle.
+    The functions we return do the mapping for the specified cell.
+    ╭╮
+    ╰╯
+    See https://math.stackexchange.com/questions/1649714
+    '''
+    a = ((cell_width // supersample_factor) // 2) * supersample_factor
+    b = ((cell_height // supersample_factor) // 2) * supersample_factor
+    radius = cell_width / 2
+    yexp = cell_height / radius
+    xexp = radius / cell_width
+    pow = math.pow
+    left_quadrants, lower_quadrants = {'╭': (True, False), '╮': (False, False), '╰': (True, True), '╯': (False, True)}[which]
+    adjust_left_quadrant = (cell_width // supersample_factor % 2) * supersample_factor
+
+    if lower_quadrants:
+        def y(t: float) -> float:  # 0 -> top of cell, 1 -> middle of cell
+            return t * b
+    else:
+        def y(t: float) -> float:  # 0 -> bottom of cell, 1 -> middle of cell
+            return (2 - t) * b
+
+    # x(t). To get this we first need |y(t)|/b. This is just t since as t goes
+    # from 0 to 1 y goes from either 0 to b or 0 to -b
+    if left_quadrants:
+        def x(t: float) -> float:
+            xterm = 1 - pow(t, yexp)
+            return cell_width - abs(a * pow(xterm, xexp)) - adjust_left_quadrant
+    else:
+        def x(t: float) -> float:
+            xterm = 1 - pow(t, yexp)
+            return abs(a * pow(xterm, xexp))
+
+    return x, y
+
+
 @supersampled()
 def rounded_corner(buf: BufType, width: int, height: int, level: int = 1, which: str = '╭') -> None:
     supersample_factor = getattr(buf, 'supersample_factor')
-    delta, extra = divmod(thickness(level), 2)
-    hw = ((width / supersample_factor) // 2) * supersample_factor
-    hh = ((height / supersample_factor) // 2) * supersample_factor
-    if which == '╭':
-        start = hw, height - 1
-        end = width - 1, hh
-        c1 = hw, int(0.75 * height)
-        c2 = hw, hh + 1
-    elif which == '╮':
-        start = 0, hh
-        end = hw, height - 1
-        c1 = hw, hh + 1
-        c2 = hw, int(0.75 * height)
-    elif which == '╰':
-        start = width // 2, 0
-        end = width - 1, hh
-        c1 = hw, int(0.25 * height)
-        c2 = hw, hh - 1
-    elif which == '╯':
-        start = 0, hh
-        end = hw, 0
-        c1 = hw, hh - 1
-        c2 = hw, int(0.25 * height)
-    xfunc, yfunc = cubic_bezier(start, end, c1, c2)
-    draw_parametrized_curve(buf, width, height, delta * supersample_factor, extra * supersample_factor, xfunc, yfunc)
+    xfunc, yfunc = rectcircle_equations(width, height, supersample_factor, which)
+    draw_parametrized_curve(buf, width, height, level, xfunc, yfunc, supersample_factor)
 
 
 def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> Tuple[int, int]:
