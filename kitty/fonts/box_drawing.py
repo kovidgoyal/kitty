@@ -413,9 +413,9 @@ def D(buf: BufType, width: int, height: int, left: bool = True) -> None:
 
 def draw_parametrized_curve(
     buf: BufType, width: int, height: int, level: int,
-    xfunc: ParameterizedFunc, yfunc: ParameterizedFunc,
-    supersample_factor: int
+    xfunc: ParameterizedFunc, yfunc: ParameterizedFunc
 ) -> None:
+    supersample_factor = getattr(buf, 'supersample_factor')
     num_samples = height * 8
     delta, extra = divmod(thickness(level), 2)
     delta *= supersample_factor
@@ -491,7 +491,7 @@ def rectircle_equations(
 def rounded_corner(buf: BufType, width: int, height: int, level: int = 1, which: str = '╭') -> None:
     supersample_factor = getattr(buf, 'supersample_factor')
     xfunc, yfunc = rectircle_equations(width, height, supersample_factor, which)
-    draw_parametrized_curve(buf, width, height, level, xfunc, yfunc, supersample_factor)
+    draw_parametrized_curve(buf, width, height, level, xfunc, yfunc)
 
 
 def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> Tuple[int, int]:
