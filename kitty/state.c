@@ -60,6 +60,27 @@ GlobalState global_state = {{0}};
             if (wp->id == cb_window_id && cb_window_id) global_state.callback_os_window = wp; \
     }}
 
+static inline double
+dpi_for_os_window_id(id_type os_window_id) {
+    double dpi = 0;
+    if (os_window_id) {
+        WITH_OS_WINDOW(os_window_id)
+            dpi = (os_window->logical_dpi_x + os_window->logical_dpi_y) / 2.;
+        END_WITH_OS_WINDOW
+    }
+    if (dpi == 0) {
+        dpi = (global_state.default_dpi.x + global_state.default_dpi.y) / 2.;
+    }
+    return dpi;
+}
+
+
+static long
+pt_to_px(double pt, id_type os_window_id) {
+    const double dpi = dpi_for_os_window_id(os_window_id);
+    return ((long)round((pt * (dpi / 72.0))));
+}
+
 
 OSWindow*
 current_os_window() {
@@ -986,26 +1007,11 @@ PYWRAP1(sync_os_window_title) {
 }
 
 
-static inline double
-dpi_for_os_window_id(id_type os_window_id) {
-    double dpi = 0;
-    if (os_window_id) {
-        WITH_OS_WINDOW(os_window_id)
-            dpi = (os_window->logical_dpi_x + os_window->logical_dpi_y) / 2.;
-        END_WITH_OS_WINDOW
-    }
-    if (dpi == 0) {
-        dpi = (global_state.default_dpi.x + global_state.default_dpi.y) / 2.;
-    }
-    return dpi;
-}
-
 PYWRAP1(pt_to_px) {
-    double pt, dpi = 0;
+    double pt;
     id_type os_window_id = 0;
     PA("d|K", &pt, &os_window_id);
-    dpi = dpi_for_os_window_id(os_window_id);
-    return PyLong_FromLong((long)round((pt * (dpi / 72.0))));
+    return PyLong_FromLong(pt_to_px(pt, os_window_id));
 }
 
 PYWRAP1(global_font_size) {
