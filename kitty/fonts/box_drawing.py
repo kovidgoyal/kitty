@@ -464,7 +464,8 @@ def rectircle_equations(
     xexp = radius / cell_width
     pow = math.pow
     left_quadrants, lower_quadrants = {'╭': (True, False), '╮': (False, False), '╰': (True, True), '╯': (False, True)}[which]
-    adjust_left_quadrant = (cell_width // supersample_factor % 2) * supersample_factor
+    cell_width_is_odd = (cell_width // supersample_factor) % 2
+    adjust_x = cell_width_is_odd * supersample_factor
 
     if lower_quadrants:
         def y(t: float) -> float:  # 0 -> top of cell, 1 -> middle of cell
@@ -478,7 +479,7 @@ def rectircle_equations(
     if left_quadrants:
         def x(t: float) -> float:
             xterm = 1 - pow(t, yexp)
-            return cell_width - abs(a * pow(xterm, xexp)) - adjust_left_quadrant
+            return cell_width - abs(a * pow(xterm, xexp)) - adjust_x
     else:
         def x(t: float) -> float:
             xterm = 1 - pow(t, yexp)
