@@ -102,6 +102,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Improve rendering of rounded corners by using a rectircle equation rather
   than a cubic bezier (:iss:`3409`)
 
+- Graphics protocol: Add a control to allow clients to specify that the cursor
+  should not move when displaying an image (:iss:`3411`)
+
 
 0.19.3 [2020-12-19]
 -------------------

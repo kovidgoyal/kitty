@@ -39,7 +39,8 @@ static inline void parse_graphics_code(Screen *screen,
     num_lines = 'r',
     cell_x_offset = 'X',
     cell_y_offset = 'Y',
-    z_index = 'z'
+    z_index = 'z',
+    cursor_movement = 'C'
   };
 
   enum KEYS key = 'a';
@@ -121,6 +122,9 @@ static inline void parse_graphics_code(Screen *screen,
       case z_index:
         value_state = INT;
         break;
+      case cursor_movement:
+        value_state = UINT;
+        break;
       default:
         REPORT_ERROR("Malformed GraphicsCommand control block, invalid key "
                      "character: 0x%x",
@@ -144,9 +148,9 @@ static inline void parse_graphics_code(Screen *screen,
 
       case action: {
         g.action = screen->parser_buf[pos++] & 0xff;
-        if (g.action != 'q' && g.action != 'd' && g.action != 'p' &&
-            g.action != 't' && g.action != 'T' && g.action != 'f' &&
-            g.action != 'a') {
+        if (g.action != 't' && g.action != 'a' && g.action != 'T' &&
+            g.action != 'f' && g.action != 'd' && g.action != 'p' &&
+            g.action != 'q') {
           REPORT_ERROR("Malformed GraphicsCommand control block, unknown flag "
                        "value for action: 0x%x",
                        g.action);
@@ -156,16 +160,16 @@ static inline void parse_graphics_code(Screen *screen,
 
       case delete_action: {
         g.delete_action = screen->parser_buf[pos++] & 0xff;
-        if (g.delete_action != 'F' && g.delete_action != 'n' &&
-            g.delete_action != 'x' && g.delete_action != 'I' &&
-            g.delete_action != 'p' && g.delete_action != 'i' &&
-            g.delete_action != 'C' && g.delete_action != 'Q' &&
-            g.delete_action != 'A' && g.delete_action != 'z' &&
-            g.delete_action != 'y' && g.delete_action != 'c' &&
-            g.delete_action != 'Z' && g.delete_action != 'N' &&
-            g.delete_action != 'X' && g.delete_action != 'q' &&
-            g.delete_action != 'P' && g.delete_action != 'f' &&
-            g.delete_action != 'Y' && g.delete_action != 'a') {
+        if (g.delete_action != 'Q' && g.delete_action != 'N' &&
+            g.delete_action != 'z' && g.delete_action != 'p' &&
+            g.delete_action != 'X' && g.delete_action != 'a' &&
+            g.delete_action != 'y' && g.delete_action != 'f' &&
+            g.delete_action != 'Z' && g.delete_action != 'F' &&
+            g.delete_action != 'Y' && g.delete_action != 'n' &&
+            g.delete_action != 'C' && g.delete_action != 'q' &&
+            g.delete_action != 'c' && g.delete_action != 'i' &&
+            g.delete_action != 'A' && g.delete_action != 'P' &&
+            g.delete_action != 'I' && g.delete_action != 'x') {
           REPORT_ERROR("Malformed GraphicsCommand control block, unknown flag "
                        "value for delete_action: 0x%x",
                        g.delete_action);
@@ -175,8 +179,8 @@ static inline void parse_graphics_code(Screen *screen,
 
       case transmission_type: {
         g.transmission_type = screen->parser_buf[pos++] & 0xff;
-        if (g.transmission_type != 's' && g.transmission_type != 'f' &&
-            g.transmission_type != 'd' && g.transmission_type != 't') {
+        if (g.transmission_type != 's' && g.transmission_type != 't' &&
+            g.transmission_type != 'd' && g.transmission_type != 'f') {
           REPORT_ERROR("Malformed GraphicsCommand control block, unknown flag "
                        "value for transmission_type: 0x%x",
                        g.transmission_type);
@@ -264,6 +268,7 @@ static inline void parse_graphics_code(Screen *screen,
         U(num_lines);
         U(cell_x_offset);
         U(cell_y_offset);
+        U(cursor_movement);
       default:
         break;
       }
@@ -322,8 +327,8 @@ static inline void parse_graphics_code(Screen *screen,
   }
 
   REPORT_VA_COMMAND(
-      "s {sc sc sc sc sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI si "
-      "sI} y#",
+      "s {sc sc sc sc sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI sI "
+      "si sI} y#",
       "graphics_command", "action", g.action, "delete_action", g.delete_action,
       "transmission_type", g.transmission_type, "compressed", g.compressed,
       "format", (unsigned int)g.format, "more", (unsigned int)g.more, "id",
@@ -336,8 +341,9 @@ static inline void parse_graphics_code(Screen *screen,
       (unsigned int)g.data_sz, "data_offset", (unsigned int)g.data_offset,
       "num_cells", (unsigned int)g.num_cells, "num_lines",
       (unsigned int)g.num_lines, "cell_x_offset", (unsigned int)g.cell_x_offset,
-      "cell_y_offset", (unsigned int)g.cell_y_offset, "z_index", (int)g.z_index,
-      "payload_sz", g.payload_sz, payload, g.payload_sz);
+      "cell_y_offset", (unsigned int)g.cell_y_offset, "cursor_movement",
+      (unsigned int)g.cursor_movement, "z_index", (int)g.z_index, "payload_sz",
+      g.payload_sz, payload, g.payload_sz);
 
   screen_handle_graphics_command(screen, &g, payload);
 }

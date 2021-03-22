@@ -10,7 +10,7 @@
 
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
-    uint32_t format, more, id, image_number, data_sz, data_offset, placement_id, quiet;
+    uint32_t format, more, id, image_number, data_sz, data_offset, placement_id, quiet, cursor_movement;
     uint32_t width, height, x_offset, y_offset, data_height, data_width, num_cells, num_lines, cell_x_offset, cell_y_offset;
     int32_t z_index;
     size_t payload_sz;

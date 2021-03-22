@@ -273,6 +273,7 @@ def graphics_parser() -> None:
         'X': ('cell_x_offset', 'uint'),
         'Y': ('cell_y_offset', 'uint'),
         'z': ('z_index', 'int'),
+        'C': ('cursor_movement', 'uint'),
     }
     text = generate('parse_graphics_code', 'screen_handle_graphics_command', 'graphics_command', keymap, 'GraphicsCommand')
     write_header(text, 'kitty/parse-graphics-command.h')
