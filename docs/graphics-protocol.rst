@@ -686,8 +686,8 @@ Key      Value                 Default    Description
 ``Y``    Positive integer      ``0``      The y-offset within the first cell at which to start displaying the image
 ``c``    Positive integer      ``0``      The number of columns to display the image over
 ``r``    Positive integer      ``0``      The number of rows to display the image over
-``C``    Positive integer      ``0``      Cursor movement policy. ``0`` is the default, to move the cursor after the image.
-                                          ``1`` is to not move the cursor at all when placing images.
+``C``    Positive integer      ``0``      Cursor movement policy. ``0`` is the default, to move the cursor to after the image.
+                                          ``1`` is to not move the cursor at all when placing the image.
 ``z``    32-bit integer        ``0``      The *z-index* vertical stacking order of the image
 
 **Keys for animation frame loading**
