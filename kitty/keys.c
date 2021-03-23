@@ -85,7 +85,9 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
     unsigned int left = w->geometry.left, top = w->geometry.top;
     left += screen->cursor->x * cell_width;
     top += screen->cursor->y * cell_height;
-    glfwUpdateIMEState(global_state.callback_os_window->handle, 2, left, top, cell_width, cell_height);
+    GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_CURSOR_POSITION };
+    ev.cursor.left = left; ev.cursor.top = top; ev.cursor.width = cell_width; ev.cursor.height = cell_height;
+    glfwUpdateIMEState(global_state.callback_os_window->handle, &ev);
 }
 
 void

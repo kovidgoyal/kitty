@@ -3085,8 +3085,8 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
 }
 
 void
-_glfwPlatformUpdateIMEState(_GLFWwindow *w, GLFWIMEUpdateState which, int a, int b, int c, int d) {
-    glfw_xkb_update_ime_state(w, &_glfw.x11.xkb, which, a, b, c, d);
+_glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
+    glfw_xkb_update_ime_state(w, &_glfw.x11.xkb, ev);
 }
 
 //////////////////////////////////////////////////////////////////////////

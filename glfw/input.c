@@ -1010,13 +1010,13 @@ GLFWAPI GLFWkeyboardfun glfwSetKeyboardCallback(GLFWwindow* handle, GLFWkeyboard
     return cbfun;
 }
 
-GLFWAPI void glfwUpdateIMEState(GLFWwindow* handle, GLFWIMEUpdateState which, int a, int b, int c, int d) {
+GLFWAPI void glfwUpdateIMEState(GLFWwindow* handle, const GLFWIMEUpdateEvent *ev) {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);
 
     _GLFW_REQUIRE_INIT();
 #if defined(_GLFW_X11) || defined(_GLFW_WAYLAND) || defined(_GLFW_COCOA)
-    _glfwPlatformUpdateIMEState(window, which, a, b, c, d);
+    _glfwPlatformUpdateIMEState(window, ev);
 #else
     (void)window; (void)which; (void)a; (void)b; (void)c; (void)d;
 #endif

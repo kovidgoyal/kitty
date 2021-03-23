@@ -933,7 +933,17 @@ typedef enum {
 typedef enum {
     GLFW_IME_UPDATE_FOCUS = 1,
     GLFW_IME_UPDATE_CURSOR_POSITION = 2
-} GLFWIMEUpdateState;
+} GLFWIMEUpdateType;
+
+typedef struct GLFWIMEUpdateEvent {
+    GLFWIMEUpdateType type;
+    const char *before_text, *at_text, *after_text;
+    bool focused;
+    struct {
+        int left, top, width, height;
+    } cursor;
+} GLFWIMEUpdateEvent;
+
 
 typedef struct GLFWkeyevent
 {
@@ -1932,7 +1942,7 @@ typedef GLFWkeyboardfun (*glfwSetKeyboardCallback_func)(GLFWwindow*, GLFWkeyboar
 GFW_EXTERN glfwSetKeyboardCallback_func glfwSetKeyboardCallback_impl;
 #define glfwSetKeyboardCallback glfwSetKeyboardCallback_impl
 
-typedef void (*glfwUpdateIMEState_func)(GLFWwindow*, GLFWIMEUpdateState, int, int, int, int);
+typedef void (*glfwUpdateIMEState_func)(GLFWwindow*, const GLFWIMEUpdateEvent*);
 GFW_EXTERN glfwUpdateIMEState_func glfwUpdateIMEState_impl;
 #define glfwUpdateIMEState glfwUpdateIMEState_impl
 

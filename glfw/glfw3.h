@@ -1195,7 +1195,17 @@ typedef enum {
 typedef enum {
     GLFW_IME_UPDATE_FOCUS = 1,
     GLFW_IME_UPDATE_CURSOR_POSITION = 2
-} GLFWIMEUpdateState;
+} GLFWIMEUpdateType;
+
+typedef struct GLFWIMEUpdateEvent {
+    GLFWIMEUpdateType type;
+    const char *before_text, *at_text, *after_text;
+    bool focused;
+    struct {
+        int left, top, width, height;
+    } cursor;
+} GLFWIMEUpdateEvent;
+
 
 typedef struct GLFWkeyevent
 {
@@ -4545,16 +4555,12 @@ GLFWAPI GLFWkeyboardfun glfwSetKeyboardCallback(GLFWwindow* window, GLFWkeyboard
  * Used to notify the IME system of changes in state such as focus gained/lost
  * and text cursor position.
  *
- * @param which: What data to notify.
- * @param a, b, c, d: Interpreted based on the value of which. When which is GLFW_IME_UPDATE_FOCUS
- * a is interpreted as a boolean indicating focus gained/lost. When which is GLFW_IME_UPDATE_CURSOR_POSITION
- * a, b, c, d are the cursor x, y, width and height values (in the window co-ordinate
- * system).
+ * @param ev: What data to notify.
  *
  *  @ingroup input
  *  @since Added in version 4.0
  */
-GLFWAPI void glfwUpdateIMEState(GLFWwindow* window, GLFWIMEUpdateState which, int a, int b, int c, int d);
+GLFWAPI void glfwUpdateIMEState(GLFWwindow* window, const GLFWIMEUpdateEvent *ev);
 
 
 /*! @brief Sets the mouse button callback.
