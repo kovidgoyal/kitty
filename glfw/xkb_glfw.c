@@ -575,7 +575,7 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
     if (failed && window && window->callbacks.keyboard) {
         // notify application to remove any existing pre-edit text
         GLFWkeyevent fake_ev = {.action = GLFW_PRESS};
-        fake_ev.ime_state = 1;
+        fake_ev.ime_state = GLFW_IME_PREEDIT_CHANGED;
         window->callbacks.keyboard((GLFWwindow*) window, &fake_ev);
     }
     static xkb_keycode_t last_handled_press_keycode = 0;
@@ -594,7 +594,7 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
             format_mods(ev->glfw_ev.mods), ev->glfw_ev.text
         );
 
-        ev->glfw_ev.ime_state = 0;
+        ev->glfw_ev.ime_state = GLFW_IME_NONE;
         _glfwInputKeyboard(window, &ev->glfw_ev);
     } else debug("↳ discarded\n");
     if (!is_release && handled_by_ime)

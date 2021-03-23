@@ -1184,6 +1184,11 @@ typedef enum {
     GLFW_PRESS = 1,
     GLFW_REPEAT = 2
 } GLFWKeyAction;
+typedef enum {
+    GLFW_IME_NONE,
+    GLFW_IME_PREEDIT_CHANGED,
+    GLFW_IME_COMMIT_TEXT
+} GLFWIMEState;
 
 typedef struct GLFWkeyevent
 {
@@ -1203,9 +1208,9 @@ typedef struct GLFWkeyevent
     const char *text;
 
     // Used for Input Method events. Zero for normal key events.
-    //   A value of 1 means the pre-edit text for the input event has been changed.
-    //   A value of 2 means the text should be committed.
-    int ime_state;
+    //   A value of GLFW_IME_PREEDIT_CHANGED means the pre-edit text for the input event has been changed.
+    //   A value of GLFW_IME_COMMIT_TEXT means the text should be committed.
+    GLFWIMEState ime_state;
 } GLFWkeyevent;
 
 /*! @brief The function pointer type for error callbacks.
