@@ -1296,10 +1296,10 @@ is_ascii_control_char(char x) {
 }
 
 void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
-    [w->ns.view updateIMEStateFor: which left:(CGFloat)ev->cursor.left top:(CGFloat)ev->cursor.top cellWidth:(CGFloat)ev->cursor.width cellHeight:(CGFloat)ev->cursor.height];
+    [w->ns.view updateIMEStateFor: ev->type left:(CGFloat)ev->cursor.left top:(CGFloat)ev->cursor.top cellWidth:(CGFloat)ev->cursor.width cellHeight:(CGFloat)ev->cursor.height];
 }
 
-- (void)updateIMEStateFor:(GLFWIMEUpdateState)which
+- (void)updateIMEStateFor:(GLFWIMEUpdateType)which
                      left:(CGFloat)left
                       top:(CGFloat)top
                 cellWidth:(CGFloat)cellWidth
