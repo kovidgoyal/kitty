@@ -8,18 +8,19 @@
 #include "wl_text_input.h"
 #include "internal.h"
 #include "wayland-text-input-unstable-v3-client-protocol.h"
+#define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
 
 static struct zwp_text_input_v3*                  text_input;
 static struct zwp_text_input_manager_v3*          text_input_manager;
 
 static void
 text_input_enter(void *data UNUSED, struct zwp_text_input_v3 *text_input UNUSED, struct wl_surface *surface UNUSED) {
-    printf("enter text input\n");
+    debug("text-input: enter event\n");
 }
 
 static void
 text_input_leave(void *data UNUSED, struct zwp_text_input_v3 *text_input UNUSED, struct wl_surface *surface UNUSED) {
-    printf("leave text input\n");
+    debug("text-input: leave event\n");
 }
 
 static void
