@@ -278,7 +278,7 @@ __str__(HistoryBuf *self) {
     if (lines == NULL) return PyErr_NoMemory();
     for (index_type i = 0; i < self->count; i++) {
         init_line(self, index_of(self, i), self->line);
-        PyObject *t = line_as_unicode(self->line);
+        PyObject *t = line_as_unicode(self->line, false);
         if (t == NULL) { Py_CLEAR(lines); return NULL; }
         PyTuple_SET_ITEM(lines, i, t);
     }
