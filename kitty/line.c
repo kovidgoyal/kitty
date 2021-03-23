@@ -229,7 +229,7 @@ cell_as_utf8_for_fallback(CPUCell *cell, char *buf) {
 
 
 PyObject*
-unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc, char leading_char) {
+unicode_in_range(const Line *self, const index_type start, const index_type limit, const bool include_cc, const char leading_char, const bool skip_zero_cells) {
     size_t n = 0;
     static Py_UCS4 buf[4096];
     if (leading_char) buf[n++] = leading_char;
@@ -238,6 +238,7 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
         char_type ch = self->cpu_cells[i].ch;
         if (ch == 0) {
             if (previous_width == 2) { previous_width = 0; continue; };
+            if (skip_zero_cells) continue;
         }
         if (ch == '\t') {
             buf[n++] = '\t';
@@ -255,8 +256,8 @@ unicode_in_range(Line *self, index_type start, index_type limit, bool include_cc
 }
 
 PyObject *
-line_as_unicode(Line* self) {
-    return unicode_in_range(self, 0, xlimit_for_line(self), true, 0);
+line_as_unicode(Line* self, bool skip_zero_cells) {
+    return unicode_in_range(self, 0, xlimit_for_line(self), true, 0, skip_zero_cells);
 }
 
 static PyObject*
@@ -380,7 +381,7 @@ is_continued(Line* self, PyObject *a UNUSED) {
 
 static PyObject*
 __repr__(Line* self) {
-    PyObject *s = line_as_unicode(self);
+    PyObject *s = line_as_unicode(self, false);
     if (s == NULL) return NULL;
     PyObject *ans = PyObject_Repr(s);
     Py_CLEAR(s);
@@ -784,7 +785,7 @@ mark_text_in_line(PyObject *marker, Line *line) {
         for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs &= ATTRS_MASK_WITHOUT_MARK;
         return;
     }
-    PyObject *text = line_as_unicode(line);
+    PyObject *text = line_as_unicode(line, false);
     if (PyUnicode_GET_LENGTH(text) > 0) {
         apply_marker(marker, line, text);
     } else {
@@ -827,7 +828,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
                 Py_CLEAR(ret);
             }
         } else {
-            t = line_as_unicode(line);
+            t = line_as_unicode(line, false);
         }
         if (t == NULL) goto end;
         ret = PyObject_CallFunctionObjArgs(callback, t, NULL);
