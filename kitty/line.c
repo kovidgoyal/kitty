@@ -736,8 +736,8 @@ apply_mark(Line *line, const attrs_type mark, index_type *cell_pos, unsigned int
 #define MARK { line->gpu_cells[x].attrs &= ATTRS_MASK_WITHOUT_MARK; line->gpu_cells[x].attrs |= mark; }
     index_type x = *cell_pos;
     MARK;
+    (*match_pos)++;
     if (line->cpu_cells[x].ch) {
-        (*match_pos)++;
         if (line->cpu_cells[x].ch == '\t') {
             unsigned num_cells_to_skip_for_tab = line->cpu_cells[x].cc_idx[0];
             while (num_cells_to_skip_for_tab && x + 1 < line->xnum && line->cpu_cells[x+1].ch == ' ') {

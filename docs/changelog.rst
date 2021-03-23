@@ -105,6 +105,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Graphics protocol: Add a control to allow clients to specify that the cursor
   should not move when displaying an image (:iss:`3411`)
 
+- Fix marking of text not working on lines that contain zero cells
+  (:iss:`3403`)
+
 
 0.19.3 [2020-12-19]
 -------------------
