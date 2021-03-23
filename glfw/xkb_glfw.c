@@ -349,7 +349,9 @@ glfw_xkb_create_context(_GLFWXKBData *xkb) {
                         "Failed to initialize XKB context");
         return false;
     }
+#ifndef _GLFW_WAYLAND
     glfw_connect_to_ibus(&xkb->ibus);
+#endif
     return true;
 }
 

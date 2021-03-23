@@ -584,6 +584,7 @@ static void registryHandleGlobal(void* data UNUSED,
             if (_glfw.wl.primarySelectionDeviceManager && !_glfw.wl.primarySelectionDevice) {
                 _glfwSetupWaylandPrimarySelectionDevice();
             }
+            _glfwWaylandInitTextInput();
         }
     }
     else if (strcmp(interface, "xdg_wm_base") == 0)
@@ -616,6 +617,11 @@ static void registryHandleGlobal(void* data UNUSED,
             wl_registry_bind(registry, name,
                              &zwp_pointer_constraints_v1_interface,
                              1);
+    }
+    else if (strcmp(interface, GLFW_WAYLAND_TEXT_INPUT_INTERFACE_NAME) == 0)
+    {
+        _glfwWaylandBindTextInput(registry, name);
+        _glfwWaylandInitTextInput();
     }
     else if (strcmp(interface, "zwp_idle_inhibit_manager_v1") == 0)
     {
@@ -847,6 +853,7 @@ void _glfwPlatformTerminate(void)
         zwp_relative_pointer_manager_v1_destroy(_glfw.wl.relativePointerManager);
     if (_glfw.wl.pointerConstraints)
         zwp_pointer_constraints_v1_destroy(_glfw.wl.pointerConstraints);
+    _glfwWaylandDestroyTextInput();
     if (_glfw.wl.idleInhibitManager)
         zwp_idle_inhibit_manager_v1_destroy(_glfw.wl.idleInhibitManager);
     if (_glfw.wl.dataSourceForClipboard)
