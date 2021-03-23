@@ -917,16 +917,23 @@ typedef struct GLFWwindow GLFWwindow;
  *  @ingroup input
  */
 typedef struct GLFWcursor GLFWcursor;
+
 typedef enum {
     GLFW_RELEASE = 0,
     GLFW_PRESS = 1,
     GLFW_REPEAT = 2
 } GLFWKeyAction;
+
 typedef enum {
     GLFW_IME_NONE,
     GLFW_IME_PREEDIT_CHANGED,
     GLFW_IME_COMMIT_TEXT
 } GLFWIMEState;
+
+typedef enum {
+    GLFW_IME_UPDATE_FOCUS = 1,
+    GLFW_IME_UPDATE_CURSOR_POSITION = 2
+} GLFWIMEUpdateState;
 
 typedef struct GLFWkeyevent
 {
@@ -1925,7 +1932,7 @@ typedef GLFWkeyboardfun (*glfwSetKeyboardCallback_func)(GLFWwindow*, GLFWkeyboar
 GFW_EXTERN glfwSetKeyboardCallback_func glfwSetKeyboardCallback_impl;
 #define glfwSetKeyboardCallback glfwSetKeyboardCallback_impl
 
-typedef void (*glfwUpdateIMEState_func)(GLFWwindow*, int, int, int, int, int);
+typedef void (*glfwUpdateIMEState_func)(GLFWwindow*, GLFWIMEUpdateState, int, int, int, int);
 GFW_EXTERN glfwUpdateIMEState_func glfwUpdateIMEState_impl;
 #define glfwUpdateIMEState glfwUpdateIMEState_impl
 

@@ -555,13 +555,13 @@ format_xkb_mods(_GLFWXKBData *xkb, const char* name, xkb_mod_mask_t mods) {
 }
 
 void
-glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, int which, int a, int b, int c, int d) {
+glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, GLFWIMEUpdateState which, int a, int b, int c, int d) {
     int x = 0, y = 0;
     switch(which) {
-        case 1:
+        case GLFW_IME_UPDATE_FOCUS:
             glfw_ibus_set_focused(&xkb->ibus, a ? true : false);
             break;
-        case 2:
+        case GLFW_IME_UPDATE_CURSOR_POSITION:
             _glfwPlatformGetWindowPos(w, &x, &y);
             x += a; y += b;
             glfw_ibus_set_cursor_geometry(&xkb->ibus, x, y, c, d);

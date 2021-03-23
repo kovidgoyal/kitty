@@ -1295,11 +1295,11 @@ is_ascii_control_char(char x) {
     [[markedText mutableString] setString:@""];
 }
 
-void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c, int d) {
+void _glfwPlatformUpdateIMEState(_GLFWwindow *w, GLFWIMEUpdateState which, int a, int b, int c, int d) {
     [w->ns.view updateIMEStateFor: which left:(CGFloat)a top:(CGFloat)b cellWidth:(CGFloat)c cellHeight:(CGFloat)d];
 }
 
-- (void)updateIMEStateFor:(int)which
+- (void)updateIMEStateFor:(GLFWIMEUpdateState)which
                      left:(CGFloat)left
                       top:(CGFloat)top
                 cellWidth:(CGFloat)cellWidth
