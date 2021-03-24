@@ -961,7 +961,7 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
         bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
         bool is_empty = is_special && is_empty_glyph(glyph_id, font);
         uint32_t num_codepoints_used_by_glyph = 0;
-        bool is_last_glyph = G(glyph_idx) == G(num_glyphs) - 1;
+        bool is_last_glyph = G(glyph_idx) == G(num_glyphs) - 1, is_first_glyph = G(glyph_idx) == 0;
         Group *current_group = G(groups) + G(group_idx);
         if (is_last_glyph) {
             num_codepoints_used_by_glyph = UINT32_MAX;
@@ -977,7 +977,8 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
             else add_to_current_group = ligature_type == INFINITE_LIGATURE_MIDDLE || ligature_type == INFINITE_LIGATURE_END || is_empty;
         } else {
             if (is_special) {
-                if (font->spacer_strategy == SPACERS_BEFORE) add_to_current_group = G(prev_was_empty);
+                if (!is_first_glyph && !current_group->num_cells) add_to_current_group = true;
+                else if (font->spacer_strategy == SPACERS_BEFORE) add_to_current_group = G(prev_was_empty);
                 else add_to_current_group = is_empty;
             } else {
                 add_to_current_group = !G(prev_was_special);
