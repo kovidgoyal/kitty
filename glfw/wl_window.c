@@ -2104,11 +2104,6 @@ VkResult _glfwPlatformCreateWindowSurface(VkInstance instance,
     return err;
 }
 
-void
-_glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
-    glfw_xkb_update_ime_state(w, &_glfw.wl.xkb, ev);
-}
-
 static void
 frame_handle_redraw(void *data, struct wl_callback *callback, uint32_t time UNUSED) {
     _GLFWwindow* window = (_GLFWwindow*) data;
