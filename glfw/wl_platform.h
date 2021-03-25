@@ -132,7 +132,7 @@ typedef struct _GLFWwindowWayland
     } xdg;
 
     _GLFWcursor*                currentCursor;
-    double                      cursorPosX, cursorPosY;
+    double                      cursorPosX, cursorPosY, allCursorPosX, allCursorPosY;
 
     char*                       title;
     char                        appId[256];

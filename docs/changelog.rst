@@ -146,6 +146,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Add support for the text input protocol (:iss:`3410`)
 
+- Wayland: Fix mouse handling when using client side decorations
+
 - Add an option, :opt:`detect_urls` to control whether kitty will detect URLs
   when the mouse moves over them (:pull:`3118`)
 
