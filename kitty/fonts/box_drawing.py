@@ -479,11 +479,11 @@ def rectircle_equations(
     if left_quadrants:
         def x(t: float) -> float:
             xterm = 1 - pow(t, yexp)
-            return cell_width - abs(a * pow(xterm, xexp)) - adjust_x
+            return math.floor(cell_width - abs(a * pow(xterm, xexp)) - adjust_x)
     else:
         def x(t: float) -> float:
             xterm = 1 - pow(t, yexp)
-            return abs(a * pow(xterm, xexp))
+            return math.ceil(abs(a * pow(xterm, xexp)))
 
     return x, y
 
