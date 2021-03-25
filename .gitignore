@@ -1,6 +1,7 @@
 *.so
 *.pyc
 *.pyo
+*.d
 *_stub.pyi
 /.dmypy.json
 /tags
