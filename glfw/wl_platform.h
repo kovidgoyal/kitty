@@ -263,7 +263,6 @@ typedef struct _GLFWlibraryWayland
     size_t dataOffersCounter;
     _GLFWWaylandDataOffer dataOffers[8];
     char* primarySelectionString;
-    GLFWWLCursorThemes cursor_themes;
 } _GLFWlibraryWayland;
 
 // Wayland-specific per-monitor data

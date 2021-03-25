@@ -729,6 +729,7 @@ void _glfwPlatformSetWindowFloating(_GLFWwindow* window, bool enabled);
 void _glfwPlatformSetWindowMousePassthrough(_GLFWwindow* window, bool enabled);
 void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity);
 void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev);
+void _glfwPlatformChangeCursorTheme(void);
 
 void _glfwPlatformPollEvents(void);
 void _glfwPlatformWaitEvents(void);

@@ -1,6 +1,7 @@
 // Future devs supporting whatever Wayland protocol stabilizes for cursor selection: see _themeAdd.
 
 #include "internal.h"
+#include "linux_desktop_settings.h"
 
 #include <assert.h>
 #include <errno.h>
@@ -8,38 +9,35 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static GLFWWLCursorThemes cursor_themes;
+
 static int
 pixels_from_scale(int scale) {
-    static bool queried_env = false;
-    static int factor = 32;
-    if (!queried_env) {
-        const char *env = getenv("XCURSOR_SIZE");
-        if (env) {
-            const int retval = atoi(env);
-            if (retval > 0 && retval < 2048) factor = retval;
-        }
-        queried_env = true;
-    }
+    int factor;
+    const char* name;
+    glfw_current_cursor_theme(&name, &factor);
     return factor * scale;
 }
 
 
 struct wl_cursor_theme*
 glfw_wlc_theme_for_scale(int scale) {
-    GLFWWLCursorThemes *t = &_glfw.wl.cursor_themes;
-    for (size_t i = 0; i < t->count; i++) {
-        if (t->themes[i].scale == scale) return t->themes[i].theme;
+    for (size_t i = 0; i < cursor_themes.count; i++) {
+        if (cursor_themes.themes[i].scale == scale) return cursor_themes.themes[i].theme;
     }
 
-    if (t->count >= t->capacity) {
-        t->themes = realloc(t->themes, sizeof(GLFWWLCursorTheme) * (t->count + 16));
-        if (!t->themes) {
+    if (cursor_themes.count >= cursor_themes.capacity) {
+        cursor_themes.themes = realloc(cursor_themes.themes, sizeof(GLFWWLCursorTheme) * (cursor_themes.count + 16));
+        if (!cursor_themes.themes) {
             _glfwInputError(GLFW_PLATFORM_ERROR, "Wayland: Out of memory allocating space for cursor themes");
             return NULL;
         }
-        t->capacity = t->count + 16;
+        cursor_themes.capacity = cursor_themes.count + 16;
     }
-    struct wl_cursor_theme *ans = wl_cursor_theme_load(getenv("XCURSOR_THEME"), pixels_from_scale(scale), _glfw.wl.shm);
+    int factor;
+    const char* name;
+    glfw_current_cursor_theme(&name, &factor);
+    struct wl_cursor_theme *ans = wl_cursor_theme_load(name, pixels_from_scale(scale), _glfw.wl.shm);
     if (!ans) {
         _glfwInputError(
             GLFW_PLATFORM_ERROR, "Wayland: wl_cursor_theme_load failed at scale: %d pixels: %d",
@@ -47,7 +45,7 @@ glfw_wlc_theme_for_scale(int scale) {
         );
         return NULL;
     }
-    GLFWWLCursorTheme *theme = t->themes + t->count++;
+    GLFWWLCursorTheme *theme = cursor_themes.themes + cursor_themes.count++;
     theme->scale = scale;
     theme->theme = ans;
     return ans;
@@ -55,11 +53,9 @@ glfw_wlc_theme_for_scale(int scale) {
 
 void
 glfw_wlc_destroy(void) {
-    GLFWWLCursorThemes *t = &_glfw.wl.cursor_themes;
-
-    for (size_t i = 0; i < t->count; i++) {
-        wl_cursor_theme_destroy(t->themes[i].theme);
+    for (size_t i = 0; i < cursor_themes.count; i++) {
+        wl_cursor_theme_destroy(cursor_themes.themes[i].theme);
     }
-    free(t->themes);
-    t->themes = NULL; t->capacity = 0; t->count = 0;
+    free(cursor_themes.themes);
+    cursor_themes.themes = NULL; cursor_themes.capacity = 0; cursor_themes.count = 0;
 }

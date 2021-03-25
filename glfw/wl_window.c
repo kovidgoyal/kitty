@@ -42,8 +42,8 @@
 #include <sys/mman.h>
 
 
-static void setCursorImage(_GLFWwindow* window)
-{
+static void
+setCursorImage(_GLFWwindow* window, bool on_theme_change) {
     _GLFWcursorWayland defaultCursor = {.shape = GLFW_ARROW_CURSOR};
     _GLFWcursorWayland* cursorWayland = window->cursor ? &window->cursor->wl : &defaultCursor;
     struct wl_cursor_image* image = NULL;
@@ -54,9 +54,8 @@ static void setCursorImage(_GLFWwindow* window)
     if (cursorWayland->scale < 0) {
         buffer = cursorWayland->buffer;
         toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, 0);
-    } else
-    {
-        if (cursorWayland->scale != scale) {
+    } else {
+        if (on_theme_change || cursorWayland->scale != scale) {
             struct wl_cursor *newCursor = NULL;
             struct wl_cursor_theme *theme = glfw_wlc_theme_for_scale(scale);
             if (theme) newCursor = _glfwLoadCursor(cursorWayland->shape, theme);
@@ -131,7 +130,7 @@ static bool checkScaleChange(_GLFWwindow* window)
     {
         window->wl.scale = scale;
         wl_surface_set_buffer_scale(window->wl.surface, scale);
-        setCursorImage(window);
+        setCursorImage(window, false);
         return true;
     }
     if (window->wl.monitorsCount > 0 && !window->wl.initial_scale_notified) {
@@ -746,7 +745,7 @@ static void incrementCursorImage(_GLFWwindow* window)
         {
             cursor->wl.currentImage += 1;
             cursor->wl.currentImage %= cursor->wl.cursor->image_count;
-            setCursorImage(window);
+            setCursorImage(window, false);
             toggleTimer(&_glfw.wl.eventLoopData, _glfw.wl.cursorAnimationTimer, cursor->wl.cursor->image_count > 1);
             return;
         }
@@ -1521,7 +1520,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
 
     if (window->cursorMode == GLFW_CURSOR_NORMAL)
     {
-        setCursorImage(window);
+        setCursorImage(window, false);
     }
     else if (window->cursorMode == GLFW_CURSOR_DISABLED)
     {
@@ -2114,6 +2113,16 @@ frame_handle_redraw(void *data, struct wl_callback *callback, uint32_t time UNUS
     wl_callback_destroy(callback);
 }
 
+void
+_glfwPlatformChangeCursorTheme(void) {
+    glfw_wlc_destroy();
+    _GLFWwindow *w = _glfw.windowListHead;
+    while (w) {
+        setCursorImage(w, true);
+        w = w->next;
+    }
+
+}
 
 //////////////////////////////////////////////////////////////////////////
 //////                        GLFW native API                       //////

@@ -65,6 +65,7 @@
       "linux_joystick.h",
       "null_joystick.h",
       "linux_notify.h",
+      "linux_desktop_settings.h",
       "main_loop.h"
     ],
     "protocols": [
@@ -91,6 +92,7 @@
       "osmesa_context.c",
       "backend_utils.c",
       "linux_joystick.c",
+      "linux_desktop_settings.c",
       "null_joystick.c",
       "linux_notify.c"
     ]
