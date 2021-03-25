@@ -1073,7 +1073,7 @@ is_ascii_control_char(char x) {
         if (input_source_changed) {
             debug_key(@"Input source changed, clearing pre-edit text and resetting deadkey state\n");
             glfw_keyevent.text = NULL;
-            glfw_keyevent.ime_state = 1;
+            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
             window->ns.deadKeyState = 0;
             _glfwInputKeyboard(window, &glfw_keyevent); // clear pre-edit text
         }
@@ -1110,14 +1110,14 @@ is_ascii_control_char(char x) {
             // 0x75 is the delete key which needs to be ignored during a compose sequence
             debug_key(@"Sending pre-edit text for dead key (text: %@ markedText: %@).\n", @(format_text(_glfw.ns.text)), markedText);
             glfw_keyevent.text = [[markedText string] UTF8String];
-            glfw_keyevent.ime_state = 1;
+            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
             _glfwInputKeyboard(window, &glfw_keyevent); // update pre-edit text
             return;
         }
         if (in_compose_sequence) {
             debug_key(@"Clearing pre-edit text at end of compose sequence\n");
             glfw_keyevent.text = NULL;
-            glfw_keyevent.ime_state = 1;
+            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
             _glfwInputKeyboard(window, &glfw_keyevent); // clear pre-edit text
         }
     }
@@ -1127,11 +1127,11 @@ is_ascii_control_char(char x) {
     if (!window->ns.deadKeyState) {
         if ([self hasMarkedText]) {
             glfw_keyevent.text = [[markedText string] UTF8String];
-            glfw_keyevent.ime_state = 1;
+            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
             _glfwInputKeyboard(window, &glfw_keyevent); // update pre-edit text
         } else if (previous_has_marked_text) {
             glfw_keyevent.text = NULL;
-            glfw_keyevent.ime_state = 1;
+            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
             _glfwInputKeyboard(window, &glfw_keyevent); // clear pre-edit text
         }
         if (([self hasMarkedText] || previous_has_marked_text) && !_glfw.ns.text[0]) {
@@ -1140,7 +1140,7 @@ is_ascii_control_char(char x) {
         }
     }
     glfw_keyevent.text = _glfw.ns.text;
-    glfw_keyevent.ime_state = 0;
+    glfw_keyevent.ime_state = GLFW_IME_NONE;
     add_alternate_keys(&glfw_keyevent, event);
     _glfwInputKeyboard(window, &glfw_keyevent);
 }
@@ -1295,11 +1295,11 @@ is_ascii_control_char(char x) {
     [[markedText mutableString] setString:@""];
 }
 
-void _glfwPlatformUpdateIMEState(_GLFWwindow *w, int which, int a, int b, int c, int d) {
-    [w->ns.view updateIMEStateFor: which left:(CGFloat)a top:(CGFloat)b cellWidth:(CGFloat)c cellHeight:(CGFloat)d];
+void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
+    [w->ns.view updateIMEStateFor: ev->type left:(CGFloat)ev->cursor.left top:(CGFloat)ev->cursor.top cellWidth:(CGFloat)ev->cursor.width cellHeight:(CGFloat)ev->cursor.height];
 }
 
-- (void)updateIMEStateFor:(int)which
+- (void)updateIMEStateFor:(GLFWIMEUpdateType)which
                      left:(CGFloat)left
                       top:(CGFloat)top
                 cellWidth:(CGFloat)cellWidth

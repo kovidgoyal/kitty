@@ -699,7 +699,9 @@ handle_put_command(GraphicsManager *self, const GraphicsCommand *g, Cursor *c, b
     update_src_rect(ref, img);
     update_dest_rect(ref, g->num_cells, g->num_lines, cell);
     // Move the cursor, the screen will take care of ensuring it is in bounds
-    c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
+    if (g->cursor_movement != 1) {
+        c->x += ref->effective_num_cols; c->y += ref->effective_num_rows - 1;
+    }
     return img->client_id;
 }
 

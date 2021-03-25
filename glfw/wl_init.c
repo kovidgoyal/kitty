@@ -173,6 +173,8 @@ static void setCursor(GLFWCursorShape shape, _GLFWwindow* window)
     _glfw.wl.cursorPreviousShape = shape;
 }
 
+#define x window->wl.allCursorPosX
+#define y window->wl.allCursorPosY
 static void pointerHandleMotion(void* data UNUSED,
                                 struct wl_pointer* pointer UNUSED,
                                 uint32_t time UNUSED,
@@ -181,15 +183,14 @@ static void pointerHandleMotion(void* data UNUSED,
 {
     _GLFWwindow* window = _glfw.wl.pointerFocus;
     GLFWCursorShape cursorShape = GLFW_ARROW_CURSOR;
-    double x, y;
 
     if (!window)
         return;
 
     if (window->cursorMode == GLFW_CURSOR_DISABLED)
         return;
-    x = wl_fixed_to_double(sx);
-    y = wl_fixed_to_double(sy);
+    window->wl.allCursorPosX = wl_fixed_to_double(sx);
+    window->wl.allCursorPosY = wl_fixed_to_double(sy);
 
     switch (window->wl.decorations.focus)
     {
@@ -252,7 +253,7 @@ static void pointerHandleButton(void* data UNUSED,
             case mainWindow:
                 break;
             case topDecoration:
-                if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
+                if (y < _GLFW_DECORATION_WIDTH)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
                 else
                 {
@@ -261,21 +262,21 @@ static void pointerHandleButton(void* data UNUSED,
                 }
                 break;
             case leftDecoration:
-                if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
+                if (y < _GLFW_DECORATION_WIDTH)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
                 break;
             case rightDecoration:
-                if (window->wl.cursorPosY < _GLFW_DECORATION_WIDTH)
+                if (y < _GLFW_DECORATION_WIDTH)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
                 break;
             case bottomDecoration:
-                if (window->wl.cursorPosX < _GLFW_DECORATION_WIDTH)
+                if (x < _GLFW_DECORATION_WIDTH)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-                else if (window->wl.cursorPosX > window->wl.width + _GLFW_DECORATION_WIDTH)
+                else if (x > window->wl.width + _GLFW_DECORATION_WIDTH)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
@@ -293,10 +294,7 @@ static void pointerHandleButton(void* data UNUSED,
     {
         if (window->wl.decorations.focus != mainWindow && window->wl.xdg.toplevel)
         {
-            xdg_toplevel_show_window_menu(window->wl.xdg.toplevel,
-                                          _glfw.wl.seat, serial,
-                                          (int32_t)window->wl.cursorPosX,
-                                          (int32_t)window->wl.cursorPosY);
+            xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, serial, (int32_t)x, (int32_t)y - _GLFW_DECORATION_TOP);
             return;
         }
     }
@@ -318,6 +316,8 @@ static void pointerHandleButton(void* data UNUSED,
                                 : GLFW_RELEASE,
                          _glfw.wl.xkb.states.modifiers);
 }
+#undef x
+#undef y
 
 static void pointerHandleAxis(void* data UNUSED,
                               struct wl_pointer* pointer UNUSED,
@@ -584,6 +584,7 @@ static void registryHandleGlobal(void* data UNUSED,
             if (_glfw.wl.primarySelectionDeviceManager && !_glfw.wl.primarySelectionDevice) {
                 _glfwSetupWaylandPrimarySelectionDevice();
             }
+            _glfwWaylandInitTextInput();
         }
     }
     else if (strcmp(interface, "xdg_wm_base") == 0)
@@ -616,6 +617,11 @@ static void registryHandleGlobal(void* data UNUSED,
             wl_registry_bind(registry, name,
                              &zwp_pointer_constraints_v1_interface,
                              1);
+    }
+    else if (strcmp(interface, GLFW_WAYLAND_TEXT_INPUT_INTERFACE_NAME) == 0)
+    {
+        _glfwWaylandBindTextInput(registry, name);
+        _glfwWaylandInitTextInput();
     }
     else if (strcmp(interface, "zwp_idle_inhibit_manager_v1") == 0)
     {
@@ -847,6 +853,7 @@ void _glfwPlatformTerminate(void)
         zwp_relative_pointer_manager_v1_destroy(_glfw.wl.relativePointerManager);
     if (_glfw.wl.pointerConstraints)
         zwp_pointer_constraints_v1_destroy(_glfw.wl.pointerConstraints);
+    _glfwWaylandDestroyTextInput();
     if (_glfw.wl.idleInhibitManager)
         zwp_idle_inhibit_manager_v1_destroy(_glfw.wl.idleInhibitManager);
     if (_glfw.wl.dataSourceForClipboard)

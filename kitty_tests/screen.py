@@ -647,6 +647,13 @@ class TestScreen(BaseTest):
         self.ae(s.marked_cells(), cells(8))
         s.set_marker(marker_from_regex('\t', 3))
         self.ae(s.marked_cells(), cells(*range(8)))
+        s = self.create_screen()
+        s.cursor.x = 2
+        s.draw('x')
+        s.cursor.x += 1
+        s.draw('x')
+        s.set_marker(marker_from_function(mark_x))
+        self.ae(s.marked_cells(), [(2, 0, 1), (4, 0, 2)])
 
     def test_hyperlinks(self):
         s = self.create_screen()

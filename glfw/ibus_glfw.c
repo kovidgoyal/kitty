@@ -107,7 +107,7 @@ get_ibus_text_from_message(DBusMessage *msg) {
 }
 
 static inline void
-send_text(const char *text, int ime_state) {
+send_text(const char *text, GLFWIMEState ime_state) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {
         GLFWkeyevent fake_ev = {.action = GLFW_PRESS};
@@ -130,11 +130,11 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data) 
         case 0:
             text = get_ibus_text_from_message(msg);
             debug("IBUS: CommitText: '%s'\n", text ? text : "(nil)");
-            send_text(text, 2);
+            send_text(text, GLFW_IME_COMMIT_TEXT);
             break;
         case 1:
             text = get_ibus_text_from_message(msg);
-            send_text(text, 1);
+            send_text(text, GLFW_IME_PREEDIT_CHANGED);
             debug("IBUS: UpdatePreeditText: '%s'\n", text ? text : "(nil)");
             break;
         case 2:

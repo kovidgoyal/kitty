@@ -1978,7 +1978,7 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
         char leading_char = (i > 0 && insert_newlines && !line->continued) ? '\n' : 0;
-        PyObject *text = unicode_in_range(line, xr.x, xr.x_limit, true, leading_char);
+        PyObject *text = unicode_in_range(line, xr.x, xr.x_limit, true, leading_char, false);
         if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
         PyTuple_SET_ITEM(ans, i, text);
     }

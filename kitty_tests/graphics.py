@@ -124,9 +124,15 @@ def put_helpers(self, cw, ch):
         s = self.create_screen(10, 5, cell_width=cw, cell_height=ch)
         return s, 2 / s.columns, 2 / s.lines
 
-    def put_cmd(z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0, height=0, cell_x_off=0, cell_y_off=0, placement_id=0):
-        return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d,p=%d' % (
-            z, num_cols, num_lines, x_off, y_off, width, height, cell_x_off, cell_y_off, placement_id)
+    def put_cmd(
+            z=0, num_cols=0, num_lines=0, x_off=0, y_off=0, width=0,
+            height=0, cell_x_off=0, cell_y_off=0, placement_id=0,
+            cursor_movement=0
+    ):
+        return 'z=%d,c=%d,r=%d,x=%d,y=%d,w=%d,h=%d,X=%d,Y=%d,p=%d,C=%d' % (
+            z, num_cols, num_lines, x_off, y_off, width, height, cell_x_off,
+            cell_y_off, placement_id, cursor_movement
+        )
 
     def put_image(screen, w, h, **kw):
         nonlocal iid
@@ -509,6 +515,8 @@ class TestGraphics(BaseTest):
         rect_eq(l2[1]['src_rect'], 0, 0, 1, 1)
         rect_eq(l2[1]['dest_rect'], -1, 1, -1 + dx, 1 - dy)
         self.ae(l2[0]['group_count'], 1), self.ae(l2[1]['group_count'], 1)
+        self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
+        self.ae(put_image(s, 10, 20, cursor_movement=1)[1], 'OK')
         self.ae(s.cursor.x, 0), self.ae(s.cursor.y, 1)
         s.reset()
         self.assertEqual(s.grman.disk_cache.total_size, 0)

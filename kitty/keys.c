@@ -85,7 +85,9 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
     unsigned int left = w->geometry.left, top = w->geometry.top;
     left += screen->cursor->x * cell_width;
     top += screen->cursor->y * cell_height;
-    glfwUpdateIMEState(global_state.callback_os_window->handle, 2, left, top, cell_width, cell_height);
+    GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_CURSOR_POSITION };
+    ev.cursor.left = left; ev.cursor.top = top; ev.cursor.width = cell_width; ev.cursor.height = cell_height;
+    glfwUpdateIMEState(global_state.callback_os_window->handle, &ev);
 }
 
 void
@@ -105,19 +107,19 @@ on_key_input(GLFWkeyevent *ev) {
     id_type active_window_id = w->id;
 
     switch(ev->ime_state) {
-        case 1:  // update pre-edit text
+        case GLFW_IME_PREEDIT_CHANGED:
             update_ime_position(global_state.callback_os_window, w, screen);
             screen_draw_overlay_text(screen, text);
             debug("updated pre-edit text: '%s'\n", text);
             return;
-        case 2:  // commit text
+        case GLFW_IME_COMMIT_TEXT:
             if (*text) {
                 schedule_write_to_child(w->id, 1, text, strlen(text));
                 debug("committed pre-edit text: %s\n", text);
             } else debug("committed pre-edit text: (null)\n");
             screen_draw_overlay_text(screen, NULL);
             return;
-        case 0:
+        case GLFW_IME_NONE:
             // for macOS, update ime position on every key input
             // because the position is required before next input
 #if defined(__APPLE__)

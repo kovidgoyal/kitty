@@ -917,11 +917,33 @@ typedef struct GLFWwindow GLFWwindow;
  *  @ingroup input
  */
 typedef struct GLFWcursor GLFWcursor;
+
 typedef enum {
     GLFW_RELEASE = 0,
     GLFW_PRESS = 1,
     GLFW_REPEAT = 2
 } GLFWKeyAction;
+
+typedef enum {
+    GLFW_IME_NONE,
+    GLFW_IME_PREEDIT_CHANGED,
+    GLFW_IME_COMMIT_TEXT
+} GLFWIMEState;
+
+typedef enum {
+    GLFW_IME_UPDATE_FOCUS = 1,
+    GLFW_IME_UPDATE_CURSOR_POSITION = 2
+} GLFWIMEUpdateType;
+
+typedef struct GLFWIMEUpdateEvent {
+    GLFWIMEUpdateType type;
+    const char *before_text, *at_text, *after_text;
+    bool focused;
+    struct {
+        int left, top, width, height;
+    } cursor;
+} GLFWIMEUpdateEvent;
+
 
 typedef struct GLFWkeyevent
 {
@@ -941,9 +963,9 @@ typedef struct GLFWkeyevent
     const char *text;
 
     // Used for Input Method events. Zero for normal key events.
-    //   A value of 1 means the pre-edit text for the input event has been changed.
-    //   A value of 2 means the text should be committed.
-    int ime_state;
+    //   A value of GLFW_IME_PREEDIT_CHANGED means the pre-edit text for the input event has been changed.
+    //   A value of GLFW_IME_COMMIT_TEXT means the text should be committed.
+    GLFWIMEState ime_state;
 } GLFWkeyevent;
 
 /*! @brief The function pointer type for error callbacks.
@@ -1920,7 +1942,7 @@ typedef GLFWkeyboardfun (*glfwSetKeyboardCallback_func)(GLFWwindow*, GLFWkeyboar
 GFW_EXTERN glfwSetKeyboardCallback_func glfwSetKeyboardCallback_impl;
 #define glfwSetKeyboardCallback glfwSetKeyboardCallback_impl
 
-typedef void (*glfwUpdateIMEState_func)(GLFWwindow*, int, int, int, int, int);
+typedef void (*glfwUpdateIMEState_func)(GLFWwindow*, const GLFWIMEUpdateEvent*);
 GFW_EXTERN glfwUpdateIMEState_func glfwUpdateIMEState_impl;
 #define glfwUpdateIMEState glfwUpdateIMEState_impl
 

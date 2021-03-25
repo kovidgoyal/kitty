@@ -102,6 +102,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Improve rendering of rounded corners by using a rectircle equation rather
   than a cubic bezier (:iss:`3409`)
 
+- Graphics protocol: Add a control to allow clients to specify that the cursor
+  should not move when displaying an image (:iss:`3411`)
+
+- Fix marking of text not working on lines that contain zero cells
+  (:iss:`3403`)
+
 
 0.19.3 [2020-12-19]
 -------------------
@@ -137,6 +143,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Fix key repeat being stopped by the release of an unrelated key
   (:iss:`2191`)
+
+- Wayland: Add support for the text input protocol (:iss:`3410`)
+
+- Wayland: Fix mouse handling when using client side decorations
 
 - Add an option, :opt:`detect_urls` to control whether kitty will detect URLs
   when the mouse moves over them (:pull:`3118`)
