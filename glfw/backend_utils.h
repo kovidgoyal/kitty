@@ -1,7 +1,7 @@
 //========================================================================
-// GLFW 3.4 Wayland - www.glfw.org
+// GLFW 3.4
 //------------------------------------------------------------------------
-// Copyright (c) 2014 Jonas Ådahl <jadahl@gmail.com>
+// Copyright (c) 2014 Kovid Goyal
 //
 // This software is provided 'as-is', without any express or implied
 // warranty. In no event will the authors be held liable for any damages
