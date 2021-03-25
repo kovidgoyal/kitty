@@ -171,26 +171,26 @@ static void resizeFramebuffer(_GLFWwindow* window)
 
     // Top decoration.
     wp_viewport_set_destination(window->wl.decorations.top.viewport,
-                                window->wl.width, _GLFW_DECORATION_TOP);
+                                window->wl.width, window->wl.decoration_metrics.top);
     wl_surface_commit(window->wl.decorations.top.surface);
 
     // Left decoration.
     wp_viewport_set_destination(window->wl.decorations.left.viewport,
-                                _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+                                window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
     wl_surface_commit(window->wl.decorations.left.surface);
 
     // Right decoration.
     wl_subsurface_set_position(window->wl.decorations.right.subsurface,
-                               window->wl.width, -_GLFW_DECORATION_TOP);
+                               window->wl.width, -window->wl.decoration_metrics.top);
     wp_viewport_set_destination(window->wl.decorations.right.viewport,
-                                _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+                                window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
     wl_surface_commit(window->wl.decorations.right.surface);
 
     // Bottom decoration.
     wl_subsurface_set_position(window->wl.decorations.bottom.subsurface,
-                               -_GLFW_DECORATION_WIDTH, window->wl.height);
+                               -window->wl.decoration_metrics.width, window->wl.height);
     wp_viewport_set_destination(window->wl.decorations.bottom.viewport,
-                                window->wl.width + _GLFW_DECORATION_HORIZONTAL, _GLFW_DECORATION_WIDTH);
+                                window->wl.width + window->wl.decoration_metrics.horizontal, window->wl.decoration_metrics.width);
     wl_surface_commit(window->wl.decorations.bottom.surface);
 }
 
@@ -394,20 +394,20 @@ static void createDecorations(_GLFWwindow* window)
 
     createDecoration(&window->wl.decorations.top, window->wl.surface,
                      window->wl.decorations.buffer, opaque,
-                     0, -_GLFW_DECORATION_TOP,
-                     window->wl.width, _GLFW_DECORATION_TOP);
+                     0, -window->wl.decoration_metrics.top,
+                     window->wl.width, window->wl.decoration_metrics.top);
     createDecoration(&window->wl.decorations.left, window->wl.surface,
                      window->wl.decorations.buffer, opaque,
-                     -_GLFW_DECORATION_WIDTH, -_GLFW_DECORATION_TOP,
-                     _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+                     -window->wl.decoration_metrics.width, -window->wl.decoration_metrics.top,
+                     window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
     createDecoration(&window->wl.decorations.right, window->wl.surface,
                      window->wl.decorations.buffer, opaque,
-                     window->wl.width, -_GLFW_DECORATION_TOP,
-                     _GLFW_DECORATION_WIDTH, window->wl.height + _GLFW_DECORATION_TOP);
+                     window->wl.width, -window->wl.decoration_metrics.top,
+                     window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
     createDecoration(&window->wl.decorations.bottom, window->wl.surface,
                      window->wl.decorations.buffer, opaque,
-                     -_GLFW_DECORATION_WIDTH, window->wl.height,
-                     window->wl.width + _GLFW_DECORATION_HORIZONTAL, _GLFW_DECORATION_WIDTH);
+                     -window->wl.decoration_metrics.width, window->wl.height,
+                     window->wl.width + window->wl.decoration_metrics.horizontal, window->wl.decoration_metrics.width);
 }
 
 static void destroyDecoration(_GLFWdecorationWayland* decoration)
@@ -622,8 +622,8 @@ static void xdgToplevelHandleConfigure(void* data,
     window->wl.fullscreened = fullscreen;
     if (!fullscreen) {
         if (window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.buffer) {
-            width -= _GLFW_DECORATION_HORIZONTAL;
-            height -= _GLFW_DECORATION_VERTICAL;
+            width -= window->wl.decoration_metrics.horizontal;
+            height -= window->wl.decoration_metrics.vertical;
         }
     }
     dispatchChangesAfterConfigure(window, width, height);
@@ -882,6 +882,10 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
                               const _GLFWctxconfig* ctxconfig,
                               const _GLFWfbconfig* fbconfig)
 {
+    window->wl.decoration_metrics.width = 4;
+    window->wl.decoration_metrics.top = 24;
+    window->wl.decoration_metrics.horizontal = 2 * window->wl.decoration_metrics.width;
+    window->wl.decoration_metrics.vertical = window->wl.decoration_metrics.width + window->wl.decoration_metrics.top;
     window->wl.transparent = fbconfig->transparent;
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
 
@@ -1086,13 +1090,13 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
     if (window->decorated && !window->monitor && !window->wl.decorations.serverSide)
     {
         if (top)
-            *top = _GLFW_DECORATION_TOP;
+            *top = window->wl.decoration_metrics.top;
         if (left)
-            *left = _GLFW_DECORATION_WIDTH;
+            *left = window->wl.decoration_metrics.width;
         if (right)
-            *right = _GLFW_DECORATION_WIDTH;
+            *right = window->wl.decoration_metrics.width;
         if (bottom)
-            *bottom = _GLFW_DECORATION_WIDTH;
+            *bottom = window->wl.decoration_metrics.width;
     }
 }
 

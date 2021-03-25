@@ -202,27 +202,27 @@ static void pointerHandleMotion(void* data UNUSED,
             _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
             return;
         case topDecoration:
-            if (y < _GLFW_DECORATION_WIDTH)
+            if (y < window->wl.decoration_metrics.width)
                 cursorShape = GLFW_VRESIZE_CURSOR;
             else
                 cursorShape = GLFW_ARROW_CURSOR;
             break;
         case leftDecoration:
-            if (y < _GLFW_DECORATION_WIDTH)
+            if (y < window->wl.decoration_metrics.width)
                 cursorShape = GLFW_NW_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_HRESIZE_CURSOR;
             break;
         case rightDecoration:
-            if (y < _GLFW_DECORATION_WIDTH)
+            if (y < window->wl.decoration_metrics.width)
                 cursorShape = GLFW_NE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_HRESIZE_CURSOR;
             break;
         case bottomDecoration:
-            if (x < _GLFW_DECORATION_WIDTH)
+            if (x < window->wl.decoration_metrics.width)
                 cursorShape = GLFW_SW_RESIZE_CURSOR;
-            else if (x > window->wl.width + _GLFW_DECORATION_WIDTH)
+            else if (x > window->wl.width + window->wl.decoration_metrics.width)
                 cursorShape = GLFW_SE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_VRESIZE_CURSOR;
@@ -254,7 +254,7 @@ static void pointerHandleButton(void* data UNUSED,
             case mainWindow:
                 break;
             case topDecoration:
-                if (y < _GLFW_DECORATION_WIDTH)
+                if (y < window->wl.decoration_metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
                 else
                 {
@@ -263,21 +263,21 @@ static void pointerHandleButton(void* data UNUSED,
                 }
                 break;
             case leftDecoration:
-                if (y < _GLFW_DECORATION_WIDTH)
+                if (y < window->wl.decoration_metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
                 break;
             case rightDecoration:
-                if (y < _GLFW_DECORATION_WIDTH)
+                if (y < window->wl.decoration_metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
                 break;
             case bottomDecoration:
-                if (x < _GLFW_DECORATION_WIDTH)
+                if (x < window->wl.decoration_metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-                else if (x > window->wl.width + _GLFW_DECORATION_WIDTH)
+                else if (x > window->wl.width + window->wl.decoration_metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
@@ -295,7 +295,7 @@ static void pointerHandleButton(void* data UNUSED,
     {
         if (window->wl.decorations.focus != mainWindow && window->wl.xdg.toplevel)
         {
-            xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, serial, (int32_t)x, (int32_t)y - _GLFW_DECORATION_TOP);
+            xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, serial, (int32_t)x, (int32_t)y - window->wl.decoration_metrics.top);
             return;
         }
     }
