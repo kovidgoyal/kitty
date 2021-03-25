@@ -8,10 +8,13 @@
 #include "wl_text_input.h"
 #include "internal.h"
 #include "wayland-text-input-unstable-v3-client-protocol.h"
+#include <stdlib.h>
 #define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
 
 static struct zwp_text_input_v3*                  text_input;
 static struct zwp_text_input_manager_v3*          text_input_manager;
+static char *pending_pre_edit = NULL;
+static char *pending_commit   = NULL;
 
 static void commit(void) { if (text_input) zwp_text_input_v3_commit (text_input); }
 
@@ -54,13 +57,15 @@ text_input_preedit_string(
         int32_t                  cursor_end
 ) {
     debug("text-input: preedit_string event: text: %s cursor_begin: %d cursor_end: %d\n", text, cursor_begin, cursor_end);
-    send_text(text, GLFW_IME_PREEDIT_CHANGED);
+    free(pending_pre_edit);
+    pending_pre_edit = text ? _glfw_strdup(text) : NULL;
 }
 
 static void
 text_input_commit_string(void *data UNUSED, struct zwp_text_input_v3 *text_input UNUSED, const char *text) {
     debug("text-input: commit_string event: text: %s\n", text);
-    send_text(text, GLFW_IME_COMMIT_TEXT);
+    free(pending_commit);
+    pending_commit = text ? _glfw_strdup(text) : NULL;
 }
 
 static void
@@ -75,6 +80,14 @@ text_input_delete_surrounding_text(
 static void
 text_input_done(void *data UNUSED, struct zwp_text_input_v3 *zwp_text_input_v3 UNUSED, uint32_t serial UNUSED) {
     debug("text-input: done event: serial: %u\n", serial);
+    if (pending_pre_edit) {
+        send_text(pending_pre_edit, GLFW_IME_PREEDIT_CHANGED);
+        free(pending_pre_edit); pending_pre_edit = NULL;
+    }
+    if (pending_commit) {
+        send_text(pending_commit, GLFW_IME_COMMIT_TEXT);
+        free(pending_commit); pending_commit = NULL;
+    }
 }
 
 void
@@ -106,6 +119,8 @@ _glfwWaylandDestroyTextInput(void) {
     if (text_input) zwp_text_input_v3_destroy(text_input);
     if (text_input_manager) zwp_text_input_manager_v3_destroy(text_input_manager);
     text_input = NULL; text_input_manager = NULL;
+    free(pending_pre_edit); pending_pre_edit = NULL;
+    free(pending_commit); pending_commit = NULL;
 }
 
 void
