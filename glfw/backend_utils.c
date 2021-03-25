@@ -8,6 +8,7 @@
 #define _GNU_SOURCE
 #include "backend_utils.h"
 #include "internal.h"
+#include "memfd.h"
 
 #include <stdlib.h>
 #include <string.h>
@@ -349,4 +350,73 @@ GLFWAPI char* utf_8_strndup(const char* source, size_t max_length) {
     memcpy(result, source, length);
     result[length] = 0;
     return result;
+}
+
+/*
+ * Create a new, unique, anonymous file of the given size, and
+ * return the file descriptor for it. The file descriptor is set
+ * CLOEXEC. The file is immediately suitable for mmap()'ing
+ * the given size at offset zero.
+ *
+ * The file should not have a permanent backing store like a disk,
+ * but may have if XDG_RUNTIME_DIR is not properly implemented in OS.
+ *
+ * The file name is deleted from the file system.
+ *
+ * The file is suitable for buffer sharing between processes by
+ * transmitting the file descriptor over Unix sockets using the
+ * SCM_RIGHTS methods.
+ *
+ * posix_fallocate() is used to guarantee that disk space is available
+ * for the file at the given size. If disk space is insufficient, errno
+ * is set to ENOSPC. If posix_fallocate() is not supported, program may
+ * receive SIGBUS on accessing mmap()'ed file contents instead.
+ */
+int createAnonymousFile(off_t size) {
+    int ret, fd = -1, shm_anon = 0;
+#ifdef HAS_MEMFD_CREATE
+    fd = memfd_create("glfw-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+    if (fd < 0) return -1;
+    // We can add this seal before calling posix_fallocate(), as the file
+    // is currently zero-sized anyway.
+    //
+    // There is also no need to check for the return value, we couldn’t do
+    // anything with it anyway.
+    fcntl(fd, F_ADD_SEALS, F_SEAL_SHRINK | F_SEAL_SEAL);
+#elif defined(SHM_ANON)
+    fd = shm_open(SHM_ANON, O_RDWR | O_CLOEXEC, 0600);
+    if (fd < 0) return -1;
+    shm_anon = 1;
+#else
+    static const char template[] = "/glfw-shared-XXXXXX";
+    const char* path;
+    char* name;
+
+    path = getenv("XDG_RUNTIME_DIR");
+    if (!path)
+    {
+        errno = ENOENT;
+        return -1;
+    }
+
+    name = calloc(strlen(path) + sizeof(template), 1);
+    strcpy(name, path);
+    strcat(name, template);
+
+    fd = createTmpfileCloexec(name);
+
+    free(name);
+
+    if (fd < 0)
+        return -1;
+#endif
+    // posix_fallocate does not work on SHM descriptors
+    ret = shm_anon ? ftruncate(fd, size) : posix_fallocate(fd, 0, size);
+    if (ret != 0)
+    {
+        close(fd);
+        errno = ret;
+        return -1;
+    }
+    return fd;
 }

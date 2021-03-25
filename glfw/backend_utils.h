@@ -29,6 +29,7 @@
 #include <poll.h>
 #include <unistd.h>
 #include <stdbool.h>
+#include <sys/types.h>
 
 #ifdef __has_include
 #if __has_include(<sys/eventfd.h>)
@@ -96,3 +97,4 @@ void finalizePollData(EventLoopData *eld);
 bool initPollData(EventLoopData *eld, int display_fd);
 void wakeupEventLoop(EventLoopData *eld);
 char* utf_8_strndup(const char* source, size_t max_length);
+int createAnonymousFile(off_t size);
