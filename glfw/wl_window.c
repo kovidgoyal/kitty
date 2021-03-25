@@ -42,7 +42,7 @@
 #include <sys/mman.h>
 
 
-static struct wl_buffer* createShmBuffer(const GLFWimage* image)
+static struct wl_buffer* createShmBuffer(const GLFWimage* image, bool is_opaque, bool init_data)
 {
     struct wl_shm_pool* pool;
     struct wl_buffer* buffer;
@@ -72,28 +72,31 @@ static struct wl_buffer* createShmBuffer(const GLFWimage* image)
     pool = wl_shm_create_pool(_glfw.wl.shm, fd, length);
 
     close(fd);
-    unsigned char* source = (unsigned char*) image->pixels;
-    unsigned char* target = data;
-    for (i = 0;  i < image->width * image->height;  i++, source += 4)
-    {
-        unsigned int alpha = source[3];
+    if (init_data) {
+        unsigned char* source = (unsigned char*) image->pixels;
+        unsigned char* target = data;
+        for (i = 0;  i < image->width * image->height;  i++, source += 4)
+        {
+            unsigned int alpha = source[3];
 
-        *target++ = (unsigned char) ((source[2] * alpha) / 255);
-        *target++ = (unsigned char) ((source[1] * alpha) / 255);
-        *target++ = (unsigned char) ((source[0] * alpha) / 255);
-        *target++ = (unsigned char) alpha;
+            *target++ = (unsigned char) ((source[2] * alpha) / 255);
+            *target++ = (unsigned char) ((source[1] * alpha) / 255);
+            *target++ = (unsigned char) ((source[0] * alpha) / 255);
+            *target++ = (unsigned char) alpha;
+        }
     }
 
     buffer =
         wl_shm_pool_create_buffer(pool, 0,
                                   image->width,
                                   image->height,
-                                  stride, WL_SHM_FORMAT_ARGB8888);
+                                  stride, is_opaque ? WL_SHM_FORMAT_XRGB8888 : WL_SHM_FORMAT_ARGB8888);
     munmap(data, length);
     wl_shm_pool_destroy(pool);
 
     return buffer;
 }
+
 static void
 setCursorImage(_GLFWwindow* window, bool on_theme_change) {
     _GLFWcursorWayland defaultCursor = {.shape = GLFW_ARROW_CURSOR};
@@ -279,12 +282,10 @@ static void dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, in
 
 static void createDecoration(_GLFWdecorationWayland* decoration,
                              struct wl_surface* parent,
-                             struct wl_buffer* buffer, bool opaque,
+                             struct wl_buffer* buffer,
                              int x, int y,
                              int width, int height)
 {
-    struct wl_region* region;
-
     decoration->surface = wl_compositor_create_surface(_glfw.wl.compositor);
     decoration->subsurface =
         wl_subcompositor_get_subsurface(_glfw.wl.subcompositor,
@@ -294,47 +295,37 @@ static void createDecoration(_GLFWdecorationWayland* decoration,
                                                       decoration->surface);
     wp_viewport_set_destination(decoration->viewport, width, height);
     wl_surface_attach(decoration->surface, buffer, 0, 0);
-
-    if (opaque)
-    {
-        region = wl_compositor_create_region(_glfw.wl.compositor);
-        wl_region_add(region, 0, 0, width, height);
-        wl_surface_set_opaque_region(decoration->surface, region);
-        wl_surface_commit(decoration->surface);
-        wl_region_destroy(region);
-    }
-    else
-        wl_surface_commit(decoration->surface);
+    wl_surface_commit(decoration->surface);
 }
 
 static void createDecorations(_GLFWwindow* window)
 {
     unsigned char data[] = { 224, 224, 224, 255 };
     const GLFWimage image = { 1, 1, data };
-    bool opaque = (data[3] == 255);
+    bool is_opaque = (data[3] == 255);
 
     if (!_glfw.wl.viewporter || !window->decorated || window->wl.decorations.serverSide)
         return;
 
     if (!window->wl.decorations.edge_buffer)
-        window->wl.decorations.edge_buffer = createShmBuffer(&image);
+        window->wl.decorations.edge_buffer = createShmBuffer(&image, is_opaque, true);
     if (!window->wl.decorations.edge_buffer)
         return;
 
     createDecoration(&window->wl.decorations.top, window->wl.surface,
-                     window->wl.decorations.edge_buffer, opaque,
+                     window->wl.decorations.edge_buffer,
                      0, -window->wl.decoration_metrics.top,
                      window->wl.width, window->wl.decoration_metrics.top);
     createDecoration(&window->wl.decorations.left, window->wl.surface,
-                     window->wl.decorations.edge_buffer, opaque,
+                     window->wl.decorations.edge_buffer,
                      -window->wl.decoration_metrics.width, -window->wl.decoration_metrics.top,
                      window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
     createDecoration(&window->wl.decorations.right, window->wl.surface,
-                     window->wl.decorations.edge_buffer, opaque,
+                     window->wl.decorations.edge_buffer,
                      window->wl.width, -window->wl.decoration_metrics.top,
                      window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
     createDecoration(&window->wl.decorations.bottom, window->wl.surface,
-                     window->wl.decorations.edge_buffer, opaque,
+                     window->wl.decorations.edge_buffer,
                      -window->wl.decoration_metrics.width, window->wl.height,
                      window->wl.width + window->wl.decoration_metrics.horizontal, window->wl.decoration_metrics.width);
 }
@@ -1293,7 +1284,7 @@ int _glfwPlatformCreateCursor(_GLFWcursor* cursor,
                               const GLFWimage* image,
                               int xhot, int yhot, int count UNUSED)
 {
-    cursor->wl.buffer = createShmBuffer(image);
+    cursor->wl.buffer = createShmBuffer(image, false, true);
     if (!cursor->wl.buffer)
         return false;
 
