@@ -387,25 +387,25 @@ static void createDecorations(_GLFWwindow* window)
     if (!_glfw.wl.viewporter || !window->decorated || window->wl.decorations.serverSide)
         return;
 
-    if (!window->wl.decorations.buffer)
-        window->wl.decorations.buffer = createShmBuffer(&image);
-    if (!window->wl.decorations.buffer)
+    if (!window->wl.decorations.edge_buffer)
+        window->wl.decorations.edge_buffer = createShmBuffer(&image);
+    if (!window->wl.decorations.edge_buffer)
         return;
 
     createDecoration(&window->wl.decorations.top, window->wl.surface,
-                     window->wl.decorations.buffer, opaque,
+                     window->wl.decorations.edge_buffer, opaque,
                      0, -window->wl.decoration_metrics.top,
                      window->wl.width, window->wl.decoration_metrics.top);
     createDecoration(&window->wl.decorations.left, window->wl.surface,
-                     window->wl.decorations.buffer, opaque,
+                     window->wl.decorations.edge_buffer, opaque,
                      -window->wl.decoration_metrics.width, -window->wl.decoration_metrics.top,
                      window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
     createDecoration(&window->wl.decorations.right, window->wl.surface,
-                     window->wl.decorations.buffer, opaque,
+                     window->wl.decorations.edge_buffer, opaque,
                      window->wl.width, -window->wl.decoration_metrics.top,
                      window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
     createDecoration(&window->wl.decorations.bottom, window->wl.surface,
-                     window->wl.decorations.buffer, opaque,
+                     window->wl.decorations.edge_buffer, opaque,
                      -window->wl.decoration_metrics.width, window->wl.height,
                      window->wl.width + window->wl.decoration_metrics.horizontal, window->wl.decoration_metrics.width);
 }
@@ -621,7 +621,7 @@ static void xdgToplevelHandleConfigure(void* data,
     }
     window->wl.fullscreened = fullscreen;
     if (!fullscreen) {
-        if (window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.buffer) {
+        if (window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.edge_buffer) {
             width -= window->wl.decoration_metrics.horizontal;
             height -= window->wl.decoration_metrics.vertical;
         }
@@ -964,8 +964,8 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->wl.xdg.decoration)
         zxdg_toplevel_decoration_v1_destroy(window->wl.xdg.decoration);
 
-    if (window->wl.decorations.buffer)
-        wl_buffer_destroy(window->wl.decorations.buffer);
+    if (window->wl.decorations.edge_buffer)
+        wl_buffer_destroy(window->wl.decorations.edge_buffer);
 
     if (window->wl.native)
         wl_egl_window_destroy(window->wl.native);

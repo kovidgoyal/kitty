@@ -151,7 +151,7 @@ typedef struct _GLFWwindowWayland
 
     struct {
         bool                               serverSide;
-        struct wl_buffer*                  buffer;
+        struct wl_buffer*                  edge_buffer;
         _GLFWdecorationWayland             top, left, right, bottom;
         int                                focus;
     } decorations;
