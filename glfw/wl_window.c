@@ -460,6 +460,7 @@ static void xdgToplevelHandleConfigure(void* data,
     }
     dispatchChangesAfterConfigure(window, width, height);
     _glfwInputWindowFocus(window, activated);
+    ensure_csd_resources(window);
 }
 
 static void xdgToplevelHandleClose(void* data,
