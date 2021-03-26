@@ -53,7 +53,6 @@ typedef VkBool32 (APIENTRY *PFN_vkGetPhysicalDeviceWaylandPresentationSupportKHR
 #include "wl_cursors.h"
 
 #include "wayland-xdg-shell-client-protocol.h"
-#include "wayland-viewporter-client-protocol.h"
 #include "wayland-xdg-decoration-unstable-v1-client-protocol.h"
 #include "wayland-relative-pointer-unstable-v1-client-protocol.h"
 #include "wayland-pointer-constraints-unstable-v1-client-protocol.h"
@@ -154,10 +153,6 @@ typedef struct _GLFWwindowWayland
         } subsurfaces;
 
         struct {
-            struct wp_viewport               *top, *left, *right, *bottom;
-        } viewports;
-
-        struct {
             struct wl_buffer *front_buffer, *back_buffer;
             uint8_t *data;
             size_t buffer_sz;
@@ -223,7 +218,6 @@ typedef struct _GLFWlibraryWayland
     struct wl_data_device*      dataDevice;
     struct xdg_wm_base*         wmBase;
     struct zxdg_decoration_manager_v1*      decorationManager;
-    struct wp_viewporter*       viewporter;
     struct zwp_relative_pointer_manager_v1* relativePointerManager;
     struct zwp_pointer_constraints_v1*      pointerConstraints;
     struct zwp_idle_inhibit_manager_v1*     idleInhibitManager;

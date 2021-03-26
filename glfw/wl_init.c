@@ -585,11 +585,6 @@ static void registryHandleGlobal(void* data UNUSED,
         wl_registry_bind(registry, name,
             &zxdg_decoration_manager_v1_interface, 1);
     }
-    else if (strcmp(interface, "wp_viewporter") == 0)
-    {
-        _glfw.wl.viewporter =
-            wl_registry_bind(registry, name, &wp_viewporter_interface, 1);
-    }
     else if (strcmp(interface, "zwp_relative_pointer_manager_v1") == 0)
     {
         _glfw.wl.relativePointerManager =
@@ -824,8 +819,6 @@ void _glfwPlatformTerminate(void)
         wl_compositor_destroy(_glfw.wl.compositor);
     if (_glfw.wl.shm)
         wl_shm_destroy(_glfw.wl.shm);
-    if (_glfw.wl.viewporter)
-        wp_viewporter_destroy(_glfw.wl.viewporter);
     if (_glfw.wl.decorationManager)
         zxdg_decoration_manager_v1_destroy(_glfw.wl.decorationManager);
     if (_glfw.wl.wmBase)

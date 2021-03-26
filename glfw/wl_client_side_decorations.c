@@ -86,8 +86,8 @@ static bool
 create_shm_buffers_for_edges(_GLFWwindow* window) {
     free_edge_resources(window);
 
-    const size_t vertical_width = window->wl.decorations.metrics.width, vertical_height = window->wl.height;
-    const size_t horizontal_height = window->wl.decorations.metrics.width, horizontal_width = window->wl.width;
+    const size_t vertical_width = decs.metrics.width, vertical_height = window->wl.height + decs.metrics.top;
+    const size_t horizontal_height = decs.metrics.width, horizontal_width = window->wl.width + 2 * decs.metrics.width;
     const size_t mapping_sz = 4 * (2 * vertical_width * vertical_height + horizontal_height * horizontal_width);
 
     int fd = createAnonymousFile(mapping_sz);
@@ -124,22 +124,19 @@ free_csd_surfaces(_GLFWwindow *window) {
 #define d(which) {\
     if (decs.subsurfaces.which) wl_subsurface_destroy(decs.subsurfaces.which); decs.subsurfaces.which = NULL; \
     if (decs.surfaces.which) wl_surface_destroy(decs.surfaces.which); decs.surfaces.which = NULL; \
-    if (decs.viewports.which) wp_viewport_destroy(decs.viewports.which); \
 }
     d(left); d(top); d(right); d(bottom);
 #undef d
 }
 
-#define position_decoration_surfaces(which, x, y, width, height) { \
+#define position_decoration_surfaces(which, x, y) { \
     wl_subsurface_set_position(decs.subsurfaces.which, x, y); \
-    wp_viewport_set_destination(decs.viewports.which, width, height); \
     wl_surface_commit(decs.surfaces.which); \
 }
 
 #define create_decoration_surfaces(which, buffer) { \
     decs.surfaces.which = wl_compositor_create_surface(_glfw.wl.compositor); \
     decs.subsurfaces.which = wl_subcompositor_get_subsurface(_glfw.wl.subcompositor, decs.surfaces.which, window->wl.surface); \
-    decs.viewports.which = wp_viewporter_get_viewport(_glfw.wl.viewporter, decs.surfaces.which); \
     wl_surface_attach(decs.surfaces.which, buffer, 0, 0); \
 }
 
@@ -160,26 +157,23 @@ ensure_csd_resources(_GLFWwindow *window) {
     if (!decs.title_bar.front_buffer) {
         if (!create_shm_buffers_for_title_bar(window)) return false;
     }
-    int x, y, width, height;
+    int x, y;
 
     x = 0; y = -decs.metrics.top;
-    width = window->wl.width; height = decs.metrics.top;
     if (!decs.surfaces.top) create_decoration_surfaces(top, decs.title_bar.front_buffer);
-    position_decoration_surfaces(top, x, y, width, height);
+    position_decoration_surfaces(top, x, y);
 
     x = -decs.metrics.width; y = -decs.metrics.top;
-    width = decs.metrics.width; height = decs.metrics.top + window->wl.height;
     if (!decs.surfaces.left) create_decoration_surfaces(left, decs.edges.left);
-    position_decoration_surfaces(left, x, y, width, height);
+    position_decoration_surfaces(left, x, y);
 
     x = window->wl.width; y = -decs.metrics.top;
     if (!decs.surfaces.right) create_decoration_surfaces(right, decs.edges.right);
-    position_decoration_surfaces(right, x, y, width, height);
+    position_decoration_surfaces(right, x, y);
 
     x = -decs.metrics.width; y = window->wl.height;
-    width = decs.metrics.horizontal + window->wl.width; height = decs.metrics.width;
     if (!decs.surfaces.bottom) create_decoration_surfaces(bottom, decs.edges.bottom);
-    position_decoration_surfaces(bottom, x, y, width, height);
+    position_decoration_surfaces(bottom, x, y);
 
     decs.for_window_size.width = window->wl.width;
     decs.for_window_size.height = window->wl.height;

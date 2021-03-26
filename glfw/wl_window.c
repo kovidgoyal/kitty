@@ -259,7 +259,7 @@ static void dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, in
 
 static void
 createDecorations(_GLFWwindow* window) {
-    if (!_glfw.wl.viewporter || !window->decorated || window->wl.decorations.serverSide) return;
+    if (!window->decorated || window->wl.decorations.serverSide) return;
 
     ensure_csd_resources(window);
 }
