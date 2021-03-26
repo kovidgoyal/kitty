@@ -164,7 +164,7 @@ typedef struct _GLFWwindowWayland
 
         struct {
             int width, height, scale;
-        } for_window_size;
+        } for_window_state;
 
         struct {
             unsigned int width, top, horizontal, vertical;

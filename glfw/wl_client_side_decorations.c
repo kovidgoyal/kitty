@@ -151,9 +151,9 @@ free_csd_surfaces(_GLFWwindow *window) {
 bool
 ensure_csd_resources(_GLFWwindow *window) {
     const bool size_changed = (
-        decs.for_window_size.width != window->wl.width ||
-        decs.for_window_size.height != window->wl.height ||
-        decs.for_window_size.scale != window->wl.scale
+        decs.for_window_state.width != window->wl.width ||
+        decs.for_window_state.height != window->wl.height ||
+        decs.for_window_state.scale != window->wl.scale
     );
     if (size_changed) {
         free_title_bar_resources(window);
@@ -183,9 +183,9 @@ ensure_csd_resources(_GLFWwindow *window) {
     if (!decs.surfaces.bottom) create_decoration_surfaces(bottom, decs.edges.bottom);
     position_decoration_surfaces(bottom, x, y);
 
-    decs.for_window_size.width = window->wl.width;
-    decs.for_window_size.height = window->wl.height;
-    decs.for_window_size.scale = window->wl.scale;
+    decs.for_window_state.width = window->wl.width;
+    decs.for_window_state.height = window->wl.height;
+    decs.for_window_state.scale = window->wl.scale;
     return true;
 }
 
