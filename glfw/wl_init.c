@@ -29,6 +29,7 @@
 #define _GNU_SOURCE
 #include "internal.h"
 #include "backend_utils.h"
+#include "wl_client_side_decorations.h"
 #include "linux_desktop_settings.h"
 #include "../kitty/monotonic.h"
 
@@ -59,37 +60,21 @@ static inline int min(int n1, int n2)
     return n1 < n2 ? n1 : n2;
 }
 
-static _GLFWwindow* findWindowFromDecorationSurface(struct wl_surface* surface,
-                                                    int* which)
+static _GLFWwindow*
+findWindowFromDecorationSurface(struct wl_surface* surface, _GLFWdecorationSideWayland* which)
 {
-    int focus;
+    _GLFWdecorationSideWayland focus;
+    if (!which) which = &focus;
     _GLFWwindow* window = _glfw.windowListHead;
-    if (!which)
-        which = &focus;
-    while (window)
-    {
-        if (surface == window->wl.decorations.top.surface)
-        {
-            *which = topDecoration;
-            break;
-        }
-        if (surface == window->wl.decorations.left.surface)
-        {
-            *which = leftDecoration;
-            break;
-        }
-        if (surface == window->wl.decorations.right.surface)
-        {
-            *which = rightDecoration;
-            break;
-        }
-        if (surface == window->wl.decorations.bottom.surface)
-        {
-            *which = bottomDecoration;
-            break;
-        }
+#define q(edge, result) if (surface == window->wl.decorations.surfaces.edge) { *which = result; break; }
+    while (window) {
+        q(top, TOP_DECORATION);
+        q(left, LEFT_DECORATION);
+        q(right, RIGHT_DECORATION);
+        q(bottom, BOTTOM_DECORATION);
         window = window->next;
     }
+#undef q
     return window;
 }
 
@@ -104,7 +89,7 @@ static void pointerHandleEnter(void* data UNUSED,
     if (!surface)
         return;
 
-    int focus = 0;
+    _GLFWdecorationSideWayland focus = CENTRAL_WINDOW;
     _GLFWwindow* window = wl_surface_get_user_data(surface);
     if (!window)
     {
@@ -195,34 +180,34 @@ static void pointerHandleMotion(void* data UNUSED,
 
     switch (window->wl.decorations.focus)
     {
-        case mainWindow:
+        case CENTRAL_WINDOW:
             window->wl.cursorPosX = x;
             window->wl.cursorPosY = y;
             _glfwInputCursorPos(window, x, y);
             _glfw.wl.cursorPreviousShape = GLFW_INVALID_CURSOR;
             return;
-        case topDecoration:
-            if (y < window->wl.decoration_metrics.width)
+        case TOP_DECORATION:
+            if (y < window->wl.decorations.metrics.width)
                 cursorShape = GLFW_VRESIZE_CURSOR;
             else
                 cursorShape = GLFW_ARROW_CURSOR;
             break;
-        case leftDecoration:
-            if (y < window->wl.decoration_metrics.width)
+        case LEFT_DECORATION:
+            if (y < window->wl.decorations.metrics.width)
                 cursorShape = GLFW_NW_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_HRESIZE_CURSOR;
             break;
-        case rightDecoration:
-            if (y < window->wl.decoration_metrics.width)
+        case RIGHT_DECORATION:
+            if (y < window->wl.decorations.metrics.width)
                 cursorShape = GLFW_NE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_HRESIZE_CURSOR;
             break;
-        case bottomDecoration:
-            if (x < window->wl.decoration_metrics.width)
+        case BOTTOM_DECORATION:
+            if (x < window->wl.decorations.metrics.width)
                 cursorShape = GLFW_SW_RESIZE_CURSOR;
-            else if (x > window->wl.width + window->wl.decoration_metrics.width)
+            else if (x > window->wl.width + window->wl.decorations.metrics.width)
                 cursorShape = GLFW_SE_RESIZE_CURSOR;
             else
                 cursorShape = GLFW_VRESIZE_CURSOR;
@@ -251,10 +236,10 @@ static void pointerHandleButton(void* data UNUSED,
     {
         switch (window->wl.decorations.focus)
         {
-            case mainWindow:
+            case CENTRAL_WINDOW:
                 break;
-            case topDecoration:
-                if (y < window->wl.decoration_metrics.width)
+            case TOP_DECORATION:
+                if (y < window->wl.decorations.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP;
                 else
                 {
@@ -262,22 +247,22 @@ static void pointerHandleButton(void* data UNUSED,
                         xdg_toplevel_move(window->wl.xdg.toplevel, _glfw.wl.seat, serial);
                 }
                 break;
-            case leftDecoration:
-                if (y < window->wl.decoration_metrics.width)
+            case LEFT_DECORATION:
+                if (y < window->wl.decorations.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_LEFT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_LEFT;
                 break;
-            case rightDecoration:
-                if (y < window->wl.decoration_metrics.width)
+            case RIGHT_DECORATION:
+                if (y < window->wl.decorations.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_TOP_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_RIGHT;
                 break;
-            case bottomDecoration:
-                if (x < window->wl.decoration_metrics.width)
+            case BOTTOM_DECORATION:
+                if (x < window->wl.decorations.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_LEFT;
-                else if (x > window->wl.width + window->wl.decoration_metrics.width)
+                else if (x > window->wl.width + window->wl.decorations.metrics.width)
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM_RIGHT;
                 else
                     edges = XDG_TOPLEVEL_RESIZE_EDGE_BOTTOM;
@@ -293,15 +278,15 @@ static void pointerHandleButton(void* data UNUSED,
     }
     else if (button == BTN_RIGHT)
     {
-        if (window->wl.decorations.focus != mainWindow && window->wl.xdg.toplevel)
+        if (window->wl.decorations.focus != CENTRAL_WINDOW && window->wl.xdg.toplevel)
         {
-            xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, serial, (int32_t)x, (int32_t)y - window->wl.decoration_metrics.top);
+            xdg_toplevel_show_window_menu(window->wl.xdg.toplevel, _glfw.wl.seat, serial, (int32_t)x, (int32_t)y - window->wl.decorations.metrics.top);
             return;
         }
     }
 
     // Don’t pass the button to the user if it was related to a decoration.
-    if (window->wl.decorations.focus != mainWindow)
+    if (window->wl.decorations.focus != CENTRAL_WINDOW)
         return;
 
     _glfw.wl.serial = serial;

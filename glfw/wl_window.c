@@ -32,6 +32,7 @@
 #include "backend_utils.h"
 #include "memfd.h"
 #include "linux_notify.h"
+#include "wl_client_side_decorations.h"
 #include "../kitty/monotonic.h"
 
 #include <stdio.h>
@@ -221,32 +222,8 @@ static void resizeFramebuffer(_GLFWwindow* window)
         setOpaqueRegion(window);
     _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
 
-    if (!window->wl.decorations.top.surface)
-        return;
+    if (window->wl.decorations.surfaces.top) resize_csd(window);
 
-    // Top decoration.
-    wp_viewport_set_destination(window->wl.decorations.top.viewport,
-                                window->wl.width, window->wl.decoration_metrics.top);
-    wl_surface_commit(window->wl.decorations.top.surface);
-
-    // Left decoration.
-    wp_viewport_set_destination(window->wl.decorations.left.viewport,
-                                window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
-    wl_surface_commit(window->wl.decorations.left.surface);
-
-    // Right decoration.
-    wl_subsurface_set_position(window->wl.decorations.right.subsurface,
-                               window->wl.width, -window->wl.decoration_metrics.top);
-    wp_viewport_set_destination(window->wl.decorations.right.viewport,
-                                window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
-    wl_surface_commit(window->wl.decorations.right.surface);
-
-    // Bottom decoration.
-    wl_subsurface_set_position(window->wl.decorations.bottom.subsurface,
-                               -window->wl.decoration_metrics.width, window->wl.height);
-    wp_viewport_set_destination(window->wl.decorations.bottom.viewport,
-                                window->wl.width + window->wl.decoration_metrics.horizontal, window->wl.decoration_metrics.width);
-    wl_surface_commit(window->wl.decorations.bottom.surface);
 }
 
 
@@ -280,75 +257,11 @@ static void dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, in
 }
 
 
-static void createDecoration(_GLFWdecorationWayland* decoration,
-                             struct wl_surface* parent,
-                             struct wl_buffer* buffer,
-                             int x, int y,
-                             int width, int height)
-{
-    decoration->surface = wl_compositor_create_surface(_glfw.wl.compositor);
-    decoration->subsurface =
-        wl_subcompositor_get_subsurface(_glfw.wl.subcompositor,
-                                        decoration->surface, parent);
-    wl_subsurface_set_position(decoration->subsurface, x, y);
-    decoration->viewport = wp_viewporter_get_viewport(_glfw.wl.viewporter,
-                                                      decoration->surface);
-    wp_viewport_set_destination(decoration->viewport, width, height);
-    wl_surface_attach(decoration->surface, buffer, 0, 0);
-    wl_surface_commit(decoration->surface);
-}
+static void
+createDecorations(_GLFWwindow* window) {
+    if (!_glfw.wl.viewporter || !window->decorated || window->wl.decorations.serverSide) return;
 
-static void createDecorations(_GLFWwindow* window)
-{
-    unsigned char data[] = { 224, 224, 224, 255 };
-    const GLFWimage image = { 1, 1, data };
-    bool is_opaque = (data[3] == 255);
-
-    if (!_glfw.wl.viewporter || !window->decorated || window->wl.decorations.serverSide)
-        return;
-
-    if (!window->wl.decorations.edge_buffer)
-        window->wl.decorations.edge_buffer = createShmBuffer(&image, is_opaque, true);
-    if (!window->wl.decorations.edge_buffer)
-        return;
-
-    createDecoration(&window->wl.decorations.top, window->wl.surface,
-                     window->wl.decorations.edge_buffer,
-                     0, -window->wl.decoration_metrics.top,
-                     window->wl.width, window->wl.decoration_metrics.top);
-    createDecoration(&window->wl.decorations.left, window->wl.surface,
-                     window->wl.decorations.edge_buffer,
-                     -window->wl.decoration_metrics.width, -window->wl.decoration_metrics.top,
-                     window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
-    createDecoration(&window->wl.decorations.right, window->wl.surface,
-                     window->wl.decorations.edge_buffer,
-                     window->wl.width, -window->wl.decoration_metrics.top,
-                     window->wl.decoration_metrics.width, window->wl.height + window->wl.decoration_metrics.top);
-    createDecoration(&window->wl.decorations.bottom, window->wl.surface,
-                     window->wl.decorations.edge_buffer,
-                     -window->wl.decoration_metrics.width, window->wl.height,
-                     window->wl.width + window->wl.decoration_metrics.horizontal, window->wl.decoration_metrics.width);
-}
-
-static void destroyDecoration(_GLFWdecorationWayland* decoration)
-{
-    if (decoration->subsurface)
-        wl_subsurface_destroy(decoration->subsurface);
-    if (decoration->surface)
-        wl_surface_destroy(decoration->surface);
-    if (decoration->viewport)
-        wp_viewport_destroy(decoration->viewport);
-    decoration->surface = NULL;
-    decoration->subsurface = NULL;
-    decoration->viewport = NULL;
-}
-
-static void destroyDecorations(_GLFWwindow* window)
-{
-    destroyDecoration(&window->wl.decorations.top);
-    destroyDecoration(&window->wl.decorations.left);
-    destroyDecoration(&window->wl.decorations.right);
-    destroyDecoration(&window->wl.decorations.bottom);
+    ensure_csd_resources(window);
 }
 
 static void xdgDecorationHandleConfigure(void* data,
@@ -474,8 +387,7 @@ static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
             xdg_toplevel_set_fullscreen(
                 window->wl.xdg.toplevel,
                 monitor ? monitor->wl.output : NULL);
-            if (!window->wl.decorations.serverSide)
-                destroyDecorations(window);
+            if (!window->wl.decorations.serverSide) free_csd_surfaces(window);
         } else {
             xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
             if (!_glfw.wl.decorationManager)
@@ -541,9 +453,9 @@ static void xdgToplevelHandleConfigure(void* data,
     }
     window->wl.fullscreened = fullscreen;
     if (!fullscreen) {
-        if (window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.edge_buffer) {
-            width -= window->wl.decoration_metrics.horizontal;
-            height -= window->wl.decoration_metrics.vertical;
+        if (window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.edges.left) {
+            width -= window->wl.decorations.metrics.horizontal;
+            height -= window->wl.decorations.metrics.vertical;
         }
     }
     dispatchChangesAfterConfigure(window, width, height);
@@ -659,7 +571,7 @@ static bool createXdgSurface(_GLFWwindow* window)
 
 static void incrementCursorImage(_GLFWwindow* window)
 {
-    if (window && window->wl.decorations.focus == mainWindow && window->cursorMode != GLFW_CURSOR_HIDDEN) {
+    if (window && window->wl.decorations.focus == CENTRAL_WINDOW && window->cursorMode != GLFW_CURSOR_HIDDEN) {
         _GLFWcursor* cursor = window->wl.currentCursor;
         if (cursor && cursor->wl.cursor)
         {
@@ -802,10 +714,10 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
                               const _GLFWctxconfig* ctxconfig,
                               const _GLFWfbconfig* fbconfig)
 {
-    window->wl.decoration_metrics.width = 4;
-    window->wl.decoration_metrics.top = 24;
-    window->wl.decoration_metrics.horizontal = 2 * window->wl.decoration_metrics.width;
-    window->wl.decoration_metrics.vertical = window->wl.decoration_metrics.width + window->wl.decoration_metrics.top;
+    window->wl.decorations.metrics.width = 4;
+    window->wl.decorations.metrics.top = 24;
+    window->wl.decorations.metrics.horizontal = 2 * window->wl.decorations.metrics.width;
+    window->wl.decorations.metrics.vertical = window->wl.decorations.metrics.width + window->wl.decorations.metrics.top;
     window->wl.transparent = fbconfig->transparent;
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
 
@@ -880,12 +792,9 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
     if (window->context.destroy)
         window->context.destroy(window);
 
-    destroyDecorations(window);
+    free_all_csd_resources(window);
     if (window->wl.xdg.decoration)
         zxdg_toplevel_decoration_v1_destroy(window->wl.xdg.decoration);
-
-    if (window->wl.decorations.edge_buffer)
-        wl_buffer_destroy(window->wl.decorations.edge_buffer);
 
     if (window->wl.native)
         wl_egl_window_destroy(window->wl.native);
@@ -1010,13 +919,13 @@ void _glfwPlatformGetWindowFrameSize(_GLFWwindow* window,
     if (window->decorated && !window->monitor && !window->wl.decorations.serverSide)
     {
         if (top)
-            *top = window->wl.decoration_metrics.top;
+            *top = window->wl.decorations.metrics.top;
         if (left)
-            *left = window->wl.decoration_metrics.width;
+            *left = window->wl.decorations.metrics.width;
         if (right)
-            *right = window->wl.decoration_metrics.width;
+            *right = window->wl.decorations.metrics.width;
         if (bottom)
-            *bottom = window->wl.decoration_metrics.width;
+            *bottom = window->wl.decorations.metrics.width;
     }
 }
 
@@ -1176,7 +1085,7 @@ void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, bool enabled)
         if (enabled)
             createDecorations(window);
         else
-            destroyDecorations(window);
+            free_csd_surfaces(window);
     }
 }
 
@@ -1435,7 +1344,7 @@ void _glfwPlatformSetCursor(_GLFWwindow* window, _GLFWcursor* cursor)
 
     // If we're not in the correct window just save the cursor
     // the next time the pointer enters the window the cursor will change
-    if (window != _glfw.wl.pointerFocus || window->wl.decorations.focus != mainWindow)
+    if (window != _glfw.wl.pointerFocus || window->wl.decorations.focus != CENTRAL_WINDOW)
         return;
 
     // Unlock possible pointer lock if no longer disabled.

@@ -66,6 +66,7 @@
       "null_joystick.h",
       "linux_notify.h",
       "linux_desktop_settings.h",
+      "wl_client_side_decorations.h",
       "main_loop.h"
     ],
     "protocols": [
@@ -84,6 +85,7 @@
       "wl_window.c",
       "wl_cursors.c",
       "wl_text_input.c",
+      "wl_client_side_decorations.c",
       "posix_thread.c",
       "xkb_glfw.c",
       "dbus_glfw.c",

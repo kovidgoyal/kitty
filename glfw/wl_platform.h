@@ -91,21 +91,13 @@ typedef void (* PFN_wl_egl_window_resize)(struct wl_egl_window*, int, int, int, 
 
 typedef enum _GLFWdecorationSideWayland
 {
-    mainWindow,
-    topDecoration,
-    leftDecoration,
-    rightDecoration,
-    bottomDecoration,
-
+    CENTRAL_WINDOW,
+    TOP_DECORATION,
+    LEFT_DECORATION,
+    RIGHT_DECORATION,
+    BOTTOM_DECORATION,
 } _GLFWdecorationSideWayland;
 
-typedef struct _GLFWdecorationWayland
-{
-    struct wl_surface*          surface;
-    struct wl_subsurface*       subsurface;
-    struct wp_viewport*         viewport;
-
-} _GLFWdecorationWayland;
 
 // Wayland-specific per-window data
 //
@@ -150,10 +142,38 @@ typedef struct _GLFWwindowWayland
     bool                        fullscreened;
 
     struct {
-        bool                               serverSide;
-        struct wl_buffer*                  edge_buffer;
-        _GLFWdecorationWayland             top, left, right, bottom;
-        int                                focus;
+        bool serverSide;
+        _GLFWdecorationSideWayland focus;
+
+        struct {
+            struct wl_surface                *top, *left, *right, *bottom;
+        } surfaces;
+
+        struct {
+            struct wl_subsurface             *top, *left, *right, *bottom;
+        } subsurfaces;
+
+        struct {
+            struct wp_viewport               *top, *left, *right, *bottom;
+        } viewports;
+
+        struct {
+            struct wl_buffer *front_buffer, *back_buffer;
+            uint8_t *data;
+            size_t buffer_sz;
+        } title_bar;
+
+        struct {
+            struct wl_buffer *left, *right, *bottom;
+        } edges;
+
+        struct {
+            int width, height, scale;
+        } for_window_size;
+
+        struct {
+            unsigned int width, top, horizontal, vertical;
+        } metrics;
     } decorations;
 
     struct {
@@ -161,10 +181,6 @@ typedef struct _GLFWwindowWayland
         void(*callback)(unsigned long long id);
         struct wl_callback *current_wl_callback;
     } frameCallbackData;
-
-    struct {
-        unsigned int width, top, horizontal, vertical;
-    } decoration_metrics;
 
 } _GLFWwindowWayland;
 
