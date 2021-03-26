@@ -115,13 +115,15 @@ functional_key_number_to_name_map = {
     57442: 'LEFT_ALT',
     57443: 'LEFT_SUPER',
     57444: 'LEFT_HYPER',
-    57445: 'RIGHT_SHIFT',
-    57446: 'RIGHT_CONTROL',
-    57447: 'RIGHT_ALT',
-    57448: 'RIGHT_SUPER',
-    57449: 'RIGHT_HYPER',
-    57450: 'ISO_LEVEL3_SHIFT',
-    57451: 'ISO_LEVEL5_SHIFT'}
+    57445: 'LEFT_META',
+    57446: 'RIGHT_SHIFT',
+    57447: 'RIGHT_CONTROL',
+    57448: 'RIGHT_ALT',
+    57449: 'RIGHT_SUPER',
+    57450: 'RIGHT_HYPER',
+    57451: 'RIGHT_META',
+    57452: 'ISO_LEVEL3_SHIFT',
+    57453: 'ISO_LEVEL5_SHIFT'}
 csi_number_to_functional_number_map = {
     2: 57348,
     3: 57349,
@@ -190,7 +192,7 @@ def parse_shortcut(spec: str) -> ParsedShortcut:
         key_name = character_key_name_aliases.get(key_name.upper(), key_name)
     mod_val = 0
     if len(parts) > 1:
-        mods = tuple(config_mod_map.get(x.upper(), SUPER << 8) for x in parts[:-1])
+        mods = tuple(config_mod_map.get(x.upper(), META << 8) for x in parts[:-1])
         for x in mods:
             mod_val |= x
     return ParsedShortcut(mod_val, key_name)
@@ -207,6 +209,8 @@ class KeyEvent(NamedTuple):
     alt: bool = False
     ctrl: bool = False
     super: bool = False
+    hyper: bool = False
+    meta: bool = False
 
     def matches(self, spec: Union[str, ParsedShortcut], types: int = EventType.PRESS | EventType.REPEAT) -> bool:
         if not self.type & types:
@@ -236,6 +240,10 @@ class KeyEvent(NamedTuple):
                 mods |= defines.GLFW_MOD_CONTROL
             if self.super:
                 mods |= defines.GLFW_MOD_SUPER
+            if self.hyper:
+                mods |= defines.GLFW_MOD_HYPER
+            if self.meta:
+                mods |= defines.GLFW_MOD_META
 
         fnm = get_name_to_functional_number_map()
 
@@ -248,7 +256,7 @@ class KeyEvent(NamedTuple):
             action=action, text=self.text)
 
 
-SHIFT, ALT, CTRL, SUPER = 1, 2, 4, 8
+SHIFT, ALT, CTRL, SUPER, HYPER, META = 1, 2, 4, 8, 16, 32
 enter_key = KeyEvent(key='ENTER')
 backspace_key = KeyEvent(key='BACKSPACE')
 config_mod_map = {
@@ -260,7 +268,9 @@ config_mod_map = {
     'CMD': SUPER,
     'SUPER': SUPER,
     'CTRL': CTRL,
-    'CONTROL': CTRL
+    'CONTROL': CTRL,
+    'HYPER': HYPER,
+    'META': META,
 }
 
 
@@ -294,6 +304,7 @@ def decode_key_event(csi: str, csi_type: str) -> KeyEvent:
     return KeyEvent(
         mods=mods, shift=bool(mods & SHIFT), alt=bool(mods & ALT),
         ctrl=bool(mods & CTRL), super=bool(mods & SUPER),
+        hyper=bool(mods & HYPER), meta=bool(mods & META),
         key=key_name(keynum),
         shifted_key=key_name(first_section[1] if len(first_section) > 1 else 0),
         alternate_key=key_name(first_section[2] if len(first_section) > 2 else 0),
@@ -346,6 +357,10 @@ def encode_key_event(key_event: KeyEvent) -> str:
             m |= 4
         if key_event.super:
             m |= 8
+        if key_event.hyper:
+            m |= 16
+        if key_event.meta:
+            m |= 32
         if action > 1 or m:
             ans += f';{m+1}'
             if action > 1:

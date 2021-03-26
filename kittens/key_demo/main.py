@@ -6,7 +6,7 @@ import sys
 from typing import List
 
 from kitty.key_encoding import (
-    ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, SUPER, KeyEvent,
+    ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, SUPER, HYPER, META, KeyEvent,
     encode_key_event
 )
 
@@ -32,7 +32,9 @@ class KeysHandler(Handler):
                 SHIFT: 'Shift',
                 ALT: 'Alt',
                 CTRL: 'Ctrl',
-                SUPER: 'Super'}.items():
+                SUPER: 'Super',
+                HYPER: 'Hyper',
+                META: 'Meta'}.items():
             if key_event.mods & m:
                 lmods.append(name)
         mods = '+'.join(lmods)

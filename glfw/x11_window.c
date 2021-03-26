@@ -185,6 +185,7 @@ static int translateState(int state)
 {
     int mods = 0;
 
+    /* Need some way to expose hyper and meta without xkbcommon-x11 */
     if (state & ShiftMask)
         mods |= GLFW_MOD_SHIFT;
     if (state & ControlMask)

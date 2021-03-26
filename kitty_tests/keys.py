@@ -17,7 +17,7 @@ class TestKeys(BaseTest):
     def test_encode_key_event(self):
         enc = defines.encode_key_for_tty
         ae = self.assertEqual
-        shift, alt, ctrl, super = defines.GLFW_MOD_SHIFT, defines.GLFW_MOD_ALT, defines.GLFW_MOD_CONTROL, defines.GLFW_MOD_SUPER  # noqa
+        shift, alt, ctrl, super, hyper, meta = defines.GLFW_MOD_SHIFT, defines.GLFW_MOD_ALT, defines.GLFW_MOD_CONTROL, defines.GLFW_MOD_SUPER, defines.GLFW_MOD_HYPER, defines.GLFW_MOD_META  # noqa
         press, repeat, release = defines.GLFW_PRESS, defines.GLFW_REPEAT, defines.GLFW_RELEASE  # noqa
 
         def csi(mods=0, num=1, action=1, shifted_key=0, alternate_key=0, text=None, trailer='u'):
@@ -44,6 +44,10 @@ class TestKeys(BaseTest):
                     m |= 4
                 if mods & super:
                     m |= 8
+                if mods & hyper:
+                    m |= 16
+                if mods & meta:
+                    m |= 32
                 if action > 1 or m:
                     ans += f';{m+1}'
                     if action > 1:
@@ -461,7 +465,7 @@ class TestKeys(BaseTest):
         ae(eq(ord('a'), mods=shift, text='AB'), csi(shift, num='a', text='AB'))
 
         # test roundtripping via KeyEvent
-        for mods in range(16):
+        for mods in range(64):
             for action in EventType:
                 for key in ('ENTER', 'a', 'TAB', 'F3'):
                     for shifted_key in ('', 'X'):
@@ -470,6 +474,7 @@ class TestKeys(BaseTest):
                                 ev = KeyEvent(
                                     type=action, mods=mods, key=key, text=text, shifted_key=shifted_key, alternate_key=alternate_key,
                                     shift=bool(mods & 1), alt=bool(mods & 2), ctrl=bool(mods & 4), super=bool(mods & 8)
+                                    , hyper=bool(mods & 16), meta=bool(mods & 32)
                                 )
                                 ec = encode_key_event(ev)
                                 q = decode_key_event(ec[2:-1], ec[-1])
