@@ -85,9 +85,13 @@ render_left_edge(uint8_t *data, size_t width, size_t height) {
 static bool
 create_shm_buffers_for_edges(_GLFWwindow* window) {
     free_edge_resources(window);
+    int scale = window->wl.scale;
+    if (scale < 1) scale = 1;
 
-    const size_t vertical_width = decs.metrics.width, vertical_height = window->wl.height + decs.metrics.top;
-    const size_t horizontal_height = decs.metrics.width, horizontal_width = window->wl.width + 2 * decs.metrics.width;
+    size_t vertical_width = decs.metrics.width, vertical_height = window->wl.height + decs.metrics.top;
+    size_t horizontal_height = decs.metrics.width, horizontal_width = window->wl.width + 2 * decs.metrics.width;
+    vertical_width *= scale; vertical_height *= scale;
+    horizontal_width *= scale; horizontal_height *= scale;
     const size_t mapping_sz = 4 * (2 * vertical_width * vertical_height + horizontal_height * horizontal_width);
 
     int fd = createAnonymousFile(mapping_sz);
@@ -136,6 +140,7 @@ free_csd_surfaces(_GLFWwindow *window) {
 
 #define create_decoration_surfaces(which, buffer) { \
     decs.surfaces.which = wl_compositor_create_surface(_glfw.wl.compositor); \
+    wl_surface_set_buffer_scale(decs.surfaces.which, window->wl.scale < 1 ? 1 : window->wl.scale); \
     decs.subsurfaces.which = wl_subcompositor_get_subsurface(_glfw.wl.subcompositor, decs.surfaces.which, window->wl.surface); \
     wl_surface_attach(decs.surfaces.which, buffer, 0, 0); \
 }
