@@ -46,8 +46,11 @@ free_edge_resources(_GLFWwindow *window) {
 static bool
 create_shm_buffers_for_title_bar(_GLFWwindow* window) {
     free_title_bar_resources(window);
-    const size_t stride = 4 * window->wl.width;
-    tb.buffer_sz = stride * window->wl.decorations.metrics.top;
+    int scale = window->wl.scale;
+    if (scale < 1) scale = 1;
+    size_t width = window->wl.width * scale, height = decs.metrics.top * scale;
+    const size_t stride = 4 * width;
+    tb.buffer_sz = stride * height;
     const size_t mapping_sz = tb.buffer_sz * 2;
 
     int fd = createAnonymousFile(mapping_sz);
