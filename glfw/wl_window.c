@@ -817,14 +817,13 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
 {
-    if (window->wl.title)
-        free(window->wl.title);
+    if (window->wl.title) free(window->wl.title);
     // Wayland cannot handle requests larger than ~8200 bytes. Sending
     // one causes an abort(). Since titles this large are meaningless anyway
     // ensure they do not happen.
     window->wl.title = utf_8_strndup(title, 2048);
-    if (window->wl.xdg.toplevel)
-        xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
+    if (window->wl.xdg.toplevel) xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
+    if (window->wl.decorations.top.surface) change_csd_title(window);
 }
 
 void _glfwPlatformSetWindowIcon(_GLFWwindow* window UNUSED,

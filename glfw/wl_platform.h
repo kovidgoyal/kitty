@@ -100,7 +100,7 @@ typedef enum _GLFWdecorationSideWayland
 typedef struct _GLFWWaylandBufferPair {
     struct wl_buffer *a, *b, *front, *back;
     struct { uint8_t *a, *b, *front, *back; } data;
-    bool back_buffer_is_safe, has_pending_update;
+    bool has_pending_update;
     size_t size_in_bytes, width, height, stride;
 } _GLFWWaylandBufferPair;
 

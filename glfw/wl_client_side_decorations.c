@@ -15,8 +15,15 @@
 #define decs window->wl.decorations
 
 #define ARGB(a, r, g, b) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
+#define SWAP(x, y) do { __typeof__(x) SWAP = x; x = y; y = SWAP; } while (0)
 
 static const uint32_t bg_color = 0xfffefefe;
+
+static void
+swap_buffers(_GLFWWaylandBufferPair *pair) {
+    SWAP(pair->front, pair->back);
+    SWAP(pair->data.front, pair->data.back);
+}
 
 static size_t
 init_buffer_pair(_GLFWWaylandBufferPair *pair, size_t width, size_t height, unsigned scale) {
@@ -38,7 +45,6 @@ alloc_buffer_pair(_GLFWWaylandBufferPair *pair, struct wl_shm_pool *pool, uint8_
     *offset += pair->size_in_bytes;
     pair->front = pair->a; pair->back = pair->b;
     pair->data.front = pair->data.a; pair->data.back = pair->data.b;
-    pair->back_buffer_is_safe = true;
 }
 
 static void
@@ -131,6 +137,11 @@ create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDEdge *s) {
     s->subsurface = wl_subcompositor_get_subsurface(_glfw.wl.subcompositor, s->surface, window->wl.surface);
 }
 
+#define damage_csd(which, xbuffer) \
+    wl_surface_attach(decs.which.surface, xbuffer, 0, 0); \
+    wl_surface_damage(decs.which.surface, 0, 0, decs.which.buffer.width, decs.which.buffer.height); \
+    wl_surface_commit(decs.which.surface)
+
 bool
 ensure_csd_resources(_GLFWwindow *window) {
     const bool is_focused = window->id == _glfw.focusedWindowId;
@@ -142,7 +153,7 @@ ensure_csd_resources(_GLFWwindow *window) {
         !decs.mapping.data
     );
     const bool needs_update = focus_changed || size_changed || !decs.left.surface;
-    if (!needs_update) return true;
+    if (!needs_update) return false;
     if (size_changed) {
         free_csd_buffers(window);
         if (!create_shm_buffers(window)) return false;
@@ -165,16 +176,10 @@ ensure_csd_resources(_GLFWwindow *window) {
     if (!decs.right.surface) create_csd_surfaces(window, &decs.right);
     position_csd_surface(&decs.right, x, y, scale);
 
-#define c(which, xbuffer) \
-    wl_surface_attach(decs.which.surface, xbuffer, 0, 0); \
-    wl_surface_damage(decs.which.surface, 0, 0, decs.which.buffer.width, decs.which.buffer.height); \
-    wl_surface_commit(decs.which.surface)
-
-    c(top, decs.top.buffer.front);
-    c(left, is_focused ? decs.left.buffer.front : decs.left.buffer.back);
-    c(bottom, is_focused ? decs.bottom.buffer.front : decs.bottom.buffer.back);
-    c(right, is_focused ? decs.right.buffer.front : decs.right.buffer.back);
-#undef c
+    damage_csd(top, decs.top.buffer.front);
+    damage_csd(left, is_focused ? decs.left.buffer.front : decs.left.buffer.back);
+    damage_csd(bottom, is_focused ? decs.bottom.buffer.front : decs.bottom.buffer.back);
+    damage_csd(right, is_focused ? decs.right.buffer.front : decs.right.buffer.back);
 
     decs.for_window_state.width = window->wl.width;
     decs.for_window_state.height = window->wl.height;
@@ -192,4 +197,14 @@ free_all_csd_resources(_GLFWwindow *window) {
 void
 resize_csd(_GLFWwindow *window) {
     ensure_csd_resources(window);
+}
+
+void
+change_csd_title(_GLFWwindow *window) {
+    if (ensure_csd_resources(window)) return;  // CSD were re-rendered for other reasons
+    if (decs.top.surface) {
+        render_title_bar(window, false);
+        swap_buffers(&decs.top.buffer);
+        damage_csd(top, decs.top.buffer.front);
+    }
 }
