@@ -222,7 +222,7 @@ static void resizeFramebuffer(_GLFWwindow* window)
         setOpaqueRegion(window);
     _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
 
-    if (window->wl.decorations.surfaces.top) resize_csd(window);
+    if (window->wl.decorations.mapping.data) resize_csd(window);
 
 }
 
@@ -453,7 +453,7 @@ static void xdgToplevelHandleConfigure(void* data,
     }
     window->wl.fullscreened = fullscreen;
     if (!fullscreen) {
-        if (window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.edges.left) {
+        if (window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.left.surface) {
             width -= window->wl.decorations.metrics.horizontal;
             height -= window->wl.decorations.metrics.vertical;
         }

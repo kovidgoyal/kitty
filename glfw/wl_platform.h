@@ -97,6 +97,20 @@ typedef enum _GLFWdecorationSideWayland
     BOTTOM_DECORATION,
 } _GLFWdecorationSideWayland;
 
+typedef struct _GLFWWaylandBufferPair {
+    struct wl_buffer *a, *b, *front, *back;
+    struct { uint8_t *a, *b, *front, *back; } data;
+    bool back_buffer_is_safe, has_pending_update;
+    size_t size_in_bytes, width, height, stride;
+} _GLFWWaylandBufferPair;
+
+typedef struct _GLFWWaylandCSDEdge {
+    struct wl_surface *surface;
+    struct wl_subsurface *subsurface;
+    _GLFWWaylandBufferPair buffer;
+    int x, y;
+} _GLFWWaylandCSDEdge;
+
 
 // Wayland-specific per-window data
 //
@@ -143,24 +157,12 @@ typedef struct _GLFWwindowWayland
     struct {
         bool serverSide;
         _GLFWdecorationSideWayland focus;
+        _GLFWWaylandCSDEdge top, left, right, bottom;
 
         struct {
-            struct wl_surface                *top, *left, *right, *bottom;
-        } surfaces;
-
-        struct {
-            struct wl_subsurface             *top, *left, *right, *bottom;
-        } subsurfaces;
-
-        struct {
-            struct wl_buffer *front_buffer, *back_buffer;
             uint8_t *data;
-            size_t buffer_sz;
-        } title_bar;
-
-        struct {
-            struct wl_buffer *left, *right, *bottom;
-        } edges;
+            size_t size;
+        } mapping;
 
         struct {
             int width, height, scale;

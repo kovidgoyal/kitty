@@ -66,7 +66,7 @@ findWindowFromDecorationSurface(struct wl_surface* surface, _GLFWdecorationSideW
     _GLFWdecorationSideWayland focus;
     if (!which) which = &focus;
     _GLFWwindow* window = _glfw.windowListHead;
-#define q(edge, result) if (surface == window->wl.decorations.surfaces.edge) { *which = result; break; }
+#define q(edge, result) if (surface == window->wl.decorations.edge.surface) { *which = result; break; }
     while (window) {
         q(top, TOP_DECORATION);
         q(left, LEFT_DECORATION);
