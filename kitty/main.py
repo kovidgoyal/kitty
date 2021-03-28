@@ -275,15 +275,14 @@ def expand_listen_on(listen_on: str, from_config_file: bool) -> str:
 
 
 def setup_environment(opts: OptionsStub, cli_opts: CLIOptions) -> None:
-    if opts.editor == '.':
+    editor = opts.editor
+    if editor == '.':
         editor = get_editor_from_env(os.environ)
         if not editor:
             shell_env = read_shell_environment(opts)
             editor = get_editor_from_env(shell_env)
-        if editor:
-            os.environ['EDITOR'] = editor
-    else:
-        os.environ['EDITOR'] = opts.editor
+    if editor and 'EDITOR' not in os.environ:
+        os.environ['EDITOR'] = editor
     from_config_file = False
     if not cli_opts.listen_on and opts.listen_on.startswith('unix:'):
         cli_opts.listen_on = opts.listen_on
