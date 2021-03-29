@@ -216,6 +216,7 @@ extern bool init_cocoa(PyObject *module);
 extern bool init_macos_process_info(PyObject *module);
 #else
 extern bool init_freetype_library(PyObject*);
+extern bool init_freetype_render_ui_text(PyObject*);
 #endif
 
 
@@ -253,6 +254,7 @@ PyInit_fast_data_types(void) {
     if (!init_freetype_library(m)) return NULL;
     if (!init_fontconfig_library(m)) return NULL;
     if (!init_desktop(m)) return NULL;
+    if (!init_freetype_render_ui_text(m)) return NULL;
 #endif
     if (!init_fonts(m)) return NULL;
 

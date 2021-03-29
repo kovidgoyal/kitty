@@ -669,7 +669,11 @@ def compile_c_extension(
 def find_c_files() -> Tuple[List[str], List[str]]:
     ans, headers = [], []
     d = 'kitty'
-    exclude = {'fontconfig.c', 'freetype.c', 'desktop.c'} if is_macos else {'core_text.m', 'cocoa_window.m', 'macos_process_info.c'}
+    exclude = {
+        'fontconfig.c', 'freetype.c', 'desktop.c', 'freetype_render_ui_text.c'
+    } if is_macos else {
+        'core_text.m', 'cocoa_window.m', 'macos_process_info.c'
+    }
     for x in sorted(os.listdir(d)):
         ext = os.path.splitext(x)[1]
         if ext in ('.c', '.m') and os.path.basename(x) not in exclude:

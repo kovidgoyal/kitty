@@ -168,6 +168,31 @@ end:
     if (charset != NULL) FcCharSetDestroy(charset);
 }
 
+const char*
+file_path_for_font(const char *family, bool bold, bool italic) {
+    const char *ans = NULL;
+    FcPattern *match = NULL;
+    FcPattern *pat = FcPatternCreate();
+    if (pat == NULL) { PyErr_NoMemory(); return NULL; }
+    if (family && strlen(family) > 0) AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
+    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
+    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    FcResult result;
+    FcConfigSubstitute(NULL, pat, FcMatchPattern);
+    FcDefaultSubstitute(pat);
+    match = FcFontMatch(NULL, pat, &result);
+    if (match == NULL) { PyErr_SetString(PyExc_KeyError, "FcFontMatch() failed"); goto end; }
+    FcChar8 *out;
+    if (FcPatternGetString(pat, FC_FILE, 0, &out) != FcResultMatch) { PyErr_SetString(PyExc_ValueError, "No path found in fontconfig result"); goto end; }
+    ans = strdup((char*)out);
+    if (!ans) { PyErr_NoMemory(); goto end; }
+end:
+    if (match != NULL) FcPatternDestroy(match);
+    if (pat != NULL) FcPatternDestroy(pat);
+    return ans;
+}
+
+
 static PyObject*
 fc_match(PyObject UNUSED *self, PyObject *args) {
     char *family = NULL;
