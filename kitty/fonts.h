@@ -50,8 +50,3 @@ right_shift_canvas(pixel *canvas, size_t width, size_t height, size_t amt) {
         zero_at_ptr_count(src, amt);
     }
 }
-
-
-#ifndef __APPLE__
-const char* file_path_for_font(const char *family, bool bold, bool italic);
-#endif

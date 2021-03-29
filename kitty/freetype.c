@@ -252,6 +252,15 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
     return (PyObject*)self;
 }
 
+FT_Face
+native_face_from_path(const char *path, int index) {
+    int error;
+    FT_Face ans;
+    error = FT_New_Face(library, path, index, &ans);
+    if (error) { set_freetype_error("Failed to load face, with error:", error); return NULL; }
+    return ans;
+}
+
 PyObject*
 face_from_path(const char *path, int index, FONTS_DATA_HANDLE fg) {
     Face *ans = (Face*)Face_Type.tp_alloc(&Face_Type, 0);

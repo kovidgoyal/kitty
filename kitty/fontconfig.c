@@ -10,6 +10,7 @@
 #include "fonts.h"
 #include <fontconfig/fontconfig.h>
 #include "emoji.h"
+#include "freetype_render_ui_text.h"
 #ifndef FC_COLOR
 #define FC_COLOR "color"
 #endif
@@ -168,28 +169,36 @@ end:
     if (charset != NULL) FcCharSetDestroy(charset);
 }
 
-const char*
-file_path_for_font(const char *family, bool bold, bool italic) {
-    const char *ans = NULL;
+bool
+information_for_font_family(const char *family, bool bold, bool italic, FontConfigFace *ans) {
+    memset(ans, 0, sizeof(FontConfigFace));
     FcPattern *match = NULL;
     FcPattern *pat = FcPatternCreate();
-    if (pat == NULL) { PyErr_NoMemory(); return NULL; }
+    bool ok = false;
+    if (pat == NULL) { PyErr_NoMemory(); return ok; }
     if (family && strlen(family) > 0) AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
     if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
     FcResult result;
     FcConfigSubstitute(NULL, pat, FcMatchPattern);
     FcDefaultSubstitute(pat);
+    /* printf("fc_match = %s\n", FcNameUnparse(pat)); */
     match = FcFontMatch(NULL, pat, &result);
     if (match == NULL) { PyErr_SetString(PyExc_KeyError, "FcFontMatch() failed"); goto end; }
     FcChar8 *out;
-    if (FcPatternGetString(pat, FC_FILE, 0, &out) != FcResultMatch) { PyErr_SetString(PyExc_ValueError, "No path found in fontconfig result"); goto end; }
-    ans = strdup((char*)out);
-    if (!ans) { PyErr_NoMemory(); goto end; }
+#define g(func, prop, output) if (func(match, prop, 0, &output) != FcResultMatch) { PyErr_SetString(PyExc_ValueError, "No " #prop " found in fontconfig match result"); goto end; }
+    g(FcPatternGetString, FC_FILE, out);
+    g(FcPatternGetInteger, FC_INDEX, ans->index);
+    g(FcPatternGetInteger, FC_HINT_STYLE, ans->hintstyle);
+    g(FcPatternGetBool, FC_HINTING, ans->hinting);
+#undef g
+    ans->path = strdup((char*)out);
+    if (!ans->path) { PyErr_NoMemory(); goto end; }
+    ok = true;
 end:
     if (match != NULL) FcPatternDestroy(match);
     if (pat != NULL) FcPatternDestroy(pat);
-    return ans;
+    return ok;
 }
 
 
