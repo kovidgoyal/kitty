@@ -149,7 +149,7 @@ end:
     return ans;
 }
 
-static Py_UCS4 char_buf[1024];
+static char_type char_buf[1024];
 
 static inline void
 add_charset(FcPattern *pat, size_t num) {
@@ -169,16 +169,10 @@ end:
     if (charset != NULL) FcCharSetDestroy(charset);
 }
 
-bool
-information_for_font_family(const char *family, bool bold, bool italic, FontConfigFace *ans) {
-    memset(ans, 0, sizeof(FontConfigFace));
-    FcPattern *match = NULL;
-    FcPattern *pat = FcPatternCreate();
+static inline bool
+_native_fc_match(FcPattern *pat, FontConfigFace *ans) {
     bool ok = false;
-    if (pat == NULL) { PyErr_NoMemory(); return ok; }
-    if (family && strlen(family) > 0) AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
-    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
-    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    FcPattern *match = NULL;
     FcResult result;
     FcConfigSubstitute(NULL, pat, FcMatchPattern);
     FcDefaultSubstitute(pat);
@@ -197,6 +191,21 @@ information_for_font_family(const char *family, bool bold, bool italic, FontConf
     ok = true;
 end:
     if (match != NULL) FcPatternDestroy(match);
+    return ok;
+}
+
+
+bool
+information_for_font_family(const char *family, bool bold, bool italic, FontConfigFace *ans) {
+    memset(ans, 0, sizeof(FontConfigFace));
+    FcPattern *pat = FcPatternCreate();
+    bool ok = false;
+    if (pat == NULL) { PyErr_NoMemory(); return ok; }
+    if (family && strlen(family) > 0) AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
+    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
+    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    ok = _native_fc_match(pat, ans);
+end:
     if (pat != NULL) FcPatternDestroy(pat);
     return ok;
 }
@@ -278,6 +287,23 @@ specialize_font_descriptor(PyObject *base_descriptor, FONTS_DATA_HANDLE fg) {
 end:
     if (pat != NULL) FcPatternDestroy(pat);
     return ans;
+}
+
+bool
+fallback_font(char_type ch, const char *family, bool bold, bool italic, FontConfigFace *ans) {
+    memset(ans, 0, sizeof(FontConfigFace));
+    bool ok = false;
+    FcPattern *pat = FcPatternCreate();
+    if (pat == NULL) { PyErr_NoMemory(); return ok; }
+    if (family) AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
+    if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
+    if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    char_buf[0] = ch;
+    add_charset(pat, 1);
+    ok = _native_fc_match(pat, ans);
+end:
+    if (pat != NULL) FcPatternDestroy(pat);
+    return ok;
 }
 
 PyObject*

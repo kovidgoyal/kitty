@@ -20,7 +20,6 @@
 #define FT_Bitmap_Init FT_Bitmap_New
 #endif
 
-#include FT_FREETYPE_H
 #include FT_BITMAP_H
 #include FT_TRUETYPE_TABLES_H
 typedef struct {

@@ -18,6 +18,6 @@ typedef struct FontConfigFace {
 
 bool information_for_font_family(const char *family, bool bold, bool italic, FontConfigFace *ans);
 FT_Face native_face_from_path(const char *path, int index);
-
+bool fallback_font(char_type ch, const char *family, bool bold, bool italic, FontConfigFace *ans);
 
 void set_main_face_family(const char *family, bool bold, bool italic);
