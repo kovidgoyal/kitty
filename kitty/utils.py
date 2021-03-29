@@ -462,17 +462,64 @@ def natsort_ints(iterable: Iterable[str]) -> List[str]:
     return sorted(iterable, key=alphanum_key)
 
 
-@run_once
-def get_editor() -> List[str]:
+def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> Optional[str]:
+    import shlex
+    editor_cmd = shlex.split(editor)
+    editor_exe = (editor_cmd or ('',))[0]
+    if editor_exe and os.path.isabs(editor_exe):
+        return editor
+    if not editor_exe:
+        return None
+
+    def patched(exe: str) -> str:
+        editor_cmd[0] = exe
+        return ' '.join(map(shlex.quote, editor_cmd))
+
+    if shell_env is os.environ:
+        q = find_exe(editor_exe)
+        if q:
+            return patched(q)
+    elif 'PATH' in shell_env:
+        import shutil
+        q = shutil.which(editor_exe, path=shell_env['PATH'])
+        if q:
+            return patched(q)
+
+
+def get_editor_from_env(env: Mapping[str, str]) -> Optional[str]:
+    for var in ('VISUAL', 'EDITOR'):
+        editor = env.get(var)
+        if editor:
+            editor = resolve_editor_cmd(editor, env)
+            if editor:
+                return editor
+
+
+def get_editor_from_env_vars(opts: Optional[Options] = None) -> List[str]:
     import shlex
     import shutil
-    for ans in (os.environ.get('VISUAL'), os.environ.get('EDITOR'), 'vim',
-                'nvim', 'vi', 'emacs', 'kak', 'micro', 'nano', 'vis'):
+
+    editor = get_editor_from_env(os.environ)
+    if not editor:
+        shell_env = read_shell_environment(opts)
+        editor = get_editor_from_env(shell_env)
+
+    for ans in (editor, 'vim', 'nvim', 'vi', 'emacs', 'kak', 'micro', 'nano', 'vis'):
         if ans and shutil.which(shlex.split(ans)[0]):
             break
     else:
         ans = 'vim'
     return shlex.split(ans)
+
+
+def get_editor(opts: Optional[Options] = None) -> List[str]:
+    if opts is None:
+        from .cli import create_default_opts
+        opts = create_default_opts()
+    if opts.editor == '.':
+        return get_editor_from_env_vars()
+    import shlex
+    return shlex.split(opts.editor)
 
 
 def is_path_in_temp_dir(path: str) -> bool:

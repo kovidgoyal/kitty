@@ -852,3 +852,10 @@ def create_opts(args: CLIOptions, debug_config: bool = False, accumulate_bad_lin
             print('Running under:', green('Wayland' if is_wayland(opts) else 'X11'))
         compare_opts(opts)
     return opts
+
+
+def create_default_opts() -> OptionsStub:
+    from .config import load_config
+    config = tuple(resolve_config(SYSTEM_CONF, defconf, ()))
+    opts = load_config(*config)
+    return opts
