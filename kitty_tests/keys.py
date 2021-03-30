@@ -473,8 +473,8 @@ class TestKeys(BaseTest):
                             for text in ('', 'moose'):
                                 ev = KeyEvent(
                                     type=action, mods=mods, key=key, text=text, shifted_key=shifted_key, alternate_key=alternate_key,
-                                    shift=bool(mods & 1), alt=bool(mods & 2), ctrl=bool(mods & 4), super=bool(mods & 8)
-                                    , hyper=bool(mods & 16), meta=bool(mods & 32)
+                                    shift=bool(mods & 1), alt=bool(mods & 2), ctrl=bool(mods & 4), super=bool(mods & 8),
+                                    hyper=bool(mods & 16), meta=bool(mods & 32)
                                 )
                                 ec = encode_key_event(ev)
                                 q = decode_key_event(ec[2:-1], ec[-1])
