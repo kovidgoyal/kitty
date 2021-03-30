@@ -9,6 +9,8 @@
 #include "data-types.h"
 #include <hb-ft.h>
 
+bool render_single_line(const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, bool alpha_first);
+
 typedef struct FontConfigFace {
     char *path;
     int index;

@@ -12,10 +12,6 @@
 #include <ft2build.h>
 #include <hb-ft.h>
 
-#if HB_VERSION_MAJOR > 1 || (HB_VERSION_MAJOR == 1 && (HB_VERSION_MINOR > 6 || (HB_VERSION_MINOR == 6 && HB_VERSION_MICRO >= 3)))
-#define HARFBUZZ_HAS_CHANGE_FONT
-#endif
-
 #if FREETYPE_MAJOR == 2 && FREETYPE_MINOR < 7
 #define FT_Bitmap_Init FT_Bitmap_New
 #endif
@@ -149,17 +145,7 @@ set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt
             return set_font_size(self, 0, h, xdpi, ydpi, 0, cell_height);
         }
         self->char_width = char_width; self->char_height = char_height; self->xdpi = xdpi; self->ydpi = ydpi;
-        if (self->harfbuzz_font != NULL) {
-#ifdef HARFBUZZ_HAS_CHANGE_FONT
-            hb_ft_font_changed(self->harfbuzz_font);
-#else
-            hb_font_set_scale(
-                self->harfbuzz_font,
-                (int) (((uint64_t) self->face->size->metrics.x_scale * (uint64_t) self->face->units_per_EM + (1u<<15)) >> 16),
-                (int) (((uint64_t) self->face->size->metrics.y_scale * (uint64_t) self->face->units_per_EM + (1u<<15)) >> 16)
-            );
-#endif
-        }
+        if (self->harfbuzz_font != NULL) hb_ft_font_changed(self->harfbuzz_font);
     } else {
         if (!self->is_scalable && self->face->num_fixed_sizes > 0) {
             int32_t min_diff = INT32_MAX;
