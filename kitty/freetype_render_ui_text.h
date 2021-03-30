@@ -9,7 +9,7 @@
 #include "data-types.h"
 #include <hb-ft.h>
 
-bool render_single_line(const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, bool alpha_first);
+bool render_single_line(const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height);
 
 typedef struct FontConfigFace {
     char *path;
@@ -21,5 +21,7 @@ typedef struct FontConfigFace {
 bool information_for_font_family(const char *family, bool bold, bool italic, FontConfigFace *ans);
 FT_Face native_face_from_path(const char *path, int index);
 bool fallback_font(char_type ch, const char *family, bool bold, bool italic, FontConfigFace *ans);
+bool freetype_convert_mono_bitmap(FT_Bitmap *src, FT_Bitmap *dest);
+FT_Library freetype_library(void);
 
 void set_main_face_family(const char *family, bool bold, bool italic);

@@ -9,6 +9,7 @@
 #include <hb.h>
 #include <hb-ft.h>
 #include "charsets.h"
+#include FT_BITMAP_H
 
 typedef struct FamilyInformation {
     char *name;
@@ -19,9 +20,20 @@ typedef struct Face {
     FT_Face freetype;
     hb_font_t *hb;
     FT_UInt pixel_size;
+    int hinting, hintstyle;
     struct Face *fallbacks;
     size_t count, capacity;
 } Face;
+
+typedef struct {
+    unsigned char* buf;
+    size_t start_x, width, stride;
+    size_t rows;
+    FT_Pixel_Mode pixel_mode;
+    unsigned int factor, right_edge;
+    int bitmap_left, bitmap_top;
+} ProcessedBitmap;
+
 
 Face main_face = {0};
 FontConfigFace main_face_information = {0};
@@ -59,12 +71,25 @@ set_main_face_family(const char *family, bool bold, bool italic) {
     main_face_family.bold = bold; main_face_family.italic = italic;
 }
 
+static inline int
+get_load_flags(int hinting, int hintstyle, int base) {
+    int flags = base;
+    if (hinting) {
+        if (hintstyle >= 3) flags |= FT_LOAD_TARGET_NORMAL;
+        else if (0 < hintstyle  && hintstyle < 3) flags |= FT_LOAD_TARGET_LIGHT;
+    } else flags |= FT_LOAD_NO_HINTING;
+    return flags;
+}
+
+
 static bool
 load_font(FontConfigFace *info, Face *ans) {
     ans->freetype = native_face_from_path(info->path, info->index);
     if (!ans->freetype) return false;
     ans->hb = hb_ft_font_create(ans->freetype, NULL);
     if (!ans->hb) { PyErr_NoMemory(); return false; }
+    ans->hinting = info->hinting; ans->hintstyle = info->hintstyle;
+    hb_ft_font_set_load_flags(ans->hb, get_load_flags(ans->hinting, ans->hintstyle, FT_LOAD_DEFAULT));
     return true;
 }
 
@@ -83,34 +108,125 @@ set_pixel_size(Face *face, FT_UInt sz) {
     if (sz != face->pixel_size) {
         FT_Set_Pixel_Sizes(face->freetype, sz, sz);  // TODO: check for and handle failures
         hb_ft_font_changed(face->hb);
+        hb_ft_font_set_load_flags(face->hb, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
         face->pixel_size = sz;
     }
 }
 
+
 typedef struct RenderState {
     uint32_t pending_in_buffer, fg, bg;
-    uint8_t *output;
-    bool alpha_first;
+    pixel *output;
     size_t output_width, output_height;
     Face *current_face;
+    float x, y;
+    Region src, dest;
 } RenderState;
 
+static inline int
+font_units_to_pixels_y(FT_Face face, int x) {
+    return (int)ceil((double)FT_MulFix(x, face->size->metrics.y_scale) / 64.0);
+}
 
-bool
+static void
+setup_regions(ProcessedBitmap *bm, RenderState *rs, int baseline) {
+    rs->src = (Region){ .left = bm->start_x, .bottom = bm->rows, .right = bm->width + bm->start_x };
+    rs->dest = (Region){ .bottom = rs->output_height, .right = (uint32_t) (rs->output_width - rs->x) };
+    int xoff = (int)(rs->x + bm->bitmap_left);
+    if (xoff < 0) rs->src.left += -xoff;
+    else rs->dest.left = xoff;
+    int yoff = (int)(rs->y + bm->bitmap_top);
+    if ((yoff > 0 && yoff > baseline)) {
+        rs->dest.top = 0;
+    } else {
+        rs->dest.top = baseline - yoff;
+    }
+}
+
+static pixel
+premult_pixel(pixel p, float alpha) {
+#define s(by) ((pixel)(((p >> by) & 0xff) * alpha) << by)
+    return (((pixel)(255 * alpha)) << 24) | s(16) | s(8) | s(0);
+#undef s
+}
+
+static pixel
+alpha_blend_premult(pixel over, pixel under, pixel final_alpha) {
+    const uint16_t over_r = (over >> 16) & 0xff, over_g = (over >> 8) & 0xff, over_b = over & 0xff;
+    const uint16_t under_r = (under >> 16) & 0xff, under_g = (under >> 8) & 0xff, under_b = under & 0xff;
+    const uint16_t factor = 1 - (over >> 24);
+#define ans(x) (over_##x + (factor * under_##x) / 255)
+    return final_alpha | (ans(r) << 16) | ans(g) << 8 | ans(b);
+#undef ans
+}
+
+static void
+render_gray_bitmap(ProcessedBitmap *src, RenderState *rs) {
+    for (size_t sr = rs->src.top, dr = rs->dest.top; sr < rs->src.bottom && dr < rs->dest.bottom; sr++, dr++) {
+        pixel *dest_row = rs->output + rs->output_width * dr;
+        uint8_t *src_row = src->buf + src->stride * sr;
+        for(size_t sc = rs->src.left, dc = rs->dest.left; sc < rs->src.right && dc < rs->dest.right; sc++, dc++) {
+            pixel fg = premult_pixel(rs->fg, src_row[sc] / 255.f);
+            dest_row[dc] = alpha_blend_premult(fg, dest_row[dc], dest_row[dc] & 0xff000000);
+        }
+    }
+}
+
+static inline void
+populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBitmap *ans) {
+    ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
+    ans->rows = bitmap->rows;
+    ans->start_x = 0; ans->width = bitmap->width;
+    ans->pixel_mode = bitmap->pixel_mode;
+    ans->bitmap_top = slot->bitmap_top; ans->bitmap_left = slot->bitmap_left;
+}
+
+static bool
 render_run(RenderState *rs) {
     hb_buffer_guess_segment_properties(hb_buffer);
     if (!HB_DIRECTION_IS_HORIZONTAL (hb_buffer_get_direction(hb_buffer))) {
         PyErr_SetString(PyExc_ValueError, "Vertical text is not supported");
         return false;
     }
-    FT_UInt pixel_size = 2 * rs->output_height / 3;
+    FT_UInt pixel_size = 3 * rs->output_height / 4;
     set_pixel_size(rs->current_face, pixel_size);
     hb_shape(rs->current_face->hb, hb_buffer, NULL, 0);
     unsigned int len = hb_buffer_get_length(hb_buffer);
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
-    hb_glyph_position_t *pos = hb_buffer_get_glyph_positions(hb_buffer, NULL);
+    hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
+    FT_Face face = rs->current_face->freetype;
+    int baseline = font_units_to_pixels_y(face, face->ascender);
+    bool has_color = FT_HAS_COLOR(face);
+    int load_flags = get_load_flags(rs->current_face->hinting, rs->current_face->hintstyle, has_color ? FT_LOAD_COLOR : FT_LOAD_RENDER);
 
-    (void)len; (void)info; (void)pos;
+    for (unsigned int i = 0; i < len; i++) {
+        rs->x += (float)positions[i].x_offset / 64.0f;
+        rs->y += (float)positions[i].y_offset / 64.0f;
+        int error = FT_Load_Glyph(face, info->codepoint, load_flags);
+        if (error) continue;
+        FT_Bitmap *bitmap = &face->glyph->bitmap;
+        ProcessedBitmap pbm;
+        switch(bitmap->pixel_mode) {
+            case FT_PIXEL_MODE_BGRA:
+                // TODO: Implement this
+                break;
+            case FT_PIXEL_MODE_MONO: {
+                FT_Bitmap bitmap;
+                freetype_convert_mono_bitmap(&face->glyph->bitmap, &bitmap);
+                populate_processed_bitmap(face->glyph, &bitmap, &pbm);
+                setup_regions(&pbm, rs, baseline);
+                render_gray_bitmap(&pbm, rs);
+                FT_Bitmap_Done(freetype_library(), &bitmap);
+            }
+                break;
+            case FT_PIXEL_MODE_GRAY:
+                populate_processed_bitmap(face->glyph, &face->glyph->bitmap, &pbm);
+                setup_regions(&pbm, rs, baseline);
+                render_gray_bitmap(&pbm, rs);
+                break;
+        }
+        rs->x += (float)positions[i].x_advance / 64.0f;
+    }
 
     return true;
 }
@@ -148,16 +264,17 @@ find_fallback_font_for(RenderState *rs, char_type codep) {
 
 
 bool
-render_single_line(const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, bool alpha_first) {
+render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height) {
     if (!ensure_state()) return false;
-    for (uint32_t *px = (uint32_t*)output_buf, *end = ((uint32_t*)output_buf) + width * height; px < end; px++) *px = bg;
-    if (!text || !text[0]) return true;
-    (void)fg; (void)alpha_first;
+    bool has_text = text && text[0];
+    pixel pbg = premult_pixel(bg, ((bg >> 24) & 0xff) / 255.f);
+    for (pixel *px = (pixel*)output_buf, *end = ((pixel*)output_buf) + width * height; px < end; px++) *px = pbg;
+    if (!has_text) return true;
     hb_buffer_clear_contents(hb_buffer);
     if (!hb_buffer_pre_allocate(hb_buffer, 512)) { PyErr_NoMemory(); return false; }
     RenderState rs = {
         .current_face = &main_face, .fg = fg, .bg = bg, .output_width = width, .output_height = height,
-        .output = output_buf, .alpha_first = alpha_first
+        .output = (pixel*)output_buf,
     };
 
     for (uint32_t i = 0, codep = 0, state = 0, prev = UTF8_ACCEPT; text[i] > 0; i++) {
@@ -193,6 +310,40 @@ render_single_line(const char *text, uint32_t fg, uint32_t bg, uint8_t *output_b
     return true;
 }
 
+
+static PyObject*
+render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
+    // use for testing as below
+    // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line('H'))" && convert -size 800x120 -depth 8 /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
+    const char *text = "Test rendering", *family = NULL;
+    unsigned int width=800, height=120;
+    int bold = 0, italic = 0;
+    unsigned long fg = 0, bg = 0xfffefefe;
+    static const char* kwlist[] = {"text", "width", "height", "font_family", "bold", "italic", "fg", "bg", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|sIIzppkk", (char**)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg)) return NULL;
+    if (family) set_main_face_family(family, bold, italic);
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, width * height * 4);
+    if (!ans) return NULL;
+    uint8_t *buffer = (u_int8_t*) PyBytes_AS_STRING(ans);
+    if (!render_single_line(text, 0, 0xffffffff, buffer, width, height)) {
+        Py_CLEAR(ans);
+        if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unknown error while rendering text");
+        ans = NULL;
+    } else {
+        // remove pre-multiplication and convert to ABGR which is what the ImageMagick .rgba filetype wants
+        for (pixel *p = (pixel*)buffer, *end = (pixel*)(buffer + PyBytes_GET_SIZE(ans)); p < end; p++) {
+            const uint16_t a = (*p >> 24) & 0xff;
+            if (!a) continue;
+            uint16_t r = (*p >> 16) & 0xff, g = (*p >> 8) & 0xff, b = *p & 0xff;
+#define c(x) (((x * 255) / a) & 0xff)
+            r = c(r); g = c(g); b = c(b);
+#undef c
+            *p = (a << 24) | (b << 16) | (g << 8) | r;
+        }
+    }
+    return ans;
+}
+
 static PyObject*
 path_for_font(PyObject *self UNUSED, PyObject *args) {
     const char *family = NULL; int bold = 0, italic = 0;
@@ -217,8 +368,9 @@ fallback_for_char(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
-    METHODB(path_for_font, METH_VARARGS),
-    METHODB(fallback_for_char, METH_VARARGS),
+    {"fontconfig_path_for_font", (PyCFunction)(void (*) (void))(path_for_font), METH_VARARGS, NULL},
+    {"fontconfig_fallback_for_char", (PyCFunction)(void (*) (void))(fallback_for_char), METH_VARARGS, NULL},
+    {"freetype_render_line", (PyCFunction)(void (*) (void))(render_line), METH_VARARGS | METH_KEYWORDS, NULL},
 
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };

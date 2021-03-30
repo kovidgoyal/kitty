@@ -72,6 +72,9 @@ set_freetype_error(const char* prefix, int err_code) {
 
 static FT_Library  library;
 
+FT_Library
+freetype_library(void) { return library; }
+
 static inline int
 font_units_to_pixels_y(Face *self, int x) {
     return (int)ceil((double)FT_MulFix(x, self->face->size->metrics.y_scale) / 64.0);
@@ -402,6 +405,22 @@ populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBit
     ans->bitmap_top = slot->bitmap_top; ans->bitmap_left = slot->bitmap_left;
 }
 
+bool
+freetype_convert_mono_bitmap(FT_Bitmap *src, FT_Bitmap *dest) {
+    FT_Bitmap_Init(dest);
+    // This also sets pixel_mode to FT_PIXEL_MODE_GRAY so we don't have to
+    int error = FT_Bitmap_Convert(library, src, dest, 1);
+    if (error) { set_freetype_error("Failed to convert bitmap, with error:", error); return false; }
+    // Normalize gray levels to the range [0..255]
+    dest->num_grays = 256;
+    unsigned int stride = dest->pitch < 0 ? -dest->pitch : dest->pitch;
+    for (unsigned i = 0; i < (unsigned)dest->rows; ++i) {
+        // We only have 2 levels
+        for (unsigned j = 0; j < (unsigned)dest->width; ++j) dest->buffer[i * stride + j] *= 255;
+    }
+    return true;
+}
+
 static inline bool
 render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic, bool rescale, FONTS_DATA_HANDLE fg) {
     if (!load_glyph(self, glyph_id, FT_LOAD_RENDER)) return false;
@@ -410,19 +429,7 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     // Embedded bitmap glyph?
     if (self->face->glyph->bitmap.pixel_mode == FT_PIXEL_MODE_MONO) {
         FT_Bitmap bitmap;
-        FT_Bitmap_Init(&bitmap);
-
-        // This also sets pixel_mode to FT_PIXEL_MODE_GRAY so we don't have to
-        int error = FT_Bitmap_Convert(library, &self->face->glyph->bitmap, &bitmap, 1);
-        if (error) { set_freetype_error("Failed to convert bitmap, with error:", error); return false; }
-
-        // Normalize gray levels to the range [0..255]
-        bitmap.num_grays = 256;
-        unsigned int stride = bitmap.pitch < 0 ? -bitmap.pitch : bitmap.pitch;
-        for (unsigned i = 0; i < (unsigned)bitmap.rows; ++i) {
-            // We only have 2 levels
-            for (unsigned j = 0; j < (unsigned)bitmap.width; ++j) bitmap.buffer[i * stride + j] *= 255;
-        }
+        freetype_convert_mono_bitmap(&self->face->glyph->bitmap, &bitmap);
         populate_processed_bitmap(self->face->glyph, &bitmap, ans, true);
         FT_Bitmap_Done(library, &bitmap);
     } else {
