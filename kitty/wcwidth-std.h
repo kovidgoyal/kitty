@@ -5,7 +5,7 @@
 
 START_ALLOW_CASE_RANGE
 
-static int
+static inline int
 wcwidth_std(int32_t code) {
 	if (LIKELY(0x20 <= code && code <= 0x7e)) return 1;
 	switch(code) {

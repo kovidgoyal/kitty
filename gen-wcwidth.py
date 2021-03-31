@@ -504,7 +504,7 @@ def gen_wcwidth() -> None:
         p('\t\t// }}}\n')
 
     with create_header('kitty/wcwidth-std.h') as p:
-        p('static int\nwcwidth_std(int32_t code) {')
+        p('static inline int\nwcwidth_std(int32_t code) {')
         p('\tif (LIKELY(0x20 <= code && code <= 0x7e)) return 1;')
         p('\tswitch(code) {')
 
