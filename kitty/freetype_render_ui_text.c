@@ -53,6 +53,7 @@ free_face(Face *face) {
     if (face->freetype) FT_Done_Face(face->freetype);
     if (face->hb) hb_font_destroy(face->hb);
     for (size_t i = 0; i < face->count; i++) free_face(face->fallbacks + i);
+    free(face->fallbacks);
     memset(face, 0, sizeof(Face));
 }
 
@@ -291,7 +292,9 @@ find_fallback_font_for(char_type codep, char_type next_codep) {
     if (!fallback_font(codep, main_face_family.name, main_face_family.bold, main_face_family.italic, prefer_color, &q)) return NULL;
     ensure_space_for(&main_face, fallbacks, Face, main_face.count + 1, capacity, 8, true);
     Face *ans = main_face.fallbacks + main_face.count;
-    if (!load_font(&q, ans)) return NULL;
+    bool ok = load_font(&q, ans);
+    free(q.path);
+    if (!ok) return NULL;
     main_face.count++;
     return ans;
 }
@@ -332,8 +335,11 @@ render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, si
     if (!has_text) return true;
     hb_buffer_clear_contents(hb_buffer);
     if (!hb_buffer_pre_allocate(hb_buffer, 512)) { PyErr_NoMemory(); return false; }
+
     size_t text_len = strlen(text);
     char_type *unicode = calloc(sizeof(char_type), text_len + 1);
+    if (!unicode) { PyErr_NoMemory(); return false; }
+    bool ok = false;
     text_len = decode_utf8_string(text, text_len, unicode);
     RenderState rs = {
         .current_face = &main_face, .fg = fg, .bg = bg, .output_width = width, .output_height = height,
@@ -341,14 +347,17 @@ render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, si
     };
 
     for (size_t i = 0; i < text_len && rs.x < rs.output_width; i++) {
-        process_codepoint(&rs, unicode[i], unicode[i + 1]);
+        if (!process_codepoint(&rs, unicode[i], unicode[i + 1])) goto end;
     }
     if (rs.pending_in_buffer && rs.x < rs.output_width) {
-        if (!render_run(&rs)) return false;
+        if (!render_run(&rs)) goto end;
         rs.pending_in_buffer = 0;
         hb_buffer_clear_contents(hb_buffer);
     }
-    return true;
+    ok = true;
+end:
+    free(unicode);
+    return ok;
 }
 
 
