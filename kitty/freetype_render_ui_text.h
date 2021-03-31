@@ -20,8 +20,9 @@ typedef struct FontConfigFace {
 
 bool information_for_font_family(const char *family, bool bold, bool italic, FontConfigFace *ans);
 FT_Face native_face_from_path(const char *path, int index);
-bool fallback_font(char_type ch, const char *family, bool bold, bool italic, FontConfigFace *ans);
+bool fallback_font(char_type ch, const char *family, bool bold, bool italic, bool prefer_color, FontConfigFace *ans);
 bool freetype_convert_mono_bitmap(FT_Bitmap *src, FT_Bitmap *dest);
 FT_Library freetype_library(void);
+void set_freetype_error(const char* prefix, int err_code);
 
 void set_main_face_family(const char *family, bool bold, bool italic);

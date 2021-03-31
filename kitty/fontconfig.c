@@ -290,7 +290,7 @@ end:
 }
 
 bool
-fallback_font(char_type ch, const char *family, bool bold, bool italic, FontConfigFace *ans) {
+fallback_font(char_type ch, const char *family, bool bold, bool italic, bool prefer_color, FontConfigFace *ans) {
     memset(ans, 0, sizeof(FontConfigFace));
     bool ok = false;
     FcPattern *pat = FcPatternCreate();
@@ -298,6 +298,7 @@ fallback_font(char_type ch, const char *family, bool bold, bool italic, FontConf
     if (family) AP(FcPatternAddString, FC_FAMILY, (const FcChar8*)family, "family");
     if (bold) { AP(FcPatternAddInteger, FC_WEIGHT, FC_WEIGHT_BOLD, "weight"); }
     if (italic) { AP(FcPatternAddInteger, FC_SLANT, FC_SLANT_ITALIC, "slant"); }
+    if (prefer_color) { AP(FcPatternAddBool, FC_COLOR, true, "color"); }
     char_buf[0] = ch;
     add_charset(pat, 1);
     ok = _native_fc_match(pat, ans);

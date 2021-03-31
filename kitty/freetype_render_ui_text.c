@@ -9,6 +9,9 @@
 #include <hb.h>
 #include <hb-ft.h>
 #include "charsets.h"
+#include "unicode-data.h"
+#include "wcwidth-std.h"
+#include "wcswidth.h"
 #include FT_BITMAP_H
 
 typedef struct FamilyInformation {
@@ -103,10 +106,32 @@ ensure_state(void) {
     return true;
 }
 
+static int
+font_units_to_pixels_y(FT_Face face, int x) {
+    return (int)ceil((double)FT_MulFix(x, face->size->metrics.y_scale) / 64.0);
+}
+
+static FT_UInt
+choose_bitmap_size(FT_Face face, FT_UInt desired_height) {
+    unsigned short best = 0, diff = USHRT_MAX;
+    const short limit = face->num_fixed_sizes;
+    for (short i = 0; i < limit; i++) {
+        unsigned short h = face->available_sizes[i].height;
+        unsigned short d = h > (unsigned short)desired_height ? h - (unsigned short)desired_height : (unsigned short)desired_height - h;
+        if (d < diff) {
+            diff = d;
+            best = i;
+        }
+    }
+    FT_Select_Size(face, best);
+    return best;
+}
+
 static void
-set_pixel_size(Face *face, FT_UInt sz) {
+set_pixel_size(Face *face, FT_UInt sz, bool has_color) {
     if (sz != face->pixel_size) {
-        FT_Set_Pixel_Sizes(face->freetype, sz, sz);  // TODO: check for and handle failures
+        if (has_color) sz = choose_bitmap_size(face->freetype, font_units_to_pixels_y(main_face.freetype, main_face.freetype->height));
+        else FT_Set_Pixel_Sizes(face->freetype, sz, sz);
         hb_ft_font_changed(face->hb);
         hb_ft_font_set_load_flags(face->hb, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
         face->pixel_size = sz;
@@ -122,11 +147,6 @@ typedef struct RenderState {
     float x, y;
     Region src, dest;
 } RenderState;
-
-static inline int
-font_units_to_pixels_y(FT_Face face, int x) {
-    return (int)ceil((double)FT_MulFix(x, face->size->metrics.y_scale) / 64.0);
-}
 
 static void
 setup_regions(ProcessedBitmap *bm, RenderState *rs, int baseline) {
@@ -164,11 +184,23 @@ alpha_blend_premult(pixel over, pixel under) {
 }
 
 static void
+render_color_bitmap(ProcessedBitmap *src, RenderState *rs) {
+    for (size_t sr = rs->src.top, dr = rs->dest.top; sr < rs->src.bottom && dr < rs->dest.bottom; sr++, dr++) {
+        pixel *dest_row = rs->output + rs->output_width * dr;
+        uint8_t *src_px = src->buf + src->stride * sr;
+        for (size_t sc = rs->src.left, dc = rs->dest.left; sc < rs->src.right && dc < rs->dest.right; sc++, dc++, src_px += 4) {
+            pixel fg = premult_pixel(ARGB(src_px[3], src_px[2], src_px[1], src_px[0]), src_px[3]);
+            dest_row[dc] = alpha_blend_premult(fg, dest_row[dc]);
+        }
+    }
+}
+
+static void
 render_gray_bitmap(ProcessedBitmap *src, RenderState *rs) {
     for (size_t sr = rs->src.top, dr = rs->dest.top; sr < rs->src.bottom && dr < rs->dest.bottom; sr++, dr++) {
         pixel *dest_row = rs->output + rs->output_width * dr;
         uint8_t *src_row = src->buf + src->stride * sr;
-        for(size_t sc = rs->src.left, dc = rs->dest.left; sc < rs->src.right && dc < rs->dest.right; sc++, dc++) {
+        for (size_t sc = rs->src.left, dc = rs->dest.left; sc < rs->src.right && dc < rs->dest.right; sc++, dc++) {
             pixel fg = premult_pixel(rs->fg, src_row[sc]);
             dest_row[dc] = alpha_blend_premult(fg, dest_row[dc]);
         }
@@ -192,15 +224,15 @@ render_run(RenderState *rs) {
         PyErr_SetString(PyExc_ValueError, "Vertical text is not supported");
         return false;
     }
+    FT_Face face = rs->current_face->freetype;
+    bool has_color = FT_HAS_COLOR(face);
     FT_UInt pixel_size = 3 * rs->output_height / 4;
-    set_pixel_size(rs->current_face, pixel_size);
+    set_pixel_size(rs->current_face, pixel_size, has_color);
     hb_shape(rs->current_face->hb, hb_buffer, NULL, 0);
     unsigned int len = hb_buffer_get_length(hb_buffer);
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
     hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
-    FT_Face face = rs->current_face->freetype;
     int baseline = font_units_to_pixels_y(face, face->ascender);
-    bool has_color = FT_HAS_COLOR(face);
     int load_flags = get_load_flags(rs->current_face->hinting, rs->current_face->hintstyle, has_color ? FT_LOAD_COLOR : FT_LOAD_RENDER);
 
     for (unsigned int i = 0; i < len; i++) {
@@ -208,11 +240,18 @@ render_run(RenderState *rs) {
         rs->y += (float)positions[i].y_offset / 64.0f;
         if (rs->x > rs->output_width) break;
         int error = FT_Load_Glyph(face, info[i].codepoint, load_flags);
-        if (error) continue;
+        if (error) {
+            set_freetype_error("Failed loading glyph", error);
+            PyErr_Print();
+            continue;
+        };
         ProcessedBitmap pbm = {.factor=1};
         switch(face->glyph->bitmap.pixel_mode) {
-            case FT_PIXEL_MODE_BGRA:
-                // TODO: Implement this
+            case FT_PIXEL_MODE_BGRA: {
+                populate_processed_bitmap(face->glyph, &face->glyph->bitmap, &pbm);
+                setup_regions(&pbm, rs, baseline);
+                render_color_bitmap(&pbm, rs);
+            }
                 break;
             case FT_PIXEL_MODE_MONO: {
                 FT_Bitmap bitmap;
@@ -228,6 +267,10 @@ render_run(RenderState *rs) {
                 setup_regions(&pbm, rs, baseline);
                 render_gray_bitmap(&pbm, rs);
                 break;
+            default:
+                PyErr_Format(PyExc_TypeError, "Unknown FreeType bitmap type: %x", face->glyph->bitmap.pixel_mode);
+                return false;
+                break;
         }
         rs->x += (float)positions[i].x_advance / 64.0f;
     }
@@ -235,37 +278,50 @@ render_run(RenderState *rs) {
     return true;
 }
 
-static bool
-current_font_has_codepoint(RenderState *rs, char_type codep) {
-    if (rs->current_face != &main_face && glyph_id_for_codepoint(&main_face, codep) > 0) {
-        rs->current_face = &main_face;
-        return true;
-    }
-    return glyph_id_for_codepoint(rs->current_face, codep);
-}
-
-static bool
-find_fallback_font_for(RenderState *rs, char_type codep) {
-    if (glyph_id_for_codepoint(&main_face, codep) > 0) {
-        rs->current_face = &main_face;
-        return true;
-    }
+static Face*
+find_fallback_font_for(char_type codep, char_type next_codep) {
+    if (glyph_id_for_codepoint(&main_face, codep) > 0) return &main_face;
     for (size_t i = 0; i < main_face.count; i++) {
-        if (glyph_id_for_codepoint(main_face.fallbacks + i, codep) > 0) {
-            rs->current_face = main_face.fallbacks + i;
-            return true;
-        }
+        if (glyph_id_for_codepoint(main_face.fallbacks + i, codep) > 0) return main_face.fallbacks + i;
     }
     FontConfigFace q;
-    if (!fallback_font(codep, main_face_family.name, main_face_family.bold, main_face_family.italic, &q)) return false;
+    bool prefer_color = false;
+    char_type string[3] = {codep, next_codep, 0};
+    if (wcswidth_string(string) >= 2 && is_emoji_presentation_base(codep)) prefer_color = true;
+    if (!fallback_font(codep, main_face_family.name, main_face_family.bold, main_face_family.italic, prefer_color, &q)) return NULL;
     ensure_space_for(&main_face, fallbacks, Face, main_face.count + 1, capacity, 8, true);
     Face *ans = main_face.fallbacks + main_face.count;
-    if (!load_font(&q, ans)) return false;
+    if (!load_font(&q, ans)) return NULL;
     main_face.count++;
-    rs->current_face = ans;
-    return true;
+    return ans;
 }
 
+static bool
+process_codepoint(RenderState *rs, char_type codep, char_type next_codep) {
+    bool add_to_current_buffer = false;
+    Face *fallback_font = NULL;
+    if (is_combining_char(codep)) {
+        add_to_current_buffer = true;
+    } if (glyph_id_for_codepoint(&main_face, codep) > 0) {
+        add_to_current_buffer = rs->current_face == &main_face;
+        if (!add_to_current_buffer) fallback_font = &main_face;
+    } else {
+        if (glyph_id_for_codepoint(rs->current_face, codep) > 0) fallback_font = rs->current_face;
+        else fallback_font = find_fallback_font_for(codep, next_codep);
+        add_to_current_buffer = !fallback_font || rs->current_face == fallback_font;
+    }
+    if (!add_to_current_buffer) {
+        if (rs->pending_in_buffer) {
+            if (!render_run(rs)) return false;
+            rs->pending_in_buffer = 0;
+            hb_buffer_clear_contents(hb_buffer);
+        }
+        if (fallback_font) rs->current_face = fallback_font;
+    }
+    hb_buffer_add_utf32(hb_buffer, &codep, 1, 0, 1);
+    rs->pending_in_buffer += 1;
+    return true;
+}
 
 bool
 render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
@@ -276,35 +332,16 @@ render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, si
     if (!has_text) return true;
     hb_buffer_clear_contents(hb_buffer);
     if (!hb_buffer_pre_allocate(hb_buffer, 512)) { PyErr_NoMemory(); return false; }
+    size_t text_len = strlen(text);
+    char_type *unicode = calloc(sizeof(char_type), text_len + 1);
+    text_len = decode_utf8_string(text, text_len, unicode);
     RenderState rs = {
         .current_face = &main_face, .fg = fg, .bg = bg, .output_width = width, .output_height = height,
         .output = (pixel*)output_buf, .x = x_offset, .y = y_offset
     };
 
-    for (uint32_t i = 0, codep = 0, state = 0, prev = UTF8_ACCEPT; text[i] > 0 && rs.x < rs.output_width; i++) {
-        switch(decode_utf8(&state, &codep, text[i])) {
-            case UTF8_ACCEPT:
-                if (current_font_has_codepoint(&rs, codep)) {
-                    hb_buffer_add_utf32(hb_buffer, &codep, 1, 0, 1);
-                    rs.pending_in_buffer += 1;
-                } else {
-                    if (rs.pending_in_buffer) {
-                        if (!render_run(&rs)) return false;
-                        rs.pending_in_buffer = 0;
-                        hb_buffer_clear_contents(hb_buffer);
-                    }
-                    if (!find_fallback_font_for(&rs, codep)) {
-                        hb_buffer_add_utf32(hb_buffer, &codep, 1, 0, 1);
-                        rs.pending_in_buffer += 1;
-                    }
-                }
-                break;
-            case UTF8_REJECT:
-                state = UTF8_ACCEPT;
-                if (prev != UTF8_ACCEPT && i > 0) i--;
-                break;
-        }
-        prev = state;
+    for (size_t i = 0; i < text_len && rs.x < rs.output_width; i++) {
+        process_codepoint(&rs, unicode[i], unicode[i + 1]);
     }
     if (rs.pending_in_buffer && rs.x < rs.output_width) {
         if (!render_run(&rs)) return false;
@@ -318,9 +355,9 @@ render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, si
 static PyObject*
 render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     // use for testing as below
-    // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line('H'))" && convert -size 800x120 -depth 8 /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
-    const char *text = "Test rendering with a truncated string", *family = NULL;
-    unsigned int width=800, height=120;
+    // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line())" && convert -size 800x120 -depth 8 /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
+    const char *text = "Test 猫 H🐱H rendering", *family = NULL;
+    unsigned int width = 800, height = 120;
     int bold = 0, italic = 0;
     unsigned long fg = 0, bg = 0xfffefefe;
     float x_offset = 0, y_offset = 0;
@@ -365,7 +402,7 @@ fallback_for_char(PyObject *self UNUSED, PyObject *args) {
     unsigned int ch;
     if (!PyArg_ParseTuple(args, "I|zpp", &ch, &family, &bold, &italic)) return NULL;
     FontConfigFace f;
-    if (!fallback_font(ch, family, bold, italic, &f)) return NULL;
+    if (!fallback_font(ch, family, bold, italic, false, &f)) return NULL;
     PyObject *ret = Py_BuildValue("{ss si si si}", "path", f.path, "index", f.index, "hinting", f.hinting, "hintstyle", f.hintstyle);
     free(f.path);
     return ret;
