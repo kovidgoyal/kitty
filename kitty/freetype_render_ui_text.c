@@ -131,7 +131,7 @@ font_units_to_pixels_y(FT_Face face, int x) {
 static void
 setup_regions(ProcessedBitmap *bm, RenderState *rs, int baseline) {
     rs->src = (Region){ .left = bm->start_x, .bottom = bm->rows, .right = bm->width + bm->start_x };
-    rs->dest = (Region){ .bottom = rs->output_height, .right = (uint32_t) (rs->output_width - rs->x) };
+    rs->dest = (Region){ .bottom = rs->output_height, .right = rs->output_width };
     int xoff = (int)(rs->x + bm->bitmap_left);
     if (xoff < 0) rs->src.left += -xoff;
     else rs->dest.left = xoff;
@@ -143,20 +143,23 @@ setup_regions(ProcessedBitmap *bm, RenderState *rs, int baseline) {
     }
 }
 
+#define ARGB(a, r, g, b) ( (a & 0xff) << 24 ) | ( (r & 0xff) << 16) | ( (g & 0xff) << 8 ) | (b & 0xff)
+
 static pixel
-premult_pixel(pixel p, float alpha) {
-#define s(by) ((pixel)(((p >> by) & 0xff) * alpha) << by)
-    return (((pixel)(255 * alpha)) << 24) | s(16) | s(8) | s(0);
+premult_pixel(pixel p, uint16_t alpha) {
+#define s(x) (x * alpha / 255)
+    uint16_t r = (p >> 16) & 0xff, g = (p >> 8) & 0xff, b = p & 0xff;
+    return ARGB(alpha, s(r), s(g), s(b));
 #undef s
 }
 
 static pixel
-alpha_blend_premult(pixel over, pixel under, pixel final_alpha) {
+alpha_blend_premult(pixel over, pixel under) {
     const uint16_t over_r = (over >> 16) & 0xff, over_g = (over >> 8) & 0xff, over_b = over & 0xff;
     const uint16_t under_r = (under >> 16) & 0xff, under_g = (under >> 8) & 0xff, under_b = under & 0xff;
-    const uint16_t factor = 1 - (over >> 24);
+    const uint16_t factor = 255 - ((over >> 24) & 0xff);
 #define ans(x) (over_##x + (factor * under_##x) / 255)
-    return final_alpha | (ans(r) << 16) | ans(g) << 8 | ans(b);
+    return ARGB(under >> 24, ans(r), ans(g), ans(b));
 #undef ans
 }
 
@@ -166,8 +169,8 @@ render_gray_bitmap(ProcessedBitmap *src, RenderState *rs) {
         pixel *dest_row = rs->output + rs->output_width * dr;
         uint8_t *src_row = src->buf + src->stride * sr;
         for(size_t sc = rs->src.left, dc = rs->dest.left; sc < rs->src.right && dc < rs->dest.right; sc++, dc++) {
-            pixel fg = premult_pixel(rs->fg, src_row[sc] / 255.f);
-            dest_row[dc] = alpha_blend_premult(fg, dest_row[dc], dest_row[dc] & 0xff000000);
+            pixel fg = premult_pixel(rs->fg, src_row[sc]);
+            dest_row[dc] = alpha_blend_premult(fg, dest_row[dc]);
         }
     }
 }
@@ -179,12 +182,13 @@ populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBit
     ans->start_x = 0; ans->width = bitmap->width;
     ans->pixel_mode = bitmap->pixel_mode;
     ans->bitmap_top = slot->bitmap_top; ans->bitmap_left = slot->bitmap_left;
+    ans->buf = bitmap->buffer;
 }
 
 static bool
 render_run(RenderState *rs) {
     hb_buffer_guess_segment_properties(hb_buffer);
-    if (!HB_DIRECTION_IS_HORIZONTAL (hb_buffer_get_direction(hb_buffer))) {
+    if (!HB_DIRECTION_IS_HORIZONTAL(hb_buffer_get_direction(hb_buffer))) {
         PyErr_SetString(PyExc_ValueError, "Vertical text is not supported");
         return false;
     }
@@ -202,11 +206,10 @@ render_run(RenderState *rs) {
     for (unsigned int i = 0; i < len; i++) {
         rs->x += (float)positions[i].x_offset / 64.0f;
         rs->y += (float)positions[i].y_offset / 64.0f;
-        int error = FT_Load_Glyph(face, info->codepoint, load_flags);
+        int error = FT_Load_Glyph(face, info[i].codepoint, load_flags);
         if (error) continue;
-        FT_Bitmap *bitmap = &face->glyph->bitmap;
-        ProcessedBitmap pbm;
-        switch(bitmap->pixel_mode) {
+        ProcessedBitmap pbm = {.factor=1};
+        switch(face->glyph->bitmap.pixel_mode) {
             case FT_PIXEL_MODE_BGRA:
                 // TODO: Implement this
                 break;
@@ -264,17 +267,17 @@ find_fallback_font_for(RenderState *rs, char_type codep) {
 
 
 bool
-render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height) {
+render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
     if (!ensure_state()) return false;
     bool has_text = text && text[0];
-    pixel pbg = premult_pixel(bg, ((bg >> 24) & 0xff) / 255.f);
+    pixel pbg = premult_pixel(bg, ((bg >> 24) & 0xff));
     for (pixel *px = (pixel*)output_buf, *end = ((pixel*)output_buf) + width * height; px < end; px++) *px = pbg;
     if (!has_text) return true;
     hb_buffer_clear_contents(hb_buffer);
     if (!hb_buffer_pre_allocate(hb_buffer, 512)) { PyErr_NoMemory(); return false; }
     RenderState rs = {
         .current_face = &main_face, .fg = fg, .bg = bg, .output_width = width, .output_height = height,
-        .output = (pixel*)output_buf,
+        .output = (pixel*)output_buf, .x = x_offset, .y = y_offset
     };
 
     for (uint32_t i = 0, codep = 0, state = 0, prev = UTF8_ACCEPT; text[i] > 0; i++) {
@@ -315,17 +318,18 @@ static PyObject*
 render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     // use for testing as below
     // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line('H'))" && convert -size 800x120 -depth 8 /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
-    const char *text = "Test rendering", *family = NULL;
+    const char *text = "Test rendering with a truncated string", *family = NULL;
     unsigned int width=800, height=120;
     int bold = 0, italic = 0;
     unsigned long fg = 0, bg = 0xfffefefe;
-    static const char* kwlist[] = {"text", "width", "height", "font_family", "bold", "italic", "fg", "bg", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "|sIIzppkk", (char**)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg)) return NULL;
+    float x_offset = 0, y_offset = 0;
+    static const char* kwlist[] = {"text", "width", "height", "font_family", "bold", "italic", "fg", "bg", "x_offset", "y_offset", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|sIIzppkkff", (char**)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg, &x_offset, &y_offset)) return NULL;
     if (family) set_main_face_family(family, bold, italic);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, width * height * 4);
     if (!ans) return NULL;
     uint8_t *buffer = (u_int8_t*) PyBytes_AS_STRING(ans);
-    if (!render_single_line(text, 0, 0xffffffff, buffer, width, height)) {
+    if (!render_single_line(text, 0, 0xffffffff, buffer, width, height, x_offset, y_offset)) {
         Py_CLEAR(ans);
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unknown error while rendering text");
         ans = NULL;
@@ -335,10 +339,9 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
             const uint16_t a = (*p >> 24) & 0xff;
             if (!a) continue;
             uint16_t r = (*p >> 16) & 0xff, g = (*p >> 8) & 0xff, b = *p & 0xff;
-#define c(x) (((x * 255) / a) & 0xff)
-            r = c(r); g = c(g); b = c(b);
+#define c(x) (((x * 255) / a))
+            *p = ARGB(a, c(b), c(g), c(r));
 #undef c
-            *p = (a << 24) | (b << 16) | (g << 8) | r;
         }
     }
     return ans;
