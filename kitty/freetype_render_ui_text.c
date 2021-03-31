@@ -206,6 +206,7 @@ render_run(RenderState *rs) {
     for (unsigned int i = 0; i < len; i++) {
         rs->x += (float)positions[i].x_offset / 64.0f;
         rs->y += (float)positions[i].y_offset / 64.0f;
+        if (rs->x > rs->output_width) break;
         int error = FT_Load_Glyph(face, info[i].codepoint, load_flags);
         if (error) continue;
         ProcessedBitmap pbm = {.factor=1};
@@ -280,7 +281,7 @@ render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, si
         .output = (pixel*)output_buf, .x = x_offset, .y = y_offset
     };
 
-    for (uint32_t i = 0, codep = 0, state = 0, prev = UTF8_ACCEPT; text[i] > 0; i++) {
+    for (uint32_t i = 0, codep = 0, state = 0, prev = UTF8_ACCEPT; text[i] > 0 && rs.x < rs.output_width; i++) {
         switch(decode_utf8(&state, &codep, text[i])) {
             case UTF8_ACCEPT:
                 if (current_font_has_codepoint(&rs, codep)) {
@@ -305,7 +306,7 @@ render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, si
         }
         prev = state;
     }
-    if (rs.pending_in_buffer) {
+    if (rs.pending_in_buffer && rs.x < rs.output_width) {
         if (!render_run(&rs)) return false;
         rs.pending_in_buffer = 0;
         hb_buffer_clear_contents(hb_buffer);
