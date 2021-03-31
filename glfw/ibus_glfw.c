@@ -388,6 +388,7 @@ ibus_key_state(unsigned int glfw_modifiers, int action) {
     M(CONTROL, IBUS_CONTROL_MASK);
     M(ALT, IBUS_MOD1_MASK);
     M(NUM_LOCK, IBUS_MOD2_MASK);
+    M(SUPER, IBUS_MOD4_MASK);
     /* To do: figure out how to get super/hyper/meta */
 #undef M
     return ans;
