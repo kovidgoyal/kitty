@@ -90,7 +90,7 @@ serialize(const EncodingData *data, char *output, const char csi_trailer) {
     }
     if (third_field_not_empty) {
         const char *p = data->text;
-        uint32_t codep, state = UTF8_ACCEPT;
+        uint32_t codep; UTF8State state = UTF8_ACCEPT;
         bool first = true;
         while(*p) {
             if (decode_utf8(&state, &codep, *p) == UTF8_ACCEPT) {
@@ -397,7 +397,7 @@ encode_key(const KeyEvent *ev, char *output) {
 static inline bool
 startswith_ascii_control_char(const char *p) {
     if (!p || !*p) return true;
-    uint32_t codep, state = UTF8_ACCEPT;
+    uint32_t codep; UTF8State state = UTF8_ACCEPT;
     while(*p) {
         if (decode_utf8(&state, &codep, *p) == UTF8_ACCEPT) {
             return codep < 32 || codep == 127;

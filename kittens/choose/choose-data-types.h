@@ -30,8 +30,6 @@ typedef uint8_t len_t;
 typedef uint32_t text_t;
 
 #define LEN_MAX UINT8_MAX
-#define UTF8_ACCEPT 0
-#define UTF8_REJECT 1
 #define IS_LOWERCASE(x) (x) >= 'a' && (x) <= 'z'
 #define IS_UPPERCASE(x) (x) >= 'A' && (x) <= 'Z'
 #define LOWERCASE(x) ((IS_UPPERCASE(x)) ? (x) + 32 : (x))

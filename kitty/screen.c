@@ -622,7 +622,7 @@ screen_draw_overlay_text(Screen *self, const char *utf8_text) {
     self->overlay_line.ynum = self->cursor->y;
     self->overlay_line.xstart = self->cursor->x;
     self->overlay_line.xnum = 0;
-    uint32_t codepoint = 0, state = UTF8_ACCEPT;
+    uint32_t codepoint = 0; UTF8State state = UTF8_ACCEPT;
     bool orig_line_wrap_mode = self->modes.mDECAWM;
     self->modes.mDECAWM = false;
     self->cursor->reverse ^= true;

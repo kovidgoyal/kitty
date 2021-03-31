@@ -80,8 +80,6 @@ typedef enum { TILING, SCALED, MIRRORED } BackgroundImageLayout;
 #define ATTRS_MASK_FOR_SGR (ATTRS_MASK_WITHOUT_MARK | ATTRS_MASK_WITHOUT_WIDTH)
 #define MARK_MASK 3
 #define COL_MASK 0xFFFFFFFF
-#define UTF8_ACCEPT 0
-#define UTF8_REJECT 1
 #define DECORATION_FG_CODE 58
 #define CHAR_IS_BLANK(ch) ((ch) == 32 || (ch) == 0)
 #define CONTINUED_MASK 1
@@ -152,6 +150,8 @@ typedef enum { TILING, SCALED, MIRRORED } BackgroundImageLayout;
 #define END_ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic pop")
 #endif
 
+
+typedef enum UTF8State { UTF8_ACCEPT = 0, UTF8_REJECT = 1} UTF8State;
 
 typedef struct {
     uint32_t left, top, right, bottom;

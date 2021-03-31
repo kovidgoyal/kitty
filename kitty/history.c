@@ -196,7 +196,8 @@ static inline bool
 pagerhist_ensure_start_is_valid_utf8(PagerHistoryBuf *ph) {
     uint8_t scratch[8];
     size_t num = ringbuf_memcpy_from(scratch, ph->ringbuf, arraysz(scratch));
-    uint32_t state = UTF8_ACCEPT, codep;
+    uint32_t codep;
+    UTF8State state = UTF8_ACCEPT;
     size_t count = 0;
     size_t last_reject_at = 0;
     while (count < num) {
@@ -333,7 +334,7 @@ get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, index_of(sel
 
 static inline char_type
 pagerhist_remove_char(PagerHistoryBuf *ph, unsigned *count, uint8_t record[8]) {
-    uint32_t codep, state = UTF8_ACCEPT;
+    uint32_t codep; UTF8State state = UTF8_ACCEPT;
     *count = 0;
     size_t num = ringbuf_bytes_used(ph->ringbuf);
     while (num--) {

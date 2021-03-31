@@ -7,10 +7,8 @@
 
 // Taken from consolemap.c in the linux vt driver sourcecode
 
-#include <stddef.h>
-#include <stdint.h>
-#define UTF8_ACCEPT 0
-#define UTF8_REJECT 1
+#include "data-types.h"
+
 
 static uint32_t charset_translations[5][256] = {
   /* 8-bit Latin-1 mapped to Unicode -- trivial mapping */
@@ -231,7 +229,7 @@ static const uint8_t utf8_data[] = {
 };
 
 uint32_t
-decode_utf8(uint32_t* state, uint32_t* codep, uint8_t byte) {
+decode_utf8(UTF8State* state, uint32_t* codep, uint8_t byte) {
   uint32_t type = utf8_data[byte];
 
   *codep = (*state != UTF8_ACCEPT) ?
@@ -245,7 +243,8 @@ decode_utf8(uint32_t* state, uint32_t* codep, uint8_t byte) {
 size_t
 decode_utf8_string(const char *src, size_t sz, uint32_t *dest) {
     // dest must be a zeroed array of size at least sz
-    uint32_t codep = 0, state = 0, prev = UTF8_ACCEPT;
+    uint32_t codep = 0;
+    UTF8State state = 0, prev = UTF8_ACCEPT;
     size_t i, d;
     for (i = 0, d = 0; i < sz; i++) {
         switch(decode_utf8(&state, &codep, src[i])) {
