@@ -118,6 +118,15 @@ wcswidth_step(WCSState *state, const char_type ch) {
     return ans;
 }
 
+size_t
+wcswidth_string(const char_type *s) {
+    WCSState state;
+    initialize_wcs_state(&state);
+    size_t ans = 0;
+    while (*s) ans += wcswidth_step(&state, *(s++));
+    return ans;
+}
+
 PyObject *
 wcswidth_std(PyObject UNUSED *self, PyObject *str) {
     if (PyUnicode_READY(str) != 0) return NULL;
