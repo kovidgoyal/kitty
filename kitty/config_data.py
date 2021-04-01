@@ -623,16 +623,16 @@ edge_desc = _(
     ' Three values set top, horizontal and bottom. Four values set top, right, bottom and left.')
 
 o('window_margin_width', '0', option_type=edge_width, long_text=_('''
-The window margin (in pts) (blank area outside the border).''' + edge_desc +
-'''For margins with tab bar, see tab_bar_margin_height.'''))
+The window margin (in pts) (blank area outside the border).
+For margins with tab bar, see tab_bar_margin_height.''' + edge_desc))
 
 o('single_window_margin_width', '-1', option_type=optional_edge_width, long_text=_('''
 The window margin (in pts) to use when only a single window is visible.
 Negative values will cause the value of :opt:`window_margin_width` to be used instead. ''' + edge_desc))
 
 o('window_padding_width', '0', option_type=edge_width, long_text=_('''
-The window padding (in pts) (blank area between the text and the window border).''' + edge_desc +
-'''For padding with tab bar, see tab_bar_margin_height.'''))
+The window padding (in pts) (blank area between the text and the window border).
+For padding with tab bar, see tab_bar_margin_height.''' + edge_desc))
 
 o('placement_strategy', 'center', option_type=choices('center', 'top-left'), long_text=_('''
 When the window size is not an exact multiple of the cell size, the cell area of the terminal
