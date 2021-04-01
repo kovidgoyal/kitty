@@ -257,13 +257,6 @@ static void dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, in
 }
 
 
-static void
-createDecorations(_GLFWwindow* window) {
-    if (!window->decorated || window->wl.decorations.serverSide) return;
-
-    ensure_csd_resources(window);
-}
-
 static void xdgDecorationHandleConfigure(void* data,
                                          struct zxdg_toplevel_decoration_v1* decoration UNUSED,
                                          uint32_t mode)
@@ -272,8 +265,7 @@ static void xdgDecorationHandleConfigure(void* data,
 
     window->wl.decorations.serverSide = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
 
-    if (!window->wl.decorations.serverSide)
-        createDecorations(window);
+    if (!window->wl.decorations.serverSide) ensure_csd_resources(window);
 }
 
 static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener = {
@@ -391,7 +383,7 @@ static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
         } else {
             xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
             if (!_glfw.wl.decorationManager)
-                createDecorations(window);
+                ensure_csd_resources(window);
         }
     }
     setIdleInhibitor(window, on);
@@ -503,7 +495,7 @@ static void setXdgDecorations(_GLFWwindow* window)
     else
     {
         window->wl.decorations.serverSide = false;
-        createDecorations(window);
+        ensure_csd_resources(window);
     }
 }
 
@@ -1086,7 +1078,7 @@ void _glfwPlatformSetWindowDecorated(_GLFWwindow* window, bool enabled)
     if (!window->monitor)
     {
         if (enabled)
-            createDecorations(window);
+            ensure_csd_resources(window);
         else
             free_csd_surfaces(window);
     }

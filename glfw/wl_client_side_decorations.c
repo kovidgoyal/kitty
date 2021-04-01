@@ -159,6 +159,7 @@ create_csd_surfaces(_GLFWwindow *window, _GLFWWaylandCSDEdge *s) {
 
 bool
 ensure_csd_resources(_GLFWwindow *window) {
+    if (!window->decorated || window->wl.decorations.serverSide) return false;
     const bool is_focused = window->id == _glfw.focusedWindowId;
     const bool focus_changed = is_focused != decs.for_window_state.focused;
     const bool size_changed = (
@@ -212,11 +213,13 @@ free_all_csd_resources(_GLFWwindow *window) {
 
 void
 resize_csd(_GLFWwindow *window) {
+    if (!window->decorated || window->wl.decorations.serverSide) return;
     ensure_csd_resources(window);
 }
 
 void
 change_csd_title(_GLFWwindow *window) {
+    if (!window->decorated || window->wl.decorations.serverSide) return;
     if (ensure_csd_resources(window)) return;  // CSD were re-rendered for other reasons
     if (decs.top.surface) {
         update_title_bar(window);
