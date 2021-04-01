@@ -470,6 +470,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (!OPT(tab_bar_hidden) && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
 =======
     if (!global_state.tab_bar_hidden) {
@@ -485,6 +486,10 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
         central->bottom = os_window->viewport_height - 1;
     } else if (os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
 >>>>>>> bcb5770d (Working Commit)
+=======
+    if (!global_state.tab_bar_hidden) {
+      if (os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
+>>>>>>> 1ee97dbc (added options for padding around tab bar)
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
                 central->left = 0; central->top = os_window->fonts_data->cell_height + pt_to_px(OPT(tab_bar_margin_height), os_window->id); central->right = os_window->viewport_width - 1;
@@ -499,6 +504,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
                 tab_bar->bottom = os_window->viewport_height - 1;
                 break;
         }
+<<<<<<< HEAD
     } else if (OPT(retain_tab_bar_margin_height)) {
         switch(OPT(tab_bar_edge)) {
           case TOP_EDGE:
@@ -512,6 +518,23 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
             central->bottom = os_window->viewport_height - pt_to_px(OPT(tab_bar_margin_height), os_window->id);
             break;
         }
+=======
+      } else {
+        switch(OPT(tab_bar_edge)) {
+            case TOP_EDGE:
+              zero_at_ptr(tab_bar);
+              central->left = 0; central->top = pt_to_px(OPT(tab_bar_margin_height), os_window->id); central->right = os_window->viewport_width - 1;
+              central->bottom = os_window->viewport_height - 1;
+              break;
+            default:
+              zero_at_ptr(tab_bar);
+              central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
+              central->bottom = os_window->viewport_height - pt_to_px(OPT(tab_bar_margin_height), os_window->id);
+              break;
+        }
+      }
+
+>>>>>>> 1ee97dbc (added options for padding around tab bar)
     } else {
         zero_at_ptr(tab_bar);
         central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
@@ -664,7 +687,10 @@ PYWRAP1(set_options) {
     S(url_style, PyLong_AsUnsignedLong);
     S(tab_bar_edge, PyLong_AsLong);
     S(tab_bar_margin_height, PyFloat_AsFloat);
+<<<<<<< HEAD
     S(retain_tab_bar_margin_height, PyObject_IsTrue);
+=======
+>>>>>>> 1ee97dbc (added options for padding around tab bar)
     S(mouse_hide_wait, parse_s_double_to_monotonic_t);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
     S(touch_scroll_multiplier, PyFloat_AsDouble);
