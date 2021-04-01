@@ -20,6 +20,7 @@ class Version(NamedTuple):
 
 
 appname: str = 'kitty'
+kitty_face = '🐱'
 version: Version = Version(0, 19, 3)
 str_version: str = '.'.join(map(str, version))
 _plat = sys.platform.lower()

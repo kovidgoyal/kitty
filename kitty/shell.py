@@ -16,7 +16,7 @@ from .cli import (
     title
 )
 from .cli_stub import RCOptions
-from .constants import cache_dir, is_macos, version
+from .constants import cache_dir, is_macos, version, kitty_face
 from .rc.base import (
     RemoteCommand, all_command_names, command_for_name,
     display_subcommand_help, parse_subcommand_cli
@@ -169,7 +169,7 @@ def real_main(global_opts: RCOptions) -> None:
     while True:
         try:
             try:
-                scmdline = input('🐱 ')
+                scmdline = input(f'{kitty_face} ')
             except UnicodeEncodeError:
                 scmdline = input('kitty> ')
         except EOFError:
