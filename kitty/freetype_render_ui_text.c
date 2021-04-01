@@ -52,7 +52,7 @@ typedef struct RenderCtx {
 #define main_face_family ctx->main_face_family
 #define hb_buffer ctx->hb_buffer
 
-static inline FT_UInt
+static FT_UInt
 glyph_id_for_codepoint(Face *face, char_type cp) {
     return FT_Get_Char_Index(face->freetype, cp);
 }
@@ -88,7 +88,7 @@ set_main_face_family(FreeTypeRenderCtx ctx_, const char *family, bool bold, bool
     main_face_family.bold = bold; main_face_family.italic = italic;
 }
 
-static inline int
+static int
 get_load_flags(int hinting, int hintstyle, int base) {
     int flags = base;
     if (hinting) {
@@ -215,7 +215,7 @@ render_gray_bitmap(ProcessedBitmap *src, RenderState *rs) {
     }
 }
 
-static inline void
+static void
 populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBitmap *ans) {
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
