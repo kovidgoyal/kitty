@@ -394,14 +394,25 @@ apple_file_open_callback(const char* filepath) {
 }
 #else
 
+static FreeTypeRenderCtx csd_title_render_ctx = NULL;
+
 static bool
 draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
     if (!set_callback_window(window)) return false;
+    if (!csd_title_render_ctx) {
+        csd_title_render_ctx = create_freetype_render_context();
+        if (!csd_title_render_ctx) {
+            if (PyErr_Occurred()) PyErr_Print();
+            return false;
+        }
+    }
     double xdpi, ydpi;
     get_window_dpi(window, &xdpi, &ydpi);
     unsigned px_sz = (unsigned)(global_state.callback_os_window->font_sz_in_pts * ydpi / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
-    return render_single_line(text, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset);
+    bool ok = render_single_line(csd_title_render_ctx, text, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset);
+    if (!ok && PyErr_Occurred()) PyErr_Print();
+    return ok;
 }
 #endif
 // }}}
@@ -1406,6 +1417,9 @@ static PyMethodDef module_methods[] = {
 void cleanup_glfw(void) {
     if (logo.pixels) free(logo.pixels);
     logo.pixels = NULL;
+#ifndef __APPLE__
+    release_freetype_render_context(csd_title_render_ctx);
+#endif
 }
 
 // constants {{{

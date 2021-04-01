@@ -9,7 +9,12 @@
 #include "data-types.h"
 #include <hb-ft.h>
 
-bool render_single_line(const char *text, unsigned sz_px, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset);
+typedef struct {bool created;} *FreeTypeRenderCtx;
+
+FreeTypeRenderCtx create_freetype_render_context(void);
+void set_main_face_family(FreeTypeRenderCtx ctx, const char *family, bool bold, bool italic);
+bool render_single_line(FreeTypeRenderCtx ctx, const char *text, unsigned sz_px, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset);
+void release_freetype_render_context(FreeTypeRenderCtx ctx);
 
 typedef struct FontConfigFace {
     char *path;
@@ -24,5 +29,3 @@ bool fallback_font(char_type ch, const char *family, bool bold, bool italic, boo
 bool freetype_convert_mono_bitmap(FT_Bitmap *src, FT_Bitmap *dest);
 FT_Library freetype_library(void);
 void set_freetype_error(const char* prefix, int err_code);
-
-void set_main_face_family(const char *family, bool bold, bool italic);

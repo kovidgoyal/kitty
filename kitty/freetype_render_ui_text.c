@@ -37,11 +37,18 @@ typedef struct {
     int bitmap_left, bitmap_top;
 } ProcessedBitmap;
 
+typedef struct RenderCtx {
+    bool created;
+    Face main_face;
+    FontConfigFace main_face_information;
+    FamilyInformation main_face_family;
+    hb_buffer_t *hb_buffer;
+} RenderCtx;
 
-Face main_face = {0};
-FontConfigFace main_face_information = {0};
-FamilyInformation main_face_family = {0};
-hb_buffer_t *hb_buffer = NULL;
+#define main_face ctx->main_face
+#define main_face_information ctx->main_face_information
+#define main_face_family ctx->main_face_family
+#define hb_buffer ctx->hb_buffer
 
 static inline FT_UInt
 glyph_id_for_codepoint(Face *face, char_type cp) {
@@ -58,7 +65,7 @@ free_face(Face *face) {
 }
 
 static void
-cleanup(void) {
+cleanup(RenderCtx *ctx) {
     free_face(&main_face);
     free(main_face_information.path); main_face_information.path = NULL;
     free(main_face_family.name);
@@ -68,9 +75,10 @@ cleanup(void) {
 }
 
 void
-set_main_face_family(const char *family, bool bold, bool italic) {
+set_main_face_family(FreeTypeRenderCtx ctx_, const char *family, bool bold, bool italic) {
+    RenderCtx *ctx = (RenderCtx*)ctx_;
     if (family == main_face_family.name || (main_face_family.name && strcmp(family, main_face_family.name) == 0)) return;
-    cleanup();
+    cleanup(ctx);
     main_face_family.name = strdup(family);
     main_face_family.bold = bold; main_face_family.italic = italic;
 }
@@ -85,7 +93,6 @@ get_load_flags(int hinting, int hintstyle, int base) {
     return flags;
 }
 
-
 static bool
 load_font(FontConfigFace *info, Face *ans) {
     ans->freetype = native_face_from_path(info->path, info->index);
@@ -98,7 +105,7 @@ load_font(FontConfigFace *info, Face *ans) {
 }
 
 static bool
-ensure_state(void) {
+ensure_state(RenderCtx *ctx) {
     if (main_face.freetype && main_face.hb) return true;
     if (!information_for_font_family(main_face_family.name, main_face_family.bold, main_face_family.italic, &main_face_information)) return false;
     if (!load_font(&main_face_information, &main_face)) return false;
@@ -106,6 +113,8 @@ ensure_state(void) {
     if (!hb_buffer) { PyErr_NoMemory(); return false; }
     return true;
 }
+
+
 
 static int
 font_units_to_pixels_y(FT_Face face, int x) {
@@ -129,7 +138,7 @@ choose_bitmap_size(FT_Face face, FT_UInt desired_height) {
 }
 
 static void
-set_pixel_size(Face *face, FT_UInt sz) {
+set_pixel_size(RenderCtx *ctx, Face *face, FT_UInt sz) {
     if (sz != face->pixel_size) {
         if (FT_HAS_COLOR(face->freetype)) sz = choose_bitmap_size(face->freetype, font_units_to_pixels_y(main_face.freetype, main_face.freetype->height));
         else FT_Set_Pixel_Sizes(face->freetype, sz, sz);
@@ -220,7 +229,7 @@ populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBit
 }
 
 static bool
-render_run(RenderState *rs) {
+render_run(RenderCtx *ctx, RenderState *rs) {
     hb_buffer_guess_segment_properties(hb_buffer);
     if (!HB_DIRECTION_IS_HORIZONTAL(hb_buffer_get_direction(hb_buffer))) {
         PyErr_SetString(PyExc_ValueError, "Vertical text is not supported");
@@ -229,7 +238,7 @@ render_run(RenderState *rs) {
     FT_Face face = rs->current_face->freetype;
     bool has_color = FT_HAS_COLOR(face);
     FT_UInt pixel_size = rs->sz_px;
-    set_pixel_size(rs->current_face, pixel_size);
+    set_pixel_size(ctx, rs->current_face, pixel_size);
     hb_shape(rs->current_face->hb, hb_buffer, NULL, 0);
     unsigned int len = hb_buffer_get_length(hb_buffer);
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
@@ -281,7 +290,7 @@ render_run(RenderState *rs) {
 }
 
 static Face*
-find_fallback_font_for(char_type codep, char_type next_codep) {
+find_fallback_font_for(RenderCtx *ctx, char_type codep, char_type next_codep) {
     if (glyph_id_for_codepoint(&main_face, codep) > 0) return &main_face;
     for (size_t i = 0; i < main_face.count; i++) {
         if (glyph_id_for_codepoint(main_face.fallbacks + i, codep) > 0) return main_face.fallbacks + i;
@@ -301,7 +310,7 @@ find_fallback_font_for(char_type codep, char_type next_codep) {
 }
 
 static bool
-process_codepoint(RenderState *rs, char_type codep, char_type next_codep) {
+process_codepoint(RenderCtx *ctx, RenderState *rs, char_type codep, char_type next_codep) {
     bool add_to_current_buffer = false;
     Face *fallback_font = NULL;
     if (is_combining_char(codep)) {
@@ -311,12 +320,12 @@ process_codepoint(RenderState *rs, char_type codep, char_type next_codep) {
         if (!add_to_current_buffer) fallback_font = &main_face;
     } else {
         if (glyph_id_for_codepoint(rs->current_face, codep) > 0) fallback_font = rs->current_face;
-        else fallback_font = find_fallback_font_for(codep, next_codep);
+        else fallback_font = find_fallback_font_for(ctx, codep, next_codep);
         add_to_current_buffer = !fallback_font || rs->current_face == fallback_font;
     }
     if (!add_to_current_buffer) {
         if (rs->pending_in_buffer) {
-            if (!render_run(rs)) return false;
+            if (!render_run(ctx, rs)) return false;
             rs->pending_in_buffer = 0;
             hb_buffer_clear_contents(hb_buffer);
         }
@@ -328,8 +337,9 @@ process_codepoint(RenderState *rs, char_type codep, char_type next_codep) {
 }
 
 bool
-render_single_line(const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
-    if (!ensure_state()) return false;
+render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
+    RenderCtx *ctx = (RenderCtx*)ctx_;
+    if (!ctx->created) return false;
     bool has_text = text && text[0];
     pixel pbg = premult_pixel(bg, ((bg >> 24) & 0xff));
     for (pixel *px = (pixel*)output_buf, *end = ((pixel*)output_buf) + width * height; px < end; px++) *px = pbg;
@@ -342,7 +352,7 @@ render_single_line(const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t
     if (!unicode) { PyErr_NoMemory(); return false; }
     bool ok = false;
     text_len = decode_utf8_string(text, text_len, unicode);
-    set_pixel_size(&main_face, sz_px);
+    set_pixel_size(ctx, &main_face, sz_px);
     unsigned text_height = font_units_to_pixels_y(main_face.freetype, main_face.freetype->height);
     if (text_height < height) y_offset -= (height - text_height) / 2;
     RenderState rs = {
@@ -351,10 +361,10 @@ render_single_line(const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t
     };
 
     for (size_t i = 0; i < text_len && rs.x < rs.output_width; i++) {
-        if (!process_codepoint(&rs, unicode[i], unicode[i + 1])) goto end;
+        if (!process_codepoint(ctx, &rs, unicode[i], unicode[i + 1])) goto end;
     }
     if (rs.pending_in_buffer && rs.x < rs.output_width) {
-        if (!render_run(&rs)) goto end;
+        if (!render_run(ctx, &rs)) goto end;
         rs.pending_in_buffer = 0;
         hb_buffer_clear_contents(hb_buffer);
     }
@@ -364,6 +374,16 @@ end:
     return ok;
 }
 
+FreeTypeRenderCtx
+create_freetype_render_context(void) {
+    RenderCtx *ctx = calloc(1, sizeof(RenderCtx));
+    if (!ensure_state(ctx)) { free(ctx); return NULL; }
+    ctx->created = true;
+    return (FreeTypeRenderCtx)ctx;
+}
+
+void
+release_freetype_render_context(FreeTypeRenderCtx ctx) { if (ctx) { cleanup((RenderCtx*)ctx); free(ctx); } }
 
 static PyObject*
 render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
@@ -376,11 +396,13 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     float x_offset = 0, y_offset = 0;
     static const char* kwlist[] = {"text", "width", "height", "font_family", "bold", "italic", "fg", "bg", "x_offset", "y_offset", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|sIIzppkkff", (char**)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg, &x_offset, &y_offset)) return NULL;
-    if (family) set_main_face_family(family, bold, italic);
     PyObject *ans = PyBytes_FromStringAndSize(NULL, width * height * 4);
     if (!ans) return NULL;
     uint8_t *buffer = (u_int8_t*) PyBytes_AS_STRING(ans);
-    if (!render_single_line(text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset)) {
+    RenderCtx *ctx = (RenderCtx*)create_freetype_render_context();
+    if (!ctx) return NULL;
+    if (family) set_main_face_family((FreeTypeRenderCtx)ctx, family, bold, italic);
+    if (!render_single_line((FreeTypeRenderCtx)ctx, text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset)) {
         Py_CLEAR(ans);
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unknown error while rendering text");
         ans = NULL;
@@ -395,6 +417,7 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
 #undef c
         }
     }
+    release_freetype_render_context((FreeTypeRenderCtx)ctx);
     return ans;
 }
 
@@ -433,9 +456,5 @@ static PyMethodDef module_methods[] = {
 bool
 init_freetype_render_ui_text(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-    if (Py_AtExit(cleanup) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the fontconfig library at exit handler");
-        return false;
-    }
     return true;
 }

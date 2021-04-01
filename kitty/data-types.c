@@ -237,7 +237,6 @@ PyInit_fast_data_types(void) {
     if (!init_child_monitor(m)) return NULL;
     if (!init_ColorProfile(m)) return NULL;
     if (!init_Screen(m)) return NULL;
-    if (!init_glfw(m)) return NULL;
     if (!init_child(m)) return NULL;
     if (!init_state(m)) return NULL;
     if (!init_keys(m)) return NULL;
@@ -257,6 +256,7 @@ PyInit_fast_data_types(void) {
     if (!init_freetype_render_ui_text(m)) return NULL;
 #endif
     if (!init_fonts(m)) return NULL;
+    if (!init_glfw(m)) return NULL;
 
     PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
     PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
