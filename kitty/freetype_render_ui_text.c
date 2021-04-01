@@ -267,6 +267,40 @@ detect_edges(ProcessedBitmap *ans) {
 #undef check
 }
 
+static Face*
+find_fallback_font_for(RenderCtx *ctx, char_type codep, char_type next_codep) {
+    if (glyph_id_for_codepoint(&main_face, codep) > 0) return &main_face;
+    for (size_t i = 0; i < main_face.count; i++) {
+        if (glyph_id_for_codepoint(main_face.fallbacks + i, codep) > 0) return main_face.fallbacks + i;
+    }
+    FontConfigFace q;
+    bool prefer_color = false;
+    char_type string[3] = {codep, next_codep, 0};
+    if (wcswidth_string(string) >= 2 && is_emoji_presentation_base(codep)) prefer_color = true;
+    if (!fallback_font(codep, main_face_family.name, main_face_family.bold, main_face_family.italic, prefer_color, &q)) return NULL;
+    ensure_space_for(&main_face, fallbacks, Face, main_face.count + 1, capacity, 8, true);
+    Face *ans = main_face.fallbacks + main_face.count;
+    bool ok = load_font(&q, ans);
+    free(q.path);
+    if (!ok) return NULL;
+    main_face.count++;
+    return ans;
+}
+
+
+static unsigned
+calculate_ellipsis_width(RenderCtx *ctx) {
+    Face *face = find_fallback_font_for(ctx, ELLIPSIS, 0);
+    if (!face) return 0;
+    set_pixel_size(ctx, face, main_face.pixel_size, false);
+    int glyph_index = FT_Get_Char_Index(face->freetype, ELLIPSIS);
+    if (!glyph_index) return 0;
+    int error = FT_Load_Glyph(face->freetype, glyph_index, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
+    if (error) return 0;
+    return (unsigned)ceilf((float)face->freetype->glyph->metrics.horiAdvance / 64.f);
+}
+
+
 static bool
 render_run(RenderCtx *ctx, RenderState *rs) {
     hb_buffer_guess_segment_properties(hb_buffer);
@@ -295,7 +329,7 @@ render_run(RenderCtx *ctx, RenderState *rs) {
         pos += delta;
     }
     if (limit < len) {
-        unsigned ellipsis_width = width_for_char(&main_face, 'm');
+        unsigned ellipsis_width = calculate_ellipsis_width(ctx);
         while (pos + ellipsis_width >= rs->output_width && limit) {
             limit--;
             pos -= (float)positions[limit].x_offset / 64.0f + (float)positions[limit].x_advance / 64.0f;
@@ -375,26 +409,6 @@ render_run(RenderCtx *ctx, RenderState *rs) {
         rs->x += (float)positions[i].x_advance / 64.0f;
     }
     return true;
-}
-
-static Face*
-find_fallback_font_for(RenderCtx *ctx, char_type codep, char_type next_codep) {
-    if (glyph_id_for_codepoint(&main_face, codep) > 0) return &main_face;
-    for (size_t i = 0; i < main_face.count; i++) {
-        if (glyph_id_for_codepoint(main_face.fallbacks + i, codep) > 0) return main_face.fallbacks + i;
-    }
-    FontConfigFace q;
-    bool prefer_color = false;
-    char_type string[3] = {codep, next_codep, 0};
-    if (wcswidth_string(string) >= 2 && is_emoji_presentation_base(codep)) prefer_color = true;
-    if (!fallback_font(codep, main_face_family.name, main_face_family.bold, main_face_family.italic, prefer_color, &q)) return NULL;
-    ensure_space_for(&main_face, fallbacks, Face, main_face.count + 1, capacity, 8, true);
-    Face *ans = main_face.fallbacks + main_face.count;
-    bool ok = load_font(&q, ans);
-    free(q.path);
-    if (!ok) return NULL;
-    main_face.count++;
-    return ans;
 }
 
 static bool
