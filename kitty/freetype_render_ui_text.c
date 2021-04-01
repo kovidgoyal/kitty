@@ -129,9 +129,9 @@ choose_bitmap_size(FT_Face face, FT_UInt desired_height) {
 }
 
 static void
-set_pixel_size(Face *face, FT_UInt sz, bool has_color) {
+set_pixel_size(Face *face, FT_UInt sz) {
     if (sz != face->pixel_size) {
-        if (has_color) sz = choose_bitmap_size(face->freetype, font_units_to_pixels_y(main_face.freetype, main_face.freetype->height));
+        if (FT_HAS_COLOR(face->freetype)) sz = choose_bitmap_size(face->freetype, font_units_to_pixels_y(main_face.freetype, main_face.freetype->height));
         else FT_Set_Pixel_Sizes(face->freetype, sz, sz);
         hb_ft_font_changed(face->hb);
         hb_ft_font_set_load_flags(face->hb, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
@@ -229,7 +229,7 @@ render_run(RenderState *rs) {
     FT_Face face = rs->current_face->freetype;
     bool has_color = FT_HAS_COLOR(face);
     FT_UInt pixel_size = rs->sz_px;
-    set_pixel_size(rs->current_face, pixel_size, has_color);
+    set_pixel_size(rs->current_face, pixel_size);
     hb_shape(rs->current_face->hb, hb_buffer, NULL, 0);
     unsigned int len = hb_buffer_get_length(hb_buffer);
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
@@ -342,6 +342,9 @@ render_single_line(const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t
     if (!unicode) { PyErr_NoMemory(); return false; }
     bool ok = false;
     text_len = decode_utf8_string(text, text_len, unicode);
+    set_pixel_size(&main_face, sz_px);
+    unsigned text_height = font_units_to_pixels_y(main_face.freetype, main_face.freetype->height);
+    if (text_height < height) y_offset -= (height - text_height) / 2;
     RenderState rs = {
         .current_face = &main_face, .fg = fg, .bg = bg, .output_width = width, .output_height = height,
         .output = (pixel*)output_buf, .x = x_offset, .y = y_offset, .sz_px = sz_px
