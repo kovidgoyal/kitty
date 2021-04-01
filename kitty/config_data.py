@@ -799,14 +799,16 @@ edge_desc = _(
 
 
 o('window_margin_width', '0', option_type=edge_width, long_text=_('''
-The window margin (in pts) (blank area outside the border). ''' + edge_desc))
+The window margin (in pts) (blank area outside the border).
+For margins with tab bar, see tab_bar_margin_height.''' + edge_desc))
 
 o('single_window_margin_width', '-1', option_type=optional_edge_width, long_text=_('''
 The window margin (in pts) to use when only a single window is visible.
 Negative values will cause the value of :opt:`window_margin_width` to be used instead. ''' + edge_desc))
 
 o('window_padding_width', '0', option_type=edge_width, long_text=_('''
-The window padding (in pts) (blank area between the text and the window border). ''' + edge_desc))
+The window padding (in pts) (blank area between the text and the window border).
+For padding with tab bar, see tab_bar_margin_height.''' + edge_desc))
 
 o('placement_strategy', 'center', option_type=choices('center', 'top-left'), long_text=_('''
 When the window size is not an exact multiple of the cell size, the cell area of the terminal
@@ -915,6 +917,15 @@ Which edge to show the tab bar on, top or bottom'''))
 
 o('tab_bar_margin_width', 0.0, option_type=positive_float, long_text=_('''
 The margin to the left and right of the tab bar (in pts)'''))
+
+o('tab_bar_margin_height', 0.0, option_type=positive_float, long_text=('''
+The margin to the top or bottom of the tab bar (in pts)
+If tab_bar_style is hidden, this value has no effect.
+If the number of tabs is less than tab_bar_min_tabs, this is the distance between the top of the os window and
+the point where the padding/margin set through window_margin_width or window_padding_width takes over.
+If the number of tabs is greater than tab_bar_min_tabs, there is the top of the os window, a padding of tab_bar_margin_height,
+the tab bar (which takes a height of one character cell), the padding/margin set through the methods mentioned above, and
+then the shell prompt.'''))
 
 o('tab_bar_style', 'fade', option_type=choices('fade', 'separator', 'powerline', 'hidden'), long_text=_('''
 The tab bar style, can be one of: :code:`fade`, :code:`separator`, :code:`powerline`, or :code:`hidden`.
