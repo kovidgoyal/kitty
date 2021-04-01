@@ -34,7 +34,8 @@ typedef struct {
     size_t start_x, width, stride;
     size_t rows;
     FT_Pixel_Mode pixel_mode;
-    unsigned int factor, right_edge;
+    unsigned int left_edge, top_edge, bottom_edge, right_edge;
+    float factor;
     int bitmap_left, bitmap_top;
 } ProcessedBitmap;
 
@@ -102,7 +103,7 @@ width_for_char(Face *face, char_type ch) {
     unsigned int ans = 0;
     int glyph_index = FT_Get_Char_Index(face->freetype, ch);
     if (glyph_index) {
-        int error = FT_Load_Glyph(face->freetype, glyph_index, FT_LOAD_DEFAULT);
+        int error = FT_Load_Glyph(face->freetype, glyph_index, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
         if (!error) {
             ans = (unsigned int)ceilf((float)face->freetype->glyph->metrics.horiAdvance / 64.f);
         }
@@ -144,7 +145,7 @@ choose_bitmap_size(FT_Face face, FT_UInt desired_height) {
 }
 
 static void
-set_pixel_size(RenderCtx *ctx, Face *face, FT_UInt sz) {
+set_pixel_size(RenderCtx *ctx, Face *face, FT_UInt sz, bool get_metrics UNUSED) {
     if (sz != face->pixel_size) {
         if (FT_HAS_COLOR(face->freetype)) sz = choose_bitmap_size(face->freetype, font_units_to_pixels_y(main_face.freetype, main_face.freetype->height));
         else FT_Set_Pixel_Sizes(face->freetype, sz, sz);
@@ -161,6 +162,7 @@ typedef struct RenderState {
     size_t output_width, output_height;
     Face *current_face;
     float x, y;
+    int y_offset;
     Region src, dest;
     unsigned sz_px;
     bool truncated;
@@ -179,6 +181,7 @@ setup_regions(ProcessedBitmap *bm, RenderState *rs, int baseline) {
     } else {
         rs->dest.top = baseline - yoff;
     }
+    rs->dest.top += rs->y_offset;
 }
 
 #define ARGB(a, r, g, b) ( (a & 0xff) << 24 ) | ( (r & 0xff) << 16) | ( (g & 0xff) << 8 ) | (b & 0xff)
@@ -205,7 +208,7 @@ static void
 render_color_bitmap(ProcessedBitmap *src, RenderState *rs) {
     for (size_t sr = rs->src.top, dr = rs->dest.top; sr < rs->src.bottom && dr < rs->dest.bottom; sr++, dr++) {
         pixel *dest_row = rs->output + rs->output_width * dr;
-        uint8_t *src_px = src->buf + src->stride * sr;
+        uint8_t *src_px = src->buf + src->stride * sr + 4 * rs->src.left;
         for (size_t sc = rs->src.left, dc = rs->dest.left; sc < rs->src.right && dc < rs->dest.right; sc++, dc++, src_px += 4) {
             pixel fg = premult_pixel(ARGB(src_px[3], src_px[2], src_px[1], src_px[0]), src_px[3]);
             dest_row[dc] = alpha_blend_premult(fg, dest_row[dc]);
@@ -235,6 +238,35 @@ populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBit
     ans->buf = bitmap->buffer;
 }
 
+static void
+detect_edges(ProcessedBitmap *ans) {
+#define check const uint8_t *p = ans->buf + x * 4 + y * ans->stride; if (p[3] > 20)
+    ans->right_edge = 0; ans->bottom_edge = 0;
+    for (ssize_t x = ans->width - 1; !ans->right_edge && x > -1; x--) {
+        for (size_t y = 0; y < ans->rows && !ans->right_edge; y++) {
+            check ans->right_edge = x;
+        }
+    }
+    for (ssize_t y = ans->rows - 1; !ans->bottom_edge && y > -1; y--) {
+        for (size_t x = 0; x < ans->width && !ans->bottom_edge; x++) {
+            check ans->bottom_edge = y;
+        }
+    }
+    ans->left_edge = ans->width;
+    for (size_t x = 0; ans->left_edge == ans->width && x < ans->width; x++) {
+        for (size_t y = 0; y < ans->rows && ans->left_edge == ans->width; y++) {
+            check ans->left_edge = x;
+        }
+    }
+    ans->top_edge = ans->rows;
+    for (size_t y = 0; ans->top_edge == ans->rows && y < ans->rows; y++) {
+        for (size_t x = 0; x < ans->width && ans->top_edge == ans->rows; x++) {
+            check ans->top_edge = y;
+        }
+    }
+#undef check
+}
+
 static bool
 render_run(RenderCtx *ctx, RenderState *rs) {
     hb_buffer_guess_segment_properties(hb_buffer);
@@ -245,7 +277,7 @@ render_run(RenderCtx *ctx, RenderState *rs) {
     FT_Face face = rs->current_face->freetype;
     bool has_color = FT_HAS_COLOR(face);
     FT_UInt pixel_size = rs->sz_px;
-    set_pixel_size(ctx, rs->current_face, pixel_size);
+    set_pixel_size(ctx, rs->current_face, pixel_size, false);
     hb_shape(rs->current_face->hb, hb_buffer, NULL, 0);
     unsigned int len = hb_buffer_get_length(hb_buffer);
     hb_glyph_info_t *info = hb_buffer_get_glyph_infos(hb_buffer, NULL);
@@ -281,12 +313,44 @@ render_run(RenderCtx *ctx, RenderState *rs) {
             PyErr_Print();
             continue;
         };
-        ProcessedBitmap pbm = {.factor=1};
+        ProcessedBitmap pbm = {0};
         switch(face->glyph->bitmap.pixel_mode) {
             case FT_PIXEL_MODE_BGRA: {
+                uint8_t *buf = NULL;
+                unsigned text_height = font_units_to_pixels_y(main_face.freetype, main_face.freetype->height);
                 populate_processed_bitmap(face->glyph, &face->glyph->bitmap, &pbm);
+                unsigned bm_width = 0, bm_height = text_height;
+                if (pbm.rows > bm_height) {
+                    double ratio = pbm.width / (double)pbm.rows;
+                    bm_width = (unsigned)(ratio * bm_height);
+                    buf = calloc(sizeof(pixel), bm_height * bm_width);
+                    if (!buf) break;
+                    downsample_32bit_image(pbm.buf, pbm.width, pbm.rows, pbm.stride, buf, bm_width, bm_height);
+                    pbm.buf = buf; pbm.stride = 4 * bm_width; pbm.width = bm_width; pbm.rows = bm_height;
+                    detect_edges(&pbm);
+                }
                 setup_regions(&pbm, rs, baseline);
+                if (bm_width) {
+                    /* printf("bottom_edge: %u top_edge: %u left_edge: %u right_edge: %u\n", */
+                    /*         pbm.bottom_edge, pbm.top_edge, pbm.left_edge, pbm.right_edge); */
+                    rs->src.top = pbm.top_edge; rs->src.bottom = pbm.bottom_edge + 1;
+                    rs->src.left = pbm.left_edge; rs->src.right = pbm.right_edge + 1;
+                    rs->dest.left = (int)(rs->x + 2);
+                    positions[i].x_advance = (pbm.right_edge - pbm.left_edge + 2) * 64;
+                    unsigned main_baseline = font_units_to_pixels_y(main_face.freetype, main_face.freetype->ascender);
+                    unsigned symbol_height = pbm.bottom_edge - pbm.top_edge;
+                    unsigned baseline_y = main_baseline + rs->y_offset, text_bottom_y = text_height + rs->y_offset;
+                    if (symbol_height <= baseline_y) {
+                        rs->dest.top = baseline_y - symbol_height + 2;
+                    } else {
+                        if (symbol_height <= text_bottom_y) rs->dest.top = text_bottom_y - symbol_height;
+                        else rs->dest.top = 0;
+                    }
+                    rs->dest.top += main_baseline > pbm.bottom_edge ? main_baseline - pbm.bottom_edge : 0;
+                    /* printf("symbol_height: %u baseline_y: %u\n", symbol_height, baseline_y); */
+                }
                 render_color_bitmap(&pbm, rs);
+                free(buf);
             }
                 break;
             case FT_PIXEL_MODE_MONO: {
@@ -376,13 +440,13 @@ render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pix
     if (!unicode) { PyErr_NoMemory(); return false; }
     bool ok = false;
     text_len = decode_utf8_string(text, text_len, unicode);
-    set_pixel_size(ctx, &main_face, sz_px);
+    set_pixel_size(ctx, &main_face, sz_px, true);
     unsigned text_height = font_units_to_pixels_y(main_face.freetype, main_face.freetype->height);
-    if (text_height < height) y_offset -= (height - text_height) / 2;
     RenderState rs = {
         .current_face = &main_face, .fg = fg, .bg = bg, .output_width = width, .output_height = height,
         .output = (pixel*)output_buf, .x = x_offset, .y = y_offset, .sz_px = sz_px
     };
+    if (text_height < height) rs.y_offset = (height - text_height) / 2;
 
     for (size_t i = 0; i < text_len && rs.x < rs.output_width && !rs.truncated; i++) {
         if (!process_codepoint(ctx, &rs, unicode[i], unicode[i + 1])) goto end;
@@ -424,9 +488,9 @@ release_freetype_render_context(FreeTypeRenderCtx ctx) { if (ctx) { cleanup((Ren
 static PyObject*
 render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     // use for testing as below
-    // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line())" && convert -size 800x120 -depth 8 /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
-    const char *text = "Test 猫 H🐱H rendering with ellipsis", *family = NULL;
-    unsigned int width = 800, height = 120;
+    // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line())" && convert -size 800x60 -depth 8 /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
+    const char *text = "Test 猫 H🐱🚀b rendering with ellipsis for cut off text", *family = NULL;
+    unsigned int width = 800, height = 60;
     int bold = 0, italic = 0;
     unsigned long fg = 0, bg = 0xfffefefe;
     float x_offset = 0, y_offset = 0;

@@ -29,3 +29,4 @@ bool fallback_font(char_type ch, const char *family, bool bold, bool italic, boo
 bool freetype_convert_mono_bitmap(FT_Bitmap *src, FT_Bitmap *dest);
 FT_Library freetype_library(void);
 void set_freetype_error(const char* prefix, int err_code);
+int downsample_32bit_image(uint8_t *src, unsigned src_width, unsigned src_height, unsigned src_stride, uint8_t *dest, unsigned dest_width, unsigned dest_height);

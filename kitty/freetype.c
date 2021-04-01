@@ -458,36 +458,38 @@ render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_
     return true;
 }
 
-static void
-downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_height) {
+int
+downsample_32bit_image(uint8_t *src, unsigned src_width, unsigned src_height, unsigned src_stride, uint8_t *dest, unsigned dest_width, unsigned dest_height) {
     // Downsample using a simple area averaging algorithm. Could probably do
     // better with bi-cubic or lanczos, but at these small sizes I don't think
     // it matters
-    float ratio = MAX((float)bm->width / width, (float)bm->rows / cell_height);
+    float ratio = MAX((float)src_width / dest_width, (float)src_height / dest_height);
     int factor = (int)ceilf(ratio);
-    uint8_t *dest = calloc(4, (size_t)width * cell_height);
-    if (dest == NULL) fatal("Out of memory");
     uint8_t *d = dest;
-
-    for (unsigned int i = 0, sr = 0; i < cell_height; i++, sr += factor) {
-        for (unsigned int j = 0, sc = 0; j < width; j++, sc += factor, d += 4) {
-
+    for (unsigned int i = 0, sr = 0; i < dest_height; i++, sr += factor) {
+        for (unsigned int j = 0, sc = 0; j < dest_width; j++, sc += factor, d += 4) {
             // calculate area average
             unsigned int r=0, g=0, b=0, a=0, count=0;
-            for (unsigned int y=sr; y < MIN(sr + factor, bm->rows); y++) {
-                uint8_t *p = bm->buf + (y * bm->stride) + sc * 4;
-                for (unsigned int x=sc; x < MIN(sc + factor, bm->width); x++, count++) {
+            for (unsigned int y=sr; y < MIN(sr + factor, src_height); y++) {
+                uint8_t *p = src + (y * src_stride) + sc * 4;
+                for (unsigned int x=sc; x < MIN(sc + factor, src_width); x++, count++) {
                     b += *(p++); g += *(p++); r += *(p++); a += *(p++);
                 }
             }
             if (count) {
                 d[0] = b / count; d[1] = g / count; d[2] = r / count; d[3] = a / count;
             }
-
         }
     }
+    return factor;
+}
+
+static void
+downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_height) {
+    uint8_t *dest = calloc(4, (size_t)width * cell_height);
+    if (dest == NULL) fatal("Out of memory");
+    bm->factor = downsample_32bit_image(bm->buf, bm->width, bm->rows, bm->stride, dest, width, cell_height);
     bm->buf = dest; bm->needs_free = true; bm->stride = 4 * width; bm->width = width; bm->rows = cell_height;
-    bm->factor = factor;
 }
 
 static inline void
