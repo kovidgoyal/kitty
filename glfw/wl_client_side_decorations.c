@@ -55,7 +55,7 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     uint8_t *output = to_front_buffer ? decs.top.buffer.data.front : decs.top.buffer.data.back;
     if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
         uint32_t fg_color = is_focused ? 0xff444444 : 0xff888888;
-        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height, 0, 0)) return;
+        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height, 0, 0, 0)) return;
     }
     for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.top.buffer.size_in_bytes); px < end; px++) {
         *px = bg_color;

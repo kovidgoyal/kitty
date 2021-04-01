@@ -98,19 +98,6 @@ get_load_flags(int hinting, int hintstyle, int base) {
     return flags;
 }
 
-static inline unsigned int
-width_for_char(Face *face, char_type ch) {
-    unsigned int ans = 0;
-    int glyph_index = FT_Get_Char_Index(face->freetype, ch);
-    if (glyph_index) {
-        int error = FT_Load_Glyph(face->freetype, glyph_index, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
-        if (!error) {
-            ans = (unsigned int)ceilf((float)face->freetype->glyph->metrics.horiAdvance / 64.f);
-        }
-    }
-    return ans;
-}
-
 static bool
 load_font(FontConfigFace *info, Face *ans) {
     ans->freetype = native_face_from_path(info->path, info->index);
@@ -159,7 +146,7 @@ set_pixel_size(RenderCtx *ctx, Face *face, FT_UInt sz, bool get_metrics UNUSED) 
 typedef struct RenderState {
     uint32_t pending_in_buffer, fg, bg;
     pixel *output;
-    size_t output_width, output_height;
+    size_t output_width, output_height, stride;
     Face *current_face;
     float x, y;
     int y_offset;
@@ -207,7 +194,7 @@ alpha_blend_premult(pixel over, pixel under) {
 static void
 render_color_bitmap(ProcessedBitmap *src, RenderState *rs) {
     for (size_t sr = rs->src.top, dr = rs->dest.top; sr < rs->src.bottom && dr < rs->dest.bottom; sr++, dr++) {
-        pixel *dest_row = rs->output + rs->output_width * dr;
+        pixel *dest_row = rs->output + rs->stride * dr;
         uint8_t *src_px = src->buf + src->stride * sr + 4 * rs->src.left;
         for (size_t sc = rs->src.left, dc = rs->dest.left; sc < rs->src.right && dc < rs->dest.right; sc++, dc++, src_px += 4) {
             pixel fg = premult_pixel(ARGB(src_px[3], src_px[2], src_px[1], src_px[0]), src_px[3]);
@@ -219,7 +206,7 @@ render_color_bitmap(ProcessedBitmap *src, RenderState *rs) {
 static void
 render_gray_bitmap(ProcessedBitmap *src, RenderState *rs) {
     for (size_t sr = rs->src.top, dr = rs->dest.top; sr < rs->src.bottom && dr < rs->dest.bottom; sr++, dr++) {
-        pixel *dest_row = rs->output + rs->output_width * dr;
+        pixel *dest_row = rs->output + rs->stride * dr;
         uint8_t *src_row = src->buf + src->stride * sr;
         for (size_t sc = rs->src.left, dc = rs->dest.left; sc < rs->src.right && dc < rs->dest.right; sc++, dc++) {
             pixel fg = premult_pixel(rs->fg, src_row[sc]);
@@ -439,12 +426,16 @@ process_codepoint(RenderCtx *ctx, RenderState *rs, char_type codep, char_type ne
 }
 
 bool
-render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
+render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin) {
     RenderCtx *ctx = (RenderCtx*)ctx_;
     if (!ctx->created) return false;
+    size_t output_width = right_margin <= width ? width - right_margin : 0;
     bool has_text = text && text[0];
     pixel pbg = premult_pixel(bg, ((bg >> 24) & 0xff));
-    for (pixel *px = (pixel*)output_buf, *end = ((pixel*)output_buf) + width * height; px < end; px++) *px = pbg;
+    for (size_t y = 0; y < height; y++) {
+        pixel *px = (pixel*)(output_buf + 4 * y * width);
+        for (size_t x = (size_t)x_offset; x < output_width; x++) px[x] = pbg;
+    }
     if (!has_text) return true;
     hb_buffer_clear_contents(hb_buffer);
     if (!hb_buffer_pre_allocate(hb_buffer, 512)) { PyErr_NoMemory(); return false; }
@@ -457,7 +448,8 @@ render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pix
     set_pixel_size(ctx, &main_face, sz_px, true);
     unsigned text_height = font_units_to_pixels_y(main_face.freetype, main_face.freetype->height);
     RenderState rs = {
-        .current_face = &main_face, .fg = fg, .bg = bg, .output_width = width, .output_height = height,
+        .current_face = &main_face, .fg = fg, .bg = bg,
+        .output_width = output_width, .output_height = height, .stride = width,
         .output = (pixel*)output_buf, .x = x_offset, .y = y_offset, .sz_px = sz_px
     };
     if (text_height < height) rs.y_offset = (height - text_height) / 2;
@@ -504,18 +496,18 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     // use for testing as below
     // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line())" && convert -size 800x60 -depth 8 /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
     const char *text = "Test 猫 H🐱🚀b rendering with ellipsis for cut off text", *family = NULL;
-    unsigned int width = 800, height = 60;
+    unsigned int width = 800, height = 60, right_margin = 0;
     int bold = 0, italic = 0;
     unsigned long fg = 0, bg = 0xfffefefe;
     float x_offset = 0, y_offset = 0;
-    static const char* kwlist[] = {"text", "width", "height", "font_family", "bold", "italic", "fg", "bg", "x_offset", "y_offset", NULL};
-    if (!PyArg_ParseTupleAndKeywords(args, kw, "|sIIzppkkff", (char**)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg, &x_offset, &y_offset)) return NULL;
+    static const char* kwlist[] = {"text", "width", "height", "font_family", "bold", "italic", "fg", "bg", "x_offset", "y_offset", "right_margin", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "|sIIzppkkffI", (char**)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg, &x_offset, &y_offset, &right_margin)) return NULL;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, width * height * 4);
     if (!ans) return NULL;
     uint8_t *buffer = (u_int8_t*) PyBytes_AS_STRING(ans);
     RenderCtx *ctx = (RenderCtx*)create_freetype_render_context(family, bold, italic);
     if (!ctx) return NULL;
-    if (!render_single_line((FreeTypeRenderCtx)ctx, text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset)) {
+    if (!render_single_line((FreeTypeRenderCtx)ctx, text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset, right_margin)) {
         Py_CLEAR(ans);
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unknown error while rendering text");
         ans = NULL;

@@ -398,7 +398,7 @@ apple_file_open_callback(const char* filepath) {
 static FreeTypeRenderCtx csd_title_render_ctx = NULL;
 
 static bool
-draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
+draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin) {
     if (!set_callback_window(window)) return false;
     if (!csd_title_render_ctx) {
         csd_title_render_ctx = create_freetype_render_context(NULL, true, false);
@@ -413,7 +413,7 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
     px_sz = MIN(px_sz, 3 * height / 4);
     static char title[2048];
     snprintf(title, sizeof(title), "🐱 %s", text);
-    bool ok = render_single_line(csd_title_render_ctx, title, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset);
+    bool ok = render_single_line(csd_title_render_ctx, title, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset, right_margin);
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
 }
