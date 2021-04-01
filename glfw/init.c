@@ -375,3 +375,10 @@ GLFWAPI GLFWapplicationclosefun glfwSetApplicationCloseCallback(GLFWapplicationc
     _GLFW_SWAP_POINTERS(_glfw.callbacks.application_close, cbfun);
     return cbfun;
 }
+
+GLFWAPI GLFWdrawtextfun glfwSetDrawTextFunction(GLFWdrawtextfun cbfun)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(NULL);
+    _GLFW_SWAP_POINTERS(_glfw.callbacks.draw_text, cbfun);
+    return cbfun;
+}

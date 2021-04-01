@@ -1421,6 +1421,7 @@ typedef void (* GLFWjoystickfun)(int,int);
 
 typedef void (* GLFWuserdatafun)(unsigned long long, void*);
 typedef void (* GLFWtickcallback)(void*);
+typedef void (* GLFWdrawtextfun)(const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset);
 
 /*! @brief Video mode type.
  *
@@ -1605,6 +1606,10 @@ GFW_EXTERN glfwUpdateTimer_func glfwUpdateTimer_impl;
 typedef void (*glfwRemoveTimer_func)(unsigned long);
 GFW_EXTERN glfwRemoveTimer_func glfwRemoveTimer_impl;
 #define glfwRemoveTimer glfwRemoveTimer_impl
+
+typedef GLFWdrawtextfun (*glfwSetDrawTextFunction_func)(GLFWdrawtextfun);
+GFW_EXTERN glfwSetDrawTextFunction_func glfwSetDrawTextFunction_impl;
+#define glfwSetDrawTextFunction glfwSetDrawTextFunction_impl
 
 typedef void (*glfwTerminate_func)(void);
 GFW_EXTERN glfwTerminate_func glfwTerminate_impl;

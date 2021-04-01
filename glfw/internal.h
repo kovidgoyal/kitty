@@ -614,6 +614,7 @@ struct _GLFWlibrary
         GLFWmonitorfun  monitor;
         GLFWjoystickfun joystick;
         GLFWapplicationclosefun application_close;
+        GLFWdrawtextfun draw_text;
     } callbacks;
 
 

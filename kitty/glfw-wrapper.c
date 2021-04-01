@@ -33,6 +33,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwRemoveTimer_impl) = dlsym(handle, "glfwRemoveTimer");
     if (glfwRemoveTimer_impl == NULL) fail("Failed to load glfw function glfwRemoveTimer with error: %s", dlerror());
 
+    *(void **) (&glfwSetDrawTextFunction_impl) = dlsym(handle, "glfwSetDrawTextFunction");
+    if (glfwSetDrawTextFunction_impl == NULL) fail("Failed to load glfw function glfwSetDrawTextFunction with error: %s", dlerror());
+
     *(void **) (&glfwTerminate_impl) = dlsym(handle, "glfwTerminate");
     if (glfwTerminate_impl == NULL) fail("Failed to load glfw function glfwTerminate with error: %s", dlerror());
 
