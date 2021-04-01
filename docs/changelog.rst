@@ -108,6 +108,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix marking of text not working on lines that contain zero cells
   (:iss:`3403`)
 
+- Fix the selection getting changed if the screen contents scroll while
+  the selection is in progress (:iss:`3431`)
+
 
 0.19.3 [2020-12-19]
 -------------------
