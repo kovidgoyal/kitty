@@ -17,7 +17,8 @@
 #define ARGB(a, r, g, b) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
 #define SWAP(x, y) do { __typeof__(x) SWAP = x; x = y; y = SWAP; } while (0)
 
-static const uint32_t bg_color = 0xfffefefe;
+static const uint32_t passive_bg_color = 0xffeeeeee;
+static const uint32_t active_bg_color = 0xffdddad6;
 
 static void
 swap_buffers(_GLFWWaylandBufferPair *pair) {
@@ -49,20 +50,31 @@ alloc_buffer_pair(_GLFWWaylandBufferPair *pair, struct wl_shm_pool *pool, uint8_
 
 static void
 render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
+    const bool is_focused = window->id == _glfw.focusedWindowId;
+    uint32_t bg_color = is_focused ? active_bg_color : passive_bg_color;
     uint8_t *output = to_front_buffer ? decs.top.buffer.data.front : decs.top.buffer.data.back;
     if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
-        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, 0, bg_color, output, decs.top.buffer.width, decs.top.buffer.height, 10, 0)) return;
+        uint32_t fg_color = is_focused ? 0xff222222 : 0xff888888;
+        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height, 10, 0)) return;
     }
     for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.top.buffer.size_in_bytes); px < end; px++) {
         *px = bg_color;
     }
 }
 
+static void
+update_title_bar(_GLFWwindow *window) {
+    render_title_bar(window, false);
+    swap_buffers(&decs.top.buffer);
+}
 
 static void
 render_edge(_GLFWWaylandBufferPair *pair) {
     for (uint32_t *px = (uint32_t*)pair->data.front, *end = (uint32_t*)(pair->data.front + pair->size_in_bytes); px < end; px++) {
-        *px = bg_color;
+        *px = active_bg_color;
+    }
+    for (uint32_t *px = (uint32_t*)pair->data.back, *end = (uint32_t*)(pair->data.back + pair->size_in_bytes); px < end; px++) {
+        *px = passive_bg_color;
     }
 }
 
@@ -179,6 +191,7 @@ ensure_csd_resources(_GLFWwindow *window) {
     if (!decs.right.surface) create_csd_surfaces(window, &decs.right);
     position_csd_surface(&decs.right, x, y, scale);
 
+    if (focus_changed) update_title_bar(window);
     damage_csd(top, decs.top.buffer.front);
     damage_csd(left, is_focused ? decs.left.buffer.front : decs.left.buffer.back);
     damage_csd(bottom, is_focused ? decs.bottom.buffer.front : decs.bottom.buffer.back);
@@ -206,8 +219,7 @@ void
 change_csd_title(_GLFWwindow *window) {
     if (ensure_csd_resources(window)) return;  // CSD were re-rendered for other reasons
     if (decs.top.surface) {
-        render_title_bar(window, false);
-        swap_buffers(&decs.top.buffer);
+        update_title_bar(window);
         damage_csd(top, decs.top.buffer.front);
     }
 }
