@@ -99,7 +99,7 @@ load_font(FontConfigFace *info, Face *ans) {
 
 static bool
 ensure_state(void) {
-    if (main_face.freetype && main_face.hb) return false;
+    if (main_face.freetype && main_face.hb) return true;
     if (!information_for_font_family(main_face_family.name, main_face_family.bold, main_face_family.italic, &main_face_information)) return false;
     if (!load_font(&main_face_information, &main_face)) return false;
     hb_buffer = hb_buffer_create();
@@ -147,6 +147,7 @@ typedef struct RenderState {
     Face *current_face;
     float x, y;
     Region src, dest;
+    unsigned sz_px;
 } RenderState;
 
 static void
@@ -227,7 +228,7 @@ render_run(RenderState *rs) {
     }
     FT_Face face = rs->current_face->freetype;
     bool has_color = FT_HAS_COLOR(face);
-    FT_UInt pixel_size = 3 * rs->output_height / 4;
+    FT_UInt pixel_size = rs->sz_px;
     set_pixel_size(rs->current_face, pixel_size, has_color);
     hb_shape(rs->current_face->hb, hb_buffer, NULL, 0);
     unsigned int len = hb_buffer_get_length(hb_buffer);
@@ -327,7 +328,7 @@ process_codepoint(RenderState *rs, char_type codep, char_type next_codep) {
 }
 
 bool
-render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
+render_single_line(const char *text, unsigned sz_px, pixel fg, pixel bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
     if (!ensure_state()) return false;
     bool has_text = text && text[0];
     pixel pbg = premult_pixel(bg, ((bg >> 24) & 0xff));
@@ -343,7 +344,7 @@ render_single_line(const char *text, pixel fg, pixel bg, uint8_t *output_buf, si
     text_len = decode_utf8_string(text, text_len, unicode);
     RenderState rs = {
         .current_face = &main_face, .fg = fg, .bg = bg, .output_width = width, .output_height = height,
-        .output = (pixel*)output_buf, .x = x_offset, .y = y_offset
+        .output = (pixel*)output_buf, .x = x_offset, .y = y_offset, .sz_px = sz_px
     };
 
     for (size_t i = 0; i < text_len && rs.x < rs.output_width; i++) {
@@ -376,7 +377,7 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, width * height * 4);
     if (!ans) return NULL;
     uint8_t *buffer = (u_int8_t*) PyBytes_AS_STRING(ans);
-    if (!render_single_line(text, 0, 0xffffffff, buffer, width, height, x_offset, y_offset)) {
+    if (!render_single_line(text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset)) {
         Py_CLEAR(ans);
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unknown error while rendering text");
         ans = NULL;

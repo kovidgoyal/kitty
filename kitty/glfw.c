@@ -10,6 +10,9 @@
 #include "charsets.h"
 #include <structmember.h>
 #include "glfw-wrapper.h"
+#ifndef __APPLE__
+#include "freetype_render_ui_text.h"
+#endif
 extern bool cocoa_make_window_resizable(void *w, bool);
 extern void cocoa_focus_window(void *w);
 extern long cocoa_window_number(void *w);
@@ -381,11 +384,24 @@ application_close_requested_callback(int flags) {
     }
 }
 
+static inline void get_window_dpi(GLFWwindow *w, double *x, double *y);
+
 #ifdef __APPLE__
 static bool
 apple_file_open_callback(const char* filepath) {
     set_cocoa_pending_action(OPEN_FILE, filepath);
     return true;
+}
+#else
+
+static bool
+draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
+    if (!set_callback_window(window)) return false;
+    double xdpi, ydpi;
+    get_window_dpi(window, &xdpi, &ydpi);
+    unsigned px_sz = (unsigned)(global_state.callback_os_window->font_sz_in_pts * ydpi / 72.);
+    px_sz = MIN(px_sz, 3 * height / 4);
+    return render_single_line(text, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset);
 }
 #endif
 // }}}
@@ -855,6 +871,8 @@ glfw_init(PyObject UNUSED *self, PyObject *args) {
     if (ans == Py_True) {
 #ifdef __APPLE__
         glfwSetCocoaFileOpenCallback(apple_file_open_callback);
+#else
+        glfwSetDrawTextFunction(draw_text_callback);
 #endif
         OSWindow w = {0};
         set_os_window_dpi(&w);

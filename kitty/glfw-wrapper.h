@@ -1421,7 +1421,7 @@ typedef void (* GLFWjoystickfun)(int,int);
 
 typedef void (* GLFWuserdatafun)(unsigned long long, void*);
 typedef void (* GLFWtickcallback)(void*);
-typedef void (* GLFWdrawtextfun)(const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset);
+typedef bool (* GLFWdrawtextfun)(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset);
 
 /*! @brief Video mode type.
  *

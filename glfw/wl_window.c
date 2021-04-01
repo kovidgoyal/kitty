@@ -817,7 +817,10 @@ void _glfwPlatformDestroyWindow(_GLFWwindow* window)
 
 void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
 {
-    if (window->wl.title) free(window->wl.title);
+    if (window->wl.title) {
+        if (title && strcmp(title, window->wl.title) == 0) return;
+        free(window->wl.title);
+    } else if (!title) return;
     // Wayland cannot handle requests larger than ~8200 bytes. Sending
     // one causes an abort(). Since titles this large are meaningless anyway
     // ensure they do not happen.
