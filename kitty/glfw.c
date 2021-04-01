@@ -411,7 +411,9 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
     get_window_dpi(window, &xdpi, &ydpi);
     unsigned px_sz = (unsigned)(global_state.callback_os_window->font_sz_in_pts * ydpi / 72.);
     px_sz = MIN(px_sz, 3 * height / 4);
-    bool ok = render_single_line(csd_title_render_ctx, text, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset);
+    static char title[2048];
+    snprintf(title, sizeof(title), "🐱 %s", text);
+    bool ok = render_single_line(csd_title_render_ctx, title, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset);
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
 }
