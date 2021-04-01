@@ -171,6 +171,8 @@ are placed into vertical or horizontal splits, by default::
     │              │               │
     └──────────────┴───────────────┘
 
+.. versionadded:: 0.17.0
+    The Splits layout
 
 
 The Horizontal Layout
