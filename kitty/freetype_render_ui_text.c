@@ -13,6 +13,7 @@
 #include "wcwidth-std.h"
 #include "wcswidth.h"
 #include FT_BITMAP_H
+#define ELLIPSIS 0x2026
 
 typedef struct FamilyInformation {
     char *name;
@@ -96,6 +97,19 @@ get_load_flags(int hinting, int hintstyle, int base) {
     return flags;
 }
 
+static inline unsigned int
+width_for_char(Face *face, char_type ch) {
+    unsigned int ans = 0;
+    int glyph_index = FT_Get_Char_Index(face->freetype, ch);
+    if (glyph_index) {
+        int error = FT_Load_Glyph(face->freetype, glyph_index, FT_LOAD_DEFAULT);
+        if (!error) {
+            ans = (unsigned int)ceilf((float)face->freetype->glyph->metrics.horiAdvance / 64.f);
+        }
+    }
+    return ans;
+}
+
 static bool
 load_font(FontConfigFace *info, Face *ans) {
     ans->freetype = native_face_from_path(info->path, info->index);
@@ -111,6 +125,7 @@ static int
 font_units_to_pixels_y(FT_Face face, int x) {
     return (int)ceil((double)FT_MulFix(x, face->size->metrics.y_scale) / 64.0);
 }
+
 
 static FT_UInt
 choose_bitmap_size(FT_Face face, FT_UInt desired_height) {
@@ -148,6 +163,7 @@ typedef struct RenderState {
     float x, y;
     Region src, dest;
     unsigned sz_px;
+    bool truncated;
 } RenderState;
 
 static void
@@ -236,8 +252,26 @@ render_run(RenderCtx *ctx, RenderState *rs) {
     hb_glyph_position_t *positions = hb_buffer_get_glyph_positions(hb_buffer, NULL);
     int baseline = font_units_to_pixels_y(face, face->ascender);
     int load_flags = get_load_flags(rs->current_face->hinting, rs->current_face->hintstyle, has_color ? FT_LOAD_COLOR : FT_LOAD_RENDER);
-
+    float pos = rs->x;
+    unsigned int limit = len;
     for (unsigned int i = 0; i < len; i++) {
+        float delta = (float)positions[i].x_offset / 64.0f + (float)positions[i].x_advance / 64.0f;
+        if (pos + delta >= rs->output_width) {
+            limit = i;
+            break;
+        }
+        pos += delta;
+    }
+    if (limit < len) {
+        unsigned ellipsis_width = width_for_char(&main_face, 'm');
+        while (pos + ellipsis_width >= rs->output_width && limit) {
+            limit--;
+            pos -= (float)positions[limit].x_offset / 64.0f + (float)positions[limit].x_advance / 64.0f;
+        }
+        rs->truncated = true;
+    }
+
+    for (unsigned int i = 0; i < limit; i++) {
         rs->x += (float)positions[i].x_offset / 64.0f;
         rs->y += (float)positions[i].y_offset / 64.0f;
         if (rs->x > rs->output_width) break;
@@ -276,7 +310,6 @@ render_run(RenderCtx *ctx, RenderState *rs) {
         }
         rs->x += (float)positions[i].x_advance / 64.0f;
     }
-
     return true;
 }
 
@@ -351,13 +384,20 @@ render_single_line(FreeTypeRenderCtx ctx_, const char *text, unsigned sz_px, pix
         .output = (pixel*)output_buf, .x = x_offset, .y = y_offset, .sz_px = sz_px
     };
 
-    for (size_t i = 0; i < text_len && rs.x < rs.output_width; i++) {
+    for (size_t i = 0; i < text_len && rs.x < rs.output_width && !rs.truncated; i++) {
         if (!process_codepoint(ctx, &rs, unicode[i], unicode[i + 1])) goto end;
     }
-    if (rs.pending_in_buffer && rs.x < rs.output_width) {
+    if (rs.pending_in_buffer && rs.x < rs.output_width && !rs.truncated) {
         if (!render_run(ctx, &rs)) goto end;
         rs.pending_in_buffer = 0;
         hb_buffer_clear_contents(hb_buffer);
+    }
+    if (rs.truncated) {
+        hb_buffer_clear_contents(hb_buffer);
+        rs.pending_in_buffer = 0;
+        rs.current_face = &main_face;
+        if (!process_codepoint(ctx, &rs, ELLIPSIS, 0)) goto end;
+        if (!render_run(ctx, &rs)) goto end;
     }
     ok = true;
 end:
@@ -385,7 +425,7 @@ static PyObject*
 render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     // use for testing as below
     // kitty +runpy "from kitty.fast_data_types import *; open('/tmp/test.rgba', 'wb').write(freetype_render_line())" && convert -size 800x120 -depth 8 /tmp/test.rgba /tmp/test.png && icat /tmp/test.png
-    const char *text = "Test 猫 H🐱H rendering", *family = NULL;
+    const char *text = "Test 猫 H🐱H rendering with ellipsis", *family = NULL;
     unsigned int width = 800, height = 120;
     int bold = 0, italic = 0;
     unsigned long fg = 0, bg = 0xfffefefe;
