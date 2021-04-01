@@ -148,6 +148,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Fix mouse handling when using client side decorations
 
+- GNOME/Wayland: Improve window decorations the titlebar now shows the window
+  title (:iss:`3284`)
+
 - Add an option, :opt:`detect_urls` to control whether kitty will detect URLs
   when the mouse moves over them (:pull:`3118`)
 
