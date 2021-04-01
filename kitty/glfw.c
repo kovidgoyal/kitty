@@ -401,7 +401,7 @@ static bool
 draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset) {
     if (!set_callback_window(window)) return false;
     if (!csd_title_render_ctx) {
-        csd_title_render_ctx = create_freetype_render_context();
+        csd_title_render_ctx = create_freetype_render_context(NULL, true, false);
         if (!csd_title_render_ctx) {
             if (PyErr_Occurred()) PyErr_Print();
             return false;

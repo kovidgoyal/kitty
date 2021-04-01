@@ -77,9 +77,12 @@ cleanup(RenderCtx *ctx) {
 void
 set_main_face_family(FreeTypeRenderCtx ctx_, const char *family, bool bold, bool italic) {
     RenderCtx *ctx = (RenderCtx*)ctx_;
-    if (family == main_face_family.name || (main_face_family.name && strcmp(family, main_face_family.name) == 0)) return;
+    if (
+        (family == main_face_family.name || (main_face_family.name && strcmp(family, main_face_family.name) == 0)) &&
+        main_face_family.bold == bold && main_face_family.italic == italic
+    ) return;
     cleanup(ctx);
-    main_face_family.name = strdup(family);
+    main_face_family.name = family ? strdup(family) : NULL;
     main_face_family.bold = bold; main_face_family.italic = italic;
 }
 
@@ -103,18 +106,6 @@ load_font(FontConfigFace *info, Face *ans) {
     hb_ft_font_set_load_flags(ans->hb, get_load_flags(ans->hinting, ans->hintstyle, FT_LOAD_DEFAULT));
     return true;
 }
-
-static bool
-ensure_state(RenderCtx *ctx) {
-    if (main_face.freetype && main_face.hb) return true;
-    if (!information_for_font_family(main_face_family.name, main_face_family.bold, main_face_family.italic, &main_face_information)) return false;
-    if (!load_font(&main_face_information, &main_face)) return false;
-    hb_buffer = hb_buffer_create();
-    if (!hb_buffer) { PyErr_NoMemory(); return false; }
-    return true;
-}
-
-
 
 static int
 font_units_to_pixels_y(FT_Face face, int x) {
@@ -375,9 +366,14 @@ end:
 }
 
 FreeTypeRenderCtx
-create_freetype_render_context(void) {
+create_freetype_render_context(const char *family, bool bold, bool italic) {
     RenderCtx *ctx = calloc(1, sizeof(RenderCtx));
-    if (!ensure_state(ctx)) { free(ctx); return NULL; }
+    main_face_family.name = family ? strdup(family) : NULL;
+    main_face_family.bold = bold; main_face_family.italic = italic;
+    if (!information_for_font_family(main_face_family.name, main_face_family.bold, main_face_family.italic, &main_face_information)) return false;
+    if (!load_font(&main_face_information, &main_face)) return false;
+    hb_buffer = hb_buffer_create();
+    if (!hb_buffer) { PyErr_NoMemory(); return false; }
     ctx->created = true;
     return (FreeTypeRenderCtx)ctx;
 }
@@ -399,9 +395,8 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     PyObject *ans = PyBytes_FromStringAndSize(NULL, width * height * 4);
     if (!ans) return NULL;
     uint8_t *buffer = (u_int8_t*) PyBytes_AS_STRING(ans);
-    RenderCtx *ctx = (RenderCtx*)create_freetype_render_context();
+    RenderCtx *ctx = (RenderCtx*)create_freetype_render_context(family, bold, italic);
     if (!ctx) return NULL;
-    if (family) set_main_face_family((FreeTypeRenderCtx)ctx, family, bold, italic);
     if (!render_single_line((FreeTypeRenderCtx)ctx, text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset)) {
         Py_CLEAR(ans);
         if (!PyErr_Occurred()) PyErr_SetString(PyExc_RuntimeError, "Unknown error while rendering text");
