@@ -7,6 +7,7 @@
 
 
 #include "state.h"
+#include "cleanup.h"
 #include "monotonic.h"
 #include <Cocoa/Cocoa.h>
 #ifndef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
@@ -656,9 +657,6 @@ bool
 init_cocoa(PyObject *module) {
     memset(&global_shortcuts, 0, sizeof(global_shortcuts));
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-    if (Py_AtExit(cleanup) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the cocoa_window at exit handler");
-        return false;
-    }
+    register_at_exit_cleanup_func(COCOA_CLEANUP_FUNC, cleanup);
     return true;
 }

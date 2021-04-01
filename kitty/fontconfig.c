@@ -6,6 +6,7 @@
  */
 
 #include "state.h"
+#include "cleanup.h"
 #include "lineops.h"
 #include "fonts.h"
 #include <fontconfig/fontconfig.h>
@@ -339,10 +340,7 @@ init_fontconfig_library(PyObject *module) {
         PyErr_SetString(PyExc_RuntimeError, "Failed to initialize the fontconfig library");
         return false;
     }
-    if (Py_AtExit(FcFini) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the fontconfig library at exit handler");
-        return false;
-    }
+    register_at_exit_cleanup_func(FONTCONFIG_CLEANUP_FUNC, FcFini);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     PyModule_AddIntMacro(module, FC_WEIGHT_REGULAR);
     PyModule_AddIntMacro(module, FC_WEIGHT_MEDIUM);

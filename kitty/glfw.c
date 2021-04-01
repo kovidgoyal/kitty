@@ -5,6 +5,7 @@
  */
 
 #include "state.h"
+#include "cleanup.h"
 #include "fonts.h"
 #include "monotonic.h"
 #include "charsets.h"
@@ -1426,10 +1427,7 @@ void cleanup_glfw(void) {
 bool
 init_glfw(PyObject *m) {
     if (PyModule_AddFunctions(m, module_methods) != 0) return false;
-    if (Py_AtExit(cleanup_glfw) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the glfw exit handler");
-        return false;
-    }
+    register_at_exit_cleanup_func(GLFW_CLEANUP_FUNC, cleanup_glfw);
 #define ADDC(n) if(PyModule_AddIntConstant(m, #n, n) != 0) return false;
     ADDC(GLFW_RELEASE);
     ADDC(GLFW_PRESS);

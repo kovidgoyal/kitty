@@ -6,6 +6,7 @@
  */
 
 #include "state.h"
+#include "cleanup.h"
 #include <math.h>
 
 GlobalState global_state = {{0}};
@@ -1251,10 +1252,7 @@ init_state(PyObject *module) {
     PyModule_AddIntConstant(module, "IMPERATIVE_CLOSE_REQUESTED", IMPERATIVE_CLOSE_REQUESTED);
     PyModule_AddIntConstant(module, "NO_CLOSE_REQUESTED", NO_CLOSE_REQUESTED);
     PyModule_AddIntConstant(module, "CLOSE_BEING_CONFIRMED", CLOSE_BEING_CONFIRMED);
-    if (Py_AtExit(finalize) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the state at exit handler");
-        return false;
-    }
+    register_at_exit_cleanup_func(STATE_CLEANUP_FUNC, finalize);
     return true;
 }
 // }}}

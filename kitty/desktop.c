@@ -6,6 +6,7 @@
  */
 
 #include "data-types.h"
+#include "cleanup.h"
 #include <dlfcn.h>
 
 #define FUNC(name, restype, ...) typedef restype (*name##_func)(__VA_ARGS__); static name##_func name = NULL
@@ -174,9 +175,6 @@ finalize(void) {
 bool
 init_desktop(PyObject *m) {
     if (PyModule_AddFunctions(m, module_methods) != 0) return false;
-    if (Py_AtExit(finalize) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the desktop.c at exit handler");
-        return false;
-    }
+    register_at_exit_cleanup_func(DESKTOP_CLEANUP_FUNC, finalize);
     return true;
 }

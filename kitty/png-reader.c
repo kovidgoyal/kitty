@@ -6,6 +6,7 @@
  */
 
 #include "png-reader.h"
+#include "cleanup.h"
 #include "state.h"
 #include <lcms2.h>
 
@@ -167,10 +168,6 @@ unload(void) {
 bool
 init_png_reader(PyObject *module) {
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
-    if (Py_AtExit(unload) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the PNG library at exit handler");
-        return false;
-    }
-
+    register_at_exit_cleanup_func(PNG_READER_CLEANUP_FUNC, unload);
     return true;
 }

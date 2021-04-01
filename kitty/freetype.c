@@ -6,6 +6,7 @@
  */
 
 #include "fonts.h"
+#include "cleanup.h"
 #include "state.h"
 #include <math.h>
 #include <structmember.h>
@@ -737,10 +738,7 @@ init_freetype_library(PyObject *m) {
         set_freetype_error("Failed to initialize FreeType library, with error:", error);
         return false;
     }
-    if (Py_AtExit(free_freetype) != 0) {
-        PyErr_SetString(FreeType_Exception, "Failed to register the freetype library at exit handler");
-        return false;
-    }
+    register_at_exit_cleanup_func(FREETYPE_CLEANUP_FUNC, free_freetype);
     return true;
 }
 

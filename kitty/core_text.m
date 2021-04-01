@@ -6,6 +6,7 @@
  */
 
 #include "state.h"
+#include "cleanup.h"
 #include "fonts.h"
 #include "unicode-data.h"
 #include <structmember.h>
@@ -608,10 +609,7 @@ init_CoreText(PyObject *module) {
     if (PyType_Ready(&CTFace_Type) < 0) return 0;
     if (PyModule_AddObject(module, "CTFace", (PyObject *)&CTFace_Type) != 0) return 0;
     if (PyModule_AddFunctions(module, module_methods) != 0) return 0;
-    if (Py_AtExit(finalize) != 0) {
-        PyErr_SetString(PyExc_RuntimeError, "Failed to register the CoreText at exit handler");
-        return false;
-    }
+    register_at_exit_cleanup_func(CORE_TEXT_CLEANUP_FUNC, finalize);
     return 1;
 }
 
