@@ -114,6 +114,7 @@ def parse_ucd() -> None:
     word_search_map['bee'] |= word_search_map['honeybee']
     word_search_map['lambda'] |= word_search_map['lamda']
     word_search_map['lamda'] |= word_search_map['lambda']
+    word_search_map['diamond'] |= word_search_map['gem']
 
 
 def parse_range_spec(spec: str) -> Set[int]:
