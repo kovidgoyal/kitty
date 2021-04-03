@@ -338,7 +338,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
             if (!historybuf_pop_line(self->historybuf, self->alt_linebuf->line)) break;
             INDEX_DOWN;
             linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, 0);
-            self->cursor->y++;
+            if (self->cursor->y + 1 < self->lines) self->cursor->y++;
         }
     }
     return true;
