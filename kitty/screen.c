@@ -222,26 +222,24 @@ static inline void
 index_selection(const Screen *self, Selections *selections, bool up) {
     for (size_t i = 0; i < selections->count; i++) {
         Selection *s = selections->items + i;
-        if (!is_selection_empty(s)) {
-            if (up) {
-                if (s->start.y == 0) s->start_scrolled_by += 1;
-                else {
-                    s->start.y--;
-                    if (s->input_start.y) s->input_start.y--;
-                    if (s->input_current.y) s->input_current.y--;
-                }
-                if (s->end.y == 0) s->end_scrolled_by += 1;
-                else s->end.y--;
-            } else {
-                if (s->start.y >= self->lines - 1) s->start_scrolled_by -= 1;
-                else {
-                    s->start.y++;
-                    if (s->input_start.y < self->lines - 1) s->input_start.y++;
-                    if (s->input_current.y < self->lines - 1) s->input_current.y++;
-                }
-                if (s->end.y >= self->lines - 1) s->end_scrolled_by -= 1;
-                else s->end.y++;
+        if (up) {
+            if (s->start.y == 0) s->start_scrolled_by += 1;
+            else {
+                s->start.y--;
+                if (s->input_start.y) s->input_start.y--;
+                if (s->input_current.y) s->input_current.y--;
             }
+            if (s->end.y == 0) s->end_scrolled_by += 1;
+            else s->end.y--;
+        } else {
+            if (s->start.y >= self->lines - 1) s->start_scrolled_by -= 1;
+            else {
+                s->start.y++;
+                if (s->input_start.y < self->lines - 1) s->input_start.y++;
+                if (s->input_current.y < self->lines - 1) s->input_current.y++;
+            }
+            if (s->end.y >= self->lines - 1) s->end_scrolled_by -= 1;
+            else s->end.y++;
         }
     }
 }
