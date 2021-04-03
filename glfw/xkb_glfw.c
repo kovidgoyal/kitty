@@ -29,6 +29,9 @@
 #include <stdlib.h>
 #include "internal.h"
 #include "xkb_glfw.h"
+#ifdef _GLFW_X11
+#include <X11/XKBlib.h>
+#endif
 
 #define debug(...) if (_glfw.hints.init.debugKeyboard) printf(__VA_ARGS__);
 
@@ -141,11 +144,13 @@ glfw_key_for_sym(xkb_keysym_t key) {
         case XKB_KEY_Alt_L: return GLFW_FKEY_LEFT_ALT;
         case XKB_KEY_Super_L: return GLFW_FKEY_LEFT_SUPER;
         case XKB_KEY_Hyper_L: return GLFW_FKEY_LEFT_HYPER;
+        case XKB_KEY_Meta_L: return GLFW_FKEY_LEFT_META;
         case XKB_KEY_Shift_R: return GLFW_FKEY_RIGHT_SHIFT;
         case XKB_KEY_Control_R: return GLFW_FKEY_RIGHT_CONTROL;
         case XKB_KEY_Alt_R: return GLFW_FKEY_RIGHT_ALT;
         case XKB_KEY_Super_R: return GLFW_FKEY_RIGHT_SUPER;
         case XKB_KEY_Hyper_R: return GLFW_FKEY_RIGHT_HYPER;
+        case XKB_KEY_Meta_R: return GLFW_FKEY_RIGHT_META;
         case XKB_KEY_ISO_Level3_Shift: return GLFW_FKEY_ISO_LEVEL3_SHIFT;
         case XKB_KEY_ISO_Level5_Shift: return GLFW_FKEY_ISO_LEVEL5_SHIFT;
 /* end xkb to glfw */
@@ -257,11 +262,13 @@ glfw_xkb_sym_for_key(uint32_t key) {
         case GLFW_FKEY_LEFT_ALT: return XKB_KEY_Alt_L;
         case GLFW_FKEY_LEFT_SUPER: return XKB_KEY_Super_L;
         case GLFW_FKEY_LEFT_HYPER: return XKB_KEY_Hyper_L;
+        case GLFW_FKEY_LEFT_META: return XKB_KEY_Meta_L;
         case GLFW_FKEY_RIGHT_SHIFT: return XKB_KEY_Shift_R;
         case GLFW_FKEY_RIGHT_CONTROL: return XKB_KEY_Control_R;
         case GLFW_FKEY_RIGHT_ALT: return XKB_KEY_Alt_R;
         case GLFW_FKEY_RIGHT_SUPER: return XKB_KEY_Super_R;
         case GLFW_FKEY_RIGHT_HYPER: return XKB_KEY_Hyper_R;
+        case GLFW_FKEY_RIGHT_META: return XKB_KEY_Meta_R;
         case GLFW_FKEY_ISO_LEVEL3_SHIFT: return XKB_KEY_ISO_Level3_Shift;
         case GLFW_FKEY_ISO_LEVEL5_SHIFT: return XKB_KEY_ISO_Level5_Shift;
 /* end glfw to xkb */
@@ -308,10 +315,83 @@ glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb) {
     if (conn) state = xkb_x11_state_new_from_device(keymap, conn, xkb->keyboard_device_id); \
 }
 
+static void
+glfw_xkb_update_masks(_GLFWXKBData *xkb) {
+    bool succeeded = false;
+    unsigned used_bits = 0; /* To avoid using the same bit twice */
+    XkbDescPtr xkb_ptr = XkbGetMap( _glfw.x11.display, XkbVirtualModsMask | XkbVirtualModMapMask, XkbUseCoreKbd );
+
+#define S( a ) xkb->a##Idx = XKB_MOD_INVALID; xkb->a##Mask = 0
+    S(control); S(alt); S(shift); S(super); S(hyper); S(meta); S(capsLock); S(numLock);
+#undef S
+    if ( xkb_ptr ) {
+        Status status = XkbGetNames( _glfw.x11.display, XkbVirtualModNamesMask, xkb_ptr );
+        if ( status == Success ) {
+            for ( int indx = 0; indx < XkbNumVirtualMods; ++indx ) {
+                Atom atom = xkb_ptr->names->vmods[indx];
+                if ( atom ) {
+                    unsigned mask_rtn = 0;
+                    if ( XkbVirtualModsToReal( xkb_ptr, 1<<indx, &mask_rtn ) ) {
+                        const char *name = XGetAtomName( _glfw.x11.display, atom );
+#define S( a, s ) if ( !(used_bits & mask_rtn) && strcmp( name, #s ) == 0 ) xkb->a##Mask = mask_rtn, used_bits |= mask_rtn
+                        /* Note that the order matters here; earlier is higher priority. */
+                        S( alt, Alt );
+                        S( super, Super );
+                        S( numLock, NumLock );
+                        S( meta, Meta );
+                        S( hyper, Hyper );
+#undef S
+                    }
+                }
+            }
+            succeeded = true;
+        }
+        XkbFreeNames( xkb_ptr, XkbVirtualModNamesMask, True );
+        XkbFreeKeyboard( xkb_ptr, 0, True );
+    }
+    if ( succeeded ) {
+        unsigned indx, shifted;
+        for ( indx = 0, shifted = 1; used_bits; ++indx, shifted <<= 1, used_bits >>= 1 ) {
+#define S( a ) if ( xkb->a##Mask == shifted ) xkb->a##Idx = indx
+            S(alt); S(super); S(hyper); S(meta); S(numLock);
+#undef S
+        }
+    }
+#define S(a, n) xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); xkb->a##Mask = 1 << xkb->a##Idx;
+    S(control, XKB_MOD_NAME_CTRL);
+    S(shift, XKB_MOD_NAME_SHIFT);
+    S(capsLock, XKB_MOD_NAME_CAPS);
+    if ( !succeeded ) {
+        S(numLock, XKB_MOD_NAME_NUM);
+        S(alt, XKB_MOD_NAME_ALT);
+        S(super, XKB_MOD_NAME_LOGO);
+    }
+#undef S
+    debug( "Modifier indices alt:%d super:%d hyper:%d meta:%d num>ock:%d\n", xkb->altIdx, xkb->superIdx, xkb->hyperIdx, xkb->metaIdx, xkb->numLockIdx );
+}
+
+
 #else
 
 #define xkb_glfw_load_keymap(keymap, map_str) keymap = xkb_keymap_new_from_string(xkb->context, map_str, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
 #define xkb_glfw_load_state(keymap, state) state = xkb_state_new(keymap);
+
+static void
+glfw_xkb_update_masks(_GLFWXKBData *xkb) {
+    /* Should find better solution under evdev or wayland */
+
+#define S( a ) xkb->a##Idx = XKB_MOD_INVALID; xkb->a##Mask = 0
+    S(hyper); S(meta);
+#undef S
+#define S(a, n) xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); xkb->a##Mask = 1 << xkb->a##Idx;
+    S(control, XKB_MOD_NAME_CTRL);
+    S(shift, XKB_MOD_NAME_SHIFT);
+    S(capsLock, XKB_MOD_NAME_CAPS);
+    S(numLock, XKB_MOD_NAME_NUM);
+    S(alt, XKB_MOD_NAME_ALT);
+    S(super, XKB_MOD_NAME_LOGO);
+#undef S
+}
 
 #endif
 
@@ -416,8 +496,8 @@ active_unknown_modifiers(_GLFWXKBData *xkb, struct xkb_state *state) {
 static void
 update_modifiers(_GLFWXKBData *xkb) {
     XKBStateGroup *group = &xkb->states;
-#define S(attr, name) if (xkb_state_mod_index_is_active(group->state, xkb->attr##Idx, XKB_STATE_MODS_EFFECTIVE)) group->modifiers |= GLFW_MOD_##name
-    S(control, CONTROL); S(alt, ALT); S(shift, SHIFT); S(super, SUPER); S(capsLock, CAPS_LOCK); S(numLock, NUM_LOCK);
+#define S(attr, name) if (xkb_state_mod_index_is_active(group->state, xkb->attr##Idx, XKB_STATE_MODS_EFFECTIVE) == 1) group->modifiers |= GLFW_MOD_##name
+    S(control, CONTROL); S(alt, ALT); S(shift, SHIFT); S(super, SUPER); S(hyper, HYPER); S(meta, META); S(capsLock, CAPS_LOCK); S(numLock, NUM_LOCK);
 #undef S
     xkb->states.activeUnknownModifiers = active_unknown_modifiers(xkb, xkb->states.state);
 
@@ -441,18 +521,12 @@ glfw_xkb_compile_keymap(_GLFWXKBData *xkb, const char *map_str) {
         return false;
     }
     load_compose_tables(xkb);
-#define S(a, n) xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); xkb->a##Mask = 1 << xkb->a##Idx;
-    S(control, XKB_MOD_NAME_CTRL);
-    S(alt, XKB_MOD_NAME_ALT);
-    S(shift, XKB_MOD_NAME_SHIFT);
-    S(super, XKB_MOD_NAME_LOGO);
-    S(capsLock, XKB_MOD_NAME_CAPS);
-    S(numLock, XKB_MOD_NAME_NUM);
-#undef S
+
+    glfw_xkb_update_masks(xkb);
     size_t capacity = arraysz(xkb->unknownModifiers), j = 0;
     for (xkb_mod_index_t i = 0; i < capacity; i++) xkb->unknownModifiers[i] = XKB_MOD_INVALID;
     for (xkb_mod_index_t i = 0; i < xkb_keymap_num_mods(xkb->keymap) && j < capacity - 1; i++) {
-        if (i != xkb->controlIdx && i != xkb->altIdx && i != xkb->shiftIdx && i != xkb->superIdx && i != xkb->capsLockIdx && i != xkb->numLockIdx) xkb->unknownModifiers[j++] = i;
+        if (i != xkb->controlIdx && i != xkb->altIdx && i != xkb->shiftIdx && i != xkb->superIdx && i != xkb->hyperIdx && i != xkb->metaIdx && i != xkb->capsLockIdx && i != xkb->numLockIdx) xkb->unknownModifiers[j++] = i;
     }
     xkb->states.modifiers = 0;
     xkb->states.activeUnknownModifiers = 0;
@@ -524,6 +598,8 @@ format_mods(unsigned int mods) {
     if (mods & GLFW_MOD_ALT) pr("alt+");
     if (mods & GLFW_MOD_SHIFT) pr("shift+");
     if (mods & GLFW_MOD_SUPER) pr("super+");
+    if (mods & GLFW_MOD_META) pr("meta+");
+    if (mods & GLFW_MOD_HYPER) pr("hyper+");
     if (mods & GLFW_MOD_CAPS_LOCK) pr("capslock+");
     if (mods & GLFW_MOD_NUM_LOCK) pr("numlock+");
     if (p == s) pr("none");
@@ -648,7 +724,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
             if (consumed_unknown_mods) { debug("%s", format_xkb_mods(xkb, "consumed_unknown_mods", consumed_unknown_mods)); }
             else xkb_sym = clean_syms[0];
             // xkb returns text even if alt and/or super are pressed
-            if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER) & sg->modifiers) == 0) {
+            if ( ((GLFW_MOD_CONTROL | GLFW_MOD_ALT | GLFW_MOD_SUPER | GLFW_MOD_HYPER | GLFW_MOD_META) & sg->modifiers) == 0) {
               xkb_state_key_get_utf8(sg->state, code_for_sym, key_text, sizeof(key_text));
             }
             text_type = "text";

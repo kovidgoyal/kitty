@@ -542,10 +542,11 @@ compatibility reasons.
    "RAISE_VOLUME", "``57438 u``", "MUTE_VOLUME", "``57439 u``"
    "LEFT_SHIFT", "``57440 u``", "LEFT_CONTROL", "``57441 u``"
    "LEFT_ALT", "``57442 u``", "LEFT_SUPER", "``57443 u``"
-   "LEFT_HYPER", "``57444 u``", "RIGHT_SHIFT", "``57445 u``"
-   "RIGHT_CONTROL", "``57446 u``", "RIGHT_ALT", "``57447 u``"
-   "RIGHT_SUPER", "``57448 u``", "RIGHT_HYPER", "``57449 u``"
-   "ISO_LEVEL3_SHIFT", "``57450 u``", "ISO_LEVEL5_SHIFT", "``57451 u``"
+   "LEFT_HYPER", "``57444 u``", "LEFT_META", "``57445 u``"
+   "RIGHT_SHIFT", "``57446 u``", "RIGHT_CONTROL", "``57447 u``"
+   "RIGHT_ALT", "``57448 u``", "RIGHT_SUPER", "``57449 u``"
+   "RIGHT_HYPER", "``57450 u``", "RIGHT_META", "``57451 u``"
+   "ISO_LEVEL3_SHIFT", "``57452 u``", "ISO_LEVEL5_SHIFT", "``57453 u``"
 
 .. end functional key table
 .. }}}

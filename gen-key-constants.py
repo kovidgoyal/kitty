@@ -109,11 +109,13 @@ left_control                Control_L                   0x3B   -
 left_alt                    Alt_L                       0x3A   -
 left_super                  Super_L                     0x37   -
 left_hyper                  Hyper_L                     -      -
+left_meta                   Meta_L                      -      -
 right_shift                 Shift_R                     0x3C   -
 right_control               Control_R                   0x3E   -
 right_alt                   Alt_R                       0x3D   -
 right_super                 Super_R                     0x36   -
 right_hyper                 Hyper_R                     -      -
+right_meta                  Meta_R                      -      -
 iso_level3_shift            ISO_Level3_Shift            -      -
 iso_level5_shift            ISO_Level5_Shift            -      -
 '''  # }}}

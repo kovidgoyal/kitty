@@ -184,14 +184,16 @@ typedef enum {
   GLFW_FKEY_LEFT_ALT = 0xe062u,
   GLFW_FKEY_LEFT_SUPER = 0xe063u,
   GLFW_FKEY_LEFT_HYPER = 0xe064u,
-  GLFW_FKEY_RIGHT_SHIFT = 0xe065u,
-  GLFW_FKEY_RIGHT_CONTROL = 0xe066u,
-  GLFW_FKEY_RIGHT_ALT = 0xe067u,
-  GLFW_FKEY_RIGHT_SUPER = 0xe068u,
-  GLFW_FKEY_RIGHT_HYPER = 0xe069u,
-  GLFW_FKEY_ISO_LEVEL3_SHIFT = 0xe06au,
-  GLFW_FKEY_ISO_LEVEL5_SHIFT = 0xe06bu,
-  GLFW_FKEY_LAST = 0xe06bu
+  GLFW_FKEY_LEFT_META = 0xe065u,
+  GLFW_FKEY_RIGHT_SHIFT = 0xe066u,
+  GLFW_FKEY_RIGHT_CONTROL = 0xe067u,
+  GLFW_FKEY_RIGHT_ALT = 0xe068u,
+  GLFW_FKEY_RIGHT_SUPER = 0xe069u,
+  GLFW_FKEY_RIGHT_HYPER = 0xe06au,
+  GLFW_FKEY_RIGHT_META = 0xe06bu,
+  GLFW_FKEY_ISO_LEVEL3_SHIFT = 0xe06cu,
+  GLFW_FKEY_ISO_LEVEL5_SHIFT = 0xe06du,
+  GLFW_FKEY_LAST = 0xe06du
 } GLFWFunctionKey;
 /* end functional key names */
 
@@ -210,33 +212,44 @@ typedef enum {
  *  If this bit is set one or more Shift keys were held down.
  */
 #define GLFW_MOD_SHIFT           0x0001
-/*! @brief If this bit is set one or more Control keys were held down.
- *
- *  If this bit is set one or more Control keys were held down.
- */
-#define GLFW_MOD_ALT         0x0002
 /*! @brief If this bit is set one or more Alt keys were held down.
  *
  *  If this bit is set one or more Alt keys were held down.
  */
-#define GLFW_MOD_CONTROL             0x0004
+#define GLFW_MOD_ALT             0x0002
+/*! @brief If this bit is set one or more Alt keys were held down.
+ *
+ *  If this bit is set one or more Alt keys were held down.
+ */
+#define GLFW_MOD_CONTROL         0x0004
 /*! @brief If this bit is set one or more Super keys were held down.
  *
  *  If this bit is set one or more Super keys were held down.
  */
 #define GLFW_MOD_SUPER           0x0008
+/*! @brief If this bit is set one or more Hyper keys were held down.
+ *
+ *  If this bit is set one or more Hyper keys were held down.
+ */
+#define GLFW_MOD_HYPER           0x0010
+/*! @brief If this bit is set one or more Meta keys were held down.
+ *
+ *  If this bit is set one or more Meta keys were held down.
+ */
+#define GLFW_MOD_META            0x0020
 /*! @brief If this bit is set the Caps Lock key is enabled.
  *
  *  If this bit is set the Caps Lock key is enabled and the @ref
  *  GLFW_LOCK_KEY_MODS input mode is set.
  */
-#define GLFW_MOD_CAPS_LOCK       0x0010
+#define GLFW_MOD_CAPS_LOCK       0x0040
 /*! @brief If this bit is set the Num Lock key is enabled.
  *
  *  If this bit is set the Num Lock key is enabled and the @ref
  *  GLFW_LOCK_KEY_MODS input mode is set.
+ *  @note Ravi: Num lock is not supported in this branch
  */
-#define GLFW_MOD_NUM_LOCK        0x0020
+#define GLFW_MOD_NUM_LOCK        0x0080
 
 /*! @} */
 
