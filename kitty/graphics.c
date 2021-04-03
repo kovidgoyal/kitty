@@ -333,6 +333,7 @@ png_path_to_bitmap(const char* path, uint8_t** data, unsigned int* width, unsign
         return false;
     }
     *data = d.decompressed;
+    free(d.row_pointers);
     *sz = d.sz;
     *height = d.height; *width = d.width;
     return true;
