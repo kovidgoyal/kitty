@@ -140,14 +140,17 @@ sub-field for the shifted key, like this::
 Modifiers
 ~~~~~~~~~~~~~~
 
-This protocol supports four modifier keys, :kbd:`shift, alt, ctrl and super`.
-Here super is either the *Windows/Linux* key or the *Cmd* key on mac keyboards.
-Modifiers are encoded as a bit field with::
+This protocol supports six modifier keys, :kbd:`shift, alt, ctrl, super, hyper
+and meta`. Here :kbd:`super` is either the *Windows/Linux* key or the *Cmd* key on
+mac keyboards. :kbd:`hyper` and :kbd:`meta` are typically present only on X11
+based systems with special XKB rules. Modifiers are encoded as a bit field with::
 
-    shift 0b1     (1)
-    alt   0b10    (2)
-    ctrl  0b100   (4)
-    super 0b1000  (8)
+    shift 0b1      (1)
+    alt   0b10     (2)
+    ctrl  0b100    (4)
+    super 0b1000   (8)
+    hyper 0b10000  (16)
+    meta  0b100000 (32)
 
 In the escape code, the modifier value is encoded as a decimal number which is
 ``1 + actual modifiers``. So to represent :kbd:`shift` only, the value would be ``1 +

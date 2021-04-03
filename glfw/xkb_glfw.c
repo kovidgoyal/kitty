@@ -317,6 +317,7 @@ glfw_xkb_update_x11_keyboard_id(_GLFWXKBData *xkb) {
 
 static void
 glfw_xkb_update_masks(_GLFWXKBData *xkb) {
+    // See https://github.com/kovidgoyal/kitty/pull/3430 for discussion
     bool succeeded = false;
     unsigned used_bits = 0; /* To avoid using the same bit twice */
     XkbDescPtr xkb_ptr = XkbGetMap( _glfw.x11.display, XkbVirtualModsMask | XkbVirtualModMapMask, XkbUseCoreKbd );
@@ -324,34 +325,34 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
 #define S( a ) xkb->a##Idx = XKB_MOD_INVALID; xkb->a##Mask = 0
     S(control); S(alt); S(shift); S(super); S(hyper); S(meta); S(capsLock); S(numLock);
 #undef S
-    if ( xkb_ptr ) {
-        Status status = XkbGetNames( _glfw.x11.display, XkbVirtualModNamesMask, xkb_ptr );
-        if ( status == Success ) {
-            for ( int indx = 0; indx < XkbNumVirtualMods; ++indx ) {
+    if (xkb_ptr) {
+        Status status = XkbGetNames(_glfw.x11.display, XkbVirtualModNamesMask, xkb_ptr);
+        if (status == Success) {
+            for (int indx = 0; indx < XkbNumVirtualMods; ++indx) {
                 Atom atom = xkb_ptr->names->vmods[indx];
-                if ( atom ) {
+                if (atom) {
                     unsigned mask_rtn = 0;
-                    if ( XkbVirtualModsToReal( xkb_ptr, 1<<indx, &mask_rtn ) ) {
-                        const char *name = XGetAtomName( _glfw.x11.display, atom );
-#define S( a, s ) if ( !(used_bits & mask_rtn) && strcmp( name, #s ) == 0 ) xkb->a##Mask = mask_rtn, used_bits |= mask_rtn
+                    if (XkbVirtualModsToReal( xkb_ptr, 1<<indx, &mask_rtn) ) {
+                        const char *name = XGetAtomName(_glfw.x11.display, atom);
+#define S( a, s ) if (!(used_bits & mask_rtn) && strcmp(name, #s) == 0) xkb->a##Mask = mask_rtn, used_bits |= mask_rtn
                         /* Note that the order matters here; earlier is higher priority. */
-                        S( alt, Alt );
-                        S( super, Super );
-                        S( numLock, NumLock );
-                        S( meta, Meta );
-                        S( hyper, Hyper );
+                        S(alt, Alt);
+                        S(super, Super);
+                        S(numLock, NumLock);
+                        S(meta, Meta);
+                        S(hyper, Hyper);
 #undef S
                     }
                 }
             }
             succeeded = true;
         }
-        XkbFreeNames( xkb_ptr, XkbVirtualModNamesMask, True );
-        XkbFreeKeyboard( xkb_ptr, 0, True );
+        XkbFreeNames(xkb_ptr, XkbVirtualModNamesMask, True);
+        XkbFreeKeyboard(xkb_ptr, 0, True);
     }
-    if ( succeeded ) {
+    if (succeeded) {
         unsigned indx, shifted;
-        for ( indx = 0, shifted = 1; used_bits; ++indx, shifted <<= 1, used_bits >>= 1 ) {
+        for (indx = 0, shifted = 1; used_bits; ++indx, shifted <<= 1, used_bits >>= 1) {
 #define S( a ) if ( xkb->a##Mask == shifted ) xkb->a##Idx = indx
             S(alt); S(super); S(hyper); S(meta); S(numLock);
 #undef S
@@ -361,13 +362,14 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     S(control, XKB_MOD_NAME_CTRL);
     S(shift, XKB_MOD_NAME_SHIFT);
     S(capsLock, XKB_MOD_NAME_CAPS);
-    if ( !succeeded ) {
+    if (!succeeded) {
         S(numLock, XKB_MOD_NAME_NUM);
         S(alt, XKB_MOD_NAME_ALT);
         S(super, XKB_MOD_NAME_LOGO);
     }
 #undef S
-    debug( "Modifier indices alt:%d super:%d hyper:%d meta:%d num>ock:%d\n", xkb->altIdx, xkb->superIdx, xkb->hyperIdx, xkb->metaIdx, xkb->numLockIdx );
+    debug("Modifier indices alt:%d super:%d hyper:%d meta:%d numlock:%d\n",
+            xkb->altIdx, xkb->superIdx, xkb->hyperIdx, xkb->metaIdx, xkb->numLockIdx);
 }
 
 
@@ -378,7 +380,8 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
 
 static void
 glfw_xkb_update_masks(_GLFWXKBData *xkb) {
-    /* Should find better solution under evdev or wayland */
+    // Should find better solution under Wayland
+    // See https://github.com/kovidgoyal/kitty/pull/3430 for discussion
 
 #define S( a ) xkb->a##Idx = XKB_MOD_INVALID; xkb->a##Mask = 0
     S(hyper); S(meta);
