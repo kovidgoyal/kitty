@@ -141,18 +141,19 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     // render shadow part
     const size_t margin = create_shadow_tile(window);
     const size_t edge_segment_size = st.corner_size - margin;
+    const uint8_t divisor = is_focused ? 1 : 2;
     for (size_t y = 0; y < margin; y++) {
         // left segment
         uint32_t *s = st.data + y * st.stride + margin;
         uint32_t *d = (uint32_t*)(output + y * decs.top.buffer.stride);
-        for (size_t x = 0; x < edge_segment_size; x++) d[x] = s[x];
+        for (size_t x = 0; x < edge_segment_size; x++) d[x] = (A(s[x]) / divisor) << 24;
         // middle segment
         s += edge_segment_size;
         size_t limit = decs.top.buffer.width > edge_segment_size ? decs.top.buffer.width - edge_segment_size : 0;
-        for (size_t x = edge_segment_size, sx = 0; x < limit; x++, sx = (sx + 1) % margin) d[x] = s[sx];
+        for (size_t x = edge_segment_size, sx = 0; x < limit; x++, sx = (sx + 1) % margin) d[x] = (A(s[sx]) / divisor) << 24;
         // right segment
         s += margin;
-        for (size_t x = limit; x < decs.top.buffer.width; x++, s++) d[x] = *s;
+        for (size_t x = limit; x < decs.top.buffer.width; x++, s++) d[x] = (A(*s) / divisor) << 24;
     }
 
     // render text part
@@ -230,6 +231,10 @@ render_edges(_GLFWwindow *window) {
         uint32_t *right_dest = (uint32_t*)(decs.right.buffer.data.front + dest_y * decs.right.buffer.stride);
         memcpy(right_dest, src, margin * sizeof(uint32_t));
     }
+
+#define copy(which) for (uint32_t *src = (uint32_t*)decs.which.buffer.data.front, *dest = (uint32_t*)decs.which.buffer.data.back; src < (uint32_t*)(decs.which.buffer.data.front + decs.which.buffer.size_in_bytes); src++, dest++) *dest = (A(*src) / 2 ) << 24;
+    copy(left); copy(bottom); copy(right);
+#undef copy
 
 }
 #undef st
