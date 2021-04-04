@@ -114,26 +114,6 @@ alloc_buffer_pair(_GLFWWaylandBufferPair *pair, struct wl_shm_pool *pool, uint8_
     pair->data.front = pair->data.a; pair->data.back = pair->data.b;
 }
 
-static void
-render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
-    const bool is_focused = window->id == _glfw.focusedWindowId;
-    uint32_t bg_color = is_focused ? active_bg_color : passive_bg_color;
-    uint8_t *output = to_front_buffer ? decs.top.buffer.data.front : decs.top.buffer.data.back;
-    if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
-        uint32_t fg_color = is_focused ? 0xff444444 : 0xff888888;
-        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height, 0, 0, 0)) return;
-    }
-    for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.top.buffer.size_in_bytes); px < end; px++) {
-        *px = bg_color;
-    }
-}
-
-static void
-update_title_bar(_GLFWwindow *window) {
-    render_title_bar(window, false);
-    swap_buffers(&decs.top.buffer);
-}
-
 #define st decs.shadow_tile
 static size_t
 create_shadow_tile(_GLFWwindow *window) {
@@ -149,6 +129,47 @@ create_shadow_tile(_GLFWwindow *window) {
     if (st.data) for (size_t i = 0; i < st.stride * st.stride; i++) st.data[i] = mask[i] << 24;
     free(mask);
     return margin;
+}
+
+
+static void
+render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
+    const bool is_focused = window->id == _glfw.focusedWindowId;
+    uint32_t bg_color = is_focused ? active_bg_color : passive_bg_color;
+    uint8_t *output = to_front_buffer ? decs.top.buffer.data.front : decs.top.buffer.data.back;
+
+    // render shadow part
+    const size_t margin = create_shadow_tile(window);
+    const size_t edge_segment_size = st.corner_size - margin;
+    for (size_t y = 0; y < margin; y++) {
+        // left segment
+        uint32_t *s = st.data + y * st.stride + margin;
+        uint32_t *d = (uint32_t*)(output + y * decs.top.buffer.stride);
+        for (size_t x = 0; x < edge_segment_size; x++) d[x] = s[x];
+        // middle segment
+        s += edge_segment_size;
+        size_t limit = decs.top.buffer.width > edge_segment_size ? decs.top.buffer.width - edge_segment_size : 0;
+        for (size_t x = edge_segment_size, sx = 0; x < limit; x++, sx = (sx + 1) % margin) d[x] = s[sx];
+        // right segment
+        s += margin;
+        for (size_t x = limit; x < decs.top.buffer.width; x++, s++) d[x] = *s;
+    }
+
+    // render text part
+    output += decs.top.buffer.stride * decs.metrics.width;
+    if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
+        uint32_t fg_color = is_focused ? 0xff444444 : 0xff888888;
+        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height - decs.metrics.width, 0, 0, 0)) return;
+    }
+    for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.top.buffer.size_in_bytes); px < end; px++) {
+        *px = bg_color;
+    }
+}
+
+static void
+update_title_bar(_GLFWwindow *window) {
+    render_title_bar(window, false);
+    swap_buffers(&decs.top.buffer);
 }
 
 static void

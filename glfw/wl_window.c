@@ -708,7 +708,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
                               const _GLFWfbconfig* fbconfig)
 {
     window->wl.decorations.metrics.width = 12;
-    window->wl.decorations.metrics.top = 24;
+    window->wl.decorations.metrics.top = 36;
     window->wl.decorations.metrics.horizontal = 2 * window->wl.decorations.metrics.width;
     window->wl.decorations.metrics.vertical = window->wl.decorations.metrics.width + window->wl.decorations.metrics.top;
     window->wl.transparent = fbconfig->transparent;
