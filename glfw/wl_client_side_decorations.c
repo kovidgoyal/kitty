@@ -11,14 +11,86 @@
 #include <sys/mman.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define decs window->wl.decorations
 
 #define ARGB(a, r, g, b) (((a) << 24) | ((r) << 16) | ((g) << 8) | (b))
+#define A(x) (((x) >> 24) & 0xff)
+#define R(x) (((x) >> 16) & 0xff)
+#define G(x) (((x) >> 8) & 0xff)
+#define B(x) ((x) & 0xff)
 #define SWAP(x, y) do { __typeof__(x) SWAP = x; x = y; y = SWAP; } while (0)
 
 static const uint32_t passive_bg_color = 0xffeeeeee;
 static const uint32_t active_bg_color = 0xffdddad6;
+typedef float kernel_type;
+
+static void
+build_blur_kernel(kernel_type *blur_kernel, const size_t size, kernel_type sigma_multiplier) {
+    // 1D Normalized Gaussian
+    const kernel_type half = size / (kernel_type)2;
+    const kernel_type sigma = size * sigma_multiplier;
+	kernel_type sum = 0;
+	for (size_t i = 0; i < size; i++) {
+		kernel_type f = (i - half);
+		blur_kernel[i] = (kernel_type)exp(- f * f / sigma);
+		sum += blur_kernel[i];
+	}
+	for (size_t i = 0; i < size; i++) blur_kernel[i] /= sum;
+}
+
+static size_t
+kernel_size_for_margin(size_t margin) {
+    return 2 * margin + 1;
+}
+
+static void
+blur_mask(uint8_t *image_data, ssize_t width, ssize_t height, size_t margin, kernel_type sigma_multiplier, uint8_t *scratch, kernel_type *blur_kernel) {
+    const ssize_t size = kernel_size_for_margin(margin);
+    build_blur_kernel(blur_kernel, size, sigma_multiplier);
+    const size_t half = size / 2;
+
+    for (ssize_t y = 0; y < height; y++) {
+        uint8_t *s = image_data + y * width, *d = scratch + y * width;
+        for (ssize_t x = 0; x < width; x++) {
+            uint8_t a = 0;
+            for (ssize_t k = 0; k < size; k++) {
+                const ssize_t px = x + k - half;
+                if (0 <= px && px < width) a += (uint8_t)(s[px] * blur_kernel[k]);
+            }
+            d[x] = a;
+        }
+    }
+
+    for (ssize_t y = 0; y < height; y++) {
+        uint8_t *d = image_data + y * width;
+        for (ssize_t x = 0; x < width; x++) {
+            uint8_t a = 0;
+            for (ssize_t k = 0; k < size; k++) {
+                const ssize_t py = y + k - half;
+                if (0 <= py && py < height) {
+                    uint8_t p = (scratch + py * width)[x];
+                    a += (uint8_t)(p * blur_kernel[k]);
+                }
+            }
+            d[x] = a;
+        }
+    }
+}
+
+static uint8_t*
+create_shadow_mask(size_t width, size_t height, size_t margin, uint8_t base_alpha, kernel_type sigma_multiplier) {
+    uint8_t *mask = calloc(1, 2 * width * height + sizeof(kernel_type) * kernel_size_for_margin(margin));
+    if (!mask) return NULL;
+    for (size_t y = margin; y < height - margin; y++) {
+        uint8_t *row = mask + y * width;
+        for (size_t x = margin; x < width - margin; x++) row[x] = base_alpha;
+    }
+    blur_mask(mask, width, height, margin, sigma_multiplier, mask + width * height, (kernel_type*)(mask + 2 * width * height));
+    return mask;
+}
+
 
 static void
 swap_buffers(_GLFWWaylandBufferPair *pair) {
@@ -78,6 +150,18 @@ render_edge(_GLFWWaylandBufferPair *pair) {
     }
 }
 
+static void
+render_edges(_GLFWwindow *window) {
+    render_edge(&decs.left.buffer); render_edge(&decs.right.buffer);
+    const size_t full_width = decs.bottom.buffer.width, full_height = decs.bottom.buffer.height + decs.left.buffer.height;
+    size_t margin = decs.bottom.buffer.height;
+    uint8_t *shadow_mask = create_shadow_mask(full_width, full_height, margin, 255, 12.f);
+    uint8_t *bottom = shadow_mask + full_width * decs.left.buffer.height;
+    uint32_t *p = (uint32_t*)decs.bottom.buffer.data.front;
+    for (size_t i = 0; i < decs.bottom.buffer.width * decs.bottom.buffer.height; i++, p += 1, bottom++) *p = ARGB(*bottom, 0, 0, 0);
+    free(shadow_mask);
+}
+
 static bool
 create_shm_buffers(_GLFWwindow* window) {
     int scale = window->wl.scale;
@@ -112,7 +196,7 @@ create_shm_buffers(_GLFWwindow* window) {
 #undef a
     wl_shm_pool_destroy(pool);
     render_title_bar(window, true);
-    render_edge(&decs.left.buffer); render_edge(&decs.bottom.buffer); render_edge(&decs.right.buffer);
+    render_edges(window);
     return true;
 }
 
