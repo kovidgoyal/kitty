@@ -175,6 +175,41 @@ render_edges(_GLFWwindow *window) {
         s += margin;
         for (size_t x = 0; x < st.corner_size && limit + x < decs.bottom.buffer.width; x++) d[limit + x] = s[x];
     }
+
+    // upper corners
+    for (size_t y = 0; y < st.corner_size && y < decs.left.buffer.height; y++) {
+        uint32_t *left_src = st.data + st.stride * y;
+        uint32_t *left_dest = (uint32_t*)(decs.left.buffer.data.front + y * decs.left.buffer.stride);
+        memcpy(left_dest, left_src, margin * sizeof(uint32_t));
+        uint32_t *right_src = left_src + 2 * st.corner_size;
+        uint32_t *right_dest = (uint32_t*)(decs.right.buffer.data.front + y * decs.right.buffer.stride);
+        memcpy(right_dest, right_src, margin * sizeof(uint32_t));
+    }
+
+    // lower corners
+    size_t src_height = st.corner_size - margin;
+    size_t dest_top = decs.left.buffer.height > src_height ? decs.left.buffer.height - src_height : 0;
+    size_t src_top = st.corner_size + margin;
+    for (size_t src_y = src_top, dest_y = dest_top; src_y < src_top + src_height && dest_y < decs.left.buffer.height; src_y++, dest_y++) {
+        uint32_t *s = st.data + st.stride * src_y;
+        uint32_t *d = (uint32_t*)(decs.left.buffer.data.front + dest_y * decs.left.buffer.stride);
+        memcpy(d, s, margin * sizeof(uint32_t));
+        s += 2 * st.corner_size;
+        d = (uint32_t*)(decs.right.buffer.data.front + dest_y * decs.left.buffer.stride);
+        memcpy(d, s, margin * sizeof(uint32_t));
+    }
+
+    // sides
+    size_t limit = decs.left.buffer.height > src_height ? decs.left.buffer.height - src_height : 0;
+    for (size_t dest_y = st.corner_size, src_y = 0; dest_y < limit; dest_y++, src_y = (src_y + 1) % margin) {
+        uint32_t *src = st.data + (st.corner_size + src_y) * st.stride;
+        uint32_t *left_dest = (uint32_t*)(decs.left.buffer.data.front + dest_y * decs.left.buffer.stride);
+        memcpy(left_dest, src, margin * sizeof(uint32_t));
+        src += 2 * st.corner_size;
+        uint32_t *right_dest = (uint32_t*)(decs.right.buffer.data.front + dest_y * decs.right.buffer.stride);
+        memcpy(right_dest, src, margin * sizeof(uint32_t));
+    }
+
 }
 #undef st
 
