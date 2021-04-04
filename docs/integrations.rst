@@ -76,7 +76,7 @@ System and data visualisation tools
 `onefetch <https://github.com/o2sh/onefetch>`_
     a tool to fetch information about your git repositories
 
-`wttr <https://github.com/chubin/wttr.in>`_
+`wttr.in <https://github.com/chubin/wttr.in>`_
     a tool to display weather information in your terminal with curl
 
 `wl-clipboard-manager <https://github.com/maximbaz/wl-clipboard-manager>`_
