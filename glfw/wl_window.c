@@ -237,8 +237,6 @@ clipboard_mime(void) {
 }
 
 static void dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
-    if (width <= 0) width = window->wl.width;
-    if (height <= 0) height = window->wl.height;
     bool size_changed = width != window->wl.width || height != window->wl.height;
     bool scale_changed = checkScaleChange(window);
 
@@ -444,12 +442,8 @@ static void xdgToplevelHandleConfigure(void* data,
         }
     }
     window->wl.fullscreened = fullscreen;
-    if (!fullscreen) {
-        if (window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.left.surface) {
-            width -= window->wl.decorations.metrics.horizontal;
-            height -= window->wl.decorations.metrics.vertical;
-        }
-    }
+    set_csd_window_geometry(window, &width, &height);
+    wl_surface_commit(window->wl.surface);
     dispatchChangesAfterConfigure(window, width, height);
     _glfwInputWindowFocus(window, activated);
     ensure_csd_resources(window);
