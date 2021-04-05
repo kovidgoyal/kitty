@@ -185,6 +185,10 @@ typedef struct _GLFWwindowWayland
         struct wl_callback *current_wl_callback;
     } frameCallbackData;
 
+    struct {
+        int32_t width, height;
+    } size_before_maximize;
+
 } _GLFWwindowWayland;
 
 typedef enum _GLFWWaylandOfferType

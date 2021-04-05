@@ -151,6 +151,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Fix mouse handling when using client side decorations
 
+- Wayland: Fix un-maximizing a window not restoring its size to what it was
+  before being maximized
+
 - GNOME/Wayland: Improve window decorations the titlebar now shows the window
   title (:iss:`3284`)
 

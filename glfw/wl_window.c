@@ -425,6 +425,18 @@ static void xdgToplevelHandleConfigure(void* data,
                 break;
         }
     }
+    bool window_maximized = !window->wl.maximized && maximized;
+    bool window_unmaximized = window->wl.maximized && !maximized;
+    if (window_maximized) {
+        window->wl.size_before_maximize.width = window->wl.width;
+        window->wl.size_before_maximize.height = window->wl.height;
+    } else if (window_unmaximized && window->wl.size_before_maximize.width > 0 && window->wl.size_before_maximize.height > 0) {
+        width = window->wl.size_before_maximize.width;
+        height = window->wl.size_before_maximize.height;
+        window->wl.size_before_maximize.width = 0;
+        window->wl.size_before_maximize.height = 0;
+    }
+    window->wl.maximized = maximized;
 
     if (width != 0 && height != 0)
     {
@@ -538,6 +550,7 @@ static bool createXdgSurface(_GLFWwindow* window)
     }
     else if (window->wl.maximized)
     {
+        window->wl.maximized = false;
         xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
         setIdleInhibitor(window, false);
         setXdgDecorations(window);
@@ -950,7 +963,6 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
         // minimized, so there is nothing to do in this case.
     }
     _glfwInputWindowMonitor(window, NULL);
-    window->wl.maximized = false;
 }
 
 void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
@@ -959,7 +971,6 @@ void _glfwPlatformMaximizeWindow(_GLFWwindow* window)
     {
         xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
     }
-    window->wl.maximized = true;
 }
 
 void _glfwPlatformShowWindow(_GLFWwindow* window)
