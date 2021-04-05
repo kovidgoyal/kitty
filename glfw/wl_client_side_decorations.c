@@ -157,10 +157,10 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     }
 
     // render text part
-    output += decs.top.buffer.stride * decs.metrics.width;
+    output += decs.top.buffer.stride * margin;
     if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
         uint32_t fg_color = is_focused ? 0xff444444 : 0xff888888;
-        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height - decs.metrics.width, 0, 0, 0)) return;
+        if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height - margin, 0, 0, 0)) return;
     }
     for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.top.buffer.size_in_bytes); px < end; px++) {
         *px = bg_color;
@@ -241,8 +241,7 @@ render_edges(_GLFWwindow *window) {
 
 static bool
 create_shm_buffers(_GLFWwindow* window) {
-    int scale = window->wl.scale;
-    if (scale < 1) scale = 1;
+    const unsigned scale = window->wl.scale >= 1 ? window->wl.scale : 1;
 
     const size_t vertical_width = decs.metrics.width, vertical_height = window->wl.height + decs.metrics.top;
     const size_t horizontal_height = decs.metrics.width, horizontal_width = window->wl.width + 2 * decs.metrics.width;
@@ -399,11 +398,9 @@ set_csd_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
     bool size_specified_by_compositor = *width > 0 && *height > 0;
     if (!size_specified_by_compositor) { *width = window->wl.width; *height = window->wl.height; }
     struct { int32_t x, y, width, height; } geometry = {.x = 0, .y = 0, .width = *width, .height = *height};
-    int scale = window->wl.scale >= 1 ? window->wl.scale : 1;
     if (has_csd) {
         int32_t visible_titlebar_height = decs.metrics.top - decs.metrics.width;
-        geometry.y = -decs.metrics.top + decs.metrics.width / scale;
-        geometry.height = *height;
+        geometry.y = -visible_titlebar_height;
         *height -= visible_titlebar_height;
     }
     xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
