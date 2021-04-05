@@ -40,40 +40,32 @@ build_blur_kernel(kernel_type *blur_kernel, const size_t size, kernel_type sigma
 }
 
 static void
-blur_mask(uint8_t *image_data, ssize_t width, ssize_t height, ssize_t kernel_size, kernel_type sigma, uint8_t *scratch, kernel_type *blur_kernel, ssize_t margin) {
+blur_mask(kernel_type *image_data, ssize_t width, ssize_t height, ssize_t kernel_size, kernel_type sigma, kernel_type *scratch, kernel_type *blur_kernel, ssize_t margin) {
     (void)margin;
     build_blur_kernel(blur_kernel, kernel_size, sigma);
     const size_t half = kernel_size / 2;
 
     for (ssize_t y = 0; y < height; y++) {
-        uint8_t *s = image_data + y * width, *d = scratch + y * width;
+        kernel_type *s = image_data + y * width, *d = scratch + y * width;
         for (ssize_t x = 0; x < width; x++) {
-            uint8_t a = 0;
-            /* if (margin < x && x < width - margin) { */
-            /*     d[x] = s[x]; */
-            /*     continue; */
-            /* } */
+            kernel_type a = 0;
             for (ssize_t k = 0; k < kernel_size; k++) {
                 const ssize_t px = x + k - half;
-                if (0 <= px && px < width) a += (uint8_t)(s[px] * blur_kernel[k]);
+                if (0 <= px && px < width) a += s[px] * blur_kernel[k];
             }
             d[x] = a;
         }
     }
 
     for (ssize_t y = 0; y < height; y++) {
-        uint8_t *d = image_data + y * width;
+        kernel_type *d = image_data + y * width;
         for (ssize_t x = 0; x < width; x++) {
-            uint8_t a = 0;
-            /* if (margin <= y && y < height - margin) { */
-            /*     d[x] = (scratch + y * width)[x]; */
-            /*     continue; */
-            /* } */
+            kernel_type a = 0;
             for (ssize_t k = 0; k < kernel_size; k++) {
                 const ssize_t py = y + k - half;
                 if (0 <= py && py < height) {
-                    uint8_t *s = scratch + py * width;
-                    a += (uint8_t)(s[x] * blur_kernel[k]);
+                    kernel_type *s = scratch + py * width;
+                    a += s[x] * blur_kernel[k];
                 }
             }
             d[x] = a;
@@ -81,18 +73,17 @@ blur_mask(uint8_t *image_data, ssize_t width, ssize_t height, ssize_t kernel_siz
     }
 }
 
-static uint8_t*
-create_shadow_mask(size_t width, size_t height, size_t margin, size_t kernel_size, uint8_t base_alpha, kernel_type sigma) {
-    uint8_t *mask = calloc(1, 2 * width * height + sizeof(kernel_type) * kernel_size);
+static kernel_type*
+create_shadow_mask(size_t width, size_t height, size_t margin, size_t kernel_size, kernel_type base_alpha, kernel_type sigma) {
+    kernel_type *mask = calloc(sizeof(kernel_type), 2 * width * height + kernel_size);
     if (!mask) return NULL;
     for (size_t y = margin; y < height - margin; y++) {
-        uint8_t *row = mask + y * width;
+        kernel_type *row = mask + y * width;
         for (size_t x = margin; x < width - margin; x++) row[x] = base_alpha;
     }
     blur_mask(mask, width, height, kernel_size, sigma, mask + width * height, (kernel_type*)(mask + 2 * width * height), margin);
     return mask;
 }
-
 
 static void
 swap_buffers(_GLFWWaylandBufferPair *pair) {
@@ -132,9 +123,9 @@ create_shadow_tile(_GLFWwindow *window) {
     st.segments = 7;
     st.stride = st.segments * margin;
     st.corner_size = margin * (st.segments - 1) / 2;
-    uint8_t* mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, 255, 32 * margin);
+    kernel_type* mask = create_shadow_mask(st.stride, st.stride, margin, 2 * margin + 1, (kernel_type)0.7, 32 * margin);
     st.data = malloc(sizeof(uint32_t) * st.stride * st.stride);
-    if (st.data) for (size_t i = 0; i < st.stride * st.stride; i++) st.data[i] = mask[i] << 24;
+    if (st.data) for (size_t i = 0; i < st.stride * st.stride; i++) st.data[i] = ((uint8_t)(mask[i] * 255)) << 24;
     free(mask);
     return margin;
 }
