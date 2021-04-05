@@ -34,6 +34,10 @@ images and other types of documents directly in your terminal, even over SSH.
     view images in the terminal, similar to kitty's icat, however also supports
     displaying animated GIFs
 
+`w3m <https://github.com/tats/w3m>`_
+    A text mode WWW browser that supports kitty's graphics protocol to display
+    images
+
 `timg <https://github.com/hzeller/timg>`_
     A terminal image and video viewer, that displays static and animated
     images or plays videos. Fast multi-threaded loading, JPEG exif rotation,
