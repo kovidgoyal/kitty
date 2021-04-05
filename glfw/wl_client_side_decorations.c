@@ -64,8 +64,8 @@ blur_mask(uint8_t *image_data, ssize_t width, ssize_t height, ssize_t kernel_siz
             for (ssize_t k = 0; k < kernel_size; k++) {
                 const ssize_t py = y + k - half;
                 if (0 <= py && py < height) {
-                    uint8_t p = (scratch + py * width)[x];
-                    a += (uint8_t)(p * blur_kernel[k]);
+                    uint8_t *s = scratch + py * width;
+                    a += (uint8_t)(s[x] * blur_kernel[k]);
                 }
             }
             d[x] = a;
