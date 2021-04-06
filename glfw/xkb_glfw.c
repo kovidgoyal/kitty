@@ -368,7 +368,7 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
         S(super, XKB_MOD_NAME_LOGO);
     }
 #undef S
-    debug("Modifier indices alt:%d super:%d hyper:%d meta:%d numlock:%d\n",
+    debug("Modifier indices alt:%u super:%u hyper:%u meta:%u numlock:%u\n",
             xkb->altIdx, xkb->superIdx, xkb->hyperIdx, xkb->metaIdx, xkb->numLockIdx);
 }
 
