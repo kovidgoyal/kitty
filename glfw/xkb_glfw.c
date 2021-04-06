@@ -362,11 +362,11 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     S(control, XKB_MOD_NAME_CTRL);
     S(shift, XKB_MOD_NAME_SHIFT);
     S(capsLock, XKB_MOD_NAME_CAPS);
-    if (!succeeded) {
-        S(numLock, XKB_MOD_NAME_NUM);
-        S(alt, XKB_MOD_NAME_ALT);
-        S(super, XKB_MOD_NAME_LOGO);
-    }
+#define C(a, n) if (xkb->a##Idx == XKB_MOD_INVALID) { S(a, n); }
+    C(numLock, XKB_MOD_NAME_NUM);
+    C(alt, XKB_MOD_NAME_ALT);
+    C(super, XKB_MOD_NAME_LOGO);
+#undef C
 #undef S
     debug("Modifier indices alt:%u super:%u hyper:%u meta:%u numlock:%u\n",
             xkb->altIdx, xkb->superIdx, xkb->hyperIdx, xkb->metaIdx, xkb->numLockIdx);
