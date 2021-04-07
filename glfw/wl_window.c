@@ -712,11 +712,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
                               const _GLFWctxconfig* ctxconfig,
                               const _GLFWfbconfig* fbconfig)
 {
-    window->wl.decorations.metrics.width = 12;
-    window->wl.decorations.metrics.top = 36;
-    window->wl.decorations.metrics.visible_titlebar_height = window->wl.decorations.metrics.top - window->wl.decorations.metrics.width;
-    window->wl.decorations.metrics.horizontal = 2 * window->wl.decorations.metrics.width;
-    window->wl.decorations.metrics.vertical = window->wl.decorations.metrics.width + window->wl.decorations.metrics.top;
+    initialize_csd_metrics(window);
     window->wl.transparent = fbconfig->transparent;
     strncpy(window->wl.appId, wndconfig->wl.appId, sizeof(window->wl.appId));
 
@@ -826,7 +822,7 @@ void _glfwPlatformSetWindowTitle(_GLFWwindow* window, const char* title)
     // ensure they do not happen.
     window->wl.title = utf_8_strndup(title, 2048);
     if (window->wl.xdg.toplevel) xdg_toplevel_set_title(window->wl.xdg.toplevel, window->wl.title);
-    if (window->wl.decorations.top.surface) change_csd_title(window);
+    change_csd_title(window);
 }
 
 void _glfwPlatformSetWindowIcon(_GLFWwindow* window UNUSED,

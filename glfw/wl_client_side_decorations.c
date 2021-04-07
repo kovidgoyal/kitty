@@ -115,6 +115,16 @@ alloc_buffer_pair(_GLFWWaylandBufferPair *pair, struct wl_shm_pool *pool, uint8_
 }
 
 #define st decs.shadow_tile
+
+void
+initialize_csd_metrics(_GLFWwindow *window) {
+    decs.metrics.width = 12;
+    decs.metrics.top = 36;
+    decs.metrics.visible_titlebar_height = window->wl.decorations.metrics.top - window->wl.decorations.metrics.width;
+    decs.metrics.horizontal = 2 * window->wl.decorations.metrics.width;
+    decs.metrics.vertical = window->wl.decorations.metrics.width + window->wl.decorations.metrics.top;
+}
+
 static size_t
 create_shadow_tile(_GLFWwindow *window) {
     const size_t margin = decs.bottom.buffer.height;
