@@ -428,6 +428,7 @@ static void xdgToplevelHandleConfigure(void* data,
     if (new_states & TOPLEVEL_STATE_RESIZING) {
         if (width) window->wl.user_requested_content_size.width = width;
         if (height) window->wl.user_requested_content_size.height = height;
+        if (!(window->wl.toplevel_states & TOPLEVEL_STATE_RESIZING)) _glfwInputLiveResize(window, true);
     }
     if (width != 0 && height != 0)
     {
@@ -444,6 +445,7 @@ static void xdgToplevelHandleConfigure(void* data,
             }
         }
     }
+    bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.toplevel_states & TOPLEVEL_STATE_RESIZING);
     window->wl.toplevel_states = new_states;
     set_csd_window_geometry(window, &width, &height);
     debug("final window content size: %dx%d\n", window->wl.width, window->wl.height);
@@ -451,6 +453,7 @@ static void xdgToplevelHandleConfigure(void* data,
     dispatchChangesAfterConfigure(window, width, height);
     _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
     ensure_csd_resources(window);
+    if (live_resize_done) _glfwInputLiveResize(window, false);
 }
 
 static void xdgToplevelHandleClose(void* data,
