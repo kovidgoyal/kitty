@@ -187,6 +187,10 @@ typedef struct _GLFWwindowWayland
         } metrics;
 
         struct {
+            int32_t x, y, width, height;
+        } geometry;
+
+        struct {
             uint32_t *data;
             size_t for_decoration_size, stride, segments, corner_size;
         } shadow_tile;

@@ -42,7 +42,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-#define debug(...) if (_glfw.hints.init.debugRendering) printf(__VA_ARGS__);
+#define debug(...) if (_glfw.hints.init.debugRendering) fprintf(stderr, __VA_ARGS__);
 
 static struct wl_buffer* createShmBuffer(const GLFWimage* image, bool is_opaque, bool init_data)
 {
@@ -213,18 +213,15 @@ static void setOpaqueRegion(_GLFWwindow* window)
 }
 
 
-static void resizeFramebuffer(_GLFWwindow* window)
-{
+static void
+resizeFramebuffer(_GLFWwindow* window) {
     int scale = window->wl.scale;
     int scaledWidth = window->wl.width * scale;
     int scaledHeight = window->wl.height * scale;
+    debug("Resizing framebuffer to: %dx%d at scale: %d\n", window->wl.width, window->wl.height, scale);
     wl_egl_window_resize(window->wl.native, scaledWidth, scaledHeight, 0, 0);
-    if (!window->wl.transparent)
-        setOpaqueRegion(window);
+    if (!window->wl.transparent) setOpaqueRegion(window);
     _glfwInputFramebufferSize(window, scaledWidth, scaledHeight);
-
-    if (window->wl.decorations.mapping.data) resize_csd(window);
-
 }
 
 
@@ -265,8 +262,7 @@ static void xdgDecorationHandleConfigure(void* data,
     _GLFWwindow* window = data;
 
     window->wl.decorations.serverSide = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-
-    if (!window->wl.decorations.serverSide) ensure_csd_resources(window);
+    ensure_csd_resources(window);
 }
 
 static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener = {
@@ -293,6 +289,7 @@ static void surfaceHandleEnter(void *data,
     if (checkScaleChange(window)) {
         resizeFramebuffer(window);
         _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
+        ensure_csd_resources(window);
     }
 }
 
@@ -317,6 +314,7 @@ static void surfaceHandleLeave(void *data,
     if (checkScaleChange(window)) {
         resizeFramebuffer(window);
         _glfwInputWindowContentScale(window, window->wl.scale, window->wl.scale);
+        ensure_csd_resources(window);
     }
 }
 
@@ -385,8 +383,7 @@ static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
             if (!window->wl.decorations.serverSide) free_csd_surfaces(window);
         } else {
             xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
-            if (!_glfw.wl.decorationManager)
-                ensure_csd_resources(window);
+            ensure_csd_resources(window);
         }
     }
     setIdleInhibitor(window, on);
@@ -450,11 +447,15 @@ static void xdgToplevelHandleConfigure(void* data,
     bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.toplevel_states & TOPLEVEL_STATE_RESIZING);
     window->wl.toplevel_states = new_states;
     set_csd_window_geometry(window, &width, &height);
-    wl_surface_commit(window->wl.surface);
     dispatchChangesAfterConfigure(window, width, height);
     debug("final window content size: %dx%d\n", window->wl.width, window->wl.height);
     _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
     ensure_csd_resources(window);
+#define geometry window->wl.decorations.geometry
+    debug("Setting window geometry: x=%d y=%d %dx%d\n", geometry.x, geometry.y, geometry.width, geometry.height);
+    xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
+#undef geometry
+    wl_surface_commit(window->wl.surface);
     if (live_resize_done) _glfwInputLiveResize(window, false);
 }
 
@@ -872,8 +873,8 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
         set_csd_window_geometry(window, &width, &height);
         window->wl.width = width; window->wl.height = height;
         resizeFramebuffer(window);
-        wl_surface_commit(window->wl.surface);
         ensure_csd_resources(window);
+        wl_surface_commit(window->wl.surface);
     }
 }
 
