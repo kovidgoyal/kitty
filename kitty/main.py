@@ -93,14 +93,14 @@ def load_all_shaders(semi_transparent: bool = False) -> None:
     load_borders_program()
 
 
-def init_glfw_module(glfw_module: str, debug_keyboard: bool = False) -> None:
-    if not glfw_init(glfw_path(glfw_module), debug_keyboard):
+def init_glfw_module(glfw_module: str, debug_keyboard: bool = False, debug_rendering: bool = False) -> None:
+    if not glfw_init(glfw_path(glfw_module), debug_keyboard, debug_rendering):
         raise SystemExit('GLFW initialization failed')
 
 
-def init_glfw(opts: OptionsStub, debug_keyboard: bool = False) -> str:
+def init_glfw(opts: OptionsStub, debug_keyboard: bool = False, debug_rendering: bool = False) -> str:
     glfw_module = 'cocoa' if is_macos else ('wayland' if is_wayland(opts) else 'x11')
-    init_glfw_module(glfw_module, debug_keyboard)
+    init_glfw_module(glfw_module, debug_keyboard, debug_rendering)
     return glfw_module
 
 
@@ -313,7 +313,7 @@ def _main() -> None:
             return
     bad_lines: List[BadLine] = []
     opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
-    init_glfw(opts, cli_opts.debug_keyboard)
+    init_glfw(opts, cli_opts.debug_keyboard, cli_opts.debug_rendering)
     setup_environment(opts, cli_opts)
     try:
         with setup_profiling(cli_opts):

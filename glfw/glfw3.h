@@ -1110,6 +1110,7 @@ typedef enum {
  */
 #define GLFW_ANGLE_PLATFORM_TYPE    0x00050002
 #define GLFW_DEBUG_KEYBOARD         0x00050003
+#define GLFW_DEBUG_RENDERING        0x00050004
 /*! @brief macOS specific init hint.
  *
  *  macOS specific [init hint](@ref GLFW_COCOA_CHDIR_RESOURCES_hint).

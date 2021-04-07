@@ -50,14 +50,14 @@ _GLFWlibrary _glfw = { false };
 //
 static _GLFWerror _glfwMainThreadError;
 static GLFWerrorfun _glfwErrorCallback;
-static _GLFWinitconfig _glfwInitHints =
-{
-    true,      // hat buttons
-    GLFW_ANGLE_PLATFORM_TYPE_NONE, // ANGLE backend
-    false,     // debug keyboard
-    {
-        true,  // macOS menu bar
-        true   // macOS bundle chdir
+static _GLFWinitconfig _glfwInitHints = {
+    .hatButtons = true,
+    .angleType = GLFW_ANGLE_PLATFORM_TYPE_NONE,
+    .debugKeyboard = false,
+    .debugRendering = false,
+    .ns = {
+        .menubar = true,  // macOS menu bar
+        .chdir = true   // macOS bundle chdir
     }
 };
 
@@ -284,6 +284,9 @@ GLFWAPI void glfwInitHint(int hint, int value)
             return;
         case GLFW_DEBUG_KEYBOARD:
             _glfwInitHints.debugKeyboard = value;
+            return;
+        case GLFW_DEBUG_RENDERING:
+            _glfwInitHints.debugRendering = value;
             return;
         case GLFW_COCOA_CHDIR_RESOURCES:
             _glfwInitHints.ns.chdir = value;

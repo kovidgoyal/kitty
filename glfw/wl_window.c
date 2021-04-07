@@ -407,7 +407,7 @@ static void xdgToplevelHandleConfigure(void* data,
     float targetRatio;
     enum xdg_toplevel_state* state;
     uint32_t new_states = 0;
-    const bool report_event = true;
+    const bool report_event = _glfw.hints.init.debugRendering;
     if (report_event) printf("top-level configure event: size: %dx%d states: ", width, height);
 
     wl_array_for_each(state, states) {
@@ -446,7 +446,7 @@ static void xdgToplevelHandleConfigure(void* data,
     }
     window->wl.toplevel_states = new_states;
     set_csd_window_geometry(window, &width, &height);
-    if (report_event) printf("final window size: %dx%d\n", window->wl.width, window->wl.height);
+    if (report_event) printf("final window content size: %dx%d\n", window->wl.width, window->wl.height);
     wl_surface_commit(window->wl.surface);
     dispatchChangesAfterConfigure(window, width, height);
     _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);

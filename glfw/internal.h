@@ -276,6 +276,7 @@ struct _GLFWinitconfig
     bool          hatButtons;
     int           angleType;
     bool          debugKeyboard;
+    bool          debugRendering;
     struct {
         bool      menubar;
         bool      chdir;

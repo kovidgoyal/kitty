@@ -872,12 +872,13 @@ dbus_user_notification_activated(uint32_t notification_id, const char* action) {
 static PyObject*
 glfw_init(PyObject UNUSED *self, PyObject *args) {
     const char* path;
-    int debug_keyboard = 0;
-    if (!PyArg_ParseTuple(args, "s|p", &path, &debug_keyboard)) return NULL;
+    int debug_keyboard = 0, debug_rendering = 0;
+    if (!PyArg_ParseTuple(args, "s|pp", &path, &debug_keyboard, &debug_rendering)) return NULL;
     const char* err = load_glfw(path);
     if (err) { PyErr_SetString(PyExc_RuntimeError, err); return NULL; }
     glfwSetErrorCallback(error_callback);
     glfwInitHint(GLFW_DEBUG_KEYBOARD, debug_keyboard);
+    glfwInitHint(GLFW_DEBUG_RENDERING, debug_rendering);
     OPT(debug_keyboard) = debug_keyboard != 0;
 #ifdef __APPLE__
     glfwInitHint(GLFW_COCOA_CHDIR_RESOURCES, 0);
