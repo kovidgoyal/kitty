@@ -861,9 +861,14 @@ void _glfwPlatformGetWindowSize(_GLFWwindow* window, int* width, int* height)
 void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
 {
     if (width != window->wl.width || height != window->wl.height) {
-        window->wl.width = width;
-        window->wl.height = height;
+        window->wl.user_requested_content_size.width = width;
+        window->wl.user_requested_content_size.height = height;
+        int32_t width = 0, height = 0;
+        set_csd_window_geometry(window, &width, &height);
+        window->wl.width = width; window->wl.height = height;
         resizeFramebuffer(window);
+        wl_surface_commit(window->wl.surface);
+        ensure_csd_resources(window);
     }
 }
 
