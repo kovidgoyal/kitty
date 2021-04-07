@@ -42,6 +42,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
+#define debug(...) if (_glfw.hints.init.debugRendering) printf(__VA_ARGS__);
 
 static struct wl_buffer* createShmBuffer(const GLFWimage* image, bool is_opaque, bool init_data)
 {
@@ -407,12 +408,11 @@ static void xdgToplevelHandleConfigure(void* data,
     float targetRatio;
     enum xdg_toplevel_state* state;
     uint32_t new_states = 0;
-    const bool report_event = _glfw.hints.init.debugRendering;
-    if (report_event) printf("top-level configure event: size: %dx%d states: ", width, height);
+    debug("top-level configure event: size: %dx%d states: ", width, height);
 
     wl_array_for_each(state, states) {
         switch (*state) {
-#define C(x) case XDG_##x: new_states |= x; if (report_event) printf("%s ", #x); break
+#define C(x) case XDG_##x: new_states |= x; debug("%s ", #x); break
             C(TOPLEVEL_STATE_RESIZING);
             C(TOPLEVEL_STATE_MAXIMIZED);
             C(TOPLEVEL_STATE_FULLSCREEN);
@@ -424,7 +424,7 @@ static void xdgToplevelHandleConfigure(void* data,
 #undef C
         }
     }
-    if (report_event) printf("\n");
+    debug("\n");
     if (new_states & TOPLEVEL_STATE_RESIZING) {
         if (width) window->wl.user_requested_content_size.width = width;
         if (height) window->wl.user_requested_content_size.height = height;
@@ -446,7 +446,7 @@ static void xdgToplevelHandleConfigure(void* data,
     }
     window->wl.toplevel_states = new_states;
     set_csd_window_geometry(window, &width, &height);
-    if (report_event) printf("final window content size: %dx%d\n", window->wl.width, window->wl.height);
+    debug("final window content size: %dx%d\n", window->wl.width, window->wl.height);
     wl_surface_commit(window->wl.surface);
     dispatchChangesAfterConfigure(window, width, height);
     _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
