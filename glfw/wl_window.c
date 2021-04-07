@@ -389,7 +389,7 @@ static void setFullscreen(_GLFWwindow* window, _GLFWmonitor* monitor, bool on)
 
 bool
 _glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
-    bool already_fullscreen = window->wl.fullscreened;
+    bool already_fullscreen = window->wl.toplevel_states & TOPLEVEL_STATE_FULLSCREEN;
     setFullscreen(window, NULL, !already_fullscreen);
     return !already_fullscreen;
 }
@@ -403,44 +403,41 @@ static void xdgToplevelHandleConfigure(void* data,
     _GLFWwindow* window = data;
     float aspectRatio;
     float targetRatio;
-    uint32_t* state;
-    bool maximized = false;
-    bool fullscreen = false;
-    bool activated = false;
+    enum xdg_toplevel_state* state;
+    uint32_t new_states = 0;
+    const bool report_event = true;
+    if (report_event) printf("top-level configure event: size: %dx%d states: ", width, height);
 
-    wl_array_for_each(state, states)
-    {
-        switch (*state)
-        {
-            case XDG_TOPLEVEL_STATE_MAXIMIZED:
-                maximized = true;
-                break;
-            case XDG_TOPLEVEL_STATE_FULLSCREEN:
-                fullscreen = true;
-                break;
-            case XDG_TOPLEVEL_STATE_RESIZING:
-                break;
-            case XDG_TOPLEVEL_STATE_ACTIVATED:
-                activated = true;
-                break;
+    wl_array_for_each(state, states) {
+        switch (*state) {
+#define C(x) case XDG_##x: new_states |= x; if (report_event) printf("%s ", #x); break
+            C(TOPLEVEL_STATE_RESIZING);
+            C(TOPLEVEL_STATE_MAXIMIZED);
+            C(TOPLEVEL_STATE_FULLSCREEN);
+            C(TOPLEVEL_STATE_ACTIVATED);
+            C(TOPLEVEL_STATE_TILED_LEFT);
+            C(TOPLEVEL_STATE_TILED_RIGHT);
+            C(TOPLEVEL_STATE_TILED_TOP);
+            C(TOPLEVEL_STATE_TILED_BOTTOM);
+#undef C
         }
     }
-    bool window_maximized = !window->wl.maximized && maximized;
-    bool window_unmaximized = window->wl.maximized && !maximized;
-    if (window_maximized) {
-        window->wl.size_before_maximize.width = window->wl.width;
-        window->wl.size_before_maximize.height = window->wl.height;
-    } else if (window_unmaximized && window->wl.size_before_maximize.width > 0 && window->wl.size_before_maximize.height > 0) {
-        width = window->wl.size_before_maximize.width;
-        height = window->wl.size_before_maximize.height;
-        window->wl.size_before_maximize.width = 0;
-        window->wl.size_before_maximize.height = 0;
+    if (report_event) printf("\n");
+    if ((window->wl.toplevel_states & TOPLEVEL_STATE_DOCKED) && !(new_states & TOPLEVEL_STATE_DOCKED)) {
+        width = window->wl.size_before_docking.width;
+        height = window->wl.size_before_docking.height;
+        window->wl.size_before_docking.width = 0;
+        window->wl.size_before_docking.height = 0;
+        if (report_event) printf("Restoring size on undock to: %dx%d\n", width, height);
+    } else if (!(window->wl.toplevel_states & TOPLEVEL_STATE_DOCKED) && (new_states & TOPLEVEL_STATE_DOCKED)) {
+        window->wl.size_before_docking.width = window->wl.width;
+        window->wl.size_before_docking.height = window->wl.height;
+        if (report_event) printf("Saving size on undock to: %dx%d\n", window->wl.width, window->wl.height);
     }
-    window->wl.maximized = maximized;
 
     if (width != 0 && height != 0)
     {
-        if (!maximized && !fullscreen)
+        if (!(new_states & TOPLEVEL_STATE_DOCKED))
         {
             if (window->numer != GLFW_DONT_CARE && window->denom != GLFW_DONT_CARE)
             {
@@ -453,11 +450,12 @@ static void xdgToplevelHandleConfigure(void* data,
             }
         }
     }
-    window->wl.fullscreened = fullscreen;
+    bool focus_changed = (window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED) != (new_states & TOPLEVEL_STATE_ACTIVATED);
+    window->wl.toplevel_states = new_states;
     set_csd_window_geometry(window, &width, &height);
     wl_surface_commit(window->wl.surface);
     dispatchChangesAfterConfigure(window, width, height);
-    _glfwInputWindowFocus(window, activated);
+    if (focus_changed) _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
     ensure_csd_resources(window);
 }
 
@@ -548,9 +546,9 @@ static bool createXdgSurface(_GLFWwindow* window)
                                     window->monitor->wl.output);
         setIdleInhibitor(window, true);
     }
-    else if (window->wl.maximized)
+    else if (window->wl.maximize_on_first_show)
     {
-        window->wl.maximized = false;
+        window->wl.maximize_on_first_show = false;
         xdg_toplevel_set_maximized(window->wl.xdg.toplevel);
         setIdleInhibitor(window, false);
         setXdgDecorations(window);
@@ -745,6 +743,8 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 
     if (wndconfig->title)
         window->wl.title = _glfw_strdup(wndconfig->title);
+    if (wndconfig->maximized)
+        window->wl.maximize_on_first_show = true;
 
     if (wndconfig->visible)
     {
@@ -957,7 +957,7 @@ void _glfwPlatformRestoreWindow(_GLFWwindow* window)
     {
         if (window->monitor)
             xdg_toplevel_unset_fullscreen(window->wl.xdg.toplevel);
-        if (window->wl.maximized)
+        if (window->wl.toplevel_states & TOPLEVEL_STATE_MAXIMIZED)
             xdg_toplevel_unset_maximized(window->wl.xdg.toplevel);
         // There is no way to unset minimized, or even to know if we are
         // minimized, so there is nothing to do in this case.
@@ -1058,7 +1058,7 @@ int _glfwPlatformWindowVisible(_GLFWwindow* window)
 
 int _glfwPlatformWindowMaximized(_GLFWwindow* window)
 {
-    return window->wl.maximized;
+    return window->wl.toplevel_states & TOPLEVEL_STATE_MAXIMIZED;
 }
 
 int _glfwPlatformWindowHovered(_GLFWwindow* window)
