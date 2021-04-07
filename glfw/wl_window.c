@@ -450,12 +450,11 @@ static void xdgToplevelHandleConfigure(void* data,
             }
         }
     }
-    bool focus_changed = (window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED) != (new_states & TOPLEVEL_STATE_ACTIVATED);
     window->wl.toplevel_states = new_states;
     set_csd_window_geometry(window, &width, &height);
     wl_surface_commit(window->wl.surface);
     dispatchChangesAfterConfigure(window, width, height);
-    if (focus_changed) _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
+    _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
     ensure_csd_resources(window);
 }
 
