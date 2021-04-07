@@ -183,7 +183,7 @@ typedef struct _GLFWwindowWayland
         } for_window_state;
 
         struct {
-            unsigned int width, top, horizontal, vertical;
+            unsigned int width, top, horizontal, vertical, visible_titlebar_height;
         } metrics;
 
         struct {
@@ -200,7 +200,7 @@ typedef struct _GLFWwindowWayland
 
     struct {
         int32_t width, height;
-    } size_before_docking;
+    } user_requested_content_size;
 
     uint32_t toplevel_states;
     bool maximize_on_first_show;

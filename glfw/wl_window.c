@@ -361,6 +361,8 @@ static bool createSurface(_GLFWwindow* window,
 
     window->wl.width = wndconfig->width;
     window->wl.height = wndconfig->height;
+    window->wl.user_requested_content_size.width = wndconfig->width;
+    window->wl.user_requested_content_size.height = wndconfig->height;
     window->wl.scale = 1;
 
     if (!window->wl.transparent)
@@ -423,18 +425,10 @@ static void xdgToplevelHandleConfigure(void* data,
         }
     }
     if (report_event) printf("\n");
-    if ((window->wl.toplevel_states & TOPLEVEL_STATE_DOCKED) && !(new_states & TOPLEVEL_STATE_DOCKED)) {
-        width = window->wl.size_before_docking.width;
-        height = window->wl.size_before_docking.height;
-        window->wl.size_before_docking.width = 0;
-        window->wl.size_before_docking.height = 0;
-        if (report_event) printf("Restoring size on undock to: %dx%d\n", width, height);
-    } else if (!(window->wl.toplevel_states & TOPLEVEL_STATE_DOCKED) && (new_states & TOPLEVEL_STATE_DOCKED)) {
-        window->wl.size_before_docking.width = window->wl.width;
-        window->wl.size_before_docking.height = window->wl.height;
-        if (report_event) printf("Saving size on undock to: %dx%d\n", window->wl.width, window->wl.height);
+    if (new_states & TOPLEVEL_STATE_RESIZING) {
+        if (width) window->wl.user_requested_content_size.width = width;
+        if (height) window->wl.user_requested_content_size.height = height;
     }
-
     if (width != 0 && height != 0)
     {
         if (!(new_states & TOPLEVEL_STATE_DOCKED))
@@ -452,6 +446,7 @@ static void xdgToplevelHandleConfigure(void* data,
     }
     window->wl.toplevel_states = new_states;
     set_csd_window_geometry(window, &width, &height);
+    if (report_event) printf("final window size: %dx%d\n", window->wl.width, window->wl.height);
     wl_surface_commit(window->wl.surface);
     dispatchChangesAfterConfigure(window, width, height);
     _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
@@ -713,6 +708,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 {
     window->wl.decorations.metrics.width = 12;
     window->wl.decorations.metrics.top = 36;
+    window->wl.decorations.metrics.visible_titlebar_height = window->wl.decorations.metrics.top - window->wl.decorations.metrics.width;
     window->wl.decorations.metrics.horizontal = 2 * window->wl.decorations.metrics.width;
     window->wl.decorations.metrics.vertical = window->wl.decorations.metrics.width + window->wl.decorations.metrics.top;
     window->wl.transparent = fbconfig->transparent;
