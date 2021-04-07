@@ -237,13 +237,15 @@ clipboard_mime(void) {
     return buf;
 }
 
-static void dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
+static void
+dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height) {
     bool size_changed = width != window->wl.width || height != window->wl.height;
     bool scale_changed = checkScaleChange(window);
 
     if (size_changed) {
         _glfwInputWindowSize(window, width, height);
-        _glfwPlatformSetWindowSize(window, width, height);
+        window->wl.width = width; window->wl.height = height;
+        resizeFramebuffer(window);
     }
 
     if (scale_changed) {
@@ -448,9 +450,9 @@ static void xdgToplevelHandleConfigure(void* data,
     bool live_resize_done = !(new_states & TOPLEVEL_STATE_RESIZING) && (window->wl.toplevel_states & TOPLEVEL_STATE_RESIZING);
     window->wl.toplevel_states = new_states;
     set_csd_window_geometry(window, &width, &height);
-    debug("final window content size: %dx%d\n", window->wl.width, window->wl.height);
     wl_surface_commit(window->wl.surface);
     dispatchChangesAfterConfigure(window, width, height);
+    debug("final window content size: %dx%d\n", window->wl.width, window->wl.height);
     _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
     ensure_csd_resources(window);
     if (live_resize_done) _glfwInputLiveResize(window, false);
