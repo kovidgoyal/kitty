@@ -395,14 +395,21 @@ void
 set_csd_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
     bool has_csd = window->decorated && !window->wl.decorations.serverSide && window->wl.decorations.left.surface && !(window->wl.toplevel_states & TOPLEVEL_STATE_FULLSCREEN);
     bool size_specified_by_compositor = *width > 0 && *height > 0;
-    if (!size_specified_by_compositor) { *width = window->wl.width; *height = window->wl.height; }
-    int32_t scale = window->wl.scale >= 1 ? window->wl.scale : 1;
+    if (size_specified_by_compositor) {
+        if (has_csd) {
+            *width += decs.metrics.width; *height += decs.metrics.width;
+        }
+    } else {
+        *width = window->wl.width; *height = window->wl.height;
+    }
     struct { int32_t x, y, width, height; } geometry = {.x = 0, .y = 0, .width = *width, .height = *height};
     if (has_csd) {
-        // I dont know why GNOME wants geometry.x to be zero, but thats what works
         int32_t visible_titlebar_height = decs.metrics.top - decs.metrics.width;
-        geometry.y = -decs.metrics.width;
-        *height -= visible_titlebar_height;
+        geometry.y = -visible_titlebar_height;
+        *height -= decs.metrics.top;
+        *width -= decs.metrics.width;
+        geometry.width = *width;
+        geometry.height = *height + visible_titlebar_height;
     }
-    xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x * scale, geometry.y * scale, geometry.width * scale, geometry.height * scale);
+    xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
 }
