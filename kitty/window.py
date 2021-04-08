@@ -425,7 +425,7 @@ class Window:
             return False
         assert not isinstance(pat, tuple)
 
-        if field == 'id':
+        if field in ('id', 'window_id'):
             return True if pat.pattern == str(self.id) else False
         if field == 'pid':
             return True if pat.pattern == str(self.child.pid) else False
