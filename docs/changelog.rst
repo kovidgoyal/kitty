@@ -47,7 +47,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Double clicking on empty tab bar area now opens a new tab (:iss:`3201`)
 
 - When passing a directory or a non-executable file as the program to run to
-  kitty open it with the shell, instead of just failing.
+  kitty opens it with the shell or by parsing the shebang, instead of just failing.
 
 - Linux: Fix rendering of emoji followed by the graphics variation selector not
   being colored with some fonts (:iss:`3211`)
