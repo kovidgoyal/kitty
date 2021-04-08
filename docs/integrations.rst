@@ -28,22 +28,24 @@ images and other types of documents directly in your terminal, even over SSH.
     another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
 
 `koneko <https://github.com/twenty5151/koneko>`_
-    browse images from the pixiv artist community directly in kitty
+    browse images from the pixiv artist community directly in kitty.
 
 `viu <https://github.com/atanunq/viu>`_
-    view images in the terminal, similar to kitty's icat, however also supports
-    displaying animated GIFs
+    view images in the terminal, similar to kitty's icat.
+
+`nb <https://github.com/xwmx/nb>`_
+    command line and local web note-taking, bookmarking, archiving, and
+    knowledge base application that uses kitty's graphics protocol for images.
 
 `w3m <https://github.com/tats/w3m>`_
     A text mode WWW browser that supports kitty's graphics protocol to display
-    images
+    images.
 
 `timg <https://github.com/hzeller/timg>`_
     A terminal image and video viewer, that displays static and animated
     images or plays videos. Fast multi-threaded loading, JPEG exif rotation,
     grid view and connecting to the webcam make it a versatile terminal utility.
 
-.
 
 System and data visualisation tools
 ---------------------------------------
