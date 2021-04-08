@@ -353,7 +353,7 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     if (succeeded) {
         unsigned indx, shifted;
         for (indx = 0, shifted = 1; used_bits; ++indx, shifted <<= 1, used_bits >>= 1) {
-#define S( a ) if ( xkb->a##Mask == shifted ) xkb->a##Idx = indx
+#define S( a ) if ( ( xkb->a##Mask & shifted ) == shifted ) xkb->a##Idx = indx
             S(alt); S(super); S(hyper); S(meta); S(numLock);
 #undef S
         }
@@ -362,11 +362,11 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     S(control, XKB_MOD_NAME_CTRL);
     S(shift, XKB_MOD_NAME_SHIFT);
     S(capsLock, XKB_MOD_NAME_CAPS);
-#define C(a, n) if (xkb->a##Idx == XKB_MOD_INVALID) { S(a, n); }
-    C(numLock, XKB_MOD_NAME_NUM);
-    C(alt, XKB_MOD_NAME_ALT);
-    C(super, XKB_MOD_NAME_LOGO);
-#undef C
+    if (!succeeded) {
+        S(numLock, XKB_MOD_NAME_NUM);
+        S(alt, XKB_MOD_NAME_ALT);
+        S(super, XKB_MOD_NAME_LOGO);
+    }
 #undef S
     debug("Modifier indices alt:%u super:%u hyper:%u meta:%u numlock:%u\n",
             xkb->altIdx, xkb->superIdx, xkb->hyperIdx, xkb->metaIdx, xkb->numLockIdx);
@@ -496,10 +496,25 @@ active_unknown_modifiers(_GLFWXKBData *xkb, struct xkb_state *state) {
     return ans;
 }
 
+static unsigned int
+update_one_modifier(XKBStateGroup *group, xkb_mod_mask_t mask,
+                    xkb_mod_index_t idx, unsigned int mod) {
+    if ( idx == XKB_MOD_INVALID )
+        return 0;
+    /* Optimization in the case of a single real modifier */
+    if ( mask && ( ( mask & ( mask-1 ) ) == 0 ) )
+        return (xkb_state_mod_index_is_active(group->state, idx, XKB_STATE_MODS_EFFECTIVE) == 1) ? mod : 0;
+    /* Multiple real mods map to the same virtual mod */
+    for ( unsigned indx = 0; indx < 32 && mask; ++indx, mask >>= 1 )
+        if ( ( mask & 1 ) && xkb_state_mod_index_is_active(group->state, indx, XKB_STATE_MODS_EFFECTIVE) == 1)
+            return mod;
+    return 0;
+}
+
 static void
 update_modifiers(_GLFWXKBData *xkb) {
     XKBStateGroup *group = &xkb->states;
-#define S(attr, name) if (xkb_state_mod_index_is_active(group->state, xkb->attr##Idx, XKB_STATE_MODS_EFFECTIVE) == 1) group->modifiers |= GLFW_MOD_##name
+#define S(attr, name) group->modifiers |= update_one_modifier( group, xkb->attr##Mask, xkb->attr##Idx, GLFW_MOD_##name )
     S(control, CONTROL); S(alt, ALT); S(shift, SHIFT); S(super, SUPER); S(hyper, HYPER); S(meta, META); S(capsLock, CAPS_LOCK); S(numLock, NUM_LOCK);
 #undef S
     xkb->states.activeUnknownModifiers = active_unknown_modifiers(xkb, xkb->states.state);
