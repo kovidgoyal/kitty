@@ -55,6 +55,16 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Unicode input: Fix using index in select by name mode not working for indices
   larger than 16. Also using an index does not filter the list of matches. (:pull:`3219`)
 
+- Wayland: Add support for the text input protocol (:iss:`3410`)
+
+- Wayland: Fix mouse handling when using client side decorations
+
+- Wayland: Fix un-maximizing a window not restoring its size to what it was
+  before being maximized
+
+- GNOME/Wayland: Improve window decorations the titlebar now shows the window
+  title. Allow running under Wayland on GNOME by default. (:iss:`3284`)
+
 - Panel kitten: Allow setting WM_CLASS (:iss:`3233`)
 
 - macOS: Add menu items to close the OS window and the current tab (:pull:`3240`, :iss:`3246`)
@@ -146,16 +156,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Wayland: Fix key repeat being stopped by the release of an unrelated key
   (:iss:`2191`)
-
-- Wayland: Add support for the text input protocol (:iss:`3410`)
-
-- Wayland: Fix mouse handling when using client side decorations
-
-- Wayland: Fix un-maximizing a window not restoring its size to what it was
-  before being maximized
-
-- GNOME/Wayland: Improve window decorations the titlebar now shows the window
-  title. Allow running under Wayland on GNOME by default. (:iss:`3284`)
 
 - Add an option, :opt:`detect_urls` to control whether kitty will detect URLs
   when the mouse moves over them (:pull:`3118`)
