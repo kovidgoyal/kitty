@@ -155,7 +155,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   before being maximized
 
 - GNOME/Wayland: Improve window decorations the titlebar now shows the window
-  title (:iss:`3284`)
+  title. Allow running under Wayland on GNOME by default. (:iss:`3284`)
 
 - Add an option, :opt:`detect_urls` to control whether kitty will detect URLs
   when the mouse moves over them (:pull:`3118`)

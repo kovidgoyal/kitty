@@ -146,26 +146,7 @@ def detect_if_wayland_ok() -> bool:
     wayland = glfw_path('wayland')
     if not os.path.exists(wayland):
         return False
-    # GNOME does not support xdg-decorations
-    # https://gitlab.gnome.org/GNOME/mutter/issues/217
-    import ctypes
-    lib = ctypes.CDLL(wayland)
-    check = lib.glfwWaylandCheckForServerSideDecorations
-    check.restype = ctypes.c_char_p
-    check.argtypes = ()
-    try:
-        ans = bytes(check())
-    except Exception:
-        return False
-    if ans == b'NO':
-        print(
-                'Your Wayland compositor does not support server side window decorations,'
-                ' disabling Wayland. You can force Wayland support using the'
-                ' linux_display_server option in kitty.conf'
-                ' See https://drewdevault.com/2018/01/27/Sway-and-client-side-decorations.html'
-                ' for more information.',
-                file=sys.stderr)
-    return ans == b'YES'
+    return True
 
 
 def is_wayland(opts: Optional[Options] = None) -> bool:
