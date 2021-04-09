@@ -2355,6 +2355,15 @@ clear_selection_(Screen *s, PyObject *args UNUSED) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+resize(Screen *self, PyObject *args) {
+    unsigned int a=1, b=1;
+    if(!PyArg_ParseTuple(args, "|II", &a, &b)) return NULL;
+    screen_resize(self, a, b);
+    if (PyErr_Occurred()) return NULL;
+    Py_RETURN_NONE;
+}
+
 WRAP0x(index)
 WRAP0(reverse_index)
 WRAP0(reset)
@@ -2364,7 +2373,6 @@ WRAP0(backspace)
 WRAP0(tab)
 WRAP0(linefeed)
 WRAP0(carriage_return)
-WRAP2(resize, 1, 1)
 WRAP2(set_margins, 1, 1)
 WRAP0(rescale_images)
 
