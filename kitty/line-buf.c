@@ -326,15 +326,6 @@ is_continued(LineBuf *self, PyObject *val) {
     Py_RETURN_FALSE;
 }
 
-unsigned int
-linebuf_continued_lines_count(const LineBuf *self, const index_type stop_before_line) {
-    index_type count = 0;
-    for (index_type i = 0; i < self->ynum && i < stop_before_line; i++) {
-      if (self->line_attrs[i] & CONTINUED_MASK) count++;
-    }
-    return count;
-}
-
 void
 linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom) {
     index_type i;
