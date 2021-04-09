@@ -347,6 +347,15 @@ class TestScreen(BaseTest):
         s.resize(4, 12)
         assert_lines('2', '333333333333', '333', '')
 
+        # Height increased with large continued text
+        s = self.create_screen(options={'scrollback_fill_enlarged_window': True})
+        s.draw(('x' * (s.columns * s.lines * 2)) + 'abcde')
+        s.carriage_return(), s.linefeed()
+        s.draw('>')
+        assert_lines('xxxxx', 'xxxxx', 'xxxxx', 'abcde', '>')
+        s.resize(s.lines + 2, s.columns)
+        assert_lines('xxxxx', 'xxxxx', 'xxxxx', 'xxxxx', 'xxxxx', 'abcde', '>')
+
     def test_tab_stops(self):
         # Taken from vttest/main.c
         s = self.create_screen(cols=80, lines=2)
