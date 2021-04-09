@@ -561,6 +561,133 @@ translateKeyToModifierFlag(uint32_t key)
 static const NSRange kEmptyRange = { NSNotFound, 0 };
 
 
+// SecureKeyboardEntryController {{{
+@interface SecureKeyboardEntryController : NSObject
+
+@property (nonatomic, readonly) BOOL isDesired;
+@property (nonatomic, readonly, getter=isEnabled) BOOL enabled;
+
++ (instancetype)sharedInstance;
+
+- (void)toggle;
+- (void)update;
+
+@end
+
+@implementation SecureKeyboardEntryController {
+    int _count;
+    BOOL _desired;
+}
+
++ (instancetype)sharedInstance {
+    static id instance;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        instance = [[self alloc] init];
+    });
+    return instance;
+}
+
+- (instancetype)init {
+    self = [super init];
+    if (self) {
+        _desired = false;
+
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(applicationDidResignActive:)
+                                                     name:NSApplicationDidResignActiveNotification
+                                                   object:nil];
+        [[NSNotificationCenter defaultCenter] addObserver:self
+                                                 selector:@selector(applicationDidBecomeActive:)
+                                                     name:NSApplicationDidBecomeActiveNotification
+                                                   object:nil];
+        if ([NSApp isActive]) {
+            [self update];
+        }
+    }
+    return self;
+}
+
+#pragma mark - API
+
+- (void)toggle {
+    // Set _desired to the opposite of the current state.
+    _desired = !_desired;
+    debug_key(@"toggle called. Setting desired to %@", @(_desired));
+
+    // Try to set the system's state of secure input to the desired state.
+    [self update];
+}
+
+- (BOOL)isEnabled {
+    return !!IsSecureEventInputEnabled();
+}
+
+- (BOOL)isDesired {
+    return _desired;
+}
+
+#pragma mark - Notifications
+
+- (void)applicationDidResignActive:(NSNotification *)notification {
+    if (_count > 0) {
+        debug_key(@"Application resigning active.");
+        [self update];
+    }
+}
+
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+    if (self.isDesired) {
+        debug_key(@"Application became active.");
+        [self update];
+    }
+}
+
+#pragma mark - Private
+
+- (BOOL)allowed {
+    return [NSApp isActive];
+}
+
+- (void)update {
+    debug_key(@"Update secure keyboard entry. desired=%@ active=%@",
+         @(self.isDesired), @([NSApp isActive]));
+    const BOOL secure = self.isDesired && [self allowed];
+
+    if (secure && _count > 0) {
+        debug_key(@"Want to turn on secure input but it's already on");
+        return;
+    }
+
+    if (!secure && _count == 0) {
+        debug_key(@"Want to turn off secure input but it's already off");
+        return;
+    }
+
+    debug_key(@"Before: IsSecureEventInputEnabled returns %d", (int)self.isEnabled);
+    if (secure) {
+        OSErr err = EnableSecureEventInput();
+        debug_key(@"EnableSecureEventInput err=%d", (int)err);
+        if (err) {
+            debug_key(@"EnableSecureEventInput failed with error %d", (int)err);
+        } else {
+            _count += 1;
+        }
+    } else {
+        OSErr err = DisableSecureEventInput();
+        debug_key(@"DisableSecureEventInput err=%d", (int)err);
+        if (err) {
+            debug_key(@"DisableSecureEventInput failed with error %d", (int)err);
+        } else {
+            _count -= 1;
+        }
+    }
+    debug_key(@"After: IsSecureEventInputEnabled returns %d", (int)self.isEnabled);
+}
+
+@end
+// }}}
+
 // Delegate for window related notifications {{{
 
 @interface GLFWWindowDelegate : NSObject
@@ -1401,6 +1528,19 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 
 - (BOOL)validateMenuItem:(NSMenuItem *)item {
     if (item.action == @selector(performMiniaturize:)) return YES;
+    if (item.action == @selector(toggleSecureInput:)) {
+      SecureKeyboardEntryController *controller = [SecureKeyboardEntryController sharedInstance];
+      if (controller.isEnabled) {
+          if (controller.isDesired) {
+              item.state = NSControlStateValueOn;
+          } else {
+              item.state = NSControlStateValueMixed;
+          }
+      } else {
+          item.state = controller.isDesired ? NSControlStateValueOn : NSControlStateValueOff;
+      }
+      return YES;
+    }
     return [super validateMenuItem:item];
 }
 
@@ -1408,6 +1548,10 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 {
     if (glfw_window && (!glfw_window->decorated || glfw_window->ns.titlebar_hidden)) [self miniaturize:self];
     else [super performMiniaturize:sender];
+}
+
+- (void)toggleSecureInput:(id)sender {
+    [[SecureKeyboardEntryController sharedInstance] toggle];
 }
 
 - (BOOL)canBecomeKeyWindow
