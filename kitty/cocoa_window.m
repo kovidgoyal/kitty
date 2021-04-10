@@ -397,6 +397,12 @@ cocoa_create_global_menu(void) {
 
     [appMenu addItem:[NSMenuItem separatorItem]];
 
+    [[appMenu addItemWithTitle:@"Secure Keyboard Entry"
+                        action:@selector(toggleSecureInput:)
+                 keyEquivalent:@"s"]
+        setKeyEquivalentModifierMask:NSEventModifierFlagOption | NSEventModifierFlagCommand];
+    [appMenu addItem:[NSMenuItem separatorItem]];
+
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Quit %@", app_name]
                        action:@selector(terminate:)
                 keyEquivalent:@"q"];
