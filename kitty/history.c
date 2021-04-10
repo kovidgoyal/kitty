@@ -20,10 +20,12 @@ add_segment(HistoryBuf *self) {
     self->segments = realloc(self->segments, sizeof(HistoryBufSegment) * self->num_segments);
     if (self->segments == NULL) fatal("Out of memory allocating new history buffer segment");
     HistoryBufSegment *s = self->segments + self->num_segments - 1;
-    s->cpu_cells = calloc(self->xnum * SEGMENT_SIZE, sizeof(CPUCell));
-    s->gpu_cells = calloc(self->xnum * SEGMENT_SIZE, sizeof(GPUCell));
-    s->line_attrs = calloc(SEGMENT_SIZE, sizeof(line_attrs_type));
-    if (s->cpu_cells == NULL || s->gpu_cells == NULL || s->line_attrs == NULL) fatal("Out of memory allocating new history buffer segment");
+    const size_t cpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(CPUCell);
+    const size_t gpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(GPUCell);
+    s->cpu_cells = calloc(1, cpu_cells_size + gpu_cells_size + SEGMENT_SIZE * sizeof(line_attrs_type));
+    if (!s->cpu_cells) fatal("Out of memory allocating new history buffer segment");
+    s->gpu_cells = (GPUCell*)(((uint8_t*)s->cpu_cells) + cpu_cells_size);
+    s->line_attrs = (line_attrs_type*)(((uint8_t*)s->gpu_cells) + gpu_cells_size);
 }
 
 static inline index_type
@@ -125,11 +127,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 static void
 dealloc(HistoryBuf* self) {
     Py_CLEAR(self->line);
-    for (size_t i = 0; i < self->num_segments; i++) {
-        free(self->segments[i].cpu_cells);
-        free(self->segments[i].gpu_cells);
-        free(self->segments[i].line_attrs);
-    }
+    for (size_t i = 0; i < self->num_segments; i++) free(self->segments[i].cpu_cells);
     free(self->segments);
     free_pagerhist(self);
     Py_TYPE(self)->tp_free((PyObject*)self);
