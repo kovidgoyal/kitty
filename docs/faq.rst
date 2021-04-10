@@ -346,5 +346,6 @@ use `glibc`` as your C library by setting the environment variable
 allocated in sizes of more than 64 bytes. With this set, memory usage will
 climb high, then fall when closing windows, but not fall all the way back. The
 remaining used memory can be investigated using valgrind again, and it will
-come from arenas in the GPU drivers. These too allocate memory in large blocks
-and dont release it back to the OS immediately.
+come from arenas in the GPU drivers and the per thread arenas glibc's malloc
+maintains. These too allocate memory in large blocks and dont release it back
+to the OS immediately.
