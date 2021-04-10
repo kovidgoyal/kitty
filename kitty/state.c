@@ -471,6 +471,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (!OPT(tab_bar_hidden) && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
 =======
     if (!global_state.tab_bar_hidden) {
@@ -490,6 +491,9 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
     if (!global_state.tab_bar_hidden) {
       if (os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
 >>>>>>> 1ee97dbc (added options for padding around tab bar)
+=======
+    if (!global_state.tab_bar_hidden && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
+>>>>>>> 2fc46630 (for example in pr thread)
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
                 central->left = 0; central->top = os_window->fonts_data->cell_height + pt_to_px(OPT(tab_bar_margin_height), os_window->id); central->right = os_window->viewport_width - 1;
@@ -520,6 +524,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
         }
 =======
       } else {
+<<<<<<< HEAD
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
               zero_at_ptr(tab_bar);
@@ -540,6 +545,13 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
         central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
         central->bottom = os_window->viewport_height - 1;
       }
+=======
+        zero_at_ptr(tab_bar);
+        central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
+        central->bottom = os_window->viewport_height - 1;
+    }
+    os_window->needs_render = true;
+>>>>>>> 2fc46630 (for example in pr thread)
 }
 
 void
