@@ -163,7 +163,6 @@ dealloc(ChildMonitor* self) {
     pthread_mutex_destroy(&talk_lock);
     Py_CLEAR(self->dump_callback);
     Py_CLEAR(self->death_notify);
-    Py_TYPE(self)->tp_free((PyObject*)self);
     while (remove_queue_count) {
         remove_queue_count--;
         FREE_CHILD(remove_queue[remove_queue_count]);
@@ -173,6 +172,7 @@ dealloc(ChildMonitor* self) {
         FREE_CHILD(add_queue[add_queue_count]);
     }
     free_loop_data(&self->io_loop_data);
+    Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 static void
