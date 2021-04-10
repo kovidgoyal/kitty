@@ -312,3 +312,39 @@ If you use any of the advanced features that kitty has innovated, such as
 styled underlines, desktop notifications, extended keyboard support, etc.
 they may or may not work, depending on the whims of tmux's maintainer, your
 version of tmux, etc.
+
+
+I opened and closed a lot of windows/tabs and top shows kitty's memory usage is very high?
+-------------------------------------------------------------------------------------------
+
+``top`` is not a good way to measure process memory usage. That is because on
+modern systems, when allocating memory to a process, the C library functions
+will typically allocate memory in large blocks, and give the process chunks of
+these blocks. When the process frees a chunk, the C library will not
+necessarily release the underlying block back to the OS. So even though the
+application has released the memory, ``top`` will still claim the process is
+using it.
+
+To check for memory leaks, instead use a tool like ``valgrind``. Run::
+
+    PYTHONMALLOC=malloc valgrind --tool=massif kitty
+
+Now open lots of tabs/windows, generate lots of output using tools like find/yes
+etc. Then close all but one window. Do some random work for a few seconds in
+that window, maybe run yes or find again. Then quit kitty. Then run::
+
+    massif-visualizer massif.out.*
+
+You will see the allocations graph goes up when you opened the windows, then
+goes back down when you closed them, indicating there were no memory leaks.
+
+For those interested, you can get a similar profile out of ``valgrind`` as you get
+with ``top`` by adding ``--pages-as-heap=yes`` then you will see that memory
+allocated in malloc is not freed in free. This can be further refined if you
+use `glibc`` as your C library by setting the environment variable
+``MALLOC_MMAP_THRESHOLD_=64``. This will cause free to actually free memory
+allocated in sizes of more than 64 bytes. With this set, memory usage will
+climb high, then fall when closing windows, but not fall all the way back. The
+remaining used memory can be investigated using valgrind again, and it will
+come from arenas in the GPU drivers. These too allocate memory in large blocks
+and dont release it back to the OS immediately.
