@@ -459,6 +459,7 @@ dealloc(DiskCache* self) {
         self->cache_file_fd = -1;
     }
     if (self->currently_writing.data) free(self->currently_writing.data);
+    free(self->cache_dir); self->cache_dir = NULL;
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
