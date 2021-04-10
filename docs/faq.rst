@@ -331,7 +331,7 @@ To check for memory leaks, instead use a tool like ``valgrind``. Run::
 
 Now open lots of tabs/windows, generate lots of output using tools like find/yes
 etc. Then close all but one window. Do some random work for a few seconds in
-that window, maybe run yes or find again. Then quit kitty. Then run::
+that window, maybe run yes or find again. Then quit kitty and run::
 
     massif-visualizer massif.out.*
 
