@@ -764,13 +764,13 @@ def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction) -> None
         GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_HYPER, GLFW_MOD_META,
         glfw_get_key_name
     )
-    mmap = {'shift': GLFW_MOD_SHIFT, 'alt': GLFW_MOD_ALT, 'ctrl': GLFW_MOD_CONTROL, ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER,
-            'hyper': GLFW_MOD_HYPER, 'meta': GLFW_MOD_META}
+    modmap = {'shift': GLFW_MOD_SHIFT, 'alt': GLFW_MOD_ALT, 'ctrl': GLFW_MOD_CONTROL, ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER,
+              'hyper': GLFW_MOD_HYPER, 'meta': GLFW_MOD_META}
     keys = []
     for key_spec in key_sequence:
         names = []
         mods, is_native, key = key_spec
-        for name, val in mmap.items():
+        for name, val in modmap.items():
             if mods & val:
                 names.append(name)
         if key:
