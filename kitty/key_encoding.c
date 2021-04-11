@@ -169,6 +169,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
             case GLFW_FKEY_DOWN: SIMPLE("\x1bOB");
             case GLFW_FKEY_RIGHT: SIMPLE("\x1bOC");
             case GLFW_FKEY_LEFT: SIMPLE("\x1bOD");
+            case GLFW_FKEY_KP_BEGIN: SIMPLE("\x1bOE");
             case GLFW_FKEY_END: SIMPLE("\x1bOF");
             case GLFW_FKEY_HOME: SIMPLE("\x1bOH");
             case GLFW_FKEY_F1: SIMPLE("\x1bOP");
@@ -222,6 +223,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
         case GLFW_FKEY_F10: S(21, '~');
         case GLFW_FKEY_F11: S(23, '~');
         case GLFW_FKEY_F12: S(24, '~');
+        case GLFW_FKEY_KP_BEGIN: S(1, 'E');
 /* end special numbers */
         default: break;
     }
@@ -426,7 +428,7 @@ encode_glfw_key_event(const GLFWkeyevent *e, const bool cursor_key_mode, const u
     ev.has_text = e->text && !startswith_ascii_control_char(e->text);
     if (!ev.key && !ev.has_text) return 0;
     bool send_text_standalone = !ev.report_text;
-    if (!ev.disambiguate && GLFW_FKEY_KP_0 <= ev.key && ev.key <= GLFW_FKEY_KP_DELETE) {
+    if (!ev.disambiguate && GLFW_FKEY_KP_0 <= ev.key && ev.key <= GLFW_FKEY_KP_BEGIN) {
         ev.key = convert_kp_key_to_normal_key(ev.key);
     }
     switch (e->action) {

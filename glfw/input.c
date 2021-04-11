@@ -607,6 +607,7 @@ _glfwGetKeyName(int key)
     case GLFW_FKEY_KP_END: return "KP_END";
     case GLFW_FKEY_KP_INSERT: return "KP_INSERT";
     case GLFW_FKEY_KP_DELETE: return "KP_DELETE";
+    case GLFW_FKEY_KP_BEGIN: return "KP_BEGIN";
     case GLFW_FKEY_MEDIA_PLAY: return "MEDIA_PLAY";
     case GLFW_FKEY_MEDIA_PAUSE: return "MEDIA_PAUSE";
     case GLFW_FKEY_MEDIA_PLAY_PAUSE: return "MEDIA_PLAY_PAUSE";

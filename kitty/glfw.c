@@ -1019,6 +1019,7 @@ glfw_get_key_name(PyObject UNUSED *self, PyObject *args) {
             case GLFW_FKEY_KP_END: return PyUnicode_FromString("kp_end");
             case GLFW_FKEY_KP_INSERT: return PyUnicode_FromString("kp_insert");
             case GLFW_FKEY_KP_DELETE: return PyUnicode_FromString("kp_delete");
+            case GLFW_FKEY_KP_BEGIN: return PyUnicode_FromString("kp_begin");
             case GLFW_FKEY_MEDIA_PLAY: return PyUnicode_FromString("media_play");
             case GLFW_FKEY_MEDIA_PAUSE: return PyUnicode_FromString("media_pause");
             case GLFW_FKEY_MEDIA_PLAY_PAUSE: return PyUnicode_FromString("media_play_pause");
@@ -1530,6 +1531,7 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_FKEY_KP_END);
     ADDC(GLFW_FKEY_KP_INSERT);
     ADDC(GLFW_FKEY_KP_DELETE);
+    ADDC(GLFW_FKEY_KP_BEGIN);
     ADDC(GLFW_FKEY_MEDIA_PLAY);
     ADDC(GLFW_FKEY_MEDIA_PAUSE);
     ADDC(GLFW_FKEY_MEDIA_PLAY_PAUSE);

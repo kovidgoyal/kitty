@@ -97,33 +97,34 @@ functional_key_number_to_name_map = {
     57424: 'KP_END',
     57425: 'KP_INSERT',
     57426: 'KP_DELETE',
-    57427: 'MEDIA_PLAY',
-    57428: 'MEDIA_PAUSE',
-    57429: 'MEDIA_PLAY_PAUSE',
-    57430: 'MEDIA_REVERSE',
-    57431: 'MEDIA_STOP',
-    57432: 'MEDIA_FAST_FORWARD',
-    57433: 'MEDIA_REWIND',
-    57434: 'MEDIA_TRACK_NEXT',
-    57435: 'MEDIA_TRACK_PREVIOUS',
-    57436: 'MEDIA_RECORD',
-    57437: 'LOWER_VOLUME',
-    57438: 'RAISE_VOLUME',
-    57439: 'MUTE_VOLUME',
-    57440: 'LEFT_SHIFT',
-    57441: 'LEFT_CONTROL',
-    57442: 'LEFT_ALT',
-    57443: 'LEFT_SUPER',
-    57444: 'LEFT_HYPER',
-    57445: 'LEFT_META',
-    57446: 'RIGHT_SHIFT',
-    57447: 'RIGHT_CONTROL',
-    57448: 'RIGHT_ALT',
-    57449: 'RIGHT_SUPER',
-    57450: 'RIGHT_HYPER',
-    57451: 'RIGHT_META',
-    57452: 'ISO_LEVEL3_SHIFT',
-    57453: 'ISO_LEVEL5_SHIFT'}
+    57427: 'KP_BEGIN',
+    57428: 'MEDIA_PLAY',
+    57429: 'MEDIA_PAUSE',
+    57430: 'MEDIA_PLAY_PAUSE',
+    57431: 'MEDIA_REVERSE',
+    57432: 'MEDIA_STOP',
+    57433: 'MEDIA_FAST_FORWARD',
+    57434: 'MEDIA_REWIND',
+    57435: 'MEDIA_TRACK_NEXT',
+    57436: 'MEDIA_TRACK_PREVIOUS',
+    57437: 'MEDIA_RECORD',
+    57438: 'LOWER_VOLUME',
+    57439: 'RAISE_VOLUME',
+    57440: 'MUTE_VOLUME',
+    57441: 'LEFT_SHIFT',
+    57442: 'LEFT_CONTROL',
+    57443: 'LEFT_ALT',
+    57444: 'LEFT_SUPER',
+    57445: 'LEFT_HYPER',
+    57446: 'LEFT_META',
+    57447: 'RIGHT_SHIFT',
+    57448: 'RIGHT_CONTROL',
+    57449: 'RIGHT_ALT',
+    57450: 'RIGHT_SUPER',
+    57451: 'RIGHT_HYPER',
+    57452: 'RIGHT_META',
+    57453: 'ISO_LEVEL3_SHIFT',
+    57454: 'ISO_LEVEL5_SHIFT'}
 csi_number_to_functional_number_map = {
     2: 57348,
     3: 57349,
@@ -146,7 +147,7 @@ csi_number_to_functional_number_map = {
     24: 57375,
     27: 57344,
     127: 57347}
-letter_trailer_to_csi_number_map = {'A': 57352, 'B': 57353, 'C': 57351, 'D': 57350, 'F': 8, 'H': 7, 'P': 11, 'Q': 12, 'R': 13, 'S': 14}
+letter_trailer_to_csi_number_map = {'A': 57352, 'B': 57353, 'C': 57351, 'D': 57350, 'E': 57427, 'F': 8, 'H': 7, 'P': 11, 'Q': 12, 'R': 13, 'S': 14}
 tilde_trailers = {57348, 57349, 57354, 57355, 57368, 57369, 57370, 57371, 57372, 57373, 57374, 57375}
 # end csi mapping
 # }}}
@@ -286,7 +287,7 @@ def decode_key_event(csi: str, csi_type: str) -> KeyEvent:
     mods = (second_section[0] - 1) if second_section else 0
     action = second_section[1] if len(second_section) > 1 else 1
     keynum = first_section[0]
-    if csi_type in 'ABCDHFPQRS':
+    if csi_type in 'ABCDEHFPQRS':
         keynum = letter_trailer_to_csi_number_map[csi_type]
 
     def key_name(num: int) -> str:

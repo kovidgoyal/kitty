@@ -128,6 +128,7 @@ glfw_key_for_sym(xkb_keysym_t key) {
         case XKB_KEY_KP_End: return GLFW_FKEY_KP_END;
         case XKB_KEY_KP_Insert: return GLFW_FKEY_KP_INSERT;
         case XKB_KEY_KP_Delete: return GLFW_FKEY_KP_DELETE;
+        case XKB_KEY_KP_Begin: return GLFW_FKEY_KP_BEGIN;
         case XKB_KEY_XF86AudioPlay: return GLFW_FKEY_MEDIA_PLAY;
         case XKB_KEY_XF86AudioPause: return GLFW_FKEY_MEDIA_PAUSE;
         case XKB_KEY_XF86AudioStop: return GLFW_FKEY_MEDIA_STOP;
@@ -246,6 +247,7 @@ glfw_xkb_sym_for_key(uint32_t key) {
         case GLFW_FKEY_KP_END: return XKB_KEY_KP_End;
         case GLFW_FKEY_KP_INSERT: return XKB_KEY_KP_Insert;
         case GLFW_FKEY_KP_DELETE: return XKB_KEY_KP_Delete;
+        case GLFW_FKEY_KP_BEGIN: return XKB_KEY_KP_Begin;
         case GLFW_FKEY_MEDIA_PLAY: return XKB_KEY_XF86AudioPlay;
         case GLFW_FKEY_MEDIA_PAUSE: return XKB_KEY_XF86AudioPause;
         case GLFW_FKEY_MEDIA_STOP: return XKB_KEY_XF86AudioStop;

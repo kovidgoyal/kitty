@@ -277,7 +277,7 @@ class Loop:
                     pass
                 else:
                     self.handler.on_mouse(ev)
-        elif q in 'u~ABCDHFPQRS':
+        elif q in 'u~ABCDEHFPQRS':
             if csi == '200~':
                 self.in_bracketed_paste = True
                 return

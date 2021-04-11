@@ -91,6 +91,7 @@ kp_home                     KP_Home                     -      -
 kp_end                      KP_End                      -      -
 kp_insert                   KP_Insert                   -      -
 kp_delete                   KP_Delete                   -      -
+kp_begin                    KP_Begin                    -      -
 media_play                  XF86AudioPlay               -      -
 media_pause                 XF86AudioPause              -      -
 media_play_pause            -                           -      -
@@ -129,7 +130,7 @@ functional_encoding_overrides = {
     'f11': 23, 'f12': 24, 'escape': 27, 'backspace': 127
 }
 different_trailer_functionals = {
-    'up': 'A', 'down': 'B', 'right': 'C', 'left': 'D', 'end': 'F', 'home': 'H',
+    'up': 'A', 'down': 'B', 'right': 'C', 'left': 'D', 'kp_begin': 'E', 'end': 'F', 'home': 'H',
     'f1': 'P', 'f2': 'Q', 'f3': 'R', 'f4': 'S', 'enter': 'u', 'tab': 'u',
     'backspace': 'u', 'escape': 'u'
 }
@@ -311,7 +312,7 @@ def generate_functional_table() -> None:
     csi_map = {v: name_to_code[k] for k, v in functional_encoding_overrides.items()}
     letter_trailer_codes = {
         v: functional_encoding_overrides.get(k, name_to_code.get(k))
-        for k, v in different_trailer_functionals.items() if v in 'ABCDHFPQRSZ'}
+        for k, v in different_trailer_functionals.items() if v in 'ABCDEHFPQRSZ'}
     text = f'functional_key_number_to_name_map = {serialize_dict(code_to_name)}'
     text += f'\ncsi_number_to_functional_number_map = {serialize_dict(csi_map)}'
     text += f'\nletter_trailer_to_csi_number_map = {letter_trailer_codes!r}'
