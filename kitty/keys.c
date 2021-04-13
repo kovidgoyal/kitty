@@ -97,7 +97,7 @@ on_key_input(GLFWkeyevent *ev) {
     const uint32_t key = ev->key, native_key = ev->native_key;
     const char *text = ev->text ? ev->text : "";
 
-    debug("on_key_input: glfw key: %d native_code: 0x%x action: %s mods: 0x%x text: '%s' state: %d ",
+    debug("\x1b[33mon_key_input\x1b[m: glfw key: %d native_code: 0x%x action: %s mods: 0x%x text: '%s' state: %d ",
             key, native_key,
             (action == GLFW_RELEASE ? "RELEASE" : (action == GLFW_PRESS ? "PRESS" : "REPEAT")),
             mods, text, ev->ime_state);
