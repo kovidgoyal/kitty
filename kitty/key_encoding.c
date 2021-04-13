@@ -8,6 +8,7 @@
 #include "keys.h"
 #include "charsets.h"
 
+static const unsigned LOCK_MASK = GLFW_MOD_NUM_LOCK | GLFW_MOD_CAPS_LOCK;
 typedef enum { SHIFT=1, ALT=2, CTRL=4, SUPER=8, HYPER=16, META=32, CAPS_LOCK=64, NUM_LOCK=128} ModifierMasks;
 typedef enum { PRESS = 0, REPEAT = 1, RELEASE = 2} KeyAction;
 typedef struct {
@@ -165,8 +166,9 @@ encode_function_key(const KeyEvent *ev, char *output) {
     char csi_trailer = 'u';
     uint32_t key_number = ev->key;
     bool legacy_mode = !ev->report_all_event_types && !ev->disambiguate;
+    bool has_no_unlocked_mods = !(ev->mods.value & ~LOCK_MASK);
 
-    if (ev->cursor_key_mode && legacy_mode && !ev->mods.value) {
+    if (ev->cursor_key_mode && legacy_mode && has_no_unlocked_mods) {
         switch(key_number) {
             case GLFW_FKEY_UP: SIMPLE("\x1bOA");
             case GLFW_FKEY_DOWN: SIMPLE("\x1bOB");
@@ -182,7 +184,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
             default: break;
         }
     }
-    if (!ev->mods.value) {
+    if (has_no_unlocked_mods) {
         if (!ev->disambiguate && !ev->report_text && key_number == GLFW_FKEY_ESCAPE) SIMPLE("\x1b");
         if (!ev->report_text) {
             switch(key_number) {
@@ -296,7 +298,7 @@ ctrled_key(const char key) { // {{{
 
 static int
 encode_printable_ascii_key_legacy(const KeyEvent *ev, char *output) {
-    unsigned mods = ev->mods.value & ~(GLFW_MOD_NUM_LOCK | GLFW_MOD_CAPS_LOCK);
+    unsigned mods = ev->mods.value & ~LOCK_MASK;
     if (!mods) return snprintf(output, KEY_BUFFER_SIZE, "%c", (char)ev->key);
 
     char key = ev->key;
@@ -387,7 +389,8 @@ encode_key(const KeyEvent *ev, char *output) {
                 int ret = encode_printable_ascii_key_legacy(ev, output);
                 if (ret > 0) return ret;
             }
-            if ((ev->mods.value == CTRL || ev->mods.value == ALT || ev->mods.value == (CTRL | ALT)) && ev->alternate_key && !is_legacy_ascii_key(ev->key) && is_legacy_ascii_key(ev->alternate_key)) {
+            unsigned mods = ev->mods.value & ~LOCK_MASK;
+            if ((mods == CTRL || mods == ALT || mods == (CTRL | ALT)) && ev->alternate_key && !is_legacy_ascii_key(ev->key) && is_legacy_ascii_key(ev->alternate_key)) {
                 KeyEvent alternate = *ev;
                 alternate.key = ev->alternate_key;
                 alternate.alternate_key = 0;
