@@ -6,8 +6,8 @@ import sys
 from typing import List
 
 from kitty.key_encoding import (
-    ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, SUPER, HYPER, META, KeyEvent,
-    encode_key_event
+    ALT, CAPS_LOCK, CTRL, HYPER, META, NUM_LOCK, PRESS, RELEASE, REPEAT, SHIFT,
+    SUPER, KeyEvent, encode_key_event
 )
 
 from ..tui.handler import Handler
@@ -34,7 +34,10 @@ class KeysHandler(Handler):
                 CTRL: 'Ctrl',
                 SUPER: 'Super',
                 HYPER: 'Hyper',
-                META: 'Meta'}.items():
+                META: 'Meta',
+                NUM_LOCK: 'NumLock',
+                CAPS_LOCK: 'CapsLock',
+        }.items():
             if key_event.mods & m:
                 lmods.append(name)
         mods = '+'.join(lmods)

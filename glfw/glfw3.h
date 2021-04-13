@@ -510,7 +510,6 @@ typedef enum {
  *
  *  If this bit is set the Num Lock key is enabled and the @ref
  *  GLFW_LOCK_KEY_MODS input mode is set.
- *  @note Ravi: Num lock is not supported in this branch
  */
 #define GLFW_MOD_NUM_LOCK        0x0080
 

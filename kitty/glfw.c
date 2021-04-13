@@ -677,6 +677,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     if (is_first_window) glfwSwapInterval(OPT(sync_to_monitor) && !global_state.is_wayland ? 1 : 0);
 #endif
     glfwSwapBuffers(glfw_window);
+    glfwSetInputMode(glfw_window, GLFW_LOCK_KEY_MODS, true);
     if (!global_state.is_wayland) {
         PyObject *pret = PyObject_CallFunction(pre_show_callback, "N", native_window_handle(glfw_window));
         if (pret == NULL) return NULL;
@@ -1568,6 +1569,8 @@ init_glfw(PyObject *m) {
     ADDC(GLFW_MOD_HYPER);
     ADDC(GLFW_MOD_META);
     ADDC(GLFW_MOD_KITTY);
+    ADDC(GLFW_MOD_CAPS_LOCK);
+    ADDC(GLFW_MOD_NUM_LOCK);
 
 // --- Mouse -------------------------------------------------------------------
     ADDC(GLFW_MOUSE_BUTTON_1);

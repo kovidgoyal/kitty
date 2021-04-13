@@ -8,12 +8,12 @@
 #include "keys.h"
 #include "charsets.h"
 
-typedef enum { SHIFT=1, ALT=2, CTRL=4, SUPER=8, HYPER=16, META=32} ModifierMasks;
+typedef enum { SHIFT=1, ALT=2, CTRL=4, SUPER=8, HYPER=16, META=32, CAPS_LOCK=64, NUM_LOCK=128} ModifierMasks;
 typedef enum { PRESS = 0, REPEAT = 1, RELEASE = 2} KeyAction;
 typedef struct {
     uint32_t key, shifted_key, alternate_key;
     struct {
-        bool shift, alt, ctrl, super, hyper, meta;
+        bool shift, alt, ctrl, super, hyper, meta, numlock, capslock;
         unsigned value;
         char encoded[4];
     } mods;
@@ -49,12 +49,15 @@ is_modifier_key(const uint32_t key) {
 static inline void
 convert_glfw_mods(int mods, KeyEvent *ev) {
     ev->mods.alt = (mods & GLFW_MOD_ALT) > 0, ev->mods.ctrl = (mods & GLFW_MOD_CONTROL) > 0, ev->mods.shift = (mods & GLFW_MOD_SHIFT) > 0, ev->mods.super = (mods & GLFW_MOD_SUPER) > 0, ev->mods.hyper = (mods & GLFW_MOD_HYPER) > 0, ev->mods.meta = (mods & GLFW_MOD_META) > 0;
+    ev->mods.numlock = (mods & GLFW_MOD_NUM_LOCK) > 0, ev->mods.capslock = (mods & GLFW_MOD_CAPS_LOCK) > 0;
     ev->mods.value = ev->mods.shift ? SHIFT : 0;
     if (ev->mods.alt) ev->mods.value |= ALT;
     if (ev->mods.ctrl) ev->mods.value |= CTRL;
     if (ev->mods.super) ev->mods.value |= SUPER;
     if (ev->mods.hyper) ev->mods.value |= HYPER;
     if (ev->mods.meta) ev->mods.value |= META;
+    if (ev->mods.capslock) ev->mods.value |= CAPS_LOCK;
+    if (ev->mods.numlock) ev->mods.value |= NUM_LOCK;
     snprintf(ev->mods.encoded, sizeof(ev->mods.encoded), "%u", ev->mods.value + 1);
 }
 

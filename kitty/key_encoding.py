@@ -212,16 +212,19 @@ class KeyEvent(NamedTuple):
     super: bool = False
     hyper: bool = False
     meta: bool = False
+    caps_lock: bool = False
+    num_lock: bool = False
 
     def matches(self, spec: Union[str, ParsedShortcut], types: int = EventType.PRESS | EventType.REPEAT) -> bool:
+        mods = self.mods & ~(NUM_LOCK | CAPS_LOCK)
         if not self.type & types:
             return False
         if isinstance(spec, str):
             spec = parse_shortcut(spec)
-        if (self.mods, self.key) == spec:
+        if (mods, self.key) == spec:
             return True
         is_shifted = bool(self.shifted_key and self.shift)
-        if is_shifted and (self.mods & ~SHIFT, self.shifted_key) == spec:
+        if is_shifted and (mods & ~SHIFT, self.shifted_key) == spec:
             return True
         return False
 
@@ -245,6 +248,10 @@ class KeyEvent(NamedTuple):
                 mods |= defines.GLFW_MOD_HYPER
             if self.meta:
                 mods |= defines.GLFW_MOD_META
+            if self.caps_lock:
+                mods |= defines.GLFW_MOD_CAPS_LOCK
+            if self.num_lock:
+                mods |= defines.GLFW_MOD_NUM_LOCK
 
         fnm = get_name_to_functional_number_map()
 
@@ -257,7 +264,7 @@ class KeyEvent(NamedTuple):
             action=action, text=self.text)
 
 
-SHIFT, ALT, CTRL, SUPER, HYPER, META = 1, 2, 4, 8, 16, 32
+SHIFT, ALT, CTRL, SUPER, HYPER, META, CAPS_LOCK, NUM_LOCK = 1, 2, 4, 8, 16, 32, 64, 128
 enter_key = KeyEvent(key='ENTER')
 backspace_key = KeyEvent(key='BACKSPACE')
 config_mod_map = {
@@ -272,6 +279,8 @@ config_mod_map = {
     'CONTROL': CTRL,
     'HYPER': HYPER,
     'META': META,
+    'NUM_LOCK': NUM_LOCK,
+    'CAPS_LOCK': CAPS_LOCK,
 }
 
 
@@ -306,6 +315,7 @@ def decode_key_event(csi: str, csi_type: str) -> KeyEvent:
         mods=mods, shift=bool(mods & SHIFT), alt=bool(mods & ALT),
         ctrl=bool(mods & CTRL), super=bool(mods & SUPER),
         hyper=bool(mods & HYPER), meta=bool(mods & META),
+        caps_lock=bool(mods & CAPS_LOCK), num_lock=bool(mods & NUM_LOCK),
         key=key_name(keynum),
         shifted_key=key_name(first_section[1] if len(first_section) > 1 else 0),
         alternate_key=key_name(first_section[2] if len(first_section) > 2 else 0),
@@ -362,6 +372,10 @@ def encode_key_event(key_event: KeyEvent) -> str:
             m |= 16
         if key_event.meta:
             m |= 32
+        if key_event.caps_lock:
+            m |= 64
+        if key_event.num_lock:
+            m |= 128
         if action > 1 or m:
             ans += f';{m+1}'
             if action > 1:
