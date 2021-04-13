@@ -124,6 +124,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix the selection getting changed if the screen contents scroll while
   the selection is in progress (:iss:`3431`)
 
+- X11: Fix :opt:`resize_in_steps` being applied even when window is maximized
+  (:iss:`3473`)
+
 
 0.19.3 [2020-12-19]
 -------------------

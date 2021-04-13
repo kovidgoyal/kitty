@@ -225,13 +225,14 @@ static void sendEventToWM(_GLFWwindow* window, Atom type,
 
 // Updates the normal hints according to the window settings
 //
-static void updateNormalHints(_GLFWwindow* window, int width, int height)
+static void
+updateNormalHints(_GLFWwindow* window, int width, int height)
 {
     XSizeHints* hints = XAllocSizeHints();
 
     if (!window->monitor)
     {
-        if (window->resizable)
+        if (window->resizable && !window->x11.maximized)
         {
             if (window->minwidth != GLFW_DONT_CARE &&
                 window->minheight != GLFW_DONT_CARE)
@@ -1744,6 +1745,9 @@ static void processEvent(XEvent *event)
                 if (window->x11.maximized != maximized)
                 {
                     window->x11.maximized = maximized;
+                    int width, height;
+                    _glfwPlatformGetWindowSize(window, &width, &height);
+                    updateNormalHints(window, width, height);
                     _glfwInputWindowMaximize(window, maximized);
                 }
             }
