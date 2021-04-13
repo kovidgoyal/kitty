@@ -757,6 +757,9 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     if (xkb_sym == XKB_KEY_ISO_First_Group || xkb_sym == XKB_KEY_ISO_Last_Group || xkb_sym == XKB_KEY_ISO_Next_Group || xkb_sym == XKB_KEY_ISO_Prev_Group || xkb_sym == XKB_KEY_Mode_switch) {
       return;
     }
+    if (sg->modifiers & GLFW_MOD_NUM_LOCK && XKB_KEY_KP_Space <= xkb_sym && xkb_sym <= XKB_KEY_KP_9) {
+        xkb_sym = xkb_state_key_get_one_sym(sg->state, code_for_sym);
+    }
     int num_default_syms = xkb_state_key_get_syms(sg->default_state, code_for_sym, &default_syms);
     if (num_default_syms > 0) alternate_xkb_sym = default_syms[0];
     int glfw_sym = glfw_key_for_sym(xkb_sym);
