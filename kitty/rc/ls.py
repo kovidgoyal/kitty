@@ -40,11 +40,6 @@ Show all environment variables in output not just differing ones.
         return {'all_env_vars': opts.all_env_vars}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-
-        def serialize_callback(w: Window, result: Dict[str, Any]) -> Dict[str, Any]:
-            result['is_self'] = True
-            return result
-
         data = list(boss.list_os_windows(window))
         if not payload_get('all_env_vars'):
             all_env_blocks: List[Dict[str, str]] = []
