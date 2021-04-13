@@ -18,6 +18,7 @@ class TestKeys(BaseTest):
         enc = defines.encode_key_for_tty
         ae = self.assertEqual
         shift, alt, ctrl, super, hyper, meta = defines.GLFW_MOD_SHIFT, defines.GLFW_MOD_ALT, defines.GLFW_MOD_CONTROL, defines.GLFW_MOD_SUPER, defines.GLFW_MOD_HYPER, defines.GLFW_MOD_META  # noqa
+        num_lock, caps_lock = defines.GLFW_MOD_NUM_LOCK, defines.GLFW_MOD_CAPS_LOCK
         press, repeat, release = defines.GLFW_PRESS, defines.GLFW_REPEAT, defines.GLFW_RELEASE  # noqa
 
         def csi(mods=0, num=1, action=1, shifted_key=0, alternate_key=0, text=None, trailer='u'):
@@ -398,6 +399,7 @@ class TestKeys(BaseTest):
         for key in '~!@#$%^&*()_+{}|:"<>?':
             ae(enc(key=ord(key), mods=alt), '\x1b' + key)
         ae(enc(key=ord(' ')), ' ')
+        ae(enc(key=ord(' '), mods=ctrl | num_lock | caps_lock), '\0')
         ae(enc(key=ord(' '), mods=ctrl), '\0')
         ae(enc(key=ord(' '), mods=alt), '\x1b ')
         ae(enc(key=ord(' '), mods=shift), ' ')

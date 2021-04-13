@@ -296,10 +296,10 @@ ctrled_key(const char key) { // {{{
 
 static int
 encode_printable_ascii_key_legacy(const KeyEvent *ev, char *output) {
-    if (!ev->mods.value) return snprintf(output, KEY_BUFFER_SIZE, "%c", (char)ev->key);
+    unsigned mods = ev->mods.value & ~(GLFW_MOD_NUM_LOCK | GLFW_MOD_CAPS_LOCK);
+    if (!mods) return snprintf(output, KEY_BUFFER_SIZE, "%c", (char)ev->key);
 
     char key = ev->key;
-    unsigned mods = ev->mods.value;
     if (mods & SHIFT) {
         const char shifted = ev->shifted_key;
         if (shifted && shifted != key && (!(mods & CTRL) || key < 'a' || key > 'z')) {
