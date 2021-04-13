@@ -40,7 +40,7 @@ Some programs and libraries that use the kitty graphics protocol:
  * `viu <https://github.com/atanunq/viu>`_ - a terminal image viewer
  * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
  * `ctx.graphics <https://ctx.graphics/>`_ - Library for drawing graphics
- * `timg <https://github.com/hzeller/timg>` - a terminal image and video viewer
+ * `timg <https://github.com/hzeller/timg>`_ - a terminal image and video viewer
  * `notcurses <https://github.com/dankamongmen/notcurses>`_ - C library for terminal graphics with bindings for C++, Rust and Python
  * `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the the terminal
 
