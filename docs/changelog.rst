@@ -46,6 +46,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Double clicking on empty tab bar area now opens a new tab (:iss:`3201`)
 
+- kitty @ ls: Show only environment variables that are different for each
+  window, by default.
+
 - When passing a directory or a non-executable file as the program to run to
   kitty opens it with the shell or by parsing the shebang, instead of just failing.
 
