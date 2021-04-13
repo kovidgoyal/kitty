@@ -491,9 +491,9 @@ class Tab:  # {{{
     def move_window_backward(self) -> None:
         self.move_window(-1)
 
-    def list_windows(self, active_window: Optional[Window]) -> Generator[WindowDict, None, None]:
+    def list_windows(self, active_window: Optional[Window], self_window: Optional[Window] = None) -> Generator[WindowDict, None, None]:
         for w in self:
-            yield w.as_dict(is_focused=w is active_window)
+            yield w.as_dict(is_focused=w is active_window, is_self=w is self_window)
 
     def matches(self, field: str, pat: Pattern) -> bool:
         if field == 'id':
@@ -664,14 +664,14 @@ class TabManager:  # {{{
     def __len__(self) -> int:
         return len(self.tabs)
 
-    def list_tabs(self, active_tab: Optional[Tab], active_window: Optional[Window]) -> Generator[TabDict, None, None]:
+    def list_tabs(self, active_tab: Optional[Tab], active_window: Optional[Window], self_window: Optional[Window] = None) -> Generator[TabDict, None, None]:
         for tab in self:
             yield {
                 'id': tab.id,
                 'is_focused': tab is active_tab,
                 'title': tab.name or tab.title,
                 'layout': str(tab.current_layout.name),
-                'windows': list(tab.list_windows(active_window)),
+                'windows': list(tab.list_windows(active_window, self_window)),
                 'active_window_history': list(tab.windows.active_window_history),
             }
 

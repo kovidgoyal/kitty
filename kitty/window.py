@@ -56,6 +56,7 @@ class WindowDict(TypedDict):
     cmdline: List[str]
     env: Dict[str, str]
     foreground_processes: List[ProcessDesc]
+    is_self: bool
 
 
 class PipeData(TypedDict):
@@ -308,7 +309,6 @@ class Window:
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
-        self.serialize_callback: Optional[Callable[[Window, Dict[str, Any]], Dict[str, Any]]] = None
         if not self.id:
             raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
         self.tab_id = tab.id
@@ -381,7 +381,7 @@ class Window:
         return 'Window(title={}, id={})'.format(
                 self.title, self.id)
 
-    def as_dict(self, is_focused: bool = False) -> WindowDict:
+    def as_dict(self, is_focused: bool = False, is_self: bool = False) -> WindowDict:
         return dict(
             id=self.id,
             is_focused=is_focused,
@@ -390,11 +390,12 @@ class Window:
             cwd=self.child.current_cwd or self.child.cwd,
             cmdline=self.child.cmdline,
             env=self.child.environ,
-            foreground_processes=self.child.foreground_processes
+            foreground_processes=self.child.foreground_processes,
+            is_self=is_self
         )
 
     def serialize_state(self) -> Dict[str, Any]:
-        ans = {
+        return {
             'version': 1,
             'id': self.id,
             'child_title': self.child_title,
@@ -408,9 +409,6 @@ class Window:
             'margin': self.margin.serialize(),
             'padding': self.padding.serialize(),
         }
-        if self.serialize_callback is not None:
-            ans = self.serialize_callback(self, ans)
-        return ans
 
     @property
     def current_colors(self) -> Dict:

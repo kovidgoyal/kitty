@@ -45,14 +45,7 @@ Show all environment variables in output not just differing ones.
             result['is_self'] = True
             return result
 
-        if window is not None:
-            orig_callback = window.serialize_callback
-            window.serialize_callback = serialize_callback
-        try:
-            data = list(boss.list_os_windows())
-        finally:
-            if window is not None:
-                window.serialize_callback = orig_callback
+        data = list(boss.list_os_windows(window))
         if not payload_get('all_env_vars'):
             all_env_blocks: List[Dict[str, str]] = []
             common_env_vars: Set[Tuple[str, str]] = set()
