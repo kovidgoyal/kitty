@@ -63,6 +63,7 @@ class OSWindowDict(TypedDict):
     id: int
     platform_window_id: Optional[int]
     is_focused: bool
+    is_self: bool
     tabs: List[TabDict]
     wm_class: str
     wm_name: str

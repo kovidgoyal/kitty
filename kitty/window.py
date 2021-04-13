@@ -50,6 +50,7 @@ MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]
 class WindowDict(TypedDict):
     id: int
     is_focused: bool
+    is_self: bool
     title: str
     pid: Optional[int]
     cwd: str

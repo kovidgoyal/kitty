@@ -36,6 +36,7 @@ from .window_list import WindowList
 class TabDict(TypedDict):
     id: int
     is_focused: bool
+    is_self: bool
     title: str
     layout: str
     windows: List[WindowDict]
