@@ -308,6 +308,7 @@ class Window:
         self.id: int = add_window(tab.os_window_id, tab.id, self.title)
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
+        self.serialize_callback: Optional[Callable[[Window, Dict[str, Any]], Dict[str, Any]]] = None
         if not self.id:
             raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
         self.tab_id = tab.id
@@ -393,7 +394,7 @@ class Window:
         )
 
     def serialize_state(self) -> Dict[str, Any]:
-        return {
+        ans = {
             'version': 1,
             'id': self.id,
             'child_title': self.child_title,
@@ -407,6 +408,9 @@ class Window:
             'margin': self.margin.serialize(),
             'padding': self.padding.serialize(),
         }
+        if self.serialize_callback is not None:
+            ans = self.serialize_callback(self, ans)
+        return ans
 
     @property
     def current_colors(self) -> Dict:

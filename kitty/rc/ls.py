@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
-from typing import Any, Optional
+from typing import Any, Dict, Optional
 
 from kitty.constants import appname
 
@@ -24,7 +24,8 @@ class LS(RemoteCommand):
         f' operating system {appname} windows. Each OS window has an :italic:`id` and a list'
         ' of :italic:`tabs`. Each tab has its own :italic:`id`, a :italic:`title` and a list of :italic:`windows`.'
         ' Each window has an :italic:`id`, :italic:`title`, :italic:`current working directory`, :italic:`process id (PID)`, '
-        ' :italic:`command-line` and :italic:`environment` of the process running in the window.\n\n'
+        ' :italic:`command-line` and :italic:`environment` of the process running in the window. Additionally, when'
+        ' running the command inside a kitty window, that window can be identified by the :italic:`is_self` parameter.\n\n'
         'You can use these criteria to select windows/tabs for the other commands.'
     )
     argspec = ''
@@ -33,7 +34,19 @@ class LS(RemoteCommand):
         pass
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        data = list(boss.list_os_windows())
+
+        def serialize_callback(w: Window, result: Dict[str, Any]) -> Dict[str, Any]:
+            result['is_self'] = True
+            return result
+
+        if window is not None:
+            orig_callback = window.serialize_callback
+            window.serialize_callback = serialize_callback
+        try:
+            data = list(boss.list_os_windows())
+        finally:
+            if window is not None:
+                window.serialize_callback = orig_callback
         return json.dumps(data, indent=2, sort_keys=True)
 
 
