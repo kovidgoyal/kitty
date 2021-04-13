@@ -380,10 +380,11 @@ class Window:
         return 'Window(title={}, id={})'.format(
                 self.title, self.id)
 
-    def as_dict(self, is_focused: bool = False) -> WindowDict:
+    def as_dict(self, is_focused: bool = False, is_self: bool = False) -> WindowDict:
         return dict(
             id=self.id,
             is_focused=is_focused,
+            is_self=is_self,
             title=self.override_title or self.title,
             pid=self.child.pid,
             cwd=self.child.current_cwd or self.child.cwd,

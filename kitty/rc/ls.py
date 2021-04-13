@@ -33,7 +33,7 @@ class LS(RemoteCommand):
         pass
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        data = list(boss.list_os_windows())
+        data = list(boss.list_os_windows(window))
         return json.dumps(data, indent=2, sort_keys=True)
 
 

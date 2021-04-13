@@ -214,16 +214,24 @@ class Boss:
         self.os_window_map[os_window_id] = tm
         return os_window_id
 
-    def list_os_windows(self) -> Generator[OSWindowDict, None, None]:
+    def list_os_windows(
+        self,
+        source_window: Optional[Window] = None
+    ) -> Generator[OSWindowDict, None, None]:
         with cached_process_data():
             active_tab, active_window = self.active_tab, self.active_window
             active_tab_manager = self.active_tab_manager
+            self_window = source_window if source_window is not None else None
+            self_tab = self_window.tabref() if self_window is not None else None
+            self_tm = self_tab.tab_manager_ref() if self_tab is not None else None
             for os_window_id, tm in self.os_window_map.items():
                 yield {
                     'id': os_window_id,
                     'platform_window_id': platform_window_id(os_window_id),
                     'is_focused': tm is active_tab_manager,
-                    'tabs': list(tm.list_tabs(active_tab, active_window)),
+                    'is_self': (tm is self_tm) and (self_tm is not None),
+                    'tabs': list(tm.list_tabs(active_tab, active_window,
+                                              self_tab, self_window)),
                     'wm_class': tm.wm_class,
                     'wm_name': tm.wm_name
                 }
