@@ -358,6 +358,7 @@ handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
 }
 
 HANDLER(handle_move_event) {
+    modifiers &= ~GLFW_LOCK_MASK;
     unsigned int x = 0, y = 0;
     if (OPT(focus_follows_mouse)) {
         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
@@ -421,6 +422,7 @@ clear_click_queue(Window *w) {
 }
 
 HANDLER(add_click) {
+    modifiers &= ~GLFW_LOCK_MASK;
     ClickQueue *q = &w->click_queue;
     if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
     monotonic_t now = monotonic();
@@ -477,6 +479,7 @@ handle_button_event_in_kitty(Window *w, int button, int modifiers, bool is_relea
 }
 
 HANDLER(handle_button_event) {
+    modifiers &= ~GLFW_LOCK_MASK;
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
     bool is_release = !global_state.callback_os_window->mouse_button_pressed[button];
     if (window_idx != t->active_window && !is_release) {
@@ -506,6 +509,7 @@ currently_pressed_button(void) {
 }
 
 HANDLER(handle_event) {
+    modifiers &= ~GLFW_LOCK_MASK;
     if (button == -1) {
         button = currently_pressed_button();
         handle_move_event(w, button, modifiers, window_idx);

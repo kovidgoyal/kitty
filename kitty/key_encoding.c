@@ -8,7 +8,6 @@
 #include "keys.h"
 #include "charsets.h"
 
-static const unsigned LOCK_MASK = GLFW_MOD_NUM_LOCK | GLFW_MOD_CAPS_LOCK;
 typedef enum { SHIFT=1, ALT=2, CTRL=4, SUPER=8, HYPER=16, META=32, CAPS_LOCK=64, NUM_LOCK=128} ModifierMasks;
 typedef enum { PRESS = 0, REPEAT = 1, RELEASE = 2} KeyAction;
 typedef struct {
@@ -49,7 +48,7 @@ is_modifier_key(const uint32_t key) {
 
 static inline void
 convert_glfw_mods(int mods, KeyEvent *ev, const unsigned key_encoding_flags) {
-    if (!key_encoding_flags) mods &= ~LOCK_MASK;
+    if (!key_encoding_flags) mods &= ~GLFW_LOCK_MASK;
     ev->mods.alt = (mods & GLFW_MOD_ALT) > 0, ev->mods.ctrl = (mods & GLFW_MOD_CONTROL) > 0, ev->mods.shift = (mods & GLFW_MOD_SHIFT) > 0, ev->mods.super = (mods & GLFW_MOD_SUPER) > 0, ev->mods.hyper = (mods & GLFW_MOD_HYPER) > 0, ev->mods.meta = (mods & GLFW_MOD_META) > 0;
     ev->mods.numlock = (mods & GLFW_MOD_NUM_LOCK) > 0, ev->mods.capslock = (mods & GLFW_MOD_CAPS_LOCK) > 0;
     ev->mods.value = ev->mods.shift ? SHIFT : 0;
