@@ -232,7 +232,7 @@ updateNormalHints(_GLFWwindow* window, int width, int height)
 
     if (!window->monitor)
     {
-        if (window->resizable && !window->x11.maximized)
+        if (window->resizable)
         {
             if (window->minwidth != GLFW_DONT_CARE &&
                 window->minheight != GLFW_DONT_CARE)
@@ -259,7 +259,7 @@ updateNormalHints(_GLFWwindow* window, int width, int height)
             }
 
             if (window->widthincr != GLFW_DONT_CARE &&
-                window->heightincr != GLFW_DONT_CARE)
+                window->heightincr != GLFW_DONT_CARE && !window->x11.maximized)
             {
                 hints->flags |= PResizeInc;
                 hints->width_inc = window->widthincr;
