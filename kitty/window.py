@@ -57,6 +57,8 @@ class WindowDict(TypedDict):
     env: Dict[str, str]
     foreground_processes: List[ProcessDesc]
     is_self: bool
+    lines: int
+    columns: int
 
 
 class PipeData(TypedDict):
@@ -391,7 +393,9 @@ class Window:
             cmdline=self.child.cmdline,
             env=self.child.environ,
             foreground_processes=self.child.foreground_processes,
-            is_self=is_self
+            is_self=is_self,
+            lines=self.screen.lines,
+            columns=self.screen.columns,
         )
 
     def serialize_state(self) -> Dict[str, Any]:
