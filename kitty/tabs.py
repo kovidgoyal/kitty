@@ -38,6 +38,7 @@ class TabDict(TypedDict):
     is_focused: bool
     title: str
     layout: str
+    layout_state: Dict[str, Any]
     windows: List[WindowDict]
     active_window_history: List[int]
 
@@ -671,6 +672,7 @@ class TabManager:  # {{{
                 'is_focused': tab is active_tab,
                 'title': tab.name or tab.title,
                 'layout': str(tab.current_layout.name),
+                'layout_state': tab.current_layout.layout_state(),
                 'windows': list(tab.list_windows(active_window, self_window)),
                 'active_window_history': list(tab.windows.active_window_history),
             }

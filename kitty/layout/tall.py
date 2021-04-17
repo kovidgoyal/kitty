@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from itertools import islice, repeat
-from typing import Dict, Generator, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple
 
 from kitty.borders import BorderColor
 from kitty.conf.utils import to_bool
@@ -277,6 +277,13 @@ class Tall(Layout):
             start_offset=int(not mirrored), end_offset=int(mirrored)
         )
         yield from perp_borders[1:-1]
+
+    def layout_state(self) -> Dict[str, Any]:
+        return {
+            'num_full_size_windows': self.num_full_size_windows,
+            'main_bias': self.main_bias,
+            'biased_map': self.biased_map
+        }
 
 
 class Fat(Tall):

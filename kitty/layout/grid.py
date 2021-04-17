@@ -6,7 +6,7 @@ from functools import lru_cache
 from itertools import repeat
 from math import ceil, floor
 from typing import (
-    Callable, Dict, Generator, List, Optional, Sequence, Set, Tuple
+    Any, Callable, Dict, Generator, List, Optional, Sequence, Set, Tuple
 )
 
 from kitty.borders import BorderColor
@@ -293,4 +293,10 @@ class Grid(Layout):
             'bottom': neighbors(row + 1, col),
             'left': side(row, col, -1) if col else [],
             'right': side(row, col, 1) if col < ncols - 1 else [],
+        }
+
+    def layout_state(self) -> Dict[str, Any]:
+        return {
+            'biased_cols': self.biased_cols,
+            'biased_rows': self.biased_rows
         }

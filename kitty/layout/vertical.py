@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import Dict, Generator, Iterable, List, Tuple
+from typing import Any, Dict, Generator, Iterable, List, Tuple
 
 from kitty.borders import BorderColor
 from kitty.types import Edges
@@ -129,6 +129,9 @@ class Vertical(Layout):
         if self.main_is_horizontal:
             return {'left': before, 'right': after, 'top': [], 'bottom': []}
         return {'top': before, 'bottom': after, 'left': [], 'right': []}
+
+    def layout_state(self) -> Dict[str, Any]:
+        return {'biased_map': self.biased_map}
 
 
 class Horizontal(Vertical):

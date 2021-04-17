@@ -5,8 +5,8 @@
 from functools import partial
 from itertools import repeat
 from typing import (
-    Dict, Generator, Iterable, Iterator, List, NamedTuple, Optional, Sequence,
-    Tuple
+    Any, Dict, Generator, Iterable, Iterator, List, NamedTuple, Optional,
+    Sequence, Tuple
 )
 
 from kitty.borders import BorderColor
@@ -380,3 +380,6 @@ class Layout:
 
     def layout_action(self, action_name: str, args: Sequence[str], all_windows: WindowList) -> Optional[bool]:
         pass
+
+    def layout_state(self) -> Dict[str, Any]:
+        return {}

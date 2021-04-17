@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from typing import (
-    Collection, Dict, Generator, List, NamedTuple, Optional, Sequence, Tuple,
+    Any, Collection, Dict, Generator, List, NamedTuple, Optional, Sequence, Tuple,
     Union
 )
 
@@ -546,3 +546,21 @@ class Splits(Layout):
                     if swap:
                         pair.one, pair.two = pair.two, pair.one
                     return True
+
+    def layout_state(self) -> Dict[str, Any]:
+
+        def add_pair(p: Pair) -> Dict[str, Any]:
+            ans: Dict[str, Any] = {}
+            ans['horizontal'] = p.horizontal
+            ans['bias'] = p.bias
+            if isinstance(p.one, Pair):
+                ans['one'] = add_pair(p.one)
+            elif p.one is not None:
+                ans['one'] = p.one
+            if isinstance(p.two, Pair):
+                ans['two'] = add_pair(p.two)
+            elif p.one is not None:
+                ans['two'] = p.two
+            return ans
+
+        return {'pairs': add_pair(self.pairs_root)}
