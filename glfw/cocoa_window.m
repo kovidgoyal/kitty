@@ -630,6 +630,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 #pragma mark - Notifications
 
 - (void)applicationDidResignActive:(NSNotification *)notification {
+    (void)notification;
     if (_count > 0) {
         debug_key(@"Application resigning active.");
         [self update];
@@ -637,6 +638,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 }
 
 - (void)applicationDidBecomeActive:(NSNotification *)notification {
+    (void)notification;
     if (self.isDesired) {
         debug_key(@"Application became active.");
         [self update];
@@ -1551,6 +1553,7 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 }
 
 - (void)toggleSecureInput:(id)sender {
+    (void)sender;
     [[SecureKeyboardEntryController sharedInstance] toggle];
 }
 
