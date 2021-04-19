@@ -8,7 +8,7 @@ import sys
 from base64 import standard_b64encode
 from collections import defaultdict, deque
 from contextlib import suppress
-from enum import IntEnum
+from enum import Enum
 from itertools import count
 from typing import (
     Any, Callable, DefaultDict, Deque, Dict, Iterator, List, Optional,
@@ -32,7 +32,7 @@ except Exception:
     fsenc = 'utf-8'
 
 
-class Dispose(IntEnum):
+class Dispose(Enum):
     undefined = 0
     none = 1
     background = 2
@@ -75,7 +75,7 @@ class Frame:
     def __repr__(self) -> str:
         canvas = f'{self.canvas_width}x{self.canvas_height}:{self.canvas_x}+{self.canvas_y}'
         geom = f'{self.width}x{self.height}'
-        return f'Frame(index={self.index}, gap={self.gap}, geom={geom}, canvas={canvas})'
+        return f'Frame(index={self.index}, gap={self.gap}, geom={geom}, canvas={canvas}, dispose={self.dispose})'
 
 
 class ImageData:
