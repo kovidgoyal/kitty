@@ -64,7 +64,9 @@ def run_tests(kitty_exe):
             'KITTY_CACHE_DIRECTORY': os.path.join(tdir, 'cache')
         }
         [os.mkdir(x) for x in env.values()]
-        if subprocess.call([kitty_exe, '+runpy', 'from kitty_tests.main import run_tests; run_tests()'], env=env) != 0:
+        cmd = [kitty_exe, '+runpy', 'from kitty_tests.main import run_tests; run_tests()']
+        print(*map(shlex.quote, cmd), flush=True)
+        if subprocess.call(cmd, env=env) != 0:
             print('Checking of kitty build failed', file=sys.stderr)
             os.chdir(os.path.dirname(kitty_exe))
             run_shell()
