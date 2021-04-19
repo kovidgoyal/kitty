@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - hints kitten: Fix sending hyperlinks to their default handler not working
   (:pull:`3500`)
 
+- Wayland: Fix regression in previous release causing window decorations to
+  be drawn even when compositor supports server side decorations (:iss:`3501`)
+
 
 0.20.0 [2021-04-19]
 ----------------------

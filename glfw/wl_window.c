@@ -486,6 +486,7 @@ static void setXdgDecorations(_GLFWwindow* window)
 {
     if (_glfw.wl.decorationManager)
     {
+		window->wl.decorations.serverSide = true;
         window->wl.xdg.decoration =
             zxdg_decoration_manager_v1_get_toplevel_decoration(
                 _glfw.wl.decorationManager, window->wl.xdg.toplevel);
