@@ -318,7 +318,7 @@ parse_osc_8(char *buf, char **id, char **url) {
     if (boundary == NULL) return false;
     *boundary = 0;
     if (*(boundary + 1)) *url = boundary + 1;
-    char *save, *token = strtok_r(buf, ":", &save);
+    char *save = NULL, *token = strtok_r(buf, ":", &save);
     while (token != NULL) {
         size_t len = strlen(token);
         if (len > 3 && token[0] == 'i' && token[1] == 'd' && token[2] == '=' && token[3]) {
