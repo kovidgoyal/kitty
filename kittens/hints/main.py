@@ -756,6 +756,7 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
             cwd = data['cwd']
             program = None if program == 'default' else program
             if text_type == 'hyperlink':
+                w = boss.window_id_map.get(target_window_id)
                 for m in matches:
                     if w is not None:
                         w.open_url(m, hyperlink_id=1, cwd=cwd)
