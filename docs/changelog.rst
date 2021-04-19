@@ -4,6 +4,16 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.20.1 [future]
+----------------------
+
+- icat: Fix some broken GIF images with no frame delays not being animated
+  (:iss:`3498`)
+
+- hints kitten: Fix sending hyperlinks to their default handler not working
+  (:pull:`3500`)
+
+
 0.20.0 [2021-04-19]
 ----------------------
 
