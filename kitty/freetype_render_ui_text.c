@@ -344,7 +344,7 @@ render_run(RenderCtx *ctx, RenderState *rs) {
                 if (pbm.rows > bm_height) {
                     double ratio = pbm.width / (double)pbm.rows;
                     bm_width = (unsigned)(ratio * bm_height);
-                    buf = calloc(sizeof(pixel), bm_height * bm_width);
+                    buf = calloc(sizeof(pixel), (size_t)bm_height * bm_width);
                     if (!buf) break;
                     downsample_32bit_image(pbm.buf, pbm.width, pbm.rows, pbm.stride, buf, bm_width, bm_height);
                     pbm.buf = buf; pbm.stride = 4 * bm_width; pbm.width = bm_width; pbm.rows = bm_height;
@@ -502,7 +502,7 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     float x_offset = 0, y_offset = 0;
     static const char* kwlist[] = {"text", "width", "height", "font_family", "bold", "italic", "fg", "bg", "x_offset", "y_offset", "right_margin", NULL};
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|sIIzppkkffI", (char**)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg, &x_offset, &y_offset, &right_margin)) return NULL;
-    PyObject *ans = PyBytes_FromStringAndSize(NULL, width * height * 4);
+    PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)width * height * 4);
     if (!ans) return NULL;
     uint8_t *buffer = (u_int8_t*) PyBytes_AS_STRING(ans);
     RenderCtx *ctx = (RenderCtx*)create_freetype_render_context(family, bold, italic);
