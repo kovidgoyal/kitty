@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.20.0 [future]
+0.20.0 [2021-04-19]
 ----------------------
 
 - Support display of animated images ``kitty +kitten icat animation.gif``. See
