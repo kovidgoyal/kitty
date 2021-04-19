@@ -991,7 +991,7 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
         if (debug_grouping) {
             char ch[8] = {0};
             encode_utf8(G(current_cell_data).current_codepoint, ch);
-            printf("\x1b[32m→ %s\x1b[m glyph_idx: %lu glyph_id: %u (%s) group_idx: %lu cluster: %u -> %u is_special: %d\n"
+            printf("\x1b[32m→ %s\x1b[m glyph_idx: %zu glyph_id: %u (%s) group_idx: %zu cluster: %u -> %u is_special: %d\n"
                     "  num_codepoints_used_by_glyph: %u current_group: (%u cells, %u glyphs) add_to_current_group: %d\n",
                     ch, G(glyph_idx), glyph_id, glyph_name, G(group_idx), cluster, next_cluster, is_special,
                     num_codepoints_used_by_glyph, current_group->num_cells, current_group->num_glyphs, add_to_current_group);
