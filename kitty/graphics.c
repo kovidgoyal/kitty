@@ -1578,7 +1578,7 @@ new(PyTypeObject UNUSED *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 
 static inline PyObject*
 image_as_dict(GraphicsManager *self, Image *img) {
-#define U(x) #x, img->x
+#define U(x) #x, (unsigned int)(img->x)
 #define B(x) #x, img->x ? Py_True : Py_False
     PyObject *frames = PyTuple_New(img->extra_framecnt);
     for (unsigned i = 0; i < img->extra_framecnt; i++) {
@@ -1589,21 +1589,21 @@ image_as_dict(GraphicsManager *self, Image *img) {
             "{sI sI sy#}",
             "gap", f->gap,
             "id", f->id,
-            "data", cfd.buf, (cfd.is_opaque ? 3 : 4) * img->width * img->height
+            "data", cfd.buf, (Py_ssize_t)((cfd.is_opaque ? 3 : 4) * img->width * img->height)
         ));
         free(cfd.buf);
         if (PyErr_Occurred()) { Py_CLEAR(frames); return NULL; }
     }
     CoalescedFrameData cfd = get_coalesced_frame_data(self, img, &img->root_frame);
     if (!cfd.buf) { PyErr_SetString(PyExc_RuntimeError, "Failed to get data for root frame"); return NULL; }
-    PyObject *ans = Py_BuildValue("{sI sI sI sI sK sI sI " "sO sI sO " "sI sI sI " "sI sy# sN}",
+    PyObject *ans = Py_BuildValue("{sI sI sI sI sI sI sI " "sO sI sO " "sI sI sI " "sI sy# sN}",
         U(texture_id), U(client_id), U(width), U(height), U(internal_id), U(refcnt), U(client_number),
 
         B(root_frame_data_loaded), U(animation_state), "is_4byte_aligned", img->root_frame.is_4byte_aligned ? Py_True : Py_False,
 
         U(current_frame_index), "root_frame_gap", img->root_frame.gap, U(current_frame_index),
 
-        U(animation_duration), "data", cfd.buf, (cfd.is_opaque ? 3 : 4) * img->width * img->height, "extra_frames", frames
+        U(animation_duration), "data", cfd.buf, (Py_ssize_t)((cfd.is_opaque ? 3 : 4) * img->width * img->height), "extra_frames", frames
     );
     free(cfd.buf);
     return ans;
