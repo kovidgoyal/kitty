@@ -90,6 +90,8 @@ def build_c_extensions(ext_dir, args):
         os.unlink(os.path.join(writeable_src_dir, 'kitty', 'launcher', 'kitty'))
 
     cmd = [PYTHON, 'setup.py', 'macos-freeze' if ismacos else 'linux-freeze']
+    if args.dont_strip:
+        cmd.append('--debug')
     dest = kitty_constants['appname'] + ('.app' if ismacos else '')
     dest = build_frozen_launcher.prefix = os.path.join(ext_dir, dest)
     cmd += ['--prefix', dest, '--full']
