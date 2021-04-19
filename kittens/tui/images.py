@@ -154,7 +154,7 @@ def identify(path: str) -> ImageData:
     first = data[0]
     frames = list(map(Frame, data))
     image_fmt = first['fmt'].lower()
-    if image_fmt == 'gif' and not any(f.gap for f in frames):
+    if image_fmt == 'gif' and not any(f.gap > 0 for f in frames):
         # Some broken GIF images have all zero gaps, browsers with their usual
         # idiot ideas render these with a default 100ms gap https://bugzilla.mozilla.org/show_bug.cgi?id=125137
         # Browsers actually force a 100ms gap at any zero gap frame, but that
