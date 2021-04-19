@@ -153,12 +153,21 @@ def identify(path: str) -> ImageData:
     data = json.loads(b'[' + p.stdout.rstrip(b',') + b']')
     first = data[0]
     frames = list(map(Frame, data))
+    image_fmt = first['fmt'].lower()
+    if image_fmt == 'gif' and not any(f.gap for f in frames):
+        # Some broken GIF images have all zero gaps, browsers with their usual
+        # idiot ideas render these with a default 100ms gap https://bugzilla.mozilla.org/show_bug.cgi?id=125137
+        # Browsers actually force a 100ms gap at any zero gap frame, but that
+        # just means it is impossible to deliberately use zero gap frames for
+        # sophisticated blending, so we dont do that.
+        for f in frames:
+            f.gap = 100
     mode = 'rgb'
     for f in frames:
         if f.mode == 'rgba':
             mode = 'rgba'
             break
-    return ImageData(first['fmt'].lower(), frames[0].canvas_width, frames[0].canvas_height, mode, frames)
+    return ImageData(image_fmt, frames[0].canvas_width, frames[0].canvas_height, mode, frames)
 
 
 class RenderedImage(ImageData):
