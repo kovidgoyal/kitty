@@ -194,6 +194,7 @@ typedef struct _GLFWwindowWayland
             uint32_t *data;
             size_t for_decoration_size, stride, segments, corner_size;
         } shadow_tile;
+        monotonic_t last_click_on_top_decoration_at;
     } decorations;
 
     struct {
