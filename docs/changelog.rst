@@ -4,6 +4,12 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.20.2 [future]
+----------------------
+
+- Linux: Fix binary kitty builds not able to load fonts in WOFF2 format
+  (:iss:`3506`)
+
 0.20.1 [2021-04-19]
 ----------------------
 
