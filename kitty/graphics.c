@@ -369,7 +369,7 @@ get_free_client_id(const GraphicsManager *self) {
     }
     if (!count) { free(client_ids); return 1; }
 #define int_lt(a, b) ((*a)<(*b))
-    QSORT(u_int32_t, client_ids, count, int_lt)
+    QSORT(uint32_t, client_ids, count, int_lt)
 #undef int_lt
     uint32_t prev_id = 0, ans = 1;
     for (size_t i = 0; i < count; i++) {

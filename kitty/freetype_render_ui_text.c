@@ -504,7 +504,7 @@ render_line(PyObject *self UNUSED, PyObject *args, PyObject *kw) {
     if (!PyArg_ParseTupleAndKeywords(args, kw, "|sIIzppkkffI", (char**)kwlist, &text, &width, &height, &family, &bold, &italic, &fg, &bg, &x_offset, &y_offset, &right_margin)) return NULL;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, (Py_ssize_t)width * height * 4);
     if (!ans) return NULL;
-    uint8_t *buffer = (u_int8_t*) PyBytes_AS_STRING(ans);
+    uint8_t *buffer = (uint8_t*) PyBytes_AS_STRING(ans);
     RenderCtx *ctx = (RenderCtx*)create_freetype_render_context(family, bold, italic);
     if (!ctx) return NULL;
     if (!render_single_line((FreeTypeRenderCtx)ctx, text, 3 * height / 4, 0, 0xffffffff, buffer, width, height, x_offset, y_offset, right_margin)) {
