@@ -687,7 +687,10 @@ class TabManager:  # {{{
 
     @property
     def active_tab(self) -> Optional[Tab]:
-        return self.tabs[self.active_tab_idx] if self.tabs else None
+        try:
+            return self.tabs[self.active_tab_idx] if self.tabs else None
+        except Exception:
+            return None
 
     @property
     def active_window(self) -> Optional[Window]:
@@ -750,6 +753,7 @@ class TabManager:  # {{{
         return self.tabs[idx]
 
     def remove(self, tab: Tab) -> None:
+        active_tab_before_removal = self.active_tab
         self._remove_tab(tab)
         try:
             active_tab_needs_to_change = self.active_tab is None or self.active_tab is tab
@@ -779,6 +783,13 @@ class TabManager:  # {{{
                 next_active_tab = max(0, min(self.active_tab_idx, len(self.tabs) - 1))
 
             self._set_active_tab(next_active_tab)
+        elif active_tab_before_removal is not None:
+            try:
+                idx = self.tabs.index(active_tab_before_removal)
+            except Exception:
+                pass
+            else:
+                self._active_tab_idx = idx
         self.mark_tab_bar_dirty()
         tab.destroy()
 
