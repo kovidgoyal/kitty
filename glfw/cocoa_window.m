@@ -32,6 +32,12 @@
 #include <float.h>
 #include <string.h>
 
+#if (MAC_OS_X_VERSION_MAX_ALLOWED < 101300)
+#define NSControlStateValueOn NSOnState
+#define NSControlStateValueOff NSOffState
+#define NSControlStateValueMixed NSMixedState
+#endif
+
 
 static uint32_t
 vk_code_to_functional_key_code(uint8_t key_code) {  // {{{
