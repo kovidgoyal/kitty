@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Prevent :kbd:`option` based shortcuts for being used for global menu
   actions (:iss:`3515`)
 
+- Fix ``kitty @ close-tab`` not working with pipe based remote control
+  (:iss:`3510`)
+
 0.20.1 [2021-04-19]
 ----------------------
 

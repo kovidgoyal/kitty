@@ -34,9 +34,8 @@ If specified close the tab this command is run in, rather than the active tab.
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
-            if window:
-                if tab:
-                    boss.close_tab_no_confirm(tab)
+            if tab:
+                boss.close_tab_no_confirm(tab)
 
 
 close_tab = CloseTab()
