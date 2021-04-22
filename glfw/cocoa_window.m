@@ -653,39 +653,39 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 }
 
 - (void)update {
-    debug_key("Update secure keyboard entry. desired=%d active=%d",
+    debug_key("Update secure keyboard entry. desired=%d active=%d\n",
          (int)self.isDesired, (int)[NSApp isActive]);
     const BOOL secure = self.isDesired && [self allowed];
 
     if (secure && _count > 0) {
-        debug_key("Want to turn on secure input but it's already on");
+        debug_key("Want to turn on secure input but it's already on\n");
         return;
     }
 
     if (!secure && _count == 0) {
-        debug_key("Want to turn off secure input but it's already off");
+        debug_key("Want to turn off secure input but it's already off\n");
         return;
     }
 
-    debug_key("Before: IsSecureEventInputEnabled returns %d", (int)self.isEnabled);
+    debug_key("Before: IsSecureEventInputEnabled returns %d ", (int)self.isEnabled);
     if (secure) {
         OSErr err = EnableSecureEventInput();
-        debug_key("EnableSecureEventInput err=%d", (int)err);
+        debug_key("EnableSecureEventInput err=%d ", (int)err);
         if (err) {
-            debug_key("EnableSecureEventInput failed with error %d", (int)err);
+            debug_key("EnableSecureEventInput failed with error %d ", (int)err);
         } else {
             _count += 1;
         }
     } else {
         OSErr err = DisableSecureEventInput();
-        debug_key("DisableSecureEventInput err=%d", (int)err);
+        debug_key("DisableSecureEventInput err=%d ", (int)err);
         if (err) {
-            debug_key("DisableSecureEventInput failed with error %d", (int)err);
+            debug_key("DisableSecureEventInput failed with error %d ", (int)err);
         } else {
             _count -= 1;
         }
     }
-    debug_key("After: IsSecureEventInputEnabled returns %d", (int)self.isEnabled);
+    debug_key("After: IsSecureEventInputEnabled returns %d\n", (int)self.isEnabled);
 }
 
 @end
