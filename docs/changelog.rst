@@ -10,6 +10,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Fix binary kitty builds not able to load fonts in WOFF2 format
   (:iss:`3506`)
 
+- macOS: Prevent :kbd:`option` based shortcuts for being used for global menu
+  actions (:iss:`3515`)
+
 0.20.1 [2021-04-19]
 ----------------------
 
