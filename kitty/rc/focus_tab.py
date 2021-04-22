@@ -38,9 +38,10 @@ using this option means that you will not be notified of failures.
         return {'match': opts.match}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        tabs = self.tabs_for_match_payload(boss, window, payload_get)
-        if tabs:
-            boss.set_active_tab(tabs[0])
+        for tab in self.tabs_for_match_payload(boss, window, payload_get):
+            if tab:
+                boss.set_active_tab(tab)
+                break
 
 
 focus_tab = FocusTab()
