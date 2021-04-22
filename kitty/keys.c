@@ -209,7 +209,7 @@ on_key_input(GLFWkeyevent *ev) {
         schedule_write_to_child(w->id, 1, encoded_key, size);
         debug("sent key to child\n");
     } else {
-        debug("ignoring as keyboard mode does not allow %s events\n", action == GLFW_RELEASE ? "release" : "repeat");
+        debug("ignoring as keyboard mode does not support encoding this event\n");
     }
 }
 
