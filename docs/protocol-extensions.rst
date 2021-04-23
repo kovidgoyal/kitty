@@ -172,10 +172,14 @@ instead of being blank.
 The motivation for this is that many modern shells will show completions in a
 block of lines under the cursor, this causes some of the on-screen text to be
 lost even after the completion is completed, because it has scrolled off
-screen. This escape code allows that text to be restored. If the scrollback
-buffer is empty or there is no scrollback buffer, such as for the alternate
-screen, then the newly inserted lines must be empty, just as with the original
-``SD`` escape code.
+screen. This escape code allows that text to be restored.
+
+If the scrollback buffer is empty or there is no scrollback buffer, such as for
+the alternate screen, then the newly inserted lines must be empty, just as with
+the original ``SD`` escape code. The maximum number of lines that can be
+scrolled down is the height of the screen, i.e. the number of lines on the screen.
+If the escape code requests more than that number of lines, the terminal *must*
+clip the request to the current screen size.
 
 The syntax of the escape code is identical to that of ``SD`` except that it has
 a trailing ``+`` modifier. This is legal under the `ECMA 48 standard
