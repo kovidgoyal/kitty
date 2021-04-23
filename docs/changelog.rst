@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - icat kitten: Respect EXIF orientation when displaying JPEG images
   (:iss:`3518`)
 
+- GNOME: Fix maximize state not being remembered when focus changes and window
+  decorations are hidden (:iss:`3507`)
+
 
 0.20.1 [2021-04-19]
 ----------------------
