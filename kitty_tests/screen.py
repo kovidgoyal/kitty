@@ -315,6 +315,12 @@ class TestScreen(BaseTest):
         def assert_lines(*lines):
             return self.ae(lines, tuple(str(s.line(i)) for i in range(s.lines)))
 
+        # test the reverse scroll function
+        s = prepare_screen(map(str, range(6)))
+        assert_lines('2', '3', '4', '5', '')
+        s.reverse_scroll(2, True)
+        assert_lines('0', '1', '2', '3', '4')
+
         # Height increased, width unchanged → pull down lines to fill new space at the top
         s = prepare_screen(map(str, range(6)))
         assert_lines('2', '3', '4', '5', '')

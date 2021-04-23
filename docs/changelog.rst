@@ -7,6 +7,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.20.2 [future]
 ----------------------
 
+- A new protocol extension to :ref:`unscroll <unscroll>` text from the
+  scrollback buffer onto the screen. Useful, for example, to restore
+  the screen after showing completions below the shell prompt.
+
 - Linux: Fix binary kitty builds not able to load fonts in WOFF2 format
   (:iss:`3506`)
 

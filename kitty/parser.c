@@ -932,7 +932,13 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             NO_MODIFIERS(end_modifier, ' ', "Select presentation directions escape code not implemented");
             CALL_CSI_HANDLER1(screen_scroll, 1);
         case SD:
-            CALL_CSI_HANDLER1(screen_reverse_scroll, 1);
+            if (!start_modifier && end_modifier == '+') {
+                CALL_CSI_HANDLER1(screen_reverse_scroll_and_fill_from_scrollback, 1);
+            } else {
+                NO_MODIFIERS(start_modifier, 0, "");
+                CALL_CSI_HANDLER1(screen_reverse_scroll, 1);
+            }
+            break;
         case DECSTR:
             if (end_modifier == '$') {
                 // DECRQM

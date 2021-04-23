@@ -184,6 +184,9 @@ class TestParser(BaseTest):
         pb('\033[3 @', ('Shift left escape code not implemented',))
         pb('\033[3 A', ('Shift right escape code not implemented',))
         pb('\033[3;4 S', ('Select presentation directions escape code not implemented',))
+        pb('\033[1T', ('screen_reverse_scroll', 1))
+        pb('\033[T', ('screen_reverse_scroll', 1))
+        pb('\033[+T', ('screen_reverse_scroll_and_fill_from_scrollback', 1))
 
     def test_csi_code_rep(self):
         s = self.create_screen(8)
