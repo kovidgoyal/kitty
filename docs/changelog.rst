@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix removal of inactive tab that is before the currently active tab causing
   the highlighted tab to be incorrect (:iss:`3516`)
 
+- icat kitten: Respect EXIF orientation when displaying JPEG images
+  (:iss:`3518`)
+
 
 0.20.1 [2021-04-19]
 ----------------------

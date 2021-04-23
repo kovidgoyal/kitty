@@ -211,7 +211,7 @@ def render_image(
             # we have to coalesce, resize and de-coalesce all frames
             resize_cmd = ['-coalesce'] + resize_cmd + ['-deconstruct']
         cmd += resize_cmd
-    cmd += ['-depth', '8', '-set', 'filename:f', '%w-%h-%g-%p']
+    cmd += ['-depth', '8', '-auto-orient', '-set', 'filename:f', '%w-%h-%g-%p']
     ans = RenderedImage(m.fmt, width, height, m.mode)
     if only_first_frame:
         ans.frames = [Frame(m.frames[0])]
