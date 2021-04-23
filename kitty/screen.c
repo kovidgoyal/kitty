@@ -773,9 +773,11 @@ void
 screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_screen) {
     bool to_alt = self->linebuf == self->main_linebuf;
     self->active_hyperlink_id = 0;
-    grman_clear(self->alt_grman, true, self->cell_size);  // always clear the alt buffer graphics to free up resources, since it has to be cleared when switching back to it anyway
     if (to_alt) {
-        if (clear_alt_screen) linebuf_clear(self->alt_linebuf, BLANK_CHAR);
+        if (clear_alt_screen) {
+            linebuf_clear(self->alt_linebuf, BLANK_CHAR);
+            grman_clear(self->alt_grman, true, self->cell_size);
+        }
         if (save_cursor) screen_save_cursor(self);
         self->linebuf = self->alt_linebuf;
         self->tabstops = self->alt_tabstops;
