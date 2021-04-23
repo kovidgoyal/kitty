@@ -324,8 +324,14 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     unsigned used_bits = 0; /* To avoid using the same bit twice */
     XkbDescPtr xkb_ptr = XkbGetMap( _glfw.x11.display, XkbVirtualModsMask | XkbVirtualModMapMask, XkbUseCoreKbd );
 
+    /* shift, control, and capsLock are special; they cannot be identified reliably on X11 */
+#define S(a, n) xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); xkb->a##Mask = 1 << xkb->a##Idx; used_bits |= xkb->a##Mask;
+    S(control, XKB_MOD_NAME_CTRL);
+    S(shift, XKB_MOD_NAME_SHIFT);
+    S(capsLock, XKB_MOD_NAME_CAPS);
+#undef S
 #define S( a ) xkb->a##Idx = XKB_MOD_INVALID; xkb->a##Mask = 0
-    S(control); S(alt); S(shift); S(super); S(hyper); S(meta); S(capsLock); S(numLock);
+    S(alt); S(super); S(hyper); S(meta); S(numLock);
 #undef S
     if (xkb_ptr) {
         Status status = XkbGetNames(_glfw.x11.display, XkbVirtualModNamesMask, xkb_ptr);
@@ -361,9 +367,6 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
         }
     }
 #define S(a, n) xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); xkb->a##Mask = 1 << xkb->a##Idx;
-    S(control, XKB_MOD_NAME_CTRL);
-    S(shift, XKB_MOD_NAME_SHIFT);
-    S(capsLock, XKB_MOD_NAME_CAPS);
     if (!succeeded) {
         S(numLock, XKB_MOD_NAME_NUM);
         S(alt, XKB_MOD_NAME_ALT);
