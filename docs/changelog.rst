@@ -29,6 +29,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - GNOME: Fix maximize state not being remembered when focus changes and window
   decorations are hidden (:iss:`3507`)
 
+- Fix reading :option:`kitty --session` from ``STDIN`` not working when the
+  :option:`kitty --detach` option is used (:iss:`3523`)
+
 
 0.20.1 [2021-04-19]
 ----------------------

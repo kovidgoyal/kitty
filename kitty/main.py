@@ -306,6 +306,9 @@ def _main() -> None:
         create_opts(cli_opts, debug_config=True)
         return
     if cli_opts.detach:
+        if cli_opts.session == '-':
+            from .session import PreReadSession
+            cli_opts.session = PreReadSession(sys.stdin.read())
         detach()
     if cli_opts.replay_commands:
         from kitty.client import main as client_main

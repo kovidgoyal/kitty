@@ -137,6 +137,14 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
     yield finalize_session(ans)
 
 
+class PreReadSession(str):
+
+    def __new__(cls, val: str) -> 'PreReadSession':
+        ans: PreReadSession = str.__new__(cls, val)
+        ans.pre_read = True  # type: ignore
+        return ans
+
+
 def create_sessions(
     opts: Options,
     args: Optional[CLIOptions] = None,
@@ -146,12 +154,15 @@ def create_sessions(
     default_session: Optional[str] = None
 ) -> Generator[Session, None, None]:
     if args and args.session:
-        if args.session == '-':
-            f = sys.stdin
+        if isinstance(args.session, PreReadSession):
+            session_data = '' + str(args.session)
         else:
-            f = open(args.session)
-        with f:
-            session_data = f.read()
+            if args.session == '-':
+                f = sys.stdin
+            else:
+                f = open(args.session)
+            with f:
+                session_data = f.read()
         yield from parse_session(session_data, opts, getattr(args, 'title', None))
         return
     if default_session and default_session != 'none':
