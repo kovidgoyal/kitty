@@ -1143,9 +1143,10 @@ _reverse_scroll(Screen *self, unsigned int count, bool fill_from_scrollback) {
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     fill_from_scrollback = fill_from_scrollback && self->linebuf == self->main_linebuf;
     while (count-- > 0) {
-        if (fill_from_scrollback) historybuf_pop_line(self->historybuf, self->alt_linebuf->line);
+        bool copied = false;
+        if (fill_from_scrollback) copied = historybuf_pop_line(self->historybuf, self->alt_linebuf->line);
         INDEX_DOWN;
-        if (fill_from_scrollback) linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, 0);
+        if (copied) linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, 0);
     }
 }
 
