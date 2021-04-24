@@ -261,6 +261,7 @@ def init_env(
     canberra_library: Optional[str] = None,
     extra_logging: Iterable[str] = (),
     extra_include_dirs: Iterable[str] = (),
+    ignore_compiler_warnings: bool = False
 ) -> Env:
     native_optimizations = native_optimizations and not sanitize and not debug
     if native_optimizations and is_macos and is_arm:
@@ -287,19 +288,15 @@ def init_env(
     cppflags = shlex.split(cppflags_)
     for el in extra_logging:
         cppflags.append('-DDEBUG_{}'.format(el.upper().replace('-', '_')))
+    werror = '' if ignore_compiler_warnings else '-Werror'
+    std = '' if is_openbsd else '-std=c11'
+    sanitize_flag = ' '.join(sanitize_args)
+    march = '-march=native' if native_optimizations else ''
     cflags_ = os.environ.get(
         'OVERRIDE_CFLAGS', (
-            '-Wextra {} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {}'
-            ' -pedantic-errors -Werror {} {} -fwrapv {} {} -pipe {} -fvisibility=hidden {}'
-        ).format(
-            float_conversion,
-            '' if is_openbsd else '-std=c11',
-            optimize,
-            ' '.join(sanitize_args),
-            stack_protector,
-            missing_braces,
-            '-march=native' if native_optimizations else '',
-            fortify_source
+            f'-Wextra {float_conversion} -Wno-missing-field-initializers -Wall -Wstrict-prototypes {std}'
+            f' -pedantic-errors {werror} {optimize} {sanitize_flag} -fwrapv {stack_protector} {missing_braces}'
+            f' -pipe {march} -fvisibility=hidden {fortify_source}'
         )
     )
     cflags = shlex.split(cflags_) + shlex.split(
@@ -754,7 +751,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
     env = init_env(
         args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
         args.egl_library, args.startup_notification_library, args.canberra_library,
-        args.extra_logging, args.extra_include_dirs
+        args.extra_logging, args.extra_include_dirs, args.ignore_compiler_warnings
     )
 
 
@@ -1233,6 +1230,11 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         default=Options.link_time_optimization,
         action='store_false',
         help='Turn off Link Time Optimization (LTO).'
+    )
+    p.add_argument(
+        '--ignore-compiler-warnings',
+        default=False, action='store_true',
+        help='Ignore any warnings from the compiler while building'
     )
     return p
 # }}}
