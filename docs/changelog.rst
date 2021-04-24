@@ -11,6 +11,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   scrollback buffer onto the screen. Useful, for example, to restore
   the screen after showing completions below the shell prompt.
 
+- A new remote control command :ref:`at_env` to change the default
+  environment passed to newly created windows (:iss:`3529`)
+
 - Linux: Fix binary kitty builds not able to load fonts in WOFF2 format
   (:iss:`3506`)
 
