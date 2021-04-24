@@ -329,7 +329,7 @@ void
 clear_sprite_map(Font *font) {
 #define CLEAR(s) s->filled = false; s->rendered = false; s->colored = false; s->glyph = 0; zero_at_ptr(&s->extra_glyphs); s->x = 0; s->y = 0; s->z = 0; s->ligature_index = 0;
     SpritePosition *s;
-    for (size_t i = 0; i < sizeof(font->sprite_map)/sizeof(font->sprite_map[0]); i++) {
+    for (size_t i = 0; i < arraysz(font->sprite_map); i++) {
         s = font->sprite_map + i;
         CLEAR(s);
         while ((s = s->next)) {
@@ -343,7 +343,7 @@ void
 clear_special_glyph_cache(Font *font) {
 #define CLEAR(s) s->data = 0; s->glyph = 0;
     SpecialGlyphCache *s;
-    for (size_t i = 0; i < sizeof(font->special_glyph_cache)/sizeof(font->special_glyph_cache[0]); i++) {
+    for (size_t i = 0; i < arraysz(font->special_glyph_cache); i++) {
         s = font->special_glyph_cache + i;
         CLEAR(s);
         while ((s = s->next)) {
