@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import TYPE_CHECKING, Dict, List, Optional, Set, Tuple
 
 from kitty.constants import appname
 
@@ -11,6 +11,9 @@ from .base import (
     ArgsType, Boss, PayloadGetType, PayloadType, RCOptions, RemoteCommand,
     ResponseType, Window
 )
+
+if TYPE_CHECKING:
+    from kitty.cli_stub import LSRCOptions as CLIOptions
 
 
 class LS(RemoteCommand):
@@ -36,7 +39,7 @@ Show all environment variables in output not just differing ones.
 
     argspec = ''
 
-    def message_to_kitty(self, global_opts: RCOptions, opts: Any, args: ArgsType) -> PayloadType:
+    def message_to_kitty(self, global_opts: RCOptions, opts: CLIOptions, args: ArgsType) -> PayloadType:
         return {'all_env_vars': opts.all_env_vars}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
