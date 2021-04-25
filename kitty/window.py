@@ -19,7 +19,7 @@ from typing import (
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .config import build_ansi_color_table
-from .constants import appname, wakeup
+from .constants import appname, wakeup, is_macos
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
@@ -629,13 +629,15 @@ class Window:
                 tab.on_bell(self)
 
     def change_titlebar_color(self) -> None:
-        val = self.opts.macos_titlebar_color
+        val = self.opts.macos_titlebar_color if is_macos else self.opts.wayland_titlebar_color
         if val:
             if (val & 0xff) == 1:
                 val = self.screen.color_profile.default_bg
             else:
                 val = val >> 8
             set_titlebar_color(self.os_window_id, val)
+        else:
+            set_titlebar_color(self.os_window_id, 0, True)
 
     def change_colors(self, changes: Dict[DynamicColor, Optional[str]]) -> None:
         dirtied = default_bg_changed = False

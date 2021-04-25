@@ -573,11 +573,13 @@ intercept_cocoa_fullscreen(GLFWwindow *w) {
 #endif
 
 void
-set_titlebar_color(OSWindow *w, color_type color) {
+set_titlebar_color(OSWindow *w, color_type color, bool use_system_color) {
     if (w->handle && (!w->last_titlebar_color || (w->last_titlebar_color & 0xffffff) != (color & 0xffffff))) {
         w->last_titlebar_color = (1 << 24) | (color & 0xffffff);
 #ifdef __APPLE__
-        cocoa_set_titlebar_color(glfwGetCocoaWindow(w->handle), color);
+        if (!use_system_color) cocoa_set_titlebar_color(glfwGetCocoaWindow(w->handle), color);
+#else
+        if (global_state.is_wayland && glfwWaylandSetTitlebarColor) glfwWaylandSetTitlebarColor(w->handle, color, use_system_color);
 #endif
     }
 }

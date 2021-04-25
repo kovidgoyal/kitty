@@ -2154,6 +2154,10 @@ typedef void (*glfwRequestWaylandFrameEvent_func)(GLFWwindow*, unsigned long lon
 GFW_EXTERN glfwRequestWaylandFrameEvent_func glfwRequestWaylandFrameEvent_impl;
 #define glfwRequestWaylandFrameEvent glfwRequestWaylandFrameEvent_impl
 
+typedef bool (*glfwWaylandSetTitlebarColor_func)(GLFWwindow*, uint32_t, bool);
+GFW_EXTERN glfwWaylandSetTitlebarColor_func glfwWaylandSetTitlebarColor_impl;
+#define glfwWaylandSetTitlebarColor glfwWaylandSetTitlebarColor_impl
+
 typedef unsigned long long (*glfwDBusUserNotify_func)(const char*, const char*, const char*, const char*, const char*, int32_t, GLFWDBusnotificationcreatedfun, void*);
 GFW_EXTERN glfwDBusUserNotify_func glfwDBusUserNotify_impl;
 #define glfwDBusUserNotify glfwDBusUserNotify_impl

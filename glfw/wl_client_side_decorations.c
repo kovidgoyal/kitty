@@ -146,6 +146,17 @@ static void
 render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     const bool is_focused = window->id == _glfw.focusedWindowId;
     uint32_t bg_color = is_focused ? active_bg_color : passive_bg_color;
+    uint32_t fg_color = is_focused ? 0xff444444 : 0xff888888;
+    if (decs.use_custom_titlebar_color) {
+        bg_color = 0xff000000 | (decs.titlebar_color & 0xffffff);
+        double red = ((bg_color >> 16) & 0xFF) / 255.0;
+        double green = ((bg_color >> 8) & 0xFF) / 255.0;
+        double blue = (bg_color & 0xFF) / 255.0;
+        double luma = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+        if (luma < 0.5) {
+            fg_color = is_focused ? 0xffeeeeee : 0xff888888;
+        }
+    }
     uint8_t *output = to_front_buffer ? decs.top.buffer.data.front : decs.top.buffer.data.back;
 
     // render shadow part
@@ -169,7 +180,6 @@ render_title_bar(_GLFWwindow *window, bool to_front_buffer) {
     // render text part
     output += decs.top.buffer.stride * margin;
     if (window->wl.title && window->wl.title[0] && _glfw.callbacks.draw_text) {
-        uint32_t fg_color = is_focused ? 0xff444444 : 0xff888888;
         if (_glfw.callbacks.draw_text((GLFWwindow*)window, window->wl.title, fg_color, bg_color, output, decs.top.buffer.width, decs.top.buffer.height - margin, 0, 0, 0)) return;
     }
     for (uint32_t *px = (uint32_t*)output, *end = (uint32_t*)(output + decs.top.buffer.size_in_bytes); px < end; px++) {
@@ -411,5 +421,18 @@ set_csd_window_geometry(_GLFWwindow *window, int32_t *width, int32_t *height) {
     if (has_csd) {
         decs.geometry.y = -decs.metrics.visible_titlebar_height;
         *height -= decs.metrics.visible_titlebar_height;
+    }
+}
+
+void
+set_titlebar_color(_GLFWwindow *window, uint32_t color, bool use_system_color) {
+    bool use_custom_color = !use_system_color;
+    if (use_custom_color != decs.use_custom_titlebar_color || color != decs.titlebar_color) {
+        decs.use_custom_titlebar_color = use_custom_color;
+        decs.titlebar_color = color;
+    }
+    if (window->decorated && decs.top.surface) {
+        update_title_bar(window);
+        damage_csd(top, decs.top.buffer.front);
     }
 }

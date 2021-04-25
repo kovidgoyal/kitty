@@ -437,7 +437,7 @@ def init_cell_program() -> None:
     pass
 
 
-def set_titlebar_color(os_window_id: int, color: int) -> bool:
+def set_titlebar_color(os_window_id: int, color: int, use_system_color: bool = False) -> bool:
     pass
 
 

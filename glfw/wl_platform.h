@@ -195,6 +195,9 @@ typedef struct _GLFWwindowWayland
             size_t for_decoration_size, stride, segments, corner_size;
         } shadow_tile;
         monotonic_t last_click_on_top_decoration_at;
+
+        uint32_t titlebar_color;
+        bool use_custom_titlebar_color;
     } decorations;
 
     struct {

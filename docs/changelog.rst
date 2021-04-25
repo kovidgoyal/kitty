@@ -32,6 +32,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - GNOME: Fix maximize state not being remembered when focus changes and window
   decorations are hidden (:iss:`3507`)
 
+- GNOME: Add a new :opt:`wayland_titlebar_color` option to control the color of the
+  kitty window titlebar
+
 - Fix reading :option:`kitty --session` from ``STDIN`` not working when the
   :option:`kitty --detach` option is used (:iss:`3523`)
 

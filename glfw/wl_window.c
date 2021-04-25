@@ -2001,3 +2001,12 @@ GLFWAPI unsigned long long glfwDBusUserNotify(const char *app_name, const char* 
 GLFWAPI void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler) {
     glfw_dbus_set_user_notification_activated_handler(handler);
 }
+
+GLFWAPI bool glfwWaylandSetTitlebarColor(GLFWwindow *handle, uint32_t color, bool use_system_color) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    if (!window->wl.decorations.serverSide) {
+        set_titlebar_color(window, color, use_system_color);
+        return true;
+    }
+    return false;
+}
