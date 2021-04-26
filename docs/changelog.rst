@@ -41,6 +41,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Special case rendering of the few remaining Powerline box drawing chars
   (:iss:`3535`)
 
+- Fix ``kitty @ set-colors`` not working for the :opt:`active_tab_foreground`.
+
 
 0.20.1 [2021-04-19]
 ----------------------

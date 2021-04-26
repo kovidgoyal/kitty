@@ -295,6 +295,7 @@ class TabBar:
     def patch_colors(self, spec: Dict[str, Any]) -> None:
         if 'active_tab_foreground' in spec:
             self.active_fg = (spec['active_tab_foreground'] << 8) | 2
+            self.draw_data = self.draw_data._replace(active_fg=color_from_int(spec['active_tab_foreground']))
         if 'active_tab_background' in spec:
             self.active_bg = (spec['active_tab_background'] << 8) | 2
             self.draw_data = self.draw_data._replace(active_bg=color_from_int(spec['active_tab_background']))
