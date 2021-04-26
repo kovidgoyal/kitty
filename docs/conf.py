@@ -167,8 +167,8 @@ html_show_sourcelink = False
 # One entry per manual page. List of tuples
 # (source start file, name, description, authors, manual section).
 man_pages = [
-    ('invocation', 'kitty', 'kitty Documentation',
-     [author], 1)
+    ('invocation', 'kitty', 'kitty Documentation', [author], 1),
+    ('conf', 'kitty.conf', 'kitty.conf Documentation', [author], 5)
 ]
 
 

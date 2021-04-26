@@ -39,6 +39,16 @@ expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
 Sample kitty.conf
 ^^^^^^^^^^^^^^^^^^^^^
 
-You can download a sample :file:`kitty.conf` file with all default settings and
-comments describing each setting by clicking: :download:`sample kitty.conf
-</generated/conf/kitty.conf>`.
+.. only:: html
+
+    You can download a sample :file:`kitty.conf` file with all default settings and
+    comments describing each setting by clicking: :download:`sample kitty.conf
+    </generated/conf/kitty.conf>`.
+
+.. only:: man
+
+   You can edit a fully commented sample kitty.conf by pressing the
+   :sc:`edit_config_file` shortcut in kitty. This will generate a config
+   file with full documentation and all settings commented out. If you
+   have a pre-existing kitty.conf, then that will be used instead, delete
+   it to see the sample file.
