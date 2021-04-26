@@ -204,7 +204,7 @@ def line_equation(x1: int, y1: int, x2: int, y2: int) -> Callable[[int], float]:
 
 
 @supersampled()
-def triangle(buf: BufType, width: int, height: int, left: bool = True) -> None:
+def triangle(buf: SSByteArray, width: int, height: int, left: bool = True) -> None:
     ay1, by1, y2 = 0, height - 1, height // 2
     if left:
         x1, x2 = 0, width - 1
@@ -217,7 +217,7 @@ def triangle(buf: BufType, width: int, height: int, left: bool = True) -> None:
 
 
 @supersampled()
-def corner_triangle(buf: BufType, width: int, height: int, corner: str) -> None:
+def corner_triangle(buf: SSByteArray, width: int, height: int, corner: str) -> None:
     if corner == 'top-right' or corner == 'bottom-left':
         diagonal_y = line_equation(0, 0, width - 1, height - 1)
         if corner == 'top-right':
@@ -234,7 +234,7 @@ def corner_triangle(buf: BufType, width: int, height: int, corner: str) -> None:
 
 
 @supersampled()
-def half_triangle(buf: BufType, width: int, height: int, which: str = 'left', inverted: bool = False) -> None:
+def half_triangle(buf: SSByteArray, width: int, height: int, which: str = 'left', inverted: bool = False) -> None:
     mid_x, mid_y = width // 2, height // 2
     if which == 'left':
         upper_y = line_equation(0, 0, mid_x, mid_y)
@@ -275,19 +275,17 @@ def thick_line(buf: BufType, width: int, height: int, thickness_in_pixels: int, 
 
 
 @supersampled()
-def cross_line(buf: BufType, width: int, height: int, left: bool = True, level: int = 1) -> None:
+def cross_line(buf: SSByteArray, width: int, height: int, left: bool = True, level: int = 1) -> None:
     if left:
         p1, p2 = (0, 0), (width - 1, height - 1)
     else:
         p1, p2 = (width - 1, 0), (0, height - 1)
-    supersample_factor = getattr(buf, 'supersample_factor')
-    thick_line(buf, width, height, supersample_factor * thickness(level), p1, p2)
+    thick_line(buf, width, height, buf.supersample_factor * thickness(level), p1, p2)
 
 
 @supersampled()
-def half_cross_line(buf: BufType, width: int, height: int, which: str = 'tl', level: int = 1) -> None:
-    supersample_factor = getattr(buf, 'supersample_factor')
-    thickness_in_pixels = thickness(level) * supersample_factor
+def half_cross_line(buf: SSByteArray, width: int, height: int, which: str = 'tl', level: int = 1) -> None:
+    thickness_in_pixels = thickness(level) * buf.supersample_factor
     my = (height - 1) // 2
     if which == 'tl':
         p1 = 0, 0
@@ -305,9 +303,8 @@ def half_cross_line(buf: BufType, width: int, height: int, which: str = 'tl', le
 
 
 @supersampled()
-def mid_lines(buf: BufType, width: int, height: int, level: int = 1, pts: Iterable[str] = ('lt',)) -> None:
+def mid_lines(buf: SSByteArray, width: int, height: int, level: int = 1, pts: Iterable[str] = ('lt',)) -> None:
     mid_x, mid_y = width // 2, height // 2
-    supersample_factor = getattr(buf, 'supersample_factor')
 
     def pt_to_coords(p: str) -> Tuple[int, int]:
         if p == 'l':
@@ -321,7 +318,7 @@ def mid_lines(buf: BufType, width: int, height: int, level: int = 1, pts: Iterab
 
     for x in pts:
         p1, p2 = map(pt_to_coords, x)
-        thick_line(buf, width, height, supersample_factor * thickness(level), p1, p2)
+        thick_line(buf, width, height, buf.supersample_factor * thickness(level), p1, p2)
 
 
 ParameterizedFunc = Callable[[float], float]
@@ -392,7 +389,7 @@ def get_bezier_limits(bezier_x: ParameterizedFunc, bezier_y: ParameterizedFunc) 
 
 
 @supersampled()
-def D(buf: BufType, width: int, height: int, left: bool = True) -> None:
+def D(buf: SSByteArray, width: int, height: int, left: bool = True) -> None:
     c1x = find_bezier_for_D(width, height)
     start = (0, 0)
     end = (0, height - 1)
@@ -413,10 +410,10 @@ def D(buf: BufType, width: int, height: int, left: bool = True) -> None:
 
 
 def draw_parametrized_curve(
-    buf: BufType, width: int, height: int, level: int,
+    buf: SSByteArray, width: int, height: int, level: int,
     xfunc: ParameterizedFunc, yfunc: ParameterizedFunc
 ) -> None:
-    supersample_factor = getattr(buf, 'supersample_factor')
+    supersample_factor = buf.supersample_factor
     num_samples = height * 8
     delta, extra = divmod(thickness(level), 2)
     delta *= supersample_factor
@@ -490,16 +487,14 @@ def rectircle_equations(
 
 
 @supersampled()
-def rounded_corner(buf: BufType, width: int, height: int, level: int = 1, which: str = '╭') -> None:
-    supersample_factor = getattr(buf, 'supersample_factor')
-    xfunc, yfunc = rectircle_equations(width, height, supersample_factor, which)
+def rounded_corner(buf: SSByteArray, width: int, height: int, level: int = 1, which: str = '╭') -> None:
+    xfunc, yfunc = rectircle_equations(width, height, buf.supersample_factor, which)
     draw_parametrized_curve(buf, width, height, level, xfunc, yfunc)
 
 
 @supersampled()
-def rounded_separator(buf: BufType, width: int, height: int, level: int = 1, left: bool = True) -> None:
-    supersample_factor = getattr(buf, 'supersample_factor')
-    gap = thickness(level) * supersample_factor
+def rounded_separator(buf: SSByteArray, width: int, height: int, level: int = 1, left: bool = True) -> None:
+    gap = thickness(level) * buf.supersample_factor
     c1x = find_bezier_for_D(width - gap, height)
     start = (0, 0)
     end = (0, height - 1)
@@ -510,7 +505,7 @@ def rounded_separator(buf: BufType, width: int, height: int, level: int = 1, lef
         draw_parametrized_curve(buf, width, height, level, bezier_x, bezier_y)
     else:
         mbuf = SSByteArray(width * height)
-        mbuf.supersample_factor = supersample_factor
+        mbuf.supersample_factor = buf.supersample_factor
         draw_parametrized_curve(mbuf, width, height, level, bezier_x, bezier_y)
         for y in range(height):
             offset = y * width
@@ -702,7 +697,7 @@ def sextant(buf: BufType, width: int, height: int, level: int = 1, which: int = 
 
 @supersampled()
 def smooth_mosaic(
-    buf: BufType, width: int, height: int, level: int = 1,
+    buf: SSByteArray, width: int, height: int, level: int = 1,
     lower: bool = True, a: Tuple[float, float] = (0, 0), b: Tuple[float, float] = (0, 0)
 ) -> None:
     ax, ay = int(a[0] * (width - 1)), int(a[1] * (height - 1))
