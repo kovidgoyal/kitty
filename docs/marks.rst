@@ -19,12 +19,12 @@ If you want to make it case-insensitive, use::
 
 To make it match only complete words, use::
 
-    map f1 toggle_marker regex 1 \bERROR\b
+    map f1 toggle_marker regex 1 \\bERROR\\b
 
 Suppose you want to highlight both :code:`ERROR` and :code:`WARNING`, case
 insensitively::
 
-    map f1 toggle_marker iregex 1 \bERROR\b 2 \bWARNING\b
+    map f1 toggle_marker iregex 1 \\bERROR\\b 2 \\bWARNING\\b
 
 kitty supports up to 3 mark groups (the numbers in the commands above). You
 can control the colors used for these groups in :file:`kitty.conf` with::
