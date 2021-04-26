@@ -33,10 +33,13 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   decorations are hidden (:iss:`3507`)
 
 - GNOME: Add a new :opt:`wayland_titlebar_color` option to control the color of the
-  kitty window titlebar
+  kitty window title bar
 
 - Fix reading :option:`kitty --session` from ``STDIN`` not working when the
   :option:`kitty --detach` option is used (:iss:`3523`)
+
+- Special case rendering of the few remaining Powerline box drawing chars
+  (:iss:`3535`)
 
 
 0.20.1 [2021-04-19]

@@ -165,12 +165,13 @@ def downsample(src: BufType, dest: BufType, dest_width: int, dest_height: int, f
             dest[offset + x] = min(255, dest[offset + x] + average_intensity_in_src(x, y))
 
 
+class SSByteArray(bytearray):
+    supersample_factor = 1
+
+
 def supersampled(supersample_factor: int = 4) -> Callable:
     # Anti-alias the drawing performed by the wrapped function by
     # using supersampling
-
-    class SSByteArray(bytearray):
-        supersample_factor = 1
 
     def create_wrapper(f: Callable) -> Callable:
         @wraps(f)
@@ -495,6 +496,29 @@ def rounded_corner(buf: BufType, width: int, height: int, level: int = 1, which:
     draw_parametrized_curve(buf, width, height, level, xfunc, yfunc)
 
 
+@supersampled()
+def rounded_separator(buf: BufType, width: int, height: int, level: int = 1, left: bool = True) -> None:
+    supersample_factor = getattr(buf, 'supersample_factor')
+    gap = thickness(level) * supersample_factor
+    c1x = find_bezier_for_D(width - gap, height)
+    start = (0, 0)
+    end = (0, height - 1)
+    c1 = c1x, start[1]
+    c2 = c1x, end[1]
+    bezier_x, bezier_y = cubic_bezier(start, end, c1, c2)
+    if left:
+        draw_parametrized_curve(buf, width, height, level, bezier_x, bezier_y)
+    else:
+        mbuf = SSByteArray(width * height)
+        mbuf.supersample_factor = supersample_factor
+        draw_parametrized_curve(mbuf, width, height, level, bezier_x, bezier_y)
+        for y in range(height):
+            offset = y * width
+            for src_x in range(width):
+                dest_x = width - 1 - src_x
+                buf[offset + dest_x] = mbuf[offset + src_x]
+
+
 def half_dhline(buf: BufType, width: int, height: int, level: int = 1, which: str = 'left', only: Optional[str] = None) -> Tuple[int, int]:
     x1, x2 = (0, width // 2) if which == 'left' else (width // 2, width)
     gap = thickness(level + 1, horizontal=False)
@@ -792,15 +816,21 @@ box_chars: Dict[str, List[Callable]] = {
     '╾': [p(half_hline, level=3), p(half_hline, which='right')],
     '╿': [p(half_vline, level=3), p(half_vline, which='bottom')],
     '': [triangle],
-    '': [p(triangle, left=False)],
-    '': [D],
-    '': [p(D, left=False)],
     '': [p(half_cross_line, which='tl'), p(half_cross_line, which='bl')],
+    '': [p(triangle, left=False)],
     '': [p(half_cross_line, which='tr'), p(half_cross_line, which='br')],
+    '': [D],
+    '': [rounded_separator],
+    '': [p(D, left=False)],
+    '': [p(rounded_separator, left=False)],
     '': [p(corner_triangle, corner='bottom-left')],
+    '': [cross_line],
     '': [p(corner_triangle, corner='bottom-right')],
+    '': [p(cross_line, left=False)],
     '': [p(corner_triangle, corner='top-left')],
+    '': [p(cross_line, left=False)],
     '': [p(corner_triangle, corner='top-right')],
+    '': [cross_line],
     '═': [dhline],
     '║': [dvline],
 
@@ -1037,7 +1067,7 @@ def test_char(ch: str, sz: int = 48) -> None:
             set_send_sprite_to_gpu(None)
 
 
-def test_drawing(sz: int = 48, family: str = 'monospace') -> None:
+def test_drawing(sz: int = 48, family: str = 'monospace', start: int = 0x2500, num_rows: int = 10, num_cols: int = 16) -> None:
     from .render import display_bitmap, setup_for_testing
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
 
@@ -1055,14 +1085,14 @@ def test_drawing(sz: int = 48, family: str = 'monospace') -> None:
                 return cell
             return space
 
-        pos = 0x2500
+        pos = start
         rows = []
         space_row = join_cells(repeat(space, 32))
 
         try:
-            for r in range(10):
+            for r in range(num_rows):
                 row = []
-                for i in range(16):
+                for i in range(num_cols):
                     row.append(render_chr(chr(pos)))
                     row.append(space)
                     pos += 1
