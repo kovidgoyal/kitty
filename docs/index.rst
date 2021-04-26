@@ -186,8 +186,9 @@ Configuring kitty
 -------------------
 
 |kitty| is highly configurable, everything from keyboard shortcuts to
-painting frames-per-second. For details and a sample :file:`kitty.conf`,
-see the :doc:`configuration docs <conf>`.
+painting frames-per-second. Press :sc:`edit_config_file` in kitty
+to open its fully commented sample config file in your text editor.
+For details see the :doc:`configuration docs <conf>`.
 
 
 Remote control
