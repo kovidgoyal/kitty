@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.20.2 [future]
+0.20.2 [2021-04-28]
 ----------------------
 
 - A new protocol extension to :ref:`unscroll <unscroll>` text from the
