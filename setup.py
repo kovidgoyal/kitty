@@ -831,7 +831,7 @@ def copy_man_pages(ddir: str) -> None:
     src = 'docs/_build/man'
     if not os.path.exists(src):
         raise SystemExit('''\
-The kitty man page is missing. If you are building from git then run:
+The kitty man pages are missing. If you are building from git then run:
 make && make docs
 (needs the sphinx documentation system to be installed)
 ''')
