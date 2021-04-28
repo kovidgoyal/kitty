@@ -827,6 +827,7 @@ def copy_man_pages(ddir: str) -> None:
     safe_makedirs(mandir)
     with suppress(FileNotFoundError):
         shutil.rmtree(os.path.join(mandir, 'man1'))
+        shutil.rmtree(os.path.join(mandir, 'man5'))
     src = 'docs/_build/man'
     if not os.path.exists(src):
         raise SystemExit('''\
@@ -834,7 +835,10 @@ The kitty man page is missing. If you are building from git then run:
 make && make docs
 (needs the sphinx documentation system to be installed)
 ''')
-    shutil.copytree(src, os.path.join(mandir, 'man1'))
+    for x in '15':
+        os.makedirs(os.path.join(mandir, f'man{x}'))
+        for y in glob.glob(os.path.join(src, f'*.{x}')):
+            shutil.copy2(y, os.path.join(mandir, f'man{x}'))
 
 
 def copy_html_docs(ddir: str) -> None:
