@@ -63,7 +63,7 @@ Matching criteria
 ------------------
 
 An entry in :file:`open-actions.conf` must have one or more matching criteria.
-URLs that match all criteria for an entry will trigger that entries' actions.
+URLs that match all criteria for an entry will trigger that entry's actions.
 Processing stops at the first matching entry, so put more specific matching
 criteria at the start of the list. Entries in the file are separated by blank
 lines. The various available criteria are:
