@@ -1303,7 +1303,7 @@ both Option keys as Alt, instead.
 '''))
 
 o('macos_hide_from_tasks', False, long_text=_('''
-Hide the kitty window from running tasks (:kbd:`Option+Tab`) on macOS.
+Hide the kitty window from running tasks (:kbd:`⌘+Tab`) on macOS.
 '''))
 
 o('macos_quit_when_last_window_closed', False, long_text=_('''
