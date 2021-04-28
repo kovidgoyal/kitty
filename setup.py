@@ -825,9 +825,10 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
 def copy_man_pages(ddir: str) -> None:
     mandir = os.path.join(ddir, 'share', 'man')
     safe_makedirs(mandir)
+    man_levels = '15'
     with suppress(FileNotFoundError):
-        shutil.rmtree(os.path.join(mandir, 'man1'))
-        shutil.rmtree(os.path.join(mandir, 'man5'))
+        for x in man_levels:
+            shutil.rmtree(os.path.join(mandir, f'man{x}'))
     src = 'docs/_build/man'
     if not os.path.exists(src):
         raise SystemExit('''\
@@ -835,7 +836,7 @@ The kitty man pages are missing. If you are building from git then run:
 make && make docs
 (needs the sphinx documentation system to be installed)
 ''')
-    for x in '15':
+    for x in man_levels:
         os.makedirs(os.path.join(mandir, f'man{x}'))
         for y in glob.glob(os.path.join(src, f'*.{x}')):
             shutil.copy2(y, os.path.join(mandir, f'man{x}'))
