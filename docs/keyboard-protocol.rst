@@ -28,7 +28,7 @@ issues in that proposal, listed at the :ref:`bottom of this document
 
 You can see this protocol with all enhancements in action by running::
 
-    kitty +kitten key_demo
+    kitty +kitten show_key -m kitty
 
 inside the kitty terminal to report key events.
 
