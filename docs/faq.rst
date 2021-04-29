@@ -234,7 +234,7 @@ the :sc:`send_text <send_text>` you can use the ``showkey`` utility. Run::
     showkey -a
 
 Then press the key you want to emulate. On macOS, this utility is currently not
-available, but you can get something similar grabbing and compiling this 
+available, but you can get something similar grabbing and compiling this
 `gist <https://gist.github.com/rprichard/9b05a488439455e6e41fd73e5bfa8c15>`.
 
 How do I open a new window or tab with the same working directory as the current window?
