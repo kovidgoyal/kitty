@@ -110,6 +110,13 @@ def run_website(args: Any) -> None:
     subprocess.check_call(['git', 'push'])
 
 
+def sign_file(path: str) -> None:
+    subprocess.check_call([
+        os.environ['PENV'] + '/gpg-as-kovid', '--output', path + '.sig',
+        '--detach-sig', path
+    ])
+
+
 def run_sdist(args: Any) -> None:
     with tempfile.TemporaryDirectory() as tdir:
         base = os.path.join(tdir, f'kitty-{version}')
@@ -124,6 +131,7 @@ def run_sdist(args: Any) -> None:
         with suppress(FileNotFoundError):
             os.remove(dest + '.xz')
         subprocess.check_call(['xz', '-9', dest])
+        sign_file(dest + '.xz')
 
 
 class ReadFileWithProgressReporting(io.FileIO):  # {{{
@@ -313,7 +321,7 @@ class GitHub(Base):  # {{{
                 'tag_name': self.current_tag_name,
                 'target_commitish': 'master',
                 'name': 'version %s' % self.version,
-                'body': 'Release version %s' % self.version,
+                'body': 'Release version %s. GPG key used for signing tarballs is: https://calibre-ebook.com/signatures/kovid.gpg' % self.version,
                 'draft': False,
                 'prerelease': False
             }))
@@ -331,18 +339,26 @@ def get_github_data() -> Dict[str, str]:
 
 
 def run_upload(args: Any) -> None:
-    files = {
-        os.path.join('bypy', 'b', f.format(version)): desc
-        for f, desc in {
-            'macos/dist/kitty-{}.dmg': 'macOS dmg',
-            'linux/64/sw/dist/kitty-{}-x86_64.txz': 'Linux amd64 binary bundle',
-            'linux/32/sw/dist/kitty-{}-i686.txz': 'Linux x86 binary bundle',
-        }.items()
-    }
+    files = {}
+    signatures = {}
+    for f, desc in {
+        'macos/dist/kitty-{}.dmg': 'macOS dmg',
+        'linux/64/sw/dist/kitty-{}-x86_64.txz': 'Linux amd64 binary bundle',
+        'linux/32/sw/dist/kitty-{}-i686.txz': 'Linux x86 binary bundle',
+    }.items():
+        path = os.path.join('bypy', 'b', f.format(version))
+        if not os.path.exists(path):
+            raise SystemExit(f'The installer {path} does not exist')
+        files[path] = desc
+        signatures[path] = desc + ' GPG signature'
     files[f'build/kitty-{version}.tar.xz'] = 'Source code'
+    files[f'build/kitty-{version}.tar.xz.sig'] = 'Source code GPG signature'
+    for path, desc in signatures.items():
+        sign_file(path)
+        files[path + '.sig'] = desc + ' GPG signature'
     for f in files:
         if not os.path.exists(f):
-            raise SystemExit('The installer {} does not exist'.format(f))
+            raise SystemExit(f'The release artifact {f} does not exist')
     gd = get_github_data()
     gh = GitHub(files, appname, version, gd['username'], gd['password'])
     gh()
