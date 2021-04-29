@@ -278,7 +278,6 @@ class Freeze(object):
                 'lcms2.2',
                 'crypto.1.1',
                 'ssl.1.1',
-                'ffi.7',
         ):
             print('\nAdding', x)
             x = 'lib%s.dylib' % x
@@ -420,7 +419,7 @@ class Freeze(object):
         py_compile(join(self.resources_dir, 'Python'))
 
     @flush
-    def makedmg(self, d, volname, internet_enable=True, format='ULFO'):
+    def makedmg(self, d, volname, format='ULFO'):
         ''' Copy a directory d into a dmg named volname '''
         print('\nMaking dmg...')
         sys.stdout.flush()
@@ -456,9 +455,6 @@ class Freeze(object):
         print('\nCreating dmg...')
         with timeit() as times:
             subprocess.check_call(cmd + [dmg])
-            if internet_enable:
-                subprocess.check_call(
-                    ['/usr/bin/hdiutil', 'internet-enable', '-yes', dmg])
         print('dmg created in %d minutes and %d seconds' % tuple(times))
         shutil.rmtree(tdir)
         size = os.stat(dmg).st_size / (1024 * 1024.)

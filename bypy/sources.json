@@ -28,6 +28,16 @@
         }
     },
 
+    {
+        "name": "cmake",
+        "os": "macos",
+        "unix": {
+            "filename": "cmake-3.19.4.tar.gz",
+            "hash": "sha256:7d0232b9f1c57e8de81f38071ef8203e6820fe7eec8ae46a1df125d88dbcc2e1",
+            "urls": ["https://cmake.org/files/v3.19/{filename}"]
+        }
+    },
+
 
     {
         "name": "expat",
@@ -72,6 +82,7 @@
 
     {
         "name": "libffi",
+        "os": "linux",
         "unix": {
             "filename": "libffi-3.3.0.tar.gz",
             "hash": "sha256:72fba7922703ddfa7a028d513ac15a85c8d54c8d67f55fa5a4802885dc652056",
@@ -130,9 +141,9 @@
     {
         "name": "python",
         "unix": {
-            "filename": "Python-3.9.1.tar.xz",
-            "hash": "sha256:991c3f8ac97992f3d308fefeb03a64db462574eadbff34ce8bc5bb583d9903ff",
-            "urls": ["https://www.python.org/ftp/python/3.9.1/{filename}"]
+            "filename": "Python-3.9.4.tar.xz",
+            "hash": "sha256:4b0e6644a76f8df864ae24ac500a51bbf68bd098f6a173e27d3b61cdca9aa134",
+            "urls": ["https://www.python.org/ftp/python/3.9.4/{filename}"]
         }
     },
 
@@ -151,16 +162,6 @@
             "filename": "Pygments-2.7.4.tar.gz",
             "hash": "sha256:df49d09b498e83c1a73128295860250b0b7edd4c723a32e9bc0d295c7c2ec337",
             "urls": ["pypi"]
-        }
-    },
-
-    {
-        "name": "cmake",
-        "os": "macos",
-        "unix": {
-            "filename": "cmake-3.19.4.tar.gz",
-            "hash": "sha256:7d0232b9f1c57e8de81f38071ef8203e6820fe7eec8ae46a1df125d88dbcc2e1",
-            "urls": ["https://cmake.org/files/v3.19/{filename}"]
         }
     },
 
