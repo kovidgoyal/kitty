@@ -250,6 +250,18 @@ def first_successful_compile(cc: str, *cflags: str, src: Optional[str] = None, l
     return ''
 
 
+def set_arches(flags: List[str], arches: Iterable[str] = ('x86_64', 'arm64')) -> None:
+    while True:
+        try:
+            idx = flags.index('-arch')
+        except ValueError:
+            break
+        del flags[idx]
+        del flags[idx]
+    for arch in arches:
+        flags.extend(('-arch', arch))
+
+
 def init_env(
     debug: bool = False,
     sanitize: bool = False,
@@ -261,7 +273,8 @@ def init_env(
     canberra_library: Optional[str] = None,
     extra_logging: Iterable[str] = (),
     extra_include_dirs: Iterable[str] = (),
-    ignore_compiler_warnings: bool = False
+    ignore_compiler_warnings: bool = False,
+    build_universal_binary: bool = False
 ) -> Env:
     native_optimizations = native_optimizations and not sanitize and not debug
     if native_optimizations and is_macos and is_arm:
@@ -344,6 +357,10 @@ def init_env(
 
     for path in extra_include_dirs:
         cflags.append(f'-I{path}')
+
+    if build_universal_binary:
+        set_arches(cflags)
+        set_arches(ldflags)
 
     return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver)
 
@@ -751,7 +768,8 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
     env = init_env(
         args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
         args.egl_library, args.startup_notification_library, args.canberra_library,
-        args.extra_logging, args.extra_include_dirs, args.ignore_compiler_warnings
+        args.extra_logging, args.extra_include_dirs, args.ignore_compiler_warnings,
+        args.build_universal_binary
     )
 
 
@@ -772,6 +790,8 @@ def safe_makedirs(path: str) -> None:
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
     cflags = '-Wall -Werror -fpie'.split()
+    if args.build_universal_binary:
+        cflags += '-arch x86_64 -arch arm64'.split()
     cppflags = []
     libs: List[str] = []
     if args.profile or args.sanitize:
@@ -1241,6 +1261,11 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         default=False, action='store_true',
         help='Ignore any warnings from the compiler while building'
     )
+    p.add_argument(
+        '--build-universal-binary',
+        default=False, action='store_true',
+        help='Build a universal binary (ARM + Intel on macOS, ignored on other platforms)'
+    )
     return p
 # }}}
 
@@ -1248,6 +1273,8 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
 def main() -> None:
     global verbose
     args = option_parser().parse_args(namespace=Options())
+    if not is_macos:
+        args.build_universal_binary = False
     verbose = args.verbose > 0
     args.prefix = os.path.abspath(args.prefix)
     os.chdir(base)
