@@ -49,6 +49,12 @@ kitty - the fast, featureful, GPU based terminal emulator
     Screenshot, showing vim, tig and git running in |kitty| with the 'Tall' layout
 
 
+
+.. contents::
+   :local:
+   :depth: 1
+
+
 .. _quickstart:
 
 Quickstart
@@ -73,10 +79,6 @@ and `Solus <https://dev.getsol.us/source/kitty/>`_.
 
 See :doc:`Configuring kitty <conf>` for help on configuring |kitty| and
 :doc:`Invocation <invocation>` for the command line arguments |kitty| supports.
-
-
-.. contents::
-   :local:
 
 
 Design philosophy
