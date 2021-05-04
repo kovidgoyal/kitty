@@ -454,6 +454,7 @@ cocoa_create_global_menu(void) {
                          action:@selector(open_kitty_website_url:)
                   keyEquivalent:@"?"]
                       setTarget:global_menu_target];
+    [NSApp setHelpMenu:helpMenu];
     [helpMenu release];
 
     [bar release];

@@ -15,6 +15,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Fix keyboard layout change keys defined via compose rules not being
   ignored
 
+- macOS: Fix Spotlight search of global menu not working in non-English locales
+  (:pull:`3567`)
+
+
 0.20.2 [2021-04-28]
 ----------------------
 
