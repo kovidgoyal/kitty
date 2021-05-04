@@ -109,7 +109,7 @@ Layouts
 A layout is an arrangement of multiple kitty *windows* inside a top-level OS window. You can create a new window
 using the :sc:`new_window` key combination.
 
-Currently, there are six layouts available:
+Currently, there are seven layouts available:
 
 * **Fat** -- One (or optionally more) windows are shown full width on the top, the rest of the windows are shown side-by-side on the bottom
 * **Grid** -- All windows are shown in a grid
