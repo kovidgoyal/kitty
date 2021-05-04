@@ -46,6 +46,7 @@ Some programs and libraries that use the kitty graphics protocol:
 
 
 .. contents::
+   :local:
 
 
 Getting the window size

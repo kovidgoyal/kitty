@@ -76,6 +76,7 @@ See :doc:`Configuring kitty <conf>` for help on configuring |kitty| and
 
 
 .. contents::
+   :local:
 
 
 Design philosophy

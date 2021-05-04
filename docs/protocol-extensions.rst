@@ -16,9 +16,11 @@ is to make it as easy to implement these protocol extensions as possible,
 thereby hopefully encouraging their widespread adoption.
 
 If you wish to discuss these extensions, propose additions/changes to them
-please do so by opening issues in the github bug tracker.
+please do so by opening issues in the `GitHub
+<https://github.com/kovidgoyal/kitty/issues>`_ bug tracker.
 
 .. contents::
+   :local:
 
 Colored and styled underlines
 -------------------------------

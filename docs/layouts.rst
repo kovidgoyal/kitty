@@ -28,6 +28,7 @@ are available use :opt:`enabled_layouts`, the first listed layout becomes
 the default. Individual layouts and how to use them are described below.
 
 .. contents::
+   :local:
 
 
 The Stack Layout

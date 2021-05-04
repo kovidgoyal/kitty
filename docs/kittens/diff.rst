@@ -26,6 +26,7 @@ Major Features
    Screenshot, showing a sample diff
 
 .. contents::
+   :local:
 
 
 Installation

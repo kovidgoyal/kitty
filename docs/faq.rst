@@ -4,6 +4,7 @@ Frequently Asked Questions
 .. highlight:: sh
 
 .. contents::
+   :local:
 
 Some special symbols are rendered small/truncated in kitty?
 -----------------------------------------------------------
