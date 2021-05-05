@@ -756,7 +756,7 @@ class TabManager:  # {{{
         active_tab_before_removal = self.active_tab
         self._remove_tab(tab)
         try:
-            active_tab_needs_to_change = self.active_tab is None or self.active_tab is tab
+            active_tab_needs_to_change = (self.active_tab is None and active_tab_before_removal is None) or self.active_tab is tab
         except IndexError:
             active_tab_needs_to_change = True
         while True:
