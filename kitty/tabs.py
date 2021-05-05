@@ -756,7 +756,7 @@ class TabManager:  # {{{
         active_tab_before_removal = self.active_tab
         self._remove_tab(tab)
         active_tab = self.active_tab
-        active_tab_needs_to_change = (active_tab is None and active_tab_before_removal is None) or active_tab is tab
+        active_tab_needs_to_change = (active_tab is None and (active_tab_before_removal is None or active_tab_before_removal is tab)) or active_tab is tab
         while True:
             try:
                 self.active_tab_history.remove(tab.id)
