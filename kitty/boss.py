@@ -768,6 +768,12 @@ class Boss:
                     cocoa_set_menubar_title(w.title or '')
             tm.mark_tab_bar_dirty()
 
+    def on_activity_since_last_focus(self, window: Window) -> None:
+        os_window_id = window.os_window_id
+        tm = self.os_window_map.get(os_window_id)
+        if tm is not None:
+            tm.mark_tab_bar_dirty()
+
     def update_tab_bar_data(self, os_window_id: int) -> None:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:

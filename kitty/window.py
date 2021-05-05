@@ -612,6 +612,10 @@ class Window:
     def has_activity_since_last_focus(self) -> bool:
         return self.screen.has_activity_since_last_focus()
 
+    def on_activity_since_last_focus(self) -> None:
+        if self.opts.tab_activity_symbol:
+            get_boss().on_activity_since_last_focus(self)
+
     def on_bell(self) -> None:
         if self.opts.command_on_bell and self.opts.command_on_bell != ['none']:
             import shlex

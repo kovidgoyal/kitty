@@ -571,6 +571,7 @@ screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
     if (is_ignored_char(och)) return;
     if (!self->has_activity_since_last_focus && !self->has_focus) {
         self->has_activity_since_last_focus = true;
+        CALLBACK("on_activity_since_last_focus", NULL);
     }
     uint32_t ch = och < 256 ? self->g_charset[och] : och;
     bool is_cc = is_combining_char(ch);

@@ -18,6 +18,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix Spotlight search of global menu not working in non-English locales
   (:pull:`3567`)
 
+- Fix tab activity symbol not appearing if no other changes happen in tab bar even when
+  there is activity in a tab (:iss:`3571`)
+
 
 0.20.2 [2021-04-28]
 ----------------------

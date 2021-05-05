@@ -51,6 +51,9 @@ class Callbacks:
         self.notifications = []
         self.open_urls = []
 
+    def on_activity_since_last_focus(self) -> None:
+        pass
+
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
     ans = LineBuf(ynum, xnum)
