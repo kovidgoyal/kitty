@@ -902,7 +902,8 @@ def compile_python(base_path: str) -> None:
 
 def create_linux_bundle_gunk(ddir: str, libdir_name: str) -> None:
     if not os.path.exists('docs/_build/html'):
-        run_tool(['make', 'docs'])
+        make = "gmake" if is_freebsd else "make"
+        run_tool([make, 'docs'])
     copy_man_pages(ddir)
     copy_html_docs(ddir)
     icdir = os.path.join(ddir, 'share', 'icons', 'hicolor', '256x256', 'apps')
