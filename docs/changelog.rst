@@ -21,6 +21,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix tab activity symbol not appearing if no other changes happen in tab bar even when
   there is activity in a tab (:iss:`3571`)
 
+- Fix focus changes not being sent to windows when focused window changes
+  because of the previously focused window being closed (:iss:`3571`)
+
 
 0.20.2 [2021-04-28]
 ----------------------

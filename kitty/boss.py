@@ -436,6 +436,7 @@ class Boss:
                         mark_os_window_for_close(src_tab.os_window_id)
 
     def on_child_death(self, window_id: int) -> None:
+        prev_active_window = self.active_window
         window = self.window_id_map.pop(window_id, None)
         if window is None:
             return
@@ -464,6 +465,12 @@ class Boss:
                 import traceback
                 traceback.print_exc()
         window.action_on_close = window.action_on_removal = None
+        window = self.active_window
+        if window is not prev_active_window:
+            if prev_active_window is not None:
+                prev_active_window.focus_changed(False)
+            if window is not None:
+                window.focus_changed(True)
 
     def close_window(self, window: Optional[Window] = None) -> None:
         window = window or self.active_window
