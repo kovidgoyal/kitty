@@ -35,7 +35,7 @@ find_or_create_sprite_position(SpritePosition **head_, glyph_index *glyphs, glyp
     SpritePosItem **head = (SpritePosItem**)head_, *p;
     const unsigned key_sz = key_size_for_glyph_count(count);
     if (key_sz > scratch_sz) {
-        scratch = realloc(scratch, key_sz + 16);
+        scratch = realloc(scratch, sizeof(glyph_index) * (key_sz + 16));
         if (!scratch) return NULL;
         scratch_sz = key_sz + 16;
     }
