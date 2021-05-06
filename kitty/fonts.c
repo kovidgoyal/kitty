@@ -55,7 +55,7 @@ typedef struct {
 static SymbolMap *symbol_maps = NULL;
 static size_t num_symbol_maps = 0;
 
-typedef enum { SPACER_STARTEGY_UNKNOWN, SPACERS_BEFORE, SPACERS_AFTER } SpacerStrategy;
+typedef enum { SPACER_STRATEGY_UNKNOWN, SPACERS_BEFORE, SPACERS_AFTER } SpacerStrategy;
 
 typedef struct {
     PyObject *face;
@@ -816,7 +816,7 @@ detect_spacer_strategy(hb_font_t *hbf, Font *font) {
 static inline void
 shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, Font *font, bool disable_ligature) {
     hb_font_t *hbf = harfbuzz_font_for_face(font->face);
-    if (font->spacer_strategy == SPACER_STARTEGY_UNKNOWN) detect_spacer_strategy(hbf, font);
+    if (font->spacer_strategy == SPACER_STRATEGY_UNKNOWN) detect_spacer_strategy(hbf, font);
     shape(first_cpu_cell, first_gpu_cell, num_cells, hbf, font, disable_ligature);
 #if 0
         static char dbuf[1024];
