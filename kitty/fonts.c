@@ -644,7 +644,7 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
     int error = 0;
     bool all_rendered = true;
     for (unsigned int i = 0; i < num_cells; i++) {
-        sprite_positions[i] = sprite_position_for(fg, font, glyphs, glyph_count, (uint8_t)i, &error);
+        sprite_positions[i] = sprite_position_for(fg, font, glyphs, glyph_count, i, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
         if (!sprite_positions[i]->rendered) all_rendered = false;
     }
