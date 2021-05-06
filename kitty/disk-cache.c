@@ -25,6 +25,8 @@
 #ifdef HAS_SENDFILE
 #include <sys/sendfile.h>
 #endif
+#undef uthash_fatal
+#define uthash_fatal(msg) fatal(msg)
 
 
 typedef struct {
