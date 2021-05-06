@@ -642,11 +642,13 @@ static inline void
 render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index *glyphs, unsigned glyph_count, bool center_glyph) {
 #define sprite_positions global_glyph_render_scratch.sprite_positions
     int error = 0;
+    bool all_rendered = true;
     for (unsigned int i = 0; i < num_cells; i++) {
         sprite_positions[i] = sprite_position_for(fg, font, glyphs, glyph_count, (uint8_t)i, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
+        if (!sprite_positions[i]->rendered) all_rendered = false;
     }
-    if (sprite_positions[0]->rendered) {
+    if (all_rendered) {
         for (unsigned int i = 0; i < num_cells; i++) { set_cell_sprite(gpu_cells + i, sprite_positions[i]); }
         return;
     }
@@ -657,11 +659,13 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
     if (PyErr_Occurred()) PyErr_Print();
 
     for (unsigned int i = 0; i < num_cells; i++) {
-        sprite_positions[i]->rendered = true;
-        sprite_positions[i]->colored = was_colored;
         set_cell_sprite(gpu_cells + i, sprite_positions[i]);
-        pixel *buf = num_cells == 1 ? fg->canvas.buf : extract_cell_from_canvas(fg, i, num_cells);
-        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sprite_positions[i]->x, sprite_positions[i]->y, sprite_positions[i]->z, buf);
+        if (!sprite_positions[i]->rendered) {
+            sprite_positions[i]->rendered = true;
+            sprite_positions[i]->colored = was_colored;
+            pixel *buf = num_cells == 1 ? fg->canvas.buf : extract_cell_from_canvas(fg, i, num_cells);
+            current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sprite_positions[i]->x, sprite_positions[i]->y, sprite_positions[i]->z, buf);
+        }
     }
 #undef sprite_positions
 }
