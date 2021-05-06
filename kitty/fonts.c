@@ -11,6 +11,7 @@
 #include "emoji.h"
 #include "unicode-data.h"
 #include "charsets.h"
+#include "glyph-cache.h"
 
 #define MISSING_GLYPH 4
 #define MAX_NUM_EXTRA_GLYPHS 8u
@@ -32,16 +33,6 @@ typedef enum {
 typedef struct {
     glyph_index data[MAX_NUM_EXTRA_GLYPHS];
 } ExtraGlyphs;
-
-typedef struct SpritePosition SpritePosition;
-struct SpritePosition {
-    SpritePosition *next;
-    bool filled, rendered, colored;
-    sprite_index x, y, z;
-    uint8_t ligature_index;
-    glyph_index glyph;
-    ExtraGlyphs extra_glyphs;
-};
 
 #define SPECIAL_FILLED_MASK 1
 #define SPECIAL_VALUE_MASK 2
@@ -81,7 +72,7 @@ typedef enum { SPACER_STARTEGY_UNKNOWN, SPACERS_BEFORE, SPACERS_AFTER } SpacerSt
 typedef struct {
     PyObject *face;
     // Map glyphs to sprite map co-ords
-    SpritePosition sprite_map[1024];
+    SpritePosition *sprite_position_hash_table;
     hb_feature_t* ffs_hb_features;
     size_t num_ffs_hb_features;
     SpecialGlyphCache special_glyph_cache[SPECIAL_GLYPH_CACHE_SIZE];
@@ -151,7 +142,8 @@ free_maps(Font *font) {
     }\
     memset(font->attr, 0, sizeof(font->attr)); \
 }
-    free_a_map(SpritePosition, sprite_map);
+    free_sprite_position_hash_table(&font->sprite_position_hash_table);
+    font->sprite_position_hash_table = NULL;
     free_a_map(SpecialGlyphCache, special_glyph_cache);
 #undef free_a_map
 }
@@ -258,42 +250,20 @@ do_increment(FontGroup *fg, int *error) {
 }
 
 
-static inline bool
-extra_glyphs_equal(ExtraGlyphs *a, ExtraGlyphs *b) {
-    for (size_t i = 0; i < MAX_NUM_EXTRA_GLYPHS; i++) {
-        if (a->data[i] != b->data[i]) return false;
-        if (a->data[i] == 0) return true;
-    }
-    return true;
-}
-
-
 static SpritePosition*
 sprite_position_for(FontGroup *fg, Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, uint8_t ligature_index, int *error) {
-    glyph_index idx = glyph & (SPECIAL_GLYPH_CACHE_SIZE - 1);
-    SpritePosition *s = font->sprite_map + idx;
-    // Optimize for the common case of glyph under 1024 already in the cache
-    if (LIKELY(s->glyph == glyph && s->filled && extra_glyphs_equal(&s->extra_glyphs, extra_glyphs) && s->ligature_index == ligature_index)) return s;  // Cache hit
-    while(true) {
-        if (s->filled) {
-            if (s->glyph == glyph && extra_glyphs_equal(&s->extra_glyphs, extra_glyphs) && s->ligature_index == ligature_index) return s;  // Cache hit
-        } else {
-            break;
-        }
-        if (!s->next) {
-            s->next = calloc(1, sizeof(SpritePosition));
-            if (s->next == NULL) { *error = 1; return NULL; }
-        }
-        s = s->next;
+    static glyph_index glyphs[MAX_NUM_EXTRA_GLYPHS + 4];
+    unsigned glyph_count = 1; glyphs[0] = glyph;
+    glyph_index *eg = extra_glyphs->data;
+
+    while(*eg) { glyphs[glyph_count++] = *eg++; }
+    bool created;
+    SpritePosition *s = find_or_create_sprite_position(&font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, &created);
+    if (!s) { *error = 1; return NULL; }
+    if (created) {
+        s->x = fg->sprite_tracker.x; s->y = fg->sprite_tracker.y; s->z = fg->sprite_tracker.z;
+        do_increment(fg, error);
     }
-    s->glyph = glyph;
-    memcpy(&s->extra_glyphs, extra_glyphs, sizeof(ExtraGlyphs));
-    s->ligature_index = ligature_index;
-    s->filled = true;
-    s->rendered = false;
-    s->colored = false;
-    s->x = fg->sprite_tracker.x; s->y = fg->sprite_tracker.y; s->z = fg->sprite_tracker.z;
-    do_increment(fg, error);
     return s;
 }
 
@@ -388,6 +358,7 @@ free_font_groups(void) {
         free(font_groups); font_groups = NULL;
         font_groups_capacity = 0; num_font_groups = 0;
     }
+    free_glyph_cache_global_resources();
 }
 
 static void

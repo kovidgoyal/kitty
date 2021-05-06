@@ -19,7 +19,6 @@ typedef struct {
 } StringCanvas;
 
 // API that font backends need to implement
-typedef uint16_t glyph_index;
 unsigned int glyph_id_for_codepoint(PyObject *, char_type);
 int get_glyph_width(PyObject *, glyph_index);
 bool is_glyph_empty(PyObject *, glyph_index);

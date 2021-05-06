@@ -48,6 +48,7 @@ typedef uint16_t hyperlink_id_type;
 typedef int key_type;
 #define HYPERLINK_MAX_NUMBER UINT16_MAX
 typedef uint16_t combining_type;
+typedef uint16_t glyph_index;
 typedef uint32_t pixel;
 typedef unsigned int index_type;
 typedef uint16_t sprite_index;

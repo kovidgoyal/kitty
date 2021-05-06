@@ -49,6 +49,7 @@ class Rendering(BaseTest):
         sprite_map_set_limits(10, 2)
         sprite_map_set_layout(5, 5)
         self.ae(test_sprite_position_for(0), (0, 0, 0))
+        self.ae(test_sprite_position_for(0), (0, 0, 0))
         self.ae(test_sprite_position_for(1), (1, 0, 0))
         self.ae(test_sprite_position_for(2), (0, 1, 0))
         self.ae(test_sprite_position_for(3), (1, 1, 0))
