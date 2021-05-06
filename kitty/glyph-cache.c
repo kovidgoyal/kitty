@@ -61,3 +61,31 @@ free_sprite_position_hash_table(SpritePosition **head_) {
         free(s);
     }
 }
+
+typedef struct GlyphPropertiesItem {
+    GlyphPropertiesHead
+    UT_hash_handle hh;
+    unsigned key;
+} GlyphPropertiesItem;
+
+
+GlyphProperties*
+find_or_create_glyph_properties(GlyphProperties **head_, unsigned glyph) {
+    GlyphPropertiesItem **head = (GlyphPropertiesItem**)head_, *p;
+    HASH_FIND_INT(*head, &glyph, p);
+    if (p) return (GlyphProperties*)p;
+    p = calloc(1, sizeof(GlyphPropertiesItem));
+    if (!p) return NULL;
+    p->key = glyph;
+    HASH_ADD_INT(*head, key, p);
+    return (GlyphProperties*)p;
+}
+
+void
+free_glyph_properties_hash_table(GlyphProperties **head_) {
+    GlyphPropertiesItem **head = (GlyphPropertiesItem**)head_, *s, *tmp;
+    HASH_ITER(hh, *head, s, tmp) {
+        HASH_DEL(*head, s);
+        free(s);
+    }
+}

@@ -23,7 +23,6 @@ send_sprite_to_gpu_func current_send_sprite_to_gpu = NULL;
 static PyObject *python_send_to_gpu_impl = NULL;
 extern PyTypeObject Line_Type;
 
-typedef struct SpecialGlyphCache SpecialGlyphCache;
 enum {NO_FONT=-3, MISSING_FONT=-2, BLANK_FONT=-1, BOX_FONT=0};
 typedef enum {
     LIGATURE_UNKNOWN, INFINITE_LIGATURE_START, INFINITE_LIGATURE_MIDDLE, INFINITE_LIGATURE_END
@@ -38,13 +37,6 @@ typedef struct {
 #define SPECIAL_VALUE_MASK 2
 #define EMPTY_FILLED_MASK 4
 #define EMPTY_VALUE_MASK 8
-#define SPECIAL_GLYPH_CACHE_SIZE 1024
-
-struct SpecialGlyphCache {
-    SpecialGlyphCache *next;
-    glyph_index glyph;
-    uint8_t data;
-};
 
 typedef struct {
     size_t max_y;
@@ -75,7 +67,7 @@ typedef struct {
     SpritePosition *sprite_position_hash_table;
     hb_feature_t* ffs_hb_features;
     size_t num_ffs_hb_features;
-    SpecialGlyphCache special_glyph_cache[SPECIAL_GLYPH_CACHE_SIZE];
+    GlyphProperties *glyph_properties_hash_table;
     bool bold, italic, emoji_presentation;
     SpacerStrategy spacer_strategy;
 } Font;
@@ -130,22 +122,10 @@ font_group_is_unused(FontGroup *fg) {
 
 void
 free_maps(Font *font) {
-#define free_a_map(type, attr) {\
-    type *s, *t; \
-    for (size_t i = 0; i < sizeof(font->attr)/sizeof(font->attr[0]); i++) { \
-        s = font->attr[i].next; \
-        while (s) { \
-            t = s; \
-            s = s->next; \
-            free(t); \
-        } \
-    }\
-    memset(font->attr, 0, sizeof(font->attr)); \
-}
     free_sprite_position_hash_table(&font->sprite_position_hash_table);
     font->sprite_position_hash_table = NULL;
-    free_a_map(SpecialGlyphCache, special_glyph_cache);
-#undef free_a_map
+    free_glyph_properties_hash_table(&font->glyph_properties_hash_table);
+    font->glyph_properties_hash_table = NULL;
 }
 
 static inline void
@@ -264,28 +244,6 @@ sprite_position_for(FontGroup *fg, Font *font, glyph_index glyph, ExtraGlyphs *e
         s->x = fg->sprite_tracker.x; s->y = fg->sprite_tracker.y; s->z = fg->sprite_tracker.z;
         do_increment(fg, error);
     }
-    return s;
-}
-
-static inline SpecialGlyphCache*
-special_glyph_cache_for(Font *font, glyph_index glyph, uint8_t filled_mask) {
-    SpecialGlyphCache *s = font->special_glyph_cache + (glyph & 0x3ff);
-    // Optimize for the common case of glyph under SPECIAL_GLYPH_CACHE_SIZE already in the cache
-    if (LIKELY(s->glyph == glyph && s->data & filled_mask)) return s;  // Cache hit
-    while(true) {
-        if (s->data & filled_mask) {
-            if (s->glyph == glyph) return s;  // Cache hit
-        } else {
-            if (!s->glyph) break;  // Empty cache slot
-            else if (s->glyph == glyph) return s;  // Cache slot that contains other data than the data indicated by filled_mask
-        }
-        if (!s->next) {
-            s->next = calloc(1, sizeof(SpecialGlyphCache));
-            if (s->next == NULL) return NULL;
-        }
-        s = s->next;
-    }
-    s->glyph = glyph;
     return s;
 }
 
@@ -778,7 +736,7 @@ static inline bool
 is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
     // A glyph is special if the codepoint it corresponds to matches a
     // different glyph in the font
-    SpecialGlyphCache *s = special_glyph_cache_for(font, glyph_id, SPECIAL_FILLED_MASK);
+    GlyphProperties *s = find_or_create_glyph_properties(&font->glyph_properties_hash_table, glyph_id);
     if (s == NULL) return false;
     if (!(s->data & SPECIAL_FILLED_MASK)) {
         bool is_special = cell_data->current_codepoint ? (
@@ -794,7 +752,7 @@ is_special_glyph(glyph_index glyph_id, Font *font, CellData* cell_data) {
 static inline bool
 is_empty_glyph(glyph_index glyph_id, Font *font) {
     // A glyph is empty if its metrics have a width of zero
-    SpecialGlyphCache *s = special_glyph_cache_for(font, glyph_id, EMPTY_FILLED_MASK);
+    GlyphProperties *s = find_or_create_glyph_properties(&font->glyph_properties_hash_table, glyph_id);
     if (s == NULL) return false;
     if (!(s->data & EMPTY_FILLED_MASK)) {
         uint8_t val = is_glyph_empty(font->face, glyph_id) ? EMPTY_VALUE_MASK : 0;
