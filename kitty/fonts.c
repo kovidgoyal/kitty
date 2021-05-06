@@ -14,7 +14,6 @@
 #include "glyph-cache.h"
 
 #define MISSING_GLYPH 4
-#define MAX_NUM_EXTRA_GLYPHS 8u
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
 
 typedef void (*send_sprite_to_gpu_func)(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
@@ -862,7 +861,7 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
     bool add_to_current_group;
     char glyph_name[128]; glyph_name[arraysz(glyph_name)-1] = 0;
     bool prev_glyph_was_inifinte_ligature_end = false;
-#define MAX_GLYPHS_IN_GROUP (MAX_NUM_EXTRA_GLYPHS + 1u)
+#define MAX_GLYPHS_IN_GROUP (8u + 1u)
     while (G(glyph_idx) < G(num_glyphs) && G(cell_idx) < G(num_cells)) {
         glyph_index glyph_id = G(info)[G(glyph_idx)].codepoint;
         hb_font_glyph_to_string(hbf, glyph_id, glyph_name, arraysz(glyph_name)-1);
@@ -967,8 +966,6 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
         prev_glyph_was_inifinte_ligature_end = ligature_type == INFINITE_LIGATURE_END;
         G(glyph_idx)++;
     }
-#undef MOVE_GLYPH_TO_NEXT_GROUP
-#undef MAX_GLYPHS_IN_GROUP
 }
 
 static inline void
@@ -977,11 +974,14 @@ merge_groups_for_pua_space_ligature(void) {
         Group *g = G(groups), *g1 = G(groups) + 1;
         g->num_cells += g1->num_cells;
         g->num_glyphs += g1->num_glyphs;
-        g->num_glyphs = MIN(g->num_glyphs, MAX_NUM_EXTRA_GLYPHS + 1);
+        g->num_glyphs = MIN(g->num_glyphs, MAX_GLYPHS_IN_GROUP);
         G(group_idx)--;
     }
     G(groups)->is_space_ligature = true;
 }
+
+#undef MOVE_GLYPH_TO_NEXT_GROUP
+#undef MAX_GLYPHS_IN_GROUP
 
 static inline bool
 is_group_calt_ligature(const Group *group) {
@@ -1065,8 +1065,8 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
         if (!group->num_cells) break;
         first_glyph = group->num_glyphs ? G(info)[group->first_glyph_idx].codepoint : 0;
 
-        PyObject *eg = PyTuple_New(MAX_NUM_EXTRA_GLYPHS);
-        for (size_t g = 0; g < MAX_NUM_EXTRA_GLYPHS; g++) PyTuple_SET_ITEM(eg, g, Py_BuildValue("H", g + 1 < group->num_glyphs ? G(info)[group->first_glyph_idx + g].codepoint : 0));
+        PyObject *eg = PyTuple_New(group->num_glyphs);
+        for (size_t g = 0; g < group->num_glyphs; g++) PyTuple_SET_ITEM(eg, g, Py_BuildValue("H", G(info)[group->first_glyph_idx + g].codepoint));
         PyList_Append(ans, Py_BuildValue("IIHN", group->num_cells, group->num_glyphs, first_glyph, eg));
         idx++;
     }
