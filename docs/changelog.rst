@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.20.3 [future]
+0.20.3 [2021-05-06]
 ----------------------
 
 - macOS: Distribute universal binaries with both ARM and Intel architectures
