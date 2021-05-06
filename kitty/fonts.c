@@ -15,7 +15,6 @@
 
 #define MISSING_GLYPH 4
 #define MAX_NUM_EXTRA_GLYPHS 8u
-#define CELLS_IN_CANVAS ((MAX_NUM_EXTRA_GLYPHS + 1u) * 3u)
 #define MAX_NUM_EXTRA_GLYPHS_PUA 4u
 
 typedef void (*send_sprite_to_gpu_func)(FONTS_DATA_HANDLE fg, unsigned int, unsigned int, unsigned int, pixel*);
@@ -68,6 +67,11 @@ typedef struct {
     SpacerStrategy spacer_strategy;
 } Font;
 
+typedef struct Canvas {
+    pixel *buf;
+    unsigned current_cells, alloced_cells;
+} Canvas;
+
 typedef struct {
     FONTS_DATA_HEAD
     id_type id;
@@ -75,7 +79,7 @@ typedef struct {
     size_t fonts_capacity, fonts_count, fallback_fonts_count;
     ssize_t medium_font_idx, bold_font_idx, italic_font_idx, bi_font_idx, first_symbol_font_idx, first_fallback_font_idx;
     Font *fonts;
-    pixel *canvas;
+    Canvas canvas;
     GPUSpriteTracker sprite_tracker;
 } FontGroup;
 
@@ -84,6 +88,18 @@ static size_t font_groups_capacity = 0;
 static size_t num_font_groups = 0;
 static id_type font_group_id_counter = 0;
 static void initialize_font_group(FontGroup *fg);
+
+static void
+ensure_canvas_can_fit(FontGroup *fg, unsigned cells) {
+    if (fg->canvas.alloced_cells < cells) {
+        free(fg->canvas.buf);
+        fg->canvas.alloced_cells = cells + 4;
+        fg->canvas.buf = malloc(sizeof(fg->canvas.buf[0]) * 3u * fg->canvas.alloced_cells * fg->cell_width * fg->cell_height);
+        if (!fg->canvas.buf) fatal("Out of memory allocating canvas");
+    }
+    fg->canvas.current_cells = cells;
+}
+
 
 static inline void
 save_window_font_groups(void) {
@@ -134,7 +150,7 @@ del_font(Font *f) {
 
 static inline void
 del_font_group(FontGroup *fg) {
-    free(fg->canvas); fg->canvas = NULL;
+    free(fg->canvas.buf); fg->canvas.buf = NULL; fg->canvas = (Canvas){0};
     fg->sprite_map = free_sprite_map(fg->sprite_map);
     for (size_t i = 0; i < fg->fonts_count; i++) del_font(fg->fonts + i);
     free(fg->fonts); fg->fonts = NULL;
@@ -187,7 +203,7 @@ font_group_for(double font_sz_in_pts, double logical_dpi_x, double logical_dpi_y
 
 static inline void
 clear_canvas(FontGroup *fg) {
-    if (fg->canvas) memset(fg->canvas, 0, sizeof(pixel) * CELLS_IN_CANVAS * fg->cell_width * fg->cell_height);
+    if (fg->canvas.buf) memset(fg->canvas.buf, 0, sizeof(pixel) * fg->canvas.current_cells * 3u * fg->cell_width * fg->cell_height);
 }
 
 
@@ -357,9 +373,7 @@ calc_cell_metrics(FontGroup *fg) {
     sprite_tracker_set_layout(&fg->sprite_tracker, cell_width, cell_height);
     fg->cell_width = cell_width; fg->cell_height = cell_height;
     fg->baseline = baseline; fg->underline_position = underline_position; fg->underline_thickness = underline_thickness, fg->strikethrough_position = strikethrough_position, fg->strikethrough_thickness = strikethrough_thickness;
-    free(fg->canvas);
-    fg->canvas = calloc((size_t)CELLS_IN_CANVAS * fg->cell_width * fg->cell_height, sizeof(pixel));
-    if (!fg->canvas) fatal("Out of memory allocating canvas for font group");
+    ensure_canvas_can_fit(fg, 8);
 }
 
 static inline bool
@@ -580,10 +594,11 @@ render_box_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
     PyObject *ret = PyObject_CallFunction(box_drawing_function, "IIId", cpu_cell->ch, fg->cell_width, fg->cell_height, (fg->logical_dpi_x + fg->logical_dpi_y) / 2.0);
     if (ret == NULL) { PyErr_Print(); return; }
     uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(ret, 0));
+    ensure_canvas_can_fit(fg, 1);
     clear_canvas(fg);
     Region r = { .right = fg->cell_width, .bottom = fg->cell_height };
-    render_alpha_mask(alpha_mask, fg->canvas, &r, &r, fg->cell_width, fg->cell_width);
-    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp->x, sp->y, sp->z, fg->canvas);
+    render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width);
+    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sp->x, sp->y, sp->z, fg->canvas.buf);
     Py_DECREF(ret);
 }
 
@@ -616,7 +631,7 @@ set_cell_sprite(GPUCell *cell, SpritePosition *sp) {
 
 static inline pixel*
 extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) {
-    pixel *ans = fg->canvas + (fg->cell_width * fg->cell_height * (CELLS_IN_CANVAS - 1)), *dest = ans, *src = fg->canvas + (i * fg->cell_width);
+    pixel *ans = fg->canvas.buf + (fg->cell_width * fg->cell_height * (fg->canvas.current_cells - 1)), *dest = ans, *src = fg->canvas.buf + (i * fg->cell_width);
     unsigned int stride = fg->cell_width * num_cells;
     for (unsigned int r = 0; r < fg->cell_height; r++, dest += fg->cell_width, src += stride) memcpy(dest, src, fg->cell_width * sizeof(pixel));
     return ans;
@@ -644,14 +659,15 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
 
     clear_canvas(fg);
     bool was_colored = (gpu_cells->attrs & WIDTH_MASK) == 2 && is_emoji(cpu_cells->ch);
-    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
+    ensure_canvas_can_fit(fg, num_cells + 1);
+    render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
     if (PyErr_Occurred()) PyErr_Print();
 
     for (unsigned int i = 0; i < num_cells; i++) {
         sprite_positions[i]->rendered = true;
         sprite_positions[i]->colored = was_colored;
         set_cell_sprite(gpu_cells + i, sprite_positions[i]);
-        pixel *buf = num_cells == 1 ? fg->canvas : extract_cell_from_canvas(fg, i, num_cells);
+        pixel *buf = num_cells == 1 ? fg->canvas.buf : extract_cell_from_canvas(fg, i, num_cells);
         current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sprite_positions[i]->x, sprite_positions[i]->y, sprite_positions[i]->z, buf);
     }
 #undef sprite_positions
@@ -1219,8 +1235,9 @@ send_prerendered_sprites(FontGroup *fg) {
     int error = 0;
     sprite_index x = 0, y = 0, z = 0;
     // blank cell
+    ensure_canvas_can_fit(fg, 1);
     clear_canvas(fg);
-    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas);
+    current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas.buf);
     do_increment(fg, &error);
     if (error != 0) { sprite_map_set_error(error); PyErr_Print(); fatal("Failed"); }
     PyObject *args = PyObject_CallFunction(prerender_function, "IIIIIIIffdd", fg->cell_width, fg->cell_height, fg->baseline, fg->underline_position, fg->underline_thickness, fg->strikethrough_position, fg->strikethrough_thickness, OPT(cursor_beam_thickness), OPT(cursor_underline_thickness), fg->logical_dpi_x, fg->logical_dpi_y);
@@ -1233,8 +1250,8 @@ send_prerendered_sprites(FontGroup *fg) {
         uint8_t *alpha_mask = PyLong_AsVoidPtr(PyTuple_GET_ITEM(args, i));
         clear_canvas(fg);
         Region r = { .right = fg->cell_width, .bottom = fg->cell_height };
-        render_alpha_mask(alpha_mask, fg->canvas, &r, &r, fg->cell_width, fg->cell_width);
-        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas);
+        render_alpha_mask(alpha_mask, fg->canvas.buf, &r, &r, fg->cell_width, fg->cell_width);
+        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, x, y, z, fg->canvas.buf);
     }
     Py_CLEAR(args);
 }
