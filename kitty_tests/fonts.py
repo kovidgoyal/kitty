@@ -108,7 +108,7 @@ class Rendering(BaseTest):
             self.ae(g('===--<>=='), [(3, 3), (2, 2), (2, 2), (2, 2)])
             self.ae(g('==!=<>==<><><>'), [(4, 4), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)])
             self.ae(g('A=>>B!=C'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
-            self.ae(g('-' * 18), [(9, 9), (9, 9)])
+            self.ae(g('-' * 18), [(18, 18)])
         colon_glyph = ss('9:30', font='FiraCode-Medium.otf')[1][2]
         self.assertNotEqual(colon_glyph, ss(':', font='FiraCode-Medium.otf')[0][2])
         self.ae(colon_glyph, 1031)
