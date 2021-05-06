@@ -29,10 +29,6 @@ typedef enum {
 } LigatureType;
 
 
-typedef struct {
-    glyph_index data[MAX_NUM_EXTRA_GLYPHS];
-} ExtraGlyphs;
-
 #define SPECIAL_FILLED_MASK 1
 #define SPECIAL_VALUE_MASK 2
 #define EMPTY_FILLED_MASK 4
@@ -231,12 +227,7 @@ do_increment(FontGroup *fg, int *error) {
 
 
 static SpritePosition*
-sprite_position_for(FontGroup *fg, Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, uint8_t ligature_index, int *error) {
-    static glyph_index glyphs[MAX_NUM_EXTRA_GLYPHS + 4];
-    unsigned glyph_count = 1; glyphs[0] = glyph;
-    glyph_index *eg = extra_glyphs->data;
-
-    while(*eg) { glyphs[glyph_count++] = *eg++; }
+sprite_position_for(FontGroup *fg, Font *font, glyph_index *glyphs, unsigned glyph_count, uint8_t ligature_index, int *error) {
     bool created;
     SpritePosition *s = find_or_create_sprite_position(&font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, &created);
     if (!s) { *error = 1; return NULL; }
@@ -576,8 +567,7 @@ static void
 render_box_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
     int error = 0;
     glyph_index glyph = box_glyph_id(cpu_cell->ch);
-    static ExtraGlyphs extra_glyphs = {{0}};
-    SpritePosition *sp = sprite_position_for(fg, &fg->fonts[BOX_FONT], glyph, &extra_glyphs, false, &error);
+    SpritePosition *sp = sprite_position_for(fg, &fg->fonts[BOX_FONT], &glyph, 1, false, &error);
     if (sp == NULL) {
         sprite_map_set_error(error); PyErr_Print();
         set_sprite(gpu_cell, 0, 0, 0);
@@ -633,12 +623,12 @@ extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) 
 }
 
 static inline void
-render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index glyph, ExtraGlyphs *extra_glyphs, bool center_glyph) {
+render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index *glyphs, unsigned glyph_count, bool center_glyph) {
     static SpritePosition* sprite_position[MAX_NUM_EXTRA_GLYPHS * 2];
     int error = 0;
     num_cells = MIN(arraysz(sprite_position), num_cells);
     for (unsigned int i = 0; i < num_cells; i++) {
-        sprite_position[i] = sprite_position_for(fg, font, glyph, extra_glyphs, (uint8_t)i, &error);
+        sprite_position[i] = sprite_position_for(fg, font, glyphs, glyph_count, (uint8_t)i, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
     }
     if (sprite_position[0]->rendered) {
@@ -997,22 +987,20 @@ split_run_at_offset(index_type cursor_offset, index_type *left, index_type *righ
 static inline void
 render_groups(FontGroup *fg, Font *font, bool center_glyph) {
     unsigned idx = 0;
-    ExtraGlyphs ed;
+    glyph_index glyphs[MAX_NUM_EXTRA_GLYPHS + 1];
     while (idx <= G(group_idx)) {
         Group *group = G(groups) + idx;
         if (!group->num_cells) break;
         /* printf("Group: idx: %u num_cells: %u num_glyphs: %u first_glyph_idx: %u first_cell_idx: %u total_num_glyphs: %zu\n", */
         /*         idx, group->num_cells, group->num_glyphs, group->first_glyph_idx, group->first_cell_idx, group_state.num_glyphs); */
-        glyph_index primary = group->num_glyphs ? G(info)[group->first_glyph_idx].codepoint : 0;
-        unsigned int i;
-        int last = -1;
-        for (i = 1; i < MIN(arraysz(ed.data) + 1, group->num_glyphs); i++) { last = i - 1; ed.data[last] = G(info)[group->first_glyph_idx + i].codepoint; }
-        if ((size_t)(last + 1) < arraysz(ed.data)) ed.data[last + 1] = 0;
-        // We dont want to render the spaces in a space ligature because
-        // there exist stupid fonts like Powerline that have no space glyph,
-        // so special case it: https://github.com/kovidgoyal/kitty/issues/1225
-        unsigned int num_glyphs = group->is_space_ligature ? 1 : group->num_glyphs;
-        render_group(fg, group->num_cells, num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, primary, &ed, center_glyph);
+        if (group->num_glyphs) {
+            for (unsigned i = 0; i < group->num_glyphs; i++) glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
+            // We dont want to render the spaces in a space ligature because
+            // there exist stupid fonts like Powerline that have no space glyph,
+            // so special case it: https://github.com/kovidgoyal/kitty/issues/1225
+            unsigned int num_glyphs = group->is_space_ligature ? 1 : group->num_glyphs;
+            render_group(fg, group->num_cells, num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, glyphs, num_glyphs, center_glyph);
+        }
         idx++;
     }
 }
@@ -1316,13 +1304,12 @@ sprite_map_set_layout(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject*
 test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
-    glyph_index glyph;
-    ExtraGlyphs extra_glyphs = {{0}};
-    if (!PyArg_ParseTuple(args, "H|H", &glyph, &extra_glyphs.data)) return NULL;
+    glyph_index glyphs[2] = {0};
+    if (!PyArg_ParseTuple(args, "H|H", glyphs, glyphs + 1)) return NULL;
     int error;
     FontGroup *fg = font_groups;
     if (!num_font_groups) { PyErr_SetString(PyExc_RuntimeError, "must create font group first"); return NULL; }
-    SpritePosition *pos = sprite_position_for(fg, &fg->fonts[fg->medium_font_idx], glyph, &extra_glyphs, 0, &error);
+    SpritePosition *pos = sprite_position_for(fg, &fg->fonts[fg->medium_font_idx], glyphs, 1 + (glyphs[2] ? 1 : 0), 0, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
 }
