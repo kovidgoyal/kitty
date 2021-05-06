@@ -622,17 +622,23 @@ extract_cell_from_canvas(FontGroup *fg, unsigned int i, unsigned int num_cells) 
     return ans;
 }
 
+typedef struct GlyphRenderScratch {
+    SpritePosition* *sprite_positions;
+    glyph_index *glyphs;
+    size_t sz;
+} GlyphRenderScratch;
+static GlyphRenderScratch global_glyph_render_scratch = {0};
+
 static inline void
 render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPUCell *cpu_cells, GPUCell *gpu_cells, hb_glyph_info_t *info, hb_glyph_position_t *positions, Font *font, glyph_index *glyphs, unsigned glyph_count, bool center_glyph) {
-    static SpritePosition* sprite_position[MAX_NUM_EXTRA_GLYPHS * 2];
+#define sprite_positions global_glyph_render_scratch.sprite_positions
     int error = 0;
-    num_cells = MIN(arraysz(sprite_position), num_cells);
     for (unsigned int i = 0; i < num_cells; i++) {
-        sprite_position[i] = sprite_position_for(fg, font, glyphs, glyph_count, (uint8_t)i, &error);
+        sprite_positions[i] = sprite_position_for(fg, font, glyphs, glyph_count, (uint8_t)i, &error);
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
     }
-    if (sprite_position[0]->rendered) {
-        for (unsigned int i = 0; i < num_cells; i++) { set_cell_sprite(gpu_cells + i, sprite_position[i]); }
+    if (sprite_positions[0]->rendered) {
+        for (unsigned int i = 0; i < num_cells; i++) { set_cell_sprite(gpu_cells + i, sprite_positions[i]); }
         return;
     }
 
@@ -642,13 +648,13 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
     if (PyErr_Occurred()) PyErr_Print();
 
     for (unsigned int i = 0; i < num_cells; i++) {
-        sprite_position[i]->rendered = true;
-        sprite_position[i]->colored = was_colored;
-        set_cell_sprite(gpu_cells + i, sprite_position[i]);
+        sprite_positions[i]->rendered = true;
+        sprite_positions[i]->colored = was_colored;
+        set_cell_sprite(gpu_cells + i, sprite_positions[i]);
         pixel *buf = num_cells == 1 ? fg->canvas : extract_cell_from_canvas(fg, i, num_cells);
-        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sprite_position[i]->x, sprite_position[i]->y, sprite_position[i]->z, buf);
+        current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sprite_positions[i]->x, sprite_positions[i]->y, sprite_positions[i]->z, buf);
     }
-
+#undef sprite_positions
 }
 
 typedef struct {
@@ -987,19 +993,27 @@ split_run_at_offset(index_type cursor_offset, index_type *left, index_type *righ
 static inline void
 render_groups(FontGroup *fg, Font *font, bool center_glyph) {
     unsigned idx = 0;
-    glyph_index glyphs[MAX_NUM_EXTRA_GLYPHS + 1];
     while (idx <= G(group_idx)) {
         Group *group = G(groups) + idx;
         if (!group->num_cells) break;
         /* printf("Group: idx: %u num_cells: %u num_glyphs: %u first_glyph_idx: %u first_cell_idx: %u total_num_glyphs: %zu\n", */
         /*         idx, group->num_cells, group->num_glyphs, group->first_glyph_idx, group->first_cell_idx, group_state.num_glyphs); */
         if (group->num_glyphs) {
-            for (unsigned i = 0; i < group->num_glyphs; i++) glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
+            size_t sz = MAX(group->num_glyphs, group->num_cells) + 16;
+            if (global_glyph_render_scratch.sz < sz) {
+                sz += sz % 8;
+                free(global_glyph_render_scratch.glyphs);
+                global_glyph_render_scratch.glyphs = malloc(sz * (sizeof(global_glyph_render_scratch.glyphs[0]) + sizeof(global_glyph_render_scratch.sprite_positions[0])));
+                if (!global_glyph_render_scratch.glyphs) fatal("Out of memory");
+                global_glyph_render_scratch.sprite_positions = (SpritePosition**)(global_glyph_render_scratch.glyphs + sz * sizeof(global_glyph_render_scratch.glyphs[0]));
+                global_glyph_render_scratch.sz = sz;
+            }
+            for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
             // We dont want to render the spaces in a space ligature because
             // there exist stupid fonts like Powerline that have no space glyph,
             // so special case it: https://github.com/kovidgoyal/kitty/issues/1225
             unsigned int num_glyphs = group->is_space_ligature ? 1 : group->num_glyphs;
-            render_group(fg, group->num_cells, num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, glyphs, num_glyphs, center_glyph);
+            render_group(fg, group->num_cells, num_glyphs, G(first_cpu_cell) + group->first_cell_idx, G(first_gpu_cell) + group->first_cell_idx, G(info) + group->first_glyph_idx, G(positions) + group->first_glyph_idx, font, global_glyph_render_scratch.glyphs, num_glyphs, center_glyph);
         }
         idx++;
     }
@@ -1291,6 +1305,8 @@ finalize(void) {
     free_font_groups();
     if (harfbuzz_buffer) { hb_buffer_destroy(harfbuzz_buffer); harfbuzz_buffer = NULL; }
     free(group_state.groups); group_state.groups = NULL; group_state.groups_capacity = 0;
+    free(global_glyph_render_scratch.glyphs);
+    global_glyph_render_scratch = (GlyphRenderScratch){0};
 }
 
 static PyObject*
