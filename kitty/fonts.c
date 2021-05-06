@@ -618,7 +618,7 @@ load_hb_buffer(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_
 
 
 static inline void
-set_cell_sprite(GPUCell *cell, SpritePosition *sp) {
+set_cell_sprite(GPUCell *cell, const SpritePosition *sp) {
     cell->sprite_x = sp->x; cell->sprite_y = sp->y; cell->sprite_z = sp->z;
     if (sp->colored) cell->sprite_z |= 0x4000;
 }
