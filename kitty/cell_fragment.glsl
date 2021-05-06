@@ -33,14 +33,19 @@ in float colored_sprite;
 
 out vec4 final_color;
 
+const float gamma = 1.8;
+const vec3 gamma3 = vec3(gamma);
+const vec3 invGamma3 = vec3(1.0/gamma);
+
 // Util functions {{{
 vec4 alpha_blend(vec3 over, float over_alpha, vec3 under, float under_alpha) {
     // Alpha blend two colors returning the resulting color pre-multiplied by its alpha
     // and its alpha.
     // See https://en.wikipedia.org/wiki/Alpha_compositing
     float alpha = mix(under_alpha, 1.0f, over_alpha);
-    vec3 combined_color = mix(under * under_alpha, over, over_alpha);
+    vec3 combined_color = pow(mix(pow(under, gamma3) * under_alpha, pow(over, gamma3), over_alpha), invGamma3);
     return vec4(combined_color, alpha);
+
 }
 
 vec3 premul_blend(vec3 over, float over_alpha, vec3 under) {
