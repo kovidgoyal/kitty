@@ -643,13 +643,19 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
 #define sprite_positions global_glyph_render_scratch.sprite_positions
     int error = 0;
     bool all_rendered = true;
-    for (unsigned int i = 0; i < num_cells; i++) {
-        sprite_positions[i] = sprite_position_for(fg, font, glyphs, glyph_count, i, &error);
+    bool is_infinite_ligature = num_cells > 9 && num_glyphs == num_cells;
+    for (unsigned i = 0, ligature_index = 0; i < num_cells; i++) {
+        bool is_repeat_glyph = is_infinite_ligature && i > 1 && i + 1 < num_cells && glyphs[i] == glyphs[i-1] && glyphs[i] == glyphs[i-2] && glyphs[i] == glyphs[i+1];
+        if (is_repeat_glyph) {
+            sprite_positions[i] = sprite_positions[i-1];
+        } else {
+            sprite_positions[i] = sprite_position_for(fg, font, glyphs, glyph_count, ligature_index++, &error);
+        }
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
         if (!sprite_positions[i]->rendered) all_rendered = false;
     }
     if (all_rendered) {
-        for (unsigned int i = 0; i < num_cells; i++) { set_cell_sprite(gpu_cells + i, sprite_positions[i]); }
+        for (unsigned i = 0; i < num_cells; i++) { set_cell_sprite(gpu_cells + i, sprite_positions[i]); }
         return;
     }
 
@@ -658,7 +664,7 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
     render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
     if (PyErr_Occurred()) PyErr_Print();
 
-    for (unsigned int i = 0; i < num_cells; i++) {
+    for (unsigned i = 0; i < num_cells; i++) {
         set_cell_sprite(gpu_cells + i, sprite_positions[i]);
         if (!sprite_positions[i]->rendered) {
             sprite_positions[i]->rendered = true;
