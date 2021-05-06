@@ -6,14 +6,12 @@
  */
 
 #include "hyperlink.h"
-#include "uthash.h"
+#include "kitty-uthash.h"
 #include <string.h>
 
 #define MAX_KEY_LEN 2048
 #define MAX_ID_LEN 256
 #define MAX_ADDS_BEFORE_GC 256
-#undef uthash_fatal
-#define uthash_fatal(msg) fatal(msg)
 
 typedef struct {
     const char *key;

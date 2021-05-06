@@ -6,11 +6,7 @@
  */
 
 #include "glyph-cache.h"
-#include "uthash.h"
-
-
-#undef uthash_fatal
-#define uthash_fatal(msg) fatal(msg)
+#include "kitty-uthash.h"
 
 
 typedef struct SpritePosItem {

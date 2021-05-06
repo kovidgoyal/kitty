@@ -13,7 +13,7 @@
 
 #include "disk-cache.h"
 #include "safe-wrappers.h"
-#include "uthash.h"
+#include "kitty-uthash.h"
 #include "loop-utils.h"
 #include "threading.h"
 #include "cross-platform-random.h"
@@ -25,8 +25,6 @@
 #ifdef HAS_SENDFILE
 #include <sys/sendfile.h>
 #endif
-#undef uthash_fatal
-#define uthash_fatal(msg) fatal(msg)
 
 
 typedef struct {
