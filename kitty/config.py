@@ -430,6 +430,10 @@ def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:
                 key_definitions.append(KeyDefinition(False, paction, mods, is_native, key))
 
 
+def parse_mouse_action(val: str, mouse_mappings: List['MouseMapping']) -> None:
+    pass
+
+
 def parse_symbol_map(val: str) -> Dict[Tuple[int, int], str]:
     parts = val.split()
     symbol_map: Dict[Tuple[int, int], str] = {}
@@ -500,6 +504,11 @@ def deprecated_handler(*names: str) -> Callable[[SpecialHandlerFunc], SpecialHan
 @special_handler
 def handle_map(key: str, val: str, ans: Dict[str, Any]) -> None:
     parse_key(val, ans['key_definitions'])
+
+
+@special_handler
+def handle_mouse_map(key: str, val: str, ans: Dict[str, Any]) -> None:
+    parse_mouse_action(val, ans['mouse_mappings'])
 
 
 @special_handler
@@ -596,7 +605,7 @@ def option_names_for_completion() -> Generator[str, None, None]:
 def parse_config(lines: Iterable[str], check_keys: bool = True, accumulate_bad_lines: Optional[List[BadLine]] = None) -> Dict[str, Any]:
     ans: Dict[str, Any] = {
         'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [],
-        'env': {}, 'kitten_aliases': {}, 'font_features': {}
+        'env': {}, 'kitten_aliases': {}, 'font_features': {}, 'mouse_mappings': [],
     }
     defs: Optional[OptionsStub] = None
     if check_keys:
@@ -635,8 +644,8 @@ def merge_configs(defaults: Dict, vals: Dict) -> Dict:
         if isinstance(v, dict):
             newvals = vals.get(k, {})
             ans[k] = merge_dicts(v, newvals)
-        elif k == 'key_definitions':
-            ans['key_definitions'] = v + vals.get('key_definitions', [])
+        elif k in ('key_definitions', 'mouse_mappings'):
+            ans[k] = v + vals.get(k, [])
         else:
             ans[k] = vals.get(k, v)
     return ans
