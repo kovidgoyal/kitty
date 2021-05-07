@@ -1089,7 +1089,7 @@ ring_audio_bell(void) {
 #ifdef __APPLE__
     cocoa_system_beep();
 #else
-    play_canberra_sound("bell", "kitty bell");
+    play_canberra_sound("bell", "kitty bell", OPT(bell_theme_name));
 #endif
 }
 
