@@ -12,6 +12,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Unicode input kitten: Fix a regression in 0.20.0 that broke keyboard handling
   when the num lock or caps lock modifiers were engaged. (:iss:`3587`)
 
+- Fix a regression in 0.20.0 that sent incorrect bytes for the :kbd:`F1-F4` keys
+  in rmkx mode (:iss:`3586`)
+
 
 0.20.3 [2021-05-06]
 ----------------------
