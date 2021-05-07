@@ -45,6 +45,7 @@ typedef struct {
     WindowTitleIn macos_show_window_title_in;
     int adjust_line_height_px, adjust_column_width_px;
     float adjust_line_height_frac, adjust_column_width_frac;
+    float macos_adjust_glyph_y, macos_adjust_glyph_x, macos_adjust_glyph_scale;
     float background_opacity, dim_opacity;
 
     char* background_image;

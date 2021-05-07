@@ -1324,6 +1324,18 @@ result in rendering that looks similar to sub-pixel antialiasing at
 common font sizes.
 '''))
 
+o('macos_adjust_glyph_y', 0.0, option_type=float, long_text=_('''
+Adjust the y position (up / down) of where the glyph is rendered in the cell. For example -1.0 will shift the glyph 1 pixel down inside the rendered cell.
+'''))
+
+o('macos_adjust_glyph_x', 0.0, option_type=float, long_text=_('''
+Adjust the x position (left / right) of where the glyph is rendered in the cell. For example 1.0 will shift the glyph 1 pixel right inside the rendered cell.
+'''))
+
+o('macos_adjust_glyph_scale', 0.0, option_type=positive_float, long_text=_('''
+Adjust the overall size of the glyph rendered in the cell. For example 0.1 will increase the size of the glyph by 10%.
+'''))
+
 o('macos_traditional_fullscreen', False, long_text=_('''
 Use the traditional full-screen transition, that is faster, but less pretty.
 '''))
