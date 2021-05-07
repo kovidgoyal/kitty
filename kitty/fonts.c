@@ -1000,13 +1000,9 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph) {
         if (group->num_glyphs) {
             size_t sz = MAX(group->num_glyphs, group->num_cells) + 16;
             if (global_glyph_render_scratch.sz < sz) {
-                free(global_glyph_render_scratch.glyphs);
-                global_glyph_render_scratch.glyphs = malloc(sz * sizeof(global_glyph_render_scratch.glyphs[0]));
-                if (!global_glyph_render_scratch.glyphs) fatal("Out of memory");
-                free(global_glyph_render_scratch.sprite_positions);
-                global_glyph_render_scratch.sprite_positions = malloc(sz * sizeof(global_glyph_render_scratch.sprite_positions[0]));
-                if (!global_glyph_render_scratch.sprite_positions) fatal("Out of memory");
-                global_glyph_render_scratch.sz = sz;
+#define a(what) free(global_glyph_render_scratch.what); global_glyph_render_scratch.what = malloc(sz * sizeof(global_glyph_render_scratch.what[0])); if (!global_glyph_render_scratch.what) fatal("Out of memory");
+                a(glyphs); a(sprite_positions);
+#undef a
             }
             for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
             // We dont want to render the spaces in a space ligature because
