@@ -1000,11 +1000,12 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph) {
         if (group->num_glyphs) {
             size_t sz = MAX(group->num_glyphs, group->num_cells) + 16;
             if (global_glyph_render_scratch.sz < sz) {
-                sz += sz % 8;
                 free(global_glyph_render_scratch.glyphs);
-                global_glyph_render_scratch.glyphs = malloc(sz * (sizeof(global_glyph_render_scratch.glyphs[0]) + sizeof(global_glyph_render_scratch.sprite_positions[0])));
+                global_glyph_render_scratch.glyphs = malloc(sz * sizeof(global_glyph_render_scratch.glyphs[0]));
                 if (!global_glyph_render_scratch.glyphs) fatal("Out of memory");
-                global_glyph_render_scratch.sprite_positions = (SpritePosition**)(global_glyph_render_scratch.glyphs + sz * sizeof(global_glyph_render_scratch.glyphs[0]));
+                free(global_glyph_render_scratch.sprite_positions);
+                global_glyph_render_scratch.sprite_positions = malloc(sz * sizeof(global_glyph_render_scratch.sprite_positions[0]));
+                if (!global_glyph_render_scratch.sprite_positions) fatal("Out of memory");
                 global_glyph_render_scratch.sz = sz;
             }
             for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
@@ -1305,6 +1306,7 @@ finalize(void) {
     if (harfbuzz_buffer) { hb_buffer_destroy(harfbuzz_buffer); harfbuzz_buffer = NULL; }
     free(group_state.groups); group_state.groups = NULL; group_state.groups_capacity = 0;
     free(global_glyph_render_scratch.glyphs);
+    free(global_glyph_render_scratch.sprite_positions);
     global_glyph_render_scratch = (GlyphRenderScratch){0};
 }
 
