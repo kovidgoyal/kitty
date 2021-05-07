@@ -122,6 +122,16 @@ encode_mouse_scroll(Window *w, bool upwards, int mods) {
 
 // }}}
 
+static void
+dispatch_mouse_event(Window *w, int button, int count, int modifiers) {
+    if (w->render_data.screen && PyCallable_Check(w->render_data.screen->callbacks)) {
+        PyObject *callback_ret = PyObject_CallMethod(w->render_data.screen->callbacks, "on_mouse_event", "{si si si}",
+            "button", button, "count", count, "modifiers", modifiers);
+        if (callback_ret == NULL) PyErr_Print();
+        else Py_DECREF(callback_ret);
+    }
+}
+
 static inline unsigned int
 window_left(Window *w) {
     return w->geometry.left - w->padding.left;

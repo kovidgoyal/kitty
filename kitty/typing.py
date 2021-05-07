@@ -21,3 +21,4 @@ EdgeLiteral = str
 PowerlineStyle = str
 MatchType = str
 Protocol = object
+MouseEvent = dict
