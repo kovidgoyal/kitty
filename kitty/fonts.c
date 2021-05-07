@@ -1003,6 +1003,7 @@ render_groups(FontGroup *fg, Font *font, bool center_glyph) {
 #define a(what) free(global_glyph_render_scratch.what); global_glyph_render_scratch.what = malloc(sz * sizeof(global_glyph_render_scratch.what[0])); if (!global_glyph_render_scratch.what) fatal("Out of memory");
                 a(glyphs); a(sprite_positions);
 #undef a
+                global_glyph_render_scratch.sz = sz;
             }
             for (unsigned i = 0; i < group->num_glyphs; i++) global_glyph_render_scratch.glyphs[i] = G(info)[group->first_glyph_idx + i].codepoint;
             // We dont want to render the spaces in a space ligature because
