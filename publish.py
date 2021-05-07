@@ -355,7 +355,7 @@ def run_upload(args: Any) -> None:
     files[f'build/kitty-{version}.tar.xz.sig'] = 'Source code GPG signature'
     for path, desc in signatures.items():
         sign_file(path)
-        files[path + '.sig'] = desc + ' GPG signature'
+        files[path + '.sig'] = desc
     for f in files:
         if not os.path.exists(f):
             raise SystemExit(f'The release artifact {f} does not exist')
