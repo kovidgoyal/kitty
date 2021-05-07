@@ -258,7 +258,8 @@ For example:
 Mouse features
 -------------------
 
-* You can hold down :kbd:`ctrl+shift` and click on a URL to open it in a browser.
+* You can hold down :kbd:`ctrl+shift` and click on a URL to open it in a
+  browser (see also :opt:`open_url_modifiers`).
 * You can double click to select a word and then drag to select more words.
 * You can triple click to select a line and then drag to select more lines.
 * You can right click to extend a previous selection.
@@ -266,6 +267,8 @@ Mouse features
   columns (see also :opt:`rectangle_select_modifiers`).
 * Selecting text automatically copies it to the primary clipboard (on
   platforms with a primary clipboard).
+* You can middle click to paste from the primary clipboard (on platforms
+  with a primary clipboard).
 * You can select text with kitty even when a terminal program has grabbed
   the mouse by holding down the :kbd:`shift` key (see also
   :opt:`terminal_select_modifiers`).
