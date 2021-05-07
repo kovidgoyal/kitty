@@ -176,10 +176,6 @@ encode_function_key(const KeyEvent *ev, char *output) {
             case GLFW_FKEY_KP_BEGIN: SIMPLE("\x1bOE");
             case GLFW_FKEY_END: SIMPLE("\x1bOF");
             case GLFW_FKEY_HOME: SIMPLE("\x1bOH");
-            case GLFW_FKEY_F1: SIMPLE("\x1bOP");
-            case GLFW_FKEY_F2: SIMPLE("\x1bOQ");
-            case GLFW_FKEY_F3: SIMPLE("\x1bOR");
-            case GLFW_FKEY_F4: SIMPLE("\x1bOS");
             default: break;
         }
     }
