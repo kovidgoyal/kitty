@@ -472,7 +472,7 @@ Requesting image ids from the terminal
 If you are writing a program that is going to share the screen with other
 programs and you still want to use image ids, it is not possible to know
 what image ids are free to use. In this case, instead of using the ``i``
-key to specify and image id use the ``I`` key to specify and image number
+key to specify an image id use the ``I`` key to specify an image number
 instead. These numbers are not unique.
 When creating a new image, even if an existing image has the same number a new
 one is created. And the terminal will reply with the id of the newly created
