@@ -1,0 +1,34 @@
+language: python
+git:
+  depth: false
+os: linux
+dist: bionic
+arch: s390x
+addons:
+  apt:
+    packages:
+      - libdbus-1-dev
+      - libfontconfig1-dev
+      - libfreetype6-dev
+      - libgl1-mesa-dev
+      - libharfbuzz-dev
+      - libpng-dev
+      - libx11-xcb-dev
+      - libxcursor-dev
+      - libxi-dev
+      - libxinerama-dev
+      - libxkbcommon-x11-dev
+      - libxrandr-dev
+      - pkg-config
+      - wayland-protocols
+      - zlib1g-dev
+python:
+  - 3.6
+  - 3.7
+  - 3.8
+before_script:
+  - python3 -m pip install --upgrade pip
+  - python3 -m pip install --upgrade Pillow
+  - python3 setup.py build --debug --verbose
+script:
+  - python3 test.py
