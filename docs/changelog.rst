@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.20.4 [future]
+----------------------
+
+- Unicode input kitten: Fix a regression in 0.20.0 that broke keyboard handling
+  when the num lock or caps lock modifiers were engaged. (:iss:`3587`)
+
+
 0.20.3 [2021-05-06]
 ----------------------
 

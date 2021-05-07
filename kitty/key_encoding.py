@@ -216,7 +216,7 @@ class KeyEvent(NamedTuple):
     num_lock: bool = False
 
     def matches(self, spec: Union[str, ParsedShortcut], types: int = EventType.PRESS | EventType.REPEAT) -> bool:
-        mods = self.mods & ~(NUM_LOCK | CAPS_LOCK)
+        mods = self.mods_without_locks
         if not self.type & types:
             return False
         if isinstance(spec, str):
@@ -227,6 +227,14 @@ class KeyEvent(NamedTuple):
         if is_shifted and (mods & ~SHIFT, self.shifted_key) == spec:
             return True
         return False
+
+    @property
+    def mods_without_locks(self) -> int:
+        return self.mods & ~(NUM_LOCK | CAPS_LOCK)
+
+    @property
+    def has_mods(self) -> bool:
+        return bool(self.mods_without_locks)
 
     def as_window_system_event(self) -> WindowSystemKeyEvent:
         action = defines.GLFW_PRESS

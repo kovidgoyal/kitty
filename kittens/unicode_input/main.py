@@ -416,7 +416,7 @@ class UnicodeInput(Handler):
         self.refresh()
 
     def on_key(self, key_event: KeyEvent) -> None:
-        if self.mode is HEX and key_event.type is not EventType.RELEASE and not key_event.mods:
+        if self.mode is HEX and key_event.type is not EventType.RELEASE and not key_event.has_mods:
             try:
                 val = int(self.line_edit.current_input, 16)
             except Exception:
@@ -434,7 +434,7 @@ class UnicodeInput(Handler):
                     self.line_edit.current_input = hex(val - 1)[2:]
                     self.refresh()
                     return
-        if self.mode is NAME and key_event.type is not EventType.RELEASE and not key_event.mods:
+        if self.mode is NAME and key_event.type is not EventType.RELEASE and not key_event.has_mods:
             if key_event.matches('shift+tab'):
                 self.table.move_current(cols=-1)
                 self.refresh()

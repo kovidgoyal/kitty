@@ -74,7 +74,7 @@ class Resize(Handler):
         if key_event.matches('esc'):
             self.quit_loop(0)
             return
-        if key_event.key in ('w', 'n', 't', 's') and key_event.mods == CTRL:
+        if key_event.key in ('w', 'n', 't', 's') and key_event.mods_without_locks == CTRL:
             self.do_window_resize(is_decrease=key_event.key in 'ns', is_horizontal=key_event.key in 'wn', multiplier=2)
 
     def on_resize(self, new_size: ScreenSize) -> None:
