@@ -7,7 +7,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.20.4 [future]
 ----------------------
 
-- Support infinite length ligatures
+- Support infinite length ligatures (:iss:`3504`)
 
 - Unicode input kitten: Fix a regression in 0.20.0 that broke keyboard handling
   when the num lock or caps lock modifiers were engaged. (:iss:`3587`)
