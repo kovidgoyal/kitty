@@ -350,7 +350,7 @@ def run_upload(args: Any) -> None:
         if not os.path.exists(path):
             raise SystemExit(f'The installer {path} does not exist')
         files[path] = desc
-        signatures[path] = desc + ' GPG signature'
+        signatures[path] = f'GPG signature for {desc}'
     files[f'build/kitty-{version}.tar.xz'] = 'Source code'
     files[f'build/kitty-{version}.tar.xz.sig'] = 'Source code GPG signature'
     for path, desc in signatures.items():
