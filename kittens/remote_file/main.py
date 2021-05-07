@@ -151,7 +151,7 @@ class ControlMaster:
         cp = subprocess.run(self.batch_cmd_prefix + [self.conn_data.hostname, 'hostname', '-f'], stdout=subprocess.PIPE,
                             stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
         if cp.returncode == 0:
-            q = cp.stdout.decode('utf-8').strip()
+            q = tuple(filter(None, cp.stdout.decode('utf-8').strip().splitlines()))[-1]
             if not hostname_matches(self.cli_opts.hostname or '', q):
                 print(reset_terminal(), end='')
                 print(f'The remote hostname {styled(q, fg="green")} does not match the')
