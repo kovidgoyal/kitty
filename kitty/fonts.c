@@ -665,13 +665,13 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
     if (PyErr_Occurred()) PyErr_Print();
 
     for (unsigned i = 0; i < num_cells; i++) {
-        set_cell_sprite(gpu_cells + i, sprite_positions[i]);
         if (!sprite_positions[i]->rendered) {
             sprite_positions[i]->rendered = true;
             sprite_positions[i]->colored = was_colored;
             pixel *buf = num_cells == 1 ? fg->canvas.buf : extract_cell_from_canvas(fg, i, num_cells);
             current_send_sprite_to_gpu((FONTS_DATA_HANDLE)fg, sprite_positions[i]->x, sprite_positions[i]->y, sprite_positions[i]->z, buf);
         }
+        set_cell_sprite(gpu_cells + i, sprite_positions[i]);
     }
 #undef sprite_positions
 }
