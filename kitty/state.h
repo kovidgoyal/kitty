@@ -114,7 +114,7 @@ typedef struct {
         unsigned int left, top, right, bottom;
     } padding;
     WindowGeometry geometry;
-    ClickQueue click_queue;
+    ClickQueue click_queues[8];
     monotonic_t last_drag_scroll_at;
     uint32_t last_special_key_pressed;
 } Window;

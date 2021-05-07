@@ -122,7 +122,7 @@ encode_mouse_scroll(Window *w, bool upwards, int mods) {
 
 // }}}
 
-static void
+static inline void
 dispatch_mouse_event(Window *w, int button, int count, int modifiers) {
     if (w->render_data.screen && PyCallable_Check(w->render_data.screen->callbacks)) {
         PyObject *callback_ret = PyObject_CallMethod(w->render_data.screen->callbacks, "on_mouse_event", "{si si si}",
@@ -429,13 +429,14 @@ distance(double x1, double y1, double x2, double y2) {
 }
 
 static inline void
-clear_click_queue(Window *w) {
-    w->click_queue.length = 0;
+clear_click_queue(Window *w, int button) {
+    if (0 <= button && button <= (ssize_t)arraysz(w->click_queues)) w->click_queues[button].length = 0;
 }
 
 HANDLER(add_click) {
+    if (button < 0 || button > (ssize_t)arraysz(w->click_queues)) return;
     modifiers &= ~GLFW_LOCK_MASK;
-    ClickQueue *q = &w->click_queue;
+    ClickQueue *q = &w->click_queues[button];
     if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
     monotonic_t now = monotonic();
 #define N(n) (q->clicks[q->length - n])
@@ -788,7 +789,7 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
     if (!PyArg_ParseTuple(args, "O!iipIIpp", &PyCapsule_Type, &capsule, &button, &modifiers, &is_release, &x, &y, &clear_clicks, &in_left_half_of_cell)) return NULL;
     Window *w = PyCapsule_GetPointer(capsule, "Window");
     if (!w) return NULL;
-    if (clear_clicks) clear_click_queue(w);
+    if (clear_clicks) clear_click_queue(w, button);
     bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y || w->mouse_pos.in_left_half_of_cell != in_left_half_of_cell;
     w->mouse_pos.x = 10 * x; w->mouse_pos.y = 20 * y;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
