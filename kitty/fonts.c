@@ -1319,12 +1319,19 @@ sprite_map_set_layout(PyObject UNUSED *self, PyObject *args) {
 
 static PyObject*
 test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
-    glyph_index glyphs[2] = {0};
-    if (!PyArg_ParseTuple(args, "H|H", glyphs, glyphs + 1)) return NULL;
     int error;
+    FREE_AFTER_FUNCTION glyph_index *glyphs = calloc(PyTuple_GET_SIZE(args), sizeof(glyph_index));
+    for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(args); i++) {
+        if (!PyLong_Check(PyTuple_GET_ITEM(args, i))) {
+            PyErr_SetString(PyExc_TypeError, "glyph indices must be integers");
+            return NULL;
+        }
+        glyphs[i] = (glyph_index)PyLong_AsUnsignedLong(PyTuple_GET_ITEM(args, i));
+        if (PyErr_Occurred()) return NULL;
+    }
     FontGroup *fg = font_groups;
     if (!num_font_groups) { PyErr_SetString(PyExc_RuntimeError, "must create font group first"); return NULL; }
-    SpritePosition *pos = sprite_position_for(fg, &fg->fonts[fg->medium_font_idx], glyphs, 1 + (glyphs[2] ? 1 : 0), 0, &error);
+    SpritePosition *pos = sprite_position_for(fg, &fg->fonts[fg->medium_font_idx], glyphs, PyTuple_GET_SIZE(args), 0, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
 }
