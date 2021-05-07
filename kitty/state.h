@@ -210,6 +210,7 @@ typedef struct {
     double font_sz_in_pts;
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window;
+    int active_drag_button;
     CloseRequest quit_request;
 } GlobalState;
 

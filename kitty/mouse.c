@@ -214,11 +214,12 @@ set_mouse_cursor_when_dragging(void) {
 }
 
 static inline void
-update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
+update_drag(bool from_button, Window *w, bool is_release, int modifiers, int button) {
     Screen *screen = w->render_data.screen;
     if (from_button) {
         if (is_release) {
             global_state.active_drag_in_window = 0;
+            global_state.active_drag_button = -1;
             w->last_drag_scroll_at = 0;
             if (screen->selections.in_progress) {
                 screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, true, false);
@@ -226,6 +227,7 @@ update_drag(bool from_button, Window *w, bool is_release, int modifiers) {
         }
         else {
             global_state.active_drag_in_window = w->id;
+            global_state.active_drag_button = button;
             screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, modifiers == (int)OPT(rectangle_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers)), EXTEND_CELL);
         }
     } else if (screen->selections.in_progress) {
@@ -239,7 +241,7 @@ do_drag_scroll(Window *w, bool upwards) {
     Screen *screen = w->render_data.screen;
     if (screen->linebuf == screen->main_linebuf) {
         screen_history_scroll(screen, SCROLL_LINE, upwards);
-        update_drag(false, w, false, 0);
+        update_drag(false, w, false, 0, -1);
         if (mouse_cursor_shape != ARROW) {
             mouse_cursor_shape = ARROW;
             set_mouse_cursor(mouse_cursor_shape);
@@ -357,10 +359,10 @@ detect_url(Screen *screen, unsigned int x, unsigned int y) {
 static inline void
 handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
     Screen *screen = w->render_data.screen;
-    if (screen->selections.in_progress && (button == GLFW_MOUSE_BUTTON_LEFT || button == GLFW_MOUSE_BUTTON_RIGHT)) {
+    if (screen->selections.in_progress && (button == global_state.active_drag_button)) {
         monotonic_t now = monotonic();
         if ((now - w->last_drag_scroll_at) >= ms_to_monotonic_t(20ll) || mouse_cell_changed) {
-            update_drag(false, w, false, 0);
+            update_drag(false, w, false, 0, button);
             w->last_drag_scroll_at = now;
         }
     }
@@ -474,7 +476,7 @@ static inline void
 handle_button_event_in_kitty(Window *w, int button, int modifiers, bool is_release) {
     switch(button) {
         case GLFW_MOUSE_BUTTON_LEFT:
-            update_drag(true, w, is_release, modifiers);
+            update_drag(true, w, is_release, modifiers, button);
             if (is_release) {
                 if (modifiers == (int)OPT(open_url_modifiers)) open_url(w);
             } else add_click(w, button, modifiers, 0);
@@ -626,7 +628,7 @@ mouse_event(int button, int modifiers, int action) {
             w = window_for_id(global_state.active_drag_in_window);
             if (w) {
                 button = currently_pressed_button();
-                if (button == GLFW_MOUSE_BUTTON_LEFT) {
+                if (button == global_state.active_drag_button) {
                     clamp_to_window = true;
                     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
                     for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
@@ -636,10 +638,10 @@ mouse_event(int button, int modifiers, int action) {
                 }
             }
         }
-        else if (action == GLFW_RELEASE && button == GLFW_MOUSE_BUTTON_LEFT) {
+        else if (action == GLFW_RELEASE && button == global_state.active_drag_button) {
             w = window_for_id(global_state.active_drag_in_window);
             if (w) {
-                update_drag(true, w, true, modifiers);
+                update_drag(true, w, true, modifiers, button);
             }
         }
     }
