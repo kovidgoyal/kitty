@@ -850,6 +850,10 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
     opts = _load_config(Options, defaults, parser, merge_configs, *paths, overrides=overrides)
     finalize_keys(opts)
     finalize_mouse_mappings(opts)
+    # delete no longer needed definitions, replacing with empty placeholders
+    setattr(opts, 'kitten_aliases', {})
+    setattr(opts, 'mouse_mappings', [])
+    setattr(opts, 'key_definitions', [])
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
         log_error('Cannot use both macos_titlebar_color and background_opacity')
         opts.macos_titlebar_color = 0
