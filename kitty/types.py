@@ -52,6 +52,13 @@ class SingleKey(NamedTuple):
     key: int = -1
 
 
+class MouseEvent(NamedTuple):
+    button: int = 0
+    mods: int = 0
+    repeat_count: int = 1
+    grabbed: bool = False
+
+
 ConvertibleToNumbers = Union[str, bytes, int, float]
 
 

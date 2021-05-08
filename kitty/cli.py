@@ -7,16 +7,16 @@ import re
 import sys
 from collections import deque
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterable, Iterator, List, Match, Optional,
-    Sequence, Set, Tuple, Type, TypeVar, Union, cast
+    Any, Callable, Dict, FrozenSet, Generator, Iterable, Iterator, List, Match,
+    Optional, Sequence, Set, Tuple, Type, TypeVar, Union, cast
 )
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
-from .config import KeyAction
+from .config import KeyAction, MouseMap
 from .constants import appname, defconf, is_macos, is_wayland, str_version
 from .options_stub import Options as OptionsStub
-from .types import SingleKey
+from .types import MouseEvent, SingleKey
 from .typing import BadLineType, SequenceMap, TypedDict
 
 
@@ -759,21 +759,25 @@ SYSTEM_CONF = '/etc/xdg/kitty/kitty.conf'
 ShortcutMap = Dict[Tuple[SingleKey, ...], KeyAction]
 
 
-def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction) -> None:
+def mod_to_names(mods: int) -> Generator[str, None, None]:
     from .fast_data_types import (
         GLFW_MOD_ALT, GLFW_MOD_CAPS_LOCK, GLFW_MOD_CONTROL, GLFW_MOD_HYPER,
-        GLFW_MOD_META, GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT, GLFW_MOD_SUPER,
-        glfw_get_key_name
+        GLFW_MOD_META, GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT, GLFW_MOD_SUPER
     )
     modmap = {'shift': GLFW_MOD_SHIFT, 'alt': GLFW_MOD_ALT, 'ctrl': GLFW_MOD_CONTROL, ('cmd' if is_macos else 'super'): GLFW_MOD_SUPER,
               'hyper': GLFW_MOD_HYPER, 'meta': GLFW_MOD_META, 'num_lock': GLFW_MOD_NUM_LOCK, 'caps_lock': GLFW_MOD_CAPS_LOCK}
+    for name, val in modmap.items():
+        if mods & val:
+            yield name
+
+
+def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction) -> None:
+    from .fast_data_types import glfw_get_key_name
     keys = []
     for key_spec in key_sequence:
         names = []
         mods, is_native, key = key_spec
-        for name, val in modmap.items():
-            if mods & val:
-                names.append(name)
+        names = list(mod_to_names(mods))
         if key:
             kname = glfw_get_key_name(0, key) if is_native else glfw_get_key_name(key, 0)
             names.append(kname or f'{key}')
@@ -807,19 +811,43 @@ def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
     return ans
 
 
+def compare_mousemaps(final: MouseMap, initial: MouseMap) -> None:
+    added = set(final) - set(initial)
+    removed = set(initial) - set(final)
+    changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
+
+    def print_mouse_action(trigger: MouseEvent, action: KeyAction) -> None:
+        names = list(mod_to_names(trigger.mods)) + [f'b{trigger.button+1}']
+        when = {-1: 'repeat', 1: 'press', 2: 'doublepress', 3: 'triplepress'}.get(trigger.repeat_count, trigger.repeat_count)
+        grabbed = 'grabbed' if trigger.grabbed else 'ungrabbed'
+        print('\t', '+'.join(names), when, grabbed, action)
+
+    def print_changes(defns: MouseMap, changes: Set[MouseEvent], text: str) -> None:
+        if changes:
+            print(title(text))
+            for k in sorted(changes):
+                print_mouse_action(k, defns[k])
+
+    print_changes(final, added, 'Added mouse actions:')
+    print_changes(initial, removed, 'Removed mouse actions:')
+    print_changes(final, changed, 'Changed mouse actions:')
+
+
 def compare_opts(opts: OptionsStub) -> None:
     from .config import defaults, load_config
     print('\nConfig options different from defaults:')
     default_opts = load_config()
+    ignored = ('key_definitions', 'keymap', 'sequence_map', 'mousemap', 'mouse_mappings')
     changed_opts = [
         f for f in sorted(defaults._fields)  # type: ignore
-        if f not in ('key_definitions', 'keymap', 'sequence_map') and getattr(opts, f) != getattr(defaults, f)
+        if f not in ignored and getattr(opts, f) != getattr(defaults, f)
     ]
     field_len = max(map(len, changed_opts)) if changed_opts else 20
     fmt = '{{:{:d}s}}'.format(field_len)
     for f in changed_opts:
         print(title(fmt.format(f)), getattr(opts, f))
 
+    compare_mousemaps(opts.mousemap, default_opts.mousemap)
     final_, initial_ = opts.keymap, default_opts.keymap
     final: ShortcutMap = {(k,): v for k, v in final_.items()}
     initial: ShortcutMap = {(k,): v for k, v in initial_.items()}

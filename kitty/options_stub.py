@@ -21,11 +21,12 @@ def generate_stub():
         },
         preamble_lines=(
             'from kitty.types import SingleKey',
-            'from kitty.config import KeyAction, KeyMap, SequenceMap',
+            'from kitty.config import KeyAction, KeyMap, SequenceMap, MouseMap',
         ),
         extra_fields=(
             ('keymap', 'KeyMap'),
             ('sequence_map', 'SequenceMap'),
+            ('mousemap', 'MouseMap'),
         )
     )
 
