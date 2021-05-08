@@ -306,7 +306,7 @@ png_path_to_bitmap(const char* path, uint8_t** data, unsigned int* width, unsign
     unsigned char *buf = malloc(capacity);
     if (!buf) { log_error("Out of memory reading PNG file at: %s", path); fclose(fp); return false; }
     while (!feof(fp)) {
-        if (pos - capacity < 1024) {
+        if (capacity - pos < 1024) {
             capacity *= 2;
             unsigned char *new_buf = realloc(buf, capacity);
             if (!new_buf) {
