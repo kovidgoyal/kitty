@@ -123,10 +123,10 @@ encode_mouse_scroll(Window *w, bool upwards, int mods) {
 // }}}
 
 static inline void
-dispatch_mouse_event(Window *w, int button, int count, int modifiers) {
+dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabbed) {
     if (w->render_data.screen && PyCallable_Check(w->render_data.screen->callbacks)) {
-        PyObject *callback_ret = PyObject_CallMethod(w->render_data.screen->callbacks, "on_mouse_event", "{si si si}",
-            "button", button, "count", count, "modifiers", modifiers);
+        PyObject *callback_ret = PyObject_CallMethod(w->render_data.screen->callbacks, "on_mouse_event", "{si si si sO}",
+            "button", button, "repeat_count", count, "mods", modifiers, "grabbed", grabbed ? Py_True : Py_False);
         if (callback_ret == NULL) PyErr_Print();
         else Py_DECREF(callback_ret);
     }
