@@ -458,6 +458,23 @@ draw_tint(bool premult, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
+void
+draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloat w, GLfloat h, Screen *screen) {
+    glEnable(GL_BLEND);
+    // BLEND_PREMULT
+    glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
+    bind_program(TINT_PROGRAM);
+    // TODO config option worth?
+    GLfloat attenuation = 0.4f;
+    color_type flash = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg);
+#define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) * intensity * attenuation)
+    glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), intensity * attenuation);
+#undef C
+    glUniform4f(tint_program_layout.edges_location, xstart, ystart - h, xstart + w, ystart);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glDisable(GL_BLEND);
+}
+
 static void
 draw_cells_interleaved(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, OSWindow *w, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height) {
     glEnable(GL_BLEND);
@@ -649,6 +666,11 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         if (screen->grman->num_of_negative_refs || screen->grman->num_of_below_refs || has_bgimage(os_window)) draw_cells_interleaved(
                 vao_idx, gvao_idx, screen, os_window, xstart, ystart, w, h);
         else draw_cells_simple(vao_idx, gvao_idx, screen);
+    }
+
+    float intensity = screen_visual_bell_intensity(screen);
+    if (intensity > 0.0f) {
+        draw_visual_bell_flash((GLfloat)intensity, xstart, ystart, w, h, screen);
     }
 }
 // }}}
