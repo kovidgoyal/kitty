@@ -122,14 +122,19 @@ encode_mouse_scroll(Window *w, bool upwards, int mods) {
 
 // }}}
 
-static inline void
+static bool
 dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabbed) {
-    if (w->render_data.screen && PyCallable_Check(w->render_data.screen->callbacks)) {
+    bool handled = false;
+    if (w->render_data.screen && w->render_data.screen->callbacks != Py_None) {
         PyObject *callback_ret = PyObject_CallMethod(w->render_data.screen->callbacks, "on_mouse_event", "{si si si sO}",
             "button", button, "repeat_count", count, "mods", modifiers, "grabbed", grabbed ? Py_True : Py_False);
         if (callback_ret == NULL) PyErr_Print();
-        else Py_DECREF(callback_ret);
+        else {
+            handled = callback_ret == Py_True;
+            Py_DECREF(callback_ret);
+        }
     }
+    return handled;
 }
 
 static inline unsigned int
@@ -443,6 +448,7 @@ HANDLER(add_click) {
     N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = w->mouse_pos.x; N(0).y = w->mouse_pos.y;
     q->length++;
     double multi_click_allowed_radius = 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
+    Screen *screen = w->render_data.screen;
     // Now dispatch the multi-click if any
     if (q->length > 2) {
         // possible triple-click
@@ -450,7 +456,7 @@ HANDLER(add_click) {
                 N(1).at - N(3).at <= 2 * OPT(click_interval) &&
                 distance(N(1).x, N(1).y, N(3).x, N(3).y) <= multi_click_allowed_radius
            ) {
-            multi_click(w, 3);
+            if (screen) dispatch_mouse_event(w, button, 3, modifiers, screen->modes.mouse_tracking_mode != 0);
             q->length = 0;
         }
     }
@@ -460,7 +466,7 @@ HANDLER(add_click) {
                 N(1).at - N(2).at <= OPT(click_interval) &&
                 distance(N(1).x, N(1).y, N(2).x, N(2).y) <= multi_click_allowed_radius
            ) {
-            multi_click(w, 2);
+            if (screen) dispatch_mouse_event(w, button, 2, modifiers, screen->modes.mouse_tracking_mode != 0);
         }
     }
 #undef N
@@ -473,7 +479,7 @@ open_url(Window *w) {
     screen_open_url(screen);
 }
 
-static inline void
+static void
 handle_button_event_in_kitty(Window *w, int button, int modifiers, bool is_release) {
     switch(button) {
         case GLFW_MOUSE_BUTTON_LEFT:
@@ -500,17 +506,11 @@ HANDLER(handle_button_event) {
     }
     Screen *screen = w->render_data.screen;
     if (!screen) return;
-    const int ts1 = OPT(terminal_select_modifiers), ts2 = OPT(terminal_select_modifiers) | OPT(rectangle_select_modifiers);
-    bool handle_in_kitty = (
-            modifiers == ts1 || modifiers == ts2 ||
-            screen->modes.mouse_tracking_mode == 0 ||
-            (modifiers == (int)OPT(open_url_modifiers) && button == GLFW_MOUSE_BUTTON_LEFT)
-        );
-    if (handle_in_kitty) handle_button_event_in_kitty(w, button, modifiers, is_release);
-    else {
+    if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
         int sz = encode_mouse_button(w, button, is_release ? RELEASE : PRESS, modifiers);
         if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
     }
+    add_click(w, button, modifiers, 0);
 }
 
 static inline int

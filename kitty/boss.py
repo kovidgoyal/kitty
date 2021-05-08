@@ -736,27 +736,34 @@ class Boss:
                 if t is not None:
                     t.relayout_borders()
 
-    def dispatch_action(self, key_action: KeyAction) -> bool:
+    def dispatch_action(
+        self,
+        key_action: KeyAction,
+        window_for_dispatch: Optional[Window] = None,
+        dispatch_type: str = 'KeyPress'
+    ) -> bool:
         if key_action is not None:
             f = getattr(self, key_action.func, None)
             if f is not None:
                 if self.args.debug_keyboard:
-                    print('Keypress matched action:', func_name(f))
+                    print(f'{dispatch_type} matched action:', func_name(f))
                 passthrough = f(*key_action.args)
                 if passthrough is not True:
                     return True
-        tab = self.active_tab
-        if tab is None:
-            return False
-        window = self.active_window
-        if window is None:
+        if window_for_dispatch is None:
+            tab = self.active_tab
+            window = self.active_window
+        else:
+            window = window_for_dispatch
+            tab = window.tabref()
+        if tab is None or window is None:
             return False
         if key_action is not None:
             f = getattr(tab, key_action.func, getattr(window, key_action.func, None))
             if f is not None:
                 passthrough = f(*key_action.args)
                 if self.args.debug_keyboard:
-                    print('Keypress matched action:', func_name(f))
+                    print(f'{dispatch_type} matched action:', func_name(f))
                 if passthrough is not True:
                     return True
         return False

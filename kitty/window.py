@@ -19,7 +19,7 @@ from typing import (
 from .child import ProcessDesc
 from .cli_stub import CLIOptions
 from .config import build_ansi_color_table
-from .constants import appname, wakeup, is_macos
+from .constants import appname, is_macos, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
@@ -36,7 +36,7 @@ from .notify import NotificationCommand, handle_notification_cmd
 from .options_stub import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import ScreenGeometry, WindowGeometry
+from .types import MouseEvent, ScreenGeometry, WindowGeometry
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int, get_primary_selection, load_shaders, log_error, open_cmd,
@@ -529,6 +529,13 @@ class Window:
     # screen callbacks {{{
     def use_utf8(self, on: bool) -> None:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
+
+    def on_mouse_event(self, event: Dict[str, Any]) -> bool:
+        ev = MouseEvent(**event)
+        action = self.opts.mousemap.get(ev)
+        if action is None:
+            return False
+        return get_boss().dispatch_action(action, window_for_dispatch=self, dispatch_type='MouseEvent')
 
     def open_url(self, url: str, hyperlink_id: int, cwd: Optional[str] = None) -> None:
         if hyperlink_id:
