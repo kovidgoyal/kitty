@@ -285,6 +285,20 @@ def launch(
         kw['location'] = opts.location
     if opts.copy_colors and active:
         kw['copy_colors_from'] = active
+    pipe_data: Dict[str, Any] = {}
+    if opts.stdin_source != 'none':
+        q = str(opts.stdin_source)
+        if opts.stdin_add_formatting:
+            if q in ('@screen', '@screen_scrollback', '@alternate', '@alternate_scrollback'):
+                q = '@ansi_' + q[1:]
+        if opts.stdin_add_line_wrap_markers:
+            q += '_wrap'
+        penv, stdin = boss.process_stdin_source(window=active, stdin=q, copy_pipe_data=pipe_data)
+        if stdin:
+            kw['stdin'] = stdin
+            if penv:
+                env.update(penv)
+
     cmd = args or None
     if opts.copy_cmdline and active_child:
         cmd = active_child.foreground_cmdline
@@ -298,6 +312,21 @@ def launch(
                         x = s
                 elif x == '@active-kitty-window-id':
                     x = str(active.id)
+                elif x == '@input-line-number':
+                    if 'input_line_number' in pipe_data:
+                        x = str(pipe_data['input_line_number'])
+                elif x == '@line-count':
+                    if 'lines' in pipe_data:
+                        x = str(pipe_data['lines'])
+                elif x in ('@cursor-x', '@cursor-y', '@scrolled-by'):
+                    if active is not None:
+                        screen = active.screen
+                        if x == '@scrolled-by':
+                            x = str(screen.scrolled_by)
+                        elif x == '@cursor-x':
+                            x = str(screen.cursor.x)
+                        elif x == '@cursor-y':
+                            x = str(screen.cursor.y)
             final_cmd.append(x)
         exe = find_exe(final_cmd[0])
         if not exe:
@@ -310,19 +339,6 @@ def launch(
         kw['cmd'] = final_cmd
     if opts.type == 'overlay' and active:
         kw['overlay_for'] = active.id
-    if opts.stdin_source != 'none':
-        q = str(opts.stdin_source)
-        if opts.stdin_add_formatting:
-            if q in ('@screen', '@screen_scrollback', '@alternate', '@alternate_scrollback'):
-                q = '@ansi_' + q[1:]
-        if opts.stdin_add_line_wrap_markers:
-            q += '_wrap'
-        penv, stdin = boss.process_stdin_source(window=active, stdin=q)
-        if stdin:
-            kw['stdin'] = stdin
-            if penv:
-                env.update(penv)
-
     if opts.type == 'background':
         cmd = kw['cmd']
         if not cmd:

@@ -18,6 +18,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: When the Apple Color Emoji font lacks an emoji glyph search for it in other
   installed fonts (:iss:`3591`)
 
+- Add a few more special commandline arguments for the launch command. Now all
+  ``KITTY_PIPE_DATA`` is also available via command line argument substitution
+  (:iss:`3593`)
+
 
 0.20.3 [2021-05-06]
 ----------------------

@@ -1160,7 +1160,10 @@ class Boss:
 
     prev_tab = previous_tab
 
-    def process_stdin_source(self, window: Optional[Window] = None, stdin: Optional[str] = None) -> Tuple[Optional[Dict[str, str]], Optional[bytes]]:
+    def process_stdin_source(
+        self, window: Optional[Window] = None,
+        stdin: Optional[str] = None, copy_pipe_data: Optional[Dict] = None
+    ) -> Tuple[Optional[Dict[str, str]], Optional[bytes]]:
         w = window or self.active_window
         if not w:
             return None, None
@@ -1174,6 +1177,8 @@ class Boss:
             if stdin is not None:
                 pipe_data = w.pipe_data(stdin, has_wrap_markers=add_wrap_markers) if w else None
                 if pipe_data:
+                    if copy_pipe_data is not None:
+                        copy_pipe_data.update(pipe_data)
                     env = {
                         'KITTY_PIPE_DATA':
                         '{scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}'.format(**pipe_data)

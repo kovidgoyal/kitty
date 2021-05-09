@@ -54,9 +54,34 @@ Special arguments
 -------------------
 
 There are a few special placeholder arguments that can be specified as part of
-the command line. Namely ``@selection`` which is replaced by the current
-selection and ``@active-kitty-window-id`` which is replaced by the id of the
-currently active kitty window. For example::
+the command line:
+
+
+``@selection``
+    replaced by the currently selected text
+
+``@active-kitty-window-id``
+    replaced by the id of the currently active kitty window
+
+``@line-count``
+    replaced by the number of lines in STDIN. Only present when passing some
+    data to STDIN
+
+``@input-line-number``
+    replaced the number of lines a pager should scroll to match the current
+    scroll position in kitty. See :opt:`scrollback_pager` for details
+
+``@scrolled-by``
+    replaced by the number of lines kitty is currently scrolled by
+
+``@cursor-x``
+    replaced by the current cursor x position
+
+``@cursor-y``
+    replaced by the current cursor y position
+
+
+For example::
 
     map f1 launch my-program @active-kitty-window-id
 
