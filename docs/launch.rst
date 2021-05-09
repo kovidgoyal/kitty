@@ -75,10 +75,10 @@ the command line:
     replaced by the number of lines kitty is currently scrolled by
 
 ``@cursor-x``
-    replaced by the current cursor x position
+    replaced by the current cursor x position with 1 being the leftmost cell
 
 ``@cursor-y``
-    replaced by the current cursor y position
+    replaced by the current cursor y position with 1 being the topmost cell
 
 
 For example::

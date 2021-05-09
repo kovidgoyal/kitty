@@ -324,9 +324,9 @@ def launch(
                         if x == '@scrolled-by':
                             x = str(screen.scrolled_by)
                         elif x == '@cursor-x':
-                            x = str(screen.cursor.x)
+                            x = str(screen.cursor.x + 1)
                         elif x == '@cursor-y':
-                            x = str(screen.cursor.y)
+                            x = str(screen.cursor.y + 1)
             final_cmd.append(x)
         exe = find_exe(final_cmd[0])
         if not exe:
