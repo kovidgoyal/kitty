@@ -48,6 +48,14 @@ particular desktop, but it should work for most major desktop environments.
     # Update the path to the kitty icon in the kitty.desktop file
     sed -i "s|Icon=kitty|Icon=/home/$USER/.local/kitty.app/share/icons/hicolor/256x256/apps/kitty.png|g" ~/.local/share/applications/kitty.desktop
 
+Note: if you use the venerable [`stow`](https://www.gnu.org/software/stow/)
+command to manage your manual installations, the following takes care of the
+above for you:
+
+.. code-block:: sh
+
+    cd ~/.local/stow
+    stow -v kitty.app
 
 
 Customizing the installation
