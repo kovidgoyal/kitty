@@ -1221,6 +1221,8 @@ class Boss:
         cwd_from: Optional[int] = None
     ) -> None:
         import subprocess
+        if env:
+            env = {**os.environ, **env}
         if cwd_from:
             with suppress(Exception):
                 cwd = cwd_of_process(cwd_from)
