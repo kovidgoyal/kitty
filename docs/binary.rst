@@ -50,7 +50,7 @@ particular desktop, but it should work for most major desktop environments.
 
 Note: if you use the venerable [`stow`](https://www.gnu.org/software/stow/)
 command to manage your manual installations, the following takes care of the
-above for you:
+above for you (use with `dest=~/.local/stow`):
 
 .. code-block:: sh
 
