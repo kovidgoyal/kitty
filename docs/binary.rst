@@ -51,7 +51,7 @@ particular desktop, but it should work for most major desktop environments.
 .. note::
     If you use the venerable `stow <https://www.gnu.org/software/stow/>`_
     command to manage your manual installations, the following takes care of the
-    above for you (use with `dest=~/.local/stow`)::
+    above for you (use with :file:`dest=~/.local/stow`)::
 
         cd ~/.local/stow
         stow -v kitty.app
