@@ -303,8 +303,6 @@ class TabBar:
             self.draw_data = self.draw_data._replace(inactive_bg=color_from_int(spec['inactive_tab_background']))
         if 'tab_bar_background' in spec:
             self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['tab_bar_background']))
-        elif 'background' in spec and not self.opts.tab_bar_background:
-            self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['background']))
         fg = spec.get('inactive_tab_foreground', color_as_int(self.opts.inactive_tab_foreground))
         bg = spec.get('tab_bar_background', False)
         if bg is None:

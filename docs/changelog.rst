@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   ``KITTY_PIPE_DATA`` is also available via command line argument substitution
   (:iss:`3593`)
 
+- Fix dynamically changing the background color in a window causing rendering
+  artifacts in the tab bar (:iss:`3595`)
+
 
 0.20.3 [2021-05-06]
 ----------------------
