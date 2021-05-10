@@ -115,6 +115,9 @@ such a split windows, previews, REPLs etc.
 `vim-test <https://github.com/vim-test/vim-test>`_
     allows easily running tests in a terminal window
 
+`hologram.nvim <https://github.com/edluffy/hologram.nvim>`_
+    terminal image viewer for nvim
+
 
 Scrollback manipulation
 -------------------------
