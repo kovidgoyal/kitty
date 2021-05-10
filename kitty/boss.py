@@ -1225,7 +1225,7 @@ class Boss:
         if env:
             env_ = default_env().copy()
             env_.update(env)
-            env = env
+            env = env_
         if cwd_from:
             with suppress(Exception):
                 cwd = cwd_of_process(cwd_from)
