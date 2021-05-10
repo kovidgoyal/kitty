@@ -25,6 +25,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix dynamically changing the background color in a window causing rendering
   artifacts in the tab bar (:iss:`3595`)
 
+- Fix passing STDIN to launched background processes causing them to not inherit
+  environment variables (:pull:`3603`)
+
 
 0.20.3 [2021-05-06]
 ----------------------
