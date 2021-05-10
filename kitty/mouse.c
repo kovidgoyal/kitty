@@ -479,24 +479,6 @@ open_url(Window *w) {
     screen_open_url(screen);
 }
 
-static void
-handle_button_event_in_kitty(Window *w, int button, int modifiers, bool is_release) {
-    switch(button) {
-        case GLFW_MOUSE_BUTTON_LEFT:
-            update_drag(true, w, is_release, modifiers, button);
-            if (is_release) {
-                if (modifiers == (int)OPT(open_url_modifiers)) open_url(w);
-            } else add_click(w, button, modifiers, 0);
-            break;
-        case GLFW_MOUSE_BUTTON_MIDDLE:
-            if (is_release) { call_boss(paste_from_selection, NULL); return; }
-            break;
-        case GLFW_MOUSE_BUTTON_RIGHT:
-            extend_selection(w, is_release);
-            break;
-    }
-}
-
 HANDLER(handle_button_event) {
     modifiers &= ~GLFW_LOCK_MASK;
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
@@ -507,10 +489,12 @@ HANDLER(handle_button_event) {
     Screen *screen = w->render_data.screen;
     if (!screen) return;
     if (!dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, screen->modes.mouse_tracking_mode != 0)) {
-        int sz = encode_mouse_button(w, button, is_release ? RELEASE : PRESS, modifiers);
-        if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
+        if (screen->modes.mouse_tracking_mode != 0) {
+            int sz = encode_mouse_button(w, button, is_release ? RELEASE : PRESS, modifiers);
+            if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
+        }
     }
-    add_click(w, button, modifiers, 0);
+    if (!is_release) add_click(w, button, modifiers, 0);
 }
 
 static inline int
@@ -798,9 +782,8 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
         if (button == -2) do_drag_scroll(w, true);
         else if (button == -3) do_drag_scroll(w, false);
         else handle_mouse_movement_in_kitty(w, GLFW_MOUSE_BUTTON_LEFT, mouse_cell_changed);
-    }
-    else {
-        handle_button_event_in_kitty(w, button, modifiers, (bool)is_release);
+    } else {
+        dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, false);
     }
     Py_RETURN_NONE;
 }
