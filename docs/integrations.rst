@@ -59,6 +59,10 @@ System and data visualisation tools
 `KittyTerminalImages.jl <https://github.com/simonschoelly/KittyTerminalImages.jl>`_
     show images from Julia directly in kitty
 
+`euporie <https://github.com/joouha/euporie>`_
+    a text-based user interface for running and editing Jupyter notebooks,
+    powered by kitty's graphics protocol for displaying plots
+
 `gnuplot <http://www.gnuplot.info/>`_
     a graphing and data visualization tool that can be made to display its
     output in kitty with the following bash snippet::
