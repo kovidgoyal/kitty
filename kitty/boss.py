@@ -15,7 +15,7 @@ from typing import (
 )
 from weakref import WeakValueDictionary
 
-from .child import cached_process_data, cwd_of_process
+from .child import cached_process_data, cwd_of_process, default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
 from .conf.utils import BadLine, to_cmdline
@@ -1221,6 +1221,11 @@ class Boss:
         cwd_from: Optional[int] = None
     ) -> None:
         import subprocess
+        env = env or None
+        if env:
+            env_ = default_env().copy()
+            env_.update(env)
+            env = env
         if cwd_from:
             with suppress(Exception):
                 cwd = cwd_of_process(cwd_from)
