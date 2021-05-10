@@ -26,10 +26,11 @@ from .fast_data_types import (
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     STRIKETHROUGH, TINT_PROGRAM, KeyEvent, Screen, add_timer, add_window,
-    cell_size_for_window, compile_program, encode_key_for_tty, get_boss,
-    get_clipboard_string, init_cell_program, pt_to_px, set_clipboard_string,
-    set_titlebar_color, set_window_padding, set_window_render_data,
-    update_window_title, update_window_visibility, viewport_for_window
+    cell_size_for_window, click_mouse_url, compile_program, encode_key_for_tty,
+    get_boss, get_clipboard_string, init_cell_program, pt_to_px,
+    set_clipboard_string, set_titlebar_color, set_window_padding,
+    set_window_render_data, update_window_title, update_window_visibility,
+    viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .notify import NotificationCommand, handle_notification_cmd
@@ -792,6 +793,11 @@ class Window:
             else:
                 if self.child_title:
                     self.title_stack.append(self.child_title)
+    # }}}
+
+    # mouse actions {{{
+    def mouse_click_url(self) -> bool:
+        click_mouse_url(self.os_window_id, self.tab_id, self.id)
     # }}}
 
     def text_for_selection(self) -> str:

@@ -1156,8 +1156,16 @@ pycreate_mock_window(PyObject *self UNUSED, PyObject *args) {
     return ans;
 }
 
+static inline void
+click_mouse_url(id_type os_window_id, id_type tab_id, id_type window_id) {
+    WITH_WINDOW(os_window_id, tab_id, window_id);
+    mouse_open_url(window);
+    END_WITH_WINDOW;
+}
+
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
+THREE_ID(click_mouse_url)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
 PYWRAP1(resolve_key_mods) { int mods; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(mods)); }
@@ -1177,6 +1185,7 @@ static PyMethodDef module_methods[] = {
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),
     MW(set_options, METH_VARARGS),
+    MW(click_mouse_url, METH_VARARGS),
     MW(set_in_sequence_mode, METH_O),
     MW(resolve_key_mods, METH_VARARGS),
     MW(handle_for_window_id, METH_VARARGS),

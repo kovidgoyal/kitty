@@ -472,8 +472,8 @@ HANDLER(add_click) {
 #undef N
 }
 
-static inline void
-open_url(Window *w) {
+void
+mouse_open_url(Window *w) {
     Screen *screen = w->render_data.screen;
     detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
     screen_open_url(screen);
