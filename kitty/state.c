@@ -576,11 +576,6 @@ resolve_mods(int mods) {
     return mods;
 }
 
-static int
-convert_mods(PyObject *obj) {
-    return resolve_mods(PyLong_AsLong(obj));
-}
-
 static WindowTitleIn
 window_title_in(PyObject *title_in) {
     const char *in = PyUnicode_AsUTF8(title_in);
@@ -719,9 +714,6 @@ PYWRAP1(set_options) {
     S(mouse_hide_wait, parse_s_double_to_monotonic_t);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
     S(touch_scroll_multiplier, PyFloat_AsDouble);
-    S(open_url_modifiers, convert_mods);
-    S(rectangle_select_modifiers, convert_mods);
-    S(terminal_select_modifiers, convert_mods);
     S(click_interval, parse_s_double_to_monotonic_t);
     S(resize_debounce_time, parse_s_double_to_monotonic_t);
     S(mark1_foreground, color_as_int);
@@ -1163,6 +1155,17 @@ click_mouse_url(id_type os_window_id, id_type tab_id, id_type window_id) {
     END_WITH_WINDOW;
 }
 
+static PyObject*
+pymouse_selection(PyObject *self UNUSED, PyObject *args) {
+    id_type os_window_id, tab_id, window_id;
+    int code, button;
+    PA("KKKii", &os_window_id, &tab_id, &window_id, &code, &button);
+    WITH_WINDOW(os_window_id, tab_id, window_id);
+    mouse_selection(window, code, button);
+    END_WITH_WINDOW;
+    Py_RETURN_NONE;
+}
+
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 THREE_ID(click_mouse_url)
@@ -1186,6 +1189,7 @@ static PyMethodDef module_methods[] = {
     MW(next_window_id, METH_NOARGS),
     MW(set_options, METH_VARARGS),
     MW(click_mouse_url, METH_VARARGS),
+    MW(mouse_selection, METH_VARARGS),
     MW(set_in_sequence_mode, METH_O),
     MW(resolve_key_mods, METH_VARARGS),
     MW(handle_for_window_id, METH_VARARGS),

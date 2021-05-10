@@ -27,9 +27,6 @@ typedef struct {
     CursorShape cursor_shape;
     float cursor_beam_thickness;
     float cursor_underline_thickness;
-    unsigned int open_url_modifiers;
-    unsigned int rectangle_select_modifiers;
-    unsigned int terminal_select_modifiers;
     unsigned int url_style;
     unsigned int scrollback_pager_history_size;
     bool scrollback_fill_enlarged_window;
@@ -293,3 +290,4 @@ void update_os_window_title(OSWindow *os_window);
 void fake_scroll(Window *w, int amount, bool upwards);
 Window* window_for_window_id(id_type kitty_window_id);
 void mouse_open_url(Window *w);
+void mouse_selection(Window *w, int code, int button);

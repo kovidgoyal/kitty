@@ -10,6 +10,11 @@ from kitty.fonts.render import FontObject
 from kitty.options_stub import Options
 
 # Constants {{{
+MOUSE_SELECTION_LINE: int
+MOUSE_SELECTION_EXTEND: int
+MOUSE_SELECTION_NORMAL: int
+MOUSE_SELECTION_WORD: int
+MOUSE_SELECTION_RECTANGLE: int
 KITTY_VCS_REV: str
 NO_CLOSE_REQUESTED: int
 IMPERATIVE_CLOSE_REQUESTED: int
@@ -1156,4 +1161,8 @@ def set_window_padding(os_window_id: int, tab_id: int, window_id: int, left: int
 
 
 def click_mouse_url(os_window_id: int, tab_id: int, window_id: int) -> None:
+    pass
+
+
+def mouse_selection(os_window_id: int, tab_id: int, window_id: int, code: int, button: int) -> None:
     pass

@@ -560,10 +560,6 @@ url_style_map = dict(
 
 o('url_style', 'curly', option_type=url_style)
 
-o('open_url_modifiers', 'kitty_mod', option_type=to_modifiers, long_text=_('''
-The modifier keys to press when clicking with the
-mouse on URLs to open the URL'''))
-
 o('open_url_with', 'default', option_type=to_cmdline, long_text=_('''
 The program with which to open URLs that are clicked on.
 The special value :code:`default` means to use the
@@ -612,13 +608,6 @@ o('strip_trailing_spaces', 'never', option_type=choices('never', 'smart', 'alway
 Remove spaces at the end of lines when copying to clipboard.
 A value of :code:`smart` will do it when using normal selections, but not rectangle
 selections. :code:`always` will always do it.'''))
-
-o('rectangle_select_modifiers', 'ctrl+alt', option_type=to_modifiers, long_text=_('''
-The modifiers to use rectangular selection (i.e. to select text in a
-rectangular block with the mouse)'''))
-
-o('terminal_select_modifiers', 'shift', option_type=to_modifiers, long_text=_('''
-The modifiers to override mouse selection even when a terminal application has grabbed the mouse'''))
 
 o('select_by_word_characters', '@-./_~?&=%+#', long_text=_('''
 Characters considered part of a word when double clicking. In addition to these characters
@@ -1357,6 +1346,17 @@ to force the choice.'''))
 g('mousemap')  # {{{
 
 m('click_url', 'ctrl+shift+left', 'release', 'grabbed,ungrabbed', 'mouse_click_url', _('Click the link under the mouse cursor'))
+m('paste_selection', 'middle', 'release', 'grabbed,ungrabbed', 'paste_selection', _('Paste from the primary selection'))
+m('extend_selection', 'right', 'press', 'grabbed,ungrabbed', 'mouse_selection extend', _('Extend the current selection'))
+for grabbed in (False, True):
+    modes = 'ungrabbed' + (',grabbed' if grabbed else '')
+    name_s = '_grabbed' if grabbed else ''
+    mods_p = 'shift+' if grabbed else ''
+    m('start_simple_selection' + name_s, mods_p + 'left', 'press', modes, 'mouse_selection normal', _('Start selecting text'))
+    m('start_rectangle_selection' + name_s, mods_p + 'ctrl+alt+left', 'press', modes, 'mouse_selection rectangle',
+      _('Start selecting text in a rectangle'))
+    m('select_word' + name_s, mods_p + 'left', 'doublepress', modes, 'mouse_selection word', _('Select a word'))
+    m('select_line' + name_s, mods_p + 'left', 'triplepress', modes, 'mouse_selection line', _('Select a line'))
 # }}}
 
 g('shortcuts')  # {{{

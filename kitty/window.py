@@ -27,8 +27,8 @@ from .fast_data_types import (
     MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
     STRIKETHROUGH, TINT_PROGRAM, KeyEvent, Screen, add_timer, add_window,
     cell_size_for_window, click_mouse_url, compile_program, encode_key_for_tty,
-    get_boss, get_clipboard_string, init_cell_program, pt_to_px,
-    set_clipboard_string, set_titlebar_color, set_window_padding,
+    get_boss, get_clipboard_string, init_cell_program, mouse_selection,
+    pt_to_px, set_clipboard_string, set_titlebar_color, set_window_padding,
     set_window_render_data, update_window_title, update_window_visibility,
     viewport_for_window
 )
@@ -297,6 +297,7 @@ class Window:
         watchers: Optional[Watchers] = None
     ):
         self.watchers = watchers or Watchers()
+        self.current_mouse_event_button = 0
         self.prev_osc99_cmd = NotificationCommand()
         self.action_on_close: Optional[Callable] = None
         self.action_on_removal: Optional[Callable] = None
@@ -533,6 +534,7 @@ class Window:
 
     def on_mouse_event(self, event: Dict[str, Any]) -> bool:
         ev = MouseEvent(**event)
+        self.current_mouse_event_button = ev.button
         action = self.opts.mousemap.get(ev)
         if action is None:
             return False
@@ -796,8 +798,11 @@ class Window:
     # }}}
 
     # mouse actions {{{
-    def mouse_click_url(self) -> bool:
+    def mouse_click_url(self) -> None:
         click_mouse_url(self.os_window_id, self.tab_id, self.id)
+
+    def mouse_selection(self, code: int) -> None:
+        mouse_selection(self.os_window_id, self.tab_id, self.id, code, self.current_mouse_event_button)
     # }}}
 
     def text_for_selection(self) -> str:

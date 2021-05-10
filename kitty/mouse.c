@@ -219,23 +219,9 @@ set_mouse_cursor_when_dragging(void) {
 }
 
 static inline void
-update_drag(bool from_button, Window *w, bool is_release, int modifiers, int button) {
+update_drag(Window *w) {
     Screen *screen = w->render_data.screen;
-    if (from_button) {
-        if (is_release) {
-            global_state.active_drag_in_window = 0;
-            global_state.active_drag_button = -1;
-            w->last_drag_scroll_at = 0;
-            if (screen->selections.in_progress) {
-                screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, true, false);
-            }
-        }
-        else {
-            global_state.active_drag_in_window = w->id;
-            global_state.active_drag_button = button;
-            screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, modifiers == (int)OPT(rectangle_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers)), EXTEND_CELL);
-        }
-    } else if (screen->selections.in_progress) {
+    if (screen && screen->selections.in_progress) {
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, false);
     }
     set_mouse_cursor_when_dragging();
@@ -246,7 +232,7 @@ do_drag_scroll(Window *w, bool upwards) {
     Screen *screen = w->render_data.screen;
     if (screen->linebuf == screen->main_linebuf) {
         screen_history_scroll(screen, SCROLL_LINE, upwards);
-        update_drag(false, w, false, 0, -1);
+        update_drag(w);
         if (mouse_cursor_shape != ARROW) {
             mouse_cursor_shape = ARROW;
             set_mouse_cursor(mouse_cursor_shape);
@@ -276,7 +262,6 @@ extend_selection(Window *w, bool ended) {
     if (screen_has_selection(screen)) {
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, ended, false);
     }
-    set_mouse_cursor_when_dragging();
 }
 
 static inline void
@@ -367,7 +352,7 @@ handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
     if (screen->selections.in_progress && (button == global_state.active_drag_button)) {
         monotonic_t now = monotonic();
         if ((now - w->last_drag_scroll_at) >= ms_to_monotonic_t(20ll) || mouse_cell_changed) {
-            update_drag(false, w, false, 0, button);
+            update_drag(w);
             w->last_drag_scroll_at = now;
         }
     }
@@ -394,8 +379,7 @@ HANDLER(handle_move_event) {
     bool in_tracking_mode = (
         screen->modes.mouse_tracking_mode == ANY_MODE ||
         (screen->modes.mouse_tracking_mode == MOTION_MODE && button >= 0));
-    bool has_terminal_select_modifiers = modifiers == (int)OPT(terminal_select_modifiers) || modifiers == ((int)OPT(rectangle_select_modifiers) | (int)OPT(terminal_select_modifiers));
-    bool handle_in_kitty = !in_tracking_mode || has_terminal_select_modifiers;
+    bool handle_in_kitty = !in_tracking_mode || global_state.active_drag_in_window == w->id;
     if (handle_in_kitty) {
         handle_mouse_movement_in_kitty(w, button, mouse_cell_changed | cell_half_changed);
     } else {
@@ -403,29 +387,6 @@ HANDLER(handle_move_event) {
         int sz = encode_mouse_button(w, MAX(0, button), button >=0 ? DRAG : MOVE, modifiers);
         if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
     }
-}
-
-static inline void
-multi_click(Window *w, unsigned int count) {
-    Screen *screen = w->render_data.screen;
-    index_type start, end;
-    SelectionExtendMode mode = EXTEND_CELL;
-    unsigned int y1, y2;
-    switch(count) {
-        case 2:
-            if (screen_selection_range_for_word(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, &y1, &y2, &start, &end, true)) mode = EXTEND_WORD;
-            break;
-        case 3:
-            if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end)) mode = EXTEND_LINE;
-            break;
-        default:
-            break;
-    }
-    if (mode != EXTEND_CELL) {
-        screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, mode);
-        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, true);
-    }
-    set_mouse_cursor_when_dragging();
 }
 
 static inline double
@@ -602,6 +563,59 @@ enter_event() {
 #endif
 }
 
+static void
+end_drag(Window *w) {
+    Screen *screen = w->render_data.screen;
+    global_state.active_drag_in_window = 0;
+    global_state.active_drag_button = -1;
+    w->last_drag_scroll_at = 0;
+    if (screen->selections.in_progress) {
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, true, false);
+    }
+}
+
+typedef enum MouseSelectionType {
+    MOUSE_SELECTION_NORMAL,
+    MOUSE_SELECTION_EXTEND,
+    MOUSE_SELECTION_RECTANGLE,
+    MOUSE_SELECTION_WORD,
+    MOUSE_SELECTION_LINE,
+} MouseSelectionType;
+
+
+void
+mouse_selection(Window *w, int code, int button) {
+    global_state.active_drag_in_window = w->id;
+    global_state.active_drag_button = button;
+    Screen *screen = w->render_data.screen;
+    index_type start, end;
+    unsigned int y1, y2;
+#define S(mode) {\
+        screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, mode); \
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, true); }
+
+    switch((MouseSelectionType)code) {
+        case MOUSE_SELECTION_NORMAL:
+            screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, EXTEND_CELL);
+            break;
+        case MOUSE_SELECTION_RECTANGLE:
+            screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, true, EXTEND_CELL);
+            break;
+        case MOUSE_SELECTION_WORD:
+            if (screen_selection_range_for_word(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, &y1, &y2, &start, &end, true)) S(EXTEND_WORD);
+            break;
+        case MOUSE_SELECTION_LINE:
+            if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end)) S(EXTEND_LINE);
+            break;
+        case MOUSE_SELECTION_EXTEND:
+            extend_selection(w, false);
+            break;
+    }
+    set_mouse_cursor_when_dragging();
+#undef S
+}
+
+
 void
 mouse_event(int button, int modifiers, int action) {
     MouseShape old_cursor = mouse_cursor_shape;
@@ -626,7 +640,8 @@ mouse_event(int button, int modifiers, int action) {
         else if (action == GLFW_RELEASE && button == global_state.active_drag_button) {
             w = window_for_id(global_state.active_drag_in_window);
             if (w) {
-                update_drag(true, w, true, modifiers, button);
+                end_drag(w);
+                return;
             }
         }
     }
@@ -801,6 +816,11 @@ init_mouse(PyObject *module) {
     PyModule_AddIntMacro(module, RELEASE);
     PyModule_AddIntMacro(module, DRAG);
     PyModule_AddIntMacro(module, MOVE);
+    PyModule_AddIntMacro(module, MOUSE_SELECTION_NORMAL);
+    PyModule_AddIntMacro(module, MOUSE_SELECTION_EXTEND);
+    PyModule_AddIntMacro(module, MOUSE_SELECTION_RECTANGLE);
+    PyModule_AddIntMacro(module, MOUSE_SELECTION_WORD);
+    PyModule_AddIntMacro(module, MOUSE_SELECTION_LINE);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

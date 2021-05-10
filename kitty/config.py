@@ -326,6 +326,21 @@ def scroll_to_mark(func: str, rest: str) -> FuncArgsType:
     return func, [parts[0] != 'next', max(0, min(int(parts[1]), 3))]
 
 
+@func_with_args('mouse_selection')
+def mouse_selection(func: str, rest: str) -> FuncArgsType:
+    cmap = getattr(mouse_selection, 'code_map', None)
+    if cmap is None:
+        cmap = {
+            'normal': defines.MOUSE_SELECTION_NORMAL,
+            'extend': defines.MOUSE_SELECTION_EXTEND,
+            'rectangle': defines.MOUSE_SELECTION_RECTANGLE,
+            'word': defines.MOUSE_SELECTION_WORD,
+            'line': defines.MOUSE_SELECTION_LINE,
+        }
+        setattr(mouse_selection, 'code_map', cmap)
+    return func, [cmap[rest]]
+
+
 def parse_key_action(action: str) -> Optional[KeyAction]:
     parts = action.strip().split(maxsplit=1)
     func = parts[0]
