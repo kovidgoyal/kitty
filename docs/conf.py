@@ -32,7 +32,7 @@ kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
 
-from kitty.conf.definition import Option, Shortcut  # noqa
+from kitty.conf.definition import Option, Shortcut, OptionOrAction, MouseAction  # noqa
 from kitty.constants import str_version  # noqa
 
 
@@ -447,8 +447,8 @@ def parse_shortcut_node(env: Any, sig: str, signode: Any) -> str:
     return sig
 
 
-def render_conf(conf_name: str, all_options: Iterable[Union['Option', Sequence['Shortcut']]]) -> str:
-    from kitty.conf.definition import merged_opts, Option, Group
+def render_conf(conf_name: str, all_options: Iterable[OptionOrAction]) -> str:
+    from kitty.conf.definition import merged_opts, Group
     ans = ['.. default-domain:: conf', '']
     a = ans.append
     current_group: Optional[Group] = None
@@ -499,7 +499,7 @@ def render_conf(conf_name: str, all_options: Iterable[Union['Option', Sequence['
             a(expand_opt_references(conf_name, opt.long_text))
             a('')
 
-    def handle_shortcuts(shortcuts: Sequence[Shortcut]) -> None:
+    def handle_shortcuts(shortcuts: Sequence[Union[Shortcut, MouseAction]]) -> None:
         sc = shortcuts[0]
         handle_group(sc.group, True)
         sc_text = f'{conf_name}.{sc.short_text}'
@@ -511,7 +511,7 @@ def render_conf(conf_name: str, all_options: Iterable[Union['Option', Sequence['
             a('')
             for x in shortcuts:
                 if x.add_to_default:
-                    a('    map {} {}'.format(x.key.replace('kitty_mod', kitty_mod), x.action_def))
+                    a('    ' + x.line.replace('kitty_mod', kitty_mod))
         a('')
         if sc.long_text:
             a(expand_opt_references(conf_name, sc.long_text))
@@ -572,7 +572,7 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
     sc_role.warn_dangling = True
     sc_role.process_link = process_shortcut_link
 
-    def generate_default_config(all_options: Dict[str, Union[Option, Sequence[Shortcut]]], name: str) -> None:
+    def generate_default_config(all_options: Dict[str, OptionOrAction], name: str) -> None:
         from kitty.conf.definition import as_conf_file
         with open(f'generated/conf-{name}.rst', 'w', encoding='utf-8') as f:
             print('.. highlight:: conf\n', file=f)

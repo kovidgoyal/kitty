@@ -462,14 +462,13 @@ def parse_mouse_action(val: str, mouse_mappings: List[MouseMapping]) -> None:
     xbutton, event, modes, action = parts
     kparts = xbutton.split('+')
     if len(kparts) > 1:
-        mparts, obutton = parts[:-1], parts[-1].lower()
+        mparts, obutton = kparts[:-1], kparts[-1].lower()
         mods = parse_mods(mparts, obutton)
         if mods is None:
             return
     else:
         obutton = parts[0].lower()
         mods = 0
-    obutton = xbutton.lower()
     try:
         b = {'left': 'b1', 'middle': 'b3', 'right': 'b2'}.get(obutton, obutton)[1:]
         button = getattr(defines, f'GLFW_MOUSE_BUTTON_{b}')

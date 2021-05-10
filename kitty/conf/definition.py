@@ -78,6 +78,26 @@ class Shortcut:
         self.line = 'map ' + self.key + ' ' + self.action_def
 
 
+class MouseAction:
+
+    __slots__ = 'name', 'group', 'button', 'event', 'modes', 'action_def', 'short_text', 'long_text', 'add_to_default', 'add_to_docs', 'line'
+
+    def __init__(
+            self, name: str, group: Group,
+            button: str, event: str, modes: str, action_def: str,
+            short_text: str, long_text: str, add_to_default: bool, add_to_docs: bool
+    ):
+        self.name, self.group, self.button, self.event, self.action_def = name, group, button, event, action_def
+        self.modes, self.short_text, self.long_text = modes, short_text, long_text
+        self.add_to_default = add_to_default
+        self.add_to_docs = add_to_docs
+        self.line = f'mouse_map {self.button} {self.event} {self.modes} {self.action_def}'
+
+    @property
+    def key(self) -> str:
+        return self.button
+
+
 def option(
     all_options: Dict[str, Option],
     group: Sequence[Group],
@@ -120,7 +140,7 @@ def shortcut(
     short_text: str = '',
     long_text: str = '',
     add_to_default: bool = True,
-    add_to_docs: bool = True
+    add_to_docs: bool = True,
 ) -> Shortcut:
     ans = Shortcut(action_name, group[0], key, action_def, short_text, long_text, add_to_default, add_to_docs)
     key = 'sc-' + action_name
@@ -128,17 +148,40 @@ def shortcut(
     return ans
 
 
-def option_func(all_options: Dict[str, Any], all_groups: Dict[str, Sequence[str]]) -> Tuple[Callable, Callable, Callable[[str], None], Dict[str, Group]]:
+def mouse_action(
+    all_options: Dict[str, List[MouseAction]],
+    group: Sequence[Group],
+    action_name: str,
+    button: str,
+    event: str,
+    modes: str,
+    action_def: str,
+    short_text: str = '',
+    long_text: str = '',
+    add_to_default: bool = True,
+    add_to_docs: bool = True,
+) -> MouseAction:
+    ans = MouseAction(action_name, group[0], button, event, modes, action_def, short_text, long_text, add_to_default, add_to_docs)
+    key = 'ma-' + action_name
+    all_options.setdefault(key, []).append(ans)
+    return ans
+
+
+def option_func(all_options: Dict[str, Any], all_groups: Dict[str, Sequence[str]]) -> Tuple[
+        Callable, Callable, Callable, Callable[[str], None], Dict[str, Group]]:
     all_groups_ = {k: Group(k, *v) for k, v in all_groups.items()}
     group: List[Optional[Group]] = [None]
 
     def change_group(name: str) -> None:
         group[0] = all_groups_[name]
 
-    return partial(option, all_options, group), partial(shortcut, all_options, group), change_group, all_groups_
+    return partial(option, all_options, group), partial(shortcut, all_options, group), partial(mouse_action, all_options, group), change_group, all_groups_
 
 
-def merged_opts(all_options: Sequence[Union[Option, Sequence[Shortcut]]], opt: Option, i: int) -> Generator[Option, None, None]:
+OptionOrAction = Union[Option, Sequence[Shortcut], Sequence[MouseAction]]
+
+
+def merged_opts(all_options: Sequence[OptionOrAction], opt: Option, i: int) -> Generator[Option, None, None]:
     yield opt
     for k in range(i + 1, len(all_options)):
         q = all_options[k]
@@ -208,7 +251,7 @@ def render_block(text: str) -> str:
     return '\n'.join(wrapped_block(lines))
 
 
-def as_conf_file(all_options: Iterable[Union[Option, Sequence[Shortcut]]]) -> List[str]:
+def as_conf_file(all_options: Iterable[OptionOrAction]) -> List[str]:
     ans = ['# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', '']
     a = ans.append
     current_group: Optional[Group] = None
@@ -242,11 +285,11 @@ def as_conf_file(all_options: Iterable[Union[Option, Sequence[Shortcut]]]) -> Li
             current_group = new_group
             render_group(current_group, is_shortcut)
 
-    def handle_shortcut(shortcuts: Sequence[Shortcut]) -> None:
+    def handle_shortcut(shortcuts: Sequence[Union[Shortcut, MouseAction]]) -> None:
         handle_group(shortcuts[0].group, True)
         for sc in shortcuts:
             if sc.add_to_default:
-                a('map {} {}'.format(sc.key, sc.action_def))
+                a(sc.line)
             if sc.long_text:
                 a(''), a(render_block(sc.long_text.strip())), a('')
 
@@ -279,7 +322,7 @@ def as_conf_file(all_options: Iterable[Union[Option, Sequence[Shortcut]]]) -> Li
     start: Optional[int] = None
     count: Optional[int] = None
     for i, line in enumerate(ans):
-        if line.startswith('map '):
+        if line.startswith('map ') or line.startswith('mouse_map '):
             if start is None:
                 start = i
                 count = 1
@@ -303,7 +346,7 @@ def as_conf_file(all_options: Iterable[Union[Option, Sequence[Shortcut]]]) -> Li
 
 
 def config_lines(
-    all_options: Dict[str, Union[Option, Sequence[Shortcut]]],
+    all_options: Dict[str, OptionOrAction],
 ) -> Generator[str, None, None]:
     for opt in all_options.values():
         if isinstance(opt, Option):
@@ -316,7 +359,7 @@ def config_lines(
 
 
 def as_type_stub(
-    all_options: Dict[str, Union[Option, Sequence[Shortcut]]],
+    all_options: Dict[str, OptionOrAction],
     special_types: Optional[Dict[str, str]] = None,
     preamble_lines: Union[Tuple[str, ...], List[str], Iterable[str]] = (),
     extra_fields: Union[Tuple[Tuple[str, str], ...], List[Tuple[str, str]], Iterable[Tuple[str, str]]] = (),

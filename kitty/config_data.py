@@ -6,12 +6,12 @@
 import os
 from gettext import gettext as _
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Set,
+    Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Set,
     Tuple, TypeVar, Union
 )
 
 from . import fast_data_types as defines
-from .conf.definition import Option, Shortcut, option_func
+from .conf.definition import Option, OptionOrAction, option_func
 from .conf.utils import (
     choices, to_bool, to_cmdline as tc, to_color, to_color_or_none, unit_float
 )
@@ -112,10 +112,10 @@ def uniq(vals: Iterable[T]) -> List[T]:
 # Groups {{{
 
 
-all_options: Dict[str, Union[Option, Sequence[Shortcut]]] = {}
+all_options: Dict[str, OptionOrAction] = {}
 
 
-o, k, g, all_groups = option_func(all_options, {
+o, k, m, g, all_groups = option_func(all_options, {
     'fonts': [
         _('Fonts'),
         _('kitty has very powerful font management. You can configure individual\n'
@@ -139,6 +139,9 @@ as color16 to color255.''')
     ],
     'advanced': [_('Advanced')],
     'os': [_('OS specific tweaks')],
+    'mousemap': [
+        _('Mouse actions'),
+    ],
     'shortcuts': [
         _('Keyboard shortcuts'),
         _('''\
@@ -1349,6 +1352,11 @@ Choose between Wayland and X11 backends. By default, an
 appropriate backend based on the system state is chosen
 automatically. Set it to :code:`x11` or :code:`wayland`
 to force the choice.'''))
+# }}}
+
+g('mousemap')  # {{{
+
+m('click_url', 'ctrl+shift+left', 'release', 'grabbed,ungrabbed', 'mouse_click_url', _('Click the link under the mouse cursor'))
 # }}}
 
 g('shortcuts')  # {{{
