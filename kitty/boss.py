@@ -746,7 +746,7 @@ class Boss:
             f = getattr(self, key_action.func, None)
             if f is not None:
                 if self.args.debug_keyboard:
-                    print(f'{dispatch_type} matched action:', func_name(f))
+                    print(f'{dispatch_type} matched action:', func_name(f), flush=True)
                 passthrough = f(*key_action.args)
                 if passthrough is not True:
                     return True

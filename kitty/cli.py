@@ -690,7 +690,8 @@ instead of ignoring them. Also prints out miscellaneous debug information.
 Useful when debugging rendering problems
 
 
---debug-keyboard
+--debug-input --debug-keyboard
+dest=debug_keyboard
 type=bool-set
 This option will cause kitty to print out key events as they are received
 

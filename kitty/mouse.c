@@ -19,6 +19,7 @@ extern PyTypeObject Screen_Type;
 
 static MouseShape mouse_cursor_shape = BEAM;
 typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
+#define debug(...) if (OPT(debug_keyboard)) printf(__VA_ARGS__);
 
 // Encoding of mouse events {{{
 #define SHIFT_INDICATOR  (1 << 2)
@@ -626,6 +627,7 @@ mouse_event(int button, int modifiers, int action) {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = NULL;
+    debug("%s mouse_button: %d %s", action == GLFW_RELEASE ? "\x1b[32mRelease\x1b[m" : "\x1b[31mPress\x1b[m", button, format_mods(modifiers));
     if (global_state.active_drag_in_window) {
         if (button == -1) {  // drag move
             w = window_for_id(global_state.active_drag_in_window);
@@ -637,6 +639,7 @@ mouse_event(int button, int modifiers, int action) {
                     for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
                     handle_move_event(w, button, modifiers, window_idx);
                     clamp_to_window = false;
+                    debug("handled as drag move\n");
                     return;
                 }
             }
@@ -645,6 +648,7 @@ mouse_event(int button, int modifiers, int action) {
             w = window_for_id(global_state.active_drag_in_window);
             if (w) {
                 end_drag(w);
+                debug("handled as drag end\n");
                 return;
             }
         }
@@ -653,16 +657,19 @@ mouse_event(int button, int modifiers, int action) {
     if (in_tab_bar) {
         mouse_cursor_shape = HAND;
         handle_tab_bar_mouse(button, modifiers);
+        debug("handled by tab bar\n");
     } else if (w) {
+        debug("grabbed: %d\n", w->render_data.screen->modes.mouse_tracking_mode != 0);
         handle_event(w, button, modifiers, window_idx);
     } else if (button == GLFW_MOUSE_BUTTON_LEFT && global_state.callback_os_window->mouse_button_pressed[button]) {
         // initial click, clamp it to the closest window
         w = closest_window_for_event(&window_idx);
         if (w) {
             clamp_to_window = true;
+            debug("grabbed: %d\n", w->render_data.screen->modes.mouse_tracking_mode != 0);
             handle_event(w, button, modifiers, window_idx);
             clamp_to_window = false;
-        }
+        } else debug("no window for event\n");
     }
     if (mouse_cursor_shape != old_cursor) {
         set_mouse_cursor(mouse_cursor_shape);

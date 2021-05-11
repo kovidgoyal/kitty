@@ -90,7 +90,7 @@ update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
     glfwUpdateIMEState(global_state.callback_os_window->handle, &ev);
 }
 
-static inline const char*
+const char*
 format_mods(unsigned mods) {
     static char buf[128];
     char *p = buf, *s;
