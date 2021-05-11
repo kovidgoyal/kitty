@@ -158,7 +158,8 @@ number ``b1 ... b8`` can be used to refer to upto eight buttons on a mouse.
 ``modes`` indicates whether the action is performed when the mouse is grabbed by the
 terminal application or not. It can have one or more or the values, ``grabbed,ungrabbed``.
 
-See the builtin actions below to get a sense of what is possible.
+You can run kitty with the :option:`kitty --debug-input` command line option
+to see mouse events. See the builtin actions below to get a sense of what is possible.
 '''),
     ],
     'shortcuts': [
@@ -179,7 +180,7 @@ as GLFW keys.
 
 Finally, you can use raw system key codes to map keys, again only for keys that are not
 known as GLFW keys. To see the system key code
-for a key, start kitty with the :option:`kitty --debug-keyboard` option. Then kitty will
+for a key, start kitty with the :option:`kitty --debug-input` option. Then kitty will
 output some debug text for every key event. In that text look for ``native_code``
 the value of that becomes the key name in the shortcut. For example:
 
