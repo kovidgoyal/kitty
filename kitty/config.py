@@ -492,7 +492,7 @@ def parse_mouse_action(val: str, mouse_mappings: List[MouseMapping]) -> None:
         log_error(f'Mouse button: {xbutton} not recognized, ignoring')
         return
     try:
-        count = {'release': -1, 'press': 1, 'doublepress': 2, 'triplepress': 3}[event.lower()]
+        count = {'doubleclick': -3, 'click': -2, 'release': -1, 'press': 1, 'doublepress': 2, 'triplepress': 3}[event.lower()]
     except KeyError:
         log_error(f'Mouse event type: {event} not recognized, ignoring')
         return

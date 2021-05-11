@@ -127,6 +127,29 @@ static bool
 dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabbed) {
     bool handled = false;
     if (w->render_data.screen && w->render_data.screen->callbacks != Py_None) {
+        if (OPT(debug_keyboard)) {
+            const char *evname = "move";
+            switch(count) {
+                case -3: evname = "doubleclick"; break;
+                case -2: evname = "click"; break;
+                case -1: evname = "release"; break;
+                case 1: evname = "press"; break;
+                case 2: evname = "doublepress"; break;
+                case 3: evname = "triplepress"; break;
+            }
+            const char *bname = "unknown";
+            switch(button) {
+                case GLFW_MOUSE_BUTTON_LEFT: bname = "left"; break;
+                case GLFW_MOUSE_BUTTON_MIDDLE: bname = "middle"; break;
+                case GLFW_MOUSE_BUTTON_RIGHT: bname = "right"; break;
+                case GLFW_MOUSE_BUTTON_4: bname = "b4"; break;
+                case GLFW_MOUSE_BUTTON_5: bname = "b5"; break;
+                case GLFW_MOUSE_BUTTON_6: bname = "b6"; break;
+                case GLFW_MOUSE_BUTTON_7: bname = "b7"; break;
+                case GLFW_MOUSE_BUTTON_8: bname = "b8"; break;
+            }
+            debug("\x1b[33mon_mouse_input\x1b[m: %s button: %s %sgrabbed: %d\n", evname, bname, format_mods(modifiers), grabbed);
+        }
         PyObject *callback_ret = PyObject_CallMethod(w->render_data.screen->callbacks, "on_mouse_event", "{si si si sO}",
             "button", button, "repeat_count", count, "mods", modifiers, "grabbed", grabbed ? Py_True : Py_False);
         if (callback_ret == NULL) PyErr_Print();
@@ -402,6 +425,14 @@ clear_click_queue(Window *w, int button) {
 
 #define N(n) (q->clicks[q->length - n])
 
+static bool
+release_is_click(Window *w, int button) {
+    ClickQueue *q = &w->click_queues[button];
+    double click_allowed_radius = 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
+    monotonic_t now = monotonic();
+    return (q->length > 0 && distance(N(1).x, N(1).y, w->mouse_pos.x, w->mouse_pos.y) <= click_allowed_radius && now - N(1).at < OPT(click_interval));
+}
+
 static unsigned
 multi_click_count(Window *w, int button) {
     ClickQueue *q = &w->click_queues[button];
@@ -424,7 +455,8 @@ multi_click_count(Window *w, int button) {
 }
 
 
-HANDLER(add_click) {
+static void
+add_press(Window *w, int button, int modifiers) {
     if (button < 0 || button > (ssize_t)arraysz(w->click_queues)) return;
     modifiers &= ~GLFW_LOCK_MASK;
     ClickQueue *q = &w->click_queues[button];
@@ -448,6 +480,13 @@ mouse_open_url(Window *w) {
     screen_open_url(screen);
 }
 
+static void
+dispatch_possible_click(Window *w, int button, int modifiers) {
+    Screen *screen = w->render_data.screen;
+    int count = multi_click_count(w, button);
+    if (release_is_click(w, button)) dispatch_mouse_event(w, button, count == 2 ? -3 : -2, modifiers, screen->modes.mouse_tracking_mode != 0);
+}
+
 HANDLER(handle_button_event) {
     modifiers &= ~GLFW_LOCK_MASK;
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
@@ -463,9 +502,8 @@ HANDLER(handle_button_event) {
             if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
         }
     }
-    if (!is_release) add_click(w, button, modifiers, 0);
-    else {
-    }
+    if (is_release) dispatch_possible_click(w, button, modifiers);
+    else add_press(w, button, modifiers);
 }
 
 static inline int
@@ -658,6 +696,7 @@ mouse_event(int button, int modifiers, int action) {
             if (w) {
                 end_drag(w);
                 debug("handled as drag end\n");
+                dispatch_possible_click(w, button, modifiers);
                 return;
             }
         }
@@ -836,7 +875,7 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
             dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, false);
             if (!is_release) {
                 last_button_pressed = button;
-                add_click(w, button, modifiers, 0);
+                add_press(w, button, modifiers);
             }
         }
     }
