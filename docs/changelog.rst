@@ -12,6 +12,13 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Support infinite length ligatures (:iss:`3504`)
 
+- **Backward incompatibility**: The options to control which modifiers keys to
+  press for various mouse actions have been removed, if you used these options,
+  you will need to replace them with configuration using the new
+  :ref:`mouse actions framework <conf-kitty-mouse.mousemap>` as they will be
+  ignored. The options were: ``terminal_select_modifiers``,
+  ``rectangle_select_modifiers`` and ``open_url_modifiers``.
+
 - Add a configurable mouse action to select from the clicked point to the end of the line.
   (:iss:`3585`)
 
