@@ -160,6 +160,11 @@ terminal application or not. It can have one or more or the values, ``grabbed,un
 
 You can run kitty with the :option:`kitty --debug-input` command line option
 to see mouse events. See the builtin actions below to get a sense of what is possible.
+
+.. note::
+    Once a selection drag is started, releasing the button that started it will
+    automatically end it.
+
 '''),
     ],
     'shortcuts': [
