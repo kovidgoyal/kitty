@@ -801,6 +801,10 @@ class Window:
     def mouse_click_url(self) -> None:
         click_mouse_url(self.os_window_id, self.tab_id, self.id)
 
+    def mouse_click_url_or_select(self) -> None:
+        if not self.screen.has_selection():
+            self.mouse_click_url()
+
     def mouse_selection(self, code: int) -> None:
         mouse_selection(self.os_window_id, self.tab_id, self.id, code, self.current_mouse_event_button)
 

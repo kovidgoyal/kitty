@@ -665,7 +665,11 @@ Valid values are: :code:`arrow`, :code:`beam` and :code:`hand`
 
 g('mouse.mousemap')  # {{{
 
-m('click_url', 'ctrl+shift+left', 'release', 'grabbed,ungrabbed', 'mouse_click_url', _('Click the link under the mouse cursor'))
+m('click_url_or_select', 'left', 'click', 'ungrabbed', 'mouse_click_url_or_select', _('Click the link under the mouse cursor when no selection is created'))
+m('click_url_or_select_grabbed', 'shift+left', 'click', 'grabbed,ungrabbed', 'mouse_click_url_or_select', _(
+    'Click the link under the mouse cursor when no selection is created even if grabbed'))
+m('click_url', 'ctrl+shift+left', 'release', 'grabbed,ungrabbed', 'mouse_click_url',
+  _('Click the link under the mouse cursor'), _('Variant with :kbd:`ctrl+shift` is present only for legacy compatibility.'))
 
 for grabbed in (False, True):
     modes = 'ungrabbed' + (',grabbed' if grabbed else '')

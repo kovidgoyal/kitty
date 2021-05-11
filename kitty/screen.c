@@ -2113,6 +2113,7 @@ deactivate_overlay_line(Screen *self) {
 #define WRAP2B(name) static PyObject* name(Screen *self, PyObject *args) { unsigned int a, b; int p; if(!PyArg_ParseTuple(args, "IIp", &a, &b, &p)) return NULL; screen_##name(self, a, b, (bool)p); Py_RETURN_NONE; }
 
 WRAP0(garbage_collect_hyperlink_pool)
+WRAP0x(has_selection)
 
 static PyObject*
 hyperlinks_as_list(Screen *self, PyObject *args UNUSED) {
@@ -2952,6 +2953,7 @@ static PyMethodDef methods[] = {
     MND(cursor_down1, METH_VARARGS)
     MND(cursor_forward, METH_VARARGS)
     {"index", (PyCFunction)xxx_index, METH_VARARGS, ""},
+    {"has_selection", (PyCFunction)xxx_has_selection, METH_VARARGS, ""},
     MND(set_pending_timeout, METH_O)
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)

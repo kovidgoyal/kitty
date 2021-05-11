@@ -977,6 +977,9 @@ class Screen:
     def reset_callbacks(self) -> None:
         pass
 
+    def has_selection(self) -> bool:
+        pass
+
     def text_for_selection(self) -> Tuple[str, ...]:
         pass
 

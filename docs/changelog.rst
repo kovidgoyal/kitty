@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.21.0 [future]
 ----------------------
 
+- Allow clicking URLs to open them without needing to also hold
+  :kbd:`ctrl+shift`
+
 - Allow remapping all mouse button press/release events to perform arbitrary
   actions. :ref:`See details <conf-kitty-mouse.mousemap>`.
 
