@@ -139,8 +139,27 @@ as color16 to color255.''')
     ],
     'advanced': [_('Advanced')],
     'os': [_('OS specific tweaks')],
-    'mousemap': [
+    'mouse.mousemap': [
         _('Mouse actions'),
+        _('''\
+Mouse buttons can be remapped to perform arbitrary actions. The syntax for
+doing so is:
+
+.. code-block:: none
+
+    mouse_map button-name event-type modes action
+
+Where ``button-name`` is one of ``left``, ``middle``, ``right`` or ``b1 ... b8``
+with added keyboard modifiers, for example: ``ctrl+shift+left`` refers to holding
+the :kbd:`ctrl+shift` keys while clicking with the left mouse button. The
+number ``b1 ... b8`` can be used to refer to upto eight buttons on a mouse.
+
+``event-type`` is one ``press``, ``release``, ``doublepress`` and ``triplepress``.
+``modes`` indicates whether the action is performed when the mouse is grabbed by the
+terminal application or not. It can have one or more or the values, ``grabbed,ungrabbed``.
+
+See the builtin actions below to get a sense of what is possible.
+'''),
     ],
     'shortcuts': [
         _('Keyboard shortcuts'),
@@ -636,6 +655,23 @@ o('pointer_shape_when_dragging', 'beam', option_type=choices('arrow', 'beam', 'h
 The default shape of the mouse pointer when dragging across text.
 Valid values are: :code:`arrow`, :code:`beam` and :code:`hand`
 '''))
+
+g('mouse.mousemap')  # {{{
+
+m('click_url', 'ctrl+shift+left', 'release', 'grabbed,ungrabbed', 'mouse_click_url', _('Click the link under the mouse cursor'))
+m('paste_selection', 'middle', 'release', 'grabbed,ungrabbed', 'paste_selection', _('Paste from the primary selection'))
+m('extend_selection', 'right', 'press', 'grabbed,ungrabbed', 'mouse_selection extend', _('Extend the current selection'))
+for grabbed in (False, True):
+    modes = 'ungrabbed' + (',grabbed' if grabbed else '')
+    name_s = '_grabbed' if grabbed else ''
+    mods_p = 'shift+' if grabbed else ''
+    ts = _(' even when grabbed') if grabbed else ''
+    m('start_simple_selection' + name_s, mods_p + 'left', 'press', modes, 'mouse_selection normal', _('Start selecting text') + ts)
+    m('start_rectangle_selection' + name_s, mods_p + 'ctrl+alt+left', 'press', modes, 'mouse_selection rectangle',
+      _('Start selecting text in a rectangle') + ts)
+    m('select_word' + name_s, mods_p + 'left', 'doublepress', modes, 'mouse_selection word', _('Select a word') + ts)
+    m('select_line' + name_s, mods_p + 'left', 'triplepress', modes, 'mouse_selection line', _('Select a line') + ts)
+# }}}
 
 # }}}
 
@@ -1343,21 +1379,6 @@ automatically. Set it to :code:`x11` or :code:`wayland`
 to force the choice.'''))
 # }}}
 
-g('mousemap')  # {{{
-
-m('click_url', 'ctrl+shift+left', 'release', 'grabbed,ungrabbed', 'mouse_click_url', _('Click the link under the mouse cursor'))
-m('paste_selection', 'middle', 'release', 'grabbed,ungrabbed', 'paste_selection', _('Paste from the primary selection'))
-m('extend_selection', 'right', 'press', 'grabbed,ungrabbed', 'mouse_selection extend', _('Extend the current selection'))
-for grabbed in (False, True):
-    modes = 'ungrabbed' + (',grabbed' if grabbed else '')
-    name_s = '_grabbed' if grabbed else ''
-    mods_p = 'shift+' if grabbed else ''
-    m('start_simple_selection' + name_s, mods_p + 'left', 'press', modes, 'mouse_selection normal', _('Start selecting text'))
-    m('start_rectangle_selection' + name_s, mods_p + 'ctrl+alt+left', 'press', modes, 'mouse_selection rectangle',
-      _('Start selecting text in a rectangle'))
-    m('select_word' + name_s, mods_p + 'left', 'doublepress', modes, 'mouse_selection word', _('Select a word'))
-    m('select_line' + name_s, mods_p + 'left', 'triplepress', modes, 'mouse_selection line', _('Select a line'))
-# }}}
 
 g('shortcuts')  # {{{
 

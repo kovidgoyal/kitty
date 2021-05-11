@@ -272,6 +272,9 @@ Mouse features
 * You can select text with kitty even when a terminal program has grabbed
   the mouse by holding down the :kbd:`shift` key.
 
+All these actions can be customized in :file:`kitty.conf` as described
+:ref:`here <conf-kitty-mouse.mousemap>`.
+
 
 Font control
 -----------------

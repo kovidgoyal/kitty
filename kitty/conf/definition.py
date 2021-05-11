@@ -255,27 +255,27 @@ def as_conf_file(all_options: Iterable[OptionOrAction]) -> List[str]:
     ans = ['# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', '']
     a = ans.append
     current_group: Optional[Group] = None
-    num_open_folds = 0
+    group_folds = []
     all_options_ = list(all_options)
 
     def render_group(group: Group, is_shortcut: bool) -> None:
-        nonlocal num_open_folds
-        if is_shortcut or '.' not in group.name:
-            a('#: ' + group.short_text + ' {{''{')
-            num_open_folds += 1
+        a('#: ' + group.short_text + ' {{''{')
+        group_folds.append(group.name)
         a('')
         if group.start_text:
             a(render_block(group.start_text))
             a('')
 
     def handle_group_end(group: Group, new_group_name: str = '', new_group_is_shortcut: bool = False) -> None:
-        nonlocal num_open_folds
         if group.end_text:
             a(''), a(render_block(group.end_text))
         is_subgroup = new_group_name.startswith(group.name + '.')
-        if not is_subgroup and num_open_folds > 0:
+        while group_folds:
+            is_subgroup = new_group_name.startswith(group_folds[-1] + '.')
+            if is_subgroup:
+                break
             a('#: }}''}'), a('')
-            num_open_folds -= 1
+            del group_folds[-1]
 
     def handle_group(new_group: Group, is_shortcut: bool = False) -> None:
         nonlocal current_group
@@ -314,9 +314,9 @@ def as_conf_file(all_options: Iterable[OptionOrAction]) -> List[str]:
 
     if current_group:
         handle_group_end(current_group)
-        while num_open_folds > 0:
+        while group_folds:
             a('# }}''}')
-            num_open_folds -= 1
+            del group_folds[-1]
 
     map_groups = []
     start: Optional[int] = None

@@ -4,8 +4,11 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.20.4 [future]
+0.21.0 [future]
 ----------------------
+
+- Allow remapping all mouse button press/release events to perform arbitrary
+  actions. :ref:`See details <conf-kitty-mouse.mousemap>`.
 
 - Support infinite length ligatures (:iss:`3504`)
 
