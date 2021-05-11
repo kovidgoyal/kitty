@@ -2671,6 +2671,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
             if (found_at_end) { b->x = end.x; b->y = end.y; b->in_left_half_of_cell = false; }
             break;
         }
+        case EXTEND_LINE_FROM_POINT:
         case EXTEND_LINE: {
             index_type top_line, bottom_line;
             if (start_extended_selection || y == s->start.y) {
@@ -2691,7 +2692,11 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
             }
             if (screen_selection_range_for_line(self, top_line, &start.x, &start.y) && screen_selection_range_for_line(self, bottom_line, &end.x, &end.y)) {
                 bool multiline = top_line != bottom_line;
-                a->x = multiline ? 0 : start.x; a->y = top_line; a->in_left_half_of_cell = true;
+                if (!multiline && self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
+                    if (x > end.y) break;
+                    a->x = x;
+                } else a->x = multiline ? 0 : start.x;
+                a->y = top_line; a->in_left_half_of_cell = true;
                 b->x = end.y; b->y = bottom_line; b->in_left_half_of_cell = false;
             }
             break;

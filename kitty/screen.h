@@ -25,7 +25,7 @@ typedef struct {
     bool in_left_half_of_cell;
 } SelectionBoundary;
 
-typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE } SelectionExtendMode;
+typedef enum SelectionExtendModes { EXTEND_CELL, EXTEND_WORD, EXTEND_LINE, EXTEND_LINE_FROM_POINT } SelectionExtendMode;
 
 typedef struct {
     index_type x, x_limit;

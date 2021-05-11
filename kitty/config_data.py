@@ -670,7 +670,11 @@ for grabbed in (False, True):
     m('start_rectangle_selection' + name_s, mods_p + 'ctrl+alt+left', 'press', modes, 'mouse_selection rectangle',
       _('Start selecting text in a rectangle') + ts)
     m('select_word' + name_s, mods_p + 'left', 'doublepress', modes, 'mouse_selection word', _('Select a word') + ts)
-    m('select_line' + name_s, mods_p + 'left', 'triplepress', modes, 'mouse_selection line', _('Select a line') + ts)
+    line_desc = ''
+    if not grabbed:
+        line_desc = _('Select the entire line. If you would rather select from the clicked'
+                      ' point to the end of the line, use ``line_at_point`` instead of ``line`` above')
+    m('select_line' + name_s, mods_p + 'left', 'triplepress', modes, 'mouse_selection line', _('Select a line') + ts, line_desc)
 # }}}
 
 # }}}
