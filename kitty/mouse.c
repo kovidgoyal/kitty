@@ -400,39 +400,46 @@ clear_click_queue(Window *w, int button) {
     if (0 <= button && button <= (ssize_t)arraysz(w->click_queues)) w->click_queues[button].length = 0;
 }
 
-HANDLER(add_click) {
-    if (button < 0 || button > (ssize_t)arraysz(w->click_queues)) return;
-    modifiers &= ~GLFW_LOCK_MASK;
-    ClickQueue *q = &w->click_queues[button];
-    if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
-    monotonic_t now = monotonic();
 #define N(n) (q->clicks[q->length - n])
-    N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = w->mouse_pos.x; N(0).y = w->mouse_pos.y;
-    q->length++;
+
+static unsigned
+multi_click_count(Window *w, int button) {
+    ClickQueue *q = &w->click_queues[button];
     double multi_click_allowed_radius = 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
-    Screen *screen = w->render_data.screen;
-    // Now dispatch the multi-click if any
     if (q->length > 2) {
         // possible triple-click
         if (
                 N(1).at - N(3).at <= 2 * OPT(click_interval) &&
                 distance(N(1).x, N(1).y, N(3).x, N(3).y) <= multi_click_allowed_radius
-           ) {
-            if (screen) dispatch_mouse_event(w, button, 3, modifiers, screen->modes.mouse_tracking_mode != 0);
-            q->length = 0;
-        }
+           ) return 3;
     }
     if (q->length > 1) {
         // possible double-click
         if (
                 N(1).at - N(2).at <= OPT(click_interval) &&
                 distance(N(1).x, N(1).y, N(2).x, N(2).y) <= multi_click_allowed_radius
-           ) {
-            if (screen) dispatch_mouse_event(w, button, 2, modifiers, screen->modes.mouse_tracking_mode != 0);
-        }
+           ) return 2;
     }
-#undef N
+    return q->length ? 1 : 0;
 }
+
+
+HANDLER(add_click) {
+    if (button < 0 || button > (ssize_t)arraysz(w->click_queues)) return;
+    modifiers &= ~GLFW_LOCK_MASK;
+    ClickQueue *q = &w->click_queues[button];
+    if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
+    monotonic_t now = monotonic();
+    N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = w->mouse_pos.x; N(0).y = w->mouse_pos.y;
+    q->length++;
+    Screen *screen = w->render_data.screen;
+    int count = multi_click_count(w, button);
+    if (count > 1) {
+        if (screen) dispatch_mouse_event(w, button, count, modifiers, screen->modes.mouse_tracking_mode != 0);
+        if (count > 2) q->length = 0;
+    }
+}
+#undef N
 
 void
 mouse_open_url(Window *w) {
@@ -457,6 +464,8 @@ HANDLER(handle_button_event) {
         }
     }
     if (!is_release) add_click(w, button, modifiers, 0);
+    else {
+    }
 }
 
 static inline int
