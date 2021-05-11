@@ -659,13 +659,13 @@ Valid values are: :code:`arrow`, :code:`beam` and :code:`hand`
 g('mouse.mousemap')  # {{{
 
 m('click_url', 'ctrl+shift+left', 'release', 'grabbed,ungrabbed', 'mouse_click_url', _('Click the link under the mouse cursor'))
-m('paste_selection', 'middle', 'release', 'grabbed,ungrabbed', 'paste_selection', _('Paste from the primary selection'))
-m('extend_selection', 'right', 'press', 'grabbed,ungrabbed', 'mouse_selection extend', _('Extend the current selection'))
+
 for grabbed in (False, True):
     modes = 'ungrabbed' + (',grabbed' if grabbed else '')
     name_s = '_grabbed' if grabbed else ''
     mods_p = 'shift+' if grabbed else ''
     ts = _(' even when grabbed') if grabbed else ''
+    m('paste_selection' + name_s, mods_p + 'middle', 'release', modes, 'paste_selection', _('Paste from the primary selection') + ts)
     m('start_simple_selection' + name_s, mods_p + 'left', 'press', modes, 'mouse_selection normal', _('Start selecting text') + ts)
     m('start_rectangle_selection' + name_s, mods_p + 'ctrl+alt+left', 'press', modes, 'mouse_selection rectangle',
       _('Start selecting text in a rectangle') + ts)
@@ -675,6 +675,7 @@ for grabbed in (False, True):
         line_desc = _('Select the entire line. If you would rather select from the clicked'
                       ' point to the end of the line, use ``line_at_point`` instead of ``line`` above')
     m('select_line' + name_s, mods_p + 'left', 'triplepress', modes, 'mouse_selection line', _('Select a line') + ts, line_desc)
+    m('extend_selection' + name_s, mods_p + 'right', 'press', modes, 'mouse_selection extend', _('Extend the current selection') + ts)
 # }}}
 
 # }}}

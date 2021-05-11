@@ -1109,8 +1109,14 @@ class Boss:
         text = get_clipboard_string()
         self.paste_to_active_window(text)
 
+    def current_primary_selection(self) -> str:
+        return get_primary_selection() if supports_primary_selection else ''
+
+    def current_primary_selection_or_clipboard(self) -> str:
+        return get_primary_selection() if supports_primary_selection else get_clipboard_string()
+
     def paste_from_selection(self) -> None:
-        text = get_primary_selection() if supports_primary_selection else get_clipboard_string()
+        text = self.current_primary_selection_or_clipboard()
         self.paste_to_active_window(text)
 
     def set_primary_selection(self) -> None:

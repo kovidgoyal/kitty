@@ -803,6 +803,16 @@ class Window:
 
     def mouse_selection(self, code: int) -> None:
         mouse_selection(self.os_window_id, self.tab_id, self.id, code, self.current_mouse_event_button)
+
+    def paste_selection(self) -> None:
+        txt = get_boss().current_primary_selection()
+        if txt:
+            self.paste(txt)
+
+    def paste_selection_or_clipboard(self) -> None:
+        txt = get_boss().current_primary_selection_or_clipboard()
+        if txt:
+            self.paste(txt)
     # }}}
 
     def text_for_selection(self) -> str:
