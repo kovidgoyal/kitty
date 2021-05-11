@@ -1001,6 +1001,9 @@ class Screen:
     def scroll_to_next_mark(self, mark: int = 0, backwards: bool = True) -> bool:
         pass
 
+    def reverse_scroll(self, amt: int, fill_from_scrollback: bool = False) -> bool:
+        pass
+
     def clear_selection(self) -> None:
         pass
 
