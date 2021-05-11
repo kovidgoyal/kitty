@@ -1140,9 +1140,12 @@ screen_reverse_index(Screen *self) {
 static void
 _reverse_scroll(Screen *self, unsigned int count, bool fill_from_scrollback) {
     // Scroll the screen down by count lines, not moving the cursor
-    count = MIN(self->lines, count);
     unsigned int top = self->margin_top, bottom = self->margin_bottom;
     fill_from_scrollback = fill_from_scrollback && self->linebuf == self->main_linebuf;
+    if (fill_from_scrollback) {
+        unsigned limit = MAX(self->lines, self->historybuf->count);
+        count = MIN(limit, count);
+    } else count = MIN(self->lines, count);
     while (count-- > 0) {
         bool copied = false;
         if (fill_from_scrollback) copied = historybuf_pop_line(self->historybuf, self->alt_linebuf->line);
