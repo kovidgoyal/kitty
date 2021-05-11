@@ -693,7 +693,7 @@ Useful when debugging rendering problems
 --debug-input --debug-keyboard
 dest=debug_keyboard
 type=bool-set
-This option will cause kitty to print out key events as they are received
+This option will cause kitty to print out key and mouse events as they are received
 
 
 --debug-font-fallback
