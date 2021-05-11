@@ -742,11 +742,15 @@ class Boss:
         window_for_dispatch: Optional[Window] = None,
         dispatch_type: str = 'KeyPress'
     ) -> bool:
+
+        def report_match(f: Callable) -> None:
+            if self.args.debug_keyboard:
+                print(f'\x1b[35m{dispatch_type}\x1b[m matched action:', func_name(f), flush=True)
+
         if key_action is not None:
             f = getattr(self, key_action.func, None)
             if f is not None:
-                if self.args.debug_keyboard:
-                    print(f'{dispatch_type} matched action:', func_name(f), flush=True)
+                report_match(f)
                 passthrough = f(*key_action.args)
                 if passthrough is not True:
                     return True
@@ -762,8 +766,7 @@ class Boss:
             f = getattr(tab, key_action.func, getattr(window, key_action.func, None))
             if f is not None:
                 passthrough = f(*key_action.args)
-                if self.args.debug_keyboard:
-                    print(f'{dispatch_type} matched action:', func_name(f))
+                report_match(f)
                 if passthrough is not True:
                     return True
         return False
