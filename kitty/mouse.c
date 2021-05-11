@@ -674,7 +674,7 @@ mouse_event(int button, int modifiers, int action) {
     bool in_tab_bar;
     unsigned int window_idx = 0;
     Window *w = NULL;
-    debug("%s mouse_button: %d %s", action == GLFW_RELEASE ? "\x1b[32mRelease\x1b[m" : "\x1b[31mPress\x1b[m", button, format_mods(modifiers));
+    debug("%s mouse_button: %d %s", action == GLFW_RELEASE ? "\x1b[32mRelease\x1b[m" : (button < 0 ? "\x1b[36mMove\x1b[m" : "\x1b[31mPress\x1b[m"), button, format_mods(modifiers));
     if (global_state.active_drag_in_window) {
         if (button == -1) {  // drag move
             w = window_for_id(global_state.active_drag_in_window);
