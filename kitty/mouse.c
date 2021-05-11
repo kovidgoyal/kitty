@@ -461,7 +461,7 @@ HANDLER(handle_button_event) {
 
 static inline int
 currently_pressed_button(void) {
-    for (int i = 0; i <= GLFW_MOUSE_BUTTON_8; i++) {
+    for (int i = 0; i <= GLFW_MOUSE_BUTTON_LAST; i++) {
         if (global_state.callback_os_window->mouse_button_pressed[i]) return i;
     }
     return -1;
@@ -792,6 +792,17 @@ test_encode_mouse(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyObject*
+mock_mouse_selection(PyObject *self UNUSED, PyObject *args) {
+    PyObject *capsule;
+    int button, code;
+    if (!PyArg_ParseTuple(args, "O!ii", &PyCapsule_Type, &capsule, &button, &code)) return NULL;
+    Window *w = PyCapsule_GetPointer(capsule, "Window");
+    if (!w) return NULL;
+    mouse_selection(w, code, button);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
     PyObject *capsule;
     int button, modifiers, is_release, clear_clicks, in_left_half_of_cell;
@@ -804,12 +815,21 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
     w->mouse_pos.x = 10 * x; w->mouse_pos.y = 20 * y;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
     w->mouse_pos.in_left_half_of_cell = in_left_half_of_cell;
+    static int last_button_pressed = GLFW_MOUSE_BUTTON_LEFT;
     if (button < 0) {
         if (button == -2) do_drag_scroll(w, true);
         else if (button == -3) do_drag_scroll(w, false);
-        else handle_mouse_movement_in_kitty(w, GLFW_MOUSE_BUTTON_LEFT, mouse_cell_changed);
+        else handle_mouse_movement_in_kitty(w, last_button_pressed, mouse_cell_changed);
     } else {
-        dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, false);
+        if (global_state.active_drag_in_window && is_release && button == global_state.active_drag_button) {
+            end_drag(w);
+        } else {
+            dispatch_mouse_event(w, button, is_release ? -1 : 1, modifiers, false);
+            if (!is_release) {
+                last_button_pressed = button;
+                add_click(w, button, modifiers, 0);
+            }
+        }
     }
     Py_RETURN_NONE;
 }
@@ -818,6 +838,7 @@ static PyMethodDef module_methods[] = {
     METHODB(send_mouse_event, METH_VARARGS),
     METHODB(test_encode_mouse, METH_VARARGS),
     METHODB(send_mock_mouse_event_to_window, METH_VARARGS),
+    METHODB(mock_mouse_selection, METH_VARARGS),
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

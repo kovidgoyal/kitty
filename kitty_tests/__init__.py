@@ -5,15 +5,20 @@
 import os
 from unittest import TestCase
 
-from kitty.config import Options, defaults, merge_configs
-from kitty.fast_data_types import set_options
-from kitty.fast_data_types import LineBuf, Cursor, Screen, HistoryBuf
+from kitty.config import (
+    Options, defaults, finalize_keys, finalize_mouse_mappings, merge_configs
+)
+from kitty.fast_data_types import (
+    Cursor, HistoryBuf, LineBuf, Screen, set_options
+)
+from kitty.types import MouseEvent
 
 
 class Callbacks:
 
-    def __init__(self) -> None:
+    def __init__(self, opts) -> None:
         self.clear()
+        self.opts = opts
 
     def write(self, data) -> None:
         self.wtcbuf += data
@@ -54,6 +59,16 @@ class Callbacks:
     def on_activity_since_last_focus(self) -> None:
         pass
 
+    def on_mouse_event(self, event):
+        ev = MouseEvent(**event)
+        action = self.opts.mousemap.get(ev)
+        if action is None:
+            return False
+        self.current_mouse_button = ev.button
+        getattr(self, action.func)(*action.args)
+        self.current_mouse_button = 0
+        return True
+
 
 def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
     ans = LineBuf(ynum, xnum)
@@ -92,11 +107,14 @@ class BaseTest(TestCase):
         if options:
             final_options.update(options)
         options = Options(merge_configs(defaults._asdict(), final_options))
+        finalize_keys(options)
+        finalize_mouse_mappings(options)
         set_options(options)
+        return options
 
     def create_screen(self, cols=5, lines=5, scrollback=5, cell_width=10, cell_height=20, options=None):
-        self.set_options(options)
-        c = Callbacks()
+        opts = self.set_options(options)
+        c = Callbacks(opts)
         s = Screen(c, lines, cols, scrollback, cell_width, cell_height, 0, c)
         return s
 

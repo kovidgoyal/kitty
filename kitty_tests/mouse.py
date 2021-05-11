@@ -6,7 +6,7 @@ from functools import partial
 
 from kitty.fast_data_types import (
     GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOUSE_BUTTON_LEFT,
-    GLFW_MOUSE_BUTTON_RIGHT, create_mock_window,
+    GLFW_MOUSE_BUTTON_RIGHT, create_mock_window, mock_mouse_selection,
     send_mock_mouse_event_to_window
 )
 
@@ -39,6 +39,11 @@ class TestMouse(BaseTest):
         )
         w = create_mock_window(s)
         ev = partial(send_mouse_event, w)
+
+        def mouse_selection(code: int) -> None:
+            mock_mouse_selection(w, s.callbacks.current_mouse_button, code)
+
+        s.callbacks.mouse_selection = mouse_selection
 
         def sel():
             return ''.join(s.text_for_selection())
@@ -210,7 +215,6 @@ class TestMouse(BaseTest):
         self.ae(sel(), '1234')
         press(x=1, y=1, button=GLFW_MOUSE_BUTTON_RIGHT)
         self.ae(sel(), '123456')
-        move(x=2, y=1)
-        self.ae(sel(), '1234567')
+        move(x=2, y=1, q='1234567')
         release(x=3, y=1, button=GLFW_MOUSE_BUTTON_RIGHT)
         self.ae(sel(), '12345678')
