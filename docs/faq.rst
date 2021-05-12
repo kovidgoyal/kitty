@@ -170,6 +170,17 @@ You can, of course, also run |kitty| from a terminal with command line options, 
 And within |kitty| itself, you can always run |kitty| using just `kitty` as it
 cleverly adds itself to the ``PATH``.
 
+I catted a binary file and now kitty is hung?
+-----------------------------------------------
+
+**Never** output unknown binary data directly into a terminal.
+
+Terminals have a single channel for both data and control. Certain bytes
+are control codes. Some of these control codes are of arbitrary length, so
+if the binary data you output into the terminal happens to contain the starting
+sequence for one of these control codes, the terminal will hang waiting for
+the closing sequence. Press :kbd:`ctrl+shift+delete` to reset the terminal.
+
 
 kitty is not able to use my favorite font?
 ---------------------------------------------
