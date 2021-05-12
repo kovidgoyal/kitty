@@ -316,6 +316,7 @@ void _glfwClearDisplayLinks() {
             CVDisplayLinkRelease(_glfw.ns.displayLinks.entries[i].displayLink);
             _glfw.ns.displayLinks.entries[i].displayLink = nil;
             _glfw.ns.displayLinks.entries[i].lastRenderFrameRequestedAt = 0;
+            _glfw.ns.displayLinks.entries[i].first_unserviced_render_frame_request_at = 0;
         }
     }
     _glfw.ns.displayLinks.count = 0;
@@ -333,7 +334,14 @@ static CVReturn displayLinkCallback(
     return kCVReturnSuccess;
 }
 
-static inline void createDisplayLink(CGDirectDisplayID displayID) {
+void
+_glfw_create_cv_display_link(_GLFWDisplayLinkNS *entry) {
+    CVDisplayLinkCreateWithCGDisplay(entry->displayID, &entry->displayLink);
+    CVDisplayLinkSetOutputCallback(entry->displayLink, &displayLinkCallback, (void*)(uintptr_t)entry->displayID);
+}
+
+static void
+createDisplayLink(CGDirectDisplayID displayID) {
     if (_glfw.ns.displayLinks.count >= sizeof(_glfw.ns.displayLinks.entries)/sizeof(_glfw.ns.displayLinks.entries[0]) - 1) return;
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
         if (_glfw.ns.displayLinks.entries[i].displayID == displayID) return;
@@ -341,8 +349,7 @@ static inline void createDisplayLink(CGDirectDisplayID displayID) {
     _GLFWDisplayLinkNS *entry = &_glfw.ns.displayLinks.entries[_glfw.ns.displayLinks.count++];
     memset(entry, 0, sizeof(_GLFWDisplayLinkNS));
     entry->displayID = displayID;
-    CVDisplayLinkCreateWithCGDisplay(displayID, &entry->displayLink);
-    CVDisplayLinkSetOutputCallback(entry->displayLink, &displayLinkCallback, (void*)(uintptr_t)displayID);
+    _glfw_create_cv_display_link(entry);
 }
 
 // Poll for changes in the set of connected monitors

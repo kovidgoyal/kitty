@@ -317,6 +317,7 @@ _glfwShutdownCVDisplayLink(unsigned long long timer_id UNUSED, void *user_data U
         _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayLink) CVDisplayLinkStop(dl->displayLink);
         dl->lastRenderFrameRequestedAt = 0;
+        dl->first_unserviced_render_frame_request_at = 0;
     }
 }
 
@@ -340,10 +341,22 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
         _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayID == displayID) {
             dl->lastRenderFrameRequestedAt = now;
+            if (!dl->first_unserviced_render_frame_request_at) dl->first_unserviced_render_frame_request_at = now;
             if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
+            else if (now - dl->first_unserviced_render_frame_request_at > s_to_monotonic_t(1ll)) {
+                // display link is stuck need to recreate it because Apple cant even
+                // get a simple timer right
+                CVDisplayLinkRelease(dl->displayLink); dl->displayLink = nil;
+                dl->first_unserviced_render_frame_request_at = now;
+                _glfw_create_cv_display_link(dl);
+                _glfwInputError(GLFW_PLATFORM_ERROR,
+                    "CVDisplayLink stuck possibly because of sleep/screensaver + Apple's incompetence, recreating.");
+                if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
+            }
         } else if (dl->displayLink && dl->lastRenderFrameRequestedAt && now - dl->lastRenderFrameRequestedAt >= DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL) {
             CVDisplayLinkStop(dl->displayLink);
             dl->lastRenderFrameRequestedAt = 0;
+            dl->first_unserviced_render_frame_request_at = 0;
         }
     }
 }
@@ -2140,6 +2153,12 @@ _glfwDispatchRenderFrame(CGDirectDisplayID displayID) {
             w->ns.renderFrameCallback((GLFWwindow*)w);
         }
         w = w->next;
+    }
+    for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
+        _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
+        if (dl->displayID == displayID) {
+            dl->first_unserviced_render_frame_request_at = 0;
+        }
     }
 }
 
