@@ -181,6 +181,8 @@ if the binary data you output into the terminal happens to contain the starting
 sequence for one of these control codes, the terminal will hang waiting for
 the closing sequence. Press :kbd:`ctrl+shift+delete` to reset the terminal.
 
+If you do want to cat unknown data, use ``cat -v``.
+
 
 kitty is not able to use my favorite font?
 ---------------------------------------------
