@@ -71,7 +71,7 @@ and Linux.
 
 .. image:: https://repology.org/badge/tiny-repos/kitty.svg
    :target: https://repology.org/project/kitty/versions
-   :alt: Number of reporsitories kitty is available in
+   :alt: Number of repositories kitty is available in
 
 See :doc:`Configuring kitty <conf>` for help on configuring |kitty| and
 :doc:`Invocation <invocation>` for the command line arguments |kitty| supports.
