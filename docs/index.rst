@@ -61,21 +61,17 @@ Quickstart
 --------------
 
 Pre-built binaries of |kitty| are available for both macOS and Linux.
-See the :doc:`binary install instructions </binary>`. You can
+See the :doc:`binary install instructions </binary>`. You can also
 :doc:`build from source </build>`.
 
-You can also use your favorite package manager to install the |kitty| package.
-|kitty| packages are available for:
-`macOS with Homebrew (Cask) <https://formulae.brew.sh/cask/kitty>`_,
-`macOS and Linux with Nix <https://search.nixos.org/packages?channel=unstable&show=kitty&sort=relevance&query=kitty>`_,
-`Ubuntu <https://launchpad.net/ubuntu/+source/kitty>`_,
-`Debian <https://packages.debian.org/buster/kitty>`_,
-`openSUSE <https://build.opensuse.org/package/show/X11:terminals/kitty>`_,
-`Arch Linux <https://www.archlinux.org/packages/community/x86_64/kitty/>`_,
-`Gentoo <https://packages.gentoo.org/packages/x11-terms/kitty>`_,
-`Fedora <https://src.fedoraproject.org/rpms/kitty>`_,
-`Void Linux <https://github.com/void-linux/void-packages/blob/master/srcpkgs/kitty/template>`_,
-and `Solus <https://dev.getsol.us/source/kitty/>`_.
+Additionally, you can use your favorite package manager to install the |kitty|
+package, but note that some Linux distribution packages are woefully outdated.
+|kitty| is available in a vast number of package repositories for macOS
+and Linux.
+
+.. image:: https://repology.org/badge/tiny-repos/kitty.svg
+   :target: https://repology.org/project/kitty/versions
+   :alt: Number of reporsitories kitty is available in
 
 See :doc:`Configuring kitty <conf>` for help on configuring |kitty| and
 :doc:`Invocation <invocation>` for the command line arguments |kitty| supports.
