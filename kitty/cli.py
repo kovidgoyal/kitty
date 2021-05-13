@@ -587,7 +587,7 @@ Override individual configuration options, can be specified multiple times.
 Syntax: :italic:`name=value`. For example: :option:`kitty -o` font_size=20
 
 
---directory -d
+--directory --working-directory -d
 default=.
 Change to the specified directory when launching
 
