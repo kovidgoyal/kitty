@@ -165,8 +165,11 @@ size_of_cache_file(DiskCache *self) {
 
 size_t
 disk_cache_size_on_disk(PyObject *self) {
-    off_t ans = size_of_cache_file((DiskCache*)self);
-    return MAX(0, ans);
+    if (((DiskCache*)self)->cache_file_fd > -1) {
+        off_t ans = size_of_cache_file((DiskCache*)self);
+        return MAX(0, ans);
+    }
+    return 0;
 }
 
 typedef struct {
@@ -362,7 +365,9 @@ write_loop(void *data) {
             continue;
         } else if (!count) {
             mutex(lock);
-            if (ftruncate(self->cache_file_fd, 0) == 0) lseek(self->cache_file_fd, 0, SEEK_END);
+            if (self->cache_file_fd > -1) {
+                if (ftruncate(self->cache_file_fd, 0) == 0) lseek(self->cache_file_fd, 0, SEEK_END);
+            }
             mutex(unlock);
         }
 
