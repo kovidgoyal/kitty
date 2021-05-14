@@ -50,6 +50,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix passing STDIN to launched background processes causing them to not inherit
   environment variables (:pull:`3603`)
 
+- Fix deleting windows that are not the last window via remote control leaving
+  no window focused (:iss:`3619`)
+
 
 0.20.3 [2021-05-06]
 ----------------------
