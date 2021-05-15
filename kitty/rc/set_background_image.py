@@ -82,7 +82,7 @@ failed, the command will exit with a success code.
             ret['data'] = '-'
             return ret
         if imghdr.what(path) != 'png':
-            self.fatal('{} is not a PNG image'.format(path))
+            self.fatal(f'{path} is not a PNG image')
 
         def file_pipe(path: str) -> Generator[Dict, None, None]:
             with open(path, 'rb') as f:
