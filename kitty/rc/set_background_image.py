@@ -53,6 +53,11 @@ choices=tiled,scaled,mirror-tiled,configured
 How the image should be displayed. The value of configured will use the configured value.
 
 
+--no-response
+type=bool-set
+default=false
+Don't wait for a response from kitty. This means that even if setting the background image
+failed, the command will exit with a success code.
 ''' + '\n\n' + MATCH_WINDOW_OPTION
     argspec = 'PATH_TO_PNG_IMAGE'
     args_count = 1
@@ -61,8 +66,10 @@ How the image should be displayed. The value of configured will use the configur
     current_file_obj: Optional[IO[bytes]] = None
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        if not args:
-            self.fatal('Must specify path to PNG image')
+        if len(args) != 1:
+            self.fatal('Must specify path to exactly one PNG image')
+        if opts.no_response:
+            global_opts.no_command_response = True
         path = args[0]
         ret = {
             'match': opts.match,
