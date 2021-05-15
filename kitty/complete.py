@@ -336,8 +336,14 @@ def complete_remote_command(ans: Completions, cmd_name: str, words: Sequence[str
         return
     args_completer: Optional[CompleteArgsFunc] = None
     args_completion = command_for_name(cmd_name).args_completion
-    if args_completion and 'files' in args_completion:
-        args_completer = remote_files_completer(args_completion['files'])
+    if args_completion:
+        if 'files' in args_completion:
+            title, matchers = args_completion['files']
+            if isinstance(matchers, tuple):
+                args_completer = remote_files_completer(title, matchers)
+        elif 'names' in args_completion:
+            title, q = args_completion['names']
+            args_completer = remote_args_completer(title, q() if callable(q) else q)
     complete_alias_map(ans, words, new_word, alias_map, complete_args=args_completer)
 
 
@@ -406,8 +412,7 @@ def complete_icat_args(ans: Completions, opt: Optional[OptionDict], prefix: str,
         complete_files_and_dirs(ans, prefix, 'Images', icat_file_predicate)
 
 
-def remote_files_completer(spec: Tuple[str, Tuple[str, ...]]) -> CompleteArgsFunc:
-    name, matchers = spec
+def remote_files_completer(name: str, matchers: Tuple[str, ...]) -> CompleteArgsFunc:
 
     def complete_files_map(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
 
@@ -421,6 +426,16 @@ def remote_files_completer(spec: Tuple[str, Tuple[str, ...]]) -> CompleteArgsFun
         if opt is None:
             complete_files_and_dirs(ans, prefix, name, predicate)
     return complete_files_map
+
+
+def remote_args_completer(title: str, words: Iterable[str]) -> CompleteArgsFunc:
+    items = sorted(words)
+
+    def complete_names_for_arg(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
+        if opt is None:
+            ans.match_groups[title] = {c: '' for c in items if c.startswith(prefix)}
+
+    return complete_names_for_arg
 
 
 def config_file_predicate(filename: str) -> bool:
