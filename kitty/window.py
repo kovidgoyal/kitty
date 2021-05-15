@@ -22,15 +22,16 @@ from .config import build_ansi_color_table
 from .constants import appname, is_macos, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
-    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
+    CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK,
+    CURSOR_UNDERLINE, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
-    MARK, MARK_MASK, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE, SCROLL_PAGE,
-    STRIKETHROUGH, TINT_PROGRAM, KeyEvent, Screen, add_timer, add_window,
-    cell_size_for_window, click_mouse_url, compile_program, encode_key_for_tty,
-    get_boss, get_clipboard_string, init_cell_program, mouse_selection,
-    pt_to_px, set_clipboard_string, set_titlebar_color, set_window_padding,
-    set_window_render_data, update_window_title, update_window_visibility,
-    viewport_for_window
+    MARK, MARK_MASK, NO_CURSOR_SHAPE, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
+    SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, KeyEvent, Screen, add_timer,
+    add_window, cell_size_for_window, click_mouse_url, compile_program,
+    encode_key_for_tty, get_boss, get_clipboard_string, init_cell_program,
+    mouse_selection, pt_to_px, set_clipboard_string, set_titlebar_color,
+    set_window_padding, set_window_render_data, update_window_title,
+    update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .notify import NotificationCommand, handle_notification_cmd
@@ -152,7 +153,8 @@ def as_text(
     as_ansi: bool = False,
     add_history: bool = False,
     add_wrap_markers: bool = False,
-    alternate_screen: bool = False
+    alternate_screen: bool = False,
+    add_cursor: bool = False
 ) -> str:
     lines: List[str] = []
     add_history = add_history and not (screen.is_using_alternate_linebuf() ^ alternate_screen)
@@ -161,6 +163,19 @@ def as_text(
     else:
         f = screen.as_text_non_visual if add_history else screen.as_text
     f(lines.append, as_ansi, add_wrap_markers)
+    ctext = ''
+    if add_cursor:
+        ctext += '\x1b[?25' + ('h' if screen.cursor_visible else 'l')
+        ctext += f'\x1b[{screen.cursor.y + 1};{screen.cursor.x + 1}H'
+        shape = screen.cursor.shape
+        if shape == NO_CURSOR_SHAPE:
+            ctext += '\x1b[?12' + ('h' if screen.cursor.blink else 'l')
+        else:
+            code = {CURSOR_BLOCK: 1, CURSOR_UNDERLINE: 3, CURSOR_BEAM: 5}[shape]
+            if not screen.cursor.blink:
+                code += 1
+            ctext += f'\x1b[{code} q'
+
     if add_history:
         h: List[str] = []
         pht = screen.historybuf.pagerhist_as_text()
@@ -175,8 +190,14 @@ def as_text(
                 h[-1] += '\n'
             if as_ansi:
                 h[-1] += '\x1b[m'
-        return ''.join(chain(h, lines))
-    return ''.join(lines)
+        ans = ''.join(chain(h, lines))
+        if ctext:
+            ans += ctext
+        return ans
+    ans = ''.join(lines)
+    if ctext:
+        ans += ctext
+    return ans
 
 
 class LoadShaderPrograms:
@@ -848,9 +869,10 @@ class Window:
         as_ansi: bool = False,
         add_history: bool = False,
         add_wrap_markers: bool = False,
-        alternate_screen: bool = False
+        alternate_screen: bool = False,
+        add_cursor: bool = False
     ) -> str:
-        return as_text(self.screen, as_ansi, add_history, add_wrap_markers, alternate_screen)
+        return as_text(self.screen, as_ansi, add_history, add_wrap_markers, alternate_screen, add_cursor)
 
     @property
     def cwd_of_child(self) -> Optional[str]:
