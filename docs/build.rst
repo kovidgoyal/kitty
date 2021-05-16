@@ -67,8 +67,7 @@ you might have to rebuild the app.
 .. note::
    The released :file:`kitty.dmg` includes all dependencies, unlike the
    :file:`kitty.app` built above and is built automatically by using the
-   :file:`kitty` branch of `build-calibre
-   <https://github.com/kovidgoyal/build-calibre>`_ however, that is designed to
+   <https://github.com/kovidgoyal/bypy>`_ however, that is designed to
    run on Linux and is not for the faint of heart.
 
 
