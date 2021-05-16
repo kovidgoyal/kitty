@@ -14,15 +14,15 @@ Dependencies
 
 Run-time dependencies:
 
-    * python >= 3.5
-    * harfbuzz >= 1.5.0
+    * python >= 3.6
+    * harfbuzz >= 2.2.0
     * zlib
     * libpng
     * liblcms2
     * freetype (not needed on macOS)
     * fontconfig (not needed on macOS)
     * libcanberra (not needed on macOS)
-    * ImageMagick (optional, needed to use the ``kitty icat`` tool to display images in the terminal)
+    * ImageMagick (optional, needed to use the ``kitty +kitten icat`` tool to display images in the terminal)
     * pygments (optional, need for syntax highlighting in ``kitty +kitten diff``)
 
 Build-time dependencies:
