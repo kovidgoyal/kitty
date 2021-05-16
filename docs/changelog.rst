@@ -56,6 +56,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - ``kitty @ get-text`` add an option to also get the current cursor position
   and state as ANSI escape codes (:iss:`3625`)
 
+- ``kitty @ get-text`` add an option to wrap long lines according to terminal
+  width
+
 
 0.20.3 [2021-05-06]
 ----------------------

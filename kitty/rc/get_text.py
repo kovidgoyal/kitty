@@ -45,6 +45,11 @@ type=bool-set
 Add ANSI escape codes specifying the cursor position and style to the end of the text.
 
 
+--add-wrap-markers
+type=bool-set
+Wrap long lines according to the width of the terminal.
+
+
 --self
 type=bool-set
 If specified get text from the window this command is run in, rather than the active window.
@@ -52,7 +57,14 @@ If specified get text from the window this command is run in, rather than the ac
     argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'extent': opts.extent, 'ansi': opts.ansi, 'self': opts.self, 'cursor': opts.add_cursor}
+        return {
+            'match': opts.match,
+            'extent': opts.extent,
+            'ansi': opts.ansi,
+            'self': opts.self,
+            'cursor': opts.add_cursor,
+            'wrap_markers': opts.add_wrap_markers,
+        }
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         window = self.windows_for_match_payload(boss, window, payload_get)[0]
@@ -63,6 +75,7 @@ If specified get text from the window this command is run in, rather than the ac
                 as_ansi=bool(payload_get('ansi')),
                 add_history=payload_get('extent') == 'all',
                 add_cursor=bool(payload_get('cursor')),
+                add_wrap_markers=bool(payload_get('wrap_markers')),
             )
         return ans
 
