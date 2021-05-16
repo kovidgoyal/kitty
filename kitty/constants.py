@@ -111,6 +111,7 @@ def cache_dir() -> str:
     else:
         candidate = os.environ.get('XDG_CACHE_HOME', '~/.cache')
         candidate = os.path.join(os.path.expanduser(candidate), appname)
+    candidate = os.path.realpath(candidate)
     os.makedirs(candidate, exist_ok=True)
     return candidate
 
