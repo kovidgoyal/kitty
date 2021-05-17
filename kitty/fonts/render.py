@@ -236,7 +236,8 @@ def add_dline(buf: ctypes.Array, cell_width: int, position: int, thickness: int,
 def add_curl(buf: ctypes.Array, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     max_x, max_y = cell_width - 1, cell_height - 1
     xfactor = 2.0 * pi / max_x
-    half_height = max(thickness // 2, 1)
+    half_height = thickness
+    thickness -= 1
 
     def add_intensity(x: int, y: int, val: int) -> None:
         y += position
@@ -244,20 +245,22 @@ def add_curl(buf: ctypes.Array, cell_width: int, position: int, thickness: int, 
         idx = cell_width * y + x
         buf[idx] = min(255, buf[idx] + val)
 
-    # Ensure all space at bottom of cell is used
-    if position + half_height < max_y:
-        position += max_y - (position + half_height)
+    # Ensure curve doesn't exceed cell boundary at the bottom
+    position += half_height * 2
     if position + half_height > max_y:
-        position -= position + half_height - max_y
+        position = max_y - half_height
 
     # Use the Wu antialias algorithm to draw the curve
     # cosine waves always have slope <= 1 so are never steep
     for x in range(cell_width):
         y = half_height * cos(x * xfactor)
-        y1, y2 = floor(y), ceil(y)
-        i1 = int(255 * abs(y - y1))
-        add_intensity(x, y1, 255 - i1)
-        add_intensity(x, y2, i1)
+        y1, y2 = floor(y - thickness), ceil(y)
+        i1 = int(255 * abs(y - floor(y)))
+        add_intensity(x, y1, 255 - i1)  # upper bound
+        add_intensity(x, y2, i1)  # lower bound
+        # fill between upper and lower bound
+        for t in range(1, thickness + 1):
+            add_intensity(x, y1 + t, 255)
 
 
 def render_special(
