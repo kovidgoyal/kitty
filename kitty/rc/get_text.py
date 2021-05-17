@@ -21,6 +21,7 @@ class GetText(RemoteCommand):
     extent: One of :code:`screen`, :code:`all`, or :code:`selection`
     ansi: Boolean, if True send ANSI formatting codes
     cursor: Boolean, if True send cursor position/style as ANSI codes
+    wrap_markers: Boolean, if True add wrap markers to output
     self: Boolean, if True use window command was run in
     '''
 
@@ -45,6 +46,12 @@ type=bool-set
 Add ANSI escape codes specifying the cursor position and style to the end of the text.
 
 
+--add-wrap-markers
+type=bool-set
+Add carriage returns at every line wrap location (where long lines are wrapped at
+screen edges).
+
+
 --self
 type=bool-set
 If specified get text from the window this command is run in, rather than the active window.
@@ -52,7 +59,14 @@ If specified get text from the window this command is run in, rather than the ac
     argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        return {'match': opts.match, 'extent': opts.extent, 'ansi': opts.ansi, 'self': opts.self, 'cursor': opts.add_cursor}
+        return {
+            'match': opts.match,
+            'extent': opts.extent,
+            'ansi': opts.ansi,
+            'self': opts.self,
+            'cursor': opts.add_cursor,
+            'wrap_markers': opts.add_wrap_markers,
+        }
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         window = self.windows_for_match_payload(boss, window, payload_get)[0]
@@ -63,6 +77,7 @@ If specified get text from the window this command is run in, rather than the ac
                 as_ansi=bool(payload_get('ansi')),
                 add_history=payload_get('extent') == 'all',
                 add_cursor=bool(payload_get('cursor')),
+                add_wrap_markers=bool(payload_get('wrap_markers')),
             )
         return ans
 

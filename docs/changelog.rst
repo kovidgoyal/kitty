@@ -53,8 +53,11 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix deleting windows that are not the last window via remote control leaving
   no window focused (:iss:`3619`)
 
-- ``kitty @ get-text`` add an option to also get the current cursor position
-  and state as ANSI escape codes (:iss:`3625`)
+- Add an option :option:`kitty @ get-text --add-cursor` to also get the current
+  cursor position and state as ANSI escape codes (:iss:`3625`)
+
+- Add an option :option:`kitty @ get-text --add-wrap-markers` to add line wrap
+  markers to the output (:pull:`3633`)
 
 
 0.20.3 [2021-05-06]
