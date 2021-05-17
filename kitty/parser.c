@@ -648,17 +648,25 @@ parse_region(Region *r, uint32_t *buf, unsigned int num) {
     return i;
 }
 
+static inline const char*
+csi_letter(unsigned code) {
+    static char buf[8];
+    if (33 <= code && code <= 126) snprintf(buf, sizeof(buf), "%c", code);
+    else snprintf(buf, sizeof(buf), "0x%x", code);
+    return buf;
+}
+
 static inline void
 dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define AT_MOST_ONE_PARAMETER { \
     if (num_params > 1) { \
-        REPORT_ERROR("CSI code 0x%x has %u > 1 parameters", code, num_params); \
+        REPORT_ERROR("CSI code %s has %u > 1 parameters", csi_letter(code), num_params); \
         break; \
     } \
 }
 #define NON_NEGATIVE_PARAM(x) { \
     if (x < 0) { \
-        REPORT_ERROR("CSI code 0x%x is not allowed to have negative parameter (%d)", code, x); \
+        REPORT_ERROR("CSI code %s is not allowed to have negative parameter (%d)", csi_letter(code), x); \
         break; \
     } \
 }
@@ -698,7 +706,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 
 #define CALL_CSI_HANDLER2(name, defval1, defval2) \
     if (num_params > 2) { \
-        REPORT_ERROR("CSI code 0x%x has %u > 2 parameters", code, num_params); \
+        REPORT_ERROR("CSI code %s has %u > 2 parameters", csi_letter(code), num_params); \
         break; \
     } \
     p1 = num_params > 0 ? params[0] : defval1; \
@@ -721,7 +729,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define NO_MODIFIERS(modifier, special, special_msg) { \
     if (start_modifier || end_modifier) { \
         if (special && modifier == special) { REPORT_ERROR(special_msg); } \
-        else { REPORT_ERROR("CSI code 0x%x has unsupported start modifier: 0x%x or end modifier: 0x%x", code, start_modifier, end_modifier);} \
+        else { REPORT_ERROR("CSI code %s has unsupported start modifier: %s or end modifier: %s", csi_letter(code), csi_letter(start_modifier), csi_letter(end_modifier));} \
         break; \
     } \
 }
