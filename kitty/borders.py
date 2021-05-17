@@ -107,6 +107,6 @@ class Borders:
                 draw_edges(self.os_window_id, self.tab_id, colors, wg)
 
         if self.draw_minimal_borders:
-            for border_line in current_layout.minimal_borders(all_windows):
+            for border_line in current_layout.get_minimal_borders(all_windows):
                 left, top, right, bottom = border_line.edges
                 add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, border_line.color)

@@ -204,7 +204,6 @@ class Tab:  # {{{
         if tm is not None:
             w = self.active_window
             ly = self.current_layout
-            ly.set_dimensions()
             self.borders(
                 all_windows=self.windows,
                 current_layout=ly, extra_blank_rects=tm.blank_rects,

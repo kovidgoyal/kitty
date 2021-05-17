@@ -218,7 +218,7 @@ class Layout:
         self.remove_all_biases()
 
     def bias_increment_for_cell(self, is_horizontal: bool) -> float:
-        self.set_dimensions()
+        self._set_dimensions()
         if is_horizontal:
             return (lgd.cell_width + 1) / lgd.central.width
         return (lgd.cell_height + 1) / lgd.central.height
@@ -297,11 +297,11 @@ class Layout:
             is_visible = window is active_window or (is_group_leader and not self.only_active_window_visible)
             window.set_visible_in_layout(is_visible)
 
-    def set_dimensions(self) -> None:
+    def _set_dimensions(self) -> None:
         lgd.central, tab_bar, vw, vh, lgd.cell_width, lgd.cell_height = viewport_for_window(self.os_window_id)
 
     def __call__(self, all_windows: WindowList) -> None:
-        self.set_dimensions()
+        self._set_dimensions()
         self.update_visibility(all_windows)
         self.blank_rects = []
         self.do_layout(all_windows)
@@ -373,6 +373,10 @@ class Layout:
 
     def compute_needs_borders_map(self, all_windows: WindowList) -> Dict[int, bool]:
         return all_windows.compute_needs_borders_map(lgd.draw_active_borders)
+
+    def get_minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
+        self._set_dimensions()
+        yield from self.minimal_borders(windows)
 
     def minimal_borders(self, windows: WindowList) -> Generator[BorderLine, None, None]:
         return
