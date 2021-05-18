@@ -26,8 +26,8 @@ rc=$?
 rm $tmp
 if [ "$rc" != "0" ]; then echo "$tic_out"; exit 1; fi
 if [ -z "$USER" ]; then export USER=$(whoami); fi
-EXEC_CMD
 shell_name=$(basename $0)
+EXEC_CMD
 
 # We need to pass the first argument to the executed program with a leading -
 # to make sure the shell executes as a login shell. Note that not all shells
@@ -41,7 +41,6 @@ case "dash" in
         exec $python -c "import os; os.execlp('$0', '-' '$shell_name')"
     ;;
 esac
-
 exec -a "-$shell_name" "$0"
 '''
 
@@ -62,13 +61,13 @@ with NamedTemporaryFile() as tmp:
         getattr(sys.stderr, 'buffer', sys.stderr).write(stdout + stderr)
         raise SystemExit('Failed to compile terminfo using tic')
 command_to_execute = json.loads(binascii.unhexlify('{command_to_execute}'))
-if command_to_execute:
-    os.execlp(command_to_execute[0], *command_to_execute)
 try:
     shell_path = pwd.getpwuid(os.geteuid()).pw_shell or '/bin/sh'
 except KeyError:
     shell_path = '/bin/sh'
 shell_name = '-' + os.path.basename(shell_path)
+if command_to_execute:
+    os.execlp(shell_path, shell_path, '-c', command_to_execute)
 os.execlp(shell_path, shell_name)
 '''
 
@@ -179,11 +178,13 @@ def quote(x: str) -> str:
 
 def get_posix_cmd(terminfo: str, remote_args: List[str]) -> List[str]:
     sh_script = SHELL_SCRIPT.replace('TERMINFO', terminfo, 1)
+    command_to_execute = ''
     if remote_args:
-        command_to_executeg = (quote(c) for c in remote_args)
-        command_to_execute = 'exec ' + ' '.join(command_to_executeg)
-    else:
-        command_to_execute = ''
+        # ssh simply concatenates multiple commands using a space see
+        # line 1129 of ssh.c and on the remote side sshd.c runs the
+        # concatenated command as shell -c cmd
+        args = [c.replace("'", """'"'"'""") for c in remote_args]
+        command_to_execute = "exec $0 -c '{}'".format(' '.join(args))
     sh_script = sh_script.replace('EXEC_CMD', command_to_execute)
     return [sh_script] + remote_args
 
@@ -192,7 +193,7 @@ def get_python_cmd(terminfo: str, command_to_execute: List[str]) -> List[str]:
     import json
     script = PYTHON_SCRIPT.format(
         terminfo=terminfo.encode('utf-8').hex(),
-        command_to_execute=json.dumps(command_to_execute).encode('utf-8').hex()
+        command_to_execute=json.dumps(' '.join(command_to_execute)).encode('utf-8').hex()
     )
     return [f'python -c "{script}"']
 

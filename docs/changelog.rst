@@ -59,6 +59,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add an option :option:`kitty @ get-text --add-wrap-markers` to add line wrap
   markers to the output (:pull:`3633`)
 
+- ssh kitten: Mimic behavior of ssh command line client more closely by
+  executing any command specified on the command line via the users' shell
+  just as ssh does (:iss:`3638`)
+
 
 0.20.3 [2021-05-06]
 ----------------------
