@@ -269,7 +269,9 @@ def render_special(
     underline_position: int = 0,
     underline_thickness: int = 0,
     strikethrough_position: int = 0,
-    strikethrough_thickness: int = 0
+    strikethrough_thickness: int = 0,
+    dpi_x: float = 96.,
+    dpi_y: float = 96.,
 ) -> ctypes.Array:
     underline_position = min(underline_position, cell_height - underline_thickness)
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
@@ -356,7 +358,9 @@ def prerender_function(
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
         underline_position=underline_position, underline_thickness=underline_thickness,
-        strikethrough_position=strikethrough_position, strikethrough_thickness=strikethrough_thickness)
+        strikethrough_position=strikethrough_position, strikethrough_thickness=strikethrough_thickness,
+        dpi_x=dpi_x, dpi_y=dpi_y
+    )
     c = partial(
         render_cursor, cursor_beam_thickness=cursor_beam_thickness,
         cursor_underline_thickness=cursor_underline_thickness, cell_width=cell_width,
