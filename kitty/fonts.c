@@ -810,8 +810,8 @@ static inline LigatureType
 ligature_type_from_glyph_name(const char *glyph_name) {
     const char *p = strrchr(glyph_name, '_');
     if (!p) return LIGATURE_UNKNOWN;
-    if (strcmp(p, "_start.seq") == 0) return INFINITE_LIGATURE_START;
     if (strcmp(p, "_middle.seq") == 0) return INFINITE_LIGATURE_MIDDLE;
+    if (strcmp(p, "_start.seq") == 0) return INFINITE_LIGATURE_START;
     if (strcmp(p, "_end.seq") == 0) return INFINITE_LIGATURE_END;
     return LIGATURE_UNKNOWN;
 }
