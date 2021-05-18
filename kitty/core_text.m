@@ -45,7 +45,7 @@ convert_cfstring(CFStringRef src, int free_src) {
 }
 
 static inline void
-init_face(CTFace *self, CTFontRef font) {
+init_face(CTFace *self, CTFontRef font, FONTS_DATA_HANDLE fg UNUSED) {
     if (self->hb_font) hb_font_destroy(self->hb_font);
     self->hb_font = NULL;
     if (self->ct_font) CFRelease(self->ct_font);
@@ -60,10 +60,10 @@ init_face(CTFace *self, CTFontRef font) {
 }
 
 static inline CTFace*
-ct_face(CTFontRef font) {
+ct_face(CTFontRef font, FONTS_DATA_HANDLE fg) {
     CTFace *self = (CTFace *)CTFace_Type.tp_alloc(&CTFace_Type, 0);
     if (self) {
-        init_face(self, font);
+        init_face(self, font, fg);
         self->family_name = Py_BuildValue("s", convert_cfstring(CTFontCopyFamilyName(self->ct_font), true));
         self->full_name = Py_BuildValue("s", convert_cfstring(CTFontCopyFullName(self->ct_font), true));
         self->postscript_name = Py_BuildValue("s", convert_cfstring(CTFontCopyPostScriptName(self->ct_font), true));
@@ -247,7 +247,7 @@ find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
 }
 
 PyObject*
-create_fallback_face(PyObject *base_face, CPUCell* cell, bool UNUSED bold, bool UNUSED italic, bool emoji_presentation, FONTS_DATA_HANDLE fg UNUSED) {
+create_fallback_face(PyObject *base_face, CPUCell* cell, bool UNUSED bold, bool UNUSED italic, bool emoji_presentation, FONTS_DATA_HANDLE fg) {
     CTFace *self = (CTFace*)base_face;
     CTFontRef new_font;
 #define search_for_fallback() \
@@ -267,7 +267,7 @@ create_fallback_face(PyObject *base_face, CPUCell* cell, bool UNUSED bold, bool 
     }
     else { search_for_fallback(); }
     if (new_font == NULL) return NULL;
-    return (PyObject*)ct_face(new_font);
+    return (PyObject*)ct_face(new_font, fg);
 }
 
 unsigned int
@@ -306,7 +306,7 @@ set_size_for_face(PyObject *s, unsigned int UNUSED desired_height, bool force, F
     if (!force && self->scaled_point_sz == sz) return true;
     CTFontRef new_font = CTFontCreateCopyWithAttributes(self->ct_font, sz, NULL, NULL);
     if (new_font == NULL) fatal("Out of memory");
-    init_face(self, new_font);
+    init_face(self, new_font, fg);
     return true;
 }
 
@@ -373,18 +373,18 @@ face_from_descriptor(PyObject *descriptor, FONTS_DATA_HANDLE fg) {
     CTFontRef font = CTFontCreateWithFontDescriptor(desc, scaled_point_sz(fg), NULL);
     CFRelease(desc); desc = NULL;
     if (!font) { PyErr_SetString(PyExc_ValueError, "Failed to create CTFont object"); return NULL; }
-    return (PyObject*) ct_face(font);
+    return (PyObject*) ct_face(font, fg);
 }
 
 PyObject*
-face_from_path(const char *path, int UNUSED index, FONTS_DATA_HANDLE fg UNUSED) {
+face_from_path(const char *path, int UNUSED index, FONTS_DATA_HANDLE fg) {
     CFStringRef s = CFStringCreateWithCString(NULL, path, kCFStringEncodingUTF8);
     CFURLRef url = CFURLCreateWithFileSystemPath(kCFAllocatorDefault, s, kCFURLPOSIXPathStyle, false);
     CGDataProviderRef dp = CGDataProviderCreateWithURL(url);
     CGFontRef cg_font = CGFontCreateWithDataProvider(dp);
     CTFontRef ct_font = CTFontCreateWithGraphicsFont(cg_font, 0.0, NULL, NULL);
     CFRelease(cg_font); CFRelease(dp); CFRelease(url); CFRelease(s);
-    return (PyObject*) ct_face(ct_font);
+    return (PyObject*) ct_face(ct_font, fg);
 }
 
 PyObject*
