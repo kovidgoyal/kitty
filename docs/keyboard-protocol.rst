@@ -110,7 +110,7 @@ decimal number. For example, the :kbd:`A` key is represented as ``97`` which is
 the unicode code for lowercase ``a``. Note that the codepoint used is *always*
 the lower-case (or more technically, un-shifted) version of the key. If the
 user presses, for example, :kbd:`ctrl+shift+a` the escape code would be ``CSI
-97;modifiers u``. It *must not* by ``CSI 65; modifiers u``.
+97;modifiers u``. It *must not* be ``CSI 65; modifiers u``.
 
 If *alternate key reporting* is requested by the program running in the
 terminal, the terminal can send two additional Unicode codepoints, the
@@ -296,7 +296,7 @@ represented in one of the following two forms::
 
 This makes it very easy to parse key events in an application. In particular,
 :kbd:`ctrl+c` will no longer generate the ``SIGINT`` signal, but instead be
-delivers as a ``CSI u`` escape code. This has the nice side effect of making it
+delivered as a ``CSI u`` escape code. This has the nice side effect of making it
 much easier to integrate into the application event loop. The only exceptions
 are the :kbd:`Enter, Tab and Backspace` keys which still generate the same
 bytes as in legacy mode this is to allow the user to type and execute commands
