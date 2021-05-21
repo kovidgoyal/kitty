@@ -59,6 +59,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add an option :option:`kitty @ get-text --add-wrap-markers` to add line wrap
   markers to the output (:pull:`3633`)
 
+- Improve rendering of curly underlines on HiDPI screens (:pull:`3637`)
+
 - ssh kitten: Mimic behavior of ssh command line client more closely by
   executing any command specified on the command line via the users' shell
   just as ssh does (:iss:`3638`)
