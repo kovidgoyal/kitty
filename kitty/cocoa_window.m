@@ -374,7 +374,6 @@ cocoa_create_global_menu(void) {
                 keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
     MENU_ITEM(appMenu, @"Preferences…", edit_config_file);
-    MENU_ITEM(appMenu, @"New OS Window", new_os_window);
 
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", app_name]
                        action:@selector(hide:)
@@ -408,6 +407,19 @@ cocoa_create_global_menu(void) {
                 keyEquivalent:@"q"];
     [appMenu release];
 
+    NSMenuItem* shellMenuItem =
+        [bar addItemWithTitle:@"Shell"
+                       action:NULL
+                keyEquivalent:@""];
+    NSMenu* shellMenu = [[NSMenu alloc] initWithTitle:@"Shell"];
+    [shellMenuItem setSubmenu:shellMenu];
+    MENU_ITEM(shellMenu, @"New OS Window", new_os_window);
+    MENU_ITEM(shellMenu, @"New Tab", new_tab);
+    [shellMenu addItem:[NSMenuItem separatorItem]];
+    MENU_ITEM(shellMenu, @"Close OS Window", close_os_window);
+    MENU_ITEM(shellMenu, @"Close Tab", close_tab);
+    [shellMenu release];
+
     NSMenuItem* windowMenuItem =
         [bar addItemWithTitle:@""
                        action:NULL
@@ -427,11 +439,8 @@ cocoa_create_global_menu(void) {
                    keyEquivalent:@""];
 
     [windowMenu addItem:[NSMenuItem separatorItem]];
-    MENU_ITEM(windowMenu, @"New Tab", new_tab);
     MENU_ITEM(windowMenu, @"Show Previous Tab", previous_tab);
     MENU_ITEM(windowMenu, @"Show Next Tab", next_tab);
-    MENU_ITEM(windowMenu, @"Close Tab", close_tab);
-    MENU_ITEM(windowMenu, @"Close OS Window", close_os_window);
     [[windowMenu addItemWithTitle:@"Move Tab to New Window"
                            action:@selector(detach_tab:)
                     keyEquivalent:@""] setTarget:global_menu_target];
