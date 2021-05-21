@@ -53,7 +53,7 @@ typedef struct {
 static SymbolMap *symbol_maps = NULL;
 static size_t num_symbol_maps = 0;
 
-typedef enum { SPACER_STRATEGY_UNKNOWN, SPACERS_BEFORE, SPACERS_AFTER } SpacerStrategy;
+typedef enum { SPACER_STRATEGY_UNKNOWN, SPACERS_BEFORE, SPACERS_AFTER, SPACERS_IOSEVKA } SpacerStrategy;
 
 typedef struct {
     PyObject *face;
@@ -807,12 +807,20 @@ check_cell_consumed(CellData *cell_data, CPUCell *last_cpu_cell) {
 }
 
 static inline LigatureType
-ligature_type_from_glyph_name(const char *glyph_name) {
-    const char *p = strrchr(glyph_name, '_');
-    if (!p) return LIGATURE_UNKNOWN;
-    if (strcmp(p, "_middle.seq") == 0) return INFINITE_LIGATURE_MIDDLE;
-    if (strcmp(p, "_start.seq") == 0) return INFINITE_LIGATURE_START;
-    if (strcmp(p, "_end.seq") == 0) return INFINITE_LIGATURE_END;
+ligature_type_from_glyph_name(const char *glyph_name, SpacerStrategy strategy) {
+    const char *p, *m, *s, *e;
+    if (strategy == SPACERS_IOSEVKA) {
+        p = strrchr(glyph_name, '.');
+        m = ".join-m"; s = ".join-l"; e = ".join-r";
+    } else {
+        p = strrchr(glyph_name, '_');
+        m = "_middle.seq"; s = "_start.seq"; e = "_end.seq";
+    }
+    if (p) {
+        if (strcmp(p, m) == 0) return INFINITE_LIGATURE_MIDDLE;
+        if (strcmp(p, s) == 0) return INFINITE_LIGATURE_START;
+        if (strcmp(p, e) == 0) return INFINITE_LIGATURE_END;
+    }
     return LIGATURE_UNKNOWN;
 }
 
@@ -830,19 +838,116 @@ detect_spacer_strategy(hb_font_t *hbf, Font *font) {
         bool is_empty = is_special && is_empty_glyph(glyph_id, font);
         if (is_empty) font->spacer_strategy = SPACERS_AFTER;
     }
+    shape(cpu_cells, gpu_cells, 2, hbf, font, false);
+    if (G(num_glyphs)) {
+        char glyph_name[128]; glyph_name[arraysz(glyph_name)-1] = 0;
+        for (unsigned i = 0; i < G(num_glyphs); i++) {
+            glyph_index glyph_id = G(info)[i].codepoint;
+            hb_font_glyph_to_string(hbf, glyph_id, glyph_name, arraysz(glyph_name)-1);
+            char *dot = strrchr(glyph_name, '.');
+            if (dot && (!strcmp(dot, ".join-l") || !strcmp(dot, ".join-r") || !strcmp(dot, ".join-m"))) {
+                font->spacer_strategy = SPACERS_IOSEVKA;
+                break;
+            }
+        }
+    }
 }
 
-static inline void
-shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, Font *font, bool disable_ligature) {
-    hb_font_t *hbf = harfbuzz_font_for_face(font->face);
-    if (font->spacer_strategy == SPACER_STRATEGY_UNKNOWN) detect_spacer_strategy(hbf, font);
-    shape(first_cpu_cell, first_gpu_cell, num_cells, hbf, font, disable_ligature);
-#if 0
-        static char dbuf[1024];
-        // You can also generate this easily using hb-shape --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
-        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, group_state.num_glyphs, dbuf, sizeof(dbuf), NULL, harfbuzz_font_for_face(font->face), HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS);
-        printf("\n%s\n", dbuf);
-#endif
+static LigatureType
+ligature_type_for_glyph(hb_font_t *hbf, glyph_index glyph_id, SpacerStrategy strategy) {
+    static char glyph_name[128]; glyph_name[arraysz(glyph_name)-1] = 0;
+    hb_font_glyph_to_string(hbf, glyph_id, glyph_name, arraysz(glyph_name)-1);
+    return ligature_type_from_glyph_name(glyph_name, strategy);
+}
+
+#define L INFINITE_LIGATURE_START
+#define M INFINITE_LIGATURE_MIDDLE
+#define R INFINITE_LIGATURE_END
+#define I LIGATURE_UNKNOWN
+static bool
+is_iosevka_lig_starter(LigatureType before, LigatureType current, LigatureType after) {
+    return (current == R || (current == I && (after == L || after == M))) \
+                     && \
+           !(before == R || before == M);
+}
+
+static bool
+is_iosevka_lig_ender(LigatureType before, LigatureType current, LigatureType after) {
+    return (current == L || (current == I && (before == R || before == M))) \
+                     && \
+            !(after == L || after == M);
+}
+#undef L
+#undef M
+#undef R
+#undef I
+
+static LigatureType *ligature_types = NULL;
+static size_t ligature_types_sz = 0;
+
+static void
+group_iosevka(Font *font, hb_font_t *hbf) {
+    // Group as per algorithm discussed in: https://github.com/be5invis/Iosevka/issues/1007
+    if (ligature_types_sz <= G(num_glyphs)) {
+        ligature_types_sz = G(num_glyphs) + 16;
+        ligature_types = realloc(ligature_types, ligature_types_sz * sizeof(ligature_types[0]));
+        if (!ligature_types) fatal("Out of memory allocating ligature types array");
+    }
+    for (size_t i = G(glyph_idx); i < G(num_glyphs); i++) {
+        ligature_types[i] = ligature_type_for_glyph(hbf, G(info)[i].codepoint, font->spacer_strategy);
+    }
+
+    uint32_t cluster, next_cluster;
+    while (G(glyph_idx) < G(num_glyphs) && G(cell_idx) < G(num_cells)) {
+        cluster = G(info)[G(glyph_idx)].cluster;
+        uint32_t num_codepoints_used_by_glyph = 0;
+        bool is_last_glyph = G(glyph_idx) == G(num_glyphs) - 1;
+        Group *current_group = G(groups) + G(group_idx);
+        if (is_last_glyph) {
+            num_codepoints_used_by_glyph = UINT32_MAX;
+            next_cluster = 0;
+        } else {
+            next_cluster = G(info)[G(glyph_idx) + 1].cluster;
+            // RTL languages like Arabic have decreasing cluster numbers
+            if (next_cluster != cluster) num_codepoints_used_by_glyph = cluster > next_cluster ? cluster - next_cluster : next_cluster - cluster;
+        }
+        const LigatureType before = G(glyph_idx) ? ligature_types[G(glyph_idx - 1)] : LIGATURE_UNKNOWN;
+        const LigatureType current = ligature_types[G(glyph_idx)];
+        const LigatureType after = is_last_glyph ? LIGATURE_UNKNOWN : ligature_types[G(glyph_idx + 1)];
+        bool end_current_group = false;
+        if (current_group->num_glyphs && is_iosevka_lig_ender(before, current, after)) {
+            end_current_group = true;
+        }
+        if (!current_group->num_glyphs++) {
+            if (is_iosevka_lig_starter(before, current, after)) current_group->has_special_glyph = true;
+            else end_current_group = true;
+            current_group->first_glyph_idx = G(glyph_idx);
+            current_group->first_cell_idx = G(cell_idx);
+        }
+        if (is_last_glyph) {
+            // soak up all remaining cells
+            if (G(cell_idx) < G(num_cells)) {
+                unsigned int num_left = G(num_cells) - G(cell_idx);
+                current_group->num_cells += num_left;
+                G(cell_idx) += num_left;
+            }
+        } else {
+            unsigned int num_cells_consumed = 0;
+            while (num_codepoints_used_by_glyph && G(cell_idx) < G(num_cells)) {
+                unsigned int w = check_cell_consumed(&G(current_cell_data), G(last_cpu_cell));
+                G(cell_idx) += w;
+                num_cells_consumed += w;
+                num_codepoints_used_by_glyph--;
+            }
+            current_group->num_cells += num_cells_consumed;
+        }
+        if (end_current_group) G(group_idx)++;
+        G(glyph_idx)++;
+    }
+}
+
+static void
+group_normal(Font *font, hb_font_t *hbf) {
     /* Now distribute the glyphs into groups of cells
      * Considerations to keep in mind:
      * Group sizes should be as small as possible for best performance
@@ -863,12 +968,10 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
      */
     uint32_t cluster, next_cluster;
     bool add_to_current_group;
-    char glyph_name[128]; glyph_name[arraysz(glyph_name)-1] = 0;
     bool prev_glyph_was_inifinte_ligature_end = false;
     while (G(glyph_idx) < G(num_glyphs) && G(cell_idx) < G(num_cells)) {
         glyph_index glyph_id = G(info)[G(glyph_idx)].codepoint;
-        hb_font_glyph_to_string(hbf, glyph_id, glyph_name, arraysz(glyph_name)-1);
-        LigatureType ligature_type = ligature_type_from_glyph_name(glyph_name);
+        LigatureType ligature_type = ligature_type_for_glyph(hbf, glyph_id, font->spacer_strategy);
         cluster = G(info)[G(glyph_idx)].cluster;
         bool is_special = is_special_glyph(glyph_id, font, &G(current_cell_data));
         bool is_empty = is_special && is_empty_glyph(glyph_id, font);
@@ -898,15 +1001,14 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
                 add_to_current_group = !G(prev_was_special) || !current_group->num_cells;
             }
         }
-        static const bool debug_grouping = false;
-        if (debug_grouping) {
-            char ch[8] = {0};
-            encode_utf8(G(current_cell_data).current_codepoint, ch);
-            printf("\x1b[32m→ %s\x1b[m glyph_idx: %zu glyph_id: %u (%s) group_idx: %zu cluster: %u -> %u is_special: %d\n"
-                    "  num_codepoints_used_by_glyph: %u current_group: (%u cells, %u glyphs) add_to_current_group: %d\n",
-                    ch, G(glyph_idx), glyph_id, glyph_name, G(group_idx), cluster, next_cluster, is_special,
-                    num_codepoints_used_by_glyph, current_group->num_cells, current_group->num_glyphs, add_to_current_group);
-        }
+#if 0
+        char ch[8] = {0};
+        encode_utf8(G(current_cell_data).current_codepoint, ch);
+        printf("\x1b[32m→ %s\x1b[m glyph_idx: %zu glyph_id: %u (%s) group_idx: %zu cluster: %u -> %u is_special: %d\n"
+                "  num_codepoints_used_by_glyph: %u current_group: (%u cells, %u glyphs) add_to_current_group: %d\n",
+                ch, G(glyph_idx), glyph_id, glyph_name, G(group_idx), cluster, next_cluster, is_special,
+                num_codepoints_used_by_glyph, current_group->num_cells, current_group->num_glyphs, add_to_current_group);
+#endif
 
         if (!add_to_current_group) { current_group = G(groups) + ++G(group_idx); }
         if (!current_group->num_glyphs++) {
@@ -951,6 +1053,22 @@ shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells
         prev_glyph_was_inifinte_ligature_end = ligature_type == INFINITE_LIGATURE_END;
         G(glyph_idx)++;
     }
+}
+
+
+static void
+shape_run(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_cells, Font *font, bool disable_ligature) {
+    hb_font_t *hbf = harfbuzz_font_for_face(font->face);
+    if (font->spacer_strategy == SPACER_STRATEGY_UNKNOWN) detect_spacer_strategy(hbf, font);
+    shape(first_cpu_cell, first_gpu_cell, num_cells, hbf, font, disable_ligature);
+    if (font->spacer_strategy == SPACERS_IOSEVKA) group_iosevka(font, hbf);
+    else group_normal(font, hbf);
+#if 0
+        static char dbuf[1024];
+        // You can also generate this easily using hb-shape --show-extents --cluster-level=1 --shapers=ot /path/to/font/file text
+        hb_buffer_serialize_glyphs(harfbuzz_buffer, 0, group_state.num_glyphs, dbuf, sizeof(dbuf), NULL, harfbuzz_font_for_face(font->face), HB_BUFFER_SERIALIZE_FORMAT_TEXT, HB_BUFFER_SERIALIZE_FLAG_DEFAULT | HB_BUFFER_SERIALIZE_FLAG_GLYPH_EXTENTS);
+        printf("\n%s\n", dbuf);
+#endif
 }
 
 static inline void
@@ -1300,6 +1418,7 @@ finalize(void) {
     Py_CLEAR(descriptor_for_idx);
     Py_CLEAR(font_feature_settings);
     free_font_groups();
+    free(ligature_types);
     if (harfbuzz_buffer) { hb_buffer_destroy(harfbuzz_buffer); harfbuzz_buffer = NULL; }
     free(group_state.groups); group_state.groups = NULL; group_state.groups_capacity = 0;
     free(global_glyph_render_scratch.glyphs);
