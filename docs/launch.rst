@@ -19,7 +19,6 @@ launch::
 
     map f1 launch vim path/to/some/file
 
-
 To open a new window with the same working directory as the currently
 active window::
 
@@ -28,6 +27,10 @@ active window::
 To open the new window in a new tab::
 
     map f1 launch --type=tab
+
+To run multiple commands in a shell, use::
+
+    map f1 launch sh -c "ls && zsh"
 
 To pass the contents of the current screen and scrollback to the started process::
 
