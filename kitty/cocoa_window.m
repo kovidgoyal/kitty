@@ -145,7 +145,7 @@ get_dock_menu(id self UNUSED, SEL _cmd UNUSED, NSApplication *sender UNUSED) {
     if (!dockMenu) {
         GlobalMenuTarget *global_menu_target = [GlobalMenuTarget shared_instance];
         dockMenu = [[NSMenu alloc] init];
-        [[dockMenu addItemWithTitle:@"New OS window"
+        [[dockMenu addItemWithTitle:@"New OS Window"
                              action:@selector(new_os_window:)
                       keyEquivalent:@""]
                           setTarget:global_menu_target];
@@ -374,7 +374,7 @@ cocoa_create_global_menu(void) {
                 keyEquivalent:@""];
     [appMenu addItem:[NSMenuItem separatorItem]];
     MENU_ITEM(appMenu, @"Preferences…", edit_config_file);
-    MENU_ITEM(appMenu, @"New OS window", new_os_window);
+    MENU_ITEM(appMenu, @"New OS Window", new_os_window);
 
     [appMenu addItemWithTitle:[NSString stringWithFormat:@"Hide %@", app_name]
                        action:@selector(hide:)
