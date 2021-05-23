@@ -292,3 +292,5 @@ Window* window_for_window_id(id_type kitty_window_id);
 void mouse_open_url(Window *w);
 void mouse_selection(Window *w, int code, int button);
 const char* format_mods(unsigned mods);
+void send_pending_click_to_window_id(id_type, void*);
+void send_pending_click_to_window(Window*, void*);

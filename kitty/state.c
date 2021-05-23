@@ -525,6 +525,24 @@ make_window_context_current(id_type window_id) {
     return false;
 }
 
+void
+send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
+    id_type window_id = *((id_type*)data);
+    for (size_t o = 0; o < global_state.num_os_windows; o++) {
+        OSWindow *osw = global_state.os_windows + o;
+        for (size_t t = 0; t < osw->num_tabs; t++) {
+            Tab *qtab = osw->tabs + t;
+            for (size_t w = 0; w < qtab->num_windows; w++) {
+                Window *window = qtab->windows + w;
+                if (window->id == window_id) {
+                    send_pending_click_to_window(window, data);
+                    return;
+                }
+            }
+        }
+    }
+}
+
 
 // Python API {{{
 #define PYWRAP0(name) static PyObject* py##name(PYNOARG)

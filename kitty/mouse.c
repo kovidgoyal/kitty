@@ -480,11 +480,42 @@ mouse_open_url(Window *w) {
     screen_open_url(screen);
 }
 
+typedef struct PendingClick {
+    id_type window_id;
+    int button, count, modifiers;
+    bool grabbed;
+    monotonic_t at;
+} PendingClick;
+
+static void
+free_pending_click(id_type timer_id UNUSED, void *pc) { free(pc); }
+
+void
+send_pending_click_to_window(Window *w, void *data) {
+    PendingClick *pc = (PendingClick*)data;
+    ClickQueue *q = &w->click_queues[pc->button];
+    // only send click if no presses have happened since the release that triggered the click
+    if (q->length && q->clicks[q->length - 1].at <= pc->at) {
+        dispatch_mouse_event(w, pc->button, pc->count, pc->modifiers, pc->grabbed);
+    }
+}
+
 static void
 dispatch_possible_click(Window *w, int button, int modifiers) {
     Screen *screen = w->render_data.screen;
     int count = multi_click_count(w, button);
-    if (release_is_click(w, button)) dispatch_mouse_event(w, button, count == 2 ? -3 : -2, modifiers, screen->modes.mouse_tracking_mode != 0);
+    if (release_is_click(w, button)) {
+        PendingClick *pc = calloc(sizeof(PendingClick), 1);
+        if (pc) {
+            pc->window_id = w->id;
+            pc->at = monotonic();
+            pc->button = button;
+            pc->count = count == 2 ? -3 : -2;
+            pc->modifiers = modifiers;
+            pc->grabbed = screen->modes.mouse_tracking_mode != 0;
+            add_main_loop_timer(OPT(click_interval), false, send_pending_click_to_window_id, pc, free_pending_click);
+        }
+    }
 }
 
 HANDLER(handle_button_event) {
