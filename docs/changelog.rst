@@ -22,8 +22,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   ignored. The options were: ``terminal_select_modifiers``,
   ``rectangle_select_modifiers`` and ``open_url_modifiers``.
 
-- Add a configurable mouse action to select from the clicked point to the end of the line.
-  (:iss:`3585`)
+- Add a configurable mouse action (:kbd:`ctrl+alt+triplepress` to select from the
+  clicked point to the end of the line. (:iss:`3585`)
 
 - Add the ability to un-scroll the screen to the ``kitty @ scroll-window``
   remote control command (:iss:`3604`)

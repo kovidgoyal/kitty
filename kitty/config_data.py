@@ -6,12 +6,12 @@
 import os
 from gettext import gettext as _
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Set,
+    Callable, Dict, FrozenSet, Iterable, List, Optional, Set,
     Tuple, TypeVar, Union
 )
 
 from . import fast_data_types as defines
-from .conf.definition import Option, OptionOrAction, option_func
+from .conf.definition import OptionOrAction, option_func
 from .conf.utils import (
     choices, to_bool, to_cmdline as tc, to_color, to_color_or_none, unit_float
 )
@@ -683,11 +683,9 @@ for grabbed in (False, True):
     m('start_rectangle_selection' + name_s, mods_p + 'ctrl+alt+left', 'press', modes, 'mouse_selection rectangle',
       _('Start selecting text in a rectangle') + ts)
     m('select_word' + name_s, mods_p + 'left', 'doublepress', modes, 'mouse_selection word', _('Select a word') + ts)
-    line_desc = ''
-    if not grabbed:
-        line_desc = _('Select the entire line. If you would rather select from the clicked'
-                      ' point to the end of the line, use ``line_at_point`` instead of ``line`` above')
-    m('select_line' + name_s, mods_p + 'left', 'triplepress', modes, 'mouse_selection line', _('Select a line') + ts, line_desc)
+    m('select_line' + name_s, mods_p + 'left', 'triplepress', modes, 'mouse_selection line', _('Select a line') + ts, _('Select the entire line'))
+    m('select_line_from_point' + name_s, mods_p + 'ctrl+alt+left', 'triplepress', modes,
+      'mouse_selection line_from_point', _('Select line from point') + ts, _('Select from the clicked point to the end of the line'))
     m('extend_selection' + name_s, mods_p + 'right', 'press', modes, 'mouse_selection extend', _('Extend the current selection') + ts)
 # }}}
 
