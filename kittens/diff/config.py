@@ -5,6 +5,7 @@
 import os
 from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
 
+from kitty.cli_stub import DiffCLIOptions
 from kitty.conf.definition import config_lines
 from kitty.conf.utils import (
     init_config as _init_config, key_func, load_config as _load_config,
@@ -12,10 +13,9 @@ from kitty.conf.utils import (
 )
 from kitty.constants import config_dir
 from kitty.options_stub import DiffOptions
-from kitty.cli_stub import DiffCLIOptions
 from kitty.rgb import color_as_sgr
 
-from .config_data import all_options, type_convert
+from .config_data import all_options
 
 defaults: Optional[DiffOptions] = None
 
@@ -96,7 +96,7 @@ def parse_config(lines: Iterable[str], check_keys: bool = True) -> Dict[str, Any
     parse_config_base(
         lines,
         defaults,
-        type_convert,
+        all_options,
         special_handling,
         ans,
         check_keys=check_keys

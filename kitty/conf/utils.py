@@ -98,6 +98,17 @@ def choices(*choices: str) -> Choice:
     return Choice(choices)
 
 
+def create_type_converter(all_options: Dict) -> Callable[[str, Any], Any]:
+    from .definition import Option
+
+    def type_convert(name: str, val: Any) -> Any:
+        o = all_options.get(name)
+        if isinstance(o, Option):
+            val = o.option_type(val)
+        return val
+    return type_convert
+
+
 def parse_line(
     line: str,
     type_convert: Callable[[str, Any], Any],
@@ -168,7 +179,7 @@ def _parse(
 def parse_config_base(
     lines: Iterable[str],
     defaults: Any,
-    type_convert: Callable[[str, Any], Any],
+    all_options: Dict[str, Any],
     special_handling: Callable,
     ans: Dict[str, Any],
     check_keys: bool = True,
@@ -176,7 +187,7 @@ def parse_config_base(
 ) -> None:
     all_keys: Optional[FrozenSet[str]] = defaults._asdict() if check_keys else None
     _parse(
-        lines, type_convert, special_handling, ans, all_keys, accumulate_bad_lines
+        lines, create_type_converter(all_options), special_handling, ans, all_keys, accumulate_bad_lines
     )
 
 

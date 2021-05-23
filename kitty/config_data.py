@@ -1397,7 +1397,6 @@ automatically. Set it to :code:`x11` or :code:`wayland`
 to force the choice.'''))
 # }}}
 
-
 g('shortcuts')  # {{{
 
 o('kitty_mod', 'ctrl+shift', option_type=to_modifiers, long_text=_('''
@@ -1687,10 +1686,3 @@ the line (same as pressing the Home key)::
 '''))
 # }}}
 # }}}
-
-
-def type_convert(name: str, val: Any) -> Any:
-    o = all_options.get(name)
-    if isinstance(o, Option):
-        val = o.option_type(val)
-    return val

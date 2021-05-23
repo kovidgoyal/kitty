@@ -19,13 +19,11 @@ from .conf.utils import (
     BadLine, init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, python_string, to_bool, to_cmdline
 )
-from .config_data import (
-    InvalidMods, all_options, parse_mods, parse_shortcut, type_convert
-)
+from .config_data import InvalidMods, all_options, parse_mods, parse_shortcut
 from .constants import cache_dir, defconf, is_macos
 from .fonts import FontFeature
 from .options_stub import Options as OptionsStub
-from .types import SingleKey, MouseEvent
+from .types import MouseEvent, SingleKey
 from .typing import TypedDict
 from .utils import expandvars, log_error
 
@@ -693,7 +691,7 @@ def parse_config(lines: Iterable[str], check_keys: bool = True, accumulate_bad_l
     parse_config_base(
         lines,
         defs,
-        type_convert,
+        all_options,
         special_handling,
         ans,
         check_keys=check_keys,
