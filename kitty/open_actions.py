@@ -11,7 +11,7 @@ from typing import (
 )
 from urllib.parse import ParseResult, unquote, urlparse
 
-from .conf.utils import to_cmdline
+from .conf.utils import to_cmdline_implementation
 from .config import KeyAction, parse_key_action
 from .constants import config_dir
 from .guess_mime_type import guess_type
@@ -50,7 +50,7 @@ def parse(lines: Iterable[str]) -> Generator[OpenAction, None, None]:
         key, rest = parts
         key = key.lower()
         if key == 'action':
-            with to_cmdline.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
+            with to_cmdline_implementation.filter_env_vars('URL', 'FILE_PATH', 'FILE', 'FRAGMENT'):
                 x = parse_key_action(rest)
             if x is not None:
                 actions.append(x)

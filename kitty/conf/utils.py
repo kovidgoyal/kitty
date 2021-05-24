@@ -72,7 +72,11 @@ class ToCmdline:
         )
 
 
-to_cmdline = ToCmdline()
+to_cmdline_implementation = ToCmdline()
+
+
+def to_cmdline(x: str) -> List[str]:
+    return to_cmdline_implementation(x)
 
 
 def python_string(text: str) -> str:

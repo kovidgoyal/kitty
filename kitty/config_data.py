@@ -13,7 +13,7 @@ from typing import (
 from . import fast_data_types as defines
 from .conf.definition import OptionOrAction, option_func
 from .conf.utils import (
-    choices, to_bool, to_cmdline as tc, to_color, to_color_or_none, unit_float
+    choices, to_bool, to_cmdline, to_color, to_color_or_none, unit_float
 )
 from .constants import config_dir, is_macos
 from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -37,10 +37,6 @@ mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
 character_key_name_aliases_with_ascii_lowercase = character_key_name_aliases.copy()
 for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
     character_key_name_aliases_with_ascii_lowercase[x] = x.lower()
-
-
-def to_cmdline(x: str) -> List[str]:
-    return tc(x)
 
 
 def parse_mods(parts: Iterable[str], sc: str) -> Optional[int]:
