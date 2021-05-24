@@ -12,10 +12,6 @@ from typing import (
 from .utils import Choice, to_bool
 
 
-def to_string(x: str) -> str:
-    return x
-
-
 class Group:
 
     __slots__ = 'name', 'short_text', 'start_text', 'end_text'
@@ -104,7 +100,7 @@ def option(
     name: str,
     defval: Any,
     long_text: str = '',
-    option_type: Callable[[str], Any] = to_string,
+    option_type: Callable[[str], Any] = str,
     add_to_default: bool = True,
     add_to_docs: bool = True
 ) -> Option:
@@ -113,7 +109,7 @@ def option(
         name = name[1:]
     defval_type = type(defval)
     if defval_type is not str:
-        if option_type is to_string:
+        if option_type is str:
             if defval_type is bool:
                 option_type = to_bool
             else:
