@@ -7,7 +7,7 @@ import re
 import shlex
 from typing import (
     Any, Callable, Dict, FrozenSet, Generator, Iterable, Iterator, List,
-    NamedTuple, Optional, Sequence, Tuple, Type, TypeVar, Union
+    NamedTuple, Optional, Sequence, Tuple, Type, TypeVar, Union, Set
 )
 
 from ..rgb import Color, to_color as as_color
@@ -22,6 +22,14 @@ class BadLine(NamedTuple):
     number: int
     line: str
     exception: Exception
+
+
+def positive_int(x: ConvertibleToNumbers) -> int:
+    return max(0, int(x))
+
+
+def positive_float(x: ConvertibleToNumbers) -> float:
+    return max(0, float(x))
 
 
 def to_color(x: str) -> Color:
@@ -342,3 +350,9 @@ def parse_kittens_key(
         return None
     ans = parse_kittens_func_args(action, funcs_with_args)
     return ans, parse_shortcut(sc)
+
+
+def uniq(vals: Iterable[T]) -> List[T]:
+    seen: Set[T] = set()
+    seen_add = seen.add
+    return [x for x in vals if x not in seen and not seen_add(x)]

@@ -15,13 +15,12 @@ from typing import (
     Sequence, Tuple, Union
 )
 
+from kitty.conf.utils import positive_float, positive_int
 from kitty.fast_data_types import create_canvas
 from kitty.typing import (
     CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
 )
-from kitty.utils import (
-    ScreenSize, find_exe, fit_image, positive_float, positive_int
-)
+from kitty.utils import ScreenSize, find_exe, fit_image
 
 from .operations import cursor
 

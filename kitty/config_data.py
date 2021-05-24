@@ -3,106 +3,31 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 # Utils  {{{
-import os
 from gettext import gettext as _
-from typing import (
-    Callable, Dict, FrozenSet, Iterable, List, Optional, Set,
-    Tuple, TypeVar, Union
-)
+from typing import Dict
 
 from . import fast_data_types as defines
 from .conf.definition import OptionOrAction, option_func
 from .conf.utils import (
-    choices, to_bool, to_cmdline, to_color, to_color_or_none, unit_float
+    choices, positive_float, positive_int, to_cmdline, to_color,
+    to_color_or_none, unit_float
 )
-from .constants import config_dir, is_macos
-from .fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
-from .key_names import (
-    character_key_name_aliases, functional_key_name_aliases,
-    get_key_name_lookup
+from .constants import is_macos
+from .options_types import (
+    active_tab_title_template, adjust_line_height, allow_hyperlinks,
+    allow_remote_control, box_drawing_scale, clipboard_control,
+    config_or_absolute_path, copy_on_select, cursor_text_color,
+    default_tab_separator, disable_ligatures, edge_width,
+    hide_window_decorations, macos_option_as_alt, macos_titlebar_color,
+    optional_edge_width, resize_draw_strategy, scrollback_lines,
+    scrollback_pager_history_size, tab_activity_symbol, tab_bar_edge,
+    tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
+    tab_title_template, to_cursor_shape, to_font_size, to_layout_names,
+    url_prefixes, url_style, window_border_width, window_size, to_modifiers
 )
-from .layout.interface import all_layouts
-from .rgb import Color, color_as_int, color_as_sharp, color_from_int
-from .types import FloatEdges, SingleKey
-from .utils import log_error, positive_float, positive_int
+from .rgb import color_as_sharp, color_from_int
 
 
-class InvalidMods(ValueError):
-    pass
-
-
-MINIMUM_FONT_SIZE = 4
-mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
-           '⌥': 'ALT', 'OPTION': 'ALT', 'KITTY_MOD': 'KITTY'}
-character_key_name_aliases_with_ascii_lowercase = character_key_name_aliases.copy()
-for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
-    character_key_name_aliases_with_ascii_lowercase[x] = x.lower()
-
-
-def parse_mods(parts: Iterable[str], sc: str) -> Optional[int]:
-
-    def map_mod(m: str) -> str:
-        return mod_map.get(m, m)
-
-    mods = 0
-    for m in parts:
-        try:
-            mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
-        except AttributeError:
-            if m.upper() != 'NONE':
-                log_error('Shortcut: {} has unknown modifier, ignoring'.format(sc))
-            return None
-
-    return mods
-
-
-def to_modifiers(val: str) -> int:
-    return parse_mods(val.split('+'), val) or 0
-
-
-def parse_shortcut(sc: str) -> SingleKey:
-    if sc.endswith('+') and len(sc) > 1:
-        sc = sc[:-1] + 'plus'
-    parts = sc.split('+')
-    mods = 0
-    if len(parts) > 1:
-        mods = parse_mods(parts[:-1], sc) or 0
-        if not mods:
-            raise InvalidMods('Invalid shortcut')
-    q = parts[-1]
-    q = character_key_name_aliases_with_ascii_lowercase.get(q.upper(), q)
-    is_native = False
-    if q.startswith('0x'):
-        try:
-            key = int(q, 16)
-        except Exception:
-            key = 0
-        else:
-            is_native = True
-    else:
-        try:
-            key = ord(q)
-        except Exception:
-            uq = q.upper()
-            uq = functional_key_name_aliases.get(uq, uq)
-            x: Optional[int] = getattr(defines, f'GLFW_FKEY_{uq}', None)
-            if x is None:
-                lf = get_key_name_lookup()
-                key = lf(q, False) or 0
-                is_native = key > 0
-            else:
-                key = x
-
-    return SingleKey(mods, is_native, key or 0)
-
-
-T = TypeVar('T')
-
-
-def uniq(vals: Iterable[T]) -> List[T]:
-    seen: Set[T] = set()
-    seen_add = seen.add
-    return [x for x in vals if x not in seen and not seen_add(x)]
 # }}}
 
 # Groups {{{
@@ -306,11 +231,6 @@ o('bold_font', 'auto')
 o('italic_font', 'auto')
 o('bold_italic_font', 'auto')
 
-
-def to_font_size(x: str) -> float:
-    return max(MINIMUM_FONT_SIZE, float(x))
-
-
 o('font_size', 11.0, long_text=_('Font size (in pts)'), option_type=to_font_size)
 
 o('force_ltr', False, long_text=_("""
@@ -329,16 +249,6 @@ Furthermore, this option can be used with the command line program
 :link:`GNU FriBidi <https://github.com/fribidi/fribidi#executable>` to get BIDI
 support, because it will force kitty to always treat the text as LTR, which
 FriBidi expects for terminals."""))
-
-
-def adjust_line_height(x: str) -> Union[int, float]:
-    if x.endswith('%'):
-        ans = float(x[:-1].strip()) / 100.0
-        if ans < 0:
-            log_error('Percentage adjustments of cell sizes must be positive numbers')
-            return 0
-        return ans
-    return int(x)
 
 
 o('adjust_line_height', 0, option_type=adjust_line_height, long_text=_('''
@@ -365,11 +275,6 @@ Syntax is::
     symbol_map codepoints Font Family Name
 
 '''))
-
-
-def disable_ligatures(x: str) -> int:
-    cmap = {'never': 0, 'cursor': 1, 'always': 2}
-    return cmap.get(x.lower(), 0)
 
 
 o('disable_ligatures', 'never', option_type=disable_ligatures, long_text=_('''
@@ -439,13 +344,6 @@ You can do this with e.g.::
 '''))
 
 
-def box_drawing_scale(x: str) -> Tuple[float, float, float, float]:
-    ans = tuple(float(q.strip()) for q in x.split(','))
-    if len(ans) != 4:
-        raise ValueError('Invalid box_drawing scale, must have four entries')
-    return ans[0], ans[1], ans[2], ans[3]
-
-
 o(
     'box_drawing_scale',
     '0.001, 1, 1.5, 2',
@@ -460,30 +358,6 @@ and very thick lines.
 # }}}
 
 g('cursor')  # {{{
-
-cshapes = {
-    'block': CURSOR_BLOCK,
-    'beam': CURSOR_BEAM,
-    'underline': CURSOR_UNDERLINE
-}
-
-
-def to_cursor_shape(x: str) -> int:
-    try:
-        return cshapes[x.lower()]
-    except KeyError:
-        raise ValueError(
-            'Invalid cursor shape: {} allowed values are {}'.format(
-                x, ', '.join(cshapes)
-            )
-        )
-
-
-def cursor_text_color(x: str) -> Optional[Color]:
-    if x.lower() == 'background':
-        return None
-    return to_color(x)
-
 
 o('cursor', '#cccccc', _('Default cursor color'), option_type=to_color)
 o('cursor_text_color', '#111111', option_type=cursor_text_color, long_text=_('''
@@ -508,18 +382,6 @@ inactivity.  Set to zero to never stop blinking.
 # }}}
 
 g('scrollback')  # {{{
-
-
-def scrollback_lines(x: str) -> int:
-    ans = int(x)
-    if ans < 0:
-        ans = 2 ** 32 - 1
-    return ans
-
-
-def scrollback_pager_history_size(x: str) -> int:
-    ans = int(max(0, float(x)) * 1024 * 1024)
-    return min(ans, 4096 * 1024 * 1024 - 1)
 
 
 o('scrollback_lines', 2000, option_type=scrollback_lines, long_text=_('''
@@ -574,26 +436,12 @@ o('url_color', '#0087bd', option_type=to_color, long_text=_('''
 The color and style for highlighting URLs on mouse-over.
 :code:`url_style` can be one of: none, single, double, curly'''))
 
-
-def url_style(x: str) -> int:
-    return url_style_map.get(x, url_style_map['curly'])
-
-
-url_style_map = dict(
-    ((v, i) for i, v in enumerate('none single double curly'.split()))
-)
-
-
 o('url_style', 'curly', option_type=url_style)
 
 o('open_url_with', 'default', option_type=to_cmdline, long_text=_('''
 The program with which to open URLs that are clicked on.
 The special value :code:`default` means to use the
 operating system's default URL handler.'''))
-
-
-def url_prefixes(x: str) -> Tuple[str, ...]:
-    return tuple(a.lower() for a in x.replace(',', ' ').split())
 
 
 o('url_prefixes', 'http https file ftp gemini irc gopher mailto news git', option_type=url_prefixes, long_text=_('''
@@ -603,16 +451,6 @@ o('detect_urls', True, long_text=_('''
 Detect URLs under the mouse. Detected URLs are highlighted
 with an underline and the mouse cursor becomes a hand over them.
 Even if this option is disabled, URLs are still clickable.'''))
-
-
-def copy_on_select(raw: str) -> str:
-    q = raw.lower()
-    # boolean values special cased for backwards compat
-    if q in ('y', 'yes', 'true', 'clipboard'):
-        return 'clipboard'
-    if q in ('n', 'no', 'false', ''):
-        return ''
-    return raw
 
 
 o('copy_on_select', 'no', option_type=copy_on_select, long_text=_('''
@@ -747,28 +585,8 @@ number of cells instead of pixels.
 '''))
 
 
-def window_size(val: str) -> Tuple[int, str]:
-    val = val.lower()
-    unit = 'cells' if val.endswith('c') else 'px'
-    return positive_int(val.rstrip('c')), unit
-
-
 o('initial_window_width', '640', option_type=window_size)
 o('initial_window_height', '400', option_type=window_size)
-
-
-def to_layout_names(raw: str) -> List[str]:
-    parts = [x.strip().lower() for x in raw.split(',')]
-    ans: List[str] = []
-    for p in parts:
-        if p in ('*', 'all'):
-            ans.extend(sorted(all_layouts))
-            continue
-        name = p.partition(':')[0]
-        if name not in all_layouts:
-            raise ValueError('The window layout {} is unknown'.format(p))
-        ans.append(p)
-    return uniq(ans)
 
 
 o('enabled_layouts', '*', option_type=to_layout_names, long_text=_('''
@@ -786,20 +604,6 @@ for vertical resizing.
 o('window_resize_step_lines', 2, option_type=positive_int)
 
 
-def window_border_width(x: Union[str, int, float]) -> Tuple[float, str]:
-    unit = 'pt'
-    if isinstance(x, str):
-        trailer = x[-2:]
-        if trailer in ('px', 'pt'):
-            unit = trailer
-            val = float(x[:-2])
-        else:
-            val = float(x)
-    else:
-        val = float(x)
-    return max(0, val), unit
-
-
 o('window_border_width', '0.5pt', option_type=window_border_width, long_text=_('''
 The width of window borders. Can be either in pixels (px) or pts (pt). Values
 in pts will be rounded to the nearest number of pixels based on screen
@@ -813,27 +617,6 @@ needed borders for inactive windows are drawn. That is only the borders
 that separate the inactive window from a neighbor. Note that setting
 a non-zero window margin overrides this and causes all borders to be drawn.
 '''))
-
-
-def edge_width(x: str, converter: Callable[[str], float] = positive_float) -> FloatEdges:
-    parts = str(x).split()
-    num = len(parts)
-    if num == 1:
-        val = converter(parts[0])
-        return FloatEdges(val, val, val, val)
-    if num == 2:
-        v = converter(parts[0])
-        h = converter(parts[1])
-        return FloatEdges(h, v, h, v)
-    if num == 3:
-        top, h, bottom = map(converter, parts)
-        return FloatEdges(h, top, h, bottom)
-    top, right, bottom, left = map(converter, parts)
-    return FloatEdges(left, top, right, bottom)
-
-
-def optional_edge_width(x: str) -> FloatEdges:
-    return edge_width(x, float)
 
 
 edge_desc = _(
@@ -875,14 +658,6 @@ zero and one, with zero being fully faded).
 '''))
 
 
-def hide_window_decorations(x: str) -> int:
-    if x == 'titlebar-only':
-        return 0b10
-    if to_bool(x):
-        return 0b01
-    return 0b00
-
-
 o('hide_window_decorations', 'no', option_type=hide_window_decorations, long_text=_('''
 Hide the window decorations (title-bar and window borders) with :code:`yes`.
 On macOS, :code:`titlebar-only` can be used to only hide the titlebar.
@@ -895,11 +670,6 @@ The time (in seconds) to wait before redrawing the screen when a
 resize event is received. On platforms such as macOS, where the
 operating system sends events corresponding to the start and end
 of a resize, this number is ignored.'''))
-
-
-def resize_draw_strategy(x: str) -> int:
-    cmap = {'static': 0, 'scale': 1, 'blank': 2, 'size': 3}
-    return cmap.get(x.lower(), 0)
 
 
 o('resize_draw_strategy', 'static', option_type=resize_draw_strategy, long_text=_('''
@@ -926,31 +696,6 @@ OS windows, via the quit action).
 # }}}
 
 g('tabbar')   # {{{
-default_tab_separator = ' ┇'
-
-
-def tab_separator(x: str) -> str:
-    for q in '\'"':
-        if x.startswith(q) and x.endswith(q):
-            x = x[1:-1]
-            if not x:
-                return ''
-            break
-    if not x.strip():
-        x = ('\xa0' * len(x)) if x else default_tab_separator
-    return x
-
-
-def tab_bar_edge(x: str) -> int:
-    return {'top': 1, 'bottom': 3}.get(x.lower(), 3)
-
-
-def tab_font_style(x: str) -> Tuple[bool, bool]:
-    return {
-        'bold-italic': (True, True),
-        'bold': (True, False),
-        'italic': (False, True)
-    }.get(x.lower().replace('_', '-'), (False, False))
 
 
 o('tab_bar_edge', 'bottom', option_type=tab_bar_edge, long_text=_('''
@@ -968,10 +713,6 @@ presents you with a list of tabs and allows for easy switching to a tab.
 '''))
 
 
-def tab_bar_min_tabs(x: str) -> int:
-    return max(1, positive_int(x))
-
-
 o('tab_bar_min_tabs', 2, option_type=tab_bar_min_tabs, long_text=_('''
 The minimum number of tabs that must exist before the tab bar is shown
 '''))
@@ -983,10 +724,6 @@ The default of :code:`previous` will switch to the last used tab. A value of
 of :code:`right` will switch to the tab to the right of the closed tab.
 A value of :code:`last` will switch to the right-most tab.
 '''))
-
-
-def tab_fade(x: str) -> Tuple[float, ...]:
-    return tuple(map(unit_float, x.split()))
 
 
 o('tab_fade', '0.25 0.5 0.75 1', option_type=tab_fade, long_text=_('''
@@ -1006,30 +743,9 @@ as the :opt:`tab_bar_style`, can be one of: :code:`angled`, :code:`slanted`, or 
 '''))
 
 
-def tab_activity_symbol(x: str) -> Optional[str]:
-    if x == 'none':
-        return None
-    return x or None
-
-
 o('tab_activity_symbol', 'none', option_type=tab_activity_symbol, long_text=_('''
 Some text or a unicode symbol to show on the tab if a window in the tab that does
 not have focus has some activity.'''))
-
-
-def tab_title_template(x: str) -> str:
-    if x:
-        for q in '\'"':
-            if x.startswith(q) and x.endswith(q):
-                x = x[1:-1]
-                break
-    return x
-
-
-def active_tab_title_template(x: str) -> Optional[str]:
-    x = tab_title_template(x)
-    return None if x == 'none' else x
-
 
 o('tab_title_template', '"{title}"', option_type=tab_title_template, long_text=_('''
 A template to render the tab title. The default just renders
@@ -1084,16 +800,6 @@ significant) performance hit.  If you want to dynamically change transparency
 of windows set :opt:`dynamic_background_opacity` to :code:`yes` (this is off by
 default as it has a performance cost)
 '''))
-
-
-def config_or_absolute_path(x: str) -> Optional[str]:
-    if x.lower() == 'none':
-        return None
-    x = os.path.expanduser(x)
-    x = os.path.expandvars(x)
-    if not os.path.isabs(x):
-        x = os.path.join(config_dir, x)
-    return x
 
 
 o('background_image', 'none', option_type=config_or_absolute_path, long_text=_('''
@@ -1189,12 +895,6 @@ terminal can fail silently because their stdout/stderr/stdin no longer work.
 '''))
 
 
-def allow_remote_control(x: str) -> str:
-    if x != 'socket-only':
-        x = 'y' if to_bool(x) else 'n'
-    return x
-
-
 o('allow_remote_control', 'no', option_type=allow_remote_control, long_text=_('''
 Allow other programs to control kitty. If you turn this on other programs can
 control all aspects of kitty, including sending text to kitty windows, opening
@@ -1249,10 +949,6 @@ Environment variables in the path are expanded.
 '''))
 
 
-def clipboard_control(x: str) -> FrozenSet[str]:
-    return frozenset(x.lower().split())
-
-
 o('clipboard_control', 'write-clipboard write-primary', option_type=clipboard_control, long_text=_('''
 Allow programs running in kitty to read and write from the clipboard. You can
 control exactly which actions are allowed. The set of possible actions is:
@@ -1263,12 +959,6 @@ clipboard and primary selection with concatenation enabled. Note
 that enabling the read functionality is a security risk as it means that any
 program, even one running on a remote server via SSH can read your clipboard.
 '''))
-
-
-def allow_hyperlinks(x: str) -> int:
-    if x == 'ask':
-        return 0b11
-    return 1 if to_bool(x) else 0
 
 
 o('allow_hyperlinks', 'yes', option_type=allow_hyperlinks, long_text=_('''
@@ -1293,15 +983,6 @@ key-presses, to colors, to various advanced features may not work.
 g('os')  # {{{
 
 
-def macos_titlebar_color(x: str) -> int:
-    x = x.strip('"')
-    if x == 'system':
-        return 0
-    if x == 'background':
-        return 1
-    return (color_as_int(to_color(x)) << 8) | 2
-
-
 o('wayland_titlebar_color', 'system', option_type=macos_titlebar_color, long_text=_('''
 Change the color of the kitty window's titlebar on Wayland systems with client side window decorations such as GNOME.
 A value of :code:`system` means to use the default system color,
@@ -1320,19 +1001,6 @@ color of the entire window and makes the titlebar transparent. As such it is
 incompatible with :opt:`background_opacity`. If you want to use both, you are
 probably better off just hiding the titlebar with :opt:`hide_window_decorations`.
 '''))
-
-
-def macos_option_as_alt(x: str) -> int:
-    x = x.lower()
-    if x == 'both':
-        return 0b11
-    if x == 'left':
-        return 0b10
-    if x == 'right':
-        return 0b01
-    if to_bool(x):
-        return 0b11
-    return 0
 
 
 o('macos_option_as_alt', 'no', option_type=macos_option_as_alt, long_text=_('''

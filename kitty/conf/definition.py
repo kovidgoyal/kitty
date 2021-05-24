@@ -174,7 +174,7 @@ def option_func(all_options: Dict[str, Any], all_groups: Dict[str, Sequence[str]
     return partial(option, all_options, group), partial(shortcut, all_options, group), partial(mouse_action, all_options, group), change_group, all_groups_
 
 
-OptionOrAction = Union[Option, Sequence[Shortcut], Sequence[MouseAction]]
+OptionOrAction = Union[Option, List[Union[Shortcut, MouseAction]]]
 
 
 def merged_opts(all_options: Sequence[OptionOrAction], opt: Option, i: int) -> Generator[Option, None, None]:

@@ -680,11 +680,3 @@ class SSHConnectionData(NamedTuple):
     binary: str
     hostname: str
     port: Optional[int] = None
-
-
-def positive_int(x: ConvertibleToNumbers) -> int:
-    return max(0, int(x))
-
-
-def positive_float(x: ConvertibleToNumbers) -> float:
-    return max(0, float(x))

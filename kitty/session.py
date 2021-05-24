@@ -7,7 +7,7 @@ import sys
 from typing import Generator, List, Optional, Sequence, Union
 
 from .cli_stub import CLIOptions
-from .config_data import to_layout_names
+from .options_types import to_layout_names, window_size
 from .constants import kitty_exe
 from .layout.interface import all_layouts
 from .options_stub import Options
@@ -127,7 +127,6 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
             elif cmd == 'title':
                 ans.set_next_title(rest)
             elif cmd == 'os_window_size':
-                from kitty.config_data import window_size
                 w, h = map(window_size, rest.split(maxsplit=1))
                 ans.os_window_size = WindowSizes(WindowSize(*w), WindowSize(*h))
             elif cmd == 'os_window_class':

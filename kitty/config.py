@@ -9,8 +9,8 @@ import sys
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional,
-    Sequence, Set, Tuple, Type, Union, FrozenSet
+    Any, Callable, Dict, FrozenSet, Generator, Iterable, List, NamedTuple,
+    Optional, Sequence, Set, Tuple, Type, Union
 )
 
 from . import fast_data_types as defines
@@ -19,10 +19,11 @@ from .conf.utils import (
     BadLine, init_config, key_func, load_config as _load_config, merge_dicts,
     parse_config_base, python_string, to_bool, to_cmdline
 )
-from .config_data import InvalidMods, all_options, parse_mods, parse_shortcut
+from .config_data import all_options
 from .constants import cache_dir, defconf, is_macos
 from .fonts import FontFeature
 from .options_stub import Options as OptionsStub
+from .options_types import InvalidMods, parse_mods, parse_shortcut
 from .types import MouseEvent, SingleKey
 from .typing import TypedDict
 from .utils import expandvars, log_error

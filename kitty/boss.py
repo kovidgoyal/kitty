@@ -23,7 +23,7 @@ from .config import (
     KeyAction, SubSequenceMap, common_opts_as_dict,
     prepare_config_file_for_editing
 )
-from .config_data import MINIMUM_FONT_SIZE
+from .options_types import MINIMUM_FONT_SIZE
 from .constants import (
     appname, config_dir, is_macos, kitty_exe, supports_primary_selection
 )

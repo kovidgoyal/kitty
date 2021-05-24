@@ -9,8 +9,9 @@ from gettext import gettext as _
 from typing import Dict
 
 from kitty.conf.definition import OptionOrAction, option_func
-from kitty.conf.utils import python_string, to_color, to_color_or_none
-from kitty.utils import positive_int
+from kitty.conf.utils import (
+    positive_int, python_string, to_color, to_color_or_none
+)
 
 # }}}
 

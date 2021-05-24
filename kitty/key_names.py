@@ -4,10 +4,9 @@
 
 import sys
 from contextlib import suppress
-from typing import Callable, Optional
+from typing import Callable, Dict, Optional
 
 from .constants import is_macos
-
 
 functional_key_name_aliases = {
     'ESC': 'ESCAPE',
@@ -26,7 +25,7 @@ functional_key_name_aliases = {
 }
 
 
-character_key_name_aliases = {
+character_key_name_aliases: Dict[str, str] = {
     'SPC': ' ',
     'SPACE': ' ',
     'STAR': '*',
