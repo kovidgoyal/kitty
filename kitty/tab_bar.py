@@ -7,11 +7,10 @@ from typing import Any, Dict, NamedTuple, Optional, Sequence, Tuple
 
 from .config import build_ansi_color_table
 from .fast_data_types import (
-    DECAWM, Screen, cell_size_for_window, pt_to_px, set_tab_bar_render_data,
-    viewport_for_window
+    DECAWM, Screen, cell_size_for_window, get_options, pt_to_px,
+    set_tab_bar_render_data, viewport_for_window
 )
 from .layout.base import Rect
-from .options_stub import Options
 from .rgb import Color, alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry
 from .typing import PowerlineStyle
@@ -245,11 +244,11 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
 
 class TabBar:
 
-    def __init__(self, os_window_id: int, opts: Options):
+    def __init__(self, os_window_id: int):
         self.os_window_id = os_window_id
-        self.opts = opts
         self.num_tabs = 1
-        self.margin_width = pt_to_px(self.opts.tab_bar_margin_width, self.os_window_id)
+        opts = get_options()
+        self.margin_width = pt_to_px(opts.tab_bar_margin_width, self.os_window_id)
         self.cell_width, cell_height = cell_size_for_window(self.os_window_id)
         self.data_buffer_size = 0
         self.laid_out_once = False
@@ -277,17 +276,17 @@ class TabBar:
         self.active_fg = as_rgb(color_as_int(opts.active_tab_foreground))
         self.bell_fg = as_rgb(0xff0000)
         self.draw_data = DrawData(
-            self.leading_spaces, self.sep, self.trailing_spaces, self.opts.bell_on_tab, self.bell_fg,
-            self.opts.tab_fade, self.opts.active_tab_foreground, self.opts.active_tab_background,
-            self.opts.inactive_tab_foreground, self.opts.inactive_tab_background,
-            self.opts.tab_bar_background or self.opts.background, self.opts.tab_title_template,
-            self.opts.active_tab_title_template,
-            self.opts.tab_activity_symbol,
-            self.opts.tab_powerline_style
+            self.leading_spaces, self.sep, self.trailing_spaces, opts.bell_on_tab, self.bell_fg,
+            opts.tab_fade, opts.active_tab_foreground, opts.active_tab_background,
+            opts.inactive_tab_foreground, opts.inactive_tab_background,
+            opts.tab_bar_background or opts.background, opts.tab_title_template,
+            opts.active_tab_title_template,
+            opts.tab_activity_symbol,
+            opts.tab_powerline_style
         )
-        if self.opts.tab_bar_style == 'separator':
+        if opts.tab_bar_style == 'separator':
             self.draw_func = draw_tab_with_separator
-        elif self.opts.tab_bar_style == 'powerline':
+        elif opts.tab_bar_style == 'powerline':
             self.draw_func = draw_tab_with_powerline
         else:
             self.draw_func = draw_tab_with_fade
@@ -303,12 +302,13 @@ class TabBar:
             self.draw_data = self.draw_data._replace(inactive_bg=color_from_int(spec['inactive_tab_background']))
         if 'tab_bar_background' in spec:
             self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['tab_bar_background']))
-        fg = spec.get('inactive_tab_foreground', color_as_int(self.opts.inactive_tab_foreground))
+        opts = get_options()
+        fg = spec.get('inactive_tab_foreground', color_as_int(opts.inactive_tab_foreground))
         bg = spec.get('tab_bar_background', False)
         if bg is None:
-            bg = color_as_int(self.opts.background)
+            bg = color_as_int(opts.background)
         elif bg is False:
-            bg = color_as_int(self.opts.tab_bar_background or self.opts.background)
+            bg = color_as_int(opts.tab_bar_background or opts.background)
         self.screen.color_profile.set_configured_colors(fg, bg)
 
     def layout(self) -> None:

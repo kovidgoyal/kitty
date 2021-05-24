@@ -108,8 +108,9 @@ windows).
         windows = self.windows_for_payload(boss, window, payload_get)
         settings: Dict[str, Optional[float]] = payload_get('settings')
         dirtied_tabs = {}
+        from kitty.fast_data_types import get_options
         if payload_get('configured'):
-            patch_configured_edges(boss.opts, settings)
+            patch_configured_edges(get_options(), settings)
 
         for w in windows:
             patch_window_edges(w, settings)

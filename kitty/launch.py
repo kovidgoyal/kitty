@@ -10,7 +10,9 @@ from .child import Child
 from .cli import WATCHER_DEFINITION, parse_args
 from .cli_stub import LaunchCLIOptions
 from .constants import resolve_custom_file
-from .fast_data_types import patch_color_profiles, set_clipboard_string
+from .fast_data_types import (
+    get_options, patch_color_profiles, set_clipboard_string
+)
 from .tabs import Tab
 from .types import run_once
 from .utils import find_exe, read_shell_environment, set_primary_selection
@@ -330,7 +332,7 @@ def launch(
             final_cmd.append(x)
         exe = find_exe(final_cmd[0])
         if not exe:
-            env = read_shell_environment(boss.opts)
+            env = read_shell_environment(get_options())
             if 'PATH' in env:
                 import shutil
                 exe = shutil.which(final_cmd[0], path=env['PATH'])

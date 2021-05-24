@@ -317,7 +317,8 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
 @result_handler()
 def handle_result(args: List[str], data: Result, target_window_id: int, boss: BossType) -> None:
     if data:
-        cmd = command_for_open(boss.opts.open_url_with)
+        from kitty.fast_data_types import get_options
+        cmd = command_for_open(get_options().open_url_with)
         open_cmd(cmd, data)
 
 

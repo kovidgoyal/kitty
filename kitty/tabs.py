@@ -19,13 +19,12 @@ from .child import Child
 from .cli_stub import CLIOptions
 from .constants import appname, kitty_exe
 from .fast_data_types import (
-    add_tab, attach_window, detach_window, get_boss, mark_tab_bar_dirty,
-    next_window_id, remove_tab, remove_window, ring_bell, set_active_tab,
-    set_active_window, swap_tabs, sync_os_window_title
+    add_tab, attach_window, detach_window, get_boss, get_options,
+    mark_tab_bar_dirty, next_window_id, remove_tab, remove_window, ring_bell,
+    set_active_tab, set_active_window, swap_tabs, sync_os_window_title
 )
 from .layout.base import Layout, Rect
 from .layout.interface import create_layout_object_for, evict_cached_layouts
-from .options_stub import Options
 from .tab_bar import TabBar, TabBarData
 from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import log_error, platform_window_id, resolved_shell
@@ -90,10 +89,10 @@ class Tab:  # {{{
         self.id: int = add_tab(self.os_window_id)
         if not self.id:
             raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
-        self.opts, self.args = tab_manager.opts, tab_manager.args
+        self.args = tab_manager.args
         self.name = getattr(session_tab, 'name', '')
-        self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or self.opts.enabled_layouts]
-        self.borders = Borders(self.os_window_id, self.id, self.opts)
+        self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or get_options().enabled_layouts]
+        self.borders = Borders(self.os_window_id, self.id)
         self.windows = WindowList(self)
         for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
             setattr(self, which + '_window', partial(self.nth_window, num=i))
@@ -283,15 +282,15 @@ class Tab:  # {{{
         check_for_suitability = True
         if cmd is None:
             if use_shell:
-                cmd = resolved_shell(self.opts)
+                cmd = resolved_shell(get_options())
                 check_for_suitability = False
             else:
                 if self.args.args:
                     cmd = list(self.args.args)
                 else:
-                    cmd = resolved_shell(self.opts)
+                    cmd = resolved_shell(get_options())
                     check_for_suitability = False
-                cmd = self.args.args or resolved_shell(self.opts)
+                cmd = self.args.args or resolved_shell(get_options())
         if check_for_suitability:
             old_exe = cmd[0]
             if not os.path.isabs(old_exe):
@@ -310,7 +309,7 @@ class Tab:  # {{{
                 else:
                     if stat.S_ISDIR(st.st_mode):
                         cwd = old_exe
-                        cmd = resolved_shell(self.opts)
+                        cmd = resolved_shell(get_options())
                     elif not is_executable:
                         import shlex
                         with suppress(OSError):
@@ -320,7 +319,7 @@ class Tab:  # {{{
                                     line = f.read(4096).splitlines()[0]
                                     cmd += shlex.split(line) + [old_exe]
                                 else:
-                                    cmd += [resolved_shell(self.opts)[0], cmd[0]]
+                                    cmd += [resolved_shell(get_options())[0], cmd[0]]
         fenv: Dict[str, str] = {}
         if env:
             fenv.update(env)
@@ -328,7 +327,7 @@ class Tab:  # {{{
         pwid = platform_window_id(self.os_window_id)
         if pwid is not None:
             fenv['WINDOWID'] = str(pwid)
-        ans = Child(cmd, cwd or self.cwd, self.opts, stdin, fenv, cwd_from, allow_remote_control=allow_remote_control)
+        ans = Child(cmd, cwd or self.cwd, stdin, fenv, cwd_from, allow_remote_control=allow_remote_control)
         ans.fork()
         return ans
 
@@ -356,7 +355,7 @@ class Tab:  # {{{
         child = self.launch_child(
             use_shell=use_shell, cmd=cmd, stdin=stdin, cwd_from=cwd_from, cwd=cwd, env=env, allow_remote_control=allow_remote_control)
         window = Window(
-            self, child, self.opts, self.args, override_title=override_title,
+            self, child, self.args, override_title=override_title,
             copy_colors_from=copy_colors_from, watchers=watchers
         )
         # Must add child before laying out so that resize_pty succeeds
@@ -530,16 +529,16 @@ class Tab:  # {{{
 
 class TabManager:  # {{{
 
-    def __init__(self, os_window_id: int, opts: Options, args: CLIOptions, wm_class: str, wm_name: str, startup_session: Optional[SessionType] = None):
+    def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: Optional[SessionType] = None):
         self.os_window_id = os_window_id
         self.wm_class = wm_class
         self.wm_name = wm_name
         self.last_active_tab_id = None
-        self.opts, self.args = opts, args
-        self.tab_bar_hidden = self.opts.tab_bar_style == 'hidden'
+        self.args = args
+        self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
         self.tabs: List[Tab] = []
         self.active_tab_history: Deque[int] = deque()
-        self.tab_bar = TabBar(self.os_window_id, opts)
+        self.tab_bar = TabBar(self.os_window_id)
         self._active_tab_idx = 0
 
         if startup_session is not None:
@@ -581,7 +580,7 @@ class TabManager:  # {{{
 
     @property
     def tab_bar_should_be_visible(self) -> bool:
-        return len(self.tabs) >= self.opts.tab_bar_min_tabs
+        return len(self.tabs) >= get_options().tab_bar_min_tabs
 
     def _add_tab(self, tab: Tab) -> None:
         visible_before = self.tab_bar_should_be_visible
@@ -765,16 +764,16 @@ class TabManager:  # {{{
 
         if active_tab_needs_to_change:
             next_active_tab = -1
-            if self.opts.tab_switch_strategy == 'previous':
+            if get_options().tab_switch_strategy == 'previous':
                 while self.active_tab_history and next_active_tab < 0:
                     tab_id = self.active_tab_history.pop()
                     for idx, qtab in enumerate(self.tabs):
                         if qtab.id == tab_id:
                             next_active_tab = idx
                             break
-            elif self.opts.tab_switch_strategy == 'left':
+            elif get_options().tab_switch_strategy == 'left':
                 next_active_tab = max(0, self.active_tab_idx - 1)
-            elif self.opts.tab_switch_strategy == 'right':
+            elif get_options().tab_switch_strategy == 'right':
                 next_active_tab = min(self.active_tab_idx, len(self.tabs) - 1)
 
             if next_active_tab < 0:

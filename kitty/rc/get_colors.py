@@ -40,7 +40,9 @@ configured colors.
         return {'configured': opts.configured, 'match': opts.match}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        ans = {k: getattr(boss.opts, k) for k in boss.opts if isinstance(getattr(boss.opts, k), Color)}
+        from kitty.fast_data_types import get_options
+        opts = get_options()
+        ans = {k: getattr(opts, k) for k in opts if isinstance(getattr(opts, k), Color)}
         if not payload_get('configured'):
             windows = self.windows_for_match_payload(boss, window, payload_get)
             ans.update({k: color_from_int(v) for k, v in windows[0].current_colors.items()})

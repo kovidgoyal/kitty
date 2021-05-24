@@ -7,10 +7,9 @@ from itertools import chain
 from typing import Sequence, Tuple
 
 from .fast_data_types import (
-    BORDERS_PROGRAM, add_borders_rect, compile_program, init_borders_program,
-    os_window_has_background_image
+    BORDERS_PROGRAM, add_borders_rect, compile_program, get_options,
+    init_borders_program, os_window_has_background_image
 )
-from .options_stub import Options
 from .typing import LayoutType
 from .utils import load_shaders
 from .window_list import WindowGroup, WindowList
@@ -65,11 +64,9 @@ def load_borders_program() -> None:
 
 class Borders:
 
-    def __init__(self, os_window_id: int, tab_id: int, opts: Options):
+    def __init__(self, os_window_id: int, tab_id: int):
         self.os_window_id = os_window_id
         self.tab_id = tab_id
-        self.draw_active_borders = opts.active_border_color is not None
-        self.draw_minimal_borders = opts.draw_minimal_borders and max(opts.window_margin_width) < 1
 
     def __call__(
         self,
@@ -78,6 +75,9 @@ class Borders:
         extra_blank_rects: Sequence[Tuple[int, int, int, int]],
         draw_window_borders: bool = True,
     ) -> None:
+        opts = get_options()
+        draw_active_borders = opts.active_border_color is not None
+        draw_minimal_borders = opts.draw_minimal_borders and max(opts.window_margin_width) < 1
         add_borders_rect(self.os_window_id, self.tab_id, 0, 0, 0, 0, BorderColor.default_bg)
         has_background_image = os_window_has_background_image(self.os_window_id)
         if not has_background_image:
@@ -94,9 +94,9 @@ class Borders:
         for i, wg in enumerate(groups):
             window_bg = wg.default_bg
             window_bg = (window_bg << 8) | BorderColor.window_bg
-            if draw_borders and not self.draw_minimal_borders:
+            if draw_borders and not draw_minimal_borders:
                 # Draw the border rectangles
-                if wg is active_group and self.draw_active_borders:
+                if wg is active_group and draw_active_borders:
                     color = BorderColor.active
                 else:
                     color = BorderColor.bell if wg.needs_attention else BorderColor.inactive
@@ -106,7 +106,7 @@ class Borders:
                 colors = window_bg, window_bg, window_bg, window_bg
                 draw_edges(self.os_window_id, self.tab_id, colors, wg)
 
-        if self.draw_minimal_borders:
+        if draw_minimal_borders:
             for border_line in current_layout.get_minimal_borders(all_windows):
                 left, top, right, bottom = border_line.edges
                 add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, border_line.color)

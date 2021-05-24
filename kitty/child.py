@@ -14,7 +14,6 @@ from typing import (
 import kitty.fast_data_types as fast_data_types
 
 from .constants import is_macos, shell_path, terminfo_dir
-from .options_stub import Options
 
 try:
     from typing import TypedDict
@@ -187,7 +186,6 @@ class Child:
         self,
         argv: Sequence[str],
         cwd: str,
-        opts: Options,
         stdin: Optional[bytes] = None,
         env: Optional[Dict[str, str]] = None,
         cwd_from: Optional[int] = None,
@@ -204,7 +202,6 @@ class Child:
         else:
             cwd = os.path.expandvars(os.path.expanduser(cwd or os.getcwd()))
         self.cwd = os.path.abspath(cwd)
-        self.opts = opts
         self.stdin = stdin
         self.env = env or {}
 
@@ -217,7 +214,7 @@ class Child:
                     'lc_ctype_before_python') and not getattr(default_env, 'lc_ctype_set_by_user', False):
                 del env['LC_CTYPE']
             env.update(self.env)
-            env['TERM'] = self.opts.term
+            env['TERM'] = fast_data_types.get_options().term
             env['COLORTERM'] = 'truecolor'
             if self.cwd:
                 # needed in case cwd is a symlink, in which case shells

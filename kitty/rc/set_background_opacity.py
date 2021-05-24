@@ -48,7 +48,8 @@ cause colors to be changed in all windows.
         }
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
-        if not boss.opts.dynamic_background_opacity:
+        from kitty.fast_data_types import get_options
+        if not get_options().dynamic_background_opacity:
             raise OpacityError('You must turn on the dynamic_background_opacity option in kitty.conf to be able to set background opacity')
         windows = self.windows_for_payload(boss, window, payload_get)
         for os_window_id in {w.os_window_id for w in windows}:

@@ -28,10 +28,10 @@ from .fast_data_types import (
     MARK, MARK_MASK, NO_CURSOR_SHAPE, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
     SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, KeyEvent, Screen, add_timer,
     add_window, cell_size_for_window, click_mouse_url, compile_program,
-    encode_key_for_tty, get_boss, get_clipboard_string, init_cell_program,
-    mouse_selection, pt_to_px, set_clipboard_string, set_titlebar_color,
-    set_window_padding, set_window_render_data, update_window_title,
-    update_window_visibility, viewport_for_window
+    encode_key_for_tty, get_boss, get_clipboard_string, get_options,
+    init_cell_program, mouse_selection, pt_to_px, set_clipboard_string,
+    set_titlebar_color, set_window_padding, set_window_render_data,
+    update_window_title, update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name
 from .notify import NotificationCommand, handle_notification_cmd
@@ -311,7 +311,6 @@ class Window:
         self,
         tab: TabType,
         child: ChildType,
-        opts: Options,
         args: CLIOptions,
         override_title: Optional[str] = None,
         copy_colors_from: Optional['Window'] = None,
@@ -344,8 +343,9 @@ class Window:
         self.geometry: WindowGeometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
         self.is_visible_in_layout: bool = True
-        self.child, self.opts = child, opts
+        self.child = child
         cell_width, cell_height = cell_size_for_window(self.os_window_id)
+        opts = get_options()
         self.screen: Screen = Screen(self, 24, 80, opts.scrollback_lines, cell_width, cell_height, self.id)
         if copy_colors_from is not None:
             self.screen.copy_colors_from(copy_colors_from.screen)
@@ -364,18 +364,19 @@ class Window:
         q = getattr(self.margin, edge)
         if q is not None:
             return pt_to_px(q, self.os_window_id)
+        opts = get_options()
         if is_single_window:
-            q = getattr(self.opts.single_window_margin_width, edge)
+            q = getattr(opts.single_window_margin_width, edge)
             if q > -0.1:
                 return pt_to_px(q, self.os_window_id)
-        q = getattr(self.opts.window_margin_width, edge)
+        q = getattr(opts.window_margin_width, edge)
         return pt_to_px(q, self.os_window_id)
 
     def effective_padding(self, edge: EdgeLiteral) -> int:
         q = getattr(self.padding, edge)
         if q is not None:
             return pt_to_px(q, self.os_window_id)
-        q = getattr(self.opts.window_padding_width, edge)
+        q = getattr(get_options().window_padding_width, edge)
         return pt_to_px(q, self.os_window_id)
 
     def update_effective_padding(self) -> None:
@@ -391,7 +392,7 @@ class Window:
             self.update_effective_padding()
 
     def effective_border(self) -> int:
-        val, unit = self.opts.window_border_width
+        val, unit = get_options().window_border_width
         if unit == 'pt':
             val = max(1 if val > 0 else 0, pt_to_px(val, self.os_window_id))
         else:
@@ -556,14 +557,15 @@ class Window:
     def on_mouse_event(self, event: Dict[str, Any]) -> bool:
         ev = MouseEvent(**event)
         self.current_mouse_event_button = ev.button
-        action = self.opts.mousemap.get(ev)
+        action = get_options().mousemap.get(ev)
         if action is None:
             return False
         return get_boss().dispatch_action(action, window_for_dispatch=self, dispatch_type='MouseEvent')
 
     def open_url(self, url: str, hyperlink_id: int, cwd: Optional[str] = None) -> None:
+        opts = get_options()
         if hyperlink_id:
-            if not self.opts.allow_hyperlinks:
+            if not opts.allow_hyperlinks:
                 return
             from urllib.parse import unquote, urlparse, urlunparse
             try:
@@ -582,7 +584,7 @@ class Window:
                         self.handle_remote_file(purl.netloc, unquote(purl.path))
                         return
                     url = urlunparse(purl._replace(netloc=''))
-            if self.opts.allow_hyperlinks & 0b10:
+            if opts.allow_hyperlinks & 0b10:
                 from kittens.tui.operations import styled
                 get_boss()._run_kitten('ask', ['--type=choices', '--message', _(
                     'What would you like to do with this URL:\n') +
@@ -644,16 +646,17 @@ class Window:
         return self.screen.has_activity_since_last_focus()
 
     def on_activity_since_last_focus(self) -> None:
-        if self.opts.tab_activity_symbol:
+        if get_options().tab_activity_symbol:
             get_boss().on_activity_since_last_focus(self)
 
     def on_bell(self) -> None:
-        if self.opts.command_on_bell and self.opts.command_on_bell != ['none']:
+        cb = get_options().command_on_bell
+        if cb and cb != ['none']:
             import shlex
             import subprocess
             env = self.child.final_env
             env['KITTY_CHILD_CMDLINE'] = ' '.join(map(shlex.quote, self.child.cmdline))
-            subprocess.Popen(self.opts.command_on_bell, env=env, cwd=self.child.foreground_cwd)
+            subprocess.Popen(cb, env=env, cwd=self.child.foreground_cwd)
         if not self.is_active:
             changed = not self.needs_attention
             self.needs_attention = True
@@ -664,7 +667,8 @@ class Window:
                 tab.on_bell(self)
 
     def change_titlebar_color(self) -> None:
-        val = self.opts.macos_titlebar_color if is_macos else self.opts.wayland_titlebar_color
+        opts = get_options()
+        val = opts.macos_titlebar_color if is_macos else opts.wayland_titlebar_color
         if val:
             if (val & 0xff) == 1:
                 val = self.screen.color_profile.default_bg
@@ -748,7 +752,7 @@ class Window:
             self.refresh()
 
     def request_capabilities(self, q: str) -> None:
-        for result in get_capabilities(q, self.opts):
+        for result in get_capabilities(q, get_options()):
             self.screen.send_escape_code_to_child(DCS, result)
 
     def handle_remote_cmd(self, cmd: str) -> None:
@@ -767,13 +771,14 @@ class Window:
         where, text = data.partition(';')[::2]
         if not where:
             where = 's0'
+        cc = get_options().clipboard_control
         if text == '?':
             response = None
             if 's' in where or 'c' in where:
-                response = get_clipboard_string() if 'read-clipboard' in self.opts.clipboard_control else ''
+                response = get_clipboard_string() if 'read-clipboard' in cc else ''
                 loc = 'c'
             elif 'p' in where:
-                response = get_primary_selection() if 'read-primary' in self.opts.clipboard_control else ''
+                response = get_primary_selection() if 'read-primary' in cc else ''
                 loc = 'p'
             response = response or ''
             from base64 import standard_b64encode
@@ -789,7 +794,7 @@ class Window:
 
             def write(key: str, func: Callable[[str], None]) -> None:
                 if text:
-                    if ('no-append' in self.opts.clipboard_control or
+                    if ('no-append' in cc or
                             len(self.clipboard_control_buffers[key]) > 1024*1024):
                         self.clipboard_control_buffers[key] = ''
                     self.clipboard_control_buffers[key] += text
@@ -798,13 +803,13 @@ class Window:
                 func(self.clipboard_control_buffers[key])
 
             if 's' in where or 'c' in where:
-                if 'write-clipboard' in self.opts.clipboard_control:
+                if 'write-clipboard' in cc:
                     write('c', set_clipboard_string)
             if 'p' in where:
-                if self.opts.copy_on_select == 'clipboard':
-                    if 'write-clipboard' in self.opts.clipboard_control:
+                if cc == 'clipboard':
+                    if 'write-clipboard' in cc:
                         write('c', set_clipboard_string)
-                if 'write-primary' in self.opts.clipboard_control:
+                if 'write-primary' in cc:
                     write('p', set_primary_selection)
 
     def manipulate_title_stack(self, pop: bool, title: str, icon: Any) -> None:
@@ -842,8 +847,9 @@ class Window:
 
     def text_for_selection(self) -> str:
         lines = self.screen.text_for_selection()
-        if self.opts.strip_trailing_spaces == 'always' or (
-                self.opts.strip_trailing_spaces == 'smart' and not self.screen.is_rectangle_select()):
+        sts = get_options().strip_trailing_spaces
+        if sts == 'always' or (
+                sts == 'smart' and not self.screen.is_rectangle_select()):
             return ''.join((ln.rstrip() or '\n') for ln in lines)
         return ''.join(lines)
 
@@ -906,12 +912,12 @@ class Window:
             x = x.replace('CURSOR_COLUMN', str(data['cursor_x']))
             return x
 
-        cmd = list(map(prepare_arg, self.opts.scrollback_pager))
+        cmd = list(map(prepare_arg, get_options().scrollback_pager))
         if not os.path.isabs(cmd[0]):
             import shutil
             exe = shutil.which(cmd[0])
             if not exe:
-                env = read_shell_environment(self.opts)
+                env = read_shell_environment(get_options())
                 if env and 'PATH' in env:
                     exe = shutil.which(cmd[0], path=env['PATH'])
                     if exe:

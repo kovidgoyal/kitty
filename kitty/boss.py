@@ -32,7 +32,7 @@ from .fast_data_types import (
     ChildMonitor, KeyEvent, add_timer, background_opacity_of,
     change_background_opacity, change_os_window_state, cocoa_set_menubar_title,
     create_os_window, current_application_quit_request, current_os_window,
-    destroy_global_data, focus_os_window, get_clipboard_string,
+    destroy_global_data, focus_os_window, get_clipboard_string, get_options,
     global_font_size, mark_os_window_for_close, os_window_font_size,
     patch_global_colors, safe_pipe, set_application_quit_request,
     set_background_image, set_boss, set_clipboard_string, set_in_sequence_mode,
@@ -167,8 +167,8 @@ class Boss:
             talk_fd, listen_fd
         )
         set_boss(self)
-        self.opts, self.args = opts, args
-        self.keymap = self.opts.keymap.copy()
+        self.args = args
+        self.keymap = get_options().keymap.copy()
         self.global_shortcuts_map = {v: KeyAction(k) for k, v in global_shortcuts.items()}
         for sc in global_shortcuts.values():
             self.keymap.pop(sc, None)
@@ -179,7 +179,7 @@ class Boss:
             cocoa_set_notification_activated_callback(notification_activated)
 
     def startup_first_child(self, os_window_id: Optional[int]) -> None:
-        startup_sessions = create_sessions(self.opts, self.args, default_session=self.opts.startup_session)
+        startup_sessions = create_sessions(get_options(), self.args, default_session=get_options().startup_session)
         for startup_session in startup_sessions:
             self.add_os_window(startup_session, os_window_id=os_window_id)
             os_window_id = None
@@ -199,7 +199,7 @@ class Boss:
         startup_id: Optional[str] = None
     ) -> int:
         if os_window_id is None:
-            size_data = get_os_window_sizing_data(opts_for_size or self.opts, startup_session)
+            size_data = get_os_window_sizing_data(opts_for_size or get_options(), startup_session)
             wclass = wclass or getattr(startup_session, 'os_window_class', None) or self.args.cls or appname
             wname = wname or self.args.name or wclass
             with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
@@ -210,7 +210,7 @@ class Boss:
         else:
             wname = self.args.name or self.args.cls or appname
             wclass = self.args.cls or appname
-        tm = TabManager(os_window_id, self.opts, self.args, wclass, wname, startup_session)
+        tm = TabManager(os_window_id, self.args, wclass, wname, startup_session)
         self.os_window_map[os_window_id] = tm
         return os_window_id
 
@@ -317,7 +317,7 @@ class Boss:
             sw: Optional[SpecialWindowInstance] = args
         else:
             sw = self.args_to_special_window(args, cwd_from) if args else None
-        startup_session = next(create_sessions(self.opts, special_window=sw, cwd_from=cwd_from))
+        startup_session = next(create_sessions(get_options(), special_window=sw, cwd_from=cwd_from))
         return self.add_os_window(startup_session)
 
     def new_os_window(self, *args: str) -> None:
@@ -347,7 +347,7 @@ class Boss:
         from .remote_control import handle_cmd
         response = None
         window = window or None
-        if self.opts.allow_remote_control == 'y' or from_peer or getattr(window, 'allow_remote_control', False):
+        if get_options().allow_remote_control == 'y' or from_peer or getattr(window, 'allow_remote_control', False):
             try:
                 response = handle_cmd(self, window, cmd)
             except Exception as err:
@@ -411,7 +411,7 @@ class Boss:
                 args.directory = os.path.join(data['cwd'], args.directory)
             for session in create_sessions(opts, args, respect_cwd=True):
                 os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id)
-                if opts.background_opacity != self.opts.background_opacity:
+                if opts.background_opacity != get_options().background_opacity:
                     self._set_os_window_background_opacity(os_window_id, opts.background_opacity)
                 if data.get('notify_on_os_window_death'):
                     self.os_window_death_actions[os_window_id] = partial(self.notify_on_os_window_death, data['notify_on_os_window_death'])
@@ -484,7 +484,7 @@ class Boss:
 
     def confirm_tab_close(self, tab: Tab) -> None:
         windows = tuple(tab)
-        needs_confirmation = self.opts.confirm_os_window_close > 0 and len(windows) >= self.opts.confirm_os_window_close
+        needs_confirmation = get_options().confirm_os_window_close > 0 and len(windows) >= get_options().confirm_os_window_close
         if not needs_confirmation:
             self.close_tab_no_confirm(tab)
             return
@@ -521,9 +521,9 @@ class Boss:
             self.io_thread_started = True
             self.startup_first_child(first_os_window_id)
 
-        if self.opts.update_check_interval > 0 and not hasattr(self, 'update_check_started'):
+        if get_options().update_check_interval > 0 and not hasattr(self, 'update_check_started'):
             from .update_check import run_update_check
-            run_update_check(self.opts.update_check_interval * 60 * 60)
+            run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
 
     def activate_tab_at(self, os_window_id: int, x: int, is_double: bool = False) -> int:
@@ -561,14 +561,14 @@ class Boss:
 
     def increase_font_size(self) -> None:  # legacy
         cfs = global_font_size()
-        self.set_font_size(min(self.opts.font_size * 5, cfs + 2.0))
+        self.set_font_size(min(get_options().font_size * 5, cfs + 2.0))
 
     def decrease_font_size(self) -> None:  # legacy
         cfs = global_font_size()
         self.set_font_size(max(MINIMUM_FONT_SIZE, cfs - 2.0))
 
     def restore_font_size(self) -> None:  # legacy
-        self.set_font_size(self.opts.font_size)
+        self.set_font_size(get_options().font_size)
 
     def set_font_size(self, new_size: float) -> None:  # legacy
         self.change_font_size(True, None, new_size)
@@ -577,13 +577,13 @@ class Boss:
         def calc_new_size(old_size: float) -> float:
             new_size = old_size
             if amt == 0:
-                new_size = self.opts.font_size
+                new_size = get_options().font_size
             else:
                 if increment_operation:
                     new_size += (1 if increment_operation == '+' else -1) * amt
                 else:
                     new_size = amt
-                new_size = max(MINIMUM_FONT_SIZE, min(new_size, self.opts.font_size * 5))
+                new_size = max(MINIMUM_FONT_SIZE, min(new_size, get_options().font_size * 5))
             return new_size
 
         if all_windows:
@@ -633,7 +633,7 @@ class Boss:
         window = self.active_window
         if window is None or not opacity:
             return
-        if not self.opts.dynamic_background_opacity:
+        if not get_options().dynamic_background_opacity:
             self.show_error(
                     _('Cannot change background opacity'),
                     _('You must set the dynamic_background_opacity option in kitty.conf to be able to change background opacity'))
@@ -645,7 +645,7 @@ class Boss:
                 return
             fin_opacity = old_opacity + float(opacity)
         elif opacity == 'default':
-            fin_opacity = self.opts.background_opacity
+            fin_opacity = get_options().background_opacity
         else:
             fin_opacity = float(opacity)
         self._set_os_window_background_opacity(os_window_id, fin_opacity)
@@ -672,7 +672,7 @@ class Boss:
         # Handles shortcuts, return True if the key was consumed
         key_action = get_shortcut(self.keymap, ev)
         if key_action is None:
-            sequences = get_shortcut(self.opts.sequence_map, ev)
+            sequences = get_shortcut(get_options().sequence_map, ev)
             if sequences and not isinstance(sequences, KeyAction):
                 self.pending_sequences = sequences
                 set_in_sequence_mode(True)
@@ -710,8 +710,8 @@ class Boss:
         if w is None:
             return
         overlay_window = self._run_kitten('resize_window', args=[
-            '--horizontal-increment={}'.format(self.opts.window_resize_step_cells),
-            '--vertical-increment={}'.format(self.opts.window_resize_step_lines)
+            '--horizontal-increment={}'.format(get_options().window_resize_step_cells),
+            '--vertical-increment={}'.format(get_options().window_resize_step_lines)
         ])
         if overlay_window is not None:
             overlay_window.allow_remote_control = True
@@ -813,7 +813,7 @@ class Boss:
 
     def confirm_os_window_close(self, os_window_id: int) -> None:
         tm = self.os_window_map.get(os_window_id)
-        needs_confirmation = tm is not None and self.opts.confirm_os_window_close > 0 and tm.number_of_windows >= self.opts.confirm_os_window_close
+        needs_confirmation = tm is not None and get_options().confirm_os_window_close > 0 and tm.number_of_windows >= get_options().confirm_os_window_close
         if not needs_confirmation:
             mark_os_window_for_close(os_window_id)
             return
@@ -850,7 +850,7 @@ class Boss:
         num = 0
         for q in self.os_window_map.values():
             num += q.number_of_windows
-        needs_confirmation = tm is not None and self.opts.confirm_os_window_close > 0 and num >= self.opts.confirm_os_window_close
+        needs_confirmation = tm is not None and get_options().confirm_os_window_close > 0 and num >= get_options().confirm_os_window_close
         if not needs_confirmation:
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return
@@ -889,7 +889,7 @@ class Boss:
         confpath = prepare_config_file_for_editing()
         # On macOS vim fails to handle SIGWINCH if it occurs early, so add a
         # small delay.
-        cmd = [kitty_exe(), '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + get_editor(self.opts) + [confpath]
+        cmd = [kitty_exe(), '+runpy', 'import os, sys, time; time.sleep(0.05); os.execvp(sys.argv[1], sys.argv[1:])'] + get_editor(get_options()) + [confpath]
         self.new_os_window(*cmd)
 
     def get_output(self, source_window: Window, num_lines: Optional[int] = 1) -> str:
@@ -941,7 +941,7 @@ class Boss:
                     raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
             else:
                 data = input_data if isinstance(input_data, bytes) else input_data.encode('utf-8')
-            copts = common_opts_as_dict(self.opts)
+            copts = common_opts_as_dict(get_options())
             final_args: List[str] = []
             for x in args:
                 if x == '@selection':
@@ -1081,7 +1081,7 @@ class Boss:
                 if actions:
                     self.drain_actions(actions)
         if not found_action:
-            open_url(url, program or self.opts.open_url_with, cwd=cwd)
+            open_url(url, program or get_options().open_url_with, cwd=cwd)
 
     def drain_actions(self, actions: List) -> None:
 
@@ -1128,8 +1128,8 @@ class Boss:
             text = w.text_for_selection()
             if text:
                 set_primary_selection(text)
-                if self.opts.copy_on_select:
-                    self.copy_to_buffer(self.opts.copy_on_select)
+                if get_options().copy_on_select:
+                    self.copy_to_buffer(get_options().copy_on_select)
 
     def copy_to_buffer(self, buffer_name: str) -> None:
         w = self.active_window
@@ -1401,14 +1401,15 @@ class Boss:
             window.refresh()
 
     def patch_colors(self, spec: Dict[str, int], cursor_text_color: Union[bool, int, Color], configured: bool = False) -> None:
+        opts = get_options()
         if configured:
             for k, v in spec.items():
-                if hasattr(self.opts, k):
-                    setattr(self.opts, k, color_from_int(v))
+                if hasattr(opts, k):
+                    setattr(opts, k, color_from_int(v))
             if cursor_text_color is not False:
                 if isinstance(cursor_text_color, int):
                     cursor_text_color = color_from_int(cursor_text_color)
-                self.opts.cursor_text_color = cursor_text_color
+                opts.cursor_text_color = cursor_text_color
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
         patch_global_colors(spec, configured)
