@@ -10,7 +10,7 @@ from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
     Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional,
-    Sequence, Set, Tuple, Type, Union
+    Sequence, Set, Tuple, Type, Union, FrozenSet
 )
 
 from . import fast_data_types as defines
@@ -684,9 +684,9 @@ def parse_config(lines: Iterable[str], check_keys: bool = True, accumulate_bad_l
         'env': {}, 'kitten_aliases': {}, 'font_features': {}, 'mouse_mappings': [],
         'mousemap': {}
     }
-    defs: Optional[OptionsStub] = None
+    defs: Optional[FrozenSet] = None
     if check_keys:
-        defs = defaults
+        defs = frozenset(defaults._fields)  # type: ignore
 
     parse_config_base(
         lines,
@@ -694,7 +694,6 @@ def parse_config(lines: Iterable[str], check_keys: bool = True, accumulate_bad_l
         all_options,
         special_handling,
         ans,
-        check_keys=check_keys,
         accumulate_bad_lines=accumulate_bad_lines
     )
     return ans

@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-from typing import Any, Dict, Iterable, Optional, Tuple, Type, Union
+from typing import Any, Dict, FrozenSet, Iterable, Optional, Tuple, Type, Union
 
 from kitty.cli_stub import DiffCLIOptions
 from kitty.conf.definition import config_lines
@@ -93,13 +93,16 @@ def special_handling(key: str, val: str, ans: Dict) -> bool:
 
 def parse_config(lines: Iterable[str], check_keys: bool = True) -> Dict[str, Any]:
     ans: Dict[str, Any] = {'key_definitions': {}}
+    defs: Optional[FrozenSet] = None
+    if check_keys:
+        defs = frozenset(defaults._fields)  # type: ignore
+
     parse_config_base(
         lines,
-        defaults,
+        defs,
         all_options,
         special_handling,
         ans,
-        check_keys=check_keys
     )
     return ans
 

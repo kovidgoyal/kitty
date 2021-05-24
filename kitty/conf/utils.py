@@ -182,16 +182,14 @@ def _parse(
 
 def parse_config_base(
     lines: Iterable[str],
-    defaults: Any,
+    all_option_names: Optional[FrozenSet],
     all_options: Dict[str, Any],
     special_handling: Callable,
     ans: Dict[str, Any],
-    check_keys: bool = True,
     accumulate_bad_lines: Optional[List[BadLine]] = None
 ) -> None:
-    all_keys: Optional[FrozenSet[str]] = defaults._asdict() if check_keys else None
     _parse(
-        lines, create_type_converter(all_options), special_handling, ans, all_keys, accumulate_bad_lines
+        lines, create_type_converter(all_options), special_handling, ans, all_option_names, accumulate_bad_lines
     )
 
 
