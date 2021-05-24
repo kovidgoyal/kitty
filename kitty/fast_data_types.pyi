@@ -515,11 +515,15 @@ def sync_os_window_title(os_window_id: int) -> None:
 
 
 def set_options(
-    opts: Options,
+    opts: Optional[Options],
     is_wayland: bool = False,
     debug_rendering: bool = False,
     debug_font_fallback: bool = False
 ) -> None:
+    pass
+
+
+def get_options() -> Options:
     pass
 
 

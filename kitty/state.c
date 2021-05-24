@@ -694,10 +694,25 @@ PYWRAP1(handle_for_window_id) {
     return NULL;
 }
 
+static PyObject* options_object = NULL;
+
+PYWRAP0(get_options) {
+    if (!options_object) {
+        PyErr_SetString(PyExc_RuntimeError, "Must call set_options() before using get_options()");
+        return NULL;
+    }
+    Py_INCREF(options_object);
+    return options_object;
+}
+
 PYWRAP1(set_options) {
     PyObject *ret, *opts;
     int is_wayland = 0, debug_rendering = 0, debug_font_fallback = 0;
     PA("O|ppp", &opts, &is_wayland, &debug_rendering, &debug_font_fallback);
+    if (opts == Py_None) {
+        Py_CLEAR(options_object);
+        Py_RETURN_NONE;
+    }
     global_state.is_wayland = is_wayland ? true : false;
 #ifdef __APPLE__
     global_state.has_render_frames = true;
@@ -814,6 +829,8 @@ PYWRAP1(set_options) {
 #undef read_adjust
 #undef S
 #undef SS
+    options_object = opts;
+    Py_INCREF(options_object);
     Py_RETURN_NONE;
 }
 
@@ -1206,6 +1223,7 @@ static PyMethodDef module_methods[] = {
     MW(current_os_window, METH_NOARGS),
     MW(next_window_id, METH_NOARGS),
     MW(set_options, METH_VARARGS),
+    MW(get_options, METH_NOARGS),
     MW(click_mouse_url, METH_VARARGS),
     MW(mouse_selection, METH_VARARGS),
     MW(set_in_sequence_mode, METH_O),

@@ -171,10 +171,11 @@ class AppRunner:
     def __call__(self, opts: OptionsStub, args: CLIOptions, bad_lines: Sequence[BadLine] = ()) -> None:
         set_scale(opts.box_drawing_scale)
         set_options(opts, is_wayland(), args.debug_rendering, args.debug_font_fallback)
-        set_font_family(opts, debug_font_matching=args.debug_font_fallback)
         try:
+            set_font_family(opts, debug_font_matching=args.debug_font_fallback)
             _run_app(opts, args, bad_lines)
         finally:
+            set_options(None)
             free_font_data()  # must free font data before glfw/freetype/fontconfig/opengl etc are finalized
 
 
