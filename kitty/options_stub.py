@@ -17,11 +17,12 @@ def generate_stub():
         all_options,
         special_types={
             'symbol_map': 'typing.Dict[typing.Tuple[int, int], str]',
-            'font_features': 'typing.Dict[str, typing.Tuple[str, ...]]'
+            'font_features': 'typing.Dict[str, typing.Tuple[FontFeature, ...]]'
         },
         preamble_lines=(
             'from kitty.types import SingleKey',
             'from kitty.config import KeyAction, KeyMap, SequenceMap, MouseMap',
+            'from kitty.fonts import FontFeature',
         ),
         extra_fields=(
             ('keymap', 'KeyMap'),

@@ -6,6 +6,7 @@ import re
 from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 from kitty.fast_data_types import coretext_all_fonts
+from kitty.fonts import FontFeature
 from kitty.options_stub import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
@@ -50,7 +51,7 @@ def list_fonts() -> Generator[ListedFont, None, None]:
             yield {'family': f, 'full_name': fn, 'postscript_name': fd['postscript_name'] or '', 'is_monospace': is_mono}
 
 
-def find_font_features(postscript_name: str) -> Tuple[str, ...]:
+def find_font_features(postscript_name: str) -> Tuple[FontFeature, ...]:
     """Not Implemented"""
     return ()
 

@@ -6,6 +6,7 @@ from typing import (
 
 import termios
 from kitty.boss import Boss
+from kitty.fonts import FontFeature
 from kitty.fonts.render import FontObject
 from kitty.options_stub import Options
 
@@ -886,7 +887,7 @@ def set_font_data(
     descriptor_for_idx: Callable[[int], Tuple[FontObject, bool, bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
     symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,
-    font_feature_settings: Dict[str, Tuple[str, ...]]
+    font_feature_settings: Dict[str, Tuple[FontFeature, ...]]
 ) -> None:
     pass
 

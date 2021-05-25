@@ -11,9 +11,13 @@ class ListedFont(TypedDict):
     is_monospace: bool
 
 
-class FontFeature(str):
+class FontFeature:
 
-    def __new__(cls, name: str, parsed: bytes) -> 'FontFeature':
-        ans: FontFeature = str.__new__(cls, name)
-        ans.parsed = parsed  # type: ignore
-        return ans
+    __slots__ = 'name', 'parsed'
+
+    def __init__(self, name: str, parsed: bytes):
+        self.name = name
+        self.parsed = parsed
+
+    def __repr__(self) -> str:
+        return repr(self.name)

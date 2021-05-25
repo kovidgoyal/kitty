@@ -71,7 +71,7 @@ def fc_match(family: str, bold: bool, italic: bool, spacing: int = FC_MONO) -> F
     return fc_match_impl(family, bold, italic, spacing)
 
 
-def find_font_features(postscript_name: str) -> Tuple[str, ...]:
+def find_font_features(postscript_name: str) -> Tuple[FontFeature, ...]:
     pat = fc_match_postscript_name(postscript_name)
 
     if pat.get('postscript_name') != postscript_name or 'fontfeatures' not in pat:
