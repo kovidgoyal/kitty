@@ -23,23 +23,24 @@ class Group:
 
 class Option:
 
-    __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'add_to_default', 'add_to_docs', 'line'
+    __slots__ = 'name', 'group', 'long_text', 'option_type', 'defval_as_string', 'add_to_default', 'add_to_docs', 'line', 'is_multiple'
 
-    def __init__(self, name: str, group: Group, defval: str, option_type: Any, long_text: str, add_to_default: bool, add_to_docs: bool):
+    def __init__(self, name: str, group: Group, defval: str, option_type: Any, long_text: str, add_to_default: bool, add_to_docs: bool, is_multiple: bool):
         self.name, self.group = name, group
         self.long_text, self.option_type = long_text.strip(), option_type
         self.defval_as_string = defval
         self.add_to_default = add_to_default
         self.add_to_docs = add_to_docs
+        self.is_multiple = is_multiple
         self.line = self.name + ' ' + self.defval_as_string
 
-    def type_definition(self, is_multiple: bool, imports: Set[Tuple[str, str]]) -> str:
+    def type_definition(self, imports: Set[Tuple[str, str]]) -> str:
 
         def type_name(x: type) -> str:
             ans = x.__name__
             if x.__module__ and x.__module__ != 'builtins':
                 imports.add((x.__module__, x.__name__))
-            if is_multiple:
+            if self.is_multiple:
                 ans = 'typing.Dict[str, str]'
             return ans
 
@@ -119,11 +120,8 @@ def option(
         else:
             defval = str(defval)
 
-    key = name
-    if is_multiple:
-        key = name + ' ' + defval.partition(' ')[0]
-    ans = Option(name, group[0], defval, option_type, long_text, add_to_default, add_to_docs)
-    all_options[key] = ans
+    ans = Option(name, group[0], defval, option_type, long_text, add_to_default, add_to_docs, is_multiple)
+    all_options[name] = ans
     return ans
 
 
@@ -366,9 +364,8 @@ def as_type_stub(
     overrides = special_types or {}
     for name, val in all_options.items():
         if isinstance(val, Option):
-            is_multiple = ' ' in name
             field_name = name.partition(' ')[0]
-            ans.append('    {}: {}'.format(field_name, overrides.get(field_name, val.type_definition(is_multiple, imports))))
+            ans.append('    {}: {}'.format(field_name, overrides.get(field_name, val.type_definition(imports))))
     for mod, name in imports:
         ans.insert(0, 'from {} import {}'.format(mod, name))
         ans.insert(0, 'import {}'.format(mod))

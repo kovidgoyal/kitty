@@ -294,7 +294,7 @@ Note that this refers to programming ligatures, typically implemented using the
 :opt:`font_features` setting.
 '''))
 
-o('font_features', 'none', long_text=_('''
+o('+font_features', 'none', add_to_default=False, long_text=_('''
 Choose exactly which OpenType features to enable or disable. This is useful as
 some fonts might have features worthwhile in a terminal. For example, Fira
 Code Retina includes a discretionary feature, :code:`zero`, which in that font
