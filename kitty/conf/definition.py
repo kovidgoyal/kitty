@@ -40,8 +40,6 @@ class Option:
             ans = x.__name__
             if x.__module__ and x.__module__ != 'builtins':
                 imports.add((x.__module__, x.__name__))
-            if self.is_multiple:
-                ans = 'typing.Dict[str, str]'
             return ans
 
         def option_type_as_str(x: Any) -> str:
@@ -49,6 +47,9 @@ class Option:
                 return type_name(x)
             ans = repr(x)
             ans = ans.replace('NoneType', 'None')
+            if self.is_multiple:
+                ans = ans[ans.index('[') + 1:-1]
+                ans = ans.replace('Tuple', 'Dict', 1)
             return ans
 
         if type(self.option_type) is type:
@@ -354,18 +355,16 @@ def config_lines(
 
 def as_type_stub(
     all_options: Dict[str, OptionOrAction],
-    special_types: Optional[Dict[str, str]] = None,
     preamble_lines: Union[Tuple[str, ...], List[str], Iterable[str]] = (),
     extra_fields: Union[Tuple[Tuple[str, str], ...], List[Tuple[str, str]], Iterable[Tuple[str, str]]] = (),
     class_name: str = 'Options'
 ) -> str:
     ans = ['import typing\n'] + list(preamble_lines) + ['', 'class {}:'.format(class_name)]
     imports: Set[Tuple[str, str]] = set()
-    overrides = special_types or {}
     for name, val in all_options.items():
         if isinstance(val, Option):
             field_name = name.partition(' ')[0]
-            ans.append('    {}: {}'.format(field_name, overrides.get(field_name, val.type_definition(imports))))
+            ans.append('    {}: {}'.format(field_name, val.type_definition(imports)))
     for mod, name in imports:
         ans.insert(0, 'from {} import {}'.format(mod, name))
         ans.insert(0, 'import {}'.format(mod))

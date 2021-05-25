@@ -4,6 +4,7 @@
 
 
 import os
+import sys
 from typing import (
     Callable, Dict, FrozenSet, Iterable, List, Optional, Tuple, Union
 )
@@ -15,6 +16,7 @@ from .conf.utils import (
     positive_float, positive_int, to_bool, to_color, uniq, unit_float
 )
 from .constants import config_dir
+from .fonts import FontFeature
 from .key_names import (
     character_key_name_aliases, functional_key_name_aliases,
     get_key_name_lookup
@@ -22,7 +24,7 @@ from .key_names import (
 from .layout.interface import all_layouts
 from .rgb import Color, color_as_int
 from .types import FloatEdges, SingleKey
-from .utils import log_error
+from .utils import expandvars, log_error
 
 MINIMUM_FONT_SIZE = 4
 default_tab_separator = ' ┇'
@@ -345,3 +347,56 @@ def macos_option_as_alt(x: str) -> int:
     if to_bool(x):
         return 0b11
     return 0
+
+
+def font_features(val: str) -> Iterable[Tuple[str, Tuple[FontFeature, ...]]]:
+    if val == 'none':
+        return
+    parts = val.split()
+    if len(parts) < 2:
+        log_error("Ignoring invalid font_features {}".format(val))
+        return
+    if parts[0]:
+        features = []
+        for feat in parts[1:]:
+            try:
+                parsed = defines.parse_font_feature(feat)
+            except ValueError:
+                log_error('Ignoring invalid font feature: {}'.format(feat))
+            else:
+                features.append(FontFeature(feat, parsed))
+        yield parts[0], tuple(features)
+
+
+def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
+    key, val = val.partition('=')[::2]
+    key, val = key.strip(), val.strip()
+    if key:
+        yield key, expandvars(val, current_val)
+
+
+def symbol_map(val: str) -> Iterable[Tuple[Tuple[int, int], str]]:
+    parts = val.split()
+
+    def abort() -> Dict[Tuple[int, int], str]:
+        log_error(f'Symbol map: {val} is invalid, ignoring')
+
+    if len(parts) < 2:
+        return abort()
+    family = ' '.join(parts[1:])
+
+    def to_chr(x: str) -> int:
+        if not x.startswith('U+'):
+            raise ValueError()
+        return int(x[2:], 16)
+
+    for x in parts[0].split(','):
+        a_, b_ = x.partition('-')[::2]
+        b_ = b_ or a_
+        try:
+            a, b = map(to_chr, (a_, b_))
+        except Exception:
+            return abort()
+        if b < a or max(a, b) > sys.maxunicode or min(a, b) < 1:
+            return abort()
+        yield (a, b), family

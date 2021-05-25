@@ -17,16 +17,15 @@ from .options_types import (
     active_tab_title_template, adjust_line_height, allow_hyperlinks,
     allow_remote_control, box_drawing_scale, clipboard_control,
     config_or_absolute_path, copy_on_select, cursor_text_color,
-    default_tab_separator, disable_ligatures, edge_width,
+    default_tab_separator, disable_ligatures, edge_width, env, font_features,
     hide_window_decorations, macos_option_as_alt, macos_titlebar_color,
     optional_edge_width, resize_draw_strategy, scrollback_lines,
-    scrollback_pager_history_size, tab_activity_symbol, tab_bar_edge,
-    tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
+    scrollback_pager_history_size, symbol_map, tab_activity_symbol,
+    tab_bar_edge, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
     tab_title_template, to_cursor_shape, to_font_size, to_layout_names,
-    url_prefixes, url_style, window_border_width, window_size, to_modifiers
+    to_modifiers, url_prefixes, url_style, window_border_width, window_size
 )
 from .rgb import color_as_sharp, color_from_int
-
 
 # }}}
 
@@ -263,7 +262,7 @@ o('adjust_column_width', 0, option_type=adjust_line_height)
 o(
     '+symbol_map',
     'U+E0A0-U+E0A3,U+E0C0-U+E0C7 PowerlineSymbols',
-    add_to_default=False,
+    add_to_default=False, option_type=symbol_map,
     long_text=_('''
 Map the specified unicode codepoints to a particular font. Useful if you need
 special rendering for some symbols, such as for Powerline. Avoids the need for
@@ -294,7 +293,7 @@ Note that this refers to programming ligatures, typically implemented using the
 :opt:`font_features` setting.
 '''))
 
-o('+font_features', 'none', add_to_default=False, long_text=_('''
+o('+font_features', 'none', add_to_default=False, option_type=font_features, long_text=_('''
 Choose exactly which OpenType features to enable or disable. This is useful as
 some fonts might have features worthwhile in a terminal. For example, Fira
 Code Retina includes a discretionary feature, :code:`zero`, which in that font
@@ -920,10 +919,7 @@ you also set :opt:`allow_remote_control` to enable remote control. See the
 help for :option:`kitty --listen-on` for more details.
 '''))
 
-o(
-    '+env', '',
-    add_to_default=False,
-    long_text=_('''
+o('+env', '', add_to_default=False, option_type=env, long_text=_('''
 Specify environment variables to set in all child processes. Note that
 environment variables are expanded recursively, so if you use::
 

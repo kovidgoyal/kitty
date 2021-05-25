@@ -5,7 +5,6 @@
 import json
 import os
 import re
-import sys
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
@@ -21,12 +20,13 @@ from .conf.utils import (
 )
 from .config_data import all_options
 from .constants import cache_dir, defconf, is_macos
-from .fonts import FontFeature
 from .options_stub import Options as OptionsStub
-from .options_types import InvalidMods, parse_mods, parse_shortcut
+from .options_types import (
+    InvalidMods, env, font_features, parse_mods, parse_shortcut, symbol_map
+)
 from .types import MouseEvent, SingleKey
 from .typing import TypedDict
-from .utils import expandvars, log_error
+from .utils import log_error
 
 KeyMap = Dict[SingleKey, 'KeyAction']
 MouseMap = Dict[MouseEvent, 'KeyAction']
@@ -511,37 +511,6 @@ def parse_mouse_action(val: str, mouse_mappings: List[MouseMapping]) -> None:
         mouse_mappings.append(MouseMapping(button, mods, count, mode == 'grabbed', paction))
 
 
-def parse_symbol_map(val: str) -> Dict[Tuple[int, int], str]:
-    parts = val.split()
-    symbol_map: Dict[Tuple[int, int], str] = {}
-
-    def abort() -> Dict[Tuple[int, int], str]:
-        log_error('Symbol map: {} is invalid, ignoring'.format(
-            val))
-        return {}
-
-    if len(parts) < 2:
-        return abort()
-    family = ' '.join(parts[1:])
-
-    def to_chr(x: str) -> int:
-        if not x.startswith('U+'):
-            raise ValueError()
-        return int(x[2:], 16)
-
-    for x in parts[0].split(','):
-        a_, b_ = x.partition('-')[::2]
-        b_ = b_ or a_
-        try:
-            a, b = map(to_chr, (a_, b_))
-        except Exception:
-            return abort()
-        if b < a or max(a, b) > sys.maxunicode or min(a, b) < 1:
-            return abort()
-        symbol_map[(a, b)] = family
-    return symbol_map
-
-
 def parse_send_text_bytes(text: str) -> bytes:
     return python_string(text).encode('utf-8')
 
@@ -590,26 +559,14 @@ def handle_mouse_map(key: str, val: str, ans: Dict[str, Any]) -> None:
 
 @special_handler
 def handle_symbol_map(key: str, val: str, ans: Dict[str, Any]) -> None:
-    ans['symbol_map'].update(parse_symbol_map(val))
+    for k, v in symbol_map(val):
+        ans['symbol_map'][k] = v
 
 
 @special_handler
 def handle_font_features(key: str, val: str, ans: Dict[str, Any]) -> None:
-    if val != 'none':
-        parts = val.split()
-        if len(parts) < 2:
-            log_error("Ignoring invalid font_features {}".format(val))
-        else:
-            features = []
-            for feat in parts[1:]:
-                try:
-                    parsed = defines.parse_font_feature(feat)
-                except ValueError:
-                    log_error('Ignoring invalid font feature: {}'.format(feat))
-                else:
-                    features.append(FontFeature(feat, parsed))
-            if features:
-                ans['font_features'][parts[0]] = tuple(features)
+    for key, features in font_features(val):
+        ans['font_features'][key] = features
 
 
 @special_handler
@@ -662,9 +619,8 @@ def handle_deprecated_macos_show_window_title_in_menubar_alias(key: str, val: st
 
 @special_handler
 def handle_env(key: str, val: str, ans: Dict[str, Any]) -> None:
-    key, val = val.partition('=')[::2]
-    key, val = key.strip(), val.strip()
-    ans['env'][key] = expandvars(val, ans['env'])
+    for key, val in env(val, ans['env']):
+        ans['env'][key] = val
 
 
 def special_handling(key: str, val: str, ans: Dict[str, Any]) -> bool:
