@@ -24,7 +24,7 @@ from .constants import (
 )
 from .options_stub import Options
 from .rgb import Color, to_color
-from .types import ConvertibleToNumbers, run_once
+from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
 
 
