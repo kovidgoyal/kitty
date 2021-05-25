@@ -40,6 +40,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix rendering getting stuck on some machines after sleep/screensaver
   (:iss:`2016`)
 
+- macOS: Add a new ``Shell`` menu to the global menubar with some commonly used
+  actions (:pull:`3653`)
+
 - Add a few more special commandline arguments for the launch command. Now all
   ``KITTY_PIPE_DATA`` is also available via command line argument substitution
   (:iss:`3593`)
