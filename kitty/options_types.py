@@ -6,14 +6,15 @@
 import os
 import sys
 from typing import (
-    Callable, Dict, FrozenSet, Iterable, List, Optional, Tuple, Union
+    Any, Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional,
+    Sequence, Tuple, Union
 )
 
 import kitty.fast_data_types as defines
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 
 from .conf.utils import (
-    positive_float, positive_int, to_bool, to_color, uniq, unit_float
+    key_func, positive_float, positive_int, to_bool, to_color, uniq, unit_float
 )
 from .constants import config_dir
 from .fonts import FontFeature
@@ -23,9 +24,14 @@ from .key_names import (
 )
 from .layout.interface import all_layouts
 from .rgb import Color, color_as_int
-from .types import FloatEdges, SingleKey
+from .types import FloatEdges, MouseEvent, SingleKey
 from .utils import expandvars, log_error
 
+KeyMap = Dict[SingleKey, 'KeyAction']
+MouseMap = Dict[MouseEvent, 'KeyAction']
+KeySequence = Tuple[SingleKey, ...]
+SubSequenceMap = Dict[KeySequence, 'KeyAction']
+SequenceMap = Dict[SingleKey, SubSequenceMap]
 MINIMUM_FONT_SIZE = 4
 default_tab_separator = ' ┇'
 mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
@@ -33,6 +39,14 @@ mod_map = {'CTRL': 'CONTROL', 'CMD': 'SUPER', '⌘': 'SUPER',
 character_key_name_aliases_with_ascii_lowercase: Dict[str, str] = character_key_name_aliases.copy()
 for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
     character_key_name_aliases_with_ascii_lowercase[x] = x.lower()
+sequence_sep = '>'
+func_with_args, args_funcs = key_func()
+FuncArgsType = Tuple[str, Sequence[Any]]
+
+
+class KeyAction(NamedTuple):
+    func: str
+    args: Sequence[str] = ()
 
 
 class InvalidMods(ValueError):
@@ -400,3 +414,168 @@ def symbol_map(val: str) -> Iterable[Tuple[Tuple[int, int], str]]:
         if b < a or max(a, b) > sys.maxunicode or min(a, b) < 1:
             return abort()
         yield (a, b), family
+
+
+def parse_key_action(action: str) -> Optional[KeyAction]:
+    parts = action.strip().split(maxsplit=1)
+    func = parts[0]
+    if len(parts) == 1:
+        return KeyAction(func, ())
+    rest = parts[1]
+    parser = args_funcs.get(func)
+    if parser is not None:
+        try:
+            func, args = parser(func, rest)
+        except Exception as err:
+            log_error('Ignoring invalid key action: {} with err: {}'.format(action, err))
+        else:
+            return KeyAction(func, args)
+    return None
+
+
+class BaseDefinition:
+    action: KeyAction
+
+    def resolve_kitten_aliases(self, aliases: Dict[str, Sequence[str]]) -> None:
+        if not self.action.args:
+            return
+        kitten = self.action.args[0]
+        rest = self.action.args[1] if len(self.action.args) > 1 else ''
+        changed = False
+        for key, expanded in aliases.items():
+            if key == kitten:
+                changed = True
+                kitten = expanded[0]
+                if len(expanded) > 1:
+                    rest = expanded[1] + ' ' + rest
+        if changed:
+            self.action = self.action._replace(args=[kitten, rest.rstrip()])
+
+
+class MouseMapping(BaseDefinition):
+
+    def __init__(self, button: int, mods: int, repeat_count: int, grabbed: bool, action: KeyAction):
+        self.button = button
+        self.mods = mods
+        self.repeat_count = repeat_count
+        self.grabbed = grabbed
+        self.action = action
+
+    def resolve(self, kitty_mod: int) -> None:
+        self.mods = defines.resolve_key_mods(kitty_mod, self.mods)
+
+    @property
+    def trigger(self) -> MouseEvent:
+        return MouseEvent(self.button, self.mods, self.repeat_count, self.grabbed)
+
+
+class KeyDefinition(BaseDefinition):
+
+    def __init__(self, is_sequence: bool, action: KeyAction, mods: int, is_native: bool, key: int, rest: Tuple[SingleKey, ...] = ()):
+        self.is_sequence = is_sequence
+        self.action = action
+        self.trigger = SingleKey(mods, is_native, key)
+        self.rest = rest
+
+    def resolve(self, kitty_mod: int) -> None:
+
+        def r(k: SingleKey) -> SingleKey:
+            mods = defines.resolve_key_mods(kitty_mod, k.mods)
+            key = k.key
+            is_native = k.is_native
+            return SingleKey(mods, is_native, key)
+
+        self.trigger = r(self.trigger)
+        self.rest = tuple(map(r, self.rest))
+
+
+def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:
+    parts = val.split(maxsplit=1)
+    if len(parts) != 2:
+        return
+    sc, action = parts
+    sc, action = sc.strip().strip(sequence_sep), action.strip()
+    if not sc or not action:
+        return
+    is_sequence = sequence_sep in sc
+    if is_sequence:
+        trigger: Optional[SingleKey] = None
+        restl: List[SingleKey] = []
+        for part in sc.split(sequence_sep):
+            try:
+                mods, is_native, key = parse_shortcut(part)
+            except InvalidMods:
+                return
+            if key == 0:
+                if mods is not None:
+                    log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
+                return
+            if trigger is None:
+                trigger = SingleKey(mods, is_native, key)
+            else:
+                restl.append(SingleKey(mods, is_native, key))
+        rest = tuple(restl)
+    else:
+        try:
+            mods, is_native, key = parse_shortcut(sc)
+        except InvalidMods:
+            return
+        if key == 0:
+            if mods is not None:
+                log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
+            return
+    try:
+        paction = parse_key_action(action)
+    except Exception:
+        log_error('Invalid shortcut action: {}. Ignoring.'.format(
+            action))
+    else:
+        if paction is not None:
+            if is_sequence:
+                if trigger is not None:
+                    key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], trigger[2], rest))
+            else:
+                assert key is not None
+                key_definitions.append(KeyDefinition(False, paction, mods, is_native, key))
+
+
+def parse_mouse_action(val: str, mouse_mappings: List[MouseMapping]) -> None:
+    parts = val.split(maxsplit=3)
+    if len(parts) != 4:
+        log_error(f'Ignoring invalid mouse action: {val}')
+        return
+    xbutton, event, modes, action = parts
+    kparts = xbutton.split('+')
+    if len(kparts) > 1:
+        mparts, obutton = kparts[:-1], kparts[-1].lower()
+        mods = parse_mods(mparts, obutton)
+        if mods is None:
+            return
+    else:
+        obutton = parts[0].lower()
+        mods = 0
+    try:
+        b = {'left': 'b1', 'middle': 'b3', 'right': 'b2'}.get(obutton, obutton)[1:]
+        button = getattr(defines, f'GLFW_MOUSE_BUTTON_{b}')
+    except Exception:
+        log_error(f'Mouse button: {xbutton} not recognized, ignoring')
+        return
+    try:
+        count = {'doubleclick': -3, 'click': -2, 'release': -1, 'press': 1, 'doublepress': 2, 'triplepress': 3}[event.lower()]
+    except KeyError:
+        log_error(f'Mouse event type: {event} not recognized, ignoring')
+        return
+    specified_modes = frozenset(modes.lower().split(','))
+    if specified_modes - {'grabbed', 'ungrabbed'}:
+        log_error(f'Mouse modes: {modes} not recognized, ignoring')
+        return
+    try:
+        paction = parse_key_action(action)
+    except Exception:
+        log_error(f'Invalid mouse action: {action}. Ignoring.')
+        return
+    if paction is None:
+        log_error(f'Ignoring unknown mouse action: {action}')
+        return
+    for mode in specified_modes:
+        mouse_mappings.append(MouseMapping(button, mods, count, mode == 'grabbed', paction))

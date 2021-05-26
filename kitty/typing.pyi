@@ -1,11 +1,7 @@
 from asyncio import AbstractEventLoop as AbstractEventLoop
 from socket import AddressFamily as AddressFamily, socket as Socket
-from subprocess import (
-    CompletedProcess as CompletedProcess, Popen as PopenType
-)
-from typing import (
-    Literal, Protocol as Protocol, TypedDict as TypedDict
-)
+from subprocess import CompletedProcess as CompletedProcess, Popen as PopenType
+from typing import Literal, Protocol as Protocol, TypedDict as TypedDict
 
 from kittens.hints.main import Mark as MarkType
 from kittens.tui.handler import Handler as HandlerType
@@ -21,16 +17,16 @@ from kitty.conf.utils import KittensKeyAction as KittensKeyActionType
 from .boss import Boss as BossType
 from .child import Child as ChildType
 from .conf.utils import BadLine as BadLineType
-from .config import (
-    KeyAction as KeyActionType, KeyMap as KeyMap,
-    KittyCommonOpts as KittyCommonOpts, SequenceMap as SequenceMap
-)
+from .config import KittyCommonOpts
 from .fast_data_types import (
     CoreTextFont as CoreTextFont, FontConfigPattern as FontConfigPattern,
     Screen as ScreenType, StartupCtx as StartupCtx
 )
 from .key_encoding import KeyEvent as KeyEventType
 from .layout.base import Layout as LayoutType
+from .options_types import (
+    KeyAction as KeyActionType, KeyMap as KeyMap, SequenceMap as SequenceMap
+)
 from .rc.base import RemoteCommand as RemoteCommandType
 from .session import Session as SessionType, Tab as SessionTab
 from .tabs import (

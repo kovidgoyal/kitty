@@ -17,7 +17,7 @@ def generate_stub():
         all_options,
         preamble_lines=(
             'from kitty.types import SingleKey',
-            'from kitty.config import KeyAction, KeyMap, SequenceMap, MouseMap',
+            'from kitty.options_types import KeyAction, KeyMap, SequenceMap, MouseMap',
             'from kitty.fonts import FontFeature',
         ),
         extra_fields=(

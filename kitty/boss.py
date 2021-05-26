@@ -19,11 +19,7 @@ from .child import cached_process_data, cwd_of_process, default_env
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
 from .conf.utils import BadLine, to_cmdline
-from .config import (
-    KeyAction, SubSequenceMap, common_opts_as_dict,
-    prepare_config_file_for_editing
-)
-from .options_types import MINIMUM_FONT_SIZE
+from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
     appname, config_dir, is_macos, kitty_exe, supports_primary_selection
 )
@@ -42,6 +38,7 @@ from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
 from .notify import notification_activated
 from .options_stub import Options
+from .options_types import MINIMUM_FONT_SIZE, KeyAction, SubSequenceMap
 from .os_window_size import initial_window_size_func
 from .rgb import Color, color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data

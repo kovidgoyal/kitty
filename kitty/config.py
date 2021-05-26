@@ -9,39 +9,25 @@ from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
     Any, Callable, Dict, FrozenSet, Generator, Iterable, List, NamedTuple,
-    Optional, Sequence, Set, Tuple, Type, Union
+    Optional, Sequence, Tuple, Type, Union
 )
 
 from . import fast_data_types as defines
 from .conf.definition import as_conf_file, config_lines
 from .conf.utils import (
-    BadLine, init_config, key_func, load_config as _load_config, merge_dicts,
+    BadLine, init_config, load_config as _load_config, merge_dicts,
     parse_config_base, python_string, to_bool, to_cmdline
 )
 from .config_data import all_options
 from .constants import cache_dir, defconf, is_macos
 from .options_stub import Options as OptionsStub
 from .options_types import (
-    InvalidMods, env, font_features, parse_mods, parse_shortcut, symbol_map
+    FuncArgsType, KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap,
+    env, font_features, func_with_args, parse_key, parse_key_action,
+    parse_mouse_action, symbol_map
 )
-from .types import MouseEvent, SingleKey
 from .typing import TypedDict
 from .utils import log_error
-
-KeyMap = Dict[SingleKey, 'KeyAction']
-MouseMap = Dict[MouseEvent, 'KeyAction']
-KeySequence = Tuple[SingleKey, ...]
-SubSequenceMap = Dict[KeySequence, 'KeyAction']
-SequenceMap = Dict[SingleKey, SubSequenceMap]
-
-
-class KeyAction(NamedTuple):
-    func: str
-    args: Sequence[str] = ()
-
-
-func_with_args, args_funcs = key_func()
-FuncArgsType = Tuple[str, Sequence[Any]]
 
 
 @func_with_args(
@@ -341,176 +327,6 @@ def mouse_selection(func: str, rest: str) -> FuncArgsType:
     return func, [cmap[rest]]
 
 
-def parse_key_action(action: str) -> Optional[KeyAction]:
-    parts = action.strip().split(maxsplit=1)
-    func = parts[0]
-    if len(parts) == 1:
-        return KeyAction(func, ())
-    rest = parts[1]
-    parser = args_funcs.get(func)
-    if parser is not None:
-        try:
-            func, args = parser(func, rest)
-        except Exception as err:
-            log_error('Ignoring invalid key action: {} with err: {}'.format(action, err))
-        else:
-            return KeyAction(func, args)
-    return None
-
-
-all_key_actions: Set[str] = set()
-sequence_sep = '>'
-
-
-class BaseDefinition:
-    action: KeyAction
-
-    def resolve_kitten_aliases(self, aliases: Dict[str, Sequence[str]]) -> None:
-        if not self.action.args:
-            return
-        kitten = self.action.args[0]
-        rest = self.action.args[1] if len(self.action.args) > 1 else ''
-        changed = False
-        for key, expanded in aliases.items():
-            if key == kitten:
-                changed = True
-                kitten = expanded[0]
-                if len(expanded) > 1:
-                    rest = expanded[1] + ' ' + rest
-        if changed:
-            self.action = self.action._replace(args=[kitten, rest.rstrip()])
-
-
-class MouseMapping(BaseDefinition):
-
-    def __init__(self, button: int, mods: int, repeat_count: int, grabbed: bool, action: KeyAction):
-        self.button = button
-        self.mods = mods
-        self.repeat_count = repeat_count
-        self.grabbed = grabbed
-        self.action = action
-
-    def resolve(self, kitty_mod: int) -> None:
-        self.mods = defines.resolve_key_mods(kitty_mod, self.mods)
-
-    @property
-    def trigger(self) -> MouseEvent:
-        return MouseEvent(self.button, self.mods, self.repeat_count, self.grabbed)
-
-
-class KeyDefinition(BaseDefinition):
-
-    def __init__(self, is_sequence: bool, action: KeyAction, mods: int, is_native: bool, key: int, rest: Tuple[SingleKey, ...] = ()):
-        self.is_sequence = is_sequence
-        self.action = action
-        self.trigger = SingleKey(mods, is_native, key)
-        self.rest = rest
-
-    def resolve(self, kitty_mod: int) -> None:
-
-        def r(k: SingleKey) -> SingleKey:
-            mods = defines.resolve_key_mods(kitty_mod, k.mods)
-            key = k.key
-            is_native = k.is_native
-            return SingleKey(mods, is_native, key)
-
-        self.trigger = r(self.trigger)
-        self.rest = tuple(map(r, self.rest))
-
-
-def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:
-    parts = val.split(maxsplit=1)
-    if len(parts) != 2:
-        return
-    sc, action = parts
-    sc, action = sc.strip().strip(sequence_sep), action.strip()
-    if not sc or not action:
-        return
-    is_sequence = sequence_sep in sc
-    if is_sequence:
-        trigger: Optional[SingleKey] = None
-        restl: List[SingleKey] = []
-        for part in sc.split(sequence_sep):
-            try:
-                mods, is_native, key = parse_shortcut(part)
-            except InvalidMods:
-                return
-            if key == 0:
-                if mods is not None:
-                    log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
-                return
-            if trigger is None:
-                trigger = SingleKey(mods, is_native, key)
-            else:
-                restl.append(SingleKey(mods, is_native, key))
-        rest = tuple(restl)
-    else:
-        try:
-            mods, is_native, key = parse_shortcut(sc)
-        except InvalidMods:
-            return
-        if key == 0:
-            if mods is not None:
-                log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
-            return
-    try:
-        paction = parse_key_action(action)
-    except Exception:
-        log_error('Invalid shortcut action: {}. Ignoring.'.format(
-            action))
-    else:
-        if paction is not None:
-            all_key_actions.add(paction.func)
-            if is_sequence:
-                if trigger is not None:
-                    key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], trigger[2], rest))
-            else:
-                assert key is not None
-                key_definitions.append(KeyDefinition(False, paction, mods, is_native, key))
-
-
-def parse_mouse_action(val: str, mouse_mappings: List[MouseMapping]) -> None:
-    parts = val.split(maxsplit=3)
-    if len(parts) != 4:
-        log_error(f'Ignoring invalid mouse action: {val}')
-        return
-    xbutton, event, modes, action = parts
-    kparts = xbutton.split('+')
-    if len(kparts) > 1:
-        mparts, obutton = kparts[:-1], kparts[-1].lower()
-        mods = parse_mods(mparts, obutton)
-        if mods is None:
-            return
-    else:
-        obutton = parts[0].lower()
-        mods = 0
-    try:
-        b = {'left': 'b1', 'middle': 'b3', 'right': 'b2'}.get(obutton, obutton)[1:]
-        button = getattr(defines, f'GLFW_MOUSE_BUTTON_{b}')
-    except Exception:
-        log_error(f'Mouse button: {xbutton} not recognized, ignoring')
-        return
-    try:
-        count = {'doubleclick': -3, 'click': -2, 'release': -1, 'press': 1, 'doublepress': 2, 'triplepress': 3}[event.lower()]
-    except KeyError:
-        log_error(f'Mouse event type: {event} not recognized, ignoring')
-        return
-    specified_modes = frozenset(modes.lower().split(','))
-    if specified_modes - {'grabbed', 'ungrabbed'}:
-        log_error(f'Mouse modes: {modes} not recognized, ignoring')
-        return
-    try:
-        paction = parse_key_action(action)
-    except Exception:
-        log_error(f'Invalid mouse action: {action}. Ignoring.')
-        return
-    if paction is None:
-        log_error(f'Ignoring unknown mouse action: {action}')
-        return
-    for mode in specified_modes:
-        mouse_mappings.append(MouseMapping(button, mods, count, mode == 'grabbed', paction))
-
-
 def parse_send_text_bytes(text: str) -> bytes:
     return python_string(text).encode('utf-8')
 
@@ -663,10 +479,6 @@ def parse_defaults(lines: Iterable[str], check_keys: bool = False) -> Dict[str, 
 xc = init_config(config_lines(all_options), parse_defaults)
 Options: Type[OptionsStub] = xc[0]
 defaults: OptionsStub = xc[1]
-actions = frozenset(all_key_actions) | frozenset(
-    'run_simple_kitten combine send_text goto_tab goto_layout set_font_size new_tab_with_cwd new_window_with_cwd new_os_window_with_cwd'.
-    split()
-)
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
 
