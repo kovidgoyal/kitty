@@ -489,7 +489,7 @@ class KeyDefinition(BaseDefinition):
         self.rest = tuple(map(r, self.rest))
 
 
-def parse_key(val: str) -> Iterable[KeyDefinition]:
+def parse_map(val: str) -> Iterable[KeyDefinition]:
     parts = val.split(maxsplit=1)
     if len(parts) != 2:
         return
@@ -539,7 +539,7 @@ def parse_key(val: str) -> Iterable[KeyDefinition]:
                 yield KeyDefinition(False, paction, mods, is_native, key)
 
 
-def parse_mouse_action(val: str) -> Iterable[MouseMapping]:
+def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
     parts = val.split(maxsplit=3)
     if len(parts) != 4:
         log_error(f'Ignoring invalid mouse action: {val}')

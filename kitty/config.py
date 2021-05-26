@@ -23,8 +23,8 @@ from .constants import cache_dir, defconf, is_macos
 from .options_stub import Options as OptionsStub
 from .options_types import (
     FuncArgsType, KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap,
-    env, font_features, func_with_args, parse_key, parse_key_action,
-    parse_mouse_action, symbol_map
+    env, font_features, func_with_args, parse_map, parse_key_action,
+    parse_mouse_map, symbol_map
 )
 from .typing import TypedDict
 from .utils import log_error
@@ -343,7 +343,7 @@ def parse_send_text(val: str, key_definitions: List[KeyDefinition]) -> None:
     mode, sc = parts[:2]
     text = ' '.join(parts[2:])
     key_str = '{} send_text {} {}'.format(sc, mode, text)
-    for k in parse_key(key_str):
+    for k in parse_map(key_str):
         key_definitions.append(k)
 
 
@@ -366,13 +366,13 @@ def deprecated_handler(*names: str) -> Callable[[SpecialHandlerFunc], SpecialHan
 
 @special_handler
 def handle_map(key: str, val: str, ans: Dict[str, Any]) -> None:
-    for k in parse_key(val):
+    for k in parse_map(val):
         ans['key_definitions'].append(k)
 
 
 @special_handler
 def handle_mouse_map(key: str, val: str, ans: Dict[str, Any]) -> None:
-    for ma in parse_mouse_action(val):
+    for ma in parse_mouse_map(val):
         ans['mouse_mappings'].append(ma)
 
 
