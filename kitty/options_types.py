@@ -489,7 +489,7 @@ class KeyDefinition(BaseDefinition):
         self.rest = tuple(map(r, self.rest))
 
 
-def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:
+def parse_key(val: str) -> Iterable[KeyDefinition]:
     parts = val.split(maxsplit=1)
     if len(parts) != 2:
         return
@@ -533,13 +533,13 @@ def parse_key(val: str, key_definitions: List[KeyDefinition]) -> None:
         if paction is not None:
             if is_sequence:
                 if trigger is not None:
-                    key_definitions.append(KeyDefinition(True, paction, trigger[0], trigger[1], trigger[2], rest))
+                    yield KeyDefinition(True, paction, trigger[0], trigger[1], trigger[2], rest)
             else:
                 assert key is not None
-                key_definitions.append(KeyDefinition(False, paction, mods, is_native, key))
+                yield KeyDefinition(False, paction, mods, is_native, key)
 
 
-def parse_mouse_action(val: str, mouse_mappings: List[MouseMapping]) -> None:
+def parse_mouse_action(val: str) -> Iterable[MouseMapping]:
     parts = val.split(maxsplit=3)
     if len(parts) != 4:
         log_error(f'Ignoring invalid mouse action: {val}')
@@ -578,4 +578,4 @@ def parse_mouse_action(val: str, mouse_mappings: List[MouseMapping]) -> None:
         log_error(f'Ignoring unknown mouse action: {action}')
         return
     for mode in specified_modes:
-        mouse_mappings.append(MouseMapping(button, mods, count, mode == 'grabbed', paction))
+        yield MouseMapping(button, mods, count, mode == 'grabbed', paction)

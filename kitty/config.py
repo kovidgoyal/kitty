@@ -8,8 +8,8 @@ import re
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
-    Any, Callable, Dict, FrozenSet, Generator, Iterable, List, NamedTuple,
-    Optional, Sequence, Tuple, Type, Union
+    Any, Callable, Dict, FrozenSet, Generator, Iterable, List, Optional,
+    Sequence, Tuple, Type, Union
 )
 
 from . import fast_data_types as defines
@@ -343,7 +343,8 @@ def parse_send_text(val: str, key_definitions: List[KeyDefinition]) -> None:
     mode, sc = parts[:2]
     text = ' '.join(parts[2:])
     key_str = '{} send_text {} {}'.format(sc, mode, text)
-    parse_key(key_str, key_definitions)
+    for k in parse_key(key_str):
+        key_definitions.append(k)
 
 
 SpecialHandlerFunc = Callable[[str, str, Dict[str, Any]], None]
@@ -365,12 +366,14 @@ def deprecated_handler(*names: str) -> Callable[[SpecialHandlerFunc], SpecialHan
 
 @special_handler
 def handle_map(key: str, val: str, ans: Dict[str, Any]) -> None:
-    parse_key(val, ans['key_definitions'])
+    for k in parse_key(val):
+        ans['key_definitions'].append(k)
 
 
 @special_handler
 def handle_mouse_map(key: str, val: str, ans: Dict[str, Any]) -> None:
-    parse_mouse_action(val, ans['mouse_mappings'])
+    for ma in parse_mouse_action(val):
+        ans['mouse_mappings'].append(ma)
 
 
 @special_handler
