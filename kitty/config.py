@@ -105,7 +105,7 @@ def handle_clear_all_shortcuts(key: str, val: str, ans: Dict[str, Any]) -> None:
 @deprecated_handler('x11_hide_window_decorations', 'macos_hide_titlebar')
 def handle_deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
     if not hasattr(handle_deprecated_hide_window_decorations_aliases, key):
-        setattr(handle_deprecated_hide_window_decorations_aliases, 'key', True)
+        setattr(handle_deprecated_hide_window_decorations_aliases, key, True)
         log_error('The option {} is deprecated. Use hide_window_decorations instead.'.format(key))
     if to_bool(val):
         if is_macos and key == 'macos_hide_titlebar' or (not is_macos and key == 'x11_hide_window_decorations'):
