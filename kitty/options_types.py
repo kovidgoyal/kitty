@@ -468,6 +468,9 @@ class MouseMapping(BaseDefinition):
         self.grabbed = grabbed
         self.action = action
 
+    def __repr__(self) -> str:
+        return f'MouseMapping({self.button}, {self.mods}, {self.repeat_count}, {self.grabbed}, {self.action})'
+
     def resolve(self, kitty_mod: int) -> None:
         self.mods = defines.resolve_key_mods(kitty_mod, self.mods)
 
@@ -483,6 +486,9 @@ class KeyDefinition(BaseDefinition):
         self.action = action
         self.trigger = SingleKey(mods, is_native, key)
         self.rest = rest
+
+    def __repr__(self) -> str:
+        return f'KeyDefinition({self.is_sequence}, {self.action}, {self.trigger.mods}, {self.trigger.is_native}, {self.trigger.key}, {self.rest})'
 
     def resolve(self, kitty_mod: int) -> None:
 
