@@ -23,8 +23,8 @@ from .constants import cache_dir, defconf, is_macos
 from .options_stub import Options as OptionsStub
 from .options_types import (
     FuncArgsType, KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap,
-    env, font_features, func_with_args, parse_map, parse_key_action,
-    parse_mouse_map, symbol_map
+    env, font_features, func_with_args, kitten_alias, parse_key_action,
+    parse_map, parse_mouse_map, symbol_map
 )
 from .typing import TypedDict
 from .utils import log_error
@@ -390,9 +390,8 @@ def handle_font_features(key: str, val: str, ans: Dict[str, Any]) -> None:
 
 @special_handler
 def handle_kitten_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
-    parts = val.split(maxsplit=2)
-    if len(parts) >= 2:
-        ans['kitten_aliases'][parts[0]] = parts[1:]
+    for k, v in kitten_alias(val):
+        ans['kitten_alias'][k] = v
 
 
 @special_handler
@@ -457,7 +456,7 @@ def option_names_for_completion() -> Generator[str, None, None]:
 def parse_config(lines: Iterable[str], check_keys: bool = True, accumulate_bad_lines: Optional[List[BadLine]] = None) -> Dict[str, Any]:
     ans: Dict[str, Any] = {
         'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [],
-        'env': {}, 'kitten_aliases': {}, 'font_features': {}, 'mouse_mappings': [],
+        'env': {}, 'kitten_alias': {}, 'font_features': {}, 'mouse_mappings': [],
         'mousemap': {}
     }
     defs: Optional[FrozenSet] = None
@@ -575,11 +574,10 @@ def finalize_keys(opts: OptionsStub) -> None:
             defns = []
         else:
             defns.append(d)
-    kitten_aliases: List[Dict[str, Sequence[str]]] = getattr(opts, 'kitten_aliases')
     for d in defns:
         d.resolve(opts.kitty_mod)
-        if kitten_aliases and d.action.func == 'kitten':
-            d.resolve_kitten_aliases(kitten_aliases)
+        if opts.kitten_alias and d.action.func == 'kitten':
+            d.resolve_kitten_aliases(opts.kitten_alias)
     keymap: KeyMap = {}
     sequence_map: SequenceMap = {}
 
@@ -611,7 +609,7 @@ def finalize_mouse_mappings(opts: OptionsStub) -> None:
             defns = []
         else:
             defns.append(d)
-    kitten_aliases: List[Dict[str, Sequence[str]]] = getattr(opts, 'kitten_aliases')
+    kitten_aliases: List[Dict[str, Sequence[str]]] = getattr(opts, 'kitten_alias')
     for d in defns:
         d.resolve(opts.kitty_mod)
         if kitten_aliases and d.action.func == 'kitten':
@@ -635,7 +633,7 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
     finalize_keys(opts)
     finalize_mouse_mappings(opts)
     # delete no longer needed definitions, replacing with empty placeholders
-    setattr(opts, 'kitten_aliases', {})
+    setattr(opts, 'kitten_alias', {})
     setattr(opts, 'mouse_mappings', [])
     setattr(opts, 'key_definitions', [])
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:

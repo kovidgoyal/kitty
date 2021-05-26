@@ -389,6 +389,13 @@ def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
         yield key, expandvars(val, current_val)
 
 
+def kitten_alias(val: str) -> Iterable[Tuple[str, List[str]]]:
+    parts = val.split(maxsplit=2)
+    if len(parts) >= 2:
+        name = parts.pop(0)
+        yield name, parts
+
+
 def symbol_map(val: str) -> Iterable[Tuple[Tuple[int, int], str]]:
     parts = val.split()
 

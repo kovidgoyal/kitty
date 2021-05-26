@@ -18,12 +18,13 @@ from .options_types import (
     allow_remote_control, box_drawing_scale, clipboard_control,
     config_or_absolute_path, copy_on_select, cursor_text_color,
     default_tab_separator, disable_ligatures, edge_width, env, font_features,
-    hide_window_decorations, macos_option_as_alt, macos_titlebar_color,
-    optional_edge_width, resize_draw_strategy, scrollback_lines,
-    scrollback_pager_history_size, symbol_map, tab_activity_symbol,
-    tab_bar_edge, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
-    tab_title_template, to_cursor_shape, to_font_size, to_layout_names,
-    to_modifiers, url_prefixes, url_style, window_border_width, window_size
+    hide_window_decorations, kitten_alias, macos_option_as_alt,
+    macos_titlebar_color, optional_edge_width, resize_draw_strategy,
+    scrollback_lines, scrollback_pager_history_size, symbol_map,
+    tab_activity_symbol, tab_bar_edge, tab_bar_min_tabs, tab_fade,
+    tab_font_style, tab_separator, tab_title_template, to_cursor_shape,
+    to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
+    window_border_width, window_size
 )
 from .rgb import color_as_sharp, color_from_int
 
@@ -1068,7 +1069,7 @@ o('clear_all_shortcuts', False, long_text=_('''
 You can have kitty remove all shortcut definition seen up to this point. Useful, for
 instance, to remove the default shortcuts.'''))
 
-o('kitten_alias', 'hints hints --hints-offset=0', add_to_default=False, long_text=_('''
+o('+kitten_alias', 'hints hints --hints-offset=0', option_type=kitten_alias, add_to_default=False, long_text=_('''
 You can create aliases for kitten names, this allows overriding the defaults
 for kitten options and can also be used to shorten repeated mappings of the same
 kitten with a specific group of options. For example, the above alias
