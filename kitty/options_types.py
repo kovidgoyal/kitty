@@ -668,6 +668,13 @@ def macos_option_as_alt(x: str) -> int:
     return 0
 
 
+def clear_all_shortcuts(val: str, dict_with_parse_results: Optional[Dict[str, Any]] = None) -> bool:
+    ans = to_bool(val)
+    if ans and dict_with_parse_results is not None:
+        dict_with_parse_results['map'] = [None]
+    return ans
+
+
 def font_features(val: str) -> Iterable[Tuple[str, Tuple[FontFeature, ...]]]:
     if val == 'none':
         return

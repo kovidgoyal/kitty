@@ -15,13 +15,13 @@ from .conf.utils import (
 from .constants import is_macos
 from .options_types import (
     active_tab_title_template, adjust_line_height, allow_hyperlinks,
-    allow_remote_control, box_drawing_scale, clipboard_control,
-    config_or_absolute_path, copy_on_select, cursor_text_color,
-    default_tab_separator, disable_ligatures, edge_width, env, font_features,
-    hide_window_decorations, kitten_alias, macos_option_as_alt,
-    macos_titlebar_color, optional_edge_width, resize_draw_strategy,
-    scrollback_lines, scrollback_pager_history_size, symbol_map,
-    tab_activity_symbol, tab_bar_edge, tab_bar_min_tabs, tab_fade,
+    allow_remote_control, box_drawing_scale, clear_all_shortcuts,
+    clipboard_control, config_or_absolute_path, copy_on_select,
+    cursor_text_color, default_tab_separator, disable_ligatures, edge_width,
+    env, font_features, hide_window_decorations, kitten_alias,
+    macos_option_as_alt, macos_titlebar_color, optional_edge_width,
+    resize_draw_strategy, scrollback_lines, scrollback_pager_history_size,
+    symbol_map, tab_activity_symbol, tab_bar_edge, tab_bar_min_tabs, tab_fade,
     tab_font_style, tab_separator, tab_title_template, to_cursor_shape,
     to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style,
     window_border_width, window_size
@@ -1065,7 +1065,7 @@ The value of :code:`kitty_mod` is used as the modifier for all default shortcuts
 can change it in your kitty.conf to change the modifiers for all the default
 shortcuts.'''))
 
-o('clear_all_shortcuts', False, long_text=_('''
+o('clear_all_shortcuts', False, option_type=clear_all_shortcuts, long_text=_('''
 You can have kitty remove all shortcut definition seen up to this point. Useful, for
 instance, to remove the default shortcuts.'''))
 
