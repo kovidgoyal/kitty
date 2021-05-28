@@ -50,6 +50,11 @@ class KeyAction(NamedTuple):
     func: str
     args: Sequence[str] = ()
 
+    def __repr__(self) -> str:
+        if self.args:
+            return f'KeyAction({self.func!r}, {self.args!r})'
+        return f'KeyAction({self.func!r})'
+
 
 class InvalidMods(ValueError):
     pass
