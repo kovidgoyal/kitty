@@ -7,7 +7,7 @@ import sys
 from typing import Generator, List, Optional, Sequence, Union
 
 from .cli_stub import CLIOptions
-from .options_types import to_layout_names, window_size
+from .options.utils import to_layout_names, window_size
 from .constants import kitty_exe
 from .layout.interface import all_layouts
 from .options_stub import Options

@@ -38,7 +38,7 @@ from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
 from .notify import notification_activated
 from .options_stub import Options
-from .options_types import MINIMUM_FONT_SIZE, KeyAction, SubSequenceMap
+from .options.utils import MINIMUM_FONT_SIZE, KeyAction, SubSequenceMap
 from .os_window_size import initial_window_size_func
 from .rgb import Color, color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data

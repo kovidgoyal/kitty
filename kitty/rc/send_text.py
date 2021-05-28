@@ -7,7 +7,7 @@ import os
 import sys
 from typing import TYPE_CHECKING, Dict, Generator, List, Optional
 
-from kitty.config import parse_send_text_bytes
+from kitty.options.utils import parse_send_text_bytes
 from kitty.key_encoding import decode_key_event_as_window_system_key
 from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent
 

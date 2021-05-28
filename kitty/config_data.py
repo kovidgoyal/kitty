@@ -13,7 +13,7 @@ from .conf.utils import (
     to_color_or_none, unit_float
 )
 from .constants import is_macos
-from .options_types import (
+from .options.utils import (
     active_tab_title_template, adjust_line_height, allow_hyperlinks,
     allow_remote_control, box_drawing_scale, clear_all_shortcuts,
     clipboard_control, config_or_absolute_path, copy_on_select,

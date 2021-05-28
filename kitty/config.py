@@ -19,7 +19,7 @@ from .conf.utils import (
 from .config_data import all_options
 from .constants import cache_dir, defconf, is_macos
 from .options_stub import Options as OptionsStub
-from .options_types import (
+from .options.utils import (
     KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, env,
     font_features, kitten_alias, parse_map, parse_mouse_map, symbol_map
 )

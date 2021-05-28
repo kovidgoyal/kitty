@@ -13,7 +13,7 @@ from typing import (
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
-from .options_types import KeyAction, MouseMap
+from .options.utils import KeyAction, MouseMap
 from .constants import appname, defconf, is_macos, is_wayland, str_version
 from .options_stub import Options as OptionsStub
 from .types import MouseEvent, SingleKey

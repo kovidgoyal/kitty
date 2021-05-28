@@ -14,20 +14,20 @@ from typing import (
 import kitty.fast_data_types as defines
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 
-from .conf.utils import (
+from kitty.conf.utils import (
     key_func, positive_float, positive_int, python_string, to_bool, to_cmdline,
     to_color, uniq, unit_float
 )
-from .constants import config_dir
-from .fonts import FontFeature
-from .key_names import (
+from kitty.constants import config_dir
+from kitty.fonts import FontFeature
+from kitty.key_names import (
     character_key_name_aliases, functional_key_name_aliases,
     get_key_name_lookup
 )
-from .layout.interface import all_layouts
-from .rgb import Color, color_as_int
-from .types import FloatEdges, MouseEvent, SingleKey
-from .utils import expandvars, log_error
+from kitty.layout.interface import all_layouts
+from kitty.rgb import Color, color_as_int
+from kitty.types import FloatEdges, MouseEvent, SingleKey
+from kitty.utils import expandvars, log_error
 
 KeyMap = Dict[SingleKey, 'KeyAction']
 MouseMap = Dict[MouseEvent, 'KeyAction']

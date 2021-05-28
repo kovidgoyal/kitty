@@ -24,7 +24,7 @@ from .fast_data_types import (
 )
 from .key_encoding import KeyEvent as KeyEventType
 from .layout.base import Layout as LayoutType
-from .options_types import (
+from .options.utils import (
     KeyAction as KeyActionType, KeyMap as KeyMap, SequenceMap as SequenceMap
 )
 from .rc.base import RemoteCommand as RemoteCommandType
