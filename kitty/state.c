@@ -584,10 +584,8 @@ parse_ms_long_to_monotonic_t(PyObject *val) {
     return ms_to_monotonic_t(PyLong_AsUnsignedLong(val));
 }
 
-static int kitty_mod = 0;
-
 static inline int
-resolve_mods(int mods) {
+resolve_mods(int kitty_mod, int mods) {
     if (mods & GLFW_MOD_KITTY) {
         mods = (mods & ~GLFW_MOD_KITTY) | kitty_mod;
     }
@@ -723,7 +721,6 @@ PYWRAP1(set_options) {
 #define GA(name) ret = PyObject_GetAttrString(opts, #name); if (ret == NULL) return NULL;
 #define SS(name, dest, convert) { GA(name); dest = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
 #define S(name, convert) SS(name, OPT(name), convert)
-    SS(kitty_mod, kitty_mod, PyLong_AsLong);
     S(hide_window_decorations, PyLong_AsUnsignedLong);
     S(visual_bell_duration, parse_s_double_to_monotonic_t);
     S(enable_audio_bell, PyObject_IsTrue);
@@ -1206,7 +1203,7 @@ THREE_ID(remove_window)
 THREE_ID(click_mouse_url)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
-PYWRAP1(resolve_key_mods) { int mods; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(mods)); }
+PYWRAP1(resolve_key_mods) { int mods, kitty_mod; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(kitty_mod, mods)); }
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
 PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); return PyLong_FromUnsignedLongLong(add_window(a, b, title)); }
 PYWRAP0(current_os_window) { OSWindow *w = current_os_window(); if (!w) Py_RETURN_NONE; return PyLong_FromUnsignedLongLong(w->id); }
