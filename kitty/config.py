@@ -8,7 +8,7 @@ from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
     Any, Callable, Dict, FrozenSet, Generator, Iterable, List, Optional,
-    Sequence, Tuple, Type
+    Tuple, Type
 )
 
 from .conf.definition import as_conf_file, config_lines
