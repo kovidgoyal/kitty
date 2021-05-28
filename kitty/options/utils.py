@@ -48,7 +48,7 @@ FuncArgsType = Tuple[str, Sequence[Any]]
 
 class KeyAction(NamedTuple):
     func: str
-    args: Sequence[str] = ()
+    args: Tuple[Union[str, float, bool, int, None], ...] = ()
 
     def __repr__(self) -> str:
         if self.args:
@@ -753,7 +753,7 @@ def parse_key_action(action: str, action_type: str = 'map') -> Optional[KeyActio
         except Exception as err:
             log_error(f'Ignoring invalid {action_type} action: {action} with err: {err}')
         else:
-            return KeyAction(func, args)
+            return KeyAction(func, tuple(args))
     else:
         log_error(f'Ignoring unknown {action_type} action: {action}')
     return None
@@ -766,7 +766,7 @@ class BaseDefinition:
         if not self.action.args:
             return
         kitten = self.action.args[0]
-        rest = self.action.args[1] if len(self.action.args) > 1 else ''
+        rest = str(self.action.args[1] if len(self.action.args) > 1 else '')
         changed = False
         for key, expanded in aliases.items():
             if key == kitten:
@@ -775,7 +775,7 @@ class BaseDefinition:
                 if len(expanded) > 1:
                     rest = expanded[1] + ' ' + rest
         if changed:
-            self.action = self.action._replace(args=[kitten, rest.rstrip()])
+            self.action = self.action._replace(args=(kitten, rest.rstrip()))
 
 
 class MouseMapping(BaseDefinition):

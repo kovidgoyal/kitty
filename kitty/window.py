@@ -1016,7 +1016,7 @@ class Window:
         self.current_marker_spec = key
 
     def set_marker(self, spec: Union[str, Sequence[str]]) -> None:
-        from .config import parse_marker_spec, toggle_marker
+        from .options.utils import parse_marker_spec, toggle_marker
         from .marks import marker_from_spec
         if isinstance(spec, str):
             func, (ftype, spec_, flags) = toggle_marker('toggle_marker', spec)
