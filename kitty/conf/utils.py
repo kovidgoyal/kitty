@@ -102,7 +102,7 @@ class Choice:
     def __call__(self, x: str) -> str:
         x = x.lower()
         if x not in self.all_choices:
-            x = self.defval
+            raise ValueError(f'The value {x} is not a known choice')
         return x
 
 
