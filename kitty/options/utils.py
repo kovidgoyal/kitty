@@ -762,9 +762,9 @@ def parse_key_action(action: str, action_type: str = 'map') -> Optional[KeyActio
 class BaseDefinition:
     action: KeyAction
 
-    def resolve_kitten_aliases(self, aliases: Dict[str, Sequence[str]]) -> None:
-        if not self.action.args:
-            return
+    def resolve_kitten_aliases(self, aliases: Dict[str, Sequence[str]]) -> KeyAction:
+        if not self.action.args or not aliases:
+            return self.action
         kitten = self.action.args[0]
         rest = str(self.action.args[1] if len(self.action.args) > 1 else '')
         changed = False
@@ -774,8 +774,7 @@ class BaseDefinition:
                 kitten = expanded[0]
                 if len(expanded) > 1:
                     rest = expanded[1] + ' ' + rest
-        if changed:
-            self.action = self.action._replace(args=(kitten, rest.rstrip()))
+        return self.action._replace(args=(kitten, rest.rstrip())) if changed else self.action
 
 
 class MouseMapping(BaseDefinition):
@@ -790,8 +789,8 @@ class MouseMapping(BaseDefinition):
     def __repr__(self) -> str:
         return f'MouseMapping({self.button}, {self.mods}, {self.repeat_count}, {self.grabbed}, {self.action})'
 
-    def resolve(self, kitty_mod: int) -> None:
-        self.mods = defines.resolve_key_mods(kitty_mod, self.mods)
+    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, Sequence[str]]) -> 'MouseMapping':
+        return MouseMapping(self.button, defines.resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed, self.resolve_kitten_aliases(aliases))
 
     @property
     def trigger(self) -> MouseEvent:
@@ -809,16 +808,14 @@ class KeyDefinition(BaseDefinition):
     def __repr__(self) -> str:
         return f'KeyDefinition({self.is_sequence}, {self.action}, {self.trigger.mods}, {self.trigger.is_native}, {self.trigger.key}, {self.rest})'
 
-    def resolve(self, kitty_mod: int) -> None:
-
+    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, Sequence[str]]) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
             mods = defines.resolve_key_mods(kitty_mod, k.mods)
-            key = k.key
-            is_native = k.is_native
-            return SingleKey(mods, is_native, key)
-
-        self.trigger = r(self.trigger)
-        self.rest = tuple(map(r, self.rest))
+            return k._replace(mods=mods)
+        return KeyDefinition(
+            self.is_sequence, self.resolve_kitten_aliases(aliases),
+            defines.resolve_key_mods(kitty_mod, self.trigger.mods),
+            self.trigger.is_native, self.trigger.key, tuple(map(r, self.rest)))
 
 
 def parse_map(val: str) -> Iterable[KeyDefinition]:

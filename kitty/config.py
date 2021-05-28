@@ -269,11 +269,7 @@ def finalize_keys(opts: OptionsStub) -> None:
         if d is None:  # clear_all_shortcuts
             defns = []
         else:
-            defns.append(d)
-    for d in defns:
-        d.resolve(opts.kitty_mod)
-        if opts.kitten_alias and d.action.func == 'kitten':
-            d.resolve_kitten_aliases(opts.kitten_alias)
+            defns.append(d.resolve_and_copy(opts.kitty_mod, opts.kitten_alias))
     keymap: KeyMap = {}
     sequence_map: SequenceMap = {}
 
@@ -304,12 +300,7 @@ def finalize_mouse_mappings(opts: OptionsStub) -> None:
         if d is None:  # clear_all_shortcuts
             defns = []
         else:
-            defns.append(d)
-    kitten_aliases: List[Dict[str, Sequence[str]]] = getattr(opts, 'kitten_alias')
-    for d in defns:
-        d.resolve(opts.kitty_mod)
-        if kitten_aliases and d.action.func == 'kitten':
-            d.resolve_kitten_aliases(kitten_aliases)
+            defns.append(d.resolve_and_copy(opts.kitty_mod, opts.kitten_alias))
 
     mousemap: MouseMap = {}
     for defn in defns:
