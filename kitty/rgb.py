@@ -12,6 +12,16 @@ class Color(NamedTuple):
     green: int
     blue: int
 
+    def luminance(self) -> float:
+        return 0.299 * self.red + 0.587 * self.green + 0.114 * self.blue
+
+    def contrast(self, other: 'Color') -> float:
+        a = self.luminance()
+        b = other.luminance()
+        if a < b:
+            a, b = b, a
+        return (a + 0.05) / (b + 0.05)
+
 
 def alpha_blend_channel(top_color: int, bottom_color: int, alpha: float) -> int:
     return int(alpha * top_color + (1 - alpha) * bottom_color)

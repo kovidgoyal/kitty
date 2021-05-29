@@ -234,6 +234,15 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
             screen.cursor.bg = inactive_bg
         screen.draw(separator_symbol)
     else:
+        if tab_bg == default_bg:
+            pass
+        elif tab_bg == tab_fg:
+            screen.cursor.fg = default_bg
+        else:
+            c1 = draw_data.inactive_bg.contrast(draw_data.default_bg)
+            c2 = draw_data.inactive_bg.contrast(draw_data.inactive_fg)
+            if c1 < c2:
+                screen.cursor.fg = default_bg
         screen.draw(f' {separator_alt_symbol}')
 
     end = screen.cursor.x
