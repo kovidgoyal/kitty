@@ -21,6 +21,8 @@
 #import <Foundation/NSString.h>
 #import <Foundation/NSDictionary.h>
 
+#define debug(...) if (global_state.debug_rendering) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
+
 typedef struct {
     PyObject_HEAD
 
@@ -339,9 +341,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
         }
     }
     *cell_width = MAX(1u, width);
-    *underline_position = (unsigned int)floor(self->ascent - self->underline_position + 0.5);
     *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
-    *baseline = (unsigned int)self->ascent;
     *strikethrough_position = (unsigned int)floor(*baseline * 0.65);
     *strikethrough_thickness = *underline_thickness;
     // float line_height = MAX(1, floor(self->ascent + self->descent + MAX(0, self->leading) + 0.5));
@@ -361,8 +361,30 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     CTFrameGetLineOrigins(test_frame, CFRangeMake(0, 1), &origin1);
     CTFrameGetLineOrigins(test_frame, CFRangeMake(1, 1), &origin2);
     CGFloat line_height = origin1.y - origin2.y;
-    CFRelease(test_frame); CFRelease(path); CFRelease(framesetter);
+    CFArrayRef lines = CTFrameGetLines(test_frame);
+    CTLineRef line = CFArrayGetValueAtIndex(lines, 0);
+    CGRect bounds = CTLineGetBoundsWithOptions(line, 0);
+    CGRect bounds_without_leading = CTLineGetBoundsWithOptions(line, kCTLineBoundsExcludeTypographicLeading);
+    CGFloat typographic_ascent, typographic_descent, typographic_leading;
+    CTLineGetTypographicBounds(line, &typographic_ascent, &typographic_descent, &typographic_leading);
+    CGFloat bounds_ascent = bounds_without_leading.size.height + bounds_without_leading.origin.y;
+    *baseline = (unsigned int)floor(bounds_ascent + 0.5);
     *cell_height = MAX(4u, (unsigned int)ceilf(line_height));
+    // Not sure if we should add this to bounds ascent and then round it or add
+    // it to already rounded baseline and round again.
+    *underline_position = (unsigned int)floor(bounds_ascent - self->underline_position + 0.5);
+
+    debug("Cell height calculation:\n");
+    debug("\tline height from line origins: %f\n", line_height);
+    debug("\tline bounds: origin-y: %f height: %f\n", bounds.origin.y, bounds.size.height);
+    debug("\tline bounds-no-leading: origin-y: %f height: %f\n", bounds.origin.y, bounds.size.height);
+    debug("\tbounds metrics: ascent: %f", bounds_ascent);
+    debug("\tline metrics: ascent: %f descent: %f leading: %f\n", typographic_ascent, typographic_descent, typographic_leading);
+    debug("\tfont metrics: ascent: %f descent: %f leading: %f underline_position: %f\n", self->ascent, self->descent, self->leading, self->underline_position);
+    debug("\tcell_height: %u baseline: %u underline_position: %u\n", *cell_height, *baseline, *underline_position);
+
+    CFRelease(test_frame); CFRelease(path); CFRelease(framesetter);
+
 #undef count
 }
 

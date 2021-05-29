@@ -43,6 +43,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Add a new ``Shell`` menu to the global menubar with some commonly used
   actions (:pull:`3653`)
 
+- macOS: Fix the baseline for text not matching other CoreText based
+  applications for some fonts (:iss:`2022`)
+
 - Add a few more special commandline arguments for the launch command. Now all
   ``KITTY_PIPE_DATA`` is also available via command line argument substitution
   (:iss:`3593`)
