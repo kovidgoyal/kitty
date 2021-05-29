@@ -4,9 +4,17 @@
 
 
 from . import BaseTest
+from kitty.utils import log_error
 
 
 class TestConfParsing(BaseTest):
+
+    def setUp(self):
+        self.error_messages = []
+        log_error.redirect = self.error_messages.append
+
+    def tearDown(self):
+        del log_error.redirect
 
     def test_conf_parsing(self):
         from kitty.config import load_config, defaults
@@ -16,6 +24,7 @@ class TestConfParsing(BaseTest):
 
         def p(*lines, bad_line_num=0):
             del bad_lines[:]
+            del self.error_messages[:]
             ans = load_config(overrides=lines, accumulate_bad_lines=bad_lines)
             self.ae(len(bad_lines), bad_line_num)
             return ans
@@ -44,3 +53,9 @@ class TestConfParsing(BaseTest):
         opts = p('kitty_mod alt')
         self.ae(opts.kitty_mod, to_modifiers('alt'))
         self.ae(next(keys_for_func(opts, 'next_layout')).mods, opts.kitty_mod)
+        # deprecation handling
+        opts = p('clear_all_shortcuts y', 'send_text all f1 hello')
+        self.ae(len(opts.keymap), 1)
+        opts = p('x11_hide_window_decorations y')
+        self.assertTrue(opts.hide_window_decorations)
+        self.ae(len(self.error_messages), 1)

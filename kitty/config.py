@@ -7,8 +7,8 @@ import os
 from contextlib import contextmanager, suppress
 from functools import partial
 from typing import (
-    Any, Callable, Dict, FrozenSet, Generator, Iterable, List, Optional,
-    Tuple, Type
+    Any, Callable, Dict, FrozenSet, Generator, Iterable, List, Optional, Tuple,
+    Type
 )
 
 from .conf.definition import as_conf_file, config_lines
@@ -17,31 +17,16 @@ from .conf.utils import (
     parse_config_base, to_bool
 )
 from .config_data import all_options
-from .constants import cache_dir, defconf, is_macos
-from .options_stub import Options as OptionsStub
+from .constants import cache_dir, defconf
 from .options.utils import (
-    KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, env,
-    font_features, kitten_alias, parse_map, parse_mouse_map, symbol_map
+    KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap,
+    deprecated_hide_window_decorations_aliases,
+    deprecated_macos_show_window_title_in_menubar_alias, env, font_features,
+    kitten_alias, parse_map, parse_mouse_map, parse_send_text, symbol_map
 )
+from .options_stub import Options as OptionsStub
 from .typing import TypedDict
 from .utils import log_error
-
-
-def parse_send_text(val: str, key_definitions: List[KeyDefinition]) -> None:
-    parts = val.split(' ')
-
-    def abort(msg: str) -> None:
-        log_error('Send text: {} is invalid ({}), ignoring'.format(
-            val, msg))
-
-    if len(parts) < 3:
-        return abort('Incomplete')
-    mode, sc = parts[:2]
-    text = ' '.join(parts[2:])
-    key_str = '{} send_text {} {}'.format(sc, mode, text)
-    for k in parse_map(key_str):
-        key_definitions.append(k)
-
 
 SpecialHandlerFunc = Callable[[str, str, Dict[str, Any]], None]
 special_handlers: Dict[str, SpecialHandlerFunc] = {}
@@ -93,7 +78,7 @@ def handle_kitten_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
 @special_handler
 def handle_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
     # For legacy compatibility
-    parse_send_text(val, ans['key_definitions'])
+    parse_send_text(val, ans)
 
 
 @special_handler
@@ -104,31 +89,12 @@ def handle_clear_all_shortcuts(key: str, val: str, ans: Dict[str, Any]) -> None:
 
 @deprecated_handler('x11_hide_window_decorations', 'macos_hide_titlebar')
 def handle_deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
-    if not hasattr(handle_deprecated_hide_window_decorations_aliases, key):
-        setattr(handle_deprecated_hide_window_decorations_aliases, key, True)
-        log_error('The option {} is deprecated. Use hide_window_decorations instead.'.format(key))
-    if to_bool(val):
-        if is_macos and key == 'macos_hide_titlebar' or (not is_macos and key == 'x11_hide_window_decorations'):
-            ans['hide_window_decorations'] = True
+    deprecated_hide_window_decorations_aliases(key, val, ans)
 
 
 @deprecated_handler('macos_show_window_title_in_menubar')
 def handle_deprecated_macos_show_window_title_in_menubar_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
-    if not hasattr(handle_deprecated_macos_show_window_title_in_menubar_alias, key):
-        setattr(handle_deprecated_macos_show_window_title_in_menubar_alias, 'key', True)
-        log_error('The option {} is deprecated. Use macos_show_window_title_in menubar instead.'.format(key))
-    macos_show_window_title_in = ans.get('macos_show_window_title_in', 'all')
-    if to_bool(val):
-        if macos_show_window_title_in == 'none':
-            macos_show_window_title_in = 'menubar'
-        elif macos_show_window_title_in == 'window':
-            macos_show_window_title_in = 'all'
-    else:
-        if macos_show_window_title_in == 'all':
-            macos_show_window_title_in = 'window'
-        elif macos_show_window_title_in == 'menubar':
-            macos_show_window_title_in = 'none'
-    ans['macos_show_window_title_in'] = macos_show_window_title_in
+    deprecated_macos_show_window_title_in_menubar_alias(key, val, ans)
 
 
 @special_handler

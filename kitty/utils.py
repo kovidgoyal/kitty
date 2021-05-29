@@ -72,9 +72,10 @@ def safe_print(*a: Any, **k: Any) -> None:
 
 def log_error(*a: Any, **k: str) -> None:
     from .fast_data_types import log_error_string
+    output = getattr(log_error, 'redirect', log_error_string)
     with suppress(Exception):
-        msg = k.get('sep', ' ').join(map(str, a)) + k.get('end', '')
-        log_error_string(msg.replace('\0', ''))
+        msg = k.get('sep', ' ').join(map(str, a)) + k.get('end', '').replace('\0', '')
+        output(msg)
 
 
 def ceil_int(x: float) -> int:

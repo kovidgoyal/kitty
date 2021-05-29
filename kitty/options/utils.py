@@ -18,7 +18,7 @@ from kitty.conf.utils import (
     key_func, positive_float, positive_int, python_string, to_bool, to_cmdline,
     to_color, uniq, unit_float
 )
-from kitty.constants import config_dir
+from kitty.constants import config_dir, is_macos
 from kitty.fonts import FontFeature
 from kitty.key_names import (
     character_key_name_aliases, functional_key_name_aliases,
@@ -907,3 +907,46 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
         return
     for mode in specified_modes:
         yield MouseMapping(button, mods, count, mode == 'grabbed', paction)
+
+
+def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
+    if not hasattr(deprecated_hide_window_decorations_aliases, key):
+        setattr(deprecated_hide_window_decorations_aliases, key, True)
+        log_error('The option {} is deprecated. Use hide_window_decorations instead.'.format(key))
+    if to_bool(val):
+        if is_macos and key == 'macos_hide_titlebar' or (not is_macos and key == 'x11_hide_window_decorations'):
+            ans['hide_window_decorations'] = True
+
+
+def deprecated_macos_show_window_title_in_menubar_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
+    if not hasattr(deprecated_macos_show_window_title_in_menubar_alias, key):
+        setattr(deprecated_macos_show_window_title_in_menubar_alias, 'key', True)
+        log_error('The option {} is deprecated. Use macos_show_window_title_in menubar instead.'.format(key))
+    macos_show_window_title_in = ans.get('macos_show_window_title_in', 'all')
+    if to_bool(val):
+        if macos_show_window_title_in == 'none':
+            macos_show_window_title_in = 'menubar'
+        elif macos_show_window_title_in == 'window':
+            macos_show_window_title_in = 'all'
+    else:
+        if macos_show_window_title_in == 'all':
+            macos_show_window_title_in = 'window'
+        elif macos_show_window_title_in == 'menubar':
+            macos_show_window_title_in = 'none'
+    ans['macos_show_window_title_in'] = macos_show_window_title_in
+
+
+def parse_send_text(val: str, ans: Dict[str, Any]) -> None:
+    parts = val.split(' ')
+
+    def abort(msg: str) -> None:
+        log_error('Send text: {} is invalid ({}), ignoring'.format(
+            val, msg))
+
+    if len(parts) < 3:
+        return abort('Incomplete')
+    mode, sc = parts[:2]
+    text = ' '.join(parts[2:])
+    key_str = '{} send_text {} {}'.format(sc, mode, text)
+    for k in parse_map(key_str):
+        ans['key_definitions'].append(k)
