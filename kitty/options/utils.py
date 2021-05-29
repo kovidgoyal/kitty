@@ -936,7 +936,7 @@ def deprecated_macos_show_window_title_in_menubar_alias(key: str, val: str, ans:
     ans['macos_show_window_title_in'] = macos_show_window_title_in
 
 
-def parse_send_text(val: str, ans: Dict[str, Any]) -> None:
+def deprecated_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
     parts = val.split(' ')
 
     def abort(msg: str) -> None:

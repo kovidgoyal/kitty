@@ -21,8 +21,8 @@ from .constants import cache_dir, defconf
 from .options.utils import (
     KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap,
     deprecated_hide_window_decorations_aliases,
-    deprecated_macos_show_window_title_in_menubar_alias, env, font_features,
-    kitten_alias, parse_map, parse_mouse_map, parse_send_text, symbol_map
+    deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text,
+    env, font_features, kitten_alias, parse_map, parse_mouse_map, symbol_map
 )
 from .options_stub import Options as OptionsStub
 from .typing import TypedDict
@@ -78,7 +78,7 @@ def handle_kitten_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
 @special_handler
 def handle_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
     # For legacy compatibility
-    parse_send_text(val, ans)
+    deprecated_send_text(key, val, ans)
 
 
 @special_handler
