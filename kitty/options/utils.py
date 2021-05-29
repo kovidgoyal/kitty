@@ -949,4 +949,4 @@ def deprecated_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
     text = ' '.join(parts[2:])
     key_str = '{} send_text {} {}'.format(sc, mode, text)
     for k in parse_map(key_str):
-        ans['key_definitions'].append(k)
+        ans['map'].append(k)

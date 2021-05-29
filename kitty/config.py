@@ -48,13 +48,13 @@ def deprecated_handler(*names: str) -> Callable[[SpecialHandlerFunc], SpecialHan
 @special_handler
 def handle_map(key: str, val: str, ans: Dict[str, Any]) -> None:
     for k in parse_map(val):
-        ans['key_definitions'].append(k)
+        ans['map'].append(k)
 
 
 @special_handler
 def handle_mouse_map(key: str, val: str, ans: Dict[str, Any]) -> None:
     for ma in parse_mouse_map(val):
-        ans['mouse_mappings'].append(ma)
+        ans['mouse_map'].append(ma)
 
 
 @special_handler
@@ -84,7 +84,7 @@ def handle_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
 @special_handler
 def handle_clear_all_shortcuts(key: str, val: str, ans: Dict[str, Any]) -> None:
     if to_bool(val):
-        ans['key_definitions'] = [None]
+        ans['map'] = [None]
 
 
 @deprecated_handler('x11_hide_window_decorations', 'macos_hide_titlebar')
@@ -117,8 +117,8 @@ def option_names_for_completion() -> Generator[str, None, None]:
 
 def parse_config(lines: Iterable[str], check_keys: bool = True, accumulate_bad_lines: Optional[List[BadLine]] = None) -> Dict[str, Any]:
     ans: Dict[str, Any] = {
-        'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'key_definitions': [],
-        'env': {}, 'kitten_alias': {}, 'font_features': {}, 'mouse_mappings': [],
+        'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'map': [],
+        'env': {}, 'kitten_alias': {}, 'font_features': {}, 'mouse_map': [],
         'mousemap': {}
     }
     defs: Optional[FrozenSet] = None
@@ -152,7 +152,7 @@ def merge_configs(defaults: Dict, vals: Dict) -> Dict:
         if isinstance(v, dict):
             newvals = vals.get(k, {})
             ans[k] = merge_dicts(v, newvals)
-        elif k in ('key_definitions', 'mouse_mappings'):
+        elif k in ('map', 'mouse_map'):
             ans[k] = v + vals.get(k, [])
         else:
             ans[k] = vals.get(k, v)
@@ -231,7 +231,7 @@ def prepare_config_file_for_editing() -> str:
 
 def finalize_keys(opts: OptionsStub) -> None:
     defns: List[KeyDefinition] = []
-    for d in getattr(opts, 'key_definitions'):
+    for d in getattr(opts, 'map'):
         if d is None:  # clear_all_shortcuts
             defns = []
         else:
@@ -262,7 +262,7 @@ def finalize_keys(opts: OptionsStub) -> None:
 
 def finalize_mouse_mappings(opts: OptionsStub) -> None:
     defns: List[MouseMapping] = []
-    for d in getattr(opts, 'mouse_mappings'):
+    for d in getattr(opts, 'mouse_map'):
         if d is None:  # clear_all_shortcuts
             defns = []
         else:
@@ -287,8 +287,8 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
     finalize_mouse_mappings(opts)
     # delete no longer needed definitions, replacing with empty placeholders
     setattr(opts, 'kitten_alias', {})
-    setattr(opts, 'mouse_mappings', [])
-    setattr(opts, 'key_definitions', [])
+    setattr(opts, 'mouse_map', [])
+    setattr(opts, 'map', [])
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
         log_error('Cannot use both macos_titlebar_color and background_opacity')
         opts.macos_titlebar_color = 0

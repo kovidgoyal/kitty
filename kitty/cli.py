@@ -840,7 +840,7 @@ def compare_opts(opts: OptionsStub) -> None:
     from .config import defaults, load_config
     print('\nConfig options different from defaults:')
     default_opts = load_config()
-    ignored = ('key_definitions', 'keymap', 'sequence_map', 'mousemap', 'mouse_mappings')
+    ignored = ('keymap', 'sequence_map', 'mousemap', 'map', 'mouse_map')
     changed_opts = [
         f for f in sorted(defaults._fields)  # type: ignore
         if f not in ignored and getattr(opts, f) != getattr(defaults, f)
