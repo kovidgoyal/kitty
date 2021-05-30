@@ -80,7 +80,7 @@ def cached_values_for(name: str) -> Generator[Dict, None, None]:
 
 def commented_out_default_config() -> str:
     from .options.definition import definition
-    return definition.as_conf(commented=True)
+    return '\n'.join(definition.as_conf(commented=True))
 
 
 def prepare_config_file_for_editing() -> str:

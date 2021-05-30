@@ -3,10 +3,12 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import builtins
+import re
 import typing
 from importlib import import_module
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+    Any, Callable, Dict, Iterable, Iterator, List, Match, Optional, Tuple,
+    Union, cast
 )
 
 import kitty.conf.utils as generic_parsers
@@ -25,6 +27,64 @@ class Unset:
 unset = Unset()
 
 
+def remove_markup(text: str) -> str:
+
+    def sub(m: Match) -> str:
+        if m.group(1) == 'ref':
+            return {
+                'layouts': 'https://sw.kovidgoyal.net/kitty/index.html#layouts',
+                'sessions': 'https://sw.kovidgoyal.net/kitty/index.html#sessions',
+                'functional': 'https://sw.kovidgoyal.net/kitty/keyboard-protocol.html#functional-key-definitions',
+            }[m.group(2)]
+        return str(m.group(2))
+
+    return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)
+
+
+def iter_blocks(lines: Iterable[str]) -> Iterator[Tuple[List[str], int]]:
+    current_block: List[str] = []
+    prev_indent = 0
+    for line in lines:
+        indent_size = len(line) - len(line.lstrip())
+        if indent_size != prev_indent or not line:
+            if current_block:
+                yield current_block, prev_indent
+            current_block = []
+        prev_indent = indent_size
+        if not line:
+            yield [''], 100
+        else:
+            current_block.append(line)
+    if current_block:
+        yield current_block, indent_size
+
+
+def wrapped_block(lines: Iterable[str]) -> Iterator[str]:
+    wrapper = getattr(wrapped_block, 'wrapper', None)
+    if wrapper is None:
+        import textwrap
+        wrapper = textwrap.TextWrapper(
+            initial_indent='#: ', subsequent_indent='#: ', width=70, break_long_words=False
+        )
+        setattr(wrapped_block, 'wrapper', wrapper)
+    for block, indent_size in iter_blocks(lines):
+        if indent_size > 0:
+            for line in block:
+                if not line:
+                    yield line
+                else:
+                    yield '#: ' + line
+        else:
+            for line in wrapper.wrap('\n'.join(block)):
+                yield line
+
+
+def render_block(text: str) -> str:
+    text = remove_markup(text)
+    lines = text.splitlines()
+    return '\n'.join(wrapped_block(lines))
+
+
 class Option:
 
     def __init__(
@@ -39,6 +99,28 @@ class Option:
         self.group = group
         self.parser_func = parser_func
         self.choices = choices
+
+    @property
+    def needs_coalescing(self) -> bool:
+        return self.documented and not self.long_text
+
+    def as_conf(self, commented: bool = False, level: int = 0, option_group: List['Option'] = []) -> List[str]:
+        ans: List[str] = []
+        a = ans.append
+        if not self.documented:
+            return ans
+        if option_group:
+            sz = max(len(self.name), max(len(o.name) for o in option_group))
+            a(f'{self.name.ljust(sz)} {self.defval_as_string}')
+            for o in option_group:
+                a(f'{o.name.ljust(sz)} {o.defval_as_string}')
+        else:
+            a(f'{self.name} {self.defval_as_string}')
+        if self.long_text:
+            a('')
+            a(render_block(self.long_text))
+            a('')
+        return ans
 
 
 class MultiVal:
@@ -65,8 +147,43 @@ class MultiOption:
     def __iter__(self) -> Iterator[MultiVal]:
         yield from self.items
 
+    def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
+        ans: List[str] = []
+        a = ans.append
+        for k in self.items:
+            if k.documented:
+                prefix = '' if k.add_to_default else '# '
+                a(f'{prefix}{self.name} {k.defval_as_str}')
+        if self.long_text:
+            a('')
+            a(render_block(self.long_text))
+            a('')
+        return ans
 
-class ShortcutMapping:
+
+class Mapping:
+    add_to_default: bool
+    long_text: str
+    documented: bool
+    setting_name: str
+
+    @property
+    def parseable_text(self) -> str:
+        return ''
+
+    def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
+        ans: List[str] = []
+        if self.documented:
+            a = ans.append
+            if self.add_to_default:
+                a(self.setting_name + ' ' + self.parseable_text)
+            if self.long_text:
+                a(''), a(render_block(self.long_text.strip())), a('')
+        return ans
+
+
+class ShortcutMapping(Mapping):
+    setting_name: str = 'map'
 
     def __init__(
         self, name: str, key: str, action_def: str, short_text: str, long_text: str, add_to_default: bool, documented: bool, group: 'Group', only: Only
@@ -86,7 +203,8 @@ class ShortcutMapping:
         return f'{self.key} {self.action_def}'
 
 
-class MouseMapping:
+class MouseMapping(Mapping):
+    setting_name: str = 'mouse_map'
 
     def __init__(
         self, name: str, button: str, event: str, modes: str, action_def: str,
@@ -138,6 +256,80 @@ class Group:
                 yield from x.iter_all_non_groups()
             else:
                 yield x
+
+    def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
+        ans: List[str] = []
+        a = ans.append
+        if level:
+            a('#: ' + self.title + ' {{''{')
+            a('')
+            if self.start_text:
+                a(render_block(self.start_text))
+                a('')
+        else:
+            ans.extend(('# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', ''))
+
+        option_groups = {}
+        current_group: List[Option] = []
+        coalesced = set()
+        for item in self:
+            if isinstance(item, Option):
+                if current_group:
+                    if item.needs_coalescing:
+                        current_group.append(item)
+                        coalesced.add(id(item))
+                        continue
+                    option_groups[id(current_group[0])] = current_group[1:]
+                    current_group = [item]
+                else:
+                    current_group.append(item)
+        if current_group:
+            option_groups[id(current_group[0])] = current_group[1:]
+
+        for item in self:
+            if isinstance(item, Option):
+                if id(item) in coalesced:
+                    continue
+                lines = item.as_conf(option_group=option_groups[id(item)])
+            else:
+                lines = item.as_conf(commented, level + 1)
+            ans.extend(lines)
+
+        if level:
+            if self.end_text:
+                a('')
+                a(render_block(self.end_text))
+            a('#: }}''}')
+            a('')
+        else:
+            map_groups = []
+            start: Optional[int] = None
+            count: Optional[int] = None
+            for i, line in enumerate(ans):
+                if line.startswith('map ') or line.startswith('mouse_map '):
+                    if start is None:
+                        start = i
+                        count = 1
+                    else:
+                        if count is not None:
+                            count += 1
+                else:
+                    if start is not None and count is not None:
+                        map_groups.append((start, count))
+                        start = count = None
+            for start, count in map_groups:
+                r = range(start, start + count)
+                sz = max(len(ans[i].split(' ', 3)[1]) for i in r)
+                for i in r:
+                    line = ans[i]
+                    parts = line.split(' ', 3)
+                    parts[1] = parts[1].ljust(sz)
+                    ans[i] = ' '.join(parts)
+
+            if commented:
+                ans = [x if x.startswith('#') or not x.strip() else ('# ' + x) for x in ans]
+
+        return ans
 
 
 def resolve_import(name: str, module: Any = None) -> Callable:
@@ -268,5 +460,5 @@ class Definition:
     def add_deprecation(self, parser_name: str, *aliases: str) -> None:
         self.deprecations[self.parser_func(parser_name)] = aliases
 
-    def as_conf(self, commented: bool = False) -> str:
-        raise NotImplementedError('TODO:')
+    def as_conf(self, commented: bool = False) -> List[str]:
+        return self.root_group.as_conf(commented)

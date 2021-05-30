@@ -539,8 +539,8 @@ agr('performance', 'Performance tuning')
 opt('repaint_delay', '10',
     option_type='positive_int',
     long_text='''
-Delay (in milliseconds) between screen updates. Decreasing it, increases frames-
-per-second (FPS) at the cost of more CPU usage. The default value yields ~100
+Delay (in milliseconds) between screen updates. Decreasing it, increases frames-per-second
+(FPS) at the cost of more CPU usage. The default value yields ~100
 FPS which is more than sufficient for most uses. Note that to actually achieve
 100 FPS you have to either set :opt:`sync_to_monitor` to no or use a monitor
 with a high refresh rate. Also, to minimize latency when there is pending input
@@ -1127,7 +1127,7 @@ opt('mark3_foreground', 'black',
 
 opt('mark3_background', '#f274bc',
     option_type='to_color',
-    long_text='Color for marks of type 1 (violet)'
+    long_text='Color for marks of type 3 (violet)'
     )
 
 opt('color16', '#000000',
@@ -2459,8 +2459,8 @@ terminal programs, only change it if you know what you are doing, not because
 you read some advice on Stack Overflow to change it. The TERM variable is used
 by various programs to get information about the capabilities and behavior of
 the terminal. If you change it, depending on what programs you run, and how
-different the terminal you are changing it to is, various things from key-
-presses, to colors, to various advanced features may not work.
+different the terminal you are changing it to is, various things from key-presses,
+to colors, to various advanced features may not work.
 '''
     )
 egr()  # }}}
@@ -3092,26 +3092,26 @@ map('Increase font size',
     )
 map('Increase font size',
     'increase_font_size kitty_mod+plus change_font_size all +2.0',
-    documented=False,
+    documented=True,
     )
 map('Increase font size',
     'increase_font_size kitty_mod+kp_add change_font_size all +2.0',
-    documented=False,
+    documented=True,
     )
 map('Increase font size',
     'increase_font_size cmd+plus change_font_size all +2.0',
     only="macos",
-    documented=False,
+    documented=True,
     )
 map('Increase font size',
     'increase_font_size cmd+equal change_font_size all +2.0',
     only="macos",
-    documented=False,
+    documented=True,
     )
 map('Increase font size',
     'increase_font_size cmd+shift+equal change_font_size all +2.0',
     only="macos",
-    documented=False,
+    documented=True,
     )
 
 map('Decrease font size',
@@ -3123,12 +3123,12 @@ map('Decrease font size',
 map('Decrease font size',
     'decrease_font_size cmd+minus change_font_size all -2.0',
     only="macos",
-    documented=False,
+    documented=True,
     )
 map('Decrease font size',
     'decrease_font_size cmd+shift+minus change_font_size all -2.0',
     only="macos",
-    documented=False,
+    documented=True,
     )
 
 map('Reset font size',
@@ -3137,7 +3137,7 @@ map('Reset font size',
 map('Reset font size',
     'reset_font_size cmd+0 change_font_size all 0',
     only="macos",
-    documented=False,
+    documented=True,
     )
 egr('''
 To setup shortcuts for specific font sizes::
@@ -3291,7 +3291,7 @@ If you want to operate on all windows instead of just the current one, use :ital
 It is also possible to remap Ctrl+L to both scroll the current screen contents into the scrollback buffer
 and clear the screen, instead of just clearing the screen::
 
-    map ctrl+l combine : clear_terminal scroll active : send_text normal,application \x0c
+    map ctrl+l combine : clear_terminal scroll active : send_text normal,application \\x0c
 '''
     )
 
@@ -3306,7 +3306,7 @@ the client program when pressing specified shortcut keys. For example::
 
 This will send "Special text" when you press the :kbd:`ctrl+alt+a` key
 combination.  The text to be sent is a python string literal so you can use
-escapes like :code:`\x1b` to send control codes or :code:`\u21fb` to send
+escapes like :code:`\\x1b` to send control codes or :code:`\\u21fb` to send
 unicode characters (or you can just input the unicode characters directly as
 UTF-8 text). The first argument to :code:`send_text` is the keyboard modes in which to
 activate the shortcut. The possible values are :code:`normal` or :code:`application` or :code:`kitty`
@@ -3317,8 +3317,8 @@ terminals, and :code:`kitty` refers to the special kitty extended keyboard proto
 Another example, that outputs a word and then moves the cursor to the start of
 the line (same as pressing the Home key)::
 
-    map ctrl+alt+a send_text normal Word\x1b[H
-    map ctrl+alt+a send_text application Word\x1bOH
+    map ctrl+alt+a send_text normal Word\\x1b[H
+    map ctrl+alt+a send_text application Word\\x1bOH
 '''
     )
 egr()  # }}}
