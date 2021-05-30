@@ -55,9 +55,13 @@ typedef struct {
     unsigned long tab_bar_min_tabs;
     float tab_bar_margin_height;
 <<<<<<< HEAD
+<<<<<<< HEAD
     bool retain_tab_bar_margin_height;
 =======
 >>>>>>> 1ee97dbc (added options for padding around tab bar)
+=======
+    bool retain_tab_bar_margin_height;
+>>>>>>> bdb75979 (Working Commit)
     DisableLigature disable_ligatures;
     bool force_ltr;
     ResizeDrawStrategy resize_draw_strategy;

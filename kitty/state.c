@@ -472,6 +472,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     if (!OPT(tab_bar_hidden) && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
 =======
     if (!global_state.tab_bar_hidden) {
@@ -481,11 +482,14 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
     if (!global_state.tab_bar_hidden && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
 >>>>>>> b84799fb (for example in pr thread)
 =======
+=======
+>>>>>>> bdb75979 (Working Commit)
     if (global_state.tab_bar_hidden) {
         zero_at_ptr(tab_bar);
         central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
         central->bottom = os_window->viewport_height - 1;
     } else if (os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
+<<<<<<< HEAD
 >>>>>>> bcb5770d (Working Commit)
 =======
     if (!global_state.tab_bar_hidden) {
@@ -494,6 +498,8 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
 =======
     if (!global_state.tab_bar_hidden && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
 >>>>>>> 2fc46630 (for example in pr thread)
+=======
+>>>>>>> bdb75979 (Working Commit)
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
                 central->left = 0; central->top = os_window->fonts_data->cell_height + pt_to_px(OPT(tab_bar_margin_height), os_window->id); central->right = os_window->viewport_width - 1;
@@ -509,6 +515,9 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
                 break;
         }
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> bdb75979 (Working Commit)
     } else if (OPT(retain_tab_bar_margin_height)) {
         switch(OPT(tab_bar_edge)) {
           case TOP_EDGE:
@@ -522,6 +531,7 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
             central->bottom = os_window->viewport_height - pt_to_px(OPT(tab_bar_margin_height), os_window->id);
             break;
         }
+<<<<<<< HEAD
 =======
       } else {
 <<<<<<< HEAD
@@ -552,6 +562,13 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
     }
     os_window->needs_render = true;
 >>>>>>> 2fc46630 (for example in pr thread)
+=======
+    } else {
+        zero_at_ptr(tab_bar);
+        central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
+        central->bottom = os_window->viewport_height - 1;
+      }
+>>>>>>> bdb75979 (Working Commit)
 }
 
 void
@@ -626,6 +643,118 @@ send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
 #define KKKK(name) PYWRAP1(name) { id_type a, b, c, d; PA("KKKK", &a, &b, &c, &d); name(a, b, c, d); Py_RETURN_NONE; }
 #define KK5I(name) PYWRAP1(name) { id_type a, b; unsigned int c, d, e, f, g; PA("KKIIIII", &a, &b, &c, &d, &e, &f, &g); name(a, b, c, d, e, f, g); Py_RETURN_NONE; }
 #define BOOL_SET(name) PYWRAP1(set_##name) { global_state.name = PyObject_IsTrue(args); Py_RETURN_NONE; }
+<<<<<<< HEAD
+=======
+
+static color_type default_color = 0;
+
+static inline color_type
+color_as_int(PyObject *color) {
+    if (color == Py_None && default_color) return default_color;
+    if (!PyTuple_Check(color)) { PyErr_SetString(PyExc_TypeError, "Not a color tuple"); return 0; }
+#define I(n, s) ((PyLong_AsUnsignedLong(PyTuple_GET_ITEM(color, n)) & 0xff) << s)
+    return (I(0, 16) | I(1, 8) | I(2, 0)) & 0xffffff;
+#undef I
+}
+
+static inline monotonic_t
+parse_s_double_to_monotonic_t(PyObject *val) {
+    return s_double_to_monotonic_t(PyFloat_AsDouble(val));
+}
+
+static inline monotonic_t
+parse_ms_long_to_monotonic_t(PyObject *val) {
+    return ms_to_monotonic_t(PyLong_AsUnsignedLong(val));
+}
+
+static int kitty_mod = 0;
+
+static inline int
+resolve_mods(int mods) {
+    if (mods & GLFW_MOD_KITTY) {
+        mods = (mods & ~GLFW_MOD_KITTY) | kitty_mod;
+    }
+    return mods;
+}
+
+static WindowTitleIn
+window_title_in(PyObject *title_in) {
+    const char *in = PyUnicode_AsUTF8(title_in);
+    switch(in[0]) {
+        case 'a': return ALL;
+        case 'w': return WINDOW;
+        case 'm': return MENUBAR;
+        case 'n': return NONE;
+        default: break;
+    }
+    return ALL;
+}
+
+static BackgroundImageLayout
+bglayout(PyObject *layout_name) {
+    const char *name = PyUnicode_AsUTF8(layout_name);
+    switch(name[0]) {
+        case 't': return TILING;
+        case 'm': return MIRRORED;
+        case 's': return SCALED;
+        default: break;
+    }
+    return TILING;
+}
+
+static void
+background_image(PyObject *src) {
+    if (OPT(background_image)) free(OPT(background_image));
+    OPT(background_image) = NULL;
+    if (src == Py_None || !PyUnicode_Check(src)) return;
+    Py_ssize_t sz;
+    const char *s = PyUnicode_AsUTF8AndSize(src, &sz);
+    OPT(background_image) = calloc(sz + 1, 1);
+    if (OPT(background_image)) memcpy(OPT(background_image), s, sz);
+}
+
+
+static MouseShape
+pointer_shape(PyObject *shape_name) {
+    const char *name = PyUnicode_AsUTF8(shape_name);
+    switch(name[0]) {
+        case 'a': return ARROW;
+        case 'h': return HAND;
+        case 'b': return BEAM;
+        default: break;
+    }
+    return BEAM;
+}
+
+static inline void
+free_url_prefixes(void) {
+    OPT(url_prefixes).num = 0;
+    OPT(url_prefixes).max_prefix_len = 0;
+    if (OPT(url_prefixes).values) {
+        free(OPT(url_prefixes.values));
+        OPT(url_prefixes).values = NULL;
+    }
+}
+
+static void
+set_url_prefixes(PyObject *up) {
+    free_url_prefixes();
+    OPT(url_prefixes).values = calloc(PyTuple_GET_SIZE(up), sizeof(UrlPrefix));
+    if (!OPT(url_prefixes).values) { PyErr_NoMemory(); return; }
+    OPT(url_prefixes).num = PyTuple_GET_SIZE(up);
+    for (size_t i = 0; i < OPT(url_prefixes).num; i++) {
+        PyObject *t = PyTuple_GET_ITEM(up, i);
+        if (!PyUnicode_Check(t)) { PyErr_SetString(PyExc_TypeError, "url_prefixes must be strings"); return; }
+        OPT(url_prefixes).values[i].len = MIN(arraysz(OPT(url_prefixes).values[i].string) - 1, (size_t)PyUnicode_GET_LENGTH(t));
+        int kind = PyUnicode_KIND(t);
+        OPT(url_prefixes).max_prefix_len = MAX(OPT(url_prefixes).max_prefix_len, OPT(url_prefixes).values[i].len);
+        for (size_t x = 0; x < OPT(url_prefixes).values[i].len; x++) {
+            OPT(url_prefixes).values[i].string[x] = PyUnicode_READ(kind, PyUnicode_DATA(t), x);
+        }
+    }
+}
+
+>>>>>>> bdb75979 (Working Commit)
 #define dict_iter(d) { \
     PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
@@ -644,11 +773,14 @@ PYWRAP1(handle_for_window_id) {
     return NULL;
 }
 
+<<<<<<< HEAD
 static void
 tab_bar_style(PyObject *val, Options *opts) {
     opts->tab_bar_hidden = PyUnicode_CompareWithASCIIString(val, "hidden") == 0 ? true: false;
 }
 
+=======
+>>>>>>> bdb75979 (Working Commit)
 static PyObject* options_object = NULL;
 
 PYWRAP0(get_options) {
@@ -700,9 +832,13 @@ PYWRAP1(set_options) {
     S(tab_bar_edge, PyLong_AsLong);
     S(tab_bar_margin_height, PyFloat_AsFloat);
 <<<<<<< HEAD
+<<<<<<< HEAD
     S(retain_tab_bar_margin_height, PyObject_IsTrue);
 =======
 >>>>>>> 1ee97dbc (added options for padding around tab bar)
+=======
+    S(retain_tab_bar_margin_height, PyObject_IsTrue);
+>>>>>>> bdb75979 (Working Commit)
     S(mouse_hide_wait, parse_s_double_to_monotonic_t);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
     S(touch_scroll_multiplier, PyFloat_AsDouble);
