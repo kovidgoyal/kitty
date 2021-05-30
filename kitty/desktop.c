@@ -52,8 +52,8 @@ init_x11_startup_notification(PyObject UNUSED *self, PyObject *args) {
             if (libsn_handle) break;
         }
         if (libsn_handle == NULL) {
-            PyErr_Format(PyExc_OSError, "Failed to load %s with error: %s", libnames[0], dlerror());
-            return NULL;
+            log_error("Failed to load %s with error: %s", libnames[0], dlerror());
+            Py_RETURN_NONE;
         }
         dlerror();    /* Clear any existing error */
 #define F(name) LOAD_FUNC(libsn_handle, name)
