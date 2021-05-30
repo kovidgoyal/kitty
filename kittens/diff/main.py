@@ -19,11 +19,10 @@ from typing import (
 
 from kitty.cli import CONFIG_HELP, parse_args
 from kitty.cli_stub import DiffCLIOptions
-from kitty.conf.utils import KittensKeyAction
+from kitty.conf.utils import KeyAction
 from kitty.constants import appname
 from kitty.fast_data_types import wcswidth
 from kitty.key_encoding import EventType, KeyEvent
-from kitty.options_stub import DiffOptions
 from kitty.utils import ScreenSize
 
 from ..tui.handler import Handler
@@ -33,10 +32,11 @@ from ..tui.loop import Loop
 from ..tui.operations import styled
 from . import global_data
 from .collect import (
-    Collection, create_collection, data_for_path, lines_for_path, sanitize,
-    set_highlight_data, add_remote_dir
+    Collection, add_remote_dir, create_collection, data_for_path,
+    lines_for_path, sanitize, set_highlight_data
 )
 from .config import init_config
+from .options.types import Options as DiffOptions
 from .patch import Differ, Patch, set_diff_command, worker_processes
 from .render import (
     ImagePlacement, ImageSupportWarning, Line, LineRef, Reference, render_diff
@@ -95,14 +95,14 @@ class DiffHandler(Handler):
         for key_def, action in self.opts.key_definitions.items():
             self.add_shortcut(action, key_def)
 
-    def perform_action(self, action: KittensKeyAction) -> None:
+    def perform_action(self, action: KeyAction) -> None:
         func, args = action
         if func == 'quit':
             self.quit_loop(0)
             return
         if self.state <= DIFFED:
             if func == 'scroll_by':
-                return self.scroll_lines(int(args[0]))
+                return self.scroll_lines(int(args[0] or 0))
             if func == 'scroll_to':
                 where = str(args[0])
                 if 'change' in where:
@@ -122,7 +122,7 @@ class DiffHandler(Handler):
                 elif to == 'default':
                     new_ctx = self.original_context_count
                 else:
-                    new_ctx += int(to)
+                    new_ctx += int(to or 0)
                 return self.change_context_count(new_ctx)
             if func == 'start_search':
                 self.start_search(bool(args[0]), bool(args[1]))
@@ -658,5 +658,5 @@ elif __name__ == '__doc__':
     cd['options'] = OPTIONS
     cd['help_text'] = help_text
 elif __name__ == '__conf__':
-    from .config_data import all_options
-    sys.all_options = all_options  # type: ignore
+    from .options.definition import definition
+    sys.options_definition = definition  # type: ignore

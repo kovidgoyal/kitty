@@ -7,7 +7,7 @@ from binascii import hexlify, unhexlify
 from typing import TYPE_CHECKING, Dict, Generator, Optional, cast
 
 if TYPE_CHECKING:
-    from .options_stub import Options
+    from .options.types import Options
 
 
 def modify_key_bytes(keybytes: bytes, amt: int) -> bytes:

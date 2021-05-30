@@ -6,16 +6,24 @@ import os
 import re
 import shlex
 from typing import (
-    Any, Callable, Dict, FrozenSet, Generator, Iterable, Iterator, List,
-    NamedTuple, Optional, Sequence, Tuple, Type, TypeVar, Union, Set
+    Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional,
+    Sequence, Set, Tuple, TypeVar, Union
 )
 
 from ..rgb import Color, to_color as as_color
-from ..types import ParsedShortcut, ConvertibleToNumbers
+from ..types import ConvertibleToNumbers, ParsedShortcut
+from ..typing import Protocol
 from ..utils import expandvars, log_error
 
 key_pat = re.compile(r'([a-zA-Z][a-zA-Z0-9_-]*)\s+(.+)$')
+ItemParser = Callable[[str, str, Dict[str, Any]], bool]
 T = TypeVar('T')
+
+
+class OptionsProtocol(Protocol):
+
+    def _asdict(self) -> Dict[str, Any]:
+        pass
 
 
 class BadLine(NamedTuple):
@@ -110,23 +118,12 @@ def choices(*choices: str) -> Choice:
     return Choice(choices)
 
 
-def create_type_converter(all_options: Dict) -> Callable[[str, Any], Any]:
-    from .definition import Option
-
-    def type_convert(name: str, val: Any) -> Any:
-        o = all_options.get(name)
-        if isinstance(o, Option):
-            val = o.option_type(val)
-        return val
-    return type_convert
-
-
 def parse_line(
     line: str,
-    type_convert: Callable[[str, Any], Any],
-    special_handling: Callable,
-    ans: Dict[str, Any], all_keys: Optional[FrozenSet[str]],
-    base_path_for_includes: str
+    parse_conf_item: ItemParser,
+    ans: Dict[str, Any],
+    base_path_for_includes: str,
+    accumulate_bad_lines: Optional[List[BadLine]] = None
 ) -> None:
     line = line.strip()
     if not line or line.startswith('#'):
@@ -136,15 +133,13 @@ def parse_line(
         log_error('Ignoring invalid config line: {}'.format(line))
         return
     key, val = m.groups()
-    if special_handling(key, val, ans):
-        return
     if key == 'include':
         val = os.path.expandvars(os.path.expanduser(val.strip()))
         if not os.path.isabs(val):
             val = os.path.join(base_path_for_includes, val)
         try:
             with open(val, encoding='utf-8', errors='replace') as include:
-                _parse(include, type_convert, special_handling, ans, all_keys)
+                _parse(include, parse_conf_item, ans, accumulate_bad_lines)
         except FileNotFoundError:
             log_error(
                 'Could not find included config file: {}, ignoring'.
@@ -156,18 +151,14 @@ def parse_line(
                 format(val)
             )
         return
-    if all_keys is not None and key not in all_keys:
+    if not parse_conf_item(key, val, ans):
         log_error('Ignoring unknown config key: {}'.format(key))
-        return
-    ans[key] = type_convert(key, val)
 
 
 def _parse(
     lines: Iterable[str],
-    type_convert: Callable[[str, Any], Any],
-    special_handling: Callable,
+    parse_conf_item: ItemParser,
     ans: Dict[str, Any],
-    all_keys: Optional[FrozenSet[str]],
     accumulate_bad_lines: Optional[List[BadLine]] = None
 ) -> None:
     name = getattr(lines, 'name', None)
@@ -179,8 +170,7 @@ def _parse(
     for i, line in enumerate(lines):
         try:
             parse_line(
-                line, type_convert, special_handling, ans, all_keys,
-                base_path_for_includes
+                line, parse_conf_item, ans, base_path_for_includes, accumulate_bad_lines
             )
         except Exception as e:
             if accumulate_bad_lines is None:
@@ -190,60 +180,13 @@ def _parse(
 
 def parse_config_base(
     lines: Iterable[str],
-    all_option_names: Optional[FrozenSet],
-    all_options: Dict[str, Any],
-    special_handling: Callable,
+    parse_conf_item: ItemParser,
     ans: Dict[str, Any],
     accumulate_bad_lines: Optional[List[BadLine]] = None
 ) -> None:
     _parse(
-        lines, create_type_converter(all_options), special_handling, ans, all_option_names, accumulate_bad_lines
+        lines, parse_conf_item, ans, accumulate_bad_lines
     )
-
-
-def create_options_class(all_keys: Iterable[str]) -> Type:
-    keys = tuple(sorted(all_keys))
-    slots = keys + ('_fields', )
-
-    def __init__(self: Any, kw: Dict[str, Any]) -> None:
-        for k, v in kw.items():
-            setattr(self, k, v)
-
-    def __iter__(self: Any) -> Iterator[str]:
-        return iter(keys)
-
-    def __len__(self: Any) -> int:
-        return len(keys)
-
-    def __getitem__(self: Any, i: Union[int, str]) -> Any:
-        if isinstance(i, int):
-            i = keys[i]
-        try:
-            return getattr(self, i)
-        except AttributeError:
-            raise KeyError('No option named: {}'.format(i))
-
-    def _asdict(self: Any) -> Dict[str, Any]:
-        return {k: getattr(self, k) for k in self._fields}
-
-    def _replace(self: Any, **kw: Dict) -> Any:
-        ans = self._asdict()
-        ans.update(kw)
-        return self.__class__(ans)
-
-    ans = type(
-        'Options', (), {
-            '__slots__': slots,
-            '__init__': __init__,
-            '_asdict': _asdict,
-            '_replace': _replace,
-            '__iter__': __iter__,
-            '__len__': __len__,
-            '__getitem__': __getitem__
-        }
-    )
-    ans._fields = keys  # type: ignore
-    return ans
 
 
 def merge_dicts(defaults: Dict, newvals: Dict) -> Dict:
@@ -264,14 +207,13 @@ def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Seq
 
 
 def load_config(
-        Options: Type[T],
-        defaults: Any,
-        parse_config: Callable[[Iterable[str]], Dict[str, Any]],
-        merge_configs: Callable[[Dict, Dict], Dict],
-        *paths: str,
-        overrides: Optional[Iterable[str]] = None
-) -> T:
-    ans: Dict = defaults._asdict()
+    defaults: OptionsProtocol,
+    parse_config: Callable[[Iterable[str]], Dict[str, Any]],
+    merge_configs: Callable[[Dict, Dict], Dict],
+    *paths: str,
+    overrides: Optional[Iterable[str]] = None
+) -> Dict[str, Any]:
+    ans = defaults._asdict()
     for path in paths:
         if not path:
             continue
@@ -284,14 +226,7 @@ def load_config(
     if overrides is not None:
         vals = parse_config(overrides)
         ans = merge_configs(ans, vals)
-    return Options(ans)  # type: ignore
-
-
-def init_config(default_config_lines: Iterable[str], parse_config: Callable) -> Tuple[Type, Any]:
-    defaults = parse_config(default_config_lines, check_keys=False)
-    Options = create_options_class(defaults.keys())
-    defaults = Options(defaults)
-    return Options, defaults
+    return ans
 
 
 def key_func() -> Tuple[Callable[..., Callable], Dict[str, Callable]]:
@@ -312,14 +247,21 @@ def key_func() -> Tuple[Callable[..., Callable], Dict[str, Callable]]:
     return func_with_args, ans
 
 
-KittensKeyAction = Tuple[str, Tuple[str, ...]]
+class KeyAction(NamedTuple):
+    func: str
+    args: Tuple[Union[str, float, bool, int, None], ...] = ()
+
+    def __repr__(self) -> str:
+        if self.args:
+            return f'KeyAction({self.func!r}, {self.args!r})'
+        return f'KeyAction({self.func!r})'
 
 
-def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> KittensKeyAction:
+def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> KeyAction:
     parts = action.strip().split(' ', 1)
     func = parts[0]
     if len(parts) == 1:
-        return func, ()
+        return KeyAction(func, ())
     rest = parts[1]
 
     try:
@@ -338,21 +280,38 @@ def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> Kit
     if not isinstance(args, (list, tuple)):
         args = (args, )
 
-    return func, tuple(args)
+    return KeyAction(func, tuple(args))
+
+
+KittensKeyDefinition = Tuple[ParsedShortcut, KeyAction]
+KittensKeyMap = Dict[ParsedShortcut, KeyAction]
 
 
 def parse_kittens_key(
     val: str, funcs_with_args: Dict[str, Callable]
-) -> Optional[Tuple[KittensKeyAction, ParsedShortcut]]:
+) -> Optional[KittensKeyDefinition]:
     from ..key_encoding import parse_shortcut
     sc, action = val.partition(' ')[::2]
     if not sc or not action:
         return None
     ans = parse_kittens_func_args(action, funcs_with_args)
-    return ans, parse_shortcut(sc)
+    return parse_shortcut(sc), ans
 
 
 def uniq(vals: Iterable[T]) -> List[T]:
     seen: Set[T] = set()
     seen_add = seen.add
     return [x for x in vals if x not in seen and not seen_add(x)]
+
+
+def save_type_stub(text: str, fpath: str) -> None:
+    fpath += 'i'
+    preamble = '# Update this file by running: ./test.py mypy\n\n'
+    try:
+        existing = open(fpath).read()
+    except FileNotFoundError:
+        existing = ''
+    current = preamble + text
+    if existing != current:
+        with open(fpath, 'w') as f:
+            f.write(current)

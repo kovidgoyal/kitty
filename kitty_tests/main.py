@@ -68,8 +68,6 @@ def filter_tests_by_module(suite: unittest.TestSuite, *names: str) -> unittest.T
 def type_check() -> NoReturn:
     from kitty.cli_stub import generate_stub  # type:ignore
     generate_stub()
-    from kitty.options_stub import generate_stub  # type: ignore
-    generate_stub()
     from kittens.tui.operations_stub import generate_stub  # type: ignore
     generate_stub()
     os.execlp(sys.executable, 'python', '-m', 'mypy', '--pretty')

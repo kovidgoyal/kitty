@@ -14,18 +14,22 @@ from contextlib import suppress
 from functools import lru_cache
 from time import monotonic
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Mapping, Match, NamedTuple,
-    Optional, Tuple, Union, cast
+    TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List, Mapping,
+    Match, NamedTuple, Optional, Tuple, Union, cast
 )
 
 from .constants import (
     appname, is_macos, is_wayland, read_kitty_resource, shell_path,
     supports_primary_selection
 )
-from .options_stub import Options
 from .rgb import Color, to_color
 from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
+
+if TYPE_CHECKING:
+    from .options.types import Options
+else:
+    Options = object
 
 
 def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool = True) -> str:

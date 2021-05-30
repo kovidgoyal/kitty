@@ -8,7 +8,7 @@ import termios
 from kitty.boss import Boss
 from kitty.fonts import FontFeature
 from kitty.fonts.render import FontObject
-from kitty.options_stub import Options
+from kitty.options.types import Options
 
 # Constants {{{
 MOUSE_SELECTION_LINE: int

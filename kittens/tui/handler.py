@@ -11,7 +11,7 @@ from typing import (
 from kitty.types import ParsedShortcut
 from kitty.typing import (
     AbstractEventLoop, BossType, Debug, ImageManagerType, KeyEventType,
-    KittensKeyActionType, LoopType, MouseEvent, ScreenSize, TermManagerType
+    KeyActionType, LoopType, MouseEvent, ScreenSize, TermManagerType
 )
 
 
@@ -46,15 +46,15 @@ class Handler:
     def asyncio_loop(self) -> AbstractEventLoop:
         return self._tui_loop.asycio_loop
 
-    def add_shortcut(self, action: KittensKeyActionType, spec: Union[str, ParsedShortcut]) -> None:
+    def add_shortcut(self, action: KeyActionType, spec: Union[str, ParsedShortcut]) -> None:
         if not hasattr(self, '_key_shortcuts'):
-            self._key_shortcuts: Dict[ParsedShortcut, KittensKeyActionType] = {}
+            self._key_shortcuts: Dict[ParsedShortcut, KeyActionType] = {}
         if isinstance(spec, str):
             from kitty.key_encoding import parse_shortcut
             spec = parse_shortcut(spec)
         self._key_shortcuts[spec] = action
 
-    def shortcut_action(self, key_event: KeyEventType) -> Optional[KittensKeyActionType]:
+    def shortcut_action(self, key_event: KeyEventType) -> Optional[KeyActionType]:
         for sc, action in self._key_shortcuts.items():
             if key_event.matches(sc):
                 return action

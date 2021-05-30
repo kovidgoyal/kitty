@@ -11,7 +11,7 @@ from kitty.fast_data_types import (
     FC_WEIGHT_REGULAR, FC_WIDTH_NORMAL, fc_list, fc_match as fc_match_impl,
     fc_match_postscript_name, parse_font_feature
 )
-from kitty.options_stub import Options
+from kitty.options.types import Options
 from kitty.typing import FontConfigPattern
 from kitty.utils import log_error
 

@@ -6,7 +6,7 @@ import re
 from typing import TYPE_CHECKING, Callable, Dict, Iterable, List, Tuple
 
 from kitty.fast_data_types import wcswidth
-from kitty.options_stub import DiffOptions
+from .options.types import Options as DiffOptions
 
 from ..tui.operations import styled
 

@@ -12,11 +12,10 @@ from kittens.tui.loop import (
     Debug as Debug, Loop as LoopType, MouseEvent as MouseEvent,
     TermManager as TermManagerType
 )
-from kitty.conf.utils import KittensKeyAction as KittensKeyActionType
 
 from .boss import Boss as BossType
 from .child import Child as ChildType
-from .conf.utils import BadLine as BadLineType
+from .conf.utils import BadLine as BadLineType, KeyAction as KeyActionType
 from .config import KittyCommonOpts
 from .fast_data_types import (
     CoreTextFont as CoreTextFont, FontConfigPattern as FontConfigPattern,
@@ -25,7 +24,7 @@ from .fast_data_types import (
 from .key_encoding import KeyEvent as KeyEventType
 from .layout.base import Layout as LayoutType
 from .options.utils import (
-    KeyAction as KeyActionType, KeyMap as KeyMap, SequenceMap as SequenceMap
+    KeyMap as KeyMap, SequenceMap as SequenceMap
 )
 from .rc.base import RemoteCommand as RemoteCommandType
 from .session import Session as SessionType, Tab as SessionTab
@@ -56,7 +55,7 @@ __all__ = (
     'EdgeLiteral', 'MatchType', 'GRT_a', 'GRT_f', 'GRT_t', 'GRT_o', 'GRT_m', 'GRT_d',
     'GraphicsCommandType', 'HandlerType', 'AbstractEventLoop', 'AddressFamily', 'Socket', 'CompletedProcess',
     'PopenType', 'Protocol', 'TypedDict', 'MarkType', 'ImageManagerType', 'Debug', 'LoopType', 'MouseEvent',
-    'TermManagerType', 'KittensKeyActionType', 'BossType', 'ChildType', 'BadLineType',
+    'TermManagerType', 'BossType', 'ChildType', 'BadLineType',
     'KeyActionType', 'KeyMap', 'KittyCommonOpts', 'SequenceMap', 'CoreTextFont', 'WindowSystemMouseEvent',
     'FontConfigPattern', 'ScreenType', 'StartupCtx', 'KeyEventType', 'LayoutType', 'PowerlineStyle',
     'RemoteCommandType', 'SessionType', 'SessionTab', 'SpecialWindowInstance', 'TabType', 'ScreenSize', 'WindowType'

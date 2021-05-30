@@ -7,32 +7,30 @@ import os
 import re
 import sys
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterable, List, NamedTuple, Optional,
-    Sequence, Tuple, Union
+    Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Tuple,
+    Union
 )
 
 import kitty.fast_data_types as defines
-from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
-
 from kitty.conf.utils import (
-    key_func, positive_float, positive_int, python_string, to_bool, to_cmdline,
-    to_color, uniq, unit_float
+    KeyAction, key_func, positive_float, positive_int, python_string, to_bool,
+    to_cmdline, to_color, uniq, unit_float
 )
 from kitty.constants import config_dir, is_macos
+from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from kitty.fonts import FontFeature
 from kitty.key_names import (
     character_key_name_aliases, functional_key_name_aliases,
     get_key_name_lookup
 )
-from kitty.layout.interface import all_layouts
 from kitty.rgb import Color, color_as_int
 from kitty.types import FloatEdges, MouseEvent, SingleKey
 from kitty.utils import expandvars, log_error
 
-KeyMap = Dict[SingleKey, 'KeyAction']
-MouseMap = Dict[MouseEvent, 'KeyAction']
+KeyMap = Dict[SingleKey, KeyAction]
+MouseMap = Dict[MouseEvent, KeyAction]
 KeySequence = Tuple[SingleKey, ...]
-SubSequenceMap = Dict[KeySequence, 'KeyAction']
+SubSequenceMap = Dict[KeySequence, KeyAction]
 SequenceMap = Dict[SingleKey, SubSequenceMap]
 MINIMUM_FONT_SIZE = 4
 default_tab_separator = ' ┇'
@@ -44,16 +42,6 @@ for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
 sequence_sep = '>'
 func_with_args, args_funcs = key_func()
 FuncArgsType = Tuple[str, Sequence[Any]]
-
-
-class KeyAction(NamedTuple):
-    func: str
-    args: Tuple[Union[str, float, bool, int, None], ...] = ()
-
-    def __repr__(self) -> str:
-        if self.args:
-            return f'KeyAction({self.func!r}, {self.args!r})'
-        return f'KeyAction({self.func!r})'
 
 
 class InvalidMods(ValueError):
@@ -512,6 +500,7 @@ def window_size(val: str) -> Tuple[int, str]:
 
 
 def to_layout_names(raw: str) -> List[str]:
+    from kitty.layout.interface import all_layouts
     parts = [x.strip().lower() for x in raw.split(',')]
     ans: List[str] = []
     for p in parts:
@@ -762,7 +751,7 @@ def parse_key_action(action: str, action_type: str = 'map') -> Optional[KeyActio
 class BaseDefinition:
     action: KeyAction
 
-    def resolve_kitten_aliases(self, aliases: Dict[str, Sequence[str]]) -> KeyAction:
+    def resolve_kitten_aliases(self, aliases: Dict[str, List[str]]) -> KeyAction:
         if not self.action.args or not aliases:
             return self.action
         kitten = self.action.args[0]
@@ -789,7 +778,7 @@ class MouseMapping(BaseDefinition):
     def __repr__(self) -> str:
         return f'MouseMapping({self.button}, {self.mods}, {self.repeat_count}, {self.grabbed}, {self.action})'
 
-    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, Sequence[str]]) -> 'MouseMapping':
+    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[str]]) -> 'MouseMapping':
         return MouseMapping(self.button, defines.resolve_key_mods(kitty_mod, self.mods), self.repeat_count, self.grabbed, self.resolve_kitten_aliases(aliases))
 
     @property
@@ -808,7 +797,7 @@ class KeyDefinition(BaseDefinition):
     def __repr__(self) -> str:
         return f'KeyDefinition({self.is_sequence}, {self.action}, {self.trigger.mods}, {self.trigger.is_native}, {self.trigger.key}, {self.rest})'
 
-    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, Sequence[str]]) -> 'KeyDefinition':
+    def resolve_and_copy(self, kitty_mod: int, aliases: Dict[str, List[str]]) -> 'KeyDefinition':
         def r(k: SingleKey) -> SingleKey:
             mods = defines.resolve_key_mods(kitty_mod, k.mods)
             return k._replace(mods=mods)

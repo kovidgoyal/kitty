@@ -16,6 +16,10 @@ kitty/glfw-wrapper.c
 kitty/emoji.h
 kittens/unicode_input/names.h
 kitty/parse-graphics-command.h
+kitty/options/types.py
+kitty/options/parse.py
+kittens/diff/options/types.py
+kittens/diff/options/parse.py
 '''
 
 p = subprocess.Popen([

@@ -1110,9 +1110,9 @@ def package(args: Options, bundle_type: str) -> None:
     if for_freeze:
         shutil.copytree('kitty_tests', os.path.join(libdir, 'kitty_tests'))
     if args.update_check_interval != 24.0:
-        with open(os.path.join(libdir, 'kitty/config_data.py'), 'r+', encoding='utf-8') as f:
+        with open(os.path.join(libdir, 'kitty/options/types.py'), 'r+', encoding='utf-8') as f:
             raw = f.read()
-            nraw = raw.replace("update_check_interval', 24", "update_check_interval', {}".format(args.update_check_interval), 1)
+            nraw = raw.replace('update_check_interval: float = 24.0', f'update_check_interval: float = {args.update_check_interval!r}', 1)
             if nraw == raw:
                 raise SystemExit('Failed to change the value of update_check_interval')
             f.seek(0), f.truncate(), f.write(nraw)

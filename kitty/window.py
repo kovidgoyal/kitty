@@ -35,7 +35,7 @@ from .fast_data_types import (
 )
 from .keys import keyboard_mode_name
 from .notify import NotificationCommand, handle_notification_cmd
-from .options_stub import Options
+from .options.types import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
 from .types import MouseEvent, ScreenGeometry, WindowGeometry
@@ -1016,8 +1016,8 @@ class Window:
         self.current_marker_spec = key
 
     def set_marker(self, spec: Union[str, Sequence[str]]) -> None:
-        from .options.utils import parse_marker_spec, toggle_marker
         from .marks import marker_from_spec
+        from .options.utils import parse_marker_spec, toggle_marker
         if isinstance(spec, str):
             func, (ftype, spec_, flags) = toggle_marker('toggle_marker', spec)
         else:

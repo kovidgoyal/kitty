@@ -18,7 +18,7 @@ QueryTerminalCLIOptions = BroadcastCLIOptions = ShowKeyCLIOptions = CLIOptions
 
 def generate_stub() -> None:
     from .cli import parse_option_spec, as_type_stub
-    from .conf.definition import save_type_stub
+    from .conf.utils import save_type_stub
     text = 'import typing\n\n\n'
 
     def do(otext=None, cls: str = 'CLIOptions', extra_fields: Sequence[str] = ()):

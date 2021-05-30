@@ -22,3 +22,4 @@ PowerlineStyle = str
 MatchType = str
 Protocol = object
 MouseEvent = dict
+OptionsProtocol = object

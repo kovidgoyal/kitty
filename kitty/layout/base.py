@@ -13,7 +13,7 @@ from kitty.borders import BorderColor
 from kitty.fast_data_types import (
     Region, set_active_window, viewport_for_window
 )
-from kitty.options_stub import Options
+from kitty.options.types import Options
 from kitty.types import Edges, WindowGeometry
 from kitty.typing import TypedDict, WindowType
 from kitty.window_list import WindowGroup, WindowList

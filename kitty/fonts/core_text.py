@@ -7,7 +7,7 @@ from typing import Dict, Generator, Iterable, List, Optional, Tuple
 
 from kitty.fast_data_types import coretext_all_fonts
 from kitty.fonts import FontFeature
-from kitty.options_stub import Options
+from kitty.options.types import Options
 from kitty.typing import CoreTextFont
 from kitty.utils import log_error
 

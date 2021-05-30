@@ -6,11 +6,12 @@ import os
 from unittest import TestCase
 
 from kitty.config import (
-    Options, defaults, finalize_keys, finalize_mouse_mappings, merge_configs
+    Options, defaults, finalize_keys, finalize_mouse_mappings
 )
 from kitty.fast_data_types import (
     Cursor, HistoryBuf, LineBuf, Screen, set_options
 )
+from kitty.options.parse import merge_result_dicts
 from kitty.types import MouseEvent
 
 
@@ -106,7 +107,7 @@ class BaseTest(TestCase):
         final_options = {'scrollback_pager_history_size': 1024, 'click_interval': 0.5}
         if options:
             final_options.update(options)
-        options = Options(merge_configs(defaults._asdict(), final_options))
+        options = Options(merge_result_dicts(defaults._asdict(), final_options))
         finalize_keys(options)
         finalize_mouse_mappings(options)
         set_options(options)

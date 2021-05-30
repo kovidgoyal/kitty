@@ -12,10 +12,10 @@ from typing import (
 )
 
 from .cli_stub import CLIOptions
-from .conf.utils import resolve_config
-from .options.utils import KeyAction, MouseMap
+from .conf.utils import KeyAction, resolve_config
 from .constants import appname, defconf, is_macos, is_wayland, str_version
-from .options_stub import Options as OptionsStub
+from .options.types import Options as KittyOpts, defaults
+from .options.utils import MouseMap
 from .types import MouseEvent, SingleKey
 from .typing import BadLineType, SequenceMap, TypedDict
 
@@ -836,13 +836,13 @@ def compare_mousemaps(final: MouseMap, initial: MouseMap) -> None:
     print_changes(final, changed, 'Changed mouse actions:')
 
 
-def compare_opts(opts: OptionsStub) -> None:
-    from .config import defaults, load_config
+def compare_opts(opts: KittyOpts) -> None:
+    from .config import load_config
     print('\nConfig options different from defaults:')
     default_opts = load_config()
     ignored = ('keymap', 'sequence_map', 'mousemap', 'map', 'mouse_map')
     changed_opts = [
-        f for f in sorted(defaults._fields)  # type: ignore
+        f for f in sorted(defaults._fields)
         if f not in ignored and getattr(opts, f) != getattr(defaults, f)
     ]
     field_len = max(map(len, changed_opts)) if changed_opts else 20
@@ -860,7 +860,7 @@ def compare_opts(opts: OptionsStub) -> None:
     compare_keymaps(final, initial)
 
 
-def create_opts(args: CLIOptions, debug_config: bool = False, accumulate_bad_lines: Optional[List[BadLineType]] = None) -> OptionsStub:
+def create_opts(args: CLIOptions, debug_config: bool = False, accumulate_bad_lines: Optional[List[BadLineType]] = None) -> KittyOpts:
     from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, args.config))
     if debug_config:
@@ -887,7 +887,7 @@ def create_opts(args: CLIOptions, debug_config: bool = False, accumulate_bad_lin
     return opts
 
 
-def create_default_opts() -> OptionsStub:
+def create_default_opts() -> KittyOpts:
     from .config import load_config
     config = tuple(resolve_config(SYSTEM_CONF, defconf, ()))
     opts = load_config(*config)

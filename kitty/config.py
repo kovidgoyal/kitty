@@ -6,160 +6,28 @@ import json
 import os
 from contextlib import contextmanager, suppress
 from functools import partial
-from typing import (
-    Any, Callable, Dict, FrozenSet, Generator, Iterable, List, Optional, Tuple,
-    Type
-)
+from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
 
-from .conf.definition import as_conf_file, config_lines
-from .conf.utils import (
-    BadLine, init_config, load_config as _load_config, merge_dicts,
-    parse_config_base, to_bool
-)
-from .config_data import all_options
+from .conf.utils import BadLine, load_config as _load_config, parse_config_base
 from .constants import cache_dir, defconf
+from .options.types import Options, defaults, option_names
 from .options.utils import (
-    KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap,
-    deprecated_hide_window_decorations_aliases,
-    deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text,
-    env, font_features, kitten_alias, parse_map, parse_mouse_map, symbol_map
+    KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap
 )
-from .options_stub import Options as OptionsStub
 from .typing import TypedDict
 from .utils import log_error
 
-SpecialHandlerFunc = Callable[[str, str, Dict[str, Any]], None]
-special_handlers: Dict[str, SpecialHandlerFunc] = {}
+
+def option_names_for_completion() -> Tuple[str, ...]:
+    return option_names
 
 
-def special_handler(func: SpecialHandlerFunc) -> SpecialHandlerFunc:
-    special_handlers[func.__name__.partition('_')[2]] = func
-    return func
-
-
-def deprecated_handler(*names: str) -> Callable[[SpecialHandlerFunc], SpecialHandlerFunc]:
-    def special_handler(func: SpecialHandlerFunc) -> SpecialHandlerFunc:
-        for name in names:
-            special_handlers[name] = func
-        return func
-    return special_handler
-
-
-@special_handler
-def handle_map(key: str, val: str, ans: Dict[str, Any]) -> None:
-    for k in parse_map(val):
-        ans['map'].append(k)
-
-
-@special_handler
-def handle_mouse_map(key: str, val: str, ans: Dict[str, Any]) -> None:
-    for ma in parse_mouse_map(val):
-        ans['mouse_map'].append(ma)
-
-
-@special_handler
-def handle_symbol_map(key: str, val: str, ans: Dict[str, Any]) -> None:
-    for k, v in symbol_map(val):
-        ans['symbol_map'][k] = v
-
-
-@special_handler
-def handle_font_features(key: str, val: str, ans: Dict[str, Any]) -> None:
-    for key, features in font_features(val):
-        ans['font_features'][key] = features
-
-
-@special_handler
-def handle_kitten_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
-    for k, v in kitten_alias(val):
-        ans['kitten_alias'][k] = v
-
-
-@special_handler
-def handle_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
-    # For legacy compatibility
-    deprecated_send_text(key, val, ans)
-
-
-@special_handler
-def handle_clear_all_shortcuts(key: str, val: str, ans: Dict[str, Any]) -> None:
-    if to_bool(val):
-        ans['map'] = [None]
-
-
-@deprecated_handler('x11_hide_window_decorations', 'macos_hide_titlebar')
-def handle_deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
-    deprecated_hide_window_decorations_aliases(key, val, ans)
-
-
-@deprecated_handler('macos_show_window_title_in_menubar')
-def handle_deprecated_macos_show_window_title_in_menubar_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
-    deprecated_macos_show_window_title_in_menubar_alias(key, val, ans)
-
-
-@special_handler
-def handle_env(key: str, val: str, ans: Dict[str, Any]) -> None:
-    for key, val in env(val, ans['env']):
-        ans['env'][key] = val
-
-
-def special_handling(key: str, val: str, ans: Dict[str, Any]) -> bool:
-    func = special_handlers.get(key)
-    if func is not None:
-        func(key, val, ans)
-        return True
-
-
-def option_names_for_completion() -> Generator[str, None, None]:
-    yield from defaults
-    yield from special_handlers
-
-
-def parse_config(lines: Iterable[str], check_keys: bool = True, accumulate_bad_lines: Optional[List[BadLine]] = None) -> Dict[str, Any]:
-    ans: Dict[str, Any] = {
-        'symbol_map': {}, 'keymap': {}, 'sequence_map': {}, 'map': [],
-        'env': {}, 'kitten_alias': {}, 'font_features': {}, 'mouse_map': [],
-        'mousemap': {}
-    }
-    defs: Optional[FrozenSet] = None
-    if check_keys:
-        defs = frozenset(defaults._fields)  # type: ignore
-
-    parse_config_base(
-        lines,
-        defs,
-        all_options,
-        special_handling,
-        ans,
-        accumulate_bad_lines=accumulate_bad_lines
-    )
-    return ans
-
-
-def parse_defaults(lines: Iterable[str], check_keys: bool = False) -> Dict[str, Any]:
-    return parse_config(lines, check_keys)
-
-
-xc = init_config(config_lines(all_options), parse_defaults)
-Options: Type[OptionsStub] = xc[0]
-defaults: OptionsStub = xc[1]
 no_op_actions = frozenset({'noop', 'no-op', 'no_op'})
 
 
-def merge_configs(defaults: Dict, vals: Dict) -> Dict:
-    ans = {}
-    for k, v in defaults.items():
-        if isinstance(v, dict):
-            newvals = vals.get(k, {})
-            ans[k] = merge_dicts(v, newvals)
-        elif k in ('map', 'mouse_map'):
-            ans[k] = v + vals.get(k, [])
-        else:
-            ans[k] = vals.get(k, v)
-    return ans
-
-
-def build_ansi_color_table(opts: OptionsStub = defaults) -> List[int]:
+def build_ansi_color_table(opts: Optional[Options] = None) -> List[int]:
+    if opts is None:
+        opts = defaults
 
     def as_int(x: Tuple[int, int, int]) -> int:
         return (x[0] << 16) | (x[1] << 8) | x[2]
@@ -211,12 +79,8 @@ def cached_values_for(name: str) -> Generator[Dict, None, None]:
 
 
 def commented_out_default_config() -> str:
-    ans = []
-    for line in as_conf_file(all_options.values()):
-        if line and line[0] != '#':
-            line = '# ' + line
-        ans.append(line)
-    return '\n'.join(ans)
+    from .options.definition import definition
+    return definition.as_conf(commented=True)
 
 
 def prepare_config_file_for_editing() -> str:
@@ -229,11 +93,11 @@ def prepare_config_file_for_editing() -> str:
     return defconf
 
 
-def finalize_keys(opts: OptionsStub) -> None:
+def finalize_keys(opts: Options) -> None:
     defns: List[KeyDefinition] = []
-    for d in getattr(opts, 'map'):
+    for d in opts.map:
         if d is None:  # clear_all_shortcuts
-            defns = []
+            defns = []  # type: ignore
         else:
             defns.append(d.resolve_and_copy(opts.kitty_mod, opts.kitten_alias))
     keymap: KeyMap = {}
@@ -260,13 +124,10 @@ def finalize_keys(opts: OptionsStub) -> None:
     opts.sequence_map = sequence_map
 
 
-def finalize_mouse_mappings(opts: OptionsStub) -> None:
+def finalize_mouse_mappings(opts: Options) -> None:
     defns: List[MouseMapping] = []
-    for d in getattr(opts, 'mouse_map'):
-        if d is None:  # clear_all_shortcuts
-            defns = []
-        else:
-            defns.append(d.resolve_and_copy(opts.kitty_mod, opts.kitten_alias))
+    for d in opts.mouse_map:
+        defns.append(d.resolve_and_copy(opts.kitty_mod, opts.kitten_alias))
 
     mousemap: MouseMap = {}
     for defn in defns:
@@ -278,17 +139,30 @@ def finalize_mouse_mappings(opts: OptionsStub) -> None:
     opts.mousemap = mousemap
 
 
-def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumulate_bad_lines: Optional[List[BadLine]] = None) -> OptionsStub:
-    parser = parse_config
-    if accumulate_bad_lines is not None:
-        parser = partial(parse_config, accumulate_bad_lines=accumulate_bad_lines)
-    opts = _load_config(Options, defaults, parser, merge_configs, *paths, overrides=overrides)
+def parse_config(lines: Iterable[str], accumulate_bad_lines: Optional[List[BadLine]] = None) -> Dict[str, Any]:
+    from .options.parse import create_result_dict, parse_conf_item
+    ans: Dict[str, Any] = create_result_dict()
+    parse_config_base(
+        lines,
+        parse_conf_item,
+        ans,
+        accumulate_bad_lines=accumulate_bad_lines
+    )
+    return ans
+
+
+def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumulate_bad_lines: Optional[List[BadLine]] = None) -> Options:
+    from .options.parse import merge_result_dicts
+
+    opts_dict = _load_config(defaults, partial(parse_config, accumulate_bad_lines=accumulate_bad_lines), merge_result_dicts, *paths, overrides=overrides)
+    opts = Options(opts_dict)
+
     finalize_keys(opts)
     finalize_mouse_mappings(opts)
     # delete no longer needed definitions, replacing with empty placeholders
-    setattr(opts, 'kitten_alias', {})
-    setattr(opts, 'mouse_map', [])
-    setattr(opts, 'map', [])
+    opts.kitten_alias = {}
+    opts.mouse_map = []
+    opts.map = []
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
         log_error('Cannot use both macos_titlebar_color and background_opacity')
         opts.macos_titlebar_color = 0
@@ -301,7 +175,7 @@ class KittyCommonOpts(TypedDict):
     url_prefixes: Tuple[str, ...]
 
 
-def common_opts_as_dict(opts: Optional[OptionsStub] = None) -> KittyCommonOpts:
+def common_opts_as_dict(opts: Optional[Options] = None) -> KittyCommonOpts:
     if opts is None:
         opts = defaults
     return {

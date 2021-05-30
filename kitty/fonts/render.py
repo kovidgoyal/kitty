@@ -10,7 +10,6 @@ from typing import (
     Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
 )
 
-from kitty.config import defaults
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
     Screen, create_test_font_group, get_fallback_font, set_font_data,
@@ -20,7 +19,7 @@ from kitty.fast_data_types import (
 from kitty.fonts.box_drawing import (
     BufType, render_box_char, render_missing_glyph
 )
-from kitty.options_stub import Options as OptionsStub
+from kitty.options.types import Options, defaults
 from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
@@ -33,7 +32,7 @@ FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: List[Tuple[FontObject, bool, bool]] = []
 
 
-def get_font_files(opts: OptionsStub) -> Dict[str, Any]:
+def get_font_files(opts: Options) -> Dict[str, Any]:
     if is_macos:
         return get_font_files_coretext(opts)
     return get_font_files_fontconfig(opts)
@@ -136,7 +135,7 @@ def coalesce_symbol_maps(maps: Dict[Tuple[int, int], str]) -> Dict[Tuple[int, in
     return dict(ans)
 
 
-def create_symbol_map(opts: OptionsStub) -> Tuple[Tuple[int, int, int], ...]:
+def create_symbol_map(opts: Options) -> Tuple[Tuple[int, int, int], ...]:
     val = coalesce_symbol_maps(opts.symbol_map)
     family_map: Dict[str, int] = {}
     count = 0
@@ -174,7 +173,7 @@ def dump_faces(ftypes: List[str], indices: Dict[str, int]) -> None:
             log_error(face_str(face))
 
 
-def set_font_family(opts: Optional[OptionsStub] = None, override_font_size: Optional[float] = None, debug_font_matching: bool = False) -> None:
+def set_font_family(opts: Optional[Options] = None, override_font_size: Optional[float] = None, debug_font_matching: bool = False) -> None:
     global current_faces
     opts = opts or defaults
     sz = override_font_size or opts.font_size

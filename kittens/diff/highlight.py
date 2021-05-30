@@ -159,13 +159,12 @@ def highlight_collection(collection: Collection, aliases: Optional[Dict[str, str
 
 
 def main() -> None:
-    from .config import defaults
     # kitty +runpy "from kittens.diff.highlight import main; main()" file
+    from .options.types import defaults
     import sys
     initialize_highlighter()
-    if defaults is not None:
-        with open(sys.argv[-1]) as f:
-            highlighted = highlight_data(f.read(), f.name, defaults.syntax_aliases)
-        if highlighted is None:
-            raise SystemExit('Unknown filetype: {}'.format(sys.argv[-1]))
-        print(highlighted)
+    with open(sys.argv[-1]) as f:
+        highlighted = highlight_data(f.read(), f.name, defaults.syntax_aliases)
+    if highlighted is None:
+        raise SystemExit('Unknown filetype: {}'.format(sys.argv[-1]))
+    print(highlighted)

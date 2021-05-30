@@ -10,7 +10,7 @@ from .cli_stub import CLIOptions
 from .options.utils import to_layout_names, window_size
 from .constants import kitty_exe
 from .layout.interface import all_layouts
-from .options_stub import Options
+from .options.types import Options
 from .os_window_size import WindowSize, WindowSizeData, WindowSizes
 from .typing import SpecialWindowInstance
 from .utils import log_error, resolved_shell

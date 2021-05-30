@@ -12,7 +12,7 @@ from .base import (
 
 if TYPE_CHECKING:
     from kitty.cli_stub import SetSpacingRCOptions as CLIOptions
-    from kitty.options_stub import Options
+    from kitty.options.types import Options
 
 
 def patch_window_edges(w: Window, s: Dict[str, Optional[float]]) -> None:
