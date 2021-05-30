@@ -250,25 +250,7 @@ class Group:
     def __len__(self) -> int:
         return len(self.items)
 
-    def iter_all_non_groups(self) -> Iterator[NonGroups]:
-        for x in self:
-            if isinstance(x, Group):
-                yield from x.iter_all_non_groups()
-            else:
-                yield x
-
-    def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
-        ans: List[str] = []
-        a = ans.append
-        if level:
-            a('#: ' + self.title + ' {{''{')
-            a('')
-            if self.start_text:
-                a(render_block(self.start_text))
-                a('')
-        else:
-            ans.extend(('# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', ''))
-
+    def iter_all_with_coalesced_options(self) -> Iterator[Union[Tuple, GroupItem]]:
         option_groups = {}
         current_group: List[Option] = []
         coalesced = set()
@@ -290,7 +272,33 @@ class Group:
             if isinstance(item, Option):
                 if id(item) in coalesced:
                     continue
-                lines = item.as_conf(option_group=option_groups[id(item)])
+                yield item, option_groups[id(item)]
+            else:
+                yield item
+
+    def iter_all_non_groups(self) -> Iterator[NonGroups]:
+        for x in self:
+            if isinstance(x, Group):
+                yield from x.iter_all_non_groups()
+            else:
+                yield x
+
+    def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
+        ans: List[str] = []
+        a = ans.append
+        if level:
+            a('#: ' + self.title + ' {{''{')
+            a('')
+            if self.start_text:
+                a(render_block(self.start_text))
+                a('')
+        else:
+            ans.extend(('# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', ''))
+
+        for item in self.iter_all_with_coalesced_options():
+            if isinstance(item, tuple):
+                option, option_group = item
+                lines = option.as_conf(option_group=option_group)
             else:
                 lines = item.as_conf(commented, level + 1)
             ans.extend(lines)
