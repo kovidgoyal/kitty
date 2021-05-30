@@ -71,6 +71,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   executing any command specified on the command line via the users' shell
   just as ssh does (:iss:`3638`)
 
+- Tab bar: Use a lower contrast color for tab separators (:pull:`3666`)
+
 
 0.20.3 [2021-05-06]
 ----------------------
