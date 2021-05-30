@@ -257,7 +257,9 @@ class TabBar:
         self.os_window_id = os_window_id
         self.num_tabs = 1
         opts = get_options()
+        self.tab_bar_edge = opts.tab_bar_edge
         self.margin_width = pt_to_px(opts.tab_bar_margin_width, self.os_window_id)
+        self.margin_height = pt_to_px(opts.tab_bar_margin_height, self.os_window_id)
         self.cell_width, cell_height = cell_size_for_window(self.os_window_id)
         self.data_buffer_size = 0
         self.laid_out_once = False
@@ -325,6 +327,7 @@ class TabBar:
         if tab_bar.width < 2:
             return
         self.cell_width = cell_width
+        self.cell_height = cell_height
         s = self.screen
         viewport_width = max(4 * cell_width, tab_bar.width - 2 * self.margin_width)
         ncells = viewport_width // cell_width
@@ -334,10 +337,27 @@ class TabBar:
         margin = (viewport_width - ncells * cell_width) // 2 + self.margin_width
         self.window_geometry = g = WindowGeometry(
             margin, tab_bar.top, viewport_width - margin, tab_bar.bottom, s.columns, s.lines)
-        if margin > 0:
-            self.blank_rects = (Rect(0, g.top, g.left, g.bottom + 1), Rect(g.right - 1, g.top, viewport_width, g.bottom + 1))
-        else:
-            self.blank_rects = ()
+
+        # border rects for tab bar with margin width and height 
+        if self.tab_bar_edge == 1: #top
+            if margin > 0 and self.margin_height > 0:
+                self.blank_rects = (Rect(0, g.top, g.left, g.bottom + 1), Rect(g.right - 1, g.top, viewport_width, g.bottom + 1), Rect(0, 0, viewport_width - 1, g.top))
+            elif margin > 0:
+                self.blank_rects = (Rect(0, g.top, g.left, g.bottom + 1), Rect(g.right - 1, g.top, viewport_width, g.bottom + 1))
+            elif self.margin_height > 0:
+                self.blank_rects = (Rect(0, 0, viewport_width - 1, g.top))
+            else:
+                self.blank_rects = ()
+        else: #tab_bar_edge == 3, bottom
+            if margin > 0 and self.margin_height > 0:
+                self.blank_rects = (Rect(0, g.top, g.left, g.bottom + 1), Rect(g.right - 1, g.top, viewport_width, g.bottom + 1), Rect(0, g.top + self.cell_height, viewport_width - 1, vh))
+            elif margin > 0:
+                self.blank_rects = (Rect(0, g.top, g.left, g.bottom + 1), Rect(g.right - 1, g.top, viewport_width, g.bottom + 1))
+            elif self.margin_height > 0:
+                self.blank_rects = (Rect(0, g.top + self.cell_height, viewport_width - 1, vh))
+            else:
+                self.blank_rects = ()
+
         self.screen_geometry = sg = calculate_gl_geometry(g, vw, vh, cell_width, cell_height)
         set_tab_bar_render_data(self.os_window_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
 
