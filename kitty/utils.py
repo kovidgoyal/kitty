@@ -269,7 +269,9 @@ def init_startup_notification(window_handle: Optional[int], startup_id: Optional
         except OSError as e:
             if not str(e).startswith("Failed to load libstartup-notification"):
                 raise e
-            log_error("{}. This has two main effects: you won't get a loading cursor when kitty is starting up, and kitty windows may appear under wrong X11 workspace.".format(str(e)))
+            log_error(
+                f'{e}. This has two main effects:',
+                'There will be no startup feedback and when using --single-instance, kitty windows may start on an incorrect desktop/workspace.')
     except Exception:
         import traceback
         traceback.print_exc()
