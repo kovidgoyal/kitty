@@ -264,7 +264,12 @@ def init_startup_notification(window_handle: Optional[int], startup_id: Optional
         log_error('Could not perform startup notification as window handle not present')
         return None
     try:
-        return init_startup_notification_x11(window_handle, startup_id)
+        try:
+            return init_startup_notification_x11(window_handle, startup_id)
+        except OSError as e:
+            if not str(e).startswith("Failed to load libstartup-notification"):
+                raise e
+            log_error("{}. This has two main effects: you won't get a loading cursor when kitty is starting up, and kitty windows may appear under wrong X11 workspace.".format(str(e)))
     except Exception:
         import traceback
         traceback.print_exc()
