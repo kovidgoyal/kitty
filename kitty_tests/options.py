@@ -56,6 +56,6 @@ class TestConfParsing(BaseTest):
         # deprecation handling
         opts = p('clear_all_shortcuts y', 'send_text all f1 hello')
         self.ae(len(opts.keymap), 1)
-        opts = p('x11_hide_window_decorations y')
+        opts = p('macos_hide_titlebar y' if is_macos else 'x11_hide_window_decorations y')
         self.assertTrue(opts.hide_window_decorations)
         self.ae(len(self.error_messages), 1)
