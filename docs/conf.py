@@ -32,9 +32,8 @@ kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
 
-from kitty.conf.definition import Option, Shortcut, OptionOrAction, MouseAction  # noqa
+from kitty.conf.types import Definition  # noqa
 from kitty.constants import str_version  # noqa
-
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -248,8 +247,8 @@ def add_html_context(app: Any, pagename: str, templatename: str, context: Any, *
 
 # CLI docs {{{
 def write_cli_docs(all_kitten_names: Iterable[str]) -> None:
-    from kitty.launch import options_spec as launch_options_spec
     from kitty.cli import option_spec_as_rst
+    from kitty.launch import options_spec as launch_options_spec
     with open('generated/launch.rst', 'w') as f:
         f.write(option_spec_as_rst(
             appname='launch', ospec=launch_options_spec, heading_char='_',
@@ -264,7 +263,7 @@ if you specify a program-to-run you can use the special placeholder
             'kitty --to', 'kitty @ --to'))
     as_rst = partial(option_spec_as_rst, heading_char='_')
     from kitty.rc.base import all_command_names, command_for_name
-    from kitty.remote_control import global_options_spec, cli_msg
+    from kitty.remote_control import cli_msg, global_options_spec
     with open('generated/cli-kitty-at.rst', 'w') as f:
         p = partial(print, file=f)
         p('kitty @\n' + '-' * 80)
@@ -293,7 +292,9 @@ if you specify a program-to-run you can use the special placeholder
 
 
 def write_remote_control_protocol_docs() -> None:  # {{{
-    from kitty.rc.base import all_command_names, command_for_name, RemoteCommand
+    from kitty.rc.base import (
+        RemoteCommand, all_command_names, command_for_name
+    )
     field_pat = re.compile(r'\s*([a-zA-Z0-9_+]+)\s*:\s*(.+)')
 
     def format_cmd(p: Callable, name: str, cmd: RemoteCommand) -> None:
@@ -447,87 +448,6 @@ def parse_shortcut_node(env: Any, sig: str, signode: Any) -> str:
     return sig
 
 
-def render_conf(conf_name: str, all_options: Iterable[OptionOrAction]) -> str:
-    from kitty.conf.definition import merged_opts, Group
-    ans = ['.. default-domain:: conf', '']
-    a = ans.append
-    current_group: Optional[Group] = None
-    all_options_ = list(all_options)
-    kitty_mod = 'kitty_mod'
-
-    def render_group(group: Group) -> None:
-        a('')
-        a(f'.. _conf-{conf_name}-{group.name}:')
-        a('')
-        a(group.short_text)
-        heading_level = '+' if '.' in group.name else '^'
-        a(heading_level * (len(group.short_text) + 20))
-        a('')
-        if group.start_text:
-            a(group.start_text)
-            a('')
-
-    def handle_group_end(group: Group) -> None:
-        if group.end_text:
-            assert current_group is not None
-            a(''), a(current_group.end_text)
-
-    def handle_group(new_group: Group, new_group_is_shortcut: bool = False) -> None:
-        nonlocal current_group
-        if new_group is not current_group:
-            if current_group:
-                handle_group_end(current_group)
-            current_group = new_group
-            render_group(current_group)
-
-    def handle_option(i: int, opt: Option) -> None:
-        nonlocal kitty_mod
-        if not opt.long_text or not opt.add_to_docs:
-            return
-        handle_group(opt.group)
-        if opt.name == 'kitty_mod':
-            kitty_mod = opt.defval_as_string
-        mopts = list(merged_opts(all_options_, opt, i))
-        a('.. opt:: ' + ', '.join(conf_name + '.' + mo.name for mo in mopts))
-        a('.. code-block:: conf')
-        a('')
-        sz = max(len(x.name) for x in mopts)
-        for mo in mopts:
-            a(('    {:%ds} {}' % sz).format(mo.name, mo.defval_as_string))
-        a('')
-        if opt.long_text:
-            a(expand_opt_references(conf_name, opt.long_text))
-            a('')
-
-    def handle_shortcuts(shortcuts: Sequence[Union[Shortcut, MouseAction]]) -> None:
-        sc = shortcuts[0]
-        handle_group(sc.group, True)
-        sc_text = f'{conf_name}.{sc.short_text}'
-        a('.. shortcut:: ' + sc_text)
-        shortcuts = [s for s in shortcuts if s.add_to_default]
-        shortcut_slugs[f'{conf_name}.{sc.name}'] = (sc_text, sc.key.replace('kitty_mod', kitty_mod))
-        if shortcuts:
-            a('.. code-block:: conf')
-            a('')
-            for x in shortcuts:
-                if x.add_to_default:
-                    a('    ' + x.line.replace('kitty_mod', kitty_mod))
-        a('')
-        if sc.long_text:
-            a(expand_opt_references(conf_name, sc.long_text))
-            a('')
-
-    for i, opt in enumerate(all_options_):
-        if isinstance(opt, Option):
-            handle_option(i, opt)
-        else:
-            handle_shortcuts(opt)
-
-    if current_group:
-        handle_group_end(current_group)
-    return '\n'.join(ans)
-
-
 def process_opt_link(env: Any, refnode: Any, has_explicit_title: bool, title: str, target: str) -> Tuple[str, str]:
     conf_name, opt = target.partition('.')[::2]
     if not opt:
@@ -572,25 +492,24 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
     sc_role.warn_dangling = True
     sc_role.process_link = process_shortcut_link
 
-    def generate_default_config(all_options: Dict[str, OptionOrAction], name: str) -> None:
-        from kitty.conf.definition import as_conf_file
+    def generate_default_config(definition: Definition, name: str) -> None:
         with open(f'generated/conf-{name}.rst', 'w', encoding='utf-8') as f:
             print('.. highlight:: conf\n', file=f)
-            f.write(render_conf(name, all_options.values()))
+            f.write('\n'.join(definition.as_rst(name, shortcut_slugs)))
 
         conf_name = re.sub(r'^kitten-', '', name) + '.conf'
         with open(f'generated/conf/{conf_name}', 'w', encoding='utf-8') as f:
-            text = '\n'.join(as_conf_file(all_options.values()))
+            text = '\n'.join(definition.as_conf())
             print(text, file=f)
 
-    from kitty.config_data import all_options
-    generate_default_config(all_options, 'kitty')
+    from kitty.options.definition import definition
+    generate_default_config(definition, 'kitty')
 
     from kittens.runner import get_kitten_conf_docs
     for kitten in all_kitten_names:
-        all_options = get_kitten_conf_docs(kitten)
-        if all_options:
-            generate_default_config(all_options, f'kitten-{kitten}')
+        definition = get_kitten_conf_docs(kitten)
+        if definition:
+            generate_default_config(definition, f'kitten-{kitten}')
 # }}}
 
 

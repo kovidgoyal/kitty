@@ -27,6 +27,19 @@ class Unset:
 unset = Unset()
 
 
+def expand_opt_references(conf_name: str, text: str) -> str:
+    conf_name += '.'
+
+    def expand(m: Match) -> str:
+        ref = m.group(1)
+        if '<' not in ref and '.' not in ref:
+            full_ref = conf_name + ref
+            return ':opt:`{} <{}>`'.format(ref, full_ref)
+        return str(m.group())
+
+    return re.sub(r':opt:`(.+?)`', expand, text)
+
+
 def remove_markup(text: str) -> str:
 
     def sub(m: Match) -> str:
@@ -122,6 +135,27 @@ class Option:
             a('')
         return ans
 
+    def as_rst(
+        self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]],
+        kitty_mod: str, level: int = 0, option_group: List['Option'] = []
+    ) -> List[str]:
+        ans: List[str] = []
+        a = ans.append
+        if not self.documented:
+            return ans
+        mopts = [self] + option_group
+        a('.. opt:: ' + ', '.join(conf_name + '.' + mo.name for mo in mopts))
+        a('.. code-block:: conf')
+        a('')
+        sz = max(len(x.name) for x in mopts)
+        for mo in mopts:
+            a(('    {:%ds} {}' % sz).format(mo.name, mo.defval_as_string))
+        a('')
+        if self.long_text:
+            a(expand_opt_references(conf_name, self.long_text))
+            a('')
+        return ans
+
 
 class MultiVal:
 
@@ -160,15 +194,36 @@ class MultiOption:
             a('')
         return ans
 
+    def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]], kitty_mod: str, level: int = 0) -> List[str]:
+        ans: List[str] = []
+        a = ans.append
+        a(f'.. opt:: {conf_name}.{self.name}')
+        a('.. code-block:: conf')
+        a('')
+        for k in self.items:
+            if k.documented:
+                a(f'    {self.name:s} {k.defval_as_str}')
+        a('')
+        if self.long_text:
+            a(expand_opt_references(conf_name, self.long_text))
+            a('')
+        return ans
+
 
 class Mapping:
     add_to_default: bool
+    short_text: str
     long_text: str
     documented: bool
     setting_name: str
+    name: str
 
     @property
     def parseable_text(self) -> str:
+        return ''
+
+    @property
+    def key_text(self) -> str:
         return ''
 
     def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
@@ -179,6 +234,24 @@ class Mapping:
                 a(self.setting_name + ' ' + self.parseable_text)
             if self.long_text:
                 a(''), a(render_block(self.long_text.strip())), a('')
+        return ans
+
+    def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]], kitty_mod: str, level: int = 0) -> List[str]:
+        ans: List[str] = []
+        sc_text = f'{conf_name}.{self.short_text}'
+        shortcut_slugs[f'{conf_name}.{self.name}'] = (sc_text, self.key_text.replace('kitty_mod', kitty_mod))
+        if self.documented:
+            a = ans.append
+            a('.. shortcut:: ' + sc_text)
+            if self.add_to_default:
+                a('.. code-block:: conf')
+                a('')
+                a('    ' + self.setting_name + ' ' + self.parseable_text.replace('kitty_mod', kitty_mod))
+            a('')
+            if self.long_text:
+                a(expand_opt_references(conf_name, self.long_text))
+                a('')
+
         return ans
 
 
@@ -201,6 +274,10 @@ class ShortcutMapping(Mapping):
     @property
     def parseable_text(self) -> str:
         return f'{self.key} {self.action_def}'
+
+    @property
+    def key_text(self) -> str:
+        return self.key
 
 
 class MouseMapping(Mapping):
@@ -225,6 +302,10 @@ class MouseMapping(Mapping):
     @property
     def parseable_text(self) -> str:
         return f'{self.button} {self.event} {self.modes} {self.action_def}'
+
+    @property
+    def key_text(self) -> str:
+        return self.button
 
 
 NonGroups = Union[Option, MultiOption, ShortcutMapping, MouseMapping]
@@ -251,6 +332,7 @@ class Group:
         return len(self.items)
 
     def iter_all_with_coalesced_options(self) -> Iterator[Union[Tuple, GroupItem]]:
+        self.kitty_mod = 'kitty_mod'
         option_groups = {}
         current_group: List[Option] = []
         coalesced = set()
@@ -282,6 +364,42 @@ class Group:
                 yield from x.iter_all_non_groups()
             else:
                 yield x
+
+    def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]], kitty_mod: str = 'kitty_mod', level: int = 0) -> List[str]:
+        ans: List[str] = []
+        a = ans.append
+        if level:
+            a('')
+            a(f'.. _conf-{conf_name}-{self.name}:')
+            a('')
+            a(self.title)
+            heading_level = '+' if level > 1 else '^'
+            a(heading_level * (len(self.title) + 20))
+            a('')
+            if self.start_text:
+                a(self.start_text)
+                a('')
+        else:
+            ans.extend(('.. default-domain:: conf', ''))
+
+        if not level:
+            for opt in self.iter_all_non_groups():
+                if isinstance(opt, Option) and opt.name == 'kitty_mod':
+                    kitty_mod = opt.defval_as_string
+                    break
+        for item in self.iter_all_with_coalesced_options():
+            if isinstance(item, tuple):
+                option, option_group = item
+                lines = option.as_rst(conf_name, shortcut_slugs, kitty_mod, option_group=option_group)
+            else:
+                lines = item.as_rst(conf_name, shortcut_slugs, kitty_mod, level + 1)
+            ans.extend(lines)
+
+        if level:
+            if self.end_text:
+                a('')
+                a(self.end_text)
+        return ans
 
     def as_conf(self, commented: bool = False, level: int = 0) -> List[str]:
         ans: List[str] = []
@@ -470,3 +588,6 @@ class Definition:
 
     def as_conf(self, commented: bool = False) -> List[str]:
         return self.root_group.as_conf(commented)
+
+    def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]]) -> List[str]:
+        return self.root_group.as_rst(conf_name, shortcut_slugs)
