@@ -2725,34 +2725,30 @@ map('Scroll line up',
     'scroll_line_up kitty_mod+up scroll_line_up',
     )
 map('Scroll line up',
+    'scroll_line_up kitty_mod+k scroll_line_up',
+    )
+map('Scroll line up',
     'scroll_line_up alt+cmd+page_up scroll_line_up',
     only="macos",
-    documented=False,
     )
 map('Scroll line up',
     'scroll_line_up cmd+up scroll_line_up',
     only="macos",
-    documented=False,
-    )
-map('',
-    'scroll_line_up kitty_mod+k scroll_line_up',
     )
 
 map('Scroll line down',
     'scroll_line_down kitty_mod+down scroll_line_down',
     )
-map('',
+map('Scroll line down',
     'scroll_line_down kitty_mod+j scroll_line_down',
     )
 map('Scroll line down',
     'scroll_line_down alt+cmd+page_down scroll_line_down',
     only="macos",
-    documented=False,
     )
 map('Scroll line down',
     'scroll_line_down cmd+down scroll_line_down',
     only="macos",
-    documented=False,
     )
 
 map('Scroll page up',
@@ -2761,7 +2757,6 @@ map('Scroll page up',
 map('Scroll page up',
     'scroll_page_up cmd+page_up scroll_page_up',
     only="macos",
-    documented=False,
     )
 
 map('Scroll page down',
@@ -2770,7 +2765,6 @@ map('Scroll page down',
 map('Scroll page down',
     'scroll_page_down cmd+page_down scroll_page_down',
     only="macos",
-    documented=False,
     )
 
 map('Scroll to top',
@@ -2779,7 +2773,6 @@ map('Scroll to top',
 map('Scroll to top',
     'scroll_home cmd+home scroll_home',
     only="macos",
-    documented=False,
     )
 
 map('Scroll to bottom',
@@ -2788,7 +2781,6 @@ map('Scroll to bottom',
 map('Scroll to bottom',
     'scroll_end cmd+end scroll_end',
     only="macos",
-    documented=False,
     )
 
 map('Browse scrollback buffer in less',
@@ -2810,7 +2802,7 @@ egr()  # }}}
 # shortcuts.window {{{
 agr('shortcuts.window', 'Window management')
 
-map('',
+map('New window',
     'new_window kitty_mod+enter new_window',
     long_text='''
 You can open a new window running an arbitrary program, for example::
@@ -2841,7 +2833,6 @@ For more details, see :doc:`launch`.
 map('New window',
     'new_window cmd+enter new_window',
     only="macos",
-    documented=False,
     )
 
 map('New OS window',
@@ -2855,7 +2846,6 @@ current working directory.
 map('New OS window',
     'new_os_window cmd+n new_os_window',
     only="macos",
-    documented=False,
     )
 
 map('Close window',
@@ -2864,7 +2854,6 @@ map('Close window',
 map('Close window',
     'close_window shift+cmd+d close_window',
     only="macos",
-    documented=False,
     )
 
 map('Next window',
@@ -2893,7 +2882,6 @@ map('Start resizing window',
 map('Start resizing window',
     'start_resizing_window cmd+r start_resizing_window',
     only="macos",
-    documented=False,
     )
 
 map('First window',
@@ -2902,7 +2890,6 @@ map('First window',
 map('First window',
     'first_window cmd+1 first_window',
     only="macos",
-    documented=False,
     )
 
 map('Second window',
@@ -2911,7 +2898,6 @@ map('Second window',
 map('Second window',
     'second_window cmd+2 second_window',
     only="macos",
-    documented=False,
     )
 
 map('Third window',
@@ -2920,7 +2906,6 @@ map('Third window',
 map('Third window',
     'third_window cmd+3 third_window',
     only="macos",
-    documented=False,
     )
 
 map('Fourth window',
@@ -2929,7 +2914,6 @@ map('Fourth window',
 map('Fourth window',
     'fourth_window cmd+4 fourth_window',
     only="macos",
-    documented=False,
     )
 
 map('Fifth window',
@@ -2938,7 +2922,6 @@ map('Fifth window',
 map('Fifth window',
     'fifth_window cmd+5 fifth_window',
     only="macos",
-    documented=False,
     )
 
 map('Sixth window',
@@ -2947,7 +2930,6 @@ map('Sixth window',
 map('Sixth window',
     'sixth_window cmd+6 sixth_window',
     only="macos",
-    documented=False,
     )
 
 map('Seventh window',
@@ -2956,7 +2938,6 @@ map('Seventh window',
 map('Seventh window',
     'seventh_window cmd+7 seventh_window',
     only="macos",
-    documented=False,
     )
 
 map('Eight window',
@@ -2965,7 +2946,6 @@ map('Eight window',
 map('Eight window',
     'eighth_window cmd+8 eighth_window',
     only="macos",
-    documented=False,
     )
 
 map('Ninth window',
@@ -2974,7 +2954,6 @@ map('Ninth window',
 map('Ninth window',
     'ninth_window cmd+9 ninth_window',
     only="macos",
-    documented=False,
     )
 
 map('Tenth window',
@@ -2992,11 +2971,9 @@ map('Next tab',
 map('Next tab',
     'next_tab shift+cmd+] next_tab',
     only="macos",
-    documented=False,
     )
 map('Next tab',
     'next_tab ctrl+tab next_tab',
-    documented=False,
     )
 
 map('Previous tab',
@@ -3005,11 +2982,9 @@ map('Previous tab',
 map('Previous tab',
     'previous_tab shift+cmd+[ previous_tab',
     only="macos",
-    documented=False,
     )
 map('Previous tab',
     'previous_tab shift+ctrl+tab previous_tab',
-    documented=False,
     )
 
 map('New tab',
@@ -3018,7 +2993,6 @@ map('New tab',
 map('New tab',
     'new_tab cmd+t new_tab',
     only="macos",
-    documented=False,
     )
 
 map('Close tab',
@@ -3027,13 +3001,11 @@ map('Close tab',
 map('Close tab',
     'close_tab cmd+w close_tab',
     only="macos",
-    documented=False,
     )
 
 map('Close OS window',
     'close_os_window shift+cmd+w close_os_window',
     only="macos",
-    documented=False,
     )
 
 map('Move tab forward',
@@ -3050,7 +3022,6 @@ map('Set tab title',
 map('Set tab title',
     'set_tab_title shift+cmd+i set_tab_title',
     only="macos",
-    documented=False,
     )
 egr('''
 You can also create shortcuts to go to specific tabs, with 1 being the first
@@ -3098,26 +3069,21 @@ map('Increase font size',
     )
 map('Increase font size',
     'increase_font_size kitty_mod+plus change_font_size all +2.0',
-    documented=True,
     )
 map('Increase font size',
     'increase_font_size kitty_mod+kp_add change_font_size all +2.0',
-    documented=True,
     )
 map('Increase font size',
     'increase_font_size cmd+plus change_font_size all +2.0',
     only="macos",
-    documented=True,
     )
 map('Increase font size',
     'increase_font_size cmd+equal change_font_size all +2.0',
     only="macos",
-    documented=True,
     )
 map('Increase font size',
     'increase_font_size cmd+shift+equal change_font_size all +2.0',
     only="macos",
-    documented=True,
     )
 
 map('Decrease font size',
@@ -3129,12 +3095,10 @@ map('Decrease font size',
 map('Decrease font size',
     'decrease_font_size cmd+minus change_font_size all -2.0',
     only="macos",
-    documented=True,
     )
 map('Decrease font size',
     'decrease_font_size cmd+shift+minus change_font_size all -2.0',
     only="macos",
-    documented=True,
     )
 
 map('Reset font size',
@@ -3143,7 +3107,6 @@ map('Reset font size',
 map('Reset font size',
     'reset_font_size cmd+0 change_font_size all 0',
     only="macos",
-    documented=True,
     )
 egr('''
 To setup shortcuts for specific font sizes::
@@ -3242,7 +3205,6 @@ map('Unicode input',
 map('Unicode input',
     'input_unicode_character cmd+ctrl+space kitten unicode_input',
     only="macos",
-    documented=False,
     )
 
 map('Edit config file',
@@ -3251,7 +3213,6 @@ map('Edit config file',
 map('Edit config file',
     'edit_config_file cmd+, edit_config_file',
     only="macos",
-    documented=False,
     )
 
 map('Open the kitty command shell',

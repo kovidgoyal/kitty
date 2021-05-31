@@ -101,6 +101,7 @@ def render_block(text: str) -> str:
 class CoalescedIteratorData:
 
     option_groups: Dict[int, List['Option']] = {}
+    action_groups: Dict[str, List['Mapping']] = {}
     coalesced: Set[int] = set()
     initialized: bool = False
     kitty_mod: str = 'kitty_mod'
@@ -111,6 +112,8 @@ class CoalescedIteratorData:
         self.root = root
         option_groups = self.option_groups = {}
         current_group: List[Option] = []
+        action_groups: Dict[str, List[Mapping]] = {}
+        self.action_groups = action_groups
         coalesced = self.coalesced = set()
         self.kitty_mod = 'kitty_mod'
         for item in root.iter_all_non_groups():
@@ -126,11 +129,20 @@ class CoalescedIteratorData:
                     current_group = [item]
                 else:
                     current_group.append(item)
+            elif isinstance(item, Mapping):
+                if item.name in action_groups:
+                    coalesced.add(id(item))
+                    action_groups[item.name].append(item)
+                else:
+                    action_groups[item.name] = []
         if current_group:
             option_groups[id(current_group[0])] = current_group[1:]
 
     def option_group_for_option(self, opt: 'Option') -> List['Option']:
         return self.option_groups.get(id(opt), [])
+
+    def action_group_for_action(self, ac: 'Mapping') -> List['Mapping']:
+        return self.action_groups.get(ac.name, [])
 
 
 class Option:
@@ -252,6 +264,7 @@ class Mapping:
     documented: bool
     setting_name: str
     name: str
+    only: Only
 
     @property
     def parseable_text(self) -> str:
@@ -271,21 +284,37 @@ class Mapping:
                 a(''), a(render_block(self.long_text.strip())), a('')
         return ans
 
-    def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]], kitty_mod: str, level: int = 0) -> List[str]:
+    def as_rst(
+        self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]],
+        kitty_mod: str, level: int = 0, action_group: List['Mapping'] = []
+    ) -> List[str]:
         ans: List[str] = []
+        a = ans.append
+        if not self.documented:
+            return ans
+        if not self.short_text:
+            raise ValueError(f'The shortcut for {self.name} has no short_text')
         sc_text = f'{conf_name}.{self.short_text}'
         shortcut_slugs[f'{conf_name}.{self.name}'] = (sc_text, self.key_text.replace('kitty_mod', kitty_mod))
-        if self.documented:
-            a = ans.append
-            a('.. shortcut:: ' + sc_text)
-            if self.add_to_default:
-                a('.. code-block:: conf')
-                a('')
-                a('    ' + self.setting_name + ' ' + self.parseable_text.replace('kitty_mod', kitty_mod))
+        a('.. shortcut:: ' + sc_text)
+        block_started = False
+        for sc in [self] + action_group:
+            if sc.add_to_default and sc.documented:
+                if not block_started:
+                    a('.. code-block:: conf')
+                    a('')
+                    block_started = True
+                suffix = ''
+                if sc.only == 'macos':
+                    suffix = ' 🍎'
+                elif sc.only == 'linux':
+                    suffix = ' 🐧'
+                a(f'    {sc.setting_name} {sc.parseable_text.replace("kitty_mod", kitty_mod)}{suffix}')
+        a('')
+        if self.long_text:
             a('')
-            if self.long_text:
-                a(expand_opt_references(conf_name, self.long_text))
-                a('')
+            a(expand_opt_references(conf_name, self.long_text))
+            a('')
 
         return ans
 
@@ -406,6 +435,8 @@ class Group:
         for item in self.iter_with_coalesced_options():
             if isinstance(item, Option):
                 lines = item.as_rst(conf_name, shortcut_slugs, kitty_mod, option_group=self.coalesced_iterator_data.option_group_for_option(item))
+            elif isinstance(item, Mapping):
+                lines = item.as_rst(conf_name, shortcut_slugs, kitty_mod, level + 1, action_group=self.coalesced_iterator_data.action_group_for_action(item))
             else:
                 lines = item.as_rst(conf_name, shortcut_slugs, kitty_mod, level + 1)
             ans.extend(lines)

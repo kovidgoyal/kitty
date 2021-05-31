@@ -13,10 +13,7 @@ import subprocess
 import sys
 import time
 from functools import partial
-from typing import (
-    Any, Callable, Dict, Iterable, List, Match, Optional, Sequence, Tuple,
-    Union
-)
+from typing import Any, Callable, Dict, Iterable, List, Match, Optional, Tuple
 
 from docutils import nodes
 from docutils.parsers.rst.roles import set_classes
@@ -391,12 +388,14 @@ class SessionLexer(RegexLexer):
 
 
 def link_role(name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []) -> Tuple[List, List]:
+    text = text.replace('\n', ' ')
     m = re.match(r'(.+)\s+<(.+?)>', text)
     if m is None:
         msg = inliner.reporter.error(f'link "{text}" not recognized', line=lineno)
         prb = inliner.problematic(rawtext, rawtext, msg)
         return [prb], [msg]
     text, url = m.group(1, 2)
+    url = url.replace(' ', '')
     set_classes(options)
     node = nodes.reference(rawtext, text, refuri=url, **options)
     return [node], []
@@ -491,6 +490,7 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
     sc_role = app.registry.domain_roles['std']['sc']
     sc_role.warn_dangling = True
     sc_role.process_link = process_shortcut_link
+    shortcut_slugs.clear()
 
     def generate_default_config(definition: Definition, name: str) -> None:
         with open(f'generated/conf-{name}.rst', 'w', encoding='utf-8') as f:
