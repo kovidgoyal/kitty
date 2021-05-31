@@ -68,6 +68,8 @@ class Session:
         if self.default_watchers:
             spec.opts.watcher = list(spec.opts.watcher) + self.default_watchers
         t = self.tabs[-1]
+        if t.next_title and not spec.opts.window_title:
+            spec.opts.window_title = t.next_title
         spec.opts.cwd = spec.opts.cwd or t.cwd
         t.windows.append(spec)
         t.next_title = None

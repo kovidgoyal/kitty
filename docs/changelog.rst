@@ -73,6 +73,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Tab bar: Use a lower contrast color for tab separators (:pull:`3666`)
 
+- Fix a regression that caused using the ``title`` command in session files
+  to stop working (:iss:`3676`)
+
 
 0.20.3 [2021-05-06]
 ----------------------

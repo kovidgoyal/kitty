@@ -221,8 +221,7 @@ For example:
     # vim in it
     launch --env FOO=BAR vim
     # Set the title for the next window
-    title Chat with x
-    launch irssi --profile x
+    launch --title "Chat with x" irssi --profile x
 
     # Create a new tab (the part after new_tab is the optional tab
     # name which will be displayed in the tab bar, if omitted, the
