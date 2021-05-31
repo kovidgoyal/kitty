@@ -7,7 +7,7 @@ import re
 import typing
 from importlib import import_module
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Match, Optional, Tuple,
+    Any, Callable, Dict, Iterable, Iterator, List, Match, Optional, Set, Tuple,
     Union, cast
 )
 
@@ -96,6 +96,41 @@ def render_block(text: str) -> str:
     text = remove_markup(text)
     lines = text.splitlines()
     return '\n'.join(wrapped_block(lines))
+
+
+class CoalescedIteratorData:
+
+    option_groups: Dict[int, List['Option']] = {}
+    coalesced: Set[int] = set()
+    initialized: bool = False
+    kitty_mod: str = 'kitty_mod'
+
+    def initialize(self, root: 'Group') -> None:
+        if self.initialized:
+            return
+        self.root = root
+        option_groups = self.option_groups = {}
+        current_group: List[Option] = []
+        coalesced = self.coalesced = set()
+        self.kitty_mod = 'kitty_mod'
+        for item in root.iter_all_non_groups():
+            if isinstance(item, Option):
+                if item.name == 'kitty_mod':
+                    self.kitty_mod = item.defval_as_string
+                if current_group:
+                    if item.needs_coalescing:
+                        current_group.append(item)
+                        coalesced.add(id(item))
+                        continue
+                    option_groups[id(current_group[0])] = current_group[1:]
+                    current_group = [item]
+                else:
+                    current_group.append(item)
+        if current_group:
+            option_groups[id(current_group[0])] = current_group[1:]
+
+    def option_group_for_option(self, opt: 'Option') -> List['Option']:
+        return self.option_groups.get(id(opt), [])
 
 
 class Option:
@@ -314,8 +349,9 @@ GroupItem = Union[NonGroups, 'Group']
 
 class Group:
 
-    def __init__(self, name: str, title: str, start_text: str = '', parent: Optional['Group'] = None):
+    def __init__(self, name: str, title: str, coalesced_iterator_data: CoalescedIteratorData, start_text: str = '', parent: Optional['Group'] = None):
         self.name = name
+        self.coalesced_iterator_data = coalesced_iterator_data
         self.title = title
         self.start_text = start_text
         self.end_text = ''
@@ -331,32 +367,16 @@ class Group:
     def __len__(self) -> int:
         return len(self.items)
 
-    def iter_all_with_coalesced_options(self) -> Iterator[Union[Tuple, GroupItem]]:
-        self.kitty_mod = 'kitty_mod'
-        option_groups = {}
-        current_group: List[Option] = []
-        coalesced = set()
+    def iter_with_coalesced_options(self) -> Iterator[GroupItem]:
         for item in self:
-            if isinstance(item, Option):
-                if current_group:
-                    if item.needs_coalescing:
-                        current_group.append(item)
-                        coalesced.add(id(item))
-                        continue
-                    option_groups[id(current_group[0])] = current_group[1:]
-                    current_group = [item]
-                else:
-                    current_group.append(item)
-        if current_group:
-            option_groups[id(current_group[0])] = current_group[1:]
-
-        for item in self:
-            if isinstance(item, Option):
-                if id(item) in coalesced:
-                    continue
-                yield item, option_groups[id(item)]
-            else:
+            if id(item) not in self.coalesced_iterator_data.coalesced:
                 yield item
+
+    def iter_all(self) -> Iterator[GroupItem]:
+        for x in self:
+            yield x
+            if isinstance(x, Group):
+                yield from x.iter_all()
 
     def iter_all_non_groups(self) -> Iterator[NonGroups]:
         for x in self:
@@ -382,15 +402,10 @@ class Group:
         else:
             ans.extend(('.. default-domain:: conf', ''))
 
-        if not level:
-            for opt in self.iter_all_non_groups():
-                if isinstance(opt, Option) and opt.name == 'kitty_mod':
-                    kitty_mod = opt.defval_as_string
-                    break
-        for item in self.iter_all_with_coalesced_options():
-            if isinstance(item, tuple):
-                option, option_group = item
-                lines = option.as_rst(conf_name, shortcut_slugs, kitty_mod, option_group=option_group)
+        kitty_mod = self.coalesced_iterator_data.kitty_mod
+        for item in self.iter_with_coalesced_options():
+            if isinstance(item, Option):
+                lines = item.as_rst(conf_name, shortcut_slugs, kitty_mod, option_group=self.coalesced_iterator_data.option_group_for_option(item))
             else:
                 lines = item.as_rst(conf_name, shortcut_slugs, kitty_mod, level + 1)
             ans.extend(lines)
@@ -413,10 +428,9 @@ class Group:
         else:
             ans.extend(('# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', ''))
 
-        for item in self.iter_all_with_coalesced_options():
-            if isinstance(item, tuple):
-                option, option_group = item
-                lines = option.as_conf(option_group=option_group)
+        for item in self.iter_with_coalesced_options():
+            if isinstance(item, Option):
+                lines = item.as_conf(option_group=self.coalesced_iterator_data.option_group_for_option(item))
             else:
                 lines = item.as_conf(commented, level + 1)
             ans.extend(lines)
@@ -492,7 +506,8 @@ class Definition:
     def __init__(self, package: str, *actions: Action) -> None:
         self.module_for_parsers = import_module(f'{package}.options.utils')
         self.package = package
-        self.root_group = Group('', '')
+        self.coalesced_iterator_data = CoalescedIteratorData()
+        self.root_group = Group('', '', self.coalesced_iterator_data)
         self.current_group = self.root_group
         self.option_map: Dict[str, Option] = {}
         self.multi_option_map: Dict[str, MultiOption] = {}
@@ -529,7 +544,7 @@ class Definition:
         return cast(Callable, ans)
 
     def add_group(self, name: str, title: str = '', start_text: str = '') -> None:
-        self.current_group = Group(name, title or name, start_text.strip(), self.current_group)
+        self.current_group = Group(name, title or name, self.coalesced_iterator_data, start_text.strip(), self.current_group)
         if self.current_group.parent is not None:
             self.current_group.parent.append(self.current_group)
 
@@ -587,7 +602,9 @@ class Definition:
         self.deprecations[self.parser_func(parser_name)] = aliases
 
     def as_conf(self, commented: bool = False) -> List[str]:
+        self.coalesced_iterator_data.initialize(self.root_group)
         return self.root_group.as_conf(commented)
 
     def as_rst(self, conf_name: str, shortcut_slugs: Dict[str, Tuple[str, str]]) -> List[str]:
+        self.coalesced_iterator_data.initialize(self.root_group)
         return self.root_group.as_rst(conf_name, shortcut_slugs)
