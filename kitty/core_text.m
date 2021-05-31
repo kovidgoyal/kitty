@@ -378,7 +378,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     debug("\tline height from line origins: %f\n", line_height);
     debug("\tline bounds: origin-y: %f height: %f\n", bounds.origin.y, bounds.size.height);
     debug("\tline bounds-no-leading: origin-y: %f height: %f\n", bounds.origin.y, bounds.size.height);
-    debug("\tbounds metrics: ascent: %f", bounds_ascent);
+    debug("\tbounds metrics: ascent: %f\n", bounds_ascent);
     debug("\tline metrics: ascent: %f descent: %f leading: %f\n", typographic_ascent, typographic_descent, typographic_leading);
     debug("\tfont metrics: ascent: %f descent: %f leading: %f underline_position: %f\n", self->ascent, self->descent, self->leading, self->underline_position);
     debug("\tcell_height: %u baseline: %u underline_position: %u\n", *cell_height, *baseline, *underline_position);
