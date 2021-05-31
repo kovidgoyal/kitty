@@ -2,8 +2,8 @@
 # vim:fileencoding=utf-8
 
 import typing
-from kitty.conf.utils import merge_dicts, positive_int, python_string, to_color, to_color_or_none
 from kittens.diff.options.utils import parse_map, syntax_aliases
+from kitty.conf.utils import merge_dicts, positive_int, python_string, to_color, to_color_or_none
 
 
 class Parser:

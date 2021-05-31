@@ -2,16 +2,16 @@
 # vim:fileencoding=utf-8
 
 import typing
-from kitty.options.utils import KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap
-import kitty.options.utils
 from kitty.conf.utils import KeyAction
 import kitty.conf.utils
-from kitty.types import FloatEdges, SingleKey
-import kitty.types
 from kitty.constants import is_macos
 import kitty.constants
+from kitty.options.utils import KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap
+import kitty.options.utils
 from kitty.rgb import Color
 import kitty.rgb
+from kitty.types import FloatEdges, SingleKey
+import kitty.types
 
 if typing.TYPE_CHECKING:
     choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled']
@@ -875,9 +875,9 @@ defaults.map = [
     KeyDefinition(False, KeyAction('paste_from_selection'), 1, False, 57348, ()),
     KeyDefinition(False, KeyAction('pass_selection_to_program'), 1024, False, 111, ()),
     KeyDefinition(False, KeyAction('scroll_line_up'), 1024, False, 57352, ()),
+    KeyDefinition(False, KeyAction('scroll_line_up'), 1024, False, 107, ()),
     KeyDefinition(False, KeyAction('scroll_line_up'), 10, False, 57354, ()),
     KeyDefinition(False, KeyAction('scroll_line_up'), 8, False, 57352, ()),
-    KeyDefinition(False, KeyAction('scroll_line_up'), 1024, False, 107, ()),
     KeyDefinition(False, KeyAction('scroll_line_down'), 1024, False, 57353, ()),
     KeyDefinition(False, KeyAction('scroll_line_down'), 1024, False, 106, ()),
     KeyDefinition(False, KeyAction('scroll_line_down'), 10, False, 57355, ()),

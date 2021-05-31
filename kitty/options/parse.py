@@ -2,6 +2,10 @@
 # vim:fileencoding=utf-8
 
 import typing
+from kitty.conf.utils import (
+    merge_dicts, positive_float, positive_int, to_bool, to_cmdline, to_color, to_color_or_none,
+    unit_float
+)
 from kitty.options.utils import (
     active_tab_title_template, adjust_line_height, allow_hyperlinks, allow_remote_control,
     box_drawing_scale, clear_all_shortcuts, clipboard_control, config_or_absolute_path, copy_on_select,
@@ -13,10 +17,6 @@ from kitty.options.utils import (
     tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator, tab_title_template, to_cursor_shape,
     to_font_size, to_layout_names, to_modifiers, url_prefixes, url_style, window_border_width,
     window_size
-)
-from kitty.conf.utils import (
-    merge_dicts, positive_float, positive_int, to_bool, to_cmdline, to_color, to_color_or_none,
-    unit_float
 )
 
 

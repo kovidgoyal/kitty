@@ -2,12 +2,12 @@
 # vim:fileencoding=utf-8
 
 import typing
-from kitty.types import ParsedShortcut
-import kitty.types
 from kitty.conf.utils import KeyAction, KittensKeyMap
 import kitty.conf.utils
 from kitty.rgb import Color
 import kitty.rgb
+from kitty.types import ParsedShortcut
+import kitty.types
 
 
 option_names = (  # {{{

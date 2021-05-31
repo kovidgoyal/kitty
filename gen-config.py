@@ -288,8 +288,8 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
         mmap: Dict[str, List[str]] = {}
         for mod, name in imports:
             mmap.setdefault(mod, []).append(name)
-        for mod, names in mmap.items():
-            names = sorted(names)
+        for mod in sorted(mmap):
+            names = sorted(mmap[mod])
             lines = textwrap.wrap(', '.join(names), 100)
             if len(lines) == 1:
                 s = lines[0]
@@ -326,9 +326,9 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
 def write_output(loc: str, defn: Definition) -> None:
     cls, tc = generate_class(defn, loc)
     with open(os.path.join(*loc.split('.'), 'options', 'types.py'), 'w') as f:
-        f.write(cls)
+        f.write(cls + '\n')
     with open(os.path.join(*loc.split('.'), 'options', 'parse.py'), 'w') as f:
-        f.write(tc)
+        f.write(tc + '\n')
 
 
 def main() -> None:
