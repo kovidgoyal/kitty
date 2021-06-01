@@ -59,7 +59,7 @@ opt('font_size', '11.0',
     )
 
 opt('force_ltr', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 kitty does not support BIDI (bidirectional text), however, for RTL scripts,
 words are automatically displayed in RTL. That is to say, in an RTL script, the
@@ -79,7 +79,7 @@ terminals.
     )
 
 opt('adjust_line_height', '0',
-    option_type='adjust_line_height',
+    option_type='adjust_line_height', ctype='!adjust_line_height',
     long_text='''
 Change the size of each character cell kitty renders. You can use either
 numbers, which are interpreted as pixels or percentages (number followed by %),
@@ -90,7 +90,7 @@ cause rendering artifacts).
     )
 
 opt('adjust_column_width', '0',
-    option_type='adjust_line_height',
+    option_type='adjust_line_height', ctype='!adjust_column_width',
     )
 
 opt('+symbol_map', 'U+E0A0-U+E0A3,U+E0C0-U+E0C7 PowerlineSymbols',
@@ -109,7 +109,7 @@ Syntax is::
     )
 
 opt('disable_ligatures', 'never',
-    option_type='disable_ligatures',
+    option_type='disable_ligatures', ctype='int',
     long_text='''
 Choose how you want to handle multi-character ligatures. The default is to
 always render them.  You can tell kitty to not render them when the cursor is
@@ -210,22 +210,22 @@ background
     )
 
 opt('cursor_shape', 'block',
-    option_type='to_cursor_shape',
+    option_type='to_cursor_shape', ctype='int',
     long_text='The cursor shape can be one of (block, beam, underline)'
     )
 
 opt('cursor_beam_thickness', '1.5',
-    option_type='positive_float',
+    option_type='positive_float', ctype='float',
     long_text='Defines the thickness of the beam cursor (in pts)'
     )
 
 opt('cursor_underline_thickness', '2.0',
-    option_type='positive_float',
+    option_type='positive_float', ctype='float',
     long_text='Defines the thickness of the underline cursor (in pts)'
     )
 
 opt('cursor_blink_interval', '-1',
-    option_type='float',
+    option_type='float', ctype='time',
     long_text='''
 The interval (in seconds) at which to blink the cursor. Set to zero to disable
 blinking. Negative values mean use system default. Note that numbers smaller
@@ -234,7 +234,7 @@ than :opt:`repaint_delay` will be limited to :opt:`repaint_delay`.
     )
 
 opt('cursor_stop_blinking_after', '15.0',
-    option_type='positive_float',
+    option_type='positive_float', ctype='time',
     long_text='''
 Stop blinking cursor after the specified number of seconds of keyboard
 inactivity.  Set to zero to never stop blinking.
@@ -269,7 +269,7 @@ CURSOR_LINE and CURSOR_COLUMN will be replaced by the current cursor position.
     )
 
 opt('scrollback_pager_history_size', '0',
-    option_type='scrollback_pager_history_size',
+    option_type='scrollback_pager_history_size', ctype='uint',
     long_text='''
 Separate scrollback history size, used only for browsing the scrollback buffer
 (in MB). This separate buffer is not available for interactive scrolling but
@@ -282,12 +282,12 @@ text. A value of zero or less disables this feature. The maximum allowed size is
     )
 
 opt('scrollback_fill_enlarged_window', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='Fill new space with lines from the scrollback buffer after enlarging a window.'
     )
 
 opt('wheel_scroll_multiplier', '5.0',
-    option_type='float',
+    option_type='float', ctype='float',
     long_text='''
 Modify the amount scrolled by the mouse wheel. Note this is only used for low
 precision scrolling devices, not for high precision scrolling on platforms such
@@ -296,7 +296,7 @@ as macOS and Wayland. Use negative numbers to change scroll direction.
     )
 
 opt('touch_scroll_multiplier', '1.0',
-    option_type='float',
+    option_type='float', ctype='float',
     long_text='''
 Modify the amount scrolled by a touchpad. Note this is only used for high
 precision scrolling devices on platforms such as macOS and Wayland. Use negative
@@ -310,7 +310,7 @@ agr('mouse', 'Mouse')
 
 opt('mouse_hide_wait', '3.0',
     macos_default="0.0",
-    option_type='float',
+    option_type='float', ctype='time',
     long_text='''
 Hide mouse cursor after the specified number of seconds of the mouse not being
 used. Set to zero to disable mouse cursor hiding. Set to a negative value to
@@ -321,7 +321,7 @@ is too much effort.
     )
 
 opt('url_color', '#0087bd',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='''
 The color and style for highlighting URLs on mouse-over. :code:`url_style` can
 be one of: none, single, double, curly
@@ -329,7 +329,7 @@ be one of: none, single, double, curly
     )
 
 opt('url_style', 'curly',
-    option_type='url_style',
+    option_type='url_style', ctype='uint',
     )
 
 opt('open_url_with', 'default',
@@ -341,14 +341,14 @@ The program with which to open URLs that are clicked on. The special value
     )
 
 opt('url_prefixes', 'http https file ftp gemini irc gopher mailto news git',
-    option_type='url_prefixes',
+    option_type='url_prefixes', ctype='!url_prefixes',
     long_text='''
 The set of URL prefixes to look for when detecting a URL under the mouse cursor.
 '''
     )
 
 opt('detect_urls', 'yes',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 Detect URLs under the mouse. Detected URLs are highlighted with an underline and
 the mouse cursor becomes a hand over them. Even if this option is disabled, URLs
@@ -385,6 +385,7 @@ selections. :code:`always` will always do it.
     )
 
 opt('select_by_word_characters', '@-./_~?&=%+#',
+    ctype='!select_by_word_characters',
     long_text='''
 Characters considered part of a word when double clicking. In addition to these
 characters any character that is marked as an alphanumeric character in the
@@ -393,7 +394,7 @@ unicode database will be matched.
     )
 
 opt('click_interval', '-1.0',
-    option_type='float',
+    option_type='float', ctype='time',
     long_text='''
 The interval between successive clicks to detect double/triple clicks (in
 seconds). Negative numbers will use the system default instead, if available, or
@@ -402,14 +403,14 @@ fallback to 0.5.
     )
 
 opt('focus_follows_mouse', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 Set the active window to the window under the mouse when moving the mouse around
 '''
     )
 
 opt('pointer_shape_when_grabbed', 'arrow',
-    choices=('arrow', 'beam', 'hand'),
+    choices=('arrow', 'beam', 'hand'), ctype='pointer_shape',
     long_text='''
 The shape of the mouse pointer when the program running in the terminal grabs
 the mouse. Valid values are: :code:`arrow`, :code:`beam` and :code:`hand`
@@ -417,7 +418,7 @@ the mouse. Valid values are: :code:`arrow`, :code:`beam` and :code:`hand`
     )
 
 opt('default_pointer_shape', 'beam',
-    choices=('arrow', 'beam', 'hand'),
+    choices=('arrow', 'beam', 'hand'), ctype='pointer_shape',
     long_text='''
 The default shape of the mouse pointer. Valid values are: :code:`arrow`,
 :code:`beam` and :code:`hand`
@@ -425,7 +426,7 @@ The default shape of the mouse pointer. Valid values are: :code:`arrow`,
     )
 
 opt('pointer_shape_when_dragging', 'beam',
-    choices=('arrow', 'beam', 'hand'),
+    choices=('arrow', 'beam', 'hand'), ctype='pointer_shape',
     long_text='''
 The default shape of the mouse pointer when dragging across text. Valid values
 are: :code:`arrow`, :code:`beam` and :code:`hand`
@@ -543,7 +544,7 @@ egr()  # }}}
 agr('performance', 'Performance tuning')
 
 opt('repaint_delay', '10',
-    option_type='positive_int',
+    option_type='positive_int', ctype='time',
     long_text='''
 Delay (in milliseconds) between screen updates. Decreasing it, increases frames-per-second
 (FPS) at the cost of more CPU usage. The default value yields ~100
@@ -555,7 +556,7 @@ to be processed, repaint_delay is ignored.
     )
 
 opt('input_delay', '3',
-    option_type='positive_int',
+    option_type='positive_int', ctype='time',
     long_text='''
 Delay (in milliseconds) before input from the program running in the terminal is
 processed. Note that decreasing it will increase responsiveness, but also
@@ -566,7 +567,7 @@ updates will be drawn.
     )
 
 opt('sync_to_monitor', 'yes',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 Sync screen updates to the refresh rate of the monitor. This prevents tearing
 (https://en.wikipedia.org/wiki/Screen_tearing) when scrolling. However, it
@@ -581,12 +582,12 @@ egr()  # }}}
 agr('bell', 'Terminal bell')
 
 opt('enable_audio_bell', 'yes',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='Enable/disable the audio bell. Useful in environments that require silence.'
     )
 
 opt('visual_bell_duration', '0.0',
-    option_type='positive_float',
+    option_type='positive_float', ctype='time',
     long_text='''
 Visual bell duration. Flash the screen when a bell occurs for the specified
 number of seconds. Set to zero to disable.
@@ -594,7 +595,7 @@ number of seconds. Set to zero to disable.
     )
 
 opt('window_alert_on_bell', 'yes',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 Request window attention on bell. Makes the dock icon bounce on macOS or the
 taskbar flash on linux.
@@ -723,7 +724,7 @@ how that padding is distributed with this option. Using a value of
     )
 
 opt('active_border_color', '#00ff00',
-    option_type='to_color_or_none',
+    option_type='to_color_or_none', ctype='active_border_color',
     long_text='''
 The color for the border of the active window. Set this to none to not draw
 borders around the active window.
@@ -731,17 +732,17 @@ borders around the active window.
     )
 
 opt('inactive_border_color', '#cccccc',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='The color for the border of inactive windows'
     )
 
 opt('bell_border_color', '#ff5a00',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='The color for the border of inactive windows in which a bell has occurred'
     )
 
 opt('inactive_text_alpha', '1.0',
-    option_type='unit_float',
+    option_type='unit_float', ctype='float',
     long_text='''
 Fade the text in inactive windows by the specified amount (a number between zero
 and one, with zero being fully faded).
@@ -749,7 +750,7 @@ and one, with zero being fully faded).
     )
 
 opt('hide_window_decorations', 'no',
-    option_type='hide_window_decorations',
+    option_type='hide_window_decorations', ctype='uint',
     long_text='''
 Hide the window decorations (title-bar and window borders) with :code:`yes`. On
 macOS, :code:`titlebar-only` can be used to only hide the titlebar. Whether this
@@ -759,7 +760,7 @@ system.
     )
 
 opt('resize_debounce_time', '0.1',
-    option_type='positive_float',
+    option_type='positive_float', ctype='time',
     long_text='''
 The time (in seconds) to wait before redrawing the screen when a resize event is
 received. On platforms such as macOS, where the operating system sends events
@@ -768,7 +769,7 @@ corresponding to the start and end of a resize, this number is ignored.
     )
 
 opt('resize_draw_strategy', 'static',
-    option_type='resize_draw_strategy',
+    option_type='resize_draw_strategy', ctype='int',
     long_text='''
 Choose how kitty draws a window while a resize is in progress. A value of
 :code:`static` means draw the current window contents, mostly unchanged. A value
@@ -779,7 +780,7 @@ window size in cells.
     )
 
 opt('resize_in_steps', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 Resize the OS window in steps as large as the cells, instead of with the usual
 pixel accuracy. Combined with an :opt:`initial_window_width` and
@@ -804,7 +805,7 @@ egr()  # }}}
 agr('tabbar', 'Tab bar')
 
 opt('tab_bar_edge', 'bottom',
-    option_type='tab_bar_edge',
+    option_type='tab_bar_edge', ctype='int',
     long_text='Which edge to show the tab bar on, top or bottom'
     )
 
@@ -814,7 +815,7 @@ opt('tab_bar_margin_width', '0.0',
     )
 
 opt('tab_bar_style', 'fade',
-    choices=('fade', 'hidden', 'powerline', 'separator'),
+    choices=('fade', 'hidden', 'powerline', 'separator'), ctype='!tab_bar_style',
     long_text='''
 The tab bar style, can be one of: :code:`fade`, :code:`separator`,
 :code:`powerline`, or :code:`hidden`. In the fade style, each tab's edges fade
@@ -827,7 +828,7 @@ easy switching to a tab.
     )
 
 opt('tab_bar_min_tabs', '2',
-    option_type='tab_bar_min_tabs',
+    option_type='tab_bar_min_tabs', ctype='uint',
     long_text='The minimum number of tabs that must exist before the tab bar is shown'
     )
 
@@ -942,16 +943,16 @@ egr()  # }}}
 agr('colors', 'Color scheme')
 
 opt('foreground', '#dddddd',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='The foreground and background colors'
     )
 
 opt('background', '#000000',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     )
 
 opt('background_opacity', '1.0',
-    option_type='unit_float',
+    option_type='unit_float', ctype='float',
     long_text='''
 The opacity of the background. A number between 0 and 1, where 1 is opaque and 0
 is fully transparent.  This will only work if supported by the OS (for instance,
@@ -971,22 +972,22 @@ default as it has a performance cost)
     )
 
 opt('background_image', 'none',
-    option_type='config_or_absolute_path',
+    option_type='config_or_absolute_path', ctype='!background_image',
     long_text='Path to a background image. Must be in PNG format.'
     )
 
 opt('background_image_layout', 'tiled',
-    choices=('mirror-tiled', 'scaled', 'tiled'),
+    choices=('mirror-tiled', 'scaled', 'tiled'), ctype='bglayout',
     long_text='Whether to tile or scale the background image.'
     )
 
 opt('background_image_linear', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='When background image is scaled, whether linear interpolation should be used.'
     )
 
 opt('dynamic_background_opacity', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 Allow changing of the :opt:`background_opacity` dynamically, using either
 keyboard shortcuts (:sc:`increase_background_opacity` and
@@ -995,7 +996,7 @@ keyboard shortcuts (:sc:`increase_background_opacity` and
     )
 
 opt('background_tint', '0.0',
-    option_type='unit_float',
+    option_type='unit_float', ctype='float',
     long_text='''
 How much to tint the background image by the background color. The tint is
 applied only under the text area, not margin/borders. Makes it easier to read
@@ -1006,7 +1007,7 @@ windows are supported or :opt:`background_image` is set.
     )
 
 opt('dim_opacity', '0.75',
-    option_type='unit_float',
+    option_type='unit_float', ctype='float',
     long_text='''
 How much to dim text that has the DIM/FAINT attribute set. One means no dimming
 and zero means fully dimmed (i.e. invisible).
@@ -1107,32 +1108,32 @@ opt('color15', '#ffffff',
     )
 
 opt('mark1_foreground', 'black',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='Color for marks of type 1'
     )
 
 opt('mark1_background', '#98d3cb',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='Color for marks of type 1 (light steel blue)'
     )
 
 opt('mark2_foreground', 'black',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='Color for marks of type 2'
     )
 
 opt('mark2_background', '#f2dcd3',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='Color for marks of type 1 (beige)'
     )
 
 opt('mark3_foreground', 'black',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='Color for marks of type 3'
     )
 
 opt('mark3_background', '#f274bc',
-    option_type='to_color',
+    option_type='to_color', ctype='color_as_int',
     long_text='Color for marks of type 3 (violet)'
     )
 
@@ -2360,7 +2361,7 @@ startup scripts but system-wide, otherwise kitty will not see it.
     )
 
 opt('close_on_child_death', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 Close the window when the child process (shell) exits. If no (the default), the
 terminal will remain open when the child exits as long as there are still
@@ -2449,7 +2450,7 @@ server via SSH can read your clipboard.
     )
 
 opt('allow_hyperlinks', 'yes',
-    option_type='allow_hyperlinks',
+    option_type='allow_hyperlinks', ctype='bool',
     long_text='''
 Process hyperlink (OSC 8) escape sequences. If disabled OSC 8 escape sequences
 are ignored. Otherwise they become clickable links, that you can click by
@@ -2501,7 +2502,7 @@ just hiding the titlebar with :opt:`hide_window_decorations`.
     )
 
 opt('macos_option_as_alt', 'no',
-    option_type='macos_option_as_alt',
+    option_type='macos_option_as_alt', ctype='uint',
     long_text='''
 Use the option key as an alt key. With this set to :code:`no`, kitty will use
 the macOS native :kbd:`Option+Key` = unicode character behavior. This will break
@@ -2513,12 +2514,12 @@ as Alt, instead.
     )
 
 opt('macos_hide_from_tasks', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='Hide the kitty window from running tasks (:kbd:`⌘+Tab`) on macOS.'
     )
 
 opt('macos_quit_when_last_window_closed', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 Have kitty quit when all the top-level windows are closed. By default, kitty
 will stay running, even with no open windows, as is the expected behavior on
@@ -2527,7 +2528,7 @@ macOS.
     )
 
 opt('macos_window_resizable', 'yes',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='''
 Disable this if you want kitty top-level (OS) windows to not be resizable on
 macOS.
@@ -2535,7 +2536,7 @@ macOS.
     )
 
 opt('macos_thicken_font', '0',
-    option_type='positive_float',
+    option_type='positive_float', ctype='float',
     long_text='''
 Draw an extra border around the font with the given width, to increase
 legibility at small font sizes. For example, a value of 0.75 will result in
@@ -2544,12 +2545,12 @@ rendering that looks similar to sub-pixel antialiasing at common font sizes.
     )
 
 opt('macos_traditional_fullscreen', 'no',
-    option_type='to_bool',
+    option_type='to_bool', ctype='bool',
     long_text='Use the traditional full-screen transition, that is faster, but less pretty.'
     )
 
 opt('macos_show_window_title_in', 'all',
-    choices=('all', 'menubar', 'none', 'window'),
+    choices=('all', 'menubar', 'none', 'window'), ctype='window_title_in',
     long_text='''
 Show or hide the window title in the macOS window or menu-bar. A value of
 :code:`window` will show the title of the currently active window at the top of

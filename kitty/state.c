@@ -468,7 +468,7 @@ add_borders_rect(id_type os_window_id, id_type tab_id, uint32_t left, uint32_t t
 
 void
 os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
-    if (!global_state.tab_bar_hidden && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
+    if (!OPT(tab_bar_hidden) && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
                 central->left = 0; central->top = os_window->fonts_data->cell_height; central->right = os_window->viewport_width - 1;
@@ -563,16 +563,20 @@ send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
 #define KK5I(name) PYWRAP1(name) { id_type a, b; unsigned int c, d, e, f, g; PA("KKIIIII", &a, &b, &c, &d, &e, &f, &g); name(a, b, c, d, e, f, g); Py_RETURN_NONE; }
 #define BOOL_SET(name) PYWRAP1(set_##name) { global_state.name = PyObject_IsTrue(args); Py_RETURN_NONE; }
 
-static color_type default_color = 0;
-
 static inline color_type
 color_as_int(PyObject *color) {
-    if (color == Py_None && default_color) return default_color;
     if (!PyTuple_Check(color)) { PyErr_SetString(PyExc_TypeError, "Not a color tuple"); return 0; }
 #define I(n, s) ((PyLong_AsUnsignedLong(PyTuple_GET_ITEM(color, n)) & 0xff) << s)
     return (I(0, 16) | I(1, 8) | I(2, 0)) & 0xffffff;
 #undef I
 }
+
+static inline color_type
+active_border_color(PyObject *color) {
+    if (color == Py_None) return 0x00ff00;
+    return color_as_int(color);
+}
+
 
 static inline monotonic_t
 parse_s_double_to_monotonic_t(PyObject *val) {
@@ -755,9 +759,7 @@ PYWRAP1(set_options) {
     S(url_color, color_as_int);
     S(background, color_as_int);
     S(foreground, color_as_int);
-    default_color = 0x00ff00;
-    S(active_border_color, color_as_int);
-    default_color = 0;
+    S(active_border_color, active_border_color);
     S(inactive_border_color, color_as_int);
     S(bell_border_color, color_as_int);
     S(repaint_delay, parse_ms_long_to_monotonic_t);
@@ -784,7 +786,7 @@ PYWRAP1(set_options) {
     S(detect_urls, PyObject_IsTrue);
 
     GA(tab_bar_style);
-    global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;
+    OPT(tab_bar_hidden) = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;
     Py_CLEAR(ret);
     if (PyErr_Occurred()) return NULL;
 
@@ -802,11 +804,6 @@ PYWRAP1(set_options) {
     }
     OPT(select_by_word_characters_count) = PyUnicode_GET_LENGTH(chars);
     Py_DECREF(chars);
-
-    GA(keymap);
-    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
-    GA(sequence_map);
-    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
 
     GA(background_image); background_image(ret); Py_CLEAR(ret);
 
