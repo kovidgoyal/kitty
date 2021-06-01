@@ -622,14 +622,14 @@ bglayout(PyObject *layout_name) {
 }
 
 static void
-background_image(PyObject *src) {
-    if (OPT(background_image)) free(OPT(background_image));
-    OPT(background_image) = NULL;
+background_image(PyObject *src, Options *opts) {
+    if (opts->background_image) free(opts->background_image);
+    opts->background_image = NULL;
     if (src == Py_None || !PyUnicode_Check(src)) return;
     Py_ssize_t sz;
     const char *s = PyUnicode_AsUTF8AndSize(src, &sz);
-    OPT(background_image) = calloc(sz + 1, 1);
-    if (OPT(background_image)) memcpy(OPT(background_image), s, sz);
+    opts->background_image = calloc(sz + 1, 1);
+    if (opts->background_image) memcpy(opts->background_image, s, sz);
 }
 
 
@@ -656,22 +656,48 @@ free_url_prefixes(void) {
 }
 
 static void
-set_url_prefixes(PyObject *up) {
+url_prefixes(PyObject *up, Options *opts) {
+    if (!PyTuple_Check(up)) { PyErr_SetString(PyExc_TypeError, "url_prefixes must be a tuple"); return; }
     free_url_prefixes();
-    OPT(url_prefixes).values = calloc(PyTuple_GET_SIZE(up), sizeof(UrlPrefix));
-    if (!OPT(url_prefixes).values) { PyErr_NoMemory(); return; }
-    OPT(url_prefixes).num = PyTuple_GET_SIZE(up);
-    for (size_t i = 0; i < OPT(url_prefixes).num; i++) {
+    opts->url_prefixes.values = calloc(PyTuple_GET_SIZE(up), sizeof(UrlPrefix));
+    if (!opts->url_prefixes.values) { PyErr_NoMemory(); return; }
+    opts->url_prefixes.num = PyTuple_GET_SIZE(up);
+    for (size_t i = 0; i < opts->url_prefixes.num; i++) {
         PyObject *t = PyTuple_GET_ITEM(up, i);
         if (!PyUnicode_Check(t)) { PyErr_SetString(PyExc_TypeError, "url_prefixes must be strings"); return; }
-        OPT(url_prefixes).values[i].len = MIN(arraysz(OPT(url_prefixes).values[i].string) - 1, (size_t)PyUnicode_GET_LENGTH(t));
+        opts->url_prefixes.values[i].len = MIN(arraysz(opts->url_prefixes.values[i].string) - 1, (size_t)PyUnicode_GET_LENGTH(t));
         int kind = PyUnicode_KIND(t);
-        OPT(url_prefixes).max_prefix_len = MAX(OPT(url_prefixes).max_prefix_len, OPT(url_prefixes).values[i].len);
-        for (size_t x = 0; x < OPT(url_prefixes).values[i].len; x++) {
-            OPT(url_prefixes).values[i].string[x] = PyUnicode_READ(kind, PyUnicode_DATA(t), x);
+        opts->url_prefixes.max_prefix_len = MAX(opts->url_prefixes.max_prefix_len, opts->url_prefixes.values[i].len);
+        for (size_t x = 0; x < opts->url_prefixes.values[i].len; x++) {
+            opts->url_prefixes.values[i].string[x] = PyUnicode_READ(kind, PyUnicode_DATA(t), x);
         }
     }
 }
+
+static void
+select_by_word_characters(PyObject *chars, Options *opts) {
+    if (!PyUnicode_Check(chars)) { PyErr_SetString(PyExc_TypeError, "select_by_word_characters must be a string"); return; }
+    for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), sizeof(opts->select_by_word_characters)/sizeof(opts->select_by_word_characters[0])); i++) {
+        opts->select_by_word_characters[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
+    }
+    opts->select_by_word_characters_count = PyUnicode_GET_LENGTH(chars);
+}
+
+#define read_adjust(name) { \
+    if (PyFloat_Check(al)) { \
+        opts->name##_frac = (float)PyFloat_AsDouble(al); \
+        opts->name##_px = 0; \
+    } else { \
+        opts->name##_frac = 0; \
+        opts->name##_px = (int)PyLong_AsLong(al); \
+    } \
+}
+
+static void
+adjust_line_height(PyObject *al, Options *opts) { read_adjust(adjust_line_height); }
+static void
+adjust_column_width(PyObject *al, Options *opts) { read_adjust(adjust_column_width); }
+#undef read_adjust
 
 #define dict_iter(d) { \
     PyObject *key, *value; Py_ssize_t pos = 0; \
@@ -694,6 +720,11 @@ PYWRAP1(handle_for_window_id) {
     END_WITH_OS_WINDOW
     PyErr_SetString(PyExc_ValueError, "No such window");
     return NULL;
+}
+
+static void
+tab_bar_style(PyObject *val, Options *opts) {
+    opts->tab_bar_hidden = PyUnicode_CompareWithASCIIString(val, "hidden") == 0 ? true: false;
 }
 
 static PyObject* options_object = NULL;
@@ -785,42 +816,20 @@ PYWRAP1(set_options) {
     S(pointer_shape_when_dragging, pointer_shape);
     S(detect_urls, PyObject_IsTrue);
 
-    GA(tab_bar_style);
-    OPT(tab_bar_hidden) = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;
-    Py_CLEAR(ret);
-    if (PyErr_Occurred()) return NULL;
-
-    PyObject *up = PyObject_GetAttrString(opts, "url_prefixes");
-    if (up == NULL) return NULL;
-    if (!PyTuple_Check(up)) { PyErr_SetString(PyExc_TypeError, "url_prefixes must be a tuple"); return NULL; }
-    set_url_prefixes(up);
-    Py_DECREF(up);
-    if (PyErr_Occurred()) return NULL;
-
-    PyObject *chars = PyObject_GetAttrString(opts, "select_by_word_characters");
-    if (chars == NULL) return NULL;
-    for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), sizeof(OPT(select_by_word_characters))/sizeof(OPT(select_by_word_characters[0]))); i++) {
-        OPT(select_by_word_characters)[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
-    }
-    OPT(select_by_word_characters_count) = PyUnicode_GET_LENGTH(chars);
-    Py_DECREF(chars);
-
-    GA(background_image); background_image(ret); Py_CLEAR(ret);
-
-#define read_adjust(name) { \
-    PyObject *al = PyObject_GetAttrString(opts, #name); \
-    if (PyFloat_Check(al)) { \
-        OPT(name##_frac) = (float)PyFloat_AsDouble(al); \
-        OPT(name##_px) = 0; \
-    } else { \
-        OPT(name##_frac) = 0; \
-        OPT(name##_px) = (int)PyLong_AsLong(al); \
-    } \
-    Py_DECREF(al); \
+#define SPECIAL(name) {\
+    GA(name); \
+    name(ret, &global_state.opts); \
+    Py_CLEAR(ret); \
+    if (PyErr_Occurred()) return NULL; \
 }
-    read_adjust(adjust_line_height);
-    read_adjust(adjust_column_width);
-#undef read_adjust
+    SPECIAL(tab_bar_style);
+    SPECIAL(url_prefixes);
+    SPECIAL(select_by_word_characters);
+    SPECIAL(background_image);
+    SPECIAL(adjust_line_height);
+    SPECIAL(adjust_column_width);
+#undef SPECIAL
+
 #undef S
 #undef SS
     options_object = opts;
