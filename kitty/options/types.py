@@ -403,6 +403,8 @@ option_names = (  # {{{
  'tab_bar_background',
  'tab_bar_edge',
  'tab_bar_margin_width',
+ 'tab_bar_margin_height',
+ 'retain_tab_bar_margin_height',
  'tab_bar_min_tabs',
  'tab_bar_style',
  'tab_fade',
@@ -786,6 +788,8 @@ class Options:
     tab_bar_background: typing.Optional[kitty.rgb.Color] = None
     tab_bar_edge: int = 3
     tab_bar_margin_width: float = 0
+    tab_bar_margin_height: float = 0
+    retain_tab_bar_margin_height: bool = False
     tab_bar_min_tabs: int = 2
     tab_bar_style: choices_for_tab_bar_style = 'fade'
     tab_fade: typing.Tuple[float, ...] = (0.25, 0.5, 0.75, 1.0)
