@@ -386,6 +386,7 @@ option_names = (  # {{{
  'resize_debounce_time',
  'resize_draw_strategy',
  'resize_in_steps',
+ 'retain_tab_bar_margin_height',
  'scrollback_fill_enlarged_window',
  'scrollback_lines',
  'scrollback_pager',
@@ -402,6 +403,7 @@ option_names = (  # {{{
  'tab_activity_symbol',
  'tab_bar_background',
  'tab_bar_edge',
+ 'tab_bar_margin_height',
  'tab_bar_margin_width',
  'tab_bar_min_tabs',
  'tab_bar_style',
@@ -770,6 +772,7 @@ class Options:
     resize_debounce_time: float = 0.1
     resize_draw_strategy: int = 0
     resize_in_steps: bool = False
+    retain_tab_bar_margin_height: bool = False
     scrollback_fill_enlarged_window: bool = False
     scrollback_lines: int = 2000
     scrollback_pager: typing.List[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
@@ -785,6 +788,7 @@ class Options:
     tab_activity_symbol: typing.Optional[str] = None
     tab_bar_background: typing.Optional[kitty.rgb.Color] = None
     tab_bar_edge: int = 3
+    tab_bar_margin_height: float = 0
     tab_bar_margin_width: float = 0
     tab_bar_min_tabs: int = 2
     tab_bar_style: choices_for_tab_bar_style = 'fade'

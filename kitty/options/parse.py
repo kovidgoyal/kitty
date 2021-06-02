@@ -1095,6 +1095,9 @@ class Parser:
     def resize_in_steps(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['resize_in_steps'] = to_bool(val)
 
+    def retain_tab_bar_margin_height(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['retain_tab_bar_margin_height'] = to_bool(val)
+
     def scrollback_fill_enlarged_window(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['scrollback_fill_enlarged_window'] = to_bool(val)
 
@@ -1148,6 +1151,9 @@ class Parser:
 
     def tab_bar_edge(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_bar_edge'] = tab_bar_edge(val)
+
+    def tab_bar_margin_height(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['tab_bar_margin_height'] = positive_float(val)
 
     def tab_bar_margin_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_bar_margin_width'] = positive_float(val)
