@@ -5,8 +5,8 @@
  * Distributed under terms of the GPL3 license.
  */
 
+#include "state.h"
 #include "cleanup.h"
-#include "options/to-c.h"
 #include <math.h>
 
 GlobalState global_state = {{0}};
@@ -467,39 +467,11 @@ add_borders_rect(id_type os_window_id, id_type tab_id, uint32_t left, uint32_t t
 
 void
 os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-<<<<<<< HEAD
-    if (!OPT(tab_bar_hidden) && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
-=======
-    if (!global_state.tab_bar_hidden) {
-      if (os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
->>>>>>> 00e1635c (added options for padding around tab bar)
-=======
-    if (!global_state.tab_bar_hidden && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
->>>>>>> b84799fb (for example in pr thread)
-=======
-=======
->>>>>>> bdb75979 (Working Commit)
     if (global_state.tab_bar_hidden) {
         zero_at_ptr(tab_bar);
         central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
         central->bottom = os_window->viewport_height - 1;
     } else if (os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
-<<<<<<< HEAD
->>>>>>> bcb5770d (Working Commit)
-=======
-    if (!global_state.tab_bar_hidden) {
-      if (os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
->>>>>>> 1ee97dbc (added options for padding around tab bar)
-=======
-    if (!global_state.tab_bar_hidden && os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
->>>>>>> 2fc46630 (for example in pr thread)
-=======
->>>>>>> bdb75979 (Working Commit)
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
                 central->left = 0; central->top = os_window->fonts_data->cell_height + pt_to_px(OPT(tab_bar_margin_height), os_window->id); central->right = os_window->viewport_width - 1;
@@ -514,10 +486,6 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
                 tab_bar->bottom = os_window->viewport_height - 1;
                 break;
         }
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> bdb75979 (Working Commit)
     } else if (OPT(retain_tab_bar_margin_height)) {
         switch(OPT(tab_bar_edge)) {
           case TOP_EDGE:
@@ -531,44 +499,11 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
             central->bottom = os_window->viewport_height - pt_to_px(OPT(tab_bar_margin_height), os_window->id);
             break;
         }
-<<<<<<< HEAD
-=======
-      } else {
-<<<<<<< HEAD
-        switch(OPT(tab_bar_edge)) {
-            case TOP_EDGE:
-              zero_at_ptr(tab_bar);
-              central->left = 0; central->top = pt_to_px(OPT(tab_bar_margin_height), os_window->id); central->right = os_window->viewport_width - 1;
-              central->bottom = os_window->viewport_height - 1;
-              break;
-            default:
-              zero_at_ptr(tab_bar);
-              central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
-              central->bottom = os_window->viewport_height - pt_to_px(OPT(tab_bar_margin_height), os_window->id);
-              break;
-        }
-      }
-
->>>>>>> 1ee97dbc (added options for padding around tab bar)
     } else {
         zero_at_ptr(tab_bar);
         central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
         central->bottom = os_window->viewport_height - 1;
       }
-=======
-        zero_at_ptr(tab_bar);
-        central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
-        central->bottom = os_window->viewport_height - 1;
-    }
-    os_window->needs_render = true;
->>>>>>> 2fc46630 (for example in pr thread)
-=======
-    } else {
-        zero_at_ptr(tab_bar);
-        central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
-        central->bottom = os_window->viewport_height - 1;
-      }
->>>>>>> bdb75979 (Working Commit)
 }
 
 void
@@ -643,8 +578,6 @@ send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
 #define KKKK(name) PYWRAP1(name) { id_type a, b, c, d; PA("KKKK", &a, &b, &c, &d); name(a, b, c, d); Py_RETURN_NONE; }
 #define KK5I(name) PYWRAP1(name) { id_type a, b; unsigned int c, d, e, f, g; PA("KKIIIII", &a, &b, &c, &d, &e, &f, &g); name(a, b, c, d, e, f, g); Py_RETURN_NONE; }
 #define BOOL_SET(name) PYWRAP1(set_##name) { global_state.name = PyObject_IsTrue(args); Py_RETURN_NONE; }
-<<<<<<< HEAD
-=======
 
 static color_type default_color = 0;
 
@@ -754,10 +687,14 @@ set_url_prefixes(PyObject *up) {
     }
 }
 
->>>>>>> bdb75979 (Working Commit)
 #define dict_iter(d) { \
     PyObject *key, *value; Py_ssize_t pos = 0; \
     while (PyDict_Next(d, &pos, &key, &value))
+
+static inline float
+PyFloat_AsFloat(PyObject *o) {
+    return (float)PyFloat_AsDouble(o);
+}
 
 PYWRAP0(next_window_id) {
     return PyLong_FromUnsignedLongLong(global_state.window_id_counter + 1);
@@ -773,14 +710,6 @@ PYWRAP1(handle_for_window_id) {
     return NULL;
 }
 
-<<<<<<< HEAD
-static void
-tab_bar_style(PyObject *val, Options *opts) {
-    opts->tab_bar_hidden = PyUnicode_CompareWithASCIIString(val, "hidden") == 0 ? true: false;
-}
-
-=======
->>>>>>> bdb75979 (Working Commit)
 static PyObject* options_object = NULL;
 
 PYWRAP0(get_options) {
@@ -810,6 +739,7 @@ PYWRAP1(set_options) {
 #define GA(name) ret = PyObject_GetAttrString(opts, #name); if (ret == NULL) return NULL;
 #define SS(name, dest, convert) { GA(name); dest = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
 #define S(name, convert) SS(name, OPT(name), convert)
+    SS(kitty_mod, kitty_mod, PyLong_AsLong);
     S(hide_window_decorations, PyLong_AsUnsignedLong);
     S(visual_bell_duration, parse_s_double_to_monotonic_t);
     S(enable_audio_bell, PyObject_IsTrue);
@@ -831,14 +761,7 @@ PYWRAP1(set_options) {
     S(url_style, PyLong_AsUnsignedLong);
     S(tab_bar_edge, PyLong_AsLong);
     S(tab_bar_margin_height, PyFloat_AsFloat);
-<<<<<<< HEAD
-<<<<<<< HEAD
     S(retain_tab_bar_margin_height, PyObject_IsTrue);
-=======
->>>>>>> 1ee97dbc (added options for padding around tab bar)
-=======
-    S(retain_tab_bar_margin_height, PyObject_IsTrue);
->>>>>>> bdb75979 (Working Commit)
     S(mouse_hide_wait, parse_s_double_to_monotonic_t);
     S(wheel_scroll_multiplier, PyFloat_AsDouble);
     S(touch_scroll_multiplier, PyFloat_AsDouble);
@@ -853,7 +776,9 @@ PYWRAP1(set_options) {
     S(url_color, color_as_int);
     S(background, color_as_int);
     S(foreground, color_as_int);
-    S(active_border_color, active_border_color);
+    default_color = 0x00ff00;
+    S(active_border_color, color_as_int);
+    default_color = 0;
     S(inactive_border_color, color_as_int);
     S(bell_border_color, color_as_int);
     S(repaint_delay, parse_ms_long_to_monotonic_t);
@@ -879,20 +804,47 @@ PYWRAP1(set_options) {
     S(pointer_shape_when_dragging, pointer_shape);
     S(detect_urls, PyObject_IsTrue);
 
-#define SPECIAL(name) {\
-    GA(name); \
-    name(ret, &global_state.opts); \
-    Py_CLEAR(ret); \
-    if (PyErr_Occurred()) return NULL; \
-}
-    SPECIAL(tab_bar_style);
-    SPECIAL(url_prefixes);
-    SPECIAL(select_by_word_characters);
-    SPECIAL(background_image);
-    SPECIAL(adjust_line_height);
-    SPECIAL(adjust_column_width);
-#undef SPECIAL
+    GA(tab_bar_style);
+    global_state.tab_bar_hidden = PyUnicode_CompareWithASCIIString(ret, "hidden") == 0 ? true: false;
+    Py_CLEAR(ret);
+    if (PyErr_Occurred()) return NULL;
 
+    PyObject *up = PyObject_GetAttrString(opts, "url_prefixes");
+    if (up == NULL) return NULL;
+    if (!PyTuple_Check(up)) { PyErr_SetString(PyExc_TypeError, "url_prefixes must be a tuple"); return NULL; }
+    set_url_prefixes(up);
+    Py_DECREF(up);
+    if (PyErr_Occurred()) return NULL;
+
+    PyObject *chars = PyObject_GetAttrString(opts, "select_by_word_characters");
+    if (chars == NULL) return NULL;
+    for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), sizeof(OPT(select_by_word_characters))/sizeof(OPT(select_by_word_characters[0]))); i++) {
+        OPT(select_by_word_characters)[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
+    }
+    OPT(select_by_word_characters_count) = PyUnicode_GET_LENGTH(chars);
+    Py_DECREF(chars);
+
+    GA(keymap);
+    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+    GA(sequence_map);
+    Py_DECREF(ret); if (PyErr_Occurred()) return NULL;
+
+    GA(background_image); background_image(ret); Py_CLEAR(ret);
+
+#define read_adjust(name) { \
+    PyObject *al = PyObject_GetAttrString(opts, #name); \
+    if (PyFloat_Check(al)) { \
+        OPT(name##_frac) = (float)PyFloat_AsDouble(al); \
+        OPT(name##_px) = 0; \
+    } else { \
+        OPT(name##_frac) = 0; \
+        OPT(name##_px) = (int)PyLong_AsLong(al); \
+    } \
+    Py_DECREF(al); \
+}
+    read_adjust(adjust_line_height);
+    read_adjust(adjust_column_width);
+#undef read_adjust
 #undef S
 #undef SS
     options_object = opts;
@@ -1272,7 +1224,7 @@ THREE_ID(remove_window)
 THREE_ID(click_mouse_url)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
-PYWRAP1(resolve_key_mods) { int mods, kitty_mod; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(kitty_mod, mods)); }
+PYWRAP1(resolve_key_mods) { int mods; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(mods)); }
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
 PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); return PyLong_FromUnsignedLongLong(add_window(a, b, title)); }
 PYWRAP0(current_os_window) { OSWindow *w = current_os_window(); if (!w) Py_RETURN_NONE; return PyLong_FromUnsignedLongLong(w->id); }

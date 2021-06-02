@@ -54,14 +54,7 @@ typedef struct {
     Edge tab_bar_edge;
     unsigned long tab_bar_min_tabs;
     float tab_bar_margin_height;
-<<<<<<< HEAD
-<<<<<<< HEAD
     bool retain_tab_bar_margin_height;
-=======
->>>>>>> 1ee97dbc (added options for padding around tab bar)
-=======
-    bool retain_tab_bar_margin_height;
->>>>>>> bdb75979 (Working Commit)
     DisableLigature disable_ligatures;
     bool force_ltr;
     ResizeDrawStrategy resize_draw_strategy;
@@ -80,7 +73,6 @@ typedef struct {
         size_t num, max_prefix_len;
     } url_prefixes;
     bool detect_urls;
-    bool tab_bar_hidden;
 } Options;
 
 typedef struct {
@@ -212,6 +204,7 @@ typedef struct {
     bool debug_rendering, debug_font_fallback;
     bool has_pending_resizes, has_pending_closes;
     bool in_sequence_mode;
+    bool tab_bar_hidden;
     bool check_for_active_animated_images;
     double font_sz_in_pts;
     struct { double x, y; } default_dpi;
