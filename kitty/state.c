@@ -477,7 +477,6 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
             case TOP_EDGE:
                 central->left = 0; central->top = os_window->fonts_data->cell_height + pt_to_px(OPT(tab_bar_margin_height), os_window->id); central->right = os_window->viewport_width - 1;
                 central->bottom = os_window->viewport_height - 1;
-                printf("%ld", pt_to_px(OPT(tab_bar_margin_height), os_window->id));
                 tab_bar->left = central->left; tab_bar->right = central->right; tab_bar->top = pt_to_px(OPT(tab_bar_margin_height), os_window->id);
                 tab_bar->bottom = central->top - 1;
                 break;
