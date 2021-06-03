@@ -536,7 +536,8 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned 
 
 #include "rewrap.h"
 
-void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf *as_ansi_buf) {
+void
+historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf *as_ansi_buf) {
     while(other->num_segments < self->num_segments) add_segment(other);
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
         // Fast path
@@ -551,9 +552,8 @@ void historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf *as_ansi_buf
     if (other->pagerhist && other->xnum != self->xnum && ringbuf_bytes_used(other->pagerhist->ringbuf))
         other->pagerhist->rewrap_needed = true;
     other->count = 0; other->start_of_data = 0;
-    index_type x = 0, y = 0;
     if (self->count > 0) {
-        rewrap_inner(self, other, self->count, NULL, &x, &y, as_ansi_buf);
+        rewrap_inner(self, other, self->count, NULL, NULL, as_ansi_buf);
         for (index_type i = 0; i < other->count; i++) *attrptr(other, (other->start_of_data + i) % other->ynum) |= TEXT_DIRTY_MASK;
     }
 }

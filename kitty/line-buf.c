@@ -574,7 +574,9 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
         return;
     }
 
-    rewrap_inner(self, other, first + 1, historybuf, track_x, track_y, as_ansi_buf);
+    TrackCursor tcarr[2] = {{.x = *track_x, .y = *track_y }, {.is_sentinel = true}};
+    rewrap_inner(self, other, first + 1, historybuf, (TrackCursor*)tcarr, as_ansi_buf);
+    *track_x = tcarr[0].x; *track_y = tcarr[0].y;
     *num_content_lines_after = other->line->ynum + 1;
     for (i = 0; i < *num_content_lines_after; i++) other->line_attrs[i] |= TEXT_DIRTY_MASK;
     *num_content_lines_before = first + 1;
