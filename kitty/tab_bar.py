@@ -344,7 +344,7 @@ class TabBar:
             elif margin > 0:
                 self.blank_rects = (Rect(0, g.top, g.left, g.bottom + 1), Rect(g.right - 1, g.top, viewport_width, g.bottom + 1))
             elif self.margin_height > 0:
-                self.blank_rects = (Rect(0, 0, viewport_width - 1, g.top))
+                self.blank_rects = (Rect(0, 0, viewport_width - 1, g.top),)
             else:
                 self.blank_rects = ()
         else: #tab_bar_edge == 3, bottom
@@ -353,7 +353,7 @@ class TabBar:
             elif margin > 0:
                 self.blank_rects = (Rect(0, g.top, g.left, g.bottom + 1), Rect(g.right - 1, g.top, viewport_width, g.bottom + 1))
             elif self.margin_height > 0:
-                self.blank_rects = (Rect(0, g.top + self.cell_height, viewport_width - 1, vh))
+                self.blank_rects = (Rect(0, g.top + self.cell_height, viewport_width - 1, vh),)
             else:
                 self.blank_rects = ()
                 
