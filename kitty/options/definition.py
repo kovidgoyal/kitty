@@ -816,7 +816,7 @@ opt('tab_bar_margin_width', '0.0',
     long_text='The margin to the left and right of the tab bar (in pts)'
     )
 
-opt('tab_bar_margin_height', '19.0',
+opt('tab_bar_margin_height', '0.0',
     option_type='positive_float',
     long_text='''
 The margin to the top or bottom of the tab bar (in pts). If tab_bar_style is hidden, this value has no effect.
@@ -828,7 +828,7 @@ then the shell prompt. (or the bottom of the field if tab_bar_edge is set to bot
 '''
     )
 
-opt('retain_tab_bar_margin_height', 'yes',
+opt('retain_tab_bar_margin_height', 'no',
     option_type='to_bool', ctype='bool',
     long_text='''
 Retain tab_bar_margin_height when the number of tabs is too few to trigger the tab bar.

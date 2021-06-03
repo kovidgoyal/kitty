@@ -681,6 +681,8 @@ PYWRAP1(set_options) {
     S(macos_hide_from_tasks, PyObject_IsTrue);
     S(macos_thicken_font, PyFloat_AsFloat);
     S(tab_bar_min_tabs, PyLong_AsUnsignedLong);
+    S(tab_bar_margin_height, PyFloat_AsFloat);
+    S(retain_tab_bar_margin_height, PyObject_IsTrue);
     S(disable_ligatures, PyLong_AsLong);
     S(force_ltr, PyObject_IsTrue);
     S(resize_draw_strategy, PyLong_AsLong);
