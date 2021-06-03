@@ -204,11 +204,22 @@ realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns, ANSIBuf *a
     return ans;
 }
 
+
+typedef struct CursorTrack {
+    index_type num_content_lines;
+    bool is_beyond_content;
+    struct { index_type x, y; } before;
+    struct { index_type x, y; } after;
+    struct { index_type x, y; } temp;
+} CursorTrack;
+
 static inline LineBuf*
-realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb, index_type *x, index_type *y, ANSIBuf *as_ansi_buf) {
+realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb, CursorTrack *a, CursorTrack *b, ANSIBuf *as_ansi_buf) {
     LineBuf *ans = alloc_linebuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
-    linebuf_rewrap(old, ans, nclb, ncla, hb, x, y, as_ansi_buf);
+    a->temp.x = a->before.x; a->temp.y = a->before.y;
+    b->temp.x = b->before.x; b->temp.y = b->before.y;
+    linebuf_rewrap(old, ans, nclb, ncla, hb, &a->temp.x, &a->temp.y, &b->temp.x, &b->temp.y, as_ansi_buf);
     return ans;
 }
 
@@ -263,21 +274,21 @@ index_selection(const Screen *self, Selections *selections, bool up) {
     self->is_dirty = true; \
     index_selection(self, &self->selections, false);
 
-
 static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
     lines = MAX(1u, lines); columns = MAX(1u, columns);
 
     bool is_main = self->linebuf == self->main_linebuf;
-    index_type num_content_lines_before, num_content_lines_after, num_content_lines;
-    unsigned int cursor_x = 0, cursor_y = 0;
-    bool cursor_is_beyond_content = false;
+    index_type num_content_lines_before, num_content_lines_after;
     unsigned int lines_after_cursor_before_resize = self->lines - self->cursor->y;
-#define setup_cursor() { \
-        cursor_x = x; cursor_y = y; \
-        cursor_is_beyond_content = num_content_lines_before > 0 && self->cursor->y >= num_content_lines_before; \
-        num_content_lines = num_content_lines_after; \
+    CursorTrack cursor = {.before = {self->cursor->x, self->cursor->y}};
+    CursorTrack main_saved_cursor = {.before = {self->main_savepoint.cursor.x, self->main_savepoint.cursor.y}};
+    CursorTrack alt_saved_cursor = {.before = {self->alt_savepoint.cursor.x, self->alt_savepoint.cursor.y}};
+#define setup_cursor(which) { \
+    which.after.x = which.temp.x; which.after.y = which.temp.y; \
+    which.is_beyond_content = num_content_lines_before > 0 && self->cursor->y >= num_content_lines_before; \
+    which.num_content_lines = num_content_lines_after; \
 }
     // Resize overlay line
     if (!init_overlay_line(self, columns)) return false;
@@ -286,21 +297,19 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns, &self->as_ansi_buf);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
-    index_type x = self->cursor->x, y = self->cursor->y;
-    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &x, &y, &self->as_ansi_buf);
+    LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &cursor, &main_saved_cursor, &self->as_ansi_buf);
     if (n == NULL) return false;
-
-
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
-    if (is_main) setup_cursor();
+    if (is_main) setup_cursor(cursor);
+    setup_cursor(main_saved_cursor);
     grman_resize(self->main_grman, self->lines, lines, self->columns, columns);
 
     // Resize alt linebuf
-    x = self->cursor->x, y = self->cursor->y;
-    n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL, &x, &y, &self->as_ansi_buf);
+    n = realloc_lb(self->alt_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, NULL, &cursor, &alt_saved_cursor, &self->as_ansi_buf);
     if (n == NULL) return false;
     Py_CLEAR(self->alt_linebuf); self->alt_linebuf = n;
-    if (!is_main) setup_cursor();
+    if (!is_main) setup_cursor(cursor);
+    setup_cursor(alt_saved_cursor);
     grman_resize(self->alt_grman, self->lines, lines, self->columns, columns);
 #undef setup_cursor
 
@@ -320,19 +329,24 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     clear_selection(&self->selections);
     clear_selection(&self->url_ranges);
     /* printf("old_cursor: (%u, %u) new_cursor: (%u, %u) beyond_content: %d\n", self->cursor->x, self->cursor->y, cursor_x, cursor_y, cursor_is_beyond_content); */
-    self->cursor->x = MIN(cursor_x, self->columns - 1);
-    self->cursor->y = MIN(cursor_y, self->lines - 1);
-    if (cursor_is_beyond_content) {
-        self->cursor->y = num_content_lines;
+#define S(c, w) c->x = MIN(w.after.x, self->columns - 1); c->y = MIN(w.after.y, self->lines - 1);
+    S(self->cursor, cursor);
+    S((&(self->main_savepoint.cursor)), main_saved_cursor);
+    S((&(self->alt_savepoint.cursor)), alt_saved_cursor);
+#undef S
+    if (cursor.is_beyond_content) {
+        self->cursor->y = cursor.num_content_lines;
         if (self->cursor->y >= self->lines) { self->cursor->y = self->lines - 1; screen_index(self); }
     }
     if (is_main && OPT(scrollback_fill_enlarged_window)) {
         const unsigned int top = 0, bottom = self->lines-1;
+        Savepoint *sp = is_main ? &self->main_savepoint : &self->alt_savepoint;
         while (self->cursor->y + 1 < self->lines && self->lines - self->cursor->y > lines_after_cursor_before_resize) {
             if (!historybuf_pop_line(self->historybuf, self->alt_linebuf->line)) break;
             INDEX_DOWN;
             linebuf_copy_line_to(self->main_linebuf, self->alt_linebuf->line, 0);
             self->cursor->y++;
+            sp->cursor.y = MIN(sp->cursor.y + 1, self->lines - 1);
         }
     }
     return true;
