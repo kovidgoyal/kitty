@@ -161,7 +161,7 @@ static PyObject *notification_activated_callback = NULL;
 static PyObject*
 set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
     Py_CLEAR(notification_activated_callback);
-    if (callback != Py_None)
+    if (callback != Py_None) {
         notification_activated_callback = callback;
         Py_INCREF(callback);
     }
