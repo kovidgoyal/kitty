@@ -287,7 +287,7 @@ opt('scrollback_fill_enlarged_window', 'no',
     )
 
 opt('wheel_scroll_multiplier', '5.0',
-    option_type='float', ctype='float',
+    option_type='float', ctype='double',
     long_text='''
 Modify the amount scrolled by the mouse wheel. Note this is only used for low
 precision scrolling devices, not for high precision scrolling on platforms such
@@ -296,7 +296,7 @@ as macOS and Wayland. Use negative numbers to change scroll direction.
     )
 
 opt('touch_scroll_multiplier', '1.0',
-    option_type='float', ctype='float',
+    option_type='float', ctype='double',
     long_text='''
 Modify the amount scrolled by a touchpad. Note this is only used for high
 precision scrolling devices on platforms such as macOS and Wayland. Use negative
@@ -544,7 +544,7 @@ egr()  # }}}
 agr('performance', 'Performance tuning')
 
 opt('repaint_delay', '10',
-    option_type='positive_int', ctype='time',
+    option_type='positive_int', ctype='time-ms',
     long_text='''
 Delay (in milliseconds) between screen updates. Decreasing it, increases frames-per-second
 (FPS) at the cost of more CPU usage. The default value yields ~100
@@ -556,7 +556,7 @@ to be processed, repaint_delay is ignored.
     )
 
 opt('input_delay', '3',
-    option_type='positive_int', ctype='time',
+    option_type='positive_int', ctype='time-ms',
     long_text='''
 Delay (in milliseconds) before input from the program running in the terminal is
 processed. Note that decreasing it will increase responsiveness, but also

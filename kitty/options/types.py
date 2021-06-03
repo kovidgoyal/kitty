@@ -450,7 +450,7 @@ class Options:
     box_drawing_scale: typing.Tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
     clear_all_shortcuts: bool = False
     click_interval: float = -1.0
-    clipboard_control: typing.FrozenSet[str] = frozenset({'write-primary', 'write-clipboard'})
+    clipboard_control: typing.FrozenSet[str] = frozenset({'write-clipboard', 'write-primary'})
     close_on_child_death: bool = False
     color0: Color = Color(red=0, green=0, blue=0)
     color1: Color = Color(red=204, green=4, blue=3)
@@ -1012,10 +1012,10 @@ if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('edit_config_file'), 8, False, 44, ()))
 defaults.mouse_map = [
     MouseMapping(0, 0, -2, False, KeyAction('mouse_click_url_or_select')),
-    MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),
     MouseMapping(0, 1, -2, True, KeyAction('mouse_click_url_or_select')),
-    MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),
+    MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),
     MouseMapping(0, 5, -1, True, KeyAction('mouse_click_url')),
+    MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),
     MouseMapping(2, 0, -1, False, KeyAction('paste_selection')),
     MouseMapping(0, 0, 1, False, KeyAction('mouse_selection', (0,))),
     MouseMapping(0, 6, 1, False, KeyAction('mouse_selection', (2,))),
@@ -1023,18 +1023,18 @@ defaults.mouse_map = [
     MouseMapping(0, 0, 3, False, KeyAction('mouse_selection', (4,))),
     MouseMapping(0, 6, 3, False, KeyAction('mouse_selection', (5,))),
     MouseMapping(1, 0, 1, False, KeyAction('mouse_selection', (1,))),
-    MouseMapping(2, 1, -1, False, KeyAction('paste_selection')),
     MouseMapping(2, 1, -1, True, KeyAction('paste_selection')),
-    MouseMapping(0, 1, 1, False, KeyAction('mouse_selection', (0,))),
+    MouseMapping(2, 1, -1, False, KeyAction('paste_selection')),
     MouseMapping(0, 1, 1, True, KeyAction('mouse_selection', (0,))),
-    MouseMapping(0, 7, 1, False, KeyAction('mouse_selection', (2,))),
+    MouseMapping(0, 1, 1, False, KeyAction('mouse_selection', (0,))),
     MouseMapping(0, 7, 1, True, KeyAction('mouse_selection', (2,))),
-    MouseMapping(0, 1, 2, False, KeyAction('mouse_selection', (3,))),
+    MouseMapping(0, 7, 1, False, KeyAction('mouse_selection', (2,))),
     MouseMapping(0, 1, 2, True, KeyAction('mouse_selection', (3,))),
-    MouseMapping(0, 1, 3, False, KeyAction('mouse_selection', (4,))),
+    MouseMapping(0, 1, 2, False, KeyAction('mouse_selection', (3,))),
     MouseMapping(0, 1, 3, True, KeyAction('mouse_selection', (4,))),
-    MouseMapping(0, 7, 3, False, KeyAction('mouse_selection', (5,))),
+    MouseMapping(0, 1, 3, False, KeyAction('mouse_selection', (4,))),
     MouseMapping(0, 7, 3, True, KeyAction('mouse_selection', (5,))),
-    MouseMapping(1, 1, 1, False, KeyAction('mouse_selection', (1,))),
+    MouseMapping(0, 7, 3, False, KeyAction('mouse_selection', (5,))),
     MouseMapping(1, 1, 1, True, KeyAction('mouse_selection', (1,))),
+    MouseMapping(1, 1, 1, False, KeyAction('mouse_selection', (1,))),
 ]

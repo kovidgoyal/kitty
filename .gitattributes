@@ -9,6 +9,7 @@ kitty/glfw-wrapper.* linguist-generated=true
 kitty/parse-graphics-command.h linguist-generated=true
 kitty/options/types.py linguist-generated=true
 kitty/options/parse.py linguist-generated=true
+kitty/options/to-c-generated.h linguist-generated=true
 kittens/diff/options/types.py linguist-generated=true
 kittens/diff/options/parse.py linguist-generated=true
 glfw/*.c linguist-vendored=true

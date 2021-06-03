@@ -6,7 +6,7 @@
  */
 
 #include "cleanup.h"
-#include "options/to-c.h"
+#include "options/to-c-generated.h"
 #include <math.h>
 
 GlobalState global_state = {{0}};
@@ -580,11 +580,6 @@ PYWRAP1(handle_for_window_id) {
     return NULL;
 }
 
-static void
-tab_bar_style(PyObject *val, Options *opts) {
-    opts->tab_bar_hidden = PyUnicode_CompareWithASCIIString(val, "hidden") == 0 ? true: false;
-}
-
 static PyObject* options_object = NULL;
 
 PYWRAP0(get_options) {
@@ -597,7 +592,7 @@ PYWRAP0(get_options) {
 }
 
 PYWRAP1(set_options) {
-    PyObject *ret, *opts;
+    PyObject *opts;
     int is_wayland = 0, debug_rendering = 0, debug_font_fallback = 0;
     PA("O|ppp", &opts, &is_wayland, &debug_rendering, &debug_font_fallback);
     if (opts == Py_None) {
@@ -611,85 +606,7 @@ PYWRAP1(set_options) {
     if (global_state.is_wayland) global_state.has_render_frames = true;
     global_state.debug_rendering = debug_rendering ? true : false;
     global_state.debug_font_fallback = debug_font_fallback ? true : false;
-#define GA(name) ret = PyObject_GetAttrString(opts, #name); if (ret == NULL) return NULL;
-#define SS(name, dest, convert) { GA(name); dest = convert(ret); Py_DECREF(ret); if (PyErr_Occurred()) return NULL; }
-#define S(name, convert) SS(name, OPT(name), convert)
-    S(hide_window_decorations, PyLong_AsUnsignedLong);
-    S(visual_bell_duration, parse_s_double_to_monotonic_t);
-    S(enable_audio_bell, PyObject_IsTrue);
-    S(focus_follows_mouse, PyObject_IsTrue);
-    S(cursor_blink_interval, parse_s_double_to_monotonic_t);
-    S(cursor_stop_blinking_after, parse_s_double_to_monotonic_t);
-    S(background_opacity, PyFloat_AsFloat);
-    S(background_image_layout, bglayout);
-    S(background_tint, PyFloat_AsFloat);
-    S(background_image_linear, PyObject_IsTrue);
-    S(dim_opacity, PyFloat_AsFloat);
-    S(dynamic_background_opacity, PyObject_IsTrue);
-    S(inactive_text_alpha, PyFloat_AsFloat);
-    S(scrollback_pager_history_size, PyLong_AsUnsignedLong);
-    S(scrollback_fill_enlarged_window, PyObject_IsTrue);
-    S(cursor_shape, PyLong_AsLong);
-    S(cursor_beam_thickness, PyFloat_AsFloat);
-    S(cursor_underline_thickness, PyFloat_AsFloat);
-    S(url_style, PyLong_AsUnsignedLong);
-    S(tab_bar_edge, PyLong_AsLong);
-    S(mouse_hide_wait, parse_s_double_to_monotonic_t);
-    S(wheel_scroll_multiplier, PyFloat_AsDouble);
-    S(touch_scroll_multiplier, PyFloat_AsDouble);
-    S(click_interval, parse_s_double_to_monotonic_t);
-    S(resize_debounce_time, parse_s_double_to_monotonic_t);
-    S(mark1_foreground, color_as_int);
-    S(mark1_background, color_as_int);
-    S(mark2_foreground, color_as_int);
-    S(mark2_background, color_as_int);
-    S(mark3_foreground, color_as_int);
-    S(mark3_background, color_as_int);
-    S(url_color, color_as_int);
-    S(background, color_as_int);
-    S(foreground, color_as_int);
-    S(active_border_color, active_border_color);
-    S(inactive_border_color, color_as_int);
-    S(bell_border_color, color_as_int);
-    S(repaint_delay, parse_ms_long_to_monotonic_t);
-    S(input_delay, parse_ms_long_to_monotonic_t);
-    S(sync_to_monitor, PyObject_IsTrue);
-    S(close_on_child_death, PyObject_IsTrue);
-    S(window_alert_on_bell, PyObject_IsTrue);
-    S(macos_option_as_alt, PyLong_AsUnsignedLong);
-    S(macos_traditional_fullscreen, PyObject_IsTrue);
-    S(macos_quit_when_last_window_closed, PyObject_IsTrue);
-    S(macos_show_window_title_in, window_title_in);
-    S(macos_window_resizable, PyObject_IsTrue);
-    S(macos_hide_from_tasks, PyObject_IsTrue);
-    S(macos_thicken_font, PyFloat_AsFloat);
-    S(tab_bar_min_tabs, PyLong_AsUnsignedLong);
-    S(disable_ligatures, PyLong_AsLong);
-    S(force_ltr, PyObject_IsTrue);
-    S(resize_draw_strategy, PyLong_AsLong);
-    S(resize_in_steps, PyObject_IsTrue);
-    S(allow_hyperlinks, PyObject_IsTrue);
-    S(pointer_shape_when_grabbed, pointer_shape);
-    S(default_pointer_shape, pointer_shape);
-    S(pointer_shape_when_dragging, pointer_shape);
-    S(detect_urls, PyObject_IsTrue);
-
-#define SPECIAL(name) {\
-    GA(name); \
-    name(ret, &global_state.opts); \
-    Py_CLEAR(ret); \
-    if (PyErr_Occurred()) return NULL; \
-}
-    SPECIAL(tab_bar_style);
-    SPECIAL(url_prefixes);
-    SPECIAL(select_by_word_characters);
-    SPECIAL(background_image);
-    SPECIAL(adjust_line_height);
-    SPECIAL(adjust_column_width);
-#undef SPECIAL
-
-#undef S
-#undef SS
+    if (!convert_opts_from_python_opts(opts, &global_state.opts)) return NULL;
     options_object = opts;
     Py_INCREF(options_object);
     Py_RETURN_NONE;

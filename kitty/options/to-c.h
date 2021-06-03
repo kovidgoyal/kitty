@@ -133,6 +133,11 @@ select_by_word_characters(PyObject *chars, Options *opts) {
     opts->select_by_word_characters_count = PyUnicode_GET_LENGTH(chars);
 }
 
+static void
+tab_bar_style(PyObject *val, Options *opts) {
+    opts->tab_bar_hidden = PyUnicode_CompareWithASCIIString(val, "hidden") == 0 ? true: false;
+}
+
 #define read_adjust(name) { \
     if (PyFloat_Check(al)) { \
         opts->name##_frac = (float)PyFloat_AsDouble(al); \
