@@ -633,7 +633,7 @@ class ColorProfile:
     def reset_color(self, num: int) -> None:
         pass
 
-    def update_ansi_color_table(self, val: List[int]) -> None:
+    def update_ansi_color_table(self, val: int) -> None:
         pass
 
     def set_configured_colors(

@@ -22,6 +22,9 @@ class Color(NamedTuple):
             a, b = b, a
         return (a + 0.05) / (b + 0.05)
 
+    def __int__(self) -> int:
+        return self.red << 16 | self.green << 8 | self.blue
+
 
 def alpha_blend_channel(top_color: int, bottom_color: int, alpha: float) -> int:
     return int(alpha * top_color + (1 - alpha) * bottom_color)

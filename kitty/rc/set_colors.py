@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING, Dict, Iterable, Optional, Tuple, Union
 
 from kitty.config import parse_config
 from kitty.fast_data_types import patch_color_profiles
-from kitty.rgb import Color, color_as_int
+from kitty.rgb import Color
 
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType,
@@ -28,8 +28,8 @@ def parse_colors(args: Iterable[str]) -> Tuple[Dict[str, int], Optional[Union[in
             with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
                 colors.update(parse_config(f))
     q = colors.pop('cursor_text_color', False)
-    ctc = color_as_int(q) if isinstance(q, Color) else (False if q is False else None)
-    return {k: color_as_int(v) for k, v in colors.items() if isinstance(v, Color)}, ctc
+    ctc = int(q) if isinstance(q, Color) else (False if q is False else None)
+    return {k: int(v) for k, v in colors.items() if isinstance(v, Color)}, ctc
 
 
 class SetColors(RemoteCommand):
@@ -92,11 +92,11 @@ this option, any color arguments are ignored and --configured and --all are impl
         colors = payload_get('colors')
         cursor_text_color = payload_get('cursor_text_color', missing=False)
         if payload_get('reset'):
-            colors = {k: color_as_int(v) for k, v in boss.startup_colors.items()}
+            colors = {k: int(v) for k, v in boss.startup_colors.items()}
             cursor_text_color = boss.startup_cursor_text_color
         profiles = tuple(w.screen.color_profile for w in windows)
         if isinstance(cursor_text_color, (tuple, list, Color)):
-            cursor_text_color = color_as_int(Color(*cursor_text_color))
+            cursor_text_color = int(Color(*cursor_text_color))
         patch_color_profiles(colors, cursor_text_color, profiles, payload_get('configured'))
         boss.patch_colors(colors, cursor_text_color, payload_get('configured'))
         default_bg_changed = 'background' in colors

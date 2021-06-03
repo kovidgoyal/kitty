@@ -92,11 +92,11 @@ alloc_color_profile() {
 static PyObject*
 update_ansi_color_table(ColorProfile *self, PyObject *val) {
 #define update_ansi_color_table_doc "Update the 256 basic colors"
-    if (!PyList_Check(val)) { PyErr_SetString(PyExc_TypeError, "color table must be a list"); return NULL; }
-    if (PyList_GET_SIZE(val) != arraysz(FG_BG_256)) { PyErr_SetString(PyExc_TypeError, "color table must have 256 items"); return NULL; }
+    if (!PyLong_Check(val)) { PyErr_SetString(PyExc_TypeError, "color table must be a long"); return NULL; }
+    unsigned long *color_table = PyLong_AsVoidPtr(val);
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) {
-        self->color_table[i] = PyLong_AsUnsignedLong(PyList_GET_ITEM(val, i));
-        self->orig_color_table[i] = self->color_table[i];
+        self->color_table[i] = color_table[i];
+        self->orig_color_table[i] = color_table[i];
     }
     self->dirty = true;
     Py_RETURN_NONE;

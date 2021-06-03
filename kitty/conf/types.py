@@ -165,6 +165,10 @@ class Option:
     def needs_coalescing(self) -> bool:
         return self.documented and not self.long_text
 
+    @property
+    def is_color_table_color(self) -> bool:
+        return self.name.startswith('color') and self.name[5:].isdigit()
+
     def as_conf(self, commented: bool = False, level: int = 0, option_group: List['Option'] = []) -> List[str]:
         ans: List[str] = []
         a = ans.append
@@ -536,8 +540,9 @@ class Action:
 
 class Definition:
 
-    def __init__(self, package: str, *actions: Action) -> None:
+    def __init__(self, package: str, *actions: Action, has_color_table: bool = False) -> None:
         self.module_for_parsers = import_module(f'{package}.options.utils')
+        self.has_color_table = has_color_table
         self.package = package
         self.coalesced_iterator_data = CoalescedIteratorData()
         self.root_group = Group('', '', self.coalesced_iterator_data)

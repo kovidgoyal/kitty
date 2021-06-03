@@ -2,6 +2,7 @@
 # vim:fileencoding=utf-8
 
 import typing
+from array import array
 from kitty.conf.utils import KeyAction
 import kitty.conf.utils
 from kitty.constants import is_macos
@@ -452,262 +453,2310 @@ class Options:
     click_interval: float = -1.0
     clipboard_control: typing.FrozenSet[str] = frozenset({'write-clipboard', 'write-primary'})
     close_on_child_death: bool = False
-    color0: Color = Color(red=0, green=0, blue=0)
-    color1: Color = Color(red=204, green=4, blue=3)
-    color2: Color = Color(red=25, green=203, blue=0)
-    color3: Color = Color(red=206, green=203, blue=0)
-    color4: Color = Color(red=13, green=115, blue=204)
-    color5: Color = Color(red=203, green=30, blue=209)
-    color6: Color = Color(red=13, green=205, blue=205)
-    color7: Color = Color(red=221, green=221, blue=221)
-    color8: Color = Color(red=118, green=118, blue=118)
-    color9: Color = Color(red=242, green=32, blue=31)
-    color10: Color = Color(red=35, green=253, blue=0)
-    color11: Color = Color(red=255, green=253, blue=0)
-    color12: Color = Color(red=26, green=143, blue=255)
-    color13: Color = Color(red=253, green=40, blue=255)
-    color14: Color = Color(red=20, green=255, blue=255)
-    color15: Color = Color(red=255, green=255, blue=255)
-    color16: Color = Color(red=0, green=0, blue=0)
-    color17: Color = Color(red=0, green=0, blue=95)
-    color18: Color = Color(red=0, green=0, blue=135)
-    color19: Color = Color(red=0, green=0, blue=175)
-    color20: Color = Color(red=0, green=0, blue=215)
-    color21: Color = Color(red=0, green=0, blue=255)
-    color22: Color = Color(red=0, green=95, blue=0)
-    color23: Color = Color(red=0, green=95, blue=95)
-    color24: Color = Color(red=0, green=95, blue=135)
-    color25: Color = Color(red=0, green=95, blue=175)
-    color26: Color = Color(red=0, green=95, blue=215)
-    color27: Color = Color(red=0, green=95, blue=255)
-    color28: Color = Color(red=0, green=135, blue=0)
-    color29: Color = Color(red=0, green=135, blue=95)
-    color30: Color = Color(red=0, green=135, blue=135)
-    color31: Color = Color(red=0, green=135, blue=175)
-    color32: Color = Color(red=0, green=135, blue=215)
-    color33: Color = Color(red=0, green=135, blue=255)
-    color34: Color = Color(red=0, green=175, blue=0)
-    color35: Color = Color(red=0, green=175, blue=95)
-    color36: Color = Color(red=0, green=175, blue=135)
-    color37: Color = Color(red=0, green=175, blue=175)
-    color38: Color = Color(red=0, green=175, blue=215)
-    color39: Color = Color(red=0, green=175, blue=255)
-    color40: Color = Color(red=0, green=215, blue=0)
-    color41: Color = Color(red=0, green=215, blue=95)
-    color42: Color = Color(red=0, green=215, blue=135)
-    color43: Color = Color(red=0, green=215, blue=175)
-    color44: Color = Color(red=0, green=215, blue=215)
-    color45: Color = Color(red=0, green=215, blue=255)
-    color46: Color = Color(red=0, green=255, blue=0)
-    color47: Color = Color(red=0, green=255, blue=95)
-    color48: Color = Color(red=0, green=255, blue=135)
-    color49: Color = Color(red=0, green=255, blue=175)
-    color50: Color = Color(red=0, green=255, blue=215)
-    color51: Color = Color(red=0, green=255, blue=255)
-    color52: Color = Color(red=95, green=0, blue=0)
-    color53: Color = Color(red=95, green=0, blue=95)
-    color54: Color = Color(red=95, green=0, blue=135)
-    color55: Color = Color(red=95, green=0, blue=175)
-    color56: Color = Color(red=95, green=0, blue=215)
-    color57: Color = Color(red=95, green=0, blue=255)
-    color58: Color = Color(red=95, green=95, blue=0)
-    color59: Color = Color(red=95, green=95, blue=95)
-    color60: Color = Color(red=95, green=95, blue=135)
-    color61: Color = Color(red=95, green=95, blue=175)
-    color62: Color = Color(red=95, green=95, blue=215)
-    color63: Color = Color(red=95, green=95, blue=255)
-    color64: Color = Color(red=95, green=135, blue=0)
-    color65: Color = Color(red=95, green=135, blue=95)
-    color66: Color = Color(red=95, green=135, blue=135)
-    color67: Color = Color(red=95, green=135, blue=175)
-    color68: Color = Color(red=95, green=135, blue=215)
-    color69: Color = Color(red=95, green=135, blue=255)
-    color70: Color = Color(red=95, green=175, blue=0)
-    color71: Color = Color(red=95, green=175, blue=95)
-    color72: Color = Color(red=95, green=175, blue=135)
-    color73: Color = Color(red=95, green=175, blue=175)
-    color74: Color = Color(red=95, green=175, blue=215)
-    color75: Color = Color(red=95, green=175, blue=255)
-    color76: Color = Color(red=95, green=215, blue=0)
-    color77: Color = Color(red=95, green=215, blue=95)
-    color78: Color = Color(red=95, green=215, blue=135)
-    color79: Color = Color(red=95, green=215, blue=175)
-    color80: Color = Color(red=95, green=215, blue=215)
-    color81: Color = Color(red=95, green=215, blue=255)
-    color82: Color = Color(red=95, green=255, blue=0)
-    color83: Color = Color(red=95, green=255, blue=95)
-    color84: Color = Color(red=95, green=255, blue=135)
-    color85: Color = Color(red=95, green=255, blue=175)
-    color86: Color = Color(red=95, green=255, blue=215)
-    color87: Color = Color(red=95, green=255, blue=255)
-    color88: Color = Color(red=135, green=0, blue=0)
-    color89: Color = Color(red=135, green=0, blue=95)
-    color90: Color = Color(red=135, green=0, blue=135)
-    color91: Color = Color(red=135, green=0, blue=175)
-    color92: Color = Color(red=135, green=0, blue=215)
-    color93: Color = Color(red=135, green=0, blue=255)
-    color94: Color = Color(red=135, green=95, blue=0)
-    color95: Color = Color(red=135, green=95, blue=95)
-    color96: Color = Color(red=135, green=95, blue=135)
-    color97: Color = Color(red=135, green=95, blue=175)
-    color98: Color = Color(red=135, green=95, blue=215)
-    color99: Color = Color(red=135, green=95, blue=255)
-    color100: Color = Color(red=135, green=135, blue=0)
-    color101: Color = Color(red=135, green=135, blue=95)
-    color102: Color = Color(red=135, green=135, blue=135)
-    color103: Color = Color(red=135, green=135, blue=175)
-    color104: Color = Color(red=135, green=135, blue=215)
-    color105: Color = Color(red=135, green=135, blue=255)
-    color106: Color = Color(red=135, green=175, blue=0)
-    color107: Color = Color(red=135, green=175, blue=95)
-    color108: Color = Color(red=135, green=175, blue=135)
-    color109: Color = Color(red=135, green=175, blue=175)
-    color110: Color = Color(red=135, green=175, blue=215)
-    color111: Color = Color(red=135, green=175, blue=255)
-    color112: Color = Color(red=135, green=215, blue=0)
-    color113: Color = Color(red=135, green=215, blue=95)
-    color114: Color = Color(red=135, green=215, blue=135)
-    color115: Color = Color(red=135, green=215, blue=175)
-    color116: Color = Color(red=135, green=215, blue=215)
-    color117: Color = Color(red=135, green=215, blue=255)
-    color118: Color = Color(red=135, green=255, blue=0)
-    color119: Color = Color(red=135, green=255, blue=95)
-    color120: Color = Color(red=135, green=255, blue=135)
-    color121: Color = Color(red=135, green=255, blue=175)
-    color122: Color = Color(red=135, green=255, blue=215)
-    color123: Color = Color(red=135, green=255, blue=255)
-    color124: Color = Color(red=175, green=0, blue=0)
-    color125: Color = Color(red=175, green=0, blue=95)
-    color126: Color = Color(red=175, green=0, blue=135)
-    color127: Color = Color(red=175, green=0, blue=175)
-    color128: Color = Color(red=175, green=0, blue=215)
-    color129: Color = Color(red=175, green=0, blue=255)
-    color130: Color = Color(red=175, green=95, blue=0)
-    color131: Color = Color(red=175, green=95, blue=95)
-    color132: Color = Color(red=175, green=95, blue=135)
-    color133: Color = Color(red=175, green=95, blue=175)
-    color134: Color = Color(red=175, green=95, blue=215)
-    color135: Color = Color(red=175, green=95, blue=255)
-    color136: Color = Color(red=175, green=135, blue=0)
-    color137: Color = Color(red=175, green=135, blue=95)
-    color138: Color = Color(red=175, green=135, blue=135)
-    color139: Color = Color(red=175, green=135, blue=175)
-    color140: Color = Color(red=175, green=135, blue=215)
-    color141: Color = Color(red=175, green=135, blue=255)
-    color142: Color = Color(red=175, green=175, blue=0)
-    color143: Color = Color(red=175, green=175, blue=95)
-    color144: Color = Color(red=175, green=175, blue=135)
-    color145: Color = Color(red=175, green=175, blue=175)
-    color146: Color = Color(red=175, green=175, blue=215)
-    color147: Color = Color(red=175, green=175, blue=255)
-    color148: Color = Color(red=175, green=215, blue=0)
-    color149: Color = Color(red=175, green=215, blue=95)
-    color150: Color = Color(red=175, green=215, blue=135)
-    color151: Color = Color(red=175, green=215, blue=175)
-    color152: Color = Color(red=175, green=215, blue=215)
-    color153: Color = Color(red=175, green=215, blue=255)
-    color154: Color = Color(red=175, green=255, blue=0)
-    color155: Color = Color(red=175, green=255, blue=95)
-    color156: Color = Color(red=175, green=255, blue=135)
-    color157: Color = Color(red=175, green=255, blue=175)
-    color158: Color = Color(red=175, green=255, blue=215)
-    color159: Color = Color(red=175, green=255, blue=255)
-    color160: Color = Color(red=215, green=0, blue=0)
-    color161: Color = Color(red=215, green=0, blue=95)
-    color162: Color = Color(red=215, green=0, blue=135)
-    color163: Color = Color(red=215, green=0, blue=175)
-    color164: Color = Color(red=215, green=0, blue=215)
-    color165: Color = Color(red=215, green=0, blue=255)
-    color166: Color = Color(red=215, green=95, blue=0)
-    color167: Color = Color(red=215, green=95, blue=95)
-    color168: Color = Color(red=215, green=95, blue=135)
-    color169: Color = Color(red=215, green=95, blue=175)
-    color170: Color = Color(red=215, green=95, blue=215)
-    color171: Color = Color(red=215, green=95, blue=255)
-    color172: Color = Color(red=215, green=135, blue=0)
-    color173: Color = Color(red=215, green=135, blue=95)
-    color174: Color = Color(red=215, green=135, blue=135)
-    color175: Color = Color(red=215, green=135, blue=175)
-    color176: Color = Color(red=215, green=135, blue=215)
-    color177: Color = Color(red=215, green=135, blue=255)
-    color178: Color = Color(red=215, green=175, blue=0)
-    color179: Color = Color(red=215, green=175, blue=95)
-    color180: Color = Color(red=215, green=175, blue=135)
-    color181: Color = Color(red=215, green=175, blue=175)
-    color182: Color = Color(red=215, green=175, blue=215)
-    color183: Color = Color(red=215, green=175, blue=255)
-    color184: Color = Color(red=215, green=215, blue=0)
-    color185: Color = Color(red=215, green=215, blue=95)
-    color186: Color = Color(red=215, green=215, blue=135)
-    color187: Color = Color(red=215, green=215, blue=175)
-    color188: Color = Color(red=215, green=215, blue=215)
-    color189: Color = Color(red=215, green=215, blue=255)
-    color190: Color = Color(red=215, green=255, blue=0)
-    color191: Color = Color(red=215, green=255, blue=95)
-    color192: Color = Color(red=215, green=255, blue=135)
-    color193: Color = Color(red=215, green=255, blue=175)
-    color194: Color = Color(red=215, green=255, blue=215)
-    color195: Color = Color(red=215, green=255, blue=255)
-    color196: Color = Color(red=255, green=0, blue=0)
-    color197: Color = Color(red=255, green=0, blue=95)
-    color198: Color = Color(red=255, green=0, blue=135)
-    color199: Color = Color(red=255, green=0, blue=175)
-    color200: Color = Color(red=255, green=0, blue=215)
-    color201: Color = Color(red=255, green=0, blue=255)
-    color202: Color = Color(red=255, green=95, blue=0)
-    color203: Color = Color(red=255, green=95, blue=95)
-    color204: Color = Color(red=255, green=95, blue=135)
-    color205: Color = Color(red=255, green=95, blue=175)
-    color206: Color = Color(red=255, green=95, blue=215)
-    color207: Color = Color(red=255, green=95, blue=255)
-    color208: Color = Color(red=255, green=135, blue=0)
-    color209: Color = Color(red=255, green=135, blue=95)
-    color210: Color = Color(red=255, green=135, blue=135)
-    color211: Color = Color(red=255, green=135, blue=175)
-    color212: Color = Color(red=255, green=135, blue=215)
-    color213: Color = Color(red=255, green=135, blue=255)
-    color214: Color = Color(red=255, green=175, blue=0)
-    color215: Color = Color(red=255, green=175, blue=95)
-    color216: Color = Color(red=255, green=175, blue=135)
-    color217: Color = Color(red=255, green=175, blue=175)
-    color218: Color = Color(red=255, green=175, blue=215)
-    color219: Color = Color(red=255, green=175, blue=255)
-    color220: Color = Color(red=255, green=215, blue=0)
-    color221: Color = Color(red=255, green=215, blue=95)
-    color222: Color = Color(red=255, green=215, blue=135)
-    color223: Color = Color(red=255, green=215, blue=175)
-    color224: Color = Color(red=255, green=215, blue=215)
-    color225: Color = Color(red=255, green=215, blue=255)
-    color226: Color = Color(red=255, green=255, blue=0)
-    color227: Color = Color(red=255, green=255, blue=95)
-    color228: Color = Color(red=255, green=255, blue=135)
-    color229: Color = Color(red=255, green=255, blue=175)
-    color230: Color = Color(red=255, green=255, blue=215)
-    color231: Color = Color(red=255, green=255, blue=255)
-    color232: Color = Color(red=8, green=8, blue=8)
-    color233: Color = Color(red=18, green=18, blue=18)
-    color234: Color = Color(red=28, green=28, blue=28)
-    color235: Color = Color(red=38, green=38, blue=38)
-    color236: Color = Color(red=48, green=48, blue=48)
-    color237: Color = Color(red=58, green=58, blue=58)
-    color238: Color = Color(red=68, green=68, blue=68)
-    color239: Color = Color(red=78, green=78, blue=78)
-    color240: Color = Color(red=88, green=88, blue=88)
-    color241: Color = Color(red=98, green=98, blue=98)
-    color242: Color = Color(red=108, green=108, blue=108)
-    color243: Color = Color(red=118, green=118, blue=118)
-    color244: Color = Color(red=128, green=128, blue=128)
-    color245: Color = Color(red=138, green=138, blue=138)
-    color246: Color = Color(red=148, green=148, blue=148)
-    color247: Color = Color(red=158, green=158, blue=158)
-    color248: Color = Color(red=168, green=168, blue=168)
-    color249: Color = Color(red=178, green=178, blue=178)
-    color250: Color = Color(red=188, green=188, blue=188)
-    color251: Color = Color(red=198, green=198, blue=198)
-    color252: Color = Color(red=208, green=208, blue=208)
-    color253: Color = Color(red=218, green=218, blue=218)
-    color254: Color = Color(red=228, green=228, blue=228)
-    color255: Color = Color(red=238, green=238, blue=238)
+
+    @property
+    def color0(self) -> Color:
+        x = self.color_table[0]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color0.setter
+    def color0(self, val: Color) -> None:
+        self.color_table[0] = val.__int__()
+
+    @property
+    def color1(self) -> Color:
+        x = self.color_table[1]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color1.setter
+    def color1(self, val: Color) -> None:
+        self.color_table[1] = val.__int__()
+
+    @property
+    def color2(self) -> Color:
+        x = self.color_table[2]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color2.setter
+    def color2(self, val: Color) -> None:
+        self.color_table[2] = val.__int__()
+
+    @property
+    def color3(self) -> Color:
+        x = self.color_table[3]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color3.setter
+    def color3(self, val: Color) -> None:
+        self.color_table[3] = val.__int__()
+
+    @property
+    def color4(self) -> Color:
+        x = self.color_table[4]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color4.setter
+    def color4(self, val: Color) -> None:
+        self.color_table[4] = val.__int__()
+
+    @property
+    def color5(self) -> Color:
+        x = self.color_table[5]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color5.setter
+    def color5(self, val: Color) -> None:
+        self.color_table[5] = val.__int__()
+
+    @property
+    def color6(self) -> Color:
+        x = self.color_table[6]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color6.setter
+    def color6(self, val: Color) -> None:
+        self.color_table[6] = val.__int__()
+
+    @property
+    def color7(self) -> Color:
+        x = self.color_table[7]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color7.setter
+    def color7(self, val: Color) -> None:
+        self.color_table[7] = val.__int__()
+
+    @property
+    def color8(self) -> Color:
+        x = self.color_table[8]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color8.setter
+    def color8(self, val: Color) -> None:
+        self.color_table[8] = val.__int__()
+
+    @property
+    def color9(self) -> Color:
+        x = self.color_table[9]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color9.setter
+    def color9(self, val: Color) -> None:
+        self.color_table[9] = val.__int__()
+
+    @property
+    def color10(self) -> Color:
+        x = self.color_table[10]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color10.setter
+    def color10(self, val: Color) -> None:
+        self.color_table[10] = val.__int__()
+
+    @property
+    def color11(self) -> Color:
+        x = self.color_table[11]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color11.setter
+    def color11(self, val: Color) -> None:
+        self.color_table[11] = val.__int__()
+
+    @property
+    def color12(self) -> Color:
+        x = self.color_table[12]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color12.setter
+    def color12(self, val: Color) -> None:
+        self.color_table[12] = val.__int__()
+
+    @property
+    def color13(self) -> Color:
+        x = self.color_table[13]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color13.setter
+    def color13(self, val: Color) -> None:
+        self.color_table[13] = val.__int__()
+
+    @property
+    def color14(self) -> Color:
+        x = self.color_table[14]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color14.setter
+    def color14(self, val: Color) -> None:
+        self.color_table[14] = val.__int__()
+
+    @property
+    def color15(self) -> Color:
+        x = self.color_table[15]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color15.setter
+    def color15(self, val: Color) -> None:
+        self.color_table[15] = val.__int__()
+
+    @property
+    def color16(self) -> Color:
+        x = self.color_table[16]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color16.setter
+    def color16(self, val: Color) -> None:
+        self.color_table[16] = val.__int__()
+
+    @property
+    def color17(self) -> Color:
+        x = self.color_table[17]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color17.setter
+    def color17(self, val: Color) -> None:
+        self.color_table[17] = val.__int__()
+
+    @property
+    def color18(self) -> Color:
+        x = self.color_table[18]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color18.setter
+    def color18(self, val: Color) -> None:
+        self.color_table[18] = val.__int__()
+
+    @property
+    def color19(self) -> Color:
+        x = self.color_table[19]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color19.setter
+    def color19(self, val: Color) -> None:
+        self.color_table[19] = val.__int__()
+
+    @property
+    def color20(self) -> Color:
+        x = self.color_table[20]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color20.setter
+    def color20(self, val: Color) -> None:
+        self.color_table[20] = val.__int__()
+
+    @property
+    def color21(self) -> Color:
+        x = self.color_table[21]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color21.setter
+    def color21(self, val: Color) -> None:
+        self.color_table[21] = val.__int__()
+
+    @property
+    def color22(self) -> Color:
+        x = self.color_table[22]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color22.setter
+    def color22(self, val: Color) -> None:
+        self.color_table[22] = val.__int__()
+
+    @property
+    def color23(self) -> Color:
+        x = self.color_table[23]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color23.setter
+    def color23(self, val: Color) -> None:
+        self.color_table[23] = val.__int__()
+
+    @property
+    def color24(self) -> Color:
+        x = self.color_table[24]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color24.setter
+    def color24(self, val: Color) -> None:
+        self.color_table[24] = val.__int__()
+
+    @property
+    def color25(self) -> Color:
+        x = self.color_table[25]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color25.setter
+    def color25(self, val: Color) -> None:
+        self.color_table[25] = val.__int__()
+
+    @property
+    def color26(self) -> Color:
+        x = self.color_table[26]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color26.setter
+    def color26(self, val: Color) -> None:
+        self.color_table[26] = val.__int__()
+
+    @property
+    def color27(self) -> Color:
+        x = self.color_table[27]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color27.setter
+    def color27(self, val: Color) -> None:
+        self.color_table[27] = val.__int__()
+
+    @property
+    def color28(self) -> Color:
+        x = self.color_table[28]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color28.setter
+    def color28(self, val: Color) -> None:
+        self.color_table[28] = val.__int__()
+
+    @property
+    def color29(self) -> Color:
+        x = self.color_table[29]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color29.setter
+    def color29(self, val: Color) -> None:
+        self.color_table[29] = val.__int__()
+
+    @property
+    def color30(self) -> Color:
+        x = self.color_table[30]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color30.setter
+    def color30(self, val: Color) -> None:
+        self.color_table[30] = val.__int__()
+
+    @property
+    def color31(self) -> Color:
+        x = self.color_table[31]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color31.setter
+    def color31(self, val: Color) -> None:
+        self.color_table[31] = val.__int__()
+
+    @property
+    def color32(self) -> Color:
+        x = self.color_table[32]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color32.setter
+    def color32(self, val: Color) -> None:
+        self.color_table[32] = val.__int__()
+
+    @property
+    def color33(self) -> Color:
+        x = self.color_table[33]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color33.setter
+    def color33(self, val: Color) -> None:
+        self.color_table[33] = val.__int__()
+
+    @property
+    def color34(self) -> Color:
+        x = self.color_table[34]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color34.setter
+    def color34(self, val: Color) -> None:
+        self.color_table[34] = val.__int__()
+
+    @property
+    def color35(self) -> Color:
+        x = self.color_table[35]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color35.setter
+    def color35(self, val: Color) -> None:
+        self.color_table[35] = val.__int__()
+
+    @property
+    def color36(self) -> Color:
+        x = self.color_table[36]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color36.setter
+    def color36(self, val: Color) -> None:
+        self.color_table[36] = val.__int__()
+
+    @property
+    def color37(self) -> Color:
+        x = self.color_table[37]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color37.setter
+    def color37(self, val: Color) -> None:
+        self.color_table[37] = val.__int__()
+
+    @property
+    def color38(self) -> Color:
+        x = self.color_table[38]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color38.setter
+    def color38(self, val: Color) -> None:
+        self.color_table[38] = val.__int__()
+
+    @property
+    def color39(self) -> Color:
+        x = self.color_table[39]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color39.setter
+    def color39(self, val: Color) -> None:
+        self.color_table[39] = val.__int__()
+
+    @property
+    def color40(self) -> Color:
+        x = self.color_table[40]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color40.setter
+    def color40(self, val: Color) -> None:
+        self.color_table[40] = val.__int__()
+
+    @property
+    def color41(self) -> Color:
+        x = self.color_table[41]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color41.setter
+    def color41(self, val: Color) -> None:
+        self.color_table[41] = val.__int__()
+
+    @property
+    def color42(self) -> Color:
+        x = self.color_table[42]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color42.setter
+    def color42(self, val: Color) -> None:
+        self.color_table[42] = val.__int__()
+
+    @property
+    def color43(self) -> Color:
+        x = self.color_table[43]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color43.setter
+    def color43(self, val: Color) -> None:
+        self.color_table[43] = val.__int__()
+
+    @property
+    def color44(self) -> Color:
+        x = self.color_table[44]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color44.setter
+    def color44(self, val: Color) -> None:
+        self.color_table[44] = val.__int__()
+
+    @property
+    def color45(self) -> Color:
+        x = self.color_table[45]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color45.setter
+    def color45(self, val: Color) -> None:
+        self.color_table[45] = val.__int__()
+
+    @property
+    def color46(self) -> Color:
+        x = self.color_table[46]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color46.setter
+    def color46(self, val: Color) -> None:
+        self.color_table[46] = val.__int__()
+
+    @property
+    def color47(self) -> Color:
+        x = self.color_table[47]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color47.setter
+    def color47(self, val: Color) -> None:
+        self.color_table[47] = val.__int__()
+
+    @property
+    def color48(self) -> Color:
+        x = self.color_table[48]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color48.setter
+    def color48(self, val: Color) -> None:
+        self.color_table[48] = val.__int__()
+
+    @property
+    def color49(self) -> Color:
+        x = self.color_table[49]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color49.setter
+    def color49(self, val: Color) -> None:
+        self.color_table[49] = val.__int__()
+
+    @property
+    def color50(self) -> Color:
+        x = self.color_table[50]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color50.setter
+    def color50(self, val: Color) -> None:
+        self.color_table[50] = val.__int__()
+
+    @property
+    def color51(self) -> Color:
+        x = self.color_table[51]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color51.setter
+    def color51(self, val: Color) -> None:
+        self.color_table[51] = val.__int__()
+
+    @property
+    def color52(self) -> Color:
+        x = self.color_table[52]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color52.setter
+    def color52(self, val: Color) -> None:
+        self.color_table[52] = val.__int__()
+
+    @property
+    def color53(self) -> Color:
+        x = self.color_table[53]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color53.setter
+    def color53(self, val: Color) -> None:
+        self.color_table[53] = val.__int__()
+
+    @property
+    def color54(self) -> Color:
+        x = self.color_table[54]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color54.setter
+    def color54(self, val: Color) -> None:
+        self.color_table[54] = val.__int__()
+
+    @property
+    def color55(self) -> Color:
+        x = self.color_table[55]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color55.setter
+    def color55(self, val: Color) -> None:
+        self.color_table[55] = val.__int__()
+
+    @property
+    def color56(self) -> Color:
+        x = self.color_table[56]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color56.setter
+    def color56(self, val: Color) -> None:
+        self.color_table[56] = val.__int__()
+
+    @property
+    def color57(self) -> Color:
+        x = self.color_table[57]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color57.setter
+    def color57(self, val: Color) -> None:
+        self.color_table[57] = val.__int__()
+
+    @property
+    def color58(self) -> Color:
+        x = self.color_table[58]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color58.setter
+    def color58(self, val: Color) -> None:
+        self.color_table[58] = val.__int__()
+
+    @property
+    def color59(self) -> Color:
+        x = self.color_table[59]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color59.setter
+    def color59(self, val: Color) -> None:
+        self.color_table[59] = val.__int__()
+
+    @property
+    def color60(self) -> Color:
+        x = self.color_table[60]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color60.setter
+    def color60(self, val: Color) -> None:
+        self.color_table[60] = val.__int__()
+
+    @property
+    def color61(self) -> Color:
+        x = self.color_table[61]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color61.setter
+    def color61(self, val: Color) -> None:
+        self.color_table[61] = val.__int__()
+
+    @property
+    def color62(self) -> Color:
+        x = self.color_table[62]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color62.setter
+    def color62(self, val: Color) -> None:
+        self.color_table[62] = val.__int__()
+
+    @property
+    def color63(self) -> Color:
+        x = self.color_table[63]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color63.setter
+    def color63(self, val: Color) -> None:
+        self.color_table[63] = val.__int__()
+
+    @property
+    def color64(self) -> Color:
+        x = self.color_table[64]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color64.setter
+    def color64(self, val: Color) -> None:
+        self.color_table[64] = val.__int__()
+
+    @property
+    def color65(self) -> Color:
+        x = self.color_table[65]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color65.setter
+    def color65(self, val: Color) -> None:
+        self.color_table[65] = val.__int__()
+
+    @property
+    def color66(self) -> Color:
+        x = self.color_table[66]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color66.setter
+    def color66(self, val: Color) -> None:
+        self.color_table[66] = val.__int__()
+
+    @property
+    def color67(self) -> Color:
+        x = self.color_table[67]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color67.setter
+    def color67(self, val: Color) -> None:
+        self.color_table[67] = val.__int__()
+
+    @property
+    def color68(self) -> Color:
+        x = self.color_table[68]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color68.setter
+    def color68(self, val: Color) -> None:
+        self.color_table[68] = val.__int__()
+
+    @property
+    def color69(self) -> Color:
+        x = self.color_table[69]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color69.setter
+    def color69(self, val: Color) -> None:
+        self.color_table[69] = val.__int__()
+
+    @property
+    def color70(self) -> Color:
+        x = self.color_table[70]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color70.setter
+    def color70(self, val: Color) -> None:
+        self.color_table[70] = val.__int__()
+
+    @property
+    def color71(self) -> Color:
+        x = self.color_table[71]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color71.setter
+    def color71(self, val: Color) -> None:
+        self.color_table[71] = val.__int__()
+
+    @property
+    def color72(self) -> Color:
+        x = self.color_table[72]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color72.setter
+    def color72(self, val: Color) -> None:
+        self.color_table[72] = val.__int__()
+
+    @property
+    def color73(self) -> Color:
+        x = self.color_table[73]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color73.setter
+    def color73(self, val: Color) -> None:
+        self.color_table[73] = val.__int__()
+
+    @property
+    def color74(self) -> Color:
+        x = self.color_table[74]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color74.setter
+    def color74(self, val: Color) -> None:
+        self.color_table[74] = val.__int__()
+
+    @property
+    def color75(self) -> Color:
+        x = self.color_table[75]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color75.setter
+    def color75(self, val: Color) -> None:
+        self.color_table[75] = val.__int__()
+
+    @property
+    def color76(self) -> Color:
+        x = self.color_table[76]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color76.setter
+    def color76(self, val: Color) -> None:
+        self.color_table[76] = val.__int__()
+
+    @property
+    def color77(self) -> Color:
+        x = self.color_table[77]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color77.setter
+    def color77(self, val: Color) -> None:
+        self.color_table[77] = val.__int__()
+
+    @property
+    def color78(self) -> Color:
+        x = self.color_table[78]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color78.setter
+    def color78(self, val: Color) -> None:
+        self.color_table[78] = val.__int__()
+
+    @property
+    def color79(self) -> Color:
+        x = self.color_table[79]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color79.setter
+    def color79(self, val: Color) -> None:
+        self.color_table[79] = val.__int__()
+
+    @property
+    def color80(self) -> Color:
+        x = self.color_table[80]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color80.setter
+    def color80(self, val: Color) -> None:
+        self.color_table[80] = val.__int__()
+
+    @property
+    def color81(self) -> Color:
+        x = self.color_table[81]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color81.setter
+    def color81(self, val: Color) -> None:
+        self.color_table[81] = val.__int__()
+
+    @property
+    def color82(self) -> Color:
+        x = self.color_table[82]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color82.setter
+    def color82(self, val: Color) -> None:
+        self.color_table[82] = val.__int__()
+
+    @property
+    def color83(self) -> Color:
+        x = self.color_table[83]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color83.setter
+    def color83(self, val: Color) -> None:
+        self.color_table[83] = val.__int__()
+
+    @property
+    def color84(self) -> Color:
+        x = self.color_table[84]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color84.setter
+    def color84(self, val: Color) -> None:
+        self.color_table[84] = val.__int__()
+
+    @property
+    def color85(self) -> Color:
+        x = self.color_table[85]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color85.setter
+    def color85(self, val: Color) -> None:
+        self.color_table[85] = val.__int__()
+
+    @property
+    def color86(self) -> Color:
+        x = self.color_table[86]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color86.setter
+    def color86(self, val: Color) -> None:
+        self.color_table[86] = val.__int__()
+
+    @property
+    def color87(self) -> Color:
+        x = self.color_table[87]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color87.setter
+    def color87(self, val: Color) -> None:
+        self.color_table[87] = val.__int__()
+
+    @property
+    def color88(self) -> Color:
+        x = self.color_table[88]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color88.setter
+    def color88(self, val: Color) -> None:
+        self.color_table[88] = val.__int__()
+
+    @property
+    def color89(self) -> Color:
+        x = self.color_table[89]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color89.setter
+    def color89(self, val: Color) -> None:
+        self.color_table[89] = val.__int__()
+
+    @property
+    def color90(self) -> Color:
+        x = self.color_table[90]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color90.setter
+    def color90(self, val: Color) -> None:
+        self.color_table[90] = val.__int__()
+
+    @property
+    def color91(self) -> Color:
+        x = self.color_table[91]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color91.setter
+    def color91(self, val: Color) -> None:
+        self.color_table[91] = val.__int__()
+
+    @property
+    def color92(self) -> Color:
+        x = self.color_table[92]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color92.setter
+    def color92(self, val: Color) -> None:
+        self.color_table[92] = val.__int__()
+
+    @property
+    def color93(self) -> Color:
+        x = self.color_table[93]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color93.setter
+    def color93(self, val: Color) -> None:
+        self.color_table[93] = val.__int__()
+
+    @property
+    def color94(self) -> Color:
+        x = self.color_table[94]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color94.setter
+    def color94(self, val: Color) -> None:
+        self.color_table[94] = val.__int__()
+
+    @property
+    def color95(self) -> Color:
+        x = self.color_table[95]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color95.setter
+    def color95(self, val: Color) -> None:
+        self.color_table[95] = val.__int__()
+
+    @property
+    def color96(self) -> Color:
+        x = self.color_table[96]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color96.setter
+    def color96(self, val: Color) -> None:
+        self.color_table[96] = val.__int__()
+
+    @property
+    def color97(self) -> Color:
+        x = self.color_table[97]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color97.setter
+    def color97(self, val: Color) -> None:
+        self.color_table[97] = val.__int__()
+
+    @property
+    def color98(self) -> Color:
+        x = self.color_table[98]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color98.setter
+    def color98(self, val: Color) -> None:
+        self.color_table[98] = val.__int__()
+
+    @property
+    def color99(self) -> Color:
+        x = self.color_table[99]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color99.setter
+    def color99(self, val: Color) -> None:
+        self.color_table[99] = val.__int__()
+
+    @property
+    def color100(self) -> Color:
+        x = self.color_table[100]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color100.setter
+    def color100(self, val: Color) -> None:
+        self.color_table[100] = val.__int__()
+
+    @property
+    def color101(self) -> Color:
+        x = self.color_table[101]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color101.setter
+    def color101(self, val: Color) -> None:
+        self.color_table[101] = val.__int__()
+
+    @property
+    def color102(self) -> Color:
+        x = self.color_table[102]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color102.setter
+    def color102(self, val: Color) -> None:
+        self.color_table[102] = val.__int__()
+
+    @property
+    def color103(self) -> Color:
+        x = self.color_table[103]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color103.setter
+    def color103(self, val: Color) -> None:
+        self.color_table[103] = val.__int__()
+
+    @property
+    def color104(self) -> Color:
+        x = self.color_table[104]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color104.setter
+    def color104(self, val: Color) -> None:
+        self.color_table[104] = val.__int__()
+
+    @property
+    def color105(self) -> Color:
+        x = self.color_table[105]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color105.setter
+    def color105(self, val: Color) -> None:
+        self.color_table[105] = val.__int__()
+
+    @property
+    def color106(self) -> Color:
+        x = self.color_table[106]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color106.setter
+    def color106(self, val: Color) -> None:
+        self.color_table[106] = val.__int__()
+
+    @property
+    def color107(self) -> Color:
+        x = self.color_table[107]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color107.setter
+    def color107(self, val: Color) -> None:
+        self.color_table[107] = val.__int__()
+
+    @property
+    def color108(self) -> Color:
+        x = self.color_table[108]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color108.setter
+    def color108(self, val: Color) -> None:
+        self.color_table[108] = val.__int__()
+
+    @property
+    def color109(self) -> Color:
+        x = self.color_table[109]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color109.setter
+    def color109(self, val: Color) -> None:
+        self.color_table[109] = val.__int__()
+
+    @property
+    def color110(self) -> Color:
+        x = self.color_table[110]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color110.setter
+    def color110(self, val: Color) -> None:
+        self.color_table[110] = val.__int__()
+
+    @property
+    def color111(self) -> Color:
+        x = self.color_table[111]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color111.setter
+    def color111(self, val: Color) -> None:
+        self.color_table[111] = val.__int__()
+
+    @property
+    def color112(self) -> Color:
+        x = self.color_table[112]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color112.setter
+    def color112(self, val: Color) -> None:
+        self.color_table[112] = val.__int__()
+
+    @property
+    def color113(self) -> Color:
+        x = self.color_table[113]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color113.setter
+    def color113(self, val: Color) -> None:
+        self.color_table[113] = val.__int__()
+
+    @property
+    def color114(self) -> Color:
+        x = self.color_table[114]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color114.setter
+    def color114(self, val: Color) -> None:
+        self.color_table[114] = val.__int__()
+
+    @property
+    def color115(self) -> Color:
+        x = self.color_table[115]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color115.setter
+    def color115(self, val: Color) -> None:
+        self.color_table[115] = val.__int__()
+
+    @property
+    def color116(self) -> Color:
+        x = self.color_table[116]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color116.setter
+    def color116(self, val: Color) -> None:
+        self.color_table[116] = val.__int__()
+
+    @property
+    def color117(self) -> Color:
+        x = self.color_table[117]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color117.setter
+    def color117(self, val: Color) -> None:
+        self.color_table[117] = val.__int__()
+
+    @property
+    def color118(self) -> Color:
+        x = self.color_table[118]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color118.setter
+    def color118(self, val: Color) -> None:
+        self.color_table[118] = val.__int__()
+
+    @property
+    def color119(self) -> Color:
+        x = self.color_table[119]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color119.setter
+    def color119(self, val: Color) -> None:
+        self.color_table[119] = val.__int__()
+
+    @property
+    def color120(self) -> Color:
+        x = self.color_table[120]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color120.setter
+    def color120(self, val: Color) -> None:
+        self.color_table[120] = val.__int__()
+
+    @property
+    def color121(self) -> Color:
+        x = self.color_table[121]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color121.setter
+    def color121(self, val: Color) -> None:
+        self.color_table[121] = val.__int__()
+
+    @property
+    def color122(self) -> Color:
+        x = self.color_table[122]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color122.setter
+    def color122(self, val: Color) -> None:
+        self.color_table[122] = val.__int__()
+
+    @property
+    def color123(self) -> Color:
+        x = self.color_table[123]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color123.setter
+    def color123(self, val: Color) -> None:
+        self.color_table[123] = val.__int__()
+
+    @property
+    def color124(self) -> Color:
+        x = self.color_table[124]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color124.setter
+    def color124(self, val: Color) -> None:
+        self.color_table[124] = val.__int__()
+
+    @property
+    def color125(self) -> Color:
+        x = self.color_table[125]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color125.setter
+    def color125(self, val: Color) -> None:
+        self.color_table[125] = val.__int__()
+
+    @property
+    def color126(self) -> Color:
+        x = self.color_table[126]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color126.setter
+    def color126(self, val: Color) -> None:
+        self.color_table[126] = val.__int__()
+
+    @property
+    def color127(self) -> Color:
+        x = self.color_table[127]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color127.setter
+    def color127(self, val: Color) -> None:
+        self.color_table[127] = val.__int__()
+
+    @property
+    def color128(self) -> Color:
+        x = self.color_table[128]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color128.setter
+    def color128(self, val: Color) -> None:
+        self.color_table[128] = val.__int__()
+
+    @property
+    def color129(self) -> Color:
+        x = self.color_table[129]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color129.setter
+    def color129(self, val: Color) -> None:
+        self.color_table[129] = val.__int__()
+
+    @property
+    def color130(self) -> Color:
+        x = self.color_table[130]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color130.setter
+    def color130(self, val: Color) -> None:
+        self.color_table[130] = val.__int__()
+
+    @property
+    def color131(self) -> Color:
+        x = self.color_table[131]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color131.setter
+    def color131(self, val: Color) -> None:
+        self.color_table[131] = val.__int__()
+
+    @property
+    def color132(self) -> Color:
+        x = self.color_table[132]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color132.setter
+    def color132(self, val: Color) -> None:
+        self.color_table[132] = val.__int__()
+
+    @property
+    def color133(self) -> Color:
+        x = self.color_table[133]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color133.setter
+    def color133(self, val: Color) -> None:
+        self.color_table[133] = val.__int__()
+
+    @property
+    def color134(self) -> Color:
+        x = self.color_table[134]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color134.setter
+    def color134(self, val: Color) -> None:
+        self.color_table[134] = val.__int__()
+
+    @property
+    def color135(self) -> Color:
+        x = self.color_table[135]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color135.setter
+    def color135(self, val: Color) -> None:
+        self.color_table[135] = val.__int__()
+
+    @property
+    def color136(self) -> Color:
+        x = self.color_table[136]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color136.setter
+    def color136(self, val: Color) -> None:
+        self.color_table[136] = val.__int__()
+
+    @property
+    def color137(self) -> Color:
+        x = self.color_table[137]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color137.setter
+    def color137(self, val: Color) -> None:
+        self.color_table[137] = val.__int__()
+
+    @property
+    def color138(self) -> Color:
+        x = self.color_table[138]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color138.setter
+    def color138(self, val: Color) -> None:
+        self.color_table[138] = val.__int__()
+
+    @property
+    def color139(self) -> Color:
+        x = self.color_table[139]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color139.setter
+    def color139(self, val: Color) -> None:
+        self.color_table[139] = val.__int__()
+
+    @property
+    def color140(self) -> Color:
+        x = self.color_table[140]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color140.setter
+    def color140(self, val: Color) -> None:
+        self.color_table[140] = val.__int__()
+
+    @property
+    def color141(self) -> Color:
+        x = self.color_table[141]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color141.setter
+    def color141(self, val: Color) -> None:
+        self.color_table[141] = val.__int__()
+
+    @property
+    def color142(self) -> Color:
+        x = self.color_table[142]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color142.setter
+    def color142(self, val: Color) -> None:
+        self.color_table[142] = val.__int__()
+
+    @property
+    def color143(self) -> Color:
+        x = self.color_table[143]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color143.setter
+    def color143(self, val: Color) -> None:
+        self.color_table[143] = val.__int__()
+
+    @property
+    def color144(self) -> Color:
+        x = self.color_table[144]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color144.setter
+    def color144(self, val: Color) -> None:
+        self.color_table[144] = val.__int__()
+
+    @property
+    def color145(self) -> Color:
+        x = self.color_table[145]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color145.setter
+    def color145(self, val: Color) -> None:
+        self.color_table[145] = val.__int__()
+
+    @property
+    def color146(self) -> Color:
+        x = self.color_table[146]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color146.setter
+    def color146(self, val: Color) -> None:
+        self.color_table[146] = val.__int__()
+
+    @property
+    def color147(self) -> Color:
+        x = self.color_table[147]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color147.setter
+    def color147(self, val: Color) -> None:
+        self.color_table[147] = val.__int__()
+
+    @property
+    def color148(self) -> Color:
+        x = self.color_table[148]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color148.setter
+    def color148(self, val: Color) -> None:
+        self.color_table[148] = val.__int__()
+
+    @property
+    def color149(self) -> Color:
+        x = self.color_table[149]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color149.setter
+    def color149(self, val: Color) -> None:
+        self.color_table[149] = val.__int__()
+
+    @property
+    def color150(self) -> Color:
+        x = self.color_table[150]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color150.setter
+    def color150(self, val: Color) -> None:
+        self.color_table[150] = val.__int__()
+
+    @property
+    def color151(self) -> Color:
+        x = self.color_table[151]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color151.setter
+    def color151(self, val: Color) -> None:
+        self.color_table[151] = val.__int__()
+
+    @property
+    def color152(self) -> Color:
+        x = self.color_table[152]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color152.setter
+    def color152(self, val: Color) -> None:
+        self.color_table[152] = val.__int__()
+
+    @property
+    def color153(self) -> Color:
+        x = self.color_table[153]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color153.setter
+    def color153(self, val: Color) -> None:
+        self.color_table[153] = val.__int__()
+
+    @property
+    def color154(self) -> Color:
+        x = self.color_table[154]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color154.setter
+    def color154(self, val: Color) -> None:
+        self.color_table[154] = val.__int__()
+
+    @property
+    def color155(self) -> Color:
+        x = self.color_table[155]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color155.setter
+    def color155(self, val: Color) -> None:
+        self.color_table[155] = val.__int__()
+
+    @property
+    def color156(self) -> Color:
+        x = self.color_table[156]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color156.setter
+    def color156(self, val: Color) -> None:
+        self.color_table[156] = val.__int__()
+
+    @property
+    def color157(self) -> Color:
+        x = self.color_table[157]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color157.setter
+    def color157(self, val: Color) -> None:
+        self.color_table[157] = val.__int__()
+
+    @property
+    def color158(self) -> Color:
+        x = self.color_table[158]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color158.setter
+    def color158(self, val: Color) -> None:
+        self.color_table[158] = val.__int__()
+
+    @property
+    def color159(self) -> Color:
+        x = self.color_table[159]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color159.setter
+    def color159(self, val: Color) -> None:
+        self.color_table[159] = val.__int__()
+
+    @property
+    def color160(self) -> Color:
+        x = self.color_table[160]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color160.setter
+    def color160(self, val: Color) -> None:
+        self.color_table[160] = val.__int__()
+
+    @property
+    def color161(self) -> Color:
+        x = self.color_table[161]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color161.setter
+    def color161(self, val: Color) -> None:
+        self.color_table[161] = val.__int__()
+
+    @property
+    def color162(self) -> Color:
+        x = self.color_table[162]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color162.setter
+    def color162(self, val: Color) -> None:
+        self.color_table[162] = val.__int__()
+
+    @property
+    def color163(self) -> Color:
+        x = self.color_table[163]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color163.setter
+    def color163(self, val: Color) -> None:
+        self.color_table[163] = val.__int__()
+
+    @property
+    def color164(self) -> Color:
+        x = self.color_table[164]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color164.setter
+    def color164(self, val: Color) -> None:
+        self.color_table[164] = val.__int__()
+
+    @property
+    def color165(self) -> Color:
+        x = self.color_table[165]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color165.setter
+    def color165(self, val: Color) -> None:
+        self.color_table[165] = val.__int__()
+
+    @property
+    def color166(self) -> Color:
+        x = self.color_table[166]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color166.setter
+    def color166(self, val: Color) -> None:
+        self.color_table[166] = val.__int__()
+
+    @property
+    def color167(self) -> Color:
+        x = self.color_table[167]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color167.setter
+    def color167(self, val: Color) -> None:
+        self.color_table[167] = val.__int__()
+
+    @property
+    def color168(self) -> Color:
+        x = self.color_table[168]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color168.setter
+    def color168(self, val: Color) -> None:
+        self.color_table[168] = val.__int__()
+
+    @property
+    def color169(self) -> Color:
+        x = self.color_table[169]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color169.setter
+    def color169(self, val: Color) -> None:
+        self.color_table[169] = val.__int__()
+
+    @property
+    def color170(self) -> Color:
+        x = self.color_table[170]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color170.setter
+    def color170(self, val: Color) -> None:
+        self.color_table[170] = val.__int__()
+
+    @property
+    def color171(self) -> Color:
+        x = self.color_table[171]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color171.setter
+    def color171(self, val: Color) -> None:
+        self.color_table[171] = val.__int__()
+
+    @property
+    def color172(self) -> Color:
+        x = self.color_table[172]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color172.setter
+    def color172(self, val: Color) -> None:
+        self.color_table[172] = val.__int__()
+
+    @property
+    def color173(self) -> Color:
+        x = self.color_table[173]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color173.setter
+    def color173(self, val: Color) -> None:
+        self.color_table[173] = val.__int__()
+
+    @property
+    def color174(self) -> Color:
+        x = self.color_table[174]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color174.setter
+    def color174(self, val: Color) -> None:
+        self.color_table[174] = val.__int__()
+
+    @property
+    def color175(self) -> Color:
+        x = self.color_table[175]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color175.setter
+    def color175(self, val: Color) -> None:
+        self.color_table[175] = val.__int__()
+
+    @property
+    def color176(self) -> Color:
+        x = self.color_table[176]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color176.setter
+    def color176(self, val: Color) -> None:
+        self.color_table[176] = val.__int__()
+
+    @property
+    def color177(self) -> Color:
+        x = self.color_table[177]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color177.setter
+    def color177(self, val: Color) -> None:
+        self.color_table[177] = val.__int__()
+
+    @property
+    def color178(self) -> Color:
+        x = self.color_table[178]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color178.setter
+    def color178(self, val: Color) -> None:
+        self.color_table[178] = val.__int__()
+
+    @property
+    def color179(self) -> Color:
+        x = self.color_table[179]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color179.setter
+    def color179(self, val: Color) -> None:
+        self.color_table[179] = val.__int__()
+
+    @property
+    def color180(self) -> Color:
+        x = self.color_table[180]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color180.setter
+    def color180(self, val: Color) -> None:
+        self.color_table[180] = val.__int__()
+
+    @property
+    def color181(self) -> Color:
+        x = self.color_table[181]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color181.setter
+    def color181(self, val: Color) -> None:
+        self.color_table[181] = val.__int__()
+
+    @property
+    def color182(self) -> Color:
+        x = self.color_table[182]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color182.setter
+    def color182(self, val: Color) -> None:
+        self.color_table[182] = val.__int__()
+
+    @property
+    def color183(self) -> Color:
+        x = self.color_table[183]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color183.setter
+    def color183(self, val: Color) -> None:
+        self.color_table[183] = val.__int__()
+
+    @property
+    def color184(self) -> Color:
+        x = self.color_table[184]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color184.setter
+    def color184(self, val: Color) -> None:
+        self.color_table[184] = val.__int__()
+
+    @property
+    def color185(self) -> Color:
+        x = self.color_table[185]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color185.setter
+    def color185(self, val: Color) -> None:
+        self.color_table[185] = val.__int__()
+
+    @property
+    def color186(self) -> Color:
+        x = self.color_table[186]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color186.setter
+    def color186(self, val: Color) -> None:
+        self.color_table[186] = val.__int__()
+
+    @property
+    def color187(self) -> Color:
+        x = self.color_table[187]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color187.setter
+    def color187(self, val: Color) -> None:
+        self.color_table[187] = val.__int__()
+
+    @property
+    def color188(self) -> Color:
+        x = self.color_table[188]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color188.setter
+    def color188(self, val: Color) -> None:
+        self.color_table[188] = val.__int__()
+
+    @property
+    def color189(self) -> Color:
+        x = self.color_table[189]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color189.setter
+    def color189(self, val: Color) -> None:
+        self.color_table[189] = val.__int__()
+
+    @property
+    def color190(self) -> Color:
+        x = self.color_table[190]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color190.setter
+    def color190(self, val: Color) -> None:
+        self.color_table[190] = val.__int__()
+
+    @property
+    def color191(self) -> Color:
+        x = self.color_table[191]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color191.setter
+    def color191(self, val: Color) -> None:
+        self.color_table[191] = val.__int__()
+
+    @property
+    def color192(self) -> Color:
+        x = self.color_table[192]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color192.setter
+    def color192(self, val: Color) -> None:
+        self.color_table[192] = val.__int__()
+
+    @property
+    def color193(self) -> Color:
+        x = self.color_table[193]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color193.setter
+    def color193(self, val: Color) -> None:
+        self.color_table[193] = val.__int__()
+
+    @property
+    def color194(self) -> Color:
+        x = self.color_table[194]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color194.setter
+    def color194(self, val: Color) -> None:
+        self.color_table[194] = val.__int__()
+
+    @property
+    def color195(self) -> Color:
+        x = self.color_table[195]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color195.setter
+    def color195(self, val: Color) -> None:
+        self.color_table[195] = val.__int__()
+
+    @property
+    def color196(self) -> Color:
+        x = self.color_table[196]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color196.setter
+    def color196(self, val: Color) -> None:
+        self.color_table[196] = val.__int__()
+
+    @property
+    def color197(self) -> Color:
+        x = self.color_table[197]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color197.setter
+    def color197(self, val: Color) -> None:
+        self.color_table[197] = val.__int__()
+
+    @property
+    def color198(self) -> Color:
+        x = self.color_table[198]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color198.setter
+    def color198(self, val: Color) -> None:
+        self.color_table[198] = val.__int__()
+
+    @property
+    def color199(self) -> Color:
+        x = self.color_table[199]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color199.setter
+    def color199(self, val: Color) -> None:
+        self.color_table[199] = val.__int__()
+
+    @property
+    def color200(self) -> Color:
+        x = self.color_table[200]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color200.setter
+    def color200(self, val: Color) -> None:
+        self.color_table[200] = val.__int__()
+
+    @property
+    def color201(self) -> Color:
+        x = self.color_table[201]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color201.setter
+    def color201(self, val: Color) -> None:
+        self.color_table[201] = val.__int__()
+
+    @property
+    def color202(self) -> Color:
+        x = self.color_table[202]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color202.setter
+    def color202(self, val: Color) -> None:
+        self.color_table[202] = val.__int__()
+
+    @property
+    def color203(self) -> Color:
+        x = self.color_table[203]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color203.setter
+    def color203(self, val: Color) -> None:
+        self.color_table[203] = val.__int__()
+
+    @property
+    def color204(self) -> Color:
+        x = self.color_table[204]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color204.setter
+    def color204(self, val: Color) -> None:
+        self.color_table[204] = val.__int__()
+
+    @property
+    def color205(self) -> Color:
+        x = self.color_table[205]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color205.setter
+    def color205(self, val: Color) -> None:
+        self.color_table[205] = val.__int__()
+
+    @property
+    def color206(self) -> Color:
+        x = self.color_table[206]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color206.setter
+    def color206(self, val: Color) -> None:
+        self.color_table[206] = val.__int__()
+
+    @property
+    def color207(self) -> Color:
+        x = self.color_table[207]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color207.setter
+    def color207(self, val: Color) -> None:
+        self.color_table[207] = val.__int__()
+
+    @property
+    def color208(self) -> Color:
+        x = self.color_table[208]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color208.setter
+    def color208(self, val: Color) -> None:
+        self.color_table[208] = val.__int__()
+
+    @property
+    def color209(self) -> Color:
+        x = self.color_table[209]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color209.setter
+    def color209(self, val: Color) -> None:
+        self.color_table[209] = val.__int__()
+
+    @property
+    def color210(self) -> Color:
+        x = self.color_table[210]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color210.setter
+    def color210(self, val: Color) -> None:
+        self.color_table[210] = val.__int__()
+
+    @property
+    def color211(self) -> Color:
+        x = self.color_table[211]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color211.setter
+    def color211(self, val: Color) -> None:
+        self.color_table[211] = val.__int__()
+
+    @property
+    def color212(self) -> Color:
+        x = self.color_table[212]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color212.setter
+    def color212(self, val: Color) -> None:
+        self.color_table[212] = val.__int__()
+
+    @property
+    def color213(self) -> Color:
+        x = self.color_table[213]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color213.setter
+    def color213(self, val: Color) -> None:
+        self.color_table[213] = val.__int__()
+
+    @property
+    def color214(self) -> Color:
+        x = self.color_table[214]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color214.setter
+    def color214(self, val: Color) -> None:
+        self.color_table[214] = val.__int__()
+
+    @property
+    def color215(self) -> Color:
+        x = self.color_table[215]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color215.setter
+    def color215(self, val: Color) -> None:
+        self.color_table[215] = val.__int__()
+
+    @property
+    def color216(self) -> Color:
+        x = self.color_table[216]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color216.setter
+    def color216(self, val: Color) -> None:
+        self.color_table[216] = val.__int__()
+
+    @property
+    def color217(self) -> Color:
+        x = self.color_table[217]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color217.setter
+    def color217(self, val: Color) -> None:
+        self.color_table[217] = val.__int__()
+
+    @property
+    def color218(self) -> Color:
+        x = self.color_table[218]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color218.setter
+    def color218(self, val: Color) -> None:
+        self.color_table[218] = val.__int__()
+
+    @property
+    def color219(self) -> Color:
+        x = self.color_table[219]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color219.setter
+    def color219(self, val: Color) -> None:
+        self.color_table[219] = val.__int__()
+
+    @property
+    def color220(self) -> Color:
+        x = self.color_table[220]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color220.setter
+    def color220(self, val: Color) -> None:
+        self.color_table[220] = val.__int__()
+
+    @property
+    def color221(self) -> Color:
+        x = self.color_table[221]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color221.setter
+    def color221(self, val: Color) -> None:
+        self.color_table[221] = val.__int__()
+
+    @property
+    def color222(self) -> Color:
+        x = self.color_table[222]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color222.setter
+    def color222(self, val: Color) -> None:
+        self.color_table[222] = val.__int__()
+
+    @property
+    def color223(self) -> Color:
+        x = self.color_table[223]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color223.setter
+    def color223(self, val: Color) -> None:
+        self.color_table[223] = val.__int__()
+
+    @property
+    def color224(self) -> Color:
+        x = self.color_table[224]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color224.setter
+    def color224(self, val: Color) -> None:
+        self.color_table[224] = val.__int__()
+
+    @property
+    def color225(self) -> Color:
+        x = self.color_table[225]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color225.setter
+    def color225(self, val: Color) -> None:
+        self.color_table[225] = val.__int__()
+
+    @property
+    def color226(self) -> Color:
+        x = self.color_table[226]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color226.setter
+    def color226(self, val: Color) -> None:
+        self.color_table[226] = val.__int__()
+
+    @property
+    def color227(self) -> Color:
+        x = self.color_table[227]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color227.setter
+    def color227(self, val: Color) -> None:
+        self.color_table[227] = val.__int__()
+
+    @property
+    def color228(self) -> Color:
+        x = self.color_table[228]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color228.setter
+    def color228(self, val: Color) -> None:
+        self.color_table[228] = val.__int__()
+
+    @property
+    def color229(self) -> Color:
+        x = self.color_table[229]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color229.setter
+    def color229(self, val: Color) -> None:
+        self.color_table[229] = val.__int__()
+
+    @property
+    def color230(self) -> Color:
+        x = self.color_table[230]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color230.setter
+    def color230(self, val: Color) -> None:
+        self.color_table[230] = val.__int__()
+
+    @property
+    def color231(self) -> Color:
+        x = self.color_table[231]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color231.setter
+    def color231(self, val: Color) -> None:
+        self.color_table[231] = val.__int__()
+
+    @property
+    def color232(self) -> Color:
+        x = self.color_table[232]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color232.setter
+    def color232(self, val: Color) -> None:
+        self.color_table[232] = val.__int__()
+
+    @property
+    def color233(self) -> Color:
+        x = self.color_table[233]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color233.setter
+    def color233(self, val: Color) -> None:
+        self.color_table[233] = val.__int__()
+
+    @property
+    def color234(self) -> Color:
+        x = self.color_table[234]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color234.setter
+    def color234(self, val: Color) -> None:
+        self.color_table[234] = val.__int__()
+
+    @property
+    def color235(self) -> Color:
+        x = self.color_table[235]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color235.setter
+    def color235(self, val: Color) -> None:
+        self.color_table[235] = val.__int__()
+
+    @property
+    def color236(self) -> Color:
+        x = self.color_table[236]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color236.setter
+    def color236(self, val: Color) -> None:
+        self.color_table[236] = val.__int__()
+
+    @property
+    def color237(self) -> Color:
+        x = self.color_table[237]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color237.setter
+    def color237(self, val: Color) -> None:
+        self.color_table[237] = val.__int__()
+
+    @property
+    def color238(self) -> Color:
+        x = self.color_table[238]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color238.setter
+    def color238(self, val: Color) -> None:
+        self.color_table[238] = val.__int__()
+
+    @property
+    def color239(self) -> Color:
+        x = self.color_table[239]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color239.setter
+    def color239(self, val: Color) -> None:
+        self.color_table[239] = val.__int__()
+
+    @property
+    def color240(self) -> Color:
+        x = self.color_table[240]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color240.setter
+    def color240(self, val: Color) -> None:
+        self.color_table[240] = val.__int__()
+
+    @property
+    def color241(self) -> Color:
+        x = self.color_table[241]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color241.setter
+    def color241(self, val: Color) -> None:
+        self.color_table[241] = val.__int__()
+
+    @property
+    def color242(self) -> Color:
+        x = self.color_table[242]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color242.setter
+    def color242(self, val: Color) -> None:
+        self.color_table[242] = val.__int__()
+
+    @property
+    def color243(self) -> Color:
+        x = self.color_table[243]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color243.setter
+    def color243(self, val: Color) -> None:
+        self.color_table[243] = val.__int__()
+
+    @property
+    def color244(self) -> Color:
+        x = self.color_table[244]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color244.setter
+    def color244(self, val: Color) -> None:
+        self.color_table[244] = val.__int__()
+
+    @property
+    def color245(self) -> Color:
+        x = self.color_table[245]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color245.setter
+    def color245(self, val: Color) -> None:
+        self.color_table[245] = val.__int__()
+
+    @property
+    def color246(self) -> Color:
+        x = self.color_table[246]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color246.setter
+    def color246(self, val: Color) -> None:
+        self.color_table[246] = val.__int__()
+
+    @property
+    def color247(self) -> Color:
+        x = self.color_table[247]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color247.setter
+    def color247(self, val: Color) -> None:
+        self.color_table[247] = val.__int__()
+
+    @property
+    def color248(self) -> Color:
+        x = self.color_table[248]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color248.setter
+    def color248(self, val: Color) -> None:
+        self.color_table[248] = val.__int__()
+
+    @property
+    def color249(self) -> Color:
+        x = self.color_table[249]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color249.setter
+    def color249(self, val: Color) -> None:
+        self.color_table[249] = val.__int__()
+
+    @property
+    def color250(self) -> Color:
+        x = self.color_table[250]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color250.setter
+    def color250(self, val: Color) -> None:
+        self.color_table[250] = val.__int__()
+
+    @property
+    def color251(self) -> Color:
+        x = self.color_table[251]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color251.setter
+    def color251(self, val: Color) -> None:
+        self.color_table[251] = val.__int__()
+
+    @property
+    def color252(self) -> Color:
+        x = self.color_table[252]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color252.setter
+    def color252(self, val: Color) -> None:
+        self.color_table[252] = val.__int__()
+
+    @property
+    def color253(self) -> Color:
+        x = self.color_table[253]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color253.setter
+    def color253(self, val: Color) -> None:
+        self.color_table[253] = val.__int__()
+
+    @property
+    def color254(self) -> Color:
+        x = self.color_table[254]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color254.setter
+    def color254(self, val: Color) -> None:
+        self.color_table[254] = val.__int__()
+
+    @property
+    def color255(self) -> Color:
+        x = self.color_table[255]
+        return Color((x >> 16) & 255, (x >> 8) & 255, x & 255)
+
+    @color255.setter
+    def color255(self, val: Color) -> None:
+        self.color_table[255] = val.__int__()
     command_on_bell: typing.List[str] = ['none']
     confirm_os_window_close: int = 0
     copy_on_select: str = ''
@@ -817,6 +2866,40 @@ class Options:
     sequence_map: SequenceMap = {}
     mouse_map: typing.List[kitty.options.utils.MouseMapping] = []
     mousemap: MouseMap = {}
+    color_table: array = array("L", (
+        0x000000, 0xcc0403, 0x19cb00, 0xcecb00, 0x0d73cc, 0xcb1ed1, 0x0dcdcd, 0xdddddd,
+        0x767676, 0xf2201f, 0x23fd00, 0xfffd00, 0x1a8fff, 0xfd28ff, 0x14ffff, 0xffffff,
+        0x000000, 0x00005f, 0x000087, 0x0000af, 0x0000d7, 0x0000ff, 0x005f00, 0x005f5f,
+        0x005f87, 0x005faf, 0x005fd7, 0x005fff, 0x008700, 0x00875f, 0x008787, 0x0087af,
+        0x0087d7, 0x0087ff, 0x00af00, 0x00af5f, 0x00af87, 0x00afaf, 0x00afd7, 0x00afff,
+        0x00d700, 0x00d75f, 0x00d787, 0x00d7af, 0x00d7d7, 0x00d7ff, 0x00ff00, 0x00ff5f,
+        0x00ff87, 0x00ffaf, 0x00ffd7, 0x00ffff, 0x5f0000, 0x5f005f, 0x5f0087, 0x5f00af,
+        0x5f00d7, 0x5f00ff, 0x5f5f00, 0x5f5f5f, 0x5f5f87, 0x5f5faf, 0x5f5fd7, 0x5f5fff,
+        0x5f8700, 0x5f875f, 0x5f8787, 0x5f87af, 0x5f87d7, 0x5f87ff, 0x5faf00, 0x5faf5f,
+        0x5faf87, 0x5fafaf, 0x5fafd7, 0x5fafff, 0x5fd700, 0x5fd75f, 0x5fd787, 0x5fd7af,
+        0x5fd7d7, 0x5fd7ff, 0x5fff00, 0x5fff5f, 0x5fff87, 0x5fffaf, 0x5fffd7, 0x5fffff,
+        0x870000, 0x87005f, 0x870087, 0x8700af, 0x8700d7, 0x8700ff, 0x875f00, 0x875f5f,
+        0x875f87, 0x875faf, 0x875fd7, 0x875fff, 0x878700, 0x87875f, 0x878787, 0x8787af,
+        0x8787d7, 0x8787ff, 0x87af00, 0x87af5f, 0x87af87, 0x87afaf, 0x87afd7, 0x87afff,
+        0x87d700, 0x87d75f, 0x87d787, 0x87d7af, 0x87d7d7, 0x87d7ff, 0x87ff00, 0x87ff5f,
+        0x87ff87, 0x87ffaf, 0x87ffd7, 0x87ffff, 0xaf0000, 0xaf005f, 0xaf0087, 0xaf00af,
+        0xaf00d7, 0xaf00ff, 0xaf5f00, 0xaf5f5f, 0xaf5f87, 0xaf5faf, 0xaf5fd7, 0xaf5fff,
+        0xaf8700, 0xaf875f, 0xaf8787, 0xaf87af, 0xaf87d7, 0xaf87ff, 0xafaf00, 0xafaf5f,
+        0xafaf87, 0xafafaf, 0xafafd7, 0xafafff, 0xafd700, 0xafd75f, 0xafd787, 0xafd7af,
+        0xafd7d7, 0xafd7ff, 0xafff00, 0xafff5f, 0xafff87, 0xafffaf, 0xafffd7, 0xafffff,
+        0xd70000, 0xd7005f, 0xd70087, 0xd700af, 0xd700d7, 0xd700ff, 0xd75f00, 0xd75f5f,
+        0xd75f87, 0xd75faf, 0xd75fd7, 0xd75fff, 0xd78700, 0xd7875f, 0xd78787, 0xd787af,
+        0xd787d7, 0xd787ff, 0xd7af00, 0xd7af5f, 0xd7af87, 0xd7afaf, 0xd7afd7, 0xd7afff,
+        0xd7d700, 0xd7d75f, 0xd7d787, 0xd7d7af, 0xd7d7d7, 0xd7d7ff, 0xd7ff00, 0xd7ff5f,
+        0xd7ff87, 0xd7ffaf, 0xd7ffd7, 0xd7ffff, 0xff0000, 0xff005f, 0xff0087, 0xff00af,
+        0xff00d7, 0xff00ff, 0xff5f00, 0xff5f5f, 0xff5f87, 0xff5faf, 0xff5fd7, 0xff5fff,
+        0xff8700, 0xff875f, 0xff8787, 0xff87af, 0xff87d7, 0xff87ff, 0xffaf00, 0xffaf5f,
+        0xffaf87, 0xffafaf, 0xffafd7, 0xffafff, 0xffd700, 0xffd75f, 0xffd787, 0xffd7af,
+        0xffd7d7, 0xffd7ff, 0xffff00, 0xffff5f, 0xffff87, 0xffffaf, 0xffffd7, 0xffffff,
+        0x080808, 0x121212, 0x1c1c1c, 0x262626, 0x303030, 0x3a3a3a, 0x444444, 0x4e4e4e,
+        0x585858, 0x626262, 0x6c6c6c, 0x767676, 0x808080, 0x8a8a8a, 0x949494, 0x9e9e9e,
+        0xa8a8a8, 0xb2b2b2, 0xbcbcbc, 0xc6c6c6, 0xd0d0d0, 0xdadada, 0xe4e4e4, 0xeeeeee,
+    ))
 
     def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:
         if options_dict is not None:
@@ -1012,10 +3095,10 @@ if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('edit_config_file'), 8, False, 44, ()))
 defaults.mouse_map = [
     MouseMapping(0, 0, -2, False, KeyAction('mouse_click_url_or_select')),
-    MouseMapping(0, 1, -2, True, KeyAction('mouse_click_url_or_select')),
     MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),
-    MouseMapping(0, 5, -1, True, KeyAction('mouse_click_url')),
+    MouseMapping(0, 1, -2, True, KeyAction('mouse_click_url_or_select')),
     MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),
+    MouseMapping(0, 5, -1, True, KeyAction('mouse_click_url')),
     MouseMapping(2, 0, -1, False, KeyAction('paste_selection')),
     MouseMapping(0, 0, 1, False, KeyAction('mouse_selection', (0,))),
     MouseMapping(0, 6, 1, False, KeyAction('mouse_selection', (2,))),
@@ -1023,18 +3106,18 @@ defaults.mouse_map = [
     MouseMapping(0, 0, 3, False, KeyAction('mouse_selection', (4,))),
     MouseMapping(0, 6, 3, False, KeyAction('mouse_selection', (5,))),
     MouseMapping(1, 0, 1, False, KeyAction('mouse_selection', (1,))),
-    MouseMapping(2, 1, -1, True, KeyAction('paste_selection')),
     MouseMapping(2, 1, -1, False, KeyAction('paste_selection')),
-    MouseMapping(0, 1, 1, True, KeyAction('mouse_selection', (0,))),
+    MouseMapping(2, 1, -1, True, KeyAction('paste_selection')),
     MouseMapping(0, 1, 1, False, KeyAction('mouse_selection', (0,))),
-    MouseMapping(0, 7, 1, True, KeyAction('mouse_selection', (2,))),
+    MouseMapping(0, 1, 1, True, KeyAction('mouse_selection', (0,))),
     MouseMapping(0, 7, 1, False, KeyAction('mouse_selection', (2,))),
-    MouseMapping(0, 1, 2, True, KeyAction('mouse_selection', (3,))),
+    MouseMapping(0, 7, 1, True, KeyAction('mouse_selection', (2,))),
     MouseMapping(0, 1, 2, False, KeyAction('mouse_selection', (3,))),
-    MouseMapping(0, 1, 3, True, KeyAction('mouse_selection', (4,))),
+    MouseMapping(0, 1, 2, True, KeyAction('mouse_selection', (3,))),
     MouseMapping(0, 1, 3, False, KeyAction('mouse_selection', (4,))),
-    MouseMapping(0, 7, 3, True, KeyAction('mouse_selection', (5,))),
+    MouseMapping(0, 1, 3, True, KeyAction('mouse_selection', (4,))),
     MouseMapping(0, 7, 3, False, KeyAction('mouse_selection', (5,))),
-    MouseMapping(1, 1, 1, True, KeyAction('mouse_selection', (1,))),
+    MouseMapping(0, 7, 3, True, KeyAction('mouse_selection', (5,))),
     MouseMapping(1, 1, 1, False, KeyAction('mouse_selection', (1,))),
+    MouseMapping(1, 1, 1, True, KeyAction('mouse_selection', (1,))),
 ]

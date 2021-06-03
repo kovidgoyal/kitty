@@ -12,6 +12,7 @@ definition = Definition(
     Action('map', 'parse_map', {'keymap': 'KeyMap', 'sequence_map': 'SequenceMap'},
            ['KeyDefinition', 'kitty.conf.utils.KeyAction', 'kitty.types.SingleKey']),
     Action('mouse_map', 'parse_mouse_map', {'mousemap': 'MouseMap'}, ['MouseMapping', 'kitty.conf.utils.KeyAction']),
+    has_color_table=True,
 )
 definition.add_deprecation('deprecated_hide_window_decorations_aliases', 'x11_hide_window_decorations', 'macos_hide_titlebar')
 definition.add_deprecation('deprecated_macos_show_window_title_in_menubar_alias', 'macos_show_window_title_in_menubar')

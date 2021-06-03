@@ -8,10 +8,15 @@ import pprint
 import re
 import textwrap
 from typing import (
-    Any, Callable, Dict, List, Set, Tuple, Union, get_type_hints
+    Any, Callable, Dict, Iterator, List, Set, Tuple, Union, get_type_hints
 )
 
 from kitty.conf.types import Definition, MultiOption, Option, unset
+
+
+def chunks(lst: List, n: int) -> Iterator[List]:
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
 
 
 def atoi(text: str) -> str:
@@ -60,6 +65,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
 
     is_mutiple_vars = {}
     option_names = set()
+    color_table = list(map(str, range(256)))
 
     def parser_function_declaration(option_name: str) -> None:
         t('')
@@ -93,6 +99,22 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             choices[ename] = typ
             typ = ename
             func = str
+        elif defn.has_color_table and option.is_color_table_color:
+            func, typ = option_type_data(option)
+            t(f'        ans[{option.name!r}] = {func.__name__}(val)')
+            tc_imports.add((func.__module__, func.__name__))
+            cnum = int(option.name[5:])
+            color_table[cnum] = '0x{:06x}'.format(func(option.defval_as_string).__int__())
+            a('')
+            a('    @property')
+            a(f'    def {option.name}(self) -> {typ}:')
+            a(f'        x = self.color_table[{cnum}]')
+            a(f'        return {typ}((x >> 16) & 255, (x >> 8) & 255, x & 255)')
+            a('')
+            a(f'    @{option.name}.setter')
+            a(f'    def {option.name}(self, val: {typ}) -> None:')
+            a(f'        self.color_table[{cnum}] = val.__int__()')
+            continue
         else:
             func, typ = option_type_data(option)
             try:
@@ -156,6 +178,13 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
         t(f'        for k in {func.__name__}(val):')
         t(f'            ans[{aname!r}].append(k)')
         tc_imports.add((func.__module__, func.__name__))
+
+    if defn.has_color_table:
+        imports.add(('array', 'array'))
+        a('    color_table: array = array("L", (')
+        for grp in chunks(color_table, 8):
+            a('        ' + ', '.join(grp) + ',')
+        a('    ))')
 
     a('')
     a('    def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:')
@@ -297,7 +326,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
                 s = '\n    '.join(lines)
                 s = f'(\n    {s}\n)'
             a(f'from {mod} import {s}')
-            if add_module_imports and mod not in seen_mods:
+            if add_module_imports and mod not in seen_mods and mod != s:
                 a(f'import {mod}')
                 seen_mods.add(mod)
 
