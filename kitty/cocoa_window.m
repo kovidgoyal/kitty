@@ -160,9 +160,11 @@ static PyObject *notification_activated_callback = NULL;
 
 static PyObject*
 set_notification_activated_callback(PyObject *self UNUSED, PyObject *callback) {
-    if (notification_activated_callback) Py_DECREF(notification_activated_callback);
-    notification_activated_callback = callback;
-    Py_INCREF(callback);
+    Py_CLEAR(notification_activated_callback);
+    if (callback != Py_None)
+        notification_activated_callback = callback;
+        Py_INCREF(callback);
+    }
     Py_RETURN_NONE;
 }
 
@@ -638,7 +640,6 @@ cleanup() {
 
     if (dockMenu) [dockMenu release];
     dockMenu = nil;
-    Py_CLEAR(notification_activated_callback);
 
 #ifndef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
     drain_pending_notifications(NO);

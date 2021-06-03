@@ -178,6 +178,9 @@ class AppRunner:
         finally:
             set_options(None)
             free_font_data()  # must free font data before glfw/freetype/fontconfig/opengl etc are finalized
+            if is_macos:
+                from kitty.fast_data_types import set_notification_activated_callback
+                set_notification_activated_callback(None)
 
 
 run_app = AppRunner()

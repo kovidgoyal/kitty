@@ -76,6 +76,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression that caused using the ``title`` command in session files
   to stop working (:iss:`3676`)
 
+- macOS: Fix a rare crash on exit (:iss:`3686`)
+
 
 0.20.3 [2021-05-06]
 ----------------------

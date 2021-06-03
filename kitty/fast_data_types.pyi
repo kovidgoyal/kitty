@@ -1182,3 +1182,7 @@ def click_mouse_url(os_window_id: int, tab_id: int, window_id: int) -> None:
 
 def mouse_selection(os_window_id: int, tab_id: int, window_id: int, code: int, button: int) -> None:
     pass
+
+
+def set_notification_activated_callback(cb: Optional[Callable]) -> None:
+    pass
