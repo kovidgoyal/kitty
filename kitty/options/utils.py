@@ -7,8 +7,7 @@ import os
 import re
 import sys
 from typing import (
-    Any, Callable, Dict, FrozenSet, Iterable, List, Optional, Sequence, Tuple,
-    Union
+    Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 )
 
 import kitty.fast_data_types as defines
@@ -630,8 +629,8 @@ def allow_remote_control(x: str) -> str:
     return x
 
 
-def clipboard_control(x: str) -> FrozenSet[str]:
-    return frozenset(x.lower().split())
+def clipboard_control(x: str) -> Tuple[str, ...]:
+    return tuple(x.lower().split())
 
 
 def allow_hyperlinks(x: str) -> int:

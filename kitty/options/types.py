@@ -451,7 +451,7 @@ class Options:
     box_drawing_scale: typing.Tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
     clear_all_shortcuts: bool = False
     click_interval: float = -1.0
-    clipboard_control: typing.FrozenSet[str] = frozenset({'write-clipboard', 'write-primary'})
+    clipboard_control: typing.Tuple[str, ...] = ('write-clipboard', 'write-primary')
     close_on_child_death: bool = False
 
     @property
