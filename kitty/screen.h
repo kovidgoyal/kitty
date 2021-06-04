@@ -232,6 +232,7 @@ void screen_pop_key_encoding_flags(Screen *self, uint32_t num);
 uint8_t screen_current_key_encoding_flags(Screen *self);
 void screen_report_key_encoding_flags(Screen *self);
 void screen_xtmodkeys(Screen *self, uint32_t p1, uint32_t p2);
+bool screen_detect_url(Screen *screen, unsigned int x, unsigned int y);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

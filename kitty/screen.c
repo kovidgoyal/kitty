@@ -2120,6 +2120,86 @@ deactivate_overlay_line(Screen *self) {
 
 // }}}
 
+// URLs {{{
+static void
+extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type sentinel) {
+    unsigned int count = 0;
+    while(count++ < 10) {
+        if (*x != line->xnum - 1) break;
+        bool next_line_starts_with_url_chars = false;
+        line = screen_visual_line(screen, *y + 2);
+        if (line) next_line_starts_with_url_chars = line_startswith_url_chars(line);
+        line = screen_visual_line(screen, *y + 1);
+        if (!line) break;
+        // we deliberately allow non-continued lines as some programs, like
+        // mutt split URLs with newlines at line boundaries
+        index_type new_x = line_url_end_at(line, 0, false, sentinel, next_line_starts_with_url_chars);
+        if (!new_x && !line_startswith_url_chars(line)) break;
+        *y += 1; *x = new_x;
+    }
+}
+
+static char_type
+get_url_sentinel(Line *line, index_type url_start) {
+    char_type before = 0, sentinel;
+    if (url_start > 0 && url_start < line->xnum) before = line->cpu_cells[url_start - 1].ch;
+    switch(before) {
+        case '"':
+        case '\'':
+        case '*':
+            sentinel = before; break;
+        case '(':
+            sentinel = ')'; break;
+        case '[':
+            sentinel = ']'; break;
+        case '{':
+            sentinel = '}'; break;
+        case '<':
+            sentinel = '>'; break;
+        default:
+            sentinel = 0; break;
+    }
+    return sentinel;
+}
+
+bool
+screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
+    bool has_url = false;
+    index_type url_start, url_end = 0;
+    Line *line = screen_visual_line(screen, y);
+    if (line->cpu_cells[x].hyperlink_id) {
+        screen_mark_hyperlink(screen, x, y);
+        return true;
+    }
+    char_type sentinel;
+    if (line) {
+        url_start = line_url_start_at(line, x);
+        if (url_start < line->xnum) {
+            bool next_line_starts_with_url_chars = false;
+            if (y < screen->lines - 1) {
+                line = screen_visual_line(screen, y+1);
+                next_line_starts_with_url_chars = line_startswith_url_chars(line);
+                line = screen_visual_line(screen, y);
+            }
+            sentinel = get_url_sentinel(line, url_start);
+            url_end = line_url_end_at(line, x, true, sentinel, next_line_starts_with_url_chars);
+        }
+        has_url = url_end > url_start;
+    }
+    if (has_url) {
+        index_type y_extended = y;
+        extend_url(screen, line, &url_end, &y_extended, sentinel);
+        screen_mark_url(screen, url_start, y, url_end, y_extended);
+    } else {
+        screen_mark_url(screen, 0, 0, 0, 0);
+    }
+    return has_url;
+}
+
+
+
+// }}}
+
 // Python interface {{{
 #define WRAP0(name) static PyObject* name(Screen *self, PyObject *a UNUSED) { screen_##name(self); Py_RETURN_NONE; }
 #define WRAP0x(name) static PyObject* xxx_##name(Screen *self, PyObject *a UNUSED) { screen_##name(self); Py_RETURN_NONE; }
@@ -2404,6 +2484,7 @@ WRAP0(tab)
 WRAP0(linefeed)
 WRAP0(carriage_return)
 WRAP2(set_margins, 1, 1)
+WRAP2(detect_url, 0, 0)
 WRAP0(rescale_images)
 
 static PyObject*
@@ -2999,6 +3080,7 @@ static PyMethodDef methods[] = {
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
+    MND(detect_url, METH_VARARGS)
     MND(rescale_images, METH_NOARGS)
     MND(current_key_encoding_flags, METH_NOARGS)
     MND(text_for_selection, METH_NOARGS)

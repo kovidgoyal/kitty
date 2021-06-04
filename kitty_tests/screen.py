@@ -864,3 +864,28 @@ class TestScreen(BaseTest):
             w('#P')
         w('#R')
         ac(9, 10)
+
+    def test_detect_url(self):
+        s = self.create_screen(cols=30)
+
+        def ae(expected, x=3, y=0):
+            s.detect_url(x, y)
+            url = ''.join(s.text_for_marked_url())
+            self.assertEqual(expected, url)
+
+        def t(url, x=0, y=0, before='', after=''):
+            s.reset()
+            s.cursor.x = x
+            s.cursor.y = y
+            s.draw(before + url + after)
+            ae(url, x=x + 1 + len(before), y=y)
+
+        t('http://moo.com')
+        t('http://moo.com/something?else=+&what-')
+        for (st, e) in '() {} [] <>'.split():
+            t('http://moo.com', before=st, after=e)
+        for trailer in ')-=]}':
+            t('http://moo.com' + trailer)
+        for trailer in '{([':
+            t('http://moo.com', after=trailer)
+        t('http://moo.com', x=s.columns - 9)

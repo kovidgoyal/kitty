@@ -289,85 +289,8 @@ extend_selection(Window *w, bool ended) {
 }
 
 static inline void
-extend_url(Screen *screen, Line *line, index_type *x, index_type *y, char_type sentinel) {
-    unsigned int count = 0;
-    while(count++ < 10) {
-        if (*x != line->xnum - 1) break;
-        bool next_line_starts_with_url_chars = false;
-        line = screen_visual_line(screen, *y + 2);
-        if (line) next_line_starts_with_url_chars = line_startswith_url_chars(line);
-        line = screen_visual_line(screen, *y + 1);
-        if (!line) break;
-        // we deliberately allow non-continued lines as some programs, like
-        // mutt split URLs with newlines at line boundaries
-        index_type new_x = line_url_end_at(line, 0, false, sentinel, next_line_starts_with_url_chars);
-        if (!new_x && !line_startswith_url_chars(line)) break;
-        *y += 1; *x = new_x;
-    }
-}
-
-static inline char_type
-get_url_sentinel(Line *line, index_type url_start) {
-    char_type before = 0, sentinel;
-    if (url_start > 0 && url_start < line->xnum) before = line->cpu_cells[url_start - 1].ch;
-    switch(before) {
-        case '"':
-        case '\'':
-        case '*':
-            sentinel = before; break;
-        case '(':
-            sentinel = ')'; break;
-        case '[':
-            sentinel = ']'; break;
-        case '{':
-            sentinel = '}'; break;
-        case '<':
-            sentinel = '>'; break;
-        default:
-            sentinel = 0; break;
-    }
-    return sentinel;
-}
-
-static inline void
 set_mouse_cursor_for_screen(Screen *screen) {
     mouse_cursor_shape = screen->modes.mouse_tracking_mode == NO_TRACKING ? OPT(default_pointer_shape): OPT(pointer_shape_when_grabbed);
-}
-
-static inline void
-detect_url(Screen *screen, unsigned int x, unsigned int y) {
-    bool has_url = false;
-    index_type url_start, url_end = 0;
-    Line *line = screen_visual_line(screen, y);
-    if (line->cpu_cells[x].hyperlink_id) {
-        mouse_cursor_shape = HAND;
-        screen_mark_hyperlink(screen, x, y);
-        return;
-    }
-    char_type sentinel;
-    if (line) {
-        url_start = line_url_start_at(line, x);
-        sentinel = get_url_sentinel(line, url_start);
-        if (url_start < line->xnum) {
-            bool next_line_starts_with_url_chars = false;
-            if (y < screen->lines - 1) {
-                line = screen_visual_line(screen, y+1);
-                next_line_starts_with_url_chars = line_startswith_url_chars(line);
-                line = screen_visual_line(screen, y);
-            }
-            url_end = line_url_end_at(line, x, true, sentinel, next_line_starts_with_url_chars);
-        }
-        has_url = url_end > url_start;
-    }
-    if (has_url) {
-        mouse_cursor_shape = HAND;
-        index_type y_extended = y;
-        extend_url(screen, line, &url_end, &y_extended, sentinel);
-        screen_mark_url(screen, url_start, y, url_end, y_extended);
-    } else {
-        set_mouse_cursor_for_screen(screen);
-        screen_mark_url(screen, 0, 0, 0, 0);
-    }
 }
 
 static inline void
@@ -381,6 +304,12 @@ handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
         }
     }
 
+}
+
+static void
+detect_url(Screen *screen, unsigned int x, unsigned int y) {
+    if (screen_detect_url(screen, x, y)) mouse_cursor_shape = HAND;
+    else set_mouse_cursor_for_screen(screen);
 }
 
 HANDLER(handle_move_event) {

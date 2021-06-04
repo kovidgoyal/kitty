@@ -243,13 +243,16 @@ class TestDataTypes(BaseTest):
         l0 = create('file:///etc/test')
         self.ae(l0.url_start_at(0), 0)
 
-        for trail in '.,]>)\\':
+        for trail in '.,\\':
             lx = create("http://xyz.com" + trail)
             self.ae(lx.url_end_at(0), len(lx) - 2)
+        for trail in ')}]>':
+            lx = create("http://xyz.com" + trail)
+            self.ae(lx.url_end_at(0), len(lx) - 1)
         l0 = create("ftp://abc/")
         self.ae(l0.url_end_at(0), len(l0) - 1)
         l2 = create("http://-abcd] ")
-        self.ae(l2.url_end_at(0), len(l2) - 3)
+        self.ae(l2.url_end_at(0), len(l2) - 2)
         l3 = create("http://ab.de           ")
         self.ae(l3.url_start_at(4), 0)
         self.ae(l3.url_start_at(5), 0)

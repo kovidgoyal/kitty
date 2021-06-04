@@ -71,6 +71,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   executing any command specified on the command line via the users' shell
   just as ssh does (:iss:`3638`)
 
+- Fix trailing parentheses in URLs not being detected (:iss:`3688`)
+
 - Tab bar: Use a lower contrast color for tab separators (:pull:`3666`)
 
 - Fix a regression that caused using the ``title`` command in session files

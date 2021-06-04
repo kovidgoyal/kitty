@@ -52,7 +52,7 @@ cell_text(CPUCell *cell) {
 static inline index_type
 find_colon_slash(Line *self, index_type x, index_type limit) {
     // Find :// at or before x
-    index_type pos = x;
+    index_type pos = MIN(x, self->xnum - 1);
     enum URL_PARSER_STATES {ANY, FIRST_SLASH, SECOND_SLASH};
     enum URL_PARSER_STATES state = ANY;
     limit = MAX(2u, limit);
@@ -108,7 +108,6 @@ has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_ty
 
 static inline bool
 has_url_beyond(Line *self, index_type x) {
-    if (self->xnum <= x + MIN_URL_LEN + 3) return false;
     for (index_type i = x; i < MIN(x + MIN_URL_LEN + 3, self->xnum); i++) {
         if (!is_url_char(self->cpu_cells[i].ch)) return false;
     }
@@ -122,7 +121,7 @@ line_url_start_at(Line *self, index_type x) {
     if (x >= self->xnum || self->xnum <= MIN_URL_LEN + 3) return self->xnum;
     index_type ds_pos = 0, t;
     // First look for :// ahead of x
-    if (self->xnum - x > OPT(url_prefixes).max_prefix_len + 3) ds_pos = find_colon_slash(self, x + OPT(url_prefixes).max_prefix_len + 3, x < 2 ? 0 : x - 2);
+    ds_pos = find_colon_slash(self, x + OPT(url_prefixes).max_prefix_len + 3, x < 2 ? 0 : x - 2);
     if (ds_pos != 0 && has_url_beyond(self, ds_pos)) {
         if (has_url_prefix_at(self, ds_pos, ds_pos > x ? ds_pos - x: 0, &t)) return t;
     }
