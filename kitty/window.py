@@ -806,9 +806,6 @@ class Window:
                 if 'write-clipboard' in cc:
                     write('c', set_clipboard_string)
             if 'p' in where:
-                if cc == 'clipboard':
-                    if 'write-clipboard' in cc:
-                        write('c', set_clipboard_string)
                 if 'write-primary' in cc:
                     write('p', set_primary_selection)
 
