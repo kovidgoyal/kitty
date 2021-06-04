@@ -2434,10 +2434,10 @@ copy_colors_from(Screen *self, Screen *other) {
 }
 
 static PyObject*
-text_for_selection(Screen *self, PyObject *a UNUSED) {
+text_for_selections(Screen *self, Selections *selections) {
     PyObject *lines = NULL;
-    for (size_t i = 0; i < self->selections.count; i++) {
-        PyObject *temp = text_for_range(self, self->selections.items + i, true);
+    for (size_t i = 0; i < selections->count; i++) {
+        PyObject *temp = text_for_range(self, selections->items + i, true);
         if (temp) {
             if (lines) {
                 lines = extend_tuple(lines, temp);
@@ -2449,6 +2449,17 @@ text_for_selection(Screen *self, PyObject *a UNUSED) {
     if (!lines) lines = PyTuple_New(0);
     return lines;
 }
+
+static PyObject*
+text_for_selection(Screen *self, PyObject *a UNUSED) {
+    return text_for_selections(self, &self->selections);
+}
+
+static PyObject*
+text_for_marked_url(Screen *self, PyObject *a UNUSED) {
+    return text_for_selections(self, &self->url_ranges);
+}
+
 
 bool
 screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end) {
@@ -2991,6 +3002,7 @@ static PyMethodDef methods[] = {
     MND(rescale_images, METH_NOARGS)
     MND(current_key_encoding_flags, METH_NOARGS)
     MND(text_for_selection, METH_NOARGS)
+    MND(text_for_marked_url, METH_NOARGS)
     MND(is_rectangle_select, METH_NOARGS)
     MND(scroll, METH_VARARGS)
     MND(send_escape_code_to_child, METH_VARARGS)
