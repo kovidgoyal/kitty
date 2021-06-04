@@ -78,6 +78,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix a rare crash on exit (:iss:`3686`)
 
+- Fix ligatures not working with the Iosevka font (requires Iosevka >= 7.1)
+  (:iss:`297`)
+
 
 0.20.3 [2021-05-06]
 ----------------------

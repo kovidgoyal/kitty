@@ -99,16 +99,22 @@ class Rendering(BaseTest):
         def groups(text, font=None):
             return [x[:2] for x in ss(text, font)]
 
-        for font in ('FiraCode-Medium.otf', 'CascadiaCode-Regular.otf'):
+        for font in ('FiraCode-Medium.otf', 'CascadiaCode-Regular.otf', 'iosevka-regular.ttf'):
             g = partial(groups, font=font)
             self.ae(g('abcd'), [(1, 1) for i in range(4)])
-            self.ae(g('----'), [(4, 4)])
             self.ae(g('A===B!=C'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
-            self.ae(g('F--a--'), [(1, 1), (2, 2), (1, 1), (2, 2)])
-            self.ae(g('===--<>=='), [(3, 3), (2, 2), (2, 2), (2, 2)])
-            self.ae(g('==!=<>==<><><>'), [(4, 4), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)])
             self.ae(g('A=>>B!=C'), [(1, 1), (3, 3), (1, 1), (2, 2), (1, 1)])
-            self.ae(g('-' * 18), [(18, 18)])
+            if 'iosevka' in font:
+                self.ae(g('--->'), [(4, 4)])
+                self.ae(g('-' * 12 + '>'), [(13, 13)])
+                self.ae(g('<~~~'), [(4, 4)])
+                self.ae(g('a<~~~b'), [(1, 1), (4, 4), (1, 1)])
+            else:
+                self.ae(g('----'), [(4, 4)])
+                self.ae(g('F--a--'), [(1, 1), (2, 2), (1, 1), (2, 2)])
+                self.ae(g('===--<>=='), [(3, 3), (2, 2), (2, 2), (2, 2)])
+                self.ae(g('==!=<>==<><><>'), [(4, 4), (2, 2), (2, 2), (2, 2), (2, 2), (2, 2)])
+                self.ae(g('-' * 18), [(18, 18)])
         colon_glyph = ss('9:30', font='FiraCode-Medium.otf')[1][2]
         self.assertNotEqual(colon_glyph, ss(':', font='FiraCode-Medium.otf')[0][2])
         self.ae(colon_glyph, 1031)

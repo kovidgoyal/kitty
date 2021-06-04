@@ -576,7 +576,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
         dest.top = baseline - yoff;
     }
 
-    /* printf("x_offset: %d bearing_x: %f y_offset: %d bearing_y: %f src_start_row: %u src_start_column: %u dest_start_row: %u dest_start_column: %u bm_width: %lu bitmap_rows: %lu\n", xoff, bearing_x, yoff, bearing_y, src.top, src.left, dest.top, dest.left, bm->width, bm->rows); */
+    /* printf("x_offset: %d y_offset: %d src_start_row: %u src_start_column: %u dest_start_row: %u dest_start_column: %u bm_width: %lu bitmap_rows: %lu\n", xoff, yoff, src.top, src.left, dest.top, dest.left, bm->width, bm->rows); */
 
     if (bm->pixel_mode == FT_PIXEL_MODE_BGRA) {
         copy_color_bitmap(bm->buf, cell, &src, &dest, bm->stride, cell_width);
