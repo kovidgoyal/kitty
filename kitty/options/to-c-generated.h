@@ -6,6 +6,19 @@
 
 
 static void
+convert_from_python_font_size(PyObject *val, Options *opts) {
+    opts->font_size = PyFloat_AsDouble(val);
+}
+
+static void
+convert_from_opts_font_size(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "font_size");
+    if (ret == NULL) return;
+    convert_from_python_font_size(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_force_ltr(PyObject *val, Options *opts) {
     opts->force_ltr = PyObject_IsTrue(val);
 }
@@ -852,6 +865,8 @@ convert_from_opts_macos_show_window_title_in(PyObject *py_opts, Options *opts) {
 
 static bool
 convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
+    convert_from_opts_font_size(py_opts, opts);
+    if (PyErr_Occurred()) return false;
     convert_from_opts_force_ltr(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_adjust_line_height(py_opts, opts);

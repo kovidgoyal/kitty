@@ -55,7 +55,7 @@ opt('bold_italic_font', 'auto',
     )
 
 opt('font_size', '11.0',
-    option_type='to_font_size',
+    option_type='to_font_size', ctype='double',
     long_text='Font size (in pts)'
     )
 

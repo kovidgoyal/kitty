@@ -179,7 +179,7 @@ add_os_window() {
         }
     }
 
-    ans->font_sz_in_pts = global_state.font_sz_in_pts;
+    ans->font_sz_in_pts = OPT(font_size);
     END_WITH_OS_WINDOW_REFS
     return ans;
 }
@@ -824,8 +824,8 @@ PYWRAP1(pt_to_px) {
 PYWRAP1(global_font_size) {
     double set_val = -1;
     PA("|d", &set_val);
-    if (set_val > 0) global_state.font_sz_in_pts = set_val;
-    return Py_BuildValue("d", global_state.font_sz_in_pts);
+    if (set_val > 0) OPT(font_size) = set_val;
+    return Py_BuildValue("d", OPT(font_size));
 }
 
 PYWRAP1(os_window_font_size) {
@@ -1066,7 +1066,7 @@ finalize(void) {
 
 bool
 init_state(PyObject *module) {
-    global_state.font_sz_in_pts = 11.0;
+    OPT(font_size) = 11.0;
 #ifdef __APPLE__
 #define DPI 72.0
 #else

@@ -1313,7 +1313,7 @@ set_font_data(PyObject UNUSED *m, PyObject *args) {
     if (!PyArg_ParseTuple(args, "OOOIIIIO!dO",
                 &box_drawing_function, &prerender_function, &descriptor_for_idx,
                 &descriptor_indices.bold, &descriptor_indices.italic, &descriptor_indices.bi, &descriptor_indices.num_symbol_fonts,
-                &PyTuple_Type, &sm, &global_state.font_sz_in_pts, &font_feature_settings)) return NULL;
+                &PyTuple_Type, &sm, &OPT(font_size), &font_feature_settings)) return NULL;
     Py_INCREF(box_drawing_function); Py_INCREF(prerender_function); Py_INCREF(descriptor_for_idx); Py_INCREF(font_feature_settings);
     free_font_groups();
     clear_symbol_maps();

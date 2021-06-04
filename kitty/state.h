@@ -72,6 +72,7 @@ typedef struct {
     } url_prefixes;
     bool detect_urls;
     bool tab_bar_hidden;
+    double font_size;
 } Options;
 
 typedef struct {
@@ -204,7 +205,6 @@ typedef struct {
     bool has_pending_resizes, has_pending_closes;
     bool in_sequence_mode;
     bool check_for_active_animated_images;
-    double font_sz_in_pts;
     struct { double x, y; } default_dpi;
     id_type active_drag_in_window;
     int active_drag_button;

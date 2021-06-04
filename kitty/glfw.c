@@ -653,7 +653,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     float xscale, yscale;
     double xdpi, ydpi;
     get_window_content_scale(temp_window, &xscale, &yscale, &xdpi, &ydpi);
-    FONTS_DATA_HANDLE fonts_data = load_fonts_data(global_state.font_sz_in_pts, xdpi, ydpi);
+    FONTS_DATA_HANDLE fonts_data = load_fonts_data(OPT(font_size), xdpi, ydpi);
     PyObject *ret = PyObject_CallFunction(get_window_size, "IIddff", fonts_data->cell_width, fonts_data->cell_height, fonts_data->logical_dpi_x, fonts_data->logical_dpi_y, xscale, yscale);
     if (ret == NULL) return NULL;
     int width = PyLong_AsLong(PyTuple_GET_ITEM(ret, 0)), height = PyLong_AsLong(PyTuple_GET_ITEM(ret, 1));
