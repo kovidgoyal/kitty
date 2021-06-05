@@ -911,7 +911,7 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
         return
     if paction is None:
         return
-    for mode in specified_modes:
+    for mode in sorted(specified_modes):
         yield MouseMapping(button, mods, count, mode == 'grabbed', paction)
 
 

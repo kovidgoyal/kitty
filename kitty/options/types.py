@@ -777,10 +777,10 @@ if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('clear_terminal', ('reset', True)), 10, False, 114, ()))
 defaults.mouse_map = [
     MouseMapping(0, 0, -2, False, KeyAction('mouse_click_url_or_select')),  # click_url_or_select
-    MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),  # click_url_or_select_grabbed
     MouseMapping(0, 1, -2, True, KeyAction('mouse_click_url_or_select')),  # click_url_or_select_grabbed
-    MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),  # click_url
+    MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),  # click_url_or_select_grabbed
     MouseMapping(0, 5, -1, True, KeyAction('mouse_click_url')),  # click_url
+    MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),  # click_url
     MouseMapping(2, 0, -1, False, KeyAction('paste_selection')),  # paste_selection
     MouseMapping(0, 0, 1, False, KeyAction('mouse_selection', (0,))),  # start_simple_selection
     MouseMapping(0, 6, 1, False, KeyAction('mouse_selection', (2,))),  # start_rectangle_selection
