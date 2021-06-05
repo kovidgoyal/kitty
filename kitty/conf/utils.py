@@ -212,8 +212,9 @@ def load_config(
     merge_configs: Callable[[Dict, Dict], Dict],
     *paths: str,
     overrides: Optional[Iterable[str]] = None
-) -> Dict[str, Any]:
+) -> Tuple[Dict[str, Any], Tuple[str, ...]]:
     ans = defaults._asdict()
+    found_paths = []
     for path in paths:
         if not path:
             continue
@@ -222,11 +223,12 @@ def load_config(
                 vals = parse_config(f)
         except (FileNotFoundError, PermissionError):
             continue
+        found_paths.append(path)
         ans = merge_configs(ans, vals)
     if overrides is not None:
         vals = parse_config(overrides)
         ans = merge_configs(ans, vals)
-    return ans
+    return ans, tuple(found_paths)
 
 
 def key_func() -> Tuple[Callable[..., Callable], Dict[str, Callable]]:

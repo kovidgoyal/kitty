@@ -150,7 +150,8 @@ def parse_config(lines: Iterable[str], accumulate_bad_lines: Optional[List[BadLi
 def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumulate_bad_lines: Optional[List[BadLine]] = None) -> Options:
     from .options.parse import merge_result_dicts
 
-    opts_dict = _load_config(defaults, partial(parse_config, accumulate_bad_lines=accumulate_bad_lines), merge_result_dicts, *paths, overrides=overrides)
+    overrides = tuple(overrides) if overrides is not None else ()
+    opts_dict, paths = _load_config(defaults, partial(parse_config, accumulate_bad_lines=accumulate_bad_lines), merge_result_dicts, *paths, overrides=overrides)
     opts = Options(opts_dict)
 
     finalize_keys(opts)
@@ -162,6 +163,8 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None, accumula
     if opts.background_opacity < 1.0 and opts.macos_titlebar_color:
         log_error('Cannot use both macos_titlebar_color and background_opacity')
         opts.macos_titlebar_color = 0
+    opts.config_paths = paths
+    opts.config_overrides = overrides
     return opts
 
 

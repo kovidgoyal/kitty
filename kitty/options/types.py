@@ -598,6 +598,8 @@ class Options:
         0x585858, 0x626262, 0x6c6c6c, 0x767676, 0x808080, 0x8a8a8a, 0x949494, 0x9e9e9e,
         0xa8a8a8, 0xb2b2b2, 0xbcbcbc, 0xc6c6c6, 0xd0d0d0, 0xdadada, 0xe4e4e4, 0xeeeeee,
     ))
+    config_paths: typing.Tuple[str, ...] = ()
+    config_overrides: typing.Tuple[str, ...] = ()
 
     def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:
         if options_dict is not None:
@@ -668,73 +670,140 @@ defaults.font_features = {}
 defaults.kitten_alias = {}
 defaults.symbol_map = {}
 defaults.map = [
-    KeyDefinition(False, KeyAction('copy_to_clipboard'), 1024, False, 99, ()),  # copy_to_clipboard
-    KeyDefinition(False, KeyAction('paste_from_clipboard'), 1024, False, 118, ()),  # paste_from_clipboard
-    KeyDefinition(False, KeyAction('paste_from_selection'), 1024, False, 115, ()),  # paste_from_selection
-    KeyDefinition(False, KeyAction('paste_from_selection'), 1, False, 57348, ()),  # paste_from_selection
-    KeyDefinition(False, KeyAction('pass_selection_to_program'), 1024, False, 111, ()),  # pass_selection_to_program
-    KeyDefinition(False, KeyAction('scroll_line_up'), 1024, False, 57352, ()),  # scroll_line_up
-    KeyDefinition(False, KeyAction('scroll_line_up'), 1024, False, 107, ()),  # scroll_line_up
-    KeyDefinition(False, KeyAction('scroll_line_down'), 1024, False, 57353, ()),  # scroll_line_down
-    KeyDefinition(False, KeyAction('scroll_line_down'), 1024, False, 106, ()),  # scroll_line_down
-    KeyDefinition(False, KeyAction('scroll_page_up'), 1024, False, 57354, ()),  # scroll_page_up
-    KeyDefinition(False, KeyAction('scroll_page_down'), 1024, False, 57355, ()),  # scroll_page_down
-    KeyDefinition(False, KeyAction('scroll_home'), 1024, False, 57356, ()),  # scroll_home
-    KeyDefinition(False, KeyAction('scroll_end'), 1024, False, 57357, ()),  # scroll_end
-    KeyDefinition(False, KeyAction('show_scrollback'), 1024, False, 104, ()),  # show_scrollback
-    KeyDefinition(False, KeyAction('new_window'), 1024, False, 57345, ()),  # new_window
-    KeyDefinition(False, KeyAction('new_os_window'), 1024, False, 110, ()),  # new_os_window
-    KeyDefinition(False, KeyAction('close_window'), 1024, False, 119, ()),  # close_window
-    KeyDefinition(False, KeyAction('next_window'), 1024, False, 93, ()),  # next_window
-    KeyDefinition(False, KeyAction('previous_window'), 1024, False, 91, ()),  # previous_window
-    KeyDefinition(False, KeyAction('move_window_forward'), 1024, False, 102, ()),  # move_window_forward
-    KeyDefinition(False, KeyAction('move_window_backward'), 1024, False, 98, ()),  # move_window_backward
-    KeyDefinition(False, KeyAction('move_window_to_top'), 1024, False, 96, ()),  # move_window_to_top
-    KeyDefinition(False, KeyAction('start_resizing_window'), 1024, False, 114, ()),  # start_resizing_window
-    KeyDefinition(False, KeyAction('first_window'), 1024, False, 49, ()),  # first_window
-    KeyDefinition(False, KeyAction('second_window'), 1024, False, 50, ()),  # second_window
-    KeyDefinition(False, KeyAction('third_window'), 1024, False, 51, ()),  # third_window
-    KeyDefinition(False, KeyAction('fourth_window'), 1024, False, 52, ()),  # fourth_window
-    KeyDefinition(False, KeyAction('fifth_window'), 1024, False, 53, ()),  # fifth_window
-    KeyDefinition(False, KeyAction('sixth_window'), 1024, False, 54, ()),  # sixth_window
-    KeyDefinition(False, KeyAction('seventh_window'), 1024, False, 55, ()),  # seventh_window
-    KeyDefinition(False, KeyAction('eighth_window'), 1024, False, 56, ()),  # eighth_window
-    KeyDefinition(False, KeyAction('ninth_window'), 1024, False, 57, ()),  # ninth_window
-    KeyDefinition(False, KeyAction('tenth_window'), 1024, False, 48, ()),  # tenth_window
-    KeyDefinition(False, KeyAction('next_tab'), 1024, False, 57351, ()),  # next_tab
-    KeyDefinition(False, KeyAction('next_tab'), 4, False, 57346, ()),  # next_tab
-    KeyDefinition(False, KeyAction('previous_tab'), 1024, False, 57350, ()),  # previous_tab
-    KeyDefinition(False, KeyAction('previous_tab'), 5, False, 57346, ()),  # previous_tab
-    KeyDefinition(False, KeyAction('new_tab'), 1024, False, 116, ()),  # new_tab
-    KeyDefinition(False, KeyAction('close_tab'), 1024, False, 113, ()),  # close_tab
-    KeyDefinition(False, KeyAction('move_tab_forward'), 1024, False, 46, ()),  # move_tab_forward
-    KeyDefinition(False, KeyAction('move_tab_backward'), 1024, False, 44, ()),  # move_tab_backward
-    KeyDefinition(False, KeyAction('set_tab_title'), 1026, False, 116, ()),  # set_tab_title
-    KeyDefinition(False, KeyAction('next_layout'), 1024, False, 108, ()),  # next_layout
-    KeyDefinition(False, KeyAction('change_font_size', (True, '+', 2.0)), 1024, False, 61, ()),  # increase_font_size
-    KeyDefinition(False, KeyAction('change_font_size', (True, '+', 2.0)), 1024, False, 43, ()),  # increase_font_size
-    KeyDefinition(False, KeyAction('change_font_size', (True, '+', 2.0)), 1024, False, 57413, ()),  # increase_font_size
-    KeyDefinition(False, KeyAction('change_font_size', (True, '-', 2.0)), 1024, False, 45, ()),  # decrease_font_size
-    KeyDefinition(False, KeyAction('change_font_size', (True, '-', 2.0)), 1024, False, 57412, ()),  # decrease_font_size
-    KeyDefinition(False, KeyAction('change_font_size', (True, None, 0.0)), 1024, False, 57347, ()),  # reset_font_size
-    KeyDefinition(False, KeyAction('kitten', ('hints',)), 1024, False, 101, ()),  # open_url
-    KeyDefinition(True, KeyAction('kitten', ('hints', '--type path --program -')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=102),)),  # insert_selected_path
-    KeyDefinition(True, KeyAction('kitten', ('hints', '--type path')), 1024, False, 112, (SingleKey(mods=1, is_native=False, key=102),)),  # open_selected_path
-    KeyDefinition(True, KeyAction('kitten', ('hints', '--type line --program -')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=108),)),  # insert_selected_line
-    KeyDefinition(True, KeyAction('kitten', ('hints', '--type word --program -')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=119),)),  # insert_selected_word
-    KeyDefinition(True, KeyAction('kitten', ('hints', '--type hash --program -')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=104),)),  # insert_selected_hash
-    KeyDefinition(True, KeyAction('kitten', ('hints', '--type linenum')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=110),)),  # goto_file_line
-    KeyDefinition(True, KeyAction('kitten', ('hints', '--type hyperlink')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=121),)),  # open_selected_hyperlink
-    KeyDefinition(False, KeyAction('toggle_fullscreen'), 1024, False, 57374, ()),  # toggle_fullscreen
-    KeyDefinition(False, KeyAction('toggle_maximized'), 1024, False, 57373, ()),  # toggle_maximized
-    KeyDefinition(False, KeyAction('kitten', ('unicode_input',)), 1024, False, 117, ()),  # input_unicode_character
-    KeyDefinition(False, KeyAction('edit_config_file'), 1024, False, 57365, ()),  # edit_config_file
-    KeyDefinition(False, KeyAction('kitty_shell', ('window',)), 1024, False, 57344, ()),  # kitty_shell
-    KeyDefinition(True, KeyAction('set_background_opacity', ('+0.1',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=109),)),  # increase_background_opacity
-    KeyDefinition(True, KeyAction('set_background_opacity', ('-0.1',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=108),)),  # decrease_background_opacity
-    KeyDefinition(True, KeyAction('set_background_opacity', ('1',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=49),)),  # full_background_opacity
-    KeyDefinition(True, KeyAction('set_background_opacity', ('default',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=100),)),  # reset_background_opacity
-    KeyDefinition(False, KeyAction('clear_terminal', ('reset', True)), 1024, False, 57349, ()),  # reset_terminal
+    # copy_to_clipboard
+    KeyDefinition(False, KeyAction('copy_to_clipboard'), 1024, False, 99, ()),
+    # paste_from_clipboard
+    KeyDefinition(False, KeyAction('paste_from_clipboard'), 1024, False, 118, ()),
+    # paste_from_selection
+    KeyDefinition(False, KeyAction('paste_from_selection'), 1024, False, 115, ()),
+    # paste_from_selection
+    KeyDefinition(False, KeyAction('paste_from_selection'), 1, False, 57348, ()),
+    # pass_selection_to_program
+    KeyDefinition(False, KeyAction('pass_selection_to_program'), 1024, False, 111, ()),
+    # scroll_line_up
+    KeyDefinition(False, KeyAction('scroll_line_up'), 1024, False, 57352, ()),
+    # scroll_line_up
+    KeyDefinition(False, KeyAction('scroll_line_up'), 1024, False, 107, ()),
+    # scroll_line_down
+    KeyDefinition(False, KeyAction('scroll_line_down'), 1024, False, 57353, ()),
+    # scroll_line_down
+    KeyDefinition(False, KeyAction('scroll_line_down'), 1024, False, 106, ()),
+    # scroll_page_up
+    KeyDefinition(False, KeyAction('scroll_page_up'), 1024, False, 57354, ()),
+    # scroll_page_down
+    KeyDefinition(False, KeyAction('scroll_page_down'), 1024, False, 57355, ()),
+    # scroll_home
+    KeyDefinition(False, KeyAction('scroll_home'), 1024, False, 57356, ()),
+    # scroll_end
+    KeyDefinition(False, KeyAction('scroll_end'), 1024, False, 57357, ()),
+    # show_scrollback
+    KeyDefinition(False, KeyAction('show_scrollback'), 1024, False, 104, ()),
+    # new_window
+    KeyDefinition(False, KeyAction('new_window'), 1024, False, 57345, ()),
+    # new_os_window
+    KeyDefinition(False, KeyAction('new_os_window'), 1024, False, 110, ()),
+    # close_window
+    KeyDefinition(False, KeyAction('close_window'), 1024, False, 119, ()),
+    # next_window
+    KeyDefinition(False, KeyAction('next_window'), 1024, False, 93, ()),
+    # previous_window
+    KeyDefinition(False, KeyAction('previous_window'), 1024, False, 91, ()),
+    # move_window_forward
+    KeyDefinition(False, KeyAction('move_window_forward'), 1024, False, 102, ()),
+    # move_window_backward
+    KeyDefinition(False, KeyAction('move_window_backward'), 1024, False, 98, ()),
+    # move_window_to_top
+    KeyDefinition(False, KeyAction('move_window_to_top'), 1024, False, 96, ()),
+    # start_resizing_window
+    KeyDefinition(False, KeyAction('start_resizing_window'), 1024, False, 114, ()),
+    # first_window
+    KeyDefinition(False, KeyAction('first_window'), 1024, False, 49, ()),
+    # second_window
+    KeyDefinition(False, KeyAction('second_window'), 1024, False, 50, ()),
+    # third_window
+    KeyDefinition(False, KeyAction('third_window'), 1024, False, 51, ()),
+    # fourth_window
+    KeyDefinition(False, KeyAction('fourth_window'), 1024, False, 52, ()),
+    # fifth_window
+    KeyDefinition(False, KeyAction('fifth_window'), 1024, False, 53, ()),
+    # sixth_window
+    KeyDefinition(False, KeyAction('sixth_window'), 1024, False, 54, ()),
+    # seventh_window
+    KeyDefinition(False, KeyAction('seventh_window'), 1024, False, 55, ()),
+    # eighth_window
+    KeyDefinition(False, KeyAction('eighth_window'), 1024, False, 56, ()),
+    # ninth_window
+    KeyDefinition(False, KeyAction('ninth_window'), 1024, False, 57, ()),
+    # tenth_window
+    KeyDefinition(False, KeyAction('tenth_window'), 1024, False, 48, ()),
+    # next_tab
+    KeyDefinition(False, KeyAction('next_tab'), 1024, False, 57351, ()),
+    # next_tab
+    KeyDefinition(False, KeyAction('next_tab'), 4, False, 57346, ()),
+    # previous_tab
+    KeyDefinition(False, KeyAction('previous_tab'), 1024, False, 57350, ()),
+    # previous_tab
+    KeyDefinition(False, KeyAction('previous_tab'), 5, False, 57346, ()),
+    # new_tab
+    KeyDefinition(False, KeyAction('new_tab'), 1024, False, 116, ()),
+    # close_tab
+    KeyDefinition(False, KeyAction('close_tab'), 1024, False, 113, ()),
+    # move_tab_forward
+    KeyDefinition(False, KeyAction('move_tab_forward'), 1024, False, 46, ()),
+    # move_tab_backward
+    KeyDefinition(False, KeyAction('move_tab_backward'), 1024, False, 44, ()),
+    # set_tab_title
+    KeyDefinition(False, KeyAction('set_tab_title'), 1026, False, 116, ()),
+    # next_layout
+    KeyDefinition(False, KeyAction('next_layout'), 1024, False, 108, ()),
+    # increase_font_size
+    KeyDefinition(False, KeyAction('change_font_size', (True, '+', 2.0)), 1024, False, 61, ()),
+    # increase_font_size
+    KeyDefinition(False, KeyAction('change_font_size', (True, '+', 2.0)), 1024, False, 43, ()),
+    # increase_font_size
+    KeyDefinition(False, KeyAction('change_font_size', (True, '+', 2.0)), 1024, False, 57413, ()),
+    # decrease_font_size
+    KeyDefinition(False, KeyAction('change_font_size', (True, '-', 2.0)), 1024, False, 45, ()),
+    # decrease_font_size
+    KeyDefinition(False, KeyAction('change_font_size', (True, '-', 2.0)), 1024, False, 57412, ()),
+    # reset_font_size
+    KeyDefinition(False, KeyAction('change_font_size', (True, None, 0.0)), 1024, False, 57347, ()),
+    # open_url
+    KeyDefinition(False, KeyAction('kitten', ('hints',)), 1024, False, 101, ()),
+    # insert_selected_path
+    KeyDefinition(True, KeyAction('kitten', ('hints', '--type path --program -')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=102),)),
+    # open_selected_path
+    KeyDefinition(True, KeyAction('kitten', ('hints', '--type path')), 1024, False, 112, (SingleKey(mods=1, is_native=False, key=102),)),
+    # insert_selected_line
+    KeyDefinition(True, KeyAction('kitten', ('hints', '--type line --program -')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=108),)),
+    # insert_selected_word
+    KeyDefinition(True, KeyAction('kitten', ('hints', '--type word --program -')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=119),)),
+    # insert_selected_hash
+    KeyDefinition(True, KeyAction('kitten', ('hints', '--type hash --program -')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=104),)),
+    # goto_file_line
+    KeyDefinition(True, KeyAction('kitten', ('hints', '--type linenum')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=110),)),
+    # open_selected_hyperlink
+    KeyDefinition(True, KeyAction('kitten', ('hints', '--type hyperlink')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=121),)),
+    # toggle_fullscreen
+    KeyDefinition(False, KeyAction('toggle_fullscreen'), 1024, False, 57374, ()),
+    # toggle_maximized
+    KeyDefinition(False, KeyAction('toggle_maximized'), 1024, False, 57373, ()),
+    # input_unicode_character
+    KeyDefinition(False, KeyAction('kitten', ('unicode_input',)), 1024, False, 117, ()),
+    # edit_config_file
+    KeyDefinition(False, KeyAction('edit_config_file'), 1024, False, 57365, ()),
+    # kitty_shell
+    KeyDefinition(False, KeyAction('kitty_shell', ('window',)), 1024, False, 57344, ()),
+    # increase_background_opacity
+    KeyDefinition(True, KeyAction('set_background_opacity', ('+0.1',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=109),)),
+    # decrease_background_opacity
+    KeyDefinition(True, KeyAction('set_background_opacity', ('-0.1',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=108),)),
+    # full_background_opacity
+    KeyDefinition(True, KeyAction('set_background_opacity', ('1',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=49),)),
+    # reset_background_opacity
+    KeyDefinition(True, KeyAction('set_background_opacity', ('default',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=100),)),
+    # reset_terminal
+    KeyDefinition(False, KeyAction('clear_terminal', ('reset', True)), 1024, False, 57349, ()),
 ]
 if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('copy_to_clipboard'), 8, False, 99, ()))
@@ -776,30 +845,56 @@ if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('edit_config_file'), 8, False, 44, ()))
     defaults.map.append(KeyDefinition(False, KeyAction('clear_terminal', ('reset', True)), 10, False, 114, ()))
 defaults.mouse_map = [
-    MouseMapping(0, 0, -2, False, KeyAction('mouse_click_url_or_select')),  # click_url_or_select
-    MouseMapping(0, 1, -2, True, KeyAction('mouse_click_url_or_select')),  # click_url_or_select_grabbed
-    MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),  # click_url_or_select_grabbed
-    MouseMapping(0, 5, -1, True, KeyAction('mouse_click_url')),  # click_url
-    MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),  # click_url
-    MouseMapping(2, 0, -1, False, KeyAction('paste_selection')),  # paste_selection
-    MouseMapping(0, 0, 1, False, KeyAction('mouse_selection', (0,))),  # start_simple_selection
-    MouseMapping(0, 6, 1, False, KeyAction('mouse_selection', (2,))),  # start_rectangle_selection
-    MouseMapping(0, 0, 2, False, KeyAction('mouse_selection', (3,))),  # select_word
-    MouseMapping(0, 0, 3, False, KeyAction('mouse_selection', (4,))),  # select_line
-    MouseMapping(0, 6, 3, False, KeyAction('mouse_selection', (5,))),  # select_line_from_point
-    MouseMapping(1, 0, 1, False, KeyAction('mouse_selection', (1,))),  # extend_selection
-    MouseMapping(2, 1, -1, True, KeyAction('paste_selection')),  # paste_selection_grabbed
-    MouseMapping(2, 1, -1, False, KeyAction('paste_selection')),  # paste_selection_grabbed
-    MouseMapping(0, 1, 1, True, KeyAction('mouse_selection', (0,))),  # start_simple_selection_grabbed
-    MouseMapping(0, 1, 1, False, KeyAction('mouse_selection', (0,))),  # start_simple_selection_grabbed
-    MouseMapping(0, 7, 1, True, KeyAction('mouse_selection', (2,))),  # start_rectangle_selection_grabbed
-    MouseMapping(0, 7, 1, False, KeyAction('mouse_selection', (2,))),  # start_rectangle_selection_grabbed
-    MouseMapping(0, 1, 2, True, KeyAction('mouse_selection', (3,))),  # select_word_grabbed
-    MouseMapping(0, 1, 2, False, KeyAction('mouse_selection', (3,))),  # select_word_grabbed
-    MouseMapping(0, 1, 3, True, KeyAction('mouse_selection', (4,))),  # select_line_grabbed
-    MouseMapping(0, 1, 3, False, KeyAction('mouse_selection', (4,))),  # select_line_grabbed
-    MouseMapping(0, 7, 3, True, KeyAction('mouse_selection', (5,))),  # select_line_from_point_grabbed
-    MouseMapping(0, 7, 3, False, KeyAction('mouse_selection', (5,))),  # select_line_from_point_grabbed
-    MouseMapping(1, 1, 1, True, KeyAction('mouse_selection', (1,))),  # extend_selection_grabbed
-    MouseMapping(1, 1, 1, False, KeyAction('mouse_selection', (1,))),  # extend_selection_grabbed
+    # click_url_or_select
+    MouseMapping(0, 0, -2, False, KeyAction('mouse_click_url_or_select')),
+    # click_url_or_select_grabbed
+    MouseMapping(0, 1, -2, True, KeyAction('mouse_click_url_or_select')),
+    # click_url_or_select_grabbed
+    MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),
+    # click_url
+    MouseMapping(0, 5, -1, True, KeyAction('mouse_click_url')),
+    # click_url
+    MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),
+    # paste_selection
+    MouseMapping(2, 0, -1, False, KeyAction('paste_selection')),
+    # start_simple_selection
+    MouseMapping(0, 0, 1, False, KeyAction('mouse_selection', (0,))),
+    # start_rectangle_selection
+    MouseMapping(0, 6, 1, False, KeyAction('mouse_selection', (2,))),
+    # select_word
+    MouseMapping(0, 0, 2, False, KeyAction('mouse_selection', (3,))),
+    # select_line
+    MouseMapping(0, 0, 3, False, KeyAction('mouse_selection', (4,))),
+    # select_line_from_point
+    MouseMapping(0, 6, 3, False, KeyAction('mouse_selection', (5,))),
+    # extend_selection
+    MouseMapping(1, 0, 1, False, KeyAction('mouse_selection', (1,))),
+    # paste_selection_grabbed
+    MouseMapping(2, 1, -1, True, KeyAction('paste_selection')),
+    # paste_selection_grabbed
+    MouseMapping(2, 1, -1, False, KeyAction('paste_selection')),
+    # start_simple_selection_grabbed
+    MouseMapping(0, 1, 1, True, KeyAction('mouse_selection', (0,))),
+    # start_simple_selection_grabbed
+    MouseMapping(0, 1, 1, False, KeyAction('mouse_selection', (0,))),
+    # start_rectangle_selection_grabbed
+    MouseMapping(0, 7, 1, True, KeyAction('mouse_selection', (2,))),
+    # start_rectangle_selection_grabbed
+    MouseMapping(0, 7, 1, False, KeyAction('mouse_selection', (2,))),
+    # select_word_grabbed
+    MouseMapping(0, 1, 2, True, KeyAction('mouse_selection', (3,))),
+    # select_word_grabbed
+    MouseMapping(0, 1, 2, False, KeyAction('mouse_selection', (3,))),
+    # select_line_grabbed
+    MouseMapping(0, 1, 3, True, KeyAction('mouse_selection', (4,))),
+    # select_line_grabbed
+    MouseMapping(0, 1, 3, False, KeyAction('mouse_selection', (4,))),
+    # select_line_from_point_grabbed
+    MouseMapping(0, 7, 3, True, KeyAction('mouse_selection', (5,))),
+    # select_line_from_point_grabbed
+    MouseMapping(0, 7, 3, False, KeyAction('mouse_selection', (5,))),
+    # extend_selection_grabbed
+    MouseMapping(1, 1, 1, True, KeyAction('mouse_selection', (1,))),
+    # extend_selection_grabbed
+    MouseMapping(1, 1, 1, False, KeyAction('mouse_selection', (1,))),
 ]

@@ -177,6 +177,8 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             a('        ' + ', '.join(grp) + ',')
         a('    ))')
 
+    a('    config_paths: typing.Tuple[str, ...] = ()')
+    a('    config_overrides: typing.Tuple[str, ...] = ()')
     a('')
     a('    def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:')
     a('        if options_dict is not None:')
@@ -272,7 +274,8 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
                 only.setdefault(sc.only, []).append((text, func))
             else:
                 for val in func(text):
-                    a(f'    {val!r},  # {sc.name}')
+                    a(f'    # {sc.name}')
+                    a(f'    {val!r},')
         a(']')
         if only:
             imports.add(('kitty.constants', 'is_macos'))

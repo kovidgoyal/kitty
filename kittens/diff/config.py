@@ -55,8 +55,11 @@ def load_config(*paths: str, overrides: Optional[Iterable[str]] = None) -> DiffO
         )
         return ans
 
-    opts_dict = _load_config(defaults, parse_config, merge_result_dicts, *paths, overrides=overrides)
+    overrides = tuple(overrides) if overrides is not None else ()
+    opts_dict, paths = _load_config(defaults, parse_config, merge_result_dicts, *paths, overrides=overrides)
     opts = DiffOptions(opts_dict)
+    opts.config_paths = paths
+    opts.config_overrides = overrides
     return opts
 
 
