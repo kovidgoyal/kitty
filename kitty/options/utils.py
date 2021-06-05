@@ -666,6 +666,9 @@ class TabBarMarginHeight(NamedTuple):
     outer: float = 0
     inner: float = 0
 
+    def __bool__(self) -> bool:
+        return (self.outer + self.inner) > 0
+
 
 def tab_bar_margin_height(x: str) -> TabBarMarginHeight:
     parts = x.split(maxsplit=1)
