@@ -270,8 +270,9 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
             text = sc.parseable_text
             if sc.only:
                 only.setdefault(sc.only, []).append((text, func))
-            for val in func(text):
-                a(f'    {val!r},')
+            else:
+                for val in func(text):
+                    a(f'    {val!r},')
         a(']')
         if only:
             imports.add(('kitty.constants', 'is_macos'))
