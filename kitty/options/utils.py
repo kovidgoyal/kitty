@@ -348,6 +348,12 @@ def mouse_selection(func: str, rest: str) -> FuncArgsType:
         }
         setattr(mouse_selection, 'code_map', cmap)
     return func, [cmap[rest]]
+
+
+@func_with_args('load_config')
+def load_config(func: str, rest: str) -> FuncArgsType:
+    import shlex
+    return func, shlex.split(rest)
 # }}}
 
 

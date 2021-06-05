@@ -21,7 +21,8 @@ from .cli_stub import CLIOptions
 from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
-    appname, config_dir, is_macos, kitty_exe, supports_primary_selection
+    appname, config_dir, is_macos, is_wayland, kitty_exe,
+    supports_primary_selection
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
@@ -30,9 +31,10 @@ from .fast_data_types import (
     create_os_window, current_application_quit_request, current_os_window,
     destroy_global_data, focus_os_window, get_clipboard_string, get_options,
     global_font_size, mark_os_window_for_close, os_window_font_size,
-    patch_global_colors, safe_pipe, set_application_quit_request,
-    set_background_image, set_boss, set_clipboard_string, set_in_sequence_mode,
-    thread_write, toggle_fullscreen, toggle_maximized
+    patch_color_profiles, patch_global_colors, safe_pipe,
+    set_application_quit_request, set_background_image, set_boss,
+    set_clipboard_string, set_in_sequence_mode, set_options, thread_write,
+    toggle_fullscreen, toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
@@ -165,15 +167,19 @@ class Boss:
         )
         set_boss(self)
         self.args = args
-        self.keymap = get_options().keymap.copy()
         self.global_shortcuts_map = {v: KeyAction(k) for k, v in global_shortcuts.items()}
-        for sc in global_shortcuts.values():
-            self.keymap.pop(sc, None)
+        self.global_shortcuts = global_shortcuts
+        self.update_keymap()
         if is_macos:
             from .fast_data_types import (
                 cocoa_set_notification_activated_callback
             )
             cocoa_set_notification_activated_callback(notification_activated)
+
+    def update_keymap(self) -> None:
+        self.keymap = get_options().keymap.copy()
+        for sc in self.global_shortcuts.values():
+            self.keymap.pop(sc, None)
 
     def startup_first_child(self, os_window_id: Optional[int]) -> None:
         startup_sessions = create_sessions(get_options(), self.args, default_session=get_options().startup_session)
@@ -1428,6 +1434,30 @@ class Boss:
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
         patch_global_colors(spec, configured)
+
+    def apply_new_options(self, opts: Options) -> None:
+        set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
+        self.update_keymap()
+        spec = opts._asdict()
+        for tm in self.all_tab_managers:
+            tm.tab_bar.patch_colors(spec)
+        profiles = tuple(w.screen.color_profile for w in self.all_windows)
+        ctc = None if opts.cursor_text_color is None else int(opts.cursor_text_color)
+        patch_color_profiles(spec, ctc, profiles, True)
+        for w in self.all_windows:
+            self.default_bg_changed_for(w.id)
+            w.refresh()
+
+    def load_config(self, *paths: str, apply_overrides: bool = True) -> None:
+        from .config import load_config
+        old_opts = get_options()
+        paths = paths or old_opts.config_paths
+        bad_lines: List[BadLine] = []
+        opts = load_config(*paths, overrides=old_opts.config_overrides if apply_overrides else None, accumulate_bad_lines=bad_lines)
+        if bad_lines:
+            self.show_bad_config_lines(bad_lines)
+        else:
+            self.apply_new_options(opts)
 
     def safe_delete_temp_file(self, path: str) -> None:
         if is_path_in_temp_dir(path):
