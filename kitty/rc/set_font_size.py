@@ -35,7 +35,8 @@ class SetFontSize(RemoteCommand):
 --all -a
 type=bool-set
 By default, the font size is only changed in the active OS window,
-this option will cause it to be changed in all OS windows.
+this option will cause it to be changed in all OS windows. It also changes
+the font size for any newly created OS Windows in the future.
 '''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
