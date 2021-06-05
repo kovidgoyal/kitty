@@ -272,7 +272,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
                 only.setdefault(sc.only, []).append((text, func))
             else:
                 for val in func(text):
-                    a(f'    {val!r},')
+                    a(f'    {val!r},  # {sc.name}')
         a(']')
         if only:
             imports.add(('kitty.constants', 'is_macos'))
