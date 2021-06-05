@@ -73,6 +73,9 @@ typedef struct {
     bool detect_urls;
     bool tab_bar_hidden;
     double font_size;
+    struct {
+        double outer, inner;
+    } tab_bar_margin_height;
 } Options;
 
 typedef struct {

@@ -7,7 +7,8 @@ import os
 import re
 import sys
 from typing import (
-    Any, Callable, Dict, Iterable, List, Optional, Sequence, Tuple, Union
+    Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Sequence, Tuple,
+    Union
 )
 
 import kitty.fast_data_types as defines
@@ -659,6 +660,20 @@ def macos_option_as_alt(x: str) -> int:
     if to_bool(x):
         return 0b11
     return 0
+
+
+class TabBarMarginHeight(NamedTuple):
+    outer: float = 0
+    inner: float = 0
+
+
+def tab_bar_margin_height(x: str) -> TabBarMarginHeight:
+    parts = x.split(maxsplit=1)
+    if len(parts) != 2:
+        log_error(f'Invalid tab_bar_margin_height: {tab_bar_margin_height}, ignoring')
+        return TabBarMarginHeight()
+    ans = map(positive_float, parts)
+    return TabBarMarginHeight(next(ans), next(ans))
 
 
 def clear_all_shortcuts(val: str, dict_with_parse_results: Optional[Dict[str, Any]] = None) -> bool:

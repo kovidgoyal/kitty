@@ -138,6 +138,16 @@ tab_bar_style(PyObject *val, Options *opts) {
     opts->tab_bar_hidden = PyUnicode_CompareWithASCIIString(val, "hidden") == 0 ? true: false;
 }
 
+static void
+tab_bar_margin_height(PyObject *val, Options *opts) {
+    if (!PyTuple_Check(val) || PyTuple_GET_SIZE(val) != 2) {
+        PyErr_SetString(PyExc_TypeError, "tab_bar_margin_height is not a 2-item tuple");
+        return;
+    }
+    opts->tab_bar_margin_height.outer = PyFloat_AsDouble(PyTuple_GET_ITEM(val, 0));
+    opts->tab_bar_margin_height.inner = PyFloat_AsDouble(PyTuple_GET_ITEM(val, 1));
+}
+
 #define read_adjust(name) { \
     if (PyFloat_Check(al)) { \
         opts->name##_frac = (float)PyFloat_AsDouble(al); \

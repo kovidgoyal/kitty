@@ -815,6 +815,17 @@ opt('tab_bar_margin_width', '0.0',
     long_text='The margin to the left and right of the tab bar (in pts)'
     )
 
+opt('tab_bar_margin_height', '0.0 0.0',
+    option_type='tab_bar_margin_height', ctype='!tab_bar_margin_height',
+    long_text='''
+The margin above and below the tab bar (in pts). The first number is the
+margin between the edge of the OS Window and the tab bar and the second
+number is the margin between the tab bar and the contents of the current
+tab.
+'''
+    )
+
+
 opt('tab_bar_style', 'fade',
     choices=('fade', 'hidden', 'powerline', 'separator'), ctype='!tab_bar_style',
     long_text='''
