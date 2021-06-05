@@ -1152,8 +1152,11 @@ class Parser:
     def tab_bar_edge(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_bar_edge'] = tab_bar_edge(val)
 
-    def tab_bar_margin_height(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['tab_bar_margin_height'] = positive_float(val)
+    def tab_bar_margin_inner(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['tab_bar_margin_inner'] = positive_float(val)
+
+    def tab_bar_margin_outer(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['tab_bar_margin_outer'] = positive_float(val)
 
     def tab_bar_margin_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_bar_margin_width'] = positive_float(val)

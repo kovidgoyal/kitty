@@ -53,7 +53,8 @@ typedef struct {
     float inactive_text_alpha;
     Edge tab_bar_edge;
     unsigned long tab_bar_min_tabs;
-    float tab_bar_margin_height;
+    float tab_bar_margin_outer;
+    float tab_bar_margin_inner;
     bool retain_tab_bar_margin_height;
     DisableLigature disable_ligatures;
     bool force_ltr;

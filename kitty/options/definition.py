@@ -816,7 +816,20 @@ opt('tab_bar_margin_width', '0.0',
     long_text='The margin to the left and right of the tab bar (in pts)'
     )
 
-opt('tab_bar_margin_height', '0.0',
+#NOTE
+opt('tab_bar_margin_outer', '0.0',
+    option_type='positive_float',
+    long_text='''
+The margin to the top or bottom of the tab bar (in pts). If tab_bar_style is hidden, this value has no effect.
+If the number of tabs is less than tab_bar_min_tabs and retain_tab_bar_margin_height is set on, this is the distance
+between the top of the os window and the point where the padding/margin set through window_margin_width/window_padding_width takes over.
+If the number of tabs is greater than tab_bar_min_tabs, there is the top/bottom of the os window, a padding of tab_bar_margin_height,
+the tab bar (which takes a height of one character cell), the padding/margin (set through window_margin_width or window_padding_width), and
+then the shell prompt. (or the bottom of the field if tab_bar_edge is set to bottom)
+'''
+    )
+#NOTE
+opt('tab_bar_margin_inner', '0.0',
     option_type='positive_float',
     long_text='''
 The margin to the top or bottom of the tab bar (in pts). If tab_bar_style is hidden, this value has no effect.

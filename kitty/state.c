@@ -465,7 +465,6 @@ add_borders_rect(id_type os_window_id, id_type tab_id, uint32_t left, uint32_t t
     END_WITH_TAB
 }
 
-
 void
 os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
     if (OPT(tab_bar_hidden)) {
@@ -475,15 +474,15 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
     } else if (os_window->num_tabs >= OPT(tab_bar_min_tabs)) {
         switch(OPT(tab_bar_edge)) {
             case TOP_EDGE:
-                central->left = 0; central->top = os_window->fonts_data->cell_height + pt_to_px(OPT(tab_bar_margin_height), os_window->id); central->right = os_window->viewport_width - 1;
+                central->left = 0; central->top = os_window->fonts_data->cell_height + pt_to_px(OPT(tab_bar_margin_outer), os_window->id) + pt_to_px(OPT(tab_bar_margin_inner), os_window->id); central->right = os_window->viewport_width - 1;
                 central->bottom = os_window->viewport_height - 1;
-                tab_bar->left = central->left; tab_bar->right = central->right; tab_bar->top = pt_to_px(OPT(tab_bar_margin_height), os_window->id);
+                tab_bar->left = central->left; tab_bar->right = central->right; tab_bar->top = pt_to_px(OPT(tab_bar_margin_outer), os_window->id);
                 tab_bar->bottom = central->top - 1;
                 break;
             default:
                 central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
-                central->bottom = os_window->viewport_height - os_window->fonts_data->cell_height - pt_to_px(OPT(tab_bar_margin_height), os_window->id) - 1;
-                tab_bar->left = central->left; tab_bar->right = central->right; tab_bar->top = central->bottom + 1;
+                central->bottom = os_window->viewport_height - pt_to_px(OPT(tab_bar_margin_inner), os_window->id) - os_window->fonts_data->cell_height - pt_to_px(OPT(tab_bar_margin_outer), os_window->id) - 1;
+                tab_bar->left = central->left; tab_bar->right = central->right; tab_bar->top = central->bottom + pt_to_px(OPT(tab_bar_margin_inner), os_window->id);
                 tab_bar->bottom = os_window->viewport_height - 1;
                 break;
         }
@@ -491,13 +490,13 @@ os_window_regions(OSWindow *os_window, Region *central, Region *tab_bar) {
         switch(OPT(tab_bar_edge)) {
           case TOP_EDGE:
             zero_at_ptr(tab_bar);
-            central->left = 0; central->top = pt_to_px(OPT(tab_bar_margin_height), os_window->id); central->right = os_window->viewport_width - 1;
+            central->left = 0; central->top = pt_to_px(OPT(tab_bar_margin_outer), os_window->id); central->right = os_window->viewport_width - 1;
             central->bottom = os_window->viewport_height - 1;
             break;
           default:
             zero_at_ptr(tab_bar);
             central->left = 0; central->top = 0; central->right = os_window->viewport_width - 1;
-            central->bottom = os_window->viewport_height - pt_to_px(OPT(tab_bar_margin_height), os_window->id);
+            central->bottom = os_window->viewport_height - pt_to_px(OPT(tab_bar_margin_outer), os_window->id);
             break;
         }
     } else {
@@ -681,7 +680,8 @@ PYWRAP1(set_options) {
     S(macos_hide_from_tasks, PyObject_IsTrue);
     S(macos_thicken_font, PyFloat_AsFloat);
     S(tab_bar_min_tabs, PyLong_AsUnsignedLong);
-    S(tab_bar_margin_height, PyFloat_AsFloat);
+    S(tab_bar_margin_outer, PyFloat_AsFloat);
+    S(tab_bar_margin_inner, PyFloat_AsFloat);
     S(retain_tab_bar_margin_height, PyObject_IsTrue);
     S(disable_ligatures, PyLong_AsLong);
     S(force_ltr, PyObject_IsTrue);

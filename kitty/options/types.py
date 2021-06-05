@@ -403,7 +403,8 @@ option_names = (  # {{{
  'tab_activity_symbol',
  'tab_bar_background',
  'tab_bar_edge',
- 'tab_bar_margin_height',
+ 'tab_bar_margin_inner',
+ 'tab_bar_margin_outer',
  'tab_bar_margin_width',
  'tab_bar_min_tabs',
  'tab_bar_style',
@@ -788,7 +789,8 @@ class Options:
     tab_activity_symbol: typing.Optional[str] = None
     tab_bar_background: typing.Optional[kitty.rgb.Color] = None
     tab_bar_edge: int = 3
-    tab_bar_margin_height: float = 0
+    tab_bar_margin_inner: float = 0
+    tab_bar_margin_outer: float = 0
     tab_bar_margin_width: float = 0
     tab_bar_min_tabs: int = 2
     tab_bar_style: choices_for_tab_bar_style = 'fade'
@@ -1016,10 +1018,10 @@ if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('edit_config_file'), 8, False, 44, ()))
 defaults.mouse_map = [
     MouseMapping(0, 0, -2, False, KeyAction('mouse_click_url_or_select')),
-    MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),
     MouseMapping(0, 1, -2, True, KeyAction('mouse_click_url_or_select')),
-    MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),
+    MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),
     MouseMapping(0, 5, -1, True, KeyAction('mouse_click_url')),
+    MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),
     MouseMapping(2, 0, -1, False, KeyAction('paste_selection')),
     MouseMapping(0, 0, 1, False, KeyAction('mouse_selection', (0,))),
     MouseMapping(0, 6, 1, False, KeyAction('mouse_selection', (2,))),
@@ -1027,18 +1029,18 @@ defaults.mouse_map = [
     MouseMapping(0, 0, 3, False, KeyAction('mouse_selection', (4,))),
     MouseMapping(0, 6, 3, False, KeyAction('mouse_selection', (5,))),
     MouseMapping(1, 0, 1, False, KeyAction('mouse_selection', (1,))),
-    MouseMapping(2, 1, -1, False, KeyAction('paste_selection')),
     MouseMapping(2, 1, -1, True, KeyAction('paste_selection')),
-    MouseMapping(0, 1, 1, False, KeyAction('mouse_selection', (0,))),
+    MouseMapping(2, 1, -1, False, KeyAction('paste_selection')),
     MouseMapping(0, 1, 1, True, KeyAction('mouse_selection', (0,))),
-    MouseMapping(0, 7, 1, False, KeyAction('mouse_selection', (2,))),
+    MouseMapping(0, 1, 1, False, KeyAction('mouse_selection', (0,))),
     MouseMapping(0, 7, 1, True, KeyAction('mouse_selection', (2,))),
-    MouseMapping(0, 1, 2, False, KeyAction('mouse_selection', (3,))),
+    MouseMapping(0, 7, 1, False, KeyAction('mouse_selection', (2,))),
     MouseMapping(0, 1, 2, True, KeyAction('mouse_selection', (3,))),
-    MouseMapping(0, 1, 3, False, KeyAction('mouse_selection', (4,))),
+    MouseMapping(0, 1, 2, False, KeyAction('mouse_selection', (3,))),
     MouseMapping(0, 1, 3, True, KeyAction('mouse_selection', (4,))),
-    MouseMapping(0, 7, 3, False, KeyAction('mouse_selection', (5,))),
+    MouseMapping(0, 1, 3, False, KeyAction('mouse_selection', (4,))),
     MouseMapping(0, 7, 3, True, KeyAction('mouse_selection', (5,))),
-    MouseMapping(1, 1, 1, False, KeyAction('mouse_selection', (1,))),
+    MouseMapping(0, 7, 3, False, KeyAction('mouse_selection', (5,))),
     MouseMapping(1, 1, 1, True, KeyAction('mouse_selection', (1,))),
+    MouseMapping(1, 1, 1, False, KeyAction('mouse_selection', (1,))),
 ]
