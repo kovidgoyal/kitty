@@ -999,6 +999,7 @@ process_global_state(void *data) {
             if (cocoa_pending_actions & DETACH_TAB) { call_boss(detach_tab, NULL); }
             if (cocoa_pending_actions & NEW_WINDOW) { call_boss(new_window, NULL); }
             if (cocoa_pending_actions & CLOSE_WINDOW) { call_boss(close_window, NULL); }
+            if (cocoa_pending_actions & RESET_TERMINAL) { call_boss(clear_terminal, "sO", "reset", Py_True ); }
             if (cocoa_pending_actions_data.wd) {
                 if (cocoa_pending_actions & NEW_OS_WINDOW_WITH_WD) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_data.wd); }
                 if (cocoa_pending_actions & NEW_TAB_WITH_WD) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_data.wd); }

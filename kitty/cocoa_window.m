@@ -90,6 +90,7 @@ PENDING(next_tab, NEXT_TAB)
 PENDING(previous_tab, PREVIOUS_TAB)
 PENDING(new_window, NEW_WINDOW)
 PENDING(close_window, CLOSE_WINDOW)
+PENDING(reset_terminal, RESET_TERMINAL)
 
 - (void)open_kitty_website_url:(id)sender {
     (void)sender;
@@ -117,7 +118,7 @@ typedef struct {
 } GlobalShortcut;
 typedef struct {
     GlobalShortcut new_os_window, close_os_window, close_tab, edit_config_file;
-    GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window;
+    GlobalShortcut previous_tab, next_tab, new_tab, new_window, close_window, reset_terminal;
 } GlobalShortcuts;
 static GlobalShortcuts global_shortcuts;
 
@@ -131,7 +132,7 @@ cocoa_set_global_shortcut(PyObject *self UNUSED, PyObject *args) {
 #define Q(x) if (strcmp(name, #x) == 0) gs = &global_shortcuts.x
     Q(new_os_window); else Q(close_os_window); else Q(close_tab); else Q(edit_config_file);
     else Q(new_tab); else Q(next_tab); else Q(previous_tab);
-    else Q(new_window); else Q(close_window);
+    else Q(new_window); else Q(close_window); else Q(reset_terminal);
 #undef Q
     if (gs == NULL) { PyErr_SetString(PyExc_KeyError, "Unknown shortcut name"); return NULL; }
     int cocoa_mods;
@@ -425,6 +426,8 @@ cocoa_create_global_menu(void) {
     MENU_ITEM(shellMenu, @"Close OS Window", close_os_window);
     MENU_ITEM(shellMenu, @"Close Tab", close_tab);
     MENU_ITEM(shellMenu, @"Close Window", close_window);
+    [shellMenu addItem:[NSMenuItem separatorItem]];
+    MENU_ITEM(shellMenu, @"Reset", reset_terminal);
     [shellMenu release];
 
     NSMenuItem* windowMenuItem =

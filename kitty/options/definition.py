@@ -3275,6 +3275,12 @@ and clear the screen, instead of just clearing the screen::
 '''
     )
 
+map('Reset the terminal',
+    'reset_terminal cmd+option+r clear_terminal reset active',
+    only="macos"
+    )
+
+
 map('Send arbitrary text on key presses',
     'send_text ctrl+shift+alt+h send_text all Hello World',
     add_to_default=False,

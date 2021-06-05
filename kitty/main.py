@@ -7,7 +7,7 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager, suppress
-from typing import Dict, Generator, List, Optional, Sequence
+from typing import Dict, Generator, List, Optional, Sequence, Tuple
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -104,11 +104,11 @@ def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool
     return glfw_module
 
 
-def get_macos_shortcut_for(opts: Options, function: str = 'new_os_window') -> Optional[SingleKey]:
+def get_macos_shortcut_for(opts: Options, function: str = 'new_os_window', args: Tuple = (), lookup_name: str = '') -> Optional[SingleKey]:
     ans = None
     candidates = []
     for k, v in opts.keymap.items():
-        if v.func == function:
+        if v.func == function and v.args == args:
             candidates.append(k)
     if candidates:
         from .fast_data_types import cocoa_set_global_shortcut
@@ -120,7 +120,7 @@ def get_macos_shortcut_for(opts: Options, function: str = 'new_os_window') -> Op
                 # presumably because Apple reserves them for IME, see
                 # https://github.com/kovidgoyal/kitty/issues/3515
                 continue
-            if cocoa_set_global_shortcut(function, candidate[0], candidate[2]):
+            if cocoa_set_global_shortcut(lookup_name or function, candidate[0], candidate[2]):
                 ans = candidate
                 break
     return ans
@@ -140,6 +140,9 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
             val = get_macos_shortcut_for(opts, ac)
             if val is not None:
                 global_shortcuts[ac] = val
+        val = get_macos_shortcut_for(opts, 'clear_terminal', args=('reset', True), lookup_name='reset_terminal')
+        if val is not None:
+            global_shortcuts['reset_terminal'] = val
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
     if not is_wayland() and not is_macos:  # no window icons on wayland

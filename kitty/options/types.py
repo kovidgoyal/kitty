@@ -772,6 +772,7 @@ defaults.map = [
     KeyDefinition(True, KeyAction('set_background_opacity', ('1',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=49),)),
     KeyDefinition(True, KeyAction('set_background_opacity', ('default',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=100),)),
     KeyDefinition(False, KeyAction('clear_terminal', ('reset', True)), 1024, False, 57349, ()),
+    KeyDefinition(False, KeyAction('clear_terminal', ('reset', True)), 10, False, 114, ()),
 ]
 if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('copy_to_clipboard'), 8, False, 99, ()))
@@ -811,6 +812,7 @@ if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('change_font_size', (True, None, 0.0)), 8, False, 48, ()))
     defaults.map.append(KeyDefinition(False, KeyAction('kitten', ('unicode_input',)), 12, False, 32, ()))
     defaults.map.append(KeyDefinition(False, KeyAction('edit_config_file'), 8, False, 44, ()))
+    defaults.map.append(KeyDefinition(False, KeyAction('clear_terminal', ('reset', True)), 10, False, 114, ()))
 defaults.mouse_map = [
     MouseMapping(0, 0, -2, False, KeyAction('mouse_click_url_or_select')),
     MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),

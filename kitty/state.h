@@ -277,6 +277,7 @@ typedef enum {
     OPEN_FILE = 1024,
     NEW_WINDOW = 2048,
     CLOSE_WINDOW = 4096,
+    RESET_TERMINAL = 8192,
 } CocoaPendingAction;
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);
 #endif
