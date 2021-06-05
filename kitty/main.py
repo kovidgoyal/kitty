@@ -310,9 +310,6 @@ def _main() -> None:
         os.chdir(os.path.expanduser('~'))
     cli_opts, rest = parse_args(args=args, result_class=CLIOptions)
     cli_opts.args = rest
-    if cli_opts.debug_config:
-        create_opts(cli_opts, debug_config=True)
-        return
     if cli_opts.detach:
         if cli_opts.session == '-':
             from .session import PreReadSession

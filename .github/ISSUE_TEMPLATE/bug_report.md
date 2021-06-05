@@ -21,10 +21,11 @@ Steps to reproduce the behavior:
 If applicable, add screenshots to help explain your problem.
 
 **Environment details**
-OS: Name and version of operating system(s)
-
 ```
-Output of kitty --debug-config
+Press Ctrl+Shift+F6 in kitty, to copy debug output about kitty and its
+configuration to the clipboard and paste it here. 
+
+On older versions of kitty, run kitty --debug-config instead
 ```
 
 **Additional context**

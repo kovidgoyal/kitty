@@ -3280,6 +3280,9 @@ map('Reset the terminal',
     only="macos"
     )
 
+map('Debug kitty configuration',
+    'debug_config kitty_mod+f6 debug_config'
+    )
 
 map('Send arbitrary text on key presses',
     'send_text ctrl+shift+alt+h send_text all Hello World',

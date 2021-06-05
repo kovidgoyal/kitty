@@ -50,8 +50,8 @@ from .typing import PopenType, TypedDict
 from .utils import (
     func_name, get_editor, get_primary_selection, is_path_in_temp_dir,
     log_error, open_url, parse_address_spec, parse_uri_list,
-    platform_window_id, remove_socket_file, safe_print, set_primary_selection,
-    single_instance, startup_notification_handler
+    platform_window_id, read_shell_environment, remove_socket_file, safe_print,
+    set_primary_selection, single_instance, startup_notification_handler
 )
 from .window import MatchPatternType, Window
 
@@ -874,11 +874,29 @@ class Boss:
                 s.shutdown(socket.SHUT_RDWR)
             s.close()
 
-    def display_scrollback(self, window: Window, data: Optional[bytes], cmd: List[str]) -> None:
+    def display_scrollback(self, window: Window, data: Union[bytes, str], input_line_number: int = 0, title: str = '') -> None:
+        def prepare_arg(x: str) -> str:
+            x = x.replace('INPUT_LINE_NUMBER', str(input_line_number))
+            x = x.replace('CURSOR_LINE', str(window.screen.cursor.y + 1))
+            x = x.replace('CURSOR_COLUMN', str(window.screen.cursor.x + 1))
+            return x
+
+        cmd = list(map(prepare_arg, get_options().scrollback_pager))
+        if not os.path.isabs(cmd[0]):
+            import shutil
+            exe = shutil.which(cmd[0])
+            if not exe:
+                env = read_shell_environment(get_options())
+                if env and 'PATH' in env:
+                    exe = shutil.which(cmd[0], path=env['PATH'])
+                    if exe:
+                        cmd[0] = exe
+
         tab = self.active_tab
         if tab is not None:
+            bdata = data.encode('utf-8') if isinstance(data, str) else data
             tab.new_special_window(
-                SpecialWindow(cmd, data, _('History'), overlay_for=window.id, cwd=window.cwd_of_child),
+                SpecialWindow(cmd, bdata, title or _('History'), overlay_for=window.id, cwd=window.cwd_of_child),
                 copy_colors_from=self.active_window
                 )
 
@@ -1677,8 +1695,8 @@ class Boss:
     def show_kitty_env_vars(self) -> None:
         w = self.active_window
         if w:
-            output = '\n'.join(f'{k}={v}' for k, v in os.environ.items()).encode('utf-8')
-            self.display_scrollback(w, output, ['less'])
+            output = '\n'.join(f'{k}={v}' for k, v in os.environ.items())
+            self.display_scrollback(w, output, title=_('Current kitty env vars'))
 
     def open_file(self, path: str) -> None:
         if path == ":cocoa::application launched::":
@@ -1697,3 +1715,12 @@ class Boss:
         self.new_window(path)
         if w is not None:
             tab.remove_window(w)
+
+    def debug_config(self) -> None:
+        from .debug_config import debug_config
+        w = self.active_window
+        if w is not None:
+            output = debug_config(get_options())
+            set_clipboard_string(re.sub(r'\x1b.+?m', '', output))
+            output += '\n\x1b[35mThis debug output has been copied to the clipboard\x1b[m'
+            self.display_scrollback(w, output, title=_('Current kitty options'))

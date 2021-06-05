@@ -42,8 +42,7 @@ from .types import MouseEvent, ScreenGeometry, WindowGeometry
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int, get_primary_selection, load_shaders, log_error, open_cmd,
-    open_url, parse_color_set, read_shell_environment, sanitize_title,
-    set_primary_selection
+    open_url, parse_color_set, sanitize_title, set_primary_selection
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
@@ -902,27 +901,7 @@ class Window:
     def show_scrollback(self) -> None:
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
-
-        def prepare_arg(x: str) -> str:
-            x = x.replace('INPUT_LINE_NUMBER', str(data['input_line_number']))
-            x = x.replace('CURSOR_LINE', str(data['cursor_y']))
-            x = x.replace('CURSOR_COLUMN', str(data['cursor_x']))
-            return x
-
-        cmd = list(map(prepare_arg, get_options().scrollback_pager))
-        if not os.path.isabs(cmd[0]):
-            import shutil
-            exe = shutil.which(cmd[0])
-            if not exe:
-                env = read_shell_environment(get_options())
-                if env and 'PATH' in env:
-                    exe = shutil.which(cmd[0], path=env['PATH'])
-                    if exe:
-                        cmd[0] = exe
-        bdata: Union[str, bytes, None] = data['text']
-        if isinstance(bdata, str):
-            bdata = bdata.encode('utf-8')
-        get_boss().display_scrollback(self, bdata, cmd)
+        get_boss().display_scrollback(self, data['text'], data['input_line_number'])
 
     def paste_bytes(self, text: Union[str, bytes]) -> None:
         # paste raw bytes without any processing
