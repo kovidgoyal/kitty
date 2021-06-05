@@ -658,7 +658,7 @@ def os_window_font_size(
     pass
 
 
-def cocoa_set_notification_activated_callback(identifier: Callable[[str], None]) -> None:
+def cocoa_set_notification_activated_callback(identifier: Optional[Callable[[str], None]]) -> None:
     pass
 
 
@@ -1181,8 +1181,4 @@ def click_mouse_url(os_window_id: int, tab_id: int, window_id: int) -> None:
 
 
 def mouse_selection(os_window_id: int, tab_id: int, window_id: int, code: int, button: int) -> None:
-    pass
-
-
-def set_notification_activated_callback(cb: Optional[Callable]) -> None:
     pass
