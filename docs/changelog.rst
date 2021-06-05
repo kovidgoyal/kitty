@@ -28,6 +28,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add the ability to un-scroll the screen to the ``kitty @ scroll-window``
   remote control command (:iss:`3604`)
 
+- A new option, :opt:`tab_bar_margin_height` to add margins around the
+  top and bottom edges of the tab bar (:iss:`3247`)
+
 - Unicode input kitten: Fix a regression in 0.20.0 that broke keyboard handling
   when the NumLock or CapsLock modifiers were engaged. (:iss:`3587`)
 
