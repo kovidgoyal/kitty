@@ -5,6 +5,7 @@
 import os
 from functools import partial
 from typing import Callable, Dict, Generator, Iterable, Set, Tuple
+from pprint import pformat
 
 from .cli import green, title, version
 from .conf.utils import KeyAction
@@ -41,7 +42,7 @@ def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction, print: 
             names.append(kname or f'{key}')
         keys.append('+'.join(names))
 
-    print('\t', ' > '.join(keys), action)
+    print('\t' + ' > '.join(keys), action)
 
 
 def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple[SingleKey, ...]], print: Callable) -> None:
@@ -104,7 +105,16 @@ def compare_opts(opts: KittyOpts, print: Callable) -> None:
     field_len = max(map(len, changed_opts)) if changed_opts else 20
     fmt = '{{:{:d}s}}'.format(field_len)
     for f in changed_opts:
-        print(title(fmt.format(f)), str(getattr(opts, f)))
+        val = getattr(opts, f)
+        if isinstance(val, dict):
+            print(f'{title(f)}:')
+            if f == 'symbol_map':
+                for k in sorted(val):
+                    print(f'\tU+{k[0]:04x} - U+{k[1]:04x} → {val[k]}')
+            else:
+                print(pformat(val))
+        else:
+            print(title(fmt.format(f)), str(getattr(opts, f)))
 
     compare_mousemaps(opts.mousemap, default_opts.mousemap, print)
     final_, initial_ = opts.keymap, default_opts.keymap
