@@ -10,8 +10,8 @@ frames-per-second. See below for an overview of all customization
 possibilities.
 
 You can open the config file within kitty by pressing :sc:`edit_config_file`.
-You can also display the current configuration by running ``kitty
---debug-config``.
+You can also display the current configuration by pressing the
+:sc:`debug_config` key.
 
 .. _confloc:
 
