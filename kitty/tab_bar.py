@@ -309,8 +309,6 @@ class TabBar:
             self.draw_data = self.draw_data._replace(active_bg=color_from_int(spec['active_tab_background']))
         if 'inactive_tab_background' in spec:
             self.draw_data = self.draw_data._replace(inactive_bg=color_from_int(spec['inactive_tab_background']))
-        if 'tab_bar_background' in spec:
-            self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['tab_bar_background']))
         opts = get_options()
         fg = spec.get('inactive_tab_foreground', color_as_int(opts.inactive_tab_foreground))
         bg = spec.get('tab_bar_background', False)
@@ -318,6 +316,8 @@ class TabBar:
             bg = color_as_int(opts.background)
         elif bg is False:
             bg = color_as_int(opts.tab_bar_background or opts.background)
+        if 'tab_bar_background' in spec:
+            self.draw_data = self.draw_data._replace(default_bg=color_from_int(bg))
         self.screen.color_profile.set_configured_colors(fg, bg)
 
     def layout(self) -> None:

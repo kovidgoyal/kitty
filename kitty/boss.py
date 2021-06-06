@@ -1436,9 +1436,19 @@ class Boss:
         patch_global_colors(spec, configured)
 
     def apply_new_options(self, opts: Options) -> None:
+        # Update options storage
         set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
+        # Update font data
+        from .fonts.render import set_font_family
+        set_font_family(opts, debug_font_matching=self.args.debug_font_fallback)
+        for os_window_id, tm in self.os_window_map.items():
+            if tm is not None:
+                os_window_font_size(os_window_id, opts.font_size, True)
+                tm.resize()
+        # Update key bindings
         self.update_keymap()
-        spec = opts._asdict()
+        # Update colors
+        spec = {k: int(v) if isinstance(v, Color) else v for k, v in opts._asdict().items()}
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
         profiles = tuple(w.screen.color_profile for w in self.all_windows)
@@ -1456,8 +1466,7 @@ class Boss:
         opts = load_config(*paths, overrides=old_opts.config_overrides if apply_overrides else None, accumulate_bad_lines=bad_lines)
         if bad_lines:
             self.show_bad_config_lines(bad_lines)
-        else:
-            self.apply_new_options(opts)
+        self.apply_new_options(opts)
 
     def safe_delete_temp_file(self, path: str) -> None:
         if is_path_in_temp_dir(path):
