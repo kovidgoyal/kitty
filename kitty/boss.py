@@ -1458,7 +1458,7 @@ class Boss:
             self.default_bg_changed_for(w.id)
             w.refresh()
 
-    def load_config(self, *paths: str, apply_overrides: bool = True) -> None:
+    def load_config_file(self, *paths: str, apply_overrides: bool = True) -> None:
         from .config import load_config
         old_opts = get_options()
         paths = paths or old_opts.config_paths

@@ -5,13 +5,14 @@ Configuring kitty
 
 .. highlight:: conf
 
-|kitty| is highly customizable, everything from keyboard shortcuts, to painting
-frames-per-second. See below for an overview of all customization
+|kitty| is highly customizable, everything from keyboard shortcuts, to
+rendering frames-per-second. See below for an overview of all customization
 possibilities.
 
 You can open the config file within kitty by pressing :sc:`edit_config_file`.
-You can also display the current configuration by pressing the
-:sc:`debug_config` key.
+You can reload the config file within kitty by pressing
+:sc:`reload_config_file`. You can also display the current configuration by
+pressing the :sc:`debug_config` key.
 
 .. _confloc:
 

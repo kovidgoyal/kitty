@@ -804,6 +804,8 @@ defaults.map = [
     KeyDefinition(True, KeyAction('set_background_opacity', ('default',)), 1024, False, 97, (SingleKey(mods=0, is_native=False, key=100),)),
     # reset_terminal
     KeyDefinition(False, KeyAction('clear_terminal', ('reset', True)), 1024, False, 57349, ()),
+    # reload_config_file
+    KeyDefinition(False, KeyAction('load_config_file'), 1024, False, 57368, ()),
     # debug_config
     KeyDefinition(False, KeyAction('debug_config'), 1024, False, 57369, ()),
 ]

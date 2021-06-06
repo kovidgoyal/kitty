@@ -3277,11 +3277,30 @@ and clear the screen, instead of just clearing the screen::
 
 map('Reset the terminal',
     'reset_terminal cmd+option+r clear_terminal reset active',
-    only="macos"
+    only="macos",
+    )
+
+map('Reload kitty.conf',
+    'reload_config_file kitty_mod+f5 load_config_file',
+    long_text='''
+Reload kitty.conf, applying any changes since the last time it was loaded.
+Note that a handful of settings cannot be dynamically changed and require a
+full restart of kitty.  You can also map a keybinding to load a different
+config file, for example::
+
+    map f5 load_config /path/to/alternative/kitty.conf
+
+Note that all setting from the original kitty.conf are discarded, in other words
+the new conf settings *replace* the old ones.
+'''
     )
 
 map('Debug kitty configuration',
-    'debug_config kitty_mod+f6 debug_config'
+    'debug_config kitty_mod+f6 debug_config',
+    long_text='''
+Show details about exactly what configuration kitty is running with and
+its host environment. Useful for debugging issues.
+'''
     )
 
 map('Send arbitrary text on key presses',

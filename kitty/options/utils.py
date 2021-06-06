@@ -350,8 +350,8 @@ def mouse_selection(func: str, rest: str) -> FuncArgsType:
     return func, [cmap[rest]]
 
 
-@func_with_args('load_config')
-def load_config(func: str, rest: str) -> FuncArgsType:
+@func_with_args('load_config_file')
+def load_config_file(func: str, rest: str) -> FuncArgsType:
     import shlex
     return func, shlex.split(rest)
 # }}}
