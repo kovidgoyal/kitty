@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.21.0 [future]
 ----------------------
 
+- Allow reloading the :file:`kitty.conf` config file by pressing
+  :sc:`reload_config_file`. (:iss:`1292`)
+
 - Allow clicking URLs to open them without needing to also hold
   :kbd:`ctrl+shift`
 
