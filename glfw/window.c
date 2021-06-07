@@ -701,8 +701,8 @@ GLFWAPI void glfwSetWindowSizeIncrements(GLFWwindow* handle, int widthincr, int 
 {
     _GLFWwindow* window = (_GLFWwindow*) handle;
     assert(window != NULL);
-    assert(widthincr >= 0);
-    assert(heightincr >= 0);
+    assert(widthincr >= 0 || widthincr == GLFW_DONT_CARE);
+    assert(heightincr >= 0 || heightincr == GLFW_DONT_CARE);
 
     _GLFW_REQUIRE_INIT();
 

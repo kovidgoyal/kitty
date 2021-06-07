@@ -735,7 +735,7 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
     w->fonts_data = fonts_data;
     w->shown_once = true;
     w->last_focused_counter = ++focus_counter;
-    if (OPT(resize_in_steps)) os_window_update_size_increments(w);
+    os_window_update_size_increments(w);
 #ifdef __APPLE__
     if (OPT(macos_option_as_alt)) glfwSetCocoaTextInputFilter(glfw_window, filter_option);
     glfwSetCocoaToggleFullscreenIntercept(glfw_window, intercept_cocoa_fullscreen);
@@ -788,8 +788,13 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
 
 void
 os_window_update_size_increments(OSWindow *window) {
-    if (window->handle && window->fonts_data) glfwSetWindowSizeIncrements(
-            window->handle, window->fonts_data->cell_width, window->fonts_data->cell_height);
+    if (OPT(resize_in_steps)) {
+        if (window->handle && window->fonts_data) glfwSetWindowSizeIncrements(
+                window->handle, window->fonts_data->cell_width, window->fonts_data->cell_height);
+    } else {
+        if (window->handle) glfwSetWindowSizeIncrements(
+                window->handle, GLFW_DONT_CARE, GLFW_DONT_CARE);
+    }
 }
 
 #ifdef __APPLE__

@@ -864,7 +864,7 @@ PYWRAP1(os_window_font_size) {
                     resize_screen(os_window, w->render_data.screen, true);
                 }
             }
-            if (OPT(resize_in_steps)) os_window_update_size_increments(os_window);
+            os_window_update_size_increments(os_window);
         }
         return Py_BuildValue("d", os_window->font_sz_in_pts);
     END_WITH_OS_WINDOW
@@ -890,6 +890,8 @@ PYWRAP0(apply_options_update) {
     for (size_t o = 0; o < global_state.num_os_windows; o++) {
         OSWindow *os_window = global_state.os_windows + o;
         get_platform_dependent_config_values(os_window->handle);
+        os_window->background_opacity = OPT(background_opacity);
+        os_window->is_damaged = true;
         break;
     }
     Py_RETURN_NONE;

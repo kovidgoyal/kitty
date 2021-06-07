@@ -15,7 +15,9 @@ from typing import (
 )
 from weakref import WeakValueDictionary
 
-from .child import cached_process_data, cwd_of_process, default_env
+from .child import (
+    cached_process_data, cwd_of_process, default_env, set_default_env
+)
 from .cli import create_opts, parse_args
 from .cli_stub import CLIOptions
 from .conf.utils import BadLine, KeyAction, to_cmdline
@@ -1442,6 +1444,7 @@ class Boss:
         set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
         apply_options_update()
         set_layout_options(opts)
+        set_default_env(opts.env.copy())
         # Update font data
         set_scale(opts.box_drawing_scale)
         from .fonts.render import set_font_family

@@ -212,7 +212,9 @@ background
 
 opt('cursor_shape', 'block',
     option_type='to_cursor_shape', ctype='int',
-    long_text='The cursor shape can be one of (block, beam, underline)'
+    long_text='The cursor shape can be one of (block, beam, underline).'
+    ' Note that when reloading the config this will be changed only if the'
+    ' cursor shape has not been set by the program running in the terminal.'
     )
 
 opt('cursor_beam_thickness', '1.5',
@@ -253,7 +255,8 @@ Number of lines of history to keep in memory for scrolling back. Memory is
 allocated on demand. Negative numbers are (effectively) infinite scrollback.
 Note that using very large scrollback is not recommended as it can slow down
 performance of the terminal and also use large amounts of RAM. Instead, consider
-using :opt:`scrollback_pager_history_size`.
+using :opt:`scrollback_pager_history_size`. Note that on config reload if this
+is changed it will only affect newly created windows, not existing ones.
 '''
     )
 
@@ -278,7 +281,8 @@ will be piped to the pager program when viewing scrollback buffer in a separate
 window. The current implementation stores the data in UTF-8, so approximatively
 10000 lines per megabyte at 100 chars per line, for pure ASCII text, unformatted
 text. A value of zero or less disables this feature. The maximum allowed size is
-4GB.
+4GB. Note that on config reload if this
+is changed it will only affect newly created windows, not existing ones.
 '''
     )
 
@@ -756,7 +760,8 @@ opt('hide_window_decorations', 'no',
 Hide the window decorations (title-bar and window borders) with :code:`yes`. On
 macOS, :code:`titlebar-only` can be used to only hide the titlebar. Whether this
 works and exactly what effect it has depends on the window manager/operating
-system.
+system. Note that the effects of changing this setting when reloading config
+are undefined.
 '''
     )
 
@@ -979,7 +984,9 @@ the escape codes to set the terminals default colors in a shell script to launch
 your editor.  Be aware that using a value less than 1.0 is a (possibly
 significant) performance hit.  If you want to dynamically change transparency of
 windows set :opt:`dynamic_background_opacity` to :code:`yes` (this is off by
-default as it has a performance cost)
+default as it has a performance cost). Changing this setting when reloading
+the config will only work if :opt:`dynamic_background_opacity` was enabled
+in the original config.
 '''
     )
 
@@ -1003,7 +1010,8 @@ opt('dynamic_background_opacity', 'no',
     long_text='''
 Allow changing of the :opt:`background_opacity` dynamically, using either
 keyboard shortcuts (:sc:`increase_background_opacity` and
-:sc:`decrease_background_opacity`) or the remote control facility.
+:sc:`decrease_background_opacity`) or the remote control facility. Changing
+this setting by reloading the config is not supported.
 '''
     )
 
@@ -2395,7 +2403,8 @@ running within kitty to control it, with :code:`yes` or only programs that
 connect to the socket specified with the :option:`kitty --listen-on` command
 line option, if you use the value :code:`socket-only`. The latter is useful if
 you want to prevent programs running on a remote computer over ssh from
-controlling kitty.
+controlling kitty. Changing this option by reloading the config will only affect
+newly created windows.
 '''
     )
 
@@ -2409,7 +2418,8 @@ unix:@mykitty. Environment variables are expanded. If {kitty_pid} is present
 then it is replaced by the PID of the kitty process, otherwise the PID of the
 kitty process is appended to the value, with a hyphen. This option is ignored
 unless you also set :opt:`allow_remote_control` to enable remote control. See
-the help for :option:`kitty --listen-on` for more details.
+the help for :option:`kitty --listen-on` for more details. Changing this option
+by reloading the config is not supported.
 '''
     )
 
@@ -2432,7 +2442,8 @@ opt('update_check_interval', '24',
     long_text='''
 Periodically check if an update to kitty is available. If an update is found a
 system notification is displayed informing you of the available update. The
-default is to check every 24 hrs, set to zero to disable.
+default is to check every 24 hrs, set to zero to disable. Changing this option
+by reloading the config is not supported.
 '''
     )
 
@@ -2443,7 +2454,8 @@ Path to a session file to use for all kitty instances. Can be overridden by
 using the :option:`kitty --session` command line option for individual
 instances. See :ref:`sessions` in the kitty documentation for details. Note that
 relative paths are interpreted with respect to the kitty config directory.
-Environment variables in the path are expanded.
+Environment variables in the path are expanded. Changing this option by reloading
+the config is not supported.
 '''
     )
 
@@ -2479,7 +2491,8 @@ you read some advice on Stack Overflow to change it. The TERM variable is used
 by various programs to get information about the capabilities and behavior of
 the terminal. If you change it, depending on what programs you run, and how
 different the terminal you are changing it to is, various things from key-presses,
-to colors, to various advanced features may not work.
+to colors, to various advanced features may not work. Changing this option by reloading
+the config will only affect newly created windows.
 '''
     )
 egr()  # }}}
@@ -2521,13 +2534,14 @@ the macOS native :kbd:`Option+Key` = unicode character behavior. This will break
 any :kbd:`Alt+key` keyboard shortcuts in your terminal programs, but you can use
 the macOS unicode input technique. You can use the values: :code:`left`,
 :code:`right`, or :code:`both` to use only the left, right or both Option keys
-as Alt, instead.
+as Alt, instead. Changing this setting by reloading the config is not supported.
 '''
     )
 
 opt('macos_hide_from_tasks', 'no',
     option_type='to_bool', ctype='bool',
     long_text='Hide the kitty window from running tasks (:kbd:`⌘+Tab`) on macOS.'
+    ' Changing this setting by reloading the config is not supported.'
     )
 
 opt('macos_quit_when_last_window_closed', 'no',
@@ -2543,7 +2557,8 @@ opt('macos_window_resizable', 'yes',
     option_type='to_bool', ctype='bool',
     long_text='''
 Disable this if you want kitty top-level (OS) windows to not be resizable on
-macOS.
+macOS. Changing this setting by reloading the config will only affect newly
+created windows.
 '''
     )
 
@@ -2578,7 +2593,7 @@ opt('macos_custom_beam_cursor', 'no',
     long_text='''
 Enable/disable custom mouse cursor for macOS that is easier to see on both light
 and dark backgrounds. WARNING: this might make your mouse cursor invisible on
-dual GPU machines.
+dual GPU machines. Changing this setting by reloading the config is not supported.
 '''
     )
 
@@ -2587,7 +2602,8 @@ opt('linux_display_server', 'auto',
     long_text='''
 Choose between Wayland and X11 backends. By default, an appropriate backend
 based on the system state is chosen automatically. Set it to :code:`x11` or
-:code:`wayland` to force the choice.
+:code:`wayland` to force the choice. Changing this setting by reloading the
+config is not supported.
 '''
     )
 egr()  # }}}
