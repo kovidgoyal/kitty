@@ -3299,13 +3299,12 @@ screen, for example, for ZSH add the following to :file:`~/.zshrc`:
 
 .. code-block:: sh
 
-    scroll_and_clear() {
-        printf '\\n%.0s' {1..$(tput lines)}
-        printf '\\e[H\\e[2J'
-        zle redisplay
+    scroll-and-clear-screen() {
+        printf '\n%.0s' {1..$LINES}
+        zle clear-screen
     }
-    zle -N scroll_and_clear
-    bindkey '^l' scroll_and_clear
+    zle -N scroll-and-clear-screen
+    bindkey '^l' scroll-and-clear-screen
 
 '''
     )
