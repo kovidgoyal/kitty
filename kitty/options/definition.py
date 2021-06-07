@@ -3282,12 +3282,23 @@ You can create shortcuts to clear/reset the terminal. For example::
     # Scroll the contents of the screen into the scrollback
     map kitty_mod+f12 clear_terminal scroll active
 
-If you want to operate on all windows instead of just the current one, use :italic:`all` instead of :italic:`active`.
+If you want to operate on all windows instead of just the current one, use
+:italic:`all` instead of :italic:`active`.
 
-It is also possible to remap Ctrl+L to both scroll the current screen contents into the scrollback buffer
-and clear the screen, instead of just clearing the screen::
+It is also possible to remap Ctrl+L to both scroll the current screen contents
+into the scrollback buffer and clear the screen, instead of just clearing the
+screen, for example, for ZSH add the following to :file:`~/.zshrc`:
 
-    map ctrl+l combine : clear_terminal scroll active : send_text normal,application \\x0c
+.. code-block:: sh
+
+    scroll_and_clear() {
+        printf '\\n%.0s' {1..$(tput lines)}
+        printf '\\e[H\\e[2J'
+        zle redisplay
+    }
+    zle -N scroll_and_clear
+    bindkey '^l' scroll_and_clear
+
 '''
     )
 
