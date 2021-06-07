@@ -256,19 +256,25 @@ class TabBar:
     def __init__(self, os_window_id: int):
         self.os_window_id = os_window_id
         self.num_tabs = 1
+        self.data_buffer_size = 0
+        self.blank_rects: Tuple[Rect, ...] = ()
+        self.laid_out_once = False
+        self.apply_options()
+
+    def apply_options(self) -> None:
         opts = get_options()
+        self.dirty = True
         self.margin_width = pt_to_px(opts.tab_bar_margin_width, self.os_window_id)
         self.cell_width, cell_height = cell_size_for_window(self.os_window_id)
-        self.data_buffer_size = 0
-        self.laid_out_once = False
-        self.dirty = True
-        self.screen = s = Screen(None, 1, 10, 0, self.cell_width, cell_height)
+        if not hasattr(self, 'screen'):
+            self.screen = s = Screen(None, 1, 10, 0, self.cell_width, cell_height)
+        else:
+            s = self.screen
         s.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
         s.color_profile.set_configured_colors(
             color_as_int(opts.inactive_tab_foreground),
             color_as_int(opts.tab_bar_background or opts.background)
         )
-        self.blank_rects: Tuple[Rect, ...] = ()
         sep = opts.tab_separator
         self.trailing_spaces = self.leading_spaces = 0
         while sep and sep[0] == ' ':
@@ -309,6 +315,8 @@ class TabBar:
             self.draw_data = self.draw_data._replace(active_bg=color_from_int(spec['active_tab_background']))
         if 'inactive_tab_background' in spec:
             self.draw_data = self.draw_data._replace(inactive_bg=color_from_int(spec['inactive_tab_background']))
+        if 'tab_bar_background' in spec:
+            self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['tab_bar_background']))
         opts = get_options()
         fg = spec.get('inactive_tab_foreground', color_as_int(opts.inactive_tab_foreground))
         bg = spec.get('tab_bar_background', False)
@@ -316,8 +324,6 @@ class TabBar:
             bg = color_as_int(opts.background)
         elif bg is False:
             bg = color_as_int(opts.tab_bar_background or opts.background)
-        if 'tab_bar_background' in spec:
-            self.draw_data = self.draw_data._replace(default_bg=color_from_int(bg))
         self.screen.color_profile.set_configured_colors(fg, bg)
 
     def layout(self) -> None:

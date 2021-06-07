@@ -886,6 +886,15 @@ PYWRAP0(get_boss) {
     Py_RETURN_NONE;
 }
 
+PYWRAP0(apply_options_update) {
+    for (size_t o = 0; o < global_state.num_os_windows; o++) {
+        OSWindow *os_window = global_state.os_windows + o;
+        get_platform_dependent_config_values(os_window->handle);
+        break;
+    }
+    Py_RETURN_NONE;
+}
+
 PYWRAP1(patch_global_colors) {
     PyObject *spec;
     int configured;
@@ -1057,6 +1066,7 @@ static PyMethodDef module_methods[] = {
     MW(os_window_font_size, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(get_boss, METH_NOARGS),
+    MW(apply_options_update, METH_NOARGS),
     MW(patch_global_colors, METH_VARARGS),
     MW(create_mock_window, METH_VARARGS),
     MW(destroy_global_data, METH_NOARGS),

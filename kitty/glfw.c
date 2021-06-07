@@ -33,6 +33,18 @@ static void set_os_window_dpi(OSWindow *w);
 
 
 void
+get_platform_dependent_config_values(void *glfw_window) {
+    if (OPT(click_interval) < 0) OPT(click_interval) = glfwGetDoubleClickInterval(glfw_window);
+    if (OPT(cursor_blink_interval) < 0) {
+        OPT(cursor_blink_interval) = ms_to_monotonic_t(500ll);
+#ifdef __APPLE__
+        monotonic_t cbi = cocoa_cursor_blink_interval();
+        if (cbi >= 0) OPT(cursor_blink_interval) = cbi / 2;
+#endif
+    }
+}
+
+void
 request_tick_callback(void) {
     glfwPostEmptyEvent();
 }
@@ -706,16 +718,9 @@ create_os_window(PyObject UNUSED *self, PyObject *args) {
         dest##_cursor = glfwCreateStandardCursor(GLFW_##shape##_CURSOR); \
         if (dest##_cursor == NULL) { log_error("Failed to create the %s mouse cursor, using default cursor.", #shape); } \
 }}
-    CC(standard, IBEAM); CC(click, HAND); CC(arrow, ARROW);
+        CC(standard, IBEAM); CC(click, HAND); CC(arrow, ARROW);
 #undef CC
-        if (OPT(click_interval) < 0) OPT(click_interval) = glfwGetDoubleClickInterval(glfw_window);
-        if (OPT(cursor_blink_interval) < 0) {
-            OPT(cursor_blink_interval) = ms_to_monotonic_t(500ll);
-#ifdef __APPLE__
-            monotonic_t cbi = cocoa_cursor_blink_interval();
-            if (cbi >= 0) OPT(cursor_blink_interval) = cbi / 2;
-#endif
-        }
+        get_platform_dependent_config_values(glfw_window);
         is_first_window = false;
     }
     OSWindow *w = add_os_window();

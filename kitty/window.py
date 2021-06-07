@@ -398,6 +398,12 @@ class Window:
             val = round(val)
         return int(val)
 
+    def apply_options(self) -> None:
+        opts = get_options()
+        self.update_effective_padding()
+        self.change_titlebar_color()
+        setup_colors(self.screen, opts)
+
     @property
     def title(self) -> str:
         return self.override_title or self.child_title

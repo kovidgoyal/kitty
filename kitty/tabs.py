@@ -115,6 +115,14 @@ class Tab:  # {{{
             self._set_current_layout(l0)
             self.startup(session_tab)
 
+    def apply_options(self) -> None:
+        for window in self:
+            window.apply_options()
+        self.enabled_layouts = [x.lower() for x in get_options().enabled_layouts] or ['tall']
+        if self.current_layout.name not in self.enabled_layouts:
+            self._set_current_layout(self.enabled_layouts[0])
+        self.relayout()
+
     def take_over_from(self, other_tab: 'Tab') -> None:
         self.name, self.cwd = other_tab.name, other_tab.cwd
         self.enabled_layouts = list(other_tab.enabled_layouts)
@@ -828,4 +836,13 @@ class TabManager:  # {{{
         self.tab_bar.destroy()
         del self.tab_bar
         del self.tabs
+
+    def apply_options(self) -> None:
+        for tab in self:
+            tab.apply_options()
+        self.tab_bar_hidden = get_options().tab_bar_style == 'hidden'
+        self.tab_bar.apply_options()
+        self.update_tab_bar_data()
+        self.mark_tab_bar_dirty()
+        self.tab_bar.layout()
 # }}}

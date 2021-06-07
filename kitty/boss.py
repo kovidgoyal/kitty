@@ -26,13 +26,13 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
-    ChildMonitor, KeyEvent, add_timer, background_opacity_of,
-    change_background_opacity, change_os_window_state, cocoa_set_menubar_title,
-    create_os_window, current_application_quit_request, current_os_window,
-    destroy_global_data, focus_os_window, get_clipboard_string, get_options,
-    global_font_size, mark_os_window_for_close, os_window_font_size,
-    patch_color_profiles, patch_global_colors, safe_pipe,
-    set_application_quit_request, set_background_image, set_boss,
+    ChildMonitor, KeyEvent, add_timer, apply_options_update,
+    background_opacity_of, change_background_opacity, change_os_window_state,
+    cocoa_set_menubar_title, create_os_window,
+    current_application_quit_request, current_os_window, destroy_global_data,
+    focus_os_window, get_clipboard_string, get_options, global_font_size,
+    mark_os_window_for_close, os_window_font_size, patch_global_colors,
+    safe_pipe, set_application_quit_request, set_background_image, set_boss,
     set_clipboard_string, set_in_sequence_mode, set_options, thread_write,
     toggle_fullscreen, toggle_maximized
 )
@@ -1436,9 +1436,14 @@ class Boss:
         patch_global_colors(spec, configured)
 
     def apply_new_options(self, opts: Options) -> None:
+        from .fonts.box_drawing import set_scale
+
         # Update options storage
         set_options(opts, is_wayland(), self.args.debug_rendering, self.args.debug_font_fallback)
+        apply_options_update()
+        set_layout_options(opts)
         # Update font data
+        set_scale(opts.box_drawing_scale)
         from .fonts.render import set_font_family
         set_font_family(opts, debug_font_matching=self.args.debug_font_fallback)
         for os_window_id, tm in self.os_window_map.items():
@@ -1447,13 +1452,10 @@ class Boss:
                 tm.resize()
         # Update key bindings
         self.update_keymap()
-        # Update colors
-        spec = {k: int(v) if isinstance(v, Color) else v for k, v in opts._asdict().items()}
+        # Update misc options
         for tm in self.all_tab_managers:
-            tm.tab_bar.patch_colors(spec)
-        profiles = tuple(w.screen.color_profile for w in self.all_windows)
-        ctc = None if opts.cursor_text_color is None else int(opts.cursor_text_color)
-        patch_color_profiles(spec, ctc, profiles, True)
+            tm.apply_options()
+        # Update colors
         for w in self.all_windows:
             self.default_bg_changed_for(w.id)
             w.refresh()
