@@ -480,7 +480,8 @@ mma('Click the link under the mouse cursor when no selection is created even if 
 
 mma('Click the link under the mouse cursor',
     'click_url ctrl+shift+left release grabbed,ungrabbed mouse_click_url',
-    long_text='Variant with :kbd:`ctrl+shift` is present only for legacy compatibility.'
+    long_text='Variant with :kbd:`ctrl+shift` is present because the simple'
+    ' click based version has an unavoidable delay of :opt:`click_interval`, to disambiguate clicks from double clicks.'
     )
 
 mma('Paste from the primary selection',
