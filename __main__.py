@@ -2,8 +2,8 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2015, Kovid Goyal <kovid at kovidgoyal.net>
 
-import sys
 import os
+import sys
 from typing import List
 
 
@@ -30,8 +30,8 @@ def runpy(args: List[str]) -> None:
 
 def hold(args: List[str]) -> None:
     import subprocess
-    from contextlib import suppress
     import tty
+    from contextlib import suppress
     ret = subprocess.Popen(args[1:]).wait()
     with suppress(BaseException):
         print('\n\x1b[1;32mPress any key to exit', end='', flush=True)
@@ -72,9 +72,9 @@ def run_kitten(args: List[str]) -> None:
 
 
 def edit_config_file(args: List[str]) -> None:
-    from kitty.utils import edit_config_file as f
-    from kitty.fast_data_types import set_options
     from kitty.cli import create_default_opts
+    from kitty.fast_data_types import set_options
+    from kitty.utils import edit_config_file as f
     set_options(create_default_opts())
     f()
 
