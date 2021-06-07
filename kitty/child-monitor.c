@@ -83,7 +83,7 @@ static unsigned long remove_notify[MAX_CHILDREN] = {0};
 static size_t add_queue_count = 0, remove_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock, talk_lock;
-static bool kill_signal_received = false;
+static bool kill_signal_received = false, reload_config_signal_received = false;
 static ChildMonitor *the_monitor = NULL;
 
 typedef struct {
@@ -333,7 +333,7 @@ static bool
 parse_input(ChildMonitor *self) {
     // Parse all available input that was read in the I/O thread.
     size_t count = 0, remove_count = 0;
-    bool input_read = false;
+    bool input_read = false, reload_config_called = false;
     monotonic_t now = monotonic();
     children_mutex(lock);
     while (remove_queue_count) {
@@ -343,11 +343,17 @@ parse_input(ChildMonitor *self) {
         FREE_CHILD(remove_queue[remove_queue_count]);
     }
 
-    if (UNLIKELY(kill_signal_received)) {
-        global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
-        global_state.has_pending_closes = true;
-        request_tick_callback();
-        kill_signal_received = false;
+    if (UNLIKELY(kill_signal_received || reload_config_signal_received)) {
+        if (kill_signal_received) {
+            global_state.quit_request = IMPERATIVE_CLOSE_REQUESTED;
+            global_state.has_pending_closes = true;
+            request_tick_callback();
+            kill_signal_received = false;
+        }
+        else if (reload_config_signal_received) {
+            reload_config_signal_received = false;
+            reload_config_called = true;
+        }
     } else {
         count = self->count;
         for (size_t i = 0; i < count; i++) {
@@ -401,6 +407,9 @@ parse_input(ChildMonitor *self) {
             if (do_parse(self, scratch[i].screen, now)) input_read = true;
         }
         DECREF_CHILD(scratch[i]);
+    }
+    if (reload_config_called) {
+        call_boss(load_config_file, "");
     }
     return input_read;
 }
@@ -1145,7 +1154,7 @@ read_bytes(int fd, Screen *screen) {
 }
 
 
-typedef struct { bool kill_signal, child_died; } SignalSet;
+typedef struct { bool kill_signal, child_died, reload_config; } SignalSet;
 
 static void
 handle_signal(int signum, void *data) {
@@ -1157,6 +1166,9 @@ handle_signal(int signum, void *data) {
             break;
         case SIGCHLD:
             ss->child_died = true;
+            break;
+        case SIGUSR1:
+            ss->reload_config = true;
             break;
         default:
             break;
@@ -1272,7 +1284,12 @@ io_loop(void *data) {
                 SignalSet ss = {0};
                 data_received = true;
                 read_signals(fds[1].fd, handle_signal, &ss);
-                if (ss.kill_signal) { children_mutex(lock); kill_signal_received = true; children_mutex(unlock); }
+                if (ss.kill_signal || ss.reload_config) {
+                    children_mutex(lock);
+                    if (ss.kill_signal) kill_signal_received = true;
+                    if (ss.reload_config) reload_config_signal_received = true;
+                    children_mutex(unlock);
+                }
                 if (ss.child_died) reap_children(self, OPT(close_on_child_death));
             }
             for (i = 0; i < self->count; i++) {

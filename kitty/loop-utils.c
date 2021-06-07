@@ -45,7 +45,7 @@ handle_signal(int sig_num) {
 #define SIGNAL_SET \
     sigset_t signals = {0}; \
     sigemptyset(&signals); \
-    sigaddset(&signals, SIGINT); sigaddset(&signals, SIGTERM); sigaddset(&signals, SIGCHLD); \
+    sigaddset(&signals, SIGINT); sigaddset(&signals, SIGTERM); sigaddset(&signals, SIGCHLD); sigaddset(&signals, SIGUSR1); \
 
 void
 free_loop_data(LoopData *ld) {
