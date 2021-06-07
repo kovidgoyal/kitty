@@ -484,6 +484,13 @@ mma('Click the link under the mouse cursor',
     ' click based version has an unavoidable delay of :opt:`click_interval`, to disambiguate clicks from double clicks.'
     )
 
+mma('Click the link under the mouse cursor',
+    'click_url_discard ctrl+shift+left press grabbed mouse_discard_event',
+    long_text='Prevent this press event from being sent to the program that has'
+    ' grabbed the mouse, as the corresponding release event is used to open a URL.'
+    )
+
+
 mma('Paste from the primary selection',
     'paste_selection middle release ungrabbed paste_selection',
     )
