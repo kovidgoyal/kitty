@@ -875,7 +875,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Add a :code:`titlebar-only` setting to
   :opt:`hide_window_decorations` to only hide the title bar (:pull:`2286`)
 
-- Fix a segfault when using :option:`kitty --debug-config` with maps (:iss:`2270`)
+- Fix a segfault when using ``--debug-config`` with maps (:iss:`2270`)
 
 - ``goto_tab`` now maps numbers larger than the last tab to the last tab
   (:iss:`2291`)
@@ -1751,8 +1751,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Support "-T" as an alias for "--title" (:pull:`659`)
 
-- Fix a regression in the previous release that broke using :option:`kitty
-  --debug-config` with custom key mappings (:iss:`695`)
+- Fix a regression in the previous release that broke using
+  ``--debug-config`` with custom key mappings (:iss:`695`)
 
 
 0.11.1 [2018-06-17]
