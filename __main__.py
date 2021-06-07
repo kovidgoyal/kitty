@@ -73,6 +73,9 @@ def run_kitten(args: List[str]) -> None:
 
 def edit_config_file(args: List[str]) -> None:
     from kitty.utils import edit_config_file as f
+    from kitty.fast_data_types import set_options
+    from kitty.cli import create_default_opts
+    set_options(create_default_opts())
     f()
 
 
