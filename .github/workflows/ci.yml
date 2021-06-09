@@ -76,7 +76,7 @@ jobs:
                 python-version: 3.8
 
             - name: Install build-only deps
-              run: pip install flake8 mypy sphinx
+              run: pip install flake8 mypy types-requests sphinx
 
             - name: Run pyflakes
               run: python -m flake8 --count .
