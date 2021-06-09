@@ -221,7 +221,7 @@ def load_watch_modules(watchers: Sequence[str]) -> Optional[Watchers]:
     ans = Watchers()
     for path in watchers:
         path = resolve_custom_file(path)
-        m = runpy.run_path(path, run_name='__kitty_watcher__')  # type: ignore
+        m = runpy.run_path(path, run_name='__kitty_watcher__')
         w = m.get('on_close')
         if callable(w):
             ans.on_close.append(w)
