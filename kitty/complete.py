@@ -385,7 +385,7 @@ def complete_files_and_dirs(
     add_prefix: Optional[str] = None
 ) -> None:
     dirs, files_ = path_completion(prefix or '')
-    files = filter(predicate, files_)
+    files: Iterable[str] = filter(predicate, files_)
     if add_prefix:
         dirs = list(add_prefix + x for x in dirs)
         files = (add_prefix + x for x in files)
