@@ -312,7 +312,7 @@ While as of May 2020, kitty is the only terminal emulator to support this
 graphics protocol, we intend that any terminal emulator that wishes to support
 it can. To check if a terminal emulator supports the graphics protocol the best way
 is to send the above *query action* followed by a request for the
-`primary device attributes <https://vt100.net/docs/vt510-rm/DA1.html>`. If you
+`primary device attributes <https://vt100.net/docs/vt510-rm/DA1.html>`_. If you
 get back an answer for the device attributes without getting back an answer for
 the *query action* the terminal emulator does not support the graphics
 protocol.
