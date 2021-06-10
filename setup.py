@@ -789,7 +789,8 @@ def safe_makedirs(path: str) -> None:
 
 
 def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 'source') -> None:
-    cflags = '-Wall -Werror -fpie'.split()
+    werror = '' if args.ignore_compiler_warnings else '-pedantic-errors -Werror'
+    cflags = f'-Wall {werror} -fpie'.split()
     if args.build_universal_binary:
         cflags += '-arch x86_64 -arch arm64'.split()
     cppflags = []
