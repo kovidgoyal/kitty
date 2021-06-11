@@ -6,8 +6,16 @@ Building kitty from source
   :target: https://github.com/kovidgoyal/kitty/actions?query=workflow%3ACI
 
 
-|kitty| is designed to run from source, for easy hackability. Make sure
+|kitty| is designed to run from source, for easy hack-ability. Make sure
 the following dependencies are installed first.
+
+
+.. note::
+   If you are making changes only to the python parts of kitty, there is no need to
+   build kitty at all, instead, assuming you have installed the official kitty
+   binaries, you can simply set the KITTY_DEVELOP_FROM enviroment variable to
+   point to the directory into which you have checked out the kitty source
+   code. kitty will then load its python code from there.
 
 Dependencies
 ----------------
