@@ -90,6 +90,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   <https://github.com/be5invis/Iosevka>`_ font (requires Iosevka >= 7.0.4)
   (:iss:`297`)
 
+- Remote control: Allow matching tabs by index number in currently active OS
+  Window (:iss:`3708`)
+
 
 0.20.3 [2021-05-06]
 ----------------------

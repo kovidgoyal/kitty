@@ -90,13 +90,14 @@ MATCH_TAB_OPTION = '''\
 --match -m
 The tab to match. Match specifications are of the form:
 :italic:`field:regexp`. Where field can be one of:
-id, title, window_id, window_title, pid, cwd, env, cmdline.
+id, index, title, window_id, window_title, pid, cwd, env, cmdline.
 You can use the :italic:`ls` command to get a list of tabs. Note that for
-numeric fields such as id and pid the expression is interpreted as a number,
+numeric fields such as id, index and pid the expression is interpreted as a number,
 not a regular expression. When using title or id, first a matching tab is
 looked for and if not found a matching window is looked for, and the tab
 for that window is used. You can also use window_id and window_title to match
-the tab that contains the window with the specified id or title.
+the tab that contains the window with the specified id or title. The index number
+is used to match the nth tab in the currently active OS window.
 '''
 
 

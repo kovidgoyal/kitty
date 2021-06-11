@@ -299,6 +299,12 @@ class Boss:
                 if q:
                     found = True
                     yield q
+        elif field == 'index':
+            tm = self.active_tab_manager
+            if tm is not None and len(tm.tabs) > 0:
+                idx = (int(pat.pattern) + len(tm.tabs)) % len(tm.tabs)
+                found = True
+                yield tm.tabs[idx]
         if not found:
             tabs = {self.tab_for_window(w) for w in self.match_windows(match)}
             for q in tabs:
