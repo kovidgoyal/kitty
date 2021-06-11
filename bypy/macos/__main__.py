@@ -348,7 +348,7 @@ class Freeze(object):
         for x in bases:
             iv['sanitize_source_folder'](os.path.join(self.python_stdlib, x))
         self.compile_py_modules()
-        freeze_python(self.python_stdlib, pdir, self.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM')
+        freeze_python(self.python_stdlib, pdir, self.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM', remove_pyc_files=True)
         iv['build_frozen_launcher']([path_to_freeze_dir(), self.obj_dir])
         os.rename(join(dirname(self.contents_dir), 'bin', 'kitty'), join(self.contents_dir, 'MacOS', 'kitty'))
         shutil.rmtree(join(dirname(self.contents_dir), 'bin'))

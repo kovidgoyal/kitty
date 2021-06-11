@@ -124,7 +124,7 @@ def copy_python(env):
     for x in bases:
         iv['sanitize_source_folder'](os.path.join(env.py_dir, x))
     py_compile(env.py_dir)
-    freeze_python(env.py_dir, pdir, env.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM')
+    freeze_python(env.py_dir, pdir, env.obj_dir, ext_map, develop_mode_env_var='KITTY_DEVELOP_FROM', remove_pyc_files=True)
 
 
 def build_launcher(env):
