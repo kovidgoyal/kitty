@@ -2167,6 +2167,7 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
     bool has_url = false;
     index_type url_start, url_end = 0;
     Line *line = screen_visual_line(screen, y);
+    if (!line || x >= screen->columns) return false;
     if (line->cpu_cells[x].hyperlink_id) {
         screen_mark_hyperlink(screen, x, y);
         return true;
