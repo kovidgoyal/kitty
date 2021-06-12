@@ -64,7 +64,7 @@ server, use the following one-liner instead (it
 is slower as it needs to ssh into the server twice, but will work with most
 servers)::
 
-    infocmp xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
+    infocmp -a xterm-kitty | ssh myserver tic -x -o \~/.terminfo /dev/stdin
 
 If you are behind a proxy (like Balabit) that prevents this, you must redirect the
 1st command to a file, copy that to the server and run ``tic`` manually.  If you

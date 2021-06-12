@@ -211,7 +211,7 @@ def main(args: List[str]) -> NoReturn:
     else:
         hostname, remote_args = server_args[0], server_args[1:]
         cmd += ['-t', hostname]
-        terminfo = subprocess.check_output(['infocmp']).decode('utf-8')
+        terminfo = subprocess.check_output(['infocmp', '-a']).decode('utf-8')
         f = get_posix_cmd if use_posix else get_python_cmd
         cmd += f(terminfo, remote_args)
     os.execvp('ssh', cmd)

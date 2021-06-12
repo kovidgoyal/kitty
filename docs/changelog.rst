@@ -93,6 +93,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Remote control: Allow matching tabs by index number in currently active OS
   Window (:iss:`3708`)
 
+- ssh kitten: Fix non-standard properties in terminfo such as the ones used for
+  true color not being copied (:iss:`312`)
+
 
 0.20.3 [2021-05-06]
 ----------------------
