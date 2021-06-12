@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.21.0 [future]
+0.21.0 [2021-06-12]
 ----------------------
 
 - Allow reloading the :file:`kitty.conf` config file by pressing
