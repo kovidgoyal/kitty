@@ -2172,7 +2172,7 @@ screen_detect_url(Screen *screen, unsigned int x, unsigned int y) {
         screen_mark_hyperlink(screen, x, y);
         return true;
     }
-    char_type sentinel;
+    char_type sentinel = 0;
     if (line) {
         url_start = line_url_start_at(line, x);
         if (url_start < line->xnum) {
