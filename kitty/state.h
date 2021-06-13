@@ -278,6 +278,7 @@ typedef enum {
     NEW_WINDOW = 2048,
     CLOSE_WINDOW = 4096,
     RESET_TERMINAL = 8192,
+    RELOAD_CONFIG = 16384,
 } CocoaPendingAction;
 void set_cocoa_pending_action(CocoaPendingAction action, const char*);
 #endif

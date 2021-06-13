@@ -143,6 +143,9 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
         val = get_macos_shortcut_for(opts, 'clear_terminal', args=('reset', True), lookup_name='reset_terminal')
         if val is not None:
             global_shortcuts['reset_terminal'] = val
+        val = get_macos_shortcut_for(opts, 'load_config_file', args=(), lookup_name='reload_config')
+        if val is not None:
+            global_shortcuts['reload_config'] = val
     if is_macos and opts.macos_custom_beam_cursor:
         set_custom_ibeam_cursor()
     if not is_wayland() and not is_macos:  # no window icons on wayland
