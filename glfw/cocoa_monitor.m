@@ -47,7 +47,7 @@ static char* getDisplayName(CGDirectDisplayID displayID)
     io_service_t service;
     CFDictionaryRef info;
 
-    if (IOServiceGetMatchingServices(kIOMasterPortDefault,
+    if (IOServiceGetMatchingServices(kIOMainPortDefault,
                                      IOServiceMatching("IODisplayConnect"),
                                      &it) != 0)
     {
@@ -245,7 +245,7 @@ static double getFallbackRefreshRate(CGDirectDisplayID displayID)
     io_iterator_t it;
     io_service_t service;
 
-    if (IOServiceGetMatchingServices(kIOMasterPortDefault,
+    if (IOServiceGetMatchingServices(kIOMainPortDefault,
                                      IOServiceMatching("IOFramebuffer"),
                                      &it) != 0)
     {
