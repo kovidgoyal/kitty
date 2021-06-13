@@ -342,7 +342,6 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     }
     *cell_width = MAX(1u, width);
     *underline_thickness = (unsigned int)ceil(MAX(0.1, self->underline_thickness));
-    *strikethrough_position = (unsigned int)floor(*baseline * 0.65);
     *strikethrough_thickness = *underline_thickness;
     // float line_height = MAX(1, floor(self->ascent + self->descent + MAX(0, self->leading) + 0.5));
     // Let CoreText's layout engine calculate the line height. Slower, but hopefully more accurate.
@@ -373,6 +372,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     // Not sure if we should add this to bounds ascent and then round it or add
     // it to already rounded baseline and round again.
     *underline_position = (unsigned int)floor(bounds_ascent - self->underline_position + 0.5);
+    *strikethrough_position = (unsigned int)floor(*baseline * 0.65);
 
     debug("Cell height calculation:\n");
     debug("\tline height from line origins: %f\n", line_height);
@@ -381,7 +381,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     debug("\tbounds metrics: ascent: %f\n", bounds_ascent);
     debug("\tline metrics: ascent: %f descent: %f leading: %f\n", typographic_ascent, typographic_descent, typographic_leading);
     debug("\tfont metrics: ascent: %f descent: %f leading: %f underline_position: %f\n", self->ascent, self->descent, self->leading, self->underline_position);
-    debug("\tcell_height: %u baseline: %u underline_position: %u\n", *cell_height, *baseline, *underline_position);
+    debug("\tcell_height: %u baseline: %u underline_position: %u strikethrough_position: %u\n", *cell_height, *baseline, *underline_position, *strikethrough_position);
 
     CFRelease(test_frame); CFRelease(path); CFRelease(framesetter);
 
