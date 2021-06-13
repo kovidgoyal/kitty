@@ -848,6 +848,8 @@ if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('kitten', ('unicode_input',)), 12, False, 32, ()))
     defaults.map.append(KeyDefinition(False, KeyAction('edit_config_file'), 8, False, 44, ()))
     defaults.map.append(KeyDefinition(False, KeyAction('clear_terminal', ('reset', True)), 10, False, 114, ()))
+    defaults.map.append(KeyDefinition(False, KeyAction('load_config_file'), 12, False, 44, ()))
+    defaults.map.append(KeyDefinition(False, KeyAction('debug_config'), 10, False, 44, ()))
 defaults.mouse_map = [
     # click_url_or_select
     MouseMapping(0, 0, -2, False, KeyAction('mouse_click_url_or_select')),

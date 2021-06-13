@@ -3329,6 +3329,11 @@ the new conf settings *replace* the old ones.
 '''
     )
 
+map('Reload kitty.conf',
+    'reload_config_file cmd+control+, load_config_file',
+    only='macos'
+    )
+
 map('Debug kitty configuration',
     'debug_config kitty_mod+f6 debug_config',
     long_text='''
@@ -3336,6 +3341,12 @@ Show details about exactly what configuration kitty is running with and
 its host environment. Useful for debugging issues.
 '''
     )
+
+map('Debug kitty configuration',
+    'debug_config cmd+option+, debug_config',
+    only='macos'
+    )
+
 
 map('Send arbitrary text on key presses',
     'send_text ctrl+shift+alt+h send_text all Hello World',

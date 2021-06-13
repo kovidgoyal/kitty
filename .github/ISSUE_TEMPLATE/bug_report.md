@@ -22,7 +22,7 @@ If applicable, add screenshots to help explain your problem.
 
 **Environment details**
 ```
-Press Ctrl+Shift+F6 in kitty, to copy debug output about kitty and its
+Press Ctrl+Shift+F6 (cmd+option+, on macOS) in kitty, to copy debug output about kitty and its
 configuration to the clipboard and paste it here. 
 
 On older versions of kitty, run kitty --debug-config instead

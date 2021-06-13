@@ -116,8 +116,8 @@ Toggle maximized                    :sc:`toggle_maximized`
 Input unicode character             :sc:`input_unicode_character` (also :kbd:`^+⌘+space` on macOS)
 Click URL using the keyboard        :sc:`open_url`
 Reset the terminal                  :sc:`reset_terminal`
-Reload :file:`kitty.conf`           :sc:`reload_config_file`
-Debug :file:`kitty.conf`            :sc:`debug_config`
+Reload :file:`kitty.conf`           :sc:`reload_config_file` (also :kbd:`^+⌘+f5` on macOS)
+Debug :file:`kitty.conf`            :sc:`debug_config` (also :kbd:`⌘+option+f6` on macOS)
 Pass current selection to program   :sc:`pass_selection_to_program`
 Edit |kitty| config file            :sc:`edit_config_file`
 Open a |kitty| shell                :sc:`kitty_shell`
