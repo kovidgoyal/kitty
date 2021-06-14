@@ -10,6 +10,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix a regression in the previous release that broke rendering of
   strikeout (:iss:`3717`)
 
+- macOS: Fix a crash when rendering ligatures larger than 128 characters
+  (:iss:`3724`)
+
 - Fix a regression in the previous release that could cause a crash when
   changing layouts and mousing (:iss:`3713`)
 
