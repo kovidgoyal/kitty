@@ -944,7 +944,8 @@ process_pending_closes(ChildMonitor *self) {
 // If we create new OS windows during wait_events(), using global menu actions
 // via the mouse causes a crash because of the way autorelease pools work in
 // glfw/cocoa. So we use a flag instead.
-static CocoaPendingAction cocoa_pending_actions = NO_COCOA_PENDING_ACTION;
+static bool cocoa_pending_actions[NUM_COCOA_PENDING_ACTIONS] = {0};
+static bool has_cocoa_pending_actions = false;
 typedef struct {
     char* wd;
     char **open_files;
@@ -964,7 +965,8 @@ set_cocoa_pending_action(CocoaPendingAction action, const char *wd) {
             cocoa_pending_actions_data.wd = strdup(wd);
         }
     }
-    cocoa_pending_actions |= action;
+    cocoa_pending_actions[action] = true;
+    has_cocoa_pending_actions = true;
     // The main loop may be blocking on the event queue, if e.g. unfocused.
     // Unjam it so the pending action is processed right now.
     wakeup_main_loop();
@@ -997,22 +999,22 @@ process_global_state(void *data) {
     if (parse_input(self)) input_read = true;
     render(now, input_read);
 #ifdef __APPLE__
-        if (cocoa_pending_actions) {
-            if (cocoa_pending_actions & PREFERENCES_WINDOW) { call_boss(edit_config_file, NULL); }
-            if (cocoa_pending_actions & NEW_OS_WINDOW) { call_boss(new_os_window, NULL); }
-            if (cocoa_pending_actions & CLOSE_OS_WINDOW) { call_boss(close_os_window, NULL); }
-            if (cocoa_pending_actions & CLOSE_TAB) { call_boss(close_tab, NULL); }
-            if (cocoa_pending_actions & NEW_TAB) { call_boss(new_tab, NULL); }
-            if (cocoa_pending_actions & NEXT_TAB) { call_boss(next_tab, NULL); }
-            if (cocoa_pending_actions & PREVIOUS_TAB) { call_boss(previous_tab, NULL); }
-            if (cocoa_pending_actions & DETACH_TAB) { call_boss(detach_tab, NULL); }
-            if (cocoa_pending_actions & NEW_WINDOW) { call_boss(new_window, NULL); }
-            if (cocoa_pending_actions & CLOSE_WINDOW) { call_boss(close_window, NULL); }
-            if (cocoa_pending_actions & RESET_TERMINAL) { call_boss(clear_terminal, "sO", "reset", Py_True ); }
-            if (cocoa_pending_actions & RELOAD_CONFIG) { call_boss(load_config_file, NULL); }
+        if (has_cocoa_pending_actions) {
+            if (cocoa_pending_actions[PREFERENCES_WINDOW]) { call_boss(edit_config_file, NULL); }
+            if (cocoa_pending_actions[NEW_OS_WINDOW]) { call_boss(new_os_window, NULL); }
+            if (cocoa_pending_actions[CLOSE_OS_WINDOW]) { call_boss(close_os_window, NULL); }
+            if (cocoa_pending_actions[CLOSE_TAB]) { call_boss(close_tab, NULL); }
+            if (cocoa_pending_actions[NEW_TAB]) { call_boss(new_tab, NULL); }
+            if (cocoa_pending_actions[NEXT_TAB]) { call_boss(next_tab, NULL); }
+            if (cocoa_pending_actions[PREVIOUS_TAB]) { call_boss(previous_tab, NULL); }
+            if (cocoa_pending_actions[DETACH_TAB]) { call_boss(detach_tab, NULL); }
+            if (cocoa_pending_actions[NEW_WINDOW]) { call_boss(new_window, NULL); }
+            if (cocoa_pending_actions[CLOSE_WINDOW]) { call_boss(close_window, NULL); }
+            if (cocoa_pending_actions[RESET_TERMINAL]) { call_boss(clear_terminal, "sO", "reset", Py_True ); }
+            if (cocoa_pending_actions[RELOAD_CONFIG]) { call_boss(load_config_file, NULL); }
             if (cocoa_pending_actions_data.wd) {
-                if (cocoa_pending_actions & NEW_OS_WINDOW_WITH_WD) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_data.wd); }
-                if (cocoa_pending_actions & NEW_TAB_WITH_WD) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_data.wd); }
+                if (cocoa_pending_actions[NEW_OS_WINDOW_WITH_WD]) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_data.wd); }
+                if (cocoa_pending_actions[NEW_TAB_WITH_WD]) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_data.wd); }
                 free(cocoa_pending_actions_data.wd);
                 cocoa_pending_actions_data.wd = NULL;
             }
@@ -1026,7 +1028,8 @@ process_global_state(void *data) {
                 }
                 cocoa_pending_actions_data.open_files_count = 0;
             }
-            cocoa_pending_actions = 0;
+            memset(cocoa_pending_actions, 0, sizeof(cocoa_pending_actions));
+            has_cocoa_pending_actions = false;
         }
 #endif
     report_reaped_pids();
