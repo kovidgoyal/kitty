@@ -4,6 +4,11 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.21.2 [future]
+----------------------
+
+- Add support for the XTVERSION escape code
+
 0.21.1 [2021-06-14]
 ----------------------
 

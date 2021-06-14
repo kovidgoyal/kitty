@@ -1528,6 +1528,13 @@ report_device_attributes(Screen *self, unsigned int mode, char start_modifier) {
 }
 
 void
+screen_xtversion(Screen *self, unsigned int mode) {
+    if (mode == 0) {
+        write_escape_code_to_child(self, DCS, ">|kitty(" XT_VERSION ")");
+    }
+}
+
+void
 screen_report_size(Screen *self, unsigned int which) {
     char buf[32] = {0};
     unsigned int code = 0;

@@ -166,6 +166,7 @@ void screen_clear_tab_stop(Screen *self, unsigned int how);
 void screen_set_mode(Screen *self, unsigned int mode);
 void screen_reset_mode(Screen *self, unsigned int mode);
 void screen_decsace(Screen *self, unsigned int);
+void screen_xtversion(Screen *self, unsigned int);
 void screen_insert_characters(Screen *self, unsigned int count);
 void screen_cursor_up(Screen *self, unsigned int count/*=1*/, bool do_carriage_return/*=false*/, int move_direction/*=-1*/);
 void screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary);

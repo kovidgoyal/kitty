@@ -374,6 +374,7 @@ def kitty_env() -> Env:
     cppflags = ans.cppflags
     cppflags.append('-DPRIMARY_VERSION={}'.format(version[0] + 4000))
     cppflags.append('-DSECONDARY_VERSION={}'.format(version[1]))
+    cppflags.append('-DXT_VERSION="{}"'.format('.'.join(map(str, version))))
     at_least_version('harfbuzz', 1, 5)
     cflags.extend(pkg_config('libpng', '--cflags-only-I'))
     cflags.extend(pkg_config('lcms2', '--cflags-only-I'))

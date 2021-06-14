@@ -935,7 +935,14 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             REPORT_ERROR("Unknown CSI x sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
             break;
         case DECSCUSR:
-            CALL_CSI_HANDLER1M(screen_set_cursor, 1);
+            if (!start_modifier && end_modifier == ' ') {
+                CALL_CSI_HANDLER1M(screen_set_cursor, 1);
+            }
+            if (start_modifier == '>' && !end_modifier) {
+                CALL_CSI_HANDLER1(screen_xtversion, 0);
+            }
+            REPORT_ERROR("Unknown CSI q sequence with start and end modifiers: '%c' '%c'", start_modifier, end_modifier);
+            break;
         case SU:
             NO_MODIFIERS(end_modifier, ' ', "Select presentation directions escape code not implemented");
             CALL_CSI_HANDLER1(screen_scroll, 1);
