@@ -231,6 +231,7 @@ string_capabilities = {
     'smso': r'\E[7m',
     # Enter underline mode
     'smul': r'\E[4m',
+    'Smulx': r'\E[4:%p1%dm',  # this is a non-standard extension that some terminals use, so match them
     # Enter strikethrough mode
     'smxx': r'\E[9m',
     # Clear all tab stops
@@ -436,7 +437,7 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'Su Tc setrgbf setrgbb fullkbd kUP kDN'.split() + [
+    'Su Smulx Tc setrgbf setrgbb fullkbd kUP kDN'.split() + [
         'k{}{}'.format(key, mod)
         for key in 'UP DN RIT LFT END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
