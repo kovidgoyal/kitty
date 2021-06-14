@@ -231,6 +231,8 @@ string_capabilities = {
     'smso': r'\E[7m',
     # Enter underline mode
     'smul': r'\E[4m',
+    # Enter extended Kitty underline mode
+    'Smulx': r'\E[4:%p1%dm',
     # Enter strikethrough mode
     'smxx': r'\E[9m',
     # Clear all tab stops
