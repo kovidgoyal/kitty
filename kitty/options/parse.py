@@ -37,6 +37,9 @@ class Parser:
     def active_tab_title_template(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['active_tab_title_template'] = active_tab_title_template(val)
 
+    def adjust_baseline(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['adjust_baseline'] = int(val)
+
     def adjust_column_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['adjust_column_width'] = adjust_line_height(val)
 

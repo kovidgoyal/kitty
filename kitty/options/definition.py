@@ -94,6 +94,15 @@ opt('adjust_column_width', '0',
     option_type='adjust_line_height', ctype='!adjust_column_width',
     )
 
+opt('adjust_baseline', '0',
+    option_type='int', ctype='int',
+    add_to_default=False,
+    long_text='''
+Adjust the baseline position of each character (in pixels) on macOS. A positive
+number moves all characters up, and a negative number moves them down.
+'''
+    )
+
 opt('+symbol_map', 'U+E0A0-U+E0A3,U+E0C0-U+E0C7 PowerlineSymbols',
     option_type='symbol_map',
     add_to_default=False,

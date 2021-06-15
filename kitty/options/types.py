@@ -45,6 +45,7 @@ option_names = (  # {{{
  'active_tab_font_style',
  'active_tab_foreground',
  'active_tab_title_template',
+ 'adjust_baseline',
  'adjust_column_width',
  'adjust_line_height',
  'allow_hyperlinks',
@@ -435,6 +436,7 @@ class Options:
     active_tab_font_style: typing.Tuple[bool, bool] = (True, True)
     active_tab_foreground: Color = Color(red=0, green=0, blue=0)
     active_tab_title_template: typing.Optional[str] = None
+    adjust_baseline: int = 0
     adjust_column_width: typing.Union[int, float] = 0
     adjust_line_height: typing.Union[int, float] = 0
     allow_hyperlinks: int = 1
