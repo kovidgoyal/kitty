@@ -9,6 +9,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add support for the XTVERSION escape code
 
+- macOS: Fix middle-click to paste from clipboard not working (:iss:`3730`)
+
+
 0.21.1 [2021-06-14]
 ----------------------
 

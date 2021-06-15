@@ -492,7 +492,7 @@ mma('Discard press event for link click',
 
 
 mma('Paste from the primary selection',
-    'paste_selection middle release ungrabbed paste_selection',
+    'paste_selection middle release ungrabbed paste_from_selection',
     )
 
 mma('Start selecting text',
