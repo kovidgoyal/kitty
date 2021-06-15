@@ -140,6 +140,10 @@ changes the appearance of the zero (0), to make it more easily distinguishable
 from Ø. Fira Code Retina also includes other discretionary features known as
 Stylistic Sets which have the tags :code:`ss01` through :code:`ss20`.
 
+For the exact syntax to use for individual features, see the
+:link:`Harfbuzz documentation
+<https://harfbuzz.github.io/harfbuzz-hb-common.html#hb-feature-from-string>`.
+
 Note that this code is indexed by PostScript name, and not the font
 family. This allows you to define very precise feature settings; e.g. you can
 disable a feature in the italic font but not in the regular font.
