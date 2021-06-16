@@ -377,7 +377,7 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     CGFloat bounds_ascent = bounds_without_leading.size.height + bounds_without_leading.origin.y;
     int baseline_offset = 0;
     if (OPT(adjust_baseline_px) != 0) baseline_offset = OPT(adjust_baseline_px);
-    else if (OPT(adjust_baseline_frac) != 0) baseline_offset = *cell_height * OPT(adjust_baseline_frac);
+    else if (OPT(adjust_baseline_frac) != 0) baseline_offset = (int)(*cell_height * OPT(adjust_baseline_frac));
     *baseline = (unsigned int)floor(bounds_ascent + 0.5);
     // Not sure if we should add this to bounds ascent and then round it or add
     // it to already rounded baseline and round again.
