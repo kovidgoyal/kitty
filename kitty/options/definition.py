@@ -98,11 +98,12 @@ opt('adjust_baseline', '0',
     option_type='adjust_baseline', ctype='!adjust_baseline',
     add_to_default=False,
     long_text='''
-Adjust the baseline position of each character. You can use either
-a number, which is interpreted as pixels or a percentage (number followed by %),
-which is interpreted as the percentage of the line height. A positive
-value moves all characters up, and a negative value moves them down.
-The underline and strikethrough positions are adjusted accordingly.
+Adjust the vertical alignment of text (the height in the cell at which text is
+positioned). You can use either numbers, which are interpreted as pixels or a
+percentages (number followed by %), which are interpreted as the percentage of
+the line height. A positive value moves the baseline up, and a negative value
+moves them down. The underline and strikethrough positions are adjusted
+accordingly.
 '''
     )
 

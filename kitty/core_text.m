@@ -323,6 +323,13 @@ harfbuzz_font_for_face(PyObject* s) {
     return self->hb_font;
 }
 
+static unsigned int
+adjust_ypos(unsigned int pos, unsigned int cell_height, int adjustment) {
+    if (adjustment >= 0) adjustment = MIN(adjustment, (int)pos - 1);
+    else adjustment = MAX(adjustment, (int)pos - (int)cell_height + 1);
+    return pos - adjustment;
+}
+
 void
 cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, unsigned int* baseline, unsigned int* underline_position, unsigned int* underline_thickness, unsigned int* strikethrough_position, unsigned int* strikethrough_thickness) {
     // See https://developer.apple.com/library/content/documentation/StringsTextFonts/Conceptual/TextAndWebiPhoneOS/TypoFeatures/TextSystemFeatures.html
@@ -368,8 +375,9 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     CTLineGetTypographicBounds(line, &typographic_ascent, &typographic_descent, &typographic_leading);
     *cell_height = MAX(4u, (unsigned int)ceilf(line_height));
     CGFloat bounds_ascent = bounds_without_leading.size.height + bounds_without_leading.origin.y;
-    if (OPT(adjust_baseline_px) != 0) bounds_ascent -= OPT(adjust_baseline_px);
-    if (OPT(adjust_baseline_frac) != 0) bounds_ascent -= *cell_height * OPT(adjust_baseline_frac);
+    int baseline_offset = 0;
+    if (OPT(adjust_baseline_px) != 0) baseline_offset = OPT(adjust_baseline_px);
+    else if (OPT(adjust_baseline_frac) != 0) baseline_offset = *cell_height * OPT(adjust_baseline_frac);
     *baseline = (unsigned int)floor(bounds_ascent + 0.5);
     // Not sure if we should add this to bounds ascent and then round it or add
     // it to already rounded baseline and round again.
@@ -384,6 +392,11 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     debug("\tline metrics: ascent: %f descent: %f leading: %f\n", typographic_ascent, typographic_descent, typographic_leading);
     debug("\tfont metrics: ascent: %f descent: %f leading: %f underline_position: %f\n", self->ascent, self->descent, self->leading, self->underline_position);
     debug("\tcell_height: %u baseline: %u underline_position: %u strikethrough_position: %u\n", *cell_height, *baseline, *underline_position, *strikethrough_position);
+    if (baseline_offset) {
+        *baseline = adjust_ypos(*baseline, *cell_height, baseline_offset);
+        *underline_position = adjust_ypos(*underline_position, *cell_height, baseline_offset);
+        *strikethrough_position = adjust_ypos(*strikethrough_position, *cell_height, baseline_offset);
+    }
 
     CFRelease(test_frame); CFRelease(path); CFRelease(framesetter);
 

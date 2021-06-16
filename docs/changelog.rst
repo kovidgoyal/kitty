@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.21.2 [future]
 ----------------------
 
+- A new :opt:`adjust_baseline` option to adjust the vertical alignment of text
+  inside a line (:pull:`3734`)
+
 - Fix a regression in 0.21.0 that broke rendering of private use unicode symbols followed
   by spaces, when they also exist not followed by spaces (:iss:`3729`)
 
