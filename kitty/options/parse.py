@@ -7,16 +7,16 @@ from kitty.conf.utils import (
     unit_float
 )
 from kitty.options.utils import (
-    active_tab_title_template, adjust_line_height, allow_hyperlinks, allow_remote_control,
-    box_drawing_scale, clear_all_shortcuts, clipboard_control, config_or_absolute_path, copy_on_select,
-    cursor_text_color, deprecated_hide_window_decorations_aliases,
-    deprecated_macos_show_window_title_in_menubar_alias, deprecated_send_text, disable_ligatures,
-    edge_width, env, font_features, hide_window_decorations, kitten_alias, macos_option_as_alt,
-    macos_titlebar_color, optional_edge_width, parse_map, parse_mouse_map, resize_draw_strategy,
-    scrollback_lines, scrollback_pager_history_size, symbol_map, tab_activity_symbol, tab_bar_edge,
-    tab_bar_margin_height, tab_bar_min_tabs, tab_fade, tab_font_style, tab_separator,
-    tab_title_template, to_cursor_shape, to_font_size, to_layout_names, to_modifiers, url_prefixes,
-    url_style, window_border_width, window_size
+    active_tab_title_template, adjust_baseline, adjust_line_height, allow_hyperlinks,
+    allow_remote_control, box_drawing_scale, clear_all_shortcuts, clipboard_control,
+    config_or_absolute_path, copy_on_select, cursor_text_color,
+    deprecated_hide_window_decorations_aliases, deprecated_macos_show_window_title_in_menubar_alias,
+    deprecated_send_text, disable_ligatures, edge_width, env, font_features, hide_window_decorations,
+    kitten_alias, macos_option_as_alt, macos_titlebar_color, optional_edge_width, parse_map,
+    parse_mouse_map, resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, symbol_map,
+    tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
+    tab_font_style, tab_separator, tab_title_template, to_cursor_shape, to_font_size, to_layout_names,
+    to_modifiers, url_prefixes, url_style, window_border_width, window_size
 )
 
 
@@ -38,7 +38,7 @@ class Parser:
         ans['active_tab_title_template'] = active_tab_title_template(val)
 
     def adjust_baseline(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['adjust_baseline'] = int(val)
+        ans['adjust_baseline'] = adjust_baseline(val)
 
     def adjust_column_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['adjust_column_width'] = adjust_line_height(val)

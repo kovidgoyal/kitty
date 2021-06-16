@@ -162,4 +162,6 @@ static void
 adjust_line_height(PyObject *al, Options *opts) { read_adjust(adjust_line_height); }
 static void
 adjust_column_width(PyObject *al, Options *opts) { read_adjust(adjust_column_width); }
+static void
+adjust_baseline(PyObject *al, Options *opts) { read_adjust(adjust_baseline); }
 #undef read_adjust

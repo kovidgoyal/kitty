@@ -59,7 +59,7 @@ convert_from_opts_adjust_column_width(PyObject *py_opts, Options *opts) {
 
 static void
 convert_from_python_adjust_baseline(PyObject *val, Options *opts) {
-    opts->adjust_baseline = PyLong_AsLong(val);
+    adjust_baseline(val, opts);
 }
 
 static void

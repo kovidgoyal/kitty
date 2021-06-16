@@ -307,12 +307,15 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     Face *self = (Face*)s;
     *cell_width = calc_cell_width(self);
     *cell_height = calc_cell_height(self, true);
-    *baseline = font_units_to_pixels_y(self, self->ascender);
-    *underline_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->underline_position)));
+    int baseline_offset = 0;
+    if (OPT(adjust_baseline_px) != 0) baseline_offset = OPT(adjust_baseline_px);
+    if (OPT(adjust_baseline_frac) != 0) baseline_offset = (int)(*cell_height * OPT(adjust_baseline_frac));
+    *baseline = font_units_to_pixels_y(self, self->ascender) - baseline_offset;
+    *underline_position = MIN(*cell_height - 1, (unsigned int)MAX(0, font_units_to_pixels_y(self, MAX(0, self->ascender - self->underline_position)) - baseline_offset));
     *underline_thickness = MAX(1, font_units_to_pixels_y(self, self->underline_thickness));
 
     if (self->strikethrough_position != 0) {
-      *strikethrough_position = MIN(*cell_height - 1, (unsigned int)font_units_to_pixels_y(self, MAX(0, self->ascender - self->strikethrough_position)));
+      *strikethrough_position = MIN(*cell_height - 1, (unsigned int)MAX(0, font_units_to_pixels_y(self, MAX(0, self->ascender - self->strikethrough_position)) - baseline_offset));
     } else {
       *strikethrough_position = (unsigned int)floor(*baseline * 0.65);
     }

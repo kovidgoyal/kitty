@@ -95,11 +95,14 @@ opt('adjust_column_width', '0',
     )
 
 opt('adjust_baseline', '0',
-    option_type='int', ctype='int',
+    option_type='adjust_baseline', ctype='!adjust_baseline',
     add_to_default=False,
     long_text='''
-Adjust the baseline position of each character (in pixels) on macOS. A positive
-number moves all characters up, and a negative number moves them down.
+Adjust the baseline position of each character. You can use either
+a number, which is interpreted as pixels or a percentage (number followed by %),
+which is interpreted as the percentage of the line height. A positive
+value moves all characters up, and a negative value moves them down.
+The underline and strikethrough positions are adjusted accordingly.
 '''
     )
 
