@@ -424,6 +424,16 @@ def adjust_line_height(x: str) -> Union[int, float]:
     return int(x)
 
 
+def adjust_baseline(x: str) -> Union[int, float]:
+    if x.endswith('%'):
+        ans = float(x[:-1].strip()) / 100.0
+        if abs(ans) > 1:
+            log_error('Percentage adjustments of the baseline cannot exceed 100%')
+            return 0
+        return ans
+    return int(x)
+
+
 def to_font_size(x: str) -> float:
     return max(MINIMUM_FONT_SIZE, float(x))
 

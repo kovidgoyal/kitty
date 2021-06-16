@@ -58,6 +58,19 @@ convert_from_opts_adjust_column_width(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_adjust_baseline(PyObject *val, Options *opts) {
+    adjust_baseline(val, opts);
+}
+
+static void
+convert_from_opts_adjust_baseline(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "adjust_baseline");
+    if (ret == NULL) return;
+    convert_from_python_adjust_baseline(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_disable_ligatures(PyObject *val, Options *opts) {
     opts->disable_ligatures = PyLong_AsLong(val);
 }
@@ -885,6 +898,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_adjust_line_height(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_adjust_column_width(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_adjust_baseline(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_disable_ligatures(py_opts, opts);
     if (PyErr_Occurred()) return false;

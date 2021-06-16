@@ -40,8 +40,8 @@ typedef struct {
     unsigned int macos_option_as_alt;
     float macos_thicken_font;
     WindowTitleIn macos_show_window_title_in;
-    int adjust_line_height_px, adjust_column_width_px;
-    float adjust_line_height_frac, adjust_column_width_frac;
+    int adjust_line_height_px, adjust_column_width_px, adjust_baseline_px;
+    float adjust_line_height_frac, adjust_column_width_frac, adjust_baseline_frac;
     float background_opacity, dim_opacity;
 
     char* background_image;

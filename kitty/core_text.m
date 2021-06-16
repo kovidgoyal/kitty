@@ -366,9 +366,11 @@ cell_metrics(PyObject *s, unsigned int* cell_width, unsigned int* cell_height, u
     CGRect bounds_without_leading = CTLineGetBoundsWithOptions(line, kCTLineBoundsExcludeTypographicLeading);
     CGFloat typographic_ascent, typographic_descent, typographic_leading;
     CTLineGetTypographicBounds(line, &typographic_ascent, &typographic_descent, &typographic_leading);
-    CGFloat bounds_ascent = bounds_without_leading.size.height + bounds_without_leading.origin.y;
-    *baseline = (unsigned int)floor(bounds_ascent + 0.5);
     *cell_height = MAX(4u, (unsigned int)ceilf(line_height));
+    CGFloat bounds_ascent = bounds_without_leading.size.height + bounds_without_leading.origin.y;
+    if (OPT(adjust_baseline_px) != 0) bounds_ascent -= OPT(adjust_baseline_px);
+    if (OPT(adjust_baseline_frac) != 0) bounds_ascent -= *cell_height * OPT(adjust_baseline_frac);
+    *baseline = (unsigned int)floor(bounds_ascent + 0.5);
     // Not sure if we should add this to bounds ascent and then round it or add
     // it to already rounded baseline and round again.
     *underline_position = (unsigned int)floor(bounds_ascent - self->underline_position + 0.5);

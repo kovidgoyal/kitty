@@ -94,6 +94,18 @@ opt('adjust_column_width', '0',
     option_type='adjust_line_height', ctype='!adjust_column_width',
     )
 
+opt('adjust_baseline', '0',
+    option_type='adjust_baseline', ctype='!adjust_baseline',
+    add_to_default=False,
+    long_text='''
+Adjust the baseline position of each character. You can use either
+a number, which is interpreted as pixels or a percentage (number followed by %),
+which is interpreted as the percentage of the line height. A positive
+value moves all characters up, and a negative value moves them down.
+The underline and strikethrough positions are adjusted accordingly.
+'''
+    )
+
 opt('+symbol_map', 'U+E0A0-U+E0A3,U+E0C0-U+E0C7 PowerlineSymbols',
     option_type='symbol_map',
     add_to_default=False,
