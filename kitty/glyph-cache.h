@@ -21,7 +21,7 @@ typedef struct SpritePosition {
 
 void free_sprite_position_hash_table(SpritePosition **head);
 SpritePosition*
-find_or_create_sprite_position(SpritePosition **head, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, bool *created);
+find_or_create_sprite_position(SpritePosition **head, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created);
 
 #define GlyphPropertiesHead \
     uint8_t data;

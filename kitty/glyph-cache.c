@@ -26,12 +26,12 @@ free_glyph_cache_global_resources(void) {
 }
 
 
-static inline unsigned
-key_size_for_glyph_count(unsigned count) { return count + 2; }
+static unsigned
+key_size_for_glyph_count(unsigned count) { return count + 3; }
 
 
 SpritePosition*
-find_or_create_sprite_position(SpritePosition **head_, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, bool *created) {
+find_or_create_sprite_position(SpritePosition **head_, glyph_index *glyphs, glyph_index count, glyph_index ligature_index, glyph_index cell_count, bool *created) {
     SpritePosItem **head = (SpritePosItem**)head_, *p;
     const unsigned key_sz = key_size_for_glyph_count(count);
     if (key_sz > scratch_sz) {
@@ -40,8 +40,8 @@ find_or_create_sprite_position(SpritePosition **head_, glyph_index *glyphs, glyp
         scratch_sz = key_sz + 16;
     }
     const unsigned key_sz_bytes = key_sz * sizeof(glyph_index);
-    scratch[0] = count; scratch[1] = ligature_index;
-    memcpy(scratch + 2, glyphs, count * sizeof(glyph_index));
+    scratch[0] = count; scratch[1] = ligature_index; scratch[2] = cell_count;
+    memcpy(scratch + 3, glyphs, count * sizeof(glyph_index));
     HASH_FIND(hh, *head, scratch, key_sz_bytes, p);
     if (p) { *created = false; return (SpritePosition*)p; }
 

@@ -238,9 +238,9 @@ do_increment(FontGroup *fg, int *error) {
 
 
 static SpritePosition*
-sprite_position_for(FontGroup *fg, Font *font, glyph_index *glyphs, unsigned glyph_count, uint8_t ligature_index, int *error) {
+sprite_position_for(FontGroup *fg, Font *font, glyph_index *glyphs, unsigned glyph_count, uint8_t ligature_index, unsigned cell_count, int *error) {
     bool created;
-    SpritePosition *s = find_or_create_sprite_position(&font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, &created);
+    SpritePosition *s = find_or_create_sprite_position(&font->sprite_position_hash_table, glyphs, glyph_count, ligature_index, cell_count, &created);
     if (!s) { *error = 1; return NULL; }
     if (created) {
         s->x = fg->sprite_tracker.x; s->y = fg->sprite_tracker.y; s->z = fg->sprite_tracker.z;
@@ -576,7 +576,7 @@ static void
 render_box_cell(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
     int error = 0;
     glyph_index glyph = box_glyph_id(cpu_cell->ch);
-    SpritePosition *sp = sprite_position_for(fg, &fg->fonts[BOX_FONT], &glyph, 1, false, &error);
+    SpritePosition *sp = sprite_position_for(fg, &fg->fonts[BOX_FONT], &glyph, 1, 0, 1, &error);
     if (sp == NULL) {
         sprite_map_set_error(error); PyErr_Print();
         set_sprite(gpu_cell, 0, 0, 0);
@@ -649,7 +649,7 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
         if (is_repeat_glyph) {
             sp[i] = sp[i-1];
         } else {
-            sp[i] = sprite_position_for(fg, font, glyphs, glyph_count, ligature_index++, &error);
+            sp[i] = sprite_position_for(fg, font, glyphs, glyph_count, ligature_index++, num_cells, &error);
         }
         if (error != 0) { sprite_map_set_error(error); PyErr_Print(); return; }
         if (!sp[i]->rendered) all_rendered = false;
@@ -1449,7 +1449,7 @@ test_sprite_position_for(PyObject UNUSED *self, PyObject *args) {
     }
     FontGroup *fg = font_groups;
     if (!num_font_groups) { PyErr_SetString(PyExc_RuntimeError, "must create font group first"); return NULL; }
-    SpritePosition *pos = sprite_position_for(fg, &fg->fonts[fg->medium_font_idx], glyphs, PyTuple_GET_SIZE(args), 0, &error);
+    SpritePosition *pos = sprite_position_for(fg, &fg->fonts[fg->medium_font_idx], glyphs, PyTuple_GET_SIZE(args), 0, 1, &error);
     if (pos == NULL) { sprite_map_set_error(error); return NULL; }
     return Py_BuildValue("HHH", pos->x, pos->y, pos->z);
 }

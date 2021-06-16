@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.21.2 [future]
 ----------------------
 
+- Fix a regression in 0.21.0 that broke rendering of private use unicode symbols followed
+  by spaces, when they also exist not followed by spaces (:iss:`3729`)
+
 - Add support for the XTVERSION escape code
 
 - macOS: Fix middle-click to paste from clipboard not working (:iss:`3730`)
