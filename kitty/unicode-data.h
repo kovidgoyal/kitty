@@ -14,8 +14,10 @@ combining_type mark_for_codepoint(char_type c);
 
 static inline bool
 is_excluded_from_url(uint32_t ch) {
-    for (size_t i = 0; i < OPT(url_excluded_characters_count); i++) {
-        if (ch == OPT(url_excluded_characters)[i]) return true;
+    if (OPT(url_excluded_characters)) {
+        for (const char_type *p = OPT(url_excluded_characters); *p; p++) {
+            if (ch == *p) return true;
+        }
     }
     return false;
 }

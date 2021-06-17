@@ -2563,8 +2563,10 @@ screen_selection_range_for_line(Screen *self, index_type y, index_type *start, i
 
 static inline bool
 is_opt_word_char(char_type ch) {
-    for (size_t i = 0; i < OPT(select_by_word_characters_count); i++) {
-        if (OPT(select_by_word_characters[i]) == ch) return true;
+    if (OPT(select_by_word_characters)) {
+        for (const char_type *p = OPT(select_by_word_characters); *p; p++) {
+            if (ch == *p) return true;
+        }
     }
     return false;
 }

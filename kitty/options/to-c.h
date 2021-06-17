@@ -124,22 +124,28 @@ url_prefixes(PyObject *up, Options *opts) {
     }
 }
 
+static char_type*
+list_of_chars(PyObject *chars) {
+    if (!PyUnicode_Check(chars)) { PyErr_SetString(PyExc_TypeError, "list_of_chars must be a string"); return NULL; }
+    char_type *ans = calloc(PyUnicode_GET_LENGTH(chars) + 1, sizeof(char_type));
+    if (ans) {
+        for (ssize_t i = 0; i < PyUnicode_GET_LENGTH(chars); i++) {
+            ans[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
+        }
+    }
+    return ans;
+}
+
 static void
 url_excluded_characters(PyObject *chars, Options *opts) {
-    if (!PyUnicode_Check(chars)) { PyErr_SetString(PyExc_TypeError, "url_excluded_characters must be a string"); return; }
-    for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), arraysz(opts->url_excluded_characters)); i++) {
-        opts->url_excluded_characters[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
-    }
-    opts->url_excluded_characters_count = PyUnicode_GET_LENGTH(chars);
+    free(opts->url_excluded_characters);
+    opts->url_excluded_characters = list_of_chars(chars);
 }
 
 static void
 select_by_word_characters(PyObject *chars, Options *opts) {
-    if (!PyUnicode_Check(chars)) { PyErr_SetString(PyExc_TypeError, "select_by_word_characters must be a string"); return; }
-    for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), arraysz(opts->select_by_word_characters)); i++) {
-        opts->select_by_word_characters[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
-    }
-    opts->select_by_word_characters_count = PyUnicode_GET_LENGTH(chars);
+    free(opts->select_by_word_characters);
+    opts->select_by_word_characters = list_of_chars(chars);
 }
 
 static void
