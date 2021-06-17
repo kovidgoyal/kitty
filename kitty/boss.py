@@ -906,6 +906,8 @@ class Boss:
                     if exe:
                         cmd[0] = exe
 
+        if os.path.basename(cmd[0]) == 'less':
+            cmd.append('-+F')  # reset --quit-if-one-screen
         tab = self.active_tab
         if tab is not None:
             bdata = data.encode('utf-8') if isinstance(data, str) else data

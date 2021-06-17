@@ -20,6 +20,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix middle-click to paste from clipboard not working (:iss:`3730`)
 
+- When displaying scrollback ensure that the window does not quit is the amount
+  of scrollback is less than a screen and the user has the ``--quit-if-one-screen``
+  option enabled for less (:iss:`3740`)
+
 
 0.21.1 [2021-06-14]
 ----------------------
