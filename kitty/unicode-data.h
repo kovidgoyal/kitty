@@ -1,5 +1,6 @@
 #pragma once
 #include "data-types.h"
+#include "state.h"
 #define VS15 1285
 #define VS16 1286
 
@@ -13,6 +14,8 @@ combining_type mark_for_codepoint(char_type c);
 
 static inline bool
 is_url_char(uint32_t ch) {
+    for (size_t i = 0; i < OPT(url_excluded_characters_count); i++)
+        if (ch == OPT(url_excluded_characters)[i]) return false;
     return ch && !is_CZ_category(ch);
 }
 
