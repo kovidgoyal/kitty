@@ -125,6 +125,15 @@ url_prefixes(PyObject *up, Options *opts) {
 }
 
 static void
+url_excluded_characters(PyObject *chars, Options *opts) {
+    if (!PyUnicode_Check(chars)) { PyErr_SetString(PyExc_TypeError, "url_excluded_characters must be a string"); return; }
+    for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), sizeof(opts->url_excluded_characters)/sizeof(opts->url_excluded_characters[0])); i++) {
+        opts->url_excluded_characters[i] = PyUnicode_READ(PyUnicode_KIND(chars), PyUnicode_DATA(chars), i);
+    }
+    opts->url_excluded_characters_count = PyUnicode_GET_LENGTH(chars);
+}
+
+static void
 select_by_word_characters(PyObject *chars, Options *opts) {
     if (!PyUnicode_Check(chars)) { PyErr_SetString(PyExc_TypeError, "select_by_word_characters must be a string"); return; }
     for (size_t i = 0; i < MIN((size_t)PyUnicode_GET_LENGTH(chars), sizeof(opts->select_by_word_characters)/sizeof(opts->select_by_word_characters[0])); i++) {

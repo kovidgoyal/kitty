@@ -70,6 +70,7 @@ typedef struct {
         UrlPrefix *values;
         size_t num, max_prefix_len;
     } url_prefixes;
+    char_type url_excluded_characters[256]; size_t url_excluded_characters_count;
     bool detect_urls;
     bool tab_bar_hidden;
     double font_size;

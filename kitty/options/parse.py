@@ -1206,6 +1206,9 @@ class Parser:
     def url_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['url_color'] = to_color(val)
 
+    def url_excluded_characters(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['url_excluded_characters'] = str(val)
+
     def url_prefixes(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['url_prefixes'] = url_prefixes(val)
 

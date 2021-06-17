@@ -378,6 +378,15 @@ are still clickable.
 '''
     )
 
+opt('url_excluded_characters', '',
+    ctype='!url_excluded_characters',
+    long_text='''
+Characters not considered part of a URL under the mouse. In addition to these
+characters any character that is marked as the unicode C and Z categories will
+be excluded.
+'''
+    )
+
 opt('copy_on_select', 'no',
     option_type='copy_on_select',
     long_text='''
