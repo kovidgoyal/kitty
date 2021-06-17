@@ -381,9 +381,8 @@ are still clickable.
 opt('url_excluded_characters', '',
     ctype='!url_excluded_characters',
     long_text='''
-Characters not considered part of a URL under the mouse. In addition to these
-characters any character that is marked as the unicode C and Z categories will
-be excluded.
+Additional characters to be disallowed from URLs, when detecting URLs under the
+mouse cursor. By default, all characters legal in URLs are allowed.
 '''
     )
 
