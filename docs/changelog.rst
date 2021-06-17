@@ -10,7 +10,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new :opt:`adjust_baseline` option to adjust the vertical alignment of text
   inside a line (:pull:`3734`)
 
-- A new opt:`url_excluded_characters` option to exclude additional characters
+- A new :opt:`url_excluded_characters` option to exclude additional characters
   when detecting URLs under the mouse (:pull:`3738`)
 
 - Fix a regression in 0.21.0 that broke rendering of private use unicode symbols followed
