@@ -45,7 +45,9 @@ def all_fonts_map(monospaced: bool = True) -> FontMap:
     if monospaced:
         ans = fc_list(FC_DUAL) + fc_list(FC_MONO)
     else:
-        ans = fc_list()
+        # allow non-monospaced and bitmapped fonts as these are used for
+        # symbol_map
+        ans = fc_list(-1, True)
     return create_font_map(ans)
 
 

@@ -24,6 +24,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   of scrollback is less than a screen and the user has the ``--quit-if-one-screen``
   option enabled for less (:iss:`3740`)
 
+- Linux: Fix emoji/bitmapped fonts not useable in symbol_map
+
 
 0.21.1 [2021-06-14]
 ----------------------
