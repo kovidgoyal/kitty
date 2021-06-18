@@ -13,7 +13,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new :opt:`url_excluded_characters` option to exclude additional characters
   when detecting URLs under the mouse (:pull:`3738`)
 
-- Fix a regression in 0.21.0 that broke rendering of private use unicode symbols followed
+- Fix a regression in 0.21.0 that broke rendering of private use Unicode symbols followed
   by spaces, when they also exist not followed by spaces (:iss:`3729`)
 
 - Add support for the XTVERSION escape code
@@ -24,7 +24,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   of scrollback is less than a screen and the user has the ``--quit-if-one-screen``
   option enabled for less (:iss:`3740`)
 
-- Linux: Fix emoji/bitmapped fonts not useable in symbol_map
+- Linux: Fix Emoji/bitmapped fonts not use able in symbol_map
 
 
 0.21.1 [2021-06-14]
