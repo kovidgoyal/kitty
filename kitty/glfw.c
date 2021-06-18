@@ -316,7 +316,7 @@ mouse_button_callback(GLFWwindow *w, int button, int action, int mods) {
     global_state.callback_os_window->last_mouse_activity_at = now;
     if (button >= 0 && (unsigned int)button < arraysz(global_state.callback_os_window->mouse_button_pressed)) {
         global_state.callback_os_window->mouse_button_pressed[button] = action == GLFW_PRESS ? true : false;
-        if (is_window_ready_for_callbacks()) mouse_event(button, mods, action);
+        if (is_window_ready_for_callbacks()) mouse_event(w, button, mods, action);
     }
     request_tick_callback();
     global_state.callback_os_window = NULL;
@@ -331,7 +331,7 @@ cursor_pos_callback(GLFWwindow *w, double x, double y) {
     global_state.callback_os_window->cursor_blink_zero_time = now;
     global_state.callback_os_window->mouse_x = x * global_state.callback_os_window->viewport_x_ratio;
     global_state.callback_os_window->mouse_y = y * global_state.callback_os_window->viewport_y_ratio;
-    if (is_window_ready_for_callbacks()) mouse_event(-1, mods_at_last_key_or_button_event, -1);
+    if (is_window_ready_for_callbacks()) mouse_event(w, -1, mods_at_last_key_or_button_event, -1);
     request_tick_callback();
     global_state.callback_os_window = NULL;
 }

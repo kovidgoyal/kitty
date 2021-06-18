@@ -308,6 +308,7 @@ CGDirectDisplayID displayIDForWindow(_GLFWwindow *w) {
 }
 
 static unsigned long long display_link_shutdown_timer = 0;
+static NSEvent* lastMouseDownEvent = NULL;
 #define DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL s_to_monotonic_t(30ll)
 
 void
@@ -969,6 +970,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
 - (void)mouseDown:(NSEvent *)event
 {
     if (!window) return;
+    lastMouseDownEvent = event;
     _glfwInputMouseClick(window,
                          GLFW_MOUSE_BUTTON_LEFT,
                          GLFW_PRESS,
@@ -2690,6 +2692,12 @@ glfwGetCocoaKeyEquivalent(uint32_t glfw_key, int glfw_mods, int *cocoa_mods) {
     if (glfw_mods & GLFW_MOD_CAPS_LOCK)
         *cocoa_mods |= NSEventModifierFlagCapsLock;
     return _glfwPlatformGetNativeKeyForKey(glfw_key);
+}
+
+GLFWAPI void
+glfwPerformCocoaWindowDrag(GLFWwindow *handle) {
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    [window->ns.object performWindowDragWithEvent:lastMouseDownEvent];
 }
 
 
