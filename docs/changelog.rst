@@ -18,7 +18,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add support for the XTVERSION escape code
 
-- macOS: Fix middle-click to paste from clipboard not working (:iss:`3730`)
+- macOS: Fix a regression in 0.21.0 that broke middle-click to paste from clipboard (:iss:`3730`)
 
 - When displaying scrollback ensure that the window does not quit is the amount
   of scrollback is less than a screen and the user has the ``--quit-if-one-screen``
