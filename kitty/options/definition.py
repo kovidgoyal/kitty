@@ -480,10 +480,11 @@ number ``b1 ... b8`` can be used to refer to upto eight buttons on a mouse.
 
 ``event-type`` is one ``press``, ``release``, ``doublepress``, ``triplepress``,
 ``click`` and ``doubleclick``.  ``modes`` indicates whether the action is
-performed when the mouse is grabbed by the terminal application or not. It can
-have one or more or the values, ``grabbed,ungrabbed``. Note that the click
-and double click events have a delay of :opt:`click_interval` to disambiguate
-from double and triple presses.
+performed when the mouse is grabbed by the program running in the terminal, or
+not. It can have one or more or the values, ``grabbed,ungrabbed``. ``grabbed``
+refers to when the program running in the terminal has requested mouse events.
+Note that the click and double click events have a delay of
+:opt:`click_interval` to disambiguate from double and triple presses.
 
 You can run kitty with the :option:`kitty --debug-input` command line option
 to see mouse events. See the builtin actions below to get a sense of what is possible.
