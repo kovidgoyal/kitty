@@ -268,6 +268,15 @@ and alternate screens. If a pop request is received that empties the stack,
 all flags are reset. If a push request is received and the stack is full, the
 oldest entry from the stack must be evicted.
 
+.. note:: The main and alternate screens in the terminal emulator must maintain
+   their own, independent, keyboard mode stacks. This is so that a program that
+   uses the alternate screen such as an editor, can change the keyboard mode
+   in the alternate screen only, without affecting the mode in the main screen
+   or even knowing what that mode is. Without this, and if no stack is
+   implemented for keyboard modes (such as in some legacy terminal emulators)
+   the editor would have to somehow know what the keyboard mode of the main
+   screen is and restore to that mode on exit.
+
 .. note:: In the interests of interoperation, the XTerm specific sequences
    `CSI > 4; 1 m` and `CSI > 4; 0 m` are treated as `CSI > 1 u` and `CSI < 1 u`.
    These codes cause XTerm to use the CSI u encoding for more keys and are therefore
