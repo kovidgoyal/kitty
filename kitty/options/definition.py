@@ -488,7 +488,10 @@ from double and triple presses.
 You can run kitty with the :option:`kitty --debug-input` command line option
 to see mouse events. See the builtin actions below to get a sense of what is possible.
 
-If you want to unmap an action map it to ``no-op``.
+If you want to unmap an action map it to ``no-op``. For example, to disable opening
+of URLs with a plain click::
+
+    mouse_map left click ungrabbed no-op
 
 .. note::
     Once a selection is started, releasing the button that started it will
