@@ -426,6 +426,28 @@ def write_output(loc: str, defn: Definition) -> None:
 
 
 def main() -> None:
+    # To use run it as:
+    # kitty +runpy 'from kitty.conf.generate import main; main()' /path/to/kitten/file.py
+    import importlib
     import sys
+
+    from kittens.runner import path_to_custom_kitten, resolved_kitten
+    from kitty.constants import config_dir
+
     kitten = sys.argv[-1]
-    if not kitten.endswith(
+    if not kitten.endswith('.py'):
+        kitten += '.py'
+    kitten = resolved_kitten(kitten)
+    path = os.path.realpath(path_to_custom_kitten(config_dir, kitten))
+    if not os.path.dirname(path):
+        raise SystemExit(f'No custom kitten named {kitten} found')
+    sys.path.insert(0, os.path.dirname(path))
+    package_name = os.path.basename(os.path.dirname(path))
+    m = importlib.import_module('kitten_options_definition')
+    defn = getattr(m, 'definition')
+    loc = package_name
+    cls, tc = generate_class(defn, loc)
+    with open(os.path.join(os.path.dirname(path), 'kitten_options_types.py'), 'w') as f:
+        f.write(cls + '\n')
+    with open(os.path.join(os.path.dirname(path), 'kitten_options_parse.py'), 'w') as f:
+        f.write(tc + '\n')

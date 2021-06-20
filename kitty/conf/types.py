@@ -541,9 +541,11 @@ class Action:
 class Definition:
 
     def __init__(self, package: str, *actions: Action, has_color_table: bool = False) -> None:
-        self.module_for_parsers = import_module(f'{package}.options.utils')
+        if package.startswith('!'):
+            self.module_for_parsers = import_module(package[1:])
+        else:
+            self.module_for_parsers = import_module(f'{package}.options.utils')
         self.has_color_table = has_color_table
-        self.package = package
         self.coalesced_iterator_data = CoalescedIteratorData()
         self.root_group = Group('', '', self.coalesced_iterator_data)
         self.current_group = self.root_group
