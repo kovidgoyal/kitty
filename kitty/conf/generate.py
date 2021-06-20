@@ -423,3 +423,9 @@ def write_output(loc: str, defn: Definition) -> None:
         c = generate_c_conversion(loc, ctypes)
         with open(os.path.join(*loc.split('.'), 'options', 'to-c-generated.h'), 'w') as f:
             f.write(c + '\n')
+
+
+def main() -> None:
+    import sys
+    kitten = sys.argv[-1]
+    if not kitten.endswith(

@@ -6,8 +6,9 @@
 import importlib
 import os
 import sys
+from contextlib import contextmanager
 from functools import partial
-from typing import Any, Dict, FrozenSet, List, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Generator, List, cast
 
 from kitty.types import run_once
 
@@ -30,21 +31,29 @@ def path_to_custom_kitten(config_dir: str, kitten: str) -> str:
     return path
 
 
+@contextmanager
+def preserve_sys_path() -> Generator[None, None, None]:
+    orig = sys.path[:]
+    try:
+        yield
+    finally:
+        if sys.path != orig:
+            del sys.path[:]
+            sys.path.extend(orig)
+
+
 def import_kitten_main_module(config_dir: str, kitten: str) -> Dict[str, Any]:
     if kitten.endswith('.py'):
-        path_modified = False
-        path = path_to_custom_kitten(config_dir, kitten)
-        if os.path.dirname(path):
-            sys.path.insert(0, os.path.dirname(path))
-            path_modified = True
-        with open(path) as f:
-            src = f.read()
-        code = compile(src, path, 'exec')
-        g = {'__name__': 'kitten'}
-        exec(code, g)
-        hr = g.get('handle_result', lambda *a, **kw: None)
-        if path_modified:
-            del sys.path[0]
+        with preserve_sys_path():
+            path = path_to_custom_kitten(config_dir, kitten)
+            if os.path.dirname(path):
+                sys.path.insert(0, os.path.dirname(path))
+            with open(path) as f:
+                src = f.read()
+            code = compile(src, path, 'exec')
+            g = {'__name__': 'kitten'}
+            exec(code, g)
+            hr = g.get('handle_result', lambda *a, **kw: None)
         return {'start': g['main'], 'end': hr}
 
     kitten = resolved_kitten(kitten)
