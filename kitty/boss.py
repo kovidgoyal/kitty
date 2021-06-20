@@ -1776,3 +1776,7 @@ class Boss:
             set_clipboard_string(re.sub(r'\x1b.+?m', '', output))
             output += '\n\x1b[35mThis debug output has been copied to the clipboard\x1b[m'
             self.display_scrollback(w, output, title=_('Current kitty options'))
+
+    def discard_event(self) -> None:
+        pass
+    mouse_discard_event = discard_event

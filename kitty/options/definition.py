@@ -514,7 +514,7 @@ mma('Click the link under the mouse cursor',
     )
 
 mma('Discard press event for link click',
-    'click_url_discard ctrl+shift+left press grabbed mouse_discard_event',
+    'click_url_discard ctrl+shift+left press grabbed discard_event',
     long_text='Prevent this press event from being sent to the program that has'
     ' grabbed the mouse, as the corresponding release event is used to open a URL.'
     )

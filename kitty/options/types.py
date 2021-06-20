@@ -866,7 +866,7 @@ defaults.mouse_map = [
     # click_url
     MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),
     # click_url_discard
-    MouseMapping(0, 5, 1, True, KeyAction('mouse_discard_event')),
+    MouseMapping(0, 5, 1, True, KeyAction('discard_event')),
     # paste_selection
     MouseMapping(2, 0, -1, False, KeyAction('paste_from_selection')),
     # start_simple_selection
