@@ -16,6 +16,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.21.0 that broke rendering of private use Unicode symbols followed
   by spaces, when they also exist not followed by spaces (:iss:`3729`)
 
+- ssh kitten: Support system where the login shell is a non-POSIX shell
+
 - Add support for the XTVERSION escape code
 
 - macOS: Fix a regression in 0.21.0 that broke middle-click to paste from clipboard (:iss:`3730`)

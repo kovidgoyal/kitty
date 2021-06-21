@@ -21,27 +21,83 @@ cat >$tmp << 'TERMEOF'
 TERMINFO
 TERMEOF
 
-tic_out=$(tic -x -o ~/.terminfo $tmp 2>&1)
+tic_out=$(tic -x -o $HOME/.terminfo $tmp 2>&1)
 rc=$?
 rm $tmp
 if [ "$rc" != "0" ]; then echo "$tic_out"; exit 1; fi
 if [ -z "$USER" ]; then export USER=$(whoami); fi
-shell_name=$(basename $0)
+export TERMINFO="$HOME/.terminfo"
+login_shell=""
+python=""
+
+login_shell_is_ok() {
+    if [ -z "$login_shell" ] || [ ! -x "$login_shell" ]; then return 1; fi
+    case "$login_shell" in
+        *sh) return 0;
+    esac
+    return 1;
+}
+
+detect_python() {
+    python=$(command -v python3)
+    if [ -z "$python" ]; then python=$(command -v python2); fi
+    if [ -z "$python" ]; then python=python; fi
+}
+
+using_getent() {
+    cmd=$(command -v getent)
+    if [ -z "$cmd" ]; then return; fi
+    output=$($cmd passwd $USER 2>/dev/null)
+    if [ $? = 0 ]; then login_shell=$(echo $output | cut -d: -f7); fi
+}
+
+using_id() {
+    cmd=$(command -v id)
+    if [ -z "$cmd" ]; then return; fi
+    output=$($cmd -P $USER 2>/dev/null)
+    if [ $? = 0 ]; then login_shell=$(echo $output | cut -d: -f7); fi
+}
+
+using_passwd() {
+    cmd=$(command -v grep)
+    if [ -z "$cmd" ]; then return; fi
+    output=$($cmd "^$USER:" /etc/passwd 2>/dev/null)
+    if [ $? = 0 ]; then login_shell=$(echo $output | cut -d: -f7); fi
+}
+
+using_python() {
+    detect_python
+    if [ ! -x "$python" ]; then return; fi
+    output=$($python -c "import pwd, os; print(pwd.getpwuid(os.geteuid()).pw_shell)")
+    if [ $? = 0 ]; then login_shell=$output; fi
+}
+
+execute_with_python() {
+    detect_python
+    exec $python -c "import os; os.execl('$login_shell', '-' '$shell_name')"
+}
+
+die() { echo "$*" 1>&2 ; exit 1; }
+
+using_getent
+if ! login_shell_is_ok; then using_id; fi
+if ! login_shell_is_ok; then using_python; fi
+if ! login_shell_is_ok; then using_passwd; fi
+if ! login_shell_is_ok; then die "Could not detect login shell"; fi
+
+
+# If a command was passed to SSH execute it here
 EXEC_CMD
 
 # We need to pass the first argument to the executed program with a leading -
 # to make sure the shell executes as a login shell. Note that not all shells
 # support exec -a so we use the below to try to detect such shells
-
-case "dash" in
-    *$shell_name*)
-        python=$(command -v python3)
-        if [ -z "$python" ]; then python=$(command -v python2); fi
-        if [ -z "$python" ]; then python=python; fi
-        exec $python -c "import os; os.execlp('$0', '-' '$shell_name')"
-    ;;
-esac
-exec -a "-$shell_name" "$0"
+shell_name=$(basename $login_shell)
+if [ -z "$PIPESTATUS" ]; then
+    # the dash shell does not support exec -a and also does not define PIPESTATUS
+    execute_with_python
+fi
+exec -a "-$shell_name" $login_shell
 '''
 
 
@@ -184,9 +240,9 @@ def get_posix_cmd(terminfo: str, remote_args: List[str]) -> List[str]:
         # line 1129 of ssh.c and on the remote side sshd.c runs the
         # concatenated command as shell -c cmd
         args = [c.replace("'", """'"'"'""") for c in remote_args]
-        command_to_execute = "exec $0 -c '{}'".format(' '.join(args))
+        command_to_execute = "exec $login_shell -c '{}'".format(' '.join(args))
     sh_script = sh_script.replace('EXEC_CMD', command_to_execute)
-    return [sh_script] + remote_args
+    return [f'/bin/sh -c {shlex.quote(sh_script)}']
 
 
 def get_python_cmd(terminfo: str, command_to_execute: List[str]) -> List[str]:

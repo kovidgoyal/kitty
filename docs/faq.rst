@@ -55,7 +55,8 @@ type it each time::
     alias ssh="kitty +kitten ssh"
 
 If for some reason that does not work (typically because the server is using a
-non POSIX compliant shell), you can try using it with python instead::
+non POSIX compliant shell as ``/bin/sh``), you can try using it with ``python``
+instead::
 
     kitty +kitten ssh use-python myserver
 
