@@ -18,6 +18,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - ssh kitten: Support system where the login shell is a non-POSIX shell
 
+- ssh kitten: Fix "Connection closed" message being printed by ssh when running
+  remote commands
+
 - Add support for the XTVERSION escape code
 
 - macOS: Fix a regression in 0.21.0 that broke middle-click to paste from clipboard (:iss:`3730`)

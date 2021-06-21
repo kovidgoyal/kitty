@@ -266,7 +266,9 @@ def main(args: List[str]) -> NoReturn:
         cmd += server_args
     else:
         hostname, remote_args = server_args[0], server_args[1:]
-        cmd += ['-t', hostname]
+        if not remote_args:
+            cmd.append('-t')
+        cmd.append(hostname)
         terminfo = subprocess.check_output(['infocmp', '-a']).decode('utf-8')
         f = get_posix_cmd if use_posix else get_python_cmd
         cmd += f(terminfo, remote_args)
