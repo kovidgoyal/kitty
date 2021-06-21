@@ -971,6 +971,41 @@ set_cocoa_pending_action(CocoaPendingAction action, const char *wd) {
     // Unjam it so the pending action is processed right now.
     wakeup_main_loop();
 }
+
+static void
+process_cocoa_pending_actions(void) {
+    if (cocoa_pending_actions[PREFERENCES_WINDOW]) { call_boss(edit_config_file, NULL); }
+    if (cocoa_pending_actions[NEW_OS_WINDOW]) { call_boss(new_os_window, NULL); }
+    if (cocoa_pending_actions[CLOSE_OS_WINDOW]) { call_boss(close_os_window, NULL); }
+    if (cocoa_pending_actions[CLOSE_TAB]) { call_boss(close_tab, NULL); }
+    if (cocoa_pending_actions[NEW_TAB]) { call_boss(new_tab, NULL); }
+    if (cocoa_pending_actions[NEXT_TAB]) { call_boss(next_tab, NULL); }
+    if (cocoa_pending_actions[PREVIOUS_TAB]) { call_boss(previous_tab, NULL); }
+    if (cocoa_pending_actions[DETACH_TAB]) { call_boss(detach_tab, NULL); }
+    if (cocoa_pending_actions[NEW_WINDOW]) { call_boss(new_window, NULL); }
+    if (cocoa_pending_actions[CLOSE_WINDOW]) { call_boss(close_window, NULL); }
+    if (cocoa_pending_actions[RESET_TERMINAL]) { call_boss(clear_terminal, "sO", "reset", Py_True ); }
+    if (cocoa_pending_actions[RELOAD_CONFIG]) { call_boss(load_config_file, NULL); }
+    if (cocoa_pending_actions_data.wd) {
+        if (cocoa_pending_actions[NEW_OS_WINDOW_WITH_WD]) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_data.wd); }
+        if (cocoa_pending_actions[NEW_TAB_WITH_WD]) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_data.wd); }
+        free(cocoa_pending_actions_data.wd);
+        cocoa_pending_actions_data.wd = NULL;
+    }
+    if (cocoa_pending_actions_data.open_files_count) {
+        for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_files_count; cpa++) {
+            if (cocoa_pending_actions_data.open_files[cpa]) {
+                call_boss(open_file, "s", cocoa_pending_actions_data.open_files[cpa]);
+                free(cocoa_pending_actions_data.open_files[cpa]);
+                cocoa_pending_actions_data.open_files[cpa] = NULL;
+            }
+        }
+        cocoa_pending_actions_data.open_files_count = 0;
+    }
+    memset(cocoa_pending_actions, 0, sizeof(cocoa_pending_actions));
+    has_cocoa_pending_actions = false;
+
+}
 #endif
 
 static void process_global_state(void *data);
@@ -1000,36 +1035,7 @@ process_global_state(void *data) {
     render(now, input_read);
 #ifdef __APPLE__
         if (has_cocoa_pending_actions) {
-            if (cocoa_pending_actions[PREFERENCES_WINDOW]) { call_boss(edit_config_file, NULL); }
-            if (cocoa_pending_actions[NEW_OS_WINDOW]) { call_boss(new_os_window, NULL); }
-            if (cocoa_pending_actions[CLOSE_OS_WINDOW]) { call_boss(close_os_window, NULL); }
-            if (cocoa_pending_actions[CLOSE_TAB]) { call_boss(close_tab, NULL); }
-            if (cocoa_pending_actions[NEW_TAB]) { call_boss(new_tab, NULL); }
-            if (cocoa_pending_actions[NEXT_TAB]) { call_boss(next_tab, NULL); }
-            if (cocoa_pending_actions[PREVIOUS_TAB]) { call_boss(previous_tab, NULL); }
-            if (cocoa_pending_actions[DETACH_TAB]) { call_boss(detach_tab, NULL); }
-            if (cocoa_pending_actions[NEW_WINDOW]) { call_boss(new_window, NULL); }
-            if (cocoa_pending_actions[CLOSE_WINDOW]) { call_boss(close_window, NULL); }
-            if (cocoa_pending_actions[RESET_TERMINAL]) { call_boss(clear_terminal, "sO", "reset", Py_True ); }
-            if (cocoa_pending_actions[RELOAD_CONFIG]) { call_boss(load_config_file, NULL); }
-            if (cocoa_pending_actions_data.wd) {
-                if (cocoa_pending_actions[NEW_OS_WINDOW_WITH_WD]) { call_boss(new_os_window_with_wd, "s", cocoa_pending_actions_data.wd); }
-                if (cocoa_pending_actions[NEW_TAB_WITH_WD]) { call_boss(new_tab_with_wd, "s", cocoa_pending_actions_data.wd); }
-                free(cocoa_pending_actions_data.wd);
-                cocoa_pending_actions_data.wd = NULL;
-            }
-            if (cocoa_pending_actions_data.open_files_count) {
-                for (unsigned cpa = 0; cpa < cocoa_pending_actions_data.open_files_count; cpa++) {
-                    if (cocoa_pending_actions_data.open_files[cpa]) {
-                        call_boss(open_file, "s", cocoa_pending_actions_data.open_files[cpa]);
-                        free(cocoa_pending_actions_data.open_files[cpa]);
-                        cocoa_pending_actions_data.open_files[cpa] = NULL;
-                    }
-                }
-                cocoa_pending_actions_data.open_files_count = 0;
-            }
-            memset(cocoa_pending_actions, 0, sizeof(cocoa_pending_actions));
-            has_cocoa_pending_actions = false;
+            process_cocoa_pending_actions();
             maximum_wait = 0;  // ensure loop ticks again so that the actions side effects are performed immediately
         }
 #endif
