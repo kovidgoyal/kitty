@@ -16,7 +16,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression in 0.21.0 that broke rendering of private use Unicode symbols followed
   by spaces, when they also exist not followed by spaces (:iss:`3729`)
 
-- ssh kitten: Support system where the login shell is a non-POSIX shell
+- ssh kitten: Support systems where the login shell is a non-POSIX shell
+  (:iss:`3405`)
 
 - ssh kitten: Fix "Connection closed" message being printed by ssh when running
   remote commands
