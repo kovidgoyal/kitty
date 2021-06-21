@@ -1034,10 +1034,10 @@ process_global_state(void *data) {
     if (parse_input(self)) input_read = true;
     render(now, input_read);
 #ifdef __APPLE__
-        if (has_cocoa_pending_actions) {
-            process_cocoa_pending_actions();
-            maximum_wait = 0;  // ensure loop ticks again so that the actions side effects are performed immediately
-        }
+    if (has_cocoa_pending_actions) {
+        process_cocoa_pending_actions();
+        maximum_wait = 0;  // ensure loop ticks again so that the actions side effects are performed immediately
+    }
 #endif
     report_reaped_pids();
     bool should_quit = false;
