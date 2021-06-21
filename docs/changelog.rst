@@ -26,6 +26,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix a regression in 0.21.0 that broke middle-click to paste from clipboard (:iss:`3730`)
 
+- macOS: Fix shortcuts in the global menu bar responding slowly when cursor blink
+  is disabled/timed out (:iss:`3693`)
+
 - When displaying scrollback ensure that the window does not quit if the amount
   of scrollback is less than a screen and the user has the ``--quit-if-one-screen``
   option enabled for less (:iss:`3740`)

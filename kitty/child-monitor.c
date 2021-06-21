@@ -1030,6 +1030,7 @@ process_global_state(void *data) {
             }
             memset(cocoa_pending_actions, 0, sizeof(cocoa_pending_actions));
             has_cocoa_pending_actions = false;
+            maximum_wait = 0;  // ensure loop ticks again so that the actions side effects are performed immediately
         }
 #endif
     report_reaped_pids();
