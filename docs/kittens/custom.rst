@@ -185,6 +185,102 @@ The output of print statements will go to the ``STDOUT`` of the kitty process.
 So if you run kitty from another kitty instance, the output will be visible
 in the first kitty instance.
 
+Adding options to kittens
+----------------------------
+
+If you would like to use kitty's config framework to make your kittens
+configurable, you will need some boilerplate. In the directory
+of your kitten make the following files.
+
+:file:`kitten_options_definition.py`
+
+.. code-block:: python
+
+    from kitty.conf.types import Action, Definition
+
+    definition = Definition(
+        '!kitten_options_utils',
+        Action(
+            'map', 'parse_map',
+            {'key_definitions': 'kitty.conf.utils.KittensKeyMap'},
+            ['kitty.types.ParsedShortcut', 'kitty.conf.utils.KeyAction']
+        ),
+    )
+
+    agr = definition.add_group
+    egr = definition.end_group
+    opt = definition.add_option
+    map = definition.add_map
+
+    # main options {{{
+    agr('main', 'Main')
+
+    opt('some_option', '33',
+        option_type='some_option_parser',
+        long_text='''
+    Help text for this option
+    '''
+        )
+    egr()  # }}}
+
+    # shortcuts {{{
+    agr('shortcuts', 'Keyboard shortcuts')
+
+    map('Quit', 'quit q quit')
+    egr()  # }}}
+
+
+:file:`kitten_options_utils.py`
+
+.. code-block:: python
+    from kitty.conf.utils import KittensKeyDefinition, key_func, parse_kittens_key
+
+    func_with_args, args_funcs = key_func()
+    FuncArgsType = Tuple[str, Sequence[Any]]
+
+    def some_option_parser(val: str) -> int:
+        return int(val) + 3000
+
+    def parse_map(val: str) -> Iterable[KittensKeyDefinition]:
+        x = parse_kittens_key(val, args_funcs)
+        if x is not None:
+            yield x
+Then run::
+
+    kitty +runpy 'from kitty.conf.generate import main; main()' /path/to/kitten_options_definition.py
+
+You can parse and read the options in your kitten using the following code:
+
+.. code-block:: python
+
+    from .kitten_options_types import Options, defaults
+    from kitty.conf.utils import load_config as _load_config, parse_config_base
+    from typing import Optional, Iterable, Dict, Any
+
+    def load_config(*paths: str, overrides: Optional[Iterable[str]] = None) -> Options:
+        from .kitten_options_parse import  (
+            create_result_dict, merge_result_dicts, parse_conf_item
+        )
+
+        def parse_config(lines: Iterable[str]) -> Dict[str, Any]:
+            ans: Dict[str, Any] = create_result_dict()
+            parse_config_base(
+                lines,
+                parse_conf_item,
+                ans,
+            )
+            return ans
+
+        overrides = tuple(overrides) if overrides is not None else ()
+        opts_dict, paths = _load_config(defaults, parse_config, merge_result_dicts, *paths, overrides=overrides)
+        opts = Options(opts_dict)
+        opts.config_paths = paths
+        opts.config_overrides = overrides
+        return opts
+
+See the code for the builtin diff kitten for examples of creating more options
+and keyboard shortcuts.
+
 .. _external_kittens:
 
 Kittens created by kitty users
