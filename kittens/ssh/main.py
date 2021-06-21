@@ -242,7 +242,7 @@ def get_posix_cmd(terminfo: str, remote_args: List[str]) -> List[str]:
         args = [c.replace("'", """'"'"'""") for c in remote_args]
         command_to_execute = "exec $login_shell -c '{}'".format(' '.join(args))
     sh_script = sh_script.replace('EXEC_CMD', command_to_execute)
-    return [f'/bin/sh -c {shlex.quote(sh_script)}']
+    return [f'sh -c {shlex.quote(sh_script)}']
 
 
 def get_python_cmd(terminfo: str, command_to_execute: List[str]) -> List[str]:
