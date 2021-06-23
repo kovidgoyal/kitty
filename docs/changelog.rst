@@ -59,7 +59,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   :kbd:`ctrl+shift`
 
 - Allow remapping all mouse button press/release events to perform arbitrary
-  actions. :ref:`See details <conf-kitty-mouse.mousemap>`.
+  actions. :ref:`See details <conf-kitty-mouse.mousemap>` (:iss:`1033`)
 
 - Support infinite length ligatures (:iss:`3504`)
 
