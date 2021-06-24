@@ -479,17 +479,15 @@ def get_capabilities(query_string: str, opts: 'Options') -> Generator[str, None,
         if name in ('TN', 'name'):
             yield result(encoded_query_name, names[0])
         elif name.startswith('kitty-query-'):
+            from kittens.query_terminal.main import get_result
             name = name[len('kitty-query-'):]
-            if name == 'version':
-                from .constants import str_version
-                yield result(encoded_query_name, str_version)
-            elif name == 'allow_hyperlinks':
-                yield result(encoded_query_name,
-                             'ask' if opts.allow_hyperlinks == 0b11 else ('yes' if opts.allow_hyperlinks else 'no'))
-            else:
+            rval = get_result(name)
+            if rval is None:
                 from .utils import log_error
                 log_error('Unknown kitty terminfo query:', name)
                 yield result(encoded_query_name)
+            else:
+                yield result(encoded_query_name, rval)
         else:
             try:
                 val = queryable_capabilities[name]

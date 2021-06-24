@@ -4,15 +4,16 @@
 
 import re
 import sys
-from binascii import unhexlify, hexlify
+from binascii import hexlify, unhexlify
 from contextlib import suppress
-from typing import Dict, Iterable, List, Type
+from typing import Dict, Iterable, List, Type, Optional
 
 from kitty.cli import parse_args
 from kitty.cli_stub import QueryTerminalCLIOptions
-from kitty.constants import appname
-from kitty.utils import TTYIO
+from kitty.constants import appname, str_version
+from kitty.options.types import Options
 from kitty.terminfo import names
+from kitty.utils import TTYIO
 
 
 class Query:
@@ -45,6 +46,10 @@ class Query:
     def output_line(self) -> str:
         return self.ans
 
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        raise NotImplementedError()
+
 
 all_queries: Dict[str, Type[Query]] = {}
 
@@ -60,6 +65,10 @@ class TerminalName(Query):
     query_name: str = 'TN'
     help_text: str = f'Terminal name ({names[0]})'
 
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        return appname
+
 
 @query
 class TerminalVersion(Query):
@@ -67,12 +76,28 @@ class TerminalVersion(Query):
     query_name: str = 'kitty-query-version'
     help_text: str = 'Terminal version, for e.g.: 0.19.2'
 
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        return str_version
+
 
 @query
 class AllowHyperlinks(Query):
     name: str = 'allow_hyperlinks'
     query_name: str = 'kitty-query-allow_hyperlinks'
     help_text: str = 'yes, no or ask'
+
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        return 'ask' if opts.allow_hyperlinks == 0b11 else ('yes' if opts.allow_hyperlinks else 'no')
+
+
+def get_result(name: str) -> Optional[str]:
+    from kitty.fast_data_types import get_options
+    q = all_queries.get(name)
+    if q is None:
+        return None
+    return q.get_result(get_options())
 
 
 def do_queries(queries: Iterable, cli_opts: QueryTerminalCLIOptions) -> Dict[str, str]:
