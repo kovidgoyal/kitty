@@ -29,7 +29,7 @@ def main() -> None:
     write: Callable[[bytes], None] = cast(Callable[[bytes], None], sys.stdout.buffer.write)
     sgr_pat = re.compile(br'\x1b\[.*?m')
     osc_pat = re.compile(b'\x1b\\].*?\x1b\\\\')
-    num_pat = re.compile(b'^(\\d+)[:\\-]')
+    num_pat = re.compile(br'^(\d+)[:-]')
 
     in_result: bytes = b''
     hostname = socket.gethostname().encode('utf-8')

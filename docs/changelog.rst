@@ -38,6 +38,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - query terminal kitten: Allow querying font face and size information
   (:iss:`3756`)
 
+- hyperlinked grep kitten: Fix context options not generating contextual output (:iss:`3759`)
+
 
 0.21.1 [2021-06-14]
 ----------------------
