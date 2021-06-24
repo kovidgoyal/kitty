@@ -55,8 +55,9 @@ def main() -> None:
                     write(line)
     except KeyboardInterrupt:
         p.send_signal(signal.SIGINT)
-        p.stdout.close()
     except EOFError:
+        pass
+    finally:
         p.stdout.close()
     raise SystemExit(p.wait())
 
