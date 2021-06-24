@@ -35,6 +35,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Linux: Fix Emoji/bitmapped fonts not use able in symbol_map
 
+- query terminal kitten: Allow querying font face and size information
+  (:iss:`3756`)
+
 
 0.21.1 [2021-06-14]
 ----------------------

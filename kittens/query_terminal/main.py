@@ -19,8 +19,12 @@ from kitty.utils import TTYIO
 class Query:
     name: str = ''
     ans: str = ''
-    query_name: str = ''
     help_text: str = ''
+    override_query_name: str = ''
+
+    @property
+    def query_name(self) -> str:
+        return self.override_query_name or f'kitty-query-{self.name}'
 
     def __init__(self) -> None:
         self.encoded_query_name = hexlify(self.query_name.encode('utf-8')).decode('ascii')
@@ -62,7 +66,7 @@ def query(cls: Type[Query]) -> Type[Query]:
 @query
 class TerminalName(Query):
     name: str = 'name'
-    query_name: str = 'TN'
+    override_query_name: str = 'name'
     help_text: str = f'Terminal name ({names[0]})'
 
     @staticmethod
@@ -73,7 +77,6 @@ class TerminalName(Query):
 @query
 class TerminalVersion(Query):
     name: str = 'version'
-    query_name: str = 'kitty-query-version'
     help_text: str = 'Terminal version, for e.g.: 0.19.2'
 
     @staticmethod
@@ -84,12 +87,69 @@ class TerminalVersion(Query):
 @query
 class AllowHyperlinks(Query):
     name: str = 'allow_hyperlinks'
-    query_name: str = 'kitty-query-allow_hyperlinks'
     help_text: str = 'yes, no or ask'
 
     @staticmethod
     def get_result(opts: Options) -> str:
         return 'ask' if opts.allow_hyperlinks == 0b11 else ('yes' if opts.allow_hyperlinks else 'no')
+
+
+@query
+class FontFamily(Query):
+    name: str = 'font_family'
+    help_text: str = 'The current font\'s PostScript name'
+
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        from kitty.fast_data_types import current_fonts
+        cf = current_fonts()
+        return str(cf['medium'].display_name())
+
+
+@query
+class BoldFont(Query):
+    name: str = 'bold_font'
+    help_text: str = 'The current bold font\'s PostScript name'
+
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        from kitty.fast_data_types import current_fonts
+        cf = current_fonts()
+        return str(cf['bold'].display_name())
+
+
+@query
+class ItalicFont(Query):
+    name: str = 'italic_font'
+    help_text: str = 'The current italic font\'s PostScript name'
+
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        from kitty.fast_data_types import current_fonts
+        cf = current_fonts()
+        return str(cf['italic'].display_name())
+
+
+@query
+class BiFont(Query):
+    name: str = 'bold_italic_font'
+    help_text: str = 'The current bold-italic font\'s PostScript name'
+
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        from kitty.fast_data_types import current_fonts
+        cf = current_fonts()
+        return str(cf['bi'].display_name())
+
+
+@query
+class FontSize(Query):
+    name: str = 'font_size'
+    help_text: str = 'The current overall font size (individual windows can have different per window font sizes)'
+
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        return f'{opts.font_size:g}'
 
 
 def get_result(name: str) -> Optional[str]:
