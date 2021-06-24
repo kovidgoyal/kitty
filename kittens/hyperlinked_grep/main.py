@@ -29,7 +29,7 @@ def main() -> None:
     write: Callable[[bytes], None] = cast(Callable[[bytes], None], sys.stdout.buffer.write)
     sgr_pat = re.compile(br'\x1b\[.*?m')
     osc_pat = re.compile(b'\x1b\\].*?\x1b\\\\')
-    num_pat = re.compile(b'^(\\d+):')
+    num_pat = re.compile(b'^(\\d+)[:\\-]')
 
     in_result: bytes = b''
     hostname = socket.gethostname().encode('utf-8')
@@ -46,6 +46,8 @@ def main() -> None:
                 m = num_pat.match(clean_line)
                 if m is not None:
                     write_hyperlink(write, in_result, line, frag=m.group(1))
+                else:
+                    write(line)
             else:
                 if line.strip():
                     path = quote_from_bytes(os.path.abspath(clean_line)).encode('utf-8')
