@@ -233,6 +233,7 @@ of your kitten make the following files.
 :file:`kitten_options_utils.py`
 
 .. code-block:: python
+
     from kitty.conf.utils import KittensKeyDefinition, key_func, parse_kittens_key
 
     func_with_args, args_funcs = key_func()
@@ -245,6 +246,7 @@ of your kitten make the following files.
         x = parse_kittens_key(val, args_funcs)
         if x is not None:
             yield x
+
 Then run::
 
     kitty +runpy 'from kitty.conf.generate import main; main()' /path/to/kitten_options_definition.py
