@@ -6,7 +6,8 @@ import os
 import shlex
 import sys
 from typing import (
-    Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
+    Any, Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Set,
+    Tuple
 )
 
 from kittens.runner import (
@@ -14,11 +15,14 @@ from kittens.runner import (
 )
 
 from .cli import (
-    OptionDict, OptionSpecSeq, options_for_completion, parse_option_spec
+    OptionDict, OptionSpecSeq, options_for_completion, parse_option_spec,
+    prettify
 )
+from .fast_data_types import truncate_point_for_length, wcswidth
 from .rc.base import all_command_names, command_for_name
 from .shell import options_for_cmd
 from .types import run_once
+from .utils import screen_size_function
 
 '''
 To add completion for a new shell, you need to:
@@ -161,6 +165,30 @@ def fish_input_parser(data: str) -> ParseResult:
 @output_serializer
 def zsh_output_serializer(ans: Completions) -> str:
     lines = []
+
+    screen = screen_size_function(sys.stderr.fileno())()
+    width = screen.cols
+
+    def fmt_desc(word: str, desc: str, max_word_len: int) -> Iterator[str]:
+        desc = prettify(desc.splitlines()[0])
+        multiline = False
+        if wcswidth(word) > max_word_len:
+            max_desc_len = width - 2
+            multiline = True
+        else:
+            word = word.ljust(max_word_len)
+            max_desc_len = width - max_word_len - 3
+        if wcswidth(desc) > max_desc_len:
+            desc = desc[:truncate_point_for_length(desc, max_desc_len - 2)]
+            desc += '…'
+
+        word = f'\x1b[32m{word}\x1b[39m'
+        if multiline:
+            ans = f'{word}\n  {desc}'
+        else:
+            ans = f'{word}  {desc}'
+        yield ans
+
     for description, matches in ans.match_groups.items():
         cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote('%B' + description + '%b')]
         if description in ans.no_space_groups:
@@ -171,6 +199,17 @@ def zsh_output_serializer(ans: Completions) -> str:
             if common_prefix:
                 cmd.extend(('-p', shlex.quote(common_prefix)))
                 matches = {k[len(common_prefix):]: v for k, v in matches.items()}
+        has_descriptions = any(matches.values())
+        if has_descriptions:
+            lines.append('compdescriptions=(')
+            sz = max(map(wcswidth, matches))
+            limit = min(16, sz)
+            for word, desc in matches.items():
+                lines.extend(map(shlex.quote, fmt_desc(word, desc, limit)))
+            lines.append(')')
+            cmd.append('-l')
+            cmd.append('-d')
+            cmd.append('compdescriptions')
         cmd.append('--')
         for word in matches:
             cmd.append(shlex.quote(word))
