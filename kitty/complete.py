@@ -162,7 +162,7 @@ def fish_input_parser(data: str) -> ParseResult:
 def zsh_output_serializer(ans: Completions) -> str:
     lines = []
     for description, matches in ans.match_groups.items():
-        cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote(description)]
+        cmd = ['compadd', '-U', '-J', shlex.quote(description), '-X', shlex.quote('%B' + description + '%b')]
         if description in ans.no_space_groups:
             cmd += ['-S', '""']
         if description in ans.files_groups:
