@@ -80,8 +80,14 @@ def edit_config_file(args: List[str]) -> None:
 
 
 def namespaced(args: List[str]) -> None:
-    func = namespaced_entry_points[args[1]]
-    func(args[1:])
+    try:
+        func = namespaced_entry_points[args[1]]
+    except KeyError:
+        pass
+    else:
+        func(args[1:])
+        return
+    raise SystemExit(f'{args[1]} is not a known entry point. Choices are: ' + ', '.join(namespaced_entry_points))
 
 
 entry_points = {
