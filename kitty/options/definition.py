@@ -938,7 +938,8 @@ opt('tab_title_template', '"{title}"',
     long_text='''
 A template to render the tab title. The default just renders the title. If you
 wish to include the tab-index as well, use something like: :code:`{index}:
-{title}`. Useful if you have shortcuts mapped for :code:`goto_tab N`. In
+{title}`. Useful if you have shortcuts mapped for :code:`goto_tab N`. If you
+prefer to see the index as a superscript, use {sup.index}. In
 addition you can use :code:`{layout_name}` for the current layout name and
 :code:`{num_windows}` for the number of windows in the tab. Note that formatting
 is done by Python's string formatting machinery, so you can use, for instance,

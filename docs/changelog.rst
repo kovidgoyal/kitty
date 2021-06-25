@@ -40,6 +40,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - hyperlinked grep kitten: Fix context options not generating contextual output (:iss:`3759`)
 
+- Allow using superscripts in tab titles (:iss:`3763`)
+
 
 0.21.1 [2021-06-14]
 ----------------------

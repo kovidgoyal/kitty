@@ -12,7 +12,7 @@ from .fast_data_types import (
 )
 from .layout.base import Rect
 from .rgb import Color, alpha_blend, color_as_sgr, color_from_int, to_color
-from .types import WindowGeometry
+from .types import WindowGeometry, run_once
 from .typing import PowerlineStyle
 from .utils import color_as_int, log_error
 from .window import calculate_gl_geometry
@@ -91,6 +91,30 @@ class Formatter:
     noitalic = '\x1b[23m'
 
 
+@run_once
+def super_sub_maps() -> Tuple[dict, dict]:
+    import string
+    sup_table = str.maketrans(
+        string.ascii_lowercase + string.ascii_uppercase + string.digits + '+-=()',
+        'ᵃᵇᶜᵈᵉᶠᵍʰⁱʲᵏˡᵐⁿᵒᵖqʳˢᵗᵘᵛʷˣʸᶻ' 'ᴬᴮᶜᴰᴱᶠᴳᴴᴵᴶᴷᴸᴹᴺᴼᴾQᴿˢᵀᵁⱽᵂˣʸᶻ' '⁰¹²³⁴⁵⁶⁷⁸⁹' '⁺⁻⁼⁽⁾')
+    sub_table = str.maketrans(
+        string.ascii_lowercase + string.ascii_uppercase + string.digits + '+-=()',
+        'ₐbcdₑfgₕᵢⱼₖₗₘₙₒₚqᵣₛₜᵤᵥwₓyz' 'ₐbcdₑfgₕᵢⱼₖₗₘₙₒₚqᵣₛₜᵤᵥwₓyz' '₀₁₂₃₄₅₆₇₈₉' '₊₋₌₍₎')
+    return sup_table, sub_table
+
+
+class SupSub:
+
+    def __init__(self, data: dict, is_subscript: bool = False):
+        self.__data = data
+        self.__is_subscript = is_subscript
+
+    def __getattr__(self, name: str) -> str:
+        name = str(self.__data.get(name, name))
+        table = super_sub_maps()[int(self.__is_subscript)]
+        return name.translate(table)
+
+
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
     if tab.needs_attention and draw_data.bell_on_tab:
         fg = screen.cursor.fg
@@ -107,12 +131,20 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
     if tab.is_active and draw_data.active_title_template is not None:
         template = draw_data.active_title_template
     try:
+        data = {
+            'index': index,
+            'layout_name': tab.layout_name,
+            'num_windows': tab.num_windows,
+            'title': tab.title,
+        }
         eval_locals = {
             'index': index,
             'layout_name': tab.layout_name,
             'num_windows': tab.num_windows,
             'title': tab.title,
             'fmt': Formatter,
+            'sup': SupSub(data),
+            'sub': SupSub(data, True),
         }
         title = eval(compile_template(template), {'__builtins__': {}}, eval_locals)
     except Exception as e:
