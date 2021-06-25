@@ -3,12 +3,12 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-import re
 import shlex
 import subprocess
 import sys
 from contextlib import suppress
 from typing import List, NoReturn, Optional, Set, Tuple
+from .completion import ssh_options
 
 from kitty.utils import SSHConnectionData
 
@@ -129,20 +129,15 @@ os.execlp(shell_path, shell_name)
 
 
 def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
-    other_ssh_args: List[str] = []
-    boolean_ssh_args: List[str] = []
-    stderr = subprocess.Popen(['ssh'], stderr=subprocess.PIPE).stderr
-    assert stderr is not None
-    raw = stderr.read().decode('utf-8')
-    for m in re.finditer(r'\[(.+?)\]', raw):
-        q = m.group(1)
-        if len(q) < 2 or q[0] != '-':
-            continue
-        if ' ' in q:
-            other_ssh_args.append(q[1])
+    other_ssh_args: Set[str] = set()
+    boolean_ssh_args: Set[str] = set()
+    for k, v in ssh_options().items():
+        k = '-' + k
+        if v:
+            other_ssh_args.add(k)
         else:
-            boolean_ssh_args.extend(q[1:])
-    return set('-' + x for x in boolean_ssh_args), set('-' + x for x in other_ssh_args)
+            boolean_ssh_args.add(k)
+    return boolean_ssh_args, other_ssh_args
 
 
 def get_connection_data(args: List[str]) -> Optional[SSHConnectionData]:
