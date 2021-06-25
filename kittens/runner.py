@@ -164,6 +164,14 @@ def get_kitten_cli_docs(kitten: str) -> Any:
         return ans
 
 
+def get_kitten_completer(kitten: str) -> Any:
+    run_kitten(kitten, run_name='__completer__')
+    ans = getattr(sys, 'kitten_completer', None)
+    if ans is not None:
+        delattr(sys, 'kitten_completer')
+    return ans
+
+
 def get_kitten_conf_docs(kitten: str) -> Definition:
     setattr(sys, 'options_definition', None)
     run_kitten(kitten, run_name='__conf__')

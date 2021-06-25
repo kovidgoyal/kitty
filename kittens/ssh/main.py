@@ -8,7 +8,7 @@ import subprocess
 import sys
 from contextlib import suppress
 from typing import List, NoReturn, Optional, Set, Tuple
-from .completion import ssh_options
+from .completion import ssh_options, complete
 
 from kitty.utils import SSHConnectionData
 
@@ -272,3 +272,5 @@ def main(args: List[str]) -> NoReturn:
 
 if __name__ == '__main__':
     main(sys.argv)
+elif __name__ == '__completer__':
+    setattr(sys, 'kitten_completer', complete)

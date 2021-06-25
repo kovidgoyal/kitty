@@ -9,7 +9,9 @@ from typing import (
     Any, Callable, Dict, Iterable, List, Optional, Sequence, Set, Tuple
 )
 
-from kittens.runner import all_kitten_names, get_kitten_cli_docs
+from kittens.runner import (
+    all_kitten_names, get_kitten_cli_docs, get_kitten_completer
+)
 
 from .cli import (
     OptionDict, OptionSpecSeq, options_for_completion, parse_option_spec
@@ -39,7 +41,7 @@ them into something your shell will understand.
 
 parsers: Dict[str, Callable] = {}
 serializers: Dict[str, Callable] = {}
-MathGroup = Dict[str, str]
+MatchGroup = Dict[str, str]
 
 
 def debug(*a: Any, **kw: Any) -> None:
@@ -69,7 +71,7 @@ class Delegate:
 class Completions:
 
     def __init__(self) -> None:
-        self.match_groups: Dict[str, MathGroup] = {}
+        self.match_groups: Dict[str, MatchGroup] = {}
         self.no_space_groups: Set[str] = set()
         self.files_groups: Set[str] = set()
         self.delegate: Delegate = Delegate()
@@ -450,6 +452,13 @@ def complete_diff_args(ans: Completions, opt: Optional[OptionDict], prefix: str,
 
 
 def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_word: bool) -> None:
+    try:
+        completer = get_kitten_completer(kitten)
+    except SystemExit:
+        completer = None
+    if completer is not None:
+        completer(ans, words, new_word)
+        return
     try:
         cd = get_kitten_cli_docs(kitten)
     except SystemExit:
