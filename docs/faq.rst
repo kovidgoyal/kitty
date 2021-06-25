@@ -54,6 +54,8 @@ type it each time::
 
     alias ssh="kitty +kitten ssh"
 
+Remember to also setup :ref:`completion`.
+
 If for some reason that does not work (typically because the server is using a
 non POSIX compliant shell as ``/bin/sh``), you can try using it with ``python``
 instead::
