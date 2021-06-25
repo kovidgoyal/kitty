@@ -162,7 +162,7 @@ def option_help_map() -> Dict[str, str]:
 # }}}
 
 
-def complete_arg(ans: Completions, option_name: str, prefix: str = '') -> None:
+def complete_arg(ans: Completions, option_flag: str, prefix: str = '') -> None:
     pass
 
 
@@ -172,8 +172,12 @@ def complete_destination(ans: Completions, prefix: str = '') -> None:
 
 
 def complete_option(ans: Completions, prefix: str = '-') -> None:
-    result = {k: v for k, v in option_help_map().items() if k.startswith(prefix)}
-    ans.match_groups['option'] = result
+    hm = option_help_map()
+    if len(prefix) <= 1:
+        result = {k: v for k, v in hm.items() if k.startswith(prefix)}
+        ans.match_groups['option'] = result
+    else:
+        ans.match_groups['option'] = {prefix: ''}
 
 
 def complete(ans: Completions, words: Sequence[str], new_word: bool) -> None:
@@ -202,5 +206,5 @@ def complete(ans: Completions, words: Sequence[str], new_word: bool) -> None:
             return complete_arg(ans, words[-2], words[-1])
         if types[-1] == 'destination':
             return complete_destination(ans, words[-1])
-        if words[-1] == '-':
-            return complete_option(ans)
+        if types[-1] == 'option':
+            return complete_option(ans, words[-1])
