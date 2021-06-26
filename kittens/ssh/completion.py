@@ -7,7 +7,7 @@ import re
 import subprocess
 from typing import Callable, Dict, Iterable, Iterator, Sequence, Tuple
 
-from kitty.complete import Completions, debug
+from kitty.complete import Completions, complete_files_and_dirs, debug
 from kitty.types import run_once
 
 debug
@@ -162,8 +162,26 @@ def option_help_map() -> Dict[str, str]:
 # }}}
 
 
+def complete_choices(ans: Completions, prefix: str, title: str, key: str, comma_separated: bool) -> None:
+    choices = {}
+    for line in lines_from_command('ssh', '-Q', key):
+        q = line.strip()
+        if q.startswith(prefix):
+            choices[q] = ''
+    ans.match_groups[title] = choices
+
+
 def complete_arg(ans: Completions, option_flag: str, prefix: str = '') -> None:
-    pass
+    options = ssh_options()
+    option_name = options.get(option_flag[1:])
+    if option_name.endswith('file') or option_name.endswith('path'):
+        return complete_files_and_dirs(ans, prefix, option_name)
+    choices = {
+        'mac_spec': ('MAC algorithms', 'mac', True),
+        'cipher_spec': ('encryption ciphers', 'cipher', True),
+    }
+    if option_name in choices:
+        return complete_choices(ans, prefix, *choices[option_name])
 
 
 def complete_destination(ans: Completions, prefix: str = '') -> None:
