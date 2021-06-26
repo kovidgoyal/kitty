@@ -168,7 +168,7 @@ def complete_choices(ans: Completions, prefix: str, title: str, key: str, comma_
         q = line.strip()
         if q.startswith(prefix):
             choices[q] = ''
-    ans.match_groups[title] = choices
+    ans.add_match_group(title, choices)
 
 
 def complete_arg(ans: Completions, option_flag: str, prefix: str = '') -> None:
@@ -185,17 +185,17 @@ def complete_arg(ans: Completions, option_flag: str, prefix: str = '') -> None:
 
 
 def complete_destination(ans: Completions, prefix: str = '') -> None:
-    result = {k: '' for k in known_hosts() if k.startswith(prefix)}
-    ans.match_groups['remote host name'] = result
+    result = (k for k in known_hosts() if k.startswith(prefix))
+    ans.add_match_group('remote host name', result)
 
 
 def complete_option(ans: Completions, prefix: str = '-') -> None:
     hm = option_help_map()
     if len(prefix) <= 1:
         result = {k: v for k, v in hm.items() if k.startswith(prefix)}
-        ans.match_groups['option'] = result
+        ans.add_match_group('option', result)
     else:
-        ans.match_groups['option'] = {prefix: ''}
+        ans.add_match_group('option', {prefix: ''})
 
 
 def complete(ans: Completions, words: Sequence[str], new_word: bool) -> None:
