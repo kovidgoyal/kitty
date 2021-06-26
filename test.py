@@ -5,6 +5,7 @@
 import importlib
 import os
 import sys
+import warnings
 
 base = os.path.dirname(os.path.abspath(__file__))
 
@@ -14,6 +15,8 @@ def init_env() -> None:
 
 
 def main() -> None:
+    warnings.simplefilter('error')
+    os.environ['PYTHONWARNINGS'] = 'error'
     init_env()
     m = importlib.import_module('kitty_tests.main')
     m.run_tests()  # type: ignore
