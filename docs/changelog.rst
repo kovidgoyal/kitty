@@ -19,6 +19,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - ssh kitten: Support systems where the login shell is a non-POSIX shell
   (:iss:`3405`)
 
+- ssh kitten: Add completion (:iss:`3760`)
+
 - ssh kitten: Fix "Connection closed" message being printed by ssh when running
   remote commands
 

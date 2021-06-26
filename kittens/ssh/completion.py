@@ -162,8 +162,103 @@ def option_help_map() -> Dict[str, str]:
 # }}}
 
 
-def complete_choices(ans: Completions, prefix: str, title: str, key: str, comma_separated: bool) -> None:
-    choices = {}
+# option names {{{
+@run_once
+def option_names() -> Tuple[str, ...]:
+    return tuple(filter(None, (
+        line.strip() for line in '''
+AddKeysToAgent
+AddressFamily
+BatchMode
+BindAddress
+CanonicalDomains
+CanonicalizeFallbackLocal
+CanonicalizeHostname
+CanonicalizeMaxDots
+CanonicalizePermittedCNAMEs
+CASignatureAlgorithms
+CertificateFile
+ChallengeResponseAuthentication
+CheckHostIP
+Ciphers
+ClearAllForwardings
+Compression
+ConnectionAttempts
+ConnectTimeout
+ControlMaster
+ControlPath
+ControlPersist
+DynamicForward
+EscapeChar
+ExitOnForwardFailure
+FingerprintHash
+ForwardAgent
+ForwardX11
+ForwardX11Timeout
+ForwardX11Trusted
+GatewayPorts
+GlobalKnownHostsFile
+GSSAPIAuthentication
+GSSAPIDelegateCredentials
+HashKnownHosts
+Host
+HostbasedAcceptedAlgorithms
+HostbasedAuthentication
+HostKeyAlgorithms
+HostKeyAlias
+Hostname
+IdentitiesOnly
+IdentityAgent
+IdentityFile
+IPQoS
+KbdInteractiveAuthentication
+KbdInteractiveDevices
+KexAlgorithms
+KnownHostsCommand
+LocalCommand
+LocalForward
+LogLevel
+MACs
+Match
+NoHostAuthenticationForLocalhost
+NumberOfPasswordPrompts
+PasswordAuthentication
+PermitLocalCommand
+PermitRemoteOpen
+PKCS11Provider
+Port
+PreferredAuthentications
+ProxyCommand
+ProxyJump
+ProxyUseFdpass
+PubkeyAcceptedAlgorithms
+PubkeyAuthentication
+RekeyLimit
+RemoteCommand
+RemoteForward
+RequestTTY
+SendEnv
+ServerAliveInterval
+ServerAliveCountMax
+SetEnv
+StreamLocalBindMask
+StreamLocalBindUnlink
+StrictHostKeyChecking
+TCPKeepAlive
+Tunnel
+TunnelDevice
+UpdateHostKeys
+User
+UserKnownHostsFile
+VerifyHostKeyDNS
+VisualHostKey
+XAuthLocation
+'''.splitlines())))
+# }}}
+
+
+def complete_choices(ans: Completions, prefix: str, title: str, choices: Iterable[str], comma_separated: bool = False) -> None:
+    matches: Dict[str, str] = {}
     word_transforms = {}
     effective_prefix = prefix
     hidden_prefix = ''
@@ -172,15 +267,19 @@ def complete_choices(ans: Completions, prefix: str, title: str, key: str, comma_
         hidden_prefix = ','.join(prefix.split(',')[:-1])
         if hidden_prefix:
             hidden_prefix += ','
-    for line in lines_from_command('ssh', '-Q', key):
-        q = line.strip()
+    for q in choices:
         if q.startswith(effective_prefix):
             if comma_separated:
                 tq = q
                 q = hidden_prefix + q + ','
                 word_transforms[q] = tq
-            choices[q] = ''
-    ans.add_match_group(title, choices, trailing_space=not comma_separated, word_transforms=word_transforms)
+            matches[q] = ''
+    ans.add_match_group(title, matches, trailing_space=not comma_separated, word_transforms=word_transforms)
+
+
+def complete_q_choices(ans: Completions, prefix: str, title: str, key: str, comma_separated: bool) -> None:
+    choices = (line.strip() for line in lines_from_command('ssh', '-Q', key))
+    complete_choices(ans, prefix, title, choices, comma_separated)
 
 
 def complete_arg(ans: Completions, option_flag: str, prefix: str = '') -> None:
@@ -189,11 +288,20 @@ def complete_arg(ans: Completions, option_flag: str, prefix: str = '') -> None:
     if option_name.endswith('file') or option_name.endswith('path'):
         return complete_files_and_dirs(ans, prefix, option_name)
     choices = {
-        'mac_spec': ('MAC algorithms', 'mac', True),
-        'cipher_spec': ('encryption ciphers', 'cipher', True),
+        'mac_spec': ('MAC algorithm', 'mac', True),
+        'cipher_spec': ('encryption cipher', 'cipher', True),
+        'query_option': ('query option', 'help', False),
     }
     if option_name in choices:
-        return complete_choices(ans, prefix, *choices[option_name])
+        return complete_q_choices(ans, prefix, *choices[option_name])
+    if option_name == 'destination':
+        return complete_destination(ans, prefix)
+    if option_name == 'ctl_cmd':
+        return complete_choices(ans, prefix, 'control command', ('check', 'forward', 'cancel', 'exit'))
+    if option_name == 'option':
+        matches = (x+'=' for x in option_names() if x.startswith(prefix))
+        word_transforms = {x+'=': x for x in option_names()}
+        ans.add_match_group('configure file option', matches, trailing_space=False, word_transforms=word_transforms)
 
 
 def complete_destination(ans: Completions, prefix: str = '') -> None:
