@@ -164,11 +164,23 @@ def option_help_map() -> Dict[str, str]:
 
 def complete_choices(ans: Completions, prefix: str, title: str, key: str, comma_separated: bool) -> None:
     choices = {}
+    word_transforms = {}
+    effective_prefix = prefix
+    hidden_prefix = ''
+    if comma_separated:
+        effective_prefix = prefix.split(',')[-1]
+        hidden_prefix = ','.join(prefix.split(',')[:-1])
+        if hidden_prefix:
+            hidden_prefix += ','
     for line in lines_from_command('ssh', '-Q', key):
         q = line.strip()
-        if q.startswith(prefix):
+        if q.startswith(effective_prefix):
+            if comma_separated:
+                tq = q
+                q = hidden_prefix + q + ','
+                word_transforms[q] = tq
             choices[q] = ''
-    ans.add_match_group(title, choices)
+    ans.add_match_group(title, choices, trailing_space=not comma_separated, word_transforms=word_transforms)
 
 
 def complete_arg(ans: Completions, option_flag: str, prefix: str = '') -> None:

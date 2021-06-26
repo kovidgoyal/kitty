@@ -49,13 +49,27 @@ serializers: Dict[str, Callable] = {}
 
 class MatchGroup:
 
-    def __init__(self, x: Union[Dict[str, str], Iterable[str]], trailing_space: bool = True, is_files: bool = False):
+    def __init__(
+        self, x: Union[Dict[str, str], Iterable[str]],
+        trailing_space: bool = True,
+        is_files: bool = False,
+        word_transforms: Optional[Dict[str, str]] = None,
+    ):
         self.mdict = x if isinstance(x, dict) else dict.fromkeys(x, '')
         self.trailing_space = trailing_space
         self.is_files = is_files
+        self.word_transforms = word_transforms or {}
 
     def __iter__(self) -> Iterator[str]:
         return iter(self.mdict)
+
+    def transformed_words(self) -> Iterator[str]:
+        for w in self:
+            yield self.word_transforms.get(w, w)
+
+    def transformed_items(self) -> Iterator[Tuple[str, str]]:
+        for w, desc in self.items():
+            yield self.word_transforms.get(w, w), desc
 
     def items(self) -> Iterator[Tuple[str, str]]:
         return iter(self.mdict.items())
@@ -94,8 +108,13 @@ class Completions:
         self.match_groups: Dict[str, MatchGroup] = {}
         self.delegate: Delegate = Delegate()
 
-    def add_match_group(self, name: str, x: Union[Dict[str, str], Iterable[str]], trailing_space: bool = True, is_files: bool = False) -> MatchGroup:
-        self.match_groups[name] = m = MatchGroup(x, trailing_space, is_files)
+    def add_match_group(
+        self, name: str, x: Union[Dict[str, str], Iterable[str]],
+        trailing_space: bool = True,
+        is_files: bool = False,
+        word_transforms: Optional[Dict[str, str]] = None
+    ) -> MatchGroup:
+        self.match_groups[name] = m = MatchGroup(x, trailing_space, is_files, word_transforms)
         return m
 
 
@@ -188,6 +207,9 @@ def zsh_output_serializer(ans: Completions) -> str:
     width = screen.cols
 
     def fmt_desc(word: str, desc: str, max_word_len: int) -> Iterator[str]:
+        if not desc:
+            yield word
+            return
         desc = prettify(desc.splitlines()[0])
         multiline = False
         if wcswidth(word) > max_word_len:
@@ -218,14 +240,15 @@ def zsh_output_serializer(ans: Completions) -> str:
                 cmd.extend(('-p', shlex.quote(common_prefix)))
                 matches = MatchGroup({k[len(common_prefix):]: v for k, v in matches.items()})
         has_descriptions = any(matches.values())
-        if has_descriptions:
+        if has_descriptions or matches.word_transforms:
             lines.append('compdescriptions=(')
-            sz = max(map(wcswidth, matches))
+            sz = max(map(wcswidth, matches.transformed_words()))
             limit = min(16, sz)
-            for word, desc in matches.items():
+            for word, desc in matches.transformed_items():
                 lines.extend(map(shlex.quote, fmt_desc(word, desc, limit)))
             lines.append(')')
-            cmd.append('-l')
+            if has_descriptions:
+                cmd.append('-l')
             cmd.append('-d')
             cmd.append('compdescriptions')
         cmd.append('--')
