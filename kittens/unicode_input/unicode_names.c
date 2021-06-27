@@ -19,27 +19,43 @@ all_words(PYNOARG) {
     return ans;
 }
 
-static inline void
-add_matches(const word_trie *wt, char_type *codepoints, size_t *pos, const size_t sz) {
+typedef struct MatchingCodepoints {
+    char_type *codepoints;
+    size_t capacity, pos;
+} MatchingCodepoints;
+
+static bool
+ensure_space(MatchingCodepoints *ans) {
+    if (ans->capacity > ans->pos + 1) return true;
+    ans->capacity = MAX(1024u, ans->pos + 256);
+    ans->codepoints = realloc(ans->codepoints, sizeof(ans->codepoints[0]) * ans->capacity);
+    if (ans->codepoints) return true;
+    PyErr_NoMemory();
+    return false;
+}
+
+static void
+add_matches(const word_trie *wt, MatchingCodepoints *ans) {
     size_t num = mark_groups[wt->match_offset];
-    for (size_t i = wt->match_offset + 1; i < wt->match_offset + 1 + num && *pos < sz; i++, (*pos)++) {
-        codepoints[*pos] = mark_to_cp[mark_groups[i]];
+    for (size_t i = wt->match_offset + 1; i < wt->match_offset + 1 + num; i++) {
+        if (!ensure_space(ans)) return;
+        ans->codepoints[ans->pos++] = mark_to_cp[mark_groups[i]];
     }
 }
 
 static void
-process_trie_node(const word_trie *wt, char_type *codepoints, size_t *pos, const size_t sz) {
-    if (wt->match_offset) add_matches(wt, codepoints, pos, sz);
+process_trie_node(const word_trie *wt, MatchingCodepoints *ans) {
+    if (wt->match_offset) add_matches(wt, ans);
     size_t num_children = children_array[wt->children_offset];
     if (!num_children) return;
     for (size_t c = wt->children_offset + 1; c < wt->children_offset + 1 + num_children; c++) {
-        if (*pos > sz) return;
+        if (!ensure_space(ans)) return;
         uint32_t x = children_array[c];
-        process_trie_node(&all_trie_nodes[x >> 8], codepoints, pos, sz);
+        process_trie_node(&all_trie_nodes[x >> 8], ans);
     }
 }
 
-static inline PyObject*
+static PyObject*
 codepoints_for_word(const char *word, size_t len) {
     const word_trie *wt = all_trie_nodes;
     for (size_t i = 0; i < len; i++) {
@@ -57,14 +73,16 @@ codepoints_for_word(const char *word, size_t len) {
         }
         if (!found) return PyFrozenSet_New(NULL);
     }
-    static char_type codepoints[1024];
-    size_t cpos = 0;
-    process_trie_node(wt, codepoints, &cpos, arraysz(codepoints));
-    PyObject *ans = PyFrozenSet_New(NULL); if (ans == NULL) return NULL;
-    for (size_t i = 0; i < cpos; i++) {
-        PyObject *t = PyLong_FromUnsignedLong(codepoints[i]); if (t == NULL) { Py_DECREF(ans); return NULL; }
-        int ret = PySet_Add(ans, t); Py_DECREF(t); if (ret != 0) { Py_DECREF(ans); return NULL; }
+    MatchingCodepoints m = {0};
+    process_trie_node(wt, &m);
+    if (PyErr_Occurred()) return NULL;
+    PyObject *ans = PyFrozenSet_New(NULL);
+    if (ans == NULL) { free(m.codepoints); return NULL; }
+    for (size_t i = 0; i < m.pos; i++) {
+        PyObject *t = PyLong_FromUnsignedLong(m.codepoints[i]); if (t == NULL) { Py_DECREF(ans); free(m.codepoints); return NULL; }
+        int ret = PySet_Add(ans, t); Py_DECREF(t); if (ret != 0) { Py_DECREF(ans); free(m.codepoints); return NULL; }
     }
+    free(m.codepoints);
     return ans;
 }
 

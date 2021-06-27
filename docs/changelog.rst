@@ -44,6 +44,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow using superscripts in tab titles (:iss:`3763`)
 
+- Unicode input kitten: Fix searching when a word has more than 1024 matches (:iss:`3773`)
+
 
 0.21.1 [2021-06-14]
 ----------------------
