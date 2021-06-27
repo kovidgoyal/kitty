@@ -25,9 +25,9 @@ typedef struct MatchingCodepoints {
 } MatchingCodepoints;
 
 static bool
-ensure_space(MatchingCodepoints *ans) {
-    if (ans->capacity > ans->pos + 1) return true;
-    ans->capacity = MAX(1024u, ans->pos + 256);
+ensure_space(MatchingCodepoints *ans, size_t num) {
+    if (ans->capacity > ans->pos + num) return true;
+    ans->capacity = MAX(1024u, ans->pos + num + 8);
     ans->codepoints = realloc(ans->codepoints, sizeof(ans->codepoints[0]) * ans->capacity);
     if (ans->codepoints) return true;
     PyErr_NoMemory();
@@ -37,8 +37,8 @@ ensure_space(MatchingCodepoints *ans) {
 static void
 add_matches(const word_trie *wt, MatchingCodepoints *ans) {
     size_t num = mark_groups[wt->match_offset];
+    if (!ensure_space(ans, num)) return;
     for (size_t i = wt->match_offset + 1; i < wt->match_offset + 1 + num; i++) {
-        if (!ensure_space(ans)) return;
         ans->codepoints[ans->pos++] = mark_to_cp[mark_groups[i]];
     }
 }
@@ -48,8 +48,8 @@ process_trie_node(const word_trie *wt, MatchingCodepoints *ans) {
     if (wt->match_offset) add_matches(wt, ans);
     size_t num_children = children_array[wt->children_offset];
     if (!num_children) return;
+    if (!ensure_space(ans, num_children)) return;
     for (size_t c = wt->children_offset + 1; c < wt->children_offset + 1 + num_children; c++) {
-        if (!ensure_space(ans)) return;
         uint32_t x = children_array[c];
         process_trie_node(&all_trie_nodes[x >> 8], ans);
     }
