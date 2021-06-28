@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.21.2 [future]
+0.21.2 [2021-06-28]
 ----------------------
 
 - A new :opt:`adjust_baseline` option to adjust the vertical alignment of text
