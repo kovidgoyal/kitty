@@ -310,7 +310,8 @@ def save_type_stub(text: str, fpath: str) -> None:
     fpath += 'i'
     preamble = '# Update this file by running: ./test.py mypy\n\n'
     try:
-        existing = open(fpath).read()
+        with open(fpath) as fs:
+            existing = fs.read()
     except FileNotFoundError:
         existing = ''
     current = preamble + text
