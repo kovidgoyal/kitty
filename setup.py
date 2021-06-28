@@ -1145,9 +1145,13 @@ def clean() -> None:
         'build', 'compile_commands.json', 'link_commands.json',
         'linux-package', 'kitty.app', 'asan-launcher',
         'kitty-profile', 'kitty/launcher')
-    exclude = ('.git',)
-    for root, dirs, files in os.walk('.', topdown=True):
-        dirs[:] = [d for d in dirs if d not in exclude]
+
+    def excluded(root: str, d: str) -> bool:
+        q = os.path.relpath(os.path.join(root, d), base).replace(os.sep, '/')
+        return q in ('.git', 'bypy/b')
+
+    for root, dirs, files in os.walk(base, topdown=True):
+        dirs[:] = [d for d in dirs if not excluded(root, d)]
         remove_dirs = {d for d in dirs if d == '__pycache__' or d.endswith('.dSYM')}
         for d in remove_dirs:
             shutil.rmtree(os.path.join(root, d))
