@@ -67,7 +67,7 @@ def name(cp: Union[int, str]) -> str:
 
 
 @lru_cache(maxsize=256)
-def codepoints_matching_search(parts: Sequence[str]) -> List[int]:
+def codepoints_matching_search(parts: Tuple[str, ...]) -> List[int]:
     ans = []
     if parts and parts[0] and len(parts[0]) > 1:
         codepoints = points_for_word(parts[0])
