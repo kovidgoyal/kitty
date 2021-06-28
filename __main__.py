@@ -49,13 +49,22 @@ def complete(args: List[str]) -> None:
 def launch(args: List[str]) -> None:
     import runpy
     sys.argv = args[1:]
-    exe = args[1]
+    try:
+        exe = args[1]
+    except IndexError:
+        raise SystemExit(
+            'usage: kitty +launch script.py [arguments to be passed to script.py ...]\n\n'
+            'script.py will be run with full access to kitty code. If script.py is '
+            'prefixed with a : it will be searched for in PATH'
+        )
     if exe.startswith(':'):
         import shutil
         q = shutil.which(exe[1:])
         if not q:
-            raise SystemExit('{} not found in PATH'.format(args[1][1:]))
+            raise SystemExit(f'{exe[1:]} not found in PATH')
         exe = q
+    if not os.path.exists(exe):
+        raise SystemExit(f'{exe} does not exist')
     runpy.run_path(exe, run_name='__main__')
 
 
