@@ -905,6 +905,7 @@ class Window:
     # actions {{{
 
     def show_scrollback(self) -> None:
+        '@ac:cp: Show scrollback in a pager like less'
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
         get_boss().display_scrollback(self, data['text'], data['input_line_number'])
@@ -916,6 +917,7 @@ class Window:
         self.screen.paste_bytes(text)
 
     def paste(self, text: Union[str, bytes]) -> None:
+        '@ac:cp: Paste the specified text into the current window'
         if text and not self.destroyed:
             if isinstance(text, str):
                 text = text.encode('utf-8')
@@ -932,6 +934,7 @@ class Window:
             self.screen.paste(text)
 
     def copy_to_clipboard(self) -> None:
+        '@ac:cp: Copy the selected text from the active window to the clipboard'
         text = self.text_for_selection()
         if text:
             set_clipboard_string(text)
@@ -945,6 +948,7 @@ class Window:
         ).encode('ascii')
 
     def copy_or_interrupt(self) -> None:
+        '@ac:cp: Copy the selected text from the active window to the clipboard, if no selection, send Ctrl-C'
         text = self.text_for_selection()
         if text:
             set_clipboard_string(text)
@@ -952,10 +956,12 @@ class Window:
             self.write_to_child(self.encoded_key(KeyEvent(key=ord('c'), mods=GLFW_MOD_CONTROL)))
 
     def copy_and_clear_or_interrupt(self) -> None:
+        '@ac:cp: Copy the selected text from the active window to the clipboard and clear selection, if no selection, send Ctrl-C'
         self.copy_or_interrupt()
         self.screen.clear_selection()
 
     def pass_selection_to_program(self, *args: str) -> None:
+        '@ac:cp: Pass the selected text from the active window to the specified program'
         cwd = self.cwd_of_child
         text = self.text_for_selection()
         if text:
@@ -965,30 +971,37 @@ class Window:
                 open_url(text, cwd=cwd)
 
     def scroll_line_up(self) -> None:
+        '@ac:sc: Scroll up by one line'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, True)
 
     def scroll_line_down(self) -> None:
+        '@ac:sc: Scroll down by one line'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, False)
 
     def scroll_page_up(self) -> None:
+        '@ac:sc: Scroll up by one page'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, True)
 
     def scroll_page_down(self) -> None:
+        '@ac:sc: Scroll down by one page'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, False)
 
     def scroll_home(self) -> None:
+        '@ac:sc: Scroll to the top of the scrollback buffer'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, True)
 
     def scroll_end(self) -> None:
+        '@ac:sc: Scroll to the bottom of the scrollback buffer'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, False)
 
     def toggle_marker(self, ftype: str, spec: Union[str, Tuple[Tuple[int, str], ...]], flags: int) -> None:
+        '@ac:mk: Toggle the current marker on/off'
         from .marks import marker_from_spec
         key = ftype, spec
         if key == self.current_marker_spec:
@@ -1009,14 +1022,23 @@ class Window:
         self.current_marker_spec = key
 
     def remove_marker(self) -> None:
+        '@ac:mk: Remove a previously created marker'
         if self.current_marker_spec is not None:
             self.screen.set_marker()
             self.current_marker_spec = None
 
     def scroll_to_mark(self, prev: bool = True, mark: int = 0) -> None:
+        '@ac:mk: Scroll to the next or previous mark of the specified type'
         self.screen.scroll_to_next_mark(mark, prev)
 
     def signal_child(self, *signals: int) -> None:
+        '''
+        @ac:misc: Send the specified SIGNAL to the foreground process in the active window
+
+        For example::
+
+            map F1 signal_child SIGTERM
+        '''
         pid = self.child.pid_for_cwd
         if pid is not None:
             for sig in signals:

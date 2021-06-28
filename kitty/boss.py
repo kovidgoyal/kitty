@@ -1044,6 +1044,7 @@ class Boss:
         self._run_kitten('show_error', args=['--title', title], input_data=msg)
 
     def create_marker(self) -> None:
+        '@ac:mk: Create a new marker'
         w = self.active_window
         if w:
             spec = None
