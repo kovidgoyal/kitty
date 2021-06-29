@@ -1463,7 +1463,7 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
                         state = START;
                         break;
                     }
-                    screen->pending_mode.capacity = MAX(screen->pending_mode.capacity * 2, screen->pending_mode.used + read_buf_sz);
+                    screen->pending_mode.capacity = MAX(screen->pending_mode.capacity * 2, screen->pending_mode.used + read_buf_sz + sizeof(screen->pending_mode.stop_buf));
                     screen->pending_mode.buf = realloc(screen->pending_mode.buf, screen->pending_mode.capacity);
                     if (!screen->pending_mode.buf) fatal("Out of memory");
                 }
