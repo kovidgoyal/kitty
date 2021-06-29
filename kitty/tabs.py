@@ -393,11 +393,13 @@ class Tab:  # {{{
         )
 
     def close_window(self) -> None:
+        '@ac:win: Close the currently active window'
         w = self.active_window
         if w is not None:
             self.remove_window(w)
 
     def close_other_windows_in_tab(self) -> None:
+        '@ac:win: Close all windows in the tab other than the currently active window'
         if len(self.windows) > 1:
             active_window = self.active_window
             for window in tuple(self.windows):
@@ -436,6 +438,13 @@ class Tab:  # {{{
             return self.current_layout.nth_window(self.windows, n)
 
     def nth_window(self, num: int = 0) -> None:
+        '''
+        @ac:win: Focus the nth window if positive or the previously active windows if negative
+
+        For example, to ficus the previously active window::
+
+            map ctrl+p nth_window -1
+        '''
         if self.windows:
             if num < 0:
                 self.windows.make_previous_group_active(-num)
@@ -449,9 +458,11 @@ class Tab:  # {{{
             self.relayout_borders()
 
     def next_window(self) -> None:
+        '@ac:win: Focus the next window in the current tab'
         self._next_window()
 
     def previous_window(self) -> None:
+        '@ac:win: Focus the previous window in the current tab'
         self._next_window(-1)
 
     prev_window = previous_window
@@ -474,11 +485,25 @@ class Tab:  # {{{
             return self.most_recent_group(candidates)
 
     def neighboring_window(self, which: EdgeLiteral) -> None:
+        '''
+        @ac:win: Focus the neighboring window in the current tab
+
+        For example::
+            map ctrl+left neighboring_window left
+            map ctrl+down neighboring_window bottom
+        '''
         neighbor = self.neighboring_group_id(which)
         if neighbor:
             self.windows.set_active_group(neighbor)
 
     def move_window(self, delta: Union[EdgeLiteral, int] = 1) -> None:
+        '''
+        @ac:win: Move the window in the specified direction
+
+        For example::
+            map ctrl+left move_window left
+            map ctrl+down move_window bottom
+        '''
         if isinstance(delta, int):
             if self.current_layout.move_window(self.windows, delta):
                 self.relayout()
@@ -489,14 +514,17 @@ class Tab:  # {{{
                     self.relayout()
 
     def move_window_to_top(self) -> None:
+        '@ac:win: Move active window to the top (make it the first window)'
         n = self.windows.active_group_idx
         if n > 0:
             self.move_window(-n)
 
     def move_window_forward(self) -> None:
+        '@ac:win: Move active window forward (swap it with the next window)'
         self.move_window()
 
     def move_window_backward(self) -> None:
+        '@ac:win: Move active window backward (swap it with the previous window)'
         self.move_window(-1)
 
     def list_windows(self, active_window: Optional[Window], self_window: Optional[Window] = None) -> Generator[WindowDict, None, None]:

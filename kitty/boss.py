@@ -1635,6 +1635,11 @@ class Boss:
         )
 
     def detach_window(self, *args: str) -> None:
+        '''
+        @ac:win: Detach a window, moving it to another tab or OS Window
+
+        See :ref:`detach_window` for details.
+        '''
         if not args or args[0] == 'new':
             return self._move_window_to(target_os_window_id='new')
         if args[0] == 'new-tab':
@@ -1685,6 +1690,11 @@ class Boss:
         )
 
     def detach_tab(self, *args: str) -> None:
+        '''
+        @ac:tab: Detach a tab, moving it to another OS Window
+
+        See :ref:`detach_window` for details.
+        '''
         if not args or args[0] == 'new':
             return self._move_tab_to()
 
