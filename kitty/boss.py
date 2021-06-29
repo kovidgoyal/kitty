@@ -783,6 +783,17 @@ class Boss:
         return False
 
     def combine(self, *actions: KeyAction) -> None:
+        '''
+        @ac:misc: Combine multiple actions and map to a single keypress
+
+        The syntax is::
+
+            map key combine <separator> action1 <separator> action2 <separator> action3 ...
+
+        For example::
+
+            map kitty_mod+e combine : new_window : next_layout
+        '''
         for key_action in actions:
             self.dispatch_action(key_action)
 
