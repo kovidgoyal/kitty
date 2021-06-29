@@ -343,6 +343,7 @@ class TestParser(BaseTest):
         timeout = 0.1
         s.set_pending_timeout(timeout)
         pb = partial(self.parse_bytes_dump, s)
+
         pb('\033P=1s\033\\', ('screen_start_pending_mode',))
         pb('a')
         self.ae(str(s.line(0)), '')
@@ -361,6 +362,12 @@ class TestParser(BaseTest):
         pb('\033\\', ('screen_stop_pending_mode',), ('draw', 'e'))
         pb('\033P=1sxyz;.;\033\\''\033P=2skjf".,><?_+)98\033\\', ('screen_start_pending_mode',), ('screen_stop_pending_mode',))
         pb('\033P=1s\033\\f\033P=1s\033\\', ('screen_start_pending_mode',), ('screen_start_pending_mode',))
+        pb('\033P=2s\033\\', ('screen_stop_pending_mode',), ('draw', 'f'))
+
+        pb('\033[?2026hXXX\033[?2026l', ('screen_set_mode', 2026, 1), ('screen_reset_mode', 2026, 1), ('draw', 'XXX'))
+        pb('\033[?2026h\033[32ma\033[?2026l', ('screen_set_mode', 2026, 1), ('screen_reset_mode', 2026, 1), ('select_graphic_rendition', '32 '), ('draw', 'a'))
+        pb('\033[?2026h\033P+q544e\033\\ama\033P=2s\033\\',
+           ('screen_set_mode', 2026, 1), ('screen_stop_pending_mode',), ('screen_request_capabilities', 43, '544e'), ('draw', 'ama'))
 
     def test_oth_codes(self):
         s = self.create_screen()

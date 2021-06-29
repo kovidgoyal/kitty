@@ -1244,7 +1244,7 @@ END_ALLOW_CASE_RANGE
             handle_esc_mode_char(screen, codepoint, dump_callback); \
             break; \
         case CSI: \
-            if (accumulate_csi(screen, codepoint, dump_callback)) { dispatch_csi(screen, dump_callback); SET_STATE(0); } \
+            if (accumulate_csi(screen, codepoint, dump_callback)) { dispatch_csi(screen, dump_callback); SET_STATE(0); watch_for_pending; } \
             break; \
         case OSC: \
             if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); } \
@@ -1316,78 +1316,110 @@ FLUSH_DRAW;
 }
 
 
-static inline size_t
+static size_t
 _queue_pending_bytes(Screen *screen, const uint8_t *buf, size_t len, PyObject *dump_callback DUMP_UNUSED) {
     size_t pos = 0;
-    enum STATE { NORMAL, MAYBE_DCS, IN_DCS, EXPECTING_DATA, EXPECTING_SLASH };
-    enum STATE state = screen->pending_mode.state;
-#define COPY(what) screen->pending_mode.buf[screen->pending_mode.used++] = what
-#define COPY_STOP_BUF { \
-    COPY(0x1b); COPY('P'); COPY(PENDING_MODE_CHAR); \
-    for (size_t i = 0; i < screen->pending_mode.stop_buf_pos; i++) { \
-        COPY(screen->pending_mode.stop_buf[i]); \
+    enum STATE { NORMAL, MAYBE_DCS_OR_CSI, IN_DCS, IN_CSI, EXPECTING_DATA, EXPECTING_CSI_DATA, EXPECTING_SLASH };
+#define pm screen->pending_mode
+    enum STATE state = pm.state;
+#define stop_pending_mode \
+    if (state == EXPECTING_CSI_DATA) { REPORT_COMMAND(screen_reset_mode, 2026, 1); } \
+    else { REPORT_COMMAND(screen_stop_pending_mode); } \
+    pm.activated_at = 0; \
+    goto end;
+#define start_pending_mode \
+    if (state == EXPECTING_CSI_DATA) { REPORT_COMMAND(screen_set_mode, 2026, 1); } \
+    else { REPORT_COMMAND(screen_start_pending_mode); } \
+    pm.activated_at = monotonic();
+#define COPY(what) pm.buf[pm.used++] = what
+#define COPY_STOP_BUF(for_dcs) { \
+    COPY(0x1b); \
+    if (for_dcs) { COPY('P'); COPY(PENDING_MODE_CHAR); } \
+    else { COPY('['); COPY('?'); } \
+    for (size_t i = 0; i < pm.stop_buf_pos; i++) { \
+        COPY(pm.stop_buf[i]); \
     } \
-    screen->pending_mode.stop_buf_pos = 0;}
+    pm.stop_buf_pos = 0;}
 
     while (pos < len) {
         uint8_t ch = buf[pos++];
         switch(state) {
             case NORMAL:
-                if (ch == ESC) state = MAYBE_DCS;
+                if (ch == ESC) state = MAYBE_DCS_OR_CSI;
                 else COPY(ch);
                 break;
-            case MAYBE_DCS:
+            case MAYBE_DCS_OR_CSI:
                 if (ch == 'P') state = IN_DCS;
+                else if (ch == '[') state = IN_CSI;
                 else {
                     state = NORMAL;
                     COPY(0x1b); COPY(ch);
                 }
                 break;
             case IN_DCS:
-                if (ch == PENDING_MODE_CHAR) { state = EXPECTING_DATA; screen->pending_mode.stop_buf_pos = 0; }
+                if (ch == PENDING_MODE_CHAR) { state = EXPECTING_DATA; pm.stop_buf_pos = 0; }
                 else {
                     state = NORMAL;
                     COPY(0x1b); COPY('P'); COPY(ch);
                 }
                 break;
+            case IN_CSI:
+                if (ch == '?') { state = EXPECTING_CSI_DATA; pm.stop_buf_pos = 0; }
+                else {
+                    state = NORMAL;
+                    COPY(0x1b); COPY('['); COPY(ch);
+                }
+                break;
+            case EXPECTING_CSI_DATA:
+                if (ch == 'h' || ch == 'l') {
+                    if (pm.stop_buf_pos == 4 && memcmp(pm.stop_buf, "2026", 4) == 0) {
+                        if (ch == 'h') { start_pending_mode } else { stop_pending_mode }
+                    } else {
+                        COPY_STOP_BUF(false); COPY(ch);
+                    }
+                    state = NORMAL;
+                } else {
+                    pm.stop_buf[pm.stop_buf_pos++] = ch;
+                    if (pm.stop_buf_pos >= sizeof(pm.stop_buf)) {
+                        state = NORMAL;
+                        COPY_STOP_BUF(false);
+                    }
+                }
+                break;
             case EXPECTING_DATA:
+                pm.stop_buf[pm.stop_buf_pos++] = ch;
                 if (ch == 0x1b) state = EXPECTING_SLASH;
                 else {
-                    screen->pending_mode.stop_buf[screen->pending_mode.stop_buf_pos++] = ch;
-                    if (screen->pending_mode.stop_buf_pos >= sizeof(screen->pending_mode.stop_buf)) {
+                    if (pm.stop_buf_pos >= sizeof(pm.stop_buf)) {
                         state = NORMAL;
-                        COPY_STOP_BUF;
+                        COPY_STOP_BUF(true);
                     }
                 }
                 break;
             case EXPECTING_SLASH:
                 if (
                         ch == '\\' &&
-                        screen->pending_mode.stop_buf_pos >= 2 &&
-                        (screen->pending_mode.stop_buf[0] == '1' || screen->pending_mode.stop_buf[0] == '2') &&
-                        screen->pending_mode.stop_buf[1] == 's'
+                        pm.stop_buf_pos >= 2 &&
+                        (pm.stop_buf[0] == '1' || pm.stop_buf[0] == '2') &&
+                        pm.stop_buf[1] == 's'
                    ) {
                     // We found a pending mode sequence
-                    if (screen->pending_mode.stop_buf[0] == '2') {
-                        REPORT_COMMAND(screen_stop_pending_mode);
-                        screen->pending_mode.activated_at = 0;
-                        goto end;
-                    } else {
-                        REPORT_COMMAND(screen_start_pending_mode);
-                        screen->pending_mode.activated_at = monotonic();
-                    }
+                    if (pm.stop_buf[0] == '2') { stop_pending_mode } else { start_pending_mode }
                 } else {
-                    state = NORMAL;
-                    COPY_STOP_BUF; COPY(ch);
+                    COPY_STOP_BUF(true); COPY(ch);
                 }
+                state = NORMAL;
                 break;
         }
     }
 end:
-    screen->pending_mode.state = state;
+    pm.state = state;
     return pos;
 #undef COPY
 #undef COPY_STOP_BUF
+#undef stop_pending_mode
+#undef start_pending_mode
+#undef pm
 }
 
 static inline void

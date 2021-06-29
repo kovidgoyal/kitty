@@ -80,3 +80,6 @@
 #define BRACKETED_PASTE (2004 << 5)
 #define BRACKETED_PASTE_START "200~"
 #define BRACKETED_PASTE_END  "201~"
+
+// Pending updates mode
+#define PENDING_UPDATE (2026 << 5)

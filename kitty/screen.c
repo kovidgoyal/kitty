@@ -815,7 +815,7 @@ screen_toggle_screen_buffer(Screen *self, bool save_cursor, bool clear_alt_scree
 void screen_normal_keypad_mode(Screen UNUSED *self) {} // Not implemented as this is handled by the GUI
 void screen_alternate_keypad_mode(Screen UNUSED *self) {}  // Not implemented as this is handled by the GUI
 
-static inline void
+static void
 set_mode_from_const(Screen *self, unsigned int mode, bool val) {
 #define SIMPLE_MODE(name) \
     case name: \
@@ -883,6 +883,14 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         case ALTERNATE_SCREEN:
             if (val && self->linebuf == self->main_linebuf) screen_toggle_screen_buffer(self, mode == ALTERNATE_SCREEN, mode == ALTERNATE_SCREEN);
             else if (!val && self->linebuf != self->main_linebuf) screen_toggle_screen_buffer(self, mode == ALTERNATE_SCREEN, mode == ALTERNATE_SCREEN);
+            break;
+        case PENDING_UPDATE:
+            if (val) {
+                self->pending_mode.activated_at = monotonic();
+            } else {
+                if (!self->pending_mode.activated_at) log_error("Pending mode stop command issued while not in pending mode");
+                self->pending_mode.activated_at = 0;
+            }
             break;
         default:
             private = mode >= 1 << 5;
@@ -1626,6 +1634,8 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
             ans = self->modes.mouse_tracking_mode == ANY_MODE ? 1 : 2; break;
         case MOUSE_SGR_MODE:
             ans = self->modes.mouse_tracking_protocol == SGR_PROTOCOL ? 1 : 2; break;
+        case PENDING_UPDATE:
+            ans = self->pending_mode.activated_at ? 1 : 2; break;
     }
     int sz = snprintf(buf, sizeof(buf) - 1, "%s%u;%u$y", (private ? "?" : ""), which, ans);
     if (sz > 0) write_escape_code_to_child(self, CSI, buf);
