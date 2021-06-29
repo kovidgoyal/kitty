@@ -524,6 +524,11 @@ class Window:
         get_boss().close_window(self)
 
     def send_text(self, *args: str) -> bool:
+        '''
+        @ac:misc: Send the specified text to the active window
+
+        For details, see :sc:`send_text`.
+        '''
         mode = keyboard_mode_name(self.screen)
         required_mode_, text = args[-2:]
         required_mode = frozenset(required_mode_.split(','))
