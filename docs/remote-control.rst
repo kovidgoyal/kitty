@@ -142,6 +142,8 @@ running on other computers (for example, over ssh) or as other users.
    kitty, as if you were running with ``allow_remote_control`` turned on.
 
 
+.. _rc_mapping:
+
 Mapping key presses to remote control commands
 --------------------------------------------------
 

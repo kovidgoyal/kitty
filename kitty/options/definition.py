@@ -3193,7 +3193,7 @@ insert it into the terminal or copy it to the clipboard.
 ''')
 
 map('Open URL',
-    'open_url kitty_mod+e kitten hints',
+    'open_url kitty_mod+e open_url_with_hints',
     long_text='''
 Open a currently visible URL using the keyboard. The program used to open the
 URL is specified in :opt:`open_url_with`.

@@ -257,6 +257,11 @@ class Tab:  # {{{
         return 'Could not resize'
 
     def resize_window(self, quality: str, increment: int) -> None:
+        '''
+        @ac:win: Resize the active window by the specified amount
+
+        See :ref:`window_resizing` for details.
+        '''
         if increment < 1:
             raise ValueError(increment)
         is_horizontal = quality in ('wider', 'narrower')
@@ -267,6 +272,7 @@ class Tab:  # {{{
             ring_bell()
 
     def reset_window_sizes(self) -> None:
+        '@ac:win:Reset window sizes undoing any dynamic resizing of windows'
         if self.current_layout.remove_all_biases():
             self.relayout()
 
