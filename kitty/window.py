@@ -827,21 +827,30 @@ class Window:
 
     # mouse actions {{{
     def mouse_click_url(self) -> None:
+        '@ac:mouse: Click the URL under the mouse'
         click_mouse_url(self.os_window_id, self.tab_id, self.id)
 
     def mouse_click_url_or_select(self) -> None:
+        '@ac:mouse: Click the URL under the mouse only if the screen has no selection'
         if not self.screen.has_selection():
             self.mouse_click_url()
 
     def mouse_selection(self, code: int) -> None:
+        '''
+        @ac:mouse: Manipulate the selection based on the current mouse position
+
+        For examples, see :ref:`conf-kitty-mouse.mousemap`
+        '''
         mouse_selection(self.os_window_id, self.tab_id, self.id, code, self.current_mouse_event_button)
 
     def paste_selection(self) -> None:
+        '@ac:mouse: Paste the current primary selection'
         txt = get_boss().current_primary_selection()
         if txt:
             self.paste(txt)
 
     def paste_selection_or_clipboard(self) -> None:
+        '@ac:mouse: Paste the current primary selection or the clipboard if no selection is present'
         txt = get_boss().current_primary_selection_or_clipboard()
         if txt:
             self.paste(txt)
