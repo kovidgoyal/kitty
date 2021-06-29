@@ -1227,6 +1227,7 @@ END_ALLOW_CASE_RANGE
             break;
         case NUL:
         case DEL:
+            SET_STATE(0);
             break;  // no-op
         default:
             REPORT_ERROR("Invalid character in CSI: 0x%x, ignoring the sequence", ch);
