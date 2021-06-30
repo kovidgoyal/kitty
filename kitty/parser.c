@@ -155,7 +155,7 @@ static inline void
 screen_nel(Screen *screen) { screen_carriage_return(screen); screen_linefeed(screen); }
 
 static inline void
-handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
+dispatch_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
 #define CALL_SCREEN_HANDLER(name) REPORT_COMMAND(name); name(screen); break;
     switch(ch) {
         case BEL:
@@ -204,7 +204,7 @@ handle_normal_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_
 
 // Esc mode {{{
 static inline void
-handle_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
+dispatch_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
 #define CALL_ED(name) REPORT_COMMAND(name); name(screen); SET_STATE(0);
 #define CALL_ED1(name, ch) REPORT_COMMAND(name, ch); name(screen, ch); SET_STATE(0);
 #define CALL_ED2(name, a, b) REPORT_COMMAND(name, a, b); name(screen, a, b); SET_STATE(0);
@@ -1223,7 +1223,7 @@ END_ALLOW_CASE_RANGE
         case IND:
         case RI:
         case HTS:
-            handle_normal_mode_char(screen, ch, dump_callback);
+            dispatch_normal_mode_char(screen, ch, dump_callback);
             break;
         case NUL:
         case DEL:
@@ -1239,46 +1239,46 @@ END_ALLOW_CASE_RANGE
 #undef ENSURE_SPACE
 }
 
-#define dispatch_unicode_char(codepoint, watch_for_pending) { \
+#define dispatch_unicode_char(codepoint, dispatch, watch_for_pending) { \
     switch(screen->parser_state) { \
         case ESC: \
-            handle_esc_mode_char(screen, codepoint, dump_callback); \
+            dispatch##_esc_mode_char(screen, codepoint, dump_callback); \
             break; \
         case CSI: \
-            if (accumulate_csi(screen, codepoint, dump_callback)) { dispatch_csi(screen, dump_callback); SET_STATE(0); watch_for_pending; } \
+            if (accumulate_csi(screen, codepoint, dump_callback)) { dispatch##_csi(screen, dump_callback); SET_STATE(0); watch_for_pending; } \
             break; \
         case OSC: \
-            if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch_osc(screen, dump_callback); SET_STATE(0); } \
+            if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch##_osc(screen, dump_callback); SET_STATE(0); } \
             break; \
         case APC: \
-            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch_apc(screen, dump_callback); SET_STATE(0); } \
+            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch##_apc(screen, dump_callback); SET_STATE(0); } \
             break; \
         case PM: \
-            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch_pm(screen, dump_callback); SET_STATE(0); } \
+            if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch##_pm(screen, dump_callback); SET_STATE(0); } \
             break; \
         case DCS: \
-            if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch_dcs(screen, dump_callback); SET_STATE(0); watch_for_pending; } \
-            if (screen->parser_state == ESC) { handle_esc_mode_char(screen, codepoint, dump_callback); break; } \
+            if (accumulate_dcs(screen, codepoint, dump_callback)) { dispatch##_dcs(screen, dump_callback); SET_STATE(0); watch_for_pending; } \
+            if (screen->parser_state == ESC) { dispatch##_esc_mode_char(screen, codepoint, dump_callback); } \
             break; \
         default: \
-            handle_normal_mode_char(screen, codepoint, dump_callback); \
+            dispatch##_normal_mode_char(screen, codepoint, dump_callback); \
             break; \
     } \
 } \
 
 extern uint32_t *latin1_charset;
 
-#define decode_loop(watch_for_pending) { \
+#define decode_loop(dispatch, watch_for_pending) { \
     i = 0; \
     uint32_t prev = screen->utf8_state; \
     while(i < (size_t)len) { \
         uint8_t ch = buf[i++]; \
         if (screen->use_latin1) { \
-            dispatch_unicode_char(latin1_charset[ch], watch_for_pending); \
+            dispatch_unicode_char(latin1_charset[ch], dispatch, watch_for_pending); \
         } else { \
             switch (decode_utf8(&screen->utf8_state, &screen->utf8_codepoint, ch)) { \
                 case UTF8_ACCEPT: \
-                    dispatch_unicode_char(screen->utf8_codepoint, watch_for_pending); \
+                    dispatch_unicode_char(screen->utf8_codepoint, dispatch, watch_for_pending); \
                     break; \
                 case UTF8_REJECT: \
                     screen->utf8_state = UTF8_ACCEPT; \
@@ -1293,19 +1293,18 @@ extern uint32_t *latin1_charset;
 static inline void
 _parse_bytes(Screen *screen, const uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     unsigned int i;
-    decode_loop(;);
+    decode_loop(dispatch, ;);
 FLUSH_DRAW;
 }
 
 static inline size_t
 _parse_bytes_watching_for_pending(Screen *screen, const uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     unsigned int i;
-    decode_loop(if (screen->pending_mode.activated_at) goto end);
+    decode_loop(dispatch, if (screen->pending_mode.activated_at) goto end);
 end:
 FLUSH_DRAW;
     return i;
 }
-
 
 static size_t
 _queue_pending_bytes(Screen *screen, const uint8_t *buf, size_t len, PyObject *dump_callback DUMP_UNUSED) {
