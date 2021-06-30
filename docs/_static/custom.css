@@ -17,10 +17,6 @@
 
 .fit-img { max-width: 95% }
 
-div.body p, div.body dd, div.body li, div.body blockquote {
-    text-align: justify;
-}
-
 div.body {
     min-width: 200px;
 }
