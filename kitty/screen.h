@@ -116,11 +116,9 @@ typedef struct {
     CursorRenderInfo cursor_render_info;
 
     struct {
-        size_t capacity, used, stop_buf_pos;
+        size_t capacity, used;
         uint8_t *buf;
         monotonic_t activated_at, wait_time;
-        int state;
-        uint8_t stop_buf[32];
     } pending_mode;
     DisableLigature disable_ligatures;
     PyObject *marker;

@@ -363,6 +363,7 @@ class TestParser(BaseTest):
         pb('\033P=1sxyz;.;\033\\''\033P=2skjf".,><?_+)98\033\\', ('screen_start_pending_mode',), ('screen_stop_pending_mode',))
         pb('\033P=1s\033\\f\033P=1s\033\\', ('screen_start_pending_mode',), ('screen_start_pending_mode',))
         pb('\033P=2s\033\\', ('screen_stop_pending_mode',), ('draw', 'f'))
+        pb('\033P=1s\033\\XXX\033P=2s\033\\', ('screen_start_pending_mode',), ('screen_stop_pending_mode',), ('draw', 'XXX'))
 
         pb('\033[?2026hXXX\033[?2026l', ('screen_set_mode', 2026, 1), ('screen_reset_mode', 2026, 1), ('draw', 'XXX'))
         pb('\033[?2026h\033[32ma\033[?2026l', ('screen_set_mode', 2026, 1), ('screen_reset_mode', 2026, 1), ('select_graphic_rendition', '32 '), ('draw', 'a'))
