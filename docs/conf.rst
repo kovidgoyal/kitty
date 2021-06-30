@@ -34,6 +34,10 @@ expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
      include other.conf
 
 
+.. note:: Syntax highlighting for :file:`kitty.conf` in vim is available via
+   `vim-kitty <https://github.com/fladson/vim-kitty>`_.
+
+
 .. include:: /generated/conf-kitty.rst
 
 
