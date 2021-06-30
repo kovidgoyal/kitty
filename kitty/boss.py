@@ -566,7 +566,7 @@ class Boss:
         '''
         @ac:misc: Clear the terminal
 
-        For example::
+        See :sc:`reset_terminal` for details. For example::
 
             # Reset the terminal
             map kitty_mod+f9 clear_terminal reset active
@@ -577,7 +577,6 @@ class Boss:
             # Scroll the contents of the screen into the scrollback
             map kitty_mod+f12 clear_terminal scroll active
 
-        See :sc:`reset_terminal` for details.
         '''
         if only_active:
             windows = []
@@ -1067,7 +1066,7 @@ class Boss:
             return overlay_window
 
     def kitten(self, kitten: str, *args: str) -> None:
-        '@ac:misc: Run the specified kitten. See :doc:`kittens/custom` for details'
+        '@ac:misc: Run the specified kitten. See :doc:`/kittens/custom` for details'
         import shlex
         cmdline = args[0] if args else ''
         kargs = shlex.split(cmdline) if cmdline else []
@@ -1084,7 +1083,7 @@ class Boss:
             end_kitten(data, target_window_id, self)
 
     def input_unicode_character(self) -> None:
-        '@ac:misc: Input an arbitrary unicode character. See :doc:`kittens/unicode_input` for details.'
+        '@ac:misc: Input an arbitrary unicode character. See :doc:`/kittens/unicode-input` for details.'
         self._run_kitten('unicode_input')
 
     def set_tab_title(self) -> None:
@@ -1739,7 +1738,7 @@ class Boss:
         '''
         @ac:win: Detach a window, moving it to another tab or OS Window
 
-        See :ref:`detach_window` for details.
+        See :ref:`detaching windows <detach_window>` for details.
         '''
         if not args or args[0] == 'new':
             return self._move_window_to(target_os_window_id='new')
@@ -1794,7 +1793,7 @@ class Boss:
         '''
         @ac:tab: Detach a tab, moving it to another OS Window
 
-        See :ref:`detach_window` for details.
+        See :ref:`detaching windows <detach_window>` for details.
         '''
         if not args or args[0] == 'new':
             return self._move_tab_to()

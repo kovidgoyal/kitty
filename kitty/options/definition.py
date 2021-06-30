@@ -2700,6 +2700,9 @@ You can use multi-key shortcuts using the syntax shown below::
 For example::
 
     map ctrl+f>2 set_font_size 20
+
+The full list of actions that can be mapped to key presses is available
+:doc:`here </actions>`.
 ''')
 
 opt('kitty_mod', 'ctrl+shift',

@@ -102,6 +102,9 @@ the currently active window::
 Other keyboard shortcuts
 ----------------------------------
 
+The full list of actions that can be mapped to key presses is available
+:doc:`here </actions>`.
+
 ==================================  =======================
 Action                              Shortcut
 ==================================  =======================
