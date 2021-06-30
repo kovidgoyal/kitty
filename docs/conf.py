@@ -86,7 +86,7 @@ language: Optional[str] = None
 # This pattern also affects html_static_path and html_extra_path .
 exclude_patterns = [
     '_build', 'Thumbs.db', '.DS_Store',
-    'generated/cli-*.rst', 'generated/conf-*.rst'
+    'generated/cli-*.rst', 'generated/conf-*.rst', 'generated/actions.rst'
 ]
 
 # The name of the Pygments (syntax highlighting) style to use.
