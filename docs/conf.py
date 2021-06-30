@@ -347,6 +347,8 @@ class ConfLexer(RegexLexer):
             (r'(include)(\s+)(.+?)$', bygroups(Comment.Preproc, Whitespace, Name.Namespace)),
             (r'(map)(\s+)(\S+)(\s+)', bygroups(
                 Keyword.Declaration, Whitespace, String, Whitespace), 'action'),
+            (r'(mouse_map)(\s+)(\S+)(\s+)(\S+)(\s+)(\S+)(\s+)', bygroups(
+                Keyword.Declaration, Whitespace, String, Whitespace, Name.Variable, Whitespace, String, Whitespace), 'action'),
             (r'(symbol_map)(\s+)(\S+)(\s+)(.+?)$', bygroups(
                 Keyword.Declaration, Whitespace, String, Whitespace, Literal)),
             (r'([a-zA-Z_0-9]+)(\s+)', bygroups(
