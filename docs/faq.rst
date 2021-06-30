@@ -123,7 +123,7 @@ How do I change the colors in a running kitty instance?
 ------------------------------------------------------------
 
 You can either use the
-`OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h2-Operating-System-Commands>`_
+`OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands>`_
 to set colors or you can define keyboard shortcuts to set colors, for example::
 
     map f1 set_colors --configured /path/to/some/config/file/colors.conf

@@ -29,7 +29,7 @@ Colored and styled underlines
 use in terminal editors such as vim and emacs to display red, wavy underlines
 under mis-spelled words and/or syntax errors. This is done by re-purposing some
 SGR escape codes that are not used in modern terminals (`CSI codes
-<https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_sequences>`_)
+<https://en.wikipedia.org/wiki/ANSI_escape_code#CSI_(Control_Sequence_Introducer)_sequences>`_)
 
 To set the underline style::
 

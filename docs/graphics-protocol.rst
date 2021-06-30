@@ -227,7 +227,7 @@ Value of `t`          Meaning
                       :file:`/dev/shm`, :file:`TMPDIR env var if present` and any platform
                       specific temporary directories.
 ``s``                 A *shared memory object*, which on POSIX systems is a `POSIX shared memory object
-                      <http://man7.org/linux/man-pages/man7/shm_overview.7.html>`_ and on Windows is a
+                      <https://man7.org/linux/man-pages/man7/shm_overview.7.html>`_ and on Windows is a
                       `Named shared memory object <https://docs.microsoft.com/en-us/windows/win32/memory/creating-named-shared-memory>`_.
                       The terminal emulator must read the data from the memory
                       object and then unlink and close it on POSIX and just
