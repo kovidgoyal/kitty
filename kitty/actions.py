@@ -40,7 +40,7 @@ def get_all_actions() -> Dict[str, List[Action]]:
         return bool(doc and doc.strip().startswith('@ac:'))
 
     def as_action(x: object) -> Action:
-        doc = (x.__doc__ or '').strip()
+        doc = inspect.cleandoc(x.__doc__ or '')
         lines = doc.splitlines()
         first = lines.pop(0)
         parts = first.split(':', 2)
