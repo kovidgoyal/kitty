@@ -566,9 +566,9 @@ class Definition:
 
     def iter_all_maps(self, which: str = 'map') -> Iterator[Union[ShortcutMapping, MouseMapping]]:
         for x in self.iter_all_non_groups():
-            if isinstance(x, ShortcutMapping) and which == 'map':
+            if isinstance(x, ShortcutMapping) and which in ('map', '*'):
                 yield x
-            elif isinstance(x, MouseMapping) and which == 'mouse_map':
+            elif isinstance(x, MouseMapping) and which == ('mouse_map', '*'):
                 yield x
 
     def parser_func(self, name: str) -> Callable:

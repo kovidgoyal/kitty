@@ -512,7 +512,7 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
             generate_default_config(definition, f'kitten-{kitten}')
 
     from kitty.actions import as_rst
-    with open(f'generated/actions.rst', 'w', encoding='utf-8') as f:
+    with open('generated/actions.rst', 'w', encoding='utf-8') as f:
         f.write(as_rst())
 # }}}
 

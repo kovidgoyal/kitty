@@ -2,12 +2,13 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import NamedTuple, Dict, List
-from .window import Window
-from .tabs import Tab
-from .boss import Boss
-from .types import run_once
 import inspect
+from typing import Dict, List, NamedTuple
+
+from .boss import Boss
+from .tabs import Tab
+from .types import run_once
+from .window import Window
 
 
 class Action(NamedTuple):
@@ -64,9 +65,17 @@ def dump() -> None:
 
 
 def as_rst() -> str:
+    from .options.definition import definition
+    from .conf.types import Mapping
     allg = get_all_actions()
     lines: List[str] = []
     a = lines.append
+    maps: Dict[str, List[Mapping]] = {}
+    for m in definition.iter_all_maps():
+        if m.documented:
+            func = m.action_def.split()[0]
+            maps.setdefault(func, []).append(m)
+
     for group in sorted(allg, key=lambda x: group_title(x).lower()):
         title = group_title(group)
         a('')
@@ -91,4 +100,9 @@ def as_rst() -> str:
             a('')
             if action.long_help:
                 a(action.long_help)
+            if action.name in maps:
+                a('')
+                a('Default shortcuts using this action:')
+                scs = {f':sc:`kitty.{m.name}`' for m in maps[action.name]}
+                a(', '.join(sorted(scs)))
     return '\n'.join(lines)
