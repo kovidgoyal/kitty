@@ -40,4 +40,7 @@ html:
 linkcheck:
 	$(MAKE) FAIL_WARN=$(FAIL_WARN) -C docs linkcheck
 
+website:
+	./publish.py --only website
+
 docs: man html
