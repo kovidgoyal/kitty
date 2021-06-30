@@ -1268,49 +1268,39 @@ END_ALLOW_CASE_RANGE
 
 extern uint32_t *latin1_charset;
 
+#define decode_loop(watch_for_pending) { \
+    i = 0; \
+    uint32_t prev = screen->utf8_state; \
+    while(i < (size_t)len) { \
+        uint8_t ch = buf[i++]; \
+        if (screen->use_latin1) { \
+            dispatch_unicode_char(latin1_charset[ch], watch_for_pending); \
+        } else { \
+            switch (decode_utf8(&screen->utf8_state, &screen->utf8_codepoint, ch)) { \
+                case UTF8_ACCEPT: \
+                    dispatch_unicode_char(screen->utf8_codepoint, watch_for_pending); \
+                    break; \
+                case UTF8_REJECT: \
+                    screen->utf8_state = UTF8_ACCEPT; \
+                    if (prev != UTF8_ACCEPT && i > 0) i--; \
+                    break; \
+            } \
+            prev = screen->utf8_state; \
+        } \
+    }  \
+}
+
 static inline void
 _parse_bytes(Screen *screen, const uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
-    uint32_t prev = screen->utf8_state;
-    for (unsigned int i = 0; i < (unsigned int)len; i++) {
-        if (screen->use_latin1) {
-            dispatch_unicode_char(latin1_charset[buf[i]], ;);
-        } else {
-            switch (decode_utf8(&screen->utf8_state, &screen->utf8_codepoint, buf[i])) {
-                case UTF8_ACCEPT:
-                    dispatch_unicode_char(screen->utf8_codepoint, ;);
-                    break;
-                case UTF8_REJECT:
-                    screen->utf8_state = UTF8_ACCEPT;
-                    if (prev != UTF8_ACCEPT && i > 0) i--;
-                    break;
-            }
-            prev = screen->utf8_state;
-        }
-    }
+    unsigned int i;
+    decode_loop(;);
 FLUSH_DRAW;
 }
 
 static inline size_t
 _parse_bytes_watching_for_pending(Screen *screen, const uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
-    uint32_t prev = screen->utf8_state;
-    size_t i = 0;
-    while(i < (size_t)len) {
-        uint8_t ch = buf[i++];
-        if (screen->use_latin1) {
-            dispatch_unicode_char(latin1_charset[ch], if (screen->pending_mode.activated_at) goto end);
-        } else {
-            switch (decode_utf8(&screen->utf8_state, &screen->utf8_codepoint, ch)) {
-                case UTF8_ACCEPT:
-                    dispatch_unicode_char(screen->utf8_codepoint, if (screen->pending_mode.activated_at) goto end);
-                    break;
-                case UTF8_REJECT:
-                    screen->utf8_state = UTF8_ACCEPT;
-                    if (prev != UTF8_ACCEPT && i > 0) i--;
-                    break;
-            }
-            prev = screen->utf8_state;
-        }
-    }
+    unsigned int i;
+    decode_loop(if (screen->pending_mode.activated_at) goto end);
 end:
 FLUSH_DRAW;
     return i;
