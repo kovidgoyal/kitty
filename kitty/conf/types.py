@@ -463,7 +463,7 @@ class Group:
                 a(render_block(self.start_text))
                 a('')
         else:
-            ans.extend(('# vim:fileencoding=utf-8:ft=conf:foldmethod=marker', ''))
+            ans.extend(('# vim:fileencoding=utf-8:foldmethod=marker', ''))
 
         for item in self.iter_with_coalesced_options():
             if isinstance(item, Option):
