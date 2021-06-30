@@ -1233,7 +1233,11 @@ class Boss:
                     self.copy_to_buffer(get_options().copy_on_select)
 
     def copy_to_buffer(self, buffer_name: str) -> None:
-        '@ac:cp: Copy the selection from the active window to the specified buffer'
+        '''
+        @ac:cp: Copy the selection from the active window to the specified buffer
+
+        See :ref:`cpbuf` for details.
+        '''
         w = self.active_window
         if w is not None and not w.destroyed:
             text = w.text_for_selection()
@@ -1246,7 +1250,11 @@ class Boss:
                     self.clipboard_buffers[buffer_name] = text
 
     def paste_from_buffer(self, buffer_name: str) -> None:
-        '@ac:cp: Paste from the specified buffer to the active window'
+        '''
+        @ac:cp: Paste from the specified buffer to the active window
+
+        See :ref:`cpbuf` for details.
+        '''
         if buffer_name == 'clipboard':
             text: Optional[str] = get_clipboard_string()
         elif buffer_name == 'primary':
