@@ -1577,6 +1577,17 @@ screen_report_size(Screen *self, unsigned int which) {
 }
 
 void
+screen_escape_resize(Screen *self, unsigned int op, unsigned int lines, unsigned int cols) {
+    if (OPT(allow_resize_csi)) {
+        CALLBACK("resize_from_escape", "OII",
+            op == 8 ? Py_True : Py_False,
+            cols, lines
+        );
+    }
+    return;
+}
+
+void
 screen_manipulate_title_stack(Screen *self, unsigned int op, unsigned int which) {
     CALLBACK("manipulate_title_stack", "OOO",
         op == 23 ? Py_True : Py_False,
