@@ -109,8 +109,11 @@ _report_params(PyObject *dump_callback, const char *name, int *params, unsigned 
 #define REPORT_COMMAND3(name, x, y) \
         Py_XDECREF(PyObject_CallFunction(dump_callback, "sii", #name, (int)x, (int)y)); PyErr_Clear();
 
-#define GET_MACRO(_1,_2,_3,NAME,...) NAME
-#define REPORT_COMMAND(...) GET_MACRO(__VA_ARGS__, REPORT_COMMAND3, REPORT_COMMAND2, REPORT_COMMAND1, SENTINEL)(__VA_ARGS__)
+#define REPORT_COMMAND4(name, x, y, z) \
+        Py_XDECREF(PyObject_CallFunction(dump_callback, "siii", #name, (int)x, (int)y, (int)z)); PyErr_Clear();
+
+#define GET_MACRO(_1,_2,_3,_4,NAME,...) NAME
+#define REPORT_COMMAND(...) GET_MACRO(__VA_ARGS__, REPORT_COMMAND4, REPORT_COMMAND3, REPORT_COMMAND2, REPORT_COMMAND1, SENTINEL)(__VA_ARGS__)
 #define REPORT_VA_COMMAND(...) Py_XDECREF(PyObject_CallFunction(dump_callback, __VA_ARGS__)); PyErr_Clear();
 
 #define REPORT_DRAW(ch) \
@@ -717,6 +720,21 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     name(screen, p1, p2); \
     break;
 
+#define CALL_CSI_HANDLER3(name, defval1, defval2, defval3) \
+    if (num_params > 3) { \
+        REPORT_ERROR("CSI code %s has %u > 3 parameters", csi_letter(code), num_params); \
+        break; \
+    } \
+    p1 = num_params > 0 ? params[0] : defval1; \
+    p2 = num_params > 1 ? params[1] : defval2; \
+    p3 = num_params > 2 ? params[2] : defval3; \
+    NON_NEGATIVE_PARAM(p1); \
+    NON_NEGATIVE_PARAM(p2); \
+    NON_NEGATIVE_PARAM(p3); \
+    REPORT_COMMAND(name, p1, p2, p3); \
+    name(screen, p1, p2, p3); \
+    break;
+
 #define SET_MODE(func) \
     p1 = start_modifier == '?' ? 5 : 0; \
     for (i = 0; i < num_params; i++) { \
@@ -737,7 +755,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     char start_modifier = 0, end_modifier = 0;
     uint32_t *buf = screen->parser_buf, code = screen->parser_buf[screen->parser_buf_pos];
     unsigned int num = screen->parser_buf_pos, start, i, num_params=0;
-    static int params[MAX_PARAMS] = {0}, p1, p2;
+    static int params[MAX_PARAMS] = {0}, p1, p2, p3;
     bool private;
     if (buf[0] == '>' || buf[0] == '<' || buf[0] == '?' || buf[0] == '!' || buf[0] == '=') {
         start_modifier = (char)screen->parser_buf[0];
