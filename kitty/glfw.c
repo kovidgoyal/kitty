@@ -1255,6 +1255,26 @@ cocoa_window_id(PyObject UNUSED *self, PyObject *os_wid) {
 }
 
 static PyObject*
+resize_os_window(PyObject UNUSED *self, PyObject UNUSED *args) {
+    PyObject *w_id;
+    int x,y;
+
+    if(!PyArg_ParseTuple(args, "Oii", &w_id, &x, &y)) {
+        log_error("Unable to parse args.");
+    }
+
+    OSWindow* w = find_os_window(w_id);
+    if (!w) {
+        log_error("Cannot find window.");
+    }
+
+    glfwSetWindowSize(w->handle, x, y);
+    update_os_window_viewport(w, true);
+
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 get_primary_selection(PYNOARG) {
     if (glfwGetPrimarySelectionString) {
         OSWindow *w = current_os_window();
@@ -1426,6 +1446,7 @@ static PyMethodDef module_methods[] = {
     METHODB(get_primary_selection, METH_NOARGS),
     METHODB(x11_display, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
+    METHODB(resize_os_window, METH_VARARGS),
     METHODB(set_primary_selection, METH_VARARGS),
 #ifndef __APPLE__
     METHODB(dbus_send_notification, METH_VARARGS),

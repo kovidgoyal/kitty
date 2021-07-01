@@ -746,6 +746,9 @@ def cocoa_window_id(os_window_id: int) -> int:
     pass
 
 
+def resize_os_window(os_window_id: int, x: int, y: int) -> None:
+    pass
+
 def swap_tabs(os_window_id: int, a: int, b: int) -> None:
     pass
 
