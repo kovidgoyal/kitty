@@ -2773,7 +2773,6 @@ screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
     return id;
 }
 
-
 void
 screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool ended, bool start_extended_selection) {
     if (!self->selections.count) return;
@@ -2832,7 +2831,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
             break;
         }
         case EXTEND_CELL:
-            s->end.x = x; s->end.y = y; s->end.in_left_half_of_cell = in_left_half_of_cell;
+            b->x = x; b->y = y; b->in_left_half_of_cell = in_left_half_of_cell;
             break;
     }
     if (!self->selections.in_progress) call_boss(set_primary_selection, NULL);
