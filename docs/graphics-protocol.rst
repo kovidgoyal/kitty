@@ -590,7 +590,7 @@ Clients can control animations by using the ``a=a`` key in the escape code sent
 to the terminal.
 
 The simplest is client driven animations, where the client transmits the frame
-data and the also instructs the terminal to make a particular frame the current
+data and then also instructs the terminal to make a particular frame the current
 frame.  To change the current frame, use the ``c`` key::
 
     <ESC>_Ga=a,i=3,c=7<ESC>\
