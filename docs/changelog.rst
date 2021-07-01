@@ -7,6 +7,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.21.3 [future]
 ----------------------
 
+- Add a new :ref:`action-toggle_layout` action to easily zoom/unzoom a window
+
 - Fix a bug in the implementation of the synchronized updates escape code that
   could cause incorrect parsing if either the pending buffer capacity or the
   pending timeout were exceeded (:iss:`3779`)

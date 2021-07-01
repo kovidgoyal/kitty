@@ -3125,6 +3125,13 @@ You can also create shortcuts to switch to specific layouts::
 Similarly, to switch back to the previous layout::
 
    map ctrl+alt+p last_used_layout
+
+There is also a toggle layout function that switches
+to the named layout or back to the previous layout if
+in the named layout. Useful to temporarily "zoom" the
+active window by switching to the stack layout::
+
+    map ctrl+alt+z toggle_layout stack
 ''')  # }}}
 
 

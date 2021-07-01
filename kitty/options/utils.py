@@ -116,7 +116,7 @@ def detach_tab_parse(func: str, rest: str) -> FuncArgsType:
     return func, (rest,)
 
 
-@func_with_args('set_background_opacity', 'goto_layout', 'kitty_shell')
+@func_with_args('set_background_opacity', 'goto_layout', 'toggle_layout', 'kitty_shell')
 def simple_parse(func: str, rest: str) -> FuncArgsType:
     return func, [rest]
 

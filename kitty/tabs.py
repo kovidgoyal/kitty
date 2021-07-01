@@ -258,6 +258,21 @@ class Tab:  # {{{
         self._set_current_layout(layout_name)
         self.relayout()
 
+    def toggle_layout(self, layout_name: str) -> None:
+        '''
+        @ac:lay: Toggle the named layout
+
+        Switches to the named layout if another layout is current, otherwise
+        switches to the last used layout. Useful to "zoom" a window temporarily
+        by switching to the stack layout. For example::
+
+            map f1 toggle_layout stack
+        '''
+        if self._current_layout_name == layout_name:
+            self.last_used_layout()
+        else:
+            self.goto_layout(layout_name)
+
     def resize_window_by(self, window_id: int, increment: float, is_horizontal: bool) -> Optional[str]:
         increment_as_percent = self.current_layout.bias_increment_for_cell(is_horizontal) * increment
         if self.current_layout.modify_size_of_window(self.windows, window_id, increment_as_percent, is_horizontal):
