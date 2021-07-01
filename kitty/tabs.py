@@ -495,6 +495,7 @@ class Tab:  # {{{
         @ac:win: Focus the neighboring window in the current tab
 
         For example::
+
             map ctrl+left neighboring_window left
             map ctrl+down neighboring_window bottom
         '''
@@ -507,6 +508,7 @@ class Tab:  # {{{
         @ac:win: Move the window in the specified direction
 
         For example::
+
             map ctrl+left move_window left
             map ctrl+down move_window bottom
         '''

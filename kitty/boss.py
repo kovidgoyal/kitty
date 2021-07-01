@@ -677,6 +677,7 @@ class Boss:
         @ac:win: Set the background opacity for the active OS Window
 
         For example::
+
             map f1 set_background_opacity +0.1
             map f2 set_background_opacity -0.1
             map f3 set_background_opacity 0.5
