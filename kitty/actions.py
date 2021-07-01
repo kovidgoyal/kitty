@@ -25,6 +25,7 @@ groups = {
     'tab': 'Tab management',
     'mouse': 'Mouse actions',
     'mk': 'Marks',
+    'lay': 'Layouts',
     'misc': 'Miscellaneous',
 }
 group_title = groups.__getitem__

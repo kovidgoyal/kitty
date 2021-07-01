@@ -223,6 +223,7 @@ class Tab:  # {{{
         return create_layout_object_for(name, self.os_window_id, self.id)
 
     def next_layout(self) -> None:
+        '@ac:lay: Go to the next enabled layout'
         if len(self.enabled_layouts) > 1:
             for i, layout_name in enumerate(self.enabled_layouts):
                 if layout_name == self.current_layout.full_name:
@@ -235,11 +236,19 @@ class Tab:  # {{{
             self.relayout()
 
     def last_used_layout(self) -> None:
+        '@ac:lay: Go to the previously used layout'
         if len(self.enabled_layouts) > 1 and self._last_used_layout and self._last_used_layout != self._current_layout_name:
             self._set_current_layout(self._last_used_layout)
             self.relayout()
 
     def goto_layout(self, layout_name: str, raise_exception: bool = False) -> None:
+        '''
+        @ac:lay: Switch to the named layout
+
+        For example::
+
+            map f1 goto_layout tall
+        '''
         layout_name = layout_name.lower()
         if layout_name not in self.enabled_layouts:
             if raise_exception:
