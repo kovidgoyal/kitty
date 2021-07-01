@@ -888,8 +888,11 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             if (val) {
                 self->pending_mode.activated_at = monotonic();
             } else {
-                if (!self->pending_mode.activated_at) log_error("Pending mode stop command issued while not in pending mode");
-                self->pending_mode.activated_at = 0;
+                if (!self->pending_mode.activated_at) log_error(
+                    "Pending mode stop command issued while not in pending mode, this can"
+                    " be either a bug in the terminal application or caused by a timeout with no data"
+                    " received for too long or by too much data in pending mode");
+                else self->pending_mode.activated_at = 0;
             }
             break;
         default:

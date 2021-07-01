@@ -1013,7 +1013,9 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 } else {
                     // ignore stop without matching start, see queue_pending_bytes()
                     // for how stop is detected while in pending mode.
-                    REPORT_ERROR("Pending mode stop command issued while not in pending mode");
+                    REPORT_ERROR("Pending mode stop command issued while not in pending mode, this can"
+                        " be either a bug in the terminal application or caused by a timeout with no data"
+                        " received for too long or by too much data in pending mode");
                     REPORT_COMMAND(screen_stop_pending_mode);
                 }
             } else {
@@ -1409,19 +1411,39 @@ end:
     return i;
 }
 
-static inline void
+static void
+create_pending_space(Screen *screen, size_t needed_space) {
+    screen->pending_mode.capacity = MAX(screen->pending_mode.capacity * 2, screen->pending_mode.used + needed_space);
+    if (screen->pending_mode.capacity > READ_BUF_SZ) screen->pending_mode.capacity = screen->pending_mode.used + needed_space;
+    screen->pending_mode.buf = realloc(screen->pending_mode.buf, screen->pending_mode.capacity);
+    if (!screen->pending_mode.buf) fatal("Out of memory");
+}
+
+static void
+dump_partial_escape_code_to_pending(Screen *screen) {
+    if (screen->parser_buf_pos) {
+        const size_t needed_space = 4 * screen->parser_buf_pos + 8;
+        if (screen->pending_mode.used + needed_space >= screen->pending_mode.capacity) create_pending_space(screen, needed_space);
+        write_pending_char(screen, screen->parser_state);
+        for (unsigned i = 0; i < screen->parser_buf_pos; i++) write_pending_char(screen, screen->parser_buf[i]);
+    }
+}
+
+static void
 do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz, monotonic_t now, PyObject *dump_callback DUMP_UNUSED) {
     enum STATE {START, PARSE_PENDING, PARSE_READ_BUF, QUEUE_PENDING};
     enum STATE state = START;
     size_t read_buf_pos = 0;
+    unsigned int parser_state_at_start_of_pending = 0;
 
     do {
         switch(state) {
             case START:
                 if (screen->pending_mode.activated_at) {
                     if (screen->pending_mode.activated_at + screen->pending_mode.wait_time < now) {
+                        dump_partial_escape_code_to_pending(screen);
                         screen->pending_mode.activated_at = 0;
-                        state = screen->pending_mode.used ? PARSE_PENDING : PARSE_READ_BUF;
+                        state = START;
                     } else state = QUEUE_PENDING;
                 } else {
                     state = screen->pending_mode.used ? PARSE_PENDING : PARSE_READ_BUF;
@@ -1429,6 +1451,8 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
                 break;
 
             case PARSE_PENDING:
+                screen->parser_state = parser_state_at_start_of_pending;
+                parser_state_at_start_of_pending = 0;
                 _parse_bytes(screen, screen->pending_mode.buf, screen->pending_mode.used, dump_callback);
                 screen->pending_mode.used = 0;
                 screen->pending_mode.activated_at = 0;  // ignore any pending starts in the pending bytes
@@ -1445,15 +1469,14 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
                 const size_t needed_space = read_buf_sz * 2;
                 if (screen->pending_mode.capacity - screen->pending_mode.used < needed_space) {
                     if (screen->pending_mode.capacity >= READ_BUF_SZ) {
-                        // Too much pending data, drain it
+                        dump_partial_escape_code_to_pending(screen);
                         screen->pending_mode.activated_at = 0;
                         state = START;
                         break;
                     }
-                    screen->pending_mode.capacity = MAX(screen->pending_mode.capacity * 2, screen->pending_mode.used + needed_space);
-                    screen->pending_mode.buf = realloc(screen->pending_mode.buf, screen->pending_mode.capacity);
-                    if (!screen->pending_mode.buf) fatal("Out of memory");
+                    create_pending_space(screen, needed_space);
                 }
+                if (!screen->pending_mode.used) parser_state_at_start_of_pending = screen->parser_state;
                 read_buf_pos += queue_pending_bytes(screen, read_buf + read_buf_pos, read_buf_sz - read_buf_pos, dump_callback);
                 state = START;
             }   break;

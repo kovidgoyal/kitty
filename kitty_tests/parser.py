@@ -370,6 +370,21 @@ class TestParser(BaseTest):
         pb('\033[?2026h\033P+q544e\033\\ama\033P=2s\033\\',
            ('screen_set_mode', 2026, 1), ('screen_stop_pending_mode',), ('screen_request_capabilities', 43, '544e'), ('draw', 'ama'))
 
+        s.reset()
+        s.set_pending_timeout(timeout)
+        pb('\033[?2026h', ('screen_set_mode', 2026, 1),)
+        pb('\033P+q')
+        time.sleep(1.2 * timeout)
+        pb(
+            '544e' + '\033\\\033P=2s\033\\',
+            ('screen_request_capabilities', 43, '544e'),
+            ('Pending mode stop command issued while not in pending mode, this can be '
+             'either a bug in the terminal application or caused by a timeout with no '
+             'data received for too long or by too much data in pending mode',),
+            ('screen_stop_pending_mode',)
+        )
+        self.assertEqual(str(s.line(0)), '')
+
     def test_oth_codes(self):
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)
