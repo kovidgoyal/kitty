@@ -234,6 +234,7 @@ string_capabilities = {
     'Smulx': r'\E[4:%p1%dm',  # this is a non-standard extension that some terminals use, so match them
     # Enter strikethrough mode
     'smxx': r'\E[9m',
+    'Sync': '\\EP=%p1%ds\\E\\',  # this is a non-standard extension supported by tmux for synchronized updates
     # Clear all tab stops
     'tbc': r'\E[3g',
     # To status line (used to set window titles)
@@ -437,7 +438,7 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'Su Smulx Tc setrgbf setrgbb fullkbd kUP kDN'.split() + [
+    'Su Smulx Sync Tc setrgbf setrgbb fullkbd kUP kDN'.split() + [
         'k{}{}'.format(key, mod)
         for key in 'UP DN RIT LFT END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
