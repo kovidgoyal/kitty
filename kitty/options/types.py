@@ -50,6 +50,7 @@ option_names = (  # {{{
  'adjust_line_height',
  'allow_hyperlinks',
  'allow_remote_control',
+ 'allow_resize_csi',
  'background',
  'background_image',
  'background_image_layout',
@@ -442,6 +443,7 @@ class Options:
     adjust_line_height: typing.Union[int, float] = 0
     allow_hyperlinks: int = 1
     allow_remote_control: str = 'n'
+    allow_resize_csi: bool = False
     background: Color = Color(red=0, green=0, blue=0)
     background_image: typing.Optional[str] = None
     background_image_layout: choices_for_background_image_layout = 'tiled'

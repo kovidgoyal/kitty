@@ -95,6 +95,16 @@ class AllowHyperlinks(Query):
 
 
 @query
+class AllowResizeCSI(Query):
+    name: str = 'allow_resize_csi'
+    help_text: str = 'yes or no'
+
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        return 'yes' if opts.allow_resize_csi else 'no'
+
+
+@query
 class FontFamily(Query):
     name: str = 'font_family'
     help_text: str = 'The current font\'s PostScript name'

@@ -2522,6 +2522,15 @@ holding down ctrl+shift and clicking with the mouse. The special value of
 '''
     )
 
+opt('allow_resize_csi', 'no',
+    option_type='to_bool', ctype='bool',
+    long_text='''
+Process resize (CSI 8/9/10) escape sequences.  If disabled resize escape
+sequences are ignored.  Otherwise, they are handled by resizing windows as
+specified.
+'''
+    )
+
 opt('term', 'xterm-kitty',
     long_text='''
 The value of the TERM environment variable to set. Changing this can break many
