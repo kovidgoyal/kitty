@@ -894,6 +894,8 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             switch(params[0]) {
                 case 4:
                 case 8:
+                case 88:
+                case 89:
                     CALL_CSI_HANDLER3(screen_escape_resize, 0, 25, 80);
                     break;
                 case 14:

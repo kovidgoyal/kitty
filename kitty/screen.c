@@ -1578,9 +1578,15 @@ screen_report_size(Screen *self, unsigned int which) {
 
 void
 screen_escape_resize(Screen *self, unsigned int op, unsigned int lines, unsigned int cols) {
+    PyObject *cells, *os_window, *layout_window;
+
+    cells = (op == 4) ? Py_False : Py_True;
+    os_window = (op == 89) ? Py_False : Py_True;
+    layout_window = (op == 88) ? Py_False : Py_True;
+
     if (OPT(allow_resize_csi)) {
-        CALLBACK("resize_from_escape", "OII",
-            op == 8 ? Py_True : Py_False,
+        CALLBACK("resize_from_escape", "OOOII",
+            cells, os_window, layout_window,
             cols, lines
         );
     }
