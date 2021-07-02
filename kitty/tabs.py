@@ -199,18 +199,24 @@ class Tab:  # {{{
             if tm is not None:
                 tm.title_changed(self)
 
-    def resize_from_window(self, window: Window, x: int, y: int) -> None:
-        if len(self.windows) != 1:
-            log_error('Unable to resize layout-ed windows.')
-            return
+    def resize_from_window(self, window: Window, os_window: bool, layout_window: bool, x: int, y: int, dx_cells: int, dy_cells: int) -> None:
+        if os_window:
+            # If there are multiple windows we can only resize if requested
+            # to modify layouts also.
+            if len(self.windows) != 1 and not layout_window:
+                return
 
-        if window is not self.active_window:
-            log_error('Unable to resize inactive window.')
-            return
+            tm = self.tab_manager_ref()
+            if tm is not None:
+                resize_os_window(tm.os_window_id, x, y)
 
-        tm = self.tab_manager_ref()
-        if tm is not None:
-            resize_os_window(tm.os_window_id, x, y)
+            # Tabs will resize as part of window resize event.
+
+        elif layout_window:
+            if dx_cells:
+                self.resize_window_by(window.id, dx_cells, True)
+            if dy_cells:
+                self.resize_window_by(window.id, dy_cells, False)
 
     def on_bell(self, window: Window) -> None:
         self.mark_tab_bar_dirty()

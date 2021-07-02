@@ -521,12 +521,18 @@ class Window:
         if t is None:
             return
 
-        if cells:
-            cell_width, cell_height = cell_size_for_window(self.os_window_id)
-            x = x * cell_width
-            y = y * cell_height
+        cell_width, cell_height = cell_size_for_window(self.os_window_id)
 
-        t.resize_from_window(self, x, y)
+        if cells:
+            x, y = max(x, 10), max(y, 2)
+            cells_x, cells_y = x, y
+            x, y = x * cell_width, y * cell_height
+        else:
+            x, y = max(x, cell_width*10), max(y, cell_height*2)
+            cells_x, cells_y = int(x / cells_width), int(y / cells_height)
+
+        g = self.geometry
+        t.resize_from_window(self, os_window, layout_window, x, y, cells_x - g.xnum, cells_y - g.ynum)
 
     def contains(self, x: int, y: int) -> bool:
         g = self.geometry
