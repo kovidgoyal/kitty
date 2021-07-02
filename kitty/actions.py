@@ -57,6 +57,12 @@ def get_all_actions() -> Dict[str, List[Action]]:
             if ac.name not in seen:
                 ans.setdefault(ac.group, []).append(ac)
                 seen.add(ac.name)
+    for i, which in enumerate('first second third fourth fifth sixth seventh eighth ninth tenth'.split()):
+        name = f'{which}_window'
+        if name not in seen:
+            seen.add(name)
+            ans['win'].append(Action(name, 'win', f'Focus the {which} window', ''))
+
     return ans
 
 

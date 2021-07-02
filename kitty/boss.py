@@ -332,6 +332,7 @@ class Boss:
         return self.add_os_window(startup_session)
 
     def new_os_window(self, *args: str) -> None:
+        '@ac:win: New OS Window'
         self._new_os_window(args)
 
     @property
@@ -499,6 +500,7 @@ class Boss:
             self.child_monitor.mark_for_close(window.id)
 
     def close_tab(self, tab: Optional[Tab] = None) -> None:
+        '@ac:tab: Close the current tab'
         tab = tab or self.active_tab
         if tab:
             self.confirm_tab_close(tab)
@@ -1901,6 +1903,7 @@ class Boss:
             tab.remove_window(w)
 
     def debug_config(self) -> None:
+        '@ac:misc: Show the effective configuration kitty is running with'
         from .debug_config import debug_config
         w = self.active_window
         if w is not None:

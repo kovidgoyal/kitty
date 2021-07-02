@@ -301,6 +301,7 @@ class Tab:  # {{{
             self.relayout()
 
     def layout_action(self, action_name: str, args: Sequence[str]) -> None:
+        '@ac:lay: Perform a layout specific action. See :doc:`layouts` for details'
         ret = self.current_layout.layout_action(action_name, args, self.windows)
         if ret is None:
             ring_bell()
