@@ -1382,7 +1382,7 @@ pending_dcs(Screen *screen, PyObject *dump_callback DUMP_UNUSED) {
             REPORT_COMMAND(screen_start_pending_mode);
             screen->pending_mode.activated_at = monotonic();
         } else {
-            REPORT_COMMAND(screen_stop_pending_mode);
+            screen->pending_mode.stop_escape_code_type = DCS;
             screen->pending_mode.activated_at = 0;
         }
     } else pending_escape_code(screen, DCS, ST);
@@ -1395,8 +1395,8 @@ pending_csi(Screen *screen, PyObject *dump_callback DUMP_UNUSED) {
             REPORT_COMMAND(screen_set_mode, 2026, 1);
             screen->pending_mode.activated_at = monotonic();
         } else {
-            REPORT_COMMAND(screen_reset_mode, 2026, 1);
             screen->pending_mode.activated_at = 0;
+            screen->pending_mode.stop_escape_code_type = CSI;
         }
     } else pending_escape_code(screen, CSI, pb(screen->parser_buf_pos));
 }
@@ -1456,6 +1456,11 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
                 _parse_bytes(screen, screen->pending_mode.buf, screen->pending_mode.used, dump_callback);
                 screen->pending_mode.used = 0;
                 screen->pending_mode.activated_at = 0;  // ignore any pending starts in the pending bytes
+                if (screen->pending_mode.stop_escape_code_type) {
+                    if (screen->pending_mode.stop_escape_code_type == DCS) { REPORT_COMMAND(screen_stop_pending_mode); }
+                    else if (screen->pending_mode.stop_escape_code_type == CSI) { REPORT_COMMAND(screen_reset_mode, 2026, 1); }
+                    screen->pending_mode.stop_escape_code_type = 0;
+                }
                 state = START;
                 break;
 
@@ -1467,6 +1472,7 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
 
             case QUEUE_PENDING: {
                 const size_t needed_space = read_buf_sz * 2;
+                screen->pending_mode.stop_escape_code_type = 0;
                 if (screen->pending_mode.capacity - screen->pending_mode.used < needed_space) {
                     if (screen->pending_mode.capacity >= READ_BUF_SZ) {
                         dump_partial_escape_code_to_pending(screen);
