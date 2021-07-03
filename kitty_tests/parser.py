@@ -369,6 +369,7 @@ class TestParser(BaseTest):
         pb('\033[?2026h\033[32ma\033[?2026l', ('screen_set_mode', 2026, 1), ('screen_reset_mode', 2026, 1), ('select_graphic_rendition', '32 '), ('draw', 'a'))
         pb('\033[?2026h\033P+q544e\033\\ama\033P=2s\033\\',
            ('screen_set_mode', 2026, 1), ('screen_stop_pending_mode',), ('screen_request_capabilities', 43, '544e'), ('draw', 'ama'))
+        pb('\033P=1s\033\\\033(B\033P=2s\033\\', ('screen_start_pending_mode',), ('screen_stop_pending_mode',), ('screen_designate_charset', 0, 66))
 
         s.reset()
         s.set_pending_timeout(timeout)

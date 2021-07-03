@@ -1327,7 +1327,7 @@ static void
 pending_esc_mode_char(Screen *screen, uint32_t ch, PyObject *dump_callback UNUSED) {
     if (screen->parser_buf_pos > 0) {
         write_pending_char(screen, ESC);
-        write_pending_char(screen, screen->parser_buf[screen->parser_buf_pos]);
+        write_pending_char(screen, screen->parser_buf[screen->parser_buf_pos - 1]);
         write_pending_char(screen, ch);
         SET_STATE(0);
         return;
