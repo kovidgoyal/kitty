@@ -895,6 +895,9 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
                 else self->pending_mode.activated_at = 0;
             }
             break;
+        case 7727 << 5:
+            log_error("Application escape mode is not supported, the extended keyboard protocol should be used instead");
+            break;
         default:
             private = mode >= 1 << 5;
             if (private) mode >>= 5;
