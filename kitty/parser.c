@@ -1129,7 +1129,7 @@ START_ALLOW_CASE_RANGE
 END_ALLOW_CASE_RANGE
             if (screen->parser_buf_pos > 0 && screen->parser_buf[screen->parser_buf_pos-1] == ESC) {
                 if (ch == '\\') { screen->parser_buf_pos--; return true; }
-                REPORT_ERROR("DCS sequence contained non-printable character: 0x%x ignoring the sequence", ESC);
+                REPORT_ERROR("DCS sequence contained ESC without trailing \\ ignoring the sequence");
                 SET_STATE(ESC); return false;
             }
             if (screen->parser_buf_pos >= PARSER_BUF_SZ - 1) {

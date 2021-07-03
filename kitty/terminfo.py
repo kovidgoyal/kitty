@@ -234,7 +234,7 @@ string_capabilities = {
     'Smulx': r'\E[4:%p1%dm',  # this is a non-standard extension that some terminals use, so match them
     # Enter strikethrough mode
     'smxx': r'\E[9m',
-    'Sync': '\\EP=%p1%ds\\E\\',  # this is a non-standard extension supported by tmux for synchronized updates
+    'Sync': r'\EP=%p1%ds\E\\',  # this is a non-standard extension supported by tmux for synchronized updates
     # Clear all tab stops
     'tbc': r'\E[3g',
     # To status line (used to set window titles)
