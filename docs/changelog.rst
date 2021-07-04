@@ -9,6 +9,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Add a new :ref:`action-toggle_layout` action to easily zoom/unzoom a window
 
+- When right clicking to extend a selection, move the nearest selection
+  boundary rather than the end of the selection. To restore previous behavior
+  use ``mouse_map right press ungrabbed mouse_selection move-end``.
+
 - Fix a bug in the implementation of the synchronized updates escape code that
   could cause incorrect parsing if either the pending buffer capacity or the
   pending timeout were exceeded (:iss:`3779`)

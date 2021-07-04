@@ -548,6 +548,7 @@ mma('Select line from point',
 
 mma('Extend the current selection',
     'extend_selection right press ungrabbed mouse_selection extend',
+    long_text='If you want only the end of the selection to be moved instead of the nearest boundary, use move-end instead of extend.'
     )
 
 mma('Paste from the primary selection even when grabbed',

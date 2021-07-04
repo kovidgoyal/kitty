@@ -281,11 +281,11 @@ drag_scroll(Window *w, OSWindow *frame) {
 }
 
 static inline void
-extend_selection(Window *w, bool ended) {
+extend_selection(Window *w, bool ended, bool extend_nearest) {
     Screen *screen = w->render_data.screen;
     if (screen_has_selection(screen)) {
         screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell,
-                (SelectionUpdate){.ended=ended, .set_as_nearest_extend=true});
+                (SelectionUpdate){.ended=ended, .set_as_nearest_extend=extend_nearest});
     }
 }
 
@@ -590,6 +590,7 @@ typedef enum MouseSelectionType {
     MOUSE_SELECTION_WORD,
     MOUSE_SELECTION_LINE,
     MOUSE_SELECTION_LINE_FROM_POINT,
+    MOUSE_SELECTION_MOVE_END,
 } MouseSelectionType;
 
 
@@ -621,7 +622,10 @@ mouse_selection(Window *w, int code, int button) {
             if (screen_selection_range_for_line(screen, w->mouse_pos.cell_y, &start, &end) && end > w->mouse_pos.cell_x) S(EXTEND_LINE_FROM_POINT);
             break;
         case MOUSE_SELECTION_EXTEND:
-            extend_selection(w, false);
+            extend_selection(w, false, true);
+            break;
+        case MOUSE_SELECTION_MOVE_END:
+            extend_selection(w, false, false);
             break;
     }
     set_mouse_cursor_when_dragging();
@@ -863,6 +867,7 @@ init_mouse(PyObject *module) {
     PyModule_AddIntMacro(module, MOUSE_SELECTION_WORD);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_LINE);
     PyModule_AddIntMacro(module, MOUSE_SELECTION_LINE_FROM_POINT);
+    PyModule_AddIntMacro(module, MOUSE_SELECTION_MOVE_END);
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return true;
 }

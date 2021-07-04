@@ -341,6 +341,7 @@ def mouse_selection(func: str, rest: str) -> FuncArgsType:
         cmap = {
             'normal': defines.MOUSE_SELECTION_NORMAL,
             'extend': defines.MOUSE_SELECTION_EXTEND,
+            'move-end': defines.MOUSE_SELECTION_MOVE_END,
             'rectangle': defines.MOUSE_SELECTION_RECTANGLE,
             'word': defines.MOUSE_SELECTION_WORD,
             'line': defines.MOUSE_SELECTION_LINE,
