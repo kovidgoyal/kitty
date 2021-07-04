@@ -20,7 +20,10 @@ else:
 
 
 def resolved_kitten(k: str) -> str:
-    return aliases.get(k, k).replace('-', '_')
+    ans = aliases.get(k, k)
+    head, tail = os.path.split(ans)
+    tail = tail.replace('-', '_')
+    return os.path.join(head, tail)
 
 
 def path_to_custom_kitten(config_dir: str, kitten: str) -> str:
