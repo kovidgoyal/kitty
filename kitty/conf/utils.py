@@ -96,8 +96,8 @@ def to_cmdline(x: str) -> List[str]:
 
 
 def python_string(text: str) -> str:
-    import ast
-    ans: str = ast.literal_eval("'''" + text.replace("'''", "'\\''") + "'''")
+    from ast import literal_eval
+    ans: str = literal_eval("'''" + text.replace("'''", "'\\''") + "'''")
     return ans
 
 
