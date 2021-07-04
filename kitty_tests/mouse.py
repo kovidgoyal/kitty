@@ -179,6 +179,12 @@ class TestMouse(BaseTest):
         move(x=2, y=1)
         self.ae(sel(), '123\n 456')
         release()
+        press(x=2, y=1, button=GLFW_MOUSE_BUTTON_RIGHT)
+        release(x=2, y=1, button=GLFW_MOUSE_BUTTON_RIGHT)
+        self.ae(sel(), '123\n 456')
+        press(button=GLFW_MOUSE_BUTTON_RIGHT)
+        release(button=GLFW_MOUSE_BUTTON_RIGHT)
+        self.ae(sel(), ' 123\n 456')
 
         # Rectangle select
         init()

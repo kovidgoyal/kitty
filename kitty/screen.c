@@ -2835,8 +2835,12 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
     if (upd.set_as_nearest_extend) {
         bool start_is_nearer = false;
         if (self->selections.extend_mode == EXTEND_LINE || self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
-            if (s->start.y == s->end.y) start_is_nearer = selection_boundary_less_than(&abs_start, &abs_end) ? (abs_current_input.y > abs_start.y) : (abs_current_input.y < abs_end.y);
-            else start_is_nearer = num_lines_between_selection_boundaries(&abs_start, &abs_current_input) < num_lines_between_selection_boundaries(&abs_end, &abs_current_input);
+            if (abs_start.y == abs_end.y) {
+                if (abs_current_input.y == abs_start.y) start_is_nearer = selection_boundary_less_than(&abs_start, &abs_end) ? (abs_current_input.x <= abs_start.x) : (abs_current_input.x <= abs_end.x);
+                else start_is_nearer = selection_boundary_less_than(&abs_start, &abs_end) ? (abs_current_input.y > abs_start.y) : (abs_current_input.y < abs_end.y);
+            } else {
+                start_is_nearer = num_lines_between_selection_boundaries(&abs_start, &abs_current_input) < num_lines_between_selection_boundaries(&abs_end, &abs_current_input);
+            }
         } else start_is_nearer = num_cells_between_selection_boundaries(self, &abs_start, &abs_current_input) < num_cells_between_selection_boundaries(self, &abs_end, &abs_current_input);
         if (start_is_nearer) s->adjusting_start = true;
     }
@@ -2905,6 +2909,8 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
                     } else {
                         a->in_left_half_of_cell = false; a->x = down_end.x; a->y = bottom_line;
                     }
+                    // allow selecting whitespace at the start of the top line
+                    if (a->y == top_line && s->input_current.y == top_line && s->input_current.x < a->x && adjusted_boundary_is_before) a->x = s->input_current.x;
                 }
             }
         }
