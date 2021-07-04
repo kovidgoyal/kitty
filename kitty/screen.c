@@ -1849,19 +1849,41 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
 }
 
 
-static inline bool
-selection_boundary_less_than(SelectionBoundary *a, SelectionBoundary *b) {
-    if (a->y < b->y) return true;
-    if (a->y > b->y) return false;
+static bool
+selection_boundary_less_than(const SelectionBoundary *a, const SelectionBoundary *b) {
+    // y -values must be absolutized (aka adjusted with scrolled_by)
+    // this means the oldest line has the highest value and is thus the least
+    if (a->y > b->y) return true;
+    if (a->y < b->y) return false;
     if (a->x < b->x) return true;
     if (a->x > b->x) return false;
     if (a->in_left_half_of_cell && !b->in_left_half_of_cell) return true;
     return false;
 }
 
+static index_type
+num_cells_between_selection_boundaries(const Screen *self, const SelectionBoundary *a, const SelectionBoundary *b) {
+    const SelectionBoundary *before, *after;
+    if (selection_boundary_less_than(a, b)) { before = a; after = b; }
+    else { before = b; after = a; }
+    index_type ans = 0;
+    if (before->y + 1 < after->y) ans += self->columns * (after->y - before->y - 1);
+    if (before->y == after->y) ans += after->x - before->x;
+    else ans += (self->columns - before->x) + after->x;
+    return ans;
+}
+
+static index_type
+num_lines_between_selection_boundaries(const SelectionBoundary *a, const SelectionBoundary *b) {
+    const SelectionBoundary *before, *after;
+    if (selection_boundary_less_than(a, b)) { before = a; after = b; }
+    else { before = b; after = a; }
+    return before->y - after->y;
+}
+
 typedef Line*(linefunc_t)(Screen*, int);
 
-static inline Line*
+static Line*
 visual_line_(Screen *self, int y_) {
     index_type y = MAX(0, y_);
     if (self->scrolled_by) {
@@ -1875,7 +1897,7 @@ visual_line_(Screen *self, int y_) {
     return self->linebuf->line;
 }
 
-static inline Line*
+static Line*
 range_line_(Screen *self, int y) {
     if (y < 0) {
         historybuf_init_line(self->historybuf, -(y + 1), self->historybuf->line);
@@ -1885,7 +1907,7 @@ range_line_(Screen *self, int y) {
     return self->linebuf->line;
 }
 
-static inline bool
+static bool
 selection_is_left_to_right(const Selection *self) {
     return self->input_start.x < self->input_current.x || (self->input_start.x == self->input_current.x && self->input_start.in_left_half_of_cell);
 }
@@ -2477,9 +2499,9 @@ cursor_up(Screen *self, PyObject *args) {
 static PyObject*
 update_selection(Screen *self, PyObject *args) {
     unsigned int x, y;
-    int in_left_half_of_cell = 0, ended = 1;
-    if (!PyArg_ParseTuple(args, "II|pp", &x, &y, &in_left_half_of_cell, &ended)) return NULL;
-    screen_update_selection(self, x, y, in_left_half_of_cell, ended, false);
+    int in_left_half_of_cell = 0, ended = 1, nearest = 0;
+    if (!PyArg_ParseTuple(args, "II|ppp", &x, &y, &in_left_half_of_cell, &ended, &nearest)) return NULL;
+    screen_update_selection(self, x, y, in_left_half_of_cell, (SelectionUpdate){.ended = ended, .set_as_nearest_extend=nearest});
     Py_RETURN_NONE;
 }
 
@@ -2779,68 +2801,124 @@ screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
     return id;
 }
 
+static index_type
+continue_line_upwards(Screen *self, index_type top_line, SelectionBoundary *start, SelectionBoundary *end) {
+    while (top_line > 0 && visual_line_(self, top_line)->continued) {
+        if (!screen_selection_range_for_line(self, top_line - 1, &start->x, &end->x)) break;
+        top_line--;
+    }
+    return top_line;
+}
+
+static index_type
+continue_line_downwards(Screen *self, index_type bottom_line, SelectionBoundary *start, SelectionBoundary *end) {
+    while (bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->continued) {
+        if (!screen_selection_range_for_line(self, bottom_line + 1, &start->x, &end->x)) break;
+        bottom_line++;
+    }
+    return bottom_line;
+}
+
 void
-screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, bool ended, bool start_extended_selection) {
+screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half_of_cell, SelectionUpdate upd) {
     if (!self->selections.count) return;
-    self->selections.in_progress = !ended;
+    self->selections.in_progress = !upd.ended;
     Selection *s = self->selections.items;
     s->input_current.x = x; s->input_current.y = y;
     s->input_current.in_left_half_of_cell = in_left_half_of_cell;
-    s->end_scrolled_by = self->scrolled_by;
-    SelectionBoundary start, end, *a, *b;
-    a = &s->start, b = &s->end;
+    SelectionBoundary start, end, *a = &s->start, *b = &s->end, abs_start, abs_end, abs_current_input;
+#define absy(b, scrolled_by) b.y = scrolled_by + self->lines - 1 - b.y
+    abs_start = s->start; absy(abs_start, s->start_scrolled_by);
+    abs_end = s->end; absy(abs_end, s->end_scrolled_by);
+    abs_current_input = s->input_current; absy(abs_current_input, self->scrolled_by);
+#undef absy
+    if (upd.set_as_nearest_extend) {
+        bool start_is_nearer = false;
+        if (self->selections.extend_mode == EXTEND_LINE || self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
+            if (s->start.y == s->end.y) start_is_nearer = selection_boundary_less_than(&abs_start, &abs_end) ? (abs_current_input.y > abs_start.y) : (abs_current_input.y < abs_end.y);
+            else start_is_nearer = num_lines_between_selection_boundaries(&abs_start, &abs_current_input) < num_lines_between_selection_boundaries(&abs_end, &abs_current_input);
+        } else start_is_nearer = num_cells_between_selection_boundaries(self, &abs_start, &abs_current_input) < num_cells_between_selection_boundaries(self, &abs_end, &abs_current_input);
+        if (start_is_nearer) s->adjusting_start = true;
+    }
+    bool adjusted_boundary_is_before;
+    if (s->adjusting_start) adjusted_boundary_is_before = selection_boundary_less_than(&abs_start, &abs_end);
+    else { adjusted_boundary_is_before = selection_boundary_less_than(&abs_end, &abs_start); }
 
     switch(self->selections.extend_mode) {
         case EXTEND_WORD: {
-            SelectionBoundary *before = &s->input_start, *after = &s->input_current;
-            if (selection_boundary_less_than(after, before)) { before = after; after = &s->input_start; }
-            bool found_at_start = screen_selection_range_for_word(self, before->x, before->y, &start.y, &end.y, &start.x, &end.x, true);
-            if (found_at_start) {
-                a->x = start.x; a->y = start.y; a->in_left_half_of_cell = true;
-                b->x = end.x; b->y = end.y; b->in_left_half_of_cell = false;
+            if (!s->adjusting_start) { a = &s->end; b = &s->start; }
+            const bool word_found_at_cursor = screen_selection_range_for_word(self, s->input_current.x, s->input_current.y, &start.y, &end.y, &start.x, &end.x, true);
+            bool adjust_both_ends = is_selection_empty(s);
+            if (word_found_at_cursor) {
+                if (adjusted_boundary_is_before) {
+                    *a = start; a->in_left_half_of_cell = true;
+                    if (adjust_both_ends) { *b = end; b->in_left_half_of_cell = false; }
+                } else {
+                    *a = end; a->in_left_half_of_cell = false;
+                    if (adjust_both_ends) { *b = start; b->in_left_half_of_cell = true; }
+                }
+                if (s->adjusting_start || adjust_both_ends) s->start_scrolled_by = self->scrolled_by;
+                if (!s->adjusting_start || adjust_both_ends) s->end_scrolled_by = self->scrolled_by;
             } else {
-                a->x = before->x; a->y = before->y; a->in_left_half_of_cell = before->in_left_half_of_cell;
-                b->x = a->x; b->y = a->y; b->in_left_half_of_cell = a->in_left_half_of_cell;
+                *a = s->input_current;
+                if (s->adjusting_start) s->start_scrolled_by = self->scrolled_by; else s->end_scrolled_by = self->scrolled_by;
             }
-            bool found_at_end = screen_selection_range_for_word(self, after->x, after->y, &start.y, &end.y, &start.x, &end.x, false);
-            if (found_at_end) { b->x = end.x; b->y = end.y; b->in_left_half_of_cell = false; }
             break;
         }
         case EXTEND_LINE_FROM_POINT:
         case EXTEND_LINE: {
+            bool adjust_both_ends = is_selection_empty(s);
+            if (s->adjusting_start || adjust_both_ends) s->start_scrolled_by = self->scrolled_by;
+            if (!s->adjusting_start || adjust_both_ends) s->end_scrolled_by = self->scrolled_by;
             index_type top_line, bottom_line;
-            if (start_extended_selection || y == s->start.y) {
-                top_line = y; bottom_line = y;
-            } else if (y < s->start.y) {
-                top_line = y; bottom_line = s->start.y;
-                a = &s->end; b = &s->start;
-            } else if (y > s->start.y) {
-                bottom_line = y; top_line = s->start.y;
-            } else break;
-            while (top_line > 0 && visual_line_(self, top_line)->continued) {
-                if (!screen_selection_range_for_line(self, top_line - 1, &start.x, &end.x)) break;
-                top_line--;
+            SelectionBoundary up_start, up_end, down_start, down_end;
+            if (adjust_both_ends) {
+                // empty initial selection
+                top_line = s->input_current.y; bottom_line = s->input_current.y;
+                if (screen_selection_range_for_line(self, top_line, &up_start.x, &up_end.x)) {
+#define S \
+    s->start.y = top_line; s->end.y = bottom_line; \
+    s->start.in_left_half_of_cell = true; s->end.in_left_half_of_cell = false; \
+    s->start.x = up_start.x; s->end.x = bottom_line == top_line ? up_end.x : down_end.x;
+                    down_start = up_start; down_end = up_end;
+                    bottom_line = continue_line_downwards(self, bottom_line, &down_start, &down_end);
+                    if (self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
+                        if (x <= up_end.x) {
+                            S; s->start.x = MAX(x, up_start.x);
+                        }
+                    } else {
+                        top_line = continue_line_upwards(self, top_line, &up_start, &up_end);
+                        S;
+                    }
+                }
+#undef S
+            } else {
+                // extending an existing selection
+                top_line = s->input_current.y; bottom_line = s->input_current.y;
+                if (screen_selection_range_for_line(self, top_line, &up_start.x, &up_end.x)) {
+                    down_start = up_start; down_end = up_end;
+                    top_line = continue_line_upwards(self, top_line, &up_start, &up_end);
+                    bottom_line = continue_line_downwards(self, bottom_line, &down_start, &down_end);
+                    if (!s->adjusting_start) { a = &s->end; b = &s->start; }
+                    if (adjusted_boundary_is_before) {
+                        a->in_left_half_of_cell = true; a->x = up_start.x; a->y = top_line;
+                    } else {
+                        a->in_left_half_of_cell = false; a->x = down_end.x; a->y = bottom_line;
+                    }
+                }
             }
-            while (bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->continued) {
-                if (!screen_selection_range_for_line(self, bottom_line + 1, &start.x, &end.x)) break;
-                bottom_line++;
-            }
-            if (screen_selection_range_for_line(self, top_line, &start.x, &start.y) && screen_selection_range_for_line(self, bottom_line, &end.x, &end.y)) {
-                bool multiline = top_line != bottom_line;
-                if (self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
-                    if (x > end.y) break;
-                    a->x = x;
-                } else a->x = multiline ? 0 : start.x;
-                a->y = top_line; a->in_left_half_of_cell = true;
-                b->x = end.y; b->y = bottom_line; b->in_left_half_of_cell = false;
-            }
-            break;
         }
+        break;
         case EXTEND_CELL:
+            if (s->adjusting_start) b = &s->start;
             b->x = x; b->y = y; b->in_left_half_of_cell = in_left_half_of_cell;
+            if (s->adjusting_start) s->start_scrolled_by = self->scrolled_by; else s->end_scrolled_by = self->scrolled_by;
             break;
     }
-    if (!self->selections.in_progress) call_boss(set_primary_selection, NULL);
+    if (!self->selections.in_progress) {
+        s->adjusting_start = false;
+        call_boss(set_primary_selection, NULL);
+    }
 }
 
 static PyObject*

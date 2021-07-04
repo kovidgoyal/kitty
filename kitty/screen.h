@@ -39,7 +39,7 @@ typedef struct {
 typedef struct {
     SelectionBoundary start, end, input_start, input_current;
     unsigned int start_scrolled_by, end_scrolled_by;
-    bool rectangle_select;
+    bool rectangle_select, adjusting_start;
     IterationData last_rendered;
     int sort_y, sort_x;
 } Selection;
@@ -212,7 +212,10 @@ bool screen_is_cursor_visible(Screen *self);
 bool screen_selection_range_for_line(Screen *self, index_type y, index_type *start, index_type *end);
 bool screen_selection_range_for_word(Screen *self, const index_type x, const index_type y, index_type *, index_type *, index_type *start, index_type *end, bool);
 void screen_start_selection(Screen *self, index_type x, index_type y, bool, bool, SelectionExtendMode);
-void screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half, bool ended, bool start_extended_selection);
+typedef struct SelectionUpdate {
+    bool ended, start_extended_selection, set_as_nearest_extend;
+} SelectionUpdate;
+void screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_half, SelectionUpdate upd);
 bool screen_history_scroll(Screen *self, int amt, bool upwards);
 Line* screen_visual_line(Screen *self, index_type y);
 unsigned long screen_current_char_width(Screen *self);

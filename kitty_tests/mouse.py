@@ -177,7 +177,7 @@ class TestMouse(BaseTest):
         multi_click(x=1, count=3)
         self.ae(sel(), '123')
         move(x=2, y=1)
-        self.ae(sel(), ' 123\n 456')
+        self.ae(sel(), '123\n 456')
         release()
 
         # Rectangle select
@@ -218,3 +218,8 @@ class TestMouse(BaseTest):
         move(x=2, y=1, q='1234567')
         release(x=3, y=1, button=GLFW_MOUSE_BUTTON_RIGHT)
         self.ae(sel(), '12345678')
+        init()
+        press(y=2)
+        move(x=3.6, y=2, q='abcd')
+        press(x=3, y=0, button=GLFW_MOUSE_BUTTON_RIGHT)
+        self.ae(sel(), '4567890abcd')

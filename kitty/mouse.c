@@ -246,7 +246,7 @@ static inline void
 update_drag(Window *w) {
     Screen *screen = w->render_data.screen;
     if (screen && screen->selections.in_progress) {
-        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, false);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, (SelectionUpdate){0});
     }
     set_mouse_cursor_when_dragging();
 }
@@ -284,7 +284,8 @@ static inline void
 extend_selection(Window *w, bool ended) {
     Screen *screen = w->render_data.screen;
     if (screen_has_selection(screen)) {
-        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, ended, false);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell,
+                (SelectionUpdate){.ended=ended, .set_as_nearest_extend=true});
     }
 }
 
@@ -578,7 +579,7 @@ end_drag(Window *w) {
     global_state.active_drag_button = -1;
     w->last_drag_scroll_at = 0;
     if (screen->selections.in_progress) {
-        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, true, false);
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, (SelectionUpdate){.ended=true});
     }
 }
 
@@ -601,7 +602,7 @@ mouse_selection(Window *w, int code, int button) {
     unsigned int y1, y2;
 #define S(mode) {\
         screen_start_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, mode); \
-        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, false, true); }
+        screen_update_selection(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y, w->mouse_pos.in_left_half_of_cell, (SelectionUpdate){.start_extended_selection=true}); }
 
     switch((MouseSelectionType)code) {
         case MOUSE_SELECTION_NORMAL:
