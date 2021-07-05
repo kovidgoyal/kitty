@@ -567,7 +567,7 @@ copy_color_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect
 }
 
 static inline void
-place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, size_t baseline) {
+place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, size_t baseline, unsigned int glyph_num) {
     // We want the glyph to be positioned inside the cell based on the bearingX
     // and bearingY values, making sure that it does not overflow the cell.
 
@@ -577,8 +577,8 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
     int32_t xoff = (ssize_t)(x_offset + bm->bitmap_left);
     if (xoff < 0) src.left += -xoff;
     else dest.left = xoff;
-    // Move the dest start column back if the width overflows because of it
-    if (dest.left > 0 && dest.left + bm->width > cell_width) {
+    // Move the dest start column back if the width overflows because of it, but only if we are not in a very long/infinite ligature
+    if (glyph_num < 4 && dest.left > 0 && dest.left + bm->width > cell_width) {
         uint32_t extra = dest.left + bm->width - cell_width;
         dest.left = extra > dest.left ? 0 : dest.left - extra;
     }
@@ -630,7 +630,7 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
         if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) {
-            place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, baseline);
+            place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, baseline, i);
         }
         x += (float)positions[i].x_advance / 64.0f;
         free_processed_bitmap(&bm);
@@ -683,7 +683,7 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
         FT_Bitmap *bitmap = &self->face->glyph->bitmap;
         pbm = EMPTY_PBM;
         populate_processed_bitmap(self->face->glyph, bitmap, &pbm, false);
-        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, pen_x, 0, baseline);
+        place_bitmap_in_canvas(canvas, &pbm, canvas_width, canvas_height, pen_x, 0, baseline, n);
         pen_x += self->face->glyph->advance.x >> 6;
     }
     ans.width = pen_x; ans.height = canvas_height;
