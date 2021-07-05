@@ -575,12 +575,11 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
 
     // Calculate column bounds
     int32_t xoff = (ssize_t)(x_offset + bm->bitmap_left);
-    uint32_t extra;
     if (xoff < 0) src.left += -xoff;
     else dest.left = xoff;
     // Move the dest start column back if the width overflows because of it
     if (dest.left > 0 && dest.left + bm->width > cell_width) {
-        extra = dest.left + bm->width - cell_width;
+        uint32_t extra = dest.left + bm->width - cell_width;
         dest.left = extra > dest.left ? 0 : dest.left - extra;
     }
 
