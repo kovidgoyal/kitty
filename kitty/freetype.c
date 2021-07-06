@@ -574,7 +574,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
     Region src = { .left = bm->start_x, .bottom = bm->rows, .right = bm->width + bm->start_x }, dest = { .bottom = cell_height, .right = cell_width };
 
     // Calculate column bounds
-    int32_t xoff = (ssize_t)(x_offset + bm->bitmap_left);
+    int32_t xoff = (int32_t)(x_offset + bm->bitmap_left);
     if (xoff < 0) src.left += -xoff;
     else dest.left = xoff;
     // Move the dest start column back if the width overflows because of it, but only if we are not in a very long/infinite ligature
