@@ -4,18 +4,27 @@
 
 import os
 from functools import partial
-from typing import Callable, Dict, Generator, Iterable, Set, Tuple
 from pprint import pformat
+from typing import Callable, Dict, Generator, Iterable, Set, Tuple
 
-from .cli import green, title, version
+from .cli import version
 from .conf.utils import KeyAction
 from .constants import is_macos, is_wayland
+from kittens.tui.operations import colored
 from .options.types import Options as KittyOpts, defaults
 from .options.utils import MouseMap
 from .types import MouseEvent, SingleKey
 from .typing import SequenceMap
 
 ShortcutMap = Dict[Tuple[SingleKey, ...], KeyAction]
+
+
+def green(x: str) -> str:
+    return colored(x, 'green')
+
+
+def title(x: str) -> str:
+    return colored(x, 'blue', intense=True)
 
 
 def mod_to_names(mods: int) -> Generator[str, None, None]:
