@@ -17,6 +17,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   could cause incorrect parsing if either the pending buffer capacity or the
   pending timeout were exceeded (:iss:`3779`)
 
+- diff kitten: Remove limit on max line length of 4096 characters (:iss:`3806`)
+
 0.21.2 [2021-06-28]
 ----------------------
 

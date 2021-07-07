@@ -71,27 +71,47 @@ next_segment(SegmentPointer *s, PyObject *highlights) {
     return true;
 }
 
-static inline bool
-insert_code(PyObject *code, Py_UCS4 *buf, size_t bufsz, unsigned int *buf_pos) {
-    unsigned int csz = PyUnicode_GET_LENGTH(code);
-    if (*buf_pos + csz >= bufsz) return false;
-    for (unsigned int s = 0; s < csz; s++) buf[(*buf_pos)++] = PyUnicode_READ(PyUnicode_KIND(code), PyUnicode_DATA(code), s);
+typedef struct LineBuffer {
+    Py_UCS4 *buf;
+    size_t pos, capacity;
+} LineBuffer;
+
+
+static bool
+ensure_space(LineBuffer *b, size_t num) {
+    if (b->pos + num >= b->capacity) {
+        size_t new_cap = MAX(b->capacity * 2, 4096u);
+        new_cap = MAX(b->pos + num + 1024u, new_cap);
+        b->buf = realloc(b->buf, new_cap * sizeof(b->buf[0]));
+        if (!b->buf) { PyErr_NoMemory(); return false; }
+        b->capacity = new_cap;
+    }
     return true;
 }
 
 static inline bool
-add_line(Segment *bg_segment, Segment *fg_segment, Py_UCS4 *buf, size_t bufsz, unsigned int *buf_pos, PyObject *ans) {
-    bool bg_is_active = bg_segment->current_pos == bg_segment->end_pos, fg_is_active = fg_segment->current_pos == fg_segment->end_pos;
-    if (bg_is_active) { if(!insert_code(bg_segment->end_code, buf, bufsz, buf_pos)) return false; }
-    if (fg_is_active) { if(!insert_code(fg_segment->end_code, buf, bufsz, buf_pos)) return false; }
-    PyObject *wl = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, *buf_pos);
-    if (!wl) return false;
-    int ret = PyList_Append(ans, wl); Py_DECREF(wl); if (ret != 0) return false;
-    *buf_pos = 0;
-    if (bg_is_active) { if(!insert_code(bg_segment->start_code, buf, bufsz, buf_pos)) return false; }
-    if (fg_is_active) { if(!insert_code(fg_segment->start_code, buf, bufsz, buf_pos)) return false; }
+insert_code(PyObject *code, LineBuffer *b) {
+    unsigned int csz = PyUnicode_GET_LENGTH(code);
+    if (!ensure_space(b, csz)) return false;
+    for (unsigned int s = 0; s < csz; s++) b->buf[b->pos++] = PyUnicode_READ(PyUnicode_KIND(code), PyUnicode_DATA(code), s);
     return true;
 }
+
+static inline bool
+add_line(Segment *bg_segment, Segment *fg_segment, LineBuffer *b, PyObject *ans) {
+    bool bg_is_active = bg_segment->current_pos == bg_segment->end_pos, fg_is_active = fg_segment->current_pos == fg_segment->end_pos;
+    if (bg_is_active) { if(!insert_code(bg_segment->end_code, b)) return false; }
+    if (fg_is_active) { if(!insert_code(fg_segment->end_code, b)) return false; }
+    PyObject *wl = PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, b->buf, b->pos);
+    if (!wl) return false;
+    int ret = PyList_Append(ans, wl); Py_DECREF(wl); if (ret != 0) return false;
+    b->pos = 0;
+    if (bg_is_active) { if(!insert_code(bg_segment->start_code, b)) return false; }
+    if (fg_is_active) { if(!insert_code(fg_segment->start_code, b)) return false; }
+    return true;
+}
+
+static LineBuffer b;
 
 static PyObject*
 split_with_highlights(PyObject *self UNUSED, PyObject *args) {
@@ -106,19 +126,19 @@ split_with_highlights(PyObject *self UNUSED, PyObject *args) {
     }
     SegmentPointer fg_segment = { .sg = EMPTY_SEGMENT, .num = PyList_GET_SIZE(fg_highlights)}, bg_segment = { .sg = EMPTY_SEGMENT };
     if (bg_highlight != Py_None) { if (!convert_segment(bg_highlight, &bg_segment.sg)) { Py_CLEAR(ans); return NULL; }; bg_segment.num = 1; }
-#define CHECK_CALL(func, ...) if (!func(__VA_ARGS__)) { Py_CLEAR(ans); if (!PyErr_Occurred()) PyErr_SetString(PyExc_ValueError, "line too long"); return NULL; }
+#define CHECK_CALL(func, ...) if (!func(__VA_ARGS__)) { Py_CLEAR(ans); if (!PyErr_Occurred()) PyErr_SetString(PyExc_ValueError, "unknown error while processing line"); return NULL; }
     CHECK_CALL(next_segment, &fg_segment, fg_highlights);
 
 #define NEXT_TRUNCATE_POINT truncate_point = (truncate_pos < num_truncate_pts) ? truncate_points[truncate_pos++] : UINT_MAX
     NEXT_TRUNCATE_POINT;
 
-#define INSERT_CODE(x) { CHECK_CALL(insert_code, x, buf, arraysz(buf), &buf_pos); }
+#define INSERT_CODE(x) { CHECK_CALL(insert_code, x, &b); }
 
-#define ADD_LINE CHECK_CALL(add_line, &bg_segment.sg, &fg_segment.sg, buf, arraysz(buf), &buf_pos, ans);
+#define ADD_LINE CHECK_CALL(add_line, &bg_segment.sg, &fg_segment.sg, &b, ans);
 
 #define ADD_CHAR(x) { \
-    buf[buf_pos++] = x; \
-    if (buf_pos >= arraysz(buf)) { Py_CLEAR(ans); PyErr_SetString(PyExc_ValueError, "line too long"); return NULL; } \
+    if (!ensure_space(&b, 1)) { Py_CLEAR(ans); return NULL; } \
+    b.buf[b.pos++] = x; \
 }
 #define CHECK_SEGMENT(sgp, is_fg) { \
     if (i == sgp.sg.current_pos) { \
@@ -137,15 +157,15 @@ split_with_highlights(PyObject *self UNUSED, PyObject *args) {
 }
 
     const unsigned int line_sz = PyUnicode_GET_LENGTH(line);
-    static Py_UCS4 buf[4096];
-    unsigned int i = 0, buf_pos = 0;
+    b.pos = 0;
+    unsigned int i = 0;
     for (; i < line_sz; i++) {
         if (i == truncate_point) { ADD_LINE; NEXT_TRUNCATE_POINT; }
         CHECK_SEGMENT(bg_segment, false);
         CHECK_SEGMENT(fg_segment, true)
         ADD_CHAR(PyUnicode_READ(PyUnicode_KIND(line), PyUnicode_DATA(line), i));
     }
-    if (buf_pos) ADD_LINE;
+    if (b.pos) ADD_LINE;
     return ans;
 #undef INSERT_CODE
 #undef CHECK_SEGMENT
@@ -153,6 +173,11 @@ split_with_highlights(PyObject *self UNUSED, PyObject *args) {
 #undef ADD_CHAR
 #undef ADD_LINE
 #undef NEXT_TRUNCATE_POINT
+}
+
+static void
+free_resources(void) {
+    free(b.buf); b.buf = NULL; b.capacity = 0; b.pos = 0;
 }
 
 static PyMethodDef module_methods[] = {
@@ -175,5 +200,6 @@ PyInit_diff_speedup(void) {
 
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;
+    Py_AtExit(free_resources);
     return m;
 }
