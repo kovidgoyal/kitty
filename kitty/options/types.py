@@ -773,7 +773,7 @@ defaults.map = [
     # reset_font_size
     KeyDefinition(False, KeyAction('change_font_size', (True, None, 0.0)), 1024, False, 57347, ()),
     # open_url
-    KeyDefinition(False, KeyAction('kitten', ('hints',)), 1024, False, 101, ()),
+    KeyDefinition(False, KeyAction('open_url_with_hints'), 1024, False, 101, ()),
     # insert_selected_path
     KeyDefinition(True, KeyAction('kitten', ('hints', '--type path --program -')), 1024, False, 112, (SingleKey(mods=0, is_native=False, key=102),)),
     # open_selected_path

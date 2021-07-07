@@ -568,7 +568,7 @@ class Definition:
         for x in self.iter_all_non_groups():
             if isinstance(x, ShortcutMapping) and which in ('map', '*'):
                 yield x
-            elif isinstance(x, MouseMapping) and which == ('mouse_map', '*'):
+            elif isinstance(x, MouseMapping) and which in ('mouse_map', '*'):
                 yield x
 
     def parser_func(self, name: str) -> Callable:
