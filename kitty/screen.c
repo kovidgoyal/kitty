@@ -873,7 +873,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
             }
             break;
         case CONTROL_CURSOR_BLINK:
-            self->cursor->blink = val;
+            self->cursor->non_blinking = !val;
             break;
         case SAVE_CURSOR:
             screen_save_cursor(self);
@@ -1679,8 +1679,8 @@ screen_set_cursor(Screen *self, unsigned int mode, uint8_t secondary) {
                 blink = mode % 2;
                 shape = (mode < 3) ? CURSOR_BLOCK : (mode < 5) ? CURSOR_UNDERLINE : (mode < 7) ? CURSOR_BEAM : NO_CURSOR_SHAPE;
             }
-            if (shape != self->cursor->shape || blink != self->cursor->blink) {
-                self->cursor->shape = shape; self->cursor->blink = blink;
+            if (shape != self->cursor->shape || blink != !self->cursor->non_blinking) {
+                self->cursor->shape = shape; self->cursor->non_blinking = !blink;
             }
             break;
     }
@@ -1773,11 +1773,11 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
                     case NUM_OF_CURSOR_SHAPES:
                         shape = 1; break;
                     case CURSOR_BLOCK:
-                        shape = self->cursor->blink ? 0 : 2; break;
+                        shape = self->cursor->non_blinking ? 2 : 0; break;
                     case CURSOR_UNDERLINE:
-                        shape = self->cursor->blink ? 3 : 4; break;
+                        shape = self->cursor->non_blinking ? 4 : 3; break;
                     case CURSOR_BEAM:
-                        shape = self->cursor->blink ? 5 : 6; break;
+                        shape = self->cursor->non_blinking ? 6 : 5; break;
                 }
                 shape = snprintf(buf, sizeof(buf), "1$r%d q", shape);
             } else if (strcmp("m", query) == 0) {

@@ -523,7 +523,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
     ans->is_visible = false;
     if (rd->screen->scrolled_by || !screen_is_cursor_visible(rd->screen)) return;
     monotonic_t time_since_start_blink = now - os_window->cursor_blink_zero_time;
-    bool cursor_blinking = OPT(cursor_blink_interval) > 0 && os_window->is_focused && (OPT(cursor_stop_blinking_after) == 0 || time_since_start_blink <= OPT(cursor_stop_blinking_after));
+    bool cursor_blinking = OPT(cursor_blink_interval) > 0 && !cursor->non_blinking && os_window->is_focused && (OPT(cursor_stop_blinking_after) == 0 || time_since_start_blink <= OPT(cursor_stop_blinking_after));
     bool do_draw_cursor = true;
     if (cursor_blinking) {
         int t = monotonic_t_to_ms(time_since_start_blink);

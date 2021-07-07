@@ -24,7 +24,7 @@ dealloc(Cursor* self) {
 
 #define EQ(x) (a->x == b->x)
 static int __eq__(Cursor *a, Cursor *b) {
-    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(dim) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(blink);
+    return EQ(bold) && EQ(italic) && EQ(strikethrough) && EQ(dim) && EQ(reverse) && EQ(decoration) && EQ(fg) && EQ(bg) && EQ(decoration_fg) && EQ(x) && EQ(y) && EQ(shape) && EQ(non_blinking);
 }
 
 static const char* cursor_names[NUM_OF_CURSOR_SHAPES] = { "NO_SHAPE", "BLOCK", "BEAM", "UNDERLINE" };
@@ -35,7 +35,7 @@ repr(Cursor *self) {
     return PyUnicode_FromFormat(
         "Cursor(x=%u, y=%u, shape=%s, blink=%R, fg=#%08x, bg=#%08x, bold=%R, italic=%R, reverse=%R, strikethrough=%R, dim=%R, decoration=%d, decoration_fg=#%08x)",
         self->x, self->y, (self->shape < NUM_OF_CURSOR_SHAPES ? cursor_names[self->shape] : "INVALID"),
-        BOOL(self->blink), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), BOOL(self->dim), self->decoration, self->decoration_fg
+        BOOL(!self->non_blinking), self->fg, self->bg, BOOL(self->bold), BOOL(self->italic), BOOL(self->reverse), BOOL(self->strikethrough), BOOL(self->dim), self->decoration, self->decoration_fg
     );
 }
 
@@ -232,12 +232,12 @@ reset_display_attrs(Cursor *self, PyObject *a UNUSED) {
 void cursor_reset(Cursor *self) {
     cursor_reset_display_attrs(self);
     self->x = 0; self->y = 0;
-    self->shape = NO_CURSOR_SHAPE; self->blink = false;
+    self->shape = NO_CURSOR_SHAPE; self->non_blinking = false;
 }
 
 void cursor_copy_to(Cursor *src, Cursor *dest) {
 #define CCY(x) dest->x = src->x;
-    CCY(x); CCY(y); CCY(shape); CCY(blink);
+    CCY(x); CCY(y); CCY(shape); CCY(non_blinking);
     CCY(bold); CCY(italic); CCY(strikethrough); CCY(dim); CCY(reverse); CCY(decoration); CCY(fg); CCY(bg); CCY(decoration_fg);
 }
 
@@ -252,7 +252,11 @@ BOOL_GETSET(Cursor, italic)
 BOOL_GETSET(Cursor, reverse)
 BOOL_GETSET(Cursor, strikethrough)
 BOOL_GETSET(Cursor, dim)
-BOOL_GETSET(Cursor, blink)
+
+static PyObject* blink_get(Cursor *self, void UNUSED *closure) { PyObject *ans = !self->non_blinking ? Py_True : Py_False; Py_INCREF(ans); return ans; }
+
+static int blink_set(Cursor *self, PyObject *value, void UNUSED *closure) { if (value == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->non_blinking = PyObject_IsTrue(value) ? false : true; return 0; }
+
 
 static PyMemberDef members[] = {
     {"x", T_UINT, offsetof(Cursor, x), 0, "x"},

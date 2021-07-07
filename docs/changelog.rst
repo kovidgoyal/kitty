@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - diff kitten: Remove limit on max line length of 4096 characters (:iss:`3806`)
 
+- Fix turning off cursor blink via escape codes not working (:iss:`3808`)
+
+
 0.21.2 [2021-06-28]
 ----------------------
 
