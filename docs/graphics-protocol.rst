@@ -278,11 +278,12 @@ sequence of escape codes to the terminal emulator::
 
 Note that only the first escape code needs to have the full set of control
 codes such as width, height, format etc. Subsequent chunks **must** have
-only the ``m`` key. The client **must** finish sending all chunks for a single image
-before sending any other graphics related escape codes. Note that the cursor
-position used to display the image **must** be the position when the final chunk is
-received. Finally, terminals must not display anything, until the entire sequence is
-received and validated.
+only the ``m`` key (save the last, which may carry the ``q`` key). The client
+**must** finish sending all chunks for a single image before sending any other
+graphics related escape codes. Note that the cursor position used to display
+the image **must** be the position when the final chunk is received. Finally,
+terminals must not display anything, until the entire sequence is received and
+validated.
 
 
 Querying support and available transmission mediums
@@ -464,7 +465,8 @@ Suppressing responses from the terminal
 If you are using the graphics protocol from a limited client, such as a shell
 script, it might be useful to avoid having to process responses from the
 terminal. For this, you can use the ``q`` key. Set it to ``1`` to suppress
-``OK`` responses and to ``2`` to suppress failure responses.
+``OK`` responses and to ``2`` to suppress failure responses. When sending
+multiple chunks, ``q`` may be present only on the last chunk.
 
 .. versionadded:: 0.19.3
    The ability to suppress responses (see :doc:`kittens/query_terminal` to query kitty version)

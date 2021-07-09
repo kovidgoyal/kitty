@@ -14,6 +14,8 @@ Search `this page <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html>`_
 for *XTGETTCAP* to see the syntax for the escape code and read the source
 of this kitten to find the values of the keys for the various queries.
 
+The keyless XTVERSION escape provides a human-readable terminal name and
+version, but this should not be used for feature detection.
 
 Command Line Interface
 -------------------------
