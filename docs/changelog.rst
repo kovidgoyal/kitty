@@ -21,6 +21,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix turning off cursor blink via escape codes not working (:iss:`3808`)
 
+- Allow using neighboring window operations in the stack layout. The previous
+  window is considered the left and top neighbor and the next window is
+  considered the bottom and right neighbor (:iss:`3778`)
+
 
 0.21.2 [2021-06-28]
 ----------------------
