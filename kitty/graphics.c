@@ -1299,14 +1299,18 @@ filter_refs(GraphicsManager *self, const void* data, bool free_images, bool (*fi
 }
 
 
-static inline void
-modify_refs(GraphicsManager *self, const void* data, bool free_images, bool (*filter_func)(ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
+static void
+modify_refs(GraphicsManager *self, const void* data, bool (*filter_func)(ImageRef*, Image*, const void*, CellPixelSize), CellPixelSize cell) {
     for (size_t i = self->image_count; i-- > 0;) {
         Image *img = self->images + i;
         for (size_t j = img->refcnt; j-- > 0;) {
             if (filter_func(img->refs + j, img, data, cell)) remove_i_from_array(img->refs, j, img->refcnt);
         }
-        if (img->refcnt == 0 && (free_images || img->client_id == 0)) remove_image(self, i);
+        if (img->refcnt == 0 && img->client_id == 0 && img->client_number == 0) {
+            // references have all scrolled off the history buffer and the image has no way to reference it
+            // to create new references so remove it.
+            remove_image(self, i);
+        }
     }
 }
 
@@ -1363,7 +1367,7 @@ void
 grman_scroll_images(GraphicsManager *self, const ScrollData *data, CellPixelSize cell) {
     if (self->image_count) {
         self->layers_dirty = true;
-        modify_refs(self, data, true, data->has_margins ? scroll_filter_margins_func : scroll_filter_func, cell);
+        modify_refs(self, data, data->has_margins ? scroll_filter_margins_func : scroll_filter_func, cell);
     }
 }
 

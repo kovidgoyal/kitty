@@ -138,7 +138,11 @@ def put_helpers(self, cw, ch):
         nonlocal iid
         iid += 1
         imgid = kw.pop('id', None) or iid
-        cmd = 'a=T,f=24,i=%d,s=%d,v=%d,%s' % (imgid, w, h, put_cmd(**kw))
+        no_id = kw.pop('no_id', False)
+        if no_id:
+            cmd = 'a=T,f=24,s=%d,v=%d,%s' % (w, h, put_cmd(**kw))
+        else:
+            cmd = 'a=T,f=24,i=%d,s=%d,v=%d,%s' % (imgid, w, h, put_cmd(**kw))
         data = b'x' * w * h * 3
         res = send_command(screen, cmd, data)
         return imgid, parse_response(res)
@@ -524,7 +528,7 @@ class TestGraphics(BaseTest):
     def test_gr_scroll(self):
         cw, ch = 10, 20
         s, dx, dy, put_image, put_ref, layers, rect_eq = put_helpers(self, cw, ch)
-        put_image(s, 10, 20)  # a one cell image at (0, 0)
+        put_image(s, 10, 20, no_id=True)  # a one cell image at (0, 0)
         self.ae(len(layers(s)), 1)
         for i in range(s.lines):
             s.index()
@@ -550,7 +554,7 @@ class TestGraphics(BaseTest):
         for i in range(s.lines):  # ensure cursor is at top margin
             s.reverse_index()
         # Test clipped scrolling during index
-        put_image(s, cw, 2*ch, z=-1)  # 1x2 cell image
+        put_image(s, cw, 2*ch, z=-1, no_id=True)  # 1x2 cell image
         self.ae(s.grman.image_count, 3)
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
         s.index(), s.index()
@@ -562,7 +566,7 @@ class TestGraphics(BaseTest):
         # Test clipped scrolling during reverse_index
         for i in range(s.lines):
             s.reverse_index()
-        put_image(s, cw, 2*ch, z=-1)  # 1x2 cell image
+        put_image(s, cw, 2*ch, z=-1, no_id=True)  # 1x2 cell image
         self.ae(s.grman.image_count, 3)
         self.ae(layers(s)[0]['src_rect'], {'left': 0.0, 'top': 0.0, 'right': 1.0, 'bottom': 1.0})
         while s.cursor.y != 1:
