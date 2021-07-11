@@ -264,8 +264,9 @@ def zsh_output_serializer(ans: Completions) -> str:
                 lines.append('shift words')
                 lines.append('(( CURRENT-- ))')
             lines.append(f'_normal -p "{ans.delegate.precommand}"')
-    # debug('\n'.join(lines))
-    return '\n'.join(lines)
+    result = '\n'.join(lines)
+    # debug(result)
+    return result
 
 
 @output_serializer
