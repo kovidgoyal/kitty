@@ -39,20 +39,25 @@ class BinaryWrite(Protocol):
         pass
 
 
+def debug_write(*a: Any, **kw: Any) -> None:
+    from base64 import standard_b64encode
+    fobj = kw.pop('file', sys.stderr.buffer)
+    buf = io.StringIO()
+    kw['file'] = buf
+    print(*a, **kw)
+    stext = buf.getvalue()
+    text = b'\x1bP@kitty-print|' + standard_b64encode(stext.encode('utf-8')) + b'\x1b\\'
+    fobj.write(text)
+    fobj.flush()
+
+
 class Debug:
 
     fobj: Optional[BinaryWrite] = None
 
     def __call__(self, *a: Any, **kw: Any) -> None:
-        from base64 import standard_b64encode
-        buf = io.StringIO()
-        kw['file'] = buf
-        print(*a, **kw)
-        stext = buf.getvalue()
-        text = b'\x1bP@kitty-print|' + standard_b64encode(stext.encode('utf-8')) + b'\x1b\\'
-        fobj = self.fobj or sys.stdout.buffer
-        fobj.write(text)
-        fobj.flush()
+        kw['file'] = self.fobj or sys.stdout.buffer
+        debug_write(*a, **kw)
 
 
 debug = Debug()
