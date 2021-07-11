@@ -222,7 +222,6 @@ def zsh_output_serializer(ans: Completions) -> str:
             desc = desc[:truncate_point_for_length(desc, max_desc_len - 2)]
             desc += '…'
 
-        word = f'\x1b[32m{word}\x1b[39m'
         if multiline:
             ans = f'{word}\n  {desc}'
         else:
