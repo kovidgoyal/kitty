@@ -79,8 +79,12 @@ class MatchGroup:
 
 
 def debug(*a: Any, **kw: Any) -> None:
-    kw['file'] = sys.stderr
-    print(*a, **kw)
+    from kittens.tui.loop import Debug
+    if not hasattr(debug, 'output'):
+        d = Debug()
+        d.fobj = sys.stderr.buffer  # type: ignore
+        setattr(debug, 'output', d)
+    getattr(debug, 'output')(*a, **kw)
 
 
 class Delegate:
