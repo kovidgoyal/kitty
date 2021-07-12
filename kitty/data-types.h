@@ -83,8 +83,12 @@ typedef enum { TILING, SCALED, MIRRORED } BackgroundImageLayout;
 #define COL_MASK 0xFFFFFFFF
 #define DECORATION_FG_CODE 58
 #define CHAR_IS_BLANK(ch) ((ch) == 32 || (ch) == 0)
-#define CONTINUED_MASK 1
-#define TEXT_DIRTY_MASK 2
+enum {
+    CONTINUED_MASK=1,
+    TEXT_DIRTY_MASK=2,
+    PROMPT_START_MASK=4,
+    OUTPUT_START_MASK=8
+};
 
 #define FG 1
 #define BG 2

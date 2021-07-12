@@ -56,6 +56,19 @@ linebuf_mark_line_as_not_continued(LineBuf *self, index_type y) {
     self->line_attrs[y] &= ~CONTINUED_MASK;
 }
 
+void
+linebuf_mark_line_as_prompt_start(LineBuf *self, index_type y) {
+    self->line_attrs[y] |= PROMPT_START_MASK;
+    self->line_attrs[y] &= ~OUTPUT_START_MASK;
+}
+
+void
+linebuf_mark_line_as_output_start(LineBuf *self, index_type y) {
+    self->line_attrs[y] &= ~PROMPT_START_MASK;
+    self->line_attrs[y] |= OUTPUT_START_MASK;
+}
+
+
 
 static PyObject*
 clear(LineBuf *self, PyObject *a UNUSED) {

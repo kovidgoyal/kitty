@@ -1712,7 +1712,21 @@ clipboard_control(Screen *self, int code, PyObject *data) {
 
 void
 shell_prompt_marking(Screen *self, PyObject *data) {
-    printf("prompt_marking: x=%d y=%d ", self->cursor->x, self->cursor->y); PyObject_Print(data, stdout, 0); printf("\n");
+    if (PyUnicode_READY(data) != 0) { PyErr_Clear(); return; }
+    if (PyUnicode_GET_LENGTH(data) > 0 && self->cursor->y < self->lines) {
+        Py_UCS4 ch = PyUnicode_READ_CHAR(data, 0);
+        switch (ch) {
+            case 'A':
+                linebuf_mark_line_as_prompt_start(self->linebuf, self->cursor->y); break;
+            case 'C':
+                linebuf_mark_line_as_output_start(self->linebuf, self->cursor->y); break;
+        }
+    }
+    if (global_state.debug_rendering) {
+        fprintf(stderr, "prompt_marking: x=%d y=%d op=", self->cursor->x, self->cursor->y);
+        PyObject_Print(data, stderr, 0);
+        fprintf(stderr, "\n");
+    }
 }
 
 void

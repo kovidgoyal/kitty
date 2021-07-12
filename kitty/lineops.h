@@ -99,6 +99,8 @@ void linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *, index_type *, H
 void linebuf_mark_line_dirty(LineBuf *self, index_type y);
 void linebuf_mark_line_clean(LineBuf *self, index_type y);
 void linebuf_mark_line_as_not_continued(LineBuf *self, index_type y);
+void linebuf_mark_line_as_prompt_start(LineBuf *self, index_type y);
+void linebuf_mark_line_as_output_start(LineBuf *self, index_type y);
 unsigned int linebuf_char_width_at(LineBuf *self, index_type x, index_type y);
 void linebuf_refresh_sprite_positions(LineBuf *self);
 void historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf*);
