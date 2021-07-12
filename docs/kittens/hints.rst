@@ -92,4 +92,12 @@ look it up in the Google dictionary.
 Command Line Interface
 -------------------------
 
+Remember, kitten command line options can be made permanent by putting
+a :ref:`kitten_alias` in the config file. For example you can change
+the order of hinting characters used with::
+
+    kitten_alias hints hints --alphabet qfjdkslaureitywovmcxzpq1234567890
+
+Generally, options can be used from command line this:
+
 .. include:: ../generated/cli-kitten-hints.rst
