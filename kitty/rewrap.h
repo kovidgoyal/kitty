@@ -16,11 +16,13 @@
 #endif
 
 #ifndef init_dest_line
-#define init_dest_line(dest_y) init_line(dest, dest->line, dest->line_map[dest_y]); dest->line->continued = dest->line_attrs[dest_y];
+#define init_dest_line(dest_y) init_line(dest, dest->line, dest->line_map[dest_y]); dest->line->continued = dest->line_attrs[dest_y] & CONTINUED_MASK ? true : false; dest->line->is_output_start = dest->line_attrs[dest_y] & OUTPUT_START_MASK ? true : false; dest->line->is_prompt_start = dest->line_attrs[dest_y] & PROMPT_START_MASK ? true : false;
 #endif
 
+#define set_dest_line_attrs(dest_y, continued) dest->line_attrs[dest_y] = (continued ? CONTINUED_MASK : 0) | (src->line->is_output_start ? OUTPUT_START_MASK : 0) | (src->line->is_prompt_start ? PROMPT_START_MASK : 0);
+
 #ifndef first_dest_line
-#define first_dest_line init_dest_line(0)
+#define first_dest_line init_dest_line(0); set_dest_line_attrs(0, false)
 #endif
 
 #ifndef next_dest_line
@@ -35,7 +37,7 @@
         linebuf_clear_line(dest, dest->ynum - 1); \
     } else dest_y++; \
     init_dest_line(dest_y); \
-    dest->line_attrs[dest_y] = continued ? CONTINUED_MASK : 0;
+    set_dest_line_attrs(dest_y, continued);
 #endif
 
 #ifndef is_src_line_continued
@@ -56,12 +58,11 @@ typedef struct TrackCursor {
 
 static void
 rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf UNUSED *historybuf, TrackCursor *track, ANSIBuf *as_ansi_buf) {
-    bool src_line_is_continued = false;
+    bool src_line_is_continued = false, is_first_line = true;
     index_type src_y = 0, src_x = 0, dest_x = 0, dest_y = 0, num = 0, src_x_limit = 0;
     TrackCursor tc_end = {.is_sentinel = true };
     if (!track) track = &tc_end;
 
-    first_dest_line;
     do {
         for (TrackCursor *t = track; !t->is_sentinel; t++) t->is_tracked_line = src_y == t->y;
         init_src_line(src_y);
@@ -73,6 +74,9 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
         }
         for (TrackCursor *t = track; !t->is_sentinel; t++) {
             if (t->is_tracked_line && t->x >= src_x_limit) t->x = MAX(1u, src_x_limit) - 1;
+        }
+        if (is_first_line) {
+            first_dest_line; is_first_line = false;
         }
         while (src_x < src_x_limit) {
             if (dest_x >= dest->xnum) { next_dest_line(true); dest_x = 0; }

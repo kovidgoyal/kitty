@@ -181,7 +181,7 @@ typedef struct {
     GPUCell *gpu_cells;
     CPUCell *cpu_cells;
     index_type xnum, ynum;
-    bool continued, needs_free, has_dirty_text;
+    bool continued, needs_free, has_dirty_text, is_prompt_start, is_output_start;
 } Line;
 
 

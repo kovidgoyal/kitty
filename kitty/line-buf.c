@@ -143,6 +143,8 @@ linebuf_init_line(LineBuf *self, index_type idx) {
     self->line->xnum = self->xnum;
     self->line->continued = self->line_attrs[idx] & CONTINUED_MASK ? true : false;
     self->line->has_dirty_text = self->line_attrs[idx] & TEXT_DIRTY_MASK ? true : false;
+    self->line->is_prompt_start = self->line_attrs[idx] & PROMPT_START_MASK ? true : false;
+    self->line->is_output_start = self->line_attrs[idx] & OUTPUT_START_MASK ? true : false;
     init_line(self, self->line, self->line_map[idx]);
 }
 
@@ -232,6 +234,8 @@ create_line_copy_inner(LineBuf* self, index_type y) {
     line->ynum = y;
     line->continued = self->line_attrs[y] & CONTINUED_MASK ? true : false;
     line->has_dirty_text = self->line_attrs[y] & TEXT_DIRTY_MASK ? true : false;
+    line->is_output_start = self->line_attrs[y] & OUTPUT_START_MASK ? true : false;
+    line->is_prompt_start = self->line_attrs[y] & PROMPT_START_MASK ? true : false;
     init_line(self, &src, self->line_map[y]);
     copy_line(&src, line);
     return (PyObject*)line;
@@ -255,6 +259,8 @@ copy_line_to(LineBuf *self, PyObject *args) {
     dest->ynum = y;
     dest->continued = self->line_attrs[y] & CONTINUED_MASK;
     dest->has_dirty_text = self->line_attrs[y] & TEXT_DIRTY_MASK;
+    dest->is_output_start = self->line_attrs[y] & OUTPUT_START_MASK;
+    dest->is_prompt_start = self->line_attrs[y] & PROMPT_START_MASK;
     init_line(self, &src, self->line_map[y]);
     copy_line(&src, dest);
     Py_RETURN_NONE;
@@ -413,7 +419,7 @@ void
 linebuf_copy_line_to(LineBuf *self, Line *line, index_type where) {
     init_line(self, self->line, self->line_map[where]);
     copy_line(line, self->line);
-    self->line_attrs[where] = TEXT_DIRTY_MASK | (line->continued ? CONTINUED_MASK : 0);
+    self->line_attrs[where] = TEXT_DIRTY_MASK | (line->continued ? CONTINUED_MASK : 0) | (line->is_output_start ? OUTPUT_START_MASK : 0) | (line->is_prompt_start ? PROMPT_START_MASK : 0);
 }
 
 static PyObject*
