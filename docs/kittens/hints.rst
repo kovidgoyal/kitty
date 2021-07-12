@@ -92,4 +92,12 @@ look it up in the Google dictionary.
 Command Line Interface
 -------------------------
 
+To avoid having to specify the same command line options on ever invocation,
+you can use the :opt:`kitten_alias` option in :file:`kitty.conf` to create aliases
+that have common sets of options. For example::
+
+    kitten_alias myhints hints --alphabet qfjdkslaureitywovmcxzpq1234567890
+
+Documentation for the full set of options is below.
+
 .. include:: ../generated/cli-kitten-hints.rst
