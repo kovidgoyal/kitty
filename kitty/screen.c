@@ -1711,6 +1711,11 @@ clipboard_control(Screen *self, int code, PyObject *data) {
 }
 
 void
+shell_prompt_marking(Screen *self, PyObject *data) {
+    printf("prompt_marking: x=%d y=%d ", self->cursor->x, self->cursor->y); PyObject_Print(data, stdout, 0); printf("\n");
+}
+
+void
 set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
     if (color == NULL) { CALLBACK("set_color_table_color", "Is", code, ""); }
     else { CALLBACK("set_color_table_color", "IO", code, color); }
