@@ -1712,6 +1712,7 @@ int _glfwPlatformCreateWindow(_GLFWwindow* window,
 
     if (!createNativeWindow(window, wndconfig, fbconfig))
         return false;
+    [window->ns.object setColorSpace:[NSColorSpace sRGBColorSpace]];
 
     if (ctxconfig->client != GLFW_NO_API)
     {
