@@ -147,10 +147,7 @@ init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
     l->cpu_cells = cpu_lineptr(self, num);
     l->gpu_cells = gpu_lineptr(self, num);
-    l->continued = *attrptr(self, num) & CONTINUED_MASK;
-    l->has_dirty_text = *attrptr(self, num) & TEXT_DIRTY_MASK ? true : false;
-    l->is_output_start = *attrptr(self, num) & OUTPUT_START_MASK ? true : false;
-    l->is_prompt_start = *attrptr(self, num) & PROMPT_START_MASK ? true : false;
+    copy_line_attrs_to_line(*attrptr(self, num), l);
 }
 
 void
@@ -250,7 +247,7 @@ void
 historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
     index_type idx = historybuf_push(self, as_ansi_buf);
     copy_line(line, self->line);
-    *attrptr(self, idx) = (line->continued & CONTINUED_MASK) | (line->has_dirty_text ? TEXT_DIRTY_MASK : 0) | (line->is_output_start ? OUTPUT_START_MASK : 0) | (line->is_output_start ? PROMPT_START_MASK : 0);
+    *attrptr(self, idx) = line_attrs_from_line(line);
 }
 
 bool
@@ -532,7 +529,7 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned 
 
 #define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (*attrptr(src, map_src_index(src_y + 1)) & CONTINUED_MASK) : false)
 
-#define next_dest_line(cont) *attrptr(dest, historybuf_push(dest, as_ansi_buf)) = (cont ? CONTINUED_MASK : 0) | (src->line->is_output_start ? OUTPUT_START_MASK : 0) | (src->line->is_prompt_start ? PROMPT_START_MASK : 0); dest->line->continued = cont;
+#define next_dest_line(cont) *attrptr(dest, historybuf_push(dest, as_ansi_buf)) = (cont ? CONTINUED_MASK : 0) | line_attrs_from_line(src->line); dest->line->continued = cont;
 
 #define first_dest_line next_dest_line(false);
 

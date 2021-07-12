@@ -16,10 +16,10 @@
 #endif
 
 #ifndef init_dest_line
-#define init_dest_line(dest_y) init_line(dest, dest->line, dest->line_map[dest_y]); dest->line->continued = dest->line_attrs[dest_y] & CONTINUED_MASK ? true : false; dest->line->is_output_start = dest->line_attrs[dest_y] & OUTPUT_START_MASK ? true : false; dest->line->is_prompt_start = dest->line_attrs[dest_y] & PROMPT_START_MASK ? true : false;
+#define init_dest_line(dest_y) init_line(dest, dest->line, dest->line_map[dest_y]); copy_line_attrs_to_line(dest->line_attrs[dest_y], dest->line);
 #endif
 
-#define set_dest_line_attrs(dest_y, continued) dest->line_attrs[dest_y] = (continued ? CONTINUED_MASK : 0) | (src->line->is_output_start ? OUTPUT_START_MASK : 0) | (src->line->is_prompt_start ? PROMPT_START_MASK : 0);
+#define set_dest_line_attrs(dest_y, continued) dest->line_attrs[dest_y] = (continued ? CONTINUED_MASK : 0) | line_attrs_from_line(src->line);
 
 #ifndef first_dest_line
 #define first_dest_line init_dest_line(0); set_dest_line_attrs(0, false)
