@@ -107,6 +107,10 @@ def data_for_at(w: Optional[Window], arg: str, add_wrap_markers: bool = False) -
         return as_text(as_ansi=True, alternate_screen=True)
     if arg == '@ansi_alternate_scrollback':
         return as_text(as_ansi=True, alternate_screen=True, add_history=True)
+    if arg == '@last_cmd_output':
+        return w.last_cmd_output(add_wrap_markers=add_wrap_markers)
+    if arg == '@ansi_last_cmd_output':
+        return w.last_cmd_output(as_ansi=True, add_wrap_markers=add_wrap_markers)
     return None
 
 
@@ -1072,6 +1076,9 @@ class Boss:
                     data = sel.encode('utf-8') if sel else None
                 elif type_of_input is None:
                     data = None
+                elif type_of_input in ('output', 'output-screen', 'output-screen-ansi', 'output-ansi'):
+                    q = type_of_input.split('-')
+                    data = w.last_cmd_output(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
                 else:
                     raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
             else:

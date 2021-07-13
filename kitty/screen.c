@@ -2342,6 +2342,41 @@ as_text_alternate(Screen *self, PyObject *args) {
     return ans;
 }
 
+typedef struct OutputOffset {
+    Screen *screen;
+    int start;
+} OutputOffset;
+
+static Line*
+get_line_from_offset(void *x, int y) {
+    OutputOffset *r = x;
+    return range_line_(r->screen, r->start + y);
+}
+
+static PyObject*
+last_cmd_output(Screen *self, PyObject *args) {
+    if (self->linebuf != self->main_linebuf) return PyUnicode_FromString("");
+
+    OutputOffset oo = {.screen=self};
+    unsigned num_lines = 0;
+    int prompt_pos = self->cursor->y, y = self->cursor->y;
+    const int limit = -self->historybuf->count;
+    while (y >= limit) {
+        Line *line = range_line_(self, y);
+        if (line->is_prompt_start) prompt_pos = y;
+        if (line->is_output_start) {
+            oo.start = y;
+            num_lines = prompt_pos - y;
+            break;
+        }
+        y--;
+    }
+    if (y < limit) {
+        oo.start = limit;
+        num_lines = prompt_pos - limit;
+    }
+    return as_text_generic(args, &oo, get_line_from_offset, num_lines, &self->as_ansi_buf);
+}
 
 
 static PyObject*
@@ -3246,6 +3281,7 @@ static PyMethodDef methods[] = {
     MND(as_text, METH_VARARGS)
     MND(as_text_non_visual, METH_VARARGS)
     MND(as_text_alternate, METH_VARARGS)
+    MND(last_cmd_output, METH_VARARGS)
     MND(tab, METH_NOARGS)
     MND(backspace, METH_NOARGS)
     MND(linefeed, METH_NOARGS)

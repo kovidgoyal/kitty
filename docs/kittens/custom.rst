@@ -92,7 +92,10 @@ This will send the plain text of the active window to the kitten's
 instead. If you want line wrap markers as well, use ``screen-ansi``
 or just ``screen``. For the scrollback buffer as well, use
 ``history``, ``ansi-history`` or ``screen-history``. To get
-the currently selected text, use ``selection``.
+the currently selected text, use ``selection``. To get the output
+of the last command run in the shell, use ``output`` or ``output-ansi``
+or ``output-screen-ansi``. Note that using ``output`` requires
+:ref:`shell_integration`.
 
 
 Using kittens to script kitty, without any terminal UI

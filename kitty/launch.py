@@ -122,14 +122,15 @@ computers (for example, over ssh) or as other users.
 --stdin-source
 type=choices
 default=none
-choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollback
+choices=none,@selection,@screen,@screen_scrollback,@alternate,@alternate_scrollback,@last_cmd_output
 Pass the screen contents as :code:`STDIN` to the child process. :code:`@selection` is
 the currently selected text. :code:`@screen` is the contents of the currently active
 window. :code:`@screen_scrollback` is the same as :code:`@screen`, but includes the
 scrollback buffer as well. :code:`@alternate` is the secondary screen of the current
 active window. For example if you run a full screen terminal application, the
 secondary screen will be the screen you return to when quitting the
-application.
+application. :code:`@last_cmd_output` is the output from the last command run in the shell,
+this needs :ref:`shell_integration` to work.
 
 
 --stdin-add-formatting

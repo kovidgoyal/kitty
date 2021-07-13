@@ -2919,6 +2919,16 @@ For more details on piping screen and buffer contents to external programs,
 see :doc:`launch`.
 '''
     )
+
+map('Browse output of the last shell command in less',
+    'show_last_command_output kitty_mod+g show_last_command_output',
+    long_text='''
+Requires :ref:`shell_integration` to work. You can pipe the output
+of the last command run in the shell using the :doc:`launch` function.
+For example, the following opens the output in less in an overlay window::
+
+    map f1 launch --stdin-source=@last_cmd_output --stdin-add-formatting --type=overlay less +G -R
+''')
 egr()  # }}}
 
 

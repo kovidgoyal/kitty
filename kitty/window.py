@@ -914,6 +914,11 @@ class Window:
     ) -> str:
         return as_text(self.screen, as_ansi, add_history, add_wrap_markers, alternate_screen, add_cursor)
 
+    def last_cmd_output(self, as_ansi: bool = False, add_wrap_markers: bool = False) -> str:
+        lines: List[str] = []
+        self.screen.last_cmd_output(lines.append, as_ansi, add_wrap_markers)
+        return ''.join(lines)
+
     @property
     def cwd_of_child(self) -> Optional[str]:
         return self.child.foreground_cwd or self.child.current_cwd
@@ -941,6 +946,15 @@ class Window:
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
         get_boss().display_scrollback(self, data['text'], data['input_line_number'])
+
+    def show_last_command_output(self) -> None:
+        '''
+        @ac:cp: Show output from the last shell command in a pager like less
+
+        Requires :ref:`shell_integration` to work
+        '''
+        text = self.last_cmd_output(as_ansi=True, add_wrap_markers=True)
+        get_boss().display_scrollback(self, text, title='Last command output')
 
     def paste_bytes(self, text: Union[str, bytes]) -> None:
         # paste raw bytes without any processing

@@ -11,9 +11,9 @@ windows are:
 Scrolling
 ~~~~~~~~~~~~~~
 
-========================    =======================
+=========================   =======================
 Action                      Shortcut
-========================    =======================
+=========================   =======================
 Line up                     :sc:`scroll_line_up` (also :kbd:`⌥+⌘+⇞` and :kbd:`⌘+↑` on macOS)
 Line down                   :sc:`scroll_line_down` (also :kbd:`⌥+⌘+⇟` and :kbd:`⌘+↓` on macOS)
 Page up                     :sc:`scroll_page_up` (also :kbd:`⌘+⇞` on macOS)
@@ -22,7 +22,9 @@ Top                         :sc:`scroll_home` (also :kbd:`⌘+↖` on macOS)
 Bottom                      :sc:`scroll_end` (also :kbd:`⌘+↘` on macOS)
 Previous shell prompt       :sc:`scroll_to_previous_prompt` (see :ref:`shell_integration`)
 Next shell prompt           :sc:`scroll_to_next_prompt` (see :ref:`shell_integration`)
-========================    =======================
+Browse scrollback in less   :sc:`show_scrollback`
+Browse last cmd output      :sc:`show_last_command_output` (see :ref:`shell_integration`)
+=========================   =======================
 
 Tabs
 ~~~~~~~~~~~

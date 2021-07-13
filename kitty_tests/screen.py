@@ -919,6 +919,9 @@ class TestScreen(BaseTest):
         def mark_prompt():
             parse_bytes(s, '\033]133;A\007'.encode('ascii'))
 
+        def mark_output():
+            parse_bytes(s, '\033]133;C\007'.encode('ascii'))
+
         for i in range(4):
             mark_prompt()
             s.draw(f'$ {i}')
@@ -945,3 +948,21 @@ class TestScreen(BaseTest):
             s.draw(str(i))
         self.assertTrue(s.scroll_to_prompt())
         self.ae(str(s.visual_line(0)), '$ 0')
+
+        def lco():
+            a = []
+            s.last_cmd_output(a.append)
+            return ''.join(a)
+
+        s = self.create_screen()
+        s.draw('abcd'), s.index(), s.carriage_return()
+        s.draw('12'), s.index(), s.carriage_return()
+        self.ae(lco(), 'abcd\n12')
+        s = self.create_screen()
+        mark_prompt(), s.draw('$ 0')
+        s.carriage_return(), s.index()
+        mark_output()
+        s.draw('abcd'), s.index(), s.carriage_return()
+        s.draw('12'), s.index(), s.carriage_return()
+        mark_prompt(), s.draw('$ 1')
+        self.ae(lco(), 'abcd\n12')

@@ -718,6 +718,8 @@ defaults.map = [
     KeyDefinition(False, KeyAction('scroll_to_prompt', (1,)), 1024, False, 100, ()),
     # show_scrollback
     KeyDefinition(False, KeyAction('show_scrollback'), 1024, False, 104, ()),
+    # show_last_command_output
+    KeyDefinition(False, KeyAction('show_last_command_output'), 1024, False, 103, ()),
     # new_window
     KeyDefinition(False, KeyAction('new_window'), 1024, False, 57345, ()),
     # new_os_window
