@@ -912,6 +912,9 @@ def create_linux_bundle_gunk(ddir: str, libdir_name: str) -> None:
     safe_makedirs(icdir)
     shutil.copy2('logo/kitty.png', icdir)
     deskdir = os.path.join(ddir, 'share', 'applications')
+    icscaldir = os.path.join(ddir, 'share', 'icons', 'hicolor', 'scalable', 'apps')
+    safe_makedirs(icscaldir)
+    shutil.copy2('logo/kitty.svg', icscaldir)
     safe_makedirs(deskdir)
     with open(os.path.join(deskdir, 'kitty.desktop'), 'w') as f:
         f.write(
