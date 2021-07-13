@@ -14,12 +14,14 @@ Scrolling
 ========================    =======================
 Action                      Shortcut
 ========================    =======================
-Scroll line up              :sc:`scroll_line_up` (also :kbd:`⌥+⌘+⇞` and :kbd:`⌘+↑` on macOS)
-Scroll line down            :sc:`scroll_line_down` (also :kbd:`⌥+⌘+⇟` and :kbd:`⌘+↓` on macOS)
-Scroll page up              :sc:`scroll_page_up` (also :kbd:`⌘+⇞` on macOS)
-Scroll page down            :sc:`scroll_page_down` (also :kbd:`⌘+⇟` on macOS)
-Scroll to top               :sc:`scroll_home` (also :kbd:`⌘+↖` on macOS)
-Scroll to bottom            :sc:`scroll_end` (also :kbd:`⌘+↘` on macOS)
+Line up                     :sc:`scroll_line_up` (also :kbd:`⌥+⌘+⇞` and :kbd:`⌘+↑` on macOS)
+Line down                   :sc:`scroll_line_down` (also :kbd:`⌥+⌘+⇟` and :kbd:`⌘+↓` on macOS)
+Page up                     :sc:`scroll_page_up` (also :kbd:`⌘+⇞` on macOS)
+Page down                   :sc:`scroll_page_down` (also :kbd:`⌘+⇟` on macOS)
+Top                         :sc:`scroll_home` (also :kbd:`⌘+↖` on macOS)
+Bottom                      :sc:`scroll_end` (also :kbd:`⌘+↘` on macOS)
+Previous shell prompt       :sc:`scroll_to_previous_prompt` (see :ref:`shell_integration`)
+Next shell prompt           :sc:`scroll_to_next_prompt` (see :ref:`shell_integration`)
 ========================    =======================
 
 Tabs

@@ -1032,6 +1032,20 @@ class Window:
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, False)
 
+    @ac('sc', '''
+        Scroll to the previous/next shell command prompt
+        Allows easy jumping from one command to the next. Requires working
+        :ref:`shell_integration`. Takes a single, optional, number as argument which is
+        the number of prompts to jump, negative values jump up and positive values jump down.
+        For example::
+
+            map ctrl+p scroll_to_prompt -1  # jump to previous
+            map ctrl+n scroll_to_prompt 1   # jump to next
+        ''')
+    def scroll_to_prompt(self, num_of_prompts: int = -1) -> None:
+        if self.screen.is_main_linebuf():
+            self.screen.scroll_to_prompt(num_of_prompts)
+
     @ac('mk', 'Toggle the current marker on/off')
     def toggle_marker(self, ftype: str, spec: Union[str, Tuple[Tuple[int, str], ...]], flags: int) -> None:
         from .marks import marker_from_spec

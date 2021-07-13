@@ -249,13 +249,14 @@ def remote_control(func: str, rest: str) -> FuncArgsType:
     return func, r
 
 
-@func_with_args('nth_window')
-def nth_window(func: str, rest: str) -> FuncArgsType:
+@func_with_args('nth_window', 'scroll_to_prompt')
+def single_integer_arg(func: str, rest: str) -> FuncArgsType:
     try:
         num = int(rest)
     except Exception:
-        log_error('Invalid nth_window number: {}'.format(rest))
-        num = 1
+        if rest:
+            log_error(f'Invalid number for {func}: {rest}')
+        num = -1 if func == 'scroll_to_prompt' else 1
     return func, [num]
 
 

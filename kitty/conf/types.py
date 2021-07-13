@@ -47,6 +47,7 @@ def remove_markup(text: str) -> str:
         'sessions': f'{website_url("overview")}#startup-sessions',
         'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
         'action-select_tab': f'{website_url("actions")}#select-tab',
+        'shell_integration': website_url("shell-integration"),
     }
 
     def sub(m: Match) -> str:

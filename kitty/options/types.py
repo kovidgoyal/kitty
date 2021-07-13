@@ -712,6 +712,10 @@ defaults.map = [
     KeyDefinition(False, KeyAction('scroll_home'), 1024, False, 57356, ()),
     # scroll_end
     KeyDefinition(False, KeyAction('scroll_end'), 1024, False, 57357, ()),
+    # scroll_to_previous_prompt
+    KeyDefinition(False, KeyAction('scroll_to_prompt', (-1,)), 1024, False, 120, ()),
+    # scroll_to_next_prompt
+    KeyDefinition(False, KeyAction('scroll_to_prompt', (1,)), 1024, False, 100, ()),
     # show_scrollback
     KeyDefinition(False, KeyAction('show_scrollback'), 1024, False, 104, ()),
     # new_window

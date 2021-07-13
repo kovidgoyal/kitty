@@ -1016,6 +1016,9 @@ class Screen:
     def scroll_to_next_mark(self, mark: int = 0, backwards: bool = True) -> bool:
         pass
 
+    def scroll_to_prompt(self, num_of_prompts: int = -1) -> bool:
+        pass
+
     def reverse_scroll(self, amt: int, fill_from_scrollback: bool = False) -> bool:
         pass
 

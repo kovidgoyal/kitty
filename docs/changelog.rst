@@ -1862,7 +1862,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   using standard keyboards) via `IBus
   <https://github.com/ibus/ibus/wiki/ReadMe>`_ (:iss:`469`)
 
-- Implement completion for the kitty command in bash and zsh
+- Implement completion for the kitty command in bash and zsh. See
+  :ref:`shell_integration`.
 
 - Render the text under the cursor in a fixed color, configurable via
   the option :opt:`cursor_text_color` (:iss:`126`)
