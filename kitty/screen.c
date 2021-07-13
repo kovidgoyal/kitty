@@ -1729,6 +1729,26 @@ shell_prompt_marking(Screen *self, PyObject *data) {
     }
 }
 
+static bool
+screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
+    if (self->linebuf != self->main_linebuf) return false;
+    int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
+    num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
+    int y = -self->scrolled_by;
+    while (num_of_prompts_to_jump) {
+        y += delta;
+        if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
+        if (range_line_(self, y)->is_prompt_start) num_of_prompts_to_jump--;
+    }
+    if (delta < 0) {
+        while (-y + 1 < (int)self->historybuf->count && range_line_(self, y - 1)->is_prompt_start) y--;
+    }
+    unsigned int old = self->scrolled_by;
+    self->scrolled_by = y >= 0 ? 0 : -y;
+    if (old != self->scrolled_by) self->scroll_changed = true;
+    return old != self->scrolled_by;
+}
+
 void
 set_color_table_color(Screen *self, unsigned int code, PyObject *color) {
     if (color == NULL) { CALLBACK("set_color_table_color", "Is", code, ""); }
@@ -2707,6 +2727,15 @@ scroll(Screen *self, PyObject *args) {
     Py_RETURN_FALSE;
 }
 
+static PyObject*
+scroll_to_prompt(Screen *self, PyObject *args) {
+    int num_of_prompts = -1;
+    if (!PyArg_ParseTuple(args, "|i", &num_of_prompts)) return NULL;
+    if (screen_history_scroll_to_prompt(self, num_of_prompts)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
+
 bool
 screen_is_selection_dirty(Screen *self) {
     IterationData q;
@@ -3237,6 +3266,7 @@ static PyMethodDef methods[] = {
     MND(text_for_marked_url, METH_NOARGS)
     MND(is_rectangle_select, METH_NOARGS)
     MND(scroll, METH_VARARGS)
+    MND(scroll_to_prompt, METH_VARARGS)
     MND(send_escape_code_to_child, METH_VARARGS)
     MND(hyperlink_at, METH_VARARGS)
     MND(toggle_alt_screen, METH_NOARGS)

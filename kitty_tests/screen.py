@@ -912,3 +912,26 @@ class TestScreen(BaseTest):
         for trailer in '{([':
             t('http://moo.com', after=trailer)
         t('http://moo.com', x=s.columns - 9)
+
+    def test_prompt_marking(self):
+        s = self.create_screen()
+
+        def mark_prompt():
+            parse_bytes(s, '\033]133;A\007'.encode('ascii'))
+
+        for i in range(4):
+            mark_prompt()
+            s.draw(f'$ {i}')
+            s.carriage_return()
+            s.index(), s.index()
+        self.ae(s.scrolled_by, 0)
+        self.assertTrue(s.scroll_to_prompt())
+        self.ae(str(s.visual_line(0)), '$ 1')
+        self.assertTrue(s.scroll_to_prompt())
+        self.ae(str(s.visual_line(0)), '$ 0')
+        self.assertFalse(s.scroll_to_prompt())
+        self.assertTrue(s.scroll_to_prompt(1))
+        self.ae(str(s.visual_line(0)), '$ 1')
+        self.assertTrue(s.scroll_to_prompt(1))
+        self.ae(str(s.visual_line(0)), '$ 2')
+        self.assertFalse(s.scroll_to_prompt(1))
