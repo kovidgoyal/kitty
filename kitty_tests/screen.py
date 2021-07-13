@@ -935,3 +935,13 @@ class TestScreen(BaseTest):
         self.assertTrue(s.scroll_to_prompt(1))
         self.ae(str(s.visual_line(0)), '$ 2')
         self.assertFalse(s.scroll_to_prompt(1))
+
+        s = self.create_screen()
+        mark_prompt(), s.draw('$ 0')
+        s.carriage_return(), s.index()
+        mark_prompt(), s.draw('$ 1')
+        for i in range(s.lines):
+            s.carriage_return(), s.index()
+            s.draw(str(i))
+        self.assertTrue(s.scroll_to_prompt())
+        self.ae(str(s.visual_line(0)), '$ 0')

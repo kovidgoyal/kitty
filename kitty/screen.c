@@ -1741,7 +1741,7 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
         if (range_line_(self, y)->is_prompt_start) num_of_prompts_to_jump--;
     }
     if (delta < 0) {
-        while (-y + 1 < (int)self->historybuf->count && range_line_(self, y - 1)->is_prompt_start) y--;
+        while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->is_prompt_start) y--;
     }
     unsigned int old = self->scrolled_by;
     self->scrolled_by = y >= 0 ? 0 : -y;
