@@ -91,7 +91,7 @@ rewrap_inner(BufType *src, BufType *dest, const index_type src_limit, HistoryBuf
             src_x += num; dest_x += num;
         }
         src_y++; src_x = 0;
-        if (!src_line_is_continued && src_y < src_limit) { next_dest_line(false); dest_x = 0; }
+        if (!src_line_is_continued && src_y < src_limit) { init_src_line(src_y); next_dest_line(false); dest_x = 0; }
     } while (src_y < src_limit);
     dest->line->ynum = dest_y;
 }
