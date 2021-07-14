@@ -106,7 +106,7 @@ void linebuf_init_line(LineBuf *, index_type);
 void linebuf_clear(LineBuf *, char_type ch);
 void linebuf_index(LineBuf* self, index_type top, index_type bottom);
 void linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom);
-void linebuf_clear_line(LineBuf *self, index_type y);
+void linebuf_clear_line(LineBuf *self, index_type y, bool clear_attrs);
 void linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned int bottom);
 void linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bottom);
 void linebuf_copy_line_to(LineBuf *, Line *, index_type);

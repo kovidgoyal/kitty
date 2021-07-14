@@ -34,7 +34,7 @@
             dest->line->has_dirty_text = true; \
             historybuf_add_line(historybuf, dest->line, as_ansi_buf); \
         }\
-        linebuf_clear_line(dest, dest->ynum - 1); \
+        linebuf_clear_line(dest, dest->ynum - 1, true); \
     } else dest_y++; \
     init_dest_line(dest_y); \
     set_dest_line_attrs(dest_y, continued);

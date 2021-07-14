@@ -266,11 +266,11 @@ clear_line_(Line *l, index_type xnum) {
 }
 
 void
-linebuf_clear_line(LineBuf *self, index_type y) {
+linebuf_clear_line(LineBuf *self, index_type y, bool clear_attrs) {
     Line l;
     init_line(self, &l, self->line_map[y]);
     clear_line_(&l, self->xnum);
-    self->line_attrs[y] = 0;
+    if (clear_attrs) self->line_attrs[y] = 0;
 }
 
 static PyObject*
@@ -278,7 +278,7 @@ clear_line(LineBuf *self, PyObject *val) {
 #define clear_line_doc "clear_line(y) -> Clear the specified line"
     index_type y = (index_type)PyLong_AsUnsignedLong(val);
     if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    linebuf_clear_line(self, y);
+    linebuf_clear_line(self, y, true);
     Py_RETURN_NONE;
 }
 

@@ -271,10 +271,43 @@ index_selection(const Screen *self, Selections *selections, bool up) {
 #define INDEX_DOWN \
     if (self->overlay_line.is_active) deactivate_overlay_line(self); \
     linebuf_reverse_index(self->linebuf, top, bottom); \
-    linebuf_clear_line(self->linebuf, top); \
+    linebuf_clear_line(self->linebuf, top, true); \
     INDEX_GRAPHICS(1) \
     self->is_dirty = true; \
     index_selection(self, &self->selections, false);
+
+
+static void
+prevent_current_prompt_from_rewrapping(Screen *self, index_type columns) {
+    int y = self->cursor->y;
+    while (y >= 0) {
+        linebuf_init_line(self->main_linebuf, y);
+        Line *line = self->linebuf->line;
+        if (line->is_output_start) return;
+        if (line->is_prompt_start) break;
+        y--;
+    }
+    if (y < 0) return;
+    // we have identified a prompt at which the cursor is present, the shell
+    // will redraw this prompt. However when doing so it gets confused if the
+    // cursor vertical position relative to the first prompt line changes. This
+    // can easily be seen for instance in zsh when a right side prompt is used
+    // so when resizing to smaller sizes, simply blank all lines after the current
+    // prompt and trust the shell to redraw them
+    for (; y < (int)self->main_linebuf->ynum; y++) {
+        linebuf_mark_line_as_not_continued(self->main_linebuf, y);
+        if (columns < self->columns) {
+            linebuf_clear_line(self->main_linebuf, y, false);
+            linebuf_init_line(self->main_linebuf, y);
+            if (y <= (int)self->cursor->y) {
+                // this is needed because screen_resize() checks to see if the cursor is beyond the content,
+                // so insert some fake content
+                Line *line = self->linebuf->line;
+                line->cpu_cells[0].ch = '>';
+            }
+        }
+    }
+}
 
 static bool
 screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
@@ -299,6 +332,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns, &self->as_ansi_buf);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
+    if (is_main) prevent_current_prompt_from_rewrapping(self, columns);
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &cursor, &main_saved_cursor, &self->as_ansi_buf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
@@ -1135,7 +1169,7 @@ screen_cursor_to_column(Screen *self, unsigned int column) {
         historybuf_add_line(self->historybuf, self->linebuf->line, &self->as_ansi_buf); \
         self->history_line_added_count++; \
     } \
-    linebuf_clear_line(self->linebuf, bottom); \
+    linebuf_clear_line(self->linebuf, bottom, true); \
     self->is_dirty = true; \
     index_selection(self, &self->selections, true);
 
