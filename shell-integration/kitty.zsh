@@ -13,7 +13,7 @@ args=($@)
 
     function debug() {
         # print a line to STDOUT of parent kitty process
-        local b=$(printf "%s\n" "$1" | base64)
+        local b=$(printf "%s\n" "$1" | base64 | tr -d \\n)
         printf "\eP@kitty-print|%s\e\\" "$b"
     }
 
