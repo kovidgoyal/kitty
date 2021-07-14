@@ -777,11 +777,8 @@ class Window:
 
     def handle_remote_print(self, msg: bytes) -> None:
         from base64 import standard_b64decode
+        from .cli import green
         text = standard_b64decode(msg).decode('utf-8')
-
-        def green(x: str) -> str:
-            return f'\x1b[32m{x}\x1b[39m'
-
         text = text.replace('\x1b', green(r'\e')).replace('\a', green(r'\a')).replace('\0', green(r'\0'))
         print(text, end='', file=sys.stderr)
         sys.stderr.flush()
