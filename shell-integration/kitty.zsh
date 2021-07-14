@@ -41,22 +41,18 @@ args=($@)
         zle -N zle-keymap-select kitty_zle_keymap_select
     fi
 
-    function mark() {
-        # tell kitty to mark the current cursor position using OSC 133
-        printf "\e]133;%s\e\\" "$1"
+    function osc() {
+        printf "\e]%s\a" "$1"
     }
 
-    function set_title_precmd () { 
-        # Set kitty window title to the cwd
-        if [[ "$kitty_prompt_title" == "y" ]]; then
-            printf "\e]2;%s\007" "${PWD/$HOME/~}" 
-        fi
+    function mark() {
+        # tell kitty to mark the current cursor position using OSC 133
+        osc "133;$1"
     }
-    function set_title_preexec() { 
-        # Set kitty window title to the currently executing command
-        if [[ "$kitty_prompt_title" == "y" ]]; then
-            printf "\e]2;%s\a" "$1" 
-        fi
+    typeset -g kitty_prompt_start_mark="%{$(mark A)%}"
+
+    function set_title() {
+        if [[ "$kitty_prompt_title" == "y" ]]; then osc "2;$1"; fi
     }
 
     function kitty_precmd() { 
@@ -67,14 +63,18 @@ args=($@)
                 compdef _kitty kitty 
             fi
         fi
-        set_title_precmd
+        # Set kitty window title to the cwd
+        set_title "${PWD/$HOME/~}" 
         if [[ "$kitty_prompt_state" == "preexec" ]]; then
             mark "D;$cmd_status"
         else
             if [[ "$kitty_prompt_state" != "first-run" ]]; then mark "D"; fi
         fi
+        # we must use PS1 to set the prompt start mark as precmd functions are 
+        # not called when the prompt is redrawn after a window resize or when a background
+        # job finishes
+        if [[ "$PS1" != *"$kitty_prompt_start_mark"* ]]; then PS1="$kitty_prompt_start_mark$PS1" fi
         kitty_prompt_state="precmd"
-        mark "A"
     }
 
     function kitty_zle_line_init() { 
@@ -104,8 +104,11 @@ args=($@)
 
     function kitty_preexec() { 
         mark "C"
-        set_title_preexec "$1"
+        # Set kitty window title to the currently executing command
+        set_title "$1"
         kitty_prompt_state="preexec"
+        # remove the prompt mark sequence while the command is executing as it could read/modify the value of PS1
+        PS1="${PS1//$kitty_prompt_start_mark/}"
     }
 
     typeset -a -g precmd_functions
