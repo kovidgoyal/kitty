@@ -92,7 +92,7 @@ args=($@)
 
     function kitty_zle_line_finish() { 
         change-cursor-shape;
-        kitty_prompt_state="line-init"
+        kitty_prompt_state="line-finish"
     }
     function kitty_zle_line_finish_with_orginal() { zle kitty-zle-line-finish-original; kitty_zle_line_finish }
     zle -A zle-line-finish kitty-zle-line-finish-original 2>/dev/null
