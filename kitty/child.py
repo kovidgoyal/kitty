@@ -72,14 +72,9 @@ else:
         return ans
 
 
+@run_once
 def checked_terminfo_dir() -> Optional[str]:
-    q = getattr(checked_terminfo_dir, 'ans', False)
-    if q is False:
-        ans = terminfo_dir if os.path.isdir(terminfo_dir) else None
-        setattr(checked_terminfo_dir, 'ans', ans)
-    else:
-        ans = q
-    return ans
+    return terminfo_dir if os.path.isdir(terminfo_dir) else None
 
 
 def processes_in_group(grp: int) -> List[int]:
