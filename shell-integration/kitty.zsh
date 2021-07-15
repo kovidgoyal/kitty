@@ -1,14 +1,14 @@
 () {
     if [[ ! -o interactive ]]; then return; fi
-    if [[ -z "$kitty_shell_integration" ]]; then return; fi
+    if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then return; fi
     typeset -g -A _ksi_prompt=([state]='first-run' [cursor]='y' [title]='y' [mark]='y' [complete]='y')
-    for i in ${=kitty_shell_integration}; do
+    for i in ${=KITTY_SHELL_INTEGRATION}; do
         if [[ "$i" == "no-cursor" ]]; then _ksi_prompt[cursor]='n'; fi
         if [[ "$i" == "no-title" ]]; then _ksi_prompt[title]='n'; fi
         if [[ "$i" == "no-prompt-mark" ]]; then _ksi_prompt[mark]='n'; fi
         if [[ "$i" == "no-complete" ]]; then _ksi_prompt[complete]='n'; fi
     done
-    unset kitty_shell_integration
+    unset KITTY_SHELL_INTEGRATION
 
     function _ksi_debug_print() {
         # print a line to STDOUT of parent kitty process

@@ -227,6 +227,11 @@ class Child:
             tdir = checked_terminfo_dir()
             if tdir:
                 env['TERMINFO'] = tdir
+            opts = fast_data_types.get_options()
+            if opts.shell_integration != 'disabled':
+                from .shell_integration import get_supported_shell_name
+                if get_supported_shell_name(self.argv[0]):
+                    env['KITTY_SHELL_INTEGRATION'] = opts.shell_integration
         return env
 
     def fork(self) -> Optional[int]:
