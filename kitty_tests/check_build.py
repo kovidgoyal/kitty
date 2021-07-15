@@ -49,9 +49,11 @@ class TestBuild(BaseTest):
         self.assertGreater(len(names), 8)
 
     def test_filesystem_locations(self) -> None:
-        from kitty.constants import logo_png_file, terminfo_dir
+        from kitty.constants import terminfo_dir, logo_png_file, shell_integration_dir
+        zsh = os.path.join(shell_integration_dir, 'kitty.zsh')
         self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
         self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
+        self.assertTrue(os.path.exists(zsh), f'Shell integration: {zsh}')
 
     def test_ca_certificates(self):
         import ssl
