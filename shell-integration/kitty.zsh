@@ -1,10 +1,12 @@
 () {
     if [[ ! -o interactive ]]; then return; fi
     if [[ -z "$kitty_shell_integration" ]]; then return; fi
-    typeset -g -A kitty_prompt=([state]='first-run' [cursor]='y' [title]='y')
+    typeset -g -A kitty_prompt=([state]='first-run' [cursor]='y' [title]='y' [mark]='y' [complete]='y')
     for i in ${=kitty_shell_integration}; do
         if [[ "$i" == "no-cursor" ]]; then kitty_prompt[cursor]='n'; fi
         if [[ "$i" == "no-title" ]]; then kitty_prompt[title]='n'; fi
+        if [[ "$i" == "no-prompt-mark" ]]; then kitty_prompt[mark]='n'; fi
+        if [[ "$i" == "no-complete" ]]; then kitty_prompt[complete]='n'; fi
     done
     unset kitty_shell_integration
 
@@ -46,7 +48,7 @@
 
     function mark() {
         # tell kitty to mark the current cursor position using OSC 133
-        osc "133;$1"
+        if [[ "$kitty_prompt[mark]" == "y" ]]; then osc "133;$1"; fi
     }
     kitty_prompt[start_mark]="%{$(mark A)%}"
 
@@ -54,30 +56,40 @@
         if [[ "$kitty_prompt[title]" == "y" ]]; then osc "2;$1"; fi
     }
 
-    function kitty_precmd() { 
-        local cmd_status=$?
-        if [[ "$kitty_prompt[state]" == "first-run" ]]; then
+    function install_kitty_completion() {
+        if [[ "$kitty_prompt[complete]" == "y" ]]; then
             # compdef is only defined if compinit has been called
             if whence compdef > /dev/null; then 
                 compdef _kitty kitty 
             fi
         fi
+    }
+
+    function kitty_precmd() { 
+        local cmd_status=$?
+        if [[ "$kitty_prompt[state]" == "first-run" ]]; then
+            install_kitty_completion
+        fi
         # Set kitty window title to the cwd
         set_title "${PWD/$HOME/~}" 
-        if [[ "$kitty_prompt[state]" == "preexec" ]]; then
-            mark "D;$cmd_status"
-        else
-            if [[ "$kitty_prompt[state]" != "first-run" ]]; then mark "D"; fi
+
+        # Prompt marking
+        if [[ "$kitty_prompt[mark]" == "y" ]]; then
+            if [[ "$kitty_prompt[state]" == "preexec" ]]; then
+                mark "D;$cmd_status"
+            else
+                if [[ "$kitty_prompt[state]" != "first-run" ]]; then mark "D"; fi
+            fi
+            # we must use PS1 to set the prompt start mark as precmd functions are 
+            # not called when the prompt is redrawn after a window resize or when a background
+            # job finishes
+            if [[ "$PS1" != *"$kitty_prompt[start_mark]"* ]]; then PS1="$kitty_prompt[start_mark]$PS1" fi
         fi
-        # we must use PS1 to set the prompt start mark as precmd functions are 
-        # not called when the prompt is redrawn after a window resize or when a background
-        # job finishes
-        if [[ "$PS1" != *"$kitty_prompt[start_mark]"* ]]; then PS1="$kitty_prompt[start_mark]$PS1" fi
         kitty_prompt[state]="precmd"
     }
 
     function kitty_zle_line_init() { 
-        mark "B"
+        if [[ "$kitty_prompt[mark]" == "y" ]]; then mark "B"; fi
         change-cursor-shape; 
         kitty_prompt[state]="line-init"
     }
@@ -102,12 +114,14 @@
     fi
 
     function kitty_preexec() { 
-        mark "C"
+        if [[ "$kitty_prompt[mark]" == "y" ]]; then 
+            mark "C"; 
+            # remove the prompt mark sequence while the command is executing as it could read/modify the value of PS1
+            PS1="${PS1//$kitty_prompt[start_mark]/}"
+        fi
         # Set kitty window title to the currently executing command
         set_title "$1"
         kitty_prompt[state]="preexec"
-        # remove the prompt mark sequence while the command is executing as it could read/modify the value of PS1
-        PS1="${PS1//$kitty_prompt[start_mark]/}"
     }
 
     typeset -a -g precmd_functions
