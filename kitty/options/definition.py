@@ -2560,6 +2560,14 @@ holding down ctrl+shift and clicking with the mouse. The special value of
 '''
     )
 
+opt('shell_integration', 'enabled',
+    long_text='''
+Enable shell integration on supported shells. This enables features such as
+jumping to previous prompts, browsing the output of the previous command in a
+pager, etc. on supported shells.  Set to ``disabled`` to turn off shell
+integration, completely. See :ref:`shell_integration` for details.
+''')
+
 opt('term', 'xterm-kitty',
     long_text='''
 The value of the TERM environment variable to set. Changing this can break many

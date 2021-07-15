@@ -1128,6 +1128,9 @@ class Parser:
     def shell(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['shell'] = str(val)
 
+    def shell_integration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['shell_integration'] = str(val)
+
     def single_window_margin_width(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['single_window_margin_width'] = optional_edge_width(val)
 

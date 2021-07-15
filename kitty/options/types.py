@@ -400,6 +400,7 @@ option_names = (  # {{{
  'selection_background',
  'selection_foreground',
  'shell',
+ 'shell_integration',
  'single_window_margin_width',
  'startup_session',
  'strip_trailing_spaces',
@@ -534,6 +535,7 @@ class Options:
     selection_background: Color = Color(red=255, green=250, blue=205)
     selection_foreground: typing.Optional[kitty.rgb.Color] = Color(red=0, green=0, blue=0)
     shell: str = '.'
+    shell_integration: str = 'enabled'
     single_window_margin_width: FloatEdges = FloatEdges(left=-1.0, top=-1.0, right=-1.0, bottom=-1.0)
     startup_session: typing.Optional[str] = None
     strip_trailing_spaces: choices_for_strip_trailing_spaces = 'never'
