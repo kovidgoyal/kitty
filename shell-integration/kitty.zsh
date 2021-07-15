@@ -1,13 +1,12 @@
-local args
-typeset -a args
-args=($@)
 () {
     if [[ ! -o interactive ]]; then return; fi
-
+    if [[ -z "$kitty_shell_integration" ]]; then return; fi
     typeset -g -A kitty_prompt=([state]='first-run' [cursor]='y' [title]='y')
-
-    (( ${args[(I)no-cursor]} )) && kitty_prompt[cursor]="n"
-    (( ${args[(I)no-title]} )) && kitty_prompt[title]="n"
+    for i in ${=kitty_shell_integration}; do
+        if [[ "$i" == "no-cursor" ]]; then kitty_prompt[cursor]='n'; fi
+        if [[ "$i" == "no-title" ]]; then kitty_prompt[title]='n'; fi
+    done
+    unset kitty_shell_integration
 
     function debug() {
         # print a line to STDOUT of parent kitty process
