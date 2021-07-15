@@ -2555,8 +2555,8 @@ opt('allow_hyperlinks', 'yes',
     long_text='''
 Process hyperlink (OSC 8) escape sequences. If disabled OSC 8 escape sequences
 are ignored. Otherwise they become clickable links, that you can click by
-holding down ctrl+shift and clicking with the mouse. The special value of
-``ask`` means that kitty will ask before opening the link.
+with the mouse or the :doc:`hints kitten </kittens/hints>`. The special value of
+``ask`` means that kitty will ask before opening the link when clicked.
 '''
     )
 
