@@ -252,6 +252,21 @@ If you wish to store very large amounts of scrollback to view using the piping o
 :sc:`show_scrollback` features, you can use the :opt:`scrollback_pager_history_size`
 option.
 
+
+Shell integration
+---------------------------------
+
+kitty has the ability to integrate closely within common shells, such as `zsh
+<https://www.zsh.org/>`_ and `bash <https://www.gnu.org/software/bash/>`_ to enable
+features such as jumping to previous prompts in the scrollback, viewing the
+output of the last command in less, using the mouse to move the cursor
+while editing prompts, etc. See :doc:`shell-integration` for details.
+
+.. toctree::
+   :hidden:
+
+   shell-integration
+
 .. _cpbuf:
 
 Multiple copy/paste buffers
