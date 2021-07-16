@@ -4,6 +4,8 @@
 
 
 import os
+import shutil
+from tempfile import mkstemp
 from typing import Optional, Union
 
 from .constants import shell_integration_dir
@@ -20,10 +22,12 @@ posix_template = '''
 
 
 def atomic_write(path: str, data: Union[str, bytes]) -> None:
-    tmp = path + '_ksi_tmp'
-    with open(tmp, 'w' + ('b' if isinstance(data, bytes) else '')) as f:
+    mode = 'w' + ('b' if isinstance(data, bytes) else '')
+    fd, tpath = mkstemp(dir=os.path.dirname(path), text=isinstance(data, str))
+    shutil.copystat(path, tpath)
+    with open(fd, mode) as f:
         f.write(data)
-    os.rename(tmp, path)
+    os.rename(tpath, path)
 
 
 def setup_integration(shell_name: str, rc_path: str, template: str = posix_template) -> None:
