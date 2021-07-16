@@ -22,7 +22,7 @@
             case $KEYMAP in
                 vicmd | visual)
                     # the command mode for vi
-                    printf "\e[2 q"  # blinking block cursor
+                    printf "\e[1 q"  # blinking block cursor
                 ;;
                 *)
                     printf "\e[5 q"  # blinking bar cursor
