@@ -28,6 +28,8 @@ def is_rc_file(path: str) -> bool:
     name = os.path.basename(path)
     return '.' not in name and name.endswith('rc')
 
+def is_folder(path: str) -> bool:
+    return os.path.isdir(path)
 
 def initialize_mime_database() -> None:
     if hasattr(initialize_mime_database, 'inited'):
@@ -54,4 +56,6 @@ def guess_type(path: str) -> Optional[str]:
         mt = 'text/' + mt.split('/', 1)[-1]
     if not mt and is_rc_file(path):
         mt = 'text/plain'
+    if not mt and is_folder(path):
+        mt = 'inode/directory'
     return mt
