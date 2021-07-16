@@ -285,7 +285,7 @@ def fish_output_serializer(ans: Completions) -> str:
     lines = []
     for description, matches in ans.match_groups.items():
         for word in matches:
-            lines.append(word.replace('\n', ''))
+            lines.append(word.replace('\n', ' '))
     # debug('\n'.join(lines))
     return '\n'.join(lines)
 # }}}
