@@ -941,8 +941,10 @@ A template to render the tab title. The default just renders the title. If you
 wish to include the tab-index as well, use something like: :code:`{index}:
 {title}`. Useful if you have shortcuts mapped for :code:`goto_tab N`. If you
 prefer to see the index as a superscript, use {sup.index}. In
-addition you can use :code:`{layout_name}` for the current layout name and
-:code:`{num_windows}` for the number of windows in the tab. Note that formatting
+addition you can use :code:`{layout_name}` for the current layout name,
+:code:`{num_windows}` for the number of windows in the tab and
+:code:`{num_window_groups}` for the number of window groups
+(not counting overlay windows) in the tab. Note that formatting
 is done by Python's string formatting machinery, so you can use, for instance,
 :code:`{layout_name[:2].upper()}` to show only the first two letters of the
 layout name, upper-cased. If you want to style the text, you can use styling

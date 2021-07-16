@@ -577,6 +577,10 @@ class Tab:  # {{{
     def __len__(self) -> int:
         return len(self.windows)
 
+    @property
+    def num_window_groups(self) -> int:
+        return self.windows.num_groups
+
     def __contains__(self, window: Window) -> bool:
         return window in self.windows
 
@@ -874,7 +878,7 @@ class TabManager:  # {{{
                     has_activity_since_last_focus = True
             ans.append(TabBarData(
                 title, t is at, needs_attention,
-                len(t), t.current_layout.name or '',
+                len(t), t.num_window_groups, t.current_layout.name or '',
                 has_activity_since_last_focus
             ))
         return ans

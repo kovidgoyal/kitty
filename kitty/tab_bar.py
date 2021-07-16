@@ -23,6 +23,7 @@ class TabBarData(NamedTuple):
     is_active: bool
     needs_attention: bool
     num_windows: int
+    num_window_groups: int
     layout_name: str
     has_activity_since_last_focus: bool
 
@@ -135,12 +136,14 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
             'index': index,
             'layout_name': tab.layout_name,
             'num_windows': tab.num_windows,
+            'num_window_groups': tab.num_window_groups,
             'title': tab.title,
         }
         eval_locals = {
             'index': index,
             'layout_name': tab.layout_name,
             'num_windows': tab.num_windows,
+            'num_window_groups': tab.num_window_groups,
             'title': tab.title,
             'fmt': Formatter,
             'sup': SupSub(data),

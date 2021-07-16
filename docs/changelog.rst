@@ -28,6 +28,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Render colors in the sRGB colorspace to match other macOS terminal
   applications (:iss:`2249`)
 
+- Add a new variable ``{num_window_groups}`` for the :opt:`tab_title_template`
+  (:iss:`3837`)
+
 
 0.21.2 [2021-06-28]
 ----------------------
