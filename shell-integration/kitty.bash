@@ -1,3 +1,5 @@
+#!/bin/bash
+
 _ksi_main() {
     if [[ $- != *i* ]] ; then return; fi  # check in interactive mode
     if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then return; fi

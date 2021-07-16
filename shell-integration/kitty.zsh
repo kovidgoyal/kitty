@@ -1,3 +1,5 @@
+#!/bin/zsh
+
 () {
     if [[ ! -o interactive ]]; then return; fi
     if [[ -z "$KITTY_SHELL_INTEGRATION" ]]; then return; fi
