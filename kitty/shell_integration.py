@@ -4,7 +4,7 @@
 
 
 import os
-from typing import Optional
+from typing import Optional, Union
 
 from .constants import shell_integration_dir
 from .fast_data_types import get_options
@@ -19,13 +19,25 @@ posix_template = '''
 '''
 
 
+def atomic_write(path: str, data: Union[str, bytes]) -> None:
+    tmp = path + '_ksi_tmp'
+    with open(tmp, 'w' + ('b' if isinstance(data, bytes) else '')) as f:
+        f.write(data)
+    os.rename(tmp, path)
+
+
 def setup_integration(shell_name: str, rc_path: str, template: str = posix_template) -> None:
     import re
     rc_path = os.path.realpath(rc_path)
     if not os.access(rc_path, os.W_OK, effective_ids=os.access in os.supports_effective_ids):
         return
-    with open(rc_path) as f:
-        rc = f.read()
+    try:
+        with open(rc_path) as f:
+            rc = f.read()
+    except FileNotFoundError:
+        rc = ''
+    except Exception:
+        raise
     home = os.path.expanduser('~') + '/'
     path = os.path.join(shell_integration_dir, f'kitty.{shell_name}')
     if path.startswith(home):
@@ -36,10 +48,7 @@ def setup_integration(shell_name: str, rc_path: str, template: str = posix_templ
         '', rc, flags=re.DOTALL | re.MULTILINE)
     newrc = newrc.rstrip() + '\n\n' + integration
     if newrc != rc:
-        tmp = rc_path + '_ksi_tmp'
-        with open(tmp, 'w') as f:
-            f.write(newrc)
-        os.rename(tmp, rc_path)
+        atomic_write(rc_path, newrc)
 
 
 def setup_zsh_integration() -> None:
