@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   boundary rather than the end of the selection. To restore previous behavior
   use ``mouse_map right press ungrabbed mouse_selection move-end``.
 
+- When opening hyperlinks, allow defining open actions for directories
+  (:pull:`3836`)
+
 - Fix a bug in the implementation of the synchronized updates escape code that
   could cause incorrect parsing if either the pending buffer capacity or the
   pending timeout were exceeded (:iss:`3779`)

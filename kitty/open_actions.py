@@ -76,7 +76,7 @@ def url_matches_criterion(purl: 'ParseResult', url: str, unquoted_path: str, mc:
 
     if mc.type == 'mime':
         import fnmatch
-        mt = guess_type(unquoted_path)
+        mt = guess_type(unquoted_path, allow_filesystem_access=True)
         if not mt:
             return False
         mt = mt.lower()

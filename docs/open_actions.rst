@@ -85,7 +85,7 @@ lines. The various available criteria are:
     :file:`mime.types` in the kitty configuration directory. Useful if your
     system MIME database does not have definitions you need. This file is
     in the standard format of one definition per line, like: ``text/plain rst
-    md``.
+    md``. Note that the MIME type for directories is ``inode/directory``.
 
 ``ext``
     A comma separated list of file extensions, for example: ``jpeg, tar.gz``

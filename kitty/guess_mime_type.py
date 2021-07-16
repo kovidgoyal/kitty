@@ -28,8 +28,12 @@ def is_rc_file(path: str) -> bool:
     name = os.path.basename(path)
     return '.' not in name and name.endswith('rc')
 
+
 def is_folder(path: str) -> bool:
-    return os.path.isdir(path)
+    with suppress(OSError):
+        return os.path.isdir(path)
+    return False
+
 
 def initialize_mime_database() -> None:
     if hasattr(initialize_mime_database, 'inited'):
@@ -43,7 +47,9 @@ def initialize_mime_database() -> None:
         init((local_defs,))
 
 
-def guess_type(path: str) -> Optional[str]:
+def guess_type(path: str, allow_filesystem_access: bool = False) -> Optional[str]:
+    if allow_filesystem_access and is_folder(path):
+        return 'inode/directory'
     from mimetypes import guess_type as stdlib_guess_type
     initialize_mime_database()
     mt = None
