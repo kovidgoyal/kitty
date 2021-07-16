@@ -155,7 +155,7 @@ def sanitize(text: str) -> str:
 
 @lru_cache(maxsize=1024)
 def mime_type_for_path(path: str) -> str:
-    return guess_type(path) or 'application/octet-stream'
+    return guess_type(path, allow_filesystem_access=True) or 'application/octet-stream'
 
 
 @lru_cache(maxsize=1024)

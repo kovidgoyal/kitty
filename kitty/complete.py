@@ -478,7 +478,7 @@ def complete_icat_args(ans: Completions, opt: Optional[OptionDict], prefix: str,
     from .guess_mime_type import guess_type
 
     def icat_file_predicate(filename: str) -> bool:
-        mt = guess_type(filename)
+        mt = guess_type(filename, allow_filesystem_access=True)
         if mt and mt.startswith('image/'):
             return True
         return False
