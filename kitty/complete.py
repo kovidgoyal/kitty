@@ -283,9 +283,9 @@ def bash_output_serializer(ans: Completions) -> str:
 @output_serializer
 def fish_output_serializer(ans: Completions) -> str:
     lines = []
-    for matches in ans.match_groups.values():
+    for description, matches in ans.match_groups.items():
         for word in matches:
-            lines.append(shlex.quote(word))
+            lines.append(word.replace('\n', ''))
     # debug('\n'.join(lines))
     return '\n'.join(lines)
 # }}}
