@@ -13,7 +13,6 @@ from .fast_data_types import get_options
 from .types import run_once
 from .utils import log_error, resolved_shell
 
-SUPPORTED_SHELLS = ('zsh',)
 posix_template = '''
 # BEGIN_KITTY_SHELL_INTEGRATION
 [[ -a {path} ]] && source {path}
@@ -61,6 +60,13 @@ def setup_zsh_integration() -> None:
     setup_integration('zsh', rc)
 
 
+def setup_bash_integration() -> None:
+    setup_integration('bash', os.path.expanduser('~/.bashrc'))
+
+
+SUPPORTED_SHELLS = {'zsh': setup_zsh_integration, 'bash': setup_bash_integration}
+
+
 def get_supported_shell_name(path: str) -> Optional[str]:
     name = os.path.basename(path).split('.')[0].lower()
     if name in SUPPORTED_SHELLS:
@@ -76,7 +82,7 @@ def setup_shell_integration() -> None:
     shell = get_supported_shell_name(resolved_shell(opts)[0])
     if shell is None:
         return
-    func = {'zsh': setup_zsh_integration}[shell]
+    func = SUPPORTED_SHELLS[shell]
     try:
         func()
     except Exception:
