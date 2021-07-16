@@ -72,8 +72,9 @@
         if [[ "$_ksi_prompt[state]" == "first-run" ]]; then
             _ksi_install_completion
         fi
-        # Set kitty window title to the cwd
-        _ksi_set_title "${PWD/$HOME/~}" 
+        # Set kitty window title to the cwd, appropriately shortened, see
+        # https://unix.stackexchange.com/questions/273529/shorten-path-in-zsh-prompt
+        _ksi_set_title $(print -P '%(4~|…/%3~|%~)')
 
         # Prompt marking
         if [[ "$_ksi_prompt[mark]" == "y" ]]; then
