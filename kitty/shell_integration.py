@@ -22,7 +22,9 @@ posix_template = '''
 
 def atomic_write(path: str, data: Union[str, bytes]) -> None:
     mode = 'w' + ('b' if isinstance(data, bytes) else '')
-    fd, tpath = mkstemp(dir=os.path.dirname(path), text=isinstance(data, str))
+    base = os.path.dirname(path)
+    os.makedirs(base, exist_ok=True)
+    fd, tpath = mkstemp(dir=base, text=isinstance(data, str))
     with open(fd, mode) as f:
         shutil.copystat(path, tpath)
         f.write(data)
