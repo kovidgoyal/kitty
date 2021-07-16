@@ -9,7 +9,27 @@ function _ksi_main
         printf "\e]%s\a" "$argv[1]"
     end
 
-    if ! contains "no-prompt-mark" $_ksi
+    if not contains "no-cursor" $_ksi
+        function _ksi_bar_cursor --on-event fish_prompt
+            printf "\e[5 q"
+        end
+        function _ksi_block_cursor --on-event fish_preexec
+            printf "\e[2 q"
+        end
+        _ksi_bar_cursor
+    end
+
+    if not contains "no-title" $_ksi
+        function fish_title
+            if set -q argv[1]
+                echo $argv[1]
+            else
+                echo (prompt_pwd)
+            end
+        end
+    end
+
+    if not contains "no-prompt-mark" $_ksi
         set --global _ksi_prompt_state "first-run"
 
         function _ksi_function_is_not_empty -d "Check if the specified function exists and is not empty"
