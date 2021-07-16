@@ -5,6 +5,7 @@
 
 import os
 import shutil
+import time
 from tempfile import mkstemp
 from typing import Optional, Union
 
@@ -15,7 +16,7 @@ from .utils import log_error, resolved_shell
 
 posix_template = '''
 # BEGIN_KITTY_SHELL_INTEGRATION
-[[ -a {path} ]] && source {path}
+test -e {path} && source {path}
 # END_KITTY_SHELL_INTEGRATION
 '''
 
@@ -28,14 +29,16 @@ def atomic_write(path: str, data: Union[str, bytes]) -> None:
     with open(fd, mode) as f:
         shutil.copystat(path, tpath)
         f.write(data)
-    os.rename(tpath, path)
+    try:
+        os.rename(tpath, path)
+    except OSError:
+        os.unlink(tpath)
+        raise
 
 
 def setup_integration(shell_name: str, rc_path: str, template: str = posix_template) -> None:
     import re
     rc_path = os.path.realpath(rc_path)
-    if not os.access(rc_path, os.W_OK, effective_ids=os.access in os.supports_effective_ids):
-        return
     try:
         with open(rc_path) as f:
             rc = f.read()
@@ -66,7 +69,30 @@ def setup_bash_integration() -> None:
     setup_integration('bash', os.path.expanduser('~/.bashrc'))
 
 
-SUPPORTED_SHELLS = {'zsh': setup_zsh_integration, 'bash': setup_bash_integration}
+def atomic_symlink(destination: str, in_directory: str) -> str:
+    os.makedirs(in_directory, exist_ok=True)
+    name = os.path.basename(destination)
+    tmpname = os.path.join(in_directory, f'{name}-{os.getpid()}-{time.monotonic()}')
+    os.symlink(destination, tmpname)
+    try:
+        os.rename(tmpname, os.path.join(in_directory, name))
+    except OSError:
+        os.unlink(tmpname)
+        raise
+
+
+def setup_fish_integration() -> None:
+    base = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config'))
+    base = os.path.join(base, 'fish', 'conf.d')
+    path = os.path.join(shell_integration_dir, 'kitty.fish')
+    atomic_symlink(path, base)
+
+
+SUPPORTED_SHELLS = {
+    'zsh': setup_zsh_integration,
+    'bash': setup_bash_integration,
+    'fish': setup_fish_integration,
+}
 
 
 def get_supported_shell_name(path: str) -> Optional[str]:
