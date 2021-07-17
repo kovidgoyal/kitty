@@ -4,7 +4,7 @@
 
 from typing import Any, Callable, Dict, NamedTuple, Tuple
 
-from .constants import is_macos
+from .constants import is_macos, is_wayland
 from .types import FloatEdges
 from .typing import EdgeLiteral
 from .utils import log_error
@@ -47,9 +47,8 @@ def initial_window_size_func(opts: WindowSizeData, cached_values: Dict) -> Calla
     h, h_unit = opts.initial_window_sizes.height
 
     def get_window_size(cell_width: int, cell_height: int, dpi_x: float, dpi_y: float, xscale: float, yscale: float) -> Tuple[int, int]:
-        if not is_macos:
-            # scaling is not needed on Wayland, but is needed on macOS. Not
-            # sure about X11.
+        if not is_macos and not is_wayland():
+            # Not sure what the deal with scaling on X11 is
             xscale = yscale = 1
 
         def effective_margin(which: EdgeLiteral) -> float:
