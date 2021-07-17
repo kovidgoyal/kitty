@@ -63,29 +63,31 @@ def run_man(args: Any) -> None:
 
 
 def run_html(args: Any) -> None:
-    call('make FAIL_WARN=-W html', cwd=docs_dir)
+    call('make FAIL_WARN=-W "OPTS=-D html_theme_options.analytics_id=UA-20736318-2" dirhtml', cwd=docs_dir)
+    add_old_redirects('docs/_build/dirhtml')
 
 
-def add_analytics() -> None:
-    analytics = '''
-<!-- Global site tag (gtag.js) - Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=UA-20736318-2"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'UA-20736318-2');
-</script>
-'''
-    for dirpath, firnames, filenames in os.walk(publish_dir):
-        for fname in filenames:
-            if fname.endswith('.html'):
-                with open(os.path.join(dirpath, fname), 'r+b') as f:
-                    html = f.read().decode('utf-8')
-                    html = html.replace('<!-- kitty analytics placeholder -->', analytics, 1)
-                    f.seek(0), f.truncate()
-                    f.write(html.encode('utf-8'))
+def add_old_redirects(loc: str) -> None:
+    for dirpath, dirnames, filenames in os.walk(loc):
+        if dirpath != loc:
+            for fname in filenames:
+                if fname == 'index.html':
+                    bname = os.path.basename(dirpath)
+                    base = os.path.dirname(dirpath)
+                    link_name = os.path.join(base, f'{bname}.html') if base else f'{bname}.html'
+                    with open(link_name, 'w') as f:
+                        f.write(f'''
+<html>
+<head>
+<title>Redirecting...</title>
+<link rel="canonical" href="{bname}/" />
+<meta http-equiv="refresh" content="0;url={bname}/" />
+</head>
+<body>
+<p>Redirecting, please wait...</p>
+</body>
+</html>
+''')
 
 
 def run_docs(args: Any) -> None:
@@ -95,8 +97,7 @@ def run_docs(args: Any) -> None:
 def run_website(args: Any) -> None:
     if os.path.exists(publish_dir):
         shutil.rmtree(publish_dir)
-    shutil.copytree(os.path.join(docs_dir, '_build', 'html'), publish_dir)
-    add_analytics()
+    shutil.copytree(os.path.join(docs_dir, '_build', 'dirhtml'), publish_dir, symlinks=True)
     with open(os.path.join(publish_dir, 'current-version.txt'), 'w') as f:
         f.write(version)
     shutil.copy2(os.path.join(docs_dir, 'installer.sh'), publish_dir)
@@ -408,7 +409,7 @@ def main() -> None:
         if ans.lower() != 'y':
             return
     if actions == ['website']:
-        actions.insert(0, 'docs')
+        actions.insert(0, 'html')
     for action in actions:
         print('Running', action)
         cwd = os.getcwd()
