@@ -404,7 +404,7 @@ process_codepoint(RenderCtx *ctx, RenderState *rs, char_type codep, char_type ne
     Face *fallback_font = NULL;
     if (is_combining_char(codep)) {
         add_to_current_buffer = true;
-    } if (glyph_id_for_codepoint(&main_face, codep) > 0) {
+    } else if (glyph_id_for_codepoint(&main_face, codep) > 0) {
         add_to_current_buffer = rs->current_face == &main_face;
         if (!add_to_current_buffer) fallback_font = &main_face;
     } else {
