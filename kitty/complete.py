@@ -307,8 +307,11 @@ def fish_output_serializer(ans: Completions) -> str:
 def fish2_output_serializer(ans: Completions) -> str:
     lines = []
     for description, matches in ans.match_groups.items():
-        for word in matches:
-            lines.append(word.replace('\n', ' '))
+        for word, desc in matches.items():
+            q = word
+            if desc:
+                q = f'{q}\t{desc}'
+            lines.append(q.replace('\n', ' '))
     # debug('\n'.join(lines))
     return '\n'.join(lines)
 
