@@ -34,8 +34,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add a new variable ``{num_window_groups}`` for the :opt:`tab_title_template`
   (:iss:`3837`)
 
-- Wayland: Fix :opt:`initial_window_width` specified in cells not working on
-  High DPI screens (:iss:`3834`)
+- Wayland: Fix :opt:`initial_window_width/height <remember_window_size>` specified
+  in cells not working on High DPI screens (:iss:`3834`)
 
 
 0.21.2 [2021-06-28]
