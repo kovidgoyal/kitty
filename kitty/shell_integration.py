@@ -6,6 +6,7 @@
 import os
 import shutil
 import time
+from contextlib import suppress
 from tempfile import mkstemp
 from typing import Optional, Union
 
@@ -27,7 +28,8 @@ def atomic_write(path: str, data: Union[str, bytes]) -> None:
     os.makedirs(base, exist_ok=True)
     fd, tpath = mkstemp(dir=base, text=isinstance(data, str))
     with open(fd, mode) as f:
-        shutil.copystat(path, tpath)
+        with suppress(FileNotFoundError):
+            shutil.copystat(path, tpath)
         f.write(data)
     try:
         os.rename(tpath, path)
@@ -36,16 +38,17 @@ def atomic_write(path: str, data: Union[str, bytes]) -> None:
         raise
 
 
+def safe_read(path: str) -> str:
+    with suppress(FileNotFoundError):
+        with open(path) as f:
+            return f.read()
+    return ''
+
+
 def setup_integration(shell_name: str, rc_path: str, template: str = posix_template) -> None:
     import re
     rc_path = os.path.realpath(rc_path)
-    try:
-        with open(rc_path) as f:
-            rc = f.read()
-    except FileNotFoundError:
-        rc = ''
-    except Exception:
-        raise
+    rc = safe_read(rc_path)
     home = os.path.expanduser('~') + '/'
     path = os.path.join(shell_integration_dir, f'kitty.{shell_name}')
     if path.startswith(home):
@@ -83,9 +86,14 @@ def atomic_symlink(destination: str, in_directory: str) -> str:
 
 def setup_fish_integration() -> None:
     base = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config'))
-    base = os.path.join(base, 'fish', 'conf.d')
+    base = os.path.join(base, 'fish')
     path = os.path.join(shell_integration_dir, 'kitty.fish')
-    atomic_symlink(path, base)
+    atomic_symlink(path, os.path.join(base, 'conf.d'))
+    from .complete import completion_scripts
+    path = os.path.join(base, 'completions', 'kitty.fish')
+    rc = safe_read(path)
+    if rc != completion_scripts['fish2']:
+        atomic_write(path, completion_scripts['fish2'])
 
 
 SUPPORTED_SHELLS = {

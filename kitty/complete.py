@@ -161,6 +161,14 @@ end
 
 complete -f -c kitty -a "(__kitty_completions)"
 ''',
+    'fish2': '''
+if functions -q _ksi_completions
+    complete -f -c kitty -a "(_ksi_completions)"
+else
+    complete -f -c kitty -a "(commandline -cop | kitty +complete fish)"
+end
+''',
+
 }
 
 ParseResult = Tuple[List[str], bool]
@@ -197,6 +205,11 @@ def bash_input_parser(data: str) -> ParseResult:
 @input_parser
 def fish_input_parser(data: str) -> ParseResult:
     return data.rstrip().splitlines(), True
+
+
+@input_parser
+def fish2_input_parser(data: str) -> ParseResult:
+    return bash_input_parser(data)
 
 
 @output_serializer
@@ -288,6 +301,17 @@ def fish_output_serializer(ans: Completions) -> str:
             lines.append(word.replace('\n', ' '))
     # debug('\n'.join(lines))
     return '\n'.join(lines)
+
+
+@output_serializer
+def fish2_output_serializer(ans: Completions) -> str:
+    lines = []
+    for description, matches in ans.match_groups.items():
+        for word in matches:
+            lines.append(word.replace('\n', ' '))
+    # debug('\n'.join(lines))
+    return '\n'.join(lines)
+
 # }}}
 
 

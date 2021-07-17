@@ -9,6 +9,14 @@ function _ksi_main
         printf "\e]%s\a" "$argv[1]"
     end
 
+    if not contains "no-complete" $_ksi
+        function _ksi_completions
+            set --local ct (commandline --current-token)
+            set --local tokens (commandline --tokenize --cut-at-cursor --current-process)
+            printf "%s\n" $tokens $ct | kitty +complete fish2
+        end
+    end
+
     if not contains "no-cursor" $_ksi
         function _ksi_bar_cursor --on-event fish_prompt
             printf "\e[5 q"
