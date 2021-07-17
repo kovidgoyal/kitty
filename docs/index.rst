@@ -17,7 +17,7 @@ kitty - the fast, featureful, GPU based terminal emulator
       and several :doc:`new terminal protocol extensions
       <protocol-extensions>`.
 
-    * Supports tiling multiple terminal windows side by side in different
+    * Supports tiling multiple terminal :term:`windows <window>` side by side in different
       :ref:`layouts <layouts>` without needing to use an extra program like tmux
 
     * Can be :doc:`controlled from scripts or the shell prompt <remote-control>`,
@@ -29,14 +29,15 @@ kitty - the fast, featureful, GPU based terminal emulator
       :doc:`Side-by-side diff <kittens/diff>`.
 
     * Supports :ref:`startup sessions <sessions>` which allow you to specify
-      the window/tab layout, working directories and programs to run on startup.
+      the :term:`window`/:term:`tab` layout, working directories and programs to run on startup.
 
     * Cross-platform: |kitty| works on Linux and macOS, but because it uses only
       OpenGL for rendering, it should be trivial to port to other Unix-like platforms.
 
     * Allows you to open :ref:`the scrollback buffer <scrollback>` in a
-      separate window using arbitrary programs of your choice. This is useful for
-      browsing the history comfortably in a pager or editor.
+      separate :term:`overlay window <overlay>` using arbitrary programs of
+      your choice. This is useful for browsing the history comfortably in a
+      pager or editor.
 
     * Has :ref:`multiple copy/paste buffers <cpbuf>`, like vim.
 
@@ -105,8 +106,9 @@ relatively little effort.
 Layouts
 ----------
 
-A layout is an arrangement of multiple kitty *windows* inside a top-level OS window. You can create a new window
-using the :sc:`new_window` key combination.
+A :term:`layout` is an arrangement of multiple :term:`kitty windows <window>`
+inside a top-level :term:`OS window <os_window>`.  You can create a new
+:term:`window` using the :sc:`new_window` key combination.
 
 Currently, there are seven layouts available:
 
@@ -166,8 +168,8 @@ Some prominent kittens:
 
 
 :doc:`Broadcast <kittens/broadcast>`
-    Type in one kitty window and have it broadcast to all (or a subset) of
-    other kitty windows.
+    Type in one :term:`kitty window <window>` and have it broadcast to all (or a subset) of
+    other :term:`kitty windows <window>`.
 
 
 :doc:`Panel <kittens/panel>`
@@ -195,7 +197,8 @@ Remote control
 
 |kitty| has a very powerful system that allows you to control it from the
 :doc:`shell prompt, even over SSH <remote-control>`. You can change colors,
-fonts, open new windows, tabs, set their titles, change window layout, get text
+fonts, open new :term:`windows <window>`, :term:`tabs <tab>`, set their titles,
+change window layout, get text
 from one window and send text to another, etc, etc. The possibilities are
 endless. See the :doc:`tutorial <remote-control>` to get started.
 
@@ -204,14 +207,15 @@ endless. See the :doc:`tutorial <remote-control>` to get started.
 Startup Sessions
 ------------------
 
-You can control the tabs, window layout, working directory, startup programs,
+You can control the :term:`tabs <tab>`, `:term:`kitty window <window>` layout,
+working directory, startup programs,
 etc. by creating a "session" file and using the :option:`kitty --session`
 command line flag or the :opt:`startup_session` option in :file:`kitty.conf`.
 For example:
 
 .. code-block:: session
 
-    # Set the window layout for the current tab
+    # Set the layout for the current tab
     layout tall
     # Set the working directory for windows in the current tab
     cd ~
@@ -300,11 +304,12 @@ Colors and text formatting are preserved. You can explore the scrollback buffer
 comfortably within the pager.
 
 Additionally, you can pipe the contents of the scrollback buffer to an
-arbitrary, command running in a new window, tab or overlay, for example::
+arbitrary, command running in a new :term:`window`, :term:`tab` or :term:`overlay`,
+for example::
 
    map f1 launch --stdin-source=@screen_scrollback --stdin-add-formatting less +G -R
 
-Would open the scrollback buffer in a new window when you press the :kbd:`F1`
+Would open the scrollback buffer in a new :term:`window` when you press the :kbd:`F1`
 key. See :sc:`show_scrollback` for details.
 
 If you want to use it with an editor such as vim to get more powerful features,
