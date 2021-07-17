@@ -1,4 +1,4 @@
-Launching programs in new windows/tabs
+Launching new tabs/windows
 ========================================
 
 .. program:: launch

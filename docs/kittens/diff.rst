@@ -1,5 +1,7 @@
-kitty-diff - A fast side-by-side diff tool with syntax highlighting and images
+kitty-diff
 ================================================================================
+
+*A fast side-by-side diff tool with syntax highlighting and images*
 
 .. highlight:: sh
 
@@ -21,12 +23,9 @@ Major Features
 .. figure:: ../screenshots/diff.png
    :alt: Screenshot, showing a sample diff
    :align: center
-   :scale: 100%
+   :width: 100%
 
    Screenshot, showing a sample diff
-
-.. contents::
-   :local:
 
 
 Installation
@@ -121,8 +120,8 @@ Why does this work only in kitty?
 
 The diff kitten makes use of various features that are :doc:`kitty only
 </protocol-extensions>`,  such as the :doc:`kitty graphics protocol
-</graphics-protocol>`, the :ref:`extended keyboard protocol
-<extended-key-protocol>`, etc. It also leverages terminal program
+</graphics-protocol>`, the :doc:`extended keyboard protocol
+</keyboard-protocol>`, etc. It also leverages terminal program
 infrastructure I created for all of kitty's other kittens to reduce the amount
 of code needed (the entire implementation is under 2000 lines of code).
 

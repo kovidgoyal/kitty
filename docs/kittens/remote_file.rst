@@ -11,7 +11,7 @@ Then hold down :kbd:`ctrl+shift` and click the name of the file.
 .. figure:: ../screenshots/remote_file.png
     :alt: Remote file actions
     :align: center
-    :scale: 100%
+    :width: 100%
 
     Remote file actions
 

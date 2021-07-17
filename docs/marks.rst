@@ -1,5 +1,5 @@
-Marks
-=================
+Mark text on screen
+========================
 
 
 kitty has the ability to mark text on the screen based on regular expressions.

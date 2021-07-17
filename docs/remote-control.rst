@@ -1,6 +1,4 @@
-:tocdepth: 2
-
-Controlling kitty from scripts or the shell
+Control kitty from scripts
 ==============================================
 
 .. highlight:: sh
@@ -174,10 +172,15 @@ Now press, F1 and start typing, what you type will be sent to all windows,
 live, as you type it.
 
 
-Documentation for the remote control protocol
+The remote control protocol
 -----------------------------------------------
 
 If you wish to develop your own client to talk to |kitty|, you
-can use the :doc:`rc_protocol`.
+can use the :doc:`protocol specification <rc_protocol>`.
+
+.. toctree::
+   :hidden:
+
+   rc_protocol
 
 .. include:: generated/cli-kitty-at.rst

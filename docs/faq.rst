@@ -3,9 +3,6 @@ Frequently Asked Questions
 
 .. highlight:: sh
 
-.. contents::
-   :local:
-
 Some special symbols are rendered small/truncated in kitty?
 -----------------------------------------------------------
 
@@ -36,7 +33,7 @@ it by adding the following to your vimrc::
 
     let &t_ut=''
 
-See :ref:`here <ext_styles>` for why |kitty| does not support background color erase.
+See :doc:`here <deccara>` for why |kitty| does not support background color erase.
 
 
 I get errors about the terminal being unknown or opening the terminal failing when SSHing into a different computer?
@@ -53,8 +50,6 @@ as ssh, you can alias it to ssh in your shell's rc files to avoid having to
 type it each time::
 
     alias ssh="kitty +kitten ssh"
-
-Remember to also setup :ref:`completion`.
 
 If for some reason that does not work (typically because the server is using a
 non POSIX compliant shell as ``/bin/sh``), you can try using it with ``python``

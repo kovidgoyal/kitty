@@ -1,5 +1,7 @@
-icat - Display images in the terminal
+icat
 ========================================
+
+*Display images in the terminal*
 
 The ``icat`` kitten can be used to display arbitrary images in the |kitty|
 terminal. Using it is as simple as::

@@ -76,7 +76,7 @@ jobs:
                 python-version: 3.8
 
             - name: Install build-only deps
-              run: pip install flake8 mypy types-requests types-docutils sphinx
+              run: pip install -r docs/requirements.txt flake8 mypy types-requests types-docutils
 
             - name: Run pyflakes
               run: python -m flake8 --count .

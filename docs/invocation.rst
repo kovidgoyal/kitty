@@ -1,3 +1,5 @@
+:orphan:
+
 The kitty command line interface
 ====================================
 

@@ -1,4 +1,4 @@
-|kitty| Performance
+Performance
 ===================
 
 The main goals for |kitty| performance are user perceived latency while typing

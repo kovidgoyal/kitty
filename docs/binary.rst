@@ -1,5 +1,8 @@
-kitty - Binary install
+Install kitty
 ========================
+
+Binary install
+----------------
 
 .. |ins| replace:: curl -L :literal:`https://sw.kovidgoyal.net/kitty/installer.sh` | sh /dev/stdin
 

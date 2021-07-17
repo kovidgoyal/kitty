@@ -1,5 +1,5 @@
-A protocol for comprehensive keyboard handling in terminals
-=================================================================
+Comprehensive keyboard handling in terminals
+==============================================
 
 There are various problems with the current state of keyboard handling in
 terminals. They include:

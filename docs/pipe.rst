@@ -1,3 +1,5 @@
+:orphan:
+
 Working with the screen and history buffer contents
 ======================================================
 

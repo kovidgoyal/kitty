@@ -428,7 +428,7 @@ class Group:
             a(f'.. _conf-{conf_name}-{self.name}:')
             a('')
             a(self.title)
-            heading_level = '+' if level > 1 else '^'
+            heading_level = '+' if level > 1 else '-'
             a(heading_level * (len(self.title) + 20))
             a('')
             if self.start_text:

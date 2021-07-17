@@ -1,5 +1,5 @@
-Building kitty from source
-==============================
+Build from source
+==================
 
 .. image:: https://github.com/kovidgoyal/kitty/workflows/CI/badge.svg
   :alt: Build status
@@ -78,8 +78,8 @@ you might have to rebuild the app.
 .. note::
    The released :file:`kitty.dmg` includes all dependencies, unlike the
    :file:`kitty.app` built above and is built automatically by using the
-   <https://github.com/kovidgoyal/bypy>`_ however, that is designed to
-   run on Linux and is not for the faint of heart.
+   `bypy framework <https://github.com/kovidgoyal/bypy>`_ however, that is
+   designed to run on Linux and is not for the faint of heart.
 
 
 .. note::

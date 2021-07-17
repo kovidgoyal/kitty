@@ -7,7 +7,7 @@ Press :sc:`input_unicode_character` to start the unicode input widget, shown bel
 .. figure:: ../screenshots/unicode.png
     :alt: A screenshot of the unicode input widget
     :align: center
-    :scale: 100%
+    :width: 100%
 
     A screenshot of the unicode input widget
 

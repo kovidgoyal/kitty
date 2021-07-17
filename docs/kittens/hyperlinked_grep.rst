@@ -58,7 +58,7 @@ Then, for example, for ZSH, add the following to :file:`.zshrc`::
     compdef _rg hg
 
 To learn more about kitty's powerful framework for customizing URL click
-actions, :doc:`see here <../open_actions>`.
+actions, :doc:`see here </open_actions>`.
 
 Hopefully, someday this functionality will make it into some `upstream grep
 <https://github.com/BurntSushi/ripgrep/issues/665>`_

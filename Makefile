@@ -44,3 +44,7 @@ website:
 	./publish.py --only website
 
 docs: man html
+
+
+develop-docs:
+	$(MAKE) -C docs develop-docs

@@ -14,7 +14,7 @@ using terminal programs instead of GUI toolkits.
 .. figure:: ../screenshots/panel.png
    :alt: Screenshot, showing a sample panel
    :align: center
-   :scale: 100%
+   :width: 100%
 
    Screenshot, showing a sample panel
 

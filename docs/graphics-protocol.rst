@@ -1,18 +1,16 @@
-:tocdepth: 3
-
 The terminal graphics protocol
-==================================
+=================================
 
 The goal of this specification is to create a flexible and performant protocol
 that allows the program running in the terminal, hereafter called the *client*,
 to render arbitrary pixel (raster) graphics to the screen of the terminal
-emulator. The major design goals are
+emulator. The major design goals are:
 
- * Should not require terminal emulators to understand image formats.
- * Should allow specifying graphics to be drawn at individual pixel positions.
- * The graphics should integrate with the text, in particular it should be possible to draw graphics
-   below as well as above the text, with alpha blending. The graphics should also scroll with the text, automatically.
- * Should use optimizations when the client is running on the same computer as the terminal emulator.
+* Should not require terminal emulators to understand image formats.
+* Should allow specifying graphics to be drawn at individual pixel positions.
+* The graphics should integrate with the text, in particular it should be possible to draw graphics
+  below as well as above the text, with alpha blending. The graphics should also scroll with the text, automatically.
+* Should use optimizations when the client is running on the same computer as the terminal emulator.
 
 For some discussion regarding the design choices, see `#33
 <https://github.com/kovidgoyal/kitty/issues/33>`_.
@@ -30,23 +28,19 @@ alpha-blending and text over graphics.
 
 Some programs and libraries that use the kitty graphics protocol:
 
- * `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
- * `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with
-   image previews, see this `PR <https://github.com/ranger/ranger/pull/1077>`_
- * :doc:`kitty-diff <kittens/diff>` - a side-by-side terminal diff program with support for images
- * `pixcat <https://github.com/mirukana/pixcat>`_ - a third party CLI and python library that wraps the graphics protocol
- * `neofetch <https://github.com/dylanaraps/neofetch>`_ - A command line system
-   information tool
- * `viu <https://github.com/atanunq/viu>`_ - a terminal image viewer
- * `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
- * `ctx.graphics <https://ctx.graphics/>`_ - Library for drawing graphics
- * `timg <https://github.com/hzeller/timg>`_ - a terminal image and video viewer
- * `notcurses <https://github.com/dankamongmen/notcurses>`_ - C library for terminal graphics with bindings for C++, Rust and Python
- * `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the the terminal
-
-
-.. contents::
-   :local:
+* `termpdf.py <https://github.com/dsanson/termpdf.py>`_ - a terminal PDF/DJVU/CBR viewer
+* `ranger <https://github.com/ranger/ranger>`_ - a terminal file manager, with
+  image previews, see this `PR <https://github.com/ranger/ranger/pull/1077>`_
+* :doc:`kitty-diff <kittens/diff>` - a side-by-side terminal diff program with support for images
+* `pixcat <https://github.com/mirukana/pixcat>`_ - a third party CLI and python library that wraps the graphics protocol
+* `neofetch <https://github.com/dylanaraps/neofetch>`_ - A command line system
+  information tool
+* `viu <https://github.com/atanunq/viu>`_ - a terminal image viewer
+* `glkitty <https://github.com/michaeljclark/glkitty>`_ - C library to draw OpenGL shaders in the terminal with a glgears demo
+* `ctx.graphics <https://ctx.graphics/>`_ - Library for drawing graphics
+* `timg <https://github.com/hzeller/timg>`_ - a terminal image and video viewer
+* `notcurses <https://github.com/dankamongmen/notcurses>`_ - C library for terminal graphics with bindings for C++, Rust and Python
+* `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the the terminal
 
 
 Getting the window size

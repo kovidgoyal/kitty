@@ -37,6 +37,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Wayland: Fix :opt:`initial_window_width/height <remember_window_size>` specified
   in cells not working on High DPI screens (:iss:`3834`)
 
+- A new theme for the kitty website with support for dark mode.
+
 
 0.21.2 [2021-06-28]
 ----------------------
@@ -1716,8 +1718,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   using standard keyboards) via `IBus
   <https://github.com/ibus/ibus/wiki/ReadMe>`_ (:iss:`469`)
 
-- Implement completion for the kitty command in bash and zsh. See
-  :ref:`completion`.
+- Implement completion for the kitty command in bash and zsh
 
 - Render the text under the cursor in a fixed color, configurable via
   the option :opt:`cursor_text_color` (:iss:`126`)

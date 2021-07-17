@@ -1,6 +1,4 @@
-:tocdepth: 2
-
-Configuring kitty
+Configure kitty
 ===============================
 
 .. highlight:: conf
@@ -42,7 +40,7 @@ expanded, so :code:`${USER}.conf` becomes :file:`name.conf` if
 
 
 Sample kitty.conf
-^^^^^^^^^^^^^^^^^^^^^
+--------------------
 
 .. only:: html
 
@@ -57,3 +55,14 @@ Sample kitty.conf
    file with full documentation and all settings commented out. If you
    have a pre-existing kitty.conf, then that will be used instead, delete
    it to see the sample file.
+
+
+All mappable actions
+------------------------
+
+See the :doc:`list of all the things you can make kitty can do </actions>`.
+
+.. toctree::
+   :hidden:
+
+   actions

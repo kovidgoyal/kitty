@@ -22,7 +22,6 @@ from pygments.token import (  # type: ignore
     Comment, Keyword, Literal, Name, Number, String, Whitespace
 )
 from sphinx import addnodes, version_info  # type: ignore
-from sphinx.environment.adapters.toctree import TocTree  # type: ignore
 from sphinx.util.logging import getLogger  # type: ignore
 
 kitty_src = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -60,7 +59,13 @@ extensions = [
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
     'sphinx.ext.githubpages',
+    'sphinx_copybutton',
+    'sphinx_inline_tabs',
+    "sphinxext.opengraph",
 ]
+
+# URL for OpenGraph tags
+ogp_site_url = 'https://sw.kovidgoyal.net/kitty/'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -85,12 +90,9 @@ language: Optional[str] = None
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path .
 exclude_patterns = [
-    '_build', 'Thumbs.db', '.DS_Store',
+    '_build', 'Thumbs.db', '.DS_Store', 'basic.rst',
     'generated/cli-*.rst', 'generated/conf-*.rst', 'generated/actions.rst'
 ]
-
-# The name of the Pygments (syntax highlighting) style to use.
-pygments_style = 'sphinx'
 
 rst_prolog = '''
 .. |kitty| replace:: *kitty*
@@ -111,32 +113,23 @@ rst_prolog = '''
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = 'alabaster'
+html_theme = 'furo'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 #
-html_theme_options = {
-    'logo': 'kitty.png',
-    'show_powered_by': False,
-    'fixed_sidebar': True,
-    'sidebar_collapse': True,
-    'github_button': False,
-    'github_banner': True,
-    'github_user': 'kovidgoyal',
-    'github_repo': 'kitty',
-    # increase contrast of link color with text color
-    'link': '#00587d',
-    'link_hover': 'green',
+html_theme_options: Dict[str, Any] = {
+    'sidebar_hide_name': True,
+    'navigation_with_keys': True,
 }
 
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static', '../logo/kitty.png']
-html_favicon = '../logo/kitty.png'
+html_static_path = ['_static']
+html_favicon = html_logo = '../logo/kitty.svg'
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -146,16 +139,8 @@ html_favicon = '../logo/kitty.png'
 # default: ``['localtoc.html', 'relations.html', 'sourcelink.html',
 # 'searchbox.html']``.
 #
-html_sidebars = {
-    '**': [
-        'about.html',
-        'support.html',
-        'searchbox.html',
-        'localtoc.html',
-        'relations.html',
-    ]
-}
 html_show_sourcelink = False
+html_show_sphinx = False
 
 
 # -- Options for manual page output ------------------------------------------
@@ -217,28 +202,6 @@ def commit_role(name: str, rawtext: str, text: str, lineno: int, inliner: Any, o
         f'git rev-list --max-count=1 --abbrev-commit --skip=# {commit_id}'.split()).decode('utf-8').strip()
     node = nodes.reference(rawtext, f'commit: {short_id}', refuri=url, **options)
     return [node], []
-# }}}
-
-
-# Sidebar ToC {{{
-def create_toc(app: Any, pagename: str) -> Optional[Any]:
-    tt = TocTree(app.env)
-    toctree = tt.get_toc_for(pagename, app.builder)
-    if toctree is not None:
-        subtree = toctree[toctree.first_child_matching_class(nodes.list_item)]
-        bl = subtree.first_child_matching_class(nodes.bullet_list)
-        if bl is None:
-            return None  # Empty ToC
-        subtree = subtree[bl]
-        # for li in subtree.traverse(nodes.list_item):
-        #     modify_li(li)
-        # subtree['ids'] = [ID]
-        return app.builder.render_partial(subtree)['fragment']
-
-
-def add_html_context(app: Any, pagename: str, templatename: str, context: Any, *args: Any) -> None:
-    if 'toc' in context:
-        context['toc'] = create_toc(app, pagename) or context['toc']
 # }}}
 
 
@@ -519,6 +482,10 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
 # }}}
 
 
+def add_html_context(app: Any, pagename: str, templatename: str, context: Any, *args: Any) -> None:
+    context['analytics_id'] = app.config.analytics_id
+
+
 def setup(app: Any) -> None:
     os.makedirs('generated/conf', exist_ok=True)
     from kittens.runner import all_kitten_names
@@ -526,10 +493,11 @@ def setup(app: Any) -> None:
     write_cli_docs(kn)
     write_remote_control_protocol_docs()
     write_conf_docs(app, kn)
+    app.add_config_value('analytics_id', '', 'env')
+    app.connect('html-page-context', add_html_context)
     app.add_css_file('custom.css')
     app.add_lexer('session', SessionLexer() if version_info[0] < 3 else SessionLexer)
     app.add_role('link', link_role)
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))
     app.add_role('commit', commit_role)
-    app.connect('html-page-context', add_html_context)

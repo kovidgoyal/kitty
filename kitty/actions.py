@@ -91,17 +91,13 @@ def as_rst() -> str:
         a(title)
         a('-' * len(title))
         a('')
-        a('.. contents::')
-        a('   :local:')
-        a('   :depth: 1')
-        a('')
 
         for action in allg[group]:
             a('')
             a(f'.. _action-{action.name}:')
             a('')
             a(action.name)
-            a('^' * len(action.name))
+            a('+' * len(action.name))
             a('')
             a(action.short_help)
             a('')

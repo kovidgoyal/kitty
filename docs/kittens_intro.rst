@@ -1,0 +1,66 @@
+.. _kittens:
+
+Extend kitty
+================
+
+.. toctree::
+   :hidden:
+   :glob:
+
+   kittens/icat
+   kittens/diff
+   kittens/unicode-input
+   kittens/hints
+   kittens/remote_file
+   kittens/hyperlinked_grep
+   kittens/custom
+   kittens/*
+
+|kitty| has a framework for easily creating terminal programs that make use of
+its advanced features. These programs are called kittens. They are used both
+to add features to |kitty| itself and to create useful standalone programs.
+Some prominent kittens:
+
+:doc:`icat <kittens/icat>`
+    Display images in the terminal
+
+
+:doc:`diff <kittens/diff>`
+    A fast, side-by-side diff for the terminal with syntax highlighting and
+    images
+
+
+:doc:`Unicode Input <kittens/unicode-input>`
+    Easily input arbitrary unicode characters in |kitty| by name or hex code.
+
+
+:doc:`Hints <kittens/hints>`
+    Select and open/paste/insert arbitrary text snippets such as URLs,
+    filenames, words, lines, etc. from the terminal screen.
+
+
+:doc:`Remote file <kittens/remote_file>`
+    Edit, open, or download remote files over SSH easily, by simply clicking on
+    the filename.
+
+
+:doc:`Hyperlinked grep <kittens/hyperlinked_grep>`
+    Search your files using `ripgrep <https://github.com/BurntSushi/ripgrep>`_
+    and open the results directly in your favorite editor in the terminal,
+    at the line containing the search result, simply by clicking on the result you want.
+
+
+:doc:`Broadcast <kittens/broadcast>`
+    Type in one :term:`kitty window <window>` and have it broadcast to all (or a subset) of
+    other :term:`kitty windows <window>`.
+
+
+:doc:`Panel <kittens/panel>`
+    Draw a GPU accelerated dock panel on your desktop showing the output
+    from an arbitrary terminal program.
+
+
+:doc:`Clipboard <kittens/clipboard>`
+    Copy/paste to the clipboard from shell scripts, even over SSH.
+
+You can also :doc:`Learn to create your own kittens <kittens/custom>`.

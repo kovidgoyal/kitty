@@ -9,7 +9,7 @@ browser.
 .. figure:: ../screenshots/hints_mode.png
     :alt: URL hints mode
     :align: center
-    :scale: 100%
+    :width: 100%
 
     URL hints mode
 

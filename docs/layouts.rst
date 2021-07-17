@@ -1,5 +1,5 @@
-Layouts
-============
+Arrange windows
+===================
 
 kitty has the ability to define its own windows that can be tiled next to each
 other in arbitrary arrangements, based on *Layouts*, see below for examples:
@@ -8,7 +8,7 @@ other in arbitrary arrangements, based on *Layouts*, see below for examples:
 .. figure:: screenshots/screenshot.png
     :alt: Screenshot, showing three programs in the 'Tall' layout
     :align: center
-    :scale: 100%
+    :width: 100%
 
     Screenshot, showing vim, tig and git running in |kitty| with the 'Tall' layout
 
@@ -16,7 +16,7 @@ other in arbitrary arrangements, based on *Layouts*, see below for examples:
 .. figure:: screenshots/splits.png
     :alt: Screenshot, showing windows in the 'Splits' layout
     :align: center
-    :scale: 100%
+    :width: 100%
 
     Screenshot, showing windows with arbitrary arrangement in the 'Splits'
     layout
