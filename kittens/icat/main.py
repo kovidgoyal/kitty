@@ -359,11 +359,11 @@ def process(path: str, args: IcatCLIOptions, parsed_opts: ParsedOpts, is_tempfil
 
 
 def scan(d: str) -> Generator[Tuple[str, str], None, None]:
-    for entry in os.scandir(d):
-        if entry.is_file():
-            mt = guess_type(entry.name)
+    for dirpath, dirnames, filenames in os.walk(d):
+        for f in filenames:
+            mt = guess_type(f)
             if mt and mt.startswith('image/'):
-                yield entry.path, mt
+                yield os.path.join(dirpath, f), mt
 
 
 def detect_support(wait_for: float = 10, silent: bool = False) -> bool:
