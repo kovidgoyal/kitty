@@ -38,7 +38,7 @@ kitty
 
    * Programmble tabs, :ref:`splits <splits_layout>` and multiple :doc:`layouts <layouts>` to manage windows
    * Browse the :ref:`entire history <scrollback>` or the output from the last command comfortably in pagers and editors
-   * Edit or download :doc:`remote files <kittens/remote_file>` in an existin SSH session
+   * Edit or download :doc:`remote files <kittens/remote_file>` in an existing SSH session
 
 .. tab:: Cross-platform
 
