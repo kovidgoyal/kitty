@@ -51,28 +51,33 @@ client must be able to get the window size in pixels and the number of cells
 per row and column. This can be done by using the ``TIOCGWINSZ`` ioctl.  Some
 code to demonstrate its use
 
-In C:
+.. tab:: C
 
-.. code-block:: c
+    .. code-block:: c
 
-    #include <stdio.h>
-    #include <sys/ioctl.h>
+        #include <stdio.h>
+        #include <sys/ioctl.h>
 
-    int main(int argc, char **argv) {
-        struct winsize sz;
-        ioctl(0, TIOCGWINSZ, &sz);
-        printf("number of rows: %i, number of columns: %i, screen width: %i, screen height: %i\n", sz.ws_row, sz.ws_col, sz.ws_xpixel, sz.ws_ypixel);
-        return 0;
-    }
+        int main(int argc, char **argv) {
+            struct winsize sz;
+            ioctl(0, TIOCGWINSZ, &sz);
+            printf(
+                "number of rows: %i, number of columns: %i, screen width: %i, screen height: %i\n",
+                sz.ws_row, sz.ws_col, sz.ws_xpixel, sz.ws_ypixel);
+            return 0;
+        }
 
-In Python:
 
-.. code-block:: python
+.. tab:: Python
 
-    import array, fcntl, sys, termios
-    buf = array.array('H', [0, 0, 0, 0])
-    fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
-    print('number of rows: {}, number of columns: {}, screen width: {}, screen height: {}'.format(*buf))
+    .. code-block:: python
+
+        import array, fcntl, sys, termios
+        buf = array.array('H', [0, 0, 0, 0])
+        fcntl.ioctl(sys.stdout, termios.TIOCGWINSZ, buf)
+        print((
+            'number of rows: {} number of columns: {}'
+            'screen width: {} screen height: {}').format(*buf))
 
 Note that some terminals return ``0`` for the width and height values. Such
 terminals should be modified to return the correct values.  Examples of
