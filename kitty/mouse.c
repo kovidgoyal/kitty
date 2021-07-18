@@ -403,11 +403,11 @@ add_press(Window *w, int button, int modifiers) {
 }
 #undef N
 
-void
+bool
 mouse_open_url(Window *w) {
     Screen *screen = w->render_data.screen;
     detect_url(screen, w->mouse_pos.cell_x, w->mouse_pos.cell_y);
-    screen_open_url(screen);
+    return screen_open_url(screen);
 }
 
 typedef struct PendingClick {

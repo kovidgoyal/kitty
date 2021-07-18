@@ -1020,11 +1020,13 @@ pycreate_mock_window(PyObject *self UNUSED, PyObject *args) {
     return ans;
 }
 
-static void
+static bool
 click_mouse_url(id_type os_window_id, id_type tab_id, id_type window_id) {
+    bool clicked = false;
     WITH_WINDOW(os_window_id, tab_id, window_id);
-    mouse_open_url(window);
+    clicked = mouse_open_url(window);
     END_WITH_WINDOW;
+    return clicked;
 }
 
 static PyObject*
@@ -1038,9 +1040,14 @@ pymouse_selection(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(click_mouse_url) {
+    id_type a, b, c; PA("KKK", &a, &b, &c);
+    if (click_mouse_url(a, b, c)) { Py_RETURN_TRUE; }
+    Py_RETURN_FALSE;
+}
+
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
-THREE_ID(click_mouse_url)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
 PYWRAP1(resolve_key_mods) { int mods, kitty_mod; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(kitty_mod, mods)); }
