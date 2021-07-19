@@ -39,7 +39,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - A new theme for the kitty website with support for dark mode.
 
-- Render the ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ with spaces at the edges. Matches rendering in
+- Render ┄ ┅ ┆ ┇ ┈ ┉ ┊ ┋ with spaces at the edges. Matches rendering in
   most other programs and allows long chains of them to look better
   (:iss:`3844`)
 
