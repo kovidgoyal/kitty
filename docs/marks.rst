@@ -89,12 +89,11 @@ The syntax of the :code:`toggle_marker` command is::
 
 Here :code:`marker-type` is one of:
 
-    * :code:`text` - simple substring matching
-    * :code:`itext` - case-insensitive substring matching
-    * :code:`regex` - A python regular expression
-    * :code:`iregex` - A case-insensitive python regular expression
-    * :code:`function` - An arbitrary function defined in a python file, see
-      :ref:`marker_funcs`.
+* :code:`text` - simple substring matching
+* :code:`itext` - case-insensitive substring matching
+* :code:`regex` - A python regular expression
+* :code:`iregex` - A case-insensitive python regular expression
+* :code:`function` - An arbitrary function defined in a python file, see :ref:`marker_funcs`.
 
 .. _marker_funcs:
 

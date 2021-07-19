@@ -65,7 +65,9 @@ System and data visualisation tools
 
 `gnuplot <http://www.gnuplot.info/>`_
     a graphing and data visualization tool that can be made to display its
-    output in kitty with the following bash snippet::
+    output in kitty with the following bash snippet:
+
+    .. code-block:: sh
 
         function iplot {
             cat <<EOF | gnuplot
@@ -79,7 +81,9 @@ System and data visualisation tools
             EOF
         }
 
-   Add this to bashrc and then to plot a function, simply do::
+    Add this to bashrc and then to plot a function, simply do:
+
+    .. code-block:: sh
 
         iplot 'sin(x*3)*exp(x*.2)'
 

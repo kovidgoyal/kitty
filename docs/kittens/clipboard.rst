@@ -1,5 +1,7 @@
-clipboard - copy/paste to the system clipboard
+clipboard
 ==================================================
+
+*Copy/paste to the system clipboard from shell scripts*
 
 .. highlight:: sh
 

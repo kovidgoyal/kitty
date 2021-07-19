@@ -209,11 +209,12 @@ Note that when calling this from another program, be very
 careful not to perform any I/O on the terminal device
 until the kitten exits.
 
-Available queries are::
+Available queries are:
 
 {}
-'''.format('  ' + '\n  '.join(
-    f'{name}: {c.help_text}' for name, c in all_queries.items()))
+
+'''.format('\n'.join(
+    f'``{name}``\n  {c.help_text}\n' for name, c in all_queries.items()))
 usage = '[query1 query2 ...]'
 
 

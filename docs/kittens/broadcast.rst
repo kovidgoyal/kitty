@@ -1,5 +1,7 @@
-broadcast - type text in all kitty windows
+broadcast
 ==================================================
+
+*Type text in all kitty windows simultaneously*
 
 The ``broadcast`` kitten can be used to type text simultaneously in
 all kitty windows (or a subset as desired).
