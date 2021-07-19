@@ -46,8 +46,10 @@ def debug_write(*a: Any, **kw: Any) -> None:
     kw['file'] = buf
     print(*a, **kw)
     stext = buf.getvalue()
-    text = b'\x1bP@kitty-print|' + standard_b64encode(stext.encode('utf-8')) + b'\x1b\\'
-    fobj.write(text)
+    for i in range(0, len(stext), 256):
+        chunk = stext[i:i + 256]
+        text = b'\x1bP@kitty-print|' + standard_b64encode(chunk.encode('utf-8')) + b'\x1b\\'
+        fobj.write(text)
     fobj.flush()
 
 
