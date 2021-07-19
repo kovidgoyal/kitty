@@ -25,24 +25,27 @@ Dependencies
 
 Run-time dependencies:
 
-    * python >= 3.6
-    * harfbuzz >= 2.2.0
-    * zlib
-    * libpng
-    * liblcms2
-    * freetype (not needed on macOS)
-    * fontconfig (not needed on macOS)
-    * libcanberra (not needed on macOS)
-    * ImageMagick (optional, needed to use the ``kitty +kitten icat`` tool to display images in the terminal)
-    * pygments (optional, need for syntax highlighting in ``kitty +kitten diff``)
+* ``python`` >= 3.6
+* ``harfbuzz`` >= 2.2.0
+* ``zlib``
+* ``libpng``
+* ``liblcms2``
+* ``freetype`` (not needed on macOS)
+* ``fontconfig`` (not needed on macOS)
+* ``libcanberra`` (not needed on macOS)
+* ``ImageMagick`` (optional, needed to use the ``kitty +kitten icat`` tool to display images in the terminal)
+* ``pygments`` (optional, needed for syntax highlighting in ``kitty +kitten diff``)
+
 
 Build-time dependencies:
 
-    * gcc or clang
-    * pkg-config
-    * For building on Linux in addition to the above dependencies you might also need to install the ``-dev`` packages for:
-      ``libdbus-1-dev``, ``libxcursor-dev``, ``libxrandr-dev``, ``libxi-dev``, ``libxinerama-dev``, ``libgl1-mesa-dev``, ``libxkbcommon-x11-dev``, ``libfontconfig-dev``, ``libx11-xcb-dev``, ``liblcms2-dev``, and ``libpython3-dev``,
-      if they are not already installed by your distro.
+* ``gcc`` or ``clang``
+* ``pkg-config``
+* For building on Linux in addition to the above dependencies you might also need to install the ``-dev`` packages for:
+  ``libdbus-1-dev``, ``libxcursor-dev``, ``libxrandr-dev``, ``libxi-dev``, ``libxinerama-dev``,
+  ``libgl1-mesa-dev``, ``libxkbcommon-x11-dev``, ``libfontconfig-dev``, ``libx11-xcb-dev``,
+  ``liblcms2-dev``, and ``libpython3-dev``, if they are not already installed by your distro.
+
 
 Install and run from source
 ------------------------------
