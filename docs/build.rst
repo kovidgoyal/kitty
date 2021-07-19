@@ -128,18 +128,19 @@ This allows users to install the terminfo file on servers into which they ssh,
 without needing to install all of |kitty|.
 
 .. note::
-        You need a couple of extra dependencies to build linux-package.
-        :file:`tic` to compile terminfo files, usually found in the
-        development package of :file:`ncurses`. Also, if you are building from
-        a git checkout instead of the released source code tarball, you will
-        need :file:`sphinx-build` from the `Sphinx documentation generator
-        <https://www.sphinx-doc.org/>`_.
+   You need a couple of extra dependencies to build linux-package.
+   :file:`tic` to compile terminfo files, usually found in the
+   development package of :file:`ncurses`. Also, if you are building from
+   a git checkout instead of the released source code tarball, you will
+   need to install the dependencies from ``docs/requirements.txt`` to
+   build the kitty documentation. They can be installed most easily with
+   ``python -m pip -r docs/requirements.txt``.
 
 This applies to creating packages for |kitty| for macOS package managers such as
 brew or MacPorts as well.
 
 
 .. note::
-        |kitty| has its own update check mechanism, if you would like to turn
-        it off for your package, use
-        ``python3 setup.py linux-package --update-check-interval=0``
+   |kitty| has its own update check mechanism, if you would like to turn
+   it off for your package, use
+   ``python3 setup.py linux-package --update-check-interval=0``
