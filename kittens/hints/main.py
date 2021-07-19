@@ -94,6 +94,11 @@ def highlight_mark(m: Mark, text: str, current_input: str, alphabet: str, colors
     )
 
 
+def debug(*a: Any, **kw: Any) -> None:
+    from ..tui.loop import debug as d
+    d(*a, **kw)
+
+
 def render(text: str, current_input: str, all_marks: Sequence[Mark], ignore_mark_indices: Set[int], alphabet: str, colors: Dict[str, str]) -> str:
     for mark in reversed(all_marks):
         if mark.index in ignore_mark_indices:
@@ -102,8 +107,7 @@ def render(text: str, current_input: str, all_marks: Sequence[Mark], ignore_mark
         text = text[:mark.start] + mtext + text[mark.end:]
 
     text = text.replace('\0', '')
-
-    return text.replace('\n', '\r\n').rstrip()
+    return re.sub('[\r\n]', '\r\n', text).rstrip()
 
 
 class Hints(Handler):
@@ -342,12 +346,12 @@ def functions_for(args: HintsCLIOptions) -> Tuple[str, List[PostprocessorFunc]]:
         )
         post_processors.append(url)
     elif args.type == 'path':
-        pattern = r'(?:\S*/\S+)|(?:\S+[.][a-zA-Z0-9]{2,7})'
+        pattern = r'(?:\S*?/[\r\S]+)|(?:\S[\r\S]*\.[a-zA-Z0-9\r]{2,7})'
         post_processors.extend((brackets, quotes))
     elif args.type == 'line':
         pattern = '(?m)^\\s*(.+)[\\s\0]*$'
     elif args.type == 'hash':
-        pattern = '[0-9a-f]{7,128}'
+        pattern = '[0-9a-f][0-9a-f\r]{6,127}'
     elif args.type == 'ip':
         pattern = (
             # # IPv4 with no validation
@@ -370,16 +374,22 @@ def functions_for(args: HintsCLIOptions) -> Tuple[str, List[PostprocessorFunc]]:
 
 def convert_text(text: str, cols: int) -> str:
     lines: List[str] = []
-    empty_line = '\0' * cols
+    empty_line = '\0' * cols + '\n'
     for full_line in text.split('\n'):
         if full_line:
             if not full_line.rstrip('\r'):  # empty lines
                 lines.extend(repeat(empty_line, len(full_line)))
                 continue
+            appended = False
             for line in full_line.split('\r'):
                 if line:
                     lines.append(line.ljust(cols, '\0'))
-    return '\n'.join(lines)
+                    lines.append('\r')
+                    appended = True
+            if appended:
+                lines[-1] = '\n'
+    rstripped = re.sub('[\r\n]+$', '', ''.join(lines))
+    return rstripped
 
 
 def parse_input(text: str) -> str:

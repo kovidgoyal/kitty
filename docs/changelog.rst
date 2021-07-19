@@ -43,6 +43,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   most other programs and allows long chains of them to look better
   (:iss:`3844`)
 
+- hints kitten: Detect paths and hashes that appear over multiple lines.
+  Note that this means that all line breaks in the text are no longer \n
+  soft breaks are instead \r. If you use a custom regular expression that
+  is meant to match over line breaks, you will need to match over both.
+  (:iss:`3845`)
+
 
 0.21.2 [2021-06-28]
 ----------------------
