@@ -60,17 +60,17 @@ def half_vline(buf: BufType, width: int, height: int, level: int = 1, which: str
 
 
 def get_holes(sz: int, hole_sz: int, num: int) -> List[Tuple[int, ...]]:
-    if num == 1:
-        pts = [sz // 2]
-    elif num == 2:
-        ssz = (sz - 2 * hole_sz) // 3
-        pts = [ssz + hole_sz // 2, 2 * ssz + hole_sz // 2 + hole_sz]
-    elif num == 3:
-        ssz = (sz - 3 * hole_sz) // 4
-        pts = [ssz + hole_sz // 2, 2 * ssz + hole_sz // 2 + hole_sz, 3 * ssz + 2 * hole_sz + hole_sz // 2]
+    all_holes_use = (num + 1) * hole_sz
+    individual_block_size = (sz - all_holes_use) // (num + 1)
+    half_hole_sz = hole_sz // 2
+    pos = - half_hole_sz
     holes = []
-    for c in pts:
-        holes.append(tuple(range(c - hole_sz // 2, c - hole_sz // 2 + hole_sz)))
+    while pos < sz:
+        left = max(0, pos)
+        right = min(sz, pos + hole_sz)
+        if right > left:
+            holes.append(tuple(range(left, right)))
+        pos = right + individual_block_size
     return holes
 
 
