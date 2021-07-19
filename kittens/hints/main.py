@@ -310,7 +310,7 @@ def mark(pattern: str, post_processors: Iterable[PostprocessorFunc], text: str, 
         except InvalidMatch:
             continue
 
-        mark_text = text[s:e].replace('\n', '').replace('\0', '')
+        mark_text = re.sub('[\r\n\0]', '', text[s:e])
         yield Mark(idx, s, e, mark_text, groupdict)
 
 
