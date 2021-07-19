@@ -21,7 +21,8 @@ from .constants import appname, kitty_exe
 from .fast_data_types import (
     add_tab, attach_window, detach_window, get_boss, get_options,
     mark_tab_bar_dirty, next_window_id, remove_tab, remove_window, ring_bell,
-    set_active_tab, set_active_window, swap_tabs, sync_os_window_title
+    set_active_tab, set_active_window, swap_tabs, sync_os_window_title,
+    resize_os_window
 )
 from .layout.base import Layout, Rect
 from .layout.interface import create_layout_object_for, evict_cached_layouts
@@ -197,6 +198,25 @@ class Tab:  # {{{
             tm = self.tab_manager_ref()
             if tm is not None:
                 tm.title_changed(self)
+
+    def resize_from_window(self, window: Window, os_window: bool, layout_window: bool, x: int, y: int, dx_cells: int, dy_cells: int) -> None:
+        if os_window:
+            # If there are multiple windows we can only resize if requested
+            # to modify layouts also.
+            if len(self.windows) != 1 and not layout_window:
+                return
+
+            tm = self.tab_manager_ref()
+            if tm is not None:
+                resize_os_window(tm.os_window_id, x, y)
+
+            # Tabs will resize as part of window resize event.
+
+        elif layout_window:
+            if dx_cells:
+                self.resize_window_by(window.id, dx_cells, True)
+            if dy_cells:
+                self.resize_window_by(window.id, dy_cells, False)
 
     def on_bell(self, window: Window) -> None:
         self.mark_tab_bar_dirty()

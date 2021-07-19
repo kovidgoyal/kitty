@@ -227,6 +227,7 @@ bool screen_open_url(Screen*);
 void screen_dirty_sprite_positions(Screen *self);
 void screen_rescale_images(Screen *self);
 void screen_report_size(Screen *, unsigned int which);
+void screen_escape_resize(Screen *, unsigned int which, unsigned int lines, unsigned int cols);
 void screen_manipulate_title_stack(Screen *, unsigned int op, unsigned int which);
 void screen_draw_overlay_text(Screen *self, const char *utf8_text);
 void screen_set_key_encoding_flags(Screen *self, uint32_t val, uint32_t how);

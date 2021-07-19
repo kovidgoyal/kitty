@@ -52,6 +52,9 @@ class Parser:
     def allow_remote_control(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['allow_remote_control'] = allow_remote_control(val)
 
+    def allow_resize_csi(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['allow_resize_csi'] = to_bool(val)
+
     def background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['background'] = to_color(val)
 

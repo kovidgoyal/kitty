@@ -516,6 +516,24 @@ class Window:
         set_window_render_data(self.os_window_id, self.tab_id, self.id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])
         self.update_effective_padding()
 
+    def resize_from_escape(self, cells: bool, os_window: bool, layout_window: bool, x: int, y:int) -> None:
+        t = self.tabref()
+        if t is None:
+            return
+
+        cell_width, cell_height = cell_size_for_window(self.os_window_id)
+
+        if cells:
+            x, y = max(x, 10), max(y, 2)
+            cells_x, cells_y = x, y
+            x, y = x * cell_width, y * cell_height
+        else:
+            x, y = max(x, cell_width*10), max(y, cell_height*2)
+            cells_x, cells_y = int(x / cells_width), int(y / cells_height)
+
+        g = self.geometry
+        t.resize_from_window(self, os_window, layout_window, x, y, cells_x - g.xnum, cells_y - g.ynum)
+
     def contains(self, x: int, y: int) -> bool:
         g = self.geometry
         return g.left <= x <= g.right and g.top <= y <= g.bottom
