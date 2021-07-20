@@ -1193,6 +1193,10 @@ def click_mouse_url(os_window_id: int, tab_id: int, window_id: int) -> bool:
     pass
 
 
+def move_cursor_to_mouse_if_in_prompt(os_window_id: int, tab_id: int, window_id: int) -> bool:
+    pass
+
+
 def mouse_selection(os_window_id: int, tab_id: int, window_id: int, code: int, button: int) -> None:
     pass
 

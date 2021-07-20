@@ -241,6 +241,8 @@ uint8_t screen_current_key_encoding_flags(Screen *self);
 void screen_report_key_encoding_flags(Screen *self);
 void screen_xtmodkeys(Screen *self, uint32_t p1, uint32_t p2);
 bool screen_detect_url(Screen *screen, unsigned int x, unsigned int y);
+int screen_cursor_at_a_shell_prompt(const Screen *);
+bool screen_fake_move_cursor_to_position(Screen *, index_type x, index_type y);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

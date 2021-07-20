@@ -29,9 +29,10 @@ from .fast_data_types import (
     SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, KeyEvent, Screen, add_timer,
     add_window, cell_size_for_window, click_mouse_url, compile_program,
     encode_key_for_tty, get_boss, get_clipboard_string, get_options,
-    init_cell_program, mouse_selection, pt_to_px, set_clipboard_string,
-    set_titlebar_color, set_window_padding, set_window_render_data,
-    update_window_title, update_window_visibility, viewport_for_window
+    init_cell_program, mouse_selection, move_cursor_to_mouse_if_in_prompt,
+    pt_to_px, set_clipboard_string, set_titlebar_color, set_window_padding,
+    set_window_render_data, update_window_title, update_window_visibility,
+    viewport_for_window
 )
 from .keys import keyboard_mode_name, mod_mask
 from .notify import NotificationCommand, handle_notification_cmd
@@ -777,6 +778,7 @@ class Window:
 
     def handle_remote_print(self, msg: bytes) -> None:
         from base64 import standard_b64decode
+
         from .cli import green
         text = standard_b64decode(msg).decode('utf-8')
         text = text.replace('\x1b', green(r'\e')).replace('\a', green(r'\a')).replace('\0', green(r'\0'))
@@ -851,15 +853,37 @@ class Window:
     # }}}
 
     # mouse actions {{{
+    @ac('mouse', '''
+        Handle a mouse click
+
+        Try to perform the specified actions one after the other till one of them is successful.
+        Supported actions are::
+
+            selection - check for a selection and if one exists abort processing
+            link - if a link exists under the mouse, click it
+            prompt - if the mouse click happens at a shell prompt move the cursor to the mouse location
+
+        For examples, see :ref:`conf-kitty-mouse.mousemap`
+        ''')
+    def mouse_handle_click(self, *actions: str) -> None:
+        for a in actions:
+            if a == 'selection':
+                if self.screen.has_selection():
+                    break
+            if a == 'link':
+                if click_mouse_url(self.os_window_id, self.tab_id, self.id):
+                    break
+            if a == 'prompt':
+                if move_cursor_to_mouse_if_in_prompt(self.os_window_id, self.tab_id, self.id):
+                    break
+
     @ac('mouse', 'Click the URL under the mouse')
     def mouse_click_url(self) -> None:
-        click_mouse_url(self.os_window_id, self.tab_id, self.id)
+        self.mouse_handle_click('link')
 
     @ac('mouse', 'Click the URL under the mouse only if the screen has no selection')
     def mouse_click_url_or_select(self) -> None:
-        if not self.screen.has_selection():
-            if not click_mouse_url(self.os_window_id, self.tab_id, self.id):
-                pass  # no URL found
+        self.mouse_handle_click('selection', 'link')
 
     @ac('mouse', '''
         Manipulate the selection based on the current mouse position

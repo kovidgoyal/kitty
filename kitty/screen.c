@@ -25,6 +25,7 @@
 #include "wcwidth-std.h"
 #include "control-codes.h"
 #include "charsets.h"
+#include "keys.h"
 
 static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECARM=true};
 
@@ -1346,6 +1347,45 @@ screen_cursor_to_line(Screen *self, unsigned int line) {
     screen_cursor_position(self, line, self->cursor->x + 1);
 }
 
+int
+screen_cursor_at_a_shell_prompt(const Screen *self) {
+    if (self->cursor->y >= self->lines || self->linebuf != self->main_linebuf) return false;
+    for (index_type y=self->cursor->y + 1; y-- > 0; ) {
+        linebuf_init_line(self->linebuf, y);
+        if (self->linebuf->line->is_output_start) return -1;
+        if (self->linebuf->line->is_prompt_start) return y;
+    }
+    return -1;
+}
+
+bool
+screen_fake_move_cursor_to_position(Screen *self, index_type x, index_type y) {
+    SelectionBoundary a = {.x=x, .y=y}, b = {.x=self->cursor->x, .y=self->cursor->y};
+    SelectionBoundary *start, *end; int key;
+    if (a.y < b.y || (a.y == b.y && a.x < b.x)) { start = &a; end = &b; key = GLFW_FKEY_LEFT; }
+    else { start = &b; end = &a; key = GLFW_FKEY_RIGHT; }
+    unsigned count = 0;
+
+    for (unsigned y = start->y, x = start->x; y <= end->y; y++) {
+        unsigned x_limit = y == end->y ? end->x : self->columns;
+        while (x < x_limit) {
+            unsigned w = MAX(1u, linebuf_char_width_at(self->linebuf, x, y));
+            x += w;
+            count += w;
+        }
+        x = 0;
+    }
+    if (count) {
+        GLFWkeyevent ev = { .key = key, .action = GLFW_PRESS };
+        char output[KEY_BUFFER_SIZE+1] = {0};
+        int num = encode_glfw_key_event(&ev, false, 0, output);
+        if (num != SEND_TEXT_TO_CHILD) {
+            for (unsigned i = 0; i < count; i++) write_to_child(self, output, num);
+        }
+    }
+    return count > 0;
+}
+
 // }}}
 
 // Editing {{{
@@ -1918,7 +1958,6 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     }
     if (was_dirty) clear_selection(&self->url_ranges);
 }
-
 
 static bool
 selection_boundary_less_than(const SelectionBoundary *a, const SelectionBoundary *b) {

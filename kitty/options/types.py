@@ -876,15 +876,15 @@ if is_macos:
     defaults.map.append(KeyDefinition(False, KeyAction('debug_config'), 10, False, 44, ()))
 defaults.mouse_map = [
     # click_url_or_select
-    MouseMapping(0, 0, -2, False, KeyAction('mouse_click_url_or_select')),
+    MouseMapping(0, 0, -2, False, KeyAction('mouse_handle_click', ('selection', 'link', 'prompt'))),
     # click_url_or_select_grabbed
-    MouseMapping(0, 1, -2, True, KeyAction('mouse_click_url_or_select')),
+    MouseMapping(0, 1, -2, True, KeyAction('mouse_handle_click', ('selection', 'link', 'prompt'))),
     # click_url_or_select_grabbed
-    MouseMapping(0, 1, -2, False, KeyAction('mouse_click_url_or_select')),
+    MouseMapping(0, 1, -2, False, KeyAction('mouse_handle_click', ('selection', 'link', 'prompt'))),
     # click_url
-    MouseMapping(0, 5, -1, True, KeyAction('mouse_click_url')),
+    MouseMapping(0, 5, -1, True, KeyAction('mouse_handle_click', ('link',))),
     # click_url
-    MouseMapping(0, 5, -1, False, KeyAction('mouse_click_url')),
+    MouseMapping(0, 5, -1, False, KeyAction('mouse_handle_click', ('link',))),
     # click_url_discard
     MouseMapping(0, 5, 1, True, KeyAction('discard_event')),
     # paste_selection

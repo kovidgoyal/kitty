@@ -303,6 +303,7 @@ void update_os_window_title(OSWindow *os_window);
 void fake_scroll(Window *w, int amount, bool upwards);
 Window* window_for_window_id(id_type kitty_window_id);
 bool mouse_open_url(Window *w);
+bool move_cursor_to_mouse_if_at_shell_prompt(Window *w);
 void mouse_selection(Window *w, int code, int button);
 const char* format_mods(unsigned mods);
 void send_pending_click_to_window_id(id_type, void*);

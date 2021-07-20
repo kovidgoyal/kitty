@@ -507,16 +507,26 @@ Useful, for instance, to remove the default mouse actions.
 '''
     )
 
-mma('Click the link under the mouse cursor when no selection is created',
-    'click_url_or_select left click ungrabbed mouse_click_url_or_select',
+mma('Click the link under the mouse or move the cursor',
+    'click_url_or_select left click ungrabbed mouse_handle_click selection link prompt',
+    long_text='''
+First check for a selection and if one exists do nothing. Then check for a link
+under the mouse cursor and if one exists, click it. Finally check if the click happened at
+the current shell prompt and if so, move the cursor to the click location. Note that this
+requires :doc:`shell-integration` to work.
+'''
     )
 
-mma('Click the link under the mouse cursor when no selection is created even if grabbed',
-    'click_url_or_select_grabbed shift+left click grabbed,ungrabbed mouse_click_url_or_select',
+mma('Click the link under the mouse or move the cursor even when grabbed',
+    'click_url_or_select_grabbed shift+left click grabbed,ungrabbed mouse_handle_click selection link prompt',
+    long_text='''
+Same as above, except that the action is performed even when the mouse is grabbed
+by the program running in the terminal.
+'''
     )
 
 mma('Click the link under the mouse cursor',
-    'click_url ctrl+shift+left release grabbed,ungrabbed mouse_click_url',
+    'click_url ctrl+shift+left release grabbed,ungrabbed mouse_handle_click link',
     long_text='Variant with :kbd:`ctrl+shift` is present because the simple'
     ' click based version has an unavoidable delay of :opt:`click_interval`, to disambiguate clicks from double clicks.'
     )

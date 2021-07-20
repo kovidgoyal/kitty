@@ -1029,6 +1029,16 @@ click_mouse_url(id_type os_window_id, id_type tab_id, id_type window_id) {
     return clicked;
 }
 
+static bool
+move_cursor_to_mouse_if_in_prompt(id_type os_window_id, id_type tab_id, id_type window_id) {
+    bool moved = false;
+    WITH_WINDOW(os_window_id, tab_id, window_id);
+    moved = move_cursor_to_mouse_if_at_shell_prompt(window);
+    END_WITH_WINDOW;
+    return moved;
+}
+
+
 static PyObject*
 pymouse_selection(PyObject *self UNUSED, PyObject *args) {
     id_type os_window_id, tab_id, window_id;
@@ -1050,6 +1060,7 @@ THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 THREE_ID(detach_window)
 THREE_ID(attach_window)
+THREE_ID(move_cursor_to_mouse_if_in_prompt)
 PYWRAP1(resolve_key_mods) { int mods, kitty_mod; PA("ii", &kitty_mod, &mods); return PyLong_FromLong(resolve_mods(kitty_mod, mods)); }
 PYWRAP1(add_tab) { return PyLong_FromUnsignedLongLong(add_tab(PyLong_AsUnsignedLongLong(args))); }
 PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); return PyLong_FromUnsignedLongLong(add_window(a, b, title)); }
@@ -1069,6 +1080,7 @@ static PyMethodDef module_methods[] = {
     MW(set_options, METH_VARARGS),
     MW(get_options, METH_NOARGS),
     MW(click_mouse_url, METH_VARARGS),
+    MW(move_cursor_to_mouse_if_in_prompt, METH_VARARGS),
     MW(mouse_selection, METH_VARARGS),
     MW(set_in_sequence_mode, METH_O),
     MW(resolve_key_mods, METH_VARARGS),
