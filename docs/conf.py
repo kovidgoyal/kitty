@@ -142,7 +142,7 @@ html_favicon = html_logo = '../logo/kitty.svg'
 #
 html_show_sourcelink = False
 html_show_sphinx = False
-
+manpages_url = 'https://man7.org/linux/man-pages/man{section}/{page}.{section}.html'
 
 # -- Options for manual page output ------------------------------------------
 
