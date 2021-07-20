@@ -33,3 +33,73 @@ Glossary
       throught kitty, for example, to display the :ref:`the scrollback buffer <scrollback>`,
       to display :doc:`hints </kittens/hints>`, for :doc:`unicode input
       </kittens/unicode-input>` etc.
+
+
+Environment variables
+------------------------
+
+Variables that influence kitty behavior
+
+.. envvar:: KITTY_CONFIG_DIRECTORY
+
+   Controls where kitty looks for :file:`kitty.conf` and other configuration
+   files. Defaults to :file:`~/.config/kitty`. For full details of the config
+   directory lookup mechanism see, :option:`kitty --config`.
+
+
+Variables that kitty sets when running child programs
+
+.. envvar:: KITTY_WINDOW_ID
+
+   An integer that is the id for the kitty :term:`window` the program is running in.
+   Can be used with the :doc:`kitty remote control facility <remote-control>`.
+
+
+.. envvar:: WINDOWID
+
+   The id for the :term:`OS Window <os_window>` the program is running in. Only available
+   on platforms that have ids for their windows, such as X11 and macOS.
+
+
+.. envvar:: TERM
+
+   The name of the terminal, defaults to ``xterm-kitty``. See :opt:`term`.
+
+
+.. envvar:: TERMINFO
+
+   Path to a directory containing the kitty terminfo database.
+
+
+.. envvar:: COLORTERM
+
+   Set to the value ``truecolor`` to indicate that kitty supports 16 million
+   colors.
+
+
+.. envvar:: KITTY_LISTEN_ON
+
+   Set when the :doc:`remote control <remote-control>` facility is enabled and
+   the a socket is used for control via :option:`kitty --listen-on` or :opt:`listen_on`.
+   Contains the path to the socket. Avoids needs to use :option:`kitty @ --to` when
+   issuing remote control commands.
+
+
+.. envvar:: KITTY_PIPE_DATA
+
+   Set to data describing the layout of the screen when running child
+   programs using :option:`launch --stdin-source` with the contents of the
+   screen/scrollback piped to them.
+
+
+.. envvar:: KITTY_CHILD_CMDLINE
+
+   Set to the command line of the child process running in the kitty
+   window when calling the notification callback program on terminal bell, see
+   :opt:`command_on_bell`.
+
+
+.. envvar:: KITTY_COMMON_OPTS
+
+   Set with the values of some common kitty options when running
+   kittens, so kittens can use them without needing to load kitty.conf.

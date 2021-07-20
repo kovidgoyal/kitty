@@ -42,7 +42,7 @@ The piping environment
 --------------------------
 
 When using :option:`launch --stdin-source`, the program to which the data is
-piped has a special environment variable declared, ``KITTY_PIPE_DATA`` whose
+piped has a special environment variable declared, :env:`KITTY_PIPE_DATA` whose
 contents are::
 
    KITTY_PIPE_DATA={scrolled_by}:{cursor_x},{cursor_y}:{lines},{columns}
