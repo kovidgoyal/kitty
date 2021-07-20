@@ -148,3 +148,8 @@ Variables that kitty sets when running child programs
 
    Set with the values of some common kitty options when running
    kittens, so kittens can use them without needing to load kitty.conf.
+
+
+.. envvar:: KITTY_SHELL_INTEGRATION
+
+   Set when enabling :ref:`shell_integration`.
