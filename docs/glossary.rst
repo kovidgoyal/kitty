@@ -34,6 +34,7 @@ Glossary
       to display :doc:`hints </kittens/hints>`, for :doc:`unicode input
       </kittens/unicode-input>` etc.
 
+.. _env_vars:
 
 Environment variables
 ------------------------
