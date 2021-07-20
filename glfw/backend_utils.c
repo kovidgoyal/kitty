@@ -375,7 +375,7 @@ GLFWAPI char* utf_8_strndup(const char* source, size_t max_length) {
 int createAnonymousFile(off_t size) {
     int ret, fd = -1, shm_anon = 0;
 #ifdef HAS_MEMFD_CREATE
-    fd = memfd_create("glfw-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
+    fd = glfw_memfd_create("glfw-shared", MFD_CLOEXEC | MFD_ALLOW_SEALING);
     if (fd < 0) return -1;
     // We can add this seal before calling posix_fallocate(), as the file
     // is currently zero-sized anyway.
