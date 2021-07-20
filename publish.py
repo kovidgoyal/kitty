@@ -81,7 +81,12 @@ def add_old_redirects(loc: str) -> None:
 <head>
 <title>Redirecting...</title>
 <link rel="canonical" href="{bname}/" />
+<noscript>
 <meta http-equiv="refresh" content="0;url={bname}/" />
+</noscript>
+<script type="text/javascript">
+window.location.replace('./{bname}/' + window.location.hash);
+</script>
 </head>
 <body>
 <p>Redirecting, please wait...</p>

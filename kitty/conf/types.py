@@ -46,9 +46,9 @@ def remove_markup(text: str) -> str:
     def sub(m: Match) -> str:
         if m.group(1) == 'ref':
             return {
-                'layouts': f'{base}/overview.html#layouts',
-                'sessions': f'{base}/overview.html#sessions',
-                'functional': f'{base}/keyboard-protocol.html#functional-key-definitions',
+                'layouts': f'{base}/overview/#layouts',
+                'sessions': f'{base}/overview/#sessions',
+                'functional': f'{base}/keyboard-protocol/#functional-key-definitions',
             }[m.group(2)]
         return str(m.group(2))
 
