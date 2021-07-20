@@ -139,6 +139,7 @@ Add this to bashrc and then to plot a function, simply do:
 `onefetch <https://github.com/o2sh/onefetch>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 A tool to fetch information about your git repositories
+
 .. tool_patat:
 
 `patat <https://github.com/jaspervdj/patat>`_
@@ -204,12 +205,14 @@ Terminal image viewer for nvim
 
 Scrollback manipulation
 -------------------------
-.. tool_kitt:
+
+.. tool_kitty_search:
 
 `kitty-search <https://github.com/trygveaa/kitty-kitten-search>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Live incremental search of the scrollback buffer.
-.. tool_kitt:
+
+.. tool_kitty_grab:
 
 `kitty-grab <https://github.com/yurikhan/kitty_grab>`_
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
