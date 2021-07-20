@@ -2,7 +2,7 @@
 #
 
 # You can set these variables from the command line.
-SPHINXOPTS    = -j auto -T $(FAIL_WARN) $(OPTS)
+SPHINXOPTS    = -n -q -j auto -T $(FAIL_WARN) $(OPTS)
 SPHINXBUILD   = sphinx-build
 SPHINXPROJ    = kitty
 SOURCEDIR     = .
