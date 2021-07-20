@@ -39,7 +39,7 @@ If this option is not specified, config files are searched for in the order:
 :file:`$XDG_CONFIG_DIRS/{appname}/{conf_name}.conf`. The first one that exists is used as the
 config file.
 
-If the environment variable :env:`KITTY_CONFIG_DIRECTORY` is specified, that
+If the environment variable :envvar:`KITTY_CONFIG_DIRECTORY` is specified, that
 directory is always used and the above searching does not happen.
 
 If :file:`/etc/xdg/{appname}/{conf_name}.conf` exists it is merged before (i.e. with lower

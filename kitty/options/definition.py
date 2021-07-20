@@ -656,7 +656,7 @@ and the window is not the currently focused window
 opt('command_on_bell', 'none',
     option_type='to_cmdline',
     long_text='Program to run when a bell occurs.'
-    ' The environment variable :env:`KITTY_CHILD_CMDLINE` can be used to get the program running in'
+    ' The environment variable :envvar:`KITTY_CHILD_CMDLINE` can be used to get the program running in'
     ' the window in which the bell occurred.'
     )
 egr()  # }}}

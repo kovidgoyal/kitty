@@ -103,9 +103,9 @@ rst_prolog = '''
 .. role:: bold
 .. role:: cyan
 .. role:: title
-.. role:: env
 
 '''.replace('VERSION', str_version)
+nitpicky = True
 
 
 # -- Options for HTML output -------------------------------------------------

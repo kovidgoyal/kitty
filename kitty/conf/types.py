@@ -41,13 +41,14 @@ def expand_opt_references(conf_name: str, text: str) -> str:
 
 
 def remove_markup(text: str) -> str:
+    base = 'https://sw.kovidgoyal.net/kitty'
 
     def sub(m: Match) -> str:
         if m.group(1) == 'ref':
             return {
-                'layouts': 'https://sw.kovidgoyal.net/kitty/index.html#layouts',
-                'sessions': 'https://sw.kovidgoyal.net/kitty/index.html#sessions',
-                'functional': 'https://sw.kovidgoyal.net/kitty/keyboard-protocol.html#functional-key-definitions',
+                'layouts': f'{base}/overview.html#layouts',
+                'sessions': f'{base}/overview.html#sessions',
+                'functional': f'{base}/keyboard-protocol.html#functional-key-definitions',
             }[m.group(2)]
         return str(m.group(2))
 
