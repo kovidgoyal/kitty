@@ -1,4 +1,4 @@
-The terminal graphics protocol
+Terminal graphics protocol
 =================================
 
 The goal of this specification is to create a flexible and performant protocol

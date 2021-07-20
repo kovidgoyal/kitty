@@ -12,153 +12,242 @@ Image and document viewers
 Powered by kitty's :doc:`graphics-protocol` there exist many tools for viewing
 images and other types of documents directly in your terminal, even over SSH.
 
+.. _tool_termpdf:
+
 `termpdf.py <https://github.com/dsanson/termpdf.py>`_
-    a terminal PDF/DJVU/CBR viewer
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A terminal PDF/DJVU/CBR viewer
+
+.. _tool_mdcat:
 
 `mdcat <https://github.com/lunaryorn/mdcat>`_
-    Display markdown files nicely formatted with images in the terminal
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Display markdown files nicely formatted with images in the terminal
+
+.. _tool_ranger:
 
 `ranger <https://github.com/ranger/ranger>`_
-    a terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+
+.. _tool_nnn:
 
 `nnn <https://github.com/jarun/nnn/>`_
-    another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+
+.. _tool_hunter:
 
 `hunter <https://github.com/rabite0/hunter>`_
-    another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Another terminal file manager, with previews of file contents powered by kitty's graphics protocol.
+
+.. _tool_koneko:
 
 `koneko <https://github.com/twenty5151/koneko>`_
-    browse images from the pixiv artist community directly in kitty.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Browse images from the pixiv artist community directly in kitty.
+
+.. _tool_viu:
 
 `viu <https://github.com/atanunq/viu>`_
-    view images in the terminal, similar to kitty's icat.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+View images in the terminal, similar to kitty's icat.
+
+.. _tool_nb:
+
 
 `nb <https://github.com/xwmx/nb>`_
-    command line and local web note-taking, bookmarking, archiving, and
-    knowledge base application that uses kitty's graphics protocol for images.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+command line and local web note-taking, bookmarking, archiving, and
+knowledge base application that uses kitty's graphics protocol for images.
+
+.. _tool_w3m:
 
 `w3m <https://github.com/tats/w3m>`_
-    A text mode WWW browser that supports kitty's graphics protocol to display
-    images.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A text mode WWW browser that supports kitty's graphics protocol to display
+images.
+
+.. _tool_timg:
 
 `timg <https://github.com/hzeller/timg>`_
-    A terminal image and video viewer, that displays static and animated
-    images or plays videos. Fast multi-threaded loading, JPEG exif rotation,
-    grid view and connecting to the webcam make it a versatile terminal utility.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A terminal image and video viewer, that displays static and animated
+images or plays videos. Fast multi-threaded loading, JPEG exif rotation,
+grid view and connecting to the webcam make it a versatile terminal utility.
 
 
 System and data visualisation tools
 ---------------------------------------
 
+.. _tool_neofetch:
+
 `neofetch <https://github.com/dylanaraps/neofetch>`_
-    A command line system information tool that shows images using kitty's graphics protocol
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A command line system information tool that shows images using kitty's graphics protocol
+
+.. _tool_matplotlib:
 
 `matplotlib <https://github.com/jktr/matplotlib-backend-kitty>`_
-    show matplotlib plots directly in kitty
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Show matplotlib plots directly in kitty
+
+.. _tool_KittyTerminalImage:
 
 `KittyTerminalImages.jl <https://github.com/simonschoelly/KittyTerminalImages.jl>`_
-    show images from Julia directly in kitty
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Show images from Julia directly in kitty
+
+.. _tool_euporie:
 
 `euporie <https://github.com/joouha/euporie>`_
-    a text-based user interface for running and editing Jupyter notebooks,
-    powered by kitty's graphics protocol for displaying plots
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A text-based user interface for running and editing Jupyter notebooks,
+powered by kitty's graphics protocol for displaying plots
+
+.. _tool_gnuplot:
 
 `gnuplot <http://www.gnuplot.info/>`_
-    a graphing and data visualization tool that can be made to display its
-    output in kitty with the following bash snippet:
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-    .. code-block:: sh
+A graphing and data visualization tool that can be made to display its
+output in kitty with the following bash snippet:
 
-        function iplot {
-            cat <<EOF | gnuplot
-            set terminal pngcairo enhanced font 'Fira Sans,10'
-            set autoscale
-            set samples 1000
-            set output '|kitty +kitten icat --stdin yes'
-            set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb"#fdf6e3" behind
-            plot $@
-            set output '/dev/null'
-            EOF
-        }
+.. code-block:: sh
 
-    Add this to bashrc and then to plot a function, simply do:
+    function iplot {
+        cat <<EOF | gnuplot
+        set terminal pngcairo enhanced font 'Fira Sans,10'
+        set autoscale
+        set samples 1000
+        set output '|kitty +kitten icat --stdin yes'
+        set object 1 rectangle from screen 0,0 to screen 1,1 fillcolor rgb"#fdf6e3" behind
+        plot $@
+        set output '/dev/null'
+        EOF
+    }
 
-    .. code-block:: sh
+Add this to bashrc and then to plot a function, simply do:
 
-        iplot 'sin(x*3)*exp(x*.2)'
+.. code-block:: sh
+
+    iplot 'sin(x*3)*exp(x*.2)'
+
+.. tool_onefetch:
 
 `onefetch <https://github.com/o2sh/onefetch>`_
-    a tool to fetch information about your git repositories
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A tool to fetch information about your git repositories
+.. tool_patat:
 
 `patat <https://github.com/jaspervdj/patat>`_
-    terminal based presentations using pandoc and kitty's image protocol for
-    images
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Terminal based presentations using pandoc and kitty's image protocol for
+images
+
+.. tool_wttr:
 
 `wttr.in <https://github.com/chubin/wttr.in>`_
-    a tool to display weather information in your terminal with curl
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A tool to display weather information in your terminal with curl
+
+.. tool_wl_clipboard:
 
 `wl-clipboard-manager <https://github.com/maximbaz/wl-clipboard-manager>`_
-    view and manage the system clipboard under Wayland in your kitty terminal
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+View and manage the system clipboard under Wayland in your kitty terminal
+
+.. tool_dmenu_term:
 
 `dmenu-term <https://github.com/maximbaz/dmenu-term>`_
-    run applications on your system with fuzzy find inside a kitty window
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Run applications on your system with fuzzy find inside a kitty window
 
 
 Editor integration
 -----------------------
 
-kitty can be integrated into many different terminal editors to add features
+|kitty| can be integrated into many different terminal editors to add features
 such a split windows, previews, REPLs etc.
 
+.. tool_kakoune:
 
 `kakoune <https://kakoune.org/>`_
-    integrates with kitty to use native kitty windows for its windows/panels and REPLs.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+integrates with kitty to use native kitty windows for its windows/panels and REPLs.
+
+.. tool_vim_slime:
 
 `vim-slime <https://github.com/jpalardy/vim-slime#kitty>`_
-    uses kitty remote control for a Lisp REPL.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+uses kitty remote control for a Lisp REPL.
+
+.. tool_vim_kitty_navigator:
 
 `vim-kitty-navigator <https://github.com/knubie/vim-kitty-navigator>`_
-    allows you to navigate seamlessly between vim and kitty splits using a consistent set of hotkeys.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+allows you to navigate seamlessly between vim and kitty splits using a consistent set of hotkeys.
+
+.. tool_vim_test:
 
 `vim-test <https://github.com/vim-test/vim-test>`_
-    allows easily running tests in a terminal window
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Allows easily running tests in a terminal window
+
+.. tool_hologram:
 
 `hologram.nvim <https://github.com/edluffy/hologram.nvim>`_
-    terminal image viewer for nvim
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Terminal image viewer for nvim
 
 
 Scrollback manipulation
 -------------------------
+.. tool_kitt:
 
 `kitty-search <https://github.com/trygveaa/kitty-kitten-search>`_
-    Live incremental search of the scrollback buffer.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Live incremental search of the scrollback buffer.
+.. tool_kitt:
 
 `kitty-grab <https://github.com/yurikhan/kitty_grab>`_
-    keyboard based text selection for the kitty scrollback buffer.
-
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Keyboard based text selection for the kitty scrollback buffer.
 
 
 Miscellaneous
 ------------------
 
+.. tool_kitty_smart_tab:
+
 `kitty-smart-tab <https://github.com/yurikhan/kitty-smart-tab>`_
-    use keys to either control tabs or pass them onto running applications if
-    no tabs are present
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+use keys to either control tabs or pass them onto running applications if
+no tabs are present
+
+.. tool_kitty_smart_scroll:
 
 `kitty-smart-scroll <https://github.com/yurikhan/kitty-smart-scroll>`_
-    use keys to either scroll or pass them onto running applications if
-    no scrollback buffer is present
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+use keys to either scroll or pass them onto running applications if
+no scrollback buffer is present
 
-`reload keybindings <https://github.com/kovidgoyal/kitty/issues/1292#issuecomment-582388769>`_
-    reload key bindings from :file:`kitty.conf` without needing to restart
-    kitty
+.. tool_kitti3:
 
 `kitti3 <https://github.com/LandingEllipse/kitti3>`_
-    allow using kitty as a drop-down terminal under the i3 window manager
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+allow using kitty as a drop-down terminal under the i3 window manager
+
+.. tool_weechat_hints:
 
 `weechat-hints <https://github.com/GermainZ/kitty-weechat-hints>`_
-    URL hints kitten for WeeChat that works without having to use WeeChat's
-    raw-mode.
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+URL hints kitten for WeeChat that works without having to use WeeChat's
+raw-mode.
+
+.. tool_glkitty:
 
 `glkitty <https://github.com/michaeljclark/glkitty>`_
-    C library to draw OpenGL shaders in the terminal with a glgears demo
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+C library to draw OpenGL shaders in the terminal with a glgears demo
