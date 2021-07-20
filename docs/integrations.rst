@@ -1,3 +1,5 @@
+:tocdepth: 2
+
 Integrations with other tools
 ================================
 
