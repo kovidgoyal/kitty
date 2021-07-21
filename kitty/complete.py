@@ -253,7 +253,7 @@ def zsh_output_serializer(ans: Completions) -> str:
             allm = tuple(matches)
             if len(allm) > 1:
                 common_prefix = os.path.commonprefix(allm)
-                if common_prefix:
+                if common_prefix and '/' in common_prefix:
                     cmd.extend(('-p', shlex.quote(common_prefix)))
                     matches = MatchGroup({k[len(common_prefix):]: v for k, v in matches.items()})
         has_descriptions = any(matches.values())
@@ -335,6 +335,8 @@ def completions_for_first_word(ans: Completions, prefix: str, entry_points: Iter
 
 
 def kitty_cli_opts(ans: Completions, prefix: Optional[str] = None) -> None:
+    if not prefix:
+        return
     matches = {}
     for opt in options_for_completion():
         if isinstance(opt, str):
@@ -369,7 +371,7 @@ def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: 
     elif dest == 'watcher':
         complete_files_and_dirs(ans, prefix, files_group_name='Watcher files')
     elif dest == 'directory':
-        complete_files_and_dirs(ans, prefix, files_group_name='Directories', predicate=os.path.isdir)
+        complete_dirs(ans, prefix)
     elif dest == 'listen_on':
         if ':' not in prefix:
             k = 'Address type'
@@ -510,6 +512,12 @@ def complete_basic_option_args(ans: Completions, opt: OptionDict, prefix: str) -
         ans.add_match_group(f'Choices for {opt["dest"]}', tuple(k for k in opt['choices'] if k.startswith(prefix)))
 
 
+def complete_dirs(ans: Completions, prefix: str = '') -> None:
+    dirs, files_ = path_completion(prefix or '')
+    if dirs:
+        ans.add_match_group('Directories', dirs, trailing_space=False, is_files=True)
+
+
 def complete_icat_args(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
     from .guess_mime_type import guess_type
 
@@ -595,10 +603,11 @@ def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_wor
     options = cd['options']()
     seq = parse_option_spec(options)[0]
     option_map = {}
-    for opt in seq:
-        if not isinstance(opt, str):
-            for alias in opt['aliases']:
-                option_map[alias] = opt
+    if not new_word:
+        for opt in seq:
+            if not isinstance(opt, str):
+                for alias in opt['aliases']:
+                    option_map[alias] = opt
     complete_alias_map(ans, words, new_word, option_map, {
         'icat': complete_icat_args,
         'diff': complete_diff_args,
