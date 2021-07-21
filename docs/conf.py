@@ -485,6 +485,8 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
 def add_html_context(app: Any, pagename: str, templatename: str, context: Any, doctree: Any, *args: Any) -> None:
     context['analytics_id'] = app.config.analytics_id
     if 'toctree' in context:
+        # this is needed with furo to use all titles from pages
+        # in the sidebar (global) toc
         original_toctee_function = context['toctree']
 
         def include_sub_headings(**kwargs: Any) -> Any:
