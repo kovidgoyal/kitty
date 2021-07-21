@@ -1,7 +1,7 @@
 .. _kittens:
 
-Extend kitty
-================
+Extend with kittens
+-----------------------
 
 .. toctree::
    :hidden:

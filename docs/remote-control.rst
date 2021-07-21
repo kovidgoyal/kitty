@@ -1,14 +1,14 @@
 Control kitty from scripts
-==============================================
+----------------------------
 
 .. highlight:: sh
-
-Tutorial
-----------
 
 |kitty| can be controlled from scripts or the shell prompt. You can open new
 windows, send arbitrary text input to any window, name windows and tabs, etc.
 Let's walk through a few examples of controlling |kitty|.
+
+Tutorial
+------------
 
 Start by running |kitty| as::
 

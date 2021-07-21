@@ -1,5 +1,5 @@
 Mappable actions
-==================
+-----------------------
 
 .. highlight:: conf
 

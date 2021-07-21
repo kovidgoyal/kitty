@@ -163,7 +163,7 @@ For example:
     cannot create new OS windows, or tabs.
 
 
-Launching new tabs/windows
+Creating tabs/windows
 -------------------------------
 
 kitty can be told to run arbitrary programs in new :term:`tabs <tab>`,
@@ -197,11 +197,7 @@ Mouse features
 All these actions can be customized in :file:`kitty.conf` as described
 :ref:`here <conf-kitty-mouse.mousemap>`.
 
-
-Scripting the mouse click
----------------------------
-
-You can customize what happens when clicking on hyperlinks in kitty,
+You can also customize what happens when clicking on :term:`hyperlinks` in kitty,
 having it open files in your editor, download remote files, open things
 in your browser, etc.
 

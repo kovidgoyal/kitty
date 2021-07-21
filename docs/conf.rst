@@ -1,5 +1,5 @@
-Configure kitty
-===============================
+kitty.conf
+-----------------------
 
 .. highlight:: conf
 

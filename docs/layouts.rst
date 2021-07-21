@@ -1,5 +1,5 @@
 Arrange windows
-===================
+-------------------
 
 kitty has the ability to define its own windows that can be tiled next to each
 other in arbitrary arrangements, based on *Layouts*, see below for examples:

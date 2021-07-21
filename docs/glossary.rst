@@ -34,6 +34,11 @@ Glossary
       to display :doc:`hints </kittens/hints>`, for :doc:`unicode input
       </kittens/unicode-input>` etc.
 
+   hyperlinks
+      Terminals can have hyperlinks, just like the internet. In kitty you can
+      :doc:`control exactly what happens <open_actions>` when clicking on a
+      hyperlink, based on the type of link and its URL.
+
 .. _env_vars:
 
 Environment variables

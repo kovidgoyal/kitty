@@ -1,5 +1,5 @@
-Launching new tabs/windows
-========================================
+The :command:`launch` command
+--------------------------------
 
 .. program:: launch
 

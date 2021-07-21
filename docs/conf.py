@@ -482,8 +482,16 @@ def write_conf_docs(app: Any, all_kitten_names: Iterable[str]) -> None:
 # }}}
 
 
-def add_html_context(app: Any, pagename: str, templatename: str, context: Any, *args: Any) -> None:
+def add_html_context(app: Any, pagename: str, templatename: str, context: Any, doctree: Any, *args: Any) -> None:
     context['analytics_id'] = app.config.analytics_id
+    if 'toctree' in context:
+        original_toctee_function = context['toctree']
+
+        def include_sub_headings(**kwargs: Any) -> Any:
+            kwargs['titles_only'] = False
+            return original_toctee_function(**kwargs)
+
+        context['toctree'] = include_sub_headings
 
 
 def setup(app: Any) -> None:

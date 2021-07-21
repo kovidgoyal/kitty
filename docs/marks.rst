@@ -1,10 +1,13 @@
 Mark text on screen
-========================
+---------------------
 
 
 kitty has the ability to mark text on the screen based on regular expressions.
 This can be useful to highlight words or phrases when browsing output from long
 running programs or similar. Lets start with a few examples:
+
+Examples
+----------
 
 Suppose we want to be able to highlight the word ERROR in the current window.
 Add the following to :file:`kitty.conf`::
