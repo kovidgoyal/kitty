@@ -17,3 +17,10 @@
 .sidebar-tree a.current {
     font-style: italic;
 }
+
+details > summary {
+    color: var(--color-link);
+    cursor: pointer;
+    text-decoration-color: var(--color-link-underline);
+    text-decoration-line: underline;
+}

@@ -82,7 +82,7 @@ code used for each shell below:
 .. raw:: html
 
     <details>
-    <summary style="cursor: pointer">Click to toggle shell integration code</summary>
+    <summary>Click to toggle shell integration code</summary>
 
 .. tab:: zsh
 
