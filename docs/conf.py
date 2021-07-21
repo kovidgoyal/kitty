@@ -131,6 +131,7 @@ html_theme_options: Dict[str, Any] = {
 html_static_path = ['_static']
 html_favicon = html_logo = '../logo/kitty.svg'
 html_css_files = ['custom.css']
+html_js_files = ['custom.js']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.

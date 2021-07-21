@@ -13,3 +13,7 @@
     margin-bottom: 0.75ex;
     margin-top: 0.75ex;
 }
+
+.sidebar-tree a.current {
+    font-style: italic;
+}
