@@ -2480,16 +2480,6 @@ The value of MYVAR2 will be :code:`a/<path to home directory>/b`.
 '''
     )
 
-opt('update_check_interval', '24',
-    option_type='float',
-    long_text='''
-Periodically check if an update to kitty is available. If an update is found a
-system notification is displayed informing you of the available update. The
-default is to check every 24 hrs, set to zero to disable. Changing this option
-by reloading the config is not supported.
-'''
-    )
-
 opt('startup_session', 'none',
     option_type='config_or_absolute_path',
     long_text='''

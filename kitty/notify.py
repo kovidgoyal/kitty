@@ -157,10 +157,7 @@ def register_identifier(identifier: str, cmd: NotificationCommand, window_id: in
 
 
 def notification_activated(identifier: str, activated_implementation: Optional[Callable] = None) -> None:
-    if identifier == 'new-version':
-        from .update_check import notification_activated as do
-        do()
-    elif identifier.startswith('test-notify-'):
+    if identifier.startswith('test-notify-'):
         log_error(f'Test notification {identifier} activated')
     else:
         r = identifier_registry.pop(identifier, None)

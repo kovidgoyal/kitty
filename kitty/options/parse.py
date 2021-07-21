@@ -1200,9 +1200,6 @@ class Parser:
     def touch_scroll_multiplier(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['touch_scroll_multiplier'] = float(val)
 
-    def update_check_interval(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['update_check_interval'] = float(val)
-
     def url_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['url_color'] = to_color(val)
 

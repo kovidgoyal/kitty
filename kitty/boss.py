@@ -147,7 +147,6 @@ class Boss:
         set_layout_options(opts)
         self.cocoa_application_launched = False
         self.clipboard_buffers: Dict[str, str] = {}
-        self.update_check_process: Optional[PopenType] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.startup_cursor_text_color = opts.cursor_text_color
@@ -545,11 +544,6 @@ class Boss:
             self.child_monitor.start()
             self.io_thread_started = True
             self.startup_first_child(first_os_window_id)
-
-        if get_options().update_check_interval > 0 and not hasattr(self, 'update_check_started'):
-            from .update_check import run_update_check
-            run_update_check(get_options().update_check_interval * 60 * 60)
-            self.update_check_started = True
 
     def activate_tab_at(self, os_window_id: int, x: int, is_double: bool = False) -> int:
         tm = self.os_window_map.get(os_window_id)
@@ -1196,8 +1190,6 @@ class Boss:
     def destroy(self) -> None:
         self.shutting_down = True
         self.child_monitor.shutdown_monitor()
-        self.set_update_check_process()
-        self.update_check_process = None
         del self.child_monitor
         for tm in self.os_window_map.values():
             tm.destroy()
@@ -1600,29 +1592,6 @@ class Boss:
         if is_path_in_temp_dir(path):
             with suppress(FileNotFoundError):
                 os.remove(path)
-
-    def set_update_check_process(self, process: Optional[PopenType] = None) -> None:
-        if self.update_check_process is not None:
-            with suppress(Exception):
-                if self.update_check_process.poll() is None:
-                    self.update_check_process.kill()
-        self.update_check_process = process
-
-    def on_monitored_pid_death(self, pid: int, exit_status: int) -> None:
-        update_check_process = self.update_check_process
-        if update_check_process is not None and pid == update_check_process.pid:
-            self.update_check_process = None
-            from .update_check import process_current_release
-            try:
-                assert update_check_process.stdout is not None
-                raw = update_check_process.stdout.read().decode('utf-8')
-            except Exception as e:
-                log_error('Failed to read data from update check process, with error: {}'.format(e))
-            else:
-                try:
-                    process_current_release(raw)
-                except Exception as e:
-                    log_error('Failed to process update check data {!r}, with error: {}'.format(raw, e))
 
     def dbus_notification_callback(self, activated: bool, a: int, b: Union[int, str]) -> None:
         from .notify import (

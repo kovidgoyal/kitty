@@ -770,18 +770,6 @@ monitor_pid(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static inline void
-report_reaped_pids(void) {
-    children_mutex(lock);
-    if (reaped_pids_count) {
-        for (size_t i = 0; i < reaped_pids_count; i++) {
-            call_boss(on_monitored_pid_death, "ii", (int)reaped_pids[i].pid, reaped_pids[i].status);
-        }
-        reaped_pids_count = 0;
-    }
-    children_mutex(unlock);
-}
-
 static void*
 thread_write(void *x) {
     ThreadWriteData *data = (ThreadWriteData*)x;
@@ -1039,7 +1027,6 @@ process_global_state(void *data) {
         maximum_wait = 0;  // ensure loop ticks again so that the actions side effects are performed immediately
     }
 #endif
-    report_reaped_pids();
     bool should_quit = false;
     if (global_state.has_pending_closes) should_quit = process_pending_closes(self);
     if (should_quit) {
@@ -1682,3 +1669,4 @@ init_child_monitor(PyObject *module) {
 }
 
 // }}}
+

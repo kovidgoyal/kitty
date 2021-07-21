@@ -415,7 +415,6 @@ option_names = (  # {{{
  'tab_title_template',
  'term',
  'touch_scroll_multiplier',
- 'update_check_interval',
  'url_color',
  'url_excluded_characters',
  'url_prefixes',
@@ -545,7 +544,6 @@ class Options:
     tab_title_template: str = '{title}'
     term: str = 'xterm-kitty'
     touch_scroll_multiplier: float = 1.0
-    update_check_interval: float = 24.0
     url_color: Color = Color(red=0, green=135, blue=189)
     url_excluded_characters: str = ''
     url_prefixes: typing.Tuple[str, ...] = ('http', 'https', 'file', 'ftp', 'gemini', 'irc', 'gopher', 'mailto', 'news', 'git')
