@@ -254,6 +254,7 @@ def zsh_output_serializer(ans: Completions) -> str:
             if len(allm) > 1:
                 common_prefix = os.path.commonprefix(allm)
                 if common_prefix and '/' in common_prefix:
+                    common_prefix = os.path.dirname(common_prefix) + '/'
                     cmd.extend(('-p', shlex.quote(common_prefix)))
                     matches = MatchGroup({k[len(common_prefix):]: v for k, v in matches.items()})
         has_descriptions = any(matches.values())
