@@ -1,6 +1,8 @@
 {% extends "!base.html" %}
 {% block extrahead %}
+
   {{ super() }}
+
   {%- if analytics_id %}
       <script type="text/javascript">
       var _gaq = _gaq || [];
@@ -16,4 +18,5 @@
       })();
     </script>
   {% endif -%}
+
 {% endblock %}
