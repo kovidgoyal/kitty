@@ -63,6 +63,9 @@ class MatchGroup:
     def __iter__(self) -> Iterator[str]:
         return iter(self.mdict)
 
+    def __bool__(self) -> bool:
+        return bool(self.mdict)
+
     def transformed_words(self) -> Iterator[str]:
         for w in self:
             yield self.word_transforms.get(w, w)
@@ -247,10 +250,12 @@ def zsh_output_serializer(ans: Completions) -> str:
             cmd += ['-S', '""']
         if matches.is_files:
             cmd.append('-f')
-            common_prefix = os.path.commonprefix(tuple(matches))
-            if common_prefix:
-                cmd.extend(('-p', shlex.quote(common_prefix)))
-                matches = MatchGroup({k[len(common_prefix):]: v for k, v in matches.items()})
+            allm = tuple(matches)
+            if len(allm) > 1:
+                common_prefix = os.path.commonprefix(allm)
+                if common_prefix:
+                    cmd.extend(('-p', shlex.quote(common_prefix)))
+                    matches = MatchGroup({k[len(common_prefix):]: v for k, v in matches.items()})
         has_descriptions = any(matches.values())
         if has_descriptions or matches.word_transforms:
             lines.append('compdescriptions=(')
