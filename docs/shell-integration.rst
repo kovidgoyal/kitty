@@ -1,7 +1,7 @@
 .. _shell_integration:
 
 Shell integration
-======================
+-------------------
 
 kitty has the ability to integrate closely within common shells, such as `zsh
 <https://www.zsh.org/>`_, `fish <https://fishshell.com>`_ and `bash

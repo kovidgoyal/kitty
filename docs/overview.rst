@@ -253,7 +253,7 @@ If you wish to store very large amounts of scrollback to view using the piping o
 option.
 
 
-Shell integration
+Integration with shells
 ---------------------------------
 
 kitty has the ability to integrate closely within common shells, such as `zsh
