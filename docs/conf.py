@@ -130,6 +130,7 @@ html_theme_options: Dict[str, Any] = {
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['_static']
 html_favicon = html_logo = '../logo/kitty.svg'
+html_css_files = ['custom.css']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
@@ -505,7 +506,6 @@ def setup(app: Any) -> None:
     write_conf_docs(app, kn)
     app.add_config_value('analytics_id', '', 'env')
     app.connect('html-page-context', add_html_context)
-    app.add_css_file('custom.css')
     app.add_lexer('session', SessionLexer() if version_info[0] < 3 else SessionLexer)
     app.add_role('link', link_role)
     app.add_role('iss', partial(num_role, 'issues'))
