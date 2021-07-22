@@ -70,7 +70,8 @@ class Options(argparse.Namespace):
     extra_logging: List[str] = []
     extra_include_dirs: List[str] = []
     link_time_optimization: bool = 'KITTY_NO_LTO' not in os.environ
-    update_check_interval: float = 24
+    update_check_interval: float = 24.0
+    shell_integration: str = 'enabled'
     egl_library: Optional[str] = os.getenv('KITTY_EGL_LIBRARY')
     startup_notification_library: Optional[str] = os.getenv('KITTY_STARTUP_NOTIFICATION_LIBRARY')
     canberra_library: Optional[str] = os.getenv('KITTY_CANBERRA_LIBRARY')
@@ -1113,13 +1114,23 @@ def package(args: Options, bundle_type: str) -> None:
     shutil.copytree('kittens', os.path.join(libdir, 'kittens'), ignore=src_ignore)
     if for_freeze:
         shutil.copytree('kitty_tests', os.path.join(libdir, 'kitty_tests'))
-    if args.update_check_interval != 24.0:
-        with open(os.path.join(libdir, 'kitty/options/types.py'), 'r+', encoding='utf-8') as f:
-            raw = f.read()
-            nraw = raw.replace('update_check_interval: float = 24.0', f'update_check_interval: float = {args.update_check_interval!r}', 1)
-            if nraw == raw:
-                raise SystemExit('Failed to change the value of update_check_interval')
-            f.seek(0), f.truncate(), f.write(nraw)
+
+    def repl(name: str, raw: str, defval: Union[str, float], val: Union[str, float]) -> str:
+        if defval == val:
+            return raw
+        prefix = f'{name}: {type(defval).__name__} ='
+        nraw = raw.replace(f'{prefix} {defval!r}', f'{prefix} {val!r}', 1)
+        if nraw == raw:
+            raise SystemExit(f'Failed to change the value of {name}')
+        return nraw
+
+    with open(os.path.join(libdir, 'kitty/options/types.py'), 'r+', encoding='utf-8') as f:
+        oraw = raw = f.read()
+        raw = repl('update_check_interval', raw, Options.update_check_interval, args.update_check_interval)
+        raw = repl('shell_integration', raw, Options.shell_integration, args.shell_integration)
+        if raw != oraw:
+            f.seek(0), f.truncate(), f.write(raw)
+
     compile_python(libdir)
     for root, dirs, files in os.walk(libdir):
         for f_ in files:
@@ -1236,6 +1247,13 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         default=Options.update_check_interval,
         help='When building a package, the default value for the update_check_interval setting will'
         ' be set to this number. Use zero to disable update checking.'
+    )
+    p.add_argument(
+        '--shell-integration',
+        type=str,
+        default=Options.shell_integration,
+        help='When building a package, the default value for the shell_integration setting will'
+        ' be set to this. Use "enabled no-rc" if you intend to install the shell integration scripts system wide.'
     )
     p.add_argument(
         '--egl-library',

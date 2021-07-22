@@ -5,6 +5,7 @@ Build from source
   :alt: Build status
   :target: https://github.com/kovidgoyal/kitty/actions?query=workflow%3ACI
 
+.. highlight:: sh
 
 |kitty| is designed to run from source, for easy hack-ability. Make sure
 the following dependencies are installed first.
@@ -105,7 +106,7 @@ make them available in the newly spawned shell.
 Then proceed with ``make`` or ``make app`` according to the platform specific instructions above.
 
 
-Note for Linux/macOS packagers
+Notes for Linux/macOS packagers
 ----------------------------------
 
 The released |kitty| source code is available as a `tarball`_ from
@@ -143,7 +144,27 @@ This applies to creating packages for |kitty| for macOS package managers such as
 brew or MacPorts as well.
 
 
-.. note::
+Changing defaults for packages
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+|kitty| has its defaults chosen to be suitable for a standalone distributable.
+If you are packaging it a few of these might need to be changed.
+
+update-checking
    |kitty| has its own update check mechanism, if you would like to turn
-   it off for your package, use
-   ``python3 setup.py linux-package --update-check-interval=0``
+   it off for your package, use::
+
+       ./setup.py linux-package --update-check-interval=0
+
+shell-integration
+   |kitty| by default installs its :ref:`shell_integration` files into the user's
+   rc files. For a package, it might make more sense to distribute the shell
+   integration scripts into the system-wide shell vendor locations. The
+   shell integration files are found in the :file:`shell-integration`
+   directory. Copy them to the system wide shell vendor locations for each
+   shell, and use::
+
+       ./setup.py linux-package --shell-integration=enabled\ no-rc
+
+   This will prevent kitty from modifying the user's shell rc files to load
+   the integration scripts.
