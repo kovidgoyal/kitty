@@ -758,6 +758,30 @@ class TestGraphics(BaseTest):
         self.ae(g.image_count, 0)
         self.assertEqual(g.disk_cache.total_size, 0)
 
+        # test frame composition
+        self.assertEqual(li(a='t').code, 'OK')
+        self.assertEqual(g.disk_cache.total_size, 36)
+        t(payload='2' * 36)
+        t(payload='3' * 36, frame_number=3)
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], (
+            {'gap': 40, 'id': 2, 'data': b'2' * 36},
+            {'gap': 40, 'id': 3, 'data': b'3' * 36},
+        ))
+        self.assertEqual(li(a='c', i=11).code, 'ENOENT')
+        self.assertEqual(li(a='c', i=1, r=1, c=2).code, 'OK')
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], (
+            {'gap': 40, 'id': 2, 'data': b'abcdefghijkl'*3},
+            {'gap': 40, 'id': 3, 'data': b'3' * 36},
+        ))
+        self.assertEqual(li(a='c', i=1, r=2, c=3, w=1, h=2, x=1, y=1).code, 'OK')
+        img = g.image_for_client_id(1)
+        self.assertEqual(img['extra_frames'], (
+            {'gap': 40, 'id': 2, 'data': b'abcdefghijkl'*3},
+            {'gap': 40, 'id': 3, 'data': b'3' * 12 + (b'333abc' + b'3' * 6) * 2},
+        ))
+
     def test_graphics_quota_enforcement(self):
         s = self.create_screen()
         g = s.grman

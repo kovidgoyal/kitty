@@ -632,6 +632,45 @@ static background.
 In particular, the first frame or *root frame* is created with the base image
 data and has no gap, so its gap must be set using this control code.
 
+Composing animation frames
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. versionadded:: 0.21.3
+   Support for frame composition
+
+Clients can *compose* animation frames, this means that they can compose pixels
+in rectangular regions from one frame onto another frame. This allows for fast
+and low band-width modification of frames.
+
+To achieve this use the ``a=c`` key. The source frame is specified with
+``r=frame number`` and the destination frame as ``c=frame number``. The size of
+the rectangle is specified as ``w=width,h=height`` pixels. If unspecified, the
+full image width and height are used. The offset of the rectangle from the
+top-left corner for the source frame is specified by the ``x,y`` keys and the
+destination frame by the ``X,Y`` keys. The composition operation is specified
+by the ``C`` key with the default being to alpha blend the source rectangle
+onto the destination rectangle. With ``C=1`` it will be a simple replacement
+of pixels. For example::
+
+    <ESC>_Gi=1,r=7,c=9,w=23,h=27,X=4,Y=8,x=1,y=3<ESC>\
+
+Will compose a ``23x27`` rectangle located at ``(4, 8)`` in the ``7th frame``
+onto the rectangle located at ``(1, 3)`` in the ``9th frame``. These will be
+in the image with ``id=1``.
+
+If the frames or the image are not found the terminal emulator must
+respond with `ENOENT`. If the rectangles go out of bounds of the image
+the terminal must respond with `EINVAL`. If the source and destination frames are
+the same and the rectangles overlap, the terminal must respond with `EINVAL`.
+
+
+.. note::
+   In kitty, doing a composition will cause a frame to be *fully rendered*
+   potentially increasing its storage requirements, when the frame was previously
+   stored as a set of operations on other frames. If this happens and there
+   is not enough storage space, kitty will respond with ENOSPC.
+
+
 Image persistence and storage quotas
 -----------------------------------------
 
@@ -654,10 +693,10 @@ take, and the default value they take when missing. All integers are 32-bit.
 Key      Value                 Default    Description
 =======  ====================  =========  =================
 ``a``    Single character.     ``t``      The overall action this graphics command is performing.
-         ``(a, d, f,``                    ``t`` - transmit data, ``T`` - transmit data and display image,
+         ``(a, c, d, f, `                 ``t`` - transmit data, ``T`` - transmit data and display image,
          ``p, q, t, T)``                  ``q`` - query terminal, ``p`` - put (display) previous transmitted image,
                                           ``d`` - delete image, ``f`` - transmit data for animation frames,
-                                          ``a`` - control animation
+                                          ``a`` - control animation, ``c`` - compose animation frames
 
 ``q``    ``0, 1, 2``           ``0``      Suppress responses from the terminal to this graphics command.
 
@@ -710,6 +749,20 @@ Key      Value                 Default    Description
                                           simple overwrite.
 ``Y``    Positive integer      ``0``      The background color for pixels not
                                           specified in the frame data. Must be in 32-bit RGBA format
+
+**Keys for animation frame composition**
+-----------------------------------------------------------
+
+``c``    Positive integer      ``0``      The 1-based frame number of the frame whose image data serves as the base data
+``r``    Positive integer      ``0``      The 1-based frame number of the frame that is being edited.
+``x``    Positive integer      ``0``      The left edge (in pixels) of the destination rectangle
+``y``    Positive integer      ``0``      The top edge (in pixels) of the destination rectangle
+``w``    Positive integer      ``0``      The width (in pixels) of the source and destination rectangles. By default, the entire width is used
+``h``    Positive integer      ``0``      The height (in pixels) of the source and destination rectangles. By default, the entire height is used
+``X``    Positive integer      ``0``      The left edge (in pixels) of the source rectangle
+``Y``    Positive integer      ``0``      The top edge (in pixels) of the source rectangle
+``C``    Positive integer      ``0``      The composition mode for blending
+                                          pixels. Default is full alpha blending. ``1`` means a simple overwrite.
 
 
 **Keys for animation control**

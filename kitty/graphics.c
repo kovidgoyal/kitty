@@ -24,6 +24,7 @@ PyTypeObject GraphicsManager_Type;
 
 #define DEFAULT_STORAGE_LIMIT 320u * (1024u * 1024u)
 #define REPORT_ERROR(...) { log_error(__VA_ARGS__); }
+#define FREE_CFD_AFTER_FUNCTION __attribute__((cleanup(cfd_free)))
 
 // caching {{{
 #define CACHE_KEY_BUFFER_SIZE 32
@@ -825,7 +826,7 @@ frame_for_id(Image *img, const uint32_t frame_id) {
     return NULL;
 }
 
-static inline Frame*
+static Frame*
 frame_for_number(Image *img, const uint32_t frame_number) {
     switch(frame_number) {
         case 1:
@@ -872,10 +873,53 @@ alpha_blend(uint8_t *dest_px, const uint8_t *src_px) {
 typedef struct {
     bool needs_blending;
     uint32_t over_px_sz, under_px_sz;
-    uint32_t over_width, over_height, under_width, under_height, over_offset_x, over_offset_y;
+    uint32_t over_width, over_height, under_width, under_height, over_offset_x, over_offset_y, under_offset_x, under_offset_y;
+    uint32_t stride;
 } ComposeData;
 
-static inline void
+#define COPY_RGB under_px[0] = over_px[0]; under_px[1] = over_px[1]; under_px[2] = over_px[2];
+#define COPY_PIXELS \
+    if (d.needs_blending) { \
+        if (d.under_px_sz == 3) { \
+            ROW_ITER PIX_ITER blend_on_opaque(under_px, over_px); }} \
+        } else { \
+            ROW_ITER PIX_ITER alpha_blend(under_px, over_px); }} \
+        } \
+    } else { \
+        if (d.under_px_sz == 4) { \
+            if (d.over_px_sz == 4) { \
+                ROW_ITER PIX_ITER COPY_RGB under_px[3] = over_px[3]; }} \
+            } else { \
+                ROW_ITER PIX_ITER COPY_RGB under_px[3] = 255; }} \
+            } \
+        } else { \
+            ROW_ITER PIX_ITER COPY_RGB }} \
+        } \
+    } \
+
+
+static void
+compose_rectangles(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
+    // compose two equal sized, non-overlapping rectangles at different offsets
+    // does not do bounds checking on the data arrays
+    const bool can_copy_rows = !d.needs_blending && d.over_px_sz == d.under_px_sz;
+    const unsigned min_width = MIN(d.under_width, d.over_width);
+#define ROW_ITER for (unsigned y = 0; y < d.under_height && y < d.over_height; y++) { \
+        uint8_t *under_row = under_data + (y + d.under_offset_y) * d.under_px_sz * d.stride + (d.under_offset_x * d.under_px_sz); \
+        const uint8_t *over_row = over_data + (y + d.over_offset_y) * d.over_px_sz * d.stride + (d.over_offset_x * d.over_px_sz);
+    if (can_copy_rows) {
+        ROW_ITER memcpy(under_row, over_row, (size_t)d.over_px_sz * min_width);}
+        return;
+    }
+#define PIX_ITER for (unsigned x = 0; x < min_width; x++) { \
+        uint8_t *under_px = under_row + (d.under_px_sz * x); \
+        const uint8_t *over_px = over_row + (d.over_px_sz * x);
+    COPY_PIXELS
+#undef PIX_ITER
+#undef ROW_ITER
+}
+
+static void
 compose(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
     const bool can_copy_rows = !d.needs_blending && d.over_px_sz == d.under_px_sz;
     unsigned min_row_sz = d.over_offset_x < d.under_width ? d.under_width - d.over_offset_x : 0;
@@ -890,24 +934,7 @@ compose(const ComposeData d, uint8_t *under_data, const uint8_t *over_data) {
 #define PIX_ITER for (unsigned x = 0; x < min_row_sz; x++) { \
         uint8_t *under_px = under_row + (d.under_px_sz * x); \
         const uint8_t *over_px = over_row + (d.over_px_sz * x);
-#define COPY_RGB under_px[0] = over_px[0]; under_px[1] = over_px[1]; under_px[2] = over_px[2];
-    if (d.needs_blending) {
-        if (d.under_px_sz == 3) {
-            ROW_ITER PIX_ITER blend_on_opaque(under_px, over_px); }}
-        } else {
-            ROW_ITER PIX_ITER alpha_blend(under_px, over_px); }}
-        }
-    } else {
-        if (d.under_px_sz == 4) {
-            if (d.over_px_sz == 4) {
-                ROW_ITER PIX_ITER COPY_RGB under_px[3] = over_px[3]; }}
-            } else {
-                ROW_ITER PIX_ITER COPY_RGB under_px[3] = 255; }}
-            }
-        } else {
-            ROW_ITER PIX_ITER COPY_RGB }}
-        }
-    }
+    COPY_PIXELS
 #undef COPY_RGB
 #undef PIX_ITER
 #undef ROW_ITER
@@ -982,7 +1009,7 @@ get_coalesced_frame_data_impl(GraphicsManager *self, Image *img, const Frame *f,
     return base_data;
 }
 
-static inline CoalescedFrameData
+static CoalescedFrameData
 get_coalesced_frame_data(GraphicsManager *self, Image *img, const Frame *f) {
     return get_coalesced_frame_data_impl(self, img, f, 0);
 }
@@ -1278,6 +1305,73 @@ scan_active_animations(GraphicsManager *self, const monotonic_t now, monotonic_t
 }
 // }}}
 
+// {{{ composition a=c
+static void
+cfd_free(void *p) { free(((CoalescedFrameData*)p)->buf); }
+
+static void
+handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsCommand *g, Image *img) {
+    Frame *src_frame = frame_for_number(img, g->_frame_number);
+    if (!src_frame) {
+        set_command_failed_response("ENOENT", "No source frame number %u exists in image id: %u\n", g->_frame_number, img->client_id);
+        return;
+    }
+    Frame *dest_frame = frame_for_number(img, g->_other_frame_number);
+    if (!dest_frame) {
+        set_command_failed_response("ENOENT", "No destination frame number %u exists in image id: %u\n", g->_other_frame_number, img->client_id);
+        return;
+    }
+    const unsigned int width = g->width ? g->width : img->width;
+    const unsigned int height = g->height ? g->height : img->height;
+    const unsigned int dest_x = g->x_offset, dest_y = g->y_offset, src_x = g->cell_x_offset, src_y = g->cell_y_offset;
+    if (dest_x + width > img->width || dest_y + height > img->height) {
+        set_command_failed_response("EINVAL", "The destination rectangle is out of bounds");
+        return;
+    }
+    if (src_x + width > img->width || src_y + height > img->height) {
+        set_command_failed_response("EINVAL", "The source rectangle is out of bounds");
+        return;
+    }
+    if (src_frame == dest_frame) {
+        bool x_overlaps = MAX(src_x, dest_x) < (MIN(src_x, dest_x) + width);
+        bool y_overlaps = MAX(src_y, dest_y) < (MIN(src_y, dest_y) + height);
+        if (x_overlaps && y_overlaps) {
+            set_command_failed_response("EINVAL", "The source and destination rectangles overlap and the src and destination frames are the same");
+            return;
+        }
+    }
+
+    FREE_CFD_AFTER_FUNCTION CoalescedFrameData src_data = get_coalesced_frame_data(self, img, src_frame);
+    if (!src_data.buf) {
+        set_command_failed_response("EINVAL", "Failed to get data for src frame: %u", g->_frame_number - 1);
+        return;
+    }
+    FREE_CFD_AFTER_FUNCTION CoalescedFrameData dest_data = get_coalesced_frame_data(self, img, dest_frame);
+    if (!dest_data.buf) {
+        set_command_failed_response("EINVAL", "Failed to get data for destination frame: %u", g->_other_frame_number - 1);
+        return;
+    }
+    ComposeData d = {
+        .over_px_sz = src_data.is_opaque ? 3 : 4, .under_px_sz = dest_data.is_opaque ? 3: 4,
+        .needs_blending = !g->cursor_movement && !src_data.is_opaque,
+        .over_offset_x = src_x, .over_offset_y = src_y,
+        .under_offset_x = dest_x, .under_offset_y = dest_y,
+        .over_width = width, .over_height = height, .under_width = width, .under_height = height,
+        .stride = img->width
+    };
+    compose_rectangles(d, dest_data.buf, src_data.buf);
+    const ImageAndFrame key = { .image_id = img->internal_id, .frame_id = dest_frame->id };
+    if (!add_to_cache(self, key, dest_data.buf, (dest_data.is_opaque ? 3 : 4) * img->width * img->height)) {
+        if (PyErr_Occurred()) PyErr_Print();
+        set_command_failed_response("ENOSPC", "Failed to store image data in disk cache");
+    }
+    // frame is now a fully coalesced frame
+    dest_frame->x = 0; dest_frame->y = 0; dest_frame->width = img->width; dest_frame->height = img->height;
+    dest_frame->base_frame_id = 0; dest_frame->bgcolor = 0;
+    *is_dirty = (g->_other_frame_number - 1) == img->current_frame_index;
+}
+// }}}
+
 // Image lifetime/scrolling {{{
 
 static inline void
@@ -1563,6 +1657,20 @@ grman_handle_command(GraphicsManager *self, const GraphicsCommand *g, const uint
         }
         case 'd':
             handle_delete_command(self, g, c, is_dirty, cell);
+            break;
+        case 'c':
+            if (!g->id && !g->image_number) {
+                REPORT_ERROR("Compose frame data command without image id or number");
+                break;
+            }
+            Image *img = g->id ? img_by_client_id(self, g->id) : img_by_client_number(self, g->image_number);
+            if (!img) {
+                set_command_failed_response("ENOENT", "Animation command refers to non-existent image with id: %u and number: %u", g->id, g->image_number);
+                ret = finish_command_response(g, false);
+            } else {
+                handle_compose_command(self, is_dirty, g, img);
+                ret = finish_command_response(g, true);
+            }
             break;
         default:
             REPORT_ERROR("Unknown graphics command action: %c", g->action);

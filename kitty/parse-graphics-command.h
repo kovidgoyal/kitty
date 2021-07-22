@@ -148,9 +148,9 @@ static inline void parse_graphics_code(Screen *screen,
 
       case action: {
         g.action = screen->parser_buf[pos++] & 0xff;
-        if (g.action != 't' && g.action != 'a' && g.action != 'T' &&
-            g.action != 'f' && g.action != 'd' && g.action != 'p' &&
-            g.action != 'q') {
+        if (g.action != 'q' && g.action != 'p' && g.action != 't' &&
+            g.action != 'd' && g.action != 'c' && g.action != 'a' &&
+            g.action != 'T' && g.action != 'f') {
           REPORT_ERROR("Malformed GraphicsCommand control block, unknown flag "
                        "value for action: 0x%x",
                        g.action);
@@ -160,16 +160,16 @@ static inline void parse_graphics_code(Screen *screen,
 
       case delete_action: {
         g.delete_action = screen->parser_buf[pos++] & 0xff;
-        if (g.delete_action != 'Q' && g.delete_action != 'N' &&
-            g.delete_action != 'z' && g.delete_action != 'p' &&
-            g.delete_action != 'X' && g.delete_action != 'a' &&
-            g.delete_action != 'y' && g.delete_action != 'f' &&
-            g.delete_action != 'Z' && g.delete_action != 'F' &&
-            g.delete_action != 'Y' && g.delete_action != 'n' &&
-            g.delete_action != 'C' && g.delete_action != 'q' &&
-            g.delete_action != 'c' && g.delete_action != 'i' &&
-            g.delete_action != 'A' && g.delete_action != 'P' &&
-            g.delete_action != 'I' && g.delete_action != 'x') {
+        if (g.delete_action != 'q' && g.delete_action != 'Q' &&
+            g.delete_action != 'c' && g.delete_action != 'C' &&
+            g.delete_action != 'N' && g.delete_action != 'i' &&
+            g.delete_action != 'A' && g.delete_action != 'y' &&
+            g.delete_action != 'a' && g.delete_action != 'I' &&
+            g.delete_action != 'F' && g.delete_action != 'p' &&
+            g.delete_action != 'z' && g.delete_action != 'x' &&
+            g.delete_action != 'n' && g.delete_action != 'X' &&
+            g.delete_action != 'Y' && g.delete_action != 'P' &&
+            g.delete_action != 'Z' && g.delete_action != 'f') {
           REPORT_ERROR("Malformed GraphicsCommand control block, unknown flag "
                        "value for delete_action: 0x%x",
                        g.delete_action);
