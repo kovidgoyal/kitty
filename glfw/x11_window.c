@@ -75,8 +75,18 @@ handleEvents(monotonic_t timeout) {
         (void)dispatched;
         EVDBG("dispatched %u X11 events", dispatched);
     }
-    glfw_ibus_dispatch(&_glfw.x11.xkb.ibus);
-    glfw_dbus_session_bus_dispatch();
+	switch (_glfw.x11.xkb.imeData.module) {
+		case _GLFW_IME_MODULE_IBUS:
+			glfw_ibus_dispatch(&_glfw.x11.xkb.imeData.ibus);
+			glfw_dbus_session_bus_dispatch();
+			break;
+		case _GLFW_IME_MODULE_FCITX5:
+			glfw_fcitx5_dispatch(&_glfw.x11.xkb.imeData.fcitx5);
+			glfw_dbus_session_bus_dispatch();
+			break;
+		default:
+			break;
+	}
     EVDBG("other dispatch done");
     if (_glfw.x11.eventLoopData.wakeup_fd_ready) check_for_wakeup_events(&_glfw.x11.eventLoopData);
 }

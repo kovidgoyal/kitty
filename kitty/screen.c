@@ -602,7 +602,11 @@ screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
         if (char_width == 0) return;
         char_width = 1;
     }
-    if (from_input_stream) self->last_graphic_char = ch;
+    if (from_input_stream) {
+		// I.e., not called from screen_draw_overlay_text
+		self->last_graphic_char = ch;
+		if (self->overlay_line.is_active) deactivate_overlay_line(self);
+	}
     if (UNLIKELY(self->columns - self->cursor->x < (unsigned int)char_width)) {
         if (self->modes.mDECAWM) {
             screen_carriage_return(self);
@@ -639,6 +643,7 @@ screen_draw_overlay_text(Screen *self, const char *utf8_text) {
     self->overlay_line.ynum = self->cursor->y;
     self->overlay_line.xstart = self->cursor->x;
     self->overlay_line.xnum = 0;
+	memcpy(self->overlay_line.text, utf8_text, sizeof(self->overlay_line.text));
     uint32_t codepoint = 0; UTF8State state = UTF8_ACCEPT;
     bool orig_line_wrap_mode = self->modes.mDECAWM;
     self->modes.mDECAWM = false;

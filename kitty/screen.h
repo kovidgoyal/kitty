@@ -68,11 +68,15 @@ typedef struct {
     index_type start_of_data, count;
 } SavemodesBuffer;
 
+// The size of the `__embedded_text` buffer in `*_glfw.h` is 64.
+#define OVERLAY_LINE_TEXT_SZ 64
+
 typedef struct {
     CPUCell *cpu_cells;
     GPUCell *gpu_cells;
     bool is_active;
     index_type xstart, ynum, xnum;
+    char text[OVERLAY_LINE_TEXT_SZ];
 } OverlayLine;
 
 typedef struct {

@@ -310,12 +310,14 @@ shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
 static inline bool
 do_parse(ChildMonitor *self, Screen *screen, monotonic_t now) {
     bool input_read = false;
+	bool refresh_overlay_line = false;
     screen_mutex(lock, read);
     if (screen->read_buf_sz || screen->pending_mode.used) {
         monotonic_t time_since_new_input = now - screen->new_input_at;
         if (time_since_new_input >= OPT(input_delay)) {
             bool read_buf_full = screen->read_buf_sz >= READ_BUF_SZ;
             input_read = true;
+			if (screen->overlay_line.is_active) refresh_overlay_line = true;
             parse_func(screen, self->dump_callback, now);
             if (read_buf_full) wakeup_io_loop(self, false);  // Ensure the read fd has POLLIN set
             screen->new_input_at = 0;
@@ -326,6 +328,7 @@ do_parse(ChildMonitor *self, Screen *screen, monotonic_t now) {
         } else set_maximum_wait(OPT(input_delay) - time_since_new_input);
     }
     screen_mutex(unlock, read);
+	if (refresh_overlay_line) screen_draw_overlay_text(screen, screen->overlay_line.text);
     return input_read;
 }
 
@@ -678,6 +681,22 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
 }
 
 static inline void
+update_ime_position(OSWindow *os_window) {
+	// Since we call this after rendering the active tab/window, all of the
+	// following pointers should be valid.
+    Tab *tab = os_window->tabs + os_window->active_tab;
+	Window *w = tab->windows + tab->active_window;
+	Screen *screen = w->render_data.screen;
+    unsigned int cell_width = os_window->fonts_data->cell_width, cell_height = os_window->fonts_data->cell_height;
+    unsigned int left = w->geometry.left, top = w->geometry.top;
+    left += screen->cursor->x * cell_width;
+    top += screen->cursor->y * cell_height;
+    GLFWIMEUpdateEvent ev = { .type = GLFW_IME_UPDATE_CURSOR_POSITION };
+    ev.cursor.left = left; ev.cursor.top = top; ev.cursor.width = cell_width; ev.cursor.height = cell_height;
+    glfwUpdateIMEState(os_window->handle, &ev);
+}
+
+static inline void
 render(monotonic_t now, bool input_read) {
     EVDBG("input_read: %d, check_for_active_animated_images: %d", input_read, global_state.check_for_active_animated_images);
     static monotonic_t last_render_at = MONOTONIC_T_MIN;
@@ -728,6 +747,7 @@ render(monotonic_t now, bool input_read) {
         if (w->render_calls < 3 && w->bgimage && w->bgimage->texture_id) needs_render = true;
         if (needs_render) render_os_window(w, now, active_window_id, active_window_bg, num_visible_windows, all_windows_have_same_bg);
         if (w->is_focused) change_menubar_title(w->window_title);
+		update_ime_position(w);
     }
     last_render_at = now;
 #undef TD

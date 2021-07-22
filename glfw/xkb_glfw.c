@@ -41,6 +41,12 @@
 #define utf32_to_keysym xkb_utf32_to_keysym
 #endif
 
+static inline bool
+test_env_var(const char *name, const char *val) {
+    const char *q = getenv(name);
+    return (q && strcmp(q, val) == 0) ? true : false;
+}
+
 static int
 glfw_key_for_sym(xkb_keysym_t key) {
     switch(key) {
@@ -425,7 +431,17 @@ glfw_xkb_release(_GLFWXKBData *xkb) {
         xkb_context_unref(xkb->context);
         xkb->context = NULL;
     }
-    glfw_ibus_terminate(&xkb->ibus);
+
+	switch (xkb->imeData.module) {
+		case _GLFW_IME_MODULE_IBUS:
+			glfw_ibus_terminate(&xkb->imeData.ibus);
+			break;
+		case _GLFW_IME_MODULE_FCITX5:
+			glfw_fcitx5_terminate(&xkb->imeData.fcitx5);
+			break;
+		default:
+			break;
+	}
 }
 
 bool
@@ -438,7 +454,24 @@ glfw_xkb_create_context(_GLFWXKBData *xkb) {
         return false;
     }
 #ifndef _GLFW_WAYLAND
-    glfw_connect_to_ibus(&xkb->ibus);
+	if (test_env_var("GLFW_IM_MODULE", "ibus")) {
+		xkb->imeData.module = _GLFW_IME_MODULE_IBUS;
+	} else if (test_env_var("GLFW_IM_MODULE", "fcitx5")) {
+		xkb->imeData.module = _GLFW_IME_MODULE_FCITX5;
+	} else {
+		xkb->imeData.module = _GLFW_IME_MODULE_NONE;
+	}
+
+	switch (xkb->imeData.module) {
+		case _GLFW_IME_MODULE_IBUS:
+			glfw_connect_to_ibus(&xkb->imeData.ibus);
+			break;
+		case _GLFW_IME_MODULE_FCITX5:
+			glfw_connect_to_fcitx5(&xkb->imeData.fcitx5);
+			break;
+		default:
+			break;
+	}
 #endif
     return true;
 }
@@ -660,19 +693,52 @@ glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, const GLFWIMEUpdate
     int x = 0, y = 0;
     switch(ev->type) {
         case GLFW_IME_UPDATE_FOCUS:
-            glfw_ibus_set_focused(&xkb->ibus, ev->focused);
+			switch (xkb->imeData.module) {
+				case _GLFW_IME_MODULE_IBUS:
+					glfw_ibus_set_focused(&xkb->imeData.ibus, ev->focused);
+					break;
+				case _GLFW_IME_MODULE_FCITX5:
+					glfw_fcitx5_set_focused(&xkb->imeData.fcitx5, ev->focused);
+					break;
+				default:
+					break;
+			}
             break;
         case GLFW_IME_UPDATE_CURSOR_POSITION:
             _glfwPlatformGetWindowPos(w, &x, &y);
             x += ev->cursor.left; y += ev->cursor.top;
-            glfw_ibus_set_cursor_geometry(&xkb->ibus, x, y, ev->cursor.width, ev->cursor.height);
+			switch (xkb->imeData.module) {
+				case _GLFW_IME_MODULE_IBUS:
+					glfw_ibus_set_cursor_geometry(&xkb->imeData.ibus, x, y, ev->cursor.width, ev->cursor.height);
+					break;
+				case _GLFW_IME_MODULE_FCITX5:
+					glfw_fcitx5_set_cursor_geometry(&xkb->imeData.fcitx5, x, y, ev->cursor.width, ev->cursor.height);
+					break;
+				default:
+					break;
+			}
             break;
     }
 }
 
 void
-glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
-    _GLFWwindow *window = _glfwWindowForId(ev->window_id);
+glfw_xkb_key_from_ime(_GLFWIMEKeyEvent *ev, _GLFWIMEModule module, bool handled_by_ime, bool failed) {
+	GLFWid window_id;
+	GLFWkeyevent *glfw_ev;
+	switch (module) {
+		case _GLFW_IME_MODULE_IBUS:
+			window_id = ev->ibus.window_id;
+			glfw_ev = &ev->ibus.glfw_ev;
+			break;
+		case _GLFW_IME_MODULE_FCITX5:
+			window_id = ev->fcitx5.window_id;
+			glfw_ev = &ev->fcitx5.glfw_ev;
+			break;
+		default:
+			return;
+	}
+
+    _GLFWwindow *window = _glfwWindowForId(window_id);
     if (failed && window && window->callbacks.keyboard) {
         // notify application to remove any existing pre-edit text
         GLFWkeyevent fake_ev = {.action = GLFW_PRESS};
@@ -686,20 +752,20 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
     // you'd need to implement a ring buffer to store pending key presses.
     xkb_keycode_t prev_handled_press = last_handled_press_keycode;
     last_handled_press_keycode = 0;
-    bool is_release = ev->glfw_ev.action == GLFW_RELEASE;
-    debug("From IBUS: native_key: 0x%x name: %s is_release: %d\n", ev->glfw_ev.native_key, glfw_xkb_keysym_name(ev->glfw_ev.key), is_release);
-    if (window && !handled_by_ime && !(is_release && ev->glfw_ev.native_key == (int) prev_handled_press)) {
+    bool is_release = glfw_ev->action == GLFW_RELEASE;
+    debug("From IME: native_key: 0x%x name: %s is_release: %d\n", glfw_ev->native_key, glfw_xkb_keysym_name(glfw_ev->key), is_release);
+    if (window && !handled_by_ime && !(is_release && glfw_ev->native_key == (int) prev_handled_press)) {
         debug("↳ to application: glfw_keycode: 0x%x (%s) keysym: 0x%x (%s) action: %s %s text: %s\n",
-            ev->glfw_ev.native_key, _glfwGetKeyName(ev->glfw_ev.native_key), ev->glfw_ev.key, glfw_xkb_keysym_name(ev->glfw_ev.key),
-            (ev->glfw_ev.action == GLFW_RELEASE ? "RELEASE" : (ev->glfw_ev.action == GLFW_PRESS ? "PRESS" : "REPEAT")),
-            format_mods(ev->glfw_ev.mods), ev->glfw_ev.text
+            glfw_ev->native_key, _glfwGetKeyName(glfw_ev->native_key), glfw_ev->key, glfw_xkb_keysym_name(glfw_ev->key),
+            (glfw_ev->action == GLFW_RELEASE ? "RELEASE" : (glfw_ev->action == GLFW_PRESS ? "PRESS" : "REPEAT")),
+            format_mods(glfw_ev->mods), glfw_ev->text
         );
 
-        ev->glfw_ev.ime_state = GLFW_IME_NONE;
-        _glfwInputKeyboard(window, &ev->glfw_ev);
+        glfw_ev->ime_state = GLFW_IME_NONE;
+        _glfwInputKeyboard(window, glfw_ev);
     } else debug("↳ discarded\n");
     if (!is_release && handled_by_ime)
-      last_handled_press_keycode = ev->glfw_ev.native_key;
+      last_handled_press_keycode = glfw_ev->native_key;
 }
 
 static bool
@@ -712,7 +778,7 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     static char key_text[64] = {0};
     const xkb_keysym_t *syms, *clean_syms, *default_syms;
     xkb_keysym_t xkb_sym, shifted_xkb_sym = XKB_KEY_NoSymbol, alternate_xkb_sym = XKB_KEY_NoSymbol;
-    xkb_keycode_t code_for_sym = xkb_keycode, ibus_keycode = xkb_keycode;
+    xkb_keycode_t code_for_sym = xkb_keycode, ibus_keycode = xkb_keycode, fcitx5_keycode = xkb_keycode;
     GLFWkeyevent glfw_ev = {.action = GLFW_PRESS};
 #ifdef _GLFW_WAYLAND
     code_for_sym += 8;
@@ -802,14 +868,29 @@ glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t 
     glfw_ev.key = glfw_sym;
     glfw_ev.mods = sg->modifiers;
     glfw_ev.text = key_text;
-    _GLFWIBUSKeyEvent ibus_ev;
-    ibus_ev.glfw_ev = glfw_ev;
-    ibus_ev.ibus_keycode = ibus_keycode;
-    ibus_ev.window_id = window->id;
-    ibus_ev.ibus_keysym = syms[0];
-    if (ibus_process_key(&ibus_ev, &xkb->ibus)) {
-        debug("↳ to IBUS: keycode: 0x%x keysym: 0x%x (%s) %s\n", ibus_ev.ibus_keycode, ibus_ev.ibus_keysym, glfw_xkb_keysym_name(ibus_ev.ibus_keysym), format_mods(ibus_ev.glfw_ev.mods));
-    } else {
-        _glfwInputKeyboard(window, &glfw_ev);
+	_GLFWIBUSKeyEvent ibus_ev;
+	_GLFWFCITX5KeyEvent fcitx5_ev;
+	switch (xkb->imeData.module) {
+		case _GLFW_IME_MODULE_IBUS:
+			ibus_ev.glfw_ev = glfw_ev;
+			ibus_ev.ibus_keycode = ibus_keycode;
+			ibus_ev.window_id = window->id;
+			ibus_ev.ibus_keysym = syms[0];
+			if (ibus_process_key(&ibus_ev, &xkb->imeData.ibus)) {
+				debug("↳ to IBUS: keycode: 0x%x keysym: 0x%x (%s) %s\n", ibus_ev.ibus_keycode, ibus_ev.ibus_keysym, glfw_xkb_keysym_name(ibus_ev.ibus_keysym), format_mods(ibus_ev.glfw_ev.mods));
+			}
+			break;
+		case _GLFW_IME_MODULE_FCITX5:
+			fcitx5_ev.glfw_ev = glfw_ev;
+			fcitx5_ev.fcitx5_keycode = fcitx5_keycode;
+			fcitx5_ev.window_id = window->id;
+			fcitx5_ev.fcitx5_keysym = syms[0];
+			if (fcitx5_process_key(&fcitx5_ev, &xkb->imeData.fcitx5)) {
+				debug("↳ to FICTX5: keycode: 0x%x keysym: 0x%x (%s) %s\n", fcitx5_ev.fcitx5_keycode, fcitx5_ev.fcitx5_keysym, glfw_xkb_keysym_name(fcitx5_ev.fcitx5_keysym), format_mods(fcitx5_ev.glfw_ev.mods));
+			}
+			break;
+		default:
+			_glfwInputKeyboard(window, &glfw_ev);
+			break;
     }
 }

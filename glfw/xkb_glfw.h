@@ -33,6 +33,26 @@
 #endif
 
 #include "ibus_glfw.h"
+#include "fcitx5_glfw.h"
+
+typedef enum {
+    _GLFW_IME_MODULE_IBUS,
+    _GLFW_IME_MODULE_FCITX5,
+    _GLFW_IME_MODULE_NONE
+} _GLFWIMEModule;
+
+typedef struct {
+    union {
+        _GLFWIBUSData ibus;
+        _GLFWFCITX5Data fcitx5;
+    };
+    _GLFWIMEModule module;
+} _GLFWIMEData;
+
+typedef union {
+    _GLFWIBUSKeyEvent ibus;
+    _GLFWFCITX5KeyEvent fcitx5;
+} _GLFWIMEKeyEvent;
 
 typedef struct {
     struct xkb_state*       state;
@@ -67,7 +87,7 @@ typedef struct {
     xkb_mod_mask_t          capsLockMask;
     xkb_mod_mask_t          numLockMask;
     xkb_mod_index_t         unknownModifiers[256];
-    _GLFWIBUSData           ibus;
+    _GLFWIMEData            imeData;
 
 #ifdef _GLFW_X11
     int32_t                 keyboard_device_id;
@@ -97,4 +117,4 @@ xkb_keysym_t glfw_xkb_sym_for_key(uint32_t key);
 void glfw_xkb_handle_key_event(_GLFWwindow *window, _GLFWXKBData *xkb, xkb_keycode_t keycode, int action);
 int glfw_xkb_keysym_from_name(const char *name, bool case_sensitive);
 void glfw_xkb_update_ime_state(_GLFWwindow *w, _GLFWXKBData *xkb, const GLFWIMEUpdateEvent *ev);
-void glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed);
+void glfw_xkb_key_from_ime(_GLFWIMEKeyEvent *ev, _GLFWIMEModule module, bool handled_by_ime, bool failed);

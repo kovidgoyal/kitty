@@ -231,7 +231,7 @@ read_ibus_address(_GLFWIBUSData *ibus) {
     return false;
 }
 
-void
+static void
 input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
     if (errmsg) {
         _glfwInputError(GLFW_PLATFORM_ERROR, "IBUS: Failed to create input context with error: %s", errmsg);
@@ -254,7 +254,7 @@ input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
     debug("Connected to IBUS daemon for IME input management\n");
 }
 
-bool
+static bool
 setup_connection(_GLFWIBUSData *ibus) {
     const char *client_name = "GLFW_Application";
     const char *address_file_name = get_ibus_address_file_name();
@@ -339,6 +339,7 @@ glfw_ibus_set_focused(_GLFWIBUSData *ibus, bool focused) {
 void
 glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h) {
     if (check_connection(ibus)) {
+		printf("set cursor rect %d %d %d %d\n", x, y, w, h);
         glfw_dbus_call_method_no_reply(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCursorLocation",
                 DBUS_TYPE_INT32, &x, DBUS_TYPE_INT32, &y, DBUS_TYPE_INT32, &w, DBUS_TYPE_INT32, &h, DBUS_TYPE_INVALID);
     }
@@ -394,7 +395,7 @@ ibus_key_state(unsigned int glfw_modifiers, int action) {
     return ans;
 }
 
-void
+static void
 key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
     uint32_t handled = 0;
     _GLFWIBUSKeyEvent *ev = (_GLFWIBUSKeyEvent*)data;
@@ -409,7 +410,7 @@ key_event_processed(DBusMessage *msg, const char* errmsg, void *data) {
         glfw_dbus_get_args(msg, "Failed to get IBUS handled key from reply", DBUS_TYPE_BOOLEAN, &handled, DBUS_TYPE_INVALID);
         debug("IBUS processed native_key: 0x%x release: %d handled: %u\n", ev->glfw_ev.native_key, is_release, handled);
     }
-    glfw_xkb_key_from_ime(ev, handled ? true : false, failed);
+    glfw_xkb_key_from_ime((_GLFWIMEKeyEvent*) ev, _GLFW_IME_MODULE_IBUS, handled ? true : false, failed);
     free(ev);
 }
 
