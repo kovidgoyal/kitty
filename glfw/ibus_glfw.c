@@ -339,7 +339,6 @@ glfw_ibus_set_focused(_GLFWIBUSData *ibus, bool focused) {
 void
 glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h) {
     if (check_connection(ibus)) {
-		printf("set cursor rect %d %d %d %d\n", x, y, w, h);
         glfw_dbus_call_method_no_reply(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCursorLocation",
                 DBUS_TYPE_INT32, &x, DBUS_TYPE_INT32, &y, DBUS_TYPE_INT32, &w, DBUS_TYPE_INT32, &h, DBUS_TYPE_INVALID);
     }
