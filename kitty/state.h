@@ -101,6 +101,12 @@ typedef struct {
     unsigned int length;
 } ClickQueue;
 
+typedef struct MousePosition {
+    unsigned int cell_x, cell_y;
+    double x, y;
+    bool in_left_half_of_cell;
+} MousePosition;
+
 typedef struct {
     id_type id;
     bool visible, cursor_visible_at_last_render;
@@ -108,11 +114,7 @@ typedef struct {
     CursorShape last_cursor_shape;
     PyObject *title;
     ScreenRenderData render_data;
-    struct {
-        unsigned int cell_x, cell_y;
-        double x, y;
-        bool in_left_half_of_cell;
-    } mouse_pos;
+    MousePosition mouse_pos;
     struct {
         unsigned int left, top, right, bottom;
     } padding;

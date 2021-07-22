@@ -424,6 +424,7 @@ typedef struct PendingClick {
     int button, count, modifiers;
     bool grabbed;
     monotonic_t at;
+    MousePosition mouse_pos;
 } PendingClick;
 
 static void
@@ -435,7 +436,10 @@ send_pending_click_to_window(Window *w, void *data) {
     ClickQueue *q = &w->click_queues[pc->button];
     // only send click if no presses have happened since the release that triggered the click
     if (q->length && q->clicks[q->length - 1].at <= pc->at) {
+        MousePosition current_pos = w->mouse_pos;
+        w->mouse_pos = pc->mouse_pos;
         dispatch_mouse_event(w, pc->button, pc->count, pc->modifiers, pc->grabbed);
+        w->mouse_pos = current_pos;
     }
 }
 
@@ -447,6 +451,7 @@ dispatch_possible_click(Window *w, int button, int modifiers) {
         PendingClick *pc = calloc(sizeof(PendingClick), 1);
         if (pc) {
             pc->window_id = w->id;
+            pc->mouse_pos = w->mouse_pos;
             pc->at = monotonic();
             pc->button = button;
             pc->count = count == 2 ? -3 : -2;
