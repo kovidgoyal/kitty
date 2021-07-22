@@ -207,7 +207,7 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
                     else:
                         expecting_option_val = True
                     break
-                print('unknown option -- {}'.format(arg), file=sys.stderr)
+                print('unknown option -- {}'.format(arg[1:]), file=sys.stderr)
                 subprocess.Popen(['ssh']).wait()
                 raise SystemExit(255)
             continue
