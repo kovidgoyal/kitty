@@ -1361,7 +1361,7 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
     };
     compose_rectangles(d, dest_data.buf, src_data.buf);
     const ImageAndFrame key = { .image_id = img->internal_id, .frame_id = dest_frame->id };
-    if (!add_to_cache(self, key, dest_data.buf, (dest_data.is_opaque ? 3 : 4) * img->width * img->height)) {
+    if (!add_to_cache(self, key, dest_data.buf, ((size_t)(dest_data.is_opaque ? 3 : 4)) * img->width * img->height)) {
         if (PyErr_Occurred()) PyErr_Print();
         set_command_failed_response("ENOSPC", "Failed to store image data in disk cache");
     }
