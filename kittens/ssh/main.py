@@ -182,8 +182,9 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
     server_args: List[str] = []
     expecting_option_val = False
     passthrough = False
+    stop_option_processing = False
     for arg in args:
-        if len(server_args) > 1:
+        if len(server_args) > 1 or stop_option_processing:
             server_args.append(arg)
             continue
         if arg.startswith('-') and not expecting_option_val:
@@ -203,6 +204,9 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
                     else:
                         expecting_option_val = True
                     break
+                if arg == '--':
+                    stop_option_processing = True
+                    continue
                 raise SystemExit('Unknown option: {}'.format(arg))
             continue
         if expecting_option_val:
