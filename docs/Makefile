@@ -21,4 +21,4 @@ help:
 
 
 develop-docs:
-	sphinx-autobuild --ignore "/home/kovid/work/kitty/docs/generated/*" --watch ../kitty --watch ../kittens -b dirhtml "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS)
+	sphinx-autobuild --ignore "$(abspath $(SOURCEDIR))/generated/*" --watch ../kitty --watch ../kittens -b dirhtml "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS)
