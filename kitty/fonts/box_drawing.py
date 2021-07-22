@@ -889,7 +889,7 @@ box_chars: Dict[str, List[Callable]] = {
 
     '🬼': [p(smooth_mosaic, a=(0, 0.75), b=(0.5, 1))],
     '🬽': [p(smooth_mosaic, a=(0, 0.75), b=(1, 1))],
-    '🬾': [p(smooth_mosaic, a=(0, 0.5), b=(0.5, 1))],
+    '🬾': [p(smooth_mosaic, a=(0, 0.25), b=(0.5, 1))],
     '🬿': [p(smooth_mosaic, a=(0, 0.5), b=(1, 1))],
     '🭀': [p(smooth_mosaic, a=(0, 0), b=(0.5, 1))],
 
