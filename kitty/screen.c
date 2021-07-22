@@ -1805,18 +1805,29 @@ shell_prompt_marking(Screen *self, PyObject *data) {
 
 static bool
 screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
-    if (self->linebuf != self->main_linebuf) return false;
+    if (self->linebuf != self->main_linebuf || !num_of_prompts_to_jump) return false;
     int delta = num_of_prompts_to_jump < 0 ? -1 : 1;
     num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
     int y = -self->scrolled_by;
+#define ensure_y_ok if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
+#define move_y_to_start_of_promt while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->is_prompt_start) y--;
+#define move_y_to_end_of_promt while (y + 1 < (int)self->lines && range_line_(self, y + 1)->is_prompt_start) y++;
+    ensure_y_ok;
+    if (range_line_(self, y)->is_prompt_start) {
+        if (delta < 0) { move_y_to_start_of_promt; } else { move_y_to_end_of_promt; }
+    }
     while (num_of_prompts_to_jump) {
         y += delta;
-        if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
-        if (range_line_(self, y)->is_prompt_start) num_of_prompts_to_jump--;
+        ensure_y_ok;
+        if (range_line_(self, y)->is_prompt_start) {
+            num_of_prompts_to_jump--;
+            if (delta < 0) { move_y_to_start_of_promt; } else { move_y_to_end_of_promt; }
+        }
     }
-    if (delta < 0) {
-        while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->is_prompt_start) y--;
-    }
+    move_y_to_start_of_promt;
+#undef ensure_y_ok
+#undef move_y_to_start_of_promt
+#undef move_y_to_end_of_promt
     unsigned int old = self->scrolled_by;
     self->scrolled_by = y >= 0 ? 0 : -y;
     if (old != self->scrolled_by) self->scroll_changed = true;
