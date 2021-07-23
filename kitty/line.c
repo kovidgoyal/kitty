@@ -373,7 +373,7 @@ as_ansi(Line* self, PyObject *a UNUSED) {
 static PyObject*
 is_continued(Line* self, PyObject *a UNUSED) {
 #define is_continued_doc "Return the line's continued flag"
-    PyObject *ans = self->continued ? Py_True : Py_False;
+    PyObject *ans = self->attrs.bits.continued ? Py_True : Py_False;
     Py_INCREF(ans);
     return ans;
 }
@@ -813,7 +813,7 @@ as_text_generic(PyObject *args, void *container, get_line_func get_line, index_t
     ansibuf->active_hyperlink_id = 0;
     for (index_type y = 0; y < lines; y++) {
         Line *line = get_line(container, y);
-        if (!line->continued && y > 0) {
+        if (!line->attrs.bits.continued && y > 0) {
             ret = PyObject_CallFunctionObjArgs(callback, nl, NULL);
             if (ret == NULL) goto end;
             Py_CLEAR(ret);

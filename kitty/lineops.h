@@ -67,21 +67,6 @@ left_shift_line(Line *line, index_type at, index_type num) {
     }
 }
 
-static inline void
-copy_line_attrs_to_line(const line_attrs_type attrs, Line *line) {
-#define S(a, m) line->a = (attrs & m) ? true: false
-    S(continued, CONTINUED_MASK); S(has_dirty_text, TEXT_DIRTY_MASK);
-    S(is_prompt_start, PROMPT_START_MASK); S(is_output_start, OUTPUT_START_MASK);
-#undef S
-}
-
-static inline line_attrs_type
-line_attrs_from_line(const Line *line) {
-#define S(a, m) (line->a ? m : 0)
-    return S(continued, CONTINUED_MASK) | S(has_dirty_text, TEXT_DIRTY_MASK) | S(is_prompt_start, PROMPT_START_MASK) | S(is_output_start, OUTPUT_START_MASK);
-#undef S
-}
-
 
 typedef Line*(get_line_func)(void *, int);
 void line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch);

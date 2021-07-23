@@ -22,10 +22,10 @@ add_segment(HistoryBuf *self) {
     HistoryBufSegment *s = self->segments + self->num_segments - 1;
     const size_t cpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(CPUCell);
     const size_t gpu_cells_size = self->xnum * SEGMENT_SIZE * sizeof(GPUCell);
-    s->cpu_cells = calloc(1, cpu_cells_size + gpu_cells_size + SEGMENT_SIZE * sizeof(line_attrs_type));
+    s->cpu_cells = calloc(1, cpu_cells_size + gpu_cells_size + SEGMENT_SIZE * sizeof(LineAttrs));
     if (!s->cpu_cells) fatal("Out of memory allocating new history buffer segment");
     s->gpu_cells = (GPUCell*)(((uint8_t*)s->cpu_cells) + cpu_cells_size);
-    s->line_attrs = (line_attrs_type*)(((uint8_t*)s->gpu_cells) + gpu_cells_size);
+    s->line_attrs = (LineAttrs*)(((uint8_t*)s->gpu_cells) + gpu_cells_size);
 }
 
 static index_type
@@ -53,7 +53,7 @@ gpu_lineptr(HistoryBuf *self, index_type y) {
 }
 
 
-static line_attrs_type*
+static LineAttrs*
 attrptr(HistoryBuf *self, index_type y) {
     seg_ptr(line_attrs, 1);
 }
@@ -147,7 +147,7 @@ init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
     l->cpu_cells = cpu_lineptr(self, num);
     l->gpu_cells = gpu_lineptr(self, num);
-    copy_line_attrs_to_line(*attrptr(self, num), l);
+    l->attrs = *attrptr(self, num);
 }
 
 void
@@ -162,14 +162,12 @@ historybuf_cpu_cells(HistoryBuf *self, index_type lnum) {
 
 void
 historybuf_mark_line_clean(HistoryBuf *self, index_type y) {
-    line_attrs_type *p = attrptr(self, index_of(self, y));
-    *p &= ~TEXT_DIRTY_MASK;
+    attrptr(self, index_of(self, y))->bits.has_dirty_text = false;
 }
 
 void
 historybuf_mark_line_dirty(HistoryBuf *self, index_type y) {
-    line_attrs_type *p = attrptr(self, index_of(self, y));
-    *p |= TEXT_DIRTY_MASK;
+    attrptr(self, index_of(self, y))->bits.has_dirty_text = true;
 }
 
 void
@@ -227,7 +225,7 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
     line_as_ansi(&l, as_ansi_buf, &prev_cell);
-    if (ringbuf_bytes_used(ph->ringbuf) && !l.continued) pagerhist_write_bytes(ph, (const uint8_t*)"\n", 1);
+    if (ringbuf_bytes_used(ph->ringbuf) && !l.attrs.bits.continued) pagerhist_write_bytes(ph, (const uint8_t*)"\n", 1);
     pagerhist_write_bytes(ph, (const uint8_t*)"\x1b[m", 3);
     if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write_bytes(ph, (const uint8_t*)"\r", 1);
 }
@@ -247,7 +245,7 @@ void
 historybuf_add_line(HistoryBuf *self, const Line *line, ANSIBuf *as_ansi_buf) {
     index_type idx = historybuf_push(self, as_ansi_buf);
     copy_line(line, self->line);
-    *attrptr(self, idx) = line_attrs_from_line(line);
+    *attrptr(self, idx) = line->attrs;
 }
 
 bool
@@ -306,10 +304,10 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
         if (i < self->count - 1) {
-            l.continued = *attrptr(self, index_of(self, i + 1)) & CONTINUED_MASK;
-        } else l.continued = false;
+            l.attrs.bits.continued = attrptr(self, index_of(self, i + 1))->bits.continued;
+        } else l.attrs.bits.continued = false;
         line_as_ansi(&l, &output, &prev_cell);
-        if (!l.continued) {
+        if (!l.attrs.bits.continued) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = 10; // 10 = \n
         }
@@ -411,12 +409,12 @@ pagerhist_as_bytes(HistoryBuf *self, PyObject *args UNUSED) {
 
     Line l = {.xnum=self->xnum}; get_line(self, 0, &l);
     size_t sz = ringbuf_bytes_used(ph->ringbuf);
-    if (!l.continued) sz += 1;
+    if (!l.attrs.bits.continued) sz += 1;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
     uint8_t *buf = (uint8_t*)PyBytes_AS_STRING(ans);
     ringbuf_memcpy_from(buf, ph->ringbuf, sz);
-    if (!l.continued) buf[sz-1] = '\n';
+    if (!l.attrs.bits.continued) buf[sz-1] = '\n';
     return ans;
 #undef ph
 }
@@ -460,7 +458,7 @@ dirty_lines(HistoryBuf *self, PyObject *a UNUSED) {
 #define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
     PyObject *ans = PyList_New(0);
     for (index_type i = 0; i < self->count; i++) {
-        if (*attrptr(self, i) & TEXT_DIRTY_MASK) {
+        if (attrptr(self, i)->bits.has_dirty_text) {
             PyList_Append(ans, PyLong_FromUnsignedLong(i));
         }
     }
@@ -527,9 +525,9 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned 
 
 #define init_src_line(src_y) init_line(src, map_src_index(src_y), src->line);
 
-#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (*attrptr(src, map_src_index(src_y + 1)) & CONTINUED_MASK) : false)
+#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (attrptr(src, map_src_index(src_y + 1))->bits.continued) : false)
 
-#define next_dest_line(cont) *attrptr(dest, historybuf_push(dest, as_ansi_buf)) = (cont ? CONTINUED_MASK : 0) | line_attrs_from_line(src->line); dest->line->continued = cont;
+#define next_dest_line(cont) { LineAttrs *lap = attrptr(dest, historybuf_push(dest, as_ansi_buf)); *lap = src->line->attrs; if (cont) lap->bits.continued = true; dest->line->attrs.bits.continued = cont; }
 
 #define first_dest_line next_dest_line(false);
 
@@ -543,7 +541,7 @@ historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf *as_ansi_buf) {
         for (index_type i = 0; i < self->num_segments; i++) {
             memcpy(other->segments[i].cpu_cells, self->segments[i].cpu_cells, SEGMENT_SIZE * self->xnum * sizeof(CPUCell));
             memcpy(other->segments[i].gpu_cells, self->segments[i].gpu_cells, SEGMENT_SIZE * self->xnum * sizeof(GPUCell));
-            memcpy(other->segments[i].line_attrs, self->segments[i].line_attrs, SEGMENT_SIZE * sizeof(line_attrs_type));
+            memcpy(other->segments[i].line_attrs, self->segments[i].line_attrs, SEGMENT_SIZE * sizeof(LineAttrs));
         }
         other->count = self->count; other->start_of_data = self->start_of_data;
         return;
@@ -553,7 +551,7 @@ historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf *as_ansi_buf) {
     other->count = 0; other->start_of_data = 0;
     if (self->count > 0) {
         rewrap_inner(self, other, self->count, NULL, NULL, as_ansi_buf);
-        for (index_type i = 0; i < other->count; i++) *attrptr(other, (other->start_of_data + i) % other->ynum) |= TEXT_DIRTY_MASK;
+        for (index_type i = 0; i < other->count; i++) attrptr(other, (other->start_of_data + i) % other->ynum)->bits.has_dirty_text = true;
     }
 }
 

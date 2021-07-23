@@ -53,7 +53,6 @@ typedef uint32_t pixel;
 typedef unsigned int index_type;
 typedef uint16_t sprite_index;
 typedef uint16_t attrs_type;
-typedef uint8_t line_attrs_type;
 typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE, NUM_OF_CURSOR_SHAPES } CursorShape;
 typedef enum { DISABLE_LIGATURES_NEVER, DISABLE_LIGATURES_CURSOR, DISABLE_LIGATURES_ALWAYS } DisableLigature;
 
@@ -83,12 +82,6 @@ typedef enum { TILING, SCALED, MIRRORED } BackgroundImageLayout;
 #define COL_MASK 0xFFFFFFFF
 #define DECORATION_FG_CODE 58
 #define CHAR_IS_BLANK(ch) ((ch) == 32 || (ch) == 0)
-enum {
-    CONTINUED_MASK=1,
-    TEXT_DIRTY_MASK=2,
-    PROMPT_START_MASK=4,
-    OUTPUT_START_MASK=8
-};
 
 #define FG 1
 #define BG 2
@@ -174,6 +167,15 @@ typedef struct {
     hyperlink_id_type hyperlink_id;
 } CPUCell;
 
+typedef union LineAttrs {
+    struct {
+        uint8_t continued : 1;
+        uint8_t has_dirty_text : 1;
+        uint8_t is_prompt_start : 1;
+        uint8_t is_output_start : 1;
+    } bits;
+    uint8_t val;
+} LineAttrs ;
 
 typedef struct {
     PyObject_HEAD
@@ -181,7 +183,8 @@ typedef struct {
     GPUCell *gpu_cells;
     CPUCell *cpu_cells;
     index_type xnum, ynum;
-    bool continued, needs_free, has_dirty_text, is_prompt_start, is_output_start;
+    bool needs_free;
+    LineAttrs attrs;
 } Line;
 
 
@@ -191,14 +194,14 @@ typedef struct {
     GPUCell *gpu_cell_buf;
     CPUCell *cpu_cell_buf;
     index_type xnum, ynum, *line_map, *scratch;
-    line_attrs_type *line_attrs;
+    LineAttrs *line_attrs;
     Line *line;
 } LineBuf;
 
 typedef struct {
     GPUCell *gpu_cells;
     CPUCell *cpu_cells;
-    line_attrs_type *line_attrs;
+    LineAttrs *line_attrs;
 } HistoryBufSegment;
 
 typedef struct {

@@ -36,36 +36,37 @@ linebuf_clear(LineBuf *self, char_type ch) {
     if (ch != 0) {
         for (index_type i = 0; i < self->ynum; i++) {
             clear_chars_to(self, i, ch);
-            self->line_attrs[i] = TEXT_DIRTY_MASK;
+            self->line_attrs[i].val = 0;
+            self->line_attrs[i].bits.has_dirty_text = true;
         }
     }
 }
 
 void
 linebuf_mark_line_dirty(LineBuf *self, index_type y) {
-    self->line_attrs[y] |= TEXT_DIRTY_MASK;
+    self->line_attrs[y].bits.has_dirty_text = true;
 }
 
 void
 linebuf_mark_line_clean(LineBuf *self, index_type y) {
-    self->line_attrs[y] &= ~TEXT_DIRTY_MASK;
+    self->line_attrs[y].bits.has_dirty_text = false;
 }
 
 void
 linebuf_mark_line_as_not_continued(LineBuf *self, index_type y) {
-    self->line_attrs[y] &= ~CONTINUED_MASK;
+    self->line_attrs[y].bits.continued = false;
 }
 
 void
 linebuf_mark_line_as_prompt_start(LineBuf *self, index_type y) {
-    self->line_attrs[y] |= PROMPT_START_MASK;
-    self->line_attrs[y] &= ~OUTPUT_START_MASK;
+    self->line_attrs[y].bits.is_prompt_start = true;
+    self->line_attrs[y].bits.is_output_start = false;
 }
 
 void
 linebuf_mark_line_as_output_start(LineBuf *self, index_type y) {
-    self->line_attrs[y] &= ~PROMPT_START_MASK;
-    self->line_attrs[y] |= OUTPUT_START_MASK;
+    self->line_attrs[y].bits.is_prompt_start = false;
+    self->line_attrs[y].bits.is_output_start = true;
 }
 
 
@@ -102,7 +103,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
         self->gpu_cell_buf = PyMem_Calloc(xnum * ynum, sizeof(GPUCell));
         self->line_map = PyMem_Calloc(ynum, sizeof(index_type));
         self->scratch = PyMem_Calloc(ynum, sizeof(index_type));
-        self->line_attrs = PyMem_Calloc(ynum, sizeof(line_attrs_type));
+        self->line_attrs = PyMem_Calloc(ynum, sizeof(LineAttrs));
         self->line = alloc_line();
         if (self->cpu_cell_buf == NULL || self->gpu_cell_buf == NULL || self->line_map == NULL || self->scratch == NULL || self->line_attrs == NULL || self->line == NULL) {
             PyErr_NoMemory();
@@ -141,7 +142,7 @@ void
 linebuf_init_line(LineBuf *self, index_type idx) {
     self->line->ynum = idx;
     self->line->xnum = self->xnum;
-    copy_line_attrs_to_line(self->line_attrs[idx], self->line);
+    self->line->attrs = self->line_attrs[idx];
     init_line(self, self->line, self->line_map[idx]);
 }
 
@@ -167,7 +168,7 @@ void
 linebuf_set_attribute(LineBuf *self, unsigned int shift, unsigned int val) {
     for (index_type y = 0; y < self->ynum; y++) {
         set_attribute_on_line(gpu_lineptr(self, y), shift, val, self->xnum);
-        self->line_attrs[y] |= TEXT_DIRTY_MASK;
+        self->line_attrs[y].bits.has_dirty_text = true;
     }
 }
 
@@ -188,8 +189,7 @@ set_continued(LineBuf *self, PyObject *args) {
     int val;
     if (!PyArg_ParseTuple(args, "Ip", &y, &val)) return NULL;
     if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
-    if (val) self->line_attrs[y] |= CONTINUED_MASK;
-    else self->line_attrs[y] &= ~CONTINUED_MASK;
+    self->line_attrs[y].bits.continued = val;
     Py_RETURN_NONE;
 }
 
@@ -198,7 +198,7 @@ dirty_lines(LineBuf *self, PyObject *a UNUSED) {
 #define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
     PyObject *ans = PyList_New(0);
     for (index_type i = 0; i < self->ynum; i++) {
-        if (self->line_attrs[i] & TEXT_DIRTY_MASK) {
+        if (self->line_attrs[i].bits.has_dirty_text) {
             PyList_Append(ans, PyLong_FromUnsignedLong(i));
         }
     }
@@ -229,7 +229,7 @@ create_line_copy_inner(LineBuf* self, index_type y) {
     src.xnum = self->xnum; line->xnum = self->xnum;
     if (!allocate_line_storage(line, 0)) { Py_CLEAR(line); return PyErr_NoMemory(); }
     line->ynum = y;
-    copy_line_attrs_to_line(self->line_attrs[y], line);
+    line->attrs = self->line_attrs[y];
     init_line(self, &src, self->line_map[y]);
     copy_line(&src, line);
     return (PyObject*)line;
@@ -251,7 +251,7 @@ copy_line_to(LineBuf *self, PyObject *args) {
     if (!PyArg_ParseTuple(args, "IO!", &y, &Line_Type, &dest)) return NULL;
     src.xnum = self->xnum; dest->xnum = self->xnum;
     dest->ynum = y;
-    copy_line_attrs_to_line(self->line_attrs[y], dest);
+    dest->attrs = self->line_attrs[y];
     init_line(self, &src, self->line_map[y]);
     copy_line(&src, dest);
     Py_RETURN_NONE;
@@ -262,7 +262,7 @@ clear_line_(Line *l, index_type xnum) {
     zero_at_ptr_count(l->cpu_cells, xnum);
     zero_at_ptr_count(l->gpu_cells, xnum);
     if (BLANK_CHAR != 0) clear_chars_in_line(l->cpu_cells, l->gpu_cells, xnum, BLANK_CHAR);
-    l->has_dirty_text = false;
+    l->attrs.bits.has_dirty_text = false;
 }
 
 void
@@ -270,7 +270,7 @@ linebuf_clear_line(LineBuf *self, index_type y, bool clear_attrs) {
     Line l;
     init_line(self, &l, self->line_map[y]);
     clear_line_(&l, self->xnum);
-    if (clear_attrs) self->line_attrs[y] = 0;
+    if (clear_attrs) self->line_attrs[y].val = 0;
 }
 
 static PyObject*
@@ -286,13 +286,13 @@ void
 linebuf_index(LineBuf* self, index_type top, index_type bottom) {
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_top = self->line_map[top];
-    line_attrs_type old_attrs = self->line_attrs[top];
+    LineAttrs old_attrs = self->line_attrs[top];
     for (index_type i = top; i < bottom; i++) {
         self->line_map[i] = self->line_map[i + 1];
         self->line_attrs[i] = self->line_attrs[i + 1];
     }
     self->line_map[bottom] = old_top;
-    self->line_attrs[bottom] = old_attrs;
+    self->line_attrs[bottom]= old_attrs;
 }
 
 static PyObject*
@@ -308,7 +308,7 @@ void
 linebuf_reverse_index(LineBuf *self, index_type top, index_type bottom) {
     if (top >= self->ynum - 1 || bottom >= self->ynum || bottom <= top) return;
     index_type old_bottom = self->line_map[bottom];
-    line_attrs_type old_attrs = self->line_attrs[bottom];
+    LineAttrs old_attrs = self->line_attrs[bottom];
     for (index_type i = bottom; i > top; i--) {
         self->line_map[i] = self->line_map[i - 1];
         self->line_attrs[i] = self->line_attrs[i - 1];
@@ -332,7 +332,7 @@ is_continued(LineBuf *self, PyObject *val) {
 #define is_continued_doc "is_continued(y) -> Whether the line y is continued or not"
     unsigned long y = PyLong_AsUnsignedLong(val);
     if (y >= self->ynum) { PyErr_SetString(PyExc_ValueError, "Out of bounds."); return NULL; }
-    if (self->line_attrs[y] & CONTINUED_MASK) { Py_RETURN_TRUE; }
+    if (self->line_attrs[y].bits.continued) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
@@ -350,7 +350,7 @@ linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned i
             self->line_map[i] = self->line_map[i - num];
             self->line_attrs[i] = self->line_attrs[i - num];
         }
-        if (y + num < self->ynum) self->line_attrs[y + num] &= ~CONTINUED_MASK;
+        if (y + num < self->ynum) self->line_attrs[y + num].bits.continued = false;
         for (i = 0; i < num; i++) {
             self->line_map[y + i] = self->scratch[ylimit - num + i];
         }
@@ -358,7 +358,7 @@ linebuf_insert_lines(LineBuf *self, unsigned int num, unsigned int y, unsigned i
         for (i = y; i < y + num; i++) {
             init_line(self, &l, self->line_map[i]);
             clear_line_(&l, self->xnum);
-            self->line_attrs[i] = 0;
+            self->line_attrs[i].val = 0;
         }
     }
 }
@@ -385,7 +385,7 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
         self->line_map[i] = self->line_map[i + num];
         self->line_attrs[i] = self->line_attrs[i + num];
     }
-    self->line_attrs[y] &= ~CONTINUED_MASK;
+    self->line_attrs[y].bits.continued = false;
     for (i = 0; i < num; i++) {
         self->line_map[ylimit - num + i] = self->scratch[y + i];
     }
@@ -393,7 +393,7 @@ linebuf_delete_lines(LineBuf *self, index_type num, index_type y, index_type bot
     for (i = ylimit - num; i < ylimit; i++) {
         init_line(self, &l, self->line_map[i]);
         clear_line_(&l, self->xnum);
-        self->line_attrs[i] = 0;
+        self->line_attrs[i].val = 0;
     }
 }
 
@@ -410,7 +410,8 @@ void
 linebuf_copy_line_to(LineBuf *self, Line *line, index_type where) {
     init_line(self, self->line, self->line_map[where]);
     copy_line(line, self->line);
-    self->line_attrs[where] = TEXT_DIRTY_MASK | line_attrs_from_line(line);
+    self->line_attrs[where] = line->attrs;
+    self->line_attrs[where].bits.has_dirty_text = true;
 }
 
 static PyObject*
@@ -429,10 +430,10 @@ as_ansi(LineBuf *self, PyObject *callback) {
     } while(ylimit > 0);
 
     for(index_type i = 0; i <= ylimit; i++) {
-        l.continued = ((i < self->ynum - 1) ? self->line_attrs[i+1] : self->line_attrs[i]) & CONTINUED_MASK;
+        l.attrs.bits.continued = self->line_attrs[(i + 1 < self->ynum) ? i+1 : i].bits.continued;
         init_line(self, (&l), self->line_map[i]);
         line_as_ansi(&l, &output, &prev_cell);
-        if (!l.continued) {
+        if (!l.attrs.bits.continued) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = 10; // 10 = \n
         }
@@ -561,7 +562,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     // Fast path
     if (other->xnum == self->xnum && other->ynum == self->ynum) {
         memcpy(other->line_map, self->line_map, sizeof(index_type) * self->ynum);
-        memcpy(other->line_attrs, self->line_attrs, sizeof(bool) * self->ynum);
+        memcpy(other->line_attrs, self->line_attrs, sizeof(LineAttrs) * self->ynum);
         memcpy(other->cpu_cell_buf, self->cpu_cell_buf, (size_t)self->xnum * self->ynum * sizeof(CPUCell));
         memcpy(other->gpu_cell_buf, self->gpu_cell_buf, (size_t)self->xnum * self->ynum * sizeof(GPUCell));
         *num_content_lines_before = self->ynum; *num_content_lines_after = self->ynum;
@@ -589,7 +590,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     *track_x = tcarr[0].x; *track_y = tcarr[0].y;
     *track_x2 = tcarr[1].x; *track_y2 = tcarr[1].y;
     *num_content_lines_after = other->line->ynum + 1;
-    for (i = 0; i < *num_content_lines_after; i++) other->line_attrs[i] |= TEXT_DIRTY_MASK;
+    for (i = 0; i < *num_content_lines_after; i++) other->line_attrs[i].bits.has_dirty_text = true;
     *num_content_lines_before = first + 1;
 }
 
