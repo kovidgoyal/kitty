@@ -2508,12 +2508,10 @@ opt('clipboard_control', 'write-clipboard write-primary',
     long_text='''
 Allow programs running in kitty to read and write from the clipboard. You can
 control exactly which actions are allowed. The set of possible actions is:
-write-clipboard read-clipboard write-primary read-primary. You can additionally
-specify no-append to disable kitty's protocol extension for clipboard
-concatenation. The default is to allow writing to the clipboard and primary
-selection with concatenation enabled. Note that enabling the read functionality
-is a security risk as it means that any program, even one running on a remote
-server via SSH can read your clipboard.
+write-clipboard read-clipboard write-primary read-primary. The default is to
+allow writing to the clipboard and primary selection. Note that enabling the
+read functionality is a security risk as it means that any program, even one
+running on a remote server via SSH can read your clipboard.
 '''
     )
 

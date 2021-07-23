@@ -304,10 +304,6 @@ terminal and then switch to another and these terminals have different TERM
 variables, tmux will break. You will need to restart it as tmux does not
 support multiple terminfo definitions.
 
-Copying to clipboard via OSC 52 will not work, because tmux does not support
-the extended version of that protocol, you will need to add ``no-append`` to
-:opt:`clipboard_control` in kitty.conf.
-
 If you use any of the advanced features that kitty has innovated, such as
 styled underlines, desktop notifications, extended keyboard support, etc.
 they may or may not work, depending on the whims of tmux's maintainer, your
