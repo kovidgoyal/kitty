@@ -17,7 +17,7 @@ from .utils import log_error, resolved_shell
 
 posix_template = '''
 # BEGIN_KITTY_SHELL_INTEGRATION
-test -e {path} && source {path}
+if test -e {path}; then source {path}; fi
 # END_KITTY_SHELL_INTEGRATION
 '''
 
