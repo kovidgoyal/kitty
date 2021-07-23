@@ -2911,14 +2911,14 @@ map('Scroll to bottom',
     )
 
 map('Scroll to previous shell prompt',
-    'scroll_to_previous_prompt kitty_mod+x scroll_to_prompt -1',
+    'scroll_to_previous_prompt kitty_mod+z scroll_to_prompt -1',
     long_text='''
 Requires :ref:`shell_integration` to work.
 '''
     )
 
 map('Scroll to next shell prompt',
-    'scroll_to_next_prompt kitty_mod+d scroll_to_prompt 1',
+    'scroll_to_next_prompt kitty_mod+x scroll_to_prompt 1',
     long_text='''
 Requires :ref:`shell_integration` to work.
 '''
