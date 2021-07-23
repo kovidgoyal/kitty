@@ -1708,8 +1708,8 @@ set_dynamic_color(Screen *self, unsigned int code, PyObject *color) {
 }
 
 void
-clipboard_control(Screen *self, PyObject *data) {
-    CALLBACK("clipboard_control", "O", data);
+clipboard_control(Screen *self, int code, PyObject *data) {
+    CALLBACK("clipboard_control", "OO", data, code == -52 ? Py_True: Py_False);
 }
 
 void

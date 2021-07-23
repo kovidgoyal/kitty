@@ -16,6 +16,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When opening hyperlinks, allow defining open actions for directories
   (:pull:`3836`)
 
+- When using the OSC 52 escape code to copy to clipboard allow large
+  copies (up to 8MB) without needing a kitty specific chunking protocol.
+  Note that if you used the chunking protocol in the past, it will no longer
+  work and you should switch to using the unmodified protocol which has the
+  advantage of working with all terminal emulators.
+
 - Fix a bug in the implementation of the synchronized updates escape code that
   could cause incorrect parsing if either the pending buffer capacity or the
   pending timeout were exceeded (:iss:`3779`)

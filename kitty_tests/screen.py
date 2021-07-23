@@ -794,6 +794,29 @@ class TestScreen(BaseTest):
         self.ae(str(s.linebuf), '0\n5\n6\n7\n\n')
         self.ae(str(s.historybuf), '')
 
+    def test_osc_52(self):
+        s = self.create_screen()
+        c = s.callbacks
+
+        def send(what: str):
+            return parse_bytes(s, f'\033]52;p;{what}\a'.encode('ascii'))
+
+        def t(q, use_pending_mode, *expected):
+            c.clear()
+            if use_pending_mode:
+                parse_bytes(s, b'\033[?2026h')
+            send(q)
+            if use_pending_mode:
+                self.ae(c.cc_buf, [])
+                parse_bytes(s, b'\033[?2026l')
+            self.ae(c.cc_buf, list(expected))
+
+        for use_pending_mode in (False, True):
+            t('XYZ', use_pending_mode, ('p;XYZ', False))
+            t('a' * 8192, use_pending_mode, ('p;' + 'a' * (8192 - 6), True), (';' + 'a' * 6, False))
+            t('', use_pending_mode, ('p;', False))
+            t('!', use_pending_mode, ('p;!', False))
+
     def test_key_encoding_flags_stack(self):
         s = self.create_screen()
         c = s.callbacks

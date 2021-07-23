@@ -208,10 +208,27 @@ def write_osc(code: int, string: str = '') -> None:
 
 
 set_dynamic_color = set_color_table_color = process_cwd_notification = write_osc
+clipboard_control_pending: str = ''
+
+
+def clipboard_control(payload: str) -> None:
+    global clipboard_control_pending
+    code, data = payload.split(';', 1)
+    if code == '-52':
+        if clipboard_control_pending:
+            clipboard_control_pending += data.lstrip(';')
+        else:
+            clipboard_control_pending = payload
+        return
+    if clipboard_control_pending:
+        clipboard_control_pending += data.lstrip(';')
+        payload = clipboard_control_pending
+        clipboard_control_pending = ''
+    write(OSC + payload + '\x07')
 
 
 def replay(raw: str) -> None:
-    specials = {'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color', 'process_cwd_notification'}
+    specials = {'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color', 'process_cwd_notification', 'clipboard_control'}
     for line in raw.splitlines():
         if line.strip() and not line.startswith('#'):
             cmd, rest = line.partition(' ')[::2]

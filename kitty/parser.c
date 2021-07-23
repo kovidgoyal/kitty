@@ -16,6 +16,7 @@
 #include <time.h>
 
 extern PyTypeObject Screen_Type;
+#define EXTENDED_OSC_SENTINEL 0x1bu
 
 // utils {{{
 static const uint64_t pow_10_array[] = {
@@ -125,7 +126,7 @@ _report_params(PyObject *dump_callback, const char *name, int *params, unsigned 
     Py_XDECREF(PyObject_CallFunction(dump_callback, "sO", #name, string)); PyErr_Clear();
 
 #define REPORT_OSC2(name, code, string) \
-    Py_XDECREF(PyObject_CallFunction(dump_callback, "sIO", #name, code, string)); PyErr_Clear();
+    Py_XDECREF(PyObject_CallFunction(dump_callback, "siO", #name, code, string)); PyErr_Clear();
 
 #define REPORT_HYPERLINK(id, url) \
     Py_XDECREF(PyObject_CallFunction(dump_callback, "szz", "set_active_hyperlink", id, url)); PyErr_Clear();
@@ -354,7 +355,18 @@ dispatch_hyperlink(Screen *screen, size_t pos, size_t size, PyObject DUMP_UNUSED
     free(data);
 }
 
-static inline void
+static void
+continue_osc_52(Screen *screen) {
+    screen->parser_buf[0] = '5'; screen->parser_buf[1] = '2'; screen->parser_buf[2] = ';';
+    screen->parser_buf[3] = ';'; screen->parser_buf_pos = 4;
+}
+
+static bool
+is_extended_osc(const Screen *screen) {
+    return screen->parser_buf_pos > 2 && screen->parser_buf[0] == EXTENDED_OSC_SENTINEL && screen->parser_buf[1] == 1 && screen->parser_buf[2] == ';';
+}
+
+static void
 dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define DISPATCH_OSC_WITH_CODE(name) REPORT_OSC2(name, code, string); name(screen, code, string);
 #define DISPATCH_OSC(name) REPORT_OSC(name, string); name(screen, string);
@@ -372,6 +384,12 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (i > 0) {
         code = utoi(screen->parser_buf, i);
         if (i < limit && screen->parser_buf[i] == ';') i++;
+    } else {
+        if (is_extended_osc(screen)) {
+            // partial OSC 52
+            i = 3;
+            code = -52;
+        }
     }
     switch(code) {
         case 0:
@@ -418,8 +436,10 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             DISPATCH_OSC_WITH_CODE(set_dynamic_color);
             END_DISPATCH
         case 52:
+        case -52:
             START_DISPATCH
-            DISPATCH_OSC(clipboard_control);
+            DISPATCH_OSC_WITH_CODE(clipboard_control);
+            if (code == -52) continue_osc_52(screen);
             END_DISPATCH
         case 30001:
             REPORT_COMMAND(screen_push_dynamic_colors);
@@ -1088,8 +1108,16 @@ dispatch_pm(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 
 // Parse loop {{{
 
-static inline bool
-accumulate_osc(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
+static bool
+handle_extended_osc_code(Screen *screen) {
+    // Handle extra long OSC 52 codes
+    if (screen->parser_buf[0] != '5' || screen->parser_buf[1] != '2' || screen->parser_buf[2] != ';') return false;
+    screen->parser_buf[0] = EXTENDED_OSC_SENTINEL; screen->parser_buf[1] = 1;
+    return true;
+}
+
+static bool
+accumulate_osc(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback, bool *extended_osc_code) {
     switch(ch) {
         case ST:
             return true;
@@ -1106,7 +1134,8 @@ accumulate_osc(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
             /* fallthrough */
         default:
             if (screen->parser_buf_pos >= PARSER_BUF_SZ - 1) {
-                REPORT_ERROR("OSC sequence too long, truncating.");
+                if (handle_extended_osc_code(screen)) *extended_osc_code = true;
+                else REPORT_ERROR("OSC sequence too long, truncating.");
                 return true;
             }
             screen->parser_buf[screen->parser_buf_pos++] = ch;
@@ -1250,7 +1279,15 @@ END_ALLOW_CASE_RANGE
             if (accumulate_csi(screen, codepoint, dump_callback)) { dispatch##_csi(screen, dump_callback); SET_STATE(0); watch_for_pending; } \
             break; \
         case OSC: \
-            if (accumulate_osc(screen, codepoint, dump_callback)) { dispatch##_osc(screen, dump_callback); SET_STATE(0); } \
+            { \
+                bool extended_osc_code = false; \
+                if (accumulate_osc(screen, codepoint, dump_callback, &extended_osc_code)) {  \
+                    dispatch##_osc(screen, dump_callback); \
+                    if (extended_osc_code) { \
+                        if (accumulate_osc(screen, codepoint, dump_callback, &extended_osc_code)) { dispatch##_osc(screen, dump_callback); SET_STATE(0); } \
+                    } else { SET_STATE(0); } \
+                } \
+            } \
             break; \
         case APC: \
             if (accumulate_oth(screen, codepoint, dump_callback)) { dispatch##_apc(screen, dump_callback); SET_STATE(0); } \
@@ -1371,7 +1408,13 @@ pending_escape_code(Screen *screen, char_type start_ch, char_type end_ch) {
 
 static void pending_pm(Screen *screen, PyObject *dump_callback UNUSED) { pending_escape_code(screen, PM, ST); }
 static void pending_apc(Screen *screen, PyObject *dump_callback UNUSED) { pending_escape_code(screen, APC, ST); }
-static void pending_osc(Screen *screen, PyObject *dump_callback UNUSED) { pending_escape_code(screen, OSC, ST); }
+
+static void
+pending_osc(Screen *screen, PyObject *dump_callback UNUSED) {
+    const bool extended = is_extended_osc(screen);
+    pending_escape_code(screen, OSC, ST);
+    if (extended) continue_osc_52(screen);
+}
 
 
 static void

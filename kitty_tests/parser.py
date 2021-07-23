@@ -239,6 +239,11 @@ class TestParser(BaseTest):
         pb('\033]8;moo\x07', ('Ignoring malformed OSC 8 code',))
         pb('\033]8;id=xyz;\x07', ('set_active_hyperlink', 'xyz', None))
         pb('\033]8;moo:x=z:id=xyz:id=abc;http://yay;.com\x07', ('set_active_hyperlink', 'xyz', 'http://yay;.com'))
+        c.clear()
+        payload = '1' * 1024
+        pb(f'\033]52;p;{payload}\x07', ('clipboard_control', 52, f'p;{payload}'))
+        c.clear()
+        pb('\033]52;p;xyz\x07', ('clipboard_control', 52, 'p;xyz'))
 
     def test_desktop_notify(self):
         reset_registry()

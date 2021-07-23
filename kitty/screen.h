@@ -193,7 +193,7 @@ void set_title(Screen *self, PyObject*);
 void desktop_notify(Screen *self, unsigned int, PyObject*);
 void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
-void clipboard_control(Screen *self, PyObject*);
+void clipboard_control(Screen *self, int code, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 void process_cwd_notification(Screen *self, unsigned int code, PyObject*);
 uint32_t* translation_table(uint32_t which);

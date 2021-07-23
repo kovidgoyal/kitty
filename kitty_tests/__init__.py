@@ -50,12 +50,20 @@ class Callbacks:
     def open_url(self, url: str, hyperlink_id: int) -> None:
         self.open_urls.append((url, hyperlink_id))
 
+    def clipboard_control(self, data: str, is_partial: bool = False) -> None:
+        self.cc_buf.append((data, is_partial))
+
     def clear(self) -> None:
         self.wtcbuf = b''
         self.iconbuf = self.titlebuf = self.colorbuf = self.ctbuf = ''
         self.iutf8 = True
         self.notifications = []
         self.open_urls = []
+        self.cc_buf = []
+        self.bell_count = 0
+
+    def on_bell(self) -> None:
+        self.bell_count += 1
 
     def on_activity_since_last_focus(self) -> None:
         pass

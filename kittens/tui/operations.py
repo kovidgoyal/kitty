@@ -352,24 +352,17 @@ def set_default_colors(
 
 @cmd
 def write_to_clipboard(data: Union[str, bytes], use_primary: bool = False) -> str:
-    if isinstance(data, str):
-        data = data.encode('utf-8')
     from base64 import standard_b64encode
     fmt = 'p' if use_primary else 'c'
-
-    def esc(chunk: str) -> str:
-        return '\x1b]52;{};{}\x07'.format(fmt, chunk)
-
-    ans = esc('!')  # clear clipboard buffer
-    for chunk in (data[i:i+512] for i in range(0, len(data), 512)):
-        s = standard_b64encode(chunk).decode('ascii')
-        ans += esc(s)
-    return ans
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    payload = standard_b64encode(data).decode('ascii')
+    return f'\x1b]52;{fmt};{payload}\a'
 
 
 @cmd
 def request_from_clipboard(use_primary: bool = False) -> str:
-    return '\x1b]52;{};?\x07'.format('p' if use_primary else 'c')
+    return '\x1b]52;{};?\a'.format('p' if use_primary else 'c')
 
 
 # Boilerplate to make operations available via Handler.cmd  {{{

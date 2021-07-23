@@ -28,6 +28,5 @@ please do so by opening issues in the `GitHub
    keyboard-protocol
    desktop-notifications
    unscroll
-   clipboard
    color-stack
    deccara

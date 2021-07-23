@@ -12,8 +12,8 @@ from functools import partial
 from gettext import gettext as _
 from itertools import chain
 from typing import (
-    Any, Callable, Deque, Dict, Iterable, List, Optional, Pattern, Sequence,
-    Tuple, Union
+    Any, Callable, Deque, Dict, Iterable, List, NamedTuple, Optional, Pattern,
+    Sequence, Tuple, Union
 )
 
 from .child import ProcessDesc
@@ -70,6 +70,11 @@ class PipeData(TypedDict):
     lines: int
     columns: int
     text: str
+
+
+class ClipboardPending(NamedTuple):
+    where: str
+    data: str
 
 
 class DynamicColor(IntEnum):
@@ -337,7 +342,7 @@ class Window:
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref: Callable[[], Optional[TabType]] = weakref.ref(tab)
-        self.clipboard_control_buffers = {'p': '', 'c': ''}
+        self.clipboard_pending: Optional[ClipboardPending] = None
         self.destroyed = False
         self.geometry: WindowGeometry = WindowGeometry(0, 0, 0, 0, 0, 0)
         self.needs_layout = True
@@ -777,10 +782,25 @@ class Window:
     def send_cmd_response(self, response: Any) -> None:
         self.screen.send_escape_code_to_child(DCS, '@kitty-cmd' + json.dumps(response))
 
-    def clipboard_control(self, data: str) -> None:
+    def clipboard_control(self, data: str, is_partial: bool = False) -> None:
         where, text = data.partition(';')[::2]
+        if is_partial:
+            if self.clipboard_pending is None:
+                self.clipboard_pending = ClipboardPending(where, text)
+            else:
+                self.clipboard_pending = self.clipboard_pending._replace(data=self.clipboard_pending[1] + text)
+                if len(self.clipboard_pending.data) > 8 * 1024 * 1024:
+                    log_error('Discarding part of too large OSC 52 paste request')
+                    self.clipboard_pending = self.clipboard_pending._replace(data='')
+            return
+
         if not where:
-            where = 's0'
+            if self.clipboard_pending is not None:
+                text = self.clipboard_pending.data + text
+                where = self.clipboard_pending.where
+                self.clipboard_pending = None
+            else:
+                where = 's0'
         cc = get_options().clipboard_control
         if text == '?':
             response = None
@@ -802,22 +822,13 @@ class Window:
             except Exception:
                 text = ''
 
-            def write(key: str, func: Callable[[str], None]) -> None:
-                if text:
-                    if ('no-append' in cc or
-                            len(self.clipboard_control_buffers[key]) > 1024*1024):
-                        self.clipboard_control_buffers[key] = ''
-                    self.clipboard_control_buffers[key] += text
-                else:
-                    self.clipboard_control_buffers[key] = ''
-                func(self.clipboard_control_buffers[key])
-
             if 's' in where or 'c' in where:
                 if 'write-clipboard' in cc:
-                    write('c', set_clipboard_string)
+                    set_clipboard_string(text)
             if 'p' in where:
                 if 'write-primary' in cc:
-                    write('p', set_primary_selection)
+                    set_primary_selection(text)
+        self.clipboard_pending = None
 
     def manipulate_title_stack(self, pop: bool, title: str, icon: Any) -> None:
         if title:
