@@ -932,7 +932,8 @@ opt('tab_activity_symbol', 'none',
     option_type='tab_activity_symbol',
     long_text='''
 Some text or a unicode symbol to show on the tab if a window in the tab that
-does not have focus has some activity.
+does not have focus has some activity. If you want to use leading or trailing spaces
+surround the text with quotes.
 '''
     )
 

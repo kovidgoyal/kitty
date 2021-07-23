@@ -58,6 +58,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   is meant to match over line breaks, you will need to match over both.
   (:iss:`3845`)
 
+- Allow leading or trailing spaces in :opt:`tab_activity_symbol`
+
 
 0.21.2 [2021-06-28]
 ----------------------

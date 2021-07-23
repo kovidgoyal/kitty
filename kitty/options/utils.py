@@ -614,7 +614,7 @@ def tab_fade(x: str) -> Tuple[float, ...]:
 def tab_activity_symbol(x: str) -> Optional[str]:
     if x == 'none':
         return None
-    return x or None
+    return tab_title_template(x) or None
 
 
 def tab_title_template(x: str) -> str:
