@@ -56,7 +56,7 @@ def find_font_features(postscript_name: str) -> Tuple[FontFeature, ...]:
     return ()
 
 
-def find_best_match(family: str, bold: bool = False, italic: bool = False) -> CoreTextFont:
+def find_best_match(family: str, bold: bool = False, italic: bool = False, ignore_face: Optional[CoreTextFont] = None) -> CoreTextFont:
     q = re.sub(r'\s+', ' ', family.lower())
     font_map = all_fonts_map()
 
@@ -75,7 +75,9 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False) -> Co
     for selector in ('ps_map', 'full_map'):
         candidates = font_map[selector].get(q)
         if candidates:
-            return sorted(candidates, key=score)[-1]
+            possible = sorted(candidates, key=score)[-1]
+            if possible != ignore_face:
+                return possible
 
     # Let CoreText choose the font if the family exists, otherwise
     # fallback to Menlo
@@ -96,12 +98,14 @@ def resolve_family(f: str, main_family: str, bold: bool = False, italic: bool = 
 
 def get_font_files(opts: Options) -> Dict[str, CoreTextFont]:
     ans: Dict[str, CoreTextFont] = {}
-    for (bold, italic), attr in attr_map.items():
-        face = find_best_match(resolve_family(getattr(opts, attr), opts.font_family, bold, italic), bold, italic)
+    for (bold, italic) in sorted(attr_map):
+        attr = attr_map[(bold, italic)]
         key = {(False, False): 'medium',
                (True, False): 'bold',
                (False, True): 'italic',
                (True, True): 'bi'}[(bold, italic)]
+        ignore_face = None if key == 'medium' else ans['medium']
+        face = find_best_match(resolve_family(getattr(opts, attr), opts.font_family, bold, italic), bold, italic, ignore_face=ignore_face)
         ans[key] = face
         if key == 'medium':
             setattr(get_font_files, 'medium_family', face['family'])

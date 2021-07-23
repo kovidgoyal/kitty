@@ -60,6 +60,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Allow leading or trailing spaces in :opt:`tab_activity_symbol`
 
+- macOS: Fix automatic detection of bold/italic faces for fonts that
+  use the family name as the full face name of the regular font not working
+  (:iss:`3861`)
+
 
 0.21.2 [2021-06-28]
 ----------------------
