@@ -2660,7 +2660,7 @@ For a list of modifier names, see:
 
 On Linux you can also use XKB key names to bind keys that are not supported by
 GLFW. See :link:`XKB keys
-<https://github.com/xkbcommon/libxkbcommon/blob/master/xkbcommon/xkbcommon-keysyms.h>`
+<https://github.com/xkbcommon/libxkbcommon/blob/master/include/xkbcommon/xkbcommon-keysyms.h>`
 for a list of key names. The name to use is the part after the :code:`XKB_KEY_`
 prefix. Note that you can only use an XKB key name for keys that are not known
 as GLFW keys.
