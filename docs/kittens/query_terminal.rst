@@ -15,7 +15,4 @@ for *XTGETTCAP* to see the syntax for the escape code and read the source
 of this kitten to find the values of the keys for the various queries.
 
 
-Command Line Interface
--------------------------
-
 .. include:: ../generated/cli-kitten-query_terminal.rst

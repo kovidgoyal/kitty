@@ -246,6 +246,11 @@ if you specify a program-to-run you can use the special placeholder
             with open(f'generated/cli-kitten-{kitten}.rst', 'w') as f:
                 p = partial(print, file=f)
                 p('.. program::', f'kitty +kitten {kitten}')
+                p(f'\nSource code for {kitten}')
+                p('-' * 72)
+                p(f'\nThe source code for this kitten is `available on GitHub <https://github.com/kovidgoyal/kitty/tree/master/kittens/{kitten}>`_.')
+                p('\nCommand Line Interface')
+                p('-' * 72, file=f)
                 p('\n\n' + option_spec_as_rst(
                     data['options'], message=data['help_text'], usage=data['usage'], appname=f'kitty +kitten {kitten}',
                     heading_char='^'))

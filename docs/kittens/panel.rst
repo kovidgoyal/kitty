@@ -37,7 +37,4 @@ print out ``Hello, world!``. You can make the terminal program as complex as
 you like, as demonstrated in the screenshot above.
 
 
-Command Line Interface
--------------------------
-
 .. include:: ../generated/cli-kitten-panel.rst

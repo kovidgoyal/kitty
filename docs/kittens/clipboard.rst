@@ -23,7 +23,4 @@ use::
 .. program:: kitty +kitten clipboard
 
 
-Command Line Interface
---------------------------
-
 .. include:: /generated/cli-kitten-clipboard.rst

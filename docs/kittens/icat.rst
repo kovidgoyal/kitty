@@ -37,7 +37,4 @@ The ``icat`` kitten has various command line arguments to allow it to be used
 from inside other programs to display images. In particular, :option:`--place`,
 :option:`--detect-support` and :option:`--print-window-size`.
 
-Command Line Interface
---------------------------
-
 .. include:: /generated/cli-kitten-icat.rst

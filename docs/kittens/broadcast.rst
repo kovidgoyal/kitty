@@ -19,7 +19,4 @@ are selected.
 .. program:: kitty +kitten broadcast
 
 
-Command Line Interface
---------------------------
-
 .. include:: /generated/cli-kitten-broadcast.rst

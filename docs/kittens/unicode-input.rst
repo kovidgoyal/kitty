@@ -28,7 +28,4 @@ You can switch between modes using either the function keys or by pressing
 :kbd:`Ctrl+Shift+Tab`.
 
 
-Command Line Interface
--------------------------
-
 .. include:: ../generated/cli-kitten-unicode_input.rst

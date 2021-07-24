@@ -142,9 +142,6 @@ configuration directives.
 .. include:: /generated/conf-kitten-diff.rst
 
 
-Command Line Interface
--------------------------
-
 .. include:: /generated/cli-kitten-diff.rst
 
 
