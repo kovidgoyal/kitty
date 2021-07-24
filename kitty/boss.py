@@ -804,7 +804,8 @@ class Boss:
 
         def report_match(f: Callable) -> None:
             if self.args.debug_keyboard:
-                print(f'\x1b[35m{dispatch_type}\x1b[m matched action:', func_name(f), flush=True)
+                prefix = '\n' if dispatch_type == 'KeyPress' else ''
+                print(f'{prefix}\x1b[35m{dispatch_type}\x1b[m matched action:', func_name(f), flush=True)
 
         if key_action is not None:
             f = getattr(self, key_action.func, None)
