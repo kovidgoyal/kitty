@@ -6,15 +6,14 @@ from typing import Optional, Union
 
 from .conf.utils import KeyAction
 from .fast_data_types import (
-    GLFW_MOD_ALT, GLFW_MOD_CAPS_LOCK, GLFW_MOD_CONTROL, GLFW_MOD_HYPER,
-    GLFW_MOD_META, GLFW_MOD_NUM_LOCK, GLFW_MOD_SHIFT, GLFW_MOD_SUPER, KeyEvent
+    GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_HYPER, GLFW_MOD_META,
+    GLFW_MOD_SHIFT, GLFW_MOD_SUPER, KeyEvent
 )
 from .options.utils import KeyMap, SequenceMap, SubSequenceMap
 from .types import SingleKey
 from .typing import ScreenType
 
 mod_mask = GLFW_MOD_ALT | GLFW_MOD_CONTROL | GLFW_MOD_SHIFT | GLFW_MOD_SUPER | GLFW_MOD_META | GLFW_MOD_HYPER
-lock_mask = GLFW_MOD_NUM_LOCK | GLFW_MOD_CAPS_LOCK
 
 
 def keyboard_mode_name(screen: ScreenType) -> str:

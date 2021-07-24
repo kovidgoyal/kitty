@@ -33,7 +33,7 @@ from .fast_data_types import (
     set_titlebar_color, set_window_padding, set_window_render_data,
     update_window_title, update_window_visibility, viewport_for_window
 )
-from .keys import keyboard_mode_name
+from .keys import keyboard_mode_name, mod_mask
 from .notify import NotificationCommand, handle_notification_cmd
 from .options.types import Options
 from .rgb import to_color
@@ -570,6 +570,7 @@ class Window:
         get_boss().child_monitor.set_iutf8_winid(self.id, on)
 
     def on_mouse_event(self, event: Dict[str, Any]) -> bool:
+        event['mods'] = event.get('mods', 0) & mod_mask
         ev = MouseEvent(**event)
         self.current_mouse_event_button = ev.button
         action = get_options().mousemap.get(ev)
