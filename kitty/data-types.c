@@ -235,10 +235,26 @@ extern bool init_freetype_library(PyObject*);
 extern bool init_freetype_render_ui_text(PyObject*);
 #endif
 
+static unsigned
+shift_to_first_set_bit(CellAttrs x) {
+    unsigned num_of_bits = 8 * sizeof(x.val);
+    unsigned ans = 0;
+    while (num_of_bits--) {
+        if (x.val & 1) return ans;
+        x.val >>= 1;
+        ans++;
+    }
+    return ans;
+}
+
 
 EXPORTED PyMODINIT_FUNC
 PyInit_fast_data_types(void) {
     PyObject *m;
+    if (sizeof(CellAttrs) != 2u) {
+        PyErr_SetString(PyExc_RuntimeError, "Size of CellAttrs is not 2 on this platform");
+        return NULL;
+    }
 
     m = PyModule_Create(&module);
     if (m == NULL) return NULL;
@@ -278,13 +294,11 @@ PyInit_fast_data_types(void) {
 #endif
     if (!init_fonts(m)) return NULL;
 
-    PyModule_AddIntConstant(m, "BOLD", BOLD_SHIFT);
-    PyModule_AddIntConstant(m, "ITALIC", ITALIC_SHIFT);
-    PyModule_AddIntConstant(m, "REVERSE", REVERSE_SHIFT);
-    PyModule_AddIntConstant(m, "STRIKETHROUGH", STRIKE_SHIFT);
-    PyModule_AddIntConstant(m, "DIM", DIM_SHIFT);
-    PyModule_AddIntConstant(m, "DECORATION", DECORATION_SHIFT);
-    PyModule_AddIntConstant(m, "MARK", MARK_SHIFT);
+    CellAttrs a;
+#define s(name, attr) { a.val = 0; a.bits.attr = 1; PyModule_AddIntConstant(m, #name, shift_to_first_set_bit(a)); }
+    s(BOLD, bold); s(ITALIC, italic); s(REVERSE, reverse); s(MARK, mark);
+    s(STRIKETHROUGH, strike); s(DIM, dim); s(DECORATION, decoration);
+#undef s
     PyModule_AddIntConstant(m, "MARK_MASK", MARK_MASK);
     PyModule_AddStringMacro(m, ERROR_PREFIX);
 #ifdef KITTY_VCS_REV

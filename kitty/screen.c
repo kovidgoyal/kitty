@@ -594,24 +594,24 @@ draw_combining_char(Screen *self, char_type ch) {
         if (ch == 0xfe0f) {  // emoji presentation variation marker makes default text presentation emoji (narrow emoji) into wide emoji
             CPUCell *cpu_cell = self->linebuf->line->cpu_cells + xpos;
             GPUCell *gpu_cell = self->linebuf->line->gpu_cells + xpos;
-            if ((gpu_cell->attrs & WIDTH_MASK) != 2 && cpu_cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cpu_cell->ch)) {
+            if (gpu_cell->attrs.bits.width != 2 && cpu_cell->cc_idx[0] == VS16 && is_emoji_presentation_base(cpu_cell->ch)) {
                 if (self->cursor->x <= self->columns - 1) line_set_char(self->linebuf->line, self->cursor->x, 0, 0, self->cursor, self->active_hyperlink_id);
-                gpu_cell->attrs = (gpu_cell->attrs & !WIDTH_MASK) | 2;
+                gpu_cell->attrs.bits.width = 2;
                 if (xpos == self->columns - 1) move_widened_char(self, cpu_cell, gpu_cell, xpos, ypos);
                 else self->cursor->x++;
             }
         } else if (ch == 0xfe0e) {
             CPUCell *cpu_cell = self->linebuf->line->cpu_cells + xpos;
             GPUCell *gpu_cell = self->linebuf->line->gpu_cells + xpos;
-            if ((gpu_cell->attrs & WIDTH_MASK) == 0 && cpu_cell->ch == 0 && xpos > 0) {
+            if (gpu_cell->attrs.bits.width == 0 && cpu_cell->ch == 0 && xpos > 0) {
                 xpos--;
                 if (self->cursor->x > 0) self->cursor->x--;
                 cpu_cell = self->linebuf->line->cpu_cells + xpos;
                 gpu_cell = self->linebuf->line->gpu_cells + xpos;
             }
 
-            if ((gpu_cell->attrs & WIDTH_MASK) == 2 && cpu_cell->cc_idx[0] == VS15 && is_emoji_presentation_base(cpu_cell->ch)) {
-                gpu_cell->attrs = (gpu_cell->attrs & !WIDTH_MASK) | 1;
+            if (gpu_cell->attrs.bits.width == 2 && cpu_cell->cc_idx[0] == VS15 && is_emoji_presentation_base(cpu_cell->ch)) {
+                gpu_cell->attrs.bits.width = 1;
             }
         }
     }
@@ -3230,7 +3230,7 @@ marked_cells(Screen *self, PyObject *o UNUSED) {
         linebuf_init_line(self->linebuf, y);
         for (index_type x = 0; x < self->columns; x++) {
             GPUCell *gpu_cell = self->linebuf->line->gpu_cells + x;
-            unsigned int mark = (gpu_cell->attrs >> MARK_SHIFT) & MARK_MASK;
+            const unsigned int mark = gpu_cell->attrs.bits.mark;
             if (mark) {
                 PyObject *t = Py_BuildValue("III", x, y, mark);
                 if (!t) { Py_DECREF(ans); return NULL; }

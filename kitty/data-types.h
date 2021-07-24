@@ -52,7 +52,6 @@ typedef uint16_t glyph_index;
 typedef uint32_t pixel;
 typedef unsigned int index_type;
 typedef uint16_t sprite_index;
-typedef uint16_t attrs_type;
 typedef enum CursorShapes { NO_CURSOR_SHAPE, CURSOR_BLOCK, CURSOR_BEAM, CURSOR_UNDERLINE, NUM_OF_CURSOR_SHAPES } CursorShape;
 typedef enum { DISABLE_LIGATURES_NEVER, DISABLE_LIGATURES_CURSOR, DISABLE_LIGATURES_ALWAYS } DisableLigature;
 
@@ -65,35 +64,12 @@ typedef enum { TILING, SCALED, MIRRORED } BackgroundImageLayout;
 
 #define MAX_CHILDREN 512
 #define BLANK_CHAR 0
-#define ATTRS_MASK_WITHOUT_WIDTH 0xFFFC
-#define WIDTH_MASK  3
-#define DECORATION_SHIFT  2
-#define DECORATION_MASK 3
-#define BOLD_SHIFT 4
-#define ITALIC_SHIFT 5
-#define BI_VAL(attrs) ((attrs >> 4) & 3)
-#define REVERSE_SHIFT 6
-#define STRIKE_SHIFT 7
-#define DIM_SHIFT 8
-#define MARK_SHIFT 9
-#define ATTRS_MASK_WITHOUT_MARK 0xf9ff
-#define ATTRS_MASK_FOR_SGR (ATTRS_MASK_WITHOUT_MARK | ATTRS_MASK_WITHOUT_WIDTH)
-#define MARK_MASK 3
 #define COL_MASK 0xFFFFFFFF
 #define DECORATION_FG_CODE 58
 #define CHAR_IS_BLANK(ch) ((ch) == 32 || (ch) == 0)
 
 #define FG 1
 #define BG 2
-
-#define CURSOR_TO_ATTRS(c, w) \
-    ((w) | (((c->decoration & 3) << DECORATION_SHIFT) | ((c->bold & 1) << BOLD_SHIFT) | \
-            ((c->italic & 1) << ITALIC_SHIFT) | ((c->reverse & 1) << REVERSE_SHIFT) | \
-            ((c->strikethrough & 1) << STRIKE_SHIFT) | ((c->dim & 1) << DIM_SHIFT)))
-
-#define ATTRS_TO_CURSOR(a, c) \
-    (c)->decoration = (a >> DECORATION_SHIFT) & 3; (c)->bold = (a >> BOLD_SHIFT) & 1; (c)->italic = (a >> ITALIC_SHIFT) & 1; \
-    (c)->reverse = (a >> REVERSE_SHIFT) & 1; (c)->strikethrough = (a >> STRIKE_SHIFT) & 1; (c)->dim = (a >> DIM_SHIFT) & 1;
 
 #define COPY_CELL(src, s, dest, d) \
     (dest)->cpu_cells[d] = (src)->cpu_cells[s]; (dest)->gpu_cells[d] = (src)->gpu_cells[s];
@@ -155,10 +131,27 @@ typedef struct {
     uint32_t left, top, right, bottom;
 } Region;
 
+typedef union CellAttrs {
+    struct {
+        uint16_t width : 2;
+        uint16_t decoration : 2;
+        uint16_t bold : 1;
+        uint16_t italic : 1;
+        uint16_t reverse : 1;
+        uint16_t strike : 1;
+        uint16_t dim : 1;
+        uint16_t mark : 2;
+    } bits;
+    uint16_t val;
+} CellAttrs;
+#define MARK_MASK (3u)
+#define WIDTH_MASK (3u)
+#define SGR_MASK (~(((CellAttrs){.bits={.width=WIDTH_MASK, .mark=MARK_MASK}}).val))
+
 typedef struct {
     color_type fg, bg, decoration_fg;
     sprite_index sprite_x, sprite_y, sprite_z;
-    attrs_type attrs;
+    CellAttrs attrs;
 } GPUCell;
 
 typedef struct {
@@ -294,6 +287,21 @@ typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
     if ((i) < (count)) { \
         memmove((array) + (i), (array) + (i) + 1, sizeof((array)[0]) * ((count) - (i))); \
     }}
+
+static inline CellAttrs
+cursor_to_attrs(const Cursor *c, const uint16_t width) {
+    CellAttrs ans = {.bits={
+        .width=width, .decoration=c->decoration, .bold=c->bold, .italic=c->italic, .reverse=c->reverse,
+        .strike=c->strikethrough, .dim=c->dim}};
+    return ans;
+}
+
+static inline void
+attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
+    c->decoration = attrs.bits.decoration; c->bold = attrs.bits.bold;  c->italic = attrs.bits.italic;
+    c->reverse = attrs.bits.reverse; c->strikethrough = attrs.bits.strike; c->dim = attrs.bits.dim;
+}
+
 
 // Global functions
 const char* base64_decode(const uint32_t *src, size_t src_sz, uint8_t *dest, size_t dest_capacity, size_t *dest_sz);

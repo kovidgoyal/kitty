@@ -249,7 +249,7 @@ unicode_in_range(const Line *self, const index_type start, const index_type limi
         } else {
             n += cell_as_unicode(self->cpu_cells + i, include_cc, buf + n, ' ');
         }
-        previous_width = self->gpu_cells[i].attrs & WIDTH_MASK;
+        previous_width = self->gpu_cells[i].attrs.bits.width;
     }
     return PyUnicode_FromKindAndData(PyUnicode_4BYTE_KIND, buf, n);
 }
@@ -315,6 +315,7 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell) {
     static const GPUCell blank_cell = { 0 };
     GPUCell *cell;
     if (*prev_cell == NULL) *prev_cell = &blank_cell;
+    const CellAttrs mask_for_sgr = {.val=SGR_MASK};
 
     for (index_type pos=0; pos < limit; pos++) {
         char_type ch = self->cpu_cells[pos].ch;
@@ -331,7 +332,7 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell) {
 
         cell = &self->gpu_cells[pos];
 
-#define CMP_ATTRS (cell->attrs & ATTRS_MASK_FOR_SGR) != ((*prev_cell)->attrs & ATTRS_MASK_FOR_SGR)
+#define CMP_ATTRS (cell->attrs.val & mask_for_sgr.val) != ((*prev_cell)->attrs.val & mask_for_sgr.val)
 #define CMP(x) cell->x != (*prev_cell)->x
         if (CMP_ATTRS || CMP(fg) || CMP(bg) || CMP(decoration_fg)) {
             const char *sgr = cell_as_sgr(cell, *prev_cell);
@@ -349,7 +350,7 @@ line_as_ansi(Line *self, ANSIBuf *output, const GPUCell** prev_cell) {
                 WRITE_CH(codepoint_for_mark(self->cpu_cells[pos].cc_idx[c]));
             }
         }
-        previous_width = cell->attrs & WIDTH_MASK;
+        previous_width = cell->attrs.bits.width;
     }
 #undef CMP_ATTRS
 #undef CMP
@@ -398,15 +399,14 @@ width(Line *self, PyObject *val) {
 #define width_doc "width(x) -> the width of the character at x"
     unsigned long x = PyLong_AsUnsignedLong(val);
     if (x >= self->xnum) { PyErr_SetString(PyExc_ValueError, "Out of bounds"); return NULL; }
-    char_type attrs = self->gpu_cells[x].attrs;
-    return PyLong_FromUnsignedLong((unsigned long) (attrs & WIDTH_MASK));
+    return PyLong_FromUnsignedLong((unsigned long) (self->gpu_cells[x].attrs.bits.width));
 }
 
 void
 line_add_combining_char(Line *self, uint32_t ch, unsigned int x) {
     CPUCell *cell = self->cpu_cells + x;
     if (!cell->ch) {
-        if (x > 0 && (self->gpu_cells[x-1].attrs & WIDTH_MASK) == 2 && self->cpu_cells[x-1].ch) cell = self->cpu_cells + x - 1;
+        if (x > 0 && (self->gpu_cells[x-1].attrs.bits.width) == 2 && self->cpu_cells[x-1].ch) cell = self->cpu_cells + x - 1;
         else return; // don't allow adding combining chars to a null cell
     }
     for (unsigned i = 0; i < arraysz(cell->cc_idx); i++) {
@@ -435,7 +435,6 @@ set_text(Line* self, PyObject *args) {
 #define set_text_doc "set_text(src, offset, sz, cursor) -> Set the characters and attributes from the specified text and cursor"
     PyObject *src;
     Py_ssize_t offset, sz, limit;
-    char_type attrs;
     Cursor *cursor;
     int kind;
     void *buf;
@@ -452,7 +451,7 @@ set_text(Line* self, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, "Out of bounds offset/sz");
         return NULL;
     }
-    attrs = CURSOR_TO_ATTRS(cursor, 1);
+    CellAttrs attrs = cursor_to_attrs(cursor, 1);
     color_type fg = (cursor->fg & COL_MASK), bg = cursor->bg & COL_MASK;
     color_type dfg = cursor->decoration_fg & COL_MASK;
 
@@ -482,8 +481,7 @@ cursor_from(Line* self, PyObject *args) {
     ans = alloc_cursor();
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
     ans->x = x; ans->y = y;
-    char_type attrs = self->gpu_cells[x].attrs;
-    ATTRS_TO_CURSOR(attrs, ans);
+    attrs_to_cursor(self->gpu_cells[x].attrs, ans);
     ans->fg = self->gpu_cells[x].fg; ans->bg = self->gpu_cells[x].bg;
     ans->decoration_fg = self->gpu_cells[x].decoration_fg & COL_MASK;
 
@@ -492,11 +490,11 @@ cursor_from(Line* self, PyObject *args) {
 
 void
 line_clear_text(Line *self, unsigned int at, unsigned int num, char_type ch) {
-    attrs_type width = ch ? 1 : 0;
+    const uint16_t width = ch ? 1 : 0;
     for (index_type i = at; i < MIN(self->xnum, at + num); i++) {
         self->cpu_cells[i].ch = ch; memset(self->cpu_cells[i].cc_idx, 0, sizeof(self->cpu_cells[i].cc_idx));
         self->cpu_cells[i].hyperlink_id = 0;
-        self->gpu_cells[i].attrs = (self->gpu_cells[i].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
+        self->gpu_cells[i].attrs.bits.width = width;
     }
 }
 
@@ -512,10 +510,9 @@ clear_text(Line* self, PyObject *args) {
 
 void
 line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num, bool clear_char) {
-    char_type attrs = CURSOR_TO_ATTRS(cursor, 1);
+    CellAttrs attrs = cursor_to_attrs(cursor, 0);
     color_type fg = (cursor->fg & COL_MASK), bg = (cursor->bg & COL_MASK);
     color_type dfg = cursor->decoration_fg & COL_MASK;
-    if (!clear_char) attrs = attrs & ATTRS_MASK_WITHOUT_WIDTH;
 
     for (index_type i = at; i < self->xnum && i < at + num; i++) {
         if (clear_char) {
@@ -525,8 +522,9 @@ line_apply_cursor(Line *self, Cursor *cursor, unsigned int at, unsigned int num,
             self->gpu_cells[i].attrs = attrs;
             clear_sprite_position(self->gpu_cells[i]);
         } else {
-            attrs_type w = self->gpu_cells[i].attrs & WIDTH_MASK;
-            self->gpu_cells[i].attrs = attrs | w;
+            attrs.bits.width = self->gpu_cells[i].attrs.bits.width;
+            attrs.bits.mark = self->gpu_cells[i].attrs.bits.mark;
+            self->gpu_cells[i].attrs = attrs;
         }
         self->gpu_cells[i].fg = fg; self->gpu_cells[i].bg = bg;
         self->gpu_cells[i].decoration_fg = dfg;
@@ -549,11 +547,10 @@ void line_right_shift(Line *self, unsigned int at, unsigned int num) {
         COPY_SELF_CELL(i - num, i)
     }
     // Check if a wide character was split at the right edge
-    char_type w = (self->gpu_cells[self->xnum - 1].attrs) & WIDTH_MASK;
-    if (w != 1) {
+    if (self->gpu_cells[self->xnum - 1].attrs.bits.width != 1) {
         self->cpu_cells[self->xnum - 1].ch = BLANK_CHAR;
         self->cpu_cells[self->xnum - 1].hyperlink_id = 0;
-        self->gpu_cells[self->xnum - 1].attrs = BLANK_CHAR ? 1 : 0;
+        self->gpu_cells[self->xnum - 1].attrs = (CellAttrs){.bits={.width=BLANK_CHAR ? 1 : 0}};
         clear_sprite_position(self->gpu_cells[self->xnum - 1]);
     }
 }
@@ -589,7 +586,7 @@ left_shift(Line *self, PyObject *args) {
 char_type
 line_get_char(Line *self, index_type at) {
     char_type ch = self->cpu_cells[at].ch;
-    if (!ch && at > 0 && (self->gpu_cells[at-1].attrs & WIDTH_MASK) > 1) ch = self->cpu_cells[at-1].ch;
+    if (!ch && at > 0 && (self->gpu_cells[at-1].attrs.bits.width) > 1) ch = self->cpu_cells[at-1].ch;
     return ch;
 }
 
@@ -597,9 +594,9 @@ void
 line_set_char(Line *self, unsigned int at, uint32_t ch, unsigned int width, Cursor *cursor, hyperlink_id_type hyperlink_id) {
     GPUCell *g = self->gpu_cells + at;
     if (cursor == NULL) {
-        g->attrs = (self->gpu_cells[at].attrs & ATTRS_MASK_WITHOUT_WIDTH) | width;
+        g->attrs.bits.width = width;
     } else {
-        g->attrs = CURSOR_TO_ATTRS(cursor, width & WIDTH_MASK);
+        g->attrs = cursor_to_attrs(cursor, width);
         g->fg = cursor->fg & COL_MASK;
         g->bg = cursor->bg & COL_MASK;
         g->decoration_fg = cursor->decoration_fg & COL_MASK;
@@ -629,10 +626,12 @@ set_char(Line *self, PyObject *args) {
 static PyObject*
 set_attribute(Line *self, PyObject *args) {
 #define set_attribute_doc "set_attribute(which, val) -> Set the attribute on all cells in the line."
-    unsigned int shift, val;
-    if (!PyArg_ParseTuple(args, "II", &shift, &val)) return NULL;
-    if (shift < DECORATION_SHIFT || shift > DIM_SHIFT) { PyErr_SetString(PyExc_ValueError, "Unknown attribute"); return NULL; }
-    set_attribute_on_line(self->gpu_cells, shift, val, self->xnum);
+    unsigned int val;
+    char *which;
+    if (!PyArg_ParseTuple(args, "sI", &which, &val)) return NULL;
+    if (!set_named_attribute_on_line(self->gpu_cells, which, val, self->xnum)) {
+        PyErr_SetString(PyExc_KeyError, "Unknown cell attribute"); return NULL;
+    }
     Py_RETURN_NONE;
 }
 
@@ -669,32 +668,22 @@ cell_as_sgr(const GPUCell *cell, const GPUCell *prev) {
 #define SZ sizeof(buf) - (p - buf) - 2
 #define P(s) { size_t len = strlen(s); if (SZ > len) { memcpy(p, s, len); p += len; } }
     char *p = buf;
-#define CMP(attr) (attr(cell) != attr(prev))
-#define BOLD(cell) (cell->attrs & (1 << BOLD_SHIFT))
-#define DIM(cell) (cell->attrs & (1 << DIM_SHIFT))
-#define ITALIC(cell) (cell->attrs & (1 << ITALIC_SHIFT))
-#define REVERSE(cell) (cell->attrs & (1 << REVERSE_SHIFT))
-#define STRIKETHROUGH(cell) (cell->attrs & (1 << STRIKE_SHIFT))
-#define DECORATION(cell) (cell->attrs & (DECORATION_MASK << DECORATION_SHIFT))
-    bool intensity_differs = CMP(BOLD) || CMP(DIM);
+#define CA cell->attrs.bits
+#define PA prev->attrs.bits
+    bool intensity_differs = CA.bold != PA.bold || CA.dim != PA.dim;
     if (intensity_differs) {
-        if (!BOLD(cell) && !DIM(cell)) { P("22;"); }
-        else { if (BOLD(cell)) P("1;"); if (DIM(cell)) P("2;"); }
+        if (!CA.bold && !CA.dim) { P("22;"); }
+        else { if (CA.bold) P("1;"); if (CA.dim) P("2;"); }
     }
-    if (CMP(ITALIC)) P(ITALIC(cell) ? "3;" : "23;");
-    if (CMP(REVERSE)) P(REVERSE(cell) ? "7;" : "27;");
-    if (CMP(STRIKETHROUGH)) P(STRIKETHROUGH(cell) ? "9;" : "29;");
+    if (CA.italic != PA.italic) P(CA.italic ? "3;" : "23;");
+    if (CA.reverse != PA.reverse) P(CA.reverse ? "7;" : "27;");
+    if (CA.strike != PA.strike) P(CA.strike ? "9;" : "29;");
     if (cell->fg != prev->fg) p += color_as_sgr(p, SZ, cell->fg, 30, 90, 38);
     if (cell->bg != prev->bg) p += color_as_sgr(p, SZ, cell->bg, 40, 100, 48);
     if (cell->decoration_fg != prev->decoration_fg) p += color_as_sgr(p, SZ, cell->decoration_fg, 0, 0, DECORATION_FG_CODE);
-    if (CMP(DECORATION)) P(decoration_as_sgr((cell->attrs >> DECORATION_SHIFT) & DECORATION_MASK));
-#undef CMP
-#undef BOLD
-#undef DIM
-#undef ITALIC
-#undef REVERSE
-#undef STRIKETHROUGH
-#undef DECORATION
+    if (CA.decoration != PA.decoration) P(decoration_as_sgr(CA.decoration));
+#undef PA
+#undef CA
 #undef P
 #undef SZ
     if (p > buf) *(p - 1) = 0;  // remove trailing semi-colon
@@ -714,9 +703,9 @@ __eq__(Line *a, Line *b) {
 }
 
 bool
-line_has_mark(Line *line, attrs_type mark) {
+line_has_mark(Line *line, uint16_t mark) {
     for (index_type x = 0; x < line->xnum; x++) {
-        attrs_type m = (line->gpu_cells[x].attrs >> MARK_SHIFT) & MARK_MASK;
+        const uint16_t m = line->gpu_cells[x].attrs.bits.mark;
         if (m && (!mark || mark == m)) return true;
     }
     return false;
@@ -731,8 +720,8 @@ report_marker_error(PyObject *marker) {
 }
 
 static void
-apply_mark(Line *line, const attrs_type mark, index_type *cell_pos, unsigned int *match_pos) {
-#define MARK { line->gpu_cells[x].attrs &= ATTRS_MASK_WITHOUT_MARK; line->gpu_cells[x].attrs |= mark; }
+apply_mark(Line *line, const uint16_t mark, index_type *cell_pos, unsigned int *match_pos) {
+#define MARK { line->gpu_cells[x].attrs.bits.mark = mark; }
     index_type x = *cell_pos;
     MARK;
     (*match_pos)++;
@@ -744,7 +733,7 @@ apply_mark(Line *line, const attrs_type mark, index_type *cell_pos, unsigned int
                 num_cells_to_skip_for_tab--;
                 MARK;
             }
-        } else if ((line->gpu_cells[x].attrs & WIDTH_MASK) > 1 && x + 1 < line->xnum && !line->cpu_cells[x+1].ch) {
+        } else if ((line->gpu_cells[x].attrs.bits.width) > 1 && x + 1 < line->xnum && !line->cpu_cells[x+1].ch) {
             x++;
             MARK;
         } else {
@@ -773,28 +762,28 @@ apply_marker(PyObject *marker, Line *line, const PyObject *text) {
         while (match_pos < l && x < line->xnum) {
             apply_mark(line, 0, &x, &match_pos);
         }
-        attrs_type am = (col & MARK_MASK) << MARK_SHIFT;
+        uint16_t am = (col & MARK_MASK);
         while(x < line->xnum && match_pos <= r) {
             apply_mark(line, am, &x, &match_pos);
         }
 
     }
     Py_DECREF(iter);
-    while(x < line->xnum) line->gpu_cells[x++].attrs &= ATTRS_MASK_WITHOUT_MARK;
+    while(x < line->xnum) line->gpu_cells[x++].attrs.bits.mark = 0;
     if (PyErr_Occurred()) report_marker_error(marker);
 }
 
 void
 mark_text_in_line(PyObject *marker, Line *line) {
     if (!marker) {
-        for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs &= ATTRS_MASK_WITHOUT_MARK;
+        for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs.bits.mark = 0;
         return;
     }
     PyObject *text = line_as_unicode(line, false);
     if (PyUnicode_GET_LENGTH(text) > 0) {
         apply_marker(marker, line, text);
     } else {
-        for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs &= ATTRS_MASK_WITHOUT_MARK;
+        for (index_type i = 0; i < line->xnum; i++)  line->gpu_cells[i].attrs.bits.mark = 0;
     }
     Py_DECREF(text);
 }

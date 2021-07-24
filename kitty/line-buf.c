@@ -161,24 +161,21 @@ line(LineBuf *self, PyObject *y) {
 
 unsigned int
 linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
-    return (gpu_lineptr(self, self->line_map[y])[x].attrs) & WIDTH_MASK;
-}
-
-void
-linebuf_set_attribute(LineBuf *self, unsigned int shift, unsigned int val) {
-    for (index_type y = 0; y < self->ynum; y++) {
-        set_attribute_on_line(gpu_lineptr(self, y), shift, val, self->xnum);
-        self->line_attrs[y].bits.has_dirty_text = true;
-    }
+    return gpu_lineptr(self, self->line_map[y])[x].attrs.bits.width;
 }
 
 static PyObject*
 set_attribute(LineBuf *self, PyObject *args) {
 #define set_attribute_doc "set_attribute(which, val) -> Set the attribute on all cells in the line."
-    unsigned int shift, val;
-    if (!PyArg_ParseTuple(args, "II", &shift, &val)) return NULL;
-    if (shift < DECORATION_SHIFT || shift > DIM_SHIFT) { PyErr_SetString(PyExc_ValueError, "Unknown attribute"); return NULL; }
-    linebuf_set_attribute(self, shift, val);
+    unsigned int val;
+    char *which;
+    if (!PyArg_ParseTuple(args, "sI", &which, &val)) return NULL;
+    for (index_type y = 0; y < self->ynum; y++) {
+        if (!set_named_attribute_on_line(gpu_lineptr(self, y), which, val, self->xnum)) {
+            PyErr_SetString(PyExc_KeyError, "Unknown cell attribute"); return NULL;
+        }
+        self->line_attrs[y].bits.has_dirty_text = true;
+    }
     Py_RETURN_NONE;
 }
 

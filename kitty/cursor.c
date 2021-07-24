@@ -138,12 +138,9 @@ END_ALLOW_CASE_RANGE
 void
 apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, unsigned int count) {
 #define RANGE for(unsigned c = 0; c < cell_count; c++, cell++)
-#define SET(shift) RANGE { cell->attrs |= (1 << shift); } break;
-#define RESET(shift) RANGE { cell->attrs &= ~(1 << shift); } break;
-#define RESET2(shift1, shift2) RANGE { cell->attrs &= ~((1 << shift1) | (1 << shift2)); } break;
-#define SETM(val, mask, shift) { RANGE { cell->attrs &= ~(mask << shift); cell->attrs |= ((val) << shift); } break; }
 #define SET_COLOR(which) { color_type color = 0; parse_color(params, &i, count, &color); if (color) { RANGE { cell->which = color; }} } break;
 #define SIMPLE(which, val) RANGE { cell->which = (val); } break;
+#define S(which, val) RANGE { cell->attrs.bits.which = (val); } break;
 
     unsigned int i = 0, attr;
     if (!count) { params[0] = 0; count = 1; }
@@ -151,34 +148,38 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
         GPUCell *cell = first_cell;
         attr = params[i++];
         switch(attr) {
-            case 0:
-                RANGE { cell->attrs &= WIDTH_MASK; cell->fg = 0; cell->bg = 0; cell->decoration_fg = 0; }
+            case 0: {
+                const CellAttrs remove_sgr_mask = {.val=~SGR_MASK};
+                RANGE { cell->attrs.val &= remove_sgr_mask.val; cell->fg = 0; cell->bg = 0; cell->decoration_fg = 0; }
+            }
                 break;
             case 1:
-                SET(BOLD_SHIFT);
+                S(bold, true);
             case 2:
-                SET(DIM_SHIFT);
+                S(dim, true);
             case 3:
-                SET(ITALIC_SHIFT);
-            case 4:
-                if (i < count) { uint8_t val = MIN(3, params[i]); i++; SETM(val, DECORATION_MASK, DECORATION_SHIFT); }
-                else { SETM(1, DECORATION_MASK, DECORATION_SHIFT); }
+                S(italic, true);
+            case 4: {
+                uint8_t val = 1;
+                if (i < count) { val = MIN(3, params[i]); i++; }
+                S(decoration, val);
+            }
             case 7:
-                SET(REVERSE_SHIFT);
+                S(reverse, true);
             case 9:
-                SET(STRIKE_SHIFT);
+                S(strike, true);
             case 21:
-                SETM(2, DECORATION_MASK, DECORATION_SHIFT);
+                S(decoration, 2);
             case 22:
-                RESET2(DIM_SHIFT, BOLD_SHIFT);
+                RANGE { cell->attrs.bits.bold = false; cell->attrs.bits.dim = false; } break;
             case 23:
-                RESET(ITALIC_SHIFT);
+                S(italic, false);
             case 24:
-                SETM(0, DECORATION_MASK, DECORATION_SHIFT);
+                S(decoration, 0);
             case 27:
-                RESET(REVERSE_SHIFT);
+                S(reverse, false);
             case 29:
-                RESET(STRIKE_SHIFT);
+                S(strike, false);
 START_ALLOW_CASE_RANGE
             case 30 ... 37:
                 SIMPLE(fg, ((attr - 30) << 8) | 1);
@@ -203,18 +204,16 @@ END_ALLOW_CASE_RANGE
                 SIMPLE(decoration_fg, 0);
         }
     }
-#undef RESET
-#undef RESET2
 #undef SET_COLOR
-#undef SET
-#undef SETM
 #undef RANGE
+#undef SIMPLE
+#undef S
 }
 
 const char*
 cursor_as_sgr(const Cursor *self) {
     GPUCell blank_cell = { 0 }, cursor_cell = {
-        .attrs = CURSOR_TO_ATTRS(self, 1),
+        .attrs = cursor_to_attrs(self, 1),
         .fg = self->fg & COL_MASK,
         .bg = self->bg & COL_MASK,
         .decoration_fg = self->decoration_fg & COL_MASK,

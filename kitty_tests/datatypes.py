@@ -7,7 +7,7 @@ import tempfile
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
-    REVERSE, ColorProfile, Cursor as C, HistoryBuf, LineBuf,
+    ColorProfile, Cursor as C, HistoryBuf, LineBuf,
     parse_input_from_terminal, truncate_point_for_length, wcswidth, wcwidth
 )
 from kitty.rgb import to_color
@@ -51,7 +51,7 @@ class TestDataTypes(BaseTest):
         self.ae(new.line(0), old.line(1))
         new.clear()
         self.ae(str(new.line(0)), '')
-        old.set_attribute(REVERSE, False)
+        old.set_attribute('reverse', False)
         for y in range(old.ynum):
             for x in range(old.xnum):
                 l0 = old.line(y)
