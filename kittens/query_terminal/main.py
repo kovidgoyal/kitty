@@ -87,7 +87,7 @@ class TerminalVersion(Query):
 @query
 class AllowHyperlinks(Query):
     name: str = 'allow_hyperlinks'
-    help_text: str = 'yes, no or ask'
+    help_text: str = 'The :opt:`setting <allow_hyperlinks>` for allowing hyperlinks can be yes, no or ask'
 
     @staticmethod
     def get_result(opts: Options) -> str:
@@ -150,6 +150,16 @@ class FontSize(Query):
     @staticmethod
     def get_result(opts: Options) -> str:
         return f'{opts.font_size:g}'
+
+
+@query
+class ClipboardControl(Query):
+    name: str = 'clipboard_control'
+    help_text: str = 'The :opt:`setting <clipboard_control>` for allowing reads/writes to/from the clipboard'
+
+    @staticmethod
+    def get_result(opts: Options) -> str:
+        return ' '.join(opts.clipboard_control)
 
 
 def get_result(name: str) -> Optional[str]:
