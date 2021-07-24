@@ -75,6 +75,7 @@ class PipeData(TypedDict):
 class ClipboardPending(NamedTuple):
     where: str
     data: str
+    truncated: bool = False
 
 
 class DynamicColor(IntEnum):
@@ -792,14 +793,18 @@ class Window:
                 self.clipboard_pending = self.clipboard_pending._replace(data=self.clipboard_pending[1] + text)
                 if len(self.clipboard_pending.data) > 8 * 1024 * 1024:
                     log_error('Discarding part of too large OSC 52 paste request')
-                    self.clipboard_pending = self.clipboard_pending._replace(data='')
+                    self.clipboard_pending = self.clipboard_pending._replace(data='', truncated=True)
             return
 
         if not where:
             if self.clipboard_pending is not None:
                 text = self.clipboard_pending.data + text
                 where = self.clipboard_pending.where
-                self.clipboard_pending = None
+                try:
+                    if self.clipboard_pending.truncated:
+                        return
+                finally:
+                    self.clipboard_pending = None
             else:
                 where = 's0'
         cc = get_options().clipboard_control
