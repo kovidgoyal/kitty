@@ -107,6 +107,9 @@ class Handler:
     def on_eot(self) -> None:
         pass
 
+    def on_writing_finished(self) -> None:
+        pass
+
     def on_kitty_cmd_response(self, response: Dict) -> None:
         pass
 

@@ -19,6 +19,7 @@ class Clipboard(Handler):
         self.args = args
         self.clipboard_contents: Optional[str] = None
         self.data_to_send = data_to_send
+        self.quit_on_write = False
 
     def initialize(self) -> None:
         if self.data_to_send is not None:
@@ -30,9 +31,13 @@ class Clipboard(Handler):
                 self.print('\x1bP+q544e\x1b\\', end='')
                 self.print('Waiting for completion...')
                 return
-            self.quit_loop(0)
+            self.quit_on_write = True
             return
         self.cmd.request_from_clipboard(self.args.use_primary)
+
+    def on_writing_finished(self) -> None:
+        if self.quit_on_write:
+            self.quit_loop(0)
 
     def on_clipboard_response(self, text: str, from_primary: bool = False) -> None:
         self.clipboard_contents = text

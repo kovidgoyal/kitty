@@ -67,6 +67,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   use the family name as the full face name of the regular font not working
   (:iss:`3861`)
 
+- clipboard kitten: fix copies to clipboard not working without the
+  :option:`kitty +kitten clipboard --wait-for-completion` option
+
 
 0.21.2 [2021-06-28]
 ----------------------

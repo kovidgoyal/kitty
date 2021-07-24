@@ -343,6 +343,7 @@ class Loop:
             self.write_buf: List[bytes] = []
             self.asycio_loop.remove_writer(fd)
             self.waiting_for_writes = False
+            handler.on_writing_finished()
         else:
             consumed = 0
             for i, buf in enumerate(self.write_buf):
