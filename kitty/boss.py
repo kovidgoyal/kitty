@@ -532,13 +532,13 @@ class Boss:
         for window in tab:
             self.close_window(window)
 
-    def toggle_fullscreen(self) -> None:
-        '@ac:win: Toggle the fullscreen status of the active OS Window'
-        toggle_fullscreen()
+    def toggle_fullscreen(self, os_window_id: int = 0) -> None:
+        '@ac:win: Toggle the fullscreen status of the specified or the active OS Window'
+        toggle_fullscreen(os_window_id)
 
-    def toggle_maximized(self) -> None:
-        '@ac:win: Toggle the maximized status of the active OS Window'
-        toggle_maximized()
+    def toggle_maximized(self, os_window_id: int = 0) -> None:
+        '@ac:win: Toggle the maximized status of the specified or the active OS Window'
+        toggle_maximized(os_window_id)
 
     def start(self, first_os_window_id: int) -> None:
         if not getattr(self, 'io_thread_started', False):
