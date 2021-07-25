@@ -28,6 +28,7 @@ from .typing import AddressFamily, PopenType, Socket, StartupCtx
 
 if TYPE_CHECKING:
     from .options.types import Options
+    from .fast_data_types import OSWindowSize
 else:
     Options = object
 
@@ -692,3 +693,23 @@ class SSHConnectionData(NamedTuple):
     binary: str
     hostname: str
     port: Optional[int] = None
+
+
+def get_new_os_window_size(
+    metrics: 'OSWindowSize', width: int, height: int, unit: str, incremental: bool = False, has_window_scaling: bool = True
+) -> Tuple[int, int]:
+    if unit == 'cells':
+        cw = metrics['cell_width']
+        ch = metrics['cell_height']
+        if has_window_scaling:
+            cw = int(cw / metrics['xscale'])
+            ch = int(ch / metrics['yscale'])
+        width *= cw
+        height *= ch
+    if incremental:
+        w = metrics['width'] + width
+        h = metrics['height'] + height
+    else:
+        w = width or metrics['width']
+        h = height or metrics['height']
+    return w, h

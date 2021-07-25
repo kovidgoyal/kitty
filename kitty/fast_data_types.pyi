@@ -1202,6 +1202,8 @@ class OSWindowSize(TypedDict):
     yscale: float
     xdpi: float
     ydpi: float
+    cell_width: int
+    cell_height: int
 
 
 def get_os_window_size(os_window_id: int) -> Optional[OSWindowSize]:

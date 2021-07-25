@@ -32,11 +32,12 @@ from .fast_data_types import (
     background_opacity_of, change_background_opacity, change_os_window_state,
     cocoa_set_menubar_title, create_os_window,
     current_application_quit_request, current_os_window, destroy_global_data,
-    focus_os_window, get_clipboard_string, get_options, global_font_size,
-    mark_os_window_for_close, os_window_font_size, patch_global_colors,
-    safe_pipe, set_application_quit_request, set_background_image, set_boss,
-    set_clipboard_string, set_in_sequence_mode, set_options, thread_write,
-    toggle_fullscreen, toggle_maximized
+    focus_os_window, get_clipboard_string, get_options, get_os_window_size,
+    global_font_size, mark_os_window_for_close, os_window_font_size,
+    patch_global_colors, safe_pipe, set_application_quit_request,
+    set_background_image, set_boss, set_clipboard_string, set_in_sequence_mode,
+    set_options, set_os_window_size, thread_write, toggle_fullscreen,
+    toggle_maximized
 )
 from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
@@ -52,10 +53,11 @@ from .tabs import (
 from .types import SingleKey
 from .typing import PopenType, TypedDict
 from .utils import (
-    func_name, get_editor, get_primary_selection, is_path_in_temp_dir,
-    log_error, open_url, parse_address_spec, parse_uri_list,
-    platform_window_id, read_shell_environment, remove_socket_file, safe_print,
-    set_primary_selection, single_instance, startup_notification_handler
+    func_name, get_editor, get_new_os_window_size, get_primary_selection,
+    is_path_in_temp_dir, log_error, open_url, parse_address_spec,
+    parse_uri_list, platform_window_id, read_shell_environment,
+    remove_socket_file, safe_print, set_primary_selection, single_instance,
+    startup_notification_handler
 )
 from .window import MatchPatternType, Window
 
@@ -533,11 +535,11 @@ class Boss:
             self.close_window(window)
 
     def toggle_fullscreen(self, os_window_id: int = 0) -> None:
-        '@ac:win: Toggle the fullscreen status of the specified or the active OS Window'
+        '@ac:win: Toggle the fullscreen status of the active OS Window'
         toggle_fullscreen(os_window_id)
 
     def toggle_maximized(self, os_window_id: int = 0) -> None:
-        '@ac:win: Toggle the maximized status of the specified or the active OS Window'
+        '@ac:win: Toggle the maximized status of the active OS Window'
         toggle_maximized(os_window_id)
 
     def start(self, first_os_window_id: int) -> None:
@@ -783,6 +785,16 @@ class Boss:
             tab.reset_window_sizes()
             return None
         return tab.resize_window_by(window.id, increment, is_horizontal)
+
+    def resize_os_window(self, os_window_id: int, width: int, height: int, unit: str, incremental: bool = False) -> None:
+        if not incremental and (width < 0 or height < 0):
+            return
+        metrics = get_os_window_size(os_window_id)
+        if metrics is None:
+            return
+        has_window_scaling = is_macos or is_wayland()
+        w, h = get_new_os_window_size(metrics, width, height, unit, incremental, has_window_scaling)
+        set_os_window_size(os_window_id, w, h)
 
     def default_bg_changed_for(self, window_id: int) -> None:
         w = self.window_id_map.get(window_id)

@@ -1,0 +1,102 @@
+#!/usr/bin/env python
+# vim:fileencoding=utf-8
+# License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
+
+from typing import TYPE_CHECKING, Optional
+
+from .base import (
+    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType,
+    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+)
+
+if TYPE_CHECKING:
+    from kitty.cli_stub import ResizeOSWindowRCOptions as CLIOptions
+
+
+class ResizeOSWindow(RemoteCommand):
+    '''
+    match: Which window to resize
+    self: Boolean indicating whether to close the window the command is run in
+    incremental: Boolean indicating whether to adjust the size incrementally
+    action: One of :code:`resize, toggle-fullscreen` or :code:`toggle-maximized`
+    unit: One of :code:`cells` or :code:`pixels`
+    width: Integer indicating desired window width
+    height: Integer indicating desired window height
+    '''
+
+    short_desc = 'Resize the specified OS Window'
+    desc = (
+        'Resize the specified OS Window.'
+        ' Note that some window managers/environments do not allow applications to resize'
+        ' their windows, for example, tiling window managers.'
+    )
+    options_spec = MATCH_WINDOW_OPTION + '''\n
+--action
+default=resize
+choices=resize,toggle-fullscreen,toggle-maximized
+The action to perform.
+
+
+--unit
+default=cells
+choices=cells,pixels
+The unit in which to interpret specified sizes
+
+
+--width
+default=0
+type=int
+Change the width of the window. Zero leaves the width unchanged.
+
+
+--height
+default=0
+type=int
+Change the height of the window. Zero leaves the height unchanged.
+
+
+--incremental
+type=bool-set
+Treat the specified sizes as increments on the existing window size
+instead of absolute sizes.
+
+
+--self
+type=bool-set
+If specified resize the window this command is run in, rather than the active window.
+
+
+--no-response
+type=bool-set
+default=false
+Don't wait for a response indicating the success of the action. Note that
+using this option means that you will not be notified of failures.
+'''
+    argspec = ''
+
+    def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
+        if opts.no_response:
+            global_opts.no_command_response = True
+        return {
+            'match': opts.match, 'action': opts.action, 'unit': opts.unit,
+            'width': opts.width, 'height': opts.height, 'self': opts.self,
+            'incremental': opts.incremental
+        }
+
+    def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
+        windows = self.windows_for_match_payload(boss, window, payload_get)
+        if windows:
+            ac = payload_get('action')
+            for os_window_id in {w.os_window_id for w in windows}:
+                if ac == 'resize':
+                    boss.resize_os_window(
+                        os_window_id, width=payload_get('width'), height=payload_get('height'),
+                        unit=payload_get('unit'), incremental=payload_get('incremental')
+                    )
+                elif ac == 'toggle-fullscreen':
+                    boss.toggle_fullscreen(os_window_id)
+                elif ac == 'toggle-maximized':
+                    boss.toggle_maximized(os_window_id)
+
+
+resize_os_window = ResizeOSWindow()

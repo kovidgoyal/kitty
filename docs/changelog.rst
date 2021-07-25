@@ -26,6 +26,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   could cause incorrect parsing if either the pending buffer capacity or the
   pending timeout were exceeded (:iss:`3779`)
 
+- A new remote control command to :program:`resize the OS Window <kitty @
+  resize-os-window>`
+
 - Graphics protocol: Add support for composing rectangles from one animation
   frame onto another (:iss:`3809`)
 
