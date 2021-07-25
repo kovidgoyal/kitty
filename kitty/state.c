@@ -871,6 +871,34 @@ PYWRAP1(os_window_font_size) {
     return Py_BuildValue("d", 0.0);
 }
 
+PYWRAP1(set_os_window_size) {
+    id_type os_window_id;
+    int width, height;
+    PA("Kii", &os_window_id, &width, &height);
+    WITH_OS_WINDOW(os_window_id)
+        set_os_window_size(os_window, width, height);
+        Py_RETURN_TRUE;
+    END_WITH_OS_WINDOW
+    Py_RETURN_FALSE;
+}
+
+PYWRAP1(get_os_window_size) {
+    id_type os_window_id;
+    PA("K", &os_window_id);
+    WITH_OS_WINDOW(os_window_id)
+        double xdpi, ydpi;
+        float xscale, yscale;
+        int width, height, fw, fh;
+        get_os_window_size(os_window, &width, &height, &fw, &fh);
+        get_os_window_content_scale(os_window, &xdpi, &ydpi, &xscale, &yscale);
+        return Py_BuildValue("{si si si si sf sf sd sd}",
+            "width", width, "height", height, "framebuffer_width", fw, "framebuffer_height", fh,
+            "xscale", xscale, "yscale", yscale, "xdpi", xdpi, "ydpi", ydpi);
+    END_WITH_OS_WINDOW
+    Py_RETURN_NONE;
+}
+
+
 PYWRAP1(set_boss) {
     Py_CLEAR(global_state.boss);
     global_state.boss = args;
@@ -1066,6 +1094,8 @@ static PyMethodDef module_methods[] = {
     MW(global_font_size, METH_VARARGS),
     MW(set_background_image, METH_VARARGS),
     MW(os_window_font_size, METH_VARARGS),
+    MW(set_os_window_size, METH_VARARGS),
+    MW(get_os_window_size, METH_VARARGS),
     MW(set_boss, METH_O),
     MW(get_boss, METH_NOARGS),
     MW(apply_options_update, METH_NOARGS),

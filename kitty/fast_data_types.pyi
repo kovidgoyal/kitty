@@ -1187,3 +1187,22 @@ def mouse_selection(os_window_id: int, tab_id: int, window_id: int, code: int, b
 
 def apply_options_update() -> None:
     pass
+
+
+def set_os_window_size(os_window_id: int, x: int, y: int) -> bool:
+    pass
+
+
+class OSWindowSize(TypedDict):
+    width: int
+    height: int
+    framebuffer_width: int
+    framebuffer_height: int
+    xscale: float
+    yscale: float
+    xdpi: float
+    ydpi: float
+
+
+def get_os_window_size(os_window_id: int) -> Optional[OSWindowSize]:
+    pass

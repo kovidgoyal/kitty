@@ -481,6 +481,16 @@ make_os_window_context_current(OSWindow *w) {
     }
 }
 
+void
+get_os_window_size(OSWindow *os_window, int *w, int *h, int *fw, int *fh) {
+    if (w && h) glfwGetWindowSize(os_window->handle, w, h);
+    if (fw && fh) glfwGetFramebufferSize(os_window->handle, fw, fh);
+}
+
+void
+set_os_window_size(OSWindow *os_window, int x, int y) {
+    glfwSetWindowSize(os_window->handle, x, y);
+}
 
 static inline void
 get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
@@ -506,6 +516,11 @@ static void
 get_window_dpi(GLFWwindow *w, double *x, double *y) {
     float xscale, yscale;
     get_window_content_scale(w, &xscale, &yscale, x, y);
+}
+
+void
+get_os_window_content_scale(OSWindow *os_window, double *xdpi, double *ydpi, float *xscale, float *yscale) {
+    get_window_content_scale(os_window->handle, xscale, yscale, xdpi, ydpi);
 }
 
 static void
@@ -1253,7 +1268,6 @@ cocoa_window_id(PyObject UNUSED *self, PyObject *os_wid) {
     return NULL;
 #endif
 }
-
 static PyObject*
 get_primary_selection(PYNOARG) {
     if (glfwGetPrimarySelectionString) {
