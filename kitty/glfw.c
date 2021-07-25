@@ -502,7 +502,7 @@ get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xd
     *ydpi = *yscale * factor;
 }
 
-static inline void
+static void
 get_window_dpi(GLFWwindow *w, double *x, double *y) {
     float xscale, yscale;
     get_window_content_scale(w, &xscale, &yscale, x, y);
@@ -513,7 +513,7 @@ set_os_window_dpi(OSWindow *w) {
     get_window_dpi(w->handle, &w->logical_dpi_x, &w->logical_dpi_y);
 }
 
-static inline bool
+static bool
 do_toggle_fullscreen(OSWindow *w) {
     int width, height, x, y;
     glfwGetWindowSize(w->handle, &width, &height);
@@ -534,9 +534,9 @@ static bool
 toggle_fullscreen_for_os_window(OSWindow *w) {
     if (w && w->handle) {
 #ifdef __APPLE__
-    if (!OPT(macos_traditional_fullscreen)) return glfwToggleFullscreen(w->handle, 1);
+        if (!OPT(macos_traditional_fullscreen)) return glfwToggleFullscreen(w->handle, 1);
 #endif
-    return do_toggle_fullscreen(w);
+        return do_toggle_fullscreen(w);
     }
     return false;
 }

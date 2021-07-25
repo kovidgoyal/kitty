@@ -396,7 +396,16 @@ _glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
     return !already_fullscreen;
 }
 
-static void xdgToplevelHandleConfigure(void* data,
+static void
+inform_compositor_of_window_geometry(_GLFWwindow *window, const char *event) {
+#define geometry window->wl.decorations.geometry
+    debug("Setting window geometry in %s event: x=%d y=%d %dx%d\n", event, geometry.x, geometry.y, geometry.width, geometry.height);
+    xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
+#undef geometry
+}
+
+static void
+xdgToplevelHandleConfigure(void* data,
                                        struct xdg_toplevel* toplevel UNUSED,
                                        int32_t width,
                                        int32_t height,
@@ -452,10 +461,7 @@ static void xdgToplevelHandleConfigure(void* data,
     _glfwInputWindowFocus(window, window->wl.toplevel_states & TOPLEVEL_STATE_ACTIVATED);
     ensure_csd_resources(window);
     wl_surface_commit(window->wl.surface);
-#define geometry window->wl.decorations.geometry
-    debug("Setting window geometry: x=%d y=%d %dx%d\n", geometry.x, geometry.y, geometry.width, geometry.height);
-    xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
-#undef geometry
+    inform_compositor_of_window_geometry(window, "configure");
     if (live_resize_done) _glfwInputLiveResize(window, false);
 }
 
@@ -872,6 +878,7 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
         resizeFramebuffer(window);
         ensure_csd_resources(window);
         wl_surface_commit(window->wl.surface);
+        inform_compositor_of_window_geometry(window, "SetWindowSize");
     }
 }
 
