@@ -803,13 +803,6 @@ grman_update_layers(GraphicsManager *self, unsigned int scrolled_by, float scree
 
 // Animation {{{
 #define DEFAULT_GAP 40
-#define _frame_number num_lines
-#define _other_frame_number num_cells
-#define _gap z_index
-#define _animation_state data_width
-#define _blend_mode cell_x_offset
-#define _bgcolor cell_y_offset
-#define _loop_count data_height
 
 static inline Frame*
 current_frame(Image *img) {
@@ -1048,10 +1041,10 @@ reference_chain_too_large(Image *img, const Frame *frame) {
 
 static Image*
 handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, Image *img, const uint8_t *payload, bool *is_dirty) {
-    uint32_t frame_number = g->_frame_number, fmt = g->format ? g->format : RGBA;
+    uint32_t frame_number = g->frame_number, fmt = g->format ? g->format : RGBA;
     if (!frame_number || frame_number > img->extra_framecnt + 2) frame_number = img->extra_framecnt + 2;
     bool is_new_frame = frame_number == img->extra_framecnt + 2;
-    g->_frame_number = frame_number;
+    g->frame_number = frame_number;
     unsigned char tt = g->transmission_type ? g->transmission_type : 'd';
     if (tt == 'd' && self->currently_loading.loading_for.image_id == img->internal_id) {
         INIT_CHUNKED_LOAD;
@@ -1085,9 +1078,9 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         .x = g->x_offset, .y = g->y_offset,
         .is_4byte_aligned = load_data->is_4byte_aligned,
         .is_opaque = load_data->is_opaque,
-        .alpha_blend = g->_blend_mode != 1 && !load_data->is_opaque,
-        .gap = g->_gap > 0 ? g->_gap : (g->_gap < 0) ? 0 : DEFAULT_GAP,
-        .bgcolor = g->_bgcolor,
+        .alpha_blend = g->blend_mode != 1 && !load_data->is_opaque,
+        .gap = g->gap > 0 ? g->gap : (g->gap < 0) ? 0 : DEFAULT_GAP,
+        .bgcolor = g->bgcolor,
     };
     Frame *frame;
     if (is_new_frame) {
@@ -1098,11 +1091,11 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
         img->extra_framecnt++;
         frame = img->extra_frames + frame_number - 2;
         const ImageAndFrame key = { .image_id = img->internal_id, .frame_id = transmitted_frame.id };
-        if (g->_other_frame_number) {
-            Frame *other_frame = frame_for_number(img, g->_other_frame_number);
+        if (g->other_frame_number) {
+            Frame *other_frame = frame_for_number(img, g->other_frame_number);
             if (!other_frame) {
                 img->extra_framecnt--;
-                ABRT("EINVAL", "No frame with number: %u found", g->_other_frame_number);
+                ABRT("EINVAL", "No frame with number: %u found", g->other_frame_number);
             }
             if (other_frame->base_frame_id && reference_chain_too_large(img, other_frame)) {
                 // since there is a long reference chain to render this frame, make
@@ -1141,7 +1134,7 @@ handle_animation_frame_load_command(GraphicsManager *self, GraphicsCommand *g, I
     } else {
         frame = frame_for_number(img, frame_number);
         if (!frame) ABRT("EINVAL", "No frame with number: %u found", frame_number);
-        if (g->_gap != 0) change_gap(img, frame, transmitted_frame.gap);
+        if (g->gap != 0) change_gap(img, frame, transmitted_frame.gap);
         CoalescedFrameData cfd = get_coalesced_frame_data(self, img, frame);
         if (!cfd.buf) ABRT("EINVAL", "No data associated with frame number: %u", frame_number);
         frame->alpha_blend = false; frame->base_frame_id = 0; frame->bgcolor = 0;
@@ -1184,7 +1177,7 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
         REPORT_ERROR("Animation command refers to non-existent image with id: %u and number: %u", g->id, g->image_number);
         return NULL;
     }
-    uint32_t frame_number = MIN(img->extra_framecnt + 1, g->_frame_number);
+    uint32_t frame_number = MIN(img->extra_framecnt + 1, g->frame_number);
     if (!frame_number) frame_number = 1;
     if (!img->extra_framecnt) return g->delete_action == 'F' ? img : NULL;
     *is_dirty = true;
@@ -1220,24 +1213,24 @@ handle_delete_frame_command(GraphicsManager *self, const GraphicsCommand *g, boo
 
 static void
 handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const GraphicsCommand *g, Image *img) {
-    if (g->_frame_number) {
-        uint32_t frame_idx = g->_frame_number - 1;
+    if (g->frame_number) {
+        uint32_t frame_idx = g->frame_number - 1;
         if (frame_idx <= img->extra_framecnt) {
             Frame *f = frame_idx ? img->extra_frames + frame_idx - 1 : &img->root_frame;
-            if (g->_gap) change_gap(img, f, g->_gap);
+            if (g->gap) change_gap(img, f, g->gap);
         }
     }
-    if (g->_other_frame_number) {
-        uint32_t frame_idx = g->_other_frame_number - 1;
+    if (g->other_frame_number) {
+        uint32_t frame_idx = g->other_frame_number - 1;
         if (frame_idx != img->current_frame_index && frame_idx <= img->extra_framecnt) {
             img->current_frame_index = frame_idx;
             *is_dirty = true;
             update_current_frame(self, img, NULL);
         }
     }
-    if (g->_animation_state) {
+    if (g->animation_state) {
         AnimationState old_state = img->animation_state;
-        switch(g->_animation_state) {
+        switch(g->animation_state) {
             case 1:
                 img->animation_state = ANIMATION_STOPPED; break;
             case 2:
@@ -1256,8 +1249,8 @@ handle_animation_control_command(GraphicsManager *self, bool *is_dirty, const Gr
         }
         img->current_loop = 0;
     }
-    if (g->_loop_count) {
-        img->max_loops = g->_loop_count - 1;
+    if (g->loop_count) {
+        img->max_loops = g->loop_count - 1;
         global_state.check_for_active_animated_images = true;
     }
 }
@@ -1311,14 +1304,14 @@ cfd_free(void *p) { free(((CoalescedFrameData*)p)->buf); }
 
 static void
 handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsCommand *g, Image *img) {
-    Frame *src_frame = frame_for_number(img, g->_frame_number);
+    Frame *src_frame = frame_for_number(img, g->frame_number);
     if (!src_frame) {
-        set_command_failed_response("ENOENT", "No source frame number %u exists in image id: %u\n", g->_frame_number, img->client_id);
+        set_command_failed_response("ENOENT", "No source frame number %u exists in image id: %u\n", g->frame_number, img->client_id);
         return;
     }
-    Frame *dest_frame = frame_for_number(img, g->_other_frame_number);
+    Frame *dest_frame = frame_for_number(img, g->other_frame_number);
     if (!dest_frame) {
-        set_command_failed_response("ENOENT", "No destination frame number %u exists in image id: %u\n", g->_other_frame_number, img->client_id);
+        set_command_failed_response("ENOENT", "No destination frame number %u exists in image id: %u\n", g->other_frame_number, img->client_id);
         return;
     }
     const unsigned int width = g->width ? g->width : img->width;
@@ -1343,17 +1336,17 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
 
     FREE_CFD_AFTER_FUNCTION CoalescedFrameData src_data = get_coalesced_frame_data(self, img, src_frame);
     if (!src_data.buf) {
-        set_command_failed_response("EINVAL", "Failed to get data for src frame: %u", g->_frame_number - 1);
+        set_command_failed_response("EINVAL", "Failed to get data for src frame: %u", g->frame_number - 1);
         return;
     }
     FREE_CFD_AFTER_FUNCTION CoalescedFrameData dest_data = get_coalesced_frame_data(self, img, dest_frame);
     if (!dest_data.buf) {
-        set_command_failed_response("EINVAL", "Failed to get data for destination frame: %u", g->_other_frame_number - 1);
+        set_command_failed_response("EINVAL", "Failed to get data for destination frame: %u", g->other_frame_number - 1);
         return;
     }
     ComposeData d = {
         .over_px_sz = src_data.is_opaque ? 3 : 4, .under_px_sz = dest_data.is_opaque ? 3: 4,
-        .needs_blending = !g->cursor_movement && !src_data.is_opaque,
+        .needs_blending = !g->compose_mode && !src_data.is_opaque,
         .over_offset_x = src_x, .over_offset_y = src_y,
         .under_offset_x = dest_x, .under_offset_y = dest_y,
         .over_width = width, .over_height = height, .under_width = width, .under_height = height,
@@ -1368,7 +1361,7 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
     // frame is now a fully coalesced frame
     dest_frame->x = 0; dest_frame->y = 0; dest_frame->width = img->width; dest_frame->height = img->height;
     dest_frame->base_frame_id = 0; dest_frame->bgcolor = 0;
-    *is_dirty = (g->_other_frame_number - 1) == img->current_frame_index;
+    *is_dirty = (g->other_frame_number - 1) == img->current_frame_index;
 }
 // }}}
 

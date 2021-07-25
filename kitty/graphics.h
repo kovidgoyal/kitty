@@ -10,9 +10,16 @@
 
 typedef struct {
     unsigned char action, transmission_type, compressed, delete_action;
-    uint32_t format, more, id, image_number, data_sz, data_offset, placement_id, quiet, cursor_movement;
-    uint32_t width, height, x_offset, y_offset, data_height, data_width, num_cells, num_lines, cell_x_offset, cell_y_offset;
-    int32_t z_index;
+    uint32_t format, more, id, image_number, data_sz, data_offset, placement_id, quiet;
+    uint32_t width, height, x_offset, y_offset;
+    union { uint32_t cursor_movement, compose_mode; };
+    union { uint32_t cell_x_offset, blend_mode; };
+    union { uint32_t cell_y_offset, bgcolor; };
+    union { uint32_t data_width, animation_state; };
+    union { uint32_t data_height, loop_count; };
+    union { uint32_t num_lines, frame_number; };
+    union { uint32_t num_cells, other_frame_number; };
+    union { int32_t z_index, gap; };
     size_t payload_sz;
 } GraphicsCommand;
 
