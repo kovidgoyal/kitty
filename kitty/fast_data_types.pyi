@@ -570,11 +570,11 @@ def free_font_data() -> None:
     pass
 
 
-def toggle_maximized() -> bool:
+def toggle_maximized(os_window_id: int = 0) -> bool:
     pass
 
 
-def toggle_fullscreen() -> bool:
+def toggle_fullscreen(os_window_id: int = 0) -> bool:
     pass
 
 
