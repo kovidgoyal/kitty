@@ -4,7 +4,7 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.21.3 [future]
+0.22.0 [2021-07-26]
 ----------------------
 
 - Add a new :ref:`action-toggle_layout` action to easily zoom/unzoom a window

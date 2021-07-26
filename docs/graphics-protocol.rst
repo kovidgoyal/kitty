@@ -635,7 +635,7 @@ data and has no gap, so its gap must be set using this control code.
 Composing animation frames
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-.. versionadded:: 0.21.3
+.. versionadded:: 0.22.0
    Support for frame composition
 
 Clients can *compose* animation frames, this means that they can compose pixels
