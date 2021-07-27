@@ -224,12 +224,12 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
 
 def prettify(text: str) -> str:
 
+    def identity(x: str) -> str:
+        return x
+
     def sub(m: Match) -> str:
         role, text = m.group(1, 2)
-        try:
-            return str(role_map[role](text))
-        except KeyError:
-            return str(text)
+        return role_map.get(role, identity)(text)
 
     text = re.sub(r':([a-z]+):`([^`]+)`', sub, text)
     return text
