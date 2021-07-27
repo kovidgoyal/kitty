@@ -57,42 +57,60 @@ def surround(x: str, start: int, end: int) -> str:
     return x
 
 
+role_map: Dict[str, Callable[[str], str]] = {}
+
+
+def role(func: Callable[[str], str]) -> Callable[[str], str]:
+    role_map[func.__name__] = func
+    return func
+
+
+@role
 def emph(x: str) -> str:
     return surround(x, 91, 39)
 
 
+@role
 def cyan(x: str) -> str:
     return surround(x, 96, 39)
 
 
+@role
 def green(x: str) -> str:
     return surround(x, 32, 39)
 
 
+@role
 def blue(x: str) -> str:
     return surround(x, 34, 39)
 
 
+@role
 def yellow(x: str) -> str:
     return surround(x, 93, 39)
 
 
+@role
 def italic(x: str) -> str:
     return surround(x, 3, 23)
 
 
+@role
 def bold(x: str) -> str:
     return surround(x, 1, 22)
 
 
+@role
 def title(x: str) -> str:
     return blue(bold(x))
 
 
+@role
 def opt(text: str) -> str:
     return text
 
 
+@role
 def option(x: str) -> str:
     idx = x.rfind('--')
     if idx < 0:
@@ -103,27 +121,32 @@ def option(x: str) -> str:
     return ' '.join(parts)
 
 
+@role
 def code(x: str) -> str:
     return x
 
 
+@role
 def kbd(x: str) -> str:
     return x
 
 
+@role
 def env(x: str) -> str:
     return italic(x)
 
 
-envvar = env
+role_map['envvar'] = role_map['env']
 
 
+@role
 def file(x: str) -> str:
     return italic(x)
 
 
+@role
 def doc(x: str) -> str:
-    return f'https://sw.kovidgoyal.net/kitty/{x}.html'
+    return f'https://sw.kovidgoyal.net/kitty/{x}/'
 
 
 OptionSpecSeq = List[Union[str, OptionDict]]
@@ -200,7 +223,6 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
 
 
 def prettify(text: str) -> str:
-    role_map = globals()
 
     def sub(m: Match) -> str:
         role, text = m.group(1, 2)
