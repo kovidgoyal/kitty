@@ -625,6 +625,9 @@ class TabManager:  # {{{
 
     @active_tab_idx.setter
     def active_tab_idx(self, val: int) -> None:
+        new_active_tab_idx = max(0, min(val, len(self.tabs) - 1))
+        if new_active_tab_idx == self._active_tab_idx:
+            return
         try:
             old_active_tab: Optional[Tab] = self.tabs[self._active_tab_idx]
         except Exception:
@@ -632,7 +635,7 @@ class TabManager:  # {{{
         else:
             assert old_active_tab is not None
             add_active_id_to_history(self.active_tab_history, old_active_tab.id)
-        self._active_tab_idx = max(0, min(val, len(self.tabs) - 1))
+        self._active_tab_idx = new_active_tab_idx
         try:
             new_active_tab: Optional[Tab] = self.tabs[self._active_tab_idx]
         except Exception:
