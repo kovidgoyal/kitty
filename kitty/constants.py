@@ -186,3 +186,11 @@ def read_kitty_resource(name: str) -> bytes:
     except ImportError:
         from importlib_resources import read_binary  # type: ignore
     return read_binary('kitty', name)
+
+
+def website_url(doc_name: str = '') -> str:
+    if doc_name:
+        doc_name = doc_name.rstrip('/')
+        if doc_name:
+            doc_name += '/'
+    return f'https://sw.kovidgoyal.net/kitty/{doc_name}'

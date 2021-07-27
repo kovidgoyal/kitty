@@ -1,3 +1,3 @@
-To build from source: <https://sw.kovidgoyal.net/kitty/build.html>
+To build from source: <https://sw.kovidgoyal.net/kitty/build/>
 
-Pre-built binaries: <https://sw.kovidgoyal.net/kitty/binary.html>
+Pre-built binaries: <https://sw.kovidgoyal.net/kitty/binary/>

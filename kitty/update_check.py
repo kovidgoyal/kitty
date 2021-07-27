@@ -10,13 +10,13 @@ from typing import Dict, NamedTuple, Optional
 from urllib.request import urlopen
 
 from .config import atomic_save
-from .constants import Version, cache_dir, kitty_exe, version
+from .constants import Version, cache_dir, kitty_exe, version, website_url
 from .fast_data_types import add_timer, get_boss, monitor_pid
 from .notify import notify
 from .utils import log_error, open_url
 
-CHANGELOG_URL = 'https://sw.kovidgoyal.net/kitty/changelog.html'
-RELEASED_VERSION_URL = 'https://sw.kovidgoyal.net/kitty/current-version.txt'
+CHANGELOG_URL = website_url('changelog')
+RELEASED_VERSION_URL = website_url() + 'current-version.txt'
 CHECK_INTERVAL = 24 * 60 * 60.
 
 
@@ -104,8 +104,8 @@ def process_current_release(raw: str) -> None:
 
 
 def run_worker() -> None:
-    import time
     import random
+    import time
     time.sleep(random.randint(1000, 4000) / 1000)
     with suppress(BrokenPipeError):  # happens if parent process is killed before us
         print(get_released_version())

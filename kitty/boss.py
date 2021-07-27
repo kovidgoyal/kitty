@@ -24,7 +24,7 @@ from .conf.utils import BadLine, KeyAction, to_cmdline
 from .config import common_opts_as_dict, prepare_config_file_for_editing
 from .constants import (
     appname, config_dir, is_macos, is_wayland, kitty_exe,
-    supports_primary_selection
+    supports_primary_selection, website_url
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
@@ -1141,7 +1141,7 @@ class Boss:
 
             self._run_kitten('ask', [
                 '--name=create-marker', '--message',
-                _('Create marker, for example:\ntext 1 ERROR\nSee https://sw.kovidgoyal.net/kitty/marks.html\n')
+                _('Create marker, for example:\ntext 1 ERROR\nSee {}\n').format(website_url('marks'))
                 ],
                 custom_callback=done, action_on_removal=done2)
 

@@ -29,7 +29,7 @@ if kitty_src not in sys.path:
     sys.path.insert(0, kitty_src)
 
 from kitty.conf.types import Definition  # noqa
-from kitty.constants import str_version  # noqa
+from kitty.constants import str_version, website_url  # noqa
 
 # config {{{
 # -- Project information -----------------------------------------------------
@@ -65,7 +65,7 @@ extensions = [
 ]
 
 # URL for OpenGraph tags
-ogp_site_url = 'https://sw.kovidgoyal.net/kitty/'
+ogp_site_url = website_url()
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

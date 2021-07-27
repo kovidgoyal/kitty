@@ -4,6 +4,7 @@
 
 from typing import TYPE_CHECKING, Optional
 
+from kitty.constants import website_url
 from kitty.options.utils import parse_marker_spec
 
 from .base import (
@@ -26,8 +27,8 @@ class CreateMarker(RemoteCommand):
     short_desc = 'Create a marker that highlights specified text'
     desc = (
         'Create a marker which can highlight text in the specified window. For example: '
-        'create_marker text 1 ERROR. For full details see: https://sw.kovidgoyal.net/kitty/marks.html'
-    )
+        'create_marker text 1 ERROR. For full details see: {}'
+    ).format(website_url('marks'))
     options_spec = MATCH_WINDOW_OPTION + '''\n
 --self
 type=bool-set

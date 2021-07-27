@@ -12,6 +12,7 @@ from typing import (
 )
 
 import kitty.conf.utils as generic_parsers
+from kitty.constants import website_url
 
 if typing.TYPE_CHECKING:
     Only = typing.Literal['macos', 'linux', '']
@@ -41,15 +42,15 @@ def expand_opt_references(conf_name: str, text: str) -> str:
 
 
 def remove_markup(text: str) -> str:
-    base = 'https://sw.kovidgoyal.net/kitty'
+    ref_map = {
+        'layouts': f'{website_url("overview")}#layouts',
+        'sessions': f'{website_url("overview")}#layouts',
+        'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
+    }
 
     def sub(m: Match) -> str:
         if m.group(1) == 'ref':
-            return {
-                'layouts': f'{base}/overview/#layouts',
-                'sessions': f'{base}/overview/#sessions',
-                'functional': f'{base}/keyboard-protocol/#functional-key-definitions',
-            }[m.group(2)]
+            return ref_map[m.group(2)]
         return str(m.group(2))
 
     return re.sub(r':([a-zA-Z0-9]+):`(.+?)`', sub, text, flags=re.DOTALL)

@@ -12,7 +12,7 @@ from typing import (
 
 from .cli_stub import CLIOptions
 from .conf.utils import resolve_config
-from .constants import appname, defconf, is_macos, str_version
+from .constants import appname, defconf, is_macos, str_version, website_url
 from .options.types import Options as KittyOpts
 from .typing import BadLineType, TypedDict
 
@@ -146,7 +146,7 @@ def file(x: str) -> str:
 
 @role
 def doc(x: str) -> str:
-    return f'https://sw.kovidgoyal.net/kitty/{x}/'
+    return website_url(x)
 
 
 OptionSpecSeq = List[Union[str, OptionDict]]
@@ -293,7 +293,8 @@ Run the :italic:`{appname}` terminal emulator. You can also specify the :italic:
 to run inside :italic:`{appname}` as normal arguments following the :italic:`options`.
 For example: {appname} sh -c "echo hello, world. Press ENTER to quit; read"
 
-For comprehensive documentation for kitty, please see: https://sw.kovidgoyal.net/kitty/''').format(appname=appname)
+For comprehensive documentation for kitty, please see: {url}''').format(
+    appname=appname, url=website_url())
 
 
 class PrintHelpForSeq:

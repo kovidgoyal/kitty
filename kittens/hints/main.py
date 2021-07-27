@@ -16,6 +16,7 @@ from typing import (
 
 from kitty.cli import parse_args
 from kitty.cli_stub import HintsCLIOptions
+from kitty.constants import website_url
 from kitty.fast_data_types import set_clipboard_string
 from kitty.key_encoding import KeyEvent
 from kitty.typing import BossType, KittyCommonOpts
@@ -640,7 +641,7 @@ The foreground color for text pointed to by the hints
 --customize-processing
 Name of a python file in the kitty config directory which will be imported to provide
 custom implementations for pattern finding and performing actions
-on selected matches. See https://sw.kovidgoyal.net/kitty/kittens/hints.html
+on selected matches. See {hints_url}
 for details. You can also specify absolute paths to load the script from elsewhere.
 
 
@@ -649,7 +650,8 @@ The window title for the hints window, default title is selected based on
 the type of text being hinted.
 '''.format(
     default_regex=DEFAULT_REGEX,
-    line='{{line}}', path='{{path}}'
+    line='{{line}}', path='{{path}}',
+    hints_url=website_url('kittens/hints'),
 ).format
 help_text = 'Select text from the screen using the keyboard. Defaults to searching for URLs.'
 usage = ''

@@ -328,7 +328,7 @@ class GitHub(Base):  # {{{
                 'target_commitish': 'master',
                 'name': 'version %s' % self.version,
                 'body': f'Release version {self.version}.'
-                ' For changelog, see https://sw.kovidgoyal.net/kitty/changelog.html'
+                ' For changelog, see https://sw.kovidgoyal.net/kitty/changelog/'
                 ' GPG key used for signing tarballs is: https://calibre-ebook.com/signatures/kovid.gpg',
                 'draft': False,
                 'prerelease': False
