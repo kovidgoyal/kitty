@@ -115,6 +115,9 @@ def env(x: str) -> str:
     return italic(x)
 
 
+envvar = env
+
+
 def file(x: str) -> str:
     return italic(x)
 
