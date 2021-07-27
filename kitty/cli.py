@@ -204,7 +204,10 @@ def prettify(text: str) -> str:
 
     def sub(m: Match) -> str:
         role, text = m.group(1, 2)
-        return str(role_map[role](text))
+        try:
+            return str(role_map[role](text))
+        except KeyError:
+            return str(text)
 
     text = re.sub(r':([a-z]+):`([^`]+)`', sub, text)
     return text
