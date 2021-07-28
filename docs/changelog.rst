@@ -4,6 +4,19 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.22.1 [future]
+----------------------
+
+- Fix a regression in the previous release that broke :option:`kitty --help`
+  (:iss:`3869`)
+
+- Graphics protocol: Fix composing onto currently displayed frame not updating the frame on the GPU (:iss:`3874`)
+
+- Fix switching to previously active tab after detaching a tab not working (:pull:`3871`)
+
+- macOS: Fix an error on Apple silicon when enumerating monitors (:pull:`3875`)
+
+
 0.22.0 [2021-07-26]
 ----------------------
 
