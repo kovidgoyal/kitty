@@ -621,7 +621,10 @@ class GraphicsCommand:
             defval: Union[str, None, int] = getattr(GraphicsCommand, k)
             setattr(self, k, defval)
 
-    def iter_transmission_chunks(self, data: bytes, level: int = -1, compression_threshold: int = 1024) -> Iterator[bytes]:
+    def iter_transmission_chunks(self, data: Optional[bytes] = None, level: int = -1, compression_threshold: int = 1024) -> Iterator[bytes]:
+        if data is None:
+            yield self.serialize()
+            return
         gc = self.clone()
         gc.S = len(data)
         if level and len(data) >= compression_threshold:
