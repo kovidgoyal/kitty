@@ -293,7 +293,8 @@ class Tab:  # {{{
         w = self.active_window
         if w is not None and self.resize_window_by(
                 w.id, increment, is_horizontal) is not None:
-            ring_bell()
+            if get_options().enable_audio_bell:
+                ring_bell()
 
     def reset_window_sizes(self) -> None:
         '@ac:win:Reset window sizes undoing any dynamic resizing of windows'
