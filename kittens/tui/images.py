@@ -18,7 +18,8 @@ from typing import (
 from kitty.conf.utils import positive_float, positive_int
 from kitty.fast_data_types import create_canvas
 from kitty.typing import (
-    CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t, HandlerType
+    GRT_C, CompletedProcess, GRT_a, GRT_d, GRT_f, GRT_m, GRT_o, GRT_t,
+    HandlerType
 )
 from kitty.utils import ScreenSize, find_exe, fit_image
 
@@ -313,7 +314,7 @@ class GraphicsCommand:
     I: int = 0        # image number
     p: int = 0        # placement id
     o: Optional[GRT_o] = None  # type of compression
-    m: GRT_m = 0    # 0 or 1 whether there is more chunked data
+    m: GRT_m = 0      # 0 or 1 whether there is more chunked data
     x: int = 0        # left edge of image area to display
     y: int = 0        # top edge of image area to display
     w: int = 0        # image width to display
@@ -323,7 +324,268 @@ class GraphicsCommand:
     c: int = 0        # number of cols to display image over
     r: int = 0        # number of rows to display image over
     z: int = 0        # z-index
-    d: GRT_d = 'a'  # what to delete
+    C: GRT_C = 0      # cursor movement policy/composition mode
+    d: GRT_d = 'a'    # what to delete
+
+    @property
+    def action(self) -> GRT_a:
+        return self.a
+
+    @action.setter
+    def action(self, val: GRT_a) -> None:
+        self.a = val
+
+    @property
+    def transmission_type(self) -> GRT_t:
+        return self.t
+
+    @transmission_type.setter
+    def transmission_type(self, val: GRT_t) -> None:
+        self.t = val
+
+    @property
+    def compressed(self) -> Optional[GRT_o]:
+        return self.o
+
+    @compressed.setter
+    def compressed(self, val: Optional[GRT_o]) -> None:
+        self.o = val
+
+    @property
+    def delete_action(self) -> Optional[GRT_d]:
+        return self.d
+
+    @delete_action.setter
+    def delete_action(self, val: GRT_d) -> None:
+        self.d = val
+
+    @delete_action.setter
+    def delete_action(self, val: GRT_d) -> None:
+        self.d = val
+
+    @property
+    def format(self) -> GRT_f:
+        return self.f
+
+    @format.setter
+    def format(self, val: GRT_f) -> None:
+        self.f = val
+
+    @property
+    def more(self) -> GRT_m:
+        return self.m
+
+    @more.setter
+    def more(self, val: GRT_m) -> None:
+        self.m = val
+
+    @property
+    def image_id(self) -> int:
+        return self.i
+
+    @image_id.setter
+    def image_id(self, val: int) -> None:
+        self.i = val
+
+    @property
+    def image_number(self) -> int:
+        return self.I
+
+    @image_number.setter
+    def image_number(self, val: int) -> None:
+        self.I = val  # noqa
+
+    @property
+    def placement_id(self) -> int:
+        return self.p
+
+    @placement_id.setter
+    def placement_id(self, val: int) -> None:
+        self.p = val
+
+    @property
+    def data_size(self) -> int:
+        return self.S
+
+    @data_size.setter
+    def data_size(self, val: int) -> None:
+        self.S = val
+
+    @property
+    def data_offset(self) -> int:
+        return self.O
+
+    @data_offset.setter
+    def data_offset(self, val: int) -> None:
+        self.O = val  # noqa
+
+    @property
+    def quiet(self) -> int:
+        return self.q
+
+    @quiet.setter
+    def quiet(self, val: int) -> None:
+        self.q = val
+
+    @property
+    def width(self) -> int:
+        return self.w
+
+    @width.setter
+    def width(self, val: int) -> None:
+        self.w = val
+
+    @property
+    def height(self) -> int:
+        return self.h
+
+    @height.setter
+    def height(self, val: int) -> None:
+        self.h = val
+
+    @property
+    def left_edge(self) -> int:
+        return self.x
+
+    @left_edge.setter
+    def left_edge(self, val: int) -> None:
+        self.x = val
+
+    @property
+    def top_edge(self) -> int:
+        return self.y
+
+    @top_edge.setter
+    def top_edge(self, val: int) -> None:
+        self.y = val
+
+    @property
+    def cursor_movement(self) -> GRT_C:
+        return self.C
+
+    @cursor_movement.setter
+    def cursor_movement(self, val: GRT_C) -> None:
+        self.C = val
+
+    @property
+    def compose_mode(self) -> GRT_C:
+        return self.C
+
+    @compose_mode.setter
+    def compose_mode(self, val: GRT_C) -> None:
+        self.C = val
+
+    @property
+    def cell_x_offset(self) -> int:
+        return self.X
+
+    @cell_x_offset.setter
+    def cell_x_offset(self, val: int) -> None:
+        self.X = val
+
+    @property
+    def blend_mode(self) -> int:
+        return self.X
+
+    @blend_mode.setter
+    def blend_mode(self, val: int) -> None:
+        self.X = val
+
+    @property
+    def cell_y_offset(self) -> int:
+        return self.Y
+
+    @cell_y_offset.setter
+    def cell_y_offset(self, val: int) -> None:
+        self.Y = val
+
+    @property
+    def bgcolor(self) -> int:
+        return self.Y
+
+    @bgcolor.setter
+    def bgcolor(self, val: int) -> None:
+        self.Y = val
+
+    @property
+    def data_width(self) -> int:
+        return self.s
+
+    @data_width.setter
+    def data_width(self, val: int) -> None:
+        self.s = val
+
+    @property
+    def animation_state(self) -> int:
+        return self.s
+
+    @animation_state.setter
+    def animation_state(self, val: int) -> None:
+        self.s = val
+
+    @property
+    def data_height(self) -> int:
+        return self.v
+
+    @data_height.setter
+    def data_height(self, val: int) -> None:
+        self.v = val
+
+    @property
+    def loop_count(self) -> int:
+        return self.v
+
+    @loop_count.setter
+    def loop_count(self, val: int) -> None:
+        self.v = val
+
+    @property
+    def num_lines(self) -> int:
+        return self.r
+
+    @num_lines.setter
+    def num_lines(self, val: int) -> None:
+        self.r = val
+
+    @property
+    def frame_number(self) -> int:
+        return self.r
+
+    @frame_number.setter
+    def frame_number(self, val: int) -> None:
+        self.r = val
+
+    @property
+    def num_cells(self) -> int:
+        return self.c
+
+    @num_cells.setter
+    def num_cells(self, val: int) -> None:
+        self.c = val
+
+    @property
+    def other_frame_number(self) -> int:
+        return self.c
+
+    @other_frame_number.setter
+    def other_frame_number(self, val: int) -> None:
+        self.c = val
+
+    @property
+    def z_index(self) -> int:
+        return self.z
+
+    @z_index.setter
+    def z_index(self, val: int) -> None:
+        self.z = val
+
+    @property
+    def gap(self) -> int:
+        return self.z
+
+    @gap.setter
+    def gap(self, val: int) -> None:
+        self.z = val
 
     def __repr__(self) -> str:
         return self.serialize().decode('ascii').replace('\033', '^]')
@@ -358,6 +620,23 @@ class GraphicsCommand:
         for k in GraphicsCommand.__annotations__:
             defval: Union[str, None, int] = getattr(GraphicsCommand, k)
             setattr(self, k, defval)
+
+    def iter_transmission_chunks(self, data: bytes, level: int = -1, compression_threshold: int = 1024) -> Iterator[bytes]:
+        gc = self.clone()
+        gc.S = len(data)
+        if level and len(data) >= compression_threshold:
+            import zlib
+            compressed = zlib.compress(data, level)
+            if len(compressed) < len(data):
+                gc.o = 'z'
+                data = compressed
+                gc.S = len(data)
+        data = standard_b64encode(data)
+        while data:
+            chunk, data = data[:4096], data[4096:]
+            gc.m = 1 if data else 0
+            yield gc.serialize(chunk)
+            gc.clear()
 
 
 class Placement:

@@ -8,9 +8,9 @@ from typing import Optional, NamedTuple
 
 
 class Color(NamedTuple):
-    red: int
-    green: int
-    blue: int
+    red: int = 0
+    green: int = 0
+    blue: int = 0
 
     def luminance(self) -> float:
         return 0.299 * self.red + 0.587 * self.green + 0.114 * self.blue
@@ -24,6 +24,11 @@ class Color(NamedTuple):
 
     def __int__(self) -> int:
         return self.red << 16 | self.green << 8 | self.blue
+
+    def as_bytearray(self, alpha: Optional[int] = None) -> bytearray:
+        if alpha is None:
+            return bytearray((self.red, self.green, self.blue))
+        return bytearray((self.red, self.green, self.blue, alpha))
 
 
 def alpha_blend_channel(top_color: int, bottom_color: int, alpha: float) -> int:

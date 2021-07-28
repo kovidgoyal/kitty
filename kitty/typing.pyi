@@ -37,11 +37,12 @@ from .window import Window as WindowType
 EdgeLiteral = Literal['left', 'top', 'right', 'bottom']
 MatchType = Literal['mime', 'ext', 'protocol', 'file', 'path', 'url', 'fragment_matches']
 PowerlineStyle = Literal['angled', 'slanted', 'round']
-GRT_a = Literal['t', 'T', 'q', 'p', 'd', 'f', 'a']
+GRT_a = Literal['t', 'T', 'q', 'p', 'd', 'f', 'a', 'c', 'q']
 GRT_f = Literal[24, 32, 100]
 GRT_t = Literal['d', 'f', 't', 's']
 GRT_o = Literal['z']
 GRT_m = Literal[0, 1]
+GRT_C = Literal[0, 1]
 GRT_d = Literal['a', 'A', 'c', 'C', 'i', 'I', 'p', 'P', 'q', 'Q', 'x', 'X', 'y', 'Y', 'z', 'Z', 'f', 'F']
 
 
