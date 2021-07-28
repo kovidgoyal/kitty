@@ -757,7 +757,7 @@ Key      Value                 Default    Description
 **Keys for animation frame composition**
 -----------------------------------------------------------
 
-``c``    Positive integer      ``0``      The 1-based frame number of the frame whose image data serves as the base data
+``c``    Positive integer      ``0``      The 1-based frame number of the frame whose image data serves as the overlaid data
 ``r``    Positive integer      ``0``      The 1-based frame number of the frame that is being edited.
 ``x``    Positive integer      ``0``      The left edge (in pixels) of the destination rectangle
 ``y``    Positive integer      ``0``      The top edge (in pixels) of the destination rectangle
