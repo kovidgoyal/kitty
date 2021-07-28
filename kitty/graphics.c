@@ -1362,6 +1362,7 @@ handle_compose_command(GraphicsManager *self, bool *is_dirty, const GraphicsComm
     dest_frame->x = 0; dest_frame->y = 0; dest_frame->width = img->width; dest_frame->height = img->height;
     dest_frame->base_frame_id = 0; dest_frame->bgcolor = 0;
     *is_dirty = (g->other_frame_number - 1) == img->current_frame_index;
+    if (*is_dirty) update_current_frame(self, img, &dest_data);
 }
 // }}}
 
