@@ -7,8 +7,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.22.1 [future]
 ----------------------
 
-- Fix a regression in the previous release that broke :option:`kitty --help`
-  (:iss:`3869`)
+- Fix a regression in the previous release that broke ``kitty --help`` (:iss:`3869`)
 
 - Graphics protocol: Fix composing onto currently displayed frame not updating the frame on the GPU (:iss:`3874`)
 
