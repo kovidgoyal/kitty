@@ -1691,14 +1691,17 @@ class Boss:
             target_tab = tm.new_tab(empty_tab=True)
         else:
             target_os_window_id = target_os_window_id or current_os_window()
-            if target_tab_id == 'new':
+            if isinstance(target_tab_id, str):
                 if not isinstance(target_os_window_id, int):
                     q = self.active_tab_manager
                     assert q is not None
                     tm = q
                 else:
                     tm = self.os_window_map[target_os_window_id]
-                target_tab = tm.new_tab(empty_tab=True)
+                if target_tab_id == 'new':
+                    target_tab = tm.new_tab(empty_tab=True)
+                else:
+                    target_tab = tm.tab_at_location(target_tab_id) or tm.new_tab(empty_tab=True)
             else:
                 for tab in self.all_tabs:
                     if tab.id == target_tab_id:
@@ -1766,8 +1769,9 @@ class Boss:
         '''
         if not args or args[0] == 'new':
             return self._move_window_to(target_os_window_id='new')
-        if args[0] == 'new-tab':
-            return self._move_window_to(target_tab_id='new')
+        if args[0] in ('new-tab', 'tab-prev', 'tab-left', 'tab-right'):
+            where = 'new' if args[0] == 'new-tab' else args[0][4:]
+            return self._move_window_to(target_tab_id=where)
         title = 'Choose a tab to move the window to'
         lines = [title, '']
         fmt = ': {1}'

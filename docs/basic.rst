@@ -83,6 +83,10 @@ move it to another tab or another OS window::
     map ctrl+f2 detach_window
     # moves the window into a new Tab
     map ctrl+f3 detach_window new-tab
+    # moves the window into the previously active tab
+    map ctrl+f3 detach_window tab-prev
+    # moves the window into the tab at the left of the active tab
+    map ctrl+f3 detach_window tab-left
     # asks which tab to move the window into
     map ctrl+f4 detach_window ask
 

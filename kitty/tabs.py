@@ -720,6 +720,18 @@ class TabManager:  # {{{
         if len(self.tabs) > 1:
             self.set_active_tab_idx((self.active_tab_idx + len(self.tabs) + delta) % len(self.tabs))
 
+    def tab_at_location(self, loc: str) -> Optional[Tab]:
+        if loc == 'prev':
+            if self.active_tab_history:
+                old_active_tab_id = self.active_tab_history[-1]
+                for idx, tab in enumerate(self.tabs):
+                    if tab.id == old_active_tab_id:
+                        return tab
+        elif loc in ('left', 'right'):
+            delta = -1 if loc == 'left' else 1
+            idx = (len(self.tabs) + self.active_tab_idx + delta) % len(self.tabs)
+            return self.tabs[idx]
+
     def goto_tab(self, tab_num: int) -> None:
         if tab_num >= len(self.tabs):
             tab_num = max(0, len(self.tabs) - 1)

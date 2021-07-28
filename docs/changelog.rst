@@ -15,6 +15,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix an error on Apple silicon when enumerating monitors (:pull:`3875`)
 
+- Allow specifying the previously active tab or the tab to the left/right of
+  the active tab
+
 
 0.22.0 [2021-07-26]
 ----------------------
