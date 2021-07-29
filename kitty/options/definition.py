@@ -2418,13 +2418,13 @@ starts in interactive mode and reads its startup rc files.
 opt('editor', '.',
     long_text='''
 The console editor to use when editing the kitty config file or similar tasks.
-The default value of ``.`` means to use the environment variables :envvar:`VISUAL`
-and :envvar:`EDITOR` in that order. Note that these environment variables have
-to be set when kitty starts, so if they're only set in shell startup scripts, but
-kitty is launched directly from your desktop, kitty will not see them. kitty does try
-to read the values from the shell as well, but this process is not entirely robust since
-there are a myriad different shells out there. In that case you're better off naming
-your favorite editor here.
+
+The default value of . means to use the environment variables :envvar:`VISUAL`
+and :envvar:`EDITOR` in that order. If these variables aren't set, kitty will
+run your shell (`$SHELL -l -c env`) to see if your shell config files set
+:envvar:`VISUAL` or :envvar:`EDITOR`. If that doesn't work, kitty will cycle
+through various known editors (`vim`, `emacs`, etc) and take the first one
+that exists on your system.
 '''
     )
 
