@@ -623,8 +623,12 @@ def read_shell_environment(opts: Optional[Options] = None) -> Dict[str, str]:
         shell = resolved_shell(opts)
         master, slave = openpty()
         remove_blocking(master)
+        if '-l' not in shell and '--login' not in shell:
+            shell += ['-l']
+        if '-i' not in shell and '--interactive' not in shell:
+            shell += ['-i']
         try:
-            p = subprocess.Popen(shell + ['-l', '-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True)
+            p = subprocess.Popen(shell + ['-c', 'env'], stdout=slave, stdin=slave, stderr=slave, start_new_session=True, close_fds=True)
         except FileNotFoundError:
             log_error('Could not find shell to read environment')
             return ans
