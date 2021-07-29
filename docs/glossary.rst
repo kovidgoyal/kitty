@@ -53,6 +53,17 @@ Variables that influence kitty behavior
    directory lookup mechanism see, :option:`kitty --config`.
 
 
+.. envvar:: VISUAL
+
+   Controls what program kitty uses as an editor, when, for instance, opening
+   kitty.conf in response to :sc:`edit_config_file`
+
+
+.. envvar:: EDITOR
+
+   Same as :envvar:`VISUAL`. Used if :envvar:`VISUAL` is not set.
+
+
 Variables that kitty sets when running child programs
 
 .. envvar:: KITTY_WINDOW_ID
