@@ -2410,8 +2410,8 @@ opt('shell', '.',
     long_text='''
 The shell program to execute. The default value of . means to use whatever shell
 is set as the default shell for the current user. Note that on macOS if you
-change this, you might need to add :code:`--login` to ensure that the shell
-starts in interactive mode and reads its startup rc files.
+change this, you might need to add :code:`--login` and :code:`--interactive`
+to ensure that the shell starts in interactive mode and reads its startup rc files.
 '''
     )
 
@@ -2422,12 +2422,11 @@ config file or similar tasks.
 
 The default value of . means to use the environment variables :envvar:`VISUAL`
 and :envvar:`EDITOR` in that order. If these variables aren't set, kitty will
-run your shell (``$SHELL -l -c env``) to see if your shell config files set
-:envvar:`VISUAL` or :envvar:`EDITOR`. If that doesn't work, kitty will cycle
-through various known editors (``vim``, ``emacs``, etc) and take the first one
-that exists on your system.
-'''
-    )
+run your :opt:`shell` (``$SHELL -l -i -c env``) to see if your shell config
+files set :envvar:`VISUAL` or :envvar:`EDITOR`. If that doesn't work, kitty
+will cycle through various known editors (``vim``, ``emacs``, etc) and take the
+first one that exists on your system.
+''')
 
 opt('close_on_child_death', 'no',
     option_type='to_bool', ctype='bool',
