@@ -21,6 +21,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - broadcast kitten: Fix a regression in ``0.20.0`` that broke sending of some
   keys, such as backspace
 
+- Linux binary: Remove any RPATH build artifacts from bundled libraries
+
 
 0.22.0 [2021-07-26]
 ----------------------

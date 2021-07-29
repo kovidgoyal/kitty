@@ -88,6 +88,8 @@ def copy_libs(env):
     for x in binary_includes():
         dest = env.bin_dir if '/bin/' in x else env.lib_dir
         shutil.copy2(x, dest)
+        dest = os.path.join(dest, os.path.basename(x))
+        subprocess.check_call(['chrpath', '-d', dest])
 
 
 def copy_python(env):
