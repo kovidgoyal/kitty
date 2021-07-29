@@ -5,16 +5,15 @@
 import base64
 import os
 import sys
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional
+from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Union
 
-from kitty.options.utils import parse_send_text_bytes
-from kitty.key_encoding import decode_key_event_as_window_system_key
 from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent
+from kitty.key_encoding import decode_key_event_as_window_system_key
+from kitty.options.utils import parse_send_text_bytes
 
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError,
-    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType,
-    Window
+    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -139,14 +138,18 @@ Do not send text to the active window, even if it is one of the matched windows.
                     raise MatchError(payload_get('match_tab'), 'tabs')
                 for tab in tabs:
                     windows += tuple(tab)
-        encoding, _, q = payload_get('data').partition(':')
+        pdata: str = payload_get('data')
+        encoding, _, q = pdata.partition(':')
         if encoding == 'text':
-            data = q.encode('utf-8')
+            data: Union[bytes, WindowSystemKeyEvent] = q.encode('utf-8')
         elif encoding == 'base64':
             data = base64.standard_b64decode(q)
         elif encoding == 'kitty-key':
             bdata = base64.standard_b64decode(q)
-            data = decode_key_event_as_window_system_key(bdata.decode('ascii'))
+            candidate = decode_key_event_as_window_system_key(bdata.decode('ascii'))
+            if candidate is None:
+                raise ValueError(f'Could not decode window system key: {q}')
+            data = candidate
         else:
             raise TypeError(f'Invalid encoding for send-text data: {encoding}')
         exclude_active = payload_get('exclude_active')
