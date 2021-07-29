@@ -55,8 +55,8 @@ Variables that influence kitty behavior
 
 .. envvar:: VISUAL
 
-   Controls what program kitty uses as an editor, when, for instance, opening
-   kitty.conf in response to :sc:`edit_config_file`
+   The terminal editor (such as ``vi`` or ``nano``) kitty uses, when, for
+   instance, opening :file:`kitty.conf` in response to :sc:`edit_config_file`.
 
 
 .. envvar:: EDITOR

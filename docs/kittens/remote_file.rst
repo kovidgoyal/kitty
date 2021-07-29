@@ -17,9 +17,10 @@ Then hold down :kbd:`ctrl+shift` and click the name of the file.
 
 |kitty| will ask you what you want to do with the remote file. You can choose
 to *Edit* it in which case kitty will download it and open it locally in your
-``EDITOR``. As you make changes to the file, they are automatically transferred
-to the remote computer. Note that this happens without needing to install *any*
-special software on the server, beyond ``ls`` that supports hyperlinks.
+:envvar:`EDITOR`. As you make changes to the file, they are automatically
+transferred to the remote computer. Note that this happens without needing
+to install *any* special software on the server, beyond ``ls`` that supports
+hyperlinks.
 
 .. versionadded:: 0.19.0
 
