@@ -18,6 +18,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow specifying the previously active tab or the tab to the left/right of
   the active tab
 
+- broadcast kitten: Fix a regression in ``0.20.0`` that broke sending of some
+  keys, such as backspace
+
 
 0.22.0 [2021-07-26]
 ----------------------

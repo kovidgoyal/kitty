@@ -145,8 +145,8 @@ Do not send text to the active window, even if it is one of the matched windows.
         elif encoding == 'base64':
             data = base64.standard_b64decode(q)
         elif encoding == 'kitty-key':
-            data = base64.standard_b64decode(q)
-            data = decode_key_event_as_window_system_key(data)
+            bdata = base64.standard_b64decode(q)
+            data = decode_key_event_as_window_system_key(bdata.decode('ascii'))
         else:
             raise TypeError(f'Invalid encoding for send-text data: {encoding}')
         exclude_active = payload_get('exclude_active')
