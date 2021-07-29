@@ -52,21 +52,11 @@ Variables that influence kitty behavior
    files. Defaults to :file:`~/.config/kitty`. For full details of the config
    directory lookup mechanism see, :option:`kitty --config`.
 
-.. envvar:: EDITOR
-
-   The terminal editor (such as `vi` or `nano`) for editing config files.
-   Overridden by :envvar:`VISUAL`.
 
 .. envvar:: VISUAL
 
-   The terminal editor (such as `vi` or `nano`) for editing config files.
-   Takes precedence over :envvar:`EDITOR`.
-
-
-.. envvar:: VISUAL
-
-   Controls what program kitty uses as an editor, when, for instance, opening
-   kitty.conf in response to :sc:`edit_config_file`
+   The terminal editor (such as ``vi`` or ``nano``) kitty uses, when, for
+   instance, opening :file:`kitty.conf` in response to :sc:`edit_config_file`.
 
 
 .. envvar:: EDITOR
