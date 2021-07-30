@@ -2168,4 +2168,8 @@ typedef void (*glfwDBusSetUserNotificationHandler_func)(GLFWDBusnotificationacti
 GFW_EXTERN glfwDBusSetUserNotificationHandler_func glfwDBusSetUserNotificationHandler_impl;
 #define glfwDBusSetUserNotificationHandler glfwDBusSetUserNotificationHandler_impl
 
+typedef int (*glfwSetX11LaunchCommand_func)(GLFWwindow*, char**, int);
+GFW_EXTERN glfwSetX11LaunchCommand_func glfwSetX11LaunchCommand_impl;
+#define glfwSetX11LaunchCommand glfwSetX11LaunchCommand_impl
+
 const char* load_glfw(const char* path);

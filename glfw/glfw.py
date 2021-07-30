@@ -222,6 +222,7 @@ def generate_wrappers(glfw_header: str) -> None:
     unsigned long long glfwDBusUserNotify(const char *app_name, const char* icon, const char *summary, const char *body, \
 const char *action_text, int32_t timeout, GLFWDBusnotificationcreatedfun callback, void *data)
     void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler)
+    int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
 '''.splitlines():
         if line:
             functions.append(Function(line.strip(), check_fail=False))

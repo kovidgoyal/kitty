@@ -622,11 +622,13 @@ native_window_handle(GLFWwindow *w) {
 }
 
 static PyObject*
-create_os_window(PyObject UNUSED *self, PyObject *args) {
+create_os_window(PyObject UNUSED *self, PyObject *args, PyObject *kw) {
     int x = -1, y = -1;
     char *title, *wm_class_class, *wm_class_name;
     PyObject *load_programs = NULL, *get_window_size, *pre_show_callback;
-    if (!PyArg_ParseTuple(args, "OOsss|Oii", &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
+    static const char* kwlist[] = {"get_window_size", "pre_show_callback", "title", "wm_class_name", "wm_class_class", "load_programs", "x", "y", NULL};
+    if (!PyArg_ParseTupleAndKeywords(args, kw, "OOsss|Oii", (char**)kwlist,
+        &get_window_size, &pre_show_callback, &title, &wm_class_name, &wm_class_class, &load_programs, &x, &y)) return NULL;
 
     static bool is_first_window = true;
     if (is_first_window) {
@@ -1431,7 +1433,7 @@ stop_main_loop(void) {
 
 static PyMethodDef module_methods[] = {
     METHODB(set_custom_cursor, METH_VARARGS),
-    METHODB(create_os_window, METH_VARARGS),
+    {"create_os_window", (PyCFunction)(void (*) (void))(create_os_window), METH_VARARGS | METH_KEYWORDS, NULL},
     METHODB(set_default_window_icon, METH_VARARGS),
     METHODB(get_clipboard_string, METH_NOARGS),
     METHODB(get_content_scale_for_window, METH_NOARGS),

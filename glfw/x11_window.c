@@ -3122,3 +3122,10 @@ GLFWAPI unsigned long long glfwDBusUserNotify(const char *app_name, const char* 
 GLFWAPI void glfwDBusSetUserNotificationHandler(GLFWDBusnotificationactivatedfun handler) {
     glfw_dbus_set_user_notification_activated_handler(handler);
 }
+
+GLFWAPI int glfwSetX11LaunchCommand(GLFWwindow *handle, char **argv, int argc)
+{
+    _GLFW_REQUIRE_INIT_OR_RETURN(0);
+    _GLFWwindow* window = (_GLFWwindow*) handle;
+    return XSetCommand(_glfw.x11.display, window->x11.handle, argv, argc);
+}
