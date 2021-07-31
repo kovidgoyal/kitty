@@ -161,7 +161,7 @@ line(LineBuf *self, PyObject *y) {
 
 unsigned int
 linebuf_char_width_at(LineBuf *self, index_type x, index_type y) {
-    return gpu_lineptr(self, self->line_map[y])[x].attrs.bits.width;
+    return gpu_lineptr(self, self->line_map[y])[x].attrs.width;
 }
 
 static PyObject*

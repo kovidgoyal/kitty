@@ -141,12 +141,12 @@ typedef union CellAttrs {
         uint16_t strike : 1;
         uint16_t dim : 1;
         uint16_t mark : 2;
-    } bits;
+    };
     uint16_t val;
 } CellAttrs;
 #define MARK_MASK (3u)
 #define WIDTH_MASK (3u)
-#define SGR_MASK (~(((CellAttrs){.bits={.width=WIDTH_MASK, .mark=MARK_MASK}}).val))
+#define SGR_MASK (~(((CellAttrs){.width=WIDTH_MASK, .mark=MARK_MASK}).val))
 
 typedef struct {
     color_type fg, bg, decoration_fg;
@@ -290,16 +290,16 @@ typedef struct {FONTS_DATA_HEAD} *FONTS_DATA_HANDLE;
 
 static inline CellAttrs
 cursor_to_attrs(const Cursor *c, const uint16_t width) {
-    CellAttrs ans = {.bits={
+    CellAttrs ans = {
         .width=width, .decoration=c->decoration, .bold=c->bold, .italic=c->italic, .reverse=c->reverse,
-        .strike=c->strikethrough, .dim=c->dim}};
+        .strike=c->strikethrough, .dim=c->dim};
     return ans;
 }
 
 static inline void
 attrs_to_cursor(const CellAttrs attrs, Cursor *c) {
-    c->decoration = attrs.bits.decoration; c->bold = attrs.bits.bold;  c->italic = attrs.bits.italic;
-    c->reverse = attrs.bits.reverse; c->strikethrough = attrs.bits.strike; c->dim = attrs.bits.dim;
+    c->decoration = attrs.decoration; c->bold = attrs.bold;  c->italic = attrs.italic;
+    c->reverse = attrs.reverse; c->strikethrough = attrs.strike; c->dim = attrs.dim;
 }
 
 

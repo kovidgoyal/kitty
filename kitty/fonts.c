@@ -378,7 +378,7 @@ face_has_codepoint(PyObject* face, char_type cp) {
 
 static bool
 has_emoji_presentation(CPUCell *cpu_cell, GPUCell *gpu_cell) {
-    return gpu_cell->attrs.bits.width == 2 && is_emoji(cpu_cell->ch) && cpu_cell->cc_idx[0] != VS15;
+    return gpu_cell->attrs.width == 2 && is_emoji(cpu_cell->ch) && cpu_cell->cc_idx[0] != VS15;
 }
 
 static bool
@@ -458,8 +458,8 @@ load_fallback_font(FontGroup *fg, CPUCell *cell, bool bold, bool italic, bool em
 
 static ssize_t
 fallback_font(FontGroup *fg, CPUCell *cpu_cell, GPUCell *gpu_cell) {
-    bool bold = gpu_cell->attrs.bits.bold;
-    bool italic = gpu_cell->attrs.bits.italic;
+    bool bold = gpu_cell->attrs.bold;
+    bool italic = gpu_cell->attrs.italic;
     bool emoji_presentation = has_emoji_presentation(cpu_cell, gpu_cell);
 
     // Check if one of the existing fallback fonts has this text
@@ -512,7 +512,7 @@ START_ALLOW_CASE_RANGE
         default:
             ans = in_symbol_maps(fg, cpu_cell->ch);
             if (ans > -1) return ans;
-            switch(gpu_cell->attrs.bits.bold | (gpu_cell->attrs.bits.italic << 1)) {
+            switch(gpu_cell->attrs.bold | (gpu_cell->attrs.italic << 1)) {
                 case 0:
                     ans = fg->medium_font_idx; break;
                 case 1:
@@ -605,7 +605,7 @@ load_hb_buffer(CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, index_type num_
         for (num = 0; num_cells && num < arraysz(shape_buffer) - 20 - arraysz(first_cpu_cell->cc_idx); first_cpu_cell++, first_gpu_cell++, num_cells--) {
             if (prev_width == 2) { prev_width = 0; continue; }
             shape_buffer[num++] = first_cpu_cell->ch;
-            prev_width = first_gpu_cell->attrs.bits.width;
+            prev_width = first_gpu_cell->attrs.width;
             for (unsigned i = 0; i < arraysz(first_cpu_cell->cc_idx) && first_cpu_cell->cc_idx[i]; i++) {
                 shape_buffer[num++] = codepoint_for_mark(first_cpu_cell->cc_idx[i]);
             }
@@ -660,7 +660,7 @@ render_group(FontGroup *fg, unsigned int num_cells, unsigned int num_glyphs, CPU
     }
 
     ensure_canvas_can_fit(fg, num_cells + 1);
-    bool was_colored = gpu_cells->attrs.bits.width == 2 && is_emoji(cpu_cells->ch);
+    bool was_colored = gpu_cells->attrs.width == 2 && is_emoji(cpu_cells->ch);
     render_glyphs_in_cells(font->face, font->bold, font->italic, info, positions, num_glyphs, fg->canvas.buf, fg->cell_width, fg->cell_height, num_cells, fg->baseline, &was_colored, (FONTS_DATA_HANDLE)fg, center_glyph);
     if (PyErr_Occurred()) PyErr_Print();
 
@@ -780,7 +780,7 @@ static unsigned int
 check_cell_consumed(CellData *cell_data, CPUCell *last_cpu_cell) {
     cell_data->codepoints_consumed++;
     if (cell_data->codepoints_consumed >= cell_data->num_codepoints) {
-        uint16_t width = cell_data->gpu_cell->attrs.bits.width;
+        uint16_t width = cell_data->gpu_cell->attrs.width;
         cell_data->cpu_cell += MAX(1, width);
         cell_data->gpu_cell += MAX(1, width);
         cell_data->codepoints_consumed = 0;
@@ -829,7 +829,7 @@ ligature_type_from_glyph_name(const char *glyph_name, SpacerStrategy strategy) {
 static void
 detect_spacer_strategy(hb_font_t *hbf, Font *font) {
     CPUCell cpu_cells[3] = {{.ch = '='}, {.ch = '='}, {.ch = '='}};
-    const CellAttrs w1 = {.bits={.width=1}};
+    const CellAttrs w1 = {.width=1};
     GPUCell gpu_cells[3] = {{.attrs = w1}, {.attrs = w1}, {.attrs = w1}};
     shape(cpu_cells, gpu_cells, arraysz(cpu_cells), hbf, font, false);
     font->spacer_strategy = SPACERS_BEFORE;
@@ -1088,7 +1088,7 @@ merge_groups_for_pua_space_ligature(void) {
 static bool
 is_group_calt_ligature(const Group *group) {
     GPUCell *first_cell = G(first_gpu_cell) + group->first_cell_idx;
-    return group->num_cells > 1 && group->has_special_glyph && first_cell->attrs.bits.width == 1;
+    return group->num_cells > 1 && group->has_special_glyph && first_cell->attrs.width == 1;
 }
 
 
@@ -1142,7 +1142,7 @@ test_shape(PyObject UNUSED *self, PyObject *args) {
     int index = 0;
     if(!PyArg_ParseTuple(args, "O!|zi", &Line_Type, &line, &path, &index)) return NULL;
     index_type num = 0;
-    while(num < line->xnum && line->cpu_cells[num].ch) num += line->gpu_cells[num].attrs.bits.width;
+    while(num < line->xnum && line->cpu_cells[num].ch) num += line->gpu_cells[num].attrs.width;
     PyObject *face = NULL;
     Font *font;
     if (!num_font_groups) { PyErr_SetString(PyExc_RuntimeError, "must create at least one font group first"); return NULL; }
@@ -1272,12 +1272,12 @@ render_line(FONTS_DATA_HANDLE fg_, Line *line, index_type lnum, Cursor *cursor, 
                 render_run(fg, line->cpu_cells + i, line->gpu_cells + i, num_spaces + 1, cell_font_idx, true, center_glyph, -1, disable_ligature_strategy);
                 run_font_idx = NO_FONT;
                 first_cell_in_run = i + num_spaces + 1;
-                prev_width = line->gpu_cells[i+num_spaces].attrs.bits.width;
+                prev_width = line->gpu_cells[i+num_spaces].attrs.width;
                 i += num_spaces;
                 continue;
             }
         }
-        prev_width = gpu_cell->attrs.bits.width;
+        prev_width = gpu_cell->attrs.width;
         if (run_font_idx == NO_FONT) run_font_idx = cell_font_idx;
         if (run_font_idx == cell_font_idx) continue;
         RENDER
@@ -1549,8 +1549,8 @@ get_fallback_font(PyObject UNUSED *self, PyObject *args) {
     if (!PyUnicode_AsUCS4(text, char_buf, arraysz(char_buf), 1)) return NULL;
     cpu_cell.ch = char_buf[0];
     for (unsigned i = 0; i + 1 < (unsigned) PyUnicode_GetLength(text) && i < arraysz(cpu_cell.cc_idx); i++) cpu_cell.cc_idx[i] = mark_for_codepoint(char_buf[i + 1]);
-    if (bold) gpu_cell.attrs.bits.bold = true;
-    if (italic) gpu_cell.attrs.bits.italic = true;
+    if (bold) gpu_cell.attrs.bold = true;
+    if (italic) gpu_cell.attrs.italic = true;
     FontGroup *fg = font_groups;
     ssize_t ans = fallback_font(fg, &cpu_cell, &gpu_cell);
     if (ans == MISSING_FONT) { PyErr_SetString(PyExc_ValueError, "No fallback font found"); return NULL; }

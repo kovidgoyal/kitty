@@ -9,7 +9,7 @@
 #include "data-types.h"
 
 #define set_attribute_on_line(cells, which, val, xnum) { \
-    for (index_type i__ = 0; i__ < xnum; i__++) cells[i__].attrs.bits.which = val; }
+    for (index_type i__ = 0; i__ < xnum; i__++) cells[i__].attrs.which = val; }
 
 static inline bool
 set_named_attribute_on_line(GPUCell *cells, const char* which, uint16_t val, index_type xnum) {
@@ -31,7 +31,7 @@ static inline void
 clear_chars_in_line(CPUCell *cpu_cells, GPUCell *gpu_cells, index_type xnum, char_type ch) {
     // Clear only the char part of each cell, the rest must have been cleared by a memset or similar
     if (ch) {
-        const CellAttrs empty = {.bits={.width=1}};
+        const CellAttrs empty = {.width=1};
         for (index_type i = 0; i < xnum; i++) { cpu_cells[i].ch = ch; cpu_cells[i].hyperlink_id = 0; gpu_cells[i].attrs = empty; }
     }
 }
@@ -41,7 +41,7 @@ xlimit_for_line(const Line *line) {
     index_type xlimit = line->xnum;
     if (BLANK_CHAR == 0) {
         while (xlimit > 0 && (line->cpu_cells[xlimit - 1].ch) == BLANK_CHAR) xlimit--;
-        if (xlimit < line->xnum && line->gpu_cells[xlimit > 0 ? xlimit - 1 : xlimit].attrs.bits.width == 2) xlimit++;
+        if (xlimit < line->xnum && line->gpu_cells[xlimit > 0 ? xlimit - 1 : xlimit].attrs.width == 2) xlimit++;
     }
     return xlimit;
 }
@@ -63,9 +63,9 @@ left_shift_line(Line *line, index_type at, index_type num) {
     for (index_type i = at; i < line->xnum - num; i++) {
         COPY_CELL(line, i + num, line, i);
     }
-    const CellAttrs empty = {.bits={.width=1}};
+    const CellAttrs empty = {.width=1};
     const CellAttrs zero = {0};
-    if (at < line->xnum && line->gpu_cells[at].attrs.bits.width != 1) {
+    if (at < line->xnum && line->gpu_cells[at].attrs.width != 1) {
         line->cpu_cells[at].ch = BLANK_CHAR;
         line->cpu_cells[at].hyperlink_id = 0;
         line->gpu_cells[at].attrs = BLANK_CHAR ? empty : zero;

@@ -140,7 +140,7 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
 #define RANGE for(unsigned c = 0; c < cell_count; c++, cell++)
 #define SET_COLOR(which) { color_type color = 0; parse_color(params, &i, count, &color); if (color) { RANGE { cell->which = color; }} } break;
 #define SIMPLE(which, val) RANGE { cell->which = (val); } break;
-#define S(which, val) RANGE { cell->attrs.bits.which = (val); } break;
+#define S(which, val) RANGE { cell->attrs.which = (val); } break;
 
     unsigned int i = 0, attr;
     if (!count) { params[0] = 0; count = 1; }
@@ -171,7 +171,7 @@ apply_sgr_to_cells(GPUCell *first_cell, unsigned int cell_count, int *params, un
             case 21:
                 S(decoration, 2);
             case 22:
-                RANGE { cell->attrs.bits.bold = false; cell->attrs.bits.dim = false; } break;
+                RANGE { cell->attrs.bold = false; cell->attrs.dim = false; } break;
             case 23:
                 S(italic, false);
             case 24:
