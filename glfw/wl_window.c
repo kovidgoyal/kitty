@@ -254,6 +254,14 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
     _glfwInputWindowDamage(window);
 }
 
+static void
+inform_compositor_of_window_geometry(_GLFWwindow *window, const char *event) {
+#define geometry window->wl.decorations.geometry
+    debug("Setting window geometry in %s event: x=%d y=%d %dx%d\n", event, geometry.x, geometry.y, geometry.width, geometry.height);
+    xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
+#undef geometry
+}
+
 
 static void
 xdgDecorationHandleConfigure(void* data,
@@ -263,11 +271,22 @@ xdgDecorationHandleConfigure(void* data,
     _GLFWwindow* window = data;
 
     bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
-    debug("XDG decoration configure event received: Has server side decorations: %d\n", has_server_side_decorations);
+    debug("XDG decoration configure event received: has_server_side_decorations: %d\n", has_server_side_decorations);
     if (has_server_side_decorations == window->wl.decorations.serverSide) return;
     window->wl.decorations.serverSide = has_server_side_decorations;
-    if (window->wl.decorations.serverSide) free_csd_surfaces(window);
-    else ensure_csd_resources(window);
+    int width = window->wl.width, height = window->wl.height;
+    if (window->wl.decorations.serverSide) {
+        free_csd_surfaces(window);
+        height += window->wl.decorations.metrics.visible_titlebar_height;
+    } else {
+        ensure_csd_resources(window);
+    }
+    set_csd_window_geometry(window, &width, &height);
+    dispatchChangesAfterConfigure(window, width, height);
+    ensure_csd_resources(window);
+    wl_surface_commit(window->wl.surface);
+    debug("final window content size: %dx%d\n", window->wl.width, window->wl.height);
+    inform_compositor_of_window_geometry(window, "configure-decorations");
 }
 
 static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener = {
@@ -399,14 +418,6 @@ _glfwPlatformToggleFullscreen(_GLFWwindow *window, unsigned int flags UNUSED) {
     bool already_fullscreen = window->wl.toplevel_states & TOPLEVEL_STATE_FULLSCREEN;
     setFullscreen(window, NULL, !already_fullscreen);
     return !already_fullscreen;
-}
-
-static void
-inform_compositor_of_window_geometry(_GLFWwindow *window, const char *event) {
-#define geometry window->wl.decorations.geometry
-    debug("Setting window geometry in %s event: x=%d y=%d %dx%d\n", event, geometry.x, geometry.y, geometry.width, geometry.height);
-    xdg_surface_set_window_geometry(window->wl.xdg.surface, geometry.x, geometry.y, geometry.width, geometry.height);
-#undef geometry
 }
 
 static void
