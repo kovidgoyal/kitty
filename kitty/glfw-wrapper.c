@@ -411,6 +411,9 @@ load_glfw(const char* path) {
     *(void **) (&glfwGetCocoaKeyEquivalent_impl) = dlsym(handle, "glfwGetCocoaKeyEquivalent");
     if (glfwGetCocoaKeyEquivalent_impl == NULL) dlerror(); // clear error indicator
 
+    *(void **) (&glfwPerformCocoaWindowDrag_impl) = dlsym(handle, "glfwPerformCocoaWindowDrag");
+    if (glfwPerformCocoaWindowDrag_impl == NULL) dlerror(); // clear error indicator
+
     *(void **) (&glfwCocoaRequestRenderFrame_impl) = dlsym(handle, "glfwCocoaRequestRenderFrame");
     if (glfwCocoaRequestRenderFrame_impl == NULL) dlerror(); // clear error indicator
 

@@ -187,14 +187,6 @@ contains_mouse(Window *w) {
     return (w->visible && window_left(w) <= x && x <= window_right(w) && window_top(w) <= y && y <= window_bottom(w));
 }
 
-static inline double
-distance_to_window(Window *w) {
-    double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
-    double cx = (window_left(w) + window_right(w)) / 2.0;
-    double cy = (window_top(w) + window_bottom(w)) / 2.0;
-    return (x - cx) * (x - cx) + (y - cy) * (y - cy);
-}
-
 static bool clamp_to_window = false;
 
 static inline bool
@@ -530,23 +522,6 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     return NULL;
 }
 
-static inline Window*
-closest_window_for_event(unsigned int *window_idx) {
-    Window *ans = NULL;
-    double closest_distance = UINT_MAX;
-    if (global_state.callback_os_window->num_tabs > 0) {
-        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
-        for (unsigned int i = 0; i < t->num_windows; i++) {
-            Window *w = t->windows + i;
-            if (w->visible) {
-                double d = distance_to_window(w);
-                if (d < closest_distance) { ans = w; closest_distance = d; *window_idx = i; }
-            }
-        }
-    }
-    return ans;
-}
-
 void
 focus_in_event() {
     // Ensure that no URL is highlighted and the mouse cursor is in default shape
@@ -634,7 +609,7 @@ mouse_selection(Window *w, int code, int button) {
 
 
 void
-mouse_event(int button, int modifiers, int action) {
+mouse_event(GLFWwindow *window, int button, int modifiers, int action) {
     MouseShape old_cursor = mouse_cursor_shape;
     bool in_tab_bar;
     unsigned int window_idx = 0;
@@ -676,13 +651,8 @@ mouse_event(int button, int modifiers, int action) {
         handle_event(w, button, modifiers, window_idx);
     } else if (button == GLFW_MOUSE_BUTTON_LEFT && global_state.callback_os_window->mouse_button_pressed[button]) {
         // initial click, clamp it to the closest window
-        w = closest_window_for_event(&window_idx);
-        if (w) {
-            clamp_to_window = true;
-            debug("grabbed: %d\n", w->render_data.screen->modes.mouse_tracking_mode != 0);
-            handle_event(w, button, modifiers, window_idx);
-            clamp_to_window = false;
-        } else debug("no window for event\n");
+        debug("start window drag move\n");
+        glfwPerformCocoaWindowDrag(window);
     } else debug("\n");
     if (mouse_cursor_shape != old_cursor) {
         set_mouse_cursor(mouse_cursor_shape);

@@ -2128,6 +2128,10 @@ typedef uint32_t (*glfwGetCocoaKeyEquivalent_func)(uint32_t, int, int*);
 GFW_EXTERN glfwGetCocoaKeyEquivalent_func glfwGetCocoaKeyEquivalent_impl;
 #define glfwGetCocoaKeyEquivalent glfwGetCocoaKeyEquivalent_impl
 
+typedef void (*glfwPerformCocoaWindowDrag_func)(GLFWwindow*);
+GFW_EXTERN glfwPerformCocoaWindowDrag_func glfwPerformCocoaWindowDrag_impl;
+#define glfwPerformCocoaWindowDrag glfwPerformCocoaWindowDrag_impl
+
 typedef void (*glfwCocoaRequestRenderFrame_func)(GLFWwindow*, GLFWcocoarenderframefun);
 GFW_EXTERN glfwCocoaRequestRenderFrame_func glfwCocoaRequestRenderFrame_impl;
 #define glfwCocoaRequestRenderFrame glfwCocoaRequestRenderFrame_impl
