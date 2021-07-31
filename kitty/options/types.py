@@ -715,9 +715,9 @@ defaults.map = [
     # scroll_end
     KeyDefinition(False, KeyAction('scroll_end'), 1024, False, 57357, ()),
     # scroll_to_previous_prompt
-    KeyDefinition(False, KeyAction('scroll_to_prompt', (-1,)), 1024, False, 120, ()),
+    KeyDefinition(False, KeyAction('scroll_to_prompt', (-1,)), 1024, False, 122, ()),
     # scroll_to_next_prompt
-    KeyDefinition(False, KeyAction('scroll_to_prompt', (1,)), 1024, False, 100, ()),
+    KeyDefinition(False, KeyAction('scroll_to_prompt', (1,)), 1024, False, 120, ()),
     # show_scrollback
     KeyDefinition(False, KeyAction('show_scrollback'), 1024, False, 104, ()),
     # show_last_command_output
