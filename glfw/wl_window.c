@@ -264,14 +264,10 @@ xdgDecorationHandleConfigure(void* data,
 
     bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
     debug("XDG decoration configure event received: Has server side decorations: %d\n", has_server_side_decorations);
-    if (!has_server_side_decorations && window->wl.decorations.serverSide) {
-        // this can happen for example on sway where it has a "border toggle" function
-        // that turns on/off the server side decorations. In such a case, we dont turn
-        // on client side decorations, as that causes things to break.
-        return;
-    }
+    if (has_server_side_decorations == window->wl.decorations.serverSide) return;
     window->wl.decorations.serverSide = has_server_side_decorations;
-    ensure_csd_resources(window);
+    if (window->wl.decorations.serverSide) free_csd_surfaces(window);
+    else ensure_csd_resources(window);
 }
 
 static const struct zxdg_toplevel_decoration_v1_listener xdgDecorationListener = {
