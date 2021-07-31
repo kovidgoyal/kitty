@@ -255,13 +255,22 @@ dispatchChangesAfterConfigure(_GLFWwindow *window, int32_t width, int32_t height
 }
 
 
-static void xdgDecorationHandleConfigure(void* data,
+static void
+xdgDecorationHandleConfigure(void* data,
                                          struct zxdg_toplevel_decoration_v1* decoration UNUSED,
                                          uint32_t mode)
 {
     _GLFWwindow* window = data;
 
-    window->wl.decorations.serverSide = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    bool has_server_side_decorations = (mode == ZXDG_TOPLEVEL_DECORATION_V1_MODE_SERVER_SIDE);
+    debug("XDG decoration configure event received: Has server side decorations: %d\n", has_server_side_decorations);
+    if (!has_server_side_decorations && window->wl.decorations.serverSide) {
+        // this can happen for example on sway where it has a "border toggle" function
+        // that turns on/off the server side decorations. In such a case, we dont turn
+        // on client side decorations, as that causes things to break.
+        return;
+    }
+    window->wl.decorations.serverSide = has_server_side_decorations;
     ensure_csd_resources(window);
 }
 
@@ -488,7 +497,8 @@ static const struct xdg_surface_listener xdgSurfaceListener = {
     xdgSurfaceHandleConfigure
 };
 
-static void setXdgDecorations(_GLFWwindow* window)
+static void
+setXdgDecorations(_GLFWwindow* window)
 {
     if (_glfw.wl.decorationManager)
     {
@@ -510,7 +520,8 @@ static void setXdgDecorations(_GLFWwindow* window)
     }
 }
 
-static bool createXdgSurface(_GLFWwindow* window)
+static bool
+createXdgSurface(_GLFWwindow* window)
 {
     window->wl.xdg.surface = xdg_wm_base_get_xdg_surface(_glfw.wl.wmBase,
                                                          window->wl.surface);

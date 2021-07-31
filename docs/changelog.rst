@@ -23,6 +23,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Linux binary: Remove any RPATH build artifacts from bundled libraries
 
+- Wayland: If the compositor turns off server side decorations after turning
+  them on do not draw client side decorations (:iss:`3888`)
+
 
 0.22.0 [2021-07-26]
 ----------------------
