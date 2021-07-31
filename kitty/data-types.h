@@ -166,7 +166,7 @@ typedef union LineAttrs {
         uint8_t has_dirty_text : 1;
         uint8_t is_prompt_start : 1;
         uint8_t is_output_start : 1;
-    } bits;
+    };
     uint8_t val;
 } LineAttrs ;
 

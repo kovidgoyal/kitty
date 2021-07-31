@@ -19,7 +19,7 @@
 #define init_dest_line(dest_y) init_line(dest, dest->line, dest->line_map[dest_y]); dest->line->attrs = dest->line_attrs[dest_y];
 #endif
 
-#define set_dest_line_attrs(dest_y, continued_) dest->line_attrs[dest_y] = src->line->attrs; if (continued_) dest->line_attrs[dest_y].bits.continued = true;
+#define set_dest_line_attrs(dest_y, continued_) dest->line_attrs[dest_y] = src->line->attrs; if (continued_) dest->line_attrs[dest_y].continued = true;
 
 #ifndef first_dest_line
 #define first_dest_line init_dest_line(0); set_dest_line_attrs(0, false)
@@ -31,7 +31,7 @@
         linebuf_index(dest, 0, dest->ynum - 1); \
         if (historybuf != NULL) { \
             init_dest_line(dest->ynum - 1); \
-            dest->line->attrs.bits.has_dirty_text = true; \
+            dest->line->attrs.has_dirty_text = true; \
             historybuf_add_line(historybuf, dest->line, as_ansi_buf); \
         }\
         linebuf_clear_line(dest, dest->ynum - 1, true); \
@@ -41,7 +41,7 @@
 #endif
 
 #ifndef is_src_line_continued
-#define is_src_line_continued(src_y) (src_y < src->ynum - 1 ? (src->line_attrs[src_y + 1].bits.continued) : false)
+#define is_src_line_continued(src_y) (src_y < src->ynum - 1 ? (src->line_attrs[src_y + 1].continued) : false)
 #endif
 
 static inline void

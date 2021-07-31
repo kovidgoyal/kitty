@@ -284,8 +284,8 @@ prevent_current_prompt_from_rewrapping(Screen *self, index_type columns) {
     while (y >= 0) {
         linebuf_init_line(self->main_linebuf, y);
         Line *line = self->linebuf->line;
-        if (line->attrs.bits.is_output_start) return;
-        if (line->attrs.bits.is_prompt_start) break;
+        if (line->attrs.is_output_start) return;
+        if (line->attrs.is_prompt_start) break;
         y--;
     }
     if (y < 0) return;
@@ -470,7 +470,7 @@ move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type
     if (self->modes.mDECAWM) {  // overflow goes onto next line
         screen_carriage_return(self);
         screen_linefeed(self);
-        self->linebuf->line_attrs[self->cursor->y].bits.continued = true;
+        self->linebuf->line_attrs[self->cursor->y].continued = true;
         linebuf_init_line(self->linebuf, self->cursor->y);
         dest_cpu = self->linebuf->line->cpu_cells;
         dest_gpu = self->linebuf->line->gpu_cells;
@@ -644,7 +644,7 @@ screen_draw(Screen *self, uint32_t och, bool from_input_stream) {
         if (self->modes.mDECAWM) {
             screen_carriage_return(self);
             screen_linefeed(self);
-            self->linebuf->line_attrs[self->cursor->y].bits.continued = true;
+            self->linebuf->line_attrs[self->cursor->y].continued = true;
         } else {
             self->cursor->x = self->columns - char_width;
         }
@@ -1352,8 +1352,8 @@ screen_cursor_at_a_shell_prompt(const Screen *self) {
     if (self->cursor->y >= self->lines || self->linebuf != self->main_linebuf) return false;
     for (index_type y=self->cursor->y + 1; y-- > 0; ) {
         linebuf_init_line(self->linebuf, y);
-        if (self->linebuf->line->attrs.bits.is_output_start) return -1;
-        if (self->linebuf->line->attrs.bits.is_prompt_start) return y;
+        if (self->linebuf->line->attrs.is_output_start) return -1;
+        if (self->linebuf->line->attrs.is_prompt_start) return y;
     }
     return -1;
 }
@@ -1810,16 +1810,16 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
     num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
     int y = -self->scrolled_by;
 #define ensure_y_ok if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
-#define move_y_to_start_of_promt while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->attrs.bits.is_prompt_start) y--;
-#define move_y_to_end_of_promt while (y + 1 < (int)self->lines && range_line_(self, y + 1)->attrs.bits.is_prompt_start) y++;
+#define move_y_to_start_of_promt while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->attrs.is_prompt_start) y--;
+#define move_y_to_end_of_promt while (y + 1 < (int)self->lines && range_line_(self, y + 1)->attrs.is_prompt_start) y++;
     ensure_y_ok;
-    if (range_line_(self, y)->attrs.bits.is_prompt_start) {
+    if (range_line_(self, y)->attrs.is_prompt_start) {
         if (delta < 0) { move_y_to_start_of_promt; } else { move_y_to_end_of_promt; }
     }
     while (num_of_prompts_to_jump) {
         y += delta;
         ensure_y_ok;
-        if (range_line_(self, y)->attrs.bits.is_prompt_start) {
+        if (range_line_(self, y)->attrs.is_prompt_start) {
             num_of_prompts_to_jump--;
             if (delta < 0) { move_y_to_start_of_promt; } else { move_y_to_end_of_promt; }
         }
@@ -1948,7 +1948,7 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     for (index_type y = 0; y < MIN(self->lines, self->scrolled_by); y++) {
         lnum = self->scrolled_by - 1 - y;
         historybuf_init_line(self->historybuf, lnum, self->historybuf->line);
-        if (self->historybuf->line->attrs.bits.has_dirty_text) {
+        if (self->historybuf->line->attrs.has_dirty_text) {
             render_line(fonts_data, self->historybuf->line, lnum, self->cursor, self->disable_ligatures);
             if (screen_has_marker(self)) mark_text_in_line(self->marker, self->historybuf->line);
             historybuf_mark_line_clean(self->historybuf, lnum);
@@ -1958,10 +1958,10 @@ screen_update_cell_data(Screen *self, void *address, FONTS_DATA_HANDLE fonts_dat
     for (index_type y = self->scrolled_by; y < self->lines; y++) {
         lnum = y - self->scrolled_by;
         linebuf_init_line(self->linebuf, lnum);
-        if (self->linebuf->line->attrs.bits.has_dirty_text ||
+        if (self->linebuf->line->attrs.has_dirty_text ||
             (cursor_has_moved && (self->cursor->y == lnum || self->last_rendered.cursor_y == lnum))) {
             render_line(fonts_data, self->linebuf->line, lnum, self->cursor, self->disable_ligatures);
-            if (self->linebuf->line->attrs.bits.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, self->linebuf->line);
+            if (self->linebuf->line->attrs.has_dirty_text && screen_has_marker(self)) mark_text_in_line(self->marker, self->linebuf->line);
 
             linebuf_mark_line_clean(self->linebuf, lnum);
         }
@@ -2178,7 +2178,7 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
     for (int i = 0, y = idata.y; y < limit; y++, i++) {
         Line *line = range_line_(self, y);
         XRange xr = xrange_for_iteration(&idata, y, line);
-        char leading_char = (i > 0 && insert_newlines && !line->attrs.bits.continued) ? '\n' : 0;
+        char leading_char = (i > 0 && insert_newlines && !line->attrs.continued) ? '\n' : 0;
         PyObject *text = unicode_in_range(line, xr.x, xr.x_limit, true, leading_char, false);
         if (text == NULL) { Py_DECREF(ans); return PyErr_NoMemory(); }
         PyTuple_SET_ITEM(ans, i, text);
@@ -2447,8 +2447,8 @@ last_cmd_output(Screen *self, PyObject *args) {
     const int limit = -self->historybuf->count;
     while (y >= limit) {
         Line *line = range_line_(self, y);
-        if (line->attrs.bits.is_prompt_start) prompt_pos = y;
-        if (line->attrs.bits.is_output_start) {
+        if (line->attrs.is_prompt_start) prompt_pos = y;
+        if (line->attrs.is_output_start) {
             oo.start = y;
             num_lines = prompt_pos - y;
             break;
@@ -2790,7 +2790,7 @@ screen_selection_range_for_word(Screen *self, const index_type x, const index_ty
     start = x; end = x;
     while(true) {
         while(start > 0 && is_ok(start - 1)) start--;
-        if (start > 0 || !line->attrs.bits.continued || *y1 == 0) break;
+        if (start > 0 || !line->attrs.continued || *y1 == 0) break;
         line = visual_line_(self, *y1 - 1);
         if (!is_ok(self->columns - 1)) break;
         (*y1)--; start = self->columns - 1;
@@ -2800,7 +2800,7 @@ screen_selection_range_for_word(Screen *self, const index_type x, const index_ty
         while(end < self->columns - 1 && is_ok(end + 1)) end++;
         if (end < self->columns - 1 || *y2 >= self->lines - 1) break;
         line = visual_line_(self, *y2 + 1);
-        if (!line->attrs.bits.continued || !is_ok(0)) break;
+        if (!line->attrs.continued || !is_ok(0)) break;
         (*y2)++; end = 0;
     }
     *s = start; *e = end;
@@ -2968,7 +2968,7 @@ screen_mark_hyperlink(Screen *self, index_type x, index_type y) {
 
 static index_type
 continue_line_upwards(Screen *self, index_type top_line, SelectionBoundary *start, SelectionBoundary *end) {
-    while (top_line > 0 && visual_line_(self, top_line)->attrs.bits.continued) {
+    while (top_line > 0 && visual_line_(self, top_line)->attrs.continued) {
         if (!screen_selection_range_for_line(self, top_line - 1, &start->x, &end->x)) break;
         top_line--;
     }
@@ -2977,7 +2977,7 @@ continue_line_upwards(Screen *self, index_type top_line, SelectionBoundary *star
 
 static index_type
 continue_line_downwards(Screen *self, index_type bottom_line, SelectionBoundary *start, SelectionBoundary *end) {
-    while (bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->attrs.bits.continued) {
+    while (bottom_line < self->lines - 1 && visual_line_(self, bottom_line + 1)->attrs.continued) {
         if (!screen_selection_range_for_line(self, bottom_line + 1, &start->x, &end->x)) break;
         bottom_line++;
     }

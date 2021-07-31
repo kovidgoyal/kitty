@@ -162,12 +162,12 @@ historybuf_cpu_cells(HistoryBuf *self, index_type lnum) {
 
 void
 historybuf_mark_line_clean(HistoryBuf *self, index_type y) {
-    attrptr(self, index_of(self, y))->bits.has_dirty_text = false;
+    attrptr(self, index_of(self, y))->has_dirty_text = false;
 }
 
 void
 historybuf_mark_line_dirty(HistoryBuf *self, index_type y) {
-    attrptr(self, index_of(self, y))->bits.has_dirty_text = true;
+    attrptr(self, index_of(self, y))->has_dirty_text = true;
 }
 
 void
@@ -225,7 +225,7 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     Line l = {.xnum=self->xnum};
     init_line(self, self->start_of_data, &l);
     line_as_ansi(&l, as_ansi_buf, &prev_cell);
-    if (ringbuf_bytes_used(ph->ringbuf) && !l.attrs.bits.continued) pagerhist_write_bytes(ph, (const uint8_t*)"\n", 1);
+    if (ringbuf_bytes_used(ph->ringbuf) && !l.attrs.continued) pagerhist_write_bytes(ph, (const uint8_t*)"\n", 1);
     pagerhist_write_bytes(ph, (const uint8_t*)"\x1b[m", 3);
     if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write_bytes(ph, (const uint8_t*)"\r", 1);
 }
@@ -304,10 +304,10 @@ as_ansi(HistoryBuf *self, PyObject *callback) {
     for(unsigned int i = 0; i < self->count; i++) {
         init_line(self, i, &l);
         if (i < self->count - 1) {
-            l.attrs.bits.continued = attrptr(self, index_of(self, i + 1))->bits.continued;
-        } else l.attrs.bits.continued = false;
+            l.attrs.continued = attrptr(self, index_of(self, i + 1))->continued;
+        } else l.attrs.continued = false;
         line_as_ansi(&l, &output, &prev_cell);
-        if (!l.attrs.bits.continued) {
+        if (!l.attrs.continued) {
             ensure_space_for(&output, buf, Py_UCS4, output.len + 1, capacity, 2048, false);
             output.buf[output.len++] = 10; // 10 = \n
         }
@@ -409,12 +409,12 @@ pagerhist_as_bytes(HistoryBuf *self, PyObject *args UNUSED) {
 
     Line l = {.xnum=self->xnum}; get_line(self, 0, &l);
     size_t sz = ringbuf_bytes_used(ph->ringbuf);
-    if (!l.attrs.bits.continued) sz += 1;
+    if (!l.attrs.continued) sz += 1;
     PyObject *ans = PyBytes_FromStringAndSize(NULL, sz);
     if (!ans) return NULL;
     uint8_t *buf = (uint8_t*)PyBytes_AS_STRING(ans);
     ringbuf_memcpy_from(buf, ph->ringbuf, sz);
-    if (!l.attrs.bits.continued) buf[sz-1] = '\n';
+    if (!l.attrs.continued) buf[sz-1] = '\n';
     return ans;
 #undef ph
 }
@@ -458,7 +458,7 @@ dirty_lines(HistoryBuf *self, PyObject *a UNUSED) {
 #define dirty_lines_doc "dirty_lines() -> Line numbers of all lines that have dirty text."
     PyObject *ans = PyList_New(0);
     for (index_type i = 0; i < self->count; i++) {
-        if (attrptr(self, i)->bits.has_dirty_text) {
+        if (attrptr(self, i)->has_dirty_text) {
             PyList_Append(ans, PyLong_FromUnsignedLong(i));
         }
     }
@@ -525,9 +525,9 @@ HistoryBuf *alloc_historybuf(unsigned int lines, unsigned int columns, unsigned 
 
 #define init_src_line(src_y) init_line(src, map_src_index(src_y), src->line);
 
-#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (attrptr(src, map_src_index(src_y + 1))->bits.continued) : false)
+#define is_src_line_continued(src_y) (map_src_index(src_y) < src->ynum - 1 ? (attrptr(src, map_src_index(src_y + 1))->continued) : false)
 
-#define next_dest_line(cont) { LineAttrs *lap = attrptr(dest, historybuf_push(dest, as_ansi_buf)); *lap = src->line->attrs; if (cont) lap->bits.continued = true; dest->line->attrs.bits.continued = cont; }
+#define next_dest_line(cont) { LineAttrs *lap = attrptr(dest, historybuf_push(dest, as_ansi_buf)); *lap = src->line->attrs; if (cont) lap->continued = true; dest->line->attrs.continued = cont; }
 
 #define first_dest_line next_dest_line(false);
 
@@ -551,7 +551,7 @@ historybuf_rewrap(HistoryBuf *self, HistoryBuf *other, ANSIBuf *as_ansi_buf) {
     other->count = 0; other->start_of_data = 0;
     if (self->count > 0) {
         rewrap_inner(self, other, self->count, NULL, NULL, as_ansi_buf);
-        for (index_type i = 0; i < other->count; i++) attrptr(other, (other->start_of_data + i) % other->ynum)->bits.has_dirty_text = true;
+        for (index_type i = 0; i < other->count; i++) attrptr(other, (other->start_of_data + i) % other->ynum)->has_dirty_text = true;
     }
 }
 
