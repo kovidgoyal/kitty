@@ -182,6 +182,8 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
     a('    config_overrides: typing.Tuple[str, ...] = ()')
     a('')
     a('    def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:')
+    if defn.has_color_table:
+        a('        self.color_table = array(self.color_table.typecode, self.color_table)')
     a('        if options_dict is not None:')
     a('            for key in option_names:')
     a('                setattr(self, key, options_dict[key])')

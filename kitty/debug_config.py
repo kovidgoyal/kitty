@@ -7,12 +7,14 @@ from functools import partial
 from pprint import pformat
 from typing import Callable, Dict, Generator, Iterable, Set, Tuple
 
+from kittens.tui.operations import colored, styled
+
 from .cli import version
 from .conf.utils import KeyAction
 from .constants import is_macos, is_wayland
-from kittens.tui.operations import colored
 from .options.types import Options as KittyOpts, defaults
 from .options.utils import MouseMap
+from .rgb import Color, color_as_sharp
 from .types import MouseEvent, SingleKey
 from .typing import SequenceMap
 
@@ -113,6 +115,7 @@ def compare_opts(opts: KittyOpts, print: Callable) -> None:
     ]
     field_len = max(map(len, changed_opts)) if changed_opts else 20
     fmt = '{{:{:d}s}}'.format(field_len)
+    colors = []
     for f in changed_opts:
         val = getattr(opts, f)
         if isinstance(val, dict):
@@ -123,7 +126,11 @@ def compare_opts(opts: KittyOpts, print: Callable) -> None:
             else:
                 print(pformat(val))
         else:
-            print(title(fmt.format(f)), str(getattr(opts, f)))
+            val = getattr(opts, f)
+            if isinstance(val, Color):
+                colors.append(fmt.format(f) + ' ' + color_as_sharp(val) + ' ' + styled('  ', bg=val))
+            else:
+                print(fmt.format(f), str(getattr(opts, f)))
 
     compare_mousemaps(opts.mousemap, default_opts.mousemap, print)
     final_, initial_ = opts.keymap, default_opts.keymap
@@ -133,6 +140,9 @@ def compare_opts(opts: KittyOpts, print: Callable) -> None:
     final.update(final_s)
     initial.update(initial_s)
     compare_keymaps(final, initial, print)
+    if colors:
+        print(f'{title("Colors")}:', end='\n\t')
+        print('\n\t'.join(sorted(colors)))
 
 
 def debug_config(opts: KittyOpts) -> str:

@@ -606,6 +606,7 @@ class Options:
     config_overrides: typing.Tuple[str, ...] = ()
 
     def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:
+        self.color_table = array(self.color_table.typecode, self.color_table)
         if options_dict is not None:
             for key in option_names:
                 setattr(self, key, options_dict[key])
