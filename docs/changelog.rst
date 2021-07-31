@@ -15,8 +15,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix an error on Apple silicon when enumerating monitors (:pull:`3875`)
 
-- Allow specifying the previously active tab or the tab to the left/right of
-  the active tab
+- detach_window: Allow specifying the previously active tab or the tab to the left/right of
+  the active tab (:disc:`3877`)
 
 - broadcast kitten: Fix a regression in ``0.20.0`` that broke sending of some
   keys, such as backspace

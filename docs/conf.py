@@ -516,4 +516,5 @@ def setup(app: Any) -> None:
     app.add_role('link', link_role)
     app.add_role('iss', partial(num_role, 'issues'))
     app.add_role('pull', partial(num_role, 'pull'))
+    app.add_role('disc', partial(num_role, 'discussions'))
     app.add_role('commit', commit_role)
