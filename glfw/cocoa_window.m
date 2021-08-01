@@ -366,6 +366,7 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
         dl = _glfw_create_display_link(displayID);
         if (dl) {
             dl->lastRenderFrameRequestedAt = now;
+            dl->first_unserviced_render_frame_request_at = now;
             if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
         }
     }
