@@ -337,9 +337,12 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
         display_link_shutdown_timer = _glfwPlatformAddTimer(DISPLAY_LINK_SHUTDOWN_CHECK_INTERVAL, false, _glfwShutdownCVDisplayLink, NULL, NULL);
     }
     monotonic_t now = glfwGetTime();
+    bool found_display_link = false;
+    _GLFWDisplayLinkNS *dl = NULL;
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
-        _GLFWDisplayLinkNS *dl = &_glfw.ns.displayLinks.entries[i];
+        dl = &_glfw.ns.displayLinks.entries[i];
         if (dl->displayID == displayID) {
+            found_display_link = true;
             dl->lastRenderFrameRequestedAt = now;
             if (!dl->first_unserviced_render_frame_request_at) dl->first_unserviced_render_frame_request_at = now;
             if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
@@ -357,6 +360,13 @@ requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
             CVDisplayLinkStop(dl->displayLink);
             dl->lastRenderFrameRequestedAt = 0;
             dl->first_unserviced_render_frame_request_at = 0;
+        }
+    }
+    if (!found_display_link) {
+        dl = _glfw_create_display_link(displayID);
+        if (dl) {
+            dl->lastRenderFrameRequestedAt = now;
+            if (!CVDisplayLinkIsRunning(dl->displayLink)) CVDisplayLinkStart(dl->displayLink);
         }
     }
 }

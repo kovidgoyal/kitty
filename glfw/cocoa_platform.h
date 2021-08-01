@@ -250,3 +250,4 @@ void _glfwDispatchRenderFrame(CGDirectDisplayID);
 void _glfwShutdownCVDisplayLink(unsigned long long, void*);
 void _glfwCocoaPostEmptyEvent(void);
 void _glfw_create_cv_display_link(_GLFWDisplayLinkNS *entry);
+_GLFWDisplayLinkNS* _glfw_create_display_link(CGDirectDisplayID);

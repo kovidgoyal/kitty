@@ -41,7 +41,8 @@
 
 // Get the name of the specified display, or NULL
 //
-static char* getDisplayName(CGDirectDisplayID displayID, NSScreen* screen)
+static char*
+getDisplayName(CGDirectDisplayID displayID, NSScreen* screen)
 {
     // IOKit doesn't work on Apple Silicon anymore
     // Luckily, 10.15 introduced -[NSScreen localizedName].
@@ -51,8 +52,9 @@ static char* getDisplayName(CGDirectDisplayID displayID, NSScreen* screen)
         if ([screen respondsToSelector:@selector(localizedName)])
         {
             NSString* name = [screen valueForKey:@"localizedName"];
-            if (name)
+            if (name) {
                 return _glfw_strdup([name UTF8String]);
+            }
         }
     }
     io_iterator_t it;
@@ -64,7 +66,7 @@ static char* getDisplayName(CGDirectDisplayID displayID, NSScreen* screen)
                                      &it) != 0)
     {
         // This may happen if a desktop Mac is running headless
-        return _glfw_strdup("Display");
+        return NULL;
     }
 
     while ((service = IOIteratorNext(it)) != 0)
@@ -102,7 +104,7 @@ static char* getDisplayName(CGDirectDisplayID displayID, NSScreen* screen)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,
                         "Cocoa: Failed to find service port for display");
-        return _glfw_strdup("Display");
+        return NULL;
     }
 
     CFDictionaryRef names =
@@ -115,7 +117,7 @@ static char* getDisplayName(CGDirectDisplayID displayID, NSScreen* screen)
     {
         // This may happen if a desktop Mac is running headless
         CFRelease(info);
-        return _glfw_strdup("Display");
+        return NULL;
     }
 
     const CFIndex size =
@@ -326,11 +328,9 @@ void _glfwClearDisplayLinks() {
         if (_glfw.ns.displayLinks.entries[i].displayLink) {
             CVDisplayLinkStop(_glfw.ns.displayLinks.entries[i].displayLink);
             CVDisplayLinkRelease(_glfw.ns.displayLinks.entries[i].displayLink);
-            _glfw.ns.displayLinks.entries[i].displayLink = nil;
-            _glfw.ns.displayLinks.entries[i].lastRenderFrameRequestedAt = 0;
-            _glfw.ns.displayLinks.entries[i].first_unserviced_render_frame_request_at = 0;
         }
     }
+    memset(_glfw.ns.displayLinks.entries, 0, sizeof(_GLFWDisplayLinkNS) * _glfw.ns.displayLinks.count);
     _glfw.ns.displayLinks.count = 0;
 }
 
@@ -352,16 +352,21 @@ _glfw_create_cv_display_link(_GLFWDisplayLinkNS *entry) {
     CVDisplayLinkSetOutputCallback(entry->displayLink, &displayLinkCallback, (void*)(uintptr_t)entry->displayID);
 }
 
-static void
-createDisplayLink(CGDirectDisplayID displayID) {
-    if (_glfw.ns.displayLinks.count >= sizeof(_glfw.ns.displayLinks.entries)/sizeof(_glfw.ns.displayLinks.entries[0]) - 1) return;
+_GLFWDisplayLinkNS*
+_glfw_create_display_link(CGDirectDisplayID displayID) {
+    if (_glfw.ns.displayLinks.count >= arraysz(_glfw.ns.displayLinks.entries) - 1) {
+        _glfwInputError(GLFW_PLATFORM_ERROR, "Too many monitors cannot create display link");
+        return NULL;
+    }
     for (size_t i = 0; i < _glfw.ns.displayLinks.count; i++) {
-        if (_glfw.ns.displayLinks.entries[i].displayID == displayID) return;
+        // already created in this run
+        if (_glfw.ns.displayLinks.entries[i].displayID == displayID) return _glfw.ns.displayLinks.entries + i;
     }
     _GLFWDisplayLinkNS *entry = &_glfw.ns.displayLinks.entries[_glfw.ns.displayLinks.count++];
     memset(entry, 0, sizeof(_GLFWDisplayLinkNS));
     entry->displayID = displayID;
     _glfw_create_cv_display_link(entry);
+    return entry;
 }
 
 // Poll for changes in the set of connected monitors
@@ -369,11 +374,13 @@ createDisplayLink(CGDirectDisplayID displayID) {
 void _glfwPollMonitorsNS(void)
 {
     uint32_t displayCount;
-
     CGGetOnlineDisplayList(0, NULL, &displayCount);
     CGDirectDisplayID* displays = calloc(displayCount, sizeof(CGDirectDisplayID));
     CGGetOnlineDisplayList(displayCount, displays, &displayCount);
     _glfwClearDisplayLinks();
+    if (_glfw.hints.init.debugRendering) {
+        fprintf(stderr, "Polling for monitors: %u found\n", displayCount);
+    }
 
     for (int i = 0;  i < _glfw.monitorCount;  i++)
         _glfw.monitors[i]->ns.screen = nil;
@@ -390,8 +397,10 @@ void _glfwPollMonitorsNS(void)
 
     for (uint32_t i = 0;  i < displayCount;  i++)
     {
-        if (CGDisplayIsAsleep(displays[i]))
+        if (CGDisplayIsAsleep(displays[i])) {
+            if (_glfw.hints.init.debugRendering) fprintf(stderr, "Ignoring sleeping display: %u", displays[i]);
             continue;
+        }
 
         const uint32_t unitNumber = CGDisplayUnitNumber(displays[i]);
         NSScreen* screen = nil;
@@ -415,7 +424,9 @@ void _glfwPollMonitorsNS(void)
         {
             if (disconnected[j] && disconnected[j]->ns.unitNumber == unitNumber)
             {
+                disconnected[j]->ns.displayID  = displays[i];
                 disconnected[j]->ns.screen = screen;
+                _glfw_create_display_link(displays[i]);
                 disconnected[j] = NULL;
                 break;
             }
@@ -426,14 +437,17 @@ void _glfwPollMonitorsNS(void)
 
         const CGSize size = CGDisplayScreenSize(displays[i]);
         char* name = getDisplayName(displays[i], screen);
-        if (!name)
-            continue;
+        if (!name) {
+            _glfwInputError(GLFW_PLATFORM_ERROR,
+                "Failed to get name for display, using generic name");
+            name = _glfw_strdup("Display with no name");
+        }
 
         _GLFWmonitor* monitor = _glfwAllocMonitor(name, (int)size.width, (int)size.height);
         monitor->ns.displayID  = displays[i];
         monitor->ns.unitNumber = unitNumber;
         monitor->ns.screen     = screen;
-        createDisplayLink(monitor->ns.displayID);
+        _glfw_create_display_link(monitor->ns.displayID);
 
         free(name);
 
