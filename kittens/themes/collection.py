@@ -10,12 +10,12 @@ import re
 import shutil
 import zipfile
 from contextlib import suppress
-from typing import Any, Callable, Dict, Match
+from typing import Any, Callable, Dict, Match, Optional
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from kitty.config import parse_config
-from kitty.constants import cache_dir
+from kitty.constants import cache_dir, config_dir
 from kitty.rgb import Color
 
 
@@ -156,7 +156,14 @@ class Theme:
                 setattr(self, x, a)
 
     def __init__(self, loader: Callable[[], str]):
-        self.loader = loader
+        self._loader = loader
+        self._raw: Optional[str] = None
+
+    @property
+    def raw(self) -> str:
+        if self._raw is None:
+            self._raw = self._loader()
+        return self._raw
 
 
 class Themes:
@@ -180,3 +187,31 @@ class Themes:
                 t.apply_dict(item)
                 if t.name:
                     self.themes[t.name] = t
+
+    def load_from_dir(self, path: str) -> None:
+        if not os.path.isdir(path):
+            return
+        for name in os.listdir(path):
+            if name.endswith('.conf'):
+                with open(os.path.join(path, name), 'rb') as f:
+                    raw = f.read().decode()
+                try:
+                    d = parse_theme(name, raw)
+                except (Exception, SystemExit):
+                    continue
+                t = Theme(lambda: raw)
+                t.apply_dict(d)
+                if t.name:
+                    self.themes[t.name] = t
+
+    def filtered(self, is_ok: Callable[[Theme], bool]) -> 'Themes':
+        ans = Themes()
+        ans.themes = {k: v for k, v in self.themes.items() if is_ok(v)}
+        return ans
+
+
+def load_themes() -> Themes:
+    ans = Themes()
+    ans.load_from_zip(fetch_themes())
+    ans.load_from_dir(os.path.join(config_dir, 'themes'))
+    return ans
