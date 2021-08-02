@@ -4,6 +4,17 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.22.2 [2021-08-02]
+----------------------
+
+- macOS: Fix a long standing bug that could cause kitty windows to stop
+  updating, that got worse in the previous release (:iss:`3890` and
+  :iss:`2016`)
+
+- Wayland: A better fix for compositors like sway that can toggle client side
+  decorations on and off (:iss:`3888`)
+
+
 0.22.1 [2021-07-31]
 ----------------------
 
