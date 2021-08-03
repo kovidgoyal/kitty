@@ -8,9 +8,10 @@ import json
 import os
 import re
 import shutil
+import tempfile
 import zipfile
 from contextlib import suppress
-from typing import Any, Callable, Dict, Match, Optional
+from typing import Any, Callable, Dict, Iterator, Match, Optional
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -48,10 +49,20 @@ def fetch_themes(
             return dest_path
         raise
     m.etag = res.headers.get('etag') or ''
-    with open(dest_path, 'wb') as f:
-        shutil.copyfileobj(res, f)
-    with zipfile.ZipFile(dest_path, 'a') as zf:
-        zf.comment = json.dumps({'etag': m.etag, 'timestamp': m.timestamp.isoformat()}).encode('utf-8')
+
+    needs_delete = False
+    try:
+        with tempfile.NamedTemporaryFile(suffix='-' + os.path.basename(dest_path), dir=os.path.dirname(dest_path), delete=False) as f:
+            needs_delete = True
+            shutil.copyfileobj(res, f)
+            f.flush()
+            with zipfile.ZipFile(f.name, 'a') as zf:
+                zf.comment = json.dumps({'etag': m.etag, 'timestamp': m.timestamp.isoformat()}).encode('utf-8')
+            os.replace(f.name, dest_path)
+            needs_delete = False
+    finally:
+        if needs_delete:
+            os.unlink(f.name)
     return dest_path
 
 
@@ -170,6 +181,12 @@ class Themes:
 
     def __init__(self) -> None:
         self.themes: Dict[str, Theme] = {}
+
+    def __len__(self) -> int:
+        return len(self.themes)
+
+    def __iter__(self) -> Iterator[Theme]:
+        return iter(self.themes.values())
 
     def load_from_zip(self, path_to_zip: str) -> None:
         with zipfile.ZipFile(path_to_zip, 'r') as zf:

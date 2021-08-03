@@ -58,13 +58,11 @@ class ThemesHandler(Handler):
                 self.quit_loop(1)
                 return
             else:
-                self.themes: Themes = themes_or_exception
+                self.all_themes: Themes = themes_or_exception
                 self.state = State.browsing
             self.draw_screen()
 
         def fetch() -> None:
-            import time
-            time.sleep(15)
             try:
                 themes: Union[Themes, str] = load_themes()
             except Exception:
