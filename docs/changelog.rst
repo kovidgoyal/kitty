@@ -10,6 +10,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new style for the tab bar that makes tabs looks like the tabs in a physical
   tabbed file, see :opt:`tab_bar_style`
 
+- Fix :option:`kitty --title` not overriding the OS Window title when multiple
+  tabs are present (:iss:`3893`)
+
+
 0.22.2 [2021-08-02]
 ----------------------
 

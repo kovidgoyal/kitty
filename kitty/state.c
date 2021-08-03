@@ -264,6 +264,7 @@ update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyO
 
 void
 set_os_window_title_from_window(Window *w, OSWindow *os_window) {
+    if (os_window->disallow_title_changes) return;
     if (w->title && w->title != os_window->window_title) {
         Py_XDECREF(os_window->window_title);
         os_window->window_title = w->title;
