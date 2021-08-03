@@ -42,7 +42,7 @@ def fetch_themes(
     if m.etag:
         rq.add_header('If-None-Match', m.etag)
     try:
-        res = urlopen(rq)
+        res = urlopen(rq, timeout=30)
     except HTTPError as e:
         if m.etag and e.code == http.HTTPStatus.NOT_MODIFIED:
             return dest_path
@@ -60,7 +60,7 @@ def zip_file_loader(path_to_zip: str, theme_file_name: str, file_name: str) -> C
     name = os.path.join(os.path.dirname(theme_file_name), file_name)
 
     def zip_loader() -> str:
-        with zipfile.ZipFile(path_to_zip, 'r') as zf, zf.open(name, 'rb') as f:
+        with zipfile.ZipFile(path_to_zip, 'r') as zf, zf.open(name) as f:
             return f.read().decode('utf-8')
 
     return zip_loader
@@ -176,7 +176,7 @@ class Themes:
             for name in zf.namelist():
                 if os.path.basename(name) == 'themes.json':
                     theme_file_name = name
-                    with zf.open(theme_file_name, 'rb') as f:
+                    with zf.open(theme_file_name) as f:
                         items = json.loads(f.read())
                     break
             else:
