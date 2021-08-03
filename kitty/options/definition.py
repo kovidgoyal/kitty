@@ -874,14 +874,20 @@ tab.
 opt('tab_bar_style', 'fade',
     choices=('fade', 'hidden', 'powerline', 'separator', 'slant'), ctype='!tab_bar_style',
     long_text='''
-The tab bar style, can be one of: :code:`fade`, :code:`separator`,
-:code:`powerline`, or :code:`hidden`. In the fade style, each tab's edges fade
-into the background color, in the slant style tabs look like the tabs in file
-folder, in the separator style, tabs are separated by a configurable separator,
-the powerline shows the tabs as a continuous line. If you use the hidden
-style, you might want to create a mapping for the :ref:`action-select_tab`
-action which presents you with a list of tabs and allows for easy switching to
-a tab.
+The tab bar style, can be one of:
+
+:code:`fade`
+    Each tab's edges fade into the background color (see :opt:`tab_fade`)
+:code:`slant`
+    Tabs look like the tabs in a physical file
+:code:`separator`
+    Tabs are separated by a configurable separator (see :opt:`tab_separator`)
+:code:`powerline`
+    Tabs are shown as a continuous line with "fancy" separators (see :opt:`tab_powerline_style`)
+:code:`hidden`
+    The tab bar is hidden. If you use this, you might want to create a mapping
+    for the :ref:`action-select_tab` action which presents you with a list
+    of tabs and allows for easy switching to a tab.
 '''
     )
 
