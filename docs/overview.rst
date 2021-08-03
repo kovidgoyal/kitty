@@ -116,7 +116,7 @@ endless. See the :doc:`tutorial <remote-control>` to get started.
 Startup Sessions
 ------------------
 
-You can control the :term:`tabs <tab>`, `:term:`kitty window <window>` layout,
+You can control the :term:`tabs <tab>`, :term:`kitty window <window>` layout,
 working directory, startup programs,
 etc. by creating a "session" file and using the :option:`kitty --session`
 command line flag or the :opt:`startup_session` option in :file:`kitty.conf`.
