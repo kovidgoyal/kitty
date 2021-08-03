@@ -26,7 +26,7 @@
 #include <sys/param.h>
 #include <assert.h>
 
-static inline size_t
+static size_t
 size_t_min(size_t x, size_t y) {
     return x > y ? y : x;
 }

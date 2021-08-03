@@ -109,7 +109,7 @@ realloc_sprite_texture(FONTS_DATA_HANDLE fg) {
     sprite_map->texture_id = tex;
 }
 
-static inline void
+static void
 ensure_sprite_map(FONTS_DATA_HANDLE fg) {
     SpriteMap *sprite_map = (SpriteMap*)fg->sprite_map;
     if (!sprite_map->texture_id) realloc_sprite_texture(fg);
@@ -241,7 +241,7 @@ struct CellUniformData {
 
 static struct CellUniformData cell_uniform_data = {0, .prev_inactive_text_alpha=-1};
 
-static inline void
+static void
 send_graphics_data_to_gpu(size_t image_count, ssize_t gvao_idx, const ImageRenderData *render_data) {
     size_t sz = sizeof(GLfloat) * 16 * image_count;
     GLfloat *a = alloc_and_map_vao_buffer(gvao_idx, sz, 0, GL_STREAM_DRAW, GL_WRITE_ONLY);
@@ -249,7 +249,7 @@ send_graphics_data_to_gpu(size_t image_count, ssize_t gvao_idx, const ImageRende
     unmap_vao_buffer(gvao_idx, 0); a = NULL;
 }
 
-static inline void
+static void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
     struct CellRenderData {
         GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, cursor_text_uses_bg;
@@ -306,7 +306,7 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
 }
 
-static inline bool
+static bool
 cell_prepare_to_render(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, FONTS_DATA_HANDLE fonts_data) {
     size_t sz;
     CELL_BUFFERS;
@@ -440,7 +440,7 @@ draw_cells_simple(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen) {
     }
 }
 
-static inline bool
+static bool
 has_bgimage(OSWindow *w) {
     return w->bgimage && w->bgimage->texture_id > 0;
 }
@@ -570,7 +570,7 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     glDisable(GL_BLEND);
 }
 
-static inline void
+static void
 set_cell_uniforms(float current_inactive_text_alpha, bool force) {
     if (!cell_uniform_data.constants_set || force) {
         cell_uniform_data.gploc = glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "inactive_text_alpha");

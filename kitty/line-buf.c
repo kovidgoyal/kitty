@@ -12,17 +12,17 @@
 extern PyTypeObject Line_Type;
 extern PyTypeObject HistoryBuf_Type;
 
-static inline CPUCell*
+static CPUCell*
 cpu_lineptr(LineBuf *linebuf, index_type y) {
     return linebuf->cpu_cell_buf + y * linebuf->xnum;
 }
 
-static inline GPUCell*
+static GPUCell*
 gpu_lineptr(LineBuf *linebuf, index_type y) {
     return linebuf->gpu_cell_buf + y * linebuf->xnum;
 }
 
-static inline void
+static void
 clear_chars_to(LineBuf* linebuf, index_type y, char_type ch) {
     clear_chars_in_line(cpu_lineptr(linebuf, y), gpu_lineptr(linebuf, y), linebuf->xnum, ch);
 }
@@ -118,7 +118,7 @@ dealloc(LineBuf* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static inline void
+static void
 init_line(LineBuf *lb, Line *l, index_type ynum) {
     l->cpu_cells = cpu_lineptr(lb, ynum);
     l->gpu_cells = gpu_lineptr(lb, ynum);
@@ -193,7 +193,7 @@ dirty_lines(LineBuf *self, PyObject *a UNUSED) {
     return ans;
 }
 
-static inline bool
+static bool
 allocate_line_storage(Line *line, bool initialize) {
     if (initialize) {
         line->cpu_cells = PyMem_Calloc(line->xnum, sizeof(CPUCell));
@@ -209,7 +209,7 @@ allocate_line_storage(Line *line, bool initialize) {
     return true;
 }
 
-static inline PyObject*
+static PyObject*
 create_line_copy_inner(LineBuf* self, index_type y) {
     Line src, *line;
     line = alloc_line();
@@ -247,7 +247,7 @@ copy_line_to(LineBuf *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static inline void
+static void
 clear_line_(Line *l, index_type xnum) {
     zero_at_ptr_count(l->cpu_cells, xnum);
     zero_at_ptr_count(l->gpu_cells, xnum);
@@ -439,7 +439,7 @@ end:
     Py_RETURN_NONE;
 }
 
-static inline Line*
+static Line*
 get_line(void *x, int y) {
     LineBuf *self = (LineBuf*)x;
     linebuf_init_line(self, MAX(0, y));

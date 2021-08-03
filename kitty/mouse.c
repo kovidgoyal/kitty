@@ -30,7 +30,7 @@ typedef enum MouseActions { PRESS, RELEASE, DRAG, MOVE } MouseAction;
 #define EXTRA_BUTTON_INDICATOR (1 << 7)
 
 
-static inline unsigned int
+static unsigned int
 button_map(int button) {
     switch(button) {
         case GLFW_MOUSE_BUTTON_LEFT:
@@ -50,7 +50,7 @@ button_map(int button) {
     }
 }
 
-static inline unsigned int
+static unsigned int
 encode_button(unsigned int button) {
     if (button >= 8 && button <= 11) {
         return (button - 8) | EXTRA_BUTTON_INDICATOR;
@@ -65,7 +65,7 @@ encode_button(unsigned int button) {
 
 static char mouse_event_buf[64];
 
-static inline int
+static int
 encode_mouse_event_impl(unsigned int x, unsigned int y, int mouse_tracking_protocol, int button, MouseAction action, int mods) {
     unsigned int cb = 0;
     if (action == MOVE) {
@@ -161,33 +161,33 @@ dispatch_mouse_event(Window *w, int button, int count, int modifiers, bool grabb
     return handled;
 }
 
-static inline unsigned int
+static unsigned int
 window_left(Window *w) {
     return w->geometry.left - w->padding.left;
 }
 
-static inline unsigned int
+static unsigned int
 window_right(Window *w) {
     return w->geometry.right + w->padding.right;
 }
 
-static inline unsigned int
+static unsigned int
 window_top(Window *w) {
     return w->geometry.top - w->padding.top;
 }
 
-static inline unsigned int
+static unsigned int
 window_bottom(Window *w) {
     return w->geometry.bottom + w->padding.bottom;
 }
 
-static inline bool
+static bool
 contains_mouse(Window *w) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
     return (w->visible && window_left(w) <= x && x <= window_right(w) && window_top(w) <= y && y <= window_bottom(w));
 }
 
-static inline double
+static double
 distance_to_window(Window *w) {
     double x = global_state.callback_os_window->mouse_x, y = global_state.callback_os_window->mouse_y;
     double cx = (window_left(w) + window_right(w)) / 2.0;
@@ -197,7 +197,7 @@ distance_to_window(Window *w) {
 
 static bool clamp_to_window = false;
 
-static inline bool
+static bool
 cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_cell, OSWindow *os_window) {
     WindowGeometry *g = &w->geometry;
     Screen *screen = w->render_data.screen;
@@ -232,9 +232,9 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
     return false;
 }
 
-#define HANDLER(name) static inline void name(Window UNUSED *w, int UNUSED button, int UNUSED modifiers, unsigned int UNUSED window_idx)
+#define HANDLER(name) static void name(Window UNUSED *w, int UNUSED button, int UNUSED modifiers, unsigned int UNUSED window_idx)
 
-static inline void
+static void
 set_mouse_cursor_when_dragging(void) {
     if (mouse_cursor_shape != OPT(pointer_shape_when_dragging)) {
         mouse_cursor_shape = OPT(pointer_shape_when_dragging);
@@ -242,7 +242,7 @@ set_mouse_cursor_when_dragging(void) {
     }
 }
 
-static inline void
+static void
 update_drag(Window *w) {
     Screen *screen = w->render_data.screen;
     if (screen && screen->selections.in_progress) {
@@ -251,7 +251,7 @@ update_drag(Window *w) {
     set_mouse_cursor_when_dragging();
 }
 
-static inline bool
+static bool
 do_drag_scroll(Window *w, bool upwards) {
     Screen *screen = w->render_data.screen;
     if (screen->linebuf == screen->main_linebuf) {
@@ -280,7 +280,7 @@ drag_scroll(Window *w, OSWindow *frame) {
     return false;
 }
 
-static inline void
+static void
 extend_selection(Window *w, bool ended, bool extend_nearest) {
     Screen *screen = w->render_data.screen;
     if (screen_has_selection(screen)) {
@@ -289,12 +289,12 @@ extend_selection(Window *w, bool ended, bool extend_nearest) {
     }
 }
 
-static inline void
+static void
 set_mouse_cursor_for_screen(Screen *screen) {
     mouse_cursor_shape = screen->modes.mouse_tracking_mode == NO_TRACKING ? OPT(default_pointer_shape): OPT(pointer_shape_when_grabbed);
 }
 
-static inline void
+static void
 handle_mouse_movement_in_kitty(Window *w, int button, bool mouse_cell_changed) {
     Screen *screen = w->render_data.screen;
     if (screen->selections.in_progress && (button == global_state.active_drag_button)) {
@@ -343,12 +343,12 @@ HANDLER(handle_move_event) {
     }
 }
 
-static inline double
+static double
 distance(double x1, double y1, double x2, double y2) {
     return sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
 }
 
-static inline void
+static void
 clear_click_queue(Window *w, int button) {
     if (0 <= button && button <= (ssize_t)arraysz(w->click_queues)) w->click_queues[button].length = 0;
 }
@@ -467,7 +467,7 @@ HANDLER(handle_button_event) {
     else add_press(w, button, modifiers);
 }
 
-static inline int
+static int
 currently_pressed_button(void) {
     for (int i = 0; i <= GLFW_MOUSE_BUTTON_LAST; i++) {
         if (global_state.callback_os_window->mouse_button_pressed[i]) return i;
@@ -485,7 +485,7 @@ HANDLER(handle_event) {
     }
 }
 
-static inline void
+static void
 handle_tab_bar_mouse(int button, int UNUSED modifiers) {
     static monotonic_t last_click_at = 0;
     if (button != GLFW_MOUSE_BUTTON_LEFT || !global_state.callback_os_window->mouse_button_pressed[button]) return;
@@ -495,7 +495,7 @@ handle_tab_bar_mouse(int button, int UNUSED modifiers) {
     call_boss(activate_tab_at, "KdO", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x, is_double ? Py_True : Py_False);
 }
 
-static inline bool
+static bool
 mouse_in_region(Region *r) {
     if (r->left == r->right) return false;
     if (global_state.callback_os_window->mouse_y < r->top || global_state.callback_os_window->mouse_y > r->bottom) return false;
@@ -503,7 +503,7 @@ mouse_in_region(Region *r) {
     return true;
 }
 
-static inline Window*
+static Window*
 window_for_id(id_type window_id) {
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
     for (unsigned int i = 0; i < t->num_windows; i++) {
@@ -513,7 +513,7 @@ window_for_id(id_type window_id) {
     return NULL;
 }
 
-static inline Window*
+static Window*
 window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     Region central, tab_bar;
     os_window_regions(global_state.callback_os_window, &central, &tab_bar);
@@ -530,7 +530,7 @@ window_for_event(unsigned int *window_idx, bool *in_tab_bar) {
     return NULL;
 }
 
-static inline Window*
+static Window*
 closest_window_for_event(unsigned int *window_idx) {
     Window *ans = NULL;
     double closest_distance = UINT_MAX;

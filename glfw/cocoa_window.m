@@ -233,10 +233,10 @@ mac_ucode_to_functional(uint32_t key_code) {  // {{{
     }
 } // }}}
 
-static inline bool
+static bool
 is_surrogate(UniChar uc) { return (uc - 0xd800u) < 2048u; }
 
-static inline uint32_t
+static uint32_t
 get_first_codepoint(UniChar *utf16, UniCharCount num) {
     if (!num) return 0;
     if (!is_surrogate(*utf16)) return *utf16;
@@ -244,7 +244,7 @@ get_first_codepoint(UniChar *utf16, UniCharCount num) {
     return 0;
 }
 
-static inline bool
+static bool
 is_pua_char(uint32_t ch) {
     return (0xE000 <= ch && ch <= 0xF8FF) || (0xF0000 <= ch && ch <= 0xFFFFF) || (0x100000 <= ch && ch <= 0x10FFFF);
 }
@@ -321,7 +321,7 @@ _glfwShutdownCVDisplayLink(unsigned long long timer_id UNUSED, void *user_data U
     }
 }
 
-static inline void
+static void
 requestRenderFrame(_GLFWwindow *w, GLFWcocoarenderframefun callback) {
     if (!callback) {
         w->ns.renderFrameRequested = false;
@@ -505,7 +505,7 @@ translateFlags(NSUInteger flags)
 
 #define debug_key(...) if (_glfw.hints.init.debugKeyboard) { fprintf(stderr, __VA_ARGS__); fflush(stderr); }
 
-static inline const char*
+static const char*
 format_mods(int mods) {
     static char buf[128];
     char *p = buf, *s;
@@ -525,7 +525,7 @@ format_mods(int mods) {
     return buf;
 }
 
-static inline const char*
+static const char*
 format_text(const char *src) {
     static char buf[256];
     char *p = buf;
@@ -1144,7 +1144,7 @@ static const NSRange kEmptyRange = { NSNotFound, 0 };
     [super updateTrackingAreas];
 }
 
-static inline UInt32
+static UInt32
 convert_cocoa_to_carbon_modifiers(NSUInteger flags) {
     UInt32 mods = 0;
     if (flags & NSEventModifierFlagShift)
@@ -1161,7 +1161,7 @@ convert_cocoa_to_carbon_modifiers(NSUInteger flags) {
     return (mods >> 8) & 0xFF;
 }
 
-static inline void
+static void
 convert_utf16_to_utf8(UniChar *src, UniCharCount src_length, char *dest, size_t dest_sz) {
     CFStringRef string = CFStringCreateWithCharactersNoCopy(kCFAllocatorDefault,
                                                             src,
@@ -1174,12 +1174,12 @@ convert_utf16_to_utf8(UniChar *src, UniCharCount src_length, char *dest, size_t 
     CFRelease(string);
 }
 
-static inline bool
+static bool
 alternate_key_is_ok(uint32_t key, uint32_t akey) {
     return akey > 31 && akey != key && !is_pua_char(akey);
 }
 
-static inline void
+static void
 add_alternate_keys(GLFWkeyevent *ev, NSEvent *event) {
     ev->alternate_key = translateKey(ev->native_key, false);
     if (!alternate_key_is_ok(ev->key, ev->alternate_key)) ev->alternate_key = 0;
@@ -1198,7 +1198,7 @@ add_alternate_keys(GLFWkeyevent *ev, NSEvent *event) {
     }
 }
 
-static inline bool
+static bool
 is_ascii_control_char(char x) {
     return x == 0 || (1 <= x && x <= 31) || x == 127;
 }

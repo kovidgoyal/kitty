@@ -30,7 +30,7 @@ static uint32_t FG_BG_256[256] = {
     0xffffff,  // 15
 };
 
-static inline void
+static void
 init_FG_BG_table(void) {
     if (UNLIKELY(FG_BG_256[255] == 0)) {
         // colors 16..232: the 6x6x6 color cube
@@ -111,7 +111,7 @@ copy_color_profile(ColorProfile *dest, ColorProfile *src) {
     dest->dirty = true;
 }
 
-static inline void
+static void
 patch_color_table(const char *key, PyObject *profiles, PyObject *spec, size_t which, int change_configured) {
     PyObject *v = PyDict_GetItemString(spec, key);
     if (v) {

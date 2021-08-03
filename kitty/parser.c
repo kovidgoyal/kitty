@@ -23,7 +23,7 @@ static const uint64_t pow_10_array[] = {
     1, 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000
 };
 
-static inline int64_t
+static int64_t
 utoi(const uint32_t *buf, unsigned int sz) {
     int64_t ans = 0;
     const uint32_t *p = buf;
@@ -45,7 +45,7 @@ utoi(const uint32_t *buf, unsigned int sz) {
 }
 
 
-static inline const char*
+static const char*
 utf8(char_type codepoint) {
     if (!codepoint) return "";
     static char buf[8];
@@ -313,7 +313,7 @@ dispatch_esc_mode_char(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_c
 
 // OSC mode {{{
 
-static inline bool
+static bool
 parse_osc_8(char *buf, char **id, char **url) {
     char *boundary = strstr(buf, ";");
     if (boundary == NULL) return false;
@@ -331,7 +331,7 @@ parse_osc_8(char *buf, char **id, char **url) {
     return true;
 }
 
-static inline void
+static void
 dispatch_hyperlink(Screen *screen, size_t pos, size_t size, PyObject DUMP_UNUSED *dump_callback) {
     // since the spec says only ASCII printable chars are allowed in OSC 8, we
     // can just convert to char* directly
@@ -481,14 +481,14 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
         case '/':
 
 
-static inline void
+static void
 screen_cursor_up2(Screen *s, unsigned int count) { screen_cursor_up(s, count, false, -1); }
-static inline void
+static void
 screen_cursor_back1(Screen *s, unsigned int count) { screen_cursor_back(s, count, -1); }
-static inline void
+static void
 screen_tabn(Screen *s, unsigned int count) { for (index_type i=0; i < MAX(1u, count); i++) screen_tab(s); }
 
-static inline const char*
+static const char*
 repr_csi_params(int *params, unsigned int num_params) {
     if (!num_params) return "";
     static char buf[256];
@@ -633,7 +633,7 @@ parse_sgr(Screen *screen, uint32_t *buf, unsigned int num, int *params, PyObject
 #undef SEND_SGR
 }
 
-static inline unsigned int
+static unsigned int
 parse_region(Region *r, uint32_t *buf, unsigned int num) {
     unsigned int i, start, num_params = 0;
     int params[8] = {0};
@@ -668,7 +668,7 @@ parse_region(Region *r, uint32_t *buf, unsigned int num) {
     return i;
 }
 
-static inline const char*
+static const char*
 csi_letter(unsigned code) {
     static char buf[8];
     if (33 <= code && code <= 126) snprintf(buf, sizeof(buf), "%c", code);
@@ -676,7 +676,7 @@ csi_letter(unsigned code) {
     return buf;
 }
 
-static inline void
+static void
 dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 #define AT_MOST_ONE_PARAMETER { \
     if (num_params > 1) { \
@@ -996,7 +996,7 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 
 // DCS mode {{{
 
-static inline bool
+static bool
 startswith(const uint32_t *string, size_t sz, const char *prefix) {
     size_t l = strlen(prefix);
     if (sz < l) return false;
@@ -1008,7 +1008,7 @@ startswith(const uint32_t *string, size_t sz, const char *prefix) {
 
 #define PENDING_MODE_CHAR '='
 
-static inline void
+static void
 dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (screen->parser_buf_pos < 2) return;
     switch(screen->parser_buf[0]) {
@@ -1077,7 +1077,7 @@ dispatch_dcs(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 
 #include "parse-graphics-command.h"
 
-static inline void
+static void
 dispatch_apc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (screen->parser_buf_pos < 2) return;
     switch(screen->parser_buf[0]) {
@@ -1093,7 +1093,7 @@ dispatch_apc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
 // }}}
 
 // PM mode {{{
-static inline void
+static void
 dispatch_pm(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
     if (screen->parser_buf_pos < 2) return;
     switch(screen->parser_buf[0]) {
@@ -1144,7 +1144,7 @@ accumulate_osc(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback,
     return false;
 }
 
-static inline bool
+static bool
 accumulate_dcs(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
     switch(ch) {
         case ST:
@@ -1174,7 +1174,7 @@ END_ALLOW_CASE_RANGE
 }
 
 
-static inline bool
+static bool
 accumulate_oth(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
     switch(ch) {
         case ST:
@@ -1200,7 +1200,7 @@ accumulate_oth(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback)
 }
 
 
-static inline bool
+static bool
 accumulate_csi(Screen *screen, uint32_t ch, PyObject DUMP_UNUSED *dump_callback) {
 #define ENSURE_SPACE \
     if (screen->parser_buf_pos > PARSER_BUF_SZ - 1) { \
@@ -1329,14 +1329,14 @@ extern uint32_t *latin1_charset;
     }  \
 }
 
-static inline void
+static void
 _parse_bytes(Screen *screen, const uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     unsigned int i;
     decode_loop(dispatch, ;);
 FLUSH_DRAW;
 }
 
-static inline size_t
+static size_t
 _parse_bytes_watching_for_pending(Screen *screen, const uint8_t *buf, Py_ssize_t len, PyObject DUMP_UNUSED *dump_callback) {
     unsigned int i;
     decode_loop(dispatch, if (screen->pending_mode.activated_at) goto end);

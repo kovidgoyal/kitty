@@ -14,7 +14,7 @@
 extern PyTypeObject Line_Type;
 #define SEGMENT_SIZE 2048
 
-static inline void
+static void
 add_segment(HistoryBuf *self) {
     self->num_segments += 1;
     self->segments = realloc(self->segments, sizeof(HistoryBufSegment) * self->num_segments);
@@ -28,7 +28,7 @@ add_segment(HistoryBuf *self) {
     s->line_attrs = (line_attrs_type*)(((uint8_t*)s->gpu_cells) + gpu_cells_size);
 }
 
-static inline index_type
+static index_type
 segment_for(HistoryBuf *self, index_type y) {
     index_type seg_num = y / SEGMENT_SIZE;
     while (UNLIKELY(seg_num >= self->num_segments && SEGMENT_SIZE * self->num_segments < self->ynum)) add_segment(self);
@@ -42,23 +42,23 @@ segment_for(HistoryBuf *self, index_type y) {
     return self->segments[seg_num].which + y * stride; \
 }
 
-static inline CPUCell*
+static CPUCell*
 cpu_lineptr(HistoryBuf *self, index_type y) {
     seg_ptr(cpu_cells, self->xnum);
 }
 
-static inline GPUCell*
+static GPUCell*
 gpu_lineptr(HistoryBuf *self, index_type y) {
     seg_ptr(gpu_cells, self->xnum);
 }
 
 
-static inline line_attrs_type*
+static line_attrs_type*
 attrptr(HistoryBuf *self, index_type y) {
     seg_ptr(line_attrs, 1);
 }
 
-static inline PagerHistoryBuf*
+static PagerHistoryBuf*
 alloc_pagerhist(size_t pagerhist_sz) {
     PagerHistoryBuf *ph;
     if (!pagerhist_sz) return NULL;
@@ -71,14 +71,14 @@ alloc_pagerhist(size_t pagerhist_sz) {
     return ph;
 }
 
-static inline void
+static void
 free_pagerhist(HistoryBuf *self) {
     if (self->pagerhist && self->pagerhist->ringbuf) ringbuf_free((ringbuf_t*)&self->pagerhist->ringbuf);
     free(self->pagerhist);
     self->pagerhist = NULL;
 }
 
-static inline bool
+static bool
 pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
     size_t buffer_size = ringbuf_capacity(ph->ringbuf);
     if (buffer_size >= ph->maximum_size) return false;
@@ -92,7 +92,7 @@ pagerhist_extend(PagerHistoryBuf *ph, size_t minsz) {
     return true;
 }
 
-static inline void
+static void
 pagerhist_clear(HistoryBuf *self) {
     if (self->pagerhist && self->pagerhist->ringbuf) ringbuf_reset(self->pagerhist->ringbuf);
 }
@@ -133,7 +133,7 @@ dealloc(HistoryBuf* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static inline index_type
+static index_type
 index_of(HistoryBuf *self, index_type lnum) {
     // The index (buffer position) of the line with line number lnum
     // This is reverse indexing, i.e. lnum = 0 corresponds to the *last* line in the buffer.
@@ -142,7 +142,7 @@ index_of(HistoryBuf *self, index_type lnum) {
     return (self->start_of_data + idx) % self->ynum;
 }
 
-static inline void
+static void
 init_line(HistoryBuf *self, index_type num, Line *l) {
     // Initialize the line l, setting its pointer to the offsets for the line at index (buffer position) num
     l->cpu_cells = cpu_lineptr(self, num);
@@ -180,7 +180,7 @@ historybuf_clear(HistoryBuf *self) {
     self->start_of_data = 0;
 }
 
-static inline bool
+static bool
 pagerhist_write_bytes(PagerHistoryBuf *ph, const uint8_t *buf, size_t sz) {
     if (sz > ph->maximum_size) return false;
     if (!sz) return true;
@@ -190,7 +190,7 @@ pagerhist_write_bytes(PagerHistoryBuf *ph, const uint8_t *buf, size_t sz) {
     return true;
 }
 
-static inline bool
+static bool
 pagerhist_ensure_start_is_valid_utf8(PagerHistoryBuf *ph) {
     uint8_t scratch[8];
     size_t num = ringbuf_memcpy_from(scratch, ph->ringbuf, arraysz(scratch));
@@ -210,7 +210,7 @@ pagerhist_ensure_start_is_valid_utf8(PagerHistoryBuf *ph) {
     return false;
 }
 
-static inline bool
+static bool
 pagerhist_write_ucs4(PagerHistoryBuf *ph, const Py_UCS4 *buf, size_t sz) {
     uint8_t scratch[4];
     for (size_t i = 0; i < sz; i++) {
@@ -220,7 +220,7 @@ pagerhist_write_ucs4(PagerHistoryBuf *ph, const Py_UCS4 *buf, size_t sz) {
     return true;
 }
 
-static inline void
+static void
 pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     PagerHistoryBuf *ph = self->pagerhist;
     if (!ph) return;
@@ -233,7 +233,7 @@ pagerhist_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     if (pagerhist_write_ucs4(ph, as_ansi_buf->buf, as_ansi_buf->len)) pagerhist_write_bytes(ph, (const uint8_t*)"\r", 1);
 }
 
-static inline index_type
+static index_type
 historybuf_push(HistoryBuf *self, ANSIBuf *as_ansi_buf) {
     index_type idx = (self->start_of_data + self->count) % self->ynum;
     init_line(self, idx, self->line);
@@ -327,10 +327,10 @@ end:
     Py_RETURN_NONE;
 }
 
-static inline Line*
+static Line*
 get_line(HistoryBuf *self, index_type y, Line *l) { init_line(self, index_of(self, self->count - y - 1), l); return l; }
 
-static inline char_type
+static char_type
 pagerhist_remove_char(PagerHistoryBuf *ph, unsigned *count, uint8_t record[8]) {
     uint32_t codep; UTF8State state = UTF8_ACCEPT;
     *count = 0;

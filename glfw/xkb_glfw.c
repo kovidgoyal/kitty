@@ -490,7 +490,7 @@ load_compose_tables(_GLFWXKBData *xkb) {
     xkb_compose_table_unref(compose_table);
 }
 
-static inline xkb_mod_mask_t
+static xkb_mod_mask_t
 active_unknown_modifiers(_GLFWXKBData *xkb, struct xkb_state *state) {
     size_t i = 0;
     xkb_mod_mask_t ans = 0;
@@ -577,7 +577,7 @@ glfw_xkb_should_repeat(_GLFWXKBData *xkb, xkb_keycode_t keycode) {
 }
 
 
-static inline xkb_keysym_t
+static xkb_keysym_t
 compose_symbol(struct xkb_compose_state *composeState, xkb_keysym_t sym, int *compose_completed, char *key_text, int n) {
     *compose_completed = 0;
     if (sym == XKB_KEY_NoSymbol || !composeState) return sym;
@@ -610,7 +610,7 @@ glfw_xkb_keysym_from_name(const char *name, bool case_sensitive) {
     return (int)xkb_keysym_from_name(name, case_sensitive ? XKB_KEYSYM_NO_FLAGS : XKB_KEYSYM_CASE_INSENSITIVE);
 }
 
-static inline const char*
+static const char*
 format_mods(unsigned int mods) {
     static char buf[128];
     char *p = buf, *s;
@@ -632,7 +632,7 @@ format_mods(unsigned int mods) {
     return buf;
 }
 
-static inline const char*
+static const char*
 format_xkb_mods(_GLFWXKBData *xkb, const char* name, xkb_mod_mask_t mods) {
     static char buf[512];
     char *p = buf, *s;

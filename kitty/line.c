@@ -49,7 +49,7 @@ cell_text(CPUCell *cell) {
 
 // URL detection {{{
 
-static inline index_type
+static index_type
 find_colon_slash(Line *self, index_type x, index_type limit) {
     // Find :// at or before x
     index_type pos = MIN(x, self->xnum - 1);
@@ -84,7 +84,7 @@ find_colon_slash(Line *self, index_type x, index_type limit) {
     return 0;
 }
 
-static inline bool
+static bool
 prefix_matches(Line *self, index_type at, const char_type* prefix, index_type prefix_len) {
     if (prefix_len > at) return false;
     index_type p, i;
@@ -94,7 +94,7 @@ prefix_matches(Line *self, index_type at, const char_type* prefix, index_type pr
     return i == prefix_len;
 }
 
-static inline bool
+static bool
 has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_type *ans) {
     for (size_t i = 0; i < OPT(url_prefixes.num); i++) {
         index_type prefix_len = OPT(url_prefixes.values[i].len);
@@ -106,7 +106,7 @@ has_url_prefix_at(Line *self, index_type at, index_type min_prefix_len, index_ty
 
 #define MIN_URL_LEN 5
 
-static inline bool
+static bool
 has_url_beyond(Line *self, index_type x) {
     for (index_type i = x; i < MIN(x + MIN_URL_LEN + 3, self->xnum); i++) {
         if (!is_url_char(self->cpu_cells[i].ch)) return false;
@@ -268,7 +268,7 @@ sprite_at(Line* self, PyObject *x) {
     return Py_BuildValue("HHH", c->sprite_x, c->sprite_y, c->sprite_z);
 }
 
-static inline void
+static void
 write_sgr(const char *val, ANSIBuf *output) {
 #define W(c) output->buf[output->len++] = c
     W(0x1b); W('[');
@@ -277,7 +277,7 @@ write_sgr(const char *val, ANSIBuf *output) {
 #undef W
 }
 
-static inline void
+static void
 write_hyperlink(hyperlink_id_type hid, ANSIBuf *output) {
 #define W(c) output->buf[output->len++] = c
     const char *key = hid ? get_hyperlink_for_id(output->hyperlink_pool, hid, false) : NULL;
@@ -636,7 +636,7 @@ set_attribute(Line *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static inline int
+static int
 color_as_sgr(char *buf, size_t sz, unsigned long val, unsigned simple_code, unsigned aix_code, unsigned complex_code) {
     switch(val & 0xff) {
         case 1:
@@ -652,7 +652,7 @@ color_as_sgr(char *buf, size_t sz, unsigned long val, unsigned simple_code, unsi
     }
 }
 
-static inline const char*
+static const char*
 decoration_as_sgr(uint8_t decoration) {
     switch(decoration) {
         case 1: return "4;";
@@ -722,7 +722,7 @@ line_has_mark(Line *line, attrs_type mark) {
     return false;
 }
 
-static inline void
+static void
 report_marker_error(PyObject *marker) {
     if (!PyObject_HasAttrString(marker, "error_reported")) {
         PyErr_Print();
@@ -730,7 +730,7 @@ report_marker_error(PyObject *marker) {
     } else PyErr_Clear();
 }
 
-static inline void
+static void
 apply_mark(Line *line, const attrs_type mark, index_type *cell_pos, unsigned int *match_pos) {
 #define MARK { line->gpu_cells[x].attrs &= ATTRS_MASK_WITHOUT_MARK; line->gpu_cells[x].attrs |= mark; }
     index_type x = *cell_pos;
@@ -757,7 +757,7 @@ apply_mark(Line *line, const attrs_type mark, index_type *cell_pos, unsigned int
 #undef MARK
 }
 
-static inline void
+static void
 apply_marker(PyObject *marker, Line *line, const PyObject *text) {
     unsigned int l=0, r=0, col=0, match_pos=0;
     PyObject *pl = PyLong_FromVoidPtr(&l), *pr = PyLong_FromVoidPtr(&r), *pcol = PyLong_FromVoidPtr(&col);

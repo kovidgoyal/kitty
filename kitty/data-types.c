@@ -91,7 +91,7 @@ stop_profiler(PyObject UNUSED *self, PyObject *args UNUSED) {
 }
 #endif
 
-static inline bool
+static bool
 put_tty_in_raw_mode(int fd, const struct termios* termios_p, bool read_with_timeout, int optional_actions) {
     struct termios raw_termios = *termios_p;
     cfmakeraw(&raw_termios);

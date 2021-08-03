@@ -46,7 +46,7 @@ is_modifier_key(const uint32_t key) {
     END_ALLOW_CASE_RANGE
 }
 
-static inline void
+static void
 convert_glfw_mods(int mods, KeyEvent *ev, const unsigned key_encoding_flags) {
     if (!key_encoding_flags) mods &= ~GLFW_LOCK_MASK;
     ev->mods.alt = (mods & GLFW_MOD_ALT) > 0, ev->mods.ctrl = (mods & GLFW_MOD_CONTROL) > 0, ev->mods.shift = (mods & GLFW_MOD_SHIFT) > 0, ev->mods.super = (mods & GLFW_MOD_SUPER) > 0, ev->mods.hyper = (mods & GLFW_MOD_HYPER) > 0, ev->mods.meta = (mods & GLFW_MOD_META) > 0;
@@ -63,7 +63,7 @@ convert_glfw_mods(int mods, KeyEvent *ev, const unsigned key_encoding_flags) {
 }
 
 
-static inline void
+static void
 init_encoding_data(EncodingData *ans, const KeyEvent *ev) {
     ans->add_actions = ev->report_all_event_types && ev->action != PRESS;
     ans->has_mods = ev->mods.encoded[0] && ( ev->mods.encoded[0] != '1' || ev->mods.encoded[1] );
@@ -76,7 +76,7 @@ init_encoding_data(EncodingData *ans, const KeyEvent *ev) {
     memcpy(ans->encoded_mods, ev->mods.encoded, sizeof(ans->encoded_mods));
 }
 
-static inline int
+static int
 serialize(const EncodingData *data, char *output, const char csi_trailer) {
     int pos = 0;
     bool second_field_not_empty = data->has_mods || data->add_actions;
@@ -113,7 +113,7 @@ serialize(const EncodingData *data, char *output, const char csi_trailer) {
     return pos;
 }
 
-static inline uint32_t
+static uint32_t
 convert_kp_key_to_normal_key(uint32_t key_number) {
     switch(key_number) {
 #define S(x) case GLFW_FKEY_KP_##x: key_number = GLFW_FKEY_##x; break;
@@ -329,7 +329,7 @@ encode_printable_ascii_key_legacy(const KeyEvent *ev, char *output) {
     return 0;
 }
 
-static inline bool
+static bool
 is_legacy_ascii_key(uint32_t key) {
     START_ALLOW_CASE_RANGE
     switch (key) {
@@ -408,7 +408,7 @@ encode_key(const KeyEvent *ev, char *output) {
     return serialize(&ed, output, 'u');
 }
 
-static inline bool
+static bool
 startswith_ascii_control_char(const char *p) {
     if (!p || !*p) return true;
     uint32_t codep; UTF8State state = UTF8_ACCEPT;

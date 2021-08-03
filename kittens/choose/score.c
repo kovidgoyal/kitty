@@ -59,7 +59,7 @@ free_workspace(void *v) {
     return NULL;
 }
 
-static inline bool
+static bool
 has_char(text_t *text, len_t sz, text_t ch) {
     for(len_t i = 0; i < sz; i++) {
         if(text[i] == ch) return true;
@@ -67,7 +67,7 @@ has_char(text_t *text, len_t sz, text_t ch) {
     return false;
 }
 
-static inline uint8_t
+static uint8_t
 level_factor_for(text_t current, text_t last, WorkSpace *w) {
     text_t lch = LOWERCASE(last);
     if (has_char(w->level1, w->level1_len, lch)) return 90;
@@ -101,7 +101,7 @@ init_workspace(WorkSpace *w, text_t *haystack, len_t haystack_len) {
 }
 
 
-static inline bool
+static bool
 has_atleast_one_match(WorkSpace *w) {
     int p = -1;
     bool found;
@@ -118,7 +118,7 @@ has_atleast_one_match(WorkSpace *w) {
 
 #define POSITION(x) w->positions[x][w->address[x]]
 
-static inline bool
+static bool
 increment_address(WorkSpace *w) {
     len_t pos = w->needle_len - 1;
     while(true) {
@@ -130,7 +130,7 @@ increment_address(WorkSpace *w) {
     return false;
 }
 
-static inline bool
+static bool
 address_is_monotonic(WorkSpace *w) {
     // Check if the character positions pointed to by the current address are monotonic
     for (len_t i = 1; i < w->needle_len; i++) {
@@ -139,7 +139,7 @@ address_is_monotonic(WorkSpace *w) {
     return true;
 }
 
-static inline double
+static double
 calc_score(WorkSpace *w) {
     double ans = 0;
     len_t distance, pos;

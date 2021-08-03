@@ -16,7 +16,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 
-static inline char**
+static char**
 serialize_string_tuple(PyObject *src) {
     Py_ssize_t sz = PyTuple_GET_SIZE(src);
 
@@ -32,7 +32,7 @@ serialize_string_tuple(PyObject *src) {
     return ans;
 }
 
-static inline void
+static void
 free_string_tuple(char** data) {
     size_t i = 0;
     while(data[i]) free(data[i++]);
@@ -41,7 +41,7 @@ free_string_tuple(char** data) {
 
 extern char **environ;
 
-static inline void
+static void
 write_to_stderr(const char *text) {
     size_t sz = strlen(text);
     size_t written = 0;
@@ -58,7 +58,7 @@ write_to_stderr(const char *text) {
 
 #define exit_on_err(m) { write_to_stderr(m); write_to_stderr(": "); write_to_stderr(strerror(errno)); exit(EXIT_FAILURE); }
 
-static inline void
+static void
 wait_for_terminal_ready(int fd) {
     char data;
     while(1) {

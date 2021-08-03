@@ -30,12 +30,12 @@
 #define KITTY_LIB_DIR_NAME "lib"
 #endif
 
-static inline void cleanup_free(void *p) { free(*(void**) p); }
+static void cleanup_free(void *p) { free(*(void**) p); }
 #define FREE_AFTER_FUNCTION __attribute__((cleanup(cleanup_free)))
 
 
 #ifndef __FreeBSD__
-static inline bool
+static bool
 safe_realpath(const char* src, char *buf, size_t buf_sz) {
     FREE_AFTER_FUNCTION char* ans = realpath(src, NULL);
     if (ans == NULL) return false;
@@ -44,7 +44,7 @@ safe_realpath(const char* src, char *buf, size_t buf_sz) {
 }
 #endif
 
-static inline bool
+static bool
 set_xoptions(const char *exe_dir_c, const char *lc_ctype, bool from_source) {
     wchar_t *exe_dir = Py_DecodeLocale(exe_dir_c, NULL);
     if (exe_dir == NULL) { fprintf(stderr, "Fatal error: cannot decode exe_dir: %s\n", exe_dir_c); return false; }
@@ -199,7 +199,7 @@ run_embedded(const RunData run_data) {
 
 // read_exe_path() {{{
 #ifdef __APPLE__
-static inline bool
+static bool
 read_exe_path(char *exe, size_t buf_sz) {
     (void)buf_sz;
     uint32_t size = PATH_MAX;
@@ -212,7 +212,7 @@ read_exe_path(char *exe, size_t buf_sz) {
 #include <sys/param.h>
 #include <sys/sysctl.h>
 
-static inline bool
+static bool
 read_exe_path(char *exe, size_t buf_sz) {
     int name[] = { CTL_KERN, KERN_PROC, KERN_PROC_PATHNAME, -1 };
     size_t length = buf_sz;
@@ -225,14 +225,14 @@ read_exe_path(char *exe, size_t buf_sz) {
 }
 #elif defined(__NetBSD__)
 
-static inline bool
+static bool
 read_exe_path(char *exe, size_t buf_sz) {
     if (!safe_realpath("/proc/curproc/exe", exe, buf_sz)) { fprintf(stderr, "Failed to read /proc/curproc/exe\n"); return false; }
     return true;
 }
 
 #elif defined(__OpenBSD__)
-static inline bool
+static bool
 read_exe_path(char *exe, size_t buf_sz) {
     const char *path = getenv("PATH");
     if (!path) { fprintf(stderr, "No PATH environment variable set, aborting\n"); return false; }
@@ -251,7 +251,7 @@ read_exe_path(char *exe, size_t buf_sz) {
 
 #else
 
-static inline bool
+static bool
 read_exe_path(char *exe, size_t buf_sz) {
     if (!safe_realpath("/proc/self/exe", exe, buf_sz)) { fprintf(stderr, "Failed to read /proc/self/exe\n"); return false; }
     return true;

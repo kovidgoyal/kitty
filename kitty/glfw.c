@@ -49,7 +49,7 @@ request_tick_callback(void) {
     glfwPostEmptyEvent();
 }
 
-static inline void
+static void
 min_size_for_os_window(OSWindow *window, int *min_width, int *min_height) {
     *min_width = MAX(8u, window->fonts_data->cell_width + 1);
     *min_height = MAX(8u, window->fonts_data->cell_height + 1);
@@ -124,7 +124,7 @@ update_os_window_references() {
     }
 }
 
-static inline bool
+static bool
 set_callback_window(GLFWwindow *w) {
     global_state.callback_os_window = glfwGetWindowUserPointer(w);
     if (global_state.callback_os_window) return true;
@@ -137,7 +137,7 @@ set_callback_window(GLFWwindow *w) {
     return false;
 }
 
-static inline bool
+static bool
 is_window_ready_for_callbacks(void) {
     OSWindow *w = global_state.callback_os_window;
     if (w->num_tabs == 0) return false;
@@ -148,7 +148,7 @@ is_window_ready_for_callbacks(void) {
 
 #define WINDOW_CALLBACK(name, fmt, ...) call_boss(name, "K" fmt, global_state.callback_os_window->id, __VA_ARGS__)
 
-static inline void
+static void
 show_mouse_cursor(GLFWwindow *w) {
     glfwSetInputMode(w, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 }
@@ -250,7 +250,7 @@ refresh_callback(GLFWwindow *w) {
 
 static int mods_at_last_key_or_button_event = 0;
 
-static inline int
+static int
 key_to_modifier(uint32_t key) {
     switch(key) {
         case GLFW_FKEY_LEFT_SHIFT:
@@ -403,7 +403,7 @@ application_close_requested_callback(int flags) {
     }
 }
 
-static inline void get_window_dpi(GLFWwindow *w, double *x, double *y);
+static void get_window_dpi(GLFWwindow *w, double *x, double *y);
 
 #ifdef __APPLE__
 static bool
@@ -492,7 +492,7 @@ set_os_window_size(OSWindow *os_window, int x, int y) {
     glfwSetWindowSize(os_window->handle, x, y);
 }
 
-static inline void
+static void
 get_window_content_scale(GLFWwindow *w, float *xscale, float *yscale, double *xdpi, double *ydpi) {
     *xscale = 1; *yscale = 1;
     if (w) glfwGetWindowContentScale(w, xscale, yscale);
@@ -611,7 +611,7 @@ set_titlebar_color(OSWindow *w, color_type color, bool use_system_color) {
     }
 }
 
-static inline PyObject*
+static PyObject*
 native_window_handle(GLFWwindow *w) {
 #ifdef __APPLE__
     void *ans = glfwGetCocoaWindow(w);
@@ -815,7 +815,7 @@ os_window_update_size_increments(OSWindow *window) {
 }
 
 #ifdef __APPLE__
-static inline bool
+static bool
 window_in_same_cocoa_workspace(void *w, size_t *source_workspaces, size_t source_workspace_count) {
     static size_t workspaces[64];
     size_t workspace_count = cocoa_get_workspace_ids(w, workspaces, arraysz(workspaces));
@@ -827,7 +827,7 @@ window_in_same_cocoa_workspace(void *w, size_t *source_workspaces, size_t source
     return false;
 }
 
-static inline void
+static void
 cocoa_focus_last_window(id_type source_window_id, size_t *source_workspaces, size_t source_workspace_count) {
     id_type highest_focus_number = 0;
     OSWindow *window_to_focus = NULL;

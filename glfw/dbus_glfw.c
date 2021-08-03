@@ -31,7 +31,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static inline void
+static void
 report_error(DBusError *err, const char *fmt, ...) {
     static char buf[1024];
     va_list args;
@@ -64,7 +64,7 @@ on_dbus_watch_ready(int fd UNUSED, int events, void *data) {
     dbus_watch_handle(watch, flags);
 }
 
-static inline int
+static int
 events_for_watch(DBusWatch *watch) {
     int events = 0;
     unsigned int flags = dbus_watch_get_flags(watch);

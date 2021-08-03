@@ -50,13 +50,13 @@ enum Capabilities {
 };
 
 
-static inline bool
+static bool
 test_env_var(const char *name, const char *val) {
     const char *q = getenv(name);
     return (q && strcmp(q, val) == 0) ? true : false;
 }
 
-static inline size_t
+static size_t
 GLFW_MIN(size_t a, size_t b) {
     return a < b ? a : b;
 }
@@ -106,7 +106,7 @@ get_ibus_text_from_message(DBusMessage *msg) {
     return text;
 }
 
-static inline void
+static void
 send_text(const char *text, GLFWIMEState ime_state) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {
@@ -147,7 +147,7 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data) 
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static inline const char*
+static const char*
 get_ibus_address_file_name(void) {
     const char *addr;
     static char ans[PATH_MAX];
@@ -196,7 +196,7 @@ get_ibus_address_file_name(void) {
 }
 
 
-static inline bool
+static bool
 read_ibus_address(_GLFWIBUSData *ibus) {
     static char buf[1024];
     struct stat s;
@@ -379,7 +379,7 @@ typedef enum
 } IBusModifierType;
 
 
-static inline uint32_t
+static uint32_t
 ibus_key_state(unsigned int glfw_modifiers, int action) {
     uint32_t ans = action == GLFW_RELEASE ? IBUS_RELEASE_MASK : 0;
 #define M(g, i) if(glfw_modifiers & GLFW_MOD_##g) ans |= i

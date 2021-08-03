@@ -111,7 +111,7 @@ static size_t reaped_pids_count = 0;
 // before ticking over the main loop. Negative values mean wait forever.
 static monotonic_t maximum_wait = -1;
 
-static inline void
+static void
 set_maximum_wait(monotonic_t val) {
     if (val >= 0 && (val < maximum_wait || maximum_wait < 0)) maximum_wait = val;
 }
@@ -307,7 +307,7 @@ shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
     Py_RETURN_NONE;
 }
 
-static inline bool
+static bool
 do_parse(ChildMonitor *self, Screen *screen, monotonic_t now) {
     bool input_read = false;
     screen_mutex(lock, read);
@@ -414,7 +414,7 @@ parse_input(ChildMonitor *self) {
     return input_read;
 }
 
-static inline void
+static void
 mark_child_for_close(ChildMonitor *self, id_type window_id) {
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
@@ -437,7 +437,7 @@ mark_for_close(ChildMonitor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static inline bool
+static bool
 pty_resize(int fd, struct winsize *dim) {
     while(true) {
         if (ioctl(fd, TIOCSWINSZ, dim) == -1) {
@@ -515,7 +515,7 @@ pyset_iutf8(ChildMonitor *self, PyObject *args) {
 
 extern void cocoa_update_menu_bar_title(PyObject*);
 
-static inline void
+static void
 collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow *os_window) {
     ScreenRenderData *rd = &w->render_data;
     Cursor *cursor = rd->screen->cursor;
@@ -542,7 +542,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
     ans->is_focused = os_window->is_focused;
 }
 
-static inline void
+static void
 change_menubar_title(PyObject *title UNUSED) {
 #ifdef __APPLE__
     static PyObject *current_title = NULL;
@@ -553,7 +553,7 @@ change_menubar_title(PyObject *title UNUSED) {
 #endif
 }
 
-static inline bool
+static bool
 prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *active_window_id, color_type *active_window_bg, unsigned int *num_visible_windows, bool *all_windows_have_same_bg, bool scan_for_animated_images) {
 #define TD os_window->tab_bar_render_data
     bool needs_render = os_window->needs_render;
@@ -614,7 +614,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
     return needs_render;
 }
 
-static inline void
+static void
 render_os_window(OSWindow *os_window, monotonic_t now, unsigned int active_window_id, color_type active_window_bg, unsigned int num_visible_windows, bool all_windows_have_same_bg) {
     // ensure all pixels are cleared to background color at least once in every buffer
     if (os_window->clear_count++ < 3) blank_os_window(os_window);
@@ -664,7 +664,7 @@ draw_resizing_text(OSWindow *w) {
     }
 }
 
-static inline bool
+static bool
 no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_wait) {
     bool ans = now - w->last_render_frame_received_at > max_wait;
     if (ans && global_state.debug_rendering) {
@@ -677,7 +677,7 @@ no_render_frame_received_recently(OSWindow *w, monotonic_t now, monotonic_t max_
     return ans;
 }
 
-static inline void
+static void
 render(monotonic_t now, bool input_read) {
     EVDBG("input_read: %d, check_for_active_animated_images: %d", input_read, global_state.check_for_active_animated_images);
     static monotonic_t last_render_at = MONOTONIC_T_MIN;
@@ -736,7 +736,7 @@ render(monotonic_t now, bool input_read) {
 
 typedef struct { int fd; uint8_t *buf; size_t sz; } ThreadWriteData;
 
-static inline ThreadWriteData*
+static ThreadWriteData*
 alloc_twd(size_t sz) {
     ThreadWriteData *data = calloc(1, sizeof(ThreadWriteData));
     if (data != NULL) {
@@ -747,7 +747,7 @@ alloc_twd(size_t sz) {
     return data;
 }
 
-static inline void
+static void
 free_twd(ThreadWriteData *x) {
     if (x != NULL) free(x->buf);
     free(x);
@@ -770,7 +770,7 @@ monitor_pid(PyObject *self UNUSED, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static inline void
+static void
 report_reaped_pids(void) {
     children_mutex(lock);
     if (reaped_pids_count) {
@@ -860,7 +860,7 @@ remove_python_timer(PyObject *self UNUSED, PyObject *args) {
 }
 
 
-static inline void
+static void
 process_pending_resizes(monotonic_t now) {
     global_state.has_pending_resizes = false;
     for (size_t i = 0; i < global_state.num_os_windows; i++) {
@@ -890,7 +890,7 @@ process_pending_resizes(monotonic_t now) {
     }
 }
 
-static inline void
+static void
 close_os_window(ChildMonitor *self, OSWindow *os_window) {
     destroy_os_window(os_window);
     call_boss(on_os_window_closed, "Kii", os_window->id, os_window->window_width, os_window->window_height);
@@ -901,7 +901,7 @@ close_os_window(ChildMonitor *self, OSWindow *os_window) {
     remove_os_window(os_window->id);
 }
 
-static inline bool
+static bool
 process_pending_closes(ChildMonitor *self) {
     if (global_state.quit_request == CONFIRMABLE_CLOSE_REQUESTED) {
         call_boss(quit, "");
@@ -1075,7 +1075,7 @@ main_loop(ChildMonitor *self, PyObject *a UNUSED) {
 
 // I/O thread functions {{{
 
-static inline void
+static void
 add_children(ChildMonitor *self) {
     for (; add_queue_count > 0 && self->count < MAX_CHILDREN;) {
         add_queue_count--;
@@ -1088,7 +1088,7 @@ add_children(ChildMonitor *self) {
 }
 
 
-static inline void
+static void
 hangup(pid_t pid) {
     errno = 0;
     pid_t pgid = getpgid(pid);
@@ -1100,14 +1100,14 @@ hangup(pid_t pid) {
 }
 
 
-static inline void
+static void
 cleanup_child(ssize_t i) {
     safe_close(children[i].fd, __FILE__, __LINE__);
     hangup(children[i].pid);
 }
 
 
-static inline void
+static void
 remove_children(ChildMonitor *self) {
     if (self->count > 0) {
         size_t count = 0;
@@ -1186,7 +1186,7 @@ handle_signal(int signum, void *data) {
     }
 }
 
-static inline void
+static void
 mark_child_for_removal(ChildMonitor *self, pid_t pid) {
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
@@ -1198,7 +1198,7 @@ mark_child_for_removal(ChildMonitor *self, pid_t pid) {
     children_mutex(unlock);
 }
 
-static inline void
+static void
 mark_monitored_pids(pid_t pid, int status) {
     children_mutex(lock);
     for (ssize_t i = monitored_pids_count - 1; i >= 0; i--) {
@@ -1213,7 +1213,7 @@ mark_monitored_pids(pid_t pid, int status) {
     children_mutex(unlock);
 }
 
-static inline void
+static void
 reap_children(ChildMonitor *self, bool enable_close_on_child_death) {
     int status;
     pid_t pid;
@@ -1229,7 +1229,7 @@ reap_children(ChildMonitor *self, bool enable_close_on_child_death) {
     }
 }
 
-static inline void
+static void
 write_to_child(int fd, Screen *screen) {
     size_t written = 0;
     ssize_t ret = 0;
@@ -1387,7 +1387,7 @@ typedef struct pollfd PollFD;
 #define PEER_LIMIT 256
 #define nuke_socket(s) { shutdown(s, SHUT_RDWR); safe_close(s, __FILE__, __LINE__); }
 
-static inline bool
+static bool
 accept_peer(int listen_fd, bool shutting_down) {
     int peer = accept(listen_fd, NULL, NULL);
     if (UNLIKELY(peer == -1)) {
@@ -1408,7 +1408,7 @@ accept_peer(int listen_fd, bool shutting_down) {
     return true;
 }
 
-static inline void
+static void
 free_peer(Peer *peer) {
     free(peer->read.data); peer->read.data = NULL;
     free(peer->write.data); peer->write.data = NULL;
@@ -1417,7 +1417,7 @@ free_peer(Peer *peer) {
 
 #define KITTY_CMD_PREFIX "\x1bP@kitty-cmd{"
 
-static inline void
+static void
 queue_peer_message(ChildMonitor *self, Peer *peer) {
     talk_mutex(lock);
     ensure_space_for(self, messages, Message, self->messages_count + 16, messages_capacity, 16, true);
@@ -1436,7 +1436,7 @@ queue_peer_message(ChildMonitor *self, Peer *peer) {
     wakeup_main_loop();
 }
 
-static inline bool
+static bool
 has_complete_peer_command(Peer *peer) {
     peer->read.command_end = 0;
     if (peer->read.used > sizeof(KITTY_CMD_PREFIX) && memcmp(peer->read.data, KITTY_CMD_PREFIX, sizeof(KITTY_CMD_PREFIX)-1) == 0) {
@@ -1451,7 +1451,7 @@ has_complete_peer_command(Peer *peer) {
 }
 
 
-static inline void
+static void
 dispatch_peer_command(ChildMonitor *self, Peer *peer) {
     if (peer->read.command_end) {
         size_t used = peer->read.used;
@@ -1466,7 +1466,7 @@ dispatch_peer_command(ChildMonitor *self, Peer *peer) {
     }
 }
 
-static inline void
+static void
 read_from_peer(ChildMonitor *self, Peer *peer) {
 #define failed(msg) { log_error("Reading from peer failed: %s", msg); shutdown(peer->fd, SHUT_RD); peer->read.finished = true; return; }
     if (peer->read.used >= peer->read.capacity) {
@@ -1492,7 +1492,7 @@ read_from_peer(ChildMonitor *self, Peer *peer) {
 #undef failed
 }
 
-static inline void
+static void
 write_to_peer(Peer *peer) {
     talk_mutex(lock);
     ssize_t n = send(peer->fd, peer->write.data, peer->write.used, MSG_NOSIGNAL);
@@ -1512,7 +1512,7 @@ wakeup_talk_loop(bool in_signal_handler) {
 }
 
 
-static inline void
+static void
 prune_peers(void) {
     for (size_t i = 0; i < talk_data.num_peers; i++) {
         size_t idx = talk_data.num_peers - 1 - i;

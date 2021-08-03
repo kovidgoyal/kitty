@@ -453,7 +453,7 @@ void* _glfwLoadLocalVulkanLoaderNS(void)
 //////                       GLFW platform API                      //////
 //////////////////////////////////////////////////////////////////////////
 
-static inline bool
+static bool
 is_ctrl_tab(NSEvent *event, NSEventModifierFlags modifierFlags) {
     if (
             (modifierFlags == NSEventModifierFlagControl &&
@@ -464,7 +464,7 @@ is_ctrl_tab(NSEvent *event, NSEventModifierFlags modifierFlags) {
     return false;
 }
 
-static inline bool
+static bool
 is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
     if (modifierFlags != NSEventModifierFlagCommand) return false;
     if ([event.charactersIgnoringModifiers isEqualToString:@"."]) return true;
@@ -703,7 +703,7 @@ typedef struct {
 static Timer timers[128] = {{0}};
 static size_t num_timers = 0;
 
-static inline void
+static void
 remove_timer_at(size_t idx) {
     if (idx < num_timers) {
         Timer *t = timers + idx;

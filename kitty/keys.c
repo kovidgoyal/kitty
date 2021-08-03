@@ -20,7 +20,7 @@ typedef struct {
     PyObject *text;
 } PyKeyEvent;
 
-static inline PyObject* convert_glfw_key_event_to_python(const GLFWkeyevent *ev);
+static PyObject* convert_glfw_key_event_to_python(const GLFWkeyevent *ev);
 
 static PyObject*
 new(PyTypeObject *type UNUSED, PyObject *args, PyObject *kw) {
@@ -58,7 +58,7 @@ PyTypeObject PyKeyEvent_Type = {
     .tp_new = new,
 };
 
-static inline PyObject*
+static PyObject*
 convert_glfw_key_event_to_python(const GLFWkeyevent *ev) {
     PyKeyEvent *self = (PyKeyEvent*)PyKeyEvent_Type.tp_alloc(&PyKeyEvent_Type, 0);
     if (!self) return NULL;
@@ -71,7 +71,7 @@ convert_glfw_key_event_to_python(const GLFWkeyevent *ev) {
 }
 // }}}
 
-static inline Window*
+static Window*
 active_window(void) {
     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
     Window *w = t->windows + t->active_window;
@@ -79,7 +79,7 @@ active_window(void) {
     return NULL;
 }
 
-static inline void
+static void
 update_ime_position(OSWindow *os_window, Window* w, Screen *screen) {
     unsigned int cell_width = os_window->fonts_data->cell_width, cell_height = os_window->fonts_data->cell_height;
     unsigned int left = w->geometry.left, top = w->geometry.top;

@@ -226,7 +226,7 @@ unbind_buffer(ssize_t buf_idx) {
     glBindBuffer(buffers[buf_idx].usage, 0);
 }
 
-static inline void
+static void
 alloc_buffer(ssize_t idx, GLsizeiptr size, GLenum usage) {
     Buffer *b = buffers + idx;
     if (b->size == size) return;
@@ -234,13 +234,13 @@ alloc_buffer(ssize_t idx, GLsizeiptr size, GLenum usage) {
     glBufferData(b->usage, size, NULL, usage);
 }
 
-static inline void*
+static void*
 map_buffer(ssize_t idx, GLenum access) {
     void *ans = glMapBuffer(buffers[idx].usage, access);
     return ans;
 }
 
-static inline void
+static void
 unmap_buffer(ssize_t idx) {
     glUnmapBuffer(buffers[idx].usage);
 }

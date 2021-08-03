@@ -76,18 +76,18 @@ static FT_Library  library;
 FT_Library
 freetype_library(void) { return library; }
 
-static inline int
+static int
 font_units_to_pixels_y(Face *self, int x) {
     return (int)ceil((double)FT_MulFix(x, self->face->size->metrics.y_scale) / 64.0);
 }
 
-static inline int
+static int
 font_units_to_pixels_x(Face *self, int x) {
     return (int)ceil((double)FT_MulFix(x, self->face->size->metrics.x_scale) / 64.0);
 }
 
 
-static inline int
+static int
 get_load_flags(int hinting, int hintstyle, int base) {
     int flags = base;
     if (hinting) {
@@ -98,7 +98,7 @@ get_load_flags(int hinting, int hintstyle, int base) {
 }
 
 
-static inline bool
+static bool
 load_glyph(Face *self, int glyph_index, int load_type) {
     int flags = get_load_flags(self->hinting, self->hintstyle, load_type);
     int error = FT_Load_Glyph(self->face, glyph_index, flags);
@@ -110,7 +110,7 @@ load_glyph(Face *self, int glyph_index, int load_type) {
     return true;
 }
 
-static inline unsigned int
+static unsigned int
 get_height_for_char(Face *self, char ch) {
     unsigned int ans = 0;
     int glyph_index = FT_Get_Char_Index(self->face, ch);
@@ -125,7 +125,7 @@ get_height_for_char(Face *self, char ch) {
     return ans;
 }
 
-static inline unsigned int
+static unsigned int
 calc_cell_height(Face *self, bool for_metrics) {
     unsigned int ans = font_units_to_pixels_y(self, self->height);
     if (for_metrics) {
@@ -139,7 +139,7 @@ calc_cell_height(Face *self, bool for_metrics) {
     return ans;
 }
 
-static inline bool
+static bool
 set_font_size(Face *self, FT_F26Dot6 char_width, FT_F26Dot6 char_height, FT_UInt xdpi, FT_UInt ydpi, unsigned int desired_height, unsigned int cell_height) {
     int error = FT_Set_Char_Size(self->face, 0, char_height, xdpi, ydpi);
     if (!error) {
@@ -189,7 +189,7 @@ set_size_for_face(PyObject *s, unsigned int desired_height, bool force, FONTS_DA
     return set_font_size(self, w, w, xdpi, ydpi, desired_height, fg->cell_height);
 }
 
-static inline bool
+static bool
 init_ft_face(Face *self, PyObject *path, int hinting, int hintstyle, FONTS_DATA_HANDLE fg) {
 #define CPY(n) self->n = self->face->n;
     CPY(units_per_EM); CPY(ascender); CPY(descender); CPY(height); CPY(max_advance_width); CPY(max_advance_height); CPY(underline_position); CPY(underline_thickness);
@@ -290,7 +290,7 @@ postscript_name_for_face(const PyObject *face_) {
     return ps_name ? ps_name : "";
 }
 
-static inline unsigned int
+static unsigned int
 calc_cell_width(Face *self) {
     unsigned int ans = 0;
     for (char_type i = 32; i < 128; i++) {
@@ -382,7 +382,7 @@ typedef struct {
     int bitmap_left, bitmap_top;
 } ProcessedBitmap;
 
-static inline void
+static void
 free_processed_bitmap(ProcessedBitmap *bm) {
     if (bm->needs_free) {
         bm->needs_free = false;
@@ -390,7 +390,7 @@ free_processed_bitmap(ProcessedBitmap *bm) {
     }
 }
 
-static inline void
+static void
 trim_borders(ProcessedBitmap *ans, size_t extra) {
     bool column_has_text = false;
 
@@ -407,7 +407,7 @@ trim_borders(ProcessedBitmap *ans, size_t extra) {
     ans->width -= extra;
 }
 
-static inline void
+static void
 populate_processed_bitmap(FT_GlyphSlotRec *slot, FT_Bitmap *bitmap, ProcessedBitmap *ans, bool copy_buf) {
     ans->stride = bitmap->pitch < 0 ? -bitmap->pitch : bitmap->pitch;
     ans->rows = bitmap->rows;
@@ -438,7 +438,7 @@ freetype_convert_mono_bitmap(FT_Bitmap *src, FT_Bitmap *dest) {
     return true;
 }
 
-static inline bool
+static bool
 render_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, bool bold, bool italic, bool rescale, FONTS_DATA_HANDLE fg) {
     if (!load_glyph(self, glyph_id, FT_LOAD_RENDER)) return false;
     unsigned int max_width = cell_width * num_cells;
@@ -508,7 +508,7 @@ downsample_bitmap(ProcessedBitmap *bm, unsigned int width, unsigned int cell_hei
     bm->buf = dest; bm->needs_free = true; bm->stride = 4 * width; bm->width = width; bm->rows = cell_height;
 }
 
-static inline void
+static void
 detect_right_edge(ProcessedBitmap *ans) {
     ans->right_edge = 0;
     for (ssize_t x = ans->width - 1; !ans->right_edge && x > -1; x--) {
@@ -519,7 +519,7 @@ detect_right_edge(ProcessedBitmap *ans) {
     }
 }
 
-static inline bool
+static bool
 render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline UNUSED) {
     unsigned short best = 0, diff = USHRT_MAX;
     const short limit = self->face->num_fixed_sizes;
@@ -550,7 +550,7 @@ render_color_bitmap(Face *self, int glyph_id, ProcessedBitmap *ans, unsigned int
 }
 
 
-static inline void
+static void
 copy_color_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect, size_t src_stride, size_t dest_stride) {
     for (size_t sr = src_rect->top, dr = dest_rect->top; sr < src_rect->bottom && dr < dest_rect->bottom; sr++, dr++) {
         pixel *d = dest + dest_stride * dr;
@@ -566,7 +566,7 @@ copy_color_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect
     }
 }
 
-static inline void
+static void
 place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, size_t baseline, unsigned int glyph_num) {
     // We want the glyph to be positioned inside the cell based on the bearingX
     // and bearingY values, making sure that it does not overflow the cell.

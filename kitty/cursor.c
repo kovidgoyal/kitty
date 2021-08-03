@@ -46,7 +46,7 @@ cursor_reset_display_attrs(Cursor *self) {
 }
 
 
-static inline void
+static void
 parse_color(int *params, unsigned int *i, unsigned int count, uint32_t *result) {
     unsigned int attr;
     uint8_t r, g, b;

@@ -32,14 +32,14 @@ static const ScreenModes empty_modes = {0, .mDECAWM=true, .mDECTCEM=true, .mDECA
 
 // Constructor/destructor {{{
 
-static inline void
+static void
 clear_selection(Selections *selections) {
     selections->in_progress = false;
     selections->extend_mode = EXTEND_CELL;
     selections->count = 0;
 }
 
-static inline void
+static void
 init_tabstops(bool *tabstops, index_type count) {
     // In terminfo we specify the number of initial tabstops (it) as 8
     for (unsigned int t=0; t < count; t++) {
@@ -47,7 +47,7 @@ init_tabstops(bool *tabstops, index_type count) {
     }
 }
 
-static inline bool
+static bool
 init_overlay_line(Screen *self, index_type columns) {
     PyMem_Free(self->overlay_line.cpu_cells);
     PyMem_Free(self->overlay_line.gpu_cells);
@@ -146,7 +146,7 @@ new(PyTypeObject *type, PyObject *args, PyObject UNUSED *kwds) {
 }
 
 static void deactivate_overlay_line(Screen *self);
-static inline Line* range_line_(Screen *self, int y);
+static Line* range_line_(Screen *self, int y);
 
 void
 screen_reset(Screen *self) {
@@ -195,7 +195,7 @@ screen_dirty_sprite_positions(Screen *self) {
     for (index_type i = 0; i < self->historybuf->count; i++) historybuf_mark_line_dirty(self->historybuf, i);
 }
 
-static inline HistoryBuf*
+static HistoryBuf*
 realloc_hb(HistoryBuf *old, unsigned int lines, unsigned int columns, ANSIBuf *as_ansi_buf) {
     HistoryBuf *ans = alloc_historybuf(lines, columns, 0);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
@@ -213,7 +213,7 @@ typedef struct CursorTrack {
     struct { index_type x, y; } temp;
 } CursorTrack;
 
-static inline LineBuf*
+static LineBuf*
 realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *nclb, index_type *ncla, HistoryBuf *hb, CursorTrack *a, CursorTrack *b, ANSIBuf *as_ansi_buf) {
     LineBuf *ans = alloc_linebuf(lines, columns);
     if (ans == NULL) { PyErr_NoMemory(); return NULL; }
@@ -223,13 +223,13 @@ realloc_lb(LineBuf *old, unsigned int lines, unsigned int columns, index_type *n
     return ans;
 }
 
-static inline bool
+static bool
 is_selection_empty(const Selection *s) {
     int start_y = (int)s->start.y - (int)s->start_scrolled_by, end_y = (int)s->end.y - (int)s->end_scrolled_by;
     return s->start.x == s->end.x && s->start.in_left_half_of_cell == s->end.in_left_half_of_cell && start_y == end_y;
 }
 
-static inline void
+static void
 index_selection(const Screen *self, Selections *selections, bool up) {
     for (size_t i = 0; i < selections->count; i++) {
         Selection *s = selections->items + i;
@@ -423,7 +423,7 @@ screen_designate_charset(Screen *self, uint32_t which, uint32_t as) {
     }
 }
 
-static inline void
+static void
 move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type xpos, index_type ypos) {
     self->cursor->x = xpos; self->cursor->y = ypos;
     CPUCell src_cpu = *cpu_cell, *dest_cpu;
@@ -448,7 +448,7 @@ move_widened_char(Screen *self, CPUCell* cpu_cell, GPUCell *gpu_cell, index_type
     *dest_gpu = src_gpu;
 }
 
-static inline bool
+static bool
 selection_has_screen_line(const Selections *selections, const int y) {
     for (size_t i = 0; i < selections->count; i++) {
         const Selection *s = selections->items + i;
@@ -498,11 +498,11 @@ remap_hyperlink_ids(Screen *self, hyperlink_id_type *map) {
 }
 
 
-static inline bool is_flag_pair(char_type a, char_type b) {
+static bool is_flag_pair(char_type a, char_type b) {
     return is_flag_codepoint(a) && is_flag_codepoint(b);
 }
 
-static inline bool
+static bool
 draw_second_flag_codepoint(Screen *self, char_type ch) {
     index_type xpos = 0, ypos = 0;
     if (self->cursor->x > 1) {
@@ -523,7 +523,7 @@ draw_second_flag_codepoint(Screen *self, char_type ch) {
     return true;
 }
 
-static inline void
+static void
 draw_combining_char(Screen *self, char_type ch) {
     bool has_prev_char = false;
     index_type xpos = 0, ypos = 0;
@@ -715,12 +715,12 @@ select_graphic_rendition(Screen *self, int *params, unsigned int count, Region *
     } else cursor_from_sgr(self->cursor, params, count);
 }
 
-static inline void
+static void
 write_to_test_child(Screen *self, const char *data, size_t sz) {
     PyObject *r = PyObject_CallMethod(self->test_child, "write", "y#", data, sz); if (r == NULL) PyErr_Print(); Py_CLEAR(r);
 }
 
-static inline void
+static void
 write_to_child(Screen *self, const char *data, size_t sz) {
     if (self->window_id) schedule_write_to_child(self->window_id, 1, data, sz);
     if (self->test_child != Py_None) { write_to_test_child(self, data, sz); }
@@ -762,7 +762,7 @@ write_escape_code_to_child(Screen *self, unsigned char which, const char *data) 
     }
 }
 
-static inline bool
+static bool
 cursor_within_margins(Screen *self) {
     return self->margin_top <= self->cursor->y && self->cursor->y <= self->margin_bottom;
 }
@@ -1796,20 +1796,20 @@ screen_request_capabilities(Screen *self, char c, PyObject *q) {
 // }}}
 
 // Rendering {{{
-static inline void
+static void
 update_line_data(Line *line, unsigned int dest_y, uint8_t *data) {
     size_t base = sizeof(GPUCell) * dest_y * line->xnum;
     memcpy(data + base, line->gpu_cells, line->xnum * sizeof(GPUCell));
 }
 
 
-static inline void
+static void
 screen_reset_dirty(Screen *self) {
     self->is_dirty = false;
     self->history_line_added_count = 0;
 }
 
-static inline bool
+static bool
 screen_has_marker(Screen *self) {
     return self->marker != NULL;
 }
@@ -1980,7 +1980,7 @@ iteration_data(const Screen *self, const Selection *sel, IterationData *ans, int
     ans->y = MAX(ans->y, min_y);
 }
 
-static inline XRange
+static XRange
 xrange_for_iteration(const IterationData *idata, const int y, const Line *line) {
     XRange ans = {.x_limit=xlimit_for_line(line)};
     if (y == idata->y) {
@@ -1996,7 +1996,7 @@ xrange_for_iteration(const IterationData *idata, const int y, const Line *line) 
     return ans;
 }
 
-static inline bool
+static bool
 iteration_data_is_empty(const Screen *self, const IterationData *idata) {
     if (idata->y >= idata->y_limit) return true;
     index_type xl = MIN(idata->first.x_limit, self->columns);
@@ -2008,7 +2008,7 @@ iteration_data_is_empty(const Screen *self, const IterationData *idata) {
     return true;
 }
 
-static inline void
+static void
 apply_selection(Screen *self, uint8_t *data, Selection *s, uint8_t set_mask) {
     iteration_data(self, s, &s->last_rendered, -self->historybuf->count, true);
 
@@ -2047,7 +2047,7 @@ screen_apply_selection(Screen *self, void *address, size_t size) {
     self->url_ranges.last_rendered_count = self->url_ranges.count;
 }
 
-static inline PyObject*
+static PyObject*
 text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
     IterationData idata;
     iteration_data(self, sel, &idata, -self->historybuf->count, false);
@@ -2065,7 +2065,7 @@ text_for_range(Screen *self, const Selection *sel, bool insert_newlines) {
     return ans;
 }
 
-static inline hyperlink_id_type
+static hyperlink_id_type
 hyperlink_id_for_range(Screen *self, const Selection *sel) {
     IterationData idata;
     iteration_data(self, sel, &idata, -self->historybuf->count, false);
@@ -2079,7 +2079,7 @@ hyperlink_id_for_range(Screen *self, const Selection *sel) {
     return 0;
 }
 
-static inline PyObject*
+static PyObject*
 extend_tuple(PyObject *a, PyObject *b) {
     Py_ssize_t bs = PyBytes_GET_SIZE(b);
     if (bs < 1) return a;
@@ -2291,7 +2291,7 @@ as_text_non_visual(Screen *self, PyObject *args) {
     return as_text_generic(args, self, get_range_line, self->lines, &self->as_ansi_buf);
 }
 
-static inline PyObject*
+static PyObject*
 as_text_generic_wrapper(Screen *self, PyObject *args, get_line_func get_line) {
     return as_text_generic(args, self, get_line, self->lines, &self->as_ansi_buf);
 }
@@ -2599,7 +2599,7 @@ screen_selection_range_for_line(Screen *self, index_type y, index_type *start, i
     return true;
 }
 
-static inline bool
+static bool
 is_opt_word_char(char_type ch) {
     if (OPT(select_by_word_characters)) {
         for (const char_type *p = OPT(select_by_word_characters); *p; p++) {
@@ -2722,7 +2722,7 @@ screen_start_selection(Screen *self, index_type x, index_type y, bool in_left_ha
 #undef A
 }
 
-static inline void
+static void
 add_url_range(Screen *self, index_type start_x, index_type start_y, index_type end_x, index_type end_y) {
 #define A(attr, val) r->attr = val;
     ensure_space_for(&self->url_ranges, items, Selection, self->url_ranges.count + 8, capacity, 8, false);
@@ -2961,7 +2961,7 @@ send_escape_code_to_child(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static inline void
+static void
 screen_mark_all(Screen *self) {
     for (index_type y = 0; y < self->main_linebuf->ynum; y++) {
         linebuf_init_line(self->main_linebuf, y);

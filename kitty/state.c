@@ -196,7 +196,7 @@ add_os_window() {
     return ans;
 }
 
-static inline id_type
+static id_type
 add_tab(id_type os_window_id) {
     WITH_OS_WINDOW(os_window_id)
         make_os_window_context_current(os_window);
@@ -209,13 +209,13 @@ add_tab(id_type os_window_id) {
     return 0;
 }
 
-static inline void
+static void
 create_gpu_resources_for_window(Window *w) {
     w->render_data.vao_idx = create_cell_vao();
     w->render_data.gvao_idx = create_graphics_vao();
 }
 
-static inline void
+static void
 release_gpu_resources_for_window(Window *w) {
     if (w->render_data.vao_idx > -1) remove_vao(w->render_data.vao_idx);
     w->render_data.vao_idx = -1;
@@ -223,7 +223,7 @@ release_gpu_resources_for_window(Window *w) {
     w->render_data.gvao_idx = -1;
 }
 
-static inline void
+static void
 initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     w->id = ++global_state.window_id_counter;
     w->visible = true;
@@ -236,7 +236,7 @@ initialize_window(Window *w, PyObject *title, bool init_gpu_resources) {
     }
 }
 
-static inline id_type
+static id_type
 add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
     WITH_TAB(os_window_id, tab_id);
         ensure_space_for(tab, windows, Window, tab->num_windows + 1, capacity, 1, true);
@@ -248,7 +248,7 @@ add_window(id_type os_window_id, id_type tab_id, PyObject *title) {
     return 0;
 }
 
-static inline void
+static void
 update_window_title(id_type os_window_id, id_type tab_id, id_type window_id, PyObject *title) {
     WITH_TAB(os_window_id, tab_id);
     for (size_t i = 0; i < tab->num_windows; i++) {
@@ -283,13 +283,13 @@ update_os_window_title(OSWindow *os_window) {
     }
 }
 
-static inline void
+static void
 destroy_window(Window *w) {
     Py_CLEAR(w->render_data.screen); Py_CLEAR(w->title);
     release_gpu_resources_for_window(w);
 }
 
-static inline void
+static void
 remove_window_inner(Tab *tab, id_type id) {
     id_type active_window_id = 0;
     if (tab->active_window < tab->num_windows) active_window_id = tab->windows[tab->active_window].id;
@@ -303,7 +303,7 @@ remove_window_inner(Tab *tab, id_type id) {
     }
 }
 
-static inline void
+static void
 remove_window(id_type os_window_id, id_type tab_id, id_type id) {
     WITH_TAB(os_window_id, tab_id);
         make_os_window_context_current(osw);
@@ -325,7 +325,7 @@ add_detached_window(Window *w) {
     memcpy(detached_windows.windows + detached_windows.num_windows++, w, sizeof(Window));
 }
 
-static inline void
+static void
 detach_window(id_type os_window_id, id_type tab_id, id_type id) {
     WITH_TAB(os_window_id, tab_id);
         for (size_t i = 0; i < tab->num_windows; i++) {
@@ -342,7 +342,7 @@ detach_window(id_type os_window_id, id_type tab_id, id_type id) {
 }
 
 
-static inline void
+static void
 resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
     if (screen) {
         screen->cell_size.width = os_window->fonts_data->cell_width;
@@ -352,7 +352,7 @@ resize_screen(OSWindow *os_window, Screen *screen, bool has_graphics) {
     }
 }
 
-static inline void
+static void
 attach_window(id_type os_window_id, id_type tab_id, id_type id) {
     WITH_TAB(os_window_id, tab_id);
         for (size_t i = 0; i < detached_windows.num_windows; i++) {
@@ -376,7 +376,7 @@ attach_window(id_type os_window_id, id_type tab_id, id_type id) {
     END_WITH_TAB;
 }
 
-static inline void
+static void
 destroy_tab(Tab *tab) {
     for (size_t i = tab->num_windows; i > 0; i--) remove_window_inner(tab, tab->windows[i - 1].id);
     remove_vao(tab->border_rects.vao_idx);
@@ -384,7 +384,7 @@ destroy_tab(Tab *tab) {
     free(tab->windows); tab->windows = NULL;
 }
 
-static inline void
+static void
 remove_tab_inner(OSWindow *os_window, id_type id) {
     id_type active_tab_id = 0;
     if (os_window->active_tab < os_window->num_tabs) active_tab_id = os_window->tabs[os_window->active_tab].id;
@@ -399,14 +399,14 @@ remove_tab_inner(OSWindow *os_window, id_type id) {
     }
 }
 
-static inline void
+static void
 remove_tab(id_type os_window_id, id_type id) {
     WITH_OS_WINDOW(os_window_id)
         remove_tab_inner(os_window, id);
     END_WITH_OS_WINDOW
 }
 
-static inline void
+static void
 destroy_os_window_item(OSWindow *w) {
     for (size_t t = w->num_tabs; t > 0; t--) {
         Tab *tab = w->tabs + t - 1;
@@ -439,7 +439,7 @@ remove_os_window(id_type os_window_id) {
 }
 
 
-static inline void
+static void
 set_active_tab(id_type os_window_id, unsigned int idx) {
     WITH_OS_WINDOW(os_window_id)
         os_window->active_tab = idx;
@@ -447,7 +447,7 @@ set_active_tab(id_type os_window_id, unsigned int idx) {
     END_WITH_OS_WINDOW
 }
 
-static inline void
+static void
 set_active_window(id_type os_window_id, id_type tab_id, id_type window_id) {
     WITH_WINDOW(os_window_id, tab_id, window_id)
         (void)window;
@@ -456,7 +456,7 @@ set_active_window(id_type os_window_id, id_type tab_id, id_type window_id) {
     END_WITH_WINDOW;
 }
 
-static inline void
+static void
 swap_tabs(id_type os_window_id, unsigned int a, unsigned int b) {
     WITH_OS_WINDOW(os_window_id)
         Tab t = os_window->tabs[b];
@@ -650,7 +650,7 @@ static PyStructSequence_Field region_fields[] = {
 };
 static PyStructSequence_Desc region_desc = {"Region", NULL, region_fields, 6};
 
-static inline PyObject*
+static PyObject*
 wrap_region(Region *r) {
     PyObject *ans = PyStructSequence_New(&RegionType);
     if (ans) {
@@ -1019,7 +1019,7 @@ pycreate_mock_window(PyObject *self UNUSED, PyObject *args) {
     return ans;
 }
 
-static inline void
+static void
 click_mouse_url(id_type os_window_id, id_type tab_id, id_type window_id) {
     WITH_WINDOW(os_window_id, tab_id, window_id);
     mouse_open_url(window);

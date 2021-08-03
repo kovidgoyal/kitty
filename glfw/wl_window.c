@@ -1762,7 +1762,7 @@ void _glfwSetupWaylandPrimarySelectionDevice() {
     if (_glfw.wl.primarySelectionDevice) zwp_primary_selection_device_v1_add_listener(_glfw.wl.primarySelectionDevice, &primary_selection_device_listener, NULL);
 }
 
-static inline bool _glfwEnsureDataDevice(void) {
+static bool _glfwEnsureDataDevice(void) {
     if (!_glfw.wl.dataDeviceManager)
     {
         _glfwInputError(GLFW_PLATFORM_ERROR,

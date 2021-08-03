@@ -158,7 +158,7 @@ copy_between_files(int infd, int outfd, off_t in_pos, size_t len, uint8_t *buf, 
     return true;
 }
 
-static inline off_t
+static off_t
 size_of_cache_file(DiskCache *self) {
     return lseek(self->cache_file_fd, 0, SEEK_END);
 }
@@ -255,7 +255,7 @@ cmp_pos_in_cache_file(void *a_, void *b_) {
     return a->pos_in_cache_file - b->pos_in_cache_file;
 }
 
-static inline void
+static void
 find_hole(DiskCache *self) {
     off_t required_size = self->currently_writing.data_sz, prev = -100;
     HASH_SORT(self->entries, cmp_pos_in_cache_file);
@@ -271,7 +271,7 @@ find_hole(DiskCache *self) {
     }
 }
 
-static inline bool
+static bool
 find_cache_entry_to_write(DiskCache *self) {
     CacheEntry *tmp, *s;
     off_t size_on_disk = size_of_cache_file(self);
@@ -298,7 +298,7 @@ find_cache_entry_to_write(DiskCache *self) {
     return false;
 }
 
-static inline bool
+static bool
 write_dirty_entry(DiskCache *self) {
     size_t left = self->currently_writing.data_sz;
     uint8_t *p = self->currently_writing.data;
@@ -330,7 +330,7 @@ write_dirty_entry(DiskCache *self) {
     return true;
 }
 
-static inline void
+static void
 retire_currently_writing(DiskCache *self) {
     CacheEntry *s = NULL;
     HASH_FIND(hh, self->entries, self->currently_writing.hash_key, self->currently_writing.hash_keylen, s);
@@ -477,7 +477,7 @@ dealloc(DiskCache* self) {
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
-static inline CacheEntry*
+static CacheEntry*
 create_cache_entry(const void *key, const size_t key_sz) {
     CacheEntry *s = calloc(1, sizeof(CacheEntry));
     if (!s) return (CacheEntry*)PyErr_NoMemory();

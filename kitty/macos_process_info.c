@@ -23,7 +23,7 @@ cwd_of_process(PyObject *self UNUSED, PyObject *pid_) {
 }
 
 // Read the maximum argument size for processes
-static inline int
+static int
 get_argmax() {
     int argmax;
     int mib[] = { CTL_KERN, KERN_ARGMAX };

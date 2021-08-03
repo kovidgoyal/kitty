@@ -14,7 +14,7 @@
 #ifdef ISWINDOWS
 #include <io.h>
 #define STDOUT_FILENO 1
-static inline ssize_t ms_write(int fd, const void* buf, size_t count) { return _write(fd, buf, (unsigned int)count); }
+static ssize_t ms_write(int fd, const void* buf, size_t count) { return _write(fd, buf, (unsigned int)count); }
 #define write ms_write
 #else
 #include <unistd.h>
@@ -24,7 +24,7 @@ static inline ssize_t ms_write(int fd, const void* buf, size_t count) { return _
 
 #define FIELD(x, which) (((Candidate*)(x))->which)
 
-static inline bool
+static bool
 ensure_space(GlobalData *global, size_t sz) {
     if (global->output_sz < sz + global->output_pos || !global->output) {
         size_t before = global->output_sz;
@@ -38,7 +38,7 @@ ensure_space(GlobalData *global, size_t sz) {
     return true;
 }
 
-static inline void
+static void
 output_text(GlobalData *global, const text_t *data, size_t sz) {
     if (ensure_space(global, sz)) {
         memcpy(global->output + global->output_pos, data, sizeof(text_t) * sz);

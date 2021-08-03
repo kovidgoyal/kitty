@@ -41,7 +41,7 @@ typedef struct {
 
 static const Segment EMPTY_SEGMENT = { .current_pos = UINT_MAX };
 
-static inline bool
+static bool
 convert_segment(PyObject *highlight, Segment *dest) {
     PyObject *val = NULL;
 #define I
@@ -62,7 +62,7 @@ convert_segment(PyObject *highlight, Segment *dest) {
     return true;
 }
 
-static inline bool
+static bool
 next_segment(SegmentPointer *s, PyObject *highlights) {
     if (s->pos < s->num) {
         if (!convert_segment(PyList_GET_ITEM(highlights, s->pos), &s->sg)) return false;
@@ -89,7 +89,7 @@ ensure_space(LineBuffer *b, size_t num) {
     return true;
 }
 
-static inline bool
+static bool
 insert_code(PyObject *code, LineBuffer *b) {
     unsigned int csz = PyUnicode_GET_LENGTH(code);
     if (!ensure_space(b, csz)) return false;
@@ -97,7 +97,7 @@ insert_code(PyObject *code, LineBuffer *b) {
     return true;
 }
 
-static inline bool
+static bool
 add_line(Segment *bg_segment, Segment *fg_segment, LineBuffer *b, PyObject *ans) {
     bool bg_is_active = bg_segment->current_pos == bg_segment->end_pos, fg_is_active = fg_segment->current_pos == fg_segment->end_pos;
     if (bg_is_active) { if(!insert_code(bg_segment->end_code, b)) return false; }

@@ -35,10 +35,10 @@ finalize(void) {
     }
 }
 
-static inline PyObject*
+static PyObject*
 pybool(FcBool x) { PyObject *ans = x ? Py_True: Py_False; Py_INCREF(ans); return ans; }
 
-static inline PyObject*
+static PyObject*
 pyspacing(int val) {
 #define S(x) case FC_##x: return PyUnicode_FromString(#x)
     switch(val) { S(PROPORTIONAL); S(DUAL); S(MONO); S(CHARCELL); default: return PyUnicode_FromString("UNKNOWN"); }
@@ -46,7 +46,7 @@ pyspacing(int val) {
 }
 
 
-static inline PyObject*
+static PyObject*
 pattern_as_dict(FcPattern *pat) {
     PyObject *ans = PyDict_New(), *p = NULL, *list = NULL;
     if (ans == NULL) return NULL;
@@ -112,7 +112,7 @@ exit:
 #undef LS
 }
 
-static inline PyObject*
+static PyObject*
 font_set(FcFontSet *fs) {
     PyObject *ans = PyTuple_New(fs->nfont);
     if (ans == NULL) return NULL;
@@ -154,7 +154,7 @@ end:
     return ans;
 }
 
-static inline PyObject*
+static PyObject*
 _fc_match(FcPattern *pat) {
     FcPattern *match = NULL;
     PyObject *ans = NULL;
@@ -172,7 +172,7 @@ end:
 
 static char_type char_buf[1024];
 
-static inline void
+static void
 add_charset(FcPattern *pat, size_t num) {
     FcCharSet *charset = NULL;
     if (num) {
@@ -190,7 +190,7 @@ end:
     if (charset != NULL) FcCharSetDestroy(charset);
 }
 
-static inline bool
+static bool
 _native_fc_match(FcPattern *pat, FontConfigFace *ans) {
     bool ok = false;
     FcPattern *match = NULL;

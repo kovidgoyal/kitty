@@ -281,7 +281,7 @@ updateNormalHints(_GLFWwindow* window, int width, int height)
     XFree(hints);
 }
 
-static inline bool
+static bool
 is_window_fullscreen(_GLFWwindow* window)
 {
     Atom* states;
@@ -310,7 +310,7 @@ is_window_fullscreen(_GLFWwindow* window)
     return ans;
 }
 
-static inline void
+static void
 set_fullscreen(_GLFWwindow *window, bool on) {
     if (_glfw.x11.NET_WM_STATE && _glfw.x11.NET_WM_STATE_FULLSCREEN) {
         sendEventToWM(window,
@@ -2646,7 +2646,7 @@ void _glfwPlatformSetWindowOpacity(_GLFWwindow* window, float opacity)
                     PropModeReplace, (unsigned char*) &value, 1);
 }
 
-static inline unsigned
+static unsigned
 dispatch_x11_queued_events(int num_events) {
     unsigned dispatched = num_events > 0 ? num_events : 0;
     while (num_events-- > 0) {

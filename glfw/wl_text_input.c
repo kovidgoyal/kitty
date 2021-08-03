@@ -43,7 +43,7 @@ text_input_leave(void *data UNUSED, struct zwp_text_input_v3 *text_input UNUSED,
     }
 }
 
-static inline void
+static void
 send_text(const char *text, GLFWIMEState ime_state) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {

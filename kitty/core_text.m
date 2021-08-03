@@ -34,7 +34,7 @@ typedef struct {
 } CTFace;
 PyTypeObject CTFace_Type;
 
-static inline char*
+static char*
 convert_cfstring(CFStringRef src, int free_src) {
 #define SZ 4094
     static char buf[SZ+2] = {0};
@@ -46,7 +46,7 @@ convert_cfstring(CFStringRef src, int free_src) {
 #undef SZ
 }
 
-static inline void
+static void
 init_face(CTFace *self, CTFontRef font, FONTS_DATA_HANDLE fg UNUSED) {
     if (self->hb_font) hb_font_destroy(self->hb_font);
     self->hb_font = NULL;
@@ -61,7 +61,7 @@ init_face(CTFace *self, CTFontRef font, FONTS_DATA_HANDLE fg UNUSED) {
     self->scaled_point_sz = CTFontGetSize(self->ct_font);
 }
 
-static inline CTFace*
+static CTFace*
 ct_face(CTFontRef font, FONTS_DATA_HANDLE fg) {
     CTFace *self = (CTFace *)CTFace_Type.tp_alloc(&CTFace_Type, 0);
     if (self) {
@@ -174,7 +174,7 @@ coretext_all_fonts(PyObject UNUSED *_self) {
     return ans;
 }
 
-static inline unsigned int
+static unsigned int
 glyph_id_for_codepoint_ctfont(CTFontRef ct_font, char_type ch) {
     unichar chars[2] = {0};
     CGGlyph glyphs[2] = {0};
@@ -183,7 +183,7 @@ glyph_id_for_codepoint_ctfont(CTFontRef ct_font, char_type ch) {
     return glyphs[0];
 }
 
-static inline bool
+static bool
 is_last_resort_font(CTFontRef new_font) {
     CFStringRef name = CTFontCopyPostScriptName(new_font);
     CFComparisonResult cr = CFStringCompare(name, CFSTR("LastResort"), 0);
@@ -191,7 +191,7 @@ is_last_resort_font(CTFontRef new_font) {
     return cr == kCFCompareEqualTo;
 }
 
-static inline CTFontRef
+static CTFontRef
 manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
     CFArrayRef fonts = CTFontCollectionCreateMatchingFontDescriptors(all_fonts_collection());
     CTFontRef ans = NULL;
@@ -220,7 +220,7 @@ manually_search_fallback_fonts(CTFontRef current_font, CPUCell *cell) {
     return ans;
 }
 
-static inline CTFontRef
+static CTFontRef
 find_substitute_face(CFStringRef str, CTFontRef old_font, CPUCell *cpu_cell) {
     // CTFontCreateForString returns the original font when there are combining
     // diacritics in the font and the base character is in the original font,
@@ -296,7 +296,7 @@ get_glyph_width(PyObject *s, glyph_index g) {
     return (int)ceil(bounds.size.width);
 }
 
-static inline float
+static float
 scaled_point_sz(FONTS_DATA_HANDLE fg) {
     return ((fg->logical_dpi_x + fg->logical_dpi_y) / 144.0) * fg->font_sz_in_pts;
 }
@@ -448,7 +448,7 @@ finalize(void) {
 }
 
 
-static inline void
+static void
 render_color_glyph(CTFontRef font, uint8_t *buf, int glyph_id, unsigned int width, unsigned int height, unsigned int baseline) {
     CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
     if (color_space == NULL) fatal("Out of memory");
@@ -492,7 +492,7 @@ ensure_render_space(size_t width, size_t height, size_t num_glyphs) {
     }
 }
 
-static inline void
+static void
 render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned int baseline, unsigned int num_glyphs) {
     memset(buffers.render_buf, 0, width * height);
     CGColorSpaceRef gray_color_space = CGColorSpaceCreateDeviceGray();
@@ -538,7 +538,7 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
 }
 
 
-static inline bool
+static bool
 do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONTS_DATA_HANDLE fg, bool center_glyph) {
     unsigned int canvas_width = cell_width * num_cells;
     ensure_render_space(canvas_width, cell_height, num_glyphs);
