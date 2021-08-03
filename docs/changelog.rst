@@ -11,7 +11,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   tabbed file, see :opt:`tab_bar_style`
 
 - Fix :option:`kitty --title` not overriding the OS Window title when multiple
-  tabs are present (:iss:`3893`)
+  tabs are present. Also this option is no longer used as the default title for
+  windows, allowing individual tabs/windows to have their own titles, even when
+  the OS Window has a fixed overall title (:iss:`3893`)
 
 
 0.22.2 [2021-08-02]

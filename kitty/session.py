@@ -90,16 +90,16 @@ class Session:
         self.tabs[-1].cwd = val
 
 
-def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) -> Generator[Session, None, None]:
+def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
 
     def finalize_session(ans: Session) -> Session:
         from .tabs import SpecialWindow
         for t in ans.tabs:
             if not t.windows:
-                t.windows.append(SpecialWindow(cmd=resolved_shell(opts), override_title=default_title))
+                t.windows.append(SpecialWindow(cmd=resolved_shell(opts)))
         return ans
 
-    ans = Session(default_title)
+    ans = Session()
     ans.add_tab(opts)
     for line in raw.splitlines():
         line = line.strip()
@@ -114,7 +114,7 @@ def parse_session(raw: str, opts: Options, default_title: Optional[str] = None) 
                 ans.add_tab(opts, rest)
             elif cmd == 'new_os_window':
                 yield finalize_session(ans)
-                ans = Session(default_title)
+                ans = Session()
                 ans.add_tab(opts, rest)
             elif cmd == 'layout':
                 ans.set_layout(rest)
@@ -164,7 +164,7 @@ def create_sessions(
                 f = open(args.session)
             with f:
                 session_data = f.read()
-        yield from parse_session(session_data, opts, getattr(args, 'title', None))
+        yield from parse_session(session_data, opts)
         return
     if default_session and default_session != 'none':
         try:
@@ -173,7 +173,7 @@ def create_sessions(
         except OSError:
             log_error('Failed to read from session file, ignoring: {}'.format(default_session))
         else:
-            yield from parse_session(session_data, opts, getattr(args, 'title', None))
+            yield from parse_session(session_data, opts)
             return
     default_watchers = args.watcher if args else ()
     ans = Session(default_watchers=default_watchers)
@@ -186,7 +186,6 @@ def create_sessions(
             cmd = [kitty_exe(), '+hold'] + cmd
         from kitty.tabs import SpecialWindow
         cwd: Optional[str] = args.directory if respect_cwd and args else None
-        title = getattr(args, 'title', None)
-        special_window = SpecialWindow(cmd, override_title=title, cwd_from=cwd_from, cwd=cwd)
+        special_window = SpecialWindow(cmd, cwd_from=cwd_from, cwd=cwd)
     ans.add_special_window(special_window)
     yield ans
