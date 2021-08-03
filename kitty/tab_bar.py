@@ -13,7 +13,7 @@ from .fast_data_types import (
 from .layout.base import Rect
 from .rgb import Color, alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
-from .typing import PowerlineStyle
+from .typing import PowerlineStyle, EdgeLiteral
 from .utils import color_as_int, log_error
 from .window import calculate_gl_geometry
 
@@ -44,6 +44,7 @@ class DrawData(NamedTuple):
     active_title_template: Optional[str]
     tab_activity_symbol: Optional[str]
     powerline_style: PowerlineStyle
+    tab_bar_edge: EdgeLiteral
 
 
 def as_rgb(x: int) -> int:
@@ -162,6 +163,44 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
                 screen.draw(x)
     else:
         screen.draw(title)
+
+
+def draw_tab_with_slant(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
+    left_sep, right_sep = ('', '') if draw_data.tab_bar_edge == 'top' else ('', '')
+    tab_bg = as_rgb(color_as_int(draw_data.active_bg if tab.is_active else draw_data.inactive_bg))
+    slant_fg = as_rgb(color_as_int(draw_data.default_bg))
+
+    def draw_sep(which: str) -> None:
+        screen.cursor.bg = tab_bg
+        screen.cursor.fg = slant_fg
+        screen.draw(which)
+        screen.cursor.bg = tab_bg
+        screen.cursor.fg = 0
+
+    max_title_length += 1
+    if max_title_length <= 1:
+        screen.draw('…')
+    elif max_title_length == 2:
+        screen.draw('…|')
+    elif max_title_length < 6:
+        draw_sep(left_sep)
+        screen.draw((' ' if max_title_length == 5 else '') + '…' + (' ' if max_title_length >= 4 else ''))
+        draw_sep(right_sep)
+    else:
+        draw_sep(left_sep)
+        screen.draw(' ')
+        draw_title(draw_data, screen, tab, index)
+        extra = screen.cursor.x - before - max_title_length
+        if extra >= 0:
+            screen.cursor.x -= extra + 3
+            screen.draw('…')
+        elif extra == -1:
+            screen.cursor.x -= 2
+            screen.draw('…')
+        screen.draw(' ')
+        draw_sep(right_sep)
+
+    return screen.cursor.x
 
 
 def draw_tab_with_separator(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
@@ -332,12 +371,15 @@ class TabBar:
             opts.tab_bar_background or opts.background, opts.tab_title_template,
             opts.active_tab_title_template,
             opts.tab_activity_symbol,
-            opts.tab_powerline_style
+            opts.tab_powerline_style,
+            'top' if opts.tab_bar_edge == 1 else 'bottom'
         )
         if opts.tab_bar_style == 'separator':
             self.draw_func = draw_tab_with_separator
         elif opts.tab_bar_style == 'powerline':
             self.draw_func = draw_tab_with_powerline
+        elif opts.tab_bar_style == 'slant':
+            self.draw_func = draw_tab_with_slant
         else:
             self.draw_func = draw_tab_with_fade
 

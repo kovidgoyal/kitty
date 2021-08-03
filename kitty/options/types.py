@@ -23,7 +23,7 @@ if typing.TYPE_CHECKING:
     choices_for_pointer_shape_when_dragging = typing.Literal['arrow', 'beam', 'hand']
     choices_for_pointer_shape_when_grabbed = typing.Literal['arrow', 'beam', 'hand']
     choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
-    choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator']
+    choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant']
     choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
     choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
 else:

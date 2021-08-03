@@ -4,6 +4,12 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.23.0 [future]
+----------------------
+
+- A new style for the tab bar that makes tabs looks like the tabs in a physical
+  tabbed file, see :opt:`tab_bar_style`
+
 0.22.2 [2021-08-02]
 ----------------------
 
