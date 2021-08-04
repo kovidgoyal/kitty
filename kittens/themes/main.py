@@ -12,7 +12,7 @@ from typing import (
 
 from kitty.cli import create_default_opts
 from kitty.config import cached_values_for
-from kitty.fast_data_types import wcswidth
+from kitty.fast_data_types import truncate_point_for_length, wcswidth
 from kitty.rgb import color_as_sharp, color_from_int
 from kitty.typing import KeyEventType
 from kitty.utils import ScreenSize
@@ -25,6 +25,13 @@ from .collection import Theme, Themes, load_themes
 
 def format_traceback(msg: str) -> str:
     return traceback.format_exc() + '\n\n' + styled(msg, fg='red')
+
+
+def limit_length(text: str, limit: int = 32) -> str:
+    x = truncate_point_for_length(text, limit - 1)
+    if x >= len(text):
+        return text
+    return text[:x] + '…'
 
 
 class State(Enum):
@@ -89,9 +96,9 @@ class ThemesList:
         self.themes = self.all_themes = themes
         if self.current_search:
             self.themes = self.all_themes.copy()
-            self.display_strings = tuple(self.themes.apply_search(self.current_search))
+            self.display_strings = tuple(map(limit_length, self.themes.apply_search(self.current_search)))
         else:
-            self.display_strings = tuple(t.name for t in self.themes)
+            self.display_strings = tuple(map(limit_length, (t.name for t in self.themes)))
         self.widths = tuple(map(wcswidth, self.display_strings))
         self.max_width = max(self.widths) if self.widths else 0
         self.current_idx = 0

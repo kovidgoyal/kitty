@@ -264,7 +264,9 @@ class Themes:
         ans.index_map = self.index_map
         return ans
 
-    def apply_search(self, expression: str, mark_before: str = '\033[32m', mark_after: str = '\033[39m') -> Iterator[str]:
+    def apply_search(
+        self, expression: str, mark_before: str = '\033[33m', mark_after: str = '\033[39m'
+    ) -> Iterator[str]:
         for k, v in tuple(self.themes.items()):
             result = match(v.name, expression, mark_before=mark_before, mark_after=mark_after)
             if result and result[0]:
