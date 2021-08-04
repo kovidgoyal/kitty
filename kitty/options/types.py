@@ -889,6 +889,8 @@ defaults.mouse_map = [
     MouseMapping(2, 1, -1, True, KeyAction('paste_selection')),
     # paste_selection_grabbed
     MouseMapping(2, 1, -1, False, KeyAction('paste_selection')),
+    # paste_selection_grabbed
+    MouseMapping(2, 1, 1, True, KeyAction('discard_event')),
     # start_simple_selection_grabbed
     MouseMapping(0, 1, 1, True, KeyAction('mouse_selection', (0,))),
     # start_simple_selection_grabbed

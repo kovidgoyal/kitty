@@ -18,6 +18,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Fix some very long ligatures being rendered incorrectly at some font
   sizes (:iss:`3896`)
 
+- Fix shift+middle click to paste sending a mouse press event but no release
+  event which breaks some applications that grab the mouse but cant handle
+  mouse events (:iss:`3902`)
+
 0.22.2 [2021-08-02]
 ----------------------
 

@@ -555,6 +555,10 @@ mma('Paste from the primary selection even when grabbed',
     'paste_selection_grabbed shift+middle release ungrabbed,grabbed paste_selection',
     )
 
+mma('Discard press event for middle click paste',
+    'paste_selection_grabbed shift+middle press grabbed discard_event',
+    )
+
 mma('Start selecting text even when grabbed',
     'start_simple_selection_grabbed shift+left press ungrabbed,grabbed mouse_selection normal',
     )
