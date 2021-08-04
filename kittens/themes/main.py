@@ -10,14 +10,16 @@ from typing import (
     Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 )
 
+from kitty.cli import create_default_opts
 from kitty.config import cached_values_for
 from kitty.fast_data_types import wcswidth
+from kitty.rgb import color_as_sharp, color_from_int
 from kitty.typing import KeyEventType
 from kitty.utils import ScreenSize
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
-from ..tui.operations import styled
+from ..tui.operations import styled, color_code
 from .collection import Theme, Themes, load_themes
 
 
@@ -61,20 +63,28 @@ class ThemesList:
         self.max_width = 0
         self.current_idx = 0
 
+    def __bool__(self) -> bool:
+        return bool(self.display_strings)
+
+    def __len__(self) -> int:
+        return len(self.themes)
+
     def update_themes(self, themes: Themes) -> None:
-        self.themes = themes
+        self.themes = self.all_themes = themes
         if self.current_search:
+            self.themes = self.all_themes.copy()
             self.display_strings = tuple(self.themes.apply_search(self.current_search))
         else:
             self.display_strings = tuple(t.name for t in self.themes)
         self.widths = tuple(map(wcswidth, self.display_strings))
         self.max_width = max(self.widths) if self.widths else 0
+        self.current_idx = 0
 
     def update_search(self, search: str = '') -> None:
         if search == self.current_search:
             return
         self.current_search = search
-        self.update_themes(self.themes)
+        self.update_themes(self.all_themes)
 
     def lines(self, num_rows: int) -> Iterator[str]:
         if num_rows < 1:
@@ -86,6 +96,10 @@ class ThemesList:
             if i == self.current_idx:
                 line = styled(line, reverse=True)
             yield line
+
+    @property
+    def current_theme(self) -> Theme:
+        return self.themes[self.current_idx]
 
 
 class ThemesHandler(Handler):
@@ -99,6 +113,7 @@ class ThemesHandler(Handler):
             'recent': create_recent_filter(self.cached_values.get('recent', ()))
         }
         self.themes_list = ThemesList()
+        self.colors_set_once = False
 
     def enforce_cursor_state(self) -> None:
         self.cmd.set_cursor_visible(self.state == State.fetching)
@@ -131,8 +146,27 @@ class ThemesHandler(Handler):
             cat = 'all'
         self.cached_values['category'] = cat
 
+    def set_colors_to_current_theme(self) -> bool:
+        if not self.themes_list and self.colors_set_once:
+            return False
+        self.colors_set_once = True
+        if self.themes_list:
+            o = self.themes_list.current_theme.kitty_opts
+        else:
+            o = create_default_opts()
+        self.cmd.set_default_colors(
+            fg=o.foreground, bg=o.background, cursor=o.cursor, select_bg=o.selection_background, select_fg=o.selection_foreground
+        )
+        self.current_opts = o
+        cmds = []
+        for i in range(256):
+            col = color_as_sharp(color_from_int(o.color_table[i]))
+            cmds.append(f'{i};{col}')
+        self.print(end='\033]4;' + ';'.join(cmds) + '\033\\')
+
     def redraw_after_category_change(self) -> None:
         self.themes_list.update_themes(self.all_themes.filtered(self.filter_map[self.current_category]))
+        self.set_colors_to_current_theme()
         self.draw_screen()
 
     # Theme fetching {{{
@@ -168,7 +202,32 @@ class ThemesHandler(Handler):
 
     # Theme browsing {{{
     def draw_tab_bar(self) -> None:
-        pass
+        bar_bg = self.current_opts.tab_bar_background or self.current_opts.background
+        self.cmd.sgr(color_code(bar_bg, base=40))
+        self.print(' ' * self.screen_size.cols, end='\r')
+
+        def draw_tab(text: str, name: str, sc: str) -> None:
+            is_active = name == self.current_category
+            text = f'{sc}: {text}'
+            if is_active:
+                text = f'{text} ({len(self.themes_list)})'
+                fg, bg = self.current_opts.active_tab_foreground, self.current_opts.active_tab_background
+            else:
+                fg, bg = self.current_opts.inactive_tab_foreground, self.current_opts.inactive_tab_background
+
+            def draw_sep(which: str) -> None:
+                self.write(styled(which, fg=bar_bg, bg=bg))
+                self.cmd.sgr(color_code(fg), color_code(bg, base=40))
+
+            draw_sep('')
+            self.write(f' {text} ')
+            draw_sep('')
+
+        draw_tab('All', 'all', 'F1')
+        draw_tab('Dark', 'dark', 'F2')
+        draw_tab('Light', 'light', 'F3')
+        draw_tab('Recent', 'recent', 'F4')
+        self.cmd.sgr('39', '49')  # reset fg/bg
 
     def draw_browsing_screen(self) -> None:
         self.draw_tab_bar()

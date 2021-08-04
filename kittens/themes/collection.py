@@ -11,12 +11,13 @@ import shutil
 import tempfile
 import zipfile
 from contextlib import suppress
-from typing import Any, Callable, Dict, Iterator, Match, Optional
+from typing import Any, Callable, Dict, Iterator, Match, Optional, Tuple, Union
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from kitty.config import parse_config
 from kitty.constants import cache_dir, config_dir
+from kitty.options.types import Options as KittyOptions
 from kitty.rgb import Color
 
 from ..choose.main import match
@@ -171,6 +172,7 @@ class Theme:
     def __init__(self, loader: Callable[[], str]):
         self._loader = loader
         self._raw: Optional[str] = None
+        self._opts: Optional[KittyOptions] = None
 
     @property
     def raw(self) -> str:
@@ -178,17 +180,31 @@ class Theme:
             self._raw = self._loader()
         return self._raw
 
+    @property
+    def kitty_opts(self) -> KittyOptions:
+        if self._opts is None:
+            self._opts = KittyOptions(options_dict=parse_config(self.raw.splitlines()))
+        return self._opts
+
 
 class Themes:
 
     def __init__(self) -> None:
         self.themes: Dict[str, Theme] = {}
+        self.index_map: Tuple[str, ...] = ()
 
     def __len__(self) -> int:
         return len(self.themes)
 
     def __iter__(self) -> Iterator[Theme]:
         return iter(self.themes.values())
+
+    def __getitem__(self, key: Union[int, str]) -> Theme:
+        if isinstance(key, str):
+            return self.themes[key]
+        if key < 0:
+            key += len(self.index_map)
+        return self.themes[self.index_map[key]]
 
     def load_from_zip(self, path_to_zip: str) -> None:
         with zipfile.ZipFile(path_to_zip, 'r') as zf:
@@ -225,7 +241,18 @@ class Themes:
 
     def filtered(self, is_ok: Callable[[Theme], bool]) -> 'Themes':
         ans = Themes()
-        ans.themes = {k: v for k, v in self.themes.items() if is_ok(v)}
+
+        def sort_key(k: Tuple[str, Theme]) -> str:
+            return k[1].name.lower()
+
+        ans.themes = {k: v for k, v in sorted(self.themes.items(), key=sort_key) if is_ok(v)}
+        ans.index_map = tuple(ans.themes)
+        return ans
+
+    def copy(self) -> 'Themes':
+        ans = Themes()
+        ans.themes = self.themes.copy()
+        ans.index_map = self.index_map
         return ans
 
     def apply_search(self, expression: str, mark_before: str = '\033[32m', mark_after: str = '\033[39m') -> Iterator[str]:
@@ -235,10 +262,12 @@ class Themes:
                 yield result[0]
             else:
                 del self.themes[k]
+                self.index_map = tuple(x for x in self.index_map if x != k)
 
 
 def load_themes() -> Themes:
     ans = Themes()
     ans.load_from_zip(fetch_themes())
     ans.load_from_dir(os.path.join(config_dir, 'themes'))
+    ans.index_map = tuple(ans.themes)
     return ans

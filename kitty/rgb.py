@@ -4,13 +4,19 @@
 
 import re
 from contextlib import suppress
-from typing import Optional, NamedTuple
+from typing import NamedTuple, Optional, Tuple
 
 
 class Color(NamedTuple):
     red: int = 0
     green: int = 0
     blue: int = 0
+
+    def __truediv__(self, denom: float) -> Tuple[float, float, float]:
+        return self.red / denom, self.green / denom, self.blue / denom
+
+    def as_sgr(self) -> str:
+        return ':2:{}:{}:{}'.format(*self)
 
     def luminance(self) -> float:
         return 0.299 * self.red + 0.587 * self.green + 0.114 * self.blue
@@ -77,7 +83,7 @@ def color_as_sharp(x: Color) -> str:
 
 
 def color_as_sgr(x: Color) -> str:
-    return ':2:{}:{}:{}'.format(*x)
+    return x.as_sgr()
 
 
 def to_color(raw: str, validate: bool = False) -> Optional[Color]:
@@ -856,8 +862,8 @@ color_names = {
 
 if __name__ == '__main__':
     # Read RGB color table from specified rgb.txt file
-    import sys
     import pprint
+    import sys
     data = {}
     with open(sys.argv[-1]) as f:
         for line in f:
