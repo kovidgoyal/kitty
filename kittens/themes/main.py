@@ -19,7 +19,7 @@ from kitty.utils import ScreenSize
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
-from ..tui.operations import styled, color_code
+from ..tui.operations import styled
 from .collection import Theme, Themes, load_themes
 
 
@@ -202,40 +202,40 @@ class ThemesHandler(Handler):
 
     # Theme browsing {{{
     def draw_tab_bar(self) -> None:
-        bar_bg = self.current_opts.tab_bar_background or self.current_opts.background
-        self.cmd.sgr(color_code(bar_bg, base=40))
-        self.print(' ' * self.screen_size.cols, end='\r')
+        self.print(styled(' ' * self.screen_size.cols, reverse=True), end='\r')
 
-        def draw_tab(text: str, name: str, sc: str) -> None:
+        def draw_tab(text: str, name: str, acc_idx: int = 0) -> None:
             is_active = name == self.current_category
-            text = f'{sc}: {text}'
             if is_active:
-                text = f'{text} ({len(self.themes_list)})'
-                fg, bg = self.current_opts.active_tab_foreground, self.current_opts.active_tab_background
+                text = styled(f'{text} #{len(self.themes_list)}', italic=True)
             else:
-                fg, bg = self.current_opts.inactive_tab_foreground, self.current_opts.inactive_tab_background
+                text = text[:acc_idx] + styled(text[acc_idx], underline='straight', underline_color='red', bold=True, fg_intense=True) + text[acc_idx+1:]
 
-            def draw_sep(which: str) -> None:
-                self.write(styled(which, fg=bar_bg, bg=bg))
-                self.cmd.sgr(color_code(fg), color_code(bg, base=40))
+            self.write(styled(f' {text} ', reverse=not is_active))
 
-            draw_sep('')
-            self.write(f' {text} ')
-            draw_sep('')
-
-        draw_tab('All', 'all', 'F1')
-        draw_tab('Dark', 'dark', 'F2')
-        draw_tab('Light', 'light', 'F3')
-        draw_tab('Recent', 'recent', 'F4')
-        self.cmd.sgr('39', '49')  # reset fg/bg
+        draw_tab('All', 'all')
+        draw_tab('Dark', 'dark')
+        draw_tab('Light', 'light')
+        draw_tab('Recent', 'recent')
+        self.cmd.sgr('0')
+        self.print()
 
     def draw_browsing_screen(self) -> None:
         self.draw_tab_bar()
+
+    def on_browsing_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
+        for cat in 'all dark light recent'.split():
+            if key_event.matches(cat[0]):
+                self.current_category = cat
+                self.redraw_after_category_change()
+                return
     # }}}
 
     def on_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
         if self.state is State.fetching:
             self.on_fetching_key_event(key_event, in_bracketed_paste)
+        elif self.state is State.browsing:
+            self.on_browsing_key_event(key_event, in_bracketed_paste)
 
     def draw_screen(self) -> None:
         self.cmd.clear_screen()
