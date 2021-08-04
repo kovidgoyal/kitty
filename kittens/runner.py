@@ -87,14 +87,14 @@ def launch(args: List[str]) -> None:
     del args[:2]
     args = [kitten] + args
     os.environ['KITTY_CONFIG_DIRECTORY'] = config_dir
-    from kittens.tui.operations import clear_screen, reset_mode
+    from kittens.tui.operations import clear_screen, reset_mode, Mode
     set_debug(kitten)
     m = import_kitten_main_module(config_dir, kitten)
     try:
         result = m['start'](args)
     finally:
         sys.stdin = sys.__stdin__
-    print(reset_mode('ALTERNATE_SCREEN') + clear_screen(), end='')
+    print(reset_mode(Mode.ALTERNATE_SCREEN) + clear_screen(), end='')
     if result is not None:
         import json
         data = json.dumps(result)

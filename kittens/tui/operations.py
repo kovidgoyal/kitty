@@ -5,6 +5,7 @@
 import sys
 from contextlib import contextmanager
 from functools import wraps
+from enum import Enum
 from typing import (
     IO, Any, Callable, Dict, Generator, Optional, Tuple, TypeVar, Union
 )
@@ -22,26 +23,28 @@ SAVE_PRIVATE_MODE_VALUES = '\033[?s'
 RESTORE_PRIVATE_MODE_VALUES = '\033[?r'
 SAVE_COLORS = '\033[#P'
 RESTORE_COLORS = '\033[#Q'
-MODES = dict(
-    LNM=(20, ''),
-    IRM=(4, ''),
-    DECKM=(1, '?'),
-    DECSCNM=(5, '?'),
-    DECOM=(6, '?'),
-    DECAWM=(7, '?'),
-    DECARM=(8, '?'),
-    DECTCEM=(25, '?'),
-    MOUSE_BUTTON_TRACKING=(1000, '?'),
-    MOUSE_MOTION_TRACKING=(1002, '?'),
-    MOUSE_MOVE_TRACKING=(1003, '?'),
-    FOCUS_TRACKING=(1004, '?'),
-    MOUSE_UTF8_MODE=(1005, '?'),
-    MOUSE_SGR_MODE=(1006, '?'),
-    MOUSE_URXVT_MODE=(1015, '?'),
-    ALTERNATE_SCREEN=(1049, '?'),
-    BRACKETED_PASTE=(2004, '?'),
-    PENDING_UPDATE=(2026, '?'),
-)
+
+
+class Mode(Enum):
+    LNM = (20, '')
+    IRM = (4, '')
+    DECKM = (1, '?')
+    DECSCNM = (5, '?')
+    DECOM = (6, '?')
+    DECAWM = (7, '?')
+    DECARM = (8, '?')
+    DECTCEM = (25, '?')
+    MOUSE_BUTTON_TRACKING = (1000, '?')
+    MOUSE_MOTION_TRACKING = (1002, '?')
+    MOUSE_MOVE_TRACKING = (1003, '?')
+    FOCUS_TRACKING = (1004, '?')
+    MOUSE_UTF8_MODE = (1005, '?')
+    MOUSE_SGR_MODE = (1006, '?')
+    MOUSE_URXVT_MODE = (1015, '?')
+    ALTERNATE_SCREEN = (1049, '?')
+    BRACKETED_PASTE = (2004, '?')
+    PENDING_UPDATE = (2026, '?')
+
 
 F = TypeVar('F')
 all_cmds: Dict[str, Callable] = {}
@@ -53,14 +56,14 @@ def cmd(f: F) -> F:
 
 
 @cmd
-def set_mode(which: str, private: bool = True) -> str:
-    num, private_ = MODES[which]
-    return '\033[{}{}h'.format(private_, num)
+def set_mode(which: Mode) -> str:
+    num, private = which.value
+    return '\033[{}{}h'.format(private, num)
 
 
 @cmd
-def reset_mode(which: str) -> str:
-    num, private = MODES[which]
+def reset_mode(which: Mode) -> str:
+    num, private = which.value
     return '\033[{}{}l'.format(private, num)
 
 
@@ -101,12 +104,12 @@ def set_window_title(value: str) -> str:
 
 @cmd
 def set_line_wrapping(yes_or_no: bool) -> str:
-    return set_mode('DECAWM') if yes_or_no else reset_mode('DECAWM')
+    return set_mode(Mode.DECAWM) if yes_or_no else reset_mode(Mode.DECAWM)
 
 
 @cmd
 def set_cursor_visible(yes_or_no: bool) -> str:
-    return set_mode('DECTCEM') if yes_or_no else reset_mode('DECTCEM')
+    return set_mode(Mode.DECTCEM) if yes_or_no else reset_mode(Mode.DECTCEM)
 
 
 @cmd
@@ -263,18 +266,18 @@ def clear_images_on_screen(delete_data: bool = False) -> str:
 
 def init_state(alternate_screen: bool = True) -> str:
     ans = (
-        S7C1T + SAVE_CURSOR + SAVE_PRIVATE_MODE_VALUES + reset_mode('LNM') +
-        reset_mode('IRM') + reset_mode('DECKM') + reset_mode('DECSCNM') +
-        set_mode('DECARM') + set_mode('DECAWM') +
-        set_mode('DECTCEM') + reset_mode('MOUSE_BUTTON_TRACKING') +
-        reset_mode('MOUSE_MOTION_TRACKING') + reset_mode('MOUSE_MOVE_TRACKING') +
-        reset_mode('FOCUS_TRACKING') + reset_mode('MOUSE_UTF8_MODE') +
-        reset_mode('MOUSE_SGR_MODE') + reset_mode('MOUSE_UTF8_MODE') +
-        set_mode('BRACKETED_PASTE') + SAVE_COLORS +
+        S7C1T + SAVE_CURSOR + SAVE_PRIVATE_MODE_VALUES + reset_mode(Mode.LNM) +
+        reset_mode(Mode.IRM) + reset_mode(Mode.DECKM) + reset_mode(Mode.DECSCNM) +
+        set_mode(Mode.DECARM) + set_mode(Mode.DECAWM) +
+        set_mode(Mode.DECTCEM) + reset_mode(Mode.MOUSE_BUTTON_TRACKING) +
+        reset_mode(Mode.MOUSE_MOTION_TRACKING) + reset_mode(Mode.MOUSE_MOVE_TRACKING) +
+        reset_mode(Mode.FOCUS_TRACKING) + reset_mode(Mode.MOUSE_UTF8_MODE) +
+        reset_mode(Mode.MOUSE_SGR_MODE) + reset_mode(Mode.MOUSE_UTF8_MODE) +
+        set_mode(Mode.BRACKETED_PASTE) + SAVE_COLORS +
         '\033[*x'  # reset DECSACE to default region select
     )
     if alternate_screen:
-        ans += set_mode('ALTERNATE_SCREEN') + reset_mode('DECOM')
+        ans += set_mode(Mode.ALTERNATE_SCREEN) + reset_mode(Mode.DECOM)
         ans += clear_screen()
     ans += '\033[>31u'  # extended keyboard mode
     return ans
@@ -284,7 +287,7 @@ def reset_state(normal_screen: bool = True) -> str:
     ans = ''
     ans += '\033[<u'  # restore keyboard mode
     if normal_screen:
-        ans += reset_mode('ALTERNATE_SCREEN')
+        ans += reset_mode(Mode.ALTERNATE_SCREEN)
     ans += RESTORE_PRIVATE_MODE_VALUES
     ans += RESTORE_CURSOR
     ans += RESTORE_COLORS
@@ -293,9 +296,9 @@ def reset_state(normal_screen: bool = True) -> str:
 
 @contextmanager
 def pending_update(write: Callable[[str], None]) -> Generator[None, None, None]:
-    write(set_mode('PENDING_UPDATE'))
+    write(set_mode(Mode.PENDING_UPDATE))
     yield
-    write(reset_mode('PENDING_UPDATE'))
+    write(reset_mode(Mode.PENDING_UPDATE))
 
 
 @contextmanager
@@ -308,9 +311,9 @@ def cursor(write: Callable[[str], None]) -> Generator[None, None, None]:
 @contextmanager
 def alternate_screen(f: Optional[IO[str]] = None) -> Generator[None, None, None]:
     f = f or sys.stdout
-    print(set_mode('ALTERNATE_SCREEN'), end='', file=f)
+    print(set_mode(Mode.ALTERNATE_SCREEN), end='', file=f)
     yield
-    print(reset_mode('ALTERNATE_SCREEN'), end='', file=f)
+    print(reset_mode(Mode.ALTERNATE_SCREEN), end='', file=f)
 
 
 @contextmanager
@@ -414,6 +417,7 @@ def as_type_stub() -> str:
         'from kitty.typing import GraphicsCommandType, ScreenSize',
         'from kitty.rgb import Color',
         'import kitty.rgb',
+        'import kittens.tui.operations',
     ]
     methods = []
     for name, func in all_cmds.items():
