@@ -608,8 +608,11 @@ class Options:
     def __init__(self, options_dict: typing.Optional[typing.Dict[str, typing.Any]] = None) -> None:
         self.color_table = array(self.color_table.typecode, self.color_table)
         if options_dict is not None:
+            null = object()
             for key in option_names:
-                setattr(self, key, options_dict[key])
+                val = options_dict.get(key, null)
+                if val is not null:
+                    setattr(self, key, val)
 
     @property
     def _fields(self) -> typing.Tuple[str, ...]:

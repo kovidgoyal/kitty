@@ -185,8 +185,11 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
     if defn.has_color_table:
         a('        self.color_table = array(self.color_table.typecode, self.color_table)')
     a('        if options_dict is not None:')
+    a('            null = object()')
     a('            for key in option_names:')
-    a('                setattr(self, key, options_dict[key])')
+    a('                val = options_dict.get(key, null)')
+    a('                if val is not null:')
+    a('                    setattr(self, key, val)')
 
     a('')
     a('    @property')
