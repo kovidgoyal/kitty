@@ -566,6 +566,8 @@ copy_color_bitmap(uint8_t *src, pixel* dest, Region *src_rect, Region *dest_rect
     }
 }
 
+static const bool debug_placement = false;
+
 static void
 place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size_t cell_height, float x_offset, float y_offset, size_t baseline, unsigned int glyph_num) {
     // We want the glyph to be positioned inside the cell based on the bearingX
@@ -575,6 +577,7 @@ place_bitmap_in_canvas(pixel *cell, ProcessedBitmap *bm, size_t cell_width, size
 
     // Calculate column bounds
     int32_t xoff = (int32_t)(x_offset + bm->bitmap_left);
+    if (debug_placement) printf(" bitmap_left: %d xoff: %d", bm->bitmap_left, xoff);
     if (xoff < 0) src.left += -xoff;
     else dest.left = xoff;
     // Move the dest start column back if the width overflows because of it, but only if we are not in a very long/infinite ligature
@@ -629,10 +632,17 @@ render_glyphs_in_cells(PyObject *f, bool bold, bool italic, hb_glyph_info_t *inf
         }
         x_offset = x + (float)positions[i].x_offset / 64.0f;
         y = (float)positions[i].y_offset / 64.0f;
+        if (debug_placement) printf("%d: x=%f canvas: %u", i, x_offset, canvas_width);
         if ((*was_colored || self->face->glyph->metrics.width > 0) && bm.width > 0) {
             place_bitmap_in_canvas(canvas, &bm, canvas_width, cell_height, x_offset, y, baseline, i);
         }
-        x += (float)positions[i].x_advance / 64.0f;
+        if (debug_placement) printf(" adv: %f\n", (float)positions[i].x_advance / 64.0f);
+        // the roundf() below is needed for infinite length ligatures, for a test case
+        // use: kitty --config None -o 'font_family Fira Code' -o 'font_size 4.5' sh -c
+        // "echo '|---|--------|-------|-------------|-------------|HH'; read"
+        // if this causes issues with non-infinite ligatures, we could choose this behavior
+        // based on num_glyphs and/or num_cells
+        x += roundf((float)positions[i].x_advance / 64.0f);
         free_processed_bitmap(&bm);
     }
 

@@ -15,6 +15,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   windows, allowing individual tabs/windows to have their own titles, even when
   the OS Window has a fixed overall title (:iss:`3893`)
 
+- Linux: Fix some very long ligatures being rendered incorrectly at some font
+  sizes (:iss:`3896`)
 
 0.22.2 [2021-08-02]
 ----------------------
