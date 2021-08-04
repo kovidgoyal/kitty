@@ -19,6 +19,8 @@ from kitty.config import parse_config
 from kitty.constants import cache_dir, config_dir
 from kitty.rgb import Color
 
+from ..choose.main import match
+
 
 def fetch_themes(
     name: str = 'kitty-themes',
@@ -225,6 +227,14 @@ class Themes:
         ans = Themes()
         ans.themes = {k: v for k, v in self.themes.items() if is_ok(v)}
         return ans
+
+    def apply_search(self, expression: str, mark_before: str = '\033[32m', mark_after: str = '\033[39m') -> Iterator[str]:
+        for k, v in tuple(self.themes.items()):
+            result = match(v.name, expression, mark_before=mark_before, mark_after=mark_after)
+            if result and result[0]:
+                yield result[0]
+            else:
+                del self.themes[k]
 
 
 def load_themes() -> Themes:

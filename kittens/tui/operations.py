@@ -351,6 +351,16 @@ def set_default_colors(
 
 
 @cmd
+def save_colors() -> str:
+    return '\x1b[#P'
+
+
+@cmd
+def restore_colors() -> str:
+    return '\x1b[#Q'
+
+
+@cmd
 def write_to_clipboard(data: Union[str, bytes], use_primary: bool = False) -> str:
     from base64 import standard_b64encode
     fmt = 'p' if use_primary else 'c'
