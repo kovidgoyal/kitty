@@ -23,31 +23,29 @@ SAVE_PRIVATE_MODE_VALUES = '\033[?s'
 RESTORE_PRIVATE_MODE_VALUES = '\033[?r'
 SAVE_COLORS = '\033[#P'
 RESTORE_COLORS = '\033[#Q'
+F = TypeVar('F')
+all_cmds: Dict[str, Callable] = {}
 
 
 class Mode(Enum):
-    LNM = (20, '')
-    IRM = (4, '')
-    DECKM = (1, '?')
-    DECSCNM = (5, '?')
-    DECOM = (6, '?')
-    DECAWM = (7, '?')
-    DECARM = (8, '?')
-    DECTCEM = (25, '?')
-    MOUSE_BUTTON_TRACKING = (1000, '?')
-    MOUSE_MOTION_TRACKING = (1002, '?')
-    MOUSE_MOVE_TRACKING = (1003, '?')
-    FOCUS_TRACKING = (1004, '?')
-    MOUSE_UTF8_MODE = (1005, '?')
-    MOUSE_SGR_MODE = (1006, '?')
-    MOUSE_URXVT_MODE = (1015, '?')
-    ALTERNATE_SCREEN = (1049, '?')
-    BRACKETED_PASTE = (2004, '?')
-    PENDING_UPDATE = (2026, '?')
-
-
-F = TypeVar('F')
-all_cmds: Dict[str, Callable] = {}
+    LNM = 20, ''
+    IRM = 4, ''
+    DECKM = 1, '?'
+    DECSCNM = 5, '?'
+    DECOM = 6, '?'
+    DECAWM = 7, '?'
+    DECARM = 8, '?'
+    DECTCEM = 25, '?'
+    MOUSE_BUTTON_TRACKING = 1000, '?'
+    MOUSE_MOTION_TRACKING = 1002, '?'
+    MOUSE_MOVE_TRACKING = 1003, '?'
+    FOCUS_TRACKING = 1004, '?'
+    MOUSE_UTF8_MODE = 1005, '?'
+    MOUSE_SGR_MODE = 1006, '?'
+    MOUSE_URXVT_MODE = 1015, '?'
+    ALTERNATE_SCREEN = 1049, '?'
+    BRACKETED_PASTE = 2004, '?'
+    PENDING_UPDATE = 2026, '?'
 
 
 def cmd(f: F) -> F:
