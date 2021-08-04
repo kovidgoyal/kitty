@@ -40,6 +40,7 @@ MODES = dict(
     MOUSE_URXVT_MODE=(1015, '?'),
     ALTERNATE_SCREEN=(1049, '?'),
     BRACKETED_PASTE=(2004, '?'),
+    PENDING_UPDATE=(2026, '?'),
 )
 
 F = TypeVar('F')
@@ -288,6 +289,13 @@ def reset_state(normal_screen: bool = True) -> str:
     ans += RESTORE_CURSOR
     ans += RESTORE_COLORS
     return ans
+
+
+@contextmanager
+def pending_update(write: Callable[[str], None]) -> Generator[None, None, None]:
+    write(set_mode('PENDING_UPDATE'))
+    yield
+    write(reset_mode('PENDING_UPDATE'))
 
 
 @contextmanager

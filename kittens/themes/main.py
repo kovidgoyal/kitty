@@ -278,12 +278,13 @@ class ThemesHandler(Handler):
             self.on_browsing_key_event(key_event, in_bracketed_paste)
 
     def draw_screen(self) -> None:
-        self.cmd.clear_screen()
-        self.enforce_cursor_state()
-        if self.state is State.fetching:
-            self.draw_fetching_screen()
-        elif self.state is State.browsing:
-            self.draw_browsing_screen()
+        with self.pending_update():
+            self.cmd.clear_screen()
+            self.enforce_cursor_state()
+            if self.state is State.fetching:
+                self.draw_fetching_screen()
+            elif self.state is State.browsing:
+                self.draw_browsing_screen()
 
     def on_resize(self, screen_size: ScreenSize) -> None:
         self.screen_size = screen_size

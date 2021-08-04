@@ -10,9 +10,11 @@ from typing import (
 
 from kitty.types import ParsedShortcut
 from kitty.typing import (
-    AbstractEventLoop, BossType, Debug, ImageManagerType, KeyEventType,
-    KeyActionType, LoopType, MouseEvent, ScreenSize, TermManagerType
+    AbstractEventLoop, BossType, Debug, ImageManagerType, KeyActionType,
+    KeyEventType, LoopType, MouseEvent, ScreenSize, TermManagerType
 )
+
+from .operations import pending_update
 
 
 class Handler:
@@ -133,6 +135,9 @@ class Handler:
 
     def suspend(self) -> ContextManager[TermManagerType]:
         return self._term_manager.suspend()
+
+    def pending_update(self) -> ContextManager[None]:
+        return pending_update(self.write)
 
 
 class HandleResult:
