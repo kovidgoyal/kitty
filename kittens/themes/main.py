@@ -6,15 +6,16 @@ import os
 import sys
 import traceback
 from enum import Enum, auto
-from typing import List, Optional, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union
 
+from kitty.config import cached_values_for
 from kitty.typing import KeyEventType
 from kitty.utils import ScreenSize
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop
 from ..tui.operations import styled
-from .collection import Themes, load_themes
+from .collection import Theme, Themes, load_themes
 
 
 def format_traceback(msg: str) -> str:
@@ -26,11 +27,37 @@ class State(Enum):
     browsing = auto()
 
 
+def dark_filter(q: Theme) -> bool:
+    return q.is_dark
+
+
+def light_filter(q: Theme) -> bool:
+    return not q.is_dark
+
+
+def all_filter(q: Theme) -> bool:
+    return True
+
+
+def create_recent_filter(names: Iterable[str]) -> Callable[[Theme], bool]:
+    allowed = frozenset(names)
+
+    def recent_filter(q: Theme) -> bool:
+        return q.name in allowed
+
+    return recent_filter
+
+
 class ThemesHandler(Handler):
 
-    def __init__(self) -> None:
+    def __init__(self, cached_values: Dict[str, Any]) -> None:
+        self.cached_values = cached_values
         self.state = State.fetching
         self.report_traceback_on_exit: Optional[str] = None
+        self.filter_map: Dict[str, Callable[[Theme], bool]] = {
+            'dark': dark_filter, 'light': light_filter, 'all': all_filter,
+            'recent': create_recent_filter(self.cached_values.get('recent', ()))
+        }
 
     def enforce_cursor_state(self) -> None:
         self.cmd.set_cursor_visible(self.state == State.fetching)
@@ -57,9 +84,8 @@ class ThemesHandler(Handler):
                 self.report_traceback_on_exit = themes_or_exception
                 self.quit_loop(1)
                 return
-            else:
-                self.all_themes: Themes = themes_or_exception
-                self.state = State.browsing
+            self.all_themes: Themes = themes_or_exception
+            self.state = State.browsing
             self.draw_screen()
 
         def fetch() -> None:
@@ -103,8 +129,9 @@ class ThemesHandler(Handler):
 
 def main(args: List[str]) -> None:
     loop = Loop()
-    handler = ThemesHandler()
-    loop.loop(handler)
+    with cached_values_for('themes-kitten') as cached_values:
+        handler = ThemesHandler(cached_values)
+        loop.loop(handler)
     if loop.return_code != 0:
         if handler.report_traceback_on_exit:
             print(handler.report_traceback_on_exit, file=sys.stderr)
