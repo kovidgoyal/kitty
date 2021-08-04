@@ -33,6 +33,14 @@ group_title = groups.__getitem__
 
 @run_once
 def get_all_actions() -> Dict[str, List[Action]]:
+    ' test docstring '
+    if not get_all_actions.__doc__:
+        raise RuntimeError(
+            'This build of kitty does not have docstrings, which'
+            ' are needed for get_all_actions(). If you are using a'
+            ' kitty binary build, setup KITTY_DEVELOP_FROM'
+            ' as described here: https://sw.kovidgoyal.net/kitty/build/'
+        )
 
     ans: Dict[str, List[Action]] = {}
 
