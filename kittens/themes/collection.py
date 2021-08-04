@@ -23,6 +23,11 @@ from kitty.rgb import Color
 from ..choose.main import match
 
 
+def set_comment_in_zip_file(path: str, data: str) -> None:
+    with zipfile.ZipFile(path, 'a') as zf:
+        zf.comment = data.encode('utf-8')
+
+
 def fetch_themes(
     name: str = 'kitty-themes',
     url: str = 'https://codeload.github.com/kovidgoyal/kitty-themes/zip/master'
@@ -34,6 +39,9 @@ def fetch_themes(
             self.etag = ''
             self.timestamp = now
 
+        def __str__(self) -> str:
+            return json.dumps({'etag': self.etag, 'timestamp': self.timestamp.isoformat()})
+
     dest_path = os.path.join(cache_dir(), f'{name}.zip')
     m = Metadata()
     with suppress(Exception), zipfile.ZipFile(dest_path, 'r') as zf:
@@ -43,12 +51,14 @@ def fetch_themes(
         if (now - m.timestamp).days < 1:
             return dest_path
     rq = Request(url)
+    m.timestamp = now
     if m.etag:
         rq.add_header('If-None-Match', m.etag)
     try:
         res = urlopen(rq, timeout=30)
     except HTTPError as e:
         if m.etag and e.code == http.HTTPStatus.NOT_MODIFIED:
+            set_comment_in_zip_file(dest_path, str(m))
             return dest_path
         raise
     m.etag = res.headers.get('etag') or ''
@@ -59,8 +69,7 @@ def fetch_themes(
             needs_delete = True
             shutil.copyfileobj(res, f)
             f.flush()
-            with zipfile.ZipFile(f.name, 'a') as zf:
-                zf.comment = json.dumps({'etag': m.etag, 'timestamp': m.timestamp.isoformat()}).encode('utf-8')
+            set_comment_in_zip_file(f.name, str(m))
             os.replace(f.name, dest_path)
             needs_delete = False
     finally:

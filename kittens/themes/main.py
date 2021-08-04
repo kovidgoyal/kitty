@@ -53,6 +53,11 @@ def create_recent_filter(names: Iterable[str]) -> Callable[[Theme], bool]:
     return recent_filter
 
 
+def mark_shortcut(text: str, acc: str) -> str:
+    acc_idx = text.lower().index(acc.lower())
+    return text[:acc_idx] + styled(text[acc_idx], underline='straight', bold=True, fg_intense=True) + text[acc_idx+1:]
+
+
 class ThemesList:
 
     def __init__(self) -> None:
@@ -204,19 +209,19 @@ class ThemesHandler(Handler):
     def draw_tab_bar(self) -> None:
         self.print(styled(' ' * self.screen_size.cols, reverse=True), end='\r')
 
-        def draw_tab(text: str, name: str, acc_idx: int = 0) -> None:
+        def draw_tab(text: str, name: str, acc: str) -> None:
             is_active = name == self.current_category
             if is_active:
                 text = styled(f'{text} #{len(self.themes_list)}', italic=True)
             else:
-                text = text[:acc_idx] + styled(text[acc_idx], underline='straight', underline_color='red', bold=True, fg_intense=True) + text[acc_idx+1:]
+                text = mark_shortcut(text, acc)
 
-            self.write(styled(f' {text} ', reverse=not is_active))
+            self.cmd.styled(f' {text} ', reverse=not is_active)
 
-        draw_tab('All', 'all')
-        draw_tab('Dark', 'dark')
-        draw_tab('Light', 'light')
-        draw_tab('Recent', 'recent')
+        draw_tab('All', 'all', 'a')
+        draw_tab('Dark', 'dark', 'd')
+        draw_tab('Light', 'light', 'l')
+        draw_tab('Recent', 'recent', 'r')
         self.cmd.sgr('0')
         self.print()
 
