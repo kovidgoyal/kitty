@@ -74,6 +74,17 @@ class ThemesList:
     def __len__(self) -> int:
         return len(self.themes)
 
+    def next(self, delta: int = 1, allow_wrapping: bool = True) -> bool:
+        if not self:
+            return False
+        idx = self.current_idx + delta
+        if not allow_wrapping and (idx < 0 or idx >= len(self)):
+            return False
+        while idx < 0:
+            idx += len(self)
+        self.current_idx = idx % len(self)
+        return True
+
     def update_themes(self, themes: Themes) -> None:
         self.themes = self.all_themes = themes
         if self.current_search:
@@ -91,16 +102,14 @@ class ThemesList:
         self.current_search = search
         self.update_themes(self.all_themes)
 
-    def lines(self, num_rows: int) -> Iterator[str]:
+    def lines(self, num_rows: int) -> Iterator[Tuple[str, int, bool]]:
         if num_rows < 1:
             return
         before_num = min(self.current_idx, num_rows - 1)
         start = self.current_idx - before_num
         for i in range(start, min(start + num_rows, len(self.display_strings))):
             line = self.display_strings[i]
-            if i == self.current_idx:
-                line = styled(line, reverse=True)
-            yield line
+            yield line, self.widths[i], i == self.current_idx
 
     @property
     def current_theme(self) -> Theme:
@@ -227,13 +236,39 @@ class ThemesHandler(Handler):
 
     def draw_browsing_screen(self) -> None:
         self.draw_tab_bar()
+        num_rows = self.screen_size.rows - 2
+        mw = self.themes_list.max_width + 1
+        for line, width, is_current in self.themes_list.lines(num_rows):
+            num_rows -= 1
+            self.cmd.styled('>' if is_current else ' ', fg='green')
+            self.cmd.styled(line, bold=is_current, fg='green' if is_current else None)
+            self.cmd.move_cursor_by(mw - width, 'right')
+            self.print('║')
 
     def on_browsing_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
+        if key_event.matches('esc'):
+            self.quit_loop(0)
+            return
         for cat in 'all dark light recent'.split():
-            if key_event.matches(cat[0]):
+            if key_event.matches(cat[0]) or key_event.matches(f'alt+{cat[0]}'):
                 self.current_category = cat
                 self.redraw_after_category_change()
                 return
+        if key_event.matches('j') or key_event.matches('down'):
+            return self.next(delta=1)
+        if key_event.matches('k') or key_event.matches('up'):
+            return self.next(delta=-1)
+        if key_event.matches('page_down'):
+            return self.next(delta=self.screen_size.rows - 3, allow_wrapping=False)
+        if key_event.matches('page_up'):
+            return self.next(delta=3 - self.screen_size.rows, allow_wrapping=False)
+
+    def next(self, delta: int = 1, allow_wrapping: bool = True) -> None:
+        if self.themes_list.next(delta, allow_wrapping):
+            self.set_colors_to_current_theme()
+            self.draw_screen()
+        else:
+            self.cmd.bell()
     # }}}
 
     def on_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
