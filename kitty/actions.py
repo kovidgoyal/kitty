@@ -7,7 +7,7 @@ from typing import Dict, List, NamedTuple
 
 from .boss import Boss
 from .tabs import Tab
-from .types import run_once
+from .types import run_once, ActionGroup, ActionSpec
 from .window import Window
 
 
@@ -18,7 +18,7 @@ class Action(NamedTuple):
     long_help: str
 
 
-groups = {
+groups: Dict[ActionGroup, str] = {
     'cp': 'Copy/paste',
     'sc': 'Scrolling',
     'win': 'Window management',
@@ -34,29 +34,20 @@ group_title = groups.__getitem__
 @run_once
 def get_all_actions() -> Dict[str, List[Action]]:
     ' test docstring '
-    if not get_all_actions.__doc__:
-        raise RuntimeError(
-            'This build of kitty does not have docstrings, which'
-            ' are needed for get_all_actions(). If you are using a'
-            ' kitty binary build, setup KITTY_DEVELOP_FROM'
-            ' as described here: https://sw.kovidgoyal.net/kitty/build/'
-        )
 
     ans: Dict[str, List[Action]] = {}
 
     def is_action(x: object) -> bool:
-        doc = getattr(x, '__doc__', '')
-        return bool(doc and doc.strip().startswith('@ac:'))
+        return isinstance(getattr(x, 'action_spec', None), ActionSpec)
 
     def as_action(x: object) -> Action:
-        doc = inspect.cleandoc(x.__doc__ or '')
+        spec: ActionSpec = getattr(x, 'action_spec')
+        doc = inspect.cleandoc(spec.doc)
         lines = doc.splitlines()
         first = lines.pop(0)
-        parts = first.split(':', 2)
-        grp = parts[1].strip()
-        short_help = parts[2].strip()
+        short_help = first
         long_help = '\n'.join(lines).strip()
-        return Action(getattr(x, '__name__'), grp, short_help, long_help)
+        return Action(getattr(x, '__name__'), spec.group, short_help, long_help)
 
     seen = set()
     for cls in (Window, Tab, Boss):

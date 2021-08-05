@@ -93,3 +93,22 @@ else:
 
 def run_once(f: Callable[[], _T]) -> RunOnce:
     return RunOnce(f)
+
+
+if TYPE_CHECKING:
+    from typing import Literal
+    ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'mouse', 'mk', 'lay', 'misc']
+else:
+    ActionGroup = str
+
+
+class ActionSpec(NamedTuple):
+    group: str
+    doc: str
+
+
+def ac(group: ActionGroup, doc: str) -> Callable[[_T], _T]:
+    def w(f: _T) -> _T:
+        setattr(f, 'action_spec', ActionSpec(group, doc))
+        return f
+    return w

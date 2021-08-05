@@ -38,7 +38,7 @@ from .notify import NotificationCommand, handle_notification_cmd
 from .options.types import Options
 from .rgb import to_color
 from .terminfo import get_capabilities
-from .types import MouseEvent, ScreenGeometry, WindowGeometry
+from .types import MouseEvent, ScreenGeometry, WindowGeometry, ac
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
     color_as_int, get_primary_selection, load_shaders, log_error, open_cmd,
@@ -529,12 +529,12 @@ class Window:
     def close(self) -> None:
         get_boss().close_window(self)
 
-    def send_text(self, *args: str) -> bool:
-        '''
-        @ac:misc: Send the specified text to the active window
+    @ac('misc', '''
+        Send the specified text to the active window
 
         For details, see :sc:`send_text`.
-        '''
+        ''')
+    def send_text(self, *args: str) -> bool:
         mode = keyboard_mode_name(self.screen)
         required_mode_, text = args[-2:]
         required_mode = frozenset(required_mode_.split(','))
@@ -848,31 +848,31 @@ class Window:
     # }}}
 
     # mouse actions {{{
+    @ac('mouse', 'Click the URL under the mouse')
     def mouse_click_url(self) -> None:
-        '@ac:mouse: Click the URL under the mouse'
         click_mouse_url(self.os_window_id, self.tab_id, self.id)
 
+    @ac('mouse', 'Click the URL under the mouse only if the screen has no selection')
     def mouse_click_url_or_select(self) -> None:
-        '@ac:mouse: Click the URL under the mouse only if the screen has no selection'
         if not self.screen.has_selection():
             self.mouse_click_url()
 
-    def mouse_selection(self, code: int) -> None:
-        '''
-        @ac:mouse: Manipulate the selection based on the current mouse position
+    @ac('mouse', '''
+        Manipulate the selection based on the current mouse position
 
         For examples, see :ref:`conf-kitty-mouse.mousemap`
-        '''
+        ''')
+    def mouse_selection(self, code: int) -> None:
         mouse_selection(self.os_window_id, self.tab_id, self.id, code, self.current_mouse_event_button)
 
+    @ac('mouse', 'Paste the current primary selection')
     def paste_selection(self) -> None:
-        '@ac:mouse: Paste the current primary selection'
         txt = get_boss().current_primary_selection()
         if txt:
             self.paste(txt)
 
+    @ac('mouse', 'Paste the current primary selection or the clipboard if no selection is present')
     def paste_selection_or_clipboard(self) -> None:
-        '@ac:mouse: Paste the current primary selection or the clipboard if no selection is present'
         txt = get_boss().current_primary_selection_or_clipboard()
         if txt:
             self.paste(txt)
@@ -935,8 +935,8 @@ class Window:
 
     # actions {{{
 
+    @ac('cp', 'Show scrollback in a pager like less')
     def show_scrollback(self) -> None:
-        '@ac:cp: Show scrollback in a pager like less'
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
         get_boss().display_scrollback(self, data['text'], data['input_line_number'])
@@ -947,8 +947,8 @@ class Window:
             text = text.encode('utf-8')
         self.screen.paste_bytes(text)
 
+    @ac('cp', 'Paste the specified text into the current window')
     def paste(self, text: Union[str, bytes]) -> None:
-        '@ac:cp: Paste the specified text into the current window'
         if text and not self.destroyed:
             if isinstance(text, str):
                 text = text.encode('utf-8')
@@ -964,8 +964,8 @@ class Window:
                 text = text.replace(b'\r\n', b'\n').replace(b'\n', b'\r')
             self.screen.paste(text)
 
+    @ac('cp', 'Copy the selected text from the active window to the clipboard')
     def copy_to_clipboard(self) -> None:
-        '@ac:cp: Copy the selected text from the active window to the clipboard'
         text = self.text_for_selection()
         if text:
             set_clipboard_string(text)
@@ -978,21 +978,21 @@ class Window:
             cursor_key_mode=self.screen.cursor_key_mode,
         ).encode('ascii')
 
+    @ac('cp', 'Copy the selected text from the active window to the clipboard, if no selection, send Ctrl-C')
     def copy_or_interrupt(self) -> None:
-        '@ac:cp: Copy the selected text from the active window to the clipboard, if no selection, send Ctrl-C'
         text = self.text_for_selection()
         if text:
             set_clipboard_string(text)
         else:
             self.write_to_child(self.encoded_key(KeyEvent(key=ord('c'), mods=GLFW_MOD_CONTROL)))
 
+    @ac('cp', 'Copy the selected text from the active window to the clipboard and clear selection, if no selection, send Ctrl-C')
     def copy_and_clear_or_interrupt(self) -> None:
-        '@ac:cp: Copy the selected text from the active window to the clipboard and clear selection, if no selection, send Ctrl-C'
         self.copy_or_interrupt()
         self.screen.clear_selection()
 
+    @ac('cp', 'Pass the selected text from the active window to the specified program')
     def pass_selection_to_program(self, *args: str) -> None:
-        '@ac:cp: Pass the selected text from the active window to the specified program'
         cwd = self.cwd_of_child
         text = self.text_for_selection()
         if text:
@@ -1001,38 +1001,38 @@ class Window:
             else:
                 open_url(text, cwd=cwd)
 
+    @ac('sc', 'Scroll up by one line')
     def scroll_line_up(self) -> None:
-        '@ac:sc: Scroll up by one line'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, True)
 
+    @ac('sc', 'Scroll down by one line')
     def scroll_line_down(self) -> None:
-        '@ac:sc: Scroll down by one line'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_LINE, False)
 
+    @ac('sc', 'Scroll up by one page')
     def scroll_page_up(self) -> None:
-        '@ac:sc: Scroll up by one page'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, True)
 
+    @ac('sc', 'Scroll down by one page')
     def scroll_page_down(self) -> None:
-        '@ac:sc: Scroll down by one page'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_PAGE, False)
 
+    @ac('sc', 'Scroll to the top of the scrollback buffer')
     def scroll_home(self) -> None:
-        '@ac:sc: Scroll to the top of the scrollback buffer'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, True)
 
+    @ac('sc', 'Scroll to the bottom of the scrollback buffer')
     def scroll_end(self) -> None:
-        '@ac:sc: Scroll to the bottom of the scrollback buffer'
         if self.screen.is_main_linebuf():
             self.screen.scroll(SCROLL_FULL, False)
 
+    @ac('mk', 'Toggle the current marker on/off')
     def toggle_marker(self, ftype: str, spec: Union[str, Tuple[Tuple[int, str], ...]], flags: int) -> None:
-        '@ac:mk: Toggle the current marker on/off'
         from .marks import marker_from_spec
         key = ftype, spec
         if key == self.current_marker_spec:
@@ -1052,24 +1052,24 @@ class Window:
         self.screen.set_marker(marker_from_spec(ftype, spec_, flags))
         self.current_marker_spec = key
 
+    @ac('mk', 'Remove a previously created marker')
     def remove_marker(self) -> None:
-        '@ac:mk: Remove a previously created marker'
         if self.current_marker_spec is not None:
             self.screen.set_marker()
             self.current_marker_spec = None
 
+    @ac('mk', 'Scroll to the next or previous mark of the specified type')
     def scroll_to_mark(self, prev: bool = True, mark: int = 0) -> None:
-        '@ac:mk: Scroll to the next or previous mark of the specified type'
         self.screen.scroll_to_next_mark(mark, prev)
 
-    def signal_child(self, *signals: int) -> None:
-        '''
-        @ac:misc: Send the specified SIGNAL to the foreground process in the active window
+    @ac('misc', '''
+        Send the specified SIGNAL to the foreground process in the active window
 
         For example::
 
             map F1 signal_child SIGTERM
-        '''
+        ''')
+    def signal_child(self, *signals: int) -> None:
         pid = self.child.pid_for_cwd
         if pid is not None:
             for sig in signals:
