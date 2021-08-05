@@ -974,12 +974,12 @@ class Window:
         data = self.pipe_data(text, has_wrap_markers=True)
         get_boss().display_scrollback(self, data['text'], data['input_line_number'])
 
-    def show_last_command_output(self) -> None:
-        '''
-        @ac:cp: Show output from the last shell command in a pager like less
+    @ac('cp', '''
+        Show output from the last shell command in a pager like less
 
         Requires :ref:`shell_integration` to work
-        '''
+        ''')
+    def show_last_command_output(self) -> None:
         text = self.last_cmd_output(as_ansi=True, add_wrap_markers=True)
         get_boss().display_scrollback(self, text, title='Last command output')
 
