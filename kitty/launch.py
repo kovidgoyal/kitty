@@ -21,7 +21,7 @@ from .window import Watchers, Window
 try:
     from typing import TypedDict
 except ImportError:
-    TypedDict = Dict[str, Any]
+    TypedDict = dict
 
 
 class LaunchSpec(NamedTuple):
