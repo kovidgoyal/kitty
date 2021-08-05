@@ -18,7 +18,6 @@
 // Needed for _NSGetProgname
 #include <crt_externs.h>
 #include <objc/runtime.h>
-#include <xlocale.h>
 
 #if (MAC_OS_X_VERSION_MAX_ALLOWED < 101200)
 #define NSWindowStyleMaskResizable NSResizableWindowMask

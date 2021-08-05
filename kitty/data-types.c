@@ -11,6 +11,7 @@
 #include <unistd.h>
 #undef _DARWIN_C_SOURCE
 #endif
+
 #include "data-types.h"
 #include "cleanup.h"
 #include "safe-wrappers.h"
@@ -24,13 +25,16 @@
 #include <fcntl.h>
 #include <stdio.h>
 #include <locale.h>
+
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
+
 #include "monotonic.h"
 
 #ifdef __APPLE__
 #include <libproc.h>
+#include <xlocale.h>
 
 static PyObject*
 user_cache_dir() {
