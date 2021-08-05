@@ -111,7 +111,7 @@ def set_cursor_visible(yes_or_no: bool) -> str:
 
 
 @cmd
-def set_cursor_position(x: int, y: int) -> str:  # (0, 0) is top left
+def set_cursor_position(x: int = 0, y: int = 0) -> str:  # (0, 0) is top left
     return '\033[{};{}H'.format(y + 1, x + 1)
 
 

@@ -3,6 +3,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import re
 import sys
 import traceback
 from enum import Enum, auto
@@ -21,6 +22,8 @@ from ..tui.handler import Handler
 from ..tui.loop import Loop
 from ..tui.operations import styled
 from .collection import Theme, Themes, load_themes
+
+separator = '║'
 
 
 def format_traceback(msg: str) -> str:
@@ -135,6 +138,7 @@ class ThemesHandler(Handler):
         }
         self.themes_list = ThemesList()
         self.colors_set_once = False
+        self.tabs = tuple('all dark light recent'.split())
 
     def enforce_cursor_state(self) -> None:
         self.cmd.set_cursor_visible(self.state == State.fetching)
@@ -234,12 +238,66 @@ class ThemesHandler(Handler):
 
             self.cmd.styled(f' {text} ', reverse=not is_active)
 
-        draw_tab('All', 'all', 'a')
-        draw_tab('Dark', 'dark', 'd')
-        draw_tab('Light', 'light', 'l')
-        draw_tab('Recent', 'recent', 'r')
+        for t in self.tabs:
+            draw_tab(t.capitalize(), t, t[0])
         self.cmd.sgr('0')
         self.print()
+
+    def draw_theme_demo(self) -> None:
+        theme = self.themes_list.current_theme
+        xstart = self.themes_list.max_width + 3
+        sz = self.screen_size.cols - xstart
+        if sz < 20:
+            return
+        sz -= 1
+        y = 0
+        colors = 'black red green yellow blue magenta cyan white'.split()
+        trunc = sz // 8 - 1
+
+        def next_line() -> None:
+            nonlocal y
+            self.write('\r')
+            y += 1
+            self.cmd.set_cursor_position(xstart - 1, y)
+            self.write(separator + ' ')
+
+        def write_para(text: str) -> None:
+            text = re.sub(r'\s+', ' ', text)
+            while text:
+                sp = truncate_point_for_length(text, sz)
+                self.write(text[:sp])
+                self.debug(sp, text[:sp])
+                next_line()
+                text = text[sp:]
+
+        def write_colors(bg: Optional[str] = None) -> None:
+            for intense in (False, True):
+                buf = []
+                for c in colors:
+                    buf.append(styled(c[:trunc], fg=c, fg_intense=intense))
+                self.cmd.styled(' '.join(buf), bg=bg, bg_intense=intense)
+                next_line()
+            next_line()
+
+        def write_line(text: str) -> None:
+            self.write(text)
+            next_line()
+
+        self.cmd.set_cursor_position()
+        next_line()
+        self.cmd.styled(theme.name.center(sz), bold=True, fg='green')
+        next_line()
+        if theme.author:
+            self.cmd.styled(theme.author, italic=True)
+            next_line()
+        if theme.blurb:
+            next_line()
+            write_para(theme.blurb)
+            next_line()
+        write_colors()
+
+        for bg in colors:
+            write_colors(bg)
 
     def draw_browsing_screen(self) -> None:
         self.draw_tab_bar()
@@ -250,7 +308,9 @@ class ThemesHandler(Handler):
             self.cmd.styled('>' if is_current else ' ', fg='green')
             self.cmd.styled(line, bold=is_current, fg='green' if is_current else None)
             self.cmd.move_cursor_by(mw - width, 'right')
-            self.print('║')
+            self.print(separator)
+        if self.themes_list:
+            self.draw_theme_demo()
 
     def on_browsing_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
         if key_event.matches('esc'):
@@ -261,6 +321,10 @@ class ThemesHandler(Handler):
                 self.current_category = cat
                 self.redraw_after_category_change()
                 return
+        if key_event.matches('left') or key_event.matches('shift+tab'):
+            return self.next_category(-1)
+        if key_event.matches('right') or key_event.matches('tab'):
+            return self.next_category(1)
         if key_event.matches('j') or key_event.matches('down'):
             return self.next(delta=1)
         if key_event.matches('k') or key_event.matches('up'):
@@ -269,6 +333,11 @@ class ThemesHandler(Handler):
             return self.next(delta=self.screen_size.rows - 3, allow_wrapping=False)
         if key_event.matches('page_up'):
             return self.next(delta=3 - self.screen_size.rows, allow_wrapping=False)
+
+    def next_category(self, delta: int = 1) -> None:
+        idx = self.tabs.index(self.current_category) + delta + len(self.tabs)
+        self.current_category = self.tabs[idx % len(self.tabs)]
+        self.redraw_after_category_change()
 
     def next(self, delta: int = 1, allow_wrapping: bool = True) -> None:
         if self.themes_list.next(delta, allow_wrapping):
@@ -295,6 +364,7 @@ class ThemesHandler(Handler):
 
     def on_resize(self, screen_size: ScreenSize) -> None:
         self.screen_size = screen_size
+        self.draw_screen()
 
     def on_interrupt(self) -> None:
         self.quit_loop(1)
