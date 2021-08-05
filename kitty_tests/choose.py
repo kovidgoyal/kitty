@@ -11,7 +11,7 @@ from . import BaseTest
 def run(input_data, query, **kw):
     kw['threads'] = kw.get('threads', 1)
     mark = kw.pop('mark', False)
-    from kittens.choose.main import match
+    from kittens.choose.match import match
     mark_before = mark_after = ''
     if mark:
         if mark is True:
