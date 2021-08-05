@@ -66,6 +66,12 @@ Variables that influence kitty behavior
 
 Variables that kitty sets when running child programs
 
+.. envvar:: LANG
+
+   This is set only on macOS, and only if the country and language from the
+   macOS user settings form a valid locale.
+
+
 .. envvar:: KITTY_WINDOW_ID
 
    An integer that is the id for the kitty :term:`window` the program is running in.

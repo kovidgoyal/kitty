@@ -22,6 +22,11 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   event which breaks some applications that grab the mouse but cant handle
   mouse events (:iss:`3902`)
 
+- macOS: When the language is set to English and the country to one for which
+  an English locale does not exist, set :envvar:`LANG` to ``en_US.UTF-8``
+  (:iss:`3899`)
+
+
 0.22.2 [2021-08-02]
 ----------------------
 

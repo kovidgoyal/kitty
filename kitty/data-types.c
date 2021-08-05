@@ -23,6 +23,7 @@
 #include <signal.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <locale.h>
 #ifdef WITH_PROFILER
 #include <gperftools/profiler.h>
 #endif
@@ -156,6 +157,15 @@ wcwidth_wrap(PyObject UNUSED *self, PyObject *chr) {
     return PyLong_FromLong(wcwidth_std(PyLong_AsLong(chr)));
 }
 
+static PyObject*
+locale_is_valid(PyObject *self UNUSED, PyObject *args) {
+    char *name;
+    if (!PyArg_ParseTuple(args, "s", &name)) return NULL;
+    locale_t test_locale = newlocale(LC_ALL_MASK, name, NULL);
+    if (!test_locale) { Py_RETURN_FALSE; }
+    freelocale(test_locale);
+    Py_RETURN_TRUE;
+}
 
 static PyMethodDef module_methods[] = {
     {"wcwidth", (PyCFunction)wcwidth_wrap, METH_O, ""},
@@ -169,6 +179,7 @@ static PyMethodDef module_methods[] = {
     {"parse_bytes", (PyCFunction)parse_bytes, METH_VARARGS, ""},
     {"parse_bytes_dump", (PyCFunction)parse_bytes_dump, METH_VARARGS, ""},
     {"redirect_std_streams", (PyCFunction)redirect_std_streams, METH_VARARGS, ""},
+    {"locale_is_valid", (PyCFunction)locale_is_valid, METH_VARARGS, ""},
 #ifdef __APPLE__
     METHODB(user_cache_dir, METH_NOARGS),
     METHODB(process_group_map, METH_NOARGS),

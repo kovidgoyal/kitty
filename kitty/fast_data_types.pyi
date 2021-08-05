@@ -672,6 +672,10 @@ def cocoa_get_lang() -> Optional[str]:
     pass
 
 
+def locale_is_valid(name: str) -> bool:
+    pass
+
+
 def mark_os_window_for_close(os_window_id: int, cr_type: int = 2) -> bool:
     pass
 

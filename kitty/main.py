@@ -195,10 +195,15 @@ run_app = AppRunner()
 def ensure_macos_locale() -> None:
     # Ensure the LANG env var is set. See
     # https://github.com/kovidgoyal/kitty/issues/90
-    from .fast_data_types import cocoa_get_lang
+    from .fast_data_types import cocoa_get_lang, locale_is_valid
     if 'LANG' not in os.environ:
         lang = cocoa_get_lang()
         if lang is not None:
+            if not locale_is_valid(lang):
+                if lang.startswith('en_'):
+                    lang = 'en_US'
+                else:
+                    log_error(f'Could not set LANG Cocoa returns language as: {lang}')
             os.environ['LANG'] = lang + '.UTF-8'
 
 
