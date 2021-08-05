@@ -20,7 +20,7 @@ from kitty.constants import cache_dir, config_dir
 from kitty.options.types import Options as KittyOptions
 from kitty.rgb import Color
 
-from ..choose.main import match
+from ..choose.match import match
 
 
 def set_comment_in_zip_file(path: str, data: str) -> None:
