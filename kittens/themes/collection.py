@@ -154,7 +154,7 @@ def parse_theme(fname: str, raw: str) -> Dict[str, Any]:
     if is_dark:
         ans['is_dark'] = True
     ans['num_settings'] = len(conf) - len(parse_config(()))
-    if ans['num_settings'] < 1:
+    if ans['num_settings'] < 1 and fname != 'default.conf':
         raise SystemExit(f'The theme {fname} has no settings')
     return ans
 
