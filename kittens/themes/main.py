@@ -40,6 +40,7 @@ def limit_length(text: str, limit: int = 32) -> str:
 class State(Enum):
     fetching = auto()
     browsing = auto()
+    searching = auto()
 
 
 def dark_filter(q: Theme) -> bool:
@@ -243,6 +244,13 @@ class ThemesHandler(Handler):
         self.cmd.sgr('0')
         self.print()
 
+    def draw_bottom_bar(self) -> None:
+        self.print(styled(' ' * self.screen_size.cols, reverse=True), end='\r')
+        for t in ('search', 'accept'):
+            text = mark_shortcut(t.capitalize(), t[0])
+            self.cmd.styled(f' {text} ', reverse=True)
+        self.cmd.sgr('0')
+
     def draw_theme_demo(self) -> None:
         theme = self.themes_list.current_theme
         xstart = self.themes_list.max_width + 3
@@ -266,7 +274,6 @@ class ThemesHandler(Handler):
             while text:
                 sp = truncate_point_for_length(text, sz)
                 self.write(text[:sp])
-                self.debug(sp, text[:sp])
                 next_line()
                 text = text[sp:]
 
@@ -288,7 +295,7 @@ class ThemesHandler(Handler):
         self.cmd.styled(theme.name.center(sz), bold=True, fg='green')
         next_line()
         if theme.author:
-            self.cmd.styled(theme.author, italic=True)
+            self.cmd.styled(theme.author.center(sz), italic=True)
             next_line()
         if theme.blurb:
             next_line()
@@ -311,16 +318,17 @@ class ThemesHandler(Handler):
             self.print(separator)
         if self.themes_list:
             self.draw_theme_demo()
+        self.cmd.set_cursor_position(0, self.screen_size.rows)
+        if self.state is State.browsing:
+            self.draw_bottom_bar()
 
     def on_browsing_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
-        if key_event.matches('esc'):
-            self.quit_loop(0)
-            return
+        if key_event.matches('esc') or key_event.matches('q'):
+            return self.quit_loop(0)
         for cat in 'all dark light recent'.split():
             if key_event.matches(cat[0]) or key_event.matches(f'alt+{cat[0]}'):
                 self.current_category = cat
-                self.redraw_after_category_change()
-                return
+                return self.redraw_after_category_change()
         if key_event.matches('left') or key_event.matches('shift+tab'):
             return self.next_category(-1)
         if key_event.matches('right') or key_event.matches('tab'):
@@ -333,6 +341,9 @@ class ThemesHandler(Handler):
             return self.next(delta=self.screen_size.rows - 3, allow_wrapping=False)
         if key_event.matches('page_up'):
             return self.next(delta=3 - self.screen_size.rows, allow_wrapping=False)
+        if key_event.matches('s') or key_event.matches('/'):
+            self.state = State.searching
+            return self.draw_screen()
 
     def next_category(self, delta: int = 1) -> None:
         idx = self.tabs.index(self.current_category) + delta + len(self.tabs)
@@ -359,7 +370,7 @@ class ThemesHandler(Handler):
             self.enforce_cursor_state()
             if self.state is State.fetching:
                 self.draw_fetching_screen()
-            elif self.state is State.browsing:
+            elif self.state in (State.browsing, State.searching):
                 self.draw_browsing_screen()
 
     def on_resize(self, screen_size: ScreenSize) -> None:
