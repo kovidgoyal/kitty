@@ -980,7 +980,7 @@ class Window:
         Requires :ref:`shell_integration` to work
         ''')
     def show_last_command_output(self) -> None:
-        text = self.last_cmd_output(as_ansi=True, add_wrap_markers=True)
+        text = self.last_cmd_output(as_ansi=True, add_wrap_markers=False)
         get_boss().display_scrollback(self, text, title='Last command output')
 
     def paste_bytes(self, text: Union[str, bytes]) -> None:
