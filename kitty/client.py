@@ -211,6 +211,10 @@ set_dynamic_color = set_color_table_color = process_cwd_notification = write_osc
 clipboard_control_pending: str = ''
 
 
+def shell_prompt_marking(payload: str) -> None:
+    write_osc(133, payload)
+
+
 def clipboard_control(payload: str) -> None:
     global clipboard_control_pending
     code, data = payload.split(';', 1)
@@ -228,7 +232,10 @@ def clipboard_control(payload: str) -> None:
 
 
 def replay(raw: str) -> None:
-    specials = {'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color', 'process_cwd_notification', 'clipboard_control'}
+    specials = {
+        'draw', 'set_title', 'set_icon', 'set_dynamic_color', 'set_color_table_color',
+        'process_cwd_notification', 'clipboard_control', 'shell_prompt_marking'
+    }
     for line in raw.splitlines():
         if line.strip() and not line.startswith('#'):
             cmd, rest = line.partition(' ')[::2]
