@@ -22,6 +22,9 @@ from kitty.rgb import Color
 
 from ..choose.match import match
 
+MARK_BEFORE = '\033[33m'
+MARK_AFTER = '\033[39m'
+
 
 def set_comment_in_zip_file(path: str, data: str) -> None:
     with zipfile.ZipFile(path, 'a') as zf:
@@ -265,15 +268,21 @@ class Themes:
         return ans
 
     def apply_search(
-        self, expression: str, mark_before: str = '\033[33m', mark_after: str = '\033[39m'
+        self, expression: str, mark_before: str = MARK_BEFORE, mark_after: str = MARK_AFTER
     ) -> Iterator[str]:
-        for k, v in tuple(self.themes.items()):
-            result = match(v.name, expression, mark_before=mark_before, mark_after=mark_after)
-            if result and result[0]:
-                yield result[0]
-            else:
-                del self.themes[k]
-                self.index_map = tuple(x for x in self.index_map if x != k)
+        raw = '\n'.join(self.themes)
+        results = match(raw, expression, positions=True, level1=' ')
+        themes: Dict[str, Theme] = {}
+        for r in results:
+            pos, k = r.split(':', 1)
+            positions = tuple(map(int, pos.split(',')))
+            text = k
+            for p in reversed(positions):
+                text = text[:p] + mark_before + text[p] + mark_after + text[p+1:]
+            themes[k] = self.themes[k]
+            yield text
+        self.themes = themes
+        self.index_map = tuple(self.themes)
 
 
 def load_themes() -> Themes:

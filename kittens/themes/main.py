@@ -19,9 +19,10 @@ from kitty.typing import KeyEventType
 from kitty.utils import ScreenSize
 
 from ..tui.handler import Handler
+from ..tui.line_edit import LineEdit
 from ..tui.loop import Loop
-from ..tui.operations import styled
-from .collection import Theme, Themes, load_themes
+from ..tui.operations import color_code, styled
+from .collection import MARK_AFTER, Theme, Themes, load_themes
 
 separator = '║'
 
@@ -107,11 +108,12 @@ class ThemesList:
         self.max_width = max(self.widths) if self.widths else 0
         self.current_idx = 0
 
-    def update_search(self, search: str = '') -> None:
+    def update_search(self, search: str = '') -> bool:
         if search == self.current_search:
-            return
+            return False
         self.current_search = search
         self.update_themes(self.all_themes)
+        return True
 
     def lines(self, num_rows: int) -> Iterator[Tuple[str, int, bool]]:
         if num_rows < 1:
@@ -139,6 +141,7 @@ class ThemesHandler(Handler):
         }
         self.themes_list = ThemesList()
         self.colors_set_once = False
+        self.line_edit = LineEdit()
         self.tabs = tuple('all dark light recent'.split())
 
     def enforce_cursor_state(self) -> None:
@@ -245,11 +248,17 @@ class ThemesHandler(Handler):
         self.print()
 
     def draw_bottom_bar(self) -> None:
+        self.cmd.set_cursor_position(0, self.screen_size.rows)
         self.print(styled(' ' * self.screen_size.cols, reverse=True), end='\r')
-        for t in ('search', 'accept'):
-            text = mark_shortcut(t.capitalize(), t[0])
+        for (t, sc) in (('search (/)', 's'), ('accept (⏎)', 'c')):
+            text = mark_shortcut(t.capitalize(), sc)
             self.cmd.styled(f' {text} ', reverse=True)
         self.cmd.sgr('0')
+
+    def draw_search_bar(self) -> None:
+        self.cmd.set_cursor_position(0, self.screen_size.rows)
+        self.cmd.clear_to_eol()
+        self.line_edit.write(self.write)
 
     def draw_theme_demo(self) -> None:
         theme = self.themes_list.current_theme
@@ -312,14 +321,52 @@ class ThemesHandler(Handler):
         mw = self.themes_list.max_width + 1
         for line, width, is_current in self.themes_list.lines(num_rows):
             num_rows -= 1
+            if is_current:
+                line = line.replace(MARK_AFTER, '\033[' + color_code('green') + 'm')
             self.cmd.styled('>' if is_current else ' ', fg='green')
             self.cmd.styled(line, bold=is_current, fg='green' if is_current else None)
             self.cmd.move_cursor_by(mw - width, 'right')
             self.print(separator)
         if self.themes_list:
             self.draw_theme_demo()
-        self.cmd.set_cursor_position(0, self.screen_size.rows)
-        if self.state is State.browsing:
+        self.draw_bottom_bar() if self.state is State.browsing else self.draw_search_bar()
+
+    def on_searching_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
+        if key_event.matches('enter'):
+            self.state = State.browsing
+            self.draw_bottom_bar()
+            return
+        if key_event.matches('esc'):
+            self.state = State.browsing
+            self.themes_list.update_search('')
+            self.set_colors_to_current_theme()
+            return self.draw_screen()
+        if key_event.text:
+            self.line_edit.on_text(key_event.text, in_bracketed_paste)
+        else:
+            if not self.line_edit.on_key(key_event):
+                if key_event.matches('left') or key_event.matches('shift+tab'):
+                    return self.next_category(-1)
+                if key_event.matches('right') or key_event.matches('tab'):
+                    return self.next_category(1)
+                if key_event.matches('down'):
+                    return self.next(delta=1)
+                if key_event.matches('up'):
+                    return self.next(delta=-1)
+                if key_event.matches('page_down'):
+                    return self.next(delta=self.screen_size.rows - 3, allow_wrapping=False)
+                if key_event.matches('page_up'):
+                    return self.next(delta=3 - self.screen_size.rows, allow_wrapping=False)
+                return
+        if self.line_edit.current_input:
+            q = self.line_edit.current_input[1:]
+            if self.themes_list.update_search(q):
+                self.set_colors_to_current_theme()
+                self.draw_screen()
+            else:
+                self.draw_search_bar()
+        else:
+            self.state = State.browsing
             self.draw_bottom_bar()
 
     def on_browsing_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
@@ -327,8 +374,10 @@ class ThemesHandler(Handler):
             return self.quit_loop(0)
         for cat in 'all dark light recent'.split():
             if key_event.matches(cat[0]) or key_event.matches(f'alt+{cat[0]}'):
-                self.current_category = cat
-                return self.redraw_after_category_change()
+                if cat != self.current_category:
+                    self.current_category = cat
+                    self.redraw_after_category_change()
+                return
         if key_event.matches('left') or key_event.matches('shift+tab'):
             return self.next_category(-1)
         if key_event.matches('right') or key_event.matches('tab'):
@@ -342,8 +391,13 @@ class ThemesHandler(Handler):
         if key_event.matches('page_up'):
             return self.next(delta=3 - self.screen_size.rows, allow_wrapping=False)
         if key_event.matches('s') or key_event.matches('/'):
-            self.state = State.searching
-            return self.draw_screen()
+            return self.start_search()
+
+    def start_search(self) -> None:
+        self.line_edit.clear()
+        self.line_edit.add_text('/' + self.themes_list.current_search)
+        self.state = State.searching
+        self.draw_screen()
 
     def next_category(self, delta: int = 1) -> None:
         idx = self.tabs.index(self.current_category) + delta + len(self.tabs)
@@ -363,6 +417,8 @@ class ThemesHandler(Handler):
             self.on_fetching_key_event(key_event, in_bracketed_paste)
         elif self.state is State.browsing:
             self.on_browsing_key_event(key_event, in_bracketed_paste)
+        elif self.state is State.searching:
+            self.on_searching_key_event(key_event, in_bracketed_paste)
 
     def draw_screen(self) -> None:
         with self.pending_update():
