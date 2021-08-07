@@ -499,6 +499,14 @@ of URLs with a plain click::
     automatically end it and no release event will be dispatched.
 ''')
 
+opt('clear_all_mouse_shortcuts', 'no',
+    option_type='clear_all_mouse_shortcuts',
+    long_text='''
+You can have kitty remove all mouse shortcut definition seen up to this point.
+Useful, for instance, to remove the default mouse shortcuts.
+'''
+    )
+
 mma('Click the link under the mouse cursor when no selection is created',
     'click_url_or_select left click ungrabbed mouse_click_url_or_select',
     )
