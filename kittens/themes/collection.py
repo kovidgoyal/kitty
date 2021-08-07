@@ -26,6 +26,49 @@ MARK_BEFORE = '\033[33m'
 MARK_AFTER = '\033[39m'
 
 
+def patch_conf(raw: str) -> str:
+    addition = '# BEGIN_KITTY_THEME\ninclude current-theme.conf\n# END_KITTY_THEME'
+    nraw, num = re.subn(r'^# BEGIN_KITTY_THEME.+?# END_KITTY_THEME', addition, raw, flags=re.MULTILINE | re.DOTALL)
+    if not num:
+        if raw:
+            raw += '\n\n'
+        nraw = raw + addition
+    # comment out all existing color definitions
+    color_conf_items = [f'color{i}' for i in range(256)] + list(filter(None, '''
+foreground
+background
+selection_foreground
+selection_background
+
+cursor
+cursor_text_color
+
+url_color
+
+active_border_color
+inactive_border_color
+bell_border_color
+
+wayland_titlebar_color
+macos_titlebar_color
+
+active_tab_foreground
+active_tab_background
+inactive_tab_foreground
+inactive_tab_background
+tab_bar_background
+
+mark1_foreground
+mark1_background
+mark2_foreground
+mark2_background
+mark3_foreground
+mark3_background
+'''.splitlines()))
+    pat = f'^({"|".join(color_conf_items)})'
+    return re.sub(pat, r'# \1', nraw, flags=re.MULTILINE)
+
+
 def set_comment_in_zip_file(path: str, data: str) -> None:
     with zipfile.ZipFile(path, 'a') as zf:
         zf.comment = data.encode('utf-8')
@@ -203,6 +246,17 @@ class Theme:
 
     def save_in_conf(self, confdir: str) -> None:
         atomic_save(self.raw.encode('utf-8'), os.path.join(confdir, 'current-theme.conf'))
+        confpath = os.path.join(confdir, 'kitty.conf')
+        try:
+            with open(confpath) as f:
+                raw = f.read()
+        except FileNotFoundError:
+            raw = ''
+        nraw = patch_conf(raw)
+        if raw:
+            with open(confpath + '.bak', 'w') as f:
+                f.write(raw)
+        atomic_save(nraw.encode('utf-8'), confpath)
 
 
 class Themes:
