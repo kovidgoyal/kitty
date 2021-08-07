@@ -15,7 +15,7 @@ from typing import Any, Callable, Dict, Iterator, Match, Optional, Tuple, Union
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
-from kitty.config import parse_config
+from kitty.config import atomic_save, parse_config
 from kitty.constants import cache_dir, config_dir
 from kitty.options.types import Options as KittyOptions
 from kitty.rgb import Color
@@ -197,6 +197,9 @@ class Theme:
         if self._opts is None:
             self._opts = KittyOptions(options_dict=parse_config(self.raw.splitlines()))
         return self._opts
+
+    def save_in_dir(self, dirpath: str) -> None:
+        atomic_save(self.raw.encode('utf-8'), os.path.join(dirpath, f'{self.name}.conf'))
 
 
 class Themes:

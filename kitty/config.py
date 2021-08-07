@@ -40,7 +40,7 @@ def atomic_save(data: bytes, path: str) -> None:
     try:
         with os.fdopen(fd, 'wb') as f:
             f.write(data)
-        os.rename(p, path)
+        os.replace(p, path)
     finally:
         try:
             os.remove(p)

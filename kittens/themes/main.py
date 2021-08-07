@@ -13,6 +13,7 @@ from typing import (
 
 from kitty.cli import create_default_opts
 from kitty.config import cached_values_for
+from kitty.constants import config_dir
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 from kitty.rgb import color_as_sharp, color_from_int
 from kitty.typing import KeyEventType
@@ -42,6 +43,7 @@ class State(Enum):
     fetching = auto()
     browsing = auto()
     searching = auto()
+    accepting = auto()
 
 
 def dark_filter(q: Theme) -> bool:
@@ -392,6 +394,12 @@ class ThemesHandler(Handler):
             return self.next(delta=3 - self.screen_size.rows, allow_wrapping=False)
         if key_event.matches('s') or key_event.matches('/'):
             return self.start_search()
+        if key_event.matches('c') or key_event.matches('enter'):
+            if not self.themes_list:
+                self.cmd.beep()
+                return
+            self.state = State.accepting
+            return self.draw_screen()
 
     def start_search(self) -> None:
         self.line_edit.clear()
@@ -412,6 +420,42 @@ class ThemesHandler(Handler):
             self.cmd.bell()
     # }}}
 
+    # Accepting {{{
+    def draw_accepting_screen(self) -> None:
+        name = self.themes_list.current_theme.name
+        name = styled(name, bold=True, fg="green")
+        kc = styled('kitty.conf', italic=True)
+
+        def ac(x: str) -> str:
+            return styled(x, fg='red')
+
+        self.cmd.set_line_wrapping(True)
+        self.print(f'You have chosen the {name} theme')
+        self.print()
+        self.print('What would you like to do?')
+        self.print()
+        self.print(' ', f'{ac("M")}odify {kc} to load', styled(name, bold=True, fg="green"))
+        self.print()
+        self.print(' ', f'{ac("P")}lace the theme file in {config_dir} but do not modify {kc}')
+        self.print()
+        self.print(' ', f'{ac("A")}bort and return to list of themes')
+        self.print()
+        self.print(' ', f'{ac("Q")}uit')
+
+    def on_accepting_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
+        if key_event.matches('q') or key_event.matches('esc'):
+            self.quit_loop(0)
+            return
+        if key_event.matches('a'):
+            self.state = State.browsing
+            self.draw_screen()
+            return
+        if key_event.matches('p'):
+            self.themes_list.current_theme.save_in_dir(config_dir)
+            self.quit_loop(0)
+            return
+    # }}}
+
     def on_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
         if self.state is State.fetching:
             self.on_fetching_key_event(key_event, in_bracketed_paste)
@@ -419,15 +463,20 @@ class ThemesHandler(Handler):
             self.on_browsing_key_event(key_event, in_bracketed_paste)
         elif self.state is State.searching:
             self.on_searching_key_event(key_event, in_bracketed_paste)
+        elif self.state is State.accepting:
+            self.on_accepting_key_event(key_event, in_bracketed_paste)
 
     def draw_screen(self) -> None:
         with self.pending_update():
             self.cmd.clear_screen()
             self.enforce_cursor_state()
+            self.cmd.set_line_wrapping(False)
             if self.state is State.fetching:
                 self.draw_fetching_screen()
             elif self.state in (State.browsing, State.searching):
                 self.draw_browsing_screen()
+            elif self.state is State.accepting:
+                self.draw_accepting_screen()
 
     def on_resize(self, screen_size: ScreenSize) -> None:
         self.screen_size = screen_size
