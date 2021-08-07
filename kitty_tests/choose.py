@@ -59,6 +59,7 @@ class TestMatcher(BaseTest):
     def test_positions(self):
         ' Output of positions '
         self.basic_test('abc\nac', 'ac', '0,1:ac\n0,2:abc', positions=True)
+        self.basic_test('abc\nv', 'a', '0:abc', positions=True)
 
     def test_delimiter(self):
         ' Test using a custom line delimiter '

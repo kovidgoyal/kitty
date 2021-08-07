@@ -66,10 +66,10 @@ static void
 output_positions(GlobalData *global, len_t *positions, len_t num) {
     wchar_t buf[128];
     for (len_t i = 0; i < num; i++) {
-        int num = swprintf(buf, sizeof(buf)/sizeof(buf[0]), L"%u", positions[i]);
-        if (num > 0 && ensure_space(global, num + 1)) {
-            for (int i = 0; i < num; i++) global->output[global->output_pos++] = buf[i];
-            global->output[global->output_pos++] = (i == num - 1) ? ',' : ':';
+        int pnum = swprintf(buf, arraysz(buf), L"%u", positions[i]);
+        if (pnum > 0 && ensure_space(global, pnum + 1)) {
+            for (int k = 0; k < pnum; k++) global->output[global->output_pos++] = buf[k];
+            global->output[global->output_pos++] = (i == num - 1) ? ':' : ',';
         }
     }
 }
