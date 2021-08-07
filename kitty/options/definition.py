@@ -499,11 +499,11 @@ of URLs with a plain click::
     automatically end it and no release event will be dispatched.
 ''')
 
-opt('clear_all_mouse_shortcuts', 'no',
-    option_type='clear_all_mouse_shortcuts',
+opt('clear_all_mouse_actions', 'no',
+    option_type='clear_all_mouse_actions',
     long_text='''
-You can have kitty remove all mouse shortcut definition seen up to this point.
-Useful, for instance, to remove the default mouse shortcuts.
+You can have kitty remove all mouse actions seen up to this point.
+Useful, for instance, to remove the default mouse actions.
 '''
     )
 

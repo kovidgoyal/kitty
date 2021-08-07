@@ -123,7 +123,7 @@ def finalize_keys(opts: Options) -> None:
 def finalize_mouse_mappings(opts: Options) -> None:
     defns: List[MouseMapping] = []
     for d in opts.mouse_map:
-        if d is None:  # clear_all_mouse_shortcuts
+        if d is None:  # clear_all_mouse_actions
             defns = []  # type: ignore
         else:
             defns.append(d.resolve_and_copy(opts.kitty_mod, opts.kitten_alias))

@@ -61,7 +61,7 @@ option_names = (  # {{{
  'bold_font',
  'bold_italic_font',
  'box_drawing_scale',
- 'clear_all_mouse_shortcuts',
+ 'clear_all_mouse_actions',
  'clear_all_shortcuts',
  'click_interval',
  'clipboard_control',
@@ -454,7 +454,7 @@ class Options:
     bold_font: str = 'auto'
     bold_italic_font: str = 'auto'
     box_drawing_scale: typing.Tuple[float, float, float, float] = (0.001, 1.0, 1.5, 2.0)
-    clear_all_mouse_shortcuts: bool = False
+    clear_all_mouse_actions: bool = False
     clear_all_shortcuts: bool = False
     click_interval: float = -1.0
     clipboard_control: typing.Tuple[str, ...] = ('write-clipboard', 'write-primary')

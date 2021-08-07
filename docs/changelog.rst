@@ -32,6 +32,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - terminfo: Fix "cnorm" the property for setting the cursor to normal using a
   solid block rather than a blinking block cursor (:iss:`3906`)
 
+- Add :opt:`clear_all_mouse_actions` to clear all mouse actions defined to
+  that point (:iss:`3907`)
+
 
 0.22.2 [2021-08-02]
 ----------------------
