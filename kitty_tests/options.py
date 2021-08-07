@@ -41,6 +41,8 @@ class TestConfParsing(BaseTest):
         self.assertFalse(opts.keymap)
         opts = p('clear_all_shortcuts y', 'map f1 next_window')
         self.ae(len(opts.keymap), 1)
+        opts = p('clear_all_mouse_shortcuts y', 'mouse_map left click ungrabbed mouse_click_url_or_select')
+        self.ae(len(opts.mousemap), 1)
         opts = p('strip_trailing_spaces always')
         self.ae(opts.strip_trailing_spaces, 'always')
         self.assertFalse(bad_lines)

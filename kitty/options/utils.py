@@ -696,6 +696,13 @@ def tab_bar_margin_height(x: str) -> TabBarMarginHeight:
     return TabBarMarginHeight(next(ans), next(ans))
 
 
+def clear_all_mouse_shortcuts(val: str, dict_with_parse_results: Optional[Dict[str, Any]] = None) -> bool:
+    ans = to_bool(val)
+    if ans and dict_with_parse_results is not None:
+        dict_with_parse_results['mouse_map'] = [None]
+    return ans
+
+
 def clear_all_shortcuts(val: str, dict_with_parse_results: Optional[Dict[str, Any]] = None) -> bool:
     ans = to_bool(val)
     if ans and dict_with_parse_results is not None:
