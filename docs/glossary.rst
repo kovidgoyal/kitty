@@ -78,6 +78,13 @@ Variables that kitty sets when running child programs
    Can be used with the :doc:`kitty remote control facility <remote-control>`.
 
 
+.. envvar:: KITTY_PID
+
+   An integer that is the process id for the kitty process in which the program
+   is running. Allows programs to tell kitty to reload its config by sending it
+   the SIGUSR1 signal.
+
+
 .. envvar:: WINDOWID
 
    The id for the :term:`OS Window <os_window>` the program is running in. Only available

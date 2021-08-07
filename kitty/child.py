@@ -14,6 +14,7 @@ from typing import (
 import kitty.fast_data_types as fast_data_types
 
 from .constants import is_macos, shell_path, terminfo_dir
+from .types import run_once
 
 try:
     from typing import TypedDict
@@ -23,8 +24,9 @@ except ImportError:
 
 if is_macos:
     from kitty.fast_data_types import (
-            cmdline_of_process, cwd_of_process as _cwd, environ_of_process as _environ_of_process,
-            process_group_map as _process_group_map
+        cmdline_of_process, cwd_of_process as _cwd,
+        environ_of_process as _environ_of_process,
+        process_group_map as _process_group_map
     )
 
     def cwd_of_process(pid: int) -> str:
@@ -170,6 +172,11 @@ def openpty() -> Tuple[int, int]:
     return master, slave
 
 
+@run_once
+def getpid() -> str:
+    return str(os.getpid())
+
+
 class ProcessDesc(TypedDict):
     cwd: Optional[str]
     pid: int
@@ -216,6 +223,7 @@ class Child:
             env.update(self.env)
             env['TERM'] = fast_data_types.get_options().term
             env['COLORTERM'] = 'truecolor'
+            env['KITTY_PID'] = getpid()
             if self.cwd:
                 # needed in case cwd is a symlink, in which case shells
                 # can use it to display the current directory name rather
