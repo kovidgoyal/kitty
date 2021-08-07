@@ -1,0 +1,49 @@
+Changing kitty colors
+========================
+
+The themes kitten allows you to easily change color themes, from a collection
+of over two hundred pre-built themes available at `kitty-themes
+<https://github.com/kovidgoyal/kitty-themes>`_. To use it, simply run::
+
+    kitty +kitten themes
+
+The kitten allows you to pick a theme, with live previews of the colors. You
+can choose between light and dark themes and search by theme name by just
+typing a few characters from the name.
+
+The kitten maintains a list of recently used themes to allow quick switching.
+
+If you want to restore the colors to default, you can do so by choosing the
+``Default`` theme.
+
+How it works
+----------------
+
+A theme in kitty is just a :file:`.conf` file containing kitty settings.
+When you select a theme, the kitten simply copies the :file:`.conf` file
+to :file:`~/.config/kitty/current-theme.conf` and adds an include for
+:file:`current-theme.conf` to :file:`kitty.conf`. It also comments out
+any existing color settings in :file:`kitty.conf` so they do not interfere.
+
+Once that's done, the kitten send kitty a signal to make it reload its config.
+
+Using your own themes
+-----------------------
+
+You can also create your own themes as :file:`.conf` files. Put them in the
+:file:`themes` sub-directory of the kitty config directory, usually,
+:file:`~/.config/kitty/themes` and the kitten will automatically add them to
+the list of themes. You can use this to modify the builtin themes, by giving
+the conf file the name :file:`Some theme name.conf` to override the builtin
+theme of that name. Note that after doing so you have to run the kitten and
+choose that theme once for your changes to be applied.
+
+
+Contributing new themes
+-------------------------
+
+If you wish to contribute a new theme to the kitty theme repository, simply
+go to `kitty-themes <https://github.com/kovidgoyal/kitty-themes>`_ and open a pull request
+asking to add your contributions to the repository. Use the file
+`template.conf <https://github.com/kovidgoyal/kitty-themes/raw/master/template.conf>`_ as
+a template when creating your theme.

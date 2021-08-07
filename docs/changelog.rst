@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.23.0 [future]
 ----------------------
 
+- A new :doc:`themes kitten </kittens/themes>` to easily change kitty themes.
+  Choose from over two hundred themes in the kitty themes repository
+
 - A new style for the tab bar that makes tabs looks like the tabs in a physical
   tabbed file, see :opt:`tab_bar_style`
 

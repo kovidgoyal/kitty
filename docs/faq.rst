@@ -117,7 +117,14 @@ explicitly set a UTF-8 locale, like::
 How do I change the colors in a running kitty instance?
 ------------------------------------------------------------
 
-You can either use the
+The easiest way to do it is to use the :doc:`themes kitten </kittens/themes>`,
+to choose a new color theme. Simply run::
+
+    kitty +kitten themes
+
+And choose your theme from the list.
+
+Additionally, You can use the
 `OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands>`_
 to set colors or you can define keyboard shortcuts to set colors, for example::
 
