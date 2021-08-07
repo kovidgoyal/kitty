@@ -26,6 +26,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   an English locale does not exist, set :envvar:`LANG` to ``en_US.UTF-8``
   (:iss:`3899`)
 
+- terminfo: Fix "cnorm" the property for setting the cursor to normal using a
+  solid block rather than a blinking block cursor (:iss:`3906`)
+
 
 0.22.2 [2021-08-02]
 ----------------------
