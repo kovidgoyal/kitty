@@ -10,6 +10,7 @@ Extend with kittens
    kittens/icat
    kittens/diff
    kittens/unicode-input
+   kittens/themes
    kittens/hints
    kittens/remote_file
    kittens/hyperlinked_grep
