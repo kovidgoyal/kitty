@@ -146,6 +146,13 @@ class ThemesHandler(Handler):
         self.line_edit = LineEdit()
         self.tabs = tuple('all dark light recent'.split())
 
+    def update_recent(self) -> None:
+        r = list(self.cached_values.get('recent', ()))
+        if self.themes_list:
+            name = self.themes_list.current_theme.name
+            r = [name] + [x for x in r if x != name]
+            self.cached_values['recent'] = r[:20]
+
     def enforce_cursor_state(self) -> None:
         self.cmd.set_cursor_visible(self.state == State.fetching)
 
@@ -452,6 +459,12 @@ class ThemesHandler(Handler):
             return
         if key_event.matches('p'):
             self.themes_list.current_theme.save_in_dir(config_dir)
+            self.update_recent()
+            self.quit_loop(0)
+            return
+        if key_event.matches('m'):
+            self.themes_list.current_theme.save_in_conf(config_dir)
+            self.update_recent()
             self.quit_loop(0)
             return
     # }}}

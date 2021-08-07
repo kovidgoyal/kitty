@@ -201,6 +201,9 @@ class Theme:
     def save_in_dir(self, dirpath: str) -> None:
         atomic_save(self.raw.encode('utf-8'), os.path.join(dirpath, f'{self.name}.conf'))
 
+    def save_in_conf(self, confdir: str) -> None:
+        atomic_save(self.raw.encode('utf-8'), os.path.join(confdir, 'current-theme.conf'))
+
 
 class Themes:
 
