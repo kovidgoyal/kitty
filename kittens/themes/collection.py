@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import tempfile
 import zipfile
 from contextlib import suppress
@@ -257,6 +258,8 @@ class Theme:
             with open(confpath + '.bak', 'w') as f:
                 f.write(raw)
         atomic_save(nraw.encode('utf-8'), confpath)
+        if 'KITTY_PID' in os.environ:
+            os.kill(int(os.environ['KITTY_PID']), signal.SIGUSR1)
 
 
 class Themes:
