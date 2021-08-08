@@ -24,6 +24,8 @@ def remote_control(args: List[str]) -> None:
 
 
 def runpy(args: List[str]) -> None:
+    if len(args) < 2:
+        raise SystemExit('Usage: kitty +runpy "some python code"')
     sys.argv = ['kitty'] + args[2:]
     exec(args[1])
 
