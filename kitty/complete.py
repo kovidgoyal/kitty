@@ -338,15 +338,14 @@ def complete_kitty_cli_arg(ans: Completions, opt: Optional[OptionDict], prefix: 
         complete_files_and_dirs(ans, prefix, files_group_name='Watcher files')
     elif dest == 'directory':
         complete_files_and_dirs(ans, prefix, files_group_name='Directories', predicate=os.path.isdir)
-    elif dest == 'start_as':
-        k = 'Start as'
-        ans.add_match_group(k, {x: x for x in 'normal,fullscreen,maximized,minimized'.split(',') if x.startswith(prefix)}, trailing_space=False)
     elif dest == 'listen_on':
         if ':' not in prefix:
             k = 'Address type'
             ans.add_match_group(k, {x: x for x in ('unix:', 'tcp:') if x.startswith(prefix)}, trailing_space=False)
         elif prefix.startswith('unix:') and not prefix.startswith('@'):
             complete_files_and_dirs(ans, prefix[len('unix:'):], files_group_name='UNIX sockets', add_prefix='unix:')
+    else:
+        complete_basic_option_args(ans, opt, prefix)
 
 
 CompleteArgsFunc = Callable[[Completions, Optional[OptionDict], str, Delegate], None]
@@ -474,6 +473,11 @@ def complete_files_and_dirs(
         ans.add_match_group(files_group_name, files, is_files=True)
 
 
+def complete_basic_option_args(ans: Completions, opt: OptionDict, prefix: str) -> None:
+    if opt['choices']:
+        ans.add_match_group(f'Choices for {opt["dest"]}', tuple(k for k in opt['choices'] if k.startswith(prefix)))
+
+
 def complete_icat_args(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
     from .guess_mime_type import guess_type
 
@@ -485,6 +489,8 @@ def complete_icat_args(ans: Completions, opt: Optional[OptionDict], prefix: str,
 
     if opt is None:
         complete_files_and_dirs(ans, prefix, 'Images', icat_file_predicate)
+    else:
+        complete_basic_option_args(ans, opt, prefix)
 
 
 def complete_themes_args(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
@@ -493,6 +499,8 @@ def complete_themes_args(ans: Completions, opt: Optional[OptionDict], prefix: st
         themes = load_themes(cache_age=-1, ignore_no_cache=True)
         names = tuple(t.name for t in themes if t.name.startswith(prefix))
         ans.add_match_group('Themes', names)
+    else:
+        complete_basic_option_args(ans, opt, prefix)
 
 
 def remote_files_completer(name: str, matchers: Tuple[str, ...]) -> CompleteArgsFunc:
@@ -508,6 +516,8 @@ def remote_files_completer(name: str, matchers: Tuple[str, ...]) -> CompleteArgs
 
         if opt is None:
             complete_files_and_dirs(ans, prefix, name, predicate)
+        else:
+            complete_basic_option_args(ans, opt, prefix)
     return complete_files_map
 
 
@@ -517,6 +527,8 @@ def remote_args_completer(title: str, words: Iterable[str]) -> CompleteArgsFunc:
     def complete_names_for_arg(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
         if opt is None:
             ans.add_match_group(title, {c: '' for c in items if c.startswith(prefix)})
+        else:
+            complete_basic_option_args(ans, opt, prefix)
 
     return complete_names_for_arg
 
@@ -530,6 +542,8 @@ def complete_diff_args(ans: Completions, opt: Optional[OptionDict], prefix: str,
         complete_files_and_dirs(ans, prefix, 'Files')
     elif opt['dest'] == 'config':
         complete_files_and_dirs(ans, prefix, 'Config Files', config_file_predicate)
+    else:
+        complete_basic_option_args(ans, opt, prefix)
 
 
 def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_word: bool) -> None:
