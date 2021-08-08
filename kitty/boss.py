@@ -162,7 +162,10 @@ class Boss:
         talk_fd = getattr(single_instance, 'socket', None)
         talk_fd = -1 if talk_fd is None else talk_fd.fileno()
         listen_fd = -1
-        if args.listen_on and (opts.allow_remote_control in ('y', 'socket-only')):
+        # we dont allow reloading the config file to change
+        # allow_remote_control
+        self.allow_remote_control = opts.allow_remote_control
+        if args.listen_on and (self.allow_remote_control in ('y', 'socket-only')):
             listen_fd = listen_on(args.listen_on)
         self.child_monitor = ChildMonitor(
             self.on_child_death,
@@ -362,7 +365,7 @@ class Boss:
         from .remote_control import handle_cmd
         response = None
         window = window or None
-        if get_options().allow_remote_control == 'y' or from_peer or getattr(window, 'allow_remote_control', False):
+        if self.allow_remote_control == 'y' or from_peer or getattr(window, 'allow_remote_control', False):
             try:
                 response = handle_cmd(self, window, cmd)
             except Exception as err:

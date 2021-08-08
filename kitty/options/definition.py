@@ -2470,8 +2470,7 @@ running within kitty to control it, with :code:`yes` or only programs that
 connect to the socket specified with the :option:`kitty --listen-on` command
 line option, if you use the value :code:`socket-only`. The latter is useful if
 you want to prevent programs running on a remote computer over ssh from
-controlling kitty. Changing this option by reloading the config will only affect
-newly created windows.
+controlling kitty. Reloading the config will not affect this setting.
 '''
     )
 
