@@ -4,12 +4,11 @@
 
 
 import os
-import shutil
 import time
 from contextlib import suppress
-from tempfile import mkstemp
 from typing import Optional, Union
 
+from .config import atomic_save
 from .constants import shell_integration_dir
 from .fast_data_types import get_options
 from .types import run_once
@@ -23,19 +22,9 @@ if test -e {path}; then source {path}; fi
 
 
 def atomic_write(path: str, data: Union[str, bytes]) -> None:
-    mode = 'w' + ('b' if isinstance(data, bytes) else '')
-    base = os.path.dirname(path)
-    os.makedirs(base, exist_ok=True)
-    fd, tpath = mkstemp(dir=base, text=isinstance(data, str))
-    with open(fd, mode) as f:
-        with suppress(FileNotFoundError):
-            shutil.copystat(path, tpath)
-        f.write(data)
-    try:
-        os.rename(tpath, path)
-    except OSError:
-        os.unlink(tpath)
-        raise
+    if isinstance(data, str):
+        data = data.encode('utf-8')
+    atomic_save(data, path)
 
 
 def safe_read(path: str) -> str:
