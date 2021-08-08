@@ -717,3 +717,37 @@ def get_new_os_window_size(
         w = width or metrics['width']
         h = height or metrics['height']
     return w, h
+
+
+def get_all_processes() -> Iterable[int]:
+    if is_macos:
+        from kitty.fast_data_types import get_all_processes as f
+        yield from f()
+    else:
+        for c in os.listdir('/proc'):
+            if c.isdigit():
+                yield int(c)
+
+
+def is_kitty_gui_cmdline(*cmd: str) -> bool:
+    if not cmd:
+        return False
+    if os.path.basename(cmd[0]) != 'kitty':
+        return False
+    if len(cmd) == 1:
+        return True
+    if '+' in cmd or '@' in cmd or cmd[1].startswith('+') or cmd[1].startswith('@'):
+        return False
+    return True
+
+
+def reload_conf_in_all_kitties() -> None:
+    import signal
+    from kitty.child import cmdline_of_process  # type: ignore
+    for pid in get_all_processes():
+        try:
+            cmd = cmdline_of_process(pid)
+        except Exception:
+            continue
+        if cmd and is_kitty_gui_cmdline(*cmd):
+            os.kill(pid, signal.SIGUSR1)

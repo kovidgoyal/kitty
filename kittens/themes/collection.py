@@ -12,44 +12,20 @@ import signal
 import tempfile
 import zipfile
 from contextlib import suppress
-from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Match, Optional, Tuple,
-    Union
-)
+from typing import Any, Callable, Dict, Iterator, Match, Optional, Tuple, Union
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from kitty.config import atomic_save, parse_config
-from kitty.constants import cache_dir, config_dir, is_macos
+from kitty.constants import cache_dir, config_dir
 from kitty.options.types import Options as KittyOptions
 from kitty.rgb import Color
+from kitty.utils import reload_conf_in_all_kitties
 
 from ..choose.match import match
 
 MARK_BEFORE = '\033[33m'
 MARK_AFTER = '\033[39m'
-
-
-def is_kitty_gui(cmd: List[str]) -> bool:
-    if not cmd:
-        return False
-    if os.path.basename(cmd[0]) != 'kitty':
-        return False
-    if len(cmd) == 1:
-        return True
-    if '+' in cmd or '@' in cmd or cmd[1].startswith('+') or cmd[1].startswith('@'):
-        return False
-    return True
-
-
-def get_all_processes() -> Iterable[int]:
-    if is_macos:
-        from kitty.fast_data_types import get_all_processes as f
-        yield from f()
-    else:
-        for c in os.listdir('/proc'):
-            if c.isdigit():
-                yield int(c)
 
 
 def patch_conf(raw: str) -> str:
@@ -296,14 +272,7 @@ class Theme:
             if 'KITTY_PID' in os.environ:
                 os.kill(int(os.environ['KITTY_PID']), signal.SIGUSR1)
         elif reload_in == 'all':
-            from kitty.child import cmdline_of_process  # type: ignore
-            for pid in get_all_processes():
-                try:
-                    cmd = cmdline_of_process(pid)
-                except Exception:
-                    continue
-                if cmd and is_kitty_gui(cmd):
-                    os.kill(pid, signal.SIGUSR1)
+            reload_conf_in_all_kitties()
 
 
 class Themes:
