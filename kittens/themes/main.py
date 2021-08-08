@@ -7,11 +7,13 @@ import re
 import sys
 import traceback
 from enum import Enum, auto
+from gettext import gettext as _
 from typing import (
     Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 )
 
-from kitty.cli import create_default_opts
+from kitty.cli import create_default_opts, parse_args
+from kitty.cli_stub import ThemesCLIOptions
 from kitty.config import cached_values_for
 from kitty.constants import config_dir
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
@@ -23,7 +25,7 @@ from ..tui.handler import Handler
 from ..tui.line_edit import LineEdit
 from ..tui.loop import Loop
 from ..tui.operations import color_code, styled
-from .collection import MARK_AFTER, Theme, Themes, load_themes
+from .collection import MARK_AFTER, NoCacheFound, Theme, Themes, load_themes
 
 separator = '║'
 
@@ -133,8 +135,9 @@ class ThemesList:
 
 class ThemesHandler(Handler):
 
-    def __init__(self, cached_values: Dict[str, Any]) -> None:
+    def __init__(self, cached_values: Dict[str, Any], cli_opts: ThemesCLIOptions) -> None:
         self.cached_values = cached_values
+        self.cli_opts = cli_opts
         self.state = State.fetching
         self.report_traceback_on_exit: Optional[str] = None
         self.filter_map: Dict[str, Callable[[Theme], bool]] = {
@@ -221,7 +224,7 @@ class ThemesHandler(Handler):
 
         def fetch() -> None:
             try:
-                themes: Union[Themes, str] = load_themes()
+                themes: Union[Themes, str] = load_themes(self.cli_opts.cache_age)
             except Exception:
                 themes = format_traceback('Failed to download themes')
             self.asyncio_loop.call_soon_threadsafe(fetching_done, themes)
@@ -502,10 +505,56 @@ class ThemesHandler(Handler):
         self.quit_loop(1)
 
 
+help_text = (
+    'Change the kitty theme. If no theme name is supplied, run interactively, otherwise'
+    ' change the current theme to the specified theme name.'
+)
+usage = '[theme name to switch to]'
+OPTIONS = '''
+--cache-age
+type=float
+default=1
+Check for new themes only after the specified number of days. A value of
+zero will always check for new themes. A negative value will never check
+for new themes, instead raising an error if a local copy of the themes
+is not available.
+
+
+'''.format
+
+
+def parse_themes_args(args: List[str]) -> Tuple[ThemesCLIOptions, List[str]]:
+    return parse_args(args, OPTIONS, usage, help_text, 'kitty +kitten themes', result_class=ThemesCLIOptions)
+
+
+def non_interactive(cli_opts: ThemesCLIOptions, theme_name: str) -> None:
+    try:
+        themes = load_themes(cli_opts.cache_age)
+    except NoCacheFound as e:
+        raise SystemExit(str(e))
+    try:
+        theme = themes[theme_name]
+    except KeyError:
+        raise SystemExit(f'No theme named: {theme_name}')
+    theme.save_in_conf(config_dir)
+
+
 def main(args: List[str]) -> None:
+    try:
+        cli_opts, items = parse_themes_args(args[1:])
+    except SystemExit as e:
+        if e.code != 0:
+            print(e.args[0], file=sys.stderr)
+            input(_('Press Enter to quit'))
+        return None
+    if len(items) > 1:
+        raise SystemExit('At most one theme name must be specified')
+    if len(items) == 1:
+        return non_interactive(cli_opts, items[0])
+
     loop = Loop()
     with cached_values_for('themes-kitten') as cached_values:
-        handler = ThemesHandler(cached_values)
+        handler = ThemesHandler(cached_values, cli_opts)
         loop.loop(handler)
     if loop.return_code != 0:
         if handler.report_traceback_on_exit:
@@ -521,3 +570,8 @@ def main(args: List[str]) -> None:
 
 if __name__ == '__main__':
     main(sys.argv)
+elif __name__ == '__doc__':
+    cd = sys.cli_docs  # type: ignore
+    cd['usage'] = usage
+    cd['options'] = OPTIONS
+    cd['help_text'] = help_text

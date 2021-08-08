@@ -75,11 +75,17 @@ def set_comment_in_zip_file(path: str, data: str) -> None:
         zf.comment = data.encode('utf-8')
 
 
+class NoCacheFound(ValueError):
+    pass
+
+
 def fetch_themes(
     name: str = 'kitty-themes',
-    url: str = 'https://codeload.github.com/kovidgoyal/kitty-themes/zip/master'
+    url: str = 'https://codeload.github.com/kovidgoyal/kitty-themes/zip/master',
+    cache_age: float = 1,
 ) -> str:
     now = datetime.datetime.now(datetime.timezone.utc)
+    cache_age_delta = datetime.timedelta(days=cache_age)
 
     class Metadata:
         def __init__(self) -> None:
@@ -95,8 +101,11 @@ def fetch_themes(
         q = json.loads(zf.comment)
         m.etag = str(q.get('etag') or '')
         m.timestamp = datetime.datetime.fromisoformat(q['timestamp'])
-        if (now - m.timestamp).days < 1:
+        if cache_age < 0 or (now - m.timestamp) < cache_age_delta:
             return dest_path
+    if cache_age < 0:
+        raise NoCacheFound('No local themes cache found and negative cache age specified, aborting')
+
     rq = Request(url)
     m.timestamp = now
     if m.etag:
@@ -348,9 +357,9 @@ class Themes:
         self.index_map = tuple(self.themes)
 
 
-def load_themes() -> Themes:
+def load_themes(cache_age: float = 1.) -> Themes:
     ans = Themes()
-    ans.load_from_zip(fetch_themes())
+    ans.load_from_zip(fetch_themes(cache_age=cache_age))
     ans.load_from_dir(os.path.join(config_dir, 'themes'))
     ans.index_map = tuple(ans.themes)
     return ans

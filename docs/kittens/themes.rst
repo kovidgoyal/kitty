@@ -47,3 +47,5 @@ go to `kitty-themes <https://github.com/kovidgoyal/kitty-themes>`_ and open a pu
 asking to add your contributions to the repository. Use the file
 `template.conf <https://github.com/kovidgoyal/kitty-themes/raw/master/template.conf>`_ as
 a template when creating your theme.
+
+.. include:: ../generated/cli-kitten-themes.rst
