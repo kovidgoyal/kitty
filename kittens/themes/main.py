@@ -565,7 +565,7 @@ def main(args: List[str]) -> None:
             input(_('Press Enter to quit'))
         return None
     if len(items) > 1:
-        items = [' '.join(items[1:])]
+        items = [' '.join(items)]
     if len(items) == 1:
         return non_interactive(cli_opts, items[0])
 

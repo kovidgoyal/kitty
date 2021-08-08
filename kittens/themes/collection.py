@@ -28,8 +28,8 @@ MARK_BEFORE = '\033[33m'
 MARK_AFTER = '\033[39m'
 
 
-def patch_conf(raw: str) -> str:
-    addition = '# BEGIN_KITTY_THEME\ninclude current-theme.conf\n# END_KITTY_THEME'
+def patch_conf(raw: str, theme_name: str) -> str:
+    addition = f'# BEGIN_KITTY_THEME\n# {theme_name}\ninclude current-theme.conf\n# END_KITTY_THEME'
     nraw, num = re.subn(r'^# BEGIN_KITTY_THEME.+?# END_KITTY_THEME', addition, raw, flags=re.MULTILINE | re.DOTALL)
     if not num:
         if raw:
@@ -263,7 +263,7 @@ class Theme:
                 raw = f.read()
         except FileNotFoundError:
             raw = ''
-        nraw = patch_conf(raw)
+        nraw = patch_conf(raw, self.name)
         if raw:
             with open(confpath + '.bak', 'w') as f:
                 f.write(raw)
