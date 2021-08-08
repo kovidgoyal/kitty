@@ -257,7 +257,7 @@ class Theme:
 
     def save_in_conf(self, confdir: str, reload_in: str) -> None:
         atomic_save(self.raw.encode('utf-8'), os.path.join(confdir, 'current-theme.conf'))
-        confpath = os.path.join(confdir, 'kitty.conf')
+        confpath = os.path.realpath(os.path.join(confdir, 'kitty.conf'))
         try:
             with open(confpath) as f:
                 raw = f.read()
