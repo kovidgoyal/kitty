@@ -67,7 +67,7 @@ def atomic_symlink(destination: str, in_directory: str) -> str:
     tmpname = os.path.join(in_directory, f'{name}-{os.getpid()}-{time.monotonic()}')
     os.symlink(destination, tmpname)
     try:
-        os.rename(tmpname, os.path.join(in_directory, name))
+        os.replace(tmpname, os.path.join(in_directory, name))
     except OSError:
         os.unlink(tmpname)
         raise
