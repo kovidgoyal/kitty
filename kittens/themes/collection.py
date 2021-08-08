@@ -12,12 +12,15 @@ import signal
 import tempfile
 import zipfile
 from contextlib import suppress
-from typing import Any, Callable, Dict, Iterator, Match, Optional, Tuple, Union
+from typing import (
+    Any, Callable, Dict, Iterable, Iterator, List, Match, Optional, Tuple,
+    Union
+)
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
 from kitty.config import atomic_save, parse_config
-from kitty.constants import cache_dir, config_dir
+from kitty.constants import cache_dir, config_dir, is_macos
 from kitty.options.types import Options as KittyOptions
 from kitty.rgb import Color
 
@@ -25,6 +28,28 @@ from ..choose.match import match
 
 MARK_BEFORE = '\033[33m'
 MARK_AFTER = '\033[39m'
+
+
+def is_kitty_gui(cmd: List[str]) -> bool:
+    if not cmd:
+        return False
+    if os.path.basename(cmd[0]) != 'kitty':
+        return False
+    if len(cmd) == 1:
+        return True
+    if '+' in cmd or '@' in cmd or cmd[1].startswith('+') or cmd[1].startswith('@'):
+        return False
+    return True
+
+
+def get_all_processes() -> Iterable[int]:
+    if is_macos:
+        from kitty.fast_data_types import get_all_processes as f
+        yield from f()
+    else:
+        for c in os.listdir('/proc'):
+            if c.isdigit():
+                yield int(c)
 
 
 def patch_conf(raw: str) -> str:
@@ -254,7 +279,7 @@ class Theme:
     def save_in_dir(self, dirpath: str) -> None:
         atomic_save(self.raw.encode('utf-8'), os.path.join(dirpath, f'{self.name}.conf'))
 
-    def save_in_conf(self, confdir: str) -> None:
+    def save_in_conf(self, confdir: str, reload_in: str) -> None:
         atomic_save(self.raw.encode('utf-8'), os.path.join(confdir, 'current-theme.conf'))
         confpath = os.path.join(confdir, 'kitty.conf')
         try:
@@ -267,8 +292,18 @@ class Theme:
             with open(confpath + '.bak', 'w') as f:
                 f.write(raw)
         atomic_save(nraw.encode('utf-8'), confpath)
-        if 'KITTY_PID' in os.environ:
-            os.kill(int(os.environ['KITTY_PID']), signal.SIGUSR1)
+        if reload_in == 'parent':
+            if 'KITTY_PID' in os.environ:
+                os.kill(int(os.environ['KITTY_PID']), signal.SIGUSR1)
+        elif reload_in == 'all':
+            from kitty.child import cmdline_of_process  # type: ignore
+            for pid in get_all_processes():
+                try:
+                    cmd = cmdline_of_process(pid)
+                except Exception:
+                    continue
+                if cmd and is_kitty_gui(cmd):
+                    os.kill(pid, signal.SIGUSR1)
 
 
 class Themes:

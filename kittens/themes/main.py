@@ -466,7 +466,7 @@ class ThemesHandler(Handler):
             self.quit_loop(0)
             return
         if key_event.matches('m'):
-            self.themes_list.current_theme.save_in_conf(config_dir)
+            self.themes_list.current_theme.save_in_conf(config_dir, self.cli_opts.reload_in)
             self.update_recent()
             self.quit_loop(0)
             return
@@ -520,6 +520,20 @@ for new themes, instead raising an error if a local copy of the themes
 is not available.
 
 
+--reload-in
+default=parent
+choices=none,parent,all
+By default, this kitten will signal only the parent kitty instance it is
+running in to reload its config, after making changes. Use this option
+to instead either not reload the config at all or in all running
+kitty instances.
+
+
+--dump-theme
+type=bool-set
+default=false
+When running non-interactively, dump the specified theme to STDOUT
+instead of changing kitty.conf.
 '''.format
 
 
@@ -536,7 +550,10 @@ def non_interactive(cli_opts: ThemesCLIOptions, theme_name: str) -> None:
         theme = themes[theme_name]
     except KeyError:
         raise SystemExit(f'No theme named: {theme_name}')
-    theme.save_in_conf(config_dir)
+    if cli_opts.dump_theme:
+        print(theme.raw)
+        return
+    theme.save_in_conf(config_dir, cli_opts.reload_in)
 
 
 def main(args: List[str]) -> None:
@@ -548,7 +565,7 @@ def main(args: List[str]) -> None:
             input(_('Press Enter to quit'))
         return None
     if len(items) > 1:
-        raise SystemExit('At most one theme name must be specified')
+        items = [' '.join(items[1:])]
     if len(items) == 1:
         return non_interactive(cli_opts, items[0])
 

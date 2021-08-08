@@ -1213,3 +1213,7 @@ class OSWindowSize(TypedDict):
 
 def get_os_window_size(os_window_id: int) -> Optional[OSWindowSize]:
     pass
+
+
+def get_all_processes() -> Tuple[int, ...]:
+    pass
