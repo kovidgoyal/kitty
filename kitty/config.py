@@ -35,12 +35,16 @@ def build_ansi_color_table(opts: Optional[Options] = None) -> int:
 
 
 def atomic_save(data: bytes, path: str) -> None:
+    import shutil
     import tempfile
     path = os.path.realpath(path)
     fd, p = tempfile.mkstemp(dir=os.path.dirname(path), suffix='.tmp')
     try:
         with os.fdopen(fd, 'wb') as f:
             f.write(data)
+        with suppress(FileNotFoundError):
+            shutil.copystat(path, p)
+        os.utime(p)
         os.replace(p, path)
     finally:
         try:
