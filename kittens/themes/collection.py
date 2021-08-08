@@ -361,9 +361,14 @@ class Themes:
         self.index_map = tuple(self.themes)
 
 
-def load_themes(cache_age: float = 1.) -> Themes:
+def load_themes(cache_age: float = 1., ignore_no_cache: bool = False) -> Themes:
     ans = Themes()
-    ans.load_from_zip(fetch_themes(cache_age=cache_age))
+    try:
+        fetched = fetch_themes(cache_age=cache_age)
+    except NoCacheFound:
+        if not ignore_no_cache:
+            raise
+    ans.load_from_zip(fetched)
     ans.load_from_dir(os.path.join(config_dir, 'themes'))
     ans.index_map = tuple(ans.themes)
     return ans

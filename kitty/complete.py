@@ -487,6 +487,14 @@ def complete_icat_args(ans: Completions, opt: Optional[OptionDict], prefix: str,
         complete_files_and_dirs(ans, prefix, 'Images', icat_file_predicate)
 
 
+def complete_themes_args(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
+    if opt is None:
+        from kittens.themes.collection import load_themes
+        themes = load_themes(cache_age=-1, ignore_no_cache=True)
+        names = tuple(t.name for t in themes if t.name.startswith(prefix))
+        ans.add_match_group('Themes', names)
+
+
 def remote_files_completer(name: str, matchers: Tuple[str, ...]) -> CompleteArgsFunc:
 
     def complete_files_map(ans: Completions, opt: Optional[OptionDict], prefix: str, unknown_args: Delegate) -> None:
@@ -548,6 +556,7 @@ def complete_kitten(ans: Completions, kitten: str, words: Sequence[str], new_wor
     complete_alias_map(ans, words, new_word, option_map, {
         'icat': complete_icat_args,
         'diff': complete_diff_args,
+        'themes': complete_themes_args,
     }.get(kitten))
 
 
