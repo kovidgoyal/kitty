@@ -84,7 +84,7 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 static int
 open_cache_file_without_tmpfile(const char *cache_path) {
     int fd = -1;
-    static const char *template = "%s/disk-cache-XXXXXXXXXXXX";
+    static const char template[] = "%s/disk-cache-XXXXXXXXXXXX";
     const size_t sz = strlen(cache_path) + sizeof(template) + 4;
     FREE_AFTER_FUNCTION char *buf = calloc(1, sz);
     if (!buf) { errno = ENOMEM; return -1; }
