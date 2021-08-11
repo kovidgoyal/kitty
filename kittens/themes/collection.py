@@ -12,7 +12,7 @@ import signal
 import tempfile
 import zipfile
 from contextlib import suppress
-from typing import Any, Callable, Dict, Iterator, Match, Optional, Tuple, Union
+from typing import Any, Callable, Dict, Iterator, Match, Optional, Tuple, Union, Type
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 
@@ -190,7 +190,7 @@ class LineParser:
             self.in_blurb = True
 
 
-def parse_theme(fname: str, raw: str) -> Dict[str, Any]:
+def parse_theme(fname: str, raw: str, exc_class: Type[BaseException] = SystemExit) -> Dict[str, Any]:
     lines = raw.splitlines()
     conf = parse_config(lines)
     bg = conf.get('background', Color())
@@ -204,7 +204,7 @@ def parse_theme(fname: str, raw: str) -> Dict[str, Any]:
         try:
             parser(line, ans)
         except Exception as e:
-            raise SystemExit(
+            raise exc_class(
                 f'Failed to parse {fname} line {i+1} with error: {e}')
         if not parser.keep_going:
             break
@@ -212,8 +212,21 @@ def parse_theme(fname: str, raw: str) -> Dict[str, Any]:
         ans['is_dark'] = True
     ans['num_settings'] = len(conf) - len(parse_config(()))
     if ans['num_settings'] < 1 and fname != 'default.conf':
-        raise SystemExit(f'The theme {fname} has no settings')
+        raise exc_class(f'The theme {fname} has no settings')
     return ans
+
+
+def update_theme_file(path: str) -> bool:
+    with open(path) as f:
+        raw = f.read()
+    td = parse_theme(os.path.basename(path), raw, exc_class=ValueError)
+    if 'upstream' not in td:
+        return False
+    nraw = urlopen(td['upstream']).read().decode('utf-8')
+    if raw == nraw:
+        return False
+    atomic_save(nraw.encode('utf-8'), path)
+    return True
 
 
 class Theme:
