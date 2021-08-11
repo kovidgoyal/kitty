@@ -458,7 +458,7 @@ draw_tint(bool premult, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat 
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
 }
 
-void
+static void
 draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloat w, GLfloat h, Screen *screen) {
     glEnable(GL_BLEND);
     // BLEND_PREMULT
@@ -630,6 +630,36 @@ send_cell_data_to_gpu(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat
     return changed;
 }
 
+static float
+ease_out_cubic(float phase) {
+    return 1.0f - powf(1.0f - phase, 3.0f);
+}
+
+static float
+ease_in_out_cubic(float phase) {
+    return phase < 0.5f ?
+        4.0f * powf(phase, 3.0f) :
+        1.0f - powf(-2.0f * phase + 2.0f, 3.0f) / 2.0f;
+}
+
+static float
+visual_bell_intensity(float phase) {
+    static const float peak = 0.2f;
+    const float fade = 1.0f - peak;
+    return phase < peak ? ease_out_cubic(phase / peak) : ease_in_out_cubic((1.0f - phase) / fade);
+}
+
+static float
+get_visual_bell_intensity(Screen *screen) {
+    if (screen->start_visual_bell_at > 0) {
+        monotonic_t progress = monotonic() - screen->start_visual_bell_at;
+        monotonic_t duration = OPT(visual_bell_duration);
+        if (progress <= duration) return visual_bell_intensity((float)progress / duration);
+        screen->start_visual_bell_at = 0;
+    }
+    return 0.0f;
+}
+
 void
 draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, Screen *screen, OSWindow *os_window, bool is_active_window, bool can_be_focused) {
     CELL_BUFFERS;
@@ -668,9 +698,9 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         else draw_cells_simple(vao_idx, gvao_idx, screen);
     }
 
-    float intensity = screen_visual_bell_intensity(screen);
-    if (intensity > 0.0f) {
-        draw_visual_bell_flash((GLfloat)intensity, xstart, ystart, w, h, screen);
+    if (screen->start_visual_bell_at) {
+        GLfloat intensity = get_visual_bell_intensity(screen);
+        if (intensity > 0.0f) draw_visual_bell_flash(intensity, xstart, ystart, w, h, screen);
     }
 }
 // }}}

@@ -1516,41 +1516,6 @@ screen_invert_colors(Screen *self) {
     return inverted;
 }
 
-static inline float
-ease_out_cubic(float phase) {
-    return 1.0f - powf(1.0f - phase, 3.0f);
-}
-
-static inline float
-ease_in_out_cubic(float phase) {
-    return phase < 0.5f ?
-        4.0f * powf(phase, 3.0f) :
-        1.0f - powf(-2.0f * phase + 2.0f, 3.0f) / 2.0f;
-}
-
-static inline float
-visual_bell_intensity(float phase) {
-    float peak = 0.2f;
-    float fade = 1.0f - peak;
-    if (phase < peak)
-        return ease_out_cubic(phase / peak);
-    else
-        return ease_in_out_cubic((1.0f - phase) / fade);
-}
-
-float
-screen_visual_bell_intensity(Screen *self) {
-    if (self->start_visual_bell_at > 0) {
-        monotonic_t progress = monotonic() - self->start_visual_bell_at;
-        monotonic_t duration = OPT(visual_bell_duration);
-        if (progress <= duration) {
-            return visual_bell_intensity((float)progress / duration);
-        }
-        else self->start_visual_bell_at = 0;
-    }
-    return 0.0f;
-}
-
 void
 screen_bell(Screen *self) {
     request_window_attention(self->window_id, OPT(enable_audio_bell));
