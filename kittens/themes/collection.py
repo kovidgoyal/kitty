@@ -67,7 +67,7 @@ mark2_background
 mark3_foreground
 mark3_background
 '''.splitlines()))
-    pat = f'^({"|".join(color_conf_items)})'
+    pat = fr'^\s*({"|".join(color_conf_items)})\b'
     return re.sub(pat, r'# \1', nraw, flags=re.MULTILINE)
 
 
