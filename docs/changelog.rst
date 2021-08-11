@@ -13,6 +13,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new style for the tab bar that makes tabs looks like the tabs in a physical
   tabbed file, see :opt:`tab_bar_style`
 
+- Make the visual bell flash more gentle, especially on dark themes
+  (:pull:`2937`)
+
 - Fix :option:`kitty --title` not overriding the OS Window title when multiple
   tabs are present. Also this option is no longer used as the default title for
   windows, allowing individual tabs/windows to have their own titles, even when
