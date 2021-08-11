@@ -464,11 +464,15 @@ draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloa
     // BLEND_PREMULT
     glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
     bind_program(TINT_PROGRAM);
-    // TODO config option worth?
     GLfloat attenuation = 0.4f;
-    color_type flash = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg);
-#define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) * intensity * attenuation)
-    glUniform4f(tint_program_layout.tint_color_location, C(16), C(8), C(0), intensity * attenuation);
+    const color_type flash = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg);
+#define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) )
+    const GLfloat r = C(16), g = C(8), b = C(0);
+    const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);
+#undef C
+#define C(x) (x * intensity * attenuation)
+    if (max_channel > 0.45) attenuation = 0.6f;  // light color
+    glUniform4f(tint_program_layout.tint_color_location, C(r), C(g), C(b), C(1));
 #undef C
     glUniform4f(tint_program_layout.edges_location, xstart, ystart - h, xstart + w, ystart);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
