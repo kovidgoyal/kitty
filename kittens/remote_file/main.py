@@ -286,6 +286,7 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
                 show_error('Failed to copy file from remote machine')
     elif action == 'edit':
         print('Editing', cli_opts.path, 'from', cli_opts.hostname)
+        editor = get_editor()
         with ControlMaster(conn_data, remote_path, cli_opts) as master:
             if not master.check_hostname_matches():
                 return None
@@ -294,7 +295,6 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
                 return None
             mtime = os.path.getmtime(master.dest)
             print(reset_terminal(), end='', flush=True)
-            editor = get_editor()
             editor_process = subprocess.Popen(editor + [master.dest])
             while editor_process.poll() is None:
                 time.sleep(0.1)
