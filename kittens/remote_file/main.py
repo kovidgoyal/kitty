@@ -292,7 +292,6 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
             if not master.download():
                 show_error(f'Failed to download {remote_path}')
                 return None
-            1/0
             mtime = os.path.getmtime(master.dest)
             print(reset_terminal(), end='', flush=True)
             editor_process = subprocess.Popen(editor + [master.dest])
