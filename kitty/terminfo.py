@@ -113,7 +113,7 @@ string_capabilities = {
     # Clear screen
     'clear': r'\E[H\E[2J',
     # Make cursor appear normal
-    'cnorm': r'\E[1 q\E[?25h',
+    'cnorm': r'\E[?12h\E[?25h',
     # Carriage return
     'cr': r'^M',  # CR (carriage return \r)
     # Change scroll region
