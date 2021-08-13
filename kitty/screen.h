@@ -42,12 +42,16 @@ typedef struct {
     bool rectangle_select, adjusting_start;
     IterationData last_rendered;
     int sort_y, sort_x;
+    struct {
+        SelectionBoundary start, end;
+        unsigned int scrolled_by;
+    } initial_extent;
 } Selection;
 
 typedef struct {
     Selection *items;
     size_t count, capacity, last_rendered_count;
-    bool in_progress;
+    bool in_progress, extension_in_progress;
     SelectionExtendMode extend_mode;
 } Selections;
 

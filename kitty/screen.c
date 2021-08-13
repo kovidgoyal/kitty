@@ -239,6 +239,8 @@ index_selection(const Screen *self, Selections *selections, bool up) {
                 s->start.y--;
                 if (s->input_start.y) s->input_start.y--;
                 if (s->input_current.y) s->input_current.y--;
+                if (s->initial_extent.start.y) s->initial_extent.start.y--;
+                if (s->initial_extent.end.y) s->initial_extent.end.y--;
             }
             if (s->end.y == 0) s->end_scrolled_by += 1;
             else s->end.y--;
@@ -2823,12 +2825,12 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
     s->input_current.x = x; s->input_current.y = y;
     s->input_current.in_left_half_of_cell = in_left_half_of_cell;
     SelectionBoundary start, end, *a = &s->start, *b = &s->end, abs_start, abs_end, abs_current_input;
-#define absy(b, scrolled_by) b.y = scrolled_by + self->lines - 1 - b.y
-    abs_start = s->start; absy(abs_start, s->start_scrolled_by);
-    abs_end = s->end; absy(abs_end, s->end_scrolled_by);
-    abs_current_input = s->input_current; absy(abs_current_input, self->scrolled_by);
-#undef absy
-    if (upd.set_as_nearest_extend) {
+#define set_abs(which, initializer, scrolled_by) which = initializer; which.y = scrolled_by + self->lines - 1 - which.y;
+    set_abs(abs_start, s->start, s->start_scrolled_by);
+    set_abs(abs_end, s->end, s->end_scrolled_by);
+    set_abs(abs_current_input, s->input_current, self->scrolled_by);
+    if (upd.set_as_nearest_extend || self->selections.extension_in_progress) {
+        self->selections.extension_in_progress = true;
         bool start_is_nearer = false;
         if (self->selections.extend_mode == EXTEND_LINE || self->selections.extend_mode == EXTEND_LINE_FROM_POINT) {
             if (abs_start.y == abs_end.y) {
@@ -2839,7 +2841,25 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
             }
         } else start_is_nearer = num_cells_between_selection_boundaries(self, &abs_start, &abs_current_input) < num_cells_between_selection_boundaries(self, &abs_end, &abs_current_input);
         if (start_is_nearer) s->adjusting_start = true;
+    } else if (!upd.start_extended_selection && self->selections.extend_mode != EXTEND_CELL) {
+        SelectionBoundary abs_initial_start, abs_initial_end;
+        set_abs(abs_initial_start, s->initial_extent.start, s->initial_extent.scrolled_by);
+        set_abs(abs_initial_end, s->initial_extent.end, s->initial_extent.scrolled_by);
+        if (self->selections.extend_mode == EXTEND_WORD) {
+            s->adjusting_start = selection_boundary_less_than(&abs_current_input, &abs_initial_end);
+        } else {
+            const unsigned int initial_line = abs_initial_start.y;
+            if (initial_line == abs_current_input.y) {
+                s->adjusting_start = false;
+                s->start = s->initial_extent.start; s->start_scrolled_by = s->initial_extent.scrolled_by;
+                s->end = s->initial_extent.end; s->end_scrolled_by = s->initial_extent.scrolled_by;
+            }
+            else {
+                s->adjusting_start = abs_current_input.y > initial_line;
+            }
+        }
     }
+#undef set_abs
     bool adjusted_boundary_is_before;
     if (s->adjusting_start) adjusted_boundary_is_before = selection_boundary_less_than(&abs_start, &abs_end);
     else { adjusted_boundary_is_before = selection_boundary_less_than(&abs_end, &abs_start); }
@@ -2919,7 +2939,13 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
     }
     if (!self->selections.in_progress) {
         s->adjusting_start = false;
+        self->selections.extension_in_progress = false;
         call_boss(set_primary_selection, NULL);
+    } else {
+        if (upd.start_extended_selection && self->selections.extend_mode != EXTEND_CELL) {
+            s->initial_extent.start = s->start; s->initial_extent.end = s->end;
+            s->initial_extent.scrolled_by = s->start_scrolled_by;
+        }
     }
 }
 

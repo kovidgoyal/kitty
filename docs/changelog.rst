@@ -41,6 +41,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix the remote file kitten not working when using -- with ssh. The ssh kitten
   was recently changed to do this (:iss:`3929`)
 
+- When dragging word or line selections, ensure the initially selected item is
+  never deselected. This matches behavior in most other programs (:iss:`3930`)
+
 
 0.22.2 [2021-08-02]
 ----------------------

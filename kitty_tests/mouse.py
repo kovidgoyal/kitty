@@ -150,6 +150,11 @@ class TestMouse(BaseTest):
         multi_click(x=1, y=2)
         self.ae(sel(), 'stuvX')
         release()
+        multi_click(x=3.6)
+        self.ae(sel(), 'cd')
+        move(0.2)
+        release()
+        self.ae(sel(), 'ab cd')
 
         # Line select with drag
         s.reset()
@@ -169,6 +174,15 @@ class TestMouse(BaseTest):
         move()
         self.ae(sel(), str(s.line(0)))
         release()
+        multi_click(y=1, count=3)
+        self.ae(sel(), '4 5 6')
+        move(y=0)
+        self.ae(sel(), '1 2 3\n4 5 6')
+        move(y=1)
+        self.ae(sel(), '4 5 6')
+        move(y=2)
+        self.ae(sel(), '4 5 6\n7 8 9X')
+        release()
         s.reset()
         s.draw(' 123')
         s.linefeed(), s.carriage_return()
@@ -183,8 +197,8 @@ class TestMouse(BaseTest):
         release(x=2, y=1, button=GLFW_MOUSE_BUTTON_RIGHT)
         self.ae(sel(), '123\n 456')
         press(button=GLFW_MOUSE_BUTTON_RIGHT)
-        release(button=GLFW_MOUSE_BUTTON_RIGHT)
         self.ae(sel(), ' 123\n 456')
+        release(button=GLFW_MOUSE_BUTTON_RIGHT)
 
         # Rectangle select
         init()
