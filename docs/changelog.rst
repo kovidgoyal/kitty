@@ -38,6 +38,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Add :opt:`clear_all_mouse_actions` to clear all mouse actions defined to
   that point (:iss:`3907`)
 
+- Fix the remote file kitten not working when using -- with ssh. The ssh kitten
+  was recently changed to do this (:iss:`3929`)
+
 
 0.22.2 [2021-08-02]
 ----------------------

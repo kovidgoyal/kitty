@@ -146,15 +146,20 @@ def get_connection_data(args: List[str]) -> Optional[SSHConnectionData]:
     port: Optional[int] = None
     expecting_port = False
     expecting_option_val = False
+    expecting_hostname = False
 
     for i, arg in enumerate(args):
         if not found_ssh:
             if os.path.basename(arg).lower() in ('ssh', 'ssh.exe'):
                 found_ssh = arg
             continue
+        if expecting_hostname:
+            return SSHConnectionData(found_ssh, arg, port)
         if arg.startswith('-') and not expecting_option_val:
             if arg in boolean_ssh_args:
                 continue
+            if arg == '--':
+                expecting_hostname = True
             if arg.startswith('-p'):
                 if arg[2:].isdigit():
                     with suppress(Exception):
