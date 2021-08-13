@@ -528,7 +528,12 @@ def get_editor_from_env_vars(opts: Optional[Options] = None) -> List[str]:
 def get_editor(opts: Optional[Options] = None) -> List[str]:
     if opts is None:
         from .fast_data_types import get_options
-        opts = get_options()
+        try:
+            opts = get_options()
+        except RuntimeError:
+            # we are in a kitten
+            from .cli import create_default_opts
+            opts = create_default_opts()
     if opts.editor == '.':
         return get_editor_from_env_vars()
     import shlex
