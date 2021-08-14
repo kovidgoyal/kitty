@@ -12,11 +12,11 @@
 #endif
 
 #ifndef init_src_line
-#define init_src_line(src_y) init_line(src, src->line, src->line_map[src_y]); src->line->attrs = src->line_attrs[src_y];
+#define init_src_line(src_y) linebuf_init_line(src, src_y);
 #endif
 
 #ifndef init_dest_line
-#define init_dest_line(dest_y) init_line(dest, dest->line, dest->line_map[dest_y]); dest->line->attrs = dest->line_attrs[dest_y];
+#define init_dest_line(dest_y) linebuf_init_line(dest, dest_y);
 #endif
 
 #define set_dest_line_attrs(dest_y, continued_) dest->line_attrs[dest_y] = src->line->attrs; if (continued_) dest->line_attrs[dest_y].continued = true;
