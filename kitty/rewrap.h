@@ -15,14 +15,10 @@
 #define init_src_line(src_y) linebuf_init_line(src, src_y);
 #endif
 
-#ifndef init_dest_line
-#define init_dest_line(dest_y) linebuf_init_line(dest, dest_y);
-#endif
-
 #define set_dest_line_attrs(dest_y, continued_) dest->line_attrs[dest_y] = src->line->attrs; if (continued_) dest->line_attrs[dest_y].continued = true;
 
 #ifndef first_dest_line
-#define first_dest_line init_dest_line(0); set_dest_line_attrs(0, false)
+#define first_dest_line linebuf_init_line(dest, 0); set_dest_line_attrs(0, false)
 #endif
 
 #ifndef next_dest_line
@@ -30,13 +26,13 @@
     if (dest_y >= dest->ynum - 1) { \
         linebuf_index(dest, 0, dest->ynum - 1); \
         if (historybuf != NULL) { \
-            init_dest_line(dest->ynum - 1); \
+            linebuf_init_line(dest, dest->ynum - 1); \
             dest->line->attrs.has_dirty_text = true; \
             historybuf_add_line(historybuf, dest->line, as_ansi_buf); \
         }\
         linebuf_clear_line(dest, dest->ynum - 1, true); \
     } else dest_y++; \
-    init_dest_line(dest_y); \
+    linebuf_init_line(dest, dest_y); \
     set_dest_line_attrs(dest_y, continued);
 #endif
 
