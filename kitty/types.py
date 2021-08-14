@@ -97,7 +97,7 @@ def run_once(f: Callable[[], _T]) -> RunOnce:
 
 if TYPE_CHECKING:
     from typing import Literal
-    ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'mouse', 'mk', 'lay', 'misc']
+    ActionGroup = Literal['cp', 'sc', 'win', 'tab', 'mouse', 'mk', 'lay', 'misc', 'debug']
 else:
     ActionGroup = str
 

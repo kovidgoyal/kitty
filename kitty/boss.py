@@ -1930,7 +1930,7 @@ class Boss:
         if report:
             w.report_notification_activated(identifier)
 
-    @ac('misc', 'Show the environment variables that the kitty process sees')
+    @ac('debug', 'Show the environment variables that the kitty process sees')
     def show_kitty_env_vars(self) -> None:
         w = self.active_window
         if w:
@@ -1955,7 +1955,7 @@ class Boss:
         if w is not None:
             tab.remove_window(w)
 
-    @ac('misc', 'Show the effective configuration kitty is running with')
+    @ac('debug', 'Show the effective configuration kitty is running with')
     def debug_config(self) -> None:
         from .debug_config import debug_config
         w = self.active_window

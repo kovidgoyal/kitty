@@ -279,7 +279,7 @@ index_selection(const Screen *self, Selections *selections, bool up) {
 
 
 static void
-prevent_current_prompt_from_rewrapping(Screen *self, index_type columns) {
+prevent_current_prompt_from_rewrapping(Screen *self) {
     int y = self->cursor->y;
     while (y >= 0) {
         linebuf_init_line(self->main_linebuf, y);
@@ -293,19 +293,17 @@ prevent_current_prompt_from_rewrapping(Screen *self, index_type columns) {
     // will redraw this prompt. However when doing so it gets confused if the
     // cursor vertical position relative to the first prompt line changes. This
     // can easily be seen for instance in zsh when a right side prompt is used
-    // so when resizing to smaller sizes, simply blank all lines after the current
-    // prompt and trust the shell to redraw them
+    // so when resizing, simply blank all lines after the current
+    // prompt and trust the shell to redraw them.
     for (; y < (int)self->main_linebuf->ynum; y++) {
         linebuf_mark_line_as_not_continued(self->main_linebuf, y);
-        if (columns < self->columns) {
-            linebuf_clear_line(self->main_linebuf, y, false);
-            linebuf_init_line(self->main_linebuf, y);
-            if (y <= (int)self->cursor->y) {
-                // this is needed because screen_resize() checks to see if the cursor is beyond the content,
-                // so insert some fake content
-                Line *line = self->linebuf->line;
-                line->cpu_cells[0].ch = '>';
-            }
+        linebuf_clear_line(self->main_linebuf, y, false);
+        linebuf_init_line(self->main_linebuf, y);
+        if (y <= (int)self->cursor->y) {
+            // this is needed because screen_resize() checks to see if the cursor is beyond the content,
+            // so insert some fake content
+            Line *line = self->linebuf->line;
+            line->cpu_cells[0].ch = '>';
         }
     }
 }
@@ -333,7 +331,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     HistoryBuf *nh = realloc_hb(self->historybuf, self->historybuf->ynum, columns, &self->as_ansi_buf);
     if (nh == NULL) return false;
     Py_CLEAR(self->historybuf); self->historybuf = nh;
-    if (is_main) prevent_current_prompt_from_rewrapping(self, columns);
+    if (is_main) prevent_current_prompt_from_rewrapping(self);
     LineBuf *n = realloc_lb(self->main_linebuf, lines, columns, &num_content_lines_before, &num_content_lines_after, self->historybuf, &cursor, &main_saved_cursor, &self->as_ansi_buf);
     if (n == NULL) return false;
     Py_CLEAR(self->main_linebuf); self->main_linebuf = n;
@@ -3324,11 +3322,39 @@ reverse_scroll(Screen *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+dump_lines_with_attrs(Screen *self, PyObject *accum) {
+    int y = (self->linebuf == self->main_linebuf) ? -self->historybuf->count : 0;
+    PyObject *t;
+    while (y < (int)self->lines) {
+        Line *line = range_line_(self, y);
+        t = PyUnicode_FromFormat("\x1b[31m%d: \x1b[39m", y++);
+        if (t) {
+            PyObject_CallFunctionObjArgs(accum, t);
+            Py_DECREF(t);
+        }
+        if (line->attrs.is_prompt_start) PyObject_CallFunction(accum, "s", "\x1b[32mprompt \x1b[39m");
+        if (line->attrs.is_output_start) PyObject_CallFunction(accum, "s", "\x1b[33moutput \x1b[39m");
+        if (line->attrs.continued) PyObject_CallFunction(accum, "s", "continued ");
+        if (line->attrs.has_dirty_text) PyObject_CallFunction(accum, "s", "dirty ");
+        PyObject_CallFunction(accum, "s", "\n");
+        t = line_as_unicode(line, false);
+        if (t) {
+            PyObject_CallFunctionObjArgs(accum, t, NULL);
+            Py_DECREF(t);
+        }
+        PyObject_CallFunction(accum, "s", "\n");
+    }
+    Py_RETURN_NONE;
+}
+
+
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
 
 static PyMethodDef methods[] = {
     MND(line, METH_O)
+    MND(dump_lines_with_attrs, METH_O)
     MND(visual_line, METH_VARARGS)
     MND(current_url_text, METH_NOARGS)
     MND(draw, METH_O)

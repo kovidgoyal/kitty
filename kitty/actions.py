@@ -27,6 +27,7 @@ groups: Dict[ActionGroup, str] = {
     'mk': 'Marks',
     'lay': 'Layouts',
     'misc': 'Miscellaneous',
+    'debug': 'Debugging',
 }
 group_title = groups.__getitem__
 

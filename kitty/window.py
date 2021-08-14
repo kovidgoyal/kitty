@@ -545,6 +545,13 @@ class Window:
             return True
         self.write_to_child(text)
 
+    @ac('debug', 'Show a dump of the current lines in the scrollback + screen with their line attributes')
+    def dump_lines_with_attrs(self) -> None:
+        strings: List[str] = []
+        self.screen.dump_lines_with_attrs(strings.append)
+        text = ''.join(strings)
+        get_boss().display_scrollback(self, text, title='Dump of lines')
+
     def write_to_child(self, data: Union[str, bytes]) -> None:
         if data:
             if get_boss().child_monitor.needs_write(self.id, data) is not True:
