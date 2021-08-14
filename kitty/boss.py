@@ -541,14 +541,14 @@ class Boss:
             self.confirm_tab_close(tab)
 
     def confirm_tab_close(self, tab: Tab) -> None:
-        windows = tuple(tab)
-        needs_confirmation = get_options().confirm_os_window_close > 0 and len(windows) >= get_options().confirm_os_window_close
+        num = tab.number_of_windows_with_running_programs
+        needs_confirmation = get_options().confirm_os_window_close > 0 and num >= get_options().confirm_os_window_close
         if not needs_confirmation:
             self.close_tab_no_confirm(tab)
             return
         self._run_kitten('ask', ['--type=yesno', '--message', _(
             'Are you sure you want to close this tab, it has {}'
-            ' windows running?').format(len(windows))],
+            ' windows running?').format(num)],
             window=tab.active_window,
             custom_callback=partial(self.handle_close_tab_confirmation, tab.id)
         )
@@ -930,7 +930,8 @@ class Boss:
 
     def confirm_os_window_close(self, os_window_id: int) -> None:
         tm = self.os_window_map.get(os_window_id)
-        needs_confirmation = tm is not None and get_options().confirm_os_window_close > 0 and tm.number_of_windows >= get_options().confirm_os_window_close
+        num = 0 if tm is None else tm.number_of_windows_with_running_programs
+        needs_confirmation = tm is not None and get_options().confirm_os_window_close > 0 and num >= get_options().confirm_os_window_close
         if not needs_confirmation:
             mark_os_window_for_close(os_window_id)
             return
@@ -938,7 +939,7 @@ class Boss:
             w = tm.active_window
             self._run_kitten('ask', ['--type=yesno', '--message', _(
                 'Are you sure you want to close this OS window, it has {}'
-                ' windows running?').format(tm.number_of_windows)],
+                ' windows running?').format(num)],
                 window=w,
                 custom_callback=partial(self.handle_close_os_window_confirmation, os_window_id)
             )
@@ -967,7 +968,7 @@ class Boss:
         tm = self.active_tab
         num = 0
         for q in self.os_window_map.values():
-            num += q.number_of_windows
+            num += q.number_of_windows_with_running_programs
         needs_confirmation = tm is not None and get_options().confirm_os_window_close > 0 and num >= get_options().confirm_os_window_close
         if not needs_confirmation:
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)

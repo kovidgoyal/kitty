@@ -30,7 +30,10 @@ Features
 * Glitch free window resizing even with complex prompts. Achieved by erasing
   the prompt on resize and allowing the shell to redraw it cleanly.
 
-* Sophisticated completion for the :program:`kitty` command in the shell
+* Sophisticated completion for the :program:`kitty` command in the shell.
+
+* When confirming a quit command if a window is sitting at a shell prompt,
+  it is not counted.
 
 
 Configuration

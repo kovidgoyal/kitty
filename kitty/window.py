@@ -454,6 +454,10 @@ class Window:
     def current_colors(self) -> Dict:
         return self.screen.color_profile.as_dict()
 
+    @property
+    def has_running_program(self) -> bool:
+        return not self.screen.cursor_at_prompt()
+
     def matches(self, field: str, pat: MatchPatternType) -> bool:
         if not pat:
             return False

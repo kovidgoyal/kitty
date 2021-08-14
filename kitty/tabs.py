@@ -189,6 +189,14 @@ class Tab:  # {{{
     def title(self) -> str:
         return cast(str, getattr(self.active_window, 'title', appname))
 
+    @property
+    def number_of_windows_with_running_programs(self) -> int:
+        ans = 0
+        for window in self:
+            if window.has_running_program:
+                ans += 1
+        return ans
+
     def set_title(self, title: str) -> None:
         self.name = title or ''
         self.mark_tab_bar_dirty()
@@ -800,11 +808,10 @@ class TabManager:  # {{{
             return t.active_window
 
     @property
-    def number_of_windows(self) -> int:
+    def number_of_windows_with_running_programs(self) -> int:
         count = 0
         for tab in self:
-            for window in tab:
-                count += 1
+            count += tab.number_of_windows_with_running_programs
         return count
 
     def tab_for_id(self, tab_id: int) -> Optional[Tab]:
