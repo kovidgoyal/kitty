@@ -12,7 +12,7 @@
 #endif
 
 #ifndef init_src_line
-#define init_src_line(src_y) init_line(src, src->line, src->line_map[src_y]);
+#define init_src_line(src_y) init_line(src, src->line, src->line_map[src_y]); src->line->attrs = src->line_attrs[src_y];
 #endif
 
 #ifndef init_dest_line
@@ -41,7 +41,7 @@
 #endif
 
 #ifndef is_src_line_continued
-#define is_src_line_continued(src_y) (src_y < src->ynum - 1 ? (src->line_attrs[src_y + 1].continued) : false)
+#define is_src_line_continued(src_y) (src_y + 1 < src->ynum ? (src->line_attrs[src_y + 1].continued) : false)
 #endif
 
 static inline void
