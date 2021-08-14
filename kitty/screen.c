@@ -3348,6 +3348,17 @@ dump_lines_with_attrs(Screen *self, PyObject *accum) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+cursor_at_prompt(Screen *self, PyObject *args UNUSED) {
+    if (self->cursor->y >= self->lines || !screen_is_cursor_visible(self) || self->linebuf != self->main_linebuf) { Py_RETURN_FALSE; }
+    int y = self->cursor->y;
+    while (y >= 0) {
+        linebuf_init_line(self->linebuf, y--);
+        if (self->linebuf->line->attrs.is_prompt_start) { Py_RETURN_TRUE; }
+        if (self->linebuf->line->attrs.is_output_start) { Py_RETURN_FALSE; }
+    }
+    Py_RETURN_FALSE;
+}
 
 #define MND(name, args) {#name, (PyCFunction)name, args, #name},
 #define MODEFUNC(name) MND(name, METH_NOARGS) MND(set_##name, METH_O)
@@ -3355,6 +3366,7 @@ dump_lines_with_attrs(Screen *self, PyObject *accum) {
 static PyMethodDef methods[] = {
     MND(line, METH_O)
     MND(dump_lines_with_attrs, METH_O)
+    MND(cursor_at_prompt, METH_NOARGS)
     MND(visual_line, METH_VARARGS)
     MND(current_url_text, METH_NOARGS)
     MND(draw, METH_O)

@@ -965,6 +965,9 @@ class Screen:
     ):
         pass
 
+    def cursor_at_prompt(self) -> bool:
+        pass
+
     def current_key_encoding_flags(self) -> int:
         pass
 
