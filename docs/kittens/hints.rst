@@ -92,10 +92,8 @@ look it up in the Google dictionary.
 
 .. note::
 
-    To avoid having to specify the same command line options on ever invocation,
-    you can use the :opt:`kitten_alias` option in :file:`kitty.conf` to create aliases
+    To avoid having to specify the same command line options on every invocation,
+    you can use the :opt:`kitten_alias` option in :file:`kitty.conf`, creating aliases
     that have common sets of options. For example::
 
         kitten_alias myhints hints --alphabet qfjdkslaureitywovmcxzpq1234567890
-
-    Documentation for the full set of options is below.
