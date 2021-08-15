@@ -44,6 +44,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When dragging word or line selections, ensure the initially selected item is
   never deselected. This matches behavior in most other programs (:iss:`3930`)
 
+- hints kitten: Make copy/paste with the :option:`kitty +kitten hints
+  --program` option work when using the ``self``
+  :option:`kitty +kitten hints --linenum-action` (:iss:`3931`)
+
 
 0.22.2 [2021-08-02]
 ----------------------

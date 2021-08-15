@@ -553,10 +553,12 @@ choices=self,window,tab,os_window,background
 Where to perform the action on matched errors. :code:`self` means the current
 window, :code:`window` a new kitty window, :code:`tab` a new tab,
 :code:`os_window` a new OS window and :code:`background` run in the background.
-The action to perform on the matched errors. The actual action is whatever
-arguments are provided to the kitten, for example: :code:`kitty + kitten hints
---type=linenum --linenum-action=tab vim +{line} {path}` will open the matched
-path at the matched line number in vim in a new kitty tab.
+The actual action is whatever arguments are provided to the kitten, for
+example:
+:code:`kitty + kitten hints --type=linenum --linenum-action=tab vim +{line} {path}`
+will open the matched path at the matched line number in vim in
+a new kitty tab. Note that only when using :code:`self` are the special values for
+:option:`kitty +kitten hints --program` to copy/paste the text respected.
 
 
 --url-prefixes
@@ -705,9 +707,19 @@ def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_i
 
     if action == 'self':
         if w is not None:
-            import shlex
-            text = ' '.join(shlex.quote(arg) for arg in cmd)
-            w.paste_bytes(text + '\r')
+            is_copy_action = cmd[0] in ('-', '@', '*')
+            if is_copy_action:
+                text = ' '.join(cmd[1:])
+                if cmd[0] == '-':
+                    w.paste_bytes(text)
+                elif cmd[0] == '@':
+                    set_clipboard_string(text)
+                elif cmd[0] == '*':
+                    set_primary_selection(text)
+            else:
+                import shlex
+                text = ' '.join(shlex.quote(arg) for arg in cmd)
+                w.paste_bytes(text + '\r')
     elif action == 'background':
         import subprocess
         subprocess.Popen(cmd, cwd=data['cwd'])
