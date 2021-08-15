@@ -141,3 +141,24 @@ The value of :envvar:`KITTY_SHELL_INTEGRATION` is the same as that for
 :opt:`shell_integration`, except if you want to disable shell integration
 completely, in which case simply do not set the
 :envvar:`KITTY_SHELL_INTEGRATION` variable at all.
+
+
+Notes for shell developers
+-----------------------------
+
+The protocol used for marking the prompt is very simple. You should consider
+adding it to your shell as a builtin. Many modern terminals make use of it, for
+example: kitty, iTerm2, WezTerm
+
+Just before starting to draw the prompt send the escape code::
+
+    <OSC>133;A<ST>
+
+Just before running a command/program, send the escape code::
+
+    <OSC>133;C<ST>
+
+Here ``<OSC>`` is the bytes ``0x1b 0x5d`` and ``<ST>`` is the bytes ``0x1b
+0x5c``. This is exactly what is needed for shell integration in kitty. For the
+full protocol, that also marks the command region, see `the iTerm2 docs
+<https://iterm2.com/documentation-escape-codes.html>`_.
