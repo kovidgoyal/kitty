@@ -1362,12 +1362,16 @@ screen_fake_move_cursor_to_position(Screen *self, index_type x, index_type y) {
     SelectionBoundary *start, *end; int key;
     if (a.y < b.y || (a.y == b.y && a.x < b.x)) { start = &a; end = &b; key = GLFW_FKEY_LEFT; }
     else { start = &b; end = &a; key = GLFW_FKEY_RIGHT; }
-    unsigned count = 0;
+    unsigned int count = 0;
 
     for (unsigned y = start->y, x = start->x; y <= end->y; y++) {
         unsigned x_limit = y == end->y ? end->x : self->columns;
         while (x < x_limit) {
-            unsigned w = MAX(1u, linebuf_char_width_at(self->linebuf, x, y));
+            unsigned int w = linebuf_char_width_at(self->linebuf, x, y);
+            if (w == 0) {
+                count += 1;
+                break;
+            }
             x += w;
             count += w;
         }
