@@ -2456,6 +2456,14 @@ last_cmd_output(Screen *self, PyObject *args) {
     if (y < limit) {
         oo.start = limit;
         num_lines = prompt_pos - limit;
+    } else {
+        // resizing screen can cause multiple consecutive output start lines,
+        // so find the first one
+        while (oo.start > limit) {
+            Line *line = range_line_(self, oo.start - 1);
+            if (!line->attrs.is_output_start) break;
+            oo.start--; num_lines++;
+        }
     }
     return as_text_generic(args, &oo, get_line_from_offset, num_lines, &self->as_ansi_buf);
 }
