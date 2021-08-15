@@ -1034,7 +1034,7 @@ screen_current_char_width(Screen *self) {
 }
 
 bool
-screen_is_cursor_visible(Screen *self) {
+screen_is_cursor_visible(const Screen *self) {
     return self->modes.mDECTCEM;
 }
 
@@ -1347,7 +1347,7 @@ screen_cursor_to_line(Screen *self, unsigned int line) {
 
 int
 screen_cursor_at_a_shell_prompt(const Screen *self) {
-    if (self->cursor->y >= self->lines || self->linebuf != self->main_linebuf) return false;
+    if (self->cursor->y >= self->lines || self->linebuf != self->main_linebuf || !screen_is_cursor_visible(self)) return -1;
     for (index_type y=self->cursor->y + 1; y-- > 0; ) {
         linebuf_init_line(self->linebuf, y);
         if (self->linebuf->line->attrs.is_output_start) return -1;
@@ -3358,13 +3358,8 @@ dump_lines_with_attrs(Screen *self, PyObject *accum) {
 
 static PyObject*
 cursor_at_prompt(Screen *self, PyObject *args UNUSED) {
-    if (self->cursor->y >= self->lines || !screen_is_cursor_visible(self) || self->linebuf != self->main_linebuf) { Py_RETURN_FALSE; }
-    int y = self->cursor->y;
-    while (y >= 0) {
-        linebuf_init_line(self->linebuf, y--);
-        if (self->linebuf->line->attrs.is_prompt_start) { Py_RETURN_TRUE; }
-        if (self->linebuf->line->attrs.is_output_start) { Py_RETURN_FALSE; }
-    }
+    int y = screen_cursor_at_a_shell_prompt(self);
+    if (y > -1) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
 
