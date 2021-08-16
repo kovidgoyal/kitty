@@ -267,6 +267,17 @@ class Boss:
                 if w is not None:
                     yield w
             return
+        if field == 'recent':
+            tab = self.active_tab
+            if tab is not None:
+                try:
+                    num = int(exp)
+                except Exception:
+                    return
+                w = self.window_id_map.get(tab.nth_active_window_id(num))
+                if w is not None:
+                    yield w
+            return
         if field != 'env':
             pat: MatchPatternType = re.compile(exp)
         else:
@@ -310,6 +321,17 @@ class Boss:
                 idx = (int(pat.pattern) + len(tm.tabs)) % len(tm.tabs)
                 found = True
                 yield tm.tabs[idx]
+        elif field == 'recent':
+            tm = self.active_tab_manager
+            if tm is not None and len(tm.tabs) > 0:
+                try:
+                    num = int(exp)
+                except Exception:
+                    return
+                q = tm.nth_active_tab(num)
+                if q is not None:
+                    found = True
+                    yield q
         if not found:
             tabs = {self.tab_for_window(w) for w in self.match_windows(match)}
             for q in tabs:

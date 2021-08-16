@@ -14,6 +14,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   of data that kitty will transmit to the system clipboard on behalf of
   programs running inside it (:iss:`3937`)
 
+- When matching windows/tabs in kittens or using remote control, allow matching
+  by recency. ``recent:0`` matches the active window/tab, ``recent:1`` matches
+  the previous window/tab and so on
+
 - A new :doc:`themes kitten </kittens/themes>` to easily change kitty themes.
 0.23.0 [2021-08-16]
 ----------------------

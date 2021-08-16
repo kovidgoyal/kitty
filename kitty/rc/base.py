@@ -76,13 +76,15 @@ ArgsType = List[str]
 MATCH_WINDOW_OPTION = '''\
 --match -m
 The window to match. Match specifications are of the form:
-:italic:`field:regexp`. Where field can be one of: id, title, pid, cwd, cmdline, num, env.
+:italic:`field:regexp`. Where field can be one of: id, title, pid, cwd, cmdline, num, env and recent.
 You can use the :italic:`ls` command to get a list of windows. Note that for
-numeric fields such as id, pid and num the expression is interpreted as a number,
+numeric fields such as id, pid, recent and num the expression is interpreted as a number,
 not a regular expression. The field num refers to the window position in the current tab,
 starting from zero and counting clockwise (this is the same as the order in which the
 windows are reported by the :italic:`ls` command). The window id of the current window
-is available as the KITTY_WINDOW_ID environment variable. When using the :italic:`env` field
+is available as the KITTY_WINDOW_ID environment variable. The field recent refers to recently
+active windows in the currently active tab, with zero being the currently active window, one being the previously active
+window and so on. When using the :italic:`env` field
 to match on environment variables you can specify only the environment variable name or a name
 and value, for example, :italic:`env:MY_ENV_VAR=2`
 '''
@@ -90,14 +92,16 @@ MATCH_TAB_OPTION = '''\
 --match -m
 The tab to match. Match specifications are of the form:
 :italic:`field:regexp`. Where field can be one of:
-id, index, title, window_id, window_title, pid, cwd, env, cmdline.
+id, index, title, window_id, window_title, pid, cwd, env, cmdline and recent.
 You can use the :italic:`ls` command to get a list of tabs. Note that for
-numeric fields such as id, index and pid the expression is interpreted as a number,
+numeric fields such as id, recent, index and pid the expression is interpreted as a number,
 not a regular expression. When using title or id, first a matching tab is
 looked for and if not found a matching window is looked for, and the tab
 for that window is used. You can also use window_id and window_title to match
 the tab that contains the window with the specified id or title. The index number
-is used to match the nth tab in the currently active OS window.
+is used to match the nth tab in the currently active OS window. The recent number
+matches recently active tabs in the currently active OS window, with zero being the currently
+active tab, one the previously active tab and so on.
 '''
 
 

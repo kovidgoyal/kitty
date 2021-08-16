@@ -511,6 +511,12 @@ class Tab:  # {{{
         if groups:
             return groups[0]
 
+    def nth_active_window_id(self, n: int = 0) -> int:
+        if n <= 0:
+            return self.active_window.id if self.active_window else 0
+        ids = tuple(reversed(self.windows.active_window_history))
+        return ids[min(n - 1, len(ids) - 1)] if ids else 0
+
     def neighboring_group_id(self, which: EdgeLiteral) -> Optional[int]:
         neighbors = self.current_layout.neighbors(self.windows)
         candidates = neighbors.get(which)
@@ -747,6 +753,12 @@ class TabManager:  # {{{
                 if tab.id == old_active_tab_id:
                     self.set_active_tab_idx(idx)
                     break
+
+    def nth_active_tab(self, n: int = 0) -> Optional[Tab]:
+        if n <= 0:
+            return self.active_tab
+        tab_ids = tuple(reversed(self.active_tab_history))
+        return self.tab_for_id(tab_ids[min(n - 1, len(tab_ids) - 1)]) if tab_ids else None
 
     def __iter__(self) -> Iterator[Tab]:
         return iter(self.tabs)
