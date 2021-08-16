@@ -119,41 +119,21 @@ namespaced_entry_points['complete'] = complete
 
 
 def setup_openssl_environment() -> None:
-    # Workaround for Linux distros that have still failed to get their heads
-    # out of their asses and implement a common location for SSL certificates.
-    # It's not that hard people, there exists a wonderful tool called the symlink
-    # See https://www.mobileread.com/forums/showthread.php?t=256095
-    #
-    # Also load bundled certs on macOS since Apple tries to make everyone use
-    # their NIH SSL library instead of OpenSSL.
-    if 'SSL_CERT_FILE' in os.environ or 'SSL_CERT_DIR' in os.environ:
-        return
+    # Use our bundled CA certificates instead of the system ones, since
+    # many systems come with no certificates in a useable form or have various
+    # locations for the certificates.
     d = os.path.dirname
-    candidates: tuple = ()
+    ext_dir: str = getattr(sys, 'kitty_extensions_dir')
     if 'darwin' in sys.platform.lower():
-        ext_dir = getattr(sys, 'kitty_extensions_dir', '')
-        if ext_dir:
-            candidates = (os.path.join(d(d(d(ext_dir))), 'cacert.pem'),)
+        cert_file = os.path.join(d(d(d(ext_dir))), 'cacert.pem')
     else:
-        candidates = (
-            '/etc/ssl/certs/ca-certificates.crt',  # Debian/Ubuntu/Arch/Gentoo etc.
-            "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"  # RHEL 7
-            '/etc/pki/tls/certs/ca-bundle.crt',    # Fedora/RHEL 6
-            '/etc/ssl/ca-bundle.pem',              # OpenSUSE
-            "/etc/pki/tls/cacert.pem",             # OpenELEC
-        )
-    for q in candidates:
-        if os.access(q, os.R_OK):
-            os.environ['SSL_CERT_FILE'] = q
-            setattr(sys, 'kitty_ssl_env_var', 'SSL_CERT_FILE')
-            return
-    if os.path.isdir('/etc/ssl/certs'):
-        os.environ['SSL_CERT_DIR'] = '/etc/ssl/certs'
-        setattr(sys, 'kitty_ssl_env_var', 'SSL_CERT_DIR')
+        cert_file = os.path.join(d(ext_dir), 'cacert.pem')
+    os.environ['SSL_CERT_FILE'] = cert_file
+    setattr(sys, 'kitty_ssl_env_var', 'SSL_CERT_FILE')
 
 
 def main() -> None:
-    if getattr(sys, 'frozen', False):
+    if getattr(sys, 'frozen', False) and getattr(sys, 'kitty_extensions_dir', ''):
         setup_openssl_environment()
     first_arg = '' if len(sys.argv) < 2 else sys.argv[1]
     func = entry_points.get(first_arg)

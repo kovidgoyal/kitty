@@ -58,9 +58,6 @@ class TestBuild(BaseTest):
         import sys
         if not getattr(sys, 'frozen', False):
             self.skipTest('CA certificates are only tested on frozen builds')
-        from kitty.constants import is_macos
-        if not is_macos:
-            self.skipTest('CA certificates are only bundled on macOS')
         c = ssl.create_default_context()
         self.assertGreater(c.cert_store_stats()['x509_ca'], 2)
 

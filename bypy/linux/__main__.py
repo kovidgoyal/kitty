@@ -92,6 +92,15 @@ def copy_libs(env):
         subprocess.check_call(['chrpath', '-d', dest])
 
 
+def add_ca_certs(env):
+    print('Downloading CA certs...')
+    from urllib.request import urlopen
+    certs = urlopen(kitty_constants['cacerts_url']).read()
+    dest = os.path.join(env.lib_dir, 'cacert.pem')
+    with open(dest, 'wb') as f:
+        f.write(certs)
+
+
 def copy_python(env):
     print('Copying python...')
     srcdir = j(PREFIX, 'lib/python' + py_ver)
@@ -220,6 +229,7 @@ def main():
     build_launcher(env)
     files = find_binaries(env)
     fix_permissions(files)
+    add_ca_certs(env)
     if not args.dont_strip:
         strip_binaries(files)
     if not args.skip_tests:
