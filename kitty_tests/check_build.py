@@ -53,6 +53,11 @@ class TestBuild(BaseTest):
         self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
         self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
 
+    def test_ca_certificates(self):
+        import ssl
+        c = ssl.create_default_context()
+        self.assertGreater(c.cert_store_stats()['x509_ca'], 2)
+
 
 def main() -> None:
     tests = unittest.defaultTestLoader.loadTestsFromTestCase(TestBuild)
