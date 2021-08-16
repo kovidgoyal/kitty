@@ -383,22 +383,153 @@ glfw_xkb_update_masks(_GLFWXKBData *xkb) {
 #define xkb_glfw_load_keymap(keymap, map_str) keymap = xkb_keymap_new_from_string(xkb->context, map_str, XKB_KEYMAP_FORMAT_TEXT_V1, 0);
 #define xkb_glfw_load_state(keymap, state) state = xkb_state_new(keymap);
 
+typedef struct {
+    struct xkb_state *state;
+    int failed;
+    xkb_mod_mask_t used_mods;
+    xkb_mod_mask_t shift, control, capsLock, numLock, alt, super, meta, hyper;
+
+    /* Combination modifiers to try */
+    int try_shift;
+    xkb_keycode_t shift_keycode;
+} modifier_mapping_algorithm_t;
+
+/* Algorithm for mapping virtual modifiers to real modifiers:
+ *   1. create new state
+ *   2. for each key in keymap
+ *      a. send key down to state
+ *      b. if it affected exactly one bit in modifier map
+ *         i) get keysym
+ *         ii) if keysym matches one of the known modifiers, save it for that modifier
+ *         iii) if modifier is latched, send key up and key down to toggle again
+ *      c. send key up to reset the state
+ *   3. if shift key found in step 2, run step 2 with all shift+key for each key
+ *   4. if shift, control, alt and super are not all found, declare failure
+ *   5. if failure, use static mapping from xkbcommon-names.h
+ *
+ * Step 3 is needed because many popular keymaps map meta to alt+shift.
+ *
+ * We could do better by constructing a system of linear equations, but it should not be
+ * needed in any sane system. We could also use this algorithm with X11, but X11
+ * provides XkbVirtualModsToReal which is guaranteed to be accurate, while this
+ * algorithm is only a heuristic.
+ *
+ * We don't touch level3 or level5 modifiers.
+ */
+static void modifier_mapping_algorithm( struct xkb_keymap *keymap, xkb_keycode_t key, void *data ) {
+    ( void )keymap;
+    modifier_mapping_algorithm_t *algorithm = ( modifier_mapping_algorithm_t * )data;
+    if ( algorithm->failed )
+        return;
+
+    if ( algorithm->try_shift ) {
+        if ( key == algorithm->shift_keycode ) return;
+        xkb_state_update_key( algorithm->state, algorithm->shift_keycode, XKB_KEY_DOWN );
+    }
+
+    enum xkb_state_component changed_type = xkb_state_update_key( algorithm->state, key, XKB_KEY_DOWN );
+    if ( changed_type & ( XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED | XKB_STATE_MODS_LOCKED ) ) {
+        xkb_mod_mask_t mods = xkb_state_serialize_mods( algorithm->state,
+                                                        algorithm->try_shift ? XKB_STATE_MODS_EFFECTIVE : ( XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED | XKB_STATE_MODS_LOCKED ) );
+
+        const xkb_keysym_t *keysyms;
+        int num_keysyms = xkb_state_key_get_syms( algorithm->state, key, &keysyms );
+        /* We can handle exactly one keysym with exactly one bit set in the implementation
+         * below; with a lot more gymnastics, we could set up an 8x8 linear system and solve
+         * for each modifier in case there are some modifiers that are only present in
+         * combination with others, but it is not worth the effort. */
+        if ( num_keysyms == 1 && mods && ( mods & ( mods-1 ) ) == 0 ) {
+#define S2( k, a ) if ( ( keysyms[0] == XKB_KEY_##k##_L || keysyms[0] == XKB_KEY_##k##_R ) && !algorithm->a ) algorithm->a = mods
+#define S1( k, a ) if ( ( keysyms[0] == XKB_KEY_##k ) && !algorithm->a ) algorithm->a = mods
+            S2( Shift, shift );
+            S2( Control, control );
+            S1( Caps_Lock, capsLock );
+            S1( Shift_Lock, numLock );
+            S2( Alt, alt );
+            S2( Super, super );
+            S2( Meta, meta );
+            S2( Hyper, hyper );
+#undef S1
+#undef S2
+        }
+        if ( !algorithm->shift_keycode && ( keysyms[0] == XKB_KEY_Shift_L || keysyms[0] == XKB_KEY_Shift_R ) )
+            algorithm->shift_keycode = key;
+
+        /* If this is a lock, then up and down to remove lock state*/
+        if ( changed_type & XKB_STATE_MODS_LOCKED ) { /* What should we do for LATCHED here? */
+            xkb_state_update_key( algorithm->state, key, XKB_KEY_UP );
+            xkb_state_update_key( algorithm->state, key, XKB_KEY_DOWN );
+        }
+    }
+    xkb_state_update_key( algorithm->state, key, XKB_KEY_UP );
+
+    if ( algorithm->try_shift ) {
+        xkb_state_update_key( algorithm->state, algorithm->shift_keycode, XKB_KEY_UP );
+    }
+}
+
+static int local_modifier_mapping(_GLFWXKBData *xkb) {
+    modifier_mapping_algorithm_t algorithm;
+
+    algorithm.failed = 0;
+    algorithm.used_mods = 0;
+    algorithm.shift = algorithm.control = algorithm.capsLock = algorithm.numLock = algorithm.alt = algorithm.super = algorithm.meta = algorithm.hyper = 0;
+    algorithm.try_shift = 0;
+    algorithm.shift_keycode = 0;
+
+    algorithm.state = xkb_state_new( xkb->keymap );
+    if ( algorithm.state != NULL )
+    {
+        xkb_keymap_key_for_each( xkb->keymap, &modifier_mapping_algorithm, &algorithm );
+        if ( !algorithm.shift_keycode )
+            algorithm.failed = 1;
+
+        if ( !( algorithm.shift && algorithm.control && algorithm.alt && algorithm.super && algorithm.meta && algorithm.hyper )
+             && !algorithm.failed  ) {
+            algorithm.try_shift = 1;
+            xkb_keymap_key_for_each( xkb->keymap, &modifier_mapping_algorithm, &algorithm );
+        }
+        xkb_state_unref( algorithm.state );
+        if ( !algorithm.failed && !( algorithm.shift && algorithm.control && algorithm.alt && algorithm.super ) )
+            algorithm.failed = 1;     /* must have found at least those 4 modifiers */
+    }
+
+    if ( !algorithm.failed ) {
+#define S( a ) xkb->a##Idx = XKB_MOD_INVALID; xkb->a##Mask = 0
+        S(control); S(shift); S(capsLock); S(alt); S(super); S(hyper); S(meta); S(numLock);
+#undef S
+
+        unsigned indx, shifted, used_bits = 0;
+        for (indx = 0, shifted = 1; indx < 32; ++indx, shifted <<= 1) {
+#define S( a ) if ( (xkb->a##Idx == XKB_MOD_INVALID) && !( used_bits & shifted ) && algorithm.a == shifted  ) xkb->a##Idx = indx, xkb->a##Mask = shifted, used_bits |= shifted
+            S(control); S(shift); S(capsLock); S(alt); S(super); S(hyper); S(meta); S(numLock);
+#undef S
+        }
+    }
+
+    return !algorithm.failed;
+}
+
 static void
 glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     // Should find better solution under Wayland
     // See https://github.com/kovidgoyal/kitty/pull/3430 for discussion
 
+    if ( !local_modifier_mapping( xkb ) ) {
 #define S( a ) xkb->a##Idx = XKB_MOD_INVALID; xkb->a##Mask = 0
-    S(hyper); S(meta);
+        S(hyper); S(meta);
 #undef S
 #define S(a, n) xkb->a##Idx = xkb_keymap_mod_get_index(xkb->keymap, n); xkb->a##Mask = 1 << xkb->a##Idx;
-    S(control, XKB_MOD_NAME_CTRL);
-    S(shift, XKB_MOD_NAME_SHIFT);
-    S(capsLock, XKB_MOD_NAME_CAPS);
-    S(numLock, XKB_MOD_NAME_NUM);
-    S(alt, XKB_MOD_NAME_ALT);
-    S(super, XKB_MOD_NAME_LOGO);
+        S(control, XKB_MOD_NAME_CTRL);
+        S(shift, XKB_MOD_NAME_SHIFT);
+        S(capsLock, XKB_MOD_NAME_CAPS);
+        S(numLock, XKB_MOD_NAME_NUM);
+        S(alt, XKB_MOD_NAME_ALT);
+        S(super, XKB_MOD_NAME_LOGO);
 #undef S
+    }
+    debug("Modifier indices alt: 0x%x super: 0x%x hyper: 0x%x meta: 0x%x numlock: 0x%x shift: 0x%x capslock: 0x%x control: 0x%x\n",
+          xkb->altIdx, xkb->superIdx, xkb->hyperIdx, xkb->metaIdx, xkb->numLockIdx, xkb->shiftIdx, xkb->capsLockIdx, xkb->controlIdx);
 }
 
 #endif
