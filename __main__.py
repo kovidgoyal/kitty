@@ -128,12 +128,18 @@ def setup_openssl_environment() -> None:
     # their NIH SSL library instead of OpenSSL.
     if 'SSL_CERT_FILE' in os.environ or 'SSL_CERT_DIR' in os.environ:
         return
-    candidates = ['/etc/pki/tls/certs/ca-bundle.crt']
+    candidates = [
+        '/etc/ssl/certs/ca-certificates.crt',  # Debian/Ubuntu/Arch/Gentoo etc.
+        "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem"  # RHEL 7
+        '/etc/pki/tls/certs/ca-bundle.crt',    # Fedora/RHEL 6
+        '/etc/ssl/ca-bundle.pem',              # OpenSUSE
+        "/etc/pki/tls/cacert.pem",             # OpenELEC
+    ]
     ext_dir = getattr(sys, 'kitty_extensions_dir', '')
     if ext_dir:
+        d = os.path.dirname
         if 'darwin' in sys.platform.lower():
-            d = os.path.dirname
-            candidates.append(os.path.join(d(d(d(ext_dir))), 'cacert.pem'))
+            candidates.insert(0, os.path.join(d(d(d(ext_dir))), 'cacert.pem'))
     for q in candidates:
         if os.access(q, os.R_OK):
             os.environ['SSL_CERT_FILE'] = q
