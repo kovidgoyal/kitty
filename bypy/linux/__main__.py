@@ -95,10 +95,10 @@ def copy_libs(env):
 def add_ca_certs(env):
     print('Downloading CA certs...')
     from urllib.request import urlopen
-    certs = urlopen(kitty_constants['cacerts_url']).read()
+    cdata = urlopen(kitty_constants['cacerts_url']).read()
     dest = os.path.join(env.lib_dir, 'cacert.pem')
     with open(dest, 'wb') as f:
-        f.write(certs)
+        f.write(cdata)
 
 
 def copy_python(env):

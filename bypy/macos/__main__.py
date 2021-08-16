@@ -185,10 +185,10 @@ class Freeze(object):
     def add_ca_certs(self):
         print('\nDownloading CA certs...')
         from urllib.request import urlopen
-        certs = urlopen(kitty_constants['cacerts_url']).read()
+        cdata = urlopen(kitty_constants['cacerts_url']).read()
         dest = os.path.join(self.contents_dir, 'Resources', 'cacert.pem')
         with open(dest, 'wb') as f:
-            f.write(certs)
+            f.write(cdata)
 
     @flush
     def strip_files(self):
