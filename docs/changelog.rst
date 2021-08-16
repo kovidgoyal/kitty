@@ -18,6 +18,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   by recency. ``recent:0`` matches the active window/tab, ``recent:1`` matches
   the previous window/tab and so on
 
+- themes kitten: Fix only the first custom theme file being loaded correctly
+  (:iss:`3938`)
+
+
 - A new :doc:`themes kitten </kittens/themes>` to easily change kitty themes.
 0.23.0 [2021-08-16]
 ----------------------

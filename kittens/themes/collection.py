@@ -335,7 +335,7 @@ class Themes:
                     d = parse_theme(name, raw)
                 except (Exception, SystemExit):
                     continue
-                t = Theme(lambda: raw)
+                t = Theme(raw.__str__)
                 t.apply_dict(d)
                 if t.name:
                     self.themes[t.name] = t
