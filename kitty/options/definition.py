@@ -2533,9 +2533,16 @@ control exactly which actions are allowed. The set of possible actions is:
 write-clipboard read-clipboard write-primary read-primary. The default is to
 allow writing to the clipboard and primary selection. Note that enabling the
 read functionality is a security risk as it means that any program, even one
-running on a remote server via SSH can read your clipboard.
+running on a remote server via SSH can read your clipboard. See also :opt:`
+clipboard_max_size`.
 '''
     )
+
+opt('clipboard_max_size', 64, option_type='positive_float', long_text='''
+The maximum size (in MB) of data from programs running in kitty that will be
+stored for writing to the system clipboard. See also :opt:`clipboard_control`.
+A value of zero means no size limit is applied.
+''')
 
 opt('allow_hyperlinks', 'yes',
     option_type='allow_hyperlinks', ctype='bool',

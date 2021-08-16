@@ -791,7 +791,8 @@ class Window:
                 self.clipboard_pending = ClipboardPending(where, text)
             else:
                 self.clipboard_pending = self.clipboard_pending._replace(data=self.clipboard_pending[1] + text)
-                if len(self.clipboard_pending.data) > 8 * 1024 * 1024:
+                limit = get_options().clipboard_max_size
+                if limit and len(self.clipboard_pending.data) > limit * 1024 * 1024:
                     log_error('Discarding part of too large OSC 52 paste request')
                     self.clipboard_pending = self.clipboard_pending._replace(data='', truncated=True)
             return

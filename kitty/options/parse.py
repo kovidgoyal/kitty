@@ -102,6 +102,9 @@ class Parser:
     def clipboard_control(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['clipboard_control'] = clipboard_control(val)
 
+    def clipboard_max_size(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['clipboard_max_size'] = positive_float(val)
+
     def close_on_child_death(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['close_on_child_death'] = to_bool(val)
 

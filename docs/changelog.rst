@@ -10,6 +10,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix themes kitten failing to download themes because of missing SSL
   certificates (:iss:`3936`)
 
+- A new option :opt:`clipboard_max_size` to control the maximum size
+  of data that kitty will transmit to the system clipboard on behalf of
+  programs running inside it (:iss:`3937`)
+
 - A new :doc:`themes kitten </kittens/themes>` to easily change kitty themes.
 0.23.0 [2021-08-16]
 ----------------------

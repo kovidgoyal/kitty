@@ -65,6 +65,7 @@ option_names = (  # {{{
  'clear_all_shortcuts',
  'click_interval',
  'clipboard_control',
+ 'clipboard_max_size',
  'close_on_child_death',
  'color0',
  'color1',
@@ -458,6 +459,7 @@ class Options:
     clear_all_shortcuts: bool = False
     click_interval: float = -1.0
     clipboard_control: typing.Tuple[str, ...] = ('write-clipboard', 'write-primary')
+    clipboard_max_size: float = 64.0
     close_on_child_death: bool = False
     command_on_bell: typing.List[str] = ['none']
     confirm_os_window_close: int = 0
