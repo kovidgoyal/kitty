@@ -2,7 +2,7 @@ Changing kitty colors
 ========================
 
 The themes kitten allows you to easily change color themes, from a collection
-of over two hundred pre-built themes available at `kitty-themes
+of almost two hundred pre-built themes available at `kitty-themes
 <https://github.com/kovidgoyal/kitty-themes>`_. To use it, simply run::
 
     kitty +kitten themes
@@ -15,6 +15,9 @@ The kitten maintains a list of recently used themes to allow quick switching.
 
 If you want to restore the colors to default, you can do so by choosing the
 ``Default`` theme.
+
+.. versionadded:: 0.23.0
+   The themes kitten
 
 How it works
 ----------------
@@ -47,5 +50,17 @@ go to `kitty-themes <https://github.com/kovidgoyal/kitty-themes>`_ and open a pu
 asking to add your contributions to the repository. Use the file
 :download:`template.conf <https://github.com/kovidgoyal/kitty-themes/raw/master/template.conf>` as
 a template when creating your theme.
+
+
+Changing the theme non-interactively
+---------------------------------------
+
+You can specify the theme name as an argument when invoking the kitten
+to have it change to that theme instantly. For example::
+
+    kitty +kitten theme --reload-in=all Dimmed Monokai
+
+Will change the theme to ``Dimmed Monokai`` in all running kitty
+instances. See below for more details on non-interactive operation.
 
 .. include:: ../generated/cli-kitten-themes.rst
