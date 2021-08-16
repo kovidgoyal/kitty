@@ -25,7 +25,7 @@ to :file:`~/.config/kitty/current-theme.conf` and adds an include for
 :file:`current-theme.conf` to :file:`kitty.conf`. It also comments out
 any existing color settings in :file:`kitty.conf` so they do not interfere.
 
-Once that's done, the kitten send kitty a signal to make it reload its config.
+Once that's done, the kitten sends kitty a signal to make it reload its config.
 
 Using your own themes
 -----------------------
@@ -45,7 +45,7 @@ Contributing new themes
 If you wish to contribute a new theme to the kitty theme repository, simply
 go to `kitty-themes <https://github.com/kovidgoyal/kitty-themes>`_ and open a pull request
 asking to add your contributions to the repository. Use the file
-`template.conf <https://github.com/kovidgoyal/kitty-themes/raw/master/template.conf>`_ as
+:download:`template.conf <https://github.com/kovidgoyal/kitty-themes/raw/master/template.conf>` as
 a template when creating your theme.
 
 .. include:: ../generated/cli-kitten-themes.rst
