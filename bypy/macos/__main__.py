@@ -170,6 +170,7 @@ class Freeze(object):
         self.add_stdlib()
         self.add_misc_libraries()
         self.freeze_python()
+        self.add_ca_certs()
         if not self.dont_strip:
             self.strip_files()
         if not self.skip_tests:
@@ -179,6 +180,16 @@ class Freeze(object):
         ret = self.makedmg(self.build_dir, APPNAME + '-' + VERSION)
 
         return ret
+
+    @flush
+    def add_ca_certs(self):
+        print('\nDownloading CA certs...')
+        from urllib.request import urlopen
+        ca_certs_url = 'https://curl.haxx.se/ca/cacert.pem'
+        certs = urlopen(ca_certs_url).read()
+        dest = os.path.join(self.contents_dir, 'Resources', 'cacert.pem')
+        with open(dest, 'wb') as f:
+            f.write(certs)
 
     @flush
     def strip_files(self):

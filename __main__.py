@@ -123,17 +123,29 @@ def setup_openssl_environment() -> None:
     # out of their asses and implement a common location for SSL certificates.
     # It's not that hard people, there exists a wonderful tool called the symlink
     # See https://www.mobileread.com/forums/showthread.php?t=256095
-    if 'SSL_CERT_FILE' not in os.environ and 'SSL_CERT_DIR' not in os.environ:
-        if os.access('/etc/pki/tls/certs/ca-bundle.crt', os.R_OK):
-            os.environ['SSL_CERT_FILE'] = '/etc/pki/tls/certs/ca-bundle.crt'
+    #
+    # Also load bundled certs on macOS since Apple tries to make everyone use
+    # their NIH SSL library instead of OpenSSL.
+    if 'SSL_CERT_FILE' in os.environ or 'SSL_CERT_DIR' in os.environ:
+        return
+    candidates = ['/etc/pki/tls/certs/ca-bundle.crt']
+    ext_dir = getattr(sys, 'kitty_extensions_dir', '')
+    if ext_dir:
+        if 'darwin' in sys.platform.lower():
+            d = os.path.dirname
+            candidates.append(os.path.join(d(d(d(ext_dir))), 'cacert.pem'))
+    for q in candidates:
+        if os.access(q, os.R_OK):
+            os.environ['SSL_CERT_FILE'] = q
             setattr(sys, 'kitty_ssl_env_var', 'SSL_CERT_FILE')
-        elif os.path.isdir('/etc/ssl/certs'):
-            os.environ['SSL_CERT_DIR'] = '/etc/ssl/certs'
-            setattr(sys, 'kitty_ssl_env_var', 'SSL_CERT_DIR')
+            return
+    if os.path.isdir('/etc/ssl/certs'):
+        os.environ['SSL_CERT_DIR'] = '/etc/ssl/certs'
+        setattr(sys, 'kitty_ssl_env_var', 'SSL_CERT_DIR')
 
 
 def main() -> None:
-    if getattr(sys, 'frozen', False) and 'darwin' not in sys.platform.lower():
+    if getattr(sys, 'frozen', False):
         setup_openssl_environment()
     first_arg = '' if len(sys.argv) < 2 else sys.argv[1]
     func = entry_points.get(first_arg)

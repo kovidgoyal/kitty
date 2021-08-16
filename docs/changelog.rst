@@ -4,6 +4,13 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.23.1 [future]
+----------------------
+
+- macOS: Fix themes kitten failing to download themes because of missing SSL
+  certificates (:iss:`3936`)
+
+- A new :doc:`themes kitten </kittens/themes>` to easily change kitty themes.
 0.23.0 [2021-08-16]
 ----------------------
 
