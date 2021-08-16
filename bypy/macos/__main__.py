@@ -185,8 +185,7 @@ class Freeze(object):
     def add_ca_certs(self):
         print('\nDownloading CA certs...')
         from urllib.request import urlopen
-        ca_certs_url = 'https://curl.haxx.se/ca/cacert.pem'
-        certs = urlopen(ca_certs_url).read()
+        certs = urlopen(kitty_constants['cacerts_url']).read()
         dest = os.path.join(self.contents_dir, 'Resources', 'cacert.pem')
         with open(dest, 'wb') as f:
             f.write(certs)

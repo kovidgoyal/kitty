@@ -30,6 +30,7 @@ def initialize_constants():
     kitty_constants['appname'] = re.search(
             r'appname: str\s+=\s+(u{0,1})[\'"]([^\'"]+)[\'"]', src
     ).group(2)
+    kitty_constants['cacerts_url'] = 'https://curl.haxx.se/ca/cacert.pem'
     return kitty_constants
 
 

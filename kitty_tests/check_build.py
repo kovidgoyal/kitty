@@ -20,9 +20,9 @@ class TestBuild(BaseTest):
 
     def test_loading_extensions(self) -> None:
         import kitty.fast_data_types as fdt
-        from kittens.unicode_input import unicode_names
         from kittens.choose import subseq_matcher
         from kittens.diff import diff_speedup
+        from kittens.unicode_input import unicode_names
         del fdt, unicode_names, subseq_matcher, diff_speedup
 
     def test_loading_shaders(self) -> None:
@@ -31,7 +31,7 @@ class TestBuild(BaseTest):
             load_shaders(name)
 
     def test_glfw_modules(self) -> None:
-        from kitty.constants import is_macos, glfw_path
+        from kitty.constants import glfw_path, is_macos
         linux_backends = ['x11']
         if not self.is_ci:
             linux_backends.append('wayland')
@@ -49,12 +49,18 @@ class TestBuild(BaseTest):
         self.assertGreater(len(names), 8)
 
     def test_filesystem_locations(self) -> None:
-        from kitty.constants import terminfo_dir, logo_png_file
+        from kitty.constants import logo_png_file, terminfo_dir
         self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
         self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
 
     def test_ca_certificates(self):
         import ssl
+        import sys
+        if not getattr(sys, 'frozen', False):
+            self.skipTest('CA certificates are only tested on frozen builds')
+        from kitty.constants import is_macos
+        if not is_macos:
+            self.skipTest('CA certificates are only bundled on macOS')
         c = ssl.create_default_context()
         self.assertGreater(c.cert_store_stats()['x509_ca'], 2)
 
