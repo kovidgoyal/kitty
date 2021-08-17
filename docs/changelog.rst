@@ -4,11 +4,11 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.23.1 [future]
+0.23.1 [2021-08-17]
 ----------------------
 
 - macOS: Fix themes kitten failing to download themes because of missing SSL
-  certificates (:iss:`3936`)
+  root certificates (:iss:`3936`)
 
 - A new option :opt:`clipboard_max_size` to control the maximum size
   of data that kitty will transmit to the system clipboard on behalf of
@@ -22,7 +22,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   (:iss:`3938`)
 
 
-- A new :doc:`themes kitten </kittens/themes>` to easily change kitty themes.
 0.23.0 [2021-08-16]
 ----------------------
 
