@@ -4,6 +4,12 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
+0.23.2 [future]
+----------------------
+
+- Fix a regression that caused :option:`kitty --title` to not work when
+  opening new OS windows using :option:`kitty --single-instance` (:iss:`3893`)
+
 0.23.1 [2021-08-17]
 ----------------------
 

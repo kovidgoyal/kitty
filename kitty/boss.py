@@ -206,17 +206,19 @@ class Boss:
         wclass: Optional[str] = None,
         wname: Optional[str] = None,
         opts_for_size: Optional[Options] = None,
-        startup_id: Optional[str] = None
+        startup_id: Optional[str] = None,
+        override_title: Optional[str] = None,
     ) -> int:
         if os_window_id is None:
             size_data = get_os_window_sizing_data(opts_for_size or get_options(), startup_session)
             wclass = wclass or getattr(startup_session, 'os_window_class', None) or self.args.cls or appname
             wname = wname or self.args.name or wclass
+            wtitle = override_title or self.args.title
             with startup_notification_handler(do_notify=startup_id is not None, startup_id=startup_id) as pre_show_callback:
                 os_window_id = create_os_window(
                         initial_window_size_func(size_data, self.cached_values),
                         pre_show_callback,
-                        self.args.title or appname, wname, wclass, disallow_override_title=bool(self.args.title))
+                        wtitle or appname, wname, wclass, disallow_override_title=bool(wtitle))
         else:
             wname = self.args.name or self.args.cls or appname
             wclass = self.args.cls or appname
@@ -459,7 +461,9 @@ class Boss:
             if not os.path.isabs(args.directory):
                 args.directory = os.path.join(data['cwd'], args.directory)
             for session in create_sessions(opts, args, respect_cwd=True):
-                os_window_id = self.add_os_window(session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id)
+                os_window_id = self.add_os_window(
+                    session, wclass=args.cls, wname=args.name, opts_for_size=opts, startup_id=startup_id,
+                    override_title=args.title or None)
                 if opts.background_opacity != get_options().background_opacity:
                     self._set_os_window_background_opacity(os_window_id, opts.background_opacity)
                 if data.get('notify_on_os_window_death'):
