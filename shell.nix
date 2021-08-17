@@ -33,6 +33,10 @@ mkShell rec {
     ncurses
     pkg-config
     sphinx
+    furo
+    sphinx-copybutton
+    sphinxext-opengraph
+    sphinx-inline-tabs
   ] ++ optionals stdenv.isDarwin [
     imagemagick
     libicns  # For the png2icns tool.
