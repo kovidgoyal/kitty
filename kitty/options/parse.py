@@ -1173,7 +1173,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for tab_bar_style")
         ans["tab_bar_style"] = val
 
-    choices_for_tab_bar_style = frozenset(('fade', 'hidden', 'powerline', 'separator', 'slant'))
+    choices_for_tab_bar_style = frozenset(('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'))
 
     def tab_fade(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_fade'] = tab_fade(val)

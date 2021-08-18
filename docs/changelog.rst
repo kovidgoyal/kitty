@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.23.2 [future]
 ----------------------
 
+- Allow the user to supply a custom Python function to draw tab bar. See
+  :option:`tab_bar_style`
+
 - Fix a regression that caused :option:`kitty --title` to not work when
   opening new OS windows using :option:`kitty --single-instance` (:iss:`3893`)
 

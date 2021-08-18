@@ -884,7 +884,7 @@ tab.
 
 
 opt('tab_bar_style', 'fade',
-    choices=('fade', 'hidden', 'powerline', 'separator', 'slant'), ctype='!tab_bar_style',
+    choices=('fade', 'hidden', 'powerline', 'separator', 'slant', 'custom'), ctype='!tab_bar_style',
     long_text='''
 The tab bar style, can be one of:
 
@@ -896,6 +896,10 @@ The tab bar style, can be one of:
     Tabs are separated by a configurable separator (see :opt:`tab_separator`)
 :code:`powerline`
     Tabs are shown as a continuous line with "fancy" separators (see :opt:`tab_powerline_style`)
+:code:`custom`
+    A user-supplied Python function called draw_tab is loaded from the file :file:`tab_bar.py`
+    in the kitty config directory. For examples of how to write such a function see the functions
+    named :code:`draw_tab_with_*` in tab_bar.py in the kitty source code.
 :code:`hidden`
     The tab bar is hidden. If you use this, you might want to create a mapping
     for the :ref:`action-select_tab` action which presents you with a list

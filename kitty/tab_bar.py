@@ -2,10 +2,14 @@
 # vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
-from functools import lru_cache
-from typing import Any, Dict, List, NamedTuple, Optional, Sequence, Tuple
+import os
+from functools import lru_cache, wraps
+from typing import (
+    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
+)
 
 from .config import build_ansi_color_table
+from .constants import config_dir
 from .fast_data_types import (
     DECAWM, Screen, cell_size_for_window, get_options, pt_to_px,
     set_tab_bar_render_data, viewport_for_window
@@ -13,7 +17,7 @@ from .fast_data_types import (
 from .layout.base import Rect
 from .rgb import Color, alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
-from .typing import PowerlineStyle, EdgeLiteral
+from .typing import EdgeLiteral, PowerlineStyle
 from .utils import color_as_int, log_error
 from .window import calculate_gl_geometry
 
@@ -163,6 +167,9 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
                 screen.draw(x)
     else:
         screen.draw(title)
+
+
+DrawTabFunc = Callable[[DrawData, Screen, TabBarData, int, int, int, bool], int]
 
 
 def draw_tab_with_slant(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
@@ -325,6 +332,29 @@ def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData
     return end
 
 
+@run_once
+def load_custom_draw_tab() -> DrawTabFunc:
+    import runpy
+    import traceback
+    try:
+        m = runpy.run_path(os.path.join(config_dir, 'tab_bar.py'))
+        func: DrawTabFunc = m['draw_tab']
+    except Exception as e:
+        traceback.print_exc()
+        log_error(f'Failed to load custom draw_tab function with error: {e}')
+        return draw_tab_with_fade
+
+    @wraps(func)
+    def draw_tab(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
+        try:
+            return func(draw_data, screen, tab, before, max_title_length, index, is_last)
+        except Exception as e:
+            log_error(f'Custom draw tab function failed with error: {e}')
+            return draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, index, is_last)
+
+    return draw_tab
+
+
 class TabBar:
 
     def __init__(self, os_window_id: int):
@@ -374,12 +404,15 @@ class TabBar:
             opts.tab_powerline_style,
             'top' if opts.tab_bar_edge == 1 else 'bottom'
         )
-        if opts.tab_bar_style == 'separator':
-            self.draw_func = draw_tab_with_separator
-        elif opts.tab_bar_style == 'powerline':
+        ts = opts.tab_bar_style
+        if ts == 'separator':
+            self.draw_func: DrawTabFunc = draw_tab_with_separator
+        elif ts == 'powerline':
             self.draw_func = draw_tab_with_powerline
-        elif opts.tab_bar_style == 'slant':
+        elif ts == 'slant':
             self.draw_func = draw_tab_with_slant
+        elif ts == 'custom':
+            self.draw_func = load_custom_draw_tab()
         else:
             self.draw_func = draw_tab_with_fade
 
