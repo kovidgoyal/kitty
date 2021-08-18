@@ -145,8 +145,8 @@ Modifiers
 This protocol supports six modifier keys, :kbd:`shift, alt, ctrl, super, hyper
 and meta` as well as :kbd:`num_lock and caps_lock`. Here :kbd:`super` is either
 the *Windows/Linux* key or the *Cmd* key on mac keyboards. :kbd:`hyper` and
-:kbd:`meta` are typically present only on X11 based systems with special XKB
-rules. Modifiers are encoded as a bit field with::
+:kbd:`meta` are typically present only on X11/Wayland based systems with
+special XKB rules. Modifiers are encoded as a bit field with::
 
     shift     0b1         (1)
     alt       0b10        (2)

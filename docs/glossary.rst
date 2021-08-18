@@ -67,10 +67,15 @@ Variables that influence kitty behavior
 
    Same as :envvar:`VISUAL`. Used if :envvar:`VISUAL` is not set.
 
-
 .. envvar:: GLFW_IM_MODULE
 
    Set this to ``ibus`` to enable support for IME under X11.
+
+.. envvar:: KITTY_WAYLAND_DETECT_MODIFIERS
+
+   When set to a non-empty value, kitty attempts to autodiscover XKB
+   modifiers under Wayland. It is possible for the autodiscovery to
+   fail; the default Wayland XKB mappings are used in this case.
 
 
 Variables that kitty sets when running child programs
