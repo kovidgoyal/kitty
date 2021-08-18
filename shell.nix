@@ -7,6 +7,7 @@ let
   inherit (darwin.apple_sdk.frameworks) Cocoa CoreGraphics Foundation IOKit Kernel OpenGL;
   harfbuzzWithCoreText = harfbuzz.override { withCoreText = stdenv.isDarwin; };
 in
+with python3Packages;
 mkShell rec {
   buildInputs = [
     harfbuzzWithCoreText
@@ -29,17 +30,22 @@ mkShell rec {
   ] ++ checkInputs;
 
   nativeBuildInputs = [
-    pkgconfig python3Packages.sphinx ncurses
+    ncurses
+    pkg-config
+    sphinx
+    furo
+    sphinx-copybutton
+    sphinxext-opengraph
+    sphinx-inline-tabs
   ] ++ optionals stdenv.isDarwin [
     imagemagick
     libicns  # For the png2icns tool.
-    installShellFiles
   ];
 
   propagatedBuildInputs = optional stdenv.isLinux libGL;
 
   checkInputs = [
-    python3Packages.pillow
+    pillow
   ];
 
   # Causes build failure due to warning when using Clang
