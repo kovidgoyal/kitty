@@ -439,7 +439,15 @@ static void modifier_mapping_algorithm( struct xkb_keymap *keymap, xkb_keycode_t
          * for each modifier in case there are some modifiers that are only present in
          * combination with others, but it is not worth the effort. */
         if ( num_keysyms == 1 && mods && ( mods & ( mods-1 ) ) == 0 ) {
-#define S2( k, a ) if ( ( keysyms[0] == XKB_KEY_##k##_L || keysyms[0] == XKB_KEY_##k##_R ) && !algorithm->a ) algorithm->a = mods
+#define S2( k, a )                                                      \
+            do {                                                        \
+                if ( keysyms[0] == XKB_KEY_##k##_L || keysyms[0] == XKB_KEY_##k##_R ) { \
+                    if ( !algorithm->a )                                \
+                        algorithm->a = mods;                            \
+                    else if ( algorithm->a != mods )                    \
+                        algorithm->failed = 1;                          \
+                }                                                       \
+            } while ( 0 )
 #define S1( k, a ) if ( ( keysyms[0] == XKB_KEY_##k ) && !algorithm->a ) algorithm->a = mods
             S2( Shift, shift );
             S2( Control, control );
