@@ -9,7 +9,7 @@ kitty has the ability to integrate closely within common shells, such as `zsh
 previous prompts in the scrollback, viewing the output of the last command in
 :program:`less`, using the mouse to move the cursor while editing prompts, etc.
 
-.. versionadded:: 0.22.0
+.. versionadded:: 0.24.0
 
 Features
 -------------
