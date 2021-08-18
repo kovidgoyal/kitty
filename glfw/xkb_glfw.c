@@ -515,15 +515,17 @@ static int local_modifier_mapping(_GLFWXKBData *xkb) {
         }
     }
 
+    if ( algorithm.failed )
+        debug( "Wayland modifier autodetection algorithm failed; using defaults\n" );
     return !algorithm.failed;
 }
 
 static void
 glfw_xkb_update_masks(_GLFWXKBData *xkb) {
     // Should find better solution under Wayland
-    // See https://github.com/kovidgoyal/kitty/pull/3430 for discussion
+    // See https://github.com/kovidgoyal/kitty/pull/3943 for discussion
 
-    if ( !local_modifier_mapping( xkb ) ) {
+    if ( getenv( "KITTY_WAYLAND_DETECT_MODIFIERS" ) == NULL || !local_modifier_mapping( xkb ) ) {
 #define S( a ) xkb->a##Idx = XKB_MOD_INVALID; xkb->a##Mask = 0
         S(hyper); S(meta);
 #undef S
