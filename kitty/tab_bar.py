@@ -121,6 +121,10 @@ class SupSub:
         return name.translate(table)
 
 
+class ExtraData:
+    pass
+
+
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
     if tab.needs_attention and draw_data.bell_on_tab:
         fg = screen.cursor.fg
@@ -169,10 +173,14 @@ def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int)
         screen.draw(title)
 
 
-DrawTabFunc = Callable[[DrawData, Screen, TabBarData, int, int, int, bool], int]
+DrawTabFunc = Callable[[DrawData, Screen, TabBarData, int, int, int, bool, ExtraData], int]
 
 
-def draw_tab_with_slant(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
+def draw_tab_with_slant(
+    draw_data: DrawData, screen: Screen, tab: TabBarData,
+    before: int, max_title_length: int, index: int, is_last: bool,
+    extra_data: ExtraData
+) -> int:
     left_sep, right_sep = ('', '') if draw_data.tab_bar_edge == 'top' else ('', '')
     tab_bg = as_rgb(color_as_int(draw_data.active_bg if tab.is_active else draw_data.inactive_bg))
     slant_fg = as_rgb(color_as_int(draw_data.default_bg))
@@ -210,7 +218,11 @@ def draw_tab_with_slant(draw_data: DrawData, screen: Screen, tab: TabBarData, be
     return screen.cursor.x
 
 
-def draw_tab_with_separator(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
+def draw_tab_with_separator(
+    draw_data: DrawData, screen: Screen, tab: TabBarData,
+    before: int, max_title_length: int, index: int, is_last: bool,
+    extra_data: ExtraData
+) -> int:
     tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
     screen.cursor.bg = as_rgb(color_as_int(tab_bg))
     if draw_data.leading_spaces:
@@ -234,7 +246,11 @@ def draw_tab_with_separator(draw_data: DrawData, screen: Screen, tab: TabBarData
     return end
 
 
-def draw_tab_with_fade(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
+def draw_tab_with_fade(
+    draw_data: DrawData, screen: Screen, tab: TabBarData,
+    before: int, max_title_length: int, index: int, is_last: bool,
+    extra_data: ExtraData
+) -> int:
     tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
     fade_colors = [as_rgb(color_as_int(alpha_blend(tab_bg, draw_data.default_bg, alpha))) for alpha in draw_data.alpha]
     for bg in fade_colors:
@@ -268,7 +284,11 @@ powerline_symbols: Dict[PowerlineStyle, Tuple[str, str]] = {
 }
 
 
-def draw_tab_with_powerline(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
+def draw_tab_with_powerline(
+    draw_data: DrawData, screen: Screen, tab: TabBarData,
+    before: int, max_title_length: int, index: int, is_last: bool,
+    extra_data: ExtraData
+) -> int:
     tab_bg = as_rgb(color_as_int(draw_data.active_bg if tab.is_active else draw_data.inactive_bg))
     tab_fg = as_rgb(color_as_int(draw_data.active_fg if tab.is_active else draw_data.inactive_fg))
     inactive_bg = as_rgb(color_as_int(draw_data.inactive_bg))
@@ -345,12 +365,16 @@ def load_custom_draw_tab() -> DrawTabFunc:
         return draw_tab_with_fade
 
     @wraps(func)
-    def draw_tab(draw_data: DrawData, screen: Screen, tab: TabBarData, before: int, max_title_length: int, index: int, is_last: bool) -> int:
+    def draw_tab(
+        draw_data: DrawData, screen: Screen, tab: TabBarData,
+        before: int, max_title_length: int, index: int, is_last: bool,
+        extra_data: ExtraData
+    ) -> int:
         try:
-            return func(draw_data, screen, tab, before, max_title_length, index, is_last)
+            return func(draw_data, screen, tab, before, max_title_length, index, is_last, extra_data)
         except Exception as e:
             log_error(f'Custom draw tab function failed with error: {e}')
-            return draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, index, is_last)
+            return draw_tab_with_fade(draw_data, screen, tab, before, max_title_length, index, is_last, extra_data)
 
     return draw_tab
 
@@ -486,13 +510,14 @@ class TabBar:
         max_title_length = max(1, (self.screen_geometry.xnum // max(1, len(data))) - 1)
         cr = []
         last_tab = data[-1] if data else None
+        ed = ExtraData()
 
         for i, t in enumerate(data):
             s.cursor.bg = self.active_bg if t.is_active else 0
             s.cursor.fg = self.active_fg if t.is_active else 0
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
-            end = self.draw_func(self.draw_data, s, t, before, max_title_length, i + 1, t is last_tab)
+            end = self.draw_func(self.draw_data, s, t, before, max_title_length, i + 1, t is last_tab, ed)
             s.cursor.bg = s.cursor.fg = 0
             cr.append((before, end))
             if s.cursor.x > s.columns - max_title_length and t is not last_tab:
