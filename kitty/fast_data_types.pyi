@@ -1058,6 +1058,9 @@ class Screen:
     def has_activity_since_last_focus(self) -> bool:
         pass
 
+    def insert_characters(self, num: int) -> None:
+        pass
+
 
 def set_tab_bar_render_data(
     os_window_id: int, xstart: float, ystart: float, dx: float, dy: float,

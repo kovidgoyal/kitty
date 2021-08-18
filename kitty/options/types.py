@@ -23,6 +23,7 @@ if typing.TYPE_CHECKING:
     choices_for_pointer_shape_when_dragging = typing.Literal['arrow', 'beam', 'hand']
     choices_for_pointer_shape_when_grabbed = typing.Literal['arrow', 'beam', 'hand']
     choices_for_strip_trailing_spaces = typing.Literal['always', 'never', 'smart']
+    choices_for_tab_bar_align = typing.Literal['left', 'center', 'right']
     choices_for_tab_bar_style = typing.Literal['fade', 'hidden', 'powerline', 'separator', 'slant', 'custom']
     choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
     choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
@@ -35,6 +36,7 @@ else:
     choices_for_pointer_shape_when_dragging = str
     choices_for_pointer_shape_when_grabbed = str
     choices_for_strip_trailing_spaces = str
+    choices_for_tab_bar_align = str
     choices_for_tab_bar_style = str
     choices_for_tab_powerline_style = str
     choices_for_tab_switch_strategy = str
@@ -404,6 +406,7 @@ option_names = (  # {{{
  'symbol_map',
  'sync_to_monitor',
  'tab_activity_symbol',
+ 'tab_bar_align',
  'tab_bar_background',
  'tab_bar_edge',
  'tab_bar_margin_height',
@@ -536,6 +539,7 @@ class Options:
     strip_trailing_spaces: choices_for_strip_trailing_spaces = 'never'
     sync_to_monitor: bool = True
     tab_activity_symbol: typing.Optional[str] = None
+    tab_bar_align: choices_for_tab_bar_align = 'left'
     tab_bar_background: typing.Optional[kitty.rgb.Color] = None
     tab_bar_edge: int = 3
     tab_bar_margin_height: TabBarMarginHeight = TabBarMarginHeight(outer=0, inner=0)

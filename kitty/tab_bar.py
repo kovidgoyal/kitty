@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
-from functools import lru_cache, wraps
+from functools import lru_cache, partial, wraps
 from typing import (
     Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
 )
@@ -415,6 +415,12 @@ class TabBar:
             self.draw_func = load_custom_draw_tab()
         else:
             self.draw_func = draw_tab_with_fade
+        if opts.tab_bar_align == 'center':
+            self.align: Callable[[], None] = partial(self.align_with_factor, 2)
+        elif opts.tab_bar_align == 'right':
+            self.align = self.align_with_factor
+        else:
+            self.align = lambda: None
 
     def patch_colors(self, spec: Dict[str, Any]) -> None:
         if 'active_tab_foreground' in spec:
@@ -497,6 +503,17 @@ class TabBar:
                 break
         s.erase_in_line(0, False)  # Ensure no long titles bleed after the last tab
         self.cell_ranges = cr
+        self.align()
+
+    def align_with_factor(self, factor: int = 1) -> None:
+        if not self.cell_ranges:
+            return
+        end = self.cell_ranges[-1][1]
+        if end < self.screen.columns - 1:
+            shift = (self.screen.columns - end) // factor
+            self.screen.cursor.x = 0
+            self.screen.insert_characters(shift)
+            self.cell_ranges = [(s + shift, e + shift) for (s, e) in self.cell_ranges]
 
     def destroy(self) -> None:
         self.screen.reset_callbacks()

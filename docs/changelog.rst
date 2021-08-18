@@ -7,6 +7,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 0.23.2 [future]
 ----------------------
 
+- A new option :option:`tab_bar_align` to draw the tab bar centered or right
+  aligned (:iss:`3946`)
+
 - Allow the user to supply a custom Python function to draw tab bar. See
   :option:`tab_bar_style`
 

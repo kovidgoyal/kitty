@@ -1152,6 +1152,14 @@ class Parser:
     def tab_activity_symbol(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_activity_symbol'] = tab_activity_symbol(val)
 
+    def tab_bar_align(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_tab_bar_align:
+            raise ValueError(f"The value {val} is not a valid choice for tab_bar_align")
+        ans["tab_bar_align"] = val
+
+    choices_for_tab_bar_align = frozenset(('left', 'center', 'right'))
+
     def tab_bar_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['tab_bar_background'] = to_color_or_none(val)
 

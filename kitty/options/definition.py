@@ -907,6 +907,8 @@ The tab bar style, can be one of:
 '''
     )
 
+opt('tab_bar_align', 'left', choices=('left', 'center', 'right'), long_text='The horizontal alignment of the tab bar')
+
 opt('tab_bar_min_tabs', '2',
     option_type='tab_bar_min_tabs', ctype='uint',
     long_text='The minimum number of tabs that must exist before the tab bar is shown'
