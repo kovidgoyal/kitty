@@ -4,8 +4,13 @@ Changelog
 |kitty| is a feature-rich, cross-platform, *fast*, GPU based terminal.
 To update |kitty|, :doc:`follow the instructions <binary>`.
 
-0.23.2 [future]
+0.24.0 [future]
 ----------------------
+
+- Integrate kitty closely with common shells such as zsh, fish and bash.
+  This allows lots of niceties such as jumping to previous prompts, opening the
+  output of the last command in a new window, etc. See :ref:`shell_integration`
+  for details.
 
 - A new option :opt:`tab_bar_align` to draw the tab bar centered or right
   aligned (:iss:`3946`)
@@ -15,6 +20,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Fix a regression that caused :option:`kitty --title` to not work when
   opening new OS windows using :option:`kitty --single-instance` (:iss:`3893`)
+
 
 0.23.1 [2021-08-17]
 ----------------------
@@ -40,11 +46,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new :doc:`themes kitten </kittens/themes>` to easily change kitty themes.
   Choose from almost two hundred themes in the `kitty themes repository
   <https://github.com/kovidgoyal/kitty-themes>`_
-
-- Integrate kitty closely with common shells such as zsh, fish and bash.
-  This allows lots of niceties such as jumping to previous prompts, opening the
-  output of the last command in a new window, etc. See :ref:`shell_integration`
-  for details.
 
 - A new style for the tab bar that makes tabs looks like the tabs in a physical
   tabbed file, see :opt:`tab_bar_style`
