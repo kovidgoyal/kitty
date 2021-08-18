@@ -73,9 +73,10 @@ Variables that influence kitty behavior
 
 .. envvar:: KITTY_WAYLAND_DETECT_MODIFIERS
 
-   When set to a non-empty value, kitty attempts to autodiscover XKB
-   modifiers under Wayland. It is possible for the autodiscovery to
-   fail; the default Wayland XKB mappings are used in this case.
+   When set to a non-empty value, kitty attempts to autodiscover XKB modifiers
+   under Wayland. This is useful if using non-standard modifers like hyper. It
+   is possible for the autodiscovery to fail; the default Wayland XKB mappings
+   are used in this case. See :pull:`3943` for details.
 
 
 Variables that kitty sets when running child programs
