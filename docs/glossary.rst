@@ -52,6 +52,10 @@ Variables that influence kitty behavior
    files. Defaults to :file:`~/.config/kitty`. For full details of the config
    directory lookup mechanism see, :option:`kitty --config`.
 
+.. envvar:: KITTY_CACHE_DIRECTORY
+
+   Controls where kitty stores cache files. Defaults to :file:`~/.cache/kitty`
+   or :file:`~/Library/Caches/kitty` on macOS.
 
 .. envvar:: VISUAL
 
@@ -62,6 +66,11 @@ Variables that influence kitty behavior
 .. envvar:: EDITOR
 
    Same as :envvar:`VISUAL`. Used if :envvar:`VISUAL` is not set.
+
+
+.. envvar:: GLFW_IM_MODULE
+
+   Set this to ``ibus`` to enable support for IME under X11.
 
 
 Variables that kitty sets when running child programs
