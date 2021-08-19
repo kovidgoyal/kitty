@@ -21,6 +21,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix a regression that caused :option:`kitty --title` to not work when
   opening new OS windows using :option:`kitty --single-instance` (:iss:`3893`)
 
+- icat kitten: Fix display of JPEG images that are rotated via EXIF data and
+  larger than available screen size (:iss:`3949`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

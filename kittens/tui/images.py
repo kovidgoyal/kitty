@@ -52,6 +52,7 @@ class Frame:
     canvas_y: int
     mode: str
     needs_blend: bool
+    dimensions_swapped: bool
     dispose: Dispose
     path: str = ''
 
@@ -71,6 +72,12 @@ class Frame:
             self.mode = 'rgba' if q in ('blend', 'true') else 'rgb'
             self.needs_blend = q == 'blend'
             self.dispose = getattr(Dispose, identify_data['dispose'].lower())
+            if identify_data.get('orientation') in ('5', '6', '7', '8'):
+                self.canvas_width, self.canvas_height = self.canvas_height, self.canvas_width
+                self.width, self.height = self.height, self.width
+                self.dimensions_swapped = True
+            else:
+                self.dimensions_swapped = False
 
     def __repr__(self) -> str:
         canvas = f'{self.canvas_width}x{self.canvas_height}:{self.canvas_x}+{self.canvas_y}'
@@ -143,7 +150,7 @@ def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 
 
 def identify(path: str) -> ImageData:
     import json
-    q = '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h","dpi":"%xx%y","dispose":"%D"},'
+    q = '{"fmt":"%m","canvas":"%g","transparency":"%A","gap":"%T","index":"%p","size":"%wx%h","dpi":"%xx%y","dispose":"%D","orientation":"%[EXIF:Orientation]"}'
     exe = find_exe('magick')
     if exe:
         cmd = [exe, 'identify']
