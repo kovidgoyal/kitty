@@ -199,6 +199,7 @@ void set_icon(Screen *self, PyObject*);
 void set_dynamic_color(Screen *self, unsigned int code, PyObject*);
 void clipboard_control(Screen *self, int code, PyObject*);
 void shell_prompt_marking(Screen *self, PyObject*);
+void file_transmission(Screen *self, PyObject*);
 void set_color_table_color(Screen *self, unsigned int code, PyObject*);
 void process_cwd_notification(Screen *self, unsigned int code, PyObject*);
 uint32_t* translation_table(uint32_t which);

@@ -445,6 +445,10 @@ dispatch_osc(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             START_DISPATCH
             DISPATCH_OSC(shell_prompt_marking);
             END_DISPATCH
+        case 5113:
+            START_DISPATCH
+            DISPATCH_OSC(file_transmission);
+            END_DISPATCH
         case 30001:
             REPORT_COMMAND(screen_push_dynamic_colors);
             screen_push_colors(screen, 0);

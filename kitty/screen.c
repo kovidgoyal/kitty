@@ -1787,6 +1787,12 @@ clipboard_control(Screen *self, int code, PyObject *data) {
 }
 
 void
+file_transmission(Screen *self, PyObject *data) {
+    if (PyUnicode_READY(data) != 0) { PyErr_Clear(); return; }
+    CALLBACK("file_transmission", "O", data);
+}
+
+void
 shell_prompt_marking(Screen *self, PyObject *data) {
     if (PyUnicode_READY(data) != 0) { PyErr_Clear(); return; }
     if (PyUnicode_GET_LENGTH(data) > 0 && self->cursor->y < self->lines) {

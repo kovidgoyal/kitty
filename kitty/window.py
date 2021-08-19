@@ -799,6 +799,10 @@ class Window:
     def send_cmd_response(self, response: Any) -> None:
         self.screen.send_escape_code_to_child(DCS, '@kitty-cmd' + json.dumps(response))
 
+    def file_transmission(self, data: str) -> None:
+        from .file_transmission import parse_command
+        parse_command(data)
+
     def clipboard_control(self, data: str, is_partial: bool = False) -> None:
         where, text = data.partition(';')[::2]
         if is_partial:
