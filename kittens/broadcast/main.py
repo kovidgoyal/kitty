@@ -32,7 +32,13 @@ class Broadcast(Handler):
             self.payload['all'] = True
 
     def initialize(self) -> None:
-        self.print('Type the text to broadcast below, press', styled('Ctrl+c', fg='yellow'), 'to quit:')
+        msg = ['Type the text to broadcast below,']
+        if self.send_interrupt:
+            msg += ['close window']
+        else:
+            msg += ['press', styled('Ctrl+c', fg='yellow')]
+        msg += ['to quit:']
+        self.print(*msg)
         for x in self.initial_strings:
             self.write_broadcast_text(x)
         self.write(SAVE_CURSOR)
@@ -52,6 +58,12 @@ class Broadcast(Handler):
         self.commit_line()
 
     def on_interrupt(self) -> None:
+        if self.send_interrupt:
+            self.write_broadcast_text('\x03')
+            self.print('^C')
+            self.line_edit.clear()
+            self.write(SAVE_CURSOR)
+            return
         self.quit_loop(0)
 
     def on_eot(self) -> None:
@@ -80,8 +92,14 @@ class Broadcast(Handler):
         send = create_basic_command('send-text', payload, no_response=True)
         self.write(encode_send(send))
 
+HANDLE_ITERRUPT = '''\
+--ctrl-c -c
+type=bool-set
+Send :bold:`ctrl+c` signal to the windows as is. To finish the broadcast press
+the :italic:`close_window` shortcut, :bold:`kitty_mod+w` by default.
+'''
 
-OPTIONS = (MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t')).format
+OPTIONS = (MATCH_WINDOW_OPTION + '\n\n' + MATCH_TAB_OPTION.replace('--match -m', '--match-tab -t') + '\n\n' + HANDLE_ITERRUPT).format
 help_text = 'Broadcast typed text to all kitty windows. By default text is sent to all windows, unless one of the matching options is specified'
 usage = '[initial text to send ...]'
 
