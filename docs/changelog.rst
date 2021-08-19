@@ -26,6 +26,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - macOS: Fix SIGUSR1 quitting kitty instead of reloading the config file (:iss:`3952`)
 
+- Launch command: Allow specifying the OS window title
+
 
 0.23.1 [2021-08-17]
 ----------------------

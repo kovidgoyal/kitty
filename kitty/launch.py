@@ -164,6 +164,11 @@ Set the WM_NAME property on X11 for the newly created OS Window when using
 :option:`launch --type`=os-window. Defaults to :option:`launch --os-window-class`.
 
 
+--os-window-title
+Set the title for the newly created OS window. This title will override any
+titles set by programs running in kitty.
+
+
 --color
 type=list
 Change colors in the newly launched window. You can either specify a path to a .conf
@@ -204,7 +209,7 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab]
         else:
             tab = None
     elif opts.type == 'os-window':
-        oswid = boss.add_os_window(wclass=opts.os_window_class, wname=opts.os_window_name)
+        oswid = boss.add_os_window(wclass=opts.os_window_class, wname=opts.os_window_name, override_title=opts.os_window_title or None)
         tm = boss.os_window_map[oswid]
         tab = tm.new_tab(empty_tab=True)
         if opts.tab_title and tab is not None:
