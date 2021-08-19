@@ -28,6 +28,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Launch command: Allow specifying the OS window title
 
+- broadcast kitten: Allow broadcasting :kbd:`ctrl+c` (:pull:`3956`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

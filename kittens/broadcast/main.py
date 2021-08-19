@@ -31,7 +31,7 @@ class Broadcast(Handler):
             self.payload['all'] = True
 
     def initialize(self) -> None:
-        self.print('Type the text to broadcast below, press', styled('Ctrl+c', fg='yellow'), 'to quit:')
+        self.print('Type the text to broadcast below, press', styled('Ctrl+Esc', fg='yellow'), 'to quit:')
         for x in self.initial_strings:
             self.write_broadcast_text(x)
         self.write(SAVE_CURSOR)
@@ -51,7 +51,9 @@ class Broadcast(Handler):
         self.commit_line()
 
     def on_interrupt(self) -> None:
-        self.quit_loop(0)
+        self.write_broadcast_text('\x03')
+        self.line_edit.clear()
+        self.commit_line()
 
     def on_eot(self) -> None:
         self.write_broadcast_text('\x04')
@@ -64,6 +66,9 @@ class Broadcast(Handler):
             self.print('')
             self.line_edit.clear()
             self.write(SAVE_CURSOR)
+            return
+        if key_event.matches('ctrl+esc'):
+            self.quit_loop(0)
             return
 
         ek = encode_key_event(key_event)
