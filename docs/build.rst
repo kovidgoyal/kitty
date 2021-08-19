@@ -85,18 +85,17 @@ you might have to rebuild the app.
    `bypy framework <https://github.com/kovidgoyal/bypy>`_ however, that is
    designed to run on Linux and is not for the faint of heart.
 
-
 .. note::
    Apple disallows certain functionality, such as notifications for unsigned applications.
    If you need this functionality, you can try signing the built kitty.app with
    a self signed certificate, see for example, `here
    <https://stackoverflow.com/questions/27474751/how-can-i-codesign-an-app-without-being-in-the-mac-developer-program/27474942>`_.
 
-
 .. note::
-   If you are facing issues with ``linker`` while building, try with a ``brew`` installed python instead.
-   Or check `this thread
-   <https://github.com/kovidgoyal/kitty/issues/289>`_ for different solutions.
+   If you are facing issues with ``linker`` while building,
+   try with a ``brew`` installed python instead, see :iss:`289`
+   for more discussion.
+
 
 Build and run from source with Nix
 -------------------------------------------
