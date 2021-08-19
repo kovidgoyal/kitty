@@ -24,6 +24,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - icat kitten: Fix display of JPEG images that are rotated via EXIF data and
   larger than available screen size (:iss:`3949`)
 
+- macOS: Fix SIGUSR1 quitting kitty instead of reloading the config file (:iss:`3952`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

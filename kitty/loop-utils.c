@@ -106,7 +106,7 @@ install_signal_handlers(LoopData *ld) {
     signal_write_fd = ld->signal_fds[1];
     struct sigaction act = {.sa_handler=handle_signal};
 #define SA(which) { if (sigaction(which, &act, NULL) != 0) return false; if (siginterrupt(which, false) != 0) return false; }
-    SA(SIGINT); SA(SIGTERM); SA(SIGCHLD);
+    SA(SIGINT); SA(SIGTERM); SA(SIGCHLD); SA(SIGUSR1);
 #undef SA
     ld->signal_read_fd = ld->signal_fds[0];
 #endif
