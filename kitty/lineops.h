@@ -64,7 +64,7 @@ left_shift_line(Line *line, index_type at, index_type num) {
         COPY_CELL(line, i + num, line, i);
     }
     const CellAttrs empty = {.width=1};
-    const CellAttrs zero = {0};
+    const CellAttrs zero = {{0}};
     if (at < line->xnum && line->gpu_cells[at].attrs.width != 1) {
         line->cpu_cells[at].ch = BLANK_CHAR;
         line->cpu_cells[at].hyperlink_id = 0;
