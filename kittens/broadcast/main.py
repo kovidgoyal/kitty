@@ -25,7 +25,7 @@ class Broadcast(Handler):
     def __init__(self, opts: BroadcastCLIOptions, initial_strings: List[str]) -> None:
         self.opts = opts
         self.initial_strings = initial_strings
-        self.payload = {'exclude_active': True, 'data': '', 'match': opts.match_tab, 'match_tab': opts.match_tab}
+        self.payload = {'exclude_active': True, 'data': '', 'match': opts.match, 'match_tab': opts.match_tab}
         self.line_edit = LineEdit()
         if not opts.match and not opts.match_tab:
             self.payload['all'] = True
@@ -98,7 +98,6 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
             input(_('Press Enter to quit'))
         return None
 
-    print('Type text to be broadcast below, Ctrl-C to quit:', end='\r\n')
     sys.stdout.flush()
     loop = Loop()
     handler = Broadcast(opts, items)
