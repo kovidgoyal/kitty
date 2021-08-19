@@ -13,7 +13,7 @@ from gettext import gettext as _
 from itertools import chain
 from typing import (
     Any, Callable, Deque, Dict, Iterable, List, NamedTuple, Optional, Pattern,
-    Sequence, Tuple, Union
+    Sequence, Tuple, Union, TYPE_CHECKING
 )
 
 from .child import ProcessDesc
@@ -47,6 +47,10 @@ from .utils import (
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
+
+
+if TYPE_CHECKING:
+    from .file_transmission import FileTransmission
 
 
 class WindowDict(TypedDict):
@@ -357,6 +361,14 @@ class Window:
             self.screen.copy_colors_from(copy_colors_from.screen)
         else:
             setup_colors(self.screen, opts)
+
+    @property
+    def file_transmission_control(self) -> 'FileTransmission':
+        ans: Optional['FileTransmission'] = getattr(self, '_file_transmission', None)
+        if ans is None:
+            from .file_transmission import FileTransmission
+            ans = self._file_transmission = FileTransmission(self.id)
+        return ans
 
     def on_dpi_change(self, font_sz: float) -> None:
         self.update_effective_padding()
@@ -800,8 +812,7 @@ class Window:
         self.screen.send_escape_code_to_child(DCS, '@kitty-cmd' + json.dumps(response))
 
     def file_transmission(self, data: str) -> None:
-        from .file_transmission import parse_command
-        parse_command(data)
+        self.file_transmission_control.handle_serialized_command(data)
 
     def clipboard_control(self, data: str, is_partial: bool = False) -> None:
         where, text = data.partition(';')[::2]
