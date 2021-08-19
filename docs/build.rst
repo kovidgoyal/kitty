@@ -92,6 +92,12 @@ you might have to rebuild the app.
    a self signed certificate, see for example, `here
    <https://stackoverflow.com/questions/27474751/how-can-i-codesign-an-app-without-being-in-the-mac-developer-program/27474942>`_.
 
+
+.. note::
+   If you are facing issues with ``linker`` while building, try with a ``brew`` installed python instead.
+   Or check `this thread
+   <https://github.com/kovidgoyal/kitty/issues/289>`_ for different solutions.
+
 Build and run from source with Nix
 -------------------------------------------
 
