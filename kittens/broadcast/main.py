@@ -25,7 +25,8 @@ class Broadcast(Handler):
     def __init__(self, opts: BroadcastCLIOptions, initial_strings: List[str]) -> None:
         self.opts = opts
         self.initial_strings = initial_strings
-        self.payload = {'exclude_active': True, 'data': '', 'match': opts.match_tab, 'match_tab': opts.match_tab}
+        self.payload = {'exclude_active': True, 'data': '', 'match': opts.match, 'match_tab': opts.match_tab}
+        self.send_interrupt = opts.ctrl_c
         self.line_edit = LineEdit()
         if not opts.match and not opts.match_tab:
             self.payload['all'] = True
