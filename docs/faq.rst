@@ -137,9 +137,6 @@ Or you can enable :doc:`remote control <remote-control>` for |kitty| and use :re
 The shortcut mapping technique has the same syntax as the remote control
 command, for details, see :ref:`at_set-colors`.
 
-A list of pre-made color themes for kitty is available at:
-`kitty-themes <https://github.com/dexpota/kitty-themes>`_
-
 Examples of using OSC escape codes to set colors::
 
     Change the default foreground color:
