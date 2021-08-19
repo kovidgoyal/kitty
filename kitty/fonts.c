@@ -1214,7 +1214,14 @@ render_run(FontGroup *fg, CPUCell *first_cpu_cell, GPUCell *first_gpu_cell, inde
 
 static bool
 is_non_emoji_dingbat(char_type ch) {
-    return 0x2700 <= ch && ch <= 0x27bf && !is_emoji(ch);
+    switch(ch) {
+        START_ALLOW_CASE_RANGE
+        case 0x2700 ... 0x27bf:
+        case 0x1f100 ... 0x1f1ff:
+            return !is_emoji(ch);
+        END_ALLOW_CASE_RANGE
+    }
+    return false;
 }
 
 void

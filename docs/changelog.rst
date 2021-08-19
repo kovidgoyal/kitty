@@ -30,6 +30,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - broadcast kitten: Allow broadcasting :kbd:`ctrl+c` (:pull:`3956`)
 
+- Fix space ligatures not working with Iosevka for some characters in the
+  Enclosed Alphanumeric Supplement (:iss:`3954`)
+
 
 0.23.1 [2021-08-17]
 ----------------------
