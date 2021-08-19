@@ -99,7 +99,6 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
             input(_('Press Enter to quit'))
         return None
 
-    print('Type text to be broadcast below, Ctrl-C to quit:', end='\r\n')
     sys.stdout.flush()
     loop = Loop()
     handler = Broadcast(opts, items)
