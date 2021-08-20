@@ -541,8 +541,9 @@ class Boss:
             self.confirm_tab_close(tab)
 
     def confirm_tab_close(self, tab: Tab) -> None:
-        num = tab.number_of_windows_with_running_programs
-        needs_confirmation = get_options().confirm_os_window_close > 0 and num >= get_options().confirm_os_window_close
+        x = get_options().confirm_os_window_close
+        num = tab.number_of_windows_with_running_programs if x < 0 else len(tab)
+        needs_confirmation = x != 0 and num >= abs(x)
         if not needs_confirmation:
             self.close_tab_no_confirm(tab)
             return
@@ -930,8 +931,9 @@ class Boss:
 
     def confirm_os_window_close(self, os_window_id: int) -> None:
         tm = self.os_window_map.get(os_window_id)
-        num = 0 if tm is None else tm.number_of_windows_with_running_programs
-        needs_confirmation = tm is not None and get_options().confirm_os_window_close > 0 and num >= get_options().confirm_os_window_close
+        q = get_options().confirm_os_window_close
+        num = 0 if tm is None else (tm.number_of_windows_with_running_programs if q < 0 else tm.number_of_windows)
+        needs_confirmation = tm is not None and q != 0 and num >= abs(q)
         if not needs_confirmation:
             mark_os_window_for_close(os_window_id)
             return
@@ -967,9 +969,10 @@ class Boss:
     def quit(self, *args: Any) -> None:
         tm = self.active_tab
         num = 0
+        x = get_options().confirm_os_window_close
         for q in self.os_window_map.values():
-            num += q.number_of_windows_with_running_programs
-        needs_confirmation = tm is not None and get_options().confirm_os_window_close > 0 and num >= get_options().confirm_os_window_close
+            num += q.number_of_windows_with_running_programs if x < 0 else q.number_of_windows
+        needs_confirmation = tm is not None and x != 0 and num >= abs(x)
         if not needs_confirmation:
             set_application_quit_request(IMPERATIVE_CLOSE_REQUESTED)
             return

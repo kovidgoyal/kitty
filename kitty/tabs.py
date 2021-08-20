@@ -814,6 +814,13 @@ class TabManager:  # {{{
             count += tab.number_of_windows_with_running_programs
         return count
 
+    @property
+    def number_of_windows(self) -> int:
+        count = 0
+        for tab in self:
+            count += len(tab)
+        return count
+
     def tab_for_id(self, tab_id: int) -> Optional[Tab]:
         for t in self.tabs:
             if t.id == tab_id:

@@ -880,7 +880,7 @@ class Parser:
         ans['command_on_bell'] = to_cmdline(val)
 
     def confirm_os_window_close(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['confirm_os_window_close'] = positive_int(val)
+        ans['confirm_os_window_close'] = int(val)
 
     def copy_on_select(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['copy_on_select'] = copy_on_select(val)
