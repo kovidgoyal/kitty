@@ -76,6 +76,7 @@ def atomic_symlink(destination: str, in_directory: str) -> str:
 def setup_fish_integration() -> None:
     base = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config'))
     base = os.path.join(base, 'fish')
+    os.makedirs(os.path.join(base, 'completions'), exist_ok=True)
     path = os.path.join(shell_integration_dir, 'kitty.fish')
     atomic_symlink(path, os.path.join(base, 'conf.d'))
     from .complete import completion_scripts
