@@ -58,7 +58,7 @@ Changing the theme non-interactively
 You can specify the theme name as an argument when invoking the kitten
 to have it change to that theme instantly. For example::
 
-    kitty +kitten theme --reload-in=all Dimmed Monokai
+    kitty +kitten themes --reload-in=all Dimmed Monokai
 
 Will change the theme to ``Dimmed Monokai`` in all running kitty
 instances. See below for more details on non-interactive operation.
