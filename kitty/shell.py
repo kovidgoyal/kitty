@@ -30,7 +30,8 @@ def match_commands() -> Tuple[str, ...]:
     return tuple(sorted(all_commands + ('exit', 'help', 'quit')))
 
 
-def init_readline(readline: Any) -> None:
+@run_once
+def init_readline() -> None:
     with suppress(OSError):
         readline.read_init_file()
     if 'libedit' in readline.__doc__:
@@ -155,7 +156,7 @@ def run_cmd(global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, it
 
 
 def real_main(global_opts: RCOptions) -> None:
-    init_readline(readline)
+    init_readline()
     print_help_for_seq.allow_pager = False
     print('Welcome to the kitty shell!')
     print('Use {} for assistance or {} to quit'.format(green('help'), green('exit')))

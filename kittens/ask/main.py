@@ -160,7 +160,7 @@ def main(args: List[str]) -> Response:
     import readline as rl
     readline = rl
     from kitty.shell import init_readline
-    init_readline(readline)
+    init_readline()
     response = None
 
     with alternate_screen(), HistoryCompleter(cli_opts.name):
