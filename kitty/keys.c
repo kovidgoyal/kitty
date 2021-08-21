@@ -204,10 +204,10 @@ on_key_input(GLFWkeyevent *ev) {
     int size = encode_glfw_key_event(ev, screen->modes.mDECCKM, screen_current_key_encoding_flags(screen), encoded_key);
     if (size == SEND_TEXT_TO_CHILD) {
         schedule_write_to_child(w->id, 1, text, strlen(text));
-        debug("sent text to child\n");
+        debug("sent key as text to child\n");
     } else if (size > 0) {
         schedule_write_to_child(w->id, 1, encoded_key, size);
-        debug("sent key to child\n");
+        debug("sent encoded key to child\n");
     } else {
         debug("ignoring as keyboard mode does not support encoding this event\n");
     }
