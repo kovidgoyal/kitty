@@ -15,7 +15,7 @@ from functools import lru_cache
 from time import monotonic
 from typing import (
     TYPE_CHECKING, Any, Callable, Dict, Generator, Iterable, List, Mapping,
-    Match, NamedTuple, Optional, Tuple, Union, cast
+    Match, NamedTuple, Optional, Pattern, Tuple, Union, cast
 )
 
 from .constants import (
@@ -27,8 +27,8 @@ from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
 
 if TYPE_CHECKING:
-    from .options.types import Options
     from .fast_data_types import OSWindowSize
+    from .options.types import Options
 else:
     Options = object
 
@@ -748,6 +748,7 @@ def is_kitty_gui_cmdline(*cmd: str) -> bool:
 
 def reload_conf_in_all_kitties() -> None:
     import signal
+
     from kitty.child import cmdline_of_process  # type: ignore
     for pid in get_all_processes():
         try:
@@ -756,3 +757,12 @@ def reload_conf_in_all_kitties() -> None:
             continue
         if cmd and is_kitty_gui_cmdline(*cmd):
             os.kill(pid, signal.SIGUSR1)
+
+
+@run_once
+def control_codes_pat() -> Pattern:
+    return re.compile('[\x00-\x09\x0b-\x1f\x7f\x80-\x9f]')
+
+
+def sanitize_control_codes(text: str, replace_with: str = '') -> str:
+    return cast(str, control_codes_pat().sub(replace_with, text))
