@@ -581,6 +581,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
         *num_content_lines_before = 0;
         return;
     }
+    bool first_empty_line_is_output_start = first + 1 < self->ynum && self->line_attrs[first + 1].is_output_start;
 
     TrackCursor tcarr[3] = {{.x = *track_x, .y = *track_y }, {.x = *track_x2, .y = *track_y2}, {.is_sentinel = true}};
     rewrap_inner(self, other, first + 1, historybuf, (TrackCursor*)tcarr, as_ansi_buf);
@@ -589,6 +590,7 @@ linebuf_rewrap(LineBuf *self, LineBuf *other, index_type *num_content_lines_befo
     *num_content_lines_after = other->line->ynum + 1;
     for (i = 0; i < *num_content_lines_after; i++) other->line_attrs[i].has_dirty_text = true;
     *num_content_lines_before = first + 1;
+    if (first_empty_line_is_output_start && other->line->ynum + 1 < other->ynum) other->line_attrs[other->line->ynum + 1].is_output_start = true;
 }
 
 static PyObject*
