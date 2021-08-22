@@ -117,7 +117,7 @@ class ZlibDecompressor:
 
 
 def resolve_name(name: str, base: str) -> Optional[str]:
-    if name.startswith('/'):
+    if name.startswith('/') or os.path.isabs(name):
         return None
     base = os.path.abspath(base)
     q = os.path.abspath(os.path.join(base, name))
