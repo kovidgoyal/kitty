@@ -17,7 +17,7 @@ from typing import (
 from kitty.cli import parse_args
 from kitty.cli_stub import HintsCLIOptions
 from kitty.constants import website_url
-from kitty.fast_data_types import set_clipboard_string
+from kitty.fast_data_types import get_options, set_clipboard_string
 from kitty.key_encoding import KeyEvent
 from kitty.typing import BossType, KittyCommonOpts
 from kitty.utils import ScreenSize, screen_size_function, set_primary_selection
@@ -778,7 +778,7 @@ def handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, 
             set_primary_selection(joined_text())
         else:
             cwd = data['cwd']
-            program = None if program == 'default' else program
+            program = get_options().open_url_with if program == 'default' else program
             if text_type == 'hyperlink':
                 w = boss.window_id_map.get(target_window_id)
                 for m in matches:

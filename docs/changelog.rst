@@ -33,6 +33,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix space ligatures not working with Iosevka for some characters in the
   Enclosed Alphanumeric Supplement (:iss:`3954`)
 
+- hints kitten: Fix a regression that caused using the default open program
+  to trigger open actions instead of running the program (:iss:`3968`)
+
 
 0.23.1 [2021-08-17]
 ----------------------
