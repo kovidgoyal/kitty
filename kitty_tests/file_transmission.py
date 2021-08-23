@@ -35,6 +35,11 @@ class TestFileTransmission(BaseTest):
     def tearDown(self):
         shutil.rmtree(self.tdir)
 
+    def assertPathEqual(self, a, b):
+        a = os.path.abspath(os.path.realpath(a))
+        b = os.path.abspath(os.path.realpath(b))
+        self.ae(a, b)
+
     def test_file_put(self):
         # send refusal
         for quiet in (0, 1, 2):
@@ -52,7 +57,7 @@ class TestFileTransmission(BaseTest):
             self.assertIsNone(ft.active_cmds[''].file)
             self.ae(ft.test_responses, [] if quiet else [{'status': 'OK'}])
             ft.handle_serialized_command(serialized_cmd(action='data', data='abcd'))
-            self.ae(ft.active_cmds[''].file.name, dest)
+            self.assertPathEqual(ft.active_cmds[''].file.name, dest)
             ft.handle_serialized_command(serialized_cmd(action='end_data', data='123'))
             self.assertFalse(ft.active_cmds)
             self.ae(ft.test_responses, [] if quiet else [{'status': 'OK'}, {'status': 'COMPLETED'}])
