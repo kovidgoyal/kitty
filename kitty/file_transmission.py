@@ -157,10 +157,14 @@ class TarExtractor:
             targetpath = resolve_name(tinfo.name, dest)
             if targetpath is None:
                 continue
+            upperdirs = os.path.dirname(targetpath)
+            os.makedirs(upperdirs, exist_ok=True)
             if tinfo.isdir():
                 self.tf.makedir(tinfo, targetpath)
                 directories.append((targetpath, copy.copy(tinfo)))
                 continue
+            if tinfo.islnk():
+                tinfo._link_target = os.path.join(upperdirs, tinfo.linkname)  # type: ignore
             if tinfo.isfile():
                 self.tf.makefile(tinfo, targetpath)
             elif tinfo.isfifo():
@@ -189,9 +193,8 @@ class ZipExtractor:
     def __call__(self, dest: str) -> None:
         for zinfo in self.zf.infolist():
             targetpath = resolve_name(zinfo.filename, dest)
-            if targetpath is None:
-                continue
-            self.zf.extract(zinfo, targetpath)
+            if targetpath is not None:
+                self.zf.extract(zinfo, dest)
 
 
 class ActiveCommand:
@@ -357,8 +360,10 @@ class FileTransmission:
                         Container.extractor_for_container_fmt(cmd.file, cmd.ftc.container_fmt)(cmd.dest)
                     except OSError as e:
                         self.send_fail_on_os_error(cmd.ftc, e, 'Failed to extract files from container')
+                        raise
                     except Exception:
                         self.send_response(cmd.ftc, status='EFAIL:Failed to extract files from container')
+                        raise
                 if not cmd.ftc.quiet:
                     self.send_response(cmd.ftc, status='COMPLETED')
             finally:
