@@ -7,6 +7,7 @@ import errno
 import os
 import tempfile
 from base64 import standard_b64decode, standard_b64encode
+from contextlib import suppress
 from enum import Enum, auto
 from functools import partial
 from typing import IO, TYPE_CHECKING, Any, Dict, List, Optional, Union
@@ -25,6 +26,7 @@ class Action(Enum):
     end_data = auto()
     receive = auto()
     invalid = auto()
+    cancel = auto()
 
 
 class Container(Enum):
@@ -206,6 +208,15 @@ class ActiveCommand:
             self.file.close()
             self.file = None
 
+    def cancel(self) -> None:
+        needs_delete = self.file is not None and self.file.name and self.ftc.container_fmt is Container.none
+        if needs_delete:
+            fname = getattr(self.file, 'name')
+        self.close()
+        if needs_delete:
+            with suppress(FileNotFoundError):
+                os.unlink(fname)
+
 
 class FileTransmission:
 
@@ -226,13 +237,18 @@ class FileTransmission:
         except Exception as e:
             log_error(f'Failed to parse file transmission command with error: {e}')
             return
-        if cmd.id in self.active_cmds and cmd.action not in (Action.data, Action.end_data):
+        if cmd.id in self.active_cmds and cmd.action not in (Action.data, Action.end_data, Action.cancel):
             log_error('File transmission command received while another is in flight, aborting')
+            self.active_cmds[cmd.id].close()
             del self.active_cmds[cmd.id]
 
         if cmd.action is Action.send:
             self.active_cmds[cmd.id] = ActiveCommand(cmd)
             self.start_send(cmd)
+        elif cmd.action is Action.cancel:
+            ac = self.active_cmds.pop(cmd.id, None)
+            if ac is not None:
+                ac.cancel()
         elif cmd.action in (Action.data, Action.end_data):
             if cmd.id not in self.active_cmds:
                 log_error('File transmission data command received with unknown id')
