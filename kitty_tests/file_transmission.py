@@ -36,8 +36,24 @@ class TestFileTransmission(BaseTest):
         shutil.rmtree(self.tdir)
 
     def test_file_put(self):
+        # send refusal
+        for quiet in (0, 1, 2):
+            ft = FileTransmission()
+            ft.handle_serialized_command(serialized_cmd(action='send', id='x', quiet=quiet))
+            self.ae(ft.test_responses, [] if quiet == 2 else [{'status': 'EPERM:User refused the transfer', 'id': 'x'}])
+            self.assertFalse(ft.active_cmds)
+        # simple single file send
         ft = FileTransmission()
-        ft.handle_serialized_command(serialized_cmd(action='send', id='1', dest=os.path.join(self.tdir, '1.bin')))
-        self.assertIn('1', ft.active_cmds)
-        self.ae(os.path.basename(ft.active_cmds['1'].dest), '1.bin')
-        self.assertIsNone(ft.active_cmds['1'].file)
+        dest = os.path.join(self.tdir, '1.bin')
+        ft.handle_serialized_command(serialized_cmd(action='send', dest=dest))
+        self.assertIn('', ft.active_cmds)
+        self.ae(os.path.basename(ft.active_cmds[''].dest), '1.bin')
+        self.assertIsNone(ft.active_cmds[''].file)
+        self.ae(ft.test_responses, [{'status': 'OK'}])
+        ft.handle_serialized_command(serialized_cmd(action='data', data='abcd'))
+        self.assertIsNotNone(ft.active_cmds[''].file)
+        ft.handle_serialized_command(serialized_cmd(action='end_data', data='123'))
+        self.assertFalse(ft.active_cmds)
+        self.ae(ft.test_responses, [{'status': 'OK'}, {'status': 'COMPLETED'}])
+        with open(dest) as f:
+            self.ae(f.read(), 'abcd123')
