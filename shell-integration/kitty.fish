@@ -49,17 +49,21 @@ function _ksi_main
         end
 
         function _ksi_start_prompt
+            set --local cmd_status "$status"
             if test "$_ksi_prompt_state" != "postexec" -a "$_ksi_prompt_state" != "first-run"
                 _ksi_mark "D"
             end
             set --global _ksi_prompt_state "prompt_start"
             _ksi_mark "A"
+            return "$cmd_status" # preserve the value of $status
         end
 
         function _ksi_end_prompt
+            set --local cmd_status "$status"
             _ksi_original_fish_prompt
             set --global _ksi_prompt_state "prompt_end"
             _ksi_mark "B"
+            return "$cmd_status" # preserve the value of $status
         end
 
         functions -c fish_prompt _ksi_original_fish_prompt
