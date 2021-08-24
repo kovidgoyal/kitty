@@ -40,14 +40,14 @@ def serialized_cmd(**fields) -> str:
 class TestFileTransmission(BaseTest):
 
     def setUp(self):
-        self.tdir = tempfile.mkdtemp()
+        self.tdir = os.path.realpath(tempfile.mkdtemp())
 
     def tearDown(self):
         shutil.rmtree(self.tdir)
 
     def clean_tdir(self):
         shutil.rmtree(self.tdir)
-        self.tdir = tempfile.mkdtemp()
+        self.tdir = os.path.realpath(tempfile.mkdtemp())
 
     def assertPathEqual(self, a, b):
         a = os.path.abspath(os.path.realpath(a))
@@ -157,8 +157,8 @@ class TestFileTransmission(BaseTest):
             st = os.stat(f.name)
             self.ae(st.st_mode & 0b111111111, 0o717)
             self.ae(st.st_mtime, 13)
-            self.ae(os.path.realpath(os.path.join(dest, 'sym')), f.name)
-            self.ae(os.path.realpath(os.path.join(dest, 'asym')), '/abstarget')
+            self.assertPathEqual(os.path.join(dest, 'sym'), f.name)
+            self.assertPathEqual(os.path.join(dest, 'asym'), '/abstarget')
             self.assertTrue(os.path.samefile(f.name, os.path.join(dest, 'link')))
             self.ae({'tf', 'tf/a.txt', 'tf/sym', 'tf/asym', 'tf/link'}, set(names_in(self.tdir)))
             self.ae(len(os.listdir(self.tdir)), 1)
