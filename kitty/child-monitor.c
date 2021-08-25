@@ -245,7 +245,6 @@ schedule_write_to_child(unsigned long id, unsigned int num, ...) {
     children_mutex(lock);
     for (size_t i = 0; i < self->count; i++) {
         if (children[i].id == id) {
-            found = true;
             Screen *screen = children[i].screen;
             screen_mutex(lock, write);
             size_t space_left = screen->write_buf_sz - screen->write_buf_used;
@@ -259,6 +258,7 @@ schedule_write_to_child(unsigned long id, unsigned int num, ...) {
                 screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
                 if (screen->write_buf == NULL) { fatal("Out of memory."); }
             }
+            found = true;
             va_start(ap, num);
             for (unsigned int i = 0; i < num; i++) {
                 data = va_arg(ap, const char*);

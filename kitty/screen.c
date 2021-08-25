@@ -755,14 +755,17 @@ write_to_test_child(Screen *self, const char *data, size_t sz) {
     PyObject *r = PyObject_CallMethod(self->test_child, "write", "y#", data, sz); if (r == NULL) PyErr_Print(); Py_CLEAR(r);
 }
 
-static void
+static bool
 write_to_child(Screen *self, const char *data, size_t sz) {
-    if (self->window_id) schedule_write_to_child(self->window_id, 1, data, sz);
+    bool written = false;
+    if (self->window_id) written = schedule_write_to_child(self->window_id, 1, data, sz);
     if (self->test_child != Py_None) { write_to_test_child(self, data, sz); }
+    return written;
 }
 
-void
+bool
 write_escape_code_to_child(Screen *self, unsigned char which, const char *data) {
+    bool written = false;
     const char *prefix, *suffix = self->modes.eight_bit_controls ? "\x9c" : "\033\\";
     switch(which) {
         case DCS:
@@ -785,9 +788,9 @@ write_escape_code_to_child(Screen *self, unsigned char which, const char *data) 
     }
     if (self->window_id) {
         if (suffix[0]) {
-            schedule_write_to_child(self->window_id, 3, prefix, strlen(prefix), data, strlen(data), suffix, strlen(suffix));
+            written = schedule_write_to_child(self->window_id, 3, prefix, strlen(prefix), data, strlen(data), suffix, strlen(suffix));
         } else {
-            schedule_write_to_child(self->window_id, 2, prefix, strlen(prefix), data, strlen(data));
+            written = schedule_write_to_child(self->window_id, 2, prefix, strlen(prefix), data, strlen(data));
         }
     }
     if (self->test_child != Py_None) {
@@ -795,6 +798,7 @@ write_escape_code_to_child(Screen *self, unsigned char which, const char *data) 
         write_to_test_child(self, data, strlen(data));
         if (suffix[0]) write_to_test_child(self, suffix, strlen(suffix));
     }
+    return written;
 }
 
 static bool
@@ -3162,8 +3166,8 @@ send_escape_code_to_child(Screen *self, PyObject *args) {
     int code;
     char *text;
     if (!PyArg_ParseTuple(args, "is", &code, &text)) return NULL;
-    write_escape_code_to_child(self, code, text);
-    Py_RETURN_NONE;
+    if (write_escape_code_to_child(self, code, text)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
 }
 
 static void

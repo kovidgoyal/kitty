@@ -992,7 +992,7 @@ class Screen:
     def resize(self, width: int, height: int) -> None:
         pass
 
-    def send_escape_code_to_child(self, code: int, text: str) -> None:
+    def send_escape_code_to_child(self, code: int, text: str) -> bool:
         pass
 
     def reset_callbacks(self) -> None:

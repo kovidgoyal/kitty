@@ -144,7 +144,7 @@ void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
 void screen_restore_modes(Screen *);
 void screen_save_modes(Screen *);
-void write_escape_code_to_child(Screen *self, unsigned char which, const char *data);
+bool write_escape_code_to_child(Screen *self, unsigned char which, const char *data);
 void screen_cursor_position(Screen*, unsigned int, unsigned int);
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
 void screen_erase_in_line(Screen *, unsigned int, bool);
