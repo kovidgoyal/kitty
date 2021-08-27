@@ -819,8 +819,8 @@ and one, with zero being fully faded).
 opt('hide_window_decorations', 'no',
     option_type='hide_window_decorations', ctype='uint',
     long_text='''
-Hide the window decorations (title-bar and window borders) with :code:`yes`. On
-macOS, :code:`titlebar-only` can be used to only hide the titlebar. Whether this
+Hide the window decorations (title-bar and window borders) with :code:`yes`.
+:code:`titlebar-only` can be used to only hide the titlebar. Whether this
 works and exactly what effect it has depends on the window manager/operating
 system. Note that the effects of changing this setting when reloading config
 are undefined.
