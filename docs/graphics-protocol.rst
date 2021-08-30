@@ -223,7 +223,7 @@ and can take the values:
 Value of `t`          Meaning
 ==================    ============
 ``d``                 Direct (the data is transmitted within the escape code itself)
-``f``                 A simple file
+``f``                 A simple file (regular files only, not named pipes or similar)
 ``t``                 A temporary file, the terminal emulator will delete the file after reading the pixel data. For security reasons
                       the terminal emulator should only delete the file if it
                       is in a known temporary directory, such as :file:`/tmp`,
