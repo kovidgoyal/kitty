@@ -238,6 +238,10 @@ Value of `t`          Meaning
                       close it on Windows.
 ==================    ============
 
+When opening files, the terminal emulator must follow symlinks. In case of
+symlink loops or too many symlinks, it should fail and respond with an error,
+similar to reporting any other kind of I/O error.
+
 Local client
 ^^^^^^^^^^^^^^
 
