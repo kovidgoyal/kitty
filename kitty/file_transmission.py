@@ -3,8 +3,6 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import errno
-import os
-import tempfile
 from base64 import standard_b64decode, standard_b64encode
 from collections import deque
 from dataclasses import Field, dataclass, field, fields
@@ -12,7 +10,7 @@ from enum import Enum, auto
 from functools import partial
 from gettext import gettext as _
 from time import monotonic
-from typing import IO, Any, Deque, Dict, List, Optional, Tuple
+from typing import Any, Deque, Dict, List, Optional, Tuple, Union
 
 from kitty.fast_data_types import OSC, add_timer, get_boss
 
@@ -50,15 +48,13 @@ class TransmissionType(Enum):
     rsync = auto()
 
 
-class ErrorCode(Enum):
-    EINVAL = auto()
-    OK = auto()
+ErrorCode = Enum('ErrorCode', 'OK EINVAL EPERM')
 
 
 class TransmissionError(Exception):
 
     def __init__(
-        self, code: ErrorCode = ErrorCode.EINVAL,
+        self, code: Union[ErrorCode, str] = ErrorCode.EINVAL,
         msg: str = 'Generic error',
         transmit: bool = True,
         file_id: str = ''
@@ -70,9 +66,10 @@ class TransmissionError(Exception):
         self.code = code
 
     def as_escape_code(self, request_id: str = '') -> str:
+        code = self.code if isinstance(self.code, str) else self.code.name
         return FileTransmissionCommand(
             action=Action.status, id=request_id, file_id=self.file_id,
-            name=f'{self.code.name}:{self.human_msg}'
+            name=f'{code}:{self.human_msg}'
         ).serialize()
 
 
@@ -306,24 +303,20 @@ class FileTransmission:
                     te = TransmissionError(file_id=cmd.file_id, msg=str(err))
                     self.send_transmission_error(ar.id, te)
         elif cmd.action in (Action.data, Action.end_data):
-            try:
-                self.add_data(ar, cmd)
-            except Exception:
-                self.drop_receive(ar.id)
-                raise
-            if cmd.action is Action.end_data and cmd.id in self.active_cmds:
-                try:
-                    self.commit(cmd.id)
-                except Exception:
-                    self.drop_receive(cmd.id)
+            pass
 
-    def send_status_response(self, code: ErrorCode = ErrorCode.EINVAL, request_id: str = '', file_id: str = '', msg: str = '') -> bool:
+    def send_status_response(
+        self, code: Union[ErrorCode, str] = ErrorCode.EINVAL,
+        request_id: str = '', file_id: str = '', msg: str = ''
+    ) -> bool:
         err = TransmissionError(code=code, msg=msg, file_id=file_id)
         data = err.as_escape_code(request_id)
         return self.write_osc_to_child(request_id, data)
 
     def send_transmission_error(self, request_id: str, err: TransmissionError) -> bool:
-        return self.write_osc_to_child(request_id, err.as_escape_code())
+        if err.transmit:
+            return self.write_osc_to_child(request_id, err.as_escape_code())
+        return True
 
     def write_osc_to_child(self, request_id: str, payload: str, appendleft: bool = False) -> bool:
         boss = get_boss()
@@ -357,71 +350,16 @@ class FileTransmission:
             ar.accepted = True
         else:
             self.drop_receive(ar.id)
-        self.send_response(cmd.ftc, status='OK' if data['allowed'] else 'EPERM:User refused the transfer')
+        if ar.accepted:
+            self.send_status_response(code=ErrorCode.OK, request_id=ar.id)
+        else:
+            self.send_status_response(code=ErrorCode.EPERM, request_id=ar.id, msg='User refused the transfer')
 
-    def send_fail_on_os_error(self, ac: Optional[FileTransmissionCommand], err: OSError, msg: str) -> None:
-        if ac is None or ac.quiet < 2:
+    def send_fail_on_os_error(self, err: OSError, msg: str, ar: ActiveReceive, file_id: str = '') -> None:
+        if not ar.send_errors:
             return
         errname = errno.errorcode.get(err.errno, 'EFAIL')
-        self.send_response(ac, status=f'{errname}:{msg}')
-
-    def abort_in_flight(self, cmd_id: str) -> None:
-        c = self.active_cmds.pop(cmd_id, None)
-        if c is not None:
-            c.close()
-
-    def add_data(self, cmd: FileTransmissionCommand) -> None:
-        ac = self.active_cmds.get(cmd.id)
-
-        def abort_in_flight() -> None:
-            self.abort_in_flight(cmd.id)
-
-        if ac is None or not ac.dest or ac.ftc.action is not Action.send:
-            return abort_in_flight()
-
-        if ac.file is None:
-            try:
-                os.makedirs(os.path.dirname(ac.dest), exist_ok=True)
-            except OSError as e:
-                self.send_fail_on_os_error(ac.ftc, e, 'Creating destination directory failed')
-                return abort_in_flight()
-            if ac.ftc.container_fmt is Container.none:
-                try:
-                    ac.file = open(ac.dest, 'wb')
-                except OSError as e:
-                    self.send_fail_on_os_error(ac.ftc, e, 'Creating destination file failed')
-                    return abort_in_flight()
-            else:
-                try:
-                    ac.file = tempfile.TemporaryFile(dir=os.path.dirname(ac.dest))
-                except OSError as e:
-                    self.send_fail_on_os_error(ac.ftc, e, 'Creating destination temp file failed')
-                    return abort_in_flight()
-        data = ac.decompressor(cmd.data, cmd.action is Action.end_data)
-        try:
-            ac.file.write(data)
-        except OSError as e:
-            self.send_fail_on_os_error(ac.ftc, e, 'Writing to destination file failed')
-            return abort_in_flight()
-
-    def commit(self, cmd_id: str) -> None:
-        cmd = self.active_cmds.pop(cmd_id, None)
-        if cmd is not None:
-            try:
-                if cmd.ftc.container_fmt is not Container.none and cmd.file is not None:
-                    cmd.file.seek(0, os.SEEK_SET)
-                    try:
-                        Container.extractor_for_container_fmt(cmd.file, cmd.ftc.container_fmt)(cmd.dest)
-                    except OSError as e:
-                        self.send_fail_on_os_error(cmd.ftc, e, 'Failed to extract files from container')
-                        raise
-                    except Exception:
-                        self.send_response(cmd.ftc, status='EFAIL:Failed to extract files from container')
-                        raise
-                if not cmd.ftc.quiet:
-                    self.send_response(cmd.ftc, status='COMPLETED')
-            finally:
-                cmd.close()
+        self.send_status_response(code=errname, msg=msg, request_id=ar.id, file_id=file_id)
 
 
 class TestFileTransmission(FileTransmission):
@@ -431,8 +369,8 @@ class TestFileTransmission(FileTransmission):
         self.test_responses: List[FileTransmissionCommand] = []
         self.allow = allow
 
-    def write_osc_to_child(self, data: str) -> bool:
-        self.test_responses.append(FileTransmissionCommand.deserialize(data))
+    def write_osc_to_child(self, request_id: str, payload: str, appendleft: bool = False) -> bool:
+        self.test_responses.append(FileTransmissionCommand.deserialize(payload))
         return True
 
     def start_receive(self, aid: str) -> None:

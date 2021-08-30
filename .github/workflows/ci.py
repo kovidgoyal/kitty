@@ -45,7 +45,7 @@ def install_deps():
             os.environ['PKG_CONFIG_PATH'] = '/usr/local/opt/zlib/lib/pkgconfig'
         cmd = 'pip3 install Pillow pygments'
         if sys.version_info[:2] < (3, 7):
-            cmd += ' importlib-resources'
+            cmd += ' importlib-resources dataclasses'
         run(cmd)
 
 
