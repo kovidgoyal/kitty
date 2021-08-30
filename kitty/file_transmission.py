@@ -44,7 +44,7 @@ class FileType(Enum):
     link = auto()
 
 
-class TransmisstionType(Enum):
+class TransmissionType(Enum):
     simple = auto()
     resume = auto()
     rsync = auto()
@@ -82,7 +82,7 @@ class FileTransmissionCommand:
     action: Action = Action.invalid
     compression: Compression = Compression.none
     ftype: FileType = FileType.regular
-    ttype: TransmisstionType = TransmisstionType.simple
+    ttype: TransmissionType = TransmissionType.simple
     id: str = ''
     file_id: str = ''
     secret: str = ''
@@ -178,7 +178,7 @@ class DestFile:
         self.permissions = ftc.permissions
         self.ftype = ftc.ftype
         self.ttype = ftc.ttype
-        self.needs_data_sent = self.ttype is not TransmisstionType.simple
+        self.needs_data_sent = self.ttype is not TransmissionType.simple
         self.decompressor = ZlibDecompressor() if ftc.compression is Compression.zlib else IdentityDecompressor()
         self.closed = self.ftype is FileType.directory
 
