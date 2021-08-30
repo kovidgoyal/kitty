@@ -1648,6 +1648,8 @@ class Boss:
         if bad_lines:
             self.show_bad_config_lines(bad_lines)
         self.apply_new_options(opts)
+        from .open_actions import load_open_actions
+        load_open_actions.clear_cached()
 
     def safe_delete_temp_file(self, path: str) -> None:
         if is_path_in_temp_dir(path):

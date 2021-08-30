@@ -69,6 +69,7 @@ if TYPE_CHECKING:
         def __call__(self) -> _T: ...
         def set_override(self, val: _T) -> None: ...
         def clear_override(self) -> None: ...
+        def clear_cached(self) -> None: ...
 else:
     class RunOnce:
 
@@ -83,6 +84,9 @@ else:
             if self._cached_result is RunOnce:
                 self._cached_result = self.__wrapped__()
             return self._cached_result
+
+        def clear_cached(self):
+            self._cached_result = RunOnce
 
         def set_override(self, val):
             self._override = val
