@@ -78,8 +78,7 @@ static const Child EMPTY_CHILD = {0};
 
 static Child children[MAX_CHILDREN] = {{0}};
 static Child scratch[MAX_CHILDREN] = {{0}};
-static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}};
-static unsigned long remove_notify[MAX_CHILDREN] = {0};
+static Child add_queue[MAX_CHILDREN] = {{0}}, remove_queue[MAX_CHILDREN] = {{0}}, remove_notify[MAX_CHILDREN] = {{0}};
 static size_t add_queue_count = 0, remove_queue_count = 0;
 static struct pollfd fds[MAX_CHILDREN + EXTRA_FDS] = {{0}};
 static pthread_mutex_t children_lock, talk_lock;
@@ -308,12 +307,12 @@ shutdown_monitor(ChildMonitor *self, PyObject *a UNUSED) {
 }
 
 static bool
-do_parse(ChildMonitor *self, Screen *screen, monotonic_t now) {
+do_parse(ChildMonitor *self, Screen *screen, monotonic_t now, bool flush) {
     bool input_read = false;
     screen_mutex(lock, read);
     if (screen->read_buf_sz || screen->pending_mode.used) {
         monotonic_t time_since_new_input = now - screen->new_input_at;
-        if (time_since_new_input >= OPT(input_delay)) {
+        if (flush || time_since_new_input >= OPT(input_delay)) {
             bool read_buf_full = screen->read_buf_sz >= READ_BUF_SZ;
             input_read = true;
             parse_func(screen, self->dump_callback, now);
@@ -338,7 +337,8 @@ parse_input(ChildMonitor *self) {
     children_mutex(lock);
     while (remove_queue_count) {
         remove_queue_count--;
-        remove_notify[remove_count] = remove_queue[remove_queue_count].id;
+        remove_notify[remove_count] = remove_queue[remove_queue_count];
+        INCREF_CHILD(remove_notify[remove_count]);
         remove_count++;
         FREE_CHILD(remove_queue[remove_queue_count]);
     }
@@ -397,14 +397,16 @@ parse_input(ChildMonitor *self) {
         // must be done while no locks are held, since the locks are non-recursive and
         // the python function could call into other functions in this module
         remove_count--;
-        PyObject *t = PyObject_CallFunction(self->death_notify, "k", remove_notify[remove_count]);
+        if (remove_notify[remove_count].screen) do_parse(self, remove_notify[remove_count].screen, now, true);
+        PyObject *t = PyObject_CallFunction(self->death_notify, "k", remove_notify[remove_count].id);
         if (t == NULL) PyErr_Print();
         else Py_DECREF(t);
+        FREE_CHILD(remove_notify[remove_count]);
     }
 
     for (size_t i = 0; i < count; i++) {
         if (!scratch[i].needs_removal) {
-            if (do_parse(self, scratch[i].screen, now)) input_read = true;
+            if (do_parse(self, scratch[i].screen, now, false)) input_read = true;
         }
         DECREF_CHILD(scratch[i]);
     }
