@@ -34,6 +34,9 @@ else:
 
 
 def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool = True) -> str:
+    '''
+    Expand $VAR and ${VAR} Use $$ for a literal $
+    '''
 
     def sub(m: Match) -> str:
         key = m.group(1) or m.group(2)
@@ -47,7 +50,7 @@ def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool =
     if '$' not in val:
         return val
 
-    return re.sub(r'\$(?:(\w+)|\{([^}]+)\})', sub, val)
+    return re.sub(r'\$(?:(\w+)|\{([^}]+)\})', sub, val.replace('$$', '\0')).replace('\0', '$')
 
 
 def platform_window_id(os_window_id: int) -> Optional[int]:
