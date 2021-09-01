@@ -351,9 +351,12 @@ class FileTransmission:
         self.pending_receive_responses: Deque[Tuple[str, str]] = deque()
         self.pending_timer: Optional[int] = None
 
+    def callback_after(self, callback: Callable[[Optional[int]], None], timeout: float) -> Optional[int]:
+        return add_timer(callback, timeout, False)
+
     def start_pending_timer(self) -> None:
         if self.pending_timer is None:
-            self.pending_timer = add_timer(self.try_pending, 0.2, False)
+            self.pending_timer = self.callback_after(self.try_pending, 0.2)
 
     def try_pending(self, timer_id: Optional[int]) -> None:
         self.pending_timer = None
@@ -536,3 +539,6 @@ class TestFileTransmission(FileTransmission):
 
     def start_receive(self, aid: str) -> None:
         self.handle_send_confirmation(aid, {'response': 'y' if self.allow else 'n'})
+
+    def callback_after(self, callback: Callable[[Optional[int]], None], timeout: float) -> Optional[int]:
+        callback(None)
