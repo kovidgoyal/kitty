@@ -40,7 +40,8 @@ Some programs and libraries that use the kitty graphics protocol:
 * `ctx.graphics <https://ctx.graphics/>`_ - Library for drawing graphics
 * `timg <https://github.com/hzeller/timg>`_ - a terminal image and video viewer
 * `notcurses <https://github.com/dankamongmen/notcurses>`_ - C library for terminal graphics with bindings for C++, Rust and Python
-* `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the the terminal
+* `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the terminal
+* `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 
 
 Getting the window size
