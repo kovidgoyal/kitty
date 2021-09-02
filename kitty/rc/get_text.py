@@ -18,7 +18,7 @@ class GetText(RemoteCommand):
 
     '''
     match: The tab to focus
-    extent: One of :code:`screen`, :code:`all`, or :code:`selection`
+    extent: One of :code:`screen`, :code:`last_cmd_output`, :code:`all`, or :code:`selection`
     ansi: Boolean, if True send ANSI formatting codes
     cursor: Boolean, if True send cursor position/style as ANSI codes
     wrap_markers: Boolean, if True add wrap markers to output
@@ -29,9 +29,11 @@ class GetText(RemoteCommand):
     options_spec = MATCH_WINDOW_OPTION + '''\n
 --extent
 default=screen
-choices=screen, all, selection
-What text to get. The default of screen means all text currently on the screen. all means
-all the screen+scrollback and selection means currently selected text.
+choices=screen, all, selection, last_cmd_output
+What text to get. The default of :code:`screen` means all text currently on the screen.
+:code:`all` means all the screen+scrollback and :code:`selection` means the
+currently selected text. Finally, :code:`last_cmd_output` means the output of the last
+command that was run in the window, which requires :ref:`shell_integration` to be enabled.
 
 
 --ansi
@@ -72,6 +74,11 @@ If specified get text from the window this command is run in, rather than the ac
         window = self.windows_for_match_payload(boss, window, payload_get)[0]
         if payload_get('extent') == 'selection':
             ans = window.text_for_selection()
+        elif payload_get('extent') == 'last_cmd_output':
+            ans = window.last_cmd_output(
+                as_ansi=bool(payload_get('ansi')),
+                add_wrap_markers=bool(payload_get('wrap_markers')),
+            )
         else:
             ans = window.as_text(
                 as_ansi=bool(payload_get('ansi')),
