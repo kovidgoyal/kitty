@@ -43,6 +43,10 @@ Some programs and libraries that use the kitty graphics protocol:
 * `rasterm <https://github.com/BourgeoisBear/rasterm>`_  - Go library to display images in the terminal
 * `chafa <https://github.com/hpjansson/chafa>`_  - a terminal image viewer
 
+Other terminals that have implemented the graphics protocol:
+
+* `WezTerm <https://github.com/wez/wezterm/issues/986>`_
+
 
 Getting the window size
 -------------------------
