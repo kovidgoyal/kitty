@@ -5,6 +5,7 @@
 }
 
 .support-button {
+    box-sizing: border-box;
     border-radius: 6px;
     display: inline-block;
     cursor: pointer;
@@ -14,16 +15,16 @@
     font-weight: bold;
     padding: 8px 24px;
     text-decoration: none;
-    margin: 1em;
+    margin-left: 1em;
+    outline: 0;
+    border-width: 0;
 }
 
 .support-button:hover {
-    transform: scale(1.5);
+    transform: scale(1.2);
+    border: solid 1px rgb(92, 184, 92);
 }
 
-.support-button {
-    outline: 0;
-}
 .support-button:visited {
     color: rgb(51, 51, 51);
     outline: 0;
@@ -35,8 +36,10 @@
 }
 
 #paypal input[type=submit] {
-    background: linear-gradient(rgb(255, 236, 100) 5%, rgb(255, 171, 35) 100%) rgb(255, 236, 100);
-    border: 1px solid rgb(255, 171, 35);
+    background: linear-gradient(rgb(92, 184, 92) 5%, rgb(62, 142, 62) 100%) rgb(92, 184, 92);
+    padding-top: 10px; padding-bottom: 10px;
+    color: rgb(51, 51, 51);
+    border: 1px solid rgb(92, 184, 92);
 }
 
 a.support-button {
