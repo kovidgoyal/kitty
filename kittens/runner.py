@@ -132,7 +132,7 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
         print('Available builtin kittens:', file=sys.stderr)
         for kitten in all_kitten_names():
             print(kitten, file=sys.stderr)
-        raise SystemExit('No kitten named {}'.format(original_kitten_name))
+        raise SystemExit(f'No kitten named {original_kitten_name}')
     m = runpy.run_path(path, init_globals={'sys': sys, 'os': os}, run_name='__run_kitten__')
     m['main'](sys.argv)
 
