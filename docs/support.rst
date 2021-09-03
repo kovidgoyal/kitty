@@ -15,8 +15,7 @@ I have personally written `almost all kitty code
 <https://github.com/kovidgoyal/kitty/graphs/contributors>`_.
 
 You can choose to make either a one-time payment via PayPal or become a
-*patron* of kitty development via the Patreon or Liberapay services
-below:
+*patron* of kitty development via one of the services below:
 
 
 .. raw:: html
