@@ -103,7 +103,7 @@ functions for the events you are interested in, for example:
         # Here data will contain old_geometry and new_geometry
 
     def on_focus_change(boss, window, data):
-        # Here data kill contain focused
+        # Here data will contain focused
 
     def on_close(boss, window, data):
         # called when window is closed, typically when the program running in
@@ -112,7 +112,7 @@ functions for the events you are interested in, for example:
 
 Every callback is passed a reference to the global ``Boss`` object as well as
 the ``Window`` object the action is occurring on. The ``data`` object is
-mapping that contains event dependent data. Some useful methods and attributes
+a dict that contains event dependent data. Some useful methods and attributes
 for the ``Window`` object are: ``as_text(as_ans=False, add_history=False,
 add_wrap_markers=False, alternate_screen=False)`` with which you can get the
 contents of the window and its scrollback buffer. Similarly,
