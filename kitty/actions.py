@@ -63,6 +63,9 @@ def get_all_actions() -> Dict[str, List[Action]]:
             seen.add(name)
             ans['win'].append(Action(name, 'win', f'Focus the {which} window', ''))
 
+    ans['misc'].append(Action('no_op', 'misc', 'Unbind a shortcut',
+                              'Mapping a shortcut to no_op causes kitty to not intercept the key stroke anymore,'
+                              ' instead passing it to the program running inside it.'))
     return ans
 
 
