@@ -367,6 +367,7 @@ option_names = (  # {{{
  'listen_on',
  'macos_custom_beam_cursor',
  'macos_hide_from_tasks',
+ 'macos_hide_titlebar',
  'macos_option_as_alt',
  'macos_quit_when_last_window_closed',
  'macos_show_window_title_in',
