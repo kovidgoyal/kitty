@@ -3,6 +3,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import sys
 from functools import partial
 from pprint import pformat
 from typing import Callable, Dict, Generator, Iterable, Set, Tuple
@@ -11,7 +12,9 @@ from kittens.tui.operations import colored, styled
 
 from .cli import version
 from .conf.utils import KeyAction
-from .constants import is_macos, is_wayland
+from .constants import (
+    extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
+)
 from .options.types import Options as KittyOpts, defaults
 from .options.utils import MouseMap
 from .rgb import Color, color_as_sharp
@@ -23,6 +26,10 @@ ShortcutMap = Dict[Tuple[SingleKey, ...], KeyAction]
 
 def green(x: str) -> str:
     return colored(x, 'green')
+
+
+def yellow(x: str) -> str:
+    return colored(x, 'yellow')
 
 
 def title(x: str) -> str:
@@ -162,6 +169,12 @@ def debug_config(opts: KittyOpts) -> str:
             p(f.read().strip())
     if not is_macos:
         p('Running under:' + green('Wayland' if is_wayland() else 'X11'))
+    p(green('Frozen:'), 'True' if getattr(sys, 'frozen', False) else 'False')
+    p(green('Paths:'))
+    p(yellow('  kitty:'), kitty_exe())
+    p(yellow('  base dir:'), kitty_base_dir)
+    p(yellow('  extensions dir:'), extensions_dir)
+    p(yellow('  system shell:'), shell_path)
     if opts.config_paths:
         p(green('Loaded config files:'))
         p(' ', '\n  '.join(opts.config_paths))
