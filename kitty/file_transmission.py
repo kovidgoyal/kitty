@@ -55,7 +55,6 @@ class FileType(NameReprEnum):
 
 class TransmissionType(NameReprEnum):
     simple = auto()
-    resume = auto()
     rsync = auto()
 
 
@@ -197,7 +196,9 @@ class DestFile:
     def __init__(self, ftc: FileTransmissionCommand) -> None:
         self.name = ftc.name
         if not os.path.isabs(self.name):
-            self.name = os.path.join(tempfile.gettempdir(), self.name)
+            self.name = os.path.expanduser(self.name)
+            if not os.path.isabs(self.name):
+                self.name = os.path.join(tempfile.gettempdir(), self.name)
         self.mtime = ftc.mtime
         self.file_id = ftc.file_id
         self.permissions = ftc.permissions

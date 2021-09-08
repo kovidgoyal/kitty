@@ -8,7 +8,11 @@ import shutil
 import stat
 import tempfile
 import zlib
+from pathlib import Path
 
+from kittens.transfer.main import (
+    files_for_send, parse_transfer_args, set_paths
+)
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType,
     TestFileTransmission as FileTransmission, TransmissionType
@@ -51,14 +55,20 @@ class TestFileTransmission(BaseTest):
     def setUp(self):
         self.tdir = os.path.realpath(tempfile.mkdtemp())
         self.responses = []
+        self.orig_home = os.environ.get('HOME')
 
     def tearDown(self):
         shutil.rmtree(self.tdir)
         self.responses = []
+        if self.orig_home is None:
+            os.environ.pop('HOME')
+        else:
+            os.environ['HOME'] = self.orig_home
 
     def clean_tdir(self):
         shutil.rmtree(self.tdir)
         self.tdir = os.path.realpath(tempfile.mkdtemp())
+        self.responses = []
 
     def assertResponses(self, ft, **kw):
         self.responses.append(response(**kw))
@@ -128,7 +138,6 @@ class TestFileTransmission(BaseTest):
 
         # multi file send
         self.clean_tdir()
-        self.responses = []
         ft = FileTransmission()
         dest = os.path.join(self.tdir, '2.bin')
         ft.handle_serialized_command(serialized_cmd(action='send'))
@@ -176,3 +185,51 @@ class TestFileTransmission(BaseTest):
         self.ae(os.stat(dest + 'd1').st_mtime_ns, 29)
         self.ae(os.stat(dest + 'd2').st_mtime_ns, 29)
         self.assertFalse(ft.active_receives)
+
+    def test_path_mapping(self):
+        opts = parse_transfer_args([])[0]
+        b = Path(os.path.join(self.tdir, 'b'))
+        os.makedirs(b)
+        open(b / 'r', 'w').close()
+        os.mkdir(b / 'd')
+        open(b / 'd' / 'r', 'w').close()
+
+        def gm(*args):
+            return files_for_send(opts, list(map(str, args)))
+
+        def am(files, kw):
+            m = {f.expanded_local_path: f.remote_path for f in files}
+            kw = {str(k): str(v) for k, v in kw.items()}
+            self.ae(m, kw)
+
+        def tf(args, expected):
+            files = gm(*args)
+            self.ae(len(files), len(expected))
+            am(files, expected)
+
+        opts.mode = 'mirror'
+        with set_paths(cwd=b, home='/foo/bar'):
+            tf(['r', 'd'], {b/'r': b/'r', b/'d': b/'d', b/'d'/'r': b/'d'/'r'})
+            tf(['r', 'd/r'], {b/'r': b/'r', b/'d'/'r': b/'d'/'r'})
+        with set_paths(cwd=b, home=self.tdir):
+            tf(['r', 'd'], {b/'r': '~/b/r', b/'d': '~/b/d', b/'d'/'r': '~/b/d/r'})
+        opts.mode = 'normal'
+        with set_paths(cwd='/some/else', home='/foo/bar'):
+            tf([b/'r', b/'d', '/dest'], {b/'r': '/dest/r', b/'d': '/dest/d', b/'d'/'r': '/dest/d/r'})
+            tf([b/'r', b/'d', '~/dest'], {b/'r': '~/dest/r', b/'d': '~/dest/d', b/'d'/'r': '~/dest/d/r'})
+        with set_paths(cwd=b, home='/foo/bar'):
+            tf(['r', 'd', '/dest'], {b/'r': '/dest/r', b/'d': '/dest/d', b/'d'/'r': '/dest/d/r'})
+
+        os.symlink('/foo/b', b / 'e')
+        os.symlink('r', b / 's')
+        os.link(b / 'r', b / 'h')
+        with set_paths(cwd='/some/else', home='/foo/bar'):
+            files = gm(b / 'e', 'dest')
+            self.ae(files[0].symbolic_link_target, 'path:/foo/b')
+            files = gm(b / 's', b / 'r', 'dest')
+            self.ae(files[0].symbolic_link_target, 'fid:2')
+            files = gm(b / 'h', 'dest')
+            self.ae(files[0].file_type, FileType.regular)
+            files = gm(b / 'h', b / 'r', 'dest')
+            self.ae(files[1].file_type, FileType.link)
+            self.ae(files[1].hard_link_target, '1')
