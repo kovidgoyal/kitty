@@ -58,7 +58,7 @@ class TransmissionType(NameReprEnum):
     rsync = auto()
 
 
-ErrorCode = Enum('ErrorCode', 'OK EINVAL EPERM EISDIR')
+ErrorCode = Enum('ErrorCode', 'OK STARTED EINVAL EPERM EISDIR')
 
 
 class TransmissionError(Exception):
@@ -437,6 +437,9 @@ class FileTransmission:
                         self.send_fail_on_os_error(err, 'Failed to create directory', ar, df.file_id)
                     else:
                         self.send_status_response(ErrorCode.OK, ar.id, df.file_id, name=df.name)
+                else:
+                    if ar.send_acknowledgements:
+                        self.send_status_response(code=ErrorCode.STARTED, request_id=ar.id, file_id=df.file_id, name=df.name)
         elif cmd.action in (Action.data, Action.end_data):
             try:
                 df = ar.add_data(cmd)
