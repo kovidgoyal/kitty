@@ -17,7 +17,8 @@ from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional
 
 from kitty.constants import is_macos
 from kitty.fast_data_types import (
-    close_tty, normal_tty, open_tty, parse_input_from_terminal, raw_tty
+    FILE_TRANSFER_CODE, close_tty, normal_tty, open_tty,
+    parse_input_from_terminal, raw_tty
 )
 from kitty.key_encoding import (
     ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, backspace_key, decode_key_event,
@@ -308,15 +309,18 @@ class Loop:
         pass
 
     def _on_osc(self, osc: str) -> None:
-        m = re.match(r'(\d+);', osc)
-        if m is not None:
-            code = int(m.group(1))
-            rest = osc[m.end():]
+        parts = osc.split(';', 1)
+        if len(parts) == 2 and parts[0].isdigit():
+            code = int(parts[0])
+            rest = parts[1]
             if code == 52:
-                where, rest = rest.partition(';')[::2]
+                where, rest = rest.split(';', 1)
                 from_primary = 'p' in where
                 from base64 import standard_b64decode
                 self.handler.on_clipboard_response(standard_b64decode(rest).decode('utf-8'), from_primary)
+            elif code == FILE_TRANSFER_CODE:
+                from kitty.file_transmission import FileTransmissionCommand
+                self.handler.on_file_transfer_response(FileTransmissionCommand.deserialize(rest))
 
     def _on_apc(self, apc: str) -> None:
         if apc.startswith('G'):

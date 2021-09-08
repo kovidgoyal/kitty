@@ -222,8 +222,16 @@ def files_for_send(cli_opts: TransferCLIOptions, args: List[str]) -> Tuple[File,
     return tuple(files)
 
 
+class SendManager:
+
+    def __init__(self, files: Tuple[File, ...]):
+        self.files = files
+
+
 def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
-    pass
+    print('Scanning files…')
+    files = files_for_send(cli_opts, args)
+    print(f'Found {len(files)} files and directories, requesting transfer permission…')
 
 
 def parse_transfer_args(args: List[str]) -> Tuple[TransferCLIOptions, List[str]]:

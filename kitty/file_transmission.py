@@ -16,7 +16,7 @@ from gettext import gettext as _
 from time import monotonic
 from typing import IO, Any, Callable, Deque, Dict, List, Optional, Tuple, Union
 
-from kitty.fast_data_types import OSC, add_timer, get_boss
+from kitty.fast_data_types import FILE_TRANSFER_CODE, OSC, add_timer, get_boss
 
 from .utils import log_error, sanitize_control_codes
 
@@ -485,6 +485,7 @@ class FileTransmission:
         boss = get_boss()
         window = boss.window_id_map.get(self.window_id)
         if window is not None:
+            payload = f'{FILE_TRANSFER_CODE};{payload}'
             queued = window.screen.send_escape_code_to_child(OSC, payload)
             if not queued:
                 if appendleft:

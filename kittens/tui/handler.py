@@ -5,7 +5,7 @@
 
 from types import TracebackType
 from typing import (
-    Any, Callable, ContextManager, Dict, Optional, Sequence, Type, Union
+    Any, Callable, ContextManager, Dict, Optional, Sequence, Type, Union, TYPE_CHECKING
 )
 
 from kitty.types import ParsedShortcut
@@ -15,6 +15,10 @@ from kitty.typing import (
 )
 
 from .operations import pending_update
+
+
+if TYPE_CHECKING:
+    from kitty.file_transmission import FileTransmissionCommand
 
 
 class Handler:
@@ -116,6 +120,9 @@ class Handler:
         pass
 
     def on_clipboard_response(self, text: str, from_primary: bool = False) -> None:
+        pass
+
+    def on_file_transfer_response(self, ftc: 'FileTransmissionCommand') -> None:
         pass
 
     def on_capability_response(self, name: str, val: str) -> None:

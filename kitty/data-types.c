@@ -316,6 +316,7 @@ PyInit_fast_data_types(void) {
     PyModule_AddIntMacro(m, DCS);
     PyModule_AddIntMacro(m, APC);
     PyModule_AddIntMacro(m, OSC);
+    PyModule_AddIntMacro(m, FILE_TRANSFER_CODE);
 
     return m;
 }
