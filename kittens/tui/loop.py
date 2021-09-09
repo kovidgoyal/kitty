@@ -68,20 +68,21 @@ debug = Debug()
 
 class TermManager:
 
-    def __init__(self, optional_actions: int = termios.TCSANOW) -> None:
+    def __init__(self, optional_actions: int = termios.TCSANOW, use_alternate_screen: bool = True) -> None:
         self.extra_finalize: Optional[str] = None
         self.optional_actions = optional_actions
+        self.use_alternate_screen = use_alternate_screen
 
     def set_state_for_loop(self, set_raw: bool = True) -> None:
         if set_raw:
             raw_tty(self.tty_fd, self.original_termios)
-        write_all(self.tty_fd, init_state())
+        write_all(self.tty_fd, init_state(self.use_alternate_screen))
 
     def reset_state_to_original(self) -> None:
         normal_tty(self.tty_fd, self.original_termios)
         if self.extra_finalize:
             write_all(self.tty_fd, self.extra_finalize)
-        write_all(self.tty_fd, reset_state())
+        write_all(self.tty_fd, reset_state(self.use_alternate_screen))
 
     @contextmanager
     def suspend(self) -> Generator['TermManager', None, None]:
@@ -409,7 +410,7 @@ class Loop:
             handler.on_resize(handler.screen_size)
 
         signal_manager = SignalManager(self.asycio_loop, _on_sigwinch, handler.on_interrupt, handler.on_term)
-        with TermManager(self.optional_actions) as term_manager, signal_manager:
+        with TermManager(self.optional_actions, handler.use_alternate_screen) as term_manager, signal_manager:
             self._get_screen_size: ScreenSizeGetter = screen_size_function(term_manager.tty_fd)
             image_manager = None
             if handler.image_manager_class is not None:

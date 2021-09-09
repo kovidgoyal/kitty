@@ -21,7 +21,7 @@ from kitty.file_transmission import (
 from . import BaseTest
 
 
-def response(id='', msg='', file_id='', name='', action='status', status=''):
+def response(id='', msg='', file_id='', name='', action='status', status='', size=-1):
     ans = {'action': 'status'}
     if id:
         ans['id'] = id
@@ -31,6 +31,8 @@ def response(id='', msg='', file_id='', name='', action='status', status=''):
         ans['name'] = name
     if status:
         ans['status'] = status
+    if size > -1:
+        ans['size'] = size
     return ans
 
 
@@ -93,12 +95,12 @@ class TestFileTransmission(BaseTest):
             ft.handle_serialized_command(serialized_cmd(action='send', quiet=quiet))
             self.assertIn('', ft.active_receives)
             self.ae(ft.test_responses, [] if quiet else [response(status='OK')])
-            ft.handle_serialized_command(serialized_cmd(action='file', name=dest, quiet=quiet))
+            ft.handle_serialized_command(serialized_cmd(action='file', name=dest))
             self.assertPathEqual(ft.active_file().name, dest)
             self.assertIsNone(ft.active_file().actual_file)
             self.ae(ft.test_responses, [] if quiet else [response(status='OK'), response(status='STARTED', name=dest)])
             ft.handle_serialized_command(serialized_cmd(action='data', data='abcd'))
-            self.assertPathEqual(ft.active_file().actual_file.name, dest)
+            self.assertPathEqual(ft.active_file().name, dest)
             ft.handle_serialized_command(serialized_cmd(action='end_data', data='123'))
             self.ae(ft.test_responses, [] if quiet else [response(status='OK'), response(status='STARTED', name=dest), response(status='OK', name=dest)])
             self.assertTrue(ft.active_receives)
@@ -136,6 +138,41 @@ class TestFileTransmission(BaseTest):
             self.ae(f.read(), odata)
         del odata
         del data
+
+        # overwriting
+        self.clean_tdir()
+        ft = FileTransmission()
+        one = os.path.join(self.tdir, '1')
+        two = os.path.join(self.tdir, '2')
+        three = os.path.join(self.tdir, '3')
+        open(two, 'w').close()
+        os.symlink(two, one)
+        ft.handle_serialized_command(serialized_cmd(action='send'))
+        ft.handle_serialized_command(serialized_cmd(action='file', name=one))
+        ft.handle_serialized_command(serialized_cmd(action='end_data', data='abcd'))
+        ft.handle_serialized_command(serialized_cmd(action='finish'))
+        self.assertFalse(os.path.islink(one))
+        with open(one) as f:
+            self.ae(f.read(), 'abcd')
+        self.assertTrue(os.path.isfile(two))
+        ft = FileTransmission()
+        ft.handle_serialized_command(serialized_cmd(action='send'))
+        ft.handle_serialized_command(serialized_cmd(action='file', name=two, ftype='symlink'))
+        ft.handle_serialized_command(serialized_cmd(action='end_data', data='path:/abcd'))
+        ft.handle_serialized_command(serialized_cmd(action='finish'))
+        self.ae(os.readlink(two), '/abcd')
+        with open(three, 'w') as f:
+            f.write('abcd')
+        self.responses = []
+        ft = FileTransmission()
+        ft.handle_serialized_command(serialized_cmd(action='send'))
+        self.assertResponses(ft, status='OK')
+        ft.handle_serialized_command(serialized_cmd(action='file', name=three))
+        self.assertResponses(ft, status='STARTED', name=three, size=4)
+        ft.handle_serialized_command(serialized_cmd(action='end_data', data='11'))
+        ft.handle_serialized_command(serialized_cmd(action='finish'))
+        with open(three) as f:
+            self.ae(f.read(), '11')
 
         # multi file send
         self.clean_tdir()

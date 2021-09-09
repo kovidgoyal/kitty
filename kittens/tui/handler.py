@@ -24,6 +24,7 @@ if TYPE_CHECKING:
 class Handler:
 
     image_manager_class: Optional[Type[ImageManagerType]] = None
+    use_alternate_screen = True
 
     def _initialize(
         self,

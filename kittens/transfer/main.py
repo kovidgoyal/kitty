@@ -6,16 +6,23 @@ import os
 import stat
 import sys
 from contextlib import contextmanager
+from enum import auto
 from itertools import count
 from typing import (
-    Dict, Generator, Iterable, Iterator, List, Sequence, Tuple, Union
+    Callable, Dict, Generator, Iterable, Iterator, List, Sequence, Tuple,
+    Union, cast
 )
 
 from kitty.cli import parse_args
 from kitty.cli_stub import TransferCLIOptions
+from kitty.fast_data_types import FILE_TRANSFER_CODE
 from kitty.file_transmission import (
-    Action, Compression, FileTransmissionCommand, FileType
+    Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
+    TransmissionType
 )
+from kitty.types import run_once
+
+from ..tui.handler import Handler
 
 _cwd = _home = ''
 
@@ -32,6 +39,17 @@ def expand_home(path: str) -> str:
     if path.startswith('~' + os.sep) or (os.altsep and path.startswith('~' + os.altsep)):
         return os.path.join(home_path(), path[2:].lstrip(os.sep + (os.altsep or '')))
     return path
+
+
+@run_once
+def short_uuid_func() -> Callable[[], str]:
+    from kitty.short_uuid import ShortUUID, escape_code_safe_alphabet
+    return ShortUUID(alphabet=''.join(set(escape_code_safe_alphabet) - {';'})).uuid4
+
+
+def random_id() -> str:
+    f = short_uuid_func()
+    return cast(str, f())
 
 
 @contextmanager
@@ -93,11 +111,21 @@ def get_remote_path(local_path: str, remote_base: str) -> str:
     return remote_base
 
 
+class FileState(NameReprEnum):
+    waiting_for_start = auto()
+    waiting_for_data = auto()
+    transmitting = auto()
+    finished = auto()
+
+
 class File:
 
     def __init__(
-        self, local_path: str, expanded_local_path: str, file_id: int, stat_result: os.stat_result, remote_base: str, file_type: FileType
+        self, local_path: str, expanded_local_path: str, file_id: int, stat_result: os.stat_result,
+        remote_base: str, file_type: FileType, ttype: TransmissionType = TransmissionType.simple
     ) -> None:
+        self.ttype = ttype
+        self.state = FileState.waiting_for_start
         self.local_path = local_path
         self.expanded_local_path = expanded_local_path
         self.permissions = stat.S_IMODE(stat_result.st_mode)
@@ -112,6 +140,9 @@ class File:
         self.stat_result = stat_result
         self.file_type = file_type
         self.compression = Compression.zlib if self.file_size > 2048 else Compression.none
+        self.remote_final_path = ''
+        self.remote_initial_size = -1
+        self.err_msg = ''
 
     def metadata_command(self) -> FileTransmissionCommand:
         return FileTransmissionCommand(
@@ -222,10 +253,101 @@ def files_for_send(cli_opts: TransferCLIOptions, args: List[str]) -> Tuple[File,
     return tuple(files)
 
 
+class SendState(NameReprEnum):
+    waiting_for_permission = auto()
+    permission_granted = auto()
+    permission_denied = auto()
+    finished = auto()
+
+
 class SendManager:
 
-    def __init__(self, files: Tuple[File, ...]):
+    def __init__(self, request_id: str, files: Tuple[File, ...]):
         self.files = files
+        self.fid_map = {str(f.file_id): f for f in self.files}
+        self.request_id = request_id
+        self.state = SendState.waiting_for_permission
+        self.all_done = False
+        self.all_started = False
+
+    def update_collective_statuses(self) -> None:
+        found_not_started = found_not_done = False
+        for f in self.files:
+            if f.state is not FileState.finished:
+                found_not_done = True
+            if f.state is FileState.waiting_for_start:
+                found_not_started = True
+            if found_not_started and found_not_done:
+                break
+        self.all_done = not found_not_done
+        self.all_started = not found_not_started
+
+    def start_transfer(self) -> str:
+        return FileTransmissionCommand(action=Action.send).serialize()
+
+    def send_file_metadata(self) -> Iterator[str]:
+        for f in self.files:
+            yield f.metadata_command().serialize()
+
+    def on_file_status_update(self, ftc: FileTransmissionCommand) -> None:
+        file = self.fid_map.get(ftc.file_id)
+        if file is None:
+            return
+        if ftc.status == 'STARTED':
+            file.state = FileState.waiting_for_data if file.ttype is TransmissionType.rsync else FileState.transmitting
+            file.remote_final_path = ftc.name
+            file.remote_initial_size = ftc.size
+        else:
+            if ftc.name and not file.remote_final_path:
+                file.remote_final_path = ftc.name
+            file.state = FileState.finished
+            if ftc.status != 'OK':
+                file.err_msg = ftc.status
+        self.update_collective_statuses()
+
+    def on_file_transfer_response(self, ftc: FileTransmissionCommand) -> None:
+        if ftc.action is Action.status:
+            if ftc.file_id:
+                self.on_file_status_update(ftc)
+            else:
+                self.status = SendState.permission_granted if ftc.status == 'OK' else SendState.permission_denied
+
+
+class Send(Handler):
+    use_alternate_screen = False
+
+    def __init__(self, manager: SendManager):
+        Handler.__init__(self)
+        self.manager = manager
+
+    def send_payload(self, payload: str) -> None:
+        self.write(f'\x1b]{FILE_TRANSFER_CODE};id={self.manager.request_id};')
+        self.write(payload)
+        self.write(b'\x1b\\')
+
+    def on_file_transfer_response(self, ftc: FileTransmissionCommand) -> None:
+        if ftc.id != self.manager.request_id:
+            return
+        before = self.manager.state
+        self.manager.on_file_transfer_response(ftc)
+        if before == SendState.waiting_for_permission:
+            if self.manager.status == SendState.permission_denied:
+                self.cmd.styled('Permission denied for this transfer', fg='red')
+                self.quit_loop(1)
+            return
+
+    def initialize(self) -> None:
+        self.send_payload(self.manager.start_transfer())
+        for payload in self.manager.send_file_metadata():
+            self.send_payload(payload)
+
+    def on_interrupt(self) -> None:
+        self.cmd.styled('Interrupt requested, cancelling transfer, transferred files are in undefined state', fg='red')
+        self.abort_transfer()
+
+    def abort_transfer(self) -> None:
+        self.send_payload(FileTransmissionCommand(action=Action.cancel).serialize())
+        self.quit_loop(1)
 
 
 def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:

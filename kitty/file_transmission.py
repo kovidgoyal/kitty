@@ -68,7 +68,8 @@ class TransmissionError(Exception):
         msg: str = 'Generic error',
         transmit: bool = True,
         file_id: str = '',
-        name: str = ''
+        name: str = '',
+        size: int = -1
     ) -> None:
         Exception.__init__(self, msg)
         self.transmit = transmit
@@ -76,13 +77,14 @@ class TransmissionError(Exception):
         self.human_msg = msg
         self.code = code
         self.name = name
+        self.size = size
 
     def as_escape_code(self, request_id: str = '') -> str:
         name = self.code if isinstance(self.code, str) else self.code.name
         if self.human_msg:
             name += ':' + self.human_msg
         return FileTransmissionCommand(
-            action=Action.status, id=request_id, file_id=self.file_id, status=name, name=self.name
+            action=Action.status, id=request_id, file_id=self.file_id, status=name, name=self.name, size=self.size
         ).serialize()
 
 
@@ -99,6 +101,7 @@ class FileTransmissionCommand:
     quiet: int = 0
     mtime: int = -1
     permissions: int = -1
+    size: int = -1
     data: bytes = b''
     name: str = field(default='', metadata={'base64': True})
     status: str = field(default='', metadata={'base64': True})
@@ -199,6 +202,11 @@ class DestFile:
             self.name = os.path.expanduser(self.name)
             if not os.path.isabs(self.name):
                 self.name = os.path.join(tempfile.gettempdir(), self.name)
+        try:
+            self.existing_stat: Optional[os.stat_result] = os.stat(self.name, follow_symlinks=False)
+        except OSError:
+            self.existing_stat = None
+        self.needs_unlink = self.existing_stat is not None and (self.existing_stat.st_nlink > 1 or stat.S_ISLNK(self.existing_stat.st_mode))
         self.mtime = ftc.mtime
         self.file_id = ftc.file_id
         self.permissions = ftc.permissions
@@ -242,6 +250,13 @@ class DestFile:
             else:
                 os.utime(self.name, ns=(self.mtime, self.mtime))
 
+    def unlink_existing_if_needed(self, force: bool = False) -> None:
+        if force or self.needs_unlink:
+            with suppress(FileNotFoundError):
+                os.unlink(self.name)
+            self.existing_stat = None
+            self.needs_unlink = False
+
     def write_data(self, all_files: Dict[str, 'DestFile'], data: bytes, is_last: bool) -> None:
         if self.ftype is FileType.directory:
             raise TransmissionError(code=ErrorCode.EISDIR, file_id=self.file_id, msg='Cannot write data to a directory entry')
@@ -252,6 +267,7 @@ class DestFile:
             if is_last:
                 lt = self.link_target.decode('utf-8', 'replace')
                 base = self.make_parent_dirs()
+                self.unlink_existing_if_needed(force=True)
                 if lt.startswith('fid:'):
                     lt = all_files[lt[4:]].name
                     if self.ftype is FileType.symlink:
@@ -280,7 +296,11 @@ class DestFile:
         elif self.ftype is FileType.regular:
             if self.actual_file is None:
                 self.make_parent_dirs()
-                self.actual_file = open(self.name, 'wb')
+                self.unlink_existing_if_needed()
+                flags = os.O_RDWR | os.O_CREAT | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0)
+                if self.ttype is TransmissionType.simple:
+                    flags |= os.O_TRUNC
+                self.actual_file = open(os.open(self.name, flags, self.permissions), mode='r+b', closefd=True)
             data = self.decompressor(data, is_last=is_last)
             self.actual_file.write(data)
             if is_last:
@@ -439,7 +459,8 @@ class FileTransmission:
                         self.send_status_response(ErrorCode.OK, ar.id, df.file_id, name=df.name)
                 else:
                     if ar.send_acknowledgements:
-                        self.send_status_response(code=ErrorCode.STARTED, request_id=ar.id, file_id=df.file_id, name=df.name)
+                        sz = df.existing_stat.st_size if df.existing_stat is not None else -1
+                        self.send_status_response(code=ErrorCode.STARTED, request_id=ar.id, file_id=df.file_id, name=df.name, size=sz)
         elif cmd.action in (Action.data, Action.end_data):
             try:
                 df = ar.add_data(cmd)
@@ -470,9 +491,9 @@ class FileTransmission:
     def send_status_response(
         self, code: Union[ErrorCode, str] = ErrorCode.EINVAL,
         request_id: str = '', file_id: str = '', msg: str = '',
-        name: str = '',
+        name: str = '', size: int = -1
     ) -> bool:
-        err = TransmissionError(code=code, msg=msg, file_id=file_id, name=name)
+        err = TransmissionError(code=code, msg=msg, file_id=file_id, name=name, size=size)
         data = err.as_escape_code(request_id)
         return self.write_osc_to_child(request_id, data)
 
