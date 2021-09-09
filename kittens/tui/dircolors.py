@@ -241,7 +241,7 @@ def stat_at(file: str, cwd: Optional[Union[int, str]] = None, follow_symlinks: b
     dirfd: Optional[int] = None
     need_to_close = False
     if isinstance(cwd, str):
-        dirfd = os.open(cwd, os.O_RDONLY)
+        dirfd = os.open(cwd, os.O_RDONLY | getattr(os, 'O_CLOEXEC', 0))
         need_to_close = True
     elif isinstance(cwd, int):
         dirfd = cwd
