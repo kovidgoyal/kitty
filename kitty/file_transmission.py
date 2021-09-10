@@ -23,6 +23,7 @@ from kitty.fast_data_types import (
 from .utils import log_error, sanitize_control_codes
 
 EXPIRE_TIME = 10  # minutes
+MAX_ACTIVE_RECEIVES = 10
 
 
 class NameReprEnum(Enum):
@@ -427,13 +428,16 @@ class FileTransmission:
                 self.drop_receive(cmd.id)
                 return
             if not ar.accepted:
-                log_error(f'File transmission command received for rejected id: {cmd.id}, aborting')
+                log_error(f'File transmission command received for pending id: {cmd.id}, aborting')
                 self.drop_receive(cmd.id)
                 return
             ar.last_activity_at = monotonic()
         else:
             if cmd.action is not Action.send:
                 log_error(f'File transmission command received for unknown or rejected id: {cmd.id}, ignoring')
+                return
+            if len(self.active_receives) >= MAX_ACTIVE_RECEIVES:
+                log_error('New File transmission send with too many active receives, ignoring')
                 return
             ar = self.active_receives[cmd.id] = ActiveReceive(cmd.id, cmd.quiet, cmd.password)
             self.start_receive(ar.id)
