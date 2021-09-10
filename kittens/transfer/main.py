@@ -9,8 +9,8 @@ from contextlib import contextmanager
 from enum import auto
 from itertools import count
 from typing import (
-    Callable, Dict, Generator, Iterable, Iterator, List, Sequence, Tuple,
-    Union, cast
+    Callable, Dict, Generator, Iterable, Iterator, List, Optional, Sequence,
+    Tuple, Union, cast, IO
 )
 
 from kitty.cli import parse_args
@@ -23,6 +23,7 @@ from kitty.file_transmission import (
 from kitty.types import run_once
 
 from ..tui.handler import Handler
+from ..tui.loop import Loop
 
 _cwd = _home = ''
 
@@ -78,6 +79,12 @@ How to interpret command line arguments. In :code:`mirror` mode all arguments
 are assumed to be files on the sending computer and they are mirrored onto the
 receiving computer. In :code:`normal` mode the last argument is assumed to be a
 destination path on the receiving computer.
+
+
+--confirm-paths
+type=bool-set
+Before actually transferring files, show a mapping of local file names to remote file names
+and ask for confirmation.
 '''
 
 
@@ -130,7 +137,7 @@ class File:
         self.expanded_local_path = expanded_local_path
         self.permissions = stat.S_IMODE(stat_result.st_mode)
         self.mtime = stat_result.st_mtime_ns
-        self.file_size = stat_result.st_size
+        self.file_size = self.bytes_to_transmit = stat_result.st_size
         self.file_hash = stat_result.st_dev, stat_result.st_ino
         self.remote_path = get_remote_path(self.local_path, remote_base)
         self.remote_path = self.remote_path.replace(os.sep, '/')
@@ -143,6 +150,25 @@ class File:
         self.remote_final_path = ''
         self.remote_initial_size = -1
         self.err_msg = ''
+        self.actual_file: Optional[IO[bytes]] = None
+        self.transmitted_bytes = 0
+
+    def next_chunk(self, sz: int = 4096) -> bytes:
+        if self.file_type is FileType.symlink:
+            self.state = FileState.finished
+            return self.symbolic_link_target.encode('utf-8')
+        if self.file_type is FileType.link:
+            self.state = FileState.finished
+            return self.hard_link_target.encode('utf-8')
+        if self.actual_file is None:
+            self.actual_file = open(self.expanded_local_path, 'rb')
+        chunk = self.actual_file.read(sz)
+        is_last = not chunk or self.actual_file.tell() >= self.file_size
+        if is_last:
+            self.state = FileState.finished
+            self.actual_file.close()
+            self.actual_file = None
+        return chunk
 
     def metadata_command(self) -> FileTransmissionCommand:
         return FileTransmissionCommand(
@@ -264,11 +290,25 @@ class SendManager:
 
     def __init__(self, request_id: str, files: Tuple[File, ...]):
         self.files = files
-        self.fid_map = {str(f.file_id): f for f in self.files}
+        self.fid_map = {f.file_id: f for f in self.files}
         self.request_id = request_id
         self.state = SendState.waiting_for_permission
         self.all_done = False
         self.all_started = False
+        self.active_idx: Optional[int] = None
+
+    @property
+    def active_file(self) -> Optional[File]:
+        if self.active_idx is not None:
+            return self.files[self.active_idx]
+
+    def activate_next_ready_file(self) -> Optional[File]:
+        for i, f in enumerate(self.files):
+            if f.state is FileState.transmitting:
+                self.active_idx = i
+                self.update_collective_statuses()
+                return f
+        self.update_collective_statuses()
 
     def update_collective_statuses(self) -> None:
         found_not_started = found_not_done = False
@@ -284,6 +324,18 @@ class SendManager:
 
     def start_transfer(self) -> str:
         return FileTransmissionCommand(action=Action.send).serialize()
+
+    def next_chunk(self) -> str:
+        if self.active_file is None:
+            self.activate_next_ready_file()
+        af = self.active_file
+        if af is None:
+            return ''
+        chunk = af.next_chunk()
+        is_last = af.state is FileState.finished
+        if is_last:
+            self.activate_next_ready_file()
+        return FileTransmissionCommand(action=Action.end_data if is_last else Action.data, file_id=af.file_id, data=chunk).serialize()
 
     def send_file_metadata(self) -> Iterator[str]:
         for f in self.files:
@@ -303,6 +355,8 @@ class SendManager:
             file.state = FileState.finished
             if ftc.status != 'OK':
                 file.err_msg = ftc.status
+            if file is self.active_file:
+                self.active_idx = None
         self.update_collective_statuses()
 
     def on_file_transfer_response(self, ftc: FileTransmissionCommand) -> None:
@@ -310,15 +364,17 @@ class SendManager:
             if ftc.file_id:
                 self.on_file_status_update(ftc)
             else:
-                self.status = SendState.permission_granted if ftc.status == 'OK' else SendState.permission_denied
+                self.state = SendState.permission_granted if ftc.status == 'OK' else SendState.permission_denied
 
 
 class Send(Handler):
     use_alternate_screen = False
 
-    def __init__(self, manager: SendManager):
+    def __init__(self, cli_opts: TransferCLIOptions, manager: SendManager):
         Handler.__init__(self)
         self.manager = manager
+        self.cli_opts = cli_opts
+        self.transmit_started = False
 
     def send_payload(self, payload: str) -> None:
         self.write(f'\x1b]{FILE_TRANSFER_CODE};id={self.manager.request_id};')
@@ -331,10 +387,46 @@ class Send(Handler):
         before = self.manager.state
         self.manager.on_file_transfer_response(ftc)
         if before == SendState.waiting_for_permission:
-            if self.manager.status == SendState.permission_denied:
+            if self.manager.state == SendState.permission_denied:
                 self.cmd.styled('Permission denied for this transfer', fg='red')
                 self.quit_loop(1)
+                return
+            if self.manager.state == SendState.permission_granted:
+                self.cmd.styled('Permission granted for this transfer', fg='green')
+        self.loop_tick()
+
+    def check_for_transmit_ok(self) -> None:
+        if self.manager.state is not SendState.permission_granted:
             return
+        if self.cli_opts.confirm_paths:
+            if not self.manager.all_started:
+                return
+        if self.manager.active_file is None:
+            self.manager.activate_next_ready_file()
+        if self.manager.active_file is not None:
+            self.transmit_started = True
+            self.transmit_next_chunk()
+
+    def transmit_next_chunk(self) -> None:
+        chunk = self.manager.next_chunk()
+        if chunk:
+            self.send_payload(chunk)
+        else:
+            if self.manager.active_file is None:
+                self.transfer_finished()
+
+    def transfer_finished(self) -> None:
+        self.quit_loop(0)
+
+    def on_writing_finished(self) -> None:
+        if self.manager.state is SendState.permission_granted:
+            self.loop_tick()
+
+    def loop_tick(self) -> None:
+        if self.transmit_started:
+            self.transmit_next_chunk()
+        else:
+            self.check_for_transmit_ok()
 
     def initialize(self) -> None:
         self.send_payload(self.manager.start_transfer())
@@ -354,6 +446,10 @@ def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
     print('Scanning files…')
     files = files_for_send(cli_opts, args)
     print(f'Found {len(files)} files and directories, requesting transfer permission…')
+    loop = Loop()
+    handler = Send(cli_opts, SendManager(random_id(), files))
+    loop.loop(handler)
+    raise SystemExit(loop.return_code)
 
 
 def parse_transfer_args(args: List[str]) -> Tuple[TransferCLIOptions, List[str]]:
