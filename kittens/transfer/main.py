@@ -81,6 +81,15 @@ receiving computer. In :code:`normal` mode the last argument is assumed to be a
 destination path on the receiving computer.
 
 
+--permissions-password -p
+The password to use to skip the transfer confirmation popup in kitty. Must match the
+password set for the :opt:`file_transfer_password` option in kitty.conf. Note that
+leading and trailing whitespace is removed from the password. A password starting with
+., / or ~ characters is assumed to be a file name to read the password from. A value
+of - means read the password from STDIN. A password that is purely a number less than 256
+is assumed to be the number of a file descriptor from which to read the actual password.
+
+
 --confirm-paths
 type=bool-set
 Before actually transferring files, show a mapping of local file names to remote file names
@@ -288,8 +297,9 @@ class SendState(NameReprEnum):
 
 class SendManager:
 
-    def __init__(self, request_id: str, files: Tuple[File, ...]):
+    def __init__(self, request_id: str, files: Tuple[File, ...], pw: Optional[str] = None):
         self.files = files
+        self.password = pw or ''
         self.fid_map = {f.file_id: f for f in self.files}
         self.request_id = request_id
         self.state = SendState.waiting_for_permission
@@ -323,7 +333,7 @@ class SendManager:
         self.all_started = not found_not_started
 
     def start_transfer(self) -> str:
-        return FileTransmissionCommand(action=Action.send).serialize()
+        return FileTransmissionCommand(action=Action.send, password=self.password).serialize()
 
     def next_chunk(self) -> str:
         if self.active_file is None:
@@ -389,10 +399,12 @@ class Send(Handler):
         if before == SendState.waiting_for_permission:
             if self.manager.state == SendState.permission_denied:
                 self.cmd.styled('Permission denied for this transfer', fg='red')
+                self.print()
                 self.quit_loop(1)
                 return
             if self.manager.state == SendState.permission_granted:
                 self.cmd.styled('Permission granted for this transfer', fg='green')
+                self.print()
         self.loop_tick()
 
     def check_for_transmit_ok(self) -> None:
@@ -435,6 +447,7 @@ class Send(Handler):
 
     def on_interrupt(self) -> None:
         self.cmd.styled('Interrupt requested, cancelling transfer, transferred files are in undefined state', fg='red')
+        self.print()
         self.abort_transfer()
 
     def abort_transfer(self) -> None:
@@ -447,7 +460,7 @@ def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
     files = files_for_send(cli_opts, args)
     print(f'Found {len(files)} files and directories, requesting transfer permission…')
     loop = Loop()
-    handler = Send(cli_opts, SendManager(random_id(), files))
+    handler = Send(cli_opts, SendManager(random_id(), files, cli_opts.permissions_password))
     loop.loop(handler)
     raise SystemExit(loop.return_code)
 
@@ -459,8 +472,27 @@ def parse_transfer_args(args: List[str]) -> Tuple[TransferCLIOptions, List[str]]
     )
 
 
+def read_password(loc: str) -> str:
+    if not loc:
+        return ''
+    if loc.isdigit() and int(loc) >= 0 and int(loc) < 256:
+        with open(int(loc), 'rb') as f:
+            return f.read().decode('utf-8')
+    if loc[0] in ('.', '~', '/'):
+        if loc[0] == '~':
+            loc = os.path.expanduser(loc)
+        with open(loc, 'rb') as f:
+            return f.read().decode('utf-8')
+    if loc == '-':
+        return sys.stdin.read()
+    return loc
+
+
 def main(args: List[str]) -> None:
     cli_opts, items = parse_transfer_args(args)
+    if cli_opts.permissions_password:
+        cli_opts.permissions_password = read_password(cli_opts.permissions_password).strip()
+
     if not items:
         raise SystemExit('Usage: kitty +kitten transfer file_or_directory ...')
     if cli_opts.direction == 'send':

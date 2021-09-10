@@ -16,7 +16,9 @@ from gettext import gettext as _
 from time import monotonic
 from typing import IO, Any, Callable, Deque, Dict, List, Optional, Tuple, Union
 
-from kitty.fast_data_types import FILE_TRANSFER_CODE, OSC, add_timer, get_boss
+from kitty.fast_data_types import (
+    FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
+)
 
 from .utils import log_error, sanitize_control_codes
 
@@ -97,7 +99,7 @@ class FileTransmissionCommand:
     ttype: TransmissionType = TransmissionType.simple
     id: str = ''
     file_id: str = ''
-    secret: str = ''
+    password: str = field(default='', metadata={'base64': True})
     quiet: int = 0
     mtime: int = -1
     permissions: int = -1
@@ -313,8 +315,9 @@ class ActiveReceive:
     files: Dict[str, DestFile]
     accepted: bool = False
 
-    def __init__(self, id: str, quiet: int) -> None:
+    def __init__(self, id: str, quiet: int, password: str) -> None:
         self.id = id
+        self.password = password
         self.files = {}
         self.last_activity_at = monotonic()
         self.send_acknowledgements = quiet < 1
@@ -432,7 +435,7 @@ class FileTransmission:
             if cmd.action is not Action.send:
                 log_error(f'File transmission command received for unknown or rejected id: {cmd.id}, ignoring')
                 return
-            ar = self.active_receives[cmd.id] = ActiveReceive(cmd.id, cmd.quiet)
+            ar = self.active_receives[cmd.id] = ActiveReceive(cmd.id, cmd.quiet, cmd.password)
             self.start_receive(ar.id)
             return
 
@@ -518,6 +521,10 @@ class FileTransmission:
         return False
 
     def start_receive(self, ar_id: str) -> None:
+        ar = self.active_receives[ar_id]
+        if ar.password:
+            self.handle_send_confirmation(ar_id, {'response': 'y' if ar.password == get_options().file_transfer_password else 'n'})
+            return
         boss = get_boss()
         window = boss.window_id_map.get(self.window_id)
         if window is not None:

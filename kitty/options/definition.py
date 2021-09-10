@@ -2458,7 +2458,7 @@ opt('editor', '.',
 The terminal editor (such as ``vim`` or ``nano``) to use when editing the kitty
 config file or similar tasks.
 
-The default value of . means to use the environment variables :envvar:`VISUAL`
+The default value of :code:`.` means to use the environment variables :envvar:`VISUAL`
 and :envvar:`EDITOR` in that order. If these variables aren't set, kitty will
 run your :opt:`shell` (``$SHELL -l -i -c env``) to see if your shell config
 files set :envvar:`VISUAL` or :envvar:`EDITOR`. If that doesn't work, kitty
@@ -2561,6 +2561,13 @@ opt('clipboard_max_size', 64, option_type='positive_float', long_text='''
 The maximum size (in MB) of data from programs running in kitty that will be
 stored for writing to the system clipboard. See also :opt:`clipboard_control`.
 A value of zero means no size limit is applied.
+''')
+
+opt('file_transfer_password', '', long_text='''
+A password, that can be supplied to the file transfer kitten to skip
+the transfer confirmation dialog. This should only be used
+when initiating transfers from trusted computers, over trusted networks
+or encrypted transports.
 ''')
 
 opt('allow_hyperlinks', 'yes',
