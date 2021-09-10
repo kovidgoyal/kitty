@@ -263,8 +263,9 @@ def clear_images_on_screen(delete_data: bool = False) -> str:
 
 
 def init_state(alternate_screen: bool = True) -> str:
+    sc = SAVE_CURSOR if alternate_screen else ''
     ans = (
-        S7C1T + SAVE_CURSOR + SAVE_PRIVATE_MODE_VALUES + reset_mode(Mode.LNM) +
+        S7C1T + sc + SAVE_PRIVATE_MODE_VALUES + reset_mode(Mode.LNM) +
         reset_mode(Mode.IRM) + reset_mode(Mode.DECKM) + reset_mode(Mode.DECSCNM) +
         set_mode(Mode.DECARM) + set_mode(Mode.DECAWM) +
         set_mode(Mode.DECTCEM) + reset_mode(Mode.MOUSE_BUTTON_TRACKING) +
@@ -282,10 +283,11 @@ def init_state(alternate_screen: bool = True) -> str:
 
 
 def reset_state(normal_screen: bool = True) -> str:
-    ans = ''
-    ans += '\033[<u'  # restore keyboard mode
+    ans = '\033[<u'  # restore keyboard mode
     if normal_screen:
         ans += reset_mode(Mode.ALTERNATE_SCREEN)
+    else:
+        ans += SAVE_CURSOR
     ans += RESTORE_PRIVATE_MODE_VALUES
     ans += RESTORE_CURSOR
     ans += RESTORE_COLORS
