@@ -61,7 +61,7 @@ class TransmissionType(NameReprEnum):
     rsync = auto()
 
 
-ErrorCode = Enum('ErrorCode', 'OK STARTED EINVAL EPERM EISDIR')
+ErrorCode = Enum('ErrorCode', 'OK STARTED CANCELED EINVAL EPERM EISDIR')
 
 
 class TransmissionError(Exception):
@@ -428,13 +428,13 @@ class FileTransmission:
                 self.drop_receive(cmd.id)
                 return
             if not ar.accepted:
-                log_error(f'File transmission command received for pending id: {cmd.id}, aborting')
+                log_error(f'File transmission command {cmd.action} received for pending id: {cmd.id}, aborting')
                 self.drop_receive(cmd.id)
                 return
             ar.last_activity_at = monotonic()
         else:
             if cmd.action is not Action.send:
-                log_error(f'File transmission command received for unknown or rejected id: {cmd.id}, ignoring')
+                log_error(f'File transmission command {cmd.action} received for unknown or rejected id: {cmd.id}, ignoring')
                 return
             if len(self.active_receives) >= MAX_ACTIVE_RECEIVES:
                 log_error('New File transmission send with too many active receives, ignoring')
@@ -445,6 +445,8 @@ class FileTransmission:
 
         if cmd.action is Action.cancel:
             self.drop_receive(ar.id)
+            if ar.send_acknowledgements:
+                self.send_status_response(ErrorCode.CANCELED, request_id=ar.id)
         elif cmd.action is Action.file:
             try:
                 df = ar.start_file(cmd)

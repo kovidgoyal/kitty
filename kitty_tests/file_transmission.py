@@ -118,7 +118,7 @@ class TestFileTransmission(BaseTest):
         ft.handle_serialized_command(serialized_cmd(action='data', data='abcd'))
         self.assertTrue(os.path.exists(dest))
         ft.handle_serialized_command(serialized_cmd(action='cancel'))
-        self.ae(ft.test_responses, [response(status='OK'), response(status='STARTED', name=dest)])
+        self.ae(ft.test_responses, [response(status='OK'), response(status='STARTED', name=dest), response(status='CANCELED')])
         self.assertFalse(ft.active_receives)
         # compress with zlib
         ft = FileTransmission()

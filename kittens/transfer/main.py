@@ -292,6 +292,7 @@ class SendState(NameReprEnum):
     waiting_for_permission = auto()
     permission_granted = auto()
     permission_denied = auto()
+    canceled = auto()
     finished = auto()
 
 
@@ -385,6 +386,7 @@ class Send(Handler):
         self.manager = manager
         self.cli_opts = cli_opts
         self.transmit_started = False
+        self.file_metadata_sent = False
 
     def send_payload(self, payload: str) -> None:
         self.write(f'\x1b]{FILE_TRANSFER_CODE};id={self.manager.request_id};')
@@ -393,6 +395,11 @@ class Send(Handler):
 
     def on_file_transfer_response(self, ftc: FileTransmissionCommand) -> None:
         if ftc.id != self.manager.request_id:
+            return
+        if ftc.status == 'CANCELED':
+            self.quit_loop(1)
+            return
+        if self.manager.state in (SendState.finished, SendState.canceled):
             return
         before = self.manager.state
         self.manager.on_file_transfer_response(ftc)
@@ -405,6 +412,7 @@ class Send(Handler):
             if self.manager.state == SendState.permission_granted:
                 self.cmd.styled('Permission granted for this transfer', fg='green')
                 self.print()
+                self.send_file_metadata()
         self.loop_tick()
 
     def check_for_transmit_ok(self) -> None:
@@ -435,6 +443,8 @@ class Send(Handler):
             self.loop_tick()
 
     def loop_tick(self) -> None:
+        if self.manager.state == SendState.waiting_for_permission:
+            return
         if self.transmit_started:
             self.transmit_next_chunk()
         else:
@@ -442,17 +452,34 @@ class Send(Handler):
 
     def initialize(self) -> None:
         self.send_payload(self.manager.start_transfer())
-        for payload in self.manager.send_file_metadata():
-            self.send_payload(payload)
+        if self.cli_opts.permissions_password:
+            # dont wait for permission, not needed with a password and
+            # avoids a roundtrip
+            self.send_file_metadata()
+
+    def send_file_metadata(self) -> None:
+        if not self.file_metadata_sent:
+            for payload in self.manager.send_file_metadata():
+                self.send_payload(payload)
+            self.file_metadata_sent = True
+
+    def on_term(self) -> None:
+        self.cmd.styled('Terminate requested, cancelling transfer, transferred files are in undefined state', fg='red')
+        self.print()
+        self.abort_transfer(delay=2)
 
     def on_interrupt(self) -> None:
+        if self.manager.state is SendState.canceled:
+            self.print('Waiting for canceled acknowledgement from terminal, will abort in a few seconds if no response received')
+            return
         self.cmd.styled('Interrupt requested, cancelling transfer, transferred files are in undefined state', fg='red')
         self.print()
         self.abort_transfer()
 
-    def abort_transfer(self) -> None:
+    def abort_transfer(self, delay: float = 5) -> None:
         self.send_payload(FileTransmissionCommand(action=Action.cancel).serialize())
-        self.quit_loop(1)
+        self.manager.state = SendState.canceled
+        self.asyncio_loop.call_later(delay, self.quit_loop, 1)
 
 
 def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
