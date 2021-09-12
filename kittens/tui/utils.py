@@ -27,3 +27,18 @@ def get_key_press(allowed: str, default: str) -> str:
         finally:
             print(set_cursor_visible(True), end='', flush=True)
     return response
+
+
+def human_size(size: int, sep: str = ' ') -> str:
+    """ Convert a size in bytes into a human readable form """
+    divisor, suffix = 1, "B"
+    for i, candidate in enumerate(('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB')):
+        if size < (1 << ((i + 1) * 10)):
+            divisor, suffix = (1 << (i * 10)), candidate
+            break
+    ans = str(size / divisor)
+    if ans.find(".") > -1:
+        ans = ans[:ans.find(".")+2]
+    if ans.endswith('.0'):
+        ans = ans[:-2]
+    return ans + sep + suffix

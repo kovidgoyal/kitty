@@ -26,6 +26,7 @@ from kitty.typing import KeyEventType
 from ..tui.handler import Handler
 from ..tui.loop import Loop, debug
 from ..tui.operations import styled
+from ..tui.utils import human_size
 
 _cwd = _home = ''
 debug
@@ -304,6 +305,7 @@ class SendManager:
         self.current_chunk_uncompressed_sz: Optional[int] = None
         self.prefix = f'\x1b]{FILE_TRANSFER_CODE};id={self.request_id};'
         self.suffix = '\x1b\\'
+        self.total_size_of_all_files = sum(df.file_size for df in self.files if df.file_size >= 0)
 
     @property
     def active_file(self) -> Optional[File]:
@@ -448,6 +450,8 @@ class Send(Handler):
             self.print(df.local_path, '→', end=' ')
             self.cmd.styled(df.remote_final_path, fg='red' if df.remote_initial_size > -1 else None)
             self.print()
+        self.print(f'Transferring {len(self.manager.files)} files of total size: {human_size(self.manager.total_size_of_all_files)}')
+        self.print()
         self.print_continue_msg()
 
     def print_continue_msg(self) -> None:
