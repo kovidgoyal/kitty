@@ -523,10 +523,10 @@ class Send(Handler):
             # dont wait for permission, not needed with a password and
             # avoids a roundtrip
             self.send_file_metadata()
-        self.cmd.set_cursor_visible(True)
+        self.cmd.set_cursor_visible(False)
 
     def finalize(self) -> None:
-        self.cmd.set_cursor_visible(False)
+        self.cmd.set_cursor_visible(True)
 
     def send_file_metadata(self) -> None:
         if not self.file_metadata_sent:
