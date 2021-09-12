@@ -4,6 +4,7 @@
 
 import sys
 from contextlib import suppress
+from typing import Tuple
 
 from .operations import raw_mode, set_cursor_visible
 
@@ -29,15 +30,18 @@ def get_key_press(allowed: str, default: str) -> str:
     return response
 
 
-def human_size(size: int, sep: str = ' ', max_num_of_decimals: int = 2) -> str:
+def human_size(
+    size: int, sep: str = ' ',
+    max_num_of_decimals: int = 2,
+    unit_list: Tuple[str, ...] = ('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB')
+) -> str:
     """ Convert a size in bytes into a human readable form """
-    divisor, suffix = 1, "B"
-    for i, candidate in enumerate(('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB')):
-        if size < (1 << ((i + 1) * 10)):
-            divisor, suffix = (1 << (i * 10)), candidate
-            break
-    ans = str(size / divisor)
+    if size < 2:
+        return f'{size}{sep}{unit_list[0]}'
+    from math import log
+    exponent = min(int(log(size, 1024)), len(unit_list) - 1)
+    ans = str(size / 1024**exponent)
     pos = ans.find('.')
     if pos > -1:
         ans = ans[:pos + max_num_of_decimals + 1]
-    return ans.rstrip('0').rstrip('.') + sep + suffix
+    return ans.rstrip('0').rstrip('.') + sep + unit_list[exponent]
