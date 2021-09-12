@@ -433,12 +433,16 @@ class FileTransmission:
                 self.drop_receive(k)
 
     def handle_serialized_command(self, data: str) -> None:
-        self.prune_expired()
         try:
             cmd = FileTransmissionCommand.deserialize(data)
         except Exception as e:
             log_error(f'Failed to parse file transmission command with error: {e}')
             return
+        if cmd.action is Action.cancel:
+            if cmd.id in self.active_receives:
+                self.handle_receive_cmd(cmd)
+                return
+        self.prune_expired()
         if cmd.id in self.active_receives or cmd.action is Action.send:
             self.handle_receive_cmd(cmd)
 
