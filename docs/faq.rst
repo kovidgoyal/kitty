@@ -239,6 +239,37 @@ terminal) in different environments,
 see `here <https://github.com/kovidgoyal/kitty/issues/45>`_.
 
 
+I do not like the kitty icon!
+-------------------------------
+
+There are many alternate icons available, click on an icon to visit its
+homepage:
+
+.. image:: https://github.com/k0nserv/kitty-icon/raw/main/icon_512x512.png
+   :target: https://github.com/k0nserv/kitty-icon
+   :width: 256
+
+.. image:: https://github.com/DinkDonk/kitty-icon/raw/main/kitty-dark.png
+   :target: https://github.com/DinkDonk/kitty-icon
+   :width: 256
+
+.. image:: https://github.com/DinkDonk/kitty-icon/raw/main/kitty-light.png
+   :target: https://github.com/DinkDonk/kitty-icon
+   :width: 256
+
+.. image:: https://github.com/hristost/kitty-alternative-icon/raw/main/kitty_icon.png
+   :target: https://github.com/hristost/kitty-alternative-icon
+   :width: 256
+
+On macOS you can change the icon by following the steps:
+
+#. Find :file:`kitty.app` in the Applications folder, select it and press :kbd:`⌘ + i`
+#. Drag :file:`kitty.icns` onto the application icon in the kitty info pane
+#. Delete the icon cache and restart Dock::
+
+    $ rm /var/folders/*/*/*/com.apple.dock.iconcache; killall Dock
+
+
 How do I map key presses in kitty to different keys in the terminal program?
 --------------------------------------------------------------------------------------
 
