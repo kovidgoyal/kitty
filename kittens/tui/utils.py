@@ -29,7 +29,7 @@ def get_key_press(allowed: str, default: str) -> str:
     return response
 
 
-def human_size(size: int, sep: str = ' ') -> str:
+def human_size(size: int, sep: str = ' ', max_num_of_decimals: int = 2) -> str:
     """ Convert a size in bytes into a human readable form """
     divisor, suffix = 1, "B"
     for i, candidate in enumerate(('B', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB')):
@@ -37,8 +37,7 @@ def human_size(size: int, sep: str = ' ') -> str:
             divisor, suffix = (1 << (i * 10)), candidate
             break
     ans = str(size / divisor)
-    if ans.find(".") > -1:
-        ans = ans[:ans.find(".")+2]
-    if ans.endswith('.0'):
-        ans = ans[:-2]
-    return ans + sep + suffix
+    pos = ans.find('.')
+    if pos > -1:
+        ans = ans[:pos + max_num_of_decimals + 1]
+    return ans.rstrip('0').rstrip('.') + sep + suffix
