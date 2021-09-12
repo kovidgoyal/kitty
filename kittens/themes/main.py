@@ -549,7 +549,11 @@ def non_interactive(cli_opts: ThemesCLIOptions, theme_name: str) -> None:
     try:
         theme = themes[theme_name]
     except KeyError:
-        raise SystemExit(f'No theme named: {theme_name}')
+        theme_name = theme_name.replace('\\', '')
+        try:
+            theme = themes[theme_name]
+        except KeyError:
+            raise SystemExit(f'No theme named: {theme_name}')
     if cli_opts.dump_theme:
         print(theme.raw)
         return
