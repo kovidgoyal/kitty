@@ -127,9 +127,7 @@ to choose a new color theme. Simply run::
 
 And choose your theme from the list.
 
-Additionally, You can use the
-`OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands>`_
-to set colors or you can define keyboard shortcuts to set colors, for example::
+You can also define keyboard shortcuts to set colors, for example::
 
     map f1 set_colors --configured /path/to/some/config/file/colors.conf
 
@@ -137,7 +135,9 @@ Or you can enable :doc:`remote control <remote-control>` for |kitty| and use :re
 The shortcut mapping technique has the same syntax as the remote control
 command, for details, see :ref:`at_set-colors`.
 
-Examples of using OSC escape codes to set colors::
+Additionally, You can use the
+`OSC terminal escape codes <https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h3-Operating-System-Commands>`_
+to set colors. Examples of using OSC escape codes to set colors::
 
     Change the default foreground color:
     printf '\x1b]10;#ff0000\x1b\\'
