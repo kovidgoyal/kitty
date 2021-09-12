@@ -82,7 +82,7 @@ class TransmissionError(Exception):
         self.name = name
         self.size = size
 
-    def as_escape_code(self, request_id: str = '') -> str:
+    def as_escape_code(self, request_id: str) -> str:
         name = self.code if isinstance(self.code, str) else self.code.name
         if self.human_msg:
             name += ':' + self.human_msg
@@ -105,9 +105,19 @@ class FileTransmissionCommand:
     mtime: int = -1
     permissions: int = -1
     size: int = -1
-    data: bytes = b''
     name: str = field(default='', metadata={'base64': True})
     status: str = field(default='', metadata={'base64': True})
+    data: bytes = field(default=b'', repr=False)
+
+    def __repr__(self) -> str:
+        ans = []
+        for k in fields(self):
+            if not k.repr:
+                continue
+            val = getattr(self, k.name)
+            if val != k.default:
+                ans.append(f'{k.name}={val!r}')
+        return 'FTC(' + ', '.join(ans) + ')'
 
     def asdict(self, keep_defaults: bool = False) -> Dict[str, Union[str, int, bytes]]:
         ans = {}
@@ -222,6 +232,7 @@ class DestFile:
         self.decompressor: Union[ZlibDecompressor, IdentityDecompressor] = ZlibDecompressor() if ftc.compression is Compression.zlib else IdentityDecompressor()
         self.closed = self.ftype is FileType.directory
         self.actual_file: Optional[IO[bytes]] = None
+        self.failed = False
 
     def __repr__(self) -> str:
         return f'DestFile(name={self.name}, file_id={self.file_id}, actual_file={self.actual_file})'
@@ -351,9 +362,12 @@ class ActiveReceive:
         df = self.files.get(ftc.file_id)
         if df is None:
             raise TransmissionError(file_id=ftc.file_id, msg='Cannot write to a file without first starting it')
+        if df.failed:
+            return df
         try:
             df.write_data(self.files, ftc.data, ftc.action is Action.end_data)
         except Exception:
+            df.failed = True
             df.close()
             raise
         return df
@@ -473,6 +487,8 @@ class FileTransmission:
         elif cmd.action in (Action.data, Action.end_data):
             try:
                 df = ar.add_data(cmd)
+                if df.failed:
+                    return
                 if df.closed and ar.send_acknowledgements:
                     self.send_status_response(code=ErrorCode.OK, request_id=ar.id, file_id=df.file_id, name=df.name)
             except TransmissionError as err:
@@ -508,7 +524,7 @@ class FileTransmission:
 
     def send_transmission_error(self, request_id: str, err: TransmissionError) -> bool:
         if err.transmit:
-            return self.write_osc_to_child(request_id, err.as_escape_code())
+            return self.write_osc_to_child(request_id, err.as_escape_code(request_id))
         return True
 
     def write_osc_to_child(self, request_id: str, payload: str, appendleft: bool = False) -> bool:

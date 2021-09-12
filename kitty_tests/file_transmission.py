@@ -127,17 +127,16 @@ class TestFileTransmission(BaseTest):
         self.ae(ft.test_responses, [response(status='OK')])
         ft.handle_serialized_command(serialized_cmd(action='file', name=dest, compression='zlib'))
         self.assertPathEqual(ft.active_file().name, dest)
-        odata = b'abcd' * 1024
-        data = zlib.compress(odata)
-        ft.handle_serialized_command(serialized_cmd(action='data', data=data[:len(data)//2]))
+        odata = b'abcd' * 1024 + b'xyz'
+        c = zlib.compressobj()
+        ft.handle_serialized_command(serialized_cmd(action='data', data=c.compress(odata)))
         self.assertTrue(os.path.exists(dest))
-        ft.handle_serialized_command(serialized_cmd(action='end_data', data=data[len(data)//2:]))
+        ft.handle_serialized_command(serialized_cmd(action='end_data', data=c.flush()))
         self.ae(ft.test_responses, [response(status='OK'), response(status='STARTED', name=dest), response(status='OK', name=dest)])
         ft.handle_serialized_command(serialized_cmd(action='finish'))
         with open(dest, 'rb') as f:
             self.ae(f.read(), odata)
         del odata
-        del data
 
         # overwriting
         self.clean_tdir()
