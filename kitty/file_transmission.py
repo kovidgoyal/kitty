@@ -55,6 +55,14 @@ class FileType(NameReprEnum):
     symlink = auto()
     link = auto()
 
+    @property
+    def short_text(self) -> str:
+        return {FileType.regular: 'fil', FileType.directory: 'dir', FileType.symlink: 'sym', FileType.link: 'lnk'}[self]
+
+    @property
+    def color(self) -> str:
+        return {FileType.regular: 'yellow', FileType.directory: 'magenta', FileType.symlink: 'blue', FileType.link: 'green'}[self]
+
 
 class TransmissionType(NameReprEnum):
     simple = auto()

@@ -9,8 +9,8 @@ from contextlib import contextmanager
 from enum import auto
 from itertools import count
 from typing import (
-    Callable, Dict, Generator, Iterable, Iterator, List, Optional, Sequence,
-    Tuple, Union, cast, IO
+    IO, Callable, Dict, Generator, Iterable, Iterator, List, Optional,
+    Sequence, Tuple, Union, cast
 )
 
 from kitty.cli import parse_args
@@ -21,9 +21,11 @@ from kitty.file_transmission import (
     TransmissionType
 )
 from kitty.types import run_once
+from kitty.typing import KeyEventType
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop, debug
+from ..tui.operations import styled
 
 _cwd = _home = ''
 debug
@@ -91,7 +93,7 @@ of - means read the password from STDIN. A password that is purely a number less
 is assumed to be the number of a file descriptor from which to read the actual password.
 
 
---confirm-paths
+--confirm-paths -c
 type=bool-set
 Before actually transferring files, show a mapping of local file names to remote file names
 and ask for confirmation.
@@ -397,6 +399,7 @@ class Send(Handler):
         self.transmit_started = False
         self.file_metadata_sent = False
         self.quit_after_write_code: Optional[int] = None
+        self.check_paths_printed = False
 
     def send_payload(self, payload: str) -> None:
         self.write(self.manager.prefix)
@@ -427,17 +430,61 @@ class Send(Handler):
                 self.send_file_metadata()
         self.loop_tick()
 
+    def start_transfer(self) -> None:
+        if self.manager.active_file is None:
+            self.manager.activate_next_ready_file()
+        self.transmit_started = True
+        self.transmit_next_chunk()
+
+    def print_check_paths(self) -> None:
+        if self.check_paths_printed:
+            return
+        self.check_paths_printed = True
+        self.print('The following file transfers will be performed. A red destination means an existing file will be overwritten.')
+        for df in self.manager.files:
+            self.cmd.styled(df.file_type.short_text, fg=df.file_type.color)
+            self.print(end=' ')
+            self.print(df.local_path, '→', end=' ')
+            self.cmd.styled(df.remote_final_path, fg='red' if df.remote_initial_size > -1 else None)
+            self.print()
+        self.print_continue_msg()
+
+    def print_continue_msg(self) -> None:
+        self.print(
+            'Press', styled('y', fg='green', bold=True, fg_intense=True), 'to continue or',
+            styled('n', fg='red', bold=True, fg_intense=True), 'to abort')
+
+    def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
+        if self.quit_after_write_code is not None:
+            return
+        if self.check_paths_printed and not self.transmit_started:
+            if text.lower() == 'y':
+                self.start_transfer()
+                return
+            if text.lower() == 'n':
+                self.abort_transfer()
+                self.print('Sending cancel request to terminal')
+                return
+            self.print_continue_msg()
+
+    def on_key(self, key_event: KeyEventType) -> None:
+        if self.quit_after_write_code is not None:
+            return
+        if key_event.matches('esc'):
+            if self.check_paths_printed and not self.transmit_started:
+                self.abort_transfer()
+                self.print('Sending cancel request to terminal')
+            else:
+                self.on_interrupt()
+
     def check_for_transmit_ok(self) -> None:
         if self.manager.state is not SendState.permission_granted:
             return
         if self.cli_opts.confirm_paths:
-            if not self.manager.all_started:
-                return
-        if self.manager.active_file is None:
-            self.manager.activate_next_ready_file()
-        if self.manager.active_file is not None:
-            self.transmit_started = True
-            self.transmit_next_chunk()
+            if self.manager.all_started:
+                self.print_check_paths()
+            return
+        self.start_transfer()
 
     def transmit_next_chunk(self) -> None:
         for chunk in self.manager.next_chunks():
@@ -471,6 +518,10 @@ class Send(Handler):
             # dont wait for permission, not needed with a password and
             # avoids a roundtrip
             self.send_file_metadata()
+        self.cmd.set_cursor_visible(True)
+
+    def finalize(self) -> None:
+        self.cmd.set_cursor_visible(False)
 
     def send_file_metadata(self) -> None:
         if not self.file_metadata_sent:
