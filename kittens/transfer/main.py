@@ -433,8 +433,9 @@ class Send(Handler):
     def start_transfer(self) -> None:
         if self.manager.active_file is None:
             self.manager.activate_next_ready_file()
-        self.transmit_started = True
-        self.transmit_next_chunk()
+        if self.manager.active_file is not None:
+            self.transmit_started = True
+            self.transmit_next_chunk()
 
     def print_check_paths(self) -> None:
         if self.check_paths_printed:
