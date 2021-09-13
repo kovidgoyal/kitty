@@ -2544,16 +2544,17 @@ the config is not supported.
 '''
     )
 
-opt('clipboard_control', 'write-clipboard write-primary',
+opt('clipboard_control', 'write-clipboard write-primary read-clipboard-ask read-primary-ask',
     option_type='clipboard_control',
     long_text='''
 Allow programs running in kitty to read and write from the clipboard. You can
 control exactly which actions are allowed. The set of possible actions is:
-write-clipboard read-clipboard write-primary read-primary. The default is to
-allow writing to the clipboard and primary selection. Note that enabling the
-read functionality is a security risk as it means that any program, even one
-running on a remote server via SSH can read your clipboard. See also
-:opt:`clipboard_max_size`.
+:code:`write-clipboard read-clipboard write-primary read-primary read-clipboard-ask read-primary-ask`.
+The default is to allow writing to the clipboard and primary selection and to
+ask for permission when a program tries to read from the clipboard. Note that
+disabling the read confirmation is a security risk as it means that any
+program, even one running on a remote server via SSH can read your clipboard.
+See also :opt:`clipboard_max_size`.
 '''
     )
 

@@ -463,7 +463,7 @@ class Options:
     clear_all_mouse_actions: bool = False
     clear_all_shortcuts: bool = False
     click_interval: float = -1.0
-    clipboard_control: typing.Tuple[str, ...] = ('write-clipboard', 'write-primary')
+    clipboard_control: typing.Tuple[str, ...] = ('write-clipboard', 'write-primary', 'read-clipboard-ask', 'read-primary-ask')
     clipboard_max_size: float = 64.0
     close_on_child_death: bool = False
     command_on_bell: typing.List[str] = ['none']

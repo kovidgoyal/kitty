@@ -18,6 +18,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow the user to supply a custom Python function to draw tab bar. See
   :opt:`tab_bar_style`
 
+- When programs ask to read from the clipboard prompt the user to allow
+  the request by default instead of denying by default. See
+  :opt:`clipboard_control` for details (:iss:`4022`)
+
 - Fix a regression that caused :option:`kitty --title` to not work when
   opening new OS windows using :option:`kitty --single-instance` (:iss:`3893`)
 

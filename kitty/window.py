@@ -328,6 +328,7 @@ class Window:
     ):
         self.watchers = watchers or Watchers()
         self.current_mouse_event_button = 0
+        self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
         self.action_on_close: Optional[Callable] = None
         self.action_on_removal: Optional[Callable] = None
@@ -842,15 +843,17 @@ class Window:
         if text == '?':
             response = None
             if 's' in where or 'c' in where:
+                if 'read-clipboard-ask' in cc:
+                    return self.ask_to_read_clipboard(False)
                 response = get_clipboard_string() if 'read-clipboard' in cc else ''
                 loc = 'c'
             elif 'p' in where:
+                if 'read-primary-ask' in cc:
+                    return self.ask_to_read_clipboard(True)
                 response = get_primary_selection() if 'read-primary' in cc else ''
                 loc = 'p'
             response = response or ''
-            from base64 import standard_b64encode
-            self.screen.send_escape_code_to_child(OSC, '52;{};{}'.format(
-                loc, standard_b64encode(response.encode('utf-8')).decode('ascii')))
+            self.send_osc52(loc, response or '')
 
         else:
             from base64 import standard_b64decode
@@ -866,6 +869,33 @@ class Window:
                 if 'write-primary' in cc:
                     set_primary_selection(text)
         self.clipboard_pending = None
+
+    def send_osc52(self, loc: str, response: str) -> None:
+        from base64 import standard_b64encode
+        self.screen.send_escape_code_to_child(OSC, '52;{};{}'.format(
+            loc, standard_b64encode(response.encode('utf-8')).decode('ascii')))
+
+    def ask_to_read_clipboard(self, primary: bool = False) -> None:
+        if self.current_clipboard_read_ask is not None:
+            self.current_clipboard_read_ask = primary
+            return
+        self.current_clipboard_read_ask = primary
+        get_boss()._run_kitten('ask', ['--type=yesno', '--message', _(
+            'A program running in this window wants to read from the system clipboard.'
+            ' Allow it do so, once?')],
+            window=self,
+            custom_callback=self.handle_clipboard_confirmation
+        )
+
+    def handle_clipboard_confirmation(self, data: Dict[str, Any], *a: Any) -> None:
+        try:
+            loc = 'p' if self.current_clipboard_read_ask else 'c'
+            response = ''
+            if data['response'] == 'y':
+                response = get_primary_selection() if self.current_clipboard_read_ask else get_clipboard_string()
+            self.send_osc52(loc, response)
+        finally:
+            self.current_clipboard_read_ask = None
 
     def manipulate_title_stack(self, pop: bool, title: str, icon: Any) -> None:
         if title:

@@ -57,9 +57,9 @@ OPTIONS = r'''
 --get-clipboard
 default=False
 type=bool-set
-Output the current contents of the clipboard to stdout. Note that this
-will not work if you have not enabled the option to allow reading the clipboard
-in kitty.conf
+Output the current contents of the clipboard to STDOUT. Note that by default
+kitty will prompt you asking to allow access to the clipboard. Can be controlled
+by :opt:`clipboard_control`.
 
 
 --use-primary
@@ -80,8 +80,8 @@ Read or write to the system clipboard.
 
 To set the clipboard text, pipe in the new text on stdin. Use the
 :option:`--get-clipboard` option to output the current clipboard contents to
-:file:`stdout`. Note that you must enable reading of clipboard in
-:file:`kitty.conf` first.
+:file:`stdout`. Note that reading the clipboard will cause a permission
+popup, see :opt:`clipboard_control` for details.
 '''
 
 usage = ''
