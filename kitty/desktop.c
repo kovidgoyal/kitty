@@ -93,13 +93,6 @@ end_x11_startup_notification(PyObject UNUSED *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
-static PyMethodDef module_methods[] = {
-    METHODB(init_x11_startup_notification, METH_VARARGS),
-    METHODB(end_x11_startup_notification, METH_VARARGS),
-
-    {NULL, NULL, 0, NULL}        /* Sentinel */
-};
-
 static void* libcanberra_handle = NULL;
 static void *canberra_ctx = NULL;
 FUNC(ca_context_create, int, void**);
@@ -163,6 +156,14 @@ play_canberra_sound(const char *which_sound, const char *event_id) {
     );
 }
 
+static PyObject*
+play_desktop_sound(PyObject *self UNUSED, PyObject *args) {
+    const char *which, *event_id = "test sound";
+    if (!PyArg_ParseTuple(args, "s|s", &which, &event_id)) return NULL;
+    play_canberra_sound(which, event_id);
+    Py_RETURN_NONE;
+}
+
 static void
 finalize(void) {
     if (libsn_handle) dlclose(libsn_handle);
@@ -171,6 +172,15 @@ finalize(void) {
     canberra_ctx = NULL;
     if (libcanberra_handle) dlclose(libcanberra_handle);
 }
+
+static PyMethodDef module_methods[] = {
+    METHODB(init_x11_startup_notification, METH_VARARGS),
+    METHODB(end_x11_startup_notification, METH_VARARGS),
+    METHODB(play_desktop_sound, METH_VARARGS),
+
+    {NULL, NULL, 0, NULL}        /* Sentinel */
+};
+
 
 bool
 init_desktop(PyObject *m) {
