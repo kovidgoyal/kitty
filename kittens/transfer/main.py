@@ -18,7 +18,7 @@ from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
-    TransmissionType
+    TransmissionType, encode_password
 )
 from kitty.types import run_once
 from kitty.typing import KeyEventType
@@ -295,7 +295,7 @@ class SendManager:
 
     def __init__(self, request_id: str, files: Tuple[File, ...], pw: Optional[str] = None):
         self.files = files
-        self.password = pw or ''
+        self.password = encode_password(request_id, pw) if pw else ''
         self.fid_map = {f.file_id: f for f in self.files}
         self.request_id = request_id
         self.state = SendState.waiting_for_permission

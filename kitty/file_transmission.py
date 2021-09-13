@@ -26,6 +26,12 @@ EXPIRE_TIME = 10  # minutes
 MAX_ACTIVE_RECEIVES = 10
 
 
+def encode_password(request_id: str, pw: str) -> str:
+    import hashlib
+    q = request_id + ';' + pw
+    return 'sha256:' + hashlib.sha256(q.encode('utf-8', 'replace')).hexdigest()
+
+
 class NameReprEnum(Enum):
 
     def __repr__(self) -> str:
@@ -335,9 +341,12 @@ class ActiveReceive:
     files: Dict[str, DestFile]
     accepted: bool = False
 
-    def __init__(self, id: str, quiet: int, password: str) -> None:
-        self.id = id
-        self.password = password
+    def __init__(self, request_id: str, quiet: int, password: str) -> None:
+        self.id = request_id
+        self.password_ok: Optional[bool] = None
+        pw = get_options().file_transfer_password
+        if pw and password:
+            self.password_ok = encode_password(request_id, pw) == password
         self.files = {}
         self.last_activity_at = monotonic()
         self.send_acknowledgements = quiet < 1
@@ -559,8 +568,8 @@ class FileTransmission:
 
     def start_receive(self, ar_id: str) -> None:
         ar = self.active_receives[ar_id]
-        if ar.password:
-            self.handle_send_confirmation(ar_id, {'response': 'y' if ar.password == get_options().file_transfer_password else 'n'})
+        if ar.password_ok is not None:
+            self.handle_send_confirmation(ar_id, {'response': 'y' if ar.password_ok else 'n'})
             return
         boss = get_boss()
         window = boss.window_id_map.get(self.window_id)
