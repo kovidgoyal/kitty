@@ -2552,8 +2552,8 @@ control exactly which actions are allowed. The set of possible actions is:
 write-clipboard read-clipboard write-primary read-primary. The default is to
 allow writing to the clipboard and primary selection. Note that enabling the
 read functionality is a security risk as it means that any program, even one
-running on a remote server via SSH can read your clipboard. See also :opt:`
-clipboard_max_size`.
+running on a remote server via SSH can read your clipboard. See also
+:opt:`clipboard_max_size`.
 '''
     )
 
