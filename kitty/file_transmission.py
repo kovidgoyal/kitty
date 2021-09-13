@@ -438,6 +438,9 @@ class FileTransmission:
         except Exception as e:
             log_error(f'Failed to parse file transmission command with error: {e}')
             return
+        if not cmd.id:
+            log_error('File transmission command without id received, ignoring')
+            return
         if cmd.action is Action.cancel:
             if cmd.id in self.active_receives:
                 self.handle_receive_cmd(cmd)
