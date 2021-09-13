@@ -78,7 +78,7 @@ the kitten in a dedicated, ephemeral window.
 help_text = '''\
 Read or write to the system clipboard.
 
-To set the clipboard text, pipe in the new text on stdin. Use the
+To set the clipboard text, pipe in the new text on STDIN. Use the
 :option:`--get-clipboard` option to output the current clipboard contents to
 :file:`stdout`. Note that reading the clipboard will cause a permission
 popup, see :opt:`clipboard_control` for details.
