@@ -506,7 +506,7 @@ def main(args: List[str] = sys.argv) -> None:
     if not sys.stdout.isatty():
         sys.stdout = open(os.ctermid(), 'w')
     stdin_data = None
-    if cli_opts.stdin == 'yes' or (not sys.stdin.isatty() and cli_opts.stdin == 'detect'):
+    if cli_opts.stdin == 'yes' or (cli_opts.stdin == 'detect' and sys.stdin is not None and not sys.stdin.isatty()):
         stdin_data = sys.stdin.buffer.read()
         if stdin_data:
             items.insert(0, stdin_data)
