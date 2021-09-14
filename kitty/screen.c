@@ -315,6 +315,16 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
 
     bool is_main = self->linebuf == self->main_linebuf;
     index_type num_content_lines_before, num_content_lines_after;
+    bool dummy_output_inserted = false;
+    if (is_main && self->cursor->x == 0 && self->cursor->y < self->lines && self->linebuf->line_attrs[self->cursor->y].is_output_start) {
+        linebuf_init_line(self->linebuf, self->cursor->y);
+        if (!self->linebuf->line->cpu_cells[0].ch) {
+            // we have a blank output start line, we need it to be preserved by
+            // reflow, so insert a dummy char
+            self->linebuf->line->cpu_cells[self->cursor->x++].ch = '<';
+            dummy_output_inserted = true;
+        }
+    }
     unsigned int lines_after_cursor_before_resize = self->lines - self->cursor->y;
     CursorTrack cursor = {.before = {self->cursor->x, self->cursor->y}};
     CursorTrack main_saved_cursor = {.before = {self->main_savepoint.cursor.x, self->main_savepoint.cursor.y}};
@@ -383,6 +393,11 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
             self->cursor->y++;
             sp->cursor.y = MIN(sp->cursor.y + 1, self->lines - 1);
         }
+    }
+    if (dummy_output_inserted && self->cursor->y < self->lines) {
+        linebuf_init_line(self->linebuf, self->cursor->y);
+        self->linebuf->line->cpu_cells[0].ch = 0;
+        self->cursor->x = 0;
     }
     return true;
 }
