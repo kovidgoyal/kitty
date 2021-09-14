@@ -271,8 +271,7 @@ def init_state(alternate_screen: bool = True) -> str:
         set_mode(Mode.DECTCEM) + reset_mode(Mode.MOUSE_BUTTON_TRACKING) +
         reset_mode(Mode.MOUSE_MOTION_TRACKING) + reset_mode(Mode.MOUSE_MOVE_TRACKING) +
         reset_mode(Mode.FOCUS_TRACKING) + reset_mode(Mode.MOUSE_UTF8_MODE) +
-        reset_mode(Mode.MOUSE_SGR_MODE) + reset_mode(Mode.MOUSE_UTF8_MODE) +
-        set_mode(Mode.BRACKETED_PASTE) + SAVE_COLORS +
+        reset_mode(Mode.MOUSE_SGR_MODE) + set_mode(Mode.BRACKETED_PASTE) + SAVE_COLORS +
         '\033[*x'  # reset DECSACE to default region select
     )
     if alternate_screen:
