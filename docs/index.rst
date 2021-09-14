@@ -19,7 +19,8 @@ kitty
 .. tab:: Fast
 
    * Offloads rendering to the GPU for :doc:`lower system load <performance>`
-   * Uses threaded rendering for absolutely minimal latency
+   * Uses threaded rendering for
+     `absolutely minimal latency <https://github.com/kovidgoyal/kitty/issues/2701#issuecomment-636497270>`_
    * Performance tradeoffs can be :ref:`tuned <conf-kitty-performance>`
 
 .. tab:: Capable
