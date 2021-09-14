@@ -8,6 +8,7 @@ import sys
 from contextlib import contextmanager
 from enum import auto
 from itertools import count
+from mimetypes import guess_type
 from typing import (
     IO, Callable, Dict, Generator, Iterable, Iterator, List, Optional,
     Sequence, Tuple, Union, cast
@@ -30,6 +31,21 @@ from ..tui.utils import human_size
 
 _cwd = _home = ''
 debug
+
+
+def should_be_compressed(path: str) -> bool:
+    ext = path.rpartition(os.extsep)[-1].lower()
+    if ext in ('zip', 'odt', 'odp', 'pptx', 'docx', 'gz', 'bz2', 'xz', 'svgz'):
+        return False
+    mt = guess_type(path)[0] or ''
+    if mt:
+        if mt.endswith('+zip'):
+            return False
+        if mt.startswith('image/') and mt not in ('image/svg+xml',):
+            return False
+        if mt.startswith('video/'):
+            return False
+    return True
 
 
 def abspath(path: str) -> str:
@@ -160,7 +176,10 @@ class File:
         self.symbolic_link_target = ''
         self.stat_result = stat_result
         self.file_type = file_type
-        self.compression = Compression.zlib if self.file_type is FileType.regular and self.file_size > 4096 else Compression.none
+        self.compression = Compression.zlib if (
+            self.file_type is FileType.regular and self.file_size > 4096 and should_be_compressed(self.expanded_local_path)
+        ) else Compression.none
+        self.compression = Compression.zlib
         self.compressor: Union[ZlibCompressor, IdentityCompressor] = ZlibCompressor() if self.compression is Compression.zlib else IdentityCompressor()
         self.remote_final_path = ''
         self.remote_initial_size = -1
@@ -503,6 +522,8 @@ class Send(Handler):
         self.quit_after_write_code = 0
 
     def on_writing_finished(self) -> None:
+        if self.manager.current_chunk_uncompressed_sz is not None:
+            self.manager.current_chunk_uncompressed_sz = None
         if self.quit_after_write_code is not None:
             self.quit_loop(self.quit_after_write_code)
             return
