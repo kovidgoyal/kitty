@@ -92,8 +92,16 @@ def screen_set_mode(x: int, private: bool) -> None:
     write(CSI + ('?' if private else '') + str(x) + 'h')
 
 
+def screen_save_mode(x: int, private: bool) -> None:
+    write(CSI + ('?' if private else '') + str(x) + 's')
+
+
 def screen_reset_mode(x: int, private: bool) -> None:
     write(CSI + ('?' if private else '') + str(x) + 'l')
+
+
+def screen_restore_mode(x: int, private: bool) -> None:
+    write(CSI + ('?' if private else '') + str(x) + 'r')
 
 
 def screen_set_margins(t: int, b: int) -> None:

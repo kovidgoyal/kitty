@@ -885,9 +885,11 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
                 REPORT_COMMAND(screen_save_cursor);
                 screen_save_cursor(screen);
                 break;
-            } else if (start_modifier == '?' && !end_modifier && !num_params) {
-                REPORT_COMMAND(screen_save_modes);
-                screen_save_modes(screen);
+            } else if (start_modifier == '?' && !end_modifier) {
+                if (!num_params) {
+                    REPORT_COMMAND(screen_save_modes);
+                    screen_save_modes(screen);
+                } else { SET_MODE(screen_save_mode); }
                 break;
             }
             REPORT_ERROR("Unknown CSI s sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);
@@ -949,9 +951,11 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             if (!start_modifier && !end_modifier) {
                 // DECSTBM
                 CALL_CSI_HANDLER2(screen_set_margins, 0, 0);
-            } else if (start_modifier == '?' && !end_modifier && !num_params) {
-                REPORT_COMMAND(screen_restore_modes);
-                screen_restore_modes(screen);
+            } else if (start_modifier == '?' && !end_modifier) {
+                if (!num_params) {
+                    REPORT_COMMAND(screen_restore_modes);
+                    screen_restore_modes(screen);
+                } else { SET_MODE(screen_restore_mode); }
                 break;
             }
             REPORT_ERROR("Unknown CSI r sequence with start and end modifiers: '%c' '%c' and %u parameters", start_modifier, end_modifier, num_params);

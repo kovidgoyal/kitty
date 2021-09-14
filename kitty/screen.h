@@ -68,11 +68,6 @@ typedef struct {
 
 
 typedef struct {
-    ScreenModes buf[SAVEPOINTS_SZ];
-    index_type start_of_data, count;
-} SavemodesBuffer;
-
-typedef struct {
     CPUCell *cpu_cells;
     GPUCell *gpu_cells;
     bool is_active;
@@ -98,14 +93,13 @@ typedef struct {
     bool use_latin1, is_dirty, scroll_changed, reload_all_gpu_data;
     Cursor *cursor;
     Savepoint main_savepoint, alt_savepoint;
-    SavemodesBuffer modes_savepoints;
     PyObject *callbacks, *test_child;
     LineBuf *linebuf, *main_linebuf, *alt_linebuf;
     GraphicsManager *grman, *main_grman, *alt_grman;
     HistoryBuf *historybuf;
     unsigned int history_line_added_count;
     bool *tabstops, *main_tabstops, *alt_tabstops;
-    ScreenModes modes;
+    ScreenModes modes, saved_modes;
     ColorProfile *color_profile;
     monotonic_t start_visual_bell_at;
 
@@ -143,7 +137,9 @@ void screen_align(Screen*);
 void screen_restore_cursor(Screen *);
 void screen_save_cursor(Screen *);
 void screen_restore_modes(Screen *);
+void screen_restore_mode(Screen *, unsigned int);
 void screen_save_modes(Screen *);
+void screen_save_mode(Screen *, unsigned int);
 bool write_escape_code_to_child(Screen *self, unsigned char which, const char *data);
 void screen_cursor_position(Screen*, unsigned int, unsigned int);
 void screen_cursor_back(Screen *self, unsigned int count/*=1*/, int move_direction/*=-1*/);
