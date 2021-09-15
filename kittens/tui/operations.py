@@ -202,7 +202,8 @@ def styled(
     bold: Optional[bool] = None,
     underline: Optional[str] = None,
     underline_color: Optional[ColorSpec] = None,
-    reverse: Optional[bool] = None
+    reverse: Optional[bool] = None,
+    dim: Optional[bool] = None,
 ) -> str:
     start, end = [], []
     if fg is not None:
@@ -226,6 +227,10 @@ def styled(
     if bold is not None:
         s, e = (start, end) if bold else (end, start)
         s.append('1')
+        e.append('22')
+    if dim is not None:
+        s, e = (start, end) if dim else (end, start)
+        s.append('2')
         e.append('22')
     if reverse is not None:
         s, e = (start, end) if reverse else (end, start)
