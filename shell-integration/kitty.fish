@@ -60,7 +60,8 @@ function _ksi_main
 
         function _ksi_end_prompt
             set --local cmd_status "$status"
-            _ksi_original_fish_prompt
+            set --local op (_ksi_original_fish_prompt)  # trim trailing newlines to mimic fish behavior
+            printf "%s" "$op"
             set --global _ksi_prompt_state "prompt_end"
             _ksi_mark "B"
             return "$cmd_status" # preserve the value of $status
