@@ -41,6 +41,10 @@ _cwd = _home = ''
 debug
 
 
+def safe_divide(numerator: Union[int, float], denominator: Union[int, float], zero_val: float = 0.) -> float:
+    return numerator / denominator if denominator else zero_val
+
+
 def reduce_to_single_grapheme(text: str) -> str:
     x = 1
     while True:
@@ -105,15 +109,15 @@ def render_progress_in_width(
     sep, trail = unit_style.split('|')
     if bytes_so_far >= total_bytes:
         ratio = human_size(total_bytes, sep=sep)
-        rate = human_size(int(total_bytes / secs_so_far), sep=sep) + '/s'
+        rate = human_size(int(safe_divide(total_bytes, secs_so_far)), sep=sep) + '/s'
         eta = render_seconds(secs_so_far)
     else:
         tb = human_size(total_bytes, sep=' ', max_num_of_decimals=1)
         val = float(tb.split(' ', 1)[0])
-        ratio = format_number(val * bytes_so_far / total_bytes, max_num_of_decimals=1) + '/' + tb.replace(' ', sep)
+        ratio = format_number(val * safe_divide(bytes_so_far, total_bytes), max_num_of_decimals=1) + '/' + tb.replace(' ', sep)
         rate = human_size(int(bytes_per_sec), sep=sep) + '/s'
         bytes_left = total_bytes - bytes_so_far
-        eta_seconds = bytes_left / bytes_per_sec
+        eta_seconds = safe_divide(bytes_left, bytes_per_sec)
         eta = render_seconds(eta_seconds)
     lft = f'{spinner_char} '
     max_space_for_path = width // 2 - wcswidth(lft)
@@ -126,7 +130,7 @@ def render_progress_in_width(
     eta = ' ' + eta
     extra = width - w - wcswidth(q) - wcswidth(eta)
     if extra > 4:
-        q += render_progress_bar(bytes_so_far / total_bytes, extra) + eta
+        q += render_progress_bar(safe_divide(bytes_so_far, total_bytes), extra) + eta
     else:
         q += eta.strip()
     return p + q
@@ -768,8 +772,9 @@ class Send(Handler):
             self.print()
             self.render_progress(
                 'Total', spinner_char=sc,
-                bytes_so_far=p.total_transferred, total_bytes=p.total_bytes_to_transfer, secs_so_far=now - p.started_at,
-                bytes_per_sec=p.transfered_stats_amt / p.transfered_stats_interval
+                bytes_so_far=p.total_transferred, total_bytes=p.total_bytes_to_transfer,
+                secs_so_far=now - p.started_at,
+                bytes_per_sec=safe_divide(p.transfered_stats_amt, p.transfered_stats_interval)
             )
             self.print()
         self.asyncio_loop.call_later(self.spinner.interval, self.refresh_progress)
@@ -786,7 +791,7 @@ class Send(Handler):
             af.display_name, spinner_char=spinner_char,
             bytes_so_far=af.transmitted_bytes, total_bytes=af.bytes_to_transmit,
             secs_so_far=(af.transmit_ended_at or now) - af.transmit_started_at,
-            bytes_per_sec=p.transfered_stats_amt / p.transfered_stats_interval
+            bytes_per_sec=safe_divide(p.transfered_stats_amt, p.transfered_stats_interval)
         )
 
 
