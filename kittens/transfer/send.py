@@ -379,6 +379,7 @@ class Send(Handler):
         self.spinner = Spinner()
         self.progress_drawn = True
         self.done_files: List[File] = []
+        self.failed_files: List[File] = []
 
     def send_payload(self, payload: str) -> None:
         self.write(self.manager.prefix)
@@ -479,7 +480,7 @@ class Send(Handler):
 
     def transfer_finished(self) -> None:
         self.send_payload(FileTransmissionCommand(action=Action.finish).serialize())
-        self.quit_after_write_code = 0
+        self.quit_after_write_code = 1 if self.failed_files else 0
 
     def on_writing_finished(self) -> None:
         chunk_transmitted = self.manager.current_chunk_uncompressed_sz is not None
@@ -561,12 +562,15 @@ class Send(Handler):
 
     def on_file_done(self, file: File) -> None:
         self.done_files.append(file)
+        if file.err_msg:
+            self.failed_files.append(file)
         self.asyncio_loop.call_soon(self.refresh_progress)
 
     def draw_progress(self) -> None:
         with without_line_wrap(self.write):
             for df in self.done_files:
-                self.draw_progress_for_current_file(df, spinner_char=styled('✔', fg='green'), is_complete=True)
+                sc = styled('✔', fg='green') if not df.err_msg else styled('✘', fg='red')
+                self.draw_progress_for_current_file(df, spinner_char=sc, is_complete=True)
                 self.print()
             del self.done_files[:]
             is_complete = self.quit_after_write_code is not None
@@ -612,4 +616,10 @@ def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
     loop = Loop()
     handler = Send(cli_opts, files)
     loop.loop(handler)
+    if handler.failed_files:
+        print(f'Transfer of {len(handler.failed_files)} out of {len(handler.manager.files)} files failed')
+        for ff in handler.failed_files:
+            print(styled(ff.display_name, fg='red'))
+            print(' ', ff.err_msg)
+
     raise SystemExit(loop.return_code)
