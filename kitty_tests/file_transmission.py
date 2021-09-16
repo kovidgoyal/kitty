@@ -65,7 +65,7 @@ class TestFileTransmission(BaseTest):
         shutil.rmtree(self.tdir)
         self.responses = []
         if self.orig_home is None:
-            os.environ.pop('HOME')
+            os.environ.pop('HOME', None)
         else:
             os.environ['HOME'] = self.orig_home
 

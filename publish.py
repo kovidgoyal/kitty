@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
-import datetime
 import io
 import json
 import mimetypes
@@ -34,7 +33,7 @@ if ap is not None:
     appname = ap.group(1)
 
 ALL_ACTIONS = 'man html build tag sdist upload website'.split()
-NIGHTLY_ACTIONS = 'man html build upload_nightly'
+NIGHTLY_ACTIONS = 'man html build upload_nightly'.split()
 
 
 def call(*cmd: str, cwd: Optional[str] = None) -> None:
@@ -119,6 +118,9 @@ def run_website(args: Any) -> None:
 
 
 def sign_file(path: str) -> None:
+    dest = path + '.sig'
+    with suppress(FileNotFoundError):
+        os.remove(dest)
     subprocess.check_call([
         os.environ['PENV'] + '/gpg-as-kovid', '--output', path + '.sig',
         '--detach-sig', path
@@ -247,14 +249,7 @@ class GitHub(Base):  # {{{
                 r = self.requests.delete(asset_url.format(existing_assets[fname]))
                 if r.status_code != 204:
                     self.fail(r, 'Failed to delete %s from GitHub' % fname)
-            purl = url_base + release["id"]
-            now = str(datetime.datetime.utcnow()).split('.')[0] + ' UTC'
-            with open('.git/refs/heads/master') as f:
-                commit = f.read().strip()
-            self.patch(purl, 'Failed to update nightly release description',
-                       body=f'Nightly release, generated on: {now} from commit: {commit}')
         for path, desc in self.files.items():
-            self.info('')
             fname = os.path.basename(path)
             if self.is_nightly:
                 fname = fname.replace(version, 'nightly')
@@ -379,6 +374,7 @@ def files_for_upload() -> Dict[str, str]:
     for f in files:
         if not os.path.exists(f):
             raise SystemExit(f'The release artifact {f} does not exist')
+    return files
 
 
 def run_upload(args: Any) -> None:
@@ -389,6 +385,8 @@ def run_upload(args: Any) -> None:
 
 
 def run_upload_nightly(args: Any) -> None:
+    subprocess.check_call(['git', 'tag', '-f', 'nightly'])
+    subprocess.check_call(['git', 'push', 'origin', 'nightly', '-f'])
     gd = get_github_data()
     files = files_for_upload()
     gh = GitHub(files, appname, 'nightly', gd['username'], gd['password'])
@@ -458,7 +456,7 @@ def main() -> None:
         'action',
         default='all',
         nargs='?',
-        choices=list(ALL_ACTIONS) + ['all'],
+        choices=list(ALL_ACTIONS) + ['all', 'upload_nightly'],
         help='The action to start with')
     args = parser.parse_args()
     require_penv()
@@ -469,6 +467,8 @@ def main() -> None:
     require_git_master()
     if args.action == 'all':
         actions = list(ALL_ACTIONS)
+    elif args.action == 'upload_nightly':
+        actions = ['upload_nightly']
     else:
         idx = ALL_ACTIONS.index(args.action)
         actions = ALL_ACTIONS[idx:]
