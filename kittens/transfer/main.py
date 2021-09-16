@@ -5,18 +5,23 @@
 import os
 import stat
 import sys
+from collections import deque
 from contextlib import contextmanager
+from datetime import timedelta
 from enum import auto
 from itertools import count
 from mimetypes import guess_type
+from time import monotonic
 from typing import (
-    IO, Callable, Dict, Generator, Iterable, Iterator, List, Optional,
+    IO, Callable, Deque, Dict, Generator, Iterable, Iterator, List, Optional,
     Sequence, Tuple, Union, cast
 )
 
 from kitty.cli import parse_args
 from kitty.cli_stub import TransferCLIOptions
-from kitty.fast_data_types import FILE_TRANSFER_CODE
+from kitty.fast_data_types import (
+    FILE_TRANSFER_CODE, truncate_point_for_length, wcswidth
+)
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
     TransmissionType, encode_password
@@ -26,11 +31,104 @@ from kitty.typing import KeyEventType
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop, debug
-from ..tui.operations import styled
-from ..tui.utils import human_size
+from ..tui.operations import styled, without_line_wrap
+from ..tui.progress import render_progress_bar
+from ..tui.spinners import Spinner
+from ..tui.utils import format_number, human_size
 
 _cwd = _home = ''
 debug
+
+
+def reduce_to_single_grapheme(text: str) -> str:
+    x = 1
+    while True:
+        pos = truncate_point_for_length(text, x)
+        if pos > 0:
+            return text[:pos]
+        pos += 1
+
+
+def render_path_in_width(path: str, width: int) -> str:
+    if os.altsep:
+        path = path.replace(os.altsep, os.sep)
+    if wcswidth(path) <= width:
+        return path
+    parts = path.split(os.sep)
+    reduced = os.sep.join(map(reduce_to_single_grapheme, parts[:-1]))
+    path = os.path.join(reduced, parts[-1])
+    if wcswidth(path) <= width:
+        return path
+    x = truncate_point_for_length(path, width - 1)
+    return path[:x] + '…'
+
+
+def render_seconds(val: float) -> str:
+    ans = str(timedelta(seconds=int(val)))
+    if ',' in ans:
+        days = int(ans.split(' ')[0])
+        if days > 99:
+            ans = '∞'
+        else:
+            ans = f'>{days} days'
+    elif len(ans) == 7:
+        ans = '0' + ans
+    return ans.rjust(8)
+
+
+def ljust(text: str, width: int) -> str:
+    w = wcswidth(text)
+    if w < width:
+        text += ' ' * (width - w)
+    return text
+
+
+def rjust(text: str, width: int) -> str:
+    w = wcswidth(text)
+    if w < width:
+        text = ' ' * (width - w) + text
+    return text
+
+
+def render_progress_in_width(
+    path: str,
+    max_path_length: int = 80,
+    spinner_char: str = '⠋',
+    bytes_per_sec: float = 1024,
+    secs_so_far: float = 100.,
+    bytes_so_far: int = 33070,
+    total_bytes: int = 50000,
+    width: int = 80
+) -> str:
+    unit_style = styled('|', dim=True)
+    sep, trail = unit_style.split('|')
+    if bytes_so_far >= total_bytes:
+        ratio = human_size(total_bytes, sep=sep)
+        rate = human_size(int(total_bytes / secs_so_far), sep=sep) + '/s'
+        eta = render_seconds(secs_so_far)
+    else:
+        tb = human_size(total_bytes, sep=' ', max_num_of_decimals=1)
+        val = float(tb.split(' ', 1)[0])
+        ratio = format_number(val * bytes_so_far / total_bytes, max_num_of_decimals=1) + '/' + tb.replace(' ', sep)
+        rate = human_size(int(bytes_per_sec), sep=sep) + '/s'
+        bytes_left = total_bytes - bytes_so_far
+        eta_seconds = bytes_left / bytes_per_sec
+        eta = render_seconds(eta_seconds)
+    lft = f'{spinner_char} '
+    max_space_for_path = width // 2 - wcswidth(lft)
+    w = min(max_path_length, max_space_for_path)
+    p = lft + render_path_in_width(path, w)
+    w += wcswidth(lft)
+    p = ljust(p, w)
+    q = f'{ratio}{trail}{styled(" @ ", fg="yellow")}{rate}{trail}'
+    q = rjust(q, 25) + ' '
+    eta = ' ' + eta
+    extra = width - w - wcswidth(q) - wcswidth(eta)
+    if extra > 4:
+        q += render_progress_bar(bytes_so_far / total_bytes, extra) + eta
+    else:
+        q += eta.strip()
+    return p + q
 
 
 def should_be_compressed(path: str) -> bool:
@@ -186,6 +284,7 @@ class File:
         self.err_msg = ''
         self.actual_file: Optional[IO[bytes]] = None
         self.transmitted_bytes = 0
+        self.transmit_started_at = self.transmit_ended_at = 0.
 
     def next_chunk(self, sz: int = 1024 * 1024) -> Tuple[bytes, int]:
         if self.file_type is FileType.symlink:
@@ -310,9 +409,54 @@ class SendState(NameReprEnum):
     canceled = auto()
 
 
+class Transfer:
+
+    def __init__(self, amt: int = 0):
+        self.amt = amt
+        self.at = monotonic()
+
+    def is_too_old(self, now: float) -> bool:
+        return now - self.at > 30
+
+
+class ProgressTracker:
+
+    def __init__(self, total_size_of_all_files: int):
+        self.total_size_of_all_files = total_size_of_all_files
+        self.total_bytes_to_transfer = total_size_of_all_files
+        self.active_file: Optional[File] = None
+        self.total_transferred = 0
+        self.transfers: Deque[Transfer] = deque()
+        self.transfered_stats_amt = 0
+        self.transfered_stats_interval = 0.
+        self.started_at = 0.
+
+    def change_active_file(self, nf: File) -> None:
+        now = monotonic()
+        if self.active_file is not None:
+            self.active_file.transmit_ended_at = now
+        self.active_file = nf
+        nf.transmit_started_at = now
+
+    def start_transfer(self) -> None:
+        self.transfers.append(Transfer())
+        self.started_at = monotonic()
+
+    def on_transfer(self, amt: int) -> None:
+        if self.active_file is not None:
+            self.active_file.transmitted_bytes += amt
+        self.total_transferred += amt
+        self.transfers.append(Transfer(amt))
+        now = self.transfers[-1].at
+        while len(self.transfers) > 2 and self.transfers[0].is_too_old(now):
+            self.transfers.popleft()
+        self.transfered_stats_interval = now - self.transfers[0].at
+        self.transfered_stats_amt = sum(t.amt for t in self.transfers)
+
+
 class SendManager:
 
-    def __init__(self, request_id: str, files: Tuple[File, ...], pw: Optional[str] = None):
+    def __init__(self, request_id: str, files: Tuple[File, ...], pw: Optional[str] = None, file_done: Callable[[File], None] = lambda f: None):
         self.files = files
         self.password = encode_password(request_id, pw) if pw else ''
         self.fid_map = {f.file_id: f for f in self.files}
@@ -324,7 +468,8 @@ class SendManager:
         self.current_chunk_uncompressed_sz: Optional[int] = None
         self.prefix = f'\x1b]{FILE_TRANSFER_CODE};id={self.request_id};'
         self.suffix = '\x1b\\'
-        self.total_size_of_all_files = sum(df.file_size for df in self.files if df.file_size >= 0)
+        self.progress = ProgressTracker(sum(df.file_size for df in self.files if df.file_size >= 0))
+        self.file_done = file_done
 
     @property
     def active_file(self) -> Optional[File]:
@@ -334,10 +479,14 @@ class SendManager:
                 return ans
 
     def activate_next_ready_file(self) -> Optional[File]:
+        af = self.active_file
+        if af is not None:
+            self.file_done(af)
         for i, f in enumerate(self.files):
             if f.state is FileState.transmitting:
                 self.active_idx = i
                 self.update_collective_statuses()
+                self.progress.change_active_file(f)
                 return f
         self.active_idx = None
         self.update_collective_statuses()
@@ -358,7 +507,7 @@ class SendManager:
         return FileTransmissionCommand(action=Action.send, password=self.password).serialize()
 
     def next_chunks(self) -> Iterator[str]:
-        if self.active_file is None:
+        if self.active_file is None or self.active_file.state is FileState.finished:
             self.activate_next_ready_file()
         af = self.active_file
         if af is None:
@@ -369,8 +518,6 @@ class SendManager:
             chunk, usz = af.next_chunk()
             self.current_chunk_uncompressed_sz += usz
         is_last = af.state is FileState.finished
-        if is_last:
-            self.activate_next_ready_file()
         mv = memoryview(chunk)
         pos = 0
         limit = len(chunk)
@@ -413,14 +560,18 @@ class SendManager:
 class Send(Handler):
     use_alternate_screen = False
 
-    def __init__(self, cli_opts: TransferCLIOptions, manager: SendManager):
+    def __init__(self, cli_opts: TransferCLIOptions, files: Tuple[File, ...]):
         Handler.__init__(self)
-        self.manager = manager
+        self.manager = SendManager(random_id(), files, cli_opts.permissions_password, self.on_file_done)
         self.cli_opts = cli_opts
         self.transmit_started = False
         self.file_metadata_sent = False
         self.quit_after_write_code: Optional[int] = None
         self.check_paths_printed = False
+        names = tuple(x.local_path for x in self.manager.files)
+        self.max_name_length = max(6, max(map(wcswidth, names)))
+        self.spinner = Spinner()
+        self.progress_drawn = True
 
     def send_payload(self, payload: str) -> None:
         self.write(self.manager.prefix)
@@ -456,7 +607,9 @@ class Send(Handler):
             self.manager.activate_next_ready_file()
         if self.manager.active_file is not None:
             self.transmit_started = True
+            self.manager.progress.start_transfer()
             self.transmit_next_chunk()
+            self.draw_progress()
 
     def print_check_paths(self) -> None:
         if self.check_paths_printed:
@@ -469,7 +622,7 @@ class Send(Handler):
             self.print(df.local_path, '→', end=' ')
             self.cmd.styled(df.remote_final_path, fg='red' if df.remote_initial_size > -1 else None)
             self.print()
-        self.print(f'Transferring {len(self.manager.files)} files of total size: {human_size(self.manager.total_size_of_all_files)}')
+        self.print(f'Transferring {len(self.manager.files)} files of total size: {human_size(self.manager.progress.total_bytes_to_transfer)}')
         self.print()
         self.print_continue_msg()
 
@@ -523,6 +676,7 @@ class Send(Handler):
 
     def on_writing_finished(self) -> None:
         if self.manager.current_chunk_uncompressed_sz is not None:
+            self.manager.progress.on_transfer(self.manager.current_chunk_uncompressed_sz)
             self.manager.current_chunk_uncompressed_sz = None
         if self.quit_after_write_code is not None:
             self.quit_loop(self.quit_after_write_code)
@@ -535,6 +689,7 @@ class Send(Handler):
             return
         if self.transmit_started:
             self.transmit_next_chunk()
+            self.refresh_progress()
         else:
             self.check_for_transmit_ok()
 
@@ -577,13 +732,68 @@ class Send(Handler):
         self.manager.state = SendState.canceled
         self.asyncio_loop.call_later(delay, self.quit_loop, 1)
 
+    def render_progress(
+        self, name: str, spinner_char: str = ' ', bytes_so_far: int = 0, total_bytes: int = 0,
+        secs_so_far: float = 0., bytes_per_sec: float = 0.
+    ) -> None:
+        self.write(render_progress_in_width(
+            'Total', width=self.screen_size.cols, max_path_length=self.max_name_length, spinner_char=spinner_char,
+            bytes_so_far=bytes_so_far, total_bytes=total_bytes, secs_so_far=secs_so_far,
+            bytes_per_sec=bytes_per_sec
+        ))
+
+    def erase_progress(self) -> None:
+        if self.progress_drawn:
+            self.cmd.move_cursor_by(2, 'up')
+            self.write('\r')
+            self.cmd.clear_to_end_of_screen()
+            self.progress_drawn = False
+
+    def on_file_done(self, file: File) -> None:
+        with self.pending_update(), without_line_wrap(self.write):
+            self.erase_progress()
+            self.draw_progress_for_current_file(file)
+        self.draw_progress()
+
+    def draw_progress(self) -> None:
+        with self.pending_update(), without_line_wrap(self.write):
+            sc = self.spinner()
+            p = self.manager.progress
+            af = self.manager.active_file
+            now = monotonic()
+            if af is not None:
+                self.draw_progress_for_current_file(af, spinner_char=sc)
+            self.print()
+            self.render_progress(
+                'Total', spinner_char=sc,
+                bytes_so_far=p.total_transferred, total_bytes=p.total_bytes_to_transfer, secs_so_far=now - p.started_at,
+                bytes_per_sec=p.transfered_stats_amt / p.transfered_stats_interval
+            )
+            self.print()
+        self.asyncio_loop.call_later(self.spinner.interval, self.refresh_progress)
+        self.progress_drawn = True
+
+    def refresh_progress(self) -> None:
+        self.erase_progress()
+        self.draw_progress()
+
+    def draw_progress_for_current_file(self, af: File, spinner_char: str = ' ') -> None:
+        p = self.manager.progress
+        now = monotonic()
+        self.render_progress(
+            af.local_path, spinner_char=spinner_char,
+            bytes_so_far=af.transmitted_bytes, total_bytes=af.bytes_to_transmit,
+            secs_so_far=(af.transmit_ended_at or now) - af.transmit_started_at,
+            bytes_per_sec=p.transfered_stats_amt / p.transfered_stats_interval
+        )
+
 
 def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
     print('Scanning files…')
     files = files_for_send(cli_opts, args)
     print(f'Found {len(files)} files and directories, requesting transfer permission…')
     loop = Loop()
-    handler = Send(cli_opts, SendManager(random_id(), files, cli_opts.permissions_password))
+    handler = Send(cli_opts, files)
     loop.loop(handler)
     raise SystemExit(loop.return_code)
 

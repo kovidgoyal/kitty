@@ -30,6 +30,14 @@ def get_key_press(allowed: str, default: str) -> str:
     return response
 
 
+def format_number(val: float, max_num_of_decimals: int = 2) -> str:
+    ans = str(val)
+    pos = ans.find('.')
+    if pos > -1:
+        ans = ans[:pos + max_num_of_decimals + 1]
+    return ans.rstrip('0').rstrip('.')
+
+
 def human_size(
     size: int, sep: str = ' ',
     max_num_of_decimals: int = 2,
@@ -40,8 +48,4 @@ def human_size(
         return f'{size}{sep}{unit_list[0]}'
     from math import log
     exponent = min(int(log(size, 1024)), len(unit_list) - 1)
-    ans = str(size / 1024**exponent)
-    pos = ans.find('.')
-    if pos > -1:
-        ans = ans[:pos + max_num_of_decimals + 1]
-    return ans.rstrip('0').rstrip('.') + sep + unit_list[exponent]
+    return format_number(size / 1024**exponent, max_num_of_decimals) + sep + unit_list[exponent]

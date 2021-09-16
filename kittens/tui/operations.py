@@ -105,6 +105,15 @@ def set_line_wrapping(yes_or_no: bool) -> str:
     return set_mode(Mode.DECAWM) if yes_or_no else reset_mode(Mode.DECAWM)
 
 
+@contextmanager
+def without_line_wrap(write: Callable[[str], None]) -> Generator[None, None, None]:
+    write(set_line_wrapping(False))
+    try:
+        yield
+    finally:
+        write(set_line_wrapping(True))
+
+
 @cmd
 def set_cursor_visible(yes_or_no: bool) -> str:
     return set_mode(Mode.DECTCEM) if yes_or_no else reset_mode(Mode.DECTCEM)
