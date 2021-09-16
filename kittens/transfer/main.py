@@ -28,6 +28,7 @@ from kitty.file_transmission import (
 )
 from kitty.types import run_once
 from kitty.typing import KeyEventType
+from kitty.utils import sanitize_control_codes
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop, debug
@@ -262,6 +263,7 @@ class File:
         self.ttype = ttype
         self.state = FileState.waiting_for_start
         self.local_path = local_path
+        self.display_name = sanitize_control_codes(local_path)
         self.expanded_local_path = expanded_local_path
         self.permissions = stat.S_IMODE(stat_result.st_mode)
         self.mtime = stat_result.st_mtime_ns
@@ -568,7 +570,7 @@ class Send(Handler):
         self.file_metadata_sent = False
         self.quit_after_write_code: Optional[int] = None
         self.check_paths_printed = False
-        names = tuple(x.local_path for x in self.manager.files)
+        names = tuple(x.display_name for x in self.manager.files)
         self.max_name_length = max(6, max(map(wcswidth, names)))
         self.spinner = Spinner()
         self.progress_drawn = True
@@ -619,7 +621,7 @@ class Send(Handler):
         for df in self.manager.files:
             self.cmd.styled(df.file_type.short_text, fg=df.file_type.color)
             self.print(end=' ')
-            self.print(df.local_path, '→', end=' ')
+            self.print(df.display_name, '→', end=' ')
             self.cmd.styled(df.remote_final_path, fg='red' if df.remote_initial_size > -1 else None)
             self.print()
         self.print(f'Transferring {len(self.manager.files)} files of total size: {human_size(self.manager.progress.total_bytes_to_transfer)}')
@@ -781,7 +783,7 @@ class Send(Handler):
         p = self.manager.progress
         now = monotonic()
         self.render_progress(
-            af.local_path, spinner_char=spinner_char,
+            af.display_name, spinner_char=spinner_char,
             bytes_so_far=af.transmitted_bytes, total_bytes=af.bytes_to_transmit,
             secs_so_far=(af.transmit_ended_at or now) - af.transmit_started_at,
             bytes_per_sec=p.transfered_stats_amt / p.transfered_stats_interval
