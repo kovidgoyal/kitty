@@ -10,9 +10,9 @@ import tempfile
 import zlib
 from pathlib import Path
 
-from kittens.transfer.main import (
-    files_for_send, parse_transfer_args, set_paths
-)
+from kittens.transfer.main import parse_transfer_args
+from kittens.transfer.send import files_for_send
+from kittens.transfer.utils import set_paths
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType,
     TestFileTransmission as FileTransmission, TransmissionType
