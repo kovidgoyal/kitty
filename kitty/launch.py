@@ -338,10 +338,10 @@ def launch(
             final_cmd.append(x)
         exe = find_exe(final_cmd[0])
         if not exe:
-            env = read_shell_environment(get_options())
-            if 'PATH' in env:
+            xenv = read_shell_environment(get_options())
+            if 'PATH' in xenv:
                 import shutil
-                exe = shutil.which(final_cmd[0], path=env['PATH'])
+                exe = shutil.which(final_cmd[0], path=xenv['PATH'])
         if exe:
             final_cmd[0] = exe
         kw['cmd'] = final_cmd
