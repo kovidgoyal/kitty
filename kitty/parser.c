@@ -1529,7 +1529,7 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
                 const size_t needed_space = read_buf_sz * 2;
                 screen->pending_mode.stop_escape_code_type = 0;
                 if (screen->pending_mode.capacity - screen->pending_mode.used < needed_space) {
-                    if (screen->pending_mode.capacity >= READ_BUF_SZ) {
+                    if (screen->pending_mode.capacity > READ_BUF_SZ * 2) {
                         dump_partial_escape_code_to_pending(screen);
                         screen->pending_mode.activated_at = 0;
                         state = START;
