@@ -315,23 +315,29 @@ def reset_state(normal_screen: bool = True) -> str:
 @contextmanager
 def pending_update(write: Callable[[str], None]) -> Generator[None, None, None]:
     write(set_mode(Mode.PENDING_UPDATE))
-    yield
-    write(reset_mode(Mode.PENDING_UPDATE))
+    try:
+        yield
+    finally:
+        write(reset_mode(Mode.PENDING_UPDATE))
 
 
 @contextmanager
 def cursor(write: Callable[[str], None]) -> Generator[None, None, None]:
     write(SAVE_CURSOR)
-    yield
-    write(RESTORE_CURSOR)
+    try:
+        yield
+    finally:
+        write(RESTORE_CURSOR)
 
 
 @contextmanager
 def alternate_screen(f: Optional[IO[str]] = None) -> Generator[None, None, None]:
     f = f or sys.stdout
     print(set_mode(Mode.ALTERNATE_SCREEN), end='', file=f)
-    yield
-    print(reset_mode(Mode.ALTERNATE_SCREEN), end='', file=f)
+    try:
+        yield
+    finally:
+        print(reset_mode(Mode.ALTERNATE_SCREEN), end='', file=f)
 
 
 @contextmanager
