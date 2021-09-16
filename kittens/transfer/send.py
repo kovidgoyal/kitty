@@ -490,7 +490,7 @@ class Send(Handler):
             self.loop_tick()
 
     def loop_tick(self) -> None:
-        if self.manager.state == SendState.waiting_for_permission:
+        if self.manager.state is SendState.waiting_for_permission:
             return
         if self.transmit_started:
             self.transmit_next_chunk()
