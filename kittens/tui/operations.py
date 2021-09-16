@@ -115,6 +115,11 @@ def without_line_wrap(write: Callable[[str], None]) -> Generator[None, None, Non
 
 
 @cmd
+def repeat(char: str, count: int) -> str:
+    return f'{char}\x1b[{abs(count)}b'
+
+
+@cmd
 def set_cursor_visible(yes_or_no: bool) -> str:
     return set_mode(Mode.DECTCEM) if yes_or_no else reset_mode(Mode.DECTCEM)
 

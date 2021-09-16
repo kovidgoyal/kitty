@@ -3,7 +3,7 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from .operations import styled
+from .operations import styled, repeat
 
 
 def render_progress_bar(frac: float, width: int = 80) -> str:
@@ -12,28 +12,32 @@ def render_progress_bar(frac: float, width: int = 80) -> str:
     if frac <= 0:
         return styled('🬋' * width, dim=True)
     w = frac * width
-    overhang = w - int(w)
-    filled = '🬋' * int(w)
+    fl = int(w)
+    overhang = w - fl
+    filled = repeat('🬋', fl)
     if overhang < 0.2:
         needs_break = True
     elif overhang < 0.8:
         filled += '🬃'
+        fl += 1
         needs_break = False
     else:
-        if len(filled) < width - 1:
+        if fl < width - 1:
             filled += '🬋'
+            fl += 1
             needs_break = True
         else:
             filled += '🬃'
+            fl += 1
             needs_break = False
     ans = styled(filled, fg='blue')
     unfilled = ''
-    if width > len(filled):
+    if width > fl:
         if needs_break:
             unfilled += '🬇'
-    filler = width - len(filled) - len(unfilled)
+    filler = width - fl - len(unfilled)
     if filler > 0:
-        unfilled += '🬋' * filler
+        unfilled += repeat('🬋', filler)
     if unfilled:
         ans += styled(unfilled, dim=True)
     return ans

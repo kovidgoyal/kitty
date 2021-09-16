@@ -582,7 +582,7 @@ class Send(Handler):
             af = self.manager.active_file
             now = monotonic()
             if af is None:
-                self.write('─' * self.screen_size.width)
+                self.cmd.repeat('─', self.screen_size.width)
             else:
                 self.draw_progress_for_current_file(af, spinner_char=sc)
             self.print()
