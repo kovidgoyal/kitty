@@ -13,7 +13,7 @@ from typing import (
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import is_macos, shell_path, terminfo_dir, delete_env_var
+from .constants import is_macos, shell_path, terminfo_dir
 from .types import run_once
 
 try:
@@ -209,6 +209,7 @@ class Child:
 
     @property
     def final_env(self) -> Dict[str, str]:
+        from kitty.options.utils import delete_env_var
         env: Optional[Dict[str, str]] = getattr(self, '_final_env', None)
         if env is None:
             env = self._final_env = default_env().copy()

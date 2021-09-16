@@ -21,18 +21,10 @@ class Version(NamedTuple):
     patch: int
 
 
-class SentinelString(str):
-
-    def __new__(cls, val: str) -> 'SentinelString':
-        ans: SentinelString = str.__new__(cls, val)
-        return ans
-
-
 appname: str = 'kitty'
 kitty_face = '🐱'
 version: Version = Version(0, 23, 1)
 str_version: str = '.'.join(map(str, version))
-delete_env_var = SentinelString('_delete_this_env_var_')
 _plat = sys.platform.lower()
 is_macos: bool = 'darwin' in _plat
 if getattr(sys, 'frozen', False):

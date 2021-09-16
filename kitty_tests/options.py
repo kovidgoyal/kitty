@@ -5,7 +5,7 @@
 
 from . import BaseTest
 from kitty.utils import log_error
-from kitty.constants import delete_env_var
+from kitty.options.utils import delete_env_var
 
 
 class TestConfParsing(BaseTest):
