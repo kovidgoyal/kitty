@@ -88,7 +88,7 @@ class File:
         self.transmit_started_at = self.transmit_ended_at = 0.
 
     def __repr__(self) -> str:
-        return f'File({self.display_name=}, {self.file_type=}, {self.state=})'
+        return f'File(name={self.display_name}, ft={self.file_type}, state={self.state})'
 
     def next_chunk(self, sz: int = 1024 * 1024) -> Tuple[bytes, int]:
         if self.file_type is FileType.symlink:
