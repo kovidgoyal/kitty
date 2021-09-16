@@ -209,7 +209,7 @@ class Child:
 
     @property
     def final_env(self) -> Dict[str, str]:
-        from kitty.options.utils import delete_env_var
+        from kitty.options.utils import DELETE_ENV_VAR
         env: Optional[Dict[str, str]] = getattr(self, '_final_env', None)
         if env is None:
             env = self._final_env = default_env().copy()
@@ -233,7 +233,7 @@ class Child:
                 from .shell_integration import get_supported_shell_name
                 if get_supported_shell_name(self.argv[0]):
                     env['KITTY_SHELL_INTEGRATION'] = opts.shell_integration
-            env = {k: v for k, v in env.items() if v is not delete_env_var}
+            env = {k: v for k, v in env.items() if v is not DELETE_ENV_VAR}
         return env
 
     def fork(self) -> Optional[int]:

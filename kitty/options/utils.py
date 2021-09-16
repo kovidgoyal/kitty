@@ -42,7 +42,7 @@ for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
 sequence_sep = '>'
 func_with_args, args_funcs = key_func()
 FuncArgsType = Tuple[str, Sequence[Any]]
-delete_env_var = '_delete_this_env_var_'
+DELETE_ENV_VAR = '_delete_this_env_var_'
 
 
 class InvalidMods(ValueError):
@@ -742,7 +742,7 @@ def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
                     v = expandvars(v, current_val)
                 yield key, v
         else:
-            yield val, delete_env_var
+            yield val, DELETE_ENV_VAR
 
 
 def kitten_alias(val: str) -> Iterable[Tuple[str, List[str]]]:
