@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import datetime
 import io
 import json
 import mimetypes
@@ -224,6 +225,7 @@ class GitHub(Base):  # {{{
         self.requests = s = requests.Session()
         s.auth = (self.username, self.password)
         s.headers.update({'Accept': 'application/vnd.github.v3+json'})
+        self.url_base = self.API + f'repos/{self.username}/{self.reponame}/releases/'
 
     def patch(self, url: str, fail_msg: str, **data: Any) -> None:
         rdata = json.dumps(data)
@@ -235,13 +237,20 @@ class GitHub(Base):  # {{{
         if r.status_code != 200:
             self.fail(r, fail_msg)
 
+    def update_nightly_description(self, release_id: int) -> None:
+        url = self.url_base + str(release_id)
+        now = str(datetime.datetime.utcnow()).split('.')[0] + ' UTC'
+        with open('.git/refs/heads/master') as f:
+            commit = f.read().strip()
+        self.patch(url, 'Failed to update nightly release description',
+                   body=f'Nightly release, generated on: {now} from commit: {commit}')
+
     def __call__(self) -> None:
         releases = self.releases()
         # self.clean_older_releases(releases)
         release = self.create_release(releases)
         upload_url = release['upload_url'].partition('{')[0]
-        url_base = self.API + f'repos/{self.username}/{self.reponame}/releases/'
-        asset_url = url_base + 'assets/{}'
+        asset_url = self.url_base + 'assets/{}'
         existing_assets = self.existing_assets(release['id'])
         if self.is_nightly:
             for fname in existing_assets:
@@ -249,7 +258,9 @@ class GitHub(Base):  # {{{
                 r = self.requests.delete(asset_url.format(existing_assets[fname]))
                 if r.status_code != 204:
                     self.fail(r, 'Failed to delete %s from GitHub' % fname)
+            self.update_nightly_description(release['id'])
         for path, desc in self.files.items():
+            self.info('')
             fname = os.path.basename(path)
             if self.is_nightly:
                 fname = fname.replace(version, 'nightly')
