@@ -5,6 +5,7 @@
 
 from . import BaseTest
 from kitty.utils import log_error
+from kitty.constants import delete_env_var
 
 
 class TestConfParsing(BaseTest):
@@ -48,8 +49,8 @@ class TestConfParsing(BaseTest):
         self.assertFalse(bad_lines)
         opts = p('pointer_shape_when_grabbed XXX', bad_line_num=1)
         self.ae(opts.pointer_shape_when_grabbed, defaults.pointer_shape_when_grabbed)
-        opts = p('env A=1', 'env B=x$A', 'clear_all_shortcuts y', 'kitten_alias a b --moo', 'map f1 kitten a')
-        self.ae(opts.env, {'A': '1', 'B': 'x1'})
+        opts = p('env A=1', 'env B=x$A', 'env C=', 'env D', 'clear_all_shortcuts y', 'kitten_alias a b --moo', 'map f1 kitten a')
+        self.ae(opts.env, {'A': '1', 'B': 'x1', 'C': '', 'D': delete_env_var})
         ka = tuple(opts.keymap.values())[0]
         self.ae(ka.args, ('b', '--moo'))
         opts = p('kitty_mod alt')

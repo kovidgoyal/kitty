@@ -16,7 +16,7 @@ from kitty.conf.utils import (
     KeyAction, key_func, positive_float, positive_int, python_string, to_bool,
     to_cmdline, to_color, uniq, unit_float
 )
-from kitty.constants import config_dir, is_macos
+from kitty.constants import config_dir, is_macos, delete_env_var
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
 from kitty.fonts import FontFeature
 from kitty.key_names import (
@@ -731,10 +731,17 @@ def font_features(val: str) -> Iterable[Tuple[str, Tuple[FontFeature, ...]]]:
 
 
 def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
-    key, val = val.partition('=')[::2]
-    key, val = key.strip(), val.strip()
-    if key:
-        yield key, expandvars(val, current_val)
+    val = val.strip()
+    if val:
+        if '=' in val:
+            key, v = val.split('=', 1)
+            key, v = key.strip(), v.strip()
+            if key:
+                if v:
+                    v = expandvars(v, current_val)
+                yield key, v
+        else:
+            yield val, delete_env_var
 
 
 def kitten_alias(val: str) -> Iterable[Tuple[str, List[str]]]:

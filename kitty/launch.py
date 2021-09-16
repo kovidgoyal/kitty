@@ -17,6 +17,7 @@ from .tabs import Tab
 from .types import run_once
 from .utils import find_exe, read_shell_environment, set_primary_selection
 from .window import Watchers, Window
+from .options.utils import env as parse_env
 
 try:
     from typing import TypedDict
@@ -69,8 +70,9 @@ The working directory for the newly launched child. Use the special value
 --env
 type=list
 Environment variables to set in the child process. Can be specified multiple
-times to set different environment variables.
-Syntax: :italic:`name=value`.
+times to set different environment variables.  Syntax: :code:`name=value`.
+Using :code:`name=` will set to empty string and just :code:`name` will
+remove the environment variable.
 
 
 --copy-colors
@@ -193,9 +195,8 @@ def get_env(opts: LaunchCLIOptions, active_child: Child) -> Dict[str, str]:
     if opts.copy_env and active_child:
         env.update(active_child.foreground_environ)
     for x in opts.env:
-        parts = x.split('=', 1)
-        if len(parts) == 2:
-            env[parts[0]] = parts[1]
+        for k, v in parse_env(x, env):
+            env[k] = v
     return env
 
 

@@ -13,7 +13,7 @@ from typing import (
 
 import kitty.fast_data_types as fast_data_types
 
-from .constants import is_macos, shell_path, terminfo_dir
+from .constants import is_macos, shell_path, terminfo_dir, delete_env_var
 from .types import run_once
 
 try:
@@ -232,6 +232,7 @@ class Child:
                 from .shell_integration import get_supported_shell_name
                 if get_supported_shell_name(self.argv[0]):
                     env['KITTY_SHELL_INTEGRATION'] = opts.shell_integration
+            env = {k: v for k, v in env.items() if v is not delete_env_var}
         return env
 
     def fork(self) -> Optional[int]:

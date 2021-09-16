@@ -40,6 +40,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - hints kitten: Fix a regression that caused using the default open program
   to trigger open actions instead of running the program (:iss:`3968`)
 
+- Allow deleting environment variables in :opt:`env` by specifying
+  just the variable name, without a value
+
 
 0.23.1 [2021-08-17]
 ----------------------
