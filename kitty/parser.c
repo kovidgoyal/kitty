@@ -17,6 +17,7 @@
 
 extern PyTypeObject Screen_Type;
 #define EXTENDED_OSC_SENTINEL 0x1bu
+#define PENDING_BUF_INCREMENT (16u * 1024u)
 
 // utils {{{
 static const uint64_t pow_10_array[] = {
@@ -1359,6 +1360,13 @@ FLUSH_DRAW;
 
 static void
 write_pending_char(Screen *screen, uint32_t ch) {
+    if (screen->pending_mode.capacity < screen->pending_mode.used + 8) {
+        if (screen->pending_mode.capacity) {
+            screen->pending_mode.capacity += screen->pending_mode.capacity >= READ_BUF_SZ ? PENDING_BUF_INCREMENT : screen->pending_mode.capacity;
+        } else screen->pending_mode.capacity = PENDING_BUF_INCREMENT;
+        screen->pending_mode.buf = realloc(screen->pending_mode.buf, screen->pending_mode.capacity);
+        if (!screen->pending_mode.buf) fatal("Out of memory");
+    }
     screen->pending_mode.used += encode_utf8(ch, (char*)screen->pending_mode.buf + screen->pending_mode.used);
 }
 
@@ -1467,18 +1475,8 @@ end:
 }
 
 static void
-create_pending_space(Screen *screen, size_t needed_space) {
-    screen->pending_mode.capacity = MAX(screen->pending_mode.capacity * 2, screen->pending_mode.used + needed_space);
-    if (screen->pending_mode.capacity > READ_BUF_SZ) screen->pending_mode.capacity = screen->pending_mode.used + needed_space;
-    screen->pending_mode.buf = realloc(screen->pending_mode.buf, screen->pending_mode.capacity);
-    if (!screen->pending_mode.buf) fatal("Out of memory");
-}
-
-static void
 dump_partial_escape_code_to_pending(Screen *screen) {
     if (screen->parser_buf_pos) {
-        const size_t needed_space = 4 * screen->parser_buf_pos + 8;
-        if (screen->pending_mode.used + needed_space >= screen->pending_mode.capacity) create_pending_space(screen, needed_space);
         write_pending_char(screen, screen->parser_state);
         for (unsigned i = 0; i < screen->parser_buf_pos; i++) write_pending_char(screen, screen->parser_buf[i]);
     }
@@ -1511,6 +1509,11 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
                 _parse_bytes(screen, screen->pending_mode.buf, screen->pending_mode.used, dump_callback);
                 screen->pending_mode.used = 0;
                 screen->pending_mode.activated_at = 0;  // ignore any pending starts in the pending bytes
+                if (screen->pending_mode.capacity > READ_BUF_SZ + PENDING_BUF_INCREMENT) {
+                    screen->pending_mode.capacity = READ_BUF_SZ;
+                    screen->pending_mode.buf = realloc(screen->pending_mode.buf, screen->pending_mode.capacity);
+                    if (!screen->pending_mode.buf) fatal("Out of memory");
+                }
                 if (screen->pending_mode.stop_escape_code_type) {
                     if (screen->pending_mode.stop_escape_code_type == DCS) { REPORT_COMMAND(screen_stop_pending_mode); }
                     else if (screen->pending_mode.stop_escape_code_type == CSI) { REPORT_COMMAND(screen_reset_mode, 2026, 1); }
@@ -1526,16 +1529,12 @@ do_parse_bytes(Screen *screen, const uint8_t *read_buf, const size_t read_buf_sz
                 break;
 
             case QUEUE_PENDING: {
-                const size_t needed_space = read_buf_sz * 2;
                 screen->pending_mode.stop_escape_code_type = 0;
-                if (screen->pending_mode.capacity - screen->pending_mode.used < needed_space) {
-                    if (screen->pending_mode.capacity > READ_BUF_SZ * 2) {
-                        dump_partial_escape_code_to_pending(screen);
-                        screen->pending_mode.activated_at = 0;
-                        state = START;
-                        break;
-                    }
-                    create_pending_space(screen, needed_space);
+                if (screen->pending_mode.used >= READ_BUF_SZ) {
+                    dump_partial_escape_code_to_pending(screen);
+                    screen->pending_mode.activated_at = 0;
+                    state = START;
+                    break;
                 }
                 if (!screen->pending_mode.used) parser_state_at_start_of_pending = screen->parser_state;
                 read_buf_pos += queue_pending_bytes(screen, read_buf + read_buf_pos, read_buf_sz - read_buf_pos, dump_callback);
