@@ -405,7 +405,7 @@ class Send(Handler):
                 self.cmd.styled('Permission granted for this transfer', fg='green')
                 self.print()
                 self.send_file_metadata()
-        self.loop_tick()
+        self.asyncio_loop.call_soon(self.loop_tick)
 
     def start_transfer(self) -> None:
         if self.manager.active_file is None:

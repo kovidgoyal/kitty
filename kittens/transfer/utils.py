@@ -23,12 +23,16 @@ def safe_divide(numerator: Union[int, float], denominator: Union[int, float], ze
 
 
 def reduce_to_single_grapheme(text: str) -> str:
+    limit = len(text)
+    if limit < 2:
+        return text
     x = 1
-    while True:
+    while x < limit:
         pos = truncate_point_for_length(text, x)
         if pos > 0:
             return text[:pos]
-        pos += 1
+        x += 1
+    return text
 
 
 def render_path_in_width(path: str, width: int) -> str:
