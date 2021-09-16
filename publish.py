@@ -3,6 +3,7 @@
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import argparse
+import datetime
 import io
 import json
 import mimetypes
@@ -15,8 +16,8 @@ import subprocess
 import sys
 import tempfile
 import time
-from contextlib import suppress
-from typing import IO, Any, Dict, Iterable, List, Optional, cast
+from contextlib import contextmanager, suppress
+from typing import IO, Any, Dict, Generator, Iterable, List, Optional, cast
 
 import requests
 
@@ -33,6 +34,7 @@ if ap is not None:
     appname = ap.group(1)
 
 ALL_ACTIONS = 'man html build tag sdist upload website'.split()
+NIGHTLY_ACTIONS = 'man html build upload_nightly'
 
 
 def call(*cmd: str, cwd: Optional[str] = None) -> None:
@@ -215,48 +217,56 @@ class GitHub(Base):  # {{{
     ):
         self.files, self.reponame, self.version, self.username, self.password, self.replace = (
             files, reponame, version, username, password, replace)
-        self.current_tag_name = 'v' + self.version
+        self.current_tag_name = self.version if self.version == 'nightly' else ('v' + self.version)
+        self.is_nightly = self.current_tag_name == 'nightly'
         self.requests = s = requests.Session()
         s.auth = (self.username, self.password)
         s.headers.update({'Accept': 'application/vnd.github.v3+json'})
+
+    def patch(self, url: str, fail_msg: str, **data: Any) -> None:
+        rdata = json.dumps(data)
+        try:
+            r = self.requests.patch(url, data=rdata)
+        except Exception:
+            time.sleep(15)
+            r = self.requests.patch(url, data=rdata)
+        if r.status_code != 200:
+            self.fail(r, fail_msg)
 
     def __call__(self) -> None:
         releases = self.releases()
         # self.clean_older_releases(releases)
         release = self.create_release(releases)
         upload_url = release['upload_url'].partition('{')[0]
+        url_base = self.API + f'repos/{self.username}/{self.reponame}/releases/'
+        asset_url = url_base + 'assets/{}'
         existing_assets = self.existing_assets(release['id'])
-        for path, desc in self.files.items():
-            self.info('')
-            url = self.API + 'repos/%s/%s/releases/assets/{}' % (self.username,
-                                                                 self.reponame)
-            fname = os.path.basename(path)
-            if fname in existing_assets:
-                self.info('Deleting %s from GitHub with id: %s' %
-                          (fname, existing_assets[fname]))
-                r = self.requests.delete(url.format(existing_assets[fname]))
+        if self.is_nightly:
+            for fname in existing_assets:
+                self.info(f'Deleting {fname} from GitHub')
+                r = self.requests.delete(asset_url.format(existing_assets[fname]))
                 if r.status_code != 204:
                     self.fail(r, 'Failed to delete %s from GitHub' % fname)
+            purl = url_base + release["id"]
+            now = str(datetime.datetime.utcnow()).split('.')[0] + ' UTC'
+            with open('.git/refs/heads/master') as f:
+                commit = f.read().strip()
+            self.patch(purl, 'Failed to update nightly release description',
+                       body=f'Nightly release, generated on: {now} from commit: {commit}')
+        for path, desc in self.files.items():
+            self.info('')
+            fname = os.path.basename(path)
+            if self.is_nightly:
+                fname = fname.replace(version, 'nightly')
+            if fname in existing_assets:
+                self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
+                r = self.requests.delete(asset_url.format(existing_assets[fname]))
+                if r.status_code != 204:
+                    self.fail(r, f'Failed to delete {fname} from GitHub')
             r = self.do_upload(upload_url, path, desc, fname)
             if r.status_code != 201:
-                self.fail(r, 'Failed to upload file: %s' % fname)
-            try:
-                r = self.requests.patch(
-                    url.format(r.json()['id']),
-                    data=json.dumps({
-                        'name': fname,
-                        'label': desc
-                    }))
-            except Exception:
-                time.sleep(15)
-                r = self.requests.patch(
-                    url.format(r.json()['id']),
-                    data=json.dumps({
-                        'name': fname,
-                        'label': desc
-                    }))
-            if r.status_code != 200:
-                self.fail(r, 'Failed to set label for %s' % fname)
+                self.fail(r, f'Failed to upload file: {fname}')
+            self.patch(asset_url.format(r.json()['id']), f'Failed to set label for {fname}', name=fname, label=desc)
 
     def clean_older_releases(self, releases: Iterable[Dict[str, Any]]) -> None:
         for release in releases:
@@ -320,6 +330,8 @@ class GitHub(Base):  # {{{
             # Check for existing release
             if release['tag_name'] == self.current_tag_name:
                 return release
+        if self.is_nightly:
+            raise SystemExit('No existing nightly release found on GitHub')
         url = self.API + 'repos/%s/%s/releases' % (self.username, self.reponame)
         r = self.requests.post(
             url,
@@ -346,7 +358,7 @@ def get_github_data() -> Dict[str, str]:
     return {'username': un, 'password': pw}
 
 
-def run_upload(args: Any) -> None:
+def files_for_upload() -> Dict[str, str]:
     files = {}
     signatures = {}
     for f, desc in {
@@ -367,15 +379,54 @@ def run_upload(args: Any) -> None:
     for f in files:
         if not os.path.exists(f):
             raise SystemExit(f'The release artifact {f} does not exist')
+
+
+def run_upload(args: Any) -> None:
     gd = get_github_data()
+    files = files_for_upload()
     gh = GitHub(files, appname, version, gd['username'], gd['password'])
     gh()
 
 
+def run_upload_nightly(args: Any) -> None:
+    gd = get_github_data()
+    files = files_for_upload()
+    gh = GitHub(files, appname, 'nightly', gd['username'], gd['password'])
+    gh()
+
+
+def current_branch() -> str:
+    return subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').strip()
+
+
 def require_git_master(branch: str = 'master') -> None:
-    b = subprocess.check_output(['git', 'symbolic-ref', '--short', 'HEAD']).decode('utf-8').strip()
-    if b != branch:
+    if current_branch() != branch:
         raise SystemExit('You must be in the {} git branch'.format(branch))
+
+
+def safe_read(path: str) -> str:
+    with suppress(FileNotFoundError):
+        with open(path) as f:
+            return f.read()
+    return ''
+
+
+@contextmanager
+def change_to_git_master() -> Generator[None, None, None]:
+    stash_ref_before = safe_read('.git/refs/stash')
+    subprocess.check_call(['git', 'stash'])
+    try:
+        branch_before = current_branch()
+        if branch_before != 'master':
+            subprocess.check_call(['git', 'switch', 'master'])
+        try:
+            yield
+        finally:
+            if branch_before != 'master':
+                subprocess.check_call(['git', 'switch', branch_before])
+    finally:
+        if stash_ref_before != safe_read('.git/refs/stash'):
+            subprocess.check_call(['git', 'stash', 'pop'])
 
 
 def require_penv() -> None:
@@ -383,9 +434,15 @@ def require_penv() -> None:
         raise SystemExit('The PENV env var is not present, required for uploading releases')
 
 
+def exec_actions(actions: Iterable[str], args: Any) -> None:
+    for action in actions:
+        print('Running', action)
+        cwd = os.getcwd()
+        globals()['run_' + action](args)
+        os.chdir(cwd)
+
+
 def main() -> None:
-    require_git_master()
-    require_penv()
     parser = argparse.ArgumentParser(description='Publish kitty')
     parser.add_argument(
         '--only',
@@ -393,12 +450,23 @@ def main() -> None:
         action='store_true',
         help='Only run the specified action, by default the specified action and all sub-sequent actions are run')
     parser.add_argument(
+        '--nightly',
+        default=False,
+        action='store_true',
+        help='Upload a nightly release, ignores all other arguments')
+    parser.add_argument(
         'action',
         default='all',
         nargs='?',
         choices=list(ALL_ACTIONS) + ['all'],
         help='The action to start with')
     args = parser.parse_args()
+    require_penv()
+    if args.nightly:
+        with change_to_git_master():
+            exec_actions(NIGHTLY_ACTIONS, args)
+        return
+    require_git_master()
     if args.action == 'all':
         actions = list(ALL_ACTIONS)
     else:
@@ -415,11 +483,7 @@ def main() -> None:
             return
     if actions == ['website']:
         actions.insert(0, 'html')
-    for action in actions:
-        print('Running', action)
-        cwd = os.getcwd()
-        globals()['run_' + action](args)
-        os.chdir(cwd)
+    exec_actions(actions, args)
 
 
 if __name__ == '__main__':
