@@ -293,6 +293,9 @@ class File:
         self.transmitted_bytes = 0
         self.transmit_started_at = self.transmit_ended_at = 0.
 
+    def __repr__(self) -> str:
+        return f'File({self.display_name=}, {self.file_type=}, {self.state=})'
+
     def next_chunk(self, sz: int = 1024 * 1024) -> Tuple[bytes, int]:
         if self.file_type is FileType.symlink:
             self.state = FileState.finished
@@ -324,8 +327,7 @@ class File:
         )
 
 
-def process(cli_opts: TransferCLIOptions, paths: Iterable[str], remote_base: str) -> Iterator[File]:
-    counter = count(1)
+def process(cli_opts: TransferCLIOptions, paths: Iterable[str], remote_base: str, counter: Iterator[int]) -> Iterator[File]:
     for x in paths:
         expanded = expand_home(x)
         try:
@@ -339,7 +341,7 @@ def process(cli_opts: TransferCLIOptions, paths: Iterable[str], remote_base: str
                 new_remote_base = new_remote_base.rstrip('/') + '/' + os.path.basename(x) + '/'
             else:
                 new_remote_base = x.replace(os.sep, '/').rstrip('/') + '/'
-            yield from process(cli_opts, [os.path.join(x, y) for y in os.listdir(expanded)], new_remote_base)
+            yield from process(cli_opts, [os.path.join(x, y) for y in os.listdir(expanded)], new_remote_base, counter)
         elif stat.S_ISLNK(s.st_mode):
             yield File(x, expanded, next(counter), s, remote_base, FileType.symlink)
         elif stat.S_ISREG(s.st_mode):
@@ -355,7 +357,7 @@ def process_mirrored_files(cli_opts: TransferCLIOptions, args: Sequence[str]) ->
     home = home_path().rstrip(os.sep)
     if common_path and common_path.startswith(home + os.sep):
         paths = [os.path.join('~', os.path.relpath(x, home)) for x in paths]
-    yield from process(cli_opts, paths, '')
+    yield from process(cli_opts, paths, '', count(1))
 
 
 def process_normal_files(cli_opts: TransferCLIOptions, args: Sequence[str]) -> Iterator[File]:
@@ -366,7 +368,7 @@ def process_normal_files(cli_opts: TransferCLIOptions, args: Sequence[str]) -> I
     if len(args) > 1 and not remote_base.endswith('/'):
         remote_base += '/'
     paths = [abspath(x) for x in args]
-    yield from process(cli_opts, paths, remote_base)
+    yield from process(cli_opts, paths, remote_base, count(1))
 
 
 def files_for_send(cli_opts: TransferCLIOptions, args: List[str]) -> Tuple[File, ...]:
@@ -542,9 +544,12 @@ class SendManager:
         if file is None:
             return
         if ftc.status == 'STARTED':
-            file.state = FileState.waiting_for_data if file.ttype is TransmissionType.rsync else FileState.transmitting
             file.remote_final_path = ftc.name
             file.remote_initial_size = ftc.size
+            if file.file_type is FileType.directory:
+                file.state = FileState.finished
+            else:
+                file.state = FileState.waiting_for_data if file.ttype is TransmissionType.rsync else FileState.transmitting
         else:
             if ftc.name and not file.remote_final_path:
                 file.remote_final_path = ftc.name
