@@ -103,14 +103,15 @@ def render_progress_in_width(
     secs_so_far: float = 100.,
     bytes_so_far: int = 33070,
     total_bytes: int = 50000,
-    width: int = 80
+    width: int = 80,
+    is_complete: bool = False,
 ) -> str:
     unit_style = styled('|', dim=True)
     sep, trail = unit_style.split('|')
-    if bytes_so_far >= total_bytes:
+    if is_complete or bytes_so_far >= total_bytes:
         ratio = human_size(total_bytes, sep=sep)
         rate = human_size(int(safe_divide(total_bytes, secs_so_far)), sep=sep) + '/s'
-        eta = render_seconds(secs_so_far)
+        eta = styled(render_seconds(secs_so_far), fg='green')
     else:
         tb = human_size(total_bytes, sep=' ', max_num_of_decimals=1)
         val = float(tb.split(' ', 1)[0])
@@ -439,8 +440,6 @@ class ProgressTracker:
 
     def change_active_file(self, nf: File) -> None:
         now = monotonic()
-        if self.active_file is not None:
-            self.active_file.transmit_ended_at = now
         self.active_file = nf
         nf.transmit_started_at = now
 
@@ -485,9 +484,10 @@ class SendManager:
                 return ans
 
     def activate_next_ready_file(self) -> Optional[File]:
-        af = self.active_file
-        if af is not None:
-            self.file_done(af)
+        if self.active_idx is not None:
+            paf = self.files[self.active_idx]
+            paf.transmit_ended_at = monotonic()
+            self.file_done(paf)
         for i, f in enumerate(self.files):
             if f.state is FileState.transmitting:
                 self.active_idx = i
@@ -513,7 +513,7 @@ class SendManager:
         return FileTransmissionCommand(action=Action.send, password=self.password).serialize()
 
     def next_chunks(self) -> Iterator[str]:
-        if self.active_file is None or self.active_file.state is FileState.finished:
+        if self.active_file is None:
             self.activate_next_ready_file()
         af = self.active_file
         if af is None:
@@ -551,7 +551,7 @@ class SendManager:
             file.state = FileState.acknowledged
             if ftc.status != 'OK':
                 file.err_msg = ftc.status
-            if file is self.active_file:
+            if self.active_idx is not None and file is self.files[self.active_idx]:
                 self.active_idx = None
         self.update_collective_statuses()
 
@@ -740,12 +740,12 @@ class Send(Handler):
 
     def render_progress(
         self, name: str, spinner_char: str = ' ', bytes_so_far: int = 0, total_bytes: int = 0,
-        secs_so_far: float = 0., bytes_per_sec: float = 0.
+        secs_so_far: float = 0., bytes_per_sec: float = 0., is_complete: bool = False
     ) -> None:
         self.write(render_progress_in_width(
-            'Total', width=self.screen_size.cols, max_path_length=self.max_name_length, spinner_char=spinner_char,
+            name, width=self.screen_size.cols, max_path_length=self.max_name_length, spinner_char=spinner_char,
             bytes_so_far=bytes_so_far, total_bytes=total_bytes, secs_so_far=secs_so_far,
-            bytes_per_sec=bytes_per_sec
+            bytes_per_sec=bytes_per_sec, is_complete=is_complete
         ))
 
     def erase_progress(self) -> None:
@@ -756,14 +756,19 @@ class Send(Handler):
             self.progress_drawn = False
 
     def on_file_done(self, file: File) -> None:
-        with self.pending_update(), without_line_wrap(self.write):
+        with without_line_wrap(self.write):
             self.erase_progress()
-            self.draw_progress_for_current_file(file)
+            self.draw_progress_for_current_file(file, spinner_char=styled('✔', fg='green'), is_complete=True)
+            self.print()
         self.draw_progress()
 
     def draw_progress(self) -> None:
-        with self.pending_update(), without_line_wrap(self.write):
-            sc = self.spinner()
+        with without_line_wrap(self.write):
+            is_complete = self.quit_after_write_code is not None
+            if is_complete:
+                sc = styled('✔', fg='green') if self.quit_after_write_code == 0 else styled('✘', fg='red')
+            else:
+                sc = self.spinner()
             p = self.manager.progress
             af = self.manager.active_file
             now = monotonic()
@@ -773,7 +778,7 @@ class Send(Handler):
             self.render_progress(
                 'Total', spinner_char=sc,
                 bytes_so_far=p.total_transferred, total_bytes=p.total_bytes_to_transfer,
-                secs_so_far=now - p.started_at,
+                secs_so_far=now - p.started_at, is_complete=is_complete,
                 bytes_per_sec=safe_divide(p.transfered_stats_amt, p.transfered_stats_interval)
             )
             self.print()
@@ -784,11 +789,11 @@ class Send(Handler):
         self.erase_progress()
         self.draw_progress()
 
-    def draw_progress_for_current_file(self, af: File, spinner_char: str = ' ') -> None:
+    def draw_progress_for_current_file(self, af: File, spinner_char: str = ' ', is_complete: bool = False) -> None:
         p = self.manager.progress
         now = monotonic()
         self.render_progress(
-            af.display_name, spinner_char=spinner_char,
+            af.display_name, spinner_char=spinner_char, is_complete=is_complete,
             bytes_so_far=af.transmitted_bytes, total_bytes=af.bytes_to_transmit,
             secs_so_far=(af.transmit_ended_at or now) - af.transmit_started_at,
             bytes_per_sec=safe_divide(p.transfered_stats_amt, p.transfered_stats_interval)
