@@ -351,6 +351,7 @@ class SendManager:
             if ftc.status != 'OK':
                 file.err_msg = ftc.status
             if self.active_idx is not None and file is self.files[self.active_idx]:
+                self.file_done(self.files[self.active_idx])
                 self.active_idx = None
         self.update_collective_statuses()
 
@@ -377,6 +378,7 @@ class Send(Handler):
         self.max_name_length = max(6, max(map(wcswidth, names)))
         self.spinner = Spinner()
         self.progress_drawn = True
+        self.done_files: List[File] = []
 
     def send_payload(self, payload: str) -> None:
         self.write(self.manager.prefix)
@@ -480,14 +482,15 @@ class Send(Handler):
         self.quit_after_write_code = 0
 
     def on_writing_finished(self) -> None:
-        if self.manager.current_chunk_uncompressed_sz is not None:
-            self.manager.progress.on_transfer(self.manager.current_chunk_uncompressed_sz)
+        chunk_transmitted = self.manager.current_chunk_uncompressed_sz is not None
+        if chunk_transmitted:
+            self.manager.progress.on_transfer(self.manager.current_chunk_uncompressed_sz or 0)
             self.manager.current_chunk_uncompressed_sz = None
         if self.quit_after_write_code is not None:
             self.quit_loop(self.quit_after_write_code)
             return
-        if self.manager.state is SendState.permission_granted:
-            self.loop_tick()
+        if self.manager.state is SendState.permission_granted and (not self.transmit_started or chunk_transmitted):
+            self.asyncio_loop.call_soon(self.loop_tick)
 
     def loop_tick(self) -> None:
         if self.manager.state is SendState.waiting_for_permission:
@@ -541,6 +544,8 @@ class Send(Handler):
         self, name: str, spinner_char: str = ' ', bytes_so_far: int = 0, total_bytes: int = 0,
         secs_so_far: float = 0., bytes_per_sec: float = 0., is_complete: bool = False
     ) -> None:
+        if is_complete:
+            bytes_so_far = total_bytes
         self.write(render_progress_in_width(
             name, width=self.screen_size.cols, max_path_length=self.max_name_length, spinner_char=spinner_char,
             bytes_so_far=bytes_so_far, total_bytes=total_bytes, secs_so_far=secs_so_far,
@@ -555,14 +560,15 @@ class Send(Handler):
             self.progress_drawn = False
 
     def on_file_done(self, file: File) -> None:
-        with without_line_wrap(self.write):
-            self.erase_progress()
-            self.draw_progress_for_current_file(file, spinner_char=styled('✔', fg='green'), is_complete=True)
-            self.print()
-        self.draw_progress()
+        self.done_files.append(file)
+        self.asyncio_loop.call_soon(self.refresh_progress)
 
     def draw_progress(self) -> None:
         with without_line_wrap(self.write):
+            for df in self.done_files:
+                self.draw_progress_for_current_file(df, spinner_char=styled('✔', fg='green'), is_complete=True)
+                self.print()
+            del self.done_files[:]
             is_complete = self.quit_after_write_code is not None
             if is_complete:
                 sc = styled('✔', fg='green') if self.quit_after_write_code == 0 else styled('✘', fg='red')
