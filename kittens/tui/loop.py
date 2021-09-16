@@ -329,12 +329,15 @@ class Loop:
                 self.handler.image_manager.handle_response(apc)
     # }}}
 
+    @property
+    def total_pending_bytes_to_write(self) -> int:
+        return sum(map(len, self.write_buf))
+
     def _write_ready(self, handler: Handler, fd: int) -> None:
         if len(self.write_buf) > self.iov_limit:
             self.write_buf[self.iov_limit - 1] = b''.join(self.write_buf[self.iov_limit - 1:])
             del self.write_buf[self.iov_limit:]
-        sizes = tuple(map(len, self.write_buf))
-        total_size = sum(sizes)
+        total_size = self.total_pending_bytes_to_write
         if total_size:
             try:
                 written = os.writev(fd, self.write_buf)
