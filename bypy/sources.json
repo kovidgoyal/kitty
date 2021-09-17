@@ -29,6 +29,15 @@
     },
 
     {
+        "name": "openssl",
+        "unix": {
+            "filename": "openssl-1.1.1i.tar.gz",
+            "hash": "sha256:e8be6a35fe41d10603c3cc635e93289ed00bf34b79671a3a4de64fcee00d5242",
+            "urls": ["https://www.openssl.org/source/{filename}"]
+        }
+    },
+
+    {
         "name": "cmake",
         "os": "macos",
         "unix": {
@@ -91,15 +100,6 @@
     },
 
     {
-        "name": "openssl",
-        "unix": {
-            "filename": "openssl-1.1.1i.tar.gz",
-            "hash": "sha256:e8be6a35fe41d10603c3cc635e93289ed00bf34b79671a3a4de64fcee00d5242",
-            "urls": ["https://www.openssl.org/source/{filename}"]
-        }
-    },
-
-    {
         "name": "ncurses",
         "os": "linux",
         "unix": {
@@ -127,6 +127,16 @@
             "urls": ["https://tukaani.org/xz/{filename}"]
         }
     },
+
+    {
+        "name": "librsync",
+        "unix": {
+            "filename": "librsync-2.3.2.tar.gz",
+            "hash": "sha256:ef8ce23df38d5076d25510baa2cabedffbe0af460d887d86c2413a1c2b0c676f",
+            "urls": ["https://github.com/librsync/librsync/releases/download/v2.3.2/{filename}"]
+        }
+    },
+
 
     {
         "name": "xcrypt",

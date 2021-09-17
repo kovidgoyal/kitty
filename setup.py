@@ -746,23 +746,28 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
             output: str,
             extra_headers: Sequence[str] = (),
             extra_sources: Sequence[str] = (),
-            filter_sources: Optional[Callable[[str], bool]] = None
-    ) -> Tuple[List[str], List[str], str]:
+            filter_sources: Optional[Callable[[str], bool]] = None,
+            cflags: Sequence[str] = (), ldflags: Sequence[str] = (),
+    ) -> Tuple[str, List[str], List[str], str, Sequence[str], Sequence[str]]:
         sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('kittens', kitten, '*.c'))))
         headers = list_files(os.path.join('kittens', kitten, '*.h')) + list(extra_headers)
-        return (sources, headers, 'kittens/{}/{}'.format(kitten, output))
+        return kitten, sources, headers, 'kittens/{}/{}'.format(kitten, output), cflags, ldflags
 
-    for sources, all_headers, dest in (
+    for kitten, sources, all_headers, dest, cflags, ldflags in (
         files('unicode_input', 'unicode_names'),
         files('diff', 'diff_speedup'),
+        files('transfer', 'rsync', ldflags=('-lrsync',)),
         files(
             'choose', 'subseq_matcher',
             extra_headers=('kitty/charsets.h',),
             extra_sources=('kitty/charsets.c',),
             filter_sources=lambda x: 'windows_compat.c' not in x),
     ):
+        final_env = kenv.copy()
+        final_env.cflags.extend(cflags)
+        final_env.ldflags.extend(ldflags)
         compile_c_extension(
-            kenv, dest, compilation_database, sources, all_headers + ['kitty/data-types.h'])
+            final_env, dest, compilation_database, sources, all_headers + ['kitty/data-types.h'])
 
 
 def init_env_from_args(args: Options, native_optimizations: bool = False) -> None:
@@ -1186,7 +1191,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         'action',
         nargs='?',
         default=Options.action,
-        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher build-frozen-launcher clean export-ci-bundles'.split(),
+        choices='build test linux-package kitty.app linux-freeze macos-freeze build-launcher build-frozen-launcher clean export-ci-bundles build-dep'.split(),
         help='Action to perform (default is build)'
     )
     p.add_argument(
@@ -1300,8 +1305,41 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
 # }}}
 
 
+def build_dep() -> None:
+    class Options(argparse.Namespace):
+        platform: str
+        deps: List[str]
+
+    p = argparse.ArgumentParser(prog=f'{sys.argv[0]} build-dep', description='Build dependencies for the kitty binary packages')
+    p.add_argument(
+        '--platform',
+        default='all',
+        choices='all macos linux linux-x86'.split(),
+        help='Platforms to build the dep for'
+    )
+    p.add_argument(
+        'deps',
+        nargs='*',
+        default=[],
+        help='Names of the dependencies, if none provided, build all'
+    )
+    args = p.parse_args(sys.argv[2:], namespace=Options)
+    if args.platform == 'all':
+        platforms = ['linux', 'linux 32', 'macos']
+    elif args.platform == 'linux-x86':
+        platforms = ['linux 32']
+    else:
+        platforms = [args.platform]
+    base = [sys.executable, '../bypy']
+    for pf in platforms:
+        cmd = base + pf.split() + args.deps
+        run_tool(cmd)
+
+
 def main() -> None:
     global verbose
+    if len(sys.argv) > 1 and sys.argv[1] == 'build-dep':
+        return build_dep()
     args = option_parser().parse_args(namespace=Options())
     if not is_macos:
         args.build_universal_binary = False

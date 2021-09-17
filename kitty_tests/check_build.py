@@ -23,7 +23,8 @@ class TestBuild(BaseTest):
         from kittens.choose import subseq_matcher
         from kittens.diff import diff_speedup
         from kittens.unicode_input import unicode_names
-        del fdt, unicode_names, subseq_matcher, diff_speedup
+        from kittens.transfer import rsync
+        del fdt, unicode_names, subseq_matcher, diff_speedup, rsync
 
     def test_loading_shaders(self) -> None:
         from kitty.utils import load_shaders

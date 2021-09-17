@@ -1,5 +1,6 @@
 pkg-config
 zlib
+librsync
 python
 imagemagick
 harfbuzz

@@ -222,7 +222,7 @@ class Freeze(object):
     @flush
     def get_local_dependencies(self, path_to_lib):
         for x, is_id in self.get_dependencies(path_to_lib):
-            for y in (PREFIX + '/lib/', PREFIX + '/python/Python.framework/'):
+            for y in (PREFIX + '/lib/', PREFIX + '/python/Python.framework/', '@rpath/'):
                 if x.startswith(y):
                     if y == PREFIX + '/python/Python.framework/':
                         y = PREFIX + '/python/'
@@ -288,6 +288,7 @@ class Freeze(object):
                 'lcms2.2',
                 'crypto.1.1',
                 'ssl.1.1',
+                'rsync.2',
         ):
             print('\nAdding', x)
             x = 'lib%s.dylib' % x

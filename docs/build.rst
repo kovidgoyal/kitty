@@ -34,6 +34,7 @@ Run-time dependencies:
 * ``zlib``
 * ``libpng``
 * ``liblcms2``
+* ``librsync``
 * ``freetype`` (not needed on macOS)
 * ``fontconfig`` (not needed on macOS)
 * ``libcanberra`` (not needed on macOS)
