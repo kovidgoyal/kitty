@@ -73,6 +73,14 @@ class Reporter:  # {{{
 # }}}
 
 
+def get_nightly_url():
+    base = 'https://github.com/kovidgoyal/kitty/releases/download/nightly/kitty-nightly'
+    if is_macos:
+        return base + '.dmg'
+    arch = 'x86_64' if is64bit else 'i686'
+    return base + '-' + arch + '.txz'
+
+
 def get_latest_release_data():
     print('Checking for latest release on GitHub...')
     req = urllib.Request('https://api.github.com/repos/kovidgoyal/kitty/releases/latest', headers={'Accept': 'application/vnd.github.v3+json'})
@@ -194,9 +202,12 @@ def main(dest=None, launch=True, installer=None):
         url, size = get_latest_release_data()
         installer = download_installer(url, size)
     else:
-        installer = os.path.abspath(installer)
-        if not os.access(installer, os.R_OK):
-            raise SystemExit('Could not read from: {}'.format(installer))
+        if installer == 'nightly':
+            url = get_nightly_url()
+        else:
+            installer = os.path.abspath(installer)
+            if not os.access(installer, os.R_OK):
+                raise SystemExit('Could not read from: {}'.format(installer))
     if is_macos:
         macos_install(installer, dest=dest, launch=launch)
     else:

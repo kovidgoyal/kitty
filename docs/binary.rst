@@ -63,6 +63,25 @@ particular desktop, but it should work for most major desktop environments.
 Customizing the installation
 --------------------------------
 
+.. _nightly:
+
+* You can install the latest nightly kitty build with ``installer``:
+
+  .. parsed-literal::
+     :class: pre
+
+     |ins| \\
+         installer=nightly
+
+  If you want to install it in parallel to the released kitty specify a
+  different install locations with ``dest``:
+
+  .. parsed-literal::
+     :class: pre
+
+     |ins| \\
+         installer=nightly dest=/some/other/location
+
 * You can specify a different install location, with ``dest``:
 
   .. parsed-literal::
@@ -87,6 +106,7 @@ Customizing the installation
 
      |ins| \\
          installer=/path/to/dmg or tarball
+
 
 Uninstalling
 ----------------

@@ -10,6 +10,9 @@ Build from source
 |kitty| is designed to run from source, for easy hack-ability. Make sure
 the following dependencies are installed first.
 
+.. note::
+   If you just want to test the latest changes to kitty you dont need to build
+   from source. Instead install the :ref:`latest nightly build <nightly>`.
 
 .. note::
    If you are making small changes only to the python parts of kitty, there is no need to

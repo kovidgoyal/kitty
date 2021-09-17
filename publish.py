@@ -242,8 +242,11 @@ class GitHub(Base):  # {{{
         now = str(datetime.datetime.utcnow()).split('.')[0] + ' UTC'
         with open('.git/refs/heads/master') as f:
             commit = f.read().strip()
-        self.patch(url, 'Failed to update nightly release description',
-                   body=f'Nightly release, generated on: {now} from commit: {commit}')
+        self.patch(
+            url, 'Failed to update nightly release description',
+            body=f'Nightly release, generated on: {now} from commit: {commit}.'
+            ' For how to install nightly builds, see: https://sw.kovidgoyal.net/kitty/binary/#customizing-the-installation'
+        )
 
     def __call__(self) -> None:
         releases = self.releases()
