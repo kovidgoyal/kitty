@@ -113,17 +113,18 @@ typedef enum { TILING, SCALED, MIRRORED } BackgroundImageLayout;
     }
 
 #ifdef __clang__
-#define START_ALLOW_CASE_RANGE _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wpedantic\"")
-#define END_ALLOW_CASE_RANGE _Pragma("clang diagnostic pop")
+#define IGNORE_PEDANTIC_WARNINGS _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wpedantic\"")
+#define END_IGNORE_PEDANTIC_WARNINGS _Pragma("clang diagnostic pop")
 #define ALLOW_UNUSED_RESULT _Pragma("clang diagnostic push") _Pragma("clang diagnostic ignored \"-Wunused-result\"")
 #define END_ALLOW_UNUSED_RESULT _Pragma("clang diagnostic pop")
 #else
-#define START_ALLOW_CASE_RANGE _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
-#define END_ALLOW_CASE_RANGE _Pragma("GCC diagnostic pop")
+#define IGNORE_PEDANTIC_WARNINGS _Pragma("GCC diagnostic ignored \"-Wpedantic\"")
+#define END_IGNORE_PEDANTIC_WARNINGS _Pragma("GCC diagnostic pop")
 #define ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic ignored \"-Wunused-result\"")
 #define END_ALLOW_UNUSED_RESULT _Pragma("GCC diagnostic pop")
 #endif
-
+#define START_ALLOW_CASE_RANGE IGNORE_PEDANTIC_WARNINGS
+#define END_ALLOW_CASE_RANGE END_IGNORE_PEDANTIC_WARNINGS
 
 typedef enum UTF8State { UTF8_ACCEPT = 0, UTF8_REJECT = 1} UTF8State;
 
