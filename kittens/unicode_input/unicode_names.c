@@ -91,7 +91,6 @@ static PyMethodDef module_methods[] = {
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 
-#if PY_VERSION_HEX >= 0x03000000
 static struct PyModuleDef module = {
    .m_base = PyModuleDef_HEAD_INIT,
    .m_name = "unicode_names",   /* name of module */
@@ -109,13 +108,3 @@ PyInit_unicode_names(void) {
     if (m == NULL) return NULL;
     return m;
 }
-#else
-EXPORTED
-initunicode_names(void) {
-    PyObject *m;
-    m = Py_InitModule3("unicode_names", module_methods,
-    ""
-    );
-    if (m == NULL) return;
-}
-#endif
