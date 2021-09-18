@@ -7,7 +7,7 @@ class JobCapsule:
     pass
 
 
-def begin_signature(file_size: int = -1, strong_len: int = 0) -> JobCapsule:
+def begin_create_signature(file_size: int = -1, strong_len: int = 0) -> JobCapsule:
     pass
 
 

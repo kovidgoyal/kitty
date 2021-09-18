@@ -18,7 +18,7 @@ free_job_capsule(PyObject *capsule) {
 }
 
 static PyObject*
-begin_signature(PyObject *self UNUSED, PyObject *args) {
+begin_create_signature(PyObject *self UNUSED, PyObject *args) {
     long long file_size = -1;
     long sl = 0;
     if (!PyArg_ParseTuple(args, "|Ll", &file_size, &sl)) return NULL;
@@ -78,7 +78,7 @@ iter_job(PyObject *self UNUSED, PyObject *args) {
 }
 
 static PyMethodDef module_methods[] = {
-    {"begin_signature", (PyCFunction)begin_signature, METH_VARARGS, ""},
+    {"begin_create_signature", (PyCFunction)begin_create_signature, METH_VARARGS, ""},
     {"iter_job", (PyCFunction)iter_job, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
