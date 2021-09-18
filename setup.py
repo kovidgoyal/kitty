@@ -228,11 +228,11 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
     return sanitize_args
 
 
-def test_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c') -> bool:
+def test_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c', link_also: bool = True, show_stderr: bool = False) -> bool:
     src = src or 'int main(void) { return 0; }'
     p = subprocess.Popen(
-        [cc] + list(cflags) + ['-x', lang, '-o', os.devnull, '-'],
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.PIPE,
+        [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', os.devnull, '-'],
+        stdout=subprocess.DEVNULL, stdin=subprocess.PIPE, stderr=None if show_stderr else subprocess.DEVNULL
     )
     stdin = p.stdin
     assert stdin is not None
@@ -261,6 +261,20 @@ def set_arches(flags: List[str], arches: Iterable[str] = ('x86_64', 'arm64')) ->
         del flags[idx]
     for arch in arches:
         flags.extend(('-arch', arch))
+
+
+def detect_librsync(cc: str, cflags: List[str]) -> None:
+    if not test_compile(cc, '-lrsync', show_stderr=True, src='#include <librsync.h>\nint main(void) { rs_strerror(0); return 0; }'):
+        raise SystemExit('The librsync library is required')
+    if test_compile(cc, link_also=False, src='''
+#include <librsync.h>
+int main(void) {
+    rs_magic_number magic_number = 0;
+    size_t block_len = 0, strong_len = 0;
+    rs_sig_args(1024, &magic_number, &block_len, &strong_len);
+    return 0;
+}'''):
+        cflags.append('-DKITTY_HAS_RS_SIG_ARGS')
 
 
 def init_env(
@@ -316,6 +330,7 @@ def init_env(
     cflags = shlex.split(cflags_) + shlex.split(
         sysconfig.get_config_var('CCSHARED') or ''
     )
+    detect_librsync(cc, cflags)
     ldflags_ = os.environ.get(
         'OVERRIDE_LDFLAGS',
         '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3')
