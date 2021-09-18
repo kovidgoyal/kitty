@@ -69,14 +69,13 @@ iter_job(PyObject *self UNUSED, PyObject *args) {
         size_t before = buffer.avail_out;
         result = rs_job_iter(job, &buffer);
         output_size += before - buffer.avail_out;
-        if (result == RS_DONE) break;
+        if (result == RS_DONE || result == RS_BLOCKED) break;
         if (buffer.avail_in) {
             if (_PyBytes_Resize(&ans, PyBytes_GET_SIZE(ans) * 2) != 0) return NULL;
             buffer.avail_out = PyBytes_GET_SIZE(ans) - output_size;
             buffer.next_out = PyBytes_AS_STRING(ans) + output_size;
             continue;
         }
-        if (result == RS_BLOCKED) break;
         Py_DECREF(ans);
         PyErr_SetString(RsyncError, rs_strerror(result));
         return NULL;
@@ -84,7 +83,8 @@ iter_job(PyObject *self UNUSED, PyObject *args) {
     if ((ssize_t)output_size != PyBytes_GET_SIZE(ans)) {
         if (_PyBytes_Resize(&ans, output_size) != 0) return NULL;
     }
-    return Py_BuildValue("NO", ans, result == RS_DONE ? Py_True : Py_False);
+    Py_ssize_t unused_input = buffer.avail_in;
+    return Py_BuildValue("NOn", ans, result == RS_DONE ? Py_True : Py_False, unused_input);
 }
 
 static PyObject*
