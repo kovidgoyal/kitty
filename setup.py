@@ -234,11 +234,13 @@ def test_compile(
     lang: str = 'c',
     link_also: bool = True,
     show_stderr: bool = False,
-    libraries: Iterable[str] = ()
+    libraries: Iterable[str] = (),
+    ldflags: Iterable[str] = (),
 ) -> bool:
     src = src or 'int main(void) { return 0; }'
     p = subprocess.Popen(
-        [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', os.devnull, '-'] + [f'-l{x}' for x in libraries],
+        [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', os.devnull, '-'] +
+        [f'-l{x}' for x in libraries] + list(ldflags),
         stdout=subprocess.DEVNULL, stdin=subprocess.PIPE, stderr=None if show_stderr else subprocess.DEVNULL
     )
     stdin = p.stdin
@@ -270,11 +272,13 @@ def set_arches(flags: List[str], arches: Iterable[str] = ('x86_64', 'arm64')) ->
         flags.extend(('-arch', arch))
 
 
-def detect_librsync(cc: str, cflags: List[str]) -> None:
-    if not test_compile(cc, libraries=('rsync',), show_stderr=True, src='#include <librsync.h>\nint main(void) { rs_strerror(0); return 0; }'):
+def detect_librsync(cc: str, cflags: List[str], ldflags: List[str]) -> None:
+    if not test_compile(
+            cc, *cflags, libraries=('rsync',), ldflags=ldflags, show_stderr=True,
+            src='#include <librsync.h>\nint main(void) { rs_strerror(0); return 0; }'):
         raise SystemExit('The librsync library is required')
     # check for rs_sig_args() which was added to librsync in Apr 2020 version 2.3.0
-    if test_compile(cc, link_also=False, src='''
+    if test_compile(cc, *cflags, link_also=False, src='''
 #include <librsync.h>
 int main(void) {
     rs_magic_number magic_number = 0;
@@ -338,7 +342,6 @@ def init_env(
     cflags = shlex.split(cflags_) + shlex.split(
         sysconfig.get_config_var('CCSHARED') or ''
     )
-    detect_librsync(cc, cflags)
     ldflags_ = os.environ.get(
         'OVERRIDE_LDFLAGS',
         '-Wall ' + ' '.join(sanitize_args) + ('' if debug else ' -O3')
@@ -348,6 +351,7 @@ def init_env(
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
+    detect_librsync(cc, cflags, ldflags)
     if not debug and not sanitize and not is_openbsd and link_time_optimization:
         # See https://github.com/google/sanitizers/issues/647
         cflags.append('-flto')
