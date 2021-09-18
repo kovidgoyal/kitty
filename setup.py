@@ -747,16 +747,16 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
             extra_headers: Sequence[str] = (),
             extra_sources: Sequence[str] = (),
             filter_sources: Optional[Callable[[str], bool]] = None,
-            cflags: Sequence[str] = (), ldflags: Sequence[str] = (),
+            includes: Sequence[str] = (), libraries: Sequence[str] = (),
     ) -> Tuple[str, List[str], List[str], str, Sequence[str], Sequence[str]]:
         sources = list(filter(filter_sources, list(extra_sources) + list_files(os.path.join('kittens', kitten, '*.c'))))
         headers = list_files(os.path.join('kittens', kitten, '*.h')) + list(extra_headers)
-        return kitten, sources, headers, 'kittens/{}/{}'.format(kitten, output), cflags, ldflags
+        return kitten, sources, headers, 'kittens/{}/{}'.format(kitten, output), includes, libraries
 
-    for kitten, sources, all_headers, dest, cflags, ldflags in (
+    for kitten, sources, all_headers, dest, includes, libraries in (
         files('unicode_input', 'unicode_names'),
         files('diff', 'diff_speedup'),
-        files('transfer', 'rsync', ldflags=('-lrsync',)),
+        files('transfer', 'rsync', libraries=('rsync',)),
         files(
             'choose', 'subseq_matcher',
             extra_headers=('kitty/charsets.h',),
@@ -764,8 +764,8 @@ def compile_kittens(compilation_database: CompilationDatabase) -> None:
             filter_sources=lambda x: 'windows_compat.c' not in x),
     ):
         final_env = kenv.copy()
-        final_env.cflags.extend(cflags)
-        final_env.ldflags.extend(ldflags)
+        final_env.cflags.extend(f'-I{x}' for x in includes)
+        final_env.ldpaths[:0] = list(f'-l{x}' for x in libraries)
         compile_c_extension(
             final_env, dest, compilation_database, sources, all_headers + ['kitty/data-types.h'])
 
