@@ -7,7 +7,23 @@ class JobCapsule:
     pass
 
 
+class SignatureCapsule:
+    pass
+
+
+class RsyncError(Exception):
+    pass
+
+
 def begin_create_signature(file_size: int = -1, strong_len: int = 0) -> JobCapsule:
+    pass
+
+
+def begin_load_signature() -> Tuple[JobCapsule, SignatureCapsule]:
+    pass
+
+
+def make_hash_table(sig: SignatureCapsule) -> None:
     pass
 
 
