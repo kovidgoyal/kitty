@@ -123,7 +123,7 @@ build_hash_table(PyObject *self UNUSED, PyObject *args) {
 static PyObject*
 begin_create_delta(PyObject *self UNUSED, PyObject *args) {
     PyObject *sig_capsule;
-    if (!PyArg_ParseTuple(args, "O!y#|p", &PyCapsule_Type, &sig_capsule)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!", &PyCapsule_Type, &sig_capsule)) return NULL;
     GET_SIG_FROM_CAPSULE;
     rs_job_t *job = rs_delta_begin(sig);
     if (!job) return PyErr_NoMemory();

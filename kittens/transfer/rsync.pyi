@@ -27,5 +27,9 @@ def make_hash_table(sig: SignatureCapsule) -> None:
     pass
 
 
+def begin_create_delta(sig: SignatureCapsule) -> JobCapsule:
+    pass
+
+
 def iter_job(job_capsule: JobCapsule, input_data: bytes, eof: Optional[bool] = None, expecting_output: bool = True) -> Tuple[bytes, bool, int]:
     pass
