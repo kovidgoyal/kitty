@@ -246,7 +246,7 @@ def test_compile(
     stdin = p.stdin
     assert stdin is not None
     try:
-        stdin.write(src.encode('utf-8'))
+        stdin.write((src + '\n').encode('utf-8'))
         stdin.close()
     except BrokenPipeError:
         return False
