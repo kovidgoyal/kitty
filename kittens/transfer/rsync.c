@@ -54,12 +54,15 @@ static PyObject*
 iter_job(PyObject *self UNUSED, PyObject *args) {
     Py_ssize_t input_data_size;
     char *input_data;
-    int eof = -1;
+    int eof = -1, expecting_output = 1;
     PyObject *job_capsule;
-    if (!PyArg_ParseTuple(args, "O!y#|p", &PyCapsule_Type, &job_capsule, &input_data, &input_data_size, &eof)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!y#|pp", &PyCapsule_Type, &job_capsule, &input_data, &input_data_size, &eof, expecting_output)) return NULL;
     GET_JOB_FROM_CAPSULE;
     if (eof == -1) eof = input_data_size > 0 ? 0 : 1;
-    rs_buffers_t buffer = {.avail_in=input_data_size, .next_in = input_data, .eof_in=eof, .avail_out=MAX(IO_BUFFER_SIZE, 2 * (size_t)input_data_size)};
+    rs_buffers_t buffer = {
+        .avail_in=input_data_size, .next_in = input_data, .eof_in=eof,
+        .avail_out=expecting_output ? (MAX(IO_BUFFER_SIZE, 2 * (size_t)input_data_size)) : 64
+    };
     PyObject *ans = PyBytes_FromStringAndSize(NULL, buffer.avail_out);
     if (!ans) return NULL;
     buffer.next_out = PyBytes_AS_STRING(ans);
@@ -71,7 +74,7 @@ iter_job(PyObject *self UNUSED, PyObject *args) {
         output_size += before - buffer.avail_out;
         if (result == RS_DONE || result == RS_BLOCKED) break;
         if (buffer.avail_in) {
-            if (_PyBytes_Resize(&ans, PyBytes_GET_SIZE(ans) * 2) != 0) return NULL;
+            if (_PyBytes_Resize(&ans, MAX(IO_BUFFER_SIZE, (size_t)PyBytes_GET_SIZE(ans) * 2)) != 0) return NULL;
             buffer.avail_out = PyBytes_GET_SIZE(ans) - output_size;
             buffer.next_out = PyBytes_AS_STRING(ans) + output_size;
             continue;
