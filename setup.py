@@ -278,7 +278,7 @@ def detect_librsync(cc: str, cflags: List[str], ldflags: List[str]) -> None:
             src='#include <librsync.h>\nint main(void) { rs_strerror(0); return 0; }'):
         raise SystemExit('The librsync library is required')
     # check for rs_sig_args() which was added to librsync in Apr 2020 version 2.3.0
-    if test_compile(cc, *cflags, link_also=False, src='''
+    if test_compile(cc, *cflags, libraries=('rsync',), ldflags=ldflags, src='''
 #include <librsync.h>
 int main(void) {
     rs_magic_number magic_number = 0;
