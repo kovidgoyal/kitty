@@ -228,10 +228,17 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
     return sanitize_args
 
 
-def test_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c', link_also: bool = True, show_stderr: bool = False) -> bool:
+def test_compile(
+    cc: str, *cflags: str,
+    src: Optional[str] = None,
+    lang: str = 'c',
+    link_also: bool = True,
+    show_stderr: bool = False,
+    libraries: Iterable[str] = ()
+) -> bool:
     src = src or 'int main(void) { return 0; }'
     p = subprocess.Popen(
-        [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', os.devnull, '-'],
+        [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', os.devnull, '-'] + [f'-l{x}' for x in libraries],
         stdout=subprocess.DEVNULL, stdin=subprocess.PIPE, stderr=None if show_stderr else subprocess.DEVNULL
     )
     stdin = p.stdin
@@ -264,8 +271,9 @@ def set_arches(flags: List[str], arches: Iterable[str] = ('x86_64', 'arm64')) ->
 
 
 def detect_librsync(cc: str, cflags: List[str]) -> None:
-    if not test_compile(cc, '-lrsync', show_stderr=True, src='#include <librsync.h>\nint main(void) { rs_strerror(0); return 0; }'):
+    if not test_compile(cc, libraries=('rsync',), show_stderr=True, src='#include <librsync.h>\nint main(void) { rs_strerror(0); return 0; }'):
         raise SystemExit('The librsync library is required')
+    # check for rs_sig_args() which was added to librsync in Apr 2020 version 2.3.0
     if test_compile(cc, link_also=False, src='''
 #include <librsync.h>
 int main(void) {
