@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 IO_BUFFER_SIZE: int
 
@@ -23,11 +23,15 @@ def begin_load_signature() -> Tuple[JobCapsule, SignatureCapsule]:
     pass
 
 
-def make_hash_table(sig: SignatureCapsule) -> None:
+def build_hash_table(sig: SignatureCapsule) -> None:
     pass
 
 
 def begin_create_delta(sig: SignatureCapsule) -> JobCapsule:
+    pass
+
+
+def begin_patch(callback: Callable[[memoryview, int], int]) -> JobCapsule:
     pass
 
 
