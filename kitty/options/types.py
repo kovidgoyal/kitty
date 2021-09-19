@@ -345,7 +345,7 @@ option_names = (  # {{{
  'enable_audio_bell',
  'enabled_layouts',
  'env',
- 'file_transfer_password',
+ 'file_transfer_confirmation_bypass',
  'focus_follows_mouse',
  'font_family',
  'font_features',
@@ -485,7 +485,7 @@ class Options:
     editor: str = '.'
     enable_audio_bell: bool = True
     enabled_layouts: typing.List[str] = ['fat', 'grid', 'horizontal', 'splits', 'stack', 'tall', 'vertical']
-    file_transfer_password: str = ''
+    file_transfer_confirmation_bypass: str = ''
     focus_follows_mouse: bool = False
     font_family: str = 'monospace'
     font_size: float = 11.0

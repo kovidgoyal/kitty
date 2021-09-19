@@ -942,8 +942,8 @@ class Parser:
         for k, v in env(val, ans["env"]):
             ans["env"][k] = v
 
-    def file_transfer_password(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['file_transfer_password'] = str(val)
+    def file_transfer_confirmation_bypass(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['file_transfer_confirmation_bypass'] = str(val)
 
     def focus_follows_mouse(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['focus_follows_mouse'] = to_bool(val)

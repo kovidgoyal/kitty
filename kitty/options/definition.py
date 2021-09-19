@@ -2566,11 +2566,12 @@ stored for writing to the system clipboard. See also :opt:`clipboard_control`.
 A value of zero means no size limit is applied.
 ''')
 
-opt('file_transfer_password', '', long_text='''
-A password, that can be supplied to the file transfer kitten to skip
-the transfer confirmation dialog. This should only be used
-when initiating transfers from trusted computers, over trusted networks
-or encrypted transports.
+opt('file_transfer_confirmation_bypass', '', long_text='''
+A password, that can be supplied to the file transfer kitten to skip the
+transfer confirmation prompt. This should only be used when initiating
+transfers from trusted computers, over trusted networks or encrypted
+transports, as it allows programs running on the remote machine to read/write
+to the local filesystem, without permission.
 ''')
 
 opt('allow_hyperlinks', 'yes',

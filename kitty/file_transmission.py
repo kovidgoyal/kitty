@@ -26,7 +26,7 @@ EXPIRE_TIME = 10  # minutes
 MAX_ACTIVE_RECEIVES = 10
 
 
-def encode_password(request_id: str, pw: str) -> str:
+def encode_bypass(request_id: str, pw: str) -> str:
     import hashlib
     q = request_id + ';' + pw
     return 'sha256:' + hashlib.sha256(q.encode('utf-8', 'replace')).hexdigest()
@@ -114,7 +114,7 @@ class FileTransmissionCommand:
     ttype: TransmissionType = TransmissionType.simple
     id: str = ''
     file_id: str = ''
-    password: str = field(default='', metadata={'base64': True})
+    bypass: str = field(default='', metadata={'base64': True})
     quiet: int = 0
     mtime: int = -1
     permissions: int = -1
@@ -341,12 +341,12 @@ class ActiveReceive:
     files: Dict[str, DestFile]
     accepted: bool = False
 
-    def __init__(self, request_id: str, quiet: int, password: str) -> None:
+    def __init__(self, request_id: str, quiet: int, bypass: str) -> None:
         self.id = request_id
-        self.password_ok: Optional[bool] = None
-        pw = get_options().file_transfer_password
-        if pw and password:
-            self.password_ok = encode_password(request_id, pw) == password
+        self.bypass_ok: Optional[bool] = None
+        byp = get_options().file_transfer_confirmation_bypass
+        if byp and bypass:
+            self.bypass_ok = encode_bypass(request_id, byp) == byp
         self.files = {}
         self.last_activity_at = monotonic()
         self.send_acknowledgements = quiet < 1
@@ -477,7 +477,7 @@ class FileTransmission:
             if len(self.active_receives) >= MAX_ACTIVE_RECEIVES:
                 log_error('New File transmission send with too many active receives, ignoring')
                 return
-            ar = self.active_receives[cmd.id] = ActiveReceive(cmd.id, cmd.quiet, cmd.password)
+            ar = self.active_receives[cmd.id] = ActiveReceive(cmd.id, cmd.quiet, cmd.bypass)
             self.start_receive(ar.id)
             return
 
@@ -568,8 +568,8 @@ class FileTransmission:
 
     def start_receive(self, ar_id: str) -> None:
         ar = self.active_receives[ar_id]
-        if ar.password_ok is not None:
-            self.handle_send_confirmation(ar_id, {'response': 'y' if ar.password_ok else 'n'})
+        if ar.bypass_ok is not None:
+            self.handle_send_confirmation(ar_id, {'response': 'y' if ar.bypass_ok else 'n'})
             return
         boss = get_boss()
         window = boss.window_id_map.get(self.window_id)

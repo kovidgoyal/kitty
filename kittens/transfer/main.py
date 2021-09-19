@@ -30,9 +30,9 @@ receiving computer. In :code:`normal` mode the last argument is assumed to be a
 destination path on the receiving computer.
 
 
---permissions-password -p
+--permissions-bypass -p
 The password to use to skip the transfer confirmation popup in kitty. Must match the
-password set for the :opt:`file_transfer_password` option in kitty.conf. Note that
+password set for the :opt:`file_transfer_confirmation_bypass` option in kitty.conf. Note that
 leading and trailing whitespace is removed from the password. A password starting with
 ., / or ~ characters is assumed to be a file name to read the password from. A value
 of - means read the password from STDIN. A password that is purely a number less than 256
@@ -71,8 +71,8 @@ def read_password(loc: str) -> str:
 
 def main(args: List[str]) -> None:
     cli_opts, items = parse_transfer_args(args)
-    if cli_opts.permissions_password:
-        cli_opts.permissions_password = read_password(cli_opts.permissions_password).strip()
+    if cli_opts.permissions_bypass:
+        cli_opts.permissions_bypass = read_password(cli_opts.permissions_bypass).strip()
 
     if not items:
         raise SystemExit('Usage: kitty +kitten transfer file_or_directory ...')

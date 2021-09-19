@@ -18,7 +18,7 @@ from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE, wcswidth
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
-    TransmissionType, encode_password
+    TransmissionType, encode_bypass
 )
 from kitty.typing import KeyEventType
 from kitty.utils import sanitize_control_codes
@@ -257,9 +257,9 @@ class ProgressTracker:
 
 class SendManager:
 
-    def __init__(self, request_id: str, files: Tuple[File, ...], pw: Optional[str] = None, file_done: Callable[[File], None] = lambda f: None):
+    def __init__(self, request_id: str, files: Tuple[File, ...], bypass: Optional[str] = None, file_done: Callable[[File], None] = lambda f: None):
         self.files = files
-        self.password = encode_password(request_id, pw) if pw else ''
+        self.bypass = encode_bypass(request_id, bypass) if bypass else ''
         self.fid_map = {f.file_id: f for f in self.files}
         self.request_id = request_id
         self.state = SendState.waiting_for_permission
@@ -306,7 +306,7 @@ class SendManager:
         self.all_started = not found_not_started
 
     def start_transfer(self) -> str:
-        return FileTransmissionCommand(action=Action.send, password=self.password).serialize()
+        return FileTransmissionCommand(action=Action.send, bypass=self.bypass).serialize()
 
     def next_chunks(self) -> Iterator[str]:
         if self.active_file is None:
@@ -368,7 +368,7 @@ class Send(Handler):
 
     def __init__(self, cli_opts: TransferCLIOptions, files: Tuple[File, ...]):
         Handler.__init__(self)
-        self.manager = SendManager(random_id(), files, cli_opts.permissions_password, self.on_file_done)
+        self.manager = SendManager(random_id(), files, cli_opts.permissions_bypass, self.on_file_done)
         self.cli_opts = cli_opts
         self.transmit_started = False
         self.file_metadata_sent = False
@@ -504,8 +504,8 @@ class Send(Handler):
 
     def initialize(self) -> None:
         self.send_payload(self.manager.start_transfer())
-        if self.cli_opts.permissions_password:
-            # dont wait for permission, not needed with a password and
+        if self.cli_opts.permissions_bypass:
+            # dont wait for permission, not needed with a bypass and
             # avoids a roundtrip
             self.send_file_metadata()
         self.cmd.set_cursor_visible(False)
