@@ -53,7 +53,7 @@ def parse_transfer_args(args: List[str]) -> Tuple[TransferCLIOptions, List[str]]
     )
 
 
-def read_password(loc: str) -> str:
+def read_bypass(loc: str) -> str:
     if not loc:
         return ''
     if loc.isdigit() and int(loc) >= 0 and int(loc) < 256:
@@ -72,7 +72,7 @@ def read_password(loc: str) -> str:
 def main(args: List[str]) -> None:
     cli_opts, items = parse_transfer_args(args)
     if cli_opts.permissions_bypass:
-        cli_opts.permissions_bypass = read_password(cli_opts.permissions_bypass).strip()
+        cli_opts.permissions_bypass = read_bypass(cli_opts.permissions_bypass).strip()
 
     if not items:
         raise SystemExit('Usage: kitty +kitten transfer file_or_directory ...')

@@ -26,9 +26,9 @@ EXPIRE_TIME = 10  # minutes
 MAX_ACTIVE_RECEIVES = 10
 
 
-def encode_bypass(request_id: str, pw: str) -> str:
+def encode_bypass(request_id: str, bypass: str) -> str:
     import hashlib
-    q = request_id + ';' + pw
+    q = request_id + ';' + bypass
     return 'sha256:' + hashlib.sha256(q.encode('utf-8', 'replace')).hexdigest()
 
 
