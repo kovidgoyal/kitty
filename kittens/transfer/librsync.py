@@ -38,7 +38,7 @@ class StreamingJob:
         if sz_of_unused_input > 0 and not self.finished:
             if no_more_data:
                 raise RsyncError(f"{sz_of_unused_input} bytes of input data were not used")
-            self.prev_unused_input = input_data[-sz_of_unused_input:]
+            self.prev_unused_input = bytes(input_data[-sz_of_unused_input:])
         if self.finished:
             self.commit()
         elif self.calls_with_no_data > 3:
@@ -51,9 +51,10 @@ class StreamingJob:
 
 def drive_job_on_file(f: IO[bytes], job: 'JobCapsule') -> Iterator[bytes]:
     sj = StreamingJob(job)
+    input_buf = bytearray(IO_BUFFER_SIZE)
     while not sj.finished:
-        input_data = f.read(IO_BUFFER_SIZE)
-        yield sj(input_data)
+        sz = f.readinto(input_buf)  # type: ignore
+        yield sj(memoryview(input_buf)[:sz])
 
 
 def signature_of_file(path: str) -> Iterator[bytes]:

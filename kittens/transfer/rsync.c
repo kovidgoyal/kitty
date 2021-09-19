@@ -72,17 +72,18 @@ begin_create_signature(PyObject *self UNUSED, PyObject *args) {
     if (!job) { PyErr_SetString(PyExc_TypeError, "Not a job capsule"); return NULL; } \
 
 
+#define FREE_BUFFER_AFTER_FUNCTION __attribute__((cleanup(PyBuffer_Release)))
+
 static PyObject*
 iter_job(PyObject *self UNUSED, PyObject *args) {
-    Py_ssize_t input_data_size;
-    char *input_data;
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer input_buf = {0};
     int eof = -1, expecting_output = 1;
     PyObject *job_capsule;
-    if (!PyArg_ParseTuple(args, "O!y#|pp", &PyCapsule_Type, &job_capsule, &input_data, &input_data_size, &eof, &expecting_output)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!y*|pp", &PyCapsule_Type, &job_capsule, &input_buf, &eof, &expecting_output)) return NULL;
     GET_JOB_FROM_CAPSULE;
-    if (eof == -1) eof = input_data_size > 0 ? 0 : 1;
+    if (eof == -1) eof = input_buf.len > 0 ? 0 : 1;
     rs_buffers_t buffer = {
-        .avail_in=input_data_size, .next_in = input_data, .eof_in=eof,
+        .avail_in=input_buf.len, .next_in = input_buf.buf, .eof_in=eof,
         .avail_out=expecting_output ? IO_BUFFER_SIZE : 64
     };
     PyObject *ans = PyBytes_FromStringAndSize(NULL, buffer.avail_out);
