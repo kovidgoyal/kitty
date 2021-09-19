@@ -31,8 +31,6 @@ class StreamingJob:
                 raise RsyncError('There was too much input data')
             return memoryview(self.output_buf)[:0]
         no_more_data = not input_data
-        if no_more_data:
-            self.calls_with_no_data += 1
         if self.prev_unused_input:
             input_data = self.prev_unused_input + input_data
             self.prev_unused_input = b''
@@ -43,7 +41,9 @@ class StreamingJob:
             self.prev_unused_input = bytes(input_data[-sz_of_unused_input:])
         if self.finished:
             self.commit()
-        elif self.calls_with_no_data > 3:
+        if no_more_data and not output_size:
+            self.calls_with_no_data += 1
+        if self.calls_with_no_data > 3:  # prevent infinite loop
             raise RsyncError('There was not enough input data')
         return memoryview(self.output_buf)[:output_size]
 
@@ -56,7 +56,9 @@ def drive_job_on_file(f: IO[bytes], job: 'JobCapsule', input_buf_size: int = IO_
     input_buf = bytearray(input_buf_size)
     while not sj.finished:
         sz = f.readinto(input_buf)  # type: ignore
-        yield sj(memoryview(input_buf)[:sz])
+        result = sj(memoryview(input_buf)[:sz])
+        if len(result) > 0:
+            yield result
 
 
 def signature_of_file(path: str) -> Iterator[memoryview]:
@@ -108,3 +110,9 @@ class PatchFile(StreamingJob):
         if not self.src_file.closed:
             self.src_file.close()
     commit = close
+
+    def __enter__(self) -> 'PatchFile':
+        return self
+
+    def __exit__(self, *a: object) -> None:
+        self.close()

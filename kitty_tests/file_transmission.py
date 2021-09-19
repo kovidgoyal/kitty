@@ -10,6 +10,9 @@ import tempfile
 import zlib
 from pathlib import Path
 
+from kittens.transfer.librsync import (
+    LoadSignature, PatchFile, delta_for_file, signature_of_file
+)
 from kittens.transfer.main import parse_transfer_args
 from kittens.transfer.send import files_for_send
 from kittens.transfer.utils import set_paths
@@ -82,6 +85,38 @@ class TestFileTransmission(BaseTest):
         a = os.path.abspath(os.path.realpath(a))
         b = os.path.abspath(os.path.realpath(b))
         self.ae(a, b)
+
+    def test_rsync_roundtrip(self):
+        a_path = os.path.join(self.tdir, 'a')
+        b_path = os.path.join(self.tdir, 'b')
+        c_path = os.path.join(self.tdir, 'c')
+        sz = 1024 * 1024 + 37
+        with open(a_path, 'wb') as f:
+            f.write(os.urandom(sz))
+        with open(b_path, 'wb') as f:
+            f.write(os.urandom(sz))
+        sig_loader = LoadSignature()
+        for chunk in signature_of_file(a_path):
+            sig_loader(chunk)
+        sig_loader()
+        self.assertTrue(sig_loader.finished)
+        with open(c_path, 'wb') as dest, PatchFile(a_path) as patcher:
+            for chunk in delta_for_file(b_path, sig_loader.signature):
+                self.assertFalse(patcher.finished)
+                output = patcher(chunk)
+                if output:
+                    dest.write(output)
+            while not patcher.finished:
+                output = patcher()
+                if output:
+                    dest.write(output)
+        with open(b_path, 'rb') as b, open(c_path, 'rb') as c:
+            while True:
+                bc = b.read(4096)
+                cc = c.read(4096)
+                self.ae(bc, cc)
+                if not bc and not cc:
+                    break
 
     def test_file_put(self):
         # send refusal
