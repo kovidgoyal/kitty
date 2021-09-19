@@ -64,7 +64,7 @@ begin_create_signature(PyObject *self UNUSED, PyObject *args) {
     }
 #endif
     CREATE_JOB(rs_sig_begin, NULL, block_len, strong_len, magic_number);
-    return job_capsule;
+    return Py_BuildValue("Nnn", job_capsule, (Py_ssize_t)block_len, (Py_ssize_t)strong_len);
 }
 
 #define GET_JOB_FROM_CAPSULE \
