@@ -16,25 +16,25 @@ if TYPE_CHECKING:
 
 class StreamingJob:
 
-    def __init__(self, job: 'JobCapsule', expecting_output: bool = True):
+    def __init__(self, job: 'JobCapsule', output_buf_size: int = IO_BUFFER_SIZE):
         self.job = job
         self.finished = False
         self.prev_unused_input = b''
         self.calls_with_no_data = 0
-        self.expecting_output = expecting_output
+        self.output_buf = bytearray(output_buf_size)
 
-    def __call__(self, input_data: bytes = b'') -> bytes:
+    def __call__(self, input_data: bytes = b'') -> memoryview:
         if self.finished:
             if input_data:
                 raise RsyncError('There was too much input data')
-            return b''
+            return memoryview(self.output_buf)[:0]
         no_more_data = not input_data
         if no_more_data:
             self.calls_with_no_data += 1
         if self.prev_unused_input:
             input_data = self.prev_unused_input + input_data
             self.prev_unused_input = b''
-        output, self.finished, sz_of_unused_input = iter_job(self.job, input_data, no_more_data, self.expecting_output)
+        self.finished, sz_of_unused_input, output_size = iter_job(self.job, input_data, self.output_buf)
         if sz_of_unused_input > 0 and not self.finished:
             if no_more_data:
                 raise RsyncError(f"{sz_of_unused_input} bytes of input data were not used")
@@ -43,13 +43,13 @@ class StreamingJob:
             self.commit()
         elif self.calls_with_no_data > 3:
             raise RsyncError('There was not enough input data')
-        return output
+        return memoryview(self.output_buf)[:output_size]
 
     def commit(self) -> None:
         pass
 
 
-def drive_job_on_file(f: IO[bytes], job: 'JobCapsule') -> Iterator[bytes]:
+def drive_job_on_file(f: IO[bytes], job: 'JobCapsule') -> Iterator[memoryview]:
     sj = StreamingJob(job)
     input_buf = bytearray(IO_BUFFER_SIZE)
     while not sj.finished:
@@ -57,7 +57,7 @@ def drive_job_on_file(f: IO[bytes], job: 'JobCapsule') -> Iterator[bytes]:
         yield sj(memoryview(input_buf)[:sz])
 
 
-def signature_of_file(path: str) -> Iterator[bytes]:
+def signature_of_file(path: str) -> Iterator[memoryview]:
     with open(path, 'rb') as f:
         f.seek(0, os.SEEK_END)
         fsz = f.tell()
@@ -70,13 +70,13 @@ class LoadSignature(StreamingJob):
 
     def __init__(self) -> None:
         job, self.signature = begin_load_signature()
-        super().__init__(job, expecting_output=False)
+        super().__init__(job, output_buf_size=0)
 
     def commit(self) -> None:
         build_hash_table(self.signature)
 
 
-def delta_for_file(path: str, sig: 'SignatureCapsule') -> Iterator[bytes]:
+def delta_for_file(path: str, sig: 'SignatureCapsule') -> Iterator[memoryview]:
     job = begin_create_delta(sig)
     with open(path, 'rb') as f:
         yield from drive_job_on_file(f, job)

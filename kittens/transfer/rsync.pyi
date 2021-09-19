@@ -1,4 +1,4 @@
-from typing import Callable, Optional, Tuple
+from typing import Callable, Tuple
 
 IO_BUFFER_SIZE: int
 
@@ -35,5 +35,5 @@ def begin_patch(callback: Callable[[memoryview, int], int]) -> JobCapsule:
     pass
 
 
-def iter_job(job_capsule: JobCapsule, input_data: bytes, eof: Optional[bool] = None, expecting_output: bool = True) -> Tuple[bytes, bool, int]:
+def iter_job(job_capsule: JobCapsule, input_data: bytes, output_buf: bytearray) -> Tuple[bool, int, int]:
     pass

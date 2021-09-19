@@ -77,19 +77,17 @@ begin_create_signature(PyObject *self UNUSED, PyObject *args) {
 static PyObject*
 iter_job(PyObject *self UNUSED, PyObject *args) {
     FREE_BUFFER_AFTER_FUNCTION Py_buffer input_buf = {0};
-    int eof = -1, expecting_output = 1;
-    PyObject *job_capsule;
-    if (!PyArg_ParseTuple(args, "O!y*|pp", &PyCapsule_Type, &job_capsule, &input_buf, &eof, &expecting_output)) return NULL;
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer output_buf = {0};
+    PyObject *job_capsule, *output_array;
+    if (!PyArg_ParseTuple(args, "O!y*O!", &PyCapsule_Type, &job_capsule, &input_buf, &PyByteArray_Type, &output_array)) return NULL;
     GET_JOB_FROM_CAPSULE;
-    if (eof == -1) eof = input_buf.len > 0 ? 0 : 1;
+    if (PyObject_GetBuffer(output_array, &output_buf, PyBUF_WRITE) != 0) return NULL;
+    int eof = input_buf.len > 0 ? 0 : 1;
     rs_buffers_t buffer = {
-        .avail_in=input_buf.len, .next_in = input_buf.buf, .eof_in=eof,
-        .avail_out=expecting_output ? IO_BUFFER_SIZE : 64
+        .avail_in=input_buf.len, .next_in=input_buf.buf, .eof_in=eof,
+        .avail_out=output_buf.len, .next_out=output_buf.buf
     };
-    PyObject *ans = PyBytes_FromStringAndSize(NULL, buffer.avail_out);
-    if (!ans) return NULL;
-    buffer.next_out = PyBytes_AS_STRING(ans);
-    size_t output_size = 0;
+    Py_ssize_t output_size = 0;
     rs_result result = RS_DONE;
     while (true) {
         size_t before = buffer.avail_out;
@@ -97,20 +95,18 @@ iter_job(PyObject *self UNUSED, PyObject *args) {
         output_size += before - buffer.avail_out;
         if (result == RS_DONE || result == RS_BLOCKED) break;
         if (buffer.avail_in) {
-            if (_PyBytes_Resize(&ans, MAX(IO_BUFFER_SIZE, (size_t)PyBytes_GET_SIZE(ans) * 2)) != 0) return NULL;
-            buffer.avail_out = PyBytes_GET_SIZE(ans) - output_size;
-            buffer.next_out = PyBytes_AS_STRING(ans) + output_size;
+            PyBuffer_Release(&output_buf);
+            if (PyByteArray_Resize(output_array, MAX(IO_BUFFER_SIZE, (size_t)PyByteArray_GET_SIZE(output_array) * 2)) != 0) return NULL;
+            if (PyObject_GetBuffer(output_array, &output_buf, PyBUF_WRITE) != 0) return NULL;
+            buffer.avail_out = output_buf.len - output_size;
+            buffer.next_out = (char*)output_buf.buf + output_size;
             continue;
         }
-        Py_DECREF(ans);
         PyErr_SetString(RsyncError, rs_strerror(result));
         return NULL;
     }
-    if ((ssize_t)output_size != PyBytes_GET_SIZE(ans)) {
-        if (_PyBytes_Resize(&ans, output_size) != 0) return NULL;
-    }
     Py_ssize_t unused_input = buffer.avail_in;
-    return Py_BuildValue("NOn", ans, result == RS_DONE ? Py_True : Py_False, unused_input);
+    return Py_BuildValue("Onn", result == RS_DONE ? Py_True : Py_False, unused_input, output_size);
 }
 
 static PyObject*
