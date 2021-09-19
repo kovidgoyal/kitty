@@ -88,7 +88,7 @@ class TransmissionError(Exception):
         name: str = '',
         size: int = -1
     ) -> None:
-        Exception.__init__(self, msg)
+        super().__init__(msg)
         self.transmit = transmit
         self.file_id = file_id
         self.human_msg = msg

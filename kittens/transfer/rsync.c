@@ -127,7 +127,7 @@ begin_load_signature(PyObject *self UNUSED, PyObject *args UNUSED) {
 static PyObject*
 build_hash_table(PyObject *self UNUSED, PyObject *args) {
     PyObject *sig_capsule;
-    if (!PyArg_ParseTuple(args, "O!y#|p", &PyCapsule_Type, &sig_capsule)) return NULL;
+    if (!PyArg_ParseTuple(args, "O!", &PyCapsule_Type, &sig_capsule)) return NULL;
     GET_SIG_FROM_CAPSULE;
     rs_result res = rs_build_hash_table(sig);
     if (res != RS_DONE) {

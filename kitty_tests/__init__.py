@@ -108,7 +108,7 @@ def filled_history_buf(ynum=5, xnum=5, cursor=Cursor()):
 class BaseTest(TestCase):
 
     ae = TestCase.assertEqual
-    maxDiff = 2000
+    maxDiff = 2048
     is_ci = os.environ.get('CI') == 'true'
 
     def set_options(self, options=None):
