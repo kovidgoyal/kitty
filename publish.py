@@ -270,7 +270,7 @@ class GitHub(Base):  # {{{
             if fname in existing_assets:
                 self.info(f'Deleting {fname} from GitHub with id: {existing_assets[fname]}')
                 r = self.requests.delete(asset_url.format(existing_assets[fname]))
-                if r.status_code != 204:
+                if r.status_code not in (204, 404):
                     self.fail(r, f'Failed to delete {fname} from GitHub')
             r = self.do_upload(upload_url, path, desc, fname)
             if r.status_code != 201:
