@@ -62,6 +62,10 @@ begin_create_signature(PyObject *self UNUSED, PyObject *args) {
         PyErr_SetString(PyExc_ValueError, rs_strerror(res));
         return NULL;
     }
+#else
+    block_len = RS_DEFAULT_BLOCK_LEN;
+    strong_len = 8;
+    magic_number = RS_MD4_SIG_MAGIC;
 #endif
     CREATE_JOB(rs_sig_begin, NULL, block_len, strong_len, magic_number);
     return Py_BuildValue("Nnn", job_capsule, (Py_ssize_t)block_len, (Py_ssize_t)strong_len);
