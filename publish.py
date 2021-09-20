@@ -259,7 +259,7 @@ class GitHub(Base):  # {{{
             for fname in existing_assets:
                 self.info(f'Deleting {fname} from GitHub')
                 r = self.requests.delete(asset_url.format(existing_assets[fname]))
-                if r.status_code != 204:
+                if r.status_code not in (204, 404):
                     self.fail(r, 'Failed to delete %s from GitHub' % fname)
             self.update_nightly_description(release['id'])
         for path, desc in self.files.items():
