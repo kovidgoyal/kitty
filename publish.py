@@ -34,7 +34,7 @@ if ap is not None:
     appname = ap.group(1)
 
 ALL_ACTIONS = 'man html build tag sdist upload website'.split()
-NIGHTLY_ACTIONS = 'man html build upload_nightly'.split()
+NIGHTLY_ACTIONS = 'man html build sdist upload_nightly'.split()
 
 
 def call(*cmd: str, cwd: Optional[str] = None) -> None:
