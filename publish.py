@@ -37,20 +37,31 @@ ALL_ACTIONS = 'man html build tag sdist upload website'.split()
 NIGHTLY_ACTIONS = 'man html build sdist upload_nightly'.split()
 
 
-def call(*cmd: str, cwd: Optional[str] = None) -> None:
+def echo_cmd(cmd: Iterable[str]) -> None:
+    isatty = sys.stdout.isatty()
+    end = '\n'
+    if isatty:
+        end = '\x1b[m' + end
+        print('\x1b[92m', end='')
+    print(shlex.join(cmd), end=end, flush=True)
+
+
+def call(*cmd: str, cwd: Optional[str] = None, echo: bool = False) -> None:
     if len(cmd) == 1:
         q = shlex.split(cmd[0])
     else:
         q = list(cmd)
+    if echo:
+        echo_cmd(cmd)
     ret = subprocess.Popen(q, cwd=cwd).wait()
     if ret != 0:
         raise SystemExit(ret)
 
 
 def run_build(args: Any) -> None:
-    call('python ../bypy linux program')
-    call('python ../bypy linux 32 program')
-    call('python ../bypy macos program --sign-installers --notarize')
+    call('python ../bypy linux program', echo=True)
+    call('python ../bypy linux 32 program', echo=True)
+    call('python ../bypy macos program --sign-installers --notarize', echo=True)
     call('python ../bypy macos shutdown')
 
 
