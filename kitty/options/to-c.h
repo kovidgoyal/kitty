@@ -22,6 +22,13 @@ color_as_int(PyObject *color) {
 }
 
 static inline color_type
+color_or_none_as_int(PyObject *color) {
+    if (color == Py_None) return 0;
+    return color_as_int(color);
+}
+
+
+static inline color_type
 active_border_color(PyObject *color) {
     if (color == Py_None) return 0x00ff00;
     return color_as_int(color);

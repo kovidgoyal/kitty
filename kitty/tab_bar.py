@@ -8,13 +8,13 @@ from typing import (
     Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
 )
 
+from .borders import Border, BorderColor
 from .config import build_ansi_color_table
 from .constants import config_dir
 from .fast_data_types import (
     DECAWM, Screen, cell_size_for_window, get_options, pt_to_px,
     set_tab_bar_render_data, viewport_for_window
 )
-from .layout.base import Rect
 from .rgb import Color, alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
 from .typing import EdgeLiteral, PowerlineStyle
@@ -386,7 +386,7 @@ class TabBar:
         self.os_window_id = os_window_id
         self.num_tabs = 1
         self.data_buffer_size = 0
-        self.blank_rects: Tuple[Rect, ...] = ()
+        self.blank_rects: Tuple[Border, ...] = ()
         self.laid_out_once = False
         self.apply_options()
 
@@ -482,21 +482,23 @@ class TabBar:
         margin = (viewport_width - ncells * cell_width) // 2 + self.margin_width
         self.window_geometry = g = WindowGeometry(
             margin, tab_bar.top, viewport_width - margin, tab_bar.bottom, s.columns, s.lines)
-        blank_rects: List[Rect] = []
-        if margin > 0:
-            blank_rects.append(Rect(0, g.top, g.left, g.bottom + 1))
-            blank_rects.append(Rect(g.right - 1, g.top, viewport_width, g.bottom + 1))
+        blank_rects: List[Border] = []
         if opts.tab_bar_margin_height:
+            bg = BorderColor.default_bg
             if opts.tab_bar_edge == 3:  # bottom
                 if opts.tab_bar_margin_height.outer:
-                    blank_rects.append(Rect(0, tab_bar.bottom + 1, vw, vh))
+                    blank_rects.append(Border(0, tab_bar.bottom + 1, vw, vh, bg))
                 if opts.tab_bar_margin_height.inner:
-                    blank_rects.append(Rect(0, central.bottom + 1, vw, vh))
+                    blank_rects.append(Border(0, central.bottom + 1, vw, vh, bg))
             else:  # top
                 if opts.tab_bar_margin_height.outer:
-                    blank_rects.append(Rect(0, 0, vw, tab_bar.top))
+                    blank_rects.append(Border(0, 0, vw, tab_bar.top, bg))
                 if opts.tab_bar_margin_height.inner:
-                    blank_rects.append(Rect(0, tab_bar.bottom + 1, vw, central.top))
+                    blank_rects.append(Border(0, tab_bar.bottom + 1, vw, central.top, bg))
+        if margin > 0:
+            bg = BorderColor.default_bg if opts.tab_bar_background is None else BorderColor.tab_bar_bg
+            blank_rects.append(Border(0, g.top, g.left, g.bottom + 1, bg))
+            blank_rects.append(Border(g.right - 1, g.top, viewport_width, g.bottom + 1, bg))
 
         self.blank_rects = tuple(blank_rects)
         self.screen_geometry = sg = calculate_gl_geometry(g, vw, vh, cell_width, cell_height)

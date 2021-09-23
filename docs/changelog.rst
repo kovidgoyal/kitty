@@ -46,6 +46,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix :opt:`active_tab_foreground` not being honored when :opt:`tab_bar_style`
   is ``slant`` (:iss:`4053`)
 
+- When a :opt:`tab_bar_background` is specified it should extend to the edges
+  of the OS window (:iss:`4054`)
+
 
 
 0.23.1 [2021-08-17]

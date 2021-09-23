@@ -3,7 +3,7 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from enum import IntFlag
-from typing import Sequence, Tuple
+from typing import Iterable, Sequence, NamedTuple
 
 from .fast_data_types import (
     BORDERS_PROGRAM, add_borders_rect, compile_program, get_options,
@@ -16,7 +16,15 @@ from .window_list import WindowGroup, WindowList
 
 class BorderColor(IntFlag):
     # See the border vertex shader for how these flags become actual colors
-    default_bg, active, inactive, window_bg, bell = ((1 << i) for i in range(5))
+    default_bg, active, inactive, window_bg, bell, tab_bar_bg = ((1 << i) for i in range(6))
+
+
+class Border(NamedTuple):
+    left: int
+    top: int
+    right: int
+    bottom: int
+    color: BorderColor
 
 
 def vertical_edge(os_window_id: int, tab_id: int, color: int, width: int, top: int, bottom: int, left: int) -> None:
@@ -71,7 +79,7 @@ class Borders:
         self,
         all_windows: WindowList,
         current_layout: LayoutType,
-        tab_bar_rects: Sequence[Tuple[int, int, int, int]],
+        tab_bar_rects: Iterable[Border],
         draw_window_borders: bool = True,
     ) -> None:
         opts = get_options()
@@ -81,11 +89,9 @@ class Borders:
         has_background_image = os_window_has_background_image(self.os_window_id)
         if not has_background_image:
             for br in current_layout.blank_rects:
-                left, top, right, bottom = br
-                add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, BorderColor.default_bg)
+                add_borders_rect(self.os_window_id, self.tab_id, *br, BorderColor.default_bg)
             for tbr in tab_bar_rects:
-                left, top, right, bottom = tbr
-                add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, BorderColor.default_bg)
+                add_borders_rect(self.os_window_id, self.tab_id, *tbr)
         bw = 0
         groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
         if groups:

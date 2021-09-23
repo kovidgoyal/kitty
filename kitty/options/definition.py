@@ -1030,7 +1030,7 @@ opt('inactive_tab_font_style', 'normal',
     )
 
 opt('tab_bar_background', 'none',
-    option_type='to_color_or_none',
+    option_type='to_color_or_none', ctype='color_or_none_as_int',
     long_text='''
 Background color for the tab bar. Defaults to using the terminal background
 color.
