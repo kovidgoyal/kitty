@@ -181,6 +181,7 @@ def draw_tab_with_slant(
     before: int, max_title_length: int, index: int, is_last: bool,
     extra_data: ExtraData
 ) -> int:
+    orig_fg = screen.cursor.fg
     left_sep, right_sep = ('', '') if draw_data.tab_bar_edge == 'top' else ('', '')
     tab_bg = as_rgb(color_as_int(draw_data.active_bg if tab.is_active else draw_data.inactive_bg))
     slant_fg = as_rgb(color_as_int(draw_data.default_bg))
@@ -190,7 +191,7 @@ def draw_tab_with_slant(
         screen.cursor.fg = slant_fg
         screen.draw(which)
         screen.cursor.bg = tab_bg
-        screen.cursor.fg = 0
+        screen.cursor.fg = orig_fg
 
     max_title_length += 1
     if max_title_length <= 1:

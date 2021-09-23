@@ -43,6 +43,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow deleting environment variables in :opt:`env` by specifying
   just the variable name, without a value
 
+- Fix :opt:`active_tab_foreground` not being honored when :opt:`tab_bar_style`
+  is ``slant`` (:iss:`4053`)
+
+
 
 0.23.1 [2021-08-17]
 ----------------------
