@@ -14,7 +14,7 @@ from typing import (
     Sequence, Tuple, Union, cast
 )
 
-from .borders import Borders
+from .borders import Border, Borders
 from .child import Child
 from .cli_stub import CLIOptions
 from .constants import appname, kitty_exe
@@ -23,7 +23,7 @@ from .fast_data_types import (
     mark_tab_bar_dirty, next_window_id, remove_tab, remove_window, ring_bell,
     set_active_tab, set_active_window, swap_tabs, sync_os_window_title
 )
-from .layout.base import Layout, Rect
+from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
 from .tab_bar import TabBar, TabBarData
 from .types import ac
@@ -935,7 +935,7 @@ class TabManager:  # {{{
             self.set_active_tab_idx(i)
 
     @property
-    def tab_bar_rects(self) -> Tuple[Rect, ...]:
+    def tab_bar_rects(self) -> Tuple[Border, ...]:
         return self.tab_bar.blank_rects if self.tab_bar_should_be_visible else ()
 
     def destroy(self) -> None:
