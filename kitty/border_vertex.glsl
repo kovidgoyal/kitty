@@ -34,10 +34,12 @@ float to_color(uint c) {
     return float(c & FF) / 255.0;
 }
 
+#define W(bit_number, which_color) ((float(((1 << bit_number) & rc) >> bit_number)) * which_color)
+
 void main() {
     uvec2 pos = pos_map[gl_VertexID];
     gl_Position = vec4(to_opengl(rect[pos.x], rect[pos.y]), 0, 1);
     int rc = int(rect_color);
     vec3 window_bg = vec3(to_color(rect_color >> 24), to_color(rect_color >> 16), to_color(rect_color >> 8));
-    color = float(1 & rc) * default_bg + float((2 & rc) >> 1) * active_border_color + float((4 & rc) >> 2) * inactive_border_color + float((8 & rc) >> 3) * window_bg + float((16 & rc) >> 4) * bell_border_color + float((32 & rc) >> 5) * tab_bar_bg;
+    color = W(0, default_bg) + W(1, active_border_color) + W(2, inactive_border_color) + W(3, window_bg) + W(4, bell_border_color) + W(5, tab_bar_bg);
 }
