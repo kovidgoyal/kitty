@@ -222,7 +222,7 @@ class Tab:  # {{{
             ly = self.current_layout
             self.borders(
                 all_windows=self.windows,
-                current_layout=ly, extra_blank_rects=tm.blank_rects,
+                current_layout=ly, tab_bar_rects=tm.tab_bar_rects,
                 draw_window_borders=(ly.needs_window_borders and self.windows.num_visble_groups > 1) or ly.must_draw_borders
             )
             if w is not None:
@@ -935,7 +935,7 @@ class TabManager:  # {{{
             self.set_active_tab_idx(i)
 
     @property
-    def blank_rects(self) -> Tuple[Rect, ...]:
+    def tab_bar_rects(self) -> Tuple[Rect, ...]:
         return self.tab_bar.blank_rects if self.tab_bar_should_be_visible else ()
 
     def destroy(self) -> None:

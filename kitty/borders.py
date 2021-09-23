@@ -3,7 +3,6 @@
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from enum import IntFlag
-from itertools import chain
 from typing import Sequence, Tuple
 
 from .fast_data_types import (
@@ -72,7 +71,7 @@ class Borders:
         self,
         all_windows: WindowList,
         current_layout: LayoutType,
-        extra_blank_rects: Sequence[Tuple[int, int, int, int]],
+        tab_bar_rects: Sequence[Tuple[int, int, int, int]],
         draw_window_borders: bool = True,
     ) -> None:
         opts = get_options()
@@ -81,8 +80,11 @@ class Borders:
         add_borders_rect(self.os_window_id, self.tab_id, 0, 0, 0, 0, BorderColor.default_bg)
         has_background_image = os_window_has_background_image(self.os_window_id)
         if not has_background_image:
-            for br in chain(current_layout.blank_rects, extra_blank_rects):
+            for br in current_layout.blank_rects:
                 left, top, right, bottom = br
+                add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, BorderColor.default_bg)
+            for tbr in tab_bar_rects:
+                left, top, right, bottom = tbr
                 add_borders_rect(self.os_window_id, self.tab_id, left, top, right, bottom, BorderColor.default_bg)
         bw = 0
         groups = tuple(all_windows.iter_all_layoutable_groups(only_visible=True))
