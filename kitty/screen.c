@@ -780,29 +780,35 @@ write_to_child(Screen *self, const char *data, size_t sz) {
     return written;
 }
 
-bool
-write_escape_code_to_child(Screen *self, unsigned char which, const char *data) {
-    bool written = false;
-    const char *prefix, *suffix = self->modes.eight_bit_controls ? "\x9c" : "\033\\";
+static void
+get_prefix_and_suffix_for_escape_code(const Screen *self, unsigned char which, const char ** prefix, const char ** suffix) {
+    *suffix = self->modes.eight_bit_controls ? "\x9c" : "\033\\";
     switch(which) {
         case DCS:
-            prefix = self->modes.eight_bit_controls ? "\x90" : "\033P";
+            *prefix = self->modes.eight_bit_controls ? "\x90" : "\033P";
             break;
         case CSI:
-            prefix = self->modes.eight_bit_controls ? "\x9b" : "\033["; suffix = "";
+            *prefix = self->modes.eight_bit_controls ? "\x9b" : "\033["; *suffix = "";
             break;
         case OSC:
-            prefix = self->modes.eight_bit_controls ? "\x9d" : "\033]";
+            *prefix = self->modes.eight_bit_controls ? "\x9d" : "\033]";
             break;
         case PM:
-            prefix = self->modes.eight_bit_controls ? "\x9e" : "\033^";
+            *prefix = self->modes.eight_bit_controls ? "\x9e" : "\033^";
             break;
         case APC:
-            prefix = self->modes.eight_bit_controls ? "\x9f" : "\033_";
+            *prefix = self->modes.eight_bit_controls ? "\x9f" : "\033_";
             break;
         default:
             fatal("Unknown escape code to write: %u", which);
     }
+}
+
+bool
+write_escape_code_to_child(Screen *self, unsigned char which, const char *data) {
+    bool written = false;
+    const char *prefix, *suffix;
+    get_prefix_and_suffix_for_escape_code(self, which, &prefix, &suffix);
     if (self->window_id) {
         if (suffix[0]) {
             written = schedule_write_to_child(self->window_id, 3, prefix, strlen(prefix), data, strlen(data), suffix, strlen(suffix));
@@ -813,6 +819,28 @@ write_escape_code_to_child(Screen *self, unsigned char which, const char *data) 
     if (self->test_child != Py_None) {
         write_to_test_child(self, prefix, strlen(prefix));
         write_to_test_child(self, data, strlen(data));
+        if (suffix[0]) write_to_test_child(self, suffix, strlen(suffix));
+    }
+    return written;
+}
+
+static bool
+write_escape_code_to_child_python(Screen *self, unsigned char which, PyObject *data) {
+    bool written = false;
+    const char *prefix, *suffix;
+    get_prefix_and_suffix_for_escape_code(self, which, &prefix, &suffix);
+    if (self->window_id) written = schedule_write_to_child_python(self->window_id, prefix, data, suffix);
+    if (self->test_child != Py_None) {
+        write_to_test_child(self, prefix, strlen(prefix));
+        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(data); i++) {
+            PyObject *t = PyTuple_GET_ITEM(data, i);
+            if (PyBytes_Check(t)) write_to_test_child(self, PyBytes_AS_STRING(t), PyBytes_GET_SIZE(t));
+            else {
+                Py_ssize_t sz;
+                const char *d = PyUnicode_AsUTF8AndSize(t, &sz);
+                if (d) write_to_test_child(self, d, sz);
+            }
+        }
         if (suffix[0]) write_to_test_child(self, suffix, strlen(suffix));
     }
     return written;
@@ -3234,11 +3262,18 @@ toggle_alt_screen(Screen *self, PyObject *a UNUSED) {
 static PyObject*
 send_escape_code_to_child(Screen *self, PyObject *args) {
     int code;
-    char *text;
-    Py_ssize_t sz;
-    if (!PyArg_ParseTuple(args, "is#", &code, &text, &sz)) return NULL;
-    if (write_escape_code_to_child(self, code, text)) Py_RETURN_TRUE;
-    Py_RETURN_FALSE;
+    PyObject *O;
+    if (!PyArg_ParseTuple(args, "iO", &code, &O)) return NULL;
+    bool written = false;
+    if (PyBytes_Check(O)) written = write_escape_code_to_child(self, code, PyBytes_AS_STRING(O));
+    else if (PyUnicode_Check(O)) {
+        const char *t = PyUnicode_AsUTF8(O);
+        if (t) written = write_escape_code_to_child(self, code, t);
+        else return NULL;
+    } else if (PyTuple_Check(O)) written = write_escape_code_to_child_python(self, code, O);
+    else PyErr_SetString(PyExc_TypeError, "escape code must be str, bytes or tuple");
+    if (PyErr_Occurred()) return NULL;
+    if (written) { Py_RETURN_TRUE; } else { Py_RETURN_FALSE; }
 }
 
 static void

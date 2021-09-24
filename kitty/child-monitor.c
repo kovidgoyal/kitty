@@ -228,56 +228,92 @@ add_child(ChildMonitor *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+#define schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end) \
+    ChildMonitor *self = the_monitor; \
+    bool found = false; \
+    const char *data; \
+    size_t szval, sz = 0; \
+    va_start(ap, num); \
+    for (unsigned int i = 0; i < num; i++) { \
+        get_next_arg(ap); \
+        sz += szval; \
+    } \
+    va_end(ap); \
+    children_mutex(lock); \
+    for (size_t i = 0; i < self->count; i++) { \
+        if (children[i].id == id) { \
+            Screen *screen = children[i].screen; \
+            screen_mutex(lock, write); \
+            size_t space_left = screen->write_buf_sz - screen->write_buf_used; \
+            if (space_left < sz) { \
+                if (screen->write_buf_used + sz > 100 * 1024 * 1024) { \
+                    log_error("Too much data being sent to child with id: %lu, ignoring it", id); \
+                    screen_mutex(unlock, write); \
+                    break; \
+                } \
+                screen->write_buf_sz = screen->write_buf_used + sz; \
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz); \
+                if (screen->write_buf == NULL) { fatal("Out of memory."); } \
+            } \
+            found = true; \
+            va_start(ap, num); \
+            for (unsigned int i = 0; i < num; i++) { \
+                get_next_arg(ap); \
+                memcpy(screen->write_buf + screen->write_buf_used, data, szval); \
+                screen->write_buf_used += szval; \
+            } \
+            va_end(ap); \
+            if (screen->write_buf_sz > BUFSIZ && screen->write_buf_used < BUFSIZ) { \
+                screen->write_buf_sz = BUFSIZ; \
+                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz); \
+                if (screen->write_buf == NULL) { fatal("Out of memory."); } \
+            } \
+            if (screen->write_buf_used) wakeup_io_loop(self, false); \
+            screen_mutex(unlock, write); \
+            break; \
+        } \
+    } \
+    children_mutex(unlock); \
+    return found;
+
 bool
 schedule_write_to_child(unsigned long id, unsigned int num, ...) {
-    ChildMonitor *self = the_monitor;
-    bool found = false;
-    const char *data;
-    size_t sz = 0;
     va_list ap;
-    va_start(ap, num);
-    for (unsigned int i = 0; i < num; i++) {
-        va_arg(ap, const char*);
-        sz += va_arg(ap, size_t);
-    }
-    va_end(ap);
-    children_mutex(lock);
-    for (size_t i = 0; i < self->count; i++) {
-        if (children[i].id == id) {
-            Screen *screen = children[i].screen;
-            screen_mutex(lock, write);
-            size_t space_left = screen->write_buf_sz - screen->write_buf_used;
-            if (space_left < sz) {
-                if (screen->write_buf_used + sz > 100 * 1024 * 1024) {
-                    log_error("Too much data being sent to child with id: %lu, ignoring it", id);
-                    screen_mutex(unlock, write);
-                    break;
-                }
-                screen->write_buf_sz = screen->write_buf_used + sz;
-                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
-                if (screen->write_buf == NULL) { fatal("Out of memory."); }
-            }
-            found = true;
-            va_start(ap, num);
-            for (unsigned int i = 0; i < num; i++) {
-                data = va_arg(ap, const char*);
-                size_t dsz = va_arg(ap, size_t);
-                memcpy(screen->write_buf + screen->write_buf_used, data, dsz);
-                screen->write_buf_used += dsz;
-            }
-            va_end(ap);
-            if (screen->write_buf_sz > BUFSIZ && screen->write_buf_used < BUFSIZ) {
-                screen->write_buf_sz = BUFSIZ;
-                screen->write_buf = PyMem_RawRealloc(screen->write_buf, screen->write_buf_sz);
-                if (screen->write_buf == NULL) { fatal("Out of memory."); }
-            }
-            if (screen->write_buf_used) wakeup_io_loop(self, false);
-            screen_mutex(unlock, write);
-            break;
-        }
-    }
-    children_mutex(unlock);
-    return found;
+#define get_next_arg(ap) data = va_arg(ap, const char*); szval = va_arg(ap, size_t);
+    schedule_write_to_child_generic(id, num, va_start, get_next_arg, va_end);
+#undef get_next_arg
+}
+
+bool
+schedule_write_to_child_python(unsigned long id, const char *prefix, PyObject *ap, const char *suffix) {
+    if (!PyTuple_Check(ap)) return false;
+    bool has_prefix = prefix && prefix[0], has_suffix = suffix && suffix[0];
+    const size_t extra = (has_prefix ? 1 : 0) + (has_suffix ? 1 : 0);
+    size_t num = PyTuple_GET_SIZE(ap) + extra;
+    Py_ssize_t pidx;
+#define py_start(ap, num) pidx = 0;
+#define py_end(ap) pidx = 0;
+#define get_next_arg(ap) { \
+    if (pidx == 0 && has_prefix) { data = prefix; szval = strlen(prefix); } \
+    else { \
+        size_t pidxf = pidx++; \
+        if (has_prefix) pidxf--; \
+        if (has_suffix && pidxf >= (size_t)PyBytes_GET_SIZE(ap)) { data = suffix; szval = strlen(suffix); } \
+        else { \
+            PyObject *t = PyTuple_GET_ITEM(ap, pidxf); \
+            if (PyBytes_Check(t)) { data = PyBytes_AS_STRING(t); szval = PyBytes_GET_SIZE(t); } \
+            else { \
+                Py_ssize_t usz; \
+                data = PyUnicode_AsUTF8AndSize(t, &usz); szval = usz; \
+                if (!data) fatal("Failed to convert object to bytes in schedule_write_to_child_python"); \
+            } \
+        } \
+    } \
+}
+    schedule_write_to_child_generic(id, num, py_start, get_next_arg, py_end);
+#undef py_start
+#undef py_end
+#undef get_next_arg
 }
 
 static PyObject *

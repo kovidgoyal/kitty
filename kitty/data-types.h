@@ -326,6 +326,7 @@ const char* cursor_as_sgr(const Cursor *);
 
 PyObject* cm_thread_write(PyObject *self, PyObject *args);
 bool schedule_write_to_child(unsigned long id, unsigned int num, ...);
+bool schedule_write_to_child_python(unsigned long id, const char *prefix, PyObject* tuple_of_str_or_bytes, const char *suffix);
 bool set_iutf8(int, bool);
 
 color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);
