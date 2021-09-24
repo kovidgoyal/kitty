@@ -239,7 +239,7 @@ def test_compile(
     ldflags: Iterable[str] = (),
 ) -> bool:
     src = src or 'int main(void) { return 0; }'
-    with tempfile.NamedTemporaryFile() as f:
+    with tempfile.NamedTemporaryFile(prefix='kitty-test-compile-') as f:
         p = subprocess.Popen(
             [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', f.name, '-'] +
             [f'-l{x}' for x in libraries] + list(ldflags),
