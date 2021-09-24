@@ -684,8 +684,9 @@ opt('command_on_bell', 'none',
 
 opt('bell_path', 'none',
     option_type='config_or_absolute_path', ctype='!bell_path',
-    long_text='Path to a sound file to play as the bell sound. Must be in a format supported by the'
-    ' operating systems sound API, such as WAV or OGA on Linux (libcanberra) or AIFF, MP3 or WAV on macOS (NSSound)'
+    long_text='Path to a sound file to play as the bell sound. If set to :code:`none`, the system default bell sound is used.'
+    ' Must be in a format supported by the operating systems sound API, such as WAV or OGA on Linux (libcanberra)'
+    ' or AIFF, MP3 or WAV on macOS (NSSound)'
     )
 
 egr()  # }}}
