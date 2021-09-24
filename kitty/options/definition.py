@@ -681,6 +681,13 @@ opt('command_on_bell', 'none',
     ' The environment variable :envvar:`KITTY_CHILD_CMDLINE` can be used to get the program running in'
     ' the window in which the bell occurred.'
     )
+
+opt('bell_path', 'none',
+    option_type='config_or_absolute_path', ctype='!bell_path',
+    long_text='Path to a sound file to play as the bell sound. Must be in a format supported by the'
+    ' operating systems sound API, such as WAV or OGA on Linux (libcanberra) or AIFF, MP3 or WAV on macOS (NSSound)'
+    )
+
 egr()  # }}}
 
 # window {{{

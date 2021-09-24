@@ -81,6 +81,9 @@ class Parser:
     def bell_on_tab(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['bell_on_tab'] = to_bool(val)
 
+    def bell_path(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        ans['bell_path'] = config_or_absolute_path(val)
+
     def bold_font(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['bold_font'] = str(val)
 

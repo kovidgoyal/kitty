@@ -19,7 +19,7 @@ extern void cocoa_focus_window(void *w);
 extern long cocoa_window_number(void *w);
 extern void cocoa_create_global_menu(void);
 extern void cocoa_hide_window_title(void *w);
-extern void cocoa_system_beep(void);
+extern void cocoa_system_beep(const char*);
 extern void cocoa_set_activation_policy(bool);
 extern void cocoa_set_titlebar_color(void *w, color_type color);
 extern bool cocoa_alt_option_key_pressed(unsigned long);
@@ -1115,9 +1115,10 @@ ring_audio_bell(void) {
     if (last_bell_at >= 0 && now - last_bell_at <= ms_to_monotonic_t(100ll)) return;
     last_bell_at = now;
 #ifdef __APPLE__
-    cocoa_system_beep();
+    cocoa_system_beep(OPT(bell_path));
 #else
-    play_canberra_sound("bell", "kitty bell", false);
+    if (OPT(bell_path)) play_canberra_sound(OPT(bell_path), "kitty bell", true);
+    else play_canberra_sound("bell", "kitty bell", false);
 #endif
 }
 

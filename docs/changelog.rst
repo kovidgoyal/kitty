@@ -22,6 +22,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   the request by default instead of denying by default. See
   :opt:`clipboard_control` for details (:iss:`4022`)
 
+- A new option :opt:`bell_path` to specify the path to a sound file
+  to use as the bell sound
+
 - Fix a regression that caused :option:`kitty --title` to not work when
   opening new OS windows using :option:`kitty --single-instance` (:iss:`3893`)
 

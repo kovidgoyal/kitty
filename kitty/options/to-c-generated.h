@@ -435,6 +435,19 @@ convert_from_opts_window_alert_on_bell(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_bell_path(PyObject *val, Options *opts) {
+    bell_path(val, opts);
+}
+
+static void
+convert_from_opts_bell_path(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "bell_path");
+    if (ret == NULL) return;
+    convert_from_python_bell_path(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_active_border_color(PyObject *val, Options *opts) {
     opts->active_border_color = active_border_color(val);
 }
@@ -982,6 +995,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_visual_bell_duration(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_window_alert_on_bell(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_bell_path(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_active_border_color(py_opts, opts);
     if (PyErr_Occurred()) return false;

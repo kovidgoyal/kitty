@@ -78,17 +78,22 @@ bglayout(PyObject *layout_name) {
     return TILING;
 }
 
-static void
-background_image(PyObject *src, Options *opts) {
-    if (opts->background_image) free(opts->background_image);
-    opts->background_image = NULL;
-    if (src == Py_None || !PyUnicode_Check(src)) return;
-    Py_ssize_t sz;
-    const char *s = PyUnicode_AsUTF8AndSize(src, &sz);
-    opts->background_image = calloc(sz + 1, 1);
-    if (opts->background_image) memcpy(opts->background_image, s, sz);
+#define STR_SETTER(name) { \
+    free(opts->name); opts->name = NULL; \
+    if (src == Py_None || !PyUnicode_Check(src)) return; \
+    Py_ssize_t sz; \
+    const char *s = PyUnicode_AsUTF8AndSize(src, &sz); \
+    opts->name = calloc(sz + 1, 1); \
+    if (opts->name) memcpy(opts->name, s, sz); \
 }
 
+static void
+background_image(PyObject *src, Options *opts) { STR_SETTER(background_image); }
+
+static void
+bell_path(PyObject *src, Options *opts) { STR_SETTER(bell_path); }
+
+#undef STR_SETTER
 
 static MouseShape
 pointer_shape(PyObject *shape_name) {

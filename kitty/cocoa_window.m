@@ -633,12 +633,16 @@ cocoa_set_titlebar_color(void *w, color_type titlebar_color)
     } // autoreleasepool
 }
 
+static NSSound *beep_sound = nil;
+
 static void
 cleanup() {
     @autoreleasepool {
 
     if (dockMenu) [dockMenu release];
     dockMenu = nil;
+    if (beep_sound) [beep_sound release];
+    beep_sound = nil;
 
 #ifndef KITTY_USE_DEPRECATED_MACOS_NOTIFICATION_API
     drain_pending_notifications(NO);
@@ -662,8 +666,15 @@ cocoa_hide_window_title(void *w)
 }
 
 void
-cocoa_system_beep(void) {
-    NSBeep();
+cocoa_system_beep(const char *path) {
+    if (!path) { NSBeep(); return; }
+    static const char *beep_path = NULL;
+    if (beep_path != path) {
+        if (beep_sound) [beep_sound release];
+        beep_sound = [[NSSound alloc] initWithContentsOfFile:@(path) byReference:YES];
+    }
+    if (beep_sound) [beep_sound play];
+    else NSBeep();
 }
 
 static PyMethodDef module_methods[] = {

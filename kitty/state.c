@@ -1135,7 +1135,9 @@ finalize(void) {
     }
     if (detached_windows.windows) free(detached_windows.windows);
     detached_windows.capacity = 0;
-    if (OPT(background_image)) free(OPT(background_image));
+#define F(x) free(OPT(x)); OPT(x) = NULL;
+    F(background_image); F(bell_path);
+#undef F
     // we leak the texture here since it is not guaranteed
     // that freeing the texture will work during shutdown and
     // the GPU driver should take care of it when the OpenGL context is
