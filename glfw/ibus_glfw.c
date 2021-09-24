@@ -147,6 +147,40 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data) 
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static DBusHandlerResult 
+ibus_on_owner_change(DBusConnection* conn UNUSED, DBusMessage* msg, void* user_data) {
+    if (dbus_message_is_signal(msg, "org.freedesktop.DBus", "NameOwnerChanged")) {
+        const char* name;
+        const char* old_owner;
+        const char* new_owner;
+        
+        if (!dbus_message_get_args(msg, NULL, 
+            DBUS_TYPE_STRING, &name, 
+            DBUS_TYPE_STRING, &old_owner,
+            DBUS_TYPE_STRING, &new_owner,
+            DBUS_TYPE_INVALID
+        )) {
+            return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+        }
+
+        if (strcmp(name, "org.freedesktop.IBus") != 0) {
+            return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+        }
+
+        _GLFWIBUSData* ibus = (_GLFWIBUSData*) user_data;
+        if (strcmp(new_owner, "") == 0) {
+            ibus->ok = false;
+        } else {
+            ibus->ok = true;
+        }
+
+        return DBUS_HANDLER_RESULT_HANDLED;
+
+    }
+
+    return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
 static const char*
 get_ibus_address_file_name(void) {
     const char *addr;
@@ -243,6 +277,8 @@ input_context_created(DBusMessage *msg, const char* errmsg, void *data) {
     free((void*)ibus->input_ctx_path);
     ibus->input_ctx_path = _glfw_strdup(path);
     if (!ibus->input_ctx_path) return;
+    dbus_bus_add_match(ibus->conn, "type='signal',interface='org.freedesktop.DBus', member='NameOwnerChanged'", NULL);
+    dbus_connection_add_filter(ibus->conn, ibus_on_owner_change, ibus, free);
     dbus_bus_add_match(ibus->conn, "type='signal',interface='org.freedesktop.IBus.InputContext'", NULL);
     DBusObjectPathVTable ibus_vtable = {.message_function = message_handler};
     dbus_connection_try_register_object_path(ibus->conn, ibus->input_ctx_path, &ibus_vtable, ibus, NULL);
@@ -306,7 +342,7 @@ glfw_ibus_terminate(_GLFWIBUSData *ibus) {
 static bool
 check_connection(_GLFWIBUSData *ibus) {
     if (!ibus->inited) return false;
-    if (ibus->conn && dbus_connection_get_is_connected(ibus->conn)) {
+    if (ibus->conn && dbus_connection_get_is_connected(ibus->conn) && ibus->ok) {
         return ibus->ok;
     }
     struct stat s;
