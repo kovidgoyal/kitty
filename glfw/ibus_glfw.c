@@ -168,11 +168,7 @@ ibus_on_owner_change(DBusConnection* conn UNUSED, DBusMessage* msg, void* user_d
         }
 
         _GLFWIBUSData* ibus = (_GLFWIBUSData*) user_data;
-        if (strcmp(new_owner, "") == 0) {
-            ibus->ok = false;
-        } else {
-            ibus->ok = true;
-        }
+        ibus->ok = strcmp(new_owner, "") != 0;
 
         return DBUS_HANDLER_RESULT_HANDLED;
 
