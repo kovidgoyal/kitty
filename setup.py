@@ -6,6 +6,7 @@ import argparse
 import glob
 import json
 import os
+import platform
 import re
 import runpy
 import shlex
@@ -13,14 +14,14 @@ import shutil
 import subprocess
 import sys
 import sysconfig
-import platform
+import tempfile
 import time
 from contextlib import suppress
 from functools import partial
 from pathlib import Path
 from typing import (
-    Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional,
-    Sequence, Set, Tuple, Union
+    Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence,
+    Set, Tuple, Union
 )
 
 from glfw import glfw  # noqa
@@ -238,11 +239,12 @@ def test_compile(
     ldflags: Iterable[str] = (),
 ) -> bool:
     src = src or 'int main(void) { return 0; }'
-    p = subprocess.Popen(
-        [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', os.devnull, '-'] +
-        [f'-l{x}' for x in libraries] + list(ldflags),
-        stdout=subprocess.DEVNULL, stdin=subprocess.PIPE, stderr=None if show_stderr else subprocess.DEVNULL
-    )
+    with tempfile.NamedTemporaryFile() as f:
+        p = subprocess.Popen(
+            [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', f.name, '-'] +
+            [f'-l{x}' for x in libraries] + list(ldflags),
+            stdout=subprocess.DEVNULL, stdin=subprocess.PIPE, stderr=None if show_stderr else subprocess.DEVNULL
+        )
     stdin = p.stdin
     assert stdin is not None
     try:
