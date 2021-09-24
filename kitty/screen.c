@@ -3235,7 +3235,8 @@ static PyObject*
 send_escape_code_to_child(Screen *self, PyObject *args) {
     int code;
     char *text;
-    if (!PyArg_ParseTuple(args, "is", &code, &text)) return NULL;
+    Py_ssize_t sz;
+    if (!PyArg_ParseTuple(args, "is#", &code, &text, &sz)) return NULL;
     if (write_escape_code_to_child(self, code, text)) Py_RETURN_TRUE;
     Py_RETURN_FALSE;
 }
