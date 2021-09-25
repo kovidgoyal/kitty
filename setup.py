@@ -239,20 +239,20 @@ def test_compile(
     ldflags: Iterable[str] = (),
 ) -> bool:
     src = src or 'int main(void) { return 0; }'
-    with tempfile.NamedTemporaryFile(prefix='kitty-test-compile-') as f:
+    with tempfile.TemporaryDirectory(prefix='kitty-test-compile-') as tdir:
         p = subprocess.Popen(
-            [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', f.name, '-'] +
+            [cc] + list(cflags) + ([] if link_also else ['-c']) + ['-x', lang, '-o', os.path.join(tdir, 'dummy'), '-'] +
             [f'-l{x}' for x in libraries] + list(ldflags),
             stdout=subprocess.DEVNULL, stdin=subprocess.PIPE, stderr=None if show_stderr else subprocess.DEVNULL
         )
-    stdin = p.stdin
-    assert stdin is not None
-    try:
-        stdin.write((src + '\n').encode('utf-8'))
-        stdin.close()
-    except BrokenPipeError:
-        return False
-    return p.wait() == 0
+        stdin = p.stdin
+        assert stdin is not None
+        try:
+            stdin.write((src + '\n').encode('utf-8'))
+            stdin.close()
+        except BrokenPipeError:
+            return False
+        return p.wait() == 0
 
 
 def first_successful_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c') -> str:
