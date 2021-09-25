@@ -13,6 +13,7 @@ mkShell rec {
     harfbuzzWithCoreText
     ncurses
     lcms2
+    librsync
   ] ++ optionals stdenv.isDarwin [
     Cocoa
     CoreGraphics
