@@ -294,11 +294,11 @@ schedule_write_to_child_python(unsigned long id, const char *prefix, PyObject *a
 #define py_start(ap, num) pidx = 0;
 #define py_end(ap) pidx = 0;
 #define get_next_arg(ap) { \
-    if (pidx == 0 && has_prefix) { data = prefix; szval = strlen(prefix); } \
+    size_t pidxf = pidx++; \
+    if (pidxf == 0 && has_prefix) { data = prefix; szval = strlen(prefix); } \
     else { \
-        size_t pidxf = pidx++; \
         if (has_prefix) pidxf--; \
-        if (has_suffix && pidxf >= (size_t)PyBytes_GET_SIZE(ap)) { data = suffix; szval = strlen(suffix); } \
+        if (has_suffix && pidxf >= (size_t)PyTuple_GET_SIZE(ap)) { data = suffix; szval = strlen(suffix); } \
         else { \
             PyObject *t = PyTuple_GET_ITEM(ap, pidxf); \
             if (PyBytes_Check(t)) { data = PyBytes_AS_STRING(t); szval = PyBytes_GET_SIZE(t); } \
