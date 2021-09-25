@@ -1,4 +1,4 @@
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 
 IO_BUFFER_SIZE: int
 
@@ -36,4 +36,12 @@ def begin_patch(callback: Callable[[memoryview, int], int]) -> JobCapsule:
 
 
 def iter_job(job_capsule: JobCapsule, input_data: bytes, output_buf: bytearray) -> Tuple[bool, int, int]:
+    pass
+
+
+def parse_ftc(src: Union[str, bytes, memoryview], callback: Callable[[memoryview, memoryview, bool], None]) -> None:
+    pass
+
+
+def decode_utf8_buffer(src: Union[str, bytes, memoryview]) -> str:
     pass

@@ -64,6 +64,7 @@ class Debug:
 
 
 debug = Debug()
+ftc_code = str(FILE_TRANSFER_CODE)
 
 
 class TermManager:
@@ -310,18 +311,25 @@ class Loop:
         pass
 
     def _on_osc(self, osc: str) -> None:
-        parts = osc.split(';', 1)
-        if len(parts) == 2 and parts[0].isdigit():
-            code = int(parts[0])
-            rest = parts[1]
-            if code == 52:
-                where, rest = rest.split(';', 1)
-                from_primary = 'p' in where
+        idx = osc.find(';')
+        if idx <= 0:
+            return
+        q = osc[:idx]
+        if q == '52':
+            widx = osc.find(';', idx + 1)
+            if widx < idx:
+                from_primary = osc.find('p', idx + 1) > -1
+                payload = ''
+            else:
                 from base64 import standard_b64decode
-                self.handler.on_clipboard_response(standard_b64decode(rest).decode('utf-8'), from_primary)
-            elif code == FILE_TRANSFER_CODE:
-                from kitty.file_transmission import FileTransmissionCommand
-                self.handler.on_file_transfer_response(FileTransmissionCommand.deserialize(rest))
+                from_primary = osc.find('p', idx+1, widx) > -1
+                data = memoryview(osc.encode('ascii'))
+                payload = standard_b64decode(data[widx+1:]).decode('utf-8')
+            self.handler.on_clipboard_response(payload, from_primary)
+        elif q == ftc_code:
+            from kitty.file_transmission import FileTransmissionCommand
+            data = memoryview(osc.encode('ascii'))
+            self.handler.on_file_transfer_response(FileTransmissionCommand.deserialize(data[idx+1:]))
 
     def _on_apc(self, apc: str) -> None:
         if apc.startswith('G'):

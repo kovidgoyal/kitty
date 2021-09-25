@@ -14,6 +14,7 @@ from kittens.transfer.librsync import (
     LoadSignature, PatchFile, delta_for_file, signature_of_file
 )
 from kittens.transfer.main import parse_transfer_args
+from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
 from kittens.transfer.send import files_for_send
 from kittens.transfer.utils import set_paths
 from kitty.file_transmission import (
@@ -260,6 +261,25 @@ class TestFileTransmission(BaseTest):
         self.ae(os.stat(dest + 'd1').st_mtime_ns, 29)
         self.ae(os.stat(dest + 'd2').st_mtime_ns, 29)
         self.assertFalse(ft.active_receives)
+
+    def test_parse_ftc(self):
+        def t(raw, *expected):
+            a = []
+
+            def c(k, v, has_semicolons):
+                a.append(decode_utf8_buffer(k))
+                if has_semicolons:
+                    v = bytes(v).replace(b';;', b';')
+                a.append(decode_utf8_buffer(v))
+
+            parse_ftc(raw, c)
+            self.ae(tuple(a), expected)
+
+        t('a=b', 'a', 'b')
+        t('a=b;', 'a', 'b')
+        t('a1=b1;c=d;;', 'a1', 'b1', 'c', 'd;')
+        t('a1=b1;c=d;;e', 'a1', 'b1', 'c', 'd;e')
+        t('a1=b1;c=d;;;1=1', 'a1', 'b1', 'c', 'd;', '1', '1')
 
     def test_path_mapping(self):
         opts = parse_transfer_args([])[0]

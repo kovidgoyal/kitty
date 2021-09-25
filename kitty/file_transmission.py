@@ -195,30 +195,34 @@ class FileTransmissionCommand:
         return ''.join(map(as_unicode, self.get_serialized_fields(prefix_with_osc_code)))
 
     @classmethod
-    def deserialize(cls, data: str) -> 'FileTransmissionCommand':
+    def deserialize(cls, data: Union[str, bytes, memoryview]) -> 'FileTransmissionCommand':
         ans = FileTransmissionCommand()
-        parts = (x.replace('\0', ';').partition('=')[::2] for x in data.replace(';;', '\0').split(';'))
-        if not hasattr(cls, 'fmap'):
-            setattr(cls, 'fmap', {k.name: k for k in fields(cls)})
-        fmap: Dict[str, Field] = getattr(cls, 'fmap')
+        fmap: Dict[bytes, Field] = getattr(cls, 'fmap', None)
+        if not fmap:
+            fmap = {k.name.encode('ascii'): k for k in fields(cls)}
+            setattr(cls, 'fmap', fmap)
+        from kittens.transfer.rsync import parse_ftc, decode_utf8_buffer
 
-        for k, v in parts:
-            field = fmap.get(k)
+        def handle_item(key: memoryview, val: memoryview, has_semicolons: bool) -> None:
+            field = fmap.get(key)
             if field is None:
-                continue
+                return
             if issubclass(field.type, Enum):
-                setattr(ans, field.name, field.type[v])
+                setattr(ans, field.name, field.type[decode_utf8_buffer(val)])
             elif field.type is bytes:
-                setattr(ans, field.name, standard_b64decode(v))
+                setattr(ans, field.name, standard_b64decode(val))
             elif field.type is int:
-                setattr(ans, field.name, int(v))
+                setattr(ans, field.name, int(val))
             elif field.type is str:
                 if field.metadata.get('base64'):
-                    sval = standard_b64decode(v).decode('utf-8')
+                    sval = standard_b64decode(val).decode('utf-8')
                 else:
-                    sval = v
+                    if has_semicolons:
+                        val = memoryview(bytes(val).replace(b';;', b';'))
+                    sval = decode_utf8_buffer(val)
                 setattr(ans, field.name, sanitize_control_codes(sval))
 
+        parse_ftc(data, handle_item)
         if ans.action is Action.invalid:
             raise ValueError('No valid action specified in file transmission command')
 

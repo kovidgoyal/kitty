@@ -76,8 +76,6 @@ begin_create_signature(PyObject *self UNUSED, PyObject *args) {
     if (!job) { PyErr_SetString(PyExc_TypeError, "Not a job capsule"); return NULL; } \
 
 
-#define FREE_BUFFER_AFTER_FUNCTION __attribute__((cleanup(PyBuffer_Release)))
-
 static PyObject*
 iter_job(PyObject *self UNUSED, PyObject *args) {
     FREE_BUFFER_AFTER_FUNCTION Py_buffer input_buf = {0};
@@ -173,6 +171,61 @@ begin_patch(PyObject *self UNUSED, PyObject *callback) {
     return job_capsule;
 }
 
+static bool
+call_ftc_callback(PyObject *callback, char *src, Py_ssize_t key_start, Py_ssize_t key_length, Py_ssize_t val_start, Py_ssize_t val_length, PyObject *has_semicolons) {
+    DECREF_AFTER_FUNCTION PyObject *k = PyMemoryView_FromMemory(src + key_start, key_length, PyBUF_READ);
+    if (!k) return false;
+    DECREF_AFTER_FUNCTION PyObject *v = PyMemoryView_FromMemory(src + val_start, val_length, PyBUF_READ);
+    if (!v) return false;
+    DECREF_AFTER_FUNCTION PyObject *ret = PyObject_CallFunctionObjArgs(callback, k, v, has_semicolons, NULL);
+    return ret != NULL;
+}
+
+static PyObject*
+decode_utf8_buffer(PyObject *self UNUSED, PyObject *args) {
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer buf = {0};
+    if (!PyArg_ParseTuple(args, "s*", &buf)) return NULL;
+    return PyUnicode_FromStringAndSize(buf.buf, buf.len);
+}
+
+static PyObject*
+parse_ftc(PyObject *self UNUSED, PyObject *args) {
+    FREE_BUFFER_AFTER_FUNCTION Py_buffer buf = {0};
+    PyObject *callback;
+    size_t i = 0, key_start = 0, key_length = 0, val_start = 0, val_length = 0;
+    if (!PyArg_ParseTuple(args, "s*O", &buf, &callback)) return NULL;
+    char *src = buf.buf;
+    size_t sz = buf.len;
+    if (!PyCallable_Check(callback)) { PyErr_SetString(PyExc_TypeError, "callback must be callable"); return NULL; }
+    PyObject *has_semicolons = Py_False;
+    for (i = 0; i < sz; i++) {
+        char ch = src[i];
+        if (key_length == 0) {
+            if (ch == '=') {
+                key_length = i - key_start;
+                val_start = i + 1;
+                has_semicolons = Py_False;
+            }
+        } else {
+            if (ch == ';') {
+                if (i + 1 < sz && src[i + 1] == ';') {
+                    has_semicolons = Py_True;
+                    i++;
+                } else {
+                    val_length = i - val_start;
+                    if (!call_ftc_callback(callback, src, key_start, key_length, val_start, val_length, has_semicolons)) return NULL;
+                    key_length = 0; key_start = i + 1; val_start = 0;
+                }
+            }
+        }
+    }
+    if (key_length && val_start) {
+        val_length = sz - val_start;
+        if (!call_ftc_callback(callback, src, key_start, key_length, val_start, val_length, has_semicolons)) return NULL;
+    }
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     {"begin_create_signature", begin_create_signature, METH_VARARGS, ""},
     {"begin_load_signature", begin_load_signature, METH_NOARGS, ""},
@@ -180,6 +233,8 @@ static PyMethodDef module_methods[] = {
     {"begin_patch", begin_patch, METH_O, ""},
     {"begin_create_delta", begin_create_delta, METH_VARARGS, ""},
     {"iter_job", iter_job, METH_VARARGS, ""},
+    {"parse_ftc", parse_ftc, METH_VARARGS, ""},
+    {"decode_utf8_buffer", decode_utf8_buffer, METH_VARARGS, ""},
     {NULL, NULL, 0, NULL}        /* Sentinel */
 };
 

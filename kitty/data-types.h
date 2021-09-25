@@ -40,6 +40,9 @@ void log_error(const char *fmt, ...) __attribute__ ((format (printf, 1, 2)));
 #define fatal(...) { log_error(__VA_ARGS__); exit(EXIT_FAILURE); }
 static inline void cleanup_free(void *p) { free(*(void**)p); }
 #define FREE_AFTER_FUNCTION __attribute__((cleanup(cleanup_free)))
+static inline void cleanup_clear(void *p) { Py_XDECREF((PyObject *)p); }
+#define DECREF_AFTER_FUNCTION __attribute__((cleanup(cleanup_clear)))
+#define FREE_BUFFER_AFTER_FUNCTION __attribute__((cleanup(PyBuffer_Release)))
 
 typedef unsigned long long id_type;
 typedef uint32_t char_type;
