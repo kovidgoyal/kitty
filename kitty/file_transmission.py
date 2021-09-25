@@ -14,8 +14,11 @@ from enum import Enum, auto
 from functools import partial
 from gettext import gettext as _
 from time import monotonic
-from typing import IO, Any, Callable, Deque, Dict, List, Optional, Tuple, Union
+from typing import (
+    IO, Any, Callable, Deque, Dict, Iterator, List, Optional, Union
+)
 
+from kittens.transfer.librsync import signature_of_file
 from kitty.fast_data_types import (
     FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
 )
@@ -24,6 +27,17 @@ from .utils import log_error, sanitize_control_codes
 
 EXPIRE_TIME = 10  # minutes
 MAX_ACTIVE_RECEIVES = 10
+ftc_prefix = str(FILE_TRANSFER_CODE)
+
+
+def escape_semicolons(x: str) -> str:
+    return x.replace(';', ';;')
+
+
+def as_unicode(x: Union[str, bytes]) -> str:
+    if isinstance(x, bytes):
+        x = x.decode('ascii')
+    return x
 
 
 def encode_bypass(request_id: str, bypass: str) -> str:
@@ -86,7 +100,8 @@ class TransmissionError(Exception):
         transmit: bool = True,
         file_id: str = '',
         name: str = '',
-        size: int = -1
+        size: int = -1,
+        ttype: TransmissionType = TransmissionType.simple,
     ) -> None:
         super().__init__(msg)
         self.transmit = transmit
@@ -95,14 +110,15 @@ class TransmissionError(Exception):
         self.code = code
         self.name = name
         self.size = size
+        self.ttype = ttype
 
-    def as_escape_code(self, request_id: str) -> str:
+    def as_ftc(self, request_id: str) -> 'FileTransmissionCommand':
         name = self.code if isinstance(self.code, str) else self.code.name
         if self.human_msg:
             name += ':' + self.human_msg
         return FileTransmissionCommand(
-            action=Action.status, id=request_id, file_id=self.file_id, status=name, name=self.name, size=self.size
-        ).serialize()
+            action=Action.status, id=request_id, file_id=self.file_id, status=name, name=self.name, size=self.size, ttype=self.ttype
+        )
 
 
 @dataclass
@@ -144,32 +160,39 @@ class FileTransmissionCommand:
             ans[k.name] = val
         return ans
 
-    def serialize(self) -> str:
-        ans = []
+    def get_serialized_fields(self, prefix_with_osc_code: bool = False) -> Iterator[Union[str, bytes]]:
+        found = False
+        if prefix_with_osc_code:
+            yield ftc_prefix
+            found = True
+
         for k in fields(self):
-            val = getattr(self, k.name)
+            name = k.name
+            val = getattr(self, name)
             if val == k.default:
                 continue
+            if found:
+                yield ';'
+            else:
+                found = True
+            yield name
+            yield '='
             if issubclass(k.type, Enum):
-                ans.append(f'{k.name}={val.name}')
+                yield val.name
             elif k.type is bytes:
-                ev = standard_b64encode(val).decode('ascii')
-                ans.append(f'{k.name}={ev}')
+                yield standard_b64encode(val)
             elif k.type is str:
                 if k.metadata.get('base64'):
-                    sval = standard_b64encode(val.encode('utf-8')).decode('ascii')
+                    yield standard_b64encode(val.encode('utf-8'))
                 else:
-                    sval = val
-                ans.append(f'{k.name}={sanitize_control_codes(sval)}')
+                    yield escape_semicolons(sanitize_control_codes(val))
             elif k.type is int:
-                ans.append(f'{k.name}={val}')
+                yield str(val)
             else:
                 raise KeyError(f'Field of unknown type: {k.name}')
 
-        def escape_semicolons(x: str) -> str:
-            return x.replace(';', ';;')
-
-        return ';'.join(map(escape_semicolons, ans))
+    def serialize(self, prefix_with_osc_code: bool = False) -> str:
+        return ''.join(map(as_unicode, self.get_serialized_fields(prefix_with_osc_code)))
 
     @classmethod
     def deserialize(cls, data: str) -> 'FileTransmissionCommand':
@@ -344,9 +367,12 @@ class ActiveReceive:
     def __init__(self, request_id: str, quiet: int, bypass: str) -> None:
         self.id = request_id
         self.bypass_ok: Optional[bool] = None
-        byp = get_options().file_transfer_confirmation_bypass
-        if byp and bypass:
-            self.bypass_ok = encode_bypass(request_id, byp) == byp
+        if bypass:
+            byp = get_options().file_transfer_confirmation_bypass
+            if byp:
+                self.bypass_ok = encode_bypass(request_id, byp) == bypass
+            else:
+                self.bypass_ok = False
         self.files = {}
         self.last_activity_at = monotonic()
         self.send_acknowledgements = quiet < 1
@@ -404,10 +430,10 @@ class FileTransmission:
     def __init__(self, window_id: int):
         self.window_id = window_id
         self.active_receives = {}
-        self.pending_receive_responses: Deque[Tuple[str, str]] = deque()
+        self.pending_receive_responses: Deque[FileTransmissionCommand] = deque()
         self.pending_timer: Optional[int] = None
 
-    def callback_after(self, callback: Callable[[Optional[int]], None], timeout: float) -> Optional[int]:
+    def callback_after(self, callback: Callable[[Optional[int]], None], timeout: float = 0) -> Optional[int]:
         return add_timer(callback, timeout, False)
 
     def start_pending_timer(self) -> None:
@@ -417,11 +443,11 @@ class FileTransmission:
     def try_pending(self, timer_id: Optional[int]) -> None:
         self.pending_timer = None
         while self.pending_receive_responses:
-            request_id, payload = self.pending_receive_responses.popleft()
-            ar = self.active_receives.get(request_id)
+            payload = self.pending_receive_responses.popleft()
+            ar = self.active_receives.get(payload.id)
             if ar is None:
                 continue
-            if not self.write_osc_to_child(request_id, payload, appendleft=True):
+            if not self.write_ftc_to_child(payload, appendleft=True):
                 break
             ar.last_activity_at = monotonic()
         self.prune_expired()
@@ -507,7 +533,16 @@ class FileTransmission:
                 else:
                     if ar.send_acknowledgements:
                         sz = df.existing_stat.st_size if df.existing_stat is not None else -1
-                        self.send_status_response(code=ErrorCode.STARTED, request_id=ar.id, file_id=df.file_id, name=df.name, size=sz)
+                        ttype = TransmissionType.rsync \
+                            if sz > -1 and df.ttype is TransmissionType.rsync and df.ftype is FileType.regular else TransmissionType.simple
+                        self.send_status_response(code=ErrorCode.STARTED, request_id=ar.id, file_id=df.file_id, name=df.name, size=sz, ttype=ttype)
+                        if ttype is TransmissionType.rsync:
+                            try:
+                                fs = signature_of_file(df.name)
+                            except OSError as err:
+                                self.send_fail_on_os_error(err, 'Failed to open file to read signature', ar, df.file_id)
+                            else:
+                                self.callback_after(partial(self.transmit_rsync_signature, fs, ar.id, df.file_id, deque()))
         elif cmd.action in (Action.data, Action.end_data):
             try:
                 df = ar.add_data(cmd)
@@ -537,32 +572,72 @@ class FileTransmission:
             finally:
                 self.drop_receive(ar.id)
 
+    def transmit_rsync_signature(
+        self, fs: Iterator[memoryview],
+        receive_id: str, file_id: str,
+        pending: Deque[FileTransmissionCommand],
+        timer_id: Optional[int] = None
+    ) -> None:
+        ar = self.active_receives.get(receive_id)
+        if ar is None:
+            return
+        func = partial(self.transmit_rsync_signature, fs, file_id, receive_id, pending)
+        while pending:
+            if self.write_ftc_to_child(pending[0], use_pending=False):
+                pending.popleft()
+            else:
+                self.callback_after(func, timeout=0.1)
+        try:
+            next_bit_of_data = next(fs)
+        except StopIteration:
+            self.write_ftc_to_child(FileTransmissionCommand(id=receive_id, action=Action.end_data, file_id=file_id))
+            return
+        except OSError as err:
+            if ar.send_errors:
+                self.send_fail_on_os_error(err, 'Failed to read signature', ar, file_id)
+            return
+        has_capacity = True
+        pos = 0
+        while True:
+            r = next_bit_of_data[pos:pos + 4096]
+            if len(r) < 1:
+                break
+            data = FileTransmissionCommand(id=receive_id, action=Action.data, file_id=file_id, data=r)
+            if has_capacity:
+                if not self.write_ftc_to_child(data, use_pending=False):
+                    has_capacity = False
+                    pending.append(data)
+            else:
+                pending.append(data)
+        self.callback_after(func)
+
     def send_status_response(
         self, code: Union[ErrorCode, str] = ErrorCode.EINVAL,
         request_id: str = '', file_id: str = '', msg: str = '',
-        name: str = '', size: int = -1
+        name: str = '', size: int = -1,
+        ttype: TransmissionType = TransmissionType.simple,
     ) -> bool:
-        err = TransmissionError(code=code, msg=msg, file_id=file_id, name=name, size=size)
-        data = err.as_escape_code(request_id)
-        return self.write_osc_to_child(request_id, data)
+        err = TransmissionError(code=code, msg=msg, file_id=file_id, name=name, size=size, ttype=ttype)
+        return self.write_ftc_to_child(err.as_ftc(request_id))
 
     def send_transmission_error(self, request_id: str, err: TransmissionError) -> bool:
         if err.transmit:
-            return self.write_osc_to_child(request_id, err.as_escape_code(request_id))
+            return self.write_ftc_to_child(err.as_ftc(request_id))
         return True
 
-    def write_osc_to_child(self, request_id: str, payload: str, appendleft: bool = False) -> bool:
+    def write_ftc_to_child(self, payload: FileTransmissionCommand, appendleft: bool = False, use_pending: bool = True) -> bool:
         boss = get_boss()
         window = boss.window_id_map.get(self.window_id)
         if window is not None:
-            payload = f'{FILE_TRANSFER_CODE};{payload}'
-            queued = window.screen.send_escape_code_to_child(OSC, payload)
+            data = tuple(payload.get_serialized_fields(prefix_with_osc_code=True))
+            queued = window.screen.send_escape_code_to_child(OSC, data)
             if not queued:
-                if appendleft:
-                    self.pending_receive_responses.appendleft((request_id, payload))
-                else:
-                    self.pending_receive_responses.append((request_id, payload))
-                self.start_pending_timer()
+                if use_pending:
+                    if appendleft:
+                        self.pending_receive_responses.appendleft(payload)
+                    else:
+                        self.pending_receive_responses.append(payload)
+                    self.start_pending_timer()
             return queued
         return False
 
@@ -612,12 +687,12 @@ class TestFileTransmission(FileTransmission):
         self.test_responses: List[dict] = []
         self.allow = allow
 
-    def write_osc_to_child(self, request_id: str, payload: str, appendleft: bool = False) -> bool:
-        self.test_responses.append(FileTransmissionCommand.deserialize(payload).asdict())
+    def write_ftc_to_child(self, payload: FileTransmissionCommand, appendleft: bool = False, use_pending: bool = True) -> bool:
+        self.test_responses.append(payload.asdict())
         return True
 
     def start_receive(self, aid: str) -> None:
         self.handle_send_confirmation(aid, {'response': 'y' if self.allow else 'n'})
 
-    def callback_after(self, callback: Callable[[Optional[int]], None], timeout: float) -> Optional[int]:
+    def callback_after(self, callback: Callable[[Optional[int]], None], timeout: float = 0) -> Optional[int]:
         callback(None)
