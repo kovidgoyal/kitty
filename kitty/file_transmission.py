@@ -217,9 +217,9 @@ class FileTransmissionCommand:
                 if field.metadata.get('base64'):
                     sval = standard_b64decode(val).decode('utf-8')
                 else:
-                    if has_semicolons:
-                        val = memoryview(bytes(val).replace(b';;', b';'))
                     sval = decode_utf8_buffer(val)
+                    if has_semicolons:
+                        sval = sval.replace(';;', ';')
                 setattr(ans, field.name, sanitize_control_codes(sval))
 
         parse_ftc(data, handle_item)
