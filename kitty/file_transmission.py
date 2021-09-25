@@ -369,10 +369,7 @@ class ActiveReceive:
         self.bypass_ok: Optional[bool] = None
         if bypass:
             byp = get_options().file_transfer_confirmation_bypass
-            if byp:
-                self.bypass_ok = encode_bypass(request_id, byp) == bypass
-            else:
-                self.bypass_ok = False
+            self.bypass_ok = (encode_bypass(request_id, byp) == bypass) if byp else False
         self.files = {}
         self.last_activity_at = monotonic()
         self.send_acknowledgements = quiet < 1
