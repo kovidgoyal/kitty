@@ -242,14 +242,13 @@ def test_compile(
     with tempfile.TemporaryDirectory(prefix='kitty-test-compile-') as tdir:
         with open(os.path.join(tdir, f'source.{lang}'), 'w', encoding='utf-8') as srcf:
             print(src, file=srcf)
-        p = subprocess.Popen(
+        return subprocess.Popen(
             [cc] + list(cflags) + ([] if link_also else ['-c']) +
             ['-o', os.path.join(tdir, 'source.output'), srcf.name] +
             [f'-l{x}' for x in libraries] + list(ldflags),
             stdout=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
             stderr=None if show_stderr else subprocess.DEVNULL
-        )
-        return p.wait() == 0
+        ).wait() == 0
 
 
 def first_successful_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c') -> str:
