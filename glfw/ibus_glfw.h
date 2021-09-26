@@ -32,7 +32,7 @@
 #include <xkbcommon/xkbcommon.h>
 
 typedef struct {
-    bool ok, inited;
+    bool ok, inited, name_owner_changed;
     time_t address_file_mtime;
     DBusConnection *conn;
     const char *input_ctx_path, *address_file_name, *address;

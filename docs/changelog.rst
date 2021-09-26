@@ -52,6 +52,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - When a :opt:`tab_bar_background` is specified it should extend to the edges
   of the OS window (:iss:`4054`)
 
+- Linux: Fix IME with fcitx5 not working after fcitx5 is restarted
+  (:pull:`4059`)
+
 
 
 0.23.1 [2021-08-17]

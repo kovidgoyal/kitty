@@ -147,15 +147,15 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data) 
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static DBusHandlerResult 
+static DBusHandlerResult
 ibus_on_owner_change(DBusConnection* conn UNUSED, DBusMessage* msg, void* user_data) {
     if (dbus_message_is_signal(msg, "org.freedesktop.DBus", "NameOwnerChanged")) {
         const char* name;
         const char* old_owner;
         const char* new_owner;
-        
-        if (!dbus_message_get_args(msg, NULL, 
-            DBUS_TYPE_STRING, &name, 
+
+        if (!dbus_message_get_args(msg, NULL,
+            DBUS_TYPE_STRING, &name,
             DBUS_TYPE_STRING, &old_owner,
             DBUS_TYPE_STRING, &new_owner,
             DBUS_TYPE_INVALID
@@ -168,7 +168,7 @@ ibus_on_owner_change(DBusConnection* conn UNUSED, DBusMessage* msg, void* user_d
         }
 
         _GLFWIBUSData* ibus = (_GLFWIBUSData*) user_data;
-        ibus->ok = strcmp(new_owner, "") != 0;
+        ibus->name_owner_changed = true;
 
         return DBUS_HANDLER_RESULT_HANDLED;
 
@@ -317,6 +317,7 @@ glfw_connect_to_ibus(_GLFWIBUSData *ibus) {
     if (ibus->inited) return;
     if (!test_env_var("GLFW_IM_MODULE", "ibus")) return;
     ibus->inited = true;
+    ibus->name_owner_changed = false;
     setup_connection(ibus);
 }
 
@@ -338,13 +339,12 @@ glfw_ibus_terminate(_GLFWIBUSData *ibus) {
 static bool
 check_connection(_GLFWIBUSData *ibus) {
     if (!ibus->inited) return false;
-    if (ibus->conn && dbus_connection_get_is_connected(ibus->conn) && ibus->ok) {
-        return ibus->ok;
-    }
+    if (ibus->conn && dbus_connection_get_is_connected(ibus->conn) && !ibus->name_owner_changed) return ibus->ok;
     struct stat s;
+    ibus->name_owner_changed = false;
     if (stat(ibus->address_file_name, &s) != 0 || s.st_mtime != ibus->address_file_mtime) {
         if (!read_ibus_address(ibus)) return false;
-        setup_connection(ibus);
+        return setup_connection(ibus);
     }
     return false;
 }
