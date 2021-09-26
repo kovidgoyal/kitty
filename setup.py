@@ -231,7 +231,7 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
 
 def test_compile(
     cc: str, *cflags: str,
-    src: Optional[str] = None,
+    src: str = '',
     lang: str = 'c',
     link_also: bool = True,
     show_stderr: bool = False,
@@ -251,7 +251,7 @@ def test_compile(
         ).wait() == 0
 
 
-def first_successful_compile(cc: str, *cflags: str, src: Optional[str] = None, lang: str = 'c') -> str:
+def first_successful_compile(cc: str, *cflags: str, src: str = '', lang: str = 'c') -> str:
     for x in cflags:
         if test_compile(cc, *shlex.split(x), src=src, lang=lang):
             return x
