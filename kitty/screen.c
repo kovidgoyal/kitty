@@ -3131,7 +3131,8 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
         set_abs(abs_initial_start, s->initial_extent.start, s->initial_extent.scrolled_by);
         set_abs(abs_initial_end, s->initial_extent.end, s->initial_extent.scrolled_by);
         if (self->selections.extend_mode == EXTEND_WORD) {
-            s->adjusting_start = selection_boundary_less_than(&abs_current_input, &abs_initial_end);
+            if (s->adjusting_start) s->adjusting_start = selection_boundary_less_than(&abs_current_input, &abs_initial_end);
+            else s->adjusting_start = selection_boundary_less_than(&abs_current_input, &abs_initial_start);
         } else {
             const unsigned int initial_line = abs_initial_start.y;
             if (initial_line == abs_current_input.y) {
