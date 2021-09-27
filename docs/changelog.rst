@@ -55,6 +55,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Fix IME with fcitx5 not working after fcitx5 is restarted
   (:pull:`4059`)
 
+- Remote file transfer: Fix transfer not working is custom ssh port or identity
+  is specified on the command line (:iss:`4067`)
 
 
 0.23.1 [2021-08-17]

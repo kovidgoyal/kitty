@@ -140,13 +140,13 @@ def get_ssh_cli() -> Tuple[Set[str], Set[str]]:
     return boolean_ssh_args, other_ssh_args
 
 
-def get_connection_data(args: List[str]) -> Optional[SSHConnectionData]:
+def get_connection_data(args: List[str], cwd: str = '') -> Optional[SSHConnectionData]:
     boolean_ssh_args, other_ssh_args = get_ssh_cli()
-    found_ssh = ''
     port: Optional[int] = None
-    expecting_port = False
+    expecting_port = expecting_identity = False
     expecting_option_val = False
     expecting_hostname = False
+    host_name = identity_file = found_ssh = ''
 
     for i, arg in enumerate(args):
         if not found_ssh:
@@ -154,7 +154,8 @@ def get_connection_data(args: List[str]) -> Optional[SSHConnectionData]:
                 found_ssh = arg
             continue
         if expecting_hostname:
-            return SSHConnectionData(found_ssh, arg, port)
+            host_name = arg
+            continue
         if arg.startswith('-') and not expecting_option_val:
             if arg in boolean_ssh_args:
                 continue
@@ -164,8 +165,15 @@ def get_connection_data(args: List[str]) -> Optional[SSHConnectionData]:
                 if arg[2:].isdigit():
                     with suppress(Exception):
                         port = int(arg[2:])
+                    continue
                 elif arg == '-p':
                     expecting_port = True
+            elif arg.startswith('-i'):
+                if arg == '-i':
+                    expecting_identity = True
+                else:
+                    identity_file = arg[2:]
+                    continue
             expecting_option_val = True
             continue
 
@@ -174,10 +182,22 @@ def get_connection_data(args: List[str]) -> Optional[SSHConnectionData]:
                 with suppress(Exception):
                     port = int(arg)
                 expecting_port = False
+            elif expecting_identity:
+                identity_file = arg
             expecting_option_val = False
             continue
 
-        return SSHConnectionData(found_ssh, arg, port)
+        if not host_name:
+            host_name = arg
+    if not host_name:
+        return None
+    if identity_file:
+        if not os.path.isabs(identity_file):
+            identity_file = os.path.expanduser(identity_file)
+        if not os.path.isabs(identity_file):
+            identity_file = os.path.normpath(os.path.join(cwd or os.getcwd(), identity_file))
+
+    return SSHConnectionData(found_ssh, host_name, port, identity_file)
 
 
 class InvalidSSHArgs(ValueError):

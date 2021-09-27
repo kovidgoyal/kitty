@@ -705,6 +705,7 @@ class SSHConnectionData(NamedTuple):
     binary: str
     hostname: str
     port: Optional[int] = None
+    identity_file: str = ''
 
 
 def get_new_os_window_size(

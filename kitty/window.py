@@ -649,7 +649,7 @@ class Window:
     def handle_remote_file(self, netloc: str, remote_path: str) -> None:
         from kittens.ssh.main import get_connection_data
         args = self.child.foreground_cmdline
-        conn_data = get_connection_data(args)
+        conn_data = get_connection_data(args, self.child.foreground_cwd or self.child.current_cwd or '')
         if conn_data is None:
             get_boss().show_error('Could not handle remote file', 'No SSH connection data found in: {args}')
             return

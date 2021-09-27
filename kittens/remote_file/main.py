@@ -118,7 +118,9 @@ class ControlMaster:
             '-o', 'TCPKeepAlive=yes', '-o', 'ControlPersist=yes'
         ]
         if conn_data.port:
-            cmd += ['-p', str(conn_data.port)]
+            cmd.extend(['-p', str(conn_data.port)])
+        if conn_data.identity_file:
+            cmd.extend(['-i', conn_data.identity_file])
         self.batch_cmd_prefix = cmd + ['-o', 'BatchMode=yes']
 
     def __enter__(self) -> 'ControlMaster':
