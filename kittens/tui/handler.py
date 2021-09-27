@@ -147,6 +147,16 @@ class Handler:
     def pending_update(self) -> ContextManager[None]:
         return pending_update(self.write)
 
+    @classmethod
+    def with_pending_update(cls, func: Callable) -> Callable:
+        from functools import wraps
+
+        @wraps(func)
+        def f(*a: Any, **kw: Any) -> Any:
+            with a[0].pending_update():
+                return func(*a, **kw)
+        return f
+
 
 class HandleResult:
 

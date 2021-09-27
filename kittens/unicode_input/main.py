@@ -391,6 +391,7 @@ class UnicodeInput(Handler):
             text += ' ' * extra
         self.print(styled(text, reverse=True))
 
+    @Handler.with_pending_update
     def draw_screen(self) -> None:
         self.write(clear_screen())
         self.draw_title_bar()
