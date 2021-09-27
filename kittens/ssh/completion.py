@@ -74,9 +74,20 @@ def known_hosts() -> Tuple[str, ...]:
 
 @run_once
 def ssh_options() -> Dict[str, str]:
-    stderr = subprocess.Popen(['ssh'], stderr=subprocess.PIPE).stderr
-    assert stderr is not None
-    raw = stderr.read().decode('utf-8')
+    try:
+        p = subprocess.run(['ssh'], stderr=subprocess.PIPE, encoding='utf-8')
+        raw = p.stderr or ''
+    except FileNotFoundError:
+        return {
+            '4': '', '6': '', 'A': '', 'a': '', 'C': '', 'f': '', 'G': '', 'g': '', 'K': '', 'k': '',
+            'M': '', 'N': '', 'n': '', 'q': '', 's': '', 'T': '', 't': '', 'V': '', 'v': '', 'X': '',
+            'x': '', 'Y': '', 'y': '', 'B': 'bind_interface', 'b': 'bind_address', 'c': 'cipher_spec',
+            'D': '[bind_address:]port', 'E': 'log_file', 'e': 'escape_char', 'F': 'configfile', 'I': 'pkcs11',
+            'i': 'identity_file', 'J': '[user@]host[:port]', 'L': 'address', 'l': 'login_name', 'm': 'mac_spec',
+            'O': 'ctl_cmd', 'o': 'option', 'p': 'port', 'Q': 'query_option', 'R': 'address',
+            'S': 'ctl_path', 'W': 'host:port', 'w': 'local_tun[:remote_tun]'
+        }
+
     ans: Dict[str, str] = {}
     pos = 0
     while True:
