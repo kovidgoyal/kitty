@@ -482,17 +482,17 @@ class ThemesHandler(Handler):
         elif self.state is State.accepting:
             self.on_accepting_key_event(key_event, in_bracketed_paste)
 
+    @Handler.atomic_update
     def draw_screen(self) -> None:
-        with self.pending_update():
-            self.cmd.clear_screen()
-            self.enforce_cursor_state()
-            self.cmd.set_line_wrapping(False)
-            if self.state is State.fetching:
-                self.draw_fetching_screen()
-            elif self.state in (State.browsing, State.searching):
-                self.draw_browsing_screen()
-            elif self.state is State.accepting:
-                self.draw_accepting_screen()
+        self.cmd.clear_screen()
+        self.enforce_cursor_state()
+        self.cmd.set_line_wrapping(False)
+        if self.state is State.fetching:
+            self.draw_fetching_screen()
+        elif self.state in (State.browsing, State.searching):
+            self.draw_browsing_screen()
+        elif self.state is State.accepting:
+            self.draw_accepting_screen()
 
     def on_resize(self, screen_size: ScreenSize) -> None:
         self.screen_size = screen_size

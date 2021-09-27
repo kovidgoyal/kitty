@@ -5,17 +5,17 @@
 
 from types import TracebackType
 from typing import (
-    Any, Callable, ContextManager, Dict, Optional, Sequence, Type, Union, TYPE_CHECKING
+    TYPE_CHECKING, Any, Callable, ContextManager, Dict, Optional, Sequence,
+    Type, Union, cast
 )
 
-from kitty.types import ParsedShortcut
+from kitty.types import DecoratedFunc, ParsedShortcut
 from kitty.typing import (
     AbstractEventLoop, BossType, Debug, ImageManagerType, KeyActionType,
     KeyEventType, LoopType, MouseEvent, ScreenSize, TermManagerType
 )
 
 from .operations import pending_update
-
 
 if TYPE_CHECKING:
     from kitty.file_transmission import FileTransmissionCommand
@@ -144,18 +144,15 @@ class Handler:
     def suspend(self) -> ContextManager[TermManagerType]:
         return self._term_manager.suspend()
 
-    def pending_update(self) -> ContextManager[None]:
-        return pending_update(self.write)
-
     @classmethod
-    def with_pending_update(cls, func: Callable) -> Callable:
+    def atomic_update(cls, func: DecoratedFunc) -> DecoratedFunc:
         from functools import wraps
 
         @wraps(func)
         def f(*a: Any, **kw: Any) -> Any:
-            with a[0].pending_update():
+            with pending_update(a[0].write):
                 return func(*a, **kw)
-        return f
+        return cast(DecoratedFunc, f)
 
 
 class HandleResult:

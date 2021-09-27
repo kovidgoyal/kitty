@@ -3,7 +3,9 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 from functools import update_wrapper
-from typing import TYPE_CHECKING, Callable, Generic, NamedTuple, TypeVar, Union
+from typing import (
+    TYPE_CHECKING, Any, Callable, Generic, NamedTuple, TypeVar, Union
+)
 
 _T = TypeVar('_T')
 
@@ -116,3 +118,7 @@ def ac(group: ActionGroup, doc: str) -> Callable[[_T], _T]:
         setattr(f, 'action_spec', ActionSpec(group, doc))
         return f
     return w
+
+
+_BaseDecoratedFunc = Callable[..., Any]
+DecoratedFunc = TypeVar('DecoratedFunc', bound=_BaseDecoratedFunc)

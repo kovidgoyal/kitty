@@ -566,8 +566,9 @@ class Send(Handler):
             self.failed_files.append(file)
         self.asyncio_loop.call_soon(self.refresh_progress)
 
+    @Handler.atomic_update
     def draw_progress(self) -> None:
-        with self.pending_update(), without_line_wrap(self.write):
+        with without_line_wrap(self.write):
             for df in self.done_files:
                 sc = styled('✔', fg='green') if not df.err_msg else styled('✘', fg='red')
                 self.draw_progress_for_current_file(df, spinner_char=sc, is_complete=True)
