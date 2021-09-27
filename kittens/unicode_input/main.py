@@ -148,8 +148,10 @@ class Table:
         self.last_rows = self.last_cols = -1
         self.codepoints: List[int] = []
         self.current_idx = 0
+        self.scroll_rows = 0
         self.text = ''
         self.num_cols = 0
+        self.num_rows = 0
         self.mode = HEX
 
     @property
@@ -162,6 +164,7 @@ class Table:
         self.mode = mode
         self.layout_dirty = True
         self.current_idx = current_idx if current_idx < len(codepoints) else 0
+        self.scroll_rows = 0
 
     def codepoint_at_hint(self, hint: str) -> int:
         return self.codepoints[decode_hint(hint)]
@@ -213,6 +216,7 @@ class Table:
         if num < 1:
             self.text = ''
             self.num_cols = 0
+            self.num_rows = 0
             return self.text
         idx_size = len(encode_hint(num - 1))
 
@@ -228,16 +232,20 @@ class Table:
         num_cols = self.num_cols = max(cols // col_width, 1)
         buf: List[str] = []
         a = buf.append
-        rows_left = rows
+        rows_left = self.num_rows = rows
+        skip_scroll = self.scroll_rows * num_cols
 
         for i, (idx, c, desc) in enumerate(parts):
-            if i > 0 and i % num_cols == 0:
+            if skip_scroll > 0:
+                skip_scroll -= 1
+                continue
+            buf.extend(cell(i, idx, c, desc))
+            a('  ')
+            if i > 0 and (i+1) % num_cols == 0:
                 rows_left -= 1
                 if rows_left == 0:
                     break
                 a('\r\n')
-            buf.extend(cell(i, idx, c, desc))
-            a('  ')
         self.text = ''.join(buf)
         return self.text
 
@@ -252,6 +260,13 @@ class Table:
             self.current_idx += amt
             self.current_idx = max(0, min(self.current_idx, len(self.codepoints) - 1))
             self.layout_dirty = True
+        first_visible = self.scroll_rows * self.num_cols
+        last_visible = first_visible + ((self.num_cols * self.num_rows) - 1)
+        scroll_amount = self.num_rows
+        if self.current_idx < first_visible:
+            self.scroll_rows = max(self.scroll_rows - scroll_amount, 0)
+        if self.current_idx > last_visible:
+            self.scroll_rows += scroll_amount
 
 
 def is_index(w: str) -> bool:
