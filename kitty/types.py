@@ -120,5 +120,4 @@ def ac(group: ActionGroup, doc: str) -> Callable[[_T], _T]:
     return w
 
 
-_BaseDecoratedFunc = Callable[..., Any]
-DecoratedFunc = TypeVar('DecoratedFunc', bound=_BaseDecoratedFunc)
+DecoratedFunc = TypeVar('DecoratedFunc', bound=Callable[..., Any])
