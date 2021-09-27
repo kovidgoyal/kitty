@@ -3114,6 +3114,7 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
     set_abs(abs_start, s->start, s->start_scrolled_by);
     set_abs(abs_end, s->end, s->end_scrolled_by);
     set_abs(abs_current_input, s->input_current, self->scrolled_by);
+    bool return_word_sel_to_start_line = false;
     if (upd.set_as_nearest_extend || self->selections.extension_in_progress) {
         self->selections.extension_in_progress = true;
         bool start_is_nearer = false;
@@ -3131,8 +3132,15 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
         set_abs(abs_initial_start, s->initial_extent.start, s->initial_extent.scrolled_by);
         set_abs(abs_initial_end, s->initial_extent.end, s->initial_extent.scrolled_by);
         if (self->selections.extend_mode == EXTEND_WORD) {
-            if (s->adjusting_start) s->adjusting_start = selection_boundary_less_than(&abs_current_input, &abs_initial_end);
-            else s->adjusting_start = selection_boundary_less_than(&abs_current_input, &abs_initial_start);
+            if (abs_current_input.y == abs_initial_start.y && abs_start.y != abs_end.y) {
+                if (abs_start.y != abs_initial_start.y) s->adjusting_start = true;
+                else if (abs_end.y != abs_initial_start.y) s->adjusting_start = false;
+                else s->adjusting_start = selection_boundary_less_than(&abs_current_input, &abs_initial_end);
+                return_word_sel_to_start_line = true;
+            } else {
+                if (s->adjusting_start) s->adjusting_start = selection_boundary_less_than(&abs_current_input, &abs_initial_end);
+                else s->adjusting_start = selection_boundary_less_than(&abs_current_input, &abs_initial_start);
+            }
         } else {
             const unsigned int initial_line = abs_initial_start.y;
             if (initial_line == abs_current_input.y) {
@@ -3155,7 +3163,11 @@ screen_update_selection(Screen *self, index_type x, index_type y, bool in_left_h
             if (!s->adjusting_start) { a = &s->end; b = &s->start; }
             const bool word_found_at_cursor = screen_selection_range_for_word(self, s->input_current.x, s->input_current.y, &start.y, &end.y, &start.x, &end.x, true);
             bool adjust_both_ends = is_selection_empty(s);
-            if (word_found_at_cursor) {
+            if (return_word_sel_to_start_line) {
+                index_type ox = a->x;
+                if (s->adjusting_start) { *a = s->initial_extent.start; if (ox < a->x) a->x = ox; }
+                else { *a = s->initial_extent.end; if (ox > a->x) a->x = ox; }
+            } else if (word_found_at_cursor) {
                 if (adjusted_boundary_is_before) {
                     *a = start; a->in_left_half_of_cell = true;
                     if (adjust_both_ends) { *b = end; b->in_left_half_of_cell = false; }
