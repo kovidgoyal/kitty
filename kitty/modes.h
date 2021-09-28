@@ -66,6 +66,7 @@
 #define MOUSE_UTF8_MODE (1005 << 5)
 #define MOUSE_SGR_MODE (1006 << 5)
 #define MOUSE_URXVT_MODE (1015 << 5)
+#define MOUSE_SGR_PIXEL_MODE (1016 << 5)
 
 // Save cursor (DECSC)
 #define SAVE_CURSOR (1048 << 5)

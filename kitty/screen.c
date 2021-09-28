@@ -921,6 +921,7 @@ set_mode_from_const(Screen *self, unsigned int mode, bool val) {
         MOUSE_MODE(MOUSE_MOVE_TRACKING, mouse_tracking_mode, ANY_MODE)
         MOUSE_MODE(MOUSE_UTF8_MODE, mouse_tracking_protocol, UTF8_PROTOCOL)
         MOUSE_MODE(MOUSE_SGR_MODE, mouse_tracking_protocol, SGR_PROTOCOL)
+        MOUSE_MODE(MOUSE_SGR_PIXEL_MODE, mouse_tracking_protocol, SGR_PIXEL_PROTOCOL)
         MOUSE_MODE(MOUSE_URXVT_MODE, mouse_tracking_protocol, URXVT_PROTOCOL)
 
         case DECSCLM:
@@ -1816,6 +1817,10 @@ report_mode_status(Screen *self, unsigned int which, bool private) {
             ans = self->modes.mouse_tracking_mode == ANY_MODE ? 1 : 2; break;
         case MOUSE_SGR_MODE:
             ans = self->modes.mouse_tracking_protocol == SGR_PROTOCOL ? 1 : 2; break;
+        case MOUSE_UTF8_MODE:
+            ans = self->modes.mouse_tracking_protocol == UTF8_PROTOCOL ? 1 : 2; break;
+        case MOUSE_SGR_PIXEL_MODE:
+            ans = self->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL ? 1 : 2; break;
         case PENDING_UPDATE:
             ans = self->pending_mode.activated_at ? 1 : 2; break;
     }

@@ -66,7 +66,7 @@ encode_button(unsigned int button) {
 static char mouse_event_buf[64];
 
 static int
-encode_mouse_event_impl(unsigned int x, unsigned int y, int mouse_tracking_protocol, int button, MouseAction action, int mods) {
+encode_mouse_event_impl(const MousePosition *mpos, int mouse_tracking_protocol, int button, MouseAction action, int mods) {
     unsigned int cb = 0;
     if (action == MOVE) {
         cb = 3;
@@ -79,7 +79,12 @@ encode_mouse_event_impl(unsigned int x, unsigned int y, int mouse_tracking_proto
     if (mods & GLFW_MOD_SHIFT) cb |= SHIFT_INDICATOR;
     if (mods & GLFW_MOD_ALT) cb |= ALT_INDICATOR;
     if (mods & GLFW_MOD_CONTROL) cb |= CONTROL_INDICATOR;
+    int x = mpos->cell_x + 1, y = mpos->cell_y + 1;
     switch(mouse_tracking_protocol) {
+        case SGR_PIXEL_PROTOCOL:
+            x = (unsigned int)round(mpos->x);
+            y = (unsigned int)round(mpos->y);
+            /* fallthrough */
         case SGR_PROTOCOL:
             return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "<%d;%d;%d%s", cb, x, y, action == RELEASE ? "m" : "M");
             break;
@@ -106,9 +111,8 @@ encode_mouse_event_impl(unsigned int x, unsigned int y, int mouse_tracking_proto
 
 static int
 encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
-    unsigned int x = w->mouse_pos.cell_x + 1, y = w->mouse_pos.cell_y + 1; // 1 based indexing
     Screen *screen = w->render_data.screen;
-    return encode_mouse_event_impl(x, y, screen->modes.mouse_tracking_protocol, button, action, mods);
+    return encode_mouse_event_impl(&w->mouse_pos, screen->modes.mouse_tracking_protocol, button, action, mods);
 }
 
 static int
@@ -337,7 +341,7 @@ HANDLER(handle_move_event) {
     if (handle_in_kitty) {
         handle_mouse_movement_in_kitty(w, button, mouse_cell_changed | cell_half_changed);
     } else {
-        if (!mouse_cell_changed) return;
+        if (!mouse_cell_changed && screen->modes.mouse_tracking_protocol != SGR_PIXEL_PROTOCOL) return;
         int sz = encode_mouse_button(w, MAX(0, button), button >=0 ? DRAG : MOVE, modifiers);
         if (sz > 0) { mouse_event_buf[sz] = 0; write_escape_code_to_child(screen, CSI, mouse_event_buf); }
     }
@@ -799,7 +803,8 @@ send_mouse_event(PyObject *self UNUSED, PyObject *args) {
 
     MouseTrackingMode mode = screen->modes.mouse_tracking_mode;
     if (mode == ANY_MODE || (mode == MOTION_MODE && action != MOVE) || (mode == BUTTON_MODE && (action == PRESS || action == RELEASE))) {
-        int sz = encode_mouse_event_impl(x + 1, y + 1, screen->modes.mouse_tracking_protocol, button, action, mods);
+        MousePosition mpos = {.cell_x = x, .cell_y = y};
+        int sz = encode_mouse_event_impl(&mpos, screen->modes.mouse_tracking_protocol, button, action, mods);
         if (sz > 0) {
             mouse_event_buf[sz] = 0;
             write_escape_code_to_child(screen, CSI, mouse_event_buf);
@@ -814,7 +819,8 @@ test_encode_mouse(PyObject *self UNUSED, PyObject *args) {
     unsigned int x, y;
     int mouse_tracking_protocol, button, action, mods;
     if (!PyArg_ParseTuple(args, "IIiiii", &x, &y, &mouse_tracking_protocol, &button, &action, &mods)) return NULL;
-    int sz = encode_mouse_event_impl(x, y, mouse_tracking_protocol, button, action, mods);
+    MousePosition mpos = {.cell_x = x - 1, .cell_y = y - 1};
+    int sz = encode_mouse_event_impl(&mpos, mouse_tracking_protocol, button, action, mods);
     return PyUnicode_FromStringAndSize(mouse_event_buf, sz);
 }
 

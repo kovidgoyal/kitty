@@ -60,7 +60,7 @@ typedef enum { DISABLE_LIGATURES_NEVER, DISABLE_LIGATURES_CURSOR, DISABLE_LIGATU
 
 #define ERROR_PREFIX "[PARSE ERROR]"
 typedef enum MouseTrackingModes { NO_TRACKING, BUTTON_MODE, MOTION_MODE, ANY_MODE } MouseTrackingMode;
-typedef enum MouseTrackingProtocols { NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL} MouseTrackingProtocol;
+typedef enum MouseTrackingProtocols { NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOCOL, URXVT_PROTOCOL, SGR_PIXEL_PROTOCOL} MouseTrackingProtocol;
 typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 typedef enum { TILING, SCALED, MIRRORED } BackgroundImageLayout;

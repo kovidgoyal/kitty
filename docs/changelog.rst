@@ -18,6 +18,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow the user to supply a custom Python function to draw tab bar. See
   :opt:`tab_bar_style`
 
+- Add support for reporting mouse events with pixel co-ordinates using the
+  ``SGR_PIXEL_PROTOCOL`` introduced in xterm 359
+
 - When programs ask to read from the clipboard prompt the user to allow
   the request by default instead of denying by default. See
   :opt:`clipboard_control` for details (:iss:`4022`)
