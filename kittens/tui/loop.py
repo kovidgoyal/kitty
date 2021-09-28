@@ -25,10 +25,12 @@ from kitty.key_encoding import (
     enter_key
 )
 from kitty.typing import ImageManagerType, KeyEventType, Protocol
-from kitty.utils import ScreenSizeGetter, screen_size_function, write_all
+from kitty.utils import (
+    ScreenSize, ScreenSizeGetter, screen_size_function, write_all
+)
 
 from .handler import Handler
-from .operations import init_state, reset_state, MouseTracking
+from .operations import MouseTracking, init_state, reset_state
 
 
 class BinaryWrite(Protocol):
@@ -116,14 +118,21 @@ CTRL_INDICATOR = 1 << 4
 
 
 class MouseEvent(NamedTuple):
-    x: int
-    y: int
+    cell_x: int
+    cell_y: int
+    pixel_x: int
+    pixel_y: int
     type: int
     buttons: int
     mods: int
 
 
-def decode_sgr_mouse(text: str) -> MouseEvent:
+def pixel_to_cell(px: int, length: int, cell_length: int) -> int:
+    px = max(0, min(px, length - 1))
+    return px // cell_length
+
+
+def decode_sgr_mouse(text: str, screen_size: ScreenSize) -> MouseEvent:
     cb_, x_, y_ = text.split(';')
     m, y_ = y_[-1], y_[:-1]
     cb, x, y = map(int, (cb_, x_, y_))
@@ -142,7 +151,10 @@ def decode_sgr_mouse(text: str) -> MouseEvent:
         mods |= ALT
     if cb & CTRL_INDICATOR:
         mods |= CTRL
-    return MouseEvent(x, y, typ, buttons, mods)
+    return MouseEvent(
+        pixel_to_cell(x, screen_size.width, screen_size.cell_width), pixel_to_cell(y, screen_size.height, screen_size.cell_height),
+        x, y, typ, buttons, mods
+    )
 
 
 class UnhandledException(Handler):
@@ -285,7 +297,7 @@ class Loop:
             if csi.startswith('<'):
                 # SGR mouse event
                 try:
-                    ev = decode_sgr_mouse(csi[1:])
+                    ev = decode_sgr_mouse(csi[1:], self.handler.screen_size)
                 except Exception:
                     pass
                 else:

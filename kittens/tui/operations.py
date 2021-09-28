@@ -43,6 +43,7 @@ class Mode(Enum):
     MOUSE_UTF8_MODE = 1005, '?'
     MOUSE_SGR_MODE = 1006, '?'
     MOUSE_URXVT_MODE = 1015, '?'
+    MOUSE_SGR_PIXEL_MODE = 1016, '?'
     ALTERNATE_SCREEN = 1049, '?'
     BRACKETED_PASTE = 2004, '?'
     PENDING_UPDATE = 2026, '?'
@@ -304,7 +305,7 @@ def init_state(alternate_screen: bool = True, mouse_tracking: MouseTracking = Mo
         ans += set_mode(Mode.ALTERNATE_SCREEN) + reset_mode(Mode.DECOM)
         ans += clear_screen()
     if mouse_tracking is not MouseTracking.none:
-        ans += set_mode(Mode.MOUSE_SGR_MODE)
+        ans += set_mode(Mode.MOUSE_SGR_PIXEL_MODE)
         if mouse_tracking is MouseTracking.buttons_only:
             ans += set_mode(Mode.MOUSE_BUTTON_TRACKING)
         elif mouse_tracking is MouseTracking.buttons_and_drag:
