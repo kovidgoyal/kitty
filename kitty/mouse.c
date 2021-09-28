@@ -82,8 +82,8 @@ encode_mouse_event_impl(const MousePosition *mpos, int mouse_tracking_protocol, 
     int x = mpos->cell_x + 1, y = mpos->cell_y + 1;
     switch(mouse_tracking_protocol) {
         case SGR_PIXEL_PROTOCOL:
-            x = (unsigned int)round(mpos->x);
-            y = (unsigned int)round(mpos->y);
+            x = (int)round(mpos->global_x);
+            y = (int)round(mpos->global_y);
             /* fallthrough */
         case SGR_PROTOCOL:
             return snprintf(mouse_event_buf, sizeof(mouse_event_buf), "<%d;%d;%d%s", cb, x, y, action == RELEASE ? "m" : "M");
@@ -117,6 +117,16 @@ encode_mouse_event(Window *w, int button, MouseAction action, int mods) {
 
 static int
 encode_mouse_button(Window *w, int button, MouseAction action, int mods) {
+    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+        switch(action) {
+            case PRESS:
+                global_state.tracked_drag_in_window = w->id; break;
+            case RELEASE:
+                global_state.tracked_drag_in_window = 0; break;
+            default:
+                break;
+        }
+    }
     return encode_mouse_event(w, button_map(button), action, mods);
 }
 
@@ -211,11 +221,11 @@ cell_for_pos(Window *w, unsigned int *x, unsigned int *y, bool *in_left_half_of_
     double mouse_x = global_state.callback_os_window->mouse_x;
     double mouse_y = global_state.callback_os_window->mouse_y;
     double left = window_left(w), top = window_top(w), right = window_right(w), bottom = window_bottom(w);
+    w->mouse_pos.global_x = mouse_x - left; w->mouse_pos.global_y = mouse_y - top;
     if (clamp_to_window) {
         mouse_x = MIN(MAX(mouse_x, left), right);
         mouse_y = MIN(MAX(mouse_y, top), bottom);
     }
-    w->mouse_pos.x = mouse_x - left; w->mouse_pos.y = mouse_y - top;
     if (mouse_x < left || mouse_y < top || mouse_x > right || mouse_y > bottom) return false;
     if (mouse_x >= g->right) {
         qx = screen->columns - 1;
@@ -364,7 +374,7 @@ release_is_click(Window *w, int button) {
     ClickQueue *q = &w->click_queues[button];
     double click_allowed_radius = 1.2 * (global_state.callback_os_window ? global_state.callback_os_window->fonts_data->cell_height : 20);
     monotonic_t now = monotonic();
-    return (q->length > 0 && distance(N(1).x, N(1).y, w->mouse_pos.x, w->mouse_pos.y) <= click_allowed_radius && now - N(1).at < OPT(click_interval));
+    return (q->length > 0 && distance(N(1).x, N(1).y, MAX(0, w->mouse_pos.global_x), MAX(0, w->mouse_pos.global_y)) <= click_allowed_radius && now - N(1).at < OPT(click_interval));
 }
 
 static unsigned
@@ -396,7 +406,7 @@ add_press(Window *w, int button, int modifiers) {
     ClickQueue *q = &w->click_queues[button];
     if (q->length == CLICK_QUEUE_SZ) { memmove(q->clicks, q->clicks + 1, sizeof(Click) * (CLICK_QUEUE_SZ - 1)); q->length--; }
     monotonic_t now = monotonic();
-    N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = w->mouse_pos.x; N(0).y = w->mouse_pos.y;
+    N(0).at = now; N(0).button = button; N(0).modifiers = modifiers; N(0).x = MAX(0, w->mouse_pos.global_x); N(0).y = MAX(0, w->mouse_pos.global_y);
     q->length++;
     Screen *screen = w->render_data.screen;
     int count = multi_click_count(w, button);
@@ -684,6 +694,37 @@ mouse_event(int button, int modifiers, int action) {
             }
         }
     }
+    if (global_state.tracked_drag_in_window) {
+        if (button == -1) {  // drag move
+            w = window_for_id(global_state.tracked_drag_in_window);
+            if (w) {
+                button = currently_pressed_button();
+                if (button == GLFW_MOUSE_BUTTON_LEFT) {
+                    if (w->render_data.screen->modes.mouse_tracking_mode >= MOTION_MODE && w->render_data.screen->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL) {
+                        clamp_to_window = true;
+                        Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+                        for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
+                        handle_move_event(w, button, modifiers, window_idx);
+                        clamp_to_window = false;
+                        debug("sent to child as drag move\n");
+                        return;
+                    }
+                }
+            }
+        } else if (action == GLFW_RELEASE && button == GLFW_MOUSE_BUTTON_LEFT) {
+            w = window_for_id(global_state.tracked_drag_in_window);
+            if (w && w->render_data.screen->modes.mouse_tracking_mode >= MOTION_MODE && w->render_data.screen->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL) {
+                global_state.tracked_drag_in_window = 0;
+                clamp_to_window = true;
+                Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
+                for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
+                handle_button_event(w, button, modifiers, window_idx);
+                clamp_to_window = false;
+                debug("sent to child as drag end\n");
+                return;
+            }
+        }
+    }
     w = window_for_event(&window_idx, &in_tab_bar);
     if (in_tab_bar) {
         mouse_cursor_shape = HAND;
@@ -845,7 +886,7 @@ send_mock_mouse_event_to_window(PyObject *self UNUSED, PyObject *args) {
     if (!w) return NULL;
     if (clear_clicks) clear_click_queue(w, button);
     bool mouse_cell_changed = x != w->mouse_pos.cell_x || y != w->mouse_pos.cell_y || w->mouse_pos.in_left_half_of_cell != in_left_half_of_cell;
-    w->mouse_pos.x = 10 * x; w->mouse_pos.y = 20 * y;
+    w->mouse_pos.global_x = 10 * x; w->mouse_pos.global_y = 20 * y;
     w->mouse_pos.cell_x = x; w->mouse_pos.cell_y = y;
     w->mouse_pos.in_left_half_of_cell = in_left_half_of_cell;
     static int last_button_pressed = GLFW_MOUSE_BUTTON_LEFT;

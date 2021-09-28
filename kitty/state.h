@@ -104,7 +104,7 @@ typedef struct {
 
 typedef struct MousePosition {
     unsigned int cell_x, cell_y;
-    double x, y;
+    double global_x, global_y;
     bool in_left_half_of_cell;
 } MousePosition;
 
@@ -214,7 +214,7 @@ typedef struct {
     bool in_sequence_mode;
     bool check_for_active_animated_images;
     struct { double x, y; } default_dpi;
-    id_type active_drag_in_window;
+    id_type active_drag_in_window, tracked_drag_in_window;
     int active_drag_button;
     CloseRequest quit_request;
 } GlobalState;
