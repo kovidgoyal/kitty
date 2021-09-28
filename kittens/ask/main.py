@@ -138,6 +138,7 @@ class Choose(Handler):
 
     @Handler.atomic_update
     def draw_screen(self) -> None:
+        self.cmd.clear_screen()
         if self.cli_opts.message:
             self.cmd.styled(self.cli_opts.message, bold=True)
         self.print()
