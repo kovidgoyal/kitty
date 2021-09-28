@@ -10,6 +10,27 @@ from kitty.key_encoding import (
 from kittens.tui.handler import Handler
 from kittens.tui.loop import Loop
 
+mod_names = {
+    SHIFT: 'Shift',
+    ALT: 'Alt',
+    CTRL: 'Ctrl',
+    SUPER: 'Super',
+    HYPER: 'Hyper',
+    META: 'Meta',
+    NUM_LOCK: 'NumLock',
+    CAPS_LOCK: 'CapsLock',
+}
+
+
+def format_mods(mods: int) -> str:
+    if not mods:
+        return ''
+    lmods = []
+    for m, name in mod_names.items():
+        if mods & m:
+            lmods.append(name)
+    return '+'.join(lmods)
+
 
 class KeysHandler(Handler):
 
@@ -24,20 +45,7 @@ class KeysHandler(Handler):
             REPEAT: 'REPEAT',
             RELEASE: 'RELEASE'
         }[key_event.type]
-        lmods = []
-        for m, name in {
-                SHIFT: 'Shift',
-                ALT: 'Alt',
-                CTRL: 'Ctrl',
-                SUPER: 'Super',
-                HYPER: 'Hyper',
-                META: 'Meta',
-                NUM_LOCK: 'NumLock',
-                CAPS_LOCK: 'CapsLock',
-        }.items():
-            if key_event.mods & m:
-                lmods.append(name)
-        mods = '+'.join(lmods)
+        mods = format_mods(key_event.mods)
         if mods:
             mods += '+'
         key = f'{mods}{key_event.key} '
