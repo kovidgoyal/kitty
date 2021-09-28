@@ -109,7 +109,7 @@ class TermManager:
 
 
 class MouseButton(IntFlag):
-    LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 1, 2, 4, 8, 16
+    NONE, LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 0, 1, 2, 4, 8, 16
 
 
 bmap = {0: MouseButton.LEFT, 1: MouseButton.MIDDLE, 2: MouseButton.RIGHT}
@@ -132,7 +132,7 @@ class MouseEvent(NamedTuple):
     pixel_x: int
     pixel_y: int
     type: EventType
-    buttons: int
+    buttons: MouseButton
     mods: int
 
 
@@ -146,7 +146,7 @@ def decode_sgr_mouse(text: str, screen_size: ScreenSize) -> MouseEvent:
     m, y_ = y_[-1], y_[:-1]
     cb, x, y = map(int, (cb_, x_, y_))
     typ = EventType.RELEASE if m == 'm' else (EventType.MOVE if cb & MOTION_INDICATOR else EventType.PRESS)
-    buttons = 0
+    buttons: MouseButton = MouseButton.NONE
     cb3 = cb & 3
     if cb3 != 3:
         if cb & EXTRA_BUTTON_INDICATOR:
@@ -310,7 +310,7 @@ class Loop:
                 except Exception:
                     pass
                 else:
-                    self.handler.on_mouse(ev)
+                    self.handler.on_mouse_event(ev)
         elif q in 'u~ABCDEHFPQRS':
             if csi == '200~':
                 self.in_bracketed_paste = True

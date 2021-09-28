@@ -24,7 +24,7 @@ class Mouse(Handler):
     def finalize(self) -> None:
         self.cmd.set_cursor_visible(True)
 
-    def on_mouse(self, ev: MouseEvent) -> None:
+    def on_mouse_event(self, ev: MouseEvent) -> None:
         self.current_mouse_event = ev
         self.draw_screen()
 
@@ -42,6 +42,10 @@ class Mouse(Handler):
             self.print(ev.buttons)
         if ev.mods:
             self.print(f'Modifiers: {format_mods(ev.mods)}')
+
+    def on_interrupt(self) -> None:
+        self.quit_loop(0)
+    on_eot = on_interrupt
 
 
 def main(args: List[str]) -> None:

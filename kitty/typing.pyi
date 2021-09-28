@@ -9,8 +9,8 @@ from kittens.tui.images import (
     GraphicsCommand as GraphicsCommandType, ImageManager as ImageManagerType
 )
 from kittens.tui.loop import (
-    Debug as Debug, Loop as LoopType, MouseEvent as MouseEvent,
-    TermManager as TermManagerType
+    Debug as Debug, Loop as LoopType, MouseButton as MouseButton,
+    MouseEvent as MouseEvent, TermManager as TermManagerType
 )
 
 from .boss import Boss as BossType
@@ -23,9 +23,7 @@ from .fast_data_types import (
 )
 from .key_encoding import KeyEvent as KeyEventType
 from .layout.base import Layout as LayoutType
-from .options.utils import (
-    KeyMap as KeyMap, SequenceMap as SequenceMap
-)
+from .options.utils import KeyMap as KeyMap, SequenceMap as SequenceMap
 from .rc.base import RemoteCommand as RemoteCommandType
 from .session import Session as SessionType, Tab as SessionTab
 from .tabs import (
@@ -56,7 +54,7 @@ __all__ = (
     'EdgeLiteral', 'MatchType', 'GRT_a', 'GRT_f', 'GRT_t', 'GRT_o', 'GRT_m', 'GRT_d',
     'GraphicsCommandType', 'HandlerType', 'AbstractEventLoop', 'AddressFamily', 'Socket', 'CompletedProcess',
     'PopenType', 'Protocol', 'TypedDict', 'MarkType', 'ImageManagerType', 'Debug', 'LoopType', 'MouseEvent',
-    'TermManagerType', 'BossType', 'ChildType', 'BadLineType',
+    'TermManagerType', 'BossType', 'ChildType', 'BadLineType', 'MouseButton',
     'KeyActionType', 'KeyMap', 'KittyCommonOpts', 'SequenceMap', 'CoreTextFont', 'WindowSystemMouseEvent',
     'FontConfigPattern', 'ScreenType', 'StartupCtx', 'KeyEventType', 'LayoutType', 'PowerlineStyle',
     'RemoteCommandType', 'SessionType', 'SessionTab', 'SpecialWindowInstance', 'TabType', 'ScreenSize', 'WindowType'

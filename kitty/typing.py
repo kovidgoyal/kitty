@@ -12,7 +12,7 @@ SessionTab = SessionType = LayoutType = SpecialWindowInstance = None
 MarkType = RemoteCommandType = CoreTextFont = FontConfigPattern = None
 KeyEventType = ImageManagerType = KittyCommonOpts = HandlerType = None
 GRT_t = GRT_a = GRT_d = GRT_f = GRT_m = GRT_o = GRT_C = None
-ScreenSize = KittensKeyActionType = MouseEvent = AbstractEventLoop = None
+ScreenSize = KittensKeyActionType = MouseEvent = MouseButton = AbstractEventLoop = None
 TermManagerType = LoopType = Debug = GraphicsCommandType = None
 
 CompletedProcess = Tuple
@@ -21,5 +21,4 @@ EdgeLiteral = str
 PowerlineStyle = str
 MatchType = str
 Protocol = object
-MouseEvent = dict
 OptionsProtocol = object

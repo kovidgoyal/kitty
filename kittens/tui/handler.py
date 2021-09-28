@@ -3,22 +3,39 @@
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
+from collections import deque
+from time import monotonic
 from types import TracebackType
 from typing import (
-    TYPE_CHECKING, Any, Callable, ContextManager, Dict, Optional, Sequence,
-    Type, Union, cast
+    TYPE_CHECKING, Any, Callable, ContextManager, Deque, Dict, NamedTuple,
+    Optional, Sequence, Type, Union, cast
 )
 
 from kitty.types import DecoratedFunc, ParsedShortcut
 from kitty.typing import (
     AbstractEventLoop, BossType, Debug, ImageManagerType, KeyActionType,
-    KeyEventType, LoopType, MouseEvent, ScreenSize, TermManagerType
+    KeyEventType, LoopType, MouseButton, MouseEvent, ScreenSize,
+    TermManagerType
 )
 
 from .operations import MouseTracking, pending_update
 
 if TYPE_CHECKING:
     from kitty.file_transmission import FileTransmissionCommand
+
+
+class ButtonEvent(NamedTuple):
+    mouse_event: MouseEvent
+    timestamp: float
+
+
+def is_click(a: ButtonEvent, b: ButtonEvent) -> bool:
+    from .loop import EventType
+    if a.mouse_event.type is not EventType.PRESS or b.mouse_event.type is not EventType.RELEASE:
+        return False
+    x = a.mouse_event.cell_x - b.mouse_event.cell_x
+    y = a.mouse_event.cell_y - b.mouse_event.cell_y
+    return x*x + y*y <= 4
 
 
 class Handler:
@@ -44,6 +61,7 @@ class Handler:
         self.debug = debug
         self.cmd = commander(self)
         self._image_manager = image_manager
+        self._button_events: Dict[MouseButton, Deque[ButtonEvent]] = {}
 
     @property
     def image_manager(self) -> ImageManagerType:
@@ -106,7 +124,27 @@ class Handler:
     def on_key(self, key_event: KeyEventType) -> None:
         pass
 
-    def on_mouse(self, mouse_event: MouseEvent) -> None:
+    def on_mouse_event(self, mouse_event: MouseEvent) -> None:
+        from .loop import EventType
+        if mouse_event.type is EventType.MOVE:
+            self.on_mouse_move(mouse_event)
+        elif mouse_event.type is EventType.PRESS:
+            q = self._button_events.setdefault(mouse_event.buttons, deque())
+            q.append(ButtonEvent(mouse_event, monotonic()))
+            if len(q) > 5:
+                q.popleft()
+        elif mouse_event.type is EventType.RELEASE:
+            q = self._button_events.setdefault(mouse_event.buttons, deque())
+            q.append(ButtonEvent(mouse_event, monotonic()))
+            if len(q) > 5:
+                q.popleft()
+            if len(q) > 1 and is_click(q[-2], q[-1]):
+                self.on_click(mouse_event)
+
+    def on_mouse_move(self, mouse_event: MouseEvent) -> None:
+        pass
+
+    def on_click(self, mouse_event: MouseEvent) -> None:
         pass
 
     def on_interrupt(self) -> None:
