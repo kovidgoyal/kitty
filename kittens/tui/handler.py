@@ -106,7 +106,7 @@ class Handler:
     def on_key(self, key_event: KeyEventType) -> None:
         pass
 
-    def on_mouse(self, mouse_event: 'MouseEvent') -> None:
+    def on_mouse(self, mouse_event: MouseEvent) -> None:
         pass
 
     def on_interrupt(self) -> None:
