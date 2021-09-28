@@ -5,16 +5,17 @@
 import os
 import sys
 from contextlib import suppress
-from typing import TYPE_CHECKING, List, Optional, Tuple
+from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import AskCLIOptions
 from kitty.constants import cache_dir
-from kitty.typing import BossType
+from kitty.typing import BossType, TypedDict
+from kitty.utils import ScreenSize
 
-from ..tui.handler import result_handler
+from ..tui.handler import Handler, result_handler
+from ..tui.loop import Loop
 from ..tui.operations import alternate_screen, styled
-from ..tui.utils import get_key_press
 
 if TYPE_CHECKING:
     import readline
@@ -97,45 +98,80 @@ For example: y:Yes and n;red:No
 '''
 
 
-try:
-    from typing import TypedDict
-except ImportError:
-    TypedDict = dict
-
-
 class Response(TypedDict):
     items: List[str]
     response: Optional[str]
 
 
-def choice(cli_opts: AskCLIOptions, items: List[str]) -> Response:
-    with alternate_screen():
-        if cli_opts.message:
-            print(styled(cli_opts.message, bold=True))
-        print()
-        allowed = ''
-        for choice in cli_opts.choices:
-            color = 'green'
-            letter, text = choice.split(':', maxsplit=1)
-            if ';' in letter:
-                letter, color = letter.split(';', maxsplit=1)
-            letter = letter.lower()
-            idx = text.lower().index(letter)
-            allowed += letter
-            print(text[:idx], styled(text[idx], fg=color), text[idx + 1:], sep='', end='  ')
-        print()
-        response = get_key_press(allowed, '')
-        return {'items': items, 'response': response}
+class Choice(NamedTuple):
+    text: str
+    idx: int
+    color: str
 
 
-def yesno(cli_opts: AskCLIOptions, items: List[str]) -> Response:
-    with alternate_screen():
-        if cli_opts.message:
-            print(styled(cli_opts.message, bold=True))
-        print()
-        print(' ', styled('Y', fg='green') + 'es', ' ', styled('N', fg='red') + 'o')
-        response = get_key_press('yn', 'n')
-        return {'items': items, 'response': response}
+class Choose(Handler):
+
+    def __init__(self, cli_opts: AskCLIOptions) -> None:
+        self.cli_opts = cli_opts
+        self.response = 'n' if cli_opts.type == 'yesno' else ''
+        self.allowed = frozenset('yn')
+        self.choices: Dict[str, Choice] = {}
+        if cli_opts.type != 'yesno':
+            allowed = []
+            for choice in cli_opts.choices:
+                color = 'green'
+                letter, text = choice.split(':', maxsplit=1)
+                if ';' in letter:
+                    letter, color = letter.split(';', maxsplit=1)
+                letter = letter.lower()
+                idx = text.lower().index(letter)
+                allowed.append(letter)
+                self.choices[letter] = Choice(text, idx, color)
+            self.allowed = frozenset(allowed)
+
+    def initialize(self) -> None:
+        self.cmd.set_cursor_visible(False)
+        self.draw_screen()
+
+    def finalize(self) -> None:
+        self.cmd.set_cursor_visible(True)
+
+    @Handler.atomic_update
+    def draw_screen(self) -> None:
+        if self.cli_opts.message:
+            self.cmd.styled(self.cli_opts.message, bold=True)
+        self.print()
+        if self.cli_opts.type == 'yesno':
+            self.draw_yesno()
+        else:
+            self.draw_choice()
+
+    def draw_choice(self) -> None:
+        for choice in self.choices.values():
+            text = choice.text[:choice.idx]
+            text += styled(choice.text[choice.idx], fg=choice.color)
+            text += choice.text[choice.idx + 1:]
+            text += '  '
+            self.print(text, end='')
+
+    def draw_yesno(self) -> None:
+        self.print(' ', styled('Y', fg='green') + 'es', ' ', styled('N', fg='red') + 'o')
+
+    def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
+        text = text.lower()
+        if text in self.allowed:
+            self.response = text
+            self.quit_loop(0)
+
+    def on_resize(self, screen_size: ScreenSize) -> None:
+        self.screen_size = screen_size
+        self.draw_screen()
+
+    def on_interrupt(self) -> None:
+        self.quit_loop(1)
+
+    def on_eot(self) -> None:
+        self.quit_loop(1)
 
 
 def main(args: List[str]) -> Response:
@@ -152,10 +188,11 @@ def main(args: List[str]) -> Response:
             input('Press enter to quit...')
         raise SystemExit(e.code)
 
-    if cli_opts.type == 'yesno':
-        return yesno(cli_opts, items)
-    if cli_opts.type == 'choices':
-        return choice(cli_opts, items)
+    if cli_opts.type in ('yesno', 'choices'):
+        loop = Loop()
+        handler = Choose(cli_opts)
+        loop.loop(handler)
+        return {'items': items, 'response': handler.response}
 
     import readline as rl
     readline = rl
