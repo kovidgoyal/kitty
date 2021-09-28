@@ -12,6 +12,7 @@ import signal
 import sys
 import termios
 from contextlib import contextmanager
+from enum import Enum, IntFlag, auto
 from functools import partial
 from typing import Any, Callable, Dict, Generator, List, NamedTuple, Optional
 
@@ -21,8 +22,7 @@ from kitty.fast_data_types import (
     parse_input_from_terminal, raw_tty
 )
 from kitty.key_encoding import (
-    ALT, CTRL, PRESS, RELEASE, REPEAT, SHIFT, backspace_key, decode_key_event,
-    enter_key
+    ALT, CTRL, SHIFT, backspace_key, decode_key_event, enter_key
 )
 from kitty.typing import ImageManagerType, KeyEventType, Protocol
 from kitty.utils import (
@@ -78,11 +78,12 @@ class TermManager:
         self.extra_finalize: Optional[str] = None
         self.optional_actions = optional_actions
         self.use_alternate_screen = use_alternate_screen
+        self.mouse_tracking = mouse_tracking
 
     def set_state_for_loop(self, set_raw: bool = True) -> None:
         if set_raw:
             raw_tty(self.tty_fd, self.original_termios)
-        write_all(self.tty_fd, init_state(self.use_alternate_screen))
+        write_all(self.tty_fd, init_state(self.use_alternate_screen, self.mouse_tracking))
 
     def reset_state_to_original(self) -> None:
         normal_tty(self.tty_fd, self.original_termios)
@@ -107,9 +108,11 @@ class TermManager:
         del self.tty_fd, self.original_termios
 
 
-LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 1, 2, 4, 8, 16
-DRAG = REPEAT
-bmap = {0: LEFT, 1: MIDDLE, 2: RIGHT}
+class MouseButton(IntFlag):
+    LEFT, MIDDLE, RIGHT, FOURTH, FIFTH = 1, 2, 4, 8, 16
+
+
+bmap = {0: MouseButton.LEFT, 1: MouseButton.MIDDLE, 2: MouseButton.RIGHT}
 MOTION_INDICATOR = 1 << 5
 EXTRA_BUTTON_INDICATOR = 1 << 6
 SHIFT_INDICATOR = 1 << 2
@@ -117,12 +120,18 @@ ALT_INDICATOR = 1 << 3
 CTRL_INDICATOR = 1 << 4
 
 
+class EventType(Enum):
+    PRESS = auto()
+    RELEASE = auto()
+    MOVE = auto()
+
+
 class MouseEvent(NamedTuple):
     cell_x: int
     cell_y: int
     pixel_x: int
     pixel_y: int
-    type: int
+    type: EventType
     buttons: int
     mods: int
 
@@ -136,12 +145,12 @@ def decode_sgr_mouse(text: str, screen_size: ScreenSize) -> MouseEvent:
     cb_, x_, y_ = text.split(';')
     m, y_ = y_[-1], y_[:-1]
     cb, x, y = map(int, (cb_, x_, y_))
-    typ = RELEASE if m == 'm' else (DRAG if cb & MOTION_INDICATOR else PRESS)
+    typ = EventType.RELEASE if m == 'm' else (EventType.MOVE if cb & MOTION_INDICATOR else EventType.PRESS)
     buttons = 0
     cb3 = cb & 3
     if cb3 != 3:
         if cb & EXTRA_BUTTON_INDICATOR:
-            buttons |= FIFTH if cb3 & 1 else FOURTH
+            buttons |= MouseButton.FIFTH if cb3 & 1 else MouseButton.FOURTH
         else:
             buttons |= bmap[cb3]
     mods = 0
