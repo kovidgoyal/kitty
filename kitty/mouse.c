@@ -75,7 +75,7 @@ encode_mouse_event_impl(const MousePosition *mpos, int mouse_tracking_protocol, 
         if (cb == UINT_MAX) return 0;
     }
     if (action == DRAG || action == MOVE) cb |= MOTION_INDICATOR;
-    else if (action == RELEASE && mouse_tracking_protocol != SGR_PROTOCOL) cb = 3;
+    else if (action == RELEASE && mouse_tracking_protocol < SGR_PROTOCOL) cb = 3;
     if (mods & GLFW_MOD_SHIFT) cb |= SHIFT_INDICATOR;
     if (mods & GLFW_MOD_ALT) cb |= ALT_INDICATOR;
     if (mods & GLFW_MOD_CONTROL) cb |= CONTROL_INDICATOR;
