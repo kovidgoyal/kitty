@@ -10,12 +10,13 @@ from typing import TYPE_CHECKING, Dict, List, NamedTuple, Optional, Tuple
 from kitty.cli import parse_args
 from kitty.cli_stub import AskCLIOptions
 from kitty.constants import cache_dir
+from kitty.fast_data_types import wcswidth
 from kitty.typing import BossType, TypedDict
 from kitty.utils import ScreenSize
 
 from ..tui.handler import Handler, result_handler
-from ..tui.loop import Loop
-from ..tui.operations import alternate_screen, styled
+from ..tui.loop import Loop, MouseEvent
+from ..tui.operations import MouseTracking, alternate_screen, styled
 
 if TYPE_CHECKING:
     import readline
@@ -109,13 +110,24 @@ class Choice(NamedTuple):
     color: str
 
 
+class Range(NamedTuple):
+    start: int
+    end: int
+    y: int
+
+    def has_point(self, x: int, y: int) -> bool:
+        return y == self.y and self.start <= x <= self.end
+
+
 class Choose(Handler):
+    mouse_tracking = MouseTracking.buttons_only
 
     def __init__(self, cli_opts: AskCLIOptions) -> None:
         self.cli_opts = cli_opts
         self.response = 'n' if cli_opts.type == 'yesno' else ''
         self.allowed = frozenset('yn')
         self.choices: Dict[str, Choice] = {}
+        self.clickable_ranges: Dict[str, Range] = {}
         if cli_opts.type != 'yesno':
             allowed = []
             for choice in cli_opts.choices:
@@ -139,23 +151,35 @@ class Choose(Handler):
     @Handler.atomic_update
     def draw_screen(self) -> None:
         self.cmd.clear_screen()
+        y = 1
         if self.cli_opts.message:
             self.cmd.styled(self.cli_opts.message, bold=True)
+            y += wcswidth(self.cli_opts.message) // self.screen_size.cols
         self.print()
         if self.cli_opts.type == 'yesno':
-            self.draw_yesno()
+            self.draw_yesno(y)
         else:
-            self.draw_choice()
+            self.draw_choice(y)
 
-    def draw_choice(self) -> None:
-        for choice in self.choices.values():
+    def draw_choice(self, y: int) -> None:
+        x = 0
+        self.clickable_ranges.clear()
+        for letter, choice in self.choices.items():
             text = choice.text[:choice.idx]
             text += styled(choice.text[choice.idx], fg=choice.color)
             text += choice.text[choice.idx + 1:]
             text += '  '
+            sz = wcswidth(text)
+            if sz + x >= self.screen_size.cols:
+                y += 1
+                x = 0
+                self.print()
+            self.clickable_ranges[letter] = Range(x, x + sz - 1, y)
+            x += sz
             self.print(text, end='')
 
-    def draw_yesno(self) -> None:
+    def draw_yesno(self, y: int) -> None:
+        self.clickable_ranges = {'y': Range(2, 4, y), 'n': Range(8, 9, y)}
         self.print(' ', styled('Y', fg='green') + 'es', ' ', styled('N', fg='red') + 'o')
 
     def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
@@ -164,15 +188,20 @@ class Choose(Handler):
             self.response = text
             self.quit_loop(0)
 
+    def on_click(self, ev: MouseEvent) -> None:
+        for letter, r in self.clickable_ranges.items():
+            if r.has_point(ev.cell_x, ev.cell_y):
+                self.response = letter
+                self.quit_loop(0)
+                break
+
     def on_resize(self, screen_size: ScreenSize) -> None:
         self.screen_size = screen_size
         self.draw_screen()
 
     def on_interrupt(self) -> None:
         self.quit_loop(1)
-
-    def on_eot(self) -> None:
-        self.quit_loop(1)
+    on_eot = on_interrupt
 
 
 def main(args: List[str]) -> Response:
