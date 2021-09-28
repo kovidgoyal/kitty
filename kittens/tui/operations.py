@@ -4,8 +4,8 @@
 
 import sys
 from contextlib import contextmanager
+from enum import Enum, auto
 from functools import wraps
-from enum import Enum
 from typing import (
     IO, Any, Callable, Dict, Generator, Optional, Tuple, TypeVar, Union
 )
@@ -281,7 +281,14 @@ def clear_images_on_screen(delete_data: bool = False) -> str:
     return gc.serialize().decode('ascii')
 
 
-def init_state(alternate_screen: bool = True) -> str:
+class MouseTracking(Enum):
+    none = auto()
+    buttons_only = auto()
+    buttons_and_drag = auto()
+    full = auto()
+
+
+def init_state(alternate_screen: bool = True, mouse_tracking: MouseTracking = MouseTracking.none) -> str:
     sc = SAVE_CURSOR if alternate_screen else ''
     ans = (
         S7C1T + sc + SAVE_PRIVATE_MODE_VALUES + reset_mode(Mode.LNM) +
@@ -296,6 +303,14 @@ def init_state(alternate_screen: bool = True) -> str:
     if alternate_screen:
         ans += set_mode(Mode.ALTERNATE_SCREEN) + reset_mode(Mode.DECOM)
         ans += clear_screen()
+    if mouse_tracking is not MouseTracking.none:
+        ans += set_mode(Mode.MOUSE_SGR_MODE)
+        if mouse_tracking is MouseTracking.buttons_only:
+            ans += set_mode(Mode.MOUSE_BUTTON_TRACKING)
+        elif mouse_tracking is MouseTracking.buttons_and_drag:
+            ans += set_mode(Mode.MOUSE_MOTION_TRACKING)
+        elif mouse_tracking is MouseTracking.full:
+            ans += set_mode(Mode.MOUSE_MOVE_TRACKING)
     ans += '\033[>31u'  # extended keyboard mode
     return ans
 
@@ -342,8 +357,8 @@ def alternate_screen(f: Optional[IO[str]] = None) -> Generator[None, None, None]
 
 @contextmanager
 def raw_mode(fd: Optional[int] = None) -> Generator[None, None, None]:
-    import tty
     import termios
+    import tty
     if fd is None:
         fd = sys.stdin.fileno()
     old = termios.tcgetattr(fd)

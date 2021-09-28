@@ -15,7 +15,7 @@ from kitty.typing import (
     KeyEventType, LoopType, MouseEvent, ScreenSize, TermManagerType
 )
 
-from .operations import pending_update
+from .operations import MouseTracking, pending_update
 
 if TYPE_CHECKING:
     from kitty.file_transmission import FileTransmissionCommand
@@ -25,6 +25,7 @@ class Handler:
 
     image_manager_class: Optional[Type[ImageManagerType]] = None
     use_alternate_screen = True
+    mouse_tracking = MouseTracking.none
 
     def _initialize(
         self,

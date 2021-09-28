@@ -28,7 +28,7 @@ from kitty.typing import ImageManagerType, KeyEventType, Protocol
 from kitty.utils import ScreenSizeGetter, screen_size_function, write_all
 
 from .handler import Handler
-from .operations import init_state, reset_state
+from .operations import init_state, reset_state, MouseTracking
 
 
 class BinaryWrite(Protocol):
@@ -69,7 +69,10 @@ ftc_code = str(FILE_TRANSFER_CODE)
 
 class TermManager:
 
-    def __init__(self, optional_actions: int = termios.TCSANOW, use_alternate_screen: bool = True) -> None:
+    def __init__(
+        self, optional_actions: int = termios.TCSANOW, use_alternate_screen: bool = True,
+        mouse_tracking: MouseTracking = MouseTracking.none
+    ) -> None:
         self.extra_finalize: Optional[str] = None
         self.optional_actions = optional_actions
         self.use_alternate_screen = use_alternate_screen
@@ -421,7 +424,7 @@ class Loop:
             handler.on_resize(handler.screen_size)
 
         signal_manager = SignalManager(self.asycio_loop, _on_sigwinch, handler.on_interrupt, handler.on_term)
-        with TermManager(self.optional_actions, handler.use_alternate_screen) as term_manager, signal_manager:
+        with TermManager(self.optional_actions, handler.use_alternate_screen, handler.mouse_tracking) as term_manager, signal_manager:
             self._get_screen_size: ScreenSizeGetter = screen_size_function(term_manager.tty_fd)
             image_manager = None
             if handler.image_manager_class is not None:
