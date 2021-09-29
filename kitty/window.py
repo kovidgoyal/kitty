@@ -11,7 +11,6 @@ from enum import IntEnum
 from functools import partial
 from gettext import gettext as _
 from itertools import chain
-from time import monotonic
 from typing import (
     TYPE_CHECKING, Any, Callable, Deque, Dict, Iterable, List, NamedTuple,
     Optional, Pattern, Sequence, Tuple, Union
