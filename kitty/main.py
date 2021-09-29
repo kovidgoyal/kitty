@@ -339,6 +339,10 @@ def _main() -> None:
     opts = create_opts(cli_opts, accumulate_bad_lines=bad_lines)
     init_glfw(opts, cli_opts.debug_keyboard, cli_opts.debug_rendering)
     setup_environment(opts, cli_opts)
+    if cli_opts.watcher:
+        from .window import global_watchers
+        global_watchers.set_extra(cli_opts.watcher)
+        log_error('The --watcher command line option has beed deprecated infavor of using the watcher option in kitty.conf')
     try:
         with setup_profiling(cli_opts):
             # Avoid needing to launch threads to reap zombies

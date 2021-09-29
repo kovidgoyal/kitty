@@ -18,11 +18,6 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow the user to supply a custom Python function to draw tab bar. See
   :opt:`tab_bar_style`
 
-- **Backward incompatibility**: The command line option ``--watcher`` has been
-  removed in favor of the :opt:`watcher` option in :file:`kitty.conf`. It can be set
-  from the command line as: ``kitty -o watcher=/path/to/watcher``. It has the
-  advantage of applying to all windows, not just the initially created ones.
-
 - Add support for reporting mouse events with pixel co-ordinates using the
   ``SGR_PIXEL_PROTOCOL`` introduced in xterm 359
 
@@ -68,6 +63,11 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Unicode input kitten: Implement scrolling when more results are found than
   the available display space (:pull:`4068`)
+
+- The command line option ``--watcher`` has been deprecated in favor of the
+  :opt:`watcher` option in :file:`kitty.conf`. It has the advantage of
+  applying to all windows, not just the initially created ones. Note that
+  ``--watcher`` now also applies to all windows, not just initially created ones.
 
 
 0.23.1 [2021-08-17]

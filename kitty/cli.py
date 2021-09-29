@@ -711,6 +711,10 @@ type=bool-set
 Print out information about the selection of fallback fonts for characters not present in the main font.
 
 
+--watcher
+This option is deprecated in favor of the :opt:`watcher` option in kitty.conf and should not be used.
+
+
 --execute -e
 type=bool-set
 !

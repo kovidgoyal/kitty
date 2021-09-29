@@ -13,7 +13,7 @@ from gettext import gettext as _
 from itertools import chain
 from typing import (
     TYPE_CHECKING, Any, Callable, Deque, Dict, Iterable, List, NamedTuple,
-    Optional, Pattern, Sequence, Tuple, Union, cast
+    Optional, Pattern, Sequence, Tuple, Union
 )
 
 from .child import ProcessDesc
@@ -315,15 +315,30 @@ class EdgeWidths:
         return {'left': self.left, 'right': self.right, 'top': self.top, 'bottom': self.bottom}
 
 
-def global_watchers() -> Watchers:
-    spec = get_options().watcher
-    if getattr(global_watchers, 'options_spec', None) == spec:
-        return cast(Watchers, getattr(global_watchers, 'ans'))
-    from .launch import load_watch_modules
-    ans = load_watch_modules(spec) or Watchers()
-    setattr(global_watchers, 'ans', ans)
-    setattr(global_watchers, 'options_spec', spec)
-    return ans
+class GlobalWatchers:
+
+    def __init__(self) -> None:
+        self.options_spec: Optional[Dict[str, str]] = None
+        self.ans = Watchers()
+        self.extra = ''
+
+    def __call__(self) -> Watchers:
+        spec = get_options().watcher
+        if spec == self.options_spec:
+            return self.ans
+        from .launch import load_watch_modules
+        if self.extra:
+            spec = spec.copy()
+            spec[self.extra] = self.extra
+        self.ans = load_watch_modules(spec.keys()) or self.ans
+        self.options_spec = spec.copy()
+        return self.ans
+
+    def set_extra(self, extra: str) -> None:
+        self.extra = extra
+
+
+global_watchers = GlobalWatchers()
 
 
 class Window:
