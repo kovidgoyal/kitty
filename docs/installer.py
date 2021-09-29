@@ -73,19 +73,11 @@ class Reporter:  # {{{
 # }}}
 
 
-def get_nightly_url():
-    base = 'https://github.com/kovidgoyal/kitty/releases/download/nightly/kitty-nightly'
-    if is_macos:
-        return base + '.dmg'
-    arch = 'x86_64' if is64bit else 'i686'
-    url = base + '-' + arch + '.txz'
-    i = urllib.urlopen(url)
-    return url, int(i.getheader('content-length'))
-
-
-def get_latest_release_data():
+def get_release_data(relname='latest'):
     print('Checking for latest release on GitHub...')
-    req = urllib.Request('https://api.github.com/repos/kovidgoyal/kitty/releases/latest', headers={'Accept': 'application/vnd.github.v3+json'})
+    req = urllib.Request(
+        'https://api.github.com/repos/kovidgoyal/kitty/releases/' + relname,
+        headers={'Accept': 'application/vnd.github.v3+json'})
     try:
         res = urllib.urlopen(req).read().decode('utf-8')
     except Exception as err:
@@ -201,11 +193,11 @@ def main(dest=None, launch=True, installer=None):
             ' available for x86 systems. You will have to build from'
             ' source.')
     if not installer:
-        url, size = get_latest_release_data()
+        url, size = get_release_data()
         installer = download_installer(url, size)
     else:
         if installer == 'nightly':
-            url, size = get_nightly_url()
+            url, size = get_release_data('tags/nightly')
             installer = download_installer(url, size)
         else:
             installer = os.path.abspath(installer)
