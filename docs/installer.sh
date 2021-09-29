@@ -260,7 +260,7 @@ def script_launch():
     main(**kwargs)
 
 
-def update_intaller_wrapper():
+def update_installer_wrapper():
     # To run: python3 -c "import runpy; runpy.run_path('installer.py', run_name='update_wrapper')" installer.sh
     with open(__file__, 'rb') as f:
         src = f.read().decode('utf-8')
@@ -277,7 +277,7 @@ def update_intaller_wrapper():
 if __name__ == '__main__' and from_file:
     main()
 elif __name__ == 'update_wrapper':
-    update_intaller_wrapper()
+    update_installer_wrapper()
 elif __name__ == 'script_launch':
     script_launch()
 
