@@ -78,7 +78,9 @@ def get_nightly_url():
     if is_macos:
         return base + '.dmg'
     arch = 'x86_64' if is64bit else 'i686'
-    return base + '-' + arch + '.txz'
+    url = base + '-' + arch + '.txz'
+    i = urllib.urlopen(url)
+    return url, int(i.getheader('content-length'))
 
 
 def get_latest_release_data():
@@ -203,7 +205,8 @@ def main(dest=None, launch=True, installer=None):
         installer = download_installer(url, size)
     else:
         if installer == 'nightly':
-            url = get_nightly_url()
+            url, size = get_nightly_url()
+            installer = download_installer(url, size)
         else:
             installer = os.path.abspath(installer)
             if not os.access(installer, os.R_OK):
