@@ -130,7 +130,7 @@ class Watchers:
         ans = Watchers()
         ans.on_close = self.on_close[:]
         ans.on_resize = self.on_resize[:]
-        ans.on_focus_change = self.on_focus_change
+        ans.on_focus_change = self.on_focus_change[:]
         return ans
 
     @property
@@ -356,7 +356,7 @@ class Window:
             self.watchers = watchers
             self.watchers.add(global_watchers())
         else:
-            self.watchers = global_watchers()
+            self.watchers = global_watchers().copy()
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
