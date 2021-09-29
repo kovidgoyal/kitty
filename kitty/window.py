@@ -11,9 +11,10 @@ from enum import IntEnum
 from functools import partial
 from gettext import gettext as _
 from itertools import chain
+from time import monotonic
 from typing import (
-    Any, Callable, Deque, Dict, Iterable, List, NamedTuple, Optional, Pattern,
-    Sequence, Tuple, Union, TYPE_CHECKING
+    TYPE_CHECKING, Any, Callable, Deque, Dict, Iterable, List, NamedTuple,
+    Optional, Pattern, Sequence, Tuple, Union
 )
 
 from .child import ProcessDesc
@@ -931,6 +932,7 @@ class Window:
                     break
             if a == 'prompt':
                 if move_cursor_to_mouse_if_in_prompt(self.os_window_id, self.tab_id, self.id):
+                    self.screen.ignore_bells_for(1)
                     break
 
     @ac('mouse', 'Click the URL under the mouse')

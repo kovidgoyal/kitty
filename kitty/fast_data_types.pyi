@@ -969,6 +969,9 @@ class Screen:
     def cursor_at_prompt(self) -> bool:
         pass
 
+    def ignore_bells_for(self, duration: float = 1) -> None:
+        pass
+
     def current_key_encoding_flags(self) -> int:
         pass
 

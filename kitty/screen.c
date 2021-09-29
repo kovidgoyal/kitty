@@ -1699,6 +1699,14 @@ screen_invert_colors(Screen *self) {
 
 void
 screen_bell(Screen *self) {
+    if (self->ignore_bells.start) {
+        monotonic_t now = monotonic();
+        if (now < self->ignore_bells.start + self->ignore_bells.duration) {
+            self->ignore_bells.start = now;
+            return;
+        }
+        self->ignore_bells.start = 0;
+    }
     request_window_attention(self->window_id, OPT(enable_audio_bell));
     if (OPT(visual_bell_duration) > 0.0f) self->start_visual_bell_at = monotonic();
     CALLBACK("on_bell", NULL);
@@ -2819,6 +2827,15 @@ current_key_encoding_flags(Screen *self, PyObject *args UNUSED) {
 }
 
 static PyObject*
+ignore_bells_for(Screen *self, PyObject *args) {
+    double duration = 1;
+    if (!PyArg_ParseTuple(args, "|d", &duration)) return NULL;
+    self->ignore_bells.start = monotonic();
+    self->ignore_bells.duration = s_double_to_monotonic_t(duration);
+    Py_RETURN_NONE;
+}
+
+static PyObject*
 start_selection(Screen *self, PyObject *args) {
     unsigned int x, y;
     int rectangle_select = 0, extend_mode = EXTEND_CELL, in_left_half_of_cell = 1;
@@ -3557,6 +3574,7 @@ static PyMethodDef methods[] = {
     MND(reverse_index, METH_NOARGS)
     MND(mark_as_dirty, METH_NOARGS)
     MND(resize, METH_VARARGS)
+    MND(ignore_bells_for, METH_VARARGS)
     MND(set_margins, METH_VARARGS)
     MND(detect_url, METH_VARARGS)
     MND(rescale_images, METH_NOARGS)

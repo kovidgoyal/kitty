@@ -128,6 +128,9 @@ typedef struct {
     ANSIBuf as_ansi_buf;
     char_type last_graphic_char;
     uint8_t main_key_encoding_flags[8], alt_key_encoding_flags[8], *key_encoding_flags;
+    struct {
+        monotonic_t start, duration;
+    } ignore_bells;
 } Screen;
 
 
