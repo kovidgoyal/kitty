@@ -69,6 +69,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   applying to all windows, not just the initially created ones. Note that
   ``--watcher`` now also applies to all windows, not just initially created ones.
 
+- Linux: Add support for Korean IME with ibus (:pull:`4078`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

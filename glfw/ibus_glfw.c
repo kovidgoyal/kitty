@@ -85,7 +85,7 @@ typedef enum
 
 
 static uint32_t
-ibus_key_state(unsigned int glfw_modifiers, int action) {
+ibus_key_state_from_glfw(unsigned int glfw_modifiers, int action) {
     uint32_t ans = action == GLFW_RELEASE ? IBUS_RELEASE_MASK : 0;
 #define M(g, i) if(glfw_modifiers & GLFW_MOD_##g) ans |= i
     M(SHIFT, IBUS_SHIFT_MASK);
@@ -100,7 +100,7 @@ ibus_key_state(unsigned int glfw_modifiers, int action) {
 }
 
 static unsigned int
-glfw_modifiers(uint32_t ibus_key_state) {
+glfw_modifiers_from_ibus_state(uint32_t ibus_key_state) {
     unsigned int ans = 0;
 #define M(g, i) if(ibus_key_state & i) ans |= GLFW_MOD_##g
     M(SHIFT, IBUS_SHIFT_MASK);
@@ -187,7 +187,7 @@ handle_ibus_forward_key_event(DBusMessage *msg) {
     if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT32) return;
     dbus_message_iter_get_basic(&iter, &state);
 
-    int mods = glfw_modifiers(state);
+    int mods = glfw_modifiers_from_ibus_state(state);
 
     debug("IBUS: ForwardKeyEvent: keysym=%x, keycode=%x, state=%x, glfw_mods=%x\n", keysym, keycode, state, mods);
     glfw_xkb_forwarded_key_from_ime(keysym, mods);
@@ -494,7 +494,7 @@ ibus_process_key(const _GLFWIBUSKeyEvent *ev_, _GLFWIBUSData *ibus) {
     // Put the key's text in a field IN the structure, for proper serialization.
     if (ev->glfw_ev.text) strncpy(ev->__embedded_text, ev->glfw_ev.text, sizeof(ev->__embedded_text) - 1);
     ev->glfw_ev.text = NULL;
-    uint32_t state = ibus_key_state(ev->glfw_ev.mods, ev->glfw_ev.action);
+    uint32_t state = ibus_key_state_from_glfw(ev->glfw_ev.mods, ev->glfw_ev.action);
     if (!glfw_dbus_call_method_with_reply(
             ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "ProcessKeyEvent",
             3000, key_event_processed, ev,
