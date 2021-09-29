@@ -842,6 +842,19 @@ glfw_xkb_key_from_ime(_GLFWIBUSKeyEvent *ev, bool handled_by_ime, bool failed) {
       last_handled_press_keycode = ev->glfw_ev.native_key;
 }
 
+void
+glfw_xkb_forwarded_key_from_ime(xkb_keysym_t keysym, unsigned int glfw_mods) {
+    _GLFWwindow *w = _glfwFocusedWindow();
+    if (w && w->callbacks.keyboard) {
+        GLFWkeyevent fake_ev = {.action = GLFW_PRESS};
+        fake_ev.native_key = keysym;
+        fake_ev.key = glfw_key_for_sym(keysym);
+        fake_ev.mods = glfw_mods;
+        fake_ev.ime_state = GLFW_IME_NONE;
+        w->callbacks.keyboard((GLFWwindow*) w, &fake_ev);
+    }
+}
+
 static bool
 is_switch_layout_key(xkb_keysym_t xkb_sym) {
     return xkb_sym == XKB_KEY_ISO_First_Group || xkb_sym == XKB_KEY_ISO_Last_Group || xkb_sym == XKB_KEY_ISO_Next_Group || xkb_sym == XKB_KEY_ISO_Prev_Group || xkb_sym == XKB_KEY_Mode_switch;

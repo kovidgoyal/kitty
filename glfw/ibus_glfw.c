@@ -49,6 +49,70 @@ enum Capabilities {
     IBUS_CAP_SURROUNDING_TEXT   = 1 << 5
 };
 
+typedef enum
+{
+    IBUS_SHIFT_MASK    = 1 << 0,
+    IBUS_LOCK_MASK     = 1 << 1,
+    IBUS_CONTROL_MASK  = 1 << 2,
+    IBUS_MOD1_MASK     = 1 << 3,
+    IBUS_MOD2_MASK     = 1 << 4,
+    IBUS_MOD3_MASK     = 1 << 5,
+    IBUS_MOD4_MASK     = 1 << 6,
+    IBUS_MOD5_MASK     = 1 << 7,
+    IBUS_BUTTON1_MASK  = 1 << 8,
+    IBUS_BUTTON2_MASK  = 1 << 9,
+    IBUS_BUTTON3_MASK  = 1 << 10,
+    IBUS_BUTTON4_MASK  = 1 << 11,
+    IBUS_BUTTON5_MASK  = 1 << 12,
+
+    /* The next few modifiers are used by XKB, so we skip to the end.
+     * Bits 15 - 23 are currently unused. Bit 29 is used internally.
+     */
+
+    /* ibus mask */
+    IBUS_HANDLED_MASK  = 1 << 24,
+    IBUS_FORWARD_MASK  = 1 << 25,
+    IBUS_IGNORED_MASK  = IBUS_FORWARD_MASK,
+
+    IBUS_SUPER_MASK    = 1 << 26,
+    IBUS_HYPER_MASK    = 1 << 27,
+    IBUS_META_MASK     = 1 << 28,
+
+    IBUS_RELEASE_MASK  = 1 << 30,
+
+    IBUS_MODIFIER_MASK = 0x5f001fff
+} IBusModifierType;
+
+
+static uint32_t
+ibus_key_state(unsigned int glfw_modifiers, int action) {
+    uint32_t ans = action == GLFW_RELEASE ? IBUS_RELEASE_MASK : 0;
+#define M(g, i) if(glfw_modifiers & GLFW_MOD_##g) ans |= i
+    M(SHIFT, IBUS_SHIFT_MASK);
+    M(CAPS_LOCK, IBUS_LOCK_MASK);
+    M(CONTROL, IBUS_CONTROL_MASK);
+    M(ALT, IBUS_MOD1_MASK);
+    M(NUM_LOCK, IBUS_MOD2_MASK);
+    M(SUPER, IBUS_MOD4_MASK);
+    /* To do: figure out how to get super/hyper/meta */
+#undef M
+    return ans;
+}
+
+static unsigned int
+glfw_modifiers(uint32_t ibus_key_state) {
+    unsigned int ans = 0;
+#define M(g, i) if(ibus_key_state & i) ans |= GLFW_MOD_##g
+    M(SHIFT, IBUS_SHIFT_MASK);
+    M(CAPS_LOCK, IBUS_LOCK_MASK);
+    M(CONTROL, IBUS_CONTROL_MASK);
+    M(ALT, IBUS_MOD1_MASK);
+    M(NUM_LOCK, IBUS_MOD2_MASK);
+    M(SUPER, IBUS_MOD4_MASK);
+    /* To do: figure out how to get super/hyper/meta */
+#undef M
+    return ans;
+}
 
 static bool
 test_env_var(const char *name, const char *val) {
@@ -107,6 +171,29 @@ get_ibus_text_from_message(DBusMessage *msg) {
 }
 
 static void
+handle_ibus_forward_key_event(DBusMessage *msg) {
+    uint32_t keysym, keycode, state;
+    DBusMessageIter iter;
+    dbus_message_iter_init(msg, &iter);
+
+    if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT32) return;
+    dbus_message_iter_get_basic(&iter, &keysym);
+    dbus_message_iter_next(&iter);
+
+    if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT32) return;
+    dbus_message_iter_get_basic(&iter, &keycode);
+    dbus_message_iter_next(&iter);
+
+    if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_UINT32) return;
+    dbus_message_iter_get_basic(&iter, &state);
+
+    int mods = glfw_modifiers(state);
+
+    debug("IBUS: ForwardKeyEvent: keysym=%x, keycode=%x, state=%x, glfw_mods=%x\n", keysym, keycode, state, mods);
+    glfw_xkb_forwarded_key_from_ime(keysym, mods);
+}
+
+static void
 send_text(const char *text, GLFWIMEState ime_state) {
     _GLFWwindow *w = _glfwFocusedWindow();
     if (w && w->callbacks.keyboard) {
@@ -126,7 +213,7 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data) 
     _GLFWIBUSData *ibus = (_GLFWIBUSData*)user_data;
     (void)ibus;
     const char *text;
-    switch(glfw_dbus_match_signal(msg, IBUS_INPUT_INTERFACE, "CommitText", "UpdatePreeditText", "HidePreeditText", "ShowPreeditText", NULL)) {
+    switch(glfw_dbus_match_signal(msg, IBUS_INPUT_INTERFACE, "CommitText", "UpdatePreeditText", "HidePreeditText", "ShowPreeditText", "ForwardKeyEvent", NULL)) {
         case 0:
             text = get_ibus_text_from_message(msg);
             debug("IBUS: CommitText: '%s'\n", text ? text : "(nil)");
@@ -134,14 +221,17 @@ message_handler(DBusConnection *conn UNUSED, DBusMessage *msg, void *user_data) 
             break;
         case 1:
             text = get_ibus_text_from_message(msg);
-            send_text(text, GLFW_IME_PREEDIT_CHANGED);
             debug("IBUS: UpdatePreeditText: '%s'\n", text ? text : "(nil)");
+            send_text(text, GLFW_IME_PREEDIT_CHANGED);
             break;
         case 2:
             debug("IBUS: HidePreeditText\n");
             break;
         case 3:
             debug("IBUS: ShowPreeditText\n");
+            break;
+        case 4:
+            handle_ibus_forward_key_event(msg);
             break;
     }
     return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -374,56 +464,6 @@ glfw_ibus_set_cursor_geometry(_GLFWIBUSData *ibus, int x, int y, int w, int h) {
         glfw_dbus_call_method_no_reply(ibus->conn, IBUS_SERVICE, ibus->input_ctx_path, IBUS_INPUT_INTERFACE, "SetCursorLocation",
                 DBUS_TYPE_INT32, &x, DBUS_TYPE_INT32, &y, DBUS_TYPE_INT32, &w, DBUS_TYPE_INT32, &h, DBUS_TYPE_INVALID);
     }
-}
-
-typedef enum
-{
-    IBUS_SHIFT_MASK    = 1 << 0,
-    IBUS_LOCK_MASK     = 1 << 1,
-    IBUS_CONTROL_MASK  = 1 << 2,
-    IBUS_MOD1_MASK     = 1 << 3,
-    IBUS_MOD2_MASK     = 1 << 4,
-    IBUS_MOD3_MASK     = 1 << 5,
-    IBUS_MOD4_MASK     = 1 << 6,
-    IBUS_MOD5_MASK     = 1 << 7,
-    IBUS_BUTTON1_MASK  = 1 << 8,
-    IBUS_BUTTON2_MASK  = 1 << 9,
-    IBUS_BUTTON3_MASK  = 1 << 10,
-    IBUS_BUTTON4_MASK  = 1 << 11,
-    IBUS_BUTTON5_MASK  = 1 << 12,
-
-    /* The next few modifiers are used by XKB, so we skip to the end.
-     * Bits 15 - 23 are currently unused. Bit 29 is used internally.
-     */
-
-    /* ibus mask */
-    IBUS_HANDLED_MASK  = 1 << 24,
-    IBUS_FORWARD_MASK  = 1 << 25,
-    IBUS_IGNORED_MASK  = IBUS_FORWARD_MASK,
-
-    IBUS_SUPER_MASK    = 1 << 26,
-    IBUS_HYPER_MASK    = 1 << 27,
-    IBUS_META_MASK     = 1 << 28,
-
-    IBUS_RELEASE_MASK  = 1 << 30,
-
-    IBUS_MODIFIER_MASK = 0x5f001fff
-} IBusModifierType;
-
-
-static uint32_t
-ibus_key_state(unsigned int glfw_modifiers, int action) {
-    uint32_t ans = action == GLFW_RELEASE ? IBUS_RELEASE_MASK : 0;
-#define M(g, i) if(glfw_modifiers & GLFW_MOD_##g) ans |= i
-    M(SHIFT, IBUS_SHIFT_MASK);
-    M(CAPS_LOCK, IBUS_LOCK_MASK);
-    M(CONTROL, IBUS_CONTROL_MASK);
-    M(ALT, IBUS_MOD1_MASK);
-    M(NUM_LOCK, IBUS_MOD2_MASK);
-    M(SUPER, IBUS_MOD4_MASK);
-    /* To do: figure out how to get super/hyper/meta */
-#undef M
-    return ans;
 }
 
 void
