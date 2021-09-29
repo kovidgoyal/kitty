@@ -1066,7 +1066,7 @@ screen_xtmodkeys(Screen *self, uint32_t p1, uint32_t p2) {
     // https://invisible-island.net/xterm/ctlseqs/ctlseqs.html#h4-Functions-using-CSI-_-ordered-by-the-final-character-lparen-s-rparen:CSI-gt-Pp-m.1DB2
     // we handle them as being equivalent to push and pop 1 onto the keyboard stack
     if ((!p1 && !p2) || (p1 == 4 && p2 == 0)) screen_pop_key_encoding_flags(self, 1);
-    else if (p1 == 4 && p2 == 1) screen_push_key_encoding_flags(self, 1);
+    else if (p1 == 4 && (p2 == 1 || p2 == 2)) screen_push_key_encoding_flags(self, 1);
 }
 
 
