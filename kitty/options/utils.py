@@ -7,8 +7,8 @@ import os
 import re
 import sys
 from typing import (
-    Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Sequence, Tuple,
-    Union
+    Any, Callable, Container, Dict, Iterable, List, NamedTuple, Optional,
+    Sequence, Tuple, Union
 )
 
 import kitty.fast_data_types as defines
@@ -743,6 +743,12 @@ def env(val: str, current_val: Dict[str, str]) -> Iterable[Tuple[str, str]]:
                 yield key, v
         else:
             yield val, DELETE_ENV_VAR
+
+
+def watcher(val: str, current_val: Container[str]) -> Iterable[Tuple[str, str]]:
+    val = val.strip()
+    if val not in current_val:
+        yield val, val
 
 
 def kitten_alias(val: str) -> Iterable[Tuple[str, List[str]]]:

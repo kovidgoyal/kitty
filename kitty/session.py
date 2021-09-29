@@ -4,7 +4,7 @@
 
 import shlex
 import sys
-from typing import Generator, List, Optional, Sequence, Union
+from typing import Generator, List, Optional, Union
 
 from .cli_stub import CLIOptions
 from .options.utils import to_layout_names, window_size
@@ -39,9 +39,8 @@ class Tab:
 
 class Session:
 
-    def __init__(self, default_title: Optional[str] = None, default_watchers: Sequence[str] = ()):
+    def __init__(self, default_title: Optional[str] = None):
         self.tabs: List[Tab] = []
-        self.default_watchers = list(default_watchers)
         self.active_tab_idx = 0
         self.default_title = default_title
         self.os_window_size: Optional[WindowSizes] = None
@@ -65,8 +64,6 @@ class Session:
         if isinstance(cmd, str):
             cmd = shlex.split(cmd)
         spec = parse_launch_args(cmd)
-        if self.default_watchers:
-            spec.opts.watcher = list(spec.opts.watcher) + self.default_watchers
         t = self.tabs[-1]
         if t.next_title and not spec.opts.window_title:
             spec.opts.window_title = t.next_title
@@ -175,8 +172,7 @@ def create_sessions(
         else:
             yield from parse_session(session_data, opts)
             return
-    default_watchers = args.watcher if args else ()
-    ans = Session(default_watchers=default_watchers)
+    ans = Session()
     current_layout = opts.enabled_layouts[0] if opts.enabled_layouts else 'tall'
     ans.add_tab(opts)
     ans.tabs[-1].layout = current_layout

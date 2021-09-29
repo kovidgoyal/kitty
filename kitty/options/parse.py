@@ -16,7 +16,7 @@ from kitty.options.utils import (
     parse_mouse_map, resize_draw_strategy, scrollback_lines, scrollback_pager_history_size, symbol_map,
     tab_activity_symbol, tab_bar_edge, tab_bar_margin_height, tab_bar_min_tabs, tab_fade,
     tab_font_style, tab_separator, tab_title_template, to_cursor_shape, to_font_size, to_layout_names,
-    to_modifiers, url_prefixes, url_style, window_border_width, window_size
+    to_modifiers, url_prefixes, url_style, watcher, window_border_width, window_size
 )
 
 
@@ -1241,6 +1241,10 @@ class Parser:
     def visual_bell_duration(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['visual_bell_duration'] = positive_float(val)
 
+    def watcher(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        for k, v in watcher(val, ans["watcher"]):
+            ans["watcher"][k] = v
+
     def wayland_titlebar_color(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['wayland_titlebar_color'] = macos_titlebar_color(val)
 
@@ -1292,6 +1296,7 @@ def create_result_dict() -> typing.Dict[str, typing.Any]:
         'font_features': {},
         'kitten_alias': {},
         'symbol_map': {},
+        'watcher': {},
         'map': [],
         'mouse_map': [],
     }

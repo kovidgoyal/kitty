@@ -2532,6 +2532,18 @@ will delete the variable from the child process' environment.
 '''
     )
 
+opt('+watcher', '',
+    option_type='watcher',
+    add_to_default=False,
+    long_text='''
+Path to python file which will be loaded for :ref:`watchers`.
+Can be specified more than once to load multiple watchers.
+The watchers will be added to every kitty window. Relative
+paths are resolved relative to the kitty config directory.
+Note that reloading the config will only affect windows
+created after the reload.
+''')
+
 opt('update_check_interval', '24',
     option_type='float',
     long_text='''

@@ -3,21 +3,21 @@
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import Any, Dict, List, NamedTuple, Optional, Sequence
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Sequence
 
 from .boss import Boss
 from .child import Child
-from .cli import WATCHER_DEFINITION, parse_args
+from .cli import parse_args
 from .cli_stub import LaunchCLIOptions
 from .constants import resolve_custom_file
 from .fast_data_types import (
     get_options, patch_color_profiles, set_clipboard_string
 )
+from .options.utils import env as parse_env
 from .tabs import Tab
 from .types import run_once
-from .utils import find_exe, read_shell_environment, set_primary_selection
+from .utils import find_exe, read_shell_environment, set_primary_selection, log_error
 from .window import Watchers, Window
-from .options.utils import env as parse_env
 
 try:
     from typing import TypedDict
@@ -178,7 +178,14 @@ file with the same syntax as kitty.conf to read the colors from, or specify them
 individually, for example: ``--color background=white`` ``--color foreground=red``
 
 
-''' + WATCHER_DEFINITION
+--watcher -w
+type=list
+Path to a python file. Appropriately named functions in this file will be called
+for various events, such as when the window is resized, focused or closed. See the section
+on watchers in the launch command documentation: :ref:`watchers`. Relative paths are
+resolved relative to the kitty config directory. Global watchers for all windows can be
+specified with :opt:`watcher`.
+'''
 
 
 def parse_launch_args(args: Optional[Sequence[str]] = None) -> LaunchSpec:
@@ -221,14 +228,29 @@ def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab]
     return tab
 
 
-def load_watch_modules(watchers: Sequence[str]) -> Optional[Watchers]:
+watcher_modules: Dict[str, Any] = {}
+
+
+def load_watch_modules(watchers: Iterable[str]) -> Optional[Watchers]:
     if not watchers:
         return None
     import runpy
     ans = Watchers()
     for path in watchers:
         path = resolve_custom_file(path)
-        m = runpy.run_path(path, run_name='__kitty_watcher__')
+        m = watcher_modules.get(path, None)
+        if m is None:
+            try:
+                m = runpy.run_path(path, run_name='__kitty_watcher__')
+            except Exception as err:
+                import traceback
+                log_error(traceback.format_exc())
+                log_error(f'Failed to load watcher from {path} with error: {err}')
+                watcher_modules[path] = False
+                continue
+            watcher_modules[path] = m
+        if m is False:
+            continue
         w = m.get('on_close')
         if callable(w):
             ans.on_close.append(w)

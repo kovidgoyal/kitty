@@ -429,6 +429,7 @@ option_names = (  # {{{
  'url_prefixes',
  'url_style',
  'visual_bell_duration',
+ 'watcher',
  'wayland_titlebar_color',
  'wheel_scroll_multiplier',
  'window_alert_on_bell',
@@ -577,6 +578,7 @@ class Options:
     font_features: typing.Dict[str, typing.Tuple[kitty.fonts.FontFeature, ...]] = {}
     kitten_alias: typing.Dict[str, typing.List[str]] = {}
     symbol_map: typing.Dict[typing.Tuple[int, int], str] = {}
+    watcher: typing.Dict[str, str] = {}
     map: typing.List[kitty.options.utils.KeyDefinition] = []
     keymap: KeyMap = {}
     sequence_map: SequenceMap = {}
@@ -691,6 +693,7 @@ defaults.env = {}
 defaults.font_features = {}
 defaults.kitten_alias = {}
 defaults.symbol_map = {}
+defaults.watcher = {}
 defaults.map = [
     # copy_to_clipboard
     KeyDefinition(False, KeyAction('copy_to_clipboard'), 1024, False, 99, ()),

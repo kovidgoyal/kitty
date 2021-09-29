@@ -13,7 +13,7 @@ from gettext import gettext as _
 from itertools import chain
 from typing import (
     TYPE_CHECKING, Any, Callable, Deque, Dict, Iterable, List, NamedTuple,
-    Optional, Pattern, Sequence, Tuple, Union
+    Optional, Pattern, Sequence, Tuple, Union, cast
 )
 
 from .child import ProcessDesc
@@ -315,6 +315,17 @@ class EdgeWidths:
         return {'left': self.left, 'right': self.right, 'top': self.top, 'bottom': self.bottom}
 
 
+def global_watchers() -> Watchers:
+    spec = get_options().watcher
+    if getattr(global_watchers, 'options_spec', None) == spec:
+        return cast(Watchers, getattr(global_watchers, 'ans'))
+    from .launch import load_watch_modules
+    ans = load_watch_modules(spec) or Watchers()
+    setattr(global_watchers, 'ans', ans)
+    setattr(global_watchers, 'options_spec', spec)
+    return ans
+
+
 class Window:
 
     def __init__(
@@ -326,7 +337,11 @@ class Window:
         copy_colors_from: Optional['Window'] = None,
         watchers: Optional[Watchers] = None
     ):
-        self.watchers = watchers or Watchers()
+        if watchers:
+            self.watchers = watchers
+            self.watchers.add(global_watchers())
+        else:
+            self.watchers = global_watchers()
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()

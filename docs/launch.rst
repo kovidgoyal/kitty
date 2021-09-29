@@ -89,6 +89,8 @@ For example::
     map f1 launch my-program @active-kitty-window-id
 
 
+.. _watchers:
+
 Watching launched windows
 ---------------------------
 

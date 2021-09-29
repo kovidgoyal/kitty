@@ -44,6 +44,7 @@ def expand_opt_references(conf_name: str, text: str) -> str:
 def remove_markup(text: str) -> str:
     ref_map = {
         'layouts': f'{website_url("overview")}#layouts',
+        'watchers': f'{website_url("launch")}#watchers',
         'sessions': f'{website_url("overview")}#startup-sessions',
         'functional': f'{website_url("keyboard-protocol")}#functional-key-definitions',
         'action-select_tab': f'{website_url("actions")}#select-tab',
