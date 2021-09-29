@@ -17,7 +17,7 @@ import sys
 import tempfile
 import time
 from contextlib import contextmanager, suppress
-from typing import IO, Any, Dict, Generator, Iterable, List, Optional, cast
+from typing import IO, Any, Dict, Generator, Iterable, Optional, cast
 
 import requests
 
@@ -257,9 +257,8 @@ class GitHub(Base):  # {{{
         )
 
     def __call__(self) -> None:
-        releases = self.releases()
         # self.clean_older_releases(releases)
-        release = self.create_release(releases)
+        release = self.create_release()
         upload_url = release['upload_url'].partition('{')[0]
         asset_url = self.url_base + 'assets/{}'
         existing_assets = self.existing_assets(release['id'])
@@ -333,20 +332,12 @@ class GitHub(Base):  # {{{
             self.fail(r, 'Failed to get assets for release')
         return {asset['name']: asset['id'] for asset in r.json()}
 
-    def releases(self) -> List[Dict[str, Any]]:
-        url = self.API + 'repos/%s/%s/releases' % (self.username, self.reponame
-                                                   )
-        r = self.requests.get(url)
-        if r.status_code != 200:
-            self.fail(r, 'Failed to list releases')
-        return list(r.json())
-
-    def create_release(self, releases: Iterable[Dict[str, str]]) -> Dict[str, Any]:
+    def create_release(self) -> Dict[str, Any]:
         ' Create a release on GitHub or if it already exists, return the existing release '
-        for release in releases:
-            # Check for existing release
-            if release['tag_name'] == self.current_tag_name:
-                return release
+        # Check for existing release
+        r = self.requests.get(self.API + f'/repos/{self.username}/{self.reponame}/releases/tags/{self.current_tag_name}')
+        if r.status_code == 200:
+            return dict(r.json())
         if self.is_nightly:
             raise SystemExit('No existing nightly release found on GitHub')
         url = self.API + 'repos/%s/%s/releases' % (self.username, self.reponame)
