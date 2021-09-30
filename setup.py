@@ -411,7 +411,7 @@ def kitty_env() -> Env:
         test_program_src = '''#include <UserNotifications/UserNotifications.h>
         int main(void) { return 0; }\n'''
         user_notifications_framework = first_successful_compile(
-            ans.cc, '-framework UserNotifications', src=test_program_src, lang='objective-c')
+            ans.cc, '-framework UserNotifications', src=test_program_src, lang='m')
         if user_notifications_framework:
             platform_libs.extend(shlex.split(user_notifications_framework))
         else:
