@@ -72,12 +72,10 @@ class Frame:
             self.mode = 'rgba' if q in ('blend', 'true') else 'rgb'
             self.needs_blend = q == 'blend'
             self.dispose = getattr(Dispose, identify_data['dispose'].lower())
-            if identify_data.get('orientation') in ('5', '6', '7', '8'):
+            self.dimensions_swapped = identify_data.get('orientation') in ('5', '6', '7', '8')
+            if self.dimensions_swapped:
                 self.canvas_width, self.canvas_height = self.canvas_height, self.canvas_width
                 self.width, self.height = self.height, self.width
-                self.dimensions_swapped = True
-            else:
-                self.dimensions_swapped = False
 
     def __repr__(self) -> str:
         canvas = f'{self.canvas_width}x{self.canvas_height}:{self.canvas_x}+{self.canvas_y}'
