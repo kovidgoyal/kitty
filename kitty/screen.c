@@ -1473,18 +1473,19 @@ screen_fake_move_cursor_to_position(Screen *self, index_type x, index_type y) {
         while (x < x_limit) {
             unsigned int w = linebuf_char_width_at(self->linebuf, x, y);
             if (w == 0) {
-                count += 1;
                 // we only stop counting the cells in the line at an empty cell
                 // if at least one non-empty cell is found. zsh uses empty cells
                 // between the end of the text ad the right prompt. fish uses empty
                 // cells at the start of a line when editing multiline text
                 if (!found_non_empty_cell) { x++; continue; }
+                count += 1;
                 break;
             }
             found_non_empty_cell = true;
             x += w;
             count += 1;  // zsh requires a single arrow press to move fast dualwidth chars
         }
+        if (!found_non_empty_cell) count++;  // blank line
         x = 0;
     }
     if (count) {
