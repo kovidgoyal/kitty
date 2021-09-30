@@ -1483,7 +1483,7 @@ screen_fake_move_cursor_to_position(Screen *self, index_type x, index_type y) {
             }
             found_non_empty_cell = true;
             x += w;
-            count += 1;  // zsh requires a single arrow press to move fast dualwidth chars
+            count += 1;  // zsh requires a single arrow press to move past dualwidth chars
         }
         if (!found_non_empty_cell) count++;  // blank line
         x = 0;
