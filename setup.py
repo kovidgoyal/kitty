@@ -232,7 +232,7 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
 def test_compile(
     cc: str, *cflags: str,
     src: str = '',
-    lang: str = 'c',
+    source_ext: str = 'c',
     link_also: bool = True,
     show_stderr: bool = False,
     libraries: Iterable[str] = (),
@@ -240,7 +240,7 @@ def test_compile(
 ) -> bool:
     src = src or 'int main(void) { return 0; }'
     with tempfile.TemporaryDirectory(prefix='kitty-test-compile-') as tdir:
-        with open(os.path.join(tdir, f'source.{lang}'), 'w', encoding='utf-8') as srcf:
+        with open(os.path.join(tdir, f'source.{source_ext}'), 'w', encoding='utf-8') as srcf:
             print(src, file=srcf)
         return subprocess.Popen(
             [cc] + list(cflags) + ([] if link_also else ['-c']) +
@@ -251,9 +251,9 @@ def test_compile(
         ).wait() == 0
 
 
-def first_successful_compile(cc: str, *cflags: str, src: str = '', lang: str = 'c') -> str:
+def first_successful_compile(cc: str, *cflags: str, src: str = '', source_ext: str = 'c') -> str:
     for x in cflags:
-        if test_compile(cc, *shlex.split(x), src=src, lang=lang):
+        if test_compile(cc, *shlex.split(x), src=src, source_ext=source_ext):
             return x
     return ''
 
@@ -411,7 +411,7 @@ def kitty_env() -> Env:
         test_program_src = '''#include <UserNotifications/UserNotifications.h>
         int main(void) { return 0; }\n'''
         user_notifications_framework = first_successful_compile(
-            ans.cc, '-framework UserNotifications', src=test_program_src, lang='m')
+            ans.cc, '-framework UserNotifications', src=test_program_src, source_ext='m')
         if user_notifications_framework:
             platform_libs.extend(shlex.split(user_notifications_framework))
         else:
