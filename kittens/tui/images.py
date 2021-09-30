@@ -202,6 +202,7 @@ def render_image(
     cmd += ['-background', 'none', '--', path]
     if only_first_frame and has_multiple_frames:
         cmd[-1] += '[0]'
+    cmd.append('-auto-orient')
     scaled = False
     width, height = m.width, m.height
     if scale_up:
@@ -216,7 +217,7 @@ def render_image(
             # we have to coalesce, resize and de-coalesce all frames
             resize_cmd = ['-coalesce'] + resize_cmd + ['-deconstruct']
         cmd += resize_cmd
-    cmd += ['-depth', '8', '-auto-orient', '-set', 'filename:f', '%w-%h-%g-%p']
+    cmd += ['-depth', '8', '-set', 'filename:f', '%w-%h-%g-%p']
     ans = RenderedImage(m.fmt, width, height, m.mode)
     if only_first_frame:
         ans.frames = [Frame(m.frames[0])]
