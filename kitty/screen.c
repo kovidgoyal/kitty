@@ -1476,7 +1476,7 @@ screen_fake_move_cursor_to_position(Screen *self, index_type x, index_type y) {
                 break;
             }
             x += w;
-            count += w;
+            count += 1;  // zsh requires a single arrow press to move fast dualwidth chars
         }
         x = 0;
     }
