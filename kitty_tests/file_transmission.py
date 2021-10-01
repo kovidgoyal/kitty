@@ -101,16 +101,11 @@ class TestFileTransmission(BaseTest):
             sig_loader(chunk)
         sig_loader()
         self.assertTrue(sig_loader.finished)
-        with open(c_path, 'wb') as dest, PatchFile(a_path) as patcher:
+        with PatchFile(a_path, c_path) as patcher:
             for chunk in delta_for_file(b_path, sig_loader.signature):
                 self.assertFalse(patcher.finished)
-                output = patcher(chunk)
-                if output:
-                    dest.write(output)
-            while not patcher.finished:
-                output = patcher()
-                if output:
-                    dest.write(output)
+                patcher.write(chunk)
+        self.assertTrue(patcher.finished)
         with open(b_path, 'rb') as b, open(c_path, 'rb') as c:
             while True:
                 bc = b.read(4096)
