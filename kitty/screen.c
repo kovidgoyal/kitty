@@ -156,6 +156,7 @@ screen_reset(Screen *self) {
     if (self->overlay_line.is_active) deactivate_overlay_line(self);
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
     memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
+    self->redraws_multiline_prompts = false;
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
     self->alt_savepoint.is_valid = false;
@@ -291,6 +292,7 @@ prevent_current_prompt_from_rewrapping(Screen *self) {
         y--;
     }
     if (y < 0) return;
+    if (!self->redraws_multiline_prompts && self->cursor->y > (unsigned) y) return; // bash does not redraw multiline prompts
     // we have identified a prompt at which the cursor is present, the shell
     // will redraw this prompt. However when doing so it gets confused if the
     // cursor vertical position relative to the first prompt line changes. This
@@ -1921,8 +1923,14 @@ shell_prompt_marking(Screen *self, PyObject *data) {
     if (PyUnicode_GET_LENGTH(data) > 0 && self->cursor->y < self->lines) {
         Py_UCS4 ch = PyUnicode_READ_CHAR(data, 0);
         switch (ch) {
-            case 'A':
-                linebuf_mark_line_as_prompt_start(self->linebuf, self->cursor->y); break;
+            case 'A': {
+                linebuf_mark_line_as_prompt_start(self->linebuf, self->cursor->y);
+                size_t l = PyUnicode_GET_LENGTH(data);
+                if (l > 8) {
+                    DECREF_AFTER_FUNCTION PyObject *q = PyUnicode_FromString(";does_not_redraw_multiline_prompt");
+                    self->redraws_multiline_prompts = (!q || PyUnicode_Find(data, q, 1, PyUnicode_GET_LENGTH(data), 1) < 0);
+                } else self->redraws_multiline_prompts = true;
+            } break;
             case 'C':
                 linebuf_mark_line_as_output_start(self->linebuf, self->cursor->y); break;
         }

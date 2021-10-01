@@ -40,7 +40,7 @@ _ksi_main() {
     fi
 
     if [[ "${_ksi_prompt[mark]}" == "y" ]]; then 
-        PS1="\[\e]133;A\a\]$PS1"
+        PS1="\[\e]133;A;does_not_redraw_multiline_prompt\a\]$PS1"
         PS0="\[\e]133;C\a\]$PS0"
     fi
 

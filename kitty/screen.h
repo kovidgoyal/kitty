@@ -131,6 +131,7 @@ typedef struct {
     struct {
         monotonic_t start, duration;
     } ignore_bells;
+    bool redraws_multiline_prompts;
 } Screen;
 
 
