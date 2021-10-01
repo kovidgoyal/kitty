@@ -69,6 +69,11 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   applying to all windows, not just the initially created ones. Note that
   ``--watcher`` now also applies to all windows, not just initially created ones.
 
+- **Backward incompatibility**: No longer turn on the kitty extended keyboard
+  protocol's disambiguate mode when the client sends the XTMODKEYS escape code.
+  Applications must use the dedicated escape code to turn on the protocol.
+  (:iss:`4075`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

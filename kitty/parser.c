@@ -998,7 +998,11 @@ dispatch_csi(Screen *screen, PyObject DUMP_UNUSED *dump_callback) {
             break;
         case 'm':
             if (start_modifier == '>' && !end_modifier) {
-                CALL_CSI_HANDLER2(screen_xtmodkeys, 0, 0);
+                REPORT_ERROR(
+                    "The application is trying to use XTerm's modifyOtherKeys."
+                    " This is superseded by the kitty keyboard protocol: https://sw.kovidgoyal.net/kitty/keyboard-protocol/"
+                    " the application should be updated to use that"
+                );
                 break;
             }
             /* fallthrough */

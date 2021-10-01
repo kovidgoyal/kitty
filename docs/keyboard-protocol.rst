@@ -277,13 +277,6 @@ oldest entry from the stack must be evicted.
    the editor would have to somehow know what the keyboard mode of the main
    screen is and restore to that mode on exit.
 
-.. note:: In the interests of interoperation, the XTerm specific sequences
-   ``CSI > 4; x m`` and ``CSI > 4; 0 m`` are treated as ``CSI > 1 u`` and ``CSI
-   < 1 u``.  Here ``x`` can be either ``1`` or ``2``. These codes cause XTerm
-   to use the CSI u encoding for more keys and are therefore treated as similar
-   to the disambiguate progressive enhancement.
-
-
 .. _disambiguate:
 
 Disambiguate escape codes
