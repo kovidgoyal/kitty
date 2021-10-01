@@ -335,7 +335,8 @@ class GitHub(Base):  # {{{
     def create_release(self) -> Dict[str, Any]:
         ' Create a release on GitHub or if it already exists, return the existing release '
         # Check for existing release
-        r = self.requests.get(self.API + f'/repos/{self.username}/{self.reponame}/releases/tags/{self.current_tag_name}')
+        url = f'{self.API}repos/{self.username}/{self.reponame}/releases/tags/{self.current_tag_name}'
+        r = self.requests.get(url)
         if r.status_code == 200:
             return dict(r.json())
         if self.is_nightly:
