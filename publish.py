@@ -190,7 +190,7 @@ class ReadFileWithProgressReporting(io.FileIO):  # {{{
                 f'\r\033[K\033[?7h {frac:%} {mb_pos:.1f}/{mb_tot:.1f}MB {kb_rate:.1f} KB/sec {eta_m} minutes, {eta_s} seconds left\033[?7l')
         if self.tell() >= self._total:
             t = int(time.monotonic() - self.start_time) + 1
-            print(f'\nUpload took {t/60} minutes and {t%60} seconds at {kb_rate:.1f} KB/sec')
+            print(f'\nUpload took {t//60} minutes and {t%60} seconds at {kb_rate:.1f} KB/sec')
         sys.stdout.flush()
 
 
