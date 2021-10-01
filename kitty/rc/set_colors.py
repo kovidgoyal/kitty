@@ -11,8 +11,8 @@ from kitty.fast_data_types import patch_color_profiles
 from kitty.rgb import Color
 
 from .base import (
-    MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType,
-    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, ParsingOfArgsFailed,
+    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -76,7 +76,10 @@ this option, any color arguments are ignored and --configured and --all are impl
         final_colors: Dict[str, int] = {}
         cursor_text_color: Optional[Union[int, bool]] = False
         if not opts.reset:
-            final_colors, cursor_text_color = parse_colors(args)
+            try:
+                final_colors, cursor_text_color = parse_colors(args)
+            except Exception as err:
+                raise ParsingOfArgsFailed(str(err)) from err
         ans = {
             'match_window': opts.match, 'match_tab': opts.match_tab,
             'all': opts.all or opts.reset, 'configured': opts.configured or opts.reset,

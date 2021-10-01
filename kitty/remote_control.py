@@ -10,8 +10,7 @@ import types
 from contextlib import suppress
 from functools import partial
 from typing import (
-    Any, Dict, Generator, Iterable, List, Optional, Tuple,
-    Union, cast
+    Any, Dict, Generator, Iterable, List, Optional, Tuple, Union, cast
 )
 
 from .cli import emph, parse_args
@@ -19,7 +18,7 @@ from .cli_stub import RCOptions
 from .constants import appname, version
 from .fast_data_types import read_command_response
 from .rc.base import (
-    PayloadGetter, all_command_names, command_for_name,
+    ParsingOfArgsFailed, PayloadGetter, all_command_names, command_for_name,
     no_response as no_response_sentinel, parse_subcommand_cli
 )
 from .typing import BossType, WindowType
@@ -177,7 +176,10 @@ def main(args: List[str]) -> None:
         raise SystemExit('{} is not a known command. Known commands are: {}'.format(
             emph(cmd), ', '.join(x.replace('_', '-') for x in all_command_names())))
     opts, items = parse_subcommand_cli(c, items)
-    payload = c.message_to_kitty(global_opts, opts, items)
+    try:
+        payload = c.message_to_kitty(global_opts, opts, items)
+    except ParsingOfArgsFailed as err:
+        exit(str(err))
     if global_opts.no_command_response is not None:
         no_response = global_opts.no_command_response  # type: ignore
     else:

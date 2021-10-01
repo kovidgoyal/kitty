@@ -16,9 +16,9 @@ from .cli import (
     title
 )
 from .cli_stub import RCOptions
-from .constants import cache_dir, version, kitty_face
+from .constants import cache_dir, kitty_face, version
 from .rc.base import (
-    RemoteCommand, all_command_names, command_for_name,
+    ParsingOfArgsFailed, RemoteCommand, all_command_names, command_for_name,
     display_subcommand_help, parse_subcommand_cli
 )
 from .types import run_once
@@ -205,7 +205,7 @@ def real_main(global_opts: RCOptions) -> None:
         else:
             try:
                 run_cmd(global_opts, cmd, func, opts, items)
-            except SystemExit as e:
+            except (SystemExit, ParsingOfArgsFailed) as e:
                 print_err(e)
                 continue
             except KeyboardInterrupt:

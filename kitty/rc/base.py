@@ -105,6 +105,10 @@ active tab, one the previously active tab and so on.
 '''
 
 
+class ParsingOfArgsFailed(ValueError):
+    pass
+
+
 class RemoteCommand:
 
     name: str = ''
