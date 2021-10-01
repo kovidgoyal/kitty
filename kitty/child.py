@@ -249,7 +249,7 @@ class Child:
             remove_cloexec(stdin_read_fd)
         else:
             stdin_read_fd = stdin_write_fd = -1
-        env = tuple('{}={}'.format(k, v) for k, v in self.final_env.items())
+        env = tuple(f'{k}={v}' for k, v in self.final_env.items())
         argv = list(self.argv)
         exe = argv[0]
         if is_macos and exe == shell_path:
