@@ -43,6 +43,13 @@ is assumed to be the number of a file descriptor from which to read the actual p
 type=bool-set
 Before actually transferring files, show a mapping of local file names to remote file names
 and ask for confirmation.
+
+
+--transmit-deltas -x
+type=bool-set
+If a file on the receiving side already exists, use the rsync algorithm to update it to match
+the file on the sending side, potentially saving lots of bandwidth and also automatically resuming
+partial transfers.
 '''
 
 

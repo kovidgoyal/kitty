@@ -18,7 +18,7 @@ from typing import (
     IO, Any, Callable, Deque, Dict, Iterator, List, Optional, Union
 )
 
-from kittens.transfer.librsync import signature_of_file
+from kittens.transfer.librsync import PatchFile, signature_of_file
 from kitty.fast_data_types import (
     FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
 )
@@ -201,7 +201,7 @@ class FileTransmissionCommand:
         if not fmap:
             fmap = {k.name.encode('ascii'): k for k in fields(cls)}
             setattr(cls, 'fmap', fmap)
-        from kittens.transfer.rsync import parse_ftc, decode_utf8_buffer
+        from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
 
         def handle_item(key: memoryview, val: memoryview, has_semicolons: bool) -> None:
             field = fmap.get(key)
@@ -272,7 +272,7 @@ class DestFile:
         self.needs_data_sent = self.ttype is not TransmissionType.simple
         self.decompressor: Union[ZlibDecompressor, IdentityDecompressor] = ZlibDecompressor() if ftc.compression is Compression.zlib else IdentityDecompressor()
         self.closed = self.ftype is FileType.directory
-        self.actual_file: Optional[IO[bytes]] = None
+        self.actual_file: Union[PatchFile, IO[bytes], None] = None
         self.failed = False
 
     def __repr__(self) -> str:
@@ -349,15 +349,16 @@ class DestFile:
                 self.close()
                 self.apply_metadata(is_symlink=True)
         elif self.ftype is FileType.regular:
+            data = self.decompressor(data, is_last=is_last)
             if self.actual_file is None:
                 self.make_parent_dirs()
-                self.unlink_existing_if_needed()
-                flags = os.O_RDWR | os.O_CREAT | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0)
-                if self.ttype is TransmissionType.simple:
-                    flags |= os.O_TRUNC
-                self.actual_file = open(os.open(self.name, flags, self.permissions), mode='r+b', closefd=True)
-            data = self.decompressor(data, is_last=is_last)
-            self.actual_file.write(data)
+                if self.ttype is TransmissionType.rsync:
+                    self.actual_file = PatchFile(self.name)
+                else:
+                    self.unlink_existing_if_needed()
+                    flags = os.O_RDWR | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0)
+                    self.actual_file = open(os.open(self.name, flags, self.permissions), mode='r+b', closefd=True)
+            self.actual_file.write(data)  # type: ignore
             if is_last:
                 self.close()
                 self.apply_metadata()
@@ -537,6 +538,7 @@ class FileTransmission:
                         ttype = TransmissionType.rsync \
                             if sz > -1 and df.ttype is TransmissionType.rsync and df.ftype is FileType.regular else TransmissionType.simple
                         self.send_status_response(code=ErrorCode.STARTED, request_id=ar.id, file_id=df.file_id, name=df.name, size=sz, ttype=ttype)
+                        df.ttype = ttype
                         if ttype is TransmissionType.rsync:
                             try:
                                 fs = signature_of_file(df.name)
@@ -588,6 +590,7 @@ class FileTransmission:
                 pending.popleft()
             else:
                 self.callback_after(func, timeout=0.1)
+                return
         try:
             next_bit_of_data = next(fs)
         except StopIteration:
@@ -599,11 +602,12 @@ class FileTransmission:
             return
         has_capacity = True
         pos = 0
-        while True:
+        is_last = False
+        while not is_last:
             r = next_bit_of_data[pos:pos + 4096]
-            if len(r) < 1:
-                break
-            data = FileTransmissionCommand(id=receive_id, action=Action.data, file_id=file_id, data=r)
+            is_last = len(r) < 4096
+            pos += len(r)
+            data = FileTransmissionCommand(id=receive_id, action=Action.end_data if is_last else Action.data, file_id=file_id, data=r)
             if has_capacity:
                 if not self.write_ftc_to_child(data, use_pending=False):
                     has_capacity = False
