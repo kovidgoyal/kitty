@@ -93,8 +93,8 @@ class TestFileTransmission(BaseTest):
         c_path = os.path.join(self.tdir, 'c')
 
         def files_equal(a_path, c_path):
-            self.ae(os.path.getsize(a_path), os.path.getsize(b_path))
-            with open(b_path, 'rb') as b, open(c_path, 'rb') as c:
+            self.ae(os.path.getsize(a_path), os.path.getsize(c_path))
+            with open(c_path, 'rb') as b, open(c_path, 'rb') as c:
                 self.ae(b.read(), c.read())
 
         def patch(old_path, new_path, output_path, max_delta_len=0):
