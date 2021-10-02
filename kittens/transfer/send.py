@@ -372,7 +372,7 @@ class SendManager:
             if file.file_type is FileType.directory:
                 file.state = FileState.finished
             else:
-                file.state = FileState.waiting_for_data if file.ttype is TransmissionType.rsync else FileState.transmitting
+                file.state = FileState.waiting_for_data if ftc.ttype is TransmissionType.rsync else FileState.transmitting
                 if file.state is FileState.waiting_for_data:
                     file.signature_loader = LoadSignature()
         else:
