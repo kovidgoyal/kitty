@@ -136,3 +136,20 @@ class PatchFile(StreamingJob):
 
     def __exit__(self, *a: object) -> None:
         self.close()
+
+
+def develop() -> None:
+    import sys
+    src = sys.argv[-1]
+    sig_loader = LoadSignature()
+    with open(src + '.sig', 'wb') as f:
+        for chunk in signature_of_file(src):
+            sig_loader(chunk)
+            f.write(chunk)
+    sig_loader()
+    with open(src + '.delta', 'wb') as f, PatchFile(src, src + '.output') as patcher:
+        for chunk in delta_for_file(src, sig_loader.signature):
+            f.write(chunk)
+            patcher.write(chunk)
+        if not patcher.finished:
+            patcher.write(b'')

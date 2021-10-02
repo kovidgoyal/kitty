@@ -156,7 +156,7 @@ copy_callback(void *opaque, rs_long_t pos, size_t *len, void **buf) {
     if (!mem) { PyErr_Clear(); return RS_MEM_ERROR; }
     PyObject *res = PyObject_CallFunction(callback, "OL", mem, p);
     Py_DECREF(mem);
-    if (res == NULL) { PyErr_Clear(); return RS_IO_ERROR; }
+    if (res == NULL) { PyErr_Print(); return RS_IO_ERROR; }
     rs_result r = RS_DONE;
     if (PyLong_Check(res)) { *len = PyLong_AsSize_t(res); }
     else { r = RS_INTERNAL_ERROR; }
