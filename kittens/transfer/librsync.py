@@ -4,7 +4,7 @@
 
 import os
 import tempfile
-from typing import IO, TYPE_CHECKING, Iterator
+from typing import IO, TYPE_CHECKING, Iterator, Union
 
 from .rsync import (
     IO_BUFFER_SIZE, RsyncError, begin_create_delta, begin_create_signature,
@@ -22,34 +22,41 @@ class StreamingJob:
     def __init__(self, job: 'JobCapsule', output_buf_size: int = IO_BUFFER_SIZE):
         self.job = job
         self.finished = False
-        self.prev_unused_input = b''
         self.calls_with_no_data = 0
         self.output_buf = bytearray(output_buf_size)
+        self.uncomsumed_data = b''
 
-    def __call__(self, input_data: bytes = b'') -> memoryview:
+    def __call__(self, input_data: Union[memoryview, bytes] = b'') -> Iterator[memoryview]:
         if self.finished:
             if input_data:
                 raise RsyncError('There was too much input data')
             return memoryview(self.output_buf)[:0]
-        no_more_data = not input_data
-        if self.prev_unused_input:
-            input_data = self.prev_unused_input + input_data
-            self.prev_unused_input = b''
-        self.finished, sz_of_unused_input, output_size = iter_job(self.job, input_data, self.output_buf)
-        if sz_of_unused_input > 0 and not self.finished:
-            if no_more_data:
-                raise RsyncError(f"{sz_of_unused_input} bytes of input data were not used")
-            self.prev_unused_input = bytes(input_data[-sz_of_unused_input:])
-        if self.finished:
-            self.commit()
-        if no_more_data and not output_size:
-            self.calls_with_no_data += 1
-        if self.calls_with_no_data > 3:  # prevent infinite loop
-            raise RsyncError('There was not enough input data')
-        return memoryview(self.output_buf)[:output_size]
+        if self.uncomsumed_data:
+            input_data = self.uncomsumed_data + bytes(input_data)
+            self.uncomsumed_data = b''
+        while True:
+            self.finished, sz_of_unused_input, output_size = iter_job(self.job, input_data, self.output_buf)
+            if output_size:
+                yield memoryview(self.output_buf)[:output_size]
+            if self.finished:
+                break
+            if not sz_of_unused_input and len(input_data):
+                break
+            consumed_some_input = sz_of_unused_input < len(input_data)
+            produced_some_output = output_size > 0
+            if not consumed_some_input and not produced_some_output:
+                break
+            input_data = memoryview(input_data)[-sz_of_unused_input:]
+        if sz_of_unused_input:
+            self.uncomsumed_data = bytes(input_data[-sz_of_unused_input:])
 
-    def commit(self) -> None:
-        pass
+    def get_remaining_output(self) -> Iterator[memoryview]:
+        if not self.finished:
+            yield from self()
+        if not self.finished:
+            raise RsyncError('Insufficient input data')
+        if self.uncomsumed_data:
+            raise RsyncError(f'{len(self.uncomsumed_data)} bytes if unconsumed input data')
 
 
 def drive_job_on_file(f: IO[bytes], job: 'JobCapsule', input_buf_size: int = IO_BUFFER_SIZE, output_buf_size: int = IO_BUFFER_SIZE) -> Iterator[memoryview]:
@@ -57,9 +64,11 @@ def drive_job_on_file(f: IO[bytes], job: 'JobCapsule', input_buf_size: int = IO_
     input_buf = bytearray(input_buf_size)
     while not sj.finished:
         sz = f.readinto(input_buf)  # type: ignore
-        result = sj(memoryview(input_buf)[:sz])
-        if len(result) > 0:
-            yield result
+        if not sz:
+            del input_buf
+            yield from sj.get_remaining_output()
+            break
+        yield from sj(memoryview(input_buf)[:sz])
 
 
 def signature_of_file(path: str) -> Iterator[memoryview]:
@@ -83,7 +92,13 @@ class LoadSignature(StreamingJob):
         job, self.signature = begin_load_signature()
         super().__init__(job, output_buf_size=0)
 
+    def add_chunk(self, chunk: bytes) -> None:
+        for ignored in self(chunk):
+            pass
+
     def commit(self) -> None:
+        for ignored in self.get_remaining_output():
+            pass
         build_hash_table(self.signature)
 
 
@@ -115,6 +130,7 @@ class PatchFile(StreamingJob):
 
     def close(self) -> None:
         if not self.src_file.closed:
+            self.get_remaining_output()
             self.src_file.close()
             count = 100
             while not self.finished:
@@ -127,8 +143,7 @@ class PatchFile(StreamingJob):
                 os.replace(self.dest_file.name, self.src_file.name)
 
     def write(self, data: bytes) -> None:
-        output = self(data)
-        if output:
+        for output in self(data):
             self.dest_file.write(output)
 
     def __enter__(self) -> 'PatchFile':
@@ -144,12 +159,10 @@ def develop() -> None:
     sig_loader = LoadSignature()
     with open(src + '.sig', 'wb') as f:
         for chunk in signature_of_file(src):
-            sig_loader(chunk)
+            sig_loader.add_chunk(chunk)
             f.write(chunk)
-    sig_loader()
+    sig_loader.commit()
     with open(src + '.delta', 'wb') as f, PatchFile(src, src + '.output') as patcher:
         for chunk in delta_for_file(src, sig_loader.signature):
             f.write(chunk)
             patcher.write(chunk)
-        if not patcher.finished:
-            patcher.write(b'')

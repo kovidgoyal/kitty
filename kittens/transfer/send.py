@@ -392,8 +392,9 @@ class SendManager:
             return
         sl = file.signature_loader
         assert sl is not None
-        sl(ftc.data)
+        sl.add_chunk(ftc.data)
         if ftc.action is Action.end_data:
+            sl.commit()
             file.start_delta_calculation()
             self.update_collective_statuses()
 

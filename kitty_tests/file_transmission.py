@@ -91,28 +91,38 @@ class TestFileTransmission(BaseTest):
         a_path = os.path.join(self.tdir, 'a')
         b_path = os.path.join(self.tdir, 'b')
         c_path = os.path.join(self.tdir, 'c')
+
+        def files_equal(a_path, c_path):
+            self.ae(os.path.getsize(a_path), os.path.getsize(b_path))
+            with open(b_path, 'rb') as b, open(c_path, 'rb') as c:
+                self.ae(b.read(), c.read())
+
+        def patch(old_path, new_path, output_path, max_delta_len=0):
+            sig_loader = LoadSignature()
+            for chunk in signature_of_file(old_path):
+                sig_loader.add_chunk(chunk)
+            sig_loader.commit()
+            self.assertTrue(sig_loader.finished)
+            delta_len = 0
+            with PatchFile(old_path, output_path) as patcher:
+                for chunk in delta_for_file(new_path, sig_loader.signature):
+                    self.assertFalse(patcher.finished)
+                    patcher.write(chunk)
+                    delta_len += len(chunk)
+            self.assertTrue(patcher.finished)
+            if max_delta_len:
+                self.assertLessEqual(delta_len, max_delta_len)
+            files_equal(output_path, new_path)
+
         sz = 1024 * 1024 + 37
         with open(a_path, 'wb') as f:
             f.write(os.urandom(sz))
         with open(b_path, 'wb') as f:
             f.write(os.urandom(sz))
-        sig_loader = LoadSignature()
-        for chunk in signature_of_file(a_path):
-            sig_loader(chunk)
-        sig_loader()
-        self.assertTrue(sig_loader.finished)
-        with PatchFile(a_path, c_path) as patcher:
-            for chunk in delta_for_file(b_path, sig_loader.signature):
-                self.assertFalse(patcher.finished)
-                patcher.write(chunk)
-        self.assertTrue(patcher.finished)
-        with open(b_path, 'rb') as b, open(c_path, 'rb') as c:
-            while True:
-                bc = b.read(4096)
-                cc = c.read(4096)
-                self.ae(bc, cc)
-                if not bc and not cc:
-                    break
+
+        patch(a_path, b_path, c_path)
+        # test size of delta
+        patch(a_path, a_path, c_path, max_delta_len=256)
 
     def test_file_put(self):
         # send refusal

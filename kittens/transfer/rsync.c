@@ -89,26 +89,15 @@ iter_job(PyObject *self UNUSED, PyObject *args) {
         .avail_in=input_buf.len, .next_in=input_buf.buf, .eof_in=eof,
         .avail_out=output_buf.len, .next_out=output_buf.buf
     };
-    Py_ssize_t output_size = 0;
-    rs_result result = RS_DONE;
-    while (true) {
-        size_t before = buffer.avail_out;
-        result = rs_job_iter(job, &buffer);
-        output_size += before - buffer.avail_out;
-        if (result == RS_DONE || result == RS_BLOCKED) break;
-        if (buffer.avail_in) {
-            PyBuffer_Release(&output_buf);
-            if (PyByteArray_Resize(output_array, MAX(IO_BUFFER_SIZE, (size_t)PyByteArray_GET_SIZE(output_array) * 2)) != 0) return NULL;
-            if (PyObject_GetBuffer(output_array, &output_buf, PyBUF_WRITE) != 0) return NULL;
-            buffer.avail_out = output_buf.len - output_size;
-            buffer.next_out = (char*)output_buf.buf + output_size;
-            continue;
-        }
-        PyErr_SetString(RsyncError, rs_strerror(result));
-        return NULL;
+    size_t before = buffer.avail_out;
+    rs_result result = rs_job_iter(job, &buffer);
+    Py_ssize_t output_size = before - buffer.avail_out;
+    if (result == RS_DONE || result == RS_BLOCKED) {
+        Py_ssize_t unused_input = buffer.avail_in;
+        return Py_BuildValue("Onn", result == RS_DONE ? Py_True : Py_False, unused_input, output_size);
     }
-    Py_ssize_t unused_input = buffer.avail_in;
-    return Py_BuildValue("Onn", result == RS_DONE ? Py_True : Py_False, unused_input, output_size);
+    PyErr_SetString(RsyncError, rs_strerror(result));
+    return NULL;
 }
 
 static PyObject*
