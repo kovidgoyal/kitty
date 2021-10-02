@@ -584,7 +584,7 @@ class FileTransmission:
         ar = self.active_receives.get(receive_id)
         if ar is None:
             return
-        func = partial(self.transmit_rsync_signature, fs, file_id, receive_id, pending)
+        func = partial(self.transmit_rsync_signature, fs, receive_id, file_id, pending)
         while pending:
             if self.write_ftc_to_child(pending[0], use_pending=False):
                 pending.popleft()
@@ -592,7 +592,7 @@ class FileTransmission:
                 self.callback_after(func, timeout=0.1)
                 return
         try:
-            next_bit_of_data = next(fs)
+            chunk = next(fs)
         except StopIteration:
             self.write_ftc_to_child(FileTransmissionCommand(id=receive_id, action=Action.end_data, file_id=file_id))
             return
@@ -600,20 +600,19 @@ class FileTransmission:
             if ar.send_errors:
                 self.send_fail_on_os_error(err, 'Failed to read signature', ar, file_id)
             return
+        if not len(chunk):
+            self.write_ftc_to_child(FileTransmissionCommand(id=receive_id, action=Action.end_data, file_id=file_id))
+            return
         has_capacity = True
-        pos = 0
-        is_last = False
-        while not is_last:
-            r = next_bit_of_data[pos:pos + 4096]
-            is_last = len(r) < 4096
-            pos += len(r)
-            data = FileTransmissionCommand(id=receive_id, action=Action.end_data if is_last else Action.data, file_id=file_id, data=r)
+        while len(chunk) > 0:
+            data = FileTransmissionCommand(id=receive_id, action=Action.data, file_id=file_id, data=chunk[:4096])
             if has_capacity:
                 if not self.write_ftc_to_child(data, use_pending=False):
                     has_capacity = False
                     pending.append(data)
             else:
                 pending.append(data)
+            chunk = chunk[4096:]
         self.callback_after(func)
 
     def send_status_response(
