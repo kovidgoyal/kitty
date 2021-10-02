@@ -88,10 +88,6 @@ class File:
     def start_delta_calculation(self) -> None:
         sl = self.signature_loader
         assert sl is not None
-        if not sl.finished:
-            sl()
-            if not sl.finished:
-                raise ValueError('Delta signature is incomplete')
         self.state = FileState.transmitting
         self.delta_loader = delta_for_file(self.expanded_local_path, sl.signature)
 
