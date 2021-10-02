@@ -38,13 +38,9 @@ class StreamingJob:
             self.finished, sz_of_unused_input, output_size = iter_job(self.job, input_data, self.output_buf)
             if output_size:
                 yield memoryview(self.output_buf)[:output_size]
-            if self.finished:
-                break
-            if not sz_of_unused_input and len(input_data):
-                break
             consumed_some_input = sz_of_unused_input < len(input_data)
             produced_some_output = output_size > 0
-            if not consumed_some_input and not produced_some_output:
+            if self.finished or (not sz_of_unused_input and len(input_data)) or (not consumed_some_input and not produced_some_output):
                 break
             input_data = memoryview(input_data)[-sz_of_unused_input:]
         if sz_of_unused_input:
@@ -56,7 +52,7 @@ class StreamingJob:
         if not self.finished:
             raise RsyncError('Insufficient input data')
         if self.uncomsumed_data:
-            raise RsyncError(f'{len(self.uncomsumed_data)} bytes if unconsumed input data')
+            raise RsyncError(f'{len(self.uncomsumed_data)} bytes of unconsumed input data')
 
 
 def drive_job_on_file(f: IO[bytes], job: 'JobCapsule', input_buf_size: int = IO_BUFFER_SIZE, output_buf_size: int = IO_BUFFER_SIZE) -> Iterator[memoryview]:
