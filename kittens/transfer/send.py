@@ -349,11 +349,14 @@ class SendManager:
         mv = memoryview(chunk)
         pos = 0
         limit = len(chunk)
-        while pos < limit:
-            cc = mv[pos:pos + 4096]
-            pos += 4096
-            final = is_last and pos >= limit
-            yield FileTransmissionCommand(action=Action.end_data if final else Action.data, file_id=af.file_id, data=cc).serialize()
+        if limit:
+            while pos < limit:
+                cc = mv[pos:pos + 4096]
+                pos += 4096
+                final = is_last and pos >= limit
+                yield FileTransmissionCommand(action=Action.end_data if final else Action.data, file_id=af.file_id, data=cc).serialize()
+        elif is_last:
+            yield FileTransmissionCommand(action=Action.end_data, file_id=af.file_id, data=b'').serialize()
 
     def send_file_metadata(self) -> Iterator[str]:
         for f in self.files:
@@ -518,9 +521,11 @@ class Send(Handler):
         self.start_transfer()
 
     def transmit_next_chunk(self) -> None:
+        found_chunk = False
         for chunk in self.manager.next_chunks():
             self.send_payload(chunk)
-        else:
+            found_chunk = True
+        if not found_chunk:
             if self.manager.all_acknowledged:
                 self.transfer_finished()
 
