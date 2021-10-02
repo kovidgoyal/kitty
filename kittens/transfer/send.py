@@ -18,7 +18,7 @@ from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE, wcswidth
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType, NameReprEnum,
-    TransmissionType, encode_bypass
+    TransmissionType, encode_bypass, split_for_transfer
 )
 from kitty.typing import KeyEventType
 from kitty.utils import sanitize_control_codes
@@ -342,15 +342,9 @@ class SendManager:
             chunk, usz = af.next_chunk()
             self.current_chunk_uncompressed_sz += usz
         is_last = af.state is FileState.finished
-        mv = memoryview(chunk)
-        pos = 0
-        limit = len(chunk)
-        if limit:
-            while pos < limit:
-                cc = mv[pos:pos + 4096]
-                pos += 4096
-                final = is_last and pos >= limit
-                yield FileTransmissionCommand(action=Action.end_data if final else Action.data, file_id=af.file_id, data=cc).serialize()
+        if len(chunk):
+            for ftc in split_for_transfer(chunk, file_id=af.file_id, mark_last=is_last):
+                yield ftc.serialize()
         elif is_last:
             yield FileTransmissionCommand(action=Action.end_data, file_id=af.file_id, data=b'').serialize()
 

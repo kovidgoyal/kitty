@@ -46,6 +46,22 @@ def encode_bypass(request_id: str, bypass: str) -> str:
     return 'sha256:' + hashlib.sha256(q.encode('utf-8', 'replace')).hexdigest()
 
 
+def split_for_transfer(
+    data: Union[bytes, bytearray, memoryview],
+    session_id: str = '', file_id: str = '',
+    mark_last: bool = False,
+    chunk_size: int = 4096
+) -> Iterator['FileTransmissionCommand']:
+    if isinstance(data, (bytes, bytearray)):
+        data = memoryview(data)
+    while len(data):
+        ac = Action.data
+        if mark_last and len(data) <= chunk_size:
+            ac = Action.end_data
+        yield FileTransmissionCommand(action=ac, id=session_id, file_id=file_id, data=data[:chunk_size])
+        data = data[chunk_size:]
+
+
 class NameReprEnum(Enum):
 
     def __repr__(self) -> str:
@@ -604,15 +620,13 @@ class FileTransmission:
             self.write_ftc_to_child(FileTransmissionCommand(id=receive_id, action=Action.end_data, file_id=file_id))
             return
         has_capacity = True
-        while len(chunk) > 0:
-            data = FileTransmissionCommand(id=receive_id, action=Action.data, file_id=file_id, data=chunk[:4096])
+        for data in split_for_transfer(chunk, session_id=receive_id, file_id=file_id):
             if has_capacity:
                 if not self.write_ftc_to_child(data, use_pending=False):
                     has_capacity = False
                     pending.append(data)
             else:
                 pending.append(data)
-            chunk = chunk[4096:]
         self.callback_after(func)
 
     def send_status_response(
