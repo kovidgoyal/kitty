@@ -12,7 +12,7 @@ from itertools import count
 from time import monotonic
 from typing import (
     IO, Callable, Deque, Dict, Iterable, Iterator, List, Optional, Sequence,
-    Tuple, Union
+    Set, Tuple, Union
 )
 
 from kitty.cli_stub import TransferCLIOptions
@@ -442,6 +442,7 @@ class Send(Handler):
         self.spinner = Spinner()
         self.progress_drawn = True
         self.done_files: List[File] = []
+        self.done_file_ids: Set[str] = set()
         self.failed_files: List[File] = []
         self.transmit_ok_checked = False
         self.progress_update_call: Optional[TimerHandle] = None
@@ -656,6 +657,7 @@ class Send(Handler):
                 else:
                     self.write(f'{sc} {df.display_name} {styled(df.file_type.name, dim=True, italic=True)}')
                 self.print()
+                self.done_file_ids.add(df.file_id)
             del self.done_files[:]
             is_complete = self.quit_after_write_code is not None
             if is_complete:
@@ -668,7 +670,7 @@ class Send(Handler):
                 self.cmd.repeat('─', self.screen_size.width)
             else:
                 af = self.manager.last_progress_file
-                if af is None:
+                if af is None or af.file_id in self.done_file_ids:
                     self.print(sc, 'Transferring metadata...', end='')
                 else:
                     self.draw_progress_for_current_file(af, spinner_char=sc)
