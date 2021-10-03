@@ -647,7 +647,10 @@ class Send(Handler):
         with without_line_wrap(self.write):
             for df in self.done_files:
                 sc = styled('✔', fg='green') if not df.err_msg else styled('✘', fg='red')
-                self.draw_progress_for_current_file(df, spinner_char=sc, is_complete=True)
+                if df.file_type is FileType.regular:
+                    self.draw_progress_for_current_file(df, spinner_char=sc, is_complete=True)
+                else:
+                    self.write(f'{sc} {df.display_name} {styled(df.file_type.name, dim=True, italic=True)}')
                 self.print()
             del self.done_files[:]
             is_complete = self.quit_after_write_code is not None
@@ -659,7 +662,10 @@ class Send(Handler):
             af = self.manager.active_file
             now = monotonic()
             if af is None:
-                self.cmd.repeat('─', self.screen_size.width)
+                if is_complete:
+                    self.cmd.repeat('─', self.screen_size.width)
+                else:
+                    self.print(sc, end='')
             else:
                 self.draw_progress_for_current_file(af, spinner_char=sc)
             self.print()
