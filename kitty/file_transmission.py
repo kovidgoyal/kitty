@@ -569,6 +569,10 @@ class FileTransmission:
                                 self.callback_after(partial(self.transmit_rsync_signature, fs, ar.id, df.file_id, deque()))
         elif cmd.action in (Action.data, Action.end_data):
             try:
+                before = 0
+                bf = ar.files.get(cmd.file_id)
+                if bf is not None:
+                    before = bf.bytes_written
                 df = ar.add_data(cmd)
                 if df.failed:
                     return
@@ -577,8 +581,9 @@ class FileTransmission:
                         self.send_status_response(
                             code=ErrorCode.OK, request_id=ar.id, file_id=df.file_id, name=df.name, size=df.bytes_written)
                     else:
-                        self.send_status_response(
-                            code=ErrorCode.PROGRESS, request_id=ar.id, file_id=df.file_id, size=df.bytes_written)
+                        if df.bytes_written > before:
+                            self.send_status_response(
+                                code=ErrorCode.PROGRESS, request_id=ar.id, file_id=df.file_id, size=df.bytes_written)
             except TransmissionError as err:
                 if ar.send_errors:
                     self.send_transmission_error(ar.id, err)
