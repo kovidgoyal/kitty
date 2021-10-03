@@ -304,6 +304,7 @@ class SendManager:
         self.progress = ProgressTracker(sum(df.file_size for df in self.files if df.file_size >= 0))
         self.file_done = file_done
         self.file_progress = file_progress
+        self.last_progress_file: Optional[File] = None
 
     @property
     def active_file(self) -> Optional[File]:
@@ -377,6 +378,7 @@ class SendManager:
                     file.signature_loader = LoadSignature()
             self.update_collective_statuses()
         elif ftc.status == 'PROGRESS':
+            self.last_progress_file = file
             change = ftc.size - file.reported_progress
             file.reported_progress = ftc.size
             self.progress.on_file_progress(file, change)
@@ -659,22 +661,25 @@ class Send(Handler):
             else:
                 sc = self.spinner()
             p = self.manager.progress
-            af = self.manager.active_file
             now = monotonic()
-            if af is None:
-                if is_complete:
-                    self.cmd.repeat('─', self.screen_size.width)
-                else:
-                    self.print(sc, end='')
+            if is_complete:
+                self.cmd.repeat('─', self.screen_size.width)
             else:
-                self.draw_progress_for_current_file(af, spinner_char=sc)
+                af = self.manager.last_progress_file
+                if af is None:
+                    self.print(sc, 'Transferring metadata...', end='')
+                else:
+                    self.draw_progress_for_current_file(af, spinner_char=sc)
             self.print()
-            self.render_progress(
-                'Total', spinner_char=sc,
-                bytes_so_far=p.total_reported_progress, total_bytes=p.total_bytes_to_transfer,
-                secs_so_far=now - p.started_at, is_complete=is_complete,
-                bytes_per_sec=safe_divide(p.transfered_stats_amt, p.transfered_stats_interval)
-            )
+            if p.total_reported_progress > 0:
+                self.render_progress(
+                    'Total', spinner_char=sc,
+                    bytes_so_far=p.total_reported_progress, total_bytes=p.total_bytes_to_transfer,
+                    secs_so_far=now - p.started_at, is_complete=is_complete,
+                    bytes_per_sec=safe_divide(p.transfered_stats_amt, p.transfered_stats_interval)
+                )
+            else:
+                self.print('File data transfer has not yet started', end='')
             self.print()
         self.schedule_progress_update(self.spinner.interval)
         self.progress_drawn = True
