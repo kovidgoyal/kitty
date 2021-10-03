@@ -580,10 +580,9 @@ class FileTransmission:
                     if df.closed:
                         self.send_status_response(
                             code=ErrorCode.OK, request_id=ar.id, file_id=df.file_id, name=df.name, size=df.bytes_written)
-                    else:
-                        if df.bytes_written > before:
-                            self.send_status_response(
-                                code=ErrorCode.PROGRESS, request_id=ar.id, file_id=df.file_id, size=df.bytes_written)
+                    elif df.bytes_written > before:
+                        self.send_status_response(
+                            code=ErrorCode.PROGRESS, request_id=ar.id, file_id=df.file_id, size=df.bytes_written)
             except TransmissionError as err:
                 if ar.send_errors:
                     self.send_transmission_error(ar.id, err)
