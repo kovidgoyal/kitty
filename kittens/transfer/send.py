@@ -296,8 +296,7 @@ class SendManager:
         self.fid_map = {f.file_id: f for f in self.files}
         self.request_id = request_id
         self.state = SendState.waiting_for_permission
-        self.all_acknowledged = False
-        self.all_started = False
+        self.all_acknowledged = self.all_started = self.has_transmitting = self.has_rsync = False
         self.active_idx: Optional[int] = None
         self.current_chunk_uncompressed_sz: Optional[int] = None
         self.prefix = f'\x1b]{FILE_TRANSFER_CODE};id={self.request_id};'
@@ -329,15 +328,21 @@ class SendManager:
 
     def update_collective_statuses(self) -> None:
         found_not_started = found_not_done = False
+        has_rsync = has_transmitting = False
         for f in self.files:
             if f.state is not FileState.acknowledged:
                 found_not_done = True
             if f.state is FileState.waiting_for_start:
                 found_not_started = True
-            if found_not_started and found_not_done:
-                break
+            elif f.state is FileState.transmitting:
+                has_transmitting = True
+            if f.ttype is TransmissionType.rsync:
+                has_rsync = True
+
         self.all_acknowledged = not found_not_done
         self.all_started = not found_not_started
+        self.has_rsync = has_rsync
+        self.has_transmitting = has_transmitting
 
     def start_transfer(self) -> str:
         return FileTransmissionCommand(action=Action.send, bypass=self.bypass).serialize()
@@ -671,7 +676,10 @@ class Send(Handler):
             else:
                 af = self.manager.last_progress_file
                 if af is None or af.file_id in self.done_file_ids:
-                    self.print(sc, 'Transferring metadata...', end='')
+                    if self.manager.has_rsync and not self.manager.has_transmitting:
+                        self.print(sc, 'Transferring rsync signatures...', end='')
+                    else:
+                        self.print(sc, 'Transferring metadata...', end='')
                 else:
                     self.draw_progress_for_current_file(af, spinner_char=sc)
             self.print()
