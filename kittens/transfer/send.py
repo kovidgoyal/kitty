@@ -252,6 +252,7 @@ class ProgressTracker:
         self.transfered_stats_amt = 0
         self.transfered_stats_interval = 0.
         self.started_at = 0.
+        self.signature_bytes = 0
         self.total_reported_progress = 0
 
     def change_active_file(self, nf: File) -> None:
@@ -414,6 +415,7 @@ class SendManager:
         sl = file.signature_loader
         assert sl is not None
         sl.add_chunk(ftc.data)
+        self.progress.signature_bytes += len(ftc.data)
         if ftc.action is Action.end_data:
             sl.commit()
             file.start_delta_calculation()
@@ -718,6 +720,16 @@ def send_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
     loop = Loop()
     handler = Send(cli_opts, files)
     loop.loop(handler)
+    if handler.manager.has_rsync:
+        tsf = 0
+        p = handler.manager.progress
+        for f in files:
+            if f.ttype is TransmissionType.rsync:
+                tsf += f.file_size
+        print(
+            f'Rsync stats: Delta size: {human_size(p.total_transferred)} Signature size: {human_size(p.signature_bytes)}',
+            f'Total rsynced files size: {human_size(tsf)}'
+        )
     if handler.failed_files:
         print(f'Transfer of {len(handler.failed_files)} out of {len(handler.manager.files)} files failed')
         for ff in handler.failed_files:
