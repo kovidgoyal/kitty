@@ -78,9 +78,17 @@ class TestFileTransmission(BaseTest):
         self.tdir = os.path.realpath(tempfile.mkdtemp())
         self.responses = []
 
+    def cr(self, a, b):
+        def f(r):
+            r.pop('size', None)
+            return r
+        a = tuple(f(r) for r in a if r.get('status') != 'PROGRESS')
+        b = tuple(f(r) for r in b if r.get('status') != 'PROGRESS')
+        self.ae(a, b)
+
     def assertResponses(self, ft, **kw):
         self.responses.append(response(**kw))
-        self.ae(ft.test_responses, self.responses)
+        self.cr(ft.test_responses, self.responses)
 
     def assertPathEqual(self, a, b):
         a = os.path.abspath(os.path.realpath(a))
@@ -129,7 +137,7 @@ class TestFileTransmission(BaseTest):
         for quiet in (0, 1, 2):
             ft = FileTransmission(allow=False)
             ft.handle_serialized_command(serialized_cmd(action='send', id='x', quiet=quiet))
-            self.ae(ft.test_responses, [] if quiet == 2 else [response(id='x', status='EPERM:User refused the transfer')])
+            self.cr(ft.test_responses, [] if quiet == 2 else [response(id='x', status='EPERM:User refused the transfer')])
             self.assertFalse(ft.active_receives)
         # simple single file send
         for quiet in (0, 1, 2):
@@ -137,15 +145,15 @@ class TestFileTransmission(BaseTest):
             dest = os.path.join(self.tdir, '1.bin')
             ft.handle_serialized_command(serialized_cmd(action='send', quiet=quiet))
             self.assertIn('test', ft.active_receives)
-            self.ae(ft.test_responses, [] if quiet else [response(status='OK')])
+            self.cr(ft.test_responses, [] if quiet else [response(status='OK')])
             ft.handle_serialized_command(serialized_cmd(action='file', name=dest))
             self.assertPathEqual(ft.active_file('test').name, dest)
             self.assertIsNone(ft.active_file('test').actual_file)
-            self.ae(ft.test_responses, [] if quiet else [response(status='OK'), response(status='STARTED', name=dest)])
+            self.cr(ft.test_responses, [] if quiet else [response(status='OK'), response(status='STARTED', name=dest)])
             ft.handle_serialized_command(serialized_cmd(action='data', data='abcd'))
             self.assertPathEqual(ft.active_file('test').name, dest)
             ft.handle_serialized_command(serialized_cmd(action='end_data', data='123'))
-            self.ae(ft.test_responses, [] if quiet else [response(status='OK'), response(status='STARTED', name=dest), response(status='OK', name=dest)])
+            self.cr(ft.test_responses, [] if quiet else [response(status='OK'), response(status='STARTED', name=dest), response(status='OK', name=dest)])
             self.assertTrue(ft.active_receives)
             ft.handle_serialized_command(serialized_cmd(action='finish'))
             self.assertFalse(ft.active_receives)
@@ -155,19 +163,19 @@ class TestFileTransmission(BaseTest):
         ft = FileTransmission()
         dest = os.path.join(self.tdir, '2.bin')
         ft.handle_serialized_command(serialized_cmd(action='send'))
-        self.ae(ft.test_responses, [response(status='OK')])
+        self.cr(ft.test_responses, [response(status='OK')])
         ft.handle_serialized_command(serialized_cmd(action='file', name=dest))
         self.assertPathEqual(ft.active_file('test').name, dest)
         ft.handle_serialized_command(serialized_cmd(action='data', data='abcd'))
         self.assertTrue(os.path.exists(dest))
         ft.handle_serialized_command(serialized_cmd(action='cancel'))
-        self.ae(ft.test_responses, [response(status='OK'), response(status='STARTED', name=dest), response(status='CANCELED')])
+        self.cr(ft.test_responses, [response(status='OK'), response(status='STARTED', name=dest), response(status='CANCELED')])
         self.assertFalse(ft.active_receives)
         # compress with zlib
         ft = FileTransmission()
         dest = os.path.join(self.tdir, '3.bin')
         ft.handle_serialized_command(serialized_cmd(action='send'))
-        self.ae(ft.test_responses, [response(status='OK')])
+        self.cr(ft.test_responses, [response(status='OK')])
         ft.handle_serialized_command(serialized_cmd(action='file', name=dest, compression='zlib'))
         self.assertPathEqual(ft.active_file('test').name, dest)
         odata = b'abcd' * 1024 + b'xyz'
@@ -175,7 +183,7 @@ class TestFileTransmission(BaseTest):
         ft.handle_serialized_command(serialized_cmd(action='data', data=c.compress(odata)))
         self.assertTrue(os.path.exists(dest))
         ft.handle_serialized_command(serialized_cmd(action='end_data', data=c.flush()))
-        self.ae(ft.test_responses, [response(status='OK'), response(status='STARTED', name=dest), response(status='OK', name=dest)])
+        self.cr(ft.test_responses, [response(status='OK'), response(status='STARTED', name=dest), response(status='OK', name=dest)])
         ft.handle_serialized_command(serialized_cmd(action='finish'))
         with open(dest, 'rb') as f:
             self.ae(f.read(), odata)
