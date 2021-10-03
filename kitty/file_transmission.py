@@ -15,7 +15,7 @@ from functools import partial
 from gettext import gettext as _
 from time import monotonic
 from typing import (
-    IO, Any, Callable, Deque, Dict, Iterator, List, Optional, Union
+    IO, Any, Callable, Deque, Dict, Iterator, List, Optional, Union, cast
 )
 
 from kittens.transfer.librsync import PatchFile, signature_of_file
@@ -105,7 +105,7 @@ class TransmissionType(NameReprEnum):
     rsync = auto()
 
 
-ErrorCode = Enum('ErrorCode', 'OK STARTED CANCELED EINVAL EPERM EISDIR')
+ErrorCode = Enum('ErrorCode', 'OK STARTED CANCELED PROGRESS EINVAL EPERM EISDIR')
 
 
 class TransmissionError(Exception):
@@ -290,6 +290,7 @@ class DestFile:
         self.closed = self.ftype is FileType.directory
         self.actual_file: Union[PatchFile, IO[bytes], None] = None
         self.failed = False
+        self.bytes_written = 0
 
     def __repr__(self) -> str:
         return f'DestFile(name={self.name}, file_id={self.file_id}, actual_file={self.actual_file})'
@@ -335,6 +336,7 @@ class DestFile:
             raise TransmissionError(file_id=self.file_id, msg='Cannot write to a closed file')
         if self.ftype in (FileType.symlink, FileType.link):
             self.link_target += data
+            self.bytes_written += len(data)
             if is_last:
                 lt = self.link_target.decode('utf-8', 'replace')
                 base = self.make_parent_dirs()
@@ -374,7 +376,9 @@ class DestFile:
                     self.unlink_existing_if_needed()
                     flags = os.O_RDWR | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0)
                     self.actual_file = open(os.open(self.name, flags, self.permissions), mode='r+b', closefd=True)
-            self.actual_file.write(data)  # type: ignore
+            af = cast(Union[IO[bytes], PatchFile], self.actual_file)
+            af.write(data)
+            self.bytes_written = af.tell()
             if is_last:
                 self.close()
                 self.apply_metadata()
@@ -567,8 +571,13 @@ class FileTransmission:
                 df = ar.add_data(cmd)
                 if df.failed:
                     return
-                if df.closed and ar.send_acknowledgements:
-                    self.send_status_response(code=ErrorCode.OK, request_id=ar.id, file_id=df.file_id, name=df.name)
+                if ar.send_acknowledgements:
+                    if df.closed:
+                        self.send_status_response(
+                            code=ErrorCode.OK, request_id=ar.id, file_id=df.file_id, name=df.name, size=df.bytes_written)
+                    else:
+                        self.send_status_response(
+                            code=ErrorCode.PROGRESS, request_id=ar.id, file_id=df.file_id, size=df.bytes_written)
             except TransmissionError as err:
                 if ar.send_errors:
                     self.send_transmission_error(ar.id, err)
