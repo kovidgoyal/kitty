@@ -275,7 +275,8 @@ class ProgressTracker:
         self.transfered_stats_amt = sum(t.amt for t in self.transfers)
 
     def on_file_progress(self, af: File, delta: int) -> None:
-        self.total_reported_progress += delta
+        if delta > 0:
+            self.total_reported_progress += delta
 
     def on_file_done(self, af: File) -> None:
         af.done_at = monotonic()
@@ -388,10 +389,11 @@ class SendManager:
                 file.remote_final_path = ftc.name
             file.state = FileState.acknowledged
             if ftc.status == 'OK':
-                change = ftc.size - file.reported_progress
-                file.reported_progress = ftc.size
-                self.progress.on_file_progress(file, change)
-                self.file_progress(file, change)
+                if ftc.size > 0:
+                    change = ftc.size - file.reported_progress
+                    file.reported_progress = ftc.size
+                    self.progress.on_file_progress(file, change)
+                    self.file_progress(file, change)
             else:
                 file.err_msg = ftc.status
             self.progress.on_file_done(file)
