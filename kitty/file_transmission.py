@@ -367,7 +367,7 @@ class DestFile:
                 self.close()
                 self.apply_metadata(is_symlink=True)
         elif self.ftype is FileType.regular:
-            data = self.decompressor(data, is_last=is_last)
+            decompressed = self.decompressor(data, is_last=is_last)
             if self.actual_file is None:
                 self.make_parent_dirs()
                 if self.ttype is TransmissionType.rsync:
@@ -377,8 +377,9 @@ class DestFile:
                     flags = os.O_RDWR | os.O_CREAT | os.O_TRUNC | getattr(os, 'O_CLOEXEC', 0) | getattr(os, 'O_BINARY', 0)
                     self.actual_file = open(os.open(self.name, flags, self.permissions), mode='r+b', closefd=True)
             af = cast(Union[IO[bytes], PatchFile], self.actual_file)
-            af.write(data)
-            self.bytes_written = af.tell()
+            if decompressed or is_last:
+                af.write(decompressed)
+                self.bytes_written = af.tell()
             if is_last:
                 self.close()
                 self.apply_metadata()
