@@ -120,6 +120,11 @@ class PatchFile(StreamingJob):
         job = begin_patch(self.read_from_src)
         super().__init__(job, output_buf_size=4 * IO_BUFFER_SIZE)
 
+    def tell(self) -> int:
+        if self.dest_file.closed:
+            return os.path.getsize(self.src_file.name if self.overwrite_src else self.dest_file.name)
+        return self.dest_file.tell()
+
     def read_from_src(self, b: memoryview, pos: int) -> int:
         self.src_file.seek(pos)
         return self.src_file.readinto(b)  # type: ignore
