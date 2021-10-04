@@ -10,6 +10,7 @@ from typing import List, Tuple
 from kitty.cli import parse_args
 from kitty.cli_stub import TransferCLIOptions
 
+from .receive import receive_main
 from .send import send_main
 
 
