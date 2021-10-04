@@ -1,4 +1,4 @@
-// unicode data, built from the unicode standard on: 2021-07-19
+// unicode data, built from the unicode standard on: 2021-10-04
 // see gen-wcwidth.py
 #pragma once
 #include "data-types.h"
@@ -385,6 +385,8 @@ is_symbol(char_type code) {
 			return true;
 		case 0x7fe ... 0x7ff:
 			return true;
+		case 0x888:
+			return true;
 		case 0x9f2 ... 0x9f3:
 			return true;
 		case 0x9fa ... 0x9fb:
@@ -461,7 +463,7 @@ is_symbol(char_type code) {
 			return true;
 		case 0x208a ... 0x208c:
 			return true;
-		case 0x20a0 ... 0x20bf:
+		case 0x20a0 ... 0x20c0:
 			return true;
 		case 0x2100 ... 0x2101:
 			return true;
@@ -585,9 +587,13 @@ is_symbol(char_type code) {
 			return true;
 		case 0xfb29:
 			return true;
-		case 0xfbb2 ... 0xfbc1:
+		case 0xfbb2 ... 0xfbc2:
 			return true;
-		case 0xfdfc ... 0xfdfd:
+		case 0xfd40 ... 0xfd4f:
+			return true;
+		case 0xfdcf:
+			return true;
+		case 0xfdfc ... 0xfdff:
 			return true;
 		case 0xfe62:
 			return true;
@@ -641,6 +647,8 @@ is_symbol(char_type code) {
 			return true;
 		case 0x1bc9c:
 			return true;
+		case 0x1cf50 ... 0x1cfc3:
+			return true;
 		case 0x1d000 ... 0x1d0f5:
 			return true;
 		case 0x1d100 ... 0x1d126:
@@ -653,7 +661,7 @@ is_symbol(char_type code) {
 			return true;
 		case 0x1d18c ... 0x1d1a9:
 			return true;
-		case 0x1d1ae ... 0x1d1e8:
+		case 0x1d1ae ... 0x1d1ea:
 			return true;
 		case 0x1d200 ... 0x1d241:
 			return true;
@@ -729,7 +737,7 @@ is_symbol(char_type code) {
 			return true;
 		case 0x1f300 ... 0x1f6d7:
 			return true;
-		case 0x1f6e0 ... 0x1f6ec:
+		case 0x1f6dd ... 0x1f6ec:
 			return true;
 		case 0x1f6f0 ... 0x1f6fc:
 			return true;
@@ -738,6 +746,8 @@ is_symbol(char_type code) {
 		case 0x1f780 ... 0x1f7d8:
 			return true;
 		case 0x1f7e0 ... 0x1f7eb:
+			return true;
+		case 0x1f7f0:
 			return true;
 		case 0x1f800 ... 0x1f80b:
 			return true;
@@ -751,27 +761,27 @@ is_symbol(char_type code) {
 			return true;
 		case 0x1f8b0 ... 0x1f8b1:
 			return true;
-		case 0x1f900 ... 0x1f978:
-			return true;
-		case 0x1f97a ... 0x1f9cb:
-			return true;
-		case 0x1f9cd ... 0x1fa53:
+		case 0x1f900 ... 0x1fa53:
 			return true;
 		case 0x1fa60 ... 0x1fa6d:
 			return true;
 		case 0x1fa70 ... 0x1fa74:
 			return true;
-		case 0x1fa78 ... 0x1fa7a:
+		case 0x1fa78 ... 0x1fa7c:
 			return true;
 		case 0x1fa80 ... 0x1fa86:
 			return true;
-		case 0x1fa90 ... 0x1faa8:
+		case 0x1fa90 ... 0x1faac:
 			return true;
-		case 0x1fab0 ... 0x1fab6:
+		case 0x1fab0 ... 0x1faba:
 			return true;
-		case 0x1fac0 ... 0x1fac2:
+		case 0x1fac0 ... 0x1fac5:
 			return true;
-		case 0x1fad0 ... 0x1fad6:
+		case 0x1fad0 ... 0x1fad9:
+			return true;
+		case 0x1fae0 ... 0x1fae7:
+			return true;
+		case 0x1faf0 ... 0x1faf6:
 			return true;
 		case 0x1fb00 ... 0x1fb92:
 			return true;

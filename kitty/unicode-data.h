@@ -1,8 +1,8 @@
 #pragma once
 #include "data-types.h"
 #include "state.h"
-#define VS15 1285
-#define VS16 1286
+#define VS15 1320
+#define VS16 1321
 
 bool is_combining_char(char_type ch);
 bool is_ignored_char(char_type ch);
