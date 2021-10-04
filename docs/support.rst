@@ -1,5 +1,5 @@
-Support kitty development
-===========================
+Support kitty development ❤️
+==============================
 
 My goal with |kitty| is to move the stagnant terminal ecosystem forward.  To that
 end kitty has many foundational features, such as: :doc:`image support
