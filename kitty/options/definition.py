@@ -2773,6 +2773,11 @@ assigned in the default configuration::
 
     map kitty_mod+space no_op
 
+If you would like kitty to completely ignore a key event, not even sending it to
+the program running in the terminal, map it to :code:`discard_event`::
+
+    map kitty_mod+f1 discard_event
+
 You can combine multiple actions to be triggered by a single shortcut, using the
 syntax below::
 
