@@ -86,7 +86,8 @@ def main(args: List[str]) -> None:
         raise SystemExit('Usage: kitty +kitten transfer file_or_directory ...')
     if cli_opts.direction == 'send':
         send_main(cli_opts, items)
-        return
+    else:
+        receive_main(cli_opts, items)
 
 
 if __name__ == '__main__':
