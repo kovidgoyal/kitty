@@ -3,10 +3,16 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
+import re
+import socket
 import sys
+import termios
+import time
 from functools import partial
 from pprint import pformat
-from typing import Callable, Dict, Generator, Iterable, Set, Tuple
+from typing import (
+    IO, Callable, Dict, Generator, Iterable, Optional, Set, Tuple
+)
 
 from kittens.tui.operations import colored, styled
 
@@ -15,6 +21,7 @@ from .conf.utils import KeyAction
 from .constants import (
     extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
 )
+from .fast_data_types import num_users
 from .options.types import Options as KittyOpts, defaults
 from .options.utils import MouseMap
 from .rgb import Color, color_as_sharp
@@ -152,84 +159,58 @@ def compare_opts(opts: KittyOpts, print: Callable) -> None:
         print('\n\t'.join(sorted(colors)))
 
 
-is_linux = sys.platform in ('linux', 'linux2')
+class IssueData:
 
-
-if is_linux:
-    import socket
-    import time
-    import re
-    import termios
-    from .fast_data_types import num_users
-    from typing import IO
-
-
-    class IssueData:
-        uname: os.uname_result
-        hostname: str
-        formatted_date: str
-        formatted_time: str
-        tty_name: str
-        baud_rate: int
-        num_users: int
-        def __init__(self):
-            self.uname = os.uname()
-            self.hostname = socket.gethostname()
-            _time = time.localtime()
-            self.formatted_time = time.strftime('%a %b %d %Y', _time)
-            self.formatted_date = time.strftime('%H:%M:%S', _time)
-            try:
-                self.tty_name = format_tty_name(os.ttyname(sys.stdin.fileno()))
-            except OSError:
-                self.tty_name = '(none)'
-            self.baud_rate = termios.tcgetattr(sys.stdin.fileno())[5]
-            self.num_users = num_users()
-
-
-    # https://kernel.googlesource.com/pub/scm/utils/util-linux/util-linux/+/v2.7.1/login-utils/agetty.c#790
-    issue_mappings = {
-        # ctx = IssueData
-        's': lambda ctx: ctx.uname.sysname,
-        'n': lambda ctx: ctx.uname.nodename,
-        'r': lambda ctx: ctx.uname.release,
-        'v': lambda ctx: ctx.uname.version,
-        'm': lambda ctx: ctx.uname.machine,
-        'o': lambda ctx: ctx.hostname,
-        'd': lambda ctx: ctx.formatted_date,
-        't': lambda ctx: ctx.formatted_time,
-        'l': lambda ctx: ctx.tty_name,
-        'b': lambda ctx: ctx.baud_rate,
-        'u': lambda ctx: ctx.num_users,
-        'U': lambda ctx: str(ctx.num_users) + ' user' + ('' if ctx.num_users == 1 else 's'),
-    }
-
-
-    def translate_issue_char(ctx: IssueData, char: str) -> str:
-        assert len(char) == 1
+    def __init__(self) -> None:
+        self.uname = os.uname()
+        self.s, self.n, self.r, self.v, self.m = self.uname
+        self.hostname = self.o = socket.gethostname()
+        _time = time.localtime()
+        self.formatted_time = self.d = time.strftime('%a %b %d %Y', _time)
+        self.formatted_date = self.t = time.strftime('%H:%M:%S', _time)
         try:
-            return issue_mappings[char](ctx)
-        except KeyError:
-            return char
+            self.tty_name = format_tty_name(os.ttyname(sys.stdin.fileno()))
+        except OSError:
+            self.tty_name = '(none)'
+        self.l = self.tty_name  # noqa
+        self.baud_rate = termios.tcgetattr(sys.stdin.fileno())[5]
+        self.b = str(self.baud_rate)
+        try:
+            self.num_users = num_users()
+        except RuntimeError:
+            self.num_users = -1
+        self.u = str(self.num_users)
+        self.U = self.u + ' user' + ('' if self.num_users == 1 else 's')
 
 
-    def format_tty_name(raw: str) -> str:
-        return re.sub(r'^/dev/([^/]+)/([^/]+)$', r'\1\2', raw)
+def translate_issue_char(ctx: IssueData, char: str) -> str:
+    try:
+        return str(getattr(ctx, char)) if len(char) == 1 else char
+    except AttributeError:
+        return char
 
 
-    def print_issue(issue_file: IO[str], print_fn) -> None:
-        last_char = None
-        issue_data = IssueData()
-        while this_char := issue_file.read(1):
-            if last_char == '\\':
-                print_fn(translate_issue_char(issue_data, this_char), end='')
-            elif last_char is not None:
-                print_fn(last_char, end='')
-            # `\\\a` should not match the last two slashes,
-            # so make it look like it was `\?\a` where `?`
-            # is some character other than `\`.
-            last_char = None if last_char == '\\' else this_char
-        if last_char is not None:
+def format_tty_name(raw: str) -> str:
+    return re.sub(r'^/dev/([^/]+)/([^/]+)$', r'\1\2', raw)
+
+
+def print_issue(issue_file: IO[str], print_fn: Callable) -> None:
+    last_char: Optional[str] = None
+    issue_data = IssueData()
+    while True:
+        this_char = issue_file.read(1)
+        if not this_char:
+            break
+        if last_char == '\\':
+            print_fn(translate_issue_char(issue_data, this_char), end='')
+        elif last_char is not None:
             print_fn(last_char, end='')
+        # `\\\a` should not match the last two slashes,
+        # so make it look like it was `\?\a` where `?`
+        # is some character other than `\`.
+        last_char = None if last_char == '\\' else this_char
+    if last_char is not None:
+        print_fn(last_char, end='')
 
 
 def debug_config(opts: KittyOpts) -> str:
@@ -241,7 +222,7 @@ def debug_config(opts: KittyOpts) -> str:
     if is_macos:
         import subprocess
         p(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
-    if is_linux and os.path.exists('/etc/issue'):
+    if os.path.exists('/etc/issue'):
         with open('/etc/issue', encoding='utf-8', errors='replace') as f:
             print_issue(f, p)
     if os.path.exists('/etc/lsb-release'):
