@@ -1238,3 +1238,6 @@ def get_os_window_size(os_window_id: int) -> Optional[OSWindowSize]:
 
 def get_all_processes() -> Tuple[int, ...]:
     pass
+
+def num_users() -> int:
+    pass
