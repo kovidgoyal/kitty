@@ -1,6 +1,5 @@
-
 #include "data-types.h"
-#ifdef __unix__
+#if __has_include(<utmpx.h>)
 #include <utmpx.h>
 
 static PyObject*
