@@ -11,7 +11,7 @@ import time
 from functools import partial
 from pprint import pformat
 from typing import (
-    IO, Callable, Dict, Generator, Iterable, Optional, Set, Tuple
+    IO, Callable, Dict, Generator, Iterable, Iterator, Optional, Set, Tuple
 )
 
 from kittens.tui.operations import colored, styled
@@ -182,35 +182,32 @@ class IssueData:
         self.u = str(self.num_users)
         self.U = self.u + ' user' + ('' if self.num_users == 1 else 's')
 
+    def translate_issue_char(self, char: str) -> str:
+        try:
+            return str(getattr(self, char)) if len(char) == 1 else char
+        except AttributeError:
+            return char
 
-def translate_issue_char(ctx: IssueData, char: str) -> str:
-    try:
-        return str(getattr(ctx, char)) if len(char) == 1 else char
-    except AttributeError:
-        return char
+    def parse_issue_file(self, issue_file: IO[str]) -> Iterator[str]:
+        last_char: Optional[str] = None
+        while True:
+            this_char = issue_file.read(1)
+            if not this_char:
+                break
+            if last_char == '\\':
+                yield self.translate_issue_char(this_char)
+            elif last_char is not None:
+                yield last_char
+            # `\\\a` should not match the last two slashes,
+            # so make it look like it was `\?\a` where `?`
+            # is some character other than `\`.
+            last_char = None if last_char == '\\' else this_char
+        if last_char is not None:
+            yield last_char
 
 
 def format_tty_name(raw: str) -> str:
     return re.sub(r'^/dev/([^/]+)/([^/]+)$', r'\1\2', raw)
-
-
-def print_issue(issue_file: IO[str], print_fn: Callable) -> None:
-    last_char: Optional[str] = None
-    issue_data = IssueData()
-    while True:
-        this_char = issue_file.read(1)
-        if not this_char:
-            break
-        if last_char == '\\':
-            print_fn(translate_issue_char(issue_data, this_char), end='')
-        elif last_char is not None:
-            print_fn(last_char, end='')
-        # `\\\a` should not match the last two slashes,
-        # so make it look like it was `\?\a` where `?`
-        # is some character other than `\`.
-        last_char = None if last_char == '\\' else this_char
-    if last_char is not None:
-        print_fn(last_char, end='')
 
 
 def debug_config(opts: KittyOpts) -> str:
@@ -224,7 +221,7 @@ def debug_config(opts: KittyOpts) -> str:
         p(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
     if os.path.exists('/etc/issue'):
         with open('/etc/issue', encoding='utf-8', errors='replace') as f:
-            print_issue(f, p)
+            p(end=''.join(IssueData().parse_issue_file(f)))
     if os.path.exists('/etc/lsb-release'):
         with open('/etc/lsb-release', encoding='utf-8', errors='replace') as f:
             p(f.read().strip())
