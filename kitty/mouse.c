@@ -662,7 +662,7 @@ mouse_selection(Window *w, int code, int button) {
 
 
 void
-mouse_event(int button, int modifiers, int action) {
+mouse_event(const int button, int modifiers, int action) {
     MouseShape old_cursor = mouse_cursor_shape;
     bool in_tab_bar;
     unsigned int window_idx = 0;
@@ -672,12 +672,11 @@ mouse_event(int button, int modifiers, int action) {
         if (button == -1) {  // drag move
             w = window_for_id(global_state.active_drag_in_window);
             if (w) {
-                button = currently_pressed_button();
-                if (button == global_state.active_drag_button) {
+                if (currently_pressed_button() == global_state.active_drag_button) {
                     clamp_to_window = true;
                     Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
                     for (window_idx = 0; window_idx < t->num_windows && t->windows[window_idx].id != w->id; window_idx++);
-                    handle_move_event(w, button, modifiers, window_idx);
+                    handle_move_event(w, currently_pressed_button(), modifiers, window_idx);
                     clamp_to_window = false;
                     debug("handled as drag move\n");
                     return;
@@ -698,8 +697,7 @@ mouse_event(int button, int modifiers, int action) {
         if (button == -1) {  // drag move
             w = window_for_id(global_state.tracked_drag_in_window);
             if (w) {
-                button = currently_pressed_button();
-                if (button == GLFW_MOUSE_BUTTON_LEFT) {
+                if (currently_pressed_button() == GLFW_MOUSE_BUTTON_LEFT) {
                     if (w->render_data.screen->modes.mouse_tracking_mode >= MOTION_MODE && w->render_data.screen->modes.mouse_tracking_protocol == SGR_PIXEL_PROTOCOL) {
                         clamp_to_window = true;
                         Tab *t = global_state.callback_os_window->tabs + global_state.callback_os_window->active_tab;
