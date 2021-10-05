@@ -152,6 +152,86 @@ def compare_opts(opts: KittyOpts, print: Callable) -> None:
         print('\n\t'.join(sorted(colors)))
 
 
+is_linux = sys.platform in ('linux', 'linux2')
+
+
+if is_linux:
+    import socket
+    import time
+    import re
+    import termios
+    from .fast_data_types import num_users
+    from typing import IO
+
+
+    class IssueData:
+        uname: os.uname_result
+        hostname: str
+        formatted_date: str
+        formatted_time: str
+        tty_name: str
+        baud_rate: int
+        num_users: int
+        def __init__(self):
+            self.uname = os.uname()
+            self.hostname = socket.gethostname()
+            _time = time.localtime()
+            self.formatted_time = time.strftime('%a %b %d %Y', _time)
+            self.formatted_date = time.strftime('%H:%M:%S', _time)
+            try:
+                self.tty_name = format_tty_name(os.ttyname(sys.stdin.fileno()))
+            except OSError:
+                self.tty_name = '(none)'
+            self.baud_rate = termios.tcgetattr(sys.stdin.fileno())[5]
+            self.num_users = num_users()
+
+
+    # https://kernel.googlesource.com/pub/scm/utils/util-linux/util-linux/+/v2.7.1/login-utils/agetty.c#790
+    issue_mappings = {
+        # ctx = IssueData
+        's': lambda ctx: ctx.uname.sysname,
+        'n': lambda ctx: ctx.uname.nodename,
+        'r': lambda ctx: ctx.uname.release,
+        'v': lambda ctx: ctx.uname.version,
+        'm': lambda ctx: ctx.uname.machine,
+        'o': lambda ctx: ctx.hostname,
+        'd': lambda ctx: ctx.formatted_date,
+        't': lambda ctx: ctx.formatted_time,
+        'l': lambda ctx: ctx.tty_name,
+        'b': lambda ctx: ctx.baud_rate,
+        'u': lambda ctx: ctx.num_users,
+        'U': lambda ctx: str(ctx.num_users) + ' user' + ('' if ctx.num_users == 1 else 's'),
+    }
+
+
+    def translate_issue_char(ctx: IssueData, char: str) -> str:
+        assert len(char) == 1
+        try:
+            return issue_mappings[char](ctx)
+        except KeyError:
+            return char
+
+
+    def format_tty_name(raw: str) -> str:
+        return re.sub(r'^/dev/([^/]+)/([^/]+)$', r'\1\2', raw)
+
+
+    def print_issue(issue_file: IO[str], print_fn) -> None:
+        last_char = None
+        issue_data = IssueData()
+        while this_char := issue_file.read(1):
+            if last_char == '\\':
+                print_fn(translate_issue_char(issue_data, this_char), end='')
+            elif last_char is not None:
+                print_fn(last_char, end='')
+            # `\\\a` should not match the last two slashes,
+            # so make it look like it was `\?\a` where `?`
+            # is some character other than `\`.
+            last_char = None if last_char == '\\' else this_char
+        if last_char is not None:
+            print_fn(last_char, end='')
+
+
 def debug_config(opts: KittyOpts) -> str:
     from io import StringIO
     out = StringIO()
@@ -161,9 +241,9 @@ def debug_config(opts: KittyOpts) -> str:
     if is_macos:
         import subprocess
         p(' '.join(subprocess.check_output(['sw_vers']).decode('utf-8').splitlines()).strip())
-    if os.path.exists('/etc/issue'):
+    if is_linux and os.path.exists('/etc/issue'):
         with open('/etc/issue', encoding='utf-8', errors='replace') as f:
-            p(f.read().strip())
+            print_issue(f, p)
     if os.path.exists('/etc/lsb-release'):
         with open('/etc/lsb-release', encoding='utf-8', errors='replace') as f:
             p(f.read().strip())
