@@ -70,6 +70,7 @@ class Options(argparse.Namespace):
     libdir_name: str = 'lib'
     extra_logging: List[str] = []
     extra_include_dirs: List[str] = []
+    extra_library_dirs: List[str] = []
     link_time_optimization: bool = 'KITTY_NO_LTO' not in os.environ
     update_check_interval: float = 24.0
     shell_integration: str = 'enabled'
@@ -270,7 +271,7 @@ def set_arches(flags: List[str], arches: Iterable[str] = ('x86_64', 'arm64')) ->
         flags.extend(('-arch', arch))
 
 
-def detect_librsync(cc: str, cflags: List[str], ldflags: List[str]) -> None:
+def detect_librsync(cc: str, cflags: List[str], ldflags: List[str]) -> str:
     if not test_compile(
             cc, *cflags, libraries=('rsync',), ldflags=ldflags, show_stderr=True,
             src='#include <librsync.h>\nint main(void) { rs_strerror(0); return 0; }'):
@@ -284,7 +285,8 @@ int main(void) {
     rs_sig_args(1024, &magic_number, &block_len, &strong_len);
     return 0;
 }'''):
-        cflags.append('-DKITTY_HAS_RS_SIG_ARGS')
+        return '-DKITTY_HAS_RS_SIG_ARGS'
+    return ''
 
 
 def init_env(
@@ -299,7 +301,8 @@ def init_env(
     extra_logging: Iterable[str] = (),
     extra_include_dirs: Iterable[str] = (),
     ignore_compiler_warnings: bool = False,
-    build_universal_binary: bool = False
+    build_universal_binary: bool = False,
+    extra_library_dirs: Iterable[str] = ()
 ) -> Env:
     native_optimizations = native_optimizations and not sanitize and not debug
     if native_optimizations and is_macos and is_arm:
@@ -349,7 +352,6 @@ def init_env(
     cppflags += shlex.split(os.environ.get('CPPFLAGS', ''))
     cflags += shlex.split(os.environ.get('CFLAGS', ''))
     ldflags += shlex.split(os.environ.get('LDFLAGS', ''))
-    detect_librsync(cc, cflags, ldflags)
     if not debug and not sanitize and not is_openbsd and link_time_optimization:
         # See https://github.com/google/sanitizers/issues/647
         cflags.append('-flto')
@@ -384,11 +386,19 @@ def init_env(
     for path in extra_include_dirs:
         cflags.append(f'-I{path}')
 
+    ldpaths = []
+    for path in extra_library_dirs:
+        ldpaths.append(f'-L{path}')
+
+    rs_cflag = detect_librsync(cc, cflags, ldflags + ldpaths)
+    if rs_cflag:
+        cflags.append(rs_cflag)
+
     if build_universal_binary:
         set_arches(cflags)
         set_arches(ldflags)
 
-    return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver)
+    return Env(cc, cppflags, cflags, ldflags, library_paths, ccver=ccver, ldpaths=ldpaths)
 
 
 def kitty_env() -> Env:
@@ -801,7 +811,7 @@ def init_env_from_args(args: Options, native_optimizations: bool = False) -> Non
         args.debug, args.sanitize, native_optimizations, args.link_time_optimization, args.profile,
         args.egl_library, args.startup_notification_library, args.canberra_library,
         args.extra_logging, args.extra_include_dirs, args.ignore_compiler_warnings,
-        args.build_universal_binary
+        args.build_universal_binary, args.extra_library_dirs
     )
 
 
@@ -1273,6 +1283,12 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         action='append',
         default=Options.extra_include_dirs,
         help='Extra include directories to use while compiling'
+    )
+    p.add_argument(
+        '--extra-library-dirs', '-L',
+        action='append',
+        default=Options.extra_library_dirs,
+        help='Extra library directories to use while linking'
     )
     p.add_argument(
         '--update-check-interval',

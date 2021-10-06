@@ -37,7 +37,8 @@ class Env:
         library_paths: Dict[str, List[str]] = {}, ldpaths: Optional[List[str]] = None, ccver: Tuple[int, int] = (0, 0)
     ):
         self.cc, self.cppflags, self.cflags, self.ldflags, self.library_paths = cc, cppflags, cflags, ldflags, library_paths
-        self.ldpaths, self.ccver = [] if ldpaths is None else ldpaths, ccver
+        self.ldpaths = ldpaths or []
+        self.ccver = ccver
 
     def copy(self) -> 'Env':
         ans = Env(self.cc, list(self.cppflags), list(self.cflags), list(self.ldflags), dict(self.library_paths), list(self.ldpaths), self.ccver)
