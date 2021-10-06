@@ -1269,7 +1269,7 @@ def option_parser() -> argparse.ArgumentParser:  # {{{
         ' on different types of logging.'
     )
     p.add_argument(
-        '--extra-include-dirs',
+        '--extra-include-dirs', '-I',
         action='append',
         default=Options.extra_include_dirs,
         help='Extra include directories to use while compiling'
