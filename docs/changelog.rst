@@ -74,6 +74,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   Applications must use the dedicated escape code to turn on the protocol.
   (:iss:`4075`)
 
+- Fix soft hyphens not being preserved when round tripping text through the
+  terminal
+
 
 0.23.1 [2021-08-17]
 ----------------------

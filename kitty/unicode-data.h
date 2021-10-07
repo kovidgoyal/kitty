@@ -1,14 +1,16 @@
 #pragma once
 #include "data-types.h"
 #include "state.h"
-#define VS15 1320
-#define VS16 1321
+// START_KNOWN_MARKS
+static const combining_type VS15 = 1325, VS16 = 1326;
+// END_KNOWN_MARKS
 
 bool is_combining_char(char_type ch);
 bool is_ignored_char(char_type ch);
 bool is_word_char(char_type ch);
 bool is_CZ_category(char_type);
 bool is_P_category(char_type);
+bool is_non_rendered_char(char_type);
 char_type codepoint_for_mark(combining_type m);
 combining_type mark_for_codepoint(char_type c);
 

@@ -387,8 +387,7 @@ has_cell_text(Font *self, CPUCell *cell) {
     char_type combining_chars[arraysz(cell->cc_idx)];
     unsigned num_cc = 0;
     for (unsigned i = 0; i < arraysz(cell->cc_idx) && cell->cc_idx[i]; i++) {
-        if (cell->cc_idx[i] == VS15 || cell->cc_idx[i] == VS16) continue;
-        combining_chars[num_cc++] = codepoint_for_mark(cell->cc_idx[i]);
+        if (!is_non_rendered_char(cell->cc_idx[i])) combining_chars[num_cc++] = codepoint_for_mark(cell->cc_idx[i]);
     }
     if (num_cc == 0) return true;
     if (num_cc == 1) {

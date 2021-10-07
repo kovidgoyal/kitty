@@ -513,6 +513,15 @@ class TestScreen(BaseTest):
         self.ae(s.text_for_selection(), expected)
         s.scroll(2, True)
         self.ae(s.text_for_selection(), expected)
+        s.reset()
+
+    def test_soft_hyphen(self):
+        s = self.create_screen()
+        s.draw('a\u00adb')
+        self.ae(s.cursor.x, 2)
+        s.start_selection(0, 0)
+        s.update_selection(2, 0)
+        self.ae(s.text_for_selection(), ('a\u00adb',))
 
     def test_variation_selectors(self):
         s = self.create_screen()
