@@ -16,7 +16,7 @@ base = os.path.dirname(os.path.abspath(__file__))
 
 class Env:
 
-    cc: str = ''
+    cc: List[str] = []
     cppflags: List[str] = []
     cflags: List[str] = []
     ldflags: List[str] = []
@@ -33,7 +33,7 @@ class Env:
     wayland_protocols: Tuple[str, ...] = ()
 
     def __init__(
-        self, cc: str = '', cppflags: List[str] = [], cflags: List[str] = [], ldflags: List[str] = [],
+        self, cc: List[str] = [], cppflags: List[str] = [], cflags: List[str] = [], ldflags: List[str] = [],
         library_paths: Dict[str, List[str]] = {}, ldpaths: Optional[List[str]] = None, ccver: Tuple[int, int] = (0, 0)
     ):
         self.cc, self.cppflags, self.cflags, self.ldflags, self.library_paths = cc, cppflags, cflags, ldflags, library_paths

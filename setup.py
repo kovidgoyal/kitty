@@ -151,20 +151,21 @@ def at_least_version(package: str, major: int, minor: int = 0) -> None:
             )
 
 
-def cc_version() -> Tuple[str, Tuple[int, int]]:
+def cc_version() -> Tuple[List[str], Tuple[int, int]]:
     if 'CC' in os.environ:
-        cc = os.environ['CC']
+        q = os.environ['CC']
     else:
         if is_macos:
-            cc = 'clang'
+            q = 'clang'
         else:
             if shutil.which('gcc'):
-                cc = 'gcc'
+                q = 'gcc'
             elif shutil.which('clang'):
-                cc = 'clang'
+                q = 'clang'
             else:
-                cc = 'cc'
-    raw = subprocess.check_output([cc, '-dumpversion']).decode('utf-8')
+                q = 'cc'
+    cc = shlex.split(q)
+    raw = subprocess.check_output(cc + ['-dumpversion']).decode('utf-8')
     ver_ = raw.strip().split('.')[:2]
     try:
         if len(ver_) == 1:
@@ -220,7 +221,7 @@ def get_python_flags(cflags: List[str]) -> List[str]:
     return libs
 
 
-def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
+def get_sanitize_args(cc: List[str], ccver: Tuple[int, int]) -> List[str]:
     sanitize_args = ['-fsanitize=address']
     if ccver >= (5, 0):
         sanitize_args.append('-fsanitize=undefined')
@@ -231,7 +232,7 @@ def get_sanitize_args(cc: str, ccver: Tuple[int, int]) -> List[str]:
 
 
 def test_compile(
-    cc: str, *cflags: str,
+    cc: List[str], *cflags: str,
     src: str = '',
     source_ext: str = 'c',
     link_also: bool = True,
@@ -244,7 +245,7 @@ def test_compile(
         with open(os.path.join(tdir, f'source.{source_ext}'), 'w', encoding='utf-8') as srcf:
             print(src, file=srcf)
         return subprocess.Popen(
-            [cc] + list(cflags) + ([] if link_also else ['-c']) +
+            cc + list(cflags) + ([] if link_also else ['-c']) +
             ['-o', os.path.join(tdir, 'source.output'), srcf.name] +
             [f'-l{x}' for x in libraries] + list(ldflags),
             stdout=subprocess.DEVNULL, stdin=subprocess.DEVNULL,
@@ -252,7 +253,7 @@ def test_compile(
         ).wait() == 0
 
 
-def first_successful_compile(cc: str, *cflags: str, src: str = '', source_ext: str = 'c') -> str:
+def first_successful_compile(cc: List[str], *cflags: str, src: str = '', source_ext: str = 'c') -> str:
     for x in cflags:
         if test_compile(cc, *shlex.split(x), src=src, source_ext=source_ext):
             return x
@@ -271,7 +272,7 @@ def set_arches(flags: List[str], arches: Iterable[str] = ('x86_64', 'arm64')) ->
         flags.extend(('-arch', arch))
 
 
-def detect_librsync(cc: str, cflags: List[str], ldflags: List[str]) -> str:
+def detect_librsync(cc: List[str], cflags: List[str], ldflags: List[str]) -> str:
     if not test_compile(
             cc, *cflags, libraries=('rsync',), ldflags=ldflags, show_stderr=True,
             src='#include <librsync.h>\nint main(void) { rs_strerror(0); return 0; }'):
@@ -287,6 +288,13 @@ int main(void) {
 }'''):
         return '-DKITTY_HAS_RS_SIG_ARGS'
     return ''
+
+
+def is_gcc(cc: List[str]) -> bool:
+    if not hasattr(is_gcc, 'ans'):
+        raw = subprocess.check_output(cc + ['--version']).decode('utf-8').splitlines()[0]
+        setattr(is_gcc, 'ans', '(GCC)' in raw.split())
+    return bool(getattr(is_gcc, 'ans'))
 
 
 def init_env(
@@ -313,7 +321,7 @@ def init_env(
     print('CC:', cc, ccver)
     stack_protector = first_successful_compile(cc, '-fstack-protector-strong', '-fstack-protector')
     missing_braces = ''
-    if ccver < (5, 2) and cc == 'gcc':
+    if ccver < (5, 2) and is_gcc(cc):
         missing_braces = '-Wno-missing-braces'
     df = '-g3'
     float_conversion = ''
@@ -695,7 +703,7 @@ def compile_c_extension(
             if defines is not None:
                 cppflags.extend(map(define, defines))
 
-        cmd = [kenv.cc, '-MMD'] + cppflags + kenv.cflags
+        cmd = kenv.cc + ['-MMD'] + cppflags + kenv.cflags
         cmd += ['-c', src] + ['-o', dest]
         key = CompileKey(original_src, os.path.basename(dest))
         desc = 'Compiling {} ...'.format(emphasis(desc_prefix + src))
@@ -709,7 +717,7 @@ def compile_c_extension(
     # warnings on some old systems)
     unsafe = {'-pthread', '-Werror', '-pedantic-errors'}
     linker_cflags = list(filter(lambda x: x not in unsafe, kenv.cflags))
-    cmd = [kenv.cc] + linker_cflags + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest]
+    cmd = kenv.cc + linker_cflags + kenv.ldflags + objects + kenv.ldpaths + ['-o', dest]
 
     def on_success() -> None:
         os.rename(dest, real_dest)
@@ -841,7 +849,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
         if args.sanitize:
             cflags.append('-g3')
             cflags.extend(get_sanitize_args(env.cc, env.ccver))
-            libs += ['-lasan'] if env.cc == 'gcc' and not is_macos else []
+            libs += ['-lasan'] if is_gcc(env.cc) and not is_macos else []
         else:
             cflags.append('-g')
         if args.profile:
@@ -874,7 +882,7 @@ def build_launcher(args: Options, launcher_dir: str = '.', bundle_type: str = 's
     os.makedirs(launcher_dir, exist_ok=True)
     dest = os.path.join(launcher_dir, 'kitty')
     src = 'launcher.c'
-    cmd = [env.cc] + cppflags + cflags + [
+    cmd = env.cc + cppflags + cflags + [
            src, '-o', dest] + ldflags + libs + pylib
     key = CompileKey('launcher.c', 'kitty')
     desc = 'Building {}...'.format(emphasis('launcher'))
