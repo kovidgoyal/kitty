@@ -164,7 +164,7 @@ def cc_version() -> Tuple[str, Tuple[int, int]]:
                 cc = 'clang'
             else:
                 cc = 'cc'
-    raw = subprocess.check_output([cc, '-dumpversion']).decode('utf-8')
+    raw = subprocess.check_output(cc.split() + ['-dumpversion']).decode('utf-8')
     ver_ = raw.strip().split('.')[:2]
     try:
         if len(ver_) == 1:
