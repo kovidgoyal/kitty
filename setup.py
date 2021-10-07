@@ -292,7 +292,7 @@ int main(void) {
 
 def is_gcc(cc: Iterable[str]) -> bool:
 
-    @lru_cache
+    @lru_cache()
     def f(cc: Tuple[str]) -> bool:
         raw = subprocess.check_output(cc + ('--version',)).decode('utf-8').splitlines()[0]
         return '(GCC)' in raw.split()
