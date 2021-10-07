@@ -219,6 +219,7 @@ encode_function_key(const KeyEvent *ev, char *output) {
         case GLFW_FKEY_PAGE_UP: S(5, '~');
         case GLFW_FKEY_PAGE_DOWN: S(6, '~');
         case GLFW_FKEY_HOME: S(1, 'H');
+        case GLFW_FKEY_KP_BEGIN: S(1, 'E');
         case GLFW_FKEY_END: S(1, 'F');
         case GLFW_FKEY_F1: S(1, 'P');
         case GLFW_FKEY_F2: S(1, 'Q');
@@ -232,7 +233,6 @@ encode_function_key(const KeyEvent *ev, char *output) {
         case GLFW_FKEY_F10: S(21, '~');
         case GLFW_FKEY_F11: S(23, '~');
         case GLFW_FKEY_F12: S(24, '~');
-        case GLFW_FKEY_KP_BEGIN: S(1, 'E');
 /* end special numbers */
         default: break;
     }
