@@ -297,9 +297,9 @@ string_capabilities.update({
     name.format(unmod=unmod, key=key):
         encode_keystring(modify_key_bytes(b'\033' + value, mod))
     for unmod, key, value in zip(
-        'cuu1 cud1 cuf1 cub1 end home ich1 dch1 pp  np'.split(),
-        'UP   DN   RIT  LFT  END HOM  IC   DC   PRV NXT'.split(),
-        b'OA  OB   OC   OD   OF  OH   [2~  [3~  [5~ [6~'.split())
+        'cuu1 cud1 cuf1 cub1 beg end home ich1 dch1 pp  np'.split(),
+        'UP   DN   RIT  LFT  BEG END HOM  IC   DC   PRV NXT'.split(),
+        b'OA  OB   OC   OD   OE  OF  OH   [2~  [3~  [5~ [6~'.split())
     for name, mod in {
         'k{unmod}': 0, 'k{key}': 2, 'k{key}3': 3, 'k{key}4': 4,
         'k{key}5': 5, 'k{key}6': 6, 'k{key}7': 7}.items()
@@ -438,9 +438,9 @@ queryable_capabilities = cast(Dict[str, str], numeric_capabilities.copy())
 queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
-    'Su Smulx Sync Tc setrgbf setrgbb fullkbd kUP kDN'.split() + [
+    'Su Smulx Sync Tc setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
         'k{}{}'.format(key, mod)
-        for key in 'UP DN RIT LFT END HOM IC DC PRV NXT'.split()
+        for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
 if extra - no_termcap_for:
     raise Exception('Termcap aliases not complete, missing: {}'.format(extra - no_termcap_for))
