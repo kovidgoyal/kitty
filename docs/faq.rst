@@ -192,10 +192,10 @@ If you do want to cat unknown data, use ``cat -v``.
 kitty is not able to use my favorite font?
 ---------------------------------------------
 
-|kitty| achieves its stellar performance by caching alpha masks of each rendered
-character on the GPU, so that every character needs to be rendered only once.
-This means it is a strictly character cell based display.  As such it can use
-only monospace fonts, since every cell in the grid has to be the same size.
+|kitty| achieves its stellar performance by caching alpha masks of each
+rendered character on the GPU, and rendering them all in parallel.  This means
+it is a strictly character cell based display. As such it can use only
+monospace fonts, since every cell in the grid has to be the same size.
 Furthermore, it needs fonts to be freely resizable, so it does not support
 bitmapped fonts.
 
