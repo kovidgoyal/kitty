@@ -17,7 +17,7 @@ import sysconfig
 import tempfile
 import time
 from contextlib import suppress
-from functools import partial
+from functools import lru_cache, partial
 from pathlib import Path
 from typing import (
     Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence,
@@ -290,11 +290,14 @@ int main(void) {
     return ''
 
 
-def is_gcc(cc: List[str]) -> bool:
-    if not hasattr(is_gcc, 'ans'):
-        raw = subprocess.check_output(cc + ['--version']).decode('utf-8').splitlines()[0]
-        setattr(is_gcc, 'ans', '(GCC)' in raw.split())
-    return bool(getattr(is_gcc, 'ans'))
+def is_gcc(cc: Iterable[str]) -> bool:
+
+    @lru_cache
+    def f(cc: Tuple[str]) -> bool:
+        raw = subprocess.check_output(cc + ('--version',)).decode('utf-8').splitlines()[0]
+        return '(GCC)' in raw.split()
+
+    return f(tuple(cc))
 
 
 def init_env(
