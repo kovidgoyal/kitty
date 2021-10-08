@@ -64,7 +64,7 @@ DECCKM set. "kitty" is the full kitty extended keyboard protocol.
 
 
 def main(args: List[str]) -> None:
-    cli_opts, items = parse_args(args[1:], OPTIONS, '', '', 'kitty +kitten clipboard', result_class=ShowKeyCLIOptions)
+    cli_opts, items = parse_args(args[1:], OPTIONS, '', '', 'kitty +kitten show_key', result_class=ShowKeyCLIOptions)
     if cli_opts.key_mode == 'kitty':
         from .kitty_mode import main as kitty_main
         return kitty_main()
