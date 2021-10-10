@@ -77,6 +77,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix soft hyphens not being preserved when round tripping text through the
   terminal
 
+- macOS: Fix :kbd:`ctrl or cmd` with :kbd:`Esc or Function keys` not working
+  (:iss:`4109`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

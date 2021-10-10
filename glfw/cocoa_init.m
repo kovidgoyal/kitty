@@ -471,6 +471,22 @@ is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
     return false;
 }
 
+static bool
+is_modified_special_key(NSEvent *event, NSEventModifierFlags modifierFlags) {
+    if ((modifierFlags & (NSEventModifierFlagControl | NSEventModifierFlagCommand)) && [event.charactersIgnoringModifiers length] == 1) {
+        switch ([event.charactersIgnoringModifiers characterAtIndex:0]) {
+            case 0x1b:  // Esc
+            case NSF1FunctionKey: case NSF2FunctionKey: case NSF3FunctionKey:
+            case NSF4FunctionKey: case NSF5FunctionKey: case NSF6FunctionKey: case NSF7FunctionKey:
+            case NSF8FunctionKey: case NSF9FunctionKey: case NSF10FunctionKey: case NSF11FunctionKey:
+            case NSF12FunctionKey: case NSF13FunctionKey: case NSF14FunctionKey: case NSF15FunctionKey:
+            case NSF16FunctionKey: case NSF17FunctionKey: case NSF18FunctionKey: case NSF19FunctionKey:
+                return true;
+        }
+    }
+    return false;
+}
+
 GLFWAPI GLFWapplicationshouldhandlereopenfun glfwSetApplicationShouldHandleReopen(GLFWapplicationshouldhandlereopenfun callback) {
     GLFWapplicationshouldhandlereopenfun previous = handle_reopen_callback;
     handle_reopen_callback = callback;
@@ -511,9 +527,10 @@ int _glfwPlatformInit(void)
     NSEvent* (^keydown_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
         NSEventModifierFlags modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
-        if (is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
-            // Cocoa swallows Ctrl+Tab to cycle between views
+        if (is_modified_special_key(event, modifierFlags) || is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
+            // Cocoa swallows various key presses, so route them explicitly
             [[NSApp keyWindow].contentView keyDown:event];
+            return nil;
         }
 
         return event;
@@ -528,9 +545,10 @@ int _glfwPlatformInit(void)
             // down the command key don't get sent to the key window.
             [[NSApp keyWindow] sendEvent:event];
         }
-        if (is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
-            // Cocoa swallows Ctrl+Tab to cycle between views
+        if (is_modified_special_key(event, modifierFlags) || is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
+            // Cocoa swallows various key presses, so route them explicitly
             [[NSApp keyWindow].contentView keyUp:event];
+            return nil;
         }
 
         return event;
