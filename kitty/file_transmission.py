@@ -7,18 +7,21 @@ import os
 import stat
 import tempfile
 from base64 import standard_b64decode, standard_b64encode
-from collections import deque
+from collections import defaultdict, deque
 from contextlib import suppress
 from dataclasses import Field, dataclass, field, fields
 from enum import Enum, auto
 from functools import partial
 from gettext import gettext as _
+from itertools import chain
 from time import monotonic
 from typing import (
-    IO, Any, Callable, Deque, Dict, Iterator, List, Optional, Union, cast
+    IO, Any, Callable, DefaultDict, Deque, Dict, Iterable, Iterator, List,
+    Optional, Tuple, Union, cast
 )
 
 from kittens.transfer.librsync import PatchFile, signature_of_file
+from kittens.transfer.utils import abspath, expand_home
 from kitty.fast_data_types import (
     FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
 )
@@ -26,7 +29,7 @@ from kitty.fast_data_types import (
 from .utils import log_error, sanitize_control_codes
 
 EXPIRE_TIME = 10  # minutes
-MAX_ACTIVE_RECEIVES = 10
+MAX_ACTIVE_RECEIVES = MAX_ACTIVE_SENDS = 10
 ftc_prefix = str(FILE_TRANSFER_CODE)
 
 
@@ -60,6 +63,86 @@ def split_for_transfer(
             ac = Action.end_data
         yield FileTransmissionCommand(action=ac, id=session_id, file_id=file_id, data=data[:chunk_size])
         data = data[chunk_size:]
+
+
+def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union['FileTransmissionCommand', 'TransmissionError']]:
+    file_map: DefaultDict[str, List[FileTransmissionCommand]] = defaultdict(list)
+
+    def make_ftc(path: str, spec_id: str, sr: Optional[os.stat_result] = None) -> FileTransmissionCommand:
+        if sr is None:
+            sr = os.stat(path)
+        if stat.S_ISREG(sr.st_mode):
+            ftype = FileType.regular
+        elif stat.S_ISLNK(sr.st_mode):
+            ftype = FileType.symlink
+        elif stat.S_ISDIR(sr.st_mode):
+            ftype = FileType.directory
+        else:
+            raise ValueError('Not an appropriate file type')
+        return FileTransmissionCommand(
+            action=Action.file, file_id=spec_id, mtime=sr.st_mtime_ns, permissions=stat.S_IMODE(sr.st_mode),
+            name=path, status=f'{sr.st_dev}:{sr.st_ino}', size=sr.st_size, ftype=ftype
+        )
+
+    for spec_id, spec in file_specs:
+        path = spec
+        if not os.path.isabs(path):
+            path = expand_home(path)
+            if not os.path.isabs(path):
+                path = abspath(path, use_home=True)
+        try:
+            sr = os.stat(path)
+            read_ok = os.access(path, os.R_OK)
+        except OSError as err:
+            errname = errno.errorcode.get(err.errno, 'EFAIL')
+            yield TransmissionError(file_id=spec_id, code=errname, msg='Failed to read spec')
+            continue
+        if not read_ok:
+            yield TransmissionError(file_id=spec_id, code='EPERM', msg='No permission to read spec')
+            continue
+        try:
+            ftc = make_ftc(path, spec_id, sr)
+        except ValueError:
+            yield TransmissionError(file_id=spec_id, code='EINVAL', msg='Not a valid filetype')
+            continue
+        file_map[ftc.status].append(ftc)
+        if ftc.ftype is FileType.directory:
+            try:
+                x_ok = os.access(path, os.X_OK)
+                di = os.walk(path)
+            except OSError:
+                x_ok = False
+            if x_ok:
+                for dirpath, dirnames, filenames in di:
+                    for dname in chain(dirnames, filenames):
+                        try:
+                            dftc = make_ftc(os.path.join(dirpath, dname), spec_id)
+                        except (ValueError, OSError):
+                            continue
+                        file_map[dftc.status].append(dftc)
+    for fkey, cmds in file_map.items():
+        base = cmds[0]
+        if base.ftype is FileType.symlink:
+            try:
+                dest = os.readlink(base.name)
+            except OSError:
+                pass
+            else:
+                try:
+                    s = os.stat(dest)
+                except OSError:
+                    pass
+                else:
+                    fkey = f'{s.st_dev}:{s.st_ino}'
+                    if fkey in file_map:
+                        base.data = fkey.encode('utf-8', 'replace')
+        yield base
+        if len(cmds) > 1 and base.ftype is FileType.regular:
+            for q in cmds[1:]:
+                if q.ftype is FileType.regular:
+                    q.ftype = FileType.link
+                    q.data = base.status.encode('utf-8', 'replace')
+                    yield q
 
 
 class NameReprEnum(Enum):
@@ -105,7 +188,7 @@ class TransmissionType(NameReprEnum):
     rsync = auto()
 
 
-ErrorCode = Enum('ErrorCode', 'OK STARTED CANCELED PROGRESS EINVAL EPERM EISDIR')
+ErrorCode = Enum('ErrorCode', 'OK STARTED CANCELED PROGRESS EINVAL EPERM EISDIR ENOENT')
 
 
 class TransmissionError(Exception):
@@ -446,13 +529,45 @@ class ActiveReceive:
                 df.apply_metadata()
 
 
-class FileTransmission:
+class ActiveSend:
 
-    active_receives: Dict[str, ActiveReceive]
+    def __init__(self, request_id: str, quiet: int, bypass: str, num_of_args: int) -> None:
+        self.id = request_id
+        self.args_remaining = num_of_args
+        self.bypass_ok: Optional[bool] = None
+        self.accepted = False
+        if bypass:
+            byp = get_options().file_transfer_confirmation_bypass
+            self.bypass_ok = (encode_bypass(request_id, byp) == bypass) if byp else False
+        self.last_activity_at = monotonic()
+        self.send_acknowledgements = quiet < 1
+        self.send_errors = quiet < 2
+        self.last_activity_at = monotonic()
+        self.file_specs: List[Tuple[str, str]] = []
+
+    @property
+    def spec_complete(self) -> bool:
+        return self.args_remaining < 1
+
+    def add_file_spec(self, cmd: FileTransmissionCommand) -> None:
+        if len(self.file_specs) > 8192 or self.spec_complete:
+            raise TransmissionError(ErrorCode.EINVAL, 'Too many file specs')
+        self.file_specs.append((cmd.file_id, cmd.data.decode('utf-8')))
+
+    @property
+    def is_expired(self) -> bool:
+        return monotonic() - self.last_activity_at > (60 * EXPIRE_TIME)
+
+    def close(self) -> None:
+        raise NotImplementedError('TODO: Implement this')
+
+
+class FileTransmission:
 
     def __init__(self, window_id: int):
         self.window_id = window_id
-        self.active_receives = {}
+        self.active_receives: Dict[str, ActiveReceive] = {}
+        self.active_sends: Dict[str, ActiveSend] = {}
         self.pending_receive_responses: Deque[FileTransmissionCommand] = deque()
         self.pending_timer: Optional[int] = None
 
@@ -479,16 +594,28 @@ class FileTransmission:
         for ar in self.active_receives.values():
             ar.close()
         self.active_receives = {}
+        for a in self.active_sends.values():
+            a.close()
+        self.active_receives = {}
+        self.active_sends = {}
 
     def drop_receive(self, receive_id: str) -> None:
         ar = self.active_receives.pop(receive_id, None)
         if ar is not None:
             ar.close()
 
+    def drop_send(self, send_id: str) -> None:
+        a = self.active_sends.pop(send_id, None)
+        if a is not None:
+            a.close()
+
     def prune_expired(self) -> None:
         for k in tuple(self.active_receives):
             if self.active_receives[k].is_expired:
                 self.drop_receive(k)
+        for a in tuple(self.active_sends):
+            if self.active_sends[a].is_expired:
+                self.drop_send(a)
 
     def handle_serialized_command(self, data: str) -> None:
         try:
@@ -503,9 +630,69 @@ class FileTransmission:
             if cmd.id in self.active_receives:
                 self.handle_receive_cmd(cmd)
                 return
+            if cmd.id in self.active_sends:
+                self.handle_send_cmd(cmd)
+                return
         self.prune_expired()
         if cmd.id in self.active_receives or cmd.action is Action.send:
             self.handle_receive_cmd(cmd)
+        if cmd.id in self.active_sends or cmd.action is Action.receive:
+            self.handle_send_cmd(cmd)
+
+    def handle_send_cmd(self, cmd: FileTransmissionCommand) -> None:
+        if cmd.id in self.active_sends:
+            asd = self.active_sends[cmd.id]
+            if cmd.action is Action.receive:
+                log_error('File transmission receive received for already active id, aborting')
+                self.drop_send(cmd.id)
+                return
+            if cmd.action is Action.file:
+                try:
+                    asd.add_file_spec(cmd)
+                except TransmissionError as err:
+                    self.drop_send(asd.id)
+                    if asd.send_errors:
+                        self.send_transmission_error(asd.id, err)
+                    return
+                if asd.spec_complete:
+                    self.send_metadata_for_send_transfer(asd)
+                return
+            if not asd.accepted:
+                log_error(f'File transmission command {cmd.action} received for pending id: {cmd.id}, aborting')
+                self.drop_send(cmd.id)
+                return
+            asd.last_activity_at = monotonic()
+        else:
+            if cmd.action is not Action.receive:
+                log_error(f'File transmission command {cmd.action} received for unknown or rejected id: {cmd.id}, ignoring')
+                return
+            if len(self.active_sends) >= MAX_ACTIVE_SENDS:
+                log_error('New File transmission send with too many active receives, ignoring')
+                return
+            asd = self.active_sends[cmd.id] = ActiveSend(cmd.id, cmd.quiet, cmd.bypass, cmd.size)
+            self.start_send(asd.id)
+            return
+        if cmd.action is Action.cancel:
+            self.drop_send(asd.id)
+            if asd.send_acknowledgements:
+                self.send_status_response(ErrorCode.CANCELED, request_id=asd.id)
+
+    def send_metadata_for_send_transfer(self, asd: ActiveSend) -> None:
+        sent = False
+        for ftc in iter_file_metadata(asd.file_specs):
+            if isinstance(ftc, TransmissionError):
+                sent = True
+                if asd.send_errors:
+                    self.send_transmission_error(asd.id, ftc)
+            else:
+                ftc.id = asd.id
+                self.write_ftc_to_child(ftc)
+                sent = True
+        if sent:
+            self.send_status_response(code=ErrorCode.OK, request_id=asd.id)
+        else:
+            self.send_status_response(code=ErrorCode.ENOENT, request_id=asd.id, msg='No files found')
+            self.drop_send(asd.id)
 
     def handle_receive_cmd(self, cmd: FileTransmissionCommand) -> None:
         if cmd.id in self.active_receives:
@@ -604,6 +791,8 @@ class FileTransmission:
                     self.send_transmission_error(ar.id, te)
             finally:
                 self.drop_receive(ar.id)
+        else:
+            log_error('Transmission receive command with unknown action: {cmd.action}, ignoring')
 
     def transmit_rsync_signature(
         self, fs: Iterator[memoryview],
@@ -673,6 +862,37 @@ class FileTransmission:
             return queued
         return False
 
+    def start_send(self, asd_id: str) -> None:
+        asd = self.active_sends[asd_id]
+        if asd.bypass_ok is not None:
+            self.handle_receive_confirmation(asd_id, {'response': 'y' if asd.bypass_ok else 'n'})
+            return
+        boss = get_boss()
+        window = boss.window_id_map.get(self.window_id)
+        if window is not None:
+            boss._run_kitten('ask', ['--type=yesno', '--message', _(
+                'The remote machine wants to read some files from this computer. Do you want to allow the transfer?'
+                )],
+                window=window, custom_callback=partial(self.handle_receive_confirmation, asd_id),
+            )
+
+    def handle_receive_confirmation(self, cmd_id: str, data: Dict[str, str], *a: Any) -> None:
+        asd = self.active_sends.get(cmd_id)
+        if asd is None:
+            return
+        if data['response'] == 'y':
+            asd.accepted = True
+        else:
+            self.drop_send(asd.id)
+        if asd.accepted:
+            if asd.send_acknowledgements:
+                self.send_status_response(code=ErrorCode.OK, request_id=asd.id)
+            if asd.spec_complete:
+                self.send_metadata_for_send_transfer(asd)
+        else:
+            if asd.send_errors:
+                self.send_status_response(code=ErrorCode.EPERM, request_id=asd.id, msg='User refused the transfer')
+
     def start_receive(self, ar_id: str) -> None:
         ar = self.active_receives[ar_id]
         if ar.bypass_ok is not None:
@@ -725,6 +945,9 @@ class TestFileTransmission(FileTransmission):
 
     def start_receive(self, aid: str) -> None:
         self.handle_send_confirmation(aid, {'response': 'y' if self.allow else 'n'})
+
+    def start_send(self, aid: str) -> None:
+        self.handle_receive_confirmation(aid, {'response': 'y' if self.allow else 'n'})
 
     def callback_after(self, callback: Callable[[Optional[int]], None], timeout: float = 0) -> Optional[int]:
         callback(None)

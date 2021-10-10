@@ -133,8 +133,9 @@ def should_be_compressed(path: str) -> bool:
     return True
 
 
-def abspath(path: str) -> str:
-    return os.path.normpath(os.path.join(_cwd or os.getcwd(), path))
+def abspath(path: str, use_home: bool = False) -> str:
+    base = home_path() if use_home else (_cwd or os.getcwd())
+    return os.path.normpath(os.path.join(base, path))
 
 
 def home_path() -> str:
