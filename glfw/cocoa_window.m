@@ -1206,11 +1206,15 @@ is_ascii_control_char(char x) {
 - (void)keyDown:(NSEvent *)event
 {
     const bool previous_has_marked_text = [self hasMarkedText];
-    bool input_source_changed = false;
     NSTextInputContext *inpctx = [NSTextInputContext currentInputContext];
     if (inpctx && (!input_source_at_last_key_event || ![input_source_at_last_key_event isEqualToString:inpctx.selectedKeyboardInputSource])) {
+        if (input_source_at_last_key_event) {
+            debug_key("Input source changed, clearing pre-edit text and resetting deadkey state\n");
+            GLFWkeyevent dummy = {.action = GLFW_RELEASE, .ime_state = GLFW_IME_PREEDIT_CHANGED};
+            window->ns.deadKeyState = 0;
+            _glfwInputKeyboard(window, &dummy); // clear pre-edit text
+        }
         input_source_at_last_key_event = [inpctx.selectedKeyboardInputSource retain];
-        input_source_changed = true;
     }
 
     const unsigned int keycode = [event keyCode];
@@ -1230,14 +1234,6 @@ is_ascii_control_char(char x) {
             [self interpretKeyEvents:[NSArray arrayWithObject:event]];
         }
     } else {
-        if (input_source_changed) {
-            debug_key("Input source changed, clearing pre-edit text and resetting deadkey state\n");
-            glfw_keyevent.text = NULL;
-            glfw_keyevent.ime_state = GLFW_IME_PREEDIT_CHANGED;
-            window->ns.deadKeyState = 0;
-            _glfwInputKeyboard(window, &glfw_keyevent); // clear pre-edit text
-        }
-
         static UniChar text[256];
         UniCharCount char_count = 0;
         const bool in_compose_sequence = window->ns.deadKeyState != 0;
