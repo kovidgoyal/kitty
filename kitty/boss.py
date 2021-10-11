@@ -27,7 +27,8 @@ from .constants import (
     supports_primary_selection, website_url
 )
 from .fast_data_types import (
-    CLOSE_BEING_CONFIRMED, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
+    CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
+    GLFW_MOD_SUPER, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
     ChildMonitor, KeyEvent, add_timer, apply_options_update,
     background_opacity_of, change_background_opacity, change_os_window_state,
     cocoa_set_menubar_title, create_os_window,
@@ -809,12 +810,17 @@ class Boss:
         tab = self.active_tab
         if tab is not None:
             pending_sequences: SubSequenceMap = {}
+            count = 0
             for idx, window in tab.windows.iter_visible_windows_with_number():
+                count += 1
                 window.screen.set_window_number(idx + 1)
-                pending_sequences[(SingleKey(key=ord(str(idx + 1))),)] = KeyAction('focus_visible_window_trigger', (idx,))
-            if pending_sequences:
+                ac = KeyAction('focus_visible_window_trigger', (idx,))
+                for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
+                    pending_sequences[(SingleKey(mods=mods, key=ord(str(idx + 1))),)] = ac
+            if count > 1:
                 self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('focus_visible_window_trigger'))
             else:
+                self.focus_visible_window_trigger()
                 if get_options().enable_audio_bell:
                     ring_bell()
 

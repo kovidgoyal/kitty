@@ -214,10 +214,9 @@ class WindowList:
             if g.is_visible_in_layout:
                 aw = g.active_window_id
                 for window in g:
-                    if window in g:
-                        if window.id == aw:
-                            yield i, window
-                            break
+                    if window.id == aw:
+                        yield i, window
+                        break
 
     def make_previous_group_active(self, which: int = 1, notify: bool = True) -> None:
         which = max(1, which)
