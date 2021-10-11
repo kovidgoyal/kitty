@@ -35,7 +35,7 @@ Simply :ref:`install kitty <quickstart>`.  You also need
 to have either the `git <https://git-scm.com/>`_ program or the ``diff`` program
 installed. Additionally, for syntax highlighting to work,
 `pygments <https://pygments.org/>`_ must be installed (note that pygments is
-included in the macOS kitty app).
+included in the official kitty binary builds).
 
 
 Usage
