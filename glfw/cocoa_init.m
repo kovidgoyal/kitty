@@ -492,8 +492,8 @@ is_modified_special_key(NSEvent *event, NSEventModifierFlags modifierFlags) {
                 return true;
         }
     }
-    // ctrl+esc and cmd+esc
-    if (ch == 0x1b && (modifierFlags == NSEventModifierFlagCommand || modifierFlags == NSEventModifierFlagControl)) return true;
+    // ctrl+whatever+esc and cmd+whatever+esc
+    if (ch == 0x1b && (modifierFlags & (NSEventModifierFlagCommand | NSEventModifierFlagControl))) return true;
     return false;
 }
 
