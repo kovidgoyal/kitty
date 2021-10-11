@@ -473,17 +473,27 @@ is_cmd_period(NSEvent *event, NSEventModifierFlags modifierFlags) {
 
 static bool
 is_modified_special_key(NSEvent *event, NSEventModifierFlags modifierFlags) {
-    if ((modifierFlags & (NSEventModifierFlagControl | NSEventModifierFlagCommand)) && [event.charactersIgnoringModifiers length] == 1) {
-        switch ([event.charactersIgnoringModifiers characterAtIndex:0]) {
+    // really one should use [[NSUserDefaults standardUserDefaults] valueForDefaultsDomain:@"com.apple.symbolichotkeys" key:@"AppleSymbolicHotKeys"]
+    // to get the list of global shortcuts and pass through the important ones,
+    // see https://stackoverflow.com/questions/21878482/what-do-the-parameter-values-in-applesymbolichotkeys-plist-dict-represent
+    // however given that in order to know which integers are which actions in that dict one needs reverse engineering
+    // see https://stackoverflow.com/questions/866056/how-do-i-programmatically-get-the-shortcut-keys-reserved-by-mac-os-x
+    // it's too much effort.
+    if ([event.charactersIgnoringModifiers length] != 1) return false;
+    const unichar ch = [event.charactersIgnoringModifiers characterAtIndex:0];
+    if (modifierFlags == (NSEventModifierFlagControl | NSEventModifierFlagShift)) {
+        switch (ch) {
             case 0x1b:  // Esc
-            case NSF1FunctionKey: case NSF2FunctionKey: case NSF3FunctionKey:
-            case NSF4FunctionKey: case NSF5FunctionKey: case NSF6FunctionKey: case NSF7FunctionKey:
-            case NSF8FunctionKey: case NSF9FunctionKey: case NSF10FunctionKey: case NSF11FunctionKey:
-            case NSF12FunctionKey: case NSF13FunctionKey: case NSF14FunctionKey: case NSF15FunctionKey:
-            case NSF16FunctionKey: case NSF17FunctionKey: case NSF18FunctionKey: case NSF19FunctionKey:
+            case NSF1FunctionKey: case NSF2FunctionKey: case NSF3FunctionKey: case NSF4FunctionKey:
+            case NSF5FunctionKey: case NSF6FunctionKey: case NSF7FunctionKey: case NSF8FunctionKey:
+            case NSF9FunctionKey: case NSF10FunctionKey: case NSF11FunctionKey: case NSF12FunctionKey:
+            case NSF13FunctionKey: case NSF14FunctionKey: case NSF15FunctionKey: case NSF16FunctionKey:
+            case NSF17FunctionKey: case NSF18FunctionKey: case NSF19FunctionKey:
                 return true;
         }
     }
+    // ctrl+esc and cmd+esc
+    if (ch == 0x1b && (modifierFlags == NSEventModifierFlagCommand || modifierFlags == NSEventModifierFlagControl)) return true;
     return false;
 }
 
@@ -526,7 +536,7 @@ int _glfwPlatformInit(void)
 
     NSEvent* (^keydown_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
-        NSEventModifierFlags modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+        NSEventModifierFlags modifierFlags = [event modifierFlags] & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl);
         if (is_modified_special_key(event, modifierFlags) || is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
             // Cocoa swallows various key presses, so route them explicitly
             [[NSApp keyWindow].contentView keyDown:event];
@@ -538,7 +548,7 @@ int _glfwPlatformInit(void)
 
     NSEvent* (^keyup_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
-        NSEventModifierFlags modifierFlags = [event modifierFlags] & NSEventModifierFlagDeviceIndependentFlagsMask;
+        NSEventModifierFlags modifierFlags = [event modifierFlags] & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl);
         if (modifierFlags & NSEventModifierFlagCommand) {
             // From http://cocoadev.com/index.pl?GameKeyboardHandlingAlmost
             // This works around an AppKit bug, where key up events while holding
