@@ -973,6 +973,9 @@ class Screen:
     def ignore_bells_for(self, duration: float = 1) -> None:
         pass
 
+    def set_window_number(self, num: int = -1) -> None:
+        pass
+
     def current_key_encoding_flags(self) -> int:
         pass
 

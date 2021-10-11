@@ -481,7 +481,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat 
 #define C(shift) ((((GLfloat)((digit_color >> shift) & 0xFF)) / 255.0f))
     glUniform4f(seven_segment_program_layout.digit_color_location, C(16), C(8), C(0), 1.);
 #undef C
-    glUniform1i(seven_segment_program_layout.digit_location, 8);
+    glUniform1i(seven_segment_program_layout.digit_location, screen->display_window_number - 1);
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glDisable(GL_BLEND);
 }
@@ -735,7 +735,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         if (intensity > 0.0f) draw_visual_bell_flash(intensity, xstart, ystart, w, h, screen);
     }
 
-    if (false) draw_window_number(os_window, screen, xstart, ystart, w, h);
+    if (screen->display_window_number) draw_window_number(os_window, screen, xstart, ystart, w, h);
 }
 // }}}
 

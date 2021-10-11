@@ -132,6 +132,7 @@ typedef struct {
         monotonic_t start, duration;
     } ignore_bells;
     bool redraws_multiline_prompts;
+    unsigned int display_window_number;
 } Screen;
 
 
