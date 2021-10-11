@@ -12,6 +12,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   output of the last command in a new window, etc. See :ref:`shell_integration`
   for details.
 
+- A new shortcut :sc:`focus_visible_window` to visually focus a window using
+  the keyboard. Pressing it causes numbers to appear over each visible window
+  and you can press the number to focus the corresponding window (:iss:`4110`)
+
 - A new option :opt:`tab_bar_align` to draw the tab bar centered or right
   aligned (:iss:`3946`)
 

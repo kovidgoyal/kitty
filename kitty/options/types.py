@@ -767,6 +767,8 @@ defaults.map = [
     KeyDefinition(False, KeyAction('ninth_window'), 1024, False, 57, ()),
     # tenth_window
     KeyDefinition(False, KeyAction('tenth_window'), 1024, False, 48, ()),
+    # focus_visible_window
+    KeyDefinition(False, KeyAction('focus_visible_window'), 1024, False, 57370, ()),
     # next_tab
     KeyDefinition(False, KeyAction('next_tab'), 1024, False, 57351, ()),
     # next_tab

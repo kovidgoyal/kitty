@@ -3149,6 +3149,8 @@ map('Ninth window',
 map('Tenth window',
     'tenth_window kitty_mod+0 tenth_window',
     )
+
+map('Visually select focus window', 'focus_visible_window kitty_mod+f7 focus_visible_window')
 egr()  # }}}
 
 
