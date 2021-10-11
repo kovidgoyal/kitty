@@ -115,8 +115,7 @@ def copy_python(env):
             shutil.copy2(y, env.py_dir)
 
     srcdir = j(srcdir, 'site-packages')
-    site_packages_dir = j(env.py_dir, 'site-packages')
-    import_site_packages(srcdir, site_packages_dir)
+    import_site_packages(srcdir, env.py_dir)
 
     pdir = os.path.join(env.lib_dir, 'kitty-extensions')
     os.makedirs(pdir, exist_ok=True)

@@ -4,6 +4,7 @@
 
 
 import os
+import sys
 import unittest
 
 from . import BaseTest
@@ -22,8 +23,8 @@ class TestBuild(BaseTest):
         import kitty.fast_data_types as fdt
         from kittens.choose import subseq_matcher
         from kittens.diff import diff_speedup
-        from kittens.unicode_input import unicode_names
         from kittens.transfer import rsync
+        from kittens.unicode_input import unicode_names
         del fdt, unicode_names, subseq_matcher, diff_speedup, rsync
 
     def test_loading_shaders(self) -> None:
@@ -50,7 +51,9 @@ class TestBuild(BaseTest):
         self.assertGreater(len(names), 8)
 
     def test_filesystem_locations(self) -> None:
-        from kitty.constants import terminfo_dir, logo_png_file, shell_integration_dir
+        from kitty.constants import (
+            logo_png_file, shell_integration_dir, terminfo_dir
+        )
         zsh = os.path.join(shell_integration_dir, 'kitty.zsh')
         self.assertTrue(os.path.isdir(terminfo_dir), f'Terminfo dir: {terminfo_dir}')
         self.assertTrue(os.path.exists(logo_png_file), f'Logo file: {logo_png_file}')
@@ -58,11 +61,16 @@ class TestBuild(BaseTest):
 
     def test_ca_certificates(self):
         import ssl
-        import sys
         if not getattr(sys, 'frozen', False):
             self.skipTest('CA certificates are only tested on frozen builds')
         c = ssl.create_default_context()
         self.assertGreater(c.cert_store_stats()['x509_ca'], 2)
+
+    def test_pygments(self):
+        if not getattr(sys, 'frozen', False):
+            self.skipTest('Pygments is only tested on frozen builds')
+        import pygments
+        del pygments
 
 
 def main() -> None:
