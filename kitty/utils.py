@@ -64,13 +64,14 @@ def platform_window_id(os_window_id: int) -> Optional[int]:
             return x11_window_id(os_window_id)
 
 
-def load_shaders(name: str) -> Tuple[str, str]:
+def load_shaders(name: str, vertex_name: str = '', fragment_name: str = '') -> Tuple[str, str]:
     from .fast_data_types import GLSL_VERSION
 
-    def load(which: str) -> str:
-        return read_kitty_resource(f'{name}_{which}.glsl').decode('utf-8').replace('GLSL_VERSION', str(GLSL_VERSION), 1)
+    def load(which: str, lname: str = '') -> str:
+        lname = lname or name
+        return read_kitty_resource(f'{lname}_{which}.glsl').decode('utf-8').replace('GLSL_VERSION', str(GLSL_VERSION), 1)
 
-    return load('vertex'), load('fragment')
+    return load('vertex', vertex_name), load('fragment', fragment_name)
 
 
 def safe_print(*a: Any, **k: Any) -> None:

@@ -9,7 +9,7 @@
 #include "gl.h"
 #include <stddef.h>
 
-enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, NUM_PROGRAMS };
+enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, SEVEN_SEGMENT_PROGRAM, NUM_PROGRAMS };
 enum { SPRITE_MAP_UNIT, GRAPHICS_UNIT, BLIT_UNIT, BGIMAGE_UNIT };
 
 // Sprites {{{
@@ -172,6 +172,10 @@ typedef struct {
     GLint tint_color_location, edges_location;
 } TintProgramLayout;
 static TintProgramLayout tint_program_layout = {0};
+typedef struct {
+    GLint edges_location, area_bounds_location, digit_color_location, digit_location;
+} SevenSegmentProgramLayout;
+static SevenSegmentProgramLayout seven_segment_program_layout = {0};
 
 static void
 init_cell_program(void) {
@@ -197,6 +201,10 @@ init_cell_program(void) {
     bgimage_program_layout.premult_location = get_uniform_location(BGIMAGE_PROGRAM, "premult");
     tint_program_layout.tint_color_location = get_uniform_location(TINT_PROGRAM, "tint_color");
     tint_program_layout.edges_location = get_uniform_location(TINT_PROGRAM, "edges");
+    seven_segment_program_layout.edges_location = get_uniform_location(SEVEN_SEGMENT_PROGRAM, "edges");
+    seven_segment_program_layout.area_bounds_location = get_uniform_location(SEVEN_SEGMENT_PROGRAM, "area_bounds");
+    seven_segment_program_layout.digit_color_location = get_uniform_location(SEVEN_SEGMENT_PROGRAM, "digit_color");
+    seven_segment_program_layout.digit_location = get_uniform_location(SEVEN_SEGMENT_PROGRAM, "digit");
 }
 
 #define CELL_BUFFERS enum { cell_data_buffer, selection_buffer, uniform_buffer };
@@ -459,6 +467,26 @@ draw_tint(bool premult, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat 
 }
 
 static void
+draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height) {
+    glEnable(GL_BLEND);
+    glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // BLEND_PREMULT
+    bind_program(SEVEN_SEGMENT_PROGRAM);
+    GLfloat left = os_window->viewport_width * (xstart + 1.f) / 2.f;
+    GLfloat right = left + os_window->viewport_width * width / 2.f;
+    GLfloat top = os_window->viewport_height * (1.f - ystart) / 2.f;
+    GLfloat bottom = os_window->viewport_height * (1.f + height - ystart) / 2.f;
+    glUniform4f(seven_segment_program_layout.edges_location, xstart, ystart - height, xstart + width, ystart);
+    glUniform4f(seven_segment_program_layout.area_bounds_location, left, top, right - left, bottom - top);
+    color_type digit_color = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg);
+#define C(shift) ((((GLfloat)((digit_color >> shift) & 0xFF)) / 255.0f))
+    glUniform4f(seven_segment_program_layout.digit_color_location, C(16), C(8), C(0), 1.);
+#undef C
+    glUniform1i(seven_segment_program_layout.digit_location, 8);
+    glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
+    glDisable(GL_BLEND);
+}
+
+static void
 draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloat w, GLfloat h, Screen *screen) {
     glEnable(GL_BLEND);
     // BLEND_PREMULT
@@ -706,6 +734,8 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
         GLfloat intensity = get_visual_bell_intensity(screen);
         if (intensity > 0.0f) draw_visual_bell_flash(intensity, xstart, ystart, w, h, screen);
     }
+
+    if (false) draw_window_number(os_window, screen, xstart, ystart, w, h);
 }
 // }}}
 
@@ -867,7 +897,7 @@ static PyMethodDef module_methods[] = {
 bool
 init_shaders(PyObject *module) {
 #define C(x) if (PyModule_AddIntConstant(module, #x, x) != 0) { PyErr_NoMemory(); return false; }
-    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM);
+    C(CELL_PROGRAM); C(CELL_BG_PROGRAM); C(CELL_SPECIAL_PROGRAM); C(CELL_FG_PROGRAM); C(BORDERS_PROGRAM); C(GRAPHICS_PROGRAM); C(GRAPHICS_PREMULT_PROGRAM); C(GRAPHICS_ALPHA_MASK_PROGRAM); C(BLIT_PROGRAM); C(BGIMAGE_PROGRAM); C(TINT_PROGRAM); C(SEVEN_SEGMENT_PROGRAM);
     C(GLSL_VERSION);
     C(GL_VERSION);
     C(GL_VENDOR);

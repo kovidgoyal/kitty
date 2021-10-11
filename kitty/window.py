@@ -26,13 +26,13 @@ from .fast_data_types import (
     CURSOR_UNDERLINE, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, NO_CURSOR_SHAPE, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
-    SCROLL_PAGE, STRIKETHROUGH, TINT_PROGRAM, KeyEvent, Screen, add_timer,
-    add_window, cell_size_for_window, click_mouse_url, compile_program,
-    encode_key_for_tty, get_boss, get_clipboard_string, get_options,
-    init_cell_program, mouse_selection, move_cursor_to_mouse_if_in_prompt,
-    pt_to_px, set_clipboard_string, set_titlebar_color, set_window_padding,
-    set_window_render_data, update_window_title, update_window_visibility,
-    viewport_for_window
+    SCROLL_PAGE, SEVEN_SEGMENT_PROGRAM, STRIKETHROUGH, TINT_PROGRAM, KeyEvent,
+    Screen, add_timer, add_window, cell_size_for_window, click_mouse_url,
+    compile_program, encode_key_for_tty, get_boss, get_clipboard_string,
+    get_options, init_cell_program, mouse_selection,
+    move_cursor_to_mouse_if_in_prompt, pt_to_px, set_clipboard_string,
+    set_titlebar_color, set_window_padding, set_window_render_data,
+    update_window_title, update_window_visibility, viewport_for_window
 )
 from .keys import keyboard_mode_name, mod_mask
 from .notify import NotificationCommand, handle_notification_cmd
@@ -255,6 +255,8 @@ class LoadShaderPrograms:
         compile_program(BGIMAGE_PROGRAM, v, f)
         v, f = load_shaders('tint')
         compile_program(TINT_PROGRAM, v, f)
+        v, f = load_shaders('seven_segment', vertex_name='tint')
+        compile_program(SEVEN_SEGMENT_PROGRAM, v, f)
         init_cell_program()
 
 

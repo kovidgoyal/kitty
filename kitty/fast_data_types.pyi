@@ -263,6 +263,7 @@ SCROLL_LINE: int
 SCROLL_PAGE: int
 STRIKETHROUGH: int
 TINT_PROGRAM: int
+SEVEN_SEGMENT_PROGRAM: int
 FC_MONO: int = 100
 FC_DUAL: int
 FC_WEIGHT_REGULAR: int
@@ -1238,6 +1239,7 @@ def get_os_window_size(os_window_id: int) -> Optional[OSWindowSize]:
 
 def get_all_processes() -> Tuple[int, ...]:
     pass
+
 
 def num_users() -> int:
     pass
