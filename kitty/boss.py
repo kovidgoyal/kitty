@@ -34,7 +34,7 @@ from .fast_data_types import (
     current_application_quit_request, current_os_window, destroy_global_data,
     focus_os_window, get_clipboard_string, get_options, get_os_window_size,
     global_font_size, mark_os_window_for_close, os_window_font_size,
-    patch_global_colors, safe_pipe, set_application_quit_request,
+    patch_global_colors, ring_bell, safe_pipe, set_application_quit_request,
     set_background_image, set_boss, set_clipboard_string, set_in_sequence_mode,
     set_options, set_os_window_size, thread_write, toggle_fullscreen,
     toggle_maximized
@@ -158,6 +158,7 @@ class Boss:
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences: Optional[SubSequenceMap] = None
+        self.default_pending_action: Optional[KeyAction] = None
         self.cached_values = cached_values
         self.os_window_map: Dict[int, TabManager] = {}
         self.os_window_death_actions: Dict[int, Callable[[], None]] = {}
@@ -758,14 +759,18 @@ class Boss:
         if t is not None:
             return t.active_window
 
+    def set_pending_sequences(self, sequences: SubSequenceMap, default_pending_action: Optional[KeyAction] = None) -> None:
+        self.pending_sequences = sequences
+        self.default_pending_action = default_pending_action
+        set_in_sequence_mode(True)
+
     def dispatch_possible_special_key(self, ev: KeyEvent) -> bool:
         # Handles shortcuts, return True if the key was consumed
         key_action = get_shortcut(self.keymap, ev)
         if key_action is None:
             sequences = get_shortcut(get_options().sequence_map, ev)
             if sequences and not isinstance(sequences, KeyAction):
-                self.pending_sequences = sequences
-                set_in_sequence_mode(True)
+                self.set_pending_sequences(sequences)
                 return True
             if self.global_shortcuts_map and get_shortcut(self.global_shortcuts_map, ev):
                 return True
@@ -790,10 +795,36 @@ class Boss:
         if remaining:
             self.pending_sequences = remaining
         else:
-            self.pending_sequences = None
+            matched_action = matched_action or self.default_pending_action
+            self.pending_sequences = self.default_pending_action = None
             set_in_sequence_mode(False)
             if matched_action is not None:
                 self.dispatch_action(matched_action)
+
+    @ac('win', '''
+        Focus a visible window by pressing the number of the window. Window numbers are displayed
+        over the windows for easy selection in this mode.
+        ''')
+    def focus_visible_window(self) -> None:
+        tab = self.active_tab
+        if tab is not None:
+            pending_sequences: SubSequenceMap = {}
+            for idx, window in tab.windows.iter_visible_windows_with_number():
+                window.screen.set_window_number(idx + 1)
+                pending_sequences[(SingleKey(key=ord(str(idx + 1))),)] = KeyAction('focus_visible_window_trigger', (idx,))
+            if pending_sequences:
+                self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('focus_visible_window_trigger'))
+            else:
+                if get_options().enable_audio_bell:
+                    ring_bell()
+
+    def focus_visible_window_trigger(self, idx: int = -1) -> None:
+        tab = self.active_tab
+        if tab is not None:
+            for window in tab:
+                window.screen.set_window_number()
+            if idx > -1:
+                tab.nth_window(idx)
 
     @ac('win', '''
         Resize the active window interactively
