@@ -90,6 +90,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix :opt:`resize_in_steps` not working correctly on high DPI screens
   (:iss:`4114`)
 
+- Fix the :program:`resize OS Windows <kitty @ resize-os-window>` setting a
+  slightly incorrect size on high DPI screens (:iss:`4114`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

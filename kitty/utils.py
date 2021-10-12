@@ -715,11 +715,11 @@ def get_new_os_window_size(
     if unit == 'cells':
         cw = metrics['cell_width']
         ch = metrics['cell_height']
-        if has_window_scaling:
-            cw = int(cw / metrics['xscale'])
-            ch = int(ch / metrics['yscale'])
         width *= cw
         height *= ch
+        if has_window_scaling:
+            width = round(width / metrics['xscale'])
+            height = round(height / metrics['yscale'])
     if incremental:
         w = metrics['width'] + width
         h = metrics['height'] + height
