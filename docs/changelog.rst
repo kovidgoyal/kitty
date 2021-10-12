@@ -87,6 +87,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - macOS: Fix :kbd:`ctrl+shift` with :kbd:`Esc or Function keys` not working
   (:iss:`4109`)
 
+- macOS: Fix :opt:`resize_in_steps` not working correctly on high DPI screens
+  (:iss:`4114`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

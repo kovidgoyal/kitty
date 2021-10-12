@@ -1875,10 +1875,13 @@ void _glfwPlatformSetWindowAspectRatio(_GLFWwindow* window, int numer, int denom
 
 void _glfwPlatformSetWindowSizeIncrements(_GLFWwindow* window, int widthincr, int heightincr)
 {
-    if (widthincr != GLFW_DONT_CARE && heightincr != GLFW_DONT_CARE)
-        [window->ns.object setResizeIncrements:NSMakeSize(widthincr, heightincr)];
-    else
+    if (widthincr != GLFW_DONT_CARE && heightincr != GLFW_DONT_CARE) {
+        float xscale = 1, yscale = 1;
+        _glfwPlatformGetWindowContentScale(window, &xscale, &yscale);
+        [window->ns.object setResizeIncrements:NSMakeSize(widthincr / xscale, heightincr / yscale)];
+    } else {
         [window->ns.object setResizeIncrements:NSMakeSize(1.0, 1.0)];
+    }
 }
 
 void _glfwPlatformGetFramebufferSize(_GLFWwindow* window, int* width, int* height)
