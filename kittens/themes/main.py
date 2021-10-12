@@ -385,7 +385,7 @@ class ThemesHandler(Handler):
         if key_event.matches('esc') or key_event.matches('q'):
             return self.quit_loop(0)
         for cat in 'all dark light recent'.split():
-            if key_event.matches(cat[0]) or key_event.matches(f'alt+{cat[0]}'):
+            if key_event.matches(cat[0]) or key_event.matches(f'alt+{cat[0]}') or key_event.matches(f'shift+{cat[0]}'):
                 if cat != self.current_category:
                     self.current_category = cat
                     self.redraw_after_category_change()
@@ -402,9 +402,9 @@ class ThemesHandler(Handler):
             return self.next(delta=self.screen_size.rows - 3, allow_wrapping=False)
         if key_event.matches('page_up'):
             return self.next(delta=3 - self.screen_size.rows, allow_wrapping=False)
-        if key_event.matches('s') or key_event.matches('/'):
+        if key_event.matches('s') or key_event.matches('/') or key_event.matches('shift+s'):
             return self.start_search()
-        if key_event.matches('c') or key_event.matches('enter'):
+        if key_event.matches('c') or key_event.matches('enter') or key_event.matches('shift+c'):
             if not self.themes_list:
                 self.cmd.beep()
                 return
@@ -453,19 +453,19 @@ class ThemesHandler(Handler):
         self.print(' ', f'{ac("Q")}uit')
 
     def on_accepting_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
-        if key_event.matches('q') or key_event.matches('esc'):
+        if key_event.matches('q') or key_event.matches('esc') or key_event.matches('shift+q'):
             self.quit_loop(0)
             return
-        if key_event.matches('a'):
+        if key_event.matches('a') or key_event.matches('shift+a'):
             self.state = State.browsing
             self.draw_screen()
             return
-        if key_event.matches('p'):
+        if key_event.matches('p') or key_event.matches('shift+p'):
             self.themes_list.current_theme.save_in_dir(config_dir)
             self.update_recent()
             self.quit_loop(0)
             return
-        if key_event.matches('m'):
+        if key_event.matches('m') or key_event.matches('shift+m'):
             self.themes_list.current_theme.save_in_conf(config_dir, self.cli_opts.reload_in)
             self.update_recent()
             self.quit_loop(0)
