@@ -726,7 +726,8 @@ a list of available layouts, see the :ref:`layouts`.
 opt('window_resize_step_cells', '2',
     option_type='positive_int',
     long_text='''
-The step size (in units of cell width/cell height) to use when resizing windows.
+The step size (in units of cell width/cell height) to use when resizing kitty windows
+in a layout with the keyboard (:sc:`start_resizing_window`).
 The cells value is used for horizontal resizing and the lines value for vertical
 resizing.
 '''
