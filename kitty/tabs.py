@@ -77,6 +77,11 @@ def add_active_id_to_history(items: Deque[int], item_id: int, maxlen: int = 64) 
 
 class Tab:  # {{{
 
+    active_fg: Optional[int] = None
+    active_bg: Optional[int] = None
+    inactive_fg: Optional[int] = None
+    inactive_bg: Optional[int] = None
+
     def __init__(
         self,
         tab_manager: 'TabManager',
@@ -922,7 +927,8 @@ class TabManager:  # {{{
             ans.append(TabBarData(
                 title, t is at, needs_attention,
                 len(t), t.num_window_groups, t.current_layout.name or '',
-                has_activity_since_last_focus
+                has_activity_since_last_focus, t.active_fg, t.active_bg,
+                t.inactive_fg, t.inactive_bg
             ))
         return ans
 

@@ -30,6 +30,10 @@ class TabBarData(NamedTuple):
     num_window_groups: int
     layout_name: str
     has_activity_since_last_focus: bool
+    active_fg: Optional[int]
+    active_bg: Optional[int]
+    inactive_fg: Optional[int]
+    inactive_bg: Optional[int]
 
 
 class DrawData(NamedTuple):
@@ -49,6 +53,24 @@ class DrawData(NamedTuple):
     tab_activity_symbol: Optional[str]
     powerline_style: PowerlineStyle
     tab_bar_edge: EdgeLiteral
+
+    def tab_fg(self, tab: TabBarData) -> int:
+        if tab.is_active:
+            if tab.active_fg is not None:
+                return tab.active_fg
+            return int(self.active_fg)
+        if tab.inactive_fg is not None:
+            return tab.inactive_fg
+        return int(self.inactive_fg)
+
+    def tab_bg(self, tab: TabBarData) -> int:
+        if tab.is_active:
+            if tab.active_bg is not None:
+                return tab.active_bg
+            return int(self.active_bg)
+        if tab.inactive_bg is not None:
+            return tab.inactive_bg
+        return int(self.inactive_bg)
 
 
 def as_rgb(x: int) -> int:
@@ -122,7 +144,8 @@ class SupSub:
 
 
 class ExtraData:
-    pass
+    prev_tab: Optional[TabBarData] = None
+    next_tab: Optional[TabBarData] = None
 
 
 def draw_title(draw_data: DrawData, screen: Screen, tab: TabBarData, index: int) -> None:
@@ -183,7 +206,7 @@ def draw_tab_with_slant(
 ) -> int:
     orig_fg = screen.cursor.fg
     left_sep, right_sep = ('', '') if draw_data.tab_bar_edge == 'top' else ('', '')
-    tab_bg = as_rgb(color_as_int(draw_data.active_bg if tab.is_active else draw_data.inactive_bg))
+    tab_bg = screen.cursor.bg
     slant_fg = as_rgb(color_as_int(draw_data.default_bg))
 
     def draw_sep(which: str) -> None:
@@ -224,8 +247,6 @@ def draw_tab_with_separator(
     before: int, max_title_length: int, index: int, is_last: bool,
     extra_data: ExtraData
 ) -> int:
-    tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
-    screen.cursor.bg = as_rgb(color_as_int(tab_bg))
     if draw_data.leading_spaces:
         screen.draw(' ' * draw_data.leading_spaces)
     draw_title(draw_data, screen, tab, index)
@@ -252,12 +273,13 @@ def draw_tab_with_fade(
     before: int, max_title_length: int, index: int, is_last: bool,
     extra_data: ExtraData
 ) -> int:
-    tab_bg = draw_data.active_bg if tab.is_active else draw_data.inactive_bg
+    orig_bg = screen.cursor.bg
+    tab_bg = color_from_int(orig_bg >> 8)
     fade_colors = [as_rgb(color_as_int(alpha_blend(tab_bg, draw_data.default_bg, alpha))) for alpha in draw_data.alpha]
     for bg in fade_colors:
         screen.cursor.bg = bg
         screen.draw(' ')
-    screen.cursor.bg = as_rgb(color_as_int(tab_bg))
+    screen.cursor.bg = orig_bg
     draw_title(draw_data, screen, tab, index)
     extra = screen.cursor.x - before - max_title_length
     if extra > 0:
@@ -290,29 +312,21 @@ def draw_tab_with_powerline(
     before: int, max_title_length: int, index: int, is_last: bool,
     extra_data: ExtraData
 ) -> int:
-    tab_bg = as_rgb(color_as_int(draw_data.active_bg if tab.is_active else draw_data.inactive_bg))
-    tab_fg = as_rgb(color_as_int(draw_data.active_fg if tab.is_active else draw_data.inactive_fg))
-    inactive_bg = as_rgb(color_as_int(draw_data.inactive_bg))
-    default_bg = as_rgb(color_as_int(draw_data.default_bg))
+    tab_bg = screen.cursor.bg
+    tab_fg = screen.cursor.fg
+    default_bg = as_rgb(int(draw_data.default_bg))
+    if extra_data.next_tab:
+        next_tab_bg = as_rgb(draw_data.tab_bg(extra_data.next_tab))
+        needs_soft_separator = next_tab_bg == tab_bg
+    else:
+        next_tab_bg = default_bg
+        needs_soft_separator = False
 
-    separator_symbol, separator_alt_symbol = powerline_symbols.get(draw_data.powerline_style, ('', ''))
+    separator_symbol, soft_separator_symbol = powerline_symbols.get(draw_data.powerline_style, ('', ''))
     min_title_length = 1 + 2
-
-    if screen.cursor.x + min_title_length >= screen.columns:
-        screen.cursor.x -= 2
-        screen.cursor.bg = default_bg
-        screen.cursor.fg = inactive_bg
-        screen.draw(f'{separator_symbol}   ')
-        return screen.cursor.x
-
     start_draw = 2
-    if tab.is_active and screen.cursor.x >= 2:
-        screen.cursor.x -= 2
-        screen.cursor.fg = inactive_bg
-        screen.cursor.bg = tab_bg
-        screen.draw(f'{separator_symbol} ')
-        screen.cursor.fg = tab_fg
-    elif screen.cursor.x == 0:
+
+    if screen.cursor.x == 0:
         screen.cursor.bg = tab_bg
         screen.draw(' ')
         start_draw = 1
@@ -327,13 +341,10 @@ def draw_tab_with_powerline(
             screen.cursor.x -= extra + 1
             screen.draw('…')
 
-    if tab.is_active or is_last:
+    if not needs_soft_separator:
         screen.draw(' ')
         screen.cursor.fg = tab_bg
-        if is_last:
-            screen.cursor.bg = default_bg
-        else:
-            screen.cursor.bg = inactive_bg
+        screen.cursor.bg = next_tab_bg
         screen.draw(separator_symbol)
     else:
         prev_fg = screen.cursor.fg
@@ -344,7 +355,7 @@ def draw_tab_with_powerline(
             c2 = draw_data.inactive_bg.contrast(draw_data.inactive_fg)
             if c1 < c2:
                 screen.cursor.fg = default_bg
-        screen.draw(f' {separator_alt_symbol}')
+        screen.draw(f' {soft_separator_symbol}')
         screen.cursor.fg = prev_fg
 
     end = screen.cursor.x
@@ -516,8 +527,10 @@ class TabBar:
         ed = ExtraData()
 
         for i, t in enumerate(data):
-            s.cursor.bg = self.active_bg if t.is_active else 0
-            s.cursor.fg = self.active_fg if t.is_active else 0
+            ed.prev_tab = data[i - 1] if i > 0 else None
+            ed.next_tab = data[i + 1] if i + 1 < len(data) else None
+            s.cursor.bg = as_rgb(self.draw_data.tab_bg(t))
+            s.cursor.fg = as_rgb(self.draw_data.tab_fg(t))
             s.cursor.bold, s.cursor.italic = self.active_font_style if t.is_active else self.inactive_font_style
             before = s.cursor.x
             end = self.draw_func(self.draw_data, s, t, before, max_title_length, i + 1, t is last_tab, ed)
