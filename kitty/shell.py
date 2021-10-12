@@ -11,6 +11,8 @@ from contextlib import suppress
 from functools import lru_cache
 from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
 
+from kittens.tui.operations import set_window_title, set_cursor_shape
+
 from .cli import (
     OptionDict, emph, green, italic, parse_option_spec, print_help_for_seq,
     title
@@ -22,6 +24,8 @@ from .rc.base import (
     display_subcommand_help, parse_subcommand_cli
 )
 from .types import run_once
+
+output_prefix = '\x1b]133;C\x1b\\'
 
 
 @run_once
@@ -137,6 +141,7 @@ def print_help(which: Optional[str] = None) -> None:
 
 def run_cmd(global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, items: List[str]) -> None:
     from .remote_control import do_io
+    print(end=set_window_title(cmd), flush=True)
     payload = func.message_to_kitty(global_opts, opts, items)
     send = {
         'cmd': cmd,
@@ -147,11 +152,13 @@ def run_cmd(global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, it
         send['payload'] = payload
     response = do_io(global_opts.to, send, func.no_response)
     if not response.get('ok'):
+        print(end=output_prefix, flush=True)
         if response.get('tb'):
             print_err(response['tb'])
         print_err(response['error'])
         return
     if 'data' in response:
+        print(end=output_prefix, flush=True)
         print(response['data'])
 
 
@@ -164,17 +171,19 @@ def real_main(global_opts: RCOptions) -> None:
     if awid is not None:
         print('The ID of the previously active window is: {}'.format(awid))
 
+    pre_prompt = '\x1b]133;A\x1b\\' + set_window_title('The kitty shell') + set_cursor_shape('bar')
     while True:
         try:
             try:
-                scmdline = input(f'{kitty_face} ')
+                scmdline = input(f'{pre_prompt}{kitty_face} ')
             except UnicodeEncodeError:
-                scmdline = input('kitty> ')
+                scmdline = input('{pre_prompt}kitty> ')
         except EOFError:
             break
         except KeyboardInterrupt:
             print()
             continue
+        print(end=set_cursor_shape(), flush=True)
         if not scmdline:
             continue
         cmdline = shlex.split(scmdline)
@@ -185,6 +194,7 @@ def real_main(global_opts: RCOptions) -> None:
         except KeyError:
             if cmd in ('exit', 'quit'):
                 break
+            print(end=output_prefix, flush=True)
             if cmd == 'help':
                 print_help(cmdline[1] if len(cmdline) > 1 else None)
                 continue
@@ -195,10 +205,12 @@ def real_main(global_opts: RCOptions) -> None:
             opts, items = parse_subcommand_cli(func, cmdline)
         except SystemExit as e:
             if e.code != 0:
+                print(end=output_prefix, flush=True)
                 print_err(e)
                 print_err('Use "{}" to see how to use this command.'.format(emph('help ' + cmd)))
             continue
         except Exception:
+            print(end=output_prefix, flush=True)
             print_err('Unhandled error:')
             traceback.print_exc()
             continue
@@ -206,12 +218,15 @@ def real_main(global_opts: RCOptions) -> None:
             try:
                 run_cmd(global_opts, cmd, func, opts, items)
             except (SystemExit, ParsingOfArgsFailed) as e:
+                print(end=output_prefix, flush=True)
                 print_err(e)
                 continue
             except KeyboardInterrupt:
+                print(end=output_prefix, flush=True)
                 print()
                 continue
             except Exception:
+                print(end=output_prefix, flush=True)
                 print_err('Unhandled error:')
                 traceback.print_exc()
                 continue
