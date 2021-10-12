@@ -228,6 +228,11 @@ class KeyEvent(NamedTuple):
             return True
         return False
 
+    def matches_text(self, text: str, case_sensitive: bool = False) -> bool:
+        if case_sensitive:
+            return self.text == text
+        return self.text.lower() == text.lower()
+
     @property
     def mods_without_locks(self) -> int:
         return self.mods & ~(NUM_LOCK | CAPS_LOCK)

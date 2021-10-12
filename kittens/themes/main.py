@@ -382,10 +382,10 @@ class ThemesHandler(Handler):
             self.draw_bottom_bar()
 
     def on_browsing_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
-        if key_event.matches('esc') or key_event.matches('q'):
+        if key_event.matches('esc') or key_event.matches_text('q'):
             return self.quit_loop(0)
         for cat in 'all dark light recent'.split():
-            if key_event.matches(cat[0]) or key_event.matches(f'alt+{cat[0]}') or key_event.matches(f'shift+{cat[0]}'):
+            if key_event.matches_text(cat[0]) or key_event.matches(f'alt+{cat[0]}'):
                 if cat != self.current_category:
                     self.current_category = cat
                     self.redraw_after_category_change()
@@ -394,17 +394,17 @@ class ThemesHandler(Handler):
             return self.next_category(-1)
         if key_event.matches('right') or key_event.matches('tab'):
             return self.next_category(1)
-        if key_event.matches('j') or key_event.matches('down'):
+        if key_event.matches_text('j') or key_event.matches('down'):
             return self.next(delta=1)
-        if key_event.matches('k') or key_event.matches('up'):
+        if key_event.matches_text('k') or key_event.matches('up'):
             return self.next(delta=-1)
         if key_event.matches('page_down'):
             return self.next(delta=self.screen_size.rows - 3, allow_wrapping=False)
         if key_event.matches('page_up'):
             return self.next(delta=3 - self.screen_size.rows, allow_wrapping=False)
-        if key_event.matches('s') or key_event.matches('/') or key_event.matches('shift+s'):
+        if key_event.matches_text('s') or key_event.matches('/'):
             return self.start_search()
-        if key_event.matches('c') or key_event.matches('enter') or key_event.matches('shift+c'):
+        if key_event.matches_text('c') or key_event.matches('enter'):
             if not self.themes_list:
                 self.cmd.beep()
                 return
@@ -453,19 +453,19 @@ class ThemesHandler(Handler):
         self.print(' ', f'{ac("Q")}uit')
 
     def on_accepting_key_event(self, key_event: KeyEventType, in_bracketed_paste: bool = False) -> None:
-        if key_event.matches('q') or key_event.matches('esc') or key_event.matches('shift+q'):
+        if key_event.matches_text('q') or key_event.matches('esc'):
             self.quit_loop(0)
             return
-        if key_event.matches('a') or key_event.matches('shift+a'):
+        if key_event.matches_text('a'):
             self.state = State.browsing
             self.draw_screen()
             return
-        if key_event.matches('p') or key_event.matches('shift+p'):
+        if key_event.matches_text('p'):
             self.themes_list.current_theme.save_in_dir(config_dir)
             self.update_recent()
             self.quit_loop(0)
             return
-        if key_event.matches('m') or key_event.matches('shift+m'):
+        if key_event.matches_text('m'):
             self.themes_list.current_theme.save_in_conf(config_dir, self.cli_opts.reload_in)
             self.update_recent()
             self.quit_loop(0)
