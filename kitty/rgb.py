@@ -75,7 +75,7 @@ def color_from_int(x: int) -> Color:
 
 
 def color_as_int(x: Color) -> int:
-    return x.red << 16 | x.green << 8 | x.blue
+    return int(x)
 
 
 def color_as_sharp(x: Color) -> str:
