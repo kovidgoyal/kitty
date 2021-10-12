@@ -18,14 +18,14 @@ class CloseTab(RemoteCommand):
 
     '''
     match: Which tab to close
-    self: Boolean indicating whether to close the window the command is run in
+    self: Boolean indicating whether to close the tab of the window the command is run in
     '''
 
     short_desc = 'Close the specified tab(s)'
     options_spec = MATCH_TAB_OPTION + '''\n
 --self
 type=bool-set
-If specified close the tab this command is run in, rather than the active tab.
+If specified close the tab of the window this command is run in, rather than the active tab.
 '''
     argspec = ''
 
