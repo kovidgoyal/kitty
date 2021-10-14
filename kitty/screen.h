@@ -131,7 +131,13 @@ typedef struct {
     struct {
         monotonic_t start, duration;
     } ignore_bells;
-    bool redraws_multiline_prompts;
+    union {
+        struct {
+            unsigned int redraws_multiline_prompts: 1;
+            unsigned int redraws_prompts_at_all: 1;
+        };
+        unsigned int val;
+    } prompt_redraw_settings;
     unsigned int display_window_number;
 } Screen;
 

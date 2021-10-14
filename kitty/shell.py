@@ -172,13 +172,14 @@ def real_main(global_opts: RCOptions) -> None:
         print('The ID of the previously active window is: {}'.format(awid))
 
     pre_prompt = set_window_title('The kitty shell') + set_cursor_shape('bar')
-    pre_prompt += '\x1b]133;A\x1b\\'
+    pre_prompt += '\x1b]133;A;does_not_redraw_prompts\x1b\\'
     while True:
         try:
+            print(end=pre_prompt)
             try:
-                scmdline = input(f'{pre_prompt}{kitty_face} ')
+                scmdline = input(f'{kitty_face} ')
             except UnicodeEncodeError:
-                scmdline = input('{pre_prompt}kitty> ')
+                scmdline = input('kitty> ')
         except EOFError:
             break
         except KeyboardInterrupt:
