@@ -496,7 +496,7 @@ is_modified_special_key(NSEvent *event, NSEventModifierFlags modifierFlags) {
         case 0x1b:  // Esc
             if (modifierFlags & (NSEventModifierFlagCommand | NSEventModifierFlagControl)) return true;
             break;
-        case NSInsertFunctionKey:  // Insert
+        case NSHelpFunctionKey:  // For some reason keyboards with an insert key have it mapped to help
             if (!modifierFlags || modifierFlags == NSEventModifierFlagShift) return true;
             break;
     }
