@@ -51,7 +51,7 @@ from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import (
     SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 )
-from .types import SingleKey, ac
+from .types import _T, SingleKey, ac
 from .typing import PopenType, TypedDict
 from .utils import (
     func_name, get_editor, get_new_os_window_size, get_primary_selection,
@@ -1807,31 +1807,25 @@ class Boss:
         self._cleanup_tab_after_window_removal(tab)
         target_tab.make_active()
 
-    @ac('tab', 'Interactively select a tab to switch to')
-    def select_tab(self) -> None:
-        title = 'Choose a tab to switch to'
+    def choose_entry(self, title: str, entries: Iterable[Tuple[Union[_T, str, None], str]], callback: Callable[[Union[_T, str, None]], None]) -> None:
         lines = [title, '']
+        idx_map: List[Union[_T, str]] = []
+        ans: Union[str, _T, None] = None
         fmt = ': {1}'
-        tab_id_map: Dict[int, Optional[Union[str, int]]] = {}
-        current_tab = self.active_tab
-        done_tab_id: Optional[Union[str, int]] = None
 
-        for i, tab in enumerate(self.all_tabs):
-            if tab is not current_tab:
-                tab_id_map[len(tab_id_map)] = tab.id
-                lines.append(fmt.format(i + 1, tab.title))
+        for obj, text in entries:
+            if obj is None:
+                lines.append(text)
+            else:
+                idx_map.append(obj)
+                lines.append(fmt.format(len(idx_map), text))
 
         def done(data: Dict[str, Any], target_window_id: int, self: Boss) -> None:
-            nonlocal done_tab_id
-            done_tab_id = tab_id_map[int(data['groupdicts'][0]['index'])]
+            nonlocal ans
+            ans = idx_map[int(data['groupdicts'][0]['index'])]
 
         def done2(target_window_id: int, self: Boss) -> None:
-            tab_id = done_tab_id
-            if tab_id is not None:
-                for i, tab in enumerate(self.all_tabs):
-                    if tab.id == tab_id:
-                        self.set_active_tab(tab)
-                        break
+            callback(ans)
 
         self._run_kitten(
             'hints', args=(
@@ -1839,6 +1833,16 @@ class Boss:
                 r'--regex=(?m)^:\s+.+$', '--window-title', title,
             ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
         )
+
+    @ac('tab', 'Interactively select a tab to switch to')
+    def select_tab(self) -> None:
+
+        def chosen(ans: Union[None, str, Tab]) -> None:
+            if isinstance(ans, Tab):
+                self.set_active_tab(ans)
+
+        ct = self.active_tab
+        self.choose_entry('Choose a tab to switch to', ((t, t.title) for t in self.all_tabs if t is not ct), chosen)
 
     @ac('win', '''
         Detach a window, moving it to another tab or OS Window
@@ -1851,50 +1855,23 @@ class Boss:
         if args[0] in ('new-tab', 'tab-prev', 'tab-left', 'tab-right'):
             where = 'new' if args[0] == 'new-tab' else args[0][4:]
             return self._move_window_to(target_tab_id=where)
-        title = 'Choose a tab to move the window to'
-        lines = [title, '']
-        fmt = ': {1}'
-        tab_id_map: Dict[int, Optional[Union[str, int]]] = {}
-        current_tab = self.active_tab
-        done_tab_id: Optional[Union[str, int]] = None
-        done_called = False
+        ct = self.active_tab
+        items: List[Tuple[Union[str, Tab], str]] = [(t, t.title) for t in self.all_tabs if t is not ct]
+        items.append(('new_tab', 'New tab'))
+        items.append(('new_os_window', 'New OS Window'))
+        target_window = self.active_window
 
-        for i, tab in enumerate(self.all_tabs):
-            if tab is not current_tab:
-                tab_id_map[len(tab_id_map)] = tab.id
-                lines.append(fmt.format(i + 1, tab.title))
-        new_idx = len(tab_id_map) + 1
-        tab_id_map[new_idx - 1] = 'new'
-        lines.append(fmt.format(new_idx, 'New tab'))
-        new_idx = len(tab_id_map) + 1
-        tab_id_map[new_idx - 1] = None
-        lines.append(fmt.format(new_idx, 'New OS Window'))
+        def chosen(ans: Union[None, str, Tab]) -> None:
+            if ans is not None:
+                if isinstance(ans, str):
+                    if ans == 'new_os_window':
+                        self._move_window_to(window=target_window, target_os_window_id='new')
+                    elif ans == 'new_tab':
+                        self._move_window_to(window=target_window)
+                else:
+                    self._move_window_to(target_window, target_tab_id=ans.id)
 
-        def done(data: Dict[str, Any], target_window_id: int, self: Boss) -> None:
-            nonlocal done_tab_id, done_called
-            done_tab_id = tab_id_map[int(data['groupdicts'][0]['index'])]
-            done_called = True
-
-        def done2(target_window_id: int, self: Boss) -> None:
-            if not done_called:
-                return
-            tab_id = done_tab_id
-            target_window = None
-            for w in self.all_windows:
-                if w.id == target_window_id:
-                    target_window = w
-                    break
-            if tab_id is None:
-                self._move_window_to(window=target_window, target_os_window_id='new')
-            else:
-                self._move_window_to(window=target_window, target_tab_id=tab_id)
-
-        self._run_kitten(
-            'hints', args=(
-                '--ascending', '--customize-processing=::import::kitty.choose_entry',
-                r'--regex=(?m)^:\s+.+$', '--window-title', title,
-            ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
-        )
+        self.choose_entry('Choose a tab to move the window to', items, chosen)
 
     @ac('tab', '''
         Detach a tab, moving it to another OS Window
@@ -1905,47 +1882,20 @@ class Boss:
         if not args or args[0] == 'new':
             return self._move_tab_to()
 
-        title = 'Choose an OS window to move the tab to'
-        lines = [title, '']
-        fmt = ': {1}'
-        os_window_id_map: Dict[int, Optional[int]] = {}
-        current_os_window = getattr(self.active_tab, 'os_window_id', 0)
-        done_osw: Optional[int] = None
-        done_called = False
+        items: List[Tuple[Union[str, int], str]] = []
+        ct = self.active_tab_manager
+        for osw_id, tm in self.os_window_map.items():
+            if tm is not ct and tm.active_tab:
+                items.append((osw_id, tm.active_tab.title))
+        items.append(('new', 'New OS Window'))
+        target_tab = self.active_tab
 
-        for i, osw in enumerate(self.os_window_map):
-            tm = self.os_window_map[osw]
-            if current_os_window != osw and tm.active_tab and tm.active_tab:
-                os_window_id_map[len(os_window_id_map)] = osw
-                lines.append(fmt.format(i + 1, tm.active_tab.title))
-        new_idx = len(os_window_id_map) + 1
-        os_window_id_map[new_idx - 1] = None
-        lines.append(fmt.format(new_idx, 'New OS Window'))
+        def chosen(ans: Union[None, int, str]) -> None:
+            if ans is not None:
+                os_window_id = None if isinstance(ans, str) else ans
+                self._move_tab_to(tab=target_tab, target_os_window_id=os_window_id)
 
-        def done(data: Dict[str, Any], target_window_id: int, self: Boss) -> None:
-            nonlocal done_called, done_osw
-            done_osw = os_window_id_map[int(data['groupdicts'][0]['index'])]
-            done_called = True
-
-        def done2(target_window_id: int, self: Boss) -> None:
-            if not done_called:
-                return
-            os_window_id = done_osw
-            target_tab = self.active_tab
-            for w in self.all_windows:
-                if w.id == target_window_id:
-                    target_tab = w.tabref()
-                    break
-            if target_tab and target_tab.os_window_id == os_window_id:
-                return
-            self._move_tab_to(tab=target_tab, target_os_window_id=os_window_id)
-
-        self._run_kitten(
-            'hints', args=(
-                '--ascending', '--customize-processing=::import::kitty.choose_entry',
-                r'--regex=(?m)^:\s+.+$', '--window-title', title,
-            ), input_data='\r\n'.join(lines).encode('utf-8'), custom_callback=done, action_on_removal=done2
-        )
+        self.choose_entry('Choose an OS window to move the tab to', items, chosen)
 
     def set_background_image(self, path: Optional[str], os_windows: Tuple[int, ...], configured: bool, layout: Optional[str]) -> None:
         if layout:
