@@ -505,6 +505,7 @@ currently_pressed_button(void) {
 
 HANDLER(handle_event) {
     modifiers &= ~GLFW_LOCK_MASK;
+    set_mouse_cursor_for_screen(w->render_data.screen);
     if (button == -1) {
         button = currently_pressed_button();
         handle_move_event(w, button, modifiers, window_idx);
