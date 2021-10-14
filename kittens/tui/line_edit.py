@@ -135,20 +135,20 @@ class LineEdit:
     def on_key(self, key_event: KeyEvent) -> bool:
         if key_event.type is EventType.RELEASE:
             return False
-        if key_event.matches('home'):
+        if key_event.matches('home') or key_event.matches('ctrl+a'):
             return self.home()
-        if key_event.matches('end'):
+        if key_event.matches('end') or key_event.matches('ctrl+e'):
             return self.end()
         if key_event.matches('backspace'):
             self.backspace()
             return True
-        if key_event.matches('delete'):
+        if key_event.matches('delete') or key_event.matches('ctrl+d'):
             self.delete()
             return True
-        if key_event.matches('left'):
+        if key_event.matches('left') or key_event.matches('ctrl+b'):
             self.left()
             return True
-        if key_event.matches('right'):
+        if key_event.matches('right') or key_event.matches('ctrl+f'):
             self.right()
             return True
         return False
