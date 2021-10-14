@@ -86,9 +86,9 @@ class TestFileTransmission(BaseTest):
         b = tuple(f(r) for r in b if r.get('status') != 'PROGRESS')
         self.ae(a, b)
 
-    def assertResponses(self, ft, **kw):
+    def assertResponses(self, ft, limit=1024, **kw):
         self.responses.append(response(**kw))
-        self.cr(ft.test_responses, self.responses)
+        self.cr(ft.test_responses[:limit], self.responses[:limit])
 
     def assertPathEqual(self, a, b):
         a = os.path.abspath(os.path.realpath(a))
@@ -131,6 +131,58 @@ class TestFileTransmission(BaseTest):
         patch(a_path, b_path, c_path)
         # test size of delta
         patch(a_path, a_path, c_path, max_delta_len=256)
+
+    def test_file_get(self):
+        # send refusal
+        for quiet in (0, 1, 2):
+            ft = FileTransmission(allow=False)
+            ft.handle_serialized_command(serialized_cmd(action='receive', id='x', quiet=quiet))
+            self.cr(ft.test_responses, [] if quiet == 2 else [response(id='x', status='EPERM:User refused the transfer')])
+            self.assertFalse(ft.active_sends)
+        # reading metadata for specs
+        cwd = os.path.join(self.tdir, 'cwd')
+        home = os.path.join(self.tdir, 'home')
+        os.mkdir(cwd), os.mkdir(home)
+        with set_paths(cwd=cwd, home=home):
+            ft = FileTransmission()
+            self.responses = []
+            ft.handle_serialized_command(serialized_cmd(action='receive', size=1))
+            self.assertResponses(ft, status='OK')
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='missing', data=b'XXX'))
+            self.responses.append(response(status='ENOENT:Failed to read spec', file_id='missing'))
+            self.assertResponses(ft, status='OK')
+            ft = FileTransmission()
+            self.responses = []
+            ft.handle_serialized_command(serialized_cmd(action='receive', size=2))
+            self.assertResponses(ft, status='OK')
+            with open(os.path.join(home, 'a'), 'w') as f:
+                f.write('a')
+            os.mkdir(f.name + 'd')
+            with open(os.path.join(f.name + 'd', 'b'), 'w') as f2:
+                f2.write('bbb')
+            os.symlink(f.name, f.name + 'd/s')
+            os.link(f.name, f.name + 'd/h')
+            os.symlink('XXX', f.name + 'd/q')
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='a', data=b'a'))
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='b', data=b'ad'))
+            files = {r['name']: r for r in ft.test_responses if r['action'] == 'file'}
+            self.ae(len(files), 6)
+            q = files[f.name]
+            tgt = q['status'].encode('ascii')
+            self.ae(q['size'], 1), self.assertNotIn('ftype', q)
+            q = files[f.name + 'd']
+            self.ae(q['ftype'], 'directory')
+            q = files[f.name + 'd/b']
+            self.ae(q['size'], 3)
+            q = files[f.name + 'd/s']
+            self.ae(q['ftype'], 'symlink')
+            self.ae(q['data'], tgt)
+            q = files[f.name + 'd/h']
+            self.ae(q['ftype'], 'link')
+            self.ae(q['data'], tgt)
+            q = files[f.name + 'd/q']
+            self.ae(q['ftype'], 'symlink')
+            self.assertNotIn('data', q)
 
     def test_file_put(self):
         # send refusal

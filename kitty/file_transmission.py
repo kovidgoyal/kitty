@@ -70,13 +70,13 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
 
     def make_ftc(path: str, spec_id: str, sr: Optional[os.stat_result] = None) -> FileTransmissionCommand:
         if sr is None:
-            sr = os.stat(path)
-        if stat.S_ISREG(sr.st_mode):
-            ftype = FileType.regular
-        elif stat.S_ISLNK(sr.st_mode):
+            sr = os.stat(path, follow_symlinks=False)
+        if stat.S_ISLNK(sr.st_mode):
             ftype = FileType.symlink
         elif stat.S_ISDIR(sr.st_mode):
             ftype = FileType.directory
+        elif stat.S_ISREG(sr.st_mode):
+            ftype = FileType.regular
         else:
             raise ValueError('Not an appropriate file type')
         return FileTransmissionCommand(
@@ -91,7 +91,7 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
             if not os.path.isabs(path):
                 path = abspath(path, use_home=True)
         try:
-            sr = os.stat(path)
+            sr = os.stat(path, follow_symlinks=False)
             read_ok = os.access(path, os.R_OK)
         except OSError as err:
             errname = errno.errorcode.get(err.errno, 'EFAIL')
@@ -129,7 +129,7 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
                 pass
             else:
                 try:
-                    s = os.stat(dest)
+                    s = os.stat(dest, follow_symlinks=False)
                 except OSError:
                     pass
                 else:
@@ -533,7 +533,7 @@ class ActiveSend:
 
     def __init__(self, request_id: str, quiet: int, bypass: str, num_of_args: int) -> None:
         self.id = request_id
-        self.args_remaining = num_of_args
+        self.expected_num_of_args = num_of_args
         self.bypass_ok: Optional[bool] = None
         self.accepted = False
         if bypass:
@@ -547,7 +547,7 @@ class ActiveSend:
 
     @property
     def spec_complete(self) -> bool:
-        return self.args_remaining < 1
+        return self.expected_num_of_args <= len(self.file_specs)
 
     def add_file_spec(self, cmd: FileTransmissionCommand) -> None:
         if len(self.file_specs) > 8192 or self.spec_complete:
@@ -559,7 +559,7 @@ class ActiveSend:
         return monotonic() - self.last_activity_at > (60 * EXPIRE_TIME)
 
     def close(self) -> None:
-        raise NotImplementedError('TODO: Implement this')
+        pass  # TODO: Implement this
 
 
 class FileTransmission:
