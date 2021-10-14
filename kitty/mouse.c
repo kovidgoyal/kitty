@@ -742,9 +742,7 @@ mouse_event(const int button, int modifiers, int action) {
             clamp_to_window = false;
         } else debug("no window for event\n");
     } else debug("\n");
-    if (mouse_cursor_shape != old_cursor) {
-        set_mouse_cursor(mouse_cursor_shape);
-    }
+    if (mouse_cursor_shape != old_cursor) set_mouse_cursor(mouse_cursor_shape);
 }
 
 void
