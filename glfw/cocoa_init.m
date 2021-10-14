@@ -492,8 +492,14 @@ is_modified_special_key(NSEvent *event, NSEventModifierFlags modifierFlags) {
                 return true;
         }
     }
-    // ctrl+whatever+esc and cmd+whatever+esc
-    if (ch == 0x1b && (modifierFlags & (NSEventModifierFlagCommand | NSEventModifierFlagControl))) return true;
+    switch (ch) {
+        case 0x1b:  // Esc
+            if (modifierFlags & (NSEventModifierFlagCommand | NSEventModifierFlagControl)) return true;
+            break;
+        case NSInsertFunctionKey:  // Insert
+            if (!modifierFlags || modifierFlags == NSEventModifierFlagShift) return true;
+            break;
+    }
     return false;
 }
 
