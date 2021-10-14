@@ -561,7 +561,8 @@ class TabBar:
         del self.screen
 
     def tab_at(self, x: int) -> Optional[int]:
-        x = (x - self.window_geometry.left) // self.cell_width
-        for i, (a, b) in enumerate(self.cell_ranges):
-            if a <= x <= b:
-                return i
+        if self.laid_out_once:
+            x = (x - self.window_geometry.left) // self.cell_width
+            for i, (a, b) in enumerate(self.cell_ranges):
+                if a <= x <= b:
+                    return i
