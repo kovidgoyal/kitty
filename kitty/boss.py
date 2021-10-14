@@ -40,6 +40,7 @@ from .fast_data_types import (
     set_options, set_os_window_size, thread_write, toggle_fullscreen,
     toggle_maximized
 )
+from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
 from .layout.base import set_layout_options
 from .notify import notification_activated
@@ -820,6 +821,7 @@ class Boss:
                 ac = KeyAction('focus_visible_window_trigger', (idx,))
                 for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
                     pending_sequences[(SingleKey(mods=mods, key=ord(str(idx + 1))),)] = ac
+                    pending_sequences[(SingleKey(mods=mods, key=get_name_to_functional_number_map()[f'KP_{idx+1}']),)] = ac
             if count > 1:
                 self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('focus_visible_window_trigger'))
             else:
