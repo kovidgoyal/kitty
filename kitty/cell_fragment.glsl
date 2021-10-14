@@ -82,7 +82,7 @@ vec4 blend_onto_opaque_premul(vec3 over, float over_alpha, vec3 under) {
  *        3) Draw the background of cells that don't have the default background if any images were drawn in 2 above
  *        4) Draw the images that are supposed to be below text but not background, again in graphics shader.
  *        5) Draw the special cells (selection/cursor). Output is same as from step 1, with bg_alpha 1 for special cells and 0 otherwise
- *        6) Draw the foreground -- expected output is color with alpha which is blended using the opaque blend func
+ *        6) Draw the foreground -- expected output is color with alpha premultiplied which is blended using the premult blend func
  *        7) Draw the images that are supposed to be above text again in the graphics shader
  *
  *    2b) Transparent bg with images
@@ -137,13 +137,7 @@ void main() {
 #endif
 
 #ifdef FOREGROUND
-    vec4 fg = calculate_foreground();  // pre-multiplied foreground
-#ifdef TRANSPARENT
-    final_color = fg;
-#else
-    final_color = vec4(fg.rgb / fg.a, fg.a);
-#endif
-
+    final_color = calculate_foreground();  // pre-multiplied foreground
 #endif
 
 }
