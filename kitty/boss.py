@@ -809,9 +809,12 @@ class Boss:
     def focus_visible_window(self) -> None:
         tab = self.active_tab
         if tab is not None:
+            if tab.current_layout.only_active_window_visible:
+                self.select_window_in_tab()
+                return
             pending_sequences: SubSequenceMap = {}
             count = 0
-            for idx, window in tab.windows.iter_visible_windows_with_number():
+            for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
                 count += 1
                 window.screen.set_window_number(idx + 1)
                 ac = KeyAction('focus_visible_window_trigger', (idx,))
@@ -831,6 +834,27 @@ class Boss:
                 window.screen.set_window_number()
             if idx > -1:
                 tab.nth_window(idx)
+
+    @ac('win', 'Interactively select a window in the current tab')
+    def select_window_in_tab(self) -> None:
+        tab = self.active_tab
+        if tab is None:
+            return
+        aw = self.active_window
+        windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False) if w is not aw)
+        tab_id = tab.id
+        if len(windows) < 1:
+            if get_options().enable_audio_bell:
+                ring_bell()
+            return
+
+        def chosen(ans: Union[None, int, str]) -> None:
+            if isinstance(ans, int):
+                for tab in self.all_tabs:
+                    if tab.id == tab_id:
+                        tab.set_active_window(ans)
+                        break
+        self.choose_entry('Choose window to switch to', windows, chosen)
 
     @ac('win', '''
         Resize the active window interactively
@@ -1837,12 +1861,14 @@ class Boss:
     @ac('tab', 'Interactively select a tab to switch to')
     def select_tab(self) -> None:
 
-        def chosen(ans: Union[None, str, Tab]) -> None:
-            if isinstance(ans, Tab):
-                self.set_active_tab(ans)
+        def chosen(ans: Union[None, str, int]) -> None:
+            if isinstance(ans, int):
+                for tab in self.all_tabs:
+                    if tab.id == ans:
+                        self.set_active_tab(tab)
 
         ct = self.active_tab
-        self.choose_entry('Choose a tab to switch to', ((t, t.title) for t in self.all_tabs if t is not ct), chosen)
+        self.choose_entry('Choose a tab to switch to', ((t.id, t.title) for t in self.all_tabs if t is not ct), chosen)
 
     @ac('win', '''
         Detach a window, moving it to another tab or OS Window
@@ -1856,12 +1882,12 @@ class Boss:
             where = 'new' if args[0] == 'new-tab' else args[0][4:]
             return self._move_window_to(target_tab_id=where)
         ct = self.active_tab
-        items: List[Tuple[Union[str, Tab], str]] = [(t, t.title) for t in self.all_tabs if t is not ct]
+        items: List[Tuple[Union[str, int], str]] = [(t.id, t.title) for t in self.all_tabs if t is not ct]
         items.append(('new_tab', 'New tab'))
         items.append(('new_os_window', 'New OS Window'))
         target_window = self.active_window
 
-        def chosen(ans: Union[None, str, Tab]) -> None:
+        def chosen(ans: Union[None, str, int]) -> None:
             if ans is not None:
                 if isinstance(ans, str):
                     if ans == 'new_os_window':
@@ -1869,7 +1895,7 @@ class Boss:
                     elif ans == 'new_tab':
                         self._move_window_to(window=target_window)
                 else:
-                    self._move_window_to(target_window, target_tab_id=ans.id)
+                    self._move_window_to(target_window, target_tab_id=ans)
 
         self.choose_entry('Choose a tab to move the window to', items, chosen)
 

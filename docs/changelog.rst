@@ -32,6 +32,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   the request by default instead of denying by default. See
   :opt:`clipboard_control` for details (:iss:`4022`)
 
+- A new mappable action ``select_window_in_tab`` to select a window in the current tab to switch to, by window title
+
 - A new option :opt:`bell_path` to specify the path to a sound file
   to use as the bell sound
 

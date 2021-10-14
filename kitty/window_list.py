@@ -209,9 +209,9 @@ class WindowList:
     def iter_all_layoutable_groups(self, only_visible: bool = False) -> Iterator[WindowGroup]:
         return iter(g for g in self.groups if g.is_visible_in_layout) if only_visible else iter(self.groups)
 
-    def iter_visible_windows_with_number(self) -> Iterator[Tuple[int, WindowType]]:
+    def iter_windows_with_number(self, only_visible: bool = True) -> Iterator[Tuple[int, WindowType]]:
         for i, g in enumerate(self.groups):
-            if g.is_visible_in_layout:
+            if not only_visible or g.is_visible_in_layout:
                 aw = g.active_window_id
                 for window in g:
                     if window.id == aw:
