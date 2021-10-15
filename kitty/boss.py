@@ -821,12 +821,17 @@ class Boss:
             count = 0
             fmap = get_name_to_functional_number_map()
             for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
+                if idx > 9:
+                    break
                 count += 1
-                window.screen.set_window_number(idx + 1)
+                num = idx + 1
                 ac = KeyAction('focus_visible_window_trigger', (idx,))
+                if num == 10:
+                    num = 0
+                window.screen.set_window_number(num)
                 for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
-                    pending_sequences[(SingleKey(mods=mods, key=ord(str(idx + 1))),)] = ac
-                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{idx+1}']),)] = ac
+                    pending_sequences[(SingleKey(mods=mods, key=ord(str(num))),)] = ac
+                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{num}']),)] = ac
             if count > 1:
                 self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('focus_visible_window_trigger'))
                 redirect_mouse_handling(True)
