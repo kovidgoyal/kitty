@@ -839,6 +839,7 @@ class Boss:
     def focus_visible_window_trigger(self, idx: int = -1) -> None:
         tab = self.active_tab
         redirect_mouse_handling(False)
+        self.clear_pending_sequences()
         if tab is not None:
             for window in tab:
                 window.screen.set_window_number()
@@ -851,11 +852,9 @@ class Boss:
             tab = self.active_tab
             if w is not None and tab is not None and w in tab:
                 tab.set_active_window(w)
-                self.clear_pending_sequences()
                 self.focus_visible_window_trigger()
                 return
         if ev.button > -1:
-            self.clear_pending_sequences()
             self.focus_visible_window_trigger()
 
     def mouse_event(
