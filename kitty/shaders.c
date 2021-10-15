@@ -467,14 +467,87 @@ draw_tint(bool premult, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat 
 }
 
 static void
-draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, Window *window UNUSED) {
+set_cell_uniforms(float current_inactive_text_alpha, bool force) {
+    if (!cell_uniform_data.constants_set || force) {
+        cell_uniform_data.gploc = glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "inactive_text_alpha");
+        cell_uniform_data.gpploc = glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "inactive_text_alpha");
+        cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
+        cell_uniform_data.cfploc = glGetUniformLocation(program_id(CELL_FG_PROGRAM), "inactive_text_alpha");
+        cell_uniform_data.amask_premult_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "alpha_mask_premult");
+#define S(prog, name, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), val); }
+        S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT, 1i);
+        S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT, 1i);
+        S(CELL_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i); S(CELL_FG_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i);
+        S(CELL_PROGRAM, dim_opacity, OPT(dim_opacity), 1f); S(CELL_FG_PROGRAM, dim_opacity, OPT(dim_opacity), 1f);
+        S(CELL_BG_PROGRAM, defaultbg, OPT(background), 1f);
+#undef S
+        cell_uniform_data.constants_set = true;
+    }
+    if (current_inactive_text_alpha != cell_uniform_data.prev_inactive_text_alpha || force) {
+        cell_uniform_data.prev_inactive_text_alpha = current_inactive_text_alpha;
+#define S(prog, loc) { bind_program(prog); glUniform1f(cell_uniform_data.loc, current_inactive_text_alpha); }
+        S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc); S(GRAPHICS_PROGRAM, gploc); S(GRAPHICS_PREMULT_PROGRAM, gpploc);
+    }
+}
+
+static GLfloat
+render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, GLfloat ystart, GLfloat width, Window *window, GLfloat left, GLfloat right) {
+    unsigned bar_height = os_window->fonts_data->cell_height + 2;
+    if (!bar_height || right <= left) return 0;
+    unsigned bar_width = (unsigned)ceilf(right - left);
+    if (!window->title_bar_data.buf || window->title_bar_data.width != bar_width || window->title_bar_data.height != bar_height) {
+        free(window->title_bar_data.buf);
+        window->title_bar_data.buf = malloc(4 * bar_width * bar_height);
+        window->title_bar_data.last_drawn_title_object_id = NULL;
+        if (!window->title_bar_data.buf) return 0;
+        window->title_bar_data.height = bar_height;
+        window->title_bar_data.width = bar_width;
+    }
+    static char title[2048] = {0};
+    if (window->title_bar_data.last_drawn_title_object_id != window->title) {
+        snprintf(title, arraysz(title), " %s", PyUnicode_AsUTF8(window->title));
+#define RGBCOL(which) ( 0xff000000 | colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.which, screen->color_profile->configured.which) )
+        if (!draw_window_title(os_window, title, RGBCOL(highlight_fg), RGBCOL(highlight_bg), window->title_bar_data.buf, bar_width, bar_height)) return 0;
+#undef RGBCOL
+        window->title_bar_data.last_drawn_title_object_id = window->title;
+    }
+    static ImageRenderData data = {.group_count=1};
+    gpu_data_for_image(&data, xstart, ystart, xstart + width, ystart - 2.f * (bar_height / (float)os_window->viewport_height));
+    if (!data.texture_id) { glGenTextures(1, &data.texture_id); }
+    glBindTexture(GL_TEXTURE_2D, data.texture_id);
+    glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, bar_width, bar_height, 0, GL_RGBA, GL_UNSIGNED_BYTE, window->title_bar_data.buf);
+    set_cell_uniforms(1.f, false);
+    bind_program(GRAPHICS_PROGRAM);
+    send_graphics_data_to_gpu(1, os_window->gvao_idx, &data);
     glEnable(GL_BLEND);
-    glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // BLEND_PREMULT
-    bind_program(SEVEN_SEGMENT_PROGRAM);
+    if (os_window->is_semi_transparent) { BLEND_PREMULT; } else { BLEND_ONTO_OPAQUE; }
+    draw_graphics(GRAPHICS_PROGRAM, 0, os_window->gvao_idx, &data, 0, 1);
+    glDisable(GL_BLEND);
+    return (GLfloat)bar_height / (GLfloat)os_window->viewport_height;
+}
+
+static void
+draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height, Window *window) {
     GLfloat left = os_window->viewport_width * (xstart + 1.f) / 2.f;
     GLfloat right = left + os_window->viewport_width * width / 2.f;
     GLfloat top = os_window->viewport_height * (1.f - ystart) / 2.f;
     GLfloat bottom = os_window->viewport_height * (1.f + height - ystart) / 2.f;
+    GLfloat title_bar_height = 0;
+    if (window->title && PyUnicode_Check(window->title)) title_bar_height = render_window_title(
+            os_window, screen, xstart, ystart, width, window, left, right);
+    if (title_bar_height > 0) {
+        ystart -= title_bar_height;
+        top = os_window->viewport_height * (1.f - ystart) / 2.f;
+        bottom = os_window->viewport_height * (1.f + height - ystart) / 2.f;
+    }
+    glEnable(GL_BLEND);
+    glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);  // BLEND_PREMULT
+    bind_program(SEVEN_SEGMENT_PROGRAM);
     glUniform4f(seven_segment_program_layout.edges_location, xstart, ystart - height, xstart + width, ystart);
     glUniform4f(seven_segment_program_layout.area_bounds_location, left, top, right - left, bottom - top);
     color_type digit_color = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg);
@@ -619,31 +692,6 @@ draw_cells_interleaved_premult(ssize_t vao_idx, ssize_t gvao_idx, Screen *screen
     glDrawArrays(GL_TRIANGLE_FAN, 0, 4);
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_BLEND);
-}
-
-static void
-set_cell_uniforms(float current_inactive_text_alpha, bool force) {
-    if (!cell_uniform_data.constants_set || force) {
-        cell_uniform_data.gploc = glGetUniformLocation(program_id(GRAPHICS_PROGRAM), "inactive_text_alpha");
-        cell_uniform_data.gpploc = glGetUniformLocation(program_id(GRAPHICS_PREMULT_PROGRAM), "inactive_text_alpha");
-        cell_uniform_data.cploc = glGetUniformLocation(program_id(CELL_PROGRAM), "inactive_text_alpha");
-        cell_uniform_data.cfploc = glGetUniformLocation(program_id(CELL_FG_PROGRAM), "inactive_text_alpha");
-        cell_uniform_data.amask_premult_loc = glGetUniformLocation(program_id(GRAPHICS_ALPHA_MASK_PROGRAM), "alpha_mask_premult");
-#define S(prog, name, val, type) { bind_program(prog); glUniform##type(glGetUniformLocation(program_id(prog), #name), val); }
-        S(GRAPHICS_PROGRAM, image, GRAPHICS_UNIT, 1i);
-        S(GRAPHICS_PREMULT_PROGRAM, image, GRAPHICS_UNIT, 1i);
-        S(CELL_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i); S(CELL_FG_PROGRAM, sprites, SPRITE_MAP_UNIT, 1i);
-        S(CELL_PROGRAM, dim_opacity, OPT(dim_opacity), 1f); S(CELL_FG_PROGRAM, dim_opacity, OPT(dim_opacity), 1f);
-        S(CELL_BG_PROGRAM, defaultbg, OPT(background), 1f);
-#undef S
-        cell_uniform_data.constants_set = true;
-    }
-    if (current_inactive_text_alpha != cell_uniform_data.prev_inactive_text_alpha || force) {
-        cell_uniform_data.prev_inactive_text_alpha = current_inactive_text_alpha;
-#define S(prog, loc) { bind_program(prog); glUniform1f(cell_uniform_data.loc, current_inactive_text_alpha); }
-        S(CELL_PROGRAM, cploc); S(CELL_FG_PROGRAM, cfploc); S(GRAPHICS_PROGRAM, gploc); S(GRAPHICS_PREMULT_PROGRAM, gpploc);
-#undef S
-    }
 }
 
 void

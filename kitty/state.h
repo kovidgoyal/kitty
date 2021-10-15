@@ -123,6 +123,11 @@ typedef struct {
     ClickQueue click_queues[8];
     monotonic_t last_drag_scroll_at;
     uint32_t last_special_key_pressed;
+    struct {
+        unsigned width, height;
+        uint8_t *buf;
+        PyObject *last_drawn_title_object_id;
+    } title_bar_data;
 } Window;
 
 typedef struct {
@@ -313,3 +318,4 @@ const char* format_mods(unsigned mods);
 void send_pending_click_to_window_id(id_type, void*);
 void send_pending_click_to_window(Window*, void*);
 void get_platform_dependent_config_values(void *glfw_window);
+bool draw_window_title(OSWindow *window, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height);

@@ -416,8 +416,7 @@ apple_file_open_callback(const char* filepath) {
 static FreeTypeRenderCtx csd_title_render_ctx = NULL;
 
 static bool
-draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin) {
-    if (!set_callback_window(window)) return false;
+ensure_csd_title_render_ctx(void) {
     if (!csd_title_render_ctx) {
         csd_title_render_ctx = create_freetype_render_context(NULL, true, false);
         if (!csd_title_render_ctx) {
@@ -425,6 +424,13 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
             return false;
         }
     }
+    return true;
+}
+
+static bool
+draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin) {
+    if (!set_callback_window(window)) return false;
+    if (!ensure_csd_title_render_ctx()) return false;
     double xdpi, ydpi;
     get_window_dpi(window, &xdpi, &ydpi);
     unsigned px_sz = (unsigned)(global_state.callback_os_window->font_sz_in_pts * ydpi / 72.);
@@ -432,6 +438,18 @@ draw_text_callback(GLFWwindow *window, const char *text, uint32_t fg, uint32_t b
     static char title[2048];
     snprintf(title, sizeof(title), "🐱 %s", text);
     bool ok = render_single_line(csd_title_render_ctx, title, px_sz, fg, bg, output_buf, width, height, x_offset, y_offset, right_margin);
+    if (!ok && PyErr_Occurred()) PyErr_Print();
+    return ok;
+}
+
+bool
+draw_window_title(OSWindow *window, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
+    if (!ensure_csd_title_render_ctx()) return false;
+    unsigned px_sz = (unsigned)(window->fonts_data->font_sz_in_pts * window->fonts_data->logical_dpi_y / 72.);
+    px_sz = MIN(px_sz, 3 * height / 4);
+#define RGB2BGR(x) (x & 0xFF000000) | ((x & 0xFF0000) >> 16) | (x & 0x00FF00) | ((x & 0x0000FF) << 16)
+    bool ok = render_single_line(csd_title_render_ctx, text, px_sz, RGB2BGR(fg), RGB2BGR(bg), output_buf, width, height, 0, 0, 0);
+#undef RGB2BGR
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
 }
