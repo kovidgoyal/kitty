@@ -61,6 +61,17 @@ class MouseEvent(NamedTuple):
     grabbed: bool = False
 
 
+class WindowSystemMouseEvent(NamedTuple):
+    in_tab_bar: bool
+    window_id: int
+    action: int
+    modifiers: int
+    button: int
+    currently_pressed_button: int
+    x: float
+    y: float
+
+
 ConvertibleToNumbers = Union[str, bytes, int, float]
 
 

@@ -1055,7 +1055,18 @@ PYWRAP1(click_mouse_url) {
     if (click_mouse_url(a, b, c)) { Py_RETURN_TRUE; }
     Py_RETURN_FALSE;
 }
-PYWRAP1(move_cursor_to_mouse_if_in_prompt) { id_type a, b, c; PA("KKK", &a, &b, &c); if (move_cursor_to_mouse_if_in_prompt(a, b, c)) Py_RETURN_TRUE; Py_RETURN_FALSE; }
+
+PYWRAP1(move_cursor_to_mouse_if_in_prompt) {
+    id_type a, b, c; PA("KKK", &a, &b, &c);
+    if (move_cursor_to_mouse_if_in_prompt(a, b, c)) Py_RETURN_TRUE;
+    Py_RETURN_FALSE;
+}
+
+PYWRAP1(redirect_mouse_handling) {
+    global_state.redirect_mouse_handling = PyObject_IsTrue(args) ? true : false;
+    Py_RETURN_NONE;
+}
+
 THREE_ID_OBJ(update_window_title)
 THREE_ID(remove_window)
 THREE_ID(detach_window)
@@ -1080,6 +1091,7 @@ static PyMethodDef module_methods[] = {
     MW(get_options, METH_NOARGS),
     MW(click_mouse_url, METH_VARARGS),
     MW(move_cursor_to_mouse_if_in_prompt, METH_VARARGS),
+    MW(redirect_mouse_handling, METH_O),
     MW(mouse_selection, METH_VARARGS),
     MW(set_in_sequence_mode, METH_O),
     MW(resolve_key_mods, METH_VARARGS),

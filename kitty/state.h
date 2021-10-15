@@ -217,6 +217,7 @@ typedef struct {
     id_type active_drag_in_window, tracked_drag_in_window;
     int active_drag_button;
     CloseRequest quit_request;
+    bool redirect_mouse_handling;
 } GlobalState;
 
 extern GlobalState global_state;

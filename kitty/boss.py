@@ -31,14 +31,14 @@ from .fast_data_types import (
     GLFW_MOD_SUPER, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
     ChildMonitor, KeyEvent, add_timer, apply_options_update,
     background_opacity_of, change_background_opacity, change_os_window_state,
-    cocoa_set_menubar_title, create_os_window,
+    cocoa_set_menubar_title, create_os_window, GLFW_PRESS, GLFW_MOUSE_BUTTON_LEFT,
     current_application_quit_request, current_os_window, destroy_global_data,
     focus_os_window, get_clipboard_string, get_options, get_os_window_size,
     global_font_size, mark_os_window_for_close, os_window_font_size,
-    patch_global_colors, ring_bell, safe_pipe, set_application_quit_request,
-    set_background_image, set_boss, set_clipboard_string, set_in_sequence_mode,
-    set_options, set_os_window_size, thread_write, toggle_fullscreen,
-    toggle_maximized
+    patch_global_colors, redirect_mouse_handling, ring_bell, safe_pipe,
+    set_application_quit_request, set_background_image, set_boss,
+    set_clipboard_string, set_in_sequence_mode, set_options,
+    set_os_window_size, thread_write, toggle_fullscreen, toggle_maximized
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -52,7 +52,7 @@ from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import (
     SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 )
-from .types import _T, SingleKey, ac
+from .types import _T, SingleKey, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
 from .utils import (
     func_name, get_editor, get_new_os_window_size, get_primary_selection,
@@ -183,6 +183,7 @@ class Boss:
         self.args = args
         self.global_shortcuts_map = {v: KeyAction(k) for k, v in global_shortcuts.items()}
         self.global_shortcuts = global_shortcuts
+        self.mouse_handler: Optional[Callable[[WindowSystemMouseEvent], None]] = None
         self.update_keymap()
         if is_macos:
             from .fast_data_types import (
@@ -779,6 +780,10 @@ class Boss:
         elif isinstance(key_action, KeyAction):
             return self.dispatch_action(key_action)
 
+    def clear_pending_sequences(self) -> None:
+        self.pending_sequences = self.default_pending_action = None
+        set_in_sequence_mode(False)
+
     def process_sequence(self, ev: KeyEvent) -> None:
         if not self.pending_sequences:
             set_in_sequence_mode(False)
@@ -798,8 +803,7 @@ class Boss:
             self.pending_sequences = remaining
         else:
             matched_action = matched_action or self.default_pending_action
-            self.pending_sequences = self.default_pending_action = None
-            set_in_sequence_mode(False)
+            self.clear_pending_sequences()
             if matched_action is not None:
                 self.dispatch_action(matched_action)
 
@@ -825,6 +829,8 @@ class Boss:
                     pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{idx+1}']),)] = ac
             if count > 1:
                 self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('focus_visible_window_trigger'))
+                redirect_mouse_handling(True)
+                self.mouse_handler = self.focus_visible_window_mouse_handler
             else:
                 self.focus_visible_window_trigger()
                 if get_options().enable_audio_bell:
@@ -832,11 +838,33 @@ class Boss:
 
     def focus_visible_window_trigger(self, idx: int = -1) -> None:
         tab = self.active_tab
+        redirect_mouse_handling(False)
         if tab is not None:
             for window in tab:
                 window.screen.set_window_number()
             if idx > -1:
                 tab.nth_window(idx)
+
+    def focus_visible_window_mouse_handler(self, ev: WindowSystemMouseEvent) -> None:
+        if ev.button == GLFW_MOUSE_BUTTON_LEFT and ev.action == GLFW_PRESS and ev.window_id:
+            w = self.window_id_map.get(ev.window_id)
+            tab = self.active_tab
+            if w is not None and tab is not None and w in tab:
+                tab.set_active_window(w)
+                self.clear_pending_sequences()
+                self.focus_visible_window_trigger()
+                return
+        if ev.button > -1:
+            self.clear_pending_sequences()
+            self.focus_visible_window_trigger()
+
+    def mouse_event(
+        self, in_tab_bar: bool, window_id: int, action: int, modifiers: int, button: int,
+        currently_pressed_button: int, x: float, y: float
+    ) -> None:
+        if self.mouse_handler is not None:
+            ev = WindowSystemMouseEvent(in_tab_bar, window_id, action, modifiers, button, currently_pressed_button, x, y)
+            self.mouse_handler(ev)
 
     @ac('win', 'Interactively select a window in the current tab')
     def select_window_in_tab(self) -> None:

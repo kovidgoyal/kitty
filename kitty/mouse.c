@@ -669,6 +669,16 @@ mouse_event(const int button, int modifiers, int action) {
     unsigned int window_idx = 0;
     Window *w = NULL;
     debug("%s mouse_button: %d %s", action == GLFW_RELEASE ? "\x1b[32mRelease\x1b[m" : (button < 0 ? "\x1b[36mMove\x1b[m" : "\x1b[31mPress\x1b[m"), button, format_mods(modifiers));
+    if (global_state.redirect_mouse_handling) {
+        w = window_for_event(&window_idx, &in_tab_bar);
+        call_boss(mouse_event, "OK iiii dd",
+                (in_tab_bar ? Py_True : Py_False), (w ? w->id : 0),
+                action, modifiers, button, currently_pressed_button(),
+                global_state.callback_os_window->mouse_x, global_state.callback_os_window->mouse_y
+        );
+        debug("mouse handling redirected\n");
+        return;
+    }
     if (global_state.active_drag_in_window) {
         if (button == -1) {  // drag move
             w = window_for_id(global_state.active_drag_in_window);

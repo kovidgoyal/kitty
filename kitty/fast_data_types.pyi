@@ -1246,3 +1246,7 @@ def get_all_processes() -> Tuple[int, ...]:
 
 def num_users() -> int:
     pass
+
+
+def redirect_mouse_handling(yes: bool) -> None:
+    pass
