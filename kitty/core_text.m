@@ -33,6 +33,7 @@ typedef struct {
     PyObject *family_name, *full_name, *postscript_name, *path;
 } CTFace;
 PyTypeObject CTFace_Type;
+static CTFontRef window_title_font = nil;
 
 static char*
 convert_cfstring(CFStringRef src, int free_src) {
@@ -445,6 +446,8 @@ finalize(void) {
     free(buffers.render_buf); free(buffers.glyphs); free(buffers.boxes); free(buffers.positions); free(buffers.advances);
     memset(&buffers, 0, sizeof(struct RenderBuffers));
     if (all_fonts_collection_data) CFRelease(all_fonts_collection_data);
+    if (window_title_font) CFRelease(window_title_font);
+    window_title_font = nil;
 }
 
 
@@ -537,6 +540,35 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
     return ans;
 }
 
+static bool
+ensure_ui_font(void) {
+    if (!window_title_font) window_title_font = CTFontCreateUIFontForLanguage(kCTFontUIFontWindowTitle, 0.f, NULL);
+    return !!window_title_font;
+}
+
+bool
+cocoa_render_line_of_text(const char *text, const color_type fg, const color_type bg, uint8_t *rgba_output, const size_t width, const size_t height) {
+    if (!ensure_ui_font()) return false;
+    CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
+    if (color_space == NULL) return false;
+    CGContextRef ctx = CGBitmapContextCreate(rgba_output, width, height, 8, 4 * width, color_space, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrderDefault);
+    CGColorSpaceRelease(color_space);
+    if (ctx == NULL) return false;
+
+    CGContextSetShouldAntialias(ctx, true);
+    CGContextSetShouldSmoothFonts(ctx, true);  // sub-pixel antialias
+    CGContextSetRGBFillColor(ctx, ((bg >> 16) & 0xff) / 255.f, ((bg >> 8) & 0xff) / 255.f, (bg & 0xff) / 255.f, 1.f);
+    CGContextFillRect(ctx, CGRectMake(0.0, 0.0, width, height));
+    CGAffineTransform transform = CGAffineTransformIdentity;
+    CGContextSetTextDrawingMode(ctx, kCGTextFill);
+    CGContextSetTextMatrix(ctx, transform);
+    CGContextSetRGBFillColor(ctx, ((fg >> 16) & 0xff) / 255.f, ((fg >> 8) & 0xff) / 255.f, (fg & 0xff) / 255.f, 1.f);
+    CGContextSetRGBStrokeColor(ctx, ((fg >> 16) & 0xff) / 255.f, ((fg >> 8) & 0xff) / 255.f, (fg & 0xff) / 255.f, 1.f);
+
+    (void)text;
+    CGContextRelease(ctx);
+    return true;
+}
 
 static bool
 do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONTS_DATA_HANDLE fg, bool center_glyph) {

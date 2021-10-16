@@ -411,6 +411,13 @@ apple_file_open_callback(const char* filepath) {
     set_cocoa_pending_action(OPEN_FILE, filepath);
     return true;
 }
+
+extern bool cocoa_render_line_of_text(const char *text, const color_type fg, const color_type bg, uint8_t *rgba_output, const size_t width, const size_t height);
+
+bool
+draw_window_title(OSWindow *window UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
+    return cocoa_render_line_of_text(text, fg, bg, output_buf, width, height);
+}
 #else
 
 static FreeTypeRenderCtx csd_title_render_ctx = NULL;
