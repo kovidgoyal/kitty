@@ -56,7 +56,7 @@ to work with :option:`launch --stdin-source` to copy data to the system
 clipboard or primary selection.
 
 
---keep-focus
+--keep-focus --dont-take-focus
 type=bool-set
 Keep the focus on the currently active window instead of switching
 to the newly opened window.
