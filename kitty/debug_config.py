@@ -229,7 +229,7 @@ def debug_config(opts: KittyOpts) -> str:
         p('Running under:' + green('Wayland' if is_wayland() else 'X11'))
     p(green('Frozen:'), 'True' if getattr(sys, 'frozen', False) else 'False')
     p(green('Paths:'))
-    p(yellow('  kitty:'), kitty_exe())
+    p(yellow('  kitty:'), os.path.realpath(kitty_exe()))
     p(yellow('  base dir:'), kitty_base_dir)
     p(yellow('  extensions dir:'), extensions_dir)
     p(yellow('  system shell:'), shell_path)
