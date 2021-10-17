@@ -3152,6 +3152,7 @@ map('Tenth window',
     )
 
 map('Visually select focus window', 'focus_visible_window kitty_mod+f7 focus_visible_window')
+map('Visually swap window with another', 'swap_with_window kitty_mod+f8 swap_with_window')
 egr()  # }}}
 
 

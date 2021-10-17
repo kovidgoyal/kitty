@@ -58,6 +58,7 @@ Move window forward         :sc:`move_window_forward`
 Move window backward        :sc:`move_window_backward`
 Move window to top          :sc:`move_window_to_top`
 Visually focus window       :sc:`focus_visible_window`
+Visually swap window        :sc:`swap_with_window`
 Focus specific window       :sc:`first_window`, :sc:`second_window` ... :sc:`tenth_window`
                             (also :kbd:`⌘+1`, :kbd:`⌘+2` ... :kbd:`⌘+9` on macOS)
                             (clockwise from the top-left)
