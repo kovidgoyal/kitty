@@ -304,10 +304,14 @@ def _main() -> None:
     rpath = sys._xoptions.get('bundle_exe_dir')
     if rpath:
         modify_path = is_macos or getattr(sys, 'frozen', False) or sys._xoptions.get('kitty_from_source') == '1'
-        if modify_path or not shutil.which('kitty'):
-            existing_paths = list(filter(None, os.environ.get('PATH', '').split(os.pathsep)))
-            existing_paths.insert(0, rpath)
-            os.environ['PATH'] = os.pathsep.join(existing_paths)
+        existing = shutil.which('kitty')
+        if modify_path or not existing:
+            def cpath(x: str) -> str:
+                return os.path.abspath(os.path.realpath(x))
+            if not existing or cpath(existing) != cpath(os.path.join(rpath, 'kitty')):
+                existing_paths = list(filter(None, os.environ.get('PATH', '').split(os.pathsep)))
+                existing_paths.insert(0, rpath)
+                os.environ['PATH'] = os.pathsep.join(existing_paths)
 
     args = sys.argv[1:]
     if is_macos and os.environ.pop('KITTY_LAUNCHED_BY_LAUNCH_SERVICES', None) == '1':
