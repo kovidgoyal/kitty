@@ -567,6 +567,13 @@ class Tab:  # {{{
                 if self.current_layout.move_window_to_group(self.windows, neighbor):
                     self.relayout()
 
+    def swap_active_window_with(self, window_id: int) -> None:
+        group = self.windows.group_for_window(window_id)
+        if group is not None:
+            w = self.active_window
+            if w is not None and w.id != window_id:
+                self.current_layout.move_window_to_group(self.windows, group.id)
+
     @ac('win', 'Move active window to the top (make it the first window)')
     def move_window_to_top(self) -> None:
         n = self.windows.active_group_idx
