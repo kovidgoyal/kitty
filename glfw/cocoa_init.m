@@ -454,12 +454,30 @@ void* _glfwLoadLocalVulkanLoaderNS(void)
 //////////////////////////////////////////////////////////////////////////
 
 static bool
-is_ctrl_tab(NSEvent *event, NSEventModifierFlags modifierFlags) {
+is_modified_tab(NSEvent *event, NSEventModifierFlags modifierFlags) {
+    switch (modifierFlags) {
+        // No need to handle shift+tab, [shift]+option+tab
+        case NSEventModifierFlagShift:
+        case NSEventModifierFlagOption:
+        case (NSEventModifierFlagShift | NSEventModifierFlagOption):
+        // Do not intercept cmd+tab, shift+cmd+tab
+        case NSEventModifierFlagCommand:
+        case (NSEventModifierFlagShift | NSEventModifierFlagCommand):
+            return false;
+        default:
+            break;
+    }
+    // ctrl+whatever+tab, option+cmd+tab
     if (
-            (modifierFlags == NSEventModifierFlagControl &&
-                [event.charactersIgnoringModifiers isEqualToString:@"\t"]) ||
-            (modifierFlags == (NSEventModifierFlagControl | NSEventModifierFlagShift) &&
-                [event.charactersIgnoringModifiers isEqualToString:@"\x19"])
+            (
+                (modifierFlags & NSEventModifierFlagControl) || 
+                    modifierFlags == (NSEventModifierFlagOption | NSEventModifierFlagCommand)
+            ) && [event.charactersIgnoringModifiers isEqualToString:@"\t"]
+       ) return true;
+    // shift+whatever+tab
+    if (
+            (modifierFlags & NSEventModifierFlagShift) &&
+                [event.charactersIgnoringModifiers isEqualToString:@"\x19"]
        ) return true;
     return false;
 }
@@ -543,7 +561,7 @@ int _glfwPlatformInit(void)
     NSEvent* (^keydown_block)(NSEvent*) = ^ NSEvent* (NSEvent* event)
     {
         NSEventModifierFlags modifierFlags = [event modifierFlags] & (NSEventModifierFlagShift | NSEventModifierFlagOption | NSEventModifierFlagCommand | NSEventModifierFlagControl);
-        if (is_modified_special_key(event, modifierFlags) || is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
+        if (is_modified_special_key(event, modifierFlags) || is_modified_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
             // Cocoa swallows various key presses, so route them explicitly
             [[NSApp keyWindow].contentView keyDown:event];
             return nil;
@@ -561,7 +579,7 @@ int _glfwPlatformInit(void)
             // down the command key don't get sent to the key window.
             [[NSApp keyWindow] sendEvent:event];
         }
-        if (is_modified_special_key(event, modifierFlags) || is_ctrl_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
+        if (is_modified_special_key(event, modifierFlags) || is_modified_tab(event, modifierFlags) || is_cmd_period(event, modifierFlags)) {
             // Cocoa swallows various key presses, so route them explicitly
             [[NSApp keyWindow].contentView keyUp:event];
             return nil;
