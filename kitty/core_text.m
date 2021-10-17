@@ -541,19 +541,35 @@ render_simple_text_impl(PyObject *s, const char *text, unsigned int baseline) {
 }
 
 static bool
-ensure_ui_font(void) {
-    if (!window_title_font) window_title_font = CTFontCreateUIFontForLanguage(kCTFontUIFontWindowTitle, 0.f, NULL);
-    return !!window_title_font;
+ensure_ui_font(size_t in_height) {
+    static size_t for_height = 0;
+    if (window_title_font) {
+        if (for_height == in_height) return true;
+        CFRelease(window_title_font);
+    }
+    window_title_font = CTFontCreateUIFontForLanguage(kCTFontUIFontWindowTitle, 0.f, NULL);
+    if (!window_title_font) return false;
+    CGFloat line_height = MAX(1, floor(CTFontGetAscent(window_title_font) + CTFontGetDescent(window_title_font) + MAX(0, CTFontGetLeading(window_title_font)) + 0.5));
+    CGFloat pts_per_px = CTFontGetSize(window_title_font) / line_height;
+    CGFloat desired_size = in_height * pts_per_px;
+    if (desired_size != CTFontGetSize(window_title_font)) {
+        CTFontRef sized = CTFontCreateCopyWithAttributes(window_title_font, desired_size, NULL, NULL);
+        CFRelease(window_title_font);
+        window_title_font = sized;
+        if (!window_title_font) return false;
+    }
+    for_height = in_height;
+    return true;
 }
 
 bool
 cocoa_render_line_of_text(const char *text, const color_type fg, const color_type bg, uint8_t *rgba_output, const size_t width, const size_t height) {
-    if (!ensure_ui_font()) return false;
     CGColorSpaceRef color_space = CGColorSpaceCreateDeviceRGB();
     if (color_space == NULL) return false;
     CGContextRef ctx = CGBitmapContextCreate(rgba_output, width, height, 8, 4 * width, color_space, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrderDefault);
     CGColorSpaceRelease(color_space);
     if (ctx == NULL) return false;
+    if (!ensure_ui_font(height)) return false;
 
     CGContextSetShouldAntialias(ctx, true);
     CGContextSetShouldSmoothFonts(ctx, true);  // sub-pixel antialias
@@ -565,7 +581,16 @@ cocoa_render_line_of_text(const char *text, const color_type fg, const color_typ
     CGContextSetRGBFillColor(ctx, ((fg >> 16) & 0xff) / 255.f, ((fg >> 8) & 0xff) / 255.f, (fg & 0xff) / 255.f, 1.f);
     CGContextSetRGBStrokeColor(ctx, ((fg >> 16) & 0xff) / 255.f, ((fg >> 8) & 0xff) / 255.f, (fg & 0xff) / 255.f, 1.f);
 
-    (void)text;
+    NSAttributedString *str = [[NSAttributedString alloc] initWithString:@(text) attributes:@{(NSString *)kCTFontAttributeName: (__bridge id)window_title_font}];
+    if (!str) { CGContextRelease(ctx); return false; }
+    CTLineRef line = CTLineCreateWithAttributedString((CFAttributedStringRef)str);
+    [str release];
+    if (!line) { CGContextRelease(ctx); return false; }
+    CGFloat ascent, descent, leading;
+    CTLineGetTypographicBounds(line, &ascent, &descent, &leading);
+    CGContextSetTextPosition(ctx, 0, descent);
+    CTLineDraw(line, ctx);
+    CFRelease(line);
     CGContextRelease(ctx);
     return true;
 }
