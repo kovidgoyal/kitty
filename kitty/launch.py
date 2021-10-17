@@ -209,7 +209,10 @@ def get_env(opts: LaunchCLIOptions, active_child: Child) -> Dict[str, str]:
 
 def tab_for_window(boss: Boss, opts: LaunchCLIOptions, target_tab: Optional[Tab] = None) -> Optional[Tab]:
     if opts.type == 'tab':
-        tm = boss.active_tab_manager
+        if target_tab is not None:
+            tm = target_tab.tab_manager_ref() or boss.active_tab_manager
+        else:
+            tm = boss.active_tab_manager
         if tm:
             tab: Optional[Tab] = tm.new_tab(empty_tab=True, location=opts.location)
             if opts.tab_title and tab is not None:

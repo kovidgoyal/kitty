@@ -95,6 +95,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix the :program:`resize OS Windows <kitty @ resize-os-window>` setting a
   slightly incorrect size on high DPI screens (:iss:`4114`)
 
+- :program:`kitty @ launch` - when creating tabs with the ``--match`` option create
+  the tab in the OS Window containing the result of the match rather than
+  the active OS Window (:iss:`4126`)
+
 
 0.23.1 [2021-08-17]
 ----------------------
