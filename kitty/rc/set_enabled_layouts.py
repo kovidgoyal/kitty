@@ -2,7 +2,7 @@
 # vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
-from typing import TYPE_CHECKING, Iterable, Optional
+from typing import TYPE_CHECKING, Iterable, List, Optional
 
 from kitty.fast_data_types import get_options
 from kitty.options.utils import parse_layout_names
@@ -48,8 +48,11 @@ as well.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) < 1:
             self.fatal('At least one layout must be specified')
+        a: List[str] = []
+        for x in args:
+            a.extend(y.strip() for y in x.split(','))
         try:
-            layouts = parse_layout_names(args)
+            layouts = parse_layout_names(a)
         except ValueError as err:
             self.fatal(str(err))
         return {'layouts': layouts, 'match': opts.match}
