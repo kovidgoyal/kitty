@@ -497,7 +497,7 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     unsigned bar_width = (unsigned)ceilf(right - left);
     if (!window->title_bar_data.buf || window->title_bar_data.width != bar_width || window->title_bar_data.height != bar_height) {
         free(window->title_bar_data.buf);
-        window->title_bar_data.buf = malloc(4 * bar_width * bar_height);
+        window->title_bar_data.buf = malloc((size_t)4 * bar_width * bar_height);
         window->title_bar_data.last_drawn_title_object_id = NULL;
         if (!window->title_bar_data.buf) return 0;
         window->title_bar_data.height = bar_height;
