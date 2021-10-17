@@ -574,6 +574,16 @@ class Tab:  # {{{
             if w is not None and w.id != window_id:
                 self.current_layout.move_window_to_group(self.windows, group.id)
 
+    @ac('win', '''
+        Focus a visible window by pressing the number of the window. Window numbers are displayed
+        over the windows for easy selection in this mode.
+        ''')
+    def focus_visible_window(self) -> None:
+        def callback(tab: Tab, window: Window) -> None:
+            tab.set_active_window(window)
+
+        get_boss().visual_window_select_action(self, callback, 'Choose window to switch to')
+
     @ac('win', 'Move active window to the top (make it the first window)')
     def move_window_to_top(self) -> None:
         n = self.windows.active_group_idx

@@ -158,6 +158,7 @@ class Boss:
         self.update_check_process: Optional[PopenType] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
+        self.visual_window_select_callback: Optional[Callable[[Tab, Window], None]] = None
         self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences: Optional[SubSequenceMap] = None
         self.default_pending_action: Optional[KeyAction] = None
@@ -807,60 +808,58 @@ class Boss:
             if matched_action is not None:
                 self.dispatch_action(matched_action)
 
-    @ac('win', '''
-        Focus a visible window by pressing the number of the window. Window numbers are displayed
-        over the windows for easy selection in this mode.
-        ''')
-    def focus_visible_window(self) -> None:
-        tab = self.active_tab
-        if tab is not None:
-            if tab.current_layout.only_active_window_visible:
-                self.select_window_in_tab()
-                return
-            pending_sequences: SubSequenceMap = {}
-            count = 0
-            fmap = get_name_to_functional_number_map()
-            for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
-                if idx > 9:
-                    break
-                count += 1
-                num = idx + 1
-                ac = KeyAction('focus_visible_window_trigger', (idx,))
-                if num == 10:
-                    num = 0
-                window.screen.set_window_number(num)
-                for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
-                    pending_sequences[(SingleKey(mods=mods, key=ord(str(num))),)] = ac
-                    pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{num}']),)] = ac
-            if count > 1:
-                self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('focus_visible_window_trigger'))
-                redirect_mouse_handling(True)
-                self.mouse_handler = self.focus_visible_window_mouse_handler
-            else:
-                self.focus_visible_window_trigger()
-                if get_options().enable_audio_bell:
-                    ring_bell()
+    def visual_window_select_action(self, tab: Tab, callback: Callable[[Tab, Window], None], choose_msg: str) -> None:
+        self.visual_window_select_callback = callback
+        if tab.current_layout.only_active_window_visible:
+            self.select_window_in_tab_using_overlay(tab, choose_msg)
+            return
+        pending_sequences: SubSequenceMap = {}
+        count = 0
+        fmap = get_name_to_functional_number_map()
+        for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
+            if idx > 9:
+                break
+            count += 1
+            num = idx + 1
+            ac = KeyAction('visual_window_select_action_trigger', (tab.id, window.id))
+            if num == 10:
+                num = 0
+            window.screen.set_window_number(num)
+            for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
+                pending_sequences[(SingleKey(mods=mods, key=ord(str(num))),)] = ac
+                pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{num}']),)] = ac
+        if count > 1:
+            self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('visual_window_select_action_trigger', (tab.id,)))
+            redirect_mouse_handling(True)
+            self.mouse_handler = self.focus_visible_window_mouse_handler
+        else:
+            self.visual_window_select_action_trigger(tab.id)
+            if get_options().enable_audio_bell:
+                ring_bell()
 
-    def focus_visible_window_trigger(self, idx: int = -1) -> None:
-        tab = self.active_tab
+    def visual_window_select_action_trigger(self, tab_id: int, window_id: int = 0) -> None:
         redirect_mouse_handling(False)
         self.clear_pending_sequences()
-        if tab is not None:
-            for window in tab:
-                window.screen.set_window_number()
-            if idx > -1:
-                tab.nth_window(idx)
+        for tab in self.all_tabs:
+            if tab.id == tab_id:
+                for window in tab:
+                    window.screen.set_window_number()
+                    if window.id == window_id:
+                        if self.visual_window_select_callback:
+                            self.visual_window_select_callback(tab, window)
+                break
+        self.visual_window_select_callback = None
 
     def focus_visible_window_mouse_handler(self, ev: WindowSystemMouseEvent) -> None:
+        tab = self.active_tab
         if ev.button == GLFW_MOUSE_BUTTON_LEFT and ev.action == GLFW_PRESS and ev.window_id:
             w = self.window_id_map.get(ev.window_id)
-            tab = self.active_tab
             if w is not None and tab is not None and w in tab:
                 tab.set_active_window(w)
-                self.focus_visible_window_trigger()
+                self.visual_window_select_action_trigger(tab.id)
                 return
-        if ev.button > -1:
-            self.focus_visible_window_trigger()
+        if ev.button > -1 and tab is not None:
+            self.visual_window_select_action_trigger(tab.id)
 
     def mouse_event(
         self, in_tab_bar: bool, window_id: int, action: int, modifiers: int, button: int,
@@ -870,12 +869,8 @@ class Boss:
             ev = WindowSystemMouseEvent(in_tab_bar, window_id, action, modifiers, button, currently_pressed_button, x, y)
             self.mouse_handler(ev)
 
-    @ac('win', 'Interactively select a window in the current tab')
-    def select_window_in_tab(self) -> None:
-        tab = self.active_tab
-        if tab is None:
-            return
-        aw = self.active_window
+    def select_window_in_tab_using_overlay(self, tab: Tab, msg: str) -> None:
+        aw = tab.active_window
         windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False) if w is not aw)
         tab_id = tab.id
         if len(windows) < 1:
@@ -886,10 +881,13 @@ class Boss:
         def chosen(ans: Union[None, int, str]) -> None:
             if isinstance(ans, int):
                 for tab in self.all_tabs:
-                    if tab.id == tab_id:
-                        tab.set_active_window(ans)
+                    if tab.id == tab_id and self.visual_window_select_callback:
+                        w = self.window_id_map.get(ans)
+                        if w is not None:
+                            self.visual_window_select_callback(tab, w)
                         break
-        self.choose_entry('Choose window to switch to', windows, chosen)
+            self.visual_window_select_callback = None
+        self.choose_entry(msg, windows, chosen)
 
     @ac('win', '''
         Resize the active window interactively
