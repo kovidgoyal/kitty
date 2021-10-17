@@ -1924,9 +1924,9 @@ class Boss:
             if ans is not None:
                 if isinstance(ans, str):
                     if ans == 'new_os_window':
-                        self._move_window_to(window=target_window, target_os_window_id='new')
+                        self._move_window_to(target_os_window_id='new')
                     elif ans == 'new_tab':
-                        self._move_window_to(window=target_window)
+                        self._move_window_to(target_tab_id=ans)
                 else:
                     self._move_window_to(target_window, target_tab_id=ans)
 
