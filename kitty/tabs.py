@@ -10,8 +10,8 @@ from contextlib import suppress
 from functools import partial
 from operator import attrgetter
 from typing import (
-    Any, Deque, Dict, Generator, Iterator, List, NamedTuple, Optional, Pattern,
-    Sequence, Tuple, Union, cast
+    Any, Deque, Dict, Generator, Iterable, Iterator, List, NamedTuple,
+    Optional, Pattern, Sequence, Tuple, Union, cast
 )
 
 from .borders import Border, Borders
@@ -121,13 +121,16 @@ class Tab:  # {{{
             self._set_current_layout(l0)
             self.startup(session_tab)
 
-    def apply_options(self) -> None:
-        for window in self:
-            window.apply_options()
-        self.enabled_layouts = [x.lower() for x in get_options().enabled_layouts] or ['tall']
+    def set_enabled_layouts(self, val: Iterable[str]) -> None:
+        self.enabled_layouts = [x.lower() for x in val] or ['tall']
         if self.current_layout.name not in self.enabled_layouts:
             self._set_current_layout(self.enabled_layouts[0])
         self.relayout()
+
+    def apply_options(self) -> None:
+        for window in self:
+            window.apply_options()
+        self.set_enabled_layouts(get_options().enabled_layouts)
 
     def take_over_from(self, other_tab: 'Tab') -> None:
         self.name, self.cwd = other_tab.name, other_tab.cwd

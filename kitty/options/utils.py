@@ -518,11 +518,11 @@ def window_size(val: str) -> Tuple[int, str]:
     return positive_int(val.rstrip('c')), unit
 
 
-def to_layout_names(raw: str) -> List[str]:
+def parse_layout_names(parts: Iterable[str]) -> List[str]:
     from kitty.layout.interface import all_layouts
-    parts = [x.strip().lower() for x in raw.split(',')]
-    ans: List[str] = []
+    ans = []
     for p in parts:
+        p = p.lower()
         if p in ('*', 'all'):
             ans.extend(sorted(all_layouts))
             continue
@@ -531,6 +531,10 @@ def to_layout_names(raw: str) -> List[str]:
             raise ValueError('The window layout {} is unknown'.format(p))
         ans.append(p)
     return uniq(ans)
+
+
+def to_layout_names(raw: str) -> List[str]:
+    return parse_layout_names((x.strip() for x in raw.split(',')))
 
 
 def window_border_width(x: Union[str, int, float]) -> Tuple[float, str]:

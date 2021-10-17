@@ -34,6 +34,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - A new mappable action ``swap_with_window`` to swap the current window with another window in the tab, visually
 
+- A new :program:`remote control command <kitty @ set-enabled-layouts>` to change
+  the enabled layouts in a tab (:iss:`4129`)
+
 - A new option :opt:`bell_path` to specify the path to a sound file
   to use as the bell sound
 
