@@ -1805,7 +1805,11 @@ class Boss:
         )
         from kitty.remote_control import parse_rc_args
         c = command_for_name('set_colors')
-        opts, items = parse_subcommand_cli(c, ['set-colors'] + list(args))
+        try:
+            opts, items = parse_subcommand_cli(c, ['set-colors'] + list(args))
+        except (Exception, SystemExit) as err:
+            self.show_error('Invalid set_colors mapping', str(err))
+            return
         payload = c.message_to_kitty(parse_rc_args([])[0], opts, items)
         c.response_from_kitty(self, self.active_window, PayloadGetter(c, payload if isinstance(payload, dict) else {}))
 
