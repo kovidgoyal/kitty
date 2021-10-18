@@ -552,7 +552,7 @@ class ActiveSend:
     def add_file_spec(self, cmd: FileTransmissionCommand) -> None:
         if len(self.file_specs) > 8192 or self.spec_complete:
             raise TransmissionError(ErrorCode.EINVAL, 'Too many file specs')
-        self.file_specs.append((cmd.file_id, cmd.data.decode('utf-8')))
+        self.file_specs.append((cmd.file_id, cmd.name))
 
     @property
     def is_expired(self) -> bool:

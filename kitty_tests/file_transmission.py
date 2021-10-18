@@ -148,7 +148,7 @@ class TestFileTransmission(BaseTest):
             self.responses = []
             ft.handle_serialized_command(serialized_cmd(action='receive', size=1))
             self.assertResponses(ft, status='OK')
-            ft.handle_serialized_command(serialized_cmd(action='file', file_id='missing', data=b'XXX'))
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='missing', name='XXX'))
             self.responses.append(response(status='ENOENT:Failed to read spec', file_id='missing'))
             self.assertResponses(ft, status='OK')
             ft = FileTransmission()
@@ -163,8 +163,8 @@ class TestFileTransmission(BaseTest):
             os.symlink(f.name, f.name + 'd/s')
             os.link(f.name, f.name + 'd/h')
             os.symlink('XXX', f.name + 'd/q')
-            ft.handle_serialized_command(serialized_cmd(action='file', file_id='a', data=b'a'))
-            ft.handle_serialized_command(serialized_cmd(action='file', file_id='b', data=b'ad'))
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='a', name='a'))
+            ft.handle_serialized_command(serialized_cmd(action='file', file_id='b', name='ad'))
             files = {r['name']: r for r in ft.test_responses if r['action'] == 'file'}
             self.ae(len(files), 6)
             q = files[f.name]

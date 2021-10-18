@@ -460,14 +460,12 @@ class Send(Handler):
         self.write(self.manager.suffix)
 
     def on_file_transfer_response(self, ftc: FileTransmissionCommand) -> None:
-        if self.quit_after_write_code is not None:
-            return
         if ftc.id != self.manager.request_id:
             return
-        if ftc.status == 'CANCELED':
+        if ftc.status == 'CANCELED' and ftc.action is Action.status:
             self.quit_loop(1)
             return
-        if self.manager.state is SendState.canceled:
+        if self.quit_after_write_code is not None or self.manager.state is SendState.canceled:
             return
         before = self.manager.state
         self.manager.on_file_transfer_response(ftc)
