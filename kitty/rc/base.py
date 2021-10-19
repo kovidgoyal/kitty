@@ -10,7 +10,7 @@ from typing import (
 
 from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec
 from kitty.cli_stub import RCOptions as R
-from kitty.constants import appname, running_in_kitty
+from kitty.constants import appname, list_kitty_resources, running_in_kitty
 
 if TYPE_CHECKING:
     from kitty.boss import Boss as B
@@ -227,13 +227,9 @@ def command_for_name(cmd_name: str) -> RemoteCommand:
 
 
 def all_command_names() -> FrozenSet[str]:
-    try:
-        from importlib.resources import contents
-    except ImportError:
-        from importlib_resources import contents  # type:ignore
 
     def ok(name: str) -> bool:
         root, _, ext = name.rpartition('.')
         return bool(ext in ('py', 'pyc', 'pyo') and root and root not in ('base', '__init__'))
 
-    return frozenset({x.rpartition('.')[0] for x in filter(ok, contents('kitty.rc'))})
+    return frozenset({x.rpartition('.')[0] for x in filter(ok, list_kitty_resources('kitty.rc'))})

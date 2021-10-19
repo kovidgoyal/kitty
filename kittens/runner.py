@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Dict, FrozenSet, Generator, List, cast
 
 from kitty.types import run_once
 
+
 aliases = {'url_hints': 'hints'}
 if TYPE_CHECKING:
     from kitty.conf.types import Definition
@@ -139,12 +140,9 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
 
 @run_once
 def all_kitten_names() -> FrozenSet[str]:
-    try:
-        from importlib.resources import contents
-    except ImportError:
-        from importlib_resources import contents  # type: ignore
+    from kitty.constants import list_kitty_resources
     ans = []
-    for name in contents('kittens'):
+    for name in list_kitty_resources('kittens'):
         if '__' not in name and '.' not in name and name != 'tui':
             ans.append(name)
     return frozenset(ans)

@@ -6,11 +6,21 @@ import importlib
 import os
 import sys
 import unittest
-try:
+from typing import Callable, Generator, NoReturn, Sequence, Set, Iterable
+
+
+if sys.version_info >= (3, 9):
+    from importlib.resources import files
+
+    def contents(package: str) -> Iterable[str]:
+        return (path.name for path in files(package).iterdir())
+elif sys.version_info < (3, 7):
+    from importlib_resources import files
+
+    def contents(package: str) -> Iterable[str]:
+        return (path.name for path in files(package).iterdir())
+else:
     from importlib.resources import contents
-except Exception:
-    from importlib_resources import contents
-from typing import Callable, Generator, NoReturn, Sequence, Set
 
 
 def itertests(suite: unittest.TestSuite) -> Generator[unittest.TestCase, None, None]:

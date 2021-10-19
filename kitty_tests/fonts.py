@@ -8,12 +8,8 @@ import sys
 import tempfile
 import unittest
 from functools import partial
-try:
-    from importlib.resources import read_binary
-except ImportError:
-    from importlib_resources import read_binary
 
-from kitty.constants import is_macos
+from kitty.constants import is_macos, read_kitty_resource
 from kitty.fast_data_types import (
     DECAWM, get_fallback_font, sprite_map_set_layout, sprite_map_set_limits,
     test_render_line, test_sprite_position_for, wcwidth
@@ -88,7 +84,7 @@ class Rendering(BaseTest):
             if name not in font_path_cache:
                 with open(os.path.join(self.tdir, name), 'wb') as f:
                     font_path_cache[name] = f.name
-                    data = read_binary(__name__.rpartition('.')[0], name)
+                    data = read_kitty_resource(name, __name__.rpartition('.')[0])
                     f.write(data)
             return font_path_cache[name]
 
