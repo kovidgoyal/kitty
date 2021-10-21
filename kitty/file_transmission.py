@@ -20,7 +20,7 @@ from typing import (
 )
 
 from kittens.transfer.librsync import PatchFile, signature_of_file
-from kittens.transfer.utils import abspath, expand_home
+from kittens.transfer.utils import abspath, expand_home, home_path
 from kitty.fast_data_types import (
     FILE_TRANSFER_CODE, OSC, add_timer, get_boss, get_options
 )
@@ -653,7 +653,7 @@ class FileTransmission:
                     if asd.send_errors:
                         self.send_transmission_error(asd.id, err)
                     return
-                if asd.spec_complete:
+                if asd.spec_complete and asd.accepted:
                     self.send_metadata_for_send_transfer(asd)
                 return
             if not asd.accepted:
@@ -688,7 +688,7 @@ class FileTransmission:
                 self.write_ftc_to_child(ftc)
                 sent = True
         if sent:
-            self.send_status_response(code=ErrorCode.OK, request_id=asd.id)
+            self.send_status_response(code=ErrorCode.OK, request_id=asd.id, name=home_path())
         else:
             self.send_status_response(code=ErrorCode.ENOENT, request_id=asd.id, msg='No files found')
             self.drop_send(asd.id)

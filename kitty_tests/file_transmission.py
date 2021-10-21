@@ -149,7 +149,7 @@ class TestFileTransmission(BaseTest):
             self.assertResponses(ft, status='OK')
             ft.handle_serialized_command(serialized_cmd(action='file', file_id='missing', name='XXX'))
             self.responses.append(response(status='ENOENT:Failed to read spec', file_id='missing'))
-            self.assertResponses(ft, status='OK')
+            self.assertResponses(ft, status='OK', name=home)
             ft = FileTransmission()
             self.responses = []
             ft.handle_serialized_command(serialized_cmd(action='receive', size=2))
