@@ -187,7 +187,12 @@ def real_main(global_opts: RCOptions) -> None:
         print(end=set_cursor_shape(), flush=True)
         if not scmdline:
             continue
-        cmdline = shlex.split(scmdline)
+        try:
+            cmdline = shlex.split(scmdline)
+        except Exception:
+            print_err(f'"{emph(scmdline)}" is invalid. Use "help" to see a list of commands.')
+            continue
+
         cmd = cmdline[0].lower()
 
         try:
