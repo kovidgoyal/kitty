@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import contextlib
@@ -145,7 +144,7 @@ def get_screen_size() -> ScreenSize:
 
 @run_once
 def options_spec() -> str:
-    return OPTIONS.format(appname='{}-icat'.format(appname))
+    return OPTIONS.format(appname=f'{appname}-icat')
 
 
 def write_gr_cmd(cmd: GraphicsCommand, payload: Optional[bytes] = None) -> None:
@@ -195,7 +194,7 @@ def set_cursor_for_place(place: 'Place', cmd: GraphicsCommand, width: int, heigh
         extra_cells = (place.width - num_of_cells_needed) // 2
     elif align == 'right':
         extra_cells = place.width - num_of_cells_needed
-    sys.stdout.buffer.write('\033[{};{}H'.format(place.top + 1, x + extra_cells).encode('ascii'))
+    sys.stdout.buffer.write(f'\033[{place.top + 1};{x + extra_cells}H'.encode('ascii'))
 
 
 def write_chunked(cmd: GraphicsCommand, data: bytes) -> None:
@@ -369,7 +368,7 @@ def scan(d: str) -> Generator[Tuple[str, str], None, None]:
 def detect_support(wait_for: float = 10, silent: bool = False) -> bool:
     global can_transfer_with_files
     if not silent:
-        print('Checking for graphics ({}s max. wait)...'.format(wait_for), end='\r')
+        print(f'Checking for graphics ({wait_for}s max. wait)...', end='\r')
     sys.stdout.flush()
     try:
         received = b''
@@ -466,7 +465,7 @@ def process_single_item(
                     with socket_timeout(30):
                         urlretrieve(item, filename=tf.name)
                 except Exception as e:
-                    raise SystemExit('Failed to download image at URL: {} with error: {}'.format(item, e))
+                    raise SystemExit(f'Failed to download image at URL: {item} with error: {e}')
                 item = tf.name
             is_tempfile = True
             file_removed = process(item, args, parsed_opts, is_tempfile)
@@ -493,14 +492,14 @@ def process_single_item(
 
 def main(args: List[str] = sys.argv) -> None:
     global can_transfer_with_files
-    cli_opts, items_ = parse_args(args[1:], options_spec, usage, help_text, '{} +kitten icat'.format(appname), result_class=IcatCLIOptions)
+    cli_opts, items_ = parse_args(args[1:], options_spec, usage, help_text, f'{appname} +kitten icat', result_class=IcatCLIOptions)
     items: List[Union[str, bytes]] = list(items_)
 
     if cli_opts.print_window_size:
         screen_size_function.cache_clear()
         with open(os.ctermid()) as tty:
             ss = screen_size_function(tty)()
-        print('{}x{}'.format(ss.width, ss.height), end='')
+        print(f'{ss.width}x{ss.height}', end='')
         raise SystemExit(0)
 
     if not sys.stdout.isatty():
@@ -511,7 +510,7 @@ def main(args: List[str] = sys.argv) -> None:
         if stdin_data:
             items.insert(0, stdin_data)
         sys.stdin.close()
-        sys.stdin = open(os.ctermid(), 'r')
+        sys.stdin = open(os.ctermid())
 
     screen_size = get_screen_size_function()
     signal.signal(signal.SIGWINCH, lambda signum, frame: setattr(screen_size, 'changed', True))
@@ -526,12 +525,12 @@ def main(args: List[str] = sys.argv) -> None:
         try:
             parsed_opts.place = parse_place(cli_opts.place)
         except Exception:
-            raise SystemExit('Not a valid place specification: {}'.format(cli_opts.place))
+            raise SystemExit(f'Not a valid place specification: {cli_opts.place}')
 
     try:
         parsed_opts.z_index = parse_z_index(cli_opts.z_index)
     except Exception:
-        raise SystemExit('Not a valid z-index specification: {}'.format(cli_opts.z_index))
+        raise SystemExit(f'Not a valid z-index specification: {cli_opts.z_index}')
 
     if cli_opts.detect_support:
         if not detect_support(wait_for=cli_opts.detection_timeout, silent=True):

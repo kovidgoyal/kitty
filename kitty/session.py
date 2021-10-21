@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import shlex
@@ -56,7 +55,7 @@ class Session:
 
     def set_layout(self, val: str) -> None:
         if val.partition(':')[0] not in all_layouts:
-            raise ValueError('{} is not a valid layout'.format(val))
+            raise ValueError(f'{val} is not a valid layout')
         self.tabs[-1].layout = val
 
     def add_window(self, cmd: Union[None, str, List[str]]) -> None:
@@ -131,7 +130,7 @@ def parse_session(raw: str, opts: Options) -> Generator[Session, None, None]:
             elif cmd == 'os_window_class':
                 ans.os_window_class = rest
             else:
-                raise ValueError('Unknown command in session file: {}'.format(cmd))
+                raise ValueError(f'Unknown command in session file: {cmd}')
     yield finalize_session(ans)
 
 
@@ -168,7 +167,7 @@ def create_sessions(
             with open(default_session) as f:
                 session_data = f.read()
         except OSError:
-            log_error('Failed to read from session file, ignoring: {}'.format(default_session))
+            log_error(f'Failed to read from session file, ignoring: {default_session}')
         else:
             yield from parse_session(session_data, opts)
             return

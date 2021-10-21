@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 import os
 import string
@@ -110,7 +109,7 @@ def serialize_favorites(favorites: Iterable[int]) -> str:
 
 '''.splitlines()
     for cp in favorites:
-        ans.append('{:x} # {} {}'.format(cp, chr(cp), name(cp)))
+        ans.append(f'{cp:x} # {chr(cp)} {name(cp)}')
     return '\n'.join(ans)
 
 
@@ -381,7 +380,7 @@ class UnicodeInput(Handler):
     def draw_title_bar(self) -> None:
         entries = []
         for name, key, mode in all_modes:
-            entry = ' {} ({}) '.format(name, key)
+            entry = f' {name} ({key}) '
             if mode is self.mode:
                 entry = styled(entry, reverse=False, bold=True)
             entries.append(entry)

@@ -28,7 +28,7 @@ def main():
         characters += ['\x1b[91m', '\x1b[0m', '\x1b[1;32m', '\x1b[22m', '\x1b[35m']
 
     if args.unicode:
-        characters += [u'日', u'本', u'💜', u'☃', u'🎩', u'🍀', u'、']
+        characters += ['日', '本', '💜', '☃', '🎩', '🍀', '、']
 
     patterns = []
     for _ in range(0, args.patterns):

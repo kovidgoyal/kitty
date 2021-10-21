@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
@@ -146,12 +145,12 @@ cli_msg = (
 
 def parse_rc_args(args: List[str]) -> Tuple[RCOptions, List[str]]:
     cmap = {name: command_for_name(name) for name in sorted(all_command_names())}
-    cmds = ('  :green:`{}`\n    {}'.format(cmd.name, cmd.short_desc) for c, cmd in cmap.items())
+    cmds = (f'  :green:`{cmd.name}`\n    {cmd.short_desc}' for c, cmd in cmap.items())
     msg = cli_msg + (
             '\n\n:title:`Commands`:\n{cmds}\n\n'
             'You can get help for each individual command by using:\n'
             '{appname} @ :italic:`command` -h').format(appname=appname, cmds='\n'.join(cmds))
-    return parse_args(args[1:], global_options_spec, 'command ...', msg, '{} @'.format(appname), result_class=RCOptions)
+    return parse_args(args[1:], global_options_spec, 'command ...', msg, f'{appname} @', result_class=RCOptions)
 
 
 def create_basic_command(name: str, payload: Any = None, no_response: bool = False) -> Dict[str, Any]:

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
@@ -428,7 +427,7 @@ class DiffHandler(Handler):
         elif self.state is MESSAGE:
             self.cmd.styled(self.message, reverse=True)
         else:
-            sp = '{:.0%}'.format(self.scroll_pos/self.max_scroll_pos) if self.scroll_pos and self.max_scroll_pos else '0%'
+            sp = f'{self.scroll_pos/self.max_scroll_pos:.0%}' if self.scroll_pos and self.max_scroll_pos else '0%'
             scroll_frac = styled(sp, fg=self.opts.margin_fg)
             if self.current_search is None:
                 counts = '{}{}{}'.format(
@@ -437,7 +436,7 @@ class DiffHandler(Handler):
                         styled(str(self.removed_count), fg=self.opts.highlight_removed_bg)
                 )
             else:
-                counts = styled('{} matches'.format(len(self.current_search)), fg=self.opts.margin_fg)
+                counts = styled(f'{len(self.current_search)} matches', fg=self.opts.margin_fg)
             suffix = counts + '  ' + scroll_frac
             prefix = styled(':', fg=self.opts.margin_fg)
             filler = self.screen_size.cols - wcswidth(prefix) - wcswidth(suffix)
@@ -632,7 +631,7 @@ def main(args: List[str]) -> None:
         raise SystemExit('The items to be diffed should both be either directories or files. Comparing a directory to a file is not valid.')
     for f in left, right:
         if not os.path.exists(f):
-            raise SystemExit('{} does not exist'.format(f))
+            raise SystemExit(f'{f} does not exist')
 
     loop = Loop()
     handler = DiffHandler(cli_opts, opts, left, right)

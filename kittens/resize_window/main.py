@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
@@ -43,7 +42,7 @@ class Resize(Handler):
         if is_decrease:
             increment *= -1
         axis = 'reset' if reset else ('horizontal' if is_horizontal else 'vertical')
-        cmdline = [resize_window.name, '--self', '--increment={}'.format(increment), '--axis=' + axis]
+        cmdline = [resize_window.name, '--self', f'--increment={increment}', '--axis=' + axis]
         opts, items = parse_subcommand_cli(resize_window, cmdline)
         payload = resize_window.message_to_kitty(global_opts, opts, items)
         send = {'cmd': resize_window.name, 'version': version, 'payload': payload, 'no_response': False}
@@ -96,7 +95,7 @@ class Resize(Handler):
         print('Hold down {} to double step size'.format(styled('Ctrl', italic=True)))
         print()
         print(styled('Sizes', bold=True, fg='white', fg_intense=True))
-        print('Original: {} rows {} cols'.format(self.original_size.rows, self.original_size.cols))
+        print(f'Original: {self.original_size.rows} rows {self.original_size.cols} cols')
         print('Current:  {} rows {} cols'.format(
             styled(str(self.screen_size.rows), fg='magenta'), styled(str(self.screen_size.cols), fg='magenta')))
 

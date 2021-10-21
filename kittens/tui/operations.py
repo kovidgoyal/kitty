@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import sys
@@ -57,13 +56,13 @@ def cmd(f: F) -> F:
 @cmd
 def set_mode(which: Mode) -> str:
     num, private = which.value
-    return '\033[{}{}h'.format(private, num)
+    return f'\033[{private}{num}h'
 
 
 @cmd
 def reset_mode(which: Mode) -> str:
     num, private = which.value
-    return '\033[{}{}l'.format(private, num)
+    return f'\033[{private}{num}l'
 
 
 @cmd
@@ -127,7 +126,7 @@ def set_cursor_visible(yes_or_no: bool) -> str:
 
 @cmd
 def set_cursor_position(x: int = 0, y: int = 0) -> str:  # (0, 0) is top left
-    return '\033[{};{}H'.format(y + 1, x + 1)
+    return f'\033[{y + 1};{x + 1}H'
 
 
 @cmd
@@ -141,7 +140,7 @@ def set_cursor_shape(shape: str = 'block', blink: bool = True) -> str:
     val = {'block': 1, 'underline': 3, 'bar': 5}.get(shape, 1)
     if not blink:
         val += 1
-    return '\033[{} q'.format(val)
+    return f'\033[{val} q'
 
 
 @cmd
@@ -156,7 +155,7 @@ def set_scrolling_region(screen_size: Optional['ScreenSize'] = None, top: Option
         bottom = screen_size.rows - 1 + bottom
     else:
         bottom += 1
-    return '\033[{};{}r'.format(top + 1, bottom + 1)
+    return f'\033[{top + 1};{bottom + 1}r'
 
 
 @cmd
@@ -178,7 +177,7 @@ def color_code(color: ColorSpec, intense: bool = False, base: int = 30) -> str:
     if isinstance(color, str):
         e = str((base + 60 if intense else base) + STANDARD_COLORS[color])
     elif isinstance(color, int):
-        e = '{}:5:{}'.format(base + 8, max(0, min(color, 255)))
+        e = f'{base + 8}:5:{max(0, min(color, 255))}'
     else:
         e = '{}:2:{}:{}:{}'.format(base + 8, *color)
     return e
@@ -198,7 +197,7 @@ def colored(
     reset_to_intense: bool = False
 ) -> str:
     e = color_code(color, intense)
-    return '\033[{}m{}\033[{}m'.format(e, text, 39 if reset_to is None else color_code(reset_to, reset_to_intense))
+    return f'\033[{e}m{text}\033[{39 if reset_to is None else color_code(reset_to, reset_to_intense)}m'
 
 
 @cmd
@@ -233,7 +232,7 @@ def styled(
         start.append(color_code(underline_color, base=50))
         end.append('59')
     if underline is not None:
-        start.append('4:{}'.format(UNDERLINE_STYLES[underline]))
+        start.append(f'4:{UNDERLINE_STYLES[underline]}')
         end.append('4:0')
     if italic is not None:
         s, e = (start, end) if italic else (end, start)
@@ -383,7 +382,7 @@ def set_default_colors(
     def item(which: Optional[Union[Color, str]], num: int) -> None:
         nonlocal ans
         if which is None:
-            ans += '\x1b]1{}\x1b\\'.format(num)
+            ans += f'\x1b]1{num}\x1b\\'
         else:
             if isinstance(which, Color):
                 q = color_as_sharp(which)
@@ -391,7 +390,7 @@ def set_default_colors(
                 x = to_color(which)
                 assert x is not None
                 q = color_as_sharp(x)
-            ans += '\x1b]{};{}\x1b\\'.format(num, q)
+            ans += f'\x1b]{num};{q}\x1b\\'
 
     item(fg, 10)
     item(bg, 11)
@@ -464,7 +463,7 @@ def as_type_stub() -> str:
         args = ', '.join(func_sig(func))
         if args:
             args = ', ' + args
-        methods.append('    def {}(self{}) -> str: pass'.format(name, args))
+        methods.append(f'    def {name}(self{args}) -> str: pass')
     ans += ['', '', 'class CMD:'] + methods
 
     return '\n'.join(ans) + '\n\n\n'

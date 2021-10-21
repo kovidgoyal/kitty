@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
@@ -24,12 +23,12 @@ class TestHints(BaseTest):
 
         u = 'http://test.me/'
         t(u, 'http://test.me/')
-        t('"{}"'.format(u), u)
-        t('({})'.format(u), u)
+        t(f'"{u}"', u)
+        t(f'({u})', u)
         t(u + '\nxxx', u + 'xxx', len(u))
-        t('link:{}[xxx]'.format(u), u)
-        t('`xyz <{}>`_.'.format(u), u)
-        t('<a href="{}">moo'.format(u), u)
+        t(f'link:{u}[xxx]', u)
+        t(f'`xyz <{u}>`_.', u)
+        t(f'<a href="{u}">moo', u)
 
     def test_ip_hints(self):
         from kittens.hints.main import parse_hints_args, functions_for, mark, convert_text

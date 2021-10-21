@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -294,7 +293,7 @@ def bash_output_serializer(ans: Completions) -> str:
         for word in matches:
             if matches.trailing_space:
                 word += ' '
-            lines.append('COMPREPLY+=({})'.format(shlex.quote(word)))
+            lines.append(f'COMPREPLY+=({shlex.quote(word)})')
     # debug('\n'.join(lines))
     return '\n'.join(lines)
 
@@ -685,7 +684,7 @@ def main(args: Sequence[str], entry_points: Iterable[str], namespaced_entry_poin
         parser = parsers[cstyle]
         serializer = serializers[cstyle]
     except KeyError:
-        raise SystemExit('Unknown completion style: {}'.format(cstyle))
+        raise SystemExit(f'Unknown completion style: {cstyle}')
     words, new_word = parser(data)
     ans = find_completions(words, new_word, entry_points, namespaced_entry_points)
     print(serializer(ans), end='')

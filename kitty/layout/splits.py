@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from typing import (
@@ -324,7 +323,7 @@ class Pair:
                 return 'top', 'bottom'
             return 'bottom', 'top'
 
-        geometries = dict((group.id, group.geometry) for group in all_windows.groups if group.geometry)
+        geometries = {group.id: group.geometry for group in all_windows.groups if group.geometry}
 
         def extend(other: Union[int, 'Pair', None], edge: EdgeLiteral, which: EdgeLiteral) -> None:
             if not ans[which] and other:

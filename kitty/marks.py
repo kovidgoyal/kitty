@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -45,8 +44,8 @@ def marker_from_multiple_regex(regexes: Iterable[Tuple[int, str]], flags: int = 
     expr = ''
     color_map = {}
     for i, (color, spec) in enumerate(regexes):
-        grp = 'mcg{}'.format(i)
-        expr += '|(?P<{}>{})'.format(grp, spec)
+        grp = f'mcg{i}'
+        expr += f'|(?P<{grp}>{spec})'
         color_map[grp] = color
     expr = expr[1:]
     pat = re.compile(expr, flags=flags)
@@ -92,4 +91,4 @@ def marker_from_spec(ftype: str, spec: Union[str, Sequence[Tuple[int, str]]], fl
         if not os.path.isabs(path):
             path = os.path.join(config_dir, path)
         return marker_from_function(runpy.run_path(path, run_name='__marker__')["marker"])
-    raise ValueError('Unknown marker type: {}'.format(ftype))
+    raise ValueError(f'Unknown marker type: {ftype}')

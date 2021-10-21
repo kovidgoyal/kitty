@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from functools import partial
@@ -77,7 +76,7 @@ class TestMouse(BaseTest):
             ev(x=x, y=y, button=button)
             if q is not None:
                 s = sel()
-                self.ae(s, q, '{!r} != {!r} after movement to x={} y={}'.format(s, q, x, y))
+                self.ae(s, q, f'{s!r} != {q!r} after movement to x={x} y={y}')
 
         def multi_click(x=0, y=0, count=2):
             clear_click_queue = True

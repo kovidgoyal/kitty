@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -336,11 +335,11 @@ class Dircolors:
 
     def _format_code(self, text: str, code: str) -> str:
         val = self.codes.get(code)
-        return '\033[%sm%s\033[%sm' % (val, text, self.codes.get('rs', '0')) if val else text
+        return '\033[{}m{}\033[{}m'.format(val, text, self.codes.get('rs', '0')) if val else text
 
     def _format_ext(self, text: str, ext: str) -> str:
         val = self.extensions.get(ext, '0')
-        return '\033[%sm%s\033[%sm' % (val, text, self.codes.get('rs', '0')) if val else text
+        return '\033[{}m{}\033[{}m'.format(val, text, self.codes.get('rs', '0')) if val else text
 
     def format_mode(self, text: str, sr: os.stat_result) -> str:
         mode = sr.st_mode

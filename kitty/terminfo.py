@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
@@ -19,7 +18,7 @@ def modify_key_bytes(keybytes: bytes, amt: int) -> bytes:
         return bytes(ans[:-1] + bytearray(b';' + samt + b'~'))
     if ans[1] == ord('O'):
         return bytes(ans[:1] + bytearray(b'[1;' + samt) + ans[-1:])
-    raise ValueError('Unknown key type in key: {!r}'.format(keybytes))
+    raise ValueError(f'Unknown key type in key: {keybytes!r}')
 
 
 def encode_keystring(keybytes: bytes) -> str:
@@ -285,7 +284,7 @@ string_capabilities = {
 }
 
 string_capabilities.update({
-    'kf{}'.format(offset + n):
+    f'kf{offset + n}':
         encode_keystring(modify_key_bytes(b'\033' + value, mod))
     for offset, mod in {0: 0, 12: 2, 24: 5, 36: 6, 48: 3, 60: 4}.items()
     for n, value in zip(range(1, 13),
@@ -427,7 +426,7 @@ termcap_aliases.update({
 })
 
 termcap_aliases.update({
-    tc: 'kf{}'.format(n)
+    tc: f'kf{n}'
     for n, tc in enumerate(
         'k1 k2 k3 k4 k5 k6 k7 k8 k9 k; F1 F2 F3 F4 F5 F6 F7 F8 F9 FA '
         'FB FC FD FE FF FG FH FI FJ FK FL FM FN FO FP FQ FR FS FT FU '
@@ -439,11 +438,11 @@ queryable_capabilities.update(string_capabilities)
 extra = (bool_capabilities | numeric_capabilities.keys() | string_capabilities.keys()) - set(termcap_aliases.values())
 no_termcap_for = frozenset(
     'Su Smulx Sync Tc setrgbf setrgbb fullkbd kUP kDN kbeg kBEG'.split() + [
-        'k{}{}'.format(key, mod)
+        f'k{key}{mod}'
         for key in 'UP DN RIT LFT BEG END HOM IC DC PRV NXT'.split()
         for mod in range(3, 8)])
 if extra - no_termcap_for:
-    raise Exception('Termcap aliases not complete, missing: {}'.format(extra - no_termcap_for))
+    raise Exception(f'Termcap aliases not complete, missing: {extra - no_termcap_for}')
 del extra
 
 
@@ -451,8 +450,8 @@ def generate_terminfo() -> str:
     # Use ./build-terminfo to update definition files
     ans = ['|'.join(names)]
     ans.extend(sorted(bool_capabilities))
-    ans.extend('{}#{}'.format(k, numeric_capabilities[k]) for k in sorted(numeric_capabilities))
-    ans.extend('{}={}'.format(k, string_capabilities[k]) for k in sorted(string_capabilities))
+    ans.extend(f'{k}#{numeric_capabilities[k]}' for k in sorted(numeric_capabilities))
+    ans.extend(f'{k}={string_capabilities[k]}' for k in sorted(string_capabilities))
     return ',\n\t'.join(ans) + ',\n'
 
 

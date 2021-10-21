@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import concurrent.futures
@@ -151,9 +150,9 @@ class Hunk:
         # Sanity check
         c = self.chunks[-1]
         if c.left_start + c.left_count != self.left_start + self.left_count:
-            raise ValueError('Left side line mismatch {} != {}'.format(c.left_start + c.left_count, self.left_start + self.left_count))
+            raise ValueError(f'Left side line mismatch {c.left_start + c.left_count} != {self.left_start + self.left_count}')
         if c.right_start + c.right_count != self.right_start + self.right_count:
-            raise ValueError('Left side line mismatch {} != {}'.format(c.right_start + c.right_count, self.right_start + self.right_count))
+            raise ValueError(f'Left side line mismatch {c.right_start + c.right_count} != {self.right_start + self.right_count}')
         for c in self.chunks:
             c.finalize()
 
@@ -240,18 +239,18 @@ class Differ:
             try:
                 ok, returncode, output = future.result()
             except FileNotFoundError as err:
-                return 'Could not find the {} executable. Is it in your PATH?'.format(err.filename)
+                return f'Could not find the {err.filename} executable. Is it in your PATH?'
             except Exception as e:
-                return 'Running git diff for {} vs. {} generated an exception: {}'.format(left_path, right_path, e)
+                return f'Running git diff for {left_path} vs. {right_path} generated an exception: {e}'
             if not ok:
-                return output + '\nRunning git diff for {} vs. {} failed'.format(left_path, right_path)
+                return output + f'\nRunning git diff for {left_path} vs. {right_path} failed'
             left_lines = lines_for_path(left_path)
             right_lines = lines_for_path(right_path)
             try:
                 patch = parse_patch(output)
             except Exception:
                 import traceback
-                return traceback.format_exc() + '\nParsing diff for {} vs. {} failed'.format(left_path, right_path)
+                return traceback.format_exc() + f'\nParsing diff for {left_path} vs. {right_path} failed'
             else:
                 ans[key] = patch
         return ans

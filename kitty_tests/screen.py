@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 from kitty.fast_data_types import (
@@ -837,7 +836,7 @@ class TestScreen(BaseTest):
             return parse_bytes(s, f'\033[{code}{p}u'.encode('ascii'))
 
         def ac(flags):
-            parse_bytes(s, '\033[?u'.encode('ascii'))
+            parse_bytes(s, b'\033[?u')
             self.ae(c.wtcbuf, f'\033[?{flags}u'.encode('ascii'))
             c.clear()
 
@@ -926,10 +925,10 @@ class TestScreen(BaseTest):
         s = self.create_screen()
 
         def mark_prompt():
-            parse_bytes(s, '\033]133;A\007'.encode('ascii'))
+            parse_bytes(s, b'\033]133;A\007')
 
         def mark_output():
-            parse_bytes(s, '\033]133;C\007'.encode('ascii'))
+            parse_bytes(s, b'\033]133;C\007')
 
         for i in range(4):
             mark_prompt()

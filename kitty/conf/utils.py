@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -130,7 +129,7 @@ def parse_line(
         return
     m = key_pat.match(line)
     if m is None:
-        log_error('Ignoring invalid config line: {}'.format(line))
+        log_error(f'Ignoring invalid config line: {line}')
         return
     key, val = m.groups()
     if key == 'include':
@@ -152,7 +151,7 @@ def parse_line(
             )
         return
     if not parse_conf_item(key, val, ans):
-        log_error('Ignoring unknown config key: {}'.format(key))
+        log_error(f'Ignoring unknown config key: {key}')
 
 
 def _parse(
@@ -199,8 +198,7 @@ def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Seq
     if config_files_on_cmd_line:
         if 'NONE' not in config_files_on_cmd_line:
             yield SYSTEM_CONF
-            for cf in config_files_on_cmd_line:
-                yield cf
+            yield from config_files_on_cmd_line
     else:
         yield SYSTEM_CONF
         yield defconf
@@ -240,7 +238,7 @@ def key_func() -> Tuple[Callable[..., Callable], Dict[str, Callable]]:
             for name in names:
                 if ans.setdefault(name, f) is not f:
                     raise ValueError(
-                        'the args_func {} is being redefined'.format(name)
+                        f'the args_func {name} is being redefined'
                     )
             return f
 
@@ -277,7 +275,7 @@ def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> Key
     try:
         func, args = parser(func, rest)
     except Exception:
-        raise ValueError('Unknown key action: {}'.format(action))
+        raise ValueError(f'Unknown key action: {action}')
 
     if not isinstance(args, (list, tuple)):
         args = (args, )

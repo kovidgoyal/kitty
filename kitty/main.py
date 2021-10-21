@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import locale
@@ -50,7 +49,7 @@ def set_custom_ibeam_cursor() -> None:
     try:
         set_custom_cursor(GLFW_IBEAM_CURSOR, images, 4, 8)
     except Exception as e:
-        log_error('Failed to set custom beam cursor with error: {}'.format(e))
+        log_error(f'Failed to set custom beam cursor with error: {e}')
 
 
 def talk_to_instance(args: CLIOptions) -> None:
@@ -61,7 +60,7 @@ def talk_to_instance(args: CLIOptions) -> None:
             'cwd': os.getcwd()}
     notify_socket = None
     if args.wait_for_single_instance_window_close:
-        address = '\0{}-os-window-close-notify-{}-{}'.format(appname, os.getpid(), os.geteuid())
+        address = f'\0{appname}-os-window-close-notify-{os.getpid()}-{os.geteuid()}'
         notify_socket = socket.socket(family=socket.AF_UNIX)
         try:
             notify_socket.bind(address)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -94,7 +93,7 @@ def main(args: List[str]) -> NoReturn:
     data: Optional[bytes] = None
     if not sys.stdin.isatty():
         data = sys.stdin.buffer.read()
-        sys.stdin = open(os.ctermid(), 'r')
+        sys.stdin = open(os.ctermid())
     loop = Loop()
     handler = Clipboard(data, cli_opts)
     loop.loop(handler)

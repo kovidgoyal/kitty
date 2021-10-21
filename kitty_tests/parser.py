@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import time
@@ -126,7 +125,7 @@ class TestParser(BaseTest):
         s.reset()
 
         def sgr(params):
-            return (('select_graphic_rendition', '{} '.format(x)) for x in params.split())
+            return (('select_graphic_rendition', f'{x} ') for x in params.split())
 
         pb('\033[1;2;3;4;7;9;34;44m', *sgr('1 2 3 4 7 9 34 44'))
         for attr in 'bold italic reverse strikethrough dim'.split():
@@ -313,7 +312,7 @@ class TestParser(BaseTest):
         c = s.callbacks
         pb = partial(self.parse_bytes_dump, s)
         q = hexlify(b'kind').decode('ascii')
-        pb('a\033P+q{}\x9cbcde'.format(q), 'a', ('screen_request_capabilities', 43, q), 'bcde')
+        pb(f'a\033P+q{q}\x9cbcde', 'a', ('screen_request_capabilities', 43, q), 'bcde')
         self.ae(str(s.line(0)), 'abcde')
         self.ae(c.wtcbuf, '1+r{}={}'.format(q, '1b5b313b3242').encode('ascii'))
         c.clear()
@@ -325,12 +324,12 @@ class TestParser(BaseTest):
         for sgr in '0;34;102;1;2;3;4 0;38:5:200;58:2:10:11:12'.split():
             expected = set(sgr.split(';')) - {'0'}
             c.clear()
-            parse_bytes(s, '\033[{}m\033P$qm\033\\'.format(sgr).encode('ascii'))
+            parse_bytes(s, f'\033[{sgr}m\033P$qm\033\\'.encode('ascii'))
             r = c.wtcbuf.decode('ascii').partition('r')[2].partition('m')[0]
             self.ae(expected, set(r.split(';')))
         c.clear()
         pb('\033P$qr\033\\', ('screen_request_capabilities', ord('$'), 'r'))
-        self.ae(c.wtcbuf, '\033P1$r{};{}r\033\\'.format(s.margin_top + 1, s.margin_bottom + 1).encode('ascii'))
+        self.ae(c.wtcbuf, f'\033P1$r{s.margin_top + 1};{s.margin_bottom + 1}r\033\\'.encode('ascii'))
 
     def test_sc81t(self):
         s = self.create_screen()
@@ -396,10 +395,10 @@ class TestParser(BaseTest):
         pb = partial(self.parse_bytes_dump, s)
         for prefix in '\033_', '\u009f':
             for suffix in '\u009c', '\033\\':
-                pb('a{}+\\++{}bcde'.format(prefix, suffix), ('draw', 'a'), ('Unrecognized APC code: 0x2b',), ('draw', 'bcde'))
+                pb(f'a{prefix}+\\++{suffix}bcde', ('draw', 'a'), ('Unrecognized APC code: 0x2b',), ('draw', 'bcde'))
         for prefix in '\033^', '\u009e':
             for suffix in '\u009c', '\033\\':
-                pb('a{}+\\++{}bcde'.format(prefix, suffix), ('draw', 'a'), ('Unrecognized PM code: 0x2b',), ('draw', 'bcde'))
+                pb(f'a{prefix}+\\++{suffix}bcde', ('draw', 'a'), ('Unrecognized PM code: 0x2b',), ('draw', 'bcde'))
 
     def test_graphics_command(self):
         from base64 import standard_b64encode
@@ -424,7 +423,7 @@ class TestParser(BaseTest):
             pb('\033_G{};{}\033\\'.format(cmd, enc(kw.get('payload', ''))), c(**kw))
 
         def e(cmd, err):
-            pb('\033_G{}\033\\'.format(cmd), (err,))
+            pb(f'\033_G{cmd}\033\\', (err,))
 
         s = self.create_screen()
         pb = partial(self.parse_bytes_dump, s)

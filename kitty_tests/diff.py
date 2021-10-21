@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
@@ -37,9 +36,9 @@ class TestDiff(BaseTest):
             self.ae(expected, tuple(split_with_highlights(line, width, [], seg)))
 
         def h(s, e, w):
-            ans = Segment(s, 'S{}S'.format(w))
+            ans = Segment(s, f'S{w}S')
             ans.end = e
-            ans.end_code = 'E{}E'.format(w)
+            ans.end_code = f'E{w}E'
             return ans
 
         highlights = [h(0, 1, 1), h(1, 3, 2)]

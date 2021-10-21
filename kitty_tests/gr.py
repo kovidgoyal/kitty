@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -16,11 +15,11 @@ def clear_screen():
 
 
 def move_cursor(x, y):
-    write('\033[{};{}H'.format(y, x).encode('ascii'))
+    write(f'\033[{y};{x}H'.encode('ascii'))
 
 
 def write_gr_cmd(cmd, payload):
-    cmd = ','.join('{}={}'.format(k, v) for k, v in cmd.items())
+    cmd = ','.join(f'{k}={v}' for k, v in cmd.items())
     w = write
     w(b'\033_G'), w(cmd.encode('ascii')), w(b';'), w(payload), w(b'\033\\')
     sys.stdout.flush()

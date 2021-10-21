@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import fcntl
@@ -41,15 +40,15 @@ if is_macos:
 else:
 
     def cmdline_of_process(pid: int) -> List[str]:
-        with open('/proc/{}/cmdline'.format(pid), 'rb') as f:
+        with open(f'/proc/{pid}/cmdline', 'rb') as f:
             return list(filter(None, f.read().decode('utf-8').split('\0')))
 
     def cwd_of_process(pid: int) -> str:
-        ans = '/proc/{}/cwd'.format(pid)
+        ans = f'/proc/{pid}/cwd'
         return os.path.realpath(ans)
 
     def _environ_of_process(pid: int) -> str:
-        with open('/proc/{}/environ'.format(pid), 'rb') as f:
+        with open(f'/proc/{pid}/environ', 'rb') as f:
             return f.read().decode('utf-8')
 
     def process_group_map() -> DefaultDict[int, List[int]]:

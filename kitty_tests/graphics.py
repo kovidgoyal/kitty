@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -95,7 +94,7 @@ def load_helpers(self):
 
     def pl(payload, **kw):
         kw.setdefault('i', 1)
-        cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
+        cmd = ','.join(f'{k}={v}' for k, v in kw.items())
         res = send_command(s, cmd, payload)
         return parse_response(res)
 
@@ -176,7 +175,7 @@ def make_send_command(screen):
         if i:
             kw['i'] = i
         kw['a'] = a
-        cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
+        cmd = ','.join(f'{k}={v}' for k, v in kw.items())
         res = send_command(screen, cmd, payload)
         return parse_full_response(res)
     return li
@@ -435,7 +434,7 @@ class TestGraphics(BaseTest):
         self.assertEqual(g.disk_cache.total_size, 0)
 
         def li(payload, **kw):
-            cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
+            cmd = ','.join(f'{k}={v}' for k, v in kw.items())
             res = send_command(s, cmd, payload)
             return parse_response_with_ids(res)
 
@@ -470,7 +469,7 @@ class TestGraphics(BaseTest):
 
         # test put with number
         def put(**kw):
-            cmd = ','.join('%s=%s' % (k, v) for k, v in kw.items())
+            cmd = ','.join(f'{k}={v}' for k, v in kw.items())
             cmd = 'a=p,' + cmd
             return parse_response_with_ids(send_command(s, cmd))
 
@@ -483,9 +482,9 @@ class TestGraphics(BaseTest):
         def delete(ac='N', **kw):
             cmd = 'a=d'
             if ac:
-                cmd += ',d={}'.format(ac)
+                cmd += f',d={ac}'
             if kw:
-                cmd += ',' + ','.join('{}={}'.format(k, v) for k, v in kw.items())
+                cmd += ',' + ','.join(f'{k}={v}' for k, v in kw.items())
             send_command(s, cmd)
 
         count = s.grman.image_count
@@ -599,9 +598,9 @@ class TestGraphics(BaseTest):
         def delete(ac=None, **kw):
             cmd = 'a=d'
             if ac:
-                cmd += ',d={}'.format(ac)
+                cmd += f',d={ac}'
             if kw:
-                cmd += ',' + ','.join('{}={}'.format(k, v) for k, v in kw.items())
+                cmd += ',' + ','.join(f'{k}={v}' for k, v in kw.items())
             send_command(s, cmd)
 
         put_image(s, cw, ch)

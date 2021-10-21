@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -116,7 +115,7 @@ def setup_x11_window(win_id: int) -> None:
             '-id', str(win_id), '-format', '_NET_WM_WINDOW_TYPE', '32a',
             '-set', '_NET_WM_WINDOW_TYPE', '_NET_WM_WINDOW_TYPE_DOCK'
     )
-    func = globals()['create_{}_strut'.format(args.edge)]
+    func = globals()[f'create_{args.edge}_strut']
     func(win_id, window_width, window_height)
 
 

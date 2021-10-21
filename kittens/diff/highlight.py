@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import concurrent
@@ -31,7 +30,7 @@ class DiffFormatter(Formatter):
         except ClassNotFound:
             initialized = False
         if not initialized:
-            raise StyleNotFound('pygments style "{}" not found'.format(style))
+            raise StyleNotFound(f'pygments style "{style}" not found')
 
         self.styles: Dict[str, Tuple[str, str]] = {}
         for token, token_style in self.style:
@@ -153,7 +152,7 @@ def highlight_collection(collection: Collection, aliases: Optional[Dict[str, str
             try:
                 highlights = future.result()
             except Exception as e:
-                return 'Running syntax highlighting for {} generated an exception: {}'.format(path, e)
+                return f'Running syntax highlighting for {path} generated an exception: {e}'
             ans[path] = highlights
     return ans
 
@@ -166,5 +165,5 @@ def main() -> None:
     with open(sys.argv[-1]) as f:
         highlighted = highlight_data(f.read(), f.name, defaults.syntax_aliases)
     if highlighted is None:
-        raise SystemExit('Unknown filetype: {}'.format(sys.argv[-1]))
+        raise SystemExit(f'Unknown filetype: {sys.argv[-1]}')
     print(highlighted)

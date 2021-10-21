@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
@@ -381,9 +380,9 @@ class SingleInstance:
 
     def __call__(self, group_id: Optional[str] = None) -> bool:
         import socket
-        name = '{}-ipc-{}'.format(appname, os.geteuid())
+        name = f'{appname}-ipc-{os.geteuid()}'
         if group_id:
-            name += '-{}'.format(group_id)
+            name += f'-{group_id}'
 
         s = socket.socket(family=socket.AF_UNIX)
         # First try with abstract UDS
@@ -425,7 +424,7 @@ def parse_address_spec(spec: str) -> Tuple[AddressFamily, Union[Tuple[str, int],
         host, port = rest.rsplit(':', 1)
         address = host, int(port)
     else:
-        raise ValueError('Unknown protocol in --listen-on value: {}'.format(spec))
+        raise ValueError(f'Unknown protocol in --listen-on value: {spec}')
     return family, address, socket_path
 
 

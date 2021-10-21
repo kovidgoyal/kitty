@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import builtins
@@ -35,7 +34,7 @@ def expand_opt_references(conf_name: str, text: str) -> str:
         ref = m.group(1)
         if '<' not in ref and '.' not in ref:
             full_ref = conf_name + ref
-            return ':opt:`{} <{}>`'.format(ref, full_ref)
+            return f':opt:`{ref} <{full_ref}>`'
         return str(m.group())
 
     return re.sub(r':opt:`(.+?)`', expand, text)

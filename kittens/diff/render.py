@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import warnings
@@ -42,7 +41,7 @@ class Ref:
 
     def __repr__(self) -> str:
         return '{}({})'.format(self.__class__.__name__, ', '.join(
-            '{}={}'.format(n, getattr(self, n)) for n in self.__slots__ if n != '_hash'))
+            f'{n}={getattr(self, n)}' for n in self.__slots__ if n != '_hash'))
 
 
 class LineRef(Ref):
@@ -264,7 +263,7 @@ def render_diff_pair(
 
 def hunk_title(hunk_num: int, hunk: Hunk, margin_size: int, available_cols: int) -> str:
     m = hunk_margin_format(' ' * margin_size)
-    t = '@@ -{},{} +{},{} @@ {}'.format(hunk.left_start + 1, hunk.left_count, hunk.right_start + 1, hunk.right_count, hunk.title)
+    t = f'@@ -{hunk.left_start + 1},{hunk.left_count} +{hunk.right_start + 1},{hunk.right_count} @@ {hunk.title}'
     return m + hunk_format(place_in(t, available_cols))
 
 
@@ -539,7 +538,7 @@ class RenderDiff:
                 assert other_path is not None
                 ans = yield_lines_from(rename_lines(path, other_path, args, columns, margin_size), item_ref)
             else:
-                raise ValueError('Unsupported item type: {}'.format(item_type))
+                raise ValueError(f'Unsupported item type: {item_type}')
             yield from ans
             if i < last_item_num:
                 yield Line('', item_ref)

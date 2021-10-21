@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
@@ -67,7 +66,7 @@ class ScrollWindow(RemoteCommand):
                     else:
                         unit = 'page' if unit == 'p' else 'line'
                         direction = 'up' if amt < 0 else 'down'
-                        func = getattr(window, 'scroll_{}_{}'.format(unit, direction))
+                        func = getattr(window, f'scroll_{unit}_{direction}')
                         for i in range(abs(amt)):
                             func()
 

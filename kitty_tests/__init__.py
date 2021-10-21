@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -83,7 +82,7 @@ def filled_line_buf(ynum=5, xnum=5, cursor=Cursor()):
     ans = LineBuf(ynum, xnum)
     cursor.x = 0
     for i in range(ynum):
-        t = ('{}'.format(i)) * xnum
+        t = (f'{i}') * xnum
         ans.line(i).set_text(t, 0, xnum, cursor)
     return ans
 

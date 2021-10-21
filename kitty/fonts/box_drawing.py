@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 #
@@ -372,7 +371,7 @@ def get_bezier_limits(bezier_x: ParameterizedFunc, bezier_y: ParameterizedFunc) 
             if q > x:
                 increment /= 2
                 if increment < 1e-6:
-                    raise ValueError('Failed to find t for x={}'.format(x))
+                    raise ValueError(f'Failed to find t for x={x}')
             else:
                 start_t += increment
                 increment = t_limit - start_t
@@ -1096,7 +1095,7 @@ def test_drawing(sz: int = 48, family: str = 'monospace', start: int = 0x2500, n
             rgb_data = b''.join(rows)
             width *= 32
             height *= len(rows)
-            assert len(rgb_data) == width * height * 4, '{} != {}'.format(len(rgb_data), width * height * 4)
+            assert len(rgb_data) == width * height * 4, f'{len(rgb_data)} != {width * height * 4}'
             display_bitmap(rgb_data, width, height)
         finally:
             set_send_sprite_to_gpu(None)

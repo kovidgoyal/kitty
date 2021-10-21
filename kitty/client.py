@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 # Replay the log from --dump-commands. To use first run
@@ -43,7 +42,7 @@ def screen_alternate_keypad_mode() -> None:
 
 
 def screen_cursor_position(y: int, x: int) -> None:
-    write(CSI + '%s;%sH' % (y, x))
+    write(CSI + f'{y};{x}H')
 
 
 def screen_cursor_forward(amt: int) -> None:

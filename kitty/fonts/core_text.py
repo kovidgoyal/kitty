@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
@@ -82,7 +81,7 @@ def find_best_match(family: str, bold: bool = False, italic: bool = False, ignor
     # Let CoreText choose the font if the family exists, otherwise
     # fallback to Menlo
     if q not in font_map['family_map']:
-        log_error('The font {} was not found, falling back to Menlo'.format(family))
+        log_error(f'The font {family} was not found, falling back to Menlo')
         q = 'menlo'
     candidates = font_map['family_map'][q]
     return sorted(candidates, key=score)[-1]

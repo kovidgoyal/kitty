@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import json
@@ -233,7 +232,7 @@ class LoadShaderPrograms:
                     'MARK_SHIFT': MARK,
                     'MARK_MASK': MARK_MASK,
             }.items():
-                vv = vv.replace('{{{}}}'.format(gln), str(pyn), 1)
+                vv = vv.replace(f'{{{gln}}}', str(pyn), 1)
             if semi_transparent:
                 vv = vv.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
                 ff = ff.replace('#define NOT_TRANSPARENT', '#define TRANSPARENT')
@@ -377,7 +376,7 @@ class Window:
         self.margin = EdgeWidths()
         self.padding = EdgeWidths()
         if not self.id:
-            raise Exception('No tab with id: {} in OS Window: {} was found, or the window counter wrapped'.format(tab.id, tab.os_window_id))
+            raise Exception(f'No tab with id: {tab.id} in OS Window: {tab.os_window_id} was found, or the window counter wrapped')
         self.tab_id = tab.id
         self.os_window_id = tab.os_window_id
         self.tabref: Callable[[], Optional[TabType]] = weakref.ref(tab)
@@ -778,7 +777,7 @@ class Window:
         r |= r << 8
         g |= g << 8
         b |= b << 8
-        self.screen.send_escape_code_to_child(OSC, '{};rgb:{:04x}/{:04x}/{:04x}'.format(code, r, g, b))
+        self.screen.send_escape_code_to_child(OSC, f'{code};rgb:{r:04x}/{g:04x}/{b:04x}')
 
     def report_notification_activated(self, identifier: str) -> None:
         self.screen.send_escape_code_to_child(OSC, f'99;i={identifier};')
@@ -806,7 +805,7 @@ class Window:
             changed = False
             for c, val in parse_color_set(value):
                 if val is None:  # color query
-                    self.report_color('4;{}'.format(c), *self.screen.color_profile.as_color((c << 8) | 1))
+                    self.report_color(f'4;{c}', *self.screen.color_profile.as_color((c << 8) | 1))
                 else:
                     changed = True
                     cp.set_color(c, val)

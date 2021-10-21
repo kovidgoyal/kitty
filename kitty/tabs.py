@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -94,7 +93,7 @@ class Tab:  # {{{
         self.os_window_id: int = tab_manager.os_window_id
         self.id: int = add_tab(self.os_window_id)
         if not self.id:
-            raise Exception('No OS window with id {} found, or tab counter has wrapped'.format(self.os_window_id))
+            raise Exception(f'No OS window with id {self.os_window_id} found, or tab counter has wrapped')
         self.args = tab_manager.args
         self.name = getattr(session_tab, 'name', '')
         self.enabled_layouts = [x.lower() for x in getattr(session_tab, 'enabled_layouts', None) or get_options().enabled_layouts]
@@ -270,7 +269,7 @@ class Tab:  # {{{
         if layout_name not in self.enabled_layouts:
             if raise_exception:
                 raise ValueError(layout_name)
-            log_error('Unknown or disabled layout: {}'.format(layout_name))
+            log_error(f'Unknown or disabled layout: {layout_name}')
             return
         self._set_current_layout(layout_name)
         self.relayout()
@@ -639,7 +638,7 @@ class Tab:  # {{{
         self.windows = WindowList(self)
 
     def __repr__(self) -> str:
-        return 'Tab(title={}, id={})'.format(self.name or self.title, hex(id(self)))
+        return f'Tab(title={self.name or self.title}, id={hex(id(self))})'
 
     def make_active(self) -> None:
         tm = self.tab_manager_ref()

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
@@ -84,7 +83,7 @@ def find_font_features(postscript_name: str) -> Tuple[FontFeature, ...]:
         try:
             parsed = parse_font_feature(feat)
         except ValueError:
-            log_error('Ignoring invalid font feature: {}'.format(feat))
+            log_error(f'Ignoring invalid font feature: {feat}')
         else:
             features.append(FontFeature(feat, parsed))
 

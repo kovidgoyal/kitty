@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -366,7 +365,7 @@ def functions_for(args: HintsCLIOptions) -> Tuple[str, List[PostprocessorFunc]]:
         chars = args.word_characters
         if chars is None:
             chars = kitty_common_opts()['select_by_word_characters']
-        pattern = r'(?u)[{}\w]{{{},}}'.format(escape(chars), args.minimum_match_length)
+        pattern = fr'(?u)[{escape(chars)}\w]{{{args.minimum_match_length},}}'
         post_processors.extend((brackets, quotes))
     else:
         pattern = args.regex

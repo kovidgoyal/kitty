@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 from contextlib import suppress
@@ -37,7 +36,7 @@ class MatchError(ValueError):
     hide_traceback = True
 
     def __init__(self, expression: str, target: str = 'windows'):
-        ValueError.__init__(self, 'No matching {} for expression: {}'.format(target, expression))
+        ValueError.__init__(self, f'No matching {target} for expression: {expression}')
 
 
 class OpacityError(ValueError):
@@ -199,15 +198,15 @@ class RemoteCommand:
 
 
 def cli_params_for(command: RemoteCommand) -> Tuple[Callable[[], str], str, str, str]:
-    return (command.options_spec or '\n').format, command.argspec, command.desc, '{} @ {}'.format(appname, command.name)
+    return (command.options_spec or '\n').format, command.argspec, command.desc, f'{appname} @ {command.name}'
 
 
 def parse_subcommand_cli(command: RemoteCommand, args: ArgsType) -> Tuple[Any, ArgsType]:
     opts, items = parse_args(args[1:], *cli_params_for(command), result_class=command.options_class)
     if command.args_count is not None and command.args_count != len(items):
         if command.args_count == 0:
-            raise SystemExit('Unknown extra argument(s) supplied to {}'.format(command.name))
-        raise SystemExit('Must specify exactly {} argument(s) for {}'.format(command.args_count, command.name))
+            raise SystemExit(f'Unknown extra argument(s) supplied to {command.name}')
+        raise SystemExit(f'Must specify exactly {command.args_count} argument(s) for {command.name}')
     return opts, items
 
 

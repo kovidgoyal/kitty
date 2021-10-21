@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
@@ -30,7 +29,7 @@ class Search:
         try:
             self.pat = re.compile(query, flags=re.UNICODE | re.IGNORECASE)
         except Exception:
-            raise BadRegex('Not a valid regex: {}'.format(query))
+            raise BadRegex(f'Not a valid regex: {query}')
 
     def __call__(self, diff_lines: Iterable['Line'], margin_size: int, cols: int) -> bool:
         self.matches = {}
@@ -68,6 +67,6 @@ class Search:
             return False
         write(self.style)
         for start, text in highlights:
-            write('\r\x1b[{}C{}'.format(start, text))
+            write(f'\r\x1b[{start}C{text}')
         write('\x1b[m')
         return True

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
@@ -104,7 +103,7 @@ def goto_tab_parse(func: str, rest: str) -> FuncArgsType:
 @func_with_args('detach_window')
 def detach_window_parse(func: str, rest: str) -> FuncArgsType:
     if rest not in ('new', 'new-tab', 'ask', 'tab-prev', 'tab-left', 'tab-right'):
-        log_error('Ignoring invalid detach_window argument: {}'.format(rest))
+        log_error(f'Ignoring invalid detach_window argument: {rest}')
         rest = 'new'
     return func, (rest,)
 
@@ -112,7 +111,7 @@ def detach_window_parse(func: str, rest: str) -> FuncArgsType:
 @func_with_args('detach_tab')
 def detach_tab_parse(func: str, rest: str) -> FuncArgsType:
     if rest not in ('new', 'ask'):
-        log_error('Ignoring invalid detach_tab argument: {}'.format(rest))
+        log_error(f'Ignoring invalid detach_tab argument: {rest}')
         rest = 'new'
     return func, (rest,)
 
@@ -145,7 +144,7 @@ def signal_child_parse(func: str, rest: str) -> FuncArgsType:
 def parse_change_font_size(func: str, rest: str) -> Tuple[str, Tuple[bool, Optional[str], float]]:
     vals = rest.strip().split(maxsplit=1)
     if len(vals) != 2:
-        log_error('Invalid change_font_size specification: {}, treating it as default'.format(rest))
+        log_error(f'Invalid change_font_size specification: {rest}, treating it as default')
         return func, (True, None, 0)
     c_all = vals[0].lower() == 'all'
     sign: Optional[str] = None
@@ -182,7 +181,7 @@ def neighboring_window(func: str, rest: str) -> FuncArgsType:
     rest = rest.lower()
     rest = {'up': 'top', 'down': 'bottom'}.get(rest, rest)
     if rest not in ('left', 'right', 'top', 'bottom'):
-        log_error('Invalid neighbor specification: {}'.format(rest))
+        log_error(f'Invalid neighbor specification: {rest}')
         rest = 'right'
     return func, [rest]
 
@@ -196,14 +195,14 @@ def resize_window(func: str, rest: str) -> FuncArgsType:
     else:
         quality = vals[0].lower()
         if quality not in ('taller', 'shorter', 'wider', 'narrower'):
-            log_error('Invalid quality specification: {}'.format(quality))
+            log_error(f'Invalid quality specification: {quality}')
             quality = 'wider'
         increment = 1
         if len(vals) == 2:
             try:
                 increment = int(vals[1])
             except Exception:
-                log_error('Invalid increment specification: {}'.format(vals[1]))
+                log_error(f'Invalid increment specification: {vals[1]}')
         args = [quality, increment]
     return func, args
 
@@ -217,7 +216,7 @@ def move_window(func: str, rest: str) -> FuncArgsType:
         prest = int(prest)
     except Exception:
         if prest not in ('left', 'right', 'top', 'bottom'):
-            log_error('Invalid move_window specification: {}'.format(rest))
+            log_error(f'Invalid move_window specification: {rest}')
             prest = 0
     return func, [prest]
 
@@ -269,9 +268,9 @@ def disable_ligatures_in(func: str, rest: str) -> FuncArgsType:
     else:
         where, strategy = parts
     if where not in ('active', 'all', 'tab'):
-        raise ValueError('{} is not a valid set of windows to disable ligatures in'.format(where))
+        raise ValueError(f'{where} is not a valid set of windows to disable ligatures in')
     if strategy not in ('never', 'always', 'cursor'):
-        raise ValueError('{} is not a valid disable ligatures strategy'.format(strategy))
+        raise ValueError(f'{strategy} is not a valid disable ligatures strategy')
     return func, [where, strategy]
 
 
@@ -295,7 +294,7 @@ def parse_marker_spec(ftype: str, parts: Sequence[str]) -> Tuple[str, Union[str,
             try:
                 color = max(1, min(int(parts[i]), 3))
             except Exception:
-                raise ValueError('color {} in marker specification is not an integer'.format(parts[i]))
+                raise ValueError(f'color {parts[i]} in marker specification is not an integer')
             sspec = parts[i + 1]
             if 'regex' not in ftype:
                 sspec = re.escape(sspec)
@@ -305,7 +304,7 @@ def parse_marker_spec(ftype: str, parts: Sequence[str]) -> Tuple[str, Union[str,
     elif ftype == 'function':
         spec = ' '.join(parts)
     else:
-        raise ValueError('Unknown marker type: {}'.format(ftype))
+        raise ValueError(f'Unknown marker type: {ftype}')
     return ftype, spec, flags
 
 
@@ -314,7 +313,7 @@ def toggle_marker(func: str, rest: str) -> FuncArgsType:
     import shlex
     parts = rest.split(maxsplit=1)
     if len(parts) != 2:
-        raise ValueError('{} is not a valid marker specification'.format(rest))
+        raise ValueError(f'{rest} is not a valid marker specification')
     ftype, spec = parts
     parts = shlex.split(spec)
     return func, list(parse_marker_spec(ftype, parts))
@@ -332,7 +331,7 @@ def scroll_to_mark(func: str, rest: str) -> FuncArgsType:
         try:
             return func, [True, max(0, min(int(q), 3))]
         except Exception:
-            raise ValueError('{} is not a valid scroll_to_mark destination'.format(rest))
+            raise ValueError(f'{rest} is not a valid scroll_to_mark destination')
     return func, [parts[0] != 'next', max(0, min(int(parts[1]), 3))]
 
 
@@ -371,7 +370,7 @@ def parse_mods(parts: Iterable[str], sc: str) -> Optional[int]:
             mods |= getattr(defines, 'GLFW_MOD_' + map_mod(m.upper()))
         except AttributeError:
             if m.upper() != 'NONE':
-                log_error('Shortcut: {} has unknown modifier, ignoring'.format(sc))
+                log_error(f'Shortcut: {sc} has unknown modifier, ignoring')
             return None
 
     return mods
@@ -493,9 +492,9 @@ def url_style(x: str) -> int:
     return url_style_map.get(x, url_style_map['curly'])
 
 
-url_style_map = dict(
-    ((v, i) for i, v in enumerate('none single double curly'.split()))
-)
+url_style_map = {
+    v: i for i, v in enumerate('none single double curly'.split())
+}
 
 
 def url_prefixes(x: str) -> Tuple[str, ...]:
@@ -528,13 +527,13 @@ def parse_layout_names(parts: Iterable[str]) -> List[str]:
             continue
         name = p.partition(':')[0]
         if name not in all_layouts:
-            raise ValueError('The window layout {} is unknown'.format(p))
+            raise ValueError(f'The window layout {p} is unknown')
         ans.append(p)
     return uniq(ans)
 
 
 def to_layout_names(raw: str) -> List[str]:
-    return parse_layout_names((x.strip() for x in raw.split(',')))
+    return parse_layout_names(x.strip() for x in raw.split(','))
 
 
 def window_border_width(x: Union[str, int, float]) -> Tuple[float, str]:
@@ -721,7 +720,7 @@ def font_features(val: str) -> Iterable[Tuple[str, Tuple[FontFeature, ...]]]:
         return
     parts = val.split()
     if len(parts) < 2:
-        log_error("Ignoring invalid font_features {}".format(val))
+        log_error(f"Ignoring invalid font_features {val}")
         return
     if parts[0]:
         features = []
@@ -729,7 +728,7 @@ def font_features(val: str) -> Iterable[Tuple[str, Tuple[FontFeature, ...]]]:
             try:
                 parsed = defines.parse_font_feature(feat)
             except ValueError:
-                log_error('Ignoring invalid font feature: {}'.format(feat))
+                log_error(f'Ignoring invalid font feature: {feat}')
             else:
                 features.append(FontFeature(feat, parsed))
         yield parts[0], tuple(features)
@@ -886,7 +885,7 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
                 return
             if key == 0:
                 if mods is not None:
-                    log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
+                    log_error(f'Shortcut: {sc} has unknown key, ignoring')
                 return
             if trigger is None:
                 trigger = SingleKey(mods, is_native, key)
@@ -900,7 +899,7 @@ def parse_map(val: str) -> Iterable[KeyDefinition]:
             return
         if key == 0:
             if mods is not None:
-                log_error('Shortcut: {} has unknown key, ignoring'.format(sc))
+                log_error(f'Shortcut: {sc} has unknown key, ignoring')
             return
     try:
         paction = parse_key_action(action)
@@ -961,7 +960,7 @@ def parse_mouse_map(val: str) -> Iterable[MouseMapping]:
 def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str, Any]) -> None:
     if not hasattr(deprecated_hide_window_decorations_aliases, key):
         setattr(deprecated_hide_window_decorations_aliases, key, True)
-        log_error('The option {} is deprecated. Use hide_window_decorations instead.'.format(key))
+        log_error(f'The option {key} is deprecated. Use hide_window_decorations instead.')
     if to_bool(val):
         if is_macos and key == 'macos_hide_titlebar' or (not is_macos and key == 'x11_hide_window_decorations'):
             ans['hide_window_decorations'] = True
@@ -970,7 +969,7 @@ def deprecated_hide_window_decorations_aliases(key: str, val: str, ans: Dict[str
 def deprecated_macos_show_window_title_in_menubar_alias(key: str, val: str, ans: Dict[str, Any]) -> None:
     if not hasattr(deprecated_macos_show_window_title_in_menubar_alias, key):
         setattr(deprecated_macos_show_window_title_in_menubar_alias, 'key', True)
-        log_error('The option {} is deprecated. Use macos_show_window_title_in menubar instead.'.format(key))
+        log_error(f'The option {key} is deprecated. Use macos_show_window_title_in menubar instead.')
     macos_show_window_title_in = ans.get('macos_show_window_title_in', 'all')
     if to_bool(val):
         if macos_show_window_title_in == 'none':
@@ -996,6 +995,6 @@ def deprecated_send_text(key: str, val: str, ans: Dict[str, Any]) -> None:
         return abort('Incomplete')
     mode, sc = parts[:2]
     text = ' '.join(parts[2:])
-    key_str = '{} send_text {} {}'.format(sc, mode, text)
+    key_str = f'{sc} send_text {mode} {text}'
     for k in parse_map(key_str):
         ans['map'].append(k)

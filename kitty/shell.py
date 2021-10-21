@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -134,7 +133,7 @@ def print_help(which: Optional[str] = None) -> None:
             elif which == 'help':
                 print('Show help')
             else:
-                print('Unknown command: {}'.format(emph(which)))
+                print(f'Unknown command: {emph(which)}')
             return
         display_subcommand_help(func)
 
@@ -169,7 +168,7 @@ def real_main(global_opts: RCOptions) -> None:
     print('Use {} for assistance or {} to quit'.format(green('help'), green('exit')))
     awid = os.environ.pop('KITTY_SHELL_ACTIVE_WINDOW_ID', None)
     if awid is not None:
-        print('The ID of the previously active window is: {}'.format(awid))
+        print(f'The ID of the previously active window is: {awid}')
 
     pre_prompt = set_window_title('The kitty shell') + set_cursor_shape('bar')
     pre_prompt += '\x1b]133;A;does_not_redraw_prompts\x1b\\'
@@ -200,7 +199,7 @@ def real_main(global_opts: RCOptions) -> None:
             if cmd == 'help':
                 print_help(cmdline[1] if len(cmdline) > 1 else None)
                 continue
-            print_err('"{}" is an unknown command. Use "help" to see a list of commands.'.format(emph(cmd)))
+            print_err(f'"{emph(cmd)}" is an unknown command. Use "help" to see a list of commands.')
             continue
 
         try:

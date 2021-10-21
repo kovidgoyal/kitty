@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2019, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -118,7 +117,7 @@ def update_check() -> bool:
             'from kitty.update_check import run_worker; run_worker()'
         ], stdout=subprocess.PIPE)
     except OSError as e:
-        log_error('Failed to run kitty for update check, with error: {}'.format(e))
+        log_error(f'Failed to run kitty for update check, with error: {e}')
         return False
     monitor_pid(p.pid)
     get_boss().set_update_check_process(p)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import codecs
@@ -105,7 +104,7 @@ class OpenFailed(ValueError):
 
     def __init__(self, path: str, message: str):
         ValueError.__init__(
-            self, 'Failed to open image: {} with error: {}'.format(path, message)
+            self, f'Failed to open image: {path} with error: {message}'
         )
         self.path = path
 
@@ -114,7 +113,7 @@ class ConvertFailed(ValueError):
 
     def __init__(self, path: str, message: str):
         ValueError.__init__(
-            self, 'Failed to convert image: {} with error: {}'.format(path, message)
+            self, f'Failed to convert image: {path} with error: {message}'
         )
         self.path = path
 
@@ -212,7 +211,7 @@ def render_image(
             scaled = True
     if scaled or width > available_width or height > available_height:
         width, height = fit_image(width, height, available_width, available_height)
-        resize_cmd = ['-resize', '{}x{}!'.format(width, height)]
+        resize_cmd = ['-resize', f'{width}x{height}!']
         if get_multiple_frames:
             # we have to coalesce, resize and de-coalesce all frames
             resize_cmd = ['-coalesce'] + resize_cmd + ['-deconstruct']
@@ -373,7 +372,7 @@ class GraphicsCommand:
     def serialize(self, payload: Union[bytes, str] = b'') -> bytes:
         items = []
         for k, val in self._actual_values.items():
-            items.append('{}={}'.format(k, val))
+            items.append(f'{k}={val}')
 
         ans: List[bytes] = []
         w = ans.append

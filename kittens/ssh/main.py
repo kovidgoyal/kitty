@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -245,7 +244,7 @@ def parse_ssh_args(args: List[str]) -> Tuple[List[str], List[str], bool]:
                     else:
                         expecting_option_val = True
                     break
-                raise InvalidSSHArgs('unknown option -- {}'.format(arg[1:]))
+                raise InvalidSSHArgs(f'unknown option -- {arg[1:]}')
             continue
         if expecting_option_val:
             ssh_args.append(arg)

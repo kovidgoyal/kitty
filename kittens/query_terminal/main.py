@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
@@ -28,10 +27,10 @@ class Query:
 
     def __init__(self) -> None:
         self.encoded_query_name = hexlify(self.query_name.encode('utf-8')).decode('ascii')
-        self.pat = re.compile('\x1bP([01])\\+r{}(.*?)\x1b\\\\'.format(self.encoded_query_name).encode('ascii'))
+        self.pat = re.compile(f'\x1bP([01])\\+r{self.encoded_query_name}(.*?)\x1b\\\\'.encode('ascii'))
 
     def query_code(self) -> str:
-        return "\x1bP+q{}\x1b\\".format(self.encoded_query_name)
+        return f"\x1bP+q{self.encoded_query_name}\x1b\\"
 
     def decode_response(self, res: bytes) -> str:
         return unhexlify(res).decode('utf-8')
@@ -234,7 +233,7 @@ def main(args: List[str] = sys.argv) -> None:
         options_spec,
         usage,
         help_text,
-        '{} +kitten query_terminal'.format(appname),
+        f'{appname} +kitten query_terminal',
         result_class=QueryTerminalCLIOptions
     )
     queries: List[str] = list(items_)

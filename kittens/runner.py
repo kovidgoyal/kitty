@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 
@@ -61,7 +60,7 @@ def import_kitten_main_module(config_dir: str, kitten: str) -> Dict[str, Any]:
         return {'start': g['main'], 'end': hr}
 
     kitten = resolved_kitten(kitten)
-    m = importlib.import_module('kittens.{}.main'.format(kitten))
+    m = importlib.import_module(f'kittens.{kitten}.main')
     return {'start': getattr(m, 'main'), 'end': getattr(m, 'handle_result', lambda *a, **k: None)}
 
 
@@ -111,7 +110,7 @@ def deserialize(output: str) -> Any:
             prefix, sz, rest = output.split(' ', 2)
             return json.loads(rest[:int(sz)])
         except Exception:
-            raise ValueError('Failed to parse kitten output: {!r}'.format(output))
+            raise ValueError(f'Failed to parse kitten output: {output!r}')
 
 
 def run_kitten(kitten: str, run_name: str = '__main__') -> None:
@@ -120,7 +119,7 @@ def run_kitten(kitten: str, run_name: str = '__main__') -> None:
     kitten = resolved_kitten(kitten)
     set_debug(kitten)
     try:
-        runpy.run_module('kittens.{}.main'.format(kitten), run_name=run_name)
+        runpy.run_module(f'kittens.{kitten}.main', run_name=run_name)
         return
     except ImportError:
         pass

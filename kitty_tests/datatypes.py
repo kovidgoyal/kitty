@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -423,7 +422,7 @@ class TestDataTypes(BaseTest):
         c = ColorProfile()
         c.update_ansi_color_table(build_ansi_color_table())
         for i in range(8):
-            col = getattr(defaults, 'color{}'.format(i))
+            col = getattr(defaults, f'color{i}')
             self.assertEqual(c.as_color(i << 8 | 1), (col[0], col[1], col[2]))
         self.ae(c.as_color(255 << 8 | 1), (0xee, 0xee, 0xee))
 

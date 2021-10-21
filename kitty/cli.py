@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2017, Kovid Goyal <kovid at kovidgoyal.net>
 
 import re
@@ -53,7 +52,7 @@ defaults for all users.
 
 def surround(x: str, start: int, end: int) -> str:
     if sys.stdout.isatty():
-        x = '\033[{}m{}\033[{}m'.format(start, x, end)
+        x = f'\033[{start}m{x}\033[{end}m'
     return x
 
 
@@ -185,7 +184,7 @@ def parse_option_spec(spec: Optional[str] = None) -> Tuple[OptionSpecSeq, Option
                 }
                 state = METADATA
                 continue
-            raise ValueError('Invalid option spec, unexpected line: {}'.format(line))
+            raise ValueError(f'Invalid option spec, unexpected line: {line}')
         elif state is METADATA:
             m = mpat.match(line)
             if m is None:
@@ -243,7 +242,7 @@ def version(add_rev: bool = False) -> str:
     rev = ''
     from . import fast_data_types
     if add_rev and hasattr(fast_data_types, 'KITTY_VCS_REV'):
-        rev = ' ({})'.format(fast_data_types.KITTY_VCS_REV[:10])
+        rev = f' ({fast_data_types.KITTY_VCS_REV[:10]})'
     return '{} {}{} created by {}'.format(italic(appname), green(str_version), rev, title('Kovid Goyal'))
 
 
@@ -334,7 +333,7 @@ class PrintHelpForSeq:
             a('{}:'.format(title('Options')))
         for opt in seq:
             if isinstance(opt, str):
-                a('{}:'.format(title(opt)))
+                a(f'{title(opt)}:')
                 continue
             help_text = opt['help']
             if help_text == '!':
@@ -347,7 +346,7 @@ class PrintHelpForSeq:
                 t = help_text.replace('%default', str(defval))
                 wa(prettify(t.strip()), indent=4)
                 if defval is not None:
-                    wa('Default: {}'.format(defval), indent=4)
+                    wa(f'Default: {defval}', indent=4)
                 if opt.get('choices'):
                     wa('Choices: {}'.format(', '.join(opt['choices'])), indent=4)
                 a('')
@@ -384,7 +383,7 @@ def seq_as_rst(
     a('.. highlight:: sh')
     a('.. code-block:: sh')
     a('')
-    a('  {} {}{}'.format(appname, optstring, usage))
+    a(f'  {appname} {optstring}{usage}')
     a('')
     message = message or default_msg
     a(prettify_rst(message))
@@ -412,7 +411,7 @@ def seq_as_rst(
             a('')
             a(textwrap.indent(prettify_rst(t), ' ' * 4))
             if defval is not None:
-                a(textwrap.indent('Default: :code:`{}`'.format(defval), ' ' * 4))
+                a(textwrap.indent(f'Default: :code:`{defval}`', ' ' * 4))
             if opt.get('choices'):
                 a(textwrap.indent('Choices: :code:`{}`'.format(', '.join(sorted(opt['choices']))), ' ' * 4))
             a('')
@@ -423,7 +422,7 @@ def seq_as_rst(
 
 def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, extra_fields: Sequence[str] = ()) -> str:
     from itertools import chain
-    ans: List[str] = ['class {}:'.format(class_name)]
+    ans: List[str] = [f'class {class_name}:']
     for opt in chain(seq, disabled):
         if isinstance(opt, str):
             continue
@@ -443,10 +442,10 @@ def as_type_stub(seq: OptionSpecSeq, disabled: OptionSpecSeq, class_name: str, e
         elif otype.startswith('bool-'):
             t = 'bool'
         else:
-            raise ValueError('Unknown CLI option type: {}'.format(otype))
-        ans.append('    {}: {}'.format(name, t))
+            raise ValueError(f'Unknown CLI option type: {otype}')
+        ans.append(f'    {name}: {t}')
     for x in extra_fields:
-        ans.append('    {}'.format(x))
+        ans.append(f'    {x}')
     return '\n'.join(ans) + '\n\n\n'
 
 
@@ -485,7 +484,7 @@ class Options:
     def opt_for_alias(self, alias: str) -> OptionDict:
         opt = self.alias_map.get(alias)
         if opt is None:
-            raise SystemExit('Unknown option: {}'.format(emph(alias)))
+            raise SystemExit(f'Unknown option: {emph(alias)}')
         return opt
 
     def needs_arg(self, alias: str) -> bool:
@@ -546,7 +545,7 @@ def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: Optional
                 needs_arg = oc.needs_arg(parts[0])
                 if not needs_arg:
                     if len(parts) != 1:
-                        raise SystemExit('The {} option does not accept arguments'.format(emph(parts[0])))
+                        raise SystemExit(f'The {emph(parts[0])} option does not accept arguments')
                     oc.process_arg(parts[0])
                     continue
                 if len(parts) == 1:
@@ -561,7 +560,7 @@ def parse_cmdline(oc: Options, disabled: OptionSpecSeq, ans: Any, args: Optional
             oc.process_arg(current_option, arg)
             current_option, state = None, NORMAL
     if state is EXPECTING_ARG:
-        raise SystemExit('An argument is required for the option: {}'.format(emph(arg)))
+        raise SystemExit(f'An argument is required for the option: {emph(arg)}')
 
     for key, val in oc.values_map.items():
         setattr(ans, key, val)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import errno
@@ -89,7 +88,7 @@ def _get_config_dir() -> str:
     try:
         os.makedirs(ans, exist_ok=True)
     except FileExistsError:
-        raise SystemExit('A file {} already exists. It must be a directory, not a file.'.format(ans))
+        raise SystemExit(f'A file {ans} already exists. It must be a directory, not a file.')
     except PermissionError:
         make_tmp_conf()
     except OSError as err:

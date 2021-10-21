@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2016, Kovid Goyal <kovid at kovidgoyal.net>
 
 import atexit
@@ -899,8 +898,8 @@ class Boss:
         if w is None:
             return
         overlay_window = self._run_kitten('resize_window', args=[
-            '--horizontal-increment={}'.format(get_options().window_resize_step_cells),
-            '--vertical-increment={}'.format(get_options().window_resize_step_lines)
+            f'--horizontal-increment={get_options().window_resize_step_cells}',
+            f'--vertical-increment={get_options().window_resize_step_lines}'
         ])
         if overlay_window is not None:
             overlay_window.allow_remote_control = True
@@ -1178,7 +1177,7 @@ class Boss:
                     q = type_of_input.split('-')
                     data = w.last_cmd_output(as_ansi='ansi' in q, add_wrap_markers='screen' in q).encode('utf-8')
                 else:
-                    raise ValueError('Unknown type_of_input: {}'.format(type_of_input))
+                    raise ValueError(f'Unknown type_of_input: {type_of_input}')
             else:
                 data = input_data if isinstance(input_data, bytes) else input_data.encode('utf-8')
             copts = common_opts_as_dict(get_options())
@@ -1766,12 +1765,12 @@ class Boss:
                 assert update_check_process.stdout is not None
                 raw = update_check_process.stdout.read().decode('utf-8')
             except Exception as e:
-                log_error('Failed to read data from update check process, with error: {}'.format(e))
+                log_error(f'Failed to read data from update check process, with error: {e}')
             else:
                 try:
                     process_current_release(raw)
                 except Exception as e:
-                    log_error('Failed to process update check data {!r}, with error: {}'.format(raw, e))
+                    log_error(f'Failed to process update check data {raw!r}, with error: {e}')
 
     def dbus_notification_callback(self, activated: bool, a: int, b: Union[int, str]) -> None:
         from .notify import (
@@ -1787,7 +1786,7 @@ class Boss:
     def show_bad_config_lines(self, bad_lines: Iterable[BadLine]) -> None:
 
         def format_bad_line(bad_line: BadLine) -> str:
-            return '{}:{} in line: {}\n'.format(bad_line.number, bad_line.exception, bad_line.line)
+            return f'{bad_line.number}:{bad_line.exception} in line: {bad_line.line}\n'
 
         msg = '\n'.join(map(format_bad_line, bad_lines)).rstrip()
         self.show_error(_('Errors in kitty.conf'), msg)

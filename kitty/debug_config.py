@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-# vim:fileencoding=utf-8
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -128,7 +127,7 @@ def compare_opts(opts: KittyOpts, print: Callable) -> None:
         if f not in ignored and getattr(opts, f) != getattr(defaults, f)
     ]
     field_len = max(map(len, changed_opts)) if changed_opts else 20
-    fmt = '{{:{:d}s}}'.format(field_len)
+    fmt = f'{{:{field_len:d}s}}'
     colors = []
     for f in changed_opts:
         val = getattr(opts, f)

@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-# vim:fileencoding=utf-8
 # License: GPL v3 Copyright: 2018, Kovid Goyal <kovid at kovidgoyal.net>
 
 import os
@@ -79,7 +78,7 @@ def as_rgb(x: int) -> int:
 
 @lru_cache()
 def report_template_failure(template: str, e: str) -> None:
-    log_error('Invalid tab title template: "{}" with error: {}'.format(template, e))
+    log_error(f'Invalid tab title template: "{template}" with error: {e}')
 
 
 @lru_cache()
