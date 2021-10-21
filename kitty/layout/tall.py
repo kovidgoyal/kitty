@@ -72,6 +72,9 @@ class TallLayoutOpts(LayoutOpts):
         self.bias = tuple(repeat(b / fs, fs)) + (1.0 - b,)
         self.mirrored = to_bool(data.get('mirrored', 'false'))
 
+    def serialized(self) -> Dict[str, Any]:
+        return {'full_size': self.full_size, 'bias': self.bias, 'mirrored': self.mirrored}
+
 
 class Tall(Layout):
 

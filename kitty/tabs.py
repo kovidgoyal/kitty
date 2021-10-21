@@ -38,6 +38,7 @@ class TabDict(TypedDict):
     title: str
     layout: str
     layout_state: Dict[str, Any]
+    layout_opts: Dict[str, Any]
     windows: List[WindowDict]
     active_window_history: List[int]
 
@@ -169,6 +170,8 @@ class Tab:  # {{{
             'window_list': self.windows.serialize_state(),
             'current_layout': self._current_layout_name,
             'last_used_layout': self._last_used_layout,
+            'layout_opts': self.current_layout.layout_opts,
+            'layout_state': self.current_layout.layout_state,
             'name': self.name,
         }
 
@@ -813,6 +816,7 @@ class TabManager:  # {{{
                 'title': tab.name or tab.title,
                 'layout': str(tab.current_layout.name),
                 'layout_state': tab.current_layout.layout_state(),
+                'layout_opts': tab.current_layout.layout_opts.serialized(),
                 'windows': list(tab.list_windows(active_window, self_window)),
                 'active_window_history': list(tab.windows.active_window_history),
             }

@@ -28,6 +28,9 @@ class LayoutOpts:
     def __init__(self, data: Dict[str, str]):
         pass
 
+    def serialized(self) -> Dict[str, Any]:
+        return {}
+
 
 class LayoutData(NamedTuple):
     content_pos: int = 0

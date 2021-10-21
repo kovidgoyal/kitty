@@ -388,6 +388,9 @@ class SplitsLayoutOpts(LayoutOpts):
     def __init__(self, data: Dict[str, str]):
         self.default_axis_is_horizontal = data.get('split_axis', 'horizontal') == 'horizontal'
 
+    def serialized(self) -> Dict[str, Any]:
+        return {'default_axis_is_horizontal': self.default_axis_is_horizontal}
+
 
 class Splits(Layout):
     name = 'splits'
