@@ -440,6 +440,12 @@ remove_os_window(id_type os_window_id) {
     return found;
 }
 
+static void
+mark_os_window_dirty(id_type os_window_id) {
+    WITH_OS_WINDOW(os_window_id)
+        os_window->needs_render = true;
+    END_WITH_OS_WINDOW
+}
 
 static void
 set_active_tab(id_type os_window_id, unsigned int idx) {
@@ -573,6 +579,7 @@ send_pending_click_to_window_id(id_type timer_id UNUSED, void *data) {
 #define TWO_ID(name) PYWRAP1(name) { id_type a, b; PA("KK", &a, &b); name(a, b); Py_RETURN_NONE; }
 #define THREE_ID(name) PYWRAP1(name) { id_type a, b, c; PA("KKK", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
 #define THREE_ID_OBJ(name) PYWRAP1(name) { id_type a, b, c; PyObject *o; PA("KKKO", &a, &b, &c, &o); name(a, b, c, o); Py_RETURN_NONE; }
+#define K(name) PYWRAP1(name) { id_type a; PA("K", &a); name(a); Py_RETURN_NONE; }
 #define KI(name) PYWRAP1(name) { id_type a; unsigned int b; PA("KI", &a, &b); name(a, b); Py_RETURN_NONE; }
 #define KII(name) PYWRAP1(name) { id_type a; unsigned int b, c; PA("KII", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
 #define KKI(name) PYWRAP1(name) { id_type a, b; unsigned int c; PA("KKI", &a, &b, &c); name(a, b, c); Py_RETURN_NONE; }
@@ -1078,6 +1085,7 @@ PYWRAP1(add_window) { PyObject *title; id_type a, b; PA("KKO", &a, &b, &title); 
 PYWRAP0(current_os_window) { OSWindow *w = current_os_window(); if (!w) Py_RETURN_NONE; return PyLong_FromUnsignedLongLong(w->id); }
 TWO_ID(remove_tab)
 KI(set_active_tab)
+K(mark_os_window_dirty)
 KKK(set_active_window)
 KII(swap_tabs)
 KK5I(add_borders_rect)
@@ -1106,6 +1114,7 @@ static PyMethodDef module_methods[] = {
     MW(detach_window, METH_VARARGS),
     MW(attach_window, METH_VARARGS),
     MW(set_active_tab, METH_VARARGS),
+    MW(mark_os_window_dirty, METH_VARARGS),
     MW(set_active_window, METH_VARARGS),
     MW(swap_tabs, METH_VARARGS),
     MW(add_borders_rect, METH_VARARGS),

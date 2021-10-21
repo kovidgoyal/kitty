@@ -28,7 +28,7 @@ from .fast_data_types import (
     SCROLL_PAGE, SEVEN_SEGMENT_PROGRAM, STRIKETHROUGH, TINT_PROGRAM, KeyEvent,
     Screen, add_timer, add_window, cell_size_for_window, click_mouse_url,
     compile_program, encode_key_for_tty, get_boss, get_clipboard_string,
-    get_options, init_cell_program, mouse_selection,
+    get_options, init_cell_program, mark_os_window_dirty, mouse_selection,
     move_cursor_to_mouse_if_in_prompt, pt_to_px, set_clipboard_string,
     set_titlebar_color, set_window_padding, set_window_render_data,
     update_window_title, update_window_visibility, viewport_for_window
@@ -566,6 +566,8 @@ class Window:
                 self.pty_resized_once = True
                 self.child.mark_terminal_ready()
             self.last_reported_pty_size = current_pty_size
+        else:
+            mark_os_window_dirty(self.os_window_id)
 
         self.geometry = g = new_geometry
         set_window_render_data(self.os_window_id, self.tab_id, self.id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen, *g[:4])

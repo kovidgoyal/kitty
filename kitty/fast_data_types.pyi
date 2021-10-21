@@ -1236,6 +1236,10 @@ class OSWindowSize(TypedDict):
     cell_height: int
 
 
+def mark_os_window_dirty(os_window_id: int) -> None:
+    pass
+
+
 def get_os_window_size(os_window_id: int) -> Optional[OSWindowSize]:
     pass
 
