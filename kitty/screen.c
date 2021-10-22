@@ -1928,8 +1928,8 @@ static void
 parse_prompt_mark(Screen *self, PyObject *parts, PromptKind *pk) {
     for (Py_ssize_t i = 0; i < PyList_GET_SIZE(parts); i++) {
         PyObject *token = PyList_GET_ITEM(parts, i);
-        if (PyUnicode_CompareWithASCIIString(token, "k=s")) *pk = SECONDARY_PROMPT;
-        else if (PyUnicode_CompareWithASCIIString(token, "redraw=0")) self->prompt_settings.redraws_prompts_at_all = 0;
+        if (PyUnicode_CompareWithASCIIString(token, "k=s") == 0) *pk = SECONDARY_PROMPT;
+        else if (PyUnicode_CompareWithASCIIString(token, "redraw=0") == 0) self->prompt_settings.redraws_prompts_at_all = 0;
     }
 }
 
