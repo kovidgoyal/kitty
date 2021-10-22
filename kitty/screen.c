@@ -1971,24 +1971,24 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
     num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
     int y = -self->scrolled_by;
 #define ensure_y_ok if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
-#define move_y_to_start_of_promt while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->attrs.prompt_kind == PROMPT_START) y--;
-#define move_y_to_end_of_promt while (y + 1 < (int)self->lines && range_line_(self, y + 1)->attrs.prompt_kind == PROMPT_START) y++;
+#define move_y_to_start_of_prompt while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->attrs.prompt_kind == PROMPT_START) y--;
+#define move_y_to_end_of_prompt while (y + 1 < (int)self->lines && range_line_(self, y + 1)->attrs.prompt_kind == PROMPT_START) y++;
     ensure_y_ok;
     if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) {
-        if (delta < 0) { move_y_to_start_of_promt; } else { move_y_to_end_of_promt; }
+        if (delta < 0) { move_y_to_start_of_prompt; } else { move_y_to_end_of_prompt; }
     }
     while (num_of_prompts_to_jump) {
         y += delta;
         ensure_y_ok;
         if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) {
             num_of_prompts_to_jump--;
-            if (delta < 0) { move_y_to_start_of_promt; } else { move_y_to_end_of_promt; }
+            if (delta < 0) { move_y_to_start_of_prompt; } else { move_y_to_end_of_prompt; }
         }
     }
-    move_y_to_start_of_promt;
+    move_y_to_start_of_prompt;
 #undef ensure_y_ok
-#undef move_y_to_start_of_promt
-#undef move_y_to_end_of_promt
+#undef move_y_to_start_of_prompt
+#undef move_y_to_end_of_prompt
     unsigned int old = self->scrolled_by;
     self->scrolled_by = y >= 0 ? 0 : -y;
     if (old != self->scrolled_by) self->scroll_changed = true;
