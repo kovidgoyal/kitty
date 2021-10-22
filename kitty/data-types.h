@@ -164,12 +164,12 @@ typedef struct {
     hyperlink_id_type hyperlink_id;
 } CPUCell;
 
+typedef enum { UNKNOWN_PROMPT_KIND = 0, PROMPT_START = 1, SECONDARY_PROMPT = 2, OUTPUT_START = 3 } PromptKind;
 typedef union LineAttrs {
     struct {
         uint8_t continued : 1;
         uint8_t has_dirty_text : 1;
-        uint8_t is_prompt_start : 1;
-        uint8_t is_output_start : 1;
+        PromptKind prompt_kind : 2;
     };
     uint8_t val;
 } LineAttrs ;

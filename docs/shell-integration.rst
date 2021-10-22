@@ -148,11 +148,15 @@ Notes for shell developers
 
 The protocol used for marking the prompt is very simple. You should consider
 adding it to your shell as a builtin. Many modern terminals make use of it, for
-example: kitty, iTerm2, WezTerm
+example: kitty, iTerm2, WezTerm, DomTerm
 
-Just before starting to draw the prompt send the escape code::
+Just before starting to draw the PS1 prompt send the escape code::
 
     <OSC>133;A<ST>
+
+Just before starting to draw the PS2 prompt send the escape code::
+
+    <OSC>133;A;k=s<ST>
 
 Just before running a command/program, send the escape code::
 

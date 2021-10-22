@@ -133,11 +133,10 @@ typedef struct {
     } ignore_bells;
     union {
         struct {
-            unsigned int redraws_multiline_prompts: 1;
             unsigned int redraws_prompts_at_all: 1;
         };
         unsigned int val;
-    } prompt_redraw_settings;
+    } prompt_settings;
     unsigned int display_window_number;
 } Screen;
 

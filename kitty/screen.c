@@ -157,7 +157,7 @@ screen_reset(Screen *self) {
     memset(self->main_key_encoding_flags, 0, sizeof(self->main_key_encoding_flags));
     memset(self->alt_key_encoding_flags, 0, sizeof(self->alt_key_encoding_flags));
     self->display_window_number = 0;
-    self->prompt_redraw_settings.val = 0;
+    self->prompt_settings.val = 0;
     self->last_graphic_char = 0;
     self->main_savepoint.is_valid = false;
     self->alt_savepoint.is_valid = false;
@@ -284,17 +284,25 @@ index_selection(const Screen *self, Selections *selections, bool up) {
 
 static void
 prevent_current_prompt_from_rewrapping(Screen *self) {
-    if (!self->prompt_redraw_settings.redraws_prompts_at_all) return;
+    if (!self->prompt_settings.redraws_prompts_at_all) return;
     int y = self->cursor->y;
     while (y >= 0) {
         linebuf_init_line(self->main_linebuf, y);
         Line *line = self->linebuf->line;
-        if (line->attrs.is_output_start) return;
-        if (line->attrs.is_prompt_start) break;
+        switch (line->attrs.prompt_kind) {
+            case UNKNOWN_PROMPT_KIND:
+                break;
+            case PROMPT_START:
+            case SECONDARY_PROMPT:
+                goto found;
+                break;
+            case OUTPUT_START:
+                return;
+        }
         y--;
     }
+found:
     if (y < 0) return;
-    if (!self->prompt_redraw_settings.redraws_multiline_prompts && self->cursor->y > (unsigned) y) return; // bash does not redraw multiline prompts
     // we have identified a prompt at which the cursor is present, the shell
     // will redraw this prompt. However when doing so it gets confused if the
     // cursor vertical position relative to the first prompt line changes. This
@@ -322,7 +330,7 @@ screen_resize(Screen *self, unsigned int lines, unsigned int columns) {
     bool is_main = self->linebuf == self->main_linebuf;
     index_type num_content_lines_before, num_content_lines_after;
     bool dummy_output_inserted = false;
-    if (is_main && self->cursor->x == 0 && self->cursor->y < self->lines && self->linebuf->line_attrs[self->cursor->y].is_output_start) {
+    if (is_main && self->cursor->x == 0 && self->cursor->y < self->lines && self->linebuf->line_attrs[self->cursor->y].prompt_kind == OUTPUT_START) {
         linebuf_init_line(self->linebuf, self->cursor->y);
         if (!self->linebuf->line->cpu_cells[0].ch) {
             // we have a blank output start line, we need it to be preserved by
@@ -1447,8 +1455,15 @@ screen_cursor_at_a_shell_prompt(const Screen *self) {
     if (self->cursor->y >= self->lines || self->linebuf != self->main_linebuf || !screen_is_cursor_visible(self)) return -1;
     for (index_type y=self->cursor->y + 1; y-- > 0; ) {
         linebuf_init_line(self->linebuf, y);
-        if (self->linebuf->line->attrs.is_output_start) return -1;
-        if (self->linebuf->line->attrs.is_prompt_start) return y;
+        switch(self->linebuf->line->attrs.prompt_kind) {
+            case OUTPUT_START:
+                return -1;
+            case PROMPT_START:
+            case SECONDARY_PROMPT:
+                return y;
+            case UNKNOWN_PROMPT_KIND:
+                break;
+        }
     }
     return -1;
 }
@@ -1909,6 +1924,15 @@ file_transmission(Screen *self, PyObject *data) {
     CALLBACK("file_transmission", "O", data);
 }
 
+static void
+parse_prompt_mark(Screen *self, PyObject *parts, PromptKind *pk) {
+    for (Py_ssize_t i = 0; i < PyList_GET_SIZE(parts); i++) {
+        PyObject *token = PyList_GET_ITEM(parts, i);
+        if (PyUnicode_CompareWithASCIIString(token, "k=s")) *pk = SECONDARY_PROMPT;
+        else if (PyUnicode_CompareWithASCIIString(token, "redraw=0")) self->prompt_settings.redraws_prompts_at_all = 0;
+    }
+}
+
 void
 shell_prompt_marking(Screen *self, PyObject *data) {
     if (PyUnicode_READY(data) != 0) { PyErr_Clear(); return; }
@@ -1916,20 +1940,21 @@ shell_prompt_marking(Screen *self, PyObject *data) {
         Py_UCS4 ch = PyUnicode_READ_CHAR(data, 0);
         switch (ch) {
             case 'A': {
-                linebuf_mark_line_as_prompt_start(self->linebuf, self->cursor->y);
-                size_t l = PyUnicode_GET_LENGTH(data);
-                self->prompt_redraw_settings.redraws_multiline_prompts = 1;
-                self->prompt_redraw_settings.redraws_prompts_at_all = 1;
-                if (l > 8) {
-                    const char *buf = PyUnicode_AsUTF8(data);
-                    if (buf) {
-                        if (strstr(buf, ";does_not_redraw_multiline_prompt")) self->prompt_redraw_settings.redraws_multiline_prompts = 0;
-                        if (strstr(buf, ";does_not_redraw_prompts")) self->prompt_redraw_settings.redraws_prompts_at_all = 0;
+                PromptKind pk = PROMPT_START;
+                self->prompt_settings.redraws_prompts_at_all = 1;
+                if (PyUnicode_FindChar(data, ';', 0, PyUnicode_GET_LENGTH(data), 1)) {
+                    DECREF_AFTER_FUNCTION PyObject *sep = PyUnicode_FromString(";");
+                    if (sep) {
+                        DECREF_AFTER_FUNCTION PyObject *parts = PyUnicode_Split(data, sep, -1);
+                        if (parts) parse_prompt_mark(self, parts, &pk);
                     }
                 }
+                if (PyErr_Occurred()) PyErr_Print();
+                self->linebuf->line_attrs[self->cursor->y].prompt_kind = pk;
             } break;
             case 'C':
-                linebuf_mark_line_as_output_start(self->linebuf, self->cursor->y); break;
+                self->linebuf->line_attrs[self->cursor->y].prompt_kind = OUTPUT_START;
+                break;
         }
     }
     if (global_state.debug_rendering) {
@@ -1946,16 +1971,16 @@ screen_history_scroll_to_prompt(Screen *self, int num_of_prompts_to_jump) {
     num_of_prompts_to_jump = num_of_prompts_to_jump < 0 ? -num_of_prompts_to_jump : num_of_prompts_to_jump;
     int y = -self->scrolled_by;
 #define ensure_y_ok if (y >= (int)self->lines || -y > (int)self->historybuf->count) return false;
-#define move_y_to_start_of_promt while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->attrs.is_prompt_start) y--;
-#define move_y_to_end_of_promt while (y + 1 < (int)self->lines && range_line_(self, y + 1)->attrs.is_prompt_start) y++;
+#define move_y_to_start_of_promt while (-y + 1 <= (int)self->historybuf->count && range_line_(self, y - 1)->attrs.prompt_kind == PROMPT_START) y--;
+#define move_y_to_end_of_promt while (y + 1 < (int)self->lines && range_line_(self, y + 1)->attrs.prompt_kind == PROMPT_START) y++;
     ensure_y_ok;
-    if (range_line_(self, y)->attrs.is_prompt_start) {
+    if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) {
         if (delta < 0) { move_y_to_start_of_promt; } else { move_y_to_end_of_promt; }
     }
     while (num_of_prompts_to_jump) {
         y += delta;
         ensure_y_ok;
-        if (range_line_(self, y)->attrs.is_prompt_start) {
+        if (range_line_(self, y)->attrs.prompt_kind == PROMPT_START) {
             num_of_prompts_to_jump--;
             if (delta < 0) { move_y_to_start_of_promt; } else { move_y_to_end_of_promt; }
         }
@@ -2583,8 +2608,8 @@ last_cmd_output(Screen *self, PyObject *args) {
     const int limit = -self->historybuf->count;
     while (y >= limit) {
         Line *line = range_line_(self, y);
-        if (line->attrs.is_prompt_start) prompt_pos = y;
-        if (line->attrs.is_output_start) {
+        if (line->attrs.prompt_kind == PROMPT_START) prompt_pos = y;
+        if (line->attrs.prompt_kind == OUTPUT_START) {
             oo.start = y;
             num_lines = prompt_pos - y;
             break;
@@ -2599,7 +2624,7 @@ last_cmd_output(Screen *self, PyObject *args) {
         // so find the first one
         while (oo.start > limit) {
             Line *line = range_line_(self, oo.start - 1);
-            if (!line->attrs.is_output_start) break;
+            if (line->attrs.prompt_kind != OUTPUT_START) break;
             oo.start--; num_lines++;
         }
     }
@@ -3519,8 +3544,19 @@ dump_lines_with_attrs(Screen *self, PyObject *accum) {
             PyObject_CallFunctionObjArgs(accum, t);
             Py_DECREF(t);
         }
-        if (line->attrs.is_prompt_start) PyObject_CallFunction(accum, "s", "\x1b[32mprompt \x1b[39m");
-        if (line->attrs.is_output_start) PyObject_CallFunction(accum, "s", "\x1b[33moutput \x1b[39m");
+        switch (line->attrs.prompt_kind) {
+            case UNKNOWN_PROMPT_KIND:
+                break;
+            case PROMPT_START:
+                PyObject_CallFunction(accum, "s", "\x1b[32mprompt \x1b[39m");
+                break;
+            case SECONDARY_PROMPT:
+                PyObject_CallFunction(accum, "s", "\x1b[32msecondary_prompt \x1b[39m");
+                break;
+            case OUTPUT_START:
+                PyObject_CallFunction(accum, "s", "\x1b[33moutput \x1b[39m");
+                break;
+        }
         if (line->attrs.continued) PyObject_CallFunction(accum, "s", "continued ");
         if (line->attrs.has_dirty_text) PyObject_CallFunction(accum, "s", "dirty ");
         PyObject_CallFunction(accum, "s", "\n");

@@ -57,20 +57,6 @@ linebuf_mark_line_as_not_continued(LineBuf *self, index_type y) {
     self->line_attrs[y].continued = false;
 }
 
-void
-linebuf_mark_line_as_prompt_start(LineBuf *self, index_type y) {
-    self->line_attrs[y].is_prompt_start = true;
-    self->line_attrs[y].is_output_start = false;
-}
-
-void
-linebuf_mark_line_as_output_start(LineBuf *self, index_type y) {
-    self->line_attrs[y].is_prompt_start = false;
-    self->line_attrs[y].is_output_start = true;
-}
-
-
-
 static PyObject*
 clear(LineBuf *self, PyObject *a UNUSED) {
 #define clear_doc "Clear all lines in this LineBuf"
