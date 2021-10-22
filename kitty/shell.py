@@ -25,6 +25,7 @@ from .rc.base import (
 from .types import run_once
 
 output_prefix = '\x1b]133;C\x1b\\'
+is_libedit = False
 
 
 @run_once
@@ -35,10 +36,12 @@ def match_commands() -> Tuple[str, ...]:
 
 @run_once
 def init_readline() -> None:
+    global is_libedit
     with suppress(OSError):
         readline.read_init_file()
     if 'libedit' in readline.__doc__:
         readline.parse_and_bind("bind ^I rl_complete")
+        is_libedit = True
     else:
         readline.parse_and_bind('tab: complete')
 
@@ -171,7 +174,7 @@ def real_main(global_opts: RCOptions) -> None:
         print(f'The ID of the previously active window is: {awid}')
 
     pre_prompt = set_window_title('The kitty shell') + set_cursor_shape('bar')
-    pre_prompt += '\x1b]133;A;does_not_redraw_prompts\x1b\\'
+    pre_prompt += f'\x1b]133;A;redraw={0 if is_libedit else 1}\x1b\\'
     while True:
         try:
             print(end=pre_prompt)
