@@ -53,7 +53,8 @@ def setup_integration(shell_name: str, rc_path: str, template: str = posix_templ
 def setup_zsh_integration() -> None:
     base = os.environ.get('ZDOTDIR', os.path.expanduser('~'))
     rc = os.path.join(base, '.zshrc')
-    setup_integration('zsh', rc)
+    if os.path.exists(rc):
+        setup_integration('zsh', rc)
 
 
 def setup_bash_integration() -> None:
