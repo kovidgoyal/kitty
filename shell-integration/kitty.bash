@@ -42,8 +42,8 @@ _ksi_main() {
     if [[ "${_ksi_prompt[mark]}" == "y" ]]; then 
         # bash does not redraw the leading lines in a multiline prompt so
         # mark them as secondary prompts
-        local secondary_prompt="\[\e]133;A;k=s\a\]"
-        PS1=${PS1//\n/\n"$secondary_prompt"}
+        local secondary_prompt="\n\[\e]133;A;k=s\a\]"
+        PS1=${PS1//"\n"/"$secondary_prompt"}
         PS1="\[\e]133;A\a\]$PS1"
         PS2="\[\e]133;A;k=s\a\]$PS2"
         PS0="\[\e]133;C\a\]$PS0"
