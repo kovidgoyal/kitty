@@ -1601,7 +1601,11 @@ void _glfwPlatformUpdateIMEState(_GLFWwindow *w, const GLFWIMEUpdateEvent *ev) {
 {
     if (glfw_window && glfw_window->ns.toggleFullscreenCallback && glfw_window->ns.toggleFullscreenCallback((GLFWwindow*)glfw_window) == 1)
             return;
+    // When resizeIncrements is set, Cocoa cannot restore the original window size after returning from fullscreen.
+    const NSSize original = [self resizeIncrements];
+    [self setResizeIncrements:NSMakeSize(1.0, 1.0)];
     [super toggleFullScreen:sender];
+    [self setResizeIncrements:original];
 }
 
 @end
