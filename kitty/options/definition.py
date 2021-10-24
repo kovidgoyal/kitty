@@ -231,6 +231,10 @@ opt('cursor_shape', 'block',
     long_text='The cursor shape can be one of (block, beam, underline).'
     ' Note that when reloading the config this will be changed only if the'
     ' cursor shape has not been set by the program running in the terminal.'
+    ' This sets the default cursor shape. Applications running in the terminal'
+    ' can override it. In particular, :ref:`shell_integration` in kitty'
+    ' sets the cursor shape to bar at shell prompts. You can avoid this'
+    ' by setting :opt:`shell_integration` to :code:`no-cursor`.'
     )
 
 opt('cursor_beam_thickness', '1.5',
