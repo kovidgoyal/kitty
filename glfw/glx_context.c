@@ -48,7 +48,7 @@ static int getGLXFBConfigAttrib(GLXFBConfig fbconfig, int attrib)
 }
 
 static GLXFBConfig*
-choose_fb_config(const _GLFWfbconfig* desired, bool trust_window_bit, int *nelements, bool try_ten_bit) {
+choose_fb_config(const _GLFWfbconfig* desired, bool trust_window_bit, int *nelements, bool use_best_color_depth) {
     int attrib_list[64];
     int pos = 0;
 #define ATTR(x, y) { attrib_list[pos++] = x; attrib_list[pos++] = y; }
@@ -59,7 +59,9 @@ choose_fb_config(const _GLFWfbconfig* desired, bool trust_window_bit, int *nelem
     if (_glfw.glx.ARB_multisample && desired->samples > 0) ATTR(GLX_SAMPLES, desired->samples);
     if (desired->depthBits != GLFW_DONT_CARE) ATTR(GLX_DEPTH_SIZE, desired->depthBits);
     if (desired->stencilBits != GLFW_DONT_CARE) ATTR(GLX_STENCIL_SIZE, desired->stencilBits);
-    if (try_ten_bit) {
+    if (use_best_color_depth) {
+        // we just ask for the highest available R+G+B color depth. This hopefully
+        // works with 10bit (r=10, g=10, b=19, a=2) visuals
         ATTR(GLX_RED_SIZE, 1); ATTR(GLX_GREEN_SIZE, 1); ATTR(GLX_BLUE_SIZE, 1); ATTR(GLX_ALPHA_SIZE, 0);
     } else {
         if (desired->redBits != GLFW_DONT_CARE) ATTR(GLX_RED_SIZE, desired->redBits);
