@@ -1845,6 +1845,8 @@ void _glfwPlatformSetWindowSize(_GLFWwindow* window, int width, int height)
     }
     else
     {
+        // Disable window resizing in fullscreen.
+        if ([window->ns.object styleMask] & NSWindowStyleMaskFullScreen || window->ns.in_traditional_fullscreen) return;
         NSRect contentRect =
             [window->ns.object contentRectForFrameRect:[window->ns.object frame]];
         contentRect.origin.y += contentRect.size.height - height;
