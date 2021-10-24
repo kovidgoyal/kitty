@@ -36,11 +36,11 @@ from .window_list import WindowList
 
 
 class TabMouseEvent(NamedTuple):
-    button: int = -1
-    modifiers: int = 0
-    action: int = GLFW_PRESS
-    at: float = -1000.
-    tab_idx: Optional[int] = None
+    button: int
+    modifiers: int
+    action: int
+    at: float
+    tab_idx: Optional[int]
 
 
 class TabDict(TypedDict):
