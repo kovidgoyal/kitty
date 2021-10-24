@@ -102,6 +102,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   the tab in the OS Window containing the result of the match rather than
   the active OS Window (:iss:`4126`)
 
+- Linux X11: Add support for 10bit colors (:iss:`4150`)
+
 
 0.23.1 [2021-08-17]
 ----------------------

@@ -48,7 +48,7 @@ static int getGLXFBConfigAttrib(GLXFBConfig fbconfig, int attrib)
 }
 
 static GLXFBConfig*
-choose_fb_config(const _GLFWfbconfig* desired, bool trust_window_bit, int *nelements) {
+choose_fb_config(const _GLFWfbconfig* desired, bool trust_window_bit, int *nelements, bool try_ten_bit) {
     int attrib_list[64];
     int pos = 0;
 #define ATTR(x, y) { attrib_list[pos++] = x; attrib_list[pos++] = y; }
@@ -59,10 +59,14 @@ choose_fb_config(const _GLFWfbconfig* desired, bool trust_window_bit, int *nelem
     if (_glfw.glx.ARB_multisample && desired->samples > 0) ATTR(GLX_SAMPLES, desired->samples);
     if (desired->depthBits != GLFW_DONT_CARE) ATTR(GLX_DEPTH_SIZE, desired->depthBits);
     if (desired->stencilBits != GLFW_DONT_CARE) ATTR(GLX_STENCIL_SIZE, desired->stencilBits);
-    if (desired->redBits != GLFW_DONT_CARE) ATTR(GLX_RED_SIZE, desired->redBits);
-    if (desired->greenBits != GLFW_DONT_CARE) ATTR(GLX_GREEN_SIZE, desired->greenBits);
-    if (desired->blueBits != GLFW_DONT_CARE) ATTR(GLX_BLUE_SIZE, desired->blueBits);
-    if (desired->alphaBits != GLFW_DONT_CARE) ATTR(GLX_ALPHA_SIZE, desired->alphaBits);
+    if (try_ten_bit) {
+        ATTR(GLX_RED_SIZE, 1); ATTR(GLX_GREEN_SIZE, 1); ATTR(GLX_BLUE_SIZE, 1); ATTR(GLX_ALPHA_SIZE, 0);
+    } else {
+        if (desired->redBits != GLFW_DONT_CARE) ATTR(GLX_RED_SIZE, desired->redBits);
+        if (desired->greenBits != GLFW_DONT_CARE) ATTR(GLX_GREEN_SIZE, desired->greenBits);
+        if (desired->blueBits != GLFW_DONT_CARE) ATTR(GLX_BLUE_SIZE, desired->blueBits);
+        if (desired->alphaBits != GLFW_DONT_CARE) ATTR(GLX_ALPHA_SIZE, desired->alphaBits);
+    }
     if (desired->accumRedBits != GLFW_DONT_CARE) ATTR(GLX_ACCUM_RED_SIZE, desired->accumRedBits);
     if (desired->accumGreenBits != GLFW_DONT_CARE) ATTR(GLX_ACCUM_GREEN_SIZE, desired->accumGreenBits);
     if (desired->accumBlueBits != GLFW_DONT_CARE) ATTR(GLX_ACCUM_BLUE_SIZE, desired->accumBlueBits);
@@ -96,11 +100,15 @@ static bool chooseGLXFBConfig(const _GLFWfbconfig* desired,
     vendor = glXGetClientString(_glfw.x11.display, GLX_VENDOR);
     if (vendor && strcmp(vendor, "Chromium") == 0)
         trustWindowBit = false;
-    nativeConfigs = choose_fb_config(desired, trustWindowBit, &nativeCount);
+    nativeConfigs = choose_fb_config(desired, trustWindowBit, &nativeCount, false);
     if (!nativeConfigs || !nativeCount)
     {
-        _glfwInputError(GLFW_API_UNAVAILABLE, "GLX: No GLXFBConfigs returned");
-        return false;
+        nativeConfigs = choose_fb_config(desired, trustWindowBit, &nativeCount, true);
+
+        if (!nativeConfigs || !nativeCount) {
+            _glfwInputError(GLFW_API_UNAVAILABLE, "GLX: No GLXFBConfigs returned");
+            return false;
+        }
     }
     for (i = 0;  i < nativeCount;  i++)
     {
