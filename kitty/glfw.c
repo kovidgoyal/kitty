@@ -1424,6 +1424,11 @@ dbus_send_notification(PyObject *self UNUSED, PyObject *args) {
     unsigned long long notification_id = glfwDBusUserNotify(app_name, icon, summary, body, action_name, timeout, dbus_notification_created_callback, NULL);
     return PyLong_FromUnsignedLongLong(notification_id);
 }
+
+static PyObject*
+get_click_interval(PyObject *self UNUSED, PyObject *args UNUSED) {
+    return PyFloat_FromDouble(monotonic_t_to_s_double(OPT(click_interval)));
+}
 #endif
 
 id_type
@@ -1472,6 +1477,7 @@ static PyMethodDef module_methods[] = {
     METHODB(glfw_window_hint, METH_VARARGS),
     METHODB(get_primary_selection, METH_NOARGS),
     METHODB(x11_display, METH_NOARGS),
+    METHODB(get_click_interval, METH_NOARGS),
     METHODB(x11_window_id, METH_O),
     METHODB(set_primary_selection, METH_VARARGS),
 #ifndef __APPLE__

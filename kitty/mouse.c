@@ -515,13 +515,10 @@ HANDLER(handle_event) {
 }
 
 static void
-handle_tab_bar_mouse(int button, int UNUSED modifiers) {
-    static monotonic_t last_click_at = 0;
-    if (button != GLFW_MOUSE_BUTTON_LEFT || !global_state.callback_os_window->mouse_button_pressed[button]) return;
-    monotonic_t now = monotonic();
-    bool is_double = now - last_click_at <= OPT(click_interval);
-    last_click_at = is_double ? 0 : now;
-    call_boss(activate_tab_at, "KdO", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x, is_double ? Py_True : Py_False);
+handle_tab_bar_mouse(int button, int modifiers, int action) {
+    if (button > -1) {  // dont report motion events, as they are expensive and useless
+        call_boss(handle_click_on_tab, "Kdiii", global_state.callback_os_window->id, global_state.callback_os_window->mouse_x, button, modifiers, action);
+    }
 }
 
 static bool
@@ -737,7 +734,7 @@ mouse_event(const int button, int modifiers, int action) {
     w = window_for_event(&window_idx, &in_tab_bar);
     if (in_tab_bar) {
         mouse_cursor_shape = HAND;
-        handle_tab_bar_mouse(button, modifiers);
+        handle_tab_bar_mouse(button, modifiers, action);
         debug("handled by tab bar\n");
     } else if (w) {
         debug("grabbed: %d\n", w->render_data.screen->modes.mouse_tracking_mode != 0);

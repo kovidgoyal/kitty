@@ -76,6 +76,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Unicode input kitten: Implement scrolling when more results are found than
   the available display space (:pull:`4068`)
 
+- Allow middle clicking on a tab to close it (:iss:`4151`)
+
 - The command line option ``--watcher`` has been deprecated in favor of the
   :opt:`watcher` option in :file:`kitty.conf`. It has the advantage of
   applying to all windows, not just the initially created ones. Note that

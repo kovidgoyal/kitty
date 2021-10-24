@@ -8,6 +8,7 @@ from collections import deque
 from contextlib import suppress
 from functools import partial
 from operator import attrgetter
+from time import monotonic
 from typing import (
     Any, Deque, Dict, Generator, Iterable, Iterator, List, NamedTuple,
     Optional, Pattern, Sequence, Tuple, Union, cast
@@ -18,9 +19,11 @@ from .child import Child
 from .cli_stub import CLIOptions
 from .constants import appname, kitty_exe
 from .fast_data_types import (
-    add_tab, attach_window, detach_window, get_boss, get_options,
-    mark_tab_bar_dirty, next_window_id, remove_tab, remove_window, ring_bell,
-    set_active_tab, set_active_window, swap_tabs, sync_os_window_title
+    GLFW_MOUSE_BUTTON_LEFT, GLFW_MOUSE_BUTTON_MIDDLE, GLFW_PRESS, GLFW_RELEASE,
+    add_tab, attach_window, detach_window, get_boss, get_click_interval,
+    get_options, mark_tab_bar_dirty, next_window_id, remove_tab, remove_window,
+    ring_bell, set_active_tab, set_active_window, swap_tabs,
+    sync_os_window_title
 )
 from .layout.base import Layout
 from .layout.interface import create_layout_object_for, evict_cached_layouts
@@ -30,6 +33,14 @@ from .typing import EdgeLiteral, SessionTab, SessionType, TypedDict
 from .utils import log_error, platform_window_id, resolved_shell
 from .window import Watchers, Window, WindowDict
 from .window_list import WindowList
+
+
+class TabMouseEvent(NamedTuple):
+    button: int = -1
+    modifiers: int = 0
+    action: int = GLFW_PRESS
+    at: float = -1000.
+    tab_idx: Optional[int] = None
 
 
 class TabDict(TypedDict):
@@ -657,6 +668,7 @@ class TabManager:  # {{{
     def __init__(self, os_window_id: int, args: CLIOptions, wm_class: str, wm_name: str, startup_session: Optional[SessionType] = None):
         self.os_window_id = os_window_id
         self.wm_class = wm_class
+        self.recent_mouse_events: Deque[TabMouseEvent] = deque()
         self.wm_name = wm_name
         self.last_active_tab_id = None
         self.args = args
@@ -965,13 +977,32 @@ class TabManager:  # {{{
             ))
         return ans
 
-    def activate_tab_at(self, x: int, is_double: bool = False) -> None:
+    def handle_click_on_tab(self, x: int, button: int, modifiers: int, action: int) -> None:
         i = self.tab_bar.tab_at(x)
+        now = monotonic()
         if i is None:
-            if is_double:
-                self.new_tab()
+            if button == GLFW_MOUSE_BUTTON_LEFT and action == GLFW_PRESS and len(self.recent_mouse_events) > 1:
+                ci = get_click_interval()
+                prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
+                if (
+                    prev.button == button and prev2.button == button and
+                    prev.action == GLFW_RELEASE and prev2.action == GLFW_PRESS and
+                    prev.tab_idx is None and prev2.tab_idx is None and
+                    now - prev.at <= ci and now - prev2.at <= 2 * ci
+                ):  # double click
+                    self.new_tab()
+                    self.recent_mouse_events.clear()
+                    return
         else:
-            self.set_active_tab_idx(i)
+            if action == GLFW_PRESS:
+                if button == GLFW_MOUSE_BUTTON_LEFT:
+                    self.set_active_tab_idx(i)
+                elif button == GLFW_MOUSE_BUTTON_MIDDLE:
+                    tab = self.tabs[i]
+                    get_boss().close_tab(tab)
+        self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, i))
+        if len(self.recent_mouse_events) > 5:
+            self.recent_mouse_events.popleft()
 
     @property
     def tab_bar_rects(self) -> Tuple[Border, ...]:

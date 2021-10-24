@@ -1254,3 +1254,7 @@ def num_users() -> int:
 
 def redirect_mouse_handling(yes: bool) -> None:
     pass
+
+
+def get_click_interval() -> float:
+    pass
