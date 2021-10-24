@@ -70,7 +70,7 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Linux: Fix IME with fcitx5 not working after fcitx5 is restarted
   (:pull:`4059`)
 
-- Remote file transfer: Fix transfer not working is custom ssh port or identity
+- Remote file transfer: Fix transfer not working if custom ssh port or identity
   is specified on the command line (:iss:`4067`)
 
 - Unicode input kitten: Implement scrolling when more results are found than
