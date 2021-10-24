@@ -166,7 +166,7 @@ typedef struct {
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
 static ssize_t blit_vertex_array;
 typedef struct {
-    GLint image_location, tiled_location, sizes_location, opacity_location, premult_location;
+    GLint image_location, tiled_location, translate_location, sizes_location, opacity_location, premult_location;
 } BGImageProgramLayout;
 static BGImageProgramLayout bgimage_program_layout = {0};
 typedef struct {
@@ -199,6 +199,7 @@ init_cell_program(void) {
     bgimage_program_layout.opacity_location = get_uniform_location(BGIMAGE_PROGRAM, "opacity");
     bgimage_program_layout.sizes_location = get_uniform_location(BGIMAGE_PROGRAM, "sizes");
     bgimage_program_layout.tiled_location = get_uniform_location(BGIMAGE_PROGRAM, "tiled");
+    bgimage_program_layout.translate_location = get_uniform_location(BGIMAGE_PROGRAM, "translate");
     bgimage_program_layout.premult_location = get_uniform_location(BGIMAGE_PROGRAM, "premult");
     tint_program_layout.tint_color_location = get_uniform_location(TINT_PROGRAM, "tint_color");
     tint_program_layout.edges_location = get_uniform_location(TINT_PROGRAM, "edges");
@@ -415,6 +416,20 @@ draw_bg(OSWindow *w) {
         glUniform1f(bgimage_program_layout.tiled_location, tiled);
         bgimage_constants_set = true;
     }
+    float translate_left = 0.0f, translate_top = 0.0f;
+    if (OPT(background_image_layout) != SCALED) {
+        if (w->bgimage->anchor == NORTH || w->bgimage->anchor == CENTER || w->bgimage->anchor == SOUTH) {
+            translate_left = ((float)w->window_width / 2.0f - (float)w->bgimage->width / 2.0f) / (float)w->bgimage->width;
+        } else if (w->bgimage->anchor == NORTHEAST || w->bgimage->anchor == EAST || w->bgimage->anchor == SOUTHEAST) {
+            translate_left = ((float)w->window_width - (float)w->bgimage->width) / (float)w->bgimage->width;
+        }
+        if (w->bgimage->anchor == WEST || w->bgimage->anchor == CENTER || w->bgimage->anchor == EAST) {
+            translate_top = ((float)w->window_height / 2.0f - (float)w->bgimage->height / 2.0f) / (float)w->bgimage->height;
+        } else if (w->bgimage->anchor == SOUTHWEST || w->bgimage->anchor == SOUTH || w->bgimage->anchor == SOUTHEAST) {
+            translate_top = ((float)w->window_height - (float)w->bgimage->height) / (float)w->bgimage->height;
+        }
+    }
+    glUniform2f(bgimage_program_layout.translate_location, (GLfloat)translate_left, (GLfloat)translate_top);
     glUniform4f(bgimage_program_layout.sizes_location,
         (GLfloat)w->window_width, (GLfloat)w->window_height, (GLfloat)w->bgimage->width, (GLfloat)w->bgimage->height);
     glUniform1f(bgimage_program_layout.premult_location, w->is_semi_transparent ? 1.f : 0.f);

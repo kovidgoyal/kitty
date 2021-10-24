@@ -9,6 +9,7 @@
 #define tex_bottom 1
 
 uniform float tiled;
+uniform vec2 translate; // [ left, top ]
 uniform vec4 sizes;  // [ window_width, window_height, image_width, image_height ]
 
 out vec2 texcoord;
@@ -37,6 +38,6 @@ float tiling_factor(int i) {
 
 void main() {
     vec2 tex_coords = tex_map[gl_VertexID];
-    texcoord = vec2(tex_coords[0] * tiling_factor(0), tex_coords[1] * tiling_factor(1));
+    texcoord = vec2(tex_coords[0] * tiling_factor(0) - translate[0], tex_coords[1] * tiling_factor(1) - translate[1]);
     gl_Position = vec4(pos_map[gl_VertexID], 0, 1);
 }

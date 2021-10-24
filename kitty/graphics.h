@@ -66,6 +66,7 @@ typedef struct {
     unsigned int height, width;
     uint8_t* bitmap;
     uint32_t refcnt;
+    BackgroundImageAnchor anchor;
 } BackgroundImage;
 
 typedef struct {

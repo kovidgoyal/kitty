@@ -24,6 +24,7 @@ class SetBackgroundImage(RemoteCommand):
     img_id+: Unique uuid (as string) used for chunking
     match: Window to change opacity in
     layout: The image layout
+    anchor: The image anchor
     all: Boolean indicating operate on all windows
     configured: Boolean indicating if the configured value should be changed
     '''
@@ -52,6 +53,12 @@ choices=tiled,scaled,mirror-tiled,configured
 How the image should be displayed. The value of configured will use the configured value.
 
 
+--anchor
+type=choices
+choices=northwest,north,northeast,east,southeast,south,southwest,west,northwest,north,center,configured
+Where the image should be positioned. The value of configured will use the configured value.
+
+
 --no-response
 type=bool-set
 default=false
@@ -74,6 +81,7 @@ failed, the command will exit with a success code.
             'match': opts.match,
             'configured': opts.configured,
             'layout': opts.layout,
+            'anchor': opts.anchor,
             'all': opts.all,
             'img_id': str(uuid4())
         }
@@ -110,6 +118,7 @@ failed, the command will exit with a success code.
         windows = self.windows_for_payload(boss, window, payload_get)
         os_windows = tuple({w.os_window_id for w in windows})
         layout = payload_get('layout')
+        anchor = payload_get('anchor')
         if data == '-':
             path = None
         else:
@@ -120,7 +129,7 @@ failed, the command will exit with a success code.
             f.flush()
 
         try:
-            boss.set_background_image(path, os_windows, payload_get('configured'), layout)
+            boss.set_background_image(path, os_windows, payload_get('configured'), layout, anchor)
         except ValueError as err:
             err.hide_traceback = True  # type: ignore
             raise

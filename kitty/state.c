@@ -180,6 +180,7 @@ add_os_window() {
             global_state.bgimage = calloc(1, sizeof(BackgroundImage));
             if (!global_state.bgimage) fatal("Out of memory allocating the global bg image object");
             global_state.bgimage->refcnt++;
+            global_state.bgimage->anchor = OPT(background_image_anchor);
             size_t size;
             if (png_path_to_bitmap(OPT(background_image), &global_state.bgimage->bitmap, &global_state.bgimage->width, &global_state.bgimage->height, &size)) {
                 send_bgimage_to_gpu(OPT(background_image_layout), global_state.bgimage);
@@ -961,11 +962,13 @@ static PyObject*
 pyset_background_image(PyObject *self UNUSED, PyObject *args) {
     const char *path;
     PyObject *layout_name = NULL;
+    PyObject *anchor_name = NULL;
     PyObject *os_window_ids;
     int configured = 0;
-    PA("zO!|pU", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name);
+    PA("zO!|pOO", &path, &PyTuple_Type, &os_window_ids, &configured, &layout_name, &anchor_name);
     size_t size;
-    BackgroundImageLayout layout = layout_name ? bglayout(layout_name) : OPT(background_image_layout);
+    BackgroundImageLayout layout = PyUnicode_Check(layout_name) ? bglayout(layout_name) : OPT(background_image_layout);
+    BackgroundImageAnchor anchor = PyUnicode_Check(anchor_name) ? bganchor(anchor_name) : OPT(background_image_anchor);
     BackgroundImage *bgimage = NULL;
     if (path) {
         bgimage = calloc(1, sizeof(BackgroundImage));
@@ -983,6 +986,7 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
         global_state.bgimage = bgimage;
         if (bgimage) bgimage->refcnt++;
         OPT(background_image_layout) = layout;
+        OPT(background_image_anchor) = anchor;
     }
     for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(os_window_ids); i++) {
         id_type os_window_id = PyLong_AsUnsignedLongLong(PyTuple_GET_ITEM(os_window_ids, i));
@@ -990,6 +994,7 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
             make_os_window_context_current(os_window);
             free_bgimage(&os_window->bgimage, true);
             os_window->bgimage = bgimage;
+            os_window->bgimage->anchor = anchor;
             os_window->render_calls = 0;
             if (bgimage) bgimage->refcnt++;
         END_WITH_OS_WINDOW

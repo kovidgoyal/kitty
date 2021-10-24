@@ -47,6 +47,7 @@ typedef struct {
 
     char* background_image;
     BackgroundImageLayout background_image_layout;
+    BackgroundImageAnchor background_image_anchor;
     bool background_image_linear;
     float background_tint;
 

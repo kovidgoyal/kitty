@@ -65,6 +65,7 @@ typedef enum MouseTrackingProtocols { NORMAL_PROTOCOL, UTF8_PROTOCOL, SGR_PROTOC
 typedef enum MouseShapes { BEAM, HAND, ARROW } MouseShape;
 typedef enum { NONE, MENUBAR, WINDOW, ALL } WindowTitleIn;
 typedef enum { TILING, SCALED, MIRRORED } BackgroundImageLayout;
+typedef enum { NORTHWEST, NORTH, NORTHEAST, EAST, SOUTHEAST, SOUTH, SOUTHWEST, WEST, CENTER } BackgroundImageAnchor;
 
 #define MAX_CHILDREN 512
 #define BLANK_CHAR 0

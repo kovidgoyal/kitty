@@ -14,6 +14,7 @@ from kitty.types import FloatEdges, SingleKey
 import kitty.types
 
 if typing.TYPE_CHECKING:
+    choices_for_background_image_anchor = typing.Literal['northwest', 'north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'center']
     choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled']
     choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'hand']
     choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
@@ -27,6 +28,7 @@ if typing.TYPE_CHECKING:
     choices_for_tab_powerline_style = typing.Literal['angled', 'round', 'slanted']
     choices_for_tab_switch_strategy = typing.Literal['last', 'left', 'previous', 'right']
 else:
+    choices_for_background_image_anchor = str
     choices_for_background_image_layout = str
     choices_for_default_pointer_shape = str
     choices_for_linux_display_server = str
@@ -53,6 +55,7 @@ option_names = (  # {{{
  'allow_remote_control',
  'background',
  'background_image',
+ 'background_image_anchor',
  'background_image_layout',
  'background_image_linear',
  'background_opacity',
@@ -453,6 +456,7 @@ class Options:
     allow_remote_control: str = 'n'
     background: Color = Color(0, 0, 0)
     background_image: typing.Optional[str] = None
+    background_image_anchor: choices_for_background_image_anchor = 'northwest'
     background_image_layout: choices_for_background_image_layout = 'tiled'
     background_image_linear: bool = False
     background_opacity: float = 1.0

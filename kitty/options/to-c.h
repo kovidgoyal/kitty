@@ -77,6 +77,36 @@ bglayout(PyObject *layout_name) {
     return TILING;
 }
 
+static BackgroundImageAnchor
+bganchor(PyObject *anchor_name) {
+    const char *name = PyUnicode_AsUTF8(anchor_name);
+    if (strcmp(name, "north") == 0) {
+        return NORTH;
+    }
+    else if (strcmp(name, "northeast") == 0) {
+        return NORTHEAST;
+    }
+    else if (strcmp(name, "east") == 0) {
+        return EAST;
+    }
+    else if (strcmp(name, "southeast") == 0) {
+        return SOUTHEAST;
+    }
+    else if (strcmp(name, "south") == 0) {
+        return SOUTH;
+    }
+    else if (strcmp(name, "southwest") == 0) {
+        return SOUTHWEST;
+    }
+    else if (strcmp(name, "west") == 0) {
+        return WEST;
+    }
+    else if (strcmp(name, "center") == 0) {
+        return CENTER;
+    }
+    return NORTHWEST;
+}
+
 #define STR_SETTER(name) { \
     free(opts->name); opts->name = NULL; \
     if (src == Py_None || !PyUnicode_Check(src)) return; \

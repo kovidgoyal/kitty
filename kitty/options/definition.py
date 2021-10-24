@@ -1110,6 +1110,11 @@ opt('background_image_layout', 'tiled',
     long_text='Whether to tile or scale the background image.'
     )
 
+opt('background_image_anchor', 'northwest',
+    choices=('northwest', 'north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'center'), ctype='bganchor',
+    long_text='Where to position the background image in the window.'
+    )
+
 opt('background_image_linear', 'no',
     option_type='to_bool', ctype='bool',
     long_text='When background image is scaled, whether linear interpolation should be used.'
