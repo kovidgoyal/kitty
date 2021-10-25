@@ -620,6 +620,11 @@ class Window:
         self.title_updated()
 
     def desktop_notify(self, osc_code: int, raw_data: str) -> None:
+        if osc_code == 777:
+            if not raw_data.startswith('notify;'):
+                log_error(f'Ignoring unknown OSC 777: {raw_data}')
+                return  # unknown OSC 777
+            raw_data = raw_data[len('notify;'):]
         cmd = handle_notification_cmd(osc_code, raw_data, self.id, self.prev_osc99_cmd)
         if cmd is not None and osc_code == 99:
             self.prev_osc99_cmd = cmd

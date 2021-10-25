@@ -67,10 +67,22 @@ class NotificationCommand:
     body: str = ''
     actions: str = ''
 
+    def __repr__(self) -> str:
+        return f'NotificationCommand(identifier={self.identifier!r}, title={self.title!r}, body={self.body!r}, actions={self.actions!r}, done={self.done!r})'
+
 
 def parse_osc_9(raw: str) -> NotificationCommand:
     ans = NotificationCommand()
     ans.title = raw
+    return ans
+
+
+def parse_osc_777(raw: str) -> NotificationCommand:
+    parts = raw.split(';', 1)
+    ans = NotificationCommand()
+    ans.title = parts[0]
+    if len(parts) > 1:
+        ans.body = parts[1]
     return ans
 
 
@@ -201,3 +213,8 @@ def handle_notification_cmd(
     if osc_code == 9:
         cmd = parse_osc_9(raw_data)
         notify_with_command(cmd, window_id, notify_implementation)
+        return cmd
+    if osc_code == 777:
+        cmd = parse_osc_777(raw_data)
+        notify_with_command(cmd, window_id, notify_implementation)
+        return cmd

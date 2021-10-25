@@ -112,6 +112,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - All tab bar margins are now drawn using the general background color, instead
   of drawing only the left and right margins with the tab bar background color
 
+- Add support for OSC 777 based desktop notifications
+
 
 0.23.1 [2021-08-17]
 ----------------------
