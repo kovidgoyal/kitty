@@ -695,7 +695,7 @@ class TabBarMarginHeight(NamedTuple):
 def tab_bar_margin_height(x: str) -> TabBarMarginHeight:
     parts = x.split(maxsplit=1)
     if len(parts) != 2:
-        log_error(f'Invalid tab_bar_margin_height: {tab_bar_margin_height}, ignoring')
+        log_error(f'Invalid tab_bar_margin_height: {x}, ignoring')
         return TabBarMarginHeight()
     ans = map(positive_float, parts)
     return TabBarMarginHeight(next(ans), next(ans))
