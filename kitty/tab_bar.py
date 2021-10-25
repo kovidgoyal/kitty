@@ -503,10 +503,10 @@ class TabBar:
                     blank_rects.append(Border(0, tab_bar.bottom + 1, vw, central.top, bg))
         g = self.window_geometry
         if g.left > 0:
-            viewport_width = max(4 * cell_width, tab_bar.width - 2 * self.margin_width)
             blank_rects.append(Border(0, g.top, g.left, g.bottom + 1, bg))
+        viewport_width = max(4 * cell_width, tab_bar.width - 2 * self.margin_width)
+        if g.right - 1 < viewport_width:
             blank_rects.append(Border(g.right - 1, g.top, viewport_width, g.bottom + 1, bg))
-
         self.blank_rects = tuple(blank_rects)
 
     def layout(self) -> None:
