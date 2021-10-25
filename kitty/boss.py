@@ -1702,6 +1702,9 @@ class Boss:
             tm.tab_bar.patch_colors(spec)
             tm.tab_bar.layout()
             tm.mark_tab_bar_dirty()
+            t = tm.active_tab
+            if t is not None:
+                t.relayout_borders()
         patch_global_colors(spec, configured)
 
     def apply_new_options(self, opts: Options) -> None:
