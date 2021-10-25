@@ -475,6 +475,8 @@ class TabBar:
             if val is None:
                 val = color_as_int(opts.background)
             self.draw_data = self.draw_data._replace(default_bg=color_from_int(val))
+        elif not opts.tab_bar_background:
+            self.draw_data = self.draw_data._replace(default_bg=opts.background)
         bg = spec.get('tab_bar_background', False)
         if bg is None:
             bg = color_as_int(opts.background)
