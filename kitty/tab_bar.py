@@ -476,7 +476,6 @@ class TabBar:
         elif bg is False:
             bg = color_as_int(opts.tab_bar_background or opts.background)
         self.screen.color_profile.set_configured_colors(fg, bg)
-        self.update_blank_rects()
 
     def update_blank_rects(self) -> None:
         opts = get_options()
