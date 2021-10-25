@@ -230,7 +230,7 @@ def parse_eaw() -> None:
         if eaw == 'A':
             ambiguous |= chars
             seen |= chars
-        elif eaw == 'W' or eaw == 'F':
+        elif eaw in ['W', 'F']:
             doublewidth |= chars
             seen |= chars
     doublewidth |= set(range(0x3400, 0x4DBF + 1)) - seen
