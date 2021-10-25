@@ -451,18 +451,16 @@ as_text(LineBuf *self, PyObject *args) {
 
 static PyObject*
 __str__(LineBuf *self) {
-    PyObject *lines = PyTuple_New(self->ynum);
+    DECREF_AFTER_FUNCTION PyObject *lines = PyTuple_New(self->ynum);
     if (lines == NULL) return PyErr_NoMemory();
     for (index_type i = 0; i < self->ynum; i++) {
         init_line(self, self->line, self->line_map[i]);
         PyObject *t = line_as_unicode(self->line, false);
-        if (t == NULL) { Py_CLEAR(lines); return NULL; }
+        if (t == NULL) return NULL;
         PyTuple_SET_ITEM(lines, i, t);
     }
-    PyObject *sep = PyUnicode_FromString("\n");
-    PyObject *ans = PyUnicode_Join(sep, lines);
-    Py_CLEAR(lines); Py_CLEAR(sep);
-    return ans;
+    DECREF_AFTER_FUNCTION PyObject *sep = PyUnicode_FromString("\n");
+    return PyUnicode_Join(sep, lines);
 }
 
 // Boilerplate {{{
