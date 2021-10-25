@@ -948,7 +948,7 @@ PYWRAP1(patch_global_colors) {
 }
     P(active_border_color); P(inactive_border_color); P(bell_border_color);
     if (configured) {
-        P(background); P(url_color);
+        P(background); P(url_color); P(tab_bar_background);
         P(mark1_background); P(mark1_foreground); P(mark2_background); P(mark2_foreground);
         P(mark3_background); P(mark3_foreground);
     }
