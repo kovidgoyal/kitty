@@ -281,9 +281,9 @@ class LaunchKwds(TypedDict):
 
 def apply_colors(window: Window, spec: Sequence[str]) -> None:
     from kitty.rc.set_colors import parse_colors
-    colors, cursor_text_color = parse_colors(spec)
+    colors = parse_colors(spec)
     profiles = window.screen.color_profile,
-    patch_color_profiles(colors, cursor_text_color, profiles, True)
+    patch_color_profiles(colors, profiles, True)
 
 
 def launch(

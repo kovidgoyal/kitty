@@ -114,7 +114,7 @@ copy_color_profile(ColorProfile *dest, ColorProfile *src) {
 static void
 patch_color_table(const char *key, PyObject *profiles, PyObject *spec, size_t which, int change_configured) {
     PyObject *v = PyDict_GetItemString(spec, key);
-    if (v) {
+    if (v && PyLong_Check(v)) {
         color_type color = PyLong_AsUnsignedLong(v);
         for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) {
             ColorProfile *self = (ColorProfile*)PyTuple_GET_ITEM(profiles, j);
@@ -128,7 +128,7 @@ patch_color_table(const char *key, PyObject *profiles, PyObject *spec, size_t wh
 
 #define patch_mark_color(key, profiles, spec, array, i) { \
     PyObject *v = PyDict_GetItemString(spec, key); \
-    if (v) { \
+    if (v && PyLong_Check(v)) { \
         color_type color = PyLong_AsUnsignedLong(v); \
         for (Py_ssize_t j = 0; j < PyTuple_GET_SIZE(profiles); j++) { \
             ColorProfile *self = (ColorProfile*)PyTuple_GET_ITEM(profiles, j); \
@@ -139,8 +139,8 @@ patch_color_table(const char *key, PyObject *profiles, PyObject *spec, size_t wh
 
 static PyObject*
 patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
-    PyObject *spec, *profiles, *v; ColorProfile *self; int change_configured; PyObject *cursor_text_color;
-    if (!PyArg_ParseTuple(args, "O!OO!p", &PyDict_Type, &spec, &cursor_text_color, &PyTuple_Type, &profiles, &change_configured)) return NULL;
+    PyObject *spec, *profiles, *v; ColorProfile *self; int change_configured;
+    if (!PyArg_ParseTuple(args, "O!O!p", &PyDict_Type, &spec, &PyTuple_Type, &profiles, &change_configured)) return NULL;
     char key[32] = {0};
     for (size_t i = 0; i < arraysz(FG_BG_256); i++) {
         snprintf(key, sizeof(key) - 1, "color%zu", i);
@@ -153,7 +153,7 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
     }
 #define S(config_name, profile_name) { \
     v = PyDict_GetItemString(spec, #config_name); \
-    if (v) { \
+    if (v && PyLong_Check(v)) { \
         color_type color = PyLong_AsUnsignedLong(v); \
         for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) { \
             self = (ColorProfile*)PyTuple_GET_ITEM(profiles, i); \
@@ -166,12 +166,13 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
         S(foreground, default_fg); S(background, default_bg); S(cursor, cursor_color);
         S(selection_foreground, highlight_fg); S(selection_background, highlight_bg);
 #undef S
-    if (cursor_text_color != Py_False) {
+    PyObject *cursor_text_color = PyDict_GetItemString(spec, "cursor_text_color");
+    if (cursor_text_color) {
         for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) {
             self = (ColorProfile*)PyTuple_GET_ITEM(profiles, i);
             self->overridden.cursor_text_color = 0x111111;
             self->overridden.cursor_text_uses_bg = 3;
-            if (cursor_text_color != Py_None) {
+            if (PyLong_Check(cursor_text_color)) {
                 self->overridden.cursor_text_color = (PyLong_AsUnsignedLong(cursor_text_color) << 8) | 2;
                 self->overridden.cursor_text_uses_bg = 1;
             }

@@ -1687,16 +1687,16 @@ class Boss:
             window.screen.disable_ligatures = strategy
             window.refresh()
 
-    def patch_colors(self, spec: Dict[str, int], cursor_text_color: Union[bool, int, Color], configured: bool = False) -> None:
+    def patch_colors(self, spec: Dict[str, Optional[int]], configured: bool = False) -> None:
         opts = get_options()
         if configured:
             for k, v in spec.items():
                 if hasattr(opts, k):
-                    setattr(opts, k, color_from_int(v))
-            if cursor_text_color is not False:
-                if isinstance(cursor_text_color, int):
-                    cursor_text_color = color_from_int(cursor_text_color)
-                opts.cursor_text_color = cursor_text_color
+                    if v is None:
+                        if k in ('cursor_text_color', 'tab_bar_background'):
+                            setattr(opts, k, None)
+                    else:
+                        setattr(opts, k, color_from_int(v))
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
         patch_global_colors(spec, configured)

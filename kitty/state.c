@@ -942,13 +942,14 @@ PYWRAP1(patch_global_colors) {
     if (!PyArg_ParseTuple(args, "Op", &spec, &configured)) return NULL;
 #define P(name) { \
     PyObject *val = PyDict_GetItemString(spec, #name); \
-    if (val && PyLong_Check(val)) { \
-        OPT(name) = PyLong_AsLong(val); \
+    if (val) { \
+        if (val == Py_None) OPT(name) = 0; \
+        else if (PyLong_Check(val)) OPT(name) = PyLong_AsLong(val); \
     } \
 }
-    P(active_border_color); P(inactive_border_color); P(bell_border_color);
+    P(active_border_color); P(inactive_border_color); P(bell_border_color); P(tab_bar_background);
     if (configured) {
-        P(background); P(url_color); P(tab_bar_background);
+        P(background); P(url_color);
         P(mark1_background); P(mark1_foreground); P(mark2_background); P(mark2_foreground);
         P(mark3_background); P(mark3_foreground);
     }

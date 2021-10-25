@@ -614,7 +614,7 @@ def safe_pipe(nonblock: bool = True) -> Tuple[int, int]:
     pass
 
 
-def patch_global_colors(spec: Dict[str, int], configured: bool) -> None:
+def patch_global_colors(spec: Dict[str, Optional[int]], configured: bool) -> None:
     pass
 
 
@@ -647,8 +647,7 @@ class ColorProfile:
 
 
 def patch_color_profiles(
-    spec: Dict[str, int], cursor_text_color: Optional[Union[bool, int]],
-    profiles: Tuple[ColorProfile, ...], change_configured: bool
+    spec: Dict[str, Optional[int]], profiles: Tuple[ColorProfile, ...], change_configured: bool
 ) -> None:
     pass
 

@@ -457,32 +457,40 @@ class TabBar:
         else:
             self.align = lambda: None
 
-    def patch_colors(self, spec: Dict[str, Any]) -> None:
-        if 'active_tab_foreground' in spec:
-            self.active_fg = (spec['active_tab_foreground'] << 8) | 2
-            self.draw_data = self.draw_data._replace(active_fg=color_from_int(spec['active_tab_foreground']))
-        if 'active_tab_background' in spec:
-            self.active_bg = (spec['active_tab_background'] << 8) | 2
-            self.draw_data = self.draw_data._replace(active_bg=color_from_int(spec['active_tab_background']))
-        if 'inactive_tab_background' in spec:
-            self.draw_data = self.draw_data._replace(inactive_bg=color_from_int(spec['inactive_tab_background']))
-        if 'tab_bar_background' in spec:
-            self.draw_data = self.draw_data._replace(default_bg=color_from_int(spec['tab_bar_background']))
+    def patch_colors(self, spec: Dict[str, Optional[int]]) -> None:
         opts = get_options()
-        fg = spec.get('inactive_tab_foreground', color_as_int(opts.inactive_tab_foreground))
+        atf = spec.get('active_tab_foreground')
+        if isinstance(atf, int):
+            self.active_fg = (atf << 8) | 2
+            self.draw_data = self.draw_data._replace(active_fg=color_from_int(atf))
+        atb = spec.get('active_tab_background')
+        if isinstance(atb, int):
+            self.active_bg = (atb << 8) | 2
+            self.draw_data = self.draw_data._replace(active_bg=color_from_int(atb))
+        itb = spec.get('inactive_tab_background')
+        if isinstance(itb, int):
+            self.draw_data = self.draw_data._replace(inactive_bg=color_from_int(itb))
+        if 'tab_bar_background' in spec:
+            val = spec['tab_bar_background']
+            if val is None:
+                val = color_as_int(opts.background)
+            self.draw_data = self.draw_data._replace(default_bg=color_from_int(val))
         bg = spec.get('tab_bar_background', False)
         if bg is None:
             bg = color_as_int(opts.background)
         elif bg is False:
             bg = color_as_int(opts.tab_bar_background or opts.background)
+        fg = spec.get('inactive_tab_foreground')
+        if fg is None:
+            fg = color_as_int(opts.inactive_tab_foreground)
         self.screen.color_profile.set_configured_colors(fg, bg)
 
     def update_blank_rects(self) -> None:
         opts = get_options()
         central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
         blank_rects: List[Border] = []
+        bg = BorderColor.default_bg
         if opts.tab_bar_margin_height:
-            bg = BorderColor.default_bg
             if opts.tab_bar_edge == 3:  # bottom
                 if opts.tab_bar_margin_height.outer:
                     blank_rects.append(Border(0, tab_bar.bottom + 1, vw, vh, bg))
@@ -496,7 +504,6 @@ class TabBar:
         g = self.window_geometry
         if g.left > 0:
             viewport_width = max(4 * cell_width, tab_bar.width - 2 * self.margin_width)
-            bg = BorderColor.default_bg
             blank_rects.append(Border(0, g.top, g.left, g.bottom + 1, bg))
             blank_rects.append(Border(g.right - 1, g.top, viewport_width, g.bottom + 1, bg))
 
