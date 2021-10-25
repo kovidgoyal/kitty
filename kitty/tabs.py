@@ -998,8 +998,7 @@ class TabManager:  # {{{
                 self.set_active_tab_idx(i)
             elif button == GLFW_MOUSE_BUTTON_MIDDLE and action == GLFW_RELEASE and self.recent_mouse_events:
                 p = self.recent_mouse_events[-1]
-                ci = get_click_interval()
-                if p.button == button and p.action == GLFW_PRESS and p.tab_idx == i and now - p.at <= ci:
+                if p.button == button and p.action == GLFW_PRESS and p.tab_idx == i:
                     tab = self.tabs[i]
                     get_boss().close_tab(tab)
         self.recent_mouse_events.append(TabMouseEvent(button, modifiers, action, now, i))
