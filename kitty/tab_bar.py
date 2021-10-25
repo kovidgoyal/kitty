@@ -476,22 +476,11 @@ class TabBar:
         elif bg is False:
             bg = color_as_int(opts.tab_bar_background or opts.background)
         self.screen.color_profile.set_configured_colors(fg, bg)
+        self.update_blank_rects()
 
-    def layout(self) -> None:
-        central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
-        if tab_bar.width < 2:
-            return
+    def update_blank_rects(self) -> None:
         opts = get_options()
-        self.cell_width = cell_width
-        s = self.screen
-        viewport_width = max(4 * cell_width, tab_bar.width - 2 * self.margin_width)
-        ncells = viewport_width // cell_width
-        s.resize(1, ncells)
-        s.reset_mode(DECAWM)
-        self.laid_out_once = True
-        margin = (viewport_width - ncells * cell_width) // 2 + self.margin_width
-        self.window_geometry = g = WindowGeometry(
-            margin, tab_bar.top, viewport_width - margin, tab_bar.bottom, s.columns, s.lines)
+        central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
         blank_rects: List[Border] = []
         if opts.tab_bar_margin_height:
             bg = BorderColor.default_bg
@@ -505,13 +494,31 @@ class TabBar:
                     blank_rects.append(Border(0, 0, vw, tab_bar.top, bg))
                 if opts.tab_bar_margin_height.inner:
                     blank_rects.append(Border(0, tab_bar.bottom + 1, vw, central.top, bg))
-        if margin > 0:
-            bg = BorderColor.default_bg if opts.tab_bar_background is None else BorderColor.tab_bar_bg
+        g = self.window_geometry
+        if g.left > 0:
+            viewport_width = max(4 * cell_width, tab_bar.width - 2 * self.margin_width)
+            bg = BorderColor.default_bg
             blank_rects.append(Border(0, g.top, g.left, g.bottom + 1, bg))
             blank_rects.append(Border(g.right - 1, g.top, viewport_width, g.bottom + 1, bg))
 
         self.blank_rects = tuple(blank_rects)
+
+    def layout(self) -> None:
+        central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
+        if tab_bar.width < 2:
+            return
+        self.cell_width = cell_width
+        s = self.screen
+        viewport_width = max(4 * cell_width, tab_bar.width - 2 * self.margin_width)
+        ncells = viewport_width // cell_width
+        s.resize(1, ncells)
+        s.reset_mode(DECAWM)
+        self.laid_out_once = True
+        margin = (viewport_width - ncells * cell_width) // 2 + self.margin_width
+        self.window_geometry = g = WindowGeometry(
+            margin, tab_bar.top, viewport_width - margin, tab_bar.bottom, s.columns, s.lines)
         self.screen_geometry = sg = calculate_gl_geometry(g, vw, vh, cell_width, cell_height)
+        self.update_blank_rects()
         set_tab_bar_render_data(self.os_window_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
 
     def update(self, data: Sequence[TabBarData]) -> None:
