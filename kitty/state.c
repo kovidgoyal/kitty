@@ -180,7 +180,6 @@ add_os_window() {
             global_state.bgimage = calloc(1, sizeof(BackgroundImage));
             if (!global_state.bgimage) fatal("Out of memory allocating the global bg image object");
             global_state.bgimage->refcnt++;
-            global_state.bgimage->anchor = OPT(background_image_anchor);
             size_t size;
             if (png_path_to_bitmap(OPT(background_image), &global_state.bgimage->bitmap, &global_state.bgimage->width, &global_state.bgimage->height, &size)) {
                 send_bgimage_to_gpu(OPT(background_image_layout), global_state.bgimage);
@@ -994,7 +993,6 @@ pyset_background_image(PyObject *self UNUSED, PyObject *args) {
             make_os_window_context_current(os_window);
             free_bgimage(&os_window->bgimage, true);
             os_window->bgimage = bgimage;
-            os_window->bgimage->anchor = anchor;
             os_window->render_calls = 0;
             if (bgimage) bgimage->refcnt++;
         END_WITH_OS_WINDOW

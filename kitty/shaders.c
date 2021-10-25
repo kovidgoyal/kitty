@@ -417,15 +417,15 @@ draw_bg(OSWindow *w) {
         bgimage_constants_set = true;
     }
     float translate_left = 0.0f, translate_top = 0.0f;
-    if (OPT(background_image_layout) != SCALED) {
-        if (w->bgimage->anchor == NORTH || w->bgimage->anchor == CENTER || w->bgimage->anchor == SOUTH) {
+    if (OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED) {
+        if (OPT(background_image_anchor) == NORTH || OPT(background_image_anchor) == CENTER || OPT(background_image_anchor) == SOUTH) {
             translate_left = ((float)w->window_width / 2.0f - (float)w->bgimage->width / 2.0f) / (float)w->bgimage->width;
-        } else if (w->bgimage->anchor == NORTHEAST || w->bgimage->anchor == EAST || w->bgimage->anchor == SOUTHEAST) {
+        } else if (OPT(background_image_anchor) == NORTHEAST || OPT(background_image_anchor) == EAST || OPT(background_image_anchor) == SOUTHEAST) {
             translate_left = ((float)w->window_width - (float)w->bgimage->width) / (float)w->bgimage->width;
         }
-        if (w->bgimage->anchor == WEST || w->bgimage->anchor == CENTER || w->bgimage->anchor == EAST) {
+        if (OPT(background_image_anchor) == WEST || OPT(background_image_anchor) == CENTER || OPT(background_image_anchor) == EAST) {
             translate_top = ((float)w->window_height / 2.0f - (float)w->bgimage->height / 2.0f) / (float)w->bgimage->height;
-        } else if (w->bgimage->anchor == SOUTHWEST || w->bgimage->anchor == SOUTH || w->bgimage->anchor == SOUTHEAST) {
+        } else if (OPT(background_image_anchor) == SOUTHWEST || OPT(background_image_anchor) == SOUTH || OPT(background_image_anchor) == SOUTHEAST) {
             translate_top = ((float)w->window_height - (float)w->bgimage->height) / (float)w->bgimage->height;
         }
     }
