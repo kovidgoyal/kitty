@@ -143,7 +143,7 @@ def print_help(which: Optional[str] = None) -> None:
 
 def run_cmd(global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, items: List[str]) -> None:
     from .remote_control import do_io
-    print(end=set_window_title(cmd), flush=True)
+    print(end=set_window_title(cmd) + output_prefix, flush=True)
     payload = func.message_to_kitty(global_opts, opts, items)
     send = {
         'cmd': cmd,
@@ -154,13 +154,11 @@ def run_cmd(global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, it
         send['payload'] = payload
     response = do_io(global_opts.to, send, func.no_response)
     if not response.get('ok'):
-        print(end=output_prefix, flush=True)
         if response.get('tb'):
             print_err(response['tb'])
         print_err(response['error'])
         return
     if 'data' in response:
-        print(end=output_prefix, flush=True)
         print(response['data'])
 
 
