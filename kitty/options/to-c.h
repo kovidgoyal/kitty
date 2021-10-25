@@ -72,6 +72,7 @@ bglayout(PyObject *layout_name) {
         case 't': return TILING;
         case 'm': return MIRRORED;
         case 's': return SCALED;
+        case 'c': return CLAMPED;
         default: break;
     }
     return TILING;

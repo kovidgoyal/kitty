@@ -71,7 +71,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for background_image_layout")
         ans["background_image_layout"] = val
 
-    choices_for_background_image_layout = frozenset(('mirror-tiled', 'scaled', 'tiled'))
+    choices_for_background_image_layout = frozenset(('mirror-tiled', 'scaled', 'tiled', 'clamped'))
 
     def background_image_linear(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['background_image_linear'] = to_bool(val)

@@ -49,7 +49,7 @@ Change the configured background image which is used for new OS windows.
 
 --layout
 type=choices
-choices=tiled,scaled,mirror-tiled,configured
+choices=tiled,scaled,mirror-tiled,clamped,configured
 How the image should be displayed. The value of configured will use the configured value.
 
 

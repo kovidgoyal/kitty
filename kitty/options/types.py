@@ -15,7 +15,7 @@ import kitty.types
 
 if typing.TYPE_CHECKING:
     choices_for_background_image_anchor = typing.Literal['northwest', 'north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'center']
-    choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled']
+    choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped']
     choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'hand']
     choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
     choices_for_macos_show_window_title_in = typing.Literal['all', 'menubar', 'none', 'window']

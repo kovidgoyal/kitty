@@ -166,7 +166,7 @@ typedef struct {
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
 static ssize_t blit_vertex_array;
 typedef struct {
-    GLint image_location, tiled_location, translate_location, sizes_location, opacity_location, premult_location;
+    GLint image_location, unscaled_location, translate_location, sizes_location, opacity_location, premult_location;
 } BGImageProgramLayout;
 static BGImageProgramLayout bgimage_program_layout = {0};
 typedef struct {
@@ -198,7 +198,7 @@ init_cell_program(void) {
     bgimage_program_layout.image_location = get_uniform_location(BGIMAGE_PROGRAM, "image");
     bgimage_program_layout.opacity_location = get_uniform_location(BGIMAGE_PROGRAM, "opacity");
     bgimage_program_layout.sizes_location = get_uniform_location(BGIMAGE_PROGRAM, "sizes");
-    bgimage_program_layout.tiled_location = get_uniform_location(BGIMAGE_PROGRAM, "tiled");
+    bgimage_program_layout.unscaled_location = get_uniform_location(BGIMAGE_PROGRAM, "unscaled");
     bgimage_program_layout.translate_location = get_uniform_location(BGIMAGE_PROGRAM, "translate");
     bgimage_program_layout.premult_location = get_uniform_location(BGIMAGE_PROGRAM, "premult");
     tint_program_layout.tint_color_location = get_uniform_location(TINT_PROGRAM, "tint_color");
@@ -408,16 +408,16 @@ draw_bg(OSWindow *w) {
     bind_program(BGIMAGE_PROGRAM);
     bind_vertex_array(blit_vertex_array);
 
+    const bool unscaled = OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED || OPT(background_image_layout) == CLAMPED;
     static bool bgimage_constants_set = false;
     if (!bgimage_constants_set) {
         glUniform1i(bgimage_program_layout.image_location, BGIMAGE_UNIT);
         glUniform1f(bgimage_program_layout.opacity_location, OPT(background_opacity));
-        GLfloat tiled = (OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED) ? 1 : 0;
-        glUniform1f(bgimage_program_layout.tiled_location, tiled);
+        glUniform1f(bgimage_program_layout.unscaled_location, (GLfloat)unscaled);
         bgimage_constants_set = true;
     }
     float translate_left = 0.0f, translate_top = 0.0f;
-    if (OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED) {
+    if (unscaled) {
         if (OPT(background_image_anchor) == NORTH || OPT(background_image_anchor) == CENTER || OPT(background_image_anchor) == SOUTH) {
             translate_left = ((float)w->window_width / 2.0f - (float)w->bgimage->width / 2.0f) / (float)w->bgimage->width;
         } else if (OPT(background_image_anchor) == NORTHEAST || OPT(background_image_anchor) == EAST || OPT(background_image_anchor) == SOUTHEAST) {

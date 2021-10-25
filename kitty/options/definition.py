@@ -1106,8 +1106,8 @@ opt('background_image', 'none',
     )
 
 opt('background_image_layout', 'tiled',
-    choices=('mirror-tiled', 'scaled', 'tiled'), ctype='bglayout',
-    long_text='Whether to tile or scale the background image.'
+    choices=('mirror-tiled', 'scaled', 'tiled', 'clamped'), ctype='bglayout',
+    long_text='Whether to tile, scale or clamp the background image.'
     )
 
 opt('background_image_anchor', 'northwest',
