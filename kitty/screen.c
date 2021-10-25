@@ -317,7 +317,8 @@ found:
             // this is needed because screen_resize() checks to see if the cursor is beyond the content,
             // so insert some fake content
             Line *line = self->linebuf->line;
-            line->cpu_cells[0].ch = '>';
+            // we use a space as readline does not erase to bottom of screen so we fake it with spaces
+            line->cpu_cells[0].ch = ' ';
         }
     }
 }
