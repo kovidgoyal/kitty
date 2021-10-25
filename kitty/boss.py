@@ -1699,6 +1699,7 @@ class Boss:
                         setattr(opts, k, color_from_int(v))
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
+            tm.mark_tab_bar_dirty()
         patch_global_colors(spec, configured)
 
     def apply_new_options(self, opts: Options) -> None:
