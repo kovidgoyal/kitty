@@ -942,7 +942,7 @@ PYWRAP1(patch_global_colors) {
     if (!PyArg_ParseTuple(args, "Op", &spec, &configured)) return NULL;
 #define P(name) { \
     PyObject *val = PyDict_GetItemString(spec, #name); \
-    if (val) { \
+    if (val && PyLong_Check(val)) { \
         OPT(name) = PyLong_AsLong(val); \
     } \
 }
