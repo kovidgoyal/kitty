@@ -60,9 +60,9 @@ choose_fb_config(const _GLFWfbconfig* desired, bool trust_window_bit, int *nelem
     if (desired->depthBits != GLFW_DONT_CARE) ATTR(GLX_DEPTH_SIZE, desired->depthBits);
     if (desired->stencilBits != GLFW_DONT_CARE) ATTR(GLX_STENCIL_SIZE, desired->stencilBits);
     if (use_best_color_depth) {
-        // we just ask for the highest available R+G+B color depth. This hopefully
+        // we just ask for the highest available R+G+B+A color depth. This hopefully
         // works with 10bit (r=10, g=10, b=19, a=2) visuals
-        ATTR(GLX_RED_SIZE, 1); ATTR(GLX_GREEN_SIZE, 1); ATTR(GLX_BLUE_SIZE, 1); ATTR(GLX_ALPHA_SIZE, 0);
+        ATTR(GLX_RED_SIZE, 1); ATTR(GLX_GREEN_SIZE, 1); ATTR(GLX_BLUE_SIZE, 1); ATTR(GLX_ALPHA_SIZE, 1);
     } else {
         if (desired->redBits != GLFW_DONT_CARE) ATTR(GLX_RED_SIZE, desired->redBits);
         if (desired->greenBits != GLFW_DONT_CARE) ATTR(GLX_GREEN_SIZE, desired->greenBits);
