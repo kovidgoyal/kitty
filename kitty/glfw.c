@@ -1425,11 +1425,12 @@ dbus_send_notification(PyObject *self UNUSED, PyObject *args) {
     return PyLong_FromUnsignedLongLong(notification_id);
 }
 
+#endif
+
 static PyObject*
 get_click_interval(PyObject *self UNUSED, PyObject *args UNUSED) {
     return PyFloat_FromDouble(monotonic_t_to_s_double(OPT(click_interval)));
 }
-#endif
 
 id_type
 add_main_loop_timer(monotonic_t interval, bool repeats, timer_callback_fun callback, void *callback_data, timer_callback_fun free_callback) {
