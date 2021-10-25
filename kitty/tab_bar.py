@@ -11,7 +11,7 @@ from .borders import Border, BorderColor
 from .config import build_ansi_color_table
 from .constants import config_dir
 from .fast_data_types import (
-    DECAWM, Screen, cell_size_for_window, get_options, pt_to_px,
+    DECAWM, Region, Screen, cell_size_for_window, get_options, pt_to_px,
     set_tab_bar_render_data, viewport_for_window
 )
 from .rgb import Color, alpha_blend, color_as_sgr, color_from_int, to_color
@@ -485,9 +485,8 @@ class TabBar:
             fg = color_as_int(opts.inactive_tab_foreground)
         self.screen.color_profile.set_configured_colors(fg, bg)
 
-    def update_blank_rects(self) -> None:
+    def update_blank_rects(self, central: Region, tab_bar: Region, vw: int, vh: int) -> None:
         opts = get_options()
-        central, tab_bar, vw, vh, cell_width, cell_height = viewport_for_window(self.os_window_id)
         blank_rects: List[Border] = []
         bg = BorderColor.default_bg
         if opts.tab_bar_margin_height:
@@ -504,9 +503,8 @@ class TabBar:
         g = self.window_geometry
         if g.left > 0:
             blank_rects.append(Border(0, g.top, g.left, g.bottom + 1, bg))
-        viewport_width = max(4 * cell_width, tab_bar.width - 2 * self.margin_width)
-        if g.right - 1 < viewport_width:
-            blank_rects.append(Border(g.right - 1, g.top, viewport_width, g.bottom + 1, bg))
+        if g.right - 1 < vw:
+            blank_rects.append(Border(g.right - 1, g.top, vw, g.bottom + 1, bg))
         self.blank_rects = tuple(blank_rects)
 
     def layout(self) -> None:
@@ -524,7 +522,7 @@ class TabBar:
         self.window_geometry = g = WindowGeometry(
             margin, tab_bar.top, viewport_width - margin, tab_bar.bottom, s.columns, s.lines)
         self.screen_geometry = sg = calculate_gl_geometry(g, vw, vh, cell_width, cell_height)
-        self.update_blank_rects()
+        self.update_blank_rects(central, tab_bar, vw, vh)
         set_tab_bar_render_data(self.os_window_id, sg.xstart, sg.ystart, sg.dx, sg.dy, self.screen)
 
     def update(self, data: Sequence[TabBarData]) -> None:
