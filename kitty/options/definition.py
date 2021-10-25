@@ -1048,6 +1048,14 @@ Background color for the tab bar. Defaults to using the terminal background
 color.
 '''
     )
+
+opt('tab_bar_margin_color', 'none',
+    option_type='to_color_or_none', ctype='color_or_none_as_int',
+    long_text='''
+Color for the tab bar margin area. Defaults to using the terminal background
+color.
+'''
+    )
 egr()  # }}}
 
 # colors {{{

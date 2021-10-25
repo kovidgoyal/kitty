@@ -15,7 +15,7 @@ from .window_list import WindowGroup, WindowList
 
 class BorderColor(IntFlag):
     # See the border vertex shader for how these flags become actual colors
-    default_bg, active, inactive, window_bg, bell, tab_bar_bg = ((1 << i) for i in range(6))
+    default_bg, active, inactive, window_bg, bell, tab_bar_bg, tab_bar_margin_color = ((1 << i) for i in range(7))
 
 
 class Border(NamedTuple):

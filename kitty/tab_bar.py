@@ -488,7 +488,7 @@ class TabBar:
     def update_blank_rects(self, central: Region, tab_bar: Region, vw: int, vh: int) -> None:
         opts = get_options()
         blank_rects: List[Border] = []
-        bg = BorderColor.default_bg
+        bg = BorderColor.tab_bar_margin_color if opts.tab_bar_margin_color is not None else BorderColor.default_bg
         if opts.tab_bar_margin_height:
             if opts.tab_bar_edge == 3:  # bottom
                 if opts.tab_bar_margin_height.outer:

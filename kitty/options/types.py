@@ -411,6 +411,7 @@ option_names = (  # {{{
  'tab_bar_align',
  'tab_bar_background',
  'tab_bar_edge',
+ 'tab_bar_margin_color',
  'tab_bar_margin_height',
  'tab_bar_margin_width',
  'tab_bar_min_tabs',
@@ -548,6 +549,7 @@ class Options:
     tab_bar_align: choices_for_tab_bar_align = 'left'
     tab_bar_background: typing.Optional[kitty.rgb.Color] = None
     tab_bar_edge: int = 3
+    tab_bar_margin_color: typing.Optional[kitty.rgb.Color] = None
     tab_bar_margin_height: TabBarMarginHeight = TabBarMarginHeight(outer=0, inner=0)
     tab_bar_margin_width: float = 0
     tab_bar_min_tabs: int = 2

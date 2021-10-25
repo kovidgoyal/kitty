@@ -617,6 +617,19 @@ convert_from_opts_tab_bar_background(PyObject *py_opts, Options *opts) {
 }
 
 static void
+convert_from_python_tab_bar_margin_color(PyObject *val, Options *opts) {
+    opts->tab_bar_margin_color = color_or_none_as_int(val);
+}
+
+static void
+convert_from_opts_tab_bar_margin_color(PyObject *py_opts, Options *opts) {
+    PyObject *ret = PyObject_GetAttrString(py_opts, "tab_bar_margin_color");
+    if (ret == NULL) return;
+    convert_from_python_tab_bar_margin_color(ret, opts);
+    Py_DECREF(ret);
+}
+
+static void
 convert_from_python_foreground(PyObject *val, Options *opts) {
     opts->foreground = color_as_int(val);
 }
@@ -1023,6 +1036,8 @@ convert_opts_from_python_opts(PyObject *py_opts, Options *opts) {
     convert_from_opts_tab_bar_min_tabs(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_tab_bar_background(py_opts, opts);
+    if (PyErr_Occurred()) return false;
+    convert_from_opts_tab_bar_margin_color(py_opts, opts);
     if (PyErr_Occurred()) return false;
     convert_from_opts_foreground(py_opts, opts);
     if (PyErr_Occurred()) return false;

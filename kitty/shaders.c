@@ -790,7 +790,7 @@ draw_cells(ssize_t vao_idx, ssize_t gvao_idx, GLfloat xstart, GLfloat ystart, GL
 // }}}
 
 // Borders {{{
-enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, BORDER_bell_border_color, BORDER_tab_bar_bg, NUM_BORDER_UNIFORMS };
+enum BorderUniforms { BORDER_viewport, BORDER_background_opacity, BORDER_default_bg, BORDER_active_border_color, BORDER_inactive_border_color, BORDER_bell_border_color, BORDER_tab_bar_bg, BORDER_tab_bar_margin_color, NUM_BORDER_UNIFORMS };
 static GLint border_uniform_locations[NUM_BORDER_UNIFORMS] = {0};
 
 static void
@@ -803,6 +803,7 @@ init_borders_program(void) {
         SET_LOC(inactive_border_color)
         SET_LOC(bell_border_color)
         SET_LOC(tab_bar_bg)
+        SET_LOC(tab_bar_margin_color)
 #undef SET_LOC
 }
 
@@ -843,6 +844,7 @@ draw_borders(ssize_t vao_idx, unsigned int num_border_rects, BorderRect *rect_bu
         glUniform3f(border_uniform_locations[BORDER_inactive_border_color], CV3(OPT(inactive_border_color)));
         glUniform3f(border_uniform_locations[BORDER_bell_border_color], CV3(OPT(bell_border_color)));
         glUniform3f(border_uniform_locations[BORDER_tab_bar_bg], CV3(OPT(tab_bar_background)));
+        glUniform3f(border_uniform_locations[BORDER_tab_bar_margin_color], CV3(OPT(tab_bar_margin_color)));
         glUniform2ui(border_uniform_locations[BORDER_viewport], viewport_width, viewport_height);
         color_type default_bg = (num_visible_windows > 1 && !all_windows_have_same_bg) ? OPT(background) : active_window_bg;
         glUniform3f(border_uniform_locations[BORDER_default_bg], CV3(default_bg));

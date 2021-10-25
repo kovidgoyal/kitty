@@ -1688,17 +1688,19 @@ class Boss:
             window.refresh()
 
     def patch_colors(self, spec: Dict[str, Optional[int]], configured: bool = False) -> None:
+        from kitty.rc.set_colors import nullable_colors
         opts = get_options()
         if configured:
             for k, v in spec.items():
                 if hasattr(opts, k):
                     if v is None:
-                        if k in ('cursor_text_color', 'tab_bar_background'):
+                        if k in nullable_colors:
                             setattr(opts, k, None)
                     else:
                         setattr(opts, k, color_from_int(v))
         for tm in self.all_tab_managers:
             tm.tab_bar.patch_colors(spec)
+            tm.tab_bar.layout()
             tm.mark_tab_bar_dirty()
         patch_global_colors(spec, configured)
 

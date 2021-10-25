@@ -109,8 +109,8 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Fix various issues with changing :opt:`tab_bar_background` by remote control
   (:iss:`4152`)
 
-- All tab bar margins are now drawn using the general background color, instead
-  of drawing only the left and right margins with the tab bar background color
+- A new option :opt:`tab_bar_margin_color` to control the color of the tab bar
+  margins
 
 - Add support for OSC 777 based desktop notifications
 

@@ -18,22 +18,25 @@ if TYPE_CHECKING:
     from kitty.cli_stub import SetColorsRCOptions as CLIOptions
 
 
+nullable_colors = ('cursor_text_color', 'tab_bar_background', 'tab_bar_margin_color')
+
+
 def parse_colors(args: Iterable[str]) -> Dict[str, Optional[int]]:
     colors: Dict[str, Optional[Color]] = {}
-    nullable_colors: Dict[str, Optional[int]] = {}
+    nullable_color_map: Dict[str, Optional[int]] = {}
     for spec in args:
         if '=' in spec:
             colors.update(parse_config((spec.replace('=', ' '),)))
         else:
             with open(os.path.expanduser(spec), encoding='utf-8', errors='replace') as f:
                 colors.update(parse_config(f))
-    for k in ('cursor_text_color', 'tab_bar_background'):
+    for k in nullable_colors:
         q = colors.pop(k, False)
         if q is not False:
             val = int(q) if isinstance(q, Color) else None
-            nullable_colors[k] = val
+            nullable_color_map[k] = val
     ans: Dict[str, Optional[int]] = {k: int(v) for k, v in colors.items() if isinstance(v, Color)}
-    ans.update(nullable_colors)
+    ans.update(nullable_color_map)
     return ans
 
 
