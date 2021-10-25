@@ -551,6 +551,10 @@ class Boss:
         if not needs_confirmation:
             self.close_tab_no_confirm(tab)
             return
+        if tab is not self.active_tab:
+            tm = tab.tab_manager_ref()
+            if tm is not None:
+                tm.set_active_tab(tab)
         self._run_kitten('ask', ['--type=yesno', '--message', _(
             'Are you sure you want to close this tab, it has {}'
             ' windows running?').format(num)],
