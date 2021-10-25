@@ -106,6 +106,12 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 
 - Linux X11: Add support for 10bit colors (:iss:`4150`)
 
+- Fix various issues with changing :opt:`tab_bar_background` by remote control
+  (:iss:`4152`)
+
+- All tab bar margins are now drawn using the general background color, instead
+  of drawing only the left and right margins with the tab bar background color
+
 
 0.23.1 [2021-08-17]
 ----------------------
