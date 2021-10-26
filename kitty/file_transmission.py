@@ -67,7 +67,7 @@ def split_for_transfer(
 def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union['FileTransmissionCommand', 'TransmissionError']]:
     file_map: DefaultDict[str, List[FileTransmissionCommand]] = defaultdict(list)
 
-    def make_ftc(path: str, spec_id: str, sr: Optional[os.stat_result] = None) -> FileTransmissionCommand:
+    def make_ftc(path: str, spec_id: str, sr: Optional[os.stat_result] = None, parent: str = '') -> FileTransmissionCommand:
         if sr is None:
             sr = os.stat(path, follow_symlinks=False)
         if stat.S_ISLNK(sr.st_mode):
@@ -80,7 +80,7 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
             raise ValueError('Not an appropriate file type')
         return FileTransmissionCommand(
             action=Action.file, file_id=spec_id, mtime=sr.st_mtime_ns, permissions=stat.S_IMODE(sr.st_mode),
-            name=path, status=f'{sr.st_dev}:{sr.st_ino}', size=sr.st_size, ftype=ftype
+            name=path, status=f'{sr.st_dev}:{sr.st_ino}', size=sr.st_size, ftype=ftype, parent=parent
         )
 
     for spec_id, spec in file_specs:
@@ -115,7 +115,7 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
                 for dirpath, dirnames, filenames in di:
                     for dname in chain(dirnames, filenames):
                         try:
-                            dftc = make_ftc(os.path.join(dirpath, dname), spec_id)
+                            dftc = make_ftc(os.path.join(dirpath, dname), spec_id, parent=ftc.status)
                         except (ValueError, OSError):
                             continue
                         file_map[dftc.status].append(dftc)
@@ -235,6 +235,7 @@ class FileTransmissionCommand:
     size: int = -1
     name: str = field(default='', metadata={'base64': True})
     status: str = field(default='', metadata={'base64': True})
+    parent: str = field(default='', metadata={'base64': True})
     data: bytes = field(default=b'', repr=False)
 
     def __repr__(self) -> str:

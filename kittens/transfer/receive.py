@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
+import os
+import posixpath
 from enum import auto
 from typing import Dict, Iterator, List, Optional
 
@@ -35,6 +37,70 @@ class File:
         self.remote_name = ftc.name
         self.remote_id = ftc.status
         self.remote_target = ftc.data.decode('utf-8')
+        self.parent = ftc.parent
+        self.local_name = ''
+
+
+class TreeNode:
+
+    def __init__(self, file: File, local_name: str, parent: Optional['TreeNode'] = None):
+        self.entry = file
+        self.entry.local_name = local_name
+        self.children: List[TreeNode] = []
+        self.parent = parent
+
+    def add_child(self, file: File) -> 'TreeNode':
+        c = TreeNode(file, os.path.join(self.entry.local_name, os.path.basename(file.remote_name)), self)
+        self.children.append(c)
+        return c
+
+
+def make_tree(all_files: List[File], local_base: str) -> TreeNode:
+    fid_map = {f.remote_id: f for f in all_files}
+    node_map: Dict[str, TreeNode] = {}
+    root_node = TreeNode(File(FileTransmissionCommand()), local_base)
+
+    def ensure_parent(f: File) -> TreeNode:
+        if not f.parent:
+            return root_node
+        parent = node_map.get(f.parent)
+        if parent is None:
+            fp = fid_map[f.parent]
+            gp = ensure_parent(fp)
+            parent = gp.add_child(fp)
+        return parent
+
+    for f in all_files:
+        p = ensure_parent(f)
+        p.add_child(f)
+    return root_node
+
+
+def files_for_receive(cli_opts: TransferCLIOptions, dest: str, files: List[File], remote_home: str, specs: List[str]) -> None:
+    spec_map: Dict[int, List[File]] = {i: [] for i in range(len(specs))}
+    for f in files:
+        spec_map[f.spec_id].append(f)
+    spec_paths = [spec_map[i][0].remote_name for i in range(len(specs))]
+    if cli_opts.mode == 'mirror':
+        try:
+            common_path = posixpath.commonpath(spec_paths)
+        except ValueError:
+            common_path = ''
+        home = remote_home.rstrip('/')
+        if common_path and common_path.startswith(home + '/'):
+            spec_paths = [posixpath.join('~', posixpath.relpath(x, home)) for x in spec_paths]
+        for spec_id, files_for_spec in spec_map.items():
+            spec = spec_paths[spec_id]
+            tree = make_tree(files_for_spec, os.path.expanduser(spec))
+    else:
+        dest_is_dir = dest[-1] in (os.sep, os.altsep) or len(specs) > 1
+        for spec_id, files_for_spec in spec_map.items():
+            if dest_is_dir:
+                dest_path = os.path.join(dest, posixpath.basename(files_for_spec[0].remote_name))
+            else:
+                dest_path = dest
+            tree = make_tree(files_for_spec, os.path.expanduser(dest_path))
+    tree
 
 
 class Manager:
