@@ -418,14 +418,14 @@ draw_bg(OSWindow *w) {
     }
     float translate_left = 0.0f, translate_top = 0.0f;
     if (unscaled) {
-        if (OPT(background_image_anchor) == NORTH || OPT(background_image_anchor) == CENTER || OPT(background_image_anchor) == SOUTH) {
+        if (OPT(background_image_anchor) == TOP || OPT(background_image_anchor) == CENTER || OPT(background_image_anchor) == BOTTOM) {
             translate_left = ((float)w->window_width / 2.0f - (float)w->bgimage->width / 2.0f) / (float)w->bgimage->width;
-        } else if (OPT(background_image_anchor) == NORTHEAST || OPT(background_image_anchor) == EAST || OPT(background_image_anchor) == SOUTHEAST) {
+        } else if (OPT(background_image_anchor) == TOP_RIGHT || OPT(background_image_anchor) == RIGHT || OPT(background_image_anchor) == BOTTOM_RIGHT) {
             translate_left = ((float)w->window_width - (float)w->bgimage->width) / (float)w->bgimage->width;
         }
-        if (OPT(background_image_anchor) == WEST || OPT(background_image_anchor) == CENTER || OPT(background_image_anchor) == EAST) {
+        if (OPT(background_image_anchor) == LEFT || OPT(background_image_anchor) == CENTER || OPT(background_image_anchor) == RIGHT) {
             translate_top = ((float)w->window_height / 2.0f - (float)w->bgimage->height / 2.0f) / (float)w->bgimage->height;
-        } else if (OPT(background_image_anchor) == SOUTHWEST || OPT(background_image_anchor) == SOUTH || OPT(background_image_anchor) == SOUTHEAST) {
+        } else if (OPT(background_image_anchor) == BOTTOM_LEFT || OPT(background_image_anchor) == BOTTOM || OPT(background_image_anchor) == BOTTOM_RIGHT) {
             translate_top = ((float)w->window_height - (float)w->bgimage->height) / (float)w->bgimage->height;
         }
     }

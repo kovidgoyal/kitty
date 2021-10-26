@@ -14,7 +14,7 @@ from kitty.types import FloatEdges, SingleKey
 import kitty.types
 
 if typing.TYPE_CHECKING:
-    choices_for_background_image_anchor = typing.Literal['northwest', 'north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'center']
+    choices_for_background_image_anchor = typing.Literal['top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right']
     choices_for_background_image_layout = typing.Literal['mirror-tiled', 'scaled', 'tiled', 'clamped']
     choices_for_default_pointer_shape = typing.Literal['arrow', 'beam', 'hand']
     choices_for_linux_display_server = typing.Literal['auto', 'wayland', 'x11']
@@ -456,7 +456,7 @@ class Options:
     allow_remote_control: str = 'n'
     background: Color = Color(0, 0, 0)
     background_image: typing.Optional[str] = None
-    background_image_anchor: choices_for_background_image_anchor = 'northwest'
+    background_image_anchor: choices_for_background_image_anchor = 'top-left'
     background_image_layout: choices_for_background_image_layout = 'tiled'
     background_image_linear: bool = False
     background_opacity: float = 1.0

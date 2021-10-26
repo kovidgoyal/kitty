@@ -1110,8 +1110,8 @@ opt('background_image_layout', 'tiled',
     long_text='Whether to tile, scale or clamp the background image.'
     )
 
-opt('background_image_anchor', 'northwest',
-    choices=('northwest', 'north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'center'), ctype='bganchor',
+opt('background_image_anchor', 'top-left',
+    choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'), ctype='bganchor',
     long_text='Where to position the background image in the window.'
     )
 

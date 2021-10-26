@@ -63,7 +63,7 @@ class Parser:
             raise ValueError(f"The value {val} is not a valid choice for background_image_anchor")
         ans["background_image_anchor"] = val
 
-    choices_for_background_image_anchor = frozenset(('northwest', 'north', 'northeast', 'east', 'southeast', 'south', 'southwest', 'west', 'center'))
+    choices_for_background_image_anchor = frozenset(('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'))
 
     def background_image_layout(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()

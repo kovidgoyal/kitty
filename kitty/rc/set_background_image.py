@@ -55,7 +55,7 @@ How the image should be displayed. The value of configured will use the configur
 
 --anchor
 type=choices
-choices=northwest,north,northeast,east,southeast,south,southwest,west,northwest,north,center,configured
+choices=top-left,top,top-right,left,center,right,bottom-left,bottom,bottom-right,configured
 Where the image should be positioned. The value of configured will use the configured value.
 
 
