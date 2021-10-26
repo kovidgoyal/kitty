@@ -951,3 +951,4 @@ class TestFileTransmission(FileTransmission):
 
     def callback_after(self, callback: Callable[[Optional[int]], None], timeout: float = 0) -> Optional[int]:
         callback(None)
+        return None

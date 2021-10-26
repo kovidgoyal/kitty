@@ -86,6 +86,7 @@ class Pair:
         for q in root.self_and_descendants():
             if q.one is self or q.two is self:
                 return q
+        return None
 
     def remove_windows(self, window_ids: Collection[int]) -> None:
         if isinstance(self.one, int) and self.one in window_ids:
@@ -548,6 +549,7 @@ class Splits(Layout):
                     if swap:
                         pair.one, pair.two = pair.two, pair.one
                     return True
+        return None
 
     def layout_state(self) -> Dict[str, Any]:
 

@@ -132,7 +132,7 @@ class ControlMaster:
             self.dest = os.path.join(self.tdir, os.path.basename(self.remote_path))
         return self
 
-    def __exit__(self, *a: Any) -> bool:
+    def __exit__(self, *a: Any) -> None:
         subprocess.Popen(
             self.batch_cmd_prefix + ['-O', 'exit', self.conn_data.hostname],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL
@@ -215,6 +215,7 @@ def main(args: List[str]) -> Result:
         import traceback
         traceback.print_exc()
         show_error('Failed with unhandled exception')
+    return None
 
 
 def save_as(conn_data: SSHConnectionData, remote_path: str, cli_opts: RemoteFileCLIOptions) -> None:
@@ -312,6 +313,7 @@ def handle_action(action: str, cli_opts: RemoteFileCLIOptions) -> Result:
     elif action == 'save':
         print('Saving', cli_opts.path, 'from', cli_opts.hostname)
         save_as(conn_data, remote_path, cli_opts)
+    return None
 
 
 @result_handler()

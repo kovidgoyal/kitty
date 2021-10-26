@@ -161,6 +161,7 @@ Do not send text to the active window, even if it is one of the matched windows.
                             window.write_to_child(kdata)
                     else:
                         window.write_to_child(data)
+        return None
 
 
 send_text = SendText()

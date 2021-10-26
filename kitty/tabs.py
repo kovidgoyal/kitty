@@ -500,6 +500,7 @@ class Tab:  # {{{
     def get_nth_window(self, n: int) -> Optional[Window]:
         if self.windows:
             return self.current_layout.nth_window(self.windows, n)
+        return None
 
     @ac('win', '''
         Focus the nth window if positive or the previously active windows if negative
@@ -541,6 +542,7 @@ class Tab:  # {{{
 
         if groups:
             return groups[0]
+        return None
 
     def nth_active_window_id(self, n: int = 0) -> int:
         if n <= 0:
@@ -553,6 +555,7 @@ class Tab:  # {{{
         candidates = neighbors.get(which)
         if candidates:
             return self.most_recent_group(candidates)
+        return None
 
     @ac('win', '''
         Focus the neighboring window in the current tab
@@ -794,6 +797,7 @@ class TabManager:  # {{{
             delta = -1 if loc == 'left' else 1
             idx = (len(self.tabs) + self.active_tab_idx + delta) % len(self.tabs)
             return self.tabs[idx]
+        return None
 
     def goto_tab(self, tab_num: int) -> None:
         if tab_num >= len(self.tabs):
@@ -856,6 +860,7 @@ class TabManager:  # {{{
         t = self.active_tab
         if t is not None:
             return t.active_window
+        return None
 
     @property
     def number_of_windows_with_running_programs(self) -> int:
@@ -875,6 +880,7 @@ class TabManager:  # {{{
         for t in self.tabs:
             if t.id == tab_id:
                 return t
+        return None
 
     def move_tab(self, delta: int = 1) -> None:
         if len(self.tabs) > 1:

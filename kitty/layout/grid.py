@@ -81,6 +81,7 @@ class Grid(Layout):
                 if idx == window_idx:
                     return row_num, col_num
                 row_num += 1
+            return 0, 0
 
         row_num, col_num = position_for_window_idx(idx)
 

@@ -333,6 +333,7 @@ class Child:
         with suppress(Exception):
             assert self.pid is not None
             return cwd_of_process(self.pid)
+        return None
 
     @property
     def pid_for_cwd(self) -> Optional[int]:
@@ -349,6 +350,7 @@ class Child:
         with suppress(Exception):
             assert self.pid_for_cwd is not None
             return cwd_of_process(self.pid_for_cwd) or None
+        return None
 
     @property
     def foreground_environ(self) -> Dict[str, str]:

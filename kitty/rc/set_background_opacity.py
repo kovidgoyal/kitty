@@ -53,6 +53,7 @@ cause colors to be changed in all windows.
         windows = self.windows_for_payload(boss, window, payload_get)
         for os_window_id in {w.os_window_id for w in windows}:
             boss._set_os_window_background_opacity(os_window_id, payload_get('opacity'))
+        return None
 
 
 set_background_opacity = SetBackgroundOpacity()

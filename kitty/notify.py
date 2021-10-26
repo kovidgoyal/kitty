@@ -218,3 +218,4 @@ def handle_notification_cmd(
         cmd = parse_osc_777(raw_data)
         notify_with_command(cmd, window_id, notify_implementation)
         return cmd
+    return None

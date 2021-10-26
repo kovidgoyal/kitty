@@ -119,6 +119,7 @@ windows).
 
         for tab in dirtied_tabs.values():
             tab.relayout()
+        return None
 
 
 set_spacing = SetSpacing()

@@ -107,6 +107,7 @@ this option, any color arguments are ignored and --configured and --all are impl
             if default_bg_changed:
                 boss.default_bg_changed_for(w.id)
             w.refresh()
+        return None
 
 
 set_colors = SetColors()

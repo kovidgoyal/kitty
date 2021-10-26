@@ -594,6 +594,7 @@ class Window:
         if not text:
             return True
         self.write_to_child(text)
+        return False
 
     @ac('debug', 'Show a dump of the current lines in the scrollback + screen with their line attributes')
     def dump_lines_with_attrs(self) -> None:

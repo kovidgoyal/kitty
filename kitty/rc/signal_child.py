@@ -47,6 +47,7 @@ class SignalChild(RemoteCommand):
         for window in windows:
             if window:
                 window.signal_child(*signals)
+        return None
 
 
 signal_child = SignalChild()

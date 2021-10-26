@@ -83,6 +83,7 @@ class Handler:
         for sc, action in self._key_shortcuts.items():
             if key_event.matches(sc):
                 return action
+        return None
 
     def __enter__(self) -> None:
         if self._image_manager is not None:

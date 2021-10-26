@@ -45,6 +45,7 @@ the command will exit with a success code.
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
                 tab.last_used_layout()
+        return None
 
 
 last_used_layout = LastUsedLayout()

@@ -203,6 +203,7 @@ class ThemesHandler(Handler):
             col = color_as_sharp(color_from_int(o.color_table[i]))
             cmds.append(f'{i};{col}')
         self.print(end='\033]4;' + ';'.join(cmds) + '\033\\')
+        return True
 
     def redraw_after_category_change(self) -> None:
         self.themes_list.update_themes(self.all_themes.filtered(self.filter_map[self.current_category]))

@@ -49,6 +49,7 @@ the font size for any newly created OS Windows in the future.
         boss.change_font_size(
             payload_get('all'),
             payload_get('increment_op'), payload_get('size'))
+        return None
 
 
 set_font_size = SetFontSize()

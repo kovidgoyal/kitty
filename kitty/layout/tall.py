@@ -203,6 +203,7 @@ class Tall(Layout):
             if self.layout_opts.full_size > 1:
                 self.layout_opts.full_size -= 1
                 return True
+        return None
 
     def minimal_borders(self, all_windows: WindowList) -> Generator[BorderLine, None, None]:
         num = all_windows.num_groups

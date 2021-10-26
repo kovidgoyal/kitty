@@ -57,6 +57,7 @@ want to allow other programs to change it afterwards, use this option.
                     window.title_changed(payload_get('title'))
                 else:
                     window.set_title(payload_get('title'))
+        return None
 
 
 set_window_title = SetWindowTitle()

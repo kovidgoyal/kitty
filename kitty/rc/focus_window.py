@@ -43,6 +43,7 @@ the command will exit with a success code.
                 if os_window_id:
                     focus_os_window(os_window_id, True)
                 break
+        return None
 
 
 focus_window = FocusWindow()

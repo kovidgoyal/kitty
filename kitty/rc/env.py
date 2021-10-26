@@ -43,6 +43,7 @@ class Env(RemoteCommand):
             else:
                 env.pop(k, None)
         set_default_env(env)
+        return None
 
 
 env = Env()

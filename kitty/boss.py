@@ -9,8 +9,8 @@ from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, Optional, Tuple, Union,
-    cast
+    Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple,
+    Union, cast
 )
 from weakref import WeakValueDictionary
 
@@ -27,16 +27,16 @@ from .constants import (
 )
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
-    GLFW_MOD_SUPER, IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED,
-    ChildMonitor, KeyEvent, add_timer, apply_options_update,
-    background_opacity_of, change_background_opacity, change_os_window_state,
-    cocoa_set_menubar_title, create_os_window, GLFW_PRESS, GLFW_MOUSE_BUTTON_LEFT,
-    current_application_quit_request, current_os_window, destroy_global_data,
-    focus_os_window, get_clipboard_string, get_options, get_os_window_size,
-    global_font_size, mark_os_window_for_close, os_window_font_size,
-    patch_global_colors, redirect_mouse_handling, ring_bell, safe_pipe,
-    set_application_quit_request, set_background_image, set_boss,
-    set_clipboard_string, set_in_sequence_mode, set_options,
+    GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
+    IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED, ChildMonitor, KeyEvent,
+    add_timer, apply_options_update, background_opacity_of,
+    change_background_opacity, change_os_window_state, cocoa_set_menubar_title,
+    create_os_window, current_application_quit_request, current_os_window,
+    destroy_global_data, focus_os_window, get_clipboard_string, get_options,
+    get_os_window_size, global_font_size, mark_os_window_for_close,
+    os_window_font_size, patch_global_colors, redirect_mouse_handling,
+    ring_bell, safe_pipe, set_application_quit_request, set_background_image,
+    set_boss, set_clipboard_string, set_in_sequence_mode, set_options,
     set_os_window_size, thread_write, toggle_fullscreen, toggle_maximized
 )
 from .key_encoding import get_name_to_functional_number_map
@@ -234,7 +234,7 @@ class Boss:
         self.os_window_map[os_window_id] = tm
         return os_window_id
 
-    def list_os_windows(self, self_window: Optional[Window] = None) -> Generator[OSWindowDict, None, None]:
+    def list_os_windows(self, self_window: Optional[Window] = None) -> Iterator[OSWindowDict]:
         with cached_process_data():
             active_tab, active_window = self.active_tab, self.active_window
             active_tab_manager = self.active_tab_manager
@@ -249,20 +249,20 @@ class Boss:
                 }
 
     @property
-    def all_tab_managers(self) -> Generator[TabManager, None, None]:
+    def all_tab_managers(self) -> Iterator[TabManager]:
         yield from self.os_window_map.values()
 
     @property
-    def all_tabs(self) -> Generator[Tab, None, None]:
+    def all_tabs(self) -> Iterator[Tab]:
         for tm in self.all_tab_managers:
             yield from tm
 
     @property
-    def all_windows(self) -> Generator[Window, None, None]:
+    def all_windows(self) -> Iterator[Window]:
         for tab in self.all_tabs:
             yield from tab
 
-    def match_windows(self, match: str) -> Generator[Window, None, None]:
+    def match_windows(self, match: str) -> Iterator[Window]:
         try:
             field, exp = match.split(':', 1)
         except ValueError:
@@ -305,8 +305,9 @@ class Boss:
             for w in tab:
                 if w.id == window.id:
                     return tab
+        return None
 
-    def match_tabs(self, match: str) -> Generator[Tab, None, None]:
+    def match_tabs(self, match: str) -> Iterator[Tab]:
         try:
             field, exp = match.split(':', 1)
         except ValueError:
@@ -359,6 +360,7 @@ class Boss:
                         if switch_os_window_if_needed and current_os_window() != os_window_id:
                             focus_os_window(os_window_id, True)
                         return os_window_id
+        return None
 
     def _new_os_window(self, args: Union[SpecialWindowInstance, Iterable[str]], cwd_from: Optional[int] = None) -> int:
         if isinstance(args, SpecialWindowInstance):
@@ -377,6 +379,7 @@ class Boss:
         t = self.active_tab
         if t is not None:
             return t.active_window_for_cwd
+        return None
 
     @ac('win', 'New OS Window with the same working directory as the currently active window')
     def new_os_window_with_cwd(self, *args: str) -> None:
@@ -595,7 +598,7 @@ class Boss:
             run_update_check(get_options().update_check_interval * 60 * 60)
             self.update_check_started = True
 
-    def handle_click_on_tab(self, os_window_id: int, x: int, button: int, modifiers: int, action: int) -> int:
+    def handle_click_on_tab(self, os_window_id: int, x: int, button: int, modifiers: int, action: int) -> None:
         tm = self.os_window_map.get(os_window_id)
         if tm is not None:
             tm.handle_click_on_tab(x, button, modifiers, action)
@@ -751,20 +754,17 @@ class Boss:
     @property
     def active_tab_manager(self) -> Optional[TabManager]:
         os_window_id = current_os_window()
-        if os_window_id is not None:
-            return self.os_window_map.get(os_window_id)
+        return None if os_window_id is None else self.os_window_map.get(os_window_id)
 
     @property
     def active_tab(self) -> Optional[Tab]:
         tm = self.active_tab_manager
-        if tm is not None:
-            return tm.active_tab
+        return None if tm is None else tm.active_tab
 
     @property
     def active_window(self) -> Optional[Window]:
         t = self.active_tab
-        if t is not None:
-            return t.active_window
+        return None if t is None else t.active_window
 
     def set_pending_sequences(self, sequences: SubSequenceMap, default_pending_action: Optional[KeyAction] = None) -> None:
         self.pending_sequences = sequences
@@ -783,6 +783,7 @@ class Boss:
                 return True
         elif isinstance(key_action, KeyAction):
             return self.dispatch_action(key_action)
+        return False
 
     def clear_pending_sequences(self) -> None:
         self.pending_sequences = self.default_pending_action = None
@@ -1530,7 +1531,7 @@ class Boss:
         else:
             subprocess.Popen(cmd, env=env, cwd=cwd)
 
-    def pipe(self, source: str, dest: str, exe: str, *args: str) -> Window:
+    def pipe(self, source: str, dest: str, exe: str, *args: str) -> Optional[Window]:
         cmd = [exe] + list(args)
         window = self.active_window
         cwd_from = window.child.pid_for_cwd if window else None
@@ -1559,6 +1560,7 @@ class Boss:
         else:
             env, stdin = self.process_stdin_source(stdin=source, window=window)
             self.run_background_process(cmd, cwd_from=cwd_from, stdin=stdin, env=env)
+        return None
 
     def args_to_special_window(self, args: Iterable[str], cwd_from: Optional[int] = None) -> SpecialWindowInstance:
         args = list(args)
@@ -1591,6 +1593,7 @@ class Boss:
         tm = self.active_tab_manager
         if tm is not None:
             return tm.new_tab(special_window=special_window, cwd_from=cwd_from, as_neighbor=as_neighbor)
+        return None
 
     def _create_tab(self, args: List[str], cwd_from: Optional[int] = None) -> None:
         as_neighbor = False
@@ -1615,21 +1618,22 @@ class Boss:
 
     def _new_window(self, args: List[str], cwd_from: Optional[int] = None) -> Optional[Window]:
         tab = self.active_tab
-        if tab is not None:
-            allow_remote_control = False
-            location = None
-            if args and args[0].startswith('!'):
-                location = args[0][1:].lower()
-                args = args[1:]
-            if args and args[0] == '@':
-                args = args[1:]
-                allow_remote_control = True
-            if args:
-                return tab.new_special_window(
-                    self.args_to_special_window(args, cwd_from=cwd_from),
-                    location=location, allow_remote_control=allow_remote_control)
-            else:
-                return tab.new_window(cwd_from=cwd_from, location=location, allow_remote_control=allow_remote_control)
+        if tab is None:
+            return None
+        allow_remote_control = False
+        location = None
+        if args and args[0].startswith('!'):
+            location = args[0][1:].lower()
+            args = args[1:]
+        if args and args[0] == '@':
+            args = args[1:]
+            allow_remote_control = True
+        if args:
+            return tab.new_special_window(
+                self.args_to_special_window(args, cwd_from=cwd_from),
+                location=location, allow_remote_control=allow_remote_control)
+        else:
+            return tab.new_window(cwd_from=cwd_from, location=location, allow_remote_control=allow_remote_control)
 
     @ac('win', 'Create a new window')
     def new_window(self, *args: str) -> None:

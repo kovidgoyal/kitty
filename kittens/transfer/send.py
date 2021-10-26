@@ -312,6 +312,7 @@ class SendManager:
             ans = self.files[self.active_idx]
             if ans.state is FileState.transmitting:
                 return ans
+        return None
 
     def activate_next_ready_file(self) -> Optional[File]:
         if self.active_idx is not None:
@@ -325,6 +326,7 @@ class SendManager:
                 return f
         self.active_idx = None
         self.update_collective_statuses()
+        return None
 
     def update_collective_statuses(self) -> None:
         found_not_started = found_not_done = False

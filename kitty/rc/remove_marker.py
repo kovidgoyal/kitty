@@ -34,6 +34,7 @@ If specified apply marker to the window this command is run in, rather than the 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
         for window in self.windows_for_match_payload(boss, window, payload_get):
             window.remove_marker()
+        return None
 
 
 remove_marker = RemoveMarker()

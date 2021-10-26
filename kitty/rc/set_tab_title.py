@@ -37,6 +37,7 @@ class SetTabTitle(RemoteCommand):
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
                 tab.set_title(payload_get('title'))
+        return None
 
 
 set_tab_title = SetTabTitle()

@@ -96,6 +96,7 @@ using this option means that you will not be notified of failures.
                     boss.toggle_fullscreen(os_window_id)
                 elif ac == 'toggle-maximized':
                     boss.toggle_maximized(os_window_id)
+        return None
 
 
 resize_os_window = ResizeOSWindow()

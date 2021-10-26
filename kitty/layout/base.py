@@ -69,6 +69,7 @@ def idx_for_id(win_id: int, windows: Iterable[WindowType]) -> Optional[int]:
     for i, w in enumerate(windows):
         if w.id == win_id:
             return i
+    return None
 
 
 def set_layout_options(opts: Options) -> None:

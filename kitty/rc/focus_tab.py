@@ -41,6 +41,7 @@ using this option means that you will not be notified of failures.
             if tab:
                 boss.set_active_tab(tab)
                 break
+        return None
 
 
 focus_tab = FocusTab()

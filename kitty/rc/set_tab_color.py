@@ -76,6 +76,7 @@ If specified close the tab this command is run in, rather than the active tab.
                 for k, v in s.items():
                     setattr(tab, k, v)
                 tab.mark_tab_bar_dirty()
+        return None
 
 
 set_tab_color = SetTabColor()

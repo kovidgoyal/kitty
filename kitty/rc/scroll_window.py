@@ -69,6 +69,7 @@ class ScrollWindow(RemoteCommand):
                         func = getattr(window, f'scroll_{unit}_{direction}')
                         for i in range(abs(amt)):
                             func()
+        return None
 
 
 scroll_window = ScrollWindow()

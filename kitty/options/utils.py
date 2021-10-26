@@ -764,7 +764,7 @@ def kitten_alias(val: str) -> Iterable[Tuple[str, List[str]]]:
 def symbol_map(val: str) -> Iterable[Tuple[Tuple[int, int], str]]:
     parts = val.split()
 
-    def abort() -> Dict[Tuple[int, int], str]:
+    def abort() -> None:
         log_error(f'Symbol map: {val} is invalid, ignoring')
 
     if len(parts) < 2:

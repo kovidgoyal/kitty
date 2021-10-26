@@ -578,3 +578,4 @@ class TabBar:
             for i, (a, b) in enumerate(self.cell_ranges):
                 if a <= x <= b:
                     return i
+        return None

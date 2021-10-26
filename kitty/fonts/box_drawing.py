@@ -10,7 +10,7 @@ import math
 from functools import partial as p, wraps
 from itertools import repeat
 from typing import (
-    Any, Callable, Dict, Generator, Iterable, List, MutableSequence, Optional,
+    Any, Callable, Dict, Iterable, Iterator, List, MutableSequence, Optional,
     Sequence, Tuple, cast
 )
 
@@ -314,6 +314,7 @@ def mid_lines(buf: SSByteArray, width: int, height: int, level: int = 1, pts: It
             return width - 1, mid_y
         if p == 'b':
             return mid_x, height - 1
+        raise KeyError(f'Unknown p: {p}')
 
     for x in pts:
         p1, p2 = map(pt_to_coords, x)
@@ -353,7 +354,7 @@ def find_bezier_for_D(width: int, height: int) -> int:
         cx += 1
 
 
-def get_bezier_limits(bezier_x: ParameterizedFunc, bezier_y: ParameterizedFunc) -> Generator[Tuple[float, float], None, int]:
+def get_bezier_limits(bezier_x: ParameterizedFunc, bezier_y: ParameterizedFunc) -> Iterator[Tuple[float, float]]:
     start_x = int(bezier_x(0))
     max_x = int(bezier_x(0.5))
     last_t, t_limit = 0., 0.5
@@ -1043,8 +1044,9 @@ def render_missing_glyph(buf: BufType, width: int, height: int) -> None:
 
 def test_char(ch: str, sz: int = 48) -> None:
     # kitty +runpy "from kitty.fonts.box_drawing import test_char; test_char('XXX')"
-    from .render import display_bitmap, setup_for_testing
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
+
+    from .render import display_bitmap, setup_for_testing
     with setup_for_testing('monospace', sz) as (_, width, height):
         buf = bytearray(width * height)
         try:
@@ -1062,8 +1064,9 @@ def test_char(ch: str, sz: int = 48) -> None:
 
 
 def test_drawing(sz: int = 48, family: str = 'monospace', start: int = 0x2500, num_rows: int = 10, num_cols: int = 16) -> None:
-    from .render import display_bitmap, setup_for_testing
     from kitty.fast_data_types import concat_cells, set_send_sprite_to_gpu
+
+    from .render import display_bitmap, setup_for_testing
 
     with setup_for_testing(family, sz) as (_, width, height):
         space = bytearray(width * height)

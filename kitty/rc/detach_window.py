@@ -53,6 +53,7 @@ If specified detach the window this command is run in, rather than the active wi
         kwargs = {'target_os_window_id': newval} if target_tab_id is None else {'target_tab_id': target_tab_id}
         for window in windows:
             boss._move_window_to(window=window, **kwargs)
+        return None
 
 
 detach_window = DetachWindow()

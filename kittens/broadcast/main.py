@@ -106,6 +106,7 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
     loop = Loop()
     handler = Broadcast(opts, items)
     loop.loop(handler)
+    return None
 
 
 if __name__ == '__main__':

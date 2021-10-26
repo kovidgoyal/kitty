@@ -64,6 +64,7 @@ as well.
         for tab in tabs:
             if tab:
                 tab.set_enabled_layouts(layouts)
+        return None
 
 
 set_enabled_layouts = SetEnabledLayouts()

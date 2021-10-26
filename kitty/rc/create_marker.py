@@ -45,6 +45,7 @@ If specified apply marker to the window this command is run in, rather than the 
         args = payload_get('marker_spec')
         for window in self.windows_for_match_payload(boss, window, payload_get):
             window.set_marker(args)
+        return None
 
 
 create_marker = CreateMarker()

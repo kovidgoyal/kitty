@@ -124,6 +124,7 @@ failed, the command will exit with a success code.
         except ValueError as err:
             err.hide_traceback = True  # type: ignore
             raise
+        return None
 
 
 set_background_image = SetBackgroundImage()

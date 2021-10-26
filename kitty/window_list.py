@@ -108,6 +108,7 @@ class WindowGroup:
         if self.windows:
             w: WindowType = self.windows[-1]
             return w.geometry
+        return None
 
     @property
     def is_visible_in_layout(self) -> bool:
@@ -195,6 +196,7 @@ class WindowList:
         for i, gr in enumerate(self.groups):
             if gr.id == group_id:
                 return self.set_active_group_idx(i)
+        return False
 
     def change_tab(self, tab: TabType) -> None:
         self.tabref = weakref.ref(tab)
@@ -241,32 +243,38 @@ class WindowList:
         for g in self.groups:
             if q in g:
                 return g
+        return None
 
     def group_idx_for_window(self, x: WindowOrId) -> Optional[int]:
         q = self.id_map[x] if isinstance(x, int) else x
         for i, g in enumerate(self.groups):
             if q in g:
                 return i
+        return None
 
     def windows_in_group_of(self, x: WindowOrId) -> Iterator[WindowType]:
         g = self.group_for_window(x)
         if g is not None:
             return iter(g)
+        return iter(())
 
     @property
     def active_group(self) -> Optional[WindowGroup]:
         with suppress(Exception):
             return self.groups[self.active_group_idx]
+        return None
 
     @property
     def active_window(self) -> Optional[WindowType]:
         with suppress(Exception):
             return self.id_map[self.groups[self.active_group_idx].active_window_id]
+        return None
 
     @property
     def active_group_base(self) -> Optional[WindowType]:
         with suppress(Exception):
             return self.id_map[self.groups[self.active_group_idx].base_window_id]
+        return None
 
     def set_active_window_group_for(self, x: WindowOrId) -> None:
         try:
@@ -350,6 +358,7 @@ class WindowList:
             n = max(0, min(n, self.num_groups - 1))
         if 0 <= n < self.num_groups:
             return self.id_map.get(self.groups[n].active_window_id)
+        return None
 
     def activate_next_window_group(self, delta: int) -> None:
         self.set_active_group_idx(wrap_increment(self.active_group_idx, self.num_groups, delta))

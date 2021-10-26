@@ -57,6 +57,7 @@ If specified detach the tab this command is run in, rather than the active tab.
 
         for tab in tabs:
             boss._move_tab_to(tab=tab, **kwargs)
+        return None
 
 
 detach_tab = DetachTab()

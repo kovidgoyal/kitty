@@ -35,6 +35,7 @@ If specified close the tab of the window this command is run in, rather than the
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
                 boss.close_tab_no_confirm(tab)
+        return None
 
 
 close_tab = CloseTab()

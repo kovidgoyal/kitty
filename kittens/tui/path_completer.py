@@ -132,6 +132,7 @@ class PathCompleter:
             options = self.cache[text] = tuple(find_completions(text))
         if options and state < len(options):
             return options[state]
+        return None
 
     def __exit__(self, *a: Any) -> bool:
         import readline
@@ -143,6 +144,7 @@ class PathCompleter:
     def input(self) -> str:
         with self:
             return input(self.prompt)
+        return ''
 
 
 def develop() -> None:

@@ -61,7 +61,7 @@ def setup_bash_integration() -> None:
     setup_integration('bash', os.path.expanduser('~/.bashrc'))
 
 
-def atomic_symlink(destination: str, in_directory: str) -> str:
+def atomic_symlink(destination: str, in_directory: str) -> None:
     os.makedirs(in_directory, exist_ok=True)
     name = os.path.basename(destination)
     tmpname = os.path.join(in_directory, f'{name}-{os.getpid()}-{time.monotonic()}')
@@ -97,6 +97,7 @@ def get_supported_shell_name(path: str) -> Optional[str]:
     name = os.path.basename(path).split('.')[0].lower()
     if name in SUPPORTED_SHELLS:
         return name
+    return None
 
 
 @run_once

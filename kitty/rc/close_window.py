@@ -34,6 +34,7 @@ If specified close the window this command is run in, rather than the active win
         for window in self.windows_for_match_payload(boss, window, payload_get):
             if window:
                 boss.close_window(window)
+        return None
 
 
 close_window = CloseWindow()

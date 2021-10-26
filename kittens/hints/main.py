@@ -688,6 +688,7 @@ def main(args: List[str]) -> Optional[Dict[str, Any]]:
         import traceback
         traceback.print_exc()
         input(_('Press Enter to quit'))
+    return None
 
 
 def linenum_handle_result(args: List[str], data: Dict[str, Any], target_window_id: int, boss: BossType, extra_cli_args: Sequence[str], *a: Any) -> None:

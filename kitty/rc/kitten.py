@@ -51,6 +51,7 @@ class Kitten(RemoteCommand):
                 break
         if isinstance(retval, (str, bool)):
             return retval
+        return None
 
 
 kitten = Kitten()

@@ -24,6 +24,7 @@ def find_differ() -> Optional[str]:
         return GIT_DIFF
     if shutil.which('diff'):
         return DIFF_DIFF
+    return None
 
 
 def set_diff_command(opt: str) -> None:

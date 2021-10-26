@@ -157,6 +157,7 @@ class Table:
     def current_codepoint(self) -> Optional[int]:
         if self.codepoints:
             return self.codepoints[self.current_idx]
+        return None
 
     def set_codepoints(self, codepoints: List[int], mode: str = HEX, current_idx: int = 0) -> None:
         self.codepoints = codepoints

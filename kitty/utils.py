@@ -61,6 +61,7 @@ def platform_window_id(os_window_id: int) -> Optional[int]:
         from .fast_data_types import x11_window_id
         with suppress(Exception):
             return x11_window_id(os_window_id)
+    return None
 
 
 def load_shaders(name: str, vertex_name: str = '', fragment_name: str = '') -> Tuple[str, str]:
@@ -284,6 +285,7 @@ def init_startup_notification(window_handle: Optional[int], startup_id: Optional
     except Exception:
         import traceback
         traceback.print_exc()
+    return None
 
 
 def end_startup_notification(ctx: Optional['StartupCtx']) -> None:
@@ -500,6 +502,7 @@ def resolve_editor_cmd(editor: str, shell_env: Mapping[str, str]) -> Optional[st
         q = shutil.which(editor_exe, path=shell_env['PATH'])
         if q:
             return patched(q)
+    return None
 
 
 def get_editor_from_env(env: Mapping[str, str]) -> Optional[str]:
@@ -509,6 +512,7 @@ def get_editor_from_env(env: Mapping[str, str]) -> Optional[str]:
             editor = resolve_editor_cmd(editor, env)
             if editor:
                 return editor
+    return None
 
 
 def get_editor_from_env_vars(opts: Optional[Options] = None) -> List[str]:
