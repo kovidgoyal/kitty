@@ -29,6 +29,7 @@ from .fonts.render import set_font_family
 from .options.types import Options
 from .os_window_size import initial_window_size_func
 from .session import get_os_window_sizing_data
+from .shell_integration import setup_shell_integration
 from .types import SingleKey
 from .utils import (
     detach, expandvars, log_error, single_instance,
@@ -150,9 +151,6 @@ def _run_app(opts: Options, args: CLIOptions, bad_lines: Sequence[BadLine] = ())
     if not is_wayland() and not is_macos:  # no window icons on wayland
         set_x11_window_icon()
     load_shader_programs.use_selection_fg = opts.selection_foreground is not None
-    if opts.shell_integration != 'disabled':
-        from .shell_integration import setup_shell_integration
-        setup_shell_integration()
     with cached_values_for(run_app.cached_values_name) as cached_values:
         with startup_notification_handler(extra_callback=run_app.first_window_callback) as pre_show_callback:
             window_id = create_os_window(
@@ -274,7 +272,9 @@ def setup_environment(opts: Options, cli_opts: CLIOptions) -> None:
     if cli_opts.listen_on and opts.allow_remote_control != 'n':
         cli_opts.listen_on = expand_listen_on(cli_opts.listen_on, from_config_file)
         os.environ['KITTY_LISTEN_ON'] = cli_opts.listen_on
-    set_default_env(opts.env.copy())
+    env = opts.env.copy()
+    setup_shell_integration(opts, env)
+    set_default_env(env)
 
 
 def set_locale() -> None:

@@ -5,12 +5,11 @@
 import os
 import time
 from contextlib import suppress
-from typing import Optional, Union
+from typing import Optional, Union, Dict
 
+from .options.types import Options
 from .config import atomic_save
 from .constants import shell_integration_dir
-from .fast_data_types import get_options
-from .types import run_once
 from .utils import log_error, resolved_shell
 
 posix_template = '''
@@ -50,14 +49,14 @@ def setup_integration(shell_name: str, rc_path: str, template: str = posix_templ
         atomic_write(rc_path, newrc)
 
 
-def setup_zsh_integration() -> None:
+def setup_zsh_integration(env: Dict[str, str]) -> None:
     base = os.environ.get('ZDOTDIR', os.path.expanduser('~'))
     rc = os.path.join(base, '.zshrc')
     if os.path.exists(rc):  # dont prevent zsh-newuser-install from running
         setup_integration('zsh', rc)
 
 
-def setup_bash_integration() -> None:
+def setup_bash_integration(env: Dict[str, str]) -> None:
     setup_integration('bash', os.path.expanduser('~/.bashrc'))
 
 
@@ -73,17 +72,16 @@ def atomic_symlink(destination: str, in_directory: str) -> None:
         raise
 
 
-def setup_fish_integration() -> None:
-    base = os.environ.get('XDG_CONFIG_HOME', os.path.expanduser('~/.config'))
-    base = os.path.join(base, 'fish')
-    os.makedirs(os.path.join(base, 'completions'), exist_ok=True)
-    path = os.path.join(shell_integration_dir, 'kitty.fish')
-    atomic_symlink(path, os.path.join(base, 'conf.d'))
-    from .complete import completion_scripts
-    path = os.path.join(base, 'completions', 'kitty.fish')
-    rc = safe_read(path)
-    if rc != completion_scripts['fish2']:
-        atomic_write(path, completion_scripts['fish2'])
+def setup_fish_integration(env: Dict[str, str]) -> None:
+    if 'XDG_DATA_DIRS' in env:
+        val = env.get('XDG_DATA_DIRS', '')
+        dirs = list(filter(None, val.split(os.pathsep)))
+    else:
+        val = os.environ.get('XDG_DATA_DIRS', '')
+        dirs = list(filter(None, val.split(os.pathsep)))
+    if shell_integration_dir not in dirs:
+        dirs.insert(0, shell_integration_dir)
+    env['XDG_DATA_DIRS'] = os.pathsep.join(dirs)
 
 
 SUPPORTED_SHELLS = {
@@ -100,19 +98,19 @@ def get_supported_shell_name(path: str) -> Optional[str]:
     return None
 
 
-@run_once
-def setup_shell_integration() -> None:
-    opts = get_options()
-    q = opts.shell_integration.split()
-    if opts.shell_integration == 'disabled' or 'no-rc' in q:
-        return
+def setup_shell_integration(opts: Options, env: Dict[str, str]) -> bool:
+    q = set(opts.shell_integration.split())
+    if q & {'disabled', 'no-rc'}:
+        return False
     shell = get_supported_shell_name(resolved_shell(opts)[0])
     if shell is None:
-        return
+        return False
     func = SUPPORTED_SHELLS[shell]
     try:
-        func()
+        func(env)
     except Exception:
         import traceback
         traceback.print_exc()
         log_error(f'Failed to setup shell integration for: {shell}')
+        return False
+    return True

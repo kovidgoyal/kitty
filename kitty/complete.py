@@ -17,6 +17,7 @@ from .cli import (
     OptionDict, OptionSpecSeq, options_for_completion, parse_option_spec,
     prettify
 )
+from .constants import shell_integration_dir
 from .fast_data_types import truncate_point_for_length, wcswidth
 from .rc.base import all_command_names, command_for_name
 from .shell import options_for_cmd
@@ -128,6 +129,11 @@ def remote_control_command_names() -> Tuple[str, ...]:
 # Shell specific code {{{
 
 
+def load_fish2_completion() -> str:
+    with open(os.path.join(shell_integration_dir, 'fish', 'vendor_completions.d', 'kitty.fish')) as f:
+        return f.read()
+
+
 completion_scripts = {
     'zsh': '''#compdef kitty
 
@@ -140,7 +146,7 @@ _kitty() {
     fi
 }
 compdef _kitty kitty
-''',
+'''.__str__,
     'bash': '''
 _kitty_completions() {
     local src
@@ -154,7 +160,7 @@ _kitty_completions() {
 }
 
 complete -o nospace -F _kitty_completions kitty
-''',
+'''.__str__,
     'fish': '''
 function __kitty_completions
     # Send all words up to the one before the cursor
@@ -162,15 +168,8 @@ function __kitty_completions
 end
 
 complete -f -c kitty -a "(__kitty_completions)"
-''',
-    'fish2': '''
-if functions -q _ksi_completions
-    complete -f -c kitty -a "(_ksi_completions)"
-else
-    complete -f -c kitty -a "(commandline -cop | kitty +complete fish)"
-end
-''',
-
+'''.__str__,
+    'fish2': load_fish2_completion,
 }
 
 ParseResult = Tuple[List[str], bool]
@@ -670,7 +669,7 @@ def find_completions(words: Sequence[str], new_word: bool, entry_points: Iterabl
 
 
 def setup(cstyle: str) -> None:
-    print(completion_scripts[cstyle])
+    print(completion_scripts[cstyle]())
 
 
 def main(args: Sequence[str], entry_points: Iterable[str], namespaced_entry_points: Iterable[str]) -> None:
