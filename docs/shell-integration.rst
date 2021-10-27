@@ -97,7 +97,7 @@ code used for each shell below:
 
 .. tab:: fish
 
-    .. literalinclude:: ../shell-integration/kitty.fish
+    .. literalinclude:: ../shell-integration/fish/vendor_conf.d/kitty-shell-integration.fish
         :language: fish
 
 .. tab:: bash
