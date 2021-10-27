@@ -209,7 +209,7 @@ def truncate_points(line: str, width: int) -> Generator[int, None, None]:
             break
 
 
-def split_with_highlights(line: str, width: int, highlights: List, bg_highlight: Optional[Segment] = None) -> List:
+def split_with_highlights(line: str, width: int, highlights: List[Segment], bg_highlight: Optional[Segment] = None) -> List[str]:
     truncate_pts = list(truncate_points(line, width))
     return _split_with_highlights(line, truncate_pts, highlights, bg_highlight)
 
@@ -270,7 +270,7 @@ def hunk_title(hunk_num: int, hunk: Hunk, margin_size: int, available_cols: int)
 def render_half_line(
     line_number: int,
     line: str,
-    highlights: List,
+    highlights: List[Segment],
     ltype: str,
     margin_size: int,
     available_cols: int,

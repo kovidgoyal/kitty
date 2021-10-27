@@ -251,7 +251,7 @@ def get_ranges(items: List[int]) -> Generator[Union[int, Tuple[int, int]], None,
             yield a, b
 
 
-def write_case(spec: Union[Tuple, int], p: Callable) -> None:
+def write_case(spec: Union[Tuple[int, ...], int], p: Callable[..., None]) -> None:
     if isinstance(spec, tuple):
         p('\t\tcase 0x{:x} ... 0x{:x}:'.format(*spec))
     else:
@@ -259,7 +259,7 @@ def write_case(spec: Union[Tuple, int], p: Callable) -> None:
 
 
 @contextmanager
-def create_header(path: str, include_data_types: bool = True) -> Generator[Callable, None, None]:
+def create_header(path: str, include_data_types: bool = True) -> Generator[Callable[..., None], None, None]:
     with open(path, 'w') as f:
         p = partial(print, file=f)
         p('// unicode data, built from the unicode standard on:', date.today())
@@ -299,7 +299,7 @@ def gen_emoji() -> None:
 
 def category_test(
     name: str,
-    p: Callable,
+    p: Callable[..., None],
     classes: Iterable[str],
     comment: str,
     use_static: bool = False,
@@ -329,7 +329,7 @@ def category_test(
     p('\treturn false;\n}\n')
 
 
-def codepoint_to_mark_map(p: Callable, mark_map: List[int]) -> Dict[int, int]:
+def codepoint_to_mark_map(p: Callable[..., None], mark_map: List[int]) -> Dict[int, int]:
     p('\tswitch(c) { // {{{')
     rmap = {c: m for m, c in enumerate(mark_map)}
     for spec in get_ranges(mark_map):
@@ -522,7 +522,7 @@ def gen_names() -> None:
 def gen_wcwidth() -> None:
     seen: Set[int] = set()
 
-    def add(p: Callable, comment: str, chars_: Union[Set[int], FrozenSet[int]], ret: int) -> None:
+    def add(p: Callable[..., None], comment: str, chars_: Union[Set[int], FrozenSet[int]], ret: int) -> None:
         chars = chars_ - seen
         seen.update(chars)
         p(f'\t\t// {comment} ({len(chars)} codepoints)' + ' {{' '{')

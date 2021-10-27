@@ -170,7 +170,9 @@ texinfo_documents = [
 
 # GitHub linking inline roles {{{
 
-def num_role(which: str, name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []) -> Tuple[List, List]:
+def num_role(
+    which: str, name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []
+) -> Tuple[List[nodes.reference], List[nodes.problematic]]:
     ' Link to a github issue '
     try:
         issue_num = int(text)
@@ -188,7 +190,9 @@ def num_role(which: str, name: str, rawtext: str, text: str, lineno: int, inline
     return [node], []
 
 
-def commit_role(name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []) -> Tuple[List, List]:
+def commit_role(
+    name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []
+) -> Tuple[List[nodes.reference], List[nodes.problematic]]:
     ' Link to a github commit '
     try:
         commit_id = subprocess.check_output(
@@ -264,7 +268,7 @@ def write_remote_control_protocol_docs() -> None:  # {{{
     )
     field_pat = re.compile(r'\s*([a-zA-Z0-9_+]+)\s*:\s*(.+)')
 
-    def format_cmd(p: Callable, name: str, cmd: RemoteCommand) -> None:
+    def format_cmd(p: Callable[..., None], name: str, cmd: RemoteCommand) -> None:
         p(name)
         p('-' * 80)
         lines = (cmd.__doc__ or '').strip().splitlines()
@@ -304,7 +308,7 @@ def write_remote_control_protocol_docs() -> None:  # {{{
 
 # config file docs {{{
 
-class ConfLexer(RegexLexer):
+class ConfLexer(RegexLexer):  # type: ignore
     name = 'Conf'
     aliases = ['conf']
     filenames = ['*.conf']
@@ -343,7 +347,7 @@ class ConfLexer(RegexLexer):
     }
 
 
-class SessionLexer(RegexLexer):
+class SessionLexer(RegexLexer):  # type: ignore
     name = 'Session'
     aliases = ['session']
     filenames = ['*.session']
@@ -359,7 +363,9 @@ class SessionLexer(RegexLexer):
     }
 
 
-def link_role(name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []) -> Tuple[List, List]:
+def link_role(
+    name: str, rawtext: str, text: str, lineno: int, inliner: Any, options: Any = {}, content: Any = []
+) -> Tuple[List[nodes.reference], List[nodes.problematic]]:
     text = text.replace('\n', ' ')
     m = re.match(r'(.+)\s+<(.+?)>', text)
     if m is None:
@@ -376,7 +382,7 @@ def link_role(name: str, rawtext: str, text: str, lineno: int, inliner: Any, opt
 def expand_opt_references(conf_name: str, text: str) -> str:
     conf_name += '.'
 
-    def expand(m: Match) -> str:
+    def expand(m: Match[str]) -> str:
         ref = m.group(1)
         if '<' not in ref and '.' not in ref:
             full_ref = conf_name + ref

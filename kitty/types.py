@@ -107,7 +107,7 @@ else:
             self._override = RunOnce
 
 
-def run_once(f: Callable[[], _T]) -> RunOnce[_T]:
+def run_once(f: Callable[[], _T]) -> 'RunOnce[_T]':
     return RunOnce(f)
 
 
