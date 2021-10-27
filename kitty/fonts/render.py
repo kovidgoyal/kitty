@@ -6,7 +6,8 @@ import sys
 from functools import partial
 from math import ceil, cos, floor, pi
 from typing import (
-    Any, Callable, Dict, Generator, List, Optional, Tuple, Union, cast
+    TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional, Tuple,
+    Union, cast
 )
 
 from kitty.constants import is_macos
@@ -23,9 +24,15 @@ from kitty.typing import CoreTextFont, FontConfigPattern
 from kitty.utils import log_error
 
 if is_macos:
-    from .core_text import get_font_files as get_font_files_coretext, font_for_family as font_for_family_macos, find_font_features
+    from .core_text import (
+        find_font_features, font_for_family as font_for_family_macos,
+        get_font_files as get_font_files_coretext
+    )
 else:
-    from .fontconfig import get_font_files as get_font_files_fontconfig, font_for_family as font_for_family_fontconfig, find_font_features
+    from .fontconfig import (
+        find_font_features, font_for_family as font_for_family_fontconfig,
+        get_font_files as get_font_files_fontconfig
+    )
 
 FontObject = Union[CoreTextFont, FontConfigPattern]
 current_faces: List[Tuple[FontObject, bool, bool]] = []
@@ -200,7 +207,10 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
     )
 
 
-CBufType = ctypes.Array[ctypes.c_ubyte]
+if TYPE_CHECKING:
+    CBufType = ctypes.Array[ctypes.c_ubyte]
+else:
+    CBufType = None
 UnderlineCallback = Callable[[CBufType, int, int, int, int], None]
 
 
@@ -445,6 +455,7 @@ def shape_string(
 
 def display_bitmap(rgb_data: bytes, width: int, height: int) -> None:
     from tempfile import NamedTemporaryFile
+
     from kittens.icat.main import detect_support, show
     if not hasattr(display_bitmap, 'detected') and not detect_support():
         raise SystemExit('Your terminal does not support the graphics protocol')
