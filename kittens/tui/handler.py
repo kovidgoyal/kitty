@@ -156,7 +156,7 @@ class Handler:
     def on_writing_finished(self) -> None:
         pass
 
-    def on_kitty_cmd_response(self, response: Dict) -> None:
+    def on_kitty_cmd_response(self, response: Dict[str, Any]) -> None:
         pass
 
     def on_clipboard_response(self, text: str, from_primary: bool = False) -> None:
@@ -199,7 +199,7 @@ class HandleResult:
     type_of_input: Optional[str] = None
     no_ui: bool = False
 
-    def __init__(self, impl: Callable, type_of_input: Optional[str], no_ui: bool):
+    def __init__(self, impl: Callable[..., Any], type_of_input: Optional[str], no_ui: bool):
         self.impl = impl
         self.no_ui = no_ui
         self.type_of_input = type_of_input
@@ -208,9 +208,9 @@ class HandleResult:
         return self.impl(args, data, target_window_id, boss)
 
 
-def result_handler(type_of_input: Optional[str] = None, no_ui: bool = False) -> Callable[[Callable], HandleResult]:
+def result_handler(type_of_input: Optional[str] = None, no_ui: bool = False) -> Callable[[Callable[..., Any]], HandleResult]:
 
-    def wrapper(impl: Callable) -> HandleResult:
+    def wrapper(impl: Callable[..., Any]) -> HandleResult:
         return HandleResult(impl, type_of_input, no_ui)
 
     return wrapper

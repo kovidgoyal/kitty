@@ -132,7 +132,7 @@ class OutdatedImageMagick(ValueError):
 last_imagemagick_cmd: Sequence[str] = ()
 
 
-def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> CompletedProcess:
+def run_imagemagick(path: str, cmd: Sequence[str], keep_stdout: bool = True) -> 'CompletedProcess[bytes]':
     global last_imagemagick_cmd
     import subprocess
     last_imagemagick_cmd = cmd

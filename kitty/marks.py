@@ -22,7 +22,7 @@ def get_output_variables(left_address: int, right_address: int, color_address: i
     )
 
 
-def marker_from_regex(expression: Union[str, Pattern], color: int, flags: int = re.UNICODE) -> MarkerFunc:
+def marker_from_regex(expression: Union[str, 'Pattern[str]'], color: int, flags: int = re.UNICODE) -> MarkerFunc:
     color = max(1, min(color, 3))
     if isinstance(expression, str):
         pat = re.compile(expression, flags=flags)

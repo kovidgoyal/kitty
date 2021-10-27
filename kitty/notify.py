@@ -194,12 +194,12 @@ def reset_registry() -> None:
     id_counter = count()
 
 
-def notify_with_command(cmd: NotificationCommand, window_id: int, notify: NotifyImplementation = notify_implementation) -> None:
+def notify_with_command(cmd: NotificationCommand, window_id: int, notify_implementation: NotifyImplementation = notify_implementation) -> None:
     title = cmd.title or cmd.body
     body = cmd.body if cmd.title else ''
     if title:
         identifier = 'i' + str(next(id_counter))
-        notify_implementation(title, body, identifier=identifier)
+        notify_implementation(title, body, identifier)
         register_identifier(identifier, cmd, window_id)
 
 

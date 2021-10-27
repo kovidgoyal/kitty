@@ -11,7 +11,7 @@ from functools import partial as p, wraps
 from itertools import repeat
 from typing import (
     Any, Callable, Dict, Iterable, Iterator, List, MutableSequence, Optional,
-    Sequence, Tuple, cast
+    Sequence, Tuple
 )
 
 scale = (0.001, 1., 1.5, 2.)
@@ -168,11 +168,11 @@ class SSByteArray(bytearray):
     supersample_factor = 1
 
 
-def supersampled(supersample_factor: int = 4) -> Callable:
+def supersampled(supersample_factor: int = 4) -> Callable[[Callable[..., None]], Callable[..., None]]:
     # Anti-alias the drawing performed by the wrapped function by
     # using supersampling
 
-    def create_wrapper(f: Callable) -> Callable:
+    def create_wrapper(f: Callable[..., None]) -> Callable[..., None]:
         @wraps(f)
         def supersampled_wrapper(buf: BufType, width: int, height: int, *args: Any, **kw: Any) -> None:
             w, h = supersample_factor * width, supersample_factor * height
@@ -781,7 +781,7 @@ def braille(buf: BufType, width: int, height: int, which: int = 0) -> None:
             braille_dot(buf, width, height, col, row)
 
 
-box_chars: Dict[str, List[Callable]] = {
+box_chars: Dict[str, List[Callable[[BufType, int, int], Any]]] = {
     '─': [hline],
     '━': [p(hline, level=3)],
     '│': [vline],
@@ -1008,7 +1008,7 @@ for starts, func, pattern in (
 
 for chars, func_ in (('╒╕╘╛', dvcorner), ('╓╖╙╜', dhcorner), ('╔╗╚╝', dcorner), ('╟╢╤╧', dpip)):
     for ch in chars:
-        box_chars[ch] = [p(cast(Callable, func_), which=ch)]
+        box_chars[ch] = [p(func_, which=ch)]
 
 for i in range(256):
     box_chars[chr(0x2800 + i)] = [p(braille, which=i)]

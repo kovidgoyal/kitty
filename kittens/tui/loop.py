@@ -193,19 +193,17 @@ class SignalManager:
     def __init__(
         self,
         loop: asyncio.AbstractEventLoop,
-        on_winch: Callable,
-        on_interrupt: Callable,
-        on_term: Callable
+        on_winch: Callable[[], None],
+        on_interrupt: Callable[[], None],
+        on_term: Callable[[], None],
     ) -> None:
         self.asycio_loop = loop
         self.on_winch, self.on_interrupt, self.on_term = on_winch, on_interrupt, on_term
 
     def __enter__(self) -> None:
-        tuple(map(lambda x: self.asycio_loop.add_signal_handler(*x), (
-            (signal.SIGWINCH, self.on_winch),
-            (signal.SIGINT, self.on_interrupt),
-            (signal.SIGTERM, self.on_term)
-        )))
+        self.asycio_loop.add_signal_handler(signal.SIGWINCH, self.on_winch)
+        self.asycio_loop.add_signal_handler(signal.SIGINT, self.on_interrupt)
+        self.asycio_loop.add_signal_handler(signal.SIGTERM, self.on_term)
 
     def __exit__(self, *a: Any) -> None:
         tuple(map(self.asycio_loop.remove_signal_handler, (

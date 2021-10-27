@@ -23,7 +23,7 @@ RESTORE_PRIVATE_MODE_VALUES = '\033[?r'
 SAVE_COLORS = '\033[#P'
 RESTORE_COLORS = '\033[#Q'
 F = TypeVar('F')
-all_cmds: Dict[str, Callable] = {}
+all_cmds: Dict[str, Callable[..., Any]] = {}
 
 
 class Mode(Enum):
@@ -264,7 +264,7 @@ def serialize_gr_command(cmd: Dict[str, Union[int, str]], payload: Optional[byte
 
 
 @cmd
-def gr_command(cmd: Union[Dict, 'GraphicsCommandType'], payload: Optional[bytes] = None) -> str:
+def gr_command(cmd: Union[Dict[str, Union[int, str]], 'GraphicsCommandType'], payload: Optional[bytes] = None) -> str:
     if isinstance(cmd, dict):
         raw = serialize_gr_command(cmd, payload)
     else:
@@ -428,7 +428,7 @@ def request_from_clipboard(use_primary: bool = False) -> str:
 # Boilerplate to make operations available via Handler.cmd  {{{
 
 
-def writer(handler: HandlerType, func: Callable) -> Callable:
+def writer(handler: HandlerType, func: Callable[..., Union[bytes, str]]) -> Callable[..., None]:
     @wraps(func)
     def f(*a: Any, **kw: Any) -> None:
         handler.write(func(*a, **kw))
@@ -442,7 +442,7 @@ def commander(handler: HandlerType) -> CMD:
     return ans
 
 
-def func_sig(func: Callable) -> Generator[str, None, None]:
+def func_sig(func: Callable[..., Any]) -> Generator[str, None, None]:
     import inspect
     import re
     s = inspect.signature(func)
