@@ -64,7 +64,7 @@ class PayloadGetter:
 
 no_response = NoResponse()
 payload_get = object()
-ResponseType = Union[bool, str, None]
+ResponseType = Union[bool, str, None, NoResponse]
 CmdReturnType = Union[Dict[str, Any], List[Any], Tuple[Any, ...], str, int, float, bool]
 CmdGenerator = Iterator[CmdReturnType]
 PayloadType = Optional[Union[CmdReturnType, CmdGenerator]]

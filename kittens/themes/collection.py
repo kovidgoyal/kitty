@@ -149,7 +149,7 @@ def theme_name_from_file_name(fname: str) -> str:
     ans = fname.rsplit('.', 1)[0]
     ans = ans.replace('_', ' ')
 
-    def camel_case(m: Match) -> str:
+    def camel_case(m: 'Match[str]') -> str:
         return str(m.group(1) + ' ' + m.group(2))
 
     ans = re.sub(r'([a-z])([A-Z])', camel_case, ans)

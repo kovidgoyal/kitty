@@ -6,7 +6,7 @@ import re
 import shlex
 from typing import (
     Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional,
-    Sequence, Set, Tuple, TypeVar, Union
+    Sequence, Set, Tuple, TypeVar, Union, Generic
 )
 
 from ..rgb import Color, to_color as as_color
@@ -188,7 +188,7 @@ def parse_config_base(
     )
 
 
-def merge_dicts(defaults: Dict, newvals: Dict) -> Dict:
+def merge_dicts(defaults: Dict[str, Any], newvals: Dict[str, Any]) -> Dict[str, Any]:
     ans = defaults.copy()
     ans.update(newvals)
     return ans
@@ -207,7 +207,7 @@ def resolve_config(SYSTEM_CONF: str, defconf: str, config_files_on_cmd_line: Seq
 def load_config(
     defaults: OptionsProtocol,
     parse_config: Callable[[Iterable[str]], Dict[str, Any]],
-    merge_configs: Callable[[Dict, Dict], Dict],
+    merge_configs: Callable[[Dict[str, Any], Dict[str, Any]], Dict[str, Any]],
     *paths: str,
     overrides: Optional[Iterable[str]] = None
 ) -> Tuple[Dict[str, Any], Tuple[str, ...]]:
@@ -229,22 +229,25 @@ def load_config(
     return ans, tuple(found_paths)
 
 
-def key_func() -> Tuple[Callable[..., Callable], Dict[str, Callable]]:
-    ans: Dict[str, Callable] = {}
+ReturnType = TypeVar('ReturnType')
+KeyFunc = Callable[[str, str], ReturnType]
 
-    def func_with_args(*names: str) -> Callable:
 
-        def w(f: Callable) -> Callable:
+class KeyFuncWrapper(Generic[ReturnType]):
+    def __init__(self) -> None:
+        self.args_funcs: Dict[str, KeyFunc[ReturnType]] = {}
+
+    def __call__(self, *names: str) -> Callable[[KeyFunc[ReturnType]], KeyFunc[ReturnType]]:
+
+        def w(f: KeyFunc[ReturnType]) -> KeyFunc[ReturnType]:
             for name in names:
-                if ans.setdefault(name, f) is not f:
-                    raise ValueError(
-                        f'the args_func {name} is being redefined'
-                    )
+                if self.args_funcs.setdefault(name, f) is not f:
+                    raise ValueError(f'the args_func {name} is being redefined')
             return f
-
         return w
 
-    return func_with_args, ans
+    def get(self, name: str) -> Optional[KeyFunc[ReturnType]]:
+        return self.args_funcs.get(name)
 
 
 class KeyAction(NamedTuple):
@@ -257,7 +260,7 @@ class KeyAction(NamedTuple):
         return f'KeyAction({self.func!r})'
 
 
-def parse_kittens_func_args(action: str, args_funcs: Dict[str, Callable]) -> KeyAction:
+def parse_kittens_func_args(action: str, args_funcs: Dict[str, KeyFunc[Tuple[str, Any]]]) -> KeyAction:
     parts = action.strip().split(' ', 1)
     func = parts[0]
     if len(parts) == 1:
@@ -288,7 +291,7 @@ KittensKeyMap = Dict[ParsedShortcut, KeyAction]
 
 
 def parse_kittens_key(
-    val: str, funcs_with_args: Dict[str, Callable]
+    val: str, funcs_with_args: Dict[str, KeyFunc[Tuple[str, Any]]]
 ) -> Optional[KittensKeyDefinition]:
     from ..key_encoding import parse_shortcut
     sc, action = val.partition(' ')[::2]

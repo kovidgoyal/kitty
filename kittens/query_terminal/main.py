@@ -169,7 +169,7 @@ def get_result(name: str) -> Optional[str]:
     return q.get_result(get_options())
 
 
-def do_queries(queries: Iterable, cli_opts: QueryTerminalCLIOptions) -> Dict[str, str]:
+def do_queries(queries: Iterable[str], cli_opts: QueryTerminalCLIOptions) -> Dict[str, str]:
     actions = tuple(all_queries[x]() for x in queries)
     qstring = ''.join(a.query_code() for a in actions)
     received = b''

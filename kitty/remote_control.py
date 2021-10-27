@@ -18,7 +18,7 @@ from .constants import appname, version
 from .fast_data_types import read_command_response
 from .rc.base import (
     ParsingOfArgsFailed, PayloadGetter, all_command_names, command_for_name,
-    no_response as no_response_sentinel, parse_subcommand_cli
+    NoResponse, parse_subcommand_cli
 )
 from .typing import BossType, WindowType
 from .utils import TTYIO, parse_address_spec
@@ -41,7 +41,7 @@ def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str
         if no_response:  # don't report errors if --no-response was used
             return None
         raise
-    if ans is no_response_sentinel:
+    if isinstance(ans, NoResponse):
         return None
     response: Dict[str, Any] = {'ok': True}
     if ans is not None:
@@ -114,7 +114,7 @@ class RCIO(TTYIO):
         return b''.join(ans)
 
 
-def do_io(to: Optional[str], send: Dict, no_response: bool) -> Dict[str, Any]:
+def do_io(to: Optional[str], send: Dict[str, Any], no_response: bool) -> Dict[str, Any]:
     payload = send.get('payload')
     if not isinstance(payload, types.GeneratorType):
         send_data: Union[bytes, Iterable[bytes]] = encode_send(send)

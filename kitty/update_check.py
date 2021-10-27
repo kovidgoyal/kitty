@@ -5,7 +5,7 @@ import os
 import subprocess
 import time
 from contextlib import suppress
-from typing import Dict, NamedTuple, Optional
+from typing import Dict, NamedTuple, Optional, Tuple
 from urllib.request import urlopen
 
 from .config import atomic_save
@@ -73,7 +73,7 @@ def read_cache() -> Dict[Version, Notification]:
     return notified_versions
 
 
-def already_notified(version: tuple) -> bool:
+def already_notified(version: Tuple[int, int, int]) -> bool:
     notified_versions = read_cache()
     return version in notified_versions
 

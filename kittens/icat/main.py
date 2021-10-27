@@ -447,7 +447,7 @@ def process_single_item(
     item: Union[bytes, str],
     args: IcatCLIOptions,
     parsed_opts: ParsedOpts,
-    url_pat: Optional[Pattern] = None,
+    url_pat: Optional['Pattern[str]'] = None,
     maybe_dir: bool = True
 ) -> None:
     is_tempfile = False

@@ -12,8 +12,8 @@ from typing import (
 
 import kitty.fast_data_types as defines
 from kitty.conf.utils import (
-    KeyAction, key_func, positive_float, positive_int, python_string, to_bool,
-    to_cmdline, to_color, uniq, unit_float
+    KeyAction, KeyFuncWrapper, positive_float, positive_int,
+    python_string, to_bool, to_cmdline, to_color, uniq, unit_float
 )
 from kitty.constants import config_dir, is_macos
 from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
@@ -39,8 +39,8 @@ character_key_name_aliases_with_ascii_lowercase: Dict[str, str] = character_key_
 for x in 'ABCDEFGHIJKLMNOPQRSTUVWXYZ':
     character_key_name_aliases_with_ascii_lowercase[x] = x.lower()
 sequence_sep = '>'
-func_with_args, args_funcs = key_func()
 FuncArgsType = Tuple[str, Sequence[Any]]
+func_with_args = KeyFuncWrapper[FuncArgsType]()
 DELETE_ENV_VAR = '_delete_this_env_var_'
 
 
@@ -794,7 +794,7 @@ def parse_key_action(action: str, action_type: str = 'map') -> Optional[KeyActio
     if len(parts) == 1:
         return KeyAction(func, ())
     rest = parts[1]
-    parser = args_funcs.get(func)
+    parser = func_with_args.get(func)
     if parser is not None:
         try:
             func, args = parser(func, rest)

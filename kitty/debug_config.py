@@ -54,7 +54,7 @@ def mod_to_names(mods: int) -> Generator[str, None, None]:
             yield name
 
 
-def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction, print: Callable) -> None:
+def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction, print: Callable[..., None]) -> None:
     from .fast_data_types import glfw_get_key_name
     keys = []
     for key_spec in key_sequence:
@@ -69,7 +69,7 @@ def print_shortcut(key_sequence: Iterable[SingleKey], action: KeyAction, print: 
     print('\t' + ' > '.join(keys), action)
 
 
-def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple[SingleKey, ...]], print: Callable) -> None:
+def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple[SingleKey, ...]], print: Callable[..., None]) -> None:
     if changes:
         print(title(text))
 
@@ -77,7 +77,7 @@ def print_shortcut_changes(defns: ShortcutMap, text: str, changes: Set[Tuple[Sin
             print_shortcut(k, defns[k], print)
 
 
-def compare_keymaps(final: ShortcutMap, initial: ShortcutMap, print: Callable) -> None:
+def compare_keymaps(final: ShortcutMap, initial: ShortcutMap, print: Callable[..., None]) -> None:
     added = set(final) - set(initial)
     removed = set(initial) - set(final)
     changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
@@ -94,7 +94,7 @@ def flatten_sequence_map(m: SequenceMap) -> ShortcutMap:
     return ans
 
 
-def compare_mousemaps(final: MouseMap, initial: MouseMap, print: Callable) -> None:
+def compare_mousemaps(final: MouseMap, initial: MouseMap, print: Callable[..., None]) -> None:
     added = set(final) - set(initial)
     removed = set(initial) - set(final)
     changed = {k for k in set(final) & set(initial) if final[k] != initial[k]}
@@ -116,7 +116,7 @@ def compare_mousemaps(final: MouseMap, initial: MouseMap, print: Callable) -> No
     print_changes(final, changed, 'Changed mouse actions:')
 
 
-def compare_opts(opts: KittyOpts, print: Callable) -> None:
+def compare_opts(opts: KittyOpts, print: Callable[..., None]) -> None:
     from .config import load_config
     print()
     print('Config options different from defaults:')

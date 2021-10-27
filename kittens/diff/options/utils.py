@@ -3,12 +3,14 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import Any, Dict, Iterable, Sequence, Tuple, Union
+from typing import Any, Dict, Iterable, Tuple, Union
 
-from kitty.conf.utils import KittensKeyDefinition, key_func, parse_kittens_key
+from kitty.conf.utils import (
+    KeyFuncWrapper, KittensKeyDefinition, parse_kittens_key
+)
 
-func_with_args, args_funcs = key_func()
-FuncArgsType = Tuple[str, Sequence[Any]]
+ReturnType = Tuple[str, Any]
+func_with_args = KeyFuncWrapper[ReturnType]()
 
 
 @func_with_args('scroll_by')
@@ -57,6 +59,6 @@ def syntax_aliases(raw: str) -> Dict[str, str]:
 
 
 def parse_map(val: str) -> Iterable[KittensKeyDefinition]:
-    x = parse_kittens_key(val, args_funcs)
+    x = parse_kittens_key(val, func_with_args.args_funcs)
     if x is not None:
         yield x
