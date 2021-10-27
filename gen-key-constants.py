@@ -245,7 +245,7 @@ def patch_file(path: str, what: str, text: str, start_marker: str = '/* ', end_m
         f.write(raw)
 
 
-def serialize_dict(x: dict) -> str:
+def serialize_dict(x: Dict[Any, Any]) -> str:
     return pformat(x, indent=4).replace('{', '{\n ', 1)
 
 
@@ -349,7 +349,7 @@ def generate_legacy_text_key_maps() -> None:
     patch_file('kitty_tests/keys.py', 'legacy letter tests', '\n'.join(tests), start_marker='# ', end_marker='')
 
 
-def chunks(lst: List, n: int) -> Any:
+def chunks(lst: List[Any], n: int) -> Any:
     """Yield successive n-sized chunks from lst."""
     for i in range(0, len(lst), n):
         yield lst[i:i + n]

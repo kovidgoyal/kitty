@@ -6,12 +6,27 @@ import json
 import os
 import re
 import sys
-from typing import Callable, Dict, List, Optional, Tuple
+from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 _plat = sys.platform.lower()
 is_linux = 'linux' in _plat
 is_openbsd = 'openbsd' in _plat
 base = os.path.dirname(os.path.abspath(__file__))
+
+
+class CompileKey(NamedTuple):
+    src: str
+    dest: str
+
+
+class Command(NamedTuple):
+    desc: str
+    cmd: Sequence[str]
+    is_newer_func: Callable[[], bool]
+    on_success: Callable[[], None]
+    key: Optional[CompileKey]
+    keyfile: Optional[str]
+
 
 
 class Env:
@@ -56,7 +71,14 @@ def wayland_protocol_file_name(base: str, ext: str = 'c') -> str:
     return 'wayland-{}-client-protocol.{}'.format(base, ext)
 
 
-def init_env(env: Env, pkg_config: Callable, pkg_version: Callable, at_least_version: Callable, test_compile: Callable, module: str = 'x11') -> Env:
+def init_env(
+    env: Env,
+    pkg_config: Callable[..., List[str]],
+    pkg_version: Callable[[str], Tuple[int, int]],
+    at_least_version: Callable[..., None],
+    test_compile: Callable[..., bool],
+    module: str = 'x11'
+) -> Env:
     ans = env.copy()
     ans.cflags.append('-fPIC')
     ans.cppflags.append('-D_GLFW_' + module.upper())

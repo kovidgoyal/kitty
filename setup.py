@@ -20,11 +20,12 @@ from contextlib import suppress
 from functools import lru_cache, partial
 from pathlib import Path
 from typing import (
-    Callable, Dict, Iterable, Iterator, List, NamedTuple, Optional, Sequence,
-    Set, Tuple, Union
+    Callable, Dict, Iterable, Iterator, List, Optional, Sequence, Set, Tuple,
+    Union
 )
 
-from glfw import glfw  # noqa
+from glfw import glfw
+from glfw.glfw import Command, CompileKey
 
 if sys.version_info[:2] < (3, 6):
     raise SystemExit('kitty requires python >= 3.6')
@@ -79,20 +80,6 @@ class Options(argparse.Namespace):
     canberra_library: Optional[str] = os.getenv('KITTY_CANBERRA_LIBRARY')
 
 
-class CompileKey(NamedTuple):
-    src: str
-    dest: str
-
-
-class Command(NamedTuple):
-    desc: str
-    cmd: Sequence[str]
-    is_newer_func: Callable[[], bool]
-    on_success: Callable[[], None]
-    key: Optional[CompileKey]
-    keyfile: Optional[str]
-
-
 def emphasis(text: str) -> str:
     if sys.stdout.isatty():
         text = '\033[32m' + text + '\033[39m'
@@ -120,14 +107,14 @@ def pkg_config(pkg: str, *args: str) -> List[str]:
         raise SystemExit('The package {} was not found on your system'.format(error(pkg)))
 
 
-def pkg_version(package: str) -> Optional[Tuple[int, int]]:
+def pkg_version(package: str) -> Tuple[int, int]:
     ver = subprocess.check_output([
         PKGCONFIG, package, '--modversion']).decode('utf-8').strip()
     m = re.match(r'(\d+).(\d+)', ver)
     if m is not None:
         qmajor, qminor = map(int, m.groups())
         return qmajor, qminor
-    return None
+    return -1, -1
 
 
 def at_least_version(package: str, major: int, minor: int = 0) -> None:
@@ -559,7 +546,7 @@ def parallel_run(items: List[Command]) -> None:
     except Exception:
         num_workers = 2
     items = list(reversed(items))
-    workers: Dict[int, Tuple[Optional[Command], Optional[subprocess.Popen]]] = {}
+    workers: Dict[int, Tuple[Optional[Command], Optional['subprocess.Popen[bytes]']]] = {}
     failed = None
     num, total = 0, len(items)
 
@@ -613,9 +600,9 @@ class CompilationDatabase:
         self,
         desc: str,
         cmd: List[str],
-        is_newer_func: Callable,
+        is_newer_func: Callable[[], bool],
         key: Optional[CompileKey] = None,
-        on_success: Optional[Callable] = None,
+        on_success: Optional[Callable[[], None]] = None,
         keyfile: Optional[str] = None
     ) -> None:
         def no_op() -> None:
