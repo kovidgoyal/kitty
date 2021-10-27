@@ -630,7 +630,7 @@ class Tab:  # {{{
         for w in self:
             yield w.as_dict(is_focused=w is active_window, is_self=w is self_window)
 
-    def matches(self, field: str, pat: Pattern) -> bool:
+    def matches(self, field: str, pat: 'Pattern[str]') -> bool:
         if field == 'id':
             return bool(pat.pattern == str(self.id))
         if field == 'title':

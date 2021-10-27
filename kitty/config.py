@@ -56,9 +56,9 @@ def atomic_save(data: bytes, path: str) -> None:
 
 
 @contextmanager
-def cached_values_for(name: str) -> Generator[Dict, None, None]:
+def cached_values_for(name: str) -> Generator[Dict[str, Any], None, None]:
     cached_path = os.path.join(cache_dir(), name + '.json')
-    cached_values: Dict = {}
+    cached_values: Dict[str, Any] = {}
     try:
         with open(cached_path, 'rb') as f:
             cached_values.update(json.loads(f.read().decode('utf-8')))

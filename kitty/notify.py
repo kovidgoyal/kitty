@@ -10,6 +10,8 @@ from .constants import is_macos, logo_png_file
 from .fast_data_types import get_boss
 from .utils import log_error
 
+NotifyImplementation = Callable[[str, str, str], None]
+
 if is_macos:
     from .fast_data_types import cocoa_send_notification
 
@@ -57,6 +59,10 @@ else:
         alloc_id = dbus_send_notification(application, icf, title, body, 'Click to see changes', timeout)
         if alloc_id and identifier is not None:
             alloc_map[alloc_id] = identifier
+
+
+def notify_implementation(title: str, body: str, identifier: str) -> None:
+    notify(title, body, identifier=identifier)
 
 
 class NotificationCommand:
@@ -167,7 +173,7 @@ def register_identifier(identifier: str, cmd: NotificationCommand, window_id: in
         identifier_registry.popitem(False)
 
 
-def notification_activated(identifier: str, activated_implementation: Optional[Callable] = None) -> None:
+def notification_activated(identifier: str, activated_implementation: Optional[Callable[[str, int, bool, bool], None]] = None) -> None:
     if identifier == 'new-version':
         from .update_check import notification_activated as do
         do()
@@ -188,12 +194,12 @@ def reset_registry() -> None:
     id_counter = count()
 
 
-def notify_with_command(cmd: NotificationCommand, window_id: int, notify: Callable = notify) -> None:
+def notify_with_command(cmd: NotificationCommand, window_id: int, notify: NotifyImplementation = notify_implementation) -> None:
     title = cmd.title or cmd.body
     body = cmd.body if cmd.title else ''
     if title:
         identifier = 'i' + str(next(id_counter))
-        notify(title, body, identifier=identifier)
+        notify_implementation(title, body, identifier=identifier)
         register_identifier(identifier, cmd, window_id)
 
 
@@ -202,7 +208,7 @@ def handle_notification_cmd(
     raw_data: str,
     window_id: int,
     prev_cmd: NotificationCommand,
-    notify_implementation: Callable = notify
+    notify_implementation: NotifyImplementation = notify_implementation
 ) -> Optional[NotificationCommand]:
     if osc_code == 99:
         cmd = merge_osc_99(prev_cmd, parse_osc_99(raw_data))

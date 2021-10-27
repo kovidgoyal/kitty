@@ -4,7 +4,7 @@
 import os
 from functools import lru_cache, partial, wraps
 from typing import (
-    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
+    Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple, Union
 )
 
 from .borders import Border, BorderColor
@@ -119,7 +119,7 @@ class Formatter:
 
 
 @run_once
-def super_sub_maps() -> Tuple[dict, dict]:
+def super_sub_maps() -> Tuple[Dict[int, Union[None, int]], Dict[int, Union[None, int]]]:
     import string
     sup_table = str.maketrans(
         string.ascii_lowercase + string.ascii_uppercase + string.digits + '+-=()',
@@ -132,7 +132,7 @@ def super_sub_maps() -> Tuple[dict, dict]:
 
 class SupSub:
 
-    def __init__(self, data: dict, is_subscript: bool = False):
+    def __init__(self, data: Dict[str, Any], is_subscript: bool = False):
         self.__data = data
         self.__is_subscript = is_subscript
 
