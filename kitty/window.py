@@ -601,7 +601,7 @@ class Window:
         strings: List[str] = []
         self.screen.dump_lines_with_attrs(strings.append)
         text = ''.join(strings)
-        get_boss().display_scrollback(self, text, title='Dump of lines')
+        get_boss().display_scrollback(self, text, title='Dump of lines', report_cursor=False)
 
     def write_to_child(self, data: Union[str, bytes]) -> None:
         if data:
@@ -1078,7 +1078,7 @@ class Window:
     def show_last_command_output(self) -> None:
         text = self.last_cmd_output(as_ansi=True, add_wrap_markers=True)
         text = text.replace('\r\n', '\n').replace('\r', '\n')
-        get_boss().display_scrollback(self, text, title='Last command output')
+        get_boss().display_scrollback(self, text, title='Last command output', report_cursor=False)
 
     def paste_bytes(self, text: Union[str, bytes]) -> None:
         # paste raw bytes without any processing

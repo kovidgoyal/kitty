@@ -288,7 +288,8 @@ passed as STDIN to this program. If you change it, make sure the program you use
 can handle ANSI escape sequences for colors and text formatting.
 INPUT_LINE_NUMBER in the command line above will be replaced by an integer
 representing which line should be at the top of the screen. Similarly
-CURSOR_LINE and CURSOR_COLUMN will be replaced by the current cursor position.
+CURSOR_LINE and CURSOR_COLUMN will be replaced by the current cursor position or
+set to 0 if there is no cursor, for example, when showing the last command output.
 '''
     )
 

@@ -1096,11 +1096,11 @@ class Boss:
                 s.shutdown(socket.SHUT_RDWR)
             s.close()
 
-    def display_scrollback(self, window: Window, data: Union[bytes, str], input_line_number: int = 0, title: str = '') -> None:
+    def display_scrollback(self, window: Window, data: Union[bytes, str], input_line_number: int = 0, title: str = '', report_cursor: bool = True) -> None:
         def prepare_arg(x: str) -> str:
             x = x.replace('INPUT_LINE_NUMBER', str(input_line_number))
-            x = x.replace('CURSOR_LINE', str(window.screen.cursor.y + 1))
-            x = x.replace('CURSOR_COLUMN', str(window.screen.cursor.x + 1))
+            x = x.replace('CURSOR_LINE', str(window.screen.cursor.y + 1) if report_cursor else '0')
+            x = x.replace('CURSOR_COLUMN', str(window.screen.cursor.x + 1) if report_cursor else '0')
             return x
 
         cmd = list(map(prepare_arg, get_options().scrollback_pager))
@@ -2003,7 +2003,7 @@ class Boss:
         w = self.active_window
         if w:
             output = '\n'.join(f'{k}={v}' for k, v in os.environ.items())
-            self.display_scrollback(w, output, title=_('Current kitty env vars'))
+            self.display_scrollback(w, output, title=_('Current kitty env vars'), report_cursor=False)
 
     def open_file(self, path: str) -> None:
         if path == ":cocoa::application launched::":
@@ -2031,7 +2031,7 @@ class Boss:
             output = debug_config(get_options())
             set_clipboard_string(re.sub(r'\x1b.+?m', '', output))
             output += '\n\x1b[35mThis debug output has been copied to the clipboard\x1b[m'
-            self.display_scrollback(w, output, title=_('Current kitty options'))
+            self.display_scrollback(w, output, title=_('Current kitty options'), report_cursor=False)
 
     @ac('misc', 'Discard this event completely ignoring it')
     def discard_event(self) -> None:
