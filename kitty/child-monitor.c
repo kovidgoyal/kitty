@@ -574,9 +574,7 @@ collect_cursor_info(CursorRenderInfo *ans, Window *w, monotonic_t now, OSWindow 
     }
     if (!do_draw_cursor) { ans->is_visible = false; return; }
     ans->is_visible = true;
-    ColorProfile *cp = rd->screen->color_profile;
     ans->shape = cursor->shape ? cursor->shape : OPT(cursor_shape);
-    ans->color = colorprofile_to_color(cp, cp->overridden.cursor_color, cp->configured.cursor_color);
     ans->is_focused = os_window->is_focused;
 }
 
@@ -617,7 +615,7 @@ prepare_to_render_os_window(OSWindow *os_window, monotonic_t now, unsigned int *
 #define WD w->render_data
         if (w->visible && WD.screen) {
             *num_visible_windows += 1;
-            color_type window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg);
+            color_type window_bg = colorprofile_to_color(WD.screen->color_profile, WD.screen->color_profile->overridden.default_bg, WD.screen->color_profile->configured.default_bg).rgb;
             if (*num_visible_windows == 1) first_window_bg = window_bg;
             if (first_window_bg != window_bg) *all_windows_have_same_bg = false;
             if (w->last_drag_scroll_at > 0) {

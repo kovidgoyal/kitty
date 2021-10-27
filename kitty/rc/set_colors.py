@@ -18,7 +18,7 @@ if TYPE_CHECKING:
     from kitty.cli_stub import SetColorsRCOptions as CLIOptions
 
 
-nullable_colors = ('cursor_text_color', 'tab_bar_background', 'tab_bar_margin_color')
+nullable_colors = ('cursor', 'cursor_text_color', 'tab_bar_background', 'tab_bar_margin_color', 'selection_foreground')
 
 
 def parse_colors(args: Iterable[str]) -> Dict[str, Optional[int]]:

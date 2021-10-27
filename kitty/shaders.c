@@ -260,9 +260,9 @@ send_graphics_data_to_gpu(size_t image_count, ssize_t gvao_idx, const ImageRende
 static void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
     struct CellRenderData {
-        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, cursor_text_uses_bg;
+        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
 
-        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, cursor_text_color, url_color, url_style, inverted;
+        GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
         GLuint xnum, ynum, cursor_fg_sprite_idx;
         GLfloat cursor_x, cursor_y, cursor_w;
@@ -274,6 +274,9 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     if (UNLIKELY(screen->color_profile->dirty || screen->reload_all_gpu_data)) {
         copy_color_table_to_buffer(screen->color_profile, (GLuint*)rd, cell_program_layouts[CELL_PROGRAM].color_table.offset / sizeof(GLuint), cell_program_layouts[CELL_PROGRAM].color_table.stride / sizeof(GLuint));
     }
+#define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name).rgb
+#define IS_SPECIAL_COLOR(name) (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
+    rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
     // Cursor position
     enum { BLOCK_IDX = 0, BEAM_IDX = 6, UNDERLINE_IDX = 7, UNFOCUSED_IDX = 8 };
     if (cursor->is_visible) {
@@ -288,6 +291,21 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
                     rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
             }
         } else rd->cursor_fg_sprite_idx = UNFOCUSED_IDX;
+        color_type cell_fg, cell_bg;
+        resolve_cell_colors(screen, screen->cursor->x, screen->cursor->y, &cell_fg, &cell_bg, rd->default_fg, rd->default_bg);
+        if (screen->color_profile->overridden.cursor_color.type == COLOR_IS_INDEX || screen->color_profile->overridden.cursor_color.type == COLOR_IS_RGB) {
+            // since the program is controlling the cursor color we hope it has chosen one
+            // that has good contrast with the text color of the cell
+            rd->cursor_fg = cell_fg; rd->cursor_bg = COLOR(cursor_color);
+        } else if (IS_SPECIAL_COLOR(cursor_color)) {
+            if (cell_bg == cell_fg) {
+                rd->cursor_fg = rd->default_bg; rd->cursor_bg = rd->default_fg;
+            } else { rd->cursor_fg = cell_bg; rd->cursor_bg = cell_fg; }
+        } else {
+            rd->cursor_bg = COLOR(cursor_color);
+            if (IS_SPECIAL_COLOR(cursor_text_color)) rd->cursor_fg = cell_bg;
+            else rd->cursor_fg = COLOR(cursor_text_color);
+        }
     } else rd->cursor_x = screen->columns, rd->cursor_y = screen->lines;
     rd->cursor_w = rd->cursor_x;
     if (
@@ -304,12 +322,9 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     rd->inverted = inverted ? 1 : 0;
     rd->background_opacity = os_window->is_semi_transparent ? os_window->background_opacity : 1.0f;
 
-#define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name)
-    rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
-    rd->cursor_text_color = COLOR(cursor_text_color);
 #undef COLOR
-    rd->cursor_color = cursor->color; rd->url_color = OPT(url_color); rd->url_style = OPT(url_style);
-    rd->cursor_text_uses_bg = cursor_text_as_bg(screen->color_profile);
+#undef IS_SPECIAL_COLOR
+    rd->url_color = OPT(url_color); rd->url_style = OPT(url_style);
 
     unmap_vao_buffer(vao_idx, uniform_buffer); rd = NULL;
 }
@@ -456,7 +471,7 @@ has_bgimage(OSWindow *w) {
 static void
 draw_tint(bool premult, Screen *screen, GLfloat xstart, GLfloat ystart, GLfloat width, GLfloat height) {
     bind_program(TINT_PROGRAM);
-    color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg);
+    color_type window_bg = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.default_bg, screen->color_profile->configured.default_bg).rgb;
 #define C(shift) ((((GLfloat)((window_bg >> shift) & 0xFF)) / 255.0f))
     float alpha = OPT(background_tint);
     if (premult) glUniform4f(tint_program_layout.tint_color_location, C(16) * alpha, C(8) * alpha, C(0) * alpha, alpha);
@@ -506,8 +521,8 @@ render_window_title(OSWindow *os_window, Screen *screen UNUSED, GLfloat xstart, 
     static char title[2048] = {0};
     if (window->title_bar_data.last_drawn_title_object_id != window->title) {
         snprintf(title, arraysz(title), " %s", PyUnicode_AsUTF8(window->title));
-#define RGBCOL(which) ( 0xff000000 | colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.which, screen->color_profile->configured.which) )
-        if (!draw_window_title(os_window, title, RGBCOL(highlight_fg), RGBCOL(highlight_bg), window->title_bar_data.buf, bar_width, bar_height)) return 0;
+#define RGBCOL(which, fallback) ( 0xff000000 | colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.which, screen->color_profile->configured.which, screen->color_profile->overridden.fallback, screen->color_profile->configured.fallback))
+        if (!draw_window_title(os_window, title, RGBCOL(highlight_fg, default_fg), RGBCOL(highlight_bg, default_bg), window->title_bar_data.buf, bar_width, bar_height)) return 0;
 #undef RGBCOL
         window->title_bar_data.last_drawn_title_object_id = window->title;
     }
@@ -550,7 +565,7 @@ draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat 
     bind_program(SEVEN_SEGMENT_PROGRAM);
     glUniform4f(seven_segment_program_layout.edges_location, xstart, ystart - height, xstart + width, ystart);
     glUniform4f(seven_segment_program_layout.area_bounds_location, left, top, right - left, bottom - top);
-    color_type digit_color = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg);
+    color_type digit_color = colorprofile_to_color_with_fallback(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
 #define C(shift) ((((GLfloat)((digit_color >> shift) & 0xFF)) / 255.0f))
     glUniform4f(seven_segment_program_layout.digit_color_location, C(16), C(8), C(0), 1.);
 #undef C
@@ -566,7 +581,8 @@ draw_visual_bell_flash(GLfloat intensity, GLfloat xstart, GLfloat ystart, GLfloa
     glBlendFuncSeparate(GL_ONE, GL_ONE_MINUS_SRC_ALPHA, GL_ZERO, GL_ONE);
     bind_program(TINT_PROGRAM);
     GLfloat attenuation = 0.4f;
-    const color_type flash = colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg);
+    const color_type flash = colorprofile_to_color_with_fallback(
+        screen->color_profile, screen->color_profile->overridden.highlight_bg, screen->color_profile->configured.highlight_bg, screen->color_profile->overridden.default_fg, screen->color_profile->configured.default_fg);
 #define C(shift) ((((GLfloat)((flash >> shift) & 0xFF)) / 255.0f) )
     const GLfloat r = C(16), g = C(8), b = C(0);
     const GLfloat max_channel = r > g ? (r > b ? r : b) : (g > b ? g : b);

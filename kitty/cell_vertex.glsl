@@ -12,9 +12,9 @@
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, cursor_text_uses_bg;
+    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
 
-    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_color, cursor_text_color, url_color, url_style, inverted;
+    uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
     uint xnum, ynum, cursor_fg_sprite_idx;
     float cursor_x, cursor_y, cursor_w;
@@ -198,8 +198,8 @@ void main() {
     strike_pos = to_sprite_pos(pos, ((text_attrs >> STRIKE_SHIFT) & ONE) * FOUR, ZERO, ZERO);
 
     // Cursor
-    cursor_color_vec = vec4(color_to_vec(cursor_color), 1.0);
-    vec3 final_cursor_text_color = mix(color_to_vec(cursor_text_color), bg, cursor_text_uses_bg);
+    cursor_color_vec = vec4(color_to_vec(cursor_bg), 1.0);
+    vec3 final_cursor_text_color = color_to_vec(cursor_fg);
     foreground = choose_color(cell_has_block_cursor, final_cursor_text_color, foreground);
     decoration_fg = choose_color(cell_has_block_cursor, final_cursor_text_color, decoration_fg);
     cursor_pos = to_sprite_pos(pos, cursor_fg_sprite_idx * uint(cell_has_cursor), ZERO, ZERO);
@@ -237,7 +237,7 @@ void main() {
 #if defined(SPECIAL) || defined(SIMPLE)
     // Selection and cursor
     bg = choose_color(float(is_selected & ONE), color_to_vec(highlight_bg), bg);
-    background = choose_color(cell_has_block_cursor, color_to_vec(cursor_color), bg);
+    background = choose_color(cell_has_block_cursor, color_to_vec(cursor_bg), bg);
 #if !defined(TRANSPARENT) && defined(SPECIAL)
     float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);
     bg_alpha = step(0.5, is_special_cell);

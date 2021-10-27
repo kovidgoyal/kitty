@@ -642,7 +642,7 @@ class ColorProfile:
         pass
 
     def set_configured_colors(
-        self, fg: int, bg: int, cursor: int = 0, cursor_text: int = 0, cursor_text_uses_bg: int = 0, highlight_fg: int = 0, highlight_bg: int = 0
+        self, fg: int, bg: int, cursor: int = 0, cursor_text: int = 0, highlight_fg: int = 0, highlight_bg: int = 0
     ) -> None:
         pass
 

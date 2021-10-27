@@ -16,6 +16,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
   the keyboard. Pressing it causes numbers to appear over each visible window
   and you can press the number to focus the corresponding window (:iss:`4110`)
 
+- Allow rendering the cursor with a *reverse video* effect. See :opt:`cursor`
+  for details (:iss:`126`)
+
 - A new option :opt:`tab_bar_align` to draw the tab bar centered or right
   aligned (:iss:`3946`)
 

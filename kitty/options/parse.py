@@ -888,7 +888,7 @@ class Parser:
         ans['copy_on_select'] = copy_on_select(val)
 
     def cursor(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['cursor'] = to_color(val)
+        ans['cursor'] = to_color_or_none(val)
 
     def cursor_beam_thickness(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['cursor_beam_thickness'] = positive_float(val)

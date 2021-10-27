@@ -239,16 +239,27 @@ typedef struct {
     bool is_visible, is_focused;
     CursorShape shape;
     unsigned int x, y;
-    color_type color;
 } CursorRenderInfo;
 
-typedef struct {
-    color_type default_fg, default_bg, cursor_color, cursor_text_color, cursor_text_uses_bg, highlight_fg, highlight_bg;
+typedef enum DynamicColorType {
+    COLOR_NOT_SET, COLOR_IS_SPECIAL, COLOR_IS_INDEX, COLOR_IS_RGB
+} DynamicColorType;
+
+typedef union DynamicColor {
+    struct {
+        color_type rgb: 24;
+        DynamicColorType type: 8;
+    };
+    color_type val;
 } DynamicColor;
 
+typedef struct {
+    DynamicColor default_fg, default_bg, cursor_color, cursor_text_color, highlight_fg, highlight_bg;
+} DynamicColors;
+
 
 typedef struct {
-    DynamicColor dynamic_colors;
+    DynamicColors dynamic_colors;
     uint32_t color_table[256];
 } ColorStackEntry;
 
@@ -260,7 +271,7 @@ typedef struct {
     uint32_t orig_color_table[256];
     ColorStackEntry *color_stack;
     unsigned int color_stack_idx, color_stack_sz;
-    DynamicColor configured, overridden;
+    DynamicColors configured, overridden;
     color_type mark_foregrounds[MARK_MASK+1], mark_backgrounds[MARK_MASK+1];
 } ColorProfile;
 
@@ -332,8 +343,9 @@ bool schedule_write_to_child(unsigned long id, unsigned int num, ...);
 bool schedule_write_to_child_python(unsigned long id, const char *prefix, PyObject* tuple_of_str_or_bytes, const char *suffix);
 bool set_iutf8(int, bool);
 
-color_type colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval);
-float cursor_text_as_bg(ColorProfile *self);
+DynamicColor colorprofile_to_color(ColorProfile *self, DynamicColor entry, DynamicColor defval);
+color_type
+colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, DynamicColor defval, DynamicColor fallback, DynamicColor falback_defval);
 void copy_color_table_to_buffer(ColorProfile *self, color_type *address, int offset, size_t stride);
 bool colorprofile_push_colors(ColorProfile*, unsigned int);
 bool colorprofile_pop_colors(ColorProfile*, unsigned int);

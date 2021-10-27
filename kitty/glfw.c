@@ -162,7 +162,7 @@ blank_os_window(OSWindow *w) {
             Window *w = t->windows + t->active_window;
             Screen *s = w->render_data.screen;
             if (s) {
-                color = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg);
+                color = colorprofile_to_color(s->color_profile, s->color_profile->overridden.default_bg, s->color_profile->configured.default_bg).rgb;
             }
         }
     }

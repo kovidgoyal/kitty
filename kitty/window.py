@@ -36,13 +36,13 @@ from .fast_data_types import (
 from .keys import keyboard_mode_name, mod_mask
 from .notify import NotificationCommand, handle_notification_cmd
 from .options.types import Options
-from .rgb import to_color
+from .rgb import Color, to_color
 from .terminfo import get_capabilities
 from .types import MouseEvent, ScreenGeometry, WindowGeometry, ac
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
 from .utils import (
-    color_as_int, get_primary_selection, load_shaders, log_error, open_cmd,
-    open_url, parse_color_set, sanitize_title, set_primary_selection
+    get_primary_selection, load_shaders, log_error, open_cmd, open_url,
+    parse_color_set, sanitize_title, set_primary_selection
 )
 
 MatchPatternType = Union[Pattern[str], Tuple[Pattern[str], Optional[Pattern[str]]]]
@@ -264,14 +264,14 @@ load_shader_programs = LoadShaderPrograms()
 
 def setup_colors(screen: Screen, opts: Options) -> None:
     screen.color_profile.update_ansi_color_table(build_ansi_color_table(opts))
-    cursor_text_color = opts.cursor_text_color or (12, 12, 12)
-    cursor_text_color_as_bg = 3 if opts.cursor_text_color is None else 1
-    sfg = (0, 0, 0) if opts.selection_foreground is None else opts.selection_foreground
-    screen.color_profile.set_configured_colors(*map(color_as_int, (
-        opts.foreground, opts.background, opts.cursor,
-        cursor_text_color, (0, 0, cursor_text_color_as_bg),
-        sfg, opts.selection_background)
-    ))
+
+    def s(c: Optional[Color]) -> int:
+        return 0 if c is None else (0xff000000 | int(c))
+    screen.color_profile.set_configured_colors(
+        s(opts.foreground), s(opts.background),
+        s(opts.cursor), s(opts.cursor_text_color),
+        s(opts.selection_foreground), s(opts.selection_background)
+    )
 
 
 def text_sanitizer(as_ansi: bool, add_wrap_markers: bool) -> Callable[[str], str]:
@@ -762,16 +762,16 @@ class Window:
     def change_colors(self, changes: Dict[DynamicColor, Optional[str]]) -> None:
         dirtied = default_bg_changed = False
 
-        def item(raw: Optional[str]) -> Optional[int]:
+        def item(raw: Optional[str]) -> int:
             if raw is None:
                 return 0
-            val = to_color(raw)
-            return None if val is None else (color_as_int(val) << 8) | 2
+            v = to_color(raw)
+            if v is None:
+                return 0
+            return 0xff000000 | int(v)
 
         for which, val_ in changes.items():
             val = item(val_)
-            if val is None:
-                continue
             dirtied = True
             setattr(self.screen.color_profile, which.name, val)
             if which.name == 'default_bg':

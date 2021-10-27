@@ -151,64 +151,64 @@ patch_color_profiles(PyObject *module UNUSED, PyObject *args) {
     S(background, i); S(foreground, i);
 #undef S
     }
+#define SI(profile_name) \
+    DynamicColor color; \
+    if (PyLong_Check(v)) { \
+        color.rgb = PyLong_AsUnsignedLong(v);  color.type = COLOR_IS_RGB; \
+    } else { color.rgb = 0; color.type = COLOR_IS_SPECIAL; }\
+    self->overridden.profile_name = color; \
+    if (change_configured) self->configured.profile_name = color; \
+    self->dirty = true;
+
 #define S(config_name, profile_name) { \
     v = PyDict_GetItemString(spec, #config_name); \
-    if (v && PyLong_Check(v)) { \
-        color_type color = PyLong_AsUnsignedLong(v); \
+    if (v) { \
         for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) { \
             self = (ColorProfile*)PyTuple_GET_ITEM(profiles, i); \
-            self->overridden.profile_name = (color << 8) | 2; \
-            if (change_configured) self->configured.profile_name = color; \
-            self->dirty = true; \
+            SI(profile_name); \
         } \
     } \
 }
         S(foreground, default_fg); S(background, default_bg); S(cursor, cursor_color);
         S(selection_foreground, highlight_fg); S(selection_background, highlight_bg);
+        S(cursor_text_color, cursor_text_color);
+#undef SI
 #undef S
-    PyObject *cursor_text_color = PyDict_GetItemString(spec, "cursor_text_color");
-    if (cursor_text_color) {
-        for (Py_ssize_t i = 0; i < PyTuple_GET_SIZE(profiles); i++) {
-            self = (ColorProfile*)PyTuple_GET_ITEM(profiles, i);
-            self->overridden.cursor_text_color = 0x111111;
-            self->overridden.cursor_text_uses_bg = 3;
-            if (PyLong_Check(cursor_text_color)) {
-                self->overridden.cursor_text_color = (PyLong_AsUnsignedLong(cursor_text_color) << 8) | 2;
-                self->overridden.cursor_text_uses_bg = 1;
-            }
-            if (change_configured) {
-                self->configured.cursor_text_color = self->overridden.cursor_text_color;
-                self->configured.cursor_text_uses_bg = self->overridden.cursor_text_uses_bg;
-            }
-            self->dirty = true;
-        }
-    }
-
     Py_RETURN_NONE;
 }
 
-color_type
-colorprofile_to_color(ColorProfile *self, color_type entry, color_type defval) {
-    color_type t = entry & 0xFF, r;
-    switch(t) {
-        case 1:
-            r = (entry >> 8) & 0xff;
-            return self->color_table[r];
-        case 2:
-            return entry >> 8;
-        default:
+DynamicColor
+colorprofile_to_color(ColorProfile *self, DynamicColor entry, DynamicColor defval) {
+    switch(entry.type) {
+        case COLOR_NOT_SET:
             return defval;
+        case COLOR_IS_INDEX: {
+            DynamicColor ans;
+            ans.rgb = self->color_table[entry.rgb & 0xff] & 0xffffff;
+            ans.type = COLOR_IS_RGB;
+            return ans;
+        }
+        case COLOR_IS_RGB:
+        case COLOR_IS_SPECIAL:
+            return entry;
     }
+    return entry;
 }
 
-float
-cursor_text_as_bg(ColorProfile *self) {
-    if (self->overridden.cursor_text_uses_bg & 1) {
-        return self->overridden.cursor_text_uses_bg & 2 ? 1.f : 0.f;
+color_type
+colorprofile_to_color_with_fallback(ColorProfile *self, DynamicColor entry, DynamicColor defval, DynamicColor fallback, DynamicColor falback_defval) {
+    switch(entry.type) {
+        case COLOR_NOT_SET:
+        case COLOR_IS_SPECIAL:
+            if (defval.type == COLOR_IS_SPECIAL) return colorprofile_to_color(self, fallback, falback_defval).rgb;
+            return defval.rgb;
+        case COLOR_IS_RGB:
+            return entry.rgb;
+        case COLOR_IS_INDEX:
+            return self->color_table[entry.rgb & 0xff] & 0xffffff;
     }
-    return self->configured.cursor_text_uses_bg & 2 ? 1.f : 0.f;
+    return entry.rgb;
 }
-
 
 static PyObject*
 as_dict(ColorProfile *self, PyObject *args UNUSED) {
@@ -225,8 +225,8 @@ as_dict(ColorProfile *self, PyObject *args UNUSED) {
         if (ret != 0) { Py_CLEAR(ans); return NULL; }
     }
 #define D(attr, name) { \
-    color_type c = colorprofile_to_color(self, self->overridden.attr, 0xffffffff); \
-    if (c != 0xffffffff) { \
+    if (self->overridden.attr.type != COLOR_NOT_SET) { \
+        color_type c = colorprofile_to_color(self, self->overridden.attr, self->configured.attr).rgb; \
         PyObject *val = PyLong_FromUnsignedLong(c); \
         if (!val) { Py_CLEAR(ans); return PyErr_NoMemory(); } \
         int ret = PyDict_SetItemString(ans, #name, val); \
@@ -296,11 +296,14 @@ set_color(ColorProfile *self, PyObject *args) {
 static PyObject*
 set_configured_colors(ColorProfile *self, PyObject *args) {
 #define set_configured_colors_doc "Set the configured colors"
-    if (!PyArg_ParseTuple(
-                args, "II|IIIII",
-                &(self->configured.default_fg), &(self->configured.default_bg),
-                &(self->configured.cursor_color), &(self->configured.cursor_text_color), &(self->configured.cursor_text_uses_bg),
-                &(self->configured.highlight_fg), &(self->configured.highlight_bg))) return NULL;
+    unsigned int default_fg, default_bg, cursor_color, cursor_text_color, highlight_fg, highlight_bg;
+    if (!PyArg_ParseTuple(args, "II|IIII", &default_fg, &default_bg,
+        &cursor_color, &cursor_text_color, &highlight_fg, &highlight_bg)) return NULL;
+#define S(which) \
+    self->configured.which.rgb = which & 0xffffff; \
+    self->configured.which.type = (which & 0xff000000) ? COLOR_IS_RGB : COLOR_IS_SPECIAL;
+    S(default_fg); S(default_bg); S(cursor_color); S(cursor_text_color); S(highlight_fg); S(highlight_bg);
+#undef S
     self->dirty = true;
     Py_RETURN_NONE;
 }
@@ -395,8 +398,14 @@ default_color_table(PyObject *self UNUSED, PyObject *args UNUSED) {
 // Boilerplate {{{
 
 #define CGETSET(name) \
-    static PyObject* name##_get(ColorProfile *self, void UNUSED *closure) { return PyLong_FromUnsignedLong(colorprofile_to_color(self, self->overridden.name, self->configured.name));  } \
-    static int name##_set(ColorProfile *self, PyObject *val, void UNUSED *closure) { if (val == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute"); return -1; } self->overridden.name = (color_type) PyLong_AsUnsignedLong(val); self->dirty = true; return 0; }
+    static PyObject* name##_get(ColorProfile *self, void UNUSED *closure) { return PyLong_FromUnsignedLong(colorprofile_to_color(self, self->overridden.name, self->configured.name).rgb);  } \
+    static int name##_set(ColorProfile *self, PyObject *v, void UNUSED *closure) { \
+        if (v == NULL) { PyErr_SetString(PyExc_TypeError, "Cannot delete attribute: " #name); return -1; } \
+        unsigned long val = PyLong_AsUnsignedLong(v); \
+        self->overridden.name.rgb = val & 0xffffff; \
+        self->overridden.name.type = (val & 0xff000000) ? COLOR_IS_RGB : COLOR_NOT_SET; \
+        self->dirty = true; return 0; \
+    }
 
 CGETSET(default_fg)
 CGETSET(default_bg)

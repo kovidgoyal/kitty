@@ -472,7 +472,7 @@ class Options:
     command_on_bell: typing.List[str] = ['none']
     confirm_os_window_close: int = 0
     copy_on_select: str = ''
-    cursor: Color = Color(red=204, green=204, blue=204)
+    cursor: typing.Optional[kitty.rgb.Color] = Color(red=204, green=204, blue=204)
     cursor_beam_thickness: float = 1.5
     cursor_blink_interval: float = -1.0
     cursor_shape: int = 1
