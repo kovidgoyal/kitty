@@ -748,7 +748,7 @@ def compile_glfw(compilation_database: CompilationDatabase) -> None:
         all_headers = [os.path.join('glfw', x) for x in genv.all_headers]
         if module == 'wayland':
             try:
-                glfw.build_wayland_protocols(genv, Command, parallel_run, emphasis, newer, 'glfw')
+                glfw.build_wayland_protocols(genv, parallel_run, emphasis, newer, 'glfw')
             except SystemExit as err:
                 print(err, file=sys.stderr)
                 print(error('Disabling building of wayland backend'), file=sys.stderr)

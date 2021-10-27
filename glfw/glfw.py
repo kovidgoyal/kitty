@@ -23,10 +23,9 @@ class Command(NamedTuple):
     desc: str
     cmd: Sequence[str]
     is_newer_func: Callable[[], bool]
-    on_success: Callable[[], None]
-    key: Optional[CompileKey]
-    keyfile: Optional[str]
-
+    on_success: Callable[[], None] = lambda: None
+    key: Optional[CompileKey] = None
+    keyfile: Optional[str] = None
 
 
 class Env:
@@ -140,7 +139,13 @@ def init_env(
     return ans
 
 
-def build_wayland_protocols(env: Env, Command: Callable, parallel_run: Callable, emphasis: Callable, newer: Callable, dest_dir: str) -> None:
+def build_wayland_protocols(
+    env: Env,
+    parallel_run: Callable[[List[Command]], None],
+    emphasis: Callable[[str], str],
+    newer: Callable[..., bool],
+    dest_dir: str
+) -> None:
     items = []
     for protocol in env.wayland_protocols:
         src = os.path.join(env.wayland_packagedir, protocol)
@@ -153,8 +158,7 @@ def build_wayland_protocols(env: Env, Command: Callable, parallel_run: Callable,
                 q = 'client-header' if ext == 'h' else env.wayland_scanner_code
                 items.append(Command(
                     'Generating {} ...'.format(emphasis(os.path.basename(dest))),
-                    [env.wayland_scanner, q, src, dest],
-                    lambda: True, None, None, None))
+                    [env.wayland_scanner, q, src, dest], lambda: True))
     if items:
         parallel_run(items)
 

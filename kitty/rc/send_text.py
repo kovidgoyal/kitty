@@ -4,15 +4,16 @@
 import base64
 import os
 import sys
-from typing import TYPE_CHECKING, Dict, Generator, List, Optional, Union
+from typing import TYPE_CHECKING, List, Optional, Union
 
 from kitty.fast_data_types import KeyEvent as WindowSystemKeyEvent
 from kitty.key_encoding import decode_key_event_as_window_system_key
 from kitty.options.utils import parse_send_text_bytes
 
 from .base import (
-    MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, MatchError,
-    PayloadGetType, PayloadType, RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator,
+    MatchError, PayloadGetType, PayloadType, RCOptions, RemoteCommand,
+    ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -63,7 +64,7 @@ Do not send text to the active window, even if it is one of the matched windows.
         limit = 1024
         ret = {'match': opts.match, 'data': '', 'match_tab': opts.match_tab, 'all': opts.all, 'exclude_active': opts.exclude_active}
 
-        def pipe() -> Generator[Dict, None, None]:
+        def pipe() -> CmdGenerator:
             if sys.stdin.isatty():
                 ret['exclude_active'] = True
                 import select
@@ -90,14 +91,14 @@ Do not send text to the active window, even if it is one of the matched windows.
                     ret['data'] = 'base64:' + base64.standard_b64encode(data).decode('ascii')
                     yield ret
 
-        def chunks(text: str) -> Generator[Dict, None, None]:
+        def chunks(text: str) -> CmdGenerator:
             data = parse_send_text_bytes(text).decode('utf-8')
             while data:
                 ret['data'] = 'text:' + data[:limit]
                 yield ret
                 data = data[limit:]
 
-        def file_pipe(path: str) -> Generator[Dict, None, None]:
+        def file_pipe(path: str) -> CmdGenerator:
             with open(path, 'rb') as f:
                 while True:
                     data = f.read(limit)
@@ -116,7 +117,7 @@ Do not send text to the active window, even if it is one of the matched windows.
         text = ' '.join(args)
         sources.append(chunks(text))
 
-        def chain() -> Generator[Dict, None, None]:
+        def chain() -> CmdGenerator:
             for src in sources:
                 yield from src
         return chain()

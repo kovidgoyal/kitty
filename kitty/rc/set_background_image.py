@@ -4,12 +4,12 @@
 import imghdr
 import tempfile
 from base64 import standard_b64decode, standard_b64encode
-from typing import IO, TYPE_CHECKING, Dict, Generator, Optional
+from typing import IO, TYPE_CHECKING, Optional
 from uuid import uuid4
 
 from .base import (
-    MATCH_WINDOW_OPTION, ArgsType, Boss, PayloadGetType, PayloadType,
-    RCOptions, RemoteCommand, ResponseType, Window
+    MATCH_WINDOW_OPTION, ArgsType, Boss, CmdGenerator, PayloadGetType,
+    PayloadType, RCOptions, RemoteCommand, ResponseType, Window
 )
 
 if TYPE_CHECKING:
@@ -83,7 +83,7 @@ failed, the command will exit with a success code.
         if imghdr.what(path) != 'png':
             self.fatal(f'{path} is not a PNG image')
 
-        def file_pipe(path: str) -> Generator[Dict, None, None]:
+        def file_pipe(path: str) -> CmdGenerator:
             with open(path, 'rb') as f:
                 while True:
                     data = f.read(512)

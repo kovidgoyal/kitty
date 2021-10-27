@@ -3,7 +3,7 @@
 
 from contextlib import suppress
 from typing import (
-    TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Generator, Iterable, List,
+    TYPE_CHECKING, Any, Callable, Dict, FrozenSet, Iterable, Iterator, List,
     NoReturn, Optional, Tuple, Type, Union, cast
 )
 
@@ -64,9 +64,9 @@ class PayloadGetter:
 
 no_response = NoResponse()
 payload_get = object()
-ResponseType = Optional[Union[bool, str]]
-CmdReturnType = Union[Dict[str, Any], List, Tuple, str, int, float, bool]
-CmdGenerator = Generator[CmdReturnType, None, None]
+ResponseType = Union[bool, str, None]
+CmdReturnType = Union[Dict[str, Any], List[Any], Tuple[Any, ...], str, int, float, bool]
+CmdGenerator = Iterator[CmdReturnType]
 PayloadType = Optional[Union[CmdReturnType, CmdGenerator]]
 PayloadGetType = PayloadGetter
 ArgsType = List[str]
@@ -120,7 +120,7 @@ class RemoteCommand:
     args_count: Optional[int] = None
     args_completion: Optional[Dict[str, Tuple[str, Union[Callable[[], Iterable[str]], Tuple[str, ...]]]]] = None
     defaults: Optional[Dict[str, Any]] = None
-    options_class: Type = RCOptions
+    options_class: Type[RCOptions] = RCOptions
 
     def __init__(self) -> None:
         self.desc = self.desc or self.short_desc
