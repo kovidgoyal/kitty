@@ -37,7 +37,7 @@ def expandvars(val: str, env: Mapping[str, str] = {}, fallback_to_os_env: bool =
     Expand $VAR and ${VAR} Use $$ for a literal $
     '''
 
-    def sub(m: Match) -> str:
+    def sub(m: 'Match[str]') -> str:
         key = m.group(1) or m.group(2)
         result = env.get(key)
         if result is None and fallback_to_os_env:
@@ -216,7 +216,7 @@ def command_for_open(program: Union[str, List[str]] = 'default') -> List[str]:
     return cmd
 
 
-def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str], str] = None, cwd: Optional[str] = None) -> PopenType:
+def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str], str] = None, cwd: Optional[str] = None) -> 'PopenType[bytes]':
     import subprocess
     if arg is not None:
         cmd = list(cmd)
@@ -227,7 +227,7 @@ def open_cmd(cmd: Union[Iterable[str], List[str]], arg: Union[None, Iterable[str
     return subprocess.Popen(tuple(cmd), stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, cwd=cwd or None)
 
 
-def open_url(url: str, program: Union[str, List[str]] = 'default', cwd: Optional[str] = None) -> PopenType:
+def open_url(url: str, program: Union[str, List[str]] = 'default', cwd: Optional[str] = None) -> 'PopenType[bytes]':
     return open_cmd(command_for_open(program), url, cwd=cwd)
 
 
@@ -302,7 +302,7 @@ def end_startup_notification(ctx: Optional['StartupCtx']) -> None:
 
 class startup_notification_handler:
 
-    def __init__(self, do_notify: bool = True, startup_id: Optional[str] = None, extra_callback: Optional[Callable] = None):
+    def __init__(self, do_notify: bool = True, startup_id: Optional[str] = None, extra_callback: Optional[Callable[[int], None]] = None):
         self.do_notify = do_notify
         self.startup_id = startup_id
         self.extra_callback = extra_callback
@@ -768,9 +768,9 @@ def reload_conf_in_all_kitties() -> None:
 
 
 @run_once
-def control_codes_pat() -> Pattern:
+def control_codes_pat() -> 'Pattern[str]':
     return re.compile('[\x00-\x09\x0b-\x1f\x7f\x80-\x9f]')
 
 
 def sanitize_control_codes(text: str, replace_with: str = '') -> str:
-    return cast(str, control_codes_pat().sub(replace_with, text))
+    return control_codes_pat().sub(replace_with, text)

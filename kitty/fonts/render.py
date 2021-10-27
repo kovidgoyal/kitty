@@ -200,10 +200,11 @@ def set_font_family(opts: Optional[Options] = None, override_font_size: Optional
     )
 
 
-UnderlineCallback = Callable[[ctypes.Array, int, int, int, int], None]
+CBufType = ctypes.Array[ctypes.c_ubyte]
+UnderlineCallback = Callable[[CBufType, int, int, int, int], None]
 
 
-def add_line(buf: ctypes.Array, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
+def add_line(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     y = position - thickness // 2
     while thickness > 0 and -1 < y < cell_height:
         thickness -= 1
@@ -211,7 +212,7 @@ def add_line(buf: ctypes.Array, cell_width: int, position: int, thickness: int, 
         y += 1
 
 
-def add_dline(buf: ctypes.Array, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
+def add_dline(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     a = min(position - thickness, cell_height - 1)
     b = min(position, cell_height - 1)
     top, bottom = min(a, b), max(a, b)
@@ -231,7 +232,7 @@ def add_dline(buf: ctypes.Array, cell_width: int, position: int, thickness: int,
         ctypes.memset(ctypes.addressof(buf) + (cell_width * y), 255, cell_width)
 
 
-def add_curl(buf: ctypes.Array, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
+def add_curl(buf: CBufType, cell_width: int, position: int, thickness: int, cell_height: int) -> None:
     max_x, max_y = cell_width - 1, cell_height - 1
     xfactor = 2.0 * pi / max_x
     thickness = max(1, thickness)
@@ -280,7 +281,7 @@ def render_special(
     strikethrough_thickness: int = 0,
     dpi_x: float = 96.,
     dpi_y: float = 96.,
-) -> ctypes.Array:
+) -> CBufType:
     underline_position = min(underline_position, cell_height - underline_thickness)
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
 
@@ -317,7 +318,7 @@ def render_cursor(
     cell_height: int = 0,
     dpi_x: float = 0,
     dpi_y: float = 0
-) -> ctypes.Array:
+) -> CBufType:
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     ans = CharTexture()
 
@@ -361,7 +362,7 @@ def prerender_function(
     cursor_underline_thickness: float,
     dpi_x: float,
     dpi_y: float
-) -> Tuple[Union[int, ctypes.Array], ...]:
+) -> Tuple[Union[int, CBufType], ...]:
     # Pre-render the special underline, strikethrough and missing and cursor cells
     f = partial(
         render_special, cell_width=cell_width, cell_height=cell_height, baseline=baseline,
@@ -377,7 +378,7 @@ def prerender_function(
     return tuple(map(ctypes.addressof, cells)) + (cells,)
 
 
-def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float) -> Tuple[int, ctypes.Array]:
+def render_box_drawing(codepoint: int, cell_width: int, cell_height: int, dpi: float) -> Tuple[int, CBufType]:
     CharTexture = ctypes.c_ubyte * (cell_width * cell_height)
     buf = CharTexture()
     render_box_char(

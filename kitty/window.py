@@ -361,8 +361,8 @@ class Window:
         self.current_mouse_event_button = 0
         self.current_clipboard_read_ask: Optional[bool] = None
         self.prev_osc99_cmd = NotificationCommand()
-        self.action_on_close: Optional[Callable] = None
-        self.action_on_removal: Optional[Callable] = None
+        self.action_on_close: Optional[Callable[['Window'], None]] = None
+        self.action_on_removal: Optional[Callable[['Window'], None]] = None
         self.current_marker_spec: Optional[Tuple[str, Union[str, Tuple[Tuple[int, str], ...]]]] = None
         self.pty_resized_once = False
         self.last_reported_pty_size = (-1, -1, -1, -1)
@@ -495,7 +495,7 @@ class Window:
         }
 
     @property
-    def current_colors(self) -> Dict:
+    def current_colors(self) -> Dict[str, int]:
         return self.screen.color_profile.as_dict()
 
     @property

@@ -32,7 +32,7 @@ if is_macos:
         return os.path.realpath(_cwd(pid))
 
     def process_group_map() -> DefaultDict[int, List[int]]:
-        ans: DefaultDict[int, List] = defaultdict(list)
+        ans: DefaultDict[int, List[int]] = defaultdict(list)
         for pid, pgid in _process_group_map():
             ans[pgid].append(pid)
         return ans

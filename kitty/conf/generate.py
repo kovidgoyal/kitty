@@ -173,7 +173,7 @@ def generate_class(defn: Definition, loc: str) -> Tuple[str, str]:
 
     if defn.has_color_table:
         imports.add(('array', 'array'))
-        a('    color_table: array = array("L", (')
+        a('    color_table: "array[int]" = array("L", (')
         for grp in chunks(color_table, 8):
             a('        ' + ', '.join(grp) + ',')
         a('    ))')

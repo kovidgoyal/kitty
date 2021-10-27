@@ -20,9 +20,11 @@ all_layouts: Dict[str, Type[Layout]] = {
     Splits.name: Splits,
 }
 
+KeyType = Tuple[str, int, int, str]
+
 
 class CreateLayoutObjectFor:
-    cache: Dict[Tuple, Layout] = {}
+    cache: Dict[KeyType, Layout] = {}
 
     def __call__(
         self,

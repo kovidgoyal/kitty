@@ -585,7 +585,7 @@ class Options:
     sequence_map: SequenceMap = {}
     mouse_map: typing.List[kitty.options.utils.MouseMapping] = []
     mousemap: MouseMap = {}
-    color_table: array = array("L", (
+    color_table: "array[int]" = array("L", (
         0x000000, 0xcc0403, 0x19cb00, 0xcecb00, 0x0d73cc, 0xcb1ed1, 0x0dcdcd, 0xdddddd,
         0x767676, 0xf2201f, 0x23fd00, 0xfffd00, 0x1a8fff, 0xfd28ff, 0x14ffff, 0xffffff,
         0x000000, 0x00005f, 0x000087, 0x0000af, 0x0000d7, 0x0000ff, 0x005f00, 0x005f5f,

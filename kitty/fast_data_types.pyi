@@ -1,13 +1,14 @@
-from ctypes import Array
+import termios
+from ctypes import Array, c_ubyte
 from typing import (
     Any, AnyStr, Callable, Dict, List, NewType, Optional, Tuple, TypedDict,
     Union
 )
 
-import termios
 from kitty.boss import Boss
 from kitty.fonts import FontFeature
 from kitty.fonts.render import FontObject
+from kitty.marks import MarkerFunc
 from kitty.options.types import Options
 
 # Constants {{{
@@ -622,7 +623,7 @@ class ColorProfile:
 
     default_bg: int
 
-    def as_dict(self) -> Dict:
+    def as_dict(self) -> Dict[str, int]:
         pass
 
     def as_color(self, val: int) -> Tuple[int, int, int]:
@@ -733,7 +734,7 @@ def background_opacity_of(os_window_id: int) -> Optional[float]:
     pass
 
 
-def read_command_response(fd: int, timeout: float, list: List) -> None:
+def read_command_response(fd: int, timeout: float, list: List[bytes]) -> None:
     pass
 
 
@@ -887,10 +888,10 @@ def set_send_sprite_to_gpu(
 
 def set_font_data(
     box_drawing_func: Callable[[int, int, int, float],
-                               Tuple[int, Union[bytearray, bytes, Array]]],
+                               Tuple[int, Union[bytearray, bytes, Array[c_ubyte]]]],
     prerender_func: Callable[
         [int, int, int, int, int, int, int, float, float, float, float],
-        Tuple[Union[Array, int], ...]],
+        Tuple[Union[Array[c_ubyte], int], ...]],
     descriptor_for_idx: Callable[[int], Tuple[FontObject, bool, bool]],
     bold: int, italic: int, bold_italic: int, num_symbol_fonts: int,
     symbol_maps: Tuple[Tuple[int, int, int], ...], font_sz_in_pts: float,
@@ -1044,7 +1045,7 @@ class Screen:
     def refresh_sprite_positions(self) -> None:
         pass
 
-    def set_marker(self, marker: Optional[Callable] = None) -> None:
+    def set_marker(self, marker: Optional[MarkerFunc] = None) -> None:
         pass
 
     def paste_bytes(self, data: bytes) -> None:
@@ -1105,7 +1106,7 @@ class ChildMonitor:
     def __init__(
         self,
         death_notify: Callable[[int], None],
-        dump_callback: Optional[Callable],
+        dump_callback: Optional[Callable[[bytes], None]],
         talk_fd: int = -1,
         listen_fd: int = -1
     ):

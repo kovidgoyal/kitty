@@ -9,8 +9,7 @@ from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple,
-    Union, cast
+    Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
 )
 from weakref import WeakValueDictionary
 
@@ -154,7 +153,7 @@ class Boss:
         set_layout_options(opts)
         self.cocoa_application_launched = False
         self.clipboard_buffers: Dict[str, str] = {}
-        self.update_check_process: Optional[PopenType] = None
+        self.update_check_process: Optional['PopenType[bytes]'] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.visual_window_select_callback: Optional[Callable[[Tab, Window], None]] = None
@@ -946,7 +945,7 @@ class Boss:
         dispatch_type: str = 'KeyPress'
     ) -> bool:
 
-        def report_match(f: Callable) -> None:
+        def report_match(f: Callable[..., Any]) -> None:
             if self.args.debug_keyboard:
                 prefix = '\n' if dispatch_type == 'KeyPress' else ''
                 print(f'{prefix}\x1b[35m{dispatch_type}\x1b[m matched action:', func_name(f), flush=True)
@@ -1148,8 +1147,8 @@ class Boss:
         args: Iterable[str] = (),
         input_data: Optional[Union[bytes, str]] = None,
         window: Optional[Window] = None,
-        custom_callback: Optional[Callable] = None,
-        action_on_removal: Optional[Callable] = None
+        custom_callback: Optional[Callable[[Dict[str, Any], int, 'Boss'], None]] = None,
+        action_on_removal: Optional[Callable[[int, 'Boss'], None]] = None
     ) -> Any:
         orig_args, args = list(args), list(args)
         from kittens.runner import create_kitten_handler
@@ -1229,7 +1228,7 @@ class Boss:
     def run_kitten(self, kitten: str, *args: str) -> None:
         self._run_kitten(kitten, args)
 
-    def on_kitten_finish(self, target_window_id: str, end_kitten: Callable, source_window: Window) -> None:
+    def on_kitten_finish(self, target_window_id: int, end_kitten: Callable[[Dict[str, Any], int, 'Boss'], None], source_window: Window) -> None:
         output = self.get_output(source_window, num_lines=None)
         from kittens.runner import deserialize
         data = deserialize(output)
@@ -1336,7 +1335,7 @@ class Boss:
     def open_url_with_hints(self) -> None:
         self._run_kitten('hints')
 
-    def drain_actions(self, actions: List) -> None:
+    def drain_actions(self, actions: List[KeyAction]) -> None:
 
         def callback(timer_id: Optional[int]) -> None:
             self.dispatch_action(actions.pop(0))
@@ -1450,7 +1449,7 @@ class Boss:
 
     def process_stdin_source(
         self, window: Optional[Window] = None,
-        stdin: Optional[str] = None, copy_pipe_data: Optional[Dict] = None
+        stdin: Optional[str] = None, copy_pipe_data: Optional[Dict[str, Any]] = None
     ) -> Tuple[Optional[Dict[str, str]], Optional[bytes]]:
         w = window or self.active_window
         if not w:
@@ -1763,7 +1762,7 @@ class Boss:
             with suppress(FileNotFoundError):
                 os.remove(path)
 
-    def set_update_check_process(self, process: Optional[PopenType] = None) -> None:
+    def set_update_check_process(self, process: Optional['PopenType[bytes]'] = None) -> None:
         if self.update_check_process is not None:
             with suppress(Exception):
                 if self.update_check_process.poll() is None:

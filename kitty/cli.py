@@ -226,7 +226,7 @@ def prettify(text: str) -> str:
     def identity(x: str) -> str:
         return x
 
-    def sub(m: Match) -> str:
+    def sub(m: 'Match[str]') -> str:
         role, text = m.group(1, 2)
         return role_map.get(role, identity)(text)
 

@@ -216,7 +216,7 @@ class Hints(Handler):
         self.write(self.current_text)
 
 
-def regex_finditer(pat: Pattern, minimum_match_length: int, text: str) -> Generator[Tuple[int, int, Dict], None, None]:
+def regex_finditer(pat: 'Pattern[str]', minimum_match_length: int, text: str) -> Generator[Tuple[int, int, Dict[str, str]], None, None]:
     has_named_groups = bool(pat.groupindex)
     for m in pat.finditer(text):
         s, e = m.span(0 if has_named_groups else pat.groups)
@@ -444,7 +444,7 @@ def process_hyperlinks(text: str) -> Tuple[str, Tuple[Mark, ...]]:
         active_hyperlink_start_offset = 0
         idx += 1
 
-    def process_hyperlink(m: 're.Match') -> str:
+    def process_hyperlink(m: 're.Match[str]') -> str:
         nonlocal removed_size, active_hyperlink_url, active_hyperlink_id, active_hyperlink_start_offset
         raw = m.group()
         start = m.start() - removed_size
