@@ -3,7 +3,6 @@
 
 
 import os
-import time
 from contextlib import suppress
 from typing import Optional, Union, Dict
 
@@ -58,18 +57,6 @@ def setup_zsh_integration(env: Dict[str, str]) -> None:
 
 def setup_bash_integration(env: Dict[str, str]) -> None:
     setup_integration('bash', os.path.expanduser('~/.bashrc'))
-
-
-def atomic_symlink(destination: str, in_directory: str) -> None:
-    os.makedirs(in_directory, exist_ok=True)
-    name = os.path.basename(destination)
-    tmpname = os.path.join(in_directory, f'{name}-{os.getpid()}-{time.monotonic()}')
-    os.symlink(destination, tmpname)
-    try:
-        os.replace(tmpname, os.path.join(in_directory, name))
-    except OSError:
-        os.unlink(tmpname)
-        raise
 
 
 def setup_fish_integration(env: Dict[str, str]) -> None:
