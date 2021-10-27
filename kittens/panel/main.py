@@ -5,11 +5,11 @@ import os
 import shutil
 import subprocess
 import sys
-from typing import Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple
 
 from kitty.cli import parse_args
 from kitty.cli_stub import PanelCLIOptions
-from kitty.constants import is_macos, appname
+from kitty.constants import appname, is_macos
 from kitty.os_window_size import WindowSizeData
 
 OPTIONS = r'''
@@ -119,7 +119,7 @@ def setup_x11_window(win_id: int) -> None:
     func(win_id, window_width, window_height)
 
 
-def initial_window_size_func(opts: WindowSizeData, cached_values: Dict) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
+def initial_window_size_func(opts: WindowSizeData, cached_values: Dict[str, Any]) -> Callable[[int, int, float, float, float, float], Tuple[int, int]]:
     from kitty.fast_data_types import glfw_primary_monitor_size
 
     def initial_window_size(cell_width: int, cell_height: int, dpi_x: float, dpi_y: float, xscale: float, yscale: float) -> Tuple[int, int]:
@@ -154,7 +154,7 @@ def main(sys_args: List[str]) -> None:
     for override in args.override:
         sys.argv.extend(('--override', override))
     sys.argv.extend(items)
-    from kitty.main import run_app, main as real_main
+    from kitty.main import main as real_main, run_app
     run_app.cached_values_name = 'panel'
     run_app.first_window_callback = setup_x11_window
     run_app.initial_window_size_func = initial_window_size_func

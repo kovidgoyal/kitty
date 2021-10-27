@@ -42,8 +42,8 @@ taking the results from kitty's completion system and converting
 them into something your shell will understand.
 '''
 
-parsers: Dict[str, Callable] = {}
-serializers: Dict[str, Callable] = {}
+parsers: Dict[str, 'ParserFunc'] = {}
+serializers: Dict[str, 'SerializerFunc'] = {}
 
 
 class MatchGroup:
@@ -469,7 +469,7 @@ def path_completion(prefix: str = '') -> Tuple[List[str], List[str]]:
     src = os.path.expandvars(os.path.expanduser(base))
     src_prefix = os.path.abspath(os.path.expandvars(os.path.expanduser(prefix))) if prefix else ''
     try:
-        items: Iterable[os.DirEntry] = os.scandir(src)
+        items: Iterable['os.DirEntry[str]'] = os.scandir(src)
     except FileNotFoundError:
         items = ()
     for x in items:

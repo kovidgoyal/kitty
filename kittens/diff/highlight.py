@@ -21,7 +21,7 @@ class StyleNotFound(Exception):
     pass
 
 
-class DiffFormatter(Formatter):
+class DiffFormatter(Formatter):  # type: ignore
 
     def __init__(self, style: str = 'default') -> None:
         try:

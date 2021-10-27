@@ -146,7 +146,7 @@ class Manager:
                     self.failed_specs[fid] = ftc.status
                 else:
                     if ftc.status == 'OK':
-                        self.state == State.transferring
+                        self.state = State.transferring
                         return ''
                     else:
                         return ftc.status

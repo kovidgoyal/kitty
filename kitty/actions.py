@@ -2,17 +2,17 @@
 # License: GPLv3 Copyright: 2021, Kovid Goyal <kovid at kovidgoyal.net>
 
 import inspect
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, cast
 
 from .boss import Boss
 from .tabs import Tab
-from .types import run_once, ActionGroup, ActionSpec
+from .types import ActionGroup, ActionSpec, run_once
 from .window import Window
 
 
 class Action(NamedTuple):
     name: str
-    group: str
+    group: ActionGroup
     short_help: str
     long_help: str
 
@@ -32,10 +32,10 @@ group_title = groups.__getitem__
 
 
 @run_once
-def get_all_actions() -> Dict[str, List[Action]]:
+def get_all_actions() -> Dict[ActionGroup, List[Action]]:
     ' test docstring '
 
-    ans: Dict[str, List[Action]] = {}
+    ans: Dict[ActionGroup, List[Action]] = {}
 
     def is_action(x: object) -> bool:
         return isinstance(getattr(x, 'action_spec', None), ActionSpec)
@@ -47,7 +47,8 @@ def get_all_actions() -> Dict[str, List[Action]]:
         first = lines.pop(0)
         short_help = first
         long_help = '\n'.join(lines).strip()
-        return Action(getattr(x, '__name__'), spec.group, short_help, long_help)
+        assert spec.group in groups
+        return Action(getattr(x, '__name__'), cast(ActionGroup, spec.group), short_help, long_help)
 
     seen = set()
     for cls in (Window, Tab, Boss):
@@ -74,8 +75,8 @@ def dump() -> None:
 
 
 def as_rst() -> str:
-    from .options.definition import definition
     from .conf.types import Mapping
+    from .options.definition import definition
     allg = get_all_actions()
     lines: List[str] = []
     a = lines.append
@@ -85,7 +86,10 @@ def as_rst() -> str:
             func = m.action_def.split()[0]
             maps.setdefault(func, []).append(m)
 
-    for group in sorted(allg, key=lambda x: group_title(x).lower()):
+    def key(x: ActionGroup) -> str:
+        return group_title(x).lower()
+
+    for group in sorted(allg, key=key):
         title = group_title(group)
         a('')
         a(f'.. _action-group-{group}:')

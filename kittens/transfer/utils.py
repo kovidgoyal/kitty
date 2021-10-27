@@ -5,7 +5,7 @@ import os
 from contextlib import contextmanager
 from datetime import timedelta
 from mimetypes import guess_type
-from typing import Callable, Generator, Union, cast
+from typing import Callable, Generator, Union
 
 from kitty.fast_data_types import truncate_point_for_length, wcswidth
 from kitty.types import run_once
@@ -154,8 +154,7 @@ def short_uuid_func() -> Callable[[], str]:
 
 
 def random_id() -> str:
-    f = short_uuid_func()
-    return cast(str, f())
+    return short_uuid_func()()
 
 
 @contextmanager

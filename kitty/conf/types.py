@@ -25,12 +25,13 @@ class Unset:
 
 
 unset = Unset()
+ParserFuncType = Callable[[str], Any]
 
 
 def expand_opt_references(conf_name: str, text: str) -> str:
     conf_name += '.'
 
-    def expand(m: Match) -> str:
+    def expand(m: 'Match[str]') -> str:
         ref = m.group(1)
         if '<' not in ref and '.' not in ref:
             full_ref = conf_name + ref
@@ -50,7 +51,7 @@ def remove_markup(text: str) -> str:
         'shell_integration': website_url("shell-integration"),
     }
 
-    def sub(m: Match) -> str:
+    def sub(m: 'Match[str]') -> str:
         if m.group(1) == 'ref':
             return ref_map[m.group(2)]
         return str(m.group(2))
@@ -152,7 +153,7 @@ class CoalescedIteratorData:
 class Option:
 
     def __init__(
-        self, name: str, defval: str, macos_default: Union[Unset, str], parser_func: Callable,
+        self, name: str, defval: str, macos_default: Union[Unset, str], parser_func: ParserFuncType,
         long_text: str, documented: bool, group: 'Group', choices: Tuple[str, ...], ctype: str
     ):
         self.name = name
@@ -224,7 +225,7 @@ class MultiVal:
 
 class MultiOption:
 
-    def __init__(self, name: str, parser_func: Callable, long_text: str, group: 'Group', ctype: str):
+    def __init__(self, name: str, parser_func: ParserFuncType, long_text: str, group: 'Group', ctype: str):
         self.name = name
         self.ctype = ctype
         self.parser_func = parser_func
@@ -513,7 +514,7 @@ class Group:
         return ans
 
 
-def resolve_import(name: str, module: Any = None) -> Callable:
+def resolve_import(name: str, module: Any = None) -> ParserFuncType:
     ans = None
     if name.count('.') > 1:
         m = import_module(name.rpartition('.')[0])
@@ -526,7 +527,7 @@ def resolve_import(name: str, module: Any = None) -> Callable:
                 ans = getattr(module, name)
     if not callable(ans):
         raise TypeError(f'{name} is not a function')
-    return cast(Callable, ans)
+    return cast(ParserFuncType, ans)
 
 
 class Action:
@@ -558,7 +559,7 @@ class Definition:
         self.shortcut_map: Dict[str, List[ShortcutMapping]] = {}
         self.mouse_map: Dict[str, List[MouseMapping]] = {}
         self.actions = {a.name: a.resolve_imports(self.module_for_parsers) for a in actions}
-        self.deprecations: Dict[Callable, Tuple[str, ...]] = {}
+        self.deprecations: Dict[ParserFuncType, Tuple[str, ...]] = {}
 
     def iter_all_non_groups(self) -> Iterator[NonGroups]:
         yield from self.root_group.iter_all_non_groups()
@@ -575,17 +576,17 @@ class Definition:
             elif isinstance(x, MouseMapping) and which in ('mouse_map', '*'):
                 yield x
 
-    def parser_func(self, name: str) -> Callable:
+    def parser_func(self, name: str) -> ParserFuncType:
         ans = getattr(builtins, name, None)
         if callable(ans):
-            return cast(Callable, ans)
+            return cast(ParserFuncType, ans)
         ans = getattr(generic_parsers, name, None)
         if callable(ans):
-            return cast(Callable, ans)
+            return cast(ParserFuncType, ans)
         ans = getattr(self.module_for_parsers, name)
         if not callable(ans):
             raise TypeError(f'{name} is not a function')
-        return cast(Callable, ans)
+        return cast(ParserFuncType, ans)
 
     def add_group(self, name: str, title: str = '', start_text: str = '') -> None:
         self.current_group = Group(name, title or name, self.coalesced_iterator_data, start_text.strip(), self.current_group)

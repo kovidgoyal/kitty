@@ -295,7 +295,7 @@ def complete_q_choices(ans: Completions, prefix: str, title: str, key: str, comm
 def complete_arg(ans: Completions, option_flag: str, prefix: str = '') -> None:
     options = ssh_options()
     option_name = options.get(option_flag[1:])
-    if option_name.endswith('file') or option_name.endswith('path'):
+    if option_name and (option_name.endswith('file') or option_name.endswith('path')):
         return complete_files_and_dirs(ans, prefix, option_name)
     choices = {
         'mac_spec': ('MAC algorithm', 'mac', True),

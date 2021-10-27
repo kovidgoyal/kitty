@@ -296,7 +296,7 @@ class FileTransmissionCommand:
     @classmethod
     def deserialize(cls, data: Union[str, bytes, memoryview]) -> 'FileTransmissionCommand':
         ans = FileTransmissionCommand()
-        fmap: Dict[bytes, Field] = getattr(cls, 'fmap', None)
+        fmap: Dict[bytes, 'Field[Union[str, int, bytes, Enum]]'] = getattr(cls, 'fmap', None)
         if not fmap:
             fmap = {k.name.encode('ascii'): k for k in fields(cls)}
             setattr(cls, 'fmap', fmap)
@@ -936,7 +936,7 @@ class TestFileTransmission(FileTransmission):
 
     def __init__(self, allow: bool = True) -> None:
         super().__init__(0)
-        self.test_responses: List[dict] = []
+        self.test_responses: List[Dict[str, Union[str, int, bytes]]] = []
         self.allow = allow
 
     def write_ftc_to_child(self, payload: FileTransmissionCommand, appendleft: bool = False, use_pending: bool = True) -> bool:

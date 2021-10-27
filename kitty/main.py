@@ -6,7 +6,7 @@ import os
 import shutil
 import sys
 from contextlib import contextmanager, suppress
-from typing import Dict, Generator, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Generator, List, Optional, Sequence, Tuple
 
 from .borders import load_borders_program
 from .boss import Boss
@@ -103,7 +103,7 @@ def init_glfw(opts: Options, debug_keyboard: bool = False, debug_rendering: bool
     return glfw_module
 
 
-def get_macos_shortcut_for(opts: Options, function: str = 'new_os_window', args: Tuple = (), lookup_name: str = '') -> Optional[SingleKey]:
+def get_macos_shortcut_for(opts: Options, function: str = 'new_os_window', args: Tuple[Any, ...] = (), lookup_name: str = '') -> Optional[SingleKey]:
     ans = None
     candidates = []
     for k, v in opts.keymap.items():
@@ -187,7 +187,9 @@ class AppRunner:
             set_options(None)
             free_font_data()  # must free font data before glfw/freetype/fontconfig/opengl etc are finalized
             if is_macos:
-                from kitty.fast_data_types import cocoa_set_notification_activated_callback
+                from kitty.fast_data_types import (
+                    cocoa_set_notification_activated_callback
+                )
                 cocoa_set_notification_activated_callback(None)
 
 

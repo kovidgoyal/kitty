@@ -42,7 +42,7 @@ def unmonkey_patch_multiprocessing() -> None:
 def get_process_pool_executor(
     prefer_fork: bool = False,
     max_workers: Optional[int] = None,
-    initializer: Optional[Callable] = None,
+    initializer: Optional[Callable[..., None]] = None,
     initargs: Tuple[Any, ...] = ()
 ) -> ProcessPoolExecutor:
     if prefer_fork and 'fork' in get_all_start_methods():
