@@ -992,7 +992,7 @@ class TabManager:  # {{{
                 prev, prev2 = self.recent_mouse_events[-1], self.recent_mouse_events[-2]
                 if (
                     prev.button == button and prev2.button == button and
-                    prev.action == GLFW_RELEASE and prev2.action == GLFW_PRESS and
+                    prev.action == GLFW_PRESS and prev2.action == GLFW_RELEASE and
                     prev.tab_idx is None and prev2.tab_idx is None and
                     now - prev.at <= ci and now - prev2.at <= 2 * ci
                 ):  # double click
