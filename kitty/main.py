@@ -56,9 +56,12 @@ def set_custom_ibeam_cursor() -> None:
 def talk_to_instance(args: CLIOptions) -> None:
     import json
     import socket
+    stdin = ''
+    if args.session == '-':
+        stdin = sys.stdin.read()
     data = {'cmd': 'new_instance', 'args': tuple(sys.argv),
             'startup_id': os.environ.get('DESKTOP_STARTUP_ID'),
-            'cwd': os.getcwd()}
+            'cwd': os.getcwd(), 'stdin': stdin}
     notify_socket = None
     if args.wait_for_single_instance_window_close:
         address = f'\0{appname}-os-window-close-notify-{os.getpid()}-{os.geteuid()}'

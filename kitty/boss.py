@@ -468,6 +468,9 @@ class Boss:
             args, rest = parse_args(data['args'][1:], result_class=CLIOptions)
             args.args = rest
             opts = create_opts(args)
+            if args.session == '-':
+                from .session import PreReadSession
+                args.session = PreReadSession(data['stdin'])
             if not os.path.isabs(args.directory):
                 args.directory = os.path.join(data['cwd'], args.directory)
             for session in create_sessions(opts, args, respect_cwd=True):
