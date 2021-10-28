@@ -7,6 +7,7 @@
 
 #include "fonts.h"
 #include "gl.h"
+#include "colors.h"
 #include <stddef.h>
 
 enum { CELL_PROGRAM, CELL_BG_PROGRAM, CELL_SPECIAL_PROGRAM, CELL_FG_PROGRAM, BORDERS_PROGRAM, GRAPHICS_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_ALPHA_MASK_PROGRAM, BLIT_PROGRAM, BGIMAGE_PROGRAM, TINT_PROGRAM, SEVEN_SEGMENT_PROGRAM, NUM_PROGRAMS };
@@ -258,6 +259,21 @@ send_graphics_data_to_gpu(size_t image_count, ssize_t gvao_idx, const ImageRende
 }
 
 static void
+pick_cursor_color(Line *line, ColorProfile *color_profile, color_type cell_fg, color_type cell_bg, index_type cell_color_x, color_type *cursor_fg, color_type *cursor_bg, color_type default_fg, color_type default_bg) {
+    ARGB32 fg, bg, dfg, dbg;
+    (void) line; (void) color_profile; (void) cell_color_x;
+    fg.rgb = cell_fg; bg.rgb = cell_bg;
+    *cursor_fg = cell_bg; *cursor_bg = cell_fg;
+    double cell_contrast = rgb_contrast(fg, bg);
+    if (cell_contrast < 2.5) {
+        dfg.rgb = default_fg; dbg.rgb = default_bg;
+        if (rgb_contrast(dfg, dbg) > cell_contrast) {
+            *cursor_fg = default_bg; *cursor_bg = default_fg;
+        }
+    }
+}
+
+static void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
     struct CellRenderData {
         GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
@@ -292,16 +308,19 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
             }
         } else rd->cursor_fg_sprite_idx = UNFOCUSED_IDX;
         color_type cell_fg = rd->default_fg, cell_bg = rd->default_bg;
-        if (screen->cursor->y < screen->lines) {
+        index_type cell_color_x = screen->cursor->x;
+        bool cursor_ok = screen->cursor->x < screen->columns && screen->cursor->y < screen->lines;
+        if (cursor_ok) {
             linebuf_init_line(screen->linebuf, screen->cursor->y);
-            index_type x = screen->cursor->x;
-            colors_for_cell(screen->linebuf->line, screen->color_profile, &x, &cell_fg, &cell_bg);
+            colors_for_cell(screen->linebuf->line, screen->color_profile, &cell_color_x, &cell_fg, &cell_bg);
         }
         if (screen->color_profile->overridden.cursor_color.type == COLOR_IS_INDEX || screen->color_profile->overridden.cursor_color.type == COLOR_IS_RGB) {
             // since the program is controlling the cursor color we hope it has chosen one
             // that has good contrast with the text color of the cell
             rd->cursor_fg = cell_fg; rd->cursor_bg = COLOR(cursor_color);
         } else if (IS_SPECIAL_COLOR(cursor_color)) {
+            if (cursor_ok) pick_cursor_color(screen->linebuf->line, screen->color_profile, cell_fg, cell_bg, cell_color_x, &rd->cursor_fg, &rd->cursor_bg, rd->default_fg, rd->default_bg);
+            else { rd->cursor_fg = rd->default_bg; rd->cursor_bg = rd->default_fg; }
             if (cell_bg == cell_fg) {
                 rd->cursor_fg = rd->default_bg; rd->cursor_bg = rd->default_fg;
             } else { rd->cursor_fg = cell_bg; rd->cursor_bg = cell_fg; }

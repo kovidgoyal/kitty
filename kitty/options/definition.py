@@ -214,12 +214,12 @@ agr('cursor', 'Cursor customization')
 
 opt('cursor', '#cccccc',
     option_type='to_color_or_none', long_text='''
-Default cursor color. If set to the special value :code:`none` the cursor will be
-rendered with a "reverse video" effect. It's color will be the color of the text in
-the cell it is over and the text will be rendered with the background color of the cell.
-Note that if the program running in the terminal sets a cursor color, this takes precedence.
-Also, the reverse video effect is not applied if the cell's foreground and background colors
-are the same.
+Default cursor color. If set to the special value :code:`none` the cursor will
+be rendered with a "reverse video" effect. It's color will be the color of the
+text in the cell it is over and the text will be rendered with the background
+color of the cell.  Note that if the program running in the terminal sets a
+cursor color, this takes precedence. Also, the cursor colors are modified if
+the cell background and foreground colors have very low contrast.
 '''
     )
 
