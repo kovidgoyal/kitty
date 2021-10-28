@@ -18,8 +18,15 @@ if TYPE_CHECKING:
 
 
 nullable_colors = (
-    'cursor', 'cursor_text_color', 'tab_bar_background', 'tab_bar_margin_color',
-    'selection_foreground', 'selection_background', 'active_border_color'
+    # NULLABLE_COLORS_START
+    'active_border_color',
+    'cursor',
+    'cursor_text_color',
+    'selection_background',
+    'selection_foreground',
+    'tab_bar_background',
+    'tab_bar_margin_color',
+    # NULLABLE_COLORS_END
 )
 
 
