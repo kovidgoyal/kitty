@@ -627,18 +627,22 @@ class Color:
     @property
     def red(self) -> int:
         pass
+    r = red
 
     @property
     def green(self) -> int:
         pass
+    g = green
 
     @property
     def blue(self) -> int:
         pass
+    b = blue
 
     @property
     def alpha(self) -> int:
         pass
+    a = alpha
 
     @property
     def luminance(self) -> float:
