@@ -5,7 +5,6 @@
  * Distributed under terms of the GPL3 license.
  */
 
-#define EXTRA_INIT if (PyModule_AddFunctions(module, module_methods) != 0) return false;
 #include "state.h"
 #include <structmember.h>
 
@@ -462,5 +461,13 @@ static PyMethodDef module_methods[] = {
 };
 
 
-INIT_TYPE(ColorProfile)
+int init_ColorProfile(PyObject *module) {\
+    if (PyType_Ready(&ColorProfile_Type) < 0) return 0;
+    if (PyModule_AddObject(module, "ColorProfile", (PyObject *)&ColorProfile_Type) != 0) return 0;
+    Py_INCREF(&ColorProfile_Type);
+    if (PyModule_AddFunctions(module, module_methods) != 0) return false;
+    return 1;
+}
+
+
 // }}}
