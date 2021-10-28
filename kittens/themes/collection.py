@@ -18,7 +18,7 @@ from urllib.request import Request, urlopen
 from kitty.config import atomic_save, parse_config
 from kitty.constants import cache_dir, config_dir
 from kitty.options.types import Options as KittyOptions
-from kitty.rgb import Color
+from kitty.fast_data_types import Color
 from kitty.utils import reload_conf_in_all_kitties
 
 from ..choose.match import match

@@ -5,6 +5,7 @@
 from . import BaseTest
 from kitty.utils import log_error
 from kitty.options.utils import DELETE_ENV_VAR
+from kitty.fast_data_types import Color
 
 
 class TestConfParsing(BaseTest):
@@ -37,7 +38,7 @@ class TestConfParsing(BaseTest):
         opts = p('font_size 11.37', 'clear_all_shortcuts y', 'color23 red')
         self.ae(opts.font_size, 11.37)
         self.ae(opts.mouse_hide_wait, 0 if is_macos else 3)
-        self.ae(tuple(opts.color23), (255, 0, 0))
+        self.ae(opts.color23, Color(255, 0, 0))
         self.assertFalse(opts.keymap)
         opts = p('clear_all_shortcuts y', 'map f1 next_window')
         self.ae(len(opts.keymap), 1)

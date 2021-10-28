@@ -6,7 +6,7 @@ import tempfile
 
 from kitty.config import build_ansi_color_table, defaults
 from kitty.fast_data_types import (
-    ColorProfile, Cursor as C, HistoryBuf, LineBuf,
+    ColorProfile, Cursor as C, HistoryBuf, LineBuf, Color,
     parse_input_from_terminal, truncate_point_for_length, wcswidth, wcwidth
 )
 from kitty.rgb import to_color
@@ -32,8 +32,12 @@ class TestDataTypes(BaseTest):
         for x in 'xxx #12 #1234 rgb:a/b'.split():
             self.assertIsNone(to_color(x))
 
-        def c(spec, r=0, g=0, b=0):
-            self.ae(tuple(to_color(spec)), (r, g, b))
+        def c(spec, r=0, g=0, b=0, a=0):
+            c = to_color(spec)
+            self.ae(c.red, r)
+            self.ae(c.green, g)
+            self.ae(c.blue, b)
+            self.ae(c.alpha, a)
 
         c('#eee', 0xee, 0xee, 0xee)
         c('#234567', 0x23, 0x45, 0x67)
@@ -42,6 +46,15 @@ class TestDataTypes(BaseTest):
         c('rgb:23/45/67', 0x23, 0x45, 0x67)
         c('rgb:abc/abc/def', 0xab, 0xab, 0xde)
         c('red', 0xff)
+        self.ae(int(Color(1, 2, 3)), 0x10203)
+        base = Color(12, 12, 12)
+        a = Color(23, 23, 23)
+        b = Color(100, 100, 100)
+        self.assertLess(base.contrast(a), base.contrast(b))
+        self.ae(Color(1, 2, 3).as_sgr, ':2:1:2:3')
+        self.ae(Color(1, 2, 3).as_sharp, '#010203')
+        self.ae(Color(1, 2, 3, 4).as_sharp, '#04010203')
+        self.ae(Color(1, 2, 3, 4).rgb, 0x10203)
 
     def test_linebuf(self):
         old = filled_line_buf(2, 3, filled_cursor())
@@ -423,8 +436,8 @@ class TestDataTypes(BaseTest):
         c.update_ansi_color_table(build_ansi_color_table())
         for i in range(8):
             col = getattr(defaults, f'color{i}')
-            self.assertEqual(c.as_color(i << 8 | 1), (col[0], col[1], col[2]))
-        self.ae(c.as_color(255 << 8 | 1), (0xee, 0xee, 0xee))
+            self.assertEqual(c.as_color(i << 8 | 1), col)
+        self.ae(c.as_color(255 << 8 | 1), Color(0xee, 0xee, 0xee))
 
     def test_historybuf(self):
         lb = filled_line_buf()

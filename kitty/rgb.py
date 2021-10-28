@@ -3,37 +3,8 @@
 
 import re
 from contextlib import suppress
-from typing import NamedTuple, Optional, Tuple
-
-
-class Color(NamedTuple):
-    red: int = 0
-    green: int = 0
-    blue: int = 0
-
-    def __truediv__(self, denom: float) -> Tuple[float, float, float]:
-        return self.red / denom, self.green / denom, self.blue / denom
-
-    def as_sgr(self) -> str:
-        return ':2:{}:{}:{}'.format(*self)
-
-    def luminance(self) -> float:
-        return 0.299 * self.red + 0.587 * self.green + 0.114 * self.blue
-
-    def contrast(self, other: 'Color') -> float:
-        a = self.luminance()
-        b = other.luminance()
-        if a < b:
-            a, b = b, a
-        return (a + 0.05) / (b + 0.05)
-
-    def __int__(self) -> int:
-        return self.red << 16 | self.green << 8 | self.blue
-
-    def as_bytearray(self, alpha: Optional[int] = None) -> bytearray:
-        if alpha is None:
-            return bytearray((self.red, self.green, self.blue))
-        return bytearray((self.red, self.green, self.blue, alpha))
+from typing import Optional
+from .fast_data_types import Color
 
 
 def alpha_blend_channel(top_color: int, bottom_color: int, alpha: float) -> int:
@@ -78,11 +49,11 @@ def color_as_int(x: Color) -> int:
 
 
 def color_as_sharp(x: Color) -> str:
-    return '#{:02x}{:02x}{:02x}'.format(*x)
+    return x.as_sharp
 
 
 def color_as_sgr(x: Color) -> str:
-    return x.as_sgr()
+    return x.as_sgr
 
 
 def to_color(raw: str, validate: bool = False) -> Optional[Color]:

@@ -7,8 +7,8 @@
 
 #include "state.h"
 #include <structmember.h>
+#include "colors.h"
 
-PyTypeObject ColorProfile_Type;
 
 static uint32_t FG_BG_256[256] = {
     0x000000,  // 0
@@ -60,7 +60,7 @@ PyObject* create_256_color_table() {
 }
 
 static PyObject *
-new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
+new_cp(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
     ColorProfile *self;
 
     self = (ColorProfile *)type->tp_alloc(type, 0);
@@ -77,14 +77,14 @@ new(PyTypeObject *type, PyObject UNUSED *args, PyObject UNUSED *kwds) {
 }
 
 static void
-dealloc(ColorProfile* self) {
+dealloc_cp(ColorProfile* self) {
     if (self->color_stack) free(self->color_stack);
     Py_TYPE(self)->tp_free((PyObject*)self);
 }
 
 ColorProfile*
 alloc_color_profile() {
-    return (ColorProfile*)new(&ColorProfile_Type, NULL, NULL);
+    return (ColorProfile*)new_cp(&ColorProfile_Type, NULL, NULL);
 }
 
 
@@ -248,7 +248,6 @@ as_color(ColorProfile *self, PyObject *val) {
     unsigned int t = entry & 0xFF;
     uint8_t r;
     uint32_t col = 0;
-    PyObject *ans = NULL;
     switch(t) {
         case 1:
             r = (entry >> 8) & 0xff;
@@ -258,10 +257,11 @@ as_color(ColorProfile *self, PyObject *val) {
             col = entry >> 8;
             break;
         default:
-            ans = Py_None; Py_INCREF(Py_None);
+            Py_RETURN_NONE;
     }
-    if (ans == NULL) ans = Py_BuildValue("BBB", (unsigned char)(col >> 16), (unsigned char)((col >> 8) & 0xFF), (unsigned char)(col & 0xFF));
-    return ans;
+    Color *ans = PyObject_New(Color, &Color_Type);
+    if (ans) ans->color.rgb = col;
+    return (PyObject*)ans;
 }
 
 static PyObject*
@@ -412,8 +412,9 @@ CGETSET(cursor_color)
 CGETSET(cursor_text_color)
 CGETSET(highlight_fg)
 CGETSET(highlight_bg)
+#undef CGETSET
 
-static PyGetSetDef getsetters[] = {
+static PyGetSetDef cp_getsetters[] = {
     GETSET(default_fg)
     GETSET(default_bg)
     GETSET(cursor_color)
@@ -424,11 +425,11 @@ static PyGetSetDef getsetters[] = {
 };
 
 
-static PyMemberDef members[] = {
+static PyMemberDef cp_members[] = {
     {NULL}
 };
 
-static PyMethodDef methods[] = {
+static PyMethodDef cp_methods[] = {
     METHOD(update_ansi_color_table, METH_O)
     METHOD(reset_color_table, METH_NOARGS)
     METHOD(as_dict, METH_NOARGS)
@@ -445,14 +446,151 @@ PyTypeObject ColorProfile_Type = {
     PyVarObject_HEAD_INIT(NULL, 0)
     .tp_name = "fast_data_types.ColorProfile",
     .tp_basicsize = sizeof(ColorProfile),
-    .tp_dealloc = (destructor)dealloc,
+    .tp_dealloc = (destructor)dealloc_cp,
     .tp_flags = Py_TPFLAGS_DEFAULT,
     .tp_doc = "ColorProfile",
-    .tp_members = members,
-    .tp_methods = methods,
-    .tp_getset = getsetters,
-    .tp_new = new,
+    .tp_members = cp_members,
+    .tp_methods = cp_methods,
+    .tp_getset = cp_getsetters,
+    .tp_new = new_cp,
 };
+// }}}
+
+
+static PyObject *
+new_color(PyTypeObject *type, PyObject *args, PyObject *kwds) {
+    static const char* kwlist[] = {"red", "green", "blue", "alpha", NULL};
+    Color *self;
+    unsigned char r = 0, g = 0, b = 0, a = 0;
+    if (!PyArg_ParseTupleAndKeywords(args, kwds, "|BBBB", (char**)kwlist, &r, &g, &b, &a)) return NULL;
+
+    self = (Color *)type->tp_alloc(type, 0);
+    if (self != NULL) {
+        self->color.r = r; self->color.g = g; self->color.b = b; self->color.a = a;
+    }
+    return (PyObject*) self;
+}
+
+static PyObject*
+color_as_int(Color *self) {
+    return PyLong_FromUnsignedLong(self->color.val);
+}
+
+static PyObject*
+color_truediv(Color *self, PyObject *divisor) {
+    DECREF_AFTER_FUNCTION PyObject *o = PyNumber_Float(divisor);
+    if (o == NULL) return NULL;
+    double r = self->color.r, g = self->color.g, b = self->color.b, a = self->color.a;
+    double d = PyFloat_AS_DOUBLE(o) * 255.;
+    return Py_BuildValue("dddd", r/d, g/d, b/d, a/d);
+}
+
+static PyNumberMethods color_number_methods = {
+    .nb_int = (unaryfunc)color_as_int,
+    .nb_true_divide = (binaryfunc)color_truediv,
+};
+
+#define CGETSET(name) \
+    static PyObject* name##_get(Color *self, void UNUSED *closure) { return PyLong_FromUnsignedLong(self->color.name);  }
+CGETSET(red)
+CGETSET(green)
+CGETSET(blue)
+CGETSET(alpha)
+#undef CGETSET
+
+static PyObject*
+rgb_get(Color *self, void *closure UNUSED) {
+    return PyLong_FromUnsignedLong(self->color.rgb);
+}
+
+static PyObject*
+luminance_get(Color *self, void *closure UNUSED) {
+    return PyFloat_FromDouble(rgb_luminance(self->color));
+}
+
+static PyObject*
+sgr_get(Color* self, void *closure UNUSED) {
+    char buf[32];
+    int sz = snprintf(buf, sizeof(buf), ":2:%u:%u:%u", self->color.r, self->color.g, self->color.b);
+    return PyUnicode_FromStringAndSize(buf, sz);
+}
+
+static PyObject*
+sharp_get(Color* self, void *closure UNUSED) {
+    char buf[32];
+    int sz;
+    if (self->color.alpha) sz = snprintf(buf, sizeof(buf), "#%02x%02x%02x%02x", self->color.a, self->color.r, self->color.g, self->color.b);
+    else sz = snprintf(buf, sizeof(buf), "#%02x%02x%02x", self->color.r, self->color.g, self->color.b);
+    return PyUnicode_FromStringAndSize(buf, sz);
+}
+
+static PyObject*
+color_cmp(PyObject *self, PyObject *other, int op) {
+    if (op != Py_EQ && op != Py_NE) return Py_NotImplemented;
+    if (!PyObject_TypeCheck(other, &Color_Type)) {
+        if (op == Py_EQ) Py_RETURN_FALSE;
+        Py_RETURN_TRUE;
+    }
+    Color *a = (Color*)self, *b = (Color*)other;
+    switch (op) {
+        case Py_EQ: { if (a->color.val == b->color.val) { Py_RETURN_TRUE; } Py_RETURN_FALSE; }
+        case Py_NE: { if (a->color.val != b->color.val) { Py_RETURN_TRUE; } Py_RETURN_FALSE; }
+        default:
+            return Py_NotImplemented;
+    }
+}
+
+static PyGetSetDef color_getsetters[] = {
+    {"rgb", (getter) rgb_get, NULL, "rgb", NULL},
+    {"red", (getter) red_get, NULL, "red", NULL},
+    {"green", (getter) green_get, NULL, "green", NULL},
+    {"blue", (getter) blue_get, NULL, "blue", NULL},
+    {"alpha", (getter) alpha_get, NULL, "alpha", NULL},
+    {"luminance", (getter) luminance_get, NULL, "luminance", NULL},
+    {"as_sgr", (getter) sgr_get, NULL, "as_sgr", NULL},
+    {"as_sharp", (getter) sharp_get, NULL, "as_sharp", NULL},
+    {NULL}  /* Sentinel */
+};
+
+static PyObject*
+contrast(Color* self, PyObject *o) {
+    if (!PyObject_TypeCheck(o, &Color_Type)) { PyErr_SetString(PyExc_TypeError, "Not a Color"); return NULL; }
+    Color *other = (Color*) o;
+    return PyFloat_FromDouble(rgb_contrast(self->color, other->color));
+}
+
+static PyMethodDef color_methods[] = {
+    METHODB(contrast, METH_O),
+    {NULL}  /* Sentinel */
+};
+
+
+static PyObject *
+repr(Color *self) {
+    if (self->color.alpha) return PyUnicode_FromFormat("Color(red=%u, green=%u, blue=%u, alpha=%u)", self->color.r, self->color.g, self->color.b, self->color.a);
+    return PyUnicode_FromFormat("Color(%u, %u, %u)", self->color.r, self->color.g, self->color.b);
+}
+
+static Py_hash_t
+color_hash(PyObject *x) {
+    return ((Color*)x)->color.val;
+}
+
+PyTypeObject Color_Type = {
+    PyVarObject_HEAD_INIT(NULL, 0)
+    .tp_name = "kitty.fast_data_types.Color",
+    .tp_basicsize = sizeof(Color),
+    .tp_flags = Py_TPFLAGS_DEFAULT,
+    .tp_doc = "Color",
+    .tp_new = new_color,
+    .tp_getset = color_getsetters,
+    .tp_as_number = &color_number_methods,
+    .tp_methods = color_methods,
+    .tp_repr = (reprfunc)repr,
+    .tp_hash = color_hash,
+    .tp_richcompare = color_cmp,
+};
+
 
 static PyMethodDef module_methods[] = {
     METHODB(default_color_table, METH_NOARGS),
@@ -465,6 +603,11 @@ int init_ColorProfile(PyObject *module) {\
     if (PyType_Ready(&ColorProfile_Type) < 0) return 0;
     if (PyModule_AddObject(module, "ColorProfile", (PyObject *)&ColorProfile_Type) != 0) return 0;
     Py_INCREF(&ColorProfile_Type);
+
+    if (PyType_Ready(&Color_Type) < 0) return 0;
+    if (PyModule_AddObject(module, "Color", (PyObject *)&Color_Type) != 0) return 0;
+    Py_INCREF(&Color_Type);
+
     if (PyModule_AddFunctions(module, module_methods) != 0) return false;
     return 1;
 }

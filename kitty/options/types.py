@@ -6,10 +6,10 @@ from kitty.conf.utils import KeyAction
 import kitty.conf.utils
 from kitty.constants import is_macos
 import kitty.constants
+from kitty.fast_data_types import Color
+import kitty.fast_data_types
 from kitty.options.utils import KeyDefinition, KeyMap, MouseMap, MouseMapping, SequenceMap, TabBarMarginHeight
 import kitty.options.utils
-from kitty.rgb import Color
-import kitty.rgb
 from kitty.types import FloatEdges, SingleKey
 import kitty.types
 
@@ -441,23 +441,23 @@ option_names = (  # {{{
 
 
 class Options:
-    active_border_color: typing.Optional[kitty.rgb.Color] = Color(red=0, green=255, blue=0)
-    active_tab_background: Color = Color(red=238, green=238, blue=238)
+    active_border_color: typing.Optional[kitty.fast_data_types.Color] = Color(0, 255, 0)
+    active_tab_background: Color = Color(238, 238, 238)
     active_tab_font_style: typing.Tuple[bool, bool] = (True, True)
-    active_tab_foreground: Color = Color(red=0, green=0, blue=0)
+    active_tab_foreground: Color = Color(0, 0, 0)
     active_tab_title_template: typing.Optional[str] = None
     adjust_baseline: typing.Union[int, float] = 0
     adjust_column_width: typing.Union[int, float] = 0
     adjust_line_height: typing.Union[int, float] = 0
     allow_hyperlinks: int = 1
     allow_remote_control: str = 'n'
-    background: Color = Color(red=0, green=0, blue=0)
+    background: Color = Color(0, 0, 0)
     background_image: typing.Optional[str] = None
     background_image_layout: choices_for_background_image_layout = 'tiled'
     background_image_linear: bool = False
     background_opacity: float = 1.0
     background_tint: float = 0
-    bell_border_color: Color = Color(red=255, green=90, blue=0)
+    bell_border_color: Color = Color(255, 90, 0)
     bell_on_tab: bool = True
     bell_path: typing.Optional[str] = None
     bold_font: str = 'auto'
@@ -472,12 +472,12 @@ class Options:
     command_on_bell: typing.List[str] = ['none']
     confirm_os_window_close: int = 0
     copy_on_select: str = ''
-    cursor: typing.Optional[kitty.rgb.Color] = Color(red=204, green=204, blue=204)
+    cursor: typing.Optional[kitty.fast_data_types.Color] = Color(204, 204, 204)
     cursor_beam_thickness: float = 1.5
     cursor_blink_interval: float = -1.0
     cursor_shape: int = 1
     cursor_stop_blinking_after: float = 15.0
-    cursor_text_color: typing.Optional[kitty.rgb.Color] = Color(red=17, green=17, blue=17)
+    cursor_text_color: typing.Optional[kitty.fast_data_types.Color] = Color(17, 17, 17)
     cursor_underline_thickness: float = 2.0
     default_pointer_shape: choices_for_default_pointer_shape = 'beam'
     detect_urls: bool = True
@@ -493,12 +493,12 @@ class Options:
     font_family: str = 'monospace'
     font_size: float = 11.0
     force_ltr: bool = False
-    foreground: Color = Color(red=221, green=221, blue=221)
+    foreground: Color = Color(221, 221, 221)
     hide_window_decorations: int = 0
-    inactive_border_color: Color = Color(red=204, green=204, blue=204)
-    inactive_tab_background: Color = Color(red=153, green=153, blue=153)
+    inactive_border_color: Color = Color(204, 204, 204)
+    inactive_tab_background: Color = Color(153, 153, 153)
     inactive_tab_font_style: typing.Tuple[bool, bool] = (False, False)
-    inactive_tab_foreground: Color = Color(red=68, green=68, blue=68)
+    inactive_tab_foreground: Color = Color(68, 68, 68)
     inactive_text_alpha: float = 1.0
     initial_window_height: typing.Tuple[int, str] = (400, 'px')
     initial_window_width: typing.Tuple[int, str] = (640, 'px')
@@ -516,12 +516,12 @@ class Options:
     macos_titlebar_color: int = 0
     macos_traditional_fullscreen: bool = False
     macos_window_resizable: bool = True
-    mark1_background: Color = Color(red=152, green=211, blue=203)
-    mark1_foreground: Color = Color(red=0, green=0, blue=0)
-    mark2_background: Color = Color(red=242, green=220, blue=211)
-    mark2_foreground: Color = Color(red=0, green=0, blue=0)
-    mark3_background: Color = Color(red=242, green=116, blue=188)
-    mark3_foreground: Color = Color(red=0, green=0, blue=0)
+    mark1_background: Color = Color(152, 211, 203)
+    mark1_foreground: Color = Color(0, 0, 0)
+    mark2_background: Color = Color(242, 220, 211)
+    mark2_foreground: Color = Color(0, 0, 0)
+    mark3_background: Color = Color(242, 116, 188)
+    mark3_foreground: Color = Color(0, 0, 0)
     mouse_hide_wait: float = 0.0 if is_macos else 3.0
     open_url_with: typing.List[str] = ['default']
     placement_strategy: choices_for_placement_strategy = 'center'
@@ -537,8 +537,8 @@ class Options:
     scrollback_pager: typing.List[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
     scrollback_pager_history_size: int = 0
     select_by_word_characters: str = '@-./_~?&=%+#'
-    selection_background: Color = Color(red=255, green=250, blue=205)
-    selection_foreground: typing.Optional[kitty.rgb.Color] = Color(red=0, green=0, blue=0)
+    selection_background: Color = Color(255, 250, 205)
+    selection_foreground: typing.Optional[kitty.fast_data_types.Color] = Color(0, 0, 0)
     shell: str = '.'
     shell_integration: str = 'enabled'
     single_window_margin_width: FloatEdges = FloatEdges(left=-1.0, top=-1.0, right=-1.0, bottom=-1.0)
@@ -547,9 +547,9 @@ class Options:
     sync_to_monitor: bool = True
     tab_activity_symbol: typing.Optional[str] = None
     tab_bar_align: choices_for_tab_bar_align = 'left'
-    tab_bar_background: typing.Optional[kitty.rgb.Color] = None
+    tab_bar_background: typing.Optional[kitty.fast_data_types.Color] = None
     tab_bar_edge: int = 3
-    tab_bar_margin_color: typing.Optional[kitty.rgb.Color] = None
+    tab_bar_margin_color: typing.Optional[kitty.fast_data_types.Color] = None
     tab_bar_margin_height: TabBarMarginHeight = TabBarMarginHeight(outer=0, inner=0)
     tab_bar_margin_width: float = 0
     tab_bar_min_tabs: int = 2
@@ -562,7 +562,7 @@ class Options:
     term: str = 'xterm-kitty'
     touch_scroll_multiplier: float = 1.0
     update_check_interval: float = 24.0
-    url_color: Color = Color(red=0, green=135, blue=189)
+    url_color: Color = Color(0, 135, 189)
     url_excluded_characters: str = ''
     url_prefixes: typing.Tuple[str, ...] = ('http', 'https', 'file', 'ftp', 'gemini', 'irc', 'gopher', 'mailto', 'news', 'git')
     url_style: int = 3

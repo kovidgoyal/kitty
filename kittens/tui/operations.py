@@ -6,10 +6,11 @@ from contextlib import contextmanager
 from enum import Enum, auto
 from functools import wraps
 from typing import (
-    IO, Any, Callable, Dict, Generator, Optional, Tuple, TypeVar, Union
+    IO, Any, Callable, Dict, Generator, Optional, TypeVar, Union
 )
 
-from kitty.rgb import Color, color_as_sharp, to_color
+from kitty.fast_data_types import Color
+from kitty.rgb import color_as_sharp, to_color
 from kitty.typing import GraphicsCommandType, HandlerType, ScreenSize
 
 from .operations_stub import CMD
@@ -170,7 +171,7 @@ UNDERLINE_STYLES = {name: i + 1 for i, name in enumerate(
     'straight double curly'.split())}
 
 
-ColorSpec = Union[int, str, Tuple[int, int, int]]
+ColorSpec = Union[int, str, Color]
 
 
 def color_code(color: ColorSpec, intense: bool = False, base: int = 30) -> str:
@@ -179,7 +180,7 @@ def color_code(color: ColorSpec, intense: bool = False, base: int = 30) -> str:
     elif isinstance(color, int):
         e = f'{base + 8}:5:{max(0, min(color, 255))}'
     else:
-        e = '{}:2:{}:{}:{}'.format(base + 8, *color)
+        e = f'{base + 8}{color.as_sgr}'
     return e
 
 
@@ -454,7 +455,7 @@ def as_type_stub() -> str:
     ans = [
         'from typing import *  # noqa',
         'from kitty.typing import GraphicsCommandType, ScreenSize',
-        'from kitty.rgb import Color',
+        'from kitty.fast_data_types import Color',
         'import kitty.rgb',
         'import kittens.tui.operations',
     ]

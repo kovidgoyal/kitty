@@ -3,7 +3,8 @@
 
 from typing import TYPE_CHECKING, Optional
 
-from kitty.rgb import Color, color_as_sharp, color_from_int
+from kitty.fast_data_types import Color
+from kitty.rgb import color_as_sharp, color_from_int
 from kitty.utils import natsort_ints
 
 from .base import (

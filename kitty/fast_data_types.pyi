@@ -619,6 +619,61 @@ def patch_global_colors(spec: Dict[str, Optional[int]], configured: bool) -> Non
     pass
 
 
+class Color:
+    @property
+    def rgb(self) -> int:
+        pass
+
+    @property
+    def red(self) -> int:
+        pass
+
+    @property
+    def green(self) -> int:
+        pass
+
+    @property
+    def blue(self) -> int:
+        pass
+
+    @property
+    def alpha(self) -> int:
+        pass
+
+    @property
+    def luminance(self) -> float:
+        pass
+
+    @property
+    def as_sgr(self) -> str:
+        pass
+
+    @property
+    def as_sharp(self) -> str:
+        pass
+
+    def __init__(self, red: int = 0, green: int = 0, blue: int = 0, alpha: int = 0) -> None:
+        pass
+
+    def __truediv__(self, divisor: float) -> Tuple[float, float, float, float]:  # (r, g, b, a)
+        pass
+
+    def __int__(self) -> int:
+        pass
+
+    def __hash__(self) -> int:
+        pass
+
+    def __eq__(self, other: Any) -> bool:
+        pass
+
+    def __ne__(self, other: Any) -> bool:
+        pass
+
+    def contrast(self, other: 'Color') -> float:
+        pass
+
+
 class ColorProfile:
 
     default_bg: int
@@ -626,7 +681,7 @@ class ColorProfile:
     def as_dict(self) -> Dict[str, int]:
         pass
 
-    def as_color(self, val: int) -> Tuple[int, int, int]:
+    def as_color(self, val: int) -> Optional[Color]:
         pass
 
     def set_color(self, num: int, val: int) -> None:

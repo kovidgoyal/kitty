@@ -16,13 +16,13 @@ from kitty.conf.utils import (
     python_string, to_bool, to_cmdline, to_color, uniq, unit_float
 )
 from kitty.constants import config_dir, is_macos
-from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE
+from kitty.fast_data_types import CURSOR_BEAM, CURSOR_BLOCK, CURSOR_UNDERLINE, Color
 from kitty.fonts import FontFeature
 from kitty.key_names import (
     character_key_name_aliases, functional_key_name_aliases,
     get_key_name_lookup
 )
-from kitty.rgb import Color, color_as_int
+from kitty.rgb import color_as_int
 from kitty.types import FloatEdges, MouseEvent, SingleKey
 from kitty.utils import expandvars, log_error
 

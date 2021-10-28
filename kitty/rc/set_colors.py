@@ -6,8 +6,7 @@ import os
 from typing import TYPE_CHECKING, Dict, Iterable, Optional
 
 from kitty.config import parse_config
-from kitty.fast_data_types import patch_color_profiles
-from kitty.rgb import Color
+from kitty.fast_data_types import patch_color_profiles, Color
 
 from .base import (
     MATCH_TAB_OPTION, MATCH_WINDOW_OPTION, ArgsType, Boss, ParsingOfArgsFailed,

@@ -9,7 +9,8 @@ from typing import (
     Sequence, Set, Tuple, TypeVar, Union, Generic
 )
 
-from ..rgb import Color, to_color as as_color
+from ..rgb import to_color as as_color
+from ..fast_data_types import Color
 from ..types import ConvertibleToNumbers, ParsedShortcut
 from ..typing import Protocol
 from ..utils import expandvars, log_error

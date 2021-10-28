@@ -3,8 +3,8 @@
 import typing
 from kitty.conf.utils import KeyAction, KittensKeyMap
 import kitty.conf.utils
-from kitty.rgb import Color
-import kitty.rgb
+from kitty.fast_data_types import Color
+import kitty.fast_data_types
 from kitty.types import ParsedShortcut
 import kitty.types
 
@@ -39,31 +39,31 @@ option_names = (  # {{{
 
 
 class Options:
-    added_bg: Color = Color(red=230, green=255, blue=237)
-    added_margin_bg: Color = Color(red=205, green=255, blue=216)
-    background: Color = Color(red=255, green=255, blue=255)
+    added_bg: Color = Color(230, 255, 237)
+    added_margin_bg: Color = Color(205, 255, 216)
+    background: Color = Color(255, 255, 255)
     diff_cmd: str = 'auto'
-    filler_bg: Color = Color(red=250, green=251, blue=252)
-    foreground: Color = Color(red=0, green=0, blue=0)
-    highlight_added_bg: Color = Color(red=172, green=242, blue=189)
-    highlight_removed_bg: Color = Color(red=253, green=184, blue=192)
-    hunk_bg: Color = Color(red=241, green=248, blue=255)
-    hunk_margin_bg: Color = Color(red=219, green=237, blue=255)
-    margin_bg: Color = Color(red=250, green=251, blue=252)
-    margin_fg: Color = Color(red=170, green=170, blue=170)
-    margin_filler_bg: typing.Optional[kitty.rgb.Color] = None
+    filler_bg: Color = Color(250, 251, 252)
+    foreground: Color = Color(0, 0, 0)
+    highlight_added_bg: Color = Color(172, 242, 189)
+    highlight_removed_bg: Color = Color(253, 184, 192)
+    hunk_bg: Color = Color(241, 248, 255)
+    hunk_margin_bg: Color = Color(219, 237, 255)
+    margin_bg: Color = Color(250, 251, 252)
+    margin_fg: Color = Color(170, 170, 170)
+    margin_filler_bg: typing.Optional[kitty.fast_data_types.Color] = None
     num_context_lines: int = 3
     pygments_style: str = 'default'
-    removed_bg: Color = Color(red=255, green=238, blue=240)
-    removed_margin_bg: Color = Color(red=255, green=220, blue=224)
+    removed_bg: Color = Color(255, 238, 240)
+    removed_margin_bg: Color = Color(255, 220, 224)
     replace_tab_by: str = '    '
-    search_bg: Color = Color(red=68, green=68, blue=68)
-    search_fg: Color = Color(red=255, green=255, blue=255)
-    select_bg: Color = Color(red=180, green=213, blue=254)
-    select_fg: typing.Optional[kitty.rgb.Color] = Color(red=0, green=0, blue=0)
+    search_bg: Color = Color(68, 68, 68)
+    search_fg: Color = Color(255, 255, 255)
+    select_bg: Color = Color(180, 213, 254)
+    select_fg: typing.Optional[kitty.fast_data_types.Color] = Color(0, 0, 0)
     syntax_aliases: typing.Dict[str, str] = {'pyj': 'py', 'pyi': 'py', 'recipe': 'py'}
-    title_bg: Color = Color(red=255, green=255, blue=255)
-    title_fg: Color = Color(red=0, green=0, blue=0)
+    title_bg: Color = Color(255, 255, 255)
+    title_fg: Color = Color(0, 0, 0)
     map: typing.List[typing.Tuple[kitty.types.ParsedShortcut, kitty.conf.utils.KeyAction]] = []
     key_definitions: KittensKeyMap = {}
     config_paths: typing.Tuple[str, ...] = ()

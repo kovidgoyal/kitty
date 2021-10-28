@@ -22,7 +22,7 @@ from .constants import appname, is_macos, wakeup
 from .fast_data_types import (
     BGIMAGE_PROGRAM, BLIT_PROGRAM, CELL_BG_PROGRAM, CELL_FG_PROGRAM,
     CELL_PROGRAM, CELL_SPECIAL_PROGRAM, CURSOR_BEAM, CURSOR_BLOCK,
-    CURSOR_UNDERLINE, DCS, DECORATION, DIM, GLFW_MOD_CONTROL,
+    CURSOR_UNDERLINE, DCS, DECORATION, DIM, GLFW_MOD_CONTROL, Color,
     GRAPHICS_ALPHA_MASK_PROGRAM, GRAPHICS_PREMULT_PROGRAM, GRAPHICS_PROGRAM,
     MARK, MARK_MASK, NO_CURSOR_SHAPE, OSC, REVERSE, SCROLL_FULL, SCROLL_LINE,
     SCROLL_PAGE, SEVEN_SEGMENT_PROGRAM, STRIKETHROUGH, TINT_PROGRAM, KeyEvent,
@@ -36,7 +36,7 @@ from .fast_data_types import (
 from .keys import keyboard_mode_name, mod_mask
 from .notify import NotificationCommand, handle_notification_cmd
 from .options.types import Options
-from .rgb import Color, to_color
+from .rgb import to_color
 from .terminfo import get_capabilities
 from .types import MouseEvent, ScreenGeometry, WindowGeometry, ac
 from .typing import BossType, ChildType, EdgeLiteral, TabType, TypedDict
@@ -813,7 +813,9 @@ class Window:
             changed = False
             for c, val in parse_color_set(value):
                 if val is None:  # color query
-                    self.report_color(f'4;{c}', *self.screen.color_profile.as_color((c << 8) | 1))
+                    qc = self.screen.color_profile.as_color((c << 8) | 1)
+                    assert qc is not None
+                    self.report_color(f'4;{c}', qc.red, qc.green, qc.blue)
                 else:
                     changed = True
                     cp.set_color(c, val)

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../state.h"
+#include "../colors.h"
 
 static inline float
 PyFloat_AsFloat(PyObject *o) {
@@ -15,10 +16,9 @@ PyFloat_AsFloat(PyObject *o) {
 
 static inline color_type
 color_as_int(PyObject *color) {
-    if (!PyTuple_Check(color)) { PyErr_SetString(PyExc_TypeError, "Not a color tuple"); return 0; }
-#define I(n, s) ((PyLong_AsUnsignedLong(PyTuple_GET_ITEM(color, n)) & 0xff) << s)
-    return (I(0, 16) | I(1, 8) | I(2, 0)) & 0xffffff;
-#undef I
+    if (!PyObject_TypeCheck(color, &Color_Type)) { PyErr_SetString(PyExc_TypeError, "Not a Color object"); return 0; }
+    Color *c = (Color*)color;
+    return c->color.val & 0xffffff;
 }
 
 static inline color_type

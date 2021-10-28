@@ -36,7 +36,7 @@ from .fast_data_types import (
     os_window_font_size, patch_global_colors, redirect_mouse_handling,
     ring_bell, safe_pipe, set_application_quit_request, set_background_image,
     set_boss, set_clipboard_string, set_in_sequence_mode, set_options,
-    set_os_window_size, thread_write, toggle_fullscreen, toggle_maximized
+    set_os_window_size, thread_write, toggle_fullscreen, toggle_maximized, Color
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -45,7 +45,7 @@ from .notify import notification_activated
 from .options.types import Options
 from .options.utils import MINIMUM_FONT_SIZE, SubSequenceMap
 from .os_window_size import initial_window_size_func
-from .rgb import Color, color_from_int
+from .rgb import color_from_int
 from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import (
     SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager

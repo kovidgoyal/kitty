@@ -20,10 +20,10 @@ from .conf.utils import KeyAction
 from .constants import (
     extensions_dir, is_macos, is_wayland, kitty_base_dir, kitty_exe, shell_path
 )
-from .fast_data_types import num_users
+from .fast_data_types import num_users, Color
 from .options.types import Options as KittyOpts, defaults
 from .options.utils import MouseMap
-from .rgb import Color, color_as_sharp
+from .rgb import color_as_sharp
 from .types import MouseEvent, SingleKey
 from .typing import SequenceMap
 

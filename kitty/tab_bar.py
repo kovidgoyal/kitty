@@ -12,9 +12,9 @@ from .config import build_ansi_color_table
 from .constants import config_dir
 from .fast_data_types import (
     DECAWM, Region, Screen, cell_size_for_window, get_options, pt_to_px,
-    set_tab_bar_render_data, viewport_for_window
+    set_tab_bar_render_data, viewport_for_window, Color
 )
-from .rgb import Color, alpha_blend, color_as_sgr, color_from_int, to_color
+from .rgb import alpha_blend, color_as_sgr, color_from_int, to_color
 from .types import WindowGeometry, run_once
 from .typing import EdgeLiteral, PowerlineStyle
 from .utils import color_as_int, log_error

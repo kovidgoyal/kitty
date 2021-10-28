@@ -30,6 +30,7 @@
 #define MIN(x, y) __extension__ ({ \
     __typeof__ (x) a = (x); __typeof__ (y) b = (y); \
         a < b ? a : b;})
+#define SWAP(x, y) do { __typeof__(x) _sw_ = y; y = x; x = _sw_; } while(0)
 #define xstr(s) str(s)
 #define str(s) #s
 #define arraysz(x) (sizeof(x)/sizeof(x[0]))

@@ -21,9 +21,10 @@ from .constants import (
     appname, is_macos, is_wayland, read_kitty_resource, shell_path,
     supports_primary_selection
 )
-from .rgb import Color, to_color
+from .rgb import to_color
 from .types import run_once
 from .typing import AddressFamily, PopenType, Socket, StartupCtx
+from .fast_data_types import Color
 
 if TYPE_CHECKING:
     from .fast_data_types import OSWindowSize
@@ -95,8 +96,8 @@ def sanitize_title(x: str) -> str:
     return re.sub(r'\s+', ' ', re.sub(r'[\0-\x19\x80-\x9f]', '', x))
 
 
-def color_as_int(val: Tuple[int, int, int]) -> int:
-    return val[0] << 16 | val[1] << 8 | val[2]
+def color_as_int(val: Color) -> int:
+    return int(val) & 0xffffff
 
 
 def color_from_int(val: int) -> Color:
@@ -118,8 +119,7 @@ def parse_color_set(raw: str) -> Generator[Tuple[int, Optional[int]], None, None
             else:
                 q = to_color(spec)
                 if q is not None:
-                    r, g, b = q
-                    yield c, r << 16 | g << 8 | b
+                    yield c, int(q) & 0xffffff
         except Exception:
             continue
 
