@@ -12,7 +12,7 @@
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_fg_for_selection;
+    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_cell_for_selection_fg, use_cell_for_selection_bg;
 
     uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
@@ -170,6 +170,7 @@ void main() {
     uint bg_as_uint = resolve_color(colors[bg_index], default_colors[bg_index]);
     bg_as_uint = has_mark * color_table[NUM_COLORS + mark] + (ONE - has_mark) * bg_as_uint;
     vec3 bg = color_to_vec(bg_as_uint);
+    uint fg_as_uint = resolve_color(colors[fg_index], default_colors[fg_index]);
     // }}}
 
     // Foreground {{{
@@ -180,7 +181,6 @@ void main() {
     colored_sprite = float((sprite_coords.z & COLOR_MASK) >> 14);
 
     // Foreground
-    uint fg_as_uint = resolve_color(colors[fg_index], default_colors[fg_index]);
     fg_as_uint = has_mark * color_table[NUM_COLORS + MARK_MASK + 1 + mark] + (ONE - has_mark) * fg_as_uint;
     foreground = color_to_vec(fg_as_uint);
     float has_dim = float((text_attrs >> DIM_SHIFT) & ONE);
@@ -189,7 +189,7 @@ void main() {
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], fg_as_uint));
 #ifdef USE_SELECTION_FG
     // Selection
-    vec3 selection_color = choose_color(use_fg_for_selection, foreground, color_to_vec(highlight_fg));
+    vec3 selection_color = choose_color(use_cell_for_selection_fg, bg, color_to_vec(highlight_fg));
     foreground = choose_color(float(is_selected & ONE), selection_color, foreground);
     decoration_fg = choose_color(float(is_selected & ONE), selection_color, decoration_fg);
 #endif
@@ -236,7 +236,7 @@ void main() {
 
 #if defined(SPECIAL) || defined(SIMPLE)
     // Selection and cursor
-    bg = choose_color(float(is_selected & ONE), color_to_vec(highlight_bg), bg);
+    bg = choose_color(float(is_selected & ONE), choose_color(use_cell_for_selection_bg, color_to_vec(fg_as_uint), color_to_vec(highlight_bg)), bg);
     background = choose_color(cell_has_block_cursor, color_to_vec(cursor_bg), bg);
 #if !defined(TRANSPARENT) && defined(SPECIAL)
     float is_special_cell = cell_has_block_cursor + float(is_selected & ONE);

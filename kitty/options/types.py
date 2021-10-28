@@ -537,7 +537,7 @@ class Options:
     scrollback_pager: typing.List[str] = ['less', '--chop-long-lines', '--RAW-CONTROL-CHARS', '+INPUT_LINE_NUMBER']
     scrollback_pager_history_size: int = 0
     select_by_word_characters: str = '@-./_~?&=%+#'
-    selection_background: Color = Color(255, 250, 205)
+    selection_background: typing.Optional[kitty.fast_data_types.Color] = Color(255, 250, 205)
     selection_foreground: typing.Optional[kitty.fast_data_types.Color] = Color(0, 0, 0)
     shell: str = '.'
     shell_integration: str = 'enabled'

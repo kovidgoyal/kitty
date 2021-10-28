@@ -19,6 +19,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - Allow rendering the cursor with a *reverse video* effect. See :opt:`cursor`
   for details (:iss:`126`)
 
+- Allow rendering the mouse selection with a *reverse video* effect. See
+  :opt:`selection_foreground` (:iss:`646`)
+
 - A new option :opt:`tab_bar_align` to draw the tab bar centered or right
   aligned (:iss:`3946`)
 

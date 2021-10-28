@@ -1146,15 +1146,13 @@ and zero means fully dimmed (i.e. invisible).
 opt('selection_foreground', '#000000',
     option_type='to_color_or_none',
     long_text='''
-The foreground for text selected with the mouse. A value of none means to leave
-the color unchanged.
-'''
-    )
+The foreground and background colors for text selected with the mouse. Setting both of
+these to :code:`none` will cause a "reverse video" effect for selections, where the
+selection will be the cell text color and the text will become the cell background color.
+Note that these colors can be overridden by the program running in the terminal.
+''')
 
-opt('selection_background', '#fffacd',
-    option_type='to_color',
-    long_text='The background for text selected with the mouse.'
-    )
+opt('selection_background', '#fffacd', option_type='to_color_or_none',)
 
 
 # colors.table {{{

@@ -1125,7 +1125,7 @@ class Parser:
         ans['select_by_word_characters'] = str(val)
 
     def selection_background(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
-        ans['selection_background'] = to_color(val)
+        ans['selection_background'] = to_color_or_none(val)
 
     def selection_foreground(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['selection_foreground'] = to_color_or_none(val)
