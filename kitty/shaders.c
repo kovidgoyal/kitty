@@ -276,7 +276,7 @@ pick_cursor_color(Line *line, ColorProfile *color_profile, color_type cell_fg, c
 static void
 cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, GLfloat xstart, GLfloat ystart, GLfloat dx, GLfloat dy, CursorRenderInfo *cursor, bool inverted, OSWindow *os_window) {
     struct CellRenderData {
-        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
+        GLfloat xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_fg_for_selection;
 
         GLuint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
@@ -292,7 +292,10 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
     }
 #define COLOR(name) colorprofile_to_color(screen->color_profile, screen->color_profile->overridden.name, screen->color_profile->configured.name).rgb
 #define IS_SPECIAL_COLOR(name) (screen->color_profile->overridden.name.type == COLOR_IS_SPECIAL || (screen->color_profile->overridden.name.type == COLOR_NOT_SET && screen->color_profile->configured.name.type == COLOR_IS_SPECIAL))
-    rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg); rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
+    rd->default_fg = COLOR(default_fg); rd->default_bg = COLOR(default_bg);
+    rd->highlight_fg = COLOR(highlight_fg); rd->highlight_bg = COLOR(highlight_bg);
+    // selection
+    rd->use_fg_for_selection = IS_SPECIAL_COLOR(highlight_fg) ? 1. : 0.;
     // Cursor position
     enum { BLOCK_IDX = 0, BEAM_IDX = 6, UNDERLINE_IDX = 7, UNFOCUSED_IDX = 8 };
     if (cursor->is_visible) {

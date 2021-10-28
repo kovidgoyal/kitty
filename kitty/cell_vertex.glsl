@@ -12,7 +12,7 @@
 
 // Inputs {{{
 layout(std140) uniform CellRenderData {
-    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity;
+    float xstart, ystart, dx, dy, sprite_dx, sprite_dy, background_opacity, use_fg_for_selection;
 
     uint default_fg, default_bg, highlight_fg, highlight_bg, cursor_fg, cursor_bg, url_color, url_style, inverted;
 
@@ -189,7 +189,7 @@ void main() {
     decoration_fg = choose_color(in_url, color_to_vec(url_color), to_color(colors[2], fg_as_uint));
 #ifdef USE_SELECTION_FG
     // Selection
-    vec3 selection_color = color_to_vec(highlight_fg);
+    vec3 selection_color = choose_color(use_fg_for_selection, foreground, color_to_vec(highlight_fg));
     foreground = choose_color(float(is_selected & ONE), selection_color, foreground);
     decoration_fg = choose_color(float(is_selected & ONE), selection_color, decoration_fg);
 #endif
