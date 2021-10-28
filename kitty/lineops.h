@@ -119,3 +119,4 @@ void historybuf_clear(HistoryBuf *self);
 void mark_text_in_line(PyObject *marker, Line *line);
 bool line_has_mark(Line *, uint16_t mark);
 PyObject* as_text_generic(PyObject *args, void *container, get_line_func get_line, index_type lines, ANSIBuf *ansibuf);
+bool colors_for_cell(Line *self, ColorProfile *cp, index_type *x, color_type *fg, color_type *bg);

@@ -1509,28 +1509,6 @@ screen_fake_move_cursor_to_position(Screen *self, index_type x, index_type y) {
     return count > 0;
 }
 
-static color_type
-resolve_color(ColorProfile *cp, color_type val, color_type defval) {
-    switch(val & 0xff) {
-        case 1:
-            return cp->color_table[(val >> 8) & 0xff];
-        case 2:
-            return val >> 8;
-        default:
-            return defval;
-    }
-}
-
-bool
-resolve_cell_colors(Screen *self, index_type x, index_type y, color_type *fg, color_type *bg, color_type default_fg, color_type default_bg) {
-    if (x < self->columns && y < self->lines) {
-        linebuf_init_line(self->linebuf, y);
-        GPUCell *g = self->linebuf->line->gpu_cells + x;
-        *fg = resolve_color(self->color_profile, g->fg, default_fg);
-        *bg = resolve_color(self->color_profile, g->bg, default_bg);
-        return true;
-    } else { *fg = 0; *bg = 0; return false; }
-}
 // }}}
 
 // Editing {{{

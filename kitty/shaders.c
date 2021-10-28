@@ -291,8 +291,12 @@ cell_update_uniform_block(ssize_t vao_idx, Screen *screen, int uniform_buffer, G
                     rd->cursor_fg_sprite_idx = UNDERLINE_IDX; break;
             }
         } else rd->cursor_fg_sprite_idx = UNFOCUSED_IDX;
-        color_type cell_fg, cell_bg;
-        resolve_cell_colors(screen, screen->cursor->x, screen->cursor->y, &cell_fg, &cell_bg, rd->default_fg, rd->default_bg);
+        color_type cell_fg = rd->default_fg, cell_bg = rd->default_bg;
+        if (screen->cursor->y < screen->lines) {
+            linebuf_init_line(screen->linebuf, screen->cursor->y);
+            index_type x = screen->cursor->x;
+            colors_for_cell(screen->linebuf->line, screen->color_profile, &x, &cell_fg, &cell_bg);
+        }
         if (screen->color_profile->overridden.cursor_color.type == COLOR_IS_INDEX || screen->color_profile->overridden.cursor_color.type == COLOR_IS_RGB) {
             // since the program is controlling the cursor color we hope it has chosen one
             // that has good contrast with the text color of the cell

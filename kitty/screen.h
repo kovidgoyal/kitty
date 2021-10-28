@@ -249,7 +249,6 @@ void screen_report_key_encoding_flags(Screen *self);
 bool screen_detect_url(Screen *screen, unsigned int x, unsigned int y);
 int screen_cursor_at_a_shell_prompt(const Screen *);
 bool screen_fake_move_cursor_to_position(Screen *, index_type x, index_type y);
-bool resolve_cell_colors(Screen *self, index_type x, index_type y, color_type *fg, color_type *bg, color_type default_fg, color_type default_bg);
 #define DECLARE_CH_SCREEN_HANDLER(name) void screen_##name(Screen *screen);
 DECLARE_CH_SCREEN_HANDLER(bell)
 DECLARE_CH_SCREEN_HANDLER(backspace)

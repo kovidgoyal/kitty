@@ -583,6 +583,27 @@ left_shift(Line *self, PyObject *args) {
     Py_RETURN_NONE;
 }
 
+static color_type
+resolve_color(ColorProfile *cp, color_type val, color_type defval) {
+    switch(val & 0xff) {
+        case 1:
+            return cp->color_table[(val >> 8) & 0xff];
+        case 2:
+            return val >> 8;
+        default:
+            return defval;
+    }
+}
+
+bool
+colors_for_cell(Line *self, ColorProfile *cp, index_type *x, color_type *fg, color_type *bg) {
+    if (*x >= self->xnum) return false;
+    if (*x > 0 && !self->gpu_cells[*x].attrs.width && self->gpu_cells[*x-1].attrs.width == 2) (*x)--;
+    *fg = resolve_color(cp, self->gpu_cells[*x].fg, *fg);
+    *bg = resolve_color(cp, self->gpu_cells[*x].bg, *bg);
+    return true;
+}
+
 char_type
 line_get_char(Line *self, index_type at) {
     char_type ch = self->cpu_cells[at].ch;
