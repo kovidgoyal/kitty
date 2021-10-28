@@ -474,6 +474,7 @@ draw_centered_alpha_mask(OSWindow *os_window, size_t screen_width, size_t screen
     } else {
         BLEND_ONTO_OPAQUE;
     }
+    glScissor(0, 0, screen_width, screen_height);
     draw_graphics(GRAPHICS_ALPHA_MASK_PROGRAM, 0, os_window->gvao_idx, &data, 0, 1);
     glDisable(GL_BLEND);
 }
