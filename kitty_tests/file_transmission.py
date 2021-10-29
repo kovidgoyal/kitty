@@ -13,12 +13,14 @@ from kittens.transfer.librsync import (
     LoadSignature, PatchFile, delta_for_file, signature_of_file
 )
 from kittens.transfer.main import parse_transfer_args
+from kittens.transfer.receive import files_for_receive, File
 from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
 from kittens.transfer.send import files_for_send
-from kittens.transfer.utils import set_paths
+from kittens.transfer.utils import set_paths, home_path
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType,
-    TestFileTransmission as FileTransmission, TransmissionType
+    TestFileTransmission as FileTransmission, TransmissionType,
+    iter_file_metadata
 )
 
 from . import BaseTest
@@ -345,7 +347,37 @@ class TestFileTransmission(BaseTest):
         t('a1=b1;c=d;;e', 'a1', 'b1', 'c', 'd;e')
         t('a1=b1;c=d;;;1=1', 'a1', 'b1', 'c', 'd;', '1', '1')
 
-    def test_path_mapping(self):
+    def test_path_mapping_receive(self):
+        opts = parse_transfer_args([])[0]
+        b = Path(os.path.join(self.tdir, 'b'))
+        os.makedirs(b)
+        open(b / 'r', 'w').close()
+        os.mkdir(b / 'd')
+        open(b / 'd' / 'r', 'w').close()
+
+        def am(files, kw):
+            m = {f.remote_path: f.expanded_local_path for f in files}
+            kw = {str(k): str(v) for k, v in kw.items()}
+            self.ae(kw, m)
+
+        def tf(args, expected):
+            if opts.mode == 'mirror':
+                all_specs = args
+                dest = ''
+            else:
+                all_specs = args[:-1]
+                dest = args[-1]
+            specs = list((str(i), str(s)) for i, s in enumerate(all_specs))
+            files = list(map(File, iter_file_metadata(specs)))
+            files = list(files_for_receive(opts, dest, files, home_path(), specs))
+            self.ae(len(files), len(expected))
+            am(files, expected)
+
+        opts.mode = 'mirror'
+        with set_paths(cwd=b, home='/foo/bar'):
+            tf([b/'r', b/'d'], {b/'r': b/'r', b/'d': b/'d', b/'d'/'r': b/'d'/'r'})
+
+    def test_path_mapping_send(self):
         opts = parse_transfer_args([])[0]
         b = Path(os.path.join(self.tdir, 'b'))
         os.makedirs(b)

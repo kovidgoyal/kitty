@@ -34,31 +34,42 @@ class File:
         self.mtime = ftc.mtime
         self.spec_id = int(ftc.file_id)
         self.permissions = ftc.permissions
-        self.remote_name = ftc.name
+        self.remote_path = ftc.name
         self.remote_id = ftc.status
         self.remote_target = ftc.data.decode('utf-8')
         self.parent = ftc.parent
-        self.local_name = ''
+        self.expanded_local_path = ''
+
+    def __repr__(self) -> str:
+        return f'File(rpath={self.remote_path!r}, lpath={self.expanded_local_path!r})'
 
 
 class TreeNode:
 
     def __init__(self, file: File, local_name: str, parent: Optional['TreeNode'] = None):
         self.entry = file
-        self.entry.local_name = local_name
-        self.children: List[TreeNode] = []
+        self.entry.expanded_local_path = local_name
         self.parent = parent
+        self.added_files: Dict[int, TreeNode] = {}
 
     def add_child(self, file: File) -> 'TreeNode':
-        c = TreeNode(file, os.path.join(self.entry.local_name, os.path.basename(file.remote_name)), self)
-        self.children.append(c)
+        q = self.added_files.get(id(file))
+        if q is not None:
+            return q
+        c = TreeNode(file, os.path.join(self.entry.expanded_local_path, os.path.basename(file.remote_path)), self)
+        self.added_files[id(file)] = c
         return c
+
+    def __iter__(self) -> Iterator['TreeNode']:
+        for c in self.added_files.values():
+            yield c
+            yield from c
 
 
 def make_tree(all_files: List[File], local_base: str) -> TreeNode:
     fid_map = {f.remote_id: f for f in all_files}
     node_map: Dict[str, TreeNode] = {}
-    root_node = TreeNode(File(FileTransmissionCommand()), local_base)
+    root_node = TreeNode(File(FileTransmissionCommand(file_id='-1')), local_base)
 
     def ensure_parent(f: File) -> TreeNode:
         if not f.parent:
@@ -76,11 +87,11 @@ def make_tree(all_files: List[File], local_base: str) -> TreeNode:
     return root_node
 
 
-def files_for_receive(cli_opts: TransferCLIOptions, dest: str, files: List[File], remote_home: str, specs: List[str]) -> None:
+def files_for_receive(cli_opts: TransferCLIOptions, dest: str, files: List[File], remote_home: str, specs: List[str]) -> Iterator[File]:
     spec_map: Dict[int, List[File]] = {i: [] for i in range(len(specs))}
     for f in files:
         spec_map[f.spec_id].append(f)
-    spec_paths = [spec_map[i][0].remote_name for i in range(len(specs))]
+    spec_paths = [spec_map[i][0].remote_path for i in range(len(specs))]
     if cli_opts.mode == 'mirror':
         try:
             common_path = posixpath.commonpath(spec_paths)
@@ -91,16 +102,19 @@ def files_for_receive(cli_opts: TransferCLIOptions, dest: str, files: List[File]
             spec_paths = [posixpath.join('~', posixpath.relpath(x, home)) for x in spec_paths]
         for spec_id, files_for_spec in spec_map.items():
             spec = spec_paths[spec_id]
-            tree = make_tree(files_for_spec, os.path.expanduser(spec))
+            tree = make_tree(files_for_spec, os.path.dirname(os.path.expanduser(spec)))
+            for x in tree:
+                yield x.entry
     else:
         dest_is_dir = dest[-1] in (os.sep, os.altsep) or len(specs) > 1
         for spec_id, files_for_spec in spec_map.items():
             if dest_is_dir:
-                dest_path = os.path.join(dest, posixpath.basename(files_for_spec[0].remote_name))
+                dest_path = os.path.join(dest, posixpath.basename(files_for_spec[0].remote_path))
             else:
                 dest_path = dest
             tree = make_tree(files_for_spec, os.path.expanduser(dest_path))
-    tree
+            for x in tree:
+                yield x.entry
 
 
 class Manager:
