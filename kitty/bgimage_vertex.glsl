@@ -8,7 +8,7 @@
 #define tex_right 1
 #define tex_bottom 1
 
-uniform float rescaled;
+uniform float adjust_scale;
 uniform vec2 transform;  // [ pos_left_relative, pos_top_relative ]
 uniform vec4 sizes;  // [ window_width, window_height, image_width, image_height ]
 
@@ -29,7 +29,7 @@ const vec2 tex_map[] = vec2[4](
 
 
 float scaling_factor(int i) {
-    return rescaled * (sizes[i] / sizes[i + 2]) + (1 - rescaled);
+    return adjust_scale * (sizes[i] / sizes[i + 2]) + (1 - adjust_scale);
 }
 
 float position_divisor(int i) {

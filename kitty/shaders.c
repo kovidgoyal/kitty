@@ -166,7 +166,7 @@ typedef struct {
 static CellProgramLayout cell_program_layouts[NUM_PROGRAMS];
 static ssize_t blit_vertex_array;
 typedef struct {
-    GLint image_location, rescaled_location, transform_location, sizes_location, opacity_location, premult_location;
+    GLint image_location, adjust_scale_location, transform_location, sizes_location, opacity_location, premult_location;
 } BGImageProgramLayout;
 static BGImageProgramLayout bgimage_program_layout = {0};
 typedef struct {
@@ -198,7 +198,7 @@ init_cell_program(void) {
     bgimage_program_layout.image_location = get_uniform_location(BGIMAGE_PROGRAM, "image");
     bgimage_program_layout.opacity_location = get_uniform_location(BGIMAGE_PROGRAM, "opacity");
     bgimage_program_layout.sizes_location = get_uniform_location(BGIMAGE_PROGRAM, "sizes");
-    bgimage_program_layout.rescaled_location = get_uniform_location(BGIMAGE_PROGRAM, "rescaled");
+    bgimage_program_layout.adjust_scale_location = get_uniform_location(BGIMAGE_PROGRAM, "adjust_scale");
     bgimage_program_layout.transform_location = get_uniform_location(BGIMAGE_PROGRAM, "transform");
     bgimage_program_layout.premult_location = get_uniform_location(BGIMAGE_PROGRAM, "premult");
     tint_program_layout.tint_color_location = get_uniform_location(TINT_PROGRAM, "tint_color");
@@ -408,26 +408,18 @@ draw_bg(OSWindow *w) {
     bind_program(BGIMAGE_PROGRAM);
     bind_vertex_array(blit_vertex_array);
 
-    const bool rescaled = OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED || OPT(background_image_layout) == CLAMPED;
+    const bool adjust_scale = OPT(background_image_layout) == TILING || OPT(background_image_layout) == MIRRORED || OPT(background_image_layout) == CLAMPED;
     static bool bgimage_constants_set = false;
     if (!bgimage_constants_set) {
         glUniform1i(bgimage_program_layout.image_location, BGIMAGE_UNIT);
         glUniform1f(bgimage_program_layout.opacity_location, OPT(background_opacity));
-        glUniform1f(bgimage_program_layout.rescaled_location, (GLfloat)rescaled);
+        glUniform1f(bgimage_program_layout.adjust_scale_location, (GLfloat)adjust_scale);
         bgimage_constants_set = true;
     }
     float pos_left_relative = 0.0f, pos_top_relative = 0.0f;
-    if (rescaled) {
-        if (OPT(background_image_anchor) == TOP || OPT(background_image_anchor) == CENTER || OPT(background_image_anchor) == BOTTOM) {
-            pos_left_relative = 0.5f;
-        } else if (OPT(background_image_anchor) == TOP_RIGHT || OPT(background_image_anchor) == RIGHT || OPT(background_image_anchor) == BOTTOM_RIGHT) {
-            pos_left_relative = 1.0f;
-        }
-        if (OPT(background_image_anchor) == LEFT || OPT(background_image_anchor) == CENTER || OPT(background_image_anchor) == RIGHT) {
-            pos_top_relative = 0.5f;
-        } else if (OPT(background_image_anchor) == BOTTOM_LEFT || OPT(background_image_anchor) == BOTTOM || OPT(background_image_anchor) == BOTTOM_RIGHT) {
-            pos_top_relative = 1.0f;
-        }
+    if (adjust_scale) {
+        pos_left_relative = OPT(background_image_anchor).x;
+        pos_top_relative = OPT(background_image_anchor).y;
     }
     glUniform2f(bgimage_program_layout.transform_location, (GLfloat)pos_left_relative, (GLfloat)pos_top_relative);
     glUniform4f(bgimage_program_layout.sizes_location,

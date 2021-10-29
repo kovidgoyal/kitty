@@ -81,24 +81,18 @@ bglayout(PyObject *layout_name) {
 static BackgroundImageAnchor
 bganchor(PyObject *anchor_name) {
     const char *name = PyUnicode_AsUTF8(anchor_name);
-    if (strcmp(name, "top") == 0) {
-        return TOP;
-    } else if (strcmp(name, "top-right") == 0) {
-        return TOP_RIGHT;
-    } else if (strcmp(name, "left") == 0) {
-        return LEFT;
-    } else if (strcmp(name, "center") == 0) {
-        return CENTER;
-    } else if (strcmp(name, "right") == 0) {
-        return RIGHT;
-    } else if (strcmp(name, "bottom-left") == 0) {
-        return BOTTOM_LEFT;
-    } else if (strcmp(name, "bottom") == 0) {
-        return BOTTOM;
-    } else if (strcmp(name, "bottom-right") == 0) {
-        return BOTTOM_RIGHT;
+    BackgroundImageAnchor anchor = { .x = 0.5f, .y = 0.5f };
+    if (strstr(name, "top") != NULL) {
+        anchor.y = 0.0f;
+    } else if (strstr(name, "bottom") != NULL) {
+        anchor.y = 1.0f;
     }
-    return TOP_LEFT;
+    if (strstr(name, "left") != NULL) {
+        anchor.x = 0.0f;
+    } else if (strstr(name, "right") != NULL) {
+        anchor.x = 1.0f;
+    }
+    return anchor;
 }
 
 #define STR_SETTER(name) { \
