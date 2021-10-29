@@ -13,10 +13,10 @@ from kittens.transfer.librsync import (
     LoadSignature, PatchFile, delta_for_file, signature_of_file
 )
 from kittens.transfer.main import parse_transfer_args
-from kittens.transfer.receive import files_for_receive, File
+from kittens.transfer.receive import File, files_for_receive
 from kittens.transfer.rsync import decode_utf8_buffer, parse_ftc
 from kittens.transfer.send import files_for_send
-from kittens.transfer.utils import set_paths, home_path
+from kittens.transfer.utils import expand_home, home_path, set_paths, cwd_path
 from kitty.file_transmission import (
     Action, Compression, FileTransmissionCommand, FileType,
     TestFileTransmission as FileTransmission, TransmissionType,
@@ -357,10 +357,10 @@ class TestFileTransmission(BaseTest):
 
         def am(files, kw):
             m = {f.remote_path: f.expanded_local_path for f in files}
-            kw = {str(k): str(v) for k, v in kw.items()}
+            kw = {str(k): expand_home(str(v)) for k, v in kw.items()}
             self.ae(kw, m)
 
-        def tf(args, expected):
+        def tf(args, expected, different_home=''):
             if opts.mode == 'mirror':
                 all_specs = args
                 dest = ''
@@ -369,13 +369,19 @@ class TestFileTransmission(BaseTest):
                 dest = args[-1]
             specs = list((str(i), str(s)) for i, s in enumerate(all_specs))
             files = list(map(File, iter_file_metadata(specs)))
-            files = list(files_for_receive(opts, dest, files, home_path(), specs))
-            self.ae(len(files), len(expected))
-            am(files, expected)
+            orig_home = home_path()
+            with set_paths(cwd_path(), different_home or orig_home):
+                files = list(files_for_receive(opts, dest, files, orig_home, specs))
+                self.ae(len(files), len(expected))
+                am(files, expected)
 
         opts.mode = 'mirror'
         with set_paths(cwd=b, home='/foo/bar'):
             tf([b/'r', b/'d'], {b/'r': b/'r', b/'d': b/'d', b/'d'/'r': b/'d'/'r'})
+            tf([b/'r', b/'d/r'], {b/'r': b/'r', b/'d'/'r': b/'d'/'r'})
+        with set_paths(cwd=b, home=self.tdir):
+            tf([b/'r', b/'d'], {b/'r': '~/b/r', b/'d': '~/b/d', b/'d'/'r': '~/b/d/r'}, different_home='/foo/bar')
+        opts.mode = 'normal'
 
     def test_path_mapping_send(self):
         opts = parse_transfer_args([])[0]

@@ -14,7 +14,7 @@ from kitty.file_transmission import (
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop, debug
-from .utils import random_id
+from .utils import expand_home, random_id
 
 debug
 
@@ -102,7 +102,7 @@ def files_for_receive(cli_opts: TransferCLIOptions, dest: str, files: List[File]
             spec_paths = [posixpath.join('~', posixpath.relpath(x, home)) for x in spec_paths]
         for spec_id, files_for_spec in spec_map.items():
             spec = spec_paths[spec_id]
-            tree = make_tree(files_for_spec, os.path.dirname(os.path.expanduser(spec)))
+            tree = make_tree(files_for_spec, os.path.dirname(expand_home(spec)))
             for x in tree:
                 yield x.entry
     else:
@@ -112,7 +112,7 @@ def files_for_receive(cli_opts: TransferCLIOptions, dest: str, files: List[File]
                 dest_path = os.path.join(dest, posixpath.basename(files_for_spec[0].remote_path))
             else:
                 dest_path = dest
-            tree = make_tree(files_for_spec, os.path.expanduser(dest_path))
+            tree = make_tree(files_for_spec, expand_home(dest_path))
             for x in tree:
                 yield x.entry
 

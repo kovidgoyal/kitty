@@ -141,6 +141,10 @@ def home_path() -> str:
     return _home or os.path.expanduser('~')
 
 
+def cwd_path() -> str:
+    return _cwd or os.getcwd()
+
+
 def expand_home(path: str) -> str:
     if path.startswith('~' + os.sep) or (os.altsep and path.startswith('~' + os.altsep)):
         return os.path.join(home_path(), path[2:].lstrip(os.sep + (os.altsep or '')))
