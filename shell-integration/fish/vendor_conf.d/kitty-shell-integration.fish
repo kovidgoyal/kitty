@@ -32,7 +32,7 @@ function _ksi_main
             if set -q argv[1]
                 echo $argv[1]
             else
-                echo (prompt_pwd)
+                prompt_pwd
             end
         end
     end
@@ -41,11 +41,11 @@ function _ksi_main
         set --global _ksi_prompt_state "first-run"
 
         function _ksi_function_is_not_empty -d "Check if the specified function exists and is not empty"
-            test (functions $argv[1] | grep -cvE '^ *(#|function |end$|$)') != 0
+            functions $argv[1] | string match -qnvr '^ *(#|function |end$|$)'
         end
 
         function _ksi_mark -d "tell kitty to mark the current cursor position using OSC 133"
-            _ksi_osc "133;$argv[1]";
+            _ksi_osc "133;$argv[1]"
         end
 
         function _ksi_start_prompt
