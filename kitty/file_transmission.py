@@ -91,7 +91,7 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
                 path = abspath(path, use_home=True)
         try:
             sr = os.stat(path, follow_symlinks=False)
-            read_ok = os.access(path, os.R_OK)
+            read_ok = os.access(path, os.R_OK, follow_symlinks=False)
         except OSError as err:
             errname = errno.errorcode.get(err.errno, 'EFAIL')
             yield TransmissionError(file_id=spec_id, code=errname, msg='Failed to read spec')
@@ -123,7 +123,7 @@ def iter_file_metadata(file_specs: Iterable[Tuple[str, str]]) -> Iterator[Union[
         base = cmds[0]
         if base.ftype is FileType.symlink:
             try:
-                dest = os.readlink(base.name)
+                dest = os.path.realpath(base.name)
             except OSError:
                 pass
             else:

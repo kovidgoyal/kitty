@@ -112,7 +112,7 @@ def files_for_receive(cli_opts: TransferCLIOptions, dest: str, files: List[File]
                 dest_path = os.path.join(dest, posixpath.basename(files_for_spec[0].remote_path))
             else:
                 dest_path = dest
-            tree = make_tree(files_for_spec, expand_home(dest_path))
+            tree = make_tree(files_for_spec, os.path.dirname(expand_home(dest_path)))
             for x in tree:
                 yield x.entry
 
