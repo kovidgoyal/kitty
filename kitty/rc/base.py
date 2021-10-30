@@ -108,6 +108,22 @@ class ParsingOfArgsFailed(ValueError):
     pass
 
 
+class AsyncResponder:
+
+    def __init__(self, payload_get: PayloadGetType, window: Optional[Window]) -> None:
+        self.async_id: str = payload_get('async_id', missing='')
+        self.peer_id: int = payload_get('peer_id', missing=0)
+        self.window_id: int = getattr(window, 'id', 0)
+
+    def send_data(self, data: Any) -> None:
+        from kitty.remote_control import send_response_to_client
+        send_response_to_client(data=data, peer_id=self.peer_id, window_id=self.window_id, async_id=self.async_id)
+
+    def send_error(self, error: str) -> None:
+        from kitty.remote_control import send_response_to_client
+        send_response_to_client(error=error, peer_id=self.peer_id, window_id=self.window_id, async_id=self.async_id)
+
+
 class RemoteCommand:
 
     name: str = ''
@@ -121,6 +137,7 @@ class RemoteCommand:
     args_count: Optional[int] = None
     args_completion: Optional[Dict[str, Tuple[str, Union[Callable[[], Iterable[str]], Tuple[str, ...]]]]] = None
     defaults: Optional[Dict[str, Any]] = None
+    is_asynchronous: bool = False
     options_class: Type[RCOptions] = RCOptions
 
     def __init__(self) -> None:
@@ -190,6 +207,9 @@ class RemoteCommand:
                 for tab in tabs:
                     windows += list(tab)
         return windows
+
+    def create_async_responder(self, payload_get: PayloadGetType, window: Optional[Window]) -> AsyncResponder:
+        return AsyncResponder(payload_get, window)
 
     def message_to_kitty(self, global_opts: RCOptions, opts: Any, args: ArgsType) -> PayloadType:
         raise NotImplementedError()

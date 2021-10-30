@@ -6,6 +6,7 @@ import os
 import re
 import sys
 import types
+from time import monotonic
 from contextlib import suppress
 from functools import partial
 from typing import (
@@ -24,6 +25,9 @@ from .typing import BossType, WindowType
 from .utils import TTYIO, parse_address_spec
 
 
+active_async_requests: Dict[str, float] = {}
+
+
 def encode_response_for_peer(response: Any) -> bytes:
     import json
     return b'\x1bP@kitty-cmd' + json.dumps(response).encode('utf-8') + b'\x1b\\'
@@ -40,7 +44,16 @@ def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str
     c = command_for_name(cmd['cmd'])
     payload = cmd.get('payload') or {}
     payload['peer_id'] = peer_id
-
+    async_id = str(cmd.get('async', ''))
+    if async_id:
+        if 'cancel_async' in cmd:
+            active_async_requests.pop(async_id, None)
+            return None
+        active_async_requests[async_id] = monotonic()
+        payload['async_id'] = async_id
+        if len(active_async_requests) > 32:
+            oldest = next(iter(active_async_requests))
+            del active_async_requests[oldest]
     try:
         ans = c.response_from_kitty(boss, window, PayloadGetter(c, payload))
     except Exception:
@@ -159,14 +172,20 @@ def parse_rc_args(args: List[str]) -> Tuple[RCOptions, List[str]]:
     return parse_args(args[1:], global_options_spec, 'command ...', msg, f'{appname} @', result_class=RCOptions)
 
 
-def create_basic_command(name: str, payload: Any = None, no_response: bool = False) -> Dict[str, Any]:
+def create_basic_command(name: str, payload: Any = None, no_response: bool = False, is_asynchronous: bool = False) -> Dict[str, Any]:
     ans = {'cmd': name, 'version': version, 'no_response': no_response}
     if payload is not None:
         ans['payload'] = payload
+    if is_asynchronous:
+        from kitty.short_uuid import uuid4
+        ans['async'] = uuid4()
     return ans
 
 
-def send_response_to_client(data: Any = None, error: str = '', peer_id: int = 0, window_id: int = 0) -> None:
+def send_response_to_client(data: Any = None, error: str = '', peer_id: int = 0, window_id: int = 0, async_id: str = '') -> None:
+    ts = active_async_requests.pop(async_id, None)
+    if ts is None:
+        return
     if error:
         response: Dict[str, Union[bool, int, str]] = {'ok': False, 'error': error}
     else:
@@ -203,13 +222,16 @@ def main(args: List[str]) -> None:
     response_timeout = c.response_timeout
     if hasattr(opts, 'response_timeout'):
         response_timeout = opts.response_timeout
-    send = create_basic_command(cmd, payload=payload, no_response=no_response)
+    send = create_basic_command(cmd, payload=payload, no_response=no_response, is_asynchronous=c.is_asynchronous)
     if not global_opts.to and 'KITTY_LISTEN_ON' in os.environ:
         global_opts.to = os.environ['KITTY_LISTEN_ON']
     import socket
     try:
         response = do_io(global_opts.to, send, no_response, response_timeout)
     except (TimeoutError, socket.timeout):
+        send.pop('payload', None)
+        send['cancel_async'] = True
+        do_io(global_opts.to, send, True, 10)
         raise SystemExit(f'Timed out after {response_timeout} seconds waiting for response form kitty')
     if no_response:
         return
