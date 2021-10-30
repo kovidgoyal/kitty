@@ -15,10 +15,10 @@ from typing import (
 from .cli import emph, parse_args
 from .cli_stub import RCOptions
 from .constants import appname, version
-from .fast_data_types import read_command_response
+from .fast_data_types import get_boss, read_command_response, send_data_to_peer
 from .rc.base import (
-    ParsingOfArgsFailed, PayloadGetter, all_command_names, command_for_name,
-    NoResponse, parse_subcommand_cli
+    NoResponse, ParsingOfArgsFailed, PayloadGetter, all_command_names,
+    command_for_name, parse_subcommand_cli
 )
 from .typing import BossType, WindowType
 from .utils import TTYIO, parse_address_spec
@@ -164,6 +164,19 @@ def create_basic_command(name: str, payload: Any = None, no_response: bool = Fal
     if payload is not None:
         ans['payload'] = payload
     return ans
+
+
+def send_response_to_client(data: Any = None, error: str = '', peer_id: int = 0, window_id: int = 0) -> None:
+    if error:
+        response: Dict[str, Union[bool, int, str]] = {'ok': False, 'error': error}
+    else:
+        response = {'ok': True, 'data': data}
+    if peer_id > 0:
+        send_data_to_peer(peer_id, encode_response_for_peer(response))
+    elif window_id > 0:
+        w = get_boss().window_id_map[window_id]
+        if w is not None:
+            w.send_cmd_response(response)
 
 
 def main(args: List[str]) -> None:

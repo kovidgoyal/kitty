@@ -2,9 +2,8 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 
-from typing import TYPE_CHECKING, Dict, Optional, Union
+from typing import TYPE_CHECKING, Optional
 
-from kitty.fast_data_types import send_data_to_peer
 
 from .base import (
     MATCH_TAB_OPTION, ArgsType, Boss, PayloadGetType, PayloadType, RCOptions,
@@ -50,17 +49,11 @@ instead of the active tab.
         window_id: int = getattr(window, 'id', 0)
 
         def callback(tab: Optional['Tab'], window: Optional[Window]) -> None:
+            from kitty.remote_control import send_response_to_client
             if window:
-                response: Dict[str, Union[bool, int, str]] = {'ok': True, 'data': window.id}
+                send_response_to_client(data=window.id, peer_id=peer_id, window_id=window_id)
             else:
-                response = {'ok': False, 'error': 'No window selected'}
-            if peer_id > 0:
-                from kitty.remote_control import encode_response_for_peer
-                send_data_to_peer(peer_id, encode_response_for_peer(response))
-            elif window_id > 0:
-                w = boss.window_id_map[window_id]
-                if w is not None:
-                    w.send_cmd_response(response)
+                send_response_to_client(error='No window selected', peer_id=peer_id, window_id=window_id)
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
                 boss.visual_window_select_action(tab, callback, 'Choose window')
