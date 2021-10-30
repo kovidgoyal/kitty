@@ -152,7 +152,10 @@ def run_cmd(global_opts: RCOptions, cmd: str, func: RemoteCommand, opts: Any, it
     }
     if payload is not None:
         send['payload'] = payload
-    response = do_io(global_opts.to, send, func.no_response)
+    response_timeout = func.response_timeout
+    if hasattr(opts, 'response_timeout'):
+        response_timeout = opts.response_timeout
+    response = do_io(global_opts.to, send, func.no_response, response_timeout)
     if not response.get('ok'):
         if response.get('tb'):
             print_err(response['tb'])

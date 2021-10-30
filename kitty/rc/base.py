@@ -116,6 +116,7 @@ class RemoteCommand:
     argspec: str = '...'
     options_spec: Optional[str] = None
     no_response: bool = False
+    response_timeout: float = 10.  # seconds
     string_return_is_error: bool = False
     args_count: Optional[int] = None
     args_completion: Optional[Dict[str, Tuple[str, Union[Callable[[], Iterable[str]], Tuple[str, ...]]]]] = None

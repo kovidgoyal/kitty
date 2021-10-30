@@ -114,7 +114,7 @@ class RCIO(TTYIO):
         return b''.join(ans)
 
 
-def do_io(to: Optional[str], send: Dict[str, Any], no_response: bool) -> Dict[str, Any]:
+def do_io(to: Optional[str], send: Dict[str, Any], no_response: bool, response_timeout: float) -> Dict[str, Any]:
     payload = send.get('payload')
     if not isinstance(payload, types.GeneratorType):
         send_data: Union[bytes, Iterable[bytes]] = encode_send(send)
@@ -131,7 +131,7 @@ def do_io(to: Optional[str], send: Dict[str, Any], no_response: bool) -> Dict[st
         io.send(send_data)
         if no_response:
             return {'ok': True}
-        received = io.simple_recv(timeout=10)
+        received = io.simple_recv(timeout=response_timeout)
 
     return cast(Dict[str, Any], json.loads(received.decode('ascii')))
 
@@ -181,10 +181,13 @@ def main(args: List[str]) -> None:
     no_response = c.no_response
     if hasattr(opts, 'no_response'):
         no_response = opts.no_response
+    response_timeout = c.response_timeout
+    if hasattr(opts, 'response_timeout'):
+        response_timeout = opts.response_timeout
     send = create_basic_command(cmd, payload=payload, no_response=no_response)
     if not global_opts.to and 'KITTY_LISTEN_ON' in os.environ:
         global_opts.to = os.environ['KITTY_LISTEN_ON']
-    response = do_io(global_opts.to, send, no_response)
+    response = do_io(global_opts.to, send, no_response, response_timeout)
     if no_response:
         return
     if not response.get('ok'):
