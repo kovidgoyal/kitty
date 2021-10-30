@@ -31,6 +31,9 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new remote control command to :program:`change the tab color <kitty @
   set-tab-color>` (:iss:`1287`)
 
+- A new remote control command to :program:`visually select a window <kitty @
+  select-window>` (:iss:`4165`)
+
 - Add support for reporting mouse events with pixel co-ordinates using the
   ``SGR_PIXEL_PROTOCOL`` introduced in xterm 359
 

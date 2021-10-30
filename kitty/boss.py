@@ -156,7 +156,7 @@ class Boss:
         self.update_check_process: Optional['PopenType[bytes]'] = None
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
-        self.visual_window_select_callback: Optional[Callable[[Tab, Window], None]] = None
+        self.visual_window_select_callback: Optional[Callable[[Optional[Tab], Optional[Window]], None]] = None
         self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences: Optional[SubSequenceMap] = None
         self.default_pending_action: Optional[KeyAction] = None
@@ -459,7 +459,8 @@ class Boss:
             response = self._handle_remote_command(cmd, peer_id=peer_id)
             if response is None:
                 return None
-            return cmd_prefix + json.dumps(response).encode('utf-8') + terminator
+            from kitty.remote_control import encode_response_for_peer
+            return encode_response_for_peer(response)
 
         data = json.loads(msg_bytes.decode('utf-8'))
         if isinstance(data, dict) and data.get('cmd') == 'new_instance':
@@ -814,7 +815,7 @@ class Boss:
             if matched_action is not None:
                 self.dispatch_action(matched_action)
 
-    def visual_window_select_action(self, tab: Tab, callback: Callable[[Tab, Window], None], choose_msg: str) -> None:
+    def visual_window_select_action(self, tab: Tab, callback: Callable[[Optional[Tab], Optional[Window]], None], choose_msg: str) -> None:
         self.visual_window_select_callback = callback
         if tab.current_layout.only_active_window_visible:
             self.select_window_in_tab_using_overlay(tab, choose_msg)
@@ -846,15 +847,20 @@ class Boss:
     def visual_window_select_action_trigger(self, tab_id: int, window_id: int = 0) -> None:
         redirect_mouse_handling(False)
         self.clear_pending_sequences()
+        cb = self.visual_window_select_callback
+        self.visual_window_select_callback = None
+        called = False
         for tab in self.all_tabs:
             if tab.id == tab_id:
                 for window in tab:
                     window.screen.set_window_number()
                     if window.id == window_id:
-                        if self.visual_window_select_callback:
-                            self.visual_window_select_callback(tab, window)
+                        if cb is not None:
+                            cb(tab, window)
+                            called = True
                 break
-        self.visual_window_select_callback = None
+        if not called and cb is not None:
+            cb(None, None)
 
     def focus_visible_window_mouse_handler(self, ev: WindowSystemMouseEvent) -> None:
         tab = self.active_tab

@@ -601,15 +601,17 @@ class Tab:  # {{{
         over the windows for easy selection in this mode.
         ''')
     def focus_visible_window(self) -> None:
-        def callback(tab: Tab, window: Window) -> None:
-            tab.set_active_window(window)
+        def callback(tab: Optional[Tab], window: Optional[Window]) -> None:
+            if tab and window:
+                tab.set_active_window(window)
 
         get_boss().visual_window_select_action(self, callback, 'Choose window to switch to')
 
     @ac('win', 'Swap the current window with another window in the current tab, selected visually')
     def swap_with_window(self) -> None:
-        def callback(tab: Tab, window: Window) -> None:
-            tab.swap_active_window_with(window.id)
+        def callback(tab: Optional[Tab], window: Optional[Window]) -> None:
+            if tab and window:
+                tab.swap_active_window_with(window.id)
         get_boss().visual_window_select_action(self, callback, 'Choose window to swap with')
 
     @ac('win', 'Move active window to the top (make it the first window)')

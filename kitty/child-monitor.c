@@ -181,7 +181,7 @@ wakeup_io_loop(ChildMonitor *self, bool in_signal_handler) {
 
 static void* io_loop(void *data);
 static void* talk_loop(void *data);
-static void send_response(id_type peer_id, const char *msg, size_t msg_sz);
+static void send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz);
 static void wakeup_talk_loop(bool);
 static bool talk_thread_started = false;
 
@@ -423,9 +423,9 @@ parse_input(ChildMonitor *self) {
                 if (!resp) PyErr_Print();
             }
             if (resp) {
-                if (PyBytes_Check(resp)) send_response(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
+                if (PyBytes_Check(resp)) send_response_to_peer(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
                 Py_CLEAR(resp);
-            } else send_response(msg->peer_id, NULL, 0);
+            } else send_response_to_peer(msg->peer_id, NULL, 0);
         }
         free(msgs); msgs = NULL;
     }
@@ -1624,7 +1624,7 @@ end:
 }
 
 static void
-send_response(id_type peer_id, const char *msg, size_t msg_sz) {
+send_response_to_peer(id_type peer_id, const char *msg, size_t msg_sz) {
     bool wakeup = false;
     talk_mutex(lock);
     for (size_t i = 0; i < talk_data.num_peers; i++) {
@@ -1699,11 +1699,22 @@ cocoa_set_menubar_title(PyObject *self UNUSED, PyObject *args UNUSED) {
     Py_RETURN_NONE;
 }
 
+static PyObject*
+
+send_data_to_peer(PyObject *self UNUSED, PyObject *args) {
+    char * msg; Py_ssize_t sz;
+    unsigned long long peer_id;
+    if (!PyArg_ParseTuple(args, "Ks#", &peer_id, &msg, &sz)) return NULL;
+    send_response_to_peer(peer_id, msg, sz);
+    Py_RETURN_NONE;
+}
+
 static PyMethodDef module_methods[] = {
     METHODB(safe_pipe, METH_VARARGS),
     {"add_timer", (PyCFunction)add_python_timer, METH_VARARGS, ""},
     {"remove_timer", (PyCFunction)remove_python_timer, METH_VARARGS, ""},
     METHODB(monitor_pid, METH_VARARGS),
+    METHODB(send_data_to_peer, METH_VARARGS),
     METHODB(cocoa_set_menubar_title, METH_VARARGS),
     {NULL}  /* Sentinel */
 };

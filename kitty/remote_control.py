@@ -24,6 +24,11 @@ from .typing import BossType, WindowType
 from .utils import TTYIO, parse_address_spec
 
 
+def encode_response_for_peer(response: Any) -> bytes:
+    import json
+    return b'\x1bP@kitty-cmd' + json.dumps(response).encode('utf-8') + b'\x1b\\'
+
+
 def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str, peer_id: int) -> Optional[Dict[str, Any]]:
     cmd = json.loads(serialized_cmd)
     v = cmd['version']
@@ -188,7 +193,11 @@ def main(args: List[str]) -> None:
     send = create_basic_command(cmd, payload=payload, no_response=no_response)
     if not global_opts.to and 'KITTY_LISTEN_ON' in os.environ:
         global_opts.to = os.environ['KITTY_LISTEN_ON']
-    response = do_io(global_opts.to, send, no_response, response_timeout)
+    import socket
+    try:
+        response = do_io(global_opts.to, send, no_response, response_timeout)
+    except (TimeoutError, socket.timeout):
+        raise SystemExit(f'Timed out after {response_timeout} seconds waiting for response form kitty')
     if no_response:
         return
     if not response.get('ok'):

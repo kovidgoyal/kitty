@@ -1317,3 +1317,7 @@ def redirect_mouse_handling(yes: bool) -> None:
 
 def get_click_interval() -> float:
     pass
+
+
+def send_data_to_peer(peer_id: int, data: Union[str, bytes]) -> None:
+    pass
