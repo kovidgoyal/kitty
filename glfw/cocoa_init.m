@@ -455,7 +455,7 @@ void* _glfwLoadLocalVulkanLoaderNS(void)
 
 static bool
 is_modified_tab(NSEvent *event, NSEventModifierFlags modifierFlags) {
-    switch (modifierFlags) {
+    switch ((NSUInteger)modifierFlags) {
         // No need to handle shift+tab, [shift]+option+tab
         case NSEventModifierFlagShift:
         case NSEventModifierFlagOption:
