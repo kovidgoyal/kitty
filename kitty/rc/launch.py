@@ -40,6 +40,7 @@ class Launch(RemoteCommand):
     stdin_add_line_wrap_markers: Boolean indicating whether to add line wrap markers to stdin
     no_response: Boolean indicating whether to send back the window id
     marker: Specification for marker for new window, for example: "text 1 ERROR"
+    self: Boolean, if True use tab the command was run in
     '''
 
     short_desc = 'Run an arbitrary process in a new window/tab'
