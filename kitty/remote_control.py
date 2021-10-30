@@ -162,7 +162,6 @@ def create_basic_command(name: str, payload: Any = None, no_response: bool = Fal
 
 def main(args: List[str]) -> None:
     global_opts, items = parse_rc_args(args)
-    global_opts.no_command_response = None
 
     if not items:
         from kitty.shell import main as smain
@@ -179,10 +178,9 @@ def main(args: List[str]) -> None:
         payload = c.message_to_kitty(global_opts, opts, items)
     except ParsingOfArgsFailed as err:
         exit(str(err))
-    if global_opts.no_command_response is not None:
-        no_response = global_opts.no_command_response  # type: ignore
-    else:
-        no_response = c.no_response
+    no_response = c.no_response
+    if hasattr(opts, 'no_response'):
+        no_response = opts.no_response
     send = create_basic_command(cmd, payload=payload, no_response=no_response)
     if not global_opts.to and 'KITTY_LISTEN_ON' in os.environ:
         global_opts.to = os.environ['KITTY_LISTEN_ON']

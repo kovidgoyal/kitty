@@ -74,8 +74,6 @@ using this option means that you will not be notified of failures.
     argspec = ''
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        if opts.no_response:
-            global_opts.no_command_response = True
         return {
             'match': opts.match, 'action': opts.action, 'unit': opts.unit,
             'width': opts.width, 'height': opts.height, 'self': opts.self,

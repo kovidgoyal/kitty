@@ -78,8 +78,6 @@ the id of the new window will not be printed out.
     argspec = '[CMD ...]'
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        if opts.no_response:
-            global_opts.no_command_response = True
         return {'match': opts.match, 'title': opts.title, 'cwd': opts.cwd,
                 'new_tab': opts.new_tab, 'tab_title': opts.tab_title,
                 'window_type': opts.window_type, 'no_response': opts.no_response,

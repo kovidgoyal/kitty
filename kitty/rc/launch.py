@@ -63,8 +63,6 @@ instead of the active tab
     argspec = '[CMD ...]'
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        if opts.no_response:
-            global_opts.no_command_response = True
         ans = {'args': args or []}
         for attr, val in opts.__dict__.items():
             ans[attr] = val

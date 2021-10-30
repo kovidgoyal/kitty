@@ -67,8 +67,6 @@ failed, the command will exit with a success code.
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
         if len(args) != 1:
             self.fatal('Must specify path to exactly one PNG image')
-        if opts.no_response:
-            global_opts.no_command_response = True
         path = args[0]
         ret = {
             'match': opts.match,

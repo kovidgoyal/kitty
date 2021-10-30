@@ -31,7 +31,7 @@ def generate_stub() -> None:
     do(options_spec(), 'LaunchCLIOptions')
 
     from .remote_control import global_options_spec
-    do(global_options_spec(), 'RCOptions', extra_fields=['no_command_response: typing.Optional[bool]'])
+    do(global_options_spec(), 'RCOptions')
 
     from kittens.ask.main import option_text
     do(option_text(), 'AskCLIOptions')

@@ -37,8 +37,6 @@ the command will exit with a success code.
 ''' + '\n\n\n' + MATCH_TAB_OPTION
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        if opts.no_response:
-            global_opts.no_command_response = True
         return {'match': opts.match, 'all': opts.all}
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
