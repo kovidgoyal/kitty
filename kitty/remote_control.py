@@ -24,7 +24,7 @@ from .typing import BossType, WindowType
 from .utils import TTYIO, parse_address_spec
 
 
-def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str) -> Optional[Dict[str, Any]]:
+def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str, peer_id: int) -> Optional[Dict[str, Any]]:
     cmd = json.loads(serialized_cmd)
     v = cmd['version']
     no_response = cmd.get('no_response', False)
@@ -34,6 +34,7 @@ def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str
         return {'ok': False, 'error': 'The kitty client you are using to send remote commands is newer than this kitty instance. This is not supported.'}
     c = command_for_name(cmd['cmd'])
     payload = cmd.get('payload') or {}
+    payload['peer_id'] = peer_id
 
     try:
         ans = c.response_from_kitty(boss, window, PayloadGetter(c, payload))

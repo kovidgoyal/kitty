@@ -395,13 +395,13 @@ class Boss:
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
-    def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, from_peer: bool = False) -> Optional[Dict[str, Any]]:
+    def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, peer_id: int = 0) -> Optional[Dict[str, Any]]:
         from .remote_control import handle_cmd
         response = None
         window = window or None
-        if self.allow_remote_control == 'y' or from_peer or getattr(window, 'allow_remote_control', False):
+        if self.allow_remote_control == 'y' or peer_id > 0 or getattr(window, 'allow_remote_control', False):
             try:
-                response = handle_cmd(self, window, cmd)
+                response = handle_cmd(self, window, cmd, peer_id)
             except Exception as err:
                 import traceback
                 response = {'ok': False, 'error': str(err)}
@@ -456,7 +456,7 @@ class Boss:
         terminator = b'\x1b\\'
         if msg_bytes.startswith(cmd_prefix) and msg_bytes.endswith(terminator):
             cmd = msg_bytes[len(cmd_prefix):-len(terminator)].decode('utf-8')
-            response = self._handle_remote_command(cmd, from_peer=True)
+            response = self._handle_remote_command(cmd, peer_id=peer_id)
             if response is None:
                 return None
             return cmd_prefix + json.dumps(response).encode('utf-8') + terminator
