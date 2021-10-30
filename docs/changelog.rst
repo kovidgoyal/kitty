@@ -34,6 +34,10 @@ To update |kitty|, :doc:`follow the instructions <binary>`.
 - A new remote control command to :program:`visually select a window <kitty @
   select-window>` (:iss:`4165`)
 
+- A new option :opt:`background_image_anchor` to *anchor* the background image
+  to a position in the OS Window, useful for displaying images with logos or
+  similar (:pull:`4167`)
+
 - Add support for reporting mouse events with pixel co-ordinates using the
   ``SGR_PIXEL_PROTOCOL`` introduced in xterm 359
 
