@@ -57,13 +57,21 @@ class Parser:
     def background_image(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['background_image'] = config_or_absolute_path(val)
 
+    def background_image_anchor(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
+        val = val.lower()
+        if val not in self.choices_for_background_image_anchor:
+            raise ValueError(f"The value {val} is not a valid choice for background_image_anchor")
+        ans["background_image_anchor"] = val
+
+    choices_for_background_image_anchor = frozenset(('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'))
+
     def background_image_layout(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         val = val.lower()
         if val not in self.choices_for_background_image_layout:
             raise ValueError(f"The value {val} is not a valid choice for background_image_layout")
         ans["background_image_layout"] = val
 
-    choices_for_background_image_layout = frozenset(('mirror-tiled', 'scaled', 'tiled'))
+    choices_for_background_image_layout = frozenset(('mirror-tiled', 'scaled', 'tiled', 'clamped'))
 
     def background_image_linear(self, val: str, ans: typing.Dict[str, typing.Any]) -> None:
         ans['background_image_linear'] = to_bool(val)

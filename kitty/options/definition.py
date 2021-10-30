@@ -1106,8 +1106,13 @@ opt('background_image', 'none',
     )
 
 opt('background_image_layout', 'tiled',
-    choices=('mirror-tiled', 'scaled', 'tiled'), ctype='bglayout',
-    long_text='Whether to tile or scale the background image.'
+    choices=('mirror-tiled', 'scaled', 'tiled', 'clamped'), ctype='bglayout',
+    long_text='Whether to tile, scale or clamp the background image.'
+    )
+
+opt('background_image_anchor', 'top-left',
+    choices=('top-left', 'top', 'top-right', 'left', 'center', 'right', 'bottom-left', 'bottom', 'bottom-right'), ctype='bganchor',
+    long_text='Where to position the background image in the window.'
     )
 
 opt('background_image_linear', 'no',

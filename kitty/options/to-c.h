@@ -72,9 +72,27 @@ bglayout(PyObject *layout_name) {
         case 't': return TILING;
         case 'm': return MIRRORED;
         case 's': return SCALED;
+        case 'c': return CLAMPED;
         default: break;
     }
     return TILING;
+}
+
+static BackgroundImageAnchor
+bganchor(PyObject *anchor_name) {
+    const char *name = PyUnicode_AsUTF8(anchor_name);
+    BackgroundImageAnchor anchor = { .x = 0.5f, .y = 0.5f };
+    if (strstr(name, "top") != NULL) {
+        anchor.y = 0.0f;
+    } else if (strstr(name, "bottom") != NULL) {
+        anchor.y = 1.0f;
+    }
+    if (strstr(name, "left") != NULL) {
+        anchor.x = 0.0f;
+    } else if (strstr(name, "right") != NULL) {
+        anchor.x = 1.0f;
+    }
+    return anchor;
 }
 
 #define STR_SETTER(name) { \

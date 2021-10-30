@@ -8,7 +8,8 @@
 #define tex_right 1
 #define tex_bottom 1
 
-uniform float tiled;
+uniform float adjust_scale;
+uniform vec2 transform;  // [ pos_left_relative, pos_top_relative ]
 uniform vec4 sizes;  // [ window_width, window_height, image_width, image_height ]
 
 out vec2 texcoord;
@@ -27,16 +28,16 @@ const vec2 tex_map[] = vec2[4](
 );
 
 
-float scale_factor(float window, float image) {
-    return window / image;
+float scaling_factor(int i) {
+    return adjust_scale * (sizes[i] / sizes[i + 2]) + (1 - adjust_scale);
 }
 
-float tiling_factor(int i) {
-    return tiled * scale_factor(sizes[i], sizes[i + 2]) + (1 - tiled);
+float position_divisor(int i) {
+    return (sizes[i] - sizes[i + 2]) * transform[i] / sizes[i + 2];
 }
 
 void main() {
     vec2 tex_coords = tex_map[gl_VertexID];
-    texcoord = vec2(tex_coords[0] * tiling_factor(0), tex_coords[1] * tiling_factor(1));
+    texcoord = vec2(tex_coords[0] * scaling_factor(0) - position_divisor(0), tex_coords[1] * scaling_factor(1) - position_divisor(1));
     gl_Position = vec4(pos_map[gl_VertexID], 0, 1);
 }
