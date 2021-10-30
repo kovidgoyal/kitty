@@ -418,13 +418,14 @@ parse_input(ChildMonitor *self) {
             Message *msg = msgs + i;
             PyObject *resp = NULL;
             if (msg->data) {
-                resp = PyObject_CallMethod(global_state.boss, "peer_message_received", "y#", msg->data, (int)msg->sz);
+                resp = PyObject_CallMethod(global_state.boss, "peer_message_received", "y#K", msg->data, (int)msg->sz, msg->peer_id);
                 free(msg->data);
                 if (!resp) PyErr_Print();
             }
-            if (resp && PyBytes_Check(resp)) send_response(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
-            else send_response(msg->peer_id, NULL, 0);
-            Py_CLEAR(resp);
+            if (resp) {
+                if (PyBytes_Check(resp)) send_response(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
+                Py_CLEAR(resp);
+            } else send_response(msg->peer_id, NULL, 0);
         }
         free(msgs); msgs = NULL;
     }

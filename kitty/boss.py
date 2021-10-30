@@ -451,7 +451,7 @@ class Boss:
             tb = traceback.format_exc()
             self.show_error(_('remote_control mapping failed'), tb)
 
-    def peer_message_received(self, msg_bytes: bytes) -> Optional[bytes]:
+    def peer_message_received(self, msg_bytes: bytes, peer_id: int) -> Optional[bytes]:
         cmd_prefix = b'\x1bP@kitty-cmd'
         terminator = b'\x1b\\'
         if msg_bytes.startswith(cmd_prefix) and msg_bytes.endswith(terminator):
