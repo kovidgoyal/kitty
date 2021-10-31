@@ -821,6 +821,7 @@ class Boss:
             self.visual_window_select_action_trigger(self.visual_window_select_active_in_tab_id)
 
     def visual_window_select_action(self, tab: Tab, callback: Callable[[Optional[Tab], Optional[Window]], None], choose_msg: str) -> None:
+        self.cancel_current_visual_select()
         self.visual_window_select_callback = callback
         if tab.current_layout.only_active_window_visible:
             self.select_window_in_tab_using_overlay(tab, choose_msg)
