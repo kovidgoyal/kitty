@@ -57,5 +57,8 @@ instead of the active tab.
                 break
         return no_response
 
+    def cancel_async_request(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> None:
+        boss.cancel_current_visual_select()
+
 
 select_window = SelectWindow()

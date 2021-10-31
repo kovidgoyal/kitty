@@ -217,6 +217,9 @@ class RemoteCommand:
     def response_from_kitty(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> ResponseType:
         raise NotImplementedError()
 
+    def cancel_async_request(self, boss: 'Boss', window: Optional['Window'], payload_get: PayloadGetType) -> None:
+        pass
+
 
 def cli_params_for(command: RemoteCommand) -> Tuple[Callable[[], str], str, str, str]:
     return (command.options_spec or '\n').format, command.argspec, command.desc, f'{appname} @ {command.name}'

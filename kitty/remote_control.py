@@ -48,6 +48,7 @@ def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str
     if async_id:
         if 'cancel_async' in cmd:
             active_async_requests.pop(async_id, None)
+            c.cancel_async_request(boss, window, PayloadGetter(c, payload))
             return None
         active_async_requests[async_id] = monotonic()
         payload['async_id'] = async_id
