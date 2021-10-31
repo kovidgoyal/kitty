@@ -7,8 +7,24 @@ import os
 import sys
 import warnings
 from tempfile import TemporaryDirectory
+from contextlib import contextmanager
+from typing import Iterator
 
 base = os.path.dirname(os.path.abspath(__file__))
+
+
+@contextmanager
+def env_vars(**kw: str) -> Iterator[None]:
+    originals = {k: os.environ.get(k) for k in kw}
+    os.environ.update(kw)
+    try:
+        yield
+    finally:
+        for k, v in originals.items():
+            if v is None:
+                os.environ.pop(k, None)
+            else:
+                os.environ[k] = v
 
 
 def init_env() -> None:
@@ -17,9 +33,7 @@ def init_env() -> None:
 
 def main() -> None:
     warnings.simplefilter('error')
-    os.environ['PYTHONWARNINGS'] = 'error'
-    with TemporaryDirectory() as tdir:
-        os.environ['HOME'] = os.environ['USERPROFILE'] = tdir
+    with TemporaryDirectory() as tdir, env_vars(PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir):
         init_env()
         m = importlib.import_module('kitty_tests.main')
         m.run_tests()  # type: ignore
