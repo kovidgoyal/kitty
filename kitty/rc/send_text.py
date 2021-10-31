@@ -2,7 +2,6 @@
 # License: GPLv3 Copyright: 2020, Kovid Goyal <kovid at kovidgoyal.net>
 
 import base64
-import os
 import sys
 from typing import TYPE_CHECKING, List, Optional, Union
 
@@ -73,7 +72,7 @@ Do not send text to the active window, even if it is one of the matched windows.
                     while keep_going:
                         if not tty.wait_till_read_available():
                             break
-                        data = os.read(tty.tty_fd, limit)
+                        data = tty.read(limit)
                         if not data:
                             break
                         decoded_data = data.decode('utf-8')

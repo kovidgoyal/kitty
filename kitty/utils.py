@@ -461,6 +461,9 @@ class TTYIO:
         rd = select.select([self.tty_fd], [], [])[0]
         return bool(rd)
 
+    def read(self, limit: int) -> bytes:
+        return os.read(self.tty_fd, limit)
+
     def send(self, data: Union[str, bytes, Iterable[Union[str, bytes]]]) -> None:
         if isinstance(data, (str, bytes)):
             write_all(self.tty_fd, data)
