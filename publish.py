@@ -19,7 +19,7 @@ import time
 from contextlib import contextmanager, suppress
 from typing import IO, Any, Dict, Generator, Iterable, Optional, cast
 
-import requests  # type: ignore
+import requests
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 docs_dir = os.path.abspath('docs')
