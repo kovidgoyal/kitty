@@ -11,7 +11,7 @@ from operator import attrgetter
 from time import monotonic
 from typing import (
     Any, Deque, Dict, Generator, Iterable, Iterator, List, NamedTuple,
-    Optional, Pattern, Sequence, Tuple, Union, cast
+    Optional, Pattern, Sequence, Set, Tuple, Union, cast
 )
 
 from .borders import Border, Borders
@@ -596,6 +596,14 @@ class Tab:  # {{{
                 if self.current_layout.move_window_to_group(self.windows, group.id):
                     self.relayout()
 
+    @property
+    def all_window_ids_except_active_window(self) -> Set[int]:
+        all_window_ids = {w.id for w in self}
+        aw = self.active_window
+        if aw is not None:
+            all_window_ids.discard(aw.id)
+        return all_window_ids
+
     @ac('win', '''
         Focus a visible window by pressing the number of the window. Window numbers are displayed
         over the windows for easy selection in this mode.
@@ -605,14 +613,14 @@ class Tab:  # {{{
             if tab and window:
                 tab.set_active_window(window)
 
-        get_boss().visual_window_select_action(self, callback, 'Choose window to switch to')
+        get_boss().visual_window_select_action(self, callback, 'Choose window to switch to', only_window_ids=self.all_window_ids_except_active_window)
 
     @ac('win', 'Swap the current window with another window in the current tab, selected visually')
     def swap_with_window(self) -> None:
         def callback(tab: Optional[Tab], window: Optional[Window]) -> None:
             if tab and window:
                 tab.swap_active_window_with(window.id)
-        get_boss().visual_window_select_action(self, callback, 'Choose window to swap with')
+        get_boss().visual_window_select_action(self, callback, 'Choose window to swap with', only_window_ids=self.all_window_ids_except_active_window)
 
     @ac('win', 'Move active window to the top (make it the first window)')
     def move_window_to_top(self) -> None:

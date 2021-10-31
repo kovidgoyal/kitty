@@ -9,7 +9,8 @@ from contextlib import suppress
 from functools import partial
 from gettext import gettext as _
 from typing import (
-    Any, Callable, Dict, Iterable, Iterator, List, Optional, Tuple, Union, cast
+    Any, Callable, Container, Dict, Iterable, Iterator, List, Optional, Tuple,
+    Union, cast
 )
 from weakref import WeakValueDictionary
 
@@ -859,29 +860,38 @@ class Boss:
             self.current_visual_select.cancel()
             self.current_visual_select = None
 
-    def visual_window_select_action(self, tab: Tab, callback: Callable[[Optional[Tab], Optional[Window]], None], choose_msg: str) -> None:
+    def visual_window_select_action(
+        self, tab: Tab,
+        callback: Callable[[Optional[Tab], Optional[Window]], None],
+        choose_msg: str,
+        only_window_ids: Container[int] = ()
+    ) -> None:
         self.cancel_current_visual_select()
         tm = tab.tab_manager_ref()
         if tm is not None:
             tm.set_active_tab(tab)
         self.current_visual_select = VisualSelect(tab.id, tab.os_window_id, choose_msg, callback)
         if tab.current_layout.only_active_window_visible:
-            self.select_window_in_tab_using_overlay(tab, choose_msg)
+            self.select_window_in_tab_using_overlay(tab, choose_msg, only_window_ids)
             return
         pending_sequences: SubSequenceMap = {}
         fmap = get_name_to_functional_number_map()
+        num = 0
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
-            if idx > 9:
-                break
-            num = idx + 1
+            if only_window_ids and window.id not in only_window_ids:
+                continue
             ac = KeyAction('visual_window_select_action_trigger', (window.id,))
-            if num == 10:
+            num += 1
+            is_last = num == 10
+            if is_last:
                 num = 0
             window.screen.set_window_number(num)
             self.current_visual_select.window_ids.append(window.id)
             for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
                 pending_sequences[(SingleKey(mods=mods, key=ord(str(num))),)] = ac
                 pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{num}']),)] = ac
+            if is_last:
+                break
         if len(self.current_visual_select.window_ids) > 1:
             self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('visual_window_select_action_trigger', (0,)))
             redirect_mouse_handling(True)
@@ -914,8 +924,9 @@ class Boss:
             ev = WindowSystemMouseEvent(in_tab_bar, window_id, action, modifiers, button, currently_pressed_button, x, y)
             self.mouse_handler(ev)
 
-    def select_window_in_tab_using_overlay(self, tab: Tab, msg: str) -> None:
-        windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False))
+    def select_window_in_tab_using_overlay(self, tab: Tab, msg: str, only_window_ids: Container[int] = ()) -> None:
+        windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False)
+                        if not only_window_ids or w.id in only_window_ids)
         if len(windows) < 1:
             self.visual_window_select_action_trigger(windows[0][0] if windows else 0)
             if get_options().enable_audio_bell:

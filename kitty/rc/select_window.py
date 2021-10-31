@@ -19,6 +19,7 @@ class SelectWindow(RemoteCommand):
     match: The tab to open the new window in
     self: Boolean, if True use tab the command was run in
     title: A title for this selection
+    exclude_active: Exclude the currently active window from the list to pick
     '''
 
     short_desc = 'Visually select a window in the specified tab'
@@ -41,11 +42,16 @@ instead of the active tab.
 
 --title
 A title that will be displayed to the user to describe what this selection is for
+
+
+--exclude-active
+type=bool-set
+Exclude the currently active window from the list of windows to pick
 '''
     is_asynchronous = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        ans = {'self': opts.self, 'match': opts.match, 'title': opts.title}
+        ans = {'self': opts.self, 'match': opts.match, 'title': opts.title, 'exclude_active': opts.exclude_active}
         return ans
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
@@ -58,7 +64,11 @@ A title that will be displayed to the user to describe what this selection is fo
                 responder.send_error('No window selected')
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
-                boss.visual_window_select_action(tab, callback, payload_get('title') or 'Choose window')
+                if payload_get('exclude_active'):
+                    wids = tab.all_window_ids_except_active_window
+                else:
+                    wids = set()
+                boss.visual_window_select_action(tab, callback, payload_get('title') or 'Choose window', only_window_ids=wids)
                 break
         return no_response
 
