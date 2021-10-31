@@ -455,6 +455,8 @@ class TTYIO:
         close_tty(self.tty_fd, self.original_termios)
 
     def wait_till_read_available(self) -> bool:
+        if self.read_with_timeout:
+            raise ValueError('Cannot wait when TTY is set to read with timeout')
         import select
         rd = select.select([self.tty_fd], [], [])[0]
         return bool(rd)
