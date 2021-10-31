@@ -882,7 +882,7 @@ class Boss:
             if only_window_ids and window.id not in only_window_ids:
                 continue
             ac = KeyAction('visual_window_select_action_trigger', (window.id,))
-            num += 1
+            num = idx + 1
             is_last = num == 10
             if is_last:
                 num = 0
