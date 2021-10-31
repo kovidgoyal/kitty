@@ -8,12 +8,15 @@ from typing import Dict, Iterator, List, Optional
 
 from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE
+from kitty.utils import sanitize_control_codes
 from kitty.file_transmission import (
     Action, FileTransmissionCommand, NameReprEnum, encode_bypass
 )
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop, debug
+from ..tui.utils import human_size
+from ..tui.operations import styled, without_line_wrap
 from .utils import expand_home, random_id
 
 debug
@@ -35,6 +38,7 @@ class File:
         self.spec_id = int(ftc.file_id)
         self.permissions = ftc.permissions
         self.remote_path = ftc.name
+        self.display_name = sanitize_control_codes(self.remote_path)
         self.remote_id = ftc.status
         self.remote_target = ftc.data.decode('utf-8')
         self.parent = ftc.parent
@@ -128,16 +132,22 @@ class Manager:
         self.failed_specs: Dict[int, str] = {}
         self.spec_counts = dict.fromkeys(range(len(self.spec)), 0)
         self.dest = dest
+        self.remote_home = ''
         self.bypass = encode_bypass(request_id, bypass) if bypass else ''
         self.prefix = f'\x1b]{FILE_TRANSFER_CODE};id={self.request_id};'
         self.suffix = '\x1b\\'
         self.state = State.waiting_for_permission
         self.files: List[File] = []
+        self.total_transfer_size = 0
 
     def start_transfer(self) -> Iterator[str]:
         yield FileTransmissionCommand(action=Action.send, bypass=self.bypass, size=len(self.spec)).serialize()
         for i, x in enumerate(self.spec):
             yield FileTransmissionCommand(action=Action.file, file_id=str(i), name=x).serialize()
+
+    def collect_files(self, cli_opts: TransferCLIOptions) -> None:
+        self.files = list(files_for_receive(cli_opts, self.dest, self.files, self.remote_home, self.spec))
+        self.total_transfer_size = sum(max(0, f.expected_size) for f in self.files)
 
     def on_file_transfer_response(self, ftc: FileTransmissionCommand) -> str:
         if self.state is State.waiting_for_permission:
@@ -161,6 +171,7 @@ class Manager:
                 else:
                     if ftc.status == 'OK':
                         self.state = State.transferring
+                        self.remote_home = ftc.name
                         return ''
                     else:
                         return ftc.status
@@ -185,6 +196,7 @@ class Receive(Handler):
         self.cli_opts = cli_opts
         self.manager = Manager(random_id(), spec, dest, bypass=cli_opts.permissions_bypass)
         self.quit_after_write_code: Optional[int] = None
+        self.check_paths_printed = False
 
     def send_payload(self, payload: str) -> None:
         self.write(self.manager.prefix)
@@ -226,7 +238,37 @@ class Receive(Handler):
                 self.print_err('No matches found for: ' + ', '.join(self.manager.spec[k] for k, v in self.manager.spec_counts.items() if v == 0))
                 self.quit_loop(1)
                 return
-            self.print(f'Queueing transfer of {len(self.manager.files)} files(s)')
+            self.manager.collect_files(self.cli_opts)
+            if self.cli_opts.confirm_paths:
+                self.confirm_paths()
+            else:
+                self.queue_transfer()
+
+    def confirm_paths(self) -> None:
+        self.print_check_paths()
+
+    def print_check_paths(self) -> None:
+        if self.check_paths_printed:
+            return
+        self.check_paths_printed = True
+        self.print('The following file transfers will be performed. A red destination means an existing file will be overwritten.')
+        for df in self.manager.files:
+            self.cmd.styled(df.ftype.short_text, fg=df.ftype.color)
+            self.print(end=' ')
+            self.print(df.display_name, '→', end=' ')
+            self.cmd.styled(df.expanded_local_path, fg='red' if os.path.lexists(df.expanded_local_path) else None)
+            self.print()
+        self.print(f'Transferring {len(self.manager.files)} files of total size: {human_size(self.manager.total_transfer_size)}')
+        self.print()
+        self.print_continue_msg()
+
+    def print_continue_msg(self) -> None:
+        self.print(
+            'Press', styled('y', fg='green', bold=True, fg_intense=True), 'to continue or',
+            styled('n', fg='red', bold=True, fg_intense=True), 'to abort')
+
+    def queue_transfer(self) -> None:
+        self.print(f'Queueing transfer of {len(self.manager.files)} files(s)')
 
     def print_err(self, msg: str) -> None:
         self.cmd.styled(msg, fg='red')
@@ -251,6 +293,11 @@ class Receive(Handler):
         self.send_payload(FileTransmissionCommand(action=Action.cancel).serialize())
         self.manager.state = State.canceled
         self.asyncio_loop.call_later(delay, self.quit_loop, 1)
+
+    @Handler.atomic_update
+    def draw_progress(self) -> None:
+        with without_line_wrap(self.write):
+            pass
 
 
 def receive_main(cli_opts: TransferCLIOptions, args: List[str]) -> None:
