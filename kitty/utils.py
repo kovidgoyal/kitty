@@ -442,14 +442,22 @@ def write_all(fd: int, data: Union[str, bytes]) -> None:
 
 class TTYIO:
 
+    def __init__(self, read_with_timeout: bool = True):
+        self.read_with_timeout = read_with_timeout
+
     def __enter__(self) -> 'TTYIO':
         from .fast_data_types import open_tty
-        self.tty_fd, self.original_termios = open_tty(True)
+        self.tty_fd, self.original_termios = open_tty(self.read_with_timeout)
         return self
 
     def __exit__(self, *a: Any) -> None:
         from .fast_data_types import close_tty
         close_tty(self.tty_fd, self.original_termios)
+
+    def wait_till_read_available(self) -> bool:
+        import select
+        rd = select.select([self.tty_fd], [], [])[0]
+        return bool(rd)
 
     def send(self, data: Union[str, bytes, Iterable[Union[str, bytes]]]) -> None:
         if isinstance(data, (str, bytes)):

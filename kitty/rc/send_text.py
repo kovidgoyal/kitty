@@ -69,9 +69,13 @@ Do not send text to the active window, even if it is one of the matched windows.
                 ret['exclude_active'] = True
                 keep_going = True
                 from kitty.utils import TTYIO
-                with TTYIO() as tty:
+                with TTYIO(read_with_timeout=False) as tty:
                     while keep_going:
+                        if not tty.wait_till_read_available():
+                            break
                         data = os.read(tty.tty_fd, limit)
+                        if not data:
+                            break
                         decoded_data = data.decode('utf-8')
                         if '\x04' in decoded_data:
                             decoded_data = decoded_data[:decoded_data.index('\x04')]
