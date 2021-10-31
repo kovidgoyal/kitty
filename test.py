@@ -33,7 +33,13 @@ def init_env() -> None:
 
 def main() -> None:
     warnings.simplefilter('error')
-    with TemporaryDirectory() as tdir, env_vars(PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir):
+    with TemporaryDirectory() as tdir, env_vars(
+        PYTHONWARNINGS='error', HOME=tdir, USERPROFILE=tdir,
+        XDG_CONFIG_HOME=os.path.join(tdir, '.config'),
+        XDG_CONFIG_DIRS=os.path.join(tdir, '.config'),
+        XDG_DATA_DIRS=os.path.join(tdir, '.local', 'xdg'),
+        XDG_CACHE_HOME=os.path.join(tdir, '.cache'),
+    ):
         init_env()
         m = importlib.import_module('kitty_tests.main')
         m.run_tests()  # type: ignore
