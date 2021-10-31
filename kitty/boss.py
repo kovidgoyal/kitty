@@ -37,7 +37,8 @@ from .fast_data_types import (
     redirect_mouse_handling, ring_bell, safe_pipe,
     set_application_quit_request, set_background_image, set_boss,
     set_clipboard_string, set_in_sequence_mode, set_options,
-    set_os_window_size, thread_write, toggle_fullscreen, toggle_maximized
+    set_os_window_size, set_os_window_title, sync_os_window_title,
+    thread_write, toggle_fullscreen, toggle_maximized
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -144,10 +145,12 @@ class DumpCommands:  # {{{
 
 class VisualSelect:
 
-    def __init__(self, tab_id: int, callback: Callable[[Optional[Tab], Optional[Window]], None]):
+    def __init__(self, tab_id: int, os_window_id: int, title: str, callback: Callable[[Optional[Tab], Optional[Window]], None]):
         self.tab_id = tab_id
+        self.os_window_id = os_window_id
         self.callback = callback
         self.window_ids: List[int] = []
+        set_os_window_title(self.os_window_id, title)
 
     def cancel(self) -> None:
         self.clear_global_state()
@@ -166,6 +169,7 @@ class VisualSelect:
                 self.callback(tab, w)
 
     def clear_global_state(self) -> 'Boss':
+        sync_os_window_title(self.os_window_id)
         boss = get_boss()
         redirect_mouse_handling(False)
         boss.clear_pending_sequences()
@@ -860,10 +864,10 @@ class Boss:
         tm = tab.tab_manager_ref()
         if tm is not None:
             tm.set_active_tab(tab)
+        self.current_visual_select = VisualSelect(tab.id, tab.os_window_id, choose_msg, callback)
         if tab.current_layout.only_active_window_visible:
             self.select_window_in_tab_using_overlay(tab, choose_msg)
             return
-        self.current_visual_select = VisualSelect(tab.id, callback)
         pending_sequences: SubSequenceMap = {}
         fmap = get_name_to_functional_number_map()
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
