@@ -9,7 +9,7 @@ from typing import Dict, Iterator, List, Optional
 from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE
 from kitty.file_transmission import (
-    Action, FileTransmissionCommand, NameReprEnum, encode_bypass
+    Action, FileTransmissionCommand, FileType, NameReprEnum, encode_bypass
 )
 from kitty.typing import KeyEventType
 from kitty.utils import sanitize_control_codes
@@ -145,6 +145,12 @@ class Manager:
         yield FileTransmissionCommand(action=Action.receive, bypass=self.bypass, size=len(self.spec)).serialize()
         for i, x in enumerate(self.spec):
             yield FileTransmissionCommand(action=Action.file, file_id=str(i), name=x).serialize()
+
+    def request_files(self) -> Iterator[str]:
+        for f in self.files:
+            if f.ftype is FileType.directory:
+                continue
+            yield FileTransmissionCommand(action=Action.file, name=f.remote_path).serialize()
 
     def collect_files(self, cli_opts: TransferCLIOptions) -> None:
         self.files = list(files_for_receive(cli_opts, self.dest, self.files, self.remote_home, self.spec))
@@ -295,6 +301,8 @@ class Receive(Handler):
     def start_transfer(self) -> None:
         self.transmit_started = True
         self.print(f'Queueing transfer of {len(self.manager.files)} files(s)')
+        for x in self.manager.request_files():
+            self.send_payload(x)
 
     def print_err(self, msg: str) -> None:
         self.cmd.styled(msg, fg='red')
