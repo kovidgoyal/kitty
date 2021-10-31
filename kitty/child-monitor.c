@@ -424,6 +424,7 @@ parse_input(ChildMonitor *self) {
             }
             if (resp) {
                 if (PyBytes_Check(resp)) send_response_to_peer(msg->peer_id, PyBytes_AS_STRING(resp), PyBytes_GET_SIZE(resp));
+                else send_response_to_peer(msg->peer_id, NULL, 0);
                 Py_CLEAR(resp);
             } else send_response_to_peer(msg->peer_id, NULL, 0);
         }
