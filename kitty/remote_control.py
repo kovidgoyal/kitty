@@ -6,9 +6,9 @@ import os
 import re
 import sys
 import types
-from time import monotonic
 from contextlib import suppress
 from functools import partial
+from time import monotonic
 from typing import (
     Any, Dict, Generator, Iterable, List, Optional, Tuple, Union, cast
 )
@@ -21,9 +21,9 @@ from .rc.base import (
     NoResponse, ParsingOfArgsFailed, PayloadGetter, all_command_names,
     command_for_name, parse_subcommand_cli
 )
+from .types import AsyncResponse
 from .typing import BossType, WindowType
 from .utils import TTYIO, parse_address_spec
-
 
 active_async_requests: Dict[str, float] = {}
 
@@ -33,7 +33,7 @@ def encode_response_for_peer(response: Any) -> bytes:
     return b'\x1bP@kitty-cmd' + json.dumps(response).encode('utf-8') + b'\x1b\\'
 
 
-def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str, peer_id: int) -> Optional[Dict[str, Any]]:
+def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str, peer_id: int) -> Union[Dict[str, Any], None, AsyncResponse]:
     cmd = json.loads(serialized_cmd)
     v = cmd['version']
     no_response = cmd.get('no_response', False)
@@ -63,6 +63,8 @@ def handle_cmd(boss: BossType, window: Optional[WindowType], serialized_cmd: str
         raise
     if isinstance(ans, NoResponse):
         return None
+    if isinstance(ans, AsyncResponse):
+        return ans
     response: Dict[str, Any] = {'ok': True}
     if ans is not None:
         response['data'] = ans

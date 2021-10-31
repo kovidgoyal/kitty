@@ -53,7 +53,7 @@ from .session import Session, create_sessions, get_os_window_sizing_data
 from .tabs import (
     SpecialWindow, SpecialWindowInstance, Tab, TabDict, TabManager
 )
-from .types import _T, SingleKey, WindowSystemMouseEvent, ac
+from .types import _T, AsyncResponse, SingleKey, WindowSystemMouseEvent, ac
 from .typing import PopenType, TypedDict
 from .utils import (
     func_name, get_editor, get_new_os_window_size, get_primary_selection,
@@ -435,7 +435,7 @@ class Boss:
         self.child_monitor.add_child(window.id, window.child.pid, window.child.child_fd, window.screen)
         self.window_id_map[window.id] = window
 
-    def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, peer_id: int = 0) -> Optional[Dict[str, Any]]:
+    def _handle_remote_command(self, cmd: str, window: Optional[Window] = None, peer_id: int = 0) -> Union[Dict[str, Any], None, AsyncResponse]:
         from .remote_control import handle_cmd
         response = None
         window = window or None
@@ -491,7 +491,7 @@ class Boss:
             tb = traceback.format_exc()
             self.show_error(_('remote_control mapping failed'), tb)
 
-    def peer_message_received(self, msg_bytes: bytes, peer_id: int) -> Optional[bytes]:
+    def peer_message_received(self, msg_bytes: bytes, peer_id: int) -> Union[bytes, bool, None]:
         cmd_prefix = b'\x1bP@kitty-cmd'
         terminator = b'\x1b\\'
         if msg_bytes.startswith(cmd_prefix) and msg_bytes.endswith(terminator):
@@ -499,6 +499,8 @@ class Boss:
             response = self._handle_remote_command(cmd, peer_id=peer_id)
             if response is None:
                 return None
+            if isinstance(response, AsyncResponse):
+                return True
             from kitty.remote_control import encode_response_for_peer
             return encode_response_for_peer(response)
 
@@ -528,9 +530,8 @@ class Boss:
 
     def handle_remote_cmd(self, cmd: str, window: Optional[Window] = None) -> None:
         response = self._handle_remote_command(cmd, window)
-        if response is not None:
-            if window is not None:
-                window.send_cmd_response(response)
+        if response is not None and not isinstance(response, AsyncResponse) and window is not None:
+            window.send_cmd_response(response)
 
     def _cleanup_tab_after_window_removal(self, src_tab: Tab) -> None:
         if len(src_tab) < 1:

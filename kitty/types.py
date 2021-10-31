@@ -74,6 +74,10 @@ class WindowSystemMouseEvent(NamedTuple):
 ConvertibleToNumbers = Union[str, bytes, int, float]
 
 
+class AsyncResponse:
+    pass
+
+
 if TYPE_CHECKING:
     class RunOnce(Generic[_T]):
 

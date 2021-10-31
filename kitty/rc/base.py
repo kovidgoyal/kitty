@@ -10,6 +10,7 @@ from typing import (
 from kitty.cli import get_defaults_from_seq, parse_args, parse_option_spec
 from kitty.cli_stub import RCOptions as R
 from kitty.constants import appname, list_kitty_resources, running_in_kitty
+from kitty.types import AsyncResponse
 
 if TYPE_CHECKING:
     from kitty.boss import Boss as B
@@ -64,7 +65,7 @@ class PayloadGetter:
 
 no_response = NoResponse()
 payload_get = object()
-ResponseType = Union[bool, str, None, NoResponse]
+ResponseType = Union[bool, str, None, NoResponse, AsyncResponse]
 CmdReturnType = Union[Dict[str, Any], List[Any], Tuple[Any, ...], str, int, float, bool]
 CmdGenerator = Iterator[CmdReturnType]
 PayloadType = Optional[Union[CmdReturnType, CmdGenerator]]
