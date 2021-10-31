@@ -905,14 +905,15 @@ class Boss:
             if get_options().enable_audio_bell:
                 ring_bell()
             return
+        cvs = self.current_visual_select
 
         def chosen(ans: Union[None, int, str]) -> None:
-            if isinstance(ans, int):
+            if cvs and self.current_visual_select is cvs and isinstance(ans, int):
                 for tab in self.all_tabs:
-                    if tab.id == tab_id and self.current_visual_select:
+                    if tab.id == tab_id:
                         w = self.window_id_map.get(ans)
                         if w is not None:
-                            self.current_visual_select.callback(tab, w)
+                            cvs.callback(tab, w)
                         break
             self.current_visual_select = None
         self.choose_entry(msg, windows, chosen)
