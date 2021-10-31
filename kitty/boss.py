@@ -901,6 +901,7 @@ class Boss:
         windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False) if w is not aw)
         tab_id = tab.id
         if len(windows) < 1:
+            self.visual_window_select_action_trigger(tab.id)
             if get_options().enable_audio_bell:
                 ring_bell()
             return
