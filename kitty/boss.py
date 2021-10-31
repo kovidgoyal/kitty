@@ -27,16 +27,17 @@ from .constants import (
 from .fast_data_types import (
     CLOSE_BEING_CONFIRMED, GLFW_MOD_ALT, GLFW_MOD_CONTROL, GLFW_MOD_SHIFT,
     GLFW_MOD_SUPER, GLFW_MOUSE_BUTTON_LEFT, GLFW_PRESS,
-    IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED, ChildMonitor, KeyEvent,
-    add_timer, apply_options_update, background_opacity_of,
+    IMPERATIVE_CLOSE_REQUESTED, NO_CLOSE_REQUESTED, ChildMonitor, Color,
+    KeyEvent, add_timer, apply_options_update, background_opacity_of,
     change_background_opacity, change_os_window_state, cocoa_set_menubar_title,
     create_os_window, current_application_quit_request, current_os_window,
-    destroy_global_data, focus_os_window, get_clipboard_string, get_options,
-    get_os_window_size, global_font_size, mark_os_window_for_close,
-    os_window_font_size, patch_global_colors, redirect_mouse_handling,
-    ring_bell, safe_pipe, set_application_quit_request, set_background_image,
-    set_boss, set_clipboard_string, set_in_sequence_mode, set_options,
-    set_os_window_size, thread_write, toggle_fullscreen, toggle_maximized, Color
+    destroy_global_data, focus_os_window, get_boss, get_clipboard_string,
+    get_options, get_os_window_size, global_font_size,
+    mark_os_window_for_close, os_window_font_size, patch_global_colors,
+    redirect_mouse_handling, ring_bell, safe_pipe,
+    set_application_quit_request, set_background_image, set_boss,
+    set_clipboard_string, set_in_sequence_mode, set_options,
+    set_os_window_size, thread_write, toggle_fullscreen, toggle_maximized
 )
 from .key_encoding import get_name_to_functional_number_map
 from .keys import get_shortcut, shortcut_matches
@@ -147,6 +148,32 @@ class VisualSelect:
         self.tab_id = tab_id
         self.callback = callback
         self.window_ids: List[int] = []
+
+    def cancel(self) -> None:
+        self.clear_global_state()
+        self.callback(None, None)
+
+    def trigger(self, window_id: int) -> None:
+        boss = self.clear_global_state()
+        w = boss.window_id_map.get(window_id)
+        if w is None:
+            self.callback(None, None)
+        else:
+            tab = w.tabref()
+            if tab is None:
+                self.callback(None, None)
+            else:
+                self.callback(tab, w)
+
+    def clear_global_state(self) -> 'Boss':
+        boss = get_boss()
+        redirect_mouse_handling(False)
+        boss.clear_pending_sequences()
+        for wid in self.window_ids:
+            w = boss.window_id_map.get(wid)
+            if w is not None:
+                w.screen.set_window_number()
+        return boss
 
 
 class Boss:
@@ -825,7 +852,8 @@ class Boss:
 
     def cancel_current_visual_select(self) -> None:
         if self.current_visual_select:
-            self.visual_window_select_action_trigger(self.current_visual_select.tab_id)
+            self.current_visual_select.cancel()
+            self.current_visual_select = None
 
     def visual_window_select_action(self, tab: Tab, callback: Callable[[Optional[Tab], Optional[Window]], None], choose_msg: str) -> None:
         self.cancel_current_visual_select()
@@ -834,14 +862,12 @@ class Boss:
             return
         self.current_visual_select = VisualSelect(tab.id, callback)
         pending_sequences: SubSequenceMap = {}
-        count = 0
         fmap = get_name_to_functional_number_map()
         for idx, window in tab.windows.iter_windows_with_number(only_visible=True):
             if idx > 9:
                 break
-            count += 1
             num = idx + 1
-            ac = KeyAction('visual_window_select_action_trigger', (tab.id, window.id))
+            ac = KeyAction('visual_window_select_action_trigger', (window.id,))
             if num == 10:
                 num = 0
             window.screen.set_window_number(num)
@@ -849,44 +875,29 @@ class Boss:
             for mods in (0, GLFW_MOD_CONTROL, GLFW_MOD_CONTROL | GLFW_MOD_SHIFT, GLFW_MOD_SUPER, GLFW_MOD_ALT, GLFW_MOD_SHIFT):
                 pending_sequences[(SingleKey(mods=mods, key=ord(str(num))),)] = ac
                 pending_sequences[(SingleKey(mods=mods, key=fmap[f'KP_{num}']),)] = ac
-        if count > 1:
-            self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('visual_window_select_action_trigger', (tab.id,)))
+        if len(self.current_visual_select.window_ids) > 1:
+            self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('visual_window_select_action_trigger', (0,)))
             redirect_mouse_handling(True)
             self.mouse_handler = self.focus_visible_window_mouse_handler
         else:
-            self.visual_window_select_action_trigger(tab.id)
+            self.visual_window_select_action_trigger(self.current_visual_select.window_ids[0] if self.current_visual_select.window_ids else 0)
             if get_options().enable_audio_bell:
                 ring_bell()
 
-    def visual_window_select_action_trigger(self, tab_id: int, window_id: int = 0) -> None:
-        redirect_mouse_handling(False)
-        self.clear_pending_sequences()
-        cv = self.current_visual_select
+    def visual_window_select_action_trigger(self, window_id: int = 0) -> None:
+        if self.current_visual_select:
+            self.current_visual_select.trigger(window_id)
         self.current_visual_select = None
-        if cv is not None:
-            called = False
-            for wid in cv.window_ids:
-                w = self.window_id_map.get(wid)
-                if w is not None:
-                    w.screen.set_window_number()
-                    if wid == window_id:
-                        tab = w.tabref()
-                        if tab is not None:
-                            cv.callback(tab, w)
-                            called = True
-            if not called:
-                cv.callback(None, None)
 
     def focus_visible_window_mouse_handler(self, ev: WindowSystemMouseEvent) -> None:
         tab = self.active_tab
         if ev.button == GLFW_MOUSE_BUTTON_LEFT and ev.action == GLFW_PRESS and ev.window_id:
             w = self.window_id_map.get(ev.window_id)
             if w is not None and tab is not None and w in tab:
-                tab.set_active_window(w)
-                self.visual_window_select_action_trigger(tab.id)
+                self.visual_window_select_action_trigger(w.id)
                 return
         if ev.button > -1 and tab is not None:
-            self.visual_window_select_action_trigger(tab.id)
+            self.visual_window_select_action_trigger()
 
     def mouse_event(
         self, in_tab_bar: bool, window_id: int, action: int, modifiers: int, button: int,
@@ -899,9 +910,8 @@ class Boss:
     def select_window_in_tab_using_overlay(self, tab: Tab, msg: str) -> None:
         aw = tab.active_window
         windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False) if w is not aw)
-        tab_id = tab.id
         if len(windows) < 1:
-            self.visual_window_select_action_trigger(tab.id)
+            self.visual_window_select_action_trigger(windows[0][0] if windows else 0)
             if get_options().enable_audio_bell:
                 ring_bell()
             return
@@ -911,12 +921,7 @@ class Boss:
             q = self.current_visual_select
             self.current_visual_select = None
             if cvs and q is cvs and isinstance(ans, int):
-                for tab in self.all_tabs:
-                    if tab.id == tab_id:
-                        w = self.window_id_map.get(ans)
-                        if w is not None:
-                            cvs.callback(tab, w)
-                        break
+                q.trigger(ans)
         self.choose_entry(msg, windows, chosen)
 
     @ac('win', '''
