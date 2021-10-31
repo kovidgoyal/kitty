@@ -908,14 +908,15 @@ class Boss:
         cvs = self.current_visual_select
 
         def chosen(ans: Union[None, int, str]) -> None:
-            if cvs and self.current_visual_select is cvs and isinstance(ans, int):
+            q = self.current_visual_select
+            self.current_visual_select = None
+            if cvs and q is cvs and isinstance(ans, int):
                 for tab in self.all_tabs:
                     if tab.id == tab_id:
                         w = self.window_id_map.get(ans)
                         if w is not None:
                             cvs.callback(tab, w)
                         break
-            self.current_visual_select = None
         self.choose_entry(msg, windows, chosen)
 
     @ac('win', '''
