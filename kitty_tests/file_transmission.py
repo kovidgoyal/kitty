@@ -297,11 +297,11 @@ class TestFileTransmission(BaseTest):
                 ft.handle_serialized_command(serialized_cmd(action='end_data', file_id=str(fid), data=data))
                 self.assertResponses(ft, status='OK', name=name, file_id=str(fid))
 
-        send(dest, b'xyz', permissions=0o777, mtime=13)
+        send(dest, b'xyz', permissions=0o777, mtime=13000)
         st = os.stat(dest)
         self.ae(st.st_nlink, 1)
         self.ae(stat.S_IMODE(st.st_mode), 0o777)
-        self.ae(st.st_mtime_ns, 13)
+        self.ae(st.st_mtime_ns, 13000)
         send(dest + 's1', 'path:' + os.path.basename(dest), permissions=0o777, mtime=17, ftype='symlink')
         st = os.stat(dest + 's1', follow_symlinks=False)
         self.ae(stat.S_IMODE(st.st_mode), 0o777)
