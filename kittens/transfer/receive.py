@@ -8,15 +8,16 @@ from typing import Dict, Iterator, List, Optional
 
 from kitty.cli_stub import TransferCLIOptions
 from kitty.fast_data_types import FILE_TRANSFER_CODE
-from kitty.utils import sanitize_control_codes
 from kitty.file_transmission import (
     Action, FileTransmissionCommand, NameReprEnum, encode_bypass
 )
+from kitty.typing import KeyEventType
+from kitty.utils import sanitize_control_codes
 
 from ..tui.handler import Handler
 from ..tui.loop import Loop, debug
-from ..tui.utils import human_size
 from ..tui.operations import styled, without_line_wrap
+from ..tui.utils import human_size
 from .utils import expand_home, random_id
 
 debug
@@ -141,7 +142,7 @@ class Manager:
         self.total_transfer_size = 0
 
     def start_transfer(self) -> Iterator[str]:
-        yield FileTransmissionCommand(action=Action.send, bypass=self.bypass, size=len(self.spec)).serialize()
+        yield FileTransmissionCommand(action=Action.receive, bypass=self.bypass, size=len(self.spec)).serialize()
         for i, x in enumerate(self.spec):
             yield FileTransmissionCommand(action=Action.file, file_id=str(i), name=x).serialize()
 
@@ -197,6 +198,7 @@ class Receive(Handler):
         self.manager = Manager(random_id(), spec, dest, bypass=cli_opts.permissions_bypass)
         self.quit_after_write_code: Optional[int] = None
         self.check_paths_printed = False
+        self.transmit_started = False
 
     def send_payload(self, payload: str) -> None:
         self.write(self.manager.prefix)
@@ -242,7 +244,7 @@ class Receive(Handler):
             if self.cli_opts.confirm_paths:
                 self.confirm_paths()
             else:
-                self.queue_transfer()
+                self.start_transfer()
 
     def confirm_paths(self) -> None:
         self.print_check_paths()
@@ -258,16 +260,40 @@ class Receive(Handler):
             self.print(df.display_name, '→', end=' ')
             self.cmd.styled(df.expanded_local_path, fg='red' if os.path.lexists(df.expanded_local_path) else None)
             self.print()
-        self.print(f'Transferring {len(self.manager.files)} files of total size: {human_size(self.manager.total_transfer_size)}')
+        self.print(f'Transferring {len(self.manager.files)} file(s) of total size: {human_size(self.manager.total_transfer_size)}')
         self.print()
         self.print_continue_msg()
+
+    def on_text(self, text: str, in_bracketed_paste: bool = False) -> None:
+        if self.quit_after_write_code is not None:
+            return
+        if self.check_paths_printed and not self.transmit_started:
+            if text.lower() == 'y':
+                self.start_transfer()
+                return
+            if text.lower() == 'n':
+                self.abort_transfer()
+                self.print('Sending cancel request to terminal')
+                return
+            self.print_continue_msg()
+
+    def on_key(self, key_event: KeyEventType) -> None:
+        if self.quit_after_write_code is not None:
+            return
+        if key_event.matches('esc'):
+            if self.check_paths_printed and not self.transmit_started:
+                self.abort_transfer()
+                self.print('Sending cancel request to terminal')
+            else:
+                self.on_interrupt()
 
     def print_continue_msg(self) -> None:
         self.print(
             'Press', styled('y', fg='green', bold=True, fg_intense=True), 'to continue or',
             styled('n', fg='red', bold=True, fg_intense=True), 'to abort')
 
-    def queue_transfer(self) -> None:
+    def start_transfer(self) -> None:
+        self.transmit_started = True
         self.print(f'Queueing transfer of {len(self.manager.files)} files(s)')
 
     def print_err(self, msg: str) -> None:
