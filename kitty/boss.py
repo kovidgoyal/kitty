@@ -915,8 +915,7 @@ class Boss:
             self.mouse_handler(ev)
 
     def select_window_in_tab_using_overlay(self, tab: Tab, msg: str) -> None:
-        aw = tab.active_window
-        windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False) if w is not aw)
+        windows = tuple((w.id, w.title) for i, w in tab.windows.iter_windows_with_number(only_visible=False))
         if len(windows) < 1:
             self.visual_window_select_action_trigger(windows[0][0] if windows else 0)
             if get_options().enable_audio_bell:
