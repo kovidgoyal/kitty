@@ -157,6 +157,7 @@ class Boss:
         self.window_id_map: WeakValueDictionary[int, Window] = WeakValueDictionary()
         self.startup_colors = {k: opts[k] for k in opts if isinstance(opts[k], Color)}
         self.visual_window_select_callback: Optional[Callable[[Optional[Tab], Optional[Window]], None]] = None
+        self.visual_window_select_active_in_tab_id: int = 0
         self.startup_cursor_text_color = opts.cursor_text_color
         self.pending_sequences: Optional[SubSequenceMap] = None
         self.default_pending_action: Optional[KeyAction] = None
@@ -816,6 +817,8 @@ class Boss:
                 self.dispatch_action(matched_action)
 
     def visual_window_select_action(self, tab: Tab, callback: Callable[[Optional[Tab], Optional[Window]], None], choose_msg: str) -> None:
+        if self.visual_window_select_active_in_tab_id:
+            self.visual_window_select_action_trigger(self.visual_window_select_active_in_tab_id)
         self.visual_window_select_callback = callback
         if tab.current_layout.only_active_window_visible:
             self.select_window_in_tab_using_overlay(tab, choose_msg)
@@ -839,12 +842,14 @@ class Boss:
             self.set_pending_sequences(pending_sequences, default_pending_action=KeyAction('visual_window_select_action_trigger', (tab.id,)))
             redirect_mouse_handling(True)
             self.mouse_handler = self.focus_visible_window_mouse_handler
+            self.visual_window_select_active_in_tab_id = tab.id
         else:
             self.visual_window_select_action_trigger(tab.id)
             if get_options().enable_audio_bell:
                 ring_bell()
 
     def visual_window_select_action_trigger(self, tab_id: int, window_id: int = 0) -> None:
+        self.visual_window_select_active_in_tab_id = 0
         redirect_mouse_handling(False)
         self.clear_pending_sequences()
         cb = self.visual_window_select_callback
