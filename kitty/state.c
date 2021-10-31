@@ -840,6 +840,21 @@ PYWRAP1(sync_os_window_title) {
     Py_RETURN_NONE;
 }
 
+PYWRAP1(set_os_window_title) {
+    id_type os_window_id;
+    const char *title;
+    PA("Ks", &os_window_id, &title);
+    PyObject *old_title = NULL;
+    WITH_OS_WINDOW(os_window_id)
+        old_title = os_window->window_title;
+        Py_XINCREF(old_title);
+        set_os_window_title(os_window, title);
+    END_WITH_OS_WINDOW
+    if (!old_title) Py_RETURN_NONE;
+    return old_title;
+}
+
+
 
 PYWRAP1(pt_to_px) {
     double pt;
@@ -1139,6 +1154,7 @@ static PyMethodDef module_methods[] = {
     MW(background_opacity_of, METH_O),
     MW(update_window_visibility, METH_VARARGS),
     MW(sync_os_window_title, METH_VARARGS),
+    MW(set_os_window_title, METH_VARARGS),
     MW(global_font_size, METH_VARARGS),
     MW(set_background_image, METH_VARARGS),
     MW(os_window_font_size, METH_VARARGS),
