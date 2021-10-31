@@ -9,7 +9,7 @@ from .base import (
 )
 
 if TYPE_CHECKING:
-    from kitty.cli_stub import LaunchRCOptions as CLIOptions
+    from kitty.cli_stub import SelectWindowRCOptions as CLIOptions
     from kitty.tabs import Tab
 
 
@@ -18,6 +18,7 @@ class SelectWindow(RemoteCommand):
     '''
     match: The tab to open the new window in
     self: Boolean, if True use tab the command was run in
+    title: A title for this selection
     '''
 
     short_desc = 'Visually select a window in the specified tab'
@@ -36,11 +37,15 @@ The time in seconds to wait for the user to select a window.
 type=bool-set
 If specified the tab containing the window this command is run in is used
 instead of the active tab.
+
+
+--title
+A title that will be displayed to the user to describe what this selection is for
 '''
     is_asynchronous = True
 
     def message_to_kitty(self, global_opts: RCOptions, opts: 'CLIOptions', args: ArgsType) -> PayloadType:
-        ans = {'self': opts.self, 'match': opts.match}
+        ans = {'self': opts.self, 'match': opts.match, 'title': opts.title}
         return ans
 
     def response_from_kitty(self, boss: Boss, window: Optional[Window], payload_get: PayloadGetType) -> ResponseType:
@@ -53,7 +58,7 @@ instead of the active tab.
                 responder.send_error('No window selected')
         for tab in self.tabs_for_match_payload(boss, window, payload_get):
             if tab:
-                boss.visual_window_select_action(tab, callback, 'Choose window')
+                boss.visual_window_select_action(tab, callback, payload_get('title') or 'Choose window')
                 break
         return no_response
 
