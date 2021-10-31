@@ -67,22 +67,17 @@ Do not send text to the active window, even if it is one of the matched windows.
         def pipe() -> CmdGenerator:
             if sys.stdin.isatty():
                 ret['exclude_active'] = True
-                import select
-                fd = sys.stdin.fileno()
                 keep_going = True
-                while keep_going:
-                    rd = select.select([fd], [], [])[0]
-                    if not rd:
-                        break
-                    data = os.read(fd, limit)
-                    if not data:
-                        break  # eof
-                    decoded_data = data.decode('utf-8')
-                    if '\x04' in decoded_data:
-                        decoded_data = decoded_data[:decoded_data.index('\x04')]
-                        keep_going = False
-                    ret['data'] = 'text:' + decoded_data
-                    yield ret
+                from kitty.utils import TTYIO
+                with TTYIO() as tty:
+                    while keep_going:
+                        data = os.read(tty.tty_fd, limit)
+                        decoded_data = data.decode('utf-8')
+                        if '\x04' in decoded_data:
+                            decoded_data = decoded_data[:decoded_data.index('\x04')]
+                            keep_going = False
+                        ret['data'] = 'text:' + decoded_data
+                        yield ret
             else:
                 while True:
                     data = sys.stdin.buffer.read(limit)
