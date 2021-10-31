@@ -1070,7 +1070,8 @@ class Window:
     def show_scrollback(self) -> None:
         text = self.as_text(as_ansi=True, add_history=True, add_wrap_markers=True)
         data = self.pipe_data(text, has_wrap_markers=True)
-        get_boss().display_scrollback(self, data['text'], data['input_line_number'])
+        cursor_on_screen = self.screen.scrolled_by < self.screen.lines - self.screen.cursor.y
+        get_boss().display_scrollback(self, data['text'], data['input_line_number'], report_cursor=cursor_on_screen)
 
     @ac('cp', '''
         Show output from the last shell command in a pager like less
