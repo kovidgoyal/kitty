@@ -12,7 +12,6 @@ from io import BytesIO
 from itertools import cycle
 from typing import NamedTuple
 
-from kitty.constants import cache_dir
 from kitty.fast_data_types import (
     load_png_data, parse_bytes, shm_unlink, shm_write, xor_data
 )
@@ -182,13 +181,6 @@ def make_send_command(screen):
 
 
 class TestGraphics(BaseTest):
-
-    def setUp(self):
-        cache_dir.set_override(tempfile.mkdtemp())
-
-    def tearDown(self):
-        os.rmdir(cache_dir())
-        cache_dir.clear_override()
 
     def test_xor_data(self):
 
