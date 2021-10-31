@@ -233,7 +233,7 @@ def main(args: List[str]) -> None:
         send.pop('payload', None)
         send['cancel_async'] = True
         do_io(global_opts.to, send, True, 10)
-        raise SystemExit(f'Timed out after {response_timeout} seconds waiting for response form kitty')
+        raise SystemExit(f'Timed out after {response_timeout} seconds waiting for response from kitty')
     if no_response:
         return
     if not response.get('ok'):

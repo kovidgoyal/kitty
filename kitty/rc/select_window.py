@@ -24,7 +24,7 @@ class SelectWindow(RemoteCommand):
 
     short_desc = 'Visually select a window in the specified tab'
     desc = (
-        ' Prints out the id of the selected window. Other commands '
+        'Prints out the id of the selected window. Other commands '
         ' can then be chained to make use of it.'
     )
     options_spec = MATCH_TAB_OPTION + '\n\n' + '''\
