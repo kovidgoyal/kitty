@@ -476,47 +476,64 @@ end:
 }
 
 static uint8_t*
-render_single_char_bitmap(const ProcessedBitmap *pbm, size_t *result_width, size_t *result_height) {
-    *result_width = pbm->width; *result_height = pbm->rows;
+render_single_char_bitmap(const FT_Bitmap *bm, size_t *result_width, size_t *result_height) {
+    *result_width = bm->width; *result_height = bm->rows;
     uint8_t *rendered = malloc(*result_width * *result_height);
     if (!rendered) { PyErr_NoMemory(); return NULL; }
-    for (size_t r = 0; r < pbm->rows; r++) {
-        uint8_t *src_row = pbm->buf + pbm->stride * r;
+    for (size_t r = 0; r < bm->rows; r++) {
+        uint8_t *src_row = bm->buffer + bm->pitch * r;
         uint8_t *dest_row = rendered + *result_width * r;
-        memcpy(dest_row, src_row, MIN(*result_width, pbm->stride));
+        memcpy(dest_row, src_row, *result_width);
     }
     return rendered;
 }
 
+typedef struct TempFontData {
+    Face *face;
+    FT_UInt orig_sz;
+} TempFontData;
+
+static void cleanup_resize(void *p) {
+    TempFontData *f = p;
+    if (f->face && f->face->freetype) {
+        f->face->pixel_size = f->orig_sz;
+        FT_Set_Pixel_Sizes(f->face->freetype, f->orig_sz, f->orig_sz);
+    }
+}
+#define RESIZE_AFTER_FUNCTION __attribute__((cleanup(cleanup_resize)))
+
 uint8_t*
-render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t avail_height, size_t *result_width, size_t *result_height) {
+render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *result_width, size_t *result_height) {
     RenderCtx *ctx = (RenderCtx*)ctx_;
     if (!ctx->created) { PyErr_SetString(PyExc_RuntimeError, "freetype render ctx not created"); return NULL; }
+    RESIZE_AFTER_FUNCTION TempFontData temp = {0};
     Face *face = &main_face;
     int glyph_index = FT_Get_Char_Index(face->freetype, ch);
     if (!glyph_index) { PyErr_Format(PyExc_KeyError, "character %c not found in font", ch); return NULL; }
     unsigned int height = font_units_to_pixels_y(face->freetype, face->freetype->height);
+    size_t avail_height = *result_height;
+    if (avail_height < 4) { PyErr_Format(PyExc_ValueError, "Invalid available height: %zu", avail_height); return NULL; }
     float ratio = ((float)height) / avail_height;
-    FT_UInt orig_sz = face->pixel_size;
+    temp.face = face; temp.orig_sz = face->pixel_size;
     face->pixel_size = (FT_UInt)(face->pixel_size / ratio);
-    if (face->pixel_size != orig_sz) FT_Set_Pixel_Sizes(face->freetype, avail_height, avail_height);
+    if (face->pixel_size != temp.orig_sz) FT_Set_Pixel_Sizes(face->freetype, avail_height, avail_height);
     int error = FT_Load_Glyph(face->freetype, glyph_index, get_load_flags(face->hinting, face->hintstyle, FT_LOAD_DEFAULT));
-    FT_Set_Pixel_Sizes(face->freetype, orig_sz, orig_sz); face->pixel_size = orig_sz;
     if (error) { PyErr_Format(PyExc_Exception, "failed to load glyph for character: %c", ch); return NULL;}
-    ProcessedBitmap pbm = {0};
+    if (face->freetype->glyph->format != FT_GLYPH_FORMAT_BITMAP) {
+        error = FT_Render_Glyph(face->freetype->glyph, FT_RENDER_MODE_NORMAL);
+        if (error) { PyErr_Format(PyExc_Exception, "failed to render glyph for character: %c", ch); return NULL;}
+    }
     uint8_t *rendered = NULL;
     switch(face->freetype->glyph->bitmap.pixel_mode) {
         case FT_PIXEL_MODE_MONO: {
             FT_Bitmap bitmap;
             if (!freetype_convert_mono_bitmap(&face->freetype->glyph->bitmap, &bitmap)) return NULL;
-            populate_processed_bitmap(face->freetype->glyph, &bitmap, &pbm);
-            rendered = render_single_char_bitmap(&pbm, result_width, result_height);
+            rendered = render_single_char_bitmap(&bitmap, result_width, result_height);
             FT_Bitmap_Done(freetype_library(), &bitmap);
         }
             break;
         case FT_PIXEL_MODE_GRAY:
-            populate_processed_bitmap(face->freetype->glyph, &face->freetype->glyph->bitmap, &pbm);
-            rendered = render_single_char_bitmap(&pbm, result_width, result_height);
+            rendered = render_single_char_bitmap(&face->freetype->glyph->bitmap, result_width, result_height);
             break;
         default:
             PyErr_Format(PyExc_TypeError, "Unknown FreeType bitmap type: 0x%x", face->freetype->glyph->bitmap.pixel_mode);

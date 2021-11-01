@@ -593,13 +593,10 @@ draw_window_number(OSWindow *os_window, Screen *screen, GLfloat xstart, GLfloat 
     ystart -= dy / 2.f; height -= dy;  // top and bottom margins
     xstart += dx / 2.f; width -= dx;  // left and right margins
     GLfloat height_gl = MIN(MIN(12 * dy, height), width);
-    unsigned height_px = (unsigned)(os_window->viewport_height * height_gl / 2.f);
+    size_t height_px = (unsigned)(os_window->viewport_height * height_gl / 2.f), width_px = 0;
     if (height_px < 4) return;
-    unsigned width_px = height_px;
-    if (height_px < 4 || width_px < 4) return;
-    FREE_AFTER_FUNCTION uint8_t *canvas = malloc(height_px * width_px);
-    if (!canvas) return;
-    memset(canvas, 255, height_px * width_px);
+    FREE_AFTER_FUNCTION uint8_t *canvas = draw_single_ascii_char('a', &width_px, &height_px);
+    if (height_px < 4 || width_px < 4 || !canvas) return;
     GLfloat width_gl = 2.f * ((float)width_px) / os_window->viewport_width;
     left = xstart + (width - width_gl) / 2.f;
     right = left + width_gl;

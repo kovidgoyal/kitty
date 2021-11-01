@@ -460,6 +460,14 @@ draw_window_title(OSWindow *window, const char *text, color_type fg, color_type 
     if (!ok && PyErr_Occurred()) PyErr_Print();
     return ok;
 }
+
+uint8_t*
+draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_height) {
+    if (!ensure_csd_title_render_ctx()) return NULL;
+    uint8_t *ans = render_single_ascii_char_as_mask(csd_title_render_ctx, ch, result_width, result_height);
+    if (PyErr_Occurred()) PyErr_Print();
+    return ans;
+}
 #endif
 // }}}
 

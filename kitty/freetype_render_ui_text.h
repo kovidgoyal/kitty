@@ -14,6 +14,7 @@ typedef struct {bool created;} *FreeTypeRenderCtx;
 FreeTypeRenderCtx create_freetype_render_context(const char *family, bool bold, bool italic);
 void set_main_face_family(FreeTypeRenderCtx ctx, const char *family, bool bold, bool italic);
 bool render_single_line(FreeTypeRenderCtx ctx, const char *text, unsigned sz_px, uint32_t fg, uint32_t bg, uint8_t *output_buf, size_t width, size_t height, float x_offset, float y_offset, size_t right_margin);
+uint8_t* render_single_ascii_char_as_mask(FreeTypeRenderCtx ctx_, const char ch, size_t *result_width, size_t *result_height);
 void release_freetype_render_context(FreeTypeRenderCtx ctx);
 
 typedef struct FontConfigFace {
