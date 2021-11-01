@@ -418,6 +418,16 @@ bool
 draw_window_title(OSWindow *window UNUSED, const char *text, color_type fg, color_type bg, uint8_t *output_buf, size_t width, size_t height) {
     return cocoa_render_line_of_text(text, fg, bg, output_buf, width, height);
 }
+
+extern uint8_t* render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *result_height);
+
+uint8_t*
+draw_single_ascii_char(const char ch, size_t *result_width, size_t *result_height) {
+    uint8_t *ans = render_single_ascii_char_as_mask(ch, result_width, result_height);
+    if (PyErr_Occurred()) PyErr_Print();
+    return ans;
+}
+
 #else
 
 static FreeTypeRenderCtx csd_title_render_ctx = NULL;

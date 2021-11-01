@@ -496,12 +496,7 @@ ensure_render_space(size_t width, size_t height, size_t num_glyphs) {
 }
 
 static void
-render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned int baseline, unsigned int num_glyphs) {
-    memset(buffers.render_buf, 0, width * height);
-    CGColorSpaceRef gray_color_space = CGColorSpaceCreateDeviceGray();
-    if (gray_color_space == NULL) fatal("Out of memory");
-    CGContextRef render_ctx = CGBitmapContextCreate(buffers.render_buf, width, height, 8, width, gray_color_space, (kCGBitmapAlphaInfoMask & kCGImageAlphaNone));
-    if (render_ctx == NULL) fatal("Out of memory");
+setup_ctx_for_alpha_mask(CGContextRef render_ctx) {
     CGContextSetShouldAntialias(render_ctx, true);
     CGContextSetShouldSmoothFonts(render_ctx, true);
     CGContextSetGrayFillColor(render_ctx, 1, 1); // white glyphs
@@ -509,10 +504,20 @@ render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned 
     CGContextSetLineWidth(render_ctx, OPT(macos_thicken_font));
     CGContextSetTextDrawingMode(render_ctx, kCGTextFillStroke);
     CGContextSetTextMatrix(render_ctx, CGAffineTransformIdentity);
+}
+
+static void
+render_glyphs(CTFontRef font, unsigned int width, unsigned int height, unsigned int baseline, unsigned int num_glyphs) {
+    memset(buffers.render_buf, 0, width * height);
+    CGColorSpaceRef gray_color_space = CGColorSpaceCreateDeviceGray();
+    if (gray_color_space == NULL) fatal("Out of memory");
+    CGContextRef render_ctx = CGBitmapContextCreate(buffers.render_buf, width, height, 8, width, gray_color_space, (kCGBitmapAlphaInfoMask & kCGImageAlphaNone));
+    CGColorSpaceRelease(gray_color_space);
+    if (render_ctx == NULL) fatal("Out of memory");
+    setup_ctx_for_alpha_mask(render_ctx);
     CGContextSetTextPosition(render_ctx, 0, height - baseline);
     CTFontDrawGlyphs(font, buffers.glyphs, buffers.positions, num_glyphs, render_ctx);
     CGContextRelease(render_ctx);
-    CGColorSpaceRelease(gray_color_space);
 }
 
 StringCanvas
@@ -575,9 +580,8 @@ cocoa_render_line_of_text(const char *text, const color_type fg, const color_typ
     CGContextSetShouldSmoothFonts(ctx, true);  // sub-pixel antialias
     CGContextSetRGBFillColor(ctx, ((bg >> 16) & 0xff) / 255.f, ((bg >> 8) & 0xff) / 255.f, (bg & 0xff) / 255.f, 1.f);
     CGContextFillRect(ctx, CGRectMake(0.0, 0.0, width, height));
-    CGAffineTransform transform = CGAffineTransformIdentity;
     CGContextSetTextDrawingMode(ctx, kCGTextFill);
-    CGContextSetTextMatrix(ctx, transform);
+    CGContextSetTextMatrix(ctx, CGAffineTransformIdentity);
     CGContextSetRGBFillColor(ctx, ((fg >> 16) & 0xff) / 255.f, ((fg >> 8) & 0xff) / 255.f, (fg & 0xff) / 255.f, 1.f);
     CGContextSetRGBStrokeColor(ctx, ((fg >> 16) & 0xff) / 255.f, ((fg >> 8) & 0xff) / 255.f, (fg & 0xff) / 255.f, 1.f);
 
@@ -594,6 +598,34 @@ cocoa_render_line_of_text(const char *text, const color_type fg, const color_typ
     CGContextRelease(ctx);
     return true;
 }
+
+uint8_t*
+render_single_ascii_char_as_mask(const char ch, size_t *result_width, size_t *result_height) {
+    if (!ensure_ui_font(*result_height)) { PyErr_SetString(PyExc_RuntimeError, "failed to create UI font"); return NULL; }
+    unichar chars = ch;
+    CGSize local_advances[1];
+    CTFontGetGlyphsForCharacters(window_title_font, &chars, buffers.glyphs, 1);
+    CTFontGetAdvancesForGlyphs(window_title_font, kCTFontOrientationDefault, buffers.glyphs, local_advances, 1);
+    CGRect bounding_box = CTFontGetBoundingRectsForGlyphs(window_title_font, kCTFontOrientationDefault, buffers.glyphs, buffers.boxes, 1);
+
+    size_t width = (size_t)ceilf(bounding_box.size.width);
+    size_t height = (size_t)ceilf(bounding_box.size.height);
+    uint8_t *canvas = calloc(width, height);
+    if (!canvas) { PyErr_NoMemory(); return NULL; }
+    CGColorSpaceRef gray_color_space = CGColorSpaceCreateDeviceGray();
+    if (gray_color_space == NULL) { PyErr_NoMemory(); free(canvas); return NULL; }
+    CGContextRef render_ctx = CGBitmapContextCreate(canvas, width, height, 8, width, gray_color_space, (kCGBitmapAlphaInfoMask & kCGImageAlphaNone));
+    CGColorSpaceRelease(gray_color_space);
+    if (render_ctx == NULL) { PyErr_NoMemory(); free(canvas); return NULL; }
+    setup_ctx_for_alpha_mask(render_ctx);
+    /* printf("origin.y: %f descent: %f ascent: %f height: %zu size.height: %f\n", bounding_box.origin.y, CTFontGetDescent(window_title_font), CTFontGetAscent(window_title_font), height, bounding_box.size.height); */
+    CGContextSetTextPosition(render_ctx, 0, -bounding_box.origin.y);
+    CTFontDrawGlyphs(window_title_font, buffers.glyphs, buffers.positions, 1, render_ctx);
+    CGContextRelease(render_ctx);
+    *result_width = width; *result_height = height;
+    return canvas;
+}
+
 
 static bool
 do_render(CTFontRef ct_font, bool bold, bool italic, hb_glyph_info_t *info, hb_glyph_position_t *hb_positions, unsigned int num_glyphs, pixel *canvas, unsigned int cell_width, unsigned int cell_height, unsigned int num_cells, unsigned int baseline, bool *was_colored, bool allow_resize, FONTS_DATA_HANDLE fg, bool center_glyph) {
